@@ -3579,8 +3579,18 @@ function parse(value) {
     testFiles: files2.filter((f) => typeof f === "string"),
     newTestFiles: value.newTestFiles === true,
     ...keys === null ? {} : { keys: Object.fromEntries(keys) },
-    ...typeof value.revision === "number" ? { revision: value.revision } : {}
+    ...typeof value.revision === "number" ? { revision: value.revision } : {},
+    ...withHandoff(value.handoff)
   };
+}
+function withHandoff(value) {
+  if (!isRecord(value) || typeof value.at !== "number" || typeof value.revision !== "number") {
+    return {};
+  }
+  const keys = isRecord(value.keys) ? Object.entries(value.keys).filter(
+    (e) => typeof e[1] === "string" || e[1] === null
+  ) : [];
+  return { handoff: { at: value.at, revision: value.revision, keys: Object.fromEntries(keys) } };
 }
 function readTurn(store, consumer) {
   return parse(readSlot(store, turnMetaKey(consumer.worktreeId), consumer));
@@ -3594,7 +3604,7 @@ function startTurn(store, consumer) {
 function currentKeys(keys) {
   return new Map(keys.map((k) => [testFileId(k.testFile), k.key]));
 }
-function endTurn(store, consumer, states, undelivered) {
+function endTurn(store, consumer, states, undelivered, handoffAt = null) {
   const keys = store.testFileKeys.list(consumer.worktreeId);
   const files2 = /* @__PURE__ */ new Set();
   for (const s of states) if (s.validity === "pending") files2.add(testFileKeyOf(s.check));
@@ -3603,12 +3613,14 @@ function endTurn(store, consumer, states, undelivered) {
   const header = readHeader(store, consumer.worktreeId, states, keys);
   const current = currentKeys(keys);
   const testFiles = [...files2].sort();
+  const owed = Object.fromEntries(testFiles.map((f) => [f, current.get(f) ?? null]));
   writeTurn(store, consumer, {
     turn: "idle",
     testFiles,
     newTestFiles: header.runnerPartPending === true,
-    keys: Object.fromEntries(testFiles.map((f) => [f, current.get(f) ?? null])),
-    revision: header.revision
+    keys: owed,
+    revision: header.revision,
+    ...handoffAt === null ? {} : { handoff: { at: handoffAt, revision: header.revision, keys: owed } }
   });
 }
 function atKey(state, file, keys) {
@@ -3701,7 +3713,14 @@ function createDelivery(store, options) {
     });
     return keep === null ? full : restrictPlan(full, keep);
   }
-  function deliver2(consumer, { heardFrom, keep = null, liveness: liveness2 = false, idle = false, stop = false }) {
+  function deliver2(consumer, {
+    heardFrom,
+    keep = null,
+    liveness: liveness2 = false,
+    idle = false,
+    stop = false,
+    atRevision
+  }) {
     const select = (states) => {
       if (!idle) return { only: keep, trim: null };
       const turn = readTurn(store, consumer);
@@ -3724,6 +3743,7 @@ function createDelivery(store, options) {
     }
     return store.transaction(() => {
       if (store.consumers.get(consumer) === null) return null;
+      if (!atLatest(consumer, atRevision)) return null;
       if (heardFrom && readTurn(store, consumer).turn === "idle") startTurn(store, consumer);
       const at2 = now();
       const states = store.knownStates.list(consumer.worktreeId);
@@ -3770,6 +3790,10 @@ function createDelivery(store, options) {
     });
   }
   const quietAt = /* @__PURE__ */ new Map();
+  function atLatest(consumer, atRevision) {
+    if (atRevision === void 0) return true;
+    return (store.revisions.latest(consumer.worktreeId)?.number ?? 0) === atRevision;
+  }
   function deliverIdle(consumer) {
     const key = JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId]);
     const before = changeMarker(store);
@@ -3822,18 +3846,29 @@ function createDelivery(store, options) {
     unregister: async (consumer) => {
       store.transaction(() => drop(store, consumer, now()));
     },
-    onToolBoundary: async (consumer, { stop = false } = {}) => deliver2(consumer, { heardFrom: true, liveness: true, stop }),
+    onToolBoundary: async (consumer, { stop = false, atRevision } = {}) => deliver2(consumer, {
+      heardFrom: true,
+      liveness: true,
+      stop,
+      ...atRevision === void 0 ? {} : { atRevision }
+    }),
     peek: async (consumer, { kinds }) => {
       const only = new Set(kinds);
       return deliver2(consumer, { heardFrom: true, keep: (e) => only.has(e.kind) });
     },
     startTurn: async (consumer) => deliver2(consumer, { heardFrom: true, liveness: true }),
-    endTurn: async (consumer, { atRevision } = {}) => store.transaction(() => {
+    endTurn: async (consumer, { atRevision, handoff = false } = {}) => store.transaction(() => {
       if (store.consumers.get(consumer) === null) return true;
-      const latest = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
-      if (atRevision !== void 0 && latest !== atRevision) return false;
+      if (!atLatest(consumer, atRevision)) return false;
       const states = store.knownStates.list(consumer.worktreeId);
-      endTurn(store, consumer, states, plan(consumer, states, now(), null).entries);
+      const at2 = now();
+      endTurn(
+        store,
+        consumer,
+        states,
+        plan(consumer, states, at2, null).entries,
+        handoff ? at2 : null
+      );
       return true;
     }),
     waitForDelta: async (consumer, { timeoutMs, signal }) => {
@@ -4178,7 +4213,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.128";
+  if (true) return "0.1.129";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4382,9 +4417,14 @@ function list(names) {
   const more = names.length - shown.length;
   return more > 0 ? `${shown.join(", ")} and ${more} more` : shown.join(", ");
 }
-function slowWaitReason(revision, files2, waitedMs, command = SQUEAL_COMMAND) {
+function slowWaitReason(revision, files2, waitedMs, command = SQUEAL_COMMAND, refining = false) {
+  const after = `Squeal policy stop.requireSlowSuite is on and after ${seconds(waitedMs)} `;
+  const wait = `\`${command} run --slow --wait\` waits for their results.`;
+  const unlisted = `${runnerPartText(revision)} is still pending: slow test files it adds are not listed yet.`;
+  if (files2.length === 0) return `${after}${unlisted} ${wait}`;
   const verb = files2.length === 1 ? "is" : "are";
-  return `Squeal policy stop.requireSlowSuite is on and after ${seconds(waitedMs)} ${plural(files2.length, "slow test file")} ${verb} still not current at revision ${revision}: ${list(files2.map((f) => f.path))}. \`${command} run --slow --wait\` waits for their results.`;
+  const more = refining ? ` ${unlisted.charAt(0).toUpperCase()}${unlisted.slice(1)}` : "";
+  return `${after}${plural(files2.length, "slow test file")} ${verb} still not current at revision ${revision}: ${list(files2.map((f) => f.path))}.${more} ${wait}`;
 }
 function slowFailuresReason(revision, failures) {
   const verb = failures.length === 1 ? "fails" : "fail";
@@ -4398,13 +4438,16 @@ function seconds(ms) {
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 
 // src/harness/shared/stop.ts
-async function newsText(context, starting, command) {
+async function newsText(context, starting, command, atRevision) {
   const { store, delivery, consumer } = context;
   if (!isRegistered(context)) {
     const registration2 = await delivery.register(consumer, { inTurn: true, ...starting });
     return registration2.knownFailures.length > 0 ? formatRegistration(registration2, void 0, command) : null;
   }
-  const delta = await delivery.onToolBoundary(consumer, { stop: true });
+  const delta = await delivery.onToolBoundary(consumer, {
+    stop: true,
+    ...atRevision === void 0 ? {} : { atRevision }
+  });
   if (delta === null) return null;
   const failures = store.knownStates.list(consumer.worktreeId).filter((s) => s.outcome === "fail").map((s) => s.check);
   return `${formatDelta(delta, command)}
@@ -4427,37 +4470,48 @@ async function stopSlow(input, location2, deps) {
   return withContext(input, location2, deps, async (context) => {
     const version = deps.squealVersion ?? squealVersion();
     recordStopWait(context.store, context.consumer.worktreeId, input.harness, version);
-    if (!await handedOver(context, deps, poll)) return null;
-    const waited = read4(context, isSlow, deps);
-    if (waited.open.length === 0) return null;
-    const end = await waitForSlow(context, isSlow, deps, bound, poll);
-    if (end === null) return null;
-    const failed = end.current.filter((f) => end.seen.has(testFileId(testFileOf(f.check))));
-    const still = end.open;
-    if (still.length === 0 && failed.length === 0) return null;
-    if (!takeTurn(context)) return null;
-    const reason = still.length > 0 ? slowWaitReason(end.header.revision, still, end.waitedMs, deps.command) : slowFailuresReason(end.header.revision, failed);
-    const news = await newsText(context, {}, deps.command);
+    const handoff = await handedOver(context, deps, poll);
+    if (handoff === null) return null;
+    const waited = { owed: handoff.keys, seen: /* @__PURE__ */ new Set(), isSlow };
+    const block3 = await waitForSlow(context, waited, deps, bound, poll);
+    if (block3 === null) return null;
+    const { header, failures, reason } = block3;
+    const news = await newsText(context, {}, deps.command, header.revision);
     return `${reason}
 
-${news ?? statusText(end.header, end.failures, deps.command)}`;
+${news ?? statusText(header, failures, deps.command)}`;
   });
 }
-function read4(context, isSlow, deps) {
+function read4(context, waited, clock) {
   const { store, consumer } = context;
   return readTransaction(store, () => {
     const states = store.knownStates.list(consumer.worktreeId);
     const keys = store.testFileKeys.list(consumer.worktreeId);
-    const now = (deps.now ?? Date.now)();
-    const header = readLiveHeader(store, consumer.worktreeId, now, states, null, keys);
+    const header = readLiveHeader(store, consumer.worktreeId, clock(), states, null, keys);
     const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
+    const open = slowFilesNotCurrent(states, keys, waited.isSlow);
+    for (const file of open) waited.seen.add(testFileId(file));
     return {
       header,
       failures,
       current: failures.filter((f) => f.validity === "current"),
-      open: slowFilesNotCurrent(states, keys, isSlow),
+      open,
+      keys: currentKeys(keys),
       idle: readTurn(store, consumer).turn === "idle"
     };
+  });
+}
+function complete(last) {
+  return last.open.length === 0 && last.header.runnerPartPending !== true;
+}
+function failedOf(last, waited) {
+  return last.current.filter((f) => {
+    const file = testFileOf(f.check);
+    if (!waited.isSlow(file)) return false;
+    const id = testFileId(file);
+    if (waited.seen.has(id)) return true;
+    const recorded = waited.owed[id];
+    return recorded !== void 0 && (last.keys.get(id) ?? null) === recorded;
   });
 }
 async function handedOver(context, deps, poll) {
@@ -4465,43 +4519,57 @@ async function handedOver(context, deps, poll) {
   const deadline = performance.now() + STOP_SLOW_HANDOFF_MS;
   const { store, consumer } = context;
   for (; ; ) {
-    const handed = readTransaction(store, () => {
-      const record = store.consumers.get(consumer);
-      if (record === null || record.lastSeenAt < since) return false;
-      return readTurn(store, consumer).turn === "idle";
+    const handoff = readTransaction(store, () => {
+      if (store.consumers.get(consumer) === null) return null;
+      const turn = readTurn(store, consumer);
+      if (turn.turn !== "idle" || turn.handoff === void 0) return null;
+      return turn.handoff.at >= since ? turn.handoff : null;
     });
-    if (handed) return true;
+    if (handoff !== null) return handoff;
     const left = deadline - performance.now();
-    if (left <= 0) return false;
+    if (left <= 0) return null;
     await sleep2(Math.min(poll, left));
   }
 }
-async function waitForSlow(context, isSlow, deps, bound, poll) {
+async function waitForSlow(context, waited, deps, bound, poll) {
+  const clock = deps.now ?? Date.now;
   const started = performance.now();
-  const seen = /* @__PURE__ */ new Set();
   let downSince = null;
   for (; ; ) {
     if (!isRegistered(context)) return null;
-    const last = read4(context, isSlow, deps);
+    const last = read4(context, waited, clock);
     if (!last.idle) return null;
-    for (const file of last.open) seen.add(testFileId(file));
     const now = performance.now();
     downSince = last.header.daemon?.state === "down" ? downSince ?? now : null;
     const down = downSince !== null && now - downSince >= STOP_SLOW_DOWN_MS;
     const left = started + bound - now;
-    if (last.open.length === 0 || left <= 0 || down) {
-      return { ...last, waitedMs: Math.min(bound, Math.round(now - started)), seen };
+    const over = left <= 0 || down;
+    if (complete(last) || over) {
+      const waitedMs = Math.min(bound, Math.round(now - started));
+      const decided = decide(context, waited, clock(), { over, waitedMs, command: deps.command });
+      if (decided !== "again") return decided;
     }
-    await sleep2(Math.min(poll, left));
+    await sleep2(Math.min(poll, Math.max(0, left)));
   }
 }
-function takeTurn(context) {
+function decide(context, waited, at2, {
+  over,
+  waitedMs,
+  command
+}) {
   const { store, consumer } = context;
   return store.transaction(() => {
-    if (store.consumers.get(consumer) === null) return false;
-    if (readTurn(store, consumer).turn !== "idle") return false;
+    if (store.consumers.get(consumer) === null) return null;
+    const live = read4(context, waited, () => at2);
+    if (!live.idle) return null;
+    const failed = failedOf(live, waited);
+    const done = complete(live);
+    if (done && failed.length === 0) return null;
+    if (!done && !over) return "again";
     startTurn(store, consumer);
-    return true;
+    const { header, failures } = live;
+    const reason = done ? slowFailuresReason(header.revision, failed) : slowWaitReason(header.revision, live.open, waitedMs, command, header.runnerPartPending);
+    return { header, failures, reason };
   });
 }
 

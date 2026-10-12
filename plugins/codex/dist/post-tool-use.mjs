@@ -3564,8 +3564,18 @@ function parse(value) {
     testFiles: files2.filter((f) => typeof f === "string"),
     newTestFiles: value.newTestFiles === true,
     ...keys === null ? {} : { keys: Object.fromEntries(keys) },
-    ...typeof value.revision === "number" ? { revision: value.revision } : {}
+    ...typeof value.revision === "number" ? { revision: value.revision } : {},
+    ...withHandoff(value.handoff)
   };
+}
+function withHandoff(value) {
+  if (!isRecord(value) || typeof value.at !== "number" || typeof value.revision !== "number") {
+    return {};
+  }
+  const keys = isRecord(value.keys) ? Object.entries(value.keys).filter(
+    (e) => typeof e[1] === "string" || e[1] === null
+  ) : [];
+  return { handoff: { at: value.at, revision: value.revision, keys: Object.fromEntries(keys) } };
 }
 function readTurn(store, consumer) {
   return parse(readSlot(store, turnMetaKey(consumer.worktreeId), consumer));
@@ -3579,7 +3589,7 @@ function startTurn(store, consumer) {
 function currentKeys(keys) {
   return new Map(keys.map((k) => [testFileId(k.testFile), k.key]));
 }
-function endTurn(store, consumer, states, undelivered) {
+function endTurn(store, consumer, states, undelivered, handoffAt = null) {
   const keys = store.testFileKeys.list(consumer.worktreeId);
   const files2 = /* @__PURE__ */ new Set();
   for (const s of states) if (s.validity === "pending") files2.add(testFileKeyOf(s.check));
@@ -3588,12 +3598,14 @@ function endTurn(store, consumer, states, undelivered) {
   const header = readHeader(store, consumer.worktreeId, states, keys);
   const current = currentKeys(keys);
   const testFiles = [...files2].sort();
+  const owed = Object.fromEntries(testFiles.map((f) => [f, current.get(f) ?? null]));
   writeTurn(store, consumer, {
     turn: "idle",
     testFiles,
     newTestFiles: header.runnerPartPending === true,
-    keys: Object.fromEntries(testFiles.map((f) => [f, current.get(f) ?? null])),
-    revision: header.revision
+    keys: owed,
+    revision: header.revision,
+    ...handoffAt === null ? {} : { handoff: { at: handoffAt, revision: header.revision, keys: owed } }
   });
 }
 function atKey(state, file, keys) {
@@ -3686,7 +3698,14 @@ function createDelivery(store, options) {
     });
     return keep === null ? full : restrictPlan(full, keep);
   }
-  function deliver2(consumer, { heardFrom, keep = null, liveness: liveness2 = false, idle = false, stop = false }) {
+  function deliver2(consumer, {
+    heardFrom,
+    keep = null,
+    liveness: liveness2 = false,
+    idle = false,
+    stop = false,
+    atRevision
+  }) {
     const select = (states) => {
       if (!idle) return { only: keep, trim: null };
       const turn = readTurn(store, consumer);
@@ -3709,6 +3728,7 @@ function createDelivery(store, options) {
     }
     return store.transaction(() => {
       if (store.consumers.get(consumer) === null) return null;
+      if (!atLatest(consumer, atRevision)) return null;
       if (heardFrom && readTurn(store, consumer).turn === "idle") startTurn(store, consumer);
       const at2 = now();
       const states = store.knownStates.list(consumer.worktreeId);
@@ -3755,6 +3775,10 @@ function createDelivery(store, options) {
     });
   }
   const quietAt = /* @__PURE__ */ new Map();
+  function atLatest(consumer, atRevision) {
+    if (atRevision === void 0) return true;
+    return (store.revisions.latest(consumer.worktreeId)?.number ?? 0) === atRevision;
+  }
   function deliverIdle(consumer) {
     const key = JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId]);
     const before = changeMarker(store);
@@ -3807,18 +3831,29 @@ function createDelivery(store, options) {
     unregister: async (consumer) => {
       store.transaction(() => drop(store, consumer, now()));
     },
-    onToolBoundary: async (consumer, { stop = false } = {}) => deliver2(consumer, { heardFrom: true, liveness: true, stop }),
+    onToolBoundary: async (consumer, { stop = false, atRevision } = {}) => deliver2(consumer, {
+      heardFrom: true,
+      liveness: true,
+      stop,
+      ...atRevision === void 0 ? {} : { atRevision }
+    }),
     peek: async (consumer, { kinds }) => {
       const only = new Set(kinds);
       return deliver2(consumer, { heardFrom: true, keep: (e) => only.has(e.kind) });
     },
     startTurn: async (consumer) => deliver2(consumer, { heardFrom: true, liveness: true }),
-    endTurn: async (consumer, { atRevision } = {}) => store.transaction(() => {
+    endTurn: async (consumer, { atRevision, handoff = false } = {}) => store.transaction(() => {
       if (store.consumers.get(consumer) === null) return true;
-      const latest = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
-      if (atRevision !== void 0 && latest !== atRevision) return false;
+      if (!atLatest(consumer, atRevision)) return false;
       const states = store.knownStates.list(consumer.worktreeId);
-      endTurn(store, consumer, states, plan(consumer, states, now(), null).entries);
+      const at2 = now();
+      endTurn(
+        store,
+        consumer,
+        states,
+        plan(consumer, states, at2, null).entries,
+        handoff ? at2 : null
+      );
       return true;
     }),
     waitForDelta: async (consumer, { timeoutMs, signal }) => {
@@ -4379,7 +4414,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.128";
+  if (true) return "0.1.129";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
