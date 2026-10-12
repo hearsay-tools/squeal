@@ -1020,3 +1020,15 @@ Use /worker. Shape: defect. The board row is the brief, with R3 and the research
 ## 001-301 review of wave 13ao
 
 Use /reviewer on gpt-6.1-sol, after 001-299 and 001-300 land. Output `reviews/wave-13ao.md`. The row's questions; measure watch counts yourself with the research's counting stub, not real watches. Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
+
+## 001-302 repair of wave 13an
+
+Use /worker. Shape: repair. Decided by the human (2026-10-12): fix and a third review (001-303). Read `reviews/wave-13an.md` B1 and S2 first; B1's reproduction and fix paragraph are the brief, and its code sketch is the first test. S2, the human's rule: a slow file the Stop owes stays owed when a newer revision re-keys it, so a failure of the newer key that starts and ends between two polls blocks once (004 D9 says so). The idle waiter's own rule (001 D9) is unchanged. S1 is row 001-297, not yours.
+
+Own `src/core/types/delivery.ts`, `src/core/delivery/turn.ts`, `src/harness/shared/stop-slow.ts`, spec 004 D9 (dated line), and tests under `test/harness/` and `test/delivery/`. The watcher rows 001-299 and 001-300 run beside you in `src/core/watcher/`; do not touch it. The coordinator handles `KEY_FORMAT_VERSION` and dist. Do not edit `docs/board.md`. Run the full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Probe isolation: never run third-party agent tooling, the eval runner or any repo script where it can reach the real HOME.
+
+Done when the row's done-when holds.
+
+## 001-303 third review of wave 13am
+
+Use /reviewer on gpt-6.1-sol, after 001-302 lands. Output `reviews/wave-13ap.md`. Third round on `reviews/wave-13an.md` B1 and S2: can any schedule of listing, keys, revisions and results still end a turn silent while a slow file the Stop owes (at its recorded or a newer key) failed, or make it block on a failure it does not owe, block twice, or run past its hook timeout? Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
