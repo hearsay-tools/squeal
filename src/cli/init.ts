@@ -12,6 +12,7 @@ import {
   PREVIOUS_MARKETPLACE_NAME,
   PREVIOUS_PLUGIN_ID,
 } from "./plugin-id.js";
+import { hasChoices, initWithChoices, SETUP_FLAGS_USAGE, takeSetupFlags } from "./setup/apply.js";
 
 /*
  * `squeal init`, spec 001 D9: "adds the marketplace and the `enabledPlugins`
@@ -38,11 +39,25 @@ type JsonObject = Record<string, unknown>;
  * `--harness codex`, see `initCodex`.
  */
 export function init(args: readonly string[], io: CliIo): number | Promise<number> {
-  const parsed = parseInitArgs(args);
-  if (typeof parsed === "string") {
+  const setup = takeSetupFlags(args);
+  const parsed = typeof setup === "string" ? setup : parseInitArgs(setup.rest);
+  if (typeof parsed === "string" || typeof setup === "string") {
     io.stderr(`squeal init: takes no arguments but those below; ${parsed}\n\n${INIT_USAGE}`);
     return 2;
   }
+  if (hasChoices(setup.choices)) {
+    if (parsed.printLauncherConfig) {
+      io.stderr(
+        `squeal init: the setup choices and --print-launcher-config are separate commands\n\n${INIT_USAGE}`,
+      );
+      return 2;
+    }
+    return initWithChoices(setup.choices, io, () => initHarness(parsed, io));
+  }
+  return initHarness(parsed, io);
+}
+
+function initHarness(parsed: InitArgs, io: CliIo): number | Promise<number> {
   if (parsed.harness === "codex") {
     return parsed.printLauncherConfig
       ? printLauncherConfig(io)
@@ -53,7 +68,7 @@ export function init(args: readonly string[], io: CliIo): number | Promise<numbe
 
 const INIT_USAGE = `Usage: squeal init [--harness claude-code]
        squeal init --harness codex [--print-launcher-config | --trust [--yes]]
-`;
+${SETUP_FLAGS_USAGE}`;
 
 interface InitArgs {
   readonly harness: "claude-code" | "codex";
