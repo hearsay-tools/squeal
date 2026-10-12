@@ -4683,6 +4683,8 @@ async function deliver(context, deps, edited = true) {
   const delta = await context.delivery.onToolBoundary(context.consumer);
   const text = delta === null ? null : formatDelta(delta, deps.command);
   const line = edited && ensured === "unavailable" ? notValidated(context, deps) : null;
+  if (edited && line === null && text === null)
+    return "SQUEAL \xB7 No result for scripts/changelog.mjs: no test Squeal runs reads it. Run whatever tests it yourself.";
   if (line === null) return text;
   return text === null ? `SQUEAL \xB7 ${line}` : `${text}
 ${line}`;

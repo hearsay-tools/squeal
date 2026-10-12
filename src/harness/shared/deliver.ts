@@ -65,6 +65,9 @@ export async function deliver(
   const delta = await context.delivery.onToolBoundary(context.consumer);
   const text = delta === null ? null : formatDelta(delta, deps.command);
   const line = edited && ensured === "unavailable" ? notValidated(context, deps) : null;
+  // Experiment C1 (001-308, a5 only): the per-edit line, as a fixture literal that measures the wording.
+  if (edited && line === null && text === null)
+    return "SQUEAL · No result for scripts/changelog.mjs: no test Squeal runs reads it. Run whatever tests it yourself.";
   if (line === null) return text;
   return text === null ? `SQUEAL · ${line}` : `${text}\n${line}`;
 }
