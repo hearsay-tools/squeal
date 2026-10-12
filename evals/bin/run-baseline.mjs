@@ -3,6 +3,8 @@
 //   node evals/bin/run-baseline.mjs [--commit HEAD] [--parallel 2] [--max-load <cpus>]
 //     [--variant <name>] [--stand-in <model>=<stand-in>] [--date YYYY-MM-DD] [--resume <run>]
 //     [--repetitions <n>]  (overrides the config's repetitions; the results record it)
+//     [--models <id,...>] [--tasks <id,...>]  (runs only those; a baseline's --tasks changes its
+//     conditions, so it starts its own trend line)
 // Every cell of evals/baseline.json runs through run-cell.mjs, 2 to 4 at once, each started only
 // while the one-minute load average is below --max-load (the host's CPU count by default). A
 // model whose first cell never reaches it is recorded as missing and not run again; --stand-in
@@ -42,6 +44,7 @@ import {
   assertNoSecrets,
   cellRecord,
   conditionsOf,
+  narrowed,
   resultsName,
 } from "../lib/results.mjs";
 import { evalsRoot, refuseInsideRepo } from "../lib/root.mjs";
@@ -66,6 +69,16 @@ const config = atomic
   ? atomicConfig()
   : JSON.parse(readFileSync(join(EVALS, "baseline.json"), "utf8"));
 if (atomic) config.tasks = Object.keys(config.scenarios);
+const listOpt = (name) => (argv.includes(name) ? opt(name).split(",") : null);
+try {
+  Object.assign(
+    config,
+    narrowed(config, { models: listOpt("--models"), tasks: listOpt("--tasks") }),
+  );
+} catch (e) {
+  console.error(e.message);
+  process.exit(2);
+}
 if (argv.includes("--repetitions")) config.repetitions = Math.max(1, Number(opt("--repetitions")));
 const parallel = Math.min(
   4,

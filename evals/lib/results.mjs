@@ -24,6 +24,25 @@ export function conditionsOf({ fixture, tasks, variant, effort, tools }) {
   return { ...body, fingerprint: sha(JSON.stringify(body)).slice(0, 12) };
 }
 
+/**
+ * `config` narrowed to the `models` and `tasks` named (lists, or null for all), for a run of part
+ * of the suite (006-45); throws on a name the config does not hold. The results then name only
+ * the models that ran, and a baseline's narrowed tasks change its conditions.
+ */
+export function narrowed(config, { models = null, tasks = null } = {}) {
+  const pick = (all, names, key, flag) => {
+    if (!names) return all;
+    const unknown = names.filter((n) => !all.some((x) => key(x) === n));
+    if (unknown.length) throw new Error(`${flag}: not in the config: ${unknown.join(", ")}`);
+    return all.filter((x) => names.includes(key(x)));
+  };
+  return {
+    ...config,
+    models: pick(config.models, models, (m) => m.model, "--models"),
+    tasks: pick(config.tasks, tasks, (t) => t, "--tasks"),
+  };
+}
+
 /** One cell's grade as the results file keeps it. */
 export function cellRecord(g) {
   return {

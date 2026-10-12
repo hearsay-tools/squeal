@@ -97,7 +97,7 @@ export {
   unorderedOf,
 } from "./judge.mjs";
 export { buildFixture, cellArgs, runId } from "./prepare.mjs";
-export { armFixtures, cellRecord, conditionsOf, resultsName } from "./results.mjs";
+export { armFixtures, cellRecord, conditionsOf, narrowed, resultsName } from "./results.mjs";
 export { RUBRIC, rubricOf, SYSTEM } from "./rubric.mjs";
 export {
   cellEnv,
