@@ -139,6 +139,48 @@ describe("turn state", () => {
     expect(trimmed({ ...older, testFiles: [a] }, [], keys)).toBeNull();
   });
 
+  it("keeps a Stop's handoff untrimmed as results land (001-295, 13am B1)", async () => {
+    await delivery.register(C1);
+    setKey(store, "k1", { pending: "queued" });
+    await delivery.endTurn(C1, { handoff: true });
+    const turn = readTurn(store, C1);
+    if (turn.turn !== "idle") throw new Error("not idle");
+    const [file] = turn.testFiles;
+    expect(turn.handoff).toEqual({
+      at: expect.any(Number),
+      revision: 0,
+      keys: { [file ?? ""]: "k1" },
+    });
+    // The file's run lands: the waiter no longer owes it, the handoff still names it.
+    setKey(store, "k1");
+    const trim = trimmed(turn, [], store.testFileKeys.list(WT));
+    expect(trim).toMatchObject({ testFiles: [], handoff: turn.handoff });
+    await delivery.endTurn(C1);
+    expect(readTurn(store, C1)).not.toHaveProperty("handoff");
+  });
+
+  it("delivers at a tool boundary only at the revision asked for (001-295, 13am B2)", async () => {
+    const sink = createStateSink(store);
+    const append = (createdAt: number) =>
+      store.revisions.append({
+        worktreeId: WT,
+        createdAt,
+        head: null,
+        dirty: true,
+        trigger: "watch",
+        changes: [],
+      });
+    append(1);
+    sink.applyResults(WT, 1, [result(check("a"), "pass")], { checkpointId: null });
+    await delivery.register(C1, { inTurn: true });
+    sink.applyResults(WT, 1, [result(check("a"), "fail")], { checkpointId: null });
+    append(2);
+    expect(await delivery.onToolBoundary(C1, { stop: true, atRevision: 1 })).toBeNull();
+    const delta = await delivery.onToolBoundary(C1, { stop: true, atRevision: 2 });
+    expect(delta?.entries.map((e) => e.kind)).toEqual(["pass-to-fail"]);
+    expect(delta?.header.revision).toBe(2);
+  });
+
   it("keeps one row per worktree and drops consumers no longer registered", async () => {
     await delivery.register(C1);
     await delivery.register(C2);

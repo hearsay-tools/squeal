@@ -16,6 +16,7 @@ import type {
   EpochMs,
   KnownFailure,
   Policy,
+  RevisionNumber,
   StatusHeader,
   TestFileRef,
 } from "../../core/types/index.js";
@@ -142,7 +143,11 @@ export function stopTurn(
         if (input.agent_id !== undefined) await finishSubagent(context);
         else if (news === null) {
           // The turn ends at the revision decided on; a newer one is decided again, up to a bound.
-          const at = blocking ? { atRevision: header.revision } : {};
+          const at = {
+            ...(blocking ? { atRevision: header.revision } : {}),
+            // Task 001-295: what the waiting entry beside this one waits for.
+            ...(policy.requireSlowSuite ? { handoff: true } : {}),
+          };
           if (!(await context.delivery.endTurn(consumer, at))) {
             if (decision < STOP_DECISIONS) continue;
             const text = statusText(header, failures, deps.command);
@@ -251,12 +256,14 @@ async function finishSubagent(context: HookContext): Promise<void> {
 /**
  * The delta with its header and the known-failure count; for a main agent with
  * no registration, its registration when that lists known failures. `null`
- * when there is nothing new.
+ * when there is nothing new, or with `atRevision` when the latest revision
+ * is another one, which then delivers nothing (task 001-295).
  */
 export async function newsText(
   context: HookContext,
   starting: { readonly startingSince?: EpochMs },
   command?: string,
+  atRevision?: RevisionNumber,
 ): Promise<string | null> {
   const { store, delivery, consumer } = context;
   if (!isRegistered(context)) {
@@ -266,7 +273,10 @@ export async function newsText(
       : null;
   }
   // Task 001-224: news at Stop costs a continuation, so the edit line only rides on other news.
-  const delta = await delivery.onToolBoundary(consumer, { stop: true });
+  const delta = await delivery.onToolBoundary(consumer, {
+    stop: true,
+    ...(atRevision === undefined ? {} : { atRevision }),
+  });
   if (delta === null) return null;
   const failures = store.knownStates
     .list(consumer.worktreeId)

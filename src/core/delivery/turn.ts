@@ -5,7 +5,9 @@ import {
   type CheckKey,
   type Consumer,
   type DeltaEntry,
+  type EpochMs,
   type KnownState,
+  type StopHandoff,
   type Store,
   type TestFileKeyRecord,
   type TurnState,
@@ -50,7 +52,20 @@ function parse(value: unknown): TurnState {
     newTestFiles: value.newTestFiles === true,
     ...(keys === null ? {} : { keys: Object.fromEntries(keys) }),
     ...(typeof value.revision === "number" ? { revision: value.revision } : {}),
+    ...withHandoff(value.handoff),
   };
+}
+
+function withHandoff(value: unknown): { handoff?: StopHandoff } {
+  if (!isRecord(value) || typeof value.at !== "number" || typeof value.revision !== "number") {
+    return {};
+  }
+  const keys = isRecord(value.keys)
+    ? Object.entries(value.keys).filter(
+        (e): e is [string, CheckKey | null] => typeof e[1] === "string" || e[1] === null,
+      )
+    : [];
+  return { handoff: { at: value.at, revision: value.revision, keys: Object.fromEntries(keys) } };
 }
 
 export function readTurn(store: Store, consumer: Consumer): TurnState {
@@ -95,13 +110,16 @@ export function currentKeys(keys: readonly TestFileKeyRecord[]): CurrentKeys {
  * file queued or running) plus `undelivered`, the entries a delivery would
  * make now, so a result that landed while the turn was ending still wakes.
  * Each file is waited for at its current key, and new test files up to the
- * current revision (task 001-89, review wave 10 S3).
+ * current revision (task 001-89, review wave 10 S3). With `handoffAt`, the
+ * same files and keys are also kept untrimmed as the Stop's `handoff`
+ * (task 001-295).
  */
 export function endTurn(
   store: Store,
   consumer: Consumer,
   states: readonly KnownState[],
   undelivered: readonly DeltaEntry[],
+  handoffAt: EpochMs | null = null,
 ): void {
   const keys = store.testFileKeys.list(consumer.worktreeId);
   const files = new Set<string>();
@@ -111,12 +129,16 @@ export function endTurn(
   const header = readHeader(store, consumer.worktreeId, states, keys);
   const current = currentKeys(keys);
   const testFiles = [...files].sort();
+  const owed = Object.fromEntries(testFiles.map((f) => [f, current.get(f) ?? null]));
   writeTurn(store, consumer, {
     turn: "idle",
     testFiles,
     newTestFiles: header.runnerPartPending === true,
-    keys: Object.fromEntries(testFiles.map((f) => [f, current.get(f) ?? null])),
+    keys: owed,
     revision: header.revision,
+    ...(handoffAt === null
+      ? {}
+      : { handoff: { at: handoffAt, revision: header.revision, keys: owed } }),
   });
 }
 

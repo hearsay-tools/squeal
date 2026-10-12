@@ -10,6 +10,7 @@ import {
   type HarnessProcess,
   type KnownState,
   PAYLOAD_SCHEMA_VERSION,
+  type RevisionNumber,
   type StatusBuilder,
   type Store,
   type TurnState,
@@ -72,6 +73,8 @@ interface DeliverOptions {
   readonly liveness?: boolean;
   readonly idle?: boolean;
   readonly stop?: boolean;
+  /** Deliver only while the worktree's latest revision is this one (`ToolBoundaryOptions`). */
+  readonly atRevision?: RevisionNumber;
 }
 
 interface Selection {
@@ -136,7 +139,14 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
    */
   function deliver(
     consumer: Consumer,
-    { heardFrom, keep = null, liveness = false, idle = false, stop = false }: DeliverOptions,
+    {
+      heardFrom,
+      keep = null,
+      liveness = false,
+      idle = false,
+      stop = false,
+      atRevision,
+    }: DeliverOptions,
   ): Delta | null {
     /** What to deliver, and for the waiter the turn state trimmed of what is no longer owed. */
     const select = (states: readonly KnownState[]): Selection | "silent" => {
@@ -162,6 +172,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
     }
     return store.transaction(() => {
       if (store.consumers.get(consumer) === null) return null;
+      if (!atLatest(consumer, atRevision)) return null;
       if (heardFrom && readTurn(store, consumer).turn === "idle") startTurn(store, consumer);
       const at = now();
       const states = store.knownStates.list(consumer.worktreeId);
@@ -222,6 +233,12 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
    * that wrote, the marker moved by its own write is kept unless another
    * connection committed meanwhile.
    */
+  /** Whether `atRevision`, when given, is the worktree's latest revision. Inside a transaction. */
+  function atLatest(consumer: Consumer, atRevision: RevisionNumber | undefined): boolean {
+    if (atRevision === undefined) return true;
+    return (store.revisions.latest(consumer.worktreeId)?.number ?? 0) === atRevision;
+  }
+
   function deliverIdle(consumer: Consumer): Delta | null {
     const key = JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId]);
     const before = changeMarker(store);
@@ -283,8 +300,13 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       store.transaction(() => drop(store, consumer, now()));
     },
 
-    onToolBoundary: async (consumer, { stop = false } = {}) =>
-      deliver(consumer, { heardFrom: true, liveness: true, stop }),
+    onToolBoundary: async (consumer, { stop = false, atRevision } = {}) =>
+      deliver(consumer, {
+        heardFrom: true,
+        liveness: true,
+        stop,
+        ...(atRevision === undefined ? {} : { atRevision }),
+      }),
 
     peek: async (consumer, { kinds }) => {
       const only = new Set(kinds);
@@ -293,13 +315,19 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
 
     startTurn: async (consumer) => deliver(consumer, { heardFrom: true, liveness: true }),
 
-    endTurn: async (consumer, { atRevision } = {}) =>
+    endTurn: async (consumer, { atRevision, handoff = false } = {}) =>
       store.transaction(() => {
         if (store.consumers.get(consumer) === null) return true;
-        const latest = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
-        if (atRevision !== undefined && latest !== atRevision) return false;
+        if (!atLatest(consumer, atRevision)) return false;
         const states = store.knownStates.list(consumer.worktreeId);
-        endTurn(store, consumer, states, plan(consumer, states, now(), null).entries);
+        const at = now();
+        endTurn(
+          store,
+          consumer,
+          states,
+          plan(consumer, states, at, null).entries,
+          handoff ? at : null,
+        );
         return true;
       }),
 
