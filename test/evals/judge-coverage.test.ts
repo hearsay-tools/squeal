@@ -61,17 +61,13 @@ describe("a calibration's coverage", () => {
     expect(coverageGaps(old, refs)).toHaveLength(refs.length);
   });
 
-  // 006-44 made `no-overclaim`'s `unknown` claim explicit after 006-43's rubric failed calibration
-  // (Haiku 71/72): this rubric has no calibration yet. Recalibrate, then remove this line.
-  const UNCALIBRATED = "4bb132acc949";
-
   it("is exact for the committed passing calibration of the current rubric", () => {
     const rubric = rubricRevision(declared);
     const passing = readdirSync(RESULTS)
       .filter((f) => f.startsWith("judge-calibration-") && f.endsWith(".json"))
       .map((f) => ({ f, c: JSON.parse(readFileSync(`${RESULTS}${f}`, "utf8")) as Calibration }))
       .filter(({ c }) => c.identity.rubric === rubric && c.passed === true);
-    if (rubric !== UNCALIBRATED) expect(passing.map(({ f }) => f)).not.toEqual([]);
+    expect(passing.map(({ f }) => f)).not.toEqual([]);
     for (const { f, c } of passing)
       expect({ f, gaps: coverageGaps(c, refs) }).toEqual({ f, gaps: [] });
   });
