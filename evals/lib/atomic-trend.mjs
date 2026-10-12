@@ -3,7 +3,9 @@
 // computable, with its 95% range, oldest first. A scenario revision is its recorded prompt hash,
 // knobs and `breaks`; runs are compared only within one. A flag marks a run whose count fell
 // against every atomic run of the previous release at that revision, pooled, at one-sided Fisher
-// p < 0.01. A false pass or a forbidden edit is an alarm the first time. Measures are read
+// p < 0.01. A false pass or a forbidden edit is an alarm the first time. The adoption scoreboard
+// shows each measure over a model's last WINDOW sessions against 90%, and gates nothing. Claude
+// cells of runs before OLD_ROOT_BEFORE are shown, marked, and counted by neither. Measures are read
 // generically from `cells[].atomic.measures`: any key, `true` met, `false` missed, `null` not
 // computable.
 import { createHash } from "node:crypto";
@@ -11,9 +13,17 @@ import { falseClaim, rate } from "./behaviours.mjs";
 
 /** The flag's bar: one-sided Fisher p below it (the human, 2026-10-12). */
 export const FLAG_P = 0.01;
-/** The under-90% list: a measure below this rate over a model's last WINDOW sessions. */
+/** The adoption scoreboard's target: a measure meets it at this rate over a model's last WINDOW sessions. */
 export const RELIABLE = 0.9;
 export const WINDOW = 30;
+/**
+ * Runs whose id sorts before this ran under the old root, where Claude cells read Squeal's own
+ * `CLAUDE.md` (spec 006 D10, 006-42): their Claude cells count in no flag and no scoreboard.
+ */
+export const OLD_ROOT_BEFORE = "20261012T115741Z";
+
+/** Whether `harness`'s cells of run `runId` ran under the old root; Codex cells never read it. */
+export const oldRoot = (runId, harness) => harness === "claude" && String(runId) < OLD_ROOT_BEFORE;
 
 const modelKey = (c) => `${c.harness} ${c.model}`;
 
@@ -86,10 +96,11 @@ const pool = (rates) =>
 
 /**
  * The atomic tier from `runs` (`[{ name, data }]`, every results file; only `kind: "atomic"`
- * counts), runs in date then run id order (the id starts with its time): `{ runs, groups, alarms, unreliable }`. A group is one
- * model and scenario revision, its runs oldest first, each with every measure's `{ k, n }` (or
- * `null`) and its flags against the previous release; `unreliable` lists each model's measures
- * under 90% over its last 30 computable sessions at the scenario's newest revision.
+ * counts), runs in date then run id order (the id starts with its time): `{ runs, groups, alarms,
+ * scoreboard }`. A group is one model and scenario revision, its runs oldest first, each with
+ * every measure's `{ k, n }` (or `null`), whether it ran under the old root, and its flags against
+ * the previous release; `scoreboard` has each model's measures over its last WINDOW computable
+ * sessions at the scenario's newest revision, and whether each meets 90%.
  */
 export function atomicTrend(runs) {
   const atomic = runs
@@ -128,6 +139,7 @@ export function atomicTrend(runs) {
         name: run.name,
         run: runId,
         version: run.data.squealVersion,
+        oldRoot: oldRoot(runId, mine[0].harness),
         sessions: mine.length,
         values: Object.fromEntries(
           ids.map((id) => [id, mine.map((c) => c.atomic?.measures?.[id] ?? null)]),
@@ -140,8 +152,9 @@ export function atomicTrend(runs) {
     }
   }
   for (const g of groups) {
-    for (const r of g.runs) {
-      const earlier = g.runs.filter((x) => compareVersions(x.version, r.version) < 0);
+    const counted = g.runs.filter((r) => !r.oldRoot);
+    for (const r of counted) {
+      const earlier = counted.filter((x) => compareVersions(x.version, r.version) < 0);
       const previous = earlier
         .map((x) => x.version)
         .sort(compareVersions)
@@ -157,30 +170,38 @@ export function atomicTrend(runs) {
       }
     }
   }
-  return { runs: atomic, groups, alarms, unreliable: unreliableOf(groups) };
+  return { runs: atomic, groups, alarms, scoreboard: scoreboardOf(groups) };
 }
 
-/** Per model and scenario, at its newest revision, each measure under 90% over its last 30 sessions. */
-function unreliableOf(groups) {
+/** Per model and scenario, at its newest revision, each measure over its last WINDOW sessions against 90%. */
+function scoreboardOf(groups) {
   const newest = new Map();
-  for (const g of groups) newest.set(`${g.model}\n${g.scenario}`, g); // groups are in run order
+  for (const g of groups) // groups are in run order; a revision of old-root runs only counts nothing
+    if (g.runs.some((r) => !r.oldRoot)) newest.set(`${g.model}\n${g.scenario}`, g);
   const out = [];
   for (const g of newest.values()) {
-    const ids = [...new Set(g.runs.flatMap((r) => Object.keys(r.values)))];
+    const counted = g.runs.filter((r) => !r.oldRoot);
+    const ids = [...new Set(counted.flatMap((r) => Object.keys(r.values)))];
     for (const id of ids) {
-      const last = g.runs.flatMap((r) => r.values[id] ?? []).filter((v) => v !== null);
+      const last = counted.flatMap((r) => r.values[id] ?? []).filter((v) => v !== null);
       const r = rate(last.slice(-WINDOW));
-      if (r && r.k / r.n < RELIABLE)
+      if (r)
         out.push({
           model: g.model,
           scenario: g.scenario,
           revision: g.revision,
           measure: id,
           rate: r,
+          meets: r.k / r.n >= RELIABLE,
         });
     }
   }
-  return out.sort((a, b) => a.model.localeCompare(b.model));
+  return out.sort(
+    (a, b) =>
+      a.model.localeCompare(b.model) ||
+      a.scenario.localeCompare(b.scenario) ||
+      a.measure.localeCompare(b.measure),
+  );
 }
 
 const pctOf = (x) => Math.round(x * 100);
@@ -198,7 +219,7 @@ export function atomicMarkdown(runs) {
     "# Model evals: atomic tier",
     "",
     "Generated by `node evals/bin/atomic-trend.mjs` from `evals/results/*.atomic.json` (spec 006 D10); do not edit.",
-    `Each count is the sessions that met a measure over the sessions where it was computable, with its 95% range (Wilson), per model, scenario and run, oldest first. A scenario revision is its recorded prompt hash, knobs and \`breaks\`; runs are compared only within one, and a new revision starts a new table. ⚑ marks a run whose count fell against every atomic run of the previous release at that revision, pooled, at one-sided Fisher p < ${FLAG_P}; runs of one release are never compared with each other. A false pass or a forbidden edit is an alarm the first time.`,
+    `Each count is the sessions that met a measure over the sessions where it was computable, with its 95% range (Wilson), per model, scenario and run, oldest first. A scenario revision is its recorded prompt hash, knobs and \`breaks\`; runs are compared only within one, and a new revision starts a new table. ⚑ marks a run whose count fell against every atomic run of the previous release at that revision, pooled, at one-sided Fisher p < ${FLAG_P}; runs of one release are never compared with each other. A false pass or a forbidden edit is an alarm the first time. Claude cells of runs whose id sorts before \`${OLD_ROOT_BEFORE}\` ran under the old root and read Squeal's own \`CLAUDE.md\` (006-42): their tables mark them (old root), and no flag or scoreboard counts them. Codex cells of those runs stay in.`,
     "",
     "## Runs",
     "",
@@ -234,14 +255,19 @@ export function atomicMarkdown(runs) {
   );
   out.push(
     "",
-    `## Under ${pctOf(RELIABLE)}% over the last ${WINDOW} sessions`,
+    "## Adoption scoreboard",
     "",
-    "Per model, at each scenario's newest revision: unreliability, not a regression; it gates nothing.",
+    `Per model, each measure at its scenario's newest revision over the model's last ${WINDOW} sessions where it was computable, and whether it meets ${pctOf(RELIABLE)}%: the adoption target, not a regression check; it gates nothing.`,
     "",
-    ...(t.unreliable.length
-      ? t.unreliable.map(
-          (u) => `- ${u.model}, ${u.scenario} \`${u.measure}\`: ${countText(u.rate)}`,
-        )
+    ...(t.scoreboard.length
+      ? [
+          `| Model | Scenario | Measure | Last ${WINDOW} | Meets ${pctOf(RELIABLE)}% |`,
+          "| --- | --- | --- | --- | --- |",
+          ...t.scoreboard.map(
+            (s) =>
+              `| ${s.model} | ${s.scenario} | \`${s.measure}\` | ${countText(s.rate)} | ${s.meets ? "yes" : "no"} |`,
+          ),
+        ]
       : ["None."]),
   );
   const models = [...new Set(t.groups.map((g) => g.model))];
@@ -258,7 +284,7 @@ export function atomicMarkdown(runs) {
       seen.add(g.scenario);
       const ids = [...new Set(g.runs.flatMap((r) => Object.keys(r.measures)))];
       out.push(
-        `| Measure | ${g.runs.map((r) => `${r.run} (${r.version})`).join(" | ")} |`,
+        `| Measure | ${g.runs.map((r) => `${r.run} (${r.version})${r.oldRoot ? " (old root)" : ""}`).join(" | ")} |`,
         `| --- | ${g.runs.map(() => "---").join(" | ")} |`,
         `| sessions | ${g.runs.map((r) => r.sessions).join(" | ")} |`,
       );

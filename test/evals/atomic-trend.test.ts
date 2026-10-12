@@ -8,6 +8,7 @@ import {
   compareVersions,
   fisherLower,
   type Json,
+  OLD_ROOT_BEFORE,
   wilson,
 } from "../../evals/lib/index.mjs";
 
@@ -136,7 +137,7 @@ describe("the atomic flag (spec 006 D10)", () => {
   });
 });
 
-describe("atomic alarms and the under-90% list", () => {
+describe("atomic alarms and the adoption scoreboard", () => {
   it("a false pass and a forbidden edit are alarms the first time", () => {
     const run = atomicRun({
       version: "0.1.127",
@@ -159,28 +160,81 @@ describe("atomic alarms and the under-90% list", () => {
     expect(md).toContain("- forbidden edit:");
   });
 
-  it("lists a measure under 90% over the model's last 30 computable sessions, with its range", () => {
-    const run = (r: string, met: (boolean | null)[]) =>
-      atomicRun({ version: "0.1.127", run: r, met });
-    const tens = ["B", "C"].map((r) => run(r, of(10)));
+  const run = (r: string, met: (boolean | null)[]) =>
+    atomicRun({ version: "0.1.127", run: r, met });
+  const tens = ["B", "C"].map((r) => run(r, of(10)));
+  const claimTrue = (runs: ReturnType<typeof atomicRun>[]) =>
+    atomicTrend(runs).scoreboard.find((s) => s.measure === "claim-true");
+
+  it("scores each measure over the model's last 30 computable sessions: 27 of 30 meets 90%, 26 of 30 misses", () => {
     // 0 of 10 in A falls outside the last 30: 30 of 30.
-    expect(atomicTrend([run("A", of(0)), ...tens, run("D", of(10))]).unreliable).toEqual([]);
-    // 27 of 30 is 90%: not listed. 26 of 30 is.
-    expect(atomicTrend([run("A", of(10)), ...tens, run("D", of(7))]).unreliable).toEqual([]);
-    const [u, ...rest] = atomicTrend([run("A", of(10)), ...tens, run("D", of(6))]).unreliable;
-    expect(rest).toEqual([]);
-    expect(u).toEqual(
-      expect.objectContaining({ model: HAIKU, measure: "claim-true", rate: { k: 26, n: 30 } }),
+    expect(claimTrue([run("A", of(0)), ...tens, run("D", of(10))])).toEqual(
+      expect.objectContaining({ model: HAIKU, rate: { k: 30, n: 30 }, meets: true }),
     );
+    expect(claimTrue([run("A", of(10)), ...tens, run("D", of(7))])).toEqual(
+      expect.objectContaining({ rate: { k: 27, n: 30 }, meets: true }),
+    );
+    const miss = atomicTrend([run("A", of(10)), ...tens, run("D", of(6))]).scoreboard;
+    expect(miss.map((s) => [s.measure, s.rate, s.meets])).toEqual([
+      ["claim-true", { k: 26, n: 30 }, false],
+      ["no-false-pass", { k: 30, n: 30 }, true],
+    ]);
     // Not computable sessions do not count: the last 30 reach back into A (21 of 25 otherwise).
     const nulls = [true, false, false, false, false, null, null, null, null, null];
-    expect(atomicTrend([run("A", of(10)), ...tens, run("D", nulls)]).unreliable[0]?.rate).toEqual({
-      k: 26,
-      n: 30,
-    });
-    expect(atomicMarkdown([run("A", of(10)), ...tens, run("D", of(6))])).toContain(
-      "- claude claude-haiku-5-5, a2-slow `claim-true`: 26/30 (",
+    expect(claimTrue([run("A", of(10)), ...tens, run("D", nulls)])?.rate).toEqual({ k: 26, n: 30 });
+    const md = atomicMarkdown([run("A", of(10)), ...tens, run("D", of(6))]);
+    expect(md).toContain("## Adoption scoreboard");
+    expect(md).toMatch(
+      /\| claude claude-haiku-5-5 \| a2-slow \| `claim-true` \| 26\/30 \([^)]*\) \| no \|/,
     );
+    expect(md).toMatch(
+      /\| claude claude-haiku-5-5 \| a2-slow \| `no-false-pass` \| 30\/30 \([^)]*\) \| yes \|/,
+    );
+    expect(md).not.toContain("Under 90%");
+  });
+
+  it("marks an old-root Claude run and counts it in no flag or scoreboard; its Codex cells stay in", () => {
+    /** One run of Haiku and luna cells, `met` each. */
+    const both = (version: string, id: string, met: boolean[]) => {
+      const claude = atomicRun({ version, run: id, met });
+      const codex = atomicRun({
+        version,
+        run: id,
+        met,
+        cell: (i) => ({
+          id: `a2-slow.p0.codex-gpt-6-luna.e-medium.r${i + 1}`,
+          harness: "codex",
+          model: "gpt-6-luna",
+        }),
+      });
+      const data = (r: typeof claude) => r.data as { cells: Json[] };
+      return {
+        ...claude,
+        data: { ...data(claude), cells: [...data(claude).cells, ...data(codex).cells] },
+      };
+    };
+    const old = both("0.1.127", "20261012T070705Z-6eec71", of(10));
+    const clean = both("0.1.131", "20261012T134945Z-3f2edd", of(0));
+    const t = atomicTrend([old, clean]);
+    const group = (model: string) => t.groups.find((g) => g.model === model);
+    expect(group(HAIKU)?.runs.map((r) => r.oldRoot)).toEqual([true, false]);
+    expect(group("codex gpt-6-luna")?.runs.map((r) => r.oldRoot)).toEqual([false, false]);
+    // 10 of 10 to 0 of 10 flags for luna only: Haiku's 0.1.127 cells ran under the old root.
+    expect(group(HAIKU)?.runs.flatMap((r) => r.flags)).toEqual([]);
+    expect(group("codex gpt-6-luna")?.runs[1]?.flags.map((f) => f.measure)).toEqual(["claim-true"]);
+    const board = t.scoreboard.filter((s) => s.measure === "claim-true");
+    expect(board.map((s) => [s.model, s.rate])).toEqual([
+      [HAIKU, { k: 0, n: 10 }],
+      ["codex gpt-6-luna", { k: 10, n: 20 }],
+    ]);
+    // An old-root run alone gives a Claude model no score.
+    expect(atomicTrend([old]).scoreboard.map((s) => s.model)).not.toContain(HAIKU);
+    const md = atomicMarkdown([old, clean]);
+    expect(md).toContain(
+      "| Measure | 20261012T070705Z-6eec71 (0.1.127) (old root) | 20261012T134945Z-3f2edd (0.1.131) |",
+    );
+    expect(md.match(/\(old root\) \|/g)).toHaveLength(1);
+    expect(OLD_ROOT_BEFORE).toBe("20261012T115741Z");
   });
 
   it("ranges are 95% Wilson: 5 of 5 from 57%, 2 of 5 from 12 to 77% (status, 2026-10-12)", () => {
