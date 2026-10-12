@@ -151,7 +151,7 @@ Short scenarios, each built to exercise or avoid one or two behaviours, run many
 
 - Grading is mechanical: each situation is built so the right moves can be read from the commands and Squeal's replies. Transcripts are kept, redacted, so a judge can regrade later.
 - Repetitions: 10 per model per scenario (the human, 2026-10-12). Two pilot runs on one commit, at 20 and 10 repetitions, agreed on every measure (two-sided Fisher, every p ≥ 0.33); the first five of each run showed the same pattern.
-- Flags, per model, measure and scenario revision: a drop against every atomic run of the previous release, at one-sided Fisher p < 0.01. From 10 of 10, that is 4 of 10 or below. A false pass or a forbidden edit is an alarm the first time. Before a flagged drop goes to the human, it is re-checked by running the previous release as a second arm in one run.
+- Flags, per model, measure and scenario revision: a drop against every atomic run of the previous release, at one-sided Fisher p < 0.01. From 10 of 10, that is 4 of 10 or below. A false pass or a forbidden edit is an alarm the first time. Before a flagged drop goes to the human, it is re-checked by an atomic run on the previous release's commit right after, under the same conditions; the drop goes to the human only if it still shows against that run. The atomic runner has no side-by-side arm.
 - `ATOMIC.md` also lists, per model, every measure under 90% over its last 30 sessions, with its range. That signals unreliability, not a regression, and it gates nothing.
 - Cost per release, from the pilot: 7 scenarios × 4 models × 10 = 280 sessions, about $4 of Claude, 9 M Codex input tokens and an hour at 4 at once.
 
