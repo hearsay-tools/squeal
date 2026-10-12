@@ -599,7 +599,7 @@ Spec: `specifications/004-slow-suites/spec.md`, approved 2026-10-08, shipped 202
 
 ## Feature 005: agent adoption
 
-Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the human, held until the other coordinators finish and the quality pass under Later runs, then the human says go (human, 2026-10-10; the host's load is this project's own work); D2 and D6 reconciled with 001-172 to 001-196 on 2026-10-10 (D2 shrinks to a file-set restriction); on resume, ask the 001 coordinator to file its row for reporting ignored paths to setup (open question 6); the human's cezar session of 2026-10-10 folded into D3 and D6; its defects and D6's delivery proposals are 001 rows 001-216 to 001-224, which 005-18's proof needs shipped (001-217, 001-219, 001-223, 001-224); sections D1 to D7. Status and research brief: `status.md`, `research/README.md` (human, 2026-10-09: "The tool will have no value if agents ignore it"). First dogfood step landed before the spec: this repository's gate runs the suite through `squeal run --all --wait` (`97144d9`).
+Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the human; resumed 2026-10-12 on the human's go with 005-10 alone, 005-04 after 006-37 and 006-38 (reconciled with 0.1.131 in `status.md`, 2026-10-12); D2 and D6 reconciled with 001-172 to 001-196 on 2026-10-10 (D2 shrinks to a file-set restriction); on resume, ask the 001 coordinator to file its row for reporting ignored paths to setup (open question 6); the human's cezar session of 2026-10-10 folded into D3 and D6; its defects and D6's delivery proposals are 001 rows 001-216 to 001-224, which 005-18's proof needs shipped (001-217, 001-219, 001-223, 001-224); sections D1 to D7. Status and research brief: `status.md`, `research/README.md` (human, 2026-10-09: "The tool will have no value if agents ignore it"). First dogfood step landed before the spec: this repository's gate runs the suite through `squeal run --all --wait` (`97144d9`).
 
 ### Research (done)
 
@@ -622,9 +622,10 @@ Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the hu
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 005-10 the checkpoint's verdict | planned | D1: `run --all --wait [<ms>]`, exit codes 0, 1, 3, the verdict line, tests and file-level checks counted apart in checkpoint, status and header counts; a shared verdict module 005-11 imports. | Every exit code a test, a revision during the checkpoint included; a real-daemon failing checkpoint exits 1. |
+| 005-10 the checkpoint's verdict | planned, brief in `specifications/005-agent-adoption/tasks/wave-1.md` | D1 as reconciled 2026-10-12: `run --all --wait [<ms>]` (bare `--wait` kept), exit codes 0, 1, 3, the verdict line, joined and owed checkpoints, tests and file-level checks counted apart in the lines `run --all` prints; a shared verdict module 005-11 imports; the `run --all` section of both skills' `commands.md`. Not `status`, headers or `run --slow --wait`. | Every exit code a test, a revision during the checkpoint included; a real-daemon failing checkpoint exits 1. |
 | 005-11 a wait on named files | planned | D2: `status --wait <ms> <path>...` restricts the wait to the test files the paths select, by test or source path; no new priority (001 coordinator, 2026-10-10). | Selection tests; a wait on a pending named file returns when that file's result lands. |
 | 005-12 the setup engine | planned | D3's `squeal setup --plan [--json]`, `--check` and `init`'s per-choice flags (no new flag behaves as today), slow and artifact candidates with their evidence and `--slow`/`--input`, D4's block, D5's gate detection and rewording; `squeal remove` takes the block out. | Plan JSON, block and gate tests, the symlinked-file case included. |
+| 005-21 tests and file-level checks counted apart in status and headers | planned, after 001-292 | D1's counting rule in `squeal status` and the delivery headers (`src/core/status/format-status.ts`, `src/core/delivery/`), split from 005-10 on 2026-10-12 because 001-292 may change both. | Status and header snapshot tests name tests and test files loaded apart; the 10,000-character cap holds. |
 | 005-13 review of wave 1 | planned | `/reviewer` on gpt-6.1-sol. | `reviews/wave-1.md`. |
 
 ### Wave 2: install, setup, the skill and the texts
@@ -642,7 +643,7 @@ Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the hu
 | Task | Status | Scope | Done when |
 |---|---|---|---|
 | 005-17 e2e for setup | planned | Testing: `install.sh`, the launcher across an update, `squeal setup --yes` (proposing the known slow inputs) and the skill, in both harnesses on fixtures shaped like this repository and like cezarion. | Node 22 and 24. |
-| 005-18 dogfooding | planned, after 001-217, 001-219, 001-223, 001-224 and 006-01 ship | Goal 6: controlled sessions on a cold, slow fixture in both harnesses (at most 40), and `metric.mjs` over this repository's sessions since `97144d9` and since the release. | `lessons.md`. |
+| 005-18 dogfooding | planned, after wave 2 (the 001 rows it waited on and 006-01 have shipped) | Goal 6: controlled sessions on 006's suite (the atomic tier, D10, and the long baseline) in both harnesses, and `metric.mjs` over this repository's sessions since `97144d9` and since the release. | `lessons.md`. |
 
 ## Feature 006: model evals
 
@@ -702,7 +703,6 @@ Spec: `specifications/006-model-evals/spec.md`, approved 2026-10-11 by the human
 
 - 001: `squeal` is not on a user's PATH after a plugin install: now spec 005 D3 (`install.sh`, the launcher, `squeal setup`; rows 005-14 and 005-19), decided by the human 2026-10-09.
 
-- Quality pass over specs 002 to 004 and 001's recent waves: one `/quality` scan once the 001 coordinator finishes spec 001 and 004-25 to 004-26 land (human, 2026-10-09). The new specs 005 and 006 start after it (human, 2026-10-10).
 
 - 001: `store.prune` removes a removed worktree's results but not its per-worktree `meta` rows (`slow-tier:<worktreeId>` from 004-15, `optimizer-off.<worktreeId>` from 001-181, `held-files:<worktreeId>` and `reruns:<worktreeId>` from 001-187 (`reviews/wave-13j.md` S4), `slow-artifacts:<worktreeId>` from 004-23, and `failure-keys:<worktreeId>` from 004-25 (newest 1,024 failing checks' keys, written by `src/core/state/sink.ts`), all built in `src/core/slow/state.ts`). Prune them with the worktree by those known prefixes (a registry of per-worktree prefixes), never by a `:<worktreeId>` suffix match: the shared `nodeTest.observed.<project>` and `nodeTest.observedPreloads.<project>` keys must survive, in the same short batches as 001-141. Reported by the 002/003/004 coordinator, 2026-10-09.
 

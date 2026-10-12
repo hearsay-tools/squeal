@@ -75,6 +75,13 @@ Brief: `research/README.md`. Topics `adoption-baseline`, `instruction-surfaces`,
 
 - 2026-10-12, the human, asked by the 005 coordinator for a go: 005 stays held. The quality pass (001-252) has run and 006 is in place; what is left is the human's go. On resume, reconcile the spec with 001's work since 0.1.102 before any spawn: D1 with `run --slow --wait` (001-282), D2 with the store-backed wait (001-258), D6 and 005-15 with 001-283 (the same primer and skill files), D7 and 005-18 with 006's suite and the one-shot Stop (001-284, 001-285), and ask the 001 coordinator for open question 6's row.
 
+- 2026-10-12, the human's go: reconcile, then 005-10 alone; 005-04 waits until 006's atomic reruns (006-37, 006-38) are done, so its harness sessions do not overlap them. Reconciled by the coordinator the same day against 0.1.131:
+  - D1: bare `--wait` kept with an optional `<ms>`; joined (001-217) and owed (001-219) checkpoints named; `run --slow --wait` (001-282) and pathless `status --wait` keep their exit codes. Tests and file-level checks counted apart only in `run --all`'s own lines (005-10); in `status` and the headers it is new row 005-21, after 001-292, which may change both. The new exit code reaches agents, so the next 006 baseline is a new trend point; the gate's caveat goes when 005-10 lands, not in 005-15.
+  - D2: the path form selects from 001-258's store re-key record (0.1.113).
+  - D6 and 005-15: build on 001-283's rewrite (0.1.128) and come after 001-292 (the human's ownership split, on the board).
+  - D7 and 005-18: every 001 row 005-18 waited on has shipped; its proof runs on 006's atomic tier (D10) and the long baseline.
+  - Open question 6: the 001 coordinator was asked for its row.
+
 ## Dogfooding
 
 - 2026-10-09, `97144d9`, decided by the human ("Both": reword this repository's gate now and write the spec beside it): `CLAUDE.md` (and `AGENTS.md`, a symlink to it) and the worker skill take the suite through `squeal run --all --wait`, read `Known failures`, and fall back to `npx vitest run` when Squeal cannot answer or is doubted; reviewers, the coordinator's landing check and CI keep `npx vitest run` as the independent run. Baseline before it, from `research/adoption-baseline.md` 3 (`probes/adoption-baseline/metric.mjs` over this repository's Cezar sessions to 2026-10-09 16:25 local): 10.8 own runs per editing session, 9.0 outside a full-suite gate, 6.7 min of test wall time, gate runs 17% of runs and 39% of test wall time, 32% of sessions pulling Squeal. Sessions started after `97144d9` are the comparison.
