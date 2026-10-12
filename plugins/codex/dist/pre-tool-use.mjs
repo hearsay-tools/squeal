@@ -3567,7 +3567,14 @@ function withHandoff(value) {
   const keys = isRecord(value.keys) ? Object.entries(value.keys).filter(
     (e) => typeof e[1] === "string" || e[1] === null
   ) : [];
-  return { handoff: { at: value.at, revision: value.revision, keys: Object.fromEntries(keys) } };
+  return {
+    handoff: {
+      at: value.at,
+      revision: value.revision,
+      keys: Object.fromEntries(keys),
+      newTestFiles: value.newTestFiles === true
+    }
+  };
 }
 function readTurn(store, consumer) {
   return parse(readSlot(store, turnMetaKey(consumer.worktreeId), consumer));
@@ -3598,13 +3605,15 @@ function endTurn(store, consumer, states, undelivered, handoffAt = null) {
   const current = currentKeys(keys);
   const testFiles = [...files2].sort();
   const owed = Object.fromEntries(testFiles.map((f) => [f, current.get(f) ?? null]));
+  const newTestFiles = header.runnerPartPending === true;
+  const { revision } = header;
   writeTurn(store, consumer, {
     turn: "idle",
     testFiles,
-    newTestFiles: header.runnerPartPending === true,
+    newTestFiles,
     keys: owed,
-    revision: header.revision,
-    ...handoffAt === null ? {} : { handoff: { at: handoffAt, revision: header.revision, keys: owed } }
+    revision,
+    ...handoffAt === null ? {} : { handoff: { at: handoffAt, revision, keys: owed, newTestFiles } }
   });
 }
 function atKey(state, file, keys) {
@@ -4168,7 +4177,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.129";
+  if (true) return "0.1.130";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
