@@ -90,14 +90,13 @@ function currentText(tier: SlowTierState): string {
 /**
  * The slow-tier line, or `null` when the header has no slow tier. The
  * daemon's activity is the one the JSON carries, kept when no daemon is
- * validating (lessons defect 8c). `command` is how the text names the CLI.
+ * validating (lessons defect 8c). It ends with what Stop does about the slow
+ * files (`stopText`). `command` is how the text names the CLI.
  */
 export function slowTierText(header: StatusHeader, command: string): string | null {
   const tier = header.slowTier;
   if (tier === undefined) return null;
-  if (tier.testFiles === 0) {
-    return "Slow tier: no slow test files listed yet; not covered by Stop's wait.";
-  }
+  if (tier.testFiles === 0) return `Slow tier: no slow test files listed yet; ${stopText(tier)}.`;
   const parts: string[] = [];
   if (tier.current > 0) {
     parts.push(
@@ -111,6 +110,21 @@ export function slowTierText(header: StatusHeader, command: string): string | nu
   const runs = tier.current < tier.testFiles ? `; \`${command} run --slow\` runs them now` : "";
   return (
     `Slow tier: ${plural(tier.testFiles, "test file")}; ${parts.join("; ")}. ` +
-    `Not covered by Stop's wait${runs}.`
+    `${capitalized(stopText(tier))}${runs}.`
   );
+}
+
+/**
+ * What Stop does about slow files: nothing by default; with
+ * `stop.requireSlowSuite` on it waits up to its bound, or, before the
+ * harness's waiting entry ran in the worktree, holds the agent once (004 D9
+ * as amended 2026-10-12).
+ */
+function stopText(tier: SlowTierState): string {
+  if (tier.stopWaitMs === undefined) return "not covered by Stop's wait";
+  return `Stop waits up to ${durationText(tier.stopWaitMs)} for them or holds the agent once`;
+}
+
+function capitalized(text: string): string {
+  return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 }
