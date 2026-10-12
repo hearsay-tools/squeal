@@ -71,6 +71,13 @@ export interface StopHandoff {
   readonly at: EpochMs;
   readonly revision: RevisionNumber;
   readonly keys: Readonly<Record<string, CheckKey | null>>;
+  /**
+   * Task 001-302 (review wave 13an, B1): the runner part of `revision` was
+   * pending, so checks first observed later, up to `revision`, are owed too,
+   * as the idle waiter's `newTestFiles` says. Absent in a handoff written
+   * before it: `false`.
+   */
+  readonly newTestFiles?: boolean;
 }
 
 /**
