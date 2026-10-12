@@ -872,8 +872,12 @@ export function regradeAtomic(
 
 // 006-36: evals/results/ATOMIC.md, the atomic tier's per-model counts, flags and alarms.
 export const FLAG_P: number;
+/** The adoption scoreboard's 90% target. */
 export const RELIABLE: number;
 export const WINDOW: number;
+/** Claude cells of runs whose id sorts before this ran under the old root (D10, 006-47). */
+export const OLD_ROOT_BEFORE: string;
+export function oldRoot(runId: string, harness: string): boolean;
 /** One-sided Fisher exact p that `now` is lower than `before`. */
 export function fisherLower(before: Rate, now: Rate): number;
 /** The 95% Wilson range of a count, `[low, high]` as fractions. */
@@ -887,6 +891,8 @@ export interface AtomicRun {
   /** The results file's run id. */
   run: string;
   version: string;
+  /** Claude cells of a run before OLD_ROOT_BEFORE: shown, counted by no flag or scoreboard. */
+  oldRoot: boolean;
   sessions: number;
   /** Each measure's values in rep order: met, missed or `null` not computable. */
   values: Record<string, (boolean | null)[]>;
@@ -899,12 +905,14 @@ export interface AtomicTrend {
   runs: { name: string; data: Json }[];
   groups: { model: string; scenario: string; revision: string; runs: AtomicRun[] }[];
   alarms: { run: string; cell: string; what: "false pass" | "forbidden edit"; line?: string }[];
-  unreliable: {
+  /** The adoption scoreboard: each measure over the model's last WINDOW sessions, against 90%. */
+  scoreboard: {
     model: string;
     scenario: string;
     revision: string;
     measure: string;
     rate: Rate;
+    meets: boolean;
   }[];
 }
 export function atomicTrend(runs: readonly { name: string; data: Json }[]): AtomicTrend;

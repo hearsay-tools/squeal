@@ -27,6 +27,8 @@ export {
   countText,
   FLAG_P,
   fisherLower,
+  OLD_ROOT_BEFORE,
+  oldRoot,
   RELIABLE,
   scenarioRevision,
   WINDOW,
