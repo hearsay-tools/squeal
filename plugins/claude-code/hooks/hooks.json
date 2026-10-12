@@ -121,6 +121,15 @@
             "command": "node",
             "args": [
               "--disable-warning=ExperimentalWarning",
+              "${CLAUDE_PLUGIN_ROOT}/dist/stop-slow.mjs"
+            ],
+            "timeout": 630
+          },
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "--disable-warning=ExperimentalWarning",
               "${CLAUDE_PLUGIN_ROOT}/dist/waiter.mjs"
             ],
             "asyncRewake": true,

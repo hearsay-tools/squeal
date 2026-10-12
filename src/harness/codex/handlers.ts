@@ -4,6 +4,7 @@ import { isRegistered, withContext } from "../shared/hook.js";
 import { submitPrompt } from "../shared/prompt.js";
 import { endSession, startSession } from "../shared/session.js";
 import { stopTurn } from "../shared/stop.js";
+import { stopSlow } from "../shared/stop-slow.js";
 import type { CodexHandler } from "./hook.js";
 import type { CodexHookInput } from "./input.js";
 import { additionalContext, block, deny } from "./output.js";
@@ -84,6 +85,20 @@ export const stop: CodexHandler = async (input, location, deps) => {
   const outcome = await stopTurn({ ...input, stopHookActive: false }, location, deps);
   if (outcome === null) return null;
   return block("block" in outcome ? outcome.block : outcome.news, deps.command);
+};
+
+/**
+ * The waiting Stop entry beside `stop` (spec 004 D9 as amended 2026-10-12):
+ * with `stop.requireSlowSuite` on, waits for the slow tier as `stopSlow` says
+ * and blocks with its reason; silent otherwise.
+ */
+export const stopSlowTier: CodexHandler = async (input, location, deps) => {
+  const reason = await stopSlow(
+    { ...input, stopHookActive: input.stop_hook_active === true },
+    location,
+    deps,
+  );
+  return reason === null ? null : block(reason, deps.command);
 };
 
 /**

@@ -27,6 +27,7 @@ const FIXTURE: Record<CodexHookName, readonly [Mode, string]> = {
   "pre-tool-use": ["exec", "pre-tool-use"],
   "post-tool-use": ["exec", "post-tool-use"],
   stop: ["exec", "stop"],
+  "stop-slow": ["exec", "stop"],
   "subagent-start": ["exec", "subagent-start"],
   "subagent-stop": ["exec", "subagent-stop"],
   interrupt: ["app-server", "interrupt"],
