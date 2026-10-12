@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { createDelivery as CreateDelivery } from "../../src/core/delivery/index.js";
+import { readTurn } from "../../src/core/delivery/turn.js";
+import { testFileId } from "../../src/core/keys/index.js";
 import { DEFAULT_POLICY, type EndTurnOptions } from "../../src/core/types/index.js";
 import { runHook } from "../../src/harness/claude-code/index.js";
 import { runCodexHook } from "../../src/harness/codex/index.js";
@@ -122,14 +124,18 @@ describe.each(HARNESSES)("Stop's last retry keeps its revision guard, $name (B2)
     r.store.close();
   });
 
-  it("blocks on the queued slow file a retry decides on (control)", async () => {
+  it("ends the turn at the revision a retry found the slow file queued at, for the waiting entry (control)", async () => {
+    // 004 D9 as amended 2026-10-12: the 2 s entry leaves slow files to `stop-slow`.
     const r = await repo(harness);
     commits(r, ["edit", "queue"]);
-    const out = decision((await harness.stop(r)).stdout);
-    expect(hooks.calls).toEqual([{ atRevision: 1 }, { atRevision: 2 }]);
-    expect(out.reason).toMatch(
-      /^Squeal policy stop.requireSlowSuite is on and 1 slow test file is not current at revision 3: src\/math.test.ts\./,
-    );
+    expect((await harness.stop(r)).stdout).toBe("");
+    expect(hooks.calls).toEqual([{ atRevision: 1 }, { atRevision: 2 }, { atRevision: 3 }]);
+    const [record] = r.store.consumers.list(r.worktreeId);
+    expect(record && readTurn(r.store, record.consumer)).toMatchObject({
+      turn: "idle",
+      revision: 3,
+      testFiles: [testFileId(FILE)],
+    });
     r.store.close();
   });
 

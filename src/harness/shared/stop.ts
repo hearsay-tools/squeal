@@ -270,7 +270,7 @@ export async function newsText(
  * rather than at its recheck (`SLOW_RECHECK_MS`). A daemon that does not
  * answer costs the socket budget and nothing more; the recheck still comes.
  */
-export async function nudgeSlow(context: HookContext, header: StatusHeader): Promise<void> {
+async function nudgeSlow(context: HookContext, header: StatusHeader): Promise<void> {
   if ((header.slowPending?.testFiles ?? 0) === 0) return;
   const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
   if (record === null) return;

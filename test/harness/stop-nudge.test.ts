@@ -111,8 +111,9 @@ describe.each(HARNESSES)("Stop nudges the daemon for slow files, $name (001-281)
   });
 
   it("nudges nothing when Stop blocks and the turn goes on", async () => {
-    const r = await inTurn(harness, { requireSlowSuite: true });
+    const r = await inTurn(harness, { blockOnKnownFailures: true });
     const daemon = await listening(r);
+    r.apply(r.fail());
     queueSlow(r);
 
     expect((await harness.stop(r)).stdout).toContain('"decision":"block"');

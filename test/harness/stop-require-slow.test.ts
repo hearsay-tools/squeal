@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readTurn } from "../../src/core/delivery/turn.js";
+import { testFileId } from "../../src/core/keys/index.js";
 import { DEFAULT_POLICY, type TestFileRef } from "../../src/core/types/index.js";
 import { runHook } from "../../src/harness/claude-code/index.js";
 import { runCodexHook } from "../../src/harness/codex/index.js";
@@ -7,11 +9,12 @@ import { codexRecorded } from "./codex/helpers.js";
 import { FILE, recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
- * Spec 004 D7: with `stop.requireSlowSuite` on, a main agent's Stop blocks
- * while a slow test file is not current at this revision, naming the files
- * and that `squeal run --slow` runs them; it still never waits for them
- * (D9). Off, the default, slow files never hold a Stop. Both harnesses run
- * the shared Stop path.
+ * Spec 004 D7 and D9 as amended 2026-10-12: with `stop.requireSlowSuite` on,
+ * a main agent's 2 s Stop never blocks on slow files; it ends the turn with
+ * them pending and leaves them to the waiting entry (`stop-slow-wait.test.ts`).
+ * A subagent's SubagentStop still blocks at once while a slow file is not
+ * current, naming it and `run --slow --wait`. Off, the default, slow files
+ * never hold a Stop.
  */
 
 const deps: HookDeps = { env: {}, ensureDaemon: async () => "alive" };
@@ -71,20 +74,18 @@ function decision(stdout: string): { decision?: string; reason?: string } {
 }
 
 describe.each(HARNESSES)("stop.requireSlowSuite, $name (spec 004 D7)", (harness) => {
-  it.each<"queued" | null>(["queued", null])(
-    "on: blocks at once while a slow file is not current (%s), naming it and run --slow",
-    async (pending) => {
-      const r = await repo(harness, [SLOW_FILE.path], true);
-      slowKey(r, pending);
-      const started = performance.now();
-      const out = decision((await harness.stop(r)).stdout);
-      expect(performance.now() - started).toBeLessThan(WAIT_MS / 2);
-      expect(out.decision).toBe("block");
-      expect(out.reason).toMatch(
-        /^Squeal policy stop.requireSlowSuite is on and 1 slow test file is not current at revision 1: test\/e2e\/slow.test.ts. `.*squeal.* run --slow` runs them.\n\n/,
-      );
-    },
-  );
+  it("on: the 2 s Stop ends the turn at once with the slow file pending, for the waiting entry", async () => {
+    const r = await repo(harness, [SLOW_FILE.path], true);
+    slowKey(r, "queued");
+    const started = performance.now();
+    expect(decision((await harness.stop(r)).stdout)).toEqual({});
+    expect(performance.now() - started).toBeLessThan(WAIT_MS / 2);
+    const [record] = r.store.consumers.list(r.worktreeId);
+    expect(record && readTurn(r.store, record.consumer)).toMatchObject({
+      turn: "idle",
+      testFiles: [testFileId(SLOW_FILE)],
+    });
+  });
 
   it("on: lets the Stop end when every slow file is current", async () => {
     const r = await repo(harness, [FILE.path], true);
@@ -95,5 +96,40 @@ describe.each(HARNESSES)("stop.requireSlowSuite, $name (spec 004 D7)", (harness)
     const r = await repo(harness, [SLOW_FILE.path], false);
     slowKey(r, "queued");
     expect(decision((await harness.stop(r)).stdout).decision).toBeUndefined();
+  });
+});
+
+describe("stop.requireSlowSuite at a SubagentStop, claude-code (spec 004 D7)", () => {
+  const subagentStop = (r: SquealRepo, overrides: object = {}) =>
+    runHook("stop", recorded("subagent-stop", r.root, overrides), deps);
+
+  async function subagent(pending: "queued" | null) {
+    const [harness] = HARNESSES;
+    if (harness === undefined) throw new Error("no harness");
+    const r = await repo(harness, [SLOW_FILE.path], true);
+    await runHook("session-start", recorded("subagent-start", r.root), deps);
+    slowKey(r, pending);
+    return r;
+  }
+
+  it.each<"queued" | null>(["queued", null])(
+    "blocks at once while a slow file is not current (%s), naming it and run --slow --wait",
+    async (pending) => {
+      const r = await subagent(pending);
+      const started = performance.now();
+      const out = decision((await subagentStop(r)).stdout);
+      expect(performance.now() - started).toBeLessThan(WAIT_MS / 2);
+      expect(out.decision).toBe("block");
+      expect(out.reason).toMatch(
+        /^Squeal policy stop.requireSlowSuite is on and 1 slow test file is not current at revision 1: test\/e2e\/slow.test.ts. `.*squeal.* run --slow --wait` runs them and waits for their results.\n\n/,
+      );
+    },
+  );
+
+  it("never blocks again while an earlier block keeps the agent going (stop_hook_active)", async () => {
+    const r = await subagent("queued");
+    expect(decision((await subagentStop(r)).stdout).decision).toBe("block");
+    const again = await subagentStop(r, { stop_hook_active: true });
+    expect(decision(again.stdout).decision).toBeUndefined();
   });
 });

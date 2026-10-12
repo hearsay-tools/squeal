@@ -9,7 +9,7 @@ import { readTransaction } from "../../core/store/index.js";
 import type { KnownFailure, StatusHeader, TestFileRef } from "../../core/types/index.js";
 import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
 import { HOOK_TIMEOUT_MS, type HookDeps, isRegistered, withContext } from "./hook.js";
-import { newsText, nudgeSlow } from "./stop.js";
+import { newsText } from "./stop.js";
 import { slowFailuresReason, slowWaitReason, statusText } from "./text.js";
 
 /**
@@ -49,14 +49,15 @@ export const STOP_SLOW_POLL_MS = 250;
  *
  * Claude Code and Codex run a Stop event's entries in parallel, so this one
  * decides only after the 2 s entry (`stopTurn`) ended the turn silently: it
- * waits up to `STOP_SLOW_HANDOFF_MS` for that (`handedOver`). A 2 s entry that blocked or spoke leaves the turn going, and this
- * entry says nothing; one that ended the turn leaves the decision here, so
- * the two never both block. The 2 s entry never blocks on slow files for a
- * main agent.
+ * waits up to `STOP_SLOW_HANDOFF_MS` for that (`handedOver`). A 2 s entry
+ * that blocked or spoke leaves the turn going, and this entry says nothing;
+ * one that ended the turn leaves the decision here, so the two never both
+ * block. The 2 s entry never blocks on slow files for a main agent, and its
+ * silent end already nudged the daemon (`nudgeSlow`), so the idle slow tier
+ * has started.
  *
- * Then it nudges the daemon (`nudgeSlow`), so the idle slow tier starts now,
- * and polls until no slow file is pending at the current revision, the bound
- * passes, or the daemon has been down for `STOP_SLOW_DOWN_MS`. All current
+ * Then it polls until no slow file is pending at the current revision, the
+ * bound passes, or the daemon has been down for `STOP_SLOW_DOWN_MS`. All current
  * with no failure among the files it waited for: `null`, the turn ends as
  * today. A failure among them: a block naming it, once. Files still not
  * current: a block naming them and `run --slow --wait`.
@@ -82,17 +83,15 @@ export async function stopSlow(
     if (!(await handedOver(context, deps, poll))) return null;
     const waited = read(context, isSlow, deps);
     if (waited.open.length === 0) return null;
-    await nudgeSlow(context, waited.header);
     const end = await waitForSlow(context, isSlow, deps, bound, poll);
     if (end === null) return null;
-    const files = new Set(waited.open.map(testFileId));
-    const failed = end.current.filter((f) => files.has(testFileId(testFileOf(f.check))));
-    const still = end.open.filter((f) => files.has(testFileId(f)));
+    const failed = end.current.filter((f) => end.seen.has(testFileId(testFileOf(f.check))));
+    const still = end.open;
     if (still.length === 0 && failed.length === 0) return null;
     if (!takeTurn(context)) return null;
     const reason =
       still.length > 0
-        ? slowWaitReason(end.header.revision, still, bound, deps.command)
+        ? slowWaitReason(end.header.revision, still, end.waitedMs, deps.command)
         : slowFailuresReason(end.header.revision, failed);
     const news = await newsText(context, {}, deps.command);
     return `${reason}\n\n${news ?? statusText(end.header, end.failures, deps.command)}`;
@@ -157,8 +156,10 @@ async function handedOver(context: HookContext, deps: HookDeps, poll: number): P
 
 /**
  * Polls until no slow file is pending, `bound` passed, or the daemon has
- * been down for `STOP_SLOW_DOWN_MS`; the last read, or `null` once the
- * consumer is in a turn again or unregistered.
+ * been down for `STOP_SLOW_DOWN_MS`; the last read with how long it waited
+ * and every slow file it saw not current (`testFileId`), a file a later
+ * revision queued included; `null` once the consumer is in a turn again or
+ * unregistered.
  */
 async function waitForSlow(
   context: HookContext,
@@ -166,18 +167,22 @@ async function waitForSlow(
   deps: HookDeps,
   bound: number,
   poll: number,
-): Promise<SlowRead | null> {
+): Promise<(SlowRead & { readonly waitedMs: number; readonly seen: ReadonlySet<string> }) | null> {
   const started = performance.now();
+  const seen = new Set<string>();
   let downSince: number | null = null;
   for (;;) {
     if (!isRegistered(context)) return null;
     const last = read(context, isSlow, deps);
     if (!last.idle) return null;
+    for (const file of last.open) seen.add(testFileId(file));
     const now = performance.now();
     downSince = last.header.daemon?.state === "down" ? (downSince ?? now) : null;
     const down = downSince !== null && now - downSince >= STOP_SLOW_DOWN_MS;
     const left = started + bound - now;
-    if (last.open.length === 0 || left <= 0 || down) return last;
+    if (last.open.length === 0 || left <= 0 || down) {
+      return { ...last, waitedMs: Math.min(bound, Math.round(now - started)), seen };
+    }
     await sleep(Math.min(poll, left));
   }
 }
