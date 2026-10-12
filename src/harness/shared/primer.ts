@@ -138,20 +138,43 @@ export function trailingPrimer(text: string): string {
   return tail.length - 2 <= PRIMER_CAP_CHARS && !tail.slice(2).includes("\n") ? tail : "";
 }
 
+/**
+ * What Squeal is, said before anything else Squeal tells a session (experiment
+ * for 001-292: the a5-uncovered false passes read counts before knowing whose
+ * they were). It names no runner: the primer after it names the ones the
+ * daemon builds here.
+ */
+export const INTRO =
+  "This repository has Squeal installed, a background test runner: a daemon watches this worktree and, after each edit, re-runs the tests the edit can affect. It reports to you in SQUEAL messages like this one.";
+
+/** How the registration's test state is introduced after the primer. */
+export const STATE_LABEL = "Test state when this session started:";
+
+/** The intro and the primer, as a session hears them with no state after (after `compact`). */
+export function introducedPrimer(
+  command: string = SQUEAL_COMMAND,
+  coverage: Coverage = VITEST_ONLY,
+): string {
+  return `${INTRO}\n\n${primer(command, coverage)}`;
+}
+
 /** The primer as the Claude Code plugin says it, with `squeal` on PATH, for a Vitest-only policy. */
 export const PRIMER = primer();
 
 /**
- * A registration with the primer after it, within the message cap. Task
- * 001-88: every registration that starts a session's use of Squeal carries it.
+ * A registration with the intro and the primer before it, within the message
+ * cap. Task 001-88: every registration that starts a session's use of Squeal
+ * carries the primer. Experiment for 001-292: what Squeal is and what it runs
+ * come first, then the test state under its label, so a cut at the end trims
+ * failures, never the primer.
  */
 export function withPrimer(
   registration: Registration,
   command: string = SQUEAL_COMMAND,
   coverage: Coverage = VITEST_ONLY,
 ): string {
-  const tail = primer(command, coverage);
-  // Room the registration leaves for the primer within the message cap.
-  const max = MESSAGE_CAP_CHARS - tail.length - 2;
-  return `${formatRegistration(registration, max, command)}\n\n${tail}`;
+  const head = `${introducedPrimer(command, coverage)}\n\n${STATE_LABEL}\n`;
+  // Room the intro and the primer leave for the registration within the message cap.
+  const max = MESSAGE_CAP_CHARS - head.length;
+  return `${head}${formatRegistration(registration, max, command)}`;
 }

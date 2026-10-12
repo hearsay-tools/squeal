@@ -2,7 +2,7 @@ import { type ConsumerInput, type HookLocation, usesSqueal } from "./context.js"
 import { coverageOf } from "./coverage.js";
 import { ensure, ensureToRegister } from "./ensure.js";
 import { type HookDeps, isRegistered, withContext } from "./hook.js";
-import { primer, withPrimer } from "./primer.js";
+import { introducedPrimer, withPrimer } from "./primer.js";
 import { unregisterSession } from "./sweep.js";
 
 /** Sources after which no earlier run of the session id goes on. */
@@ -50,7 +50,7 @@ export async function startSession(
     // parallel reuses the main agent's (review wave 3, N3), and subagents have none.
     const main = input.agent_id === undefined;
     if (main && input.source === "compact" && isRegistered(context))
-      return primer(deps.command, coverageOf(context));
+      return introducedPrimer(deps.command, coverageOf(context));
     if (main && input.source !== undefined && SWEEP_SOURCES.has(input.source)) {
       await unregisterSession(context, input.session_id, {
         removeLocks: false,
