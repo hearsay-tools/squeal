@@ -1,0 +1,111 @@
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
+import type { CliIo } from "../../../src/cli/main.js";
+import { git, initRepo } from "../../hash/git-repo.js";
+
+/* Fixtures for `squeal setup` (row 005-12): real git repositories, read as text only. */
+
+const cleanups: (() => void)[] = [];
+
+/** Removes every directory the fixtures made; call from `afterEach`. */
+export function cleanupFixtures(): void {
+  for (const cleanup of cleanups.splice(0)) cleanup();
+}
+
+/**
+ * A directory under `/tmp`, not `TMPDIR`: Claude Code reads `CLAUDE.md` above
+ * the root too (D4), and a session's `TMPDIR` may sit inside a checkout that has one.
+ */
+export function scratch(prefix: string): string {
+  const dir = realpathSync(mkdtempSync(join("/tmp", prefix)));
+  cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
+  return dir;
+}
+
+export const json = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;
+
+/** The gate line of this repository's `CLAUDE.md` before `97144d9`. */
+export const VITEST_GATE =
+  "Verification: `npm run lint`, `npm run typecheck`, `npm run build`, and `npx vitest run`. Paste the output in your final message.";
+
+/**
+ * A repository shaped like this one at `2513bbdc` (`research/wave-0-checks.md`
+ * 7): a root package with `bin` and `files` naming `dist` and `plugins`, a
+ * `tsc` build into the gitignored `dist`, the bundles under `plugins/*\/dist`
+ * tracked, e2e tests naming both, `AGENTS.md -> CLAUDE.md`, and a config with
+ * e2e `inputs` and no `slow` key.
+ */
+export function squealShaped(files: Readonly<Record<string, string>> = {}): string {
+  const root = scratch("squeal-setup-");
+  initRepo(root, {
+    "package.json": json({
+      name: "squeal",
+      bin: { squeal: "dist/cli/index.js" },
+      files: ["dist", "plugins", "README.md"],
+      scripts: {
+        build: "tsc -p tsconfig.build.json && npm run build:plugin",
+        "build:plugin": "tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts",
+        test: "vitest run",
+      },
+      devDependencies: { vitest: "^3.0.0" },
+    }),
+    "tsconfig.build.json": json({ compilerOptions: { outDir: "dist" } }),
+    "vitest.config.ts": `export default { test: { include: ["test/**/*.test.ts", "src/**/*.test.ts"], exclude: ["test/fixtures/**", "node_modules/**"] } };\n`,
+    ".gitignore": "node_modules/\ndist/\n",
+    "CLAUDE.md": `# Agents\n\n${VITEST_GATE}\n`,
+    "src/cli/index.ts": "export {};\n",
+    "plugins/claude-code/dist/cli/squeal.mjs": "\n",
+    "plugins/codex/dist/cli/squeal.mjs": "\n",
+    "test/e2e/plugin-copy.test.ts": `const a = "plugins/codex/dist/cli/squeal.mjs";\nconst b = "dist/cli/squeal.mjs";\n`,
+    "test/e2e/shipped-plugin.test.ts": `const bundle = "dist/cli/squeal.mjs";\n`,
+    "test/e2e/helpers.ts": "export {};\n",
+    "test/cli/main.test.ts": "\n",
+    "test/fixtures/e2e/project/test/math.test.ts": "\n",
+    "squeal.config.json": json({
+      inputs: { "test/e2e/*.test.ts": ["plugins/claude-code/**", "plugins/codex/**"] },
+    }),
+    ".claude/skills/worker/SKILL.md": "Run `npx vitest run` and paste it.\n",
+    ...files,
+  });
+  symlinkSync("CLAUDE.md", join(root, "AGENTS.md"));
+  git(root, ["add", "AGENTS.md"]);
+  git(root, ["commit", "-q", "-m", "agents"]);
+  return root;
+}
+
+/** An environment with a scratch HOME, the named harness CLIs on PATH and nothing else. */
+export function harnessEnv(
+  harnesses: readonly ("claude" | "codex")[] = [],
+): Record<string, string> {
+  const home = scratch("squeal-setup-home-");
+  const bin = join(home, "bin");
+  mkdirSync(bin);
+  for (const name of harnesses) {
+    writeFileSync(join(bin, name), "#!/bin/sh\nexit 0\n");
+    chmodSync(join(bin, name), 0o755);
+  }
+  return { HOME: home, PATH: bin };
+}
+
+export function capture(cwd: string, env: Record<string, string> = harnessEnv()) {
+  const out = { stdout: "", stderr: "" };
+  const io: CliIo = {
+    stdout: (text) => {
+      out.stdout += text;
+    },
+    stderr: (text) => {
+      out.stderr += text;
+    },
+    cwd,
+    env,
+  };
+  return { io, out };
+}

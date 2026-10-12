@@ -6,6 +6,7 @@ import { daemonCommand } from "./daemon.js";
 import { init } from "./init.js";
 import { removeCommand } from "./remove.js";
 import { runCommand } from "./run.js";
+import { setupCommand } from "./setup/command.js";
 import { startCommand } from "./start.js";
 import { statusCommand } from "./status-command.js";
 import { statusWaitCommand } from "./status-wait.js";
@@ -37,6 +38,10 @@ Usage:
                                 trust as thread/start config for a launcher; --trust
                                 then shows the hooks Codex has not trusted and, on
                                 your yes (--yes: without asking), has Codex trust them
+  squeal setup --plan [--json]  What setting this repository up would change: harnesses,
+                                runners, instruction files and their Squeal block, gate
+                                lines, slow groups and their inputs, the warm-up's size
+  squeal setup --check [--json] The plan; exit 1 when anything in it is outdated
   squeal start [root]           Start this worktree's daemon if none runs, print status
   squeal run --all [--force] [--wait]
                                 Request a full-suite checkpoint from the daemon
@@ -88,6 +93,7 @@ export function main(argv: readonly string[], io: CliIo): number | Promise<numbe
   if (first === "status") return status(rest, io);
   if (first === "why") return why(rest, io);
   if (first === "init") return init(rest, io);
+  if (first === "setup") return setupCommand(rest, io);
   if (first === "daemon") return daemonCommand(rest, io);
   if (first === "start") return startCommand(rest, io);
   if (first === "run") return runCommand(rest, io);
