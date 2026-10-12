@@ -72,6 +72,7 @@ const SHAPE: Shape = {
     requireFullSuite: boolean,
     waitMs: atLeastZero,
     requireSlowSuite: boolean,
+    slowWaitMs: atLeastZero,
   },
   baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
   inputs,

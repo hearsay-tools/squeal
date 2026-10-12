@@ -22,6 +22,12 @@ export interface Policy {
      * while a slow file is not current at this revision. Default `false`.
      */
     readonly requireSlowSuite: boolean;
+    /**
+     * Spec 004 D9 as amended 2026-10-12: with `requireSlowSuite` on, how long
+     * a main agent's Stop waits for its slow files to become current before
+     * it blocks naming the files still running. Default `120000`.
+     */
+    readonly slowWaitMs: number;
   };
   readonly baseline: {
     /** Spec 001 D5: "the baseline is a lookup [...] followed by a run of the misses, or lookup only, per policy." */
@@ -159,6 +165,7 @@ export const DEFAULT_POLICY: Policy = {
     requireFullSuite: false,
     waitMs: 0,
     requireSlowSuite: false,
+    slowWaitMs: 120_000,
   },
   baseline: { onStart: "lookup-then-run-missing" },
   inputs: [],
