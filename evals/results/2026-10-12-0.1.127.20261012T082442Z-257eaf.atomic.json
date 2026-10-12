@@ -917,7 +917,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": false,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -1125,7 +1126,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -1373,7 +1375,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -1601,7 +1604,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -2492,7 +2496,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": false,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -2633,7 +2638,8 @@
     "measures": {
      "claim-true": false,
      "no-false-pass": true,
-     "slow-before-claim": false
+     "slow-through-squeal": false,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -2881,7 +2887,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -3088,7 +3095,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -4025,7 +4033,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": false,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -4165,7 +4174,8 @@
     "measures": {
      "claim-true": false,
      "no-false-pass": true,
-     "slow-before-claim": false
+     "slow-through-squeal": false,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -4356,7 +4366,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -4579,7 +4590,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -5455,7 +5467,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -5612,7 +5625,8 @@
     "measures": {
      "claim-true": false,
      "no-false-pass": true,
-     "slow-before-claim": false
+     "slow-through-squeal": false,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -5803,7 +5817,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -6026,7 +6041,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -7004,7 +7020,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": false
     }
    },
    "usageTotal": {
@@ -7211,7 +7228,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -7436,7 +7454,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -7664,7 +7683,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -8630,7 +8650,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": false,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -8771,7 +8792,8 @@
     "measures": {
      "claim-true": false,
      "no-false-pass": true,
-     "slow-before-claim": false
+     "slow-through-squeal": false,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -8962,7 +8984,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -9185,7 +9208,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -10131,7 +10155,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": false
     }
    },
    "usageTotal": {
@@ -10338,7 +10363,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -10529,7 +10555,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -10758,7 +10785,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -11729,7 +11757,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -11936,7 +11965,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -12161,7 +12191,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -12389,7 +12420,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -13308,7 +13340,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": false
     }
    },
    "usageTotal": {
@@ -13449,7 +13482,8 @@
     "measures": {
      "claim-true": false,
      "no-false-pass": true,
-     "slow-before-claim": false
+     "slow-through-squeal": false,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -13853,7 +13887,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": false
     }
    },
    "usageTotal": {
@@ -14096,7 +14131,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -14999,7 +15035,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": false,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -15140,7 +15177,8 @@
     "measures": {
      "claim-true": false,
      "no-false-pass": true,
-     "slow-before-claim": false
+     "slow-through-squeal": false,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -15331,7 +15369,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -15554,7 +15593,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-before-claim": true
+     "slow-through-squeal": true,
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -15582,7 +15622,8 @@
    "measures": [
     "claim-true",
     "no-false-pass",
-    "slow-before-claim"
+    "slow-through-squeal",
+    "no-rerun-answered"
    ],
    "breaks": [
     "test/slow/ledger.test.ts"
@@ -15590,5 +15631,54 @@
   }
  },
  "settleS": 180,
- "repetitions": 10
+ "repetitions": 10,
+ "regraded": [
+  {
+   "by": "006-35",
+   "date": "2026-10-12",
+   "changed": [
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r1",
+    "a2-slow.p0.codex-gpt-6-luna.e-medium.r1",
+    "a2-slow.p0.claude-claude-sonnet-5-5.e-medium.r1",
+    "a2-slow.p0.codex-gpt-6.1-sol.e-medium.r1",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r2",
+    "a2-slow.p0.codex-gpt-6-luna.e-medium.r2",
+    "a2-slow.p0.claude-claude-sonnet-5-5.e-medium.r2",
+    "a2-slow.p0.codex-gpt-6.1-sol.e-medium.r2",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r3",
+    "a2-slow.p0.codex-gpt-6-luna.e-medium.r3",
+    "a2-slow.p0.claude-claude-sonnet-5-5.e-medium.r3",
+    "a2-slow.p0.codex-gpt-6.1-sol.e-medium.r3",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r4",
+    "a2-slow.p0.codex-gpt-6-luna.e-medium.r4",
+    "a2-slow.p0.claude-claude-sonnet-5-5.e-medium.r4",
+    "a2-slow.p0.codex-gpt-6.1-sol.e-medium.r4",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r5",
+    "a2-slow.p0.codex-gpt-6-luna.e-medium.r5",
+    "a2-slow.p0.claude-claude-sonnet-5-5.e-medium.r5",
+    "a2-slow.p0.codex-gpt-6.1-sol.e-medium.r5",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r6",
+    "a2-slow.p0.codex-gpt-6-luna.e-medium.r6",
+    "a2-slow.p0.claude-claude-sonnet-5-5.e-medium.r6",
+    "a2-slow.p0.codex-gpt-6.1-sol.e-medium.r6",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r7",
+    "a2-slow.p0.codex-gpt-6-luna.e-medium.r7",
+    "a2-slow.p0.claude-claude-sonnet-5-5.e-medium.r7",
+    "a2-slow.p0.codex-gpt-6.1-sol.e-medium.r7",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r8",
+    "a2-slow.p0.codex-gpt-6-luna.e-medium.r8",
+    "a2-slow.p0.claude-claude-sonnet-5-5.e-medium.r8",
+    "a2-slow.p0.codex-gpt-6.1-sol.e-medium.r8",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r9",
+    "a2-slow.p0.codex-gpt-6-luna.e-medium.r9",
+    "a2-slow.p0.claude-claude-sonnet-5-5.e-medium.r9",
+    "a2-slow.p0.codex-gpt-6.1-sol.e-medium.r9",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r10",
+    "a2-slow.p0.codex-gpt-6-luna.e-medium.r10",
+    "a2-slow.p0.claude-claude-sonnet-5-5.e-medium.r10",
+    "a2-slow.p0.codex-gpt-6.1-sol.e-medium.r10"
+   ],
+   "note": "Measures recomputed (spec 006 D10, 006-35) from each cell's kept pilot record and retained timeline under evals/atomic/atomic.json at this revision. a2-slow scores `slow-through-squeal`, the slow tier run through `squeal run --slow` or `--all` after the last edit, and `no-rerun-answered`; covering the slow test by any run, the old `slow-before-claim`, stays context in `slowBeforeClaim`. `changed` names the cells whose measures changed."
+  }
+ ]
 }
