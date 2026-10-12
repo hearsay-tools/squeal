@@ -167,7 +167,7 @@ export function resolved(root: string, path: string): string {
 }
 
 /** `real` relative to `root` when it lies inside, else `fallback`. */
-function realName(root: string, real: string, fallback: string): string {
+export function realName(root: string, real: string, fallback: string): string {
   const inside = relative(root, real);
   return inside !== "" && !inside.startsWith("..") ? inside : fallback;
 }

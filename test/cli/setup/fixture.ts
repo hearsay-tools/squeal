@@ -41,7 +41,8 @@ export const VITEST_GATE =
  * 7): a root package with `bin` and `files` naming `dist` and `plugins`, a
  * `tsc` build into the gitignored `dist`, the bundles under `plugins/*\/dist`
  * tracked, e2e tests naming both, `AGENTS.md -> CLAUDE.md`, and a config with
- * e2e `inputs` and no `slow` key.
+ * e2e `inputs` and no `slow` key. `files` adds or replaces files; an
+ * `AGENTS.md` among them replaces the symlink.
  */
 export function squealShaped(files: Readonly<Record<string, string>> = {}): string {
   const root = scratch("squeal-setup-");
@@ -75,9 +76,11 @@ export function squealShaped(files: Readonly<Record<string, string>> = {}): stri
     ".claude/skills/worker/SKILL.md": "Run `npx vitest run` and paste it.\n",
     ...files,
   });
-  symlinkSync("CLAUDE.md", join(root, "AGENTS.md"));
-  git(root, ["add", "AGENTS.md"]);
-  git(root, ["commit", "-q", "-m", "agents"]);
+  if (!("AGENTS.md" in files)) {
+    symlinkSync("CLAUDE.md", join(root, "AGENTS.md"));
+    git(root, ["add", "AGENTS.md"]);
+    git(root, ["commit", "-q", "-m", "agents"]);
+  }
   return root;
 }
 
