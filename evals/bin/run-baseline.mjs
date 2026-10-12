@@ -18,7 +18,7 @@
 // --atomic runs the atomic scenarios instead (evals/atomic/atomic.json, 006-33): their models,
 // repetitions, effort and cells at once (--parallel overrides), no judge (the pilot grades
 // mechanically and keeps the transcripts), into <date>-<version>.<run>.atomic.json, which the
-// trend leaves out. It takes no --variant.
+// trend leaves out, and regenerates evals/results/ATOMIC.md (006-36). It takes no --variant.
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { availableParallelism, loadavg, tmpdir } from "node:os";
@@ -298,9 +298,9 @@ writeFileSync(file, text, { flag: "wx" }); // never over another run's results
 console.log(
   `wrote ${file}: ${grades.length} cells, ${failed.length} failed, missing: ${[...missing].join(", ") || "none"}`,
 );
+// An atomic run regenerates ATOMIC.md (006-36), which TREND.md leaves out.
 await new Promise((resolve) =>
-  spawn(process.execPath, [join(EVALS, "bin/trend.mjs")], { stdio: "inherit" }).on(
-    "close",
-    resolve,
-  ),
+  spawn(process.execPath, [join(EVALS, `bin/${atomic ? "atomic-trend" : "trend"}.mjs`)], {
+    stdio: "inherit",
+  }).on("close", resolve),
 );
