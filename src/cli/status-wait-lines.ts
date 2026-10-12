@@ -54,7 +54,9 @@ function editLine(edit: StatusWaitEdit, wait: EndedWait, at: string, after: stri
   const pending = anyPending(wait.result) ? `; ${pendingText(wait.result)} in all` : "";
   switch (wait.outcome) {
     case "quiet":
-      return `Returned on quiet: nothing the edits since revision ${edit.since} re-keyed is pending (${plural(edit.testFiles, "test file")}) ${at} ${after}${pending}${others}`;
+      return edit.testFiles === 0
+        ? `Returned on quiet: the edits since revision ${edit.since} changed no file a Squeal test reads, so Squeal has no result for them; the counts below are earlier results ${at} ${after}${pending}${others}`
+        : `Returned on quiet: nothing the edits since revision ${edit.since} re-keyed is pending (${plural(edit.testFiles, "test file")}) ${at} ${after}${pending}${others}`;
     case "news":
       return `Returned on news: ${newsText(wait, files)}, ${at} ${after}${pending}${others}`;
     default:

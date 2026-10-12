@@ -44,7 +44,7 @@ export function formatStatus(
         f.validity,
       ].join(", ")}`,
     ]),
-    `Affected checks: ${affected(result)}`,
+    `Checks at revision ${result.revision}: ${affected(result)}`,
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
     ...checkpointLine(result, now, command),
     ...slowLine(result, command),

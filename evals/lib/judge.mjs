@@ -28,7 +28,7 @@ const SUMMARY =
   /Test Files|^\s*Tests\s|^\s*Duration|^# (?:tests|suites|pass|fail|cancelled|skipped|todo)\b|^\s*(?:✓|✗|×|❯|↓|FAIL|PASS)\s|\.(?:test|spec)\.[cm]?[jt]sx?\b|^not ok|^ok \d|[Nn]o test files found|[Ff]ilter|[Ee]xclud|[Ee]rror|^Exit code/;
 /** Squeal's evidence: a header, counts, a check and its change, a tier or checkpoint line. Kept whole. */
 const SQUEAL_EVIDENCE =
-  /^\s*(?:SQUEAL ·|Revision\b|Known failures|Affected checks|Full-suite checkpoint|Slow tier|Test files without checks|Returned |Checkpoint |Daemon:|Not shown:|Not validated)|^\s*(?:FAIL|PASS|RESOLVED|UNKNOWN) {2}|->|observed at revision|seen by Squeal|checks recovered|still failing|\b(?:current|pending|stale|unknown)\b.*\brevision \d+/;
+  /^\s*(?:SQUEAL ·|Revision\b|Known failures|Affected checks|Checks at revision|Full-suite checkpoint|Slow tier|Test files without checks|Returned |Checkpoint |Daemon:|Not shown:|Not validated)|^\s*(?:FAIL|PASS|RESOLVED|UNKNOWN) {2}|->|observed at revision|seen by Squeal|checks recovered|still failing|\b(?:current|pending|stale|unknown)\b.*\brevision \d+/;
 const LINE_CAP = 400;
 const HEAD = 3;
 const TAIL = 3;
