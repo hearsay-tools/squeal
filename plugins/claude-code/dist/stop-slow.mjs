@@ -500,7 +500,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.130";
+  if (true) return "0.1.131";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -3620,20 +3620,7 @@ function parse(value) {
   };
 }
 function withHandoff(value) {
-  if (!isRecord(value) || typeof value.at !== "number" || typeof value.revision !== "number") {
-    return {};
-  }
-  const keys = isRecord(value.keys) ? Object.entries(value.keys).filter(
-    (e) => typeof e[1] === "string" || e[1] === null
-  ) : [];
-  return {
-    handoff: {
-      at: value.at,
-      revision: value.revision,
-      keys: Object.fromEntries(keys),
-      newTestFiles: value.newTestFiles === true
-    }
-  };
+  return isRecord(value) && typeof value.at === "number" ? { handoff: { at: value.at } } : {};
 }
 function readTurn(store, consumer) {
   return parse(readSlot(store, turnMetaKey(consumer.worktreeId), consumer));
@@ -3665,7 +3652,7 @@ function endTurn(store, consumer, states, undelivered, handoffAt = null) {
     newTestFiles,
     keys: owed,
     revision,
-    ...handoffAt === null ? {} : { handoff: { at: handoffAt, revision, keys: owed, newTestFiles } }
+    ...handoffAt === null ? {} : { handoff: { at: handoffAt } }
   });
 }
 function atKey(state, file, keys) {
@@ -4410,10 +4397,8 @@ async function stopSlow(input, location2, deps) {
   return withContext(input, location2, deps, async (context) => {
     const version = deps.squealVersion ?? squealVersion();
     recordStopWait(context.store, context.consumer.worktreeId, input.harness, version);
-    const handoff = await handedOver(context, deps, poll);
-    if (handoff === null) return null;
-    const waited = { handoff, seen: /* @__PURE__ */ new Set(), isSlow };
-    const block2 = await waitForSlow(context, waited, deps, bound, poll);
+    if (!await handedOver(context, deps, poll)) return null;
+    const block2 = await waitForSlow(context, isSlow, deps, bound, poll);
     if (block2 === null) return null;
     const { header, failures, reason } = block2;
     const news = await newsText(context, {}, deps.command, header.revision);
@@ -4422,20 +4407,18 @@ async function stopSlow(input, location2, deps) {
 ${news ?? statusText(header, failures, deps.command)}`;
   });
 }
-function read4(context, waited, clock) {
+function read4(context, isSlow, clock) {
   const { store, consumer } = context;
   return readTransaction(store, () => {
     const states = store.knownStates.list(consumer.worktreeId);
     const keys = store.testFileKeys.list(consumer.worktreeId);
     const header = readLiveHeader(store, consumer.worktreeId, clock(), states, null, keys);
     const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
-    const open = slowFilesNotCurrent(states, keys, waited.isSlow);
-    for (const file of open) waited.seen.add(testFileId(file));
     return {
       header,
       failures,
       current: failures.filter((f) => f.validity === "current"),
-      open,
+      open: slowFilesNotCurrent(states, keys, isSlow),
       idle: readTurn(store, consumer).turn === "idle"
     };
   });
@@ -4443,14 +4426,13 @@ function read4(context, waited, clock) {
 function complete(last) {
   return last.open.length === 0 && last.header.runnerPartPending !== true;
 }
-function failedOf(last, waited, told) {
-  const { handoff } = waited;
-  return last.current.filter((f) => {
-    const file = testFileOf(f.check);
-    if (!waited.isSlow(file)) return false;
-    const id = testFileId(file);
-    if (waited.seen.has(id) || handoff.keys[id] !== void 0) return true;
-    return handoff.newTestFiles === true && f.observedAt <= handoff.revision && !told().has(checkIdentity(f.check));
+function untold(last, isSlow, views) {
+  const failed = last.current.filter((f) => isSlow(testFileOf(f.check)));
+  if (failed.length === 0) return failed;
+  const told = new Map(views().map((v) => [checkIdentity(v.check), v]));
+  return failed.filter((f) => {
+    const view = told.get(checkIdentity(f.check));
+    return view?.outcome !== "fail" || (view.fingerprint ?? "") !== f.fingerprint;
   });
 }
 async function handedOver(context, deps, poll) {
@@ -4458,25 +4440,24 @@ async function handedOver(context, deps, poll) {
   const deadline = performance.now() + STOP_SLOW_HANDOFF_MS;
   const { store, consumer } = context;
   for (; ; ) {
-    const handoff = readTransaction(store, () => {
-      if (store.consumers.get(consumer) === null) return null;
+    const handed = readTransaction(store, () => {
+      if (store.consumers.get(consumer) === null) return false;
       const turn = readTurn(store, consumer);
-      if (turn.turn !== "idle" || turn.handoff === void 0) return null;
-      return turn.handoff.at >= since ? turn.handoff : null;
+      return turn.turn === "idle" && turn.handoff !== void 0 && turn.handoff.at >= since;
     });
-    if (handoff !== null) return handoff;
+    if (handed) return true;
     const left = deadline - performance.now();
-    if (left <= 0) return null;
+    if (left <= 0) return false;
     await sleep2(Math.min(poll, left));
   }
 }
-async function waitForSlow(context, waited, deps, bound, poll) {
+async function waitForSlow(context, isSlow, deps, bound, poll) {
   const clock = deps.now ?? Date.now;
   const started = performance.now();
   let downSince = null;
   for (; ; ) {
     if (!isRegistered(context)) return null;
-    const last = read4(context, waited, clock);
+    const last = read4(context, isSlow, clock);
     if (!last.idle) return null;
     const now = performance.now();
     downSince = last.header.daemon?.state === "down" ? downSince ?? now : null;
@@ -4485,13 +4466,13 @@ async function waitForSlow(context, waited, deps, bound, poll) {
     const over = left <= 0 || down;
     if (complete(last) || over) {
       const waitedMs = Math.min(bound, Math.round(now - started));
-      const decided = decide(context, waited, clock(), { over, waitedMs, command: deps.command });
+      const decided = decide(context, isSlow, clock(), { over, waitedMs, command: deps.command });
       if (decided !== "again") return decided;
     }
     await sleep2(Math.min(poll, Math.max(0, left)));
   }
 }
-function decide(context, waited, at2, {
+function decide(context, isSlow, at2, {
   over,
   waitedMs,
   command
@@ -4499,13 +4480,9 @@ function decide(context, waited, at2, {
   const { store, consumer } = context;
   return store.transaction(() => {
     if (store.consumers.get(consumer) === null) return null;
-    const live = read4(context, waited, () => at2);
+    const live = read4(context, isSlow, () => at2);
     if (!live.idle) return null;
-    let told = null;
-    const failed = failedOf(live, waited, () => {
-      told ??= new Set(store.views.list(consumer).map((v) => checkIdentity(v.check)));
-      return told;
-    });
+    const failed = untold(live, isSlow, () => store.views.list(consumer));
     const done = complete(live);
     if (done && failed.length === 0) return null;
     if (!done && !over) return "again";

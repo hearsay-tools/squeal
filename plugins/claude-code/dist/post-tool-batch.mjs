@@ -3569,20 +3569,7 @@ function parse(value) {
   };
 }
 function withHandoff(value) {
-  if (!isRecord(value) || typeof value.at !== "number" || typeof value.revision !== "number") {
-    return {};
-  }
-  const keys = isRecord(value.keys) ? Object.entries(value.keys).filter(
-    (e) => typeof e[1] === "string" || e[1] === null
-  ) : [];
-  return {
-    handoff: {
-      at: value.at,
-      revision: value.revision,
-      keys: Object.fromEntries(keys),
-      newTestFiles: value.newTestFiles === true
-    }
-  };
+  return isRecord(value) && typeof value.at === "number" ? { handoff: { at: value.at } } : {};
 }
 function readTurn(store, consumer) {
   return parse(readSlot(store, turnMetaKey(consumer.worktreeId), consumer));
@@ -3614,7 +3601,7 @@ function endTurn(store, consumer, states, undelivered, handoffAt = null) {
     newTestFiles,
     keys: owed,
     revision,
-    ...handoffAt === null ? {} : { handoff: { at: handoffAt, revision, keys: owed, newTestFiles } }
+    ...handoffAt === null ? {} : { handoff: { at: handoffAt } }
   });
 }
 function atKey(state, file, keys) {
@@ -4423,7 +4410,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.130";
+  if (true) return "0.1.131";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
