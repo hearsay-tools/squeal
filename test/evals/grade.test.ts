@@ -251,4 +251,15 @@ describe("a session that never reached a model", () => {
     ];
     expect(gradeCell({ timeline: claudeTimeline(events) }).reachedModel).toBe(false);
   });
+
+  // 006-46: Claude Code writes a provider's refusal as an assistant text, then an error result.
+  it("counts a session whose only assistant text is an API error as not reached", () => {
+    const text = "API Error: 400 unknown provider for model claude-haiku-5-5";
+    const events: Event[] = [
+      { t: 0, type: "system", subtype: "init" },
+      { t: 1, type: "assistant", message: { content: [{ type: "text", text }] } },
+      { t: 2, type: "result", is_error: true, result: text, total_cost_usd: 0 },
+    ];
+    expect(gradeCell({ timeline: claudeTimeline(events) }).reachedModel).toBe(false);
+  });
 });

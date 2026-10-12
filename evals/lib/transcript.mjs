@@ -51,6 +51,13 @@ export function claudeTimeline(events) {
       result.final = e.result ?? "";
       result.turns = e.num_turns ?? null;
       result.usage = e.usage ?? null;
+      // An API error is written as the session's only assistant text: it never reached the model.
+      if (
+        e.is_error &&
+        /^API Error\b/.test(result.final) &&
+        !result.items.some((i) => i.kind !== "say")
+      )
+        result.reachedModel = false;
       for (const d of e.permission_denials ?? []) {
         const k = byToolId.get(d.tool_use_id);
         if (k) k.refused = true;
