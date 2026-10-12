@@ -44,7 +44,16 @@ function fakeDaemon(path: string): Promise<Server> {
               ? {
                   ...base,
                   requestId: "r1",
-                  checkpoint: { id: "c1", revision: 3, testFiles: [] },
+                  checkpoint: {
+                    id: "c1",
+                    worktreeId: "0123456789abcdef",
+                    revision: 3,
+                    kind: "run-all",
+                    testFiles: [],
+                    startedAt: 1,
+                    completedAt: null,
+                    end: null,
+                  },
                   error: null,
                 }
               : base;
@@ -100,7 +109,7 @@ describe("the socket the CLI asks (001-71, D1)", () => {
     const runAll = await run(["run", "--all"], r.root);
     expect(runAll).toMatchObject({
       code: 0,
-      stdout: "Checkpoint c1 started at revision 3: 0 test files\n",
+      stdout: "Checkpoint c1 started at revision 3: 0 test files to run, 0 already current\n",
     });
     rmSync(join(elsewhere, ".."), { recursive: true, force: true });
   });
