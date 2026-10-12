@@ -66,16 +66,20 @@ function scoresOf(cells, grades, declared) {
   };
 }
 
+/** An atomic run's results name, `<date>-<version>.<run>.atomic` (006-33). */
+const ATOMIC_RUN = /\.atomic$/;
+
 /**
  * Trend lines from `runs` (`[{ name, data }]`, `data` a results file): baseline runs only, in
- * date then name order, grouped by `conditions.fingerprint` in order of first appearance. Each
+ * date then name order; a variant comparison and an atomic run (`kind: "atomic"`, 006-33) are
+ * their own records and never a trend's runs, grouped by `conditions.fingerprint` in order of first appearance. Each
  * cell is graded under `declared` (evals/tasks/tasks.json by default). Each line's runs carry
  * per-model scores, the flags against the previous run of that line, and the tasks whose cells
  * were not graded under expectations, with why.
  */
 export function trendLines(runs, declared = declarations()) {
   const baseline = runs
-    .filter((r) => r.data.kind === "baseline")
+    .filter((r) => r.data.kind === "baseline" && !ATOMIC_RUN.test(r.name))
     .sort((a, b) => a.data.date.localeCompare(b.data.date) || a.name.localeCompare(b.name));
   const lines = [];
   for (const run of baseline) {
