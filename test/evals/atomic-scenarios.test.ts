@@ -230,7 +230,7 @@ describe("the atomic scenarios", () => {
 
 describe("the baseline, untouched by the atomic scenarios", () => {
   it("keeps the judge's rubric revision", () => {
-    expect(rubricRevision(declarations())).toBe("40b88a6fb2f0"); // 006-43: currency only; a checkpoint line is not pending
+    expect(rubricRevision(declarations())).toBe("4bb132acc949"); // 006-44: an unknown claim meets no-overclaim, never n/a
     expect(Object.keys(declarations().tasks)).not.toContain("a1-break");
   });
 
