@@ -91,7 +91,8 @@ var init_store = __esm({
       rekeyed: { prefix: "rekeyed.", owner: "scheduler/rekeyed-record" },
       rekeyedMoves: { prefix: "rekeyed-moves.", owner: "scheduler/rekeyed-moves" },
       optimizerOff: { prefix: "optimizer-off.", owner: "state/optimizer-note" },
-      baselineFindings: { prefix: "state.baseline-findings.", owner: "state/baseline" }
+      baselineFindings: { prefix: "state.baseline-findings.", owner: "state/baseline" },
+      stopWait: { prefix: "stop-wait:", owner: "slow/stop-wait" }
     };
   }
 });
@@ -139,7 +140,8 @@ var init_policy = __esm({
         blockOnKnownFailures: false,
         requireFullSuite: false,
         waitMs: 0,
-        requireSlowSuite: false
+        requireSlowSuite: false,
+        slowWaitMs: 12e4
       },
       baseline: { onStart: "lookup-then-run-missing" },
       inputs: [],
@@ -2832,7 +2834,8 @@ var init_policy2 = __esm({
         blockOnKnownFailures: boolean2,
         requireFullSuite: boolean2,
         waitMs: atLeastZero,
-        requireSlowSuite: boolean2
+        requireSlowSuite: boolean2,
+        slowWaitMs: atLeastZero
       },
       baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
       inputs,
@@ -3068,6 +3071,21 @@ var init_state2 = __esm({
   }
 });
 
+// src/core/slow/stop-wait.ts
+function stopSlowWaitMs(policy) {
+  if (!policy.stop.requireSlowSuite) return null;
+  return Math.max(0, Math.min(policy.stop.slowWaitMs, STOP_SLOW_WAIT_CAP_MS));
+}
+var STOP_SLOW_WAIT_CAP_MS;
+var init_stop_wait = __esm({
+  "src/core/slow/stop-wait.ts"() {
+    "use strict";
+    init_fs();
+    init_types();
+    STOP_SLOW_WAIT_CAP_MS = 6e5;
+  }
+});
+
 // src/core/state/slow-sources.ts
 function sourcesChanged(store, worktreeId, since, revision, artifact, isSource) {
   if (since >= revision) return false;
@@ -3127,7 +3145,8 @@ function slowPolicyView(policy) {
   return {
     isSlow: slowFiles(policy, policy.nodeTest),
     slowGlobs: globs2,
-    artifactFor: (path) => [...new Set(rules.filter((r) => r.applies(path)).flatMap((r) => r.globs))].sort()
+    artifactFor: (path) => [...new Set(rules.filter((r) => r.applies(path)).flatMap((r) => r.globs))].sort(),
+    stopWaitMs: stopSlowWaitMs(policy)
   };
 }
 function worktreeSlowView(store, worktreeId) {
@@ -3199,7 +3218,8 @@ function readSlowTier(store, worktreeId, revision, states, keys, view) {
       [...globs2, ...declaredToday],
       isSource
     ),
-    activity: liveActivity(store, worktreeId, keys, view.isSlow)
+    activity: liveActivity(store, worktreeId, keys, view.isSlow),
+    ...view.stopWaitMs === null ? {} : { stopWaitMs: view.stopWaitMs }
   };
 }
 function recordedArtifacts(store) {
@@ -3253,6 +3273,7 @@ var init_slow = __esm({
     init_classify();
     init_inherit();
     init_state2();
+    init_stop_wait();
     init_types();
     init_derive();
     init_slow_sources();
@@ -3571,9 +3592,7 @@ function currentText(tier) {
 function slowTierText(header, command) {
   const tier = header.slowTier;
   if (tier === void 0) return null;
-  if (tier.testFiles === 0) {
-    return "Slow tier: no slow test files listed yet; not covered by Stop's wait.";
-  }
+  if (tier.testFiles === 0) return `Slow tier: no slow test files listed yet; ${stopText(tier)}.`;
   const parts = [];
   if (tier.current > 0) {
     parts.push(
@@ -3585,7 +3604,14 @@ function slowTierText(header, command) {
   }
   if (tier.notRun > 0) parts.push(`${tier.notRun} not run at revision ${header.revision}`);
   const runs = tier.current < tier.testFiles ? `; \`${command} run --slow\` runs them now` : "";
-  return `Slow tier: ${plural(tier.testFiles, "test file")}; ${parts.join("; ")}. Not covered by Stop's wait${runs}.`;
+  return `Slow tier: ${plural(tier.testFiles, "test file")}; ${parts.join("; ")}. ${capitalized(stopText(tier))}${runs}.`;
+}
+function stopText(tier) {
+  if (tier.stopWaitMs === void 0) return "not covered by Stop's wait";
+  return `Stop waits up to ${durationText(tier.stopWaitMs)} for them or holds the agent once`;
+}
+function capitalized(text2) {
+  return `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
 }
 var WAITING_FOR;
 var init_slow_text = __esm({
@@ -7138,6 +7164,7 @@ var init_slow2 = __esm({
     init_guard();
     init_inherit();
     init_slot();
+    init_stop_wait();
   }
 });
 
@@ -34291,7 +34318,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.127";
+  if (true) return "0.1.128";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

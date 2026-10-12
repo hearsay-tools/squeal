@@ -30,7 +30,8 @@ var WORKTREE_META_ROWS = {
   rekeyed: { prefix: "rekeyed.", owner: "scheduler/rekeyed-record" },
   rekeyedMoves: { prefix: "rekeyed-moves.", owner: "scheduler/rekeyed-moves" },
   optimizerOff: { prefix: "optimizer-off.", owner: "state/optimizer-note" },
-  baselineFindings: { prefix: "state.baseline-findings.", owner: "state/baseline" }
+  baselineFindings: { prefix: "state.baseline-findings.", owner: "state/baseline" },
+  stopWait: { prefix: "stop-wait:", owner: "slow/stop-wait" }
 };
 function worktreeMetaKey(row, worktreeId) {
   return `${WORKTREE_META_ROWS[row].prefix}${worktreeId}`;
@@ -59,7 +60,8 @@ var DEFAULT_POLICY = {
     blockOnKnownFailures: false,
     requireFullSuite: false,
     waitMs: 0,
-    requireSlowSuite: false
+    requireSlowSuite: false,
+    slowWaitMs: 12e4
   },
   baseline: { onStart: "lookup-then-run-missing" },
   inputs: [],
@@ -547,7 +549,8 @@ var SHAPE = {
     blockOnKnownFailures: boolean2,
     requireFullSuite: boolean2,
     waitMs: atLeastZero,
-    requireSlowSuite: boolean2
+    requireSlowSuite: boolean2,
+    slowWaitMs: atLeastZero
   },
   baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
   inputs,
@@ -767,6 +770,13 @@ function readFailureKeys(store, worktreeId) {
   }
 }
 
+// src/core/slow/stop-wait.ts
+var STOP_SLOW_WAIT_CAP_MS = 6e5;
+function stopSlowWaitMs(policy) {
+  if (!policy.stop.requireSlowSuite) return null;
+  return Math.max(0, Math.min(policy.stop.slowWaitMs, STOP_SLOW_WAIT_CAP_MS));
+}
+
 // src/core/state/slow-sources.ts
 function sourcesChanged(store, worktreeId, since, revision, artifact, isSource) {
   if (since >= revision) return false;
@@ -817,7 +827,8 @@ function slowPolicyView(policy) {
   return {
     isSlow: slowFiles(policy, policy.nodeTest),
     slowGlobs: globs2,
-    artifactFor: (path) => [...new Set(rules.filter((r) => r.applies(path)).flatMap((r) => r.globs))].sort()
+    artifactFor: (path) => [...new Set(rules.filter((r) => r.applies(path)).flatMap((r) => r.globs))].sort(),
+    stopWaitMs: stopSlowWaitMs(policy)
   };
 }
 function worktreeSlowView(store, worktreeId) {
@@ -889,7 +900,8 @@ function readSlowTier(store, worktreeId, revision, states, keys, view) {
       [...globs2, ...declaredToday],
       isSource
     ),
-    activity: liveActivity(store, worktreeId, keys, view.isSlow)
+    activity: liveActivity(store, worktreeId, keys, view.isSlow),
+    ...view.stopWaitMs === null ? {} : { stopWaitMs: view.stopWaitMs }
   };
 }
 function recordedArtifacts(store) {
@@ -1088,9 +1100,7 @@ function currentText(tier) {
 function slowTierText(header, command) {
   const tier = header.slowTier;
   if (tier === void 0) return null;
-  if (tier.testFiles === 0) {
-    return "Slow tier: no slow test files listed yet; not covered by Stop's wait.";
-  }
+  if (tier.testFiles === 0) return `Slow tier: no slow test files listed yet; ${stopText(tier)}.`;
   const parts = [];
   if (tier.current > 0) {
     parts.push(
@@ -1102,7 +1112,14 @@ function slowTierText(header, command) {
   }
   if (tier.notRun > 0) parts.push(`${tier.notRun} not run at revision ${header.revision}`);
   const runs = tier.current < tier.testFiles ? `; \`${command} run --slow\` runs them now` : "";
-  return `Slow tier: ${plural(tier.testFiles, "test file")}; ${parts.join("; ")}. Not covered by Stop's wait${runs}.`;
+  return `Slow tier: ${plural(tier.testFiles, "test file")}; ${parts.join("; ")}. ${capitalized(stopText(tier))}${runs}.`;
+}
+function stopText(tier) {
+  if (tier.stopWaitMs === void 0) return "not covered by Stop's wait";
+  return `Stop waits up to ${durationText(tier.stopWaitMs)} for them or holds the agent once`;
+}
+function capitalized(text) {
+  return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 }
 
 // src/core/delivery/collapse.ts
@@ -4361,7 +4378,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.127";
+  if (true) return "0.1.128";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4539,6 +4556,7 @@ function findHarnessProcess(lookup = {}) {
 }
 
 // src/harness/shared/hook.ts
+var HOOK_TIMEOUT_MS = 2e3;
 async function withContext(input, location2, deps, fn, overrides = {}) {
   const options = {
     ...deps.now === void 0 ? {} : { now: deps.now },
@@ -4565,10 +4583,10 @@ var PRIMER_OPENING = "Squeal runs this repository's ";
 function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
   const names = runnerNames(coverage);
   const sentences = (covers2, naming) => [
-    `${PRIMER_OPENING}${names.join(" and ")} tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run ${names.join(" or ")} to learn whether your edits broke something.`,
-    `Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: ${naming === "none" ? "`status --wait 60000` on the CLI SQUEAL messages name" : `\`${command} status --wait 60000\``}.`,
+    `${PRIMER_OPENING}${names.join(" and ")} tests in the background after each edit, and its results arrive as SQUEAL messages with your next tool call, so keep working; do not run ${names.join(" or ")} to learn whether your edits broke something.`,
+    `Wait only when you need a result before your next step, for example before saying the task is done: ${naming === "none" ? "`status --wait 60000` on the CLI SQUEAL messages name" : `\`${command} status --wait 60000\``}.`,
+    ...coverage.slow === null ? [] : slowSentences(command, naming),
     "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
-    ...coverage.slow === null ? [] : [slowSentence(command, naming)],
     covers2,
     "Squeal does not cover typecheck, build or any other test suite: run those yourself."
   ].join(" ");
@@ -4607,10 +4625,12 @@ function named(noun, entries, shown) {
   const last = tail.pop();
   return `${nouns} ${tail.length === 0 ? last : `${tail.join(", ")} and ${last}`}`;
 }
-function slowSentence(command, naming) {
-  const arrives = command === SQUEAL_COMMAND ? "a slow failure wakes you when you are idle in an interactive session, otherwise it arrives with your next prompt or tool call" : "a slow failure arrives with your next prompt or tool call";
-  const run = naming === "every" ? `\`${command} run --slow\`` : "the CLI's `run --slow`";
-  return `Slow test suites run when you pause between turns or on ${run}, never during Stop's wait; the header's slow-tier line says whether they are current, and ${arrives}.`;
+function slowSentences(command, naming) {
+  const run = naming === "every" ? `\`${command} run --slow --wait 60000\`` : "the CLI's `run --slow --wait 60000`";
+  return [
+    `Slow test files run when you pause between turns; before you say the task is done, run ${run} unless the header's \`Slow tier:\` line already says every slow file is current: it runs the rest and waits for their results.`,
+    command === SQUEAL_COMMAND ? "A slow failure wakes you when you are idle in an interactive session; otherwise it arrives with your next prompt or tool call." : "A slow failure arrives with your next prompt or tool call."
+  ];
 }
 function trailingPrimer(text) {
   const at2 = text.lastIndexOf(`
@@ -4651,6 +4671,9 @@ function submitPrompt(input, location2, deps, options) {
 
 // src/core/slow/slot.ts
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
+
+// src/harness/shared/stop-slow.ts
+var STOP_SLOW_HANDOFF_MS = HOOK_TIMEOUT_MS + 1e3;
 
 // src/harness/codex/output.ts
 var CONTEXT_CAP_CHARS = 8e3;

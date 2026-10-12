@@ -30,7 +30,8 @@ var WORKTREE_META_ROWS = {
   rekeyed: { prefix: "rekeyed.", owner: "scheduler/rekeyed-record" },
   rekeyedMoves: { prefix: "rekeyed-moves.", owner: "scheduler/rekeyed-moves" },
   optimizerOff: { prefix: "optimizer-off.", owner: "state/optimizer-note" },
-  baselineFindings: { prefix: "state.baseline-findings.", owner: "state/baseline" }
+  baselineFindings: { prefix: "state.baseline-findings.", owner: "state/baseline" },
+  stopWait: { prefix: "stop-wait:", owner: "slow/stop-wait" }
 };
 function worktreeMetaKey(row, worktreeId) {
   return `${WORKTREE_META_ROWS[row].prefix}${worktreeId}`;
@@ -59,7 +60,8 @@ var DEFAULT_POLICY = {
     blockOnKnownFailures: false,
     requireFullSuite: false,
     waitMs: 0,
-    requireSlowSuite: false
+    requireSlowSuite: false,
+    slowWaitMs: 12e4
   },
   baseline: { onStart: "lookup-then-run-missing" },
   inputs: [],
@@ -547,7 +549,8 @@ var SHAPE = {
     blockOnKnownFailures: boolean2,
     requireFullSuite: boolean2,
     waitMs: atLeastZero,
-    requireSlowSuite: boolean2
+    requireSlowSuite: boolean2,
+    slowWaitMs: atLeastZero
   },
   baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
   inputs,
@@ -767,6 +770,29 @@ function readFailureKeys(store, worktreeId) {
   }
 }
 
+// src/core/slow/stop-wait.ts
+var STOP_SLOW_WAIT_CAP_MS = 6e5;
+function stopSlowWaitMs(policy) {
+  if (!policy.stop.requireSlowSuite) return null;
+  return Math.max(0, Math.min(policy.stop.slowWaitMs, STOP_SLOW_WAIT_CAP_MS));
+}
+function stopWaitMetaKey(worktreeId) {
+  return worktreeMetaKey("stopWait", worktreeId);
+}
+function read2(store, worktreeId) {
+  const raw = store.meta.get(stopWaitMetaKey(worktreeId));
+  if (raw === null) return {};
+  try {
+    const value = JSON.parse(raw);
+    return isRecord(value) ? value : {};
+  } catch {
+    return {};
+  }
+}
+function stopWaitRuns(store, worktreeId, harness, version) {
+  return read2(store, worktreeId)[harness] === version;
+}
+
 // src/core/state/slow-sources.ts
 function sourcesChanged(store, worktreeId, since, revision, artifact, isSource) {
   if (since >= revision) return false;
@@ -817,7 +843,8 @@ function slowPolicyView(policy) {
   return {
     isSlow: slowFiles(policy, policy.nodeTest),
     slowGlobs: globs2,
-    artifactFor: (path) => [...new Set(rules.filter((r) => r.applies(path)).flatMap((r) => r.globs))].sort()
+    artifactFor: (path) => [...new Set(rules.filter((r) => r.applies(path)).flatMap((r) => r.globs))].sort(),
+    stopWaitMs: stopSlowWaitMs(policy)
   };
 }
 function worktreeSlowView(store, worktreeId) {
@@ -889,7 +916,8 @@ function readSlowTier(store, worktreeId, revision, states, keys, view) {
       [...globs2, ...declaredToday],
       isSource
     ),
-    activity: liveActivity(store, worktreeId, keys, view.isSlow)
+    activity: liveActivity(store, worktreeId, keys, view.isSlow),
+    ...view.stopWaitMs === null ? {} : { stopWaitMs: view.stopWaitMs }
   };
 }
 function recordedArtifacts(store) {
@@ -1097,9 +1125,7 @@ function currentText(tier) {
 function slowTierText(header, command) {
   const tier = header.slowTier;
   if (tier === void 0) return null;
-  if (tier.testFiles === 0) {
-    return "Slow tier: no slow test files listed yet; not covered by Stop's wait.";
-  }
+  if (tier.testFiles === 0) return `Slow tier: no slow test files listed yet; ${stopText(tier)}.`;
   const parts = [];
   if (tier.current > 0) {
     parts.push(
@@ -1111,7 +1137,14 @@ function slowTierText(header, command) {
   }
   if (tier.notRun > 0) parts.push(`${tier.notRun} not run at revision ${header.revision}`);
   const runs = tier.current < tier.testFiles ? `; \`${command} run --slow\` runs them now` : "";
-  return `Slow tier: ${plural(tier.testFiles, "test file")}; ${parts.join("; ")}. Not covered by Stop's wait${runs}.`;
+  return `Slow tier: ${plural(tier.testFiles, "test file")}; ${parts.join("; ")}. ${capitalized(stopText(tier))}${runs}.`;
+}
+function stopText(tier) {
+  if (tier.stopWaitMs === void 0) return "not covered by Stop's wait";
+  return `Stop waits up to ${durationText(tier.stopWaitMs)} for them or holds the agent once`;
+}
+function capitalized(text) {
+  return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 }
 
 // src/core/delivery/collapse.ts
@@ -3323,23 +3356,23 @@ function readGitHead(root) {
   const gitDir = gitDirOf(root);
   const commonDir = resolveCommonDir(root);
   if (gitDir === null || commonDir === null) return null;
-  let value = read2(join7(gitDir, "HEAD"));
+  let value = read3(join7(gitDir, "HEAD"));
   for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
     if (SHA.test(value)) return value;
     const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
     if (ref === void 0) return null;
-    value = read2(join7(gitDir, ref)) ?? read2(join7(commonDir, ref)) ?? packed(commonDir, ref);
+    value = read3(join7(gitDir, ref)) ?? read3(join7(commonDir, ref)) ?? packed(commonDir, ref);
   }
   return null;
 }
 function packed(commonDir, ref) {
-  for (const line of (read2(join7(commonDir, "packed-refs")) ?? "").split("\n")) {
+  for (const line of (read3(join7(commonDir, "packed-refs")) ?? "").split("\n")) {
     const [sha, name] = line.split(" ");
     if (name === ref && sha !== void 0 && SHA.test(sha)) return sha;
   }
   return null;
 }
-function read2(path) {
+function read3(path) {
   try {
     return readFileSync4(path, "utf8").trim();
   } catch (error) {
@@ -3751,8 +3784,8 @@ function createDelivery(store, options) {
       }
       if (idle) startTurn(store, consumer);
       const told = toldRevision(store, consumer);
-      const read3 = readLiveHeader(store, consumer.worktreeId, at2, states, told);
-      const live = withTold(read3, toldLiveness(store, consumer), at2);
+      const read4 = readLiveHeader(store, consumer.worktreeId, at2, states, told);
+      const live = withTold(read4, toldLiveness(store, consumer), at2);
       tellRevision(store, consumer, live.revision);
       const { entries, header, stillFailing } = annotate(
         store,
@@ -3800,8 +3833,8 @@ function createDelivery(store, options) {
         states.map((s) => toView2(s, at2))
       );
       const told = startingSince === void 0 ? null : { startingSince };
-      const read3 = readLiveHeader(store, consumer.worktreeId, at2, states);
-      const live = told === null ? read3 : withTold(read3, told, at2);
+      const read4 = readLiveHeader(store, consumer.worktreeId, at2, states);
+      const live = told === null ? read4 : withTold(read4, told, at2);
       const knownFailures = states.flatMap((s) => toKnownFailure(s, live.revision) ?? []);
       const header = withDependencies(store, consumer.worktreeId, live, knownFailures.length > 0);
       const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
@@ -4339,7 +4372,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.127";
+  if (true) return "0.1.128";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4485,13 +4518,13 @@ var SKIPPED = /* @__PURE__ */ new Set([
 ]);
 var MAX_HOPS = 4;
 function findHarnessProcess(lookup = {}) {
-  const read3 = lookup.read ?? readProcStat;
+  const read4 = lookup.read ?? readProcStat;
   const namespace = (lookup.namespace ?? pidNamespace)();
   if (namespace === null) return null;
   let pid = lookup.ppid ?? process.ppid;
   try {
     for (let hop = 0; hop < MAX_HOPS && pid > 1; hop++) {
-      const stat = read3(pid);
+      const stat = read4(pid);
       if (stat === null || stat.state === "Z" || stat.comm === "systemd") return null;
       if (!SKIPPED.has(stat.comm)) {
         return { pid, startTime: stat.startTime, pidNamespace: namespace };
@@ -4532,10 +4565,10 @@ var PRIMER_OPENING = "Squeal runs this repository's ";
 function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
   const names = runnerNames(coverage);
   const sentences = (covers2, naming) => [
-    `${PRIMER_OPENING}${names.join(" and ")} tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run ${names.join(" or ")} to learn whether your edits broke something.`,
-    `Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: ${naming === "none" ? "`status --wait 60000` on the CLI SQUEAL messages name" : `\`${command} status --wait 60000\``}.`,
+    `${PRIMER_OPENING}${names.join(" and ")} tests in the background after each edit, and its results arrive as SQUEAL messages with your next tool call, so keep working; do not run ${names.join(" or ")} to learn whether your edits broke something.`,
+    `Wait only when you need a result before your next step, for example before saying the task is done: ${naming === "none" ? "`status --wait 60000` on the CLI SQUEAL messages name" : `\`${command} status --wait 60000\``}.`,
+    ...coverage.slow === null ? [] : slowSentences(command, naming),
     "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
-    ...coverage.slow === null ? [] : [slowSentence(command, naming)],
     covers2,
     "Squeal does not cover typecheck, build or any other test suite: run those yourself."
   ].join(" ");
@@ -4574,10 +4607,12 @@ function named(noun, entries, shown) {
   const last = tail.pop();
   return `${nouns} ${tail.length === 0 ? last : `${tail.join(", ")} and ${last}`}`;
 }
-function slowSentence(command, naming) {
-  const arrives = command === SQUEAL_COMMAND ? "a slow failure wakes you when you are idle in an interactive session, otherwise it arrives with your next prompt or tool call" : "a slow failure arrives with your next prompt or tool call";
-  const run = naming === "every" ? `\`${command} run --slow\`` : "the CLI's `run --slow`";
-  return `Slow test suites run when you pause between turns or on ${run}, never during Stop's wait; the header's slow-tier line says whether they are current, and ${arrives}.`;
+function slowSentences(command, naming) {
+  const run = naming === "every" ? `\`${command} run --slow --wait 60000\`` : "the CLI's `run --slow --wait 60000`";
+  return [
+    `Slow test files run when you pause between turns; before you say the task is done, run ${run} unless the header's \`Slow tier:\` line already says every slow file is current: it runs the rest and waits for their results.`,
+    command === SQUEAL_COMMAND ? "A slow failure wakes you when you are idle in an interactive session; otherwise it arrives with your next prompt or tool call." : "A slow failure arrives with your next prompt or tool call."
+  ];
 }
 function trailingPrimer(text) {
   const at2 = text.lastIndexOf(`
@@ -4642,7 +4677,7 @@ function fullSuiteReason(header, command = SQUEAL_COMMAND) {
 }
 function slowSuiteReason(revision, files2, command = SQUEAL_COMMAND) {
   const verb = files2.length === 1 ? "is" : "are";
-  return `Squeal policy stop.requireSlowSuite is on and ${plural(files2.length, "slow test file")} ${verb} not current at revision ${revision}: ${list(files2.map((f) => f.path))}. \`${command} run --slow\` runs them.`;
+  return `Squeal policy stop.requireSlowSuite is on and ${plural(files2.length, "slow test file")} ${verb} not current at revision ${revision}: ${list(files2.map((f) => f.path))}. \`${command} run --slow --wait\` runs them and waits for their results.`;
 }
 
 // src/harness/shared/stop.ts
@@ -4682,6 +4717,12 @@ function stopTurn(input, location2, deps) {
       for (let decision = 1; ; decision++) {
         const { header, failures, reasons } = decide(context, policy, isSlow, now(), {
           stopHookActive: input.stopHookActive,
+          slowElsewhere: input.agent_id === void 0 && stopWaitRuns(
+            context.store,
+            context.consumer.worktreeId,
+            input.harness,
+            deps.squealVersion ?? squealVersion()
+          ),
           command: deps.command
         });
         if (reasons.length > 0) {
@@ -4714,6 +4755,7 @@ function retriesReason(decided) {
 }
 function decide(context, policy, isSlow, now, {
   stopHookActive,
+  slowElsewhere,
   command
 }) {
   const { store, consumer } = context;
@@ -4731,7 +4773,7 @@ function decide(context, policy, isSlow, now, {
     if (policy.requireFullSuite && !header.fullSuite.atCurrentRevision) {
       reasons.push(fullSuiteReason(header, command));
     }
-    if (policy.requireSlowSuite) {
+    if (policy.requireSlowSuite && !slowElsewhere) {
       const open = slowFilesNotCurrent(states, keys, isSlow);
       if (open.length > 0) reasons.push(slowSuiteReason(header.revision, open, command));
     }
@@ -4779,6 +4821,9 @@ async function waitForPending(context, waitMs, pollMs, isSlow) {
   }
 }
 
+// src/harness/shared/stop-slow.ts
+var STOP_SLOW_HANDOFF_MS = HOOK_TIMEOUT_MS + 1e3;
+
 // src/harness/codex/output.ts
 var CONTEXT_CAP_CHARS = 8e3;
 var cutLine = (command) => `SQUEAL \xB7 cut to fit a Codex hook; \`${command} status\` has the rest.`;
@@ -4804,7 +4849,11 @@ var stop = async (input, location2, deps) => {
       return null;
     });
   }
-  const outcome = await stopTurn({ ...input, stopHookActive: false }, location2, deps);
+  const outcome = await stopTurn(
+    { ...input, stopHookActive: false, harness: "codex" },
+    location2,
+    deps
+  );
   if (outcome === null) return null;
   return block2("block" in outcome ? outcome.block : outcome.news, deps.command);
 };

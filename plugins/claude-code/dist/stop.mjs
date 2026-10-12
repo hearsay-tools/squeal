@@ -145,7 +145,8 @@ var WORKTREE_META_ROWS = {
   rekeyed: { prefix: "rekeyed.", owner: "scheduler/rekeyed-record" },
   rekeyedMoves: { prefix: "rekeyed-moves.", owner: "scheduler/rekeyed-moves" },
   optimizerOff: { prefix: "optimizer-off.", owner: "state/optimizer-note" },
-  baselineFindings: { prefix: "state.baseline-findings.", owner: "state/baseline" }
+  baselineFindings: { prefix: "state.baseline-findings.", owner: "state/baseline" },
+  stopWait: { prefix: "stop-wait:", owner: "slow/stop-wait" }
 };
 function worktreeMetaKey(row, worktreeId) {
   return `${WORKTREE_META_ROWS[row].prefix}${worktreeId}`;
@@ -174,7 +175,8 @@ var DEFAULT_POLICY = {
     blockOnKnownFailures: false,
     requireFullSuite: false,
     waitMs: 0,
-    requireSlowSuite: false
+    requireSlowSuite: false,
+    slowWaitMs: 12e4
   },
   baseline: { onStart: "lookup-then-run-missing" },
   inputs: [],
@@ -458,7 +460,8 @@ var SHAPE = {
     blockOnKnownFailures: boolean2,
     requireFullSuite: boolean2,
     waitMs: atLeastZero,
-    requireSlowSuite: boolean2
+    requireSlowSuite: boolean2,
+    slowWaitMs: atLeastZero
   },
   baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
   inputs,
@@ -535,6 +538,50 @@ function merge(shape, defaults, given, prefix, problems) {
 }
 function isNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+// src/core/daemon/version.ts
+import { readFileSync as readFileSync3 } from "node:fs";
+import { dirname as dirname2, join as join3 } from "node:path";
+import { fileURLToPath } from "node:url";
+var UNKNOWN_VERSION = "0.0.0-unknown";
+var PACKAGE_NAME = "squeal";
+function squealVersion() {
+  if (true) return "0.1.128";
+  return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
+}
+function manifestVersion(module) {
+  let dir = dirname2(fileURLToPath(module));
+  for (; ; ) {
+    const version = readVersion(join3(dir, "package.json"));
+    if (version !== null) return version;
+    const parent = dirname2(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+function readVersion(path) {
+  try {
+    const parsed = JSON.parse(readFileSync3(path, "utf8"));
+    if (typeof parsed !== "object" || parsed === null) return null;
+    const { name, version } = parsed;
+    return name === PACKAGE_NAME && typeof version === "string" ? version : null;
+  } catch {
+    return null;
+  }
+}
+function isNewerVersion(version, than) {
+  const a = versionParts(version);
+  const b = versionParts(than);
+  if (a === null || b === null) return false;
+  for (let i = 0; i < 3; i++) {
+    if (a[i] !== b[i]) return (a[i] ?? 0) > (b[i] ?? 0);
+  }
+  return false;
+}
+function versionParts(version) {
+  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
+  return match === null ? null : match.slice(1).map(Number);
 }
 
 // src/core/keys/closure.ts
@@ -818,6 +865,29 @@ function readFailureKeys(store, worktreeId) {
   }
 }
 
+// src/core/slow/stop-wait.ts
+var STOP_SLOW_WAIT_CAP_MS = 6e5;
+function stopSlowWaitMs(policy) {
+  if (!policy.stop.requireSlowSuite) return null;
+  return Math.max(0, Math.min(policy.stop.slowWaitMs, STOP_SLOW_WAIT_CAP_MS));
+}
+function stopWaitMetaKey(worktreeId) {
+  return worktreeMetaKey("stopWait", worktreeId);
+}
+function read2(store, worktreeId) {
+  const raw = store.meta.get(stopWaitMetaKey(worktreeId));
+  if (raw === null) return {};
+  try {
+    const value = JSON.parse(raw);
+    return isRecord(value) ? value : {};
+  } catch {
+    return {};
+  }
+}
+function stopWaitRuns(store, worktreeId, harness, version) {
+  return read2(store, worktreeId)[harness] === version;
+}
+
 // src/core/state/slow-sources.ts
 function sourcesChanged(store, worktreeId, since, revision, artifact, isSource) {
   if (since >= revision) return false;
@@ -868,7 +938,8 @@ function slowPolicyView(policy) {
   return {
     isSlow: slowFiles(policy, policy.nodeTest),
     slowGlobs: globs2,
-    artifactFor: (path) => [...new Set(rules.filter((r) => r.applies(path)).flatMap((r) => r.globs))].sort()
+    artifactFor: (path) => [...new Set(rules.filter((r) => r.applies(path)).flatMap((r) => r.globs))].sort(),
+    stopWaitMs: stopSlowWaitMs(policy)
   };
 }
 function worktreeSlowView(store, worktreeId) {
@@ -940,7 +1011,8 @@ function readSlowTier(store, worktreeId, revision, states, keys, view) {
       [...globs2, ...declaredToday],
       isSource
     ),
-    activity: liveActivity(store, worktreeId, keys, view.isSlow)
+    activity: liveActivity(store, worktreeId, keys, view.isSlow),
+    ...view.stopWaitMs === null ? {} : { stopWaitMs: view.stopWaitMs }
   };
 }
 function recordedArtifacts(store) {
@@ -1148,9 +1220,7 @@ function currentText(tier) {
 function slowTierText(header, command) {
   const tier = header.slowTier;
   if (tier === void 0) return null;
-  if (tier.testFiles === 0) {
-    return "Slow tier: no slow test files listed yet; not covered by Stop's wait.";
-  }
+  if (tier.testFiles === 0) return `Slow tier: no slow test files listed yet; ${stopText(tier)}.`;
   const parts = [];
   if (tier.current > 0) {
     parts.push(
@@ -1162,7 +1232,14 @@ function slowTierText(header, command) {
   }
   if (tier.notRun > 0) parts.push(`${tier.notRun} not run at revision ${header.revision}`);
   const runs = tier.current < tier.testFiles ? `; \`${command} run --slow\` runs them now` : "";
-  return `Slow tier: ${plural(tier.testFiles, "test file")}; ${parts.join("; ")}. Not covered by Stop's wait${runs}.`;
+  return `Slow tier: ${plural(tier.testFiles, "test file")}; ${parts.join("; ")}. ${capitalized(stopText(tier))}${runs}.`;
+}
+function stopText(tier) {
+  if (tier.stopWaitMs === void 0) return "not covered by Stop's wait";
+  return `Stop waits up to ${durationText(tier.stopWaitMs)} for them or holds the agent once`;
+}
+function capitalized(text) {
+  return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 }
 
 // src/core/delivery/collapse.ts
@@ -1305,22 +1382,22 @@ function isBusy(error) {
 
 // src/core/store/open.ts
 import { existsSync as existsSync3, mkdirSync, renameSync, rmSync as rmSync2 } from "node:fs";
-import { join as join5 } from "node:path";
+import { join as join6 } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 // src/core/store/paths.ts
-import { join as join3 } from "node:path";
+import { join as join4 } from "node:path";
 function storePaths(commonDir) {
-  const dir = join3(commonDir, "squeal");
+  const dir = join4(commonDir, "squeal");
   return {
     dir,
-    database: join3(dir, "store.sqlite"),
-    runsDir: join3(dir, "runs"),
-    locksDir: join3(dir, "locks")
+    database: join4(dir, "store.sqlite"),
+    runsDir: join4(dir, "runs"),
+    locksDir: join4(dir, "locks")
   };
 }
 function lockFileFor(commonDir, worktreeId) {
-  return join3(storePaths(commonDir).locksDir, `${worktreeId}.sqlite`);
+  return join4(storePaths(commonDir).locksDir, `${worktreeId}.sqlite`);
 }
 
 // src/core/store/schema.ts
@@ -1616,7 +1693,7 @@ function flag(value) {
 
 // src/core/store/prune.ts
 import { existsSync as existsSync2, rmSync } from "node:fs";
-import { join as join4, resolve as resolve2, sep } from "node:path";
+import { join as join5, resolve as resolve2, sep } from "node:path";
 var DAY_MS = 24 * 60 * 60 * 1e3;
 var EVICTION_BATCH = 32;
 var DELETE_BATCH = 256;
@@ -1643,7 +1720,7 @@ function prune(conn, worktrees, paths, options) {
   const cutoff = options.now - options.retentionDays * DAY_MS;
   let worktreesRemoved = 0;
   for (const worktree of worktrees.list()) {
-    if (existsSync2(join4(worktree.root, ".git"))) continue;
+    if (existsSync2(join5(worktree.root, ".git"))) continue;
     worktrees.remove(worktree.id);
     worktreesRemoved++;
   }
@@ -2750,7 +2827,7 @@ function isCorruption(error) {
 }
 function recover(paths, options) {
   mkdirSync(paths.locksDir, { recursive: true });
-  const lock2 = new DatabaseSync(join5(paths.locksDir, "store-recovery.sqlite"));
+  const lock2 = new DatabaseSync(join6(paths.locksDir, "store-recovery.sqlite"));
   try {
     lock2.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
     lock2.exec("BEGIN EXCLUSIVE");
@@ -3206,11 +3283,11 @@ function settled(since, rekeyed, states) {
 // src/core/waiter-lock/waiter-lock.ts
 import { createHash as createHash3 } from "node:crypto";
 import { existsSync as existsSync4, mkdirSync as mkdirSync2, rmSync as rmSync3 } from "node:fs";
-import { join as join6 } from "node:path";
+import { join as join7 } from "node:path";
 import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 function waiterLockPath(locksDir, consumer) {
   const id = createHash3("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
-  return join6(locksDir, `waiter-${id}.sqlite`);
+  return join7(locksDir, `waiter-${id}.sqlite`);
 }
 function removeWaiterLock(locksDir, consumer) {
   const path = waiterLockPath(locksDir, consumer);
@@ -3237,11 +3314,11 @@ function lock(path) {
 }
 
 // src/core/delivery/harness-process.ts
-import { readFileSync as readFileSync3, readlinkSync } from "node:fs";
+import { readFileSync as readFileSync4, readlinkSync } from "node:fs";
 function readProcStat(pid) {
   let text;
   try {
-    text = readFileSync3(`/proc/${pid}/stat`, "utf8");
+    text = readFileSync4(`/proc/${pid}/stat`, "utf8");
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -3275,7 +3352,7 @@ import { existsSync as existsSync5 } from "node:fs";
 
 // src/core/daemon/lock.ts
 import { mkdirSync as mkdirSync3 } from "node:fs";
-import { dirname as dirname2 } from "node:path";
+import { dirname as dirname3 } from "node:path";
 import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
 function acquireDaemonLock(path) {
   const db = lockDatabase(path);
@@ -3290,7 +3367,7 @@ function acquireDaemonLock(path) {
   return lock2;
 }
 function lockDatabase(path) {
-  mkdirSync3(dirname2(path), { recursive: true });
+  mkdirSync3(dirname3(path), { recursive: true });
   const db = new DatabaseSync3(path);
   try {
     db.exec("PRAGMA busy_timeout = 0");
@@ -3366,33 +3443,33 @@ function files(refs) {
 }
 
 // src/core/status/git-head.ts
-import { readFileSync as readFileSync4 } from "node:fs";
-import { join as join7 } from "node:path";
+import { readFileSync as readFileSync5 } from "node:fs";
+import { join as join8 } from "node:path";
 var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 var MAX_REF_DEPTH = 5;
 function readGitHead(root) {
   const gitDir = gitDirOf(root);
   const commonDir = resolveCommonDir(root);
   if (gitDir === null || commonDir === null) return null;
-  let value = read2(join7(gitDir, "HEAD"));
+  let value = read3(join8(gitDir, "HEAD"));
   for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
     if (SHA.test(value)) return value;
     const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
     if (ref === void 0) return null;
-    value = read2(join7(gitDir, ref)) ?? read2(join7(commonDir, ref)) ?? packed(commonDir, ref);
+    value = read3(join8(gitDir, ref)) ?? read3(join8(commonDir, ref)) ?? packed(commonDir, ref);
   }
   return null;
 }
 function packed(commonDir, ref) {
-  for (const line of (read2(join7(commonDir, "packed-refs")) ?? "").split("\n")) {
+  for (const line of (read3(join8(commonDir, "packed-refs")) ?? "").split("\n")) {
     const [sha, name] = line.split(" ");
     if (name === ref && sha !== void 0 && SHA.test(sha)) return sha;
   }
   return null;
 }
-function read2(path) {
+function read3(path) {
   try {
-    return readFileSync4(path, "utf8").trim();
+    return readFileSync5(path, "utf8").trim();
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
@@ -3802,8 +3879,8 @@ function createDelivery(store, options) {
       }
       if (idle) startTurn(store, consumer);
       const told = toldRevision(store, consumer);
-      const read3 = readLiveHeader(store, consumer.worktreeId, at2, states, told);
-      const live = withTold(read3, toldLiveness(store, consumer), at2);
+      const read4 = readLiveHeader(store, consumer.worktreeId, at2, states, told);
+      const live = withTold(read4, toldLiveness(store, consumer), at2);
       tellRevision(store, consumer, live.revision);
       const { entries, header, stillFailing } = annotate(
         store,
@@ -3851,8 +3928,8 @@ function createDelivery(store, options) {
         states.map((s) => toView2(s, at2))
       );
       const told = startingSince === void 0 ? null : { startingSince };
-      const read3 = readLiveHeader(store, consumer.worktreeId, at2, states);
-      const live = told === null ? read3 : withTold(read3, told, at2);
+      const read4 = readLiveHeader(store, consumer.worktreeId, at2, states);
+      const live = told === null ? read4 : withTold(read4, told, at2);
       const knownFailures = states.flatMap((s) => toKnownFailure(s, live.revision) ?? []);
       const header = withDependencies(store, consumer.worktreeId, live, knownFailures.length > 0);
       const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
@@ -4225,18 +4302,18 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 
 // src/core/daemon/paths.ts
-import { dirname as dirname3, isAbsolute as isAbsolute3, join as join8 } from "node:path";
+import { dirname as dirname4, isAbsolute as isAbsolute3, join as join9 } from "node:path";
 function runtimeDir(env = process.env) {
   return xdgRuntimeDir(env) ?? userTmpDir();
 }
 var MAX_SOCKET_PATH_BYTES = 103;
 function socketPathFor(worktreeId, env = process.env) {
   const name = `squeal-${worktreeId}.sock`;
-  const path = join8(runtimeDir(env), name);
-  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join8(userTmpDir(), name);
+  const path = join9(runtimeDir(env), name);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join9(userTmpDir(), name);
 }
 function userTmpDir(uid = currentUid()) {
-  return join8("/tmp", `squeal-${uid}`);
+  return join9("/tmp", `squeal-${uid}`);
 }
 function xdgRuntimeDir(env) {
   const xdg = env.XDG_RUNTIME_DIR;
@@ -4328,50 +4405,6 @@ function daemonCliEntry(cli, env = process.env) {
   const override = env.SQUEAL_CLI;
   if (override !== void 0 && override !== "") return override;
   return cli ?? null;
-}
-
-// src/core/daemon/version.ts
-import { readFileSync as readFileSync5 } from "node:fs";
-import { dirname as dirname4, join as join9 } from "node:path";
-import { fileURLToPath } from "node:url";
-var UNKNOWN_VERSION = "0.0.0-unknown";
-var PACKAGE_NAME = "squeal";
-function squealVersion() {
-  if (true) return "0.1.127";
-  return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
-}
-function manifestVersion(module) {
-  let dir = dirname4(fileURLToPath(module));
-  for (; ; ) {
-    const version = readVersion(join9(dir, "package.json"));
-    if (version !== null) return version;
-    const parent = dirname4(dir);
-    if (parent === dir) return null;
-    dir = parent;
-  }
-}
-function readVersion(path) {
-  try {
-    const parsed = JSON.parse(readFileSync5(path, "utf8"));
-    if (typeof parsed !== "object" || parsed === null) return null;
-    const { name, version } = parsed;
-    return name === PACKAGE_NAME && typeof version === "string" ? version : null;
-  } catch {
-    return null;
-  }
-}
-function isNewerVersion(version, than) {
-  const a = versionParts(version);
-  const b = versionParts(than);
-  if (a === null || b === null) return false;
-  for (let i = 0; i < 3; i++) {
-    if (a[i] !== b[i]) return (a[i] ?? 0) > (b[i] ?? 0);
-  }
-  return false;
-}
-function versionParts(version) {
-  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
-  return match === null ? null : match.slice(1).map(Number);
 }
 
 // src/harness/shared/ensure.ts
@@ -4483,13 +4516,13 @@ var SKIPPED = /* @__PURE__ */ new Set([
 ]);
 var MAX_HOPS = 4;
 function findHarnessProcess(lookup = {}) {
-  const read3 = lookup.read ?? readProcStat;
+  const read4 = lookup.read ?? readProcStat;
   const namespace = (lookup.namespace ?? pidNamespace)();
   if (namespace === null) return null;
   let pid = lookup.ppid ?? process.ppid;
   try {
     for (let hop = 0; hop < MAX_HOPS && pid > 1; hop++) {
-      const stat = read3(pid);
+      const stat = read4(pid);
       if (stat === null || stat.state === "Z" || stat.comm === "systemd") return null;
       if (!SKIPPED.has(stat.comm)) {
         return { pid, startTime: stat.startTime, pidNamespace: namespace };
@@ -4577,7 +4610,7 @@ function fullSuiteReason(header, command = SQUEAL_COMMAND) {
 }
 function slowSuiteReason(revision, files2, command = SQUEAL_COMMAND) {
   const verb = files2.length === 1 ? "is" : "are";
-  return `Squeal policy stop.requireSlowSuite is on and ${plural(files2.length, "slow test file")} ${verb} not current at revision ${revision}: ${list(files2.map((f) => f.path))}. \`${command} run --slow\` runs them.`;
+  return `Squeal policy stop.requireSlowSuite is on and ${plural(files2.length, "slow test file")} ${verb} not current at revision ${revision}: ${list(files2.map((f) => f.path))}. \`${command} run --slow --wait\` runs them and waits for their results.`;
 }
 
 // src/harness/shared/stop.ts
@@ -4611,6 +4644,12 @@ function stopTurn(input, location2, deps) {
       for (let decision = 1; ; decision++) {
         const { header, failures, reasons } = decide(context, policy, isSlow, now(), {
           stopHookActive: input.stopHookActive,
+          slowElsewhere: input.agent_id === void 0 && stopWaitRuns(
+            context.store,
+            context.consumer.worktreeId,
+            input.harness,
+            deps.squealVersion ?? squealVersion()
+          ),
           command: deps.command
         });
         if (reasons.length > 0) {
@@ -4643,6 +4682,7 @@ function retriesReason(decided) {
 }
 function decide(context, policy, isSlow, now, {
   stopHookActive,
+  slowElsewhere,
   command
 }) {
   const { store, consumer } = context;
@@ -4660,7 +4700,7 @@ function decide(context, policy, isSlow, now, {
     if (policy.requireFullSuite && !header.fullSuite.atCurrentRevision) {
       reasons.push(fullSuiteReason(header, command));
     }
-    if (policy.requireSlowSuite) {
+    if (policy.requireSlowSuite && !slowElsewhere) {
       const open = slowFilesNotCurrent(states, keys, isSlow);
       if (open.length > 0) reasons.push(slowSuiteReason(header.revision, open, command));
     }
@@ -4736,7 +4776,7 @@ var stop = async (input, location2, deps) => {
     return null;
   }
   const outcome = await stopTurn(
-    { ...input, stopHookActive: input.stop_hook_active === true },
+    { ...input, stopHookActive: input.stop_hook_active === true, harness: "claude-code" },
     location2,
     deps
   );
