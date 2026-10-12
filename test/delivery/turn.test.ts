@@ -139,20 +139,14 @@ describe("turn state", () => {
     expect(trimmed({ ...older, testFiles: [a] }, [], keys)).toBeNull();
   });
 
-  it("keeps a Stop's handoff untrimmed as results land (001-295, 13am B1)", async () => {
+  it("keeps a Stop's handoff as results land (001-295; 001-305: only when)", async () => {
     await delivery.register(C1);
     setKey(store, "k1", { pending: "queued" });
     await delivery.endTurn(C1, { handoff: true });
     const turn = readTurn(store, C1);
     if (turn.turn !== "idle") throw new Error("not idle");
-    const [file] = turn.testFiles;
-    expect(turn.handoff).toEqual({
-      at: expect.any(Number),
-      revision: 0,
-      keys: { [file ?? ""]: "k1" },
-      newTestFiles: false,
-    });
-    // The file's run lands: the waiter no longer owes it, the handoff still names it.
+    expect(turn.handoff).toEqual({ at: expect.any(Number) });
+    // The file's run lands: the waiter no longer owes it, the handoff stays.
     setKey(store, "k1");
     const trim = trimmed(turn, [], store.testFileKeys.list(WT));
     expect(trim).toMatchObject({ testFiles: [], handoff: turn.handoff });
@@ -200,6 +194,14 @@ describe("turn state", () => {
     expect(readTurn(store, C1)).toEqual(START_IDLE);
     store.meta.set(turnMetaKey(WT), JSON.stringify({ "s1\nmain": { turn: "idle", testFiles: 3 } }));
     expect(readTurn(store, C1)).toEqual(START_IDLE);
+  });
+
+  it("reads an older build's handoff, with its owed keys, as when it was written (001-305)", async () => {
+    await delivery.register(C1);
+    const older = { at: 5, revision: 1, keys: { a: "k1" }, newTestFiles: true };
+    const row = { turn: "idle", testFiles: [], newTestFiles: false, handoff: older };
+    store.meta.set(turnMetaKey(WT), JSON.stringify({ "s1\nmain": row }));
+    expect(readTurn(store, C1)).toEqual({ ...START_IDLE, handoff: { at: 5 } });
   });
 
   it("does nothing for a consumer that is not registered", async () => {

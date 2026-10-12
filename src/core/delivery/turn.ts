@@ -57,22 +57,7 @@ function parse(value: unknown): TurnState {
 }
 
 function withHandoff(value: unknown): { handoff?: StopHandoff } {
-  if (!isRecord(value) || typeof value.at !== "number" || typeof value.revision !== "number") {
-    return {};
-  }
-  const keys = isRecord(value.keys)
-    ? Object.entries(value.keys).filter(
-        (e): e is [string, CheckKey | null] => typeof e[1] === "string" || e[1] === null,
-      )
-    : [];
-  return {
-    handoff: {
-      at: value.at,
-      revision: value.revision,
-      keys: Object.fromEntries(keys),
-      newTestFiles: value.newTestFiles === true,
-    },
-  };
+  return isRecord(value) && typeof value.at === "number" ? { handoff: { at: value.at } } : {};
 }
 
 export function readTurn(store: Store, consumer: Consumer): TurnState {
@@ -117,9 +102,8 @@ export function currentKeys(keys: readonly TestFileKeyRecord[]): CurrentKeys {
  * file queued or running) plus `undelivered`, the entries a delivery would
  * make now, so a result that landed while the turn was ending still wakes.
  * Each file is waited for at its current key, and new test files up to the
- * current revision (task 001-89, review wave 10 S3). With `handoffAt`, the
- * same files and keys are also kept untrimmed as the Stop's `handoff`
- * (task 001-295), with the new test files it owes (task 001-302).
+ * current revision (task 001-89, review wave 10 S3). With `handoffAt`, it
+ * records the Stop's `handoff` to the waiting entry (task 001-295).
  */
 export function endTurn(
   store: Store,
@@ -145,9 +129,7 @@ export function endTurn(
     newTestFiles,
     keys: owed,
     revision,
-    ...(handoffAt === null
-      ? {}
-      : { handoff: { at: handoffAt, revision, keys: owed, newTestFiles } }),
+    ...(handoffAt === null ? {} : { handoff: { at: handoffAt } }),
   });
 }
 

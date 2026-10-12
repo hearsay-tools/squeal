@@ -82,12 +82,63 @@ export function slowKey(r: SquealRepo, pending: "queued" | null, key = "slow1"):
 }
 
 /** The slow file's run lands at the current revision, as the daemon's slow tier stores it. */
-export function landSlow(r: SquealRepo, outcome: "pass" | "fail", key = "slow1"): void {
+export function landSlow(
+  r: SquealRepo,
+  outcome: "pass" | "fail",
+  key = "slow1",
+  message?: string,
+): void {
   const revision = r.store.revisions.latest(r.worktreeId)?.number ?? 0;
-  const ran = result(POSTS, outcome, { key, worktreeId: r.worktreeId, revision });
+  const ran = result(POSTS, outcome, {
+    key,
+    worktreeId: r.worktreeId,
+    revision,
+    ...(message === undefined ? {} : { message }),
+  });
   r.store.transaction(() => r.store.results.putMany([ran]));
   slowKey(r, null, key);
   r.sink.applyResults(r.worktreeId, revision, [ran], { checkpointId: null });
+}
+
+/** A new revision moves the slow file to `slow2` and queues it, as the scheduler does. */
+export function queueSlowAgain(r: SquealRepo): void {
+  r.apply();
+  slowKey(r, "queued", "slow2");
+  r.sink.refresh(r.worktreeId, r.store.revisions.latest(r.worktreeId)?.number ?? 0, {
+    checkpointId: null,
+  });
+}
+
+/**
+ * The entry's clock, running `at[n]` at its `n`th call: 1 is the handoff's
+ * start, 2 the first poll, 3 the second, and so on while each poll still
+ * sees the slow tier unsettled. A poll reads it inside its read transaction,
+ * after the states and keys, so a write there lands from the fixture's own
+ * SQLite connection while that poll keeps its older snapshot.
+ */
+export function clock(at: Readonly<Record<number, () => void>>): HookDeps {
+  let calls = 0;
+  return {
+    ...deps,
+    now: () => {
+      calls++;
+      at[calls]?.();
+      return Date.now();
+    },
+  };
+}
+
+/** The 2 s entry alone, then `between`, then the waiting entry with `hookDeps`. */
+export async function stopThenWait(
+  harness: Harness,
+  r: SquealRepo,
+  between: () => void = () => {},
+  hookDeps: HookDeps = deps,
+) {
+  const quick = decision(await harness.stop(r));
+  between();
+  const waiting = decision(await harness.stopSlow(r, {}, hookDeps));
+  return { quick, waiting };
 }
 
 export function decision(out: Out): { decision?: string; reason?: string } {

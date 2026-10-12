@@ -53,31 +53,20 @@ export interface EndTurnOptions {
   readonly atRevision?: RevisionNumber;
   /**
    * Task 001-295 (review wave 13am, B1): a main agent's Stop that leaves its
-   * slow files to the waiting Stop entry records what it left owed
-   * (`StopHandoff`) in the idle state it writes.
+   * slow files to the waiting Stop entry records that (`StopHandoff`) in the
+   * idle state it writes.
    */
   readonly handoff?: boolean;
 }
 
 /**
- * Task 001-295 (review wave 13am, B1): what a Stop's silent end left owed,
- * for the waiting Stop entry beside it. The test files (`testFileId`)
- * pending when the turn ended with the key each was pending at, the
- * revision it ended at, and when. Unlike the idle waiter's `testFiles`, it
- * is never trimmed as results land, so a result that landed before the
- * waiting entry read is still one it waited for.
+ * Task 001-295 (review wave 13am, B1): a Stop's silent end that leaves the
+ * slow files to the waiting Stop entry beside it, and when. Task 001-305:
+ * the waiting entry decides from what the consumer was told, so it needs no
+ * list of what was owed.
  */
 export interface StopHandoff {
   readonly at: EpochMs;
-  readonly revision: RevisionNumber;
-  readonly keys: Readonly<Record<string, CheckKey | null>>;
-  /**
-   * Task 001-302 (review wave 13an, B1): the runner part of `revision` was
-   * pending, so checks first observed later, up to `revision`, are owed too,
-   * as the idle waiter's `newTestFiles` says. Absent in a handoff written
-   * before it: `false`.
-   */
-  readonly newTestFiles?: boolean;
 }
 
 /**

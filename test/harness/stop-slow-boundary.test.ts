@@ -1,67 +1,26 @@
 import { describe, expect, it } from "vitest";
 import { refinedMetaKey } from "../../src/core/types/index.js";
-import type { HookDeps } from "../../src/harness/shared/hook.js";
-import type { SquealRepo } from "./helpers.js";
 import {
-  decision,
-  deps,
+  clock,
   HARNESSES,
-  type Harness,
   landSlow,
+  queueSlowAgain,
   repo,
-  slowKey,
+  stopThenWait,
   turnOf,
 } from "./stop-slow-helpers.js";
 
 /*
  * Review wave 13am, B1 and B2 (task 001-295): the waiting Stop entry at its
  * read boundaries. The daemon's writes land from the fixture's own SQLite
- * connection at a chosen call of the entry's clock, which it reads inside
- * each poll's read transaction after the states and keys: that poll keeps
- * its older snapshot, as a hook's poll does when the daemon commits during
- * it. Calls: 1 is the handoff's start, 2 the first poll, 3 the second, and
- * so on while each poll still sees a slow file open.
+ * connection at a chosen call of the entry's clock (`clock`), as the
+ * daemon commits while a hook's poll holds its older snapshot.
  *
- * B1: a failure the 2 s entry's silent end left owed is decided, even when it
- * landed before the waiting entry tracked anything. B2: completion is
+ * B1: a slow failure that landed after the 2 s entry's silent end is decided,
+ * even before the waiting entry's first read. B2: completion is
  * accepted at the live revision only, and never while the runner part of
  * the revision is pending.
  */
-
-/** The entry's clock, running `at[n]` at its `n`th call. */
-function clock(at: Readonly<Record<number, () => void>>): HookDeps {
-  let calls = 0;
-  return {
-    ...deps,
-    now: () => {
-      calls++;
-      at[calls]?.();
-      return Date.now();
-    },
-  };
-}
-
-/** The 2 s entry alone, then `between`, then the waiting entry with `hookDeps`. */
-async function stopThenWait(
-  harness: Harness,
-  r: SquealRepo,
-  between: () => void,
-  hookDeps: HookDeps = deps,
-) {
-  const quick = decision(await harness.stop(r));
-  between();
-  const waiting = decision(await harness.stopSlow(r, {}, hookDeps));
-  return { quick, waiting };
-}
-
-/** A new revision moves the slow file to `slow2` and queues it, as the scheduler does. */
-function queueSlowAgain(r: SquealRepo): void {
-  r.apply();
-  slowKey(r, "queued", "slow2");
-  r.sink.refresh(r.worktreeId, r.store.revisions.latest(r.worktreeId)?.number ?? 0, {
-    checkpointId: null,
-  });
-}
 
 const FAILS =
   /^Squeal policy stop.requireSlowSuite is on and the slow tier ran at revision 1: 1 check fails: test\/e2e\/slow.test.ts > ledger > posts\.\n\n/;
