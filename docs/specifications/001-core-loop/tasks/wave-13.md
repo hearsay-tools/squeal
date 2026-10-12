@@ -992,3 +992,15 @@ Done when the row's done-when holds.
 ## 001-296 re-review of wave 13am
 
 Use /reviewer on gpt-6.1-sol, after 001-295 lands. Output `reviews/wave-13an.md`. Second round on `reviews/wave-13am.md` B1 and B2: can any schedule of daemon commits, revisions or listings still end a turn silent while a slow file the Stop owes is failed, queued or unlisted, or make the waiting Stop block twice or past its hook timeout? Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human (second round).
+
+## 001-298 research: a main checkout's daemon watches its nested worktrees
+
+Use /researcher. Decided by the human (2026-10-12): it should not be the case. Evidence: on this host the 0.1.124 daemons of `/home/agent/projects/squeal` and `/home/agent/projects/mvp-unveiled-july26` held 74,121 and 279,561 inotify watches (count `^inotify` lines in `/proc/<pid>/fdinfo/*`), against about 3,365 and 2,823 paths each checkout owns outside `.ai`, `node_modules` and `.git`. Cezar puts its worktrees under `.ai/cezar/worktrees/`, git-ignored at the root. The two daemons also used about 1.7 GB and 70 to 80% CPU with no test child processes. The host limit `fs.inotify.max_user_watches` is 375,518, and the 0.1.129 gate failed only on ENOSPC.
+
+Questions:
+1. Does the main checkout's watcher (chokidar on Linux, `src/core/watcher/chokidar-backend.ts`, `exclusions.ts`, `watch-spec.ts`, `candidates.ts`) descend into git-ignored directories, nested worktrees (a `.git` file) in particular, and why? Per-directory or per-file watches? Does the macOS backend (`parcel-backend.ts`) do the same?
+2. What does each event from a nested worktree cost the main checkout's daemon (hint, `check-ignore`, revision, memory), and does that explain the CPU and RSS?
+3. The fix: never descend into ignored directories (and into any nested git worktree or repository, ignored or not), what the watch count should be, and what must still be watched (a closure's ignored extra files, declared artifacts, 004's linked builds). Does anything rely on today's behaviour?
+4. Recommend rows in the board's column shape, each with a one-worker scope, and the tests that would have caught it (a fixture with a nested worktree full of files, asserting the watch count stays near the checkout's own).
+
+Measure on scratch repositories and daemons you create and remove, with Squeal's own test harness. Do not touch the human's checkouts, their daemons or stores: read `/proc` only. Probe isolation: never run third-party agent tooling, the eval runner or any repo script where it can reach the real HOME. Output `research/nested-worktree-watch.md`, committed alone. Do not edit `docs/board.md` or source files.
