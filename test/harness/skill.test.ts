@@ -22,11 +22,18 @@ function description(): string {
 }
 
 describe("the squeal skill", () => {
+  /*
+   * Task 001-283 (`research/primer-skill-writing.md` F5): the description is
+   * a context pointer; its trigger stays the human's (001-88), and coverage,
+   * which the static text said wrong for a node:test-only repository, is the
+   * primer's list, read from the config.
+   */
   it("is described by running tests and checking for breakage, not by claiming done", () => {
     const text = description();
     expect(text).toMatch(/^Use when about to run tests \(vitest, npm test\)/);
     expect(text).toContain("check whether a change broke something");
-    expect(text).not.toMatch(/claim|complete|done/i);
+    expect(text).toContain("the suites its primer lists as covered");
+    expect(text).not.toMatch(/claim|complete|done|Vitest tests|node:test/i);
   });
 
   it("puts the steps before the reference, and points at every reference file", () => {
@@ -47,14 +54,30 @@ describe("the squeal skill", () => {
 
   /*
    * Spec 003 lessons, defect 1: "Squeal covers only the Vitest tests" sent
-   * agents to run node:test themselves. The skill is static, so it names
-   * node:test as covered where squeal.config.json lists `nodeTest` projects.
+   * agents to run node:test themselves. The skill is static, so it says
+   * coverage once, as the primer's list from `squeal.config.json`.
    */
-  it("names node:test as covered where nodeTest projects are listed, and never Vitest alone", () => {
-    expect(description()).toContain("node:test tests where squeal.config.json lists nodeTest");
-    expect(body).toContain("its node:test tests too where `squeal.config.json` lists `nodeTest`");
-    expect(body).toContain("instead of running Vitest, or node:test where");
+  it("says coverage once, as the primer's list, with node:test and slow files", () => {
+    expect(body).toContain("It covers what the SQUEAL primer lists from `squeal.config.json`");
+    expect(body).toContain("the node:test tests of the `nodeTest` projects");
+    expect(body.match(/`nodeTest`/g)).toHaveLength(1);
     expect(body).not.toMatch(/only the Vitest tests|covers only Vitest/);
+  });
+
+  /*
+   * Task 001-283 (`research/slow-claims.md` §2): a model following step 3 to
+   * the letter claimed while the slow tier ran. The claim step names
+   * `run --slow --wait`, and its completion criterion is read off the header.
+   */
+  it("makes the slow tier current before a claim, with a checkable criterion", () => {
+    const step = body.slice(body.indexOf("4. **"), body.indexOf("5. **"));
+    expect(step).toContain("Before you say the task is done");
+    expect(step).toContain("`squeal run --slow --wait 60000`");
+    expect(step).toContain(
+      "Done when no check of your edits is pending, the `Slow tier:` line says every slow file is current",
+    );
+    expect(body).not.toMatch(/never during Stop's wait/);
+    for (const text of [body, ...references.map(read)]) expect(text).not.toContain("Stop's wait");
   });
 
   it("names the squeal why line a FAIL report ends with", () => {
@@ -64,11 +87,17 @@ describe("the squeal skill", () => {
   /*
    * Task 001-174, from 001-172's measurement (`lessons.md`, "`status --wait`
    * on a loaded host"): an agent ran neighbouring suites itself rather than
-   * wait. The skill shows red/green through the wait, quotes the measured
-   * wait for a busy host, and says a re-run beside Squeal's is a duplicate.
+   * wait. Red/green through the wait, the measured wait for a busy host, and
+   * a re-run beside Squeal's named a duplicate. Task 001-283: red/green is a
+   * branch only some tasks reach, so it is disclosed in `commands.md` behind
+   * a pointer that names it.
    */
   it("shows red/green through the wait, with the measured wait and no duplicate runs", () => {
-    const example = body.slice(body.indexOf("## Red/green"), body.indexOf("## Reading a header"));
+    const commands = read("commands.md");
+    const example = commands.slice(
+      commands.indexOf("## Red/green"),
+      commands.indexOf("## squeal why"),
+    );
     expect(example).toMatch(
       /Revert the fix[\s\S]*status --wait[\s\S]*Restore the fix[\s\S]*status --wait/,
     );
@@ -80,8 +109,12 @@ describe("the squeal skill", () => {
     );
     expect(example).toContain("listed under `Known failures` after the revert");
     expect(example).not.toMatch(/quiet means the test (still )?passes/);
-    const codex = readFileSync(join(CODEX_PLUGIN_DIR, CODEX_SKILL, "SKILL.md"), "utf8");
-    expect(codex).toContain(example);
+    expect(body).toMatch(
+      /`references\/commands\.md`:[^\n]*red\/green[^\n]*before a red\/green check/,
+    );
+    const codex = (name: string) =>
+      readFileSync(join(CODEX_PLUGIN_DIR, CODEX_SKILL, "references", name), "utf8");
+    expect(codex("commands.md")).toContain(example);
     expect(body).toContain("`--wait 120000` on a busy host");
     expect(read("commands.md")).toContain("On a busy host give it `120000`");
     expect(body).toContain("duplicates what Squeal is already running");
