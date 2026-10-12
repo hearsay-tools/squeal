@@ -4,6 +4,7 @@ import { coverageOf } from "./coverage.js";
 import { ensureIfStale, startingAfter } from "./ensure.js";
 import { type HookDeps, isRegistered } from "./hook.js";
 import { withPrimer } from "./primer.js";
+import { uncoveredEditLine } from "./uncovered-edit.js";
 
 /**
  * Claude Code's tools known not to change files in the worktree. Any other
@@ -64,7 +65,8 @@ export async function deliver(
   }
   const delta = await context.delivery.onToolBoundary(context.consumer);
   const text = delta === null ? null : formatDelta(delta, deps.command);
-  const line = edited && ensured === "unavailable" ? notValidated(context, deps) : null;
+  const down = edited && ensured === "unavailable" ? notValidated(context, deps) : null;
+  const line = down ?? (edited ? uncoveredEditLine(context) : null);
   if (line === null) return text;
   return text === null ? `SQUEAL · ${line}` : `${text}\n${line}`;
 }

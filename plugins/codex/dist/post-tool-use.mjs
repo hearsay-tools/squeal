@@ -4669,6 +4669,34 @@ function withPrimer(registration2, command = SQUEAL_COMMAND, coverage = VITEST_O
 ${tail}`;
 }
 
+// src/harness/shared/uncovered-edit.ts
+import { existsSync as existsSync7 } from "node:fs";
+import { join as join11 } from "node:path";
+var CODE = /\.(?:[cm]?[jt]sx?|py)$/;
+function uncoveredEditLine(context) {
+  const { store, consumer } = context;
+  const r = registration(store, consumer);
+  const latest = store.revisions.latest(consumer.worktreeId);
+  if (r === null || latest === null) return null;
+  const { changed } = changedAfter(store, consumer.worktreeId, r, latest.number);
+  const read3 = /* @__PURE__ */ new Set();
+  for (const file of store.testFiles.list()) {
+    read3.add(file.testFile.path);
+    for (const path of file.closure.paths) read3.add(path);
+  }
+  const key = `exp-uncovered.${consumer.worktreeId}.${consumer.sessionId}.${consumer.agentId}`;
+  const told = new Set(JSON.parse(store.meta.get(key) ?? "[]"));
+  const fresh2 = [...changed].filter(
+    (p) => CODE.test(p) && !p.startsWith("dist/") && !p.includes("/dist/") && !read3.has(p) && !told.has(p) && existsSync7(join11(context.root, p))
+  );
+  if (fresh2.length === 0) return null;
+  store.meta.set(key, JSON.stringify([...told, ...fresh2]));
+  const shown = fresh2.slice(0, 3).join(", ");
+  const more = fresh2.length > 3 ? ` and ${fresh2.length - 3} more` : "";
+  const one = fresh2.length === 1;
+  return `No result for ${shown}${more}: no test Squeal runs reads ${one ? "it" : "them"}. Run whatever tests ${one ? "it" : "them"} yourself.`;
+}
+
 // src/harness/shared/deliver.ts
 async function deliver(context, deps, edited = true) {
   const at2 = (deps.now ?? Date.now)();
@@ -4682,7 +4710,8 @@ async function deliver(context, deps, edited = true) {
   }
   const delta = await context.delivery.onToolBoundary(context.consumer);
   const text = delta === null ? null : formatDelta(delta, deps.command);
-  const line = edited && ensured === "unavailable" ? notValidated(context, deps) : null;
+  const down = edited && ensured === "unavailable" ? notValidated(context, deps) : null;
+  const line = down ?? (edited ? uncoveredEditLine(context) : null);
   if (line === null) return text;
   return text === null ? `SQUEAL \xB7 ${line}` : `${text}
 ${line}`;
@@ -4729,10 +4758,10 @@ import { readFileSync as readFileSync7 } from "node:fs";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // src/harness/codex/command.ts
-import { join as join11 } from "node:path";
+import { join as join12 } from "node:path";
 function codexCommand(env, bundleCli) {
   const root = env.PLUGIN_ROOT;
-  const cli = root === void 0 || root === "" ? bundleCli : join11(root, "dist/cli/squeal.mjs");
+  const cli = root === void 0 || root === "" ? bundleCli : join12(root, "dist/cli/squeal.mjs");
   return `node --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
 }
 
