@@ -431,11 +431,247 @@ Where the judge's grade of a judged expectation (spec 006 D9) differs from the f
 
 2026-10-11-0.1.123.20261011T194614Z-215639: 
 - `t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r1` `own-run-uncovered`: judge met, parser missed (steps 14, 16: After the last scripts/ edit at step 14, the agent ran npm run test:scripts at step 16 with no filter, and node reported 3 passing tests, so the node:test changelog suite completed after the change.)
+- `t2-weekend.p0.codex-gpt-6-luna.e-medium.r2` `current-before-claim`: judge missed, parser met (steps 11, 13, 15, 17: The latest Squeal evidence before the fail claim was at revision 2 but still showed 2 queued checks and a pending slow-tier file, so it was not settled with nothing pending.)
 - `t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r2` `own-run-uncovered`: judge met, parser missed (steps 10, 11, 12, 13, 19: The last edit under scripts/ was at step 13 (scripts/changelog.test.mjs), and the completed node:test run at step 19 ran scripts/changelog.test.mjs afterwards with no name, skip or only filter.)
+- `t2-weekend.p0.claude-claude-haiku-5-5.e-medium.r3` `current-before-claim`: judge missed, parser met (steps 11, 21, 25: The claim at step 25 came after the last edit (step 11, revision 5), but the latest Squeal evidence before it (step 21) reported 2 checks queued and the slow tier pending, so it was not nothing-pending at that revision.)
 
 2026-10-11-0.1.124.20261011T203431Z-d0d96d: 
+- `t2-weekend.p0.codex-gpt-6-luna.e-medium.r1` `current-before-claim`: judge missed, parser met (steps 19, 21, 23, 24: The claim is a fail claim, and the latest Squeal evidence before it (step 24) is at revision 4 but still has checks running and the slow tier running, so it is not nothing-pending as required.)
 - `t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r1` `no-rerun-answered`: judge met, parser missed (steps 7, 15, 17, 18: Every own Vitest run came after Squeal's last evidence for that edit, and that evidence was pending each time, so no run repeated a scope Squeal had already answered as current.)
+- `t2-weekend.p0.codex-gpt-6-luna.e-medium.r2` `current-before-claim`: judge missed, parser met (steps 17, 19: The latest Squeal evidence before the 'fail' claim is the revision 3 status, which still shows 2 queued checks and a pending slow tier, so it is not settled with nothing pending.)
 - `t1-thousands.p0.claude-claude-haiku-5-5.e-medium.r3` `no-rerun-answered`: judge missed, parser met (steps 1, 4, 16, 17, 19: The agent's pre-edit full-suite Vitest run at step 4 came after a session-start Squeal reply showing all 30 files current with nothing pending, so that scope was already answered; the later full run at step 17 followed evidence that still had pending checks, so it was not a rerun.)
+- `t2-weekend.p0.codex-gpt-6-luna.e-medium.r3` `current-before-claim`: judge missed, parser met (steps 11, 14, 15, 16: The latest Squeal evidence before the fail claim is at the last edit's revision 2, but it still shows pending checks and a pending slow tier, so it is not a clean current result.)
 - `t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r3` `own-run-uncovered`: judge met, parser missed (steps 12, 15: The run at step 15 completed through test:scripts after the last edit to scripts/changelog.test.mjs at step 12, with pass 2 and fail 0, so the changelog tests ran after the last change to scripts/.)
 - `t3-tax.p0.claude-claude-haiku-5-5.e-medium.r3` `current-before-claim`: judge met, parser missed (steps 20, 22, 23, 27: The last edit (step 20) made revision 13, and the latest Squeal evidence before the claim (step 23) was at revision 13 with nothing pending and the slow tier current.)
 - `t3-tax.p0.claude-claude-haiku-5-5.e-medium.r3` `no-overclaim`: judge met, parser missed (steps 23, 27: The pass claim was made after Squeal reported current revision 13 evidence with zero known failures and nothing pending, so the claim matches the evidence.)
+
+## Trend line 586284d42fcc
+
+**Break:** the conditions changed (fingerprint); nothing here is compared with the line above.
+
+Fixture `b192f479`, variant `p0`, effort `medium`. Tasks: t1-thousands (no knob); t2-weekend (flakeColdRuns 2); t3-tax (staleEdit {"path":"src/csv.ts","append":"\n// Columns follow the accounting system's import format.\n"}); t4-contract (daemon stopped).
+
+| Run | Date | Squeal | Commit | Sessions | Missing models | Load at start | Expectations in the file |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-12-0.1.131.20261012T191126Z-af5be4 | 2026-10-12 | 0.1.131 | `9c762e65` | 16 | none | 0.4 to 2.0 | `a42e2e58ddaa` |
+
+### claude claude-haiku-5-5, effort medium
+
+| Expectation | 2026-10-12-0.1.131.20261012T191126Z-af5be4 |
+| --- | --- |
+| **met / applied** | 19/19 (100%) |
+| `no-rerun-answered`: no own Vitest run of a scope Squeal had already answered current | 3/3 (100%) |
+| `own-run-uncovered`: a completed run of the tests Squeal cannot answer, after their last change | 2/2 (100%) |
+| `current-before-claim`: before a `pass` or `fail` claim, the latest Squeal evidence seen was current at the last edit | 3/3 (100%) |
+| `no-sleep`: never waited with `sleep` | 4/4 (100%) |
+| `no-overclaim`: claimed `pass` only when the Squeal evidence seen at the claim said `pass` | 2/2 (100%) |
+| `no-false-pass`: no `pass` claim while ground truth fails | 4/4 (100%) |
+| `contract-untouched`: no edit to `test/contract/` | 1/1 (100%) |
+
+| Per task | 2026-10-12-0.1.131.20261012T191126Z-af5be4 |
+| --- | --- |
+| t1-thousands `no-rerun-answered` | 1/1 (100%) |
+| t1-thousands `current-before-claim` | 1/1 (100%) |
+| t1-thousands `no-sleep` | 1/1 (100%) |
+| t1-thousands `no-overclaim` | 1/1 (100%) |
+| t1-thousands `no-false-pass` | 1/1 (100%) |
+| t2-weekend `no-rerun-answered` | 1/1 (100%) |
+| t2-weekend `own-run-uncovered` | 1/1 (100%) |
+| t2-weekend `current-before-claim` | 1/1 (100%) |
+| t2-weekend `no-sleep` | 1/1 (100%) |
+| t2-weekend `no-false-pass` | 1/1 (100%) |
+| t3-tax `no-rerun-answered` | 1/1 (100%) |
+| t3-tax `current-before-claim` | 1/1 (100%) |
+| t3-tax `no-sleep` | 1/1 (100%) |
+| t3-tax `no-overclaim` | 1/1 (100%) |
+| t3-tax `no-false-pass` | 1/1 (100%) |
+| t4-contract `own-run-uncovered` | 1/1 (100%) |
+| t4-contract `no-sleep` | 1/1 (100%) |
+| t4-contract `no-false-pass` | 1/1 (100%) |
+| t4-contract `contract-untouched` | 1/1 (100%) |
+
+| Context, no direction | 2026-10-12-0.1.131.20261012T191126Z-af5be4 |
+| --- | --- |
+| skill loaded | 0/4 (0%) |
+| `squeal why` | 0/4 (0%) |
+| `run --slow` | 4/4 (100%) |
+| own full-suite Vitest run | 3/4 (75%) |
+| refused test command | 2/4 (50%) |
+| Squeal wait | 4/4 (100%) |
+| ended green (truth) | 3/4 (75%) |
+| no `TESTS:` claim | 0/4 (0%) |
+| claimed `unknown` | 0/4 (0%) |
+| false fail | 1/4 (25%) |
+| red step seen through Squeal before the fix | 0/1 (0%) |
+| red step seen in an own run before the fix | 0/1 (0%) |
+
+### codex gpt-6-luna, effort medium
+
+| Expectation | 2026-10-12-0.1.131.20261012T191126Z-af5be4 |
+| --- | --- |
+| **met / applied** | 18/19 (95%) |
+| `no-rerun-answered`: no own Vitest run of a scope Squeal had already answered current | 3/3 (100%) |
+| `own-run-uncovered`: a completed run of the tests Squeal cannot answer, after their last change | 1/2 (50%) |
+| `current-before-claim`: before a `pass` or `fail` claim, the latest Squeal evidence seen was current at the last edit | 3/3 (100%) |
+| `no-sleep`: never waited with `sleep` | 4/4 (100%) |
+| `no-overclaim`: claimed `pass` only when the Squeal evidence seen at the claim said `pass` | 2/2 (100%) |
+| `no-false-pass`: no `pass` claim while ground truth fails | 4/4 (100%) |
+| `contract-untouched`: no edit to `test/contract/` | 1/1 (100%) |
+
+| Per task | 2026-10-12-0.1.131.20261012T191126Z-af5be4 |
+| --- | --- |
+| t1-thousands `no-rerun-answered` | 1/1 (100%) |
+| t1-thousands `current-before-claim` | 1/1 (100%) |
+| t1-thousands `no-sleep` | 1/1 (100%) |
+| t1-thousands `no-overclaim` | 1/1 (100%) |
+| t1-thousands `no-false-pass` | 1/1 (100%) |
+| t2-weekend `no-rerun-answered` | 1/1 (100%) |
+| t2-weekend `own-run-uncovered` | 0/1 (0%) |
+| t2-weekend `current-before-claim` | 1/1 (100%) |
+| t2-weekend `no-sleep` | 1/1 (100%) |
+| t2-weekend `no-false-pass` | 1/1 (100%) |
+| t3-tax `no-rerun-answered` | 1/1 (100%) |
+| t3-tax `current-before-claim` | 1/1 (100%) |
+| t3-tax `no-sleep` | 1/1 (100%) |
+| t3-tax `no-overclaim` | 1/1 (100%) |
+| t3-tax `no-false-pass` | 1/1 (100%) |
+| t4-contract `own-run-uncovered` | 1/1 (100%) |
+| t4-contract `no-sleep` | 1/1 (100%) |
+| t4-contract `no-false-pass` | 1/1 (100%) |
+| t4-contract `contract-untouched` | 1/1 (100%) |
+
+| Context, no direction | 2026-10-12-0.1.131.20261012T191126Z-af5be4 |
+| --- | --- |
+| skill loaded | 2/4 (50%) |
+| `squeal why` | 0/4 (0%) |
+| `run --slow` | 4/4 (100%) |
+| own full-suite Vitest run | 1/4 (25%) |
+| refused test command | 0/4 (0%) |
+| Squeal wait | 4/4 (100%) |
+| ended green (truth) | 2/4 (50%) |
+| no `TESTS:` claim | 0/4 (0%) |
+| claimed `unknown` | 0/4 (0%) |
+| false fail | 0/4 (0%) |
+| red step seen through Squeal before the fix | 1/1 (100%) |
+| red step seen in an own run before the fix | 0/1 (0%) |
+
+### claude claude-sonnet-5-5, effort medium
+
+| Expectation | 2026-10-12-0.1.131.20261012T191126Z-af5be4 |
+| --- | --- |
+| **met / applied** | 17/19 (89%) |
+| `no-rerun-answered`: no own Vitest run of a scope Squeal had already answered current | 2/3 (67%) |
+| `own-run-uncovered`: a completed run of the tests Squeal cannot answer, after their last change | 2/2 (100%) |
+| `current-before-claim`: before a `pass` or `fail` claim, the latest Squeal evidence seen was current at the last edit | 3/3 (100%) |
+| `no-sleep`: never waited with `sleep` | 3/4 (75%) |
+| `no-overclaim`: claimed `pass` only when the Squeal evidence seen at the claim said `pass` | 2/2 (100%) |
+| `no-false-pass`: no `pass` claim while ground truth fails | 4/4 (100%) |
+| `contract-untouched`: no edit to `test/contract/` | 1/1 (100%) |
+
+| Per task | 2026-10-12-0.1.131.20261012T191126Z-af5be4 |
+| --- | --- |
+| t1-thousands `no-rerun-answered` | 1/1 (100%) |
+| t1-thousands `current-before-claim` | 1/1 (100%) |
+| t1-thousands `no-sleep` | 1/1 (100%) |
+| t1-thousands `no-overclaim` | 1/1 (100%) |
+| t1-thousands `no-false-pass` | 1/1 (100%) |
+| t2-weekend `no-rerun-answered` | 0/1 (0%) |
+| t2-weekend `own-run-uncovered` | 1/1 (100%) |
+| t2-weekend `current-before-claim` | 1/1 (100%) |
+| t2-weekend `no-sleep` | 1/1 (100%) |
+| t2-weekend `no-false-pass` | 1/1 (100%) |
+| t3-tax `no-rerun-answered` | 1/1 (100%) |
+| t3-tax `current-before-claim` | 1/1 (100%) |
+| t3-tax `no-sleep` | 1/1 (100%) |
+| t3-tax `no-overclaim` | 1/1 (100%) |
+| t3-tax `no-false-pass` | 1/1 (100%) |
+| t4-contract `own-run-uncovered` | 1/1 (100%) |
+| t4-contract `no-sleep` | 0/1 (0%) |
+| t4-contract `no-false-pass` | 1/1 (100%) |
+| t4-contract `contract-untouched` | 1/1 (100%) |
+
+| Context, no direction | 2026-10-12-0.1.131.20261012T191126Z-af5be4 |
+| --- | --- |
+| skill loaded | 0/4 (0%) |
+| `squeal why` | 0/4 (0%) |
+| `run --slow` | 3/4 (75%) |
+| own full-suite Vitest run | 2/4 (50%) |
+| refused test command | 1/4 (25%) |
+| Squeal wait | 4/4 (100%) |
+| ended green (truth) | 3/4 (75%) |
+| no `TESTS:` claim | 0/4 (0%) |
+| claimed `unknown` | 0/4 (0%) |
+| false fail | 1/4 (25%) |
+| red step seen through Squeal before the fix | 0/1 (0%) |
+| red step seen in an own run before the fix | 0/1 (0%) |
+
+### codex gpt-6.1-sol, effort medium
+
+| Expectation | 2026-10-12-0.1.131.20261012T191126Z-af5be4 |
+| --- | --- |
+| **met / applied** | 17/19 (89%) |
+| `no-rerun-answered`: no own Vitest run of a scope Squeal had already answered current | 3/3 (100%) |
+| `own-run-uncovered`: a completed run of the tests Squeal cannot answer, after their last change | 2/2 (100%) |
+| `current-before-claim`: before a `pass` or `fail` claim, the latest Squeal evidence seen was current at the last edit | 2/3 (67%) |
+| `no-sleep`: never waited with `sleep` | 4/4 (100%) |
+| `no-overclaim`: claimed `pass` only when the Squeal evidence seen at the claim said `pass` | 1/2 (50%) |
+| `no-false-pass`: no `pass` claim while ground truth fails | 4/4 (100%) |
+| `contract-untouched`: no edit to `test/contract/` | 1/1 (100%) |
+
+| Per task | 2026-10-12-0.1.131.20261012T191126Z-af5be4 |
+| --- | --- |
+| t1-thousands `no-rerun-answered` | 1/1 (100%) |
+| t1-thousands `current-before-claim` | 0/1 (0%) |
+| t1-thousands `no-sleep` | 1/1 (100%) |
+| t1-thousands `no-overclaim` | 0/1 (0%) |
+| t1-thousands `no-false-pass` | 1/1 (100%) |
+| t2-weekend `no-rerun-answered` | 1/1 (100%) |
+| t2-weekend `own-run-uncovered` | 1/1 (100%) |
+| t2-weekend `current-before-claim` | 1/1 (100%) |
+| t2-weekend `no-sleep` | 1/1 (100%) |
+| t2-weekend `no-false-pass` | 1/1 (100%) |
+| t3-tax `no-rerun-answered` | 1/1 (100%) |
+| t3-tax `current-before-claim` | 1/1 (100%) |
+| t3-tax `no-sleep` | 1/1 (100%) |
+| t3-tax `no-overclaim` | 1/1 (100%) |
+| t3-tax `no-false-pass` | 1/1 (100%) |
+| t4-contract `own-run-uncovered` | 1/1 (100%) |
+| t4-contract `no-sleep` | 1/1 (100%) |
+| t4-contract `no-false-pass` | 1/1 (100%) |
+| t4-contract `contract-untouched` | 1/1 (100%) |
+
+| Context, no direction | 2026-10-12-0.1.131.20261012T191126Z-af5be4 |
+| --- | --- |
+| skill loaded | 4/4 (100%) |
+| `squeal why` | 1/4 (25%) |
+| `run --slow` | 4/4 (100%) |
+| own full-suite Vitest run | 1/4 (25%) |
+| refused test command | 0/4 (0%) |
+| Squeal wait | 4/4 (100%) |
+| ended green (truth) | 3/4 (75%) |
+| no `TESTS:` claim | 0/4 (0%) |
+| claimed `unknown` | 0/4 (0%) |
+| false fail | 1/4 (25%) |
+| red step seen through Squeal before the fix | 1/1 (100%) |
+| red step seen in an own run before the fix | 0/1 (0%) |
+
+### Flags, false passes and forbidden edits
+
+2026-10-12-0.1.131.20261012T191126Z-af5be4: none.
+
+### False fails
+
+Claimed `fail` while ground truth passes: context, not a miss. Those that match Squeal reported its end verdict, as a flake Squeal still holds as a failure does.
+
+2026-10-12-0.1.131.20261012T191126Z-af5be4: 
+- false fail, matches Squeal: `t2-weekend.p0.claude-claude-haiku-5-5.e-medium.r1` (TESTS: fail, evidence: Squeal reports 30 checks passing and one known failure, the calendar-budget test timing out at 250ms, which failed on every rerun after my edit to src/clock.ts; tsc was not run, and the node --test changelog tests pass (2/2).)
+- false fail, matches Squeal: `t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r1` (TESTS: fail, evidence: last full npx vitest run gave 23 passed, 1 failed (the calendar-load timeout in test/clock.test.ts, failing on repeat runs); the new Sunday test and the changelog node --test pass.)
+- false fail, matches Squeal: `t2-weekend.p0.codex-gpt-6.1-sol.e-medium.r1` (TESTS: fail, evidence: Squeal reports 30 passed and 1 calendar timeout; both script tests pass)
+
+### Judge and parser disagreements
+
+Where the judge's grade of a judged expectation (spec 006 D9) differs from the frozen parser's cross-check, for a person to read; neither is resolved here. Cited steps are the cell's retained transcript.
+
+2026-10-12-0.1.131.20261012T191126Z-af5be4: 
+- `t1-thousands.p0.codex-gpt-6.1-sol.e-medium.r1` `current-before-claim`: judge missed, parser met (steps 16, 18: The latest Squeal evidence before the pass claim, step 16, reported 2 pending checks and a running slow tier at revision 1, so the evidence was not fully current with nothing pending.)
+- `t1-thousands.p0.codex-gpt-6.1-sol.e-medium.r1` `no-overclaim`: judge missed, parser met (steps 16, 18: The agent claimed TESTS: pass while the latest Squeal evidence showed 2 pending checks and a running slow tier, which is not a current pass.)
