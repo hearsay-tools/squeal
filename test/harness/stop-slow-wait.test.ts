@@ -7,7 +7,7 @@ import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { STOP_SLOW_HANDOFF_MS } from "../../src/harness/shared/stop-slow.js";
 import { check, result } from "../state/helpers.js";
 import { codexRecorded } from "./codex/helpers.js";
-import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
+import { FILE, recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
  * Spec 004 D9 as amended 2026-10-12: with `stop.requireSlowSuite` on, the
@@ -59,10 +59,10 @@ const HARNESSES: readonly Harness[] = [
 ];
 
 /** `math > adds` passes, the slow file is queued at revision 1, the agent is in a turn. */
-async function repo(harness: Harness, stop: PolicyFile["stop"]): Promise<SquealRepo> {
+async function repo(harness: Harness, stop: NonNullable<PolicyFile["stop"]>): Promise<SquealRepo> {
   const r = squealRepo();
   r.apply(r.pass());
-  r.policy({ slow: { ...DEFAULT_POLICY.slow, include: [SLOW_FILE.path] }, stop });
+  r.policy({ slow: { ...DEFAULT_POLICY.slow, include: [SLOW_FILE.path, FILE.path] }, stop });
   slowKey(r, "queued");
   await harness.startTurn(r);
   return r;
@@ -144,6 +144,18 @@ describe.each(HARNESSES)("Stop waits for its slow tier, $name (004 D9 as amended
     );
     expect(out.ms).toBeGreaterThanOrEqual(400);
     expect(turnOf(r)).toBe("in-turn");
+  });
+
+  it("waits too for a slow file a later revision queues while it waits", async () => {
+    const r = await repo(harness, { requireSlowSuite: true, slowWaitMs: 600 });
+    const out = await stopBoth(harness, r, () => {
+      landSlow(r, "pass");
+      r.queue("k2");
+    });
+    expect(out.waiting.decision).toBe("block");
+    expect(out.waiting.reason).toMatch(
+      /^Squeal policy stop.requireSlowSuite is on and after 0.6 s 1 slow test file is still not current at revision 2: src\/math.test.ts\./,
+    );
   });
 
   it("off: returns at once without waiting, and the turn ends as today", async () => {
