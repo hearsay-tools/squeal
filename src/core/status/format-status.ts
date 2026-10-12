@@ -9,10 +9,13 @@ import type {
   StatusUnavailable,
 } from "../types/index.js";
 import { DEATH_CAUSE, deathText } from "./died.js";
+import { runnerNames } from "./runners.js";
 
 export interface StatusFormatOptions {
   /** `squeal status --notes`: every note in full, none grouped (task 001-222). */
   readonly allNotes?: boolean;
+  /** The runners the counts come from, named after them; `runnerNames` of the worktree when absent. */
+  readonly runners?: readonly string[];
 }
 
 /**
@@ -44,7 +47,7 @@ export function formatStatus(
         f.validity,
       ].join(", ")}`,
     ]),
-    `Affected checks: ${affected(result)}`,
+    `Affected checks: ${affected(result)}${result.testFilesListed === false ? "" : runnersText(options.runners ?? runnerNames(result.worktreeRoot))}`,
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
     ...checkpointLine(result, now, command),
     ...slowLine(result, command),
@@ -192,6 +195,14 @@ function affected(s: StatusSnapshot): string {
       ? `; ${runnerPartText(s.revision)} is pending, so test files it adds are not counted yet`
       : "";
   return `${parts.join(", ")}${fresh}${runnerPart}`;
+}
+
+/** Says which runners the counts are from, and that Squeal ran no other suite. */
+function runnersText(runners: readonly string[]): string {
+  if (runners.length === 0) return "";
+  const named =
+    runners.length === 1 ? runners[0] : `${runners.slice(0, -1).join(", ")} and ${runners.at(-1)}`;
+  return ` (${named} only; Squeal runs no other test suite)`;
 }
 
 /** Spec 001 D7 as amended: the dirty flag is labelled with its revision, not known without a daemon. */

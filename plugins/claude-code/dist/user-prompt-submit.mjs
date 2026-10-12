@@ -4181,7 +4181,34 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
 
 // src/harness/shared/context.ts
 import { existsSync as existsSync5 } from "node:fs";
+import { join as join8 } from "node:path";
+
+// src/core/daemon/runner.ts
+import { readdirSync, readFileSync as readFileSync5 } from "node:fs";
 import { join as join7 } from "node:path";
+var VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
+function vitestDetected(root) {
+  let names;
+  try {
+    names = readdirSync(root);
+  } catch {
+    return false;
+  }
+  if (names.some((name) => VITEST_CONFIG.test(name))) return true;
+  let manifest;
+  try {
+    manifest = JSON.parse(readFileSync5(join7(root, "package.json"), "utf8"));
+  } catch {
+    return false;
+  }
+  if (!isRecord(manifest)) return false;
+  return ["dependencies", "devDependencies"].some((field) => {
+    const deps = manifest[field];
+    return isRecord(deps) && Object.hasOwn(deps, "vitest");
+  });
+}
+
+// src/harness/shared/context.ts
 function locate(cwd) {
   const root = findWorktreeRoot(cwd);
   if (root === null) return null;
@@ -4189,7 +4216,7 @@ function locate(cwd) {
   return commonDir === null ? null : { root, commonDir };
 }
 function usesSqueal(location2) {
-  return existsSync5(storePaths(location2.commonDir).database) || existsSync5(join7(location2.root, "squeal.config.json"));
+  return existsSync5(storePaths(location2.commonDir).database) || existsSync5(join8(location2.root, "squeal.config.json"));
 }
 function openContext(input, location2, options = {}) {
   const store = openStore(location2.commonDir, {
@@ -4221,33 +4248,6 @@ function openContext(input, location2, options = {}) {
 // src/harness/shared/coverage.ts
 import { existsSync as existsSync6 } from "node:fs";
 import { join as join9, posix as posix3 } from "node:path";
-
-// src/core/daemon/runner.ts
-import { readdirSync, readFileSync as readFileSync5 } from "node:fs";
-import { join as join8 } from "node:path";
-var VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
-function vitestDetected(root) {
-  let names;
-  try {
-    names = readdirSync(root);
-  } catch {
-    return false;
-  }
-  if (names.some((name) => VITEST_CONFIG.test(name))) return true;
-  let manifest;
-  try {
-    manifest = JSON.parse(readFileSync5(join8(root, "package.json"), "utf8"));
-  } catch {
-    return false;
-  }
-  if (!isRecord(manifest)) return false;
-  return ["dependencies", "devDependencies"].some((field) => {
-    const deps = manifest[field];
-    return isRecord(deps) && Object.hasOwn(deps, "vitest");
-  });
-}
-
-// src/harness/shared/coverage.ts
 var VITEST_ONLY = {
   vitest: true,
   vitestConfig: null,
@@ -4448,7 +4448,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.131";
+  if (true) return "0.1.132";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4611,7 +4611,7 @@ function isRegistered(context) {
 var PRIMER_CAP_CHARS = 1500;
 var PRIMER_OPENING = "Squeal runs this repository's ";
 function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
-  const names = runnerNames(coverage);
+  const names = runnerNames2(coverage);
   const sentences = (covers2, naming) => [
     `${PRIMER_OPENING}${names.join(" and ")} tests in the background after each edit, and its results arrive as SQUEAL messages with your next tool call, so keep working; do not run ${names.join(" or ")} to learn whether your edits broke something.`,
     `Wait only when you need a result before your next step, for example before saying the task is done: ${naming === "none" ? "`status --wait 60000` on the CLI SQUEAL messages name" : `\`${command} status --wait 60000\``}.`,
@@ -4629,12 +4629,12 @@ function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
   }
   return text;
 }
-function runnerNames(coverage) {
+function runnerNames2(coverage) {
   const nodeTest = coverage.nodeTest.length > 0;
   return [...coverage.vitest || !nodeTest ? ["Vitest"] : [], ...nodeTest ? ["node:test"] : []];
 }
 function coversSentence(coverage, node) {
-  const suites = runnerNames(coverage).includes("Vitest") ? [coverage.vitestConfig === null ? "Vitest" : `Vitest (${coverage.vitestConfig})`] : [];
+  const suites = runnerNames2(coverage).includes("Vitest") ? [coverage.vitestConfig === null ? "Vitest" : `Vitest (${coverage.vitestConfig})`] : [];
   if (coverage.nodeTest.length > 0) {
     const entries = coverage.nodeTest.map(
       ({ name, include }) => `${JSON.stringify(name)} (${include.join(", ")})`

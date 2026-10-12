@@ -9,6 +9,7 @@ export {
   withStatusStore,
 } from "./open.js";
 export { WHY_LOG_LINE_LIMIT } from "./run-log.js";
+export { runnerNames } from "./runners.js";
 export {
   buildSnapshot,
   createStatusBuilder,

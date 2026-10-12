@@ -4403,7 +4403,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.131";
+  if (true) return "0.1.132";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4594,7 +4594,7 @@ function isRegistered(context) {
 var PRIMER_CAP_CHARS = 1500;
 var PRIMER_OPENING = "Squeal runs this repository's ";
 function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
-  const names = runnerNames(coverage);
+  const names = runnerNames2(coverage);
   const sentences = (covers2, naming) => [
     `${PRIMER_OPENING}${names.join(" and ")} tests in the background after each edit, and its results arrive as SQUEAL messages with your next tool call, so keep working; do not run ${names.join(" or ")} to learn whether your edits broke something.`,
     `Wait only when you need a result before your next step, for example before saying the task is done: ${naming === "none" ? "`status --wait 60000` on the CLI SQUEAL messages name" : `\`${command} status --wait 60000\``}.`,
@@ -4612,12 +4612,12 @@ function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
   }
   return text;
 }
-function runnerNames(coverage) {
+function runnerNames2(coverage) {
   const nodeTest = coverage.nodeTest.length > 0;
   return [...coverage.vitest || !nodeTest ? ["Vitest"] : [], ...nodeTest ? ["node:test"] : []];
 }
 function coversSentence(coverage, node) {
-  const suites = runnerNames(coverage).includes("Vitest") ? [coverage.vitestConfig === null ? "Vitest" : `Vitest (${coverage.vitestConfig})`] : [];
+  const suites = runnerNames2(coverage).includes("Vitest") ? [coverage.vitestConfig === null ? "Vitest" : `Vitest (${coverage.vitestConfig})`] : [];
   if (coverage.nodeTest.length > 0) {
     const entries = coverage.nodeTest.map(
       ({ name, include }) => `${JSON.stringify(name)} (${include.join(", ")})`
