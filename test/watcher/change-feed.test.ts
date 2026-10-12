@@ -263,5 +263,18 @@ describe("ChangeFeed", () => {
     expect(feed?.spec?.excluded).not.toContain(join(root, "tmp"));
     appendFileSync(join(root, ".gitignore"), "tmp/\n");
     await waitFor(() => feed?.spec?.excluded.includes(join(root, "tmp")) === true);
+    // The narrowing replaced chokidar's watcher (task 001-299); the new one reports.
+    write(root, "src/a.ts", "after the narrowing\n");
+    await waitFor(() => watchBatchWith("src/a.ts"));
+  });
+
+  it("watches a directory again once it stops being ignored", async () => {
+    write(root, "out/gen.js");
+    await startFeed();
+    expect(feed?.spec?.excluded).toContain(join(root, "out"));
+    writeFileSync(join(root, ".gitignore"), "node_modules/\n*.log\nbuild/\n");
+    await waitFor(() => feed?.spec?.excluded.includes(join(root, "out")) === false);
+    write(root, "out/later.js");
+    await waitFor(() => watchBatchWith("out/later.js"));
   });
 });
