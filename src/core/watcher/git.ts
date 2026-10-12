@@ -93,7 +93,9 @@ async function checkIgnoredBatch(
  * Untracked ignored entries, collapsed to directories with a trailing `/`.
  *
  * Spec 001 D2: "the output of `git ls-files --others --ignored
- * --exclude-standard --directory`".
+ * --exclude-standard --directory`". Without `--no-empty-directory`: with it,
+ * git lists nothing below an untracked directory that is not ignored itself,
+ * such as `.ai/` holding Cezar's ignored worktrees (task 001-299).
  */
 export async function listIgnored(root: AbsolutePath): Promise<string[]> {
   const out = await runGit(root, [
@@ -103,7 +105,6 @@ export async function listIgnored(root: AbsolutePath): Promise<string[]> {
     "--ignored",
     "--exclude-standard",
     "--directory",
-    "--no-empty-directory",
   ]);
   return splitNul(out);
 }
