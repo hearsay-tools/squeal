@@ -57,7 +57,7 @@ export function primer(command: string = SQUEAL_COMMAND, coverage: Coverage = VI
       ...(coverage.slow === null ? [] : slowSentences(command, naming)),
       "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
       covers,
-      "Squeal does not cover typecheck, build or any other test suite: run those yourself.",
+      "Squeal does not cover typecheck, build or any other test suite: run those yourself. package.json names `npm run test:scripts`, which Squeal does not run.",
     ].join(" ");
   // Fold the node:test projects first, then name the CLI less, until the primer fits.
   let text = "";
