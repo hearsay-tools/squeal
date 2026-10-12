@@ -197,6 +197,7 @@ Started: 2026-10-02
 - 2026-10-12, human: the primer should name the suites Squeal does not cover, in any project, not only "any other test suite": research first (001-290).
 - 2026-10-12, human: ownership of the primer and the skill: 001 owns the mechanism and the facts the texts state (injection, the header, what Squeal covers and its file rules, the slow tier's state); 005 owns wording aimed at agent behaviour (005-15). 001-283's rewrite ships in 001 and 005-15 builds on it. The uncovered-suites research (001-290) becomes one row, 001-292: the primer names each runner's file rules from the daemon's shared record, no project analysis and no counts; its rows 001-291, 001-293 and 001-294 are not taken. The status --wait quiet line already names the slow tier (the coordinator's earlier claim otherwise was a misreading), so no wait-line row.
 - 2026-10-12, human: main-checkout daemons watching the nested cezar worktrees (74k and 280k inotify watches, the host limit exhausted, ENOSPC in the 0.1.129 gate) is a defect: research first (001-298). The two idle main-checkout daemons were stopped at the human's word to free watches.
+- 2026-10-12, human: both main-checkout daemons SIGKILLed after ignoring SIGTERM (no child processes; likely the ENOSPC reconciliation loop), and `fs.inotify.max_user_watches` raised at runtime from 375,518 to 2,000,000 so the 0.1.129 gate could run; restore 375,518 after 001-298's fix lands. A main CI failure on Node 24 (`hung-daemon.test.ts`, SIGSTOP timing) on docs-only 8039fd39 passed on re-run.
 
 ## Research
 
