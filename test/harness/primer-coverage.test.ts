@@ -103,7 +103,7 @@ describe("SessionStart's primer lists exactly what the policy and the runner cov
     // The list, then what is left, as the primer's last two sentences.
     expect(text.endsWith(` ${c.covers} ${NOT_COVERED}`)).toBe(true);
     expect(text.match(/Squeal covers /g)).toHaveLength(1);
-    expect(text.includes(`on \`${command} run --slow\``)).toBe(c.slow);
+    expect(text.includes(`\`${command} run --slow --wait 60000\``)).toBe(c.slow);
     expect(text.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
   });
 
@@ -165,18 +165,40 @@ describe("the slow sentence by harness (spec 004 D8, D9)", () => {
     expect(PRIMER).toContain(`Squeal covers Vitest. ${NOT_COVERED}`);
   });
 
-  it("under Claude Code, names when slow suites run and the idle wake", () => {
-    const text = primer("squeal", slow);
-    expect(text).toContain(
-      "Slow test suites run when you pause between turns or on `squeal run --slow`, never during Stop's wait;",
+  /*
+   * Task 001-283 (`research/primer-skill-writing.md` F1): the step before a
+   * claim, with a completion criterion the agent reads off the header, and
+   * the command that holds for slow files since 001-282. No "never during
+   * Stop's wait": with `stop.requireSlowSuite` on, Stop waits (001-285).
+   */
+  it.each(["squeal", CODEX])(
+    "names `run --slow --wait` as the step before a claim, under %s",
+    (command) => {
+      const text = primer(command, slow);
+      expect(text).toContain(
+        `Slow test files run when you pause between turns; before you say the task is done, run \`${command} run --slow --wait 60000\` unless the header's \`Slow tier:\` line already says every slow file is current: it runs the rest and waits for their results.`,
+      );
+      expect(text.indexOf("run --slow --wait")).toBeGreaterThan(text.indexOf("status --wait"));
+      expect(text).not.toContain("Stop");
+    },
+  );
+
+  it("under Claude Code, names the idle wake", () => {
+    expect(primer("squeal", slow)).toContain(
+      "A slow failure wakes you when you are idle in an interactive session; otherwise it arrives with your next prompt or tool call.",
     );
-    expect(text).toContain("a slow failure wakes you when you are idle in an interactive session");
   });
 
   it("under Codex, says a slow failure arrives with the next prompt or tool call", () => {
     const text = primer(CODEX, slow);
-    expect(text).toContain(`on \`${CODEX} run --slow\``);
-    expect(text).toContain("a slow failure arrives with your next prompt or tool call.");
+    expect(text).toContain("A slow failure arrives with your next prompt or tool call.");
     expect(text).not.toContain("wakes you");
+  });
+
+  it("names the CLI by the primer's fallback when the path is long", () => {
+    const command = `node "/${"x".repeat(700)}/dist/cli/squeal.mjs"`;
+    const text = primer(command, slow);
+    expect(text.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
+    expect(text).toContain("run the CLI's `run --slow --wait 60000` unless");
   });
 });
