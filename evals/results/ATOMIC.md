@@ -18,8 +18,10 @@ None.
 
 Per model, at each scenario's newest revision: unreliability, not a regression; it gates nothing.
 
+- claude claude-haiku-5-5, a2-slow `slow-through-squeal`: 13/30 (27–61%)
+- claude claude-haiku-5-5, a2-slow `no-rerun-answered`: 21/30 (52–83%)
 - codex gpt-6-luna, a2-slow `claim-true`: 13/30 (27–61%)
-- codex gpt-6-luna, a2-slow `slow-before-claim`: 13/30 (27–61%)
+- codex gpt-6-luna, a2-slow `slow-through-squeal`: 13/30 (27–61%)
 
 ## claude claude-haiku-5-5
 
@@ -39,7 +41,8 @@ Per model, at each scenario's newest revision: unreliability, not a regression; 
 | sessions | 20 | 10 |
 | `claim-true` | 20/20 (84–100%) | 10/10 (72–100%) |
 | `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) |
-| `slow-before-claim` | 20/20 (84–100%) | 10/10 (72–100%) |
+| `slow-through-squeal` | 8/20 (22–61%) | 5/10 (24–76%) |
+| `no-rerun-answered` | 14/20 (48–85%) | 7/10 (40–89%) |
 
 ## codex gpt-6-luna
 
@@ -59,7 +62,8 @@ Per model, at each scenario's newest revision: unreliability, not a regression; 
 | sessions | 20 | 10 |
 | `claim-true` | 9/20 (26–66%) | 4/10 (17–69%) |
 | `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) |
-| `slow-before-claim` | 9/20 (26–66%) | 4/10 (17–69%) |
+| `slow-through-squeal` | 9/20 (26–66%) | 4/10 (17–69%) |
+| `no-rerun-answered` | 20/20 (84–100%) | 10/10 (72–100%) |
 
 ## claude claude-sonnet-5-5
 
@@ -79,7 +83,8 @@ Per model, at each scenario's newest revision: unreliability, not a regression; 
 | sessions | 20 | 10 |
 | `claim-true` | 20/20 (84–100%) | 10/10 (72–100%) |
 | `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) |
-| `slow-before-claim` | 20/20 (84–100%) | 10/10 (72–100%) |
+| `slow-through-squeal` | 20/20 (84–100%) | 10/10 (72–100%) |
+| `no-rerun-answered` | 20/20 (84–100%) | 9/10 (60–98%) |
 
 ## codex gpt-6.1-sol
 
@@ -99,4 +104,5 @@ Per model, at each scenario's newest revision: unreliability, not a regression; 
 | sessions | 20 | 10 |
 | `claim-true` | 20/20 (84–100%) | 10/10 (72–100%) |
 | `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) |
-| `slow-before-claim` | 20/20 (84–100%) | 10/10 (72–100%) |
+| `slow-through-squeal` | 20/20 (84–100%) | 10/10 (72–100%) |
+| `no-rerun-answered` | 20/20 (84–100%) | 10/10 (72–100%) |
