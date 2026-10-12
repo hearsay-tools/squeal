@@ -11356,7 +11356,7 @@ var init_scheduler3 = __esm({
   }
 });
 
-// node_modules/readdirp/index.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/readdirp/index.js
 import { lstat as lstat6, readdir as readdir6, realpath as realpath5, stat as stat4 } from "node:fs/promises";
 import { join as pjoin, resolve as presolve, sep as psep } from "node:path";
 import { Readable } from "node:stream";
@@ -11378,7 +11378,7 @@ function readdirp(root, options = {}) {
 }
 var EntryTypes, defaultOptions, RECURSIVE_ERROR_CODE, NORMAL_FLOW_ERRORS, ALL_TYPES, DIR_TYPES, FILE_TYPES, isNormalFlowError, wantBigintFsStats, emptyFn, normalizeFilter, ReaddirpStream;
 var init_readdirp = __esm({
-  "node_modules/readdirp/index.js"() {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/readdirp/index.js"() {
     EntryTypes = {
       FILE_TYPE: "files",
       DIR_TYPE: "directories",
@@ -11635,7 +11635,7 @@ var init_readdirp = __esm({
   }
 });
 
-// node_modules/chokidar/handler.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/chokidar/handler.js
 import { watch as fs_watch, unwatchFile, watchFile } from "node:fs";
 import { realpath as fsrealpath, lstat as lstat7, open as open2, stat as stat5 } from "node:fs/promises";
 import { type as osType } from "node:os";
@@ -11659,7 +11659,7 @@ function createFsWatchInstance(path, options, listener, errHandler, emitRaw) {
 }
 var STR_DATA, STR_END, STR_CLOSE, EMPTY_FN, pl, isWindows, isMacos, isLinux, isFreeBSD, isIBMi, EVENTS, EV, THROTTLE_MODE_WATCH, statMethods, KEY_LISTENERS, KEY_ERR, KEY_RAW, HANDLER_KEYS, binaryExtensions, isBinaryPath, foreach, addAndConvert, clearItem, delFromSet, isEmptySet, FsWatchInstances, fsWatchBroadcast, setFsWatchListener, FsWatchFileInstances, setFsWatchFileListener, NodeFsHandler;
 var init_handler = __esm({
-  "node_modules/chokidar/handler.js"() {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/chokidar/handler.js"() {
     STR_DATA = "data";
     STR_END = "end";
     STR_CLOSE = "close";
@@ -12399,7 +12399,7 @@ var init_handler = __esm({
   }
 });
 
-// node_modules/chokidar/index.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/chokidar/index.js
 import { EventEmitter } from "node:events";
 import { stat as statcb, Stats } from "node:fs";
 import { readdir as readdir7, stat as stat6 } from "node:fs/promises";
@@ -12473,7 +12473,7 @@ function watch(paths, options = {}) {
 }
 var SLASH, SLASH_SLASH, ONE_DOT, TWO_DOTS, STRING_TYPE, BACK_SLASH_RE, DOUBLE_SLASH_RE, DOT_RE, REPLACER_RE, isMatcherObject, unifyPaths, toUnix, normalizePathToUnix, normalizeIgnored, getAbsolutePath, EMPTY_SET, DirEntry, STAT_METHOD_F, STAT_METHOD_L, WatchHelper, FSWatcher;
 var init_chokidar = __esm({
-  "node_modules/chokidar/index.js"() {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/chokidar/index.js"() {
     init_readdirp();
     init_handler();
     SLASH = "/";
@@ -15397,7 +15397,7 @@ var init_optimizer = __esm({
   }
 });
 
-// node_modules/es-module-lexer/dist/lexer.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/es-module-lexer/dist/lexer.js
 function C(A2, Q2, B2) {
   if (B2 < 1 || Q2 + B2 > A2.length) throw new SyntaxError();
   let E2 = 0;
@@ -15559,7 +15559,7 @@ function I(A2, Q2) {
 }
 var A, Q, B, E, D, w, H, N, init, R;
 var init_lexer = __esm({
-  "node_modules/es-module-lexer/dist/lexer.js"() {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/es-module-lexer/dist/lexer.js"() {
     A = false;
     Q = 1 === new Uint8Array(new Uint16Array([1]).buffer)[0];
     B = "undefined" != typeof Buffer;
@@ -17159,7 +17159,7 @@ var init_adapter_observed = __esm({
   }
 });
 
-// node_modules/acorn/dist/acorn.mjs
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/acorn/dist/acorn.mjs
 function isInAstralSet(code, set) {
   var pos = 65536;
   for (var i2 = 0; i2 < set.length; i2 += 2) {
@@ -17460,7 +17460,7 @@ function parse6(input, options) {
 }
 var astralIdentifierCodes, astralIdentifierStartCodes, nonASCIIidentifierChars, nonASCIIidentifierStartChars, reservedWords, ecma5AndLessKeywords, keywords$1, keywordRelationalOperator, nonASCIIidentifierStart, nonASCIIidentifier, TokenType, beforeExpr, startsExpr, keywords, types$1, lineBreak, lineBreakG, nonASCIIwhitespace, skipWhiteSpace, ref, hasOwnProperty, toString, hasOwn, isArray, regexpCache, loneSurrogate, Position, SourceLocation, defaultOptions2, warnedAboutEcmaVersion, SCOPE_TOP, SCOPE_FUNCTION, SCOPE_ASYNC, SCOPE_GENERATOR, SCOPE_ARROW, SCOPE_SIMPLE_CATCH, SCOPE_SUPER, SCOPE_DIRECT_SUPER, SCOPE_CLASS_STATIC_BLOCK, SCOPE_CLASS_FIELD_INIT, SCOPE_SWITCH, SCOPE_VAR, BIND_NONE, BIND_VAR, BIND_LEXICAL, BIND_FUNCTION, BIND_SIMPLE_CATCH, BIND_OUTSIDE, Parser, prototypeAccessors, pp$9, literal, DestructuringErrors, pp$8, loopLabel, switchLabel, empty$1, FUNC_STATEMENT, FUNC_HANGING_STATEMENT, FUNC_NULLABLE_ID, pp$7, TokContext, types, pp$6, pp$5, empty, pp$4, pp$3, Scope, Node, pp$2, scriptValuesAddedInUnicode, ecma9BinaryProperties, ecma10BinaryProperties, ecma11BinaryProperties, ecma12BinaryProperties, ecma13BinaryProperties, ecma14BinaryProperties, unicodeBinaryProperties, ecma14BinaryPropertiesOfStrings, unicodeBinaryPropertiesOfStrings, unicodeGeneralCategoryValues, ecma9ScriptValues, ecma10ScriptValues, ecma11ScriptValues, ecma12ScriptValues, ecma13ScriptValues, ecma14ScriptValues, unicodeScriptValues, data, ecmaVersion, i, list, pp$1, BranchID, RegExpValidationState, CharSetNone, CharSetOk, CharSetString, Token, pp, INVALID_TEMPLATE_ESCAPE_ERROR, version;
 var init_acorn = __esm({
-  "node_modules/acorn/dist/acorn.mjs"() {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/acorn/dist/acorn.mjs"() {
     astralIdentifierCodes = [509, 0, 227, 0, 150, 4, 294, 9, 1368, 2, 2, 1, 6, 3, 41, 2, 5, 0, 166, 1, 574, 3, 9, 9, 7, 9, 32, 4, 318, 1, 31, 4, 33, 15, 71, 10, 50, 3, 123, 2, 54, 14, 32, 10, 3, 1, 11, 3, 46, 10, 8, 0, 46, 9, 7, 2, 37, 13, 2, 9, 6, 1, 45, 0, 13, 2, 49, 13, 9, 3, 2, 11, 83, 11, 7, 0, 3, 0, 158, 11, 6, 9, 7, 3, 56, 1, 2, 6, 3, 1, 3, 2, 10, 0, 11, 1, 3, 6, 4, 4, 68, 8, 2, 0, 3, 0, 2, 3, 2, 4, 2, 0, 15, 1, 83, 17, 10, 9, 5, 0, 82, 19, 13, 9, 214, 6, 3, 8, 28, 1, 83, 16, 16, 9, 82, 12, 9, 9, 7, 19, 58, 14, 5, 9, 243, 14, 166, 9, 71, 5, 2, 1, 3, 3, 2, 0, 2, 1, 13, 9, 120, 6, 3, 6, 4, 0, 29, 9, 41, 6, 2, 3, 9, 0, 10, 10, 47, 15, 199, 7, 137, 9, 54, 7, 2, 7, 17, 9, 57, 21, 2, 13, 123, 5, 4, 0, 2, 1, 2, 6, 2, 0, 9, 9, 49, 4, 2, 1, 2, 4, 9, 9, 55, 9, 7, 0, 259, 3, 10, 1, 2, 0, 49, 6, 4, 4, 14, 10, 5350, 0, 7, 14, 11465, 27, 2343, 9, 87, 9, 39, 4, 60, 6, 26, 9, 535, 9, 470, 0, 2, 54, 8, 3, 82, 0, 12, 1, 19628, 1, 4178, 9, 519, 45, 3, 22, 481, 1, 61, 4, 4, 5, 9, 7, 3, 6, 31, 3, 149, 2, 12, 2, 9, 1, 3, 0, 33, 1, 1357, 49, 513, 54, 5, 49, 9, 0, 15, 0, 23, 4, 2, 14, 1361, 6, 2, 16, 3, 6, 2, 1, 2, 4, 101, 0, 161, 6, 10, 9, 357, 0, 62, 13, 499, 13, 245, 1, 2, 9, 233, 0, 3, 0, 8, 1, 6, 0, 475, 6, 110, 6, 6, 9, 4759, 9, 787719, 239];
     astralIdentifierStartCodes = [0, 11, 2, 25, 2, 18, 2, 1, 2, 14, 3, 13, 35, 122, 70, 52, 268, 28, 4, 48, 48, 31, 14, 29, 6, 37, 11, 29, 3, 35, 5, 7, 2, 4, 43, 157, 19, 35, 5, 35, 5, 39, 9, 51, 13, 10, 2, 14, 2, 6, 2, 1, 2, 10, 2, 14, 2, 6, 2, 1, 4, 51, 13, 310, 10, 21, 11, 7, 25, 5, 2, 41, 2, 13, 65, 5, 3, 0, 2, 43, 2, 1, 4, 0, 3, 22, 11, 22, 10, 30, 66, 18, 2, 1, 11, 21, 11, 25, 7, 25, 39, 55, 7, 1, 65, 0, 16, 3, 2, 2, 2, 28, 43, 28, 4, 28, 36, 7, 2, 27, 28, 53, 11, 21, 11, 18, 14, 17, 111, 72, 56, 50, 14, 50, 14, 35, 39, 27, 10, 22, 251, 41, 7, 1, 17, 5, 18, 21, 18, 28, 11, 0, 9, 21, 43, 17, 47, 20, 28, 22, 13, 52, 58, 1, 3, 0, 14, 44, 33, 24, 27, 35, 30, 0, 3, 0, 9, 34, 4, 0, 13, 47, 15, 3, 22, 0, 2, 0, 36, 17, 2, 24, 20, 1, 64, 6, 2, 0, 2, 3, 2, 14, 2, 9, 8, 46, 39, 7, 3, 1, 3, 21, 2, 6, 2, 1, 2, 4, 4, 0, 19, 0, 13, 4, 31, 9, 2, 0, 3, 0, 2, 37, 2, 0, 26, 0, 2, 0, 45, 52, 19, 3, 21, 2, 31, 47, 21, 1, 2, 0, 185, 46, 42, 3, 37, 47, 21, 0, 60, 42, 14, 0, 72, 26, 38, 6, 186, 43, 117, 63, 32, 7, 3, 0, 3, 7, 2, 1, 2, 23, 16, 0, 2, 0, 95, 7, 3, 38, 17, 0, 2, 0, 29, 0, 11, 39, 8, 0, 22, 0, 12, 45, 20, 0, 19, 72, 18, 0, 182, 32, 32, 8, 2, 36, 18, 0, 50, 29, 113, 6, 2, 1, 2, 37, 22, 0, 26, 5, 2, 1, 2, 31, 15, 0, 24, 43, 22, 0, 239, 18, 16, 0, 2, 12, 2, 33, 125, 0, 80, 921, 103, 111, 6, 206, 13, 310, 2314, 96, 16, 1071, 18, 5, 26, 3994, 6, 582, 6842, 29, 1763, 568, 8, 30, 18, 78, 18, 29, 19, 47, 17, 3, 32, 20, 6, 18, 433, 44, 212, 63, 33, 24, 3, 24, 45, 74, 6, 0, 67, 12, 65, 1, 2, 0, 15, 4, 10, 7386, 37, 33, 96, 114, 14, 913, 15, 50, 7710, 3, 2, 6, 2, 1, 2, 296, 10, 0, 30, 2, 3, 0, 15, 4, 8, 395, 2309, 106, 6, 12, 4, 8, 8, 9, 5991, 84, 2, 70, 2, 1, 3, 0, 3, 1, 3, 3, 2, 11, 2, 0, 2, 6, 2, 64, 2, 3, 3, 7, 2, 6, 2, 27, 2, 3, 2, 4, 2, 0, 4, 6, 2, 340, 2, 24, 2, 24, 2, 30, 2, 24, 2, 30, 2, 24, 2, 30, 2, 24, 2, 30, 2, 24, 2, 7, 1845, 129, 15, 6, 55, 50, 49, 61, 147, 44, 11, 6, 17, 0, 322, 29, 19, 43, 485, 27, 229, 29, 3, 0, 208, 30, 2, 2, 2, 1, 2, 6, 3, 4, 10, 1, 225, 6, 2, 3, 2, 1, 2, 14, 2, 196, 60, 67, 8, 0, 1205, 3, 2, 26, 2, 1, 2, 0, 3, 0, 2, 9, 2, 3, 2, 0, 2, 0, 7, 0, 5, 0, 2, 0, 2, 0, 2, 2, 2, 1, 2, 0, 3, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 1, 2, 0, 3, 3, 2, 6, 2, 3, 2, 3, 2, 0, 2, 9, 2, 16, 6, 2, 2, 4, 2, 16, 4421, 42719, 33, 4382, 2, 5773, 3, 7472, 16, 621, 2467, 541, 1507, 4938, 6, 8489, 39815, 11327];
     nonASCIIidentifierChars = "\u200C\u200D\xB7\u0300-\u036F\u0387\u0483-\u0487\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7-\u05C9\u0610-\u061A\u064B-\u0669\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED\u06F0-\u06F9\u0711\u0730-\u074A\u07A6-\u07B0\u07C0-\u07C9\u07EB-\u07F3\u07FD\u0816-\u0819\u081B-\u0823\u0825-\u0827\u0829-\u082D\u0859-\u085B\u0897-\u089F\u08CA-\u08E1\u08E3-\u0903\u093A-\u093C\u093E-\u094F\u0951-\u0957\u0962\u0963\u0966-\u096F\u0981-\u0983\u09BC\u09BE-\u09C4\u09C7\u09C8\u09CB-\u09CD\u09D7\u09E2\u09E3\u09E6-\u09EF\u09FE\u0A01-\u0A03\u0A3C\u0A3E-\u0A42\u0A47\u0A48\u0A4B-\u0A4D\u0A51\u0A66-\u0A71\u0A75\u0A81-\u0A83\u0ABC\u0ABE-\u0AC5\u0AC7-\u0AC9\u0ACB-\u0ACD\u0AE2\u0AE3\u0AE6-\u0AEF\u0AFA-\u0AFF\u0B01-\u0B03\u0B3C\u0B3E-\u0B44\u0B47\u0B48\u0B4B-\u0B4D\u0B53-\u0B57\u0B62\u0B63\u0B66-\u0B6F\u0B82\u0BBE-\u0BC2\u0BC6-\u0BC8\u0BCA-\u0BCD\u0BD7\u0BE6-\u0BEF\u0C00-\u0C04\u0C3C\u0C3E-\u0C44\u0C46-\u0C48\u0C4A-\u0C4D\u0C55\u0C56\u0C62\u0C63\u0C66-\u0C6F\u0C81-\u0C83\u0CBC\u0CBE-\u0CC4\u0CC6-\u0CC8\u0CCA-\u0CCD\u0CD5\u0CD6\u0CE2\u0CE3\u0CE6-\u0CEF\u0CF3\u0D00-\u0D03\u0D3B\u0D3C\u0D3E-\u0D44\u0D46-\u0D48\u0D4A-\u0D4D\u0D57\u0D62\u0D63\u0D66-\u0D6F\u0D81-\u0D83\u0DCA\u0DCF-\u0DD4\u0DD6\u0DD8-\u0DDF\u0DE6-\u0DEF\u0DF2\u0DF3\u0E31\u0E34-\u0E3A\u0E47-\u0E4E\u0E50-\u0E59\u0EB1\u0EB4-\u0EBC\u0EC8-\u0ECE\u0ED0-\u0ED9\u0F18\u0F19\u0F20-\u0F29\u0F35\u0F37\u0F39\u0F3E\u0F3F\u0F71-\u0F84\u0F86\u0F87\u0F8D-\u0F97\u0F99-\u0FBC\u0FC6\u102B-\u103E\u1040-\u1049\u1056-\u1059\u105E-\u1060\u1062-\u1064\u1067-\u106D\u1071-\u1074\u1082-\u108D\u108F-\u109D\u135D-\u135F\u1369-\u1371\u1712-\u1715\u1732-\u1734\u1752\u1753\u1772\u1773\u17B4-\u17D3\u17DD\u17E0-\u17E9\u180B-\u180D\u180F-\u1819\u18A9\u1920-\u192B\u1930-\u193B\u1946-\u194F\u19D0-\u19DA\u1A17-\u1A1B\u1A55-\u1A5E\u1A60-\u1A7C\u1A7F-\u1A89\u1A90-\u1A99\u1AB0-\u1ABD\u1ABF-\u1AF0\u1B00-\u1B04\u1B34-\u1B44\u1B50-\u1B59\u1B6B-\u1B73\u1B80-\u1B82\u1BA1-\u1BAD\u1BB0-\u1BB9\u1BE6-\u1BF3\u1C24-\u1C37\u1C40-\u1C49\u1C50-\u1C59\u1CD0-\u1CD2\u1CD4-\u1CE8\u1CED\u1CF4\u1CF7-\u1CF9\u1DC0-\u1DFF\u200C\u200D\u203F\u2040\u2054\u20D0-\u20DC\u20E1\u20E5-\u20F0\u2CEF-\u2CF1\u2D7F\u2DE0-\u2DFF\u302A-\u302F\u3099\u309A\u30FB\uA620-\uA629\uA66F\uA674-\uA67D\uA69E\uA69F\uA6F0\uA6F1\uA802\uA806\uA80B\uA823-\uA827\uA82C\uA880\uA881\uA8B4-\uA8C5\uA8D0-\uA8D9\uA8E0-\uA8F1\uA8FF-\uA909\uA926-\uA92D\uA947-\uA953\uA980-\uA983\uA9B3-\uA9C0\uA9D0-\uA9D9\uA9E5\uA9F0-\uA9F9\uAA29-\uAA36\uAA43\uAA4C\uAA4D\uAA50-\uAA59\uAA7B-\uAA7D\uAAB0\uAAB2-\uAAB4\uAAB7\uAAB8\uAABE\uAABF\uAAC1\uAAEB-\uAAEF\uAAF5\uAAF6\uABE3-\uABEA\uABEC\uABED\uABF0-\uABF9\uFB1E\uFE00-\uFE0F\uFE20-\uFE2F\uFE33\uFE34\uFE4D-\uFE4F\uFF10-\uFF19\uFF3F\uFF65";
@@ -24075,9 +24075,9 @@ var init_loader_chain = __esm({
   }
 });
 
-// node_modules/enhanced-resolve/lib/util/memoize.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/util/memoize.js
 var require_memoize = __commonJS({
-  "node_modules/enhanced-resolve/lib/util/memoize.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/util/memoize.js"(exports, module) {
     "use strict";
     var memoize = (fn) => {
       let cache = false;
@@ -24102,9 +24102,9 @@ var require_memoize = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/CachedInputFileSystem.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/CachedInputFileSystem.js
 var require_CachedInputFileSystem = __commonJS({
-  "node_modules/enhanced-resolve/lib/CachedInputFileSystem.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/CachedInputFileSystem.js"(exports, module) {
     "use strict";
     var { nextTick } = __require("process");
     var dirname28 = (path) => {
@@ -24772,9 +24772,9 @@ var require_CachedInputFileSystem = __commonJS({
   }
 });
 
-// node_modules/graceful-fs/polyfills.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/graceful-fs/polyfills.js
 var require_polyfills = __commonJS({
-  "node_modules/graceful-fs/polyfills.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/graceful-fs/polyfills.js"(exports, module) {
     var constants2 = __require("constants");
     var origCwd = process.cwd;
     var cwd = null;
@@ -25060,9 +25060,9 @@ var require_polyfills = __commonJS({
   }
 });
 
-// node_modules/graceful-fs/legacy-streams.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/graceful-fs/legacy-streams.js
 var require_legacy_streams = __commonJS({
-  "node_modules/graceful-fs/legacy-streams.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/graceful-fs/legacy-streams.js"(exports, module) {
     var Stream = __require("stream").Stream;
     module.exports = legacy;
     function legacy(fs2) {
@@ -25156,9 +25156,9 @@ var require_legacy_streams = __commonJS({
   }
 });
 
-// node_modules/graceful-fs/clone.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/graceful-fs/clone.js
 var require_clone = __commonJS({
-  "node_modules/graceful-fs/clone.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/graceful-fs/clone.js"(exports, module) {
     "use strict";
     module.exports = clone;
     var getPrototypeOf = Object.getPrototypeOf || function(obj) {
@@ -25179,9 +25179,9 @@ var require_clone = __commonJS({
   }
 });
 
-// node_modules/graceful-fs/graceful-fs.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/graceful-fs/graceful-fs.js
 var require_graceful_fs = __commonJS({
-  "node_modules/graceful-fs/graceful-fs.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/graceful-fs/graceful-fs.js"(exports, module) {
     var fs2 = __require("fs");
     var polyfills = require_polyfills();
     var legacy = require_legacy_streams();
@@ -25549,9 +25549,9 @@ var require_graceful_fs = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/forEachBail.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/forEachBail.js
 var require_forEachBail = __commonJS({
-  "node_modules/enhanced-resolve/lib/forEachBail.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/forEachBail.js"(exports, module) {
     "use strict";
     module.exports = function forEachBail(array, iterator, callback2) {
       if (array.length === 0) return callback2();
@@ -25577,9 +25577,9 @@ var require_forEachBail = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/util/strip-json-comments.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/util/strip-json-comments.js
 var require_strip_json_comments = __commonJS({
-  "node_modules/enhanced-resolve/lib/util/strip-json-comments.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/util/strip-json-comments.js"(exports, module) {
     "use strict";
     var singleComment = /* @__PURE__ */ Symbol("singleComment");
     var multiComment = /* @__PURE__ */ Symbol("multiComment");
@@ -25674,9 +25674,9 @@ var require_strip_json_comments = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/util/fs.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/util/fs.js
 var require_fs = __commonJS({
-  "node_modules/enhanced-resolve/lib/util/fs.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/util/fs.js"(exports, module) {
     "use strict";
     var memoize = require_memoize();
     var stripJsonComments = require_strip_json_comments();
@@ -25739,9 +25739,9 @@ var require_fs = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/DescriptionFileUtils.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/DescriptionFileUtils.js
 var require_DescriptionFileUtils = __commonJS({
-  "node_modules/enhanced-resolve/lib/DescriptionFileUtils.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/DescriptionFileUtils.js"(exports, module) {
     "use strict";
     var forEachBail = require_forEachBail();
     var { decodeText } = require_fs();
@@ -25870,9 +25870,9 @@ var require_DescriptionFileUtils = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/util/path.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/util/path.js
 var require_path = __commonJS({
-  "node_modules/enhanced-resolve/lib/util/path.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/util/path.js"(exports, module) {
     "use strict";
     var path = __require("path");
     var { fileURLToPath: fileURLToPath10 } = __require("url");
@@ -26155,9 +26155,9 @@ var require_path = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/getInnerRequest.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/getInnerRequest.js
 var require_getInnerRequest = __commonJS({
-  "node_modules/enhanced-resolve/lib/getInnerRequest.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/getInnerRequest.js"(exports, module) {
     "use strict";
     var { isRelativeRequest } = require_path();
     module.exports = function getInnerRequest(resolver, request) {
@@ -26181,9 +26181,9 @@ var require_getInnerRequest = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/AliasFieldPlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/AliasFieldPlugin.js
 var require_AliasFieldPlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/AliasFieldPlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/AliasFieldPlugin.js"(exports, module) {
     "use strict";
     var DescriptionFileUtils = require_DescriptionFileUtils();
     var getInnerRequest = require_getInnerRequest();
@@ -26284,9 +26284,9 @@ var require_AliasFieldPlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/AliasUtils.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/AliasUtils.js
 var require_AliasUtils = __commonJS({
-  "node_modules/enhanced-resolve/lib/AliasUtils.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/AliasUtils.js"(exports, module) {
     "use strict";
     var forEachBail = require_forEachBail();
     var { PathType, getType } = require_path();
@@ -26463,9 +26463,9 @@ var require_AliasUtils = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/AliasPlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/AliasPlugin.js
 var require_AliasPlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/AliasPlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/AliasPlugin.js"(exports, module) {
     "use strict";
     var { aliasResolveHandler, compileAliasOptions } = require_AliasUtils();
     module.exports = class AliasPlugin {
@@ -26501,9 +26501,9 @@ var require_AliasPlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/AppendPlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/AppendPlugin.js
 var require_AppendPlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/AppendPlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/AppendPlugin.js"(exports, module) {
     "use strict";
     module.exports = class AppendPlugin {
       /**
@@ -26541,9 +26541,9 @@ var require_AppendPlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/ConditionalPlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/ConditionalPlugin.js
 var require_ConditionalPlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/ConditionalPlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/ConditionalPlugin.js"(exports, module) {
     "use strict";
     module.exports = class ConditionalPlugin {
       /**
@@ -26592,9 +26592,9 @@ var require_ConditionalPlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/DescriptionFilePlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/DescriptionFilePlugin.js
 var require_DescriptionFilePlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/DescriptionFilePlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/DescriptionFilePlugin.js"(exports, module) {
     "use strict";
     var DescriptionFileUtils = require_DescriptionFileUtils();
     var BACKSLASH_G = /\\/g;
@@ -26676,9 +26676,9 @@ var require_DescriptionFilePlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/DirectoryExistsPlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/DirectoryExistsPlugin.js
 var require_DirectoryExistsPlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/DirectoryExistsPlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/DirectoryExistsPlugin.js"(exports, module) {
     "use strict";
     module.exports = class DirectoryExistsPlugin {
       /**
@@ -26731,9 +26731,9 @@ var require_DirectoryExistsPlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/util/identifier.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/util/identifier.js
 var require_identifier = __commonJS({
-  "node_modules/enhanced-resolve/lib/util/identifier.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/util/identifier.js"(exports, module) {
     "use strict";
     var { fileURLToPath: fileURLToPath10 } = __require("url");
     var { isFileURL } = require_path();
@@ -26789,9 +26789,9 @@ var require_identifier = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/util/entrypoints.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/util/entrypoints.js
 var require_entrypoints = __commonJS({
-  "node_modules/enhanced-resolve/lib/util/entrypoints.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/util/entrypoints.js"(exports, module) {
     "use strict";
     var { parseIdentifier } = require_identifier();
     var slashCode = "/".charCodeAt(0);
@@ -27234,9 +27234,9 @@ var require_entrypoints = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/ExportsFieldPlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/ExportsFieldPlugin.js
 var require_ExportsFieldPlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/ExportsFieldPlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/ExportsFieldPlugin.js"(exports, module) {
     "use strict";
     var DescriptionFileUtils = require_DescriptionFileUtils();
     var forEachBail = require_forEachBail();
@@ -27421,9 +27421,9 @@ var require_ExportsFieldPlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/ExtensionAliasPlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/ExtensionAliasPlugin.js
 var require_ExtensionAliasPlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/ExtensionAliasPlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/ExtensionAliasPlugin.js"(exports, module) {
     "use strict";
     var forEachBail = require_forEachBail();
     module.exports = class ExtensionAliasPlugin {
@@ -27508,9 +27508,9 @@ var require_ExtensionAliasPlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/FileExistsPlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/FileExistsPlugin.js
 var require_FileExistsPlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/FileExistsPlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/FileExistsPlugin.js"(exports, module) {
     "use strict";
     module.exports = class FileExistsPlugin {
       /**
@@ -27560,9 +27560,9 @@ var require_FileExistsPlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/ImportsFieldPlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/ImportsFieldPlugin.js
 var require_ImportsFieldPlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/ImportsFieldPlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/ImportsFieldPlugin.js"(exports, module) {
     "use strict";
     var DescriptionFileUtils = require_DescriptionFileUtils();
     var forEachBail = require_forEachBail();
@@ -27739,9 +27739,9 @@ var require_ImportsFieldPlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/JoinRequestPartPlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/JoinRequestPartPlugin.js
 var require_JoinRequestPartPlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/JoinRequestPartPlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/JoinRequestPartPlugin.js"(exports, module) {
     "use strict";
     var namespaceStartCharCode = "@".charCodeAt(0);
     module.exports = class JoinRequestPartPlugin {
@@ -27799,9 +27799,9 @@ var require_JoinRequestPartPlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/JoinRequestPlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/JoinRequestPlugin.js
 var require_JoinRequestPlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/JoinRequestPlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/JoinRequestPlugin.js"(exports, module) {
     "use strict";
     module.exports = class JoinRequestPlugin {
       /**
@@ -27840,9 +27840,9 @@ var require_JoinRequestPlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/MainFieldPlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/MainFieldPlugin.js
 var require_MainFieldPlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/MainFieldPlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/MainFieldPlugin.js"(exports, module) {
     "use strict";
     var DescriptionFileUtils = require_DescriptionFileUtils();
     var alreadyTriedMainField = /* @__PURE__ */ Symbol("alreadyTriedMainField");
@@ -27913,9 +27913,9 @@ var require_MainFieldPlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/getPaths.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/getPaths.js
 var require_getPaths = __commonJS({
-  "node_modules/enhanced-resolve/lib/getPaths.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/getPaths.js"(exports, module) {
     "use strict";
     function getPaths(path) {
       if (path === "/") return { paths: ["/"], segments: [""] };
@@ -27958,9 +27958,9 @@ var require_getPaths = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/ModulesUtils.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/ModulesUtils.js
 var require_ModulesUtils = __commonJS({
-  "node_modules/enhanced-resolve/lib/ModulesUtils.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/ModulesUtils.js"(exports, module) {
     "use strict";
     var forEachBail = require_forEachBail();
     var { getPathsCached } = require_getPaths();
@@ -28038,9 +28038,9 @@ var require_ModulesUtils = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/ModulesInHierarchicalDirectoriesPlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/ModulesInHierarchicalDirectoriesPlugin.js
 var require_ModulesInHierarchicalDirectoriesPlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/ModulesInHierarchicalDirectoriesPlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/ModulesInHierarchicalDirectoriesPlugin.js"(exports, module) {
     "use strict";
     var { modulesResolveHandler } = require_ModulesUtils();
     module.exports = class ModulesInHierarchicalDirectoriesPlugin {
@@ -28079,9 +28079,9 @@ var require_ModulesInHierarchicalDirectoriesPlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/ModulesInRootPlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/ModulesInRootPlugin.js
 var require_ModulesInRootPlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/ModulesInRootPlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/ModulesInRootPlugin.js"(exports, module) {
     "use strict";
     module.exports = class ModulesInRootPlugin {
       /**
@@ -28120,9 +28120,9 @@ var require_ModulesInRootPlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/NextPlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/NextPlugin.js
 var require_NextPlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/NextPlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/NextPlugin.js"(exports, module) {
     "use strict";
     module.exports = class NextPlugin {
       /**
@@ -28147,9 +28147,9 @@ var require_NextPlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/util/fileURLToPath.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/util/fileURLToPath.js
 var require_fileURLToPath = __commonJS({
-  "node_modules/enhanced-resolve/lib/util/fileURLToPath.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/util/fileURLToPath.js"(exports, module) {
     "use strict";
     var CHAR_LOWERCASE_A = 97;
     var CHAR_LOWERCASE_Z = 122;
@@ -28210,9 +28210,9 @@ var require_fileURLToPath = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/util/pathToFileURL.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/util/pathToFileURL.js
 var require_pathToFileURL = __commonJS({
-  "node_modules/enhanced-resolve/lib/util/pathToFileURL.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/util/pathToFileURL.js"(exports, module) {
     "use strict";
     var percentRegEx = /%/g;
     var backslashRegEx = /\\/g;
@@ -28266,9 +28266,9 @@ var require_pathToFileURL = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/util/packageMap.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/util/packageMap.js
 var require_packageMap = __commonJS({
-  "node_modules/enhanced-resolve/lib/util/packageMap.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/util/packageMap.js"(exports, module) {
     "use strict";
     var fileURLToPath10 = require_fileURLToPath();
     var { isInside, normalize: normalize3 } = require_path();
@@ -28387,9 +28387,9 @@ var require_packageMap = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/PackageMapPlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/PackageMapPlugin.js
 var require_PackageMapPlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/PackageMapPlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/PackageMapPlugin.js"(exports, module) {
     "use strict";
     var { readJson } = require_fs();
     var {
@@ -28605,9 +28605,9 @@ var require_PackageMapPlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/ParsePlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/ParsePlugin.js
 var require_ParsePlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/ParsePlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/ParsePlugin.js"(exports, module) {
     "use strict";
     module.exports = class ParsePlugin {
       /**
@@ -28675,9 +28675,9 @@ var require_ParsePlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/PnpPlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/PnpPlugin.js
 var require_PnpPlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/PnpPlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/PnpPlugin.js"(exports, module) {
     "use strict";
     module.exports = class PnpPlugin {
       /**
@@ -28783,9 +28783,9 @@ var require_PnpPlugin = __commonJS({
   }
 });
 
-// node_modules/tapable/lib/Hook.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/Hook.js
 var require_Hook = __commonJS({
-  "node_modules/tapable/lib/Hook.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/Hook.js"(exports, module) {
     "use strict";
     var util = __require("util");
     var deprecateContext = util.deprecate(
@@ -28971,9 +28971,9 @@ var require_Hook = __commonJS({
   }
 });
 
-// node_modules/tapable/lib/HookCodeFactory.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/HookCodeFactory.js
 var require_HookCodeFactory = __commonJS({
-  "node_modules/tapable/lib/HookCodeFactory.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/HookCodeFactory.js"(exports, module) {
     "use strict";
     var HookCodeFactory = class {
       constructor(config) {
@@ -29453,9 +29453,9 @@ ${this.header()}${this.contentWithInterceptors({
   }
 });
 
-// node_modules/tapable/lib/AsyncParallelBailHook.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/AsyncParallelBailHook.js
 var require_AsyncParallelBailHook = __commonJS({
-  "node_modules/tapable/lib/AsyncParallelBailHook.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/AsyncParallelBailHook.js"(exports, module) {
     "use strict";
     var Hook = require_Hook();
     var HookCodeFactory = require_HookCodeFactory();
@@ -29535,9 +29535,9 @@ var require_AsyncParallelBailHook = __commonJS({
   }
 });
 
-// node_modules/tapable/lib/AsyncParallelHook.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/AsyncParallelHook.js
 var require_AsyncParallelHook = __commonJS({
-  "node_modules/tapable/lib/AsyncParallelHook.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/AsyncParallelHook.js"(exports, module) {
     "use strict";
     var Hook = require_Hook();
     var HookCodeFactory = require_HookCodeFactory();
@@ -29567,9 +29567,9 @@ var require_AsyncParallelHook = __commonJS({
   }
 });
 
-// node_modules/tapable/lib/AsyncSeriesBailHook.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/AsyncSeriesBailHook.js
 var require_AsyncSeriesBailHook = __commonJS({
-  "node_modules/tapable/lib/AsyncSeriesBailHook.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/AsyncSeriesBailHook.js"(exports, module) {
     "use strict";
     var Hook = require_Hook();
     var HookCodeFactory = require_HookCodeFactory();
@@ -29607,9 +29607,9 @@ ${next()}}
   }
 });
 
-// node_modules/tapable/lib/AsyncSeriesHook.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/AsyncSeriesHook.js
 var require_AsyncSeriesHook = __commonJS({
-  "node_modules/tapable/lib/AsyncSeriesHook.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/AsyncSeriesHook.js"(exports, module) {
     "use strict";
     var Hook = require_Hook();
     var HookCodeFactory = require_HookCodeFactory();
@@ -29639,9 +29639,9 @@ var require_AsyncSeriesHook = __commonJS({
   }
 });
 
-// node_modules/tapable/lib/AsyncSeriesLoopHook.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/AsyncSeriesLoopHook.js
 var require_AsyncSeriesLoopHook = __commonJS({
-  "node_modules/tapable/lib/AsyncSeriesLoopHook.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/AsyncSeriesLoopHook.js"(exports, module) {
     "use strict";
     var Hook = require_Hook();
     var HookCodeFactory = require_HookCodeFactory();
@@ -29671,9 +29671,9 @@ var require_AsyncSeriesLoopHook = __commonJS({
   }
 });
 
-// node_modules/tapable/lib/AsyncSeriesWaterfallHook.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/AsyncSeriesWaterfallHook.js
 var require_AsyncSeriesWaterfallHook = __commonJS({
-  "node_modules/tapable/lib/AsyncSeriesWaterfallHook.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/AsyncSeriesWaterfallHook.js"(exports, module) {
     "use strict";
     var Hook = require_Hook();
     var HookCodeFactory = require_HookCodeFactory();
@@ -29716,9 +29716,9 @@ var require_AsyncSeriesWaterfallHook = __commonJS({
   }
 });
 
-// node_modules/tapable/lib/HookMap.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/HookMap.js
 var require_HookMap = __commonJS({
-  "node_modules/tapable/lib/HookMap.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/HookMap.js"(exports, module) {
     "use strict";
     var util = __require("util");
     var defaultFactory = (key2, hook) => hook;
@@ -29770,9 +29770,9 @@ var require_HookMap = __commonJS({
   }
 });
 
-// node_modules/tapable/lib/MultiHook.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/MultiHook.js
 var require_MultiHook = __commonJS({
-  "node_modules/tapable/lib/MultiHook.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/MultiHook.js"(exports, module) {
     "use strict";
     var MultiHook = class _MultiHook {
       constructor(hooks, name = void 0) {
@@ -29821,9 +29821,9 @@ var require_MultiHook = __commonJS({
   }
 });
 
-// node_modules/tapable/lib/SyncBailHook.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/SyncBailHook.js
 var require_SyncBailHook = __commonJS({
-  "node_modules/tapable/lib/SyncBailHook.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/SyncBailHook.js"(exports, module) {
     "use strict";
     var Hook = require_Hook();
     var HookCodeFactory = require_HookCodeFactory();
@@ -29868,9 +29868,9 @@ ${next()}}
   }
 });
 
-// node_modules/tapable/lib/SyncHook.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/SyncHook.js
 var require_SyncHook = __commonJS({
-  "node_modules/tapable/lib/SyncHook.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/SyncHook.js"(exports, module) {
     "use strict";
     var Hook = require_Hook();
     var HookCodeFactory = require_HookCodeFactory();
@@ -29907,9 +29907,9 @@ var require_SyncHook = __commonJS({
   }
 });
 
-// node_modules/tapable/lib/SyncLoopHook.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/SyncLoopHook.js
 var require_SyncLoopHook = __commonJS({
-  "node_modules/tapable/lib/SyncLoopHook.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/SyncLoopHook.js"(exports, module) {
     "use strict";
     var Hook = require_Hook();
     var HookCodeFactory = require_HookCodeFactory();
@@ -29946,9 +29946,9 @@ var require_SyncLoopHook = __commonJS({
   }
 });
 
-// node_modules/tapable/lib/SyncWaterfallHook.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/SyncWaterfallHook.js
 var require_SyncWaterfallHook = __commonJS({
-  "node_modules/tapable/lib/SyncWaterfallHook.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/SyncWaterfallHook.js"(exports, module) {
     "use strict";
     var Hook = require_Hook();
     var HookCodeFactory = require_HookCodeFactory();
@@ -29999,9 +29999,9 @@ var require_SyncWaterfallHook = __commonJS({
   }
 });
 
-// node_modules/tapable/lib/index.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/index.js
 var require_lib = __commonJS({
-  "node_modules/tapable/lib/index.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/tapable/lib/index.js"(exports, module) {
     "use strict";
     module.exports.AsyncParallelBailHook = require_AsyncParallelBailHook();
     module.exports.AsyncParallelHook = require_AsyncParallelHook();
@@ -30019,9 +30019,9 @@ var require_lib = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/createInnerContext.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/createInnerContext.js
 var require_createInnerContext = __commonJS({
-  "node_modules/enhanced-resolve/lib/createInnerContext.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/createInnerContext.js"(exports, module) {
     "use strict";
     module.exports = function createInnerContext(parent2, stack, message2) {
       const parentLog = parent2.log;
@@ -30052,9 +30052,9 @@ var require_createInnerContext = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/Resolver.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/Resolver.js
 var require_Resolver = __commonJS({
-  "node_modules/enhanced-resolve/lib/Resolver.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/Resolver.js"(exports, module) {
     "use strict";
     var { AsyncSeriesBailHook, AsyncSeriesHook, SyncHook } = require_lib();
     var createInnerContext = require_createInnerContext();
@@ -30758,9 +30758,9 @@ Stack:
   }
 });
 
-// node_modules/enhanced-resolve/lib/RestrictionsPlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/RestrictionsPlugin.js
 var require_RestrictionsPlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/RestrictionsPlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/RestrictionsPlugin.js"(exports, module) {
     "use strict";
     var { isInside, normalize: normalize3 } = require_path();
     module.exports = class RestrictionsPlugin {
@@ -30815,9 +30815,9 @@ var require_RestrictionsPlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/ResultPlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/ResultPlugin.js
 var require_ResultPlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/ResultPlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/ResultPlugin.js"(exports, module) {
     "use strict";
     module.exports = class ResultPlugin {
       /**
@@ -30854,9 +30854,9 @@ var require_ResultPlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/RootsPlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/RootsPlugin.js
 var require_RootsPlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/RootsPlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/RootsPlugin.js"(exports, module) {
     "use strict";
     var forEachBail = require_forEachBail();
     var RootsPlugin = class {
@@ -30911,9 +30911,9 @@ var require_RootsPlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/SelfReferencePlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/SelfReferencePlugin.js
 var require_SelfReferencePlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/SelfReferencePlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/SelfReferencePlugin.js"(exports, module) {
     "use strict";
     var DescriptionFileUtils = require_DescriptionFileUtils();
     var slashCode = "/".charCodeAt(0);
@@ -30991,9 +30991,9 @@ var require_SelfReferencePlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/SymlinkPlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/SymlinkPlugin.js
 var require_SymlinkPlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/SymlinkPlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/SymlinkPlugin.js"(exports, module) {
     "use strict";
     var forEachBail = require_forEachBail();
     var { getPathsCached } = require_getPaths();
@@ -31091,9 +31091,9 @@ var require_SymlinkPlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/SyncAsyncFileSystemDecorator.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/SyncAsyncFileSystemDecorator.js
 var require_SyncAsyncFileSystemDecorator = __commonJS({
-  "node_modules/enhanced-resolve/lib/SyncAsyncFileSystemDecorator.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/SyncAsyncFileSystemDecorator.js"(exports, module) {
     "use strict";
     function SyncAsyncFileSystemDecorator(fs2) {
       this.fs = fs2;
@@ -31279,9 +31279,9 @@ var require_SyncAsyncFileSystemDecorator = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/TryNextPlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/TryNextPlugin.js
 var require_TryNextPlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/TryNextPlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/TryNextPlugin.js"(exports, module) {
     "use strict";
     module.exports = class TryNextPlugin {
       /**
@@ -31314,9 +31314,9 @@ var require_TryNextPlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/TsconfigPathsPlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/TsconfigPathsPlugin.js
 var require_TsconfigPathsPlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/TsconfigPathsPlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/TsconfigPathsPlugin.js"(exports, module) {
     "use strict";
     var { aliasResolveHandler, compileAliasOptions } = require_AliasUtils();
     var { modulesResolveHandler } = require_ModulesUtils();
@@ -31956,9 +31956,9 @@ var require_TsconfigPathsPlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/UnsafeCachePlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/UnsafeCachePlugin.js
 var require_UnsafeCachePlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/UnsafeCachePlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/UnsafeCachePlugin.js"(exports, module) {
     "use strict";
     var { isRelativeRequest } = require_path();
     function joinRelativePreservingLeadingDot(relativePath, request, resolver) {
@@ -32084,9 +32084,9 @@ var require_UnsafeCachePlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/UseFilePlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/UseFilePlugin.js
 var require_UseFilePlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/UseFilePlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/UseFilePlugin.js"(exports, module) {
     "use strict";
     module.exports = class UseFilePlugin {
       /**
@@ -32129,9 +32129,9 @@ var require_UseFilePlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/ResolverFactory.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/ResolverFactory.js
 var require_ResolverFactory = __commonJS({
-  "node_modules/enhanced-resolve/lib/ResolverFactory.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/ResolverFactory.js"(exports, module) {
     "use strict";
     var { cwd, versions } = __require("process");
     var AliasFieldPlugin = require_AliasFieldPlugin();
@@ -32765,9 +32765,9 @@ var require_ResolverFactory = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/CloneBasenamePlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/CloneBasenamePlugin.js
 var require_CloneBasenamePlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/CloneBasenamePlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/CloneBasenamePlugin.js"(exports, module) {
     "use strict";
     module.exports = class CloneBasenamePlugin {
       /**
@@ -32809,9 +32809,9 @@ var require_CloneBasenamePlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/LogInfoPlugin.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/LogInfoPlugin.js
 var require_LogInfoPlugin = __commonJS({
-  "node_modules/enhanced-resolve/lib/LogInfoPlugin.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/LogInfoPlugin.js"(exports, module) {
     "use strict";
     module.exports = class LogInfoPlugin {
       /**
@@ -32861,9 +32861,9 @@ var require_LogInfoPlugin = __commonJS({
   }
 });
 
-// node_modules/enhanced-resolve/lib/index.js
+// ../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/index.js
 var require_lib2 = __commonJS({
-  "node_modules/enhanced-resolve/lib/index.js"(exports, module) {
+  "../../home/agent/projects/squeal/.ai/cezar/worktrees/87218933-9f1d-4390-9e07-76b12fad3a41/node_modules/enhanced-resolve/lib/index.js"(exports, module) {
     "use strict";
     var memoize = require_memoize();
     var getCachedFileSystem = memoize(() => require_CachedInputFileSystem());
