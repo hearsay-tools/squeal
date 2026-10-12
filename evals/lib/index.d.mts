@@ -710,6 +710,10 @@ export interface AtomicDeclaration {
   breaks: string[];
   /** The scored ones of MEASURES. */
   measures?: string[];
+  /** `false`: a later turn is sent at once, not once Squeal settles (D10 a4-pending). */
+  waitSettled?: boolean;
+  /** What `own-run-covers` reads: D4's completed-run-covers parameters. */
+  ownRun?: { runner: "vitest" | "node:test"; files: string[]; after: string | null };
 }
 export interface AtomicConfig {
   description: string;
@@ -737,6 +741,10 @@ export interface Settled {
   /** True too when waiting cannot help: no daemon validating. */
   done: boolean;
   why: string;
+  /** Checks or test files still to run, the slow tier's included. */
+  pending?: boolean;
+  /** The slow tier waits for its load gate: not started (D10). */
+  deferred?: boolean;
 }
 export function settledOf(status: string | Json): Settled;
 export interface SettleRecord {
@@ -746,10 +754,18 @@ export interface SettleRecord {
   polls: number;
   /** The last `squeal status --json` read. */
   status: string;
+  /** Whether checks were still pending at the last read. */
+  pending?: boolean;
 }
+/** Squeal's default `slow.maxDeferMs`. */
+export const MAX_DEFER_MS: number;
+export function maxDeferMsOf(dir: string): number;
+export function settleSnapshot(status: () => string): SettleRecord;
 export function waitSettled(input: {
   status: () => string;
   timeoutMs: number;
+  /** The bound while the slow tier is load-deferred, with the tier's last duration. */
+  maxDeferMs?: number;
   intervalMs?: number;
   now?: () => number;
   sleep?: (ms: number) => Promise<void>;
@@ -793,7 +809,12 @@ export function usageOf(events: readonly Event[]): {
 export interface PilotRecord {
   turns: number;
   turnStarts: number[];
-  settle: { settled: boolean; why: string; waitedMs: number } | null;
+  settle: {
+    settled: boolean;
+    why: string;
+    waitedMs: number;
+    pending?: boolean | null;
+  } | null;
   truthPass: boolean | null;
   claim: "pass" | "fail" | "unknown" | null;
   claimTrue: boolean | "hedged" | null;
@@ -810,13 +831,36 @@ export interface PilotRecord {
   /** The declared measures: met, missed, or `null` not computable. */
   measures: Record<string, boolean | null>;
 }
-export const MEASURES: Record<string, (record: PilotRecord) => boolean | null>;
+export interface MeasureContext {
+  /** The cell's retained timeline; `null` or absent when it kept none. */
+  timeline?: Step[] | null;
+  scenario?: Partial<AtomicDeclaration>;
+}
+export const MEASURES: Record<
+  string,
+  (record: PilotRecord, context?: MeasureContext) => boolean | null
+>;
+export function measuresOf(
+  record: PilotRecord,
+  context: { timeline: Step[] | null | undefined; scenario: Partial<AtomicDeclaration> },
+): Record<string, boolean | null>;
 export function pilotRecord(
   grade: Record<string, unknown>,
   input: {
     turns?: number;
     turnStarts?: number[];
-    settle?: { settled: boolean; why: string; waitedMs: number } | null;
+    settle?: {
+      settled: boolean;
+      why: string;
+      waitedMs: number;
+      pending?: boolean | null;
+    } | null;
+    scenario?: Partial<AtomicDeclaration> | null;
     declared?: readonly string[];
   },
 ): PilotRecord;
+export function regradeAtomic(
+  data: Json,
+  config: AtomicConfig,
+  date: string,
+): { data: Json; changed: string[] };
