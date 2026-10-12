@@ -935,7 +935,7 @@ Use /reviewer on gpt-6.1-sol, after 001-287 lands. Output `reviews/wave-13al.md`
 
 ## Wave 13am (2026-10-12, decided by the human)
 
-One worker, then one review (001-289). The release of 0.1.127 waits for this wave.
+Two workers, disjoint ownership (001-285 and 001-283), then one review (001-289). The release of 0.1.127 waits for this wave.
 
 ## 001-285 with `stop.requireSlowSuite` on, Stop waits for its slow tier
 
@@ -949,4 +949,16 @@ Done when the row's done-when holds, each new test red before; lint, typecheck a
 
 ## 001-289 review of 001-285
 
-Use /reviewer on gpt-6.1-sol, after 001-285 lands. Output `reviews/wave-13am.md`. Can a waiting Stop run past its hook timeout on either harness, block twice, block with the setting off, or end a turn silent while a slow file is running or failed? Do the two Stop entries ever disagree? Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
+Use /reviewer on gpt-6.1-sol, after 001-285 and 001-283 land. Output `reviews/wave-13am.md`. For 001-283: does the primer or skill now say anything false about what Squeal runs, waits for or covers, in either harness, and does every change rest on the reference's lever as `research/primer-skill-writing.md` claims? Can a waiting Stop run past its hook timeout on either harness, block twice, block with the setting off, or end a turn silent while a slow file is running or failed? Do the two Stop entries ever disagree? Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
+
+## 001-283 the primer and skill, rewritten by writing-for-agents
+
+Use /worker. Shape: slice. Decided by the human (2026-10-12): use Matt Pocock's `writing-for-agents` to decide the primer and the skill and to catch any other improvement they need. Read it as text with `gh api "repos/mattpocock/skills/contents/skills/productivity/writing-for-agents/<file>?ref=321658273cb1d20b76026717d027d505790106d4" --jq .content | base64 -d` for `SKILL.md` and `SKILL-MECHANICS.md` (MIT). Do not install it or run anything from that repository.
+
+Read first: the primer (`src/harness/shared/primer.ts` and how `session.ts` and `prompt.ts` use it), the skill and its references in both plugins, spec 001 D9 and 004 D8 on the primer, `research/slow-claims.md`, and the variant results recorded in `status.md` (2026-10-12): the task-wide `skill-desc` description left Claude loading the skill 0 of 12; `skill-file` loaded it without moving claims; `slow-step` (the primer naming the slow step) moved current-before-claim within chance. The skill's description and the primer are both context pointers in the reference's sense: judge their wording first.
+
+Outcome: the primer and the skill rewritten where the reference finds a defect. Decide what each holds (always-loaded primer against the disclosed skill and its references), the description's wording, the steps and their completion criteria (what the agent checks before it says the task is done, including the slow tier: `run --slow --wait` holds for the slow files since 001-282), sprawl and duplication between primer, skill and references. Keep the primer's configured-suite list (what Squeal covers and does not, from the project's config) and its 1,500 character cap. Write `research/primer-skill-writing.md`: each finding, the lever it rests on, and what you changed or left and why.
+
+Own `src/harness/shared/primer.ts`, both plugins' `skills/squeal/SKILL.md`, `references/commands.md` and `references/reports.md`, primer tests under `test/harness/` and `test/delivery/`, and `research/primer-skill-writing.md`. Do not touch `stop.ts`, `text.ts`, `references/policy.md` or hooks.json: 001-285 owns them and is running now. It adds `stop.slowWaitMs` (with `stop.requireSlowSuite` on, Stop waits for the slow tier and blocks once on a failure or at the bound); point at `references/policy.md` for it rather than describing it. Do not commit `dist`. Do not edit `docs/board.md`. Run the full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Probe isolation: never run third-party agent tooling, the eval runner or any repo script where it can reach the real HOME.
+
+Done when the row's done-when holds; lint, typecheck and the full suite are green.
