@@ -22,6 +22,7 @@ import {
   SKILL_SOURCE,
 } from "../../../src/harness/codex/build.js";
 import { CODEX_HOOKS } from "../../../src/harness/codex/index.js";
+import { STOP_SLOW_HOOK_TIMEOUT_S } from "../../../src/harness/shared/stop-slow.js";
 import { tempDir } from "../../store/helpers.js";
 import { expectSameFiles } from "../bundle-helpers.js";
 import { buildCodexBundles } from "./helpers.js";
@@ -34,6 +35,7 @@ const CONTRACT = [
   "session-end",
   "session-start",
   "stop",
+  "stop-slow",
   "subagent-start",
   "subagent-stop",
   "user-prompt-submit",
@@ -154,6 +156,17 @@ describe("Codex plugin build (spec 002 D1, D5)", () => {
     expect(existsSync(join(pluginDir, CODEX_MANIFEST))).toBe(false);
     expect(existsSync(join(pluginDir, "dist/session-start.mjs"))).toBe(true);
   }, 60_000);
+
+  it("runs the slow wait beside the 2 s Stop, under its long timeout (004 D9 as amended 2026-10-12)", () => {
+    const hooks = JSON.parse(readFileSync(join(CODEX_PLUGIN_DIR, "hooks/hooks.json"), "utf8")) as {
+      hooks: { Stop: { hooks: { command: string; timeout: number }[] }[] };
+    };
+    const stop = hooks.hooks.Stop.flatMap((g) => g.hooks);
+    expect(stop.map((h) => [h.command.match(/dist\/([a-z-]+)\.mjs/)?.[1], h.timeout])).toEqual([
+      ["stop", 2],
+      ["stop-slow", STOP_SLOW_HOOK_TIMEOUT_S],
+    ]);
+  });
 
   it("is built by `npm run build:plugin` beside the Claude Code plugin", () => {
     const pkg = JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8")) as {

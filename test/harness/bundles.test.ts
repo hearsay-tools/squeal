@@ -14,6 +14,7 @@ const HOOKS = [
   "post-tool-batch",
   "pre-tool-use",
   "stop",
+  "stop-slow",
   "session-end",
   "waiter",
 ];
@@ -23,6 +24,7 @@ const EVENT_OF: Record<string, string> = {
   "post-tool-batch": "post-tool-batch",
   "pre-tool-use": "pre-tool-use",
   stop: "stop",
+  "stop-slow": "stop",
   "session-end": "session-end",
   waiter: "stop",
 };

@@ -4,6 +4,7 @@ import { isBuiltin } from "node:module";
 import { join } from "node:path";
 import { build, type Metafile } from "esbuild";
 import { describe, expect, it } from "vitest";
+import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 import { buildDist } from "../../src/harness/build.js";
 import {
   bundleOptions,
@@ -15,6 +16,12 @@ import {
   writePluginVersions,
 } from "../../src/harness/claude-code/build.js";
 import { WAITER_HOOK_TIMEOUT_S } from "../../src/harness/claude-code/index.js";
+import {
+  STOP_SLOW_DOWN_MS,
+  STOP_SLOW_HANDOFF_MS,
+  STOP_SLOW_HOOK_TIMEOUT_S,
+  STOP_SLOW_WAIT_CAP_MS,
+} from "../../src/harness/shared/stop-slow.js";
 import { tempDir } from "../store/helpers.js";
 import { expectSameFiles, runtimeDir } from "./bundle-helpers.js";
 
@@ -58,6 +65,8 @@ describe("hooks/hooks.json", () => {
       // Task 001-93: every tool call, so a turn another Stop hook continued is a turn again.
       "PreToolUse  pre-tool-use.mjs ",
       "Stop  stop.mjs ",
+      // 004 D9 as amended 2026-10-12: the slow-tier wait beside the 2 s Stop.
+      "Stop  stop-slow.mjs ",
       "Stop  waiter.mjs rewake",
       "SubagentStop  stop.mjs ",
       "SessionEnd  session-end.mjs ",
@@ -78,10 +87,17 @@ describe("hooks/hooks.json", () => {
     }
   });
 
-  it("gives every synchronous hook timeout 2 and the waiter an explicit long one", () => {
+  it("gives every synchronous hook timeout 2, the waiter and the slow wait explicit long ones", () => {
     for (const { hook } of all) {
-      expect(hook.timeout).toBe(hook.asyncRewake === true ? WAITER_HOOK_TIMEOUT_S : 2);
+      const long = bundleOf(hook) === "stop-slow.mjs" ? STOP_SLOW_HOOK_TIMEOUT_S : 2;
+      expect(hook.timeout).toBe(hook.asyncRewake === true ? WAITER_HOOK_TIMEOUT_S : long);
     }
+  });
+
+  it("lets the slow wait's bound, not the harness, end it (004 D9 as amended 2026-10-12)", () => {
+    const limit = STOP_SLOW_WAIT_CAP_MS + STOP_SLOW_HANDOFF_MS + STOP_SLOW_DOWN_MS;
+    expect(STOP_SLOW_HOOK_TIMEOUT_S * 1_000).toBeGreaterThan(limit);
+    expect(DEFAULT_POLICY.stop.slowWaitMs).toBeLessThanOrEqual(STOP_SLOW_WAIT_CAP_MS);
   });
 });
 

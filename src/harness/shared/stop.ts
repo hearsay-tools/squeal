@@ -120,6 +120,7 @@ export function stopTurn(
       for (let decision = 1; ; decision++) {
         const { header, failures, reasons } = decide(context, policy, isSlow, now(), {
           stopHookActive: input.stopHookActive,
+          slowElsewhere: input.agent_id === undefined,
           command: deps.command,
         });
         if (reasons.length > 0) {
@@ -177,8 +178,13 @@ function decide(
   now: number,
   {
     stopHookActive,
+    slowElsewhere,
     command,
-  }: { readonly stopHookActive: boolean; readonly command: string | undefined },
+  }: {
+    readonly stopHookActive: boolean;
+    readonly slowElsewhere: boolean;
+    readonly command: string | undefined;
+  },
 ): Decision {
   const { store, consumer } = context;
   return readTransaction(store, () => {
@@ -195,7 +201,7 @@ function decide(
     if (policy.requireFullSuite && !header.fullSuite.atCurrentRevision) {
       reasons.push(fullSuiteReason(header, command));
     }
-    if (policy.requireSlowSuite) {
+    if (policy.requireSlowSuite && !slowElsewhere) {
       const open = slowFilesNotCurrent(states, keys, isSlow);
       if (open.length > 0) reasons.push(slowSuiteReason(header.revision, open, command));
     }
@@ -235,7 +241,7 @@ async function finishSubagent(context: HookContext): Promise<void> {
  * no registration, its registration when that lists known failures. `null`
  * when there is nothing new.
  */
-async function newsText(
+export async function newsText(
   context: HookContext,
   starting: { readonly startingSince?: EpochMs },
   command?: string,
@@ -264,7 +270,7 @@ async function newsText(
  * rather than at its recheck (`SLOW_RECHECK_MS`). A daemon that does not
  * answer costs the socket budget and nothing more; the recheck still comes.
  */
-async function nudgeSlow(context: HookContext, header: StatusHeader): Promise<void> {
+export async function nudgeSlow(context: HookContext, header: StatusHeader): Promise<void> {
   if ((header.slowPending?.testFiles ?? 0) === 0) return;
   const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
   if (record === null) return;

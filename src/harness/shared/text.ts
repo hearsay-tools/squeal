@@ -110,8 +110,8 @@ export function fullSuiteReason(header: StatusHeader, command: string = SQUEAL_C
 
 /**
  * Spec 004 D7: the block reason of `stop.requireSlowSuite`, naming the slow
- * test files not current at `revision` and that `run --slow` runs them.
- * `command` is how the reason names the CLI.
+ * test files not current at `revision` and that `run --slow --wait` runs them
+ * and waits for them (001-282). `command` is how the reason names the CLI.
  */
 export function slowSuiteReason(
   revision: number,
@@ -122,6 +122,41 @@ export function slowSuiteReason(
   return (
     `Squeal policy stop.requireSlowSuite is on and ${plural(files.length, "slow test file")} ` +
     `${verb} not current at revision ${revision}: ${list(files.map((f) => f.path))}. ` +
-    `\`${command} run --slow\` runs them.`
+    `\`${command} run --slow --wait\` runs them and waits for their results.`
   );
+}
+
+/**
+ * Spec 004 D9 as amended 2026-10-12: the block of a Stop that waited
+ * `waitedMs` for its slow files and found `files` still not current.
+ */
+export function slowWaitReason(
+  revision: number,
+  files: readonly TestFileRef[],
+  waitedMs: number,
+  command: string = SQUEAL_COMMAND,
+): string {
+  const verb = files.length === 1 ? "is" : "are";
+  return (
+    `Squeal policy stop.requireSlowSuite is on and after ${seconds(waitedMs)} ` +
+    `${plural(files.length, "slow test file")} ${verb} still not current at revision ${revision}: ` +
+    `${list(files.map((f) => f.path))}. \`${command} run --slow --wait\` waits for their results.`
+  );
+}
+
+/**
+ * Spec 004 D9 as amended 2026-10-12: the block of a Stop whose slow files,
+ * waited for, became current at `revision` with `failures`.
+ */
+export function slowFailuresReason(revision: number, failures: readonly KnownFailure[]): string {
+  const verb = failures.length === 1 ? "fails" : "fail";
+  return (
+    `Squeal policy stop.requireSlowSuite is on and the slow tier ran at revision ${revision}: ` +
+    `${plural(failures.length, "check")} ${verb}: ${list(failures.map((f) => formatCheck(f.check)))}.`
+  );
+}
+
+/** Seconds, with a tenth unless whole, as a wait is named. */
+function seconds(ms: number): string {
+  return `${(ms / 1_000).toFixed(ms % 1_000 === 0 ? 0 : 1)} s`;
 }
