@@ -80,7 +80,8 @@ Brief: `research/README.md`. Topics `adoption-baseline`, `instruction-surfaces`,
   - D2: the path form selects from 001-258's store re-key record (0.1.113).
   - D6 and 005-15: build on 001-283's rewrite (0.1.128) and come after 001-292 (the human's ownership split, on the board).
   - D7 and 005-18: every 001 row 005-18 waited on has shipped; its proof runs on 006's atomic tier (D10) and the long baseline.
-  - Open question 6: the 001 coordinator was asked for its row.
+  - Open question 6: filed by the 001 coordinator as 001-307 (`8cafa055`), planned for when 005-12 dispatches. None of 001-292, 001-297, 001-304 touches `src/cli/run.ts`; 001-292 (an experiment on `exp/runner-named-count`) changes the `Affected checks:` line in `format-status.ts`, where 005-21 would collide, so 005-21 stays after it.
+  - 006 (its coordinator, the same day): 006-37 is done and 006-38 is unscheduled, so 005-04 need not wait for 006; the eval slot is shared by message, one run at a time. The first 006 baseline on 005-10's release is marked a new trend point.
 
 ## Dogfooding
 
