@@ -54,6 +54,7 @@ describe("loadPolicy (spec 001 D11)", () => {
         requireFullSuite: false,
         waitMs: 1500,
         requireSlowSuite: false,
+        slowWaitMs: 120_000,
       },
       baseline: { onStart: "lookup-only" },
       inputs: ["fixtures/**/*.json"],
