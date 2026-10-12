@@ -2,7 +2,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { readPolicy } from "../../core/daemon/policy.js";
 import { squealVersion } from "../../core/daemon/version.js";
 import { readLiveHeader } from "../../core/delivery/index.js";
-import { type CurrentKeys, currentKeys, readTurn, startTurn } from "../../core/delivery/turn.js";
+import { readTurn, startTurn } from "../../core/delivery/turn.js";
 import { testFileId } from "../../core/keys/index.js";
 import {
   recordStopWait,
@@ -10,7 +10,12 @@ import {
   slowFiles,
   stopSlowWaitMs,
 } from "../../core/slow/index.js";
-import { slowFilesNotCurrent, testFileOf, toKnownFailure } from "../../core/state/index.js";
+import {
+  checkIdentity,
+  slowFilesNotCurrent,
+  testFileOf,
+  toKnownFailure,
+} from "../../core/state/index.js";
 import { readTransaction } from "../../core/store/index.js";
 import type {
   EpochMs,
@@ -69,10 +74,16 @@ export const STOP_SLOW_POLL_MS = 250;
  * The 2 s entry's silent end already nudged the daemon (`nudgeSlow`), so the
  * idle slow tier has started.
  *
- * Task 001-295 (review wave 13am, B1): the files that silent end left owed,
- * at their keys (`StopHandoff`), are waited for from the start, so a result
- * that landed before this entry's first read is still decided; so is every
- * slow file a read here finds not current, at any key.
+ * Task 001-295 (review wave 13am, B1): the files that silent end left owed
+ * (`StopHandoff`) are waited for from the start, so a result that landed
+ * before this entry's first read is still decided; so is every slow file a
+ * read here finds not current, at any key. Task 001-302 (review wave 13an):
+ * an owed file stays owed at a newer key, so its failure there is decided
+ * even when no read saw it queued (S2, the human); and when that end left
+ * the runner part of its revision pending, a slow check the agent was never
+ * told, first observed up to that revision, is owed too (B1), so a slow
+ * file listed and run between two reads is still decided. Failures the
+ * agent was told before the turn ended stay outside.
  *
  * Then it polls until the slow tier looks complete (no slow file pending
  * and the runner part of the revision applied), the bound passes, or the
@@ -108,7 +119,7 @@ export async function stopSlow(
     recordStopWait(context.store, context.consumer.worktreeId, input.harness, version);
     const handoff = await handedOver(context, deps, poll);
     if (handoff === null) return null;
-    const waited: Waited = { owed: handoff.keys, seen: new Set(), isSlow };
+    const waited: Waited = { handoff, seen: new Set(), isSlow };
     const block = await waitForSlow(context, waited, deps, bound, poll);
     if (block === null) return null;
     const { header, failures, reason } = block;
@@ -123,17 +134,17 @@ interface SlowRead {
   readonly failures: readonly KnownFailure[];
   readonly current: readonly KnownFailure[];
   readonly open: readonly TestFileRef[];
-  readonly keys: CurrentKeys;
   readonly idle: boolean;
 }
 
 /**
- * The files this entry waits for: those the 2 s entry left `owed`, by
- * `testFileId`, while at the key recorded there, and each slow file a read
- * here `seen` not current, at any key.
+ * What this entry waits for: the files the 2 s entry left owed in its
+ * `handoff`, by `testFileId`, at any key; with its `newTestFiles`, the
+ * checks first observed up to its revision; and each slow file a read here
+ * `seen` not current, at any key.
  */
 interface Waited {
-  readonly owed: StopHandoff["keys"];
+  readonly handoff: StopHandoff;
   readonly seen: Set<string>;
   readonly isSlow: (testFile: TestFileRef) => boolean;
 }
@@ -153,7 +164,6 @@ function read(context: HookContext, waited: Waited, clock: () => EpochMs): SlowR
       failures,
       current: failures.filter((f) => f.validity === "current"),
       open,
-      keys: currentKeys(keys),
       idle: readTurn(store, consumer).turn === "idle",
     };
   });
@@ -164,15 +174,27 @@ function complete(last: SlowRead): boolean {
   return last.open.length === 0 && last.header.runnerPartPending !== true;
 }
 
-/** The current failures of slow files this entry waited for. */
-function failedOf(last: SlowRead, waited: Waited): readonly KnownFailure[] {
+/**
+ * The current failures of slow files this entry waited for. `told` lists
+ * the checks the consumer was told (`checkIdentity`); read only when the
+ * handoff owes new test files.
+ */
+function failedOf(
+  last: SlowRead,
+  waited: Waited,
+  told: () => ReadonlySet<string>,
+): readonly KnownFailure[] {
+  const { handoff } = waited;
   return last.current.filter((f) => {
     const file = testFileOf(f.check);
     if (!waited.isSlow(file)) return false;
     const id = testFileId(file);
-    if (waited.seen.has(id)) return true;
-    const recorded = waited.owed[id];
-    return recorded !== undefined && (last.keys.get(id) ?? null) === recorded;
+    if (waited.seen.has(id) || handoff.keys[id] !== undefined) return true;
+    return (
+      handoff.newTestFiles === true &&
+      f.observedAt <= handoff.revision &&
+      !told().has(checkIdentity(f.check))
+    );
   });
 }
 
@@ -272,7 +294,11 @@ function decide(
     if (store.consumers.get(consumer) === null) return null;
     const live = read(context, waited, () => at);
     if (!live.idle) return null;
-    const failed = failedOf(live, waited);
+    let told: ReadonlySet<string> | null = null;
+    const failed = failedOf(live, waited, () => {
+      told ??= new Set(store.views.list(consumer).map((v) => checkIdentity(v.check)));
+      return told;
+    });
     const done = complete(live);
     if (done && failed.length === 0) return null;
     if (!done && !over) return "again";

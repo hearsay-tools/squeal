@@ -150,6 +150,7 @@ describe("turn state", () => {
       at: expect.any(Number),
       revision: 0,
       keys: { [file ?? ""]: "k1" },
+      newTestFiles: false,
     });
     // The file's run lands: the waiter no longer owes it, the handoff still names it.
     setKey(store, "k1");

@@ -65,7 +65,14 @@ function withHandoff(value: unknown): { handoff?: StopHandoff } {
         (e): e is [string, CheckKey | null] => typeof e[1] === "string" || e[1] === null,
       )
     : [];
-  return { handoff: { at: value.at, revision: value.revision, keys: Object.fromEntries(keys) } };
+  return {
+    handoff: {
+      at: value.at,
+      revision: value.revision,
+      keys: Object.fromEntries(keys),
+      newTestFiles: value.newTestFiles === true,
+    },
+  };
 }
 
 export function readTurn(store: Store, consumer: Consumer): TurnState {
@@ -112,7 +119,7 @@ export function currentKeys(keys: readonly TestFileKeyRecord[]): CurrentKeys {
  * Each file is waited for at its current key, and new test files up to the
  * current revision (task 001-89, review wave 10 S3). With `handoffAt`, the
  * same files and keys are also kept untrimmed as the Stop's `handoff`
- * (task 001-295).
+ * (task 001-295), with the new test files it owes (task 001-302).
  */
 export function endTurn(
   store: Store,
@@ -130,15 +137,17 @@ export function endTurn(
   const current = currentKeys(keys);
   const testFiles = [...files].sort();
   const owed = Object.fromEntries(testFiles.map((f) => [f, current.get(f) ?? null]));
+  const newTestFiles = header.runnerPartPending === true;
+  const { revision } = header;
   writeTurn(store, consumer, {
     turn: "idle",
     testFiles,
-    newTestFiles: header.runnerPartPending === true,
+    newTestFiles,
     keys: owed,
-    revision: header.revision,
+    revision,
     ...(handoffAt === null
       ? {}
-      : { handoff: { at: handoffAt, revision: header.revision, keys: owed } }),
+      : { handoff: { at: handoffAt, revision, keys: owed, newTestFiles } }),
   });
 }
 
