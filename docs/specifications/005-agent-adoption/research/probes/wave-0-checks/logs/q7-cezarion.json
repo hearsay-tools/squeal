@@ -1,0 +1,208 @@
+{
+ "repo": "/home/agent/projects/wiktor",
+ "testFiles": 674,
+ "vitestFiles": 651,
+ "nodeTestProjects": [
+  {
+   "project": "packages/cezar:test:unit",
+   "globs": [
+    "test/unit/*.test.ts"
+   ],
+   "files": 10
+  },
+  {
+   "project": "packages/cezar:test:package",
+   "globs": [
+    "test/e2e/*.test.ts"
+   ],
+   "files": 13
+  }
+ ],
+ "unresolvedScripts": [
+  ".:test:e2e = \"sh .ai/scripts/e2e.sh\" (not resolvable statically)"
+ ],
+ "groups": [
+  {
+   "group": "packages/cezar/test/e2e",
+   "files": 13,
+   "reasons": [
+    "under a directory named e2e",
+    "run by npm script .:test:package",
+    "run by npm script packages/cezar:test:package",
+    "node:test project packages/cezar:test:package"
+   ],
+   "package": "packages/cezar",
+   "artifactCandidates": [
+    {
+     "path": "packages/cezar/dist",
+     "why": "packages/cezar/package.json bin \"dist/index.js\""
+    },
+    {
+     "path": "packages/cezar/dist",
+     "why": "packages/cezar/package.json bin \"dist/index.js\""
+    },
+    {
+     "path": "packages/cezar/dist",
+     "why": "packages/cezar/package.json exports \"./dist/index.js\""
+    },
+    {
+     "path": "packages/cezar/dist",
+     "why": "packages/cezar/package.json exports \"./dist/server/app-type.js\""
+    },
+    {
+     "path": "packages/cezar/dist",
+     "why": "packages/cezar/package.json files \"dist\""
+    },
+    {
+     "path": "packages/cezar/web/dist",
+     "why": "packages/cezar/package.json files \"web/dist\""
+    },
+    {
+     "path": "packages/cezar/scripts",
+     "why": "packages/cezar/package.json files \"scripts\""
+    },
+    {
+     "path": null,
+     "why": "build script packages/cezar:prebuild (node scripts/sync-readme.mjs): no rule names its output"
+    },
+    {
+     "path": "packages/cezar/dist",
+     "why": "build script packages/cezar:build (tsc -> outDir dist)"
+    },
+    {
+     "path": null,
+     "why": "build script packages/cezar:postbuild (node scripts/inline-contract.mjs): no rule names its output"
+    },
+    {
+     "path": "packages/cezar/dist",
+     "rule": "gitignored+named",
+     "exists": false,
+     "fires": false,
+     "why": "gitignored, absent in this checkout, so the rule does not fire until it is built; named by 9 of 13 test files",
+     "strings": {
+      "packages/cezar/test/e2e/alias-bin-exports.test.ts": [
+       "'@open-mercato/cezar/dist/index.js'",
+       "`dist/`"
+      ],
+      "packages/cezar/test/e2e/application-update.test.ts": [
+       "'../../dist/application-update/service.js'",
+       "'../../dist/application-update/discovery.js'",
+       "'../../dist/application-update/helper.js'"
+      ],
+      "packages/cezar/test/e2e/cockpit-ownership.test.ts": [
+       "'dist/index.js'"
+      ],
+      "packages/cezar/test/e2e/cursor-print.test.ts": [
+       "'dist/core/runner-factory.js'"
+      ],
+      "packages/cezar/test/e2e/delegation.test.ts": [
+       "'dist/index.js'",
+       "'dist'",
+       "'dist'"
+      ],
+      "packages/cezar/test/e2e/inline-contract.test.ts": [
+       "'dist'",
+       "`dist`",
+       "`dist/contract/`"
+      ],
+      "packages/cezar/test/e2e/package-cli.test.ts": [
+       "'dist/index.js'",
+       "'web/dist/index.html'",
+       "'dist/ci-wait/controller.js'"
+      ],
+      "packages/cezar/test/e2e/serve-port.test.ts": [
+       "'dist/index.js'"
+      ],
+      "packages/cezar/test/e2e/task-cli.test.ts": [
+       "'dist/index.js'"
+      ]
+     }
+    },
+    {
+     "path": "packages/cezar/web/dist",
+     "rule": "gitignored+named",
+     "exists": false,
+     "fires": false,
+     "why": "gitignored, absent in this checkout, so the rule does not fire until it is built; named by 2 of 13 test files",
+     "strings": {
+      "packages/cezar/test/e2e/application-update.test.ts": [
+       "'web/dist'",
+       "'web/dist/index.html'",
+       "'web/dist'"
+      ],
+      "packages/cezar/test/e2e/package-cli.test.ts": [
+       "'web/dist/index.html'"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "group": "packages/cezar/test/unit",
+   "files": 10,
+   "reasons": [
+    "node:test project packages/cezar:test:unit"
+   ],
+   "package": "packages/cezar",
+   "artifactCandidates": [
+    {
+     "path": "packages/cezar/dist",
+     "why": "packages/cezar/package.json bin \"dist/index.js\""
+    },
+    {
+     "path": "packages/cezar/dist",
+     "why": "packages/cezar/package.json bin \"dist/index.js\""
+    },
+    {
+     "path": "packages/cezar/dist",
+     "why": "packages/cezar/package.json exports \"./dist/index.js\""
+    },
+    {
+     "path": "packages/cezar/dist",
+     "why": "packages/cezar/package.json exports \"./dist/server/app-type.js\""
+    },
+    {
+     "path": "packages/cezar/dist",
+     "why": "packages/cezar/package.json files \"dist\""
+    },
+    {
+     "path": "packages/cezar/web/dist",
+     "why": "packages/cezar/package.json files \"web/dist\""
+    },
+    {
+     "path": "packages/cezar/scripts",
+     "why": "packages/cezar/package.json files \"scripts\""
+    },
+    {
+     "path": null,
+     "why": "build script packages/cezar:prebuild (node scripts/sync-readme.mjs): no rule names its output"
+    },
+    {
+     "path": "packages/cezar/dist",
+     "why": "build script packages/cezar:build (tsc -> outDir dist)"
+    },
+    {
+     "path": null,
+     "why": "build script packages/cezar:postbuild (node scripts/inline-contract.mjs): no rule names its output"
+    },
+    {
+     "path": "packages/cezar/dist",
+     "rule": "gitignored+named",
+     "exists": false,
+     "fires": false,
+     "why": "gitignored, absent in this checkout, so the rule does not fire until it is built; named by 2 of 10 test files",
+     "strings": {
+      "packages/cezar/test/unit/test-env-launcher.test.ts": [
+       "'packages/cezar/dist/index.js'"
+      ],
+      "packages/cezar/test/unit/web-typecheck.test.ts": [
+       "'dist'",
+       "'packages/cezar/dist/server'",
+       "'packages/cezar/dist/server/app-type.d.ts'"
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}

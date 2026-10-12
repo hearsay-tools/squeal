@@ -1,0 +1,4 @@
+[{"root":"packages/cezar","include":["src/**/*.test.ts"]},
+ {"root":"packages/contract","include":["src/**/*.test.ts"]},
+ {"root":"packages/api-client","include":["src/**/*.test.ts"]},
+ {"root":"packages/web","include":["src/**/*.test.{ts,tsx}"]}]

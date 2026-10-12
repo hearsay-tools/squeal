@@ -1,0 +1,32 @@
+batch1 load before: 4.09 12.05 21.13
+2026-10-13T00:06:18+02:00 cx2-mention codex start load 4.09
+2026-10-13T00:06:18+02:00 cx1-plain codex start load 4.09
+2026-10-13T00:06:18+02:00 cc2-ask claude start load 4.09
+2026-10-13T00:06:18+02:00 cx3-timeout codex start load 4.09
+2026-10-13T00:06:18+02:00 cc1-plain claude start load 4.09
+2026-10-13T00:06:21+02:00 cx1-plain codex exit 0 load 4.00
+2026-10-13T00:06:24+02:00 cc2-ask claude exit 0 load 4.16
+2026-10-13T00:06:24+02:00 cc1-plain claude exit 0 load 4.16
+2026-10-13T00:06:27+02:00 cx2-mention codex exit 0 load 4.16
+2026-10-13T00:07:39+02:00 cx3-timeout codex exit 0 load 4.32
+batch1 load after: 4.32 10.21 19.73
+batch2 load before: 3.11 8.47 18.33; user settings: {"extraKnownMarketplaces":{"hearsay":{"source":{"source":"directory","path":"/tmp/wave0-checks/hub"}}},"enabledPlugins":{}}
+2026-10-13T00:08:55+02:00 cc1b-plain claude start load 3.11
+2026-10-13T00:09:02+02:00 cc1b-plain claude exit 0 load 3.18
+2026-10-13T00:09:02+02:00 cc4-enabled-s2 claude start load 3.18
+2026-10-13T00:09:08+02:00 cc4-enabled-s2 claude exit 0 load 3.48
+batch2 load after: 3.48 8.37 18.19
+batch3 load before: 4.01 7.77 17.47; user settings: {"extraKnownMarketplaces":{"hearsay":{"source":{"source":"directory","path":"/tmp/wave0-checks/hub"}}},"enabledPlugins":{"squeal@hearsay":true}}
+2026-10-13T00:09:55+02:00 cc1c-plain claude start load 4.01
+2026-10-13T00:09:55+02:00 cc5-enabled-mixed claude start load 4.01
+2026-10-13T00:09:59+02:00 cc5-enabled-mixed claude exit 0 load 4.01
+2026-10-13T00:10:01+02:00 cc1c-plain claude exit 0 load 4.41
+batch3 load after: 4.41 7.79 17.42
+batch4 order: ['project@0.1.132', 'user@0.1.131']; load before: 5.01 7.70 17.19
+2026-10-13T00:10:24+02:00 cc6-enabled-mixed-reordered claude start load 5.01
+2026-10-13T00:10:30+02:00 cc6-enabled-mixed-reordered claude exit 0 load 4.70
+batch4 order after the session: ['project@0.1.132', 'user@0.1.131']; load after: 4.70 7.55 17.04
+2026-10-13T00:10:54+02:00 cc7-ask-tui claude start load 4.67
+2026-10-13T00:11:52+02:00 cc7-ask-tui claude end load 5.45
+2026-10-13T00:12:06+02:00 cc7-ask-tui claude start load 7.54
+2026-10-13T00:12:57+02:00 cc7-ask-tui claude end load 7.27

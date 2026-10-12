@@ -1,0 +1,74 @@
+{
+ "repo": "/home/agent/projects/squeal/.ai/cezar/worktrees/83ce4636-4675-4437-9cbf-d3c399e9e92c",
+ "testFiles": 430,
+ "vitestFiles": 430,
+ "nodeTestProjects": [],
+ "unresolvedScripts": [],
+ "groups": [
+  {
+   "group": "test/e2e",
+   "files": 10,
+   "reasons": [
+    "under a directory named e2e"
+   ],
+   "package": ".",
+   "artifactCandidates": [
+    {
+     "path": "dist",
+     "why": "./package.json bin \"dist/cli/index.js\""
+    },
+    {
+     "path": "dist",
+     "why": "./package.json files \"dist\""
+    },
+    {
+     "path": "plugins",
+     "why": "./package.json files \"plugins\""
+    },
+    {
+     "path": "dist",
+     "why": "build script .:build (tsc -p tsconfig.build.json -> outDir dist)"
+    },
+    {
+     "path": null,
+     "why": "build script .:build (npm run build:plugin): no rule names its output"
+    },
+    {
+     "path": null,
+     "why": "build script .:build:plugin (tsx src/harness/claude-code/build.ts): no rule names its output"
+    },
+    {
+     "path": null,
+     "why": "build script .:build:plugin (tsx src/harness/codex/build.ts): no rule names its output"
+    },
+    {
+     "path": "dist",
+     "rule": "gitignored+named",
+     "exists": false,
+     "fires": false,
+     "why": "gitignored, absent in this checkout, so the rule does not fire until it is built; named by 4 of 10 test files",
+     "strings": {
+      "test/e2e/plugin-copy.test.ts": [
+       "\"plugins/codex/dist/cli/squeal.mjs\"",
+       "\"plugins/codex/dist/cli/squeal.mjs\"",
+       "\"dist/cli/squeal.mjs\""
+      ],
+      "test/e2e/shipped-plugin.test.ts": [
+       "\"dist/cli/squeal.mjs\""
+      ],
+      "test/e2e/slow-node-test.test.ts": [
+       "`dist`",
+       "`packages/demo/dist/cli.mjs`",
+       "\"packages/demo/dist/cli.mjs\""
+      ],
+      "test/e2e/slow-vitest.test.ts": [
+       "`dist`",
+       "`dist/**`",
+       "`dist/cli.mjs`"
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}

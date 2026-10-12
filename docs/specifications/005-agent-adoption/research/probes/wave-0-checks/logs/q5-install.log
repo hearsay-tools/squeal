@@ -1,0 +1,69 @@
+$ claude plugin marketplace add /tmp/wave0-checks/hub
+Adding marketplace…✔ Successfully added marketplace: hearsay (declared in user settings)
+[exit 0]
+$ claude plugin install squeal@hearsay --scope user
+Installing plugin "squeal@hearsay"...✔ Successfully installed plugin: squeal@hearsay (scope: user)
+[exit 0]
+$ claude plugin list --json
+[
+  {
+    "id": "squeal@hearsay",
+    "version": "0.1.131",
+    "scope": "user",
+    "enabled": true,
+    "installPath": "/tmp/wave0-checks/home/.claude/plugins/cache/hearsay/squeal/0.1.131",
+    "installedAt": "2026-10-12T22:04:43.932Z",
+    "lastUpdated": "2026-10-12T22:04:43.932Z",
+    "projectEnabled": false
+  }
+]
+[exit 0]
+$ codex plugin marketplace add /tmp/wave0-checks/hub
+Added marketplace `hearsay` from /tmp/wave0-checks/hub.
+Installed marketplace root: /tmp/wave0-checks/hub
+[exit 0]
+$ codex plugin add squeal@hearsay
+Added plugin `squeal` from marketplace `hearsay`.
+Installed plugin root: /tmp/wave0-checks/codex/plugins/cache/hearsay/squeal/0.1.131
+[exit 0]
+$ codex plugin list
+Marketplace `hearsay`
+/tmp/wave0-checks/hub/.agents/plugins/marketplace.json
+
+PLUGIN          STATUS              VERSION  SOURCE
+squeal@hearsay  installed, enabled  0.1.131  file:///tmp/wave0-checks/toolrepo, path `plugins/codex`, ref `v131`, sha `c724cbdc7b3cda771b5932a22fca3ce7e0de2e33`
+[exit 0]
+--- installed_plugins.json
+{
+  "version": 2,
+  "plugins": {
+    "squeal@hearsay": [
+      {
+        "scope": "user",
+        "installPath": "/tmp/wave0-checks/home/.claude/plugins/cache/hearsay/squeal/0.1.131",
+        "version": "0.1.131",
+        "installedAt": "2026-10-12T22:04:43.932Z",
+        "lastUpdated": "2026-10-12T22:04:43.932Z",
+        "gitCommitSha": "c724cbdc7b3cda771b5932a22fca3ce7e0de2e33"
+      }
+    ]
+  }
+}--- user settings
+{
+  "extraKnownMarketplaces": {
+    "hearsay": {
+      "source": {
+        "source": "directory",
+        "path": "/tmp/wave0-checks/hub"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "squeal@hearsay": true
+  }
+}
+--- codex cache
+/tmp/wave0-checks/codex/plugins/cache
+/tmp/wave0-checks/codex/plugins/cache/hearsay
+/tmp/wave0-checks/codex/plugins/cache/hearsay/squeal
+/tmp/wave0-checks/codex/plugins/cache/hearsay/squeal/0.1.131

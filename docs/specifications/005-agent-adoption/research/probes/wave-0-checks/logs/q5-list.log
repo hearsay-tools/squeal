@@ -1,0 +1,28 @@
+== S1 user-scope install, user true (cwd fx/enabled), user enabledPlugins: "squeal@hearsay": true
+Installed plugins:
+
+  ❯ squeal@hearsay
+    Version: 0.1.131
+    Scope: user
+    Status: ✔ enabled
+
+[ { "id": "squeal@hearsay", "version": "0.1.131", "scope": "user", "enabled": true, "installPath": "/tmp/wave0-checks/home/.claude/plugins/cache/hearsay/squeal/0.1.131", "installedAt": "2026-10-12T22:04:43.932Z", "lastUpdated": "2026-10-12T22:04:43.932Z", "projectEnabled": true }]
+== S2 user-scope install, no user entry (cwd fx/enabled), user enabledPlugins: none
+Installed plugins:
+
+  ❯ squeal@hearsay
+    Version: 0.1.131
+    Scope: user
+    Status: ✔ enabled
+
+[ { "id": "squeal@hearsay", "version": "0.1.131", "scope": "user", "enabled": true, "installPath": "/tmp/wave0-checks/home/.claude/plugins/cache/hearsay/squeal/0.1.131", "installedAt": "2026-10-12T22:04:43.932Z", "lastUpdated": "2026-10-12T22:04:43.932Z", "projectEnabled": true }]
+== S3 user-scope install, user false (cwd fx/enabled), user enabledPlugins: "squeal@hearsay": false
+Installed plugins:
+
+  ❯ squeal@hearsay
+    Version: 0.1.131
+    Scope: user
+    Status: ✔ enabled
+    Note: Disabled in ~/.claude/settings.json but still loads — project settings enable it, which overrides your user setting
+
+[ { "id": "squeal@hearsay", "version": "0.1.131", "scope": "user", "enabled": true, "installPath": "/tmp/wave0-checks/home/.claude/plugins/cache/hearsay/squeal/0.1.131", "installedAt": "2026-10-12T22:04:43.932Z", "lastUpdated": "2026-10-12T22:04:43.932Z", "notes": [ "Disabled in ~/.claude/settings.json but still loads — project settings enable it, which overrides your user setting" ], "noteDetails": [ { "type": "ineffective-disable" } ], "projectEnabled": true }]

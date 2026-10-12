@@ -1,0 +1,74 @@
+## cc1-plain
+init: claude 2.1.296 model claude-haiku-5-5; squeal plugin [{'name': 'squeal', 'path': '/tmp/wave0-checks/home/.claude/plugins/cache/hearsay/squeal/0.1.131', 'source': 'squeal@hearsay', 'version': '0.1.131'}]; squeal skills ['squeal:squeal']; AskUserQuestion in tools: False
+tool_use Bash: {"command": "command -v squeal", "description": "Locate squeal binary on PATH"}
+tool_use Bash: {"command": "squeal --version", "description": "Print squeal version"}
+tool_use Bash: {"command": "echo \"$PATH\" | tr \":\" \"\\n\" | grep -i plugin", "description": "Filter PATH entries containing plugin"}
+result: '**`command -v squeal`**\n```\n/home/agent/.claude/plugins/cache/hearsay/squeal/0.1.131/bin/squeal\n```\n\n**`squeal --version`**\n```\n0.1.131\n```\n\n**`echo "$PATH" | tr ":" "\\n" | grep -i plugin`**\n```\n/home/agent/.claude/plugins/cache/hearsay/squeal/0.1.131/bin\n/tmp/wave0-checks/home/.claude/plugins/cache/hearsay/squeal/0.1.131/bin\n```\n\nSkills whose name contains "squeal":\n- `squeal:squeal`'
+
+## cc1b-plain
+init: claude 2.1.296 model claude-haiku-5-5; squeal plugin []; squeal skills []; AskUserQuestion in tools: False
+tool_use Bash: {"command": "command -v squeal", "description": "Locate squeal binary on PATH"}
+tool_use Bash: {"command": "squeal --version", "description": "Print squeal version"}
+tool_use Bash: {"command": "echo \"$PATH\" | tr \":\" \"\\n\" | grep -i plugin", "description": "Filter PATH entries containing plugin"}
+result: 'Raw output from the three commands:\n\n1. `command -v squeal`: no stdout, exit code 1.\n2. `squeal --version`: exit code 127, stderr: `/bin/bash: line 1: squeal: command not found`\n3. `echo "$PATH" | tr ":" "\\n" | grep -i plugin`: no output (grep found no matching PATH entries).\n\nSkills whose name contains "squeal": none. The available skills are dataviz, update-config, keybindings-help, code-review, simplify, fewer-permission-prompts, loop, claude-api, workflow-authoring, run, plugin-authoring, init, and security-review.'
+
+## cc1c-plain
+init: claude 2.1.296 model claude-haiku-5-5; squeal plugin [{'name': 'squeal', 'path': '/tmp/wave0-checks/home/.claude/plugins/cache/hearsay/squeal/0.1.131', 'source': 'squeal@hearsay', 'version': '0.1.131'}]; squeal skills ['squeal:squeal']; AskUserQuestion in tools: False
+tool_use Bash: {"command": "command -v squeal", "description": "Locate squeal binary on PATH"}
+tool_use Bash: {"command": "squeal --version", "description": "Print squeal version"}
+tool_use Bash: {"command": "echo \"$PATH\" | tr \":\" \"\\n\" | grep -i plugin", "description": "Filter PATH entries containing plugin"}
+result: 'Raw output from the three commands:\n\n```\n$ command -v squeal\n/tmp/wave0-checks/home/.claude/plugins/cache/hearsay/squeal/0.1.131/bin/squeal\n\n$ squeal --version\n0.1.131\n\n$ echo "$PATH" | tr ":" "\\n" | grep -i plugin\n/tmp/wave0-checks/home/.claude/plugins/cache/hearsay/squeal/0.1.131/bin\n```\n\nSkills whose name contains "squeal":\n\n- `squeal:squeal`'
+
+## cc2-ask
+init: claude 2.1.296 model claude-haiku-5-5; squeal plugin [{'name': 'squeal', 'path': '/tmp/wave0-checks/home/.claude/plugins/cache/hearsay/squeal/0.1.131', 'source': 'squeal@hearsay', 'version': '0.1.131'}]; squeal skills ['ask-probe', 'squeal:squeal']; AskUserQuestion in tools: False
+tool_use Write: {"file_path": "/tmp/wave0-checks/fx/ask/colour.txt", "content": "unasked\n"}
+result: 'I could not ask: there is no AskUserQuestion tool in this session, so I wrote `unasked` to `/tmp/wave0-checks/fx/ask/colour.txt`.'
+
+## cc4-enabled-s2
+init: claude 2.1.296 model claude-haiku-5-5; squeal plugin [{'name': 'squeal', 'path': '/tmp/wave0-checks/home/.claude/plugins/cache/hearsay/squeal/0.1.131', 'source': 'squeal@hearsay', 'version': '0.1.131'}]; squeal skills ['squeal:squeal']; AskUserQuestion in tools: False
+tool_use Bash: {"command": "command -v squeal; squeal --version", "description": "Show squeal path and version"}
+result: '```\n/tmp/wave0-checks/home/.claude/plugins/cache/hearsay/squeal/0.1.131/bin/squeal\n0.1.131\n```'
+
+## cc5-enabled-mixed
+init: claude 2.1.296 model claude-haiku-5-5; squeal plugin [{'name': 'squeal', 'path': '/tmp/wave0-checks/home/.claude/plugins/cache/hearsay/squeal/0.1.131', 'source': 'squeal@hearsay', 'version': '0.1.131'}]; squeal skills ['squeal:squeal']; AskUserQuestion in tools: False
+tool_use Bash: {"command": "command -v squeal; squeal --version; echo \"$PATH\" | tr \":\" \"\\n\" | grep -i plugin", "description": "Check squeal binary, version, and PATH plugin entries"}
+result: '```\n/tmp/wave0-checks/home/.claude/plugins/cache/hearsay/squeal/0.1.131/bin/squeal\n0.1.131\n/tmp/wave0-checks/home/.claude/plugins/cache/hearsay/squeal/0.1.131/bin\n```'
+
+## cc6-enabled-mixed-reordered
+init: claude 2.1.296 model claude-haiku-5-5; squeal plugin [{'name': 'squeal', 'path': '/tmp/wave0-checks/home/.claude/plugins/cache/hearsay/squeal/0.1.132', 'source': 'squeal@hearsay', 'version': '0.1.132'}]; squeal skills ['squeal:squeal']; AskUserQuestion in tools: False
+tool_use Bash: {"command": "command -v squeal; squeal --version", "description": "Show squeal path and version"}
+result: '```\n/tmp/wave0-checks/home/.claude/plugins/cache/hearsay/squeal/0.1.132/bin/squeal\n0.1.132\n```'
+
+## codex rollout-2026-10-13T00-06-18-01a13226-fe31-7871-8c81-cc8570c555a7.jsonl
+prompt: ''
+
+## codex rollout-2026-10-13T00-06-18-01a13226-fe9e-7bc3-96d5-2ae13cfdb935.jsonl
+prompt: ''
+2026-10-12T22:06:22.589Z call exec: 'const r = await tools.exec_command({cmd:"date +%T; sleep 75; date +%T; echo finished",yield_time_ms:30000});\ntext(r.output);\nif (r.session_id) text(`SESSION_ID=${r.session_id}`);\n'
+2026-10-12T22:06:52.775Z output: 'Script completed\nWall time 30.2 seconds\nOutput:\n 00:06:22\n SESSION_ID=65912'
+2026-10-12T22:06:53.948Z call exec: 'const r = await tools.write_stdin({session_id:65912,yield_time_ms:30000});\ntext(r.output);\nif (r.session_id) text(`SESSION_ID=${r.session_id}`);\n'
+2026-10-12T22:07:23.955Z output: 'Script completed\nWall time 30.0 seconds\nOutput:\n  SESSION_ID=65912'
+2026-10-12T22:07:26.297Z call exec: 'const r = await tools.write_stdin({session_id:65912,yield_time_ms:30000});\ntext(r.output);\nif (r.session_id) text(`SESSION_ID=${r.session_id}`);\n'
+2026-10-12T22:07:37.633Z output: 'Script completed\nWall time 11.3 seconds\nOutput:\n 00:07:37\nfinished\n'
+
+## codex rollout-2026-10-13T00-06-19-01a13227-0281-7923-9a08-2cb17d6b8525.jsonl
+prompt: ''
+2026-10-12T22:06:24.996Z call exec: 'const r = await tools.exec_command({cmd:"node --disable-warning=ExperimentalWarning \\"/tmp/wave0-checks/codex/plugins/cache/hearsay/squeal/0.1.131/dist/cli/squeal.mjs\\" --version",max_output_tokens:1000});\ntext(JSON.stri'
+2026-10-12T22:06:25.145Z output: 'Script completed\nWall time 0.1 seconds\nOutput:\n {"chunk_id":"fac8ec","wall_time_seconds":0.000004208,"exit_code":0,"original_token_count":2,"output":"0.1.131\\n"}'
+
+## cx1-plain (codex exec --json)
+agent_message:  'squeal:squeal — r1/squeal/0.1.131/skills/squeal/SKILL.md\n\n```text\nexit 1\n```'
+
+## cx2-mention (codex exec --json)
+agent_message:  'I’m following the Squeal skill to locate its CLI and run only `--version`.'
+command_execution: /bin/bash -lc 'node --disable-warning=ExperimentalWarning "/tmp/wave0-checks/codex/plugins/cache/hearsay/squeal/0.1.131/dist/cli/squeal.mjs" --version' '0.1.131\n'
+agent_message:  'Command: `node --disable-warning=ExperimentalWarning "/tmp/wave0-checks/codex/plugins/cache/hearsay/squeal/0.1.131/dist/cli/squeal.mjs" --version`\n\nRaw output:\n```text\n0.1.131\n```'
+
+## cx3-timeout (codex exec --json)
+command_execution: /bin/bash -lc 'date +%T; sleep 75; date +%T; echo finished' '00:06:22\n00:07:37\nfinished\n'
+agent_message:  '```text\n00:06:22\n00:07:37\nfinished```'
+
+## cx2 rollout, model-visible skill text
+### Skill roots | - `r0` = `/tmp/wave0-checks/codex/skills/.system` | - `r1` = `/tmp/wave0-checks/codex/plugins/cache/hearsay` | ### Available skills | - imagegen: Generate or edit ra
+- squeal:squeal: Use when about to run tests (vitest, npm test) or to check whether a change broke something, in a repository that uses Squeal (it has squeal.config.json, or SQUEAL messages appear). Squeal already runs the suites its primer lists as covered; this says when to wait for their results and how to read its reports. (file: r1/squeal/0.1.131/skills/squeal/SKILL.md)
+<skill> | <name>squeal:squeal</name> | <path>/tmp/wave0-checks/codex/plugins/cache/hearsay/squeal/0.1.131/skills/squeal/SKILL.md</path> | --- | name: squeal | description: Use when about to run tests (vitest, npm test

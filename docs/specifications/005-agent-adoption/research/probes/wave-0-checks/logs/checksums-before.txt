@@ -1,0 +1,6 @@
+6c70e548382329c257bcb48853d32494293d0ea069a4883bcd5cc1281cdfaa88  /home/agent/.claude/settings.json
+/home/agent/.claude/settings.json 899 2026-10-12 12:17:56.809994720 +0200
+bcf57537b6199fb18b08cfd7f86b69993c64c622bb09f3e4d82919511d98d81f  /home/agent/.claude/plugins/installed_plugins.json
+/home/agent/.claude/plugins/installed_plugins.json 3113 2026-10-12 20:02:04.459658889 +0200
+2983be965e415b792bafd4f9183388ae25b4203b60e6c898421646b6fdd1ccc3  /home/agent/.codex/config.toml
+/home/agent/.codex/config.toml 7765 2026-10-12 15:05:06.112087932 +0200
