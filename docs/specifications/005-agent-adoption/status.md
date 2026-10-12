@@ -83,7 +83,7 @@ Brief: `research/README.md`. Topics `adoption-baseline`, `instruction-surfaces`,
   - Open question 6: filed by the 001 coordinator as 001-307 (`8cafa055`), planned for when 005-12 dispatches. None of 001-292, 001-297, 001-304 touches `src/cli/run.ts`; 001-292 (an experiment on `exp/runner-named-count`) changes the `Affected checks:` line in `format-status.ts`, where 005-21 would collide, so 005-21 stays after it.
   - 006 (its coordinator, the same day): 006-37 is done and 006-38 is unscheduled, so 005-04 need not wait for 006; the eval slot is shared by message, one run at a time. The first 006 baseline on 005-10's release is marked a new trend point.
 
-- 2026-10-12, the human: the warm-up must also run on its own. D3 adds `squeal setup --warm-up`: no questions and no writes, the same steps and progress lines, anything it finds printed as a suggestion for `squeal setup`; the skill offers it alone too. Rows 005-14 and 005-19.
+- 2026-10-12, the human: the warm-up must also run on its own. D3 adds `squeal warmup`, a command of its own beside `squeal setup`, not a flag (the human, the same day): no questions and no writes, the same steps and progress lines, anything it finds printed as a suggestion for `squeal setup`; the skill offers it alone too. Rows 005-14 and 005-19.
 
 ## Dogfooding
 
