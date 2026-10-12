@@ -21,6 +21,8 @@ interface Target {
   added: Set<AbsolutePath>;
   /** A `.gitignore` changed, or an update came, since the last step: recompute all. */
   stale: boolean;
+  /** A step is queued and has not started: later hints join it. */
+  queued: boolean;
 }
 
 /**
@@ -89,6 +91,7 @@ export class LinkedWatches {
       queue: Promise.resolve(),
       added: new Set(),
       stale: false,
+      queued: false,
     };
     try {
       target.excluded = await linkedExclusions(this.root, this.linksOf(path), path);
@@ -135,7 +138,10 @@ export class LinkedWatches {
   /** Recomputes the exclusions of `target`, all of them when `all`, and applies them. */
   private step(path: AbsolutePath, target: Target, all: boolean): Promise<void> {
     if (all) target.stale = true;
+    if (target.queued) return target.queue;
+    target.queued = true;
     target.queue = target.queue.then(async () => {
+      target.queued = false;
       if (target.sub === null || !this.links.has(path)) return;
       const links = this.linksOf(path);
       const stale = target.stale;
