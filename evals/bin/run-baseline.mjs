@@ -2,6 +2,7 @@
 // Spec 006 D3, D5, D6, D8: the baseline against a commit of this repository's Squeal.
 //   node evals/bin/run-baseline.mjs [--commit HEAD] [--parallel 2] [--max-load <cpus>]
 //     [--variant <name>] [--stand-in <model>=<stand-in>] [--date YYYY-MM-DD] [--resume <run>]
+//     [--repetitions <n>]  (overrides the config's repetitions; the results record it)
 // Every cell of evals/baseline.json runs through run-cell.mjs, 2 to 4 at once, each started only
 // while the one-minute load average is below --max-load (the host's CPU count by default). A
 // model whose first cell never reaches it is recorded as missing and not run again; --stand-in
@@ -56,6 +57,7 @@ const config = atomic
   ? atomicConfig()
   : JSON.parse(readFileSync(join(EVALS, "baseline.json"), "utf8"));
 if (atomic) config.tasks = Object.keys(config.scenarios);
+if (argv.includes("--repetitions")) config.repetitions = Math.max(1, Number(opt("--repetitions")));
 const parallel = Math.min(
   4,
   Math.max(1, Number(opt("--parallel", String(atomic ? config.parallel : 2)))),
@@ -270,6 +272,7 @@ const results = {
       }),
     ),
     settleS: config.settleS,
+    repetitions: config.repetitions,
   }),
 };
 // Graded under the current expectations at write time (spec 006 D4), as regrade.mjs would.
