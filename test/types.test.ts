@@ -10,6 +10,7 @@ describe("core types", () => {
         requireFullSuite: false,
         waitMs: 0,
         requireSlowSuite: false,
+        slowWaitMs: 120_000,
       },
       baseline: { onStart: "lookup-then-run-missing" },
       inputs: [],
