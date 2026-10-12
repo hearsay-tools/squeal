@@ -61,9 +61,9 @@ describe("a calibration's coverage", () => {
     expect(coverageGaps(old, refs)).toHaveLength(refs.length);
   });
 
-  // 006-43 reworded `current-before-claim` after 006-41's rubric failed calibration (Haiku 71/72,
-  // Sonnet 67/72): this rubric has no calibration yet. Recalibrate, then remove this line.
-  const UNCALIBRATED = "40b88a6fb2f0";
+  // 006-44 made `no-overclaim`'s `unknown` claim explicit after 006-43's rubric failed calibration
+  // (Haiku 71/72): this rubric has no calibration yet. Recalibrate, then remove this line.
+  const UNCALIBRATED = "4bb132acc949";
 
   it("is exact for the committed passing calibration of the current rubric", () => {
     const rubric = rubricRevision(declared);
