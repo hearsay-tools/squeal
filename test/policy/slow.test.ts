@@ -120,6 +120,17 @@ describe("policy slow (spec 004 D7)", () => {
     expect(problems).toEqual([`"stop.requireSlowSuite" must be true or false, got "yes"`]);
     expect(policy.stop.requireSlowSuite).toBe(false);
   });
+
+  it("defaults stop.slowWaitMs to 120000 and accepts a number >= 0 (D9 as amended 2026-10-12)", () => {
+    expect(DEFAULT_POLICY.stop.slowWaitMs).toBe(120_000);
+    expect(load({ stop: { slowWaitMs: 30_000 } })).toMatchObject({
+      policy: { stop: { slowWaitMs: 30_000 } },
+      problems: [],
+    });
+    const { policy, problems } = load({ stop: { slowWaitMs: -1 } });
+    expect(problems).toEqual([`"stop.slowWaitMs" must be a number >= 0, got -1`]);
+    expect(policy.stop.slowWaitMs).toBe(120_000);
+  });
 });
 
 describe("policy nodeTest[].slow (spec 004 D1)", () => {
