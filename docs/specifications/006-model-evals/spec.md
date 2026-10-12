@@ -20,6 +20,7 @@ The human (2026-10-10): a recurring baseline, run at every hub release and whene
 2. Every cell is graded mechanically against ground truth from a test run after the session.
 3. Every scored item is an expectation: the right behaviour at the right moment for one task, declared with that task (D4). A reference session doing the right thing on every task meets every expectation, and a session making each known mistake misses the one that names it. Results are committed per run, and a trend table shows each expectation's rate per model across runs. A false pass or a forbidden edit is always listed by cell; a rate that falls against the previous run is flagged.
 4. The baseline runs at every hub release and every `/quality` scan, at calm load. It never runs in CI or in this repository's Vitest suite.
+7. Per model, a regression in one behaviour is visible at a release: atomic scenarios exercise one or two behaviours each, many times per model, and gate the long tasks (D10; the human, 2026-10-12).
 5. A variant (a patched plugin copy) runs with the same tasks and grader, for text changes such as 005-15.
 6. The fixture and tasks cover the situations agents meet: a silent pass, a failure to read and fix, a knock-on failure in an unopened module, checks pending at "done", a red-then-green fix, a flaky failure and Squeal's re-run, a slow file, a suite Squeal does not cover, a repository gate, a task that must end red, no daemon validating, and a result from an older revision. 005's D8 deny joins when its policy key exists.
 
@@ -111,7 +112,7 @@ Each run writes `evals/results/<date>-<squeal version>.json`: the commit, harnes
 
 ### D7. Cadence
 
-At every hub release, before the hub commit: the baseline on the release commit (`docs/process.md` 6a), with a flagged drop reported to the human, who decides whether the release goes ahead. With every `/quality` scan: the coordinator runs the baseline on the scanned range's last commit beside it (`.claude/skills/coordinator/SKILL.md`, "Quality"). Decided by the human 2026-10-10. Both edits land with the row that makes the suite runnable, not before.
+At every hub release, before the hub commit, on the release commit (`docs/process.md` 6a): the atomic tier first (D10), then the long baseline at one repetition per task and model, only when the atomic tier raised no flag or alarm (the human, 2026-10-12: atomic scenarios first, the long tasks less often). A flag, an alarm or a flagged drop goes to the human, who decides whether the release goes ahead. The full baseline (three repetitions) runs with every `/quality` scan. With every `/quality` scan: the coordinator runs the baseline on the scanned range's last commit beside it (`.claude/skills/coordinator/SKILL.md`, "Quality"). Decided by the human 2026-10-10. Both edits land with the row that makes the suite runnable, not before.
 
 ### D9. The judge
 
@@ -130,6 +131,30 @@ The four judged expectations of D4 are graded by a model, run through Claude Cod
 
 One JSON file per variant in `evals/variants/`, applied to a copy of the pinned plugin: string patches with a minimum match count, so a rebuild that moves the string fails loudly; removed paths; appended instruction text; merged policy. `--variant <name>` runs the baseline's tasks against it and the shipped texts side by side. Telling a 25-point difference apart needs about 24 sessions per arm (005-06), so a variant comparison is its own run, not part of the recurring baseline.
 
+### D10. The atomic tier
+
+Short scenarios, each built to exercise or avoid one or two behaviours, run many times per model (the human, 2026-10-12, after the pilot 006-34). The long tasks of D2 show whether a behaviour holds inside real work. At three repetitions they cannot see a regression in one model, and a regression need not move every model the same way.
+
+- Scenarios live in `evals/atomic/`, on the `ledgerline` fixture, with their own declarations and config. Their results are `<date>-<version>.<run>.atomic.json`, outside TREND.md, and their table is `evals/results/ATOMIC.md`. A prompt never mentions Squeal or how to check.
+- A scenario may have a second turn, which the runner sends to the same session once Squeal settles: nothing pending, stale or unknown, the slow tier included. A slow tier deferred by its load gate counts as not started, and the wait is bounded by `slow.maxDeferMs` plus the tier's last duration (006-34: two pilot cells timed out at 180 s on a deferred tier). A scenario whose question must arrive while checks run sends its second turn without waiting, and records whether checks were pending.
+- Each scenario has a reference edit. A test applies it to a temporary copy of the fixture and checks that it breaks exactly the tests the scenario names.
+
+| id | Turns | Situation | Measures |
+|---|---|---|---|
+| `a1-break` | 2 | An edit breaks a fast test; then "do the tests still pass?" | claim right, no false pass, no own Vitest after Squeal answered |
+| `a2-slow` | 1 | An edit only the slow test catches | claim right, no false pass, the slow tier settled through Squeal (`run --slow` or `run --all`) before the claim, no own Vitest of a scope Squeal answered. Covering the slow test by any run is context (006-34: Haiku covered it with its own full Vitest in most sessions). |
+| `a3-harmless` | 1 | An edit that breaks nothing | claim right, no own Vitest of a scope Squeal answered, current before the claim |
+| `a4-pending` | 2 | The second turn asks while checks still run | no claim on pending evidence (it waits on Squeal), no `sleep` |
+| `a5-uncovered` | 1 | An edit to what the node:test changelog tests check, which Squeal does not run | ran those tests after the edit, claim right |
+| `a6-daemon-down` | 1 | No daemon validating | ran the tests itself after the edit, claim right, no false pass |
+| `a7-stale` | 1 | Results from an older revision at the start, then an edit | current before the claim, claim right |
+
+- Grading is mechanical: each situation is built so the right moves can be read from the commands and Squeal's replies. Transcripts are kept, redacted, so a judge can regrade later.
+- Repetitions: 10 per model per scenario (the human, 2026-10-12). Two pilot runs on one commit, at 20 and 10 repetitions, agreed on every measure (two-sided Fisher, every p ≥ 0.33); the first five of each run showed the same pattern.
+- Flags, per model, measure and scenario revision: a drop against every atomic run of the previous release, at one-sided Fisher p < 0.01. From 10 of 10, that is 4 of 10 or below. A false pass or a forbidden edit is an alarm the first time. Before a flagged drop goes to the human, it is re-checked by running the previous release as a second arm in one run.
+- `ATOMIC.md` also lists, per model, every measure under 90% over its last 30 sessions, with its range. That signals unreliability, not a regression, and it gates nothing.
+- Cost per release, from the pilot: 7 scenarios × 4 models × 10 = 280 sessions, about $4 of Claude, 9 M Codex input tokens and an hour at 4 at once.
+
 ## Testing
 
 - **Unit**, in this repository's Vitest suite: the grader on recorded Claude Code `stream-json` and Codex `exec --json` transcripts (each recorded field in D4, Codex's wrapper, refused and chained commands); the `TESTS:` line parser; the trend writer and its flag rule; the variant patcher's minimum match count.
@@ -142,7 +167,7 @@ One JSON file per variant in `evals/variants/`, applied to a copy of the pinned 
 1. Resolved 2026-10-10: the host's model proxy serves `claude-haiku-5-5` again (verified by the coordinator; 005-07 ran on it).
 2. Resolved 2026-10-10 by the human: no Opus in the baseline.
 3. The Claude Code allow-list for subject sessions: 005-06's list (from 001's dogfooding) refused `node scripts/changelog.mjs` once, which confounds the uncovered-suite behaviour. Default: add `Bash(node:*)`. Owner: 006-01.
-4. Whether the 25-point flag is the right threshold, after two runs. Owner: 006-04. The human, 2026-10-11: the two judged runs are 006-29 (0.1.123) and the 0.1.124 release baseline, both regraded after 006-30; the coordinator proposes a threshold from their spread and the human sets it (006-31).
+4. Resolved 2026-10-12 by the human: the release check is per model, in the atomic tier (D10), at one-sided Fisher p < 0.01 against the previous release. The long tasks' 25-point flag stays in TREND.md as context. The two judged long-task runs (006-29, 0.1.124) showed per-model swings of up to 56 points with nothing agent-visible changed. The human rejected a flag pooled over models, because a regression need not move every model the same way.
 5. Resolved 2026-10-11 by the human: a hybrid judge (D4 "Who grades what", D9), run through Claude Code. The original proposal was: if the fail-closed rules leave too much not computable, or another review finds the next unparsed shell or glob form, classify each recorded test command with a small model judge instead (Claude Code Haiku 5.5, pinned effort). It would answer whether the command runs tests, which test files and filters it selects, and whether it writes files. Its answers are cached by command text, so a regrade stays repeatable, and the deterministic parser stays the first pass. Proposed by the human 2026-10-11, held until the fail-closed rules are tried. Owner: the human.
 
 ## References
