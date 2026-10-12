@@ -51,6 +51,20 @@ for (const harness of ["codex", "claude"] as const)
         expect(Object.entries(grade(c) ?? {}).filter(([, v]) => v !== "met")).toEqual([]);
       });
 
+    // 006-41 (the human, 2026-10-12): a failure a status lists as current at the last edit's
+    // revision counts, though first observed at an older one; paired with `older`, the same
+    // failure with that revision pending, among the mistakes above.
+    it("t3-tax: a fail claim on a failure carried forward as current, checks queued, meets every expectation", () => {
+      const c = BUILD["t3-tax"]?.({
+        pendingFailure: "carried",
+        claim: "fail",
+        truthPass: false,
+        harness,
+      }) as CellRecord;
+      expect((c.transcript as string[]).join("\n")).toContain("observed at revision 5, current");
+      expect(Object.entries(grade(c) ?? {}).filter(([, v]) => v !== "met")).toEqual([]);
+    });
+
     for (const m of MISTAKES)
       it(`${m.task}: ${m.what} misses ${m.misses.join(" and ")} and only that`, () => {
         const g = grade(BUILD[m.task]?.({ ...m.twist, harness }) as CellRecord);

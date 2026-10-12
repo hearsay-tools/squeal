@@ -242,18 +242,32 @@ export const SUNDAY = (rev: number) =>
 /** A delivery of the Sunday test recovering while the flake keeps failing. */
 export const RECOVERED = (rev: number) =>
   `SQUEAL · 2 checks changed at revision ${rev}\n${COUNTS(rev, 0)}\n\nFAIL  test/clock.test.ts > due dates > loads the holiday calendar within its budget\n    Seen by Squeal's run at revision ${rev}.\n\nPASS  test/clock.test.ts > due dates > moves a Sunday due date to Monday\n    FAIL -> PASS`;
-/** `squeal status` text: `rev`, `failing` known failures listed as current, and what is left. */
+/**
+ * `squeal status` text: `rev`, `failing` known failures first observed at `seen` and `listed`
+ * (`current`, or `pending` when `seen` is older), and what is left.
+ */
 export const STATUS_TEXT = (
   rev: number,
-  { failing = [] as string[], pending = 0, stale = 0, unknown = 0, seen = rev } = {},
+  {
+    failing = [],
+    pending = 0,
+    stale = 0,
+    unknown = 0,
+    seen = rev,
+    listed = seen < rev ? "pending" : "current",
+  }: {
+    failing?: string[];
+    pending?: number;
+    stale?: number;
+    unknown?: number;
+    seen?: number;
+    listed?: string;
+  } = {},
 ) =>
   [
     `Revision: ${rev}`,
     `Known failures: ${failing.length}`,
-    ...failing.flatMap((f) => [
-      `  FAIL  ${f}`,
-      `        observed at revision ${seen}, ${seen < rev ? "pending" : "current"}`,
-    ]),
+    ...failing.flatMap((f) => [`  FAIL  ${f}`, `        observed at revision ${seen}, ${listed}`]),
     `Affected checks: ${31 - pending - stale - unknown} passed, 0 running, ${pending} queued${stale ? `, ${stale} stale` : ""}${unknown ? `, ${unknown} unknown` : ""}`,
     "Full-suite checkpoint: none completed at any revision",
     "",
@@ -264,10 +278,21 @@ export const waitAt = (rev: number, failing: string[] = []) => ({
   cmd: "squeal status --wait 60000",
   out: `Returned on quiet: nothing pending at revision ${rev} after 4.0 s\n\n${STATUS_TEXT(rev, { failing })}`,
 });
-/** `squeal status --wait` that returned on its timeout at `rev`, `pending` checks left, `failing` listed. */
-export const waitFailing = (rev: number, failing: string[], { pending = 2, seen = rev } = {}) => ({
+/**
+ * `squeal status --wait` that returned on its timeout at `rev`, `pending` checks left, `failing`
+ * listed as first observed at `seen`; `listed` `current` when Squeal carried them forward (006-41).
+ */
+export const waitFailing = (
+  rev: number,
+  failing: string[],
+  {
+    pending = 2,
+    seen = rev,
+    listed = seen < rev ? "pending" : "current",
+  }: { pending?: number; seen?: number; listed?: string } = {},
+) => ({
   cmd: "squeal status --wait 60000",
-  out: `Returned on timeout after 60.0 s: ${pending} pending at revision ${rev}\n\n${STATUS_TEXT(rev, { failing, pending, seen })}`,
+  out: `Returned on timeout after 60.0 s: ${pending} pending at revision ${rev}\n\n${STATUS_TEXT(rev, { failing, pending, seen, listed })}`,
 });
 /** A wait current at revision 1, for a session that saw no revision before its edit. */
 export const WAIT = waitAt(1);
