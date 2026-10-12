@@ -2,7 +2,7 @@
 // Spec 006 D3: one eval cell (task x variant x harness x model x repetition) end to end, isolated.
 //   node evals/bin/run-cell.mjs <task> <variant> <claude|codex> <model> [rep]
 //     [--commit HEAD] [--run <id>] [--resume] [--effort medium] [--cold] [--dry]
-//     [--max-load <cpus>] [--timeout-s 900] [--grace-s 10]
+//     [--max-load <cpus>] [--timeout-s 900] [--grace-s 10] [--force-root]
 // --dry builds the cell and warms it, then stops the daemon without a session. --effort pins the
 // reasoning effort: `claude -p --effort <level>`, `codex exec -c model_reasoning_effort="<level>"`.
 // The task's knobs come from evals/tasks/tasks.json. Exit 75: held, the load is too high.
@@ -16,7 +16,8 @@
 // run is skipped with --resume and refused without it (exit 2), so no run overwrites another.
 // Exit 1: the cell failed (setup, a session that could not start, or a secret that survived).
 //
-// Everything lives under $SQ_EVALS_ROOT (default <tmpdir>/squeal-evals):
+// Everything lives under $SQ_EVALS_ROOT (default /tmp/squeal-evals-<uid>, never the system temp
+// directory), refused inside a repository (exit 2) unless --force-root:
 //   pin-base/<commit>/      `git archive` of the commit's plugins
 //   nm/node_modules         the fixture's Vitest, copied into each cell
 //   pins/<commit>/<variant> the variant's patched copy (evals/variants/<variant>.json)
@@ -40,7 +41,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { availableParallelism, loadavg, tmpdir } from "node:os";
+import { availableParallelism, loadavg } from "node:os";
 import { join, relative } from "node:path";
 import {
   maxDeferMsOf,
@@ -67,6 +68,7 @@ import {
   runId,
 } from "../lib/prepare.mjs";
 import { cellRecord } from "../lib/results.mjs";
+import { evalsRoot, refuseInsideRepo } from "../lib/root.mjs";
 import {
   cellEnv,
   clearScratch,
@@ -79,10 +81,16 @@ import {
 import { groundTruth, killRunning, runSession, sessionCommand } from "../lib/session.mjs";
 import { buildPin } from "../lib/variant.mjs";
 
-const ROOT = process.env.SQ_EVALS_ROOT ?? join(tmpdir(), "squeal-evals");
+const argv = process.argv.slice(2);
+const forceRoot = argv.includes("--force-root");
+let ROOT;
 let args;
 try {
-  args = cellArgs(process.argv.slice(2), { runId, maxLoad: availableParallelism() });
+  ROOT = refuseInsideRepo(evalsRoot(), { force: forceRoot });
+  args = cellArgs(
+    argv.filter((a) => a !== "--force-root"),
+    { runId, maxLoad: availableParallelism() },
+  );
 } catch (e) {
   console.error(e.message);
   process.exit(2);

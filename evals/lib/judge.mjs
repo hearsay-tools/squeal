@@ -6,8 +6,8 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { evalsRoot, refuseInsideRepo } from "./root.mjs";
 import { RUBRIC, rubricOf, SYSTEM } from "./rubric.mjs";
 import { cellEnv, providerVariables } from "./scratch.mjs";
 
@@ -215,11 +215,12 @@ export function judgeEnv(parent, scratch) {
 
 /**
  * The real runner: each call runs `command` (with `prefix` before the arguments) from a fresh
- * scratch directory under `base`, with a scratch `HOME`, and removes the scratch afterwards.
+ * scratch directory under `base` (`<eval root>/judge` by default, refused inside a repository,
+ * `lib/root.mjs`), with a scratch `HOME`, and removes the scratch afterwards.
  * Resolves `{ status, stdout, stderr }`.
  */
 export function claudeRunner({
-  base = tmpdir(),
+  base = refuseInsideRepo(join(evalsRoot(), "judge")),
   parent = process.env,
   command = "claude",
   prefix = [],

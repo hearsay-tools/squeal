@@ -2,18 +2,17 @@
 // Spec 006 D9's calibration gate: the judge identity judges every reference session in both
 // harnesses twice and must give each its expected verdict both times.
 //   node --import tsx evals/bin/judge-calibrate.mjs [--model claude-haiku-5-5] [--base <dir>]
-//     [--parallel 4] [--date YYYY-MM-DD] [--max-cost <usd>]
+//     [--parallel 4] [--date YYYY-MM-DD] [--max-cost <usd>] [--force-root]
 // --max-cost stops calling the model once the calls made so far cost that much; the calls left
 // fail, so the identity fails calibration rather than overspending (up to --parallel calls past it).
 // --model is Haiku 5.5 or Sonnet 5.5, never Opus or Fable; try Sonnet only when Haiku fails.
-// --base is where each call's scratch HOME is made and removed (the system temp directory by
-// default). The reference sessions are this repository's (test/evals/judge-references.ts), so the
+// --base is where each call's scratch HOME is made and removed (<eval root>/judge by default,
+// lib/root.mjs), refused inside a repository (exit 2) unless --force-root. The reference sessions are this repository's (test/evals/judge-references.ts), so the
 // script runs with tsx. It writes evals/results/judge-calibration-<identity>.json, passing or
 // not, and exits 0 when the identity passed, 3 when it did not. The file keeps the sessions'
 // names, the expected and given verdicts with their cited steps and reasons, and the cost; it
 // never keeps a transcript, and it is checked for secrets before it is written.
 import { writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { declarations } from "../lib/behaviours.mjs";
@@ -21,17 +20,25 @@ import { calibrate, calibrationName, JUDGE_MODELS } from "../lib/calibration.mjs
 import { claudeRunner, claudeVersion, JUDGE, JUDGED, judgeIdentity } from "../lib/judge.mjs";
 import { EVALS } from "../lib/prepare.mjs";
 import { assertNoSecrets } from "../lib/results.mjs";
+import { evalsRoot, refuseInsideRepo } from "../lib/root.mjs";
 import { secretsOf } from "../lib/scratch.mjs";
 
 const { values } = parseArgs({
   options: {
     model: { type: "string", default: JUDGE_MODELS[0] },
-    base: { type: "string", default: tmpdir() },
+    base: { type: "string", default: join(evalsRoot(), "judge") },
     parallel: { type: "string", default: "4" },
     date: { type: "string", default: new Date().toISOString().slice(0, 10) },
     "max-cost": { type: "string" },
+    "force-root": { type: "boolean", default: false },
   },
 });
+try {
+  values.base = refuseInsideRepo(values.base, { force: values["force-root"] });
+} catch (e) {
+  console.error(e.message);
+  process.exit(2);
+}
 if (!JUDGE_MODELS.includes(values.model)) {
   console.error(`--model must be one of ${JUDGE_MODELS.join(", ")} (spec 006 D9)`);
   process.exit(2);
