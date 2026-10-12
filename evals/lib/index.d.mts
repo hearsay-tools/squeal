@@ -284,6 +284,10 @@ export function sessionCommand(input: {
   model: string;
   effort: string;
   pluginDir: string | null;
+  /** Claude Code's turn 1 of a multi-turn session names this session id (006-33). */
+  sessionId?: string | null;
+  /** A later turn resumes this session: Claude Code's session id or Codex's thread. */
+  resume?: string | null;
 }): [string, string[]];
 
 export interface Patch {
@@ -690,3 +694,127 @@ export function trendMarkdown(
   runs: readonly { name: string; data: ResultsFile }[],
   declared?: Declarations,
 ): string;
+
+// 006-33: atomic scenarios (evals/atomic/) and a session's later turns.
+export const ATOMIC: string;
+export interface AtomicReference {
+  path: string;
+  find: string;
+  replace: string;
+}
+export interface AtomicDeclaration {
+  turns: string[];
+  knobs?: Record<string, unknown>;
+  reference: AtomicReference;
+  /** Test files the reference edit leaves failing. */
+  breaks: string[];
+  /** The scored ones of MEASURES. */
+  measures?: string[];
+}
+export interface AtomicConfig {
+  description: string;
+  models: { harness: "claude" | "codex"; model: string }[];
+  repetitions: number;
+  effort: string;
+  parallel: number;
+  variant: string;
+  settleS: number;
+  scenarios: Record<string, AtomicDeclaration>;
+}
+export interface Scenario extends AtomicDeclaration {
+  name: string;
+  /** One per turn; the last ends with the claim line's request. */
+  prompts: string[];
+  knobs: Record<string, unknown>;
+}
+export function atomicConfig(file?: string): AtomicConfig;
+export function scenarioOf(name: string, config?: AtomicConfig): Scenario | null;
+export function applyReference(dir: string, scenario: Scenario): void;
+export interface Settled {
+  settled: boolean;
+  /** True too when waiting cannot help: no daemon validating. */
+  done: boolean;
+  why: string;
+}
+export function settledOf(status: string | Json): Settled;
+export interface SettleRecord {
+  settled: boolean;
+  why: string;
+  waitedMs: number;
+  polls: number;
+  /** The last `squeal status --json` read. */
+  status: string;
+}
+export function waitSettled(input: {
+  status: () => string;
+  timeoutMs: number;
+  intervalMs?: number;
+  now?: () => number;
+  sleep?: (ms: number) => Promise<void>;
+}): Promise<SettleRecord>;
+export function readEvents(out: string): Event[];
+export interface Turns {
+  exits: Completion[];
+  /** Each later turn's start, in ms since turn 1 started. */
+  turnStarts: number[];
+  settle: SettleRecord | null;
+  t0: number;
+  t1: number;
+  samples: number[];
+  command: string;
+}
+export function runTurns(input: {
+  prompts: readonly string[];
+  harness: "claude" | "codex";
+  command: (turn: {
+    prompt: string;
+    sessionId: string | null;
+    resume: string | null;
+  }) => [string, string[]];
+  session: (
+    command: string,
+    args: string[],
+    t0: number | null,
+  ) => Promise<{ exit: Completion; t0: number; t1: number; samples: number[] }>;
+  settle: () => SettleRecord | Promise<SettleRecord>;
+  out: string;
+  log: (line: string) => void;
+  load: () => string;
+}): Promise<Turns>;
+export function codexThread(events: readonly Event[]): string | null;
+export function usageOf(events: readonly Event[]): {
+  costUsd: number | null;
+  inputTokens: number | null;
+  cachedTokens: number | null;
+  outputTokens: number | null;
+};
+export interface PilotRecord {
+  turns: number;
+  turnStarts: number[];
+  settle: { settled: boolean; why: string; waitedMs: number } | null;
+  truthPass: boolean | null;
+  claim: "pass" | "fail" | "unknown" | null;
+  claimTrue: boolean | "hedged" | null;
+  falsePass: boolean | null;
+  squealVerdict: string | null;
+  ownRuns: number;
+  ownRunsAfterAnswered: number;
+  /** In the last turn; `null` for a one-turn session. */
+  ownRunsAfterAnsweredTurn2: number | null;
+  /** Slow-tier commands after the last edit, before the claim, in order. */
+  slowBeforeClaim: { n: number; what: string }[];
+  squealWaitsAfterLastEdit: number | null;
+  sleeps: number | null;
+  /** The declared measures: met, missed, or `null` not computable. */
+  measures: Record<string, boolean | null>;
+}
+export const MEASURES: Record<string, (record: PilotRecord) => boolean | null>;
+export function pilotRecord(
+  grade: Record<string, unknown>,
+  input: {
+    turns?: number;
+    turnStarts?: number[];
+    settle?: { settled: boolean; why: string; waitedMs: number } | null;
+    declared?: readonly string[];
+  },
+): PilotRecord;

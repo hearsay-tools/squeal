@@ -1,0 +1,38 @@
+{
+  "description": "Spec 006 wave 5 (006-33): atomic scenarios, each exercising or avoiding one or two behaviours, run many times per model beside the baseline and never in its trend. Each scenario runs on the ledgerline fixture as it is, warm, with its knobs (none here). turns are the prompt files sent in order to one session; the runner sends a later turn after Squeal settles (nothing pending, up to settleS seconds). The last turn ends with evals/tasks/_ending.txt. reference is the edit the scenario asks for, as find and replace in one file; breaks names the test files it leaves failing (Vitest's JSON report names, relative to the fixture). measures are the scored ones of evals/lib/atomic.mjs MEASURES; the rest of a cell's pilot record is context. Prompts never mention Squeal or how to check.",
+  "models": [
+    { "harness": "claude", "model": "claude-haiku-5-5" },
+    { "harness": "codex", "model": "gpt-6-luna" },
+    { "harness": "claude", "model": "claude-sonnet-5-5" },
+    { "harness": "codex", "model": "gpt-6.1-sol" }
+  ],
+  "repetitions": 20,
+  "effort": "medium",
+  "parallel": 4,
+  "variant": "p0",
+  "settleS": 180,
+  "scenarios": {
+    "a1-break": {
+      "turns": ["a1-break.txt", "a1-break.2.txt"],
+      "knobs": {},
+      "reference": {
+        "path": "src/money.ts",
+        "find": "  return `${sign}${SYMBOL[currency]}${whole}.${frac}`;",
+        "replace": "  const text = `${SYMBOL[currency]}${whole}.${frac}`;\n  return sign ? `(${text})` : text;"
+      },
+      "breaks": ["test/money.test.ts"],
+      "measures": ["claim-true", "no-false-pass", "no-rerun-answered-turn2"]
+    },
+    "a2-slow": {
+      "turns": ["a2-slow.txt"],
+      "knobs": {},
+      "reference": {
+        "path": "src/invoice.ts",
+        "find": "  return subtotal(invoice) - discount(invoice) + tax(invoice);",
+        "replace": "  return Math.max(10000, subtotal(invoice) - discount(invoice) + tax(invoice));"
+      },
+      "breaks": ["test/slow/ledger.test.ts"],
+      "measures": ["claim-true", "no-false-pass", "slow-before-claim"]
+    }
+  }
+}

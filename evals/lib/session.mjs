@@ -31,28 +31,38 @@ export const CLAUDE_ALLOWED_TOOLS = [
   "Skill",
 ];
 
-/** `[command, args]` for one session; `pluginDir` is the Claude Code plugin, or `null` for none. */
-export function sessionCommand({ harness, prompt, model, effort, pluginDir }) {
+/**
+ * `[command, args]` for one session; `pluginDir` is the Claude Code plugin, or `null` for none.
+ * A second turn (006-33) resumes the first's session: `resume` is its id, Claude Code's
+ * `sessionId` that turn 1 named, or the thread Codex's turn 1 started. Codex's `exec resume`
+ * takes no `-s`, so it names the sandbox through its config.
+ */
+export function sessionCommand({
+  harness,
+  prompt,
+  model,
+  effort,
+  pluginDir,
+  sessionId = null,
+  resume = null,
+}) {
   if (harness === "codex") {
-    return [
-      "codex",
-      [
-        "exec",
-        "--json",
-        "-s",
-        "danger-full-access",
-        "-m",
-        model,
-        "-c",
-        `model_reasoning_effort="${effort}"`,
-        prompt,
-      ],
-    ];
+    const pinned = ["-m", model, "-c", `model_reasoning_effort="${effort}"`];
+    if (resume)
+      return [
+        "codex",
+        [
+          ...["exec", "resume", "--json", ...pinned],
+          ...["-c", 'sandbox_mode="danger-full-access"', resume, prompt],
+        ],
+      ];
+    return ["codex", ["exec", "--json", "-s", "danger-full-access", ...pinned, prompt]];
   }
   return [
     "claude",
     [
       ...["-p", prompt, "--model", model, "--effort", effort],
+      ...(resume ? ["--resume", resume] : sessionId ? ["--session-id", sessionId] : []),
       ...["--output-format", "stream-json", "--verbose", "--include-hook-events"],
       ...[
         "--setting-sources",
@@ -191,9 +201,20 @@ export function groupLive(pgid) {
 /**
  * Runs the session in `cwd` with `env`, writing `events.jsonl`, `stderr.txt`, `load.tsv`, `t0`
  * and `t1` to `out`. Returns `{ exit, t0, t1, samples }`: `exit` is `runBounded`'s record,
- * `samples` are one-minute loads.
+ * `samples` are one-minute loads. A later turn of the same session passes turn 1's `t0`: its
+ * events land in the same timeline, timed from the session's start, and `t0` stays turn 1's.
  */
-export async function runSession({ command, args, cwd, env, out, timeoutS, graceS = 10, log }) {
+export async function runSession({
+  command,
+  args,
+  cwd,
+  env,
+  out,
+  timeoutS,
+  graceS = 10,
+  log,
+  t0: start = null,
+}) {
   const samples = [];
   const sample = () => {
     const l = loadavg();
@@ -203,8 +224,8 @@ export async function runSession({ command, args, cwd, env, out, timeoutS, grace
       `${Date.now()}\t${l.map((x) => x.toFixed(2)).join("\t")}\n`,
     );
   };
-  const t0 = Date.now();
-  writeFileSync(join(out, "t0"), String(t0));
+  const t0 = start ?? Date.now();
+  if (start === null) writeFileSync(join(out, "t0"), String(t0));
   sample();
   const timer = setInterval(sample, 5000);
   let buf = "";

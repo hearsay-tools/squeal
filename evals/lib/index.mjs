@@ -1,6 +1,20 @@
 // The suite's library, for its scripts and for this repository's tests (test/evals/).
 
 export {
+  ATOMIC,
+  applyReference,
+  atomicConfig,
+  codexThread,
+  MEASURES,
+  pilotRecord,
+  readEvents,
+  runTurns,
+  scenarioOf,
+  settledOf,
+  usageOf,
+  waitSettled,
+} from "./atomic.mjs";
+export {
   CONTEXT,
   declarations,
   disagreements,

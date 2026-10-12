@@ -6,6 +6,10 @@
 // --dry builds the cell and warms it, then stops the daemon without a session. --effort pins the
 // reasoning effort: `claude -p --effort <level>`, `codex exec -c model_reasoning_effort="<level>"`.
 // The task's knobs come from evals/tasks/tasks.json. Exit 75: held, the load is too high.
+// An atomic scenario (evals/atomic/atomic.json, 006-33) in place of a task brings its own knobs
+// and turns: each later turn waits until `squeal status` shows nothing pending (bounded), then
+// resumes the same session with the cell's scratch homes, into the same events.jsonl. Its grade
+// carries the pilot's mechanical record (`atomic`) and is not judged.
 // --run names the run the cell belongs to (a fresh id by default); a cell already graded in that
 // run is skipped with --resume and refused without it (exit 2), so no run overwrites another.
 // Exit 1: the cell failed (setup, a session that could not start, or a secret that survived).
@@ -36,6 +40,14 @@ import {
 } from "node:fs";
 import { availableParallelism, loadavg, tmpdir } from "node:os";
 import { join, relative } from "node:path";
+import {
+  pilotRecord,
+  readEvents,
+  runTurns,
+  scenarioOf,
+  usageOf,
+  waitSettled,
+} from "../lib/atomic.mjs";
 import { declarations } from "../lib/behaviours.mjs";
 import { calibratedIdentity, judgeRecord } from "../lib/calibration.mjs";
 import { daemonPids, stopDaemons, stopLeftovers } from "../lib/daemon.mjs";
@@ -76,8 +88,10 @@ const { task, variant: variantName, harness, model, rep } = args;
 const commit = resolveCommit(args.commit);
 
 const variant = JSON.parse(readFileSync(join(EVALS, "variants", `${variantName}.json`), "utf8"));
-const knobs =
-  JSON.parse(readFileSync(join(EVALS, "tasks", "tasks.json"), "utf8")).tasks[task] ?? {};
+const scenario = scenarioOf(task);
+const knobs = scenario
+  ? scenario.knobs
+  : (JSON.parse(readFileSync(join(EVALS, "tasks", "tasks.json"), "utf8")).tasks[task] ?? {});
 const id = cellId({ task, variant: variantName, harness, model, effort, rep, cold });
 const CELL = join(ROOT, "cells", commit.slice(0, 12), run, id);
 const OUT = join(CELL, "out");
@@ -210,34 +224,43 @@ async function lifecycle() {
     return;
   }
 
-  // The session.
-  const prompt = `${readFileSync(join(EVALS, "tasks", `${task}.txt`), "utf8").trim()}\n${readFileSync(join(EVALS, "tasks", "_ending.txt"), "utf8")}`;
-  writeFileSync(join(OUT, "prompt.txt"), prompt);
-  const [cmd, args] = sessionCommand({
-    harness,
-    prompt,
-    model,
-    effort,
-    pluginDir: plugin ? join(PIN, "plugins/claude-code") : null,
-  });
-  log(`session ${cmd} ${model} effort ${effort} start, load ${load1().toFixed(1)}`);
+  // The session: one turn for a task, each of its turns for an atomic scenario.
+  const prompts = scenario?.prompts ?? [
+    `${readFileSync(join(EVALS, "tasks", `${task}.txt`), "utf8").trim()}\n${readFileSync(join(EVALS, "tasks", "_ending.txt"), "utf8")}`,
+  ];
   const {
-    exit,
+    exits,
+    turnStarts,
+    settle,
     t0: T0,
     t1: T1,
     samples,
-  } = await runSession({
     command: cmd,
-    args,
-    cwd: WORK,
-    env,
+  } = await runTurns({
+    prompts,
+    harness,
+    command: (opts) =>
+      sessionCommand({
+        harness,
+        model,
+        effort,
+        pluginDir: plugin ? join(PIN, "plugins/claude-code") : null,
+        ...opts,
+      }),
+    session: (command, args, t0) =>
+      runSession({ command, args, cwd: WORK, env, out: OUT, timeoutS, graceS, log, t0 }),
+    settle: () =>
+      plugin
+        ? waitSettled({
+            status: () => squeal(["status", "--json"]).stdout,
+            timeoutMs: scenario.settleS * 1000,
+          })
+        : { settled: false, why: "no plugin", waitedMs: 0, polls: 0, status: "" },
     out: OUT,
-    timeoutS,
-    graceS,
-    log,
+    log: (s) => log(s.replace("{model}", `${model} effort ${effort}`)),
+    load: () => load1().toFixed(1),
   });
-  log(`session end ${JSON.stringify(exit)} after ${((T1 - T0) / 1000).toFixed(1)} s`);
-  if (exit.spawnError) throw new Error(`the session could not start: ${cmd} ${exit.spawnError}`);
+  const exit = exits.at(-1);
 
   // After: Squeal's view, ground truth, diff against the fixture, store copy, daemons stopped.
   if (plugin) {
@@ -274,6 +297,13 @@ async function lifecycle() {
     setupS: +setupS.toFixed(1),
     wallS: +((T1 - T0) / 1000).toFixed(1),
     exit,
+    ...(scenario && {
+      atomic: true,
+      turns: prompts.length,
+      exits,
+      turnStarts,
+      settle: settle && { settled: settle.settled, why: settle.why, waitedMs: settle.waitedMs },
+    }),
     load: {
       start: samples[0],
       max: Math.max(...samples),
@@ -291,8 +321,31 @@ async function lifecycle() {
   if (g.status !== 0) log(`grade failed: ${g.stderr}`);
   else {
     log(`graded: ${g.stdout.trim().split("\n").at(-1)}`);
-    await judge();
+    if (scenario) pilot(meta);
+    else await judge();
   }
+}
+
+/**
+ * 006-33: an atomic cell's pilot record, graded mechanically into grade.json; its transcript is
+ * kept, redacted, for a judged regrade later.
+ */
+function pilot(meta) {
+  const file = join(OUT, "grade.json");
+  const grade = JSON.parse(readFileSync(file, "utf8"));
+  grade.transcript = (grade.transcript ?? []).map((s) =>
+    redact(s, secrets).replaceAll(CELL, "<cell>"),
+  );
+  grade.atomic = pilotRecord(grade, {
+    turns: meta.turns,
+    turnStarts: meta.turnStarts,
+    settle: meta.settle,
+    declared: scenario.measures ?? [],
+  });
+  grade.usageTotal = usageOf(readEvents(OUT));
+  writeFileSync(file, JSON.stringify(grade, null, 2));
+  const m = Object.entries(grade.atomic.measures).map(([k, v]) => `${k} ${v}`);
+  log(`pilot: ${m.join(", ") || "nothing scored"}`);
 }
 
 /**
