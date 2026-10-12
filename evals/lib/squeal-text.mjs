@@ -121,7 +121,7 @@ function countsOf(t) {
   let stale;
   let unknown;
   const header = /(\d+) current, (\d+) pending, (\d+) stale, (\d+) unknown/.exec(t);
-  const affected = /^Affected checks: (.*)$/m.exec(t)?.[1];
+  const affected = /^(?:Affected checks|Checks at revision \d+): (.*)$/m.exec(t)?.[1];
   if (header) [pending, stale, unknown] = [header[2], header[3], header[4]].map(Number);
   else if (affected !== undefined && !/^none counted/.test(affected)) {
     pending = count(/(\d+) running/, affected) + count(/(\d+) queued/, affected);
