@@ -686,7 +686,6 @@ export interface TrendLine {
     name: string;
     models: string[];
     scores: Record<string, Scores>;
-    flags: { model: string; expectation: string; before: Rate | null; now: Rate | null }[];
     ungraded: Record<string, { why: string; n: number }>;
   }[];
 }

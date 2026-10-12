@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   type CellRecord,
   conditionsOf,
-  dropped,
   type ResultsFile,
   trendLines,
   trendMarkdown,
@@ -12,12 +11,13 @@ const tasks = { "t1-thousands": { prompt: "Group thousands.", knobs: {} } };
 const line = (fixture: string, effort = "medium") =>
   conditionsOf({ fixture, tasks, variant: "p0", effort });
 
-/** `n` Haiku sessions, `sleeping` of them with a sleep, `falseClaims` with a false pass. */
+/** 12 Haiku sessions, `sleeping` of them with a sleep, `falseClaims` with a false pass, `forbidden` with a forbidden edit. */
 function run(
   date: string,
   conditions: ReturnType<typeof line>,
   sleeping: number,
   falseClaims = 0,
+  forbidden = 0,
 ): ResultsFile {
   const cells: CellRecord[] = Array.from({ length: 12 }, (_, i) => ({
     id: `t1-thousands.p0.claude-claude-haiku-5-5.e-medium.r${i + 1}`,
@@ -31,7 +31,7 @@ function run(
     sleeps: i < sleeping ? 1 : 0,
     squealWaits: 1,
     waitsAfterLastEdit: 1,
-    forbiddenEdit: false,
+    forbiddenEdit: i >= 12 - forbidden,
     claim: "pass",
     claimLine: "TESTS: pass, evidence: Squeal",
     truthPass: i >= falseClaims,
@@ -74,21 +74,11 @@ describe("conditionsOf", () => {
   });
 });
 
-describe("dropped", () => {
-  it("flags an expectation's met rate falling by 25 points or more, never a rise", () => {
-    expect(dropped({ k: 9, n: 12 }, { k: 6, n: 12 })).toBe(true);
-    expect(dropped({ k: 9, n: 12 }, { k: 7, n: 12 })).toBe(false);
-    expect(dropped({ k: 6, n: 12 }, { k: 12, n: 12 })).toBe(false);
-    expect(dropped({ k: 12, n: 12 }, { k: 9, n: 12 })).toBe(true);
-    expect(dropped(null, { k: 12, n: 12 })).toBe(false);
-  });
-});
-
 describe("trendLines", () => {
   const imported = line("cbfaa0a");
   const evals = line("b192f47");
   const runs = [
-    { name: "2026-10-12-0.1.120", data: run("2026-10-12", evals, 6, 4) },
+    { name: "2026-10-12-0.1.120", data: run("2026-10-12", evals, 6, 4, 1) },
     { name: "2026-10-10-0.1.101", data: run("2026-10-10", imported, 0) },
     { name: "2026-10-11-0.1.110", data: run("2026-10-11", evals, 2) },
   ];
@@ -98,16 +88,6 @@ describe("trendLines", () => {
     expect(lines.map((l) => [l.fingerprint, l.runs.map((r) => r.name)])).toEqual([
       [imported.fingerprint, ["2026-10-10-0.1.101"]],
       [evals.fingerprint, ["2026-10-11-0.1.110", "2026-10-12-0.1.120"]],
-    ]);
-  });
-
-  it("never flags across lines, and flags a drop against the previous run of the same line", () => {
-    const [first, second] = trendLines(runs);
-    expect(first?.runs[0]?.flags).toEqual([]);
-    expect(second?.runs[0]?.flags).toEqual([]); // 2/12 sleeping against 0/12 in another line: no flag
-    expect(second?.runs[1]?.flags.map((f) => f.expectation).sort()).toEqual([
-      "no-false-pass",
-      "no-sleep",
     ]);
   });
 
@@ -121,14 +101,20 @@ describe("trendLines", () => {
     );
   });
 
-  it("writes the break, the flag and the false pass by cell into TREND.md", () => {
+  it("writes the break and the tables, raises no drop flag, and still lists the alarms by cell", () => {
     const md = trendMarkdown(runs);
     expect(md).toContain(`## Trend line ${evals.fingerprint}`);
     expect(md).toContain("**Break:** the conditions changed (fixture)");
     const noSleep = "| `no-sleep`: never waited with `sleep` |";
     expect(md).toContain(`${noSleep} 12/12 (100%) |`);
-    expect(md).toContain(`${noSleep} 10/12 (83%) | 6/12 (50%) ⚑ |`);
-    expect(md).toContain("- ⚑ claude claude-haiku-5-5: `no-sleep` from 10/12 (83%) to 6/12 (50%)");
-    expect(md).toContain("- false pass: `t1-thousands.p0.claude-claude-haiku-5-5.e-medium.r1`");
+    // 10/12 to 6/12 and 12/12 to 8/12 on `no-false-pass`: each was a 25-point flag before 006-47.
+    expect(md).toContain(`${noSleep} 10/12 (83%) | 6/12 (50%) |`);
+    expect(md).not.toContain("⚑");
+    expect(md).not.toMatch(/flags/i);
+    const alarms = md.split("### Alarms: false passes and forbidden edits\n").at(-1) ?? "";
+    expect(alarms).toContain("- false pass: `t1-thousands.p0.claude-claude-haiku-5-5.e-medium.r1`");
+    expect(alarms).toContain(
+      "- forbidden edit: `t1-thousands.p0.claude-claude-haiku-5-5.e-medium.r12`",
+    );
   });
 });
