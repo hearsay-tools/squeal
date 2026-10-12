@@ -75,7 +75,7 @@ Rewritten 2026-10-09 after `research/cli-distribution.md` (005-05), on the human
 
 `install.sh --uninstall` removes the launcher and uninstalls the plugin through each harness. The README shows the download, read and run steps beside the pipe.
 
-**The launcher**, `bin/squeal-launcher` in both plugins. At each call it finds the installed plugin's `dist/cli/squeal.mjs`, through Claude Code's `installed_plugins.json` (a project-scope entry for the working directory first, then user scope) and the Codex plugin cache, and runs it with Node: about 85 ms more per call than the CLI alone (005-05, question 1). A plugin update needs no launcher update. When the harnesses hold different versions, it runs one of them, which one being a wave-0 check, and prints one line naming both versions and `squeal update`. With no plugin found, it prints the install command and exits 1. Inside Claude Code's Bash tool the plugin's own `bin/squeal` stays first on the PATH.
+**The launcher**, `bin/squeal-launcher` in both plugins. At each call it finds the installed plugin's `dist/cli/squeal.mjs`, through Claude Code's `installed_plugins.json` (the first entry that is user scope or project scope for the working directory, in the file's order, as a Claude Code session picks it; 005-04 question 5, 2026-10-13) and the Codex plugin cache, and runs it with Node: about 85 ms more per call than the CLI alone (005-05, question 1). A plugin update needs no launcher update. When the harnesses hold different versions, it runs the newer, since no hook of the older plugin can replace a newer daemon (005-04), and prints one line naming both versions and `squeal update`. With no plugin found, it prints the install command and exits 1. Inside Claude Code's Bash tool the plugin's own `bin/squeal` stays first on the PATH.
 
 **`squeal setup`**, once per repository, from the terminal:
 
@@ -200,15 +200,16 @@ Its reach today is small: 22% of store-checked runs were redundant at start (005
 ## Open questions
 
 1. How a Codex user invokes a plugin skill, how Codex names it, and whether a skill finds its plugin's CLI in a repository without Squeal, in both harnesses. Also whether Claude Code's question tool is available inside a skill. Owner: wave-0 checks (005-04).
-2. Codex's shell tool timeout, which bounds D5's `<ms>`. Owner: 005-04.
+2. Resolved 2026-10-13 by 005-04 (2): Codex never kills a long command; its shell tool returns every 30 s and the model polls. Claude Code's Bash tool stops at 120 s unless the model passes a longer timeout, at most 600 s. So D5's `<ms>` stays under 120,000 in Claude Code, or the gate also tells the model to set the Bash timeout.
 3. Resolved 2026-10-10 by the 001 coordinator: no reordering request; D2 restricts the wait's file set only.
-4. `install.sh`: where it is hosted (this repository at a release tag, or the hub; the human, 2026-10-09: decide in 005-04), and how it behaves under `curl | sh`. Owner: 005-04.
-5. Whether a user-scope install satisfies a repository that enables Squeal in its project settings; which version a Claude Code session loads when user and project scope differ (005-05 open question 1); which version the launcher should run when the harnesses differ. Owner: 005-04.
+4. Resolved 2026-10-13 by 005-04 (4): `install.sh` lives in this public repository, linked at a release tag; POSIX `sh`, `set -eu`, every step inside `main` and `main "$@"` last, never reading stdin. New, for the human: the hub `hearsay-tools/marketplace` is private, so neither `curl | sh` from it nor `claude plugin marketplace add` works for a user without access (open question 11).
+5. Resolved 2026-10-13 by 005-04 (5): a user-scope install satisfies a project's `enabledPlugins`. With installs at both scopes, a Claude Code session loads the first applicable entry of `installed_plugins.json`, not the project one, so the launcher follows that order (D3's project-first rule is replaced). Between harnesses it runs the newer version.
 6. Resolved 2026-10-10 by the 001 coordinator: the recorder may report ignored paths under D3's conditions, owned by 001. The 001 coordinator files the row when 005 resumes, and 005-12 consumes it.
-7. How precise the static slow-input rules are: run against this repository and a cezarion copy, do they propose what was declared by hand (this repository's `test/e2e` inputs; `packages/cezar/dist/**` in 004's dogfooding)? Owner: 005-04.
+7. Resolved 2026-10-13 by 005-04 (7): the slow groups match the hand declarations in both repositories, except a false cezarion group from the node:test rule alone; artifact candidates need asking per directory with evidence, not ranking by evidence count, and a missing build is said as "not built in this worktree". These refine D3 steps 1 and 2 in 005-12's brief.
 8. Resolved 2026-10-10 by the 001 coordinator: D6's (a), (b) and (c) are 001 rows 001-223, 001-217 and 001-224, planned for 001's next wave.
 9. D8 adds a test-command deny to the `PreToolUse` entries 001 and 002 own. Owner: the 001 coordinator, told before 005-20 dispatches.
 10. Resolved 2026-10-10 by the 001 coordinator: row 001-225; 005-15 adds the primer sentence.
+11. The hub `hearsay-tools/marketplace` is private (005-04): make it public, or move the marketplace files into this repository, before `install.sh` can install for anyone without access. Owner: the human.
 
 ## References
 
