@@ -51,6 +51,26 @@ export interface ViewEntry {
 /** `HarnessDelivery.endTurn`: the revision the caller decided at. */
 export interface EndTurnOptions {
   readonly atRevision?: RevisionNumber;
+  /**
+   * Task 001-295 (review wave 13am, B1): a main agent's Stop that leaves its
+   * slow files to the waiting Stop entry records what it left owed
+   * (`StopHandoff`) in the idle state it writes.
+   */
+  readonly handoff?: boolean;
+}
+
+/**
+ * Task 001-295 (review wave 13am, B1): what a Stop's silent end left owed,
+ * for the waiting Stop entry beside it. The test files (`testFileId`)
+ * pending when the turn ended with the key each was pending at, the
+ * revision it ended at, and when. Unlike the idle waiter's `testFiles`, it
+ * is never trimmed as results land, so a result that landed before the
+ * waiting entry read is still one it waited for.
+ */
+export interface StopHandoff {
+  readonly at: EpochMs;
+  readonly revision: RevisionNumber;
+  readonly keys: Readonly<Record<string, CheckKey | null>>;
 }
 
 /**
@@ -199,6 +219,12 @@ export interface ToolBoundaryOptions {
    * on a delivery that has other news.
    */
   readonly stop?: boolean;
+  /**
+   * Task 001-295 (review wave 13am, B2): deliver only while the worktree's
+   * latest revision is this one; else write nothing and return `null`, so a
+   * caller that decided at a revision never shows a newer header beside it.
+   */
+  readonly atRevision?: RevisionNumber;
 }
 
 /**
@@ -249,6 +275,8 @@ export type TurnState =
        * only checks observed at or before it are waited for. Absent: any.
        */
       readonly revision?: RevisionNumber;
+      /** Task 001-295: set by a Stop that leaves its slow files to the waiting entry. */
+      readonly handoff?: StopHandoff;
     };
 
 /** Options of `HarnessDelivery.register`. */

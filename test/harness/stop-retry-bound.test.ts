@@ -91,6 +91,9 @@ async function repo(harness: Harness): Promise<SquealRepo> {
   return r;
 }
 
+/** `requireSlowSuite` on: each `endTurn` also records the waiting entry's handoff (001-295). */
+const AT_REVISIONS_1_TO_3 = [1, 2, 3].map((atRevision) => ({ atRevision, handoff: true }));
+
 function decision(stdout: string): { decision?: string; reason?: string } {
   return stdout.trim() === "" ? {} : (JSON.parse(stdout) as { decision?: string });
 }
@@ -110,7 +113,7 @@ describe.each(HARNESSES)("Stop's last retry keeps its revision guard, $name (B2)
     const r = await repo(harness);
     commits(r, ["edit", "edit", "queue"]);
     const out = decision((await harness.stop(r)).stdout);
-    expect(hooks.calls).toEqual([{ atRevision: 1 }, { atRevision: 2 }, { atRevision: 3 }]);
+    expect(hooks.calls).toEqual(AT_REVISIONS_1_TO_3);
     expect(out.decision).toBe("block");
     expect(out.reason).toMatch(
       /^Squeal: the revision changed 3 times while Stop decided, now past revision 3; stop again to decide at the newest\./,
@@ -124,7 +127,7 @@ describe.each(HARNESSES)("Stop's last retry keeps its revision guard, $name (B2)
     const r = await repo(harness);
     commits(r, ["edit", "edit"]);
     expect((await harness.stop(r)).stdout).toBe("");
-    expect(hooks.calls).toEqual([{ atRevision: 1 }, { atRevision: 2 }, { atRevision: 3 }]);
+    expect(hooks.calls).toEqual(AT_REVISIONS_1_TO_3);
     r.store.close();
   });
 
@@ -133,12 +136,13 @@ describe.each(HARNESSES)("Stop's last retry keeps its revision guard, $name (B2)
     const r = await repo(harness);
     commits(r, ["edit", "queue"]);
     expect((await harness.stop(r)).stdout).toBe("");
-    expect(hooks.calls).toEqual([{ atRevision: 1 }, { atRevision: 2 }, { atRevision: 3 }]);
+    expect(hooks.calls).toEqual(AT_REVISIONS_1_TO_3);
     const [record] = r.store.consumers.list(r.worktreeId);
     expect(record && readTurn(r.store, record.consumer)).toMatchObject({
       turn: "idle",
       revision: 3,
       testFiles: [testFileId(FILE)],
+      handoff: { revision: 3, keys: { [testFileId(FILE)]: "k2" } },
     });
     r.store.close();
   });

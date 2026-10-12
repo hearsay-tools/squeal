@@ -1,4 +1,5 @@
 import { checkName, headerLines, SQUEAL_COMMAND } from "../../core/delivery/index.js";
+import { runnerPartText } from "../../core/state/index.js";
 import { formatCheck } from "../../core/status/index.js";
 import { plural } from "../../core/text.js";
 import type { CheckId, KnownFailure, StatusHeader, TestFileRef } from "../../core/types/index.js";
@@ -128,19 +129,26 @@ export function slowSuiteReason(
 
 /**
  * Spec 004 D9 as amended 2026-10-12: the block of a Stop that waited
- * `waitedMs` for its slow files and found `files` still not current.
+ * `waitedMs` for its slow files and found `files` still not current, or
+ * with `refining` the runner part of `revision` still pending (task 001-295).
  */
 export function slowWaitReason(
   revision: number,
   files: readonly TestFileRef[],
   waitedMs: number,
   command: string = SQUEAL_COMMAND,
+  refining = false,
 ): string {
+  const after = `Squeal policy stop.requireSlowSuite is on and after ${seconds(waitedMs)} `;
+  const wait = `\`${command} run --slow --wait\` waits for their results.`;
+  // Task 001-295 (review wave 13am, B2): an unfinished listing may still add slow files.
+  const unlisted = `${runnerPartText(revision)} is still pending: slow test files it adds are not listed yet.`;
+  if (files.length === 0) return `${after}${unlisted} ${wait}`;
   const verb = files.length === 1 ? "is" : "are";
+  const more = refining ? ` ${unlisted.charAt(0).toUpperCase()}${unlisted.slice(1)}` : "";
   return (
-    `Squeal policy stop.requireSlowSuite is on and after ${seconds(waitedMs)} ` +
-    `${plural(files.length, "slow test file")} ${verb} still not current at revision ${revision}: ` +
-    `${list(files.map((f) => f.path))}. \`${command} run --slow --wait\` waits for their results.`
+    `${after}${plural(files.length, "slow test file")} ${verb} still not current at revision ${revision}: ` +
+    `${list(files.map((f) => f.path))}.${more} ${wait}`
   );
 }
 
