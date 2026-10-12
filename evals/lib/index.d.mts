@@ -627,7 +627,6 @@ export function metRate(
   grades: readonly (Record<string, ExpectationGrade> | null)[],
   id: string,
 ): Rate | null;
-export function dropped(before: Rate | null, now: Rate | null, points?: number): boolean;
 
 export type CellRecord = { id: string; harness: string; model: string; [key: string]: unknown };
 export interface Conditions {
