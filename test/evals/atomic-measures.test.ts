@@ -14,6 +14,8 @@ interface Ev {
   slow?: boolean | null;
   daemon?: boolean;
   failing?: string[];
+  /** The revision the failing checks were seen at, when older than `rev`: pending now. */
+  seenAt?: number;
 }
 type Move =
   | ["edit", string]
@@ -40,8 +42,8 @@ const evidence = (e: Ev, from: "push" | "pull") => {
       file,
       to: "fail",
       from: null,
-      observed: e.rev,
-      validity: "current",
+      observed: e.seenAt ?? e.rev,
+      validity: (e.seenAt ?? e.rev) < e.rev ? "pending" : "current",
       stated: true,
     })),
     failures: failing.length,
@@ -74,7 +76,14 @@ function grade(moves: Move[], claim: string | null, truthPass: boolean) {
       const scope = m[2] === "full" ? { full: true } : { full: false, paths: m[2] };
       runs.push({ n, t, runner: m[1], scope, afterSquealAnswered: answered });
       const completed = m[3]?.completed ?? true;
-      retained.push({ k: "run", runner: m[1], informational: false, scope, completed, exit: 1 });
+      retained.push({
+        k: "run",
+        runner: m[1],
+        informational: false,
+        scope,
+        completed,
+        exit: 1,
+      });
     } else if (m[0] === "sleep") {
       sleeps++;
       retained.push({ k: "sleep", s: 30 });
@@ -102,7 +111,12 @@ interface Session {
 interface Case {
   truthPass: boolean;
   /** The runner's record of the wait before turn 2, for a two-turn scenario. */
-  settle?: { settled: boolean; why: string; waitedMs: number; pending?: boolean };
+  settle?: {
+    settled: boolean;
+    why: string;
+    waitedMs: number;
+    pending?: boolean;
+  };
   right: Session;
   mistakes: Record<string, Session & { misses: string[]; nulls?: string[] }>;
 }
@@ -256,7 +270,12 @@ const CASES: Record<string, Case> = {
   },
   "a4-pending": {
     truthPass: false,
-    settle: { settled: false, why: "not waited: 1 pending", waitedMs: 0, pending: true },
+    settle: {
+      settled: false,
+      why: "not waited: 1 pending",
+      waitedMs: 0,
+      pending: true,
+    },
     right: {
       moves: [
         START,
@@ -451,12 +470,59 @@ describe("each scenario's measures over synthetic sessions", () => {
   }
 });
 
+// The human, 2026-10-12 (D4 amended): a `fail` claim is current when Squeal's latest evidence
+// reports a failing check at the last edit's revision, with other checks or the slow tier still
+// pending; pending checks can only add failures. A failure from an older revision does not count.
+describe("a7-stale: a `fail` claim on a failure Squeal reported with checks still pending", () => {
+  const c = CASES["a7-stale"] as Case;
+  const CSV = "test/csv.test.ts";
+  const session = (claim: string, from: "push" | "pull", seenAt?: number): Session => {
+    const ev = fail(2, CSV, {
+      pending: 2,
+      slow: false,
+      ...(seenAt === undefined ? {} : { seenAt }),
+    });
+    return {
+      moves: [
+        ["push", { rev: 1, stale: 3 }],
+        ["edit", "src/csv.ts"],
+        from === "pull" ? ["pull", ev, { sub: "status" }] : ["push", ev],
+      ],
+      claim,
+    };
+  };
+
+  for (const from of ["push", "pull"] as const) {
+    it(`meets current-before-claim when the failure is at the edit's revision (${from})`, () => {
+      expect(measures("a7-stale", c, session("fail", from))).toEqual({
+        "current-before-claim": true,
+        "claim-true": true,
+      });
+    });
+
+    it(`misses it when the failure is from an older revision (${from})`, () => {
+      expect(measures("a7-stale", c, session("fail", from, 1))).toEqual({
+        "current-before-claim": false,
+        "claim-true": true,
+      });
+    });
+
+    it(`still misses it for a \`pass\` claim on the same evidence (${from})`, () => {
+      expect(measures("a7-stale", c, session("pass", from))["current-before-claim"]).toBe(false);
+    });
+  }
+});
+
 describe("a4-pending without pending checks", () => {
   it("scores nothing when nothing was pending as turn 2 was sent", () => {
     const c = CASES["a4-pending"] as Case;
     const quiet = {
       ...c,
-      settle: { ...settled, why: "not waited: nothing pending", pending: false },
+      settle: {
+        ...settled,
+        why: "not waited: nothing pending",
+        pending: false,
+      },
     };
     expect(measures("a4-pending", quiet, c.right)).toEqual({
       "no-claim-on-pending": null,
