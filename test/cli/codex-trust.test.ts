@@ -348,7 +348,8 @@ describe.skipIf(!codexOnPath)("squeal init --harness codex --trust --yes against
     const code = await main(["init", "--harness", "codex", "--trust", "--yes"], io);
     expect({ code, stderr: out.stderr }).toEqual({ code: 0, stderr: "" });
     const events = [...out.stdout.matchAll(/^ {2}(\w+)\s+trusted$/gm)].map((m) => m[1]);
-    expect(events).toHaveLength(9);
+    // Nine events, ten handlers: Stop's second is the slow-tier wait (001-285).
+    expect(events).toHaveLength(10);
 
     // Codex appended the hooks.state tables; nothing else in its config moved.
     const configAfter = readFileSync(join(codexHome, "config.toml"), "utf8");
@@ -356,7 +357,7 @@ describe.skipIf(!codexOnPath)("squeal init --harness codex --trust --yes against
     expect(configAfter.startsWith(configBefore)).toBe(true);
     expect(
       added.match(/^\[hooks\.state\."squeal@hearsay:hooks\/hooks\.json:[a-z_]+:\d+:\d+"\]$/gm),
-    ).toHaveLength(9);
+    ).toHaveLength(10);
     expect(
       added.replace(/^(\[hooks\.state\.[^\n]+\]|trusted_hash = "sha256:[0-9a-f]{64}"|)$/gm, ""),
     ).toMatch(/^\s*$/);
