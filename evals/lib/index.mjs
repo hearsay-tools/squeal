@@ -20,6 +20,19 @@ export {
   waitSettled,
 } from "./atomic.mjs";
 export {
+  atomicDropped,
+  atomicMarkdown,
+  atomicTrend,
+  compareVersions,
+  countText,
+  FLAG_P,
+  fisherLower,
+  RELIABLE,
+  scenarioRevision,
+  WINDOW,
+  wilson,
+} from "./atomic-trend.mjs";
+export {
   CONTEXT,
   declarations,
   disagreements,

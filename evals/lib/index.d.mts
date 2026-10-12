@@ -864,3 +864,43 @@ export function regradeAtomic(
   config: AtomicConfig,
   date: string,
 ): { data: Json; changed: string[] };
+
+// 006-36: evals/results/ATOMIC.md, the atomic tier's per-model counts, flags and alarms.
+export const FLAG_P: number;
+export const RELIABLE: number;
+export const WINDOW: number;
+/** One-sided Fisher exact p that `now` is lower than `before`. */
+export function fisherLower(before: Rate, now: Rate): number;
+/** The 95% Wilson range of a count, `[low, high]` as fractions. */
+export function wilson(rate: Rate): [number, number];
+export function atomicDropped(before: Rate | null, now: Rate | null): boolean;
+export function scenarioRevision(data: Json, scenario: string): string;
+export function compareVersions(a: string, b: string): number;
+export function countText(rate: Rate | null): string;
+export interface AtomicRun {
+  name: string;
+  /** The results file's run id. */
+  run: string;
+  version: string;
+  sessions: number;
+  /** Each measure's values in rep order: met, missed or `null` not computable. */
+  values: Record<string, (boolean | null)[]>;
+  measures: Record<string, Rate | null>;
+  /** The release this run was compared against, when one came before it. */
+  previous?: string;
+  flags: { measure: string; before: Rate; now: Rate; p: number }[];
+}
+export interface AtomicTrend {
+  runs: { name: string; data: Json }[];
+  groups: { model: string; scenario: string; revision: string; runs: AtomicRun[] }[];
+  alarms: { run: string; cell: string; what: "false pass" | "forbidden edit"; line?: string }[];
+  unreliable: {
+    model: string;
+    scenario: string;
+    revision: string;
+    measure: string;
+    rate: Rate;
+  }[];
+}
+export function atomicTrend(runs: readonly { name: string; data: Json }[]): AtomicTrend;
+export function atomicMarkdown(runs: readonly { name: string; data: Json }[]): string;
