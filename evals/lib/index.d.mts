@@ -726,6 +726,8 @@ export interface Scenario extends AtomicDeclaration {
   /** One per turn; the last ends with the claim line's request. */
   prompts: string[];
   knobs: Record<string, unknown>;
+  /** The config's bound on the wait before a later turn, in seconds. */
+  settleS: number;
 }
 export function atomicConfig(file?: string): AtomicConfig;
 export function scenarioOf(name: string, config?: AtomicConfig): Scenario | null;
