@@ -975,3 +975,20 @@ Questions:
 5. Recommend board rows in the board's column shape, each with a one-worker scope.
 
 Use cheap experiments on scratch repositories you create and remove, and Squeal's own test harness. Probe isolation: never run third-party agent tooling, the eval runner or any repo script where it can reach the real HOME. Output `research/uncovered-suites.md`, committed alone. Do not edit `docs/board.md` or source files.
+
+## 001-295 repair of wave 13am
+
+Use /worker. Shape: repair. From `reviews/wave-13am.md` (001-289) B1 and B2, under the human's standing rule: the coordinator fixes first-round blockers and re-reviews them (001-296). Read the review's reproductions and its "Inputs for the repair wave" first; they are the brief. S1 is row 001-297, not yours. Leave the 001-283 primer and skill rewrite alone.
+
+Outcome:
+- B1: the files the 2 s Stop leaves owed at its silent end (with their recorded keys and revision) seed the waiting entry's tracked set before any completion read, together with the files its initial read sees open. A current failure of those files is decided and delivered even when it completed before the waiting entry's first poll.
+- B2: completion is accepted only against the live revision, in a transaction, retried when the revision moved, within the one overall deadline. An empty open list is not accepted while the runner part of the revision is pending. Block reasons are guarded the same way, so an old failure never rides beside a newer header.
+- Unchanged: a pass stays silent, one slow failure or the bound gives one continuation, the 2 s budget, the 600000 ms cap under the 630 s hook timeout, setting-off and `stop_hook_active` exits, no SubagentStop wait, cancellation when a prompt or idle wake took the turn.
+
+Own `src/harness/shared/stop-slow.ts`, the handoff data it needs in `src/harness/shared/stop.ts` and the turn or delivery code it records through, and tests under `test/harness/` (both harnesses). Deterministic read-boundary schedules with a second SQLite connection, as the review's probes did, not longer timers. The coordinator re-pins `KEY_FORMAT_VERSION` 8 (unreleased) and rebuilds. Do not commit `dist`. Do not edit `docs/board.md`. Run the full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Probe isolation: never run third-party agent tooling, the eval runner or any repo script where it can reach the real HOME.
+
+Done when the row's done-when holds.
+
+## 001-296 re-review of wave 13am
+
+Use /reviewer on gpt-6.1-sol, after 001-295 lands. Output `reviews/wave-13an.md`. Second round on `reviews/wave-13am.md` B1 and B2: can any schedule of daemon commits, revisions or listings still end a turn silent while a slow file the Stop owes is failed, queued or unlisted, or make the waiting Stop block twice or past its hook timeout? Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human (second round).
