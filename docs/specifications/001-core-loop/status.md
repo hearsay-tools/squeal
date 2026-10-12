@@ -217,3 +217,4 @@ See `spec.md`, section Open questions.
 - Spec: `spec.md`
 
 - 2026-10-12: Human: release 0.1.131 over the 12 a5-uncovered false-pass alarms of its atomic tier (a gap older than the release; luna 7 of 8 on 0.1.127's stopped run), so the watcher fix ships; run the long baseline first; 001-292 follows. `test/evals/atomic-trend.test.ts` accepts exactly that run's a5 alarms.
+- 2026-10-12: Human: the a5-uncovered false-pass alarm is fixed before the next release; 0.1.131 is the one exception, so the watcher fix ships. 001-292 blocks the next release.
