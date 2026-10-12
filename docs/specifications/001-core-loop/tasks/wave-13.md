@@ -1032,3 +1032,15 @@ Done when the row's done-when holds.
 ## 001-303 third review of wave 13am
 
 Use /reviewer on gpt-6.1-sol, after 001-302 lands. Output `reviews/wave-13ap.md`. Third round on `reviews/wave-13an.md` B1 and S2: can any schedule of listing, keys, revisions and results still end a turn silent while a slow file the Stop owes (at its recorded or a newer key) failed, or make it block on a failure it does not owe, block twice, or run past its hook timeout? Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
+
+## 001-305 the waiting Stop blocks on any slow failure not yet told
+
+Use /worker. Shape: redesign within one row. Decided by the human (2026-10-12) after three review rounds (`reviews/wave-13am.md`, `wave-13an.md`, `wave-13ap.md`) each found a narrower race in the owed-list design: the waiting Stop tracked exactly which runs it owed, and some run always slipped past. The new rule needs no such list: when the waiting Stop decides, it blocks once if any slow check is a current failure this session has not been told (what the consumer's delivery has already delivered), at any revision or key. Read the three reviews first; every schedule in them becomes a test. Keep: the 2 s Stop's handoff and its fallback before the waiting entry has run, the live-revision write-transaction decision and its retry within one deadline, the bound's block, cancellation when a prompt or wake took the turn, one continuation, pass silent, setting-off and `stop_hook_active` exits, no SubagentStop wait. Remove what only the owed list needed.
+
+Own `src/harness/shared/stop-slow.ts`, `src/core/delivery/turn.ts` and `src/core/types/delivery.ts` as the change needs, the delivery read of what was told if it lives elsewhere (say so before editing outside these), spec 004 D9 (dated line), and tests under `test/harness/` and `test/delivery/`. The coordinator handles `KEY_FORMAT_VERSION` and dist. Do not edit `docs/board.md`. Run the full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Probe isolation: never run third-party agent tooling, the eval runner or any repo script where it can reach the real HOME.
+
+Done when the row's done-when holds.
+
+## 001-306 fourth review of wave 13am
+
+Use /reviewer on gpt-6.1-sol, after 001-305 lands. Output `reviews/wave-13aq.md`. Under the human's new rule (block once on any current slow failure not yet told): can any schedule end a turn silent while such a failure exists, block on a told failure, block twice, or run past the hook timeout? Re-run every schedule of the three earlier reviews. Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
