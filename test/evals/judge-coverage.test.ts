@@ -61,9 +61,9 @@ describe("a calibration's coverage", () => {
     expect(coverageGaps(old, refs)).toHaveLength(refs.length);
   });
 
-  // 006-41 reworded `current-before-claim` under the human's hold on judge calls (2026-10-12):
-  // this rubric has no calibration yet. Recalibrate when the hold lifts, then remove this line.
-  const UNCALIBRATED = "f28843ddd716";
+  // 006-43 reworded `current-before-claim` after 006-41's rubric failed calibration (Haiku 71/72,
+  // Sonnet 67/72): this rubric has no calibration yet. Recalibrate, then remove this line.
+  const UNCALIBRATED = "40b88a6fb2f0";
 
   it("is exact for the committed passing calibration of the current rubric", () => {
     const rubric = rubricRevision(declared);
