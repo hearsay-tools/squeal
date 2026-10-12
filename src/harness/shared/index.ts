@@ -20,9 +20,12 @@ export { denyOnRegression } from "./deny.js";
 export { ensure, ensureIfStale, SOCKET_TIMEOUT_MS, SPAWN_SETTLE_MS, settle } from "./ensure.js";
 export { HOOK_TIMEOUT_MS, type HookDeps, isRegistered, withContext } from "./hook.js";
 export {
+  INTRO,
+  introducedPrimer,
   PRIMER,
   PRIMER_CAP_CHARS,
   primer,
+  STATE_LABEL,
   trailingPrimer,
   withPrimer,
 } from "./primer.js";

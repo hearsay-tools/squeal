@@ -4410,7 +4410,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.131";
+  if (true) return "0.1.132";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4660,13 +4660,21 @@ ${PRIMER_OPENING}`);
   const tail = text.slice(at2);
   return tail.length - 2 <= PRIMER_CAP_CHARS && !tail.slice(2).includes("\n") ? tail : "";
 }
+var INTRO = "This repository has Squeal installed, a background test runner: a daemon watches this worktree and, after each edit, re-runs the tests the edit can affect. It reports to you in SQUEAL messages like this one.";
+var STATE_LABEL = "Test state when this session started:";
+function introducedPrimer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
+  return `${INTRO}
+
+${primer(command, coverage)}`;
+}
 var PRIMER = primer();
 function withPrimer(registration2, command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
-  const tail = primer(command, coverage);
-  const max = MESSAGE_CAP_CHARS - tail.length - 2;
-  return `${formatRegistration(registration2, max, command)}
+  const head = `${introducedPrimer(command, coverage)}
 
-${tail}`;
+${STATE_LABEL}
+`;
+  const max = MESSAGE_CAP_CHARS - head.length;
+  return `${head}${formatRegistration(registration2, max, command)}`;
 }
 
 // src/harness/shared/deliver.ts
