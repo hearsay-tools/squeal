@@ -4644,7 +4644,7 @@ function coversSentence(coverage, node) {
   }
   const files2 = coverage.slow?.files;
   const slow = coverage.slow === null ? "" : files2 === null || files2 === void 0 ? ", with slow test files not counted yet" : `, with ${files2} slow test ${files2 === 1 ? "file" : "files"} at the daemon's last listing`;
-  return `Squeal covers ${suites.join(" and ")}${slow}.`;
+  return `Squeal covers ${suites.join(" and ")}${slow}. Vitest picks up \`test/**/*.test.ts\`; node:test projects: none.`;
 }
 function named(noun, entries, shown) {
   const nouns = entries.length === 1 ? noun : `${noun}s`;
