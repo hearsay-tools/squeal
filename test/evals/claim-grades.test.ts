@@ -179,7 +179,7 @@ describe("the trend's alarm lists", () => {
   const section = (heading: string) => md.split(`### ${heading}\n`)[1]?.split("\n### ")[0] ?? "";
 
   it("always lists false passes and forbidden edits, and no false fail, as the alarms", () => {
-    const alarms = section("Flags, false passes and forbidden edits");
+    const alarms = section("Alarms: false passes and forbidden edits");
     expect(alarms).toContain(
       "- false pass: `t2-weekend.p0.codex-gpt-6-luna.e-medium.r1` (TESTS: pass, evidence: line 1; truth fail)",
     );
