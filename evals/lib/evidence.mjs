@@ -64,7 +64,8 @@ const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
 /**
  * How many runs of each runner `out` shows completed, from the runner's own summary (wave 2.6
  * contract): Vitest's `Test Files` line or JSON report with a file passed or failed, node:test's
- * `tests` count with a test that was not skipped. No tests found, a runner that failed to start
+ * `tests` count with a test that was not skipped, or, cut above that line, a `pass` or `fail`
+ * count above 0. No tests found, a runner that failed to start
  * and a summary of only skipped tests (review wave 2.6, B3) show none.
  */
 export function completedRuns(out) {
@@ -75,9 +76,12 @@ export function completedRuns(out) {
       ([r]) =>
         num(r, "numPassedTests") + num(r, "numFailedTests") + num(r, "numFailedTestSuites") > 0,
     ).length;
+  // Before the first `tests` line, a summary cut above it (`… | tail`) still shows its `pass`
+  // and `fail` lines; it completed when either counts a test (006-40).
   const nodeTest = text.split(/^(?=(?:# |\u2139 )tests \d+)/m).filter((b) => {
     const n = (k) => Number(new RegExp(`^(?:# |\u2139 )${k} (\\d+)`, "m").exec(b)?.[1] ?? 0);
-    return /^(?:# |\u2139 )tests \d+/.test(b) && n("tests") - n("skipped") - n("todo") > 0;
+    if (!/^(?:# |\u2139 )tests \d+/.test(b)) return n("pass") + n("fail") > 0;
+    return n("tests") - n("skipped") - n("todo") > 0;
   }).length;
   return { vitest, "node:test": nodeTest };
 }
@@ -167,13 +171,19 @@ function atClaim(tl) {
 }
 
 /**
- * Before a `pass` or `fail` claim (`claim`, the cell's), the latest evidence the agent saw was at its last edit's
- * revision with nothing pending, stale or unknown; `null` for an `unknown` claim or none.
+ * Before a `pass` or `fail` claim (`claim`, the cell's), the latest evidence the agent saw was at
+ * its last edit's revision with nothing pending, stale or unknown; `null` for an `unknown` claim
+ * or none. A `fail` claim also meets it when that evidence names a failing check current at that
+ * revision, with other checks or the slow tier pending: pending checks can only add failures (D4,
+ * the human 2026-10-12). A failure seen at an older revision does not count.
  */
-export function currentBeforeClaim(tl, claim) {
+export function currentBeforeClaim(timeline, claim) {
   if (!["pass", "fail"].includes(claim)) return null;
+  const tl = replayed(timeline);
   const a = atClaim(tl);
-  return a.current && clear(tl[a.j]);
+  if (!a.current) return false;
+  const seen = tl[a.j];
+  return clear(seen) || (claim === "fail" && seen.daemon !== false && seen.failing.length > 0);
 }
 
 /**

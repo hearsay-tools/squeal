@@ -52,7 +52,49 @@ describe("completedRuns, on the controls' real output", () => {
   it("does not count a runner that failed to start", () => {
     expect(completedRuns(output("project")).vitest).toBe(0);
   });
+
+  // 006-40: Sonnet's `node --test … | tail -30` in the stopped 006-37 run's a5-uncovered r1 cut
+  // the summary above `ℹ pass 1 / ℹ fail 1`, so its `ℹ tests` line was gone.
+  it("counts a node:test summary cut above its tests line by its pass and fail lines", () => {
+    expect(completedRuns(output("node-cut"))["node:test"]).toBe(1);
+    expect(completedRuns("# suites 0\n# pass 0\n# fail 2\n# cancelled 0")["node:test"]).toBe(1);
+  });
+
+  it("does not count a cut summary of only skipped tests, nor one with neither line", () => {
+    const skipped = "ℹ suites 0\nℹ pass 0\nℹ fail 0\nℹ cancelled 0\nℹ skipped 2\nℹ todo 0";
+    expect(completedRuns(skipped)["node:test"]).toBe(0);
+    expect(completedRuns("ℹ duration_ms 94.8\n\n✖ failing tests:")["node:test"]).toBe(0);
+  });
+
+  it("counts a cut summary before a whole one as two runs", () => {
+    const two = `ℹ pass 1\nℹ fail 0\n${output("node-broken")}`;
+    expect(completedRuns(two)["node:test"]).toBe(2);
+  });
 });
+
+for (const harness of ["codex", "claude"] as const)
+  it(`grades T2's own run met on a node:test summary cut by tail (${harness})`, () => {
+    const t2 = (out: string) =>
+      grade(
+        session(
+          "t2-weekend",
+          [
+            { squeal: REGISTERED(0) },
+            { edit: "test/clock.test.ts" },
+            { squeal: SUNDAY(1) },
+            { edit: "src/clock.ts" },
+            { squeal: RECOVERED(2) },
+            { edit: "scripts/changelog.mjs" },
+            { cmd: "node --test scripts/changelog.test.mjs 2>&1 | tail -30", out },
+            { squeal: FLAKE(3) },
+            CLAIM("fail"),
+          ],
+          { truthPass: true, status: "fail", harness },
+        ),
+      )?.["own-run-uncovered"];
+    expect(t2(output("node-cut"))).toBe("met");
+    expect(t2("ℹ pass 0\nℹ fail 0\nℹ skipped 2\nℹ todo 0")).toBe("missed");
+  });
 
 for (const harness of ["codex", "claude"] as const)
   describe(`review 006-18, ${harness}`, () => {

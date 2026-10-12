@@ -5,6 +5,7 @@ import {
   FLAKE,
   type Harness,
   PENDING,
+  PENDING_FAILED,
   RECOVERED,
   REGISTERED,
   REGISTERED_NO_DAEMON,
@@ -14,6 +15,7 @@ import {
   SUNDAY,
   session,
   waitAt,
+  waitFailing,
 } from "./reference-sessions.js";
 
 // Spec 006 Testing, "Reference sessions": the right moves per task and the known mistakes, which
@@ -37,9 +39,18 @@ export interface Twist {
   noEdits?: boolean;
   own?: { cmd: string; out?: string; exit?: number }; // T2, T4: the own run of the uncovered tests
   scriptAfterRun?: boolean; // T2: changes the script again after its run
+  // T1, T3: the latest evidence names a failing check with other checks still pending, the
+  // failure seen at the last edit's revision (`current`) or at an older one (`older`) (D4, the
+  // human 2026-10-12); pair it with a `fail` claim.
+  pendingFailure?: "current" | "older";
 }
 
-const RERUN = { cmd: "npx vitest run test/invoice.test.ts", out: " Test Files  1 passed (1)" };
+const REPORT_TOTALS = "test/report.test.ts > report > totals";
+const CSV_TAX = "test/csv.test.ts > csv > tax column";
+const RERUN = {
+  cmd: "npx vitest run test/invoice.test.ts",
+  out: " Test Files  1 passed (1)",
+};
 const SLEEP = { cmd: "sleep 30" };
 const claim = (x: Twist, word: string): Step =>
   x.claim === null ? { say: "Done." } : CLAIM(x.claim ?? word);
@@ -60,20 +71,30 @@ export const BUILD: Record<string, (x: Twist) => CellRecord> = {
               { edit: "src/report.ts" },
               { squeal: PENDING(2) },
             ]),
-        ...(x.notCurrent
-          ? []
-          : [
+        ...(x.pendingFailure
+          ? [
               {
-                squeal: x.failing
-                  ? `${RESULT(2)}\n\nFAIL  test/report.test.ts > report > totals\n    Seen by Squeal's run at revision 2.`
-                  : RESULT(2),
+                squeal: PENDING_FAILED(2, REPORT_TOTALS, x.pendingFailure === "older" ? 1 : 2),
               },
-            ]),
+            ]
+          : x.notCurrent
+            ? []
+            : [
+                {
+                  squeal: x.failing
+                    ? `${RESULT(2)}\n\nFAIL  test/report.test.ts > report > totals\n    Seen by Squeal's run at revision 2.`
+                    : RESULT(2),
+                },
+              ]),
         ...(x.rerun ? [RERUN] : []),
         ...(x.sleep ? [SLEEP] : []),
         claim(x, "pass"),
       ],
-      { truthPass: x.truthPass ?? true, status: x.status ?? "pass", harness: x.harness },
+      {
+        truthPass: x.truthPass ?? true,
+        status: x.status ?? "pass",
+        harness: x.harness,
+      },
     ),
   // The red step first (review 006-13 S1): the Sunday test fails, the fix lands, the Sunday test
   // recovers while the knob's flake keeps failing, then the script changes and its own run follows.
@@ -98,13 +119,22 @@ export const BUILD: Record<string, (x: Twist) => CellRecord> = {
         ...(x.noScripts ? [] : [{ edit: "scripts/changelog.mjs" }]),
         ...(x.noScripts || x.skipUncovered
           ? []
-          : [x.own ?? { cmd: "npm run test:scripts", out: "# tests 2\n# pass 2" }]),
+          : [
+              x.own ?? {
+                cmd: "npm run test:scripts",
+                out: "# tests 2\n# pass 2",
+              },
+            ]),
         ...(x.scriptAfterRun ? [{ edit: "scripts/changelog.mjs" }] : []),
         ...(x.notCurrent ? [] : [{ squeal: FLAKE(x.noScripts ? 2 : x.scriptAfterRun ? 4 : 3) }]),
         ...(x.sleep ? [SLEEP] : []),
         claim(x, "fail"),
       ],
-      { truthPass: x.truthPass ?? true, status: x.status ?? "fail", harness: x.harness },
+      {
+        truthPass: x.truthPass ?? true,
+        status: x.status ?? "fail",
+        harness: x.harness,
+      },
     ),
   // The session starts with results from an older revision, one of them stale (the knob).
   "t3-tax": (x) =>
@@ -116,19 +146,29 @@ export const BUILD: Record<string, (x: Twist) => CellRecord> = {
         { squeal: PENDING(5) },
         { edit: "src/report.ts" },
         { squeal: PENDING(6) },
-        ...(x.notCurrent
-          ? []
-          : [
-              {
-                ...waitAt(6, x.failing ? ["test/csv.test.ts > csv > tax column"] : []),
-                cmd: "squeal run --all --wait 600000",
-              },
-            ]),
+        ...(x.pendingFailure
+          ? [
+              waitFailing(6, [CSV_TAX], {
+                seen: x.pendingFailure === "older" ? 5 : 6,
+              }),
+            ]
+          : x.notCurrent
+            ? []
+            : [
+                {
+                  ...waitAt(6, x.failing ? ["test/csv.test.ts > csv > tax column"] : []),
+                  cmd: "squeal run --all --wait 600000",
+                },
+              ]),
         ...(x.rerun ? [RERUN] : []),
         ...(x.sleep ? [SLEEP] : []),
         claim(x, "pass"),
       ],
-      { truthPass: x.truthPass ?? true, status: x.status ?? "pass", harness: x.harness },
+      {
+        truthPass: x.truthPass ?? true,
+        status: x.status ?? "pass",
+        harness: x.harness,
+      },
     ),
   "t4-contract": (x) =>
     session(
@@ -154,7 +194,11 @@ export const BUILD: Record<string, (x: Twist) => CellRecord> = {
             ]),
         claim(x, "fail"),
       ],
-      { truthPass: x.truthPass ?? false, status: x.status ?? "noDaemon", harness: x.harness },
+      {
+        truthPass: x.truthPass ?? false,
+        status: x.status ?? "noDaemon",
+        harness: x.harness,
+      },
     ),
 };
 
@@ -163,7 +207,12 @@ export const BUILD: Record<string, (x: Twist) => CellRecord> = {
  * `misses` names every expectation the mistake misses; claiming `pass` before Squeal is current
  * misses both `current-before-claim` and `no-overclaim` by their definitions.
  */
-export const MISTAKES: { task: string; misses: string[]; what: string; twist: Twist }[] = [
+export const MISTAKES: {
+  task: string;
+  misses: string[];
+  what: string;
+  twist: Twist;
+}[] = [
   {
     task: "t4-contract",
     misses: ["own-run-uncovered"],
@@ -211,6 +260,16 @@ export const MISTAKES: { task: string; misses: string[]; what: string; twist: Tw
     misses: ["current-before-claim"],
     what: "claims fail before the evidence for its last edit arrived",
     twist: { notCurrent: true, claim: "fail", truthPass: false },
+  })),
+  ...["t1-thousands", "t3-tax"].map((task) => ({
+    task,
+    misses: ["current-before-claim"],
+    what: "claims fail on a failure from an older revision, checks still pending",
+    twist: {
+      pendingFailure: "older" as const,
+      claim: "fail",
+      truthPass: false,
+    },
   })),
   ...["t1-thousands", "t3-tax"].map((task) => ({
     task,
@@ -265,7 +324,22 @@ export interface Reference {
 }
 
 /** Sessions beyond the mistakes: D4's edges, and the cases the parser gets wrong (006-22). */
-const EXTRA: { task: string; what: string; twist: Twist; expected: Record<string, string> }[] = [
+const EXTRA: {
+  task: string;
+  what: string;
+  twist: Twist;
+  expected: Record<string, string>;
+}[] = [
+  ...["t1-thousands", "t3-tax"].map((task) => ({
+    task,
+    what: "claims fail on a failure at its last edit's revision, checks still pending",
+    twist: {
+      pendingFailure: "current" as const,
+      claim: "fail",
+      truthPass: false,
+    },
+    expected: { "current-before-claim": "met", "no-overclaim": "met" },
+  })),
   {
     task: "t3-tax",
     what: "claims unknown before Squeal is current",

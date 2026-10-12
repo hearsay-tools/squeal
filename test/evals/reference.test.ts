@@ -39,6 +39,18 @@ for (const harness of ["codex", "claude"] as const)
       });
     }
 
+    // D4 amended (the human, 2026-10-12), paired with the older-revision mistake above.
+    for (const task of ["t1-thousands", "t3-tax"])
+      it(`${task}: a fail claim on a failure at its last edit's revision, checks pending, meets every expectation`, () => {
+        const c = BUILD[task]?.({
+          pendingFailure: "current",
+          claim: "fail",
+          truthPass: false,
+          harness,
+        }) as CellRecord;
+        expect(Object.entries(grade(c) ?? {}).filter(([, v]) => v !== "met")).toEqual([]);
+      });
+
     for (const m of MISTAKES)
       it(`${m.task}: ${m.what} misses ${m.misses.join(" and ")} and only that`, () => {
         const g = grade(BUILD[m.task]?.({ ...m.twist, harness }) as CellRecord);

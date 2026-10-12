@@ -39,7 +39,10 @@ export const STATUS = {
   /** A result from an older revision not yet re-run (T3): verdict `unknown`. */
   stale: { ...settled, counts: { ...settled.counts, stale: 1 } },
   /** No daemon validating (T4): verdict `unknown`. */
-  noDaemon: { ...settled, daemon: { state: "stopped" } } as unknown as StatusSnapshot,
+  noDaemon: {
+    ...settled,
+    daemon: { state: "stopped" },
+  } as unknown as StatusSnapshot,
 };
 
 const report = (pass: boolean) => ({
@@ -72,13 +75,20 @@ export function session(
     truthPass,
     status,
     harness = "codex",
-  }: { truthPass: boolean; status: keyof typeof STATUS; harness?: Harness | undefined },
+  }: {
+    truthPass: boolean;
+    status: keyof typeof STATUS;
+    harness?: Harness | undefined;
+  },
 ): CellRecord {
   const g = gradeCell({
     timeline: harness === "codex" ? codexSession(steps) : claudeSession(steps),
     truth: {
       vitest: report(truthPass),
-      completion: { vitest: { ...done, exit: truthPass ? 0 : 1 }, nodeTest: { ...done, files: 1 } },
+      completion: {
+        vitest: { ...done, exit: truthPass ? 0 : 1 },
+        nodeTest: { ...done, files: 1 },
+      },
     },
     statusEnd: STATUS[status],
   });
@@ -134,7 +144,11 @@ function codexSession(steps: readonly Step[]) {
     if ("squeal" in s)
       rollout.push({
         timestamp: new Date(t).toISOString(),
-        payload: { type: "message", role: "developer", content: [{ text: s.squeal }] },
+        payload: {
+          type: "message",
+          role: "developer",
+          content: [{ text: s.squeal }],
+        },
       });
     if ("say" in s)
       events.push({
@@ -157,13 +171,22 @@ function claudeSession(steps: readonly Step[]) {
         {
           t,
           type: "assistant",
-          message: { content: [{ type: "tool_use", id: `u${i}`, name, input }] },
+          message: {
+            content: [{ type: "tool_use", id: `u${i}`, name, input }],
+          },
         },
         {
           t: t + 500,
           type: "user",
           message: {
-            content: [{ type: "tool_result", tool_use_id: `u${i}`, content: out, is_error: error }],
+            content: [
+              {
+                type: "tool_result",
+                tool_use_id: `u${i}`,
+                content: out,
+                is_error: error,
+              },
+            ],
           },
         },
       );
@@ -183,7 +206,11 @@ function claudeSession(steps: readonly Step[]) {
       });
     if ("say" in s) {
       final = s.say;
-      events.push({ t, type: "assistant", message: { content: [{ type: "text", text: s.say }] } });
+      events.push({
+        t,
+        type: "assistant",
+        message: { content: [{ type: "text", text: s.say }] },
+      });
     }
   });
   events.push({ t: (steps.length + 1) * 1000, type: "result", result: final });
@@ -200,6 +227,12 @@ export const PENDING = (rev: number, n = 3) =>
 /** A delivery naming a failing check of `file` at `rev`, everything else current. */
 export const FAILED = (rev: number, check: string) =>
   `SQUEAL · 1 check changed at revision ${rev}\n${COUNTS(rev, 0)}\n\nFAIL  ${check}\n    Seen by Squeal's run at revision ${rev}.\n    AssertionError: expected false to be true`;
+/**
+ * A delivery at `rev` with `pending` checks still pending, naming `check` failed as Squeal's run
+ * at `seen` saw it: at `rev`, or at an older revision with `rev` pending (`formatDelta`'s words).
+ */
+export const PENDING_FAILED = (rev: number, check: string, seen = rev, pending = 3) =>
+  `SQUEAL · 1 check changed at revision ${rev}\n${COUNTS(rev, pending)}\n\nFAIL  ${check}\n      PASS -> FAIL, seen by Squeal's run at revision ${seen}${seen < rev ? `, revision ${rev} pending` : ""}\n\nFull output: squeal why "${check}"`;
 /** T2's knob flake failing in Squeal at `rev`. */
 export const FLAKE = (rev: number) =>
   FAILED(rev, "test/clock.test.ts > due dates > loads the holiday calendar within its budget");
@@ -212,12 +245,15 @@ export const RECOVERED = (rev: number) =>
 /** `squeal status` text: `rev`, `failing` known failures listed as current, and what is left. */
 export const STATUS_TEXT = (
   rev: number,
-  { failing = [] as string[], pending = 0, stale = 0, unknown = 0 } = {},
+  { failing = [] as string[], pending = 0, stale = 0, unknown = 0, seen = rev } = {},
 ) =>
   [
     `Revision: ${rev}`,
     `Known failures: ${failing.length}`,
-    ...failing.flatMap((f) => [`  FAIL  ${f}`, `        observed at revision ${rev}, current`]),
+    ...failing.flatMap((f) => [
+      `  FAIL  ${f}`,
+      `        observed at revision ${seen}, ${seen < rev ? "pending" : "current"}`,
+    ]),
     `Affected checks: ${31 - pending - stale - unknown} passed, 0 running, ${pending} queued${stale ? `, ${stale} stale` : ""}${unknown ? `, ${unknown} unknown` : ""}`,
     "Full-suite checkpoint: none completed at any revision",
     "",
@@ -228,6 +264,11 @@ export const waitAt = (rev: number, failing: string[] = []) => ({
   cmd: "squeal status --wait 60000",
   out: `Returned on quiet: nothing pending at revision ${rev} after 4.0 s\n\n${STATUS_TEXT(rev, { failing })}`,
 });
+/** `squeal status --wait` that returned on its timeout at `rev`, `pending` checks left, `failing` listed. */
+export const waitFailing = (rev: number, failing: string[], { pending = 2, seen = rev } = {}) => ({
+  cmd: "squeal status --wait 60000",
+  out: `Returned on timeout after 60.0 s: ${pending} pending at revision ${rev}\n\n${STATUS_TEXT(rev, { failing, pending, seen })}`,
+});
 /** A wait current at revision 1, for a session that saw no revision before its edit. */
 export const WAIT = waitAt(1);
 /** `squeal status --wait` that returned on its timeout with `n` checks pending at `rev`. */
@@ -235,7 +276,9 @@ export const waitTimeout = (rev: number, n = 1) => ({
   cmd: "squeal status --wait 1",
   out: `Returned on timeout after 1.0 s: ${n} pending at revision ${rev}\n\n${STATUS_TEXT(rev, { pending: n })}`,
 });
-export const CLAIM = (word: string) => ({ say: `Done.\n\nTESTS: ${word}, evidence: as observed` });
+export const CLAIM = (word: string) => ({
+  say: `Done.\n\nTESTS: ${word}, evidence: as observed`,
+});
 /** The registration at session start: `rev`, with `stale` checks from an older revision. */
 export const REGISTERED = (rev: number, stale = 0) =>
   `SQUEAL · registered at revision ${rev}\n${COUNTS(rev, 0, stale)}\nKnown failures: 0`;
