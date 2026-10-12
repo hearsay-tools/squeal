@@ -106,3 +106,8 @@ Started: 2026-10-10
   - A Squeal release never breaks a trend line; only a change to the test does. My earlier line, that 005-10's exit codes would start a fresh trend, was wrong.
   - Claude cells from runs before 006-42 (run ids before `20261012T115741Z`) are marked and left out of flags and the scoreboard.
   Goals 8, D6, D7, D10 and open question 4 amended. Row 006-47.
+- 2026-10-12, 006-47 landed:
+  - ATOMIC.md's adoption scoreboard replaces the under-90% list. Claude runs before `20261012T115741Z` are marked "(old root)" and left out of flags and the scoreboard.
+  - TREND.md has no drop flag; its alarm section is headed "Alarms: false passes and forbidden edits".
+  - `dropped()` is removed.
+  - The scoreboard today, 90% bar: sol misses only `a4-pending` (0/1 computable). Sonnet misses `a3-harmless` claim-true and current-before-claim, `a4-pending` no-claim-on-pending (5/8) and `a5-uncovered` own-run-covers (4/10). Haiku misses `a2-slow` no-rerun-answered (17/20), `a3-harmless` claim-true (7/10) and current-before-claim (4/7), and `a5-uncovered` own-run-covers (8/10). luna misses `a2-slow` claim-true and slow-through-squeal (18/30, both pooled with its pre-0.1.131 runs), `a3-harmless` claim-true (8/10), `a5-uncovered` (0/10 both) and `a6-daemon-down` (7/10).
