@@ -3892,7 +3892,7 @@ function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
     ...coverage.slow === null ? [] : slowSentences(command, naming),
     "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
     covers2,
-    "Squeal does not cover typecheck, build or any other test suite: run those yourself."
+    "Squeal does not cover typecheck, build or any other test suite: run the appropriate tests yourself unless Squeal's results confirm they cover your change."
   ].join(" ");
   let text = "";
   for (const naming of ["every", "first", "none"]) {
