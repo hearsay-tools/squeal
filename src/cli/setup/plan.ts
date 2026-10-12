@@ -5,6 +5,7 @@ import { isRecord } from "../../core/fs/index.js";
 import type { AbsolutePath, Policy } from "../../core/types/index.js";
 import { seedNodeTest } from "../node-test-seed.js";
 import { BLOCK_VERSION, instructionFiles } from "./block.js";
+import { slowCandidates } from "./candidates.js";
 import { scanGates } from "./gates.js";
 import { type HarnessFact, readHarnesses } from "./harnesses.js";
 import { otherWorktrees, type RepoFacts, readJson, readRepoFacts } from "./repo.js";
@@ -159,13 +160,19 @@ export async function buildPlan(root: AbsolutePath, options: PlanOptions): Promi
   const raw = readJson(join(root, POLICY_FILE));
   const runners = readRunners(facts, policy, raw);
   const exists = existsSync(join(root, POLICY_FILE));
+  const slow = await slowCandidates(facts, policy, runners);
   const config: ConfigFact = {
     path: POLICY_FILE,
     exists,
     tracked: facts.tracked.includes(POLICY_FILE),
     elsewhere: exists ? null : await configElsewhere(root),
     problems,
-    missingKeys: exists && runners.nodeTest.some((p) => p.source === "seed") ? ["nodeTest"] : [],
+    missingKeys: [
+      ...(exists && runners.nodeTest.some((p) => p.source === "seed") ? ["nodeTest" as const] : []),
+      ...(exists && !(isRecord(raw) && "slow" in raw) && slow.groups.some((g) => g.defaultSlow)
+        ? ["slow" as const]
+        : []),
+    ],
   };
   const { testFiles } = facts;
   const instructions = instructionFiles(root, facts.tracked);
@@ -181,14 +188,14 @@ export async function buildPlan(root: AbsolutePath, options: PlanOptions): Promi
     instructions,
     gates,
     mentions,
-    slow: { groups: [], unresolvedScripts: [] },
+    slow,
     codexTrust: { state: "not-checked", command: "squeal init --harness codex --trust" },
     warmup: {
       source: testFiles.source,
       testFiles: testFiles.paths.length,
       withoutCurrentResult: testFiles.paths.length - (testFiles.current ?? 0),
     },
-    outdated: outdated(config, instructions),
+    outdated: outdated(config, instructions, slow),
   };
 }
 
@@ -229,7 +236,11 @@ async function configElsewhere(root: AbsolutePath): Promise<string | null> {
   return null;
 }
 
-function outdated(config: ConfigFact, instructions: readonly InstructionFile[]): string[] {
+function outdated(
+  config: ConfigFact,
+  instructions: readonly InstructionFile[],
+  slow: SlowFacts,
+): string[] {
   const lines: string[] = [];
   if (!config.exists) {
     lines.push(
@@ -247,6 +258,13 @@ function outdated(config: ConfigFact, instructions: readonly InstructionFile[]):
     } else if (block.state === "unterminated") {
       lines.push(`${path}:${block.line}: a Squeal block begins with no end; fix it by hand`);
     }
+  }
+  // D3: 004 D5's warning reaches a human. A group with no candidate has nothing to name.
+  for (const group of slow.groups) {
+    if (!group.declaredSlow || group.inputsHoldArtifact || group.artifacts.length === 0) continue;
+    lines.push(
+      `${group.dir}: declared slow, but no declared input holds an artifact it may test (${group.artifacts.map((a) => a.path).join(", ")})`,
+    );
   }
   return lines;
 }
