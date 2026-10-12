@@ -1,0 +1,1 @@
+[{"root":"","include":["test/**/*.test.ts","src/**/*.test.ts"],"exclude":["test/fixtures/**","node_modules/**"]}]

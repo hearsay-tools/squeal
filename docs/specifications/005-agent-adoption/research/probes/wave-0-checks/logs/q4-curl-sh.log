@@ -1,0 +1,75 @@
+/bin/sh is /usr/bin/dash; curl 8.5.0
+
+== A: naive script, whole, read under a pipe
+step 1: check node
+step 2: install plugins
+continue? [y/N] answer was: []
+step 3: copy launcher
+step 4: print next step
+would remove the launcher
+DONE naive
+[pipeline exit 0]
+
+== B: naive script cut mid-download
+curl: (18) transfer closed with 194 bytes remaining to read
+step 1: check node
+step 2: install plugins
+continue? [y/N] sh: 7: Syntax error: Unterminated quoted string
+[pipeline exit 2]
+
+== C: guarded (main at the end) cut mid-download
+curl: (18) transfer closed with 267 bytes remaining to read
+sh: 8: Syntax error: end of file unexpected (expecting "fi")
+[pipeline exit 2]
+
+== D: 404, curl -f, plain pipe
+curl: (22) The requested URL returned error: 404
+[pipeline exit 0]
+
+== D2: 404 under bash -o pipefail
+curl: (22) The requested URL returned error: 404
+[pipeline exit 22]
+
+== E: guarded, no controlling terminal (setsid)
+step 1: check node
+step 2: install plugins
+stdin is not a terminal (piped script)
+/dev/tty is not available
+step 3: copy launcher
+step 4: print next step
+DONE guarded
+[pipeline exit 0]
+
+== E2: guarded, inside a terminal (script -qc)
+step 1: check node
+step 2: install plugins
+stdin is not a terminal (piped script)
+/dev/tty is available
+step 3: copy launcher
+step 4: print next step
+DONE guarded
+[pipeline exit 0]
+
+== F: arguments through the pipe (sh -s -- --uninstall)
+step 1: check node
+step 2: install plugins
+stdin is not a terminal (piped script)
+/dev/tty is not available
+step 3: copy launcher
+step 4: print next step
+DONE guarded
+args: --uninstall --yes
+[pipeline exit 0]
+
+== A2: read early in an 80 KB script, dash
+step 1
+read got: [d 249 ......................]
+step 2, after the filler
+DONE big
+[pipeline exit 0]
+
+== A3: the same under bash
+step 1
+step 2, after the filler
+DONE big
+[pipeline exit 0]

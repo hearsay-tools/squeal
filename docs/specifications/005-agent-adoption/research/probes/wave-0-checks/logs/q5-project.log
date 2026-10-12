@@ -1,0 +1,57 @@
+hub pinned to v132
+$ claude plugin marketplace update hearsay
+Updating marketplace: hearsay...Validating local marketplace
+✔ Successfully updated marketplace: hearsay
+[exit 0]
+$ claude plugin uninstall squeal@hearsay --scope project
+✔ Successfully uninstalled plugin: squeal (scope: project)
+[exit 0]
+$ claude plugin install squeal@hearsay --scope project
+Installing plugin "squeal@hearsay"...✔ Successfully installed plugin: squeal@hearsay (scope: project)
+[exit 0]
+--- project settings
+{
+  "enabledPlugins": {
+    "squeal@hearsay": true
+  }
+}
+--- installed_plugins.json
+{
+  "version": 2,
+  "plugins": {
+    "squeal@hearsay": [
+      {
+        "scope": "user",
+        "installPath": "/tmp/wave0-checks/home/.claude/plugins/cache/hearsay/squeal/0.1.131",
+        "version": "0.1.131",
+        "installedAt": "2026-10-12T22:04:43.932Z",
+        "lastUpdated": "2026-10-12T22:04:43.932Z",
+        "gitCommitSha": "c724cbdc7b3cda771b5932a22fca3ce7e0de2e33"
+      },
+      {
+        "scope": "project",
+        "installPath": "/tmp/wave0-checks/home/.claude/plugins/cache/hearsay/squeal/0.1.132",
+        "version": "0.1.132",
+        "installedAt": "2026-10-12T22:09:43.266Z",
+        "lastUpdated": "2026-10-12T22:09:43.266Z",
+        "gitCommitSha": "c5aaff12135c8258abb4172d9d30f7846e667e44",
+        "projectPath": "/tmp/wave0-checks/fx/enabled"
+      }
+    ]
+  }
+}
+--- list in fx/enabled
+[ { "id": "squeal@hearsay", "version": "0.1.131", "scope": "user", "enabled": true, "installPath": "/tmp/wave0-checks/home/.claude/plugins/cache/hearsay/squeal/0.1.131", "installedAt": "2026-10-12T22:04:43.932Z", "lastUpdated": "2026-10-12T22:04:43.932Z", "projectEnabled": true }, { "id": "squeal@hearsay", "version": "0.1.132", "scope": "project", "enabled": true, "installPath": "/tmp/wave0-checks/home/.claude/plugins/cache/hearsay/squeal/0.1.132", "installedAt": "2026-10-12T22:09:43.266Z", "lastUpdated": "2026-10-12T22:09:43.266Z", "projectPath": "/tmp/wave0-checks/fx/enabled", "projectEnabled": true }]
+--- list in fx/plain
+Installed plugins:
+
+  ❯ squeal@hearsay
+    Version: 0.1.131
+    Scope: user
+    Status: ✔ enabled
+
+  ❯ squeal@hearsay
+    Version: 0.1.132
+    Scope: project
+    Status: ✔ enabled
+
