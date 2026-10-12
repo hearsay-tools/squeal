@@ -5,6 +5,7 @@ import { isRecord } from "../../core/fs/index.js";
 import type { AbsolutePath, Policy } from "../../core/types/index.js";
 import { seedNodeTest } from "../node-test-seed.js";
 import { BLOCK_VERSION, instructionFiles } from "./block.js";
+import { scanGates } from "./gates.js";
 import { type HarnessFact, readHarnesses } from "./harnesses.js";
 import { otherWorktrees, type RepoFacts, readJson, readRepoFacts } from "./repo.js";
 
@@ -168,6 +169,9 @@ export async function buildPlan(root: AbsolutePath, options: PlanOptions): Promi
   };
   const { testFiles } = facts;
   const instructions = instructionFiles(root, facts.tracked);
+  const { gates, mentions } = scanGates(root, facts.tracked, {
+    nodeTest: runners.nodeTest.length > 0,
+  });
   return {
     schemaVersion: SETUP_PLAN_SCHEMA_VERSION,
     root,
@@ -175,8 +179,8 @@ export async function buildPlan(root: AbsolutePath, options: PlanOptions): Promi
     runners,
     config,
     instructions,
-    gates: [],
-    mentions: [],
+    gates,
+    mentions,
     slow: { groups: [], unresolvedScripts: [] },
     codexTrust: { state: "not-checked", command: "squeal init --harness codex --trust" },
     warmup: {
