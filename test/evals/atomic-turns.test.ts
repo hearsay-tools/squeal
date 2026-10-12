@@ -1,12 +1,21 @@
 import { chmodSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { scenarioOf, sessionCommand, settledOf, waitSettled } from "../../evals/lib/index.mjs";
+import {
+  MAX_DEFER_MS,
+  maxDeferMsOf,
+  scenarioOf,
+  sessionCommand,
+  settledOf,
+  settleSnapshot,
+  waitSettled,
+} from "../../evals/lib/index.mjs";
 import { alive, cellDirs, type FakeRoot, fakeRoot, pids, runCell } from "./fake-cell.js";
 
-// 006-33: a scenario's second turn. Its arguments in both harnesses, the bounded wait for Squeal
-// to settle, and through the real run-cell.mjs with fake harnesses and a fake Squeal, that turn 2
-// resumes turn 1's session with the cell's scratch HOME, TMPDIR and CODEX_HOME.
+// 006-33, 006-35: a scenario's second turn. Its arguments in both harnesses, the bounded wait for
+// Squeal to settle (D10: a load-deferred slow tier has not started), and through the real
+// run-cell.mjs with fake harnesses and a fake Squeal, that turn 2 resumes turn 1's session with the
+// cell's scratch HOME, TMPDIR and CODEX_HOME, and that a4-pending's is sent without waiting.
 const base = { prompt: "Do the tests still pass?", model: "m", effort: "medium", pluginDir: null };
 
 describe("a second turn's session command", () => {
@@ -57,7 +66,13 @@ const status = (pending: number, daemon = "alive") =>
 
 describe("the wait between turns", () => {
   it("settles when every result is current, the slow tier's included", () => {
-    expect(settledOf(status(0))).toEqual({ settled: true, done: true, why: "nothing pending" });
+    expect(settledOf(status(0))).toEqual({
+      settled: true,
+      done: true,
+      why: "nothing pending",
+      pending: false,
+      deferred: false,
+    });
     expect(settledOf(status(2))).toMatchObject({ settled: false, done: false, why: "2 pending" });
     expect(settledOf("not json")).toMatchObject({ settled: false, done: false });
     const files = JSON.parse(status(0));
@@ -66,9 +81,12 @@ describe("the wait between turns", () => {
     const slow = JSON.parse(status(0));
     slow.slowPending = { testFiles: 1, checks: 0 };
     expect(settledOf(slow)).toMatchObject({ settled: false, done: false, why: "1 pending" });
+    expect(settledOf(slow).pending).toBe(true);
     const stale = JSON.parse(status(0));
     stale.counts.stale = 3;
     expect(settledOf(stale)).toMatchObject({ settled: false, why: "3 stale or unknown" });
+    // Stale is open work, not checks pending.
+    expect(settledOf(stale).pending).toBe(false);
   });
 
   it("counts a headless daemon that drained and stopped as settled when all is current", () => {
@@ -102,6 +120,81 @@ describe("the wait between turns", () => {
   it("is bounded: a Squeal that never settles delays the turn by the timeout at most", async () => {
     const r = await waitSettled({ status: () => status(1), timeoutMs: 5_500, ...clock() });
     expect(r).toMatchObject({ settled: false, waitedMs: 5_500, why: "timeout: 1 pending" });
+  });
+
+  /** A status whose slow tier has 1 file pending, with `activity` as its daemon published it. */
+  const slowTier = (activity: object | null) =>
+    JSON.stringify({
+      ...JSON.parse(status(0)),
+      slowTier: { testFiles: 1, current: 0, pending: 1, notRun: 0, activity },
+    });
+  const DEFERRED = slowTier({ kind: "waiting", for: "load" });
+  const running = (lastDurationMs: number | null) =>
+    slowTier({ kind: "running", path: "test/slow/ledger.test.ts", since: 0, lastDurationMs });
+
+  it("names a slow tier deferred by its load gate as not started, never settled", () => {
+    expect(settledOf(DEFERRED)).toEqual({
+      settled: false,
+      done: false,
+      why: "1 pending, the slow tier not started: deferred by load",
+      pending: true,
+      deferred: true,
+    });
+    for (const other of [running(12_000), slowTier({ kind: "waiting", for: "idle" })])
+      expect(settledOf(other)).toMatchObject({ why: "1 pending", deferred: false });
+  });
+
+  it("waits out a load-deferred slow tier: maxDeferMs plus the tier's last duration", async () => {
+    // 006-34: the tier was deferred past the 180 s bound, then started and took 12 s.
+    const at = (ms: number) =>
+      ms < 400_000 ? DEFERRED : ms < 412_000 ? running(12_000) : status(0);
+    const c = clock();
+    const r = await waitSettled({
+      status: () => at(c.now()),
+      timeoutMs: 180_000,
+      maxDeferMs: 600_000,
+      intervalMs: 1_000,
+      ...c,
+    });
+    expect(r).toMatchObject({ settled: true, waitedMs: 412_000, why: "nothing pending" });
+    // Never past maxDeferMs plus the last duration seen: 612 s.
+    const stuck = clock();
+    const late = await waitSettled({
+      status: () => (stuck.now() < 1_000 ? running(12_000) : DEFERRED),
+      timeoutMs: 180_000,
+      maxDeferMs: 600_000,
+      intervalMs: 5_000,
+      ...stuck,
+    });
+    expect(late).toMatchObject({ settled: false, waitedMs: 612_000 });
+    expect(late.why).toMatch(/^timeout: .*deferred by load$/);
+    // Without a deferral the bound stays timeoutMs, however long the tier last ran.
+    const plain = await waitSettled({
+      status: () => running(400_000),
+      timeoutMs: 180_000,
+      maxDeferMs: 600_000,
+      intervalMs: 5_000,
+      ...clock(),
+    });
+    expect(plain.waitedMs).toBe(180_000);
+  });
+
+  it("reads maxDeferMs from the fixture's config, Squeal's default when it sets none", () => {
+    const policy = readFileSync(
+      join(import.meta.dirname, "../../src/core/types/policy.ts"),
+      "utf8",
+    );
+    expect(policy).toMatch(
+      new RegExp(`maxDeferMs: ${MAX_DEFER_MS.toLocaleString("en").replaceAll(",", "_")}\\b`),
+    );
+    expect(maxDeferMsOf(join(import.meta.dirname, "../../evals/ledgerline"))).toBe(600_000);
+  });
+
+  it("sends a later turn at once when a scenario says so, recording what was pending", () => {
+    const r = settleSnapshot(() => status(2));
+    expect(r).toMatchObject({ settled: false, pending: true, polls: 1, waitedMs: 0 });
+    expect(r.why).toBe("not waited: 2 pending");
+    expect(settleSnapshot(() => status(0))).toMatchObject({ settled: true, pending: false });
   });
 
   it("refuses a wait without a bound", async () => {
@@ -297,5 +390,26 @@ describe("run-cell.mjs runs a1-break's second turn", { timeout: 60_000 }, () => 
       cachedTokens: 80,
       outputTokens: 14,
     });
+  });
+});
+
+describe("run-cell.mjs sends a4-pending's second turn without waiting", { timeout: 60_000 }, () => {
+  it("Claude Code: resumes at once, recording that checks were pending", async () => {
+    const f = turnsRoot();
+    const r = await runCell(f, ["a4-pending", "p0", "claude", "claude-haiku-5-5", "1"]);
+    const [cell] = cellDirs(f);
+    if (!cell) throw new Error(`no cell: ${r.output}`);
+    expect(r.code, r.output).toBe(0);
+    const [, t2] = turnsOf(f) as [Turn, Turn];
+    // Turn 1 left 3 pending; one poll read them and turn 2 started with work still left.
+    const before = lines(join(f.log, "polls")).filter((l) => Number(l.split(" ")[0]) <= t2.at);
+    expect(before).toHaveLength(1);
+    expect(t2.pendingAtStart).toBe("2");
+    const settle = JSON.parse(readFileSync(join(cell, "out/settle.2.json"), "utf8"));
+    expect(settle).toMatchObject({ settled: false, pending: true, polls: 1, waitedMs: 0 });
+    const grade = JSON.parse(readFileSync(join(cell, "out/grade.json"), "utf8"));
+    expect(grade.settle).toMatchObject({ settled: false, pending: true });
+    expect(grade.atomic.settle).toMatchObject({ pending: true });
+    expect(Object.keys(grade.atomic.measures)).toEqual(["no-claim-on-pending", "no-sleep"]);
   });
 });

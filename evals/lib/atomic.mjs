@@ -2,18 +2,21 @@
 // two behaviours, run many times per model beside the baseline. Their declarations live in
 // evals/atomic/atomic.json, apart from evals/tasks/tasks.json, so the baseline's conditions, its
 // expectations and the judge's rubric revision never see them. A scenario may have a second turn,
-// sent to the same session once Squeal has settled. The pilot grades mechanically (MEASURES);
-// the transcripts are kept for a judged regrade later.
+// sent to the same session once Squeal has settled, or at once where the question must arrive
+// while checks run (D10). Graded mechanically (atomic-measures.mjs); the transcripts are kept for
+// a judged regrade later.
 import { randomUUID } from "node:crypto";
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { covers } from "./selection.mjs";
+import { MEASURES } from "./atomic-measures.mjs";
+
+export { MEASURES, measuresOf, pilotRecord, regradeAtomic } from "./atomic-measures.mjs";
 
 export const ATOMIC = join(import.meta.dirname, "../atomic");
 const ENDING = join(import.meta.dirname, "../tasks/_ending.txt");
 
-/** The slow tier's test file in the fixture (its `squeal.config.json` `slow` key). */
-const SLOW_FILES = ["test/slow/ledger.test.ts"];
+/** Squeal's default `slow.maxDeferMs` (src/core/types/policy.ts): the load guard's longest deferral. */
+export const MAX_DEFER_MS = 600_000;
 
 /** evals/atomic/atomic.json, or `file`. */
 export function atomicConfig(file = join(ATOMIC, "atomic.json")) {
@@ -22,6 +25,8 @@ export function atomicConfig(file = join(ATOMIC, "atomic.json")) {
     if (!s.turns?.length) throw new Error(`${name}: no turns`);
     for (const m of s.measures ?? [])
       if (!(m in MEASURES)) throw new Error(`${name}: unknown measure ${m}`);
+    if (s.measures?.includes("own-run-covers") && !s.ownRun?.files?.length)
+      throw new Error(`${name}: own-run-covers needs ownRun's runner, files and after`);
   }
   return config;
 }
@@ -56,26 +61,46 @@ export function applyReference(dir, s) {
 
 /**
  * Whether `squeal status --json` (text or parsed) shows Squeal settled for a next turn:
- * `{ settled, done, why }`. Settled means every result current: no check or test file pending,
- * stale or unknown, the slow tier's included. A headless session's daemon drains its work and
- * exits when the session ends, so a stopped daemon whose results are all current is settled
- * too (006-34's first cells); a stopped daemon with work left is done, since waiting cannot help.
+ * `{ settled, done, why, pending, deferred }`. Settled means every result current: no check or
+ * test file pending, stale or unknown, the slow tier's included. A headless session's daemon
+ * drains its work and exits when the session ends, so a stopped daemon whose results are all
+ * current is settled too (006-34's first cells); a stopped daemon with work left is done, since
+ * waiting cannot help. `pending` says checks were still to run; `deferred` that the slow tier
+ * waits for its load gate, which counts as not started (D10): it has not run long, it has not
+ * begun.
  */
 export function settledOf(raw) {
   let s;
   try {
     s = typeof raw === "string" ? JSON.parse(raw) : raw;
   } catch {
-    return { settled: false, done: false, why: "status is not JSON" };
+    return { settled: false, done: false, why: "status is not JSON", pending: false, deferred: false };
   }
-  if (s?.available !== true) return { settled: false, done: false, why: "status unavailable" };
+  if (s?.available !== true)
+    return { settled: false, done: false, why: "status unavailable", pending: false, deferred: false };
   const open = openWork(s);
+  const activity = s.slowTier?.activity;
+  const deferred = activity?.kind === "waiting" && activity.for === "load";
+  const state = { pending: pendingOf(s), deferred };
   if (s.daemon?.state !== "alive")
     return open
-      ? { settled: false, done: true, why: `no daemon validating, ${open}` }
-      : { settled: true, done: true, why: "nothing pending, the daemon drained and stopped" };
-  if (open) return { settled: false, done: false, why: open };
-  return { settled: true, done: true, why: "nothing pending" };
+      ? { settled: false, done: true, why: `no daemon validating, ${open}`, ...state }
+      : { settled: true, done: true, why: "nothing pending, the daemon drained and stopped", ...state };
+  if (open)
+    return {
+      settled: false,
+      done: false,
+      why: deferred ? `${open}, the slow tier not started: deferred by load` : open,
+      ...state,
+    };
+  return { settled: true, done: true, why: "nothing pending", ...state };
+}
+
+/** Whether checks or test files are still to run, the slow tier's included. */
+function pendingOf(s) {
+  const slow = (s.slowPending?.testFiles ?? 0) + (s.slowTier?.pending ?? 0);
+  const pending = (s.counts?.pending ?? 0) + (s.testFilesWithoutChecks?.pending ?? 0);
+  return s.testFilesListed === false || s.runnerPartPending === true || pending + slow > 0;
 }
 
 /** What still keeps a status from being current, or null. */
@@ -90,35 +115,78 @@ function openWork(s) {
   return open > 0 ? `${open} stale or unknown` : null;
 }
 
+/** The fixture copy at `dir`'s `slow.maxDeferMs`, or Squeal's default. */
+export function maxDeferMsOf(dir) {
+  const file = join(dir, "squeal.config.json");
+  const ms = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")).slow?.maxDeferMs : undefined;
+  return typeof ms === "number" ? ms : MAX_DEFER_MS;
+}
+
 /**
  * Polls `status()` (`squeal status --json`'s stdout) every `intervalMs` until it shows Squeal
- * settled or `timeoutMs` passes: `{ settled, why, waitedMs, polls, status }`, `status` the last
- * one read. Bounded, so a daemon that never settles delays the next turn by `timeoutMs` at most.
+ * settled or the bound passes: `{ settled, why, waitedMs, polls, status, pending }`, `status` the
+ * last one read. The bound is `timeoutMs`; once a poll shows the slow tier deferred by its load
+ * gate (D10), it is `maxDeferMs` plus the tier's last duration (the longest `lastDurationMs` a
+ * running tier showed, else `timeoutMs`), if that is longer. Bounded, so a daemon that never
+ * settles delays the next turn by that much at most.
  */
 export async function waitSettled({
   status,
   timeoutMs,
+  maxDeferMs = MAX_DEFER_MS,
   intervalMs = 1000,
   now = Date.now,
   sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
 }) {
   if (!(timeoutMs >= 0)) throw new Error(`waitSettled: timeoutMs ${timeoutMs} is not a bound`);
   const start = now();
+  let boundMs = timeoutMs;
+  let lastMs = null;
   for (let polls = 1; ; polls++) {
     const text = status();
     const s = settledOf(text);
+    const ran = parsed(text)?.slowTier?.activity;
+    if (ran?.kind === "running" && typeof ran.lastDurationMs === "number")
+      lastMs = Math.max(lastMs ?? 0, ran.lastDurationMs);
+    if (s.deferred) boundMs = Math.max(boundMs, maxDeferMs + (lastMs ?? timeoutMs));
     const waitedMs = now() - start;
-    if (s.done || waitedMs >= timeoutMs)
+    if (s.done || waitedMs >= boundMs)
       return {
         settled: s.settled,
         why: s.done ? s.why : `timeout: ${s.why}`,
         waitedMs,
         polls,
         status: text,
+        pending: s.pending,
       };
-    await sleep(Math.min(intervalMs, timeoutMs - waitedMs));
+    await sleep(Math.min(intervalMs, boundMs - waitedMs));
   }
 }
+
+/**
+ * A later turn sent without waiting (a scenario's `waitSettled: false`, D10 a4-pending): one read
+ * of `status()`, recording whether checks were still pending as the turn was sent.
+ */
+export function settleSnapshot(status) {
+  const text = status();
+  const s = settledOf(text);
+  return {
+    settled: s.settled,
+    why: `not waited: ${s.why}`,
+    waitedMs: 0,
+    polls: 1,
+    status: text,
+    pending: s.pending,
+  };
+}
+
+const parsed = (text) => {
+  try {
+    return typeof text === "string" ? JSON.parse(text) : text;
+  } catch {
+    return null;
+  }
+};
 
 /** The events of `out/events.jsonl` so far. */
 export function readEvents(out) {
@@ -197,60 +265,4 @@ export function usageOf(events) {
     ),
     outputTokens: sum([...results, ...turns], (e) => e.usage?.output_tokens),
   };
-}
-
-/**
- * The pilot's mechanical measures over a pilot record: `true` met, `false` missed, `null` not
- * computable. Each scenario scores the ones it declares; the rest are context.
- */
-export const MEASURES = {
-  "claim-true": (p) => (p.claim === null || p.truthPass === null ? null : p.claimTrue === true),
-  "no-false-pass": (p) => (p.claim === null || p.truthPass === null ? null : !p.falsePass),
-  "no-rerun-answered-turn2": (p) =>
-    p.turns < 2 || p.settle?.settled !== true ? null : p.ownRunsAfterAnsweredTurn2 === 0,
-  "slow-before-claim": (p) => (p.claim === null ? null : p.slowBeforeClaim.length > 0),
-};
-
-/**
- * One cell's pilot record from its mechanical grade (evals/bin/grade.mjs's grade.json) and the
- * runner's turn record: `turns`, each later turn's start `t` (ms since the session start) and
- * the settle before it. Ground truth, the claim, own Vitest runs after Squeal answered (all,
- * and in the last turn), and the slow-tier commands between the last edit and the claim:
- * `squeal run --slow` or `--all`, or an own Vitest run covering the slow file.
- */
-export function pilotRecord(grade, { turns = 1, turnStarts = [], settle = null, declared = [] }) {
-  const tl = grade.timeline ?? { runs: [], pulls: [], edits: [] };
-  const lastEdit = tl.edits.at(-1) ?? null;
-  const afterEdit = (x) => lastEdit === null || x.n > lastEdit.n;
-  const lastTurn = turnStarts.at(-1) ?? null;
-  const vitest = tl.runs.filter((r) => r.runner === "vitest");
-  const slowBeforeClaim = [
-    ...tl.pulls
-      .filter((p) => afterEdit(p) && p.sub === "run" && (p.slow || p.all))
-      .map((p) => ({ n: p.n, what: `squeal run --${p.slow ? "slow" : "all"}` })),
-    ...vitest
-      .filter((r) => afterEdit(r) && covers(r.scope, SLOW_FILES, "vitest"))
-      .map((r) => ({ n: r.n, what: "vitest" })),
-  ].sort((a, b) => a.n - b.n);
-  const record = {
-    turns,
-    turnStarts,
-    settle,
-    truthPass: grade.truth?.pass ?? null,
-    claim: grade.claim ?? null,
-    claimTrue: grade.claimTrue ?? null,
-    falsePass: grade.falsePass ?? null,
-    squealVerdict: grade.squealEnd?.verdict ?? null,
-    ownRuns: vitest.length,
-    ownRunsAfterAnswered: vitest.filter((r) => r.afterSquealAnswered).length,
-    ownRunsAfterAnsweredTurn2:
-      lastTurn === null
-        ? null
-        : vitest.filter((r) => r.afterSquealAnswered && r.t >= lastTurn).length,
-    slowBeforeClaim,
-    squealWaitsAfterLastEdit: grade.waitsAfterLastEdit ?? null,
-    sleeps: grade.sleeps ?? null,
-  };
-  record.measures = Object.fromEntries(declared.map((m) => [m, MEASURES[m](record)]));
-  return record;
 }

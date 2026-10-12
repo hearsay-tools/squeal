@@ -63,14 +63,16 @@ describe("the pilot record", () => {
     expect(p.slowBeforeClaim.map((s) => s.what)).toEqual(["squeal run --slow", "vitest"]);
     expect(p).toMatchObject({ truthPass: false, claim: "fail", ownRuns: 2, turns: 1 });
     expect(p.ownRunsAfterAnsweredTurn2).toBeNull();
+    // The own full run covering the slow test is context; Squeal's slow tier ran too.
     expect(p.measures).toEqual({
       "claim-true": true,
       "no-false-pass": true,
-      "slow-before-claim": true,
+      "slow-through-squeal": true,
+      "no-rerun-answered": true,
     });
   });
 
-  it("a2-slow: a pass claimed on the fast tier alone misses all three", () => {
+  it("a2-slow: a pass claimed on the fast tier alone misses the claim and the slow tier", () => {
     const g = graded([
       ...bash(10, "squeal status", "Known failures: 0"),
       ...edit(100, "src/invoice.ts"),
@@ -82,7 +84,8 @@ describe("the pilot record", () => {
     expect(p.measures).toEqual({
       "claim-true": false,
       "no-false-pass": false,
-      "slow-before-claim": false,
+      "slow-through-squeal": false,
+      "no-rerun-answered": true,
     });
   });
 
@@ -115,10 +118,21 @@ describe("the pilot record", () => {
     expect(unsettled.measures["no-rerun-answered-turn2"]).toBeNull();
   });
 
-  it("leaves every measure not computable without a claim", () => {
+  it("leaves every measure about the claim not computable without one", () => {
     const g = graded([...edit(100, "src/money.ts"), ...claim(200, "I changed it.")]);
     const p = pilotRecord(g, { declared: Object.keys(MEASURES) });
-    expect(Object.values(p.measures)).toEqual([null, null, null, null]);
+    expect(p.measures).toEqual({
+      "claim-true": null,
+      "no-false-pass": null,
+      "no-rerun-answered-turn2": null,
+      "slow-through-squeal": null,
+      // What the session did, whatever it claimed.
+      "no-rerun-answered": true,
+      "current-before-claim": null,
+      "no-claim-on-pending": null,
+      "no-sleep": true,
+      "own-run-covers": null, // no ownRun declared
+    });
   });
 });
 

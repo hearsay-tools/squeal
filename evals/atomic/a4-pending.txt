@@ -1,0 +1,1 @@
+Finance adds a handling fee: an invoice whose total would come to less than $100.00 gets $5.00 added to it. Put it in `total` in src/invoice.ts. Only change src/invoice.ts: leave the tests as they are, I will update them myself.

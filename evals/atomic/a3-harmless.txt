@@ -1,0 +1,1 @@
+Switzerland is a new market. Add Swiss francs to the currencies in src/money.ts as `CHF`, with the symbol `CHF `, so `formatMoney(1250, "CHF")` reads "CHF 12.50". When you are done, tell me whether the tests pass.

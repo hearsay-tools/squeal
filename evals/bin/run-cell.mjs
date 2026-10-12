@@ -7,9 +7,11 @@
 // reasoning effort: `claude -p --effort <level>`, `codex exec -c model_reasoning_effort="<level>"`.
 // The task's knobs come from evals/tasks/tasks.json. Exit 75: held, the load is too high.
 // An atomic scenario (evals/atomic/atomic.json, 006-33) in place of a task brings its own knobs
-// and turns: each later turn waits until `squeal status` shows nothing pending (bounded), then
-// resumes the same session with the cell's scratch homes, into the same events.jsonl. Its grade
-// carries the pilot's mechanical record (`atomic`) and is not judged.
+// and turns: each later turn waits until `squeal status` shows nothing pending (bounded by
+// `settleS`, or by the fixture's `slow.maxDeferMs` plus the tier's last duration while its load
+// gate defers the slow tier, D10), then resumes the same session with the cell's scratch homes,
+// into the same events.jsonl. A scenario with `waitSettled: false` sends it at once and records
+// whether checks were pending. Its grade carries the mechanical record (`atomic`), unjudged.
 // --run names the run the cell belongs to (a fresh id by default); a cell already graded in that
 // run is skipped with --resume and refused without it (exit 2), so no run overwrites another.
 // Exit 1: the cell failed (setup, a session that could not start, or a secret that survived).
@@ -41,10 +43,12 @@ import {
 import { availableParallelism, loadavg, tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import {
+  maxDeferMsOf,
   pilotRecord,
   readEvents,
   runTurns,
   scenarioOf,
+  settleSnapshot,
   usageOf,
   waitSettled,
 } from "../lib/atomic.mjs";
@@ -249,13 +253,16 @@ async function lifecycle() {
       }),
     session: (command, args, t0) =>
       runSession({ command, args, cwd: WORK, env, out: OUT, timeoutS, graceS, log, t0 }),
-    settle: () =>
-      plugin
-        ? waitSettled({
-            status: () => squeal(["status", "--json"]).stdout,
-            timeoutMs: scenario.settleS * 1000,
-          })
-        : { settled: false, why: "no plugin", waitedMs: 0, polls: 0, status: "" },
+    settle: () => {
+      if (!plugin) return { settled: false, why: "no plugin", waitedMs: 0, polls: 0, status: "" };
+      const status = () => squeal(["status", "--json"]).stdout;
+      if (scenario.waitSettled === false) return settleSnapshot(status);
+      return waitSettled({
+        status,
+        timeoutMs: scenario.settleS * 1000,
+        maxDeferMs: maxDeferMsOf(WORK),
+      });
+    },
     out: OUT,
     log: (s) => log(s.replace("{model}", `${model} effort ${effort}`)),
     load: () => load1().toFixed(1),
@@ -302,7 +309,12 @@ async function lifecycle() {
       userTurns: prompts.length,
       exits,
       turnStarts,
-      settle: settle && { settled: settle.settled, why: settle.why, waitedMs: settle.waitedMs },
+      settle: settle && {
+        settled: settle.settled,
+        why: settle.why,
+        waitedMs: settle.waitedMs,
+        pending: settle.pending ?? null,
+      },
     }),
     load: {
       start: samples[0],
@@ -340,7 +352,7 @@ function pilot(meta) {
     turns: meta.userTurns,
     turnStarts: meta.turnStarts,
     settle: meta.settle,
-    declared: scenario.measures ?? [],
+    scenario,
   });
   grade.usageTotal = usageOf(readEvents(OUT));
   writeFileSync(file, JSON.stringify(grade, null, 2));
