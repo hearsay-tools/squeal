@@ -82,7 +82,11 @@ export const stop: CodexHandler = async (input, location, deps) => {
       return null;
     });
   }
-  const outcome = await stopTurn({ ...input, stopHookActive: false }, location, deps);
+  const outcome = await stopTurn(
+    { ...input, stopHookActive: false, harness: "codex" },
+    location,
+    deps,
+  );
   if (outcome === null) return null;
   return block("block" in outcome ? outcome.block : outcome.news, deps.command);
 };
@@ -94,7 +98,7 @@ export const stop: CodexHandler = async (input, location, deps) => {
  */
 export const stopSlowTier: CodexHandler = async (input, location, deps) => {
   const reason = await stopSlow(
-    { ...input, stopHookActive: input.stop_hook_active === true },
+    { ...input, stopHookActive: input.stop_hook_active === true, harness: "codex" },
     location,
     deps,
   );

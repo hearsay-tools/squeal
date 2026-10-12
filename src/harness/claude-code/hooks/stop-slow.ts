@@ -11,7 +11,7 @@ import type { Handler } from "../hook.js";
 export const stopSlow: Handler = async (input, location, deps) => {
   if (isFork(input)) return null;
   const reason = await waitForSlowTier(
-    { ...input, stopHookActive: input.stop_hook_active === true },
+    { ...input, stopHookActive: input.stop_hook_active === true, harness: "claude-code" },
     location,
     deps,
   );

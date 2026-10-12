@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
+import { squealVersion } from "../../src/core/daemon/version.js";
 import type { createDelivery as CreateDelivery } from "../../src/core/delivery/index.js";
 import { readTurn } from "../../src/core/delivery/turn.js";
 import { testFileId } from "../../src/core/keys/index.js";
+import { recordStopWait, type StopWaitHarness } from "../../src/core/slow/index.js";
 import { DEFAULT_POLICY, type EndTurnOptions } from "../../src/core/types/index.js";
 import { runHook } from "../../src/harness/claude-code/index.js";
 import { runCodexHook } from "../../src/harness/codex/index.js";
@@ -43,7 +45,7 @@ vi.mock("../../src/core/delivery/index.js", async (importOriginal) => {
 const deps: HookDeps = { env: {}, ensureDaemon: async () => "alive" };
 
 interface Harness {
-  readonly name: string;
+  readonly name: StopWaitHarness;
   startTurn(r: SquealRepo): Promise<void>;
   stop(r: SquealRepo, overrides?: object): Promise<{ readonly stdout: string }>;
 }
@@ -82,6 +84,8 @@ async function repo(harness: Harness): Promise<SquealRepo> {
     slow: { ...DEFAULT_POLICY.slow, include: [FILE.path] },
     stop: { waitMs: 0, requireSlowSuite: true },
   });
+  // 001-285: the waiting entry ran here, so the 2 s Stop leaves slow files to it.
+  recordStopWait(r.store, r.worktreeId, harness.name, squealVersion());
   await harness.startTurn(r);
   hooks.calls = [];
   return r;

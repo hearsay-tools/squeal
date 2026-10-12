@@ -18,7 +18,7 @@ export const stop: Handler = async (input, location, deps) => {
     return null;
   }
   const outcome = await stopTurn(
-    { ...input, stopHookActive: input.stop_hook_active === true },
+    { ...input, stopHookActive: input.stop_hook_active === true, harness: "claude-code" },
     location,
     deps,
   );

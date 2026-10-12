@@ -250,6 +250,7 @@ export const WORKTREE_META_ROWS = {
   rekeyedMoves: { prefix: "rekeyed-moves.", owner: "scheduler/rekeyed-moves" },
   optimizerOff: { prefix: "optimizer-off.", owner: "state/optimizer-note" },
   baselineFindings: { prefix: "state.baseline-findings.", owner: "state/baseline" },
+  stopWait: { prefix: "stop-wait:", owner: "slow/stop-wait" },
 } as const;
 
 export type WorktreeMetaRow = keyof typeof WORKTREE_META_ROWS;

@@ -1,13 +1,14 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { requestDaemon } from "../../core/daemon/client.js";
 import { readPolicy } from "../../core/daemon/policy.js";
+import { squealVersion } from "../../core/daemon/version.js";
 import {
   formatDelta,
   formatRegistration,
   readHeader,
   readLiveHeader,
 } from "../../core/delivery/index.js";
-import { slowFiles } from "../../core/slow/index.js";
+import { type StopWaitHarness, slowFiles, stopWaitRuns } from "../../core/slow/index.js";
 import { isFastPending, slowFilesNotCurrent, toKnownFailure } from "../../core/state/index.js";
 import { STATUS_BUSY_TIMEOUT_MS } from "../../core/status/index.js";
 import { readTransaction, storePaths } from "../../core/store/index.js";
@@ -62,8 +63,12 @@ export type StopOutcome = { readonly block: string } | { readonly news: string }
  * of the current revision, deliver the delta with its status header, and
  * block with a factual reason when `stop.blockOnKnownFailures`,
  * `stop.requireFullSuite` or `stop.requireSlowSuite` (spec 004 D7: a slow
- * test file not current at this revision) is not met. Stop never waits for
- * slow files, whatever the policy (D9).
+ * test file not current at this revision) is not met. This entry never
+ * waits for slow files, whatever the policy (D9). With `requireSlowSuite` on,
+ * a main agent's slow files are the waiting entry's (`stopSlow`, D9 as
+ * amended 2026-10-12) once its harness's waiting entry is known to run in the
+ * worktree at this version (`stopWaitRuns`); until then this one blocks on
+ * them as before, so an untrusted or missing waiting hook still holds.
  *
  * Stop context is not passive: Claude Code continues the turn so the model
  * can read it (2.1.288 counts it toward its consecutive-block cap). So Stop
@@ -91,7 +96,7 @@ export type StopOutcome = { readonly block: string } | { readonly news: string }
  * no registration still registers, as `newsText` says.
  */
 export function stopTurn(
-  input: ConsumerInput & { readonly stopHookActive: boolean },
+  input: ConsumerInput & { readonly stopHookActive: boolean; readonly harness: StopWaitHarness },
   location: HookLocation,
   deps: HookDeps,
 ): Promise<StopOutcome> {
@@ -120,7 +125,14 @@ export function stopTurn(
       for (let decision = 1; ; decision++) {
         const { header, failures, reasons } = decide(context, policy, isSlow, now(), {
           stopHookActive: input.stopHookActive,
-          slowElsewhere: input.agent_id === undefined,
+          slowElsewhere:
+            input.agent_id === undefined &&
+            stopWaitRuns(
+              context.store,
+              context.consumer.worktreeId,
+              input.harness,
+              deps.squealVersion ?? squealVersion(),
+            ),
           command: deps.command,
         });
         if (reasons.length > 0) {
