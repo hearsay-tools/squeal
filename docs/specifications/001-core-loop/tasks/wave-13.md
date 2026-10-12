@@ -932,3 +932,21 @@ Done when: the review's three probes pass as tests and are red before; a nudge a
 ## 001-288 re-review of wave 13ak
 
 Use /reviewer on gpt-6.1-sol, after 001-287 lands. Output `reviews/wave-13al.md`. Second round on `reviews/wave-13ak.md` B1, B2 and S1: can any front-desk message still throw out? Can any change to the policy, a key or a row make a held wait return quiet while its file runs, or never return? Is slow news named correctly? Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human (second round).
+
+## Wave 13am (2026-10-12, decided by the human)
+
+One worker, then one review (001-289). The release of 0.1.127 waits for this wave.
+
+## 001-285 with `stop.requireSlowSuite` on, Stop waits for its slow tier
+
+Use /worker. Shape: slice. The board row is the brief, with `research/slow-claims.md` sections 4 and 5 and the four variant results recorded in `status.md` (2026-10-12): `stop-slow`, today's one-time block naming `run --slow`, moved Haiku's current-before-claim from 0 of 9 to 8 of 9. The human decided that the wait follows the setting in every session, not only one-shot ones. Read spec 004 D7 and D9 and `src/harness/shared/stop.ts` first.
+
+Outcome: with `stop.requireSlowSuite` on, a Stop whose slow files are not current nudges them (`nudgeSlow`) and waits for their results up to `stop.slowWaitMs` (new policy key; pick and justify a default from the research's measured costs, about 27 s on the fixture). It is a second Stop entry with a timeout above the bound in both plugins' hooks.json, because Claude Code runs a Stop event's entries in parallel: the 2 s entry must not block on slow files when the waiting entry will decide, and the two must never both block. Pass is silent. A slow failure blocks once with the failure. At the bound it blocks once, naming the files still running and `run --slow --wait`; `slowSuiteReason` names `run --slow --wait` too. A Stop with `stop_hook_active` never blocks. With the setting off nothing changes. A SubagentStop does not wait. Amend spec 004 D7 and D9 in place with a dated line.
+
+Own `src/harness/shared/stop.ts` (or a new sibling), `src/harness/shared/text.ts` (`slowSuiteReason`), the policy key (`src/core/types/policy.ts`, `src/core/daemon/policy.ts`), the Stop entries in `plugins/*/hooks/hooks.json` and their sources, spec 004 D7 and D9, and tests under `test/harness/` and `test/policy/`. The coordinator handles `KEY_FORMAT_VERSION` and rebuilds. Do not commit `dist`. Do not edit `docs/board.md`. Run the full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Probe isolation: never run third-party agent tooling, the eval runner or any repo script where it can reach the real HOME.
+
+Done when the row's done-when holds, each new test red before; lint, typecheck and the full suite are green.
+
+## 001-289 review of 001-285
+
+Use /reviewer on gpt-6.1-sol, after 001-285 lands. Output `reviews/wave-13am.md`. Can a waiting Stop run past its hook timeout on either harness, block twice, block with the setting off, or end a turn silent while a slow file is running or failed? Do the two Stop entries ever disagree? Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
