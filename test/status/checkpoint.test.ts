@@ -99,7 +99,7 @@ describe("status names the checkpoint in progress (task 001-217)", () => {
     expect(snapshot.breakdown.testFilesWithoutChecksRunning).toBe(30);
     const lines = formatStatus(snapshot, NOW).split("\n");
     expect(lines[2]).toBe(
-      "Affected checks: 0 passed, 0 running, 0 queued; 160 test files without checks yet: 30 running, 130 queued",
+      "Affected checks: 0 passed, 0 running, 0 queued; 160 test files without checks yet: 30 running, 130 queued (Vitest only; Squeal runs no other test suite)",
     );
     expect(lines).toContain(
       "Checkpoint in progress: the baseline from revision 3, started 90 s ago: 40 of 200 test files done (`squeal run --all --wait` waits for it)",

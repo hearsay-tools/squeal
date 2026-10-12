@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
+import { formatStatus, readStatus, runnerNames } from "../../src/core/status/index.js";
 import { META_STORE_RECOVERED, SCHEMA_VERSION } from "../../src/core/store/index.js";
 import type { StatusResult, StatusSnapshot, Store } from "../../src/core/types/index.js";
 import { tempDir } from "../store/helpers.js";
@@ -208,7 +208,7 @@ describe("readStatus", () => {
         FAIL  src/auth.test.ts > auth > expired token
               expected 401, received 500
               at src/auth.ts:12:5, observed at revision 2, current
-      Affected checks: 3 passed, 1 running, 1 queued, 1 skipped, 1 stale, 1 unknown
+      Affected checks: 3 passed, 1 running, 1 queued, 1 skipped, 1 stale, 1 unknown (Vitest only; Squeal runs no other test suite)
       Full-suite checkpoint: none completed since revision 1 (the counts are for revision 2; \`squeal run --all\` requests one)
 
       Worktree: <b> (HEAD abc1234, dirty at revision 2)
@@ -267,12 +267,21 @@ describe("readStatus", () => {
     });
     store.checkpoints.finish("cp-170", "completed", 2);
 
-    const lines = formatStatus(readStatus(repo.main, { now: () => NOW }), NOW).split("\n");
+    const status = readStatus(repo.main, { now: () => NOW });
+    const lines = formatStatus(status, NOW).split("\n");
+    const named = (runners: string[]) =>
+      formatStatus(status, NOW, "squeal", { runners }).split("\n")[2];
+    expect(named(["Vitest"])).toBe(
+      "Affected checks: 47 passed, 3 running, 12 queued (Vitest only; Squeal runs no other test suite)",
+    );
+    expect(named(["Vitest", "node:test (scripts)"])).toBe(
+      "Affected checks: 47 passed, 3 running, 12 queued (Vitest and node:test (scripts) only; Squeal runs no other test suite)",
+    );
 
     expect(lines.slice(0, 4)).toEqual([
       "Revision: 187",
       "Known failures: 0",
-      "Affected checks: 47 passed, 3 running, 12 queued",
+      "Affected checks: 47 passed, 3 running, 12 queued (Vitest only; Squeal runs no other test suite)",
       "Full-suite checkpoint: none completed since revision 170 (the counts are for revision 187; `squeal run --all` requests one)",
     ]);
   });
@@ -339,7 +348,7 @@ describe("readStatus", () => {
     const listed = snapshotOf(readStatus(repo.main, { now: () => NOW }));
     expect(listed.testFilesListed).toBe(true);
     expect(formatStatus(listed, NOW).split("\n")[2]).toBe(
-      "Affected checks: 0 passed, 0 running, 0 queued",
+      "Affected checks: 0 passed, 0 running, 0 queued (Vitest only; Squeal runs no other test suite)",
     );
   });
 
@@ -619,5 +628,19 @@ describe("readStatus", () => {
     expect(lines).toContain(
       `Worktree: ${repo.main} (HEAD no commit, dirty state not known: no daemon is validating)`,
     );
+  });
+});
+
+describe("the counts name their runners (experiment for 001-292)", () => {
+  it("names Vitest when no node:test project is configured, then each node:test project", () => {
+    const repo = fakeRepo();
+    expect(runnerNames(repo.main)).toEqual(["Vitest"]);
+    writeFileSync(
+      join(repo.main, "squeal.config.json"),
+      JSON.stringify({ nodeTest: [{ name: "scripts", include: ["scripts/*.test.mjs"] }] }),
+    );
+    expect(runnerNames(repo.main)).toEqual(["node:test (scripts)"]);
+    writeFileSync(join(repo.main, "vitest.config.ts"), "export default {};\n");
+    expect(runnerNames(repo.main)).toEqual(["Vitest", "node:test (scripts)"]);
   });
 });
