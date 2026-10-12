@@ -42,46 +42,86 @@ export const chokidarBackend: WatcherBackend = {
   name: "chokidar",
   async watch(spec: WatchSpec, listener: WatchListener): Promise<WatchSubscription> {
     let current = spec;
-    let exclusions = new Exclusions(spec);
-    let extra = new Set(spec.extraFiles);
-    const watcher: FSWatcher = watch([spec.root, ...spec.extraFiles], {
-      ignored: (path: string) =>
-        !extra.has(path) && (exclusions.excludes(path) || inNestedRepo(spec.root, path)),
-      ignoreInitial: true,
-      persistent: true,
-      followSymlinks: false,
-      atomic: false,
-    });
-    watcher.on("all", (event, path) => {
-      const kind = KINDS[event];
-      if (kind) listener.onHints([{ path, kind }]);
-    });
-    watcher.on("error", (error) => {
-      listener.onError(error instanceof Error ? error : new Error(String(error)));
-    });
-    await new Promise<void>((resolve) => watcher.once("ready", () => resolve()));
+    let filter = new Filter(spec);
+    let watcher = await open(spec, filter, listener);
+    let closed = false;
 
     return {
       async update(next: WatchSpec): Promise<void> {
         const before = current;
-        current = next;
-        exclusions = new Exclusions(next);
-        extra = new Set(next.extraFiles);
         const nowExcluded = next.excluded.filter((p) => !before.excluded.includes(p));
+        if (nowExcluded.length > 0) {
+          // chokidar's unwatch closes a directory's own watch, not its descendants' (task
+          // 001-299), so a fresh watcher replaces this one, which reports until it is ready.
+          const nextFilter = new Filter(next);
+          const fresh = await open(next, nextFilter, listener);
+          if (closed) {
+            await fresh.close();
+            return;
+          }
+          const old = watcher;
+          watcher = fresh;
+          filter = nextFilter;
+          current = next;
+          await old.close();
+          return;
+        }
+        current = next;
+        filter.set(next);
         const noLongerExcluded = before.excluded.filter((p) => !next.excluded.includes(p));
         const newExtra = next.extraFiles.filter((p) => !before.extraFiles.includes(p));
-        // unwatch releases the descriptors; the predicate alone would only drop events.
-        if (nowExcluded.length > 0) watcher.unwatch(nowExcluded);
         // add with ignoreInitial reports nothing that already exists; the change
         // feed reconciles after exclusions shrink.
         if (noLongerExcluded.length > 0 || newExtra.length > 0) {
           watcher.add([...noLongerExcluded, ...newExtra]);
         }
       },
-      close: () => watcher.close(),
+      async close(): Promise<void> {
+        closed = true;
+        await watcher.close();
+      },
     };
   },
 };
+
+/** The spec as chokidar's `ignored` predicate. */
+class Filter {
+  private exclusions: Exclusions;
+  private extra: ReadonlySet<AbsolutePath>;
+
+  constructor(private spec: WatchSpec) {
+    this.exclusions = new Exclusions(spec);
+    this.extra = new Set(spec.extraFiles);
+  }
+
+  set(spec: WatchSpec): void {
+    this.spec = spec;
+    this.exclusions = new Exclusions(spec);
+    this.extra = new Set(spec.extraFiles);
+  }
+
+  readonly ignored = (path: string): boolean =>
+    !this.extra.has(path) && (this.exclusions.excludes(path) || inNestedRepo(this.spec.root, path));
+}
+
+async function open(spec: WatchSpec, filter: Filter, listener: WatchListener): Promise<FSWatcher> {
+  const watcher: FSWatcher = watch([spec.root, ...spec.extraFiles], {
+    ignored: filter.ignored,
+    ignoreInitial: true,
+    persistent: true,
+    followSymlinks: false,
+    atomic: false,
+  });
+  watcher.on("all", (event, path) => {
+    const kind = KINDS[event];
+    if (kind) listener.onHints([{ path, kind }]);
+  });
+  watcher.on("error", (error) => {
+    listener.onError(error instanceof Error ? error : new Error(String(error)));
+  });
+  await new Promise<void>((resolve) => watcher.once("ready", () => resolve()));
+  return watcher;
+}
 
 /**
  * True when a directory above `path`, below `root`, holds a `.git` entry. A
