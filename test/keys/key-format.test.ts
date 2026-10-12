@@ -41,6 +41,7 @@ const SEAMS = [
   "src/cli/main.ts -> src/cli/init.ts", // `squeal init`: writes the user's config files
   "src/cli/main.ts -> src/cli/remove.ts", // `squeal remove`: stops daemons, deletes the store
   "src/cli/main.ts -> src/cli/run.ts", // `squeal run`: asks a daemon for a checkpoint or the slow tier
+  "src/cli/main.ts -> src/cli/setup/command.ts", // `squeal setup`: reads the repository and writes instruction files and the config
   "src/cli/main.ts -> src/cli/start.ts", // `squeal start`: starts a daemon through core/daemon/ensure.ts
   "src/cli/main.ts -> src/cli/status-command.ts", // `squeal status`: reads the store
   "src/cli/main.ts -> src/cli/status-wait.ts", // `squeal status --wait`: polls the store
