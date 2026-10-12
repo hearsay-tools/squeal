@@ -645,6 +645,11 @@ export function conditionsOf(input: {
   effort: string;
   tools?: Record<string, readonly string[]>;
 }): Conditions;
+/** `config` narrowed to the named models and tasks; throws on a name it does not hold (006-45). */
+export function narrowed<C extends { models: { model: string }[]; tasks: string[] }>(
+  config: C,
+  only?: { models?: readonly string[] | null; tasks?: readonly string[] | null },
+): C;
 export function cellRecord(grade: Record<string, unknown>): CellRecord;
 export function armFixtures(
   grades: readonly { variant: string; head: string }[],
