@@ -38,7 +38,7 @@ export function scenarioOf(name, config = atomicConfig()) {
     const text = readFileSync(join(ATOMIC, f), "utf8").trim();
     return i === s.turns.length - 1 ? `${text}\n${ending}` : text;
   });
-  return { name, prompts, knobs: s.knobs ?? {}, ...s };
+  return { name, prompts, knobs: s.knobs ?? {}, settleS: config.settleS, ...s };
 }
 
 /** Applies scenario `s`'s reference edit to the fixture copy at `dir`; throws unless it matches once. */
@@ -90,6 +90,7 @@ export async function waitSettled({
   now = Date.now,
   sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
 }) {
+  if (!(timeoutMs >= 0)) throw new Error(`waitSettled: timeoutMs ${timeoutMs} is not a bound`);
   const start = now();
   for (let polls = 1; ; polls++) {
     const text = status();

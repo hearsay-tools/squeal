@@ -298,8 +298,8 @@ async function lifecycle() {
     wallS: +((T1 - T0) / 1000).toFixed(1),
     exit,
     ...(scenario && {
-      atomic: true,
-      turns: prompts.length,
+      kind: "atomic",
+      userTurns: prompts.length,
       exits,
       turnStarts,
       settle: settle && { settled: settle.settled, why: settle.why, waitedMs: settle.waitedMs },
@@ -337,7 +337,7 @@ function pilot(meta) {
     redact(s, secrets).replaceAll(CELL, "<cell>"),
   );
   grade.atomic = pilotRecord(grade, {
-    turns: meta.turns,
+    turns: meta.userTurns,
     turnStarts: meta.turnStarts,
     settle: meta.settle,
     declared: scenario.measures ?? [],
