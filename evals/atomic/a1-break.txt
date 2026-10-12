@@ -1,0 +1,1 @@
+Accountants read negative amounts in parentheses. Change `formatMoney` in src/money.ts so a negative amount reads "($12.00)" instead of "-$12.00", in every currency. Only change src/money.ts: leave the tests as they are, I will update them myself.
