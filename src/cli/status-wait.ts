@@ -38,6 +38,7 @@ import {
   windowRefined,
 } from "./status-wait-edit.js";
 import { waitLine } from "./status-wait-lines.js";
+import { namedWaitCommand } from "./status-wait-paths.js";
 import { type HeldSlow, heldSlowLeft, heldSlowNews, pendingSlow } from "./status-wait-slow.js";
 
 /** How often `status --wait` reads the store. */
@@ -359,16 +360,29 @@ function newsOf(
  * ended comes first in the human rendering and goes to stderr with `--json`,
  * where stdout is the snapshot payload plus a `wait` field
  * (`StatusWaitPayload`) with the same outcome. `holdSlow` is
- * `run --slow --wait`'s (`StatusWaitOptions`).
+ * `run --slow --wait`'s (`StatusWaitOptions`). With `paths`, the wait is
+ * spec 005 D2's on the test files they select (`namedWaitCommand`).
  */
 export async function statusWaitCommand(
   timeoutMs: number,
   json: boolean,
   io: CliIo,
   holdSlow = false,
+  paths: readonly string[] = [],
 ): Promise<number> {
   const now = io.now ?? Date.now;
   const env = io.env ?? process.env;
+  if (paths.length > 0) {
+    const pollMs = STATUS_WAIT_POLL_MS;
+    const settleMs = STATUS_WAIT_SETTLE_MS;
+    return namedWaitCommand(paths, json, io, {
+      timeoutMs,
+      pollMs,
+      settleMs,
+      now,
+      sync: syncDaemon,
+    });
+  }
   const session = env.CLAUDE_CODE_SESSION_ID ?? env.CODEX_SESSION_ID ?? null;
   const wait = await waitForStatus(io.cwd ?? process.cwd(), {
     timeoutMs,

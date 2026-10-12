@@ -1,7 +1,11 @@
-import { runnerPartText } from "../core/state/index.js";
+import { testFileId } from "../core/keys/index.js";
+import { runnerPartText, testFileKeyOf } from "../core/state/index.js";
+import { formatCheck } from "../core/status/index.js";
 import { plural } from "../core/text.js";
 import type { DaemonLiveness, StatusSnapshot } from "../core/types/index.js";
 import type { StatusWait, StatusWaitEdit, StatusWaitSlow } from "./status-wait.js";
+import type { NamedWait } from "./status-wait-paths.js";
+import { failuresText, noVerdictText, verdictCode } from "./verdict.js";
 
 /** A wait that ended with a snapshot. */
 export type EndedWait = Extract<StatusWait, { result: StatusSnapshot }>;
@@ -118,6 +122,66 @@ function slowTierText(snapshot: StatusSnapshot, command: string): string {
     `; ${plural(open, "slow file")} ${open === 1 ? "is" : "are"} not current, ` +
     `which this wait does not hold for: \`${command} run --slow --wait 60000\` runs and waits for ${open === 1 ? "it" : "them"}`
   );
+}
+
+/** A named-files wait that ended with a snapshot. */
+type EndedNamed = Extract<NamedWait, { result: StatusSnapshot }>;
+
+/** How many selected test files the line names before "and N more". */
+const NAMED_FILES_SHOWN = 10;
+
+/**
+ * Spec 005 D2: the first line of `status --wait <ms> <path>...` is the
+ * verdict on the selected test files as D1 words a checkpoint's, then the
+ * line naming them. A path that selects nothing says D2's text.
+ */
+export function namedLine(wait: EndedNamed, command = "squeal"): string {
+  const { verdict, selection } = wait;
+  const after = `after ${(wait.waitedMs / 1_000).toFixed(1)} s`;
+  const none = (why: string) => `Named test files have no verdict: ${why}`;
+  let line: string;
+  switch (wait.outcome) {
+    case "unmatched":
+      return `No verdict: ${selection.unmatched.map((p) => `no test file's closure holds ${p}`).join("; ")}`;
+    case "no-daemon":
+      line = none(
+        `${noDaemonText(wait.result.daemon)}; results are as of revision ${verdict.revision}; \`${command} start\` starts one`,
+      );
+      break;
+    case "timeout":
+      line = none(`the deadline passed ${after}: ${noVerdictText(verdict) ?? "no result yet"}`);
+      break;
+    case "settled": {
+      const why = verdictCode(verdict) === 3 ? noVerdictText(verdict) : null;
+      line =
+        why === null
+          ? `Named test files at revision ${verdict.revision}: ${failuresText(verdict.failures)}; ${plural(verdict.testFiles, "test file")}, each with a current result, ${after}`
+          : none(why);
+    }
+  }
+  const files = selection.files.map((f) => f.path);
+  const shown = files.slice(0, NAMED_FILES_SHOWN).join(", ");
+  const more =
+    files.length > NAMED_FILES_SHOWN ? ` and ${files.length - NAMED_FILES_SHOWN} more` : "";
+  return `${line}\nSelected: ${shown}${more}`;
+}
+
+/** The selected files' known failures, each as status lists it (spec 005 D2: "in full"). */
+export function namedFailures(wait: EndedNamed): string[] {
+  const ids = new Set(wait.selection.files.map(testFileId));
+  return wait.result.knownFailures
+    .filter((f) => ids.has(testFileKeyOf(f.check)))
+    .flatMap((f) => [
+      `  FAIL  ${formatCheck(f.check)}`,
+      ...(f.summary === "" ? [] : [`        ${f.summary}`]),
+      `        ${[
+        ...(f.location === null
+          ? []
+          : [`at ${f.location.path}:${f.location.line}:${f.location.column}`]),
+        `observed at revision ${f.observedAt}`,
+        f.validity,
+      ].join(", ")}`,
+    ]);
 }
 
 /** As delivered headers word it (spec 001 D10: "no daemon running since <time>"). */

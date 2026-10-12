@@ -21,6 +21,10 @@ Usage:
   squeal status --wait <ms> [--json]
                                 Wait up to <ms> until nothing is pending at the current
                                 revision or a check changed, then print status
+  squeal status --wait <ms> <path>... [--json]
+                                Wait up to <ms> for the test files the paths select (a
+                                test file, or a file in test files' closures), then give
+                                their verdict: exit 0, 1 on known failures, 3 without one
   squeal why <check> [--include-logs] [--json]
                                 History and provenance of one check, and the run log
                                 holding its console output; --include-logs also prints
@@ -97,7 +101,8 @@ export function main(argv: readonly string[], io: CliIo): number | Promise<numbe
  * Exit codes for both commands: 0 with an answer, 1 when the store cannot
  * answer (status unavailable, no matching check), 2 on a usage error. Known
  * failures do not change the exit code: status reports, policy decides.
- * `status --wait` also exits 0 when its wait timed out.
+ * `status --wait` also exits 0 when its wait timed out. `status --wait <ms>
+ * <path>...` exits as spec 005 D1 for the files the paths select (D2).
  */
 function status(args: readonly string[], io: CliIo): number | Promise<number> {
   const wait = takeWait(args);
@@ -107,8 +112,10 @@ function status(args: readonly string[], io: CliIo): number | Promise<number> {
   const rest = wait.rest.filter((arg) => arg !== "--notes");
   const parsed = parseArgs("status", rest, io);
   if (parsed === null) return 2;
-  if (parsed.positional.length > 0) return usage("status", "takes no arguments", io);
-  if (waitMs !== null) return statusWaitCommand(waitMs, parsed.json, io);
+  if (waitMs !== null) return statusWaitCommand(waitMs, parsed.json, io, false, parsed.positional);
+  if (parsed.positional.length > 0) {
+    return usage("status", "takes paths only with --wait <ms>", io);
+  }
   const now = io.now ?? Date.now;
   const cwd = io.cwd ?? process.cwd();
   const result = readStatus(cwd, { now });
