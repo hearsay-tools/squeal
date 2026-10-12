@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { squealVersion } from "../../src/core/daemon/version.js";
 import { readTurn } from "../../src/core/delivery/turn.js";
 import { testFileId } from "../../src/core/keys/index.js";
+import { recordStopWait, type StopWaitHarness } from "../../src/core/slow/index.js";
 import { DEFAULT_POLICY, type TestFileRef } from "../../src/core/types/index.js";
 import { runHook } from "../../src/harness/claude-code/index.js";
 import { runCodexHook } from "../../src/harness/codex/index.js";
@@ -10,8 +12,10 @@ import { FILE, recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
  * Spec 004 D7 and D9 as amended 2026-10-12: with `stop.requireSlowSuite` on,
- * a main agent's 2 s Stop never blocks on slow files; it ends the turn with
- * them pending and leaves them to the waiting entry (`stop-slow-wait.test.ts`).
+ * a main agent's 2 s Stop blocks at once while a slow file is not current, as
+ * before, until its harness's waiting entry is known to run in the worktree;
+ * then it ends the turn with them pending and leaves them to that entry
+ * (`stop-slow-wait.test.ts`).
  * A subagent's SubagentStop still blocks at once while a slow file is not
  * current, naming it and `run --slow --wait`. Off, the default, slow files
  * never hold a Stop.
@@ -22,7 +26,7 @@ const SLOW_FILE: TestFileRef = { project: "", path: "test/e2e/slow.test.ts" };
 const WAIT_MS = 1_000;
 
 interface Harness {
-  readonly name: string;
+  readonly name: StopWaitHarness;
   startTurn(r: SquealRepo): Promise<void>;
   stop(r: SquealRepo): Promise<{ readonly stdout: string }>;
 }
@@ -74,8 +78,24 @@ function decision(stdout: string): { decision?: string; reason?: string } {
 }
 
 describe.each(HARNESSES)("stop.requireSlowSuite, $name (spec 004 D7)", (harness) => {
-  it("on: the 2 s Stop ends the turn at once with the slow file pending, for the waiting entry", async () => {
+  it.each<"queued" | null>(["queued", null])(
+    "on, no waiting entry known to run here: blocks at once while a slow file is not current (%s)",
+    async (pending) => {
+      const r = await repo(harness, [SLOW_FILE.path], true);
+      slowKey(r, pending);
+      const started = performance.now();
+      const out = decision((await harness.stop(r)).stdout);
+      expect(performance.now() - started).toBeLessThan(WAIT_MS / 2);
+      expect(out.decision).toBe("block");
+      expect(out.reason).toMatch(
+        /^Squeal policy stop.requireSlowSuite is on and 1 slow test file is not current at revision 1: test\/e2e\/slow.test.ts. `.*squeal.* run --slow --wait` runs them and waits for their results.\n\n/,
+      );
+    },
+  );
+
+  it("on, the waiting entry known to run here: ends the turn at once with the slow file pending, for it", async () => {
     const r = await repo(harness, [SLOW_FILE.path], true);
+    recordStopWait(r.store, r.worktreeId, harness.name, squealVersion());
     slowKey(r, "queued");
     const started = performance.now();
     expect(decision((await harness.stop(r)).stdout)).toEqual({});

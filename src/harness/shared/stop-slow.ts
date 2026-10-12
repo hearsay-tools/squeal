@@ -1,9 +1,10 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { readPolicy } from "../../core/daemon/policy.js";
+import { squealVersion } from "../../core/daemon/version.js";
 import { readLiveHeader } from "../../core/delivery/index.js";
 import { readTurn, startTurn } from "../../core/delivery/turn.js";
 import { testFileId } from "../../core/keys/index.js";
-import { slowFiles } from "../../core/slow/index.js";
+import { recordStopWait, type StopWaitHarness, slowFiles } from "../../core/slow/index.js";
 import { slowFilesNotCurrent, testFileOf, toKnownFailure } from "../../core/state/index.js";
 import { readTransaction } from "../../core/store/index.js";
 import type { KnownFailure, StatusHeader, TestFileRef } from "../../core/types/index.js";
@@ -52,9 +53,11 @@ export const STOP_SLOW_POLL_MS = 250;
  * waits up to `STOP_SLOW_HANDOFF_MS` for that (`handedOver`). A 2 s entry
  * that blocked or spoke leaves the turn going, and this entry says nothing;
  * one that ended the turn leaves the decision here, so the two never both
- * block. The 2 s entry never blocks on slow files for a main agent, and its
- * silent end already nudged the daemon (`nudgeSlow`), so the idle slow tier
- * has started.
+ * block. It first records that it runs here (`recordStopWait`); from then
+ * on the 2 s entry leaves a main agent's slow files to it, and before that
+ * blocks on them at once as it always did, which leaves this entry silent.
+ * The 2 s entry's silent end already nudged the daemon (`nudgeSlow`), so the
+ * idle slow tier has started.
  *
  * Then it polls until no slow file is pending at the current revision, the
  * bound passes, or the daemon has been down for `STOP_SLOW_DOWN_MS`. All current
@@ -69,7 +72,7 @@ export const STOP_SLOW_POLL_MS = 250;
  * `requireSlowSuite` return `null` at once.
  */
 export async function stopSlow(
-  input: ConsumerInput & { readonly stopHookActive: boolean },
+  input: ConsumerInput & { readonly stopHookActive: boolean; readonly harness: StopWaitHarness },
   location: HookLocation,
   deps: HookDeps,
 ): Promise<string | null> {
@@ -80,6 +83,8 @@ export async function stopSlow(
   const isSlow = slowFiles(project, project.nodeTest);
   const poll = deps.pollIntervalMs ?? STOP_SLOW_POLL_MS;
   return withContext(input, location, deps, async (context) => {
+    const version = deps.squealVersion ?? squealVersion();
+    recordStopWait(context.store, context.consumer.worktreeId, input.harness, version);
     if (!(await handedOver(context, deps, poll))) return null;
     const waited = read(context, isSlow, deps);
     if (waited.open.length === 0) return null;

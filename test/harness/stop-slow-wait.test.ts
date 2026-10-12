@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { squealVersion } from "../../src/core/daemon/version.js";
 import { readTurn } from "../../src/core/delivery/turn.js";
+import { recordStopWait, type StopWaitHarness, stopWaitRuns } from "../../src/core/slow/index.js";
 import { DEFAULT_POLICY, type PolicyFile, type TestFileRef } from "../../src/core/types/index.js";
 import { runHook } from "../../src/harness/claude-code/index.js";
 import { runCodexHook } from "../../src/harness/codex/index.js";
@@ -27,7 +29,7 @@ interface Out {
 }
 
 interface Harness {
-  readonly name: string;
+  readonly name: StopWaitHarness;
   startTurn(r: SquealRepo): Promise<void>;
   stop(r: SquealRepo, overrides?: object): Promise<Out>;
   stopSlow(r: SquealRepo, overrides?: object): Promise<Out>;
@@ -58,12 +60,20 @@ const HARNESSES: readonly Harness[] = [
   },
 ];
 
-/** `math > adds` passes, the slow file is queued at revision 1, the agent is in a turn. */
-async function repo(harness: Harness, stop: NonNullable<PolicyFile["stop"]>): Promise<SquealRepo> {
+/**
+ * `math > adds` passes, the slow file is queued at revision 1, the agent is
+ * in a turn; `marked`: the harness's waiting entry ran here before.
+ */
+async function repo(
+  harness: Harness,
+  stop: NonNullable<PolicyFile["stop"]>,
+  marked = true,
+): Promise<SquealRepo> {
   const r = squealRepo();
   r.apply(r.pass());
   r.policy({ slow: { ...DEFAULT_POLICY.slow, include: [SLOW_FILE.path, FILE.path] }, stop });
   slowKey(r, "queued");
+  if (marked) recordStopWait(r.store, r.worktreeId, harness.name, squealVersion());
   await harness.startTurn(r);
   return r;
 }
@@ -156,6 +166,30 @@ describe.each(HARNESSES)("Stop waits for its slow tier, $name (004 D9 as amended
     expect(out.waiting.reason).toMatch(
       /^Squeal policy stop.requireSlowSuite is on and after 0.6 s 1 slow test file is still not current at revision 2: src\/math.test.ts\./,
     );
+  });
+
+  it("unmarked: the 2 s entry blocks at once as before, and the waiting entry stays silent and marks", async () => {
+    const r = await repo(harness, { requireSlowSuite: true }, false);
+    const quick = decision(await harness.stop(r));
+    expect(quick.decision).toBe("block");
+    expect(quick.reason).toMatch(
+      /^Squeal policy stop.requireSlowSuite is on and 1 slow test file is not current at revision 1: test\/e2e\/slow.test.ts. `.*squeal.* run --slow --wait` runs them/,
+    );
+    const timer = setTimeout(() => landSlow(r, "fail"), 200);
+    try {
+      expect(decision(await harness.stopSlow(r))).toEqual({});
+    } finally {
+      clearTimeout(timer);
+    }
+    expect(stopWaitRuns(r.store, r.worktreeId, harness.name, squealVersion())).toBe(true);
+  });
+
+  it("marked by another harness or version: the 2 s entry still blocks at once", async () => {
+    const r = await repo(harness, { requireSlowSuite: true }, false);
+    const other = harness.name === "codex" ? "claude-code" : "codex";
+    recordStopWait(r.store, r.worktreeId, other, squealVersion());
+    recordStopWait(r.store, r.worktreeId, harness.name, "0.0.1-older");
+    expect(decision(await harness.stop(r)).decision).toBe("block");
   });
 
   it("off: returns at once without waiting, and the turn ends as today", async () => {
