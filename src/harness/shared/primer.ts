@@ -36,23 +36,26 @@ type Naming = "every" | "first" | "none";
  * out what is left to run (005's pilot: every false "pass" came from an
  * uncovered node:test suite).
  *
- * With slow files declared (spec 004 D8, D9) it says when they run and when
- * a slow failure arrives. Codex names the CLI by its path, never `squeal`,
- * and has no idle wake (002): there a slow failure arrives with the next
- * prompt or tool call.
+ * With slow files declared (spec 004 D8, D9) it names the step before a
+ * claim, `run --slow --wait`, with the header line that says it is done, and
+ * when a slow failure arrives. Codex names the CLI by its path, never
+ * `squeal`, and has no idle wake (002): there a slow failure arrives with the
+ * next prompt or tool call. Task 001-283 (`research/primer-skill-writing.md`):
+ * the arrival of results is said once, and the slow step sits beside the
+ * wait it extends.
  */
 export function primer(command: string = SQUEAL_COMMAND, coverage: Coverage = VITEST_ONLY): string {
   const names = runnerNames(coverage);
   const sentences = (covers: string, naming: Naming) =>
     [
-      `${PRIMER_OPENING}${names.join(" and ")} tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run ${names.join(" or ")} to learn whether your edits broke something.`,
-      `Results arrive with your next tool call, so keep working; wait only when you need a result before your next step, for example before saying the task is done: ${
+      `${PRIMER_OPENING}${names.join(" and ")} tests in the background after each edit, and its results arrive as SQUEAL messages with your next tool call, so keep working; do not run ${names.join(" or ")} to learn whether your edits broke something.`,
+      `Wait only when you need a result before your next step, for example before saying the task is done: ${
         naming === "none"
           ? "`status --wait 60000` on the CLI SQUEAL messages name"
           : `\`${command} status --wait 60000\``
       }.`,
+      ...(coverage.slow === null ? [] : slowSentences(command, naming)),
       "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
-      ...(coverage.slow === null ? [] : [slowSentence(command, naming)]),
       covers,
       "Squeal does not cover typecheck, build or any other test suite: run those yourself.",
     ].join(" ");
@@ -106,14 +109,22 @@ function named(noun: string, entries: readonly string[], shown: number): string 
   return `${nouns} ${tail.length === 0 ? last : `${tail.join(", ")} and ${last}`}`;
 }
 
-/** Spec 004 D8, D9: when slow suites run and how their failures arrive, by harness. */
-function slowSentence(command: string, naming: Naming): string {
-  const arrives =
+/**
+ * Spec 004 D8, D9: when slow files run, the step before a claim with its
+ * completion criterion read off the `Slow tier:` line (task 001-283; it
+ * holds for them since 001-282), and how a slow failure arrives, by harness.
+ */
+function slowSentences(command: string, naming: Naming): string[] {
+  const run =
+    naming === "every"
+      ? `\`${command} run --slow --wait 60000\``
+      : "the CLI's `run --slow --wait 60000`";
+  return [
+    `Slow test files run when you pause between turns; before you say the task is done, run ${run} unless the header's \`Slow tier:\` line already says every slow file is current: it runs the rest and waits for their results.`,
     command === SQUEAL_COMMAND
-      ? "a slow failure wakes you when you are idle in an interactive session, otherwise it arrives with your next prompt or tool call"
-      : "a slow failure arrives with your next prompt or tool call";
-  const run = naming === "every" ? `\`${command} run --slow\`` : "the CLI's `run --slow`";
-  return `Slow test suites run when you pause between turns or on ${run}, never during Stop's wait; the header's slow-tier line says whether they are current, and ${arrives}.`;
+      ? "A slow failure wakes you when you are idle in an interactive session; otherwise it arrives with your next prompt or tool call."
+      : "A slow failure arrives with your next prompt or tool call.",
+  ];
 }
 
 /**
