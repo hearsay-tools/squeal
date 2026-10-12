@@ -14,10 +14,15 @@
 // Every run has a fresh id, its cells under $SQ_EVALS_ROOT/cells/<commit>/<run>/ (default root
 // <tmpdir>/squeal-evals), so two runs of one commit never share a cell or a results file.
 // --resume <run> continues that run instead: its graded cells are skipped.
+// --atomic runs the atomic scenarios instead (evals/atomic/atomic.json, 006-33): their models,
+// repetitions, effort and cells at once (--parallel overrides), no judge (the pilot grades
+// mechanically and keeps the transcripts), into <date>-<version>.<run>.atomic.json, which the
+// trend leaves out. It takes no --variant.
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { availableParallelism, loadavg, tmpdir } from "node:os";
 import { join } from "node:path";
+import { atomicConfig, scenarioOf } from "../lib/atomic.mjs";
 import { declarations, expectationsOf } from "../lib/behaviours.mjs";
 import { ensureCalibrated } from "../lib/calibration.mjs";
 import { claudeRunner, identityKey } from "../lib/judge.mjs";
@@ -46,16 +51,27 @@ const ROOT = process.env.SQ_EVALS_ROOT ?? join(tmpdir(), "squeal-evals");
 const argv = process.argv.slice(2);
 const opt = (name, dflt) => (argv.includes(name) ? argv[argv.indexOf(name) + 1] : dflt);
 const commit = resolveCommit(opt("--commit", "HEAD"));
-const parallel = Math.min(4, Math.max(1, Number(opt("--parallel", "2"))));
+const atomic = argv.includes("--atomic");
+const config = atomic
+  ? atomicConfig()
+  : JSON.parse(readFileSync(join(EVALS, "baseline.json"), "utf8"));
+if (atomic) config.tasks = Object.keys(config.scenarios);
+const parallel = Math.min(
+  4,
+  Math.max(1, Number(opt("--parallel", String(atomic ? config.parallel : 2)))),
+);
 const maxLoad = Number(opt("--max-load", String(availableParallelism())));
 const variantArm = opt("--variant", null);
+if (atomic && variantArm) {
+  console.error("--atomic takes no --variant: the atomic scenarios run the shipped texts");
+  process.exit(2);
+}
 const date = opt("--date", new Date().toISOString().slice(0, 10));
 const resume = opt("--resume", null);
 const run = resume ?? runId();
 const standIns = Object.fromEntries(
   argv.flatMap((a, i) => (argv[i - 1] === "--stand-in" ? [a.split("=")] : [])),
 );
-const config = JSON.parse(readFileSync(join(EVALS, "baseline.json"), "utf8"));
 const knobs = JSON.parse(readFileSync(join(EVALS, "tasks/tasks.json"), "utf8")).tasks;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const load1 = () => loadavg()[0];
@@ -63,35 +79,39 @@ const load1 = () => loadavg()[0];
 // ---------- the judge, calibrated before any session (spec 006 D9) ----------
 // A Claude Code version or rubric with no passing calibration file is calibrated first: Haiku 5.5,
 // then Sonnet 5.5. With none passing, the run stops here, before spending on any subject session.
-const judgeIdentity = await ensureCalibrated({
-  dir: join(EVALS, "results"),
-  declared: declarations(),
-  runner: claudeRunner({ base: ROOT }),
-  calibrateModel: (model) =>
-    new Promise((resolve) =>
-      spawn(
-        process.execPath,
-        [
-          "--import",
-          "tsx",
-          join(EVALS, "bin/judge-calibrate.mjs"),
-          "--model",
-          model,
-          "--base",
-          ROOT,
-        ],
-        { cwd: join(EVALS, ".."), stdio: "inherit" },
-      ).on("close", resolve),
-    ),
-  log: console.log,
-});
-if (!judgeIdentity) {
+// The atomic pilot is graded mechanically: no judge.
+const judgeIdentity = atomic
+  ? null
+  : await ensureCalibrated({
+      dir: join(EVALS, "results"),
+      declared: declarations(),
+      runner: claudeRunner({ base: ROOT }),
+      calibrateModel: (model) =>
+        new Promise((resolve) =>
+          spawn(
+            process.execPath,
+            [
+              "--import",
+              "tsx",
+              join(EVALS, "bin/judge-calibrate.mjs"),
+              "--model",
+              model,
+              "--base",
+              ROOT,
+            ],
+            { cwd: join(EVALS, ".."), stdio: "inherit" },
+          ).on("close", resolve),
+        ),
+      log: console.log,
+    });
+if (!atomic && !judgeIdentity) {
   console.error(
     "judge: no model passed calibration for this Claude Code and rubric (spec 006 D9); no session ran. Commit the calibration files in evals/results and ask the human.",
   );
   process.exit(3);
 }
-console.log(`judge: ${identityKey(judgeIdentity)}; commit its calibration file with the results`);
+if (judgeIdentity)
+  console.log(`judge: ${identityKey(judgeIdentity)}; commit its calibration file with the results`);
 
 // ---------- what every cell shares, built before any cell starts ----------
 const base = pinBase(ROOT, commit);
@@ -127,7 +147,7 @@ const outDir = (c) => join(ROOT, "cells", commit.slice(0, 12), run, cellId(c), "
 const missing = new Set();
 const failed = [];
 console.log(
-  `baseline ${resume ? "resuming " : ""}run ${run}: Squeal ${version} at ${commit.slice(0, 12)}, ${plan.length} cells, ${parallel} at once below load ${maxLoad}`,
+  `${atomic ? "atomic" : "baseline"} ${resume ? "resuming " : ""}run ${run}: Squeal ${version} at ${commit.slice(0, 12)}, ${plan.length} cells, ${parallel} at once below load ${maxLoad}`,
 );
 
 async function runCell(c) {
@@ -188,16 +208,19 @@ const grades = plan
   .map((f) => JSON.parse(readFileSync(f, "utf8")))
   .filter((g) => !g.skipped);
 const fixtures = armFixtures(grades, arms);
+// An atomic scenario's prompt is its turns' prompts, in order.
 const tasksOf = () =>
   Object.fromEntries(
     config.tasks.map((t) => [
       t,
-      {
-        prompt:
-          readFileSync(join(EVALS, "tasks", `${t}.txt`), "utf8") +
-          readFileSync(join(EVALS, "tasks/_ending.txt"), "utf8"),
-        knobs: knobs[t] ?? {},
-      },
+      atomic
+        ? { prompt: scenarioOf(t, config).prompts.join("\n"), knobs: config.scenarios[t].knobs }
+        : {
+            prompt:
+              readFileSync(join(EVALS, "tasks", `${t}.txt`), "utf8") +
+              readFileSync(join(EVALS, "tasks/_ending.txt"), "utf8"),
+            knobs: knobs[t] ?? {},
+          },
     ]),
   );
 const conditions = Object.fromEntries(
@@ -215,7 +238,7 @@ const conditions = Object.fromEntries(
 const harnessVersions = Object.fromEntries(grades.map((g) => [g.harness, g.harnessVersion]));
 const results = {
   schema: 1,
-  kind: variantArm ? "variant" : "baseline",
+  kind: atomic ? "atomic" : variantArm ? "variant" : "baseline",
   date,
   run,
   squealVersion: version,
@@ -234,20 +257,40 @@ const results = {
   }),
   load: { cpus: availableParallelism(), maxLoad, parallel },
   failed,
-  cells: grades.map(cellRecord),
+  // An atomic cell keeps the pilot's mechanical record and every turn's usage (006-33).
+  cells: grades.map((g) => ({
+    ...cellRecord(g),
+    ...(atomic && { atomic: g.atomic ?? null, usageTotal: g.usageTotal ?? null }),
+  })),
+  ...(atomic && {
+    scenarios: Object.fromEntries(
+      config.tasks.map((t) => {
+        const { measures = [], breaks, turns } = config.scenarios[t];
+        return [t, { turns: turns.length, measures, breaks }];
+      }),
+    ),
+    settleS: config.settleS,
+  }),
 };
 // Graded under the current expectations at write time (spec 006 D4), as regrade.mjs would.
+// An atomic run declares measures, not the baseline's expectations.
 const declared = declarations();
-results.expectationsRevision = expectationsRevision(declared);
-for (const cell of results.cells)
-  cell.expectations = expectationsOf(cell, results.conditions, declared);
+if (!atomic) {
+  results.expectationsRevision = expectationsRevision(declared);
+  for (const cell of results.cells)
+    cell.expectations = expectationsOf(cell, results.conditions, declared);
+}
 const text = `${JSON.stringify(results, null, 1)}\n`;
 const realCodex = join(process.env.HOME, ".codex/config.toml");
 assertNoSecrets(
   text,
   secretsOf(process.env, existsSync(realCodex) ? readFileSync(realCodex, "utf8") : ""),
 );
-const file = join(EVALS, "results", resultsName({ date, version, run, variant: variantArm }));
+const file = join(
+  EVALS,
+  "results",
+  resultsName({ date, version, run, variant: atomic ? "atomic" : variantArm }),
+);
 writeFileSync(file, text, { flag: "wx" }); // never over another run's results
 console.log(
   `wrote ${file}: ${grades.length} cells, ${failed.length} failed, missing: ${[...missing].join(", ") || "none"}`,
