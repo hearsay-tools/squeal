@@ -95,7 +95,8 @@ function coversSentence(coverage: Coverage, node: number): string {
       : files === null || files === undefined
         ? ", with slow test files not counted yet"
         : `, with ${files} slow test ${files === 1 ? "file" : "files"} at the daemon's last listing`;
-  return `Squeal covers ${suites.join(" and ")}${slow}.`;
+  // Experiment C5 (001-292 as planned, fixture literal): each runner's file rules.
+  return `Squeal covers ${suites.join(" and ")}${slow}. Vitest picks up \`test/**/*.test.ts\`; node:test projects: none.`;
 }
 
 /** `entries` as "projects a, b and c", the first `shown` of them, the rest as "and N more". */
