@@ -1,13 +1,16 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { resolveCommonDir } from "../core/fs/index.js";
+import { testFileId } from "../core/keys/index.js";
 import { formatStatus, readStatus } from "../core/status/index.js";
 import { isStoreOpenFailure, openStore } from "../core/store/index.js";
+import { plural } from "../core/text.js";
 import {
   type AbsolutePath,
   type CheckpointProgress,
   type CheckpointRecord,
   checkpointMetaKey,
   parseCheckpointProgress,
+  type RevisionNumber,
   type RunAllResponse,
   type Store,
 } from "../core/types/index.js";
@@ -15,94 +18,187 @@ import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { runSlowCommand } from "./run-slow.js";
 import { statusCommand } from "./status-command.js";
+import {
+  type FileVerdict,
+  failuresText,
+  noVerdictText,
+  readVerdict,
+  verdictCode,
+} from "./verdict.js";
+import { takeWait } from "./wait-arg.js";
 
 const USAGE =
-  "usage: squeal run --all [--force] [--wait]\n       squeal run --slow [--wait <ms>]\n";
+  "usage: squeal run --all [--force] [--wait [<ms>]]\n       squeal run --slow [--wait <ms>]\n";
 /** Without `--wait`, how long to wait for the scheduler to record the checkpoint. */
 const RECORD_WAIT_MS = 10_000;
 const POLL_MS = 100;
+const STORE_POLL_MS = 250;
+
+/** How a waited checkpoint ended for the CLI (spec 005 D1). */
+type Outcome =
+  | { readonly kind: "ended"; readonly verdict: FileVerdict }
+  | { readonly kind: "abandoned" | "stopped" }
+  | { readonly kind: "moved"; readonly revision: RevisionNumber }
+  | { readonly kind: "deadline"; readonly verdict: FileVerdict | null };
 
 /**
- * `squeal run --all [--force] [--wait]`: an explicit checkpoint (spec 001
- * D5), requested over the daemon socket. Prints the checkpoint once the
- * scheduler recorded it; with `--wait`, polls the store until it ends and
- * prints status. Exit code 0 when requested (or completed with `--wait`), 1
- * when no daemon runs, the request failed, or the checkpoint was abandoned.
+ * `squeal run --all [--force] [--wait [<ms>]]`: an explicit checkpoint
+ * (spec 001 D5), requested over the daemon socket. Prints the checkpoint once
+ * the scheduler recorded it. Exit code 0 when requested, 1 when no daemon
+ * runs, the request failed or was not recorded in time, 2 on a usage error.
+ *
+ * With `--wait`, waits until the checkpoint ends, or `<ms>` from the start,
+ * and gives its verdict (spec 005 D1): the first line names it, then the
+ * start line and status. Exit code 0 when it completed with every test file
+ * current and no known failure at a revision the worktree is still at, 1
+ * with known failures, 3 when Squeal has no verdict.
  */
 export async function runCommand(args: readonly string[], io: CliIo): Promise<number> {
   const flags = new Set(args);
   if (flags.has("--slow") && !flags.has("--all")) return runSlowCommand(args, io, USAGE);
-  const unknown = args.filter((a) => !["--all", "--force", "--wait"].includes(a));
-  if (!flags.has("--all") || unknown.length > 0) {
-    io.stderr(
-      `squeal run: ${unknown.length > 0 ? `unknown argument "${unknown[0]}"` : "--all or --slow is required"}\n${USAGE}`,
-    );
+  const wait = takeAllWait(args);
+  const unknown =
+    typeof wait === "string" ? [] : wait.rest.filter((a) => !["--all", "--force"].includes(a));
+  if (typeof wait === "string" || !flags.has("--all") || unknown.length > 0) {
+    const problem =
+      typeof wait === "string"
+        ? wait
+        : unknown.length > 0
+          ? `unknown argument "${unknown[0]}"`
+          : "--all or --slow is required";
+    io.stderr(`squeal run: ${problem}\n${USAGE}`);
     return 2;
   }
   const root = worktreeRoot(undefined, io);
   if (root === null) return 1;
+  const deadline = wait.waitMs === null ? null : Date.now() + wait.waitMs;
+  const noVerdict = (text: string): number => {
+    if (deadline === null) {
+      io.stderr(`squeal: ${text}\n`);
+      return 1;
+    }
+    io.stdout(`No verdict: ${text}\n`);
+    return 3;
+  };
   const socketPath = await daemonSocket(root);
   const response = await askDaemon(socketPath, { type: "run-all", force: flags.has("--force") });
-  if (response === null) {
-    io.stderr(`squeal: no daemon running for ${root}; start one with squeal start\n`);
-    return 1;
-  }
+  if (response === null)
+    return noVerdict(`no daemon running for ${root}; start one with squeal start`);
   if (!response.ok || response.type !== "run-all") {
-    io.stderr(`squeal: run --all failed: ${response.ok ? "unexpected answer" : response.error}\n`);
+    return noVerdict(`run --all failed: ${response.ok ? "unexpected answer" : response.error}`);
+  }
+  const checkpoint = await recorded(socketPath, response, deadline ?? Date.now() + RECORD_WAIT_MS);
+  if (typeof checkpoint === "string") return noVerdict(checkpoint);
+  if (checkpoint === null) {
+    const allows = "the daemon records the checkpoint once its current work allows";
+    if (deadline !== null) {
+      return noVerdict(
+        `the deadline passed before request ${response.requestId} was recorded; ${allows}`,
+      );
+    }
+    io.stdout(`Run requested (request ${response.requestId}); ${allows}\n`);
     return 1;
   }
-  const wait = flags.has("--wait");
-  const checkpoint = await recorded(socketPath, response, wait ? null : RECORD_WAIT_MS, io);
-  if (checkpoint === null) return 1;
-  io.stdout(
-    `Checkpoint ${checkpoint.id} started at revision ${checkpoint.revision}: ${checkpoint.testFiles.length} test files${joinedText(root, checkpoint)}\n`,
-  );
-  if (!wait) return 0;
-  const end = await ended(root, socketPath, checkpoint.id);
-  if (end === null) {
-    io.stderr(
-      `squeal: the daemon stopped before checkpoint ${checkpoint.id} ended${owedText(root, checkpoint)}\n`,
-    );
-    return 1;
+  const started = `Checkpoint ${checkpoint.id} started at revision ${checkpoint.revision}: ${filesText(root, checkpoint)}${joinedText(root, checkpoint)}\n`;
+  if (deadline === null) {
+    io.stdout(started);
+    return 0;
   }
-  io.stdout(`Checkpoint ${checkpoint.id} ${end}\n\n`);
+  const outcome = await ended(root, socketPath, checkpoint, deadline);
+  const [line, code] = verdictLine(root, checkpoint, outcome);
+  io.stdout(`Checkpoint ${checkpoint.id} ${line}\n${started}\n`);
   const now = io.now ?? Date.now;
   io.stdout(formatStatus(readStatus(root, { now }), now(), statusCommand(io.env ?? process.env)));
-  return end === "completed" ? 0 : 1;
+  return code;
 }
 
-/** Polls the daemon until the scheduler recorded the request's checkpoint. */
+/**
+ * `--wait` bare, `Infinity`, or with `<ms>` read as `run --slow --wait <ms>`
+ * reads it (`takeWait`); `waitMs` is `null` without the flag.
+ */
+function takeAllWait(args: readonly string[]): ReturnType<typeof takeWait> {
+  const at = args.indexOf("--wait");
+  if (at === -1 || /^\d+$/.test(args[at + 1] ?? "")) return takeWait(args);
+  return { waitMs: Number.POSITIVE_INFINITY, rest: args.filter((_, i) => i !== at) };
+}
+
+/** The verdict line after `Checkpoint <id> `, and the exit code (spec 005 D1). */
+function verdictLine(
+  root: AbsolutePath,
+  checkpoint: CheckpointRecord,
+  outcome: Outcome,
+): [string, 0 | 1 | 3] {
+  const none = (why: string): [string, 3] => [`has no verdict: ${why}`, 3];
+  switch (outcome.kind) {
+    case "abandoned":
+      return none(
+        "it was abandoned before every test file had a result (a newer request replaced it, a tier crashed or timed out, or the daemon stopped)",
+      );
+    case "stopped":
+      return none(`the daemon stopped before it ended${owedText(root, checkpoint)}`);
+    case "moved":
+      return none(
+        `revision ${outcome.revision} was recorded after the checkpoint's revision ${checkpoint.revision}`,
+      );
+    case "deadline": {
+      const pending = outcome.verdict?.byClass.pending;
+      const left = pending === undefined ? "" : ` with ${plural(pending, "test file")} pending`;
+      return none(
+        `the deadline passed${left} at revision ${checkpoint.revision}; the checkpoint goes on in the daemon`,
+      );
+    }
+    case "ended": {
+      const { verdict } = outcome;
+      const why = noVerdictText(verdict);
+      if (why !== null) return none(why);
+      const ran = Math.min(checkpoint.testFiles.length, verdict.testFiles);
+      const counts = `${plural(verdict.testFiles, "test file")}, ${verdict.testFiles - ran} already current, ${ran} run now`;
+      return [
+        `completed at revision ${verdict.revision}: ${failuresText(verdict.failures)}; ${counts}`,
+        verdictCode(verdict),
+      ];
+    }
+  }
+}
+
+/** Polls the daemon until the scheduler recorded the request's checkpoint; `null` past `deadline`, a string when it failed. */
 async function recorded(
   socketPath: AbsolutePath,
   first: RunAllResponse,
-  timeoutMs: number | null,
-  io: CliIo,
-): Promise<CheckpointRecord | null> {
-  const deadline = timeoutMs === null ? Number.POSITIVE_INFINITY : Date.now() + timeoutMs;
+  deadline: number,
+): Promise<CheckpointRecord | string | null> {
   let state: RunAllResponse = first;
   for (;;) {
     if (state.checkpoint !== null) return state.checkpoint;
-    if (state.error !== null) {
-      io.stderr(`squeal: run --all failed: ${state.error}\n`);
-      return null;
-    }
-    if (Date.now() > deadline) {
-      io.stdout(
-        `Run requested (request ${first.requestId}); the daemon records the checkpoint once its current work allows\n`,
-      );
-      return null;
-    }
+    if (state.error !== null) return `run --all failed: ${state.error}`;
+    if (Date.now() > deadline) return null;
     await sleep(POLL_MS);
     const next = await askDaemon(socketPath, {
       type: "run-all-status",
       requestId: first.requestId,
     });
     if (next === null || !next.ok || next.type !== "run-all") {
-      io.stderr("squeal: the daemon stopped before recording the checkpoint\n");
-      return null;
+      return "the daemon stopped before recording the checkpoint";
     }
     state = next;
   }
+}
+
+/**
+ * Spec 005 D1: `N test files to run, M already current`, never queued work
+ * alone; the second count only when the store says it.
+ */
+function filesText(root: AbsolutePath, checkpoint: CheckpointRecord): string {
+  const toRun = plural(checkpoint.testFiles.length, "test file");
+  const current = inStore(root, (store) => {
+    const requested = new Set(checkpoint.testFiles.map(testFileId));
+    const rest = store.testFileKeys
+      .list(checkpoint.worktreeId)
+      .map((row) => row.testFile)
+      .filter((file) => !requested.has(testFileId(file)));
+    return readVerdict(store, checkpoint.worktreeId, rest).byClass.current;
+  });
+  return `${toRun} to run${current === null ? "" : `, ${current} already current`}`;
 }
 
 /** Task 001-219: a checkpoint the stopped daemon owes resumes in the next one. */
@@ -146,26 +242,34 @@ function inStore<T>(root: AbsolutePath, read: (store: Store) => T): T | null {
   }
 }
 
-/** Polls the store until the checkpoint ends; `null` when the daemon went away first. */
+/**
+ * Polls the store until the checkpoint ended and none of the worktree's test
+ * files is pending (a new failure's re-run, spec 001 D6 as amended), a newer
+ * revision was recorded, `deadline` passed, or the daemon went away.
+ */
 async function ended(
   root: AbsolutePath,
   socketPath: AbsolutePath,
-  id: string,
-): Promise<CheckpointRecord["end"]> {
-  const commonDir = resolveCommonDir(root);
-  if (commonDir === null) return null;
+  checkpoint: CheckpointRecord,
+  deadline: number,
+): Promise<Outcome> {
   for (let polls = 0; ; polls++) {
-    const store = openStore(commonDir, { create: false, busyTimeoutMs: 1_000 });
-    if (isStoreOpenFailure(store)) return null;
-    let end: CheckpointRecord["end"];
-    try {
-      end = store.checkpoints.get(id)?.end ?? null;
-    } finally {
-      store.close();
-    }
-    if (end !== null) return end;
+    const seen = inStore(root, (store): Outcome | FileVerdict => {
+      const end = store.checkpoints.get(checkpoint.id)?.end ?? null;
+      const revision = store.revisions.latest(checkpoint.worktreeId)?.number ?? 0;
+      if (revision > checkpoint.revision) return { kind: "moved", revision };
+      if (end === "abandoned") return { kind: "abandoned" };
+      const verdict = readVerdict(store, checkpoint.worktreeId);
+      const settled = verdict.byClass.pending === 0 && !verdict.unlisted;
+      return end === "completed" && settled ? { kind: "ended", verdict } : verdict;
+    });
+    if (seen === null) return { kind: "stopped" };
+    if ("kind" in seen) return seen;
+    if (Date.now() >= deadline) return { kind: "deadline", verdict: seen };
     // A killed daemon never ends its checkpoint; check that it is still there now and then.
-    if (polls % 20 === 19 && (await askDaemon(socketPath, { type: "ping" })) === null) return null;
-    await sleep(250);
+    if (polls % 20 === 19 && (await askDaemon(socketPath, { type: "ping" })) === null) {
+      return { kind: "stopped" };
+    }
+    await sleep(Math.max(0, Math.min(STORE_POLL_MS, deadline - Date.now())));
   }
 }
