@@ -39,7 +39,7 @@ type Outcome =
   | { readonly kind: "ended"; readonly verdict: FileVerdict }
   | { readonly kind: "abandoned" | "stopped" }
   | { readonly kind: "moved"; readonly revision: RevisionNumber }
-  | { readonly kind: "deadline"; readonly verdict: FileVerdict | null };
+  | { readonly kind: "deadline"; readonly verdict: FileVerdict };
 
 /**
  * `squeal run --all [--force] [--wait [<ms>]]`: an explicit checkpoint
@@ -82,8 +82,9 @@ export async function runCommand(args: readonly string[], io: CliIo): Promise<nu
   };
   const socketPath = await daemonSocket(root);
   const response = await askDaemon(socketPath, { type: "run-all", force: flags.has("--force") });
-  if (response === null)
+  if (response === null) {
     return noVerdict(`no daemon running for ${root}; start one with squeal start`);
+  }
   if (!response.ok || response.type !== "run-all") {
     return noVerdict(`run --all failed: ${response.ok ? "unexpected answer" : response.error}`);
   }
@@ -141,10 +142,9 @@ function verdictLine(
         `revision ${outcome.revision} was recorded after the checkpoint's revision ${checkpoint.revision}`,
       );
     case "deadline": {
-      const pending = outcome.verdict?.byClass.pending;
-      const left = pending === undefined ? "" : ` with ${plural(pending, "test file")} pending`;
+      const pending = plural(outcome.verdict.byClass.pending, "test file");
       return none(
-        `the deadline passed${left} at revision ${checkpoint.revision}; the checkpoint goes on in the daemon`,
+        `the deadline passed with ${pending} pending at revision ${checkpoint.revision}; the checkpoint goes on in the daemon`,
       );
     }
     case "ended": {
