@@ -1004,3 +1004,19 @@ Questions:
 4. Recommend rows in the board's column shape, each with a one-worker scope, and the tests that would have caught it (a fixture with a nested worktree full of files, asserting the watch count stays near the checkout's own).
 
 Measure on scratch repositories and daemons you create and remove, with Squeal's own test harness. Do not touch the human's checkouts, their daemons or stores: read `/proc` only. Probe isolation: never run third-party agent tooling, the eval runner or any repo script where it can reach the real HOME. Output `research/nested-worktree-watch.md`, committed alone. Do not edit `docs/board.md` or source files.
+
+## Wave 13ao (2026-10-12, decided by the human)
+
+Two workers, disjoint ownership (001-299: `src/core/watcher/` except `linked-watch.ts`; 001-300: `linked-watch.ts`), then one review (001-301). R4 (eval cells outside every repository) went to 006; R5 (a per-directory Linux backend) is parked. The release ships 0.1.129's Stop-wait repair and this fix together, after both reviews; then the coordinator restores `fs.inotify.max_user_watches` to 375,518. Each worker: read `research/nested-worktree-watch.md` first, including its probes' method (a counting `fs.watch` stub takes no real watches). Do not edit `docs/board.md`, do not commit `dist`, run the full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Do not touch the human's checkouts or daemons. Probe isolation: never run third-party agent tooling, the eval runner or any repo script where it can reach the real HOME.
+
+## 001-299 the watch spec skips ignored and nested-repository directories, without storms
+
+Use /worker. Shape: defect. The board row is the brief, with R1 and R2 and findings 1 to 3 of the research. Keep what must still be watched: a closure's ignored extra files, declared artifacts, linked artifacts, a directory that stops being ignored after a `.gitignore` change, the `logs/` rule. Done when the row's done-when holds and the full suite is green.
+
+## 001-300 linked directory targets get their exclusions
+
+Use /worker. Shape: defect. The board row is the brief, with R3 and the research's "Linked targets, a second leak". Done when the row's done-when holds and the full suite is green.
+
+## 001-301 review of wave 13ao
+
+Use /reviewer on gpt-6.1-sol, after 001-299 and 001-300 land. Output `reviews/wave-13ao.md`. The row's questions; measure watch counts yourself with the research's counting stub, not real watches. Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
