@@ -1,15 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { squealVersion } from "../../src/core/daemon/version.js";
-import { readTurn } from "../../src/core/delivery/turn.js";
-import { recordStopWait, type StopWaitHarness, stopWaitRuns } from "../../src/core/slow/index.js";
-import { DEFAULT_POLICY, type PolicyFile, type TestFileRef } from "../../src/core/types/index.js";
+import { recordStopWait, stopWaitRuns } from "../../src/core/slow/index.js";
 import { runHook } from "../../src/harness/claude-code/index.js";
-import { runCodexHook } from "../../src/harness/codex/index.js";
-import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { STOP_SLOW_HANDOFF_MS } from "../../src/harness/shared/stop-slow.js";
-import { check, result } from "../state/helpers.js";
-import { codexRecorded } from "./codex/helpers.js";
-import { FILE, recorded, type SquealRepo, squealRepo } from "./helpers.js";
+import { recorded } from "./helpers.js";
+import {
+  decision,
+  deps,
+  HARNESSES,
+  landSlow,
+  repo,
+  slowKey,
+  stopBoth,
+  turnOf,
+} from "./stop-slow-helpers.js";
 
 /*
  * Spec 004 D9 as amended 2026-10-12: with `stop.requireSlowSuite` on, the
@@ -19,108 +23,6 @@ import { FILE, recorded, type SquealRepo, squealRepo } from "./helpers.js";
  * block at the bound naming the files and `run --slow --wait`. Off, with
  * `stop_hook_active`, or after the 2 s entry spoke, it says nothing.
  */
-
-const deps: HookDeps = { env: {}, ensureDaemon: async () => "alive", pollIntervalMs: 20 };
-const SLOW_FILE: TestFileRef = { project: "", path: "test/e2e/slow.test.ts" };
-const POSTS = check("ledger > posts", SLOW_FILE);
-
-interface Out {
-  readonly stdout: string;
-}
-
-interface Harness {
-  readonly name: StopWaitHarness;
-  startTurn(r: SquealRepo): Promise<void>;
-  stop(r: SquealRepo, overrides?: object): Promise<Out>;
-  stopSlow(r: SquealRepo, overrides?: object): Promise<Out>;
-}
-
-const HARNESSES: readonly Harness[] = [
-  {
-    name: "claude-code",
-    async startTurn(r) {
-      await runHook("session-start", recorded("session-start", r.root), deps);
-      await runHook("user-prompt-submit", recorded("user-prompt-submit", r.root), deps);
-    },
-    stop: (r, o) => runHook("stop", recorded("stop", r.root, o), deps),
-    stopSlow: (r, o) => runHook("stop-slow", recorded("stop", r.root, o), deps),
-  },
-  {
-    name: "codex",
-    async startTurn(r) {
-      await runCodexHook("session-start", codexRecorded("exec", "session-start", r.root), deps);
-      await runCodexHook(
-        "user-prompt-submit",
-        codexRecorded("exec", "user-prompt-submit", r.root),
-        deps,
-      );
-    },
-    stop: (r, o) => runCodexHook("stop", codexRecorded("exec", "stop", r.root, o), deps),
-    stopSlow: (r, o) => runCodexHook("stop-slow", codexRecorded("exec", "stop", r.root, o), deps),
-  },
-];
-
-/**
- * `math > adds` passes, the slow file is queued at revision 1, the agent is
- * in a turn; `marked`: the harness's waiting entry ran here before.
- */
-async function repo(
-  harness: Harness,
-  stop: NonNullable<PolicyFile["stop"]>,
-  marked = true,
-): Promise<SquealRepo> {
-  const r = squealRepo();
-  r.apply(r.pass());
-  r.policy({ slow: { ...DEFAULT_POLICY.slow, include: [SLOW_FILE.path, FILE.path] }, stop });
-  slowKey(r, "queued");
-  if (marked) recordStopWait(r.store, r.worktreeId, harness.name, squealVersion());
-  await harness.startTurn(r);
-  return r;
-}
-
-function slowKey(r: SquealRepo, pending: "queued" | null): void {
-  const revision = r.store.revisions.latest(r.worktreeId)?.number ?? 0;
-  r.store.testFileKeys.upsertMany([
-    { worktreeId: r.worktreeId, testFile: SLOW_FILE, key: "slow1", revision, pending },
-  ]);
-}
-
-/** The slow file's run lands at the current revision, as the daemon's slow tier stores it. */
-function landSlow(r: SquealRepo, outcome: "pass" | "fail"): void {
-  const revision = r.store.revisions.latest(r.worktreeId)?.number ?? 0;
-  const ran = result(POSTS, outcome, { key: "slow1", worktreeId: r.worktreeId, revision });
-  r.store.transaction(() => r.store.results.putMany([ran]));
-  slowKey(r, null);
-  r.sink.applyResults(r.worktreeId, revision, [ran], { checkpointId: null });
-}
-
-function decision(out: Out): { decision?: string; reason?: string } {
-  return out.stdout.trim() === "" ? {} : (JSON.parse(out.stdout) as { decision?: string });
-}
-
-/** Both entries at once, as the harness runs them; `during` acts while they run. */
-async function stopBoth(
-  harness: Harness,
-  r: SquealRepo,
-  during: () => void = () => {},
-  afterMs = 300,
-) {
-  const timer = setTimeout(during, afterMs);
-  try {
-    const started = performance.now();
-    const [quick, waiting] = await Promise.all([harness.stop(r), harness.stopSlow(r)]);
-    return { quick: decision(quick), waiting: decision(waiting), ms: performance.now() - started };
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/** The main agent's turn state; each harness names its session. */
-function turnOf(r: SquealRepo) {
-  const [record] = r.store.consumers.list(r.worktreeId);
-  if (record === undefined) throw new Error("no consumer");
-  return readTurn(r.store, record.consumer).turn;
-}
 
 describe.each(HARNESSES)("Stop waits for its slow tier, $name (004 D9 as amended)", (harness) => {
   it("on: waits for a running slow file and ends the turn silently when it passes", async () => {
