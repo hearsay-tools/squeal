@@ -13,7 +13,8 @@
 // run. Each arm's fixture commit holds its own instructions and policy, so each arm's conditions
 // name its own fixture; cells of one arm on different fixtures abort the results.
 // Every run has a fresh id, its cells under $SQ_EVALS_ROOT/cells/<commit>/<run>/ (default root
-// <tmpdir>/squeal-evals), so two runs of one commit never share a cell or a results file.
+// /tmp/squeal-evals-<uid>), so two runs of one commit never share a cell or a results file. A root
+// inside a repository is refused (exit 2) unless --force-root, which reaches every cell too.
 // --resume <run> continues that run instead: its graded cells are skipped.
 // --atomic runs the atomic scenarios instead (evals/atomic/atomic.json, 006-33): their models,
 // repetitions, effort and cells at once (--parallel overrides), no judge (the pilot grades
@@ -21,7 +22,7 @@
 // trend leaves out, and regenerates evals/results/ATOMIC.md (006-36). It takes no --variant.
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { availableParallelism, loadavg, tmpdir } from "node:os";
+import { availableParallelism, loadavg } from "node:os";
 import { join } from "node:path";
 import { atomicConfig, scenarioOf } from "../lib/atomic.mjs";
 import { declarations, expectationsOf } from "../lib/behaviours.mjs";
@@ -43,13 +44,21 @@ import {
   conditionsOf,
   resultsName,
 } from "../lib/results.mjs";
+import { evalsRoot, refuseInsideRepo } from "../lib/root.mjs";
 import { secretsOf } from "../lib/scratch.mjs";
 import { CLAUDE_ALLOWED_TOOLS } from "../lib/session.mjs";
 import { expectationsRevision } from "../lib/trend.mjs";
 import { buildPin } from "../lib/variant.mjs";
 
-const ROOT = process.env.SQ_EVALS_ROOT ?? join(tmpdir(), "squeal-evals");
 const argv = process.argv.slice(2);
+const forceRoot = argv.includes("--force-root");
+let ROOT;
+try {
+  ROOT = refuseInsideRepo(evalsRoot(), { force: forceRoot });
+} catch (e) {
+  console.error(e.message);
+  process.exit(2);
+}
 const opt = (name, dflt) => (argv.includes(name) ? argv[argv.indexOf(name) + 1] : dflt);
 const commit = resolveCommit(opt("--commit", "HEAD"));
 const atomic = argv.includes("--atomic");
@@ -100,6 +109,7 @@ const judgeIdentity = atomic
               model,
               "--base",
               ROOT,
+              ...(forceRoot ? ["--force-root"] : []),
             ],
             { cwd: join(EVALS, ".."), stdio: "inherit" },
           ).on("close", resolve),
@@ -177,6 +187,7 @@ async function runCell(c) {
       String(maxLoad),
     );
     if (resume) args.push("--resume");
+    if (forceRoot) args.push("--force-root");
     const code = await new Promise((resolve) =>
       spawn(process.execPath, args, { stdio: "inherit" }).on("close", resolve),
     );
