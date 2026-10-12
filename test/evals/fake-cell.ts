@@ -138,7 +138,11 @@ export interface CellRun {
   output: string;
 }
 
-/** Runs run-cell.mjs; `onStart` gets the child once it is spawned (to signal it). */
+/**
+ * Runs run-cell.mjs; `onStart` gets the child once it is spawned (to signal it). With
+ * `--force-root`: the fake root sits under the system temp directory, inside the checkout in a
+ * Cezar session, and its fake harnesses read no instructions (006-42).
+ */
 export function runCell(
   f: FakeRoot,
   args: string[],
@@ -147,7 +151,7 @@ export function runCell(
 ): Promise<CellRun> {
   const child = spawn(
     process.execPath,
-    [join(REPO, "evals/bin/run-cell.mjs"), ...args, "--max-load", "100000"],
+    [join(REPO, "evals/bin/run-cell.mjs"), ...args, "--max-load", "100000", "--force-root"],
     { env: { ...f.env, ...extraEnv }, stdio: ["ignore", "pipe", "pipe"] },
   );
   let output = "";
