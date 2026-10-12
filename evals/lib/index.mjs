@@ -38,7 +38,6 @@ export {
   CONTEXT,
   declarations,
   disagreements,
-  dropped,
   EXPECTATIONS,
   expectationsOf,
   falseClaim,

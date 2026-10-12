@@ -232,11 +232,3 @@ export function rate(values) {
 export function metRate(grades, id) {
   return rate(grades.map((g) => (g?.[id] === "met" ? true : g?.[id] === "missed" ? false : null)));
 }
-
-/** Whether `now` is at least `points` percentage points below `before` (both met rates). */
-export function dropped(before, now, points = 25) {
-  if (!before || !now) return false;
-  const delta = (now.k / now.n - before.k / before.n) * 100;
-  const eps = 1e-9; // 3/12 against 6/12 is a 25-point change, whatever the floating point says
-  return delta <= -points + eps;
-}
