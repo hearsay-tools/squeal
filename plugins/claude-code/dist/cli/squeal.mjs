@@ -34605,7 +34605,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.131";
+  if (true) return "0.1.132";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -38766,8 +38766,10 @@ function safeList2(dir) {
 
 // src/cli/run.ts
 init_fs();
+init_keys();
 import { setTimeout as sleep9 } from "node:timers/promises";
 init_store3();
+init_text();
 init_types();
 
 // src/cli/run-slow.ts
@@ -39253,86 +39255,202 @@ async function taken(socketPath, first, io) {
   }
 }
 
+// src/cli/verdict.ts
+init_keys();
+init_state3();
+init_text();
+function readVerdict(store, worktreeId, files2 = null) {
+  const states = store.knownStates.list(worktreeId);
+  const keys = store.testFileKeys.list(worktreeId);
+  const header = readHeader(store, worktreeId, states, keys);
+  const checks = /* @__PURE__ */ new Map();
+  for (const state of states) {
+    const id2 = testFileKeyOf(state.check);
+    checks.set(id2, [...checks.get(id2) ?? [], state]);
+  }
+  const rows = new Map(keys.map((row) => [testFileId(row.testFile), row]));
+  const ids = files2 === null ? [...rows.keys()] : [...new Set(files2.map(testFileId))];
+  const byClass = { current: 0, pending: 0, stale: 0, unknown: 0 };
+  const failures = { tests: 0, testFiles: 0 };
+  for (const id2 of ids) {
+    const row = rows.get(id2);
+    const own = checks.get(id2) ?? [];
+    const has = (validity) => own.some((s) => s.validity === validity);
+    const queued = row !== void 0 && row.key !== null && row.pending !== null;
+    const unkeyed = row === void 0 || row.key === null;
+    byClass[queued || has("pending") ? "pending" : unkeyed || own.length === 0 || has("unknown") ? "unknown" : has("stale") ? "stale" : "current"]++;
+    for (const state of own) {
+      if (state.outcome === "fail") failures[state.check.kind === "test" ? "tests" : "testFiles"]++;
+    }
+  }
+  return {
+    revision: header.revision,
+    testFiles: ids.length,
+    byClass,
+    unlisted: header.runnerPartPending === true || header.awaitingInstall === true,
+    failures
+  };
+}
+function verdictCode(verdict) {
+  if (verdict.unlisted || verdict.byClass.current < verdict.testFiles) return 3;
+  return failureCount(verdict.failures) > 0 ? 1 : 0;
+}
+function noVerdictText(verdict) {
+  const { byClass, revision } = verdict;
+  if (verdict.unlisted) {
+    return `the runner has not listed the test files of revision ${revision} yet`;
+  }
+  if (byClass.pending > 0) {
+    return `${plural(byClass.pending, "test file")} still pending at revision ${revision}`;
+  }
+  const missing = byClass.unknown + byClass.stale;
+  if (missing === 0) return null;
+  const parts = [
+    ...byClass.unknown > 0 ? [`${byClass.unknown} unknown`] : [],
+    ...byClass.stale > 0 ? [`${byClass.stale} stale`] : []
+  ];
+  return `${plural(missing, "test file")} without a current result at revision ${revision} (${parts.join(", ")})`;
+}
+function failuresText(failures) {
+  const total = failureCount(failures);
+  if (total === 0) return "no known failures";
+  const parts = [
+    ...failures.tests > 0 ? [plural(failures.tests, "test")] : [],
+    ...failures.testFiles > 0 ? [`${plural(failures.testFiles, "test file")} that did not load`] : []
+  ];
+  return `${plural(total, "known failure")}: ${parts.join(", ")}`;
+}
+function failureCount(failures) {
+  return failures.tests + failures.testFiles;
+}
+
 // src/cli/run.ts
-var USAGE2 = "usage: squeal run --all [--force] [--wait]\n       squeal run --slow [--wait <ms>]\n";
+var USAGE2 = "usage: squeal run --all [--force] [--wait [<ms>]]\n       squeal run --slow [--wait <ms>]\n";
 var RECORD_WAIT_MS2 = 1e4;
 var POLL_MS2 = 100;
+var STORE_POLL_MS = 250;
 async function runCommand(args, io) {
   const flags = new Set(args);
   if (flags.has("--slow") && !flags.has("--all")) return runSlowCommand(args, io, USAGE2);
-  const unknown = args.filter((a) => !["--all", "--force", "--wait"].includes(a));
-  if (!flags.has("--all") || unknown.length > 0) {
-    io.stderr(
-      `squeal run: ${unknown.length > 0 ? `unknown argument "${unknown[0]}"` : "--all or --slow is required"}
-${USAGE2}`
-    );
+  const wait = takeAllWait(args);
+  const unknown = typeof wait === "string" ? [] : wait.rest.filter((a) => !["--all", "--force"].includes(a));
+  if (typeof wait === "string" || !flags.has("--all") || unknown.length > 0) {
+    const problem = typeof wait === "string" ? wait : unknown.length > 0 ? `unknown argument "${unknown[0]}"` : "--all or --slow is required";
+    io.stderr(`squeal run: ${problem}
+${USAGE2}`);
     return 2;
   }
   const root = worktreeRoot(void 0, io);
   if (root === null) return 1;
+  const deadline = wait.waitMs === null ? null : Date.now() + wait.waitMs;
+  const noVerdict = (text2) => {
+    if (deadline === null) {
+      io.stderr(`squeal: ${text2}
+`);
+      return 1;
+    }
+    io.stdout(`No verdict: ${text2}
+`);
+    return 3;
+  };
   const socketPath = await daemonSocket(root);
   const response = await askDaemon(socketPath, { type: "run-all", force: flags.has("--force") });
   if (response === null) {
-    io.stderr(`squeal: no daemon running for ${root}; start one with squeal start
-`);
-    return 1;
+    return noVerdict(`no daemon running for ${root}; start one with squeal start`);
   }
   if (!response.ok || response.type !== "run-all") {
-    io.stderr(`squeal: run --all failed: ${response.ok ? "unexpected answer" : response.error}
+    return noVerdict(`run --all failed: ${response.ok ? "unexpected answer" : response.error}`);
+  }
+  const checkpoint = await recorded(socketPath, response, deadline ?? Date.now() + RECORD_WAIT_MS2);
+  if (typeof checkpoint === "string") return noVerdict(checkpoint);
+  if (checkpoint === null) {
+    const allows = "the daemon records the checkpoint once its current work allows";
+    if (deadline !== null) {
+      return noVerdict(
+        `the deadline passed before request ${response.requestId} was recorded; ${allows}`
+      );
+    }
+    io.stdout(`Run requested (request ${response.requestId}); ${allows}
 `);
     return 1;
   }
-  const wait = flags.has("--wait");
-  const checkpoint = await recorded(socketPath, response, wait ? null : RECORD_WAIT_MS2, io);
-  if (checkpoint === null) return 1;
-  io.stdout(
-    `Checkpoint ${checkpoint.id} started at revision ${checkpoint.revision}: ${checkpoint.testFiles.length} test files${joinedText(root, checkpoint)}
-`
-  );
-  if (!wait) return 0;
-  const end = await ended(root, socketPath, checkpoint.id);
-  if (end === null) {
-    io.stderr(
-      `squeal: the daemon stopped before checkpoint ${checkpoint.id} ended${owedText(root, checkpoint)}
-`
-    );
-    return 1;
+  const started2 = `Checkpoint ${checkpoint.id} started at revision ${checkpoint.revision}: ${filesText2(root, checkpoint)}${joinedText(root, checkpoint)}
+`;
+  if (deadline === null) {
+    io.stdout(started2);
+    return 0;
   }
-  io.stdout(`Checkpoint ${checkpoint.id} ${end}
-
+  const outcome2 = await ended(root, socketPath, checkpoint, deadline);
+  const [line, code] = verdictLine(root, checkpoint, outcome2);
+  io.stdout(`Checkpoint ${checkpoint.id} ${line}
+${started2}
 `);
   const now = io.now ?? Date.now;
   io.stdout(formatStatus(readStatus(root, { now }), now(), statusCommand(io.env ?? process.env)));
-  return end === "completed" ? 0 : 1;
+  return code;
 }
-async function recorded(socketPath, first, timeoutMs, io) {
-  const deadline = timeoutMs === null ? Number.POSITIVE_INFINITY : Date.now() + timeoutMs;
+function takeAllWait(args) {
+  const at2 = args.indexOf("--wait");
+  if (at2 === -1 || /^\d+$/.test(args[at2 + 1] ?? "")) return takeWait(args);
+  return { waitMs: Number.POSITIVE_INFINITY, rest: args.filter((_, i2) => i2 !== at2) };
+}
+function verdictLine(root, checkpoint, outcome2) {
+  const none = (why2) => [`has no verdict: ${why2}`, 3];
+  switch (outcome2.kind) {
+    case "abandoned":
+      return none(
+        "it was abandoned before every test file had a result (a newer request replaced it, a tier crashed or timed out, or the daemon stopped)"
+      );
+    case "stopped":
+      return none(`the daemon stopped before it ended${owedText(root, checkpoint)}`);
+    case "moved":
+      return none(
+        `revision ${outcome2.revision} was recorded after the checkpoint's revision ${checkpoint.revision}`
+      );
+    case "deadline": {
+      const pending = plural(outcome2.verdict.byClass.pending, "test file");
+      return none(
+        `the deadline passed with ${pending} pending at revision ${checkpoint.revision}; the checkpoint goes on in the daemon`
+      );
+    }
+    case "ended": {
+      const { verdict } = outcome2;
+      const why2 = noVerdictText(verdict);
+      if (why2 !== null) return none(why2);
+      const ran = Math.min(checkpoint.testFiles.length, verdict.testFiles);
+      const counts = `${plural(verdict.testFiles, "test file")}, ${verdict.testFiles - ran} already current, ${ran} run now`;
+      return [
+        `completed at revision ${verdict.revision}: ${failuresText(verdict.failures)}; ${counts}`,
+        verdictCode(verdict)
+      ];
+    }
+  }
+}
+async function recorded(socketPath, first, deadline) {
   let state = first;
   for (; ; ) {
     if (state.checkpoint !== null) return state.checkpoint;
-    if (state.error !== null) {
-      io.stderr(`squeal: run --all failed: ${state.error}
-`);
-      return null;
-    }
-    if (Date.now() > deadline) {
-      io.stdout(
-        `Run requested (request ${first.requestId}); the daemon records the checkpoint once its current work allows
-`
-      );
-      return null;
-    }
+    if (state.error !== null) return `run --all failed: ${state.error}`;
+    if (Date.now() > deadline) return null;
     await sleep9(POLL_MS2);
     const next = await askDaemon(socketPath, {
       type: "run-all-status",
       requestId: first.requestId
     });
     if (next === null || !next.ok || next.type !== "run-all") {
-      io.stderr("squeal: the daemon stopped before recording the checkpoint\n");
-      return null;
+      return "the daemon stopped before recording the checkpoint";
     }
     state = next;
   }
+}
+function filesText2(root, checkpoint) {
+  const toRun2 = plural(checkpoint.testFiles.length, "test file");
+  const current2 = inStore(root, (store) => {
+    const requested = new Set(checkpoint.testFiles.map(testFileId));
+    const rest = store.testFileKeys.list(checkpoint.worktreeId).map((row) => row.testFile).filter((file) => !requested.has(testFileId(file)));
+    return readVerdict(store, checkpoint.worktreeId, rest).byClass.current;
+  });
+  return `${toRun2} to run${current2 === null ? "" : `, ${current2} already current`}`;
 }
 function owedText(root, checkpoint) {
   const owed = inStore(root, (store) => openCheckpoint2(store, checkpoint)?.owed?.ids ?? []);
@@ -39362,21 +39480,24 @@ function inStore(root, read4) {
     store.close();
   }
 }
-async function ended(root, socketPath, id2) {
-  const commonDir = resolveCommonDir(root);
-  if (commonDir === null) return null;
+async function ended(root, socketPath, checkpoint, deadline) {
   for (let polls = 0; ; polls++) {
-    const store = openStore(commonDir, { create: false, busyTimeoutMs: 1e3 });
-    if (isStoreOpenFailure(store)) return null;
-    let end;
-    try {
-      end = store.checkpoints.get(id2)?.end ?? null;
-    } finally {
-      store.close();
+    const seen = inStore(root, (store) => {
+      const end = store.checkpoints.get(checkpoint.id)?.end ?? null;
+      const revision = store.revisions.latest(checkpoint.worktreeId)?.number ?? 0;
+      if (revision > checkpoint.revision) return { kind: "moved", revision };
+      if (end === "abandoned") return { kind: "abandoned" };
+      const verdict = readVerdict(store, checkpoint.worktreeId);
+      const settled = verdict.byClass.pending === 0 && !verdict.unlisted;
+      return end === "completed" && settled ? { kind: "ended", verdict } : verdict;
+    });
+    if (seen === null) return { kind: "stopped" };
+    if ("kind" in seen) return seen;
+    if (Date.now() >= deadline) return { kind: "deadline", verdict: seen };
+    if (polls % 20 === 19 && await askDaemon(socketPath, { type: "ping" }) === null) {
+      return { kind: "stopped" };
     }
-    if (end !== null) return end;
-    if (polls % 20 === 19 && await askDaemon(socketPath, { type: "ping" }) === null) return null;
-    await sleep9(250);
+    await sleep9(Math.max(0, Math.min(STORE_POLL_MS, deadline - Date.now())));
   }
 }
 
