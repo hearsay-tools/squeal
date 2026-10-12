@@ -56,8 +56,9 @@ export function applyReference(dir, s) {
 
 /**
  * Whether `squeal status --json` (text or parsed) shows Squeal settled for a next turn:
- * `{ settled, why }`. Settled means a daemon validating with no check and no test file pending,
- * the slow tier's included; `done` is true too when waiting cannot help (no daemon, no status).
+ * `{ settled, done, why }`. Settled means a daemon validating with no check and no test file
+ * pending, the slow tier's included; `done` is true too when waiting cannot help: no daemon
+ * validating.
  */
 export function settledOf(raw) {
   let s;
