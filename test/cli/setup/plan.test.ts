@@ -87,6 +87,7 @@ describe("squeal setup --plan --json", () => {
     git(root, ["commit", "-q", "-m", "untrack"]);
     expect((await planJson(root)).outdated).toEqual([
       "squeal.config.json is not tracked by git: other worktrees run on defaults",
+      'squeal.config.json has no "slow" key',
     ]);
 
     const worktree = join(scratch("squeal-setup-wt-"), "wt");
@@ -118,13 +119,19 @@ describe("squeal setup --plan --json", () => {
     expect(plan.runners.nodeTest).toEqual([
       { name: "test:unit", cwd: "packages/demo", include: ["test/unit/*.test.js"], source: "seed" },
     ]);
-    expect(plan.config.missingKeys).toEqual(["nodeTest"]);
+    // test/e2e is a slow candidate too, so the config lacks both keys.
+    expect(plan.config.missingKeys).toEqual(["nodeTest", "slow"]);
   });
 });
 
 describe("squeal setup --check and usage", () => {
   it("exits 1 when anything is outdated, 0 when nothing is", async () => {
-    const root = squealShaped();
+    const root = squealShaped({
+      "squeal.config.json": json({
+        slow: { include: ["test/e2e/**/*.test.ts"] },
+        inputs: { "test/e2e/*.test.ts": ["plugins/**"] },
+      }),
+    });
     const ok = capture(root);
     expect(await main(["setup", "--check"], ok.io)).toBe(0);
     expect(ok.out.stdout).toContain("Nothing is outdated.");

@@ -76,6 +76,9 @@ export function squealShaped(files: Readonly<Record<string, string>> = {}): stri
     ".claude/skills/worker/SKILL.md": "Run `npx vitest run` and paste it.\n",
     ...files,
   });
+  // The bundles are committed past the `dist/` ignore, as here.
+  git(root, ["add", "-f", "plugins"]);
+  git(root, ["commit", "-q", "-m", "bundles"]);
   if (!("AGENTS.md" in files)) {
     symlinkSync("CLAUDE.md", join(root, "AGENTS.md"));
     git(root, ["add", "AGENTS.md"]);
