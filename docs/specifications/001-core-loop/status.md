@@ -200,6 +200,7 @@ Started: 2026-10-02
 - 2026-10-12, human: both main-checkout daemons SIGKILLed after ignoring SIGTERM (no child processes; likely the ENOSPC reconciliation loop), and `fs.inotify.max_user_watches` raised at runtime from 375,518 to 2,000,000 so the 0.1.129 gate could run; restore 375,518 after 001-298's fix lands. A main CI failure on Node 24 (`hung-daemon.test.ts`, SIGSTOP timing) on docs-only 8039fd39 passed on re-run.
 - 2026-10-12, human (`research/nested-worktree-watch.md`): R1 to R3 now (001-299, 001-300, review 001-301); R4 to 006; R5 parked. One release carries 0.1.129's Stop-wait repair and the watcher fix, after both reviews.
 - 2026-10-12, human (`reviews/wave-13an.md`, second round): fix and a third review (001-302, 001-303). S2: a slow file the Stop owes stays owed at a newer key, and its failure between polls blocks once.
+- 2026-10-12, human (`reviews/wave-13ap.md`, third round): the waiting Stop's owed list is replaced by a simpler rule: it blocks once on any current slow failure the session was not told, whatever its revision or key (001-305, fourth review 001-306). The cost accepted: an agent can hear a slow failure it did not cause, once.
 
 ## Research
 
