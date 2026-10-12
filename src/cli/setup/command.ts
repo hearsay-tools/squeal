@@ -5,7 +5,8 @@ import { buildPlan } from "./plan.js";
 
 export const SETUP_USAGE = `Usage: squeal setup --plan [--json]
        squeal setup --check [--json]
-Apply a plan's choices with squeal init and its flags (squeal init --help).
+Apply its choices with squeal init --block <file|none>, --gate <id>=<reword|keep>,
+--slow <glob> and --input <test glob>=<input glob>.
 `;
 
 /**
