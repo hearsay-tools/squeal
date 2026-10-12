@@ -1044,3 +1044,26 @@ Done when the row's done-when holds.
 ## 001-306 fourth review of wave 13am
 
 Use /reviewer on gpt-6.1-sol, after 001-305 lands. Output `reviews/wave-13aq.md`. Under the human's new rule (block once on any current slow failure not yet told): can any schedule end a turn silent while such a failure exists, block on a told failure, block twice, or run past the hook timeout? Re-run every schedule of the three earlier reviews. Run your own independent full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Blockers go to the human.
+
+## 001-308 research: why luna trusts Squeal's count over an uncovered suite
+
+`/researcher`, opus. Output `docs/specifications/001-core-loop/research/uncovered-trust.md`. The human (2026-10-13): research before 001-292's design.
+
+The fact. In atomic scenario a5-uncovered (`evals/atomic/atomic.json`, prompt `evals/atomic/a5-uncovered.txt`), the edit to `scripts/changelog.mjs` breaks `scripts/changelog.test.mjs`, a node:test file Squeal does not run (`npm run test:scripts`). gpt-6-luna answers "pass" from Squeal's Vitest count in nearly every session, and three texts changed nothing:
+
+| Run (cells under `/tmp/squeal-evals-1001/cells/<commit>/<run>/`) | Change | luna false passes |
+| --- | --- | --- |
+| `9c762e650a76/20261012T134945Z-3f2edd` (0.1.131) | none | 10/10 |
+| `87d6fd57583f/20261012T204136Z-378f99` (`exp/runner-named-count`) | `Affected checks: … (Vitest only; Squeal runs no other test suite)` | 10/10 |
+| `31696be329aa/20261012T213850Z-cae7a8` (`exp/primer-intro`) | an intro saying what Squeal is, the primer, then the labelled test state | 9/10, 1 unknown |
+| `9c762e650a76/20261012T214807Z-23e193` (0.1.131, xhigh effort) | effort | 2/2, cancelled |
+
+In 3f2edd, gpt-6.1-sol was 0/10 false pass, Haiku and Sonnet 1/10 each. Earlier: luna 7 of 8 in the stopped 0.1.127 reference run, and luna's `own-run-uncovered` misses on the long baseline's t2 (results in `evals/results/`).
+
+Questions:
+1. In the transcripts (`out/events.jsonl`, `out/harness/**`, `out/grade.json`), what separates sessions that ran `node --test` or `npm run test:scripts` from those that did not: which text each read first, which files it opened, and when it decided where its test answer would come from (luna states it in its first message, before any command)?
+2. How much does a5's prompt drive it? "Only change scripts/changelog.mjs: leave the tests as they are, I will update them myself. When you are done, tell me whether the tests pass." Compare t2 and the other atomic prompts. Is "leave the tests as they are" read as "do not deal with tests"? Would a prompt real users write produce the same?
+3. Candidate texts that name the gap concretely, each with where it shows (primer, status, `--wait`, Stop), when it fires, and its noise: on this repository, on cezarion, and on a monorepo with a suite Squeal does not support (a Python backend). Include naming the `package.json` scripts Squeal does not run; the human ruled out project analysis and counts for 001-292, so say where each candidate sits against that.
+4. Which candidates are worth an eval variant on a5 and t2 (`evals/variants/*.json` patches texts in the plugins' `dist` without a build), and how many sessions would separate them from 10/10.
+
+Rules. Read only; run no eval, no `claude`, no `codex` and no repository script (the eval slot is another coordinator's; probe isolation). Static reading of transcripts and code is the method. Commit only the findings file, with each claim marked verified (with the transcript path) or inferred.
