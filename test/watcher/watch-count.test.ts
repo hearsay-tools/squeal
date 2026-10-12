@@ -1,10 +1,10 @@
 import { spawn } from "node:child_process";
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type ChangeFeed, createChangeFeed } from "../../src/core/watcher/change-feed.js";
 import { createWatcherBackend } from "../../src/core/watcher/index.js";
-import { delay, git, makeRepo } from "./helpers.js";
+import { delay, git, makeRepo, PausableBackend, waitFor } from "./helpers.js";
 
 /** Inotify watches this process holds: one `inotify wd:` line per watched inode. */
 function inotifyWatches(): number {
@@ -46,16 +46,17 @@ function writeMany(dir: string, files: number): void {
  * 3,365 own paths. Real watches, counted in `/proc/self/fdinfo`; each test file
  * runs in its own process.
  */
-describe.runIf(process.platform === "linux")("watch count", () => {
+describe.runIf(process.platform === "linux")("watch count", { timeout: 30_000 }, () => {
   let root: string;
   let cleanup: () => void;
   let feed: ChangeFeed | null;
   let errors: Error[];
+  let backend: PausableBackend;
 
   const startFeed = async () => {
     feed = createChangeFeed({
       root,
-      backend: createWatcherBackend("linux"),
+      backend,
       onBatch: () => {},
       onError: (error) => errors.push(error),
       timings: { reconcileIntervalMs: 60_000 },
@@ -67,6 +68,7 @@ describe.runIf(process.platform === "linux")("watch count", () => {
     ({ root, cleanup } = makeRepo());
     feed = null;
     errors = [];
+    backend = new PausableBackend(createWatcherBackend("linux"));
   });
   afterEach(async () => {
     await feed?.close();
@@ -117,5 +119,22 @@ describe.runIf(process.platform === "linux")("watch count", () => {
       await delay(25);
     }
     expect(peak).toBeLessThanOrEqual(own + 20);
+  });
+
+  it("releases a watched directory's subtree when a rebuild newly excludes it", async () => {
+    // chokidar's unwatch closes the directory's own watch only (measured by 001-300).
+    const own = countPaths(root, [".git"]);
+    const staged = join(root, "../staged/node_modules");
+    writeMany(join(staged, "pkg"), 450);
+    const before = inotifyWatches();
+    await startFeed();
+    // No hint reaches the feed, so chokidar watches the whole install until the pass.
+    backend.paused = true;
+    renameSync(staged, join(root, "node_modules"));
+    await waitFor(() => inotifyWatches() - before >= own + 400);
+    backend.paused = false;
+    await feed?.reconcile("interval");
+    expect(feed?.spec?.excluded).toContain(join(root, "node_modules"));
+    expect(inotifyWatches() - before).toBeLessThanOrEqual(own + 20);
   });
 });
