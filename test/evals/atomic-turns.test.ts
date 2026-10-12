@@ -56,14 +56,28 @@ const status = (pending: number, daemon = "alive") =>
   });
 
 describe("the wait between turns", () => {
-  it("settles only with a daemon validating and nothing pending, the slow tier's included", () => {
+  it("settles when every result is current, the slow tier's included", () => {
     expect(settledOf(status(0))).toEqual({ settled: true, done: true, why: "nothing pending" });
     expect(settledOf(status(2))).toMatchObject({ settled: false, done: false, why: "2 pending" });
-    expect(settledOf(status(0, "dead"))).toMatchObject({ settled: false, done: true });
     expect(settledOf("not json")).toMatchObject({ settled: false, done: false });
     const files = JSON.parse(status(0));
     files.testFilesWithoutChecks.pending = 1;
     expect(settledOf(files).settled).toBe(false);
+    const slow = JSON.parse(status(0));
+    slow.slowPending = { testFiles: 1, checks: 0 };
+    expect(settledOf(slow)).toMatchObject({ settled: false, done: false, why: "1 pending" });
+    const stale = JSON.parse(status(0));
+    stale.counts.stale = 3;
+    expect(settledOf(stale)).toMatchObject({ settled: false, why: "3 stale or unknown" });
+  });
+
+  it("counts a headless daemon that drained and stopped as settled when all is current", () => {
+    expect(settledOf(status(0, "dead"))).toMatchObject({ settled: true, done: true });
+    expect(settledOf(status(2, "dead"))).toMatchObject({
+      settled: false,
+      done: true,
+      why: "no daemon validating, 2 pending",
+    });
   });
 
   /** A clock that moves only when the wait sleeps. */
@@ -97,9 +111,19 @@ describe("the wait between turns", () => {
     expect(scenarioOf("a1-break")?.settleS).toBe(180);
   });
 
-  it("stops at once when no daemon validates", async () => {
-    const r = await waitSettled({ status: () => status(0, "dead"), timeoutMs: 60_000, ...clock() });
-    expect(r).toMatchObject({ settled: false, polls: 1, waitedMs: 0 });
+  it("stops at once when no daemon validates, settled only if it left nothing pending", async () => {
+    const drained = await waitSettled({
+      status: () => status(0, "dead"),
+      timeoutMs: 60_000,
+      ...clock(),
+    });
+    expect(drained).toMatchObject({ settled: true, polls: 1, waitedMs: 0 });
+    const left = await waitSettled({
+      status: () => status(1, "dead"),
+      timeoutMs: 60_000,
+      ...clock(),
+    });
+    expect(left).toMatchObject({ settled: false, polls: 1, waitedMs: 0 });
   });
 });
 
