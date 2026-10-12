@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type ChangeFeed, createChangeFeed } from "../../src/core/watcher/change-feed.js";
 import { createWatcherBackend } from "../../src/core/watcher/index.js";
+import { linkedExclusions } from "../../src/core/watcher/linked-exclusions.js";
 import { BatchLog, git, makeRepo, waitFor } from "./helpers.js";
 
 function write(root: string, path: string, content = "x\n"): void {
@@ -152,5 +153,44 @@ describe.runIf(process.platform === "linux")("the watch of a linked directory's 
           .some((b) => b.trigger === "watch" && b.paths.some((p) => p.path === "lib/gen/out.ts")),
       3_000,
     );
+  });
+});
+
+describe("linkedExclusions", () => {
+  let root: string;
+  let target: string;
+  let cleanup: () => void;
+
+  beforeEach(() => {
+    ({ root, cleanup } = makeRepo());
+    target = join(root, "../ext/lib");
+    write(target, "src/a.ts");
+    write(target, "gen/out.ts");
+    write(target, "node_modules/dep/index.js");
+    write(target, "vendor/dep/index.js");
+    git(join(target, "vendor/dep"), "init", "-q");
+    write(root, "pkg/.gitignore", "gen/\n");
+  });
+  afterEach(() => cleanup());
+
+  it("names the ignored directories and nested repositories, and nothing below them", async () => {
+    expect(await linkedExclusions(root, ["pkg/lib"], target)).toEqual([
+      join(target, "gen"),
+      join(target, "node_modules"),
+      join(target, "vendor/dep"),
+    ]);
+  });
+
+  it("leaves out only what every link to the target ignores", async () => {
+    expect(await linkedExclusions(root, ["pkg/lib", "lib"], target)).toEqual([
+      join(target, "node_modules"),
+      join(target, "vendor/dep"),
+    ]);
+  });
+
+  it("checks only the directories it is given, and those below them", async () => {
+    expect(await linkedExclusions(root, ["lib"], target, [join(target, "vendor")])).toEqual([
+      join(target, "vendor/dep"),
+    ]);
   });
 });
