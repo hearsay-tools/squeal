@@ -190,7 +190,12 @@ describe("atomic alarms and the under-90% list", () => {
 });
 
 describe("ATOMIC.md from the committed atomic results", () => {
-  it("shows no flag and no alarm", () => {
+  // The human released 0.1.131 over its a5-uncovered false passes (status, 2026-10-12): a gap
+  // older than the release, closed by 001-292. Any other alarm still fails.
+  const ACCEPTED = (a: { run: string; cell: string }) =>
+    a.run === "20261012T134945Z-3f2edd" && a.cell.startsWith("a5-uncovered.");
+
+  it("shows no flag and no alarm beyond the accepted ones", () => {
     const runs = readdirSync(RESULTS)
       .filter((f) => f.endsWith(".atomic.json"))
       .map((f) => ({
@@ -200,9 +205,7 @@ describe("ATOMIC.md from the committed atomic results", () => {
     expect(runs.length).toBeGreaterThanOrEqual(2);
     const t = atomicTrend(runs);
     expect(t.groups.flatMap((g) => g.runs.flatMap((r) => r.flags))).toEqual([]);
-    expect(t.alarms).toEqual([]);
-    const md = atomicMarkdown(runs);
-    expect(md).not.toMatch(FLAGGED);
-    expect(md).toContain("## Flags and alarms\n\nNone.");
+    expect(t.alarms.filter((a) => !ACCEPTED(a))).toEqual([]);
+    expect(atomicMarkdown(runs)).not.toMatch(FLAGGED);
   });
 });
