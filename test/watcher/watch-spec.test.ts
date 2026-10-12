@@ -114,6 +114,29 @@ describe("buildWatchSpec", () => {
     expect(spec.excluded).toContain(sub);
   });
 
+  it("excludes ignored directories below an untracked directory that is not ignored", async () => {
+    // Task 001-299: Cezar's layout. `.ai/` is untracked and not ignored; its own
+    // `.gitignore` ignores the worktrees, runs and temp directories below it.
+    write(root, ".ai/cezar/.gitignore", "worktrees/\nruns/\ntmp/\n");
+    write(root, ".ai/cezar/config.json", "{}\n");
+    git(root, "worktree", "add", "-q", "--detach", ".ai/cezar/worktrees/w1");
+    write(root, ".ai/cezar/runs/r1/log.jsonl");
+    write(root, ".ai/cezar/tmp/t1/scratch.txt");
+    write(root, "packages/new/index.ts");
+    write(root, "packages/new/node_modules/dep/index.js");
+    const spec = await buildWatchSpec(root);
+    for (const dir of [
+      ".ai/cezar/worktrees",
+      ".ai/cezar/runs",
+      ".ai/cezar/tmp",
+      "packages/new/node_modules",
+    ]) {
+      expect(spec.excluded).toContain(join(root, dir));
+    }
+    expect(spec.excluded).not.toContain(join(root, ".ai"));
+    expect(spec.excluded).not.toContain(join(root, "packages/new"));
+  });
+
   it("keeps a directory watched when only its current contents are ignored", async () => {
     write(root, "logs/today.log");
     const spec = await buildWatchSpec(root);
