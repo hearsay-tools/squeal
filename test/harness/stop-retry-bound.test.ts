@@ -142,7 +142,8 @@ describe.each(HARNESSES)("Stop's last retry keeps its revision guard, $name (B2)
       turn: "idle",
       revision: 3,
       testFiles: [testFileId(FILE)],
-      handoff: { revision: 3, keys: { [testFileId(FILE)]: "k2" } },
+      keys: { [testFileId(FILE)]: "k2" },
+      handoff: { at: expect.any(Number) },
     });
     r.store.close();
   });

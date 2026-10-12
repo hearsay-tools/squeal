@@ -3,7 +3,6 @@ import { readPolicy } from "../../core/daemon/policy.js";
 import { squealVersion } from "../../core/daemon/version.js";
 import { readLiveHeader } from "../../core/delivery/index.js";
 import { readTurn, startTurn } from "../../core/delivery/turn.js";
-import { testFileId } from "../../core/keys/index.js";
 import {
   recordStopWait,
   type StopWaitHarness,
@@ -21,8 +20,8 @@ import type {
   EpochMs,
   KnownFailure,
   StatusHeader,
-  StopHandoff,
   TestFileRef,
+  ViewEntry,
 } from "../../core/types/index.js";
 import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
 import { HOOK_TIMEOUT_MS, type HookDeps, isRegistered, withContext } from "./hook.js";
@@ -74,26 +73,20 @@ export const STOP_SLOW_POLL_MS = 250;
  * The 2 s entry's silent end already nudged the daemon (`nudgeSlow`), so the
  * idle slow tier has started.
  *
- * Task 001-295 (review wave 13am, B1): the files that silent end left owed
- * (`StopHandoff`) are waited for from the start, so a result that landed
- * before this entry's first read is still decided; so is every slow file a
- * read here finds not current, at any key. Task 001-302 (review wave 13an):
- * an owed file stays owed at a newer key, so its failure there is decided
- * even when no read saw it queued (S2, the human); and when that end left
- * the runner part of its revision pending, a slow check the agent was never
- * told, first observed up to that revision, is owed too (B1), so a slow
- * file listed and run between two reads is still decided. Failures the
- * agent was told before the turn ended stay outside.
- *
  * Then it polls until the slow tier looks complete (no slow file pending
  * and the runner part of the revision applied), the bound passes, or the
  * daemon has been down for `STOP_SLOW_DOWN_MS`, and decides from a read in
- * a write transaction (`decide`, B2): what a poll saw may be a snapshot the
- * daemon has moved past, and the decision holds only for the live revision.
- * Complete with no failure among the files it waited for: `null`, the turn
- * ends as today. Not complete before the bound: it polls again, within the
- * same bound. A failure among them: a block naming it, once. Not complete
- * at the bound: a block naming the files and a pending runner part.
+ * a write transaction (`decide`, review wave 13am B2): what a poll saw may
+ * be a snapshot the daemon has moved past, and the decision holds only for
+ * the live revision. Not complete before the bound: it polls again, within
+ * the same bound. Not complete at the bound: a block naming the files and
+ * a pending runner part. Complete: a block naming each slow check that is
+ * a current failure this session was not told (`untold`), at whatever
+ * revision or key it ran; with none, `null`, and the turn ends as today.
+ * Task 001-305 (the human, after review waves 13am, 13an and 13ap): it
+ * keeps no list of the files it owes, which each review found a narrower
+ * race past; a failure told before the turn ended, or the same failure at
+ * a newer key, never blocks.
  *
  * A block takes the turn in that transaction, with the check that the
  * consumer is still idle: Claude Code's idle waiter may have woken the agent
@@ -117,10 +110,8 @@ export async function stopSlow(
   return withContext(input, location, deps, async (context) => {
     const version = deps.squealVersion ?? squealVersion();
     recordStopWait(context.store, context.consumer.worktreeId, input.harness, version);
-    const handoff = await handedOver(context, deps, poll);
-    if (handoff === null) return null;
-    const waited: Waited = { handoff, seen: new Set(), isSlow };
-    const block = await waitForSlow(context, waited, deps, bound, poll);
+    if (!(await handedOver(context, deps, poll))) return null;
+    const block = await waitForSlow(context, isSlow, deps, bound, poll);
     if (block === null) return null;
     const { header, failures, reason } = block;
     const news = await newsText(context, {}, deps.command, header.revision);
@@ -137,33 +128,23 @@ interface SlowRead {
   readonly idle: boolean;
 }
 
-/**
- * What this entry waits for: the files the 2 s entry left owed in its
- * `handoff`, by `testFileId`, at any key; with its `newTestFiles`, the
- * checks first observed up to its revision; and each slow file a read here
- * `seen` not current, at any key.
- */
-interface Waited {
-  readonly handoff: StopHandoff;
-  readonly seen: Set<string>;
-  readonly isSlow: (testFile: TestFileRef) => boolean;
-}
-
 /** One read transaction; `clock` is read after the states and keys, inside it. */
-function read(context: HookContext, waited: Waited, clock: () => EpochMs): SlowRead {
+function read(
+  context: HookContext,
+  isSlow: (testFile: TestFileRef) => boolean,
+  clock: () => EpochMs,
+): SlowRead {
   const { store, consumer } = context;
   return readTransaction(store, () => {
     const states = store.knownStates.list(consumer.worktreeId);
     const keys = store.testFileKeys.list(consumer.worktreeId);
     const header = readLiveHeader(store, consumer.worktreeId, clock(), states, null, keys);
     const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
-    const open = slowFilesNotCurrent(states, keys, waited.isSlow);
-    for (const file of open) waited.seen.add(testFileId(file));
     return {
       header,
       failures,
       current: failures.filter((f) => f.validity === "current"),
-      open,
+      open: slowFilesNotCurrent(states, keys, isSlow),
       idle: readTurn(store, consumer).turn === "idle",
     };
   });
@@ -175,56 +156,46 @@ function complete(last: SlowRead): boolean {
 }
 
 /**
- * The current failures of slow files this entry waited for. `told` lists
- * the checks the consumer was told (`checkIdentity`); read only when the
- * handoff owes new test files.
+ * The current failures of slow checks the consumer was not told: its view
+ * (`ViewEntry`) holds no failure of the check with this fingerprint, so a
+ * delivery now would name it. `views` is read only when a slow check fails.
  */
-function failedOf(
+function untold(
   last: SlowRead,
-  waited: Waited,
-  told: () => ReadonlySet<string>,
+  isSlow: (testFile: TestFileRef) => boolean,
+  views: () => readonly ViewEntry[],
 ): readonly KnownFailure[] {
-  const { handoff } = waited;
-  return last.current.filter((f) => {
-    const file = testFileOf(f.check);
-    if (!waited.isSlow(file)) return false;
-    const id = testFileId(file);
-    if (waited.seen.has(id) || handoff.keys[id] !== undefined) return true;
-    return (
-      handoff.newTestFiles === true &&
-      f.observedAt <= handoff.revision &&
-      !told().has(checkIdentity(f.check))
-    );
+  const failed = last.current.filter((f) => isSlow(testFileOf(f.check)));
+  if (failed.length === 0) return failed;
+  const told = new Map(views().map((v) => [checkIdentity(v.check), v]));
+  return failed.filter((f) => {
+    const view = told.get(checkIdentity(f.check));
+    return view?.outcome !== "fail" || (view.fingerprint ?? "") !== f.fingerprint;
   });
 }
 
 /**
- * The handoff of the 2 s entry that ended the turn: the consumer is idle
- * with a `StopHandoff` written since this Stop began, less
+ * Whether the 2 s entry ended the turn: the consumer is idle with a
+ * `StopHandoff` written since this Stop began, less
  * `STOP_SLOW_HANDOFF_SLACK_MS`. Only that entry's silent end writes one, in
  * the transaction that makes the consumer idle, so an idle consumer without
  * a fresh one is idle from before, and this entry waits for the 2 s entry,
- * which may not have started. `null` when none came within
+ * which may not have started. `false` when none came within
  * `STOP_SLOW_HANDOFF_MS`.
  */
-async function handedOver(
-  context: HookContext,
-  deps: HookDeps,
-  poll: number,
-): Promise<StopHandoff | null> {
+async function handedOver(context: HookContext, deps: HookDeps, poll: number): Promise<boolean> {
   const since = (deps.now ?? Date.now)() - STOP_SLOW_HANDOFF_SLACK_MS;
   const deadline = performance.now() + STOP_SLOW_HANDOFF_MS;
   const { store, consumer } = context;
   for (;;) {
-    const handoff = readTransaction(store, () => {
-      if (store.consumers.get(consumer) === null) return null;
+    const handed = readTransaction(store, () => {
+      if (store.consumers.get(consumer) === null) return false;
       const turn = readTurn(store, consumer);
-      if (turn.turn !== "idle" || turn.handoff === undefined) return null;
-      return turn.handoff.at >= since ? turn.handoff : null;
+      return turn.turn === "idle" && turn.handoff !== undefined && turn.handoff.at >= since;
     });
-    if (handoff !== null) return handoff;
+    if (handed) return true;
     const left = deadline - performance.now();
-    if (left <= 0) return null;
+    if (left <= 0) return false;
     await sleep(Math.min(poll, left));
   }
 }
@@ -245,7 +216,7 @@ interface Block {
  */
 async function waitForSlow(
   context: HookContext,
-  waited: Waited,
+  isSlow: (testFile: TestFileRef) => boolean,
   deps: HookDeps,
   bound: number,
   poll: number,
@@ -255,7 +226,7 @@ async function waitForSlow(
   let downSince: number | null = null;
   for (;;) {
     if (!isRegistered(context)) return null;
-    const last = read(context, waited, clock);
+    const last = read(context, isSlow, clock);
     if (!last.idle) return null;
     const now = performance.now();
     downSince = last.header.daemon?.state === "down" ? (downSince ?? now) : null;
@@ -264,7 +235,7 @@ async function waitForSlow(
     const over = left <= 0 || down;
     if (complete(last) || over) {
       const waitedMs = Math.min(bound, Math.round(now - started));
-      const decided = decide(context, waited, clock(), { over, waitedMs, command: deps.command });
+      const decided = decide(context, isSlow, clock(), { over, waitedMs, command: deps.command });
       if (decided !== "again") return decided;
     }
     await sleep(Math.min(poll, Math.max(0, left)));
@@ -274,14 +245,14 @@ async function waitForSlow(
 /**
  * The decision, from a read inside a write transaction, so no commit lands
  * between the read and the decision (review wave 13am, B2): `null` when the
- * consumer is gone or in a turn, or the slow tier is complete with no
- * failure it waited for; `again` when it is not complete and the bound is
+ * consumer is gone or in a turn, or the slow tier is complete with no slow
+ * failure untold; `again` when it is not complete and the bound is
  * not `over`; else a block, which takes the turn in the same transaction.
  * `at` is read before the write lock.
  */
 function decide(
   context: HookContext,
-  waited: Waited,
+  isSlow: (testFile: TestFileRef) => boolean,
   at: EpochMs,
   {
     over,
@@ -292,13 +263,9 @@ function decide(
   const { store, consumer } = context;
   return store.transaction(() => {
     if (store.consumers.get(consumer) === null) return null;
-    const live = read(context, waited, () => at);
+    const live = read(context, isSlow, () => at);
     if (!live.idle) return null;
-    let told: ReadonlySet<string> | null = null;
-    const failed = failedOf(live, waited, () => {
-      told ??= new Set(store.views.list(consumer).map((v) => checkIdentity(v.check)));
-      return told;
-    });
+    const failed = untold(live, isSlow, () => store.views.list(consumer));
     const done = complete(live);
     if (done && failed.length === 0) return null;
     if (!done && !over) return "again";
