@@ -962,3 +962,16 @@ Outcome: the primer and the skill rewritten where the reference finds a defect. 
 Own `src/harness/shared/primer.ts`, both plugins' `skills/squeal/SKILL.md`, `references/commands.md` and `references/reports.md`, primer tests under `test/harness/` and `test/delivery/`, and `research/primer-skill-writing.md`. Do not touch `stop.ts`, `text.ts`, `references/policy.md` or hooks.json: 001-285 owns them and is running now. It adds `stop.slowWaitMs` (with `stop.requireSlowSuite` on, Stop waits for the slow tier and blocks once on a failure or at the bound); point at `references/policy.md` for it rather than describing it. Do not commit `dist`. Do not edit `docs/board.md`. Run the full suite with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Probe isolation: never run third-party agent tooling, the eval runner or any repo script where it can reach the real HOME.
 
 Done when the row's done-when holds; lint, typecheck and the full suite are green.
+
+## 001-290 research: the primer names the suites Squeal does not cover
+
+Use /researcher. Decided by the human (2026-10-12): research first. The goal of the primer's coverage sentence is to name the gap, so the agent knows what it must still verify itself, in any project. Today the covered side is the project's own (001-234: the Vitest config, each node:test project, the slow files), but the uncovered side is fixed: "Squeal does not cover typecheck, build or any other test suite: run those yourself." Read `src/harness/shared/primer.ts`, `coverage.ts`, spec 001 D9 and 004 D8 on the primer, `research/primer-skill-writing.md` (001-283) and 005's eval pilot finding that every false "pass" came from an uncovered suite.
+
+Questions:
+1. What can Squeal detect of a project's other verification: package.json scripts (`test*`, `lint`, `typecheck`, `e2e`), runner configs (Playwright, Jest, Cypress, Mocha, pytest, cargo, go), CI workflow steps, monorepo workspaces? What is reliable, what gives false positives or misses, and what does a Vitest or node:test suite Squeal already covers look like through each lens, so it is not named twice?
+2. When and where is it computed: session start (cost against the hook budgets on both harnesses), the daemon, a cache keyed on which files? What happens when detection fails or is slow?
+3. How should the primer word it within the 1,500 character cap, with `writing-for-agents` (001-283) as the yardstick: a concrete runnable command per gap, how many before it truncates, what it says when nothing was found?
+4. Is it a config field (`squeal.config.json` declares what is not covered) instead of, or as well as, detection?
+5. Recommend board rows in the board's column shape, each with a one-worker scope.
+
+Use cheap experiments on scratch repositories you create and remove, and Squeal's own test harness. Probe isolation: never run third-party agent tooling, the eval runner or any repo script where it can reach the real HOME. Output `research/uncovered-suites.md`, committed alone. Do not edit `docs/board.md` or source files.

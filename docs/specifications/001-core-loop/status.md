@@ -194,6 +194,7 @@ Started: 2026-10-02
 - 2026-10-12, evals: the four 001-280 variants ran at 0.1.127, 96 cells each, none failed (`evals/results/*.skill-file.json`, `*.skill-desc.json`, `*.slow-step.json`, `*.stop-slow.json`). `skill-desc` leaves Claude loading the skill 0 of 12 in both arms although the session is offered it with the Skill tool on; `skill-file` loads it (Haiku 5 of 12, Sonnet 12 of 12) without moving claims; `slow-step` moves current-before-claim within chance; `stop-slow` (Stop blocks once while slow files are not current) moves Haiku from 0 of 9 to 8 of 9 and no-overclaim from 0 of 6 to 5 of 6, at 12 to 25 s more per session. The variant patcher now reads plugin files outside `dist/` (cb06d222, the 006 runner).
 - 2026-10-12, human: 004 D9 is amended for every session behind its setting: with `stop.requireSlowSuite` on, Stop waits for its slow tier up to a bound and blocks once on a slow failure or at the bound (001-285, rewritten); with it off, Stop never waits for slow files, as before. One-shot detection (001-284) is dropped. 0.1.127 is not released on its own: the next release carries 001-285 after its review.
 - 2026-10-12, human: 001-283 decides the primer and the skill with Matt Pocock's `writing-for-agents` (mattpocock/skills 32165827) and fixes what it finds, in wave 13am beside 001-285.
+- 2026-10-12, human: the primer should name the suites Squeal does not cover, in any project, not only "any other test suite": research first (001-290).
 
 ## Research
 
