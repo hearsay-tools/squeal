@@ -149,6 +149,11 @@ export interface SlowTierState {
   readonly sourcesChangedSince: boolean;
   /** What the daemon last published; `null` when it published nothing. */
   readonly activity: SlowTierActivity | null;
+  /**
+   * With `stop.requireSlowSuite` on, how long a main agent's Stop waits for
+   * slow files (004 D9 as amended 2026-10-12, task 001-285). Absent when off.
+   */
+  readonly stopWaitMs?: number;
 }
 
 /**

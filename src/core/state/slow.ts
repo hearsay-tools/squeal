@@ -6,6 +6,7 @@ import { isInputList, testFileId } from "../keys/index.js";
 import { slowFiles } from "../slow/classify.js";
 import { slowGlobs } from "../slow/inherit.js";
 import { readSlowActivity, readSlowArtifacts } from "../slow/state.js";
+import { stopSlowWaitMs } from "../slow/stop-wait.js";
 import {
   type CheckKey,
   type KnownState,
@@ -35,6 +36,8 @@ export interface SlowPolicyView {
   readonly slowGlobs: readonly string[];
   /** The declared input globs of the slow test file at `path`, sorted (D5). */
   artifactFor(path: RelativePath): readonly string[];
+  /** How long Stop waits for slow files (`stopSlowWaitMs`); `null` when it does not. */
+  readonly stopWaitMs: number | null;
 }
 
 /** The slow view of `policy`; `null` when it declares no slow file (D1). */
@@ -53,6 +56,7 @@ export function slowPolicyView(policy: Policy): SlowPolicyView | null {
     slowGlobs: globs,
     artifactFor: (path) =>
       [...new Set(rules.filter((r) => r.applies(path)).flatMap((r) => r.globs))].sort(),
+    stopWaitMs: stopSlowWaitMs(policy),
   };
 }
 
@@ -170,6 +174,7 @@ export function readSlowTier(
         isSource,
       ),
     activity: liveActivity(store, worktreeId, keys, view.isSlow),
+    ...(view.stopWaitMs === null ? {} : { stopWaitMs: view.stopWaitMs }),
   };
 }
 

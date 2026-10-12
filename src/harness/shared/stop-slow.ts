@@ -4,7 +4,12 @@ import { squealVersion } from "../../core/daemon/version.js";
 import { readLiveHeader } from "../../core/delivery/index.js";
 import { readTurn, startTurn } from "../../core/delivery/turn.js";
 import { testFileId } from "../../core/keys/index.js";
-import { recordStopWait, type StopWaitHarness, slowFiles } from "../../core/slow/index.js";
+import {
+  recordStopWait,
+  type StopWaitHarness,
+  slowFiles,
+  stopSlowWaitMs,
+} from "../../core/slow/index.js";
 import { slowFilesNotCurrent, testFileOf, toKnownFailure } from "../../core/state/index.js";
 import { readTransaction } from "../../core/store/index.js";
 import type { KnownFailure, StatusHeader, TestFileRef } from "../../core/types/index.js";
@@ -20,8 +25,7 @@ import { slowFailuresReason, slowWaitReason, statusText } from "./text.js";
  */
 export const STOP_SLOW_HOOK_TIMEOUT_S = 630;
 
-/** The longest `stop.slowWaitMs` honoured: 10 minutes, `slow.maxDeferMs`'s default. */
-export const STOP_SLOW_WAIT_CAP_MS = 600_000;
+export { STOP_SLOW_WAIT_CAP_MS } from "../../core/slow/index.js";
 
 /**
  * How long the waiting entry waits for the 2 s Stop entry beside it to end
@@ -78,8 +82,8 @@ export async function stopSlow(
 ): Promise<string | null> {
   if (input.stopHookActive || input.agent_id !== undefined) return null;
   const project = readPolicy(location.root);
-  if (!project.stop.requireSlowSuite) return null;
-  const bound = Math.max(0, Math.min(project.stop.slowWaitMs, STOP_SLOW_WAIT_CAP_MS));
+  const bound = stopSlowWaitMs(project);
+  if (bound === null) return null;
   const isSlow = slowFiles(project, project.nodeTest);
   const poll = deps.pollIntervalMs ?? STOP_SLOW_POLL_MS;
   return withContext(input, location, deps, async (context) => {

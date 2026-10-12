@@ -327,6 +327,23 @@ describe("the slow-tier line (spec 004 D8)", () => {
     );
   });
 
+  it("says Stop waits up to its bound with stop.requireSlowSuite on (004 D8 and D9 as amended 2026-10-12)", () => {
+    const on = { ...SLOW_POLICY, stop: { requireSlowSuite: true, slowWaitMs: 90_000 } };
+    const s = seed(on);
+    states(s.store, s.repo, [{ validity: "stale", observedAt: 1 }], [SLOW_A]);
+    expect(readHeader(s.store, s.repo.mainId).slowTier?.stopWaitMs).toBe(90_000);
+    expect(slowLine(status(s))).toBe(
+      "Slow tier: 2 test files; 2 not run at revision 2. Stop waits up to 1 min 30 s for them or holds the agent once; `squeal run --slow` runs them now.",
+    );
+    const capped = seed({
+      ...SLOW_POLICY,
+      stop: { requireSlowSuite: true, slowWaitMs: 3_600_000 },
+    });
+    expect(readHeader(capped.store, capped.repo.mainId).slowTier?.stopWaitMs).toBe(600_000);
+    const off = seed({ ...SLOW_POLICY, stop: { slowWaitMs: 90_000 } });
+    expect(readHeader(off.store, off.repo.mainId).slowTier).not.toHaveProperty("stopWaitMs");
+  });
+
   it("is the same line in a delivered registration as in status", async () => {
     const s = seed();
     keys(s.store, s.repo, { [SLOW_A]: "queued" });

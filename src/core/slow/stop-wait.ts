@@ -1,5 +1,5 @@
 import { isRecord } from "../fs/index.js";
-import { type Store, type WorktreeId, worktreeMetaKey } from "../types/index.js";
+import { type Policy, type Store, type WorktreeId, worktreeMetaKey } from "../types/index.js";
 
 /*
  * Spec 004 D9 as amended 2026-10-12 (task 001-285): which harnesses ran the
@@ -10,6 +10,18 @@ import { type Store, type WorktreeId, worktreeMetaKey } from "../types/index.js"
  * `stop.requireSlowSuite` holding as it did before, never holding nothing.
  * One JSON row per worktree, `{ "<harness>": "<version>" }`.
  */
+
+/**
+ * The longest `stop.slowWaitMs` honoured: 10 minutes, `slow.maxDeferMs`'s
+ * default, below the waiting entry's hook timeout.
+ */
+export const STOP_SLOW_WAIT_CAP_MS = 600_000;
+
+/** How long a Stop waits for slow files under `policy`; `null` with `stop.requireSlowSuite` off. */
+export function stopSlowWaitMs(policy: Policy): number | null {
+  if (!policy.stop.requireSlowSuite) return null;
+  return Math.max(0, Math.min(policy.stop.slowWaitMs, STOP_SLOW_WAIT_CAP_MS));
+}
 
 /** The harnesses with a waiting Stop entry. */
 export type StopWaitHarness = "claude-code" | "codex";
