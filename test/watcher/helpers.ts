@@ -90,4 +90,9 @@ export class PausableBackend implements WatcherBackend {
   signalDropped(reason: string): void {
     this.listener?.onDropped(reason);
   }
+
+  /** Simulates a backend error, such as a watch the system refused. */
+  signalError(error: Error): void {
+    this.listener?.onError(error);
+  }
 }

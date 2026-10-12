@@ -24,6 +24,8 @@ import { Debouncer } from "./debounce.js";
 import { Exclusions } from "./exclusions.js";
 import { type GitStatus, gitStatus } from "./git.js";
 import { LinkedWatches } from "./linked-watch.js";
+import { UnlistedDirs } from "./unlisted-dirs.js";
+import { isWatchLimit, watchLimitNote } from "./watch-limit.js";
 import { buildWatchSpec, sameWatchSpec } from "./watch-spec.js";
 
 export interface ChangeFeedOptions {
@@ -57,7 +59,10 @@ export interface ChangeFeed {
   readonly spec: WatchSpec | null;
   /** Starts the backend, then emits a reconciliation batch (`interval`, see `Feed.start`). */
   start(): Promise<void>;
-  /** Queues a reconciliation pass and resolves once its batch was delivered. */
+  /**
+   * Queues a reconciliation pass and resolves once its batch was delivered. A
+   * pass already queued and not yet started is joined instead (task 001-299).
+   */
   reconcile(trigger: RevisionTrigger): Promise<void>;
   /** Replaces the extra files and updates the watch. */
   setExtraFiles(paths: readonly RelativePath[]): Promise<void>;
@@ -99,11 +104,18 @@ class Feed implements ChangeFeed {
    */
   private linkTargets = new Map<RelativePath, AbsolutePath>();
   private queue: Promise<void> = Promise.resolve();
+  /** The reconciliation queued and not yet started, which later requests join. */
+  private pending: { trigger: RevisionTrigger; done: Promise<void> } | null = null;
+  /** Set once the system refused a watch: the note is given once per feed. */
+  private atWatchLimit = false;
+  /** Made again by `start`, with the resolved root. */
+  private unlisted: UnlistedDirs;
   private idleTimer: NodeJS.Timeout | null = null;
   private closed = false;
 
   constructor(private readonly options: ChangeFeedOptions) {
     this.root = options.root;
+    this.unlisted = new UnlistedDirs(this.root);
     this.backend = options.backend ?? createWatcherBackend(process.platform);
     this.timings = {
       ...WATCHER_TIMINGS,
@@ -119,12 +131,13 @@ class Feed implements ChangeFeed {
 
   async start(): Promise<void> {
     this.root = await realpath(this.root);
+    this.unlisted = new UnlistedDirs(this.root);
     const status = await gitStatus(this.root);
     this.spec = await buildWatchSpec(this.root, this.extraFiles, status);
     const listener = {
       onHints: (hints: readonly WatchHint[]) => this.onHints(hints),
       onDropped: (reason: string) => this.onLost(() => this.options.onDropped?.(reason)),
-      onError: (error: Error) => this.onLost(() => this.options.onError(error)),
+      onError: (error: Error) => this.onBackendError(error),
     };
     this.sub = await this.backend.watch(this.spec, listener);
     this.linked = new LinkedWatches(this.root, this.backend, listener);
@@ -135,7 +148,18 @@ class Feed implements ChangeFeed {
   }
 
   reconcile(trigger: RevisionTrigger): Promise<void> {
-    return this.enqueue(() => this.reconcileNow(trigger));
+    if (this.pending) {
+      // "interval" also checks the install (scheduler), so a joined pass keeps it.
+      if (trigger === "interval") this.pending.trigger = trigger;
+      return this.pending.done;
+    }
+    const pending = { trigger, done: Promise.resolve() };
+    this.pending = pending;
+    pending.done = this.enqueue(() => {
+      this.pending = null;
+      return this.reconcileNow(pending.trigger);
+    });
+    return pending.done;
   }
 
   setExtraFiles(paths: readonly RelativePath[]): Promise<void> {
@@ -161,6 +185,19 @@ class Feed implements ChangeFeed {
     this.armIdle();
   }
 
+  /**
+   * At the system's watch limit chokidar reports one error per path it cannot
+   * watch: the first gives one note and one pass, the rest nothing; the idle
+   * pass finds what those paths' watches would have (task 001-299).
+   */
+  private onBackendError(error: Error): void {
+    if (!isWatchLimit(error)) this.onLost(() => this.options.onError(error));
+    else if (!this.atWatchLimit) {
+      this.atWatchLimit = true;
+      this.onLost(() => this.options.onError(watchLimitNote(error)));
+    }
+  }
+
   /** Backend errors are treated like dropped events: events may be missing. */
   private onLost(report: () => void): void {
     if (this.closed) return;
@@ -171,9 +208,15 @@ class Feed implements ChangeFeed {
   private onDebounced(paths: AbsolutePath[]): void {
     void this.enqueue(async () => {
       const specChanged = paths.some((p) => SPEC_INPUTS.has(basename(p)));
+      if (specChanged) this.unlisted.clear();
       let widened = specChanged ? await this.rebuildSpec() : false;
       const hinted = await candidatesFromHints(this.context(), paths);
-      if (hinted.ignoredDirs.length > 0 && !specChanged) widened = await this.rebuildSpec();
+      const ignoredDirs = hinted.ignoredDirs.filter((dir) => !this.unlisted.holds(dir));
+      if (ignoredDirs.length > 0 && !specChanged) {
+        const before = this.spec;
+        widened = await this.rebuildSpec();
+        if (this.spec === before) await this.unlisted.record(ignoredDirs);
+      }
       const kept = this.tempHold.filter(hinted.paths, this.trackedPaths);
       if (kept.length > 0) await this.emit({ trigger: "watch", paths: kept });
       // Paths that were excluded until now were never watched; git status finds them. So does
@@ -216,6 +259,7 @@ class Feed implements ChangeFeed {
     if (sameWatchSpec(current, next)) return false;
     await this.sub.update(next);
     this.spec = next;
+    this.unlisted.clear();
     return current.excluded.some((p) => !next.excluded.includes(p));
   }
 
