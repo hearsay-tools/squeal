@@ -83,7 +83,7 @@ describe.runIf(process.platform === "linux")(
         const cli = spawnCli(suite.cli, ["run", "--all"], { cwd: repo.root, env: repo.env });
         expect(await cli.exited, cli.stderr()).toEqual({ code: 0, signal: null });
         const said =
-          /^Checkpoint (\S+) started at revision \d+: \d+ test files?, joining the baseline checkpoint (\S+) already running them \(\d+ of \d+ test files done\); it ends when that one ends$/m.exec(
+          /^Checkpoint (\S+) started at revision \d+: \d+ test files? to run, \d+ already current, joining the baseline checkpoint (\S+) already running them \(\d+ of \d+ test files done\); it ends when that one ends$/m.exec(
             cli.stdout(),
           );
         expect(said, cli.stdout()).not.toBeNull();

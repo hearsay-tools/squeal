@@ -161,8 +161,10 @@ describe(
       });
       await run.exited;
       expect(run.stdout()).toMatch(/started at revision \d+: 6 test files/);
-      // It completes with the added test among its failures.
-      expect(run.stdout()).toMatch(/Checkpoint \S+ completed\n/);
+      // It completes with the added test among its failures (spec 005 D1).
+      expect(run.stdout()).toMatch(
+        /^Checkpoint \S+ completed at revision \d+: \d+ known failures?/,
+      );
       expect(run.stdout()).toContain("FAIL  src/added.test.ts > new failure");
 
       // An existing source behind the link is observed directly, not by the idle pass.
