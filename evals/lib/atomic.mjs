@@ -74,10 +74,22 @@ export function settledOf(raw) {
   try {
     s = typeof raw === "string" ? JSON.parse(raw) : raw;
   } catch {
-    return { settled: false, done: false, why: "status is not JSON", pending: false, deferred: false };
+    return {
+      settled: false,
+      done: false,
+      why: "status is not JSON",
+      pending: false,
+      deferred: false,
+    };
   }
   if (s?.available !== true)
-    return { settled: false, done: false, why: "status unavailable", pending: false, deferred: false };
+    return {
+      settled: false,
+      done: false,
+      why: "status unavailable",
+      pending: false,
+      deferred: false,
+    };
   const open = openWork(s);
   const activity = s.slowTier?.activity;
   const deferred = activity?.kind === "waiting" && activity.for === "load";
@@ -85,7 +97,12 @@ export function settledOf(raw) {
   if (s.daemon?.state !== "alive")
     return open
       ? { settled: false, done: true, why: `no daemon validating, ${open}`, ...state }
-      : { settled: true, done: true, why: "nothing pending, the daemon drained and stopped", ...state };
+      : {
+          settled: true,
+          done: true,
+          why: "nothing pending, the daemon drained and stopped",
+          ...state,
+        };
   if (open)
     return {
       settled: false,
