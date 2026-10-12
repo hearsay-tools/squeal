@@ -1,0 +1,466 @@
+import { describe, expect, it } from "vitest";
+import { type Json, pilotRecord, scenarioOf } from "../../evals/lib/index.mjs";
+
+// 006-35: D10's measures, each over synthetic sessions: the moves a scenario's grader keeps (its
+// runs, Squeal commands and edits) and the retained timeline of what the agent saw. The right
+// moves meet every declared measure; each known mistake misses exactly the measures it names.
+// A false pass is also a wrong claim, so it misses `claim-true` beside `no-false-pass`.
+
+/** Squeal evidence at `rev`, as a status lists it: every failing check named, current. */
+interface Ev {
+  rev: number;
+  pending?: number;
+  stale?: number;
+  slow?: boolean | null;
+  daemon?: boolean;
+  failing?: string[];
+}
+type Move =
+  | ["edit", string]
+  | ["push", Ev]
+  | ["pull", Ev, { sub: string; slow?: boolean; all?: boolean }]
+  | ["run", "vitest" | "node:test", string[] | "full", { completed?: boolean }?]
+  | ["sleep"]
+  | ["turn"];
+
+const evidence = (e: Ev, from: "push" | "pull") => {
+  const failing = e.failing ?? [];
+  return {
+    k: "squeal",
+    from,
+    revision: e.rev,
+    pending: e.pending ?? 0,
+    stale: e.stale ?? 0,
+    unknown: 0,
+    slow: e.slow === undefined ? true : e.slow,
+    daemon: e.daemon ?? true,
+    known: failing.length,
+    checks: failing.map((file) => ({
+      check: `${file} > t`,
+      file,
+      to: "fail",
+      from: null,
+      observed: e.rev,
+      validity: "current",
+      stated: true,
+    })),
+    failures: failing.length,
+    verdict: "unknown",
+    files: [],
+    failing: [],
+  };
+};
+
+/** A cell's grade from its moves, its final claim and ground truth. */
+function grade(moves: Move[], claim: string | null, truthPass: boolean) {
+  const runs: object[] = [];
+  const pulls: object[] = [];
+  const edits: { n: number }[] = [];
+  const retained: object[] = [];
+  const turnStarts: number[] = [];
+  let answered = false;
+  let sleeps = 0;
+  for (const [n, m] of moves.entries()) {
+    const t = n * 100;
+    if (m[0] === "edit") {
+      edits.push({ n });
+      retained.push({ k: "edit", path: m[1] });
+      answered = false;
+    } else if (m[0] === "push" || m[0] === "pull") {
+      if (m[0] === "pull") pulls.push({ n, ...m[2] });
+      retained.push(evidence(m[1], m[0]));
+      answered ||= m[1].daemon !== false;
+    } else if (m[0] === "run") {
+      const scope = m[2] === "full" ? { full: true } : { full: false, paths: m[2] };
+      runs.push({ n, t, runner: m[1], scope, afterSquealAnswered: answered });
+      const completed = m[3]?.completed ?? true;
+      retained.push({ k: "run", runner: m[1], informational: false, scope, completed, exit: 1 });
+    } else if (m[0] === "sleep") {
+      sleeps++;
+      retained.push({ k: "sleep", s: 30 });
+    } else turnStarts.push(t);
+  }
+  retained.push({ k: "claim" });
+  return {
+    grade: {
+      timeline: { runs, pulls, edits },
+      retained,
+      truth: { pass: truthPass },
+      claim,
+      claimTrue: claim === null ? null : claim === (truthPass ? "pass" : "fail"),
+      falsePass: claim === "pass" && !truthPass,
+      sleeps,
+    },
+    turnStarts,
+  };
+}
+
+interface Session {
+  moves: Move[];
+  claim: string | null;
+}
+interface Case {
+  truthPass: boolean;
+  /** The runner's record of the wait before turn 2, for a two-turn scenario. */
+  settle?: { settled: boolean; why: string; waitedMs: number; pending?: boolean };
+  right: Session;
+  mistakes: Record<string, Session & { misses: string[]; nulls?: string[] }>;
+}
+
+function measures(name: string, c: Case, s: Session) {
+  const scenario = scenarioOf(name);
+  if (!scenario) throw new Error(`no scenario ${name}`);
+  const { grade: g, turnStarts } = grade(s.moves, s.claim, c.truthPass);
+  return pilotRecord(g as Record<string, Json>, {
+    turns: scenario.turns.length,
+    turnStarts,
+    settle: c.settle ?? null,
+    scenario,
+  }).measures;
+}
+
+const START: Move = ["push", { rev: 0 }];
+const fail = (rev: number, file: string, e: Partial<Ev> = {}): Ev => ({
+  rev,
+  failing: [file],
+  ...e,
+});
+const settled = { settled: true, why: "nothing pending", waitedMs: 4000 };
+const MONEY = "test/money.test.ts";
+const SLOW = "test/slow/ledger.test.ts";
+
+const CASES: Record<string, Case> = {
+  "a1-break": {
+    truthPass: false,
+    settle: settled,
+    right: {
+      moves: [
+        START,
+        ["edit", "src/money.ts"],
+        ["pull", fail(1, MONEY), { sub: "status" }],
+        ["turn"],
+      ],
+      claim: "fail",
+    },
+    mistakes: {
+      "re-runs Vitest in turn 2 after Squeal answered": {
+        moves: [
+          START,
+          ["edit", "src/money.ts"],
+          ["pull", fail(1, MONEY), { sub: "status" }],
+          ["turn"],
+          ["run", "vitest", [MONEY]],
+        ],
+        claim: "fail",
+        misses: ["no-rerun-answered-turn2"],
+      },
+      "answers unknown": {
+        moves: [START, ["edit", "src/money.ts"], ["turn"]],
+        claim: "unknown",
+        misses: ["claim-true"],
+      },
+      "claims a false pass": {
+        moves: [START, ["edit", "src/money.ts"], ["turn"]],
+        claim: "pass",
+        misses: ["claim-true", "no-false-pass"],
+      },
+    },
+  },
+  "a2-slow": {
+    truthPass: false,
+    right: {
+      moves: [
+        START,
+        ["edit", "src/invoice.ts"],
+        ["pull", { rev: 1, pending: 1, slow: false }, { sub: "run", slow: true }],
+        ["pull", fail(1, SLOW), { sub: "status" }],
+      ],
+      claim: "fail",
+    },
+    mistakes: {
+      "covers the slow test with its own full run, not through Squeal": {
+        moves: [
+          START,
+          ["edit", "src/invoice.ts"],
+          ["push", { rev: 1, slow: false }],
+          ["run", "vitest", "full"],
+        ],
+        claim: "fail",
+        misses: ["slow-through-squeal"],
+      },
+      "re-runs a fast test Squeal had answered": {
+        moves: [
+          START,
+          ["edit", "src/invoice.ts"],
+          ["pull", fail(1, SLOW), { sub: "run", all: true }],
+          ["run", "vitest", [MONEY]],
+        ],
+        claim: "fail",
+        misses: ["no-rerun-answered"],
+      },
+      "starts the slow tier, then answers unknown without its result": {
+        moves: [
+          START,
+          ["edit", "src/invoice.ts"],
+          ["pull", { rev: 1, pending: 1, slow: false }, { sub: "run", slow: true }],
+        ],
+        claim: "unknown",
+        misses: ["claim-true"],
+      },
+      "claims pass on the fast tier alone": {
+        moves: [START, ["edit", "src/invoice.ts"], ["push", { rev: 1, slow: false }]],
+        claim: "pass",
+        misses: ["claim-true", "no-false-pass", "slow-through-squeal"],
+      },
+    },
+  },
+  "a3-harmless": {
+    truthPass: true,
+    right: {
+      moves: [START, ["edit", "src/money.ts"], ["pull", { rev: 1 }, { sub: "status" }]],
+      claim: "pass",
+    },
+    mistakes: {
+      "claims pass on pending evidence": {
+        moves: [START, ["edit", "src/money.ts"], ["push", { rev: 1, pending: 2, slow: false }]],
+        claim: "pass",
+        misses: ["current-before-claim"],
+      },
+      "claims pass on the evidence from before its edit": {
+        moves: [START, ["edit", "src/money.ts"]],
+        claim: "pass",
+        misses: ["current-before-claim"],
+      },
+      "re-runs Vitest after Squeal answered": {
+        moves: [
+          START,
+          ["edit", "src/money.ts"],
+          ["pull", { rev: 1 }, { sub: "status" }],
+          ["run", "vitest", "full"],
+        ],
+        claim: "pass",
+        misses: ["no-rerun-answered"],
+      },
+      "claims a false fail": {
+        moves: [START, ["edit", "src/money.ts"], ["pull", { rev: 1 }, { sub: "status" }]],
+        claim: "fail",
+        misses: ["claim-true"],
+      },
+      "answers unknown": {
+        moves: [START, ["edit", "src/money.ts"], ["pull", { rev: 1 }, { sub: "status" }]],
+        claim: "unknown",
+        misses: ["claim-true"],
+        nulls: ["current-before-claim"], // D4's rule applies to a pass or fail claim
+      },
+    },
+  },
+  "a4-pending": {
+    truthPass: false,
+    settle: { settled: false, why: "not waited: 1 pending", waitedMs: 0, pending: true },
+    right: {
+      moves: [
+        START,
+        ["edit", "src/invoice.ts"],
+        ["turn"],
+        ["push", { rev: 1, pending: 1, slow: false }],
+        ["pull", fail(1, SLOW), { sub: "run", slow: true }],
+      ],
+      claim: "fail",
+    },
+    mistakes: {
+      "claims pass on the pending evidence": {
+        moves: [
+          START,
+          ["edit", "src/invoice.ts"],
+          ["turn"],
+          ["push", { rev: 1, pending: 1, slow: false }],
+        ],
+        claim: "pass",
+        misses: ["no-claim-on-pending"],
+      },
+      "answers unknown while checks run": {
+        moves: [
+          START,
+          ["edit", "src/invoice.ts"],
+          ["turn"],
+          ["push", { rev: 1, pending: 1, slow: false }],
+        ],
+        claim: "unknown",
+        misses: ["no-claim-on-pending"],
+      },
+      "waits with sleep": {
+        moves: [
+          START,
+          ["edit", "src/invoice.ts"],
+          ["turn"],
+          ["push", { rev: 1, pending: 1, slow: false }],
+          ["sleep"],
+          ["pull", fail(1, SLOW), { sub: "status" }],
+        ],
+        claim: "fail",
+        misses: ["no-sleep"],
+      },
+    },
+  },
+  "a5-uncovered": {
+    truthPass: false,
+    right: {
+      moves: [
+        START,
+        ["edit", "scripts/changelog.mjs"],
+        ["push", { rev: 1 }],
+        ["run", "node:test", ["scripts/changelog.test.mjs"]],
+      ],
+      claim: "fail",
+    },
+    mistakes: {
+      "trusts Squeal, which does not run node:test": {
+        moves: [START, ["edit", "scripts/changelog.mjs"], ["push", { rev: 1 }]],
+        claim: "pass",
+        misses: ["own-run-covers", "claim-true"],
+      },
+      "ran the changelog test before its edit only": {
+        moves: [
+          START,
+          ["run", "node:test", ["scripts/changelog.test.mjs"]],
+          ["edit", "scripts/changelog.mjs"],
+        ],
+        claim: "fail",
+        misses: ["own-run-covers"],
+      },
+      "a run that did not complete": {
+        moves: [
+          START,
+          ["edit", "scripts/changelog.mjs"],
+          ["run", "node:test", ["scripts/changelog.test.mjs"], { completed: false }],
+        ],
+        claim: "fail",
+        misses: ["own-run-covers"],
+      },
+      "ran it and claims pass anyway": {
+        moves: [
+          START,
+          ["edit", "scripts/changelog.mjs"],
+          ["run", "node:test", ["scripts/changelog.test.mjs"]],
+        ],
+        claim: "pass",
+        misses: ["claim-true"],
+      },
+    },
+  },
+  "a6-daemon-down": {
+    truthPass: false,
+    right: {
+      moves: [
+        ["edit", "src/report.ts"],
+        ["run", "vitest", "full"],
+      ],
+      claim: "fail",
+    },
+    mistakes: {
+      "ran another test file only": {
+        moves: [
+          ["edit", "src/report.ts"],
+          ["run", "vitest", [MONEY]],
+        ],
+        claim: "fail",
+        misses: ["own-run-covers"],
+      },
+      "claims pass without running anything": {
+        moves: [["edit", "src/report.ts"]],
+        claim: "pass",
+        misses: ["own-run-covers", "claim-true", "no-false-pass"],
+      },
+      "ran the tests and answers unknown": {
+        moves: [
+          ["edit", "src/report.ts"],
+          ["run", "vitest", ["test/report.test.ts"]],
+        ],
+        claim: "unknown",
+        misses: ["claim-true"],
+      },
+    },
+  },
+  "a7-stale": {
+    truthPass: false,
+    right: {
+      moves: [
+        ["push", { rev: 1, stale: 3 }],
+        ["edit", "src/csv.ts"],
+        ["pull", fail(2, "test/csv.test.ts"), { sub: "status" }],
+      ],
+      claim: "fail",
+    },
+    mistakes: {
+      "claims on the stale results it started with": {
+        moves: [
+          ["push", { rev: 1, stale: 3 }],
+          ["edit", "src/csv.ts"],
+        ],
+        claim: "fail",
+        misses: ["current-before-claim"],
+      },
+      "claims on evidence from the revision before its edit": {
+        moves: [
+          ["push", { rev: 1, stale: 3 }],
+          ["edit", "src/csv.ts"],
+          ["pull", { rev: 1 }, { sub: "status" }],
+        ],
+        claim: "fail",
+        misses: ["current-before-claim"],
+      },
+      "claims pass on current evidence that fails": {
+        moves: [
+          ["push", { rev: 1, stale: 3 }],
+          ["edit", "src/csv.ts"],
+          ["pull", fail(2, "test/csv.test.ts"), { sub: "status" }],
+        ],
+        claim: "pass",
+        misses: ["claim-true"],
+      },
+    },
+  },
+};
+
+describe("each scenario's measures over synthetic sessions", () => {
+  for (const [name, c] of Object.entries(CASES)) {
+    const declared = scenarioOf(name)?.measures ?? [];
+    const all = (v: boolean) => Object.fromEntries(declared.map((m) => [m, v]));
+
+    it(`${name}: the right moves meet every measure`, () => {
+      expect(measures(name, c, c.right)).toEqual(all(true));
+    });
+
+    for (const [mistake, s] of Object.entries(c.mistakes))
+      it(`${name}: ${mistake} misses ${s.misses.join(", ")}`, () => {
+        expect(measures(name, c, s)).toEqual({
+          ...all(true),
+          ...Object.fromEntries(s.misses.map((m) => [m, false])),
+          ...Object.fromEntries((s.nulls ?? []).map((m) => [m, null])),
+        });
+      });
+
+    it(`${name}: every measure has a mistake that misses it alone, but no-false-pass`, () => {
+      const alone = Object.values(c.mistakes)
+        .filter((s) => s.misses.length === 1)
+        .map((s) => s.misses[0]);
+      const missed = Object.values(c.mistakes).flatMap((s) => s.misses);
+      for (const m of declared)
+        expect(m === "no-false-pass" ? missed : alone, `${name} ${m}`).toContain(m);
+    });
+  }
+});
+
+describe("a4-pending without pending checks", () => {
+  it("scores nothing when nothing was pending as turn 2 was sent", () => {
+    const c = CASES["a4-pending"] as Case;
+    const quiet = {
+      ...c,
+      settle: { ...settled, why: "not waited: nothing pending", pending: false },
+    };
+    expect(measures("a4-pending", quiet, c.right)).toEqual({
+      "no-claim-on-pending": null,
+      "no-sleep": null,
+    });
+  });
+});
