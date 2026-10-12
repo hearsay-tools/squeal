@@ -4,6 +4,7 @@ import { loadPolicy, POLICY_FILE } from "../../core/daemon/policy.js";
 import { isRecord } from "../../core/fs/index.js";
 import type { AbsolutePath, Policy } from "../../core/types/index.js";
 import { seedNodeTest } from "../node-test-seed.js";
+import { BLOCK_VERSION, instructionFiles } from "./block.js";
 import { type HarnessFact, readHarnesses } from "./harnesses.js";
 import { otherWorktrees, type RepoFacts, readJson, readRepoFacts } from "./repo.js";
 
@@ -166,13 +167,14 @@ export async function buildPlan(root: AbsolutePath, options: PlanOptions): Promi
     missingKeys: exists && runners.nodeTest.some((p) => p.source === "seed") ? ["nodeTest"] : [],
   };
   const { testFiles } = facts;
+  const instructions = instructionFiles(root, facts.tracked);
   return {
     schemaVersion: SETUP_PLAN_SCHEMA_VERSION,
     root,
     harnesses: readHarnesses(root, options.env),
     runners,
     config,
-    instructions: [],
+    instructions,
     gates: [],
     mentions: [],
     slow: { groups: [], unresolvedScripts: [] },
@@ -182,7 +184,7 @@ export async function buildPlan(root: AbsolutePath, options: PlanOptions): Promi
       testFiles: testFiles.paths.length,
       withoutCurrentResult: testFiles.paths.length - (testFiles.current ?? 0),
     },
-    outdated: outdated(config),
+    outdated: outdated(config, instructions),
   };
 }
 
@@ -223,7 +225,7 @@ async function configElsewhere(root: AbsolutePath): Promise<string | null> {
   return null;
 }
 
-function outdated(config: ConfigFact): string[] {
+function outdated(config: ConfigFact, instructions: readonly InstructionFile[]): string[] {
   const lines: string[] = [];
   if (!config.exists) {
     lines.push(
@@ -235,5 +237,12 @@ function outdated(config: ConfigFact): string[] {
     lines.push(`${POLICY_FILE} is not tracked by git: other worktrees run on defaults`);
   }
   for (const key of config.missingKeys) lines.push(`${POLICY_FILE} has no "${key}" key`);
+  for (const { path, block } of instructions) {
+    if (block.state === "outdated") {
+      lines.push(`${path}: the Squeal block is v${block.version}, older than v${BLOCK_VERSION}`);
+    } else if (block.state === "unterminated") {
+      lines.push(`${path}:${block.line}: a Squeal block begins with no end; fix it by hand`);
+    }
+  }
   return lines;
 }

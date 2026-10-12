@@ -17,6 +17,7 @@ import {
   PREVIOUS_MARKETPLACE_NAME,
   PREVIOUS_PLUGIN_ID,
 } from "./plugin-id.js";
+import { removeBlocks } from "./setup/block.js";
 
 /** A daemon asked to stop finishes the tier in flight (D10); `remove` waits this long for it. */
 const STOP_WAIT_MS = 5_000;
@@ -37,7 +38,8 @@ const PARTIAL_EXIT = 3;
  * store; one that cannot be deleted is listed with its error code and the
  * exit code is 3 (review wave 10c, S2). `--config` also deletes this
  * worktree's `squeal.config.json` (D11), and the output names every other
- * worktree that keeps one (S3).
+ * worktree that keeps one (S3). The Squeal block (spec 005 D4) leaves the
+ * instruction files; one with no end marker is listed under "Still there".
  */
 export async function removeCommand(
   args: readonly string[],
@@ -103,6 +105,19 @@ export async function removeCommand(
     );
   }
 
+  // Spec 005 D4: the instruction block goes too; one without its end stays and is named.
+  for (const edit of removeBlocks(root)) {
+    const path = join(root, edit.path);
+    if (edit.result === "unterminated") {
+      failed.push(
+        `${path}: its Squeal block begins at line ${edit.line} with no end marker; delete it by hand`,
+      );
+    } else if (edit.result === "deleted") {
+      removed.push(`${path} (it held only the Squeal block: the deletion is a change to commit)`);
+    } else {
+      removed.push(`${path}: the Squeal block (a change to commit)`);
+    }
+  }
   io.stdout(
     removed.length === 0 && failed.length === 0
       ? `Nothing to remove: no Squeal store for this repository.\n`
