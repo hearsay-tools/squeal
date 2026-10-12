@@ -56,9 +56,10 @@ export function applyReference(dir, s) {
 
 /**
  * Whether `squeal status --json` (text or parsed) shows Squeal settled for a next turn:
- * `{ settled, done, why }`. Settled means a daemon validating with no check and no test file
- * pending, the slow tier's included; `done` is true too when waiting cannot help: no daemon
- * validating.
+ * `{ settled, done, why }`. Settled means every result current: no check or test file pending,
+ * stale or unknown, the slow tier's included. A headless session's daemon drains its work and
+ * exits when the session ends, so a stopped daemon whose results are all current is settled
+ * too (006-34's first cells); a stopped daemon with work left is done, since waiting cannot help.
  */
 export function settledOf(raw) {
   let s;
@@ -68,15 +69,25 @@ export function settledOf(raw) {
     return { settled: false, done: false, why: "status is not JSON" };
   }
   if (s?.available !== true) return { settled: false, done: false, why: "status unavailable" };
+  const open = openWork(s);
   if (s.daemon?.state !== "alive")
-    return { settled: false, done: true, why: "no daemon validating" };
-  const pending = (s.counts?.pending ?? 0) + (s.testFilesWithoutChecks?.pending ?? 0);
-  if (s.testFilesListed === false)
-    return { settled: false, done: false, why: "test files not listed" };
-  if (s.runnerPartPending === true)
-    return { settled: false, done: false, why: "runner part pending" };
-  if (pending > 0) return { settled: false, done: false, why: `${pending} pending` };
+    return open
+      ? { settled: false, done: true, why: `no daemon validating, ${open}` }
+      : { settled: true, done: true, why: "nothing pending, the daemon drained and stopped" };
+  if (open) return { settled: false, done: false, why: open };
   return { settled: true, done: true, why: "nothing pending" };
+}
+
+/** What still keeps a status from being current, or null. */
+function openWork(s) {
+  if (s.testFilesListed === false) return "test files not listed";
+  if (s.runnerPartPending === true) return "runner part pending";
+  const slow = (s.slowPending?.testFiles ?? 0) + (s.slowTier?.pending ?? 0);
+  const pending = (s.counts?.pending ?? 0) + (s.testFilesWithoutChecks?.pending ?? 0);
+  if (pending > 0 || slow > 0) return `${pending + slow} pending`;
+  const open =
+    (s.counts?.stale ?? 0) + (s.counts?.unknown ?? 0) + (s.testFilesWithoutChecks?.unknown ?? 0);
+  return open > 0 ? `${open} stale or unknown` : null;
 }
 
 /**
