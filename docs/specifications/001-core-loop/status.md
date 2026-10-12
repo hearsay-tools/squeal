@@ -196,6 +196,7 @@ Started: 2026-10-02
 - 2026-10-12, human: 001-283 decides the primer and the skill with Matt Pocock's `writing-for-agents` (mattpocock/skills 32165827) and fixes what it finds, in wave 13am beside 001-285.
 - 2026-10-12, human: the primer should name the suites Squeal does not cover, in any project, not only "any other test suite": research first (001-290).
 - 2026-10-12, human: ownership of the primer and the skill: 001 owns the mechanism and the facts the texts state (injection, the header, what Squeal covers and its file rules, the slow tier's state); 005 owns wording aimed at agent behaviour (005-15). 001-283's rewrite ships in 001 and 005-15 builds on it. The uncovered-suites research (001-290) becomes one row, 001-292: the primer names each runner's file rules from the daemon's shared record, no project analysis and no counts; its rows 001-291, 001-293 and 001-294 are not taken. The status --wait quiet line already names the slow tier (the coordinator's earlier claim otherwise was a misreading), so no wait-line row.
+- 2026-10-12, human: main-checkout daemons watching the nested cezar worktrees (74k and 280k inotify watches, the host limit exhausted, ENOSPC in the 0.1.129 gate) is a defect: research first (001-298). The two idle main-checkout daemons were stopped at the human's word to free watches.
 
 ## Research
 
