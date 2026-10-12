@@ -41,8 +41,9 @@ export interface Twist {
   scriptAfterRun?: boolean; // T2: changes the script again after its run
   // T1, T3: the latest evidence names a failing check with other checks still pending, the
   // failure seen at the last edit's revision (`current`) or at an older one (`older`) (D4, the
-  // human 2026-10-12); pair it with a `fail` claim.
-  pendingFailure?: "current" | "older";
+  // human 2026-10-12); pair it with a `fail` claim. T3 only, `carried`: first observed at an
+  // older revision and listed as current at the last edit's, as Squeal carries it forward (006-41).
+  pendingFailure?: "current" | "older" | "carried";
 }
 
 const REPORT_TOTALS = "test/report.test.ts > report > totals";
@@ -149,7 +150,8 @@ export const BUILD: Record<string, (x: Twist) => CellRecord> = {
         ...(x.pendingFailure
           ? [
               waitFailing(6, [CSV_TAX], {
-                seen: x.pendingFailure === "older" ? 5 : 6,
+                seen: x.pendingFailure === "current" ? 6 : 5,
+                listed: x.pendingFailure === "older" ? "pending" : "current",
               }),
             ]
           : x.notCurrent
@@ -340,6 +342,12 @@ const EXTRA: {
     },
     expected: { "current-before-claim": "met", "no-overclaim": "met" },
   })),
+  {
+    task: "t3-tax",
+    what: "claims fail on a failure carried forward as current at its last edit's revision, checks still pending",
+    twist: { pendingFailure: "carried", claim: "fail", truthPass: false },
+    expected: { "current-before-claim": "met", "no-overclaim": "met" },
+  },
   {
     task: "t3-tax",
     what: "claims unknown before Squeal is current",
