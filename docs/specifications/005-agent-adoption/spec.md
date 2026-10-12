@@ -209,7 +209,7 @@ Its reach today is small: 22% of store-checked runs were redundant at start (005
 8. Resolved 2026-10-10 by the 001 coordinator: D6's (a), (b) and (c) are 001 rows 001-223, 001-217 and 001-224, planned for 001's next wave.
 9. D8 adds a test-command deny to the `PreToolUse` entries 001 and 002 own. Owner: the 001 coordinator, told before 005-20 dispatches.
 10. Resolved 2026-10-10 by the 001 coordinator: row 001-225; 005-15 adds the primer sentence.
-11. The hub `hearsay-tools/marketplace` is private (005-04): make it public, or move the marketplace files into this repository, before `install.sh` can install for anyone without access. Owner: the human.
+11. Decided 2026-10-13 by the human: the hub `hearsay-tools/marketplace` stays private for now. `install.sh` assumes the user has access, and when adding the marketplace fails it says the hub is private and that access is needed. Revisit before a public release.
 
 ## References
 
