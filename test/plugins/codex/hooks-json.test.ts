@@ -37,6 +37,8 @@ const PINNED: Readonly<Record<string, string>> = {
   "pre_tool_use:0:0": "sha256:0c132913495a596585c293ba3dc3ee08e28d27884a83274999b617bcd8e91b96",
   "post_tool_use:0:0": "sha256:0c6cd3bc8223b7538d1f39dc491bf8cd61388f2fdcc481910368cef0e9190bf1",
   "stop:0:0": "sha256:f8c8dc32300fba6a3edb5b7e2777162170a8bd42326b17499b67ca2a761f0234",
+  // 001-285: the slow-tier wait beside the 2 s Stop, a new hook users trust once.
+  "stop:0:1": "sha256:3292fa42376f0d13699689ebbcc2f18c043e84d64e04fc0af8620774e462d539",
   "subagent_start:0:0": "sha256:32e6dbd1fa103e891ad039499fce4bcaad9fb57cc45110e65c81387dfa8a333d",
   "subagent_stop:0:0": "sha256:a4a1287ccb38a20484fc59bb7067cd47c8b7e7210dc34664e296848741415aaa",
   "interrupt:0:0": "sha256:6d3a0b166e716f1139a99204e22dcd1d149b435b0ebaaa89c9820702d352fa31",
@@ -44,7 +46,7 @@ const PINNED: Readonly<Record<string, string>> = {
 };
 
 describe("plugins/codex/hooks/hooks.json", () => {
-  it("declares exactly the contract's nine entries with their budgets", () => {
+  it("declares exactly the contract's nine entries and the slow-tier wait with their budgets", () => {
     const table = all.map(({ event, matcher, hook }) => {
       const bundle = /"\$\{PLUGIN_ROOT\}\/dist\/([a-z-]+\.mjs)"$/.exec(hook.command)?.[1];
       return [event, matcher ?? "", bundle, hook.timeout].join(" ");
@@ -55,6 +57,8 @@ describe("plugins/codex/hooks/hooks.json", () => {
       "PreToolUse * pre-tool-use.mjs 2",
       "PostToolUse * post-tool-use.mjs 2",
       "Stop  stop.mjs 2",
+      // 004 D9 as amended 2026-10-12 (001-285): above `STOP_SLOW_WAIT_CAP_MS`.
+      "Stop  stop-slow.mjs 630",
       "SubagentStart  subagent-start.mjs 2",
       "SubagentStop  subagent-stop.mjs 2",
       "Interrupt  interrupt.mjs 3",

@@ -183,9 +183,10 @@ describe("squeal init --harness codex --print-launcher-config", () => {
       }
     }
     const state = config["hooks.state"] as Record<string, { trusted_hash: string }>;
-    expect(Object.keys(state)).toHaveLength(EVENTS.length);
+    const handlers = Object.values(declared).flatMap((groups) => groups.flatMap((g) => g.hooks));
+    expect(Object.keys(state)).toHaveLength(handlers.length);
     for (const key of Object.keys(state)) {
-      expect(key).toMatch(/^\/<session-flags>\/config\.toml:[a-z_]+:0:0$/);
+      expect(key).toMatch(/^\/<session-flags>\/config\.toml:[a-z_]+:0:\d+$/);
     }
     expect(
       Object.fromEntries(
