@@ -193,7 +193,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -564,7 +564,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -1022,7 +1022,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": false
+     "no-rerun-answered": false
     }
    },
    "usageTotal": {
@@ -1360,7 +1360,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -1746,7 +1746,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -2117,7 +2117,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -2455,7 +2455,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -2826,7 +2826,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -3164,7 +3164,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -3506,7 +3506,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -3766,7 +3766,7 @@
    "measures": [
     "claim-true",
     "no-false-pass",
-    "no-rerun-answered-turn2"
+    "no-rerun-answered"
    ],
    "breaks": [
     "test/money.test.ts"
@@ -3786,5 +3786,24 @@
   }
  },
  "settleS": 180,
- "repetitions": 10
+ "repetitions": 10,
+ "regraded": [
+  {
+   "by": "006-50",
+   "date": "2026-10-13",
+   "changed": [
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r1",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r2",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r3",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r4",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r5",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r6",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r7",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r8",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r9",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r10"
+   ],
+   "note": "Measures recomputed (spec 006 D10, 006-50) from each cell's kept pilot record and retained timeline under evals/atomic/atomic.json at this revision. a1-break scores D4's `no-rerun-answered` over the whole session, in place of the prototype's `no-rerun-answered-turn2`, which counted `squeal why` and pending or older evidence as an answer and scored only a turn sent once Squeal settled. The old record's `ownRunsAfterAnswered` fields stay in each cell and are read by nothing. `changed` names the cells whose measures changed."
+  }
+ ]
 }

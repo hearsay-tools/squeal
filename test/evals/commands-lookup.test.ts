@@ -7,9 +7,13 @@ import {
   classifyShell,
   claudeTimeline,
   codexTimeline,
+  coveredRun,
   type Event,
   gradeCell,
 } from "../../evals/lib/index.mjs";
+
+/** A completed node:test run after the last script change: D4's completed-run-covers. */
+const SCRIPTS = { runner: "node:test", files: ["scripts/changelog.test.mjs"], after: "^scripts/" };
 
 // Review wave 2.5, B4: `command -v`, `-V` and `-pv` run no named program, but Bash still applies
 // their redirections, also when the lookup fails. Each probe runs the agent's script in a real
@@ -116,7 +120,7 @@ describe("a lookup's redirections, against Bash", () => {
       for (const g of grades(command, c.exit, c.out)) {
         expect(g.nodeTestRuns, command).toBe(1);
         expect(g.edits, command).toBe(2);
-        expect(g.nodeTestAfterScriptEdit, command).toBe(false);
+        expect(coveredRun(g.retained, SCRIPTS), command).toBe(false);
       }
     },
   );
@@ -129,7 +133,7 @@ describe("a lookup's redirections, against Bash", () => {
     expect([c.nodeRuns, c.rewritten]).toEqual([0, true]);
     for (const g of grades(command, c.exit, c.out)) {
       expect(g.nodeTestRuns, command).toBe(0);
-      expect(g.nodeTestAfterScriptEdit, command).toBe(false);
+      expect(coveredRun(g.retained, SCRIPTS), command).toBe(false);
     }
   });
 

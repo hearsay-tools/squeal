@@ -60,21 +60,18 @@ function grade(moves: Move[], claim: string | null, truthPass: boolean) {
   const edits: { n: number }[] = [];
   const retained: object[] = [];
   const turnStarts: number[] = [];
-  let answered = false;
   let sleeps = 0;
   for (const [n, m] of moves.entries()) {
     const t = n * 100;
     if (m[0] === "edit") {
       edits.push({ n });
       retained.push({ k: "edit", path: m[1] });
-      answered = false;
     } else if (m[0] === "push" || m[0] === "pull") {
       if (m[0] === "pull") pulls.push({ n, ...m[2] });
       retained.push(evidence(m[1], m[0]));
-      answered ||= m[1].daemon !== false;
     } else if (m[0] === "run") {
       const scope = m[2] === "full" ? { full: true } : { full: false, paths: m[2] };
-      runs.push({ n, t, runner: m[1], scope, afterSquealAnswered: answered });
+      runs.push({ n, t, runner: m[1], scope });
       const completed = m[3]?.completed ?? true;
       retained.push({
         k: "run",
@@ -166,7 +163,7 @@ const CASES: Record<string, Case> = {
           ["run", "vitest", [MONEY]],
         ],
         claim: "fail",
-        misses: ["no-rerun-answered-turn2"],
+        misses: ["no-rerun-answered"],
       },
       "answers unknown": {
         moves: [START, ["edit", "src/money.ts"], ["turn"]],

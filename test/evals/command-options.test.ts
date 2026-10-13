@@ -3,7 +3,16 @@ import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:f
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { claudeTimeline, codexTimeline, type Event, gradeCell } from "../../evals/lib/index.mjs";
+import {
+  claudeTimeline,
+  codexTimeline,
+  coveredRun,
+  type Event,
+  gradeCell,
+} from "../../evals/lib/index.mjs";
+
+/** A completed node:test run after the last script change: D4's completed-run-covers. */
+const SCRIPTS = { runner: "node:test", files: ["scripts/changelog.test.mjs"], after: "^scripts/" };
 
 // 006-12 item 3 (review wave 1.7's scope note): `command` takes options. `command -p set -e`
 // runs `set -e`, so errexit is on after it; `command -p exit` ends the shell; `command -v` and
@@ -99,7 +108,7 @@ describe("`command` with options, against Bash", () => {
     expect(c.nodeRan).toBe(false);
     for (const g of grades(command, c.exit, c.out)) {
       expect(g.nodeTestRuns, command).toBe(0);
-      expect(g.nodeTestAfterScriptEdit, command).toBe(false);
+      expect(coveredRun(g.retained, SCRIPTS), command).toBe(false);
     }
   });
 
@@ -113,6 +122,6 @@ describe("`command` with options, against Bash", () => {
     const c = control(command);
     expect(c.nodeRan).toBe(true);
     for (const g of grades(command, c.exit, c.out))
-      expect(g.nodeTestAfterScriptEdit, command).toBe(true);
+      expect(coveredRun(g.retained, SCRIPTS), command).toBe(true);
   });
 });

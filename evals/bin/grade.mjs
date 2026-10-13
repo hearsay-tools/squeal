@@ -64,5 +64,5 @@ const grade = {
 writeFileSync(join(OUT, "grade.json"), JSON.stringify(grade, null, 2));
 const t = grade.truth?.pass === undefined ? "?" : grade.truth.pass ? "pass" : "fail";
 console.log(
-  `${meta.id}\tvitest ${grade.vitestRuns} (after Squeal ${grade.vitestAfterSquealAnswered})\tnode:test ${grade.nodeTestRuns}\twaits ${grade.squealWaits}\tsleep ${grade.sleeps}\tskill ${grade.skillLoads}\trefused ${grade.refused}\tclaim ${grade.claim} truth ${t} -> ${grade.claimTrue}`,
+  `${meta.id}\tvitest ${grade.vitestRuns}\tnode:test ${grade.nodeTestRuns}\twaits ${grade.squealWaits}\tsleep ${grade.sleeps}\tskill ${grade.skillLoads}\trefused ${grade.refused}\tclaim ${grade.claim} truth ${t} -> ${grade.claimTrue}`,
 );

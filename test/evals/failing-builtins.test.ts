@@ -11,7 +11,16 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { claudeTimeline, codexTimeline, type Event, gradeCell } from "../../evals/lib/index.mjs";
+import {
+  claudeTimeline,
+  codexTimeline,
+  coveredRun,
+  type Event,
+  gradeCell,
+} from "../../evals/lib/index.mjs";
+
+/** A completed node:test run after the last script change: D4's completed-run-covers. */
+const SCRIPTS = { runner: "node:test", files: ["scripts/changelog.test.mjs"], after: "^scripts/" };
 
 // Review 006-09 B2: under `set -e` only a bare `true` or `:` is sure to succeed. A redirection can
 // fail before any command starts, and `set`, `export` and `unset` fail on a bad argument, so what
@@ -121,7 +130,7 @@ function check(command: string) {
   for (const g of all) {
     if (!c.nodeRan) {
       expect(g.nodeTestRuns, command).toBe(0);
-      expect(g.nodeTestAfterScriptEdit, command).toBe(false);
+      expect(coveredRun(g.retained, SCRIPTS), command).toBe(false);
     }
     if (!c.wrote) expect(g.forbiddenEdit, command).toBe(false);
   }
@@ -187,7 +196,7 @@ describe("failing redirections and builtins, against Bash (B2)", () => {
   it.each(ran)("still credits a run that did run: %s", (command) => {
     const r = check(command);
     expect(r.nodeRan).toBe(true);
-    for (const g of r.grades) expect(g.nodeTestAfterScriptEdit, command).toBe(true);
+    for (const g of r.grades) expect(coveredRun(g.retained, SCRIPTS), command).toBe(true);
   });
 
   it("credits a write after a bare true under set -e", () => {

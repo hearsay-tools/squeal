@@ -58,7 +58,6 @@ export function cellRecord(g) {
     reachedModel: g.reachedModel ?? true,
     wallS: g.wallS,
     loadStart: g.load?.start ?? null,
-    loadMax: g.load?.max ?? null,
     costUsd: g.cost ?? null,
     tokens: g.usage
       ? {
@@ -68,12 +67,7 @@ export function cellRecord(g) {
         }
       : null,
     edits: g.edits,
-    vitestRuns: g.vitestRuns,
     vitestFull: g.vitestByScope?.full ?? 0,
-    vitestAfterLastEdit: g.vitestAfterLastEdit,
-    vitestAfterSquealAnswered: g.vitestAfterSquealAnswered ?? null,
-    nodeTestRuns: g.nodeTestRuns,
-    nodeTestAfterScriptEdit: g.nodeTestAfterScriptEdit ?? null,
     testAttemptsRefused: g.testAttemptsRefused ?? 0,
     squealWaits: g.squealWaits,
     waitsAfterLastEdit: g.waitsAfterLastEdit,
@@ -81,8 +75,6 @@ export function cellRecord(g) {
     skillLoads: g.skillLoads,
     squealWhy: g.squealWhy,
     squealRunSlow: g.squealRunSlow,
-    failDeliveries: g.deliveries?.fail ?? null,
-    tempFileHeaders: g.tempFileHeaders ?? null,
     forbiddenEdit: g.forbiddenEdit,
     claim: g.claim,
     claimLine: g.claimLine,
@@ -90,7 +82,6 @@ export function cellRecord(g) {
     claimTrue: g.claimTrue,
     claimMatchesSqueal: g.claimMatchesSqueal ?? null,
     squealVerdict: g.squealEnd?.verdict ?? null,
-    daemonKilled: (g.daemonExits ?? []).filter((e) => e.signal).length,
     leftovers: g.leftovers ?? 0,
     // D4 "Retained evidence": what the timeline rules read, so a later rule regrades from it.
     timeline: g.retained ?? null,

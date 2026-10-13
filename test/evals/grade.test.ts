@@ -1,14 +1,19 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  answeredRuns,
   claudeTimeline,
   codexTimeline,
+  coveredRun,
   type Event,
   gradeCell,
   reportedEffort,
   scopeLabel,
 } from "../../evals/lib/index.mjs";
 import { settled } from "./status-snapshot.js";
+
+/** A completed node:test run after the last script change: D4's completed-run-covers. */
+const SCRIPTS = { runner: "node:test", files: ["scripts/changelog.test.mjs"], after: "^scripts/" };
 
 // Small recorded transcripts in each harness's own format (Claude Code `stream-json`, Codex
 // `exec --json` and its rollout), cut down from 005-06's cells to the behaviours spec 006 D4 grades.
@@ -50,15 +55,13 @@ describe("gradeCell on a Claude Code transcript", () => {
     statusEnd,
   });
 
-  it("counts the agent's own runs by runner and scope, and whether Squeal had answered", () => {
+  it("counts the agent's own runs by runner and scope", () => {
     expect(g.vitestRuns).toBe(1);
     expect(g.vitestByScope).toEqual({ full: 0, files: 1, name: 0 });
     expect(g.timeline.runs[0]).toMatchObject({
       runner: "vitest",
       scope: { full: false, paths: ["test/clock.test.ts"] },
-      afterSquealAnswered: true,
     });
-    expect(g.vitestAfterSquealAnswered).toBe(1);
   });
 
   it("counts a refused chained command as an attempt, never as a run or an edit", () => {
@@ -83,8 +86,7 @@ describe("gradeCell on a Claude Code transcript", () => {
     expect(g.squealWhy).toBe(1);
     expect(g.skillLoads).toBe(1);
     expect(g.waitsAfterLastEdit).toBe(0);
-    expect(g.nodeTestWanted).toBe(true);
-    expect(g.nodeTestAfterScriptEdit).toBe(false);
+    expect(coveredRun(g.retained, SCRIPTS)).toBe(false);
   });
 
   it("grades a pass claim false against node:test's failure, though Squeal agreed", () => {
@@ -116,11 +118,9 @@ describe("gradeCell on a Codex transcript", () => {
   it("reads commands inside the bash -lc wrapper, chained, with heredoc text left out", () => {
     expect(g.vitestRuns).toBe(1);
     expect(g.nodeTestRuns).toBe(1);
-    expect(
-      g.timeline.runs.map((r) => [r.runner, scopeLabel(r.scope), r.afterSquealAnswered]),
-    ).toEqual([
-      ["vitest", "full", true],
-      ["node:test", "files", true],
+    expect(g.timeline.runs.map((r) => [r.runner, scopeLabel(r.scope)])).toEqual([
+      ["vitest", "full"],
+      ["node:test", "files"],
     ]);
     expect(g.squealPulls).toBe(2);
     expect(g.squealRunSlow).toBe(1);
@@ -233,8 +233,8 @@ describe("a session with no daemon validating (the T4 knob)", () => {
 
   it("does not count a 'no daemon' reply as Squeal having answered", () => {
     expect(g.deliveries).toMatchObject({ registration: 1, noDaemon: 1, other: 0 });
-    expect(g.timeline.runs[0]?.afterSquealAnswered).toBe(false);
-    expect(g.vitestAfterSquealAnswered).toBe(0);
+    expect(g.timeline.runs).toHaveLength(1);
+    expect(answeredRuns(g.retained)).toBe(0);
   });
 
   it("reads the store's last results without a daemon as no verdict", () => {
