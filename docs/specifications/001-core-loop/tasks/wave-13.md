@@ -1084,3 +1084,28 @@ Build:
 Do not touch `src/cli/` (005-14 owns `warmup.ts`, `setup/`, the `main.ts` dispatch), `src/harness/` (001-292), or `linked-watch.ts` (001-304).
 
 Done when (tests): a slow node:test and a Vitest file reading a gitignored `dist/` file report it after an `observeIgnored` checkpoint, and their check keys equal the keys of a run without it; a run without the flag stores nothing; the list caps at 50 with the count; editing the ignored file re-runs nothing and leaves results current; `KEY_FORMAT_VERSION` is bumped only if the key-format guard says so. Full suite, lint, typecheck, build.
+
+## 001-292 a line after an edit that no Squeal test reads
+
+`/worker`, opus. The human (2026-10-13): "C1 default: On, off switch". It replaces the file-rules plan this row held before (arm C5, 10 of 10 false passes). The evidence is in `status.md` (2026-10-13 overnight arms and the full run) and `research/uncovered-trust.md`. The tested prototype is branch `exp/a5-arm-c1r`, commit c1338cd5: `src/harness/shared/uncovered-edit.ts` and two lines in `deliver.ts`. Start from it. The run on it was atomic, 280 sessions: luna's a5-uncovered went from 10 of 10 false passes to 5, and no other measure dropped.
+
+Build:
+1. After an editing boundary, the delivery that today carries the "not validated" line also carries, when that line is absent, one line naming the code files that changed since the consumer registered and that no test Squeal runs reads. Use exactly the prototype's text: `No result for <paths>: no test Squeal runs reads it|them. Run whatever tests it|them yourself.` Show at most 3 paths, then ` and N more`. That wording is what was measured, so do not reword it. 005-15 owns any later wording.
+2. Which files: paths in the prototype's `CODE` pattern (`.js .jsx .ts .tsx .mjs .cjs .mts .cts .py`), outside any `dist/`, that still exist. A path that is a test file or in any recorded closure is covered. Read closures through this worktree's projects only, not every row of `store.testFiles` (the prototype read all of them; check what `list()` spans and scope it).
+3. Once per path per consumer (session and agent). The told set is a meta row registered in `WORKTREE_META_ROWS` (001-254), so worktree cleanup removes it. If a told path is later read by a test, it never comes back. A path told and then changed again stays told.
+4. An off switch in `squeal.config.json`: `delivery.uncoveredEdits`, a boolean, default `true`. Add it to `Policy`, `DEFAULT_POLICY`, the loader's `SHAPE` and the config docs. With `false`, no line and no meta row is written. 005-20 adds `testCommand` in the same two policy files. Whoever lands second rebases; the change is additive.
+5. Both harnesses (Claude Code and Codex) through the shared delivery. The line counts against the existing delivery cap.
+6. Amend 001 D9 (what an edit's delivery carries) and D11 (the new key). Add one sentence to the primer only if a test shows the primer must explain the line. Prefer no primer change.
+
+Do not touch `src/runners/observe` or `src/core/scheduler` (001-307), `src/cli/` (005-14), `linked-watch.ts` (001-304), or `src/core/delivery/test-command-denied.ts` and `src/harness/shared/deny.ts` (005-20).
+
+Done when (tests):
+- An edit to an uncovered `.mjs` gets the line once, and the next edit to it gets nothing.
+- An edit to a covered file, a `.md`, a `dist/` file or a deleted file gets no line.
+- Four or more files show the first 3 and ` and N more`.
+- A second agent in the same session is told on its own.
+- `delivery.uncoveredEdits: false` writes nothing.
+- The "not validated" line still wins when the daemon is down.
+- The meta row is removed with the worktree.
+- `KEY_FORMAT_VERSION` is bumped only if the key-format guard says so.
+- Full suite, lint, typecheck, build, and `plugins/claude-code/dist` rebuilt.
