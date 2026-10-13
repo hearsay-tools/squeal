@@ -20,7 +20,12 @@ const check = (path: string, fullName: string): TestCheckId => ({
 });
 
 const HANG = "test/hang.test.ts";
-const TIMEOUT_MS = 8_000;
+/**
+ * Only the hanging file may reach it (task 001-335). A tier of three
+ * ordinary files took 0.5-2.8 s beside a full suite at load 37-87; one such
+ * tier outlasted the 8 s this was at load 76 and ended without its files.
+ */
+const TIMEOUT_MS = 30_000;
 
 /** `count` quick test files and one that never ends; `oneWorker` runs them one at a time, the hanging one first. */
 function suite(count: number, oneWorker = false) {
@@ -34,9 +39,10 @@ function suite(count: number, oneWorker = false) {
       `import { expect, it } from "vitest";\nit("holds", () => {\n  expect(${i}).toBe(${i});\n});\n`,
     );
   }
+  // Blocks its worker as a busy loop would, ignoring a cancel, without using a core while it waits.
   writeFileSync(
     at(HANG),
-    'import { it } from "vitest";\nit("hangs", () => {\n  while (true) {}\n});\n',
+    'import { it } from "vitest";\nit("hangs", () => {\n  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0);\n});\n',
   );
   if (oneWorker) {
     // One file at a time, the hanging one first: it holds every file behind it.
@@ -119,7 +125,7 @@ describe("scheduler: a timed-out tier keeps its completed files (D5, D12, task 0
     expect(h.header().counts).toMatchObject({ pending: 0, unknown: 0 });
     expect(h.header().testFilesWithoutChecks).toMatchObject({ pending: 0, unknown: 1 });
     console.log(
-      `001-179: tiers ${runs.map((r) => `${r.files.length} ${r.report.end} (${r.report.completedFiles.length} completed)`).join(", ")}`,
+      `001-179: tiers ${runs.map((r) => `${r.files.length} ${r.report.end} (${r.report.completedFiles.length} completed, ${r.report.durationMs} ms)`).join(", ")}`,
     );
   });
 
@@ -139,7 +145,7 @@ describe("scheduler: a timed-out tier keeps its completed files (D5, D12, task 0
 
     const runs = h.runner.runs;
     console.log(
-      `001-179 one worker: tiers ${runs.map((r) => `${r.files.length} ${r.report.end} (${r.report.completedFiles.length} completed)`).join(", ")}`,
+      `001-179 one worker: tiers ${runs.map((r) => `${r.files.length} ${r.report.end} (${r.report.completedFiles.length} completed, ${r.report.durationMs} ms)`).join(", ")}`,
     );
     // The hanging file ran first and held the files behind it: the first tier stored none of them.
     expect(runs[0]?.files).toHaveLength(count + 1);
