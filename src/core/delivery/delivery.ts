@@ -1,4 +1,5 @@
 import { setTimeout as sleep } from "node:timers/promises";
+import { forgetStopWait } from "../slow/stop-wait.js";
 import { baselineFindings, toKnownFailure } from "../state/index.js";
 import { type ChangeMarker, changeMarker } from "../store/index.js";
 import {
@@ -260,6 +261,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         // Review wave 10b, B1: a consumer still registered keeps the revision its changes start at.
         const registered = store.consumers.get(consumer) !== null;
         store.consumers.register(consumer, at);
+        // Review wave 13ba, B1: the waiting Stop entry's evidence is this registration's alone.
+        forgetStopWait(store, consumer);
         const states = store.knownStates.list(consumer.worktreeId);
         store.views.writeMany(
           consumer,
