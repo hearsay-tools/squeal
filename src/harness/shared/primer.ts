@@ -19,6 +19,14 @@ export const PRIMER_CAP_CHARS = 1_500;
 /** How every primer starts, so a hook's cut can find one at the end of a text. */
 export const PRIMER_OPENING = "Squeal runs this repository's ";
 
+/**
+ * Spec 005 D6, the human's wording (2026-10-10): revisions defined once, here,
+ * since every result and `squeal why`'s `Changed since revision N:` line
+ * (001-225) name one and agents guessed at what a jump meant.
+ */
+export const REVISION =
+  "A revision is Squeal's number for each saved change to this worktree's files; every result names the revision it ran at, and a header names the files its revision changed.";
+
 /** Where the primer names the CLI: in every command, in the first only, or nowhere. */
 type Naming = "every" | "first" | "none";
 
@@ -42,13 +50,15 @@ type Naming = "every" | "first" | "none";
  * `squeal`, and has no idle wake (002): there a slow failure arrives with the
  * next prompt or tool call. Task 001-283 (`research/primer-skill-writing.md`):
  * the arrival of results is said once, and the slow step sits beside the
- * wait it extends.
+ * wait it extends. Spec 005 D6: that sentence says passing results are
+ * silent and a message means a check changed (an agent with only the primer
+ * took silence for lost messages), and the primer defines a revision once.
  */
 export function primer(command: string = SQUEAL_COMMAND, coverage: Coverage = VITEST_ONLY): string {
   const names = runnerNames(coverage);
   const sentences = (covers: string, naming: Naming) =>
     [
-      `${PRIMER_OPENING}${names.join(" and ")} tests in the background after each edit, and its results arrive as SQUEAL messages with your next tool call, so keep working; do not run ${names.join(" or ")} to learn whether your edits broke something.`,
+      `${PRIMER_OPENING}${names.join(" and ")} tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run ${names.join(" or ")} to learn whether your edits broke something.`,
       `Wait only when you need a result before your next step, for example before saying the task is done: ${
         naming === "none"
           ? "`status --wait 60000` on the CLI SQUEAL messages name"
@@ -56,6 +66,7 @@ export function primer(command: string = SQUEAL_COMMAND, coverage: Coverage = VI
       }.`,
       ...(coverage.slow === null ? [] : slowSentences(command, naming)),
       "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
+      REVISION,
       covers,
       "Squeal does not cover typecheck, build or any other test suite: run those yourself.",
     ].join(" ");
@@ -120,7 +131,7 @@ function slowSentences(command: string, naming: Naming): string[] {
       ? `\`${command} run --slow --wait 60000\``
       : "the CLI's `run --slow --wait 60000`";
   return [
-    `Slow test files run when you pause between turns; before you say the task is done, run ${run} unless the header's \`Slow tier:\` line already says every slow file is current: it runs the rest and waits for their results.`,
+    `Slow test files run when you pause between turns; before you say the task is done, run ${run} unless the header's \`Slow tier:\` line says every slow file is current: it runs the rest and waits for them.`,
     command === SQUEAL_COMMAND
       ? "A slow failure wakes you when you are idle in an interactive session; otherwise it arrives with your next prompt or tool call."
       : "A slow failure arrives with your next prompt or tool call.",

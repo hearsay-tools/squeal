@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { PolicyFile } from "../../src/core/types/index.js";
 import { CONTEXT_CAP_CHARS, capContext } from "../../src/harness/codex/output.js";
-import { PRIMER, PRIMER_CAP_CHARS, primer } from "../../src/harness/shared/primer.js";
+import { VITEST_ONLY } from "../../src/harness/shared/coverage.js";
+import { PRIMER, PRIMER_CAP_CHARS, primer, REVISION } from "../../src/harness/shared/primer.js";
 import {
   CODEX,
   HARNESSES,
@@ -176,7 +177,7 @@ describe("the slow sentence by harness (spec 004 D8, D9)", () => {
     (command) => {
       const text = primer(command, slow);
       expect(text).toContain(
-        `Slow test files run when you pause between turns; before you say the task is done, run \`${command} run --slow --wait 60000\` unless the header's \`Slow tier:\` line already says every slow file is current: it runs the rest and waits for their results.`,
+        `Slow test files run when you pause between turns; before you say the task is done, run \`${command} run --slow --wait 60000\` unless the header's \`Slow tier:\` line says every slow file is current: it runs the rest and waits for them.`,
       );
       expect(text.indexOf("run --slow --wait")).toBeGreaterThan(text.indexOf("status --wait"));
       expect(text).not.toContain("Stop");
@@ -201,4 +202,30 @@ describe("the slow sentence by harness (spec 004 D8, D9)", () => {
     expect(text.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
     expect(text).toContain("run the CLI's `run --slow --wait 60000` unless");
   });
+});
+
+/*
+ * Spec 005 D6: the primer, which reaches every session, says passing results
+ * are silent and a message means a check changed (an agent with only the
+ * primer took silence for lost messages), and defines a revision once, in
+ * the human's wording, with and without slow files under both harnesses.
+ */
+describe("the primer's D6 sentences (005-15)", () => {
+  const slow = { vitest: true, vitestConfig: null, nodeTest: [], slow: { files: 3 } };
+  const cases = ["squeal", CODEX].flatMap((command) =>
+    [VITEST_ONLY, slow].map((coverage) => [command, coverage] as const),
+  );
+
+  it.each(cases)(
+    "says passes are silent and defines a revision once, under %s",
+    (command, coverage) => {
+      const text = primer(command, coverage);
+      expect(text).toContain(
+        "a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working;",
+      );
+      expect(text).toContain(` ${REVISION} Squeal covers `);
+      expect(text.match(/A revision is /g)).toHaveLength(1);
+      expect(text.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
+    },
+  );
 });
