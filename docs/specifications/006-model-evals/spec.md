@@ -23,7 +23,7 @@ The human (2026-10-10): a recurring baseline, run at every hub release and whene
 7. Per model, a regression in one behaviour is visible at a release: atomic scenarios exercise one or two behaviours each, many times per model, and gate the long tasks (D10; the human, 2026-10-12).
 8. Adoption is a scoreboard: per model and measure, whether the agent does the right thing at least 90% of the time. It is a target that gates nothing (D10; the human, 2026-10-12).
 5. A variant (a patched plugin copy) runs with the same tasks and grader, for text changes such as 005-15.
-6. The fixture and tasks cover the situations agents meet: a silent pass, a failure to read and fix, a knock-on failure in an unopened module, checks pending at "done", a red-then-green fix, a flaky failure and Squeal's re-run, a slow file, a suite Squeal does not cover, a repository gate, a task that must end red, no daemon validating, and a result from an older revision. 005's D8 deny joins when its policy key exists.
+6. The fixture and tasks cover the situations agents meet: a silent pass, a failure to read and fix, a knock-on failure in an unopened module, checks pending at "done", a red-then-green fix, a flaky failure and Squeal's re-run, a slow file, a suite Squeal does not cover, a repository gate, a task that must end red, no daemon validating, and a result from an older revision. 005's D8 deny is measured by 005-18 with the `d8-deny` variant arm, not a standing scenario, while it is off by default (the human, 2026-10-13).
 
 ## Non-goals
 

@@ -47,9 +47,9 @@ The run: `20261013T102030Z-ae0c65` on `9c762e65`.
 - Load 6.6 to 117 from other sessions' suites. The runner held new cells above 24.
 - Report: `evals/results/2026-10-13-0.1.131.20261013T102030Z-ae0c65.stop-slow.atomic-compare.md`.
 
-**No model moved significantly.** At 10 sessions an arm, a measure must fall from 10/10 to 5/10 before the two-sided p drops below 0.05.
-- **Haiku leans better with it on.**
-  - `slow-through-squeal` went from 7/10 to 10/10 (p = 0.21). Its three misses as shipped ran Vitest directly, at ordinary load (8 to 21).
+**Haiku gained 30 points; the other models did not move.** The gain is large but unconfirmed. At 10 sessions an arm, only a gap of 10/10 against 5/10 or wider reaches two-sided p < 0.05, so a 30-point gap can still be chance.
+- **Haiku did much better with it on.**
+  - `slow-through-squeal` went from 7/10 to 10/10 (+30 points, p = 0.21). Its three misses as shipped ran Vitest directly, at ordinary load (8 to 21).
   - Its own Vitest runs fell from 20 to 6, and its mean session from 85 s to 60 s.
   - `no-rerun-answered` went from 8/10 to 9/10.
   - As shipped, clean Haiku on 0.1.131 is now 16/20 on `slow-through-squeal`: 9/10 in the release run and 7/10 here.
@@ -59,9 +59,12 @@ The run: `20261013T102030Z-ae0c65` on `9c762e65`.
   - They came in sessions where the load reached 75 to 112 and the cell's Squeal held its slow file for host load.
   - So they are a load artefact, not the setting.
 - **The block itself fired in 4 of the 40 sessions with the setting on:** Haiku 1, Sonnet 1, luna 2, sol 0. The models mostly ran `squeal run --slow` before stopping, so the block had nothing to hold.
-- **What differs in every session is the session-start line.** With the setting on it reads "Stop waits up to 2 min for them or holds the agent once"; as shipped it reads "Not covered by Stop's wait". Haiku's lean comes mostly from that line, since the block reached only one Haiku session.
+- **What differs in every session is the session-start line.** With the setting on it reads "Stop waits up to 2 min for them or holds the agent once"; as shipped it reads "Not covered by Stop's wait". Haiku's gain most likely comes from that line, since the block reached only one Haiku session. That is an inference, not something this run proves.
 
-Nothing here calls for turning the default on. Whether to change the setting or the line is 004's to decide, on the human's word.
+The human (2026-10-13) chose to reword the line, not to turn the default on:
+- the default stays off;
+- the 001 coordinator rewords "Not covered by Stop's wait";
+- 006-52 tests the new line on Haiku.
 
 ## Open questions
 
