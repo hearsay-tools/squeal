@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { copyFileSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { copyFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -12,7 +12,14 @@ import { atomicConfig, atomicMarkdown, type Json, regradeAtomic } from "../../ev
 const RESULTS = join(import.meta.dirname, "../../evals/results");
 const PILOT = "2026-10-12-0.1.127.20261012T070705Z-6eec71.atomic.json";
 const SECOND = "2026-10-12-0.1.127.20261012T082442Z-257eaf.atomic.json";
-const ATOMIC = readdirSync(RESULTS).filter((f) => f.endsWith(".atomic.json"));
+// The four runs 006-50 regraded. A run graded since then carries no 006-50 note and no prototype
+// count to compare against.
+const REGRADED_006_50 = [
+  PILOT,
+  SECOND,
+  "2026-10-12-0.1.127.20261012T203134Z-4ed2a0.atomic.json",
+  "2026-10-12-0.1.131.20261012T134945Z-3f2edd.atomic.json",
+];
 
 interface Cell {
   id: string;
@@ -65,7 +72,7 @@ describe("the committed atomic runs, regraded", () => {
 
   it("a1-break keeps every value the prototype's rule could compute, and the two timed-out settles are met", () => {
     const newly: string[] = [];
-    for (const f of ATOMIC) {
+    for (const f of REGRADED_006_50) {
       const data = read(f);
       const a1 = data.cells.filter((c) => c.task === "a1-break");
       expect(data.regraded.find((n) => n.by === "006-50")?.changed, f).toEqual(a1.map((c) => c.id));
