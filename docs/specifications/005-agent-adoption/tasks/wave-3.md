@@ -54,3 +54,23 @@ Use /reviewer. Range: the 005-21, 005-15 and 005-19 commits and the 0.1.146 buil
 - 005-19: does the skill write nothing in a session that cannot ask (`-p`, Codex outside Plan mode)? Does every answer map to a flag `squeal setup` takes, `--slow none` included? Does it never commit or stage? Is the Codex copy reachable without the build copying it?
 
 **Rules:** no model session, never the real `claude` or `codex`; stub CLIs in scratch homes only; scratch roots inside your own directory. Output `reviews/wave-3.md` on your branch; change no source.
+
+# Wave 3.5: repairs from `reviews/wave-3.md` (FAIL at `2247281c`)
+
+Three workers on disjoint files, then one narrow re-review. Code and text only: no model session, never the real `claude` or `codex`, scratch homes and stub CLIs. Every full run is `npx vitest run --maxWorkers=4` (host load). Leave bundles, `package.json`'s version and `docs/board.md` to the coordinator.
+
+## 005-34 repair: every count of checks split, inherited and titles too (B1)
+
+Use /worker. Shape: repair. **Read:** `reviews/wave-3.md` B1 (its probe is your first test); D1. **Seam:** carry inherited file-level counts (per source too) from `src/core/state/header.ts:73` through the snapshot; reuse `countChecks`/`checkPartsText` (`src/core/status/checks.ts`) at `format-status.ts:57`, `:84` and `delivery/format.ts:125`, `:339`, `:340`. **Owns:** `src/core/status/`, `src/core/delivery/format.ts`, `src/core/state/header.ts`, `src/core/types/status.ts` (additive), their tests. Leave a key-format re-pin to the coordinator (separate commit if you need the guard green). **Leave alone:** `src/cli/`, `plugins/`. **Done when:** B1's probe passes; mixed test and file entries in titles, grouped and overflow counts each split; the 10,000-character cap holds; lint, typecheck, suite green.
+
+## 005-35 repair: the skills say only what Squeal does (B2, B3, S1)
+
+Use /worker. Shape: repair. **Read:** `reviews/wave-3.md` B2, B3, S1; D3 "The skill"; D6. **Seam:** B2: qualify both `skills/squeal/SKILL.md:15` copies to `queueReruns`' eligibility (`src/core/scheduler/rerun.ts:72`: not forced, not already re-run at that key, not slow, at most eight eligible test files in one tier), tested as a text contract; change no scheduler code. B3: `squeal setup --harness none` (exclusive with named harnesses, parsed to `[]`) in `src/cli/setup/command.ts`, its usage and D3 step 4, mapped in both setup skills; tested with the real setup command in a scratch home writing neither harness's config while other answers still apply. S1: the skill examples at `SKILL.md:22`, `references/commands.md:12`, `references/reports.md:23` show the split counts. **Owns:** `plugins/*/skills/**`, `src/cli/setup/command.ts`, their tests. **Done when:** copies identical, size budgets held, each finding's probe a test; lint, typecheck, suite green.
+
+## 005-36 repair: a join is counted only when the daemon joined (B4)
+
+Use /worker. Shape: repair. **Read:** `reviews/wave-3.md` B4 (its stub-daemon proof is your first test). **Seam:** `src/cli/run.ts:279-286` guesses the owner from equal completion times. Carry the owner id from `Checkpoints.join()` to the CLI instead, in the `run-all` (and `run-all-status`) response; count an owner's work only with it. Before editing `src/core/daemon/` or `src/core/types/`, send me a request naming the field; I clear it with the 001 coordinator. **Owns:** `src/cli/run.ts`, the cleared protocol field, tests. **Done when:** paired tests on the real tracker (a completed-before-read join; an independent empty request ending in the same millisecond) count correctly; exit codes unchanged; lint, typecheck, suite green.
+
+## 005-37 re-review of wave 3.5
+
+Use /reviewer. Limited to B1 to B4, S1 and their nearest variants, against the 005-34 to 005-36 commits and their build on main. Rerun the review's probes, then one `npx vitest run --maxWorkers=4`. Write `reviews/wave-3.5.md` and commit it within your first 15 minutes, then extend. Same rules as 005-33.
