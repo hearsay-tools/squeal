@@ -188,4 +188,73 @@ describe("vitest adapter: the runner part beside a run (001-150)", SLOW, () => {
     expect(report.completedFiles).toEqual([HELD]);
     expect(outcomes(report)).toEqual(["pass"]);
   });
+
+  /*
+   * Task 001-343 (research `revert-restore-pass-2.md`): the invalidate lands
+   * after Vite read the reverted bytes and before their transform is cached.
+   * Vite returns that transform to the run but does not cache it, so `hold`
+   * finds nothing cached to keep and the run's own check nothing to compare.
+   */
+  async function inFlightRun(revert: boolean): Promise<RunReport> {
+    const markers = mkdtempSync(join(tmpdir(), "squeal-001-343-"));
+    markerDirs.push(markers);
+    const transforming = join(markers, "transforming");
+    const go = join(markers, "go");
+    const fx = await openFixture("basic", {
+      // Holds the module's transform after Vite loaded it, until `go` exists.
+      "vitest.config.ts": [
+        'import { existsSync, writeFileSync } from "node:fs";',
+        'import { setTimeout as delay } from "node:timers/promises";',
+        'import { defineConfig } from "vitest/config";',
+        'import { include } from "./vitest.shared.ts";',
+        "export default defineConfig({",
+        "  plugins: [{",
+        '    name: "hold-transform",',
+        "    async transform(_code, id) {",
+        '      if (!id.endsWith("/src/mod.ts")) return null;',
+        `      writeFileSync(${JSON.stringify(transforming)}, "");`,
+        `      while (!existsSync(${JSON.stringify(go)})) await delay(20);`,
+        "      return null;",
+        "    },",
+        "  }],",
+        '  test: { include, setupFiles: ["test/setup.ts"], globalSetup: ["test/global-setup.ts"] },',
+        "});",
+        "",
+      ].join("\n"),
+      "src/mod.ts": NEW,
+      [HELD.path]: [
+        'import { readFileSync, writeFileSync } from "node:fs";',
+        'import { expect, it } from "vitest";',
+        'it("loads the module", async () => {',
+        '  const file = new URL("../src/mod.ts", import.meta.url);',
+        '  const restored = readFileSync(file, "utf8");',
+        ...(revert ? [`  writeFileSync(file, ${JSON.stringify(OLD)});`] : []),
+        '  const target = "../src/mod" + ".ts";',
+        "  const { which } = await import(/* @vite-ignore */ target);",
+        "  writeFileSync(file, restored);",
+        '  expect(which).toBe("new");',
+        "}, 120_000);",
+        "",
+      ].join("\n"),
+    });
+    const run = fx.adapter.run([HELD], fx.runOptions());
+    await expect.poll(() => existsSync(transforming), { timeout: 60_000 }).toBe(true);
+    // A revision named src/mod.ts while its transform was in flight; its runner part lands now.
+    await fx.adapter.invalidate([{ path: "src/mod.ts", kind: "change" }]);
+    writeFileSync(go, "");
+    return run;
+  }
+
+  it("drops a file whose run read bytes a mid-run invalidate dropped while their transform was in flight (001-343)", async () => {
+    const report = await inFlightRun(true);
+    expect(report.completedFiles).toEqual([]);
+    expect(report.results).toEqual([]);
+    expect(report.failure).toContain("src/mod.ts changed on disk after this run loaded it");
+  });
+
+  it("completes a run whose in-flight transform a mid-run invalidate dropped with the bytes on disk (001-343)", async () => {
+    const report = await inFlightRun(false);
+    expect(report.completedFiles).toEqual([HELD]);
+    expect(outcomes(report)).toEqual(["pass"]);
+  });
 });
