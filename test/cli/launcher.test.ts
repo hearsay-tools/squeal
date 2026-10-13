@@ -53,7 +53,11 @@ describe("the launcher", () => {
     const m = machine();
     claudeInstalls(m, [{ scope: "user", version: "0.1.131" }]);
     const r = launch(m, ["status", "--exit", "7"]);
-    expect(r.ran).toEqual({ version: "0.1.131", harness: "claude-code", args: ["status", "--exit", "7"] });
+    expect(r.ran).toEqual({
+      version: "0.1.131",
+      harness: "claude-code",
+      args: ["status", "--exit", "7"],
+    });
     expect(r.status).toBe(7);
     expect(r.stderr).toBe("");
   });
@@ -144,7 +148,10 @@ describe("the launcher", () => {
   });
 
   it("is the same file in both plugins, and carries its format line", () => {
-    const codex = readFileSync(join(REPO_ROOT, "plugins", "codex", "bin", "squeal-launcher"), "utf8");
+    const codex = readFileSync(
+      join(REPO_ROOT, "plugins", "codex", "bin", "squeal-launcher"),
+      "utf8",
+    );
     expect(codex).toBe(readFileSync(LAUNCHER, "utf8"));
     expect(codex).toMatch(/^#!\/bin\/sh\n# squeal-launcher format \d+\n/);
   });

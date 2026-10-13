@@ -57,17 +57,20 @@ describe("install.sh", () => {
     expect(r.stdout).toContain("is the launcher of squeal@hearsay 0.1.134");
   });
 
-  it.each([["claude"], ["codex"]] as const)("installs in %s alone when it is the only harness", (h) => {
-    const m = machine([h]);
-    m.publish("0.1.134");
-    const r = install(m);
-    expect(r.status).toBe(0);
-    expect(m.calls().every((c) => c.startsWith(`${h} `))).toBe(true);
-    expect(m.calls()).toHaveLength(2);
-    expect(JSON.parse(squeal(m).stdout)).toMatchObject({
-      harness: h === "claude" ? "claude-code" : "codex",
-    });
-  });
+  it.each([["claude"], ["codex"]] as const)(
+    "installs in %s alone when it is the only harness",
+    (h) => {
+      const m = machine([h]);
+      m.publish("0.1.134");
+      const r = install(m);
+      expect(r.status).toBe(0);
+      expect(m.calls().every((c) => c.startsWith(`${h} `))).toBe(true);
+      expect(m.calls()).toHaveLength(2);
+      expect(JSON.parse(squeal(m).stdout)).toMatchObject({
+        harness: h === "claude" ? "claude-code" : "codex",
+      });
+    },
+  );
 
   it("uses SQUEAL_BIN_DIR, and says nothing about the PATH when it is on it", () => {
     const m = machine();
@@ -96,12 +99,18 @@ describe("install.sh", () => {
     ]);
     expect(existsSync(launcherOf(m))).toBe(false);
     // What stays is the marketplace each harness added, which the script says how to remove.
-    expect(Object.keys(snapshot(m.home)).filter((f) => !(f in empty)).sort()).toEqual([
+    expect(
+      Object.keys(snapshot(m.home))
+        .filter((f) => !(f in empty))
+        .sort(),
+    ).toEqual([
       ".claude/plugins/installed_plugins.json",
       ".claude/plugins/known_marketplaces.json",
       ".codex/stub-marketplaces.json",
     ]);
-    expect(JSON.parse(snapshot(m.home)[".claude/plugins/installed_plugins.json"]?.slice(4) ?? "")).toEqual({
+    expect(
+      JSON.parse(snapshot(m.home)[".claude/plugins/installed_plugins.json"]?.slice(4) ?? ""),
+    ).toEqual({
       version: 2,
       plugins: {},
     });
