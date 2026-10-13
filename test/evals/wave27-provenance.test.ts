@@ -184,7 +184,7 @@ describe("S2: failures a delivery does not show by name still count", () => {
       1,
       many.map((c) => ({ ...c, ...REGRESSES })),
     );
-    expect(failed).toMatch(/^Not shown: \d+ more changed checks \(\d+ FAIL\)/m);
+    expect(failed).toMatch(/^Not shown: \d+ more changed checks \(\d+ FAIL: \d+ tests\)/m);
     const e = squealEvidence(failed, "push");
     expect([e?.failures, e?.verdict]).toEqual([200, "fail"]);
     const recovered = delivered(

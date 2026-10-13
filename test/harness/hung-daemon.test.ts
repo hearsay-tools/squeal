@@ -144,7 +144,7 @@ describe("a SIGSTOPped daemon (lessons, defect 22)", SLOW, () => {
       120_000,
       "the edit's result after SIGCONT",
     );
-    expect(recovered).toMatch(/^SQUEAL · 1 check changed at revision \d+\n/);
+    expect(recovered).toMatch(/^SQUEAL · 1 check changed \(1 test\) at revision \d+\n/);
     expect(recovered).toContain("PASS -> FAIL");
     expect(after.join("\n")).not.toContain("Not validated");
   });

@@ -75,7 +75,7 @@ describe("the idle waiter and the turn state (task 001-85)", () => {
     const batch = await hook("post-tool-batch", r);
 
     expect(waiter).toEqual(SILENT);
-    expect(context(batch)).toMatch(/^SQUEAL · 1 check changed at revision 3\n/);
+    expect(context(batch)).toMatch(/^SQUEAL · 1 check changed \(1 test\) at revision 3\n/);
     expect(context(batch)).toContain("PASS -> FAIL");
     expect(readTurn(r.store, r.consumer()).turn).toBe("in-turn");
   });
@@ -95,7 +95,7 @@ describe("the idle waiter and the turn state (task 001-85)", () => {
     const waiter = await waiterAround(r, () => r.apply(r.fail()), 5_000);
 
     expect(waiter.exitCode).toBe(2);
-    expect(waiter.stderr).toMatch(/^SQUEAL · 1 check changed at revision 3\n/);
+    expect(waiter.stderr).toMatch(/^SQUEAL · 1 check changed \(1 test\) at revision 3\n/);
     expect(waiter.stderr).toContain("PASS -> FAIL");
     // The wake starts a turn, and the prompt Claude Code sends with it has nothing left.
     expect(readTurn(r.store, r.consumer()).turn).toBe("in-turn");
@@ -117,7 +117,7 @@ describe("the idle waiter and the turn state (task 001-85)", () => {
     expect(wake.stderr).not.toContain("other > holds");
 
     const prompt = context(await hook("user-prompt-submit", r));
-    expect(prompt).toMatch(/^SQUEAL · 1 check changed at revision 4\n/);
+    expect(prompt).toMatch(/^SQUEAL · 1 check changed \(1 test\) at revision 4\n/);
     expect(prompt).toContain("FAIL  src/other.test.ts > other > holds");
     expect(prompt).not.toContain("math > adds");
   });

@@ -57,7 +57,7 @@ describe.each(PLUGINS)("transitions on $boundary, $name", (plugin) => {
     const fail = await e.hook("post-tool-batch", e.main);
     expect(fail).toMatchObject({ code: 0, stderr: "" });
     expect(fail.ms).toBeLessThan(HOOK_BUDGET_MS);
-    expect(fail.text).toMatch(/^SQUEAL · 1 check changed at revision \d+\n/);
+    expect(fail.text).toMatch(/^SQUEAL · 1 check changed \(1 test\) at revision \d+\n/);
     expect(headerRevision(fail.text ?? "")).toBe(broken.revision);
     expect(fail.text).toContain(
       `FAIL  ${ADDS}\n      PASS -> FAIL, seen by Squeal's run at revision ${broken.revision}\n      expected -1 to be 3`,
@@ -75,7 +75,7 @@ describe.each(PLUGINS)("transitions on $boundary, $name", (plugin) => {
     // FAIL -> PASS.
     const fixed = await e.edit(e.main, "math", MATH(), quiet);
     const pass = await e.hook("post-tool-batch", e.main);
-    expect(pass.text).toMatch(/^SQUEAL · 1 check changed at revision \d+\n/);
+    expect(pass.text).toMatch(/^SQUEAL · 1 check changed \(1 test\) at revision \d+\n/);
     expect(headerRevision(pass.text ?? "")).toBe(fixed.revision);
     expect(pass.text).toContain(`PASS  ${ADDS}\n      FAIL -> PASS`);
     expect(pass.text).not.toContain("FAIL  ");

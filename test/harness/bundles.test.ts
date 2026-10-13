@@ -99,7 +99,9 @@ describe("bundled hooks, recorded JSON in and JSON out", () => {
     expect(JSON.parse(subStop.stdout)).toEqual({
       hookSpecificOutput: {
         hookEventName: "SubagentStop",
-        additionalContext: expect.stringMatching(/^SQUEAL · \d check(s)? changed at revision 2\n/),
+        additionalContext: expect.stringMatching(
+          /^SQUEAL · \d checks? changed \(\d tests?\) at revision 2\n/,
+        ),
       },
     });
 
@@ -142,7 +144,9 @@ describe("bundled waiter", () => {
     const out = await waiting;
     expect(out.code).toBe(2);
     expect(out.stdout).toBe("");
-    expect(out.stderr).toMatch(/^SQUEAL · 1 check changed at revision \d+[\s\S]*PASS -> FAIL/);
+    expect(out.stderr).toMatch(
+      /^SQUEAL · 1 check changed \(1 test\) at revision \d+[\s\S]*PASS -> FAIL/,
+    );
   });
 
   it("exits 0 silently on timeout", async () => {

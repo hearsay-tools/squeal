@@ -107,7 +107,7 @@ describe.each(PLUGINS)("a second worktree, $name", (plugin) => {
     expect(e.runs(e.main)).toHaveLength(mainRuns);
 
     const delivered = await e.hook("post-tool-batch", wt2, { session_id: OTHER_SESSION });
-    expect(delivered.text).toMatch(/^SQUEAL · 1 check changed at revision \d+\n/);
+    expect(delivered.text).toMatch(/^SQUEAL · 1 check changed \(1 test\) at revision \d+\n/);
     expect(headerRevision(delivered.text ?? "")).toBe(broken.revision);
     expect(delivered.text).toContain("FAIL  test/strings.test.ts > shouts\n      PASS -> FAIL");
     expectAgrees(delivered.text, await e.status(wt2));

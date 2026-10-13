@@ -100,7 +100,9 @@ describe("every recorded Codex event", () => {
         }
         break;
       case "PostToolUse":
-        expect(json(out)).toEqual(context(event, /^SQUEAL · 1 check changed at revision 2\n/));
+        expect(json(out)).toEqual(
+          context(event, /^SQUEAL · 1 check changed \(1 test\) at revision 2\n/),
+        );
         break;
       case "Stop":
         if (active) {
@@ -110,7 +112,7 @@ describe("every recorded Codex event", () => {
           expect(json(out)).toEqual({
             decision: "block",
             reason: expect.stringMatching(
-              /^SQUEAL · 1 check changed at revision 2\n[\s\S]*PASS -> FAIL/,
+              /^SQUEAL · 1 check changed \(1 test\) at revision 2\n[\s\S]*PASS -> FAIL/,
             ),
           });
         }

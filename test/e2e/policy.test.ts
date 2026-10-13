@@ -50,7 +50,7 @@ describe.each(PLUGINS)("PreToolUse with interrupt.onRegression, $name", (plugin)
     expect(deny).toMatchObject({ code: 0, stderr: "" });
     expect(deny.ms).toBeLessThan(HOOK_BUDGET_MS);
     expect(deny.json?.hookSpecificOutput?.permissionDecision).toBe("deny");
-    expect(deny.text).toMatch(/^SQUEAL · 1 check changed at revision \d+\n/);
+    expect(deny.text).toMatch(/^SQUEAL · 1 check changed \(1 test\) at revision \d+\n/);
     expect(deny.text).toContain(`FAIL  ${ADDS}\n      PASS -> FAIL`);
     expect(deny.text).not.toContain(MULTIPLIES);
     expect(deny.text).toContain(`denied this ${plugin.editTool} call, so the edit was not applied`);
@@ -61,7 +61,7 @@ describe.each(PLUGINS)("PreToolUse with interrupt.onRegression, $name", (plugin)
 
     // The recovery is still there for the tool boundary, and only the recovery.
     const recovery = await e.hook("post-tool-batch", e.main);
-    expect(recovery.text).toMatch(/^SQUEAL · 1 check changed at revision \d+\n/);
+    expect(recovery.text).toMatch(/^SQUEAL · 1 check changed \(1 test\) at revision \d+\n/);
     expect(recovery.text).toContain(`PASS  ${MULTIPLIES}\n      FAIL -> PASS`);
     expect(recovery.text).not.toContain(ADDS);
     expectAgrees(recovery.text, await e.status(e.main));
