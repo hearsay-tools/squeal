@@ -155,11 +155,11 @@ describe.each(PLUGINS)("a bad squeal.config.json, $name", (plugin) => {
     expect((await e.ping(e.main))?.pid).toBe(first.pid);
     // Task 001-337: the processes are listed while the next step runs, so its timing holds.
     const stopped = { ...(await e.cli(e.main, ["stop"])), at: new Date().toISOString() };
-    const afterStop = daemonProcesses(e.plugin);
+    const afterStop = daemonProcesses(e);
     expect(stopped.code).toBe(0);
     const third = await e.hook("session-start", e.main, { session_id: "third-session" });
     const sessionStart = { ...third, at: new Date().toISOString() };
-    const afterSessionStart = daemonProcesses(e.plugin);
+    const afterSessionStart = daemonProcesses(e);
     await withRestartEvidence(
       e,
       { stop: stopped, afterStop, sessionStart, afterSessionStart },
