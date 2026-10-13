@@ -11,15 +11,21 @@ const servers: Server[] = [];
 
 /**
  * A stand-in daemon. `answers` maps a request type to its answers in order;
- * the last one repeats. Resolves to the request types it got, in order.
+ * the last one repeats. `onRequest` runs before each answer is sent.
+ * Resolves to the request types it got, in order.
  */
-export function fakeDaemon(path: string, answers: Record<string, Answer[]>): Promise<string[]> {
+export function fakeDaemon(
+  path: string,
+  answers: Record<string, Answer[]>,
+  onRequest: (type: string) => void = () => {},
+): Promise<string[]> {
   const seen: string[] = [];
   return new Promise((resolve) => {
     const server = createServer((socket) => {
       socket.once("data", (data) => {
         const request = JSON.parse(data.toString()) as { type: string };
         seen.push(request.type);
+        onRequest(request.type);
         const queue = answers[request.type] ?? [{ ok: true, type: request.type }];
         const answer = (queue.length > 1 ? queue.shift() : queue[0]) as Answer;
         socket.end(`${JSON.stringify({ schemaVersion: 1, ...answer })}\n`);

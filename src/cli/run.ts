@@ -1,5 +1,5 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import { resolveCommonDir } from "../core/fs/index.js";
+import { resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
 import { testFileId } from "../core/keys/index.js";
 import { formatStatus, readStatus } from "../core/status/index.js";
 import { isStoreOpenFailure, openStore } from "../core/store/index.js";
@@ -91,6 +91,7 @@ export async function runCommand(
     return 3;
   };
   const socketPath = await daemonSocket(root);
+  const before = openBefore(root);
   const response = await askDaemon(socketPath, {
     type: "run-all",
     force: flags.has("--force"),
@@ -114,7 +115,7 @@ export async function runCommand(
     io.stdout(`Run requested (request ${response.requestId}); ${allows}\n`);
     return 1;
   }
-  const joined = joinedCheckpoint(root, checkpoint);
+  const joined = joinedCheckpoint(root, checkpoint, before);
   const started = `Checkpoint ${checkpoint.id} started at revision ${checkpoint.revision}: ${filesText(root, checkpoint)}${joinedText(joined)}\n`;
   if (deadline === null) {
     io.stdout(started);
@@ -175,9 +176,7 @@ function verdictLine(
       const owner = joined === null ? checkpoint : joined.record;
       const ran = owner === null ? 0 : Math.min(owner.testFiles.length, verdict.testFiles);
       const by =
-        joined === null
-          ? "run now"
-          : `run by the ${joined.what} checkpoint ${joined.open.id} it joined`;
+        joined === null ? "run now" : `run by the ${joined.what} checkpoint ${joined.id} it joined`;
       const counts =
         owner === null
           ? files
@@ -240,31 +239,62 @@ function owedText(root: AbsolutePath, checkpoint: CheckpointRecord): string {
 
 /** The running checkpoint a request joined, as it stood when the request was recorded. */
 interface Joined {
-  readonly open: CheckpointProgress;
+  readonly id: string;
+  /** What it had done; `null` when it had ended, with the request, before `run --all` read it. */
+  readonly open: CheckpointProgress | null;
   /** Its record, `null` when the store holds none. */
   readonly record: CheckpointRecord | null;
   readonly what: "baseline" | "`run --all`";
 }
 
+/** The checkpoint open before the request was sent, which the request may join. */
+function openBefore(root: AbsolutePath): CheckpointProgress | null {
+  return inStore(root, (store) =>
+    parseCheckpointProgress(store.meta.get(checkpointMetaKey(worktreeIdFor(root)))),
+  );
+}
+
 /**
  * Task 001-217: a request the open checkpoint already runs joined it, and
- * ends when it ends; `null` when it did not.
+ * ends when it ends; `null` when it did not. A join that ended before this
+ * read left no open checkpoint (review wave-1.5, S2): it is the one open
+ * before the request that ended as the request did, at the same time.
  */
-function joinedCheckpoint(root: AbsolutePath, checkpoint: CheckpointRecord): Joined | null {
+function joinedCheckpoint(
+  root: AbsolutePath,
+  checkpoint: CheckpointRecord,
+  before: CheckpointProgress | null,
+): Joined | null {
   return inStore(root, (store): Joined | null => {
+    const own = store.checkpoints.get(checkpoint.id);
+    const joined = (id: string, open: CheckpointProgress | null): Joined => {
+      const record = store.checkpoints.get(id);
+      return { id, open, record, what: record?.kind === "baseline" ? "baseline" : "`run --all`" };
+    };
     const open = openCheckpoint(store, checkpoint);
-    if (open === null || open.id === checkpoint.id || open.owed !== undefined) return null;
-    if (store.checkpoints.get(checkpoint.id)?.end !== null) return null;
-    const record = store.checkpoints.get(open.id);
-    return { open, record, what: record?.kind === "baseline" ? "baseline" : "`run --all`" };
+    if (own?.end === null) {
+      if (open === null || open.id === checkpoint.id || open.owed !== undefined) return null;
+      return joined(open.id, open);
+    }
+    if (before === null || before.id === checkpoint.id || before.owed !== undefined) return null;
+    const owner = store.checkpoints.get(before.id);
+    const endedWith =
+      own !== null &&
+      owner !== null &&
+      owner.end === own.end &&
+      owner.completedAt === own.completedAt;
+    return endedWith ? joined(before.id, null) : null;
   });
 }
 
 /** Task 001-217: says the request joined, and what that one has done. */
 function joinedText(joined: Joined | null): string {
   if (joined === null) return "";
-  const { open, what } = joined;
-  return `, joining the ${what} checkpoint ${open.id} already running them (${open.done} of ${open.total} test files done); it ends when that one ends`;
+  const { id, open, what } = joined;
+  if (open === null) {
+    return `, joining the ${what} checkpoint ${id} already running them; both had ended when this command read them`;
+  }
+  return `, joining the ${what} checkpoint ${id} already running them (${open.done} of ${open.total} test files done); it ends when that one ends`;
 }
 
 /** The worktree's open checkpoint as the store holds it (`checkpointMetaKey`). */

@@ -104,24 +104,33 @@ function worktree() {
   return { root: repo.main, id, store, socket, file, checkpoint };
 }
 
-/** A daemon that records `record` for the request and answers pings. */
-function daemonFor(socket: string, record: CheckpointRecord, extra: Record<string, Answer[]> = {}) {
-  return fakeDaemon(socket, {
-    "run-all": [{ ok: true, type: "run-all", requestId: "r1", checkpoint: record, error: null }],
-    ping: [
-      {
-        ok: true,
-        type: "ping",
-        pid: process.pid,
-        worktreeId: record.worktreeId,
-        root: "/",
-        squealVersion: "0.0.0-test",
-        phase: "ready",
-        startedAt: Date.now(),
-      },
-    ],
-    ...extra,
-  });
+/** A daemon that records `record` for the request and answers pings; `onRequest` runs before it answers. */
+function daemonFor(
+  socket: string,
+  record: CheckpointRecord,
+  extra: Record<string, Answer[]> = {},
+  onRequest?: (type: string) => void,
+) {
+  return fakeDaemon(
+    socket,
+    {
+      "run-all": [{ ok: true, type: "run-all", requestId: "r1", checkpoint: record, error: null }],
+      ping: [
+        {
+          ok: true,
+          type: "ping",
+          pid: process.pid,
+          worktreeId: record.worktreeId,
+          root: "/",
+          squealVersion: "0.0.0-test",
+          phase: "ready",
+          startedAt: Date.now(),
+        },
+      ],
+      ...extra,
+    },
+    onRequest,
+  );
 }
 
 async function run(argv: string[], cwd: string) {
@@ -280,6 +289,71 @@ describe("run --all --wait: the checkpoint's verdict (spec 005 D1)", () => {
     );
     expect(result.second).toMatch(
       /, joining the baseline checkpoint c0 already running them \(1 of 2 test files done\); it ends when that one ends$/,
+    );
+    expect(result.code).toBe(0);
+  });
+
+  it("counts the joined checkpoint's files when both ended before run --all read the join (review wave-1.5, S2)", async () => {
+    const w = worktree();
+    w.file(A);
+    w.file(B, { validity: "pending", pending: "running" });
+    const open: CheckpointProgress = {
+      id: "c0",
+      kind: "baseline",
+      revision: 3 as RevisionNumber,
+      startedAt: Date.now(),
+      done: 1,
+      total: 2,
+    };
+    w.store.checkpoints.start({ ...open, worktreeId: w.id, testFiles: [ref(A), ref(B)] });
+    w.store.meta.set(checkpointMetaKey(w.id), JSON.stringify(open));
+    const c1 = w.checkpoint([]);
+    // The scheduler ends the joined request with its owner and clears the progress before answering.
+    await daemonFor(w.socket, c1, {}, (type) => {
+      if (type !== "run-all") return;
+      w.file(B);
+      const at = Date.now();
+      for (const id of ["c0", "c1"]) w.store.checkpoints.finish(id, "completed", at);
+      w.store.meta.delete(checkpointMetaKey(w.id));
+    });
+    const result = await run(["run", "--all", "--wait"], w.root);
+    expect(result.first).toBe(
+      "Checkpoint c1 completed at revision 3: no known failures; 2 test files, 0 already current, 2 run by the baseline checkpoint c0 it joined",
+    );
+    expect(result.second).toMatch(
+      /, joining the baseline checkpoint c0 already running them; both had ended when this command read them$/,
+    );
+    expect(result.code).toBe(0);
+  });
+
+  it("counts a request that needed nothing as already current, though a checkpoint was open (review wave-1.5, S2)", async () => {
+    const w = worktree();
+    w.file(A);
+    w.file(B);
+    const open: CheckpointProgress = {
+      id: "c0",
+      kind: "baseline",
+      revision: 3 as RevisionNumber,
+      startedAt: Date.now(),
+      done: 1,
+      total: 2,
+    };
+    w.store.checkpoints.start({ ...open, worktreeId: w.id, testFiles: [ref(A), ref(B)] });
+    w.store.meta.set(checkpointMetaKey(w.id), JSON.stringify(open));
+    const c1 = w.checkpoint([]);
+    // Completed at once (`completeAtOnce`) while c0 ran; c0 ended later, on its own.
+    await daemonFor(w.socket, c1, {}, (type) => {
+      if (type !== "run-all") return;
+      w.store.checkpoints.finish("c1", "completed", Date.now() - 1_000);
+      w.store.checkpoints.finish("c0", "completed", Date.now());
+      w.store.meta.delete(checkpointMetaKey(w.id));
+    });
+    const result = await run(["run", "--all", "--wait"], w.root);
+    expect(result.first).toBe(
+      "Checkpoint c1 completed at revision 3: no known failures; 2 test files, 2 already current, 0 run now",
+    );
+    expect(result.second).toBe(
+      "Checkpoint c1 started at revision 3: 0 test files to run, 2 already current",
     );
     expect(result.code).toBe(0);
   });
