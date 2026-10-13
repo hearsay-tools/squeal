@@ -52,6 +52,7 @@ describe.each(PLUGINS)("a second worktree, $name", (plugin) => {
           worktreeRoot: e.main,
           commit: head.trim(),
           count: main.counts.current,
+          fileLevelCount: main.fileLevelCounts?.current,
         },
       ],
     });
