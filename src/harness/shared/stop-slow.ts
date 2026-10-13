@@ -44,9 +44,9 @@ export { STOP_SLOW_WAIT_CAP_MS } from "../../core/slow/index.js";
 export const STOP_SLOW_HANDOFF_MS = HOOK_TIMEOUT_MS + 1_000;
 
 /**
- * How long before this Stop the 2 s entry may have ended the turn: the
- * harness starts both entries at once, and one that started first ran at
- * most its hook timeout.
+ * How long before this entry's process started the 2 s entry may have ended
+ * the turn: the harness starts both entries at once, and one that started
+ * first ran at most its hook timeout.
  */
 export const STOP_SLOW_HANDOFF_SLACK_MS = HOOK_TIMEOUT_MS;
 
@@ -177,15 +177,20 @@ function untold(
 
 /**
  * Whether the 2 s entry ended the turn: the consumer is idle with a
- * `StopHandoff` written since this Stop began, less
+ * `StopHandoff` written since this entry's process started, less
  * `STOP_SLOW_HANDOFF_SLACK_MS`. Only that entry's silent end writes one, in
  * the transaction that makes the consumer idle, so an idle consumer without
  * a fresh one is idle from before, and this entry waits for the 2 s entry,
  * which may not have started. `false` when none came within
  * `STOP_SLOW_HANDOFF_MS`.
+ *
+ * Task 001-326: anchored at the process's start (`performance.timeOrigin`,
+ * read in the `now` clock's frame), not at this check, which comes after the
+ * entry's Node start, policy read and store open; under load those took
+ * longer than the whole 2 s entry, and its handoff read as stale.
  */
 async function handedOver(context: HookContext, deps: HookDeps, poll: number): Promise<boolean> {
-  const since = (deps.now ?? Date.now)() - STOP_SLOW_HANDOFF_SLACK_MS;
+  const since = (deps.now ?? Date.now)() - performance.now() - STOP_SLOW_HANDOFF_SLACK_MS;
   const deadline = performance.now() + STOP_SLOW_HANDOFF_MS;
   const { store, consumer } = context;
   for (;;) {
