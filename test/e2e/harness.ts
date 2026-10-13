@@ -41,6 +41,7 @@ export { hasNodeModulesAbove, until } from "./support.js";
  */
 
 const FIXTURE = join(REPO_ROOT, "test/fixtures/e2e");
+const TMPFS = "/dev/shm";
 /** Spec 001 D9: every hook has `timeout: 2`. */
 export const HOOK_BUDGET_MS = 2_000;
 const DAEMON_WAIT_MS = 45_000;
@@ -80,6 +81,15 @@ export interface FixtureOptions {
    * `squeal init` wrote it: a node:test fixture marks a project slow this way.
    */
   readonly amendPolicy?: (policy: Record<string, unknown>) => object;
+  /**
+   * Builds the fixture, its store included, on tmpfs (`/dev/shm`) when the
+   * host has one, else under /tmp as always. For a test that times hooks
+   * against `HOOK_BUDGET_MS` (task 001-331): every write a hook makes pays
+   * an fsync, and on a disk the host shares that sync waits for its journal
+   * commit, measured at 350 ms per hook and up to 3.5 s on one, while the
+   * rest of the hook stayed under 600 ms.
+   */
+  readonly tmpfs?: boolean;
 }
 
 interface BuildOptions extends FixtureOptions {
@@ -117,7 +127,8 @@ export class E2E {
 
   static create(kind: Plugin, install: string, options: BuildOptions = {}): E2E {
     // Under /tmp: the OS temp dir can sit inside a checkout that has node_modules.
-    const base = realpathSync(mkdtempSync("/tmp/squeal-e2e-"));
+    const under = options.tmpfs === true && existsSync(TMPFS) ? TMPFS : "/tmp";
+    const base = realpathSync(mkdtempSync(join(under, "squeal-e2e-")));
     const e2e = new E2E(kind, base, realpathSync(mkdtempSync("/tmp/sq-")), install);
     try {
       e2e.#build(options);
