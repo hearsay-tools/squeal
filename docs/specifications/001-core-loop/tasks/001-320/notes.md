@@ -47,6 +47,8 @@ Each of these waits on its own work finishing: in-process hooks or CLI commands 
 
 "a bad squeal.config.json > yields one note and a running daemon" makes no `HOOK_BUDGET_MS` assertion, and its 240 s bound is far from the 5 s default. It failed once here at 52.8 s, in the first run after the edit above at load about 50. I did not capture the message. It passed in the next five runs (one alone, four in parallel) and is unchanged. If it fails again, keep the message: its waits are `registered`, `e.edit`, the `stop` CLI and `daemonReady`, each with its own bound in `test/e2e/harness.ts`.
 
+The coordinator's landing gate failed it again (codex, load about 55): `timed out after 45000 ms waiting for a ready daemon` at `test/e2e/lifecycle.test.ts:150`, the `daemonReady` wait. Run alone right after, the file passed 6 of 6. It is accepted as a load timeout and left unchanged.
+
 ## Seen beside this row, not changed
 
 - `test/harness/stop-slow-untold.test.ts` "13an S2: a pending file moved and failed between two polls blocks once" (codex) failed once in a parallel batch with these files at load about 90: decision `block`, reason not matching `FAILS_AT(2)`, at 5,098 ms. It was an assertion, not a timeout. I did not capture the reason. Injected 2.1 s stalls at the first and second poll each gave the expected reason. It then passed 8 parallel runs of the file (320 tests). If it fails again, capture the reason first.
