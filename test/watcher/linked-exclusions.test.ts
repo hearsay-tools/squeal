@@ -51,13 +51,22 @@ function ownPaths(dir: string, skip: readonly string[] = []): number {
   return count;
 }
 
+const onLinux = describe.runIf(process.platform === "linux");
+/**
+ * Each test here writes installs of 2,000 files synchronously and reconciles
+ * them in this process: seconds on a loaded runner, past the 5 s default and
+ * any 3 s wait (task 001-309).
+ */
+const LOADED_RUNNER = { timeout: 120_000 } as const;
+const WAIT_MS = 30_000;
+
 /*
  * Task 001-300 (research/nested-worktree-watch.md R3): the target of an
  * observed symlinked directory is watched without the directories git would
  * ignore under the link, were the link a directory, and without nested
  * repositories, as the root's own watch is.
  */
-describe.runIf(process.platform === "linux")("the watch of a linked directory's target", () => {
+onLinux("the watch of a linked directory's target", LOADED_RUNNER, () => {
   let root: string;
   let target: string;
   let cleanup: () => void;
@@ -106,7 +115,7 @@ describe.runIf(process.platform === "linux")("the watch of a linked directory's 
     await startFeed();
     expect(inotifyWatches() - before).toBeLessThanOrEqual(bound());
     appendFileSync(join(root, "lib/src/a.ts"), "y\n");
-    await waitFor(() => watched("lib/src/a.ts"), 3_000);
+    await waitFor(() => watched("lib/src/a.ts"), WAIT_MS);
   });
 
   it("leaves out the directories the target's own .gitignore files name", async () => {
@@ -131,21 +140,19 @@ describe.runIf(process.platform === "linux")("the watch of a linked directory's 
     const before = inotifyWatches();
     await startFeed();
     install(join(target, "node_modules"));
-    // The install's directories are reported, so the watch saw it appear. The
-    // watch reaches its 100 directories and reconciles its 2,000 files in this
-    // process: seconds on a loaded runner, so each wait is sized for one (task 001-309).
-    await waitFor(() => log.paths().some((p) => p.startsWith("lib/node_modules/")), 30_000);
-    await waitFor(() => inotifyWatches() - before <= bound(), 30_000);
+    // The install's directories are reported, so the watch saw it appear.
+    await waitFor(() => log.paths().some((p) => p.startsWith("lib/node_modules/")), WAIT_MS);
+    await waitFor(() => inotifyWatches() - before <= bound(), WAIT_MS);
     appendFileSync(join(root, "lib/index.ts"), "y\n");
-    await waitFor(() => watched("lib/index.ts"), 30_000);
-  }, 120_000);
+    await waitFor(() => watched("lib/index.ts"), WAIT_MS);
+  });
 
   it("watches a directory again once the target's .gitignore stops naming it", async () => {
     write(target, ".gitignore", "gen/\n");
     write(target, "gen/out.ts");
     await startFeed();
     writeFileSync(join(target, ".gitignore"), "\n");
-    await waitFor(() => watched("lib/gen/out.ts"), 3_000);
+    await waitFor(() => watched("lib/gen/out.ts"), WAIT_MS);
     const seen = log.batches.length;
     appendFileSync(join(root, "lib/gen/out.ts"), "y\n");
     await waitFor(
@@ -153,7 +160,7 @@ describe.runIf(process.platform === "linux")("the watch of a linked directory's 
         log.batches
           .slice(seen)
           .some((b) => b.trigger === "watch" && b.paths.some((p) => p.path === "lib/gen/out.ts")),
-      3_000,
+      WAIT_MS,
     );
   });
 });
