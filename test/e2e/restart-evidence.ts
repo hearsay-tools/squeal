@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
@@ -19,18 +19,35 @@ const run = promisify(execFile);
 const PS_FIELDS = "pid,ppid,stat,etime,pcpu,wchan:20,args";
 
 /**
- * This plugin copy's daemons with their `ps` state, wait channel and age, as
- * `daemonPids` finds them, from one `ps` that does not block the test.
+ * This fixture's daemons with their `ps` state, wait channel and age, as
+ * `daemonPids` finds them, from one `ps` that does not block the test, after
+ * the holders of the worktree's daemon lock in `/proc/locks`, read first so
+ * they are the moment of the call. Reading takes no lock, unlike `lockFree`.
  */
-export async function daemonProcesses(plugin: string): Promise<string> {
+export async function daemonProcesses(e: E2E): Promise<string> {
   const at = new Date().toISOString();
+  const holders = lockHolders(e.main);
   const ps = await run("ps", ["-eo", PS_FIELDS]).catch((error: unknown) => ({
     stdout: `ps failed: ${String(error)}`,
   }));
-  const daemon = `${join(plugin, "dist/cli/squeal.mjs")} daemon`;
+  const daemon = `${join(e.plugin, "dist/cli/squeal.mjs")} daemon`;
   const [header = "", ...rows] = ps.stdout.split("\n");
   const found = rows.filter((row) => row.includes(daemon));
-  return [at, header, ...(found.length === 0 ? ["no daemon process"] : found)].join("\n");
+  const processes = found.length === 0 ? ["no daemon process"] : found;
+  return [at, `lock holders: ${holders}`, header, ...processes].join("\n");
+}
+
+/** The `/proc/locks` lines on the daemon lock file's inode: pid and lock type. */
+function lockHolders(root: string): string {
+  try {
+    const { ino } = statSync(lockFileFor(join(root, ".git"), worktreeIdFor(root)));
+    const lines = readFileSync("/proc/locks", "utf8")
+      .split("\n")
+      .filter((line) => line.split(/\s+/).some((field) => field.endsWith(`:${ino}`)));
+    return lines.length === 0 ? "none" : lines.join("; ");
+  } catch (error) {
+    return `unread: ${String(error)}`;
+  }
 }
 
 /** What the restart did before the wait: the stop, the third SessionStart, and the daemons after each. */
@@ -75,7 +92,7 @@ async function collect(e: E2E, restart: Restart, error: unknown): Promise<string
       text: restart.sessionStart.text,
     },
     afterSessionStart: await settle(restart.afterSessionStart),
-    atFailure: await settle(daemonProcesses(e.plugin)),
+    atFailure: await settle(daemonProcesses(e)),
     ping: await settle(e.ping(e.main)),
     status:
       typeof status === "string"
