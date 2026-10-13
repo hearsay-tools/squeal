@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { squealEvidence } from "../../evals/lib/index.mjs";
 import {
   formatDelta,
   formatRegistration,
@@ -89,7 +90,7 @@ describe("split counts in deliveries (spec 005 D1, review wave 3 B1)", () => {
     const failing = [test("tests/x.test.ts", "one"), file("tests/y.test.ts")];
     const text = formatDelta(delta(recovered, { stillFailing: failing }));
     expect(text).toContain(
-      "PASS  12 checks (9 tests, 3 test files loaded) recovered (FAIL -> PASS)",
+      "PASS  12 checks recovered (FAIL -> PASS): 9 tests, 3 test files loaded",
     );
     expect(text).toContain("      still failing: 2 (1 test, 1 test file that did not load)");
 
@@ -106,7 +107,7 @@ describe("split counts in deliveries (spec 005 D1, review wave 3 B1)", () => {
   it("splits retired and unknown groups", () => {
     const gone = formatDelta(delta(mixed(2, "z").map(retired)));
     expect(gone).toContain(
-      "RESOLVED  8 checks (6 tests, 2 test files loaded) no longer reported by the runner (FAIL -> RESOLVED)",
+      "RESOLVED  8 checks no longer reported by the runner (FAIL -> RESOLVED): 6 tests, 2 test files loaded",
     );
     const unknown = formatDelta(
       delta([
@@ -131,7 +132,7 @@ describe("split counts in deliveries (spec 005 D1, review wave 3 B1)", () => {
     expect(text.length).toBeLessThanOrEqual(MESSAGE_CAP_CHARS);
     const notShown = lines(text).find((l) => l.startsWith("Not shown: "));
     expect(notShown).toMatch(
-      /^Not shown: \d+ more changed checks \(\d+ tests, \d+ test files loaded\): \d+ FAIL \(\d+ tests, \d+ test files that did not load\), 12 PASS \(9 tests, 3 test files loaded\), 200 UNKNOWN \(150 tests, 50 test files loaded\), 12 RESOLVED \(9 tests, 3 test files loaded\)\. `.+ status` lists every known failure\.$/,
+      /^Not shown: \d+ more changed checks \(\d+ FAIL: \d+ tests, \d+ test files that did not load; 12 PASS: 9 tests, 3 test files loaded; 200 UNKNOWN: 150 tests, 50 test files loaded; 12 RESOLVED: 9 tests, 3 test files loaded\)\. `.+ status` lists every known failure\.$/,
     );
     expect(lines(text).at(-1)).toMatch(/^Full output: .+ why /);
   });
@@ -156,6 +157,15 @@ describe("split counts in deliveries (spec 005 D1, review wave 3 B1)", () => {
     expect(text).toMatch(
       /\nNot shown: \d+ more known failures \(\d+ tests, \d+ test files that did not load\)\. `squeal status` lists every known failure\.\n/,
     );
+  });
+
+  it("stays readable by the eval's parser: overflow failures and collapsed recoveries counted", () => {
+    const failing = mixed(500, "e");
+    const failed = formatDelta(delta(failing.map((c) => change(c, "pass", "fail"))));
+    expect(failed).toContain("Not shown: ");
+    expect(squealEvidence(failed, "push")?.failures).toBe(failing.length);
+    const recovered = formatDelta(delta(failing.map((c) => change(c, "fail", "pass"))));
+    expect(squealEvidence(recovered, "push", failing.length)?.failures).toBe(0);
   });
 
   it("prints an inherited count whole from a header without its file-level part", () => {
