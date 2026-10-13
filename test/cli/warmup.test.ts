@@ -14,7 +14,8 @@ import { daemonSuite, SLOW, spawnCli, withStore } from "../daemon/helpers.js";
  * and every test file current, 3 without a verdict.
  */
 
-const suite = daemonSuite();
+// With the observe recorder the real build ships, so a warm-up records ignored reads (005-29).
+const suite = daemonSuite({ observe: true });
 
 /** Long enough for a progress line or two at one poll a second. */
 const HELD = `import { expect, it } from "vitest";
@@ -153,18 +154,11 @@ describe("the warm-up's ignored reads on a real daemon", SLOW, () => {
     const entry = Object.entries(stored?.files ?? {}).find(([id]) =>
       id.endsWith("\0test/build.test.ts"),
     );
-    if (entry === undefined) {
-      // A daemon whose warm-up observes no slow lane (001-311 repairs it): said, never "read none".
-      expect(out).toContain(
-        "squeal warmup: no ignored read recorded for test/build.test.ts: not observed by this warm-up",
-      );
-    } else {
-      expect(entry[1]).toEqual({ paths: ["build/out.txt"], more: 0 });
-      expect(out).toContain(
-        "Suggestions; squeal warmup applies none:\n  test/build.test.ts read 1 gitignored path, unkeyed: a change to it re-runs nothing until declared; squeal setup --input test/build.test.ts=<glob> declares one\n    build/out.txt\n",
-      );
-      expect(out).not.toContain("no ignored read recorded");
-    }
+    expect(entry?.[1]).toEqual({ paths: ["build/out.txt"], more: 0 });
+    expect(out).toContain(
+      "Suggestions; squeal warmup applies none:\n  test/build.test.ts read 1 gitignored path, unkeyed: a change to it re-runs nothing until declared; squeal setup --input test/build.test.ts=<glob> declares one\n    build/out.txt\n",
+    );
+    expect(out).not.toContain("no ignored read recorded");
     // A fast file's reads are no slow suggestion.
     expect(out).not.toContain("test/fast-build.test.ts");
     expect(readFileSync(join(repo.root, "squeal.config.json"), "utf8")).toBe(config);
