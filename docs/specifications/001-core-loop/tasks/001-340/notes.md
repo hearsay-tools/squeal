@@ -78,7 +78,7 @@ Step-down handover: a hook-spawned daemon that lands in the old daemon's last st
 
 ## Key format
 
-`open.ts`, `ensure.ts` and `cli/daemon.ts` are guarded sources, so their changes moved the guard's hash. Key format 9 is re-pinned (unreleased) to `5201949593bd318333764b88e9ba15a79327e3114a3c0fc1b8851512f9770bdb`, by this repository's convention for an unreleased format. No new seam: `open.ts` reads liveness through `ensure.ts`, which already holds the `delivery/liveness.ts` seam.
+`open.ts`, `ensure.ts` and `cli/daemon.ts` are guarded sources, so their changes moved the guard's hash. Key format 9 is re-pinned (unreleased) to `a19a039bedbf1420ae8cec6bd2d1ec1ca92c7f4b13f7e7e7d82e77f5f468fd3e` (on top of 005-34's pin, after the rebase onto 4c89381f), by this repository's convention for an unreleased format. No new seam: `open.ts` reads liveness through `ensure.ts`, which already holds the `delivery/liveness.ts` seam.
 
 ## Draft D10 amendment (for the coordinator)
 
@@ -100,4 +100,14 @@ Add to D10, after the shutdown order or beside "Status reports …":
 
 ## Verification
 
-Filled in below from the runs at the candidate.
+These runs used bundles rebuilt from this row's sources and left uncommitted, because the e2e cases run the shipped bundles. The coordinator commits the rebuild.
+
+- **The bad-config case**, `test/e2e/lifecycle.test.ts -t "bad squeal.config"` on both plugins, unchanged: 20 runs in a row, 20 passed, at load 38 to 117 (24 cores). A full suite ran beside them.
+- **That full suite** (`npx vitest run --maxWorkers=4`, before the rebase onto 4c89381f): 462 files passed, 1 failed, 1 skipped; 3,904 tests passed, 1 failed, 10 skipped, in 1,014 s. The failure is `test/runners/node-test/graph-cost.test.ts`, "re-resolves no slower than a cold build" (ratio 1.088 against < 1). It is a timing ratio under load near 100, and this row did not touch node:test.
+- **Squeal's full-suite checkpoint** (`squeal run --all --wait`, Squeal 0.1.131, after the rebase): completed at revision 31 with `Known failures: 0`, 4,390 passed and 10 skipped.
+- **Directly, after the rebase:**
+  - `test/keys/key-format.test.ts`: 27 passed.
+  - `npm run lint`: clean.
+  - `npm run typecheck`: exit 0.
+- **Directly, before the rebase:**
+  - `test/daemon/handover.test.ts`, `step-down.test.ts`, `server-handover.test.ts`, `socket-handover.test.ts`, `lifecycle.test.ts`, `open.test.ts`, `test/harness/ensure.test.ts`, `test/cli/stop-lock.test.ts` and `test/e2e/stop-gap.test.ts`: all passed.
