@@ -722,10 +722,10 @@ var init_observed = __esm({
         if (added.length === 0) return [];
         const key2 = observedMetaKey(testFile.project);
         this.store.transaction(() => {
-          const merged = parse(this.store.meta.get(key2));
-          const known2 = /* @__PURE__ */ new Set([...merged[testFile.path] ?? [], ...added]);
-          merged[testFile.path] = [...known2].sort(compare);
-          const value = Object.fromEntries(Object.entries(merged).sort(([a], [b]) => compare(a, b)));
+          const merged2 = parse(this.store.meta.get(key2));
+          const known2 = /* @__PURE__ */ new Set([...merged2[testFile.path] ?? [], ...added]);
+          merged2[testFile.path] = [...known2].sort(compare);
+          const value = Object.fromEntries(Object.entries(merged2).sort(([a], [b]) => compare(a, b)));
           this.store.meta.set(key2, JSON.stringify(value));
           this.#raw.delete(testFile.project);
         });
@@ -2812,8 +2812,8 @@ function loadPolicy(root) {
     );
   }
   const problems = [];
-  const merged = merge(SHAPE, DEFAULT_POLICY, parsed, "", problems);
-  return { policy: merged, problems };
+  const merged2 = merge(SHAPE, DEFAULT_POLICY, parsed, "", problems);
+  return { policy: merged2, problems };
 }
 function readPolicy(root) {
   return loadPolicy(root).policy;
@@ -7953,20 +7953,20 @@ var init_slow3 = __esm({
 
 // src/core/scheduler/ledger.ts
 function mergeApplied(applied) {
-  const merged = [];
+  const merged2 = [];
   let seen = /* @__PURE__ */ new Set();
   for (const { results: results2, checkpointId } of applied) {
     const ids = results2.map((r) => checkId(r.check));
-    const last = merged.at(-1);
+    const last = merged2.at(-1);
     if (last === void 0 || last.checkpointId !== checkpointId || ids.some((id2) => seen.has(id2))) {
-      merged.push({ results: [...results2], checkpointId });
+      merged2.push({ results: [...results2], checkpointId });
       seen = new Set(ids);
       continue;
     }
     last.results.push(...results2);
     for (const id2 of ids) seen.add(id2);
   }
-  return merged;
+  return merged2;
 }
 var MAX_DISCARDS, Ledger;
 var init_ledger = __esm({
@@ -34527,19 +34527,19 @@ function observedStore(store, project) {
     readPreloads,
     writePreloads(additions) {
       store.transaction(() => {
-        const merged = /* @__PURE__ */ new Set([...parsePaths(store.meta.get(preloadKey)), ...additions]);
-        store.meta.set(preloadKey, JSON.stringify([...merged].sort(compare)));
+        const merged2 = /* @__PURE__ */ new Set([...parsePaths(store.meta.get(preloadKey)), ...additions]);
+        store.meta.set(preloadKey, JSON.stringify([...merged2].sort(compare)));
       });
     },
     write(additions) {
       store.transaction(() => {
-        const merged = new Map(
+        const merged2 = new Map(
           Object.entries(parseObserved(store.meta.get(key2))).map(([f, p]) => [f, new Set(p)])
         );
         for (const [testFile, paths] of Object.entries(additions)) {
-          const known2 = merged.get(testFile) ?? /* @__PURE__ */ new Set();
+          const known2 = merged2.get(testFile) ?? /* @__PURE__ */ new Set();
           for (const path of paths) known2.add(path);
-          merged.set(testFile, known2);
+          merged2.set(testFile, known2);
           const stored = store.testFiles.get({ project, path: testFile });
           if (stored === null) continue;
           const union = [.../* @__PURE__ */ new Set([...stored.closure.paths, ...paths])].sort(compare);
@@ -34547,7 +34547,7 @@ function observedStore(store, project) {
           store.testFiles.put({ ...stored, closure: { ...stored.closure, paths: union } });
         }
         const value = Object.fromEntries(
-          [...merged].sort(([a], [b]) => compare(a, b)).map(([testFile, paths]) => [testFile, [...paths].sort(compare)])
+          [...merged2].sort(([a], [b]) => compare(a, b)).map(([testFile, paths]) => [testFile, [...paths].sort(compare)])
         );
         store.meta.set(key2, JSON.stringify(value));
       });
@@ -34834,7 +34834,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.139";
+  if (true) return "0.1.140";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -41246,9 +41246,11 @@ async function warmUp(root, io) {
   return { code: verdict, slowCandidates: candidates, ...ignoredReads(root, id2, candidates) };
 }
 function ignoredReadText(read4) {
-  const count = read4.paths.length + read4.more;
-  const listed = [...read4.paths, ...read4.more > 0 ? [`and ${read4.more} more`] : []];
-  return `${read4.path} read ${plural(count, "gitignored path")}, unkeyed: a change to ${count === 1 ? "it" : "them"} re-runs nothing until declared; squeal setup --input ${read4.path}=<glob> declares one${listed.map((p) => `
+  const bound = read4.moreAtMost === true && read4.more > 0;
+  const count = bound ? read4.paths.length : read4.paths.length + read4.more;
+  const more = read4.more > 0 ? [`and ${bound ? "up to " : ""}${read4.more} more`] : [];
+  const listed = [...read4.paths, ...more];
+  return `${read4.path} read ${bound ? "at least " : ""}${plural(count, "gitignored path")}, unkeyed: a change to ${count === 1 ? "it" : "them"} re-runs nothing until declared; squeal setup --input ${read4.path}=<glob> declares one${listed.map((p) => `
     ${p}`).join("")}`;
 }
 function ignoredReadNotes({ reads, unobserved }) {
@@ -41266,13 +41268,19 @@ function slowFileReads(record, files2, isSlow) {
   for (const ref2 of files2.filter(isSlow)) {
     const file = record?.files[testFileId(ref2)];
     if (file === void 0) unobserved.add(ref2.path);
-    else if (!reads.has(ref2.path)) reads.set(ref2.path, { path: ref2.path, ...file });
+    else reads.set(ref2.path, merged(reads.get(ref2.path), ref2.path, file));
   }
   for (const path of reads.keys()) unobserved.delete(path);
   return {
     reads: [...reads.values()].sort((a, b) => compare(a.path, b.path)),
     unobserved: [...unobserved].sort(compare)
   };
+}
+function merged(read4, path, file) {
+  if (read4 === void 0) return { path, paths: file.paths, more: file.more };
+  const paths = [.../* @__PURE__ */ new Set([...read4.paths, ...file.paths])].sort(compare);
+  const more = read4.more + file.more;
+  return more > 0 ? { path, paths, more, moreAtMost: true } : { path, paths, more };
 }
 function ignoredReads(root, id2, candidates) {
   const { policy } = loadPolicy(root);
