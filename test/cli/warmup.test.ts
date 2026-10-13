@@ -51,7 +51,9 @@ describe("squeal warmup on a real daemon", SLOW, () => {
     const out = run.stdout();
     expect(exited, `${out}${run.stderr()}`).toEqual({ code: 0, signal: null });
     const lines = out.split("\n");
-    expect(lines[0]).toMatch(/^squeal warmup: the first run covers about \d+ test files, counted/);
+    expect(lines[0]).toMatch(
+      /^squeal warmup: runs about \d+ test files, counted from the repository/,
+    );
     expect(lines[1]).toBe(`Squeal daemon spawned for ${repo.root}`);
     expect(out).toMatch(/^squeal warmup: \d+ of \d+ test files done$/m);
     expect(out).toMatch(/^Checkpoint \S+ completed at revision \d+: no known failures; /m);
@@ -59,11 +61,11 @@ describe("squeal warmup on a real daemon", SLOW, () => {
       "squeal warmup: every test file is current with no known failure. The results carry over",
     );
     everyFileCurrent(repo);
-    // A second warm-up finds every file current and runs none.
+    // A second warm-up finds every file current and still re-runs all of them (001-312).
     const again = warmup(repo);
     expect((await again.exited).code, again.stdout()).toBe(0);
     expect(again.stdout().split("\n")[0]).toMatch(
-      /^squeal warmup: the first run covers 0 of \d+ test files, those without a current result$/,
+      /^squeal warmup: runs all \d+ test files, current ones too, to record the ignored paths each reads$/,
     );
     expect(again.stdout().split("\n")[1]).toBe(`Squeal daemon alive for ${repo.root}`);
   });
@@ -195,7 +197,7 @@ describe("squeal setup --yes on a real daemon", SLOW, () => {
     expect(out).toContain(
       "Set up Claude Code here (not on the PATH, plugin not installed)?\n  no (default, --yes)",
     );
-    expect(out).toMatch(/^squeal warmup: the first run covers /m);
+    expect(out).toMatch(/^squeal warmup: runs (all|about) /m);
     expect(out).toContain("squeal warmup: every test file is current with no known failure.");
     // Setup's defaults declare build/** as an input, so the warm-up observes the slow file
     // (001-312: it never joins) and finds no ignored read outside its closure.

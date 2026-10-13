@@ -82,7 +82,7 @@ export function formatPlan(plan: SetupPlan): string {
   lines.push(
     "",
     `Codex trust: ${trustText(plan.codexTrust)}`,
-    `Warm-up: ${plan.warmup.withoutCurrentResult} of ${plan.warmup.testFiles} test files without a current result${plan.warmup.source === "store" ? "" : " (estimated: no daemon has listed them)"}`,
+    `Warm-up: runs all ${plan.warmup.testFiles} test files, ${plan.warmup.withoutCurrentResult} without a current result${plan.warmup.source === "store" ? "" : " (estimated: no daemon has listed them)"}`,
     "",
   );
   if (plan.outdated.length === 0) lines.push("Nothing is outdated.");
