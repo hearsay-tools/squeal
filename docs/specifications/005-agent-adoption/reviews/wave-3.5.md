@@ -4,7 +4,7 @@
 
 Product candidate: `a69ba49d1b9596df0d5046b999f699e8f4a069ac` (0.1.151). Actual clean checkout: `53922de1d99f7a2e298aaa57741d9e5a9265b0bf`. `git diff a69ba49d..53922de1 --name-only` lists only `docs/board.md` and this spec's `status.md`. The HEAD mismatch is N1; no product mismatch. Review range is the 005-34, 005-35 and 005-36 commits from `0cbf6429` through `6a5bf2e3`, plus their `a69ba49d` build. 001 and 006 changes are excluded.
 
-The prior findings file is `reviews/wave-3.md`; scope is B1 to B4, S1 and their nearest variants, as `tasks/wave-3.md` 005-37 requests. The 2026-10-13 wave 3.5 amendment is the current contract. No source changes, real Claude/Codex CLI or model session. Standalone probes use synthetic stores, a real checkpoint tracker, a socket stand-in and executable harness stubs. Their homes and roots are inside this worktree's ignored `node_modules/.review-00537/` directory. `/proc/self/fd/<fd>/daemon.sock` aliases that directory to fit the Unix socket path limit.
+The prior findings file is `reviews/wave-3.md`; scope is B1 to B4, S1 and their nearest variants, as `tasks/wave-3.md` 005-37 requests. The 2026-10-13 wave 3.5 amendment is the current contract. No source changes or model session. Reviewer-owned probes invoke no real Claude/Codex CLI. The repository suite includes its isolated real Codex plugin/trust integration; the parent explicitly authorized that suite unchanged after the first attempt was interrupted. Standalone probes use synthetic stores, a real checkpoint tracker, a socket stand-in and executable harness stubs. Their homes and roots are inside this worktree's ignored `node_modules/.review-00537/` directory. `/proc/self/fd/<fd>/daemon.sock` aliases that directory to fit the Unix socket path limit.
 
 All routine commands below exited 0 on clean `53922de1`. The exact build SHA's verification is **unverified** under the reviewer provenance rule; the product-identical checkout's results are verified. The full suite is the independent reviewer run, not Squeal's checkpoint.
 
@@ -92,10 +92,12 @@ exit 0
 
 ```text
 $ npx vitest run --maxWorkers=4
-IN PROGRESS, started at clean 53922de1; no completed full-suite verdict yet.
+INTERRUPTED by the reviewer, exit 143; started at clean 53922de1.
+No completed full-suite verdict. Two unchanged stop-slow timing cases had failed.
+The parent authorized one replacement capped full run, unchanged.
 ```
 
-This is the first findings commit, inside the brief's first 15 minutes. It will be extended with the one capped full-suite result. No second full run is planned. The probe's initial scratch-script failures (CJS top-level await and a stand-in handling ping as a run-all request) were fixture errors, corrected before the successful output above; they are not product findings.
+The first findings commit, `9492a24a`, was inside the brief's first 15 minutes. The reviewer interrupted the first capped attempt on discovering `test/cli/codex-trust.test.ts:307` probes real Codex and its gated integration runs plugin/trust commands with scratch HOME/CODEX_HOME. The parent clarified that the brief's restriction covers reviewer-owned probes, not the repository suite, and explicitly authorized one replacement capped run unchanged (reply `5e4f9617-911c-447e-9d01-a55fdc7e61e4`). This will be extended with its result. The first attempt is unverified, not a failed full-suite verdict. Before interruption it reported two timing failures in unchanged `test/harness/stop-slow.test.ts` (693 ms and 3,900 ms test durations); load sampled 73 to 77. Attribution to this wave is unverified. The probe's initial scratch-script failures (CJS top-level await and a stand-in handling ping as a run-all request) were fixture errors, corrected before the successful output above; they are not product findings.
 
 ## Verdict
 
@@ -137,7 +139,7 @@ The skill and references show current/pending and passed/running/queued counts w
 
 ### S2. Proven, nonblocking nearest variant: the cap sentence does not say eligible files
 
-**Location:** both `plugins/*/skills/squeal/SKILL.md`, Claude line 13 and Codex line 15; `test/harness/skill.test.ts:145` pins the sentence.
+**Location:** both `plugins/*/skills/squeal/SKILL.md`, Claude line 13 and Codex line 15; `test/harness/skill.test.ts:150` pins the sentence.
 
 005-35's brief says "at most eight eligible test files in one tier". The skill says "nor any when more than eight test files fail anew in one tier", without the eligibility qualifier. The scheduler filters forced, already-re-run and slow failures before counting the cap (`src/core/scheduler/rerun.ts:72`). The discriminating probe passes nine new failures, eight ordinary and one forced, to that real function: eight re-runs are queued, even though nine files failed anew. The original forced-run false promise is fixed; this inverse cap wording is a follow-up note under the bounded re-review rule, not a reopened blocker.
 
@@ -164,4 +166,4 @@ The skill and references show current/pending and passed/running/queued counts w
 3. Keep `FullSuiteCheckpoint.owner` on the scheduler-to-front-desk result and `RunAllResponse.owner` beside, not inside, the persisted checkpoint. Own ID means independent work; another ID means a real join; absence means an older daemon whose owner cannot be inferred. No timestamp fallback.
 4. Keep harness unanswered (`null`) distinct from declined-all (`[]`), apply explicit answers, and retain `--no-warmup` when the skill handles warm-up separately.
 5. Keep the 10,000-character delivery cap and whole status/why pointers. Both Squeal references stay in parity; the Codex-only CLI note remains deliberate.
-6. The proof wave owns real harness/model sessions. This review ran none. The single capped full suite is still pending at this first commit; its final result will be appended below.
+6. The proof wave owns real harness/model sessions. This review ran none. The parent-authorized replacement capped full suite will be recorded below. The first capped attempt was interrupted; neither its partial failures nor a pending replacement changes this bounded verdict.
