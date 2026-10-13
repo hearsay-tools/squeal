@@ -246,8 +246,17 @@ describe("atomic alarms and the adoption scoreboard", () => {
 describe("ATOMIC.md from the committed atomic results", () => {
   // The human released 0.1.131 over its a5-uncovered false passes (status, 2026-10-12): a gap
   // older than the release, closed by 001-292. Any other alarm still fails.
+  /**
+   * The human (2026-10-13): luna on a5-uncovered is the known offender, accepted
+   * at 001-292's landed 3 of 10 (run e23b55) and to be improved over time; a
+   * later run must not do worse. 3f2edd is 0.1.131's run before the fix.
+   */
+  const LUNA_A5 = "a5-uncovered.p0.codex-gpt-6-luna.";
+  const LUNA_A5_FROM = "20261013T112437Z-e23b55";
+  const LUNA_A5_CEILING = 0.3;
   const ACCEPTED = (a: { run: string; cell: string }) =>
-    a.run === "20261012T134945Z-3f2edd" && a.cell.startsWith("a5-uncovered.");
+    (a.run === "20261012T134945Z-3f2edd" && a.cell.startsWith("a5-uncovered.")) ||
+    (a.run >= LUNA_A5_FROM && a.cell.startsWith(LUNA_A5));
 
   it("shows no flag and no alarm beyond the accepted ones", () => {
     const runs = readdirSync(RESULTS)
@@ -261,5 +270,23 @@ describe("ATOMIC.md from the committed atomic results", () => {
     expect(t.groups.flatMap((g) => g.runs.flatMap((r) => r.flags))).toEqual([]);
     expect(t.alarms.filter((a) => !ACCEPTED(a))).toEqual([]);
     expect(atomicMarkdown(runs)).not.toMatch(FLAGGED);
+  });
+
+  it("keeps luna's a5-uncovered false passes at or under 3 in 10 per run from e23b55", () => {
+    interface Run {
+      run: string;
+      cells: { id: string; atomic?: { falsePass?: boolean } }[];
+    }
+    const runs = readdirSync(RESULTS)
+      .filter((f) => f.endsWith(".atomic.json"))
+      .map((f) => JSON.parse(readFileSync(join(RESULTS, f), "utf8")) as Run);
+    const checked = runs.filter((r) => r.run >= LUNA_A5_FROM);
+    expect(checked.length).toBeGreaterThanOrEqual(1);
+    for (const r of checked) {
+      const cells = r.cells.filter((c) => c.id.startsWith(LUNA_A5));
+      if (cells.length === 0) continue;
+      const falsePasses = cells.filter((c) => c.atomic?.falsePass === true).length;
+      expect(falsePasses / cells.length, r.run).toBeLessThanOrEqual(LUNA_A5_CEILING);
+    }
   });
 });
