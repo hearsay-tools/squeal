@@ -25,7 +25,11 @@ export interface IgnoredReadsOfFile {
   readonly more: number;
 }
 
-/** The last warm-up's ignored paths, by `testFileId` (`<project>\0<path>`). */
+/**
+ * The last warm-up's ignored paths, by `testFileId` (`<project>\0<path>`):
+ * every file a runner observed, with no path when it read none; a file
+ * missing was not observed (task 001-312).
+ */
 export interface IgnoredReads {
   /** The id of the checkpoint the `run-all` request created. */
   readonly checkpoint: string;
