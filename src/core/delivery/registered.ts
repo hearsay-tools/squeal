@@ -42,11 +42,15 @@ interface Parked extends Registration {
   readonly leftTime: EpochMs;
   /** The 001-224 line was said in the session (review wave 13u, B2); absent when not. */
   readonly said?: true;
+  /** The paths the consumer was told no test reads (review wave 13as, B2); absent when none. */
+  readonly uncovered?: readonly RelativePath[];
 }
 
 /** What a parked registration taken up brings back beside its revisions. */
 export interface Resumed {
   readonly said: boolean;
+  /** `uncoveredTold` when it left: told once per consumer, so not again after it returns. */
+  readonly uncovered: readonly RelativePath[];
 }
 
 /** `meta` key of a worktree's registration revisions. */
@@ -121,7 +125,7 @@ export function tellRegistered(
   const parked = unpark(store, consumer, at);
   const next = parked === null ? fresh(revision, scanned) : back(parked, revision, scanned);
   writeSlot(store, registeredMetaKey(consumer.worktreeId), consumer, stored(next));
-  return parked === null ? null : { said: parked.said === true };
+  return parked === null ? null : { said: parked.said === true, uncovered: parked.uncovered ?? [] };
 }
 
 function fresh(since: RevisionNumber, scanned: EpochMs | null): Registration {
@@ -144,22 +148,26 @@ function back(parked: Parked, revision: RevisionNumber, scanned: EpochMs | null)
 
 /**
  * Forgets `consumer`'s registration and parks it, with the revision it left
- * at and whether it was `said` the 001-224 line, for a registration of the
- * same session and agent to take up (N4, review wave 13u B2). Call inside
- * the unregistration's transaction.
+ * at, whether it was `said` the 001-224 line and the `uncovered` paths it was
+ * told, for a registration of the same session and agent to take up (N4,
+ * review waves 13u B2 and 13as B2). They expire with it. Call inside the
+ * unregistration's transaction.
  */
 export function park(
   store: Store,
   consumer: Consumer,
   at: EpochMs,
-  { said }: Resumed = { said: false },
+  { said, uncovered }: Resumed = { said: false, uncovered: [] },
 ): void {
   const key = registeredMetaKey(consumer.worktreeId);
   const current = registration(store, consumer);
   if (readSlot(store, key, consumer) !== undefined) writeSlot(store, key, consumer, null);
   if (current === null) return;
   const leftAt = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
-  const told = said ? { said: true as const } : {};
+  const told = {
+    ...(said ? { said: true as const } : {}),
+    ...(uncovered.length > 0 ? { uncovered } : {}),
+  };
   writeParked(store, consumer, at, { ...current, leftAt, leftTime: at, ...told });
 }
 
@@ -173,7 +181,12 @@ function unpark(store: Store, consumer: Consumer, at: EpochMs): Parked | null {
     return null;
   }
   if (value.leftTime < at - CONSUMER_EXPIRY_MS) return null;
-  const told = value.said === true ? { said: true as const } : {};
+  const told = {
+    ...(value.said === true ? { said: true as const } : {}),
+    ...(Array.isArray(value.uncovered)
+      ? { uncovered: value.uncovered.filter((p): p is string => typeof p === "string") }
+      : {}),
+  };
   return { ...r, leftAt: value.leftAt, leftTime: value.leftTime, ...told };
 }
 

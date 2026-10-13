@@ -41,6 +41,7 @@ import {
   waitedFor,
   writeTurn,
 } from "./turn.js";
+import { recordUncoveredTold } from "./uncovered.js";
 
 export interface DeliveryOptions {
   /** Builds `status()`; task 001-22 owns the implementation. */
@@ -283,6 +284,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
           });
           // Tasks 001-223 and 001-224: edits count from here; a resumed session was told once (B2).
           startEdits(store, consumer, header.revision, resumed?.said === true);
+          // Review wave 13as, B2: a path told before it left is not told again.
+          if (resumed !== null) recordUncoveredTold(store, consumer, resumed.uncovered);
         }
         if (inTurn) startTurn(store, consumer);
         else writeTurn(store, consumer, null);
