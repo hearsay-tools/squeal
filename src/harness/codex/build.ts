@@ -18,12 +18,18 @@ export const CODEX_MANIFEST = ".codex-plugin/plugin.json";
 /** D1: the skill's source, and where the build copies it in the Codex plugin. */
 export const SKILL_SOURCE = "plugins/claude-code/skills/squeal";
 export const CODEX_SKILL = "skills/squeal";
+/** Row 005-19: the setup skill, copied unchanged; its text names both harnesses' CLI. */
+export const SETUP_SKILL_SOURCE = "plugins/claude-code/skills/setup";
+export const CODEX_SETUP_SKILL = "skills/setup";
 
 export const CODEX_PLUGIN: PluginBuild = {
   pluginDir: CODEX_PLUGIN_DIR,
   entriesDir: "src/harness/codex/entries",
   versionedFiles: [CODEX_MANIFEST],
-  copies: [{ from: SKILL_SOURCE, to: CODEX_SKILL }],
+  copies: [
+    { from: SKILL_SOURCE, to: CODEX_SKILL },
+    { from: SETUP_SKILL_SOURCE, to: CODEX_SETUP_SKILL },
+  ],
 };
 
 /**
