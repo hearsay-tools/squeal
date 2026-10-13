@@ -1,0 +1,7 @@
+-- c's .venv/bin/python by path, main's venv activated:
+APP_FILE <S>/i/c/src/app/__init__.py MARK edited-in-c
+.CHILD (3, 13) fixture-original PARENT (3, 10)
+2 passed in 0.05s
+-- the same with VIRTUAL_ENV and PATH set to c's own environment:
+CHILD (3, 10) edited-in-c PARENT (3, 10)
+1 passed in 0.04s

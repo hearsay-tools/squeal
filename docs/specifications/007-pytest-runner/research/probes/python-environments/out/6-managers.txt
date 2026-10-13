@@ -1,0 +1,48 @@
+== Poetry Poetry (version 2.5.1)
+error: No interpreter found for Python 3.13 in virtual environments, managed installations, or search path
+-- env path
+<S>/home/.cache/pypoetry/virtualenvs/app-a6Ube3HM-py3.12
+-- new files in the project
+?? poetry.lock
+684 ms: <S>/tools/.venv/bin/poetry env info -p
+-- fresh worktree: poetry env info -p -> exit 1
+-- fresh worktree: poetry run python (creates an env?)
+Creating virtualenv app-U8PTQ08u-py3.12 in <S>/home/.cache/pypoetry/virtualenvs
+<S>/home/.cache/pypoetry/virtualenvs/app-U8PTQ08u-py3.12
+app-U8PTQ08u-py3.12
+app-a6Ube3HM-py3.12
+== PDM PDM, version 2.29.2
+error: No interpreter found for Python 3.13 in virtual environments, managed installations, or search path
+Using Python interpreter: <S>/m/pdm/.venv/bin/python (3.12)
+
+  0:00:00 🎉 All complete! 5/5
+-- new files in the project
+?? .pdm-python
+?? .python-version
+?? pdm.lock
+!! .pdm-build/
+!! .venv/
+-- .pdm-python
+<S>/m/pdm/.venv/bin/python
+420 ms: <S>/tools/.venv/bin/pdm info --python
+-- fresh worktree: pdm info --python
+WARNING: Project requires a python version of >=3.10, The virtualenv is being created for you as it cannot be matched to the right version.
+INFO: python.use_venv is on, creating a virtualenv for this project...
+Virtualenv is created successfully at <S>/m/pdm-wt/.venv
+<S>/m/pdm-wt/.venv/bin/python
+== Hatch Hatch, version 1.18.1
+error: No interpreter found for Python 3.13 in virtual environments, managed installations, or search path
+Checking dependencies
+-- env path
+<S>/home/.local/share/hatch/env/virtual/app/fP6BC0fS/app
+-- new files in the project
+170 ms: <S>/tools/.venv/bin/hatch env find
+-- fresh worktree: hatch env find
+<S>/home/.local/share/hatch/env/virtual/app/LALGrTsK/app
+exists: no
+== costs for comparison (uv, files)
+33 ms: uv python find
+63 ms: uv run --frozen --no-sync python -c pass
+26 ms: .venv/bin/python -c pass
+16 ms: .venv/bin/python -I -S -c pass
+93 ms: node <P>/envprint.mjs .venv

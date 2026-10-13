@@ -1,0 +1,25 @@
+== c runs with main's .venv (a symlinked or inherited shared env)
+APP_FILE <S>/x/main/src/app/__init__.py MARK fixture-original
+        print("APP_FILE", app.__file__, "MARK", app.MARK)
+1 failed in 0.03s
+-- the same with pythonpath = ["src", "packages/lib/src"] in [tool.pytest.ini_options]
+APP_FILE <S>/x/c/src/app/__init__.py MARK edited-in-c
+1 passed in 0.01s
+-- detection from files: editable roots outside this worktree
+app-0.1.0.dist-info OUTSIDE <S>/x/main
+lib-0.1.0.dist-info OUTSIDE <S>/x/main/packages/lib
+== setuptools and hatchling editables: what lands in site-packages
+-- setuptools: new files
+__editable__.pkg_setuptools-0.1.pth
+pkg_setuptools-0.1.dist-info
+   __editable__.pkg_setuptools-0.1.pth: <S>/x/setuptools/src
+{"url":"file://<S>/x/setuptools","dir_info":{"editable":true}}
+-- hatchling: new files
+_editable_impl_pkg_hatchling.pth
+pkg_hatchling-0.1.dist-info
+   _editable_impl_pkg_hatchling.pth: <S>/x/hatchling/src
+{"url":"file://<S>/x/hatchling","dir_info":{"editable":true}}
+-- setuptools strict mode (an import-hook finder rather than a path)
+__editable__.pkg_setuptools-0.1.pth
+pkg_setuptools-0.1.dist-info
+   __editable__.pkg_setuptools-0.1.pth: <S>/x/setuptools/build/__editable__.pkg_setuptools-0.1-py3-none-any
