@@ -115,15 +115,22 @@ export function slowTierText(header: StatusHeader, command: string): string | nu
 }
 
 /**
- * What happens to the slow files: by default Squeal runs them once the agent
- * pauses (D2's idle trigger, the `idle` wait above; task 001-317); with
- * `stop.requireSlowSuite` on Stop waits up to its bound, or, before the
- * harness's waiting entry ran in the worktree, holds the agent once (004 D9
- * as amended 2026-10-12).
+ * What happens to the slow files: by default Squeal runs the queued ones
+ * once the agent pauses (D2's idle trigger, the `idle` wait above; task
+ * 001-317). A file not run is not queued, and a pause queues nothing (with
+ * `baseline.onStart: "lookup-only"` a miss stays so), so the line claims no
+ * run for it: `run --slow` is what runs it (review wave-13ax B1, task
+ * 001-323). With `stop.requireSlowSuite` on Stop waits up to its bound, or,
+ * before the harness's waiting entry ran in the worktree, holds the agent
+ * once (004 D9 as amended 2026-10-12).
  */
 function stopText(tier: SlowTierState): string {
-  if (tier.stopWaitMs === undefined) return "Squeal runs them when the agent pauses";
-  return `Stop waits up to ${durationText(tier.stopWaitMs)} for them or holds the agent once`;
+  if (tier.stopWaitMs !== undefined) {
+    return `Stop waits up to ${durationText(tier.stopWaitMs)} for them or holds the agent once`;
+  }
+  if (tier.notRun === 0) return "Squeal runs them when the agent pauses";
+  if (tier.pending === 0) return "Squeal has not queued them";
+  return "Squeal runs the pending ones when the agent pauses and has not queued the rest";
 }
 
 function capitalized(text: string): string {
