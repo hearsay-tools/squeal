@@ -2747,6 +2747,26 @@ function moveAside(database, at2) {
   return movedTo;
 }
 
+// src/core/delivery/closure.ts
+function closureFor(store, worktreeId) {
+  const keys = /* @__PURE__ */ new Map();
+  const keyOf = (id, ref) => {
+    let byFile2 = keys.get(id);
+    if (byFile2 === void 0) {
+      byFile2 = new Map(store.testFileKeys.list(id).map((r) => [testFileId(r.testFile), r.key]));
+      keys.set(id, byFile2);
+    }
+    return byFile2.get(testFileId(ref)) ?? null;
+  };
+  return (ref) => {
+    const record = store.testFiles.get(ref);
+    if (record === null) return void 0;
+    if (record.updatedBy === worktreeId) return record.closure.paths;
+    const key = keyOf(worktreeId, ref);
+    return key !== null && key === keyOf(record.updatedBy, ref) ? record.closure.paths : void 0;
+  };
+}
+
 // src/core/delivery/registered.ts
 function registeredMetaKey(worktreeId) {
   return worktreeMetaKey("registered", worktreeId);
@@ -2781,7 +2801,7 @@ function tellRegistered(store, consumer, revision, { at: at2, scanned }) {
   const parked = unpark(store, consumer, at2);
   const next = parked === null ? fresh(revision, scanned) : back(parked, revision, scanned);
   writeSlot(store, registeredMetaKey(consumer.worktreeId), consumer, stored(next));
-  return parked === null ? null : { said: parked.said === true };
+  return parked === null ? null : { said: parked.said === true, uncovered: parked.uncovered ?? [] };
 }
 function fresh(since, scanned) {
   return scanned === null ? { since, gaps: [] } : { since, gaps: [], scanned };
@@ -2794,13 +2814,16 @@ function back(parked, revision, scanned) {
   };
   return scanned !== null && parked.scanned === scanned ? { ...r, scanned } : r;
 }
-function park(store, consumer, at2, { said } = { said: false }) {
+function park(store, consumer, at2, { said, uncovered } = { said: false, uncovered: [] }) {
   const key = registeredMetaKey(consumer.worktreeId);
   const current = registration(store, consumer);
   if (readSlot(store, key, consumer) !== void 0) writeSlot(store, key, consumer, null);
   if (current === null) return;
   const leftAt = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
-  const told = said ? { said: true } : {};
+  const told = {
+    ...said ? { said: true } : {},
+    ...uncovered.length > 0 ? { uncovered } : {}
+  };
   writeParked(store, consumer, at2, { ...current, leftAt, leftTime: at2, ...told });
 }
 function unpark(store, consumer, at2) {
@@ -2812,7 +2835,10 @@ function unpark(store, consumer, at2) {
     return null;
   }
   if (value.leftTime < at2 - CONSUMER_EXPIRY_MS) return null;
-  const told = value.said === true ? { said: true } : {};
+  const told = {
+    ...value.said === true ? { said: true } : {},
+    ...Array.isArray(value.uncovered) ? { uncovered: value.uncovered.filter((p) => typeof p === "string") } : {}
+  };
   return { ...r, leftAt: value.leftAt, leftTime: value.leftTime, ...told };
 }
 function writeParked(store, consumer, at2, value) {
@@ -2870,24 +2896,6 @@ function recordedArtifacts2(store) {
       records.set(from, byKey);
     }
     return byKey.get(key);
-  };
-}
-function closureFor(store, worktreeId) {
-  const keys = /* @__PURE__ */ new Map();
-  const keyOf = (id, ref) => {
-    let byFile2 = keys.get(id);
-    if (byFile2 === void 0) {
-      byFile2 = new Map(store.testFileKeys.list(id).map((r) => [testFileId(r.testFile), r.key]));
-      keys.set(id, byFile2);
-    }
-    return byFile2.get(testFileId(ref)) ?? null;
-  };
-  return (ref) => {
-    const record = store.testFiles.get(ref);
-    if (record === null) return void 0;
-    if (record.updatedBy === worktreeId) return record.closure.paths;
-    const key = keyOf(worktreeId, ref);
-    return key !== null && key === keyOf(record.updatedBy, ref) ? record.closure.paths : void 0;
   };
 }
 function attribute(store, consumer, entries, revision) {
@@ -3641,9 +3649,58 @@ function trimmed(state, states, keys) {
   };
 }
 
+// src/core/delivery/uncovered.ts
+var CODE = /\.(?:[cm]?[jt]sx?|py)$/;
+function uncoveredMetaKey(worktreeId) {
+  return worktreeMetaKey("uncoveredTold", worktreeId);
+}
+function tellUncovered(store, consumer, exists) {
+  return store.transaction(() => {
+    const r = registration(store, consumer);
+    const latest = store.revisions.latest(consumer.worktreeId);
+    if (r === null || latest === null) return [];
+    const { changed } = changedAfter(store, consumer.worktreeId, r, latest.number);
+    const code = [...changed].filter(
+      (p) => CODE.test(p) && !p.startsWith("dist/") && !p.includes("/dist/")
+    );
+    if (code.length === 0) return [];
+    const read3 = readByTests(store, consumer.worktreeId);
+    if (read3 === null) return [];
+    const told = uncoveredTold(store, consumer);
+    const fresh2 = code.filter((p) => !read3.has(p) && !told.includes(p) && exists(p));
+    if (fresh2.length > 0) recordUncoveredTold(store, consumer, [...told, ...fresh2]);
+    return fresh2;
+  });
+}
+function uncoveredTold(store, consumer) {
+  const value = readSlot(store, uncoveredMetaKey(consumer.worktreeId), consumer);
+  return Array.isArray(value) ? value.filter((p) => typeof p === "string") : [];
+}
+function recordUncoveredTold(store, consumer, told) {
+  const key = uncoveredMetaKey(consumer.worktreeId);
+  if (told.length > 0) writeSlot(store, key, consumer, told);
+  else if (readSlot(store, key, consumer) !== void 0) writeSlot(store, key, consumer, null);
+}
+function readByTests(store, worktreeId) {
+  const listed = store.testFileKeys.list(worktreeId);
+  if (listed.length === 0) return null;
+  const closureOf = closureFor(store, worktreeId);
+  const read3 = /* @__PURE__ */ new Set();
+  for (const { testFile } of listed) {
+    const closure = closureOf(testFile);
+    if (closure === void 0) return null;
+    read3.add(testFile.path);
+    for (const path of closure) read3.add(path);
+  }
+  return read3;
+}
+
 // src/core/delivery/expiry.ts
 function drop(store, consumer, at2) {
-  park(store, consumer, at2, { said: editsSaid(store, consumer) });
+  park(store, consumer, at2, {
+    said: editsSaid(store, consumer),
+    uncovered: uncoveredTold(store, consumer)
+  });
   store.consumers.unregister(consumer);
   forget(store, consumer);
   store.meta.set(departedMetaKey(consumer.worktreeId), String(at2));
@@ -3658,6 +3715,7 @@ function forget(store, consumer) {
   recordHarness(store, consumer, null);
   recordVersion(store, consumer, null);
   forgetEdits(store, consumer);
+  recordUncoveredTold(store, consumer, []);
 }
 
 // src/core/delivery/own-edit.ts
@@ -3822,6 +3880,7 @@ function createDelivery(store, options) {
           scanned: scannedDaemon(store, consumer.worktreeId, alive)
         });
         startEdits(store, consumer, header.revision, resumed?.said === true);
+        if (resumed !== null) recordUncoveredTold(store, consumer, resumed.uncovered);
       }
       if (inTurn) startTurn(store, consumer);
       else writeTurn(store, consumer, null);
@@ -4420,7 +4479,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.138";
+  if (true) return "0.1.139";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4682,52 +4741,10 @@ ${tail}`;
 // src/harness/shared/uncovered-edit.ts
 import { existsSync as existsSync7 } from "node:fs";
 import { join as join11 } from "node:path";
-
-// src/core/delivery/uncovered.ts
-var CODE = /\.(?:[cm]?[jt]sx?|py)$/;
-function uncoveredMetaKey(worktreeId) {
-  return worktreeMetaKey("uncoveredTold", worktreeId);
-}
-function tellUncovered(store, consumer, exists) {
-  return store.transaction(() => {
-    const r = registration(store, consumer);
-    const latest = store.revisions.latest(consumer.worktreeId);
-    if (r === null || latest === null) return [];
-    const { changed } = changedAfter(store, consumer.worktreeId, r, latest.number);
-    const code = [...changed].filter(
-      (p) => CODE.test(p) && !p.startsWith("dist/") && !p.includes("/dist/")
-    );
-    if (code.length === 0) return [];
-    const read3 = readByTests(store, consumer.worktreeId);
-    if (read3 === null) return [];
-    const key = uncoveredMetaKey(consumer.worktreeId);
-    const told = toldPaths(readSlot(store, key, consumer));
-    const fresh2 = code.filter((p) => !read3.has(p) && !told.has(p) && exists(p));
-    if (fresh2.length > 0) writeSlot(store, key, consumer, [...told, ...fresh2]);
-    return fresh2;
-  });
-}
-function readByTests(store, worktreeId) {
-  const listed = store.testFileKeys.list(worktreeId);
-  if (listed.length === 0) return null;
-  const ids = new Set(listed.map((row) => testFileId(row.testFile)));
-  const read3 = new Set(listed.map((row) => row.testFile.path));
-  let closures = 0;
-  for (const record of store.testFiles.list()) {
-    if (!ids.has(testFileId(record.testFile))) continue;
-    closures++;
-    for (const path of record.closure.paths) read3.add(path);
-  }
-  return closures < ids.size ? null : read3;
-}
-function toldPaths(value) {
-  return new Set(
-    Array.isArray(value) ? value.filter((p) => typeof p === "string") : []
-  );
-}
-
-// src/harness/shared/uncovered-edit.ts
 var SHOWN = 3;
+var UNCOVERED_LINE_CAP_CHARS = 1e3;
+var PREFIX = "SQUEAL \xB7 ";
+var CUT = "\u2026";
 function uncoveredEditLine(context) {
   if (!readPolicy(context.root).delivery.uncoveredEdits) return null;
   const paths = tellUncovered(
@@ -4735,11 +4752,23 @@ function uncoveredEditLine(context) {
     context.consumer,
     (path) => existsSync7(join11(context.root, path))
   );
-  if (paths.length === 0) return null;
-  const shown = paths.slice(0, SHOWN).join(", ");
-  const more = paths.length > SHOWN ? ` and ${paths.length - SHOWN} more` : "";
+  return paths.length === 0 ? null : fitUncovered(paths);
+}
+function fitUncovered(paths) {
   const it = paths.length === 1 ? "it" : "them";
-  return `No result for ${shown}${more}: no test Squeal runs reads ${it}. Run whatever tests ${it} yourself.`;
+  const line = (shown) => {
+    const more = paths.length - shown.length;
+    const rest = more > 0 ? ` and ${more} more` : "";
+    return `No result for ${shown.join(", ")}${rest}: no test Squeal runs reads ${it}. Run whatever tests ${it} yourself.`;
+  };
+  const fits = (text) => PREFIX.length + text.length <= UNCOVERED_LINE_CAP_CHARS;
+  for (let n = Math.min(SHOWN, paths.length); n > 0; n--) {
+    const text = line(paths.slice(0, n));
+    if (fits(text)) return text;
+  }
+  const first = paths[0] ?? "";
+  const room = UNCOVERED_LINE_CAP_CHARS - PREFIX.length - line([""]).length - CUT.length;
+  return line([`${CUT}${first.slice(first.length - room)}`]);
 }
 
 // src/harness/shared/deliver.ts

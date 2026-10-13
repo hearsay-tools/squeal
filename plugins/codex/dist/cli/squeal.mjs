@@ -34834,7 +34834,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.138";
+  if (true) return "0.1.139";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -37091,6 +37091,9 @@ init_keys();
 init_state2();
 init_state3();
 
+// src/core/delivery/closure.ts
+init_keys();
+
 // src/core/delivery/registered.ts
 init_fs();
 init_types();
@@ -37113,13 +37116,16 @@ function toRegistration(value) {
 function registration(store, consumer) {
   return toRegistration(readSlot(store, registeredMetaKey(consumer.worktreeId), consumer));
 }
-function park(store, consumer, at2, { said } = { said: false }) {
+function park(store, consumer, at2, { said, uncovered } = { said: false, uncovered: [] }) {
   const key2 = registeredMetaKey(consumer.worktreeId);
   const current2 = registration(store, consumer);
   if (readSlot(store, key2, consumer) !== void 0) writeSlot(store, key2, consumer, null);
   if (current2 === null) return;
   const leftAt = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
-  const told = said ? { said: true } : {};
+  const told = {
+    ...said ? { said: true } : {},
+    ...uncovered.length > 0 ? { uncovered } : {}
+  };
   writeParked(store, consumer, at2, { ...current2, leftAt, leftTime: at2, ...told });
 }
 function writeParked(store, consumer, at2, value) {
@@ -37401,6 +37407,24 @@ function tellRevision(store, consumer, revision) {
 // src/core/delivery/expiry.ts
 init_slots();
 init_turn();
+
+// src/core/delivery/uncovered.ts
+init_types();
+init_slots();
+function uncoveredMetaKey(worktreeId) {
+  return worktreeMetaKey("uncoveredTold", worktreeId);
+}
+function uncoveredTold(store, consumer) {
+  const value = readSlot(store, uncoveredMetaKey(consumer.worktreeId), consumer);
+  return Array.isArray(value) ? value.filter((p) => typeof p === "string") : [];
+}
+function recordUncoveredTold(store, consumer, told) {
+  const key2 = uncoveredMetaKey(consumer.worktreeId);
+  if (told.length > 0) writeSlot(store, key2, consumer, told);
+  else if (readSlot(store, key2, consumer) !== void 0) writeSlot(store, key2, consumer, null);
+}
+
+// src/core/delivery/expiry.ts
 function expireConsumers(store, now = Date.now(), options = {}) {
   const expired = [
     ...store.transaction(() => {
@@ -37456,7 +37480,10 @@ function dropGoneHarnesses(store, worktreeId, now, options) {
   return dropped;
 }
 function drop(store, consumer, at2) {
-  park(store, consumer, at2, { said: editsSaid(store, consumer) });
+  park(store, consumer, at2, {
+    said: editsSaid(store, consumer),
+    uncovered: uncoveredTold(store, consumer)
+  });
   store.consumers.unregister(consumer);
   forget(store, consumer);
   store.meta.set(departedMetaKey(consumer.worktreeId), String(at2));
@@ -37475,6 +37502,7 @@ function forget(store, consumer) {
   recordHarness(store, consumer, null);
   recordVersion(store, consumer, null);
   forgetEdits(store, consumer);
+  recordUncoveredTold(store, consumer, []);
 }
 function idle(record, cutoff) {
   return record.lastSeenAt < cutoff && (record.lastDeliveredAt ?? 0) < cutoff;
