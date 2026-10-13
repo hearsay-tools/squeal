@@ -22,7 +22,10 @@ class FakeBackend implements WatcherBackend {
     const call = this.specs.length;
     this.specs.push(spec);
     if (this.failing.has(call)) throw new Error("transient subscription failure");
-    return { close: async () => void this.closed.push(call) };
+    return {
+      update: async () => {},
+      close: async () => void this.closed.push(call),
+    };
   }
 }
 
