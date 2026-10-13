@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import { afterEach, describe, expect, it } from "vitest";
@@ -166,5 +166,72 @@ describe("squeal setup without a terminal or --yes", () => {
     expect(stderr).toContain("no terminal to ask on");
     expect(stderr).toContain("nothing changed");
     expect(git(root, ["status", "--porcelain"])).toBe("");
+  });
+});
+
+/**
+ * A `codex` on the scratch PATH whose `app-server` lists one untrusted Squeal
+ * hook and trusts it on `config/batchWrite`, logging each method to `log`;
+ * with the plugin in the scratch Codex cache. The real Codex never runs.
+ */
+function stubCodex(): { env: Record<string, string>; log: string } {
+  const env = harnessEnv(["claude", "codex"]);
+  const log = join(env.HOME as string, "codex.log");
+  writeFileSync(
+    join(env.HOME as string, "bin", "codex"),
+    `#!${process.execPath}
+const { appendFileSync } = require("node:fs");
+const hook = { key: "squeal@hearsay:hooks/hooks.json:stop:0:0", eventName: "stop", command: "node stop.mjs",
+  pluginId: "squeal@hearsay", currentHash: "sha256:1", trustStatus: "untrusted" };
+const answer = (id, result) => process.stdout.write(JSON.stringify({ id, result }) + "\\n");
+let buf = "";
+process.stdin.on("data", (d) => {
+  buf += d;
+  let i;
+  while ((i = buf.indexOf("\\n")) >= 0) {
+    const m = JSON.parse(buf.slice(0, i));
+    buf = buf.slice(i + 1);
+    if (m.id === undefined) continue;
+    appendFileSync(${JSON.stringify(log)}, m.method + "\\n");
+    if (m.method === "initialize") answer(m.id, {});
+    if (m.method === "hooks/list") answer(m.id, { data: [{ cwd: process.cwd(), hooks: [hook] }] });
+    if (m.method === "config/batchWrite") { hook.trustStatus = "trusted"; answer(m.id, {}); }
+  }
+});
+`,
+  );
+  chmodSync(join(env.HOME as string, "bin", "codex"), 0o755);
+  mkdirSync(join(env.HOME as string, ".codex/plugins/cache/hearsay/squeal/0.1.134"), {
+    recursive: true,
+  });
+  return { env, log };
+}
+
+describe("squeal setup and Codex trust", () => {
+  it("reads the plan's Codex trust through hooks/list alone", async () => {
+    const root = squealShaped();
+    const { env, log } = stubCodex();
+    const { code, stdout } = await setup(root, ["--plan", "--json"], env);
+    expect(code).toBe(0);
+    expect(JSON.parse(stdout).codexTrust).toEqual({
+      state: "untrusted",
+      hooks: 1,
+      untrusted: 1,
+      command: "squeal init --harness codex --trust",
+    });
+    expect(readFileSync(log, "utf8")).toBe("initialize\nhooks/list\n");
+  });
+
+  it("asks for the trust when Codex is chosen and has it given through init --trust", async () => {
+    const root = squealShaped();
+    const { env, log } = stubCodex();
+    const { code, stdout, stderr } = await setup(root, ["--yes", "--no-warmup"], env);
+    expect(stderr).toBe("");
+    expect(code).toBe(0);
+    expect(stdout).toContain(
+      "Codex has not trusted 1 of the plugin's 1 hooks, and skips them silently. Have Codex trust them (once per user)?\n  yes (default, --yes)\n",
+    );
+    expect(stdout).toContain("squeal init: Codex wrote the trust; its hooks now:");
+    expect(readFileSync(log, "utf8")).toContain("config/batchWrite\n");
   });
 });
