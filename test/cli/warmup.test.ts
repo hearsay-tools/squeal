@@ -197,11 +197,10 @@ describe("squeal setup --yes on a real daemon", SLOW, () => {
     );
     expect(out).toMatch(/^squeal warmup: the first run covers /m);
     expect(out).toContain("squeal warmup: every test file is current with no known failure.");
-    // Setup says what the warm-up recorded of its slow file, observed or not: a daemon
-    // without 001-311 has the warm-up join its first checkpoint, which observes nothing.
-    expect(out).toMatch(
-      /^squeal setup: (test\/build\.test\.ts read 1 gitignored path, unkeyed|no ignored read recorded for test\/build\.test\.ts: not observed by this warm-up)/m,
-    );
+    // Setup's defaults declare build/** as an input, so the warm-up observes the slow file
+    // (001-312: it never joins) and finds no ignored read outside its closure.
+    expect(out).toMatch(/^squeal setup: test\/build\.test\.ts read no ignored path$/m);
+    expect(out).not.toContain("no ignored read recorded");
     // No harness on the PATH: setup writes no instruction file, only the config's layout.
     expect(out).toMatch(/squeal setup never commits:\n {2}squeal\.config\.json\n$/);
     everyFileCurrent(repo);
