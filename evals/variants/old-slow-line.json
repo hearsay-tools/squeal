@@ -1,0 +1,12 @@
+{
+  "description": "006-52: the slow-tier line before 001-317 (0.1.145). With stop.requireSlowSuite off it ends \"Not covered by Stop's wait\" again, in place of \"Squeal runs them when the agent pauses\"; nothing else changes. Runs against 0.1.145 or later, beside the shipped arm, so one run compares the two lines (006-38 suggested the old one kept Haiku off `run --slow`).",
+  "plugin": true,
+  "patch": [
+    {
+      "files": "plugins/*/dist/**/*.mjs",
+      "find": "return \"Squeal runs them when the agent pauses\";",
+      "replace": "return \"not covered by Stop's wait\";",
+      "min": 16
+    }
+  ]
+}
