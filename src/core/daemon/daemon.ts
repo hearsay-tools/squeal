@@ -5,11 +5,11 @@ import { recordOptimizerOff } from "../state/optimizer-note.js";
 import { setBusyTimeout } from "../store/index.js";
 import type {
   AbsolutePath,
-  CheckpointRecord,
   DaemonExit,
   DaemonExitReason,
   DaemonPhase,
   EpochMs,
+  FullSuiteCheckpoint,
   FullSuiteRequest,
   Policy,
   RunnerAdapter,
@@ -484,7 +484,7 @@ class Daemon {
     this.#desk?.setPhase(phase);
   }
 
-  async #requestFullSuite(request: FullSuiteRequest): Promise<CheckpointRecord> {
+  async #requestFullSuite(request: FullSuiteRequest): Promise<FullSuiteCheckpoint> {
     await this.#starting;
     if (this.#loop === null || this.#phase === "stopping") {
       throw new Error("the daemon is not running a scheduler");

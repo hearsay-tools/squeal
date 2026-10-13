@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CheckpointRecord } from "../../src/core/types/index.js";
+import type { FullSuiteCheckpoint } from "../../src/core/types/index.js";
 import { ALL_TEST_FILES, createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 const ran = (runs: readonly { files: readonly { path: string }[] }[]) =>
@@ -13,7 +13,7 @@ describe(
       const repo = createRepo();
       const store = openRepoStore(repo.commonDir);
       const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 2 });
-      const asked: { request?: CheckpointRecord } = {};
+      const asked: { request?: FullSuiteCheckpoint } = {};
       h.runner.beforeRun = async () => {
         h.runner.beforeRun = null;
         asked.request = await h.scheduler.requestFullSuite();
@@ -24,10 +24,33 @@ describe(
       const baseline = store.runs.get(h.runner.runs[0]?.options.runId ?? "")?.checkpointId ?? "";
       expect(store.checkpoints.get(baseline)).toMatchObject({ kind: "baseline", end: "completed" });
       const { request } = asked;
-      expect(request).toMatchObject({ kind: "run-all" });
+      expect(request).toMatchObject({ kind: "run-all", owner: baseline });
       expect(store.checkpoints.get(request?.id ?? "")?.end).toBe("completed");
       expect(request?.testFiles.length).toBeGreaterThan(0);
       expect(ran(h.runner.runs)).toEqual(ALL_TEST_FILES);
+    });
+
+    it("a forced run --all joins a forced one in flight and names it as its owner (review wave-3, B4)", async () => {
+      const repo = createRepo();
+      const store = openRepoStore(repo.commonDir);
+      const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 2 });
+      await h.scheduler.start();
+      await h.scheduler.idle();
+      const baselineRuns = h.runner.runs.length;
+      const asked: { request?: FullSuiteCheckpoint } = {};
+      h.runner.beforeRun = async () => {
+        h.runner.beforeRun = null;
+        asked.request = await h.scheduler.requestFullSuite({ force: true });
+      };
+      const first = await h.scheduler.requestFullSuite({ force: true });
+      await h.scheduler.idle();
+
+      expect(first.owner).toBe(first.id);
+      expect(asked.request?.owner).toBe(first.id);
+      for (const id of [first.id, asked.request?.id ?? ""]) {
+        expect(store.checkpoints.get(id)?.end).toBe("completed");
+      }
+      expect(ran(h.runner.runs.slice(baselineRuns))).toEqual(ALL_TEST_FILES);
     });
 
     it("a forced run --all whose daemon stops mid-way completes in the next daemon, each file once", async () => {

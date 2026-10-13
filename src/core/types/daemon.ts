@@ -151,6 +151,13 @@ export interface RunAllResponse {
   readonly requestId: string;
   readonly checkpoint: CheckpointRecord | null;
   readonly error: string | null;
+  /**
+   * Set with `checkpoint`: the id of the checkpoint whose tiers do the
+   * request's work (`FullSuiteCheckpoint.owner`), another one's only when the
+   * request joined it. Absent from a daemon before 005-36, whose joins the
+   * CLI cannot tell (review wave-3, B4).
+   */
+  readonly owner?: string;
 }
 
 /**

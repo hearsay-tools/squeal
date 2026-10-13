@@ -166,6 +166,17 @@ export function parseCheckpointProgress(raw: string | null): CheckpointProgress 
   }
 }
 
+/**
+ * The checkpoint a `run --all` request recorded, and `owner`: the id of the
+ * checkpoint whose tiers do its work. Its own id when it started or completed
+ * at once, a warm-up's always (it never joins, task 001-312); the open
+ * checkpoint's when it joined that one (`Checkpoints.join`, task 001-217).
+ * The store's row holds no owner (review wave-3, B4).
+ */
+export interface FullSuiteCheckpoint extends CheckpointRecord {
+  readonly owner: string;
+}
+
 /** A `squeal run --all` request. Spec 001 D5. */
 export interface FullSuiteRequest {
   /** Run every test file, even those with a result under their current key. */
@@ -219,7 +230,7 @@ export interface Scheduler {
    */
   handleBatch(batch: CandidateBatch): Promise<void>;
   /** Spec 001 D5 `squeal run --all`: one checkpoint of kind `run-all`, run in tiers. */
-  requestFullSuite(request?: FullSuiteRequest): Promise<CheckpointRecord>;
+  requestFullSuite(request?: FullSuiteRequest): Promise<FullSuiteCheckpoint>;
   /**
    * Spec 004 D2 `squeal run --slow`: queues every slow file that is not
    * current, and lets the slow tier run behind pending fast work even while

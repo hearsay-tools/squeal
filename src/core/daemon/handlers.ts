@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import {
   type AbsolutePath,
-  type CheckpointRecord,
   type DaemonPhase,
   type DaemonResponse,
   daemonIncarnation,
   type EpochMs,
+  type FullSuiteCheckpoint,
   type FullSuiteRequest,
   PAYLOAD_SCHEMA_VERSION,
   type RevisionNumber,
@@ -38,7 +38,7 @@ export interface HandlerContext {
    * Hands a `run --all` to the scheduler once it has started. Never awaited
    * by a handler: the scheduler may be busy with a batch or a runner call.
    */
-  readonly requestFullSuite: (request: FullSuiteRequest) => Promise<CheckpointRecord>;
+  readonly requestFullSuite: (request: FullSuiteRequest) => Promise<FullSuiteCheckpoint>;
   /**
    * Hands a `run --slow` to the scheduler (spec 004 D2), like
    * `requestFullSuite`. Absent: this daemon has no slow tier.
@@ -68,7 +68,7 @@ export interface HandlerContext {
 }
 
 interface RunAllState {
-  checkpoint: CheckpointRecord | null;
+  checkpoint: FullSuiteCheckpoint | null;
   error: string | null;
 }
 
@@ -91,14 +91,18 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
   const requests = new Map<string, RunAllState>();
   const slowRequests = new Map<string, RunSlowState>();
   const syncRequests = new Map<string, SyncState>();
-  const runAll = (requestId: string, state: RunAllState): RunAllResponse => ({
-    schemaVersion: PAYLOAD_SCHEMA_VERSION,
-    ok: true,
-    type: "run-all",
-    requestId,
-    checkpoint: state.checkpoint,
-    error: state.error,
-  });
+  const runAll = (requestId: string, state: RunAllState): RunAllResponse => {
+    const answer = {
+      schemaVersion: PAYLOAD_SCHEMA_VERSION,
+      ok: true,
+      type: "run-all",
+      requestId,
+      error: state.error,
+    } as const;
+    if (state.checkpoint === null) return { ...answer, checkpoint: null };
+    const { owner, ...checkpoint } = state.checkpoint;
+    return { ...answer, checkpoint, owner };
+  };
   const runSlow = (requestId: string, state: RunSlowState): RunSlowResponse => ({
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     ok: true,

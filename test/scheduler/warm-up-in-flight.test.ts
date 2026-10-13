@@ -97,6 +97,8 @@ describe("a warm-up asked while unobserved work is in flight (review wave 13ar, 
     await h.scheduler.requestFullSuite({ force: true });
     expect((await hold.held).observeIgnored).toBeUndefined();
     const record = await h.scheduler.requestFullSuite({ force: true, observeIgnored: true });
+    // It never joins (001-312), so it owns its work (review wave-3, B4).
+    expect(record.owner).toBe(record.id);
     hold.release();
     await h.scheduler.idle();
     expectObserved(h, record);

@@ -2,8 +2,8 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
 import type {
-  CheckpointRecord,
   DaemonPhase,
+  FullSuiteCheckpoint,
   FullSuiteRequest,
   SyncAnswer,
 } from "../types/index.js";
@@ -24,7 +24,7 @@ export interface DeskEvents {
   readonly onActivity: () => void;
   /** A hook's nudge (task 001-281); absent: a nudge is only activity. */
   readonly onNudge?: () => void;
-  readonly requestFullSuite: (request: FullSuiteRequest) => Promise<CheckpointRecord>;
+  readonly requestFullSuite: (request: FullSuiteRequest) => Promise<FullSuiteCheckpoint>;
   readonly requestSlowSuite: () => Promise<SlowSuiteRequested>;
   /** A `status --wait` reconciliation pass (lessons, defect 30). */
   readonly requestSync: () => Promise<SyncAnswer>;

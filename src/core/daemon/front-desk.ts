@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { parentPort } from "node:worker_threads";
-import type { CheckpointRecord, DaemonPhase, SyncAnswer } from "../types/index.js";
+import type { DaemonPhase, FullSuiteCheckpoint, SyncAnswer } from "../types/index.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
 import { createHandlers } from "./handlers.js";
 import type { SlowSuiteRequested } from "./run-slow.js";
@@ -19,7 +19,7 @@ const post = (message: FromDesk) => port.postMessage(message);
 let phase: DaemonPhase = "starting";
 const waiting = new Map<
   string,
-  { resolve: (checkpoint: CheckpointRecord) => void; reject: (error: Error) => void }
+  { resolve: (checkpoint: FullSuiteCheckpoint) => void; reject: (error: Error) => void }
 >();
 
 const waitingSlow = new Map<
