@@ -97,7 +97,8 @@ var WORKTREE_META_ROWS = {
   rekeyedMoves: { prefix: "rekeyed-moves.", owner: "scheduler/rekeyed-moves" },
   optimizerOff: { prefix: "optimizer-off.", owner: "state/optimizer-note" },
   baselineFindings: { prefix: "state.baseline-findings.", owner: "state/baseline" },
-  stopWait: { prefix: "stop-wait:", owner: "slow/stop-wait" }
+  stopWait: { prefix: "stop-wait:", owner: "slow/stop-wait" },
+  testCommandDenied: { prefix: "test-command-denied:", owner: "delivery/test-command-denied" }
 };
 function worktreeMetaKey(row, worktreeId) {
   return `${WORKTREE_META_ROWS[row].prefix}${worktreeId}`;
@@ -128,6 +129,7 @@ var DEFAULT_POLICY = {
     requireSlowSuite: false,
     slowWaitMs: 12e4
   },
+  testCommand: { denyWhenCurrent: false },
   baseline: { onStart: "lookup-then-run-missing" },
   inputs: [],
   observe: { runtimeInputs: true },
@@ -413,6 +415,7 @@ var SHAPE = {
     requireSlowSuite: boolean2,
     slowWaitMs: atLeastZero
   },
+  testCommand: { denyWhenCurrent: boolean2 },
   baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
   inputs,
   observe: { runtimeInputs: boolean2 },
@@ -489,6 +492,10 @@ function merge(shape, defaults, given, prefix, problems) {
 function isNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
 }
+
+// src/harness/shared/deny.ts
+import { readFileSync as readFileSync5, realpathSync as realpathSync3 } from "node:fs";
+import { join as join8, resolve as resolve4 } from "node:path";
 
 // src/core/keys/closure.ts
 var CLOSURE_METHOD = "static imports plus declared inputs";
@@ -4151,6 +4158,204 @@ function livenessTitle(liveness2, revision) {
   return liveness2?.state === "alive" ? `SQUEAL \xB7 a daemon is validating again at revision ${revision}` : `SQUEAL \xB7 no daemon is validating at revision ${revision}`;
 }
 
+// src/core/delivery/test-command-denied.ts
+function testCommandDeniedMetaKey(worktreeId) {
+  return worktreeMetaKey("testCommandDenied", worktreeId);
+}
+function testCommandDenied(store, consumer) {
+  return readSlot(store, testCommandDeniedMetaKey(consumer.worktreeId), consumer) !== void 0;
+}
+function recordTestCommandDenied(store, consumer, revision) {
+  writeSlot(store, testCommandDeniedMetaKey(consumer.worktreeId), consumer, revision);
+}
+
+// src/harness/shared/test-command.ts
+function recognizeTestCommand(command, context) {
+  const words = shellWords(command);
+  if (words === null) return null;
+  return vitestCommand(words) ?? npmCommand(words, context) ?? nodeTestCommand(words, context);
+}
+function bashCommand(input) {
+  const toolInput = input.tool_input;
+  if (input.tool_name !== "Bash" || typeof toolInput !== "object" || toolInput === null) return {};
+  const { command } = toolInput;
+  return typeof command === "string" ? { command } : {};
+}
+var REPORTER = "--reporter";
+var SILENT_VALUES = /* @__PURE__ */ new Set(["true", "false", "yes", "no", "passed-only"]);
+function vitestCommand(words) {
+  const start = words[0] === "npx" ? 1 : 0;
+  if (words[start] !== "vitest" || words[start + 1] !== "run") return null;
+  const filters = [];
+  const rest = words.slice(start + 2);
+  for (let i = 0; i < rest.length; i++) {
+    const word = rest[i];
+    if (word === "--silent") {
+      const next = rest[i + 1];
+      if (next !== void 0 && !next.startsWith("-")) {
+        if (!SILENT_VALUES.has(next)) return null;
+        i++;
+      }
+    } else if (word.startsWith("--silent=")) {
+      if (!SILENT_VALUES.has(word.slice("--silent=".length))) return null;
+    } else if (word === REPORTER) {
+      const next = rest[i + 1];
+      if (next === void 0 || next.startsWith("-")) return null;
+      i++;
+    } else if (word.startsWith(`${REPORTER}=`)) {
+      if (word === `${REPORTER}=`) return null;
+    } else if (word.startsWith("-") || word === "" || /:\d+(-\d+)?$/.test(word)) {
+      return null;
+    } else {
+      filters.push(word);
+    }
+  }
+  return { runner: "vitest", filters };
+}
+function npmCommand(words, context) {
+  if (words[0] !== "npm") return null;
+  const name = words.length === 2 && words[1] === "test" ? "test" : words.length === 3 && words[1] === "run" ? words[2] : void 0;
+  if (name === void 0) return null;
+  const { scripts } = context;
+  if (!Object.hasOwn(scripts, name)) return null;
+  if (Object.hasOwn(scripts, `pre${name}`) || Object.hasOwn(scripts, `post${name}`)) return null;
+  const script = shellWords(scripts[name]);
+  return script === null ? null : vitestCommand(script);
+}
+function nodeTestCommand(words, context) {
+  const at2 = words.indexOf("--test");
+  if (at2 === -1) return null;
+  const argv = words.slice(1, at2);
+  const args = words.slice(at2 + 1);
+  if (args.length === 0) return null;
+  const project = context.nodeTest.find(
+    (p) => (p.node ?? "node") === words[0] && (p.cwd === void 0 || p.cwd === "." || p.cwd === "") && Object.keys(p.env).length === 0 && same(p.argv, argv)
+  );
+  if (project === void 0) return null;
+  if (same(project.include, args))
+    return { runner: "node-test", project: project.name, files: null };
+  if (args.some((arg) => arg.startsWith("-") || /[*?[\]{}]/.test(arg))) return null;
+  return { runner: "node-test", project: project.name, files: args };
+}
+function same(a, b) {
+  return a.length === b.length && a.every((word, i) => word === b[i]);
+}
+var SPECIAL = /[|&;()<>$`\\#*?[\]{}~!\n\r]/;
+function shellWords(text) {
+  const words = [];
+  let word = null;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (char === " " || char === "	") {
+      if (word !== null) words.push(word);
+      word = null;
+    } else if (char === "'" || char === '"') {
+      const end = text.indexOf(char, i + 1);
+      if (end === -1) return null;
+      const quoted = text.slice(i + 1, end);
+      if (char === '"' && /[$`\\]/.test(quoted)) return null;
+      word = (word ?? "") + quoted;
+      i = end;
+    } else if (SPECIAL.test(char)) {
+      return null;
+    } else {
+      word = (word ?? "") + char;
+    }
+  }
+  if (word !== null) words.push(word);
+  if (words.length === 0 || /^[A-Za-z_][A-Za-z0-9_]*=/.test(words[0])) return null;
+  return words;
+}
+
+// src/harness/shared/test-command-files.ts
+import { isAbsolute as isAbsolute3, join as join7, relative, resolve as resolve3 } from "node:path";
+function resolveTestFiles(command, listing, root, nodeTest) {
+  if (command.runner === "node-test") {
+    const own = listing.filter((ref) => ref.project === command.project);
+    if (command.files === null) return own.length === 0 ? null : own;
+    const byPath = new Map(own.map((ref) => [ref.path, ref]));
+    const files2 = command.files.map((file) => byPath.get(worktreePath(root, file) ?? ""));
+    return files2.every((ref) => ref !== void 0) ? unique(files2) : null;
+  }
+  const vitest = listing.filter((ref) => !nodeTest.has(ref.project));
+  if (new Set(vitest.map((ref) => ref.project)).size !== 1) return null;
+  if (command.filters.length === 0) return vitest;
+  const selected = /* @__PURE__ */ new Set();
+  for (const filter of command.filters) {
+    const hits = vitest.filter((ref) => matchesFilter(join7(root, ref.path), filter, root));
+    if (hits.length === 0) return null;
+    for (const ref of hits) selected.add(ref);
+  }
+  return vitest.filter((ref) => selected.has(ref));
+}
+function matchesFilter(file, filter, root) {
+  if (isAbsolute3(filter) && file.startsWith(filter)) return true;
+  const testFile = relative(root, file).toLocaleLowerCase();
+  const rel = relative(root, resolve3(root, filter));
+  const relativePath = filter.endsWith("/") ? join7(rel, "/") : rel;
+  return testFile.includes(filter.toLocaleLowerCase()) || testFile.includes(relativePath.toLocaleLowerCase());
+}
+function worktreePath(root, path) {
+  const rel = relative(root, resolve3(root, path));
+  if (rel === "" || rel === ".." || rel.startsWith("../") || isAbsolute3(rel)) return null;
+  return rel;
+}
+function unique(files2) {
+  return [...new Set(files2)];
+}
+
+// src/core/status/format-status.ts
+function shortCommit(commit) {
+  return commit === null ? "no commit" : commit.slice(0, 7);
+}
+
+// src/harness/shared/test-command-reason.ts
+var NAMED_FILES = 10;
+function testCommandReason(answer) {
+  const { revision, files: files2, states } = answer;
+  const failures = states.flatMap((s) => toKnownFailure(s, revision) ?? []);
+  const passed = states.filter((s) => s.outcome === "pass").length;
+  const skipped = states.filter((s) => s.outcome === "skip").length;
+  const counts = [
+    `${plural(passed, "check")} passed`,
+    ...skipped > 0 ? [`${skipped} skipped`] : [],
+    failures.length === 0 ? "no known failures" : plural(failures.length, "known failure"),
+    inheritedText(answer)
+  ];
+  const lines = [
+    `The command did not run. Squeal holds current results at revision ${revision} for the ${plural(files2.length, "test file")} it runs (${filesText2(files2)}): ${counts.join(", ")}.`,
+    ...failures.flatMap((f) => [
+      `  FAIL  ${formatCheck(f.check)}`,
+      ...f.summary === "" ? [] : [`        ${f.summary}`],
+      ...f.location === null ? [] : [`        at ${f.location.path}:${f.location.line}:${f.location.column}`]
+    ]),
+    "Squeal does not cover typecheck, build, or test suites it is not configured for. Run the command again to run it anyway; it will not be stopped again this session."
+  ];
+  return lines.join("\n");
+}
+function filesText2(files2) {
+  if (files2.length <= NAMED_FILES) return files2.map((f) => f.path).join(", ");
+  const byDir = /* @__PURE__ */ new Map();
+  for (const { path } of files2) {
+    const at2 = path.lastIndexOf("/");
+    const dir = at2 === -1 ? "./" : path.slice(0, at2 + 1);
+    byDir.set(dir, (byDir.get(dir) ?? 0) + 1);
+  }
+  return [...byDir].map(([dir, count]) => `${dir} (${count})`).join(", ");
+}
+function inheritedText({ states, rootOf }) {
+  const sources = /* @__PURE__ */ new Map();
+  for (const { origin } of states) {
+    if (origin?.kind !== "inherited") continue;
+    const from2 = `${rootOf(origin.worktreeId) ?? origin.worktreeId} at ${shortCommit(origin.commit)}`;
+    sources.set(from2, (sources.get(from2) ?? 0) + 1);
+  }
+  if (sources.size === 0) return "none inherited";
+  const total = [...sources.values()].reduce((a, b) => a + b, 0);
+  const from = [...sources].map(([source, count]) => `${count} from ${source}`).join(", ");
+  return `${total} inherited (${from})`;
+}
+
 // src/harness/shared/text.ts
 function denialSentence(toolName) {
   return `Squeal policy interrupt.onRegression denied this ${toolName} call, so the edit was not applied. The same call can be re-issued; this regression does not deny again.`;
@@ -4158,8 +4363,8 @@ function denialSentence(toolName) {
 
 // src/harness/shared/deny.ts
 var DENIED_KINDS = ["pass-to-fail"];
-async function denyOnRegression(context, call) {
-  if (!call.edit || !readPolicy(context.root).interrupt.onRegression) {
+async function denyOnRegression(context, policy, call) {
+  if (!call.edit || !policy.interrupt.onRegression) {
     resumeTurn(context.store, context.consumer);
     return null;
   }
@@ -4169,21 +4374,87 @@ async function denyOnRegression(context, call) {
 
 ${denialSentence(call.toolName)}`;
 }
+function testCommandOf(location2, policy, call) {
+  if (!policy.testCommand.denyWhenCurrent || call.toolName !== "Bash") return null;
+  if (call.command === void 0 || realPath(call.cwd) !== location2.root) return null;
+  return recognizeTestCommand(call.command, {
+    scripts: rootScripts(location2.root),
+    nodeTest: policy.nodeTest
+  });
+}
+function realPath(path) {
+  try {
+    return realpathSync3(resolve4(path));
+  } catch {
+    return null;
+  }
+}
+function rootScripts(root) {
+  try {
+    const manifest = JSON.parse(readFileSync5(join8(root, "package.json"), "utf8"));
+    if (!isRecord(manifest) || !isRecord(manifest.scripts)) return {};
+    return Object.fromEntries(
+      Object.entries(manifest.scripts).filter(([, text]) => typeof text === "string")
+    );
+  } catch {
+    return {};
+  }
+}
+function denyCurrentTestCommand(context, command, nodeTest, now) {
+  const { store, consumer } = context;
+  return store.transaction(() => {
+    if (store.consumers.get(consumer) === null || testCommandDenied(store, consumer)) return null;
+    const states = store.knownStates.list(consumer.worktreeId);
+    const keys = store.testFileKeys.list(consumer.worktreeId);
+    const header = readLiveHeader(store, consumer.worktreeId, now, states, null, keys);
+    if (header.daemon?.state !== "alive" || header.testFilesListed === false) return null;
+    if (header.runnerPartPending === true || header.awaitingInstall === true) return null;
+    const names = new Set(nodeTest.map((p) => p.name));
+    const files2 = resolveTestFiles(
+      command,
+      keys.map((k) => k.testFile),
+      context.root,
+      names
+    );
+    if (files2 === null) return null;
+    const rows = new Map(keys.map((row) => [testFileId(row.testFile), row]));
+    const byFile2 = /* @__PURE__ */ new Map();
+    for (const state of states) {
+      const id = testFileKeyOf(state.check);
+      byFile2.set(id, [...byFile2.get(id) ?? [], state]);
+    }
+    const answered = [];
+    for (const file of files2) {
+      const row = rows.get(testFileId(file));
+      const own = byFile2.get(testFileId(file)) ?? [];
+      if (row === void 0 || row.key === null || row.pending !== null) return null;
+      if (own.length === 0 || own.some((s) => s.validity !== "current")) return null;
+      answered.push(...own);
+    }
+    recordTestCommandDenied(store, consumer, header.revision);
+    return testCommandReason({
+      revision: header.revision,
+      files: files2,
+      states: answered,
+      rootOf: (id) => store.worktrees.get(id)?.root ?? null
+    });
+  });
+}
 
 // src/core/daemon/version.ts
-import { readFileSync as readFileSync5 } from "node:fs";
-import { dirname as dirname3, join as join7 } from "node:path";
+import { readFileSync as readFileSync6 } from "node:fs";
+import { dirname as dirname3, join as join9 } from "node:path";
 import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.134";
+  if (true) return "0.1.135";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
   let dir = dirname3(fileURLToPath(module));
   for (; ; ) {
-    const version = readVersion(join7(dir, "package.json"));
+    const version = readVersion(join9(dir, "package.json"));
     if (version !== null) return version;
     const parent = dirname3(dir);
     if (parent === dir) return null;
@@ -4192,7 +4463,7 @@ function manifestVersion(module) {
 }
 function readVersion(path) {
   try {
-    const parsed = JSON.parse(readFileSync5(path, "utf8"));
+    const parsed = JSON.parse(readFileSync6(path, "utf8"));
     if (typeof parsed !== "object" || parsed === null) return null;
     const { name, version } = parsed;
     return name === PACKAGE_NAME && typeof version === "string" ? version : null;
@@ -4297,12 +4568,18 @@ function isFork(input) {
 var EDIT_TOOLS = /* @__PURE__ */ new Set(["Edit", "Write", "NotebookEdit"]);
 var preToolUse = async (input, location2, deps) => {
   if (isFork(input)) return null;
+  const policy = readPolicy(location2.root);
+  const toolName = input.tool_name ?? "";
+  const testCommand = testCommandOf(location2, policy, {
+    toolName,
+    cwd: input.cwd,
+    ...input.command === void 0 ? {} : { command: input.command }
+  });
   return withContext(input, location2, deps, async (context) => {
-    const toolName = input.tool_name ?? "";
-    const reason = await denyOnRegression(context, {
+    const reason = await denyOnRegression(context, policy, {
       edit: EDIT_TOOLS.has(toolName),
       toolName: input.tool_name ?? "tool"
-    });
+    }) ?? (testCommand === null ? null : denyCurrentTestCommand(context, testCommand, policy.nodeTest, (deps.now ?? Date.now)()));
     if (reason === null) return null;
     return {
       output: {
@@ -4317,7 +4594,7 @@ var preToolUse = async (input, location2, deps) => {
 };
 
 // src/harness/claude-code/main.ts
-import { readFileSync as readFileSync6 } from "node:fs";
+import { readFileSync as readFileSync7 } from "node:fs";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // src/harness/claude-code/input.ts
@@ -4340,6 +4617,7 @@ function parseHookInput(text) {
     ...typeof v.agent_id === "string" && v.agent_id !== "" ? { agent_id: v.agent_id } : {},
     ...typeof v.agent_type === "string" ? { agent_type: v.agent_type } : {},
     ...typeof v.tool_name === "string" ? { tool_name: v.tool_name } : {},
+    ...bashCommand(v),
     ...toolNames(v.tool_calls),
     ...typeof v.stop_hook_active === "boolean" ? { stop_hook_active: v.stop_hook_active } : {},
     ...typeof v.source === "string" ? { source: v.source } : {}
@@ -4386,7 +4664,7 @@ function projectDir(name, deps) {
 async function runMain(name, handler) {
   let stdin = "";
   try {
-    stdin = readFileSync6(0, "utf8");
+    stdin = readFileSync7(0, "utf8");
   } catch {
   }
   const result = await runHandler(name, handler, stdin, {

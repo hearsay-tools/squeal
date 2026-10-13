@@ -92,7 +92,8 @@ var init_store = __esm({
       rekeyedMoves: { prefix: "rekeyed-moves.", owner: "scheduler/rekeyed-moves" },
       optimizerOff: { prefix: "optimizer-off.", owner: "state/optimizer-note" },
       baselineFindings: { prefix: "state.baseline-findings.", owner: "state/baseline" },
-      stopWait: { prefix: "stop-wait:", owner: "slow/stop-wait" }
+      stopWait: { prefix: "stop-wait:", owner: "slow/stop-wait" },
+      testCommandDenied: { prefix: "test-command-denied:", owner: "delivery/test-command-denied" }
     };
   }
 });
@@ -143,6 +144,7 @@ var init_policy = __esm({
         requireSlowSuite: false,
         slowWaitMs: 12e4
       },
+      testCommand: { denyWhenCurrent: false },
       baseline: { onStart: "lookup-then-run-missing" },
       inputs: [],
       observe: { runtimeInputs: true },
@@ -1426,8 +1428,8 @@ function ignoredAsDirectories(root, links) {
   if (links.length === 0) return Promise.resolve(/* @__PURE__ */ new Set());
   const scratch = join9(tmpdir(), `squeal-links-${hashOf(root)}`);
   const previous = scratchQueue.get(scratch) ?? Promise.resolve();
-  const run = previous.then(() => askAsDirectories(root, scratch, links));
-  const settled = run.then(
+  const run2 = previous.then(() => askAsDirectories(root, scratch, links));
+  const settled = run2.then(
     () => {
     },
     () => {
@@ -1437,7 +1439,7 @@ function ignoredAsDirectories(root, links) {
   void settled.then(() => {
     if (scratchQueue.get(scratch) === settled) scratchQueue.delete(scratch);
   });
-  return run;
+  return run2;
 }
 async function askAsDirectories(root, scratch, links) {
   await rm(scratch, { recursive: true, force: true });
@@ -2836,6 +2838,7 @@ var init_policy2 = __esm({
         requireSlowSuite: boolean2,
         slowWaitMs: atLeastZero
       },
+      testCommand: { denyWhenCurrent: boolean2 },
       baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
       inputs,
       observe: { runtimeInputs: boolean2 },
@@ -5507,7 +5510,7 @@ function withDeath(store, worktree, live) {
   const self = daemonIncarnation(record);
   if (self !== null && shutDown(store, id2, self)) return live;
   if (!daemonGone(worktree)) return live;
-  const runs = store.runs.inFlight(id2, record.startedAt).map((run) => ({ id: run.id, revision: run.revision, testFiles: run.testFiles }));
+  const runs = store.runs.inFlight(id2, record.startedAt).map((run2) => ({ id: run2.id, revision: run2.revision, testFiles: run2.testFiles }));
   return { ...live, died: { runs } };
 }
 function shutDown(store, worktreeId, self) {
@@ -5526,7 +5529,7 @@ function daemonGone(worktree) {
   }
 }
 function deathText(died) {
-  const during = died.runs.length === 0 ? "between runs" : `during ${died.runs.map((run) => `run ${run.id} (revision ${run.revision}) of ${files(run.testFiles)}`).join("; ")}`;
+  const during = died.runs.length === 0 ? "between runs" : `during ${died.runs.map((run2) => `run ${run2.id} (revision ${run2.revision}) of ${files(run2.testFiles)}`).join("; ")}`;
   return `died without shutting down, ${during}`;
 }
 function files(refs2) {
@@ -7459,11 +7462,11 @@ function priorityOf(file, changed, direct = NO_DIRECT_IMPORTERS) {
   return file.resultKey === null ? Priority.neverRun : Priority.transitive;
 }
 function sorted(entries2, durationOf2, first) {
-  const durations = /* @__PURE__ */ new Map();
+  const durations2 = /* @__PURE__ */ new Map();
   for (const entry2 of entries2) {
-    durations.set(entry2, durationOf2(entry2.ref) ?? Number.POSITIVE_INFINITY);
+    durations2.set(entry2, durationOf2(entry2.ref) ?? Number.POSITIVE_INFINITY);
   }
-  const duration2 = (entry2) => durations.get(entry2) ?? Number.POSITIVE_INFINITY;
+  const duration2 = (entry2) => durations2.get(entry2) ?? Number.POSITIVE_INFINITY;
   return [...entries2].sort(
     (a, b) => first * (Number(b.recent) - Number(a.recent)) || a.priority - b.priority || byDuration(duration2(a), duration2(b)) || a.seq - b.seq || compare(a.ref.project, b.ref.project) || compare(a.ref.path, b.ref.path)
   ).map((entry2) => entry2.ref);
@@ -8372,7 +8375,7 @@ var init_link_target = __esm({
 });
 
 // src/core/scheduler/observed.ts
-async function observedGrowth(context, report2, run) {
+async function observedGrowth(context, report2, run2) {
   const out = /* @__PURE__ */ new Map();
   const { keys } = context;
   if (!keys.observing || report2.observed === void 0 || report2.observed.length === 0) return out;
@@ -8410,14 +8413,14 @@ async function observedGrowth(context, report2, run) {
   await keys.track(tracked);
   for (const { testFile, add, growth } of grown) {
     const firstSeen = growth.filter(
-      (path) => listedDirectory(path) === null && path !== GIT_ENTRY && keys.firstHashedDuringRun(path, run)
+      (path) => listedDirectory(path) === null && path !== GIT_ENTRY && keys.firstHashedDuringRun(path, run2)
     );
     out.set(testFileId(testFile), { add, growth, firstSeen });
   }
   return out;
 }
-async function prepareObserved(context, report2, run) {
-  const growth = await observedGrowth(context, report2, run);
+async function prepareObserved(context, report2, run2) {
+  const growth = await observedGrowth(context, report2, run2);
   if (growth.size === 0) return NOTHING_OBSERVED;
   const paths = /* @__PURE__ */ new Set();
   for (const { growth: grown } of growth.values()) {
@@ -9922,8 +9925,8 @@ var init_keying = __esm({
        * cache held neither its hash nor its absence when the run started, so what
        * the run read cannot be compared with anything (D5 as amended, task 001-134).
        */
-      firstHashedDuringRun(path, run) {
-        return (this.#firstHashed.get(path) ?? 0) >= run;
+      firstHashedDuringRun(path, run2) {
+        return (this.#firstHashed.get(path) ?? 0) >= run2;
       }
       /** Gitignored paths watched anyway (D2), sorted. */
       extraFiles() {
@@ -10307,8 +10310,8 @@ function runnerOf(context, ref2) {
   const nodeTest = context.policy.nodeTest.some((project) => project.name === ref2.project);
   return nodeTest ? `${lane}\0${ref2.project}` : lane;
 }
-function longest(durations) {
-  const known2 = durations.filter((ms) => ms !== null);
+function longest(durations2) {
+  const known2 = durations2.filter((ms) => ms !== null);
   return known2.length === 0 ? null : Math.max(...known2);
 }
 function tierKeys(tier, ledger) {
@@ -10451,15 +10454,15 @@ var init_slow_tier = __esm({
         this.#unmark(dir, context.worktreeId);
         this.#slotMissedSince = null;
         this.#slotNoted = false;
-        let run = null;
+        let run2 = null;
         try {
           const selected = await this.host.lock.run(() => this.#select(refs2, load, slot2));
           if (selected === "claimed") return null;
           if (selected === null) return "again";
-          run = { ...selected, slot: slot2 };
-          return run;
+          run2 = { ...selected, slot: slot2 };
+          return run2;
         } finally {
-          if (run === null) slot2.release();
+          if (run2 === null) slot2.release();
         }
       }
       #unmark(dir, worktreeId) {
@@ -10632,11 +10635,11 @@ var init_slow_tier = __esm({
        * that file's artifact (review wave 4, B1), and its activity goes with it
        * (`ended`).
        */
-      recorded(run, ledger) {
+      recorded(run2, ledger) {
         const { context } = this.host.started();
         const runs = /* @__PURE__ */ new Map();
-        for (const tierFile of run.tier.files) {
-          const artifact = run.artifacts.get(tierFile.file.id) ?? [];
+        for (const tierFile of run2.tier.files) {
+          const artifact = run2.artifacts.get(tierFile.file.id) ?? [];
           for (const key2 of fileKeys(tierFile, ledger)) runs.set(key2, artifact);
         }
         recordSlowArtifacts(context.store, context.worktreeId, runs);
@@ -14035,7 +14038,7 @@ var init_change_feed = __esm({
       }
       /** Runs tasks one at a time. A failed task is reported and does not stop the queue. */
       enqueue(task) {
-        const run = this.queue.then(async () => {
+        const run2 = this.queue.then(async () => {
           if (this.closed) return;
           try {
             await task();
@@ -14045,8 +14048,8 @@ var init_change_feed = __esm({
             this.armIdle();
           }
         });
-        this.queue = run;
-        return run;
+        this.queue = run2;
+        return run2;
       }
       /** Schedules the idle reconciliation; any hint or batch pushes it back. */
       armIdle() {
@@ -15732,7 +15735,7 @@ import { mkdirSync as mkdirSync8, writeFileSync as writeFileSync4 } from "node:f
 import { join as join47 } from "node:path";
 async function execute(vitest, specs, timeoutMs, collector, signal2) {
   if (signal2?.aborted) return { end: "completed", failure: CANCELLED, hung: false };
-  const run = vitest.runTestSpecifications([...specs]).then(
+  const run2 = vitest.runTestSpecifications([...specs]).then(
     () => ({ end: "completed", failure: null, hung: false }),
     (error) => ({
       end: "crashed",
@@ -15740,8 +15743,8 @@ async function execute(vitest, specs, timeoutMs, collector, signal2) {
       hung: false
     })
   );
-  if (timeoutMs === null && signal2 === void 0) return run;
-  const first = await settleOrStop(run, timeoutMs, signal2);
+  if (timeoutMs === null && signal2 === void 0) return run2;
+  const first = await settleOrStop(run2, timeoutMs, signal2);
   if (first !== "timeout" && first !== "abort") return first;
   collector.cancelRequested = true;
   const timedOut = first === "timeout";
@@ -15749,10 +15752,10 @@ async function execute(vitest, specs, timeoutMs, collector, signal2) {
   const failure2 = timedOut ? `run exceeded timeoutMs (${timeoutMs} ms)` : CANCELLED;
   const stopped = (execution) => timedOut ? { end: "timed-out", failure: failure2, hung: false } : { ...execution, failure: execution.failure ?? failure2 };
   cancel(vitest, collector, reason2);
-  const graceful = await settleWithin(run, GRACE_BEFORE_FORCE_MS);
+  const graceful = await settleWithin(run2, GRACE_BEFORE_FORCE_MS);
   if (graceful) return stopped(graceful);
   cancel(vitest, collector, reason2);
-  const forced = await settleWithin(run, GRACE_AFTER_FORCE_MS);
+  const forced = await settleWithin(run2, GRACE_AFTER_FORCE_MS);
   if (forced) return stopped(forced);
   return {
     end: timedOut ? "timed-out" : "completed",
@@ -15760,7 +15763,7 @@ async function execute(vitest, specs, timeoutMs, collector, signal2) {
     hung: true
   };
 }
-async function settleOrStop(run, timeoutMs, signal2) {
+async function settleOrStop(run2, timeoutMs, signal2) {
   let timer;
   let onAbort;
   const stop = new Promise((resolve12) => {
@@ -15769,7 +15772,7 @@ async function settleOrStop(run, timeoutMs, signal2) {
     signal2?.addEventListener("abort", onAbort, { once: true });
   });
   try {
-    return await Promise.race([run, stop]);
+    return await Promise.race([run2, stop]);
   } finally {
     clearTimeout(timer);
     if (onAbort) signal2?.removeEventListener("abort", onAbort);
@@ -24668,9 +24671,9 @@ var require_CachedInputFileSystem = __commonJS({
         const readdir10 = this._readdirBackend.provide;
         this.readdir = /** @type {FileSystem["readdir"]} */
         readdir10;
-        const readdirSync14 = this._readdirBackend.provideSync;
+        const readdirSync15 = this._readdirBackend.provideSync;
         this.readdirSync = /** @type {SyncFileSystem["readdirSync"]} */
-        readdirSync14;
+        readdirSync15;
         this._readFileBackend = createBackend(
           duration2,
           this.fileSystem.readFile,
@@ -24680,9 +24683,9 @@ var require_CachedInputFileSystem = __commonJS({
         const readFile8 = this._readFileBackend.provide;
         this.readFile = /** @type {FileSystem["readFile"]} */
         readFile8;
-        const readFileSync26 = this._readFileBackend.provideSync;
+        const readFileSync27 = this._readFileBackend.provideSync;
         this.readFileSync = /** @type {SyncFileSystem["readFileSync"]} */
-        readFileSync26;
+        readFileSync27;
         this._readJsonBackend = createBackend(
           duration2,
           // prettier-ignore
@@ -25988,7 +25991,7 @@ var require_path = __commonJS({
       }
       return posixNormalize(maybePath);
     };
-    var join66 = (rootPath, request) => {
+    var join67 = (rootPath, request) => {
       if (!request) return normalize4(rootPath);
       const requestType = getType(request);
       switch (requestType) {
@@ -26033,7 +26036,7 @@ var require_path = __commonJS({
           cacheEntry = inner.get(request);
           if (cacheEntry !== void 0) return cacheEntry;
         }
-        cacheEntry = join66(rootPath, request);
+        cacheEntry = join67(rootPath, request);
         inner.set(request, cacheEntry);
         return cacheEntry;
       };
@@ -26149,7 +26152,7 @@ var require_path = __commonJS({
     module.exports.isRelativeRequest = isRelativeRequest;
     module.exports.isSubPath = isSubPath;
     module.exports.isWindowsPath = isWindowsPath;
-    module.exports.join = join66;
+    module.exports.join = join67;
     module.exports.normalize = normalize4;
     module.exports.toPath = toPath;
   }
@@ -29366,7 +29369,7 @@ ${this.header()}${this.contentWithInterceptors({
         onResult,
         onDone,
         rethrowIfPossible,
-        onTap = (i2, run) => run()
+        onTap = (i2, run2) => run2()
       }) {
         const { taps } = this.options;
         const tapsLength = taps.length;
@@ -29500,7 +29503,7 @@ var require_AsyncParallelBailHook = __commonJS({
             code2 += "}\n";
             return code2;
           },
-          onTap: (i2, run, done, _doneBreak) => {
+          onTap: (i2, run2, done, _doneBreak) => {
             let code2 = "";
             if (i2 > 0) {
               code2 += `if(${i2} >= _results.length) {
@@ -29508,7 +29511,7 @@ var require_AsyncParallelBailHook = __commonJS({
               code2 += done();
               code2 += "} else {\n";
             }
-            code2 += run();
+            code2 += run2();
             if (i2 > 0) code2 += "}\n";
             return code2;
           },
@@ -32164,7 +32167,7 @@ var require_ResolverFactory = __commonJS({
     var TsconfigPathsPlugin = require_TsconfigPathsPlugin();
     var UnsafeCachePlugin = require_UnsafeCachePlugin();
     var UseFilePlugin = require_UseFilePlugin();
-    var { PathType, getType, join: join66, toPath } = require_path();
+    var { PathType, getType, join: join67, toPath } = require_path();
     function processPnpApiOption(option) {
       if (option === void 0 && /** @type {NodeJS.ProcessVersions & { pnp: string }} */
       versions.pnp) {
@@ -32219,7 +32222,7 @@ var require_ResolverFactory = __commonJS({
           "The 'packageMap' option needs an absolute 'configFile' in an environment without a working directory"
         );
       }
-      return join66(cwd(), file);
+      return join67(cwd(), file);
     }
     function normalizePackageMap(packageMap) {
       if (packageMap === void 0) return null;
@@ -33780,20 +33783,20 @@ async function runNodeTest(options) {
   }
   const queue = [...runs];
   const worker = async () => {
-    for (let run = queue.shift(); run !== void 0 && !expired; run = queue.shift()) {
+    for (let run2 = queue.shift(); run2 !== void 0 && !expired; run2 = queue.shift()) {
       const group = startGroup({
         command: node,
-        args: run.args,
+        args: run2.args,
         cwd,
-        env: { ...env, SQUEAL_NODE_TEST_GRAPH: join54(options.logDir, `graph-${run.index}`) },
-        stdout: join54(options.logDir, `stdout-${run.index}.log`),
-        stderr: join54(options.logDir, `stderr-${run.index}.log`)
+        env: { ...env, SQUEAL_NODE_TEST_GRAPH: join54(options.logDir, `graph-${run2.index}`) },
+        stdout: join54(options.logDir, `stdout-${run2.index}.log`),
+        stderr: join54(options.logDir, `stderr-${run2.index}.log`)
       });
       running.add(group);
-      run.exit = await group.exited;
+      run2.exit = await group.exited;
       running.delete(group);
-      run.stream = readFileStream(
-        { testFile: run.testFile, arg: run.arg, events: readEvents(options.logDir, run.index) },
+      run2.stream = readFileStream(
+        { testFile: run2.testFile, arg: run2.arg, events: readEvents(options.logDir, run2.index) },
         paths
       );
     }
@@ -34605,7 +34608,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.134";
+  if (true) return "0.1.135";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -35552,15 +35555,11 @@ var AppServerError = class extends Error {
 async function trustCodexHooks(io, root, options) {
   let server = null;
   try {
-    server = new AppServer(
+    server = await openAppServer(
       root,
       io.env ?? process.env,
       options.timeoutMs ?? CODEX_APP_SERVER_TIMEOUT_MS
     );
-    await server.request("initialize", {
-      clientInfo: { name: "squeal", title: null, version: "0" }
-    });
-    server.notify("initialized", {});
     const listed = await listHooks(server, root, [
       options.pluginId,
       ...options.previous === void 0 ? [] : [options.previous.pluginId]
@@ -35649,6 +35648,38 @@ async function trustCodexHooks(io, root, options) {
   } finally {
     await server?.close();
   }
+}
+async function readCodexTrust(root, env, pluginId, timeoutMs = CODEX_APP_SERVER_TIMEOUT_MS) {
+  let server = null;
+  try {
+    server = await openAppServer(root, env, timeoutMs);
+    const hooks = await listHooks(server, root, [pluginId]);
+    if (hooks.length === 0) {
+      return { state: "unavailable", reason: `Codex lists no hooks of ${pluginId}` };
+    }
+    const untrusted = hooks.filter(
+      (h) => h.trustStatus === "untrusted" || h.trustStatus === "modified"
+    ).length;
+    return { state: untrusted === 0 ? "trusted" : "untrusted", hooks: hooks.length, untrusted };
+  } catch (error) {
+    if (!(error instanceof AppServerError)) throw error;
+    return { state: "unavailable", reason: error.message };
+  } finally {
+    await server?.close();
+  }
+}
+async function openAppServer(root, env, timeoutMs) {
+  const server = new AppServer(root, env, timeoutMs);
+  try {
+    await server.request("initialize", {
+      clientInfo: { name: "squeal", title: null, version: "0" }
+    });
+  } catch (error) {
+    await server.close();
+    throw error;
+  }
+  server.notify("initialized", {});
+  return server;
 }
 function terminalAsk() {
   if (process.stdin.isTTY !== true || process.stdout.isTTY !== true) return null;
@@ -36488,14 +36519,14 @@ function describe(stopped, what) {
   const commands = stopped.map(({ args }) => args);
   return { text: `stopped ${count} ${what}: ${list2}`, stopped: { what, commands } };
 }
-function entryText({ pid, args, ppid, parent: parent2, ageSeconds, killed, run }) {
+function entryText({ pid, args, ppid, parent: parent2, ageSeconds, killed, run: run2 }) {
   const ended2 = killed ? `SIGKILL after ${GRACE_MS / 1e3} s` : "SIGTERM";
   const parentText = `parent ${ppid} ${parent2}`.trimEnd();
   const facts = [
     parentText,
     `${ageText(ageSeconds)} old`,
     ended2,
-    ...run === void 0 ? [] : [run]
+    ...run2 === void 0 ? [] : [run2]
   ];
   return `${`${pid} ${args}`.trimEnd()} (${facts.join(", ")})`;
 }
@@ -36588,8 +36619,8 @@ var EscapedChildren = class {
     const own = runId === null ? void 0 : `run ${runId}`;
     const shared = runsText(overlapped);
     const stopped = (await this.#stop({ lane, since, alone })).map(({ found, stopped: stopped2 }) => {
-      const run = found.own ? own : shared;
-      return run === void 0 ? stopped2 : { ...stopped2, run };
+      const run2 = found.own ? own : shared;
+      return run2 === void 0 ? stopped2 : { ...stopped2, run: run2 };
     });
     return describe(stopped, "a test left running after its tier");
   }
@@ -39182,6 +39213,7 @@ function compareVersions(a, b) {
 
 // src/cli/setup/plan.ts
 var SETUP_PLAN_SCHEMA_VERSION = 1;
+var TRUST_COMMAND = "squeal init --harness codex --trust";
 async function buildPlan(root, options) {
   const facts = await readRepoFacts(root);
   const { policy, problems } = loadPolicy(root);
@@ -39205,17 +39237,18 @@ async function buildPlan(root, options) {
   const { gates, mentions } = scanGates(root, facts.tracked, {
     nodeTest: runners.nodeTest.length > 0
   });
+  const harnesses = readHarnesses(root, options.env);
   return {
     schemaVersion: SETUP_PLAN_SCHEMA_VERSION,
     root,
-    harnesses: readHarnesses(root, options.env),
+    harnesses,
     runners,
     config,
     instructions,
     gates,
     mentions,
     slow,
-    codexTrust: { state: "not-checked", command: "squeal init --harness codex --trust" },
+    codexTrust: await codexTrust(root, harnesses, options),
     warmup: {
       source: testFiles.source,
       testFiles: testFiles.paths.length,
@@ -39223,6 +39256,13 @@ async function buildPlan(root, options) {
     },
     outdated: outdated(config, instructions, slow)
   };
+}
+async function codexTrust(root, harnesses, options) {
+  const codex = harnesses.find((h) => h.id === "codex");
+  if (options.codexTrust !== true || codex?.onPath !== true || codex.plugin === null) {
+    return { state: "not-checked", command: TRUST_COMMAND };
+  }
+  return { ...await readCodexTrust(root, options.env, PLUGIN_ID), command: TRUST_COMMAND };
 }
 function readRunners(facts, policy, raw) {
   const deps = (value) => isRecord(value) ? Object.keys(value) : [];
@@ -40794,6 +40834,193 @@ async function ended(root, socketPath, checkpoint, deadline) {
 // src/cli/setup/command.ts
 init_fs();
 
+// src/cli/setup/ask.ts
+import { createInterface as createInterface2 } from "node:readline";
+function terminalAsker(terminal = { input: process.stdin, output: process.stdout }) {
+  if (terminal.input.isTTY !== true || terminal.output.isTTY !== true) return null;
+  const rl = createInterface2({ input: terminal.input, output: terminal.output, terminal: false });
+  const lines = rl[Symbol.asyncIterator]();
+  let ended2 = false;
+  return {
+    ask: async (question) => {
+      terminal.output.write(question);
+      if (ended2) return "";
+      const next = await lines.next();
+      if (next.done === true) {
+        ended2 = true;
+        return "";
+      }
+      return next.value;
+    },
+    close: () => rl.close()
+  };
+}
+
+// src/cli/setup/flow.ts
+init_policy2();
+import { execFileSync } from "node:child_process";
+
+// src/cli/warmup.ts
+init_policy2();
+init_fs();
+init_files();
+init_classify();
+init_text();
+init_types();
+
+// src/cli/start.ts
+import { setTimeout as sleep11 } from "node:timers/promises";
+var SPAWN_WAIT_MS = 1e4;
+async function startCommand(args, io) {
+  if (args.length > 1 || args[0]?.startsWith("-")) {
+    io.stderr("usage: squeal start [root]\n");
+    return 2;
+  }
+  const root = worktreeRoot(args[0], io);
+  if (root === null) return 1;
+  const cli = process.argv[1];
+  const result = await ensureDaemon(root, cli === void 0 ? {} : { cli });
+  if (result === "unavailable") {
+    io.stderr(`squeal: no daemon could be reached or started for ${root}
+`);
+    return 1;
+  }
+  if (result === "spawned") {
+    const deadline = Date.now() + SPAWN_WAIT_MS;
+    while ((await probeDaemon(root, 100)).state !== "alive") {
+      if (Date.now() > deadline) {
+        io.stderr(`squeal: spawned a daemon for ${root}, but it did not answer
+`);
+        return 1;
+      }
+      await sleep11(50);
+    }
+  }
+  io.stdout(`Squeal daemon ${result} for ${root}
+
+`);
+  const now = io.now ?? Date.now;
+  io.stdout(formatStatus(readStatus(root, { now }), now(), statusCommand(io.env ?? process.env)));
+  return 0;
+}
+
+// src/cli/warmup.ts
+var WARMUP_USAGE = "usage: squeal warmup\n";
+var SLOW_CANDIDATE_MS = 3e4;
+var PROGRESS_POLL_MS = 1e3;
+async function warmupCommand(args, io) {
+  if (args.length > 0) {
+    io.stderr(`squeal warmup: takes no arguments
+${WARMUP_USAGE}`);
+    return 2;
+  }
+  const cwd = io.cwd ?? process.cwd();
+  const root = findWorktreeRoot(cwd);
+  if (root === null) {
+    io.stderr(`squeal warmup: ${cwd} is not inside a git worktree
+`);
+    return 1;
+  }
+  const result = await warmUp(root, io);
+  const suggestions = [
+    ...result.slowCandidates.map(
+      (c) => `${c.path} ran ${Math.round(c.durationMs / 1e3)} s, over ${SLOW_CANDIDATE_MS / 1e3} s: squeal setup --slow ${c.path} runs it in the slow tier`
+    ),
+    ...ignoredPathSuggestions(root)
+  ];
+  if (suggestions.length > 0) {
+    io.stdout(
+      `
+Suggestions; squeal warmup applies none:
+${suggestions.map((s) => `  ${s}
+`).join("")}`
+    );
+  }
+  return result.code;
+}
+async function warmUp(root, io) {
+  const { testFiles } = await readRepoFacts(root);
+  const toRun2 = testFiles.paths.length - (testFiles.current ?? 0);
+  io.stdout(
+    testFiles.source === "store" ? `squeal warmup: the first run covers ${toRun2} of ${plural(testFiles.paths.length, "test file")}, those without a current result
+` : `squeal warmup: the first run covers about ${plural(toRun2, "test file")}, counted from the repository (no daemon has listed them yet)
+`
+  );
+  let started2 = "";
+  const startIo = { ...io, stdout: (text2) => started2 += text2 };
+  if (await startCommand([root], startIo) !== 0) {
+    io.stdout("No verdict: no daemon could be started for the warm-up; see above\n");
+    io.stdout(verdictText(3));
+    return { code: 3, slowCandidates: [] };
+  }
+  io.stdout(`${started2.split("\n")[0]}
+`);
+  const id2 = worktreeIdFor(root);
+  let running = true;
+  const progress2 = reportProgress(root, id2, io, () => running);
+  let code;
+  try {
+    code = await runCommand(runAllArgs(), io);
+  } finally {
+    running = false;
+    await progress2;
+  }
+  const verdict = code === 0 || code === 1 ? code : 3;
+  io.stdout(verdictText(verdict));
+  return {
+    code: verdict,
+    slowCandidates: verdict === 3 ? [] : slowCandidates2(root, id2)
+  };
+}
+function runAllArgs() {
+  return ["--all", "--wait"];
+}
+function ignoredPathSuggestions(_root) {
+  return [];
+}
+function verdictText(code) {
+  switch (code) {
+    case 0:
+      return "\nsqueal warmup: every test file is current with no known failure. The results carry over to this repository's other worktrees where their inputs match.\n";
+    case 1:
+      return "\nsqueal warmup: every test file has a result, with the known failures above. The results carry over to this repository's other worktrees where their inputs match.\n";
+    case 3:
+      return "\nsqueal warmup: no verdict, so some test files may still lack a result; run squeal warmup again, or npx vitest run.\n";
+  }
+}
+async function reportProgress(root, id2, io, running) {
+  let last = "";
+  while (running()) {
+    await new Promise((resolve12) => setTimeout(resolve12, PROGRESS_POLL_MS));
+    if (!running()) return;
+    const open4 = withStatusStore(
+      root,
+      {},
+      ({ store }) => parseCheckpointProgress(store.meta.get(checkpointMetaKey(id2)))
+    );
+    if (open4 === null || "available" in open4) continue;
+    const line = `${open4.done} of ${plural(open4.total, "test file")} done`;
+    if (line === last) continue;
+    last = line;
+    io.stdout(`squeal warmup: ${line}
+`);
+  }
+}
+function slowCandidates2(root, id2) {
+  const { policy } = loadPolicy(root);
+  const isSlow = slowFiles(policy, policy.nodeTest);
+  const found = withStatusStore(root, {}, ({ store }) => durations(store, id2));
+  if (!Array.isArray(found)) return [];
+  return found.filter((f) => f.durationMs > SLOW_CANDIDATE_MS && !isSlow(f.ref)).map(({ ref: ref2, durationMs }) => ({ path: ref2.path, durationMs })).sort((a, b) => b.durationMs - a.durationMs);
+}
+function durations(store, id2) {
+  return store.testFileKeys.list(id2).flatMap((row) => {
+    if (row.key === null) return [];
+    const durationMs = durationOf(store.results.byKey(row.key, 0));
+    return durationMs === null ? [] : [{ ref: row.testFile, durationMs }];
+  });
+}
+
 // src/cli/setup/format.ts
 function formatPlan(plan) {
   const lines = [`Squeal setup plan for ${plan.root}`, "", "Harnesses:"];
@@ -40855,7 +41082,7 @@ function formatPlan(plan) {
   }
   lines.push(
     "",
-    `Codex trust: not checked; ${plan.codexTrust.command} checks it`,
+    `Codex trust: ${trustText(plan.codexTrust)}`,
     `Warm-up: ${plan.warmup.withoutCurrentResult} of ${plan.warmup.testFiles} test files without a current result${plan.warmup.source === "store" ? "" : " (estimated: no daemon has listed them)"}`,
     ""
   );
@@ -40864,20 +41091,275 @@ function formatPlan(plan) {
   return `${lines.join("\n")}
 `;
 }
+function trustText(trust) {
+  switch (trust.state) {
+    case "not-checked":
+      return `not checked; ${trust.command} checks it`;
+    case "trusted":
+      return `all ${trust.hooks} hooks of the plugin trusted`;
+    case "untrusted":
+      return `${trust.untrusted} of ${trust.hooks} hooks of the plugin not trusted; ${trust.command} has Codex trust them`;
+    case "unavailable":
+      return `not read (${trust.reason}); ${trust.command} checks it`;
+  }
+}
+
+// src/cli/setup/questions.ts
+var HARNESS_NAMES = { "claude-code": "Claude Code", codex: "Codex" };
+async function answerPlan(plan, given, pick) {
+  const yes = async (text2, byDefault, yesText = "yes", noText = "no") => {
+    const choices = byDefault ? [yesText, noText] : [noText, yesText];
+    return await pick({ text: text2, choices }) === (byDefault ? 0 : 1);
+  };
+  const harnesses = [];
+  for (const h of plan.harnesses) {
+    if (given.harnesses !== null) {
+      if (given.harnesses.includes(h.id)) harnesses.push(h.id);
+      continue;
+    }
+    const found = h.onPath || h.plugin !== null;
+    const where2 = `${h.onPath ? "on the PATH" : "not on the PATH"}, ${h.plugin === null ? "plugin not installed" : `plugin ${h.plugin.version}`}`;
+    if (await yes(`Set up ${HARNESS_NAMES[h.id]} here (${where2})?`, found)) harnesses.push(h.id);
+  }
+  const blocks = [];
+  if (given.blocks !== null) blocks.push(...given.blocks.filter((b) => b !== "none"));
+  else {
+    for (const file of plan.instructions) {
+      const readers = file.harnesses.filter((h) => harnesses.includes(h));
+      if (readers.length === 0) continue;
+      const by = readers.map((h) => HARNESS_NAMES[h]).join(" and ");
+      const { block: block2 } = file;
+      if (block2.state === "current" || block2.state === "unterminated") continue;
+      const write2 = block2.state === "outdated" ? await yes(
+        `${file.path} (read by ${by}) holds the Squeal block v${block2.version}, which is outdated. Upgrade it?`,
+        true,
+        "upgrade it",
+        `keep v${block2.version}`
+      ) : await yes(
+        `Write the Squeal block to ${file.path} (read by ${by}${file.exists ? "" : "; it does not exist yet"})?`,
+        true,
+        "write it",
+        "no block"
+      );
+      if (write2) blocks.push(file.path);
+    }
+  }
+  const gates = [...given.gates];
+  for (const gate of plan.gates) {
+    if (gate.proposed === null || gates.some((g2) => g2.id === gate.id)) continue;
+    const reword2 = await yes(
+      `Gate line ${gate.id}:
+    ${gate.text.trim()}
+  reworded:
+    ${gate.proposed.trim()}
+  Reword it?`,
+      true,
+      "reword",
+      "keep"
+    );
+    gates.push({ id: gate.id, choice: reword2 ? "reword" : "keep" });
+  }
+  const slow = [...given.slow?.slow ?? []];
+  const inputs2 = [...given.slow?.inputs ?? []];
+  if (given.slow === null) {
+    for (const group of plan.slow.groups) {
+      const glob = groupGlob(group);
+      const isSlow = group.declaredSlow || await yes(
+        `${glob} (${group.files.length} files: ${group.reasons.join("; ")}). Run these tests in the slow tier?`,
+        group.defaultSlow,
+        "slow",
+        "not slow"
+      );
+      if (!group.declaredSlow && isSlow) slow.push(glob);
+      if (!isSlow || group.inputsHoldArtifact || group.artifacts.length === 0) continue;
+      const input = await inputQuestion(group, pick);
+      if (input !== null) inputs2.push(...input.map((dir) => ({ test: glob, input: `${dir}/**` })));
+    }
+  }
+  const trust = given.trust ?? (harnesses.includes("codex") && plan.codexTrust.state === "untrusted" ? await yes(
+    `Codex has not trusted ${plan.codexTrust.untrusted} of the plugin's ${plan.codexTrust.hooks} hooks, and skips them silently. Have Codex trust them (once per user)?`,
+    true
+  ) : false);
+  const { testFiles, withoutCurrentResult } = plan.warmup;
+  const warmup = given.warmup ?? await yes(
+    `Warm up now: run the ${withoutCurrentResult} of ${testFiles} test files without a current result on this terminal's daemon?`,
+    true
+  );
+  return { harnesses, blocks, gates, slow, inputs: inputs2, trust, warmup };
+}
+function groupGlob(group) {
+  return group.dir === "" ? "**" : `${group.dir}/**`;
+}
+async function inputQuestion(group, pick) {
+  const paths = group.artifacts.map((a) => a.path);
+  const first = group.broader === null ? paths : [group.broader];
+  const options = [
+    first,
+    ...paths.filter((p) => !first.includes(p) || first.length > 1).map((p) => [p])
+  ];
+  const evidence = group.artifacts.map(
+    (a) => `    ${a.path}: ${a.evidence.map((e) => `${e.detail}${e.weak ? " (weak)" : ""}`).join("; ")}`
+  );
+  const text2 = [
+    `${groupGlob(group)} may test these artifacts, which Squeal does not see change:`,
+    ...evidence,
+    "  With an input, each rebuild re-runs the group and its results can be shared across worktrees;",
+    "  without one, the group stays current after a rebuild until its own files change, and every",
+    "  worktree runs it itself. Squeal never builds: keeping the artifact built stays your job.",
+    "  Re-run these tests when this changes?"
+  ].join("\n");
+  const choices = [...options.map((dirs) => dirs.map((d) => `${d}/**`).join(" and ")), "none"];
+  const index = await pick({ text: text2, choices });
+  return options[index] ?? null;
+}
+function terminalPick(ask, out) {
+  return async ({ text: text2, choices }) => {
+    out(numbered({ text: text2, choices }));
+    for (let tries = 0; tries < 3; tries++) {
+      const answer2 = (await ask(`Choice [1]: `)).trim();
+      if (answer2 === "") return 0;
+      const n = Number(answer2);
+      if (Number.isInteger(n) && n >= 1 && n <= choices.length) return n - 1;
+      const named = choices.findIndex((c) => c.toLowerCase() === answer2.toLowerCase());
+      if (named !== -1) return named;
+      out(`Answer 1 to ${choices.length}, or press Enter for 1.
+`);
+    }
+    return 0;
+  };
+}
+function defaultPick(out) {
+  return async ({ text: text2, choices }) => {
+    out(`${text2}
+  ${choices[0]} (default, --yes)
+`);
+    return 0;
+  };
+}
+function listPick(out) {
+  return async ({ text: text2, choices }) => {
+    out(numbered({ text: text2, choices }));
+    return 0;
+  };
+}
+function numbered({ text: text2, choices }) {
+  return `
+${text2}
+${choices.map((c, i2) => `  ${i2 + 1}. ${c}${i2 === 0 ? " (default)" : ""}
+`).join("")}`;
+}
+
+// src/cli/setup/flow.ts
+async function runSetup(run2, io) {
+  const { plan } = run2;
+  io.stdout(formatPlan(plan));
+  if (run2.asker === null && !run2.yes) {
+    io.stdout("\nQuestions, the default first:\n");
+    await answerPlan(plan, run2.given, listPick(io.stdout));
+    io.stderr(
+      "\nsqueal setup: no terminal to ask on; rerun on a terminal, or with --yes to take the defaults (one flag per choice to change one); nothing changed\n"
+    );
+    return 1;
+  }
+  io.stdout("\n");
+  const pick = run2.yes ? defaultPick(io.stdout) : terminalPick(askOf(run2.asker), io.stdout);
+  let answers;
+  try {
+    answers = await answerPlan(plan, run2.given, pick);
+  } finally {
+    run2.asker?.close();
+  }
+  io.stdout("\n");
+  let code = await apply2(answers, io);
+  if (code !== 0) return code;
+  if (answers.trust) {
+    if (await init2(["--harness", "codex", "--trust", "--yes"], io) !== 0) {
+      io.stderr(
+        "squeal setup: Codex trust was not given; squeal init --harness codex --trust retries it\n"
+      );
+      code = 1;
+    }
+  }
+  if (answers.warmup) {
+    io.stdout("\n");
+    const warm = await warmUp(plan.root, io);
+    for (const c of warm.slowCandidates) {
+      io.stdout(
+        `squeal setup: ${c.path} ran ${Math.round(c.durationMs / 1e3)} s; squeal setup --slow ${c.path} runs it in the slow tier
+`
+      );
+    }
+    if (code === 0) code = warm.code;
+  }
+  showChanges(plan, io);
+  return code;
+}
+function askOf(asker) {
+  if (asker === null) throw new Error("no terminal to ask on");
+  return asker.ask;
+}
+async function apply2(answers, io) {
+  const runs = Math.max(answers.harnesses.length, answers.blocks.length, 1);
+  for (let i2 = 0; i2 < runs; i2++) {
+    const harness = answers.harnesses[i2];
+    const choices = i2 === 0 ? {
+      block: answers.blocks[0] ?? null,
+      gates: answers.gates,
+      slow: answers.slow,
+      inputs: answers.inputs
+    } : { block: answers.blocks[i2] ?? null, gates: [], slow: [], inputs: [] };
+    const code = await initWithChoices(
+      choices,
+      io,
+      () => harness === void 0 ? 0 : init2(["--harness", harness], io)
+    );
+    if (code !== 0) {
+      io.stderr("squeal setup: stopped; what is listed above was written\n");
+      return code;
+    }
+  }
+  return 0;
+}
+function showChanges(plan, io) {
+  const git = (args) => {
+    try {
+      return execFileSync("git", ["-C", plan.root, ...args], { encoding: "utf8" });
+    } catch {
+      return "";
+    }
+  };
+  const files2 = [...new Set(plan.instructions.flatMap((f) => [f.path, ...f.aliases]))];
+  const stat7 = git(["diff", "--stat"]);
+  const diff = files2.length === 0 ? "" : git(["diff", "--", ...files2]);
+  const untracked = git(["status", "--porcelain", "--", POLICY_FILE, ".claude/settings.json"]).split("\n").filter((line) => line.startsWith("??")).map((line) => line.slice(3));
+  const changed = git(["diff", "--name-only"]).split("\n").filter((l) => l !== "");
+  io.stdout(
+    `
+Changes:
+${stat7 === "" ? "  none to tracked files\n" : stat7}${diff === "" ? "" : `
+${diff}`}`
+  );
+  const commit = [...changed, ...untracked];
+  io.stdout(
+    commit.length === 0 ? "\nNothing to commit.\n" : `
+Commit these when they look right; squeal setup never commits:
+${commit.map((f) => `  ${f}
+`).join("")}${untracked.includes(POLICY_FILE) ? `Other worktrees read ${POLICY_FILE} only once it is committed.
+` : ""}`
+  );
+}
 
 // src/cli/setup/command.ts
-var SETUP_USAGE = `Usage: squeal setup --plan [--json]
+var SETUP_USAGE = `Usage: squeal setup [--yes] [--harness <claude-code|codex>]... [--block <file|none>]...
+         [--gate <id>=<reword|keep>]... [--slow <glob>]... [--input <test glob>=<input glob>]...
+         [--no-trust] [--no-warmup]
+       squeal setup --plan [--json]
        squeal setup --check [--json]
-Apply its choices with squeal init --block <file|none>, --gate <id>=<reword|keep>,
---slow <glob> and --input <test glob>=<input glob>.
 `;
-async function setupCommand(args, io) {
-  const flags = new Set(args);
-  const known2 = /* @__PURE__ */ new Set(["--plan", "--check", "--json"]);
-  const unknown = args.find((arg) => !known2.has(arg));
-  if (unknown !== void 0 || !flags.has("--plan") && !flags.has("--check")) {
-    const problem = unknown === void 0 ? "takes --plan or --check" : `unknown argument "${unknown}"`;
-    io.stderr(`squeal setup: ${problem}
+async function setupCommand(args, io, deps = {}) {
+  const parsed = parseSetupArgs(args);
+  if (typeof parsed === "string") {
+    io.stderr(`squeal setup: ${parsed}
 
 ${SETUP_USAGE}`);
     return 2;
@@ -40889,46 +41371,60 @@ ${SETUP_USAGE}`);
 `);
     return 1;
   }
-  const plan = await buildPlan(root, { env: io.env ?? process.env });
-  io.stdout(flags.has("--json") ? `${JSON.stringify(plan, null, 2)}
+  const env = io.env ?? process.env;
+  const plan = await buildPlan(root, { env, codexTrust: true });
+  if (parsed.mode === "apply") {
+    const asker = parsed.yes ? null : (deps.asker ?? terminalAsker)();
+    return runSetup({ plan, given: parsed.given, yes: parsed.yes, asker }, io);
+  }
+  io.stdout(parsed.json ? `${JSON.stringify(plan, null, 2)}
 ` : formatPlan(plan));
-  return flags.has("--check") && plan.outdated.length > 0 ? 1 : 0;
+  return parsed.mode === "check" && plan.outdated.length > 0 ? 1 : 0;
 }
-
-// src/cli/start.ts
-import { setTimeout as sleep11 } from "node:timers/promises";
-var SPAWN_WAIT_MS = 1e4;
-async function startCommand(args, io) {
-  if (args.length > 1 || args[0]?.startsWith("-")) {
-    io.stderr("usage: squeal start [root]\n");
-    return 2;
+function parseSetupArgs(args) {
+  const flags = new Set(args);
+  if (flags.has("--plan") || flags.has("--check")) {
+    const unknown2 = args.find((arg) => !["--plan", "--check", "--json"].includes(arg));
+    if (unknown2 !== void 0) return `unknown argument "${unknown2}"`;
+    if (flags.has("--plan") && flags.has("--check")) return "takes --plan or --check, not both";
+    return { mode: flags.has("--check") ? "check" : "plan", json: flags.has("--json") };
   }
-  const root = worktreeRoot(args[0], io);
-  if (root === null) return 1;
-  const cli = process.argv[1];
-  const result = await ensureDaemon(root, cli === void 0 ? {} : { cli });
-  if (result === "unavailable") {
-    io.stderr(`squeal: no daemon could be reached or started for ${root}
-`);
-    return 1;
-  }
-  if (result === "spawned") {
-    const deadline = Date.now() + SPAWN_WAIT_MS;
-    while ((await probeDaemon(root, 100)).state !== "alive") {
-      if (Date.now() > deadline) {
-        io.stderr(`squeal: spawned a daemon for ${root}, but it did not answer
-`);
-        return 1;
-      }
-      await sleep11(50);
+  const blocks = [];
+  const harnesses = [];
+  const rest = [];
+  for (let i2 = 0; i2 < args.length; i2++) {
+    const arg = args[i2];
+    const flag2 = ["--block", "--harness"].find((f) => arg === f || arg.startsWith(`${f}=`));
+    if (flag2 === void 0) {
+      rest.push(arg);
+      continue;
     }
+    const value = arg === flag2 ? args[++i2] : arg.slice(flag2.length + 1);
+    if (value === void 0 || value === "") return `${flag2} takes a value`;
+    if (flag2 === "--block") blocks.push(value);
+    else if (value === "claude-code" || value === "codex") harnesses.push(value);
+    else return `--harness takes claude-code or codex, not "${value}"`;
   }
-  io.stdout(`Squeal daemon ${result} for ${root}
-
-`);
-  const now = io.now ?? Date.now;
-  io.stdout(formatStatus(readStatus(root, { now }), now(), statusCommand(io.env ?? process.env)));
-  return 0;
+  const setup = takeSetupFlags(rest);
+  if (typeof setup === "string") return setup;
+  const own = ["--yes", "--no-trust", "--no-warmup", "--json"];
+  const unknown = setup.rest.find((arg) => !own.includes(arg));
+  if (unknown !== void 0) return `unknown argument "${unknown}"`;
+  if (setup.rest.includes("--json")) return "--json goes with --plan or --check";
+  if (blocks.includes("none") && blocks.length > 1) return "--block none goes alone";
+  const { gates, slow, inputs: inputs2 } = setup.choices;
+  return {
+    mode: "apply",
+    yes: setup.rest.includes("--yes"),
+    given: {
+      harnesses: harnesses.length > 0 ? harnesses : null,
+      blocks: blocks.length > 0 ? blocks : null,
+      gates,
+      slow: slow.length + inputs2.length > 0 ? { slow, inputs: inputs2 } : null,
+      trust: setup.rest.includes("--no-trust") ? false : null,
+      warmup: setup.rest.includes("--no-warmup") ? false : null
+    }
+  };
 }
 
 // src/cli/stop.ts
@@ -40967,6 +41463,140 @@ async function stopCommand(args, io) {
   return 0;
 }
 
+// src/cli/update.ts
+init_fs();
+import { spawnSync } from "node:child_process";
+import { chmodSync as chmodSync3, copyFileSync, existsSync as existsSync24, readdirSync as readdirSync14, readFileSync as readFileSync26 } from "node:fs";
+import { join as join66 } from "node:path";
+var NAMES = { "claude-code": "Claude Code", codex: "Codex" };
+var UPDATE_COMMANDS = {
+  "claude-code": [
+    ["claude", "plugin", "marketplace", "update", MARKETPLACE_NAME],
+    ["claude", "plugin", "update", PLUGIN_ID]
+  ],
+  codex: [["codex", "plugin", "marketplace", "upgrade", MARKETPLACE_NAME]]
+};
+var COMMAND_TIMEOUT_MS = 10 * 6e4;
+function updateCommand(args, io) {
+  if (args.length > 0) {
+    io.stderr("usage: squeal update\n");
+    return 2;
+  }
+  const env = io.env ?? process.env;
+  const cwd = io.cwd ?? process.cwd();
+  const before = readHarnesses(cwd, env).filter((h) => h.onPath && h.plugin !== null);
+  if (before.length === 0) {
+    const commands = readHarnesses(cwd, env).flatMap((h) => h.installCommands);
+    io.stderr(
+      `squeal update: no harness on the PATH has ${PLUGIN_ID} installed. Install it:
+${commands.map((c) => `  ${c}
+`).join("")}`
+    );
+    return 1;
+  }
+  const failed2 = /* @__PURE__ */ new Set();
+  for (const harness of before) {
+    if (!UPDATE_COMMANDS[harness.id].every((command) => run(command, cwd, env, io))) {
+      failed2.add(harness.id);
+    }
+  }
+  let ok = failed2.size === 0;
+  const after = new Map(readHarnesses(cwd, env).map((h) => [h.id, h.plugin?.version ?? null]));
+  for (const harness of before) {
+    const was = harness.plugin?.version;
+    const now = after.get(harness.id) ?? "not installed";
+    const how = now !== was ? `was ${was}` : failed2.has(harness.id) ? "not updated" : "up to date";
+    io.stdout(`${NAMES[harness.id]}: ${PLUGIN_ID} ${now}, ${how}
+`);
+  }
+  const versions = new Set(before.map((h) => after.get(h.id)));
+  if (versions.size > 1) {
+    io.stdout("The harnesses still hold different versions; the launcher runs the newer.\n");
+    ok = false;
+  }
+  recopyLauncher(env, io);
+  if (ok) {
+    io.stdout(
+      "A running session keeps the version it loaded until it restarts, or until /reload-plugins in Claude Code.\n"
+    );
+  }
+  return ok ? 0 : 1;
+}
+function run(command, cwd, env, io) {
+  const [file = "", ...args] = command;
+  io.stdout(`$ ${command.join(" ")}
+`);
+  const r = spawnSync(file, args, {
+    cwd,
+    env,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    timeout: COMMAND_TIMEOUT_MS
+  });
+  if (r.stdout) io.stdout(r.stdout);
+  if (r.stderr) io.stderr(r.stderr);
+  if (r.error !== void 0) {
+    io.stderr(`squeal update: ${command.join(" ")} did not run: ${r.error.message}
+`);
+    return false;
+  }
+  if (r.status !== 0) {
+    io.stderr(`squeal update: ${command.join(" ")} exited ${r.status ?? r.signal}
+`);
+    return false;
+  }
+  return true;
+}
+var FORMAT = /^# squeal-launcher format (\d+)$/m;
+function launcherFormat(path) {
+  try {
+    const match2 = FORMAT.exec(readFileSync26(path, "utf8"));
+    return match2 === null ? null : Number(match2[1]);
+  } catch {
+    return null;
+  }
+}
+function recopyLauncher(env, io) {
+  const target = join66(env.SQUEAL_BIN_DIR ?? join66(env.HOME ?? "", ".local", "bin"), "squeal");
+  const current2 = launcherFormat(target);
+  if (current2 === null) return;
+  let newest = null;
+  for (const dir of pluginDirs(env)) {
+    const path = join66(dir, "bin", "squeal-launcher");
+    const format = launcherFormat(path);
+    if (format !== null && format > (newest?.format ?? current2)) newest = { path, format };
+  }
+  if (newest === null) return;
+  copyFileSync(newest.path, target);
+  chmodSync3(target, 493);
+  io.stdout(`Copied the launcher (format ${current2}, now ${newest.format}) to ${target}
+`);
+}
+function pluginDirs(env) {
+  const home = env.HOME ?? "";
+  const dirs = [];
+  const config = env.CLAUDE_CONFIG_DIR ?? join66(home, ".claude");
+  try {
+    const file = JSON.parse(
+      readFileSync26(join66(config, "plugins", "installed_plugins.json"), "utf8")
+    );
+    const entries2 = isRecord(file) && isRecord(file.plugins) ? file.plugins[PLUGIN_ID] : null;
+    for (const entry2 of Array.isArray(entries2) ? entries2 : []) {
+      if (isRecord(entry2) && typeof entry2.installPath === "string") dirs.push(entry2.installPath);
+    }
+  } catch {
+  }
+  const cache = join66(
+    env.CODEX_HOME ?? join66(home, ".codex"),
+    "plugins",
+    "cache",
+    MARKETPLACE_NAME,
+    PLUGIN_NAME
+  );
+  if (existsSync24(cache)) for (const version2 of readdirSync14(cache)) dirs.push(join66(cache, version2));
+  return dirs;
+}
+
 // src/cli/main.ts
 var HELP = `squeal: continuous validation for coding agents. Push transitions, pull state.
 
@@ -40997,6 +41627,12 @@ Usage:
                                 runners, instruction files and their Squeal block, gate
                                 lines, slow groups and their inputs, the warm-up's size
   squeal setup --check [--json] The plan; exit 1 when anything in it is outdated
+  squeal setup [--yes] [<choice flags>]
+                                Ask one question per open choice of the plan (--yes:
+                                take the defaults), apply them, warm up, show the diff
+  squeal warmup                 Start the daemon and run every test file without a
+                                current result; exit 0, 1 on known failures, 3 without
+                                a verdict; suggestions it finds, applied by squeal setup
   squeal start [root]           Start this worktree's daemon if none runs, print status
   squeal run --all [--force] [--wait]
                                 Request a full-suite checkpoint from the daemon
@@ -41007,6 +41643,8 @@ Usage:
   squeal remove [--config]      Take Squeal out of this repository: stop every worktree's
                                 daemon, delete the store and temp directories; --config
                                 also deletes squeal.config.json
+  squeal update                 Update the plugin in every harness that has it, to one
+                                version, and the launcher install.sh put on the PATH
   squeal daemon <root>          Run the daemon in the foreground (hooks start it)
   squeal --version              Print the version
   squeal --help                 Print this help
@@ -41029,11 +41667,13 @@ function main(argv, io) {
   if (first === "why") return why(rest, io);
   if (first === "init") return init2(rest, io);
   if (first === "setup") return setupCommand(rest, io);
+  if (first === "warmup") return warmupCommand(rest, io);
   if (first === "daemon") return daemonCommand(rest, io);
   if (first === "start") return startCommand(rest, io);
   if (first === "run") return runCommand(rest, io);
   if (first === "stop") return stopCommand(rest, io);
   if (first === "remove") return removeCommand(rest, io);
+  if (first === "update") return updateCommand(rest, io);
   io.stderr(`squeal: unknown command "${first}"
 
 ${HELP}`);
