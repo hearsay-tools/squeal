@@ -9143,9 +9143,9 @@ async function baseline(context, ledger, changed = NOTHING_CHANGED) {
   if (listed !== null) {
     for (const row of previousKeys.values()) {
       if (ledger.file(row.testFile)) continue;
-      const gone = ledger.addFile(row.testFile);
-      restore(gone, known2.get(gone.id));
-      ledger.removeFile(gone);
+      const gone2 = ledger.addFile(row.testFile);
+      restore(gone2, known2.get(gone2.id));
+      ledger.removeFile(gone2);
     }
   }
   const checkpointId = randomUUID5();
@@ -14802,7 +14802,7 @@ async function affectedTestFiles(vitest, specs, changed) {
     related = await walkRelated(specs, changed);
   }
   for (const spec of related) add(spec, "graph");
-  const gone = changed.filter((p) => !existsSync16(p));
+  const gone2 = changed.filter((p) => !existsSync16(p));
   const snapshots = changed.filter((p) => p.endsWith(".snap"));
   for (const project of vitest.projects) {
     const projectSpecs = specs.filter((s) => s.project === project);
@@ -14813,10 +14813,10 @@ async function affectedTestFiles(vitest, specs, changed) {
     for (const spec of projectSpecs) {
       if (snapshots.includes(snapshotPath(project, spec.moduleId))) add(spec, "snapshot");
     }
-    if (gone.length === 0) continue;
+    if (gone2.length === 0) continue;
     for (const spec of projectSpecs) {
       const closure = await importClosure(project, [spec.moduleId]);
-      if (gone.some((p) => isMissingTarget(closure, p))) add(spec, "graph");
+      if (gone2.some((p) => isMissingTarget(closure, p))) add(spec, "graph");
     }
   }
   for (const id2 of imported) {
@@ -15430,8 +15430,8 @@ function withoutTouched(report2, testFiles, touched) {
 }
 function dropFiles(report2, dropped, reason2) {
   if (dropped.length === 0) return report2;
-  const gone = new Set(dropped.map(refKey));
-  const kept2 = (ref2) => !gone.has(refKey(ref2));
+  const gone2 = new Set(dropped.map(refKey));
+  const kept2 = (ref2) => !gone2.has(refKey(ref2));
   const { fileDurations, observed, reads } = report2;
   return {
     ...report2,
@@ -16155,7 +16155,7 @@ function resolutionFields(manifest) {
 }
 function staleTransforms(vitest, added, deleted, manifests = []) {
   const stale = /* @__PURE__ */ new Set();
-  const gone = new Set(deleted);
+  const gone2 = new Set(deleted);
   for (const project of vitest.projects) {
     for (const environment of Object.values(project.vite.environments)) {
       const extensions = environment.config.resolve.extensions;
@@ -16178,7 +16178,7 @@ function staleTransforms(vitest, added, deleted, manifests = []) {
         return targets.has(path) || directories.some((dir) => path.startsWith(dir));
       };
       for (const [file, modules] of environment.moduleGraph.fileToModulesMap) {
-        if (stale.has(file) || gone.has(file)) continue;
+        if (stale.has(file) || gone2.has(file)) continue;
         for (const module of modules) {
           if (!knowsSoftInvalidation(vitest, module)) return null;
           const result = cachedTransform(module);
@@ -34879,7 +34879,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.152";
+  if (true) return "0.1.153";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -37509,12 +37509,12 @@ function recordUncoveredTold(store, consumer, told) {
 function expireConsumers(store, now = Date.now(), options = {}) {
   const expired = [
     ...store.transaction(() => {
-      const gone = store.consumers.expire(now - CONSUMER_EXPIRY_MS);
-      for (const consumer of gone) {
+      const gone2 = store.consumers.expire(now - CONSUMER_EXPIRY_MS);
+      for (const consumer of gone2) {
         forget(store, consumer);
         store.meta.set(departedMetaKey(consumer.worktreeId), String(now));
       }
-      return gone;
+      return gone2;
     })
   ];
   const { locksDir } = options;
@@ -37523,13 +37523,13 @@ function expireConsumers(store, now = Date.now(), options = {}) {
   const cutoff = now - WAITERLESS_EXPIRY_MS;
   for (const { consumer } of store.consumers.idleSince(cutoff)) {
     if (waiterLockState(locksDir, consumer) !== "free") continue;
-    const gone = store.transaction(() => {
+    const gone2 = store.transaction(() => {
       const record = store.consumers.get(consumer);
       if (record === null || !idle(record, cutoff)) return false;
       drop(store, consumer, now);
       return true;
     });
-    if (!gone) continue;
+    if (!gone2) continue;
     removeWaiterLock(locksDir, consumer);
     expired.push(consumer);
   }
@@ -37545,9 +37545,9 @@ function dropGoneHarnesses(store, worktreeId, now, options) {
     const harness = recorded2.get(slot(consumer));
     if (harness === void 0) continue;
     const id2 = `${harness.pidNamespace}/${harness.pid}/${harness.startTime}`;
-    const gone = verdicts.get(id2) ?? isGone(harness);
-    verdicts.set(id2, gone);
-    if (!gone) continue;
+    const gone2 = verdicts.get(id2) ?? isGone(harness);
+    verdicts.set(id2, gone2);
+    if (!gone2) continue;
     const removed = store.transaction(() => {
       const current2 = store.consumers.get(consumer) === null ? null : harnessOf(store, consumer);
       if (current2 === null || !sameHarness(current2, harness)) return false;
@@ -37665,15 +37665,15 @@ function startTimers(context) {
   const departure = () => attempt("departure check", () => {
     const at2 = now();
     if (!countPresence(at2) || presence.lastPresentAt === null) return;
-    const gone = at2 - presence.lastPresentAt;
-    if (gone < graceMs) return;
+    const gone2 = at2 - presence.lastPresentAt;
+    if (gone2 < graceMs) return;
     const pending = drainable(context);
     if (pending === null) {
       context.shutdown(
         "sessions-gone",
         presence.draining === true ? drainedText(presence.drainingFor ?? SLOW_FILES) : `daemon stopped: no session registered for ${duration(graceMs)} after its last one ended`
       );
-    } else if (gone >= idleMs) {
+    } else if (gone2 >= idleMs) {
       context.shutdown("sessions-gone", boundText(pending, idleMs));
     } else if (presence.draining !== true) {
       presence.draining = true;
@@ -38082,7 +38082,7 @@ async function openDaemon(rootArgument, now, awaitLockMs, vacantLockWaitMs = VAC
     const path = lockFileFor(commonDir, worktreeId);
     lock2 = acquireDaemonLock(path);
     if (lock2 === null && waitMs > 0) {
-      const giveUp2 = awaitLockMs === void 0 ? servedElsewhere(root, now) : takenOver(root);
+      const giveUp2 = awaitLockMs === void 0 ? servedElsewhere(root, commonDir, worktreeId, now) : takenOver(root);
       lock2 = await awaitDaemonLock(path, { timeoutMs: waitMs, giveUp: giveUp2 });
     }
   } catch (error) {
@@ -38143,8 +38143,26 @@ function takenOver(root) {
     return startedAt !== first || !isNewerVersion(own, record.squealVersion);
   };
 }
-function servedElsewhere(root, now) {
-  return () => !existsSync12(root) || liveDaemonRecorded(root, now());
+function servedElsewhere(root, commonDir, worktreeId, now) {
+  const own = squealVersion();
+  return () => {
+    if (!existsSync12(root) || liveDaemonRecorded(root, now())) return true;
+    const last = lastDaemonVersion(commonDir, worktreeId);
+    return last !== null && isNewerVersion(last, own);
+  };
+}
+function lastDaemonVersion(commonDir, worktreeId) {
+  try {
+    const store = openStore(commonDir, { create: false, busyTimeoutMs: 100 });
+    if (isStoreOpenFailure(store)) return null;
+    try {
+      return store.worktrees.lastDaemon(worktreeId)?.squealVersion ?? null;
+    } finally {
+      store.close();
+    }
+  } catch {
+    return null;
+  }
 }
 function lockWaitTimedOut(commonDir, worktreeId, now, text2) {
   try {
@@ -41860,11 +41878,11 @@ function parseSetupArgs(args) {
 }
 
 // src/cli/stop.ts
+import { existsSync as existsSync24 } from "node:fs";
+import { setTimeout as sleep12 } from "node:timers/promises";
 init_lock();
 init_fs();
 init_store3();
-import { existsSync as existsSync24 } from "node:fs";
-import { setTimeout as sleep12 } from "node:timers/promises";
 var STOP_WAIT_MS2 = 6e4;
 var LOCK_WAIT_MS = 3e4;
 async function stopCommand(args, io) {
@@ -41876,7 +41894,7 @@ async function stopCommand(args, io) {
   if (root === null) return 1;
   const socketPath = await daemonSocket(root);
   const ping2 = await askDaemon(socketPath, { type: "ping" }).catch(() => null);
-  const pid = ping2?.ok === true && ping2.type === "ping" ? ping2.pid : null;
+  const daemon = ping2?.ok === true && ping2.type === "ping" ? ping2 : null;
   const response = await askDaemon(socketPath, { type: "stop" });
   if (response === null) {
     io.stdout(`No daemon running for ${root}
@@ -41897,9 +41915,18 @@ async function stopCommand(args, io) {
     }
     await sleep12(50);
   }
-  if (!await lockFreed(root, pid, LOCK_WAIT_MS)) {
+  const lock2 = await lockFreed(root, daemon, LOCK_WAIT_MS);
+  const after = `${LOCK_WAIT_MS / 1e3} s`;
+  if (lock2.state === "held") {
     io.stdout(
-      `Stop requested; the daemon for ${root} closed its socket but still holds its lock after ${LOCK_WAIT_MS / 1e3} s
+      `Stop requested; the daemon for ${root} closed its socket but still holds its lock after ${after}
+`
+    );
+    return 0;
+  }
+  if (lock2.state === "unchecked") {
+    io.stdout(
+      `Stop requested; the daemon for ${root} closed its socket, and whether it still holds its lock could not be checked after ${after}: ${lock2.error}
 `
     );
     return 0;
@@ -41908,22 +41935,30 @@ async function stopCommand(args, io) {
 `);
   return 0;
 }
-async function lockFreed(root, pid, ms) {
+async function lockFreed(root, daemon, ms) {
   const commonDir = resolveCommonDir(root);
-  if (commonDir === null) return true;
+  if (commonDir === null) return { state: "free" };
   const path = lockFileFor(commonDir, worktreeIdFor(root));
   const deadline = Date.now() + ms;
   for (; ; ) {
-    if (!existsSync24(path) || pid !== null && processGone(pid)) return true;
-    try {
-      const lock2 = acquireDaemonLock(path);
-      lock2?.release();
-      if (lock2 !== null) return true;
-    } catch {
-      return true;
-    }
-    if (Date.now() > deadline) return false;
+    if (!existsSync24(path) || daemon !== null && gone(root, daemon)) return { state: "free" };
+    const probe = probeLock(path);
+    if (probe.state === "free" || Date.now() > deadline) return probe;
     await sleep12(50);
+  }
+}
+function gone(root, daemon) {
+  if (processGone(daemon.pid)) return true;
+  const record = recordedDaemon(root);
+  return record !== null && record.startedAt !== daemon.startedAt;
+}
+function probeLock(path) {
+  try {
+    const lock2 = acquireDaemonLock(path);
+    lock2?.release();
+    return { state: lock2 === null ? "held" : "free" };
+  } catch (error) {
+    return { state: "unchecked", error: error instanceof Error ? error.message : String(error) };
   }
 }
 function processGone(pid) {
