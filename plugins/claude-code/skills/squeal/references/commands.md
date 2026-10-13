@@ -9,7 +9,7 @@ Prints the current state of this worktree. It reads the store and needs no daemo
 ```text
 Revision: 187
 Known failures: 0
-Affected checks: 47 passed, 3 running, 12 queued
+Affected checks: 47 passed (40 tests, 7 test files loaded), 3 running (3 tests), 12 queued (10 tests, 2 test files loaded)
 Full-suite checkpoint: none completed at revision 187; last completed at revision 170
 ```
 
