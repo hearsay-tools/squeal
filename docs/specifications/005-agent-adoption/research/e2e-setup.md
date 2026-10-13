@@ -105,3 +105,24 @@ Reproduced without a model, 0.1.151 (*verified by experiment*): `squeal setup --
 ## For the release run
 
 Run against the final main SHA: `SQ_REAL_CLI_CANDIDATE=<sha> npx vitest run --config vitest.real-cli.config.ts`, once with `SQ_REAL_CLI_NODE=22` and once with `24`, then the four sessions with `SQ_REAL_CLI_MODELS=1` on the coordinator's go. Bullet 3 and the Codex session on this repository's shape stay red until the rows for defects 1 and 4 land, or the Testing bullet is amended.
+
+## Pre-release run, after wave 5
+
+2026-10-13 23:28 to 23:41 local, run by the coordinator. The candidate was main `0ba1d83e`, with plugins 0.1.154: 005-38 and 005-40 landed, plus 001-343's 0.1.155 code. The CLIs and isolation were as above.
+
+| Run | Result |
+|---|---|
+| Bullets 1 to 4, Node 24 | 11 passed, 4 skipped (bullet 5), 131 s. Bullet 3 is green now: `plugins/**` and `packages/cezar/dist/**` are the defaults (005-38). |
+| Bullets 1 to 4, Node 22 | 11 passed, 4 skipped |
+| Bullet 5, 4 sessions, Node 24 | 4 passed, no retry |
+
+The sessions:
+
+| Harness, model | Fixture | Load at start | Wall time | `--slow` and `--input` the model gave |
+|---|---|---|---|---|
+| Claude Code, `claude-sonnet-5-5` | this repository | 23.8 | 12.7 s | `--slow 'test/e2e/**' --input 'test/e2e/**=plugins/**'` |
+| Codex, `gpt-6-luna` | this repository | 21.2 | 24.2 s | `--slow 'test/e2e/**' --input 'test/e2e/**=plugins/**'` |
+| Claude Code, `claude-sonnet-5-5` | cezarion | 15.5 | 10.3 s | `--slow 'packages/cezar/test/e2e/**' --input 'packages/cezar/test/e2e/**=packages/cezar/dist/**'` |
+| Codex, `gpt-6-luna` | cezarion | 13.5 | 14.1 s | the same as Claude Code's |
+
+Every model gave each glob with `/**`. None gave `=none`. Defect 4's two slips did not recur after the skill's 005-40 wording, and setup now refuses or normalizes them either way. A scan for credentials across the four transcripts found none. Nothing was left under `/home/squeal-e2e/runs`, and no process of that user was left running. Defects 1, 3 and 4 are closed. Defect 2 (005-39) is not on the release path.
