@@ -2,9 +2,13 @@
 
 Spec 001 D9, ADR 0003. Released Squeal installs from the hub marketplace `hearsay` (the private repository `hearsay-tools/marketplace`), which pins this directory at a release tag (`squeal--v<version>`), so the plugin id is `squeal@hearsay` (row 001-164, `research/release-hub.md`). This repository's root `.claude-plugin/marketplace.json`, named `squeal`, lists this plugin with source `./plugins/claude-code` for installs from a checkout; Claude Code (verified with 2.1.288) resolves plugin sources of a `github` or `git` marketplace against the clone root, so that manifest cannot live in this directory.
 
+## Install with install.sh
+
+From a terminal, once per machine: `curl -fsSL https://raw.githubusercontent.com/hearsay-tools/squeal/squeal--v<version>/install.sh | sh` installs `squeal@hearsay` at user scope in Claude Code and Codex, whichever is on the `PATH`, and puts `squeal` on the terminal's `PATH` (the root [README](../../README.md#install)). Then `squeal setup` in each repository, and `squeal update` after a release. `bin/squeal-launcher` is what it copies to `~/.local/bin/squeal`: at each call it finds the installed plugin's `dist/cli/squeal.mjs`, through the first entry of `installed_plugins.json` that is user scope or project scope for the working directory, and the Codex plugin cache, and runs the newer of the two when they differ, with one line naming both versions and `squeal update`. Inside Claude Code's Bash tool, `bin/squeal` stays first on the `PATH`.
+
 ## Install in a project
 
-Nothing needs to be installed globally. The hub repository is private, so `claude plugin marketplace add` clones it with your git credentials: run `gh auth login` first (it sets up git's credential helper), or configure another git credential helper or SSH keys for GitHub. Claude Code does not pass `GH_TOKEN` to git and has no token option; without credentials the clone fails with `HTTPS authentication failed` and then `Permission denied (publickey)` (lessons, surprise 9). From the project's root:
+The plugin-first way, from inside Claude Code. Nothing needs to be installed globally. The hub repository is private, so `claude plugin marketplace add` clones it with your git credentials: run `gh auth login` first (it sets up git's credential helper), or configure another git credential helper or SSH keys for GitHub. Claude Code does not pass `GH_TOKEN` to git and has no token option; without credentials the clone fails with `HTTPS authentication failed` and then `Permission denied (publickey)` (lessons, surprise 9). From the project's root:
 
 ```sh
 claude plugin marketplace add hearsay-tools/marketplace
@@ -54,6 +58,7 @@ For development, load this directory for one session: `claude --plugin-dir plugi
 | `hooks/hooks.json` | SessionStart, SubagentStart, UserPromptSubmit, PostToolBatch, PreToolUse (`Edit\|Write\|NotebookEdit`), Stop, SubagentStop, SessionEnd: each `timeout: 2`. The idle waiter on SessionStart, UserPromptSubmit and Stop: `asyncRewake`, `timeout: 3600`. |
 | `dist/*.mjs` | One bundle per hook, Node built-ins only. Sources: `src/harness/claude-code/`. |
 | `dist/cli/squeal.mjs`, `bin/squeal` | The CLI on the Bash tool's PATH, and the daemon the hooks spawn. |
+| `bin/squeal-launcher` | The terminal's `squeal`, copied by `install.sh`: runs the installed plugin's CLI. The same file as the Codex plugin's. |
 | `dist/cli/front-desk.mjs` | The daemon's socket worker thread, loaded beside the CLI. |
 | `skills/squeal/SKILL.md` | When and how to pull `squeal status`, wait with `squeal status --wait`, `squeal why`, `squeal run --all`; policy keys. |
 | `.claude-plugin/plugin.json` | The manifest. `npm run build` writes its `version` from the root `package.json`, the one version source; the marketplace entry carries none. |
