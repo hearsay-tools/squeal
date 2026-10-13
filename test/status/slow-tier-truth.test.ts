@@ -25,7 +25,7 @@ import {
  * (lessons, "Confirmation at 0.1.85", defect 18).
  */
 
-const RUN_SLOW = "Not covered by Stop's wait; `squeal run --slow` runs them now.";
+const RUN_SLOW = "Squeal runs them when the agent pauses; `squeal run --slow` runs them now.";
 
 /** Appends one revision changing `path` from `from` to `to` (`null`: absent). */
 function change(s: Seeded, path: string, from: FileHash | null, to: FileHash | null): void {
@@ -128,7 +128,7 @@ describe("sources changed since, by content (lessons defect 15)", () => {
     closes(s.store, FAST, [FAST, "src/paths.ts"]);
     return s;
   }
-  const clean = `Slow tier: 2 test files; 2 current against plugins/** as of revision 2. Not covered by Stop's wait.`;
+  const clean = `Slow tier: 2 test files; 2 current against plugins/** as of revision 2. Squeal runs them when the agent pauses.`;
 
   it("says no source changed after a revert to the tested bytes", () => {
     const s = current();
@@ -156,7 +156,7 @@ describe("sources changed since, by content (lessons defect 15)", () => {
     change(s, "src/paths.ts", "h-tested", "h-edited");
     change(s, "src/paths.ts", "h-edited", "h-edited-again");
     expect(slowLine(status(s))).toBe(
-      `Slow tier: 2 test files; 2 current against plugins/** as of revision 2, sources changed since. Not covered by Stop's wait.`,
+      `Slow tier: 2 test files; 2 current against plugins/** as of revision 2, sources changed since. Squeal runs them when the agent pauses.`,
     );
   });
 });
@@ -179,7 +179,7 @@ describe("which changed paths are sources (lessons defect 18)", () => {
     closes(s.store, SLOW_B, [SLOW_B, "plugins/a.js"]);
     return s;
   }
-  const clean = `Slow tier: 2 test files; 2 current against plugins/** as of revision 2. Not covered by Stop's wait.`;
+  const clean = `Slow tier: 2 test files; 2 current against plugins/** as of revision 2. Squeal runs them when the agent pauses.`;
 
   it.each([
     ["a fast test's declared fixture", FIXTURE],
@@ -199,7 +199,7 @@ describe("which changed paths are sources (lessons defect 18)", () => {
     const s = current();
     change(s, path, "h-tested", "h-edited");
     expect(slowLine(status(s))).toBe(
-      `Slow tier: 2 test files; 2 current against plugins/** as of revision 2, sources changed since. Not covered by Stop's wait.`,
+      `Slow tier: 2 test files; 2 current against plugins/** as of revision 2, sources changed since. Squeal runs them when the agent pauses.`,
     );
   });
 
@@ -233,7 +233,7 @@ describe("a broad fast declaration keeps the sources other files load (review wa
     closes(s.store, SLOW_B, [SLOW_B, "plugins/a.js"]);
     return s;
   }
-  const clean = `Slow tier: 2 test files; 2 current against plugins/** as of revision 2. Not covered by Stop's wait.`;
+  const clean = `Slow tier: 2 test files; 2 current against plugins/** as of revision 2. Squeal runs them when the agent pauses.`;
 
   it.each([
     ["a fast test imports and another declares", "src/a.ts"],
@@ -242,7 +242,7 @@ describe("a broad fast declaration keeps the sources other files load (review wa
     const s = current();
     change(s, path, "h-tested", "h-edited");
     expect(slowLine(status(s))).toBe(
-      `Slow tier: 2 test files; 2 current against plugins/** as of revision 2, sources changed since. Not covered by Stop's wait.`,
+      `Slow tier: 2 test files; 2 current against plugins/** as of revision 2, sources changed since. Squeal runs them when the agent pauses.`,
     );
   });
 

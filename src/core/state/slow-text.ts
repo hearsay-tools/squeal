@@ -90,8 +90,8 @@ function currentText(tier: SlowTierState): string {
 /**
  * The slow-tier line, or `null` when the header has no slow tier. The
  * daemon's activity is the one the JSON carries, kept when no daemon is
- * validating (lessons defect 8c). It ends with what Stop does about the slow
- * files (`stopText`). `command` is how the text names the CLI.
+ * validating (lessons defect 8c). It ends with what Squeal or Stop does
+ * about the slow files (`stopText`). `command` is how the text names the CLI.
  */
 export function slowTierText(header: StatusHeader, command: string): string | null {
   const tier = header.slowTier;
@@ -115,13 +115,14 @@ export function slowTierText(header: StatusHeader, command: string): string | nu
 }
 
 /**
- * What Stop does about slow files: nothing by default; with
- * `stop.requireSlowSuite` on it waits up to its bound, or, before the
+ * What happens to the slow files: by default Squeal runs them once the agent
+ * pauses (D2's idle trigger, the `idle` wait above; task 001-317); with
+ * `stop.requireSlowSuite` on Stop waits up to its bound, or, before the
  * harness's waiting entry ran in the worktree, holds the agent once (004 D9
  * as amended 2026-10-12).
  */
 function stopText(tier: SlowTierState): string {
-  if (tier.stopWaitMs === undefined) return "not covered by Stop's wait";
+  if (tier.stopWaitMs === undefined) return "Squeal runs them when the agent pauses";
   return `Stop waits up to ${durationText(tier.stopWaitMs)} for them or holds the agent once`;
 }
 

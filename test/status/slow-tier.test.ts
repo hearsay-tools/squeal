@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { createDelivery, formatRegistration } from "../../src/core/delivery/index.js";
+import {
+  createDelivery,
+  formatDelta,
+  formatRegistration,
+  headerLines,
+  MESSAGE_CAP_CHARS,
+} from "../../src/core/delivery/index.js";
 import { publishSlowActivity, recordSlowArtifacts } from "../../src/core/slow/state.js";
 import { clockText, readHeader } from "../../src/core/state/index.js";
 import { readStatus } from "../../src/core/status/index.js";
@@ -73,7 +79,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
     });
     expect(header.slowPending).toEqual({ testFiles: 0, checks: 0, testFilesWithoutChecks: 0 });
     expect(slowLine(status(s))).toBe(
-      "Slow tier: 2 test files; 2 current against plugins/** as of revision 2, sources changed since. Not covered by Stop's wait.",
+      "Slow tier: 2 test files; 2 current against plugins/** as of revision 2, sources changed since. Squeal runs them when the agent pauses.",
     );
   });
 
@@ -82,7 +88,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
     states(s.store, s.repo, [{ observedAt: 2 }, { observedAt: 2 }], [SLOW_A, SLOW_B]);
     ran(s.store, s.repo, [SLOW_A, SLOW_B]);
     expect(slowLine(status(s))).toBe(
-      "Slow tier: 2 test files; 2 current against plugins/** as of revision 2. Not covered by Stop's wait.",
+      "Slow tier: 2 test files; 2 current against plugins/** as of revision 2. Squeal runs them when the agent pauses.",
     );
   });
 
@@ -94,7 +100,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
     ran(s.store, s.repo, [SLOW_A, SLOW_B]);
     expect(readHeader(s.store, s.repo.mainId).slowTier?.sourcesChangedSince).toBe(false);
     expect(slowLine(status(s))).toBe(
-      "Slow tier: 2 test files; 2 current against plugins/** as of revision 2. Not covered by Stop's wait.",
+      "Slow tier: 2 test files; 2 current against plugins/** as of revision 2. Squeal runs them when the agent pauses.",
     );
   });
 
@@ -107,7 +113,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
       currentUpTo: 2,
     });
     expect(slowLine(status(s))).toBe(
-      "Slow tier: 2 test files; 2 current against plugins/** as of revisions 1 to 2. Not covered by Stop's wait.",
+      "Slow tier: 2 test files; 2 current against plugins/** as of revisions 1 to 2. Squeal runs them when the agent pauses.",
     );
   });
 
@@ -130,7 +136,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
       new Map([SLOW_A, SLOW_B].map((p) => [`key-${p}`, ["plugins/**"]])),
     );
     expect(slowLine(status(s))).toBe(
-      "Slow tier: 2 test files; 2 current against plugins/** as of revision 0. Not covered by Stop's wait.",
+      "Slow tier: 2 test files; 2 current against plugins/** as of revision 0. Squeal runs them when the agent pauses.",
     );
   });
 
@@ -152,7 +158,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
         sourcesChangedSince: true,
       });
       expect(slowLine(status(s))).toBe(
-        "Slow tier: 2 test files; 2 current against plugins/** as of revision 0, sources changed since. Not covered by Stop's wait.",
+        "Slow tier: 2 test files; 2 current against plugins/** as of revision 0, sources changed since. Squeal runs them when the agent pauses.",
       );
     },
   );
@@ -171,7 +177,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
     states(s.store, s.repo, [{ observedAt: 2 }, { observedAt: 2 }], [SLOW_A, SLOW_B]);
     ran(s.store, s.repo, [SLOW_A, SLOW_B], []);
     expect(slowLine(status(s))).toBe(
-      "Slow tier: 2 test files; 2 current at revision 2, against no declared artifact. Not covered by Stop's wait.",
+      "Slow tier: 2 test files; 2 current at revision 2, against no declared artifact. Squeal runs them when the agent pauses.",
     );
   });
 
@@ -188,7 +194,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
       lastDurationMs: 72_000,
     });
     expect(slowLine(status(s))).toBe(
-      `Slow tier: 2 test files; 1 current against plugins/** as of revision 2; running ${SLOW_A} since ${clockText(since)} (last run 1 min 12 s). Not covered by Stop's wait; \`squeal run --slow\` runs them now.`,
+      `Slow tier: 2 test files; 1 current against plugins/** as of revision 2; running ${SLOW_A} since ${clockText(since)} (last run 1 min 12 s). Squeal runs them when the agent pauses; \`squeal run --slow\` runs them now.`,
     );
   });
 
@@ -204,7 +210,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
       lastDurationMs: 72_000,
     });
     expect(slowLine(status(s))).toBe(
-      `Slow tier: 2 test files; running 2 slow files since ${clockText(since)}: ${SLOW_A} and ${SLOW_B} (longest last run 1 min 12 s). Not covered by Stop's wait; \`squeal run --slow\` runs them now.`,
+      `Slow tier: 2 test files; running 2 slow files since ${clockText(since)}: ${SLOW_A} and ${SLOW_B} (longest last run 1 min 12 s). Squeal runs them when the agent pauses; \`squeal run --slow\` runs them now.`,
     );
   });
 
@@ -220,7 +226,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
       lastDurationMs: null,
     });
     expect(slowLine(status(s))).toBe(
-      `Slow tier: 3 test files; running 3 slow files since ${clockText(since)}: ${SLOW_A}, ${SLOW_B} and 1 more (no earlier run). Not covered by Stop's wait; \`squeal run --slow\` runs them now.`,
+      `Slow tier: 3 test files; running 3 slow files since ${clockText(since)}: ${SLOW_A}, ${SLOW_B} and 1 more (no earlier run). Squeal runs them when the agent pauses; \`squeal run --slow\` runs them now.`,
     );
   });
 
@@ -245,7 +251,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
       lastDurationMs: 12_000,
     });
     expect(slowLine(status(s))).toBe(
-      `Slow tier: 4 test files; 1 current against plugins/** as of revision 2; 3 pending, running 2 slow files since ${clockText(since)}: ${SLOW_B} and ${SLOW_C} (longest last run 12 s). Not covered by Stop's wait; \`squeal run --slow\` runs them now.`,
+      `Slow tier: 4 test files; 1 current against plugins/** as of revision 2; 3 pending, running 2 slow files since ${clockText(since)}: ${SLOW_B} and ${SLOW_C} (longest last run 12 s). Squeal runs them when the agent pauses; \`squeal run --slow\` runs them now.`,
     );
   });
 
@@ -278,7 +284,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
     });
     expect(readHeader(s.store, s.repo.mainId).slowTier?.activity).toBeNull();
     expect(slowLine(status(s))).toBe(
-      "Slow tier: 2 test files; 1 current against plugins/** as of revision 2; 1 pending. Not covered by Stop's wait; `squeal run --slow` runs them now.",
+      "Slow tier: 2 test files; 1 current against plugins/** as of revision 2; 1 pending. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.",
     );
   });
 
@@ -302,7 +308,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
       testFilesWithoutChecks: 2,
     });
     expect(slowLine(status(s))).toBe(
-      `Slow tier: 2 test files; ${words}. Not covered by Stop's wait; \`squeal run --slow\` runs them now.`,
+      `Slow tier: 2 test files; ${words}. Squeal runs them when the agent pauses; \`squeal run --slow\` runs them now.`,
     );
   });
 
@@ -323,7 +329,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
     const s = seed();
     states(s.store, s.repo, [{ validity: "stale", observedAt: 1 }], [SLOW_A]);
     expect(slowLine(status(s))).toBe(
-      "Slow tier: 2 test files; 2 not run at revision 2. Not covered by Stop's wait; `squeal run --slow` runs them now.",
+      "Slow tier: 2 test files; 2 not run at revision 2. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.",
     );
   });
 
@@ -344,6 +350,45 @@ describe("the slow-tier line (spec 004 D8)", () => {
     expect(readHeader(off.store, off.repo.mainId).slowTier).not.toHaveProperty("stopWaitMs");
   });
 
+  it("says Squeal runs them when the agent pauses with no slow files listed yet (001-317)", () => {
+    const s = seed({ ...SLOW_POLICY, slow: { include: ["test/none/**/*.test.ts"] } });
+    expect(readHeader(s.store, s.repo.mainId).slowTier).toMatchObject({ testFiles: 0 });
+    expect(headerLines(readHeader(s.store, s.repo.mainId), "squeal")[1]).toBe(
+      "Slow tier: no slow test files listed yet; Squeal runs them when the agent pauses.",
+    );
+    expect(slowLine(status(s))).toBe(
+      "Slow tier: no slow test files listed yet; Squeal runs them when the agent pauses.",
+    );
+  });
+
+  it("keeps the slow-tier line in a delta held to the 10,000-character cap (001 D6)", () => {
+    const s = seed();
+    keys(s.store, s.repo, { [SLOW_A]: "queued" });
+    const header = readHeader(s.store, s.repo.mainId);
+    const consumer: Consumer = { worktreeId: s.repo.mainId, sessionId: "s", agentId: "main" };
+    const entries = Array.from({ length: 2_000 }, (_, i) => ({
+      kind: "first-seen-fail" as const,
+      check: {
+        kind: "test" as const,
+        project: "",
+        testPath: `t/f${i}.test.ts`,
+        fullName: `c ${i}`,
+      },
+      from: null,
+      to: "fail" as const,
+      validity: "current" as const,
+      observedAt: 2,
+      origin: { kind: "own" as const },
+      summary: "x".repeat(300),
+      location: null,
+    }));
+    const text = formatDelta({ schemaVersion: 1, consumer, header, label: "transitions", entries });
+    expect(text.length).toBeLessThanOrEqual(MESSAGE_CAP_CHARS);
+    expect(slowLine(text)).toBe(
+      "Slow tier: 2 test files; 1 pending; 1 not run at revision 2. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.",
+    );
+  });
+
   it("is the same line in a delivered registration as in status", async () => {
     const s = seed();
     keys(s.store, s.repo, { [SLOW_A]: "queued" });
@@ -356,7 +401,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
     const lines = delivered.split("\n");
     expect(lines[0]).toBe("SQUEAL · registered at revision 2");
     expect(lines[2]).toBe(
-      "Slow tier: 2 test files; 1 pending, waiting for the agent to pause; 1 not run at revision 2. Not covered by Stop's wait; `squeal run --slow` runs them now.",
+      "Slow tier: 2 test files; 1 pending, waiting for the agent to pause; 1 not run at revision 2. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.",
     );
     expect(lines[3]).toBe("Known failures: 0");
     expect(slowLine(status(s))).toBe(lines[2]);
