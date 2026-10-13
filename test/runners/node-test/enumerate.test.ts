@@ -340,10 +340,18 @@ describe("enumerateSource", () => {
 
 describe("enumeration cost", () => {
   // Review wave 2: a fixed 200 ms failed under the full suite's load. The bound is a ratio
-  // to the cold graph build of the same 1,000-module fixture, measured between the rounds
-  // in this process, so load slows both. At calm load enumeration took about 40 ms and the
-  // build about 190 ms; best of three of each.
-  it("enumerates 200 generated test files in under half a cold graph build", SLOW, async () => {
+  // to the cold graph build of the same 1,000-module fixture, in this process, so load
+  // slows both. At calm load enumeration took about 40 ms and the build about 190 ms.
+  // Task 001-309: best of three of each, unpaired, measured 0.576 at load 23 to 92, as
+  // 001-237 found for graph cost. Each round's enumeration is divided by the build just
+  // after it and the median of the rounds is asserted, so a preempted sample or a load
+  // that drifts between rounds moves one ratio and not the median.
+  const ROUNDS = 9;
+  const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] ?? 0;
+
+  it("enumerates 200 generated test files in under half a cold graph build", {
+    timeout: 180_000,
+  }, async () => {
     const out = join(scratch, "big");
     execFileSync(process.execPath, [join(fixtures, "gen-big.mjs"), out]);
     const dir = join(out, "packages/core/test");
@@ -354,14 +362,13 @@ describe("enumeration cost", () => {
     // `stripTypeScriptTypes` loads its WebAssembly once per process, about 90 ms; it is
     // loaded before timing, as a running daemon has it.
     enumerateSource(`test("warm", () => {});`, ref);
-    let enumeration = Number.POSITIVE_INFINITY;
-    let build = Number.POSITIVE_INFINITY;
-    for (let round = 0; round < 3; round++) {
+    const ratios: number[] = [];
+    for (let round = 0; round < ROUNDS; round++) {
       let start = performance.now();
       const all = await Promise.all(
         files.map((f) => enumerate(f, { project: "big", path: relative(out, f) })),
       );
-      enumeration = Math.min(enumeration, performance.now() - start);
+      const enumeration = performance.now() - start;
       expect(all.every((checks) => checks.length > 0)).toBe(true);
       start = performance.now();
       const graph = await createNodeTestGraph({
@@ -371,8 +378,12 @@ describe("enumeration cost", () => {
         testFiles: files.map((f) => relative(out, f)),
       });
       graph.affected([]);
-      build = Math.min(build, performance.now() - start);
+      ratios.push(enumeration / (performance.now() - start));
     }
-    expect(enumeration / build, `${enumeration} ms against ${build} ms`).toBeLessThan(0.5);
+    const ratio = median(ratios);
+    console.log(
+      `node-test enumeration against a cold graph build, ${ROUNDS} rounds: median ${ratio.toFixed(3)}`,
+    );
+    expect(ratio, `ratios ${ratios.map((r) => r.toFixed(3)).join(", ")}`).toBeLessThan(0.5);
   });
 });
