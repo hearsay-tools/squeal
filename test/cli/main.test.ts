@@ -66,7 +66,7 @@ describe("squeal status", () => {
     expect(stderr).toBe("");
     expect(stdout.split("\n").slice(0, 7)).toEqual([
       "Revision: 3",
-      "Known failures: 1",
+      "Known failures: 1 (1 test)",
       "  FAIL  src/a.test.ts > adds",
       "        expected 3, received 4",
       "        observed at revision 3, current",

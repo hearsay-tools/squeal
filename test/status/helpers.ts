@@ -1,7 +1,13 @@
 import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
-import type { CheckId, KnownState, Store, TestCheckId } from "../../src/core/types/index.js";
+import type {
+  CheckId,
+  FileCheckId,
+  KnownState,
+  Store,
+  TestCheckId,
+} from "../../src/core/types/index.js";
 import { open, tempDir } from "../store/helpers.js";
 
 /** A repository on disk without git: a main worktree with a `.git` directory and linked worktrees. */
@@ -40,6 +46,11 @@ export function seedStore(repo: FakeRepo): Store {
 
 export function check(path: string, fullName: string): TestCheckId {
   return { kind: "test", project: "", testPath: path, fullName };
+}
+
+/** The file-level check of `path` (spec 001 D4). */
+export function fileCheck(path: string): FileCheckId {
+  return { kind: "file", project: "", testPath: path };
 }
 
 /** A known state with every optional field empty; override what the test needs. */

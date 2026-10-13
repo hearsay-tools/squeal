@@ -6,7 +6,15 @@ import { formatStatus, readStatus } from "../../src/core/status/index.js";
 import { META_STORE_RECOVERED, SCHEMA_VERSION } from "../../src/core/store/index.js";
 import type { StatusResult, StatusSnapshot, Store } from "../../src/core/types/index.js";
 import { tempDir } from "../store/helpers.js";
-import { appendRevisions, check, type FakeRepo, fakeRepo, seedStore, state } from "./helpers.js";
+import {
+  appendRevisions,
+  check,
+  type FakeRepo,
+  fakeRepo,
+  fileCheck,
+  seedStore,
+  state,
+} from "./helpers.js";
 
 /** `test_file_keys` rows for `paths`, as a daemon writes them once it listed the test files. */
 function setKeys(store: Store, worktreeId: string, paths: string[]) {
@@ -31,7 +39,8 @@ function snapshotOf(result: StatusResult): StatusSnapshot {
 
 /**
  * Worktree `b` of a repository whose main worktree produced results that `b`
- * inherited. Every count class, one known failure, a pending test file
+ * inherited. Every count class, a known failure of a test and one of a
+ * file-level check, a pending test file
  * without checks, a completed checkpoint at an older revision, a live daemon
  * and a recovery note.
  */
@@ -69,6 +78,14 @@ function seedBusyWorktree(repo: FakeRepo, store: Store) {
       fingerprint: "AssertionError: expected 401, received 500 @ src/auth.ts:12:5",
       location: { path: "src/auth.ts", line: 12, column: 5 },
     }),
+    // Spec 005 D1: file-level checks, counted apart from tests.
+    state(b.id, fileCheck("src/broken.test.ts"), {
+      outcome: "fail",
+      observedAt: 2,
+      summary: "Cannot find module './gone'",
+      fingerprint: "Error: Cannot find module './gone'",
+    }),
+    state(b.id, fileCheck("src/auth.test.ts"), { observedAt: 2 }),
     state(b.id, check("src/auth.test.ts", "auth > login"), { origin: inherited }),
     state(b.id, check("src/auth.test.ts", "auth > logout"), { origin: inherited }),
     state(b.id, check("src/math.test.ts", "adds"), { observedAt: 2 }),
@@ -152,7 +169,8 @@ describe("readStatus", () => {
       dirty: true,
       dirtyObservedAt: 2,
       daemon: { state: "alive", lastHeartbeatAt: NOW - 2_000 },
-      counts: { current: 5, pending: 2, stale: 1, unknown: 1 },
+      counts: { current: 7, pending: 2, stale: 1, unknown: 1 },
+      fileLevelCounts: { current: 2, pending: 0, stale: 0, unknown: 0 },
       testFilesWithoutChecks: { pending: 1, unknown: 1 },
       fullSuite: { atCurrentRevision: false, lastCompletedRevision: 1 },
       testFilesListed: true,
@@ -169,14 +187,25 @@ describe("readStatus", () => {
           fingerprint: "AssertionError: expected 401, received 500 @ src/auth.ts:12:5",
           location: { path: "src/auth.ts", line: 12, column: 5 },
         },
+        {
+          check: fileCheck("src/broken.test.ts"),
+          outcome: "fail",
+          validity: "current",
+          observedAt: 2,
+          summary: "Cannot find module './gone'",
+          fingerprint: "Error: Cannot find module './gone'",
+          location: null,
+        },
       ],
       inherited: {
         count: 2,
         sources: [{ worktreeId: repo.mainId, worktreeRoot: repo.main, commit: COMMIT, count: 2 }],
       },
       breakdown: {
-        currentByOutcome: { pass: 3, fail: 1, skip: 1, unknown: 0 },
+        currentByOutcome: { pass: 4, fail: 2, skip: 1, unknown: 0 },
         pendingByPhase: { queued: 1, running: 1 },
+        fileLevelByOutcome: { pass: 1, fail: 1, skip: 0, unknown: 0 },
+        fileLevelByPhase: { queued: 0, running: 0 },
         testFiles: 5,
         testFilesWithoutChecks: 2,
         testFilesWithoutChecksRunning: 0,
@@ -204,11 +233,14 @@ describe("readStatus", () => {
 
     expect(text).toMatchInlineSnapshot(`
       "Revision: 2
-      Known failures: 1
+      Known failures: 2 (1 test, 1 test file that did not load)
         FAIL  src/auth.test.ts > auth > expired token
               expected 401, received 500
               at src/auth.ts:12:5, observed at revision 2, current
-      Affected checks: 3 passed, 1 running, 1 queued, 1 skipped, 1 stale, 1 unknown
+        FAIL  src/broken.test.ts (file-level)
+              Cannot find module './gone'
+              observed at revision 2, current
+      Affected checks: 4 passed (3 tests, 1 test file loaded), 1 running (1 test), 1 queued (1 test), 1 skipped (1 test), 1 stale (1 test), 1 unknown (1 test)
       Full-suite checkpoint: none completed since revision 1 (the counts are for revision 2; \`squeal run --all\` requests one)
 
       Worktree: <b> (HEAD abc1234, dirty at revision 2)
@@ -238,23 +270,18 @@ describe("readStatus", () => {
       daemon: null,
     });
     appendRevisions(store, repo.mainId, 187, { head: COMMIT, dirty: false });
-    const states = [];
-    for (let n = 0; n < 47; n++) states.push(state(repo.mainId, check("src/a.test.ts", `p${n}`)));
-    for (let n = 0; n < 3; n++) {
-      states.push(
-        state(repo.mainId, check("src/b.test.ts", `r${n}`), {
-          validity: "pending",
-          pendingPhase: "running",
-        }),
-      );
-    }
-    for (let n = 0; n < 12; n++) {
-      states.push(
-        state(repo.mainId, check("src/c.test.ts", `q${n}`), {
-          validity: "pending",
-          pendingPhase: "queued",
-        }),
-      );
+    // Spec 005 D1: each test file has its file-level check, counted apart from its tests.
+    const states = [state(repo.mainId, fileCheck("src/a.test.ts"))];
+    for (let n = 0; n < 46; n++) states.push(state(repo.mainId, check("src/a.test.ts", `p${n}`)));
+    for (const [path, phase, tests] of [
+      ["src/b.test.ts", "running", 2],
+      ["src/c.test.ts", "queued", 11],
+    ] as const) {
+      const pending = { validity: "pending", pendingPhase: phase } as const;
+      states.push(state(repo.mainId, fileCheck(path), pending));
+      for (let n = 0; n < tests; n++) {
+        states.push(state(repo.mainId, check(path, `${phase}${n}`), pending));
+      }
     }
     store.knownStates.upsertMany(states);
     store.checkpoints.start({
@@ -272,7 +299,7 @@ describe("readStatus", () => {
     expect(lines.slice(0, 4)).toEqual([
       "Revision: 187",
       "Known failures: 0",
-      "Affected checks: 47 passed, 3 running, 12 queued",
+      "Affected checks: 47 passed (46 tests, 1 test file loaded), 3 running (2 tests, 1 test file loaded), 12 queued (11 tests, 1 test file loaded)",
       "Full-suite checkpoint: none completed since revision 170 (the counts are for revision 187; `squeal run --all` requests one)",
     ]);
   });

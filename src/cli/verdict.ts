@@ -1,5 +1,6 @@
 import { testFileId } from "../core/keys/index.js";
 import { readHeader, testFileKeyOf } from "../core/state/index.js";
+import { type CheckCounts, checkPartsText } from "../core/status/index.js";
 import { plural } from "../core/text.js";
 import type {
   KnownState,
@@ -12,12 +13,6 @@ import type {
 
 /** A test file as the verdict counts it: `current` only when every check it has is. */
 type FileClass = Exclude<Validity, "current"> | "current";
-
-/** Checks counted apart (spec 005 D1; 001 D4: one file-level check per test file). */
-export interface CheckCounts {
-  readonly tests: number;
-  readonly testFiles: number;
-}
 
 /**
  * What the store says of a set of test files at the worktree's current
@@ -120,13 +115,7 @@ export function noVerdictText(verdict: FileVerdict): string | null {
 export function failuresText(failures: CheckCounts): string {
   const total = failureCount(failures);
   if (total === 0) return "no known failures";
-  const parts = [
-    ...(failures.tests > 0 ? [plural(failures.tests, "test")] : []),
-    ...(failures.testFiles > 0
-      ? [`${plural(failures.testFiles, "test file")} that did not load`]
-      : []),
-  ];
-  return `${plural(total, "known failure")}: ${parts.join(", ")}`;
+  return `${plural(total, "known failure")}: ${checkPartsText(failures, "that did not load")}`;
 }
 
 function failureCount(failures: CheckCounts): number {

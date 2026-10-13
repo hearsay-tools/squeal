@@ -167,6 +167,12 @@ export interface SlowTierState {
 export interface StatusHeader {
   readonly revision: RevisionNumber;
   readonly counts: ValidityCounts;
+  /**
+   * The file-level checks among `counts`, one per test file (spec 001 D4);
+   * the tests are the rest. Spec 005 D1: every count of checks names the two
+   * apart. Set by `readHeader`; absent, the counts are printed whole.
+   */
+  readonly fileLevelCounts?: ValidityCounts;
   readonly testFilesWithoutChecks: TestFileCounts;
   readonly fullSuite: FullSuiteState;
   /**
@@ -331,6 +337,10 @@ export interface CheckBreakdown {
   readonly currentByOutcome: Readonly<Record<KnownOutcome, number>>;
   /** Checks with `pending` validity, by phase. A pending check with no phase counts as `queued`. */
   readonly pendingByPhase: Readonly<Record<PendingPhase, number>>;
+  /** The file-level checks among `currentByOutcome` (spec 005 D1); absent, the counts are printed whole. */
+  readonly fileLevelByOutcome?: Readonly<Record<KnownOutcome, number>>;
+  /** The file-level checks among `pendingByPhase` (spec 005 D1); absent, the counts are printed whole. */
+  readonly fileLevelByPhase?: Readonly<Record<PendingPhase, number>>;
   /** Test files with a key in this worktree (`test_file_keys`). */
   readonly testFiles: number;
   /**

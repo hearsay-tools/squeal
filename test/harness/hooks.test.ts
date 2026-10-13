@@ -251,7 +251,7 @@ describe("Stop and SubagentStop", () => {
       reason:
         "Squeal policy stop.blockOnKnownFailures is on and 1 known failure exists at revision 1: src/math.test.ts > math > subtracts.\n\n" +
         "SQUEAL · status at revision 1\n" +
-        "Revision 1 (changed src/math.ts): 2 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 1; `squeal run --all` requests one).\n" +
+        "Revision 1 (changed src/math.ts): 2 current (2 tests), 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 1; `squeal run --all` requests one).\n" +
         "Known failures: 1 (src/math.test.ts > math > subtracts)",
     });
   });
@@ -318,7 +318,7 @@ describe("Stop and SubagentStop", () => {
 
     expect(waited).toBeGreaterThanOrEqual(250);
     expect(waited).toBeLessThan(1_000);
-    expect(out.stdout).toContain("1 current, 0 pending");
+    expect(out.stdout).toContain("1 current (1 test), 0 pending");
     expect(out.stdout).toContain("PASS -> FAIL");
   });
 });

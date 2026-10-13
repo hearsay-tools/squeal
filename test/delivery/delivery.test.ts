@@ -404,6 +404,7 @@ describe("register", () => {
     expect(header).toEqual({
       revision: 1,
       counts: { current: 1, pending: 0, stale: 1, unknown: 0 },
+      fileLevelCounts: { current: 0, pending: 0, stale: 0, unknown: 0 },
       testFilesWithoutChecks: { pending: 0, unknown: 0 },
       fullSuite: { atCurrentRevision: true, lastCompletedRevision: 1 },
       testFilesListed: true,
@@ -420,6 +421,7 @@ describe("register", () => {
     expect(header).toEqual({
       revision: 0,
       counts: { current: 0, pending: 0, stale: 0, unknown: 0 },
+      fileLevelCounts: { current: 0, pending: 0, stale: 0, unknown: 0 },
       testFilesWithoutChecks: { pending: 0, unknown: 1 },
       fullSuite: { atCurrentRevision: false, lastCompletedRevision: null },
       testFilesListed: true,

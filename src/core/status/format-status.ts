@@ -8,6 +8,7 @@ import type {
   StatusSnapshot,
   StatusUnavailable,
 } from "../types/index.js";
+import { countedText, failureCountText } from "./checks.js";
 import { DEATH_CAUSE, deathText } from "./died.js";
 
 export interface StatusFormatOptions {
@@ -32,7 +33,7 @@ export function formatStatus(
   if (!result.available) return formatUnavailable(result);
   const lines = [
     `Revision: ${result.revision}`,
-    `Known failures: ${result.knownFailures.length}`,
+    `Known failures: ${failureCountText(result.knownFailures.map((f) => f.check))}`,
     ...result.knownFailures.flatMap((f) => [
       `  FAIL  ${formatCheck(f.check)}`,
       ...(f.summary === "" ? [] : [`        ${f.summary}`]),
@@ -157,8 +158,10 @@ export function formatUnavailable(result: StatusUnavailable): string {
 }
 
 /**
- * "47 passed, 3 running, 12 queued", then skipped, stale and unknown when
- * there are any. Before the daemon listed the test files, zero counts would
+ * "47 passed (40 tests, 7 test files loaded), 3 running (3 tests), 12
+ * queued (9 tests, 3 test files loaded)", then skipped, stale and unknown
+ * when there are any, each count naming its tests and file-level checks
+ * apart (spec 005 D1). Before the daemon listed the test files, zero counts would
  * read as complete, so none are printed (D7 as amended). While the runner
  * part of the revision is pending, the counts say what they leave out (D2 as
  * amended, review wave 4.5 S1).
@@ -167,31 +170,43 @@ function affected(s: StatusSnapshot): string {
   if (s.testFilesListed === false) {
     return "none counted; the daemon has not listed this worktree's test files yet";
   }
-  const { currentByOutcome, pendingByPhase } = s.breakdown;
+  const { currentByOutcome, pendingByPhase, fileLevelByOutcome, fileLevelByPhase } = s.breakdown;
+  const files = s.fileLevelCounts;
   const parts = [
-    `${currentByOutcome.pass} passed`,
-    `${pendingByPhase.running} running`,
-    `${pendingByPhase.queued} queued`,
+    countedText(currentByOutcome.pass, "passed", fileLevelByOutcome?.pass),
+    countedText(pendingByPhase.running, "running", fileLevelByPhase?.running),
+    countedText(pendingByPhase.queued, "queued", fileLevelByPhase?.queued),
   ];
-  const optional: [number, string][] = [
-    [currentByOutcome.skip, "skipped"],
-    [s.counts.stale, "stale"],
-    [s.counts.unknown + currentByOutcome.unknown, "unknown"],
+  const unknownFiles =
+    files === undefined || fileLevelByOutcome === undefined
+      ? undefined
+      : files.unknown + fileLevelByOutcome.unknown;
+  const optional: [number, string, number | undefined][] = [
+    [currentByOutcome.skip, "skipped", fileLevelByOutcome?.skip],
+    [s.counts.stale, "stale", files?.stale],
+    [s.counts.unknown + currentByOutcome.unknown, "unknown", unknownFiles],
   ];
-  for (const [count, label] of optional) if (count > 0) parts.push(`${count} ${label}`);
-  // Task 001-217: a baseline over fresh files runs them before any has a check; the
-  // detail line below counts them when none runs.
-  const files = s.testFilesWithoutChecks.pending;
-  const running = Math.min(files, s.breakdown.testFilesWithoutChecksRunning ?? 0);
-  const fresh =
-    running === 0
-      ? ""
-      : `; ${plural(files, "test file")} without checks yet: ${running} running, ${files - running} queued`;
+  for (const [count, label, fileLevel] of optional) {
+    if (count > 0) parts.push(countedText(count, label, fileLevel));
+  }
+  const fresh = freshText(s);
   const runnerPart =
     s.runnerPartPending === true
       ? `; ${runnerPartText(s.revision)} is pending, so test files it adds are not counted yet`
       : "";
   return `${parts.join(", ")}${fresh}${runnerPart}`;
+}
+
+/**
+ * Task 001-217: a baseline over fresh files runs them before any has a check;
+ * the detail line counts them when none runs.
+ */
+function freshText(s: StatusSnapshot): string {
+  const files = s.testFilesWithoutChecks.pending;
+  const running = Math.min(files, s.breakdown.testFilesWithoutChecksRunning ?? 0);
+  return running === 0
+    ? ""
+    : `; ${plural(files, "test file")} without checks yet: ${running} running, ${files - running} queued`;
 }
 
 /** Spec 001 D7 as amended: the dirty flag is labelled with its revision, not known without a daemon. */

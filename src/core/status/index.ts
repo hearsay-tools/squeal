@@ -7,6 +7,13 @@ export {
   readIgnoredReads,
 } from "../scheduler/ignored-reads.js";
 export { formatCheck, parseCheck } from "../state/index.js";
+export {
+  type CheckCounts,
+  checkPartsText,
+  countChecks,
+  countedText,
+  failureCountText,
+} from "./checks.js";
 export { formatStatus, formatUnavailable } from "./format-status.js";
 export { formatWhy } from "./format-why.js";
 export {

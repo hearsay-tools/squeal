@@ -8,9 +8,13 @@ import type { StatusSnapshot } from "../../src/core/types/index.js";
  * only at quiet points, where nothing is pending and no file is changing.
  */
 
-// 001-85: the revision may be followed by "(changed a.ts, b.ts and 2 more)".
-const HEADER =
-  /Revision (\d+)(?: \(changed [^)]*\))?: (\d+) current, (\d+) pending, (\d+) stale, (\d+) unknown\./;
+// 001-85: the revision may be followed by "(changed a.ts, b.ts and 2 more)"; 005-21: a
+// count by "(9 tests, 3 test files loaded)".
+const PARTS = String.raw`(?: \([^)]*\))?`;
+const HEADER = new RegExp(
+  String.raw`Revision (\d+)(?: \(changed [^)]*\))?: (\d+) current${PARTS}, (\d+) pending${PARTS}, ` +
+    String.raw`(\d+) stale${PARTS}, (\d+) unknown${PARTS}\.`,
+);
 
 /** Check names of the `FAIL  <name>` or `PASS  <name>` blocks of a delivered text. */
 export function blocks(text: string, outcome: "FAIL" | "PASS"): string[] {

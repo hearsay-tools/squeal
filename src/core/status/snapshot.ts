@@ -216,18 +216,29 @@ function breakdown(
   const filePhase = new Map(keys.map((k) => [testFileId(k.testFile), k.pending]));
   const currentByOutcome = { pass: 0, fail: 0, skip: 0, unknown: 0 };
   const pendingByPhase = { queued: 0, running: 0 };
+  const fileLevelByOutcome = { pass: 0, fail: 0, skip: 0, unknown: 0 };
+  const fileLevelByPhase = { queued: 0, running: 0 };
   const filesWithChecks = new Set<string>();
   for (const s of states) {
     const file = testFileKeyOf(s.check);
     filesWithChecks.add(file);
-    if (s.validity === "current") currentByOutcome[s.outcome]++;
-    if (s.validity === "pending")
-      pendingByPhase[s.pendingPhase ?? filePhase.get(file) ?? "queued"]++;
+    const fileLevel = s.check.kind === "file";
+    if (s.validity === "current") {
+      currentByOutcome[s.outcome]++;
+      if (fileLevel) fileLevelByOutcome[s.outcome]++;
+    }
+    if (s.validity === "pending") {
+      const phase = s.pendingPhase ?? filePhase.get(file) ?? "queued";
+      pendingByPhase[phase]++;
+      if (fileLevel) fileLevelByPhase[phase]++;
+    }
   }
   const without = keys.filter((k) => !filesWithChecks.has(testFileId(k.testFile)));
   return {
     currentByOutcome,
     pendingByPhase,
+    fileLevelByOutcome,
+    fileLevelByPhase,
     testFiles: keys.length,
     testFilesWithoutChecks: without.length,
     testFilesWithoutChecksRunning: without.filter((k) => k.pending === "running").length,
