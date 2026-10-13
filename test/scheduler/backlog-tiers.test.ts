@@ -49,7 +49,7 @@ function suite(count: number, sleepMs: number, mark?: string) {
 
 describe("scheduler: backlog work runs in machine-wide tiers (D5, defect 25)", () => {
   it("runs a 200-file backlog in at most a few tiers, within 2x a direct vitest run", {
-    timeout: 300_000,
+    timeout: 600_000,
   }, async () => {
     const repo = suite(200, 20);
     const direct = () => {
@@ -57,36 +57,48 @@ describe("scheduler: backlog work runs in machine-wide tiers (D5, defect 25)", (
       execFileSync(process.execPath, [vitestBin, "run"], { cwd: repo.main, stdio: "ignore" });
       return Math.round(performance.now() - started);
     };
-    const directMs = Math.min(direct(), direct());
+    // A cold first run, not measured.
+    direct();
 
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, {
       tierSize: 4,
       backlogTierSize: 200,
     });
-    let started = performance.now();
+    const started = performance.now();
     await h.scheduler.start();
     await h.scheduler.idle();
     const baselineMs = Math.round(performance.now() - started);
     const baselineTiers = h.runner.runs.length;
-
-    // An environment change: every key moves, all 200 files are queued again.
-    appendFileSync(join(h.root, "vitest.config.ts"), "// environment change\n");
-    started = performance.now();
-    await h.batch("vitest.config.ts");
-    await h.scheduler.idle();
-    const backlogMs = Math.round(performance.now() - started);
-    const tiers = h.runner.runs.slice(baselineTiers);
-
-    console.log(
-      `001-124: direct vitest run ${directMs} ms; baseline ${baselineMs} ms in ${baselineTiers} tiers; ` +
-        `backlog after a config edit ${backlogMs} ms in ${tiers.length} tiers`,
-    );
-    expect(new Set(tiers.flatMap((t) => t.files.map(testFileId))).size).toBe(200);
-    expect(tiers.every((t) => t.report.end === "completed")).toBe(true);
     expect(baselineTiers).toBeLessThanOrEqual(3);
-    expect(tiers.length).toBeLessThanOrEqual(3);
-    expect(backlogMs).toBeLessThan(2 * directMs);
+
+    // Task 001-320: each backlog is divided by the direct run just before it,
+    // so both meet the same load (the shape 001-237 found in graph cost), and
+    // the median of three rounds decides.
+    const ratios: number[] = [];
+    for (let round = 0; round < 3; round++) {
+      const directMs = direct();
+      const before = h.runner.runs.length;
+      // An environment change: every key moves, all 200 files are queued again.
+      appendFileSync(join(h.root, "vitest.config.ts"), `// environment change ${round}\n`);
+      const at = performance.now();
+      await h.batch("vitest.config.ts");
+      await h.scheduler.idle();
+      const backlogMs = Math.round(performance.now() - at);
+      const tiers = h.runner.runs.slice(before);
+
+      console.log(
+        `001-124: direct vitest run ${directMs} ms; baseline ${baselineMs} ms in ${baselineTiers} tiers; ` +
+          `backlog after config edit ${round + 1} ${backlogMs} ms in ${tiers.length} tiers`,
+      );
+      expect(new Set(tiers.flatMap((t) => t.files.map(testFileId))).size).toBe(200);
+      expect(tiers.every((t) => t.report.end === "completed")).toBe(true);
+      expect(tiers.length).toBeLessThanOrEqual(3);
+      ratios.push(backlogMs / directMs);
+    }
+    const median = ratios.sort((a, b) => a - b)[1] ?? Number.POSITIVE_INFINITY;
+    console.log(`001-320: backlog to direct, median of 3 paired rounds ${median.toFixed(2)}`);
+    expect(median).toBeLessThan(2);
   });
 
   it("cancels a backlog tier for an edit, keeps its completed files and runs the edit in the next small tier", {
