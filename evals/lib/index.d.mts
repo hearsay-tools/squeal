@@ -659,10 +659,12 @@ export function resultsName(input: {
   version: string;
   run: string;
   variant?: string | null;
+  /** An atomic run: `.atomic`, or `.<variant>.atomic-variant` with a variant (006-48). */
+  atomic?: boolean;
 }): string;
 
 export interface ResultsFile {
-  kind: "baseline" | "variant";
+  kind: "baseline" | "variant" | "atomic" | "atomic-variant";
   date: string;
   squealVersion: string;
   commit: string;
@@ -878,6 +880,8 @@ export const OLD_ROOT_BEFORE: string;
 export function oldRoot(runId: string, harness: string): boolean;
 /** One-sided Fisher exact p that `now` is lower than `before`. */
 export function fisherLower(before: Rate, now: Rate): number;
+/** `ln C(n, k)`. */
+export function lnChoose(n: number, k: number): number;
 /** The 95% Wilson range of a count, `[low, high]` as fractions. */
 export function wilson(rate: Rate): [number, number];
 export function atomicDropped(before: Rate | null, now: Rate | null): boolean;
@@ -915,3 +919,19 @@ export interface AtomicTrend {
 }
 export function atomicTrend(runs: readonly { name: string; data: Json }[]): AtomicTrend;
 export function atomicMarkdown(runs: readonly { name: string; data: Json }[]): string;
+
+// 006-48: an atomic variant run's two arms, per model, scenario and measure.
+/** Two-sided Fisher exact p of one count against another. */
+export function fisherTwoSided(a: Rate, b: Rate): number;
+export interface AtomicCompareRow {
+  /** `<harness> <model>`. */
+  model: string;
+  scenario: string;
+  measure: string;
+  /** Each arm's count, the shipped arm first; `null` when no session was computable. */
+  counts: [Rate | null, Rate | null];
+  /** Two-sided Fisher p; `null` unless both arms have a count. */
+  p: number | null;
+}
+export function atomicCompare(data: Json): { arms: [string, string]; rows: AtomicCompareRow[] };
+export function atomicCompareMarkdown(data: Json, name: string): string;

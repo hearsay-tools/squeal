@@ -13,6 +13,9 @@ node evals/bin/regrade.mjs                         # re-apply the claim grading 
 node evals/bin/regrade.mjs --judge                 # also re-judge retained transcripts judged by another identity (calls a model)
 node --import tsx evals/bin/judge-calibrate.mjs    # the judge's calibration gate (Haiku 5.5; --model claude-sonnet-5-5 if it fails)
 node evals/bin/compare.mjs results/<file>.json variant
+node evals/bin/run-baseline.mjs --atomic           # the atomic tier (D10); regenerates results/ATOMIC.md
+node evals/bin/run-baseline.mjs --atomic --variant stop-slow --tasks a2-slow   # shipped and variant arms, a run of its own
+node evals/bin/atomic-compare.mjs results/<file>.atomic-variant.json   # its arms per model, scenario and measure, two-sided Fisher
 ```
 
 Cells run in `$SQ_EVALS_ROOT/cells/<commit>/<run>/` (default root `/tmp/squeal-evals-<uid>`, `lib/root.mjs`) with scratch `HOME`, `TMPDIR` and `CODEX_HOME`; the real `~/.claude` and `~/.codex` are never written, and the host's model provider is read from the environment and `~/.codex/config.toml` at run time. Only the provider's allow-listed fields reach a cell; an inline header or token stops it. Every run has a fresh id, so two runs of one commit share no cell and write two results files. A cell starts only while the one-minute load average is below the CPU count. The root sits outside every repository: Claude Code loads `CLAUDE.md` from a session's working directory and each directory above it, so a root under a checkout would hand that checkout's instructions to every Claude cell and judge call (001's R4). The default never follows `TMPDIR`, which a Cezar session points inside the checkout, and `run-baseline.mjs`, `run-cell.mjs`, `judge-calibrate.mjs` and the judge's default runner refuse a root with an ancestor holding `.git`, `CLAUDE.md`, `AGENTS.md` or `.claude` (exit 2), unless `--force-root`. The judge's scratch goes under `<root>/judge`, or under the cell during a run. The coordinator commits the results file and the regenerated `TREND.md`.
@@ -35,4 +38,4 @@ The gate: `judge-calibrate.mjs` judges every reference session in `test/evals/ju
 - `baseline.json`: the matrix (D5). Changing a task, a knob, the fixture or the effort starts a new trend line.
 - `bin/`: `run-cell.mjs`, `run-baseline.mjs`, `grade.mjs`, `trend.mjs`, `regrade.mjs`, `compare.mjs`, `judge-calibrate.mjs`, and `import-005-07.mjs`, which made the first results file.
 - `lib/`: the grader, the runner's parts and the trend writer, tested in `test/evals/` on recorded transcripts.
-- `results/`: one file per run, `<date>-<version>.<run>.json`, `TREND.md`, and the judge's calibration files, `judge-calibration-<identity>.json`.
+- `results/`: one file per run, `<date>-<version>.<run>.json` (`.<variant>.json` for a variant run, `.atomic.json` for an atomic run, `.<variant>.atomic-variant.json` for an atomic variant run, which neither table reads), `TREND.md`, `ATOMIC.md`, and the judge's calibration files, `judge-calibration-<identity>.json`.

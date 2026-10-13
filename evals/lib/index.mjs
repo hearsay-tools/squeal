@@ -19,6 +19,7 @@ export {
   usageOf,
   waitSettled,
 } from "./atomic.mjs";
+export { atomicCompare, atomicCompareMarkdown, fisherTwoSided } from "./atomic-compare.mjs";
 export {
   atomicDropped,
   atomicMarkdown,
@@ -27,6 +28,7 @@ export {
   countText,
   FLAG_P,
   fisherLower,
+  lnChoose,
   OLD_ROOT_BEFORE,
   oldRoot,
   RELIABLE,

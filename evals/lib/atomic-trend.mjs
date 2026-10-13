@@ -28,7 +28,7 @@ export const oldRoot = (runId, harness) => harness === "claude" && String(runId)
 const modelKey = (c) => `${c.harness} ${c.model}`;
 
 /** `ln C(n, k)`. */
-function lnChoose(n, k) {
+export function lnChoose(n, k) {
   let s = 0;
   for (let i = 1; i <= k; i++) s += Math.log(n - k + i) - Math.log(i);
   return s;
