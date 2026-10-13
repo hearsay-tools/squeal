@@ -5,7 +5,7 @@ import { findWorktreeRoot, isRecord } from "../../core/fs/index.js";
 import { globToRegExp } from "../../core/keys/glob.js";
 import type { AbsolutePath } from "../../core/types/index.js";
 import type { CliIo } from "../main.js";
-import { blockText, resolved, withBlock, writeBlockFile } from "./block.js";
+import { blockText, resolved, unfindableBlock, withBlock, writeBlockFile } from "./block.js";
 import { rewordGates } from "./gates.js";
 import { buildPlan, type SetupPlan } from "./plan.js";
 
@@ -137,6 +137,8 @@ async function checkChoices(
     if (isAbsolute(path) || normalize(path).startsWith("..")) {
       return `--block takes a file inside the worktree, not "${path}"`;
     }
+    const unfindable = await unfindableBlock(root, path);
+    if (unfindable !== null) return unfindable;
     const text = readOrEmpty(resolved(root, path));
     const written = withBlock(text, blockText());
     if (typeof written !== "string") {

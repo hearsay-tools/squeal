@@ -17,7 +17,7 @@ import {
   PREVIOUS_MARKETPLACE_NAME,
   PREVIOUS_PLUGIN_ID,
 } from "./plugin-id.js";
-import { removeBlocks } from "./setup/block.js";
+import { blockFiles, removeBlocks } from "./setup/block.js";
 
 /** A daemon asked to stop finishes the tier in flight (D10); `remove` waits this long for it. */
 const STOP_WAIT_MS = 5_000;
@@ -105,8 +105,8 @@ export async function removeCommand(
     );
   }
 
-  // Spec 005 D4: the instruction block goes too; one without its end stays and is named.
-  for (const edit of removeBlocks(root)) {
+  // Spec 005 D4: the instruction block goes too, nested files included (row 005-24); one without its end stays and is named.
+  for (const edit of removeBlocks(root, await blockFiles(root))) {
     const path = join(root, edit.path);
     if (edit.result === "unterminated") {
       failed.push(
