@@ -187,9 +187,7 @@ async function inputQuestion(group: SlowGroup, pick: Choose): Promise<string[] |
 /** Asks on the terminal, printing the choices numbered; an empty or unreadable answer takes the default. */
 export function terminalPick(ask: Ask, out: (text: string) => void): Choose {
   return async ({ text, choices }) => {
-    out(
-      `\n${text}\n${choices.map((c, i) => `  ${i + 1}. ${c}${i === 0 ? " (default)" : ""}`).join("\n")}\n`,
-    );
+    out(numbered({ text, choices }));
     for (let tries = 0; tries < 3; tries++) {
       const answer = (await ask(`Choice [1]: `)).trim();
       if (answer === "") return 0;
@@ -214,9 +212,11 @@ export function defaultPick(out: (text: string) => void): Choose {
 /** No terminal and no `--yes`: lists each question with its choices and takes nothing. */
 export function listPick(out: (text: string) => void): Choose {
   return async ({ text, choices }) => {
-    out(
-      `\n${text}\n${choices.map((c, i) => `  ${i + 1}. ${c}${i === 0 ? " (default)" : ""}`).join("\n")}\n`,
-    );
+    out(numbered({ text, choices }));
     return 0;
   };
+}
+
+function numbered({ text, choices }: Question): string {
+  return `\n${text}\n${choices.map((c, i) => `  ${i + 1}. ${c}${i === 0 ? " (default)" : ""}\n`).join("")}`;
 }
