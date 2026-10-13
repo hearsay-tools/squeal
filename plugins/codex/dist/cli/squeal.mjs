@@ -281,6 +281,7 @@ var init_store = __esm({
       registeredLeft: { prefix: "revision-registered-left:", owner: "delivery/registered" },
       livenessTold: { prefix: "liveness-told:", owner: "delivery/liveness" },
       revisionTold: { prefix: "revision-told:", owner: "delivery/liveness" },
+      uncoveredTold: { prefix: "uncovered-told:", owner: "delivery/uncovered" },
       notes: { prefix: "notes.", owner: "types/scheduler" },
       refined: { prefix: "refined.", owner: "types/scheduler" },
       awaitingInstall: { prefix: "awaiting-install.", owner: "types/scheduler" },
@@ -358,6 +359,7 @@ var init_policy = __esm({
       runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5 },
       nodeTest: [],
       slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 6e5, maxParallel: 4 },
+      delivery: { uncoveredEdits: true },
       daemon: { idleExitMinutes: 60 },
       store: { retentionDays: 7, maxSizeMb: null }
     };
@@ -2907,6 +2909,7 @@ var init_policy2 = __esm({
         maxDeferMs: atLeastZero,
         maxParallel: positiveInteger
       },
+      delivery: { uncoveredEdits: boolean2 },
       daemon: { idleExitMinutes: aboveZero },
       store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
     };
@@ -34795,7 +34798,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.136";
+  if (true) return "0.1.137";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

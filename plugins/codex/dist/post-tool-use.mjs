@@ -81,6 +81,7 @@ var WORKTREE_META_ROWS = {
   registeredLeft: { prefix: "revision-registered-left:", owner: "delivery/registered" },
   livenessTold: { prefix: "liveness-told:", owner: "delivery/liveness" },
   revisionTold: { prefix: "revision-told:", owner: "delivery/liveness" },
+  uncoveredTold: { prefix: "uncovered-told:", owner: "delivery/uncovered" },
   notes: { prefix: "notes.", owner: "types/scheduler" },
   refined: { prefix: "refined.", owner: "types/scheduler" },
   awaitingInstall: { prefix: "awaiting-install.", owner: "types/scheduler" },
@@ -139,6 +140,7 @@ var DEFAULT_POLICY = {
   runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5 },
   nodeTest: [],
   slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 6e5, maxParallel: 4 },
+  delivery: { uncoveredEdits: true },
   daemon: { idleExitMinutes: 60 },
   store: { retentionDays: 7, maxSizeMb: null }
 };
@@ -435,6 +437,7 @@ var SHAPE = {
     maxDeferMs: atLeastZero,
     maxParallel: positiveInteger
   },
+  delivery: { uncoveredEdits: boolean2 },
   daemon: { idleExitMinutes: aboveZero },
   store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
 };
@@ -4103,7 +4106,7 @@ ${overflow(blocks.slice(i))}`, room)}${end}`;
   }
   return `${out}${end}`;
 }
-function formatDelta(delta, command = SQUEAL_COMMAND) {
+function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS) {
   const { header, entries } = delta;
   const changed = entries.filter((e) => e.kind !== "fail-retired");
   const retired = entries.filter((e) => e.kind === "fail-retired");
@@ -4129,7 +4132,7 @@ function formatDelta(delta, command = SQUEAL_COMMAND) {
     blocks,
     overflow,
     tail,
-    MESSAGE_CAP_CHARS
+    max
   );
 }
 function sawEditLine(queued) {
@@ -4416,7 +4419,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.136";
+  if (true) return "0.1.137";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4675,6 +4678,69 @@ function withPrimer(registration2, command = SQUEAL_COMMAND, coverage = VITEST_O
 ${tail}`;
 }
 
+// src/harness/shared/uncovered-edit.ts
+import { existsSync as existsSync7 } from "node:fs";
+import { join as join11 } from "node:path";
+
+// src/core/delivery/uncovered.ts
+var CODE = /\.(?:[cm]?[jt]sx?|py)$/;
+function uncoveredMetaKey(worktreeId) {
+  return worktreeMetaKey("uncoveredTold", worktreeId);
+}
+function tellUncovered(store, consumer, exists) {
+  return store.transaction(() => {
+    const r = registration(store, consumer);
+    const latest = store.revisions.latest(consumer.worktreeId);
+    if (r === null || latest === null) return [];
+    const { changed } = changedAfter(store, consumer.worktreeId, r, latest.number);
+    const code = [...changed].filter(
+      (p) => CODE.test(p) && !p.startsWith("dist/") && !p.includes("/dist/")
+    );
+    if (code.length === 0) return [];
+    const read3 = readByTests(store, consumer.worktreeId);
+    if (read3 === null) return [];
+    const key = uncoveredMetaKey(consumer.worktreeId);
+    const told = toldPaths(readSlot(store, key, consumer));
+    const fresh2 = code.filter((p) => !read3.has(p) && !told.has(p) && exists(p));
+    if (fresh2.length > 0) writeSlot(store, key, consumer, [...told, ...fresh2]);
+    return fresh2;
+  });
+}
+function readByTests(store, worktreeId) {
+  const listed = store.testFileKeys.list(worktreeId);
+  if (listed.length === 0) return null;
+  const ids = new Set(listed.map((row) => testFileId(row.testFile)));
+  const read3 = new Set(listed.map((row) => row.testFile.path));
+  let closures = 0;
+  for (const record of store.testFiles.list()) {
+    if (!ids.has(testFileId(record.testFile))) continue;
+    closures++;
+    for (const path of record.closure.paths) read3.add(path);
+  }
+  return closures < ids.size ? null : read3;
+}
+function toldPaths(value) {
+  return new Set(
+    Array.isArray(value) ? value.filter((p) => typeof p === "string") : []
+  );
+}
+
+// src/harness/shared/uncovered-edit.ts
+var SHOWN = 3;
+function uncoveredEditLine(context) {
+  if (!readPolicy(context.root).delivery.uncoveredEdits) return null;
+  const paths = tellUncovered(
+    context.store,
+    context.consumer,
+    (path) => existsSync7(join11(context.root, path))
+  );
+  if (paths.length === 0) return null;
+  const shown = paths.slice(0, SHOWN).join(", ");
+  const more = paths.length > SHOWN ? ` and ${paths.length - SHOWN} more` : "";
+  const it = paths.length === 1 ? "it" : "them";
+  return `No result for ${shown}${more}: no test Squeal runs reads ${it}. Run whatever tests ${it} yourself.`;
+}
+
 // src/harness/shared/deliver.ts
 async function deliver(context, deps, edited = true) {
   const at2 = (deps.now ?? Date.now)();
@@ -4687,8 +4753,10 @@ async function deliver(context, deps, edited = true) {
     return withPrimer(registration2, deps.command, coverageOf(context));
   }
   const delta = await context.delivery.onToolBoundary(context.consumer);
-  const text = delta === null ? null : formatDelta(delta, deps.command);
-  const line = edited && ensured === "unavailable" ? notValidated(context, deps) : null;
+  const down = edited && ensured === "unavailable" ? notValidated(context, deps) : null;
+  const line = down ?? (edited ? uncoveredEditLine(context) : null);
+  const room = MESSAGE_CAP_CHARS - (line === null ? 0 : line.length + 1);
+  const text = delta === null ? null : formatDelta(delta, deps.command, room);
   if (line === null) return text;
   return text === null ? `SQUEAL \xB7 ${line}` : `${text}
 ${line}`;
@@ -4743,10 +4811,10 @@ import { readFileSync as readFileSync7 } from "node:fs";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // src/harness/codex/command.ts
-import { join as join11 } from "node:path";
+import { join as join12 } from "node:path";
 function codexCommand(env, bundleCli) {
   const root = env.PLUGIN_ROOT;
-  const cli = root === void 0 || root === "" ? bundleCli : join11(root, "dist/cli/squeal.mjs");
+  const cli = root === void 0 || root === "" ? bundleCli : join12(root, "dist/cli/squeal.mjs");
   return `node --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
 }
 
