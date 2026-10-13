@@ -100,13 +100,14 @@ export async function runCommand(args: readonly string[], io: CliIo): Promise<nu
     io.stdout(`Run requested (request ${response.requestId}); ${allows}\n`);
     return 1;
   }
-  const started = `Checkpoint ${checkpoint.id} started at revision ${checkpoint.revision}: ${filesText(root, checkpoint)}${joinedText(root, checkpoint)}\n`;
+  const joined = joinedCheckpoint(root, checkpoint);
+  const started = `Checkpoint ${checkpoint.id} started at revision ${checkpoint.revision}: ${filesText(root, checkpoint)}${joinedText(joined)}\n`;
   if (deadline === null) {
     io.stdout(started);
     return 0;
   }
   const outcome = await ended(root, socketPath, checkpoint, deadline);
-  const [line, code] = verdictLine(root, checkpoint, outcome);
+  const [line, code] = verdictLine(root, checkpoint, outcome, joined);
   io.stdout(`Checkpoint ${checkpoint.id} ${line}\n${started}\n`);
   const now = io.now ?? Date.now;
   io.stdout(formatStatus(readStatus(root, { now }), now(), statusCommand(io.env ?? process.env)));
@@ -123,11 +124,16 @@ function takeAllWait(args: readonly string[]): ReturnType<typeof takeWait> {
   return { waitMs: Number.POSITIVE_INFINITY, rest: args.filter((_, i) => i !== at) };
 }
 
-/** The verdict line after `Checkpoint <id> `, and the exit code (spec 005 D1). */
+/**
+ * The verdict line after `Checkpoint <id> `, and the exit code (spec 005 D1).
+ * A request that joined a running checkpoint counts that one's work (review
+ * wave-1, S2), or only the files when its record is gone.
+ */
 function verdictLine(
   root: AbsolutePath,
   checkpoint: CheckpointRecord,
   outcome: Outcome,
+  joined: Joined | null,
 ): [string, 0 | 1 | 3] {
   const none = (why: string): [string, 3] => [`has no verdict: ${why}`, 3];
   switch (outcome.kind) {
@@ -151,8 +157,17 @@ function verdictLine(
       const { verdict } = outcome;
       const why = noVerdictText(verdict);
       if (why !== null) return none(why);
-      const ran = Math.min(checkpoint.testFiles.length, verdict.testFiles);
-      const counts = `${plural(verdict.testFiles, "test file")}, ${verdict.testFiles - ran} already current, ${ran} run now`;
+      const files = plural(verdict.testFiles, "test file");
+      const owner = joined === null ? checkpoint : joined.record;
+      const ran = owner === null ? 0 : Math.min(owner.testFiles.length, verdict.testFiles);
+      const by =
+        joined === null
+          ? "run now"
+          : `run by the ${joined.what} checkpoint ${joined.open.id} it joined`;
+      const counts =
+        owner === null
+          ? files
+          : `${files}, ${verdict.testFiles - ran} already current, ${ran} ${by}`;
       return [
         `completed at revision ${verdict.revision}: ${failuresText(verdict.failures)}; ${counts}`,
         verdictCode(verdict),
@@ -209,19 +224,33 @@ function owedText(root: AbsolutePath, checkpoint: CheckpointRecord): string {
     : "";
 }
 
+/** The running checkpoint a request joined, as it stood when the request was recorded. */
+interface Joined {
+  readonly open: CheckpointProgress;
+  /** Its record, `null` when the store holds none. */
+  readonly record: CheckpointRecord | null;
+  readonly what: "baseline" | "`run --all`";
+}
+
 /**
  * Task 001-217: a request the open checkpoint already runs joined it, and
- * ends when it ends; says so, and what that one has done.
+ * ends when it ends; `null` when it did not.
  */
-function joinedText(root: AbsolutePath, checkpoint: CheckpointRecord): string {
-  const text = inStore(root, (store) => {
+function joinedCheckpoint(root: AbsolutePath, checkpoint: CheckpointRecord): Joined | null {
+  return inStore(root, (store): Joined | null => {
     const open = openCheckpoint(store, checkpoint);
-    if (open === null || open.id === checkpoint.id || open.owed !== undefined) return "";
-    if (store.checkpoints.get(checkpoint.id)?.end !== null) return "";
-    const what = store.checkpoints.get(open.id)?.kind === "baseline" ? "baseline" : "`run --all`";
-    return `, joining the ${what} checkpoint ${open.id} already running them (${open.done} of ${open.total} test files done); it ends when that one ends`;
+    if (open === null || open.id === checkpoint.id || open.owed !== undefined) return null;
+    if (store.checkpoints.get(checkpoint.id)?.end !== null) return null;
+    const record = store.checkpoints.get(open.id);
+    return { open, record, what: record?.kind === "baseline" ? "baseline" : "`run --all`" };
   });
-  return text ?? "";
+}
+
+/** Task 001-217: says the request joined, and what that one has done. */
+function joinedText(joined: Joined | null): string {
+  if (joined === null) return "";
+  const { open, what } = joined;
+  return `, joining the ${what} checkpoint ${open.id} already running them (${open.done} of ${open.total} test files done); it ends when that one ends`;
 }
 
 /** The worktree's open checkpoint as the store holds it (`checkpointMetaKey`). */
