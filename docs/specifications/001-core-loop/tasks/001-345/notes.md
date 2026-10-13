@@ -117,4 +117,26 @@ Replace "it says the daemon stopped only once the lock is free (taken and releas
 
 ## Verification
 
-(Filled in below once the load hold lifts.)
+These runs used bundles rebuilt from this row's sources (`npm run build`) and left uncommitted, because the e2e cases run the shipped bundles. The coordinator commits the rebuild. Every run is after the 22:36 host-wide event: the deleted node-test fixture symlinks were restored with `git restore -- test/fixtures/node-test`, `npm ci` ran again and the bundles were rebuilt.
+
+- **Full suite** (`npx vitest run --maxWorkers=4`, 22:40): 468 files passed, 1 skipped; 3,929 tests passed, 10 skipped; 712 s; exit 0. The full suite started at 22:31 was stopped at the event and counts for nothing.
+- **The bad-config case** (`test/e2e/lifecycle.test.ts -t "bad squeal.config"`, both plugins): 30 runs in a row, 30 passed, at load 9 to 85. Runs 1 to 20 ran beside the stopped suite. Runs 21 to 30, one a minute, ran beside the full suite above.
+- **Squeal's full-suite checkpoint** (`squeal run --all --wait`, Squeal 0.1.131): completed at revision 23, `Known failures: 0`, 4,398 passed, 10 skipped.
+- **Single files**, each run once:
+
+  | File | Tests passed |
+  | --- | --- |
+  | `test/daemon/step-down.test.ts` | 3 |
+  | `test/daemon/handover.test.ts` | 6 |
+  | `test/daemon/server-handover.test.ts` | 2 |
+  | `test/daemon/socket-handover.test.ts` | 2 |
+  | `test/daemon/lock-wait.test.ts` | 4 |
+  | `test/daemon/lifecycle.test.ts` | 11 |
+  | `test/daemon/open.test.ts` | 7 |
+  | `test/cli/stop-lock.test.ts` | 5 |
+  | `test/harness/ensure.test.ts` | 12 |
+  | `test/keys/key-format.test.ts` | 27 |
+  | `test/e2e/stop-gap.test.ts` (both plugins) | 2 |
+
+  `test/daemon/handover-gap.test.ts` passed 5 runs in a row (2 tests each).
+- **Lint and typecheck:** `npm run lint` clean (989 files); `npm run typecheck` exit 0.
