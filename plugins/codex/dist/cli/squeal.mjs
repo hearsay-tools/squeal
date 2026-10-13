@@ -34879,7 +34879,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.151";
+  if (true) return "0.1.152";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -37892,6 +37892,9 @@ function recordedDaemon(root, busyTimeoutMs = 100) {
     return null;
   }
 }
+function liveDaemonRecorded(root, now = Date.now()) {
+  return daemonLiveness(recordedDaemon(root), now).state === "alive";
+}
 async function ensureDaemon(root, options = {}) {
   if (options.awaitLockMs === void 0) {
     const timeoutMs = options.socketTimeoutMs ?? DAEMON_SOCKET_TIMEOUT_MS;
@@ -38054,9 +38057,10 @@ function chdirQuietly(dir) {
 }
 
 // src/core/daemon/open.ts
+var VACANT_LOCK_WAIT_MS = 3e4;
 var DAEMON_BUSY_TIMEOUT_MS = 5e3;
 var DAEMON_START_BUSY_TIMEOUT_MS = 12e4;
-async function openDaemon(rootArgument, now, awaitLockMs) {
+async function openDaemon(rootArgument, now, awaitLockMs, vacantLockWaitMs = VACANT_LOCK_WAIT_MS) {
   let root;
   let commonDir;
   try {
@@ -38073,11 +38077,13 @@ async function openDaemon(rootArgument, now, awaitLockMs) {
   }
   const worktreeId = worktreeIdFor(root);
   let lock2;
+  const waitMs = awaitLockMs ?? vacantLockWaitMs;
   try {
     const path = lockFileFor(commonDir, worktreeId);
     lock2 = acquireDaemonLock(path);
-    if (lock2 === null && awaitLockMs !== void 0) {
-      lock2 = await awaitDaemonLock(path, { timeoutMs: awaitLockMs, giveUp: takenOver(root) });
+    if (lock2 === null && waitMs > 0) {
+      const giveUp2 = awaitLockMs === void 0 ? servedElsewhere(root, now) : takenOver(root);
+      lock2 = await awaitDaemonLock(path, { timeoutMs: waitMs, giveUp: giveUp2 });
     }
   } catch (error) {
     return exit("start-failed", 1, `could not take the daemon lock: ${message(error)}`);
@@ -38085,7 +38091,10 @@ async function openDaemon(rootArgument, now, awaitLockMs) {
   if (lock2 === null || lock2 === "gave-up") {
     return exit("lost-lock", 0, `another daemon serves ${root}`);
   }
-  if (lock2 === "timed-out") return lockWaitTimedOut(commonDir, worktreeId, now, awaitLockMs ?? 0);
+  if (lock2 === "timed-out") {
+    const text2 = awaitLockMs === void 0 ? `a daemon gave up: the lock was still held after ${waitMs} ms with no daemon serving; the next hook boundary starts one` : `a successor daemon gave up: the lock was still held after ${waitMs} ms; the next hook boundary starts one`;
+    return lockWaitTimedOut(commonDir, worktreeId, now, text2);
+  }
   let store;
   try {
     const opened = openStore(commonDir, {
@@ -38134,8 +38143,10 @@ function takenOver(root) {
     return startedAt !== first || !isNewerVersion(own, record.squealVersion);
   };
 }
-function lockWaitTimedOut(commonDir, worktreeId, now, waitedMs) {
-  const text2 = `a successor daemon gave up: the lock was still held after ${waitedMs} ms; the next hook boundary starts one`;
+function servedElsewhere(root, now) {
+  return () => !existsSync12(root) || liveDaemonRecorded(root, now());
+}
+function lockWaitTimedOut(commonDir, worktreeId, now, text2) {
   try {
     const store = openStore(commonDir, { create: false, busyTimeoutMs: DAEMON_BUSY_TIMEOUT_MS });
     if (!isStoreOpenFailure(store)) {
@@ -41849,8 +41860,13 @@ function parseSetupArgs(args) {
 }
 
 // src/cli/stop.ts
+init_lock();
+init_fs();
+init_store3();
+import { existsSync as existsSync24 } from "node:fs";
 import { setTimeout as sleep12 } from "node:timers/promises";
 var STOP_WAIT_MS2 = 6e4;
+var LOCK_WAIT_MS = 3e4;
 async function stopCommand(args, io) {
   if (args.length > 1 || args[0]?.startsWith("-")) {
     io.stderr("usage: squeal stop [root]\n");
@@ -41859,6 +41875,8 @@ async function stopCommand(args, io) {
   const root = worktreeRoot(args[0], io);
   if (root === null) return 1;
   const socketPath = await daemonSocket(root);
+  const ping2 = await askDaemon(socketPath, { type: "ping" }).catch(() => null);
+  const pid = ping2?.ok === true && ping2.type === "ping" ? ping2.pid : null;
   const response = await askDaemon(socketPath, { type: "stop" });
   if (response === null) {
     io.stdout(`No daemon running for ${root}
@@ -41879,15 +41897,48 @@ async function stopCommand(args, io) {
     }
     await sleep12(50);
   }
+  if (!await lockFreed(root, pid, LOCK_WAIT_MS)) {
+    io.stdout(
+      `Stop requested; the daemon for ${root} closed its socket but still holds its lock after ${LOCK_WAIT_MS / 1e3} s
+`
+    );
+    return 0;
+  }
   io.stdout(`Squeal daemon stopped for ${root}
 `);
   return 0;
+}
+async function lockFreed(root, pid, ms) {
+  const commonDir = resolveCommonDir(root);
+  if (commonDir === null) return true;
+  const path = lockFileFor(commonDir, worktreeIdFor(root));
+  const deadline = Date.now() + ms;
+  for (; ; ) {
+    if (!existsSync24(path) || pid !== null && processGone(pid)) return true;
+    try {
+      const lock2 = acquireDaemonLock(path);
+      lock2?.release();
+      if (lock2 !== null) return true;
+    } catch {
+      return true;
+    }
+    if (Date.now() > deadline) return false;
+    await sleep12(50);
+  }
+}
+function processGone(pid) {
+  try {
+    process.kill(pid, 0);
+    return false;
+  } catch (error) {
+    return error.code === "ESRCH";
+  }
 }
 
 // src/cli/update.ts
 init_fs();
 import { spawnSync as spawnSync2 } from "node:child_process";
-import { chmodSync as chmodSync3, copyFileSync, existsSync as existsSync24, readdirSync as readdirSync14, readFileSync as readFileSync26 } from "node:fs";
+import { chmodSync as chmodSync3, copyFileSync, existsSync as existsSync25, readdirSync as readdirSync14, readFileSync as readFileSync26 } from "node:fs";
 import { join as join67 } from "node:path";
 var NAMES = { "claude-code": "Claude Code", codex: "Codex" };
 var UPDATE_COMMANDS = {
@@ -42014,7 +42065,7 @@ function pluginDirs(env) {
     MARKETPLACE_NAME,
     PLUGIN_NAME
   );
-  if (existsSync24(cache)) for (const version2 of readdirSync14(cache)) dirs.push(join67(cache, version2));
+  if (existsSync25(cache)) for (const version2 of readdirSync14(cache)) dirs.push(join67(cache, version2));
   return dirs;
 }
 
