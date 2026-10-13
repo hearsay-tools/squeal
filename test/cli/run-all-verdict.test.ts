@@ -276,7 +276,7 @@ describe("run --all --wait: the checkpoint's verdict (spec 005 D1)", () => {
     });
     const result = await run(["run", "--all", "--wait"], w.root);
     expect(result.first).toBe(
-      "Checkpoint c1 completed at revision 3: no known failures; 2 test files, 2 already current, 0 run now",
+      "Checkpoint c1 completed at revision 3: no known failures; 2 test files, 0 already current, 2 run by the baseline checkpoint c0 it joined",
     );
     expect(result.second).toMatch(
       /, joining the baseline checkpoint c0 already running them \(1 of 2 test files done\); it ends when that one ends$/,
