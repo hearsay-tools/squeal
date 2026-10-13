@@ -10,6 +10,7 @@ import {
   PLUGINS,
   until,
 } from "./harness.js";
+import { daemonProcesses, withRestartEvidence } from "./restart-evidence.js";
 
 /*
  * Spec 001 goal 6, D10 and D11, end to end, and review wave 3 S2 and S3: a
@@ -152,9 +153,18 @@ describe.each(PLUGINS)("a bad squeal.config.json, $name", (plugin) => {
     // More sessions and a restart with the same problems add no note.
     await e.hook("session-start", e.main, { session_id: OTHER_SESSION });
     expect((await e.ping(e.main))?.pid).toBe(first.pid);
-    expect((await e.cli(e.main, ["stop"])).code).toBe(0);
-    await e.hook("session-start", e.main, { session_id: "third-session" });
-    await e.daemonReady(e.main, first.pid);
+    // Task 001-337: the processes are listed while the next step runs, so its timing holds.
+    const stopped = { ...(await e.cli(e.main, ["stop"])), at: new Date().toISOString() };
+    const afterStop = daemonProcesses(e.plugin);
+    expect(stopped.code).toBe(0);
+    const third = await e.hook("session-start", e.main, { session_id: "third-session" });
+    const sessionStart = { ...third, at: new Date().toISOString() };
+    const afterSessionStart = daemonProcesses(e.plugin);
+    await withRestartEvidence(
+      e,
+      { stop: stopped, afterStop, sessionStart, afterSessionStart },
+      () => e.daemonReady(e.main, first.pid),
+    );
     const after = await e.settle(
       e.main,
       "the restarted daemon",
