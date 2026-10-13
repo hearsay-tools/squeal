@@ -38,6 +38,17 @@ export function recognizeTestCommand(command: string, context: CommandContext): 
   return vitestCommand(words) ?? npmCommand(words, context) ?? nodeTestCommand(words, context);
 }
 
+/**
+ * Spec 005 D8: the shell command of a `Bash` call's hook input, from its
+ * `tool_input.command`, as both harnesses send it; nothing for another tool.
+ */
+export function bashCommand(input: Readonly<Record<string, unknown>>): { command?: string } {
+  const toolInput = input.tool_input;
+  if (input.tool_name !== "Bash" || typeof toolInput !== "object" || toolInput === null) return {};
+  const { command } = toolInput as Record<string, unknown>;
+  return typeof command === "string" ? { command } : {};
+}
+
 /** Vitest's reporters flag, with its value next or after `=`. */
 const REPORTER = "--reporter";
 /** `--silent`'s values (Vitest's `silent` option); bare, it takes the next word if it is not a flag. */
