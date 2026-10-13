@@ -3,7 +3,11 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-/** Environment for test git commands: no user config, no hook-inherited repository. */
+/**
+ * Environment for test git commands: no user config, no hook-inherited
+ * repository, and no detached auto-maintenance after a commit, which can still
+ * be writing `.git/objects/maintenance.lock` while a test removes the repository.
+ */
 const gitEnv = (): NodeJS.ProcessEnv => {
   const env = { ...process.env };
   for (const name of ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR"]) {
@@ -11,6 +15,11 @@ const gitEnv = (): NodeJS.ProcessEnv => {
   }
   env.GIT_CONFIG_GLOBAL = "/dev/null";
   env.GIT_CONFIG_NOSYSTEM = "1";
+  env.GIT_CONFIG_COUNT = "2";
+  env.GIT_CONFIG_KEY_0 = "maintenance.auto";
+  env.GIT_CONFIG_VALUE_0 = "false";
+  env.GIT_CONFIG_KEY_1 = "gc.auto";
+  env.GIT_CONFIG_VALUE_1 = "0";
   env.GIT_AUTHOR_NAME = "squeal";
   env.GIT_AUTHOR_EMAIL = "squeal@example.com";
   env.GIT_COMMITTER_NAME = "squeal";
