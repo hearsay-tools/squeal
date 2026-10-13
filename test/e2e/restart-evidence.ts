@@ -38,7 +38,7 @@ export async function daemonProcesses(e: E2E): Promise<string> {
 }
 
 /** The `/proc/locks` lines on the daemon lock file's inode: pid and lock type. */
-function lockHolders(root: string): string {
+export function lockHolders(root: string): string {
   try {
     const { ino } = statSync(lockFileFor(join(root, ".git"), worktreeIdFor(root)));
     const lines = readFileSync("/proc/locks", "utf8")
