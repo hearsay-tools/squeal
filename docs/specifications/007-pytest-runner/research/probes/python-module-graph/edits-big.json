@@ -1,0 +1,8 @@
+[
+ {"name": "E1 function body of a module in 148 closures", "path": "src/big/a2/b24/m496.py", "op": "replace", "old": "    return 496", "text": "    return 496 + 0"},
+ {"name": "E2 module-level line in the same module", "path": "src/big/a2/b24/m496.py", "op": "append", "text": "\nY = 1\n"},
+ {"name": "E3 TYPE_CHECKING-only target", "path": "src/big/typing_target.py", "op": "append", "text": "\nZ = 1\n"},
+ {"name": "E4 group conftest fixture body", "path": "tests/t3/conftest.py", "op": "replace", "old": "return group_f()", "text": "return group_f() + 0"},
+ {"name": "E5 pytest_plugins module fixture body", "path": "tests/plugin_extra.py", "op": "replace", "old": "return plugin_f()", "text": "return plugin_f() + 0"},
+ {"name": "E6 new module taking over a try/except ImportError", "path": "src/big/a2/b23/m477_fast.py", "op": "create", "text": "def f():\n    return -1\n"}
+]

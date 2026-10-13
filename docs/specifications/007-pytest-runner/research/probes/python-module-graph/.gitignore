@@ -1,0 +1,14 @@
+.venv*/
+__pycache__/
+.pytest_cache/
+.uv/
+.home/
+node_modules/
+fixtures/big/
+results/*.json
+.testmondata*
+.coverage*
+sources/
+*.egg-info/
+.venv310/
+results/truth-*/

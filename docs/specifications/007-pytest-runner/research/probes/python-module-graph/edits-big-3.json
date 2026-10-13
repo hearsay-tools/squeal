@@ -1,0 +1,1 @@
+[{"name": "E9 module outside every conftest closure now raises at import", "path": "src/big/a4/b40/m806.py", "op": "append", "text": "\nraise RuntimeError('boom')\n"}, {"name": "E10 same module, function body", "path": "src/big/a4/b40/m806.py", "op": "replace", "old": "def f():\n    return", "text": "def f():\n    return 0 and"}]

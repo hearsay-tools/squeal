@@ -1,0 +1,6 @@
+[
+ {"name": "S1 package data read through importlib.resources", "path": "src/app/data/values.json", "op": "create", "text": "{\"a\": 2}\n"},
+ {"name": "S2 test data read through a relative path", "path": "tests/data/sample.txt", "op": "create", "text": "changed\n"},
+ {"name": "S3 new module taking over a try/except ImportError", "path": "src/app/fast_impl.py", "op": "create", "text": "NAME = 'fast'\nraise RuntimeError('fast impl broken')\n"},
+ {"name": "S4 module behind a computed import_module", "path": "src/app/plugins/alpha.py", "op": "create", "text": "X = 4\n"}
+]

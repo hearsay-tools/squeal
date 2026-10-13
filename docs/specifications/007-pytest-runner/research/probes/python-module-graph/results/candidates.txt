@@ -1,0 +1,5 @@
+ast-big-cand candidate paths per file: median 10 max 16 distinct 538
+ast-small-cand candidate paths per file: median 0 max 28 distinct 34
+fixtures/big: creating src/big/a2/b23/m477_fast.py: 1 files hold it as a candidate, 158 of 200 test files re-key
+fixtures/small: creating src/app/fast_impl.py: 1 files hold it as a candidate, 1 of 2 test files re-key
+fixtures/big: creating big.py: 1187 files hold it as a candidate, 200 of 200 test files re-key

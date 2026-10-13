@@ -1,0 +1,59 @@
+# Throwaway probe output, 2026-10-13, CPython 3.13.14 and 3.10.20 (uv-managed), pytest 9.1.1, pytest-mock 3.16.0, pytest-testmon 2.2.0, coverage 7.16.2, grimp 3.17, web-tree-sitter 0.27.1, tree-sitter-python 0.25.0, Node 24.21.0. Host: 24 cores, load 12 to 35.
+
+## Static closures against observed (one pytest process per test file), fixtures/big
+{"graph": "ast-big-.venv.json", "truth": "end", "test_files": 200, "files_with_no_missing": 200, "missing_paths_total": 0, "extra_paths_total": 10602, "closure_median": 678.0, "closure_max": 845, "missing_by_path": {}}
+{"graph": "ast-big-.venv310.json", "truth": "end", "test_files": 200, "files_with_no_missing": 200, "missing_paths_total": 0, "extra_paths_total": 10602, "closure_median": 678.0, "closure_max": 845, "missing_by_path": {}}
+{"graph": "ast-big-tc.json", "truth": "end", "test_files": 200, "files_with_no_missing": 200, "missing_paths_total": 0, "extra_paths_total": 10402, "closure_median": 677.0, "closure_max": 844, "missing_by_path": {}}
+{"graph": "ast-big-cand.json", "truth": "end", "test_files": 200, "files_with_no_missing": 200, "missing_paths_total": 0, "extra_paths_total": 10602, "closure_median": 678.0, "closure_max": 845, "missing_by_path": {}}
+{"graph": "node-scan-big.json", "truth": "end", "test_files": 200, "files_with_no_missing": 200, "missing_paths_total": 0, "extra_paths_total": 10602, "closure_median": 678.0, "closure_max": 845, "missing_by_path": {}}
+{"graph": "node-treesitter-big.json", "truth": "end", "test_files": 200, "files_with_no_missing": 200, "missing_paths_total": 0, "extra_paths_total": 10602, "closure_median": 678.0, "closure_max": 845, "missing_by_path": {}}
+{"graph": "grimp-big.json", "truth": "end", "test_files": 200, "files_with_no_missing": 0, "missing_paths_total": 2680, "extra_paths_total": 10482, "closure_median": 664.0, "closure_max": 835, "missing_by_path": {"src/big/__init__.py": 200, "src/big/a0/__init__.py": 200, "tests/__init__.py": 200, "packages/libb/src/libb/__init__.py": 200, "src/big/a1/__init__.py": 200, "src/big/computed_target.py": 200, "src/big/a2/__init__.py": 182, "src/big/a1/b17/__init__.py": 172}}
+{"graph": "grimp-big-parents.json", "truth": "end", "test_files": 200, "files_with_no_missing": 0, "missing_paths_total": 200, "extra_paths_total": 10602, "closure_median": 677.0, "closure_max": 844, "missing_by_path": {"src/big/computed_target.py": 200}}
+{"graph": "obs-edges-graph.json", "truth": "end", "test_files": 200, "files_with_no_missing": 200, "missing_paths_total": 0, "extra_paths_total": 0, "closure_median": 628.5, "closure_max": 798, "missing_by_path": {}}
+
+## Parser agreement against the ast helper
+node-scan-big: files differing: 0 of 1281
+node-treesitter-big: files differing: 0 of 1281
+grimp-big-parents: files differing: 15 of 1281
+node-scan-small: src/app/edge/cases.py only-a: ['src/app/edge/e.py'] only-b: [] computed: [] [] files differing: 1 of 44 
+node-treesitter-small: files differing: 0 of 44 
+
+## testmon
+testmon-big timing {"plain": [1.6042446389910765, 1.6831041149853263, 1.629161610006122], "testmon_cold": 2.607272613007808, "testmon_nochange": [0.8839946649968624, 0.8497542969998904], "testmon_forceall_coverage": [2.625774301995989, 2.8073705120186787]} db_bytes 352256
+  E1 function body of a module in 148 closures | testmon 1 | static 156 | observed 148 | ======================= 2 passed, 1 deselected in 0.27s ========================
+  E2 module-level line in the same module | testmon 1 | static 156 | observed 148 | ======================= 2 passed, 1 deselected in 0.25s ========================
+  E3 TYPE_CHECKING-only target | testmon 0 | static 200 | observed 0 | ============================ no tests ran in 0.15s =============================
+  E4 group conftest fixture body | testmon 20 | static 20 | observed 20 | ====================== 40 passed, 20 deselected in 0.38s =======================
+  E5 pytest_plugins module fixture body | testmon 200 | static 200 | observed 200 | ===================== 400 passed, 200 deselected in 1.64s ======================
+  E6 new module taking over a try/except ImportError | testmon 0 | static 0 | observed 0 | ============================ no tests ran in 0.14s =============================
+testmon-big-2 timing {"plain": [3.204419618996326, 3.3812374729895964, 2.76892587999464], "testmon_cold": 5.211325679003494, "testmon_nochange": [2.1563428489898797, 1.7961069360026158], "testmon_forceall_coverage": [4.825519929989241, 5.795879554003477]} db_bytes 356352
+  E7 module now raises at import | testmon 0 | static 156 | observed 148 | ============================== 5 errors in 0.61s ===============================
+  E8 module-level constant rebinding a name importers use | testmon 1 | static 156 | observed 148 | ======================= 2 failed, 1 deselected in 0.46s ========================
+testmon-big-3 timing {"plain": [2.2314604359853547, 2.0833693199965637, 2.0006642009830102], "testmon_cold": 2.791342192009324, "testmon_nochange": [0.9310245620144997, 0.9358724920020904], "testmon_forceall_coverage": [2.6963887969905045, 2.7969460700114723]} db_bytes 356352
+  E9 module outside every conftest closure now raises at import | testmon 0 | static 28 | observed 24 | ============================ no tests ran in 0.14s =============================
+  E10 same module, function body | testmon 0 | static 28 | observed 24 | ============================ no tests ran in 0.18s =============================
+testmon-small timing {"plain": [0.7508564149902668, 0.7602136789937504, 0.7675753340008669], "testmon_cold": 0.8842002780002076, "testmon_nochange": [0.6994369800086133, 0.713029902020935], "testmon_forceall_coverage": [0.8551893790136091, 0.9460622219776269]} db_bytes 53248
+  S1 package data read through importlib.resources | testmon 0 | static 0 | observed 0 | ============================ no tests ran in 0.01s =============================
+  S2 test data read through a relative path | testmon 0 | static 0 | observed 0 | ============================ no tests ran in 0.01s =============================
+  S3 new module taking over a try/except ImportError | testmon 0 | static 0 | observed 0 | ============================ no tests ran in 0.01s =============================
+  S4 module behind a computed import_module | testmon 1 | static 0 | observed 1 | ======================= 1 failed, 5 deselected in 0.08s ========================
+
+## Plain-run outcomes of the same edits (no testmon)
+E9 (m806 raises at import): Interrupted: 24 errors during collection; --testmon: no tests ran
+S1+S2 (values.json, sample.txt): FAILED tests/test_resources.py::test_values, FAILED tests/unit/test_core.py::test_data
+S3 (fast_impl.py created): ERROR tests/unit/test_core.py - RuntimeError: fast impl broken
+Root big.py created: ModuleNotFoundError: No module named 'big.a0'; 'big' is not a package
+testmon with -p no:cacheprovider on the command line: INTERNALERROR KeyError: 'lf' (configure.py:78)
+
+## One-process observation, fixtures/big, wall seconds x3
+baseline 1.93 1.97 1.87 | plugin none 1.79 1.98 1.96 | edges 2.74 2.65 2.03 | audit 1.90 2.04 1.82 | modules 4.48 4.57 4.19
+audit first-import attribution recall over 200 files: min 0.00 median 0.00 max 0.09
+per-file processes (truth.sh, 8 at once): 200 files 37.3 s (3.13), 41.7 s (3.10)
+
+## Wall seconds per graph build, fixtures/big (1,281 files)
+ast helper 3.13: 0.41 0.38 0.38 | ast helper 3.10: 0.56 0.52 0.51 | node scan: 0.34 0.36 0.37 | node treesitter: 0.54 0.50 0.45 | grimp build only: 0.085 0.080 0.062
+ast-big-cand candidate paths per file: median 10 max 16 distinct 538
+ast-small-cand candidate paths per file: median 0 max 28 distinct 34
+fixtures/big: creating src/big/a2/b23/m477_fast.py: 1 files hold it as a candidate, 158 of 200 test files re-key
+fixtures/small: creating src/app/fast_impl.py: 1 files hold it as a candidate, 1 of 2 test files re-key
+fixtures/big: creating big.py: 1187 files hold it as a candidate, 200 of 200 test files re-key
