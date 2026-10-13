@@ -972,10 +972,14 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     unknown: 0
   };
   let inheritedCount = 0;
+  let inheritedFileLevelCount = 0;
   for (const state of states) {
     counts[state.validity]++;
     if (state.check.kind === "file") fileLevelCounts[state.validity]++;
-    if (state.validity === "current" && state.origin?.kind === "inherited") inheritedCount++;
+    if (state.validity === "current" && state.origin?.kind === "inherited") {
+      inheritedCount++;
+      if (state.check.kind === "file") inheritedFileLevelCount++;
+    }
   }
   const last = store.checkpoints.lastCompleted(worktreeId);
   const refinedRevision = readRefined(store, worktreeId);
@@ -995,6 +999,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     },
     testFilesListed: keys.length > 0 || !awaiting && last !== null,
     inheritedCount,
+    inheritedFileLevelCount,
     refinedRevision,
     runnerPartPending: refinedRevision !== null && refinedRevision < revision,
     ...slow === void 0 ? {} : { slowPending: countSlowPending(states, keys, slow) },
@@ -1153,6 +1158,33 @@ function capitalized(text) {
   return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 }
 
+// src/core/status/checks.ts
+function countChecks(checks) {
+  const testFiles = checks.filter((check) => check.kind === "file").length;
+  return { tests: checks.length - testFiles, testFiles };
+}
+function checkPartsText({ tests, testFiles }, fileLevel = "loaded") {
+  return [
+    ...tests > 0 ? [plural(tests, "test")] : [],
+    ...testFiles > 0 ? [`${plural(testFiles, "test file")} ${fileLevel}`] : []
+  ].join(", ");
+}
+function partsSuffix(count, fileLevel, fileLevelWord2) {
+  if (count === 0 || fileLevel === void 0) return "";
+  return ` (${checkPartsText({ tests: count - fileLevel, testFiles: fileLevel }, fileLevelWord2)})`;
+}
+function countedText(count, label, fileLevel) {
+  return `${count} ${label}${partsSuffix(count, fileLevel)}`;
+}
+function checksText(checks, noun = "check", fileLevel) {
+  const { testFiles } = countChecks(checks);
+  return `${plural(checks.length, noun)}${partsSuffix(checks.length, testFiles, fileLevel)}`;
+}
+function failureCountText(checks) {
+  if (checks.length === 0) return "0";
+  return `${checks.length} (${checkPartsText(countChecks(checks), "that did not load")})`;
+}
+
 // src/core/delivery/collapse.ts
 var LISTED_MAX = 5;
 var FILES_SHOWN = 10;
@@ -1160,26 +1192,34 @@ function checkName(check) {
   return cap(formatCheck(check), SUMMARY_MAX_CHARS);
 }
 var fileName = (check) => `${check.project === "" ? "" : `[${check.project}] `}${check.testPath}`;
-function nameLines(checks) {
+function nameLines(checks, fileLevel) {
   if (checks.length <= LISTED_MAX) return checks.map(checkName);
-  const grouped = byFile(checks);
+  const grouped = byFile(checks, fileLevel);
   return grouped.length < checks.length ? grouped : checks.map(checkName);
 }
-function byFile(checks) {
+function byFile(checks, fileLevel) {
   const byFile2 = /* @__PURE__ */ new Map();
-  for (const check of checks) byFile2.set(fileName(check), (byFile2.get(fileName(check)) ?? 0) + 1);
-  const files2 = [...byFile2].sort(([a, m], [b, n]) => n - m || (a < b ? -1 : a > b ? 1 : 0));
-  const lines = files2.slice(0, FILES_SHOWN).map(([file, n]) => `${n} in ${file}`);
+  for (const check of checks) {
+    byFile2.set(fileName(check), [...byFile2.get(fileName(check)) ?? [], check]);
+  }
+  const files2 = [...byFile2].sort(
+    ([a, m], [b, n]) => n.length - m.length || (a < b ? -1 : a > b ? 1 : 0)
+  );
+  const parts = (list) => checkPartsText(countChecks(list), fileLevel);
+  const lines = files2.slice(0, FILES_SHOWN).map(([file, list]) => `${parts(list)} in ${file}`);
   const rest = files2.slice(FILES_SHOWN);
   if (rest.length === 0) return lines;
-  const count = rest.reduce((sum, [, n]) => sum + n, 0);
-  return [...lines, `and ${plural(rest.length, "more test file")} (${plural(count, "check")})`];
+  const restChecks = rest.flatMap(([, list]) => list);
+  return [...lines, `and ${plural(rest.length, "more test file")} (${parts(restChecks)})`];
 }
 function collapse(head, changed, stillFailing) {
   if (changed.length <= LISTED_MAX) return null;
   const changedLines = nameLines(changed);
   if (stillFailing === void 0) return { head, lines: changedLines };
-  const failingLines = [`still failing: ${stillFailing.length}`, ...nameLines(stillFailing)];
+  const failingLines = [
+    `still failing: ${failureCountText(stillFailing)}`,
+    ...nameLines(stillFailing, "that did not load")
+  ];
   return { head, lines: failingLines.length <= changedLines.length ? failingLines : changedLines };
 }
 
@@ -3456,18 +3496,21 @@ function inheritedSources(store, states) {
     const group = groups.get(id) ?? {
       worktreeId: s.origin.worktreeId,
       commit: s.origin.commit,
-      count: 0
+      count: 0,
+      fileLevelCount: 0
     };
     group.count++;
+    if (s.check.kind === "file") group.fileLevelCount++;
     groups.set(id, group);
   }
   const sources = [...groups.values()].map((g) => ({ ...g, worktreeRoot: store.worktrees.get(g.worktreeId)?.root ?? null })).sort(
     (a, b) => b.count - a.count || a.worktreeId.localeCompare(b.worktreeId) || String(a.commit).localeCompare(String(b.commit))
-  ).map(({ worktreeId, worktreeRoot, commit, count: count2 }) => ({
+  ).map(({ worktreeId, worktreeRoot, commit, count: count2, fileLevelCount }) => ({
     worktreeId,
     worktreeRoot,
     commit,
-    count: count2
+    count: count2,
+    fileLevelCount
   }));
   return { count, sources };
 }
@@ -3942,20 +3985,6 @@ function createDelivery(store, options) {
   };
 }
 
-// src/core/status/checks.ts
-function checkPartsText({ tests, testFiles }, fileLevel = "loaded") {
-  return [
-    ...tests > 0 ? [plural(tests, "test")] : [],
-    ...testFiles > 0 ? [`${plural(testFiles, "test file")} ${fileLevel}`] : []
-  ].join(", ");
-}
-function countedText(count, label, fileLevel) {
-  const head = `${count} ${label}`;
-  if (count === 0 || fileLevel === void 0) return head;
-  const parts = { tests: count - fileLevel, testFiles: fileLevel };
-  return `${head} (${checkPartsText(parts)})`;
-}
-
 // src/core/delivery/provenance.ts
 var upper = (outcome) => outcome.toUpperCase();
 var TOUCHED_SHOWN = 3;
@@ -4031,10 +4060,12 @@ function installSentences(header) {
 
 // src/core/delivery/format.ts
 var MESSAGE_CAP_CHARS = 1e4;
-var OVERFLOW_RESERVE = 200;
+var OVERFLOW_RESERVE = 400;
 var INDENT = "      ";
 var SQUEAL_COMMAND = "squeal";
 var statusPointer = (command) => `\`${command} status\` lists every known failure.`;
+var partsText = (checks, fileLevel) => checkPartsText(countChecks(checks), fileLevel);
+var fileLevelWord = (shown) => shown === "fail" ? "that did not load" : "loaded";
 var upper2 = (outcome) => outcome.toUpperCase();
 var capitalize = (text) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 function shellWord(text) {
@@ -4064,7 +4095,8 @@ function changedText(paths) {
 }
 function headerLine(header, command) {
   const { revision, counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files2 } = header;
-  const inherited = (header.inheritedCount ?? 0) === 0 ? "" : ` Inherited: ${header.inheritedCount} of ${counts.current} current.`;
+  const inheritedCount = header.inheritedCount ?? 0;
+  const inherited = inheritedCount === 0 ? "" : ` Inherited: ${inheritedCount} of ${counts.current} current${partsSuffix(inheritedCount, header.inheritedFileLevelCount)}.`;
   const withoutChecks = files2.pending + files2.unknown === 0 ? "" : ` Test files without checks: ${files2.pending} pending, ${files2.unknown} unknown.`;
   const listed = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
   const runnerPart = header.runnerPartPending === true ? ` ${capitalize(runnerPartText(revision))} is pending; test files it adds are not counted yet.` : "";
@@ -4087,9 +4119,9 @@ function livenessSentence(daemon, revision) {
   const since = daemon.since === null ? "No daemon is running" : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
   return ` ${since}; results are as of revision ${revision}.${died}`;
 }
-function block(head, lines, outcomes) {
+function block(head, lines, counted) {
   const body = lines.filter((l) => l !== null).map((l) => `${INDENT}${l}`);
-  return { text: [head, ...body].join("\n"), outcomes };
+  return { text: [head, ...body].join("\n"), counted };
 }
 function entryBlock(entry2, revision) {
   const failed = entry2.to === "fail";
@@ -4103,41 +4135,35 @@ function entryBlock(entry2, revision) {
       ...failed ? [slow ? null : touchesLine(entry2), loadLine(entry2)] : [recoveryProvenance(entry2, revision)],
       entry2.flaky === void 0 ? null : capitalize(flakyText(entry2.flaky))
     ],
-    [entry2.to]
+    [{ check: entry2.check, shown: entry2.to }]
   );
 }
 function retiredBlock(entry2) {
   return block(
     `RESOLVED  ${checkName(entry2.check)}`,
     ["FAIL -> no longer reported by the runner"],
-    ["resolved"]
+    [{ check: entry2.check, shown: "resolved" }]
   );
 }
-function collapsedBlock({ head, lines }, outcome, count) {
+function collapsedBlock({ head, lines }, shown, checks) {
   return block(
     head,
     lines,
-    Array.from({ length: count }, () => outcome)
+    checks.map((check) => ({ check, shown }))
   );
 }
 function recoveryBlocks(entries, delta) {
-  const head = `PASS  ${plural(entries.length, "check")} recovered (FAIL -> PASS)`;
-  const collapsed = collapse(
-    head,
-    entries.map((e) => e.check),
-    delta.stillFailing
-  );
-  if (collapsed !== null) return [collapsedBlock(collapsed, "pass", entries.length)];
+  const checks = entries.map((e) => e.check);
+  const head = `PASS  ${plural(checks.length, "check")} recovered (FAIL -> PASS): ${partsText(checks)}`;
+  const collapsed = collapse(head, checks, delta.stillFailing);
+  if (collapsed !== null) return [collapsedBlock(collapsed, "pass", checks)];
   return entries.map((e) => entryBlock(e, delta.header.revision));
 }
 function retiredBlocks(entries, delta) {
-  const head = `RESOLVED  ${plural(entries.length, "check")} no longer reported by the runner (FAIL -> RESOLVED)`;
-  const collapsed = collapse(
-    head,
-    entries.map((e) => e.check),
-    delta.stillFailing
-  );
-  if (collapsed !== null) return [collapsedBlock(collapsed, "resolved", entries.length)];
+  const checks = entries.map((e) => e.check);
+  const head = `RESOLVED  ${plural(checks.length, "check")} no longer reported by the runner (FAIL -> RESOLVED): ${partsText(checks)}`;
+  const collapsed = collapse(head, checks, delta.stillFailing);
+  if (collapsed !== null) return [collapsedBlock(collapsed, "resolved", checks)];
   return entries.map(retiredBlock);
 }
 function unknownBlocks(entries) {
@@ -4148,14 +4174,14 @@ function unknownBlocks(entries) {
   }
   return [...byReason].map(([reason, group]) => {
     const files2 = [...new Set(group.map((e) => e.check.testPath))];
-    const from = (outcome) => group.filter((e) => e.from === outcome).length;
-    const counts = ["pass", "fail"].filter((o) => from(o) > 0).map((o) => `${upper2(o)} -> UNKNOWN (${from(o)})`);
+    const from = (outcome) => group.filter((e) => e.from === outcome).map((e) => e.check);
+    const counts = ["pass", "fail"].filter((o) => from(o).length > 0).map((o) => `${upper2(o)} -> UNKNOWN (${partsText(from(o))})`);
     const listed = files2.slice(0, 5).join(", ");
     const more = files2.length > 5 ? ` and ${plural(files2.length - 5, "more file")}` : "";
     return block(
-      `UNKNOWN  ${plural(group.length, "check")} in ${plural(files2.length, "test file")}`,
+      `UNKNOWN  ${checksText(group.map((e) => e.check))} in ${plural(files2.length, "test file")}`,
       [counts.join(", "), cap(reason, SUMMARY_MAX_CHARS), `${listed}${more}`],
-      group.map(() => "unknown")
+      group.map((e) => ({ check: e.check, shown: "unknown" }))
     );
   });
 }
@@ -4184,7 +4210,7 @@ function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS) {
   const { header, entries } = delta;
   const changed = entries.filter((e) => e.kind !== "fail-retired");
   const retired = entries.filter((e) => e.kind === "fail-retired");
-  const title = entries.length === 0 ? delta.liveness === void 0 ? `SQUEAL \xB7 revision ${header.revision}` : livenessTitle(delta.liveness, header.revision) : delta.label === "baseline" ? `SQUEAL \xB7 Squeal's baseline run found ${plural(entries.length, "failing check")} at revision ${header.revision}` : `SQUEAL \xB7 ${plural(entries.length, "check")} changed at revision ${header.revision}`;
+  const title = entries.length === 0 ? delta.liveness === void 0 ? `SQUEAL \xB7 revision ${header.revision}` : livenessTitle(delta.liveness, header.revision) : delta.label === "baseline" ? `SQUEAL \xB7 Squeal's baseline run found ${checksText(checksOf(entries), "failing check", "that did not load")} at revision ${header.revision}` : `SQUEAL \xB7 ${plural(entries.length, "check")} changed${partsSuffix(entries.length, countChecks(checksOf(entries)).testFiles)} at revision ${header.revision}`;
   const blocks = [
     ...changed.filter((e) => e.to === "fail").map((e) => entryBlock(e, header.revision)),
     ...unknownBlocks(changed.filter((e) => e.to === "unknown")),
@@ -4196,9 +4222,9 @@ function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS) {
   ];
   const failed = changed.find((e) => e.to === "fail");
   const overflow = (left) => {
-    const outcomes = left.flatMap((b) => b.outcomes);
-    const by = ["fail", "pass", "unknown", "resolved"].map((o) => [o, outcomes.filter((x) => x === o).length]).filter(([, n]) => n > 0).map(([o, n]) => `${n} ${upper2(o)}`);
-    return `Not shown: ${outcomes.length} more changed checks (${by.join(", ")}). ${statusPointer(command)}`;
+    const counted = left.flatMap((b) => b.counted);
+    const by = ["fail", "pass", "unknown", "resolved"].map((o) => [o, counted.filter((c) => c.shown === o).map((c) => c.check)]).filter(([, checks]) => checks.length > 0).map(([o, checks]) => `${checks.length} ${upper2(o)}: ${partsText(checks, fileLevelWord(o))}`);
+    return `Not shown: ${counted.length} more changed checks (${by.join("; ")}). ${statusPointer(command)}`;
   };
   const tail = failed === void 0 ? null : whyLine(failed.check, command);
   return assemble(
@@ -4233,6 +4259,7 @@ function editLines({ sawEdit, editsSettled }) {
     ...editsSettled === void 0 ? [] : [settledLine(editsSettled)]
   ];
 }
+var checksOf = (entries) => entries.map((e) => e.check);
 function livenessTitle(liveness2, revision) {
   return liveness2?.state === "alive" ? `SQUEAL \xB7 a daemon is validating again at revision ${revision}` : `SQUEAL \xB7 no daemon is validating at revision ${revision}`;
 }
@@ -4539,7 +4566,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.150";
+  if (true) return "0.1.151";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

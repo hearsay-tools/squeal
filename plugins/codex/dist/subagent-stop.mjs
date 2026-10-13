@@ -947,10 +947,14 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     unknown: 0
   };
   let inheritedCount = 0;
+  let inheritedFileLevelCount = 0;
   for (const state of states) {
     counts[state.validity]++;
     if (state.check.kind === "file") fileLevelCounts[state.validity]++;
-    if (state.validity === "current" && state.origin?.kind === "inherited") inheritedCount++;
+    if (state.validity === "current" && state.origin?.kind === "inherited") {
+      inheritedCount++;
+      if (state.check.kind === "file") inheritedFileLevelCount++;
+    }
   }
   const last = store.checkpoints.lastCompleted(worktreeId);
   const refinedRevision = readRefined(store, worktreeId);
@@ -970,6 +974,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     },
     testFilesListed: keys.length > 0 || !awaiting && last !== null,
     inheritedCount,
+    inheritedFileLevelCount,
     refinedRevision,
     runnerPartPending: refinedRevision !== null && refinedRevision < revision,
     ...slow === void 0 ? {} : { slowPending: countSlowPending(states, keys, slow) },
@@ -3303,18 +3308,21 @@ function inheritedSources(store, states) {
     const group = groups.get(id) ?? {
       worktreeId: s.origin.worktreeId,
       commit: s.origin.commit,
-      count: 0
+      count: 0,
+      fileLevelCount: 0
     };
     group.count++;
+    if (s.check.kind === "file") group.fileLevelCount++;
     groups.set(id, group);
   }
   const sources = [...groups.values()].map((g) => ({ ...g, worktreeRoot: store.worktrees.get(g.worktreeId)?.root ?? null })).sort(
     (a, b) => b.count - a.count || a.worktreeId.localeCompare(b.worktreeId) || String(a.commit).localeCompare(String(b.commit))
-  ).map(({ worktreeId, worktreeRoot, commit, count: count2 }) => ({
+  ).map(({ worktreeId, worktreeRoot, commit, count: count2, fileLevelCount }) => ({
     worktreeId,
     worktreeRoot,
     commit,
-    count: count2
+    count: count2,
+    fileLevelCount
   }));
   return { count, sources };
 }
@@ -3803,7 +3811,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.150";
+  if (true) return "0.1.151";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

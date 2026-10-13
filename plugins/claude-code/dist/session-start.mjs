@@ -968,10 +968,14 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     unknown: 0
   };
   let inheritedCount = 0;
+  let inheritedFileLevelCount = 0;
   for (const state of states) {
     counts[state.validity]++;
     if (state.check.kind === "file") fileLevelCounts[state.validity]++;
-    if (state.validity === "current" && state.origin?.kind === "inherited") inheritedCount++;
+    if (state.validity === "current" && state.origin?.kind === "inherited") {
+      inheritedCount++;
+      if (state.check.kind === "file") inheritedFileLevelCount++;
+    }
   }
   const last = store.checkpoints.lastCompleted(worktreeId);
   const refinedRevision = readRefined(store, worktreeId);
@@ -991,6 +995,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     },
     testFilesListed: keys.length > 0 || !awaiting && last !== null,
     inheritedCount,
+    inheritedFileLevelCount,
     refinedRevision,
     runnerPartPending: refinedRevision !== null && refinedRevision < revision,
     ...slow === void 0 ? {} : { slowPending: countSlowPending(states, keys, slow) },
@@ -1147,6 +1152,33 @@ function stopText(tier) {
 }
 function capitalized(text) {
   return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
+}
+
+// src/core/status/checks.ts
+function countChecks(checks) {
+  const testFiles = checks.filter((check) => check.kind === "file").length;
+  return { tests: checks.length - testFiles, testFiles };
+}
+function checkPartsText({ tests, testFiles }, fileLevel = "loaded") {
+  return [
+    ...tests > 0 ? [plural(tests, "test")] : [],
+    ...testFiles > 0 ? [`${plural(testFiles, "test file")} ${fileLevel}`] : []
+  ].join(", ");
+}
+function partsSuffix(count, fileLevel, fileLevelWord) {
+  if (count === 0 || fileLevel === void 0) return "";
+  return ` (${checkPartsText({ tests: count - fileLevel, testFiles: fileLevel }, fileLevelWord)})`;
+}
+function countedText(count, label, fileLevel) {
+  return `${count} ${label}${partsSuffix(count, fileLevel)}`;
+}
+function checksText(checks, noun = "check", fileLevel) {
+  const { testFiles } = countChecks(checks);
+  return `${plural(checks.length, noun)}${partsSuffix(checks.length, testFiles, fileLevel)}`;
+}
+function failureCountText(checks) {
+  if (checks.length === 0) return "0";
+  return `${checks.length} (${checkPartsText(countChecks(checks), "that did not load")})`;
 }
 
 // src/core/delivery/collapse.ts
@@ -3464,18 +3496,21 @@ function inheritedSources(store, states) {
     const group = groups.get(id) ?? {
       worktreeId: s.origin.worktreeId,
       commit: s.origin.commit,
-      count: 0
+      count: 0,
+      fileLevelCount: 0
     };
     group.count++;
+    if (s.check.kind === "file") group.fileLevelCount++;
     groups.set(id, group);
   }
   const sources = [...groups.values()].map((g) => ({ ...g, worktreeRoot: store.worktrees.get(g.worktreeId)?.root ?? null })).sort(
     (a, b) => b.count - a.count || a.worktreeId.localeCompare(b.worktreeId) || String(a.commit).localeCompare(String(b.commit))
-  ).map(({ worktreeId, worktreeRoot, commit, count: count2 }) => ({
+  ).map(({ worktreeId, worktreeRoot, commit, count: count2, fileLevelCount }) => ({
     worktreeId,
     worktreeRoot,
     commit,
-    count: count2
+    count: count2,
+    fileLevelCount
   }));
   return { count, sources };
 }
@@ -3943,28 +3978,6 @@ function createDelivery(store, options) {
   };
 }
 
-// src/core/status/checks.ts
-function countChecks(checks) {
-  const testFiles = checks.filter((check) => check.kind === "file").length;
-  return { tests: checks.length - testFiles, testFiles };
-}
-function checkPartsText({ tests, testFiles }, fileLevel = "loaded") {
-  return [
-    ...tests > 0 ? [plural(tests, "test")] : [],
-    ...testFiles > 0 ? [`${plural(testFiles, "test file")} ${fileLevel}`] : []
-  ].join(", ");
-}
-function countedText(count, label, fileLevel) {
-  const head = `${count} ${label}`;
-  if (count === 0 || fileLevel === void 0) return head;
-  const parts = { tests: count - fileLevel, testFiles: fileLevel };
-  return `${head} (${checkPartsText(parts)})`;
-}
-function failureCountText(checks) {
-  if (checks.length === 0) return "0";
-  return `${checks.length} (${checkPartsText(countChecks(checks), "that did not load")})`;
-}
-
 // src/core/delivery/provenance.ts
 function installSentences(header) {
   if (header.dependenciesInstalled === false) {
@@ -3976,7 +3989,7 @@ function installSentences(header) {
 
 // src/core/delivery/format.ts
 var MESSAGE_CAP_CHARS = 1e4;
-var OVERFLOW_RESERVE = 200;
+var OVERFLOW_RESERVE = 400;
 var INDENT = "      ";
 var SQUEAL_COMMAND = "squeal";
 var statusPointer = (command) => `\`${command} status\` lists every known failure.`;
@@ -4008,7 +4021,8 @@ function changedText(paths) {
 }
 function headerLine(header, command) {
   const { revision, counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files2 } = header;
-  const inherited = (header.inheritedCount ?? 0) === 0 ? "" : ` Inherited: ${header.inheritedCount} of ${counts.current} current.`;
+  const inheritedCount = header.inheritedCount ?? 0;
+  const inherited = inheritedCount === 0 ? "" : ` Inherited: ${inheritedCount} of ${counts.current} current${partsSuffix(inheritedCount, header.inheritedFileLevelCount)}.`;
   const withoutChecks = files2.pending + files2.unknown === 0 ? "" : ` Test files without checks: ${files2.pending} pending, ${files2.unknown} unknown.`;
   const listed = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
   const runnerPart = header.runnerPartPending === true ? ` ${capitalize(runnerPartText(revision))} is pending; test files it adds are not counted yet.` : "";
@@ -4031,9 +4045,9 @@ function livenessSentence(daemon, revision) {
   const since = daemon.since === null ? "No daemon is running" : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
   return ` ${since}; results are as of revision ${revision}.${died}`;
 }
-function block(head, lines, outcomes) {
+function block(head, lines, counted) {
   const body = lines.filter((l) => l !== null).map((l) => `${INDENT}${l}`);
-  return { text: [head, ...body].join("\n"), outcomes };
+  return { text: [head, ...body].join("\n"), counted };
 }
 function assemble(head, blocks, overflow, tail, max) {
   const end = tail === null ? "" : `
@@ -4073,14 +4087,19 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
         f.location === null ? null : at(f.location),
         f.validity === "current" ? null : `${f.validity}, observed at revision ${f.observedAt}`
       ],
-      ["fail"]
+      [{ check: f.check, shown: "fail" }]
     )
   );
   const first = knownFailures[0];
+  const notShown = (left) => checksText(
+    left.flatMap((b) => b.counted.map((c) => c.check)),
+    "more known failure",
+    "that did not load"
+  );
   return assemble(
     head,
     blocks,
-    (left) => `Not shown: ${left.length} more known failures. ${statusPointer(command)}`,
+    (left) => `Not shown: ${notShown(left)}. ${statusPointer(command)}`,
     first === void 0 ? null : whyLine(first.check, command),
     max
   );
@@ -4353,7 +4372,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.150";
+  if (true) return "0.1.151";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
