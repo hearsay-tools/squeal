@@ -67,9 +67,10 @@ export const STOP_SLOW_POLL_MS = 250;
  * waits up to `STOP_SLOW_HANDOFF_MS` for that (`handedOver`). A 2 s entry
  * that blocked or spoke leaves the turn going, and this entry says nothing;
  * one that ended the turn leaves the decision here, so the two never both
- * block. It first records that it runs here (`recordStopWait`); from then
- * on the 2 s entry leaves a main agent's slow files to it, and before that
- * blocks on them at once as it always did, which leaves this entry silent.
+ * block. It first records that it runs for this session (`recordStopWait`);
+ * from then on the session's 2 s entry leaves its slow files to it, and
+ * before that blocks on them at once as it always did, which leaves this
+ * entry silent.
  * The 2 s entry's silent end already nudged the daemon (`nudgeSlow`), so the
  * idle slow tier has started.
  *
@@ -109,7 +110,7 @@ export async function stopSlow(
   const poll = deps.pollIntervalMs ?? STOP_SLOW_POLL_MS;
   return withContext(input, location, deps, async (context) => {
     const version = deps.squealVersion ?? squealVersion();
-    recordStopWait(context.store, context.consumer.worktreeId, input.harness, version);
+    recordStopWait(context.store, context.consumer, input.harness, version);
     if (!(await handedOver(context, deps, poll))) return null;
     const block = await waitForSlow(context, isSlow, deps, bound, poll);
     if (block === null) return null;

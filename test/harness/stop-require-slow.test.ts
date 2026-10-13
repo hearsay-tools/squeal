@@ -1,19 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { squealVersion } from "../../src/core/daemon/version.js";
 import { readTurn } from "../../src/core/delivery/turn.js";
 import { testFileId } from "../../src/core/keys/index.js";
-import { recordStopWait, type StopWaitHarness } from "../../src/core/slow/index.js";
+import type { StopWaitHarness } from "../../src/core/slow/index.js";
 import { DEFAULT_POLICY, type TestFileRef } from "../../src/core/types/index.js";
 import { runHook } from "../../src/harness/claude-code/index.js";
 import { runCodexHook } from "../../src/harness/codex/index.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { codexRecorded } from "./codex/helpers.js";
 import { FILE, recorded, type SquealRepo, squealRepo } from "./helpers.js";
+import { markStopWait } from "./stop-slow-helpers.js";
 
 /*
  * Spec 004 D7 and D9 as amended 2026-10-12: with `stop.requireSlowSuite` on,
  * a main agent's 2 s Stop blocks at once while a slow file is not current, as
- * before, until its harness's waiting entry is known to run in the worktree;
+ * before, until its harness's waiting entry is known to run for its session;
  * then it ends the turn with them pending and leaves them to that entry
  * (`stop-slow-wait.test.ts`).
  * A subagent's SubagentStop still blocks at once while a slow file is not
@@ -95,7 +95,7 @@ describe.each(HARNESSES)("stop.requireSlowSuite, $name (spec 004 D7)", (harness)
 
   it("on, the waiting entry known to run here: ends the turn at once with the slow file pending, for it", async () => {
     const r = await repo(harness, [SLOW_FILE.path], true);
-    recordStopWait(r.store, r.worktreeId, harness.name, squealVersion());
+    markStopWait(r, harness.name);
     slowKey(r, "queued");
     const started = performance.now();
     expect(decision((await harness.stop(r)).stdout)).toEqual({});
