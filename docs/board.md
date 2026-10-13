@@ -693,7 +693,7 @@ Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the hu
 | 005-34 repair: every count of checks split, inherited and titles too | done (0.1.151; inherited, title, grouped, collapsed and overflow counts split, e.g. `SQUEAL · 1 check changed (1 test)`; finished by a57af06f after a session restart cancelled 9e9dc219) | B1. | B1's probe; titles, grouped and overflow counts split; cap holds. |
 | 005-35 repair: the skills say only what Squeal does | done (0.1.151; the re-run sentence lists Squeal's exceptions; `squeal setup --harness none`; split examples) | B2, B3 (`squeal setup --harness none`), S1. | Each probe a test; copies identical. |
 | 005-36 repair: a join is counted only when the daemon joined | done (0.1.151; `run-all` and `run-all-status` answer `owner`, signed off by 001; the CLI counts a join only when the daemon names one) | B4: the owner id from `Checkpoints.join()` reaches the CLI. | Paired real-tracker tests; exit codes unchanged. |
-| 005-37 re-review of wave 3.5 | running (1715a73b; brief `tasks/wave-3.md`) | `/reviewer` on gpt-6.1-sol, limited to B1 to B4 and S1. | `reviews/wave-3.5.md`. |
+| 005-37 re-review of wave 3.5 | done: PASS at a69ba49d, 0 blockers; S2 fixed (4d187e3f), N1 docs only | `/reviewer` on gpt-6.1-sol, limited to B1 to B4 and S1. | `reviews/wave-3.5.md`. |
 
 ### Wave 3: proof
 
