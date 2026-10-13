@@ -118,17 +118,30 @@ function signal(pid: number, name: NodeJS.Signals): void {
   }
 }
 
-/** True while `pid` runs; a zombie, dead but not reaped, counts as gone. */
-export function isAlive(pid: number): boolean {
+/**
+ * True while `pid` runs; a zombie, dead but not reaped, counts as gone.
+ * `readStat` reads `/proc/<pid>/stat`; tests inject its failures.
+ */
+export function isAlive(
+  pid: number,
+  readStat: (path: string) => string = (path) => readFileSync(path, "utf8"),
+): boolean {
   try {
     process.kill(pid, 0);
   } catch {
     return false;
   }
   try {
-    return !/^\d+ \(.*\) Z/.test(readFileSync(`/proc/${pid}/stat`, "utf8"));
-  } catch {
-    // On Linux it was reaped between the two reads; elsewhere there is no `/proc` to ask.
-    return process.platform !== "linux";
+    return !/^\d+ \(.*\) Z/.test(readStat(`/proc/${pid}/stat`));
+  } catch (error) {
+    // On Linux a missing stat means it was reaped between the two reads. Any
+    // other read error (EACCES, EIO) is no evidence of exit, and elsewhere
+    // there is no `/proc` to ask.
+    return !(process.platform === "linux" && reaped(error));
   }
+}
+
+function reaped(error: unknown): boolean {
+  const code = (error as NodeJS.ErrnoException | null)?.code;
+  return code === "ENOENT" || code === "ESRCH";
 }
