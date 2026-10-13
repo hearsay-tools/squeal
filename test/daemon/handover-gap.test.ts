@@ -4,15 +4,7 @@ import { requestDaemon } from "../../src/core/daemon/client.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
 import type { EnsureDaemonResult } from "../../src/core/types/index.js";
 import { lockHolders } from "../e2e/restart-evidence.js";
-import {
-  daemonSuite,
-  delay,
-  type FixtureRepo,
-  ping,
-  readNotes,
-  SLOW,
-  waitFor,
-} from "./helpers.js";
+import { daemonSuite, delay, type FixtureRepo, ping, readNotes, SLOW, waitFor } from "./helpers.js";
 import { stepDownKit } from "./step-down-helpers.js";
 
 /*
