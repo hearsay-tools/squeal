@@ -28,6 +28,7 @@ describe("gate detection", () => {
         text: VITEST_GATE,
         command: "npx vitest run",
         proposed: `Verification: \`npm run lint\`, \`npm run typecheck\`, \`npm run build\`, and \`squeal run --all --wait 110000\`. Paste the output in your final message.${FALLBACK("npx vitest run")}`,
+        reason: null,
       },
     ]);
     // AGENTS.md -> CLAUDE.md is one file: its gate is listed once.
@@ -83,8 +84,56 @@ describe("gate detection", () => {
         text: "npx vitest run",
         command: "npx vitest run",
         proposed: null,
+        reason: "inside a code block",
       },
     ]);
+  });
+
+  it("offers no rewording for a command that runs more than the test command", () => {
+    const root = squealShaped({
+      "AGENTS.md": [
+        "Run `npm run lint && npx vitest run && npm run build`.",
+        "Run `npm run lint; npm test`.",
+        "Run `npx vitest run && npx vitest run --project e2e`.",
+        "Run `npm test` and then `npx vitest run --project e2e`.",
+        "Run `CI=1 npx vitest run`.",
+        "Run `env NODE_OPTIONS=--inspect npm test`.",
+        "Run `npm test | tee test.log`.",
+        "Run CI=1 npm test before you commit.",
+        "Run npm run lint && npm test before you commit.",
+        "",
+      ].join("\n"),
+    });
+    const gates = scanGates(root, tracked(root), { nodeTest: false }).gates.filter(
+      (g) => g.file === "AGENTS.md",
+    );
+    expect(gates.map((g) => [g.line, g.proposed])).toEqual(
+      [1, 2, 3, 4, 5, 6, 7, 8, 9].map((line) => [line, null]),
+    );
+    expect(gates.map((g) => g.reason)).toEqual([
+      "runs more than the test command: `npm run lint && npx vitest run && npm run build`",
+      "runs more than the test command: `npm run lint; npm test`",
+      "runs the test command more than once",
+      "runs the test command more than once",
+      "runs more than the test command: `CI=1 npx vitest run`",
+      "runs more than the test command: `env NODE_OPTIONS=--inspect npm test`",
+      "runs more than the test command: `npm test | tee test.log`",
+      "runs more than the test command: `Run CI=1 npm test before you commit.`",
+      "runs more than the test command: `Run npm run lint && npm test before you commit.`",
+    ]);
+  });
+
+  it("still rewords a test command with flags, beside other commands in their own spans", () => {
+    const root = squealShaped({
+      "AGENTS.md": "Run `npm run lint && npm run build`, then `vitest run --reporter=dot`.\n",
+    });
+    const [gate] = scanGates(root, tracked(root), { nodeTest: false }).gates.filter(
+      (g) => g.file === "AGENTS.md",
+    );
+    expect(gate?.reason).toBeNull();
+    expect(gate?.proposed).toBe(
+      `Run \`npm run lint && npm run build\`, then \`squeal run --all --wait 110000\`.${FALLBACK("vitest run --reporter=dot")}`,
+    );
   });
 
   it("rewords a bare command and keeps the rest of the line", () => {
@@ -121,7 +170,21 @@ describe("rewording gate lines", () => {
     const before = readFileSync(join(root, "CLAUDE.md"), "utf8");
     expect(
       rewordGates(root, tracked(root), ["CLAUDE.md:5", "CLAUDE.md:2"], { nodeTest: false }),
-    ).toEqual({ refused: "CLAUDE.md:2 is inside a code block" });
+    ).toEqual({ refused: "CLAUDE.md:2: inside a code block" });
+    expect(readFileSync(join(root, "CLAUDE.md"), "utf8")).toBe(before);
+  });
+
+  it("refuses a compound command and writes nothing", () => {
+    const root = squealShaped({
+      "CLAUDE.md": "Run `npm test`.\nRun `npm run lint && npx vitest run && npm run build`.\n",
+    });
+    const before = readFileSync(join(root, "CLAUDE.md"), "utf8");
+    expect(
+      rewordGates(root, tracked(root), ["CLAUDE.md:1", "CLAUDE.md:2"], { nodeTest: false }),
+    ).toEqual({
+      refused:
+        "CLAUDE.md:2: runs more than the test command: `npm run lint && npx vitest run && npm run build`",
+    });
     expect(readFileSync(join(root, "CLAUDE.md"), "utf8")).toBe(before);
   });
 });
