@@ -1,5 +1,6 @@
+import { readPolicy } from "../../core/daemon/policy.js";
 import { deliver } from "../shared/deliver.js";
-import { denyOnRegression } from "../shared/deny.js";
+import { denyCurrentTestCommand, denyOnRegression, testCommandOf } from "../shared/deny.js";
 import { isRegistered, withContext } from "../shared/hook.js";
 import { submitPrompt } from "../shared/prompt.js";
 import { endSession, startSession } from "../shared/session.js";
@@ -45,17 +46,32 @@ export const userPromptSubmit: CodexHandler = async (input, location, deps) => {
  * PreToolUse, matcher `*`: an idle consumer is put back in a turn; an
  * `apply_patch` (Codex's `tool_name` for `Edit` and `Write` too) after an
  * undelivered regression is denied once, with `interrupt.onRegression` on.
- * `Bash` is never denied: the watcher stays the source of truth.
+ * `Bash` is never denied by default: the watcher stays the source of truth.
+ * With `testCommand.denyWhenCurrent` on, spec 005 D8 denies a test command
+ * Squeal has answered once (`denyCurrentTestCommand`), after the regression
+ * deny, one reason per call; the policy is read and the command recognized
+ * before the store opens.
  */
-export const preToolUse: CodexHandler = (input, location, deps) =>
-  withContext(input, location, deps, async (context) => {
-    const reason = await denyOnRegression(context, {
-      edit: input.tool_name === "apply_patch",
-      toolName: input.tool_name ?? "tool",
-      command: deps.command,
-    });
+export const preToolUse: CodexHandler = (input, location, deps) => {
+  const policy = readPolicy(location.root);
+  const testCommand = testCommandOf(location, policy, {
+    toolName: input.tool_name ?? "",
+    cwd: input.cwd,
+    ...(input.command === undefined ? {} : { command: input.command }),
+  });
+  return withContext(input, location, deps, async (context) => {
+    const reason =
+      (await denyOnRegression(context, policy, {
+        edit: input.tool_name === "apply_patch",
+        toolName: input.tool_name ?? "tool",
+        command: deps.command,
+      })) ??
+      (testCommand === null
+        ? null
+        : denyCurrentTestCommand(context, testCommand, policy.nodeTest, (deps.now ?? Date.now)()));
     return reason === null ? null : deny(reason, deps.command);
   });
+};
 
 /**
  * PostToolUse, matcher `*`, the primary push: once per nested tool call, so

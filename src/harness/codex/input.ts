@@ -1,3 +1,5 @@
+import { bashCommand } from "../shared/test-command.js";
+
 /**
  * The fields of Codex hook input that Squeal reads (spec 002 D2, D5). Every
  * event carries `session_id` (the thread id), `cwd` (the thread's working
@@ -15,6 +17,8 @@ export interface CodexHookInput {
   readonly turn_id?: string;
   /** PreToolUse and PostToolUse: `Bash`, `apply_patch` (also for `Edit` and `Write`), others. */
   readonly tool_name?: string;
+  /** PreToolUse of `Bash`: `tool_input.command`, the shell command (spec 005 D8). */
+  readonly command?: string;
   /** Stop and SubagentStop: true while a Stop hook's block keeps the turn going. */
   readonly stop_hook_active?: boolean;
   /** SessionStart: `startup`, `resume`, `fork`, `clear` or `compact`. */
@@ -60,6 +64,7 @@ export function parseCodexInput(text: string): CodexHookInput | null {
     ...(typeof v.agent_type === "string" ? { agent_type: v.agent_type } : {}),
     ...(typeof v.turn_id === "string" ? { turn_id: v.turn_id } : {}),
     ...(typeof v.tool_name === "string" ? { tool_name: v.tool_name } : {}),
+    ...bashCommand(v),
     ...(typeof v.stop_hook_active === "boolean" ? { stop_hook_active: v.stop_hook_active } : {}),
     ...(typeof v.source === "string" ? { source: v.source } : {}),
     ...(typeof v.transcript_path === "string" && v.transcript_path !== ""

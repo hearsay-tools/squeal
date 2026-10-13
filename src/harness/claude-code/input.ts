@@ -1,3 +1,5 @@
+import { bashCommand } from "../shared/test-command.js";
+
 /**
  * The fields of Claude Code hook input that Squeal reads. Every hook gets
  * `session_id`, `cwd` and `hook_event_name`; subagent events and events fired
@@ -17,6 +19,8 @@ export interface HookInput {
   readonly agent_type?: string;
   /** PreToolUse. */
   readonly tool_name?: string;
+  /** PreToolUse of `Bash`: `tool_input.command`, the shell command (spec 005 D8). */
+  readonly command?: string;
   /** PostToolBatch: the `tool_name` of each of its `tool_calls`; absent when it has none. */
   readonly tool_names?: readonly string[];
   /** Stop and SubagentStop: true while a Stop hook's block keeps the agent going. */
@@ -45,6 +49,7 @@ export function parseHookInput(text: string): HookInput | null {
     ...(typeof v.agent_id === "string" && v.agent_id !== "" ? { agent_id: v.agent_id } : {}),
     ...(typeof v.agent_type === "string" ? { agent_type: v.agent_type } : {}),
     ...(typeof v.tool_name === "string" ? { tool_name: v.tool_name } : {}),
+    ...bashCommand(v),
     ...toolNames(v.tool_calls),
     ...(typeof v.stop_hook_active === "boolean" ? { stop_hook_active: v.stop_hook_active } : {}),
     ...(typeof v.source === "string" ? { source: v.source } : {}),

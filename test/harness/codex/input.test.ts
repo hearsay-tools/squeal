@@ -22,9 +22,13 @@ describe("parseCodexInput", () => {
         "source",
         "transcript_path",
       ];
-      expect(input).toEqual(
-        Object.fromEntries(keep.flatMap((k) => (k in raw ? [[k, raw[k]]] : []))),
-      );
+      const toolInput = raw.tool_input as { command?: unknown } | undefined;
+      const command = raw.tool_name === "Bash" ? toolInput?.command : undefined;
+      expect(input).toEqual({
+        ...Object.fromEntries(keep.flatMap((k) => (k in raw ? [[k, raw[k]]] : []))),
+        // Spec 005 D8: a `Bash` call's command.
+        ...(typeof command === "string" ? { command } : {}),
+      });
     },
   );
 
