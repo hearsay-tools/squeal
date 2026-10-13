@@ -307,9 +307,14 @@ function assemble(
 
 /**
  * Renders a delta: header, failures first, unknowns, recoveries, retired
- * failures. `command` is how the text names the CLI (`SQUEAL_COMMAND`).
+ * failures. `command` is how the text names the CLI (`SQUEAL_COMMAND`);
+ * `max` below the cap leaves room for a line the hook adds (task 001-292).
  */
-export function formatDelta(delta: Delta, command: string = SQUEAL_COMMAND): string {
+export function formatDelta(
+  delta: Delta,
+  command: string = SQUEAL_COMMAND,
+  max: number = MESSAGE_CAP_CHARS,
+): string {
   const { header, entries } = delta;
   const changed = entries.filter((e): e is TransitionEntry => e.kind !== "fail-retired");
   const retired = entries.filter((e): e is RetiredEntry => e.kind === "fail-retired");
@@ -345,7 +350,7 @@ export function formatDelta(delta: Delta, command: string = SQUEAL_COMMAND): str
     blocks,
     overflow,
     tail,
-    MESSAGE_CAP_CHARS,
+    max,
   );
 }
 

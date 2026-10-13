@@ -42,6 +42,7 @@ describe("loadPolicy (spec 001 D11)", () => {
           observe: { runtimeInputs: false },
           env: { allowlist: ["TZ"] },
           runner: { tierSize: 2, backlogTierSize: 50, timeoutMs: null },
+          delivery: { uncoveredEdits: false },
           daemon: { idleExitMinutes: 0.5 },
           store: { retentionDays: 3, maxSizeMb: 200 },
         }),
@@ -65,6 +66,7 @@ describe("loadPolicy (spec 001 D11)", () => {
       runner: { tierSize: 2, backlogTierSize: 50, timeoutMs: null },
       nodeTest: [],
       slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 600_000, maxParallel: 4 },
+      delivery: { uncoveredEdits: false },
       daemon: { idleExitMinutes: 0.5 },
       store: { retentionDays: 3, maxSizeMb: 200 },
     });
@@ -99,6 +101,9 @@ describe("loadPolicy (spec 001 D11)", () => {
     ]);
     expect(problems('{"stop": {"waitMs": -1}}')).toEqual([
       '"stop.waitMs" must be a number >= 0, got -1',
+    ]);
+    expect(problems('{"delivery": {"uncoveredEdits": "no"}}')).toEqual([
+      '"delivery.uncoveredEdits" must be true or false, got "no"',
     ]);
     expect(problems('{"daemon": {"idleExitMinutes": 0}}')).toEqual([
       '"daemon.idleExitMinutes" must be a number > 0, got 0',

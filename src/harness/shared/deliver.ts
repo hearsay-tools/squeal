@@ -1,9 +1,15 @@
-import { formatDelta, notValidatedLine, worktreeLiveness } from "../../core/delivery/index.js";
+import {
+  formatDelta,
+  MESSAGE_CAP_CHARS,
+  notValidatedLine,
+  worktreeLiveness,
+} from "../../core/delivery/index.js";
 import type { HookContext } from "./context.js";
 import { coverageOf } from "./coverage.js";
 import { ensureIfStale, startingAfter } from "./ensure.js";
 import { type HookDeps, isRegistered } from "./hook.js";
 import { withPrimer } from "./primer.js";
+import { uncoveredEditLine } from "./uncovered-edit.js";
 
 /**
  * Claude Code's tools known not to change files in the worktree. Any other
@@ -46,7 +52,9 @@ export function mayEdit(toolNames: readonly string[] | undefined): boolean {
  * S2); the delta then says no daemon is validating, once. When none could be
  * started (one holds the lock and does not answer, lessons defect 22), a
  * boundary that `edited` adds one line saying the edit has no result, every
- * time, so silence never reads as no failures (task 001-112).
+ * time, so silence never reads as no failures (task 001-112). Without that
+ * line, a boundary that `edited` names the changed code files no test Squeal
+ * runs reads, once each (task 001-292). The line counts against the cap.
  */
 export async function deliver(
   context: HookContext,
@@ -63,8 +71,10 @@ export async function deliver(
     return withPrimer(registration, deps.command, coverageOf(context));
   }
   const delta = await context.delivery.onToolBoundary(context.consumer);
-  const text = delta === null ? null : formatDelta(delta, deps.command);
-  const line = edited && ensured === "unavailable" ? notValidated(context, deps) : null;
+  const down = edited && ensured === "unavailable" ? notValidated(context, deps) : null;
+  const line = down ?? (edited ? uncoveredEditLine(context) : null);
+  const room = MESSAGE_CAP_CHARS - (line === null ? 0 : line.length + 1);
+  const text = delta === null ? null : formatDelta(delta, deps.command, room);
   if (line === null) return text;
   return text === null ? `SQUEAL · ${line}` : `${text}\n${line}`;
 }
