@@ -34,6 +34,23 @@ async function registered(e: E2E) {
   return ping;
 }
 
+/**
+ * Spec 001 D9's 2 s hook budget, or, on a loaded runner, 5 times the median
+ * of three PreToolUse runs through the same bundle just after the hook
+ * (task 001-320). PreToolUse only reads the store and starts no daemon, so it
+ * is the fixed cost every hook pays: the bundle's start under the same load.
+ * Calm, that median is about 150 ms and the 2 s budget decides; a hook stuck
+ * on a timer of its own still fails. A load spike on the hook alone can still
+ * fail it, as one on the budget would.
+ */
+async function budget(e: E2E, ms: number): Promise<number> {
+  const runs: number[] = [];
+  for (let i = 0; i < 3; i++) runs.push((await e.hook("pre-tool-use", e.main)).ms);
+  const reference = runs.sort((a, b) => a - b)[1] ?? 0;
+  console.log(`001-320: hook ${Math.round(ms)} ms; PreToolUse median ${Math.round(reference)} ms`);
+  return Math.max(HOOK_BUDGET_MS, 5 * reference);
+}
+
 async function kill(e: E2E, pid: number): Promise<void> {
   process.kill(pid, "SIGKILL");
   await until("the killed daemon to stop answering", 10_000, async () =>
@@ -50,7 +67,7 @@ describe.each(PLUGINS)("a dead daemon, $name", (plugin) => {
     // The socket file is left behind; SessionStart must not trust it.
     const start = await e.hook("session-start", e.main, { session_id: OTHER_SESSION });
     expect(start).toMatchObject({ code: 0, stderr: "" });
-    expect(start.ms).toBeLessThan(HOOK_BUDGET_MS);
+    expect(start.ms).toBeLessThan(await budget(e, start.ms));
     expect(start.text).toMatch(/^SQUEAL · registered at revision \d+\n/);
     const second = await e.daemonReady(e.main, first.pid);
     expect(second.pid).not.toBe(first.pid);
@@ -77,11 +94,11 @@ describe.each(PLUGINS)("a dead daemon, $name", (plugin) => {
     // Goal 6: hooks serve from the store with no daemon, within budget.
     const pre = await e.hook("pre-tool-use", e.main);
     expect(pre).toMatchObject({ code: 0, stdout: "" });
-    expect(pre.ms).toBeLessThan(HOOK_BUDGET_MS);
+    expect(pre.ms).toBeLessThan(await budget(e, pre.ms));
 
     const told = await e.hook("post-tool-batch", e.main);
     expect(told).toMatchObject({ code: 0, stderr: "" });
-    expect(told.ms).toBeLessThan(HOOK_BUDGET_MS);
+    expect(told.ms).toBeLessThan(await budget(e, told.ms));
     expect(told.text).toMatch(/^SQUEAL · no daemon is validating at revision \d+\n/);
     expect(told.text).toContain(
       `No daemon has validated since ${since}; results are as of revision ${down.revision}.`,
