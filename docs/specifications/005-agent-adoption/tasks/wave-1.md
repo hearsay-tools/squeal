@@ -97,3 +97,7 @@ Three workers in parallel, one per blocker. Each reads its finding in `reviews/w
 **Owns:** `src/cli/setup/block.ts`, `apply.ts`, the block part of `src/cli/remove.ts`, block tests, a new `test/cli/setup/block-remove.test.ts` (not `init-flags.test.ts`).
 
 **Done when:** a nested-file CLI round trip; an unterminated nested block listed under "Still there", exit 3; root symlink and CRLF cases still pass.
+
+## 005-25 re-review of wave 1.5
+
+Use /reviewer. Shape: review, narrow. Range: the wave 1.5 commits on main (005-22, 005-23, 005-24 and the 0.1.134 build), against `reviews/wave-1.md`. Check B1, B2, B3, S1 and S2 closed, using the review's own probe script, and their nearest variants: a named wait with several files where only some are reconciled; a gate with `||` or a pipe, or flags on the test command; a nested `CLAUDE.local.md`, and a block file renamed after it was written. Read the 2026-10-13 amendments to D3, D4 and D5. Nothing else is in scope. Output `reviews/wave-1.5.md`, committed on your branch; change no source; run no claude or codex subject session.
