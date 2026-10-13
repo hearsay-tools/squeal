@@ -659,7 +659,8 @@ Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the hu
 | 005-27 repair: a cut installer runs nothing; uninstall removes only what it installed | done (0.1.138; completion argument; ownership record in `~/.local/state/squeal/installed`) | B2, B3; the installer tests' timeout under load. | Every byte prefix of the last line inert; pre-existing plugins and launcher survive uninstall. |
 | 005-28 repair: setup shows a new instruction file | done (0.1.138) | S1. | New and symlinked instruction files shown and listed once. |
 | 005-29 the warm-up reports 001-307's ignored reads | done (0.1.138; interim wording for a file without an entry until 001-312; narrow it then) | D3: the warm-up's `run-all` asks `observeIgnored`, then prints `readIgnoredReads` as unkeyed suggestions. | A gitignored read named after `squeal warmup`; a plain `run --all` stores nothing. |
-| 005-30 re-review of wave 2.5 | running (5e23f46e; brief `tasks/wave-2.md`) | `/reviewer` on gpt-6.1-sol, limited to B1 to B3, S1, their variants and 005-29. | `reviews/wave-2.5.md`. |
+| 005-30 re-review of wave 2.5 | done: PASS (`reviews/wave-2.5.md`, at `3dc61b4d`; B1 to B3 and S1 closed; new S2 nonblocking, fixed in 005-31; full suite 1 known failure, 001-309 item 3); wave 2 closed | `/reviewer` on gpt-6.1-sol, limited to B1 to B3, S1, their variants and 005-29. | `reviews/wave-2.5.md`. |
+| 005-31 the warm-up keeps every pool's ignored reads of one slow file | done (coordinator's own hands; paths merged, overflow said as "at least"/"up to") | S2 of `reviews/wave-2.5.md`. | A unit test with two pools' entries for one path. |
 
 ### Wave 3: proof
 
