@@ -74,6 +74,7 @@ const SHAPE: Shape = {
     requireSlowSuite: boolean,
     slowWaitMs: atLeastZero,
   },
+  testCommand: { denyWhenCurrent: boolean },
   baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
   inputs,
   observe: { runtimeInputs: boolean },

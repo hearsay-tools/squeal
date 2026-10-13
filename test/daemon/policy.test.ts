@@ -36,6 +36,7 @@ describe("loadPolicy (spec 001 D11)", () => {
         JSON.stringify({
           interrupt: { onRegression: false },
           stop: { waitMs: 1500 },
+          testCommand: { denyWhenCurrent: true },
           baseline: { onStart: "lookup-only" },
           inputs: ["fixtures/**/*.json"],
           observe: { runtimeInputs: false },
@@ -56,6 +57,7 @@ describe("loadPolicy (spec 001 D11)", () => {
         requireSlowSuite: false,
         slowWaitMs: 120_000,
       },
+      testCommand: { denyWhenCurrent: true },
       baseline: { onStart: "lookup-only" },
       inputs: ["fixtures/**/*.json"],
       observe: { runtimeInputs: false },
@@ -82,6 +84,9 @@ describe("loadPolicy (spec 001 D11)", () => {
   it("names a value of the wrong type with what was expected and what was found", () => {
     expect(problems('{"runner": {"tierSize": "4"}}')).toEqual([
       '"runner.tierSize" must be a positive integer, got "4"',
+    ]);
+    expect(problems('{"testCommand": {"denyWhenCurrent": "yes"}}')).toEqual([
+      '"testCommand.denyWhenCurrent" must be true or false, got "yes"',
     ]);
     expect(problems('{"interrupt": {"onRegression": 1}}')).toEqual([
       '"interrupt.onRegression" must be true or false, got 1',

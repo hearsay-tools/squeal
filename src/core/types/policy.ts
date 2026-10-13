@@ -29,6 +29,13 @@ export interface Policy {
      */
     readonly slowWaitMs: number;
   };
+  readonly testCommand: {
+    /**
+     * Spec 005 D8: an agent's first test command whose every test file has a
+     * current result is denied once, its reason the results. Default `false`.
+     */
+    readonly denyWhenCurrent: boolean;
+  };
   readonly baseline: {
     /** Spec 001 D5: "the baseline is a lookup [...] followed by a run of the misses, or lookup only, per policy." */
     readonly onStart: "lookup-then-run-missing" | "lookup-only";
@@ -167,6 +174,7 @@ export const DEFAULT_POLICY: Policy = {
     requireSlowSuite: false,
     slowWaitMs: 120_000,
   },
+  testCommand: { denyWhenCurrent: false },
   baseline: { onStart: "lookup-then-run-missing" },
   inputs: [],
   observe: { runtimeInputs: true },
