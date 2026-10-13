@@ -58,3 +58,67 @@ Use /reviewer. Range: the 005-14a, 005-14b and 005-20 commits and the 0.1.135 bu
 - `squeal warmup`: 0/1/3 told apart; it never claims a pass it did not see.
 
 **Rules:** probe with stub harness CLIs in scratch homes only. Never run the real `claude` or `codex`, and run no model session (006 holds the eval slot). Output `reviews/wave-2.md`, committed on your branch; change no source.
+
+# Wave 2.5: repairs from `reviews/wave-2.md` (FAIL at `2b0c5532`)
+
+Three workers on disjoint files, then one narrow re-review. Code only: run no model session and no real `claude` or `codex` (006 holds the eval slot). Scratch homes, stub harness CLIs, `file://` hubs. Leave bundles, `package.json`'s version and `docs/board.md` to the coordinator.
+
+## 005-26 repair: D8 answers only for a command its listing covers completely (B1)
+
+Use /worker. Shape: repair.
+
+**Outcome:** a Vitest command whose files include any Squeal does not run (a `typescript` pool spec, today) is never denied and uses no once-only slot; a fully covered command still denies once.
+
+**Read:** `reviews/wave-2.md` B1 (its probe is your first test) and the fix-inputs table; spec D8; `status.md` 2026-10-13, the 001 coordinator's D8 fit notes (binding).
+
+**Seam:** `testSpecifications` in `src/runners/vitest/adapter.ts:466` drops `typescript` pool specs. Suggested first edit: have the listing record that it left files out (a count is enough), stored with the listing; `src/harness/shared/test-command-files.ts:29` then falls through when it is non-zero. The hook never starts Vitest, evaluates config or scans config text. If the record must live in a store row or a daemon or key-format-guarded file, send me a request naming it before you edit; I clear it with the 001 coordinator.
+
+**Owns:** `src/harness/shared/test-command*.ts`, `deny.ts`, the adapter's listing, the record's row if cleared, tests.
+
+**Leave alone:** `install.sh`, `src/cli/`, `deliver.ts`, `stop*.ts`, bundles.
+
+**Done when:** B1's mixed ordinary/typecheck fixture falls through in both harnesses with the once slot unused; a covered suite denies once; the off flag still returns before store work (the hook p95 test passes); lint, typecheck, suite green.
+
+## 005-27 repair: a cut installer runs nothing, and uninstall removes only what it installed (B2, B3)
+
+Use /worker. Shape: repair.
+
+**Outcome:** no byte prefix of `install.sh` changes anything, and `--uninstall` removes only plugins and the launcher this script created.
+
+**Read:** `reviews/wave-2.md` B2 and B3 (their probes are your first tests); spec D3 on `install.sh`.
+
+**Seam:** `install.sh:162`. Suggested first edit: the last line passes a completion token, for example `main squeal-install-complete "$@"`, and `main` exits without a side effect when the token is missing. Then an ownership record outside `~/.claude` and `~/.codex` (under the launcher's directory or `${XDG_STATE_HOME:-~/.local/state}/squeal/`), written after each resource this run creates and kept across repeated installs and a harness that fails; uninstall acts only on recorded entries and says why it keeps the rest.
+
+**Owns:** `install.sh`, `test/cli/install-sh.test.ts`, `test/cli/install-fixture.ts`, the READMEs' uninstall lines. Keep POSIX `sh`, `set -eu`, no stdin reads, printed commands, harness writes through their own CLIs.
+
+**Done when:** every proper byte prefix of the final line is inert (exactly `main`, `main `, `main "$@"` included), for install and uninstall; a pre-existing Claude plugin, Codex plugin, mixed machine and launcher each survive uninstall; repeated install and a failed harness keep ownership; the installer tests fit their timeout under full-suite load (`install-sh.test.ts:45` timed out at 5 s in the review's full run: size a test-only bound to the measured work, or do less work per test); lint, typecheck, suite green.
+
+## 005-28 repair: setup shows and lists a new instruction file (S1)
+
+Use /worker. Shape: repair. One worker with 005-29.
+
+**Outcome:** a block written to a new `AGENTS.md` or `CLAUDE.md` appears in setup's diff and in its commit list, once.
+
+**Read:** `reviews/wave-2.md` S1; spec D3 step 5.
+
+**Seam:** `src/cli/setup/flow.ts:126-127`. Show a new file's addition read-only (`git diff --no-index /dev/null <file>`), never by staging; name each new managed file once, a symlinked alias once.
+
+**Done when:** a fresh repository, separate `CLAUDE.md` and `AGENTS.md`, and a symlinked pair each show and list every new file once.
+
+## 005-29 the warm-up reports 001-307's ignored reads
+
+Use /worker. Shape: finish. Same worker as 005-28.
+
+**Outcome:** `squeal warmup` and setup's warm-up ask their checkpoint to observe ignored reads and print each slow file's ignored paths as unkeyed suggestions for `inputs`, never declaring them.
+
+**Read:** spec D3 (the warm-up); `status.md` 2026-10-13 on 001-307; `src/core/scheduler/ignored-reads.ts` (`readIgnoredReads`, re-exported from `src/core/status/`); `src/core/daemon/protocol.ts:33`.
+
+**Seam:** `runAllArgs` and `ignoredPathSuggestions` in `src/cli/warmup.ts:118-128`. `squeal run` has no flag for `observeIgnored`; the warm-up sends its own `run-all` request, or `run.ts` takes an internal option. Do not add a user-facing `run` flag.
+
+**Owns:** `src/cli/warmup.ts`, `src/cli/setup/flow.ts`, the `run.ts` lines this needs, tests. **Leave alone:** `src/core/`, `install.sh`, `src/harness/`.
+
+**Done when:** a fixture whose slow file reads a gitignored path names it after `squeal warmup`, labelled unkeyed and capped as stored; a plain `squeal run --all --wait` stores nothing; no config written; lint, typecheck, suite green.
+
+## 005-30 re-review of wave 2.5
+
+Use /reviewer. Range: the 005-26 to 005-29 commits and their build on main. Limited to B1, B2, B3, S1, their nearest variants, and 005-29's ignored-reads output. Rerun the review's three probes against the candidate, then one independent `npx vitest run`. The same rules as 005-16; output `reviews/wave-2.5.md`.
