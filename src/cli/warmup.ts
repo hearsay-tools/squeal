@@ -47,6 +47,11 @@ export interface IgnoredRead {
   readonly paths: readonly string[];
   /** How many more past the cap. */
   readonly more: number;
+  /**
+   * Set when `more` adds up several pools' overflow, which may name the same
+   * paths, so it is an upper bound (reviews/wave-2.5.md S2).
+   */
+  readonly moreAtMost?: true;
 }
 
 /** What the warm-up's record holds of the slow files (spec 005 D3, 001-307). */
@@ -134,9 +139,11 @@ export async function warmUp(root: AbsolutePath, io: CliIo): Promise<WarmupResul
  * be unkeyed so it never reads as coverage. Nothing declares them.
  */
 export function ignoredReadText(read: IgnoredRead): string {
-  const count = read.paths.length + read.more;
-  const listed = [...read.paths, ...(read.more > 0 ? [`and ${read.more} more`] : [])];
-  return `${read.path} read ${plural(count, "gitignored path")}, unkeyed: a change to ${count === 1 ? "it" : "them"} re-runs nothing until declared; squeal setup --input ${read.path}=<glob> declares one${listed.map((p) => `\n    ${p}`).join("")}`;
+  const bound = read.moreAtMost === true && read.more > 0;
+  const count = bound ? read.paths.length : read.paths.length + read.more;
+  const more = read.more > 0 ? [`and ${bound ? "up to " : ""}${read.more} more`] : [];
+  const listed = [...read.paths, ...more];
+  return `${read.path} read ${bound ? "at least " : ""}${plural(count, "gitignored path")}, unkeyed: a change to ${count === 1 ? "it" : "them"} re-runs nothing until declared; squeal setup --input ${read.path}=<glob> declares one${listed.map((p) => `\n    ${p}`).join("")}`;
 }
 
 /**
@@ -158,8 +165,8 @@ export function ignoredReadNotes({ reads, unobserved }: SlowFileReads): string[]
 /**
  * D3 and 001-307: the gitignored paths each slow file read in the warm-up's
  * checkpoint, slow by `slow.include` (`isSlow`) or as a slow candidate. A
- * file run in two Vitest pools is named once, from the first pool the record
- * holds. `record` is `null` when no warm-up stored one.
+ * file run in two Vitest pools is named once, with every pool's paths
+ * (reviews/wave-2.5.md S2). `record` is `null` when no warm-up stored one.
  */
 export function slowFileReads(
   record: IgnoredReads | null,
@@ -171,13 +178,25 @@ export function slowFileReads(
   for (const ref of files.filter(isSlow)) {
     const file = record?.files[testFileId(ref)];
     if (file === undefined) unobserved.add(ref.path);
-    else if (!reads.has(ref.path)) reads.set(ref.path, { path: ref.path, ...file });
+    else reads.set(ref.path, merged(reads.get(ref.path), ref.path, file));
   }
   for (const path of reads.keys()) unobserved.delete(path);
   return {
     reads: [...reads.values()].sort((a, b) => compare(a.path, b.path)),
     unobserved: [...unobserved].sort(compare),
   };
+}
+
+/** One path's reads with another pool's added; their overflow counts only bound the rest. */
+function merged(
+  read: IgnoredRead | undefined,
+  path: string,
+  file: { readonly paths: readonly string[]; readonly more: number },
+): IgnoredRead {
+  if (read === undefined) return { path, paths: file.paths, more: file.more };
+  const paths = [...new Set([...read.paths, ...file.paths])].sort(compare);
+  const more = read.more + file.more;
+  return more > 0 ? { path, paths, more, moreAtMost: true } : { path, paths, more };
 }
 
 function ignoredReads(

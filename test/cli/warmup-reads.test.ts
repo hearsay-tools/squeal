@@ -53,6 +53,32 @@ describe("the warm-up's ignored reads of slow files", () => {
     expect(ignoredReadNotes(found)).toEqual([]);
   });
 
+  it("keeps every pool's reads of one slow file, and bounds their overflow (reviews/wave-2.5.md S2)", () => {
+    const both = slowFileReads(
+      record({
+        [`forks\0${SLOW}`]: { paths: ["dist/a.js" as RelativePath], more: 0 },
+        [`threads\0${SLOW}`]: { paths: ["dist/b.js" as RelativePath], more: 0 },
+      }),
+      files,
+      isSlow,
+    );
+    expect(both.reads).toEqual([{ path: SLOW, paths: ["dist/a.js", "dist/b.js"], more: 0 }]);
+    expect(ignoredReadText(both.reads[0] as (typeof both.reads)[0]).split("\n")[0]).toMatch(
+      new RegExp(`^${SLOW} read 2 gitignored paths, unkeyed`),
+    );
+    const over = slowFileReads(
+      record({
+        [`forks\0${SLOW}`]: { paths: ["dist/a.js" as RelativePath], more: 3 },
+        [`threads\0${SLOW}`]: { paths: ["dist/b.js" as RelativePath], more: 4 },
+      }),
+      files,
+      isSlow,
+    );
+    const text = ignoredReadText(over.reads[0] as (typeof over.reads)[0]).split("\n");
+    expect(text[0]).toMatch(new RegExp(`^${SLOW} read at least 2 gitignored paths, unkeyed`));
+    expect(text.slice(1)).toEqual(["    dist/a.js", "    dist/b.js", "    and up to 7 more"]);
+  });
+
   it("says a slow file observed with an empty entry read no ignored path", () => {
     const found = slowFileReads(
       record({ [`forks\0${SLOW}`]: { paths: [], more: 0 } }),
