@@ -131,6 +131,27 @@ describe("squeal setup --yes", () => {
     });
   });
 
+  // Row 005-19: the setup skill answers "not slow" for every group with a flag.
+  it("declares no slow group with --slow none, which goes alone", async () => {
+    const root = squealShaped();
+    const { code, stdout, stderr } = await setup(root, ["--yes", "--slow", "none", "--no-warmup"]);
+    expect(stderr).toBe("");
+    expect(code).toBe(0);
+    expect(stdout).not.toMatch(/slow tier\?|Re-run these tests/);
+    const before = JSON.parse(git(root, ["show", "HEAD:squeal.config.json"]));
+    const config = JSON.parse(read(root, "squeal.config.json"));
+    expect(config.slow).toBeUndefined();
+    expect(config.inputs).toEqual(before.inputs);
+    for (const args of [
+      ["--slow", "none", "--slow", "test/e2e/**"],
+      ["--slow", "none", "--input", "test/e2e/**=plugins/**"],
+    ]) {
+      const rejected = await setup(root, ["--yes", ...args]);
+      expect(rejected.code, args.join(" ")).toBe(2);
+      expect(rejected.stderr).toContain("--slow none goes alone");
+    }
+  });
+
   it("offers an outdated repository its upgrade", async () => {
     const old =
       "<!-- squeal:begin v0 (managed by Squeal setup) -->\nRun tests.\n<!-- squeal:end -->\n";
