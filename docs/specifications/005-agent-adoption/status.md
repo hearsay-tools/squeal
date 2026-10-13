@@ -97,6 +97,8 @@ Brief: `research/README.md`. Topics `adoption-baseline`, `instruction-surfaces`,
 
 - 2026-10-13, wave 1.5 landed as 0.1.134 (key format 9 unchanged): B1, B2, B3, S1, S2 repaired, each probe a test that was red before. D3, D4 and D5 amended (an unusable config fails `--check`; `--block` takes only `AGENTS.md`, `CLAUDE.md` or `CLAUDE.local.md`, never a nested ignored one; a compound gate is never reworded). Re-review 005-25 next.
 
+- 2026-10-13, re-review 005-25 PASS (`reviews/wave-1.5.md`): B1 to B3 and S1 closed; S2's variant where the joined checkpoint completes before `run --all` reads the join still miscounts reuse (verdict and exit code right), folded into 005-21. The reviewer's suite had two Codex 5 s timeouts in unchanged tests (`test/cli/codex.test.ts:103`, `test/harness/codex/plugin.test.ts:89`) that passed alone, seen in the coordinator's runs under load too; sent to the 001 coordinator for 001-309. Wave 1 closed.
+
 ## Dogfooding
 
 - 2026-10-09, `97144d9`, decided by the human ("Both": reword this repository's gate now and write the spec beside it): `CLAUDE.md` (and `AGENTS.md`, a symlink to it) and the worker skill take the suite through `squeal run --all --wait`, read `Known failures`, and fall back to `npx vitest run` when Squeal cannot answer or is doubted; reviewers, the coordinator's landing check and CI keep `npx vitest run` as the independent run. Baseline before it, from `research/adoption-baseline.md` 3 (`probes/adoption-baseline/metric.mjs` over this repository's Cezar sessions to 2026-10-09 16:25 local): 10.8 own runs per editing session, 9.0 outside a full-suite gate, 6.7 min of test wall time, gate runs 17% of runs and 39% of test wall time, 32% of sessions pulling Squeal. Sessions started after `97144d9` are the comparison.
