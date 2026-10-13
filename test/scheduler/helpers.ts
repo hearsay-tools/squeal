@@ -54,9 +54,11 @@ export const ref = (path: string): TestFileRef => ({ project: "", path });
 
 const cleanups: (() => Promise<void> | void)[] = [];
 
+// A scheduler's close waits for its run in flight and then closes Vitest: past
+// the 10 s hook default under a loaded full suite (task 001-309).
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
-});
+}, SLOW.timeout);
 
 /**
  * A git repository holding a copy of a fixture under `test/fixtures/scheduler`.
