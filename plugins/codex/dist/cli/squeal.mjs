@@ -300,7 +300,8 @@ var init_store = __esm({
       baselineFindings: { prefix: "state.baseline-findings.", owner: "state/baseline" },
       stopWait: { prefix: "stop-wait:", owner: "slow/stop-wait" },
       testCommandDenied: { prefix: "test-command-denied:", owner: "delivery/test-command-denied" },
-      ignoredReads: { prefix: "ignored-reads:", owner: "scheduler/ignored-reads" }
+      ignoredReads: { prefix: "ignored-reads:", owner: "scheduler/ignored-reads" },
+      omittedTestFiles: { prefix: "omitted-test-files:", owner: "scheduler/omitted-test-files" }
     };
   }
 });
@@ -6509,6 +6510,23 @@ var init_notes2 = __esm({
   }
 });
 
+// src/core/scheduler/omitted-test-files.ts
+function omittedTestFilesMetaKey(worktreeId) {
+  return worktreeMetaKey("omittedTestFiles", worktreeId);
+}
+async function listTestFilesOf(context, bound) {
+  const { runner, store, worktreeId } = context;
+  const listed = await bound.call(() => runner.testFiles());
+  store.meta.set(omittedTestFilesMetaKey(worktreeId), String(runner.omittedTestFiles?.() ?? 0));
+  return listed;
+}
+var init_omitted_test_files = __esm({
+  "src/core/scheduler/omitted-test-files.ts"() {
+    "use strict";
+    init_types();
+  }
+});
+
 // src/core/scheduler/claims.ts
 import { setTimeout as delay } from "node:timers/promises";
 function claimOf(ledger, ref2) {
@@ -6709,11 +6727,7 @@ async function readEnvironments(context, failures, bound) {
   return environments2 === null ? [] : context.keys.setEnvironments(environments2);
 }
 async function listTestFiles(context, ledger, bound) {
-  const listed = await tryRunner(
-    context,
-    "testFiles",
-    () => bound.call(() => context.runner.testFiles())
-  );
+  const listed = await tryRunner(context, "testFiles", () => listTestFilesOf(context, bound));
   return applyListing(context, ledger, listed);
 }
 function applyListing(context, ledger, listed) {
@@ -6777,6 +6791,7 @@ var init_revision2 = __esm({
     init_context();
     init_failures();
     init_notes2();
+    init_omitted_test_files();
     init_runner_work_bound();
   }
 });
@@ -9067,12 +9082,12 @@ function readRefined2(store, worktreeId) {
   return Number.isInteger(value) ? value : null;
 }
 async function baseline(context, ledger, changed = NOTHING_CHANGED) {
-  const { store, keys, runner, worktreeId, policy } = context;
+  const { store, keys, worktreeId, policy } = context;
   const bound = runnerPartBound(context);
   const failures = /* @__PURE__ */ new Map();
   takeHeldFiles(store, worktreeId);
   await readEnvironments(context, failures, bound);
-  const listed = await tryRunner(context, "testFiles", () => bound.call(() => runner.testFiles()));
+  const listed = await tryRunner(context, "testFiles", () => listTestFilesOf(context, bound));
   ledger.listingFailed = listed === null;
   const previousKeys = new Map(
     store.testFileKeys.list(worktreeId).map((row) => [testFileId(row.testFile), row])
@@ -9196,6 +9211,7 @@ var init_bootstrap = __esm({
     init_files();
     init_held();
     init_notes2();
+    init_omitted_test_files();
     init_queue();
     init_rerun();
     init_revision2();
@@ -10086,7 +10102,7 @@ async function fetchRunnerPart(context, ledger, revision, content, carried, touc
     () => bound.call(() => runner.environment()),
     (reason2) => failed(failures, null, reason2)
   ) : null;
-  const listed = structural || recreated.size > 0 || ledger.listingFailed ? await tryRunner(context, "testFiles", () => bound.call(() => runner.testFiles())) : void 0;
+  const listed = structural || recreated.size > 0 || ledger.listingFailed ? await tryRunner(context, "testFiles", () => listTestFilesOf(context, bound)) : void 0;
   const exists2 = new Set(
     listed ? listed.map(testFileId) : [...ledger.files.values()].map((f) => f.id)
   );
@@ -10170,6 +10186,7 @@ var init_refinement = __esm({
     init_context();
     init_failures();
     init_notes2();
+    init_omitted_test_files();
     init_revision2();
     init_runner_work_bound();
   }
@@ -16051,7 +16068,12 @@ async function invalidateStructural(vitest, paths, note) {
       (p) => vitest.projects.some((project) => project.matchesTestGlob(p.abs, () => ""))
     );
     if (testGlob) vitest.clearSpecificationsCache();
+    for (const project of vitest.projects) forgetTypecheckFiles(project);
   }
+}
+function forgetTypecheckFiles(project) {
+  if (!project.config.typecheck.enabled) return;
+  project.typecheckFilesList = null;
 }
 async function dropPackageData(vitest, manifest, kind) {
   const event2 = kind === "add" ? "create" : kind === "delete" ? "delete" : "update";
@@ -16472,7 +16494,10 @@ var init_version = __esm({
 
 // src/runners/vitest/adapter.ts
 async function testSpecifications(vitest) {
-  return (await vitest.globTestSpecifications()).filter((s) => s.pool !== "typescript");
+  return supported(await vitest.globTestSpecifications());
+}
+function supported(specs) {
+  return specs.filter((s) => s.pool !== "typescript");
 }
 var VitestAdapter;
 var init_adapter = __esm({
@@ -16556,6 +16581,8 @@ var init_adapter = __esm({
       #reload = false;
       #node;
       #collector = null;
+      /** The typecheck files the last listing left out (task 005-26). */
+      #omitted = 0;
       /** Bumped per instance, so hooks from an abandoned instance never reach a later run. */
       #generation = 0;
       #gate = new Gate();
@@ -16747,9 +16774,15 @@ var init_adapter = __esm({
         });
       }
       testFiles() {
-        return this.#part(
-          async (vitest) => (await testSpecifications(vitest)).map((s) => this.#ref(s)).sort(compareRefs)
-        );
+        return this.#part(async (vitest) => {
+          const specs = await vitest.globTestSpecifications();
+          const listed = supported(specs);
+          this.#omitted = specs.length - listed.length;
+          return listed.map((s) => this.#ref(s)).sort(compareRefs);
+        });
+      }
+      omittedTestFiles() {
+        return this.#omitted;
       }
       environment() {
         return this.#part(async (vitest) => {
@@ -34431,6 +34464,7 @@ function createRecoveringRunner(options) {
     closure: (testFile) => around(async () => (await adapter()).closure(testFile)),
     enumerate: (testFile) => around(async () => (await adapter()).enumerate(testFile)),
     testFiles: () => around(async () => (await adapter()).testFiles()),
+    omittedTestFiles: () => inner?.omittedTestFiles?.() ?? 0,
     environment: () => around(async () => (await adapter()).environment()),
     run: (testFiles, runOptions) => around(async () => (await adapter()).run(testFiles, runOptions)),
     close: () => around(async () => {
@@ -34646,6 +34680,7 @@ function createCompositeRunner(adapters) {
         );
       return parts.flatMap((part) => part.value);
     },
+    omittedTestFiles: () => adapters.reduce((sum, adapter) => sum + (adapter.omittedTestFiles?.() ?? 0), 0),
     environment,
     async run(testFiles, options) {
       const groups = /* @__PURE__ */ new Map();
@@ -34760,6 +34795,7 @@ function withSlowInstance(fast, createSlow) {
     closure: (testFile) => fast.closure(testFile),
     enumerate: (testFile) => fast.enumerate(testFile),
     testFiles: () => fast.testFiles(),
+    omittedTestFiles: () => fast.omittedTestFiles?.() ?? 0,
     environment: () => fast.environment(),
     ...lane === void 0 ? {} : { lane },
     async run(testFiles, options) {
@@ -34798,7 +34834,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.137";
+  if (true) return "0.1.138";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -36952,6 +36988,7 @@ function afterEachRun(runner, children, note) {
     closure: (testFile) => runner.closure(testFile),
     enumerate: (testFile) => runner.enumerate(testFile),
     testFiles: () => runner.testFiles(),
+    omittedTestFiles: () => runner.omittedTestFiles?.() ?? 0,
     environment: () => runner.environment(),
     ...lane === void 0 ? {} : { lane },
     ...releaseLane === void 0 ? {} : { releaseLane },
@@ -40853,7 +40890,7 @@ var USAGE2 = "usage: squeal run --all [--force] [--wait [<ms>]]\n       squeal r
 var RECORD_WAIT_MS2 = 1e4;
 var POLL_MS2 = 100;
 var STORE_POLL_MS = 250;
-async function runCommand(args, io) {
+async function runCommand(args, io, internal = {}) {
   const flags = new Set(args);
   if (flags.has("--slow") && !flags.has("--all")) return runSlowCommand(args, io, USAGE2);
   const wait = takeAllWait(args);
@@ -40878,7 +40915,11 @@ ${USAGE2}`);
     return 3;
   };
   const socketPath = await daemonSocket(root);
-  const response = await askDaemon(socketPath, { type: "run-all", force: flags.has("--force") });
+  const response = await askDaemon(socketPath, {
+    type: "run-all",
+    force: flags.has("--force"),
+    ...internal.observeIgnored === true ? { observeIgnored: true } : {}
+  });
   if (response === null) {
     return noVerdict(`no daemon running for ${root}; start one with squeal start`);
   }
@@ -41060,11 +41101,12 @@ function terminalAsker(terminal = { input: process.stdin, output: process.stdout
 
 // src/cli/setup/flow.ts
 init_policy2();
-import { execFileSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 
 // src/cli/warmup.ts
 init_policy2();
 init_fs();
+init_keys();
 init_files();
 init_classify();
 init_text();
@@ -41128,7 +41170,7 @@ ${WARMUP_USAGE}`);
     ...result.slowCandidates.map(
       (c) => `${c.path} ran ${Math.round(c.durationMs / 1e3)} s, over ${SLOW_CANDIDATE_MS / 1e3} s: squeal setup --slow ${c.path} runs it in the slow tier`
     ),
-    ...ignoredPathSuggestions(root)
+    ...result.reads.filter((r) => r.paths.length > 0).map(ignoredReadText)
   ];
   if (suggestions.length > 0) {
     io.stdout(
@@ -41138,6 +41180,8 @@ ${suggestions.map((s) => `  ${s}
 `).join("")}`
     );
   }
+  for (const note of ignoredReadNotes(result)) io.stdout(`squeal warmup: ${note}
+`);
   return result.code;
 }
 async function warmUp(root, io) {
@@ -41153,7 +41197,7 @@ async function warmUp(root, io) {
   if (await startCommand([root], startIo) !== 0) {
     io.stdout("No verdict: no daemon could be started for the warm-up; see above\n");
     io.stdout(verdictText(3));
-    return { code: 3, slowCandidates: [] };
+    return { code: 3, slowCandidates: [], reads: [], unobserved: [] };
   }
   io.stdout(`${started2.split("\n")[0]}
 `);
@@ -41162,23 +41206,60 @@ async function warmUp(root, io) {
   const progress2 = reportProgress(root, id2, io, () => running);
   let code;
   try {
-    code = await runCommand(runAllArgs(), io);
+    code = await runCommand(["--all", "--wait"], io, { observeIgnored: true });
   } finally {
     running = false;
     await progress2;
   }
   const verdict = code === 0 || code === 1 ? code : 3;
   io.stdout(verdictText(verdict));
+  if (verdict === 3) return { code: verdict, slowCandidates: [], reads: [], unobserved: [] };
+  const candidates = slowCandidates2(root, id2);
+  return { code: verdict, slowCandidates: candidates, ...ignoredReads(root, id2, candidates) };
+}
+function ignoredReadText(read4) {
+  const count = read4.paths.length + read4.more;
+  const listed = [...read4.paths, ...read4.more > 0 ? [`and ${read4.more} more`] : []];
+  return `${read4.path} read ${plural(count, "gitignored path")}, unkeyed: a change to ${count === 1 ? "it" : "them"} re-runs nothing until declared; squeal setup --input ${read4.path}=<glob> declares one${listed.map((p) => `
+    ${p}`).join("")}`;
+}
+function ignoredReadNotes({ reads, unobserved }) {
+  const clean = reads.filter((r) => r.paths.length === 0).map((r) => r.path);
+  return [
+    ...clean.length === 0 ? [] : [`${clean.join(", ")} read no ignored path`],
+    ...unobserved.length === 0 ? [] : [
+      `no ignored read recorded for ${unobserved.join(", ")}: not observed by this warm-up (it ran in the daemon's first checkpoint), or it read none; the record does not tell them apart`
+    ]
+  ];
+}
+function slowFileReads(record, files2, isSlow) {
+  const reads = /* @__PURE__ */ new Map();
+  const unobserved = /* @__PURE__ */ new Set();
+  for (const ref2 of files2.filter(isSlow)) {
+    const file = record?.files[testFileId(ref2)];
+    if (file === void 0) unobserved.add(ref2.path);
+    else if (!reads.has(ref2.path)) reads.set(ref2.path, { path: ref2.path, ...file });
+  }
+  for (const path of reads.keys()) unobserved.delete(path);
   return {
-    code: verdict,
-    slowCandidates: verdict === 3 ? [] : slowCandidates2(root, id2)
+    reads: [...reads.values()].sort((a, b) => compare(a.path, b.path)),
+    unobserved: [...unobserved].sort(compare)
   };
 }
-function runAllArgs() {
-  return ["--all", "--wait"];
-}
-function ignoredPathSuggestions(_root) {
-  return [];
+function ignoredReads(root, id2, candidates) {
+  const { policy } = loadPolicy(root);
+  const inTier = slowFiles(policy, policy.nodeTest);
+  const longer = new Set(candidates.map((c) => c.path));
+  const found = withStatusStore(
+    root,
+    {},
+    ({ store }) => slowFileReads(
+      readIgnoredReads(store, id2),
+      store.testFileKeys.list(id2).map((row) => row.testFile),
+      (ref2) => inTier(ref2) || longer.has(ref2.path)
+    )
+  );
+  return "reads" in found ? found : { reads: [], unobserved: [] };
 }
 function verdictText(code) {
   switch (code) {
@@ -41491,9 +41572,12 @@ async function runSetup(run2, io) {
 `
       );
     }
+    const reads = warm.reads.filter((r) => r.paths.length > 0).map(ignoredReadText);
+    for (const line of [...reads, ...ignoredReadNotes(warm)]) io.stdout(`squeal setup: ${line}
+`);
     if (code === 0) code = warm.code;
   }
-  showChanges(plan, io);
+  showChanges(plan, answers.blocks, io);
   return code;
 }
 function askOf(asker) {
@@ -41522,18 +41606,28 @@ async function apply2(answers, io) {
   }
   return 0;
 }
-function showChanges(plan, io) {
+function showChanges(plan, blocks, io) {
   const git = (args) => {
-    try {
-      return execFileSync("git", ["-C", plan.root, ...args], { encoding: "utf8" });
-    } catch {
-      return "";
-    }
+    const run2 = spawnSync("git", ["-C", plan.root, ...args], { encoding: "utf8" });
+    return run2.status === 0 || run2.status === 1 ? run2.stdout : "";
   };
-  const files2 = [...new Set(plan.instructions.flatMap((f) => [f.path, ...f.aliases]))];
+  const files2 = [
+    .../* @__PURE__ */ new Set([...plan.instructions.flatMap((f) => [f.path, ...f.aliases]), ...blocks])
+  ];
   const stat7 = git(["diff", "--stat"]);
-  const diff = files2.length === 0 ? "" : git(["diff", "--", ...files2]);
-  const untracked = git(["status", "--porcelain", "--", POLICY_FILE, ".claude/settings.json"]).split("\n").filter((line) => line.startsWith("??")).map((line) => line.slice(3));
+  const untracked = git([
+    "status",
+    "--porcelain",
+    "--untracked-files=all",
+    "--",
+    POLICY_FILE,
+    ".claude/settings.json",
+    ...files2
+  ]).split("\n").filter((line) => line.startsWith("??")).map((line) => line.slice(3));
+  const diff = [
+    files2.length === 0 ? "" : git(["diff", "--", ...files2]),
+    ...files2.filter((f) => untracked.includes(f)).map((f) => git(["diff", "--no-index", "--", "/dev/null", f]))
+  ].join("");
   const changed = git(["diff", "--name-only"]).split("\n").filter((l) => l !== "");
   io.stdout(
     `
@@ -41667,7 +41761,7 @@ async function stopCommand(args, io) {
 
 // src/cli/update.ts
 init_fs();
-import { spawnSync } from "node:child_process";
+import { spawnSync as spawnSync2 } from "node:child_process";
 import { chmodSync as chmodSync3, copyFileSync, existsSync as existsSync24, readdirSync as readdirSync14, readFileSync as readFileSync26 } from "node:fs";
 import { join as join67 } from "node:path";
 var NAMES = { "claude-code": "Claude Code", codex: "Codex" };
@@ -41728,7 +41822,7 @@ function run(command, cwd, env, io) {
   const [file = "", ...args] = command;
   io.stdout(`$ ${command.join(" ")}
 `);
-  const r = spawnSync(file, args, {
+  const r = spawnSync2(file, args, {
     cwd,
     env,
     encoding: "utf8",

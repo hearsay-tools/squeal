@@ -100,7 +100,8 @@ var WORKTREE_META_ROWS = {
   baselineFindings: { prefix: "state.baseline-findings.", owner: "state/baseline" },
   stopWait: { prefix: "stop-wait:", owner: "slow/stop-wait" },
   testCommandDenied: { prefix: "test-command-denied:", owner: "delivery/test-command-denied" },
-  ignoredReads: { prefix: "ignored-reads:", owner: "scheduler/ignored-reads" }
+  ignoredReads: { prefix: "ignored-reads:", owner: "scheduler/ignored-reads" },
+  omittedTestFiles: { prefix: "omitted-test-files:", owner: "scheduler/omitted-test-files" }
 };
 function worktreeMetaKey(row, worktreeId) {
   return `${WORKTREE_META_ROWS[row].prefix}${worktreeId}`;
@@ -4173,7 +4174,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.137";
+  if (true) return "0.1.138";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4369,6 +4370,16 @@ function recordTestCommandDenied(store, consumer, revision) {
   writeSlot(store, testCommandDeniedMetaKey(consumer.worktreeId), consumer, revision);
 }
 
+// src/core/scheduler/omitted-test-files.ts
+function omittedTestFilesMetaKey(worktreeId) {
+  return worktreeMetaKey("omittedTestFiles", worktreeId);
+}
+function readOmittedTestFiles(store, worktreeId) {
+  const raw = store.meta.get(omittedTestFilesMetaKey(worktreeId));
+  const count = raw === null ? Number.NaN : Number(raw);
+  return Number.isInteger(count) && count >= 0 ? count : null;
+}
+
 // src/harness/shared/test-command.ts
 function recognizeTestCommand(command, context) {
   const words = shellWords(command);
@@ -4469,7 +4480,7 @@ function shellWords(text) {
 
 // src/harness/shared/test-command-files.ts
 import { isAbsolute as isAbsolute3, join as join8, relative, resolve as resolve3 } from "node:path";
-function resolveTestFiles(command, listing, root, nodeTest) {
+function resolveTestFiles(command, listing, root, nodeTest, omitted) {
   if (command.runner === "node-test") {
     const own = listing.filter((ref) => ref.project === command.project);
     if (command.files === null) return own.length === 0 ? null : own;
@@ -4477,6 +4488,7 @@ function resolveTestFiles(command, listing, root, nodeTest) {
     const files2 = command.files.map((file) => byPath.get(worktreePath(root, file) ?? ""));
     return files2.every((ref) => ref !== void 0) ? unique(files2) : null;
   }
+  if (omitted !== 0) return null;
   const vitest = listing.filter((ref) => !nodeTest.has(ref.project));
   if (new Set(vitest.map((ref) => ref.project)).size !== 1) return null;
   if (command.filters.length === 0) return vitest;
@@ -4609,7 +4621,8 @@ function denyCurrentTestCommand(context, command, nodeTest, now) {
       command,
       keys.map((k) => k.testFile),
       context.root,
-      names
+      names,
+      readOmittedTestFiles(store, consumer.worktreeId)
     );
     if (files2 === null) return null;
     const rows = new Map(keys.map((row) => [testFileId(row.testFile), row]));
