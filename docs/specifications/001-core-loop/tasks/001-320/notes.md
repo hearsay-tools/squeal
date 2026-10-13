@@ -21,6 +21,12 @@ Each of these waits on its own work finishing: in-process hooks or CLI commands 
 | `test/harness/codex/bundles.test.ts` "without a usable store" | A bundle process per test | 60 s, the file's build bound |
 | `test/daemon/escaped-overlap.test.ts` "afterEachRun, a mark per lane" | Up to two 10 s polls (`gone`, the nice-10 priority) and the stop's 1 s grace, which already ran past the 5 s test default | 30 s |
 
+## `test/daemon/helpers.ts`: the daemon suite's `afterEach`
+
+**Cause: the 10 s hook default, 001-309 (6)'s shape.** The shared `afterEach` of `daemonSuite` sends SIGTERM to each daemon a test started and waits for it to exit, with SIGKILL only after 60 s (`stopProcess`, `stopStrays`). In this row's full gate at load about 60, it timed out in `test/daemon/died.test.ts` "a stopped daemon still holds its lock and is not called dead". The next test, "an ordinary note before the kill does not hide the death", then failed on its own fixture directory, already removed (`ENOENT` on `flag`). The file passed 6 of 6 alone.
+
+**Fix:** the `afterEach` gets `SLOW.timeout` (180 s), the bound the file's daemon tests already use. Its waits are unchanged, and each still ends by its own 60 s SIGKILL.
+
 ## `test/cli/codex-trust.test.ts`: the real Codex app-server
 
 **Cause: a product deadline sized for a person, not a loaded runner.** `CODEX_APP_SERVER_TIMEOUT_MS` (10 s) bounds each app-server answer. The real app-server missed `initialize` within it at load 62 (`reviews/wave-13aw.md`).

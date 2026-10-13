@@ -336,12 +336,14 @@ export function daemonSuite(options: BuildOptions = {}): DaemonSuite {
     built = buildCli(options);
   });
   afterAll(() => built?.cleanup());
+  // Each stop waits for a daemon's shutdown, SIGKILL only after 60 s: past the
+  // 10 s hook default under a loaded full suite (task 001-320).
   afterEach(async () => {
     for (const process of processes.splice(0)) await stopProcess(process);
     // Daemons hooks started detached, such as a successor (lessons, defect 29).
     for (const root of roots.splice(0)) await stopStrays(root);
     for (const cleanup of cleanups.splice(0).reverse()) cleanup();
-  });
+  }, SLOW.timeout);
   const cli = (): string => {
     if (built === null) throw new Error("daemonSuite: the CLI is built in beforeAll");
     return built.cli;
