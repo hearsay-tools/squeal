@@ -17,6 +17,7 @@ import {
   options,
   repoWith,
   SLOW_FILE,
+  timed,
 } from "./status-wait-fixture.js";
 
 /*
@@ -30,12 +31,13 @@ import {
 describe("status --wait holds for the edit's own test files (lessons, defect 32)", () => {
   it("returns quiet once the edited file's result is in, while a backlog runs", async () => {
     const { repo, store } = repoWith([A, B, C]);
-    later(300, () => finish(store, repo.mainId, A));
+    const finished = later(300, () => finish(store, repo.mainId, A));
 
-    const wait = await waitForStatus(repo.main, options(answering(store, repo.mainId, [A]).sync));
+    const daemon = answering(store, repo.mainId, [A]);
+    const { wait, endedBy } = await timed(() => waitForStatus(repo.main, options(daemon.sync)));
 
     expect(wait.outcome).toBe("quiet");
-    expect(wait.waitedMs).toBeGreaterThanOrEqual(300);
+    expect(endedBy).toBeGreaterThanOrEqual(finished.at);
     expect(wait.waitedMs).toBeLessThan(2_000);
     expect(wait).toMatchObject({
       transitions: 0,
@@ -49,12 +51,13 @@ describe("status --wait holds for the edit's own test files (lessons, defect 32)
   it("does not end on a backlog file's news, and reports it", async () => {
     const { repo, store } = repoWith([A, B]);
     later(100, () => fail(store, repo.mainId, BACKLOG));
-    later(500, () => finish(store, repo.mainId, A));
+    const finished = later(500, () => finish(store, repo.mainId, A));
 
-    const wait = await waitForStatus(repo.main, options(answering(store, repo.mainId, [A]).sync));
+    const daemon = answering(store, repo.mainId, [A]);
+    const { wait, endedBy } = await timed(() => waitForStatus(repo.main, options(daemon.sync)));
 
     expect(wait.outcome).toBe("quiet");
-    expect(wait.waitedMs).toBeGreaterThanOrEqual(500);
+    expect(endedBy).toBeGreaterThanOrEqual(finished.at);
     expect(wait).toMatchObject({ edit: { otherTransitions: 1 } });
     expect(waitLine(wait as EndedWait)).toMatch(/; 1 transition of other checks$/);
   });
@@ -109,12 +112,13 @@ describe("status --wait holds for the edit's own test files (lessons, defect 32)
   it("is not quiet before the window's runner part is applied", async () => {
     const { repo, store } = repoWith([], [A]);
     store.meta.set(refinedMetaKey(repo.mainId), "3");
-    later(300, () => store.meta.set(refinedMetaKey(repo.mainId), "4"));
+    const applied = later(300, () => store.meta.set(refinedMetaKey(repo.mainId), "4"));
 
-    const wait = await waitForStatus(repo.main, options(answering(store, repo.mainId, [A]).sync));
+    const daemon = answering(store, repo.mainId, [A]);
+    const { wait, endedBy } = await timed(() => waitForStatus(repo.main, options(daemon.sync)));
 
     expect(wait.outcome).toBe("quiet");
-    expect(wait.waitedMs).toBeGreaterThanOrEqual(300);
+    expect(endedBy).toBeGreaterThanOrEqual(applied.at);
   });
 
   it("counts no check's news before the daemon named the files", async () => {

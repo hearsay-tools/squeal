@@ -4,6 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import type { SyncState } from "../../src/cli/status-sync.js";
 import { STATUS_WAIT_SETTLE_MS, waitForStatus } from "../../src/cli/status-wait.js";
+import { timed } from "../cli/wait-clock.js";
 import { LOADED } from "../daemon/helpers.js";
 import { settled, waitDaemons } from "./wait-daemon.js";
 
@@ -21,8 +22,11 @@ const { createRepo, startDaemon } = waitDaemons("wait-sync");
 const SLOW = { timeout: 600_000 } as const;
 const HOLD_MS = 3_000;
 
-/** Takes the store's write lock from a connection of its own, and gives it back after `ms`. */
-function holdWriteLock(root: string, ms: number): Promise<void> {
+/**
+ * Takes the store's write lock from a connection of its own, and gives it back
+ * after `ms`: resolves with when, on `performance.now()`, the wait's clock.
+ */
+function holdWriteLock(root: string, ms: number): Promise<number> {
   const db = new DatabaseSync(join(root, ".git/squeal/store.sqlite"));
   db.exec("PRAGMA busy_timeout = 30000");
   db.exec("BEGIN IMMEDIATE");
@@ -30,7 +34,7 @@ function holdWriteLock(root: string, ms: number): Promise<void> {
     setTimeout(() => {
       db.exec("COMMIT");
       db.close();
-      done();
+      done(performance.now());
     }, ms),
   );
 }
@@ -49,12 +53,12 @@ describe("status --wait right after an edit whose revision commits late (defect 
 
     const released = holdWriteLock(root, HOLD_MS);
     appendFileSync(join(root, "src/mod.ts"), "// touched\n");
-    const wait = await waitForStatus(root, { timeoutMs: 120_000 });
-    await released;
+    const { wait, endedBy } = await timed(() => waitForStatus(root, { timeoutMs: 120_000 }));
 
     expect(wait.outcome).toBe("quiet");
     expect(wait.result).toMatchObject({ revision: before + 1 });
-    expect(wait.waitedMs).toBeGreaterThanOrEqual(HOLD_MS - 100);
+    // The edit's revision is stored after the lock is given back, on the wait's clock (001-334).
+    expect(endedBy).toBeGreaterThanOrEqual(await released);
   });
 
   it("returns promptly when nothing was edited", SLOW, async () => {

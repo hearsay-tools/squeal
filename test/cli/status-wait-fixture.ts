@@ -12,6 +12,8 @@ import {
 } from "../../src/core/types/index.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
 
+export { later, timed } from "./wait-clock.js";
+
 /*
  * A worktree at revision 4 for `status --wait`'s edit window (lessons, defect
  * 32, tasks 001-186 and 001-191), and a daemon whose store records the
@@ -110,10 +112,6 @@ export function fail(store: Store, worktreeId: string, c: ReturnType<typeof chec
   store.knownStates.upsertMany([
     state(worktreeId, c, { outcome: "fail", observedAt: 4, fingerprint: "Error: x" }),
   ]);
-}
-
-export function later(ms: number, fn: () => void) {
-  setTimeout(fn, ms);
 }
 
 /** A path re-keyed at revision 4, or a path and its revision, and whether its move had its result since the wait started. */
