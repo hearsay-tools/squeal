@@ -19,7 +19,7 @@ Use /worker.
 - Its hub is a `file://` hub built from the checkout's plugins, never `hearsay-tools/marketplace`.
 - The fixtures are `squealShaped()` (`test/cli/setup/fixture.ts`) and `cezarionShaped()` (`test/cli/setup/candidates.test.ts:113`), moved into the fixture module.
 
-**Isolation (hard).**
+**Isolation (hard).** Amended 2026-10-13 (001's flag, the probe-isolation rule): scratch `HOME` variables alone are not isolation. No real `claude` or `codex` runs until the human picks a container or a throwaway OS user; every real-CLI spawn goes through one function in `test/real-cli/isolated.ts` so it can be swapped in. Also:
 - Every real-CLI call gets the environment that `cellEnv` builds: a scratch `HOME`, `TMPDIR` and `CODEX_HOME`, plus `CLAUDE_CONFIG_DIR` inside that `HOME`.
 - Scratch lives under a root that `root.mjs` accepts: in `/tmp`, with no `.git`, `CLAUDE.md`, `AGENTS.md` or `.claude` above it.
 - A guard throws before any spawn if `HOME` resolves to the real home.
