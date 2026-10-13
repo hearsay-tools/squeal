@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { POLICY_FILE } from "../../core/daemon/policy.js";
 import { init } from "../init.js";
 import type { CliIo } from "../main.js";
-import { warmUp } from "../warmup.js";
+import { ignoredReadNotes, ignoredReadText, warmUp } from "../warmup.js";
 import { initWithChoices, type SetupChoices } from "./apply.js";
 import type { Asker } from "./ask.js";
 import { formatPlan } from "./format.js";
@@ -73,6 +73,8 @@ export async function runSetup(run: SetupRun, io: CliIo): Promise<number> {
         `squeal setup: ${c.path} ran ${Math.round(c.durationMs / 1000)} s; squeal setup --slow ${c.path} runs it in the slow tier\n`,
       );
     }
+    const reads = warm.reads.filter((r) => r.paths.length > 0).map(ignoredReadText);
+    for (const line of [...reads, ...ignoredReadNotes(warm)]) io.stdout(`squeal setup: ${line}\n`);
     if (code === 0) code = warm.code;
   }
   showChanges(plan, answers.blocks, io);

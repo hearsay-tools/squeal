@@ -1,14 +1,16 @@
 import { loadPolicy } from "../core/daemon/policy.js";
-import { findWorktreeRoot, worktreeIdFor } from "../core/fs/index.js";
+import { compare, findWorktreeRoot, worktreeIdFor } from "../core/fs/index.js";
+import { testFileId } from "../core/keys/index.js";
 import { durationOf } from "../core/scheduler/files.js";
 import { slowFiles } from "../core/slow/classify.js";
-import { withStatusStore } from "../core/status/index.js";
+import { type IgnoredReads, readIgnoredReads, withStatusStore } from "../core/status/index.js";
 import { plural } from "../core/text.js";
 import {
   type AbsolutePath,
   checkpointMetaKey,
   parseCheckpointProgress,
   type Store,
+  type TestFileRef,
   type WorktreeId,
 } from "../core/types/index.js";
 import type { CliIo } from "./main.js";
@@ -38,7 +40,23 @@ export interface SlowCandidate {
   readonly durationMs: number;
 }
 
-export interface WarmupResult {
+/** A slow file's gitignored reads in the warm-up's checkpoint, capped as 001-307 stored them. */
+export interface IgnoredRead {
+  readonly path: string;
+  /** Empty when the file was observed and read none. */
+  readonly paths: readonly string[];
+  /** How many more past the cap. */
+  readonly more: number;
+}
+
+/** What the warm-up's record holds of the slow files (spec 005 D3, 001-307). */
+export interface SlowFileReads {
+  readonly reads: readonly IgnoredRead[];
+  /** Slow files the record does not hold: not observed, or read none; it does not tell them apart. */
+  readonly unobserved: readonly string[];
+}
+
+export interface WarmupResult extends SlowFileReads {
   /** `run --all --wait`'s: 0, 1 on known failures, 3 without a verdict (spec 005 D1). */
   readonly code: 0 | 1 | 3;
   readonly slowCandidates: readonly SlowCandidate[];
@@ -62,13 +80,14 @@ export async function warmupCommand(args: readonly string[], io: CliIo): Promise
       (c) =>
         `${c.path} ran ${Math.round(c.durationMs / 1000)} s, over ${SLOW_CANDIDATE_MS / 1000} s: squeal setup --slow ${c.path} runs it in the slow tier`,
     ),
-    ...ignoredPathSuggestions(root),
+    ...result.reads.filter((r) => r.paths.length > 0).map(ignoredReadText),
   ];
   if (suggestions.length > 0) {
     io.stdout(
       `\nSuggestions; squeal warmup applies none:\n${suggestions.map((s) => `  ${s}\n`).join("")}`,
     );
   }
+  for (const note of ignoredReadNotes(result)) io.stdout(`squeal warmup: ${note}\n`);
   return result.code;
 }
 
@@ -90,7 +109,7 @@ export async function warmUp(root: AbsolutePath, io: CliIo): Promise<WarmupResul
   if ((await startCommand([root], startIo)) !== 0) {
     io.stdout("No verdict: no daemon could be started for the warm-up; see above\n");
     io.stdout(verdictText(3));
-    return { code: 3, slowCandidates: [] };
+    return { code: 3, slowCandidates: [], reads: [], unobserved: [] };
   }
   io.stdout(`${started.split("\n")[0]}\n`);
   const id = worktreeIdFor(root);
@@ -98,34 +117,85 @@ export async function warmUp(root: AbsolutePath, io: CliIo): Promise<WarmupResul
   const progress = reportProgress(root, id, io, () => running);
   let code: number;
   try {
-    code = await runCommand(runAllArgs(), io);
+    code = await runCommand(["--all", "--wait"], io, { observeIgnored: true });
   } finally {
     running = false;
     await progress;
   }
   const verdict: 0 | 1 | 3 = code === 0 || code === 1 ? code : 3;
   io.stdout(verdictText(verdict));
+  if (verdict === 3) return { code: verdict, slowCandidates: [], reads: [], unobserved: [] };
+  const candidates = slowCandidates(root, id);
+  return { code: verdict, slowCandidates: candidates, ...ignoredReads(root, id, candidates) };
+}
+
+/**
+ * D3: a slow file's ignored reads as a suggestion for its `inputs`, said to
+ * be unkeyed so it never reads as coverage. Nothing declares them.
+ */
+export function ignoredReadText(read: IgnoredRead): string {
+  const count = read.paths.length + read.more;
+  const listed = [...read.paths, ...(read.more > 0 ? [`and ${read.more} more`] : [])];
+  return `${read.path} read ${plural(count, "gitignored path")}, unkeyed: a change to ${count === 1 ? "it" : "them"} re-runs nothing until declared; squeal setup --input ${read.path}=<glob> declares one${listed.map((p) => `\n    ${p}`).join("")}`;
+}
+
+/**
+ * The slow files with no ignored read to suggest, so an unobserved file
+ * never reads as one that read none.
+ */
+export function ignoredReadNotes({ reads, unobserved }: SlowFileReads): string[] {
+  const clean = reads.filter((r) => r.paths.length === 0).map((r) => r.path);
+  return [
+    ...(clean.length === 0 ? [] : [`${clean.join(", ")} read no ignored path`]),
+    ...(unobserved.length === 0
+      ? []
+      : [
+          `no ignored read recorded for ${unobserved.join(", ")}: not observed by this warm-up (it ran in the daemon's first checkpoint), or it read none; the record does not tell them apart`,
+        ]),
+  ];
+}
+
+/**
+ * D3 and 001-307: the gitignored paths each slow file read in the warm-up's
+ * checkpoint, slow by `slow.include` (`isSlow`) or as a slow candidate. A
+ * file run in two Vitest pools is named once, from the first pool the record
+ * holds. `record` is `null` when no warm-up stored one.
+ */
+export function slowFileReads(
+  record: IgnoredReads | null,
+  files: readonly TestFileRef[],
+  isSlow: (ref: TestFileRef) => boolean,
+): SlowFileReads {
+  const reads = new Map<string, IgnoredRead>();
+  const unobserved = new Set<string>();
+  for (const ref of files.filter(isSlow)) {
+    const file = record?.files[testFileId(ref)];
+    if (file === undefined) unobserved.add(ref.path);
+    else if (!reads.has(ref.path)) reads.set(ref.path, { path: ref.path, ...file });
+  }
+  for (const path of reads.keys()) unobserved.delete(path);
   return {
-    code: verdict,
-    slowCandidates: verdict === 3 ? [] : slowCandidates(root, id),
+    reads: [...reads.values()].sort((a, b) => compare(a.path, b.path)),
+    unobserved: [...unobserved].sort(compare),
   };
 }
 
-/**
- * The arguments of the warm-up's `run --all`. Seam for 001-307: its
- * checkpoint will also record the ignored paths each test file read.
- */
-function runAllArgs(): string[] {
-  return ["--all", "--wait"];
-}
-
-/**
- * D3: the ignored project paths each slow file read or spawned, as
- * suggestions for `squeal setup`. Seam for 001-307, which records them; until
- * it lands there are none to say.
- */
-function ignoredPathSuggestions(_root: AbsolutePath): string[] {
-  return [];
+function ignoredReads(
+  root: AbsolutePath,
+  id: WorktreeId,
+  candidates: readonly SlowCandidate[],
+): SlowFileReads {
+  const { policy } = loadPolicy(root);
+  const inTier = slowFiles(policy, policy.nodeTest);
+  const longer = new Set(candidates.map((c) => c.path));
+  const found = withStatusStore(root, {}, ({ store }) =>
+    slowFileReads(
+      readIgnoredReads(store, id),
+      store.testFileKeys.list(id).map((row) => row.testFile),
+      (ref) => inTier(ref) || longer.has(ref.path),
+    ),
+  );
+  return "reads" in found ? found : { reads: [], unobserved: [] };
 }
 
 function verdictText(code: 0 | 1 | 3): string {

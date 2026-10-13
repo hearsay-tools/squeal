@@ -1,9 +1,10 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { readVerdict } from "../../src/cli/verdict.js";
+import { readIgnoredReads } from "../../src/core/status/index.js";
 import { daemonSuite, SLOW, spawnCli, withStore } from "../daemon/helpers.js";
 
 /*
@@ -91,6 +92,85 @@ describe("squeal warmup on a real daemon", SLOW, () => {
   });
 });
 
+/** Reads `build/out.txt`, which `.gitignore` leaves out: no key holds it. */
+const READS_BUILD = `import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { expect, it } from "vitest";
+
+it("reads the gitignored build output", () => {
+  expect(readFileSync(join(import.meta.dirname, "../build/out.txt"), "utf8")).toBe("built\\n");
+});
+`;
+
+/**
+ * Row 005-29 (spec 005 D3, 001-307): a slow file and a fast one read the
+ * gitignored `build/out.txt`. A load bound no host meets holds each slow run
+ * 8 s, so a slow file made stale runs under the warm-up's checkpoint, not in
+ * a slow pass of the daemon's own before the warm-up asks.
+ */
+function readsIgnored() {
+  return suite.fixture({
+    ".gitignore": "src/gen/\nnode_modules/\n.squeal-logs/\nbuild/\n",
+    "build/out.txt": "built\n",
+    "test/build.test.ts": READS_BUILD,
+    "test/fast-build.test.ts": READS_BUILD,
+    "squeal.config.json": `${JSON.stringify({ slow: { include: ["test/build.test.ts"], maxLoadPerCpu: 1e-9, maxDeferMs: 8000 } })}\n`,
+  });
+}
+
+/** Until the daemon has seen an edit: some test file is no longer current. */
+async function untilNotCurrent(repo: ReturnType<typeof suite.fixture>): Promise<void> {
+  for (let i = 0; i < 300; i++) {
+    const { testFiles, byClass } = withStore(repo, (store) => readVerdict(store, repo.worktreeId));
+    if (byClass.current < testFiles) return;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error("the daemon never saw the edit");
+}
+
+describe("the warm-up's ignored reads on a real daemon", SLOW, () => {
+  it("stores nothing for a plain run --all; the warm-up asks for the record and says what it holds", async () => {
+    const repo = readsIgnored();
+    const config = readFileSync(join(repo.root, "squeal.config.json"), "utf8");
+    const start = spawnCli(suite.cli, ["start"], { cwd: repo.root, env: repo.env });
+    expect((await start.exited).code, start.stderr()).toBe(0);
+    const plain = spawnCli(suite.cli, ["run", "--all", "--wait"], {
+      cwd: repo.root,
+      env: repo.env,
+    });
+    expect((await plain.exited).code, `${plain.stdout()}${plain.stderr()}`).toBe(0);
+    expect(withStore(repo, (store) => readIgnoredReads(store, repo.worktreeId))).toBeNull();
+    // The warm-up's own checkpoint runs the slow file: no checkpoint is open to join.
+    appendFileSync(join(repo.root, "test/build.test.ts"), "// edited\n");
+    await untilNotCurrent(repo);
+    const run = warmup(repo);
+    const exited = await run.exited;
+    const out = run.stdout();
+    expect(exited, `${out}${run.stderr()}`).toEqual({ code: 0, signal: null });
+    // The warm-up asked for the record: its checkpoint's id is the one the daemon stored.
+    const stored = withStore(repo, (store) => readIgnoredReads(store, repo.worktreeId));
+    expect(out).toContain(`Checkpoint ${stored?.checkpoint} completed at revision `);
+    const entry = Object.entries(stored?.files ?? {}).find(([id]) =>
+      id.endsWith("\0test/build.test.ts"),
+    );
+    if (entry === undefined) {
+      // A daemon whose warm-up observes no slow lane (001-311 repairs it): said, never "read none".
+      expect(out).toContain(
+        "squeal warmup: no ignored read recorded for test/build.test.ts: not observed by this warm-up",
+      );
+    } else {
+      expect(entry[1]).toEqual({ paths: ["build/out.txt"], more: 0 });
+      expect(out).toContain(
+        "Suggestions; squeal warmup applies none:\n  test/build.test.ts read 1 gitignored path, unkeyed: a change to it re-runs nothing until declared; squeal setup --input test/build.test.ts=<glob> declares one\n    build/out.txt\n",
+      );
+      expect(out).not.toContain("no ignored read recorded");
+    }
+    // A fast file's reads are no slow suggestion.
+    expect(out).not.toContain("test/fast-build.test.ts");
+    expect(readFileSync(join(repo.root, "squeal.config.json"), "utf8")).toBe(config);
+  });
+});
+
 /**
  * A scratch HOME, Claude Code and Codex config dirs, and a PATH holding only
  * `git`: neither harness CLI, nor the installed plugin's `bin/`, can be found.
@@ -113,7 +193,7 @@ function scratchEnv(repo: ReturnType<typeof suite.fixture>): NodeJS.ProcessEnv {
 
 describe("squeal setup --yes on a real daemon", SLOW, () => {
   it("applies the defaults and warms up through the same code, every test file current", async () => {
-    const repo = suite.fixture();
+    const repo = readsIgnored();
     const run = spawnCli(suite.cli, ["setup", "--yes"], { cwd: repo.root, env: scratchEnv(repo) });
     const exited = await run.exited;
     const out = run.stdout();
@@ -123,8 +203,13 @@ describe("squeal setup --yes on a real daemon", SLOW, () => {
     );
     expect(out).toMatch(/^squeal warmup: the first run covers /m);
     expect(out).toContain("squeal warmup: every test file is current with no known failure.");
-    // No harness on the PATH and no instruction file: setup writes nothing here.
-    expect(out).toContain("Changes:\n  none to tracked files\n\nNothing to commit.\n");
+    // Setup says what the warm-up recorded of its slow file, observed or not: a daemon
+    // without 001-311 has the warm-up join its first checkpoint, which observes nothing.
+    expect(out).toMatch(
+      /^squeal setup: (test\/build\.test\.ts read 1 gitignored path, unkeyed|no ignored read recorded for test\/build\.test\.ts: not observed by this warm-up)/m,
+    );
+    // No harness on the PATH: setup writes no instruction file, only the config's layout.
+    expect(out).toMatch(/squeal setup never commits:\n {2}squeal\.config\.json\n$/);
     everyFileCurrent(repo);
   });
 });
