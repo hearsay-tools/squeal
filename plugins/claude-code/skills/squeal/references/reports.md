@@ -51,7 +51,7 @@ A header or status note that begins `Squeal runs Vitest without its dependency o
 
 ## Many recoveries
 
-Up to five recovered checks are listed one by one. Above five, a report says `31 checks recovered (FAIL -> PASS)` and then the shorter list: either the checks still failing (`still failing: 2` and their names) or the recovered checks, grouped by test file with counts (`16 in tests/a.test.ts`) when that takes fewer lines than their names. Checks no longer reported by the runner are summarized the same way. New failures are always listed in full.
+Up to five recovered checks are listed one by one. Above five, a report says `31 checks recovered (FAIL -> PASS): 31 tests` and then the shorter list: either the checks still failing (`still failing: 2 (2 tests)` and their names) or the recovered checks, grouped by test file with counts (`16 in tests/a.test.ts`) when that takes fewer lines than their names. Checks no longer reported by the runner are summarized the same way. New failures are always listed in full.
 
 ## No daemon validating
 
