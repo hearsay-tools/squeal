@@ -132,9 +132,13 @@ function outDir(facts: RepoFacts, tsconfig: string, depth: number): string | nul
 }
 
 /**
- * Gitignored directories, those that exist and those the rules above name
- * even when absent, that a string literal in the group's test files names,
- * as whole path segments relative to the group's package.
+ * The candidates a string literal in the group's test files names: gitignored
+ * directories, those that exist and those the rules above name even when
+ * absent, and the rules' other directories (005-38, so a tracked one such as
+ * `plugins` here can be named too). A string names a directory only when, read
+ * relative to the test file, its package or the root, it is a path under it;
+ * and not when it ends a tracked file's path outside it, as
+ * `dist/cli/squeal.mjs` ends `plugins/codex/dist/cli/squeal.mjs` here.
  */
 async function namedCandidates(
   facts: RepoFacts,
@@ -146,24 +150,45 @@ async function namedCandidates(
     ...(await existingIgnoredDirs(facts.root)),
     ...(await ignoredDirs(facts.root, [...new Set(found.map((f) => f.path))])),
   ]);
-  const texts = files.map((file) => readText(join(facts.root, file)) ?? "");
+  const inPackage = [...ignored].filter(
+    (dir) => manifest.dir === "" || dir.startsWith(`${manifest.dir}/`),
+  );
+  const literals = files.map((file) => ({ file, strings: stringLiterals(facts, file) }));
   const out: Found[] = [];
-  for (const dir of [...ignored].sort()) {
-    if (manifest.dir !== "" && !dir.startsWith(`${manifest.dir}/`)) continue;
-    const tail = posix.relative(manifest.dir || ".", dir);
-    const literal = new RegExp(
-      `(['"\`])[^'"\`\\n]*(?<![\\w.-])${tail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w-])[^'"\`\\n]*\\1`,
-    );
-    const hits = texts.map((t) => literal.exec(t)?.[0]).filter((h) => h !== undefined);
+  for (const dir of [...new Set([...inPackage, ...found.map((f) => f.path)])].sort()) {
+    const hits = literals.flatMap(({ file, strings }) => {
+      const hit = strings.find((s) => names(facts, [posix.dirname(file), manifest.dir], s, dir));
+      return hit === undefined ? [] : [hit];
+    });
     if (hits.length === 0) continue;
+    const named = `named by ${hits.length} of ${files.length} test files, such as "${hits[0]}"`;
     out.push({
       path: dir,
       rule: "named",
-      detail: `gitignored, named by ${hits.length} of ${files.length} test files, such as ${hits[0]}`,
+      detail: ignored.has(dir) ? `gitignored, ${named}` : named,
       weak: false,
     });
   }
   return out;
+}
+
+/** The contents of a file's quoted strings, each up to its first blank. */
+function stringLiterals(facts: RepoFacts, file: string): string[] {
+  const text = readText(join(facts.root, file)) ?? "";
+  return [...text.matchAll(/(['"`])([^'"`\n]*)\1/g)].map(
+    (m) => (m[2] as string).split(/\s/)[0] as string,
+  );
+}
+
+/** Whether string `s` is a path under `dir` read from one of `bases` or the root. */
+function names(facts: RepoFacts, bases: readonly string[], s: string, dir: string): boolean {
+  if (s === "" || s.startsWith("/") || s.includes("${")) return false;
+  const under = [...bases, ""].some((base) => posix.join(base, s).startsWith(`${dir}/`));
+  if (!under) return false;
+  const tail = s.replace(/^(\.\.?\/)+/, "");
+  return !facts.tracked.some(
+    (file) => !file.startsWith(`${dir}/`) && (file === tail || file.endsWith(`/${tail}`)),
+  );
 }
 
 /**

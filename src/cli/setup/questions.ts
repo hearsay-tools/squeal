@@ -156,17 +156,17 @@ export function groupGlob(group: SlowGroup): string {
 }
 
 /**
- * D3 "Slow tests and their inputs" step 3: the broader directory first, or
- * every candidate when none lies over the rest (siblings), then each one
- * alone, then none. `null` for none.
+ * D3 "Slow tests and their inputs" step 3: the default first, then each
+ * candidate alone, then all of them, then none. `null` for none.
  */
 async function inputQuestion(group: SlowGroup, pick: Choose): Promise<string[] | null> {
   const paths = group.artifacts.map((a) => a.path);
-  const first = group.broader === null ? paths : [group.broader];
+  const first = defaultInputs(group);
   const options = [
     first,
-    ...paths.filter((p) => !first.includes(p) || first.length > 1).map((p) => [p]),
+    ...paths.filter((p) => first.length > 1 || p !== first[0]).map((p) => [p]),
   ];
+  if (paths.length > 1 && first.length < paths.length) options.push(paths);
   const evidence = group.artifacts.map(
     (a) =>
       `    ${a.path}: ${a.evidence.map((e) => `${e.detail}${e.weak ? " (weak)" : ""}`).join("; ")}`,
@@ -182,6 +182,33 @@ async function inputQuestion(group: SlowGroup, pick: Choose): Promise<string[] |
   const choices = [...options.map((dirs) => dirs.map((d) => `${d}/**`).join(" and ")), "none"];
   const index = await pick({ text, choices });
   return options[index] ?? null;
+}
+
+/** Evidence that the package builds a directory, where a `files` entry may list sources. */
+const BUILT_BY = new Set(["bin", "main", "module", "exports", "build-script"]);
+
+/**
+ * The input question's default (005-38): the broader directory when one lies
+ * over the rest (D3 step 3). Among siblings, the candidates best supported by
+ * three ranks, the first deciding, never by how much evidence (005-04):
+ * 1. named by a test file's string: the tests show they reach it (`plugins`
+ *    here, `packages/cezar/dist` in cezarion);
+ * 2. named by `bin`, `main`, `module`, `exports` or a build script: the package
+ *    says it builds it, where `files` lists sources too (cezarion's `scripts`);
+ * 3. built in this worktree.
+ * Candidates tied on all three go together, since an input too narrow is the
+ * costliest failure.
+ */
+function defaultInputs(group: SlowGroup): string[] {
+  if (group.broader !== null) return [group.broader];
+  const rank = (a: SlowGroup["artifacts"][number]) =>
+    [
+      a.evidence.some((e) => e.rule === "named"),
+      a.evidence.some((e) => BUILT_BY.has(e.rule)),
+      a.exists,
+    ].reduce((n, yes) => n * 2 + (yes ? 1 : 0), 0);
+  const best = Math.max(...group.artifacts.map(rank));
+  return group.artifacts.filter((a) => rank(a) === best).map((a) => a.path);
 }
 
 /** Asks on the terminal, printing the choices numbered; an empty or unreadable answer takes the default. */

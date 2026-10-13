@@ -1,9 +1,10 @@
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { main } from "../../../src/cli/main.js";
 import { holdsArtifact } from "../../../src/cli/setup/artifacts.js";
 import { buildPlan } from "../../../src/cli/setup/plan.js";
+import { answerPlan, NO_ANSWERS, type Question } from "../../../src/cli/setup/questions.js";
 import {
   capture,
   cezarionShaped,
@@ -24,7 +25,7 @@ afterEach(cleanupFixtures);
 const plan = (root: string) => buildPlan(root, { env: harnessEnv() });
 
 describe("this repository's shape", () => {
-  it("finds test/e2e exactly, with dist and plugins as sibling candidates, never ranked", async () => {
+  it("finds test/e2e exactly, with dist and plugins as sibling candidates; only plugins is named", async () => {
     const root = squealShaped();
     const { slow } = await plan(root);
     expect(slow).toEqual({
@@ -50,19 +51,20 @@ describe("this repository's shape", () => {
                   detail: "build script .:build (tsc -p tsconfig.build.json) writes dist",
                   weak: false,
                 },
-                {
-                  rule: "named",
-                  detail:
-                    'gitignored, named by 2 of 2 test files, such as "plugins/codex/dist/cli/squeal.mjs"',
-                  weak: false,
-                },
               ],
             },
             {
               path: "plugins",
               exists: true,
               ignored: false,
-              evidence: [{ rule: "files", detail: './package.json files "plugins"', weak: true }],
+              evidence: [
+                { rule: "files", detail: './package.json files "plugins"', weak: true },
+                {
+                  rule: "named",
+                  detail: 'named by 1 of 2 test files, such as "plugins/codex/dist/cli/squeal.mjs"',
+                  weak: false,
+                },
+              ],
             },
           ],
           broader: null,
@@ -140,6 +142,77 @@ describe("cezarion's shape", () => {
       ["packages/cezar/web/dist", false, true, ["files", "named"]],
     ]);
     expect(e2e?.broader).toBeNull();
+  });
+
+  it("counts a string as naming a candidate only as a path under it, never web/dist for dist", async () => {
+    const [e2e] = (await plan(cezarionShaped())).slow.groups;
+    const named = (path: string) =>
+      e2e?.artifacts.find((a) => a.path === path)?.evidence.find((e) => e.rule === "named")?.detail;
+    expect(named("packages/cezar/dist")).toBe(
+      'gitignored, named by 1 of 2 test files, such as "../../dist/application-update/service.js"',
+    );
+    expect(named("packages/cezar/web/dist")).toBe(
+      'gitignored, named by 1 of 2 test files, such as "web/dist/index.html"',
+    );
+    expect(named("packages/cezar/scripts")).toBeUndefined();
+  });
+});
+
+/** The input question each slow group asks with every default taken, and the inputs it answers. */
+async function inputQuestions(root: string) {
+  const asked: Question[] = [];
+  const answers = await answerPlan(await plan(root), NO_ANSWERS, async (q) => {
+    if (q.text.includes("may test these artifacts")) asked.push(q);
+    return 0;
+  });
+  return { choices: asked.map((q) => q.choices), inputs: answers.inputs };
+}
+
+describe("the input question's default (005-38)", () => {
+  it("this repository's shape without declared inputs: plugins/**, not root dist", async () => {
+    const { choices, inputs } = await inputQuestions(
+      squealShaped({ "squeal.config.json": json({}) }),
+    );
+    expect(choices).toEqual([["plugins/**", "dist/**", "dist/** and plugins/**", "none"]]);
+    expect(inputs).toEqual([{ test: "test/e2e/**", input: "plugins/**" }]);
+  });
+
+  it("cezarion's shape: packages/cezar/dist/**, never the scripts source directory", async () => {
+    const { choices, inputs } = await inputQuestions(cezarionShaped());
+    expect(choices).toEqual([
+      [
+        "packages/cezar/dist/**",
+        "packages/cezar/scripts/**",
+        "packages/cezar/web/dist/**",
+        "packages/cezar/dist/** and packages/cezar/scripts/** and packages/cezar/web/dist/**",
+        "none",
+      ],
+    ]);
+    expect(inputs).toEqual([
+      { test: "packages/cezar/test/e2e/**", input: "packages/cezar/dist/**" },
+    ]);
+  });
+
+  it("takes every candidate tied on all three ranks", async () => {
+    // Both built, both written by the build script, both named: nothing tells them apart.
+    const root = cezarionShaped({
+      "packages/cezar/package.json": json({
+        name: "@wjarka/cezar",
+        bin: { cezar: "./dist/cli.js" },
+        files: ["dist", "web/dist", "scripts"],
+        scripts: {
+          build: "tsc -p tsconfig.json && vite build --outDir web/dist",
+          "test:package": "node --import tsx --test test/e2e/*.test.ts",
+        },
+      }),
+    });
+    mkdirSync(join(root, "packages/cezar/web/dist"), { recursive: true });
+    const { choices, inputs } = await inputQuestions(root);
+    expect(choices[0]?.[0]).toBe("packages/cezar/dist/** and packages/cezar/web/dist/**");
+    expect(inputs.map((i) => i.input)).toEqual([
+      "packages/cezar/dist/**",
+      "packages/cezar/web/dist/**",
+    ]);
   });
 });
 
