@@ -91,6 +91,8 @@ Brief: `research/README.md`. Topics `adoption-baseline`, `instruction-surfaces`,
 
 - 2026-10-13, the human: the hub stays private for now (open question 11); `install.sh` says so when adding the marketplace fails; revisit before a public release. 005-11 and 005-12 dispatched together (briefs `tasks/wave-1.md`); 001-307 (ignored paths) is needed by 005-14's warm-up, not by 005-12's static plan.
 
+- 2026-10-13, 005-11 and 005-12 landed as 0.1.133, KEY_FORMAT_VERSION 9 (`src/cli/main.ts` is guarded; the human chose to land now rather than wait for 001-292, which likely changes no guarded source). Accepted choices: a named-file wait reads only and exits 3 when the store cannot be read, its first line is the verdict; bare `squeal setup` is a usage error until 005-14. The human, the same day: a named-file wait does not move the file forward in the queue, not for now (D2 unchanged). Review 005-13 next.
+
 ## Dogfooding
 
 - 2026-10-09, `97144d9`, decided by the human ("Both": reword this repository's gate now and write the spec beside it): `CLAUDE.md` (and `AGENTS.md`, a symlink to it) and the worker skill take the suite through `squeal run --all --wait`, read `Known failures`, and fall back to `npx vitest run` when Squeal cannot answer or is doubted; reviewers, the coordinator's landing check and CI keep `npx vitest run` as the independent run. Baseline before it, from `research/adoption-baseline.md` 3 (`probes/adoption-baseline/metric.mjs` over this repository's Cezar sessions to 2026-10-09 16:25 local): 10.8 own runs per editing session, 9.0 outside a full-suite gate, 6.7 min of test wall time, gate runs 17% of runs and 39% of test wall time, 32% of sessions pulling Squeal. Sessions started after `97144d9` are the comparison.
