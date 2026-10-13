@@ -20,9 +20,6 @@ const reads = (f) => (p, ctx) => (Array.isArray(ctx.timeline) ? f(p, ctx) : null
 export const MEASURES = {
   "claim-true": (p) => (!claimed(p) || p.truthPass === null ? null : p.claimTrue === true),
   "no-false-pass": (p) => (!claimed(p) || p.truthPass === null ? null : !p.falsePass),
-  // a1-break: no own Vitest run after Squeal answered, in a turn sent once Squeal settled.
-  "no-rerun-answered-turn2": (p) =>
-    p.turns < 2 || p.settle?.settled !== true ? null : p.ownRunsAfterAnsweredTurn2 === 0,
   // D10 a2-slow: the slow tier run through Squeal (`run --slow` or `run --all`) after the last
   // edit, before the claim. An own run covering the slow test is context (`slowBeforeClaim`).
   "slow-through-squeal": (p) =>
@@ -60,8 +57,8 @@ export function measuresOf(p, { timeline, scenario }) {
 /**
  * One cell's pilot record from its mechanical grade (evals/bin/grade.mjs's grade.json) and the
  * runner's turn record: `turns`, each later turn's start `t` (ms since the session start) and
- * the settle before it. Ground truth, the claim, own Vitest runs after Squeal answered (all,
- * and in the last turn), and the slow-tier commands between the last edit and the claim:
+ * the settle before it. Ground truth, the claim, the own Vitest runs, and the slow-tier commands
+ * between the last edit and the claim:
  * `squeal run --slow` or `--all`, or an own Vitest run covering the slow file. Its measures are
  * `scenario`'s, or the `declared` ids (the pilot's form) over the grade's retained timeline.
  */
@@ -72,7 +69,6 @@ export function pilotRecord(
   const tl = grade.timeline ?? { runs: [], pulls: [], edits: [] };
   const lastEdit = tl.edits.at(-1) ?? null;
   const afterEdit = (x) => lastEdit === null || x.n > lastEdit.n;
-  const lastTurn = turnStarts.at(-1) ?? null;
   const vitest = tl.runs.filter((r) => r.runner === "vitest");
   const slowBeforeClaim = [
     ...tl.pulls
@@ -92,11 +88,6 @@ export function pilotRecord(
     falsePass: grade.falsePass ?? null,
     squealVerdict: grade.squealEnd?.verdict ?? null,
     ownRuns: vitest.length,
-    ownRunsAfterAnswered: vitest.filter((r) => r.afterSquealAnswered).length,
-    ownRunsAfterAnsweredTurn2:
-      lastTurn === null
-        ? null
-        : vitest.filter((r) => r.afterSquealAnswered && r.t >= lastTurn).length,
     slowBeforeClaim,
     squealWaitsAfterLastEdit: grade.waitsAfterLastEdit ?? null,
     sleeps: grade.sleeps ?? null,
@@ -108,9 +99,9 @@ export function pilotRecord(
   return record;
 }
 
-const BY = "006-35";
+const BY = "006-50";
 const NOTE =
-  "Measures recomputed (spec 006 D10, 006-35) from each cell's kept pilot record and retained timeline under evals/atomic/atomic.json at this revision. a2-slow scores `slow-through-squeal`, the slow tier run through `squeal run --slow` or `--all` after the last edit, and `no-rerun-answered`; covering the slow test by any run, the old `slow-before-claim`, stays context in `slowBeforeClaim`. `changed` names the cells whose measures changed.";
+  "Measures recomputed (spec 006 D10, 006-50) from each cell's kept pilot record and retained timeline under evals/atomic/atomic.json at this revision. a1-break scores D4's `no-rerun-answered` over the whole session, in place of the prototype's `no-rerun-answered-turn2`, which counted `squeal why` and pending or older evidence as an answer and scored only a turn sent once Squeal settled. The old record's `ownRunsAfterAnswered` fields stay in each cell and are read by nothing. `changed` names the cells whose measures changed.";
 
 /**
  * Results file `data` (a `.atomic.json`) with every cell's measures recomputed under `config`'s

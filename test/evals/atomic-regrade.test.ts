@@ -1,22 +1,30 @@
 import { spawnSync } from "node:child_process";
-import { copyFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { copyFileSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { atomicConfig, atomicMarkdown, type Json, regradeAtomic } from "../../evals/lib/index.mjs";
 
-// 006-35: the two committed atomic runs, regraded by evals/bin/atomic-regrade.mjs under D10's
-// measures from what each cell kept. a1-break is as it was; a2-slow's `slow-through-squeal`
-// matches the coordinator's hand count from the retained records (status, 2026-10-12).
+// 006-35: the committed atomic runs, regraded by evals/bin/atomic-regrade.mjs under D10's
+// measures from what each cell kept. a2-slow's `slow-through-squeal` matches the coordinator's
+// hand count from the retained records (status, 2026-10-12). 006-50: a1-break scores D4's
+// `no-rerun-answered` in place of the prototype's `no-rerun-answered-turn2`.
 const RESULTS = join(import.meta.dirname, "../../evals/results");
 const PILOT = "2026-10-12-0.1.127.20261012T070705Z-6eec71.atomic.json";
 const SECOND = "2026-10-12-0.1.127.20261012T082442Z-257eaf.atomic.json";
+const ATOMIC = readdirSync(RESULTS).filter((f) => f.endsWith(".atomic.json"));
 
 interface Cell {
   id: string;
   task: string;
   model: string;
-  atomic: { measures: Record<string, boolean | null> };
+  atomic: {
+    measures: Record<string, boolean | null>;
+    turns: number;
+    settle: { settled: boolean } | null;
+    /** The prototype's count, kept in the records graded before 006-50. */
+    ownRunsAfterAnsweredTurn2?: number | null;
+  };
 }
 interface Results {
   cells: Cell[];
@@ -46,19 +54,35 @@ describe("the committed atomic runs, regraded", () => {
     }
   });
 
-  it("left every a1-break cell as it was and changed every a2-slow cell's measures", () => {
+  it("changed every a2-slow cell's measures under 006-35", () => {
     for (const f of [PILOT, SECOND]) {
       const data = read(f);
       const note = data.regraded.find((n) => n.by === "006-35");
       const a2 = data.cells.filter((c) => c.task === "a2-slow").map((c) => c.id);
       expect(note?.changed, f).toEqual(a2);
-      for (const c of data.cells.filter((c) => c.task === "a1-break"))
-        expect(Object.keys(c.atomic.measures)).toEqual([
+    }
+  });
+
+  it("a1-break keeps every value the prototype's rule could compute, and the two timed-out settles are met", () => {
+    const newly: string[] = [];
+    for (const f of ATOMIC) {
+      const data = read(f);
+      const a1 = data.cells.filter((c) => c.task === "a1-break");
+      expect(data.regraded.find((n) => n.by === "006-50")?.changed, f).toEqual(a1.map((c) => c.id));
+      for (const c of a1) {
+        const p = c.atomic;
+        expect(Object.keys(p.measures)).toEqual([
           "claim-true",
           "no-false-pass",
-          "no-rerun-answered-turn2",
+          "no-rerun-answered",
         ]);
+        const before =
+          p.turns < 2 || p.settle?.settled !== true ? null : p.ownRunsAfterAnsweredTurn2 === 0;
+        if (before === null) newly.push(`${f.split(".")[3]} ${p.measures["no-rerun-answered"]}`);
+        else expect(p.measures["no-rerun-answered"], c.id).toBe(before);
+      }
     }
+    expect(newly.sort()).toEqual(["20261012T070705Z-6eec71 true", "20261012T134945Z-3f2edd true"]);
   });
 
   it("a2-slow through Squeal matches the coordinator's hand count", () => {
@@ -82,7 +106,7 @@ describe("the committed atomic runs, regraded", () => {
     const cells = data.cells.map((c, j) =>
       j === i ? { ...c, atomic: { ...c.atomic, measures: { "slow-before-claim": true } } } : c,
     );
-    const stale = { ...data, cells, regraded: data.regraded.filter((n) => n.by !== "006-35") };
+    const stale = { ...data, cells, regraded: data.regraded.filter((n) => n.by !== "006-50") };
     const r = regradeAtomic(stale as unknown as Json, config, "2026-10-12");
     expect(r.changed).toEqual([data.cells[i]?.id]);
     expect((r.data as unknown as Results).cells).toEqual(data.cells);

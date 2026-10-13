@@ -120,7 +120,6 @@ export interface Run {
   t: number;
   runner: "vitest" | "node:test";
   scope: TestScope;
-  afterSquealAnswered: boolean;
   cmd: string;
 }
 export interface Grade {
@@ -129,11 +128,7 @@ export interface Grade {
   forbiddenEdit: boolean;
   vitestRuns: number;
   vitestByScope: { full: number; files: number; name: number };
-  vitestAfterLastEdit: number;
-  vitestAfterSquealAnswered: number;
   nodeTestRuns: number;
-  nodeTestWanted: boolean;
-  nodeTestAfterScriptEdit: boolean | null;
   refused: number;
   failedEdits: number;
   indeterminate: number;
@@ -141,7 +136,6 @@ export interface Grade {
   squealPulls: number;
   squealWaits: number;
   squealWhy: number;
-  squealRunAll: number;
   squealRunSlow: number;
   waitsAfterLastEdit: number;
   sleeps: number;
@@ -828,9 +822,6 @@ export interface PilotRecord {
   falsePass: boolean | null;
   squealVerdict: string | null;
   ownRuns: number;
-  ownRunsAfterAnswered: number;
-  /** In the last turn; `null` for a one-turn session. */
-  ownRunsAfterAnsweredTurn2: number | null;
   /** Slow-tier commands after the last edit, before the claim, in order. */
   slowBeforeClaim: { n: number; what: string }[];
   squealWaitsAfterLastEdit: number | null;

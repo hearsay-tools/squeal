@@ -6,8 +6,6 @@ import { SKILL_PATH, transcriptOf } from "./transcript.mjs";
 
 /** The instruction file forbids editing these (the fixture's `BASE.md`). */
 const FORBIDDEN = /^test\/contract\//;
-/** The suite Squeal is not configured for, and its code. */
-const UNCOVERED_CODE = /^scripts\/[^/]+\.mjs$/;
 
 /**
  * Grades a cell. `timeline` is `claudeTimeline` or `codexTimeline`'s result; `truth` is
@@ -30,15 +28,12 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
   const indeterminate = [];
   let skillLoads = items.filter((k) => k.kind === "skill").length;
   let n = 0;
-  const answers = [];
   // The retained timeline (D4 "Retained evidence"), each step at the time the agent saw it: a
   // pull's evidence when its call returned, after every action of that call.
   const seen = [];
   const at = (t, step, phase = 0) => seen.push({ t, phase, i: seen.length, step });
   for (const [call, k] of items.entries()) {
     if (k.kind === "squeal") {
-      const d = delivery(k);
-      if (ANSWERS.has(d.kind)) answers.push({ t: k.t, n: n++, call });
       at(k.t, { from: "push", text: k.text });
     }
     if (k.kind === "edit") {
@@ -76,9 +71,6 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
       if (a.kind === "squeal") {
         const noDaemon = NO_DAEMON.test(k.out ?? "");
         pulls.push({ ...here, sub: a.sub, wait: a.wait, all: a.all, slow: a.slow, noDaemon });
-        // A status call or run a daemon served answers when it returns.
-        if (["status", "run", "why"].includes(a.sub) && !noDaemon)
-          answers.push({ t: k.t + (k.ms ?? 0), n: here.n, call });
         // `squeal why` explains a result; it is not evidence of the current one (B2).
         if (a.sub === "status" || a.sub === "run")
           at(k.t + (k.ms ?? 0), { from: "pull", text: k.out ?? "" }, 1);
@@ -108,25 +100,8 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
   }
   const lastEdit = edits.at(-1) ?? null;
   const deliveries = items.filter((k) => k.kind === "squeal").map(delivery);
-  // Squeal answered a run when it answered after the edit before the run and before the run:
-  // within one call by order, across calls by time (a status call answers when it returns).
-  const before = (a, b) => (a.call === b.call ? a.n < b.n : a.t <= b.t && a.call < b.call);
-  for (const r of runs) {
-    const since = edits.filter((e) => e.n < r.n).at(-1);
-    r.afterSquealAnswered = answers.some(
-      (a) => before(a, r) && (!since || (a.call === since.call ? a.n > since.n : a.t > since.t)),
-    );
-  }
   const vitest = runs.filter((r) => r.runner === "vitest");
   const nodeTest = runs.filter((r) => r.runner === "node:test");
-  const lastScriptEdit = edits.filter((e) => UNCOVERED_CODE.test(e.path)).at(-1) ?? null;
-
-  const firstFail = deliveries.find((d) => d.kind === "fail" || d.kind === "deny");
-  const next =
-    firstFail &&
-    items.find(
-      (k) => k.t > firstFail.t && ["cmd", "edit", "read", "skill", "tool"].includes(k.kind),
-    );
 
   const claim = parseClaim(timeline.final);
   const said = items.filter((k) => k.kind === "say").at(-1);
@@ -154,13 +129,7 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
         vitest.filter((r) => scopeLabel(r.scope) === s).length,
       ]),
     ),
-    vitestMs: vitest.reduce((a, r) => a + (r.ms ?? 0), 0),
-    vitestAfterLastEdit: vitest.filter((r) => lastEdit !== null && r.n > lastEdit.n).length,
-    vitestAfterSquealAnswered: vitest.filter((r) => r.afterSquealAnswered).length,
     nodeTestRuns: nodeTest.length,
-    nodeTestWanted: lastScriptEdit !== null,
-    nodeTestAfterScriptEdit:
-      lastScriptEdit === null ? null : nodeTest.some((r) => r.n > lastScriptEdit.n),
     refused: refused.length,
     failedEdits: failedEdits.length,
     indeterminate: indeterminate.length,
@@ -168,7 +137,6 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
     squealPulls: pulls.length,
     squealWaits: pulls.filter((p) => p.wait).length,
     squealWhy: pulls.filter((p) => p.sub === "why").length,
-    squealRunAll: pulls.filter((p) => p.sub === "run" && p.all).length,
     squealRunSlow: pulls.filter((p) => p.sub === "run" && p.slow).length,
     waitsAfterLastEdit: pulls.filter((p) => p.wait && lastEdit !== null && p.n > lastEdit.n).length,
     sleeps: sleeps.length,
@@ -179,14 +147,6 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
         deliveries.filter((d) => d.kind === k).length,
       ]),
     ),
-    reactionToFirstFail: next
-      ? {
-          ms: next.t - firstFail.t,
-          kind: next.kind,
-          what: String(next.cmd ?? next.path ?? next.name ?? "").slice(0, 120),
-        }
-      : null,
-    tempFileHeaders: deliveries.filter((d) => d.temp).length,
     claim: claim.claim,
     claimLine: claim.line,
     truth: groundTruth,
@@ -206,8 +166,6 @@ function relPath(p) {
   if (s.startsWith("/")) return null;
   return s.replace(/^\.\//, "");
 }
-
-const ANSWERS = new Set(["fail", "deny", "resolved", "result"]);
 
 function delivery(k) {
   const text = k.text;
@@ -229,7 +187,6 @@ function delivery(k) {
     hook: k.hook,
     kind,
     head: (/SQUEAL ·[^\n\\]*/.exec(text)?.[0] ?? "").slice(0, 140),
-    temp: /\.tmp\.\d+\.[0-9a-f]+/.test(text),
   };
 }
 

@@ -311,7 +311,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": null
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -453,7 +453,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -597,7 +597,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -832,7 +832,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -1714,7 +1714,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -1887,7 +1887,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -2031,7 +2031,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -2267,7 +2267,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -3255,7 +3255,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -3428,7 +3428,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -3572,7 +3572,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -3863,7 +3863,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -4797,7 +4797,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -4939,7 +4939,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -5083,7 +5083,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -5319,7 +5319,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -6231,7 +6231,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -6435,7 +6435,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -6579,7 +6579,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -6814,7 +6814,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -7853,7 +7853,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -8026,7 +8026,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -8170,7 +8170,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -8405,7 +8405,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -9349,7 +9349,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -9552,7 +9552,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -9696,7 +9696,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -9919,7 +9919,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -10931,7 +10931,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -11104,7 +11104,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -11248,7 +11248,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -11452,7 +11452,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -12471,7 +12471,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -12613,7 +12613,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -12757,7 +12757,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -12994,7 +12994,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -13869,7 +13869,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -14073,7 +14073,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -14217,7 +14217,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -14453,7 +14453,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -15410,7 +15410,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -15600,7 +15600,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -15744,7 +15744,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -15978,7 +15978,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -16981,7 +16981,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -17154,7 +17154,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -17298,7 +17298,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -17521,7 +17521,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -18537,7 +18537,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -18710,7 +18710,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -18854,7 +18854,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -19127,7 +19127,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -20155,7 +20155,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -20359,7 +20359,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -20503,7 +20503,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -20740,7 +20740,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -21711,7 +21711,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -21914,7 +21914,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -22058,7 +22058,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -22294,7 +22294,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -23180,7 +23180,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -23322,7 +23322,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -23466,7 +23466,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -23702,7 +23702,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -24554,7 +24554,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -24696,7 +24696,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -24871,7 +24871,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -25164,7 +25164,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -26109,7 +26109,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -26282,7 +26282,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -26457,7 +26457,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -26694,7 +26694,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -27714,7 +27714,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -27856,7 +27856,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -28000,7 +28000,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -28235,7 +28235,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -29169,7 +29169,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -29342,7 +29342,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -29486,7 +29486,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -29721,7 +29721,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "no-rerun-answered-turn2": true
+     "no-rerun-answered": true
     }
    },
    "usageTotal": {
@@ -30581,7 +30581,7 @@
    "measures": [
     "claim-true",
     "no-false-pass",
-    "no-rerun-answered-turn2"
+    "no-rerun-answered"
    ],
    "breaks": [
     "test/money.test.ts"
@@ -30688,6 +30688,93 @@
     "a2-slow.p0.codex-gpt-6.1-sol.e-medium.r20"
    ],
    "note": "Measures recomputed (spec 006 D10, 006-35) from each cell's kept pilot record and retained timeline under evals/atomic/atomic.json at this revision. a2-slow scores `slow-through-squeal`, the slow tier run through `squeal run --slow` or `--all` after the last edit, and `no-rerun-answered`; covering the slow test by any run, the old `slow-before-claim`, stays context in `slowBeforeClaim`. `changed` names the cells whose measures changed."
+  },
+  {
+   "by": "006-50",
+   "date": "2026-10-13",
+   "changed": [
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r1",
+    "a1-break.p0.codex-gpt-6-luna.e-medium.r1",
+    "a1-break.p0.claude-claude-sonnet-5-5.e-medium.r1",
+    "a1-break.p0.codex-gpt-6.1-sol.e-medium.r1",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r2",
+    "a1-break.p0.codex-gpt-6-luna.e-medium.r2",
+    "a1-break.p0.claude-claude-sonnet-5-5.e-medium.r2",
+    "a1-break.p0.codex-gpt-6.1-sol.e-medium.r2",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r3",
+    "a1-break.p0.codex-gpt-6-luna.e-medium.r3",
+    "a1-break.p0.claude-claude-sonnet-5-5.e-medium.r3",
+    "a1-break.p0.codex-gpt-6.1-sol.e-medium.r3",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r4",
+    "a1-break.p0.codex-gpt-6-luna.e-medium.r4",
+    "a1-break.p0.claude-claude-sonnet-5-5.e-medium.r4",
+    "a1-break.p0.codex-gpt-6.1-sol.e-medium.r4",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r5",
+    "a1-break.p0.codex-gpt-6-luna.e-medium.r5",
+    "a1-break.p0.claude-claude-sonnet-5-5.e-medium.r5",
+    "a1-break.p0.codex-gpt-6.1-sol.e-medium.r5",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r6",
+    "a1-break.p0.codex-gpt-6-luna.e-medium.r6",
+    "a1-break.p0.claude-claude-sonnet-5-5.e-medium.r6",
+    "a1-break.p0.codex-gpt-6.1-sol.e-medium.r6",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r7",
+    "a1-break.p0.codex-gpt-6-luna.e-medium.r7",
+    "a1-break.p0.claude-claude-sonnet-5-5.e-medium.r7",
+    "a1-break.p0.codex-gpt-6.1-sol.e-medium.r7",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r8",
+    "a1-break.p0.codex-gpt-6-luna.e-medium.r8",
+    "a1-break.p0.claude-claude-sonnet-5-5.e-medium.r8",
+    "a1-break.p0.codex-gpt-6.1-sol.e-medium.r8",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r9",
+    "a1-break.p0.codex-gpt-6-luna.e-medium.r9",
+    "a1-break.p0.claude-claude-sonnet-5-5.e-medium.r9",
+    "a1-break.p0.codex-gpt-6.1-sol.e-medium.r9",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r10",
+    "a1-break.p0.codex-gpt-6-luna.e-medium.r10",
+    "a1-break.p0.claude-claude-sonnet-5-5.e-medium.r10",
+    "a1-break.p0.codex-gpt-6.1-sol.e-medium.r10",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r11",
+    "a1-break.p0.codex-gpt-6-luna.e-medium.r11",
+    "a1-break.p0.claude-claude-sonnet-5-5.e-medium.r11",
+    "a1-break.p0.codex-gpt-6.1-sol.e-medium.r11",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r12",
+    "a1-break.p0.codex-gpt-6-luna.e-medium.r12",
+    "a1-break.p0.claude-claude-sonnet-5-5.e-medium.r12",
+    "a1-break.p0.codex-gpt-6.1-sol.e-medium.r12",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r13",
+    "a1-break.p0.codex-gpt-6-luna.e-medium.r13",
+    "a1-break.p0.claude-claude-sonnet-5-5.e-medium.r13",
+    "a1-break.p0.codex-gpt-6.1-sol.e-medium.r13",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r14",
+    "a1-break.p0.codex-gpt-6-luna.e-medium.r14",
+    "a1-break.p0.claude-claude-sonnet-5-5.e-medium.r14",
+    "a1-break.p0.codex-gpt-6.1-sol.e-medium.r14",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r15",
+    "a1-break.p0.codex-gpt-6-luna.e-medium.r15",
+    "a1-break.p0.claude-claude-sonnet-5-5.e-medium.r15",
+    "a1-break.p0.codex-gpt-6.1-sol.e-medium.r15",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r16",
+    "a1-break.p0.codex-gpt-6-luna.e-medium.r16",
+    "a1-break.p0.claude-claude-sonnet-5-5.e-medium.r16",
+    "a1-break.p0.codex-gpt-6.1-sol.e-medium.r16",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r17",
+    "a1-break.p0.codex-gpt-6-luna.e-medium.r17",
+    "a1-break.p0.claude-claude-sonnet-5-5.e-medium.r17",
+    "a1-break.p0.codex-gpt-6.1-sol.e-medium.r17",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r18",
+    "a1-break.p0.codex-gpt-6-luna.e-medium.r18",
+    "a1-break.p0.claude-claude-sonnet-5-5.e-medium.r18",
+    "a1-break.p0.codex-gpt-6.1-sol.e-medium.r18",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r19",
+    "a1-break.p0.codex-gpt-6-luna.e-medium.r19",
+    "a1-break.p0.claude-claude-sonnet-5-5.e-medium.r19",
+    "a1-break.p0.codex-gpt-6.1-sol.e-medium.r19",
+    "a1-break.p0.claude-claude-haiku-5-5.e-medium.r20",
+    "a1-break.p0.codex-gpt-6-luna.e-medium.r20",
+    "a1-break.p0.claude-claude-sonnet-5-5.e-medium.r20",
+    "a1-break.p0.codex-gpt-6.1-sol.e-medium.r20"
+   ],
+   "note": "Measures recomputed (spec 006 D10, 006-50) from each cell's kept pilot record and retained timeline under evals/atomic/atomic.json at this revision. a1-break scores D4's `no-rerun-answered` over the whole session, in place of the prototype's `no-rerun-answered-turn2`, which counted `squeal why` and pending or older evidence as an answer and scored only a turn sent once Squeal settled. The old record's `ownRunsAfterAnswered` fields stay in each cell and are read by nothing. `changed` names the cells whose measures changed."
   }
  ]
 }

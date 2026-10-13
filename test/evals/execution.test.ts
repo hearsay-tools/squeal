@@ -4,10 +4,14 @@ import {
   classifyShell,
   claudeTimeline,
   codexTimeline,
+  coveredRun,
   type Event,
   gradeCell,
   simpleCommands,
 } from "../../evals/lib/index.mjs";
+
+/** A completed node:test run after the last script change: D4's completed-run-covers. */
+const SCRIPTS = { runner: "node:test", files: ["scripts/changelog.test.mjs"], after: "^scripts/" };
 
 // Review wave 1, B2: a command is graded by what ran, not by what was written. Each action is
 // executed, refused or indeterminate; an indeterminate one is never counted as established.
@@ -154,12 +158,13 @@ describe("order within one call", () => {
           "c1",
           "echo x >> scripts/changelog.mjs; node --test scripts/changelog.test.mjs",
           1,
+          "ℹ tests 1\n",
         ),
       ]),
     });
     expect(g.nodeTestRuns).toBe(1);
-    expect(g.nodeTestAfterScriptEdit).toBe(true);
-    expect(g.vitestAfterLastEdit).toBe(0);
+    expect(coveredRun(g.retained, SCRIPTS)).toBe(true);
+    expect(g.vitestRuns).toBe(0);
   });
 
   it("does not count a run before the edit in the same call as after it", () => {
@@ -170,10 +175,11 @@ describe("order within one call", () => {
           "c1",
           "node --test scripts/changelog.test.mjs; echo x >> scripts/changelog.mjs",
           0,
+          "ℹ tests 1\n",
         ),
       ]),
     });
-    expect(g.nodeTestAfterScriptEdit).toBe(false);
+    expect(coveredRun(g.retained, SCRIPTS)).toBe(false);
   });
 });
 
@@ -187,7 +193,7 @@ describe("gradeCell counts only what ran", () => {
       ]),
     });
     expect(g.nodeTestRuns).toBe(0);
-    expect(g.nodeTestAfterScriptEdit).toBe(false);
+    expect(coveredRun(g.retained, SCRIPTS)).toBe(false);
     expect(g.forbiddenEdit).toBe(false);
     expect(g.indeterminate).toBe(2);
     expect(g.timeline.indeterminate.map((a) => a.what)).toEqual([
@@ -242,11 +248,18 @@ function kinds(text: string) {
   return classifyShell(text, { exit: 0 }).map((a) => a.kind);
 }
 
-function cmd(t: number, id: string, command: string, exit: number): Event {
+function cmd(t: number, id: string, command: string, exit: number, output = ""): Event {
   return {
     t,
     type: "item.completed",
-    item: { id, type: "command_execution", command, status: "completed", exit_code: exit },
+    item: {
+      id,
+      type: "command_execution",
+      command,
+      aggregated_output: output,
+      status: "completed",
+      exit_code: exit,
+    },
   };
 }
 

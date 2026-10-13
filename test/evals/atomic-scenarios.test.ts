@@ -193,7 +193,7 @@ describe("the atomic scenarios", () => {
   it("declare D10's measures", () => {
     const measures = Object.fromEntries(NAMES.map((n) => [n, scenarioOf(n)?.measures]));
     expect(measures).toEqual({
-      "a1-break": ["claim-true", "no-false-pass", "no-rerun-answered-turn2"],
+      "a1-break": ["claim-true", "no-false-pass", "no-rerun-answered"],
       "a2-slow": ["claim-true", "no-false-pass", "slow-through-squeal", "no-rerun-answered"],
       "a3-harmless": ["claim-true", "no-rerun-answered", "current-before-claim"],
       "a4-pending": ["no-claim-on-pending", "no-sleep"],

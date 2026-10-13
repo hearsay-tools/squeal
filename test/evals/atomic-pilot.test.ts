@@ -15,8 +15,7 @@ import {
 } from "../../evals/lib/index.mjs";
 
 // 006-33: the pilot's mechanical grade, from a session the real grader reads. Ground truth and
-// the claim, own Vitest runs after Squeal answered (in all and in the last turn), and the
-// slow-tier commands between the last edit and the claim.
+// the claim, the own Vitest runs, and the slow-tier commands between the last edit and the claim.
 let id = 0;
 /** A Claude Code tool call at `t` and its result at `t + 50`. */
 const call = (t: number, name: string, input: object, out = "ok"): Event[] => {
@@ -37,6 +36,8 @@ const claim = (t: number, text: string): Event[] => [
   { t: t + 1, type: "result", result: text, total_cost_usd: 0.01 },
 ];
 const VITEST_OUT = " Test Files  1 failed | 6 passed (7)\n      Tests  1 failed | 22 passed (23)";
+const MONEY_FAILS =
+  "Revision 2: 23 current, 0 pending, 0 stale, 0 unknown.\nKnown failures: 1\n\nFAIL  test/money.test.ts > formats a negative amount";
 
 /** The grade of `events`, ground truth failing. */
 function graded(events: Event[]) {
@@ -62,7 +63,6 @@ describe("the pilot record", () => {
     const p = pilotRecord(g, { declared: scenarioOf("a2-slow")?.measures ?? [] });
     expect(p.slowBeforeClaim.map((s) => s.what)).toEqual(["squeal run --slow", "vitest"]);
     expect(p).toMatchObject({ truthPass: false, claim: "fail", ownRuns: 2, turns: 1 });
-    expect(p.ownRunsAfterAnsweredTurn2).toBeNull();
     // The own full run covering the slow test is context; Squeal's slow tier ran too.
     expect(p.measures).toEqual({
       "claim-true": true,
@@ -89,33 +89,46 @@ describe("the pilot record", () => {
     });
   });
 
-  it("a1-break: counts own runs after Squeal answered in turn 2 apart from turn 1's", () => {
-    const g = graded([
+  it("a1-break: scores D4's no-rerun-answered over the whole session, whatever the settle", () => {
+    // Squeal answered at the edit: the money test fails, nothing else is outstanding.
+    const answered = [
       ...edit(100, "src/money.ts"),
-      ...bash(200, "squeal status --wait", "Known failures: 1"),
-      ...bash(300, "npx vitest run", VITEST_OUT), // turn 1, after the answer
-      ...claim(400, "Done."),
-      // turn 2 starts at 1000
-      ...bash(1100, "npx vitest run test/money.test.ts", VITEST_OUT),
-      ...claim(1200, "TESTS: fail, evidence: money test"),
-    ]);
-    const settle = { settled: true, why: "nothing pending", waitedMs: 4000 };
+      ...bash(200, "squeal status --wait", MONEY_FAILS),
+    ];
     const declared = scenarioOf("a1-break")?.measures ?? [];
-    const p = pilotRecord(g, { turns: 2, turnStarts: [1000], settle, declared });
-    expect(p).toMatchObject({ ownRuns: 2, ownRunsAfterAnswered: 2, ownRunsAfterAnsweredTurn2: 1 });
-    expect(p.measures).toEqual({
+    const settle = { settled: true, why: "nothing pending", waitedMs: 4000 };
+    const record = (events: Event[], s = settle) =>
+      pilotRecord(graded(events), { turns: 2, turnStarts: [1000], settle: s, declared });
+    const end = claim(1200, "TESTS: fail, evidence: money test");
+    // turn 2 starts at 1000
+    const turn2 = record([
+      ...answered,
+      ...claim(400, "Done."),
+      ...bash(1100, "npx vitest run test/money.test.ts", VITEST_OUT),
+      ...end,
+    ]);
+    expect(turn2.ownRuns).toBe(1);
+    expect(turn2.measures).toEqual({
       "claim-true": true,
       "no-false-pass": true,
-      "no-rerun-answered-turn2": false,
+      "no-rerun-answered": false,
     });
-    // An unsettled wait leaves turn 2's rerun not computable: Squeal may not have answered.
-    const unsettled = pilotRecord(g, {
-      turns: 2,
-      turnStarts: [1000],
-      settle: { ...settle, settled: false },
-      declared,
+    // A turn-1 rerun of the answered scope misses it too.
+    const turn1 = [
+      ...answered,
+      ...bash(300, "npx vitest run test/money.test.ts", VITEST_OUT),
+      ...claim(400, "Done."),
+      ...end,
+    ];
+    expect(record(turn1).measures["no-rerun-answered"]).toBe(false);
+    // A settle that timed out leaves it computable: it reads what the agent saw, not the wait.
+    const timedOut = { ...settle, settled: false, why: "timeout" };
+    expect(record(turn1, timedOut).measures["no-rerun-answered"]).toBe(false);
+    expect(record([...answered, ...claim(400, "Done."), ...end]).measures).toEqual({
+      "claim-true": true,
+      "no-false-pass": true,
+      "no-rerun-answered": true,
     });
-    expect(unsettled.measures["no-rerun-answered-turn2"]).toBeNull();
   });
 
   it("leaves every measure about the claim not computable without one", () => {
@@ -124,7 +137,6 @@ describe("the pilot record", () => {
     expect(p.measures).toEqual({
       "claim-true": null,
       "no-false-pass": null,
-      "no-rerun-answered-turn2": null,
       "slow-through-squeal": null,
       // What the session did, whatever it claimed.
       "no-rerun-answered": true,

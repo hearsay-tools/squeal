@@ -7,9 +7,13 @@ import {
   classifyShell,
   claudeTimeline,
   codexTimeline,
+  coveredRun,
   type Event,
   gradeCell,
 } from "../../evals/lib/index.mjs";
+
+/** A completed node:test run after the last script change: D4's completed-run-covers. */
+const SCRIPTS = { runner: "node:test", files: ["scripts/changelog.test.mjs"], after: "^scripts/" };
 
 // Review 006-07 B2: after `exit` or `exec` nothing later in the shell runs, and under `set -e`
 // anything after a command that can fail may not run. Each command is graded through a
@@ -126,7 +130,7 @@ function check(command: string) {
   const c = control(command);
   for (const g of grades(command, c.exit, c.out)) {
     // Never credited unless it ran.
-    if (!c.nodeRan) expect(g.nodeTestAfterScriptEdit, command).toBe(false);
+    if (!c.nodeRan) expect(g.nodeTestRuns, command).toBe(0);
     if (!c.wrote) expect(g.forbiddenEdit, command).toBe(false);
   }
   return { ...c, grades: grades(command, c.exit, c.out) };
@@ -137,14 +141,14 @@ describe("the review's three commands, against Bash (B2)", () => {
     const r = check(`exit 0; ${NODE_TEST}`);
     expect([r.exit, r.nodeRan]).toEqual([0, false]);
     for (const g of r.grades)
-      expect([g.nodeTestRuns, g.nodeTestAfterScriptEdit]).toEqual([0, false]);
+      expect([g.nodeTestRuns, coveredRun(g.retained, SCRIPTS)]).toEqual([0, false]);
   });
 
   it("credits no node:test run after a failure under set -e", () => {
     const r = check(`set -e; false; ${NODE_TEST}`);
     expect([r.exit, r.nodeRan]).toEqual([1, false]);
     for (const g of r.grades)
-      expect([g.nodeTestRuns, g.nodeTestAfterScriptEdit]).toEqual([0, false]);
+      expect([g.nodeTestRuns, coveredRun(g.retained, SCRIPTS)]).toEqual([0, false]);
   });
 
   it("warns of no forbidden edit after exit 0", () => {
@@ -192,7 +196,7 @@ describe("nearby terminations, against Bash (B2)", () => {
   it.each(ran)("still credits a run that did run: %s", (command) => {
     const r = check(command);
     expect(r.nodeRan).toBe(true);
-    for (const g of r.grades) expect(g.nodeTestAfterScriptEdit, command).toBe(true);
+    for (const g of r.grades) expect(coveredRun(g.retained, SCRIPTS), command).toBe(true);
   });
 
   it("credits a write that did run under set -e after a command that cannot fail", () => {

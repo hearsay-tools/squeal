@@ -21,7 +21,7 @@
         "replace": "  const text = `${SYMBOL[currency]}${whole}.${frac}`;\n  return sign ? `(${text})` : text;"
       },
       "breaks": ["test/money.test.ts"],
-      "measures": ["claim-true", "no-false-pass", "no-rerun-answered-turn2"]
+      "measures": ["claim-true", "no-false-pass", "no-rerun-answered"]
     },
     "a2-slow": {
       "turns": ["a2-slow.txt"],
