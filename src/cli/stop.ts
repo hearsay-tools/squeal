@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { setTimeout as sleep } from "node:timers/promises";
+import { recordedDaemon } from "../core/daemon/ensure.js";
 import { acquireDaemonLock } from "../core/daemon/lock.js";
 import { resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
 import { lockFileFor } from "../core/store/index.js";
@@ -27,7 +28,7 @@ export async function stopCommand(args: readonly string[], io: CliIo): Promise<n
   if (root === null) return 1;
   const socketPath = await daemonSocket(root);
   const ping = await askDaemon(socketPath, { type: "ping" }).catch(() => null);
-  const pid = ping?.ok === true && ping.type === "ping" ? ping.pid : null;
+  const daemon = ping?.ok === true && ping.type === "ping" ? ping : null;
   const response = await askDaemon(socketPath, { type: "stop" });
   if (response === null) {
     io.stdout(`No daemon running for ${root}\n`);
@@ -45,9 +46,17 @@ export async function stopCommand(args: readonly string[], io: CliIo): Promise<n
     }
     await sleep(50);
   }
-  if (!(await lockFreed(root, pid, LOCK_WAIT_MS))) {
+  const lock = await lockFreed(root, daemon, LOCK_WAIT_MS);
+  const after = `${LOCK_WAIT_MS / 1_000} s`;
+  if (lock.state === "held") {
     io.stdout(
-      `Stop requested; the daemon for ${root} closed its socket but still holds its lock after ${LOCK_WAIT_MS / 1_000} s\n`,
+      `Stop requested; the daemon for ${root} closed its socket but still holds its lock after ${after}\n`,
+    );
+    return 0;
+  }
+  if (lock.state === "unchecked") {
+    io.stdout(
+      `Stop requested; the daemon for ${root} closed its socket, and whether it still holds its lock could not be checked after ${after}: ${lock.error}\n`,
     );
     return 0;
   }
@@ -55,32 +64,56 @@ export async function stopCommand(args: readonly string[], io: CliIo): Promise<n
   return 0;
 }
 
+/** How the stopping daemon's lock looked when `lockFreed` answered. */
+export type LockCheck =
+  | { readonly state: "free" | "held" }
+  | { readonly state: "unchecked"; readonly error: string };
+
 /**
  * Whether the stopping daemon let go of the worktree's lock within `ms`
  * (D10): its shutdown closes the socket before it releases the lock, so a
  * daemon whose socket is gone may still hold it. Free when the lock is (taken
- * and released at once, as status probes it, `daemonGone`) or when the
- * daemon's process `pid` is gone, since a daemon spawned meanwhile may take
- * the lock the moment it comes free. Also true when no common dir or lock
- * file is left to hold, or when the lock cannot be probed: nothing proves a
- * holder then.
+ * and released at once, as status probes it, `daemonGone`), when the
+ * daemon's process is gone, or when the store records a daemon of another
+ * start time, which registers only once it holds the lock: a daemon spawned
+ * meanwhile may take the lock the moment it comes free, and its pid may name
+ * another process by then. Also free when no common dir or lock file is left
+ * to hold. A probe that throws proves nothing (review 001-344, B1): the
+ * process and the record still may, and at the bound the lock is
+ * `unchecked`.
  */
-async function lockFreed(root: AbsolutePath, pid: number | null, ms: number): Promise<boolean> {
+export async function lockFreed(
+  root: AbsolutePath,
+  daemon: { readonly pid: number; readonly startedAt: number } | null,
+  ms: number,
+): Promise<LockCheck> {
   const commonDir = resolveCommonDir(root);
-  if (commonDir === null) return true;
+  if (commonDir === null) return { state: "free" };
   const path = lockFileFor(commonDir, worktreeIdFor(root));
   const deadline = Date.now() + ms;
   for (;;) {
-    if (!existsSync(path) || (pid !== null && processGone(pid))) return true;
-    try {
-      const lock = acquireDaemonLock(path);
-      lock?.release();
-      if (lock !== null) return true;
-    } catch {
-      return true;
-    }
-    if (Date.now() > deadline) return false;
+    if (!existsSync(path) || (daemon !== null && gone(root, daemon))) return { state: "free" };
+    const probe = probeLock(path);
+    if (probe.state === "free" || Date.now() > deadline) return probe;
     await sleep(50);
+  }
+}
+
+/** The daemon's process is gone, or a daemon of another start time registered since. */
+function gone(root: AbsolutePath, daemon: { readonly pid: number; readonly startedAt: number }) {
+  if (processGone(daemon.pid)) return true;
+  const record = recordedDaemon(root);
+  return record !== null && record.startedAt !== daemon.startedAt;
+}
+
+/** The lock at `path`, taken and released at once. */
+function probeLock(path: AbsolutePath): LockCheck {
+  try {
+    const lock = acquireDaemonLock(path);
+    lock?.release();
+    return { state: lock === null ? "held" : "free" };
+  } catch (error) {
+    return { state: "unchecked", error: error instanceof Error ? error.message : String(error) };
   }
 }
 
