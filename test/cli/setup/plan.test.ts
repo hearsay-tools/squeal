@@ -168,13 +168,21 @@ describe("squeal setup --check and usage", () => {
     );
   });
 
-  it("takes --plan or --check, and nothing else", async () => {
+  it("takes --plan or --check with --json alone, and setup's own flags without them", async () => {
     const root = squealShaped();
-    for (const args of [[], ["--yes"], ["--plan", "--force"]]) {
+    for (const args of [
+      ["--plan", "--force"],
+      ["--plan", "--yes"],
+      ["--plan", "--check"],
+      ["--json"],
+      ["--yes", "--harness", "pi"],
+      ["--force"],
+    ]) {
       const { io, out } = capture(root);
-      expect(await main(["setup", ...args], io)).toBe(2);
-      expect(out.stderr).toContain("Usage: squeal setup --plan [--json]");
+      expect(await main(["setup", ...args], io), args.join(" ")).toBe(2);
+      expect(out.stderr).toContain("squeal setup --plan [--json]");
     }
+    expect(git(root, ["status", "--porcelain"])).toBe("");
   });
 
   it("exits 1 outside a git worktree", async () => {

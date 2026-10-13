@@ -1,27 +1,40 @@
 import { findWorktreeRoot } from "../../core/fs/index.js";
 import type { CliIo } from "../main.js";
+import { takeSetupFlags } from "./apply.js";
+import { type Asker, terminalAsker } from "./ask.js";
+import { runSetup } from "./flow.js";
 import { formatPlan } from "./format.js";
+import type { HarnessId } from "./harnesses.js";
 import { buildPlan } from "./plan.js";
+import type { GivenAnswers } from "./questions.js";
 
-export const SETUP_USAGE = `Usage: squeal setup --plan [--json]
+export const SETUP_USAGE = `Usage: squeal setup [--yes] [--harness <claude-code|codex>]... [--block <file|none>]...
+         [--gate <id>=<reword|keep>]... [--slow <glob>]... [--input <test glob>=<input glob>]...
+         [--no-trust] [--no-warmup]
+       squeal setup --plan [--json]
        squeal setup --check [--json]
-Apply its choices with squeal init --block <file|none>, --gate <id>=<reword|keep>,
---slow <glob> and --input <test glob>=<input glob>.
 `;
+
+export interface SetupDeps {
+  /** The terminal to ask on; default `terminalAsker()`, `null` when stdin or stdout is not a TTY. */
+  readonly asker?: () => Asker | null;
+}
 
 /**
  * `squeal setup --plan [--json]` prints the plan and exits 0; `--check`
  * prints it too and exits 1 when anything is outdated (spec 005 D3). Both
- * write nothing. Exit 1 outside a git worktree, 2 on a usage error.
+ * write nothing. Bare `squeal setup` asks one question per open choice on a
+ * terminal, or takes the defaults with `--yes`, and applies them
+ * (`runSetup`). Exit 1 outside a git worktree, 2 on a usage error.
  */
-export async function setupCommand(args: readonly string[], io: CliIo): Promise<number> {
-  const flags = new Set(args);
-  const known = new Set(["--plan", "--check", "--json"]);
-  const unknown = args.find((arg) => !known.has(arg));
-  if (unknown !== undefined || (!flags.has("--plan") && !flags.has("--check"))) {
-    const problem =
-      unknown === undefined ? "takes --plan or --check" : `unknown argument "${unknown}"`;
-    io.stderr(`squeal setup: ${problem}\n\n${SETUP_USAGE}`);
+export async function setupCommand(
+  args: readonly string[],
+  io: CliIo,
+  deps: SetupDeps = {},
+): Promise<number> {
+  const parsed = parseSetupArgs(args);
+  if (typeof parsed === "string") {
+    io.stderr(`squeal setup: ${parsed}\n\n${SETUP_USAGE}`);
     return 2;
   }
   const cwd = io.cwd ?? process.cwd();
@@ -30,7 +43,63 @@ export async function setupCommand(args: readonly string[], io: CliIo): Promise<
     io.stderr(`squeal setup: ${cwd} is not inside a git worktree\n`);
     return 1;
   }
-  const plan = await buildPlan(root, { env: io.env ?? process.env });
-  io.stdout(flags.has("--json") ? `${JSON.stringify(plan, null, 2)}\n` : formatPlan(plan));
-  return flags.has("--check") && plan.outdated.length > 0 ? 1 : 0;
+  const env = io.env ?? process.env;
+  const plan = await buildPlan(root, { env, codexTrust: true });
+  if (parsed.mode === "apply") {
+    const asker = parsed.yes ? null : (deps.asker ?? terminalAsker)();
+    return runSetup({ plan, given: parsed.given, yes: parsed.yes, asker }, io);
+  }
+  io.stdout(parsed.json ? `${JSON.stringify(plan, null, 2)}\n` : formatPlan(plan));
+  return parsed.mode === "check" && plan.outdated.length > 0 ? 1 : 0;
+}
+
+type SetupArgs =
+  | { readonly mode: "plan" | "check"; readonly json: boolean }
+  | { readonly mode: "apply"; readonly yes: boolean; readonly given: GivenAnswers };
+
+function parseSetupArgs(args: readonly string[]): SetupArgs | string {
+  const flags = new Set(args);
+  if (flags.has("--plan") || flags.has("--check")) {
+    const unknown = args.find((arg) => !["--plan", "--check", "--json"].includes(arg));
+    if (unknown !== undefined) return `unknown argument "${unknown}"`;
+    if (flags.has("--plan") && flags.has("--check")) return "takes --plan or --check, not both";
+    return { mode: flags.has("--check") ? "check" : "plan", json: flags.has("--json") };
+  }
+  // `--block` may be given once per instruction file here; init takes it once.
+  const blocks: string[] = [];
+  const harnesses: HarnessId[] = [];
+  const rest: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i] as string;
+    const flag = ["--block", "--harness"].find((f) => arg === f || arg.startsWith(`${f}=`));
+    if (flag === undefined) {
+      rest.push(arg);
+      continue;
+    }
+    const value = arg === flag ? args[++i] : arg.slice(flag.length + 1);
+    if (value === undefined || value === "") return `${flag} takes a value`;
+    if (flag === "--block") blocks.push(value);
+    else if (value === "claude-code" || value === "codex") harnesses.push(value);
+    else return `--harness takes claude-code or codex, not "${value}"`;
+  }
+  const setup = takeSetupFlags(rest);
+  if (typeof setup === "string") return setup;
+  const own = ["--yes", "--no-trust", "--no-warmup", "--json"];
+  const unknown = setup.rest.find((arg) => !own.includes(arg));
+  if (unknown !== undefined) return `unknown argument "${unknown}"`;
+  if (setup.rest.includes("--json")) return "--json goes with --plan or --check";
+  if (blocks.includes("none") && blocks.length > 1) return "--block none goes alone";
+  const { gates, slow, inputs } = setup.choices;
+  return {
+    mode: "apply",
+    yes: setup.rest.includes("--yes"),
+    given: {
+      harnesses: harnesses.length > 0 ? harnesses : null,
+      blocks: blocks.length > 0 ? blocks : null,
+      gates,
+      slow: slow.length + inputs.length > 0 ? { slow, inputs } : null,
+      trust: setup.rest.includes("--no-trust") ? false : null,
+      warmup: setup.rest.includes("--no-warmup") ? false : null,
+    },
+  };
 }

@@ -55,15 +55,11 @@ export async function trustCodexHooks(
 ): Promise<number> {
   let server: AppServer | null = null;
   try {
-    server = new AppServer(
+    server = await openAppServer(
       root,
       io.env ?? process.env,
       options.timeoutMs ?? CODEX_APP_SERVER_TIMEOUT_MS,
     );
-    await server.request("initialize", {
-      clientInfo: { name: "squeal", title: null, version: "0" },
-    });
-    server.notify("initialized", {});
     const listed = await listHooks(server, root, [
       options.pluginId,
       ...(options.previous === undefined ? [] : [options.previous.pluginId]),
@@ -150,6 +146,65 @@ export async function trustCodexHooks(
   } finally {
     await server?.close();
   }
+}
+
+/** Codex trust of a plugin's hooks, as `squeal setup --plan` reports it (spec 005 D3 step 2). */
+export type CodexHookTrust =
+  | {
+      readonly state: "trusted" | "untrusted";
+      readonly hooks: number;
+      /** Hooks Codex lists as `untrusted` or `modified`. */
+      readonly untrusted: number;
+    }
+  | { readonly state: "unavailable"; readonly reason: string };
+
+/**
+ * Reads Codex's trust of `pluginId`'s hooks through `hooks/list` alone:
+ * nothing is written, by Squeal or by Codex. The app-server is killed on
+ * every path.
+ */
+export async function readCodexTrust(
+  root: string,
+  env: Readonly<Record<string, string | undefined>>,
+  pluginId: string,
+  timeoutMs: number = CODEX_APP_SERVER_TIMEOUT_MS,
+): Promise<CodexHookTrust> {
+  let server: AppServer | null = null;
+  try {
+    server = await openAppServer(root, env, timeoutMs);
+    const hooks = await listHooks(server, root, [pluginId]);
+    if (hooks.length === 0) {
+      return { state: "unavailable", reason: `Codex lists no hooks of ${pluginId}` };
+    }
+    const untrusted = hooks.filter(
+      (h) => h.trustStatus === "untrusted" || h.trustStatus === "modified",
+    ).length;
+    return { state: untrusted === 0 ? "trusted" : "untrusted", hooks: hooks.length, untrusted };
+  } catch (error) {
+    if (!(error instanceof AppServerError)) throw error;
+    return { state: "unavailable", reason: error.message };
+  } finally {
+    await server?.close();
+  }
+}
+
+/** A started `codex app-server`, initialized; an `AppServerError` when it cannot be. */
+async function openAppServer(
+  root: string,
+  env: Readonly<Record<string, string | undefined>>,
+  timeoutMs: number,
+): Promise<AppServer> {
+  const server = new AppServer(root, env, timeoutMs);
+  try {
+    await server.request("initialize", {
+      clientInfo: { name: "squeal", title: null, version: "0" },
+    });
+  } catch (error) {
+    await server.close();
+    throw error;
+  }
+  server.notify("initialized", {});
+  return server;
 }
 
 /**

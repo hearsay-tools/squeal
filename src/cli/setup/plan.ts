@@ -3,7 +3,9 @@ import { join } from "node:path";
 import { loadPolicy, POLICY_FILE } from "../../core/daemon/policy.js";
 import { isRecord } from "../../core/fs/index.js";
 import type { AbsolutePath, Policy } from "../../core/types/index.js";
+import { type CodexHookTrust, readCodexTrust } from "../codex/trust.js";
 import { seedNodeTest } from "../node-test-seed.js";
+import { PLUGIN_ID } from "../plugin-id.js";
 import { BLOCK_VERSION, instructionFiles } from "./block.js";
 import { slowCandidates } from "./candidates.js";
 import { scanGates } from "./gates.js";
@@ -138,11 +140,16 @@ export interface Evidence {
   readonly weak: boolean;
 }
 
-/** Spec 005 D3: Codex trust; reading it needs `codex app-server`, which the plan never starts. */
-export interface CodexTrust {
-  readonly state: "not-checked";
-  readonly command: string;
-}
+/**
+ * Spec 005 D3: Codex trust of the plugin's hooks, read through `codex
+ * app-server` only when `PlanOptions.codexTrust` asks and Codex is on the
+ * PATH with the plugin; `command` applies it.
+ */
+export type CodexTrust = (
+  | { readonly state: "not-checked" }
+  | Exclude<CodexHookTrust, { readonly state: "unavailable" }>
+  | { readonly state: "unavailable"; readonly reason: string }
+) & { readonly command: string };
 
 export interface Warmup {
   /** `store` when a daemon listed the test files; else counted from the tracked files. */
@@ -154,7 +161,11 @@ export interface Warmup {
 
 export interface PlanOptions {
   readonly env: Readonly<Record<string, string | undefined>>;
+  /** Read Codex trust through `codex app-server` (`readCodexTrust`); default not checked. */
+  readonly codexTrust?: boolean;
 }
+
+const TRUST_COMMAND = "squeal init --harness codex --trust";
 
 export async function buildPlan(root: AbsolutePath, options: PlanOptions): Promise<SetupPlan> {
   const facts = await readRepoFacts(root);
@@ -181,17 +192,18 @@ export async function buildPlan(root: AbsolutePath, options: PlanOptions): Promi
   const { gates, mentions } = scanGates(root, facts.tracked, {
     nodeTest: runners.nodeTest.length > 0,
   });
+  const harnesses = readHarnesses(root, options.env);
   return {
     schemaVersion: SETUP_PLAN_SCHEMA_VERSION,
     root,
-    harnesses: readHarnesses(root, options.env),
+    harnesses,
     runners,
     config,
     instructions,
     gates,
     mentions,
     slow,
-    codexTrust: { state: "not-checked", command: "squeal init --harness codex --trust" },
+    codexTrust: await codexTrust(root, harnesses, options),
     warmup: {
       source: testFiles.source,
       testFiles: testFiles.paths.length,
@@ -199,6 +211,18 @@ export async function buildPlan(root: AbsolutePath, options: PlanOptions): Promi
     },
     outdated: outdated(config, instructions, slow),
   };
+}
+
+async function codexTrust(
+  root: AbsolutePath,
+  harnesses: readonly HarnessFact[],
+  options: PlanOptions,
+): Promise<CodexTrust> {
+  const codex = harnesses.find((h) => h.id === "codex");
+  if (options.codexTrust !== true || codex?.onPath !== true || codex.plugin === null) {
+    return { state: "not-checked", command: TRUST_COMMAND };
+  }
+  return { ...(await readCodexTrust(root, options.env, PLUGIN_ID)), command: TRUST_COMMAND };
 }
 
 function readRunners(facts: RepoFacts, policy: Policy, raw: unknown): Runners {
