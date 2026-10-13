@@ -9,7 +9,7 @@ node evals/bin/run-baseline.mjs --variant p1       # shipped texts and a variant
 node evals/bin/run-baseline.mjs --resume <run>     # continue a run cut short: its graded cells are skipped
 node evals/bin/run-cell.mjs t1-thousands p0 claude claude-haiku-5-5 1   # one cell
 node evals/bin/trend.mjs                           # regenerate results/TREND.md
-node evals/bin/regrade.mjs                         # re-apply the claim grading and the expectations to every results file
+node evals/bin/regrade.mjs                         # re-apply the claim grading and the expectations to every baseline and variant file
 node evals/bin/regrade.mjs --judge                 # also re-judge retained transcripts judged by another identity (calls a model)
 node --import tsx evals/bin/judge-calibrate.mjs    # the judge's calibration gate (Haiku 5.5; --model claude-sonnet-5-5 if it fails)
 node evals/bin/compare.mjs results/<file>.json variant
@@ -34,8 +34,9 @@ The gate: `judge-calibrate.mjs` judges every reference session in `test/evals/ju
 
 - `ledgerline/`: the fixture. Outside Vitest's `include`, Biome and `tsconfig`; its tests run only in a cell.
 - `tasks/`: the prompts, `_ending.txt` (the `TESTS:` line every prompt ends with) and `tasks.json`, each task's knob (D2) and expectations (D4). The expectations stay out of the conditions fingerprint: grading is not a condition.
+- `atomic/`: the atomic tier (D10): `atomic.json`, each scenario's turns, knobs, settle bound and measures, and the turn prompts it names.
 - `variants/`: `p0` is the shipped plugin; the others patch, remove, append instructions or merge policy (D8).
 - `baseline.json`: the matrix (D5). Changing a task, a knob, the fixture or the effort starts a new trend line.
-- `bin/`: `run-cell.mjs`, `run-baseline.mjs`, `grade.mjs`, `trend.mjs`, `regrade.mjs`, `compare.mjs`, `judge-calibrate.mjs`, and `import-005-07.mjs`, which made the first results file.
+- `bin/`: `run-cell.mjs`, `run-baseline.mjs`, `grade.mjs`, `trend.mjs`, `regrade.mjs`, `compare.mjs`, `judge-calibrate.mjs`, `atomic-trend.mjs` (regenerates `ATOMIC.md`), `atomic-regrade.mjs` (recomputes the atomic files' measures, no model, then `ATOMIC.md`), `atomic-compare.mjs`, and `import-005-07.mjs`, which made the first results file.
 - `lib/`: the grader, the runner's parts and the trend writer, tested in `test/evals/` on recorded transcripts.
-- `results/`: one file per run, `<date>-<version>.<run>.json` (`.<variant>.json` for a variant run, `.atomic.json` for an atomic run, `.<variant>.atomic-variant.json` for an atomic variant run, which neither table reads), `TREND.md`, `ATOMIC.md`, and the judge's calibration files, `judge-calibration-<identity>.json`.
+- `results/`: one file per run, `<date>-<version>.<run>.json` (`.<variant>.json` for a variant run, `.atomic.json` for an atomic run, `.<variant>.atomic-variant.json` for an atomic variant run, which neither table reads), `<date>-<version>.<run>.<variant>.atomic-compare.md`, `atomic-compare.mjs`'s report of an atomic variant run, `TREND.md`, `ATOMIC.md`, and the judge's calibration files, `judge-calibration-<identity>.json`.
