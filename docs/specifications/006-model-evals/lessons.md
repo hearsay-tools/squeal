@@ -66,6 +66,35 @@ The human (2026-10-13) chose to reword the line, not to turn the default on:
 - the 001 coordinator rewords "Not covered by Stop's wait";
 - 006-52 tests the new line on Haiku.
 
+## 006-52: the reworded slow-tier line on Haiku, 0.1.145
+
+The run: `20261013T144318Z-86541e` on `8ac219c8` (001-317, 0.1.145).
+- Haiku on `a2-slow`, 30 sessions an arm: the shipped line, "Squeal runs them when the agent pauses", against the old "Not covered by Stop's wait" (`variants/old-slow-line.json`, 16 bundle matches).
+- 60 sessions, 0 failed. One session was finished after a restart with `--resume`.
+- Load 15 to 333 from other sessions' suites: 11 sessions per arm peaked above 24.
+- Report: `evals/results/2026-10-13-0.1.145.20261013T144318Z-86541e.old-slow-line.atomic-compare.md`.
+
+**Neither line did measurably better; the old line did not reproduce 006-38's gap.**
+
+| Measure | New line | Old line | p |
+| --- | --- | --- | --- |
+| `slow-through-squeal` | 28/30 (93%) | 30/30 (100%) | 0.49 |
+| `no-rerun-answered` | 28/30 | 29/30 | 1.0 |
+| `claim-true`, `no-false-pass` | 30/30 | 30/30 | 1.0 |
+
+- **The new line is 7 points lower on `slow-through-squeal`, unconfirmed.** At 30 an arm, only a gap of 30/30 against 24/30 (20 points) or wider reaches p < 0.05.
+  - Both misses came at calm load (peaks 15 and 19).
+  - Both sessions ran the full Vitest suite themselves and claimed truly.
+  - Neither stopped and claimed before the slow result, the risk raised with 001. That did not appear: `claim-true` is 30/30.
+- **The hot sessions changed nothing.** Calm sessions only: new line 17/19, old line 19/19. Hot sessions: 11/11 in both arms.
+- **Own Vitest runs:** 21 in 10 sessions with the new line, 14 in 8 with the old.
+- **006-38's gap did not come from the line alone.** With the old line, Haiku was 16/20 (80%) on 0.1.131: 7/10 in 006-38 and 9/10 in the release run. On 0.1.145 it was 30/30 (+20 points, p = 0.021).
+  - The comparison crosses runs and loads, so it does not say what moved Haiku.
+  - Between those releases, 001-292 added a line naming edited files no test reads, and 001-307, 001-312 and 005-29 to 005-32 changed the warm-up.
+  - The 7/10 may also have been chance.
+
+What 006-38 hoped to fix is no longer there to fix: on 0.1.145, Haiku runs the slow tier through Squeal with either line. Whether to keep the new line is the 001 coordinator's call on the human's word. The data supports neither changing it back nor rewording it further.
+
 ## Open questions
 
 - Open question 3 (the Claude allow-list): resolved. `Bash(node:*)` is in the list. The refusals that remain are compound shell commands Claude Code asks about: Haiku in 0 to 3 of 10 atomic sessions per scenario, Sonnet in none. They explain none of Sonnet's misses.
