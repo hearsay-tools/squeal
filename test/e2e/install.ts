@@ -28,6 +28,14 @@ import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 export const VITEST_VERSION = installedVersion("vitest");
 /** The tsx the node:test fixture installs, the repository's own for the same reason. */
 const TSX_VERSION = installedVersion("tsx");
+/**
+ * Vitest's peer Vite, named explicitly: npm 10.9.9 (Node 22.23.3) crashes resolving
+ * vitest 5's peer set ("reading 'edgesOut'", arborist `#loadPeerSet`), so
+ * the install skips peer resolution (`--legacy-peer-deps`) and installs Vite
+ * itself, the repository's own version. Drop both once Node 22's npm resolves
+ * it (2026-10-13; Node 24's npm 11 does).
+ */
+export const VITE_VERSION = installedVersion("vite");
 
 function installedVersion(name: string): string {
   const manifest = join(REPO_ROOT, "node_modules", name, "package.json");
@@ -54,13 +62,18 @@ interface Recipe {
 
 function recipe(kind: InstallKind): Recipe {
   const vitest = `vitest@${VITEST_VERSION}`;
+  const vite = `vite@${VITE_VERSION}`;
   if (kind === "vitest")
-    return { key: `vitest-${VITEST_VERSION}-${PLATFORM}`, packages: [vitest], root: {} };
+    return {
+      key: `vitest-${VITEST_VERSION}-vite-${VITE_VERSION}-${PLATFORM}`,
+      packages: [vitest, vite],
+      root: {},
+    };
   const hash = createHash("sha256");
   for (const file of MANIFESTS) hash.update(readFileSync(join(WORKSPACE, file)));
   return {
-    key: `node-test-${hash.digest("hex").slice(0, 12)}-vitest-${VITEST_VERSION}-tsx-${TSX_VERSION}-${PLATFORM}`,
-    packages: [vitest, `tsx@${TSX_VERSION}`],
+    key: `node-test-${hash.digest("hex").slice(0, 12)}-vitest-${VITEST_VERSION}-vite-${VITE_VERSION}-tsx-${TSX_VERSION}-${PLATFORM}`,
+    packages: [vitest, vite, `tsx@${TSX_VERSION}`],
     root: { workspaces: ["packages/*"] },
   };
 }
@@ -89,6 +102,7 @@ async function npmInstall(
       "--no-audit",
       "--no-fund",
       "--loglevel=error",
+      "--legacy-peer-deps",
       "--fetch-retries=0",
       "--fetch-timeout=20000",
       ...packages,
