@@ -139,7 +139,7 @@ describe("squeal status --wait <ms>", () => {
 
     expect(code).toBe(0);
     expect(stdout.split("\n")[0]).toMatch(
-      /^Returned on timeout after \d+\.\d s: 2 checks pending at revision 3$/,
+      /^Returned on timeout after \d+\.\d s: 2 checks \(2 tests\) pending at revision 3$/,
     );
     expect(elapsed).toBeGreaterThanOrEqual(590);
     expect(elapsed).toBeLessThan(1_500);
@@ -165,7 +165,7 @@ describe("squeal status --wait <ms>", () => {
     expect(snapshot).toEqual(readStatus(repo.main, { now: () => NOW }));
     expect(wait).toEqual({ outcome: "timeout", waitedMs: expect.any(Number), transitions: 0 });
     expect(stderr).toMatch(
-      /^Returned on timeout after \d+\.\d s: 1 check pending at revision 3\n$/,
+      /^Returned on timeout after \d+\.\d s: 1 check \(1 test\) pending at revision 3\n$/,
     );
   });
 
