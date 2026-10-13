@@ -17,7 +17,7 @@ In Claude Code `squeal` is on the Bash tool's PATH; if not, run `"${CLAUDE_PLUGI
 
    | Question | Flag |
    |---|---|
-   | Set up a harness here? | `--harness claude-code`, `--harness codex`: each one chosen |
+   | Set up a harness here? | `--harness claude-code`, `--harness codex`: each one chosen; `--harness none` when none |
    | Write or upgrade the Squeal block? | `--block <file>` for each file written; `--block none` when none |
    | Gate line `<id>` | `--gate <id>=reword` or `--gate <id>=keep` |
    | Run a group in the slow tier? | `--slow <glob>` for each group answered slow; `--slow none` when none |
