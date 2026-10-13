@@ -34,6 +34,13 @@ export interface HookDeps {
    * hooks pass the installed CLI by its path (spec 002 D1 as amended).
    */
   readonly command?: string;
+  /**
+   * The epoch clock. Default `Date.now`. It must advance with real elapsed
+   * time, at most a constant offset from `Date.now`: the waiting Stop entry
+   * reads its process start in this frame, once, as `now() - performance.now()`
+   * (task 001-326), so a frozen or independently advanced clock moves its
+   * handoff cutoff (review wave 13bc S2).
+   */
   readonly now?: () => EpochMs;
   /** How long the idle waiter waits before it exits silently. Default `WAITER_TIMEOUT_MS`. */
   readonly waiterTimeoutMs?: number;
