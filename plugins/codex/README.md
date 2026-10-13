@@ -2,9 +2,13 @@
 
 Spec 002 D1, D4 and D6. Released Squeal installs from the hub marketplace `hearsay` (the private repository `hearsay-tools/marketplace`), whose `.agents/plugins/marketplace.json` pins this directory at a release tag, so the plugin id is `squeal@hearsay` (row 001-164, `research/release-hub.md`). This repository's root `.agents/plugins/marketplace.json` is named `squeal` and lists this plugin, also named `squeal`, with source `./plugins/codex`, for installs from a checkout. Codex reads that file before `.claude-plugin/marketplace.json`, so it never sees the Claude Code plugin, and Claude Code never sees this one (`research/wave-0-checks.md` 1).
 
+## Install with install.sh
+
+From a terminal, once per machine: `curl -fsSL https://raw.githubusercontent.com/hearsay-tools/squeal/squeal--v<version>/install.sh | sh` runs the two commands below through Codex's own CLI, does the same for Claude Code when `claude` is on the `PATH`, and copies `bin/squeal-launcher` to `~/.local/bin/squeal` (the root [README](../../README.md#install)). The launcher finds the newest version in Codex's plugin cache at each call, so it follows Codex's upgrades; when Claude Code holds another version it runs the newer and names both and `squeal update`. Then `squeal setup` in each repository, which includes the trust step below.
+
 ## Install
 
-Codex loads plugins only from its own cache and config, so Codex makes the install writes itself:
+The plugin-first way. Codex loads plugins only from its own cache and config, so Codex makes the install writes itself:
 
 ```sh
 codex plugin marketplace add hearsay-tools/marketplace
@@ -17,7 +21,7 @@ A machine that installed Squeal before the hub has `squeal@squeal` from the `squ
 
 Then trust the hooks once, with `squeal init --harness codex --trust` (below) or in the TUI: run `/hooks` and trust the hooks of `squeal@hearsay`. Codex skips untrusted hooks without a word, so until then Squeal says nothing. `squeal status` run in a Codex shell adds a line when it finds no consumer for `CODEX_SESSION_ID` in this worktree, and names the trust step; in the session that created the store the hooks may have run and not registered yet, so the line names no cause it cannot know.
 
-In the project, `squeal init --harness codex` writes `squeal.config.json` with every default policy key if it is absent, and prints the commands above. It writes nothing under `~/.codex`. The agent's `squeal` comes from the npm package: Codex does not put a plugin's `bin/` on the shell's `PATH`.
+In the project, `squeal init --harness codex` writes `squeal.config.json` with every default policy key if it is absent, and prints the commands above. It writes nothing under `~/.codex`. Codex does not put a plugin's `bin/` on the shell's `PATH`, so the agent's `squeal` is the launcher `install.sh` put on the user's `PATH`, or the npm package.
 
 ## Trust from the command line
 
@@ -41,6 +45,7 @@ A launcher that starts threads through `codex app-server`, as Cezar does, can de
 | `dist/*.mjs` | One bundle per hook, built from `src/harness/codex/`. |
 | `dist/cli/squeal.mjs` | The CLI the hooks spawn as the daemon, with `dist/cli/front-desk.mjs` beside it. |
 | `skills/squeal/` | The skill, copied by the build from `plugins/claude-code/skills/squeal/`. |
+| `bin/squeal-launcher` | The terminal's `squeal`, copied by `install.sh`: runs the installed plugin's CLI. The same file as the Claude Code plugin's. |
 | `.codex-plugin/plugin.json` | The manifest. The build writes its `version` from the root `package.json`. |
 
 `dist/` and `skills/` are committed and built by `npm run build:plugin`; a change to `dist/` raises the root version (`npm run check:version`).
