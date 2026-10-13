@@ -1,122 +1,9 @@
 import { createRequire as __squealCreateRequire } from "node:module";
 const require = __squealCreateRequire(import.meta.url);
 
-// src/core/types/common.ts
-var PAYLOAD_SCHEMA_VERSION = 1;
-
-// src/core/types/store.ts
-var WORKTREE_META_ROWS = {
-  turn: { prefix: "turn:", owner: "delivery/turn" },
-  edits: { prefix: "edits:", owner: "delivery/edits" },
-  harnessProcess: { prefix: "harness-process:", owner: "delivery/harness-process" },
-  departed: { prefix: "departed:", owner: "delivery/expiry" },
-  consumerVersion: { prefix: "consumer-version:", owner: "delivery/consumer-version" },
-  registered: { prefix: "revision-registered:", owner: "delivery/registered" },
-  registeredLeft: { prefix: "revision-registered-left:", owner: "delivery/registered" },
-  livenessTold: { prefix: "liveness-told:", owner: "delivery/liveness" },
-  revisionTold: { prefix: "revision-told:", owner: "delivery/liveness" },
-  notes: { prefix: "notes.", owner: "types/scheduler" },
-  refined: { prefix: "refined.", owner: "types/scheduler" },
-  awaitingInstall: { prefix: "awaiting-install.", owner: "types/scheduler" },
-  checkpoint: { prefix: "checkpoint.", owner: "types/scheduler" },
-  daemonBootstrapped: { prefix: "daemon-bootstrapped:", owner: "types/daemon" },
-  daemonToken: { prefix: "daemon-token:", owner: "store/repos/worktrees" },
-  daemonExit: { prefix: "daemon-exit:", owner: "types/daemon" },
-  slowTier: { prefix: "slow-tier:", owner: "slow/state" },
-  slowArtifacts: { prefix: "slow-artifacts:", owner: "slow/state" },
-  failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
-  reruns: { prefix: "reruns:", owner: "scheduler/rerun-memory" },
-  heldFiles: { prefix: "held-files:", owner: "scheduler/held" },
-  rekeyed: { prefix: "rekeyed.", owner: "scheduler/rekeyed-record" },
-  rekeyedMoves: { prefix: "rekeyed-moves.", owner: "scheduler/rekeyed-moves" },
-  optimizerOff: { prefix: "optimizer-off.", owner: "state/optimizer-note" },
-  baselineFindings: { prefix: "state.baseline-findings.", owner: "state/baseline" },
-  stopWait: { prefix: "stop-wait:", owner: "slow/stop-wait" }
-};
-function worktreeMetaKey(row, worktreeId) {
-  return `${WORKTREE_META_ROWS[row].prefix}${worktreeId}`;
-}
-
-// src/core/types/daemon.ts
-var DAEMON_SOCKET_TIMEOUT_MS = 100;
-function daemonIncarnation(daemon) {
-  if (daemon?.token === void 0) return null;
-  return `${daemon.squealVersion}@${daemon.startedAt}#${daemon.token}`;
-}
-function bootstrappedMetaKey(worktreeId) {
-  return worktreeMetaKey("daemonBootstrapped", worktreeId);
-}
-function daemonExitMetaKey(worktreeId) {
-  return worktreeMetaKey("daemonExit", worktreeId);
-}
-
-// src/core/types/delivery.ts
-var MAIN_AGENT = "main";
-
-// src/core/types/policy.ts
-var DEFAULT_POLICY = {
-  interrupt: { onRegression: true },
-  stop: {
-    blockOnKnownFailures: false,
-    requireFullSuite: false,
-    waitMs: 0,
-    requireSlowSuite: false,
-    slowWaitMs: 12e4
-  },
-  baseline: { onStart: "lookup-then-run-missing" },
-  inputs: [],
-  observe: { runtimeInputs: true },
-  env: { allowlist: [] },
-  runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5 },
-  nodeTest: [],
-  slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 6e5, maxParallel: 4 },
-  daemon: { idleExitMinutes: 60 },
-  store: { retentionDays: 7, maxSizeMb: null }
-};
-
-// src/core/types/scheduler.ts
-var MAX_PERSISTED_NOTES = 20;
-function notesMetaKey(worktreeId) {
-  return worktreeMetaKey("notes", worktreeId);
-}
-function refinedMetaKey(worktreeId) {
-  return worktreeMetaKey("refined", worktreeId);
-}
-function awaitingInstallMetaKey(worktreeId) {
-  return worktreeMetaKey("awaitingInstall", worktreeId);
-}
-function parseAwaitingInstall(raw) {
-  if (raw === "true") return [];
-  if (raw === null || !raw.startsWith("[")) return null;
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((p) => typeof p === "string") : null;
-  } catch {
-    return null;
-  }
-}
-function checkpointMetaKey(worktreeId) {
-  return worktreeMetaKey("checkpoint", worktreeId);
-}
-function parseCheckpointProgress(raw) {
-  if (raw === null || !raw.startsWith("{")) return null;
-  try {
-    const value = JSON.parse(raw);
-    const numbers = [value.revision, value.startedAt, value.done, value.total];
-    if (typeof value.id !== "string" || numbers.some((n) => typeof n !== "number")) return null;
-    if (value.kind !== "run-all" && value.kind !== "baseline") return null;
-    const owed = value.owed;
-    const lists = owed === void 0 ? [] : [owed.ids, owed.remaining, owed.strict];
-    if (!lists.every(Array.isArray)) return null;
-    return value;
-  } catch {
-    return null;
-  }
-}
-
-// src/core/types/store-records.ts
-var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
-var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
+// src/core/daemon/policy.ts
+import { readFileSync as readFileSync2 } from "node:fs";
+import { join as join2 } from "node:path";
 
 // src/core/fs/errors.ts
 function isMissing(error) {
@@ -179,6 +66,165 @@ function dotGit(root) {
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
+
+// src/core/types/common.ts
+var PAYLOAD_SCHEMA_VERSION = 1;
+
+// src/core/types/store.ts
+var WORKTREE_META_ROWS = {
+  turn: { prefix: "turn:", owner: "delivery/turn" },
+  edits: { prefix: "edits:", owner: "delivery/edits" },
+  harnessProcess: { prefix: "harness-process:", owner: "delivery/harness-process" },
+  departed: { prefix: "departed:", owner: "delivery/expiry" },
+  consumerVersion: { prefix: "consumer-version:", owner: "delivery/consumer-version" },
+  registered: { prefix: "revision-registered:", owner: "delivery/registered" },
+  registeredLeft: { prefix: "revision-registered-left:", owner: "delivery/registered" },
+  livenessTold: { prefix: "liveness-told:", owner: "delivery/liveness" },
+  revisionTold: { prefix: "revision-told:", owner: "delivery/liveness" },
+  notes: { prefix: "notes.", owner: "types/scheduler" },
+  refined: { prefix: "refined.", owner: "types/scheduler" },
+  awaitingInstall: { prefix: "awaiting-install.", owner: "types/scheduler" },
+  checkpoint: { prefix: "checkpoint.", owner: "types/scheduler" },
+  daemonBootstrapped: { prefix: "daemon-bootstrapped:", owner: "types/daemon" },
+  daemonToken: { prefix: "daemon-token:", owner: "store/repos/worktrees" },
+  daemonExit: { prefix: "daemon-exit:", owner: "types/daemon" },
+  slowTier: { prefix: "slow-tier:", owner: "slow/state" },
+  slowArtifacts: { prefix: "slow-artifacts:", owner: "slow/state" },
+  failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
+  reruns: { prefix: "reruns:", owner: "scheduler/rerun-memory" },
+  heldFiles: { prefix: "held-files:", owner: "scheduler/held" },
+  rekeyed: { prefix: "rekeyed.", owner: "scheduler/rekeyed-record" },
+  rekeyedMoves: { prefix: "rekeyed-moves.", owner: "scheduler/rekeyed-moves" },
+  optimizerOff: { prefix: "optimizer-off.", owner: "state/optimizer-note" },
+  baselineFindings: { prefix: "state.baseline-findings.", owner: "state/baseline" },
+  stopWait: { prefix: "stop-wait:", owner: "slow/stop-wait" },
+  testCommandDenied: { prefix: "test-command-denied:", owner: "delivery/test-command-denied" }
+};
+function worktreeMetaKey(row, worktreeId) {
+  return `${WORKTREE_META_ROWS[row].prefix}${worktreeId}`;
+}
+
+// src/core/types/daemon.ts
+var DAEMON_SOCKET_TIMEOUT_MS = 100;
+function daemonIncarnation(daemon) {
+  if (daemon?.token === void 0) return null;
+  return `${daemon.squealVersion}@${daemon.startedAt}#${daemon.token}`;
+}
+function bootstrappedMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonBootstrapped", worktreeId);
+}
+function daemonExitMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonExit", worktreeId);
+}
+
+// src/core/types/delivery.ts
+var MAIN_AGENT = "main";
+
+// src/core/types/policy.ts
+var DEFAULT_POLICY = {
+  interrupt: { onRegression: true },
+  stop: {
+    blockOnKnownFailures: false,
+    requireFullSuite: false,
+    waitMs: 0,
+    requireSlowSuite: false,
+    slowWaitMs: 12e4
+  },
+  testCommand: { denyWhenCurrent: false },
+  baseline: { onStart: "lookup-then-run-missing" },
+  inputs: [],
+  observe: { runtimeInputs: true },
+  env: { allowlist: [] },
+  runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5 },
+  nodeTest: [],
+  slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 6e5, maxParallel: 4 },
+  daemon: { idleExitMinutes: 60 },
+  store: { retentionDays: 7, maxSizeMb: null }
+};
+
+// src/core/types/scheduler.ts
+var MAX_PERSISTED_NOTES = 20;
+function notesMetaKey(worktreeId) {
+  return worktreeMetaKey("notes", worktreeId);
+}
+function refinedMetaKey(worktreeId) {
+  return worktreeMetaKey("refined", worktreeId);
+}
+function awaitingInstallMetaKey(worktreeId) {
+  return worktreeMetaKey("awaitingInstall", worktreeId);
+}
+function parseAwaitingInstall(raw) {
+  if (raw === "true") return [];
+  if (raw === null || !raw.startsWith("[")) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((p) => typeof p === "string") : null;
+  } catch {
+    return null;
+  }
+}
+function checkpointMetaKey(worktreeId) {
+  return worktreeMetaKey("checkpoint", worktreeId);
+}
+function parseCheckpointProgress(raw) {
+  if (raw === null || !raw.startsWith("{")) return null;
+  try {
+    const value = JSON.parse(raw);
+    const numbers = [value.revision, value.startedAt, value.done, value.total];
+    if (typeof value.id !== "string" || numbers.some((n) => typeof n !== "number")) return null;
+    if (value.kind !== "run-all" && value.kind !== "baseline") return null;
+    const owed = value.owed;
+    const lists = owed === void 0 ? [] : [owed.ids, owed.remaining, owed.strict];
+    if (!lists.every(Array.isArray)) return null;
+    return value;
+  } catch {
+    return null;
+  }
+}
+
+// src/core/types/store-records.ts
+var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
+var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
+
+// src/core/notes.ts
+function readDaemonNotes(store, worktreeId) {
+  return parseList(store.meta.get(notesMetaKey(worktreeId))).flatMap(toNote).slice(-MAX_PERSISTED_NOTES);
+}
+function parseList(raw) {
+  if (typeof raw !== "string") return [];
+  try {
+    const value = JSON.parse(raw);
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+function toNote(item) {
+  if (typeof item !== "object" || item === null) return [];
+  const { at: at2, revision, text } = item;
+  if (typeof at2 !== "number" || typeof text !== "string") return [];
+  if (revision !== null && typeof revision !== "number") return [];
+  const { stopped: rawStopped, exitOf } = item;
+  const stopped = stoppedOf(rawStopped);
+  return [
+    {
+      at: at2,
+      revision,
+      text,
+      ...stopped === void 0 ? {} : { stopped },
+      ...typeof exitOf === "string" ? { exitOf } : {}
+    }
+  ];
+}
+function stoppedOf(value) {
+  if (typeof value !== "object" || value === null) return void 0;
+  const { what, commands } = value;
+  if (typeof what !== "string" || !Array.isArray(commands)) return void 0;
+  return commands.every((c) => typeof c === "string") ? { what, commands } : void 0;
+}
+
+// src/core/daemon/policy-node-test.ts
+import { isAbsolute as isAbsolute2, posix } from "node:path";
 
 // src/core/keys/glob.ts
 function globToRegExp(glob) {
@@ -255,6 +301,197 @@ function splitTopLevel(body) {
   }
   parts.push(body.slice(start));
   return parts;
+}
+
+// src/core/daemon/policy-node-test.ts
+function compiles(globs2) {
+  for (const glob of globs2) {
+    try {
+      globToRegExp(glob);
+    } catch (error) {
+      return { problem: `has a glob Squeal cannot use: ${error.message}` };
+    }
+  }
+  return null;
+}
+var boolean = (v) => typeof v === "boolean" ? null : "true or false";
+var nonEmptyString = (v) => typeof v === "string" && v.length > 0 ? null : "a non-empty string";
+var strings = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
+var globs = (v) => Array.isArray(v) && v.length > 0 && v.every((s) => typeof s === "string") ? compiles(v) : "a non-empty array of strings";
+var variables = (v) => isRecord(v) && Object.values(v).every((s) => typeof s === "string") ? null : "an object from variable name to string";
+var insideRoot = (v) => {
+  if (typeof v !== "string") return "a path inside the worktree, relative to its root";
+  const normal = posix.normalize(v.replaceAll("\\", "/"));
+  return isAbsolute2(v) || normal === ".." || normal.startsWith("../") ? "a path inside the worktree, relative to its root" : null;
+};
+var FIELDS = {
+  name: nonEmptyString,
+  cwd: insideRoot,
+  node: nonEmptyString,
+  argv: strings,
+  env: variables,
+  include: globs,
+  exclude: globs,
+  slow: boolean
+};
+var REQUIRED = /* @__PURE__ */ new Set(["name", "include"]);
+function nodeTestProjects(value, path) {
+  if (!Array.isArray(value)) return "an array of projects";
+  const kept = [];
+  const problems = [];
+  value.forEach((entry2, index) => {
+    const at2 = `${path}[${index}]`;
+    const problem = entryProblem(entry2, at2, kept);
+    if (problem === null) kept.push(withDefaults(entry2));
+    else problems.push(problem);
+  });
+  return { kept, problems };
+}
+function withDefaults(entry2) {
+  return { ...entry2, argv: entry2.argv ?? [], env: entry2.env ?? {} };
+}
+function entryProblem(entry2, at2, kept) {
+  if (!isRecord(entry2))
+    return `"${at2}" must be an object, got ${JSON.stringify(entry2)}; it is skipped`;
+  const named2 = nonEmptyString(entry2.name) === null ? entry2.name : null;
+  const skipped = named2 === null ? "it is skipped" : `project ${JSON.stringify(named2)} is skipped`;
+  for (const key of Object.keys(entry2)) {
+    if (!Object.hasOwn(FIELDS, key)) return `unknown key "${at2}.${key}"; ${skipped}`;
+  }
+  for (const [key, field] of Object.entries(FIELDS)) {
+    const given = entry2[key];
+    if (given === void 0 && !REQUIRED.has(key)) continue;
+    const expected = field(given);
+    if (expected === null) continue;
+    const why = typeof expected === "object" ? expected.problem : `must be ${expected}, got ${given === void 0 ? "undefined" : JSON.stringify(given)}`;
+    return `"${at2}.${key}" ${why}; ${skipped}`;
+  }
+  if (kept.some((project) => project.name === named2)) {
+    return `"${at2}.name" repeats ${JSON.stringify(named2)} of an earlier project; it is skipped`;
+  }
+  return null;
+}
+
+// src/core/daemon/policy-slow.ts
+function slowInclude(value) {
+  if (!Array.isArray(value) || !value.every((glob) => typeof glob === "string")) {
+    return "an array of strings";
+  }
+  const kept = [];
+  const problems = [];
+  value.forEach((glob, index) => {
+    const bad = compiles([glob]);
+    if (bad === null) kept.push(glob);
+    else problems.push(`"slow.include[${index}]" ${bad.problem}; it is left out`);
+  });
+  return { kept, problems };
+}
+
+// src/core/daemon/policy.ts
+var POLICY_FILE = "squeal.config.json";
+var boolean2 = (v) => typeof v === "boolean" ? null : "true or false";
+var strings2 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
+var inputs = (v) => {
+  const isList = strings2(v) === null;
+  if (!isList && !(isRecord(v) && Object.values(v).every((globs3) => strings2(globs3) === null))) {
+    return "an array of strings, or an object from test-file glob to an array of strings";
+  }
+  const globs2 = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
+  return compiles(globs2);
+};
+var atLeastZero = (v) => isNumber(v) && v >= 0 ? null : "a number >= 0";
+var aboveZero = (v) => isNumber(v) && v > 0 ? null : "a number > 0";
+var positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
+var orNull = (leaf) => (v) => {
+  const expected = v === null ? null : leaf(v);
+  return expected === null || typeof expected === "object" ? expected : `${expected}, or null`;
+};
+var oneOf = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
+var SHAPE = {
+  interrupt: { onRegression: boolean2 },
+  stop: {
+    blockOnKnownFailures: boolean2,
+    requireFullSuite: boolean2,
+    waitMs: atLeastZero,
+    requireSlowSuite: boolean2,
+    slowWaitMs: atLeastZero
+  },
+  testCommand: { denyWhenCurrent: boolean2 },
+  baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
+  inputs,
+  observe: { runtimeInputs: boolean2 },
+  env: { allowlist: strings2 },
+  runner: {
+    tierSize: positiveInteger,
+    backlogTierSize: positiveInteger,
+    timeoutMs: orNull(positiveInteger)
+  },
+  nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
+  slow: {
+    include: slowInclude,
+    maxWorkers: positiveInteger,
+    maxLoadPerCpu: aboveZero,
+    maxDeferMs: atLeastZero,
+    maxParallel: positiveInteger
+  },
+  daemon: { idleExitMinutes: aboveZero },
+  store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
+};
+function loadPolicy(root) {
+  let text;
+  try {
+    text = readFileSync2(join2(root, POLICY_FILE), "utf8");
+  } catch (error) {
+    if (isMissing(error)) return { policy: DEFAULT_POLICY, problems: [] };
+    return defaultsBecause(`could not be read: ${String(error)}`);
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (error) {
+    return defaultsBecause(`not valid JSON (${error.message})`);
+  }
+  if (!isRecord(parsed)) {
+    return defaultsBecause(
+      `must be a JSON object, got ${Array.isArray(parsed) ? "an array" : JSON.stringify(parsed)}`
+    );
+  }
+  const problems = [];
+  const merged = merge(SHAPE, DEFAULT_POLICY, parsed, "", problems);
+  return { policy: merged, problems };
+}
+function readPolicy(root) {
+  return loadPolicy(root).policy;
+}
+function defaultsBecause(problem) {
+  return { policy: DEFAULT_POLICY, problems: [problem] };
+}
+function merge(shape, defaults, given, prefix, problems) {
+  const result = { ...defaults };
+  for (const [key, value] of Object.entries(given)) {
+    const path = `${prefix}${key}`;
+    const rule = Object.hasOwn(shape, key) ? shape[key] : void 0;
+    if (rule === void 0) {
+      problems.push(`unknown key "${path}"`);
+    } else if (typeof rule === "function") {
+      const expected = rule(value);
+      if (expected === null) result[key] = value;
+      else if (typeof expected === "object" && "kept" in expected) {
+        result[key] = expected.kept;
+        problems.push(...expected.problems);
+      } else if (typeof expected === "object") problems.push(`"${path}" ${expected.problem}`);
+      else problems.push(`"${path}" must be ${expected}, got ${JSON.stringify(value)}`);
+    } else if (!isRecord(value)) {
+      problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);
+    } else {
+      const nested = defaults[key] ?? {};
+      result[key] = merge(rule, nested, value, `${path}.`, problems);
+    }
+  }
+  return result;
+}
+function isNumber(value) {
+  return typeof value === "number" && Number.isFinite(value);
 }
 
 // src/core/keys/closure.ts
@@ -395,238 +632,6 @@ function optimizerOffMetaKey(worktreeId) {
 function readOptimizerOff(store, worktreeId) {
   const text = store.meta.get(optimizerOffMetaKey(worktreeId));
   return text === null || text === "" ? void 0 : text;
-}
-
-// src/core/daemon/policy.ts
-import { readFileSync as readFileSync2 } from "node:fs";
-import { join as join2 } from "node:path";
-
-// src/core/notes.ts
-function readDaemonNotes(store, worktreeId) {
-  return parseList(store.meta.get(notesMetaKey(worktreeId))).flatMap(toNote).slice(-MAX_PERSISTED_NOTES);
-}
-function parseList(raw) {
-  if (typeof raw !== "string") return [];
-  try {
-    const value = JSON.parse(raw);
-    return Array.isArray(value) ? value : [];
-  } catch {
-    return [];
-  }
-}
-function toNote(item) {
-  if (typeof item !== "object" || item === null) return [];
-  const { at: at2, revision, text } = item;
-  if (typeof at2 !== "number" || typeof text !== "string") return [];
-  if (revision !== null && typeof revision !== "number") return [];
-  const { stopped: rawStopped, exitOf } = item;
-  const stopped = stoppedOf(rawStopped);
-  return [
-    {
-      at: at2,
-      revision,
-      text,
-      ...stopped === void 0 ? {} : { stopped },
-      ...typeof exitOf === "string" ? { exitOf } : {}
-    }
-  ];
-}
-function stoppedOf(value) {
-  if (typeof value !== "object" || value === null) return void 0;
-  const { what, commands } = value;
-  if (typeof what !== "string" || !Array.isArray(commands)) return void 0;
-  return commands.every((c) => typeof c === "string") ? { what, commands } : void 0;
-}
-
-// src/core/daemon/policy-node-test.ts
-import { isAbsolute as isAbsolute2, posix } from "node:path";
-function compiles(globs2) {
-  for (const glob of globs2) {
-    try {
-      globToRegExp(glob);
-    } catch (error) {
-      return { problem: `has a glob Squeal cannot use: ${error.message}` };
-    }
-  }
-  return null;
-}
-var boolean = (v) => typeof v === "boolean" ? null : "true or false";
-var nonEmptyString = (v) => typeof v === "string" && v.length > 0 ? null : "a non-empty string";
-var strings = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
-var globs = (v) => Array.isArray(v) && v.length > 0 && v.every((s) => typeof s === "string") ? compiles(v) : "a non-empty array of strings";
-var variables = (v) => isRecord(v) && Object.values(v).every((s) => typeof s === "string") ? null : "an object from variable name to string";
-var insideRoot = (v) => {
-  if (typeof v !== "string") return "a path inside the worktree, relative to its root";
-  const normal = posix.normalize(v.replaceAll("\\", "/"));
-  return isAbsolute2(v) || normal === ".." || normal.startsWith("../") ? "a path inside the worktree, relative to its root" : null;
-};
-var FIELDS = {
-  name: nonEmptyString,
-  cwd: insideRoot,
-  node: nonEmptyString,
-  argv: strings,
-  env: variables,
-  include: globs,
-  exclude: globs,
-  slow: boolean
-};
-var REQUIRED = /* @__PURE__ */ new Set(["name", "include"]);
-function nodeTestProjects(value, path) {
-  if (!Array.isArray(value)) return "an array of projects";
-  const kept = [];
-  const problems = [];
-  value.forEach((entry2, index) => {
-    const at2 = `${path}[${index}]`;
-    const problem = entryProblem(entry2, at2, kept);
-    if (problem === null) kept.push(withDefaults(entry2));
-    else problems.push(problem);
-  });
-  return { kept, problems };
-}
-function withDefaults(entry2) {
-  return { ...entry2, argv: entry2.argv ?? [], env: entry2.env ?? {} };
-}
-function entryProblem(entry2, at2, kept) {
-  if (!isRecord(entry2))
-    return `"${at2}" must be an object, got ${JSON.stringify(entry2)}; it is skipped`;
-  const named2 = nonEmptyString(entry2.name) === null ? entry2.name : null;
-  const skipped = named2 === null ? "it is skipped" : `project ${JSON.stringify(named2)} is skipped`;
-  for (const key of Object.keys(entry2)) {
-    if (!Object.hasOwn(FIELDS, key)) return `unknown key "${at2}.${key}"; ${skipped}`;
-  }
-  for (const [key, field] of Object.entries(FIELDS)) {
-    const given = entry2[key];
-    if (given === void 0 && !REQUIRED.has(key)) continue;
-    const expected = field(given);
-    if (expected === null) continue;
-    const why = typeof expected === "object" ? expected.problem : `must be ${expected}, got ${given === void 0 ? "undefined" : JSON.stringify(given)}`;
-    return `"${at2}.${key}" ${why}; ${skipped}`;
-  }
-  if (kept.some((project) => project.name === named2)) {
-    return `"${at2}.name" repeats ${JSON.stringify(named2)} of an earlier project; it is skipped`;
-  }
-  return null;
-}
-
-// src/core/daemon/policy-slow.ts
-function slowInclude(value) {
-  if (!Array.isArray(value) || !value.every((glob) => typeof glob === "string")) {
-    return "an array of strings";
-  }
-  const kept = [];
-  const problems = [];
-  value.forEach((glob, index) => {
-    const bad = compiles([glob]);
-    if (bad === null) kept.push(glob);
-    else problems.push(`"slow.include[${index}]" ${bad.problem}; it is left out`);
-  });
-  return { kept, problems };
-}
-
-// src/core/daemon/policy.ts
-var POLICY_FILE = "squeal.config.json";
-var boolean2 = (v) => typeof v === "boolean" ? null : "true or false";
-var strings2 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
-var inputs = (v) => {
-  const isList = strings2(v) === null;
-  if (!isList && !(isRecord(v) && Object.values(v).every((globs3) => strings2(globs3) === null))) {
-    return "an array of strings, or an object from test-file glob to an array of strings";
-  }
-  const globs2 = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
-  return compiles(globs2);
-};
-var atLeastZero = (v) => isNumber(v) && v >= 0 ? null : "a number >= 0";
-var aboveZero = (v) => isNumber(v) && v > 0 ? null : "a number > 0";
-var positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
-var orNull = (leaf) => (v) => {
-  const expected = v === null ? null : leaf(v);
-  return expected === null || typeof expected === "object" ? expected : `${expected}, or null`;
-};
-var oneOf = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
-var SHAPE = {
-  interrupt: { onRegression: boolean2 },
-  stop: {
-    blockOnKnownFailures: boolean2,
-    requireFullSuite: boolean2,
-    waitMs: atLeastZero,
-    requireSlowSuite: boolean2,
-    slowWaitMs: atLeastZero
-  },
-  baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
-  inputs,
-  observe: { runtimeInputs: boolean2 },
-  env: { allowlist: strings2 },
-  runner: {
-    tierSize: positiveInteger,
-    backlogTierSize: positiveInteger,
-    timeoutMs: orNull(positiveInteger)
-  },
-  nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
-  slow: {
-    include: slowInclude,
-    maxWorkers: positiveInteger,
-    maxLoadPerCpu: aboveZero,
-    maxDeferMs: atLeastZero,
-    maxParallel: positiveInteger
-  },
-  daemon: { idleExitMinutes: aboveZero },
-  store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
-};
-function loadPolicy(root) {
-  let text;
-  try {
-    text = readFileSync2(join2(root, POLICY_FILE), "utf8");
-  } catch (error) {
-    if (isMissing(error)) return { policy: DEFAULT_POLICY, problems: [] };
-    return defaultsBecause(`could not be read: ${String(error)}`);
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(text);
-  } catch (error) {
-    return defaultsBecause(`not valid JSON (${error.message})`);
-  }
-  if (!isRecord(parsed)) {
-    return defaultsBecause(
-      `must be a JSON object, got ${Array.isArray(parsed) ? "an array" : JSON.stringify(parsed)}`
-    );
-  }
-  const problems = [];
-  const merged = merge(SHAPE, DEFAULT_POLICY, parsed, "", problems);
-  return { policy: merged, problems };
-}
-function readPolicy(root) {
-  return loadPolicy(root).policy;
-}
-function defaultsBecause(problem) {
-  return { policy: DEFAULT_POLICY, problems: [problem] };
-}
-function merge(shape, defaults, given, prefix, problems) {
-  const result = { ...defaults };
-  for (const [key, value] of Object.entries(given)) {
-    const path = `${prefix}${key}`;
-    const rule = Object.hasOwn(shape, key) ? shape[key] : void 0;
-    if (rule === void 0) {
-      problems.push(`unknown key "${path}"`);
-    } else if (typeof rule === "function") {
-      const expected = rule(value);
-      if (expected === null) result[key] = value;
-      else if (typeof expected === "object" && "kept" in expected) {
-        result[key] = expected.kept;
-        problems.push(...expected.problems);
-      } else if (typeof expected === "object") problems.push(`"${path}" ${expected.problem}`);
-      else problems.push(`"${path}" must be ${expected}, got ${JSON.stringify(value)}`);
-    } else if (!isRecord(value)) {
-      problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);
-    } else {
-      const nested = defaults[key] ?? {};
-      result[key] = merge(rule, nested, value, `${path}.`, problems);
-    }
-  }
-  return result;
-}
-function isNumber(value) {
-  return typeof value === "number" && Number.isFinite(value);
 }
 
 // src/core/delivery/slots.ts
@@ -4410,7 +4415,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.134";
+  if (true) return "0.1.135";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4693,6 +4698,14 @@ function notValidated(context, deps) {
   return live.state === "down" ? notValidatedLine(live) : null;
 }
 
+// src/harness/shared/test-command.ts
+function bashCommand(input) {
+  const toolInput = input.tool_input;
+  if (input.tool_name !== "Bash" || typeof toolInput !== "object" || toolInput === null) return {};
+  const { command } = toolInput;
+  return typeof command === "string" ? { command } : {};
+}
+
 // src/core/slow/slot.ts
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 
@@ -4760,6 +4773,7 @@ function parseCodexInput(text) {
     ...typeof v.agent_type === "string" ? { agent_type: v.agent_type } : {},
     ...typeof v.turn_id === "string" ? { turn_id: v.turn_id } : {},
     ...typeof v.tool_name === "string" ? { tool_name: v.tool_name } : {},
+    ...bashCommand(v),
     ...typeof v.stop_hook_active === "boolean" ? { stop_hook_active: v.stop_hook_active } : {},
     ...typeof v.source === "string" ? { source: v.source } : {},
     ...typeof v.transcript_path === "string" && v.transcript_path !== "" ? { transcript_path: v.transcript_path } : {}

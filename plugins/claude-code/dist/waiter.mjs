@@ -34,7 +34,8 @@ var WORKTREE_META_ROWS = {
   rekeyedMoves: { prefix: "rekeyed-moves.", owner: "scheduler/rekeyed-moves" },
   optimizerOff: { prefix: "optimizer-off.", owner: "state/optimizer-note" },
   baselineFindings: { prefix: "state.baseline-findings.", owner: "state/baseline" },
-  stopWait: { prefix: "stop-wait:", owner: "slow/stop-wait" }
+  stopWait: { prefix: "stop-wait:", owner: "slow/stop-wait" },
+  testCommandDenied: { prefix: "test-command-denied:", owner: "delivery/test-command-denied" }
 };
 function worktreeMetaKey(row, worktreeId) {
   return `${WORKTREE_META_ROWS[row].prefix}${worktreeId}`;
@@ -65,6 +66,7 @@ var DEFAULT_POLICY = {
     requireSlowSuite: false,
     slowWaitMs: 12e4
   },
+  testCommand: { denyWhenCurrent: false },
   baseline: { onStart: "lookup-then-run-missing" },
   inputs: [],
   observe: { runtimeInputs: true },
@@ -554,6 +556,7 @@ var SHAPE = {
     requireSlowSuite: boolean2,
     slowWaitMs: atLeastZero
   },
+  testCommand: { denyWhenCurrent: boolean2 },
   baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
   inputs,
   observe: { runtimeInputs: boolean2 },
@@ -4193,7 +4196,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.134";
+  if (true) return "0.1.135";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4363,6 +4366,14 @@ var waiter = async (input, location2, deps) => {
 import { readFileSync as readFileSync6 } from "node:fs";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
+// src/harness/shared/test-command.ts
+function bashCommand(input) {
+  const toolInput = input.tool_input;
+  if (input.tool_name !== "Bash" || typeof toolInput !== "object" || toolInput === null) return {};
+  const { command } = toolInput;
+  return typeof command === "string" ? { command } : {};
+}
+
 // src/harness/claude-code/input.ts
 function parseHookInput(text) {
   let value;
@@ -4383,6 +4394,7 @@ function parseHookInput(text) {
     ...typeof v.agent_id === "string" && v.agent_id !== "" ? { agent_id: v.agent_id } : {},
     ...typeof v.agent_type === "string" ? { agent_type: v.agent_type } : {},
     ...typeof v.tool_name === "string" ? { tool_name: v.tool_name } : {},
+    ...bashCommand(v),
     ...toolNames(v.tool_calls),
     ...typeof v.stop_hook_active === "boolean" ? { stop_hook_active: v.stop_hook_active } : {},
     ...typeof v.source === "string" ? { source: v.source } : {}
