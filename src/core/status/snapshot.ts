@@ -172,7 +172,7 @@ function inheritedSources(
 ): StatusSnapshot["inherited"] {
   const groups = new Map<
     string,
-    { worktreeId: WorktreeId; commit: string | null; count: number }
+    { worktreeId: WorktreeId; commit: string | null; count: number; fileLevelCount: number }
   >();
   let count = 0;
   for (const s of states) {
@@ -183,8 +183,10 @@ function inheritedSources(
       worktreeId: s.origin.worktreeId,
       commit: s.origin.commit,
       count: 0,
+      fileLevelCount: 0,
     };
     group.count++;
+    if (s.check.kind === "file") group.fileLevelCount++;
     groups.set(id, group);
   }
   const sources: InheritedSource[] = [...groups.values()]
@@ -195,11 +197,12 @@ function inheritedSources(
         a.worktreeId.localeCompare(b.worktreeId) ||
         String(a.commit).localeCompare(String(b.commit)),
     )
-    .map(({ worktreeId, worktreeRoot, commit, count }) => ({
+    .map(({ worktreeId, worktreeRoot, commit, count, fileLevelCount }) => ({
       worktreeId,
       worktreeRoot,
       commit,
       count,
+      fileLevelCount,
     }));
   return { count, sources };
 }

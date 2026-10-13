@@ -53,7 +53,8 @@ describe("delivery header and status", () => {
       lastCompletedRevision: 0,
     });
     const { revision, counts, fileLevelCounts, testFilesWithoutChecks, fullSuite, daemon } = status;
-    const { testFilesListed, inheritedCount, refinedRevision, runnerPartPending } = status;
+    const { testFilesListed, inheritedCount, inheritedFileLevelCount } = status;
+    const { refinedRevision, runnerPartPending } = status;
     // Only delivered headers name the revision's changed files (task 001-85).
     const { changedPaths, ...header } = registration.header;
     expect(changedPaths).toEqual([]);
@@ -65,6 +66,7 @@ describe("delivery header and status", () => {
       fullSuite,
       testFilesListed,
       inheritedCount,
+      inheritedFileLevelCount,
       refinedRevision,
       runnerPartPending,
       daemon,

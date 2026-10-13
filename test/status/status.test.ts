@@ -175,6 +175,7 @@ describe("readStatus", () => {
       fullSuite: { atCurrentRevision: false, lastCompletedRevision: 1 },
       testFilesListed: true,
       inheritedCount: 2,
+      inheritedFileLevelCount: 0,
       refinedRevision: null,
       runnerPartPending: false,
       knownFailures: [
@@ -199,7 +200,15 @@ describe("readStatus", () => {
       ],
       inherited: {
         count: 2,
-        sources: [{ worktreeId: repo.mainId, worktreeRoot: repo.main, commit: COMMIT, count: 2 }],
+        sources: [
+          {
+            worktreeId: repo.mainId,
+            worktreeRoot: repo.main,
+            commit: COMMIT,
+            count: 2,
+            fileLevelCount: 0,
+          },
+        ],
       },
       breakdown: {
         currentByOutcome: { pass: 4, fail: 2, skip: 1, unknown: 0 },
@@ -245,8 +254,8 @@ describe("readStatus", () => {
 
       Worktree: <b> (HEAD abc1234, dirty at revision 2)
       Daemon: running, last heartbeat 2 s ago
-      Inherited from other worktrees: 2 current results
-        2 from <main> at abc1234
+      Inherited from other worktrees: 2 current results (2 tests)
+        2 (2 tests) from <main> at abc1234
       Test files without checks: 1 pending, 1 unknown
       Closure method: static imports plus declared inputs
       Store schema: 1

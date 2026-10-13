@@ -26,15 +26,32 @@ export function checkPartsText({ tests, testFiles }: CheckCounts, fileLevel = "l
 }
 
 /**
+ * ` (10 tests, 4 test files loaded)`: the parts of `count` checks,
+ * `fileLevel` of them file-level, for after a count. Empty when the count is
+ * zero, and when `fileLevel` is not known.
+ */
+export function partsSuffix(
+  count: number,
+  fileLevel: number | undefined,
+  fileLevelWord?: string,
+): string {
+  if (count === 0 || fileLevel === undefined) return "";
+  return ` (${checkPartsText({ tests: count - fileLevel, testFiles: fileLevel }, fileLevelWord)})`;
+}
+
+/**
  * `14 passed (10 tests, 4 test files loaded)`: `count` checks labelled
  * `label`, `fileLevel` of them file-level. The parts are left out when the
  * count is zero, and when `fileLevel` is not known.
  */
 export function countedText(count: number, label: string, fileLevel: number | undefined): string {
-  const head = `${count} ${label}`;
-  if (count === 0 || fileLevel === undefined) return head;
-  const parts = { tests: count - fileLevel, testFiles: fileLevel };
-  return `${head} (${checkPartsText(parts)})`;
+  return `${count} ${label}${partsSuffix(count, fileLevel)}`;
+}
+
+/** `3 checks (2 tests, 1 test file loaded)`: `checks` counted with `noun`, then their parts. */
+export function checksText(checks: readonly CheckId[], noun = "check", fileLevel?: string): string {
+  const { testFiles } = countChecks(checks);
+  return `${plural(checks.length, noun)}${partsSuffix(checks.length, testFiles, fileLevel)}`;
 }
 
 /** `3 (2 tests, 1 test file that did not load)`, or `0`: the count of a `Known failures:` line. */

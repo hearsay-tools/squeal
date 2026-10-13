@@ -98,8 +98,8 @@ describe("recoveries above five collapse (task 001-91)", () => {
     const failing = [check("tests/x.test.ts", "one"), check("tests/y.test.ts", "two")];
     const text = formatDelta(delta(checks(31, "r").map(recovery), failing));
     expect(body(text)).toEqual([
-      "PASS  31 checks recovered (FAIL -> PASS)",
-      "      still failing: 2",
+      "PASS  31 checks (31 tests) recovered (FAIL -> PASS)",
+      "      still failing: 2 (2 tests)",
       "      tests/x.test.ts > one",
       "      tests/y.test.ts > two",
     ]);
@@ -108,49 +108,49 @@ describe("recoveries above five collapse (task 001-91)", () => {
   it("states 31 recoveries with 20 still failing as the summary plus the recovered list by file", () => {
     const text = formatDelta(delta(checks(31, "r").map(recovery), checks(20, "f")));
     expect(body(text)).toEqual([
-      "PASS  31 checks recovered (FAIL -> PASS)",
-      "      16 in tests/r-a.test.ts",
-      "      10 in tests/r-b.test.ts",
-      "      5 in tests/r-c.test.ts",
+      "PASS  31 checks (31 tests) recovered (FAIL -> PASS)",
+      "      16 tests in tests/r-a.test.ts",
+      "      10 tests in tests/r-b.test.ts",
+      "      5 tests in tests/r-c.test.ts",
     ]);
   });
 
   it("compares the lists by the lines they take, a long list grouped by file", () => {
     const spread = Array.from({ length: 31 }, (_, i) => check(`tests/m${i % 14}.test.ts`, `${i}`));
     expect(body(formatDelta(delta(checks(31, "r").map(recovery), checks(7, "f"))))).toEqual([
-      "PASS  31 checks recovered (FAIL -> PASS)",
-      "      16 in tests/r-a.test.ts",
-      "      10 in tests/r-b.test.ts",
-      "      5 in tests/r-c.test.ts",
+      "PASS  31 checks (31 tests) recovered (FAIL -> PASS)",
+      "      16 tests in tests/r-a.test.ts",
+      "      10 tests in tests/r-b.test.ts",
+      "      5 tests in tests/r-c.test.ts",
     ]);
     expect(body(formatDelta(delta(spread.map(recovery), checks(7, "f"))))).toEqual([
-      "PASS  31 checks recovered (FAIL -> PASS)",
-      "      still failing: 7",
-      "      4 in tests/f-a.test.ts",
-      "      2 in tests/f-b.test.ts",
-      "      1 in tests/f-c.test.ts",
+      "PASS  31 checks (31 tests) recovered (FAIL -> PASS)",
+      "      still failing: 7 (7 tests)",
+      "      4 tests in tests/f-a.test.ts",
+      "      2 tests in tests/f-b.test.ts",
+      "      1 test in tests/f-c.test.ts",
     ]);
   });
 
   it("says nothing still fails when nothing does", () => {
     const text = formatDelta(delta(checks(8, "r").map(recovery), []));
     expect(body(text)).toEqual([
-      "PASS  8 checks recovered (FAIL -> PASS)",
+      "PASS  8 checks (8 tests) recovered (FAIL -> PASS)",
       "      still failing: 0",
     ]);
   });
 
   it("shows the recovered list when what still fails is not known", () => {
     const text = formatDelta(delta(checks(6, "r").map(recovery)));
-    expect(body(text)[0]).toBe("PASS  6 checks recovered (FAIL -> PASS)");
+    expect(body(text)[0]).toBe("PASS  6 checks (6 tests) recovered (FAIL -> PASS)");
     expect(text).not.toContain("still failing");
-    expect(text).toContain("      3 in tests/r-a.test.ts");
+    expect(text).toContain("      3 tests in tests/r-a.test.ts");
   });
 
   it("lists the names when grouping by file saves no line (review wave 10b, N1)", () => {
     const spread = Array.from({ length: 6 }, (_, i) => check(`tests/r${i}.test.ts`, "x"));
     expect(body(formatDelta(delta(spread.map(recovery))))).toEqual([
-      "PASS  6 checks recovered (FAIL -> PASS)",
+      "PASS  6 checks (6 tests) recovered (FAIL -> PASS)",
       ...spread.map((c) => `      ${c.testPath} > x`),
     ]);
   });
@@ -159,22 +159,24 @@ describe("recoveries above five collapse (task 001-91)", () => {
     const many = Array.from({ length: 14 }, (_, i) => check(`tests/m${i}.test.ts`, "x"));
     const lines = body(formatDelta(delta(many.map(recovery))));
     expect(lines).toHaveLength(12);
-    expect(lines.at(-1)).toBe("      and 4 more test files (4 checks)");
+    expect(lines.at(-1)).toBe("      and 4 more test files (4 tests)");
   });
 
   it("lists new failures in full above the summary", () => {
     const failures = checks(3, "n").map(regression);
     const text = formatDelta(delta([...failures, ...checks(31, "r").map(recovery)], []));
     expect(text.match(/^FAIL {2}tests\//gm)).toHaveLength(3);
-    expect(text.indexOf("FAIL  tests/")).toBeLessThan(text.indexOf("31 checks recovered"));
+    expect(text.indexOf("FAIL  tests/")).toBeLessThan(
+      text.indexOf("31 checks (31 tests) recovered"),
+    );
   });
 
   it("collapses retired checks the same way", () => {
     const failing = [check("tests/x.test.ts", "one")];
     const text = formatDelta(delta(checks(9, "gone").map(retired), failing));
     expect(body(text)).toEqual([
-      "RESOLVED  9 checks no longer reported by the runner (FAIL -> RESOLVED)",
-      "      still failing: 1",
+      "RESOLVED  9 checks (9 tests) no longer reported by the runner (FAIL -> RESOLVED)",
+      "      still failing: 1 (1 test)",
       "      tests/x.test.ts > one",
     ]);
     expect(formatDelta(delta(checks(5, "gone").map(retired)))).toContain(
@@ -188,7 +190,9 @@ describe("recoveries above five collapse (task 001-91)", () => {
     );
     const text = formatDelta(delta([...failures, ...checks(31, "r").map(recovery)], []));
     expect(text.length).toBeLessThanOrEqual(MESSAGE_CAP_CHARS);
-    expect(text).toMatch(/Not shown: \d+ more changed checks \(\d+ FAIL, 31 PASS\)/);
+    expect(text).toMatch(
+      /Not shown: \d+ more changed checks \(\d+ tests\): \d+ FAIL \(\d+ tests\), 31 PASS \(31 tests\)/,
+    );
     expect(text.split("\n").at(-1)).toMatch(/^Full output: squeal why/);
   });
 });

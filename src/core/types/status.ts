@@ -219,6 +219,11 @@ export interface StatusHeader {
    */
   readonly inheritedCount?: number;
   /**
+   * The file-level checks among `inheritedCount` (spec 005 D1). Set by
+   * `readHeader`; absent, the inherited count is printed whole.
+   */
+  readonly inheritedFileLevelCount?: number;
+  /**
    * The newest revision whose runner part the daemon applied
    * (`refinedMetaKey`); `null` when no daemon recorded one. Set by
    * `readHeader`.
@@ -324,6 +329,8 @@ export interface InheritedSource {
   readonly worktreeRoot: AbsolutePath | null;
   readonly commit: CommitSha;
   readonly count: number;
+  /** The file-level checks among `count` (spec 005 D1); absent, `count` is printed whole. */
+  readonly fileLevelCount?: number;
 }
 
 /**

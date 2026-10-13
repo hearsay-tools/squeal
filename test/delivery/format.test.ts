@@ -82,7 +82,7 @@ describe("formatDelta", () => {
   it("renders the header, then failures, then recoveries", () => {
     expect(formatDelta(delta([regression, recovery]))).toBe(
       [
-        "SQUEAL · 2 checks changed at revision 184",
+        "SQUEAL · 2 checks changed (2 tests) at revision 184",
         "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Full-suite checkpoint: none completed since revision 170 (the counts are for revision 184; `squeal run --all` requests one).",
         "",
         "FAIL  tests/auth/login.test.ts > login > expired token",
@@ -236,19 +236,19 @@ describe("formatDelta", () => {
     );
     expect(text).toContain(
       [
-        "UNKNOWN  3 checks in 2 test files",
-        "      PASS -> UNKNOWN (2), FAIL -> UNKNOWN (1)",
+        "UNKNOWN  3 checks (3 tests) in 2 test files",
+        "      PASS -> UNKNOWN (2 tests), FAIL -> UNKNOWN (1 test)",
         "      runner crashed: worker exited",
         "      tests/a.test.ts, tests/b.test.ts",
       ].join("\n"),
     );
-    expect(text.split("\n")[0]).toBe("SQUEAL · 3 checks changed at revision 184");
+    expect(text.split("\n")[0]).toBe("SQUEAL · 3 checks changed (3 tests) at revision 184");
   });
 
   it("labels baseline findings", () => {
     const finding = entry({ kind: "first-seen-fail", to: "fail", baseline: true });
     expect(formatDelta(delta([finding], "baseline")).split("\n")[0]).toBe(
-      "SQUEAL · Squeal's baseline run found 1 failing check at revision 184",
+      "SQUEAL · Squeal's baseline run found 1 failing check (1 test) at revision 184",
     );
     const mixed = formatDelta(delta([regression, finding]));
     expect(mixed).toContain(
@@ -358,7 +358,7 @@ describe("formatDelta", () => {
     expect(blank).toBe("");
     expect(why).toBe('Full output: squeal why "tests/f0.test.ts > case 0"');
     expect(last).toBe(
-      `Not shown: ${2_001 - shown} more changed checks (${2_000 - shown} FAIL, 1 PASS). \`squeal status\` lists every known failure.`,
+      `Not shown: ${2_001 - shown} more changed checks (${2_001 - shown} tests): ${2_000 - shown} FAIL (${2_000 - shown} tests), 1 PASS (1 test). \`squeal status\` lists every known failure.`,
     );
   });
 
@@ -468,7 +468,7 @@ describe("formatRegistration", () => {
     expect(text.length).toBeLessThanOrEqual(MESSAGE_CAP_CHARS);
     const shown = text.split("\n").filter((l) => l.startsWith("FAIL  ")).length;
     expect(text.split("\n").at(-3)).toBe(
-      `Not shown: ${2_000 - shown} more known failures. \`squeal status\` lists every known failure.`,
+      `Not shown: ${2_000 - shown} more known failures (${2_000 - shown} tests). \`squeal status\` lists every known failure.`,
     );
     expect(text.split("\n").at(-1)).toBe('Full output: squeal why "tests/f0.test.ts > case 0"');
   });

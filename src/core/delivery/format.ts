@@ -5,13 +5,21 @@ import {
   SUMMARY_MAX_CHARS,
   slowTierText,
 } from "../state/index.js";
-import { countedText, failureCountText } from "../status/checks.js";
+import {
+  checkPartsText,
+  checksText,
+  countChecks,
+  countedText,
+  failureCountText,
+  partsSuffix,
+} from "../status/checks.js";
 import { DEATH_CAUSE, deathText } from "../status/died.js";
 import { cap, plural } from "../text.js";
 import type {
   CheckId,
   DaemonLiveness,
   Delta,
+  DeltaEntry,
   EditsSettled,
   KnownFailure,
   KnownOutcome,
@@ -45,8 +53,8 @@ import {
 /** Spec 001 D6: "The message is capped at 10,000 characters". */
 export const MESSAGE_CAP_CHARS = 10_000;
 
-/** Room kept for the overflow line while blocks are added. */
-const OVERFLOW_RESERVE = 200;
+/** Room kept for the overflow line, its counts split (spec 005 D1), while blocks are added. */
+const OVERFLOW_RESERVE = 400;
 const INDENT = "      ";
 
 /**
@@ -60,6 +68,9 @@ const statusPointer = (command: string) => `\`${command} status\` lists every kn
 
 /** What a block counts as when it is left out: an outcome, or a retired failure. */
 type Shown = KnownOutcome | "resolved";
+
+/** How a file-level check is worded in a count of `shown` checks (spec 005 D1). */
+const fileLevelWord = (shown: Shown) => (shown === "fail" ? "that did not load" : "loaded");
 
 const upper = (outcome: Shown) => outcome.toUpperCase();
 const capitalize = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
@@ -119,10 +130,11 @@ function changedText(paths: readonly string[] | undefined): string {
 
 function headerLine(header: StatusHeader, command: string): string {
   const { revision, counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files } = header;
+  const inheritedCount = header.inheritedCount ?? 0;
   const inherited =
-    (header.inheritedCount ?? 0) === 0
+    inheritedCount === 0
       ? ""
-      : ` Inherited: ${header.inheritedCount} of ${counts.current} current.`;
+      : ` Inherited: ${inheritedCount} of ${counts.current} current${partsSuffix(inheritedCount, header.inheritedFileLevelCount)}.`;
   const withoutChecks =
     files.pending + files.unknown === 0
       ? ""
@@ -193,14 +205,20 @@ export function notValidatedLine(daemon: DaemonLiveness & { readonly state: "dow
   return `Not validated: ${since}; any change this call made has no result.`;
 }
 
-interface Block {
-  readonly text: string;
-  readonly outcomes: readonly Shown[];
+/** A check a block counts as when it is left out. */
+interface Counted {
+  readonly check: CheckId;
+  readonly shown: Shown;
 }
 
-function block(head: string, lines: readonly (string | null)[], outcomes: Shown[]): Block {
+interface Block {
+  readonly text: string;
+  readonly counted: readonly Counted[];
+}
+
+function block(head: string, lines: readonly (string | null)[], counted: Counted[]): Block {
   const body = lines.filter((l): l is string => l !== null).map((l) => `${INDENT}${l}`);
-  return { text: [head, ...body].join("\n"), outcomes };
+  return { text: [head, ...body].join("\n"), counted };
 }
 
 /**
@@ -222,7 +240,7 @@ function entryBlock(entry: TransitionEntry, revision: number): Block {
         : [recoveryProvenance(entry, revision)]),
       entry.flaky === undefined ? null : capitalize(flakyText(entry.flaky)),
     ],
-    [entry.to],
+    [{ check: entry.check, shown: entry.to }],
   );
 }
 
@@ -231,40 +249,34 @@ function retiredBlock(entry: RetiredEntry): Block {
   return block(
     `RESOLVED  ${checkName(entry.check)}`,
     ["FAIL -> no longer reported by the runner"],
-    ["resolved"],
+    [{ check: entry.check, shown: "resolved" }],
   );
 }
 
-/** A collapsed list (`collapse`) as one block that counts as `count` of `outcome`. */
-function collapsedBlock({ head, lines }: Collapsed, outcome: Shown, count: number): Block {
+/** A collapsed list (`collapse`) as one block that counts as `checks`, each `shown`. */
+function collapsedBlock({ head, lines }: Collapsed, shown: Shown, checks: CheckId[]): Block {
   return block(
     head,
     lines,
-    Array.from({ length: count }, () => outcome),
+    checks.map((check) => ({ check, shown })),
   );
 }
 
 /** Recoveries, one block each up to `LISTED_MAX`, else one summary (task 001-91). */
 function recoveryBlocks(entries: readonly TransitionEntry[], delta: Delta): Block[] {
-  const head = `PASS  ${plural(entries.length, "check")} recovered (FAIL -> PASS)`;
-  const collapsed = collapse(
-    head,
-    entries.map((e) => e.check),
-    delta.stillFailing,
-  );
-  if (collapsed !== null) return [collapsedBlock(collapsed, "pass", entries.length)];
+  const checks = entries.map((e) => e.check);
+  const head = `PASS  ${checksText(checks)} recovered (FAIL -> PASS)`;
+  const collapsed = collapse(head, checks, delta.stillFailing);
+  if (collapsed !== null) return [collapsedBlock(collapsed, "pass", checks)];
   return entries.map((e) => entryBlock(e, delta.header.revision));
 }
 
 /** Retired failures, collapsed like recoveries (task 001-91). */
 function retiredBlocks(entries: readonly RetiredEntry[], delta: Delta): Block[] {
-  const head = `RESOLVED  ${plural(entries.length, "check")} no longer reported by the runner (FAIL -> RESOLVED)`;
-  const collapsed = collapse(
-    head,
-    entries.map((e) => e.check),
-    delta.stillFailing,
-  );
-  if (collapsed !== null) return [collapsedBlock(collapsed, "resolved", entries.length)];
+  const checks = entries.map((e) => e.check);
+  const head = `RESOLVED  ${checksText(checks)} no longer reported by the runner (FAIL -> RESOLVED)`;
+  const collapsed = collapse(head, checks, delta.stillFailing);
+  if (collapsed !== null) return [collapsedBlock(collapsed, "resolved", checks)];
   return entries.map(retiredBlock);
 }
 
@@ -277,16 +289,17 @@ function unknownBlocks(entries: readonly TransitionEntry[]): Block[] {
   }
   return [...byReason].map(([reason, group]) => {
     const files = [...new Set(group.map((e) => e.check.testPath))];
-    const from = (outcome: KnownOutcome) => group.filter((e) => e.from === outcome).length;
+    const from = (outcome: KnownOutcome) =>
+      group.filter((e) => e.from === outcome).map((e) => e.check);
     const counts = (["pass", "fail"] as const)
-      .filter((o) => from(o) > 0)
-      .map((o) => `${upper(o)} -> UNKNOWN (${from(o)})`);
+      .filter((o) => from(o).length > 0)
+      .map((o) => `${upper(o)} -> UNKNOWN (${checkPartsText(countChecks(from(o)))})`);
     const listed = files.slice(0, 5).join(", ");
     const more = files.length > 5 ? ` and ${plural(files.length - 5, "more file")}` : "";
     return block(
-      `UNKNOWN  ${plural(group.length, "check")} in ${plural(files.length, "test file")}`,
+      `UNKNOWN  ${checksText(group.map((e) => e.check))} in ${plural(files.length, "test file")}`,
       [counts.join(", "), cap(reason, SUMMARY_MAX_CHARS), `${listed}${more}`],
-      group.map(() => "unknown"),
+      group.map((e) => ({ check: e.check, shown: "unknown" })),
     );
   });
 }
@@ -336,8 +349,8 @@ export function formatDelta(
         ? `SQUEAL · revision ${header.revision}`
         : livenessTitle(delta.liveness, header.revision)
       : delta.label === "baseline"
-        ? `SQUEAL · Squeal's baseline run found ${plural(entries.length, "failing check")} at revision ${header.revision}`
-        : `SQUEAL · ${plural(entries.length, "check")} changed at revision ${header.revision}`;
+        ? `SQUEAL · Squeal's baseline run found ${checksText(checksOf(entries), "failing check", "that did not load")} at revision ${header.revision}`
+        : `SQUEAL · ${plural(entries.length, "check")} changed${partsSuffix(entries.length, countChecks(checksOf(entries)).testFiles)} at revision ${header.revision}`;
   const blocks = [
     ...changed.filter((e) => e.to === "fail").map((e) => entryBlock(e, header.revision)),
     ...unknownBlocks(changed.filter((e) => e.to === "unknown")),
@@ -349,12 +362,16 @@ export function formatDelta(
   ];
   const failed = changed.find((e) => e.to === "fail");
   const overflow = (left: Block[]) => {
-    const outcomes = left.flatMap((b) => b.outcomes);
+    const counted = left.flatMap((b) => b.counted);
     const by = (["fail", "pass", "unknown", "resolved"] as const)
-      .map((o) => [o, outcomes.filter((x) => x === o).length] as const)
-      .filter(([, n]) => n > 0)
-      .map(([o, n]) => `${n} ${upper(o)}`);
-    return `Not shown: ${outcomes.length} more changed checks (${by.join(", ")}). ${statusPointer(command)}`;
+      .map((o) => [o, counted.filter((c) => c.shown === o).map((c) => c.check)] as const)
+      .filter(([, checks]) => checks.length > 0)
+      .map(([o, checks]) => {
+        const { testFiles } = countChecks(checks);
+        return `${checks.length} ${upper(o)}${partsSuffix(checks.length, testFiles, fileLevelWord(o))}`;
+      });
+    const all = counted.map((c) => c.check);
+    return `Not shown: ${checksText(all, "more changed check")}: ${by.join(", ")}. ${statusPointer(command)}`;
   };
   const tail = failed === undefined ? null : whyLine(failed.check, command);
   return assemble(
@@ -407,6 +424,8 @@ function editLines({ sawEdit, editsSettled }: Delta): string[] {
   ];
 }
 
+const checksOf = (entries: readonly DeltaEntry[]) => entries.map((e) => e.check);
+
 /** The title of a delta that carries only a change of daemon liveness. */
 function livenessTitle(liveness: DaemonLiveness | undefined, revision: number): string {
   return liveness?.state === "alive"
@@ -440,14 +459,20 @@ export function formatRegistration(
         f.location === null ? null : at(f.location),
         f.validity === "current" ? null : `${f.validity}, observed at revision ${f.observedAt}`,
       ],
-      ["fail"],
+      [{ check: f.check, shown: "fail" }],
     ),
   );
   const first = knownFailures[0];
+  const notShown = (left: Block[]) =>
+    checksText(
+      left.flatMap((b) => b.counted.map((c) => c.check)),
+      "more known failure",
+      "that did not load",
+    );
   return assemble(
     head,
     blocks,
-    (left) => `Not shown: ${left.length} more known failures. ${statusPointer(command)}`,
+    (left) => `Not shown: ${notShown(left)}. ${statusPointer(command)}`,
     first === undefined ? null : whyLine(first.check, command),
     max,
   );
