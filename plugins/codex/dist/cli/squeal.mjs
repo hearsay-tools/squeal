@@ -16366,6 +16366,13 @@ var init_sources = __esm({
        */
       #held = [];
       /**
+       * Task 001-343: each read a later load of its module replaced with other
+       * bytes, or found gone. A transform in flight when the runner part dropped
+       * its module is never cached, so the next load reads the file again; the
+       * run's check compares the replaced read too.
+       */
+      #replaced = [];
+      /**
        * Review wave-13 B2: a plugin passed to `createVitest` reaches the root
        * server and the inline projects sharing it, not a project with its own
        * config file, which gets a Vite server of its own. So the stamp goes into
@@ -16431,6 +16438,9 @@ var init_sources = __esm({
           return;
         }
         const read4 = await readStamp(file);
+        const replaced = reads.stamps.get(id2);
+        if (replaced && replaced.hash !== read4?.hash)
+          this.#replaced.push({ stamps: reads.stamps, key: id2, stamp: replaced });
         if (read4 === null) reads.stamps.delete(id2);
         else reads.stamps.set(id2, { file, ...read4, hashedAt: loadedAt, loadedAt });
       }
@@ -16446,7 +16456,8 @@ var init_sources = __esm({
        * With `loadedSince`, a run's check after it ends: it also names what an
        * earlier call found moved since that run began loading (task 001-150),
        * and starts the log again, and the stamps `hold` kept read since then
-       * (task 001-264), and lets them go.
+       * (task 001-264), and lets them go, and every other read since then whose
+       * module is no longer cached, and those a later load replaced (task 001-343).
        */
       async stale(vitest, loadedSince) {
         this.attach(vitest);
@@ -16483,6 +16494,21 @@ var init_sources = __esm({
             checks.push(held2 ? { stamps, key: key2, file, held: held2 } : { stamps, key: key2, file, after });
           }
           this.#held = [];
+          for (const environment of environments(vitest)) {
+            const reads = this.#containers.get(environment.pluginContainer);
+            if (!reads) continue;
+            for (const [key2, stamp2] of reads.stamps) {
+              if (stamp2.loadedAt < since || checked.has(stamp2)) continue;
+              checked.add(stamp2);
+              checks.push({ stamps: reads.stamps, key: key2, file: stamp2.file, held: stamp2 });
+            }
+          }
+          for (const { stamps, key: key2, stamp: stamp2 } of this.#replaced) {
+            if (stamp2.loadedAt < since || checked.has(stamp2)) continue;
+            checked.add(stamp2);
+            checks.push({ stamps, key: key2, file: stamp2.file, held: stamp2 });
+          }
+          this.#replaced = [];
         }
         const stats = /* @__PURE__ */ new Map();
         const hashes = /* @__PURE__ */ new Map();
@@ -34879,7 +34905,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.154";
+  if (true) return "0.1.155";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
