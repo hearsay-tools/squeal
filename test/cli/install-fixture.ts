@@ -29,7 +29,8 @@ export const INSTALL_SH = join(REPO_ROOT, "install.sh");
  * Stub `claude` and `codex`: each call goes to `STUB_LOG`, and each command
  * changes the scratch home the way the harness's own does, from the hub's
  * current plugin directories. `marketplace add` of a marketplace already added
- * fails; `STUB_PRIVATE` makes it fail as a hub without access does.
+ * fails; `STUB_PRIVATE` makes it fail as a hub without access does, and
+ * `STUB_FAIL` fails every call that starts with it (`codex plugin`).
  */
 const STUB = `#!${process.execPath}
 const fs = require("node:fs");
@@ -42,6 +43,7 @@ const fail = (m) => { process.stderr.write(tool + ": " + m + "\\n"); process.exi
 const readJson = (f, d) => { try { return JSON.parse(fs.readFileSync(f, "utf8")); } catch { return d; } };
 const writeJson = (f, v) => { fs.mkdirSync(p.dirname(f), { recursive: true }); fs.writeFileSync(f, JSON.stringify(v, null, 2) + "\\n"); };
 const cmd = args.join(" ");
+if (env.STUB_FAIL && (tool + " " + cmd).startsWith(env.STUB_FAIL)) fail("stub failure");
 const home = tool === "claude" ? p.join(env.CLAUDE_CONFIG_DIR, "plugins") : env.CODEX_HOME;
 const known = p.join(home, tool === "claude" ? "known_marketplaces.json" : "stub-marketplaces.json");
 const hub = () => readJson(known, {}).hearsay?.source ?? fail("marketplace hearsay is not added");

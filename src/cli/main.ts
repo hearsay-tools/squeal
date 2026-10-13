@@ -11,6 +11,7 @@ import { startCommand } from "./start.js";
 import { statusCommand } from "./status-command.js";
 import { statusWaitCommand } from "./status-wait.js";
 import { stopCommand } from "./stop.js";
+import { updateCommand } from "./update.js";
 import { takeWait } from "./wait-arg.js";
 import { warmupCommand } from "./warmup.js";
 
@@ -59,6 +60,8 @@ Usage:
   squeal remove [--config]      Take Squeal out of this repository: stop every worktree's
                                 daemon, delete the store and temp directories; --config
                                 also deletes squeal.config.json
+  squeal update                 Update the plugin in every harness that has it, to one
+                                version, and the launcher install.sh put on the PATH
   squeal daemon <root>          Run the daemon in the foreground (hooks start it)
   squeal --version              Print the version
   squeal --help                 Print this help
@@ -107,6 +110,7 @@ export function main(argv: readonly string[], io: CliIo): number | Promise<numbe
   if (first === "run") return runCommand(rest, io);
   if (first === "stop") return stopCommand(rest, io);
   if (first === "remove") return removeCommand(rest, io);
+  if (first === "update") return updateCommand(rest, io);
   io.stderr(`squeal: unknown command "${first}"\n\n${HELP}`);
   return 2;
 }
