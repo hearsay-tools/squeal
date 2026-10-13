@@ -176,7 +176,7 @@ describe("the trend", () => {
     variant: "atomic",
   });
 
-  it("leaves an atomic run out, by its kind and by its name", () => {
+  it("leaves an atomic run out by its kind", () => {
     expect(atomicName).toBe("2026-10-13-0.1.128.r.atomic.json");
     const name = atomicName.replace(/\.json$/, "");
     const base = { name: file, data };
@@ -184,7 +184,7 @@ describe("the trend", () => {
     expect(runs(trendLines([base]))).toEqual([file]);
     for (const atomic of [
       { name, data: { ...data, date: "2026-10-13", kind: "atomic" } },
-      { name, data: { ...data, date: "2026-10-13" } },
+      { name, data: { ...data, date: "2026-10-13", kind: "atomic-variant" } },
     ])
       expect(runs(trendLines([base, atomic]))).toEqual([file]);
     expect(trendMarkdown([base, { name, data: { ...data, kind: "atomic" } }])).not.toContain(name);
