@@ -34846,7 +34846,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.141";
+  if (true) return "0.1.142";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -41226,10 +41226,9 @@ ${suggestions.map((s) => `  ${s}
 }
 async function warmUp(root, io) {
   const { testFiles } = await readRepoFacts(root);
-  const toRun2 = testFiles.paths.length - (testFiles.current ?? 0);
   io.stdout(
-    testFiles.source === "store" ? `squeal warmup: the first run covers ${toRun2} of ${plural(testFiles.paths.length, "test file")}, those without a current result
-` : `squeal warmup: the first run covers about ${plural(toRun2, "test file")}, counted from the repository (no daemon has listed them yet)
+    testFiles.source === "store" ? `squeal warmup: runs all ${plural(testFiles.paths.length, "test file")}, current ones too, to record the ignored paths each reads
+` : `squeal warmup: runs about ${plural(testFiles.paths.length, "test file")}, counted from the repository (no daemon has listed them yet), to record the ignored paths each reads
 `
   );
   let started2 = "";
@@ -41268,10 +41267,8 @@ function ignoredReadText(read4) {
 function ignoredReadNotes({ reads, unobserved }) {
   const clean = reads.filter((r) => r.paths.length === 0).map((r) => r.path);
   return [
-    ...clean.length === 0 ? [] : [`${clean.join(", ")} read no ignored path`],
-    ...unobserved.length === 0 ? [] : [
-      `no ignored read recorded for ${unobserved.join(", ")}: not observed by this warm-up (it ran in the daemon's first checkpoint), or it read none; the record does not tell them apart`
-    ]
+    ...clean.length === 0 ? [] : [`${clean.join(", ")} read no ignored path outside its declared inputs`],
+    ...unobserved.length === 0 ? [] : [`no ignored read recorded for ${unobserved.join(", ")}: not observed by this warm-up`]
   ];
 }
 function slowFileReads(record, files2, isSlow) {
@@ -41414,7 +41411,7 @@ function formatPlan(plan) {
   lines.push(
     "",
     `Codex trust: ${trustText(plan.codexTrust)}`,
-    `Warm-up: ${plan.warmup.withoutCurrentResult} of ${plan.warmup.testFiles} test files without a current result${plan.warmup.source === "store" ? "" : " (estimated: no daemon has listed them)"}`,
+    `Warm-up: runs all ${plan.warmup.testFiles} test files, ${plan.warmup.withoutCurrentResult} without a current result${plan.warmup.source === "store" ? "" : " (estimated: no daemon has listed them)"}`,
     ""
   );
   if (plan.outdated.length === 0) lines.push("Nothing is outdated.");
@@ -41511,9 +41508,9 @@ async function answerPlan(plan, given, pick) {
     `Codex has not trusted ${plan.codexTrust.untrusted} of the plugin's ${plan.codexTrust.hooks} hooks, and skips them silently. Have Codex trust them (once per user)?`,
     true
   ) : false);
-  const { testFiles, withoutCurrentResult } = plan.warmup;
+  const { testFiles } = plan.warmup;
   const warmup = given.warmup ?? await yes(
-    `Warm up now: run the ${withoutCurrentResult} of ${testFiles} test files without a current result on this terminal's daemon?`,
+    `Warm up now: run all ${testFiles} test files on this terminal's daemon, current ones too, to record the ignored paths each reads?`,
     true
   );
   return { harnesses, blocks, gates, slow, inputs: inputs2, trust, warmup };
