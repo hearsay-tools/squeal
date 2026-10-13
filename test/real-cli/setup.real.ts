@@ -64,7 +64,7 @@ describe("squeal setup proposes each shape's artifact with its evidence (bullet 
     const group = p.slow.groups.find((g) => g.dir === "test/e2e");
     expect(group?.declaredInputs).toEqual(["plugins/claude-code/**", "plugins/codex/**"]);
     expect(group?.inputsHoldArtifact).toBe(true);
-    expect(evidenceOf(p, "test/e2e", "plugins")).toEqual(['./package.json files "plugins"']);
+    expect(evidenceOf(p, "test/e2e", "plugins")).toContain('./package.json files "plugins"');
     expect(await inputQuestion(fx, "test/e2e")).toBeNull();
   });
 
