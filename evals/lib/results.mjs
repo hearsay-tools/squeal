@@ -125,7 +125,17 @@ export function armFixtures(grades, arms) {
   );
 }
 
-/** A run's results file name: `<date>-<version>.<run>[.<variant>].json`, one per run. */
-export function resultsName({ date, version, run, variant = null }) {
-  return `${date}-${version}.${run}${variant ? `.${variant}` : ""}.json`;
+/**
+ * A run's results file name, one per run: `<date>-<version>.<run>[.<variant>].json`, or for an
+ * atomic run `<date>-<version>.<run>.atomic.json` and `<date>-<version>.<run>.<variant>.atomic-variant.json`.
+ */
+export function resultsName({ date, version, run, variant = null, atomic = false }) {
+  const suffix = atomic
+    ? variant
+      ? `.${variant}.atomic-variant`
+      : ".atomic"
+    : variant
+      ? `.${variant}`
+      : "";
+  return `${date}-${version}.${run}${suffix}.json`;
 }

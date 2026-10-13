@@ -21,7 +21,10 @@
 // --atomic runs the atomic scenarios instead (evals/atomic/atomic.json, 006-33): their models,
 // repetitions, effort and cells at once (--parallel overrides), no judge (the pilot grades
 // mechanically and keeps the transcripts), into <date>-<version>.<run>.atomic.json, which the
-// trend leaves out, and regenerates evals/results/ATOMIC.md (006-36). It takes no --variant.
+// trend leaves out, and regenerates evals/results/ATOMIC.md (006-36). With --variant it runs the
+// shipped texts and the variant side by side (006-48) into
+// <date>-<version>.<run>.<name>.atomic-variant.json, which ATOMIC.md and TREND.md both leave out;
+// evals/bin/atomic-compare.mjs compares its arms.
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { availableParallelism, loadavg } from "node:os";
@@ -86,10 +89,6 @@ const parallel = Math.min(
 );
 const maxLoad = Number(opt("--max-load", String(availableParallelism())));
 const variantArm = opt("--variant", null);
-if (atomic && variantArm) {
-  console.error("--atomic takes no --variant: the atomic scenarios run the shipped texts");
-  process.exit(2);
-}
 const date = opt("--date", new Date().toISOString().slice(0, 10));
 const resume = opt("--resume", null);
 const run = resume ?? runId();
@@ -264,7 +263,7 @@ const conditions = Object.fromEntries(
 const harnessVersions = Object.fromEntries(grades.map((g) => [g.harness, g.harnessVersion]));
 const results = {
   schema: 1,
-  kind: atomic ? "atomic" : variantArm ? "variant" : "baseline",
+  kind: atomic ? (variantArm ? "atomic-variant" : "atomic") : variantArm ? "variant" : "baseline",
   date,
   run,
   squealVersion: version,
@@ -316,7 +315,7 @@ assertNoSecrets(
 const file = join(
   EVALS,
   "results",
-  resultsName({ date, version, run, variant: atomic ? "atomic" : variantArm }),
+  resultsName({ date, version, run, variant: variantArm, atomic }),
 );
 writeFileSync(file, text, { flag: "wx" }); // never over another run's results
 console.log(
