@@ -55,6 +55,9 @@ describe("the setup skill", () => {
     for (const flag of ["--harness", "--block", "--slow"]) {
       expect(body).toContain(`\`${flag} none\` when none`);
     }
+    // Row 005-40, `research/e2e-setup.md` defect 4: a bare directory and a literal "none" input.
+    expect(body).toContain("`--input <glob>=none` when none");
+    expect(body).toContain("the glob ending in `/**`");
   });
 
   it("finds the CLI in each harness", () => {
