@@ -62,7 +62,8 @@ export const DAEMON_START_BUSY_TIMEOUT_MS = 120_000;
  * Daemon start up to the open store: realpath of the root; the common dir
  * from git (D1); the worktree id; the exclusive lock (D10), losers exit,
  * after a wait for it: a successor's (`awaitLockMs`, task 001-130), or
- * `vacantLockWaitMs` while no daemon is recorded serving (task 001-340);
+ * `vacantLockWaitMs` while no daemon is recorded serving and the last one
+ * recorded is no newer than this one (tasks 001-340, 001-345);
  * the store with `integrity_check` (D12) and the start's busy timeout
  * (`DAEMON_START_BUSY_TIMEOUT_MS`), exiting with a note on a newer
  * schema (D8); then the temp directory, emptied (D10, lessons defect 13).
@@ -99,7 +100,10 @@ export async function openDaemon(
     const path = lockFileFor(commonDir, worktreeId);
     lock = acquireDaemonLock(path);
     if (lock === null && waitMs > 0) {
-      const giveUp = awaitLockMs === undefined ? servedElsewhere(root, now) : takenOver(root);
+      const giveUp =
+        awaitLockMs === undefined
+          ? servedElsewhere(root, commonDir, worktreeId, now)
+          : takenOver(root);
       lock = await awaitDaemonLock(path, { timeoutMs: waitMs, giveUp });
     }
   } catch (error) {
@@ -180,10 +184,38 @@ function takenOver(root: AbsolutePath): () => boolean {
  * which leaves no note), or once the root is gone. While none is recorded the
  * holder is a daemon past its record and its socket, stopping (the
  * shutdown clears both before the lock goes) or one still starting, so the
- * lock comes free or a record appears.
+ * lock comes free or a record appears. Review 001-344, B2: nor does it wait
+ * for a daemon newer than itself, the identity the stopping one's cleared
+ * record keeps: that is a step-down's old daemon, whose successor takes the
+ * lock, and this one, a late older hook's, never starts in its place.
  */
-function servedElsewhere(root: AbsolutePath, now: () => EpochMs): () => boolean {
-  return () => !existsSync(root) || liveDaemonRecorded(root, now());
+function servedElsewhere(
+  root: AbsolutePath,
+  commonDir: AbsolutePath,
+  worktreeId: WorktreeId,
+  now: () => EpochMs,
+): () => boolean {
+  const own = squealVersion();
+  return () => {
+    if (!existsSync(root) || liveDaemonRecorded(root, now())) return true;
+    const last = lastDaemonVersion(commonDir, worktreeId);
+    return last !== null && isNewerVersion(last, own);
+  };
+}
+
+/** The version of the daemon the worktree's row last recorded, cleared or not; `null` with none. */
+function lastDaemonVersion(commonDir: AbsolutePath, worktreeId: WorktreeId): string | null {
+  try {
+    const store = openStore(commonDir, { create: false, busyTimeoutMs: 100 });
+    if (isStoreOpenFailure(store)) return null;
+    try {
+      return store.worktrees.lastDaemon(worktreeId)?.squealVersion ?? null;
+    } finally {
+      store.close();
+    }
+  } catch {
+    return null;
+  }
 }
 
 /**
