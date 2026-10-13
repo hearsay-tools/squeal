@@ -147,7 +147,7 @@ describe("the squeal skill", () => {
   it("names every failure Squeal does not re-run, as the scheduler decides it", () => {
     const step = body.slice(body.indexOf("2. **"), body.indexOf("3. **"));
     expect(step).toContain(
-      "not one from a forced run (`squeal run --all --force`, `squeal warmup`, a re-run), one already re-run at the same inputs, a slow file's, nor any when more than eight test files fail anew in one tier",
+      "not one from a forced run (`squeal run --all --force`, `squeal warmup`, a re-run), one already re-run at the same inputs, a slow file's, nor any when more than eight eligible test files fail anew in one tier",
     );
     expect(step).not.toContain("more than eight fail anew at once");
   });
