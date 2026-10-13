@@ -34605,7 +34605,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.133";
+  if (true) return "0.1.134";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -38347,6 +38347,7 @@ import { readFileSync as readFileSync23, writeFileSync as writeFileSync8 } from 
 import { isAbsolute as isAbsolute10, join as join62, normalize as normalize3 } from "node:path";
 
 // src/cli/setup/block.ts
+init_fs();
 import {
   existsSync as existsSync19,
   lstatSync as lstatSync5,
@@ -38490,10 +38491,35 @@ function writeBlockFile(root, path, block2) {
   writeFileSync6(real2, after);
   return { path, result: "written" };
 }
-function removeBlocks(root) {
+var ROOT_FILES = ["AGENTS.md", ...CLAUDE_FILES];
+var BLOCK_FILE_NAMES = ["AGENTS.md", "CLAUDE.md", "CLAUDE.local.md"];
+async function unfindableBlock(root, path) {
+  const names = BLOCK_FILE_NAMES.join(", ").replace(/, (?=[^,]*$)/, " or ");
+  const reason2 = `squeal remove could not find a block in "${path}"`;
+  if (!BLOCK_FILE_NAMES.includes(basename16(path))) return `--block takes ${names}; ${reason2}`;
+  if (ROOT_FILES.includes(path)) return null;
+  const ignored = await runGit(root, ["check-ignore", "--", path], { okCodes: [0, 1] }).catch(
+    () => ""
+  );
+  return ignored === "" ? null : `git ignores it, so ${reason2}`;
+}
+async function blockFiles(root) {
+  const out = await runGit(root, [
+    "ls-files",
+    "-z",
+    "--cached",
+    "--others",
+    "--exclude-standard",
+    "--",
+    ...BLOCK_FILE_NAMES.map((name) => `:(glob)**/${name}`)
+  ]).catch(() => "");
+  const listed = [...new Set(splitNul(out))].filter((path) => !ROOT_FILES.includes(path)).sort();
+  return [...ROOT_FILES, ...listed];
+}
+function removeBlocks(root, paths = ROOT_FILES) {
   const edits = [];
   const seen = /* @__PURE__ */ new Set();
-  for (const path of ["AGENTS.md", ...CLAUDE_FILES]) {
+  for (const path of paths) {
     if (!existsSync19(join57(root, path))) continue;
     const real2 = resolved(root, path);
     if (seen.has(real2)) continue;
@@ -38523,6 +38549,8 @@ var BEGIN2 = /^<!-- squeal:begin v\d+/;
 var END2 = /^<!-- squeal:end -->/;
 var FENCE = /^\s*(```|~~~)/;
 var REWORDED = /squeal run --all/;
+var SHELL_OPERATOR = /&&|\|\||[;|&<>]|\$\(/;
+var ENV_PREFIX = /(?:^|\s)(?:[A-Za-z_]\w*=|(?:cross-)?env\s)/;
 function commandPattern(nodeTest) {
   const commands = [
     "npx vitest(?: run)?",
@@ -38559,8 +38587,17 @@ function scanGates(root, tracked, options) {
     for (const { line, text: lineText, command, fenced } of commandLines(text2, pattern2)) {
       if (!instruction) mentions.push({ file, line, text: lineText });
       else {
-        const proposed = fenced ? null : reword(lineText, pattern2);
-        gates.push({ id: `${file}:${line}`, file, line, text: lineText, command, proposed });
+        const reason2 = fenced ? "inside a code block" : compound(lineText, pattern2);
+        const proposed = reason2 === null ? reword(lineText, pattern2) : null;
+        gates.push({
+          id: `${file}:${line}`,
+          file,
+          line,
+          text: lineText,
+          command,
+          proposed,
+          reason: reason2
+        });
       }
     }
   }
@@ -38592,6 +38629,21 @@ function commandOf(line, pattern2) {
   }
   return pattern2.exec(line)[0];
 }
+function compound(line, pattern2) {
+  const spans = [...line.matchAll(/`([^`]+)`/g)].map((span) => span[1]);
+  const testSpans = spans.filter((span) => pattern2.test(span));
+  const commands = testSpans.length > 0 ? testSpans : [line.trim()];
+  const every = new RegExp(pattern2.source, "g");
+  const runs = commands.reduce((sum, command) => sum + (command.match(every)?.length ?? 0), 0);
+  if (runs > 1) return "runs the test command more than once";
+  for (const command of commands) {
+    const at2 = pattern2.exec(command).index;
+    if (SHELL_OPERATOR.test(command) || ENV_PREFIX.test(command.slice(0, at2))) {
+      return `runs more than the test command: \`${command}\``;
+    }
+  }
+  return null;
+}
 function reword(line, pattern2 = commandPattern(true)) {
   const command = commandOf(line, pattern2);
   const checkpoint = `squeal run --all --wait ${GATE_WAIT_MS}`;
@@ -38610,7 +38662,7 @@ function rewordGates(root, tracked, ids, options) {
   for (const id2 of ids) {
     const gate = gates.find((g2) => g2.id === id2);
     if (gate === void 0) return { refused: `no gate line ${id2}` };
-    if (gate.proposed === null) return { refused: `${id2} is inside a code block` };
+    if (gate.proposed === null) return { refused: `${id2}: ${gate.reason}` };
     chosen.push(gate);
   }
   const byFile = /* @__PURE__ */ new Map();
@@ -39204,6 +39256,7 @@ async function configElsewhere(root) {
 }
 function outdated(config, instructions, slow) {
   const lines = [];
+  for (const problem of config.problems) lines.push(`${POLICY_FILE}: ${problem}`);
   if (!config.exists) {
     lines.push(
       config.elsewhere === null ? `${POLICY_FILE} is missing: worktrees run on defaults` : `${POLICY_FILE} is only in ${config.elsewhere}: this worktree runs on defaults`
@@ -39311,7 +39364,7 @@ async function checkChoices(root, choices, env) {
     const gate = plan.gates.find((g2) => g2.id === id2);
     if (gate === void 0) return `no gate line ${id2}; squeal setup --plan lists them`;
     if (choice === "reword" && gate.proposed === null) {
-      return `${id2} is inside a code block; reword it by hand`;
+      return `${id2}: ${gate.reason}; reword it by hand`;
     }
   }
   if (choices.block !== null && choices.block !== "none") {
@@ -39319,6 +39372,8 @@ async function checkChoices(root, choices, env) {
     if (isAbsolute10(path) || normalize3(path).startsWith("..")) {
       return `--block takes a file inside the worktree, not "${path}"`;
     }
+    const unfindable = await unfindableBlock(root, path);
+    if (unfindable !== null) return unfindable;
     const text2 = readOrEmpty(resolved(root, path));
     const written = withBlock(text2, blockText());
     if (typeof written !== "string") {
@@ -39721,7 +39776,7 @@ ${stopped.map((r) => `  ${r}
       tracked ? `${configPath} (tracked by git: the deletion is a change to commit)` : configPath
     );
   }
-  for (const edit of removeBlocks(root)) {
+  for (const edit of removeBlocks(root, await blockFiles(root))) {
     const path = join64(root, edit.path);
     if (edit.result === "unterminated") {
       failed2.push(
@@ -40082,7 +40137,9 @@ function namedLine(wait, command = "squeal") {
       );
       break;
     case "timeout":
-      line = none(`the deadline passed ${after}: ${noVerdictText(verdict) ?? "no result yet"}`);
+      line = none(
+        `the deadline passed ${after}: ${unsyncedText(wait.sync, verdict.revision) ?? noVerdictText(verdict) ?? "no result yet"}`
+      );
       break;
     case "settled": {
       const why2 = verdictCode(verdict) === 3 ? noVerdictText(verdict) : null;
@@ -40106,6 +40163,15 @@ function namedFailures(wait) {
       f.validity
     ].join(", ")}`
   ]);
+}
+function unsyncedText(sync, revision) {
+  if (sync.state === "pending") {
+    return `the daemon has not stored its pass over the edits made before the wait; results are as of revision ${revision}`;
+  }
+  if (sync.state === "synced" && sync.revision > revision) {
+    return `the daemon's pass is at revision ${sync.revision} and results are as of revision ${revision}`;
+  }
+  return null;
 }
 function noDaemonText(daemon) {
   if (daemon.state === "alive" || daemon.since === null) return "no daemon is running";
@@ -40197,10 +40263,11 @@ async function waitForNamed(cwd, paths, options) {
         const settled = final || elapsed() >= options.settleMs;
         const daemon = worktreeLiveness(store.worktrees.get(id2), options.now());
         const current2 = sync.current();
-        const ready = final || (current2.state === "synced" ? verdict.revision >= current2.revision && !verdict.unlisted : current2.state === "unsupported" && settled);
-        const outcome2 = settled && daemon.state !== "alive" ? "no-daemon" : !ready ? null : selection.unmatched.length > 0 ? "unmatched" : verdict.byClass.pending === 0 && !verdict.unlisted ? "settled" : final ? "timeout" : null;
+        const ready = current2.state === "synced" ? verdict.revision >= current2.revision && !verdict.unlisted : current2.state === "unsupported" && settled;
+        const outcome2 = settled && daemon.state !== "alive" ? "no-daemon" : ready && selection.unmatched.length > 0 ? "unmatched" : ready && verdict.byClass.pending === 0 && !verdict.unlisted ? "settled" : final ? "timeout" : null;
         if (outcome2 === null) return null;
-        return { outcome: outcome2, selection, verdict, result: buildSnapshot(store, root, options.now()) };
+        const result = buildSnapshot(store, root, options.now());
+        return { outcome: outcome2, selection, verdict, result, sync: current2 };
       });
       if (read4 !== null && "available" in read4) {
         if (first || final) return { outcome: "unavailable", waitedMs: elapsed(), result: read4 };
@@ -40589,14 +40656,15 @@ ${USAGE2}`);
 `);
     return 1;
   }
-  const started2 = `Checkpoint ${checkpoint.id} started at revision ${checkpoint.revision}: ${filesText2(root, checkpoint)}${joinedText(root, checkpoint)}
+  const joined = joinedCheckpoint(root, checkpoint);
+  const started2 = `Checkpoint ${checkpoint.id} started at revision ${checkpoint.revision}: ${filesText2(root, checkpoint)}${joinedText(joined)}
 `;
   if (deadline === null) {
     io.stdout(started2);
     return 0;
   }
   const outcome2 = await ended(root, socketPath, checkpoint, deadline);
-  const [line, code] = verdictLine(root, checkpoint, outcome2);
+  const [line, code] = verdictLine(root, checkpoint, outcome2, joined);
   io.stdout(`Checkpoint ${checkpoint.id} ${line}
 ${started2}
 `);
@@ -40609,7 +40677,7 @@ function takeAllWait(args) {
   if (at2 === -1 || /^\d+$/.test(args[at2 + 1] ?? "")) return takeWait(args);
   return { waitMs: Number.POSITIVE_INFINITY, rest: args.filter((_, i2) => i2 !== at2) };
 }
-function verdictLine(root, checkpoint, outcome2) {
+function verdictLine(root, checkpoint, outcome2, joined) {
   const none = (why2) => [`has no verdict: ${why2}`, 3];
   switch (outcome2.kind) {
     case "abandoned":
@@ -40632,8 +40700,11 @@ function verdictLine(root, checkpoint, outcome2) {
       const { verdict } = outcome2;
       const why2 = noVerdictText(verdict);
       if (why2 !== null) return none(why2);
-      const ran = Math.min(checkpoint.testFiles.length, verdict.testFiles);
-      const counts = `${plural(verdict.testFiles, "test file")}, ${verdict.testFiles - ran} already current, ${ran} run now`;
+      const files2 = plural(verdict.testFiles, "test file");
+      const owner2 = joined === null ? checkpoint : joined.record;
+      const ran = owner2 === null ? 0 : Math.min(owner2.testFiles.length, verdict.testFiles);
+      const by = joined === null ? "run now" : `run by the ${joined.what} checkpoint ${joined.open.id} it joined`;
+      const counts = owner2 === null ? files2 : `${files2}, ${verdict.testFiles - ran} already current, ${ran} ${by}`;
       return [
         `completed at revision ${verdict.revision}: ${failuresText(verdict.failures)}; ${counts}`,
         verdictCode(verdict)
@@ -40671,15 +40742,19 @@ function owedText(root, checkpoint) {
   const owed = inStore(root, (store) => openCheckpoint2(store, checkpoint)?.owed?.ids ?? []);
   return owed?.includes(checkpoint.id) === true ? "; the next daemon resumes it, and `run --all --wait` then waits for it" : "";
 }
-function joinedText(root, checkpoint) {
-  const text2 = inStore(root, (store) => {
+function joinedCheckpoint(root, checkpoint) {
+  return inStore(root, (store) => {
     const open4 = openCheckpoint2(store, checkpoint);
-    if (open4 === null || open4.id === checkpoint.id || open4.owed !== void 0) return "";
-    if (store.checkpoints.get(checkpoint.id)?.end !== null) return "";
-    const what = store.checkpoints.get(open4.id)?.kind === "baseline" ? "baseline" : "`run --all`";
-    return `, joining the ${what} checkpoint ${open4.id} already running them (${open4.done} of ${open4.total} test files done); it ends when that one ends`;
+    if (open4 === null || open4.id === checkpoint.id || open4.owed !== void 0) return null;
+    if (store.checkpoints.get(checkpoint.id)?.end !== null) return null;
+    const record = store.checkpoints.get(open4.id);
+    return { open: open4, record, what: record?.kind === "baseline" ? "baseline" : "`run --all`" };
   });
-  return text2 ?? "";
+}
+function joinedText(joined) {
+  if (joined === null) return "";
+  const { open: open4, what } = joined;
+  return `, joining the ${what} checkpoint ${open4.id} already running them (${open4.done} of ${open4.total} test files done); it ends when that one ends`;
 }
 function openCheckpoint2(store, checkpoint) {
   return parseCheckpointProgress(store.meta.get(checkpointMetaKey(checkpoint.worktreeId)));
@@ -40755,7 +40830,7 @@ function formatPlan(plan) {
   for (const gate of plan.gates) {
     lines.push(`  ${gate.id}: ${gate.text.trim()}`);
     lines.push(
-      gate.proposed === null ? "    inside a code block: reword it by hand" : `    reworded: ${gate.proposed.trim()}`
+      gate.proposed === null ? `    ${gate.reason}: reword it by hand` : `    reworded: ${gate.proposed.trim()}`
     );
   }
   if (plan.mentions.length > 0) {
