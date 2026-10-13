@@ -1,24 +1,27 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { INSTALL_SH, type Machine, machine, snapshot } from "./install-fixture.js";
+import {
+  INSTALL_SH,
+  install,
+  launcherOf,
+  type Machine,
+  machine,
+  snapshot,
+} from "./install-fixture.js";
 
 /* Spec 005 D3, `install.sh`, run as `curl … | sh` runs it: the script on stdin. */
 
 const SCRIPT = readFileSync(INSTALL_SH, "utf8");
-
-function install(m: Machine, ...args: string[]) {
-  return m.sh(args.length === 0 ? [] : ["-s", "--", ...args], { input: SCRIPT });
-}
-
-const launcherOf = (m: Machine) => join(m.home, ".local", "bin", "squeal");
+const LAST = SCRIPT.slice(SCRIPT.trimEnd().lastIndexOf("\n") + 1);
 
 /** Runs the installed launcher as the user's terminal would. */
 function squeal(m: Machine, ...args: string[]) {
   return m.sh([launcherOf(m), ...args]);
 }
 
-describe("install.sh", () => {
+// Each installer run spawns about ten processes; 1.9 s alone at a load of 77 on 24 cores, past 5 s under the full suite.
+describe("install.sh", { timeout: 30_000 }, () => {
   it("installs the plugin in both harnesses and puts the launcher on the PATH", () => {
     const m = machine();
     m.publish("0.1.134");
@@ -83,44 +86,6 @@ describe("install.sh", () => {
     expect(existsSync(join(bin, "squeal"))).toBe(true);
     expect(existsSync(launcherOf(m))).toBe(false);
     expect(r.stdout).not.toContain("not on your PATH");
-  });
-
-  it("--uninstall removes the launcher and the plugin from each harness", () => {
-    const m = machine();
-    m.publish("0.1.134");
-    const empty = snapshot(m.home);
-    expect(install(m).status).toBe(0);
-    m.clearLog();
-    const r = install(m, "--uninstall");
-    expect(r.status).toBe(0);
-    expect(m.calls()).toEqual([
-      "claude plugin uninstall squeal@hearsay",
-      "codex plugin remove squeal@hearsay",
-    ]);
-    expect(existsSync(launcherOf(m))).toBe(false);
-    // What stays is the marketplace each harness added, which the script says how to remove.
-    expect(
-      Object.keys(snapshot(m.home))
-        .filter((f) => !(f in empty))
-        .sort(),
-    ).toEqual([
-      ".claude/plugins/installed_plugins.json",
-      ".claude/plugins/known_marketplaces.json",
-      ".codex/stub-marketplaces.json",
-    ]);
-    expect(
-      JSON.parse(snapshot(m.home)[".claude/plugins/installed_plugins.json"]?.slice(4) ?? ""),
-    ).toEqual({
-      version: 2,
-      plugins: {},
-    });
-    expect(r.stdout).toContain("claude plugin marketplace remove hearsay");
-    // A second uninstall finds nothing; an install afterwards works with the marketplace still added.
-    m.clearLog();
-    expect(install(m, "--uninstall").status).toBe(0);
-    expect(m.calls()).toEqual([]);
-    expect(install(m).status).toBe(0);
-    expect(JSON.parse(squeal(m).stdout)).toMatchObject({ version: "0.1.134" });
   });
 
   it("stops before any harness command when neither claude nor codex is on the PATH", () => {
@@ -194,16 +159,38 @@ describe("install.sh", () => {
       m.sh([], { input: cut });
       expect(m.calls(), `cut after line ${n}`).toEqual([]);
     }
-    // A cut in the middle of the last line, too.
-    m.sh([], { input: SCRIPT.slice(0, SCRIPT.lastIndexOf('"$@"') + 2) });
-    expect(m.calls()).toEqual([]);
     expect(snapshot(m.home)).toEqual(before);
   });
 
-  it("is POSIX sh with set -eu, reads no stdin, and calls main last", () => {
+  it.each([[[]], [["--uninstall"]]] as const)(
+    "runs nothing from a download cut at any byte of its last line, with arguments %j",
+    (args) => {
+      const m = machine();
+      m.publish("0.1.134");
+      // Installed first, so a cut uninstall has something it could remove.
+      if (args.length > 0) expect(install(m).status).toBe(0);
+      m.clearLog();
+      const before = snapshot(m.home);
+      const head = SCRIPT.slice(0, SCRIPT.length - LAST.length);
+      // Every proper prefix: `main`, `main ` and `main "$@"` among them.
+      for (let n = 0; n < LAST.trimEnd().length; n++) {
+        const cut = LAST.slice(0, n);
+        const r = m.sh(args.length === 0 ? [] : ["-s", "--", ...args], { input: head + cut });
+        expect(m.calls(), `cut ${JSON.stringify(cut)}`).toEqual([]);
+        // The cuts that parse call main without its completion argument.
+        if (/^main( "\$@")? ?$/.test(cut)) {
+          expect(r.status, `cut ${JSON.stringify(cut)}`).toBe(1);
+          expect(r.stderr).toContain("ends early, as a cut download does, so it ran nothing");
+        }
+      }
+      expect(snapshot(m.home)).toEqual(before);
+    },
+  );
+
+  it("is POSIX sh with set -eu, reads no stdin, and calls main last with its completion argument", () => {
     expect(SCRIPT.startsWith("#!/bin/sh\n")).toBe(true);
     expect(SCRIPT).toMatch(/^set -eu$/m);
     expect(SCRIPT).not.toMatch(/\bread\b/);
-    expect(SCRIPT.trimEnd().split("\n").at(-1)).toBe('main "$@"');
+    expect(LAST).toBe('main "$@" squeal-install-complete\n');
   });
 });

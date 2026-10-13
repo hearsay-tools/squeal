@@ -7,16 +7,20 @@
 # at user scope through that harness's own CLI, which makes every write under
 # ~/.claude and ~/.codex. Then it copies the plugin's launcher to
 # ~/.local/bin/squeal (SQUEAL_BIN_DIR overrides). SQUEAL_MARKETPLACE overrides
-# the hub. `sh -s -- --uninstall` removes the launcher and the plugin.
+# the hub. Each plugin and launcher it creates is recorded in
+# ${XDG_STATE_HOME:-~/.local/state}/squeal/installed, and `sh -s -- --uninstall`
+# removes only those, so a plugin or launcher that was there before stays.
 #
 # Under a pipe stdin is this script, so nothing here reads stdin. Every step
-# sits inside main and `main "$@"` is the last line, so a cut download defines
-# functions or fails to parse, and runs nothing (research/wave-0-checks.md 4).
+# sits inside main, and the last line calls it with a completion argument after
+# the user's: a cut download defines functions, fails to parse, or calls main
+# without that argument, and runs nothing (research/wave-0-checks.md 4).
 set -eu
 
 PLUGIN=squeal@hearsay
 HUB=hearsay-tools/marketplace
 MARKER="squeal-launcher format"
+COMPLETE=squeal-install-complete
 
 say() { printf '%s\n' "$*"; }
 fail() {
@@ -29,6 +33,26 @@ run() {
   "$@"
 }
 has() { command -v "$1" >/dev/null 2>&1; }
+
+# The ownership record: one line per resource this script created, `claude`,
+# `codex` or `launcher <path>`, written right after it, so a run that fails
+# halfway still owns what it made.
+owns() { [ -f "$OWNED" ] && grep -qxF "$1" "$OWNED"; }
+record() {
+  owns "$1" && return 0
+  mkdir -p "${OWNED%/*}"
+  printf '%s\n' "$1" >>"$OWNED"
+}
+forget() {
+  owns "$1" || return 0
+  grep -vxF "$1" "$OWNED" >"$OWNED.new" || true
+  if [ -s "$OWNED.new" ]; then
+    mv "$OWNED.new" "$OWNED"
+  else
+    rm -f "$OWNED.new" "$OWNED"
+    rmdir "${OWNED%/*}" 2>/dev/null || true
+  fi
+}
 
 check_node() {
   has node || fail "Squeal needs Node 22.13 or later, and node is not on the PATH"
@@ -99,6 +123,7 @@ install_in() {
     [ "$added" = yes ] || hub_failed "$2"
     fail "installing $PLUGIN in $2 failed"
   fi
+  record "$1"
 }
 
 is_launcher() { [ -f "$1" ] && grep -q "^# $MARKER " "$1"; }
@@ -115,9 +140,12 @@ copy_launcher() {
   if [ -f "$to" ] && cmp -s "$from" "$to"; then
     say "$to is the launcher of $PLUGIN ${newest%% *}"
   else
+    # A launcher that was already there is updated, and stays the user's.
+    [ -e "$to" ] && existed=yes || existed=no
     run mkdir -p "$BIN_DIR"
     run cp "$from" "$to"
     run chmod 755 "$to"
+    [ "$existed" = yes ] || record "launcher $to"
   fi
   case ":$PATH:" in
   *":$BIN_DIR:"*) ;;
@@ -134,24 +162,51 @@ install() {
   say "Next, in each repository: squeal setup"
 }
 
+# $1: claude or codex; $2: its name; $3: its remove subcommand.
+uninstall_in() {
+  has "$1" || {
+    owns "$1" && say "$1 is not on the PATH, so $PLUGIN stays in $2 and in $OWNED"
+    return 0
+  }
+  [ -n "$(installed "$1")" ] || {
+    forget "$1"
+    return 0
+  }
+  if owns "$1"; then
+    run "$1" plugin "$3" "$PLUGIN"
+    forget "$1"
+  else
+    say "$2 had $PLUGIN before install.sh ran, so it stays; $1 plugin $3 $PLUGIN removes it"
+  fi
+}
+
 uninstall() {
   to="$BIN_DIR/squeal"
-  if is_launcher "$to"; then
+  if ! is_launcher "$to"; then
+    [ ! -e "$to" ] || say "$to is not Squeal's launcher; left as it is"
+    forget "launcher $to"
+  elif owns "launcher $to"; then
     run rm "$to"
-  elif [ -e "$to" ]; then
-    say "$to is not Squeal's launcher; left as it is"
+    forget "launcher $to"
+  else
+    say "$to was there before install.sh ran, so it stays; rm $to removes it"
   fi
-  if has claude && [ -n "$(installed claude)" ]; then run claude plugin uninstall "$PLUGIN"; fi
-  if has codex && [ -n "$(installed codex)" ]; then run codex plugin remove "$PLUGIN"; fi
+  uninstall_in claude "Claude Code" uninstall
+  uninstall_in codex Codex remove
   say "The hearsay marketplace stays added; claude plugin marketplace remove hearsay and codex plugin marketplace remove hearsay remove it."
 }
 
 main() {
+  case " $* " in
+  *" $COMPLETE ") ;;
+  *) fail "this copy of install.sh ends early, as a cut download does, so it ran nothing; download it again" ;;
+  esac
   MARKETPLACE=${SQUEAL_MARKETPLACE:-$HUB}
   BIN_DIR=${SQUEAL_BIN_DIR:-$HOME/.local/bin}
+  OWNED=${XDG_STATE_HOME:-$HOME/.local/state}/squeal/installed
   case "$*" in
-  "") install ;;
-  --uninstall) uninstall ;;
+  "$COMPLETE") install ;;
+  "--uninstall $COMPLETE") uninstall ;;
   *)
     say "usage: install.sh [--uninstall]" >&2
     exit 2
@@ -159,4 +214,4 @@ main() {
   esac
 }
 
-main "$@"
+main "$@" squeal-install-complete

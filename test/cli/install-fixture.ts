@@ -200,6 +200,15 @@ export function machine(harnesses: readonly ("claude" | "codex")[] = ["claude", 
   };
 }
 
+/** Runs `install.sh` as `curl … | sh` runs it, the script on stdin; `args` after `sh -s --`. */
+export function install(m: Machine, ...args: string[]): Result {
+  return m.sh(args.length === 0 ? [] : ["-s", "--", ...args], {
+    input: readFileSync(INSTALL_SH, "utf8"),
+  });
+}
+
+export const launcherOf = (m: Machine): string => join(m.home, ".local", "bin", "squeal");
+
 /** Every file under `dir` with its content and mode, for "a second run changed nothing". */
 export function snapshot(dir: string): Record<string, string> {
   const out: Record<string, string> = {};
