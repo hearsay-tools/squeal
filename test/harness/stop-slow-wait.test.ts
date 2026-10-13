@@ -10,6 +10,7 @@ import {
   HARNESSES,
   landSlow,
   mainConsumer,
+  markStopWait,
   repo,
   slowKey,
   stopBoth,
@@ -26,6 +27,12 @@ import {
  */
 
 const OTHER_SESSION = "0b9a7c1e-5d2f-4e8a-9c3b-1f6d2e7a8b90";
+
+/** Until the clock has moved on, so a registration now has a later `registeredAt`. */
+async function nextMs(): Promise<void> {
+  const start = Date.now();
+  while (Date.now() === start) await new Promise((resolve) => setTimeout(resolve, 1));
+}
 
 describe.each(HARNESSES)("Stop waits for its slow tier, $name (004 D9 as amended)", (harness) => {
   it("on: waits for a running slow file and ends the turn silently when it passes", async () => {
@@ -112,6 +119,30 @@ describe.each(HARNESSES)("Stop waits for its slow tier, $name (004 D9 as amended
     const unmarked = sessions.find((c) => c.sessionId === OTHER_SESSION);
     expect(unmarked && stopWaitRuns(r.store, unmarked, harness.name, squealVersion())).toBe(false);
     expect(stopWaitRuns(r.store, marked, harness.name, squealVersion())).toBe(true);
+  });
+
+  it("a consumer registered again starts unmarked; its waiting entry marks it again (001-322)", async () => {
+    const r = await repo(harness, { requireSlowSuite: true });
+    r.store.consumers.unregister(mainConsumer(r));
+    await nextMs();
+    await harness.startTurn(r, { source: "resume" });
+    expect(decision(await harness.stop(r)).decision).toBe("block");
+    markStopWait(r, harness.name);
+    expect(decision(await harness.stop(r))).toEqual({});
+  });
+
+  it("a resume of the same session without its end starts unmarked too (001-322)", async () => {
+    const r = await repo(harness, { requireSlowSuite: true });
+    await nextMs();
+    await harness.startTurn(r, { source: "resume" });
+    expect(decision(await harness.stop(r)).decision).toBe("block");
+  });
+
+  it("compaction in the running session keeps its mark (001-322)", async () => {
+    const r = await repo(harness, { requireSlowSuite: true });
+    await nextMs();
+    await harness.startTurn(r, { source: "compact" });
+    expect(decision(await harness.stop(r))).toEqual({});
   });
 
   it("off: returns at once without waiting, and the turn ends as today", async () => {
