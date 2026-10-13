@@ -24,7 +24,7 @@ import type {
 } from "../core/types/index.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
-import type { DaemonSync } from "./status-sync.js";
+import type { DaemonSync, SyncState } from "./status-sync.js";
 import { namedFailures, namedLine } from "./status-wait-lines.js";
 import { type FileVerdict, readVerdict, verdictCode } from "./verdict.js";
 
@@ -131,6 +131,8 @@ export type NamedWait =
       readonly selection: NamedSelection;
       readonly verdict: FileVerdict;
       readonly result: StatusSnapshot;
+      /** Where the daemon's pass stood at the last read: a `timeout` before it reached the store's revision says so. */
+      readonly sync: SyncState;
     }
   | {
       readonly outcome: "unavailable";
@@ -163,7 +165,9 @@ export interface NamedWaitOptions {
  * every edit made before the wait and whose test files the runner listed (the
  * daemon's `sync` pass, lessons defect 30), so a test file written just
  * before the wait is found; a daemon that cannot sync falls back to the
- * settle time, and the deadline decides with what it finds. It is read again
+ * settle time. A deadline before that revision is a timeout, never the old
+ * results' verdict (review wave-1, B1); a read ready at the deadline gives
+ * its verdict. It is read again
  * at every poll, since an edit can change a closure. A store that cannot be
  * read at the first read or the last ends the wait; one in between is skipped.
  */
@@ -192,24 +196,22 @@ export async function waitForNamed(
         const daemon = worktreeLiveness(store.worktrees.get(id), options.now());
         const current = sync.current();
         const ready =
-          final ||
-          (current.state === "synced"
+          current.state === "synced"
             ? verdict.revision >= current.revision && !verdict.unlisted
-            : current.state === "unsupported" && settled);
+            : current.state === "unsupported" && settled;
         const outcome: NamedWaitOutcome | null =
           settled && daemon.state !== "alive"
             ? "no-daemon"
-            : !ready
-              ? null
-              : selection.unmatched.length > 0
-                ? "unmatched"
-                : verdict.byClass.pending === 0 && !verdict.unlisted
-                  ? "settled"
-                  : final
-                    ? "timeout"
-                    : null;
+            : ready && selection.unmatched.length > 0
+              ? "unmatched"
+              : ready && verdict.byClass.pending === 0 && !verdict.unlisted
+                ? "settled"
+                : final
+                  ? "timeout"
+                  : null;
         if (outcome === null) return null;
-        return { outcome, selection, verdict, result: buildSnapshot(store, root, options.now()) };
+        const result = buildSnapshot(store, root, options.now());
+        return { outcome, selection, verdict, result, sync: current };
       });
       if (read !== null && "available" in read) {
         if (first || final) return { outcome: "unavailable", waitedMs: elapsed(), result: read };
