@@ -1,5 +1,5 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import { resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
+import { resolveCommonDir } from "../core/fs/index.js";
 import { testFileId } from "../core/keys/index.js";
 import { formatStatus, readStatus } from "../core/status/index.js";
 import { isStoreOpenFailure, openStore } from "../core/store/index.js";
@@ -91,7 +91,6 @@ export async function runCommand(
     return 3;
   };
   const socketPath = await daemonSocket(root);
-  const before = openBefore(root);
   const response = await askDaemon(socketPath, {
     type: "run-all",
     force: flags.has("--force"),
@@ -103,9 +102,9 @@ export async function runCommand(
   if (!response.ok || response.type !== "run-all") {
     return noVerdict(`run --all failed: ${response.ok ? "unexpected answer" : response.error}`);
   }
-  const checkpoint = await recorded(socketPath, response, deadline ?? Date.now() + RECORD_WAIT_MS);
-  if (typeof checkpoint === "string") return noVerdict(checkpoint);
-  if (checkpoint === null) {
+  const state = await recorded(socketPath, response, deadline ?? Date.now() + RECORD_WAIT_MS);
+  if (typeof state === "string") return noVerdict(state);
+  if (state === null) {
     const allows = "the daemon records the checkpoint once its current work allows";
     if (deadline !== null) {
       return noVerdict(
@@ -115,7 +114,8 @@ export async function runCommand(
     io.stdout(`Run requested (request ${response.requestId}); ${allows}\n`);
     return 1;
   }
-  const joined = joinedCheckpoint(root, checkpoint, before);
+  const { checkpoint } = state;
+  const joined = joinedCheckpoint(root, checkpoint, state.owner);
   const started = `Checkpoint ${checkpoint.id} started at revision ${checkpoint.revision}: ${filesText(root, checkpoint)}${joinedText(joined)}\n`;
   if (deadline === null) {
     io.stdout(started);
@@ -194,10 +194,10 @@ async function recorded(
   socketPath: AbsolutePath,
   first: RunAllResponse,
   deadline: number,
-): Promise<CheckpointRecord | string | null> {
+): Promise<Recorded | string | null> {
   let state: RunAllResponse = first;
   for (;;) {
-    if (state.checkpoint !== null) return state.checkpoint;
+    if (state.checkpoint !== null) return { checkpoint: state.checkpoint, owner: state.owner };
     if (state.error !== null) return `run --all failed: ${state.error}`;
     if (Date.now() > deadline) return null;
     await sleep(POLL_MS);
@@ -237,6 +237,13 @@ function owedText(root: AbsolutePath, checkpoint: CheckpointRecord): string {
     : "";
 }
 
+/** A `run-all` answer once the checkpoint was recorded. */
+interface Recorded {
+  readonly checkpoint: CheckpointRecord;
+  /** `RunAllResponse.owner`: absent from a daemon before 005-36. */
+  readonly owner: string | undefined;
+}
+
 /** The running checkpoint a request joined, as it stood when the request was recorded. */
 interface Joined {
   readonly id: string;
@@ -247,43 +254,28 @@ interface Joined {
   readonly what: "baseline" | "`run --all`";
 }
 
-/** The checkpoint open before the request was sent, which the request may join. */
-function openBefore(root: AbsolutePath): CheckpointProgress | null {
-  return inStore(root, (store) =>
-    parseCheckpointProgress(store.meta.get(checkpointMetaKey(worktreeIdFor(root)))),
-  );
-}
-
 /**
- * Task 001-217: a request the open checkpoint already runs joined it, and
- * ends when it ends; `null` when it did not. A join that ended before this
- * read left no open checkpoint (review wave-1.5, S2): it is the one open
- * before the request that ended as the request did, at the same time.
+ * Task 001-217: the checkpoint the request joined, the `owner` the daemon
+ * named when it is not the request's own; `null` when it is, or when an
+ * older daemon named none: a join is never guessed (review wave-3, B4). A
+ * join that ended before this read left no open checkpoint (review
+ * wave-1.5, S2).
  */
 function joinedCheckpoint(
   root: AbsolutePath,
   checkpoint: CheckpointRecord,
-  before: CheckpointProgress | null,
+  owner: string | undefined,
 ): Joined | null {
-  return inStore(root, (store): Joined | null => {
-    const own = store.checkpoints.get(checkpoint.id);
-    const joined = (id: string, open: CheckpointProgress | null): Joined => {
-      const record = store.checkpoints.get(id);
-      return { id, open, record, what: record?.kind === "baseline" ? "baseline" : "`run --all`" };
-    };
+  if (owner === undefined || owner === checkpoint.id) return null;
+  return inStore(root, (store): Joined => {
+    const record = store.checkpoints.get(owner);
     const open = openCheckpoint(store, checkpoint);
-    if (own?.end === null) {
-      if (open === null || open.id === checkpoint.id || open.owed !== undefined) return null;
-      return joined(open.id, open);
-    }
-    if (before === null || before.id === checkpoint.id || before.owed !== undefined) return null;
-    const owner = store.checkpoints.get(before.id);
-    const endedWith =
-      own !== null &&
-      owner !== null &&
-      owner.end === own.end &&
-      owner.completedAt === own.completedAt;
-    return endedWith ? joined(before.id, null) : null;
+    return {
+      id: owner,
+      open: open?.id === owner ? open : null,
+      record,
+      what: record?.kind === "baseline" ? "baseline" : "`run --all`",
+    };
   });
 }
 
