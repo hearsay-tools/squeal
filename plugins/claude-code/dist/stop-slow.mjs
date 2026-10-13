@@ -508,7 +508,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.143";
+  if (true) return "0.1.144";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -822,21 +822,14 @@ function stopSlowWaitMs(policy) {
 function stopWaitMetaKey(worktreeId) {
   return worktreeMetaKey("stopWait", worktreeId);
 }
-function read2(store, worktreeId) {
-  const raw = store.meta.get(stopWaitMetaKey(worktreeId));
-  if (raw === null) return {};
-  try {
-    const value = JSON.parse(raw);
-    return isRecord(value) ? value : {};
-  } catch {
-    return {};
-  }
+function stopWaitRuns(store, consumer, harness, version) {
+  const value = readSlot(store, stopWaitMetaKey(consumer.worktreeId), consumer);
+  return isRecord(value) && value[harness] === version;
 }
-function recordStopWait(store, worktreeId, harness, version) {
+function recordStopWait(store, consumer, harness, version) {
   store.transaction(() => {
-    const all = read2(store, worktreeId);
-    if (all[harness] === version) return;
-    store.meta.set(stopWaitMetaKey(worktreeId), JSON.stringify({ ...all, [harness]: version }));
+    if (stopWaitRuns(store, consumer, harness, version)) return;
+    writeSlot(store, stopWaitMetaKey(consumer.worktreeId), consumer, { [harness]: version });
   });
 }
 
@@ -3368,23 +3361,23 @@ function readGitHead(root) {
   const gitDir = gitDirOf(root);
   const commonDir = resolveCommonDir(root);
   if (gitDir === null || commonDir === null) return null;
-  let value = read3(join7(gitDir, "HEAD"));
+  let value = read2(join7(gitDir, "HEAD"));
   for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
     if (SHA.test(value)) return value;
     const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
     if (ref === void 0) return null;
-    value = read3(join7(gitDir, ref)) ?? read3(join7(commonDir, ref)) ?? packed(commonDir, ref);
+    value = read2(join7(gitDir, ref)) ?? read2(join7(commonDir, ref)) ?? packed(commonDir, ref);
   }
   return null;
 }
 function packed(commonDir, ref) {
-  for (const line of (read3(join7(commonDir, "packed-refs")) ?? "").split("\n")) {
+  for (const line of (read2(join7(commonDir, "packed-refs")) ?? "").split("\n")) {
     const [sha, name] = line.split(" ");
     if (name === ref && sha !== void 0 && SHA.test(sha)) return sha;
   }
   return null;
 }
-function read3(path) {
+function read2(path) {
   try {
     return readFileSync5(path, "utf8").trim();
   } catch (error) {
@@ -3830,8 +3823,8 @@ function createDelivery(store, options) {
       }
       if (idle) startTurn(store, consumer);
       const told = toldRevision(store, consumer);
-      const read5 = readLiveHeader(store, consumer.worktreeId, at2, states, told);
-      const live = withTold(read5, toldLiveness(store, consumer), at2);
+      const read4 = readLiveHeader(store, consumer.worktreeId, at2, states, told);
+      const live = withTold(read4, toldLiveness(store, consumer), at2);
       tellRevision(store, consumer, live.revision);
       const { entries, header, stillFailing } = annotate(
         store,
@@ -3883,8 +3876,8 @@ function createDelivery(store, options) {
         states.map((s) => toView2(s, at2))
       );
       const told = startingSince === void 0 ? null : { startingSince };
-      const read5 = readLiveHeader(store, consumer.worktreeId, at2, states);
-      const live = told === null ? read5 : withTold(read5, told, at2);
+      const read4 = readLiveHeader(store, consumer.worktreeId, at2, states);
+      const live = told === null ? read4 : withTold(read4, told, at2);
       const knownFailures = states.flatMap((s) => toKnownFailure(s, live.revision) ?? []);
       const header = withDependencies(store, consumer.worktreeId, live, knownFailures.length > 0);
       const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
@@ -4317,13 +4310,13 @@ var SKIPPED = /* @__PURE__ */ new Set([
 ]);
 var MAX_HOPS = 4;
 function findHarnessProcess(lookup = {}) {
-  const read5 = lookup.read ?? readProcStat;
+  const read4 = lookup.read ?? readProcStat;
   const namespace = (lookup.namespace ?? pidNamespace)();
   if (namespace === null) return null;
   let pid = lookup.ppid ?? process.ppid;
   try {
     for (let hop = 0; hop < MAX_HOPS && pid > 1; hop++) {
-      const stat = read5(pid);
+      const stat = read4(pid);
       if (stat === null || stat.state === "Z" || stat.comm === "systemd") return null;
       if (!SKIPPED.has(stat.comm)) {
         return { pid, startTime: stat.startTime, pidNamespace: namespace };
@@ -4431,7 +4424,7 @@ async function stopSlow(input, location2, deps) {
   const poll = deps.pollIntervalMs ?? STOP_SLOW_POLL_MS;
   return withContext(input, location2, deps, async (context) => {
     const version = deps.squealVersion ?? squealVersion();
-    recordStopWait(context.store, context.consumer.worktreeId, input.harness, version);
+    recordStopWait(context.store, context.consumer, input.harness, version);
     if (!await handedOver(context, deps, poll)) return null;
     const block2 = await waitForSlow(context, isSlow, deps, bound, poll);
     if (block2 === null) return null;
@@ -4442,7 +4435,7 @@ async function stopSlow(input, location2, deps) {
 ${news ?? statusText(header, failures, deps.command)}`;
   });
 }
-function read4(context, isSlow, clock) {
+function read3(context, isSlow, clock) {
   const { store, consumer } = context;
   return readTransaction(store, () => {
     const states = store.knownStates.list(consumer.worktreeId);
@@ -4492,7 +4485,7 @@ async function waitForSlow(context, isSlow, deps, bound, poll) {
   let downSince = null;
   for (; ; ) {
     if (!isRegistered(context)) return null;
-    const last = read4(context, isSlow, clock);
+    const last = read3(context, isSlow, clock);
     if (!last.idle) return null;
     const now = performance.now();
     downSince = last.header.daemon?.state === "down" ? downSince ?? now : null;
@@ -4515,7 +4508,7 @@ function decide(context, isSlow, at2, {
   const { store, consumer } = context;
   return store.transaction(() => {
     if (store.consumers.get(consumer) === null) return null;
-    const live = read4(context, isSlow, () => at2);
+    const live = read3(context, isSlow, () => at2);
     if (!live.idle) return null;
     const failed = untold(live, isSlow, () => store.views.list(consumer));
     const done = complete(live);

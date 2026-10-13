@@ -3137,6 +3137,7 @@ var STOP_SLOW_WAIT_CAP_MS;
 var init_stop_wait = __esm({
   "src/core/slow/stop-wait.ts"() {
     "use strict";
+    init_slots();
     init_fs();
     init_types();
     STOP_SLOW_WAIT_CAP_MS = 6e5;
@@ -34847,7 +34848,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.143";
+  if (true) return "0.1.144";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
