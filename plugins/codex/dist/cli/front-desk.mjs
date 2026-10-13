@@ -97,14 +97,18 @@ function createHandlers(context) {
   const requests = /* @__PURE__ */ new Map();
   const slowRequests = /* @__PURE__ */ new Map();
   const syncRequests = /* @__PURE__ */ new Map();
-  const runAll = (requestId, state) => ({
-    schemaVersion: PAYLOAD_SCHEMA_VERSION,
-    ok: true,
-    type: "run-all",
-    requestId,
-    checkpoint: state.checkpoint,
-    error: state.error
-  });
+  const runAll = (requestId, state) => {
+    const answer2 = {
+      schemaVersion: PAYLOAD_SCHEMA_VERSION,
+      ok: true,
+      type: "run-all",
+      requestId,
+      error: state.error
+    };
+    if (state.checkpoint === null) return { ...answer2, checkpoint: null };
+    const { owner, ...checkpoint } = state.checkpoint;
+    return { ...answer2, checkpoint, owner };
+  };
   const runSlow = (requestId, state) => ({
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     ok: true,

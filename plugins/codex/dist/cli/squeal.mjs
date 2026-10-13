@@ -3349,10 +3349,14 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     unknown: 0
   };
   let inheritedCount = 0;
+  let inheritedFileLevelCount = 0;
   for (const state of states) {
     counts[state.validity]++;
     if (state.check.kind === "file") fileLevelCounts[state.validity]++;
-    if (state.validity === "current" && state.origin?.kind === "inherited") inheritedCount++;
+    if (state.validity === "current" && state.origin?.kind === "inherited") {
+      inheritedCount++;
+      if (state.check.kind === "file") inheritedFileLevelCount++;
+    }
   }
   const last = store.checkpoints.lastCompleted(worktreeId);
   const refinedRevision2 = readRefined(store, worktreeId);
@@ -3372,6 +3376,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     },
     testFilesListed: keys.length > 0 || !awaiting && last !== null,
     inheritedCount,
+    inheritedFileLevelCount,
     refinedRevision: refinedRevision2,
     runnerPartPending: refinedRevision2 !== null && refinedRevision2 < revision,
     ...slow === void 0 ? {} : { slowPending: countSlowPending(states, keys, slow) },
@@ -5794,18 +5799,21 @@ function inheritedSources(store, states) {
     const group = groups.get(id2) ?? {
       worktreeId: s.origin.worktreeId,
       commit: s.origin.commit,
-      count: 0
+      count: 0,
+      fileLevelCount: 0
     };
     group.count++;
+    if (s.check.kind === "file") group.fileLevelCount++;
     groups.set(id2, group);
   }
   const sources = [...groups.values()].map((g2) => ({ ...g2, worktreeRoot: store.worktrees.get(g2.worktreeId)?.root ?? null })).sort(
     (a, b) => b.count - a.count || a.worktreeId.localeCompare(b.worktreeId) || String(a.commit).localeCompare(String(b.commit))
-  ).map(({ worktreeId, worktreeRoot: worktreeRoot2, commit, count: count2 }) => ({
+  ).map(({ worktreeId, worktreeRoot: worktreeRoot2, commit, count: count2, fileLevelCount }) => ({
     worktreeId,
     worktreeRoot: worktreeRoot2,
     commit,
-    count: count2
+    count: count2,
+    fileLevelCount
   }));
   return { count, sources };
 }
@@ -9016,7 +9024,7 @@ function abandonFullSuite(ledger) {
   const files2 = [...ledger.files.values()].map((file) => file.ref);
   const record = ledger.checkpoints.abandon(randomUUID4(), "run-all", ledger.revision.number, files2);
   ledger.commit();
-  return record;
+  return { ...record, owner: record.id };
 }
 function queueFullSuite(ledger, force, fresh = false) {
   const id2 = randomUUID4();
@@ -9055,7 +9063,7 @@ function queueFullSuite(ledger, force, fresh = false) {
     for (const file of unrunnable) checkpoints.failed(file.ref);
   }
   ledger.commit();
-  return record;
+  return { ...record, owner: joins ? attributed : record.id };
 }
 function resumeOwed(ledger) {
   const { checkpoints } = ledger;
@@ -34871,7 +34879,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.150";
+  if (true) return "0.1.151";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -34924,11 +34932,12 @@ function checkPartsText({ tests, testFiles }, fileLevel = "loaded") {
     ...testFiles > 0 ? [`${plural(testFiles, "test file")} ${fileLevel}`] : []
   ].join(", ");
 }
+function partsSuffix(count, fileLevel, fileLevelWord) {
+  if (count === 0 || fileLevel === void 0) return "";
+  return ` (${checkPartsText({ tests: count - fileLevel, testFiles: fileLevel }, fileLevelWord)})`;
+}
 function countedText(count, label2, fileLevel) {
-  const head = `${count} ${label2}`;
-  if (count === 0 || fileLevel === void 0) return head;
-  const parts = { tests: count - fileLevel, testFiles: fileLevel };
-  return `${head} (${checkPartsText(parts)})`;
+  return `${count} ${label2}${partsSuffix(count, fileLevel)}`;
 }
 function failureCountText(checks) {
   if (checks.length === 0) return "0";
@@ -34962,7 +34971,7 @@ function formatStatus(result, now, command = "squeal", options = {}) {
     daemonLine(result, now),
     inheritedLine(result),
     ...result.inherited.sources.map(
-      (s) => `  ${s.count} from ${s.worktreeRoot ?? s.worktreeId} at ${shortCommit(s.commit)}`
+      (s) => `  ${s.count}${partsSuffix(s.count, s.fileLevelCount)} from ${s.worktreeRoot ?? s.worktreeId} at ${shortCommit(s.commit)}`
     ),
     ...result.breakdown.testFilesWithoutChecks === 0 ? [] : [
       `Test files without checks: ${result.testFilesWithoutChecks.pending} pending, ${result.testFilesWithoutChecks.unknown} unknown`
@@ -34979,7 +34988,7 @@ function slowLine(s, command) {
   return text2 === null ? [] : [text2];
 }
 function inheritedLine(s) {
-  return s.inherited.count === 0 ? "Inherited from other worktrees: none (every current result here was run in this worktree)" : `Inherited from other worktrees: ${plural(s.inherited.count, "current result")}`;
+  return s.inherited.count === 0 ? "Inherited from other worktrees: none (every current result here was run in this worktree)" : `Inherited from other worktrees: ${plural(s.inherited.count, "current result")}${partsSuffix(s.inherited.count, s.inheritedFileLevelCount)}`;
 }
 function checkpointLine(s, now, command) {
   const checkpoint = s.checkpoint;
@@ -36314,14 +36323,18 @@ function createHandlers(context) {
   const requests = /* @__PURE__ */ new Map();
   const slowRequests = /* @__PURE__ */ new Map();
   const syncRequests = /* @__PURE__ */ new Map();
-  const runAll = (requestId, state) => ({
-    schemaVersion: PAYLOAD_SCHEMA_VERSION,
-    ok: true,
-    type: "run-all",
-    requestId,
-    checkpoint: state.checkpoint,
-    error: state.error
-  });
+  const runAll = (requestId, state) => {
+    const answer2 = {
+      schemaVersion: PAYLOAD_SCHEMA_VERSION,
+      ok: true,
+      type: "run-all",
+      requestId,
+      error: state.error
+    };
+    if (state.checkpoint === null) return { ...answer2, checkpoint: null };
+    const { owner: owner2, ...checkpoint } = state.checkpoint;
+    return { ...answer2, checkpoint, owner: owner2 };
+  };
   const runSlow = (requestId, state) => ({
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     ok: true,
@@ -41008,7 +41021,6 @@ ${USAGE2}`);
     return 3;
   };
   const socketPath = await daemonSocket(root);
-  const before = openBefore(root);
   const response = await askDaemon(socketPath, {
     type: "run-all",
     force: flags.has("--force"),
@@ -41020,9 +41032,9 @@ ${USAGE2}`);
   if (!response.ok || response.type !== "run-all") {
     return noVerdict(`run --all failed: ${response.ok ? "unexpected answer" : response.error}`);
   }
-  const checkpoint = await recorded(socketPath, response, deadline ?? Date.now() + RECORD_WAIT_MS2);
-  if (typeof checkpoint === "string") return noVerdict(checkpoint);
-  if (checkpoint === null) {
+  const state = await recorded(socketPath, response, deadline ?? Date.now() + RECORD_WAIT_MS2);
+  if (typeof state === "string") return noVerdict(state);
+  if (state === null) {
     const allows = "the daemon records the checkpoint once its current work allows";
     if (deadline !== null) {
       return noVerdict(
@@ -41033,7 +41045,8 @@ ${USAGE2}`);
 `);
     return 1;
   }
-  const joined = joinedCheckpoint(root, checkpoint, before);
+  const { checkpoint } = state;
+  const joined = joinedCheckpoint(root, checkpoint, state.owner);
   const started2 = `Checkpoint ${checkpoint.id} started at revision ${checkpoint.revision}: ${filesText2(root, checkpoint)}${joinedText(joined)}
 `;
   if (deadline === null) {
@@ -41092,7 +41105,7 @@ function verdictLine(root, checkpoint, outcome2, joined) {
 async function recorded(socketPath, first, deadline) {
   let state = first;
   for (; ; ) {
-    if (state.checkpoint !== null) return state.checkpoint;
+    if (state.checkpoint !== null) return { checkpoint: state.checkpoint, owner: state.owner };
     if (state.error !== null) return `run --all failed: ${state.error}`;
     if (Date.now() > deadline) return null;
     await sleep10(POLL_MS2);
@@ -41119,28 +41132,17 @@ function owedText(root, checkpoint) {
   const owed = inStore(root, (store) => openCheckpoint2(store, checkpoint)?.owed?.ids ?? []);
   return owed?.includes(checkpoint.id) === true ? "; the next daemon resumes it, and `run --all --wait` then waits for it" : "";
 }
-function openBefore(root) {
-  return inStore(
-    root,
-    (store) => parseCheckpointProgress(store.meta.get(checkpointMetaKey(worktreeIdFor(root))))
-  );
-}
-function joinedCheckpoint(root, checkpoint, before) {
+function joinedCheckpoint(root, checkpoint, owner2) {
+  if (owner2 === void 0 || owner2 === checkpoint.id) return null;
   return inStore(root, (store) => {
-    const own = store.checkpoints.get(checkpoint.id);
-    const joined = (id2, open5) => {
-      const record = store.checkpoints.get(id2);
-      return { id: id2, open: open5, record, what: record?.kind === "baseline" ? "baseline" : "`run --all`" };
-    };
+    const record = store.checkpoints.get(owner2);
     const open4 = openCheckpoint2(store, checkpoint);
-    if (own?.end === null) {
-      if (open4 === null || open4.id === checkpoint.id || open4.owed !== void 0) return null;
-      return joined(open4.id, open4);
-    }
-    if (before === null || before.id === checkpoint.id || before.owed !== void 0) return null;
-    const owner2 = store.checkpoints.get(before.id);
-    const endedWith = own !== null && owner2 !== null && owner2.end === own.end && owner2.completedAt === own.completedAt;
-    return endedWith ? joined(before.id, null) : null;
+    return {
+      id: owner2,
+      open: open4?.id === owner2 ? open4 : null,
+      record,
+      what: record?.kind === "baseline" ? "baseline" : "`run --all`"
+    };
   });
 }
 function joinedText(joined) {
@@ -41763,7 +41765,7 @@ ${commit.map((f) => `  ${f}
 }
 
 // src/cli/setup/command.ts
-var SETUP_USAGE = `Usage: squeal setup [--yes] [--harness <claude-code|codex>]... [--block <file|none>]...
+var SETUP_USAGE = `Usage: squeal setup [--yes] [--harness <claude-code|codex|none>]... [--block <file|none>]...
          [--gate <id>=<reword|keep>]... [--slow <glob|none>]... [--input <test glob>=<input glob>]...
          [--no-trust] [--no-warmup]
        squeal setup --plan [--json]
@@ -41815,8 +41817,9 @@ function parseSetupArgs(args) {
     const value = arg === flag2 ? args[++i2] : arg.slice(flag2.length + 1);
     if (value === void 0 || value === "") return `${flag2} takes a value`;
     if (flag2 === "--block") blocks.push(value);
-    else if (value === "claude-code" || value === "codex") harnesses.push(value);
-    else return `--harness takes claude-code or codex, not "${value}"`;
+    else if (value === "claude-code" || value === "codex" || value === "none")
+      harnesses.push(value);
+    else return `--harness takes claude-code, codex or none, not "${value}"`;
   }
   const setup = takeSetupFlags(rest);
   if (typeof setup === "string") return setup;
@@ -41825,6 +41828,8 @@ function parseSetupArgs(args) {
   if (unknown !== void 0) return `unknown argument "${unknown}"`;
   if (setup.rest.includes("--json")) return "--json goes with --plan or --check";
   if (blocks.includes("none") && blocks.length > 1) return "--block none goes alone";
+  const noHarness = harnesses.includes("none");
+  if (noHarness && harnesses.length > 1) return "--harness none goes alone";
   const { gates, inputs: inputs2 } = setup.choices;
   const noSlow = setup.choices.slow.includes("none");
   if (noSlow && setup.choices.slow.length + inputs2.length > 1) return "--slow none goes alone";
@@ -41833,7 +41838,7 @@ function parseSetupArgs(args) {
     mode: "apply",
     yes: setup.rest.includes("--yes"),
     given: {
-      harnesses: harnesses.length > 0 ? harnesses : null,
+      harnesses: harnesses.length > 0 ? harnesses.filter((h) => h !== "none") : null,
       blocks: blocks.length > 0 ? blocks : null,
       gates,
       slow: noSlow || slow.length + inputs2.length > 0 ? { slow, inputs: inputs2 } : null,
