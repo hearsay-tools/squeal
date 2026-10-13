@@ -3,6 +3,7 @@ import { runnerPartText, testFileKeyOf } from "../core/state/index.js";
 import { formatCheck } from "../core/status/index.js";
 import { plural } from "../core/text.js";
 import type { DaemonLiveness, StatusSnapshot } from "../core/types/index.js";
+import type { SyncState } from "./status-sync.js";
 import type { StatusWait, StatusWaitEdit, StatusWaitSlow } from "./status-wait.js";
 import type { NamedWait } from "./status-wait-paths.js";
 import { failuresText, noVerdictText, verdictCode } from "./verdict.js";
@@ -149,7 +150,9 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
       );
       break;
     case "timeout":
-      line = none(`the deadline passed ${after}: ${noVerdictText(verdict) ?? "no result yet"}`);
+      line = none(
+        `the deadline passed ${after}: ${unsyncedText(wait.sync, verdict.revision) ?? noVerdictText(verdict) ?? "no result yet"}`,
+      );
       break;
     case "settled": {
       const why = verdictCode(verdict) === 3 ? noVerdictText(verdict) : null;
@@ -182,6 +185,20 @@ export function namedFailures(wait: EndedNamed): string[] {
         f.validity,
       ].join(", ")}`,
     ]);
+}
+
+/**
+ * Review wave-1, B1: why a named wait's deadline came before the revision
+ * holding the edits made before it, or `null` when it did not.
+ */
+function unsyncedText(sync: SyncState, revision: number): string | null {
+  if (sync.state === "pending") {
+    return `the daemon has not stored its pass over the edits made before the wait; results are as of revision ${revision}`;
+  }
+  if (sync.state === "synced" && sync.revision > revision) {
+    return `the daemon's pass is at revision ${sync.revision} and results are as of revision ${revision}`;
+  }
+  return null;
 }
 
 /** As delivered headers word it (spec 001 D10: "no daemon running since <time>"). */
