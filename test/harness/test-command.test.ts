@@ -5,6 +5,7 @@ import {
   recognizeTestCommand,
   type TestCommand,
 } from "../../src/harness/shared/test-command.js";
+import { resolveTestFiles } from "../../src/harness/shared/test-command-files.js";
 
 /* Spec 005 D8 step 1: each recognized form, and each fall-through. */
 
@@ -155,5 +156,47 @@ describe("recognizeTestCommand (spec 005 D8 step 1)", () => {
     ["another node", "/usr/bin/node --import tsx --test test/unit/a.test.ts"],
   ])("falls through for %s", (_, command) => {
     expect(recognizeTestCommand(command, CONTEXT)).toBeNull();
+  });
+});
+
+describe("resolveTestFiles (spec 005 D8 step 2)", () => {
+  const ROOT = "/repo";
+  const ref = (project: string, path: string) => ({ project, path });
+  const LISTING = [
+    ref("", "test/a.test.ts"),
+    ref("", "test/b.test.ts"),
+    ref("test:unit", "test/unit/a.test.ts"),
+    ref("test:unit", "test/unit/b.test.ts"),
+  ];
+  const NODE_TEST = new Set(["test:unit"]);
+  const resolve = (command: TestCommand, listing = LISTING) =>
+    resolveTestFiles(command, listing, ROOT, NODE_TEST)?.map((r) => r.path) ?? null;
+
+  it("leaves node:test projects out of a Vitest command", () => {
+    expect(resolve(vitest())).toEqual(["test/a.test.ts", "test/b.test.ts"]);
+    expect(resolve(vitest("a.test"))).toEqual(["test/a.test.ts"]);
+  });
+
+  it("falls through for a filter that matches no listed file", () => {
+    expect(resolve(vitest("a.test", "nomatch"))).toBeNull();
+  });
+
+  it("falls through with two Vitest projects, or none", () => {
+    expect(resolve(vitest(), [...LISTING, ref("e2e", "e2e/x.test.ts")])).toBeNull();
+    expect(resolve(vitest(), LISTING.slice(2))).toBeNull();
+  });
+
+  it("resolves a node:test project's command to its files, or the files it names", () => {
+    expect(resolve(nodeTest(null))).toEqual(["test/unit/a.test.ts", "test/unit/b.test.ts"]);
+    expect(resolve(nodeTest(["./test/unit/b.test.ts", "test/unit/b.test.ts"]))).toEqual([
+      "test/unit/b.test.ts",
+    ]);
+  });
+
+  it("falls through for a named file the project does not list", () => {
+    expect(resolve(nodeTest(["test/unit/c.test.ts"]))).toBeNull();
+    expect(resolve(nodeTest(["test/a.test.ts"]))).toBeNull();
+    expect(resolve(nodeTest(["../outside.test.ts"]))).toBeNull();
+    expect(resolve(nodeTest(null), LISTING.slice(0, 2))).toBeNull();
   });
 });
