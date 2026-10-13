@@ -1,6 +1,6 @@
 # 001-320 notes: more tests that hit the 5 s default under load, and `isAlive`
 
-001-309's method: for each test, what it waits on, why load broke the wait, and the fix. None showed a product defect, so every change is to tests.
+001-309's method: for each test, what it waits on, why load broke the wait, and the fix. Every fix here is to tests. The one product defect found, the waiting Stop's handoff slack, is reported below and went to its own row, 001-326.
 
 ## `isAlive` (`reviews/wave-13ay.md` S1)
 
@@ -43,11 +43,32 @@ Each of these waits on its own work finishing: in-process hooks or CLI commands 
 
 **Cause: a clock bound.** `HOOK_BUDGET_MS` (2 s, spec 001 D9's `timeout: 2`) asserted on one hook's wall time. Measured here at load 115, the same hook kind ranged from 94 to 2,189 ms (codex session-end) across one file's run. Squeal's baseline at load about 120 saw 5,281 ms for "is named in the delivered header" (`told`).
 
-**Fix: pair it with the bundle's fixed cost.** Right after each budgeted hook, three PreToolUse runs go through the same plugin bundle. PreToolUse only reads the store and never ensures a daemon (`src/harness/shared/ensure.ts` is called from PostToolBatch, Stop, SessionStart and the prompt hook only), so the extra runs change nothing the test reads next. The bound is `max(HOOK_BUDGET_MS, 5 × median)`. One PreToolUse took 115 ms (claude-code) and 273 ms (codex) here at load 115, so the 2 s budget decides until the median passes 400 ms. A hook stuck on a 2 s socket timeout on a calm runner still fails. Under load the bound grows with the bundle's own start. A load spike on the budgeted hook alone can still fail it. That is the same trade as 001-309 (1): an inflated reference can hide a smaller delay. This covers the replacement SessionStart, `pre` and `told`.
+**Fix: pair it with the bundle's fixed cost.** Right after each budgeted hook, three PreToolUse runs go through the same plugin bundle. PreToolUse never ensures a daemon (`src/harness/shared/ensure.ts` is called from PostToolBatch, Stop, SessionStart and the prompt hook only) and changes no lifecycle state these cases assert. It is not read-only: it puts an idle consumer back in a turn and can mark an undelivered regression told (`src/harness/shared/deny.ts:28`), and these fixtures have no untold regression when it runs. The bound is `max(HOOK_BUDGET_MS, 5 × median)`. One PreToolUse took 115 ms (claude-code) and 273 ms (codex) here at load 115, so the 2 s budget decides until the median passes 400 ms. A hook stuck on a 2 s socket timeout on a calm runner still fails. Under load the bound grows with the bundle's own start. A load spike on the budgeted hook alone can still fail it. That is the same trade as 001-309 (1): an inflated reference can hide a smaller delay. This covers the replacement SessionStart, `pre` and `told`.
 
 "a bad squeal.config.json > yields one note and a running daemon" makes no `HOOK_BUDGET_MS` assertion, and its 240 s bound is far from the 5 s default. It failed once here at 52.8 s, in the first run after the edit above at load about 50. I did not capture the message. It passed in the next five runs (one alone, four in parallel) and is unchanged. If it fails again, keep the message: its waits are `registered`, `e.edit`, the `stop` CLI and `daemonReady`, each with its own bound in `test/e2e/harness.ts`.
 
 The coordinator's landing gate failed it again (codex, load about 55): `timed out after 45000 ms waiting for a ready daemon` at `test/e2e/lifecycle.test.ts:150`, the `daemonReady` wait. Run alone right after, the file passed 6 of 6. It is accepted as a load timeout and left unchanged.
+
+## 001-331: where a budgeted hook's time goes under load (`reviews/wave-13bb.md` B1)
+
+Review 001-329's full run failed the claude-code replacement SessionStart at 4,428 ms against `max(2000, 5 × 155)`. The repair measured before changing anything.
+
+**Probe.** A scratch `--import` preload (not committed), passed to the fixture's hooks through `NODE_OPTIONS` by a temporary harness edit, timed each hook process from Node's start: the preload, every `node:sqlite` call (the database file's and WAL's size and mtime around each `COMMIT`), each socket connect, each `spawn`, each `timers/promises` sleep and the exit; the harness's wall time came beside it. The dead-daemon cases (both harnesses) ran 18 times while a full suite and another coordinator's gate ran, load 8 to 72: 856 hook processes.
+
+| | p50 | p95 | max |
+| --- | --- | --- | --- |
+| In the process, outside SQLite | 54 ms | 155 ms | 584 ms |
+| In SQLite | 2 ms | 349 ms | 4,193 ms |
+| Outside the process (launch, exit, pipes) | about 15 ms | | |
+
+- Every SQLite call over 200 ms was a `COMMIT`, a connection's `close` or a `ROLLBACK`, about 350 ms each. Each slow `COMMIT` took the WAL from 0 to 4,152 bytes (a header and one frame) and left the database file's mtime alone: the sync of a fresh WAL's header, not a checkpoint. A slow `close` is the last connection's checkpoint, with the daemon dead.
+- The failure reproduced: "is named in the delivered header", claude-code, `pre` at 4,243 ms, 3,502 ms of it in one `COMMIT` and 4,193 ms in SQLite, against a PreToolUse median of 97 ms. Node's start to the preload took 23 ms and the exit 12 ms.
+- The replacement SessionStart spends nothing in `settle`: the SIGKILLed daemon's heartbeat is still fresh, so the settle returns at once. Its socket probe answers `ECONNREFUSED` in about 4 ms and its `spawn` takes 3 to 6 ms. Its slow runs were `close` (245 to 491 ms). No SessionStart over 2 s recurred in these runs; by the distribution above the review's 4,428 ms is the same stall, an inference.
+- A bare `fsync` of a new 4 KiB file: on `/tmp` (ext4, the host's root disk) 341 ms, then 2 to 4 ms each; on `/dev/shm` (tmpfs) 0 ms. The first sync of a new or truncated file waits for the file system's journal commit, which other processes' writes fill.
+
+**Cause.** The time is the store's sync on a disk the host shares, not the process launch, the daemon ensure or a timer. The PreToolUse references pay the same kind of sync (their `COMMIT`s took 350 ms too), but a journal stall lands on one process: three references taken after the hook cannot predict it. Not a product delay of the kind D9 forbids: the hooks wait on no timer, socket or daemon there; it is D8's WAL with `synchronous=NORMAL` on a host whose journal commits stall. The coordinator recorded it as an observation for D8, with no product row.
+
+**Fix: the fixture condition.** The two dead-daemon cases build their fixture on tmpfs (`FixtureOptions.tmpfs`, `/dev/shm`), store included, and fall back to `/tmp` where there is none (macOS). The formula, the three references and every replacement, PID, header, failure-delivery and once-only assertion are unchanged; the bad-config case stays on `/tmp`. Probed again on tmpfs, 6 runs at load 17 to 27, 288 hooks: SQLite p50/p95/max 1/3/9 ms, no call over 200 ms; outside SQLite 53/84/468 ms. What it still catches on a calm runner: a hook that waits on a timer, a socket or a daemon of its own for 2 s, since the median stays near 100 ms and the 2 s budget decides. What it gives up: a hook whose own syncs grow past the budget on a real disk; nothing here measured that before either, since the references paid the same syncs.
 
 ## Seen beside this row, not changed
 
