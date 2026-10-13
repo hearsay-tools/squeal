@@ -71,11 +71,13 @@ The adapter test 9dcec7f8 added (`overlap.test.ts`, "drops a file whose run read
 | 2,000 | 0.33 to 0.66 ms | 98.6 / 27.4 to 28.9 ms |
 | 5,000 | 0.52 to 2.31 ms | 154.7 / 68.9 to 73.9 ms |
 
-The loop added no check in any of these runs. `#replaced` holds only reloads with other bytes, and the next run's end check empties it. *Verified by experiment, load 10 to 17.*
+The loop added no check in any of these runs: every raw sample records `added: 0`. The timing patch measures 9dcec7f8's stamp scan only, not 97350b49's `#replaced` loop. So these samples support the observed scan times above, not a bound on every end check, and none had an uncached addition or a replacement-heavy run. *Verified by experiment, load 10 to 17.*
+
+By source inspection (review 001-353, `reviews/wave-13bi.md` N1), the work the two fixes add to an end check is O(S + R): S is the stamps retained across the active containers, R the reads replaced since the previous end check. The added checks share the end check's one stat and at most one hash per file. Changed repeated loads of a module can grow R; a reload with an equal hash adds no entry. Both collections are filtered by the run's load time, and the end check clears the replacement list. *Read in source code.*
 
 ## Recommendation for Squeal
 
-1. Land 97350b49, d4ddc13d and 85a86212 with 9dcec7f8 and f0fafaed as this row. Route B is a real stale result. The two fixes are small, local to `SourceStamps`, test-first, and cost under 3 ms per run end check at 5,000 modules.
+1. Land 97350b49, d4ddc13d and 85a86212 with 9dcec7f8 and f0fafaed as this row. Route B is a real stale result. The two fixes are small, local to `SourceStamps`, and test-first. The measured stamp scan took under 3 ms at 5,000 modules; those runs had no uncached additions, so they do not bound replacement-heavy work, whose added cost is O(S + R) as above.
 2. Keep line 195's assertion. 85a86212 only stops a split attempt from counting as planted, the way a `src/mod.ts` revision already did. The test then spends another attempt, as 001-182 recommendation 3 already noted for split restores.
 3. No product row for route A. Squeal behaved as specified: the run of the empty file's key was dropped, and the bytes' key got a run of its own.
 4. Probe-isolation note for the coordinator: at 22:36:42 this worktree's root `node_modules` was removed and reinstalled, and the tracked `test/fixtures/node-test/*/node_modules` symlinks were deleted, by no command of this session. The coordinator reports it host-wide. The suite then running was stopped, the fixtures restored, and the suite re-run.
