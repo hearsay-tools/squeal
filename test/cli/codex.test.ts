@@ -100,6 +100,8 @@ describe("squeal init --harness codex", () => {
     expect(readFileSync(join(repo.main, "squeal.config.json"), "utf8")).toBe("{}\n");
   });
 
+  // Two CLI processes, each compiling the source through tsx: about a second
+  // alone, past the 5 s default under a loaded full suite (task 001-309).
   it("touches nothing under a scratch HOME/.codex or CODEX_HOME, run as the CLI", () => {
     const repo = fakeRepo();
     const home = runtimeDir();
@@ -131,7 +133,7 @@ describe("squeal init --harness codex", () => {
     expect(cli(["--print-launcher-config"]).status).toBe(0);
     expect(snapshot(home)).toEqual(before);
     expect(existsSync(join(repo.main, "squeal.config.json"))).toBe(true);
-  });
+  }, 60_000);
 
   it("rejects an unknown harness, a stray argument and the launcher flag without codex", () => {
     const repo = fakeRepo();
