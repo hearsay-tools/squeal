@@ -1,3 +1,6 @@
+import { mkdtempSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { testCommandDenied } from "../../src/core/delivery/test-command-denied.js";
 import type { TestFileRef } from "../../src/core/types/index.js";
@@ -143,6 +146,18 @@ describe("the one-time deny of a test command Squeal has answered (spec 005 D8)"
       deps,
     );
     expect(out).toEqual(SILENT);
+  });
+
+  it("denies from a working directory that reaches the root through a symlink", async () => {
+    const r = await answered();
+    const link = join(mkdtempSync(join(tmpdir(), "sq-link-")), "root");
+    symlinkSync(r.root, link);
+    const out = await runHook(
+      "pre-tool-use",
+      JSON.stringify({ ...JSON.parse(recorded("pre-tool-use", link)), ...bash("npx vitest run") }),
+      deps,
+    );
+    expect(out.stdout).toContain('"permissionDecision":"deny"');
   });
 
   it("runs for a consumer without a registration", async () => {
