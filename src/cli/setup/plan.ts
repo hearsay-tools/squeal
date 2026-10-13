@@ -11,6 +11,7 @@ import { slowCandidates } from "./candidates.js";
 import { scanGates } from "./gates.js";
 import { type HarnessFact, readHarnesses } from "./harnesses.js";
 import { otherWorktrees, type RepoFacts, readJson, readRepoFacts } from "./repo.js";
+import { testFileUniverse, unselected } from "./test-globs.js";
 
 /*
  * `squeal setup --plan [--json]`, spec 005 D3 step 2: read-only facts of one
@@ -168,6 +169,14 @@ export interface PlanOptions {
 const TRUST_COMMAND = "squeal init --harness codex --trust";
 
 export async function buildPlan(root: AbsolutePath, options: PlanOptions): Promise<SetupPlan> {
+  return (await readPlan(root, options)).plan;
+}
+
+/** The plan and the test files a `--slow` or `--input` test glob must select (row 005-40). */
+export async function readPlan(
+  root: AbsolutePath,
+  options: PlanOptions,
+): Promise<{ readonly plan: SetupPlan; readonly testFiles: readonly string[] }> {
   const facts = await readRepoFacts(root);
   const { policy, problems } = loadPolicy(root);
   const raw = readJson(join(root, POLICY_FILE));
@@ -193,7 +202,8 @@ export async function buildPlan(root: AbsolutePath, options: PlanOptions): Promi
     nodeTest: runners.nodeTest.length > 0,
   });
   const harnesses = readHarnesses(root, options.env);
-  return {
+  const universe = testFileUniverse(facts, runners);
+  const plan: SetupPlan = {
     schemaVersion: SETUP_PLAN_SCHEMA_VERSION,
     root,
     harnesses,
@@ -209,8 +219,9 @@ export async function buildPlan(root: AbsolutePath, options: PlanOptions): Promi
       testFiles: testFiles.paths.length,
       withoutCurrentResult: testFiles.paths.length - (testFiles.current ?? 0),
     },
-    outdated: outdated(config, instructions, slow),
+    outdated: [...outdated(config, instructions, slow), ...unselected(policy, universe)],
   };
+  return { plan, testFiles: universe };
 }
 
 async function codexTrust(

@@ -5,6 +5,7 @@ import { main } from "../../../src/cli/main.js";
 import { git } from "../../hash/git-repo.js";
 import {
   capture,
+  cezarionShaped,
   cleanupFixtures,
   harnessEnv,
   json,
@@ -174,5 +175,130 @@ describe("the Codex install hint (row 005-40)", () => {
     expect(await main(["init", "--harness", "codex"], init.io)).toBe(0);
     expect(init.out.stdout).toContain("squeal init: kept squeal.config.json");
     expect(count(init.out.stdout)).toBe(0);
+  });
+});
+
+/*
+ * Row 005-40, `research/e2e-setup.md` defect 4: two of four model sessions
+ * gave a test glob that selects no test file, and setup wrote it as given.
+ */
+describe("a --slow or --input test glob", () => {
+  const config = (root: string) => JSON.parse(read(root, "squeal.config.json"));
+  const setup = async (root: string, args: readonly string[]) => {
+    const { io, out } = capture(root, harnessEnv(["claude"]));
+    const code = await main(
+      ["setup", "--yes", "--harness", "claude-code", "--no-warmup", ...args],
+      io,
+    );
+    return { code, ...out };
+  };
+
+  it("takes a bare directory as <dir>/** and says so: the Codex session's flags", async () => {
+    const root = squealShaped();
+    const { code, stdout, stderr } = await setup(root, [
+      "--block",
+      "CLAUDE.md",
+      "--gate",
+      "CLAUDE.md:3=reword",
+      "--slow",
+      "test/e2e",
+      "--input",
+      "test/e2e=plugins/**",
+    ]);
+    expect(stderr).toBe("");
+    expect(code).toBe(0);
+    expect(stdout.indexOf("squeal setup: took test/e2e as test/e2e/**\n")).toBe(0);
+    expect(stdout.split("took test/e2e as").length, "said once").toBe(2);
+    expect(stdout).toContain("squeal init: added test/e2e/** to slow.include");
+    expect(config(root).slow).toEqual({ include: ["test/e2e/**"] });
+    expect(config(root).inputs["test/e2e/**"]).toEqual(["plugins/**"]);
+    expect(await main(["setup", "--check"], capture(root).io)).toBe(0);
+  });
+
+  it("takes --input <glob>=none as no input: the Claude Code session's flags on cezarion", async () => {
+    for (const slow of ["packages/cezar/test/e2e/**", "packages/cezar/test/e2e"]) {
+      const root = cezarionShaped();
+      const { code, stdout, stderr } = await setup(root, [
+        "--block",
+        "AGENTS.md",
+        "--slow",
+        slow,
+        "--input",
+        `${slow}=packages/cezar/dist/**`,
+        "--input",
+        "packages/cezar/test/unit/**=none",
+      ]);
+      expect(stderr, slow).toBe("");
+      expect(code, slow).toBe(0);
+      expect(stdout).toContain("squeal setup: no input for packages/cezar/test/unit/**\n");
+      expect(config(root).slow.include).toEqual(["packages/cezar/test/e2e/**"]);
+      expect(config(root).inputs).toEqual({
+        "packages/cezar/test/e2e/**": ["packages/cezar/dist/**"],
+      });
+    }
+  });
+
+  it("takes an input directory as <dir>/**, built or tracked", async () => {
+    const root = cezarionShaped();
+    const { code, stdout } = await init(root, [
+      "--input",
+      "packages/cezar/test/e2e/*.test.ts=packages/cezar/dist",
+    ]);
+    expect(code).toBe(0);
+    expect(stdout).toContain("squeal init: took packages/cezar/dist as packages/cezar/dist/**\n");
+    expect(config(root).inputs).toEqual({
+      "packages/cezar/test/e2e/*.test.ts": ["packages/cezar/dist/**"],
+    });
+  });
+
+  it("is refused, naming it, when it selects no test file", async () => {
+    const root = squealShaped();
+    const cases: [string[], string][] = [
+      [["--slow", "test/nothing/**"], "--slow test/nothing/** selects no test file"],
+      [["--slow", "test/e2e/helpers.ts"], "--slow test/e2e/helpers.ts selects no test file"],
+      [
+        ["--input", "test/none=plugins/**"],
+        "--input test/none=plugins/**: test/none selects no test file",
+      ],
+      [
+        ["--input", "test/none/**=none"],
+        "--input test/none/**=none: test/none/** selects no test file",
+      ],
+    ];
+    for (const [args, message] of cases) {
+      const viaInit = await init(root, args);
+      expect(viaInit.code, args.join(" ")).toBe(1);
+      expect(viaInit.stderr).toBe(`squeal init: ${message}; nothing changed\n`);
+      const viaSetup = await setup(root, args);
+      expect(viaSetup.code, args.join(" ")).toBe(1);
+      expect(viaSetup.stdout).toBe("");
+      expect(viaSetup.stderr).toBe(`squeal setup: ${message}; nothing changed\n`);
+    }
+    expect(git(root, ["status", "--porcelain"])).toBe("");
+  });
+});
+
+describe("setup --check", () => {
+  it("names a slow.include entry or inputs key that selects no test file", async () => {
+    const root = squealShaped({
+      "squeal.config.json": json({
+        slow: { include: ["test/e2e"] },
+        inputs: {
+          "test/e2e/*.test.ts": ["plugins/**"],
+          "packages/cezar/test/unit/**": ["none"],
+        },
+      }),
+    });
+    const { io, out } = capture(root);
+    expect(await main(["setup", "--check"], io)).toBe(1);
+    expect(out.stdout).toContain(
+      'squeal.config.json: the slow.include entry "test/e2e" selects no test file; a directory takes /**: "test/e2e/**"\n',
+    );
+    expect(out.stdout).toContain(
+      'squeal.config.json: the inputs key "packages/cezar/test/unit/**" selects no test file\n',
+    );
+    const plan = capture(root);
+    await main(["setup", "--plan", "--json"], plan.io);
+    expect(JSON.parse(plan.out.stdout).outdated).toHaveLength(2);
   });
 });

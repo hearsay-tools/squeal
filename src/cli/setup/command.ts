@@ -1,15 +1,15 @@
 import { findWorktreeRoot } from "../../core/fs/index.js";
 import type { CliIo } from "../main.js";
-import { takeSetupFlags } from "./apply.js";
+import { normalizeGlobs, takeSetupFlags } from "./apply.js";
 import { type Asker, terminalAsker } from "./ask.js";
 import { runSetup } from "./flow.js";
 import { formatPlan } from "./format.js";
 import type { HarnessId } from "./harnesses.js";
-import { buildPlan } from "./plan.js";
+import { readPlan } from "./plan.js";
 import type { GivenAnswers } from "./questions.js";
 
 export const SETUP_USAGE = `Usage: squeal setup [--yes] [--harness <claude-code|codex|none>]... [--block <file|none>]...
-         [--gate <id>=<reword|keep>]... [--slow <glob|none>]... [--input <test glob>=<input glob>]...
+         [--gate <id>=<reword|keep>]... [--slow <glob|none>]... [--input <test glob>=<input glob|none>]...
          [--no-trust] [--no-warmup]
        squeal setup --plan [--json]
        squeal setup --check [--json]
@@ -44,10 +44,21 @@ export async function setupCommand(
     return 1;
   }
   const env = io.env ?? process.env;
-  const plan = await buildPlan(root, { env, codexTrust: true });
+  const { plan, testFiles } = await readPlan(root, { env, codexTrust: true });
   if (parsed.mode === "apply") {
+    // Row 005-40: a test glob that selects nothing is refused before any question.
+    let { given } = parsed;
+    if (given.slow !== null) {
+      const globs = normalizeGlobs(root, given.slow, testFiles);
+      if (typeof globs === "string") {
+        io.stderr(`squeal setup: ${globs}; nothing changed\n`);
+        return 1;
+      }
+      for (const line of globs.lines) io.stdout(`squeal setup: ${line}\n`);
+      given = { ...given, slow: { slow: globs.slow, inputs: globs.inputs } };
+    }
     const asker = parsed.yes ? null : (deps.asker ?? terminalAsker)();
-    return runSetup({ plan, given: parsed.given, yes: parsed.yes, asker }, io);
+    return runSetup({ plan, given, yes: parsed.yes, asker }, io);
   }
   io.stdout(parsed.json ? `${JSON.stringify(plan, null, 2)}\n` : formatPlan(plan));
   return parsed.mode === "check" && plan.outdated.length > 0 ? 1 : 0;

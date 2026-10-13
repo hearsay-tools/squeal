@@ -7,13 +7,15 @@ import type { AbsolutePath } from "../../core/types/index.js";
 import type { CliIo } from "../main.js";
 import { blockText, resolved, unfindableBlock, withBlock, writeBlockFile } from "./block.js";
 import { rewordGates } from "./gates.js";
-import { buildPlan, type SetupPlan } from "./plan.js";
+import { readPlan, type SetupPlan } from "./plan.js";
+import { asDirectoryGlob, directoryIn, holdsTestFile, selectsAny } from "./test-globs.js";
 
 /*
  * Spec 005 D3 step 4: `squeal init` gains one flag per setup choice, which
  * the setup command and skill pass: `--block <file|none>`, `--gate
  * <id>=<reword|keep>`, `--slow <glob>`, `--input <test glob>=<input glob>`.
- * Without them, init behaves as before.
+ * Without them, init behaves as before. Row 005-40: a test glob must select
+ * a test file, a bare directory is taken as `<dir>/**`, and `=none` is no input.
  */
 
 export interface SetupChoices {
@@ -25,7 +27,7 @@ export interface SetupChoices {
 }
 
 export const SETUP_FLAGS_USAGE = `       Setup choices, any harness: [--block <file|none>] [--gate <id>=<reword|keep>]...
-         [--slow <glob>]... [--input <test glob>=<input glob>]...
+         [--slow <glob>]... [--input <test glob>=<input glob|none>]...
 `;
 
 /** Takes the setup flags out of `args`; the rest is init's own. A string is a usage error. */
@@ -80,6 +82,42 @@ export function hasChoices(choices: SetupChoices): boolean {
 }
 
 /**
+ * Row 005-40: the `--slow` and `--input` globs as they apply, each bare
+ * directory as `<dir>/**` and each `--input <glob>=none` left out, with a
+ * line saying so; a string names a test glob that selects none of `testFiles`.
+ */
+export function normalizeGlobs(
+  root: string,
+  given: Pick<SetupChoices, "slow" | "inputs">,
+  testFiles: readonly string[],
+): (Pick<SetupChoices, "slow" | "inputs"> & { readonly lines: readonly string[] }) | string {
+  const lines: string[] = [];
+  const as = (glob: string, isDirectory: (dir: string) => boolean) => {
+    const taken = asDirectoryGlob(glob, isDirectory);
+    if (taken !== glob) lines.push(`took ${glob} as ${taken}`);
+    return taken;
+  };
+  const testGlob = (glob: string) => {
+    const taken = as(glob, holdsTestFile(testFiles));
+    return selectsAny(taken, testFiles) ? taken : null;
+  };
+  const slow: string[] = [];
+  for (const glob of given.slow) {
+    const taken = testGlob(glob);
+    if (taken === null) return `--slow ${glob} selects no test file`;
+    slow.push(taken);
+  }
+  const inputs: { test: string; input: string }[] = [];
+  for (const { test, input } of given.inputs) {
+    const taken = testGlob(test);
+    if (taken === null) return `--input ${test}=${input}: ${test} selects no test file`;
+    if (input === "none") lines.push(`no input for ${taken}`);
+    else inputs.push({ test: taken, input: as(input, directoryIn(root)) });
+  }
+  return { slow, inputs, lines: [...new Set(lines)] };
+}
+
+/**
  * Spec 005 D3 step 4: the choices are checked before anything is written,
  * `harness` sets the harness up as `squeal init` does without them, then
  * the choices apply. A choice that cannot apply changes nothing (exit 1); a
@@ -101,13 +139,14 @@ export async function initWithChoices(
     io.stderr(`squeal init: ${checked}; nothing changed\n`);
     return 1;
   }
+  for (const line of checked.lines) io.stdout(`squeal init: ${line}\n`);
   const code = await harness();
   if (code !== 0) {
     io.stderr("squeal init: the setup choices were not applied\n");
     return code;
   }
   try {
-    for (const line of applyChoices(root, choices, checked.plan)) {
+    for (const line of applyChoices(root, checked.choices, checked.plan)) {
       io.stdout(`squeal init: ${line}\n`);
     }
   } catch (error) {
@@ -123,8 +162,11 @@ async function checkChoices(
   root: AbsolutePath,
   choices: SetupChoices,
   env: Readonly<Record<string, string | undefined>>,
-): Promise<{ readonly plan: SetupPlan } | string> {
-  const plan = await buildPlan(root, { env });
+): Promise<
+  | { readonly plan: SetupPlan; readonly choices: SetupChoices; readonly lines: readonly string[] }
+  | string
+> {
+  const { plan, testFiles } = await readPlan(root, { env });
   for (const { id, choice } of choices.gates) {
     const gate = plan.gates.find((g) => g.id === id);
     if (gate === undefined) return `no gate line ${id}; squeal setup --plan lists them`;
@@ -152,21 +194,24 @@ async function checkChoices(
       return error instanceof Error ? error.message.replace(/^squeal: /, "") : String(error);
     }
   }
+  const globs = normalizeGlobs(root, choices, testFiles);
+  if (typeof globs === "string") return globs;
   const config = readConfig(root);
   if (
-    choices.slow.length + choices.inputs.length > 0 &&
+    globs.slow.length + globs.inputs.length > 0 &&
     config === null &&
     readOrEmpty(join(root, POLICY_FILE)) !== ""
   ) {
     return `${POLICY_FILE} is not a JSON object; fix it first`;
   }
-  if (choices.inputs.length > 0) {
-    const inputs = config?.inputs;
-    if (Array.isArray(inputs)) {
-      return `inputs in ${POLICY_FILE} is a list applied to every test file; add these by hand`;
-    }
+  if (globs.inputs.length > 0 && Array.isArray(config?.inputs)) {
+    return `inputs in ${POLICY_FILE} is a list applied to every test file; add these by hand`;
   }
-  return { plan };
+  return {
+    plan,
+    choices: { ...choices, slow: globs.slow, inputs: globs.inputs },
+    lines: globs.lines,
+  };
 }
 
 /** Applies checked choices; the lines say what changed. Throws only on a failed write. */
