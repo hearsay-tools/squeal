@@ -1,0 +1,44 @@
+diff --git a/src/runners/vitest/sources.ts b/src/runners/vitest/sources.ts
+index 46889b43..e90cb2f3 100644
+--- a/src/runners/vitest/sources.ts
++++ b/src/runners/vitest/sources.ts
+@@ -192,6 +192,7 @@ export class SourceStamps {
+    * module is no longer cached (task 001-343).
+    */
+   async stale(vitest: Vitest, loadedSince?: EpochMs): Promise<AbsolutePath[]> {
++    const probeStart = performance.now(); // PROBE-343
+     this.attach(vitest);
+     const since = loadedSince ?? 0;
+     const unknownAt = Number.POSITIVE_INFINITY as EpochMs;
+@@ -236,6 +237,7 @@ export class SourceStamps {
+         checks.push(held ? { stamps, key, file, held } : { stamps, key, file, after });
+       }
+       this.#held = [];
++      const probeT0 = performance.now(); const probeBefore = checks.length; let probeSeen = 0; // PROBE-343
+       // Task 001-343: a read whose transform was in flight when the runner part
+       // dropped its module. Vite returns that transform to the run but never
+       // caches it, so neither `hold` nor the loop above found it.
+@@ -243,11 +245,15 @@ export class SourceStamps {
+         const reads = this.#containers.get(environment.pluginContainer);
+         if (!reads) continue;
+         for (const [key, stamp] of reads.stamps) {
++          probeSeen++; // PROBE-343
+           if (stamp.loadedAt < since || checked.has(stamp)) continue;
+           checked.add(stamp);
+           checks.push({ stamps: reads.stamps, key, file: stamp.file, held: stamp });
+         }
+       }
++      (globalThis as { probe343?: unknown[] }).probe343 ??= []; // PROBE-343
++      ((globalThis as { probe343?: unknown[] }).probe343 as unknown[]).push({ seen: probeSeen, added: checks.length - probeBefore, loopMs: performance.now() - probeT0, checks: checks.length, files: checks.slice(probeBefore).map((c) => c.file) }); // PROBE-343
++      if (process.env.SQ343_LOG) (await import("node:fs")).appendFileSync(process.env.SQ343_LOG, `${JSON.stringify({ seen: probeSeen, added: checks.length - probeBefore, loopMs: performance.now() - probeT0, files: checks.slice(probeBefore).map((c) => c.file) })}\n`); // PROBE-343
+     }
+     // One stat and at most one hash per file, however many modules read it.
+     const stats = new Map<AbsolutePath, Promise<FileStat | null>>();
+@@ -278,6 +284,7 @@ export class SourceStamps {
+         stamps.set(key, { ...stamp, ...read, loadedAt: stamp.loadedAt });
+       return null;
+     });
++    if (loadedSince !== undefined && process.env.SQ343_LOG) (await import("node:fs")).appendFileSync(process.env.SQ343_LOG, `${JSON.stringify({ total: true, staleMs: performance.now() - probeStart, checks: checks.length })}\n`); // PROBE-343
+     const found = new Set<AbsolutePath>();
+     checks.forEach(({ file }, i) => {
+       const loadedAt = moved[i];

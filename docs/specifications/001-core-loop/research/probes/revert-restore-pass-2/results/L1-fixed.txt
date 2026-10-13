@@ -1,0 +1,97 @@
+== 2026-10-13T20-32-08-085Z-6d4edae2 planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=37.9..37.9
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +190..+578 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run 59e98701 at revision 0
+== 2026-10-13T20-32-08-492Z-8c025cee planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=37.9..37.9
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +161..+508 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run bc963cc4 at revision 0
+== 2026-10-13T20-32-24-110Z-634ce310 planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=39.9..39.9
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +151..+373 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run 62702132 at revision 0
+== 2026-10-13T20-32-24-119Z-7d3a11ea planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=39.9..39.9
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +142..+376 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run a9d91bf3 at revision 0
+== 2026-10-13T20-32-39-915Z-26cd9c92 planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=41.2..41.2
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +236..+614 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run 9f724b47 at revision 0
+== 2026-10-13T20-32-39-947Z-729b4800 planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=41.2..41.2
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +257..+520 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run 32608889 at revision 0
+== 2026-10-13T20-32-55-146Z-7a7695e8 planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=45.1..45.1
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +190..+475 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run e507e6ca at revision 0
+== 2026-10-13T20-32-55-148Z-8a073e5c planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=45.1..45.1
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +250..+555 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run 94be4103 at revision 0
+== 2026-10-13T20-33-11-077Z-e663898b planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=43.4..43.4
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +240..+501 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run e9f2a747 at revision 0
+== 2026-10-13T20-33-11-113Z-ff24c8af planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=43.4..43.4
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +275..+703 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run 693e4228 at revision 0
+== 2026-10-13T20-33-34-069Z-9340be74 planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=55.4..55.4
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +231..+658 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run ee728bd7 at revision 0
+== 2026-10-13T20-33-34-277Z-fedc3870 planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=55.4..55.4
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +422..+777 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run d2ea3b50 at revision 0
+== 2026-10-13T20-33-56-054Z-4fff5180 planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=58.8..58.8
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +198..+763 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run 05a8f742 at revision 0
+== 2026-10-13T20-33-56-245Z-304f51ce planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=57.9..57.9
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +394..+953 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run a393b6b5 at revision 0
+== 2026-10-13T20-34-17-699Z-2e763ed0 planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=59.4..59.4
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +274..+537 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run 350cf398 at revision 0
+== 2026-10-13T20-34-18-712Z-5fc924b5 planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=59.4..59.4
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +212..+527 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run 9b9c01b2 at revision 0
+== 2026-10-13T20-34-42-958Z-9571f205 planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=58.3..58.3
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +192..+652 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run e87fc242 at revision 0
+== 2026-10-13T20-34-43-148Z-4e0338de planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=58.3..58.3
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +303..+922 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run 136c9c9a at revision 0
+== 2026-10-13T20-35-07-859Z-b71be671 planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=59.2..59.2
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +275..+741 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run b21453ea at revision 0
+== 2026-10-13T20-35-08-513Z-a16d11b0 planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=59.2..59.2
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +312..+921 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run 66e4ea96 at revision 0
+== 2026-10-13T20-35-31-927Z-a4312219 planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=55.8..55.8
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +263..+723 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run 2e3324c7 at revision 0
+== 2026-10-13T20-35-32-144Z-73ddcf80 planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=55.8..55.8
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +314..+682 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run 42c08603 at revision 0
+== 2026-10-13T20-35-51-928Z-6f277abd planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=48.4..48.4
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +184..+448 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run c579a6a5 at revision 0
+== 2026-10-13T20-35-52-285Z-80285cbb planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=48.4..48.4
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +204..+439 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run 5143524f at revision 0
+== 2026-10-13T20-36-05-938Z-29376102 planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=46.3..46.3
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +189..+466 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run 59c55b05 at revision 0
+== 2026-10-13T20-36-06-006Z-af12b284 planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=46.3..46.3
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +237..+508 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run cd8e3510 at revision 0
+== 2026-10-13T20-36-22-052Z-337bd9d4 planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=45.6..45.6
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +144..+330 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run bed0bec9 at revision 0
+== 2026-10-13T20-36-22-086Z-390c355b planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=45.6..45.6
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +163..+390 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run dde03974 at revision 0
+== 2026-10-13T20-36-36-964Z-052fe26c planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=40.2..40.2
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +186..+485 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run 82d77e46 at revision 0
+== 2026-10-13T20-36-36-975Z-e325f008 planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=40.2..40.2
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +181..+446 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run d1d615e9 at revision 0
+== 2026-10-13T20-36-49-361Z-770d74c3 planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=37.2..37.2
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +203..+400 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run 6c0117be at revision 0
+== 2026-10-13T20-36-49-380Z-2dd42fa8 planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=37.2..37.2
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +160..+389 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run 2bacc6fd at revision 0
+{"reps": 32, "bad": 0, "planted": 32, "attempts": 32, "armed": 32, "kept": 0, "kept_cached": 0, "kept_inflight": 0, "kept_other": 0, "split_test": 0, "split_mod": 0, "inv_window": 0, "current_from_armed": 0, "current_from_later": 0}

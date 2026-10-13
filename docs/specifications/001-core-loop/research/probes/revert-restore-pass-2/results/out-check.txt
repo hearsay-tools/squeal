@@ -1,0 +1,4 @@
+== 2026-10-13T20-14-47-554Z-b2c5be0b planted=True state=['unknown unknown', 'unknown unknown'] bad=False load=18.1..18.1
+  attempt 1 at=0 loaded=old planted=True test-revs=[1] mod-revs=[] armed run +165..+461 kept=False mid-window src/mod.ts invalidates=[] ran=1 heard=[]
+  last stored result of test/reverting.test.ts: pass from an unarmed run 7a7f5262 at revision 0
+{"reps": 1, "bad": 0, "planted": 1, "attempts": 1, "armed": 1, "kept": 0, "kept_cached": 0, "kept_inflight": 0, "kept_other": 0, "split_test": 0, "split_mod": 0, "inv_window": 0, "current_from_armed": 0, "current_from_later": 0}

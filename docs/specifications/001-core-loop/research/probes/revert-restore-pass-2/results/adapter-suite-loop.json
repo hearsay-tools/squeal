@@ -1,0 +1,28 @@
+{
+ "endChecks": 186,
+ "withAdded": 7,
+ "added": [
+  [
+   "test/bad.test.ts"
+  ],
+  [
+   "test/syntax.test.ts"
+  ],
+  [
+   "test/syntax.test.ts"
+  ],
+  [
+   "src/mod.ts"
+  ],
+  [
+   "src/mod.ts"
+  ],
+  [
+   "src/mod.ts"
+  ],
+  [
+   "src/mod.ts"
+  ]
+ ],
+ "maxLoopMs": 0.5597749999997177
+}
