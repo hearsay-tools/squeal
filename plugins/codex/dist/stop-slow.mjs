@@ -789,13 +789,17 @@ function stopWaitMetaKey(worktreeId) {
   return worktreeMetaKey("stopWait", worktreeId);
 }
 function stopWaitRuns(store, consumer, harness, version) {
+  const registeredAt = store.consumers.get(consumer)?.registeredAt;
+  if (registeredAt === void 0) return false;
   const value = readSlot(store, stopWaitMetaKey(consumer.worktreeId), consumer);
-  return isRecord(value) && value[harness] === version;
+  return isRecord(value) && value.registeredAt === registeredAt && value[harness] === version;
 }
 function recordStopWait(store, consumer, harness, version) {
   store.transaction(() => {
-    if (stopWaitRuns(store, consumer, harness, version)) return;
-    writeSlot(store, stopWaitMetaKey(consumer.worktreeId), consumer, { [harness]: version });
+    const registeredAt = store.consumers.get(consumer)?.registeredAt;
+    if (registeredAt === void 0 || stopWaitRuns(store, consumer, harness, version)) return;
+    const key = stopWaitMetaKey(consumer.worktreeId);
+    writeSlot(store, key, consumer, { registeredAt, [harness]: version });
   });
 }
 
@@ -4287,7 +4291,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.147";
+  if (true) return "0.1.148";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
