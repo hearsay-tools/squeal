@@ -13847,8 +13847,9 @@ var init_linked_watch = __esm({
           queued: false
         };
         try {
-          target.excluded = await linkedExclusions(this.root, this.linksOf(path), path);
-          target.sub = await this.subscribe(path, target);
+          const excluded = await linkedExclusions(this.root, this.linksOf(path), path);
+          target.sub = await this.subscribe(path, target, excluded);
+          target.excluded = excluded;
         } catch (error) {
           this.listener.onError(
             new Error(`squeal: cannot watch the linked directory ${path}: ${error.message}`)
@@ -13856,9 +13857,9 @@ var init_linked_watch = __esm({
         }
         return target;
       }
-      subscribe(path, target) {
+      subscribe(path, target, excluded) {
         return this.backend.watch(
-          { root: path, excluded: target.excluded, extraFiles: [] },
+          { root: path, excluded, extraFiles: [] },
           {
             onHints: (hints) => {
               this.listener.onHints(hints.flatMap((hint) => this.mapped(path, hint)));
@@ -13914,8 +13915,8 @@ var init_linked_watch = __esm({
         if (sameList(target.excluded, excluded) || !this.links.has(path)) return;
         const freed = target.excluded.filter((dir) => !excluded.includes(dir));
         const old = target.sub;
+        target.sub = await this.subscribe(path, target, excluded);
         target.excluded = excluded;
-        target.sub = await this.subscribe(path, target);
         await old?.close();
         if (freed.length > 0) {
           this.listener.onHints(
@@ -34846,7 +34847,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.142";
+  if (true) return "0.1.143";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
