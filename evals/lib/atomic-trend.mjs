@@ -9,6 +9,8 @@
 // generically from `cells[].atomic.measures`: any key, `true` met, `false` missed, `null` not
 // computable.
 import { createHash } from "node:crypto";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { falseClaim, rate } from "./behaviours.mjs";
 
 /** The flag's bar: one-sided Fisher p below it (the human, 2026-10-12). */
@@ -300,4 +302,16 @@ export function atomicMarkdown(runs) {
     }
   }
   return `${out.join("\n").trimEnd()}\n`;
+}
+
+/** Writes `dir`/ATOMIC.md from every `*.atomic.json` in `dir`; returns how many it read. */
+export function writeAtomicMarkdown(dir) {
+  const runs = readdirSync(dir)
+    .filter((f) => f.endsWith(".atomic.json"))
+    .map((f) => ({
+      name: f.replace(/\.json$/, ""),
+      data: JSON.parse(readFileSync(join(dir, f), "utf8")),
+    }));
+  writeFileSync(join(dir, "ATOMIC.md"), atomicMarkdown(runs));
+  return runs.length;
 }
