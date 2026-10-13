@@ -1,0 +1,8 @@
+sync exit 0
+polls with .venv/.lock held: 153, free: 1
+-- uv pip install also takes it?
+polls with .venv/.lock held: 46, free: 6
+-- does uv sync wait while another process holds the lock?
+uv sync took 2822 ms while the lock was held for 3 s
+-- fingerprint cost at this size
+{"hash":"9db504f7fe2d7b46","ms":1.1,"dists":12,"pth":["_virtualenv.pth","app.pth","lib.pth"],"interpreter":"/home/agent/.local/share/uv/python/cpython-3.13.14-linux-x86_64-gnu/bin/python3.13","homeReal":"/home/agent/.local/share/uv/python/cpython-3.13.14-linux-x86_64-gnu/bin"}

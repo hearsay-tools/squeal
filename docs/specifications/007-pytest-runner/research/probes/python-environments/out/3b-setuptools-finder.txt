@@ -1,0 +1,7 @@
+__editable__.pkgf-0.1.pth
+__editable___pkgf_0_1_finder.py
+pkgf-0.1.dist-info
+__editable__.pkgf-0.1.pth: import __editable___pkgf_0_1_finder; __editable___pkgf_0_1_finder.install()
+MAPPING: dict[str, str] = {'pkgf': '<S>/x/finder/code'}
+NAMESPACES: dict[str, list[str]] = {}
+<S>/x/finder/code/__init__.py

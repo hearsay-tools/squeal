@@ -1,0 +1,23 @@
+== baseline
+{"hash":"41ab3854e7823a7b","ms":1.45,"dists":8,"pth":["_virtualenv.pth","app.pth","lib.pth"],"interpreter":"/home/agent/.local/share/uv/python/cpython-3.13.14-linux-x86_64-gnu/bin/python3.13","homeReal":"/home/agent/.local/share/uv/python/cpython-3.13.14-linux-x86_64-gnu/bin"}
+1791927020 1076358977 1791927020 1612344353 1791927020 1076660952 
+== uv sync with nothing to do: does anything move?
+{"hash":"41ab3854e7823a7b","ms":1.63,"dists":8,"pth":["_virtualenv.pth","app.pth","lib.pth"],"interpreter":"/home/agent/.local/share/uv/python/cpython-3.13.14-linux-x86_64-gnu/bin/python3.13","homeReal":"/home/agent/.local/share/uv/python/cpython-3.13.14-linux-x86_64-gnu/bin"}
+1791927020 1076358977 1791927020 1612344353 1791927020 1076660952 
+== uv.lock edited (pytest-mock pinned lower) but no sync: installed set
+ 2 files changed, 5 insertions(+), 5 deletions(-)
+{"hash":"41ab3854e7823a7b","ms":1.09,"dists":8,"pth":["_virtualenv.pth","app.pth","lib.pth"],"interpreter":"/home/agent/.local/share/uv/python/cpython-3.13.14-linux-x86_64-gnu/bin/python3.13","homeReal":"/home/agent/.local/share/uv/python/cpython-3.13.14-linux-x86_64-gnu/bin"}
+== then uv sync
+{"hash":"b4a40b0580df5880","ms":2.03,"dists":8,"pth":["_virtualenv.pth","app.pth","lib.pth"],"interpreter":"/home/agent/.local/share/uv/python/cpython-3.13.14-linux-x86_64-gnu/bin/python3.13","homeReal":"/home/agent/.local/share/uv/python/cpython-3.13.14-linux-x86_64-gnu/bin"}
+1791927023 1076358977 1791927020 1612344353 1791927020 1076660952 
+== uv pip install behind the lock's back (no lockfile change)
+{"hash":"a61b14f5a6cf520a","ms":1.68,"dists":8,"pth":["_virtualenv.pth","app.pth","lib.pth"],"interpreter":"/home/agent/.local/share/uv/python/cpython-3.13.14-linux-x86_64-gnu/bin/python3.13","homeReal":"/home/agent/.local/share/uv/python/cpython-3.13.14-linux-x86_64-gnu/bin"}
+== environment variables that change the verdict
+-- none:                                     4 passed in 0.02s
+-- PYTEST_ADDOPTS='-p no:pytest_mock':        3 passed, 1 error in 0.01s
+-- PYTEST_DISABLE_PLUGIN_AUTOLOAD=1:          3 passed, 1 error in 0.01s
+-- ... plus PYTEST_PLUGINS=pytest_mock:       4 passed in 0.01s
+-- PYTHONPATH=<a directory with another app>:  3 failed, 1 passed in 0.04s
+== Python version change: .python-version 3.13 -> 3.10 then uv sync
+python inode changed: yes
+{"hash":"069176012d8f198c","ms":1.72,"dists":11,"pth":["_virtualenv.pth","app.pth","lib.pth"],"interpreter":"/home/agent/.local/share/uv/python/cpython-3.10.20-linux-x86_64-gnu/bin/python3.10","homeReal":"/home/agent/.local/share/uv/python/cpython-3.10.20-linux-x86_64-gnu/bin"}

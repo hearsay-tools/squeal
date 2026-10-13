@@ -1,0 +1,6 @@
+synced: uv sync --check exit 0
+extra package installed by hand: exit 1
+uv.lock changed, not synced: exit 1; environment untouched by --check: yes
+51 ms: uv sync --check
+-- RECORD hashing cost (numpy+pandas env from run-5, if present)
+{"dists":12,"recordBytes":279442,"ms":3.68}

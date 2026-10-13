@@ -1,0 +1,116 @@
+== Python 3.10
+-- .venv/pyvenv.cfg
+home = /home/agent/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/bin
+implementation = CPython
+uv = 0.12.2
+version_info = 3.10
+include-system-site-packages = false
+prompt = app
+-- .venv top level
+.gitignore
+.lock
+CACHEDIR.TAG
+bin
+lib
+lib64
+pyvenv.cfg
+-- site-packages (.venv/lib/python3.10/site-packages)
+_pytest
+_virtualenv.pth
+_virtualenv.py
+app-0.1.0.dist-info
+app.pth
+exceptiongroup
+exceptiongroup-1.3.1.dist-info
+iniconfig
+iniconfig-2.3.1.dist-info
+lib-0.1.0.dist-info
+lib.pth
+packaging
+packaging-26.3.dist-info
+pluggy
+pluggy-1.6.0.dist-info
+py.py
+pygments
+pygments-2.21.0.dist-info
+pytest
+pytest-9.1.1.dist-info
+pytest_mock
+pytest_mock-3.16.0.dist-info
+tomli
+tomli-2.5.0.dist-info
+typing_extensions-4.16.0.dist-info
+typing_extensions.py
+-- *.pth
+.venv/lib/python3.10/site-packages/_virtualenv.pth: import _virtualenv
+.venv/lib/python3.10/site-packages/app.pth: <S>/layout-3.10/src
+.venv/lib/python3.10/site-packages/lib.pth: <S>/layout-3.10/packages/lib/src
+-- direct_url.json of editables
+{"url":"file://<S>/layout-3.10","dir_info":{"editable":true}}
+{"url":"file://<S>/layout-3.10/packages/lib","dir_info":{"editable":true}}
+-- INSTALLER
+uv-- sys from the venv
+3.10.20 (main, Aug  5 2026, 15:44:58) [Clang 22.1.3 ]
+cpython cpython-310
+prefix <S>/layout-3.10/.venv
+base /home/agent/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu
+user site enabled False
+sys.path ['', '/home/agent/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python310.zip', '/home/agent/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10', '/home/agent/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/lib-dynload', '<S>/layout-3.10/.venv/lib/python3.10/site-packages', '<S>/layout-3.10/src', '<S>/layout-3.10/packages/lib/src']
+-- pytest
+.....                                                                    [100%]
+5 passed in 0.11s
+== Python 3.13
+-- .venv/pyvenv.cfg
+home = /home/agent/.local/share/uv/python/cpython-3.13-linux-x86_64-gnu/bin
+implementation = CPython
+uv = 0.12.2
+version_info = 3.13
+include-system-site-packages = false
+prompt = app
+-- .venv top level
+.gitignore
+.lock
+CACHEDIR.TAG
+bin
+lib
+lib64
+pyvenv.cfg
+-- site-packages (.venv/lib/python3.13/site-packages)
+_pytest
+_virtualenv.pth
+_virtualenv.py
+app-0.1.0.dist-info
+app.pth
+iniconfig
+iniconfig-2.3.1.dist-info
+lib-0.1.0.dist-info
+lib.pth
+packaging
+packaging-26.3.dist-info
+pluggy
+pluggy-1.6.0.dist-info
+py.py
+pygments
+pygments-2.21.0.dist-info
+pytest
+pytest-9.1.1.dist-info
+pytest_mock
+pytest_mock-3.16.0.dist-info
+-- *.pth
+.venv/lib/python3.13/site-packages/_virtualenv.pth: import _virtualenv
+.venv/lib/python3.13/site-packages/app.pth: <S>/layout-3.13/src
+.venv/lib/python3.13/site-packages/lib.pth: <S>/layout-3.13/packages/lib/src
+-- direct_url.json of editables
+{"url":"file://<S>/layout-3.13","dir_info":{"editable":true}}
+{"url":"file://<S>/layout-3.13/packages/lib","dir_info":{"editable":true}}
+-- INSTALLER
+uv-- sys from the venv
+3.13.14 (main, Aug  5 2026, 15:44:26) [Clang 22.1.3 ]
+cpython cpython-313
+prefix <S>/layout-3.13/.venv
+base /home/agent/.local/share/uv/python/cpython-3.13.14-linux-x86_64-gnu
+user site enabled False
+sys.path ['', '/home/agent/.local/share/uv/python/cpython-3.13.14-linux-x86_64-gnu/lib/python313.zip', '/home/agent/.local/share/uv/python/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13', '/home/agent/.local/share/uv/python/cpython-3.13-linux-x86_64-gnu/lib/python3.13/lib-dynload', '<S>/layout-3.13/.venv/lib/python3.13/site-packages', '<S>/layout-3.13/src', '<S>/layout-3.13/packages/lib/src']
+-- pytest
+.....                                                                    [100%]
+5 passed in 0.03s

@@ -1,0 +1,45 @@
+== fresh nested worktree b, no .venv
+.git .gitignore packages pyproject.toml src tests uv.lock 
+-- .venv/bin/python exists?
+no
+-- uv python find (no project venv yet)
+<S>/wt/main/.venv/bin/python3
+-- uv run --no-sync python
+    import sys,app; print("exe", sys.executable); print("app", app.__file__)
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'app'
+-- after --no-sync, .venv exists?
+yes
+__pycache__
+_virtualenv.pth
+_virtualenv.py
+-- uv run --frozen python (default sync)
+Installed 8 packages in 47ms
+exe <S>/wt/main/.ai/wt/b/.venv/bin/python3
+app <S>/wt/main/.ai/wt/b/src/app/__init__.py
+-- .venv exists now?
+yes
+== inherited VIRTUAL_ENV pointing at main's .venv, in worktree c (no .venv)
+-- python on PATH as an activated shell has it
+exe <S>/wt/main/.venv/bin/python
+app <S>/wt/main/src/app/__init__.py
+-- pytest run that way: which app is imported?
+APP_FILE <S>/wt/main/src/app/__init__.py MARK fixture-original
+1 passed in 0.01s
+-- uv run --no-sync with VIRTUAL_ENV set
+    import sys,app; print("exe", sys.executable); print("app", app.__file__)
+    ^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'app'
+-- uv run --active --no-sync
+exe <S>/wt/main/.venv/bin/python3
+app <S>/wt/main/src/app/__init__.py
+-- uv python find with VIRTUAL_ENV set
+<S>/wt/main/.venv/bin/python3
+== UV_PROJECT_ENVIRONMENT shared across worktrees
+-- app.pth in the shared env after sync from c:
+<S>/wt/c/src
+-- app.pth after a later sync from main:
+<S>/wt/main/src
+-- pytest in c with the shared env: which app?
+APP_FILE <S>/wt/main/src/app/__init__.py MARK fixture-original
+1 passed in 0.01s
