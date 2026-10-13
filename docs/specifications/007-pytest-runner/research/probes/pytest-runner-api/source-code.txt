@@ -1,0 +1,482 @@
+Installed source excerpts, pytest 8.4.2 / pytest-json-report 1.5.0, Python 3.10.20.
+Line numbers are package-source lines; package pins are in packages-3.10.txt.
+
+--- _pytest/config/__init__.py:87-112 ---
+87: hookimpl = HookimplMarker("pytest")
+88: hookspec = HookspecMarker("pytest")
+89:
+90:
+91: @final
+92: class ExitCode(enum.IntEnum):
+93:     """Encodes the valid exit codes by pytest.
+94:
+95:     Currently users and plugins may supply other exit codes as well.
+96:
+97:     .. versionadded:: 5.0
+98:     """
+99:
+100:     #: Tests passed.
+101:     OK = 0
+102:     #: Tests failed.
+103:     TESTS_FAILED = 1
+104:     #: pytest was interrupted.
+105:     INTERRUPTED = 2
+106:     #: An internal error got in the way.
+107:     INTERNAL_ERROR = 3
+108:     #: pytest was misused.
+109:     USAGE_ERROR = 4
+110:     #: pytest couldn't find tests.
+111:     NO_TESTS_COLLECTED = 5
+112:
+
+--- _pytest/config/__init__.py:279-308 ---
+279:     "pytester_assertions",
+280: }
+281:
+282:
+283: def get_config(
+284:     args: list[str] | None = None,
+285:     plugins: Sequence[str | _PluggyPlugin] | None = None,
+286: ) -> Config:
+287:     # subsequent calls to main will create a fresh instance
+288:     pluginmanager = PytestPluginManager()
+289:     config = Config(
+290:         pluginmanager,
+291:         invocation_params=Config.InvocationParams(
+292:             args=args or (),
+293:             plugins=plugins,
+294:             dir=pathlib.Path.cwd(),
+295:         ),
+296:     )
+297:
+298:     if args is not None:
+299:         # Handle any "-p no:plugin" args.
+300:         pluginmanager.consider_preparse(args, exclude_only=True)
+301:
+302:     for spec in default_plugins:
+303:         pluginmanager.import_plugin(spec)
+304:
+305:     return config
+306:
+307:
+308: def get_plugin_manager() -> PytestPluginManager:
+
+--- _pytest/config/__init__.py:691-725 ---
+691:         rootpath: pathlib.Path,
+692:         *,
+693:         consider_namespace_packages: bool,
+694:     ) -> types.ModuleType:
+695:         conftestpath_plugin_name = str(conftestpath)
+696:         existing = self.get_plugin(conftestpath_plugin_name)
+697:         if existing is not None:
+698:             return cast(types.ModuleType, existing)
+699:
+700:         # conftest.py files there are not in a Python package all have module
+701:         # name "conftest", and thus conflict with each other. Clear the existing
+702:         # before loading the new one, otherwise the existing one will be
+703:         # returned from the module cache.
+704:         pkgpath = resolve_package_path(conftestpath)
+705:         if pkgpath is None:
+706:             try:
+707:                 del sys.modules[conftestpath.stem]
+708:             except KeyError:
+709:                 pass
+710:
+711:         try:
+712:             mod = import_path(
+713:                 conftestpath,
+714:                 mode=importmode,
+715:                 root=rootpath,
+716:                 consider_namespace_packages=consider_namespace_packages,
+717:             )
+718:         except Exception as e:
+719:             assert e.__traceback__ is not None
+720:             raise ConftestImportFailure(conftestpath, cause=e) from e
+721:
+722:         self._check_non_top_pytest_plugins(mod, conftestpath)
+723:
+724:         self._conftest_plugins.add(mod)
+725:         dirpath = conftestpath.parent
+
+--- _pytest/config/__init__.py:836-871 ---
+836:         """Import a plugin with ``modname``.
+837:
+838:         If ``consider_entry_points`` is True, entry point names are also
+839:         considered to find a plugin.
+840:         """
+841:         # Most often modname refers to builtin modules, e.g. "pytester",
+842:         # "terminal" or "capture".  Those plugins are registered under their
+843:         # basename for historic purposes but must be imported with the
+844:         # _pytest prefix.
+845:         assert isinstance(modname, str), (
+846:             f"module name as text required, got {modname!r}"
+847:         )
+848:         if self.is_blocked(modname) or self.get_plugin(modname) is not None:
+849:             return
+850:
+851:         importspec = "_pytest." + modname if modname in builtin_plugins else modname
+852:         self.rewrite_hook.mark_rewrite(importspec)
+853:
+854:         if consider_entry_points:
+855:             loaded = self.load_setuptools_entrypoints("pytest11", name=modname)
+856:             if loaded:
+857:                 return
+858:
+859:         try:
+860:             __import__(importspec)
+861:         except ImportError as e:
+862:             raise ImportError(
+863:                 f'Error importing plugin "{modname}": {e.args[0]}'
+864:             ).with_traceback(e.__traceback__) from e
+865:
+866:         except Skipped as e:
+867:             self.skipped_plugins.append((modname, e.msg or ""))
+868:         else:
+869:             mod = sys.modules[importspec]
+870:             self.register(mod, modname)
+871:
+
+--- _pytest/config/__init__.py:1385-1416 ---
+1385:     def _preparse(self, args: list[str], addopts: bool = True) -> None:
+1386:         if addopts:
+1387:             env_addopts = os.environ.get("PYTEST_ADDOPTS", "")
+1388:             if len(env_addopts):
+1389:                 args[:] = (
+1390:                     self._validate_args(shlex.split(env_addopts), "via PYTEST_ADDOPTS")
+1391:                     + args
+1392:                 )
+1393:         self._initini(args)
+1394:         if addopts:
+1395:             args[:] = (
+1396:                 self._validate_args(self.getini("addopts"), "via addopts config") + args
+1397:             )
+1398:
+1399:         self.known_args_namespace = self._parser.parse_known_args(
+1400:             args, namespace=copy.copy(self.option)
+1401:         )
+1402:         self._checkversion()
+1403:         self._consider_importhook(args)
+1404:         self._configure_python_path()
+1405:         self.pluginmanager.consider_preparse(args, exclude_only=False)
+1406:         if (
+1407:             not os.environ.get("PYTEST_DISABLE_PLUGIN_AUTOLOAD")
+1408:             and not self.known_args_namespace.disable_plugin_autoload
+1409:         ):
+1410:             # Autoloading from distribution package entry point has
+1411:             # not been disabled.
+1412:             self.pluginmanager.load_setuptools_entrypoints("pytest11")
+1413:         # Otherwise only plugins explicitly specified in PYTEST_PLUGINS
+1414:         # are going to be loaded.
+1415:         self.pluginmanager.consider_env()
+1416:
+
+--- _pytest/config/findpaths.py:40-97 ---
+40:
+41: def load_config_dict_from_file(
+42:     filepath: Path,
+43: ) -> ConfigDict | None:
+44:     """Load pytest configuration from the given file path, if supported.
+45:
+46:     Return None if the file does not contain valid pytest configuration.
+47:     """
+48:     # Configuration from ini files are obtained from the [pytest] section, if present.
+49:     if filepath.suffix == ".ini":
+50:         iniconfig = _parse_ini_config(filepath)
+51:
+52:         if "pytest" in iniconfig:
+53:             return dict(iniconfig["pytest"].items())
+54:         else:
+55:             # "pytest.ini" files are always the source of configuration, even if empty.
+56:             if filepath.name == "pytest.ini":
+57:                 return {}
+58:
+59:     # '.cfg' files are considered if they contain a "[tool:pytest]" section.
+60:     elif filepath.suffix == ".cfg":
+61:         iniconfig = _parse_ini_config(filepath)
+62:
+63:         if "tool:pytest" in iniconfig.sections:
+64:             return dict(iniconfig["tool:pytest"].items())
+65:         elif "pytest" in iniconfig.sections:
+66:             # If a setup.cfg contains a "[pytest]" section, we raise a failure to indicate users that
+67:             # plain "[pytest]" sections in setup.cfg files is no longer supported (#3086).
+68:             fail(CFG_PYTEST_SECTION.format(filename="setup.cfg"), pytrace=False)
+69:
+70:     # '.toml' files are considered if they contain a [tool.pytest.ini_options] table.
+71:     elif filepath.suffix == ".toml":
+72:         if sys.version_info >= (3, 11):
+73:             import tomllib
+74:         else:
+75:             import tomli as tomllib
+76:
+77:         toml_text = filepath.read_text(encoding="utf-8")
+78:         try:
+79:             config = tomllib.loads(toml_text)
+80:         except tomllib.TOMLDecodeError as exc:
+81:             raise UsageError(f"{filepath}: {exc}") from exc
+82:
+83:         result = config.get("tool", {}).get("pytest", {}).get("ini_options", None)
+84:         if result is not None:
+85:             # TOML supports richer data types than ini files (strings, arrays, floats, ints, etc),
+86:             # however we need to convert all scalar values to str for compatibility with the rest
+87:             # of the configuration system, which expects strings only.
+88:             def make_scalar(v: object) -> str | list[str]:
+89:                 return v if isinstance(v, list) else str(v)
+90:
+91:             return {k: make_scalar(v) for k, v in result.items()}
+92:
+93:     return None
+94:
+95:
+96: def locate_config(
+97:     invocation_dir: Path,
+
+--- _pytest/config/findpaths.py:109-128 ---
+109:     args = [x for x in args if not str(x).startswith("-")]
+110:     if not args:
+111:         args = [invocation_dir]
+112:     found_pyproject_toml: Path | None = None
+113:     for arg in args:
+114:         argpath = absolutepath(arg)
+115:         for base in (argpath, *argpath.parents):
+116:             for config_name in config_names:
+117:                 p = base / config_name
+118:                 if p.is_file():
+119:                     if p.name == "pyproject.toml" and found_pyproject_toml is None:
+120:                         found_pyproject_toml = p
+121:                     ini_config = load_config_dict_from_file(p)
+122:                     if ini_config is not None:
+123:                         return base, p, ini_config
+124:     if found_pyproject_toml is not None:
+125:         return found_pyproject_toml.parent, found_pyproject_toml, {}
+126:     return None, None, {}
+127:
+128:
+
+--- _pytest/fixtures.py:1052-1074 ---
+1052:
+1053:     def finish(self, request: SubRequest) -> None:
+1054:         exceptions: list[BaseException] = []
+1055:         while self._finalizers:
+1056:             fin = self._finalizers.pop()
+1057:             try:
+1058:                 fin()
+1059:             except BaseException as e:
+1060:                 exceptions.append(e)
+1061:         node = request.node
+1062:         node.ihook.pytest_fixture_post_finalizer(fixturedef=self, request=request)
+1063:         # Even if finalization fails, we invalidate the cached fixture
+1064:         # value and remove all finalizers because they may be bound methods
+1065:         # which will keep instances alive.
+1066:         self.cached_result = None
+1067:         self._finalizers.clear()
+1068:         if len(exceptions) == 1:
+1069:             raise exceptions[0]
+1070:         elif len(exceptions) > 1:
+1071:             msg = f'errors while tearing down fixture "{self.argname}" of {node}'
+1072:             raise BaseExceptionGroup(msg, exceptions[::-1])
+1073:
+1074:     def execute(self, request: SubRequest) -> FixtureValue:
+
+--- _pytest/pathlib.py:526-591 ---
+526:         If after importing the given `path` and the module `__file__`
+527:         are different. Only raised in `prepend` and `append` modes.
+528:     """
+529:     path = Path(path)
+530:     mode = ImportMode(mode)
+531:
+532:     if not path.exists():
+533:         raise ImportError(path)
+534:
+535:     if mode is ImportMode.importlib:
+536:         # Try to import this module using the standard import mechanisms, but
+537:         # without touching sys.path.
+538:         try:
+539:             pkg_root, module_name = resolve_pkg_root_and_module_name(
+540:                 path, consider_namespace_packages=consider_namespace_packages
+541:             )
+542:         except CouldNotResolvePathError:
+543:             pass
+544:         else:
+545:             # If the given module name is already in sys.modules, do not import it again.
+546:             with contextlib.suppress(KeyError):
+547:                 return sys.modules[module_name]
+548:
+549:             mod = _import_module_using_spec(
+550:                 module_name, path, pkg_root, insert_modules=False
+551:             )
+552:             if mod is not None:
+553:                 return mod
+554:
+555:         # Could not import the module with the current sys.path, so we fall back
+556:         # to importing the file as a single module, not being a part of a package.
+557:         module_name = module_name_from_path(path, root)
+558:         with contextlib.suppress(KeyError):
+559:             return sys.modules[module_name]
+560:
+561:         mod = _import_module_using_spec(
+562:             module_name, path, path.parent, insert_modules=True
+563:         )
+564:         if mod is None:
+565:             raise ImportError(f"Can't find module {module_name} at location {path}")
+566:         return mod
+567:
+568:     try:
+569:         pkg_root, module_name = resolve_pkg_root_and_module_name(
+570:             path, consider_namespace_packages=consider_namespace_packages
+571:         )
+572:     except CouldNotResolvePathError:
+573:         pkg_root, module_name = path.parent, path.stem
+574:
+575:     # Change sys.path permanently: restoring it at the end of this function would cause surprising
+576:     # problems because of delayed imports: for example, a conftest.py file imported by this function
+577:     # might have local imports, which would fail at runtime if we restored sys.path.
+578:     if mode is ImportMode.append:
+579:         if str(pkg_root) not in sys.path:
+580:             sys.path.append(str(pkg_root))
+581:     elif mode is ImportMode.prepend:
+582:         if str(pkg_root) != sys.path[0]:
+583:             sys.path.insert(0, str(pkg_root))
+584:     else:
+585:         assert_never(mode)
+586:
+587:     importlib.import_module(module_name)
+588:
+589:     mod = sys.modules[module_name]
+590:     if path.name == "__init__.py":
+591:         return mod
+
+--- _pytest/junitxml.py:190-206 ---
+190:     def append_pass(self, report: TestReport) -> None:
+191:         self.add_stats("passed")
+192:
+193:     def append_failure(self, report: TestReport) -> None:
+194:         # msg = str(report.longrepr.reprtraceback.extraline)
+195:         if hasattr(report, "wasxfail"):
+196:             self._add_simple("skipped", "xfail-marked test passes unexpectedly")
+197:         else:
+198:             assert report.longrepr is not None
+199:             reprcrash: ReprFileLocation | None = getattr(
+200:                 report.longrepr, "reprcrash", None
+201:             )
+202:             if reprcrash is not None:
+203:                 message = reprcrash.message
+204:             else:
+205:                 message = str(report.longrepr)
+206:             message = bin_xml_escape(message)
+
+--- _pytest/junitxml.py:639-675 ---
+639:     def pytest_sessionfinish(self) -> None:
+640:         dirname = os.path.dirname(os.path.abspath(self.logfile))
+641:         # exist_ok avoids filesystem race conditions between checking path existence and requesting creation
+642:         os.makedirs(dirname, exist_ok=True)
+643:
+644:         with open(self.logfile, "w", encoding="utf-8") as logfile:
+645:             duration = self.suite_start.elapsed()
+646:
+647:             numtests = (
+648:                 self.stats["passed"]
+649:                 + self.stats["failure"]
+650:                 + self.stats["skipped"]
+651:                 + self.stats["error"]
+652:                 - self.cnt_double_fail_tests
+653:             )
+654:             logfile.write('<?xml version="1.0" encoding="utf-8"?>')
+655:
+656:             suite_node = ET.Element(
+657:                 "testsuite",
+658:                 name=self.suite_name,
+659:                 errors=str(self.stats["error"]),
+660:                 failures=str(self.stats["failure"]),
+661:                 skipped=str(self.stats["skipped"]),
+662:                 tests=str(numtests),
+663:                 time=f"{duration.seconds:.3f}",
+664:                 timestamp=self.suite_start.as_utc().astimezone().isoformat(),
+665:                 hostname=platform.node(),
+666:             )
+667:             global_properties = self._get_global_properties_node()
+668:             if global_properties is not None:
+669:                 suite_node.append(global_properties)
+670:             for node_reporter in self.node_reporters_ordered:
+671:                 suite_node.append(node_reporter.to_xml())
+672:             testsuites = ET.Element("testsuites")
+673:             testsuites.set("name", "pytest tests")
+674:             testsuites.append(suite_node)
+675:             logfile.write(ET.tostring(testsuites, encoding="unicode"))
+
+--- pytest_jsonreport/plugin.py:165-203 ---
+165:
+166:     def pytest_runtest_logreport(self, report):
+167:         # The `_json_report_extra` attr may have been lost, e.g. when the
+168:         # original report object got replaced due to a crashed xdist worker (#75)
+169:         if not hasattr(report, '_json_report_extra'):
+170:             report._json_report_extra = {}
+171:
+172:         nodeid = report.nodeid
+173:         try:
+174:             json_testitem = self._json_tests[nodeid]
+175:         except KeyError:
+176:             json_testitem = serialize.make_testitem(
+177:                 nodeid,
+178:                 # report.keywords is a dict (for legacy reasons), but we just
+179:                 # need the keys
+180:                 None if self._must_omit('keywords') else list(report.keywords),
+181:                 report.location,
+182:             )
+183:             self._json_tests[nodeid] = json_testitem
+184:         metadata = report._json_report_extra.get('metadata')
+185:         if metadata:
+186:             json_testitem['metadata'] = metadata
+187:         # Add user properties in teardown stage if attribute exists and is non-empty
+188:         if report.when == 'teardown' and getattr(report, 'user_properties', None):
+189:             user_properties = [{str(key): val} for key, val in report.user_properties]
+190:             if serialize.serializable(user_properties):
+191:                 json_testitem['user_properties'] = user_properties
+192:             else:
+193:                 warnings.warn('User properties of {} are not JSON-serializable.'.format(nodeid))
+194:
+195:         # Update total test outcome, if necessary. The total outcome can be
+196:         # different from the outcome of the setup/call/teardown stage.
+197:         outcome = self._config.hook.pytest_report_teststatus(
+198:             report=report, config=self._config)[0]
+199:         if outcome not in ['passed', '']:
+200:             json_testitem['outcome'] = outcome
+201:         json_testitem[report.when] = \
+202:             self._config.hook.pytest_json_runtest_stage(report=report)
+203:
+
+--- pytest_jsonreport/plugin.py:217-251 ---
+217:     def pytest_sessionfinish(self, session):
+218:         summary_data = {
+219:             # Need to add deselected count to get correct number of collected
+220:             # tests (see pytest-dev/pytest#9614)
+221:             'collected': session.testscollected + self._num_deselected
+222:         }
+223:         if self._num_deselected:
+224:             summary_data['deselected'] = self._num_deselected
+225:
+226:         json_report = serialize.make_report(
+227:             created=time.time(),
+228:             duration=time.time() - self._start_time,
+229:             exitcode=session.exitstatus,
+230:             root=str(session.fspath),
+231:             environment=getattr(self._config, '_metadata', {}),
+232:             summary=serialize.make_summary(self._json_tests, **summary_data),
+233:         )
+234:         if not self._config.option.json_report_summary:
+235:             if self._json_collectors:
+236:                 json_report['collectors'] = self._json_collectors
+237:             json_report['tests'] = list(self._json_tests.values())
+238:             if self._json_warnings:
+239:                 json_report['warnings'] = self._json_warnings
+240:
+241:         self._config.hook.pytest_json_modifyreport(json_report=json_report)
+242:         # After the session has finished, other scripts may want to use report
+243:         # object directly
+244:         self.report = json_report
+245:         path = self._config.option.json_report_file
+246:         if path:
+247:             try:
+248:                 self.save_report(path)
+249:             except OSError as e:
+250:                 self._terminal_summary = 'could not save report: {}'.format(e)
+251:             else:

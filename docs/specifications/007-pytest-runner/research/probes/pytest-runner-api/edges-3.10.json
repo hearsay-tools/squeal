@@ -1,0 +1,214 @@
+{
+  "xdist_outcomes": {
+    "code": 1,
+    "events": [
+      {"kind": "config", "pid": 1083029, "time": 182587.15377848, "root": "<PROBE>/work/3.10", "ini": "<PROBE>/work/3.10/pyproject.toml", "args": ["cases/test_outcomes.py"], "addopts": ["-ra"], "testpaths": ["tests"], "python_files": ["test_*.py", "check_*.py"], "pythonpath": ["<PROBE>/work/3.10/support"], "maxfail": 0, "capture": "fd", "importmode": "prepend", "plugins": ["133660778897632", "anyio", "assertion", "asyncio", "cacheprovider", "capture", "capturemanager", "debugging", "django", "doctest", "faulthandler", "fixtures", "freeze_support", "helpconfig", "junitxml", "legacypath", "lfplugin", "logging", "main", "mark", "metadata", "monkeypatch", "nfplugin", "pastebin", "pytest_cov", "pytest_jsonreport", "pytestconfig", "python", "recwarn", "reporter", "reports", "runner", "session", "setuponly", "setupplan", "skipping", "stepwise", "syrupy", "terminal", "threadexception", "timeout", "tmpdir", "unittest", "unraisableexception", "warnings", "xdist", "xdist.looponfail"]},
+      {"kind": "worker_collection", "pid": 1083029, "time": 182589.064983494, "worker": "gw0", "ids": ["cases/test_outcomes.py::test_pass", "cases/test_outcomes.py::test_fail", "cases/test_outcomes.py::test_skip", "cases/test_outcomes.py::test_xfail", "cases/test_outcomes.py::test_xpass", "cases/test_outcomes.py::test_strict_xpass", "cases/test_outcomes.py::test_setup", "cases/test_outcomes.py::test_teardown"]},
+      {"kind": "worker_collection", "pid": 1083029, "time": 182589.085422306, "worker": "gw1", "ids": ["cases/test_outcomes.py::test_pass", "cases/test_outcomes.py::test_fail", "cases/test_outcomes.py::test_skip", "cases/test_outcomes.py::test_xfail", "cases/test_outcomes.py::test_xpass", "cases/test_outcomes.py::test_strict_xpass", "cases/test_outcomes.py::test_setup", "cases/test_outcomes.py::test_teardown"]},
+      {"kind": "start", "pid": 1083029, "time": 182589.089494825, "nodeid": "cases/test_outcomes.py::test_pass", "location": ["cases/test_outcomes.py", 9, "test_pass"]},
+      {"kind": "start", "pid": 1083029, "time": 182589.090471635, "nodeid": "cases/test_outcomes.py::test_skip", "location": ["cases/test_outcomes.py", 11, "test_skip"]},
+      {"kind": "report", "pid": 1083029, "time": 182589.090986314, "nodeid": "cases/test_outcomes.py::test_skip", "when": "setup", "outcome": "skipped", "duration": 0.0002905379806179553, "location": ["cases/test_outcomes.py", 11, "test_skip"], "wasxfail": null, "crash": null, "longrepr": "('<PROBE>/work/3.10/cases/test_outcomes.py', 12, 'Skipped: skip reason')", "sections": []},
+      {"kind": "report", "pid": 1083029, "time": 182589.091203353, "nodeid": "cases/test_outcomes.py::test_skip", "when": "teardown", "outcome": "passed", "duration": 0.0002391299931332469, "location": ["cases/test_outcomes.py", 11, "test_skip"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {"kind": "finish", "pid": 1083029, "time": 182589.091314421, "nodeid": "cases/test_outcomes.py::test_skip"},
+      {"kind": "report", "pid": 1083029, "time": 182589.091742197, "nodeid": "cases/test_outcomes.py::test_pass", "when": "setup", "outcome": "passed", "duration": 0.0032868699927348644, "location": ["cases/test_outcomes.py", 9, "test_pass"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {"kind": "start", "pid": 1083029, "time": 182589.095335715, "nodeid": "cases/test_outcomes.py::test_xfail", "location": ["cases/test_outcomes.py", 13, "test_xfail"]},
+      {"kind": "report", "pid": 1083029, "time": 182589.0954924, "nodeid": "cases/test_outcomes.py::test_xfail", "when": "setup", "outcome": "passed", "duration": 0.0015840629930607975, "location": ["cases/test_outcomes.py", 13, "test_xfail"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {"kind": "report", "pid": 1083029, "time": 182589.096318306, "nodeid": "cases/test_outcomes.py::test_pass", "when": "call", "outcome": "passed", "duration": 0.00037835200782865286, "location": ["cases/test_outcomes.py", 9, "test_pass"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {"kind": "report", "pid": 1083029, "time": 182589.096754817, "nodeid": "cases/test_outcomes.py::test_pass", "when": "teardown", "outcome": "passed", "duration": 0.0002639580052345991, "location": ["cases/test_outcomes.py", 9, "test_pass"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {"kind": "finish", "pid": 1083029, "time": 182589.096966566, "nodeid": "cases/test_outcomes.py::test_pass"},
+      {"kind": "start", "pid": 1083029, "time": 182589.104541312, "nodeid": "cases/test_outcomes.py::test_fail", "location": ["cases/test_outcomes.py", 10, "test_fail"]},
+      {"kind": "report", "pid": 1083029, "time": 182589.104795921, "nodeid": "cases/test_outcomes.py::test_fail", "when": "setup", "outcome": "passed", "duration": 0.0010709880152717233, "location": ["cases/test_outcomes.py", 10, "test_fail"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {
+        "kind": "report",
+        "pid": 1083029,
+        "time": 182589.230084899,
+        "nodeid": "cases/test_outcomes.py::test_xfail",
+        "when": "call",
+        "outcome": "skipped",
+        "duration": 0.0004064160166308284,
+        "location": ["cases/test_outcomes.py", 13, "test_xfail"],
+        "wasxfail": "expected",
+        "crash": {"path": "<PROBE>/work/3.10/cases/test_outcomes.py", "lineno": 15, "message": "assert False"},
+        "longrepr": "@pytest.mark.xfail(reason=\"expected\")\n>   def test_xfail(): assert False\nE   assert False\n\ncases/test_outcomes.py:15: AssertionError",
+        "sections": []
+      },
+      {"kind": "report", "pid": 1083029, "time": 182589.231651209, "nodeid": "cases/test_outcomes.py::test_xfail", "when": "teardown", "outcome": "passed", "duration": 0.00039443399873562157, "location": ["cases/test_outcomes.py", 13, "test_xfail"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {"kind": "finish", "pid": 1083029, "time": 182589.231940273, "nodeid": "cases/test_outcomes.py::test_xfail"},
+      {
+        "kind": "report",
+        "pid": 1083029,
+        "time": 182589.236100016,
+        "nodeid": "cases/test_outcomes.py::test_fail",
+        "when": "call",
+        "outcome": "failed",
+        "duration": 0.0003923090116586536,
+        "location": ["cases/test_outcomes.py", 10, "test_fail"],
+        "wasxfail": null,
+        "crash": {"path": "<PROBE>/work/3.10/cases/test_outcomes.py", "lineno": 9, "message": "AssertionError: helper failure\nassert False"},
+        "longrepr": ">   def test_fail(): helper()\n\ncases/test_outcomes.py:11: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\n    def helper():\n>       assert False, \"helper failure\"\nE       AssertionError: helper failure\nE       assert False\n\ncases/test_outcomes.py:9: AssertionError",
+        "sections": []
+      },
+      {"kind": "start", "pid": 1083029, "time": 182589.236239298, "nodeid": "cases/test_outcomes.py::test_xpass", "location": ["cases/test_outcomes.py", 15, "test_xpass"]},
+      {"kind": "report", "pid": 1083029, "time": 182589.236360306, "nodeid": "cases/test_outcomes.py::test_xpass", "when": "setup", "outcome": "passed", "duration": 0.0010068059782497585, "location": ["cases/test_outcomes.py", 15, "test_xpass"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {"kind": "report", "pid": 1083029, "time": 182589.236599527, "nodeid": "cases/test_outcomes.py::test_xpass", "when": "call", "outcome": "passed", "duration": 0.00024825800210237503, "location": ["cases/test_outcomes.py", 15, "test_xpass"], "wasxfail": "unexpected", "crash": null, "longrepr": null, "sections": []},
+      {"kind": "report", "pid": 1083029, "time": 182589.236737546, "nodeid": "cases/test_outcomes.py::test_xpass", "when": "teardown", "outcome": "passed", "duration": 0.00025676400400698185, "location": ["cases/test_outcomes.py", 15, "test_xpass"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {"kind": "finish", "pid": 1083029, "time": 182589.236826053, "nodeid": "cases/test_outcomes.py::test_xpass"},
+      {"kind": "report", "pid": 1083029, "time": 182589.237178066, "nodeid": "cases/test_outcomes.py::test_fail", "when": "teardown", "outcome": "passed", "duration": 0.0004631020128726959, "location": ["cases/test_outcomes.py", 10, "test_fail"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {"kind": "finish", "pid": 1083029, "time": 182589.237273106, "nodeid": "cases/test_outcomes.py::test_fail"},
+      {"kind": "start", "pid": 1083029, "time": 182589.238062532, "nodeid": "cases/test_outcomes.py::test_strict_xpass", "location": ["cases/test_outcomes.py", 17, "test_strict_xpass"]},
+      {"kind": "report", "pid": 1083029, "time": 182589.240044896, "nodeid": "cases/test_outcomes.py::test_strict_xpass", "when": "setup", "outcome": "passed", "duration": 0.0011905629944521934, "location": ["cases/test_outcomes.py", 17, "test_strict_xpass"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {"kind": "start", "pid": 1083029, "time": 182589.240796872, "nodeid": "cases/test_outcomes.py::test_setup", "location": ["cases/test_outcomes.py", 19, "test_setup"]},
+      {"kind": "report", "pid": 1083029, "time": 182589.241497752, "nodeid": "cases/test_outcomes.py::test_strict_xpass", "when": "call", "outcome": "failed", "duration": 0.0002935119846370071, "location": ["cases/test_outcomes.py", 17, "test_strict_xpass"], "wasxfail": null, "crash": null, "longrepr": "[XPASS(strict)] strict unexpected", "sections": []},
+      {"kind": "report", "pid": 1083029, "time": 182589.242599306, "nodeid": "cases/test_outcomes.py::test_strict_xpass", "when": "teardown", "outcome": "passed", "duration": 0.0004402089980430901, "location": ["cases/test_outcomes.py", 17, "test_strict_xpass"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {"kind": "finish", "pid": 1083029, "time": 182589.242903448, "nodeid": "cases/test_outcomes.py::test_strict_xpass"},
+      {
+        "kind": "report",
+        "pid": 1083029,
+        "time": 182589.246950711,
+        "nodeid": "cases/test_outcomes.py::test_setup",
+        "when": "setup",
+        "outcome": "failed",
+        "duration": 0.0013561639934778214,
+        "location": ["cases/test_outcomes.py", 19, "test_setup"],
+        "wasxfail": null,
+        "crash": {"path": "<PROBE>/work/3.10/cases/test_outcomes.py", "lineno": 3, "message": "ValueError: fixture setup"},
+        "longrepr": "@pytest.fixture\n>   def setup_error(): raise ValueError(\"fixture setup\")\nE   ValueError: fixture setup\n\ncases/test_outcomes.py:3: ValueError",
+        "sections": []
+      },
+      {"kind": "report", "pid": 1083029, "time": 182589.248600678, "nodeid": "cases/test_outcomes.py::test_setup", "when": "teardown", "outcome": "passed", "duration": 0.00047211998025886714, "location": ["cases/test_outcomes.py", 19, "test_setup"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {"kind": "finish", "pid": 1083029, "time": 182589.248742815, "nodeid": "cases/test_outcomes.py::test_setup"},
+      {"kind": "start", "pid": 1083029, "time": 182589.250640219, "nodeid": "cases/test_outcomes.py::test_teardown", "location": ["cases/test_outcomes.py", 20, "test_teardown"]},
+      {"kind": "report", "pid": 1083029, "time": 182589.254575079, "nodeid": "cases/test_outcomes.py::test_teardown", "when": "setup", "outcome": "passed", "duration": 0.0013788370124530047, "location": ["cases/test_outcomes.py", 20, "test_teardown"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {"kind": "report", "pid": 1083029, "time": 182589.254937481, "nodeid": "cases/test_outcomes.py::test_teardown", "when": "call", "outcome": "passed", "duration": 0.00025484999059699476, "location": ["cases/test_outcomes.py", 20, "test_teardown"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {
+        "kind": "report",
+        "pid": 1083029,
+        "time": 182589.258423857,
+        "nodeid": "cases/test_outcomes.py::test_teardown",
+        "when": "teardown",
+        "outcome": "failed",
+        "duration": 0.0004594559723045677,
+        "location": ["cases/test_outcomes.py", 20, "test_teardown"],
+        "wasxfail": null,
+        "crash": {"path": "<PROBE>/work/3.10/cases/test_outcomes.py", "lineno": 7, "message": "ValueError: fixture teardown"},
+        "longrepr": "@pytest.fixture\n    def teardown_error():\n        yield 1\n>       raise ValueError(\"fixture teardown\")\nE       ValueError: fixture teardown\n\ncases/test_outcomes.py:7: ValueError",
+        "sections": []
+      },
+      {"kind": "finish", "pid": 1083029, "time": 182589.258577736, "nodeid": "cases/test_outcomes.py::test_teardown"},
+      {"kind": "sessionfinish", "pid": 1083029, "time": 182589.702236818, "exitstatus": 1, "collected": 8}
+    ],
+    "stdout": "bringing up nodes...\nbringing up nodes...\n\ns.xFXFE.E                                                                [100%]\n==================================== ERRORS ====================================\n_________________________ ERROR at setup of test_setup _________________________\n[gw1] linux -- Python 3.10.20 <PROBE>/.venv-3.10/bin/python\n\n    @pytest.fixture\n>   def setup_error(): raise ValueError(\"fixture setup\")\nE   ValueError: fixture setup\n\ncases/test_outcomes.py:3: ValueError\n______________________ ERROR at teardown of test_teardown ______________________\n[gw1] linux -- Python 3.10.20 <PROBE>/.venv-3.10/bin/python\n\n    @pytest.fixture\n    def teardown_error():\n        yield 1\n>       raise ValueError(\"fixture teardown\")\nE       ValueError: fixture teardown\n\ncases/test_outcomes.py:7: ValueError\n=================================== FAILURES ===================================\n__________________________________ test_fail ___________________________________\n[gw0] linux -- Python 3.10.20 <PROBE>/.venv-3.10/bin/python\n\n>   def test_fail(): helper()\n\ncases/test_outcomes.py:11: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\n    def helper():\n>       assert False, \"helper failure\"\nE       AssertionError: helper failure\nE       assert False\n\ncases/test_outcomes.py:9: AssertionError\n______________________________ test_strict_xpass _______________________________\n[gw0] linux -- Python 3.10.20 <PROBE>/.venv-3.10/bin/python\n[XPASS(strict)] strict unexpected\n=================================== XPASSES ====================================\n=========================== short test summary info ============================\nSKIPPED [1] cases/test_outcomes.py:12: skip reason\nXFAIL cases/test_outcomes.py::test_xfail - expected\nXPASS cases/test_outcomes.py::test_xpass - unexpected\nERROR cases/test_outcomes.py::test_setup - ValueError: fixture setup\nERROR cases/test_outcomes.py::test_teardown - ValueError: fixture teardown\nFAILED cases/test_outcomes.py::test_fail - AssertionError: helper failure\nFAILED cases/test_outcomes.py::test_strict_xpass\n2 failed, 2 passed, 1 skipped, 1 xfailed, 1 xpassed, 2 errors in 2.45s\n",
+    "stderr": ""
+  },
+  "xdist_unstable_ids": {
+    "code": 1,
+    "events": [
+      {"kind": "config", "pid": 1086338, "time": 182591.178656646, "root": "<PROBE>/work/3.10", "ini": "<PROBE>/work/3.10/pyproject.toml", "args": ["tests/test_ids.py"], "addopts": ["-ra"], "testpaths": ["tests"], "python_files": ["test_*.py", "check_*.py"], "pythonpath": ["<PROBE>/work/3.10/support"], "maxfail": 0, "capture": "fd", "importmode": "prepend", "plugins": ["<PROBE>/work/3.10/tests/conftest.py", "139205787197664", "anyio", "assertion", "asyncio", "cacheprovider", "capture", "capturemanager", "debugging", "django", "doctest", "faulthandler", "fixtures", "freeze_support", "helpconfig", "junitxml", "legacypath", "lfplugin", "logging", "main", "mark", "metadata", "monkeypatch", "nfplugin", "pastebin", "pytest_cov", "pytest_jsonreport", "pytestconfig", "python", "recwarn", "reporter", "reports", "runner", "session", "setuponly", "setupplan", "skipping", "stepwise", "syrupy", "terminal", "threadexception", "timeout", "tmpdir", "unittest", "unraisableexception", "warnings", "xdist", "xdist.looponfail"]},
+      {"kind": "worker_collection", "pid": 1086338, "time": 182592.885903474, "worker": "gw0", "ids": ["tests/test_ids.py::test_object[value0]", "tests/test_ids.py::test_object[value1]", "tests/test_ids.py::test_duplicate[same0]", "tests/test_ids.py::test_duplicate[same1]", "tests/test_ids.py::test_repr[<object object at 0x7bb40df8b500>]", "tests/test_ids.py::test_repr[<object object at 0x7bb40df8b780>]", "tests/test_ids.py::TestOuter::TestInner::test_nested"]},
+      {"kind": "worker_collection", "pid": 1086338, "time": 182593.175327427, "worker": "gw1", "ids": ["tests/test_ids.py::test_object[value0]", "tests/test_ids.py::test_object[value1]", "tests/test_ids.py::test_duplicate[same0]", "tests/test_ids.py::test_duplicate[same1]", "tests/test_ids.py::test_repr[<object object at 0x7e924898b500>]", "tests/test_ids.py::test_repr[<object object at 0x7e924898b780>]", "tests/test_ids.py::TestOuter::TestInner::test_nested"]},
+      {"kind": "collectreport", "pid": 1086338, "time": 182593.175798905, "nodeid": "gw1", "outcome": "failed", "longrepr": "Different tests were collected between gw0 and gw1. The difference is:\n--- gw0\n\n+++ gw1\n\n@@ -2,6 +2,6 @@\n\n tests/test_ids.py::test_object[value1]\n tests/test_ids.py::test_duplicate[same0]\n tests/test_ids.py::test_duplicate[same1]\n-tests/test_ids.py::test_repr[<object object at 0x7bb40df8b500>]\n-tests/test_ids.py::test_repr[<object object at 0x7bb40df8b780>]\n+tests/test_ids.py::test_repr[<object object at 0x7e924898b500>]\n+tests/test_ids.py::test_repr[<object object at 0x7e924898b780>]\n tests/test_ids.py::TestOuter::TestInner::test_nested\nTo see why this happens see 'Known limitations' in documentation for pytest-xdist"},
+      {"kind": "sessionfinish", "pid": 1086338, "time": 182593.538445693, "exitstatus": 1, "collected": 7}
+    ],
+    "stdout": "bringing up nodes...\nbringing up nodes...\n\n\n==================================== ERRORS ====================================\n_____________________________ ERROR collecting gw1 _____________________________\nDifferent tests were collected between gw0 and gw1. The difference is:\n--- gw0\n\n+++ gw1\n\n@@ -2,6 +2,6 @@\n\n tests/test_ids.py::test_object[value1]\n tests/test_ids.py::test_duplicate[same0]\n tests/test_ids.py::test_duplicate[same1]\n-tests/test_ids.py::test_repr[<object object at 0x7bb40df8b500>]\n-tests/test_ids.py::test_repr[<object object at 0x7bb40df8b780>]\n+tests/test_ids.py::test_repr[<object object at 0x7e924898b500>]\n+tests/test_ids.py::test_repr[<object object at 0x7e924898b780>]\n tests/test_ids.py::TestOuter::TestInner::test_nested\nTo see why this happens see 'Known limitations' in documentation for pytest-xdist\n=========================== short test summary info ============================\nERROR gw1\n1 error in 2.22s\n",
+    "stderr": ""
+  },
+  "xdist_override": {
+    "code": 0,
+    "events": [
+      {"kind": "config", "pid": 1088731, "time": 182595.39679246, "root": "<PROBE>/work/3.10", "ini": "<PROBE>/work/3.10/pyproject.toml", "args": ["cases/test_async.py"], "addopts": ["-ra"], "testpaths": ["tests"], "python_files": ["test_*.py", "check_*.py"], "pythonpath": ["<PROBE>/work/3.10/support"], "maxfail": 0, "capture": "fd", "importmode": "prepend", "plugins": ["134556860506336", "anyio", "assertion", "asyncio", "cacheprovider", "capture", "capturemanager", "debugging", "django", "doctest", "faulthandler", "fixtures", "freeze_support", "helpconfig", "junitxml", "legacypath", "lfplugin", "logging", "main", "mark", "metadata", "monkeypatch", "nfplugin", "pastebin", "pytest_cov", "pytest_jsonreport", "pytestconfig", "python", "recwarn", "reporter", "reports", "runner", "session", "setuponly", "setupplan", "skipping", "stepwise", "syrupy", "terminal", "threadexception", "timeout", "tmpdir", "unittest", "unraisableexception", "warnings", "xdist", "xdist.looponfail"]},
+      {"kind": "collectreport", "pid": 1088731, "time": 182595.441477092, "nodeid": "", "outcome": "passed", "longrepr": null},
+      {"kind": "collectreport", "pid": 1088731, "time": 182595.446057286, "nodeid": "cases/test_async.py::TestUnit", "outcome": "passed", "longrepr": null},
+      {"kind": "collectreport", "pid": 1088731, "time": 182595.446179897, "nodeid": "cases/test_async.py", "outcome": "passed", "longrepr": null},
+      {
+        "kind": "collection",
+        "pid": 1088731,
+        "time": 182595.447041249,
+        "items": [
+          {"nodeid": "cases/test_async.py::test_asyncio", "location": ["cases/test_async.py", 1, "test_asyncio"]},
+          {"nodeid": "cases/test_async.py::test_anyio", "location": ["cases/test_async.py", 5, "test_anyio"]},
+          {"nodeid": "cases/test_async.py::TestUnit::test_ok", "location": ["cases/test_async.py", 8, "TestUnit.test_ok"]}
+        ]
+      },
+      {"kind": "start", "pid": 1088731, "time": 182595.447473404, "nodeid": "cases/test_async.py::test_asyncio", "location": ["cases/test_async.py", 1, "test_asyncio"]},
+      {"kind": "report", "pid": 1088731, "time": 182595.449923538, "nodeid": "cases/test_async.py::test_asyncio", "when": "setup", "outcome": "passed", "duration": 0.002180017007049173, "location": ["cases/test_async.py", 1, "test_asyncio"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {"kind": "report", "pid": 1088731, "time": 182595.451201865, "nodeid": "cases/test_async.py::test_asyncio", "when": "call", "outcome": "passed", "duration": 0.0008156360127031803, "location": ["cases/test_async.py", 1, "test_asyncio"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {"kind": "report", "pid": 1088731, "time": 182595.452221796, "nodeid": "cases/test_async.py::test_asyncio", "when": "teardown", "outcome": "passed", "duration": 0.000825363997137174, "location": ["cases/test_async.py", 1, "test_asyncio"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {"kind": "finish", "pid": 1088731, "time": 182595.452574159, "nodeid": "cases/test_async.py::test_asyncio"},
+      {"kind": "start", "pid": 1088731, "time": 182595.452806397, "nodeid": "cases/test_async.py::test_anyio", "location": ["cases/test_async.py", 5, "test_anyio"]},
+      {"kind": "report", "pid": 1088731, "time": 182595.45375861, "nodeid": "cases/test_async.py::test_anyio", "when": "setup", "outcome": "passed", "duration": 0.0007710630015935749, "location": ["cases/test_async.py", 5, "test_anyio"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {"kind": "report", "pid": 1088731, "time": 182595.565338641, "nodeid": "cases/test_async.py::test_anyio", "when": "call", "outcome": "passed", "duration": 0.11097697599325329, "location": ["cases/test_async.py", 5, "test_anyio"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {"kind": "report", "pid": 1088731, "time": 182595.566138097, "nodeid": "cases/test_async.py::test_anyio", "when": "teardown", "outcome": "passed", "duration": 0.0004979880177415907, "location": ["cases/test_async.py", 5, "test_anyio"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {"kind": "finish", "pid": 1088731, "time": 182595.566224118, "nodeid": "cases/test_async.py::test_anyio"},
+      {"kind": "start", "pid": 1088731, "time": 182595.566423975, "nodeid": "cases/test_async.py::TestUnit::test_ok", "location": ["cases/test_async.py", 8, "TestUnit.test_ok"]},
+      {"kind": "report", "pid": 1088731, "time": 182595.567698416, "nodeid": "cases/test_async.py::TestUnit::test_ok", "when": "setup", "outcome": "passed", "duration": 0.0010839519964065403, "location": ["cases/test_async.py", 8, "TestUnit.test_ok"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {"kind": "report", "pid": 1088731, "time": 182595.56833784, "nodeid": "cases/test_async.py::TestUnit::test_ok", "when": "call", "outcome": "passed", "duration": 0.0003132299752905965, "location": ["cases/test_async.py", 8, "TestUnit.test_ok"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {"kind": "report", "pid": 1088731, "time": 182595.56899122, "nodeid": "cases/test_async.py::TestUnit::test_ok", "when": "teardown", "outcome": "passed", "duration": 0.0004802049952559173, "location": ["cases/test_async.py", 8, "TestUnit.test_ok"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {"kind": "finish", "pid": 1088731, "time": 182595.569103992, "nodeid": "cases/test_async.py::TestUnit::test_ok"},
+      {"kind": "sessionfinish", "pid": 1088731, "time": 182595.570333187, "exitstatus": 0, "collected": 3}
+    ],
+    "stdout": "...                                                                      [100%]\n3 passed in 0.14s\n",
+    "stderr": ""
+  },
+  "cov_override": {
+    "code": 0,
+    "events": [
+      {"kind": "config", "pid": 1090094, "time": 182597.152823434, "root": "<PROBE>/work/3.10", "ini": "<PROBE>/work/3.10/pyproject.toml", "args": ["tests/nested/test_smoke.py"], "addopts": ["-ra"], "testpaths": ["tests"], "python_files": ["test_*.py", "check_*.py"], "pythonpath": ["<PROBE>/work/3.10/support"], "maxfail": 0, "capture": "fd", "importmode": "prepend", "plugins": ["<PROBE>/work/3.10/tests/conftest.py", "<PROBE>/work/3.10/tests/nested/conftest.py", "132601038716880", "_cov", "anyio", "assertion", "asyncio", "cacheprovider", "capture", "capturemanager", "debugging", "django", "doctest", "faulthandler", "fixtures", "freeze_support", "helpconfig", "junitxml", "legacypath", "lfplugin", "logging", "main", "mark", "metadata", "monkeypatch", "nfplugin", "pastebin", "pytest_cov", "pytest_jsonreport", "pytestconfig", "python", "recwarn", "reporter", "reports", "runner", "session", "setuponly", "setupplan", "skipping", "stepwise", "syrupy", "terminal", "threadexception", "timeout", "tmpdir", "unittest", "unraisableexception", "warnings", "xdist", "xdist.looponfail"]},
+      {"kind": "collectreport", "pid": 1090094, "time": 182597.197346752, "nodeid": "", "outcome": "passed", "longrepr": null},
+      {"kind": "collectreport", "pid": 1090094, "time": 182597.204568112, "nodeid": "tests/nested/test_smoke.py", "outcome": "passed", "longrepr": null},
+      {
+        "kind": "collection",
+        "pid": 1090094,
+        "time": 182597.205385772,
+        "items": [
+          {"nodeid": "tests/nested/test_smoke.py::test_smoke", "location": ["tests/nested/test_smoke.py", 2, "test_smoke"]}
+        ]
+      },
+      {"kind": "start", "pid": 1090094, "time": 182597.206073506, "nodeid": "tests/nested/test_smoke.py::test_smoke", "location": ["tests/nested/test_smoke.py", 2, "test_smoke"]},
+      {"kind": "report", "pid": 1090094, "time": 182597.208936128, "nodeid": "tests/nested/test_smoke.py::test_smoke", "when": "setup", "outcome": "passed", "duration": 0.002546846983022988, "location": ["tests/nested/test_smoke.py", 2, "test_smoke"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {"kind": "report", "pid": 1090094, "time": 182597.209703492, "nodeid": "tests/nested/test_smoke.py::test_smoke", "when": "call", "outcome": "passed", "duration": 0.00031316999229602516, "location": ["tests/nested/test_smoke.py", 2, "test_smoke"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {"kind": "report", "pid": 1090094, "time": 182597.21051978, "nodeid": "tests/nested/test_smoke.py::test_smoke", "when": "teardown", "outcome": "passed", "duration": 0.0005865150014869869, "location": ["tests/nested/test_smoke.py", 2, "test_smoke"], "wasxfail": null, "crash": null, "longrepr": null, "sections": []},
+      {"kind": "finish", "pid": 1090094, "time": 182597.210630478, "nodeid": "tests/nested/test_smoke.py::test_smoke"},
+      {"kind": "sessionfinish", "pid": 1090094, "time": 182597.211981793, "exitstatus": 0, "collected": 1}
+    ],
+    "stdout": ".                                                                        [100%]\n1 passed in 0.02s\n",
+    "stderr": ""
+  },
+  "reporter_blocked": {"code": 0, "events": [], "stdout": "...                                                                      [100%]\n3 passed in 0.17s\n", "stderr": ""},
+  "collect_sideeffect": {
+    "code": 0,
+    "events": [
+      {"kind": "config", "pid": 1093738, "time": 182602.899976782, "root": "<PROBE>/work/3.10", "ini": "<PROBE>/work/3.10/pyproject.toml", "args": ["cases/test_collect_sideeffect.py"], "addopts": ["-ra"], "testpaths": ["tests"], "python_files": ["test_*.py", "check_*.py"], "pythonpath": ["<PROBE>/work/3.10/support"], "maxfail": 0, "capture": "fd", "importmode": "prepend", "plugins": ["139267472826592", "anyio", "assertion", "asyncio", "cacheprovider", "capture", "capturemanager", "debugging", "django", "doctest", "faulthandler", "fixtures", "freeze_support", "helpconfig", "junitxml", "legacypath", "lfplugin", "logging", "main", "mark", "metadata", "monkeypatch", "nfplugin", "pastebin", "pytest_cov", "pytest_jsonreport", "pytestconfig", "python", "recwarn", "reporter", "reports", "runner", "session", "setuponly", "setupplan", "skipping", "stepwise", "syrupy", "terminal", "threadexception", "timeout", "tmpdir", "unittest", "unraisableexception", "warnings", "xdist", "xdist.looponfail"]},
+      {"kind": "collectreport", "pid": 1093738, "time": 182603.050301569, "nodeid": "", "outcome": "passed", "longrepr": null},
+      {"kind": "collectreport", "pid": 1093738, "time": 182603.065032401, "nodeid": "cases/test_collect_sideeffect.py", "outcome": "passed", "longrepr": null},
+      {
+        "kind": "collection",
+        "pid": 1093738,
+        "time": 182603.065616571,
+        "items": [
+          {"nodeid": "cases/test_collect_sideeffect.py::test_not_run", "location": ["cases/test_collect_sideeffect.py", 2, "test_not_run"]}
+        ]
+      },
+      {"kind": "sessionfinish", "pid": 1093738, "time": 182603.066104029, "exitstatus": 0, "collected": 1}
+    ],
+    "stdout": "cases/test_collect_sideeffect.py::test_not_run\n\n1 test collected in 0.07s\n",
+    "stderr": ""
+  },
+  "collect_sideeffects": {"collection": true, "body": false},
+  "module_skip": {
+    "code": 5,
+    "events": [
+      {"kind": "config", "pid": 1096575, "time": 182606.031535991, "root": "<PROBE>/work/3.10", "ini": "<PROBE>/work/3.10/pyproject.toml", "args": ["cases/test_module_skip.py"], "addopts": ["-ra"], "testpaths": ["tests"], "python_files": ["test_*.py", "check_*.py"], "pythonpath": ["<PROBE>/work/3.10/support"], "maxfail": 0, "capture": "fd", "importmode": "prepend", "plugins": ["128574219355280", "anyio", "assertion", "asyncio", "cacheprovider", "capture", "capturemanager", "debugging", "django", "doctest", "faulthandler", "fixtures", "freeze_support", "helpconfig", "junitxml", "legacypath", "lfplugin", "logging", "main", "mark", "metadata", "monkeypatch", "nfplugin", "pastebin", "pytest_cov", "pytest_jsonreport", "pytestconfig", "python", "recwarn", "reporter", "reports", "runner", "session", "setuponly", "setupplan", "skipping", "stepwise", "syrupy", "terminal", "threadexception", "timeout", "tmpdir", "unittest", "unraisableexception", "warnings", "xdist", "xdist.looponfail"]},
+      {"kind": "collectreport", "pid": 1096575, "time": 182606.070355827, "nodeid": "", "outcome": "passed", "longrepr": null},
+      {"kind": "collectreport", "pid": 1096575, "time": 182606.072808967, "nodeid": "cases/test_module_skip.py", "outcome": "skipped", "longrepr": "('<PROBE>/work/3.10/cases/test_module_skip.py', 2, 'Skipped: module skipped')"},
+      {"kind": "collection", "pid": 1096575, "time": 182606.073081962, "items": []},
+      {"kind": "sessionfinish", "pid": 1096575, "time": 182606.073922033, "exitstatus": 5, "collected": 0}
+    ],
+    "stdout": "\n=========================== short test summary info ============================\nSKIPPED [1] cases/test_module_skip.py:2: module skipped\n1 skipped in 0.02s\n",
+    "stderr": ""
+  },
+  "packaged_conftest": [
+    {"edit": 1, "code": 0, "output": ".                                                                        [100%]\n=============================== warnings summary ===============================\n../../.venv-3.10/lib/python3.10/site-packages/_pytest/config/__init__.py:1474\n  <PROBE>/.venv-3.10/lib/python3.10/site-packages/_pytest/config/__init__.py:1474: PytestConfigWarning: Unknown config option: asyncio_default_fixture_loop_scope\n  \n    self._warn_or_fail_if_strict(f\"Unknown config option: {key}\\n\")\n\n../../.venv-3.10/lib/python3.10/site-packages/_pytest/config/__init__.py:1474\n  <PROBE>/.venv-3.10/lib/python3.10/site-packages/_pytest/config/__init__.py:1474: PytestConfigWarning: Unknown config option: asyncio_mode\n  \n    self._warn_or_fail_if_strict(f\"Unknown config option: {key}\\n\")\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n1 passed, 2 warnings in 0.05s\n"},
+    {"edit": 2, "code": 1, "output": "F                                                                        [100%]\n=================================== FAILURES ===================================\n__________________________________ test_value __________________________________\n\nvalue = 1\n\n>   def test_value(value): assert value == int(os.environ[\"EXPECTED\"])\nE   AssertionError: assert 1 == 2\nE    +  where 2 = int('2')\n\nwarm_package/test_packaged.py:2: AssertionError\n=============================== warnings summary ===============================\n../../.venv-3.10/lib/python3.10/site-packages/_pytest/config/__init__.py:1474\n  <PROBE>/.venv-3.10/lib/python3.10/site-packages/_pytest/config/__init__.py:1474: PytestConfigWarning: Unknown config option: asyncio_default_fixture_loop_scope\n  \n    self._warn_or_fail_if_strict(f\"Unknown config option: {key}\\n\")\n\n../../.venv-3.10/lib/python3.10/site-packages/_pytest/config/__init__.py:1474\n  <PROBE>/.venv-3.10/lib/python3.10/site-packages/_pytest/config/__init__.py:1474: PytestConfigWarning: Unknown config option: asyncio_mode\n  \n    self._warn_or_fail_if_strict(f\"Unknown config option: {key}\\n\")\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED warm_package/test_packaged.py::test_value - AssertionError: assert 1 == 2\n1 failed, 2 warnings in 0.10s\n"}
+  ],
+  "group_term": {"parent_code": -15, "child_state": "gone"}
+}
