@@ -63,7 +63,9 @@ export const DAEMON_START_BUSY_TIMEOUT_MS = 120_000;
  * from git (D1); the worktree id; the exclusive lock (D10), losers exit,
  * after a wait for it: a successor's (`awaitLockMs`, task 001-130), or
  * `vacantLockWaitMs` while no daemon is recorded serving and the last one
- * recorded is no newer than this one (tasks 001-340, 001-345);
+ * recorded is no newer than this one (tasks 001-340, 001-345); a waiter
+ * that takes the lock while the last one recorded is newer exits as a loser
+ * too (review 001-347, B2);
  * the store with `integrity_check` (D12) and the start's busy timeout
  * (`DAEMON_START_BUSY_TIMEOUT_MS`), exiting with a note on a newer
  * schema (D8); then the temp directory, emptied (D10, lessons defect 13).
@@ -105,6 +107,14 @@ export async function openDaemon(
           ? servedElsewhere(root, commonDir, worktreeId, now)
           : takenOver(root);
       lock = await awaitDaemonLock(path, { timeoutMs: waitMs, giveUp });
+      // Review 001-347, B2: the wait takes the lock between its checks, so
+      // a waiter descheduled across a newer daemon's registration and
+      // shutdown takes the lock it freed. Nothing registers while this one
+      // holds it, so it decides once more here.
+      if (typeof lock !== "string" && newerRecorded(commonDir, worktreeId)) {
+        lock.release();
+        lock = "gave-up";
+      }
     }
   } catch (error) {
     return exit("start-failed", 1, `could not take the daemon lock: ${message(error)}`);
@@ -195,18 +205,30 @@ function servedElsewhere(
   worktreeId: WorktreeId,
   now: () => EpochMs,
 ): () => boolean {
-  const own = squealVersion();
-  return () => {
-    if (!existsSync(root) || liveDaemonRecorded(root, now())) return true;
-    const last = lastDaemonVersion(commonDir, worktreeId);
-    return last !== null && isNewerVersion(last, own);
-  };
+  return () =>
+    !existsSync(root) ||
+    liveDaemonRecorded(root, now()) ||
+    newerRecorded(commonDir, worktreeId, 100);
+}
+
+/** The daemon the worktree's row last recorded, cleared or not, is newer than this one. */
+function newerRecorded(
+  commonDir: AbsolutePath,
+  worktreeId: WorktreeId,
+  busyTimeoutMs = DAEMON_BUSY_TIMEOUT_MS,
+): boolean {
+  const last = lastDaemonVersion(commonDir, worktreeId, busyTimeoutMs);
+  return last !== null && isNewerVersion(last, squealVersion());
 }
 
 /** The version of the daemon the worktree's row last recorded, cleared or not; `null` with none. */
-function lastDaemonVersion(commonDir: AbsolutePath, worktreeId: WorktreeId): string | null {
+function lastDaemonVersion(
+  commonDir: AbsolutePath,
+  worktreeId: WorktreeId,
+  busyTimeoutMs: number,
+): string | null {
   try {
-    const store = openStore(commonDir, { create: false, busyTimeoutMs: 100 });
+    const store = openStore(commonDir, { create: false, busyTimeoutMs });
     if (isStoreOpenFailure(store)) return null;
     try {
       return store.worktrees.lastDaemon(worktreeId)?.squealVersion ?? null;
