@@ -884,6 +884,8 @@ export function fisherLower(before: Rate, now: Rate): number;
 export function lnChoose(n: number, k: number): number;
 /** The 95% Wilson range of a count, `[low, high]` as fractions. */
 export function wilson(rate: Rate): [number, number];
+/** Two-sided Fisher exact p of one count against another. */
+export function fisherTwoSided(a: Rate, b: Rate): number;
 export function atomicDropped(before: Rate | null, now: Rate | null): boolean;
 export function scenarioRevision(data: Json, scenario: string): string;
 export function compareVersions(a: string, b: string): number;
@@ -921,8 +923,6 @@ export function atomicTrend(runs: readonly { name: string; data: Json }[]): Atom
 export function atomicMarkdown(runs: readonly { name: string; data: Json }[]): string;
 
 // 006-48: an atomic variant run's two arms, per model, scenario and measure.
-/** Two-sided Fisher exact p of one count against another. */
-export function fisherTwoSided(a: Rate, b: Rate): number;
 export interface AtomicCompareRow {
   /** `<harness> <model>`. */
   model: string;
