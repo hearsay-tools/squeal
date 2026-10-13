@@ -1,6 +1,6 @@
 import { testFileId } from "../core/keys/index.js";
 import { runnerPartText, testFileKeyOf } from "../core/state/index.js";
-import { formatCheck } from "../core/status/index.js";
+import { countedText, formatCheck } from "../core/status/index.js";
 import { plural } from "../core/text.js";
 import type { DaemonLiveness, StatusSnapshot } from "../core/types/index.js";
 import type { SyncState } from "./status-sync.js";
@@ -212,10 +212,12 @@ function anyPending(snapshot: StatusSnapshot): boolean {
   return counts.pending + testFilesWithoutChecks.pending > 0 || runnerPartPending === true;
 }
 
+/** `2 checks (1 test, 1 test file loaded) and 1 test file without checks pending` (spec 005 D1). */
 function pendingText(snapshot: StatusSnapshot): string {
   const checks = snapshot.counts.pending;
   const files = snapshot.testFilesWithoutChecks.pending;
-  const parts = [plural(checks, "check")];
+  const word = checks === 1 ? "check" : "checks";
+  const parts = [countedText(checks, word, snapshot.fileLevelCounts?.pending)];
   if (files > 0) parts.push(`${plural(files, "test file")} without checks`);
   if (snapshot.runnerPartPending === true) parts.push(runnerPartText(snapshot.revision));
   return parts.length === 1
