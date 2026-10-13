@@ -15,11 +15,13 @@ import { resultOf } from "./scratch-helpers.js";
 
 function slowTest(dir: string): string {
   const at = (name: string) => JSON.stringify(join(dir, name));
-  return `import { existsSync, writeFileSync } from "node:fs";
+  return `import { existsSync, renameSync, writeFileSync } from "node:fs";
 import { getPriority } from "node:os";
 import { expect, it } from "vitest";
 it("holds until the flag", async () => {
-  writeFileSync(${at("started")}, process.env.SQUEAL_DAEMON_CHILD ?? "");
+  // Written aside and renamed in, so the test never reads it between open and write (task 001-352).
+  writeFileSync(${at("started.tmp")}, process.env.SQUEAL_DAEMON_CHILD ?? "");
+  renameSync(${at("started.tmp")}, ${at("started")});
   const deadline = Date.now() + 150_000;
   while (!existsSync(${at("flag")}) && Date.now() < deadline) {
     await new Promise((done) => setTimeout(done, 100));
