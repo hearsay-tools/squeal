@@ -775,15 +775,15 @@ Spec: `specifications/006-model-evals/spec.md`, approved 2026-10-11 by the human
 
 ## Feature 007: pytest runner
 
-Spec: none yet. Status and research brief: `specifications/007-pytest-runner/status.md`, `research/README.md` (human, 2026-10-13: start preparing pytest support). Researchers dispatched 2026-10-13 on the human's go (mixed models, generic fixture).
+Spec: none yet. Status and research brief: `specifications/007-pytest-runner/status.md`, `research/README.md` (human, 2026-10-13: start preparing pytest support). Research done 2026-10-13 (mixed models, generic fixture); the spec is written from the three findings files.
 
 ### Research
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
 | 007-01 research: pytest-runner-api | done (`add4e985`, Astra, `research/pytest-runner-api.md`) | Topic `pytest-runner-api`: a process per run against a long-lived or forking Python worker, results through a `-p` reporting plugin, collection and node IDs, config discovery and `addopts`, xdist against Squeal's own processes, timeouts and exit codes, sharp edges. | `research/pytest-runner-api.md` committed with every question tagged or "not determined, because". |
-| 007-02 research: python-module-graph | running (worker c4ac3a8b, opus high) | Topic `python-module-graph`: static imports resolved as the interpreter would (src layout, editables, namespace packages) from a Node bundle without native addons, conftest and plugins as closure or environment, observed graph, which graph keys, re-resolve cost on 1,000 modules, testmon as a component (human, 2026-10-13), prior art. | `research/python-module-graph.md` committed with every question tagged or "not determined, because". |
-| 007-03 research: python-environments | running (worker 2201620c, opus high) | Topic `python-environments`: interpreter discovery (venv, uv, Poetry, PDM, Hatch, conda), fresh and shared-venv worktrees, editable installs pointing at another worktree, the environment hash, what `squeal setup` seeds. | `research/python-environments.md` committed with every question tagged or "not determined, because". |
+| 007-02 research: python-module-graph | done (`68791090`, Opus, `research/python-module-graph.md`) | Topic `python-module-graph`: static imports resolved as the interpreter would (src layout, editables, namespace packages) from a Node bundle without native addons, conftest and plugins as closure or environment, observed graph, which graph keys, re-resolve cost on 1,000 modules, testmon as a component (human, 2026-10-13), prior art. | `research/python-module-graph.md` committed with every question tagged or "not determined, because". |
+| 007-03 research: python-environments | done (`fbc1e7be`, Opus, `research/python-environments.md`) | Topic `python-environments`: interpreter discovery (venv, uv, Poetry, PDM, Hatch, conda), fresh and shared-venv worktrees, editable installs pointing at another worktree, the environment hash, what `squeal setup` seeds. | `research/python-environments.md` committed with every question tagged or "not determined, because". |
 
 ## Later
 
