@@ -46,7 +46,12 @@ describe("squeal daemon: singleton and restart (spec 001 D10)", SLOW, () => {
 
   it("after SIGKILL a replacement serves soon after its spawn (D10 target 200 ms)", async () => {
     const repo = fixture();
+    // The cold start, paired with the replacement under the same load: it
+    // creates the store the replacement finds, so it does more work.
+    const coldAt = performance.now();
     const first = daemon(repo);
+    await waitFor(() => ping(repo.socketPath, 100), 30_000, "first daemon");
+    const cold = performance.now() - coldAt;
     await waitReady(repo, first);
     first.child.kill("SIGKILL");
     await first.exited;
@@ -66,11 +71,14 @@ describe("squeal daemon: singleton and restart (spec 001 D10)", SLOW, () => {
     const answer = await waitFor(() => ping(repo.socketPath, 100), 30_000, "replacement");
     const elapsed = performance.now() - started;
     expect(answer.pid).toBe(second.child.pid);
-    // The 200 ms target is reported, not asserted: a shared CI runner measured 213 ms.
+    // The 200 ms target is reported, not asserted: a shared CI runner measured
+    // 213 ms, and one at load measured 5.5 s against a 1 s bound (task 001-309).
     console.log(
-      `replacement serving ${elapsed.toFixed(0)} ms after spawn (target 200 ms: ${elapsed < 200 ? "met" : "missed"})`,
+      `replacement serving ${elapsed.toFixed(0)} ms after spawn, cold start ${cold.toFixed(0)} ms (target 200 ms: ${elapsed < 200 ? "met" : "missed"})`,
     );
-    if (!LOADED) expect(elapsed).toBeLessThan(1_000);
+    // Nothing the dead daemon left, its socket file or its lock, holds the
+    // replacement up: it serves about as soon as a cold start, whatever the load.
+    expect(elapsed).toBeLessThan(3 * cold);
   });
 
   it("exits after the idle period with no registered consumers, leaving a note", async () => {
