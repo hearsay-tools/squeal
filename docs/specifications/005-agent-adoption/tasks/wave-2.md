@@ -29,3 +29,19 @@ Use /worker. Shape: slice.
 **Owns:** `install.sh`, `plugins/*/bin/` (keep Claude Code's `bin/squeal`), `src/cli/update.ts`, the `update` lines in `main.ts`, the READMEs (root and both plugins: install first, plugin-first second), tests. Ask before touching `src/harness/build.ts` if the Codex plugin must ship `bin/`.
 
 **Done when:** `install.sh` run twice in a scratch home with stub harnesses is idempotent, a cut download runs nothing, `--uninstall` undoes it; launcher tests for user and project entries in both orders, two harness versions, none installed; `squeal update` tests; lint, typecheck, suite green.
+
+## 005-20 the opt-in one-time deny of a test command Squeal has answered
+
+Use /worker. Shape: slice. Runs beside 005-14a and 005-14b.
+
+**Outcome:** with `testCommand.denyWhenCurrent: true`, an agent's first test command whose every file has a current result is denied once with D8's reason; anything else, and every later command, runs.
+
+**Read:** spec D8; `status.md` 2026-10-13, the 001 coordinator's fit notes (open question 9), which are binding; 001 D9 and 002 D2 on `PreToolUse`.
+
+**Seam:** a sibling export beside `denyOnRegression` in `src/harness/shared/deny.ts`, called from both plugins' `PreToolUse` entries after the regression deny, one reason per call. First edit: the command recognizer as a pure module (`src/harness/shared/test-command.ts`) with a table test of D8 step 1's forms and fall-throughs. Then resolution against Squeal's listing, the currentness decision in one store read at the live revision (as `stop-slow.ts` does), the per-consumer "denied once" meta row (registered in `WORKTREE_META_ROWS`), the reason text.
+
+**Owns:** `deny.ts`, the new module, the `Bash` command in both entries' input parsers, `src/harness/codex/handlers.ts` and the Claude Code `PreToolUse` entry only where they call the deny, the `testCommand` key in `src/core/daemon/policy.ts` and its loader, `WORKTREE_META_ROWS`, the "never denied" sentences in 001 D9 and 002 D2 (amended behind the flag), tests.
+
+**Leave alone:** `deliver.ts`, `uncovered-edit.ts` (001-292), `stop*.ts` (001-297), `src/cli/`, `hooks.json`'s `sh` fast path, bundles, version, `docs/board.md`.
+
+**Done when:** each recognized form and fall-through a test; resolution matches Vitest's own listing on a fixture; deny only when every file is current, never when one is pending, stale, unknown, unlisted or the daemon is not validating; a second command in the same consumer runs; off by default and the flag is read before the store opens (the hook p95 test still passes); both harnesses; lint, typecheck, suite green.
