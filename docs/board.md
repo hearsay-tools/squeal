@@ -770,6 +770,18 @@ Spec: `specifications/006-model-evals/spec.md`, approved 2026-10-11 by the human
 | 006-14 score expectations per task, with reference sessions (wave 2.5) | done (`f8d0063`, three commits; coordinator follow-up: `run-baseline.mjs` grades expectations at write time, and a guard test on `evals/bin` imports) | Spec D4 rewritten 2026-10-11 after the human found the score pooled raw behaviours over tasks with one direction each (T4's correct own runs counted as faults). Expectations declared per task, reference sessions, trend and regrade. | Reference sessions pass; first baseline regraded under expectations; repository gate green. |
 | 006-13 review of wave 2.5 | done: FAIL (`reviews/wave-2.5.md`): B1 to B5 to wave 2.6 (B3 and B5 design faults in D4, amended by the coordinator); S1 a T2 red-step reference; S2 parser edges | `/reviewer` on gpt-6.1-sol: 006-12, 006-14, and the score's design (right behaviour at the right moment, per task). | `reviews/wave-2.5.md`. |
 
+## Feature 007: pytest runner
+
+Spec: none yet. Status and research brief: `specifications/007-pytest-runner/status.md`, `research/README.md` (human, 2026-10-13: start preparing pytest support). Researchers wait for the human's go and calm load.
+
+### Research
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 007-01 research: pytest-runner-api | planned | Topic `pytest-runner-api`: a process per run against a long-lived or forking Python worker, results through a `-p` reporting plugin, collection and node IDs, config discovery and `addopts`, xdist against Squeal's own processes, timeouts and exit codes, sharp edges. | `research/pytest-runner-api.md` committed with every question tagged or "not determined, because". |
+| 007-02 research: python-module-graph | planned | Topic `python-module-graph`: static imports resolved as the interpreter would (src layout, editables, namespace packages) from a Node bundle without native addons, conftest and plugins as closure or environment, observed graph, which graph keys, re-resolve cost on 1,000 modules, prior art. | `research/python-module-graph.md` committed with every question tagged or "not determined, because". |
+| 007-03 research: python-environments | planned | Topic `python-environments`: interpreter discovery (venv, uv, Poetry, PDM, Hatch, conda), fresh and shared-venv worktrees, editable installs pointing at another worktree, the environment hash, what `squeal setup` seeds. | `research/python-environments.md` committed with every question tagged or "not determined, because". |
+
 ## Later
 
 
@@ -787,8 +799,7 @@ Spec: `specifications/006-model-evals/spec.md`, approved 2026-10-11 by the human
 - 001 follow-up, filed 2026-10-08 by the 002/003 coordinator (the 001 coordinator's session had ended): tests under `test/daemon/` and `test/scheduler/` that start a daemon from the sources through tsx in a child process declare no `inputs`, so their keys do not change when the daemon code they run changes and a pass can stay current after a `src` edit (002 `lessons.md` defect 5, same shape). Declaring `src/**/*.ts` for them is correct and costs a re-run on every `src` edit: a cost trade-off for the 001 coordinator.
 
 - `squeal init` with a harness choice and the policy keys 002 and 003 add; the one seam the two specs share. Topic 005-02 reads it as a home for the install step, so it may join spec 005.
-- pytest runner adapter (it was to be 006; 006 went to model evals, 2026-10-10).
-- 007 inherited-pass re-verification policy, if dogfooding shows stale escapes.
-- 008 Pi and OpenCode adapters.
-- 009 pull credit: a pull through `squeal status` suppresses the same news in the next push (design H in `specifications/001-core-loop/research/pull-advances-push.md`; changes D6 to D9 and adds a `pulls` table; one worker plus a reviewer). Parked 2026-10-07: the repeat is harmless.
+- 008 inherited-pass re-verification policy, if dogfooding shows stale escapes.
+- 009 Pi and OpenCode adapters.
+- 010 pull credit: a pull through `squeal status` suppresses the same news in the next push (design H in `specifications/001-core-loop/research/pull-advances-push.md`; changes D6 to D9 and adds a `pulls` table; one worker plus a reviewer). Parked 2026-10-07: the repeat is harmless.
 - macOS verification before any public release.
