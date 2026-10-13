@@ -129,7 +129,7 @@ async function checkChoices(
     const gate = plan.gates.find((g) => g.id === id);
     if (gate === undefined) return `no gate line ${id}; squeal setup --plan lists them`;
     if (choice === "reword" && gate.proposed === null) {
-      return `${id} is inside a code block; reword it by hand`;
+      return `${id}: ${gate.reason}; reword it by hand`;
     }
   }
   if (choices.block !== null && choices.block !== "none") {
