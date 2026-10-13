@@ -84,6 +84,8 @@ export class VitestAdapter implements RunnerAdapter {
   #reload = false;
   #node: VitestNode;
   #collector: RunCollector | null = null;
+  /** The typecheck files the last listing left out (task 005-26). */
+  #omitted = 0;
   /** Bumped per instance, so hooks from an abandoned instance never reach a later run. */
   #generation = 0;
   readonly #gate = new Gate();
@@ -342,9 +344,16 @@ export class VitestAdapter implements RunnerAdapter {
   }
 
   testFiles(): Promise<readonly TestFileRef[]> {
-    return this.#part(async (vitest) =>
-      (await testSpecifications(vitest)).map((s) => this.#ref(s)).sort(compareRefs),
-    );
+    return this.#part(async (vitest) => {
+      const specs = await vitest.globTestSpecifications();
+      const listed = supported(specs);
+      this.#omitted = specs.length - listed.length;
+      return listed.map((s) => this.#ref(s)).sort(compareRefs);
+    });
+  }
+
+  omittedTestFiles(): number {
+    return this.#omitted;
   }
 
   environment(): Promise<readonly RunnerEnvironment[]> {
@@ -460,5 +469,9 @@ export class VitestAdapter implements RunnerAdapter {
 
 /** Test specifications of every project. Typecheck specs (`tsc`, no module graph) are not supported in v1. */
 async function testSpecifications(vitest: Vitest): Promise<TestSpecification[]> {
-  return (await vitest.globTestSpecifications()).filter((s) => s.pool !== "typescript");
+  return supported(await vitest.globTestSpecifications());
+}
+
+function supported(specs: readonly TestSpecification[]): TestSpecification[] {
+  return specs.filter((s) => s.pool !== "typescript");
 }

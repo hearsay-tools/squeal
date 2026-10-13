@@ -4,6 +4,7 @@ import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js"
 import { type Failures, failed, settleFailures } from "./failures.js";
 import type { Ledger } from "./ledger.js";
 import { unmatchedInputNotes } from "./notes.js";
+import { listTestFilesOf } from "./omitted-test-files.js";
 import { type RunnerPartBound, runnerPartBound } from "./runner-work-bound.js";
 
 /** Review, inputs for wave 2: "`oldHash === null` is `add`, `newHash === null` is `delete`, else `change`". */
@@ -129,9 +130,7 @@ async function listTestFiles(
   ledger: Ledger,
   bound: RunnerPartBound,
 ): Promise<TestFileRef[]> {
-  const listed = await tryRunner(context, "testFiles", () =>
-    bound.call(() => context.runner.testFiles()),
-  );
+  const listed = await tryRunner(context, "testFiles", () => listTestFilesOf(context, bound));
   return applyListing(context, ledger, listed);
 }
 

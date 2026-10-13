@@ -145,6 +145,7 @@ function recording(
     closure: (testFile) => guarded("closure", () => inner.closure(testFile)),
     enumerate: (testFile) => serial(() => inner.enumerate(testFile)),
     testFiles: () => guarded("testFiles", () => inner.testFiles()),
+    omittedTestFiles: () => inner.omittedTestFiles?.() ?? 0,
     environment: () =>
       guarded("environment", async () => {
         const environments = await inner.environment();

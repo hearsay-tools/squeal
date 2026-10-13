@@ -118,6 +118,7 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
     closure: (testFile: TestFileRef) => around(async () => (await adapter()).closure(testFile)),
     enumerate: (testFile: TestFileRef) => around(async () => (await adapter()).enumerate(testFile)),
     testFiles: () => around(async () => (await adapter()).testFiles()),
+    omittedTestFiles: () => inner?.omittedTestFiles?.() ?? 0,
     environment: () => around(async () => (await adapter()).environment()),
     run: (testFiles, runOptions) =>
       around(async () => (await adapter()).run(testFiles, runOptions)),
