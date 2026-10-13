@@ -1124,7 +1124,7 @@ function slowTierText(header, command) {
   return `Slow tier: ${plural(tier.testFiles, "test file")}; ${parts.join("; ")}. ${capitalized(stopText(tier))}${runs}.`;
 }
 function stopText(tier) {
-  if (tier.stopWaitMs === void 0) return "not covered by Stop's wait";
+  if (tier.stopWaitMs === void 0) return "Squeal runs them when the agent pauses";
   return `Stop waits up to ${durationText(tier.stopWaitMs)} for them or holds the agent once`;
 }
 function capitalized(text) {
@@ -4298,7 +4298,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.144";
+  if (true) return "0.1.145";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
