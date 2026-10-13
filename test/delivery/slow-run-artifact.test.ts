@@ -155,7 +155,7 @@ describe("the slow-tier line's current claim reads the runs' records (B2)", () =
     policy(declares("dist-b/**"));
     store.worktrees.setDaemon(WT, null);
     expect(line()).toBe(
-      "Slow tier: 1 test file; 1 current against dist-a/** as of revision 1. Not covered by Stop's wait.",
+      "Slow tier: 1 test file; 1 current against dist-a/** as of revision 1. Squeal runs them when the agent pauses.",
     );
   });
 
@@ -163,7 +163,7 @@ describe("the slow-tier line's current claim reads the runs' records (B2)", () =
     policy(declares("dist-b/**"));
     apply(result(A, "pass", { revision: 1 }));
     expect(line()).toBe(
-      "Slow tier: 1 test file; 1 current at revision 1, declared artifact unknown. Not covered by Stop's wait.",
+      "Slow tier: 1 test file; 1 current at revision 1, declared artifact unknown. Squeal runs them when the agent pauses.",
     );
   });
 
@@ -177,7 +177,7 @@ describe("the slow-tier line's current claim reads the runs' records (B2)", () =
     apply(result(A, "pass", { revision: 1 }));
     setKey(store, "kb", { file: pending, pending: "queued" });
     expect(line()).toBe(
-      "Slow tier: 2 test files; 1 current against dist-a/** as of revision 1; 1 pending. Not covered by Stop's wait; `squeal run --slow` runs them now.",
+      "Slow tier: 2 test files; 1 current against dist-a/** as of revision 1; 1 pending. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.",
     );
   });
 });
