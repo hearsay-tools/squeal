@@ -96,6 +96,17 @@ export class SourceStamps {
    * no longer finds it cached; it compares these with the disk instead.
    */
   #held: Held[] = [];
+  /**
+   * Task 001-343: each read a later load of its module replaced with other
+   * bytes, or found gone. A transform in flight when the runner part dropped
+   * its module is never cached, so the next load reads the file again; the
+   * run's check compares the replaced read too.
+   */
+  #replaced: {
+    readonly stamps: Map<string, Stamp>;
+    readonly key: string;
+    readonly stamp: Stamp;
+  }[] = [];
 
   constructor(
     readonly paths: WorktreePaths,
@@ -172,6 +183,9 @@ export class SourceStamps {
       return;
     }
     const read = await readStamp(file);
+    const replaced = reads.stamps.get(id);
+    if (replaced && replaced.hash !== read?.hash)
+      this.#replaced.push({ stamps: reads.stamps, key: id, stamp: replaced });
     if (read === null) reads.stamps.delete(id);
     else reads.stamps.set(id, { file, ...read, hashedAt: loadedAt, loadedAt });
   }
@@ -189,7 +203,7 @@ export class SourceStamps {
    * earlier call found moved since that run began loading (task 001-150),
    * and starts the log again, and the stamps `hold` kept read since then
    * (task 001-264), and lets them go, and every other read since then whose
-   * module is no longer cached (task 001-343).
+   * module is no longer cached, and those a later load replaced (task 001-343).
    */
   async stale(vitest: Vitest, loadedSince?: EpochMs): Promise<AbsolutePath[]> {
     this.attach(vitest);
@@ -248,6 +262,12 @@ export class SourceStamps {
           checks.push({ stamps: reads.stamps, key, file: stamp.file, held: stamp });
         }
       }
+      for (const { stamps, key, stamp } of this.#replaced) {
+        if (stamp.loadedAt < since || checked.has(stamp)) continue;
+        checked.add(stamp);
+        checks.push({ stamps, key, file: stamp.file, held: stamp });
+      }
+      this.#replaced = [];
     }
     // One stat and at most one hash per file, however many modules read it.
     const stats = new Map<AbsolutePath, Promise<FileStat | null>>();
