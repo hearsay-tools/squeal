@@ -10,6 +10,7 @@ import type {
   DaemonExitReason,
   DaemonPhase,
   EpochMs,
+  FullSuiteRequest,
   Policy,
   RunnerAdapter,
   StoppedProcesses,
@@ -454,7 +455,7 @@ class Daemon {
         token: this.#token,
       },
       {
-        requestFullSuite: (force) => this.#requestFullSuite(force),
+        requestFullSuite: (request) => this.#requestFullSuite(request),
         requestSlowSuite: () => this.#requestSlowSuite(),
         requestSync: () => this.#requestSync(),
         onActivity: () => {
@@ -483,14 +484,14 @@ class Daemon {
     this.#desk?.setPhase(phase);
   }
 
-  async #requestFullSuite(force: boolean): Promise<CheckpointRecord> {
+  async #requestFullSuite(request: FullSuiteRequest): Promise<CheckpointRecord> {
     await this.#starting;
     if (this.#loop === null || this.#phase === "stopping") {
       throw new Error("the daemon is not running a scheduler");
     }
     // A runner that never started gets another chance before the checkpoint is planned.
     this.#vitest?.retry();
-    return this.#loop.scheduler.requestFullSuite({ force });
+    return this.#loop.scheduler.requestFullSuite(request);
   }
 
   async #requestSlowSuite(): Promise<SlowSuiteRequested> {

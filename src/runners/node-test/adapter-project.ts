@@ -148,7 +148,11 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
     async run(testFiles, runOptions): Promise<RunReport> {
       if (!probe.ok) return unavailable(`${context.label}: ${probe.error}`);
       const env = childEnvOf(options, runOptions.childEnv);
-      const { report, observed: seen } = await runNodeTest({
+      const {
+        report: ran,
+        observed: seen,
+        reads,
+      } = await runNodeTest({
         root,
         project,
         files: testFiles,
@@ -160,7 +164,9 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
           ? {}
           : { concurrency: options.concurrency() }),
         ...(env === undefined ? {} : { env }),
+        ...(runOptions.observeIgnored === true ? { observeIgnored: true } : {}),
       });
+      const report = reads === undefined ? ran : { ...ran, reads };
       const preloaded = observed.record(seen, new Set(files));
       const named = bareNote(seen, bare);
       if (named !== null) note(named);

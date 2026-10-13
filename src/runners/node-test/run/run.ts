@@ -5,6 +5,7 @@ import { WorktreePaths } from "../../../core/fs/worktree-paths.js";
 import type {
   AbsolutePath,
   NodeTestProject,
+  ObservedInputs,
   RunEnd,
   RunReport,
   TestFileRef,
@@ -20,6 +21,7 @@ import {
 } from "./node-options.js";
 import { type ObservedClosure, observedClosure } from "./observed.js";
 import { type ProcessExit, startGroup } from "./process.js";
+import { NodeTestReads } from "./reads.js";
 import { type FileReport, readFileStream } from "./report.js";
 
 export interface NodeTestRunOptions {
@@ -37,12 +39,16 @@ export interface NodeTestRunOptions {
   readonly env?: NodeJS.ProcessEnv;
   /** Default: located from this module (`runtime.ts`). */
   readonly runtime?: NodeTestRuntime;
+  /** A warm-up's run (task 001-307): report what each file read (`reads.ts`). */
+  readonly observeIgnored?: boolean;
 }
 
 /** A tier's report and, for each completed file, what its process loaded. */
 export interface NodeTestRun {
   readonly report: RunReport;
   readonly observed: readonly ObservedClosure[];
+  /** With `observeIgnored`: what each completed file read, ignored paths too. */
+  readonly reads?: readonly ObservedInputs[];
 }
 
 /** SIGKILL follows SIGTERM after this long (001 D12). */
@@ -84,6 +90,7 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
     ]),
   );
   mkdirSync(options.logDir, { recursive: true });
+  const reads = options.observeIgnored ? NodeTestReads.start(options.root, options.logDir) : null;
 
   const runs: FileRun[] = options.files.map((testFile, index) => {
     const absolute = toAbsolute(options.root, testFile.path);
@@ -126,7 +133,10 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
         command: node,
         args: run.args,
         cwd,
-        env: { ...env, SQUEAL_NODE_TEST_GRAPH: join(options.logDir, `graph-${run.index}`) },
+        env: {
+          ...(reads === null ? env : reads.env(env, run.absolute)),
+          SQUEAL_NODE_TEST_GRAPH: join(options.logDir, `graph-${run.index}`),
+        },
         stdout: join(options.logDir, `stdout-${run.index}.log`),
         stderr: join(options.logDir, `stderr-${run.index}.log`),
       });
@@ -164,7 +174,8 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
     return closure === null ? [] : [closure];
   });
   writeRunLog(options.logDir, { node, cwd, runs, report });
-  return { report, observed };
+  if (reads === null) return { report, observed };
+  return { report, observed, reads: reads.take(report.completedFiles, paths) };
 }
 
 /**

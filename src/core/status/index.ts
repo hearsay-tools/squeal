@@ -1,4 +1,11 @@
 /** `squeal status` and `squeal why`, spec 001 D7. Task 001-22. */
+
+export {
+  IGNORED_READS_CAP,
+  type IgnoredReads,
+  type IgnoredReadsOfFile,
+  readIgnoredReads,
+} from "../scheduler/ignored-reads.js";
 export { formatCheck, parseCheck } from "../state/index.js";
 export { formatStatus, formatUnavailable } from "./format-status.js";
 export { formatWhy } from "./format-why.js";

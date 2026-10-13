@@ -30,7 +30,14 @@ export function parseRequest(line: string): DaemonRequest | string {
       if (request.force !== undefined && typeof request.force !== "boolean") {
         return '"force" must be true or false';
       }
-      return { type: "run-all", force: request.force === true };
+      if (request.observeIgnored !== undefined && typeof request.observeIgnored !== "boolean") {
+        return '"observeIgnored" must be true or false';
+      }
+      return {
+        type: "run-all",
+        force: request.force === true,
+        ...(request.observeIgnored === true ? { observeIgnored: true } : {}),
+      };
     case "step-down":
       if (typeof request.version !== "string") return '"version" must be a string';
       return { type: "step-down", version: request.version };
