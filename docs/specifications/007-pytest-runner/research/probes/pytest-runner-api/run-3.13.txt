@@ -1,0 +1,220 @@
+3.13 smoke: exit=0, events=10, ms=1657
+3.13 outcomes: exit=1, events=43, ms=1623
+3.13 collect1: exit=0, events=10, ms=1653
+3.13 collect2: exit=0, events=10, ms=1302
+3.13 broken: exit=2, events=7, ms=1414
+3.13 broken_continue: exit=1, events=11, ms=1506
+3.13 empty: exit=5, events=5, ms=1187
+3.13 usage: exit=4, events=0, ms=1192
+3.13 internal: exit=3, events=6, ms=1443
+3.13 keyboard: exit=2, events=8, ms=1851
+3.13 hang_SIGINT: exit=2, events=8, ms=1754
+3.13 hang_SIGTERM: exit=-15, events=6, ms=1323
+3.13 hang_SIGKILL: exit=-9, events=6, ms=1166
+3.13 timeout_signal: exit=1, events=10, ms=1846
+3.13 timeout_thread: exit=1, events=6, ms=1407
+3.13 async_unittest: exit=0, events=21, ms=2056
+3.13 django_missing: exit=0, events=9, ms=1913
+3.13 django_settings: exit=0, events=10, ms=3287
+3.13 doctest: exit=0, events=10, ms=1823
+3.13 snapshot_missing: exit=1, events=10, ms=1641
+3.13 snapshot_update: exit=0, events=10, ms=1694
+3.13 snapshot_saved: exit=0, events=10, ms=2032
+3.13 write_no_cache: exit=0, events=10, ms=1648
+3.13 import_prepend: exit=0, events=10, ms=1461
+3.13 import_append: exit=4, events=0, ms=1367
+3.13 import_importlib: exit=0, events=10, ms=1488
+3.13 default_testpaths: exit=0, events=10, ms=1453
+3.13 second_package: exit=0, events=11, ms=1558
+3.13 both_packages: exit=0, events=16, ms=1583
+3.13 rootdir_only: exit=0, events=10, ms=1657
+3.13 x_stop: exit=1, events=15, ms=1742
+3.13 maxfail_override: exit=1, events=43, ms=1840
+3.13 lf: exit=1, events=24, ms=1380
+3.13 lf_no_cache: exit=4, events=0, ms=1296
+3.13 capture_s: exit=0, events=10, ms=1318
+3.13 cov: exit=0, events=10, ms=1533
+3.13 env_addopts: exit=0, events=10, ms=1255
+3.13 ini_addopts: exit=0, events=10, ms=1378
+3.13 ini_cleared: exit=1, events=43, ms=1306
+3.13 config_setup.cfg: exit=5, events=5, ms=1411
+3.13 config_tox.ini: exit=5, events=5, ms=1470
+3.13 config_pytest.ini: exit=5, events=5, ms=1206
+3.13 config_explicit: exit=5, events=5, ms=1220
+3.13 python_files: exit=0, events=11, ms=1350
+3.13 explicit_odd: exit=0, events=10, ms=1439
+3.13 duplicate_prepend: exit=2, events=10, ms=1566
+3.13 duplicate_append: exit=2, events=10, ms=1727
+3.13 duplicate_importlib: exit=0, events=19, ms=1707
+3.13 batch_reports: exit=0, events=125, ms=2397
+3.13 xdist4_reports: exit=0, events=106, ms=3816
+{
+  "interpreter": {
+    "samples_ms": [
+      59.99,
+      62.32,
+      63.59,
+      54.4,
+      63.68
+    ],
+    "median_ms": 62.32
+  },
+  "import_pytest": {
+    "samples_ms": [
+      835.37,
+      701.58,
+      727.45,
+      642.85,
+      721.75
+    ],
+    "median_ms": 721.75
+  },
+  "configure_builtin": {
+    "samples_ms": [
+      723.51,
+      806.71,
+      659.23,
+      729.52,
+      761.25
+    ],
+    "median_ms": 729.52
+  },
+  "configure_plugins": {
+    "samples_ms": [
+      1108.32,
+      1205.76,
+      1154.18,
+      1395.36,
+      1584.91
+    ],
+    "median_ms": 1205.76
+  },
+  "one_test": {
+    "samples_ms": [
+      1663.32,
+      1526.07,
+      1411.53,
+      1233.74,
+      1075.53
+    ],
+    "median_ms": 1411.53
+  },
+  "collect_20": {
+    "samples_ms": [
+      1158.97,
+      985.52,
+      846.51,
+      852.74,
+      842.77
+    ],
+    "median_ms": 852.74
+  },
+  "batch": {
+    "samples_ms": [
+      2112.16,
+      2334.37,
+      2369.11
+    ],
+    "median_ms": 2334.37
+  },
+  "xdist4": {
+    "samples_ms": [
+      4358.37,
+      3805.24,
+      3955.59
+    ],
+    "median_ms": 3955.59
+  },
+  "processes_batch_1": {
+    "samples_ms": [
+      6560.19,
+      7225.86,
+      6834.29
+    ],
+    "median_ms": 6834.29,
+    "codes": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "processes_batch_5": {
+    "samples_ms": [
+      1573.04,
+      2211.07,
+      2171.2
+    ],
+    "median_ms": 2171.2,
+    "codes": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  }
+}

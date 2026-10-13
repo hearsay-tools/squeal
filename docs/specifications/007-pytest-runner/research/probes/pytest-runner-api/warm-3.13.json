@@ -1,0 +1,61 @@
+{
+  "python": "3.13.14 (main, Aug  5 2026, 15:44:26) [Clang 22.1.3 ]",
+  "pytest": "8.4.2",
+  "repeat": [
+    {
+      "edit": 1,
+      "code": 0,
+      "ms": 229.80018000816926,
+      "output": "VALUES app=1 conf=1 plugin=1 session=1\n.\n1 passed in 0.02s\n",
+      "fresh_code": 0,
+      "fresh_output": "VALUES app=1 conf=1 plugin=1 session=1\n.\n1 passed in 0.00s\n"
+    },
+    {
+      "edit": 2,
+      "code": 1,
+      "ms": 114.80785498861223,
+      "output": "VALUES app=1 conf=2 plugin=1 session=1\nF\n=================================== FAILURES ===================================\n_________________________________ test_values __________________________________\n\nsession_value = 1, conftest_value = 2, plugin_value = 1\n\n    def test_values(session_value, conftest_value, plugin_value):\n        expected = int(os.environ[\"EXPECTED\"])\n        print(f\"VALUES app={app.VALUE} conf={conftest_value} plugin={plugin_value} session={session_value}\")\n>       assert (app.VALUE, conftest_value, plugin_value) == (expected, expected, expected)\nE       assert (1, 2, 1) == (2, 2, 2)\nE         \nE         At index 0 diff: 1 != 2\nE         Use -v to get more diff\n\ntest_repeat.py:5: AssertionError\n=========================== short test summary info ============================\nFAILED test_repeat.py::test_values - assert (1, 2, 1) == (2, 2, 2)\n1 failed in 0.02s\n",
+      "fresh_code": 0,
+      "fresh_output": "VALUES app=2 conf=2 plugin=2 session=1\n.\n1 passed in 0.00s\n"
+    },
+    {
+      "edit": 3,
+      "code": 1,
+      "ms": 75.16579600633122,
+      "output": "VALUES app=1 conf=3 plugin=1 session=1\nF\n=================================== FAILURES ===================================\n_________________________________ test_values __________________________________\n\nsession_value = 1, conftest_value = 3, plugin_value = 1\n\n    def test_values(session_value, conftest_value, plugin_value):\n        expected = int(os.environ[\"EXPECTED\"])\n        print(f\"VALUES app={app.VALUE} conf={conftest_value} plugin={plugin_value} session={session_value}\")\n>       assert (app.VALUE, conftest_value, plugin_value) == (expected, expected, expected)\nE       assert (1, 3, 1) == (3, 3, 3)\nE         \nE         At index 0 diff: 1 != 3\nE         Use -v to get more diff\n\ntest_repeat.py:5: AssertionError\n=========================== short test summary info ============================\nFAILED test_repeat.py::test_values - assert (1, 3, 1) == (3, 3, 3)\n1 failed in 0.01s\n",
+      "fresh_code": 0,
+      "fresh_output": "VALUES app=3 conf=3 plugin=3 session=1\n.\n1 passed in 0.01s\n"
+    }
+  ],
+  "fork": [
+    {
+      "edit": 4,
+      "ms": 110.22068798774853,
+      "code": 1,
+      "output": "VALUES app=1 conf=4 plugin=1 session=1\nF\n=================================== FAILURES ===================================\n_________________________________ test_values __________________________________\n\nsession_value = 1, conftest_value = 4, plugin_value = 1\n\n    def test_values(session_value, conftest_value, plugin_value):\n        expected = int(os.environ[\"EXPECTED\"])\n        print(f\"VALUES app={app.VALUE} conf={conftest_value} plugin={plugin_value} session={session_value}\")\n>       assert (app.VALUE, conftest_value, plugin_value) == (expected, expected, expected)\nE       assert (1, 4, 1) == (4, 4, 4)\nE         \nE         At index 0 diff: 1 != 4\nE         Use -v to get more diff\n\ntest_repeat.py:5: AssertionError\n=========================== short test summary info ============================\nFAILED test_repeat.py::test_values - assert (1, 4, 1) == (4, 4, 4)\n1 failed in 0.01s\n"
+    },
+    {
+      "edit": 5,
+      "ms": 104.30785399512388,
+      "code": 1,
+      "output": "VALUES app=1 conf=5 plugin=1 session=1\nF\n=================================== FAILURES ===================================\n_________________________________ test_values __________________________________\n\nsession_value = 1, conftest_value = 5, plugin_value = 1\n\n    def test_values(session_value, conftest_value, plugin_value):\n        expected = int(os.environ[\"EXPECTED\"])\n        print(f\"VALUES app={app.VALUE} conf={conftest_value} plugin={plugin_value} session={session_value}\")\n>       assert (app.VALUE, conftest_value, plugin_value) == (expected, expected, expected)\nE       assert (1, 5, 1) == (5, 5, 5)\nE         \nE         At index 0 diff: 1 != 5\nE         Use -v to get more diff\n\ntest_repeat.py:5: AssertionError\n=========================== short test summary info ============================\nFAILED test_repeat.py::test_values - assert (1, 5, 1) == (5, 5, 5)\n1 failed in 0.01s\n"
+    }
+  ],
+  "reload": {
+    "module_value": 5,
+    "earlier_from_import": 1,
+    "deleted_name": "retained"
+  },
+  "clean_fork": [
+    {
+      "edit": 6,
+      "code": 0,
+      "ms": 305.29445499996655
+    },
+    {
+      "edit": 7,
+      "code": 0,
+      "ms": 161.2048780079931
+    }
+  ]
+}
