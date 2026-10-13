@@ -127,6 +127,51 @@ describe("openDaemon: a lost lock with no daemon recorded (task 001-340, D10)", 
     }
   });
 
+  /** A record of `squealVersion`, cleared as a stopping daemon's shutdown clears it (D10). */
+  async function cleared(repo: FixtureRepo, squealVersion: string) {
+    await record(repo, {
+      socketPath: repo.socketPath as AbsolutePath,
+      startedAt: Date.now(),
+      heartbeatAt: Date.now(),
+      heartbeatIntervalMs: 5_000,
+      squealVersion,
+    });
+    const { openStore } = await import("../../src/core/store/index.js");
+    const store = openStore(repo.commonDir as AbsolutePath);
+    if ("reason" in store) throw new Error("no store");
+    store.worktrees.setDaemon(repo.worktreeId as WorktreeId, null);
+    store.close();
+  }
+
+  it("waits for a stopping daemon of its own version, and takes the lock", async () => {
+    const repo = createFixtureRepo();
+    repos.push(repo);
+    const { squealVersion } = await import("../../src/core/daemon/version.js");
+    await cleared(repo, squealVersion());
+    const lock = await held(repo);
+    setTimeout(() => lock.release(), 400);
+    const result = await openDaemon(repo.root, Date.now);
+    if ("reason" in result) throw new Error(`exited: ${result.message}`);
+    opened.push(result);
+  });
+
+  it("exits at once, with no note, while a newer daemon than itself stops (review 001-344, B2)", async () => {
+    const repo = createFixtureRepo();
+    repos.push(repo);
+    // A step-down's old daemon is newer than a late older hook's spawn.
+    await cleared(repo, "999.0.0");
+    const lock = await held(repo);
+    try {
+      const started = performance.now();
+      const result = await openDaemon(repo.root, Date.now, undefined, 3_000);
+      expect(result).toMatchObject({ reason: "lost-lock", code: 0 });
+      expect(performance.now() - started).toBeLessThan(2_000);
+      expect(readNotes(repo)).toEqual([]);
+    } finally {
+      lock.release();
+    }
+  });
+
   it("exits at once, with no note, while the store records a daemon serving", async () => {
     const repo = createFixtureRepo();
     repos.push(repo);
