@@ -32,10 +32,7 @@ export interface CommandContext {
  * chain, pipe, redirect, subshell, expansion or leading assignment, another
  * runner, a workspace flag, or a flag that changes what runs.
  */
-export function recognizeTestCommand(
-  command: string,
-  context: CommandContext,
-): TestCommand | null {
+export function recognizeTestCommand(command: string, context: CommandContext): TestCommand | null {
   const words = shellWords(command);
   if (words === null) return null;
   return vitestCommand(words) ?? npmCommand(words, context) ?? nodeTestCommand(words, context);
@@ -121,7 +118,8 @@ function nodeTestCommand(words: readonly string[], context: CommandContext): Tes
       same(p.argv, argv),
   );
   if (project === undefined) return null;
-  if (same(project.include, args)) return { runner: "node-test", project: project.name, files: null };
+  if (same(project.include, args))
+    return { runner: "node-test", project: project.name, files: null };
   if (args.some((arg) => arg.startsWith("-") || /[*?[\]{}]/.test(arg))) return null;
   return { runner: "node-test", project: project.name, files: args };
 }
