@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ensureDaemon, probeDaemon } from "../../src/core/daemon/ensure.js";
@@ -7,7 +7,6 @@ import { readStatus } from "../../src/core/status/index.js";
 import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
 import {
   daemonSuite,
-  delay,
   type FixtureRepo,
   SLOW,
   type SpawnedProcess,
@@ -66,6 +65,18 @@ async function served(): Promise<{ repo: FixtureRepo; daemon: SpawnedProcess; de
   return { repo, daemon, deps };
 }
 
+/**
+ * SIGSTOPs the daemon and waits until the kernel has stopped it: `kill`
+ * returns once the signal is sent, and a daemon that runs on for a moment
+ * still answers a ping (task 001-309). Linux only reads the state.
+ */
+async function stop(daemon: SpawnedProcess): Promise<void> {
+  daemon.child.kill("SIGSTOP");
+  if (process.platform !== "linux") return;
+  const state = () => readFileSync(`/proc/${daemon.child.pid}/stat`, "utf8").match(/\) (\S)/)?.[1];
+  await waitFor(() => state() === "T", 10_000, "the daemon stopped");
+}
+
 function breakMath(repo: FixtureRepo): void {
   writeFileSync(
     join(repo.root, "src/math.ts"),
@@ -76,13 +87,15 @@ function breakMath(repo: FixtureRepo): void {
 describe("a SIGSTOPped daemon (lessons, defect 22)", SLOW, () => {
   it("is down past grace, unresponsive on its socket, and not replaced", async () => {
     const { repo, daemon } = await served();
-    daemon.child.kill("SIGSTOP");
     try {
+      await stop(daemon);
       const record = withStore(repo, (store) => store.worktrees.get(repo.worktreeId));
       expect(worktreeLiveness(record, Date.now()).state).toBe("alive");
       expect(worktreeLiveness(record, later()).state).toBe("down");
-      const probe = await probeDaemon(repo.root, 100, { now: later });
-      expect(probe.state).toBe("unresponsive");
+      // The whole probe, so an answer names the pid that gave it.
+      expect(await probeDaemon(repo.root, 100, { now: later })).toMatchObject({
+        state: "unresponsive",
+      });
       expect(
         await ensureDaemon(repo.root, { socketTimeoutMs: 100, now: later, cli: suite.cli }),
       ).toBe("unavailable");
@@ -95,9 +108,8 @@ describe("a SIGSTOPped daemon (lessons, defect 22)", SLOW, () => {
     const { repo, daemon, deps } = await served();
     const hung: HookDeps = { ...deps, now: later };
 
-    daemon.child.kill("SIGSTOP");
     try {
-      await delay(50);
+      await stop(daemon);
       const since = withStore(repo, (s) => s.worktrees.get(repo.worktreeId)?.daemon?.heartbeatAt);
       const line = `Not validated: no daemon has validated since ${new Date(since ?? 0).toISOString()}; any change this call made has no result.`;
       breakMath(repo);
