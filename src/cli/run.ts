@@ -41,6 +41,12 @@ type Outcome =
   | { readonly kind: "moved"; readonly revision: RevisionNumber }
   | { readonly kind: "deadline"; readonly verdict: FileVerdict };
 
+/** What a caller inside the CLI asks of `run --all` beyond its flags; no user flag sets it. */
+export interface RunInternal {
+  /** `squeal warmup`'s checkpoint records the ignored paths each file read (spec 005 D3, 001-307). */
+  readonly observeIgnored?: boolean;
+}
+
 /**
  * `squeal run --all [--force] [--wait [<ms>]]`: an explicit checkpoint
  * (spec 001 D5), requested over the daemon socket. Prints the checkpoint once
@@ -53,7 +59,11 @@ type Outcome =
  * current and no known failure at a revision the worktree is still at, 1
  * with known failures, 3 when Squeal has no verdict.
  */
-export async function runCommand(args: readonly string[], io: CliIo): Promise<number> {
+export async function runCommand(
+  args: readonly string[],
+  io: CliIo,
+  internal: RunInternal = {},
+): Promise<number> {
   const flags = new Set(args);
   if (flags.has("--slow") && !flags.has("--all")) return runSlowCommand(args, io, USAGE);
   const wait = takeAllWait(args);
@@ -81,7 +91,11 @@ export async function runCommand(args: readonly string[], io: CliIo): Promise<nu
     return 3;
   };
   const socketPath = await daemonSocket(root);
-  const response = await askDaemon(socketPath, { type: "run-all", force: flags.has("--force") });
+  const response = await askDaemon(socketPath, {
+    type: "run-all",
+    force: flags.has("--force"),
+    ...(internal.observeIgnored === true ? { observeIgnored: true } : {}),
+  });
   if (response === null) {
     return noVerdict(`no daemon running for ${root}; start one with squeal start`);
   }
