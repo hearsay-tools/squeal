@@ -83,6 +83,14 @@ export interface Policy {
   readonly nodeTest: readonly NodeTestProject[];
   /** Spec 004 D1, D7: the slow suites and how the slow tier runs them. */
   readonly slow: SlowPolicy;
+  readonly delivery: {
+    /**
+     * Spec 001 D9, D11 as amended (task 001-292): after an edit, the delivery
+     * names the changed code files no test Squeal runs reads, once per file
+     * per consumer. Default `true`.
+     */
+    readonly uncoveredEdits: boolean;
+  };
   readonly daemon: {
     /** Spec 001 D10: idle exit "with no registered consumers (default 60 minutes)". */
     readonly idleExitMinutes: number;
@@ -182,6 +190,7 @@ export const DEFAULT_POLICY: Policy = {
   runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 600_000 },
   nodeTest: [],
   slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 600_000, maxParallel: 4 },
+  delivery: { uncoveredEdits: true },
   daemon: { idleExitMinutes: 60 },
   store: { retentionDays: 7, maxSizeMb: null },
 };

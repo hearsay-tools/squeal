@@ -234,6 +234,7 @@ export const WORKTREE_META_ROWS = {
   registeredLeft: { prefix: "revision-registered-left:", owner: "delivery/registered" },
   livenessTold: { prefix: "liveness-told:", owner: "delivery/liveness" },
   revisionTold: { prefix: "revision-told:", owner: "delivery/liveness" },
+  uncoveredTold: { prefix: "uncovered-told:", owner: "delivery/uncovered" },
   notes: { prefix: "notes.", owner: "types/scheduler" },
   refined: { prefix: "refined.", owner: "types/scheduler" },
   awaitingInstall: { prefix: "awaiting-install.", owner: "types/scheduler" },

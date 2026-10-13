@@ -92,6 +92,7 @@ const SHAPE: Shape = {
     maxDeferMs: atLeastZero,
     maxParallel: positiveInteger,
   },
+  delivery: { uncoveredEdits: boolean },
   daemon: { idleExitMinutes: aboveZero },
   store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) },
 };
