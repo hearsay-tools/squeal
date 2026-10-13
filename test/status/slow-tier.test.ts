@@ -325,11 +325,11 @@ describe("the slow-tier line (spec 004 D8)", () => {
     );
   });
 
-  it("says not run at this revision for stale and never-run slow files", () => {
+  it("says not run at this revision for stale and never-run slow files, and claims no run for them (001-323)", () => {
     const s = seed();
     states(s.store, s.repo, [{ validity: "stale", observedAt: 1 }], [SLOW_A]);
     expect(slowLine(status(s))).toBe(
-      "Slow tier: 2 test files; 2 not run at revision 2. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.",
+      "Slow tier: 2 test files; 2 not run at revision 2. Squeal has not queued them; `squeal run --slow` runs them now.",
     );
   });
 
@@ -385,7 +385,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
     const text = formatDelta({ schemaVersion: 1, consumer, header, label: "transitions", entries });
     expect(text.length).toBeLessThanOrEqual(MESSAGE_CAP_CHARS);
     expect(slowLine(text)).toBe(
-      "Slow tier: 2 test files; 1 pending; 1 not run at revision 2. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.",
+      "Slow tier: 2 test files; 1 pending; 1 not run at revision 2. Squeal runs the pending ones when the agent pauses and has not queued the rest; `squeal run --slow` runs them now.",
     );
   });
 
@@ -401,7 +401,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
     const lines = delivered.split("\n");
     expect(lines[0]).toBe("SQUEAL · registered at revision 2");
     expect(lines[2]).toBe(
-      "Slow tier: 2 test files; 1 pending, waiting for the agent to pause; 1 not run at revision 2. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.",
+      "Slow tier: 2 test files; 1 pending, waiting for the agent to pause; 1 not run at revision 2. Squeal runs the pending ones when the agent pauses and has not queued the rest; `squeal run --slow` runs them now.",
     );
     expect(lines[3]).toBe("Known failures: 0");
     expect(slowLine(status(s))).toBe(lines[2]);
