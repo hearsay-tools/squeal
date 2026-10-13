@@ -16,7 +16,7 @@ The proof run for this spec was 0.1.131's release (`docs/process.md` 6a), carrie
 | 2. Every cell graded against ground truth | held | Every cell records Vitest's JSON report and node:test's output after the session (`truth.*`). A claim is true only against those. |
 | 3. Expectations, references, committed results, alarms by cell | held, amended | The four judged expectations are graded by a calibrated judge (D9), and the parser is kept as a cross-check. Calibration caught three rubric ambiguities: `fail` claims with checks pending, currency against agreement with the claim, and `unknown` claims under `no-overclaim`. All three are fixed in the rubric and pinned by reference sessions. The long tasks' drop flag was dropped (goal 7 carries the release check), and alarms stay listed by cell. |
 | 4. At every release and `/quality` scan, at calm load, never in CI | held | 0.1.131's release ran it; the runner waits below `--max-load` and recorded load per cell. No eval runs in CI or the Vitest suite (`claudeRunner` refuses under Vitest). |
-| 5. A variant runs with the same tasks and grader | held | Four long-task variants on 0.1.127 (skill file, skill description, slow step, stop-slow), and since 006-48 atomic variant arms (006-38 below). |
+| 5. A variant runs with the same tasks and grader | held | Four long-task variants on 0.1.127 (skill file, skill description, slow step, stop-slow), and since 006-48 atomic variant arms. 006-38 (below) ran both arms in one run, 80 sessions. |
 | 6. The fixture covers the situations agents meet | held | T1 to T4 with knobs (flake, stale edit, daemon stopped) and seven atomic scenarios. 005's D8 deny joins when its key exists. |
 | 7. A per-model regression is visible at a release | held | At 10 repetitions a drop from 10/10 to 4/10 flags (one-sided Fisher p < 0.01). Two pilot runs on one commit agreed on every measure, and 0.1.131 raised no flag. The alarm path worked: luna's 10/10 false passes on `a5-uncovered` reached the human the same day. |
 | 8. Adoption is a scoreboard | held | `ATOMIC.md`'s scoreboard (006-47): sol meets 90% on 22 of 23 measures, Haiku 15 of 19, Sonnet 14 of 19, luna 10 of 17. Shared weak spots: `a5-uncovered` (running the tests Squeal does not cover) and `a3-harmless` (current evidence before claiming). |
@@ -41,7 +41,27 @@ The proof run for this spec was 0.1.131's release (`docs/process.md` 6a), carrie
 
 ## 006-38: `stop.requireSlowSuite` on 0.1.131
 
-Not yet run: it waits for the eval slot.
+The run: `20261013T102030Z-ae0c65` on `9c762e65`.
+- `a2-slow` as shipped (`stop.requireSlowSuite` off) and with it on (`variants/stop-slow.json`), 10 repetitions per model and arm.
+- 80 sessions, 0 failed, cells under `/tmp`.
+- Load 6.6 to 117 from other sessions' suites. The runner held new cells above 24.
+- Report: `evals/results/2026-10-13-0.1.131.20261013T102030Z-ae0c65.stop-slow.atomic-compare.md`.
+
+**No model moved significantly.** At 10 sessions an arm, a measure must fall from 10/10 to 5/10 before the two-sided p drops below 0.05.
+- **Haiku leans better with it on.**
+  - `slow-through-squeal` went from 7/10 to 10/10 (p = 0.21). Its three misses as shipped ran Vitest directly, at ordinary load (8 to 21).
+  - Its own Vitest runs fell from 20 to 6, and its mean session from 85 s to 60 s.
+  - `no-rerun-answered` went from 8/10 to 9/10.
+  - As shipped, clean Haiku on 0.1.131 is now 16/20 on `slow-through-squeal`: 9/10 in the release run and 7/10 here.
+- **Sonnet and sol** met every measure in all 10 sessions of both arms.
+- **luna's `claim-true`** is 8/10 in both arms.
+  - All four misses were `unknown` claims, hedged rather than false.
+  - They came in sessions where the load reached 75 to 112 and the cell's Squeal held its slow file for host load.
+  - So they are a load artefact, not the setting.
+- **The block itself fired in 4 of the 40 sessions with the setting on:** Haiku 1, Sonnet 1, luna 2, sol 0. The models mostly ran `squeal run --slow` before stopping, so the block had nothing to hold.
+- **What differs in every session is the session-start line.** With the setting on it reads "Stop waits up to 2 min for them or holds the agent once"; as shipped it reads "Not covered by Stop's wait". Haiku's lean comes mostly from that line, since the block reached only one Haiku session.
+
+Nothing here calls for turning the default on. Whether to change the setting or the line is 004's to decide, on the human's word.
 
 ## Open questions
 
