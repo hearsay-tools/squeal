@@ -700,7 +700,7 @@ Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the hu
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 005-17 e2e for setup | planned | Testing: `install.sh`, the launcher across an update, `squeal setup --yes` (proposing the known slow inputs) and the skill, in both harnesses on fixtures shaped like this repository and like cezarion. | Node 22 and 24. |
+| 005-17 e2e for setup | running (brief `tasks/wave-4.md`; the release waits for it, human 2026-10-13) | Testing: `install.sh`, the launcher across an update, `squeal setup --yes` (proposing the known slow inputs) and the skill, in both harnesses on fixtures shaped like this repository and like cezarion. | Node 22 and 24. |
 | 005-18 dogfooding | planned, after wave 2 (the 001 rows it waited on and 006-01 have shipped) | Goal 6: controlled sessions on 006's suite (the atomic tier, D10, and the long baseline) in both harnesses, and `metric.mjs` over this repository's sessions since `97144d9` and since the release. | `lessons.md`. |
 
 ## Feature 006: model evals
