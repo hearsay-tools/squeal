@@ -86,8 +86,10 @@ export interface GateLine {
   readonly text: string;
   /** The test command the line runs, as written. */
   readonly command: string;
-  /** `null` when the line cannot be reworded in place (inside a code block). */
+  /** `null` when the line cannot be reworded in place; `reason` says why. */
   readonly proposed: string | null;
+  /** Why `proposed` is `null`: inside a code block, or more than the test command runs. */
+  readonly reason: string | null;
 }
 
 export interface Mention {
@@ -242,6 +244,8 @@ function outdated(
   slow: SlowFacts,
 ): string[] {
   const lines: string[] = [];
+  // An unusable config is something to fix, like an outdated one (review 005-13 S1).
+  for (const problem of config.problems) lines.push(`${POLICY_FILE}: ${problem}`);
   if (!config.exists) {
     lines.push(
       config.elsewhere === null

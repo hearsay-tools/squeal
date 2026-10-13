@@ -141,6 +141,19 @@ describe("squeal setup --check and usage", () => {
     expect(stale.out.stdout).toContain("Outdated:\n  squeal.config.json is missing");
   });
 
+  it("exits 1 for a tracked config that does not parse or fails validation (review 005-13 S1)", async () => {
+    for (const [text, problem] of [
+      ["{ invalid\n", "squeal.config.json: not valid JSON"],
+      [json({ slwo: {} }), 'squeal.config.json: unknown key "slwo"'],
+    ] as const) {
+      const root = squealShaped({ "squeal.config.json": text });
+      const { io, out } = capture(root);
+      expect(await main(["setup", "--check"], io), text).toBe(1);
+      expect(out.stdout).toContain(`Outdated:\n  ${problem}`);
+      expect(out.stdout).not.toContain("Nothing is outdated.");
+    }
+  });
+
   it("takes --plan or --check, and nothing else", async () => {
     const root = squealShaped();
     for (const args of [[], ["--yes"], ["--plan", "--force"]]) {

@@ -21,6 +21,10 @@ const END = /^<!-- squeal:end -->/;
 const FENCE = /^\s*(```|~~~)/;
 /** A line already reworded: it runs the checkpoint, with the old command as its fallback. */
 const REWORDED = /squeal run --all/;
+/** Shell syntax that runs more than one command: chains, pipes, background jobs, redirects, substitutions. */
+const SHELL_OPERATOR = /&&|\|\||[;|&<>]|\$\(/;
+/** An environment assignment, or `env`/`cross-env` setting one, ahead of the test command. */
+const ENV_PREFIX = /(?:^|\s)(?:[A-Za-z_]\w*=|(?:cross-)?env\s)/;
 
 /** The test commands D5 names; `node --test` only where node:test projects are. */
 function commandPattern(nodeTest: boolean): RegExp {
@@ -74,8 +78,17 @@ export function scanGates(
     for (const { line, text: lineText, command, fenced } of commandLines(text, pattern)) {
       if (!instruction) mentions.push({ file, line, text: lineText });
       else {
-        const proposed = fenced ? null : reword(lineText, pattern);
-        gates.push({ id: `${file}:${line}`, file, line, text: lineText, command, proposed });
+        const reason = fenced ? "inside a code block" : compound(lineText, pattern);
+        const proposed = reason === null ? reword(lineText, pattern) : null;
+        gates.push({
+          id: `${file}:${line}`,
+          file,
+          line,
+          text: lineText,
+          command,
+          proposed,
+          reason,
+        });
       }
     }
   }
@@ -120,6 +133,29 @@ function commandOf(line: string, pattern: RegExp): string {
 }
 
 /**
+ * Why the line's test command cannot become the checkpoint in place, or
+ * `null` when it can. D5 replaces the test command only, so a command that
+ * also runs or scopes something else, such as lint before it or an
+ * environment variable for it, is left for a human to reword (review 005-13
+ * B2). A line with no code span is one command, so its prose is read too.
+ */
+function compound(line: string, pattern: RegExp): string | null {
+  const spans = [...line.matchAll(/`([^`]+)`/g)].map((span) => span[1] as string);
+  const testSpans = spans.filter((span) => pattern.test(span));
+  const commands = testSpans.length > 0 ? testSpans : [line.trim()];
+  const every = new RegExp(pattern.source, "g");
+  const runs = commands.reduce((sum, command) => sum + (command.match(every)?.length ?? 0), 0);
+  if (runs > 1) return "runs the test command more than once";
+  for (const command of commands) {
+    const at = (pattern.exec(command) as RegExpExecArray).index;
+    if (SHELL_OPERATOR.test(command) || ENV_PREFIX.test(command.slice(0, at))) {
+      return `runs more than the test command: \`${command}\``;
+    }
+  }
+  return null;
+}
+
+/**
  * D5's rewording: every code span (or bare command) running the test
  * command becomes the checkpoint, and one sentence for the cases Squeal
  * cannot answer names the old command as the fallback.
@@ -151,7 +187,7 @@ export function rewordGates(
   for (const id of ids) {
     const gate = gates.find((g) => g.id === id);
     if (gate === undefined) return { refused: `no gate line ${id}` };
-    if (gate.proposed === null) return { refused: `${id} is inside a code block` };
+    if (gate.proposed === null) return { refused: `${id}: ${gate.reason}` };
     chosen.push(gate);
   }
   const byFile = new Map<string, GateLine[]>();
