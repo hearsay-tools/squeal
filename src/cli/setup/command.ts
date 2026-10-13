@@ -9,7 +9,7 @@ import { buildPlan } from "./plan.js";
 import type { GivenAnswers } from "./questions.js";
 
 export const SETUP_USAGE = `Usage: squeal setup [--yes] [--harness <claude-code|codex>]... [--block <file|none>]...
-         [--gate <id>=<reword|keep>]... [--slow <glob>]... [--input <test glob>=<input glob>]...
+         [--gate <id>=<reword|keep>]... [--slow <glob|none>]... [--input <test glob>=<input glob>]...
          [--no-trust] [--no-warmup]
        squeal setup --plan [--json]
        squeal setup --check [--json]
@@ -89,7 +89,11 @@ function parseSetupArgs(args: readonly string[]): SetupArgs | string {
   if (unknown !== undefined) return `unknown argument "${unknown}"`;
   if (setup.rest.includes("--json")) return "--json goes with --plan or --check";
   if (blocks.includes("none") && blocks.length > 1) return "--block none goes alone";
-  const { gates, slow, inputs } = setup.choices;
+  const { gates, inputs } = setup.choices;
+  // `--slow none` answers every slow group "not slow", which no glob can say.
+  const noSlow = setup.choices.slow.includes("none");
+  if (noSlow && setup.choices.slow.length + inputs.length > 1) return "--slow none goes alone";
+  const slow = noSlow ? [] : setup.choices.slow;
   return {
     mode: "apply",
     yes: setup.rest.includes("--yes"),
@@ -97,7 +101,7 @@ function parseSetupArgs(args: readonly string[]): SetupArgs | string {
       harnesses: harnesses.length > 0 ? harnesses : null,
       blocks: blocks.length > 0 ? blocks : null,
       gates,
-      slow: slow.length + inputs.length > 0 ? { slow, inputs } : null,
+      slow: noSlow || slow.length + inputs.length > 0 ? { slow, inputs } : null,
       trust: setup.rest.includes("--no-trust") ? false : null,
       warmup: setup.rest.includes("--no-warmup") ? false : null,
     },
