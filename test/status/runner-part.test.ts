@@ -93,7 +93,7 @@ describe("refined-revision marker (review wave 4.5, S1)", () => {
 
     expect(status).toMatchObject({ refinedRevision: 2, runnerPartPending: true });
     expect(formatStatus(status, NOW)).toContain(
-      "Affected checks: 1 passed, 0 running, 0 queued; the runner part of revision 3 is pending, " +
+      "Affected checks: 1 passed (1 test), 0 running, 0 queued; the runner part of revision 3 is pending, " +
         "so test files it adds are not counted yet\n",
     );
   });

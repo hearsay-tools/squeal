@@ -105,7 +105,7 @@ describe("SessionStart after spawning a daemon", () => {
     const late = await batch(r, T + DAEMON_START_GRACE_MS + 1);
     expect(context(late)).toBe(
       "SQUEAL · no daemon is validating at revision 1\n" +
-        "Revision 1 (changed src/math.ts): 1 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 1; `squeal run --all` requests one). " +
+        "Revision 1 (changed src/math.ts): 1 current (1 test), 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 1; `squeal run --all` requests one). " +
         "No daemon is running; results are as of revision 1.",
     );
     expect((await batch(r, T + DAEMON_START_GRACE_MS + 2)).stdout).toBe("");

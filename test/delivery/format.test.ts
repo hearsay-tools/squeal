@@ -23,6 +23,12 @@ const header: StatusHeader = {
   fullSuite: { atCurrentRevision: false, lastCompletedRevision: 170 },
 };
 
+/** `header` with its file-level checks counted (spec 005 D1). */
+const split: StatusHeader = {
+  ...header,
+  fileLevelCounts: { current: 4, pending: 1, stale: 0, unknown: 2 },
+};
+
 function test(path: string, fullName: string) {
   return { kind: "test" as const, project: "", testPath: path, fullName };
 }
@@ -439,7 +445,7 @@ describe("formatRegistration", () => {
       [
         "SQUEAL · registered at revision 184",
         "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Full-suite checkpoint: none completed since revision 170 (the counts are for revision 184; `squeal run --all` requests one).",
-        "Known failures: 1",
+        "Known failures: 1 (1 test)",
         "",
         "FAIL  tests/f1.test.ts > case 1",
         "      expected 401, received 500",
@@ -465,6 +471,29 @@ describe("formatRegistration", () => {
       `Not shown: ${2_000 - shown} more known failures. \`squeal status\` lists every known failure.`,
     );
     expect(text.split("\n").at(-1)).toBe('Full output: squeal why "tests/f0.test.ts > case 0"');
+  });
+
+  it("names tests and file-level checks apart in every count of checks (spec 005 D1)", () => {
+    const fileLevel = (i: number): KnownFailure => ({
+      ...failure(i),
+      check: { kind: "file", project: "", testPath: `tests/f${i}.test.ts` },
+    });
+    const text = formatRegistration({
+      ...registration([failure(1), fileLevel(2)]),
+      header: split,
+    });
+    expect(text.split("\n").slice(1, 3)).toEqual([
+      "Revision 184: 47 current (43 tests, 4 test files loaded), 3 pending (2 tests, 1 test file loaded), 0 stale, 12 unknown (10 tests, 2 test files loaded). Full-suite checkpoint: none completed since revision 170 (the counts are for revision 184; `squeal run --all` requests one).",
+      "Known failures: 2 (1 test, 1 test file that did not load)",
+    ]);
+    const many = Array.from({ length: 2_000 }, (_, i) =>
+      i % 2 === 0 ? failure(i, "y".repeat(300)) : fileLevel(i),
+    );
+    const capped = formatRegistration({ ...registration(many), header: split });
+    expect(capped.length).toBeLessThanOrEqual(MESSAGE_CAP_CHARS);
+    expect(capped).toContain(
+      "Known failures: 2000 (1000 tests, 1000 test files that did not load)",
+    );
   });
 
   it("stays under a smaller cap, which leaves room for the SessionStart primer", () => {

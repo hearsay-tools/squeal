@@ -5,6 +5,7 @@ import {
   SUMMARY_MAX_CHARS,
   slowTierText,
 } from "../state/index.js";
+import { countedText, failureCountText } from "../status/checks.js";
 import { DEATH_CAUSE, deathText } from "../status/died.js";
 import { cap, plural } from "../text.js";
 import type {
@@ -19,6 +20,7 @@ import type {
   SourceLocation,
   StatusHeader,
   TransitionEntry,
+  ValidityCounts,
 } from "../types/index.js";
 import { type Collapsed, checkName, collapse } from "./collapse.js";
 import {
@@ -116,7 +118,7 @@ function changedText(paths: readonly string[] | undefined): string {
 }
 
 function headerLine(header: StatusHeader, command: string): string {
-  const { revision, counts, testFilesWithoutChecks: files } = header;
+  const { revision, counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files } = header;
   const inherited =
     (header.inheritedCount ?? 0) === 0
       ? ""
@@ -132,12 +134,22 @@ function headerLine(header: StatusHeader, command: string): string {
       : "";
   const awaiting = awaitingInstallSentence(header);
   return (
-    `Revision ${revision}${changedText(header.changedPaths)}: ${counts.current} current, ${counts.pending} pending, ` +
-    `${counts.stale} stale, ${counts.unknown} unknown.${inherited}${withoutChecks}${listed}${runnerPart} ` +
+    `Revision ${revision}${changedText(header.changedPaths)}: ${countsText(counts, fileLevel)}.${inherited}${withoutChecks}${listed}${runnerPart} ` +
     `Full-suite checkpoint: ${fullSuiteText(header, command)}.` +
     livenessSentence(header.daemon, revision) +
     (awaiting === null ? installSentences(header) : ` ${awaiting}`)
   );
+}
+
+/**
+ * `12 current (9 tests, 3 test files loaded), 3 pending (2 tests, 1 test
+ * file loaded), 0 stale, 0 unknown`: each count names its tests and
+ * file-level checks apart (spec 005 D1).
+ */
+function countsText(counts: ValidityCounts, fileLevel: ValidityCounts | undefined): string {
+  return (["current", "pending", "stale", "unknown"] as const)
+    .map((validity) => countedText(counts[validity], validity, fileLevel?.[validity]))
+    .join(", ");
 }
 
 /** The header line, then the slow-tier line when the repository declares slow files (spec 004 D8). */
@@ -418,7 +430,7 @@ export function formatRegistration(
     ...headerLines(header, command),
     // Spec 001 D4 (task 001-176): said once, at registration; status lists it among the notes.
     ...(header.optimizerOff === undefined ? [] : [header.optimizerOff]),
-    `Known failures: ${knownFailures.length}`,
+    `Known failures: ${failureCountText(knownFailures.map((f) => f.check))}`,
   ].join("\n");
   const blocks = knownFailures.map((f: KnownFailure) =>
     block(

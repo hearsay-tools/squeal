@@ -58,9 +58,16 @@ export function readHeader(
 ): StatusHeader {
   const revision = store.revisions.latest(worktreeId)?.number ?? 0;
   const counts: Record<Validity, number> = { current: 0, pending: 0, stale: 0, unknown: 0 };
+  const fileLevelCounts: Record<Validity, number> = {
+    current: 0,
+    pending: 0,
+    stale: 0,
+    unknown: 0,
+  };
   let inheritedCount = 0;
   for (const state of states) {
     counts[state.validity]++;
+    if (state.check.kind === "file") fileLevelCounts[state.validity]++;
     if (state.validity === "current" && state.origin?.kind === "inherited") inheritedCount++;
   }
   const last = store.checkpoints.lastCompleted(worktreeId);
@@ -73,6 +80,7 @@ export function readHeader(
   return {
     revision,
     counts,
+    fileLevelCounts,
     testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
     fullSuite: {
       atCurrentRevision: !awaiting && last !== null && last.revision === revision,
