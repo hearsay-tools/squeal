@@ -7,17 +7,21 @@ import type { TestCommand } from "./test-command.js";
  * listing of the worktree (`listing`, every test file of every project), or
  * `null` when they cannot be resolved completely. The command runs from
  * `root`. `nodeTest` names the listing's node:test projects; the rest are
- * Vitest's.
+ * Vitest's. `omitted` counts the test files the listing left out because
+ * Squeal does not run them, `null` when the daemon recorded no count.
  *
  * A Vitest command resolves only while the listing has one Vitest project:
  * the store keeps no project's own directory, which Vitest's filter rule is
- * relative to, so a second project could have one other than the root.
+ * relative to, so a second project could have one other than the root. Nor
+ * while the listing left a file out (task 005-26): the command would run it,
+ * and its path is not known to match a filter against.
  */
 export function resolveTestFiles(
   command: TestCommand,
   listing: readonly TestFileRef[],
   root: AbsolutePath,
   nodeTest: ReadonlySet<string>,
+  omitted: number | null,
 ): readonly TestFileRef[] | null {
   if (command.runner === "node-test") {
     const own = listing.filter((ref) => ref.project === command.project);
@@ -26,6 +30,7 @@ export function resolveTestFiles(
     const files = command.files.map((file) => byPath.get(worktreePath(root, file) ?? ""));
     return files.every((ref) => ref !== undefined) ? unique(files) : null;
   }
+  if (omitted !== 0) return null;
   const vitest = listing.filter((ref) => !nodeTest.has(ref.project));
   if (new Set(vitest.map((ref) => ref.project)).size !== 1) return null;
   if (command.filters.length === 0) return vitest;

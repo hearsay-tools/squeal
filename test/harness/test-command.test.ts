@@ -169,8 +169,8 @@ describe("resolveTestFiles (spec 005 D8 step 2)", () => {
     ref("test:unit", "test/unit/b.test.ts"),
   ];
   const NODE_TEST = new Set(["test:unit"]);
-  const resolve = (command: TestCommand, listing = LISTING) =>
-    resolveTestFiles(command, listing, ROOT, NODE_TEST)?.map((r) => r.path) ?? null;
+  const resolve = (command: TestCommand, listing = LISTING, omitted: number | null = 0) =>
+    resolveTestFiles(command, listing, ROOT, NODE_TEST, omitted)?.map((r) => r.path) ?? null;
 
   it("leaves node:test projects out of a Vitest command", () => {
     expect(resolve(vitest())).toEqual(["test/a.test.ts", "test/b.test.ts"]);
@@ -184,6 +184,20 @@ describe("resolveTestFiles (spec 005 D8 step 2)", () => {
   it("falls through with two Vitest projects, or none", () => {
     expect(resolve(vitest(), [...LISTING, ref("e2e", "e2e/x.test.ts")])).toBeNull();
     expect(resolve(vitest(), LISTING.slice(2))).toBeNull();
+  });
+
+  it("falls through for a Vitest command while the listing left files out, or kept no count", () => {
+    expect(resolve(vitest(), LISTING, 1)).toBeNull();
+    expect(resolve(vitest("a.test"), LISTING, 1)).toBeNull();
+    expect(resolve(vitest(), LISTING, null)).toBeNull();
+    expect(resolve(nodeTest(null), LISTING, 1)).toEqual([
+      "test/unit/a.test.ts",
+      "test/unit/b.test.ts",
+    ]);
+    expect(resolve(nodeTest(null), LISTING, null)).toEqual([
+      "test/unit/a.test.ts",
+      "test/unit/b.test.ts",
+    ]);
   });
 
   it("resolves a node:test project's command to its files, or the files it names", () => {

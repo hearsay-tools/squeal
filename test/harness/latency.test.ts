@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { testCommandDeniedMetaKey } from "../../src/core/delivery/test-command-denied.js";
 import { writeTurn } from "../../src/core/delivery/turn.js";
+import { omittedTestFilesMetaKey } from "../../src/core/scheduler/omitted-test-files.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import { check, result } from "../state/helpers.js";
 import { liveSocket, runBundle, runtimeDir } from "./bundle-helpers.js";
@@ -141,6 +142,7 @@ const CASES: readonly Case[] = [
     before: (r) => {
       r.policy({ testCommand: { denyWhenCurrent: true } });
       r.store.meta.delete(testCommandDeniedMetaKey(r.worktreeId));
+      r.store.meta.set(omittedTestFilesMetaKey(r.worktreeId), "0");
     },
   },
   { hook: "stop", input: "stop", before: flip },

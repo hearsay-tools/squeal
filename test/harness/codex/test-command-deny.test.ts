@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { testCommandDenied } from "../../../src/core/delivery/test-command-denied.js";
+import { omittedTestFilesMetaKey } from "../../../src/core/scheduler/omitted-test-files.js";
 import { runCodexHook } from "../../../src/harness/codex/index.js";
 import type { HookDeps } from "../../../src/harness/shared/hook.js";
 import { squealRepo } from "../helpers.js";
@@ -14,6 +15,7 @@ const IN_SESSION = sessionOf("exec", "session-start");
 describe("the one-time test-command deny in Codex (spec 005 D8)", () => {
   it("denies the first answered test command once, and is off by default", async () => {
     const r = squealRepo();
+    r.store.meta.set(omittedTestFilesMetaKey(r.worktreeId), "0");
     r.apply(r.pass());
     await runCodexHook("session-start", codexRecorded("exec", "session-start", r.root), deps);
     const bash = (text: string) =>

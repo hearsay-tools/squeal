@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { testCommandDenied } from "../../src/core/delivery/test-command-denied.js";
+import { omittedTestFilesMetaKey } from "../../src/core/scheduler/omitted-test-files.js";
 import type { TestFileRef } from "../../src/core/types/index.js";
 import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
 import { check, result, setKey } from "../state/helpers.js";
@@ -39,9 +40,14 @@ async function reasonOf(r: SquealRepo, overrides: object): Promise<string | null
   return parsed.hookSpecificOutput.permissionDecisionReason;
 }
 
+/** The daemon's last listing left out `count` test files Squeal does not run (task 005-26). */
+const listed = (r: SquealRepo, count = 0) =>
+  r.store.meta.set(omittedTestFilesMetaKey(r.worktreeId), String(count));
+
 /** Registered, `math > adds` passing and current, `OTHER` keyed and passing too; the policy on. */
 async function answered(policy: object = ON): Promise<SquealRepo> {
   const r = squealRepo();
+  listed(r);
   setKey(r.store, "k9", { file: OTHER, worktreeId: r.worktreeId });
   r.apply(r.pass(), result(check("other > works", OTHER), "pass", { key: "k9" }));
   r.policy(policy);
@@ -64,6 +70,7 @@ describe("the one-time deny of a test command Squeal has answered (spec 005 D8)"
 
   it("names only the command's files, and every known failure among them in full", async () => {
     const r = squealRepo();
+    listed(r);
     setKey(r.store, "k9", { file: OTHER, worktreeId: r.worktreeId });
     r.apply(r.fail(), result(check("other > works", OTHER), "fail", { key: "k9" }));
     r.policy(ON);
@@ -114,6 +121,23 @@ describe("the one-time deny of a test command Squeal has answered (spec 005 D8)"
     });
     expect(await preToolUse(r, bash("npx vitest run"))).toEqual(SILENT);
     expect(await preToolUse(r, bash("npx vitest run new"))).toEqual(SILENT);
+    expect(testCommandDenied(r.store, r.consumer())).toBe(false);
+  });
+
+  it("runs a Vitest command while the listing left files out, its slot unused (review wave-2 B1)", async () => {
+    const r = await answered();
+    listed(r, 1);
+    expect(await preToolUse(r, bash("npx vitest run"))).toEqual(SILENT);
+    expect(await preToolUse(r, bash("npx vitest run math"))).toEqual(SILENT);
+    expect(testCommandDenied(r.store, r.consumer())).toBe(false);
+    listed(r, 0);
+    expect(await reasonOf(r, bash("npx vitest run"))).not.toBeNull();
+  });
+
+  it("runs a Vitest command while no listing recorded what it left out", async () => {
+    const r = await answered();
+    r.store.meta.delete(omittedTestFilesMetaKey(r.worktreeId));
+    expect(await preToolUse(r, bash("npx vitest run"))).toEqual(SILENT);
     expect(testCommandDenied(r.store, r.consumer())).toBe(false);
   });
 
