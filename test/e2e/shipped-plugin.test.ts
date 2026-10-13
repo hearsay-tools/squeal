@@ -17,6 +17,7 @@ import { worktreeIdFor } from "../../src/core/fs/index.js";
 import type { StatusResult } from "../../src/core/types/index.js";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
+import { VITE_VERSION } from "./install.js";
 import { copyPlugin, type HookName, PLUGINS } from "./plugins.js";
 
 /*
@@ -122,7 +123,10 @@ describe.each(PLUGINS)("the $name plugin as a marketplace install ships it", (ki
         "--no-audit",
         "--no-fund",
         "--loglevel=error",
+        // npm 10.9.9's arborist crashes on vitest 5's peer set: Vite named, peers unresolved (install.ts).
+        "--legacy-peer-deps",
         `vitest@${VITEST_VERSION}`,
+        `vite@${VITE_VERSION}`,
       ],
       { cwd: project, stdio: "pipe" },
     );

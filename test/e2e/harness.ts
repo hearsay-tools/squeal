@@ -369,7 +369,8 @@ export class E2E {
 
 /**
  * Registers the suite's install and cleanup; returns a fixture factory that
- * skips the test, with the reason, when the install cannot be made. Every
+ * skips the test, with the reason, when the install cannot be made (fails it
+ * on CI). Every
  * fixture of a `node-test` suite is the node:test workspace (`BuildOptions`).
  */
 export function e2eSuite(
@@ -394,6 +395,8 @@ export function e2eSuite(
   }, 20_000);
   return (ctx, plugin, options = {}) => {
     const ready = install;
+    // On CI a failed install fails the test, so a broken npm cannot hide the suite.
+    if (!ready.ok && process.env.CI) throw new Error(`end to end install failed: ${ready.reason}`);
     if (!ready.ok) return ctx.skip(`end to end skipped: ${ready.reason}`);
     const fixture = E2E.create(plugin, ready.dir, { ...options, nodeTest: kind === "node-test" });
     fixtures.push(fixture);
