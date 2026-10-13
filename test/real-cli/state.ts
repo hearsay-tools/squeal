@@ -1,3 +1,4 @@
+import { availableParallelism, loadavg } from "node:os";
 import type { Ran } from "./isolated.js";
 import { type Machine, ok } from "./machine.js";
 
@@ -72,3 +73,16 @@ console.log(JSON.stringify(out));`,
 /** A failure message that shows what the command printed. */
 export const shown = (r: Ran) =>
   `exit ${r.status ?? r.signal}${r.timedOut ? " (timed out)" : ""}\n--- stdout\n${r.stdout}\n--- stderr\n${r.stderr}`;
+
+/**
+ * Waits up to `maxMs` for the host's one-minute load to fall below its CPU
+ * count, the bound the slow tier also waits for (004 D3, `slow.maxLoadPerCpu`
+ * 1); returns the load it starts at, calm or not.
+ */
+export async function calm(maxMs = 15 * 60_000): Promise<{ load: number; cpus: number }> {
+  const cpus = availableParallelism();
+  const until = Date.now() + maxMs;
+  while ((loadavg()[0] ?? 0) >= cpus && Date.now() < until)
+    await new Promise((resolve) => setTimeout(resolve, 15_000));
+  return { load: loadavg()[0] ?? 0, cpus };
+}
