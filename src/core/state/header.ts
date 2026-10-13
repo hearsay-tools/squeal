@@ -65,10 +65,14 @@ export function readHeader(
     unknown: 0,
   };
   let inheritedCount = 0;
+  let inheritedFileLevelCount = 0;
   for (const state of states) {
     counts[state.validity]++;
     if (state.check.kind === "file") fileLevelCounts[state.validity]++;
-    if (state.validity === "current" && state.origin?.kind === "inherited") inheritedCount++;
+    if (state.validity === "current" && state.origin?.kind === "inherited") {
+      inheritedCount++;
+      if (state.check.kind === "file") inheritedFileLevelCount++;
+    }
   }
   const last = store.checkpoints.lastCompleted(worktreeId);
   const refinedRevision = readRefined(store, worktreeId);
@@ -88,6 +92,7 @@ export function readHeader(
     },
     testFilesListed: keys.length > 0 || (!awaiting && last !== null),
     inheritedCount,
+    inheritedFileLevelCount,
     refinedRevision,
     runnerPartPending: refinedRevision !== null && refinedRevision < revision,
     ...(slow === undefined ? {} : { slowPending: countSlowPending(states, keys, slow) }),

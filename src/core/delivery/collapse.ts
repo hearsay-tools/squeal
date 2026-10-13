@@ -1,4 +1,5 @@
 import { formatCheck, SUMMARY_MAX_CHARS } from "../state/index.js";
+import { checkPartsText, countChecks, failureCountText } from "../status/checks.js";
 import { cap, plural } from "../text.js";
 import type { CheckId } from "../types/index.js";
 
@@ -8,7 +9,8 @@ import type { CheckId } from "../types/index.js";
  * before; above it, one summary line and the shorter of two lists, the checks
  * that changed or the checks still failing. A list of more than `LISTED_MAX`
  * names is grouped by test file with counts when that takes fewer lines
- * (review wave 10b, N1: six checks in six files read as six names).
+ * (review wave 10b, N1: six checks in six files read as six names). Each
+ * count names its tests and file-level checks apart (spec 005 D1).
  */
 
 /** Recoveries, retired checks and names listed one by one before they collapse. */
@@ -34,24 +36,30 @@ const fileName = (check: CheckId) =>
 
 /**
  * Names one per line, or above `LISTED_MAX` one line per test file, most
- * checks first, when that takes fewer lines than the names.
+ * checks first, when that takes fewer lines than the names. `fileLevel`
+ * words a file-level check in the counts (`checkPartsText`).
  */
-export function nameLines(checks: readonly CheckId[]): string[] {
+export function nameLines(checks: readonly CheckId[], fileLevel?: string): string[] {
   if (checks.length <= LISTED_MAX) return checks.map(checkName);
-  const grouped = byFile(checks);
+  const grouped = byFile(checks, fileLevel);
   return grouped.length < checks.length ? grouped : checks.map(checkName);
 }
 
-/** One line per test file with its count, the first `FILES_SHOWN`, then the rest counted. */
-function byFile(checks: readonly CheckId[]): string[] {
-  const byFile = new Map<string, number>();
-  for (const check of checks) byFile.set(fileName(check), (byFile.get(fileName(check)) ?? 0) + 1);
-  const files = [...byFile].sort(([a, m], [b, n]) => n - m || (a < b ? -1 : a > b ? 1 : 0));
-  const lines = files.slice(0, FILES_SHOWN).map(([file, n]) => `${n} in ${file}`);
+/** One line per test file with its checks counted, the first `FILES_SHOWN`, then the rest counted. */
+function byFile(checks: readonly CheckId[], fileLevel: string | undefined): string[] {
+  const byFile = new Map<string, CheckId[]>();
+  for (const check of checks) {
+    byFile.set(fileName(check), [...(byFile.get(fileName(check)) ?? []), check]);
+  }
+  const files = [...byFile].sort(
+    ([a, m], [b, n]) => n.length - m.length || (a < b ? -1 : a > b ? 1 : 0),
+  );
+  const parts = (list: readonly CheckId[]) => checkPartsText(countChecks(list), fileLevel);
+  const lines = files.slice(0, FILES_SHOWN).map(([file, list]) => `${parts(list)} in ${file}`);
   const rest = files.slice(FILES_SHOWN);
   if (rest.length === 0) return lines;
-  const count = rest.reduce((sum, [, n]) => sum + n, 0);
-  return [...lines, `and ${plural(rest.length, "more test file")} (${plural(count, "check")})`];
+  const restChecks = rest.flatMap(([, list]) => list);
+  return [...lines, `and ${plural(rest.length, "more test file")} (${parts(restChecks)})`];
 }
 
 /**
@@ -68,6 +76,9 @@ export function collapse(
   if (changed.length <= LISTED_MAX) return null;
   const changedLines = nameLines(changed);
   if (stillFailing === undefined) return { head, lines: changedLines };
-  const failingLines = [`still failing: ${stillFailing.length}`, ...nameLines(stillFailing)];
+  const failingLines = [
+    `still failing: ${failureCountText(stillFailing)}`,
+    ...nameLines(stillFailing, "that did not load"),
+  ];
   return { head, lines: failingLines.length <= changedLines.length ? failingLines : changedLines };
 }

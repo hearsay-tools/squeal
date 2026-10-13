@@ -8,7 +8,7 @@ import type {
   StatusSnapshot,
   StatusUnavailable,
 } from "../types/index.js";
-import { countedText, failureCountText } from "./checks.js";
+import { countedText, failureCountText, partsSuffix } from "./checks.js";
 import { DEATH_CAUSE, deathText } from "./died.js";
 
 export interface StatusFormatOptions {
@@ -54,7 +54,8 @@ export function formatStatus(
     daemonLine(result, now),
     inheritedLine(result),
     ...result.inherited.sources.map(
-      (s) => `  ${s.count} from ${s.worktreeRoot ?? s.worktreeId} at ${shortCommit(s.commit)}`,
+      (s) =>
+        `  ${s.count}${partsSuffix(s.count, s.fileLevelCount)} from ${s.worktreeRoot ?? s.worktreeId} at ${shortCommit(s.commit)}`,
     ),
     ...(result.breakdown.testFilesWithoutChecks === 0
       ? []
@@ -81,7 +82,7 @@ function slowLine(s: StatusSnapshot, command: string): string[] {
 function inheritedLine(s: StatusSnapshot): string {
   return s.inherited.count === 0
     ? "Inherited from other worktrees: none (every current result here was run in this worktree)"
-    : `Inherited from other worktrees: ${plural(s.inherited.count, "current result")}`;
+    : `Inherited from other worktrees: ${plural(s.inherited.count, "current result")}${partsSuffix(s.inherited.count, s.inheritedFileLevelCount)}`;
 }
 
 /**
