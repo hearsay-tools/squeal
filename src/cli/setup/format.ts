@@ -1,4 +1,4 @@
-import type { SetupPlan } from "./plan.js";
+import type { CodexTrust, SetupPlan } from "./plan.js";
 
 /** The plan for a human: one section per D3 step 2 fact, then what is outdated. */
 export function formatPlan(plan: SetupPlan): string {
@@ -81,11 +81,24 @@ export function formatPlan(plan: SetupPlan): string {
 
   lines.push(
     "",
-    `Codex trust: not checked; ${plan.codexTrust.command} checks it`,
+    `Codex trust: ${trustText(plan.codexTrust)}`,
     `Warm-up: ${plan.warmup.withoutCurrentResult} of ${plan.warmup.testFiles} test files without a current result${plan.warmup.source === "store" ? "" : " (estimated: no daemon has listed them)"}`,
     "",
   );
   if (plan.outdated.length === 0) lines.push("Nothing is outdated.");
   else lines.push("Outdated:", ...plan.outdated.map((line) => `  ${line}`));
   return `${lines.join("\n")}\n`;
+}
+
+function trustText(trust: CodexTrust): string {
+  switch (trust.state) {
+    case "not-checked":
+      return `not checked; ${trust.command} checks it`;
+    case "trusted":
+      return `all ${trust.hooks} hooks of the plugin trusted`;
+    case "untrusted":
+      return `${trust.untrusted} of ${trust.hooks} hooks of the plugin not trusted; ${trust.command} has Codex trust them`;
+    case "unavailable":
+      return `not read (${trust.reason}); ${trust.command} checks it`;
+  }
 }

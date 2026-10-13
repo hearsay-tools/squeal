@@ -12,6 +12,7 @@ import { statusCommand } from "./status-command.js";
 import { statusWaitCommand } from "./status-wait.js";
 import { stopCommand } from "./stop.js";
 import { takeWait } from "./wait-arg.js";
+import { warmupCommand } from "./warmup.js";
 
 const HELP = `squeal: continuous validation for coding agents. Push transitions, pull state.
 
@@ -42,6 +43,12 @@ Usage:
                                 runners, instruction files and their Squeal block, gate
                                 lines, slow groups and their inputs, the warm-up's size
   squeal setup --check [--json] The plan; exit 1 when anything in it is outdated
+  squeal setup [--yes] [<choice flags>]
+                                Ask one question per open choice of the plan (--yes:
+                                take the defaults), apply them, warm up, show the diff
+  squeal warmup                 Start the daemon and run every test file without a
+                                current result; exit 0, 1 on known failures, 3 without
+                                a verdict; suggestions it finds, applied by squeal setup
   squeal start [root]           Start this worktree's daemon if none runs, print status
   squeal run --all [--force] [--wait]
                                 Request a full-suite checkpoint from the daemon
@@ -94,6 +101,7 @@ export function main(argv: readonly string[], io: CliIo): number | Promise<numbe
   if (first === "why") return why(rest, io);
   if (first === "init") return init(rest, io);
   if (first === "setup") return setupCommand(rest, io);
+  if (first === "warmup") return warmupCommand(rest, io);
   if (first === "daemon") return daemonCommand(rest, io);
   if (first === "start") return startCommand(rest, io);
   if (first === "run") return runCommand(rest, io);
