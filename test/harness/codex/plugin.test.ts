@@ -86,6 +86,7 @@ describe("Codex plugin build (spec 002 D1, D5)", () => {
     }
   }, 60_000);
 
+  // Seventeen `node --check` processes in turn: past 5 s under a loaded full suite (task 001-309).
   it("gives every bundle a require for CommonJS dependencies, and each parses (003-12)", () => {
     const files = readdirSync(built.dir, { recursive: true, encoding: "utf8" }).filter(
       (f) => f.endsWith(".mjs") || f.endsWith(".cjs"),
@@ -113,7 +114,7 @@ describe("Codex plugin build (spec 002 D1, D5)", () => {
       );
       execFileSync(process.execPath, ["--check", path]);
     }
-  });
+  }, 60_000);
 
   it("puts no CLAUDE_* variable name in a hook bundle (D4)", () => {
     for (const name of CONTRACT) {
