@@ -101,13 +101,23 @@ printf '[init]\\n\\tdefaultBranch = main\\n[advice]\\n\\tdetachedHead = false\\n
  * case root. Neither CLI takes a `file://` marketplace ("expected owner/repo,
  * a git URL, or a local marketplace path"); Codex upgrades only a Git
  * marketplace, and Claude Code clones it shallow, which dumb HTTP refuses.
- * `node -e` with the root and port: run as the throwaway user, until the
- * case's teardown kills what names its root.
+ * `node -e` with the root, the port and the suite's pid, run as the throwaway
+ * user. Teardown kills what names the root; failing that, the server exits by
+ * itself once the suite's process is gone (a kill of another user's live pid
+ * answers EPERM, of a gone one ESRCH), after `IDLE_MS` without a request, or
+ * after `LIFE_MS` in all.
  */
 const HUB_SERVER = `const http = require("node:http");
 const { spawn } = require("node:child_process");
-const [root, port] = process.argv.slice(1);
+const [root, port, suite] = process.argv.slice(1);
+const started = Date.now();
+let last = Date.now();
+setInterval(() => {
+  try { process.kill(Number(suite), 0); } catch (e) { if (e.code === "ESRCH") process.exit(0); }
+  if (Date.now() - last > ${15 * 60_000} || Date.now() - started > ${3 * 3_600_000}) process.exit(0);
+}, 5000);
 http.createServer((req, res) => {
+  last = Date.now();
   const url = new URL(req.url, "http://127.0.0.1");
   const h = req.headers;
   const cgi = spawn("git", ["http-backend"], { env: { ...process.env,
@@ -269,6 +279,7 @@ git add -A && git commit -q -m "pin squeal $1"`,
       return run("squeal", args, { timeoutMs: 300_000, ...options, cwd });
     },
     async dispose() {
+      if (!open.delete(m)) return;
       for (const cwd of cwds) await run("squeal", ["stop"], { cwd, timeoutMs: 60_000 });
       // Whatever still names the case: a daemon a session or a hook left. Never this script.
       await run("node", [
@@ -285,28 +296,51 @@ for (const pid of fs.readdirSync("/proc").filter((p) => /^\\d+$/.test(p))) {
     },
   };
 
-  ok(await sh(BOOTSTRAP, [root, ...harnesses]), "bootstrap the case");
-  const archive = execFileSync("git", ["archive", "--format=tar", CANDIDATE, "plugins"], {
-    cwd: REPO_ROOT,
-    maxBuffer: 1 << 28,
-  });
-  ok(await run("tar", ["-x", "-C", `${root}/src`], { input: archive }), "take the candidate in");
-  ok(
-    await sh(
-      "git init -q tools && cp -R src/plugins tools/ && git -C tools add -A && git -C tools commit -q -m base && git init -q hub",
-    ),
-    "build the tool repository",
-  );
-  ok(
-    await sh('nohup node -e "$1" "$2" "$3" >/dev/null 2>&1 &', [HUB_SERVER, root, String(port)]),
-    "start the hub's server",
-  );
-  await m.publish(BASE_VERSION);
-  for (let tries = 0; ; tries++) {
-    const r = await run("git", ["ls-remote", hubUrl], { timeoutMs: 10_000 });
-    if (r.status === 0) break;
-    if (tries === 20) ok(r, `reach the hub at ${hubUrl}`);
-    await new Promise((resolve) => setTimeout(resolve, 250));
+  open.add(m);
+  try {
+    await build();
+  } catch (error) {
+    await m.dispose();
+    throw error;
   }
   return m;
+
+  async function build(): Promise<void> {
+    ok(await sh(BOOTSTRAP, [root, ...harnesses]), "bootstrap the case");
+    const archive = execFileSync("git", ["archive", "--format=tar", CANDIDATE, "plugins"], {
+      cwd: REPO_ROOT,
+      maxBuffer: 1 << 28,
+    });
+    ok(await run("tar", ["-x", "-C", `${root}/src`], { input: archive }), "take the candidate in");
+    ok(
+      await sh(
+        "git init -q tools && cp -R src/plugins tools/ && git -C tools add -A && git -C tools commit -q -m base && git init -q hub",
+      ),
+      "build the tool repository",
+    );
+    ok(
+      await sh('nohup node -e "$1" "$2" "$3" "$4" >/dev/null 2>&1 &', [
+        HUB_SERVER,
+        root,
+        String(port),
+        String(process.pid),
+      ]),
+      "start the hub's server",
+    );
+    await m.publish(BASE_VERSION);
+    for (let tries = 0; ; tries++) {
+      const r = await run("git", ["ls-remote", hubUrl], { timeoutMs: 10_000 });
+      if (r.status === 0) break;
+      if (tries === 20) ok(r, `reach the hub at ${hubUrl}`);
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+  }
+}
+
+/** Machines made and not yet disposed. */
+const open = new Set<Machine>();
+
+/** Disposes every machine still open: the suite's `afterAll` (`teardown.ts`). */
+export async function disposeAll(): Promise<void> {
+  for (const m of [...open]) await m.dispose();
 }
