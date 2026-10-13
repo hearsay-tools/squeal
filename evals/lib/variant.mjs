@@ -70,7 +70,8 @@ export function buildPin(pinBase, dir, name, variant) {
   return dir;
 }
 
-function walk(d) {
+/** Every file under `d`, recursively; none when `d` does not exist. */
+export function walk(d) {
   if (!existsSync(d)) return [];
   return readdirSync(d, { withFileTypes: true }).flatMap((e) =>
     e.isDirectory() ? walk(join(d, e.name)) : [join(d, e.name)],

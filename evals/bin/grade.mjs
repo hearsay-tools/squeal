@@ -5,11 +5,12 @@
 // scratch homes into out/harness/ before the scratch is removed, so a cell can be graded again.
 // Ground truth is truth.vitest.json with truth.json, the runner's completion record of both
 // commands; Squeal's end state is status-end.json, `squeal status --json` (spec 006 wave 1.5).
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gradeCell } from "../lib/grade.mjs";
 import { claudeTimeline, codexTimeline, reportedEffort } from "../lib/transcript.mjs";
+import { walk } from "../lib/variant.mjs";
 
 const OUT = process.argv[2];
 const read = (f) => (existsSync(join(OUT, f)) ? readFileSync(join(OUT, f), "utf8") : "");
@@ -19,12 +20,6 @@ const jsonl = (f) =>
         .split("\n")
         .filter(Boolean)
         .map((l) => JSON.parse(l))
-    : [];
-const walk = (d) =>
-  existsSync(d)
-    ? readdirSync(d, { withFileTypes: true }).flatMap((x) =>
-        x.isDirectory() ? walk(join(d, x.name)) : [join(d, x.name)],
-      )
     : [];
 
 const meta = JSON.parse(read("meta.json"));

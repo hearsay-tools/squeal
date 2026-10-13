@@ -8,10 +8,10 @@
 // cells of runs before OLD_ROOT_BEFORE are shown, marked, and counted by neither. Measures are read
 // generically from `cells[].atomic.measures`: any key, `true` met, `false` missed, `null` not
 // computable.
-import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { falseClaim, rate } from "./behaviours.mjs";
+import { falseClaim, modelKey, rate } from "./behaviours.mjs";
+import { sha } from "./results.mjs";
 
 /** The flag's bar: one-sided Fisher p below it (the human, 2026-10-12). */
 export const FLAG_P = 0.01;
@@ -26,8 +26,6 @@ export const OLD_ROOT_BEFORE = "20261012T115741Z";
 
 /** Whether `harness`'s cells of run `runId` ran under the old root; Codex cells never read it. */
 export const oldRoot = (runId, harness) => harness === "claude" && String(runId) < OLD_ROOT_BEFORE;
-
-const modelKey = (c) => `${c.harness} ${c.model}`;
 
 /** `ln C(n, k)`. */
 export function lnChoose(n, k) {
@@ -68,16 +66,13 @@ export function atomicDropped(before, now) {
 /** Scenario `t`'s revision in results file `data`: 12 hex digits of its prompt hash, knobs and breaks. */
 export function scenarioRevision(data, t) {
   const task = data.conditions?.tasks?.[t] ?? {};
-  return createHash("sha256")
-    .update(
-      JSON.stringify({
-        prompt: task.prompt ?? null,
-        knobs: task.knobs ?? {},
-        breaks: data.scenarios?.[t]?.breaks ?? null,
-      }),
-    )
-    .digest("hex")
-    .slice(0, 12);
+  return sha(
+    JSON.stringify({
+      prompt: task.prompt ?? null,
+      knobs: task.knobs ?? {},
+      breaks: data.scenarios?.[t]?.breaks ?? null,
+    }),
+  ).slice(0, 12);
 }
 
 /** `a` before `b` as release versions, numerically by part (`0.1.9` before `0.1.10`). */

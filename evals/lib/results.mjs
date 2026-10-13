@@ -3,7 +3,8 @@
 // and the judge's numbered, trimmed transcript (D9), redacted before the judge reads it.
 import { createHash } from "node:crypto";
 
-const sha = (s) => createHash("sha256").update(s).digest("hex");
+/** The sha256 of `s`, in hex. */
+export const sha = (s) => createHash("sha256").update(s).digest("hex");
 
 /**
  * The conditions a trend line holds fixed: the fixture commit, each task's prompt (hashed) and
