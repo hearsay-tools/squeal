@@ -9,6 +9,7 @@ import {
   deps,
   HARNESSES,
   landSlow,
+  mainConsumer,
   repo,
   slowKey,
   stopBoth,
@@ -23,6 +24,8 @@ import {
  * block at the bound naming the files and `run --slow --wait`. Off, with
  * `stop_hook_active`, or after the 2 s entry spoke, it says nothing.
  */
+
+const OTHER_SESSION = "0b9a7c1e-5d2f-4e8a-9c3b-1f6d2e7a8b90";
 
 describe.each(HARNESSES)("Stop waits for its slow tier, $name (004 D9 as amended)", (harness) => {
   it("on: waits for a running slow file and ends the turn silently when it passes", async () => {
@@ -83,15 +86,32 @@ describe.each(HARNESSES)("Stop waits for its slow tier, $name (004 D9 as amended
     } finally {
       clearTimeout(timer);
     }
-    expect(stopWaitRuns(r.store, r.worktreeId, harness.name, squealVersion())).toBe(true);
+    expect(stopWaitRuns(r.store, mainConsumer(r), harness.name, squealVersion())).toBe(true);
   });
 
   it("marked by another harness or version: the 2 s entry still blocks at once", async () => {
     const r = await repo(harness, { requireSlowSuite: true }, false);
     const other = harness.name === "codex" ? "claude-code" : "codex";
-    recordStopWait(r.store, r.worktreeId, other, squealVersion());
-    recordStopWait(r.store, r.worktreeId, harness.name, "0.0.1-older");
+    recordStopWait(r.store, mainConsumer(r), other, squealVersion());
+    recordStopWait(r.store, mainConsumer(r), harness.name, "0.0.1-older");
     expect(decision(await harness.stop(r)).decision).toBe("block");
+  });
+
+  it("another session in the worktree without the waiting entry keeps the old block (001-297)", async () => {
+    const r = await repo(harness, { requireSlowSuite: true });
+    const marked = mainConsumer(r);
+    const other = { session_id: OTHER_SESSION, transcript_path: `/t/${OTHER_SESSION}.jsonl` };
+    await harness.startTurn(r, other);
+    const quick = decision(await harness.stop(r, other));
+    expect(quick.decision).toBe("block");
+    expect(quick.reason).toMatch(
+      /^Squeal policy stop.requireSlowSuite is on and 1 slow test file is not current at revision 1: test\/e2e\/slow.test.ts\./,
+    );
+    expect(decision(await harness.stop(r))).toEqual({});
+    const sessions = r.store.consumers.list(r.worktreeId).map((c) => c.consumer);
+    const unmarked = sessions.find((c) => c.sessionId === OTHER_SESSION);
+    expect(unmarked && stopWaitRuns(r.store, unmarked, harness.name, squealVersion())).toBe(false);
+    expect(stopWaitRuns(r.store, marked, harness.name, squealVersion())).toBe(true);
   });
 
   it("off: returns at once without waiting, and the turn ends as today", async () => {

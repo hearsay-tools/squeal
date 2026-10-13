@@ -1,7 +1,12 @@
 import { squealVersion } from "../../src/core/daemon/version.js";
 import { readTurn } from "../../src/core/delivery/turn.js";
 import { recordStopWait, type StopWaitHarness } from "../../src/core/slow/index.js";
-import { DEFAULT_POLICY, type PolicyFile, type TestFileRef } from "../../src/core/types/index.js";
+import {
+  type Consumer,
+  DEFAULT_POLICY,
+  type PolicyFile,
+  type TestFileRef,
+} from "../../src/core/types/index.js";
 import { runHook } from "../../src/harness/claude-code/index.js";
 import { runCodexHook } from "../../src/harness/codex/index.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
@@ -25,7 +30,7 @@ export interface Out {
 
 export interface Harness {
   readonly name: StopWaitHarness;
-  startTurn(r: SquealRepo): Promise<void>;
+  startTurn(r: SquealRepo, overrides?: object): Promise<void>;
   stop(r: SquealRepo, overrides?: object, hookDeps?: HookDeps): Promise<Out>;
   stopSlow(r: SquealRepo, overrides?: object, hookDeps?: HookDeps): Promise<Out>;
 }
@@ -33,20 +38,20 @@ export interface Harness {
 export const HARNESSES: readonly Harness[] = [
   {
     name: "claude-code",
-    async startTurn(r) {
-      await runHook("session-start", recorded("session-start", r.root), deps);
-      await runHook("user-prompt-submit", recorded("user-prompt-submit", r.root), deps);
+    async startTurn(r, o) {
+      await runHook("session-start", recorded("session-start", r.root, o), deps);
+      await runHook("user-prompt-submit", recorded("user-prompt-submit", r.root, o), deps);
     },
     stop: (r, o, d = deps) => runHook("stop", recorded("stop", r.root, o), d),
     stopSlow: (r, o, d = deps) => runHook("stop-slow", recorded("stop", r.root, o), d),
   },
   {
     name: "codex",
-    async startTurn(r) {
-      await runCodexHook("session-start", codexRecorded("exec", "session-start", r.root), deps);
+    async startTurn(r, o) {
+      await runCodexHook("session-start", codexRecorded("exec", "session-start", r.root, o), deps);
       await runCodexHook(
         "user-prompt-submit",
-        codexRecorded("exec", "user-prompt-submit", r.root),
+        codexRecorded("exec", "user-prompt-submit", r.root, o),
         deps,
       );
     },
@@ -58,7 +63,7 @@ export const HARNESSES: readonly Harness[] = [
 
 /**
  * `math > adds` passes, the slow file is queued at revision 1, the agent is
- * in a turn; `marked`: the harness's waiting entry ran here before.
+ * in a turn; `marked`: the harness's waiting entry ran for this session before.
  */
 export async function repo(
   harness: Harness,
@@ -69,9 +74,21 @@ export async function repo(
   r.apply(r.pass());
   r.policy({ slow: { ...DEFAULT_POLICY.slow, include: [SLOW_FILE.path, FILE.path] }, stop });
   slowKey(r, "queued");
-  if (marked) recordStopWait(r.store, r.worktreeId, harness.name, squealVersion());
   await harness.startTurn(r);
+  if (marked) markStopWait(r, harness.name);
   return r;
+}
+
+/** The registered main agent of the session's turn: the only consumer, as `startTurn` leaves it. */
+export function mainConsumer(r: SquealRepo): Consumer {
+  const [record, ...more] = r.store.consumers.list(r.worktreeId);
+  if (record === undefined || more.length > 0) throw new Error("not one consumer");
+  return record.consumer;
+}
+
+/** The waiting entry of `harness` ran for the session's main agent (001-285, 001-297). */
+export function markStopWait(r: SquealRepo, harness: StopWaitHarness): void {
+  recordStopWait(r.store, mainConsumer(r), harness, squealVersion());
 }
 
 export function slowKey(r: SquealRepo, pending: "queued" | null, key = "slow1"): void {

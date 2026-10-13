@@ -67,9 +67,10 @@ export type StopOutcome = { readonly block: string } | { readonly news: string }
  * test file not current at this revision) is not met. This entry never
  * waits for slow files, whatever the policy (D9). With `requireSlowSuite` on,
  * a main agent's slow files are the waiting entry's (`stopSlow`, D9 as
- * amended 2026-10-12) once its harness's waiting entry is known to run in the
- * worktree at this version (`stopWaitRuns`); until then this one blocks on
- * them as before, so an untrusted or missing waiting hook still holds.
+ * amended 2026-10-12) once its harness's waiting entry is known to run for
+ * this session at this version (`stopWaitRuns`, task 001-297); until then
+ * this one blocks on them as before, so an untrusted or missing waiting hook
+ * still holds, whatever another session in the worktree runs.
  *
  * Stop context is not passive: Claude Code continues the turn so the model
  * can read it (2.1.288 counts it toward its consecutive-block cap). So Stop
@@ -130,7 +131,7 @@ export function stopTurn(
             input.agent_id === undefined &&
             stopWaitRuns(
               context.store,
-              context.consumer.worktreeId,
+              context.consumer,
               input.harness,
               deps.squealVersion ?? squealVersion(),
             ),

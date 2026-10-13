@@ -1,14 +1,30 @@
+import { readSlot, writeSlot } from "../delivery/slots.js";
 import { isRecord } from "../fs/index.js";
-import { type Policy, type Store, type WorktreeId, worktreeMetaKey } from "../types/index.js";
+import {
+  type Consumer,
+  type Policy,
+  type Store,
+  type WorktreeId,
+  worktreeMetaKey,
+} from "../types/index.js";
 
 /*
- * Spec 004 D9 as amended 2026-10-12 (task 001-285): which harnesses ran the
- * waiting Stop entry (`stop-slow`) in a worktree, and at which Squeal
- * version. A main agent's 2 s Stop leaves slow files to that entry only once
- * it is known to run there: Codex runs a new plugin hook only after the user
- * trusts it, and an untrusted or missing waiting entry must leave
+ * Spec 004 D9 as amended 2026-10-12 (task 001-285): which harness's waiting
+ * Stop entry (`stop-slow`) ran for a session, and at which Squeal version. A
+ * main agent's 2 s Stop leaves slow files to that entry only once it is known
+ * to run there: Codex runs a new plugin hook only after the user trusts it,
+ * and an untrusted or missing waiting entry must leave
  * `stop.requireSlowSuite` holding as it did before, never holding nothing.
- * One JSON row per worktree, `{ "<harness>": "<version>" }`.
+ *
+ * Task 001-297 (review wave 13am S1): the evidence is the consumer's, one
+ * slot per consumer in one row per worktree (`slots.ts`),
+ * `{ "<session>\n<agent>": { "<harness>": "<version>" } }`. Another session
+ * in the worktree, with another config, launcher or trust, never inherits
+ * it: its first Stop blocks on slow files as before, and its own waiting
+ * entry, if it runs, marks it. The evidence lasts while the consumer is
+ * registered; a slot of one no longer registered is dropped on the next
+ * write. A waiting entry disabled mid-session is not seen: the slot stays
+ * until the session ends.
  */
 
 /**
@@ -31,37 +47,26 @@ export function stopWaitMetaKey(worktreeId: WorktreeId): string {
   return worktreeMetaKey("stopWait", worktreeId);
 }
 
-function read(store: Store, worktreeId: WorktreeId): Record<string, unknown> {
-  const raw = store.meta.get(stopWaitMetaKey(worktreeId));
-  if (raw === null) return {};
-  try {
-    const value: unknown = JSON.parse(raw);
-    return isRecord(value) ? value : {};
-  } catch {
-    return {};
-  }
-}
-
-/** Whether `harness`'s waiting entry ran in `worktreeId` at `version`. */
+/** Whether `harness`'s waiting entry ran for `consumer` at `version`. */
 export function stopWaitRuns(
   store: Store,
-  worktreeId: WorktreeId,
+  consumer: Consumer,
   harness: StopWaitHarness,
   version: string,
 ): boolean {
-  return read(store, worktreeId)[harness] === version;
+  const value = readSlot(store, stopWaitMetaKey(consumer.worktreeId), consumer);
+  return isRecord(value) && value[harness] === version;
 }
 
-/** Records that `harness`'s waiting entry runs in `worktreeId` at `version`; writes only a change. */
+/** Records that `harness`'s waiting entry runs for `consumer` at `version`; writes only a change. */
 export function recordStopWait(
   store: Store,
-  worktreeId: WorktreeId,
+  consumer: Consumer,
   harness: StopWaitHarness,
   version: string,
 ): void {
   store.transaction(() => {
-    const all = read(store, worktreeId);
-    if (all[harness] === version) return;
-    store.meta.set(stopWaitMetaKey(worktreeId), JSON.stringify({ ...all, [harness]: version }));
+    if (stopWaitRuns(store, consumer, harness, version)) return;
+    writeSlot(store, stopWaitMetaKey(consumer.worktreeId), consumer, { [harness]: version });
   });
 }
