@@ -4291,7 +4291,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.148";
+  if (true) return "0.1.149";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4597,7 +4597,7 @@ function untold(last, isSlow, views) {
   });
 }
 async function handedOver(context, deps, poll) {
-  const since = (deps.now ?? Date.now)() - STOP_SLOW_HANDOFF_SLACK_MS;
+  const since = (deps.now ?? Date.now)() - performance.now() - STOP_SLOW_HANDOFF_SLACK_MS;
   const deadline = performance.now() + STOP_SLOW_HANDOFF_MS;
   const { store, consumer } = context;
   for (; ; ) {
