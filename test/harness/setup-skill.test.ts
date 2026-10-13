@@ -3,21 +3,18 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { SETUP_USAGE } from "../../src/cli/setup/command.js";
 import { PLUGIN_DIR } from "../../src/harness/claude-code/build.js";
-import {
-  CODEX_PLUGIN,
-  CODEX_PLUGIN_DIR,
-  CODEX_SETUP_SKILL,
-  SETUP_SKILL_SOURCE,
-} from "../../src/harness/codex/build.js";
+import { CODEX_PLUGIN_DIR } from "../../src/harness/codex/build.js";
 
 /*
  * Task 005-19 (spec 005 D3 "The skill"): `/squeal:setup` in Claude Code and
  * `$squeal:setup` in Codex run `squeal setup`'s plan, questions and apply.
  * One text serves both harnesses, so the Codex copy is the source unchanged.
+ * Both copies are committed, outside the Codex build's copy list: that build
+ * file is key-format guarded, and listing a skill there would re-key results.
  */
 
 const SKILL = join(PLUGIN_DIR, "skills/setup");
-const CODEX = join(CODEX_PLUGIN_DIR, CODEX_SETUP_SKILL);
+const CODEX = join(CODEX_PLUGIN_DIR, "skills/setup");
 const body = readFileSync(join(SKILL, "SKILL.md"), "utf8");
 
 const files = (dir: string) => readdirSync(dir, { recursive: true, encoding: "utf8" }).sort();
@@ -30,13 +27,11 @@ function setupFlags(text: string): string[] {
 }
 
 describe("the setup skill", () => {
-  it("is the same files in both plugins, copied by the Codex build", () => {
+  it("is the same files in both plugins", () => {
     expect(files(CODEX)).toEqual(files(SKILL));
     for (const f of files(SKILL)) {
       expect(readFileSync(join(CODEX, f), "utf8"), f).toBe(readFileSync(join(SKILL, f), "utf8"));
     }
-    expect(CODEX_PLUGIN.copies).toContainEqual({ from: SETUP_SKILL_SOURCE, to: CODEX_SETUP_SKILL });
-    expect(join(PLUGIN_DIR, "..", "..", SETUP_SKILL_SOURCE)).toBe(SKILL);
   });
 
   it("is named setup, so the harnesses list it as squeal:setup", () => {
