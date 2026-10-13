@@ -24,14 +24,19 @@ import {
  * entry, if it runs, marks it.
  *
  * Task 001-322 (review wave 13aw S1): the evidence is one registration's,
- * `{ "registeredAt": <ms>, "<harness>": "<version>" }`, and counts only while
- * the consumer's `registeredAt` is that one. A registration again, after an
- * unregister, an expiry or a `startup` or `resume` of the same session id,
- * starts unmarked, so a session resumed with its waiting entry turned off
- * blocks on slow files as before; its waiting entry, if it runs, marks it at
- * its next Stop. Compaction keeps the registration and so the evidence. A
- * slot without `registeredAt`, written before, reads unmarked. A waiting
- * entry disabled within one registration is not seen.
+ * `{ "registeredAt": <ms>, "<harness>": "<version>" }`. A registration again,
+ * after an unregister, an expiry or a `startup` or `resume` of the same
+ * session id, starts unmarked, so a session resumed with its waiting entry
+ * turned off blocks on slow files as before; its waiting entry, if it runs,
+ * marks it at its next Stop. Compaction keeps the registration and so the
+ * evidence. A waiting entry disabled within one registration is not seen.
+ *
+ * Task 001-328 (review wave 13ba B1): two registrations can share a
+ * millisecond, so every registration forgets the slot in its own
+ * transaction (`forgetStopWait`, called by the delivery's `register`).
+ * `registeredAt` stays only so that slots no registration of this version
+ * forgot read unmarked: one without it, written before 001-322, and one an
+ * older hook's registration left.
  */
 
 /**
@@ -84,4 +89,9 @@ export function recordStopWait(
     const key = stopWaitMetaKey(consumer.worktreeId);
     writeSlot(store, key, consumer, { registeredAt, [harness]: version });
   });
+}
+
+/** Forgets `consumer`'s waiting-entry record: every registration starts unmarked. Call inside a transaction. */
+export function forgetStopWait(store: Store, consumer: Consumer): void {
+  writeSlot(store, stopWaitMetaKey(consumer.worktreeId), consumer, null);
 }

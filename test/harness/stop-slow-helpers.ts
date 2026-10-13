@@ -30,7 +30,7 @@ export interface Out {
 
 export interface Harness {
   readonly name: StopWaitHarness;
-  startTurn(r: SquealRepo, overrides?: object): Promise<void>;
+  startTurn(r: SquealRepo, overrides?: object, hookDeps?: HookDeps): Promise<void>;
   stop(r: SquealRepo, overrides?: object, hookDeps?: HookDeps): Promise<Out>;
   stopSlow(r: SquealRepo, overrides?: object, hookDeps?: HookDeps): Promise<Out>;
 }
@@ -38,21 +38,21 @@ export interface Harness {
 export const HARNESSES: readonly Harness[] = [
   {
     name: "claude-code",
-    async startTurn(r, o) {
-      await runHook("session-start", recorded("session-start", r.root, o), deps);
-      await runHook("user-prompt-submit", recorded("user-prompt-submit", r.root, o), deps);
+    async startTurn(r, o, d = deps) {
+      await runHook("session-start", recorded("session-start", r.root, o), d);
+      await runHook("user-prompt-submit", recorded("user-prompt-submit", r.root, o), d);
     },
     stop: (r, o, d = deps) => runHook("stop", recorded("stop", r.root, o), d),
     stopSlow: (r, o, d = deps) => runHook("stop-slow", recorded("stop", r.root, o), d),
   },
   {
     name: "codex",
-    async startTurn(r, o) {
-      await runCodexHook("session-start", codexRecorded("exec", "session-start", r.root, o), deps);
+    async startTurn(r, o, d = deps) {
+      await runCodexHook("session-start", codexRecorded("exec", "session-start", r.root, o), d);
       await runCodexHook(
         "user-prompt-submit",
         codexRecorded("exec", "user-prompt-submit", r.root, o),
-        deps,
+        d,
       );
     },
     stop: (r, o, d = deps) => runCodexHook("stop", codexRecorded("exec", "stop", r.root, o), d),

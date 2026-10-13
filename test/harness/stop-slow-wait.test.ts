@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { squealVersion } from "../../src/core/daemon/version.js";
 import { recordStopWait, stopWaitRuns } from "../../src/core/slow/index.js";
 import { runHook } from "../../src/harness/claude-code/index.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { STOP_SLOW_HANDOFF_MS } from "../../src/harness/shared/stop-slow.js";
-import { recorded } from "./helpers.js";
+import { recorded, type SquealRepo } from "./helpers.js";
 import {
   decision,
   deps,
@@ -27,6 +28,10 @@ import {
  */
 
 const OTHER_SESSION = "0b9a7c1e-5d2f-4e8a-9c3b-1f6d2e7a8b90";
+
+/** One registration time for two registrations: review wave 13ba B1 reused a production `Date.now`. */
+const AT = 1_791_909_041_203;
+const atDeps: HookDeps = { ...deps, now: () => AT };
 
 /** Until the clock has moved on, so a registration now has a later `registeredAt`. */
 async function nextMs(): Promise<void> {
@@ -142,6 +147,39 @@ describe.each(HARNESSES)("Stop waits for its slow tier, $name (004 D9 as amended
     const r = await repo(harness, { requireSlowSuite: true });
     await nextMs();
     await harness.startTurn(r, { source: "compact" });
+    expect(decision(await harness.stop(r))).toEqual({});
+  });
+
+  /** A session started at `AT`, then marked, so its next registration can land in the same ms. */
+  async function markedAt(): Promise<SquealRepo> {
+    const r = await repo(harness, { requireSlowSuite: true }, false);
+    await harness.startTurn(r, { source: "resume" }, atDeps);
+    markStopWait(r, harness.name);
+    expect(r.store.consumers.get(mainConsumer(r))?.registeredAt).toBe(AT);
+    expect(decision(await harness.stop(r))).toEqual({});
+    return r;
+  }
+
+  it("registered again in the same millisecond, it starts unmarked (001-328)", async () => {
+    const r = await markedAt();
+    r.store.consumers.unregister(mainConsumer(r));
+    await harness.startTurn(r, { source: "resume" }, atDeps);
+    expect(r.store.consumers.get(mainConsumer(r))?.registeredAt).toBe(AT);
+    expect(decision(await harness.stop(r)).decision).toBe("block");
+    markStopWait(r, harness.name);
+    expect(decision(await harness.stop(r))).toEqual({});
+  });
+
+  it("resumed without its end in the same millisecond, it starts unmarked (001-328)", async () => {
+    const r = await markedAt();
+    await harness.startTurn(r, { source: "resume" }, atDeps);
+    expect(r.store.consumers.get(mainConsumer(r))?.registeredAt).toBe(AT);
+    expect(decision(await harness.stop(r)).decision).toBe("block");
+  });
+
+  it("compaction in the same millisecond keeps its mark (001-328)", async () => {
+    const r = await markedAt();
+    await harness.startTurn(r, { source: "compact" }, atDeps);
     expect(decision(await harness.stop(r))).toEqual({});
   });
 
