@@ -13,7 +13,7 @@ Use /worker.
 **Shape.** A slice: new tests plus one report.
 
 **Seam.**
-- New `test/real-cli/`, with its own `vitest.real-cli.config.ts` and an npm script `test:real-cli`.
+- New `test/real-cli/`, with its own `vitest.real-cli.config.ts`, run as `npx vitest run --config vitest.real-cli.config.ts`: no npm script, because `package.json` is a guarded key source (decided 2026-10-13).
 - Leave `test/real-cli/` out of `vitest.config.ts`'s include, so neither CI nor the Squeal daemon ever runs it.
 - First edit: a `machine()` like `test/cli/install-fixture.ts`, but with the real `claude` and `codex` on its PATH.
 - Its hub is a `file://` hub built from the checkout's plugins, never `hearsay-tools/marketplace`.
@@ -29,12 +29,12 @@ Use /worker.
 - Before the first one, send the coordinator a request and wait for its go: the eval slot is shared.
 - Start each session only while the one-minute load is below the CPU count.
 
-**Owns.** `test/real-cli/**`, `vitest.real-cli.config.ts`, `package.json` scripts, `test/cli/setup/fixture.ts` and `candidates.test.ts` (only the move), plus `research/e2e-setup.md` (a run log: versions, Node 22 and 24, each bullet's result).
+**Owns.** `test/real-cli/**`, `vitest.real-cli.config.ts`, `test/cli/setup/fixture.ts` and `candidates.test.ts` (only the move), plus `research/e2e-setup.md` (a run log: versions, Node 22 and 24, each bullet's result).
 
 **Leaves alone.** `src/**`, `plugins/**`, `install.sh` and the board.
 - A defect found is reported with its evidence, not fixed: it becomes a planned row.
 
 **Done when.**
-- `npm run test:real-cli` passes every bullet on Node 22 and on Node 24, or the report names a defect behind each failure.
+- The real-CLI suite passes every bullet on Node 22 and on Node 24, or the report names a defect behind each failure.
 - `npx vitest run --maxWorkers=4` is unchanged.
 - Lint and typecheck pass.
