@@ -1197,11 +1197,11 @@ function staleHiddenLockfile(dir, content) {
   const newer = folders.filter(
     (folder) => Object.hasOwn(listed, folder.path) && folder.mtimeMs > lockTime
   );
-  const missing = Object.keys(listed).filter((path) => isInstalledFolder(path) && !seen.has(path));
+  const missing2 = Object.keys(listed).filter((path) => isInstalledFolder(path) && !seen.has(path));
   const parts = [
     ["not listed in it", unlisted],
     ["newer than it", newer.map((folder) => folder.path)],
-    ["missing", missing]
+    ["missing", missing2]
   ];
   const reasons = parts.filter(([, paths]) => paths.length > 0).map(([label2, paths]) => `${label2}: ${example(paths)}`);
   return reasons.length === 0 ? null : reasons.join("; ");
@@ -3360,8 +3360,8 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
   }
   const last = store.checkpoints.lastCompleted(worktreeId);
   const refinedRevision2 = readRefined(store, worktreeId);
-  const missing = parseAwaitingInstall(store.meta.get(awaitingInstallMetaKey(worktreeId)));
-  const awaiting = missing !== null;
+  const missing2 = parseAwaitingInstall(store.meta.get(awaitingInstallMetaKey(worktreeId)));
+  const awaiting = missing2 !== null;
   const view = worktreeSlowView(store, worktreeId);
   const slow = isSlow ?? view?.isSlow;
   const optimizerOff = readOptimizerOff(store, worktreeId);
@@ -3382,7 +3382,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     ...slow === void 0 ? {} : { slowPending: countSlowPending(states, keys, slow) },
     ...view === null ? {} : { slowTier: readSlowTier(store, worktreeId, revision, states, keys, view) },
     ...awaiting ? { awaitingInstall: true } : {},
-    ...missing !== null && missing.length > 0 ? { missingInstalls: missing } : {},
+    ...missing2 !== null && missing2.length > 0 ? { missingInstalls: missing2 } : {},
     ...optimizerOff === void 0 ? {} : { optimizerOff }
   };
 }
@@ -6316,7 +6316,7 @@ async function seedStatCache(cache, root, paths, options) {
   const index = await readCleanIndexHashes(root);
   let fromIndex = 0;
   let fromBytes = 0;
-  let missing = 0;
+  let missing2 = 0;
   await mapConcurrent(paths, async (path, i2) => {
     const stat7 = await hasher.stat(path);
     const earlier = before[i2];
@@ -6330,13 +6330,13 @@ async function seedStatCache(cache, root, paths, options) {
     const hash2 = stat7 ? await hasher.hash(path) : null;
     if (!stat7 || hash2 === null) {
       cache.delete(path);
-      missing++;
+      missing2++;
       return;
     }
     cache.set({ path, ...stat7, hash: hash2 }, { racy: isRacy(stat7, hashedAt) });
     fromBytes++;
   });
-  return { fromIndex, fromBytes, missing };
+  return { fromIndex, fromBytes, missing: missing2 };
 }
 var init_hasher = __esm({
   "src/core/hash/hasher.ts"() {
@@ -7032,10 +7032,10 @@ async function missingInstall(root) {
   if (!declaresOwnDependencies(manifest) && patterns.length === 0) return null;
   if (await installedIn(root)) return null;
   const declaring = await declaringWorkspaces(root, patterns);
-  const missing = [];
-  for (const dir of declaring) if (!await installedIn(join28(root, dir))) missing.push(dir);
-  if (declaring.length > 0 && missing.length === 0) return null;
-  return { workspaces: missing.length === declaring.length ? [] : missing };
+  const missing2 = [];
+  for (const dir of declaring) if (!await installedIn(join28(root, dir))) missing2.push(dir);
+  if (declaring.length > 0 && missing2.length === 0) return null;
+  return { workspaces: missing2.length === declaring.length ? [] : missing2 };
 }
 async function installDirs(root) {
   if (await installedIn(root)) return [""];
@@ -7071,7 +7071,7 @@ async function statOrNull2(path) {
     throw error;
   }
 }
-function startWaiting(context, ledger, missing) {
+function startWaiting(context, ledger, missing2) {
   const { store, worktreeId } = context;
   ledger.checkpoints.finish("abandoned");
   ledger.queue.clear();
@@ -7082,7 +7082,7 @@ function startWaiting(context, ledger, missing) {
     AWAITING_INSTALL_REASON
   );
   store.transaction(() => {
-    store.meta.set(awaitingInstallMetaKey(worktreeId), awaitingInstallValue(missing.workspaces));
+    store.meta.set(awaitingInstallMetaKey(worktreeId), awaitingInstallValue(missing2.workspaces));
     ledger.commit({ refined: ledger.revision.number });
   });
   if (!persistedNoteTexts(store, worktreeId).has(AWAITING_INSTALL_NOTE)) {
@@ -7095,10 +7095,10 @@ async function reconcileWaiting(context, ledger, batch, changed) {
     ledger.commit({ refined: applied.revision.number });
     for (const change2 of applied.revision.changes) changed.add(change2.path);
   }
-  const missing = await missingInstall(context.root);
-  if (missing !== null) {
+  const missing2 = await missingInstall(context.root);
+  if (missing2 !== null) {
     const { store, worktreeId } = context;
-    store.meta.set(awaitingInstallMetaKey(worktreeId), awaitingInstallValue(missing.workspaces));
+    store.meta.set(awaitingInstallMetaKey(worktreeId), awaitingInstallValue(missing2.workspaces));
     return true;
   }
   ledger.files.clear();
@@ -9305,13 +9305,13 @@ var init_install_stamp = __esm({
       async check() {
         const stamp2 = await this.stamp();
         if (this.#last?.stamp === stamp2) return this.#last;
-        const missing = await missingInstall(this.root);
+        const missing2 = await missingInstall(this.root);
         this.#dirs = [];
         for (const relative15 of await installDirs(this.root)) {
           const dir = join32(this.root, relative15);
           this.#dirs.push({ dir, lockfile: (await findInstalledLockfile(dir, dir))?.path ?? null });
         }
-        this.#last = { stamp: await this.stamp(), missing };
+        this.#last = { stamp: await this.stamp(), missing: missing2 };
         return this.#last;
       }
       /**
@@ -11021,9 +11021,9 @@ var init_scheduler2 = __esm({
           this.#ledger = ledger;
           this.#waitChanges = await scan(context, ledger);
           stopWaiting(context);
-          const missing = await missingInstall(options.root);
-          this.#awaitingInstall = missing !== null;
-          if (missing !== null) startWaiting(context, ledger, missing);
+          const missing2 = await missingInstall(options.root);
+          this.#awaitingInstall = missing2 !== null;
+          if (missing2 !== null) startWaiting(context, ledger, missing2);
           else await this.#baseline(context, ledger);
           this.#context = context;
         });
@@ -11058,8 +11058,8 @@ var init_scheduler2 = __esm({
           const { applied, touched } = await reconcileBatch(context, ledger, batch);
           const install = applied?.revision.changes.some((change2) => touchesInstall(change2.path));
           if (install || batch.trigger === "interval") {
-            const { missing } = await this.#install.check();
-            if (missing !== null) return this.#reinstall(ledger);
+            const { missing: missing2 } = await this.#install.check();
+            if (missing2 !== null) return this.#reinstall(ledger);
           }
           if (applied === null) {
             if (touched.length > 0) this.#runnerWork.queueTouched(touched);
@@ -14533,15 +14533,15 @@ import { builtinModules } from "node:module";
 import { basename as basename11, dirname as dirname19, extname as extname2, join as join44, resolve as resolve7 } from "node:path";
 async function importClosure(project, entries2) {
   const files2 = /* @__PURE__ */ new Set();
-  const missing = /* @__PURE__ */ new Set();
+  const missing2 = /* @__PURE__ */ new Set();
   const bare = /* @__PURE__ */ new Map();
   const builtins = /* @__PURE__ */ new Set();
   const rooted = /* @__PURE__ */ new Set();
   const entrySet = new Set(entries2);
   const visit2 = async (file) => {
-    if (files2.has(file) || missing.has(file)) return;
+    if (files2.has(file) || missing2.has(file)) return;
     if (!existsSync16(file)) {
-      missing.add(file);
+      missing2.add(file);
       return;
     }
     files2.add(file);
@@ -14553,20 +14553,20 @@ async function importClosure(project, entries2) {
     await Promise.all(hop.targets.map(visit2));
   };
   await Promise.all(entries2.map(visit2));
-  return { files: files2, missing, bare, builtins, rooted, root: project.config.root };
+  return { files: files2, missing: missing2, bare, builtins, rooted, root: project.config.root };
 }
 async function directImports(project, file) {
   const files2 = /* @__PURE__ */ new Set();
-  const missing = /* @__PURE__ */ new Set();
+  const missing2 = /* @__PURE__ */ new Set();
   const hop = await importTargets(project, file);
   for (const target of hop.targets) {
-    (existsSync16(target) ? files2 : missing).add(target);
+    (existsSync16(target) ? files2 : missing2).add(target);
   }
   const bare = new Map(hop.bare.length > 0 ? [[file, new Set(hop.bare)]] : []);
   const rooted = new Set(hop.environment === null ? [] : [hop.environment]);
   return {
     files: files2,
-    missing,
+    missing: missing2,
     bare,
     builtins: new Set(hop.builtins),
     rooted,
@@ -34905,7 +34905,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.155";
+  if (true) return "0.1.156";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -35812,13 +35812,13 @@ function noVerdictText(verdict) {
   if (byClass.pending > 0) {
     return `${plural(byClass.pending, "test file")} still pending at revision ${revision}`;
   }
-  const missing = byClass.unknown + byClass.stale;
-  if (missing === 0) return null;
+  const missing2 = byClass.unknown + byClass.stale;
+  if (missing2 === 0) return null;
   const parts = [
     ...byClass.unknown > 0 ? [`${byClass.unknown} unknown`] : [],
     ...byClass.stale > 0 ? [`${byClass.stale} stale`] : []
   ];
-  return `${plural(missing, "test file")} without a current result at revision ${revision} (${parts.join(", ")})`;
+  return `${plural(missing2, "test file")} without a current result at revision ${revision} (${parts.join(", ")})`;
 }
 function failuresText(failures) {
   const total = failureCount(failures);
@@ -38376,6 +38376,10 @@ async function openDaemon(rootArgument, now, awaitLockMs, vacantLockWaitMs = VAC
     if (lock2 === null && waitMs > 0) {
       const giveUp2 = awaitLockMs === void 0 ? servedElsewhere(root, commonDir, worktreeId, now) : takenOver(root);
       lock2 = await awaitDaemonLock(path, { timeoutMs: waitMs, giveUp: giveUp2 });
+      if (typeof lock2 !== "string" && newerRecorded(commonDir, worktreeId)) {
+        lock2.release();
+        lock2 = "gave-up";
+      }
     }
   } catch (error) {
     return exit("start-failed", 1, `could not take the daemon lock: ${message(error)}`);
@@ -38436,16 +38440,15 @@ function takenOver(root) {
   };
 }
 function servedElsewhere(root, commonDir, worktreeId, now) {
-  const own = squealVersion();
-  return () => {
-    if (!existsSync13(root) || liveDaemonRecorded(root, now())) return true;
-    const last = lastDaemonVersion(commonDir, worktreeId);
-    return last !== null && isNewerVersion(last, own);
-  };
+  return () => !existsSync13(root) || liveDaemonRecorded(root, now()) || newerRecorded(commonDir, worktreeId, 100);
 }
-function lastDaemonVersion(commonDir, worktreeId) {
+function newerRecorded(commonDir, worktreeId, busyTimeoutMs = DAEMON_BUSY_TIMEOUT_MS) {
+  const last = lastDaemonVersion(commonDir, worktreeId, busyTimeoutMs);
+  return last !== null && isNewerVersion(last, squealVersion());
+}
+function lastDaemonVersion(commonDir, worktreeId, busyTimeoutMs) {
   try {
-    const store = openStore(commonDir, { create: false, busyTimeoutMs: 100 });
+    const store = openStore(commonDir, { create: false, busyTimeoutMs });
     if (isStoreOpenFailure(store)) return null;
     try {
       return store.worktrees.lastDaemon(worktreeId)?.squealVersion ?? null;
@@ -42034,7 +42037,6 @@ function parseSetupArgs(args) {
 }
 
 // src/cli/stop.ts
-import { existsSync as existsSync24 } from "node:fs";
 import { setTimeout as sleep12 } from "node:timers/promises";
 init_lock();
 init_fs();
@@ -42097,7 +42099,7 @@ async function lockFreed(root, daemon, ms) {
   const path = lockFileFor(commonDir, worktreeIdFor(root));
   const deadline = Date.now() + ms;
   for (; ; ) {
-    if (!existsSync24(path) || daemon !== null && gone(root, daemon)) return { state: "free" };
+    if (missing(path) || daemon !== null && gone(root, daemon)) return { state: "free" };
     const probe = probeLock(path);
     if (probe.state === "free" || Date.now() > deadline) return probe;
     await sleep12(50);
@@ -42107,6 +42109,13 @@ function gone(root, daemon) {
   if (processGone(daemon.pid)) return true;
   const record = recordedDaemon(root);
   return record !== null && record.startedAt !== daemon.startedAt;
+}
+function missing(path) {
+  try {
+    return lstatOrNull(path) === null;
+  } catch {
+    return false;
+  }
 }
 function probeLock(path) {
   try {
@@ -42129,7 +42138,7 @@ function processGone(pid) {
 // src/cli/update.ts
 init_fs();
 import { spawnSync as spawnSync2 } from "node:child_process";
-import { chmodSync as chmodSync3, copyFileSync, existsSync as existsSync25, readdirSync as readdirSync14, readFileSync as readFileSync26 } from "node:fs";
+import { chmodSync as chmodSync3, copyFileSync, existsSync as existsSync24, readdirSync as readdirSync14, readFileSync as readFileSync26 } from "node:fs";
 import { join as join68 } from "node:path";
 var NAMES = { "claude-code": "Claude Code", codex: "Codex" };
 var UPDATE_COMMANDS = {
@@ -42256,7 +42265,7 @@ function pluginDirs(env) {
     MARKETPLACE_NAME,
     PLUGIN_NAME
   );
-  if (existsSync25(cache)) for (const version2 of readdirSync14(cache)) dirs.push(join68(cache, version2));
+  if (existsSync24(cache)) for (const version2 of readdirSync14(cache)) dirs.push(join68(cache, version2));
   return dirs;
 }
 
