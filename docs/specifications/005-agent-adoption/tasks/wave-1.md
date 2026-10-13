@@ -49,3 +49,19 @@ Use /worker. Shape: slice, one commit per part. Runs beside 005-11.
 **Leave alone:** `status()` in `main.ts` (005-11), `run.ts`, `verdict.ts`, `status-wait*`, `src/core/`, `src/harness/`, skills, bundles, version, `docs/board.md`.
 
 **Done when:** plan JSON tests; block write, replace, refuse a begin without end, the symlinked `AGENTS.md -> CLAUDE.md` case, `remove` taking it out; gate detection and rewording tests; candidates match `research/wave-0-checks.md` 7's table on fixtures; `init` with no new flag behaves as today; lint, typecheck, suite green.
+
+## 005-13 review of wave 1
+
+Use /reviewer. Shape: review.
+
+**Range:** `ce1425a1^..d1d3522a` on main: 005-10 (0.1.132), 005-11 and 005-12 (0.1.133). Ignore other coordinators' commits in the range (001, 006).
+
+**Read:** spec 005 D1 to D5 with their 2026-10-12 and 2026-10-13 notes, `status.md` (the accepted choices for each row), the briefs above.
+
+**Look hardest at:**
+- Honesty of the exit codes: can `run --all --wait` or `status --wait <ms> <path>...` exit 0 while a covered file is pending, stale, unknown, failing, or at an older revision? Can a known failure exit 3 instead of 1?
+- Named-file selection: a stale closure used, a path outside the worktree, a test file written mid-wait.
+- Setup: does `init` with no new flag behave exactly as before; can a block write or `remove` damage an instruction file (symlinks, a begin without an end, CRLF); does the plan claim anything it did not check (Codex trust)?
+- The KEY_FORMAT_VERSION 9 bump: is `src/cli/setup/` correctly outside the guard?
+
+**Output:** `docs/specifications/005-agent-adoption/reviews/wave-1.md` (blockers proven by a probe, should-fix, notes), committed on your branch. Change no source.
