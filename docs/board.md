@@ -628,7 +628,16 @@ Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the hu
 | 005-11 a wait on named files | done (0.1.133; reads only, no reordering, the human 2026-10-13: not for now; review in 005-13) | D2: `status --wait <ms> <path>...` restricts the wait to the test files the paths select, by test or source path; no new priority (001 coordinator, 2026-10-10). | Selection tests; a wait on a pending named file returns when that file's result lands. |
 | 005-12 the setup engine | done (0.1.133; plan, `--check`, block, gates, candidates, `init` flags; Codex trust reported not checked; KEY_FORMAT_VERSION 9; review in 005-13) | D3's `squeal setup --plan [--json]`, `--check` and `init`'s per-choice flags (no new flag behaves as today), slow and artifact candidates with their evidence and `--slow`/`--input`, D4's block, D5's gate detection and rewording; `squeal remove` takes the block out. | Plan JSON, block and gate tests, the symlinked-file case included. |
 | 005-21 tests and file-level checks counted apart in status and headers | planned, after 001-292 | D1's counting rule in `squeal status` and the delivery headers (`src/core/status/format-status.ts`, `src/core/delivery/`), split from 005-10 on 2026-10-12 because 001-292 may change both. | Status and header snapshot tests name tests and test files loaded apart; the 10,000-character cap holds. |
-| 005-13 review of wave 1 | running (reviewer 755e5d81, gpt-6.1-sol high; range `ce1425a1^..d1d3522a`) | `/reviewer` on gpt-6.1-sol. | `reviews/wave-1.md`. |
+| 005-13 review of wave 1 | done: FAIL (`reviews/wave-1.md`, at `d1d3522a`): B1 a named wait exits 0 at its deadline before sync, B2 a compound gate rewording drops lint and build, B3 `remove` misses a nested block; S1, S2 to wave 1.5; N2 noted | `/reviewer` on gpt-6.1-sol. | `reviews/wave-1.md`. |
+
+### Wave 1.5: repairs of `reviews/wave-1.md` (parallel; briefs in `specifications/005-agent-adoption/tasks/wave-1.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 005-22 repair: the named wait's deadline, joined counts | planned | B1, S2. | B1's probe states exit 3; S2's count. |
+| 005-23 repair: compound gates, an unusable config | planned | B2, S1 (`--check` exits 1 for an unusable config, the coordinator's decision). | Compound spans refused or kept whole; S1 exits 1. |
+| 005-24 repair: a block remove cannot find | planned | B3. | Nested round trip; unterminated nested block under "Still there". |
+| 005-25 re-review of wave 1.5 | planned | `/reviewer` on gpt-6.1-sol, limited to B1 to B3, S1, S2 and their nearest variants. | `reviews/wave-1.5.md`. |
 
 ### Wave 2: install, setup, the skill and the texts
 
