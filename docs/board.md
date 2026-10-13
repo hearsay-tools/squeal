@@ -671,7 +671,7 @@ Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the hu
 | 005-30 re-review of wave 2.5 | done: PASS (`reviews/wave-2.5.md`, at `3dc61b4d`; B1 to B3 and S1 closed; new S2 nonblocking, fixed in 005-31; full suite 1 known failure, 001-309 item 3); wave 2 closed | `/reviewer` on gpt-6.1-sol, limited to B1 to B3, S1, their variants and 005-29. | `reviews/wave-2.5.md`. |
 | 005-31 the warm-up keeps every pool's ignored reads of one slow file | done (coordinator's own hands; paths merged, overflow said as "at least"/"up to") | S2 of `reviews/wave-2.5.md`. | A unit test with two pools' entries for one path. |
 | 005-32 the warm-up's lines narrowed after 001-312 | done (0.1.142; coordinator's own hands) | A missing entry now means not observed, an empty one read nothing outside its declared inputs (001-312, 0.1.141); and the warm-up says it re-runs every file, current ones too (001-316's non-blocking note). | "no ignored read recorded for X: not observed by this warm-up"; "X read no ignored path outside its declared inputs". |
-| 005-33 review of wave 3 | running (9973a191, after e9c6f887 lost its stream; brief `tasks/wave-3.md`) | `/reviewer` on gpt-6.1-sol. | `reviews/wave-3.md`. |
+| 005-33 review of wave 3 | running (b2b02654; e9c6f887 lost its stream and 9973a191 was cancelled by a session restart, neither wrote findings; brief `tasks/wave-3.md`) | `/reviewer` on gpt-6.1-sol. | `reviews/wave-3.md`. |
 
 ### Wave 3: proof
 
