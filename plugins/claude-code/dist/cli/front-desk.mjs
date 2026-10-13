@@ -45,7 +45,14 @@ function parseRequest(line) {
       if (request.force !== void 0 && typeof request.force !== "boolean") {
         return '"force" must be true or false';
       }
-      return { type: "run-all", force: request.force === true };
+      if (request.observeIgnored !== void 0 && typeof request.observeIgnored !== "boolean") {
+        return '"observeIgnored" must be true or false';
+      }
+      return {
+        type: "run-all",
+        force: request.force === true,
+        ...request.observeIgnored === true ? { observeIgnored: true } : {}
+      };
     case "step-down":
       if (typeof request.version !== "string") return '"version" must be a string';
       return { type: "step-down", version: request.version };
@@ -140,7 +147,11 @@ function createHandlers(context) {
         const requestId = randomUUID();
         const state = { checkpoint: null, error: null };
         remember(requests, requestId, state);
-        context.requestFullSuite(request.force === true).then(
+        const full = {
+          force: request.force === true,
+          observeIgnored: request.observeIgnored === true
+        };
+        context.requestFullSuite(full).then(
           (checkpoint) => {
             state.checkpoint = checkpoint;
           },
@@ -332,10 +343,10 @@ function bind(identity) {
     startedAt: identity.startedAt,
     token: identity.token,
     phase: () => phase,
-    requestFullSuite: (force) => new Promise((resolve, reject) => {
+    requestFullSuite: (request) => new Promise((resolve, reject) => {
       const id = randomUUID2();
       waiting.set(id, { resolve, reject });
-      post({ type: "run-all", id, force });
+      post({ type: "run-all", id, request });
     }),
     requestSlowSuite: () => new Promise((resolve, reject) => {
       const id = randomUUID2();
