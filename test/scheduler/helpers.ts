@@ -280,13 +280,15 @@ export async function openHarness(
   );
   const parts = nodeTest.length === 0 ? runner : createCompositeRunner([runner, ...nodeTest]);
   const gate: Harness["gate"] = { before: null };
-  const schedulerRunner: RunnerAdapter = {
-    ...parts,
-    run: async (files, runOptions) => {
-      await gate.before?.(files, runOptions);
-      return parts.run(files, runOptions);
+  // Delegates to `parts` at each call, so a test that replaces `h.runner.closure` is still heard.
+  const schedulerRunner: RunnerAdapter = Object.create(parts, {
+    run: {
+      value: async (files: readonly TestFileRef[], runOptions: RunOptions) => {
+        await gate.before?.(files, runOptions);
+        return parts.run(files, runOptions);
+      },
     },
-  };
+  });
   const sink = new RecordingSink(store, worktreeId);
   const extraFiles: string[][] = [];
   const errors: Error[] = [];
