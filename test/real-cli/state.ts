@@ -29,7 +29,10 @@ export async function codexVersions(m: Machine): Promise<string[]> {
 /** The entries of `dir`, sorted; empty when it does not exist. */
 export async function list(m: Machine, dir: string): Promise<string[]> {
   const r = ok(await m.sh('[ -d "$1" ] || exit 0; ls -A "$1"', [dir]), `ls ${dir}`);
-  return r.stdout.split("\n").filter((l) => l !== "").sort();
+  return r.stdout
+    .split("\n")
+    .filter((l) => l !== "")
+    .sort();
 }
 
 export async function exists(m: Machine, path: string): Promise<boolean> {
