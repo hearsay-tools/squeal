@@ -10,6 +10,7 @@ import {
   PREVIOUS_MARKETPLACE_NAME,
   PREVIOUS_PLUGIN_ID,
 } from "../plugin-id.js";
+import { codexPlugin } from "../setup/harnesses.js";
 import { findCodexPlugin, launcherConfig, readPluginHooks } from "./launcher.js";
 import { type TrustOptions, terminalAsk, trustCodexHooks } from "./trust.js";
 
@@ -80,8 +81,13 @@ export function initCodex(
       ...(seed.templates.length === 0
         ? []
         : ["nodeTest entries to complete by hand:", JSON.stringify(seed.templates, null, 2)]),
-      "Each user installs the Codex plugin once; Codex writes its own config:",
-      ...CODEX_INSTALL_COMMANDS.map((c) => `  ${c}`),
+      // Row 005-40: setup runs init twice for Codex; a user who has the plugin needs no hint.
+      ...(codexPlugin(io.env ?? process.env) === null
+        ? [
+            "Each user installs the Codex plugin once; Codex writes its own config:",
+            ...CODEX_INSTALL_COMMANDS.map((c) => `  ${c}`),
+          ]
+        : []),
       `Then trust its hooks once: ${CODEX_TRUST_STEP}. Codex skips untrusted hooks silently.`,
       "",
     ].join("\n"),
