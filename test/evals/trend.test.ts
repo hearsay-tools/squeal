@@ -117,4 +117,20 @@ describe("trendLines", () => {
       "- forbidden edit: `t1-thousands.p0.claude-claude-haiku-5-5.e-medium.r12`",
     );
   });
+
+  it("names the tool allow-list in the preamble and in a break it starts", () => {
+    const allowed = conditionsOf({
+      fixture: "b192f47",
+      tasks,
+      variant: "p0",
+      effort: "medium",
+      tools: { claude: ["Read", "Skill"] },
+    });
+    const md = trendMarkdown([
+      ...runs,
+      { name: "2026-10-13-0.1.121", data: run("2026-10-13", allowed, 0) },
+    ]);
+    expect(md).toContain("effort, each harness's tool allow-list)");
+    expect(md).toContain("**Break:** the conditions changed (tools)");
+  });
 });
