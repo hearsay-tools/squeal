@@ -1067,3 +1067,20 @@ Questions:
 4. Which candidates are worth an eval variant on a5 and t2 (`evals/variants/*.json` patches texts in the plugins' `dist` without a build), and how many sessions would separate them from 10/10.
 
 Rules. Read only; run no eval, no `claude`, no `codex` and no repository script (the eval slot is another coordinator's; probe isolation). Static reading of transcripts and code is the method. Commit only the findings file, with each claim marked verified (with the transcript path) or inferred.
+
+## 001-307 the recorder reports the ignored paths a slow file read, for setup
+
+`/worker`, opus. 005 D3 and open question 6 (accepted by 001, 2026-10-10, conditions in `005-agent-adoption/status.md`); 005-14's `squeal warmup` consumes it.
+
+Today the recorder (`src/runners/observe`: `recorder.cjs`, `fs.cjs`, `spawn.cjs`, `read.ts`, `inputs.ts`) drops reads of gitignored project paths (001 D4: ignored paths and paths outside the worktree are left to `inputs`). Setup needs to see them, to suggest `inputs` for a slow group whose artifact is ignored (`dist/`).
+
+Build:
+1. The `run-all` request (`src/core/daemon/protocol.ts`, `handlers.ts`, `desk.ts`) takes an optional `observeIgnored: true`. Only a checkpoint started with it records ignored reads; every other run is unchanged.
+2. During such a checkpoint, the recorder also collects, per test file, the gitignored paths inside the worktree that the file read or spawned, deduplicated, capped at 50 per file with a count of the rest. Paths outside the worktree stay dropped.
+3. They are stored only as one meta row per worktree, registered in `WORKTREE_META_ROWS` (001-254), replaced by each such checkpoint: `{ checkpoint, revision, files: { "<project>\u0000<path>": { paths, more } } }`. Never in a key, a closure, a result or a revision; an ignored path's change re-runs nothing.
+4. A read-only export for 005-14: `readIgnoredReads(store, worktreeId)` in `src/core/status/` (or beside the meta row), returning that record or `null`.
+5. Amend 001 D4's ignored-paths sentence: they are never keyed; a warm-up may report them, unkeyed.
+
+Do not touch `src/cli/` (005-14 owns `warmup.ts`, `setup/`, the `main.ts` dispatch), `src/harness/` (001-292), or `linked-watch.ts` (001-304).
+
+Done when (tests): a slow node:test and a Vitest file reading a gitignored `dist/` file report it after an `observeIgnored` checkpoint, and their check keys equal the keys of a run without it; a run without the flag stores nothing; the list caps at 50 with the count; editing the ignored file re-runs nothing and leaves results current; `KEY_FORMAT_VERSION` is bumped only if the key-format guard says so. Full suite, lint, typecheck, build.
