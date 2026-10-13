@@ -134,7 +134,11 @@ describe("squeal remove", () => {
     SLOW.timeout,
   );
 
-  it("deletes nothing and exits 1 while a daemon will not let go of its lock", async () => {
+  // The 300 ms lock wait is the product's; opening the store and asking for no daemon
+  // went past the 5 s default under a loaded full suite (task 001-320).
+  it("deletes nothing and exits 1 while a daemon will not let go of its lock", {
+    timeout: 30_000,
+  }, async () => {
     const repo = storedRepo();
     const lock = acquireDaemonLock(lockFileFor(repo.commonDir, repo.id));
     try {

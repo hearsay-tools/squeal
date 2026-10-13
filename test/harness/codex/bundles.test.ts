@@ -49,7 +49,8 @@ function bundle(name: CodexHookName, cwd: string, env: Record<string, string> = 
   return runBundle(name, input, env, dist);
 }
 
-describe("bundled Codex hooks without a usable store", () => {
+// A bundle process per test: past the 5 s default under a loaded full suite (task 001-320).
+describe("bundled Codex hooks without a usable store", { timeout: 60_000 }, () => {
   it.each(HOOKS)("%s exits 0 silently outside any git worktree", async (name) => {
     const out = await bundle(name, outsideGit());
     expect(out).toMatchObject({ stdout: "", stderr: "", code: 0 });

@@ -21,6 +21,11 @@ import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/he
  */
 
 const NOW = Date.UTC(2026, 9, 6, 12, 0, 0);
+/**
+ * Each test waits for the CLI's wait to return, its store read every poll:
+ * past the 5 s default under a loaded full suite (task 001-320).
+ */
+const WAITS = { timeout: 30_000 } as const;
 const ADDS = check("src/a.test.ts", "adds");
 const SUBTRACTS = check("src/a.test.ts", "subtracts");
 
@@ -90,7 +95,7 @@ function settle(store: Store, id: string, ...states: KnownState[]) {
   store.knownStates.upsertMany(states.map((s) => ({ ...s, worktreeId: id })));
 }
 
-describe("squeal status --wait <ms>", () => {
+describe("squeal status --wait <ms>", WAITS, () => {
   it("returns on quiet once nothing is pending at the current revision", async () => {
     const { repo, store } = repoWith(pendingPass(), currentPass(SUBTRACTS));
     later(400, () => settle(store, repo.mainId, state(repo.mainId, ADDS, { observedAt: 3 })));
@@ -231,7 +236,7 @@ describe("squeal status --wait <ms>", () => {
  * "nothing pending" whatever the files held. Vision: "It says 'no known
  * failures', not 'everything passes', unless it has actually run everything".
  */
-describe("squeal status --wait without a daemon (review wave 4.5, S2)", () => {
+describe("squeal status --wait without a daemon (review wave 4.5, S2)", WAITS, () => {
   it("returns without a daemon when the heartbeat is stale, and says since when", async () => {
     const stale = { ...LIVE, heartbeatAt: NOW - 60_000 };
     const { repo } = repoWithDaemon(stale, currentPass());
@@ -286,7 +291,7 @@ describe("squeal status --wait without a daemon (review wave 4.5, S2)", () => {
   });
 });
 
-describe("waitForStatus", () => {
+describe("waitForStatus", WAITS, () => {
   it("polls at the given interval and reports the outcome with the snapshot", async () => {
     const { repo } = repoWith(currentPass());
 
@@ -325,7 +330,7 @@ const synced = (revision: number): SyncState => ({
  * pending at revision N-1", since it settled 750 ms after its start and the
  * edit's revision committed 0.9 to 3.1 s after the edit on a loaded host.
  */
-describe("status --wait decides quiet at the daemon's pass (lessons, defect 30)", () => {
+describe("status --wait decides quiet at the daemon's pass (lessons, defect 30)", WAITS, () => {
   it("is not quiet at the revision before the pass, only at the one it stored", async () => {
     const { repo, store } = repoWith(currentPass());
     const hand = handSync();
@@ -374,7 +379,7 @@ describe("status --wait decides quiet at the daemon's pass (lessons, defect 30)"
   });
 });
 
-describe("squeal status --wait names a checkpoint still running (task 001-217)", () => {
+describe("squeal status --wait names a checkpoint still running (task 001-217)", WAITS, () => {
   function runningCheckpoint() {
     const { repo, store } = repoWith(currentPass());
     const record = store.checkpoints.start({
