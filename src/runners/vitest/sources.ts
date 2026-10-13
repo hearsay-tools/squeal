@@ -188,7 +188,8 @@ export class SourceStamps {
    * With `loadedSince`, a run's check after it ends: it also names what an
    * earlier call found moved since that run began loading (task 001-150),
    * and starts the log again, and the stamps `hold` kept read since then
-   * (task 001-264), and lets them go.
+   * (task 001-264), and lets them go, and every other read since then whose
+   * module is no longer cached (task 001-343).
    */
   async stale(vitest: Vitest, loadedSince?: EpochMs): Promise<AbsolutePath[]> {
     this.attach(vitest);
@@ -235,6 +236,18 @@ export class SourceStamps {
         checks.push(held ? { stamps, key, file, held } : { stamps, key, file, after });
       }
       this.#held = [];
+      // Task 001-343: a read whose transform was in flight when the runner part
+      // dropped its module. Vite returns that transform to the run but never
+      // caches it, so neither `hold` nor the loop above found it.
+      for (const environment of environments(vitest)) {
+        const reads = this.#containers.get(environment.pluginContainer);
+        if (!reads) continue;
+        for (const [key, stamp] of reads.stamps) {
+          if (stamp.loadedAt < since || checked.has(stamp)) continue;
+          checked.add(stamp);
+          checks.push({ stamps: reads.stamps, key, file: stamp.file, held: stamp });
+        }
+      }
     }
     // One stat and at most one hash per file, however many modules read it.
     const stats = new Map<AbsolutePath, Promise<FileStat | null>>();
