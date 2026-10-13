@@ -65,3 +65,35 @@ Use /reviewer. Shape: review.
 - The KEY_FORMAT_VERSION 9 bump: is `src/cli/setup/` correctly outside the guard?
 
 **Output:** `docs/specifications/005-agent-adoption/reviews/wave-1.md` (blockers proven by a probe, should-fix, notes), committed on your branch. Change no source.
+
+## Wave 1.5: repairs of `reviews/wave-1.md`
+
+Three workers in parallel, one per blocker. Each reads its finding in `reviews/wave-1.md`, whose "One-worker fix" is the scope; the review's probe script reproduces it. Use /worker, shape repair. No bundles, no version, no `docs/board.md`.
+
+### 005-22 B1 and S2: the named wait's deadline, joined counts
+
+**Outcome:** a named-file wait never exits 0 before its selected files are current at the revision sync names; a joined checkpoint's final line counts that checkpoint's work.
+
+**Owns:** `src/cli/status-wait-paths.ts`, its wording in `src/cli/status-wait-lines.ts`, `src/cli/run.ts` (S2 only), their tests.
+
+**Done when:** B1's two probe states are tests that exit 3, red before the fix; a ready final read still exits 0 or 1; pathless waits unchanged; S2's joined-checkpoint test says what the joined checkpoint did.
+
+### 005-23 B2 and S1: compound gates, an unusable config
+
+**Outcome:** a gate rewording never drops a command from the normal path; `setup --check` exits 1 for a tracked config that does not parse or fails validation (the coordinator's decision: an unusable config is something to fix, like an outdated one).
+
+**Lead:** the review's conservative fix, a compound span gets `proposed: null` and the plan says why.
+
+**Owns:** `src/cli/setup/gates.ts`, `plan.ts`, `command.ts`, gate and plan tests, and `test/cli/setup/init-flags.test.ts`.
+
+**Done when:** `&&`, `;`, two invocations and an env prefix are tests; refused edits write nothing; the review's CLI probe leaves `CLAUDE.md` unchanged; S1's probe exits 1.
+
+### 005-24 B3: a block remove cannot find
+
+**Outcome:** every block destination `init --block` accepts is one `squeal remove` takes out or lists under "Still there".
+
+**Lead:** refusing destinations is the smaller fix, but nested `AGENTS.md` is a real instruction surface, so prefer finding the blocks: `remove` walks git-listed and untracked `AGENTS.md`/`CLAUDE.md` files, or setup records where it wrote one.
+
+**Owns:** `src/cli/setup/block.ts`, `apply.ts`, the block part of `src/cli/remove.ts`, block tests, a new `test/cli/setup/block-remove.test.ts` (not `init-flags.test.ts`).
+
+**Done when:** a nested-file CLI round trip; an unterminated nested block listed under "Still there", exit 3; root symlink and CRLF cases still pass.
