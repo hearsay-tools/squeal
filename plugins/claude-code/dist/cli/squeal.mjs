@@ -3342,9 +3342,16 @@ var init_slow = __esm({
 function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId), isSlow) {
   const revision = store.revisions.latest(worktreeId)?.number ?? 0;
   const counts = { current: 0, pending: 0, stale: 0, unknown: 0 };
+  const fileLevelCounts = {
+    current: 0,
+    pending: 0,
+    stale: 0,
+    unknown: 0
+  };
   let inheritedCount = 0;
   for (const state of states) {
     counts[state.validity]++;
+    if (state.check.kind === "file") fileLevelCounts[state.validity]++;
     if (state.validity === "current" && state.origin?.kind === "inherited") inheritedCount++;
   }
   const last = store.checkpoints.lastCompleted(worktreeId);
@@ -3357,6 +3364,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
   return {
     revision,
     counts,
+    fileLevelCounts,
     testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
     fullSuite: {
       atCurrentRevision: !awaiting && last !== null && last.revision === revision,
@@ -5801,18 +5809,29 @@ function breakdown(states, keys) {
   const filePhase = new Map(keys.map((k) => [testFileId(k.testFile), k.pending]));
   const currentByOutcome = { pass: 0, fail: 0, skip: 0, unknown: 0 };
   const pendingByPhase = { queued: 0, running: 0 };
+  const fileLevelByOutcome = { pass: 0, fail: 0, skip: 0, unknown: 0 };
+  const fileLevelByPhase = { queued: 0, running: 0 };
   const filesWithChecks = /* @__PURE__ */ new Set();
   for (const s of states) {
     const file = testFileKeyOf(s.check);
     filesWithChecks.add(file);
-    if (s.validity === "current") currentByOutcome[s.outcome]++;
-    if (s.validity === "pending")
-      pendingByPhase[s.pendingPhase ?? filePhase.get(file) ?? "queued"]++;
+    const fileLevel = s.check.kind === "file";
+    if (s.validity === "current") {
+      currentByOutcome[s.outcome]++;
+      if (fileLevel) fileLevelByOutcome[s.outcome]++;
+    }
+    if (s.validity === "pending") {
+      const phase = s.pendingPhase ?? filePhase.get(file) ?? "queued";
+      pendingByPhase[phase]++;
+      if (fileLevel) fileLevelByPhase[phase]++;
+    }
   }
   const without = keys.filter((k) => !filesWithChecks.has(testFileId(k.testFile)));
   return {
     currentByOutcome,
     pendingByPhase,
+    fileLevelByOutcome,
+    fileLevelByPhase,
     testFiles: keys.length,
     testFilesWithoutChecks: without.length,
     testFilesWithoutChecksRunning: without.filter((k) => k.pending === "running").length
@@ -34848,7 +34867,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.145";
+  if (true) return "0.1.146";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -34889,6 +34908,29 @@ function versionParts(version2) {
 init_ignored_reads();
 init_state3();
 
+// src/core/status/checks.ts
+init_text();
+function countChecks(checks) {
+  const testFiles = checks.filter((check) => check.kind === "file").length;
+  return { tests: checks.length - testFiles, testFiles };
+}
+function checkPartsText({ tests, testFiles }, fileLevel = "loaded") {
+  return [
+    ...tests > 0 ? [plural(tests, "test")] : [],
+    ...testFiles > 0 ? [`${plural(testFiles, "test file")} ${fileLevel}`] : []
+  ].join(", ");
+}
+function countedText(count, label2, fileLevel) {
+  const head = `${count} ${label2}`;
+  if (count === 0 || fileLevel === void 0) return head;
+  const parts = { tests: count - fileLevel, testFiles: fileLevel };
+  return `${head} (${checkPartsText(parts)})`;
+}
+function failureCountText(checks) {
+  if (checks.length === 0) return "0";
+  return `${checks.length} (${checkPartsText(countChecks(checks), "that did not load")})`;
+}
+
 // src/core/status/format-status.ts
 init_state3();
 init_text();
@@ -34897,7 +34939,7 @@ function formatStatus(result, now, command = "squeal", options = {}) {
   if (!result.available) return formatUnavailable(result);
   const lines = [
     `Revision: ${result.revision}`,
-    `Known failures: ${result.knownFailures.length}`,
+    `Known failures: ${failureCountText(result.knownFailures.map((f) => f.check))}`,
     ...result.knownFailures.flatMap((f) => [
       `  FAIL  ${formatCheck(f.check)}`,
       ...f.summary === "" ? [] : [`        ${f.summary}`],
@@ -34991,23 +35033,30 @@ function affected(s) {
   if (s.testFilesListed === false) {
     return "none counted; the daemon has not listed this worktree's test files yet";
   }
-  const { currentByOutcome, pendingByPhase } = s.breakdown;
+  const { currentByOutcome, pendingByPhase, fileLevelByOutcome, fileLevelByPhase } = s.breakdown;
+  const files2 = s.fileLevelCounts;
   const parts = [
-    `${currentByOutcome.pass} passed`,
-    `${pendingByPhase.running} running`,
-    `${pendingByPhase.queued} queued`
+    countedText(currentByOutcome.pass, "passed", fileLevelByOutcome?.pass),
+    countedText(pendingByPhase.running, "running", fileLevelByPhase?.running),
+    countedText(pendingByPhase.queued, "queued", fileLevelByPhase?.queued)
   ];
+  const unknownFiles = files2 === void 0 || fileLevelByOutcome === void 0 ? void 0 : files2.unknown + fileLevelByOutcome.unknown;
   const optional = [
-    [currentByOutcome.skip, "skipped"],
-    [s.counts.stale, "stale"],
-    [s.counts.unknown + currentByOutcome.unknown, "unknown"]
+    [currentByOutcome.skip, "skipped", fileLevelByOutcome?.skip],
+    [s.counts.stale, "stale", files2?.stale],
+    [s.counts.unknown + currentByOutcome.unknown, "unknown", unknownFiles]
   ];
-  for (const [count, label2] of optional) if (count > 0) parts.push(`${count} ${label2}`);
-  const files2 = s.testFilesWithoutChecks.pending;
-  const running = Math.min(files2, s.breakdown.testFilesWithoutChecksRunning ?? 0);
-  const fresh = running === 0 ? "" : `; ${plural(files2, "test file")} without checks yet: ${running} running, ${files2 - running} queued`;
+  for (const [count, label2, fileLevel] of optional) {
+    if (count > 0) parts.push(countedText(count, label2, fileLevel));
+  }
+  const fresh = freshText(s);
   const runnerPart = s.runnerPartPending === true ? `; ${runnerPartText(s.revision)} is pending, so test files it adds are not counted yet` : "";
   return `${parts.join(", ")}${fresh}${runnerPart}`;
+}
+function freshText(s) {
+  const files2 = s.testFilesWithoutChecks.pending;
+  const running = Math.min(files2, s.breakdown.testFilesWithoutChecksRunning ?? 0);
+  return running === 0 ? "" : `; ${plural(files2, "test file")} without checks yet: ${running} running, ${files2 - running} queued`;
 }
 function worktreeLine(s) {
   const dirty = s.dirty !== null ? `${s.dirty ? "dirty" : "clean"} at revision ${s.dirtyObservedAt ?? s.revision}` : s.daemon.state === "alive" ? "dirty state not known: no revision recorded yet" : "dirty state not known: no daemon is validating";
@@ -39067,11 +39116,7 @@ function noVerdictText(verdict) {
 function failuresText(failures) {
   const total = failureCount(failures);
   if (total === 0) return "no known failures";
-  const parts = [
-    ...failures.tests > 0 ? [plural(failures.tests, "test")] : [],
-    ...failures.testFiles > 0 ? [`${plural(failures.testFiles, "test file")} that did not load`] : []
-  ];
-  return `${plural(total, "known failure")}: ${parts.join(", ")}`;
+  return `${plural(total, "known failure")}: ${checkPartsText(failures, "that did not load")}`;
 }
 function failureCount(failures) {
   return failures.tests + failures.testFiles;
@@ -40505,7 +40550,8 @@ function anyPending(snapshot3) {
 function pendingText2(snapshot3) {
   const checks = snapshot3.counts.pending;
   const files2 = snapshot3.testFilesWithoutChecks.pending;
-  const parts = [plural(checks, "check")];
+  const word = checks === 1 ? "check" : "checks";
+  const parts = [countedText(checks, word, snapshot3.fileLevelCounts?.pending)];
   if (files2 > 0) parts.push(`${plural(files2, "test file")} without checks`);
   if (snapshot3.runnerPartPending === true) parts.push(runnerPartText(snapshot3.revision));
   return parts.length === 1 ? `${parts[0]} pending` : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)} pending`;
@@ -40957,6 +41003,7 @@ ${USAGE2}`);
     return 3;
   };
   const socketPath = await daemonSocket(root);
+  const before = openBefore(root);
   const response = await askDaemon(socketPath, {
     type: "run-all",
     force: flags.has("--force"),
@@ -40981,7 +41028,7 @@ ${USAGE2}`);
 `);
     return 1;
   }
-  const joined = joinedCheckpoint(root, checkpoint);
+  const joined = joinedCheckpoint(root, checkpoint, before);
   const started2 = `Checkpoint ${checkpoint.id} started at revision ${checkpoint.revision}: ${filesText2(root, checkpoint)}${joinedText(joined)}
 `;
   if (deadline === null) {
@@ -41028,7 +41075,7 @@ function verdictLine(root, checkpoint, outcome2, joined) {
       const files2 = plural(verdict.testFiles, "test file");
       const owner2 = joined === null ? checkpoint : joined.record;
       const ran = owner2 === null ? 0 : Math.min(owner2.testFiles.length, verdict.testFiles);
-      const by = joined === null ? "run now" : `run by the ${joined.what} checkpoint ${joined.open.id} it joined`;
+      const by = joined === null ? "run now" : `run by the ${joined.what} checkpoint ${joined.id} it joined`;
       const counts = owner2 === null ? files2 : `${files2}, ${verdict.testFiles - ran} already current, ${ran} ${by}`;
       return [
         `completed at revision ${verdict.revision}: ${failuresText(verdict.failures)}; ${counts}`,
@@ -41067,19 +41114,37 @@ function owedText(root, checkpoint) {
   const owed = inStore(root, (store) => openCheckpoint2(store, checkpoint)?.owed?.ids ?? []);
   return owed?.includes(checkpoint.id) === true ? "; the next daemon resumes it, and `run --all --wait` then waits for it" : "";
 }
-function joinedCheckpoint(root, checkpoint) {
+function openBefore(root) {
+  return inStore(
+    root,
+    (store) => parseCheckpointProgress(store.meta.get(checkpointMetaKey(worktreeIdFor(root))))
+  );
+}
+function joinedCheckpoint(root, checkpoint, before) {
   return inStore(root, (store) => {
+    const own = store.checkpoints.get(checkpoint.id);
+    const joined = (id2, open5) => {
+      const record = store.checkpoints.get(id2);
+      return { id: id2, open: open5, record, what: record?.kind === "baseline" ? "baseline" : "`run --all`" };
+    };
     const open4 = openCheckpoint2(store, checkpoint);
-    if (open4 === null || open4.id === checkpoint.id || open4.owed !== void 0) return null;
-    if (store.checkpoints.get(checkpoint.id)?.end !== null) return null;
-    const record = store.checkpoints.get(open4.id);
-    return { open: open4, record, what: record?.kind === "baseline" ? "baseline" : "`run --all`" };
+    if (own?.end === null) {
+      if (open4 === null || open4.id === checkpoint.id || open4.owed !== void 0) return null;
+      return joined(open4.id, open4);
+    }
+    if (before === null || before.id === checkpoint.id || before.owed !== void 0) return null;
+    const owner2 = store.checkpoints.get(before.id);
+    const endedWith = own !== null && owner2 !== null && owner2.end === own.end && owner2.completedAt === own.completedAt;
+    return endedWith ? joined(before.id, null) : null;
   });
 }
 function joinedText(joined) {
   if (joined === null) return "";
-  const { open: open4, what } = joined;
-  return `, joining the ${what} checkpoint ${open4.id} already running them (${open4.done} of ${open4.total} test files done); it ends when that one ends`;
+  const { id: id2, open: open4, what } = joined;
+  if (open4 === null) {
+    return `, joining the ${what} checkpoint ${id2} already running them; both had ended when this command read them`;
+  }
+  return `, joining the ${what} checkpoint ${id2} already running them (${open4.done} of ${open4.total} test files done); it ends when that one ends`;
 }
 function openCheckpoint2(store, checkpoint) {
   return parseCheckpointProgress(store.meta.get(checkpointMetaKey(checkpoint.worktreeId)));
@@ -41694,7 +41759,7 @@ ${commit.map((f) => `  ${f}
 
 // src/cli/setup/command.ts
 var SETUP_USAGE = `Usage: squeal setup [--yes] [--harness <claude-code|codex>]... [--block <file|none>]...
-         [--gate <id>=<reword|keep>]... [--slow <glob>]... [--input <test glob>=<input glob>]...
+         [--gate <id>=<reword|keep>]... [--slow <glob|none>]... [--input <test glob>=<input glob>]...
          [--no-trust] [--no-warmup]
        squeal setup --plan [--json]
        squeal setup --check [--json]
@@ -41755,7 +41820,10 @@ function parseSetupArgs(args) {
   if (unknown !== void 0) return `unknown argument "${unknown}"`;
   if (setup.rest.includes("--json")) return "--json goes with --plan or --check";
   if (blocks.includes("none") && blocks.length > 1) return "--block none goes alone";
-  const { gates, slow, inputs: inputs2 } = setup.choices;
+  const { gates, inputs: inputs2 } = setup.choices;
+  const noSlow = setup.choices.slow.includes("none");
+  if (noSlow && setup.choices.slow.length + inputs2.length > 1) return "--slow none goes alone";
+  const slow = noSlow ? [] : setup.choices.slow;
   return {
     mode: "apply",
     yes: setup.rest.includes("--yes"),
@@ -41763,7 +41831,7 @@ function parseSetupArgs(args) {
       harnesses: harnesses.length > 0 ? harnesses : null,
       blocks: blocks.length > 0 ? blocks : null,
       gates,
-      slow: slow.length + inputs2.length > 0 ? { slow, inputs: inputs2 } : null,
+      slow: noSlow || slow.length + inputs2.length > 0 ? { slow, inputs: inputs2 } : null,
       trust: setup.rest.includes("--no-trust") ? false : null,
       warmup: setup.rest.includes("--no-warmup") ? false : null
     }
