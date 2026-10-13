@@ -94,3 +94,29 @@ describe("stopStrays", () => {
     expect(isAlive(sibling)).toBe(true);
   });
 });
+
+describe.runIf(process.platform === "linux")("isAlive, on Linux", () => {
+  /** A stat reader that fails with `code`. */
+  const failing = (code: string) => () => {
+    throw Object.assign(new Error(code), { code });
+  };
+
+  it("reads a live process as alive and one no process has as gone", async () => {
+    expect(isAlive(process.pid)).toBe(true);
+    expect(isAlive(await deadPid())).toBe(false);
+  });
+
+  it("reads a missing stat after a successful signal probe as gone", () => {
+    expect(isAlive(process.pid, failing("ENOENT"))).toBe(false);
+    expect(isAlive(process.pid, failing("ESRCH"))).toBe(false);
+  });
+
+  it("reads a zombie as gone", () => {
+    expect(isAlive(process.pid, () => `${process.pid} (node) Z 1 0 0`)).toBe(false);
+  });
+
+  it("reads a permission or I/O error as no evidence of exit", () => {
+    expect(isAlive(process.pid, failing("EACCES"))).toBe(true);
+    expect(isAlive(process.pid, failing("EIO"))).toBe(true);
+  });
+});
