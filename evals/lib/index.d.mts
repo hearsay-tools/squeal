@@ -81,6 +81,10 @@ export function codexTimeline(
   t0?: number,
 ): Timeline;
 export function reportedEffort(harness: "claude" | "codex", records: readonly object[]): string;
+/** Command output for the judge (D9): Squeal's whole, the rest trimmed around its summary lines. */
+export function trimOutput(out: string | undefined, whole: boolean): string;
+/** The judge's numbered, trimmed transcript (D9); step `n` is index `n - 1`. */
+export function transcriptOf(timeline: Timeline): string[];
 
 export interface Truth {
   vitestFailed: number;
@@ -502,8 +506,6 @@ export const JUDGE: { model: string; effort: string };
 export const SYSTEM: string;
 export const RUBRIC: Readonly<Record<string, string>>;
 export function rubricOf(task: string, declared: Declarations): string;
-export function trimOutput(out: string | undefined, whole: boolean): string;
-export function transcriptOf(timeline: Timeline): string[];
 export function judgeInput(input: {
   task: string;
   situation: string;

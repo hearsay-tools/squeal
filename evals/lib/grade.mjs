@@ -2,8 +2,7 @@
 import { gradeClaim, parseClaim } from "./claim.mjs";
 import { classifyShell, scopeLabel } from "./commands.mjs";
 import { completedRuns, failedChecks, NO_DAEMON, retainedOf } from "./evidence.mjs";
-import { transcriptOf } from "./judge.mjs";
-import { SKILL_PATH } from "./transcript.mjs";
+import { SKILL_PATH, transcriptOf } from "./transcript.mjs";
 
 /** The instruction file forbids editing these (the fixture's `BASE.md`). */
 const FORBIDDEN = /^test\/contract\//;

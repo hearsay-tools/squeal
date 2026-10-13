@@ -92,8 +92,6 @@ export {
   schemaOf,
   situationOf,
   transcriptHash,
-  transcriptOf,
-  trimOutput,
   unorderedOf,
 } from "./judge.mjs";
 export { buildFixture, cellArgs, runId } from "./prepare.mjs";
@@ -119,6 +117,12 @@ export {
 } from "./session.mjs";
 export { simpleCommands } from "./shell.mjs";
 export { fisherLower, fisherTwoSided, lnChoose, wilson } from "./stats.mjs";
-export { claudeTimeline, codexTimeline, reportedEffort } from "./transcript.mjs";
+export {
+  claudeTimeline,
+  codexTimeline,
+  reportedEffort,
+  transcriptOf,
+  trimOutput,
+} from "./transcript.mjs";
 export { expectationsRevision, trendLines, trendMarkdown } from "./trend.mjs";
 export { applyPatch, patchPlugins } from "./variant.mjs";

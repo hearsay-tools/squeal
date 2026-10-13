@@ -2,6 +2,7 @@
 // Codex `exec --json` plus its rollout, which holds the SQUEAL texts the model received.
 // Entries: `cmd { cmd, ms, exit, out, refused }`, `edit { path, refused, failed }`, `read { path }`,
 // `skill`, `say { text }`, `squeal { hook, text }`, `tool { name }`; `t` is ms since session start.
+// From a timeline, the numbered and trimmed transcript the judge reads (D9).
 
 const SQUEAL_TEXT = /SQUEAL|Squeal runs/;
 const EDIT_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
@@ -161,4 +162,75 @@ export function reportedEffort(harness, records) {
       seen.add(String(r.payload?.effort ?? r.payload?.reasoning_effort ?? null));
   }
   return seen.size ? [...seen].sort().join(",") : "not reported";
+}
+
+// ---------- the judge's transcript (D9) ----------
+
+/** Output that names Squeal anywhere: kept whole up to `WHOLE_CAP`. */
+const SQUEAL_OUTPUT = /SQUEAL|Squeal|squeal/;
+/** Output lines a runner's summary or a failure is made of: kept whole. */
+const SUMMARY =
+  /Test Files|^\s*Tests\s|^\s*Duration|^# (?:tests|suites|pass|fail|cancelled|skipped|todo)\b|^\s*(?:✓|✗|×|❯|↓|FAIL|PASS)\s|\.(?:test|spec)\.[cm]?[jt]sx?\b|^not ok|^ok \d|[Nn]o test files found|[Ff]ilter|[Ee]xclud|[Ee]rror|^Exit code/;
+/** Squeal's evidence: a header, counts, a check and its change, a tier or checkpoint line. Kept whole. */
+const SQUEAL_EVIDENCE =
+  /^\s*(?:SQUEAL ·|Revision\b|Known failures|Affected checks|Full-suite checkpoint|Slow tier|Test files without checks|Returned |Checkpoint |Daemon:|Not shown:|Not validated)|^\s*(?:FAIL|PASS|RESOLVED|UNKNOWN) {2}|->|observed at revision|seen by Squeal|checks recovered|still failing|\b(?:current|pending|stale|unknown)\b.*\brevision \d+/;
+const LINE_CAP = 400;
+const HEAD = 3;
+const TAIL = 3;
+const WHOLE_CAP = 8000;
+
+/** A path inside the cell's work tree, relative to it. */
+const rel = (p) => String(p).replace(/^.*?\/work\//, "");
+
+/**
+ * Command output for the judge (D9). Squeal's text is kept whole up to `WHOLE_CAP` characters;
+ * beyond it, every evidence line (`SQUEAL_EVIDENCE`) and runner summary line is still kept whole
+ * and only the rest is trimmed (review 006-24, S1). Output with "squeal" anywhere counts as
+ * Squeal's, a runner's header naming `/tmp/squeal-evals/` included, so the summary lines stay
+ * there too (review 006-27). Other output keeps its runner summary lines whole and trims the
+ * rest, capping incidental lines at `LINE_CAP`. Every cut says how much it cut.
+ */
+export function trimOutput(out, whole) {
+  const text = String(out ?? "").replace(/\s+$/, "");
+  if (whole && text.length <= WHOLE_CAP) return text;
+  const lines = text.split("\n");
+  const kept = [];
+  let skipped = 0;
+  lines.forEach((line, i) => {
+    const keep = SUMMARY.test(line) || (whole && SQUEAL_EVIDENCE.test(line));
+    if (keep || i < HEAD || i >= lines.length - TAIL) {
+      if (skipped) kept.push(`[… ${skipped} lines trimmed]`);
+      skipped = 0;
+      kept.push(keep || line.length <= LINE_CAP ? line : `${line.slice(0, LINE_CAP)} [… trimmed]`);
+    } else skipped++;
+  });
+  if (skipped) kept.push(`[… ${skipped} lines trimmed]`);
+  return kept.join("\n");
+}
+
+/**
+ * The numbered, trimmed transcript D9 describes, from a `claudeTimeline` or `codexTimeline`
+ * result: each command with its exit code and output, each Squeal message whole, each edit with
+ * its path, each skill load, and the final message. Step `n` is index `n - 1`. Secret scanning
+ * is the caller's: the run redacts every step before it is kept or sent.
+ */
+export function transcriptOf(timeline) {
+  const steps = [];
+  for (const k of timeline.items) {
+    if (k.kind === "squeal") steps.push(`Squeal message:\n${k.text}`);
+    if (k.kind === "skill") steps.push("loaded Squeal's skill");
+    if (k.kind === "edit")
+      steps.push(`edit ${rel(k.path)}${k.refused ? " (refused)" : k.failed ? " (failed)" : ""}`);
+    if (k.kind !== "cmd") continue;
+    const status = k.refused
+      ? "refused, not run"
+      : k.background
+        ? "started in the background"
+        : `exit ${k.exit ?? "unknown"}`;
+    const whole = /\bsqueal\b/.test(k.cmd) || SQUEAL_OUTPUT.test(k.out ?? "");
+    const out = k.refused ? "" : trimOutput(k.out, whole);
+    steps.push(`$ ${k.cmd}\n(${status})${out ? `\n${out}` : ""}`);
+  }
+  steps.push(`final message:\n${timeline.final ?? ""}`);
+  return steps;
 }
