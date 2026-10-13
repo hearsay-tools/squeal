@@ -6,9 +6,9 @@ import type { ProjectName, RelativePath, TestFileRef } from "../../src/core/type
 /*
  * Row 005-29 (spec 005 D3, 001-307): what the warm-up says of each slow
  * file's ignored reads, from the record as stored. A slow file the record
- * does not hold is never said to have read none: a warm-up that joined the
- * daemon's first checkpoint (an older daemon, measured `{ files: {} }`)
- * observed nothing that checkpoint had already started.
+ * does not hold is never said to have read none: from 001-312 every file a
+ * warm-up observes has an entry, empty when it read none outside its
+ * declared inputs, so a missing one was not observed (an older daemon).
  */
 
 const ref = (project: string, path: string): TestFileRef => ({
@@ -23,11 +23,11 @@ const record = (entries: IgnoredReads["files"]): IgnoredReads =>
   ({ checkpoint: "c1", revision: 3, files: entries }) as IgnoredReads;
 
 describe("the warm-up's ignored reads of slow files", () => {
-  it("says a slow file a joined warm-up did not observe was not observed, never that it read none", () => {
+  it("says a slow file the warm-up did not observe was not observed, never that it read none", () => {
     const found = slowFileReads(record({}), files, isSlow);
     expect(found).toEqual({ reads: [], unobserved: [SLOW] });
     expect(ignoredReadNotes(found)).toEqual([
-      `no ignored read recorded for ${SLOW}: not observed by this warm-up (it ran in the daemon's first checkpoint), or it read none; the record does not tell them apart`,
+      `no ignored read recorded for ${SLOW}: not observed by this warm-up`,
     ]);
     // Without a record, as from a daemon that ignores observeIgnored, the same.
     expect(slowFileReads(null, files, isSlow)).toEqual(found);
@@ -86,6 +86,8 @@ describe("the warm-up's ignored reads of slow files", () => {
       isSlow,
     );
     expect(found).toEqual({ reads: [{ path: SLOW, paths: [], more: 0 }], unobserved: [] });
-    expect(ignoredReadNotes(found)).toEqual([`${SLOW} read no ignored path`]);
+    expect(ignoredReadNotes(found)).toEqual([
+      `${SLOW} read no ignored path outside its declared inputs`,
+    ]);
   });
 });

@@ -199,7 +199,9 @@ describe("squeal setup --yes on a real daemon", SLOW, () => {
     expect(out).toContain("squeal warmup: every test file is current with no known failure.");
     // Setup's defaults declare build/** as an input, so the warm-up observes the slow file
     // (001-312: it never joins) and finds no ignored read outside its closure.
-    expect(out).toMatch(/^squeal setup: test\/build\.test\.ts read no ignored path$/m);
+    expect(out).toMatch(
+      /^squeal setup: test\/build\.test\.ts read no ignored path outside its declared inputs$/m,
+    );
     expect(out).not.toContain("no ignored read recorded");
     // No harness on the PATH: setup writes no instruction file, only the config's layout.
     expect(out).toMatch(/squeal setup never commits:\n {2}squeal\.config\.json\n$/);

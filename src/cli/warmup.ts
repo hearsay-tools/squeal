@@ -153,12 +153,12 @@ export function ignoredReadText(read: IgnoredRead): string {
 export function ignoredReadNotes({ reads, unobserved }: SlowFileReads): string[] {
   const clean = reads.filter((r) => r.paths.length === 0).map((r) => r.path);
   return [
-    ...(clean.length === 0 ? [] : [`${clean.join(", ")} read no ignored path`]),
+    ...(clean.length === 0
+      ? []
+      : [`${clean.join(", ")} read no ignored path outside its declared inputs`]),
     ...(unobserved.length === 0
       ? []
-      : [
-          `no ignored read recorded for ${unobserved.join(", ")}: not observed by this warm-up (it ran in the daemon's first checkpoint), or it read none; the record does not tell them apart`,
-        ]),
+      : [`no ignored read recorded for ${unobserved.join(", ")}: not observed by this warm-up`]),
   ];
 }
 
