@@ -19,7 +19,7 @@ export {
   usageOf,
   waitSettled,
 } from "./atomic.mjs";
-export { atomicCompare, atomicCompareMarkdown, fisherTwoSided } from "./atomic-compare.mjs";
+export { atomicCompare, atomicCompareMarkdown } from "./atomic-compare.mjs";
 export {
   atomicDropped,
   atomicMarkdown,
@@ -27,14 +27,11 @@ export {
   compareVersions,
   countText,
   FLAG_P,
-  fisherLower,
-  lnChoose,
   OLD_ROOT_BEFORE,
   oldRoot,
   RELIABLE,
   scenarioRevision,
   WINDOW,
-  wilson,
 } from "./atomic-trend.mjs";
 export {
   CONTEXT,
@@ -121,6 +118,7 @@ export {
   sessionCommand,
 } from "./session.mjs";
 export { simpleCommands } from "./shell.mjs";
+export { fisherLower, fisherTwoSided, lnChoose, wilson } from "./stats.mjs";
 export { claudeTimeline, codexTimeline, reportedEffort } from "./transcript.mjs";
 export { expectationsRevision, trendLines, trendMarkdown } from "./trend.mjs";
 export { applyPatch, patchPlugins } from "./variant.mjs";

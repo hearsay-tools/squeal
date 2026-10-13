@@ -12,6 +12,7 @@ import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { falseClaim, modelKey, rate } from "./behaviours.mjs";
 import { sha } from "./results.mjs";
+import { fisherLower, wilson } from "./stats.mjs";
 
 /** The flag's bar: one-sided Fisher p below it (the human, 2026-10-12). */
 export const FLAG_P = 0.01;
@@ -26,37 +27,6 @@ export const OLD_ROOT_BEFORE = "20261012T115741Z";
 
 /** Whether `harness`'s cells of run `runId` ran under the old root; Codex cells never read it. */
 export const oldRoot = (runId, harness) => harness === "claude" && String(runId) < OLD_ROOT_BEFORE;
-
-/** `ln C(n, k)`. */
-export function lnChoose(n, k) {
-  let s = 0;
-  for (let i = 1; i <= k; i++) s += Math.log(n - k + i) - Math.log(i);
-  return s;
-}
-
-/**
- * One-sided Fisher exact p that `now` ({ k, n }) is lower than `before`: the chance, with both
- * margins fixed, that `before` holds `before.k` or more of the met sessions.
- */
-export function fisherLower(before, now) {
-  const met = before.k + now.k;
-  const all = before.n + now.n;
-  const total = lnChoose(all, before.n);
-  let p = 0;
-  for (let k = before.k; k <= Math.min(met, before.n); k++)
-    p += Math.exp(lnChoose(met, k) + lnChoose(all - met, before.n - k) - total);
-  return Math.min(1, p);
-}
-
-/** The 95% Wilson score range of `{ k, n }`: `[low, high]`, as fractions. */
-export function wilson({ k, n }) {
-  const z = 1.959964;
-  const p = k / n;
-  const d = 1 + (z * z) / n;
-  const centre = (p + (z * z) / (2 * n)) / d;
-  const half = (z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n))) / d;
-  return [Math.max(0, centre - half), Math.min(1, centre + half)];
-}
 
 /** Whether `now` dropped against `before` at the flag's bar. */
 export function atomicDropped(before, now) {
