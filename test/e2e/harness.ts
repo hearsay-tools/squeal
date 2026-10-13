@@ -113,6 +113,8 @@ export class E2E {
   #edits = 0;
   /** Linked worktrees `addWorktree` made, stopped at cleanup. */
   readonly #worktrees: string[] = [];
+  /** Set by `keep`: cleanup stops the daemons but leaves `base` for a failure's evidence. */
+  #kept = false;
 
   private constructor(
     readonly kind: Plugin,
@@ -343,6 +345,12 @@ export class E2E {
     return readRuns(join(this.main, ".git/squeal/store.sqlite"), worktreeIdFor(root));
   }
 
+  /** Leaves this fixture's directory in place at cleanup (task 001-337); returns it. */
+  keep(): string {
+    this.#kept = true;
+    return this.base;
+  }
+
   /**
    * Ends every session still registered with the plugin's SessionEnd, as its
    * harness would, so no daemon keeps a consumer; then `squeal stop` in every
@@ -361,7 +369,7 @@ export class E2E {
       await Promise.all(roots.map((root) => this.cli(root, ["stop"]).catch(() => null)));
       this.#killDaemons();
     } finally {
-      rmSync(this.base, { recursive: true, force: true, maxRetries: 3 });
+      if (!this.#kept) rmSync(this.base, { recursive: true, force: true, maxRetries: 3 });
       rmSync(this.runtime, { recursive: true, force: true, maxRetries: 3 });
       this.#killDaemons();
     }
