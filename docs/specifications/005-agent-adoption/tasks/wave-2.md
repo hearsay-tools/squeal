@@ -45,3 +45,16 @@ Use /worker. Shape: slice. Runs beside 005-14a and 005-14b.
 **Leave alone:** `deliver.ts`, `uncovered-edit.ts` (001-292), `stop*.ts` (001-297), `src/cli/`, `hooks.json`'s `sh` fast path, bundles, version, `docs/board.md`.
 
 **Done when:** each recognized form and fall-through a test; resolution matches Vitest's own listing on a fixture; deny only when every file is current, never when one is pending, stale, unknown, unlisted or the daemon is not validating; a second command in the same consumer runs; off by default and the flag is read before the store opens (the hook p95 test still passes); both harnesses; lint, typecheck, suite green.
+
+## 005-16 review of wave 2 (005-14 and 005-20)
+
+Use /reviewer. Range: the 005-14a, 005-14b and 005-20 commits and the 0.1.135 build on main. Ignore 001 and 006 commits. Read D3, D4, D5 and D8 with their amendments, `status.md` (the 001 coordinator's D8 fit notes, open question 11), and the briefs above.
+
+**Look hardest at:**
+- D8's honesty: can the deny fire when any file the command runs is pending, stale, unknown, unlisted, outside Squeal's runners, at an older revision, or when the daemon is not validating? Can it fire twice for one consumer, or for a command it did not fully resolve (a filter, a script, a `node --test` form)? Does its reason claim anything it did not check? Does the flag stay off by default at no latency cost?
+- `install.sh` under `curl | sh`: a cut download, a 404, stdin, idempotence, `--uninstall` removing only what it installed, and never writing under `~/.claude` or `~/.codex` itself.
+- The launcher: the entry it picks matches the order Claude Code loads (005-04 question 5); two harness versions; none installed.
+- `squeal setup`: with no terminal and no `--yes` it writes nothing; `--yes` applies only the plan's defaults; gates before the block; it never commits.
+- `squeal warmup`: 0/1/3 told apart; it never claims a pass it did not see.
+
+**Rules:** probe with stub harness CLIs in scratch homes only. Never run the real `claude` or `codex`, and run no model session (006 holds the eval slot). Output `reviews/wave-2.md`, committed on your branch; change no source.
