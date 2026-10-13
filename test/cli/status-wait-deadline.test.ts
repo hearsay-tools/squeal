@@ -96,7 +96,7 @@ describe("a named wait's deadline before its sync reached the current revision",
 
   it("exits 3 when the pass re-keyed the edited file and its result has not landed", async () => {
     const { repo, store } = edited();
-    let current = PENDING;
+    let current: SyncState = PENDING;
     later(30, () => {
       rekeyed(store, repo.mainId);
       current = synced(5);
@@ -112,7 +112,7 @@ describe("a named wait's deadline before its sync reached the current revision",
 
   it("gives the edited file's verdict once its result at the pass's revision lands", async () => {
     const { repo, store } = edited();
-    let current = PENDING;
+    let current: SyncState = PENDING;
     later(30, () => {
       rekeyed(store, repo.mainId);
       current = synced(5);
