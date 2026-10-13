@@ -78,6 +78,14 @@ const options = (runId: string, lane?: string): RunOptions => ({
 
 const pidOf = (child: ChildProcess | null): number => child?.pid ?? -1;
 
+/**
+ * Waits for a process a stop reached to be gone: one that outlived the grace
+ * gets SIGKILL, and `terminate` returns without waiting for the kernel to
+ * end it, which under load takes a moment (task 001-309).
+ */
+const gone = (pid: number) =>
+  expect.poll(() => isAlive(pid), { timeout: 10_000, message: `${pid} gone` }).toBe(false);
+
 describe.runIf(process.platform === "linux")("afterEachRun, a mark per lane (task 004-18)", () => {
   it("stops a short run's escape when it ends, never the long run's worker", async () => {
     const children = new EscapedChildren();
@@ -109,7 +117,7 @@ describe.runIf(process.platform === "linux")("afterEachRun, a mark per lane (tas
     await expect.poll(() => worker).not.toBeNull();
     await runner.run([SHORT], options("short"));
     const escaped = pidOf(leftover);
-    expect(isAlive(escaped)).toBe(false);
+    await gone(escaped);
     expect(isAlive(pidOf(worker))).toBe(true);
     expect(notes).toEqual([
       expect.stringMatching(
@@ -181,7 +189,7 @@ describe.runIf(process.platform === "linux")("afterEachRun, a mark per lane (tas
     // Its own stop reaches it once its run settles.
     release();
     await long;
-    expect(isAlive(working)).toBe(false);
+    await gone(working);
     expect(notes).toEqual([
       expect.stringMatching(
         new RegExp(`^stopped 1 process a test left running after its tier: ${working} `),
@@ -216,7 +224,7 @@ describe.runIf(process.platform === "linux")("afterEachRun, a mark per lane (tas
     const slow = runner.run([LONG], options("slow", "slow:vitest"));
     await expect.poll(() => worker).not.toBeNull();
     await runner.run([SHORT], options("fast"));
-    expect(isAlive(pidOf(fast))).toBe(false);
+    await gone(pidOf(fast));
     expect(isAlive(pidOf(worker))).toBe(true);
     release();
     await slow;
@@ -323,7 +331,7 @@ describe.runIf(process.platform === "linux")(
       expect(notes).toEqual([]);
       release();
       await long;
-      expect(isAlive(escaped)).toBe(false);
+      await gone(escaped);
       expect(notes).toEqual([
         expect.stringMatching(
           new RegExp(
@@ -346,7 +354,7 @@ describe.runIf(process.platform === "linux")(
       expect(isAlive(orphan)).toBe(true);
       release();
       await long;
-      expect(isAlive(orphan)).toBe(false);
+      await gone(orphan);
       expect(notes).toEqual([
         expect.stringMatching(
           new RegExp(
