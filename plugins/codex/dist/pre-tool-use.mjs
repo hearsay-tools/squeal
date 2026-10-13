@@ -785,6 +785,12 @@ function stopSlowWaitMs(policy) {
   if (!policy.stop.requireSlowSuite) return null;
   return Math.max(0, Math.min(policy.stop.slowWaitMs, STOP_SLOW_WAIT_CAP_MS));
 }
+function stopWaitMetaKey(worktreeId) {
+  return worktreeMetaKey("stopWait", worktreeId);
+}
+function forgetStopWait(store, consumer) {
+  writeSlot(store, stopWaitMetaKey(consumer.worktreeId), consumer, null);
+}
 
 // src/core/state/slow-sources.ts
 function sourcesChanged(store, worktreeId, since, revision, artifact, isSource) {
@@ -3850,6 +3856,7 @@ function createDelivery(store, options) {
       const at2 = now();
       const registered = store.consumers.get(consumer) !== null;
       store.consumers.register(consumer, at2);
+      forgetStopWait(store, consumer);
       const states = store.knownStates.list(consumer.worktreeId);
       store.views.writeMany(
         consumer,
@@ -4241,7 +4248,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.149";
+  if (true) return "0.1.150";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

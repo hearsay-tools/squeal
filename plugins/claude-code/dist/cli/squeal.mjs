@@ -34871,7 +34871,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.149";
+  if (true) return "0.1.150";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -37149,6 +37149,7 @@ function recordVersion(store, consumer, version2) {
 }
 
 // src/core/delivery/delivery.ts
+init_stop_wait();
 init_state3();
 init_store3();
 init_types();
