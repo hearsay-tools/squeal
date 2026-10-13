@@ -139,11 +139,11 @@ export async function answerPlan(
         )
       : false);
 
-  const { testFiles, withoutCurrentResult } = plan.warmup;
+  const { testFiles } = plan.warmup;
   const warmup =
     given.warmup ??
     (await yes(
-      `Warm up now: run the ${withoutCurrentResult} of ${testFiles} test files without a current result on this terminal's daemon?`,
+      `Warm up now: run all ${testFiles} test files on this terminal's daemon, current ones too, to record the ignored paths each reads?`,
       true,
     ));
 

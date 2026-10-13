@@ -97,17 +97,17 @@ export async function warmupCommand(args: readonly string[], io: CliIo): Promise
 }
 
 /**
- * The warm-up: says how many test files the first run covers, starts the
+ * The warm-up: says how many test files it re-runs, starts the
  * daemon, requests a checkpoint and waits for its verdict, printing how many
  * files are done as it goes.
  */
 export async function warmUp(root: AbsolutePath, io: CliIo): Promise<WarmupResult> {
   const { testFiles } = await readRepoFacts(root);
-  const toRun = testFiles.paths.length - (testFiles.current ?? 0);
+  // 001-312: the observing checkpoint re-runs every file, current or not.
   io.stdout(
     testFiles.source === "store"
-      ? `squeal warmup: the first run covers ${toRun} of ${plural(testFiles.paths.length, "test file")}, those without a current result\n`
-      : `squeal warmup: the first run covers about ${plural(toRun, "test file")}, counted from the repository (no daemon has listed them yet)\n`,
+      ? `squeal warmup: runs all ${plural(testFiles.paths.length, "test file")}, current ones too, to record the ignored paths each reads\n`
+      : `squeal warmup: runs about ${plural(testFiles.paths.length, "test file")}, counted from the repository (no daemon has listed them yet), to record the ignored paths each reads\n`,
   );
   let started = "";
   const startIo: CliIo = { ...io, stdout: (text) => (started += text) };
