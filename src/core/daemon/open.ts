@@ -10,7 +10,7 @@ import type {
   Store,
   WorktreeId,
 } from "../types/index.js";
-import { recordedDaemon } from "./ensure.js";
+import { liveDaemonRecorded, recordedDaemon } from "./ensure.js";
 import { acquireDaemonLock, awaitDaemonLock, type DaemonLock, type LockWaitEnd } from "./lock.js";
 import { noteInNewerStore, writeNote } from "./notes.js";
 import {
@@ -35,6 +35,16 @@ export interface OpenedDaemon {
   readonly leftovers: Promise<void>;
 }
 
+/**
+ * Task 001-340: how long a daemon started without `--await-lock` waits for a
+ * lock it lost while no daemon is recorded serving. The holder's shutdown
+ * has cleared its record and closed its socket, so only its lock release
+ * remains, a few milliseconds that an I/O stall on a loaded host stretched
+ * past 8 s (task 001-337); the successor's 2 minutes cover a tier in flight,
+ * which this holder has finished.
+ */
+export const VACANT_LOCK_WAIT_MS = 30_000;
+
 /** The daemon may wait longer on the store than a hook (spec 001 D8: a busy timeout on every connection). */
 export const DAEMON_BUSY_TIMEOUT_MS = 5_000;
 
@@ -50,7 +60,9 @@ export const DAEMON_START_BUSY_TIMEOUT_MS = 120_000;
 
 /**
  * Daemon start up to the open store: realpath of the root; the common dir
- * from git (D1); the worktree id; the exclusive lock (D10), losers exit;
+ * from git (D1); the worktree id; the exclusive lock (D10), losers exit,
+ * after a wait for it: a successor's (`awaitLockMs`, task 001-130), or
+ * `vacantLockWaitMs` while no daemon is recorded serving (task 001-340);
  * the store with `integrity_check` (D12) and the start's busy timeout
  * (`DAEMON_START_BUSY_TIMEOUT_MS`), exiting with a note on a newer
  * schema (D8); then the temp directory, emptied (D10, lessons defect 13).
@@ -61,6 +73,7 @@ export async function openDaemon(
   rootArgument: string,
   now: () => EpochMs,
   awaitLockMs?: number,
+  vacantLockWaitMs = VACANT_LOCK_WAIT_MS,
 ): Promise<OpenedDaemon | DaemonExit> {
   let root: AbsolutePath;
   let commonDir: AbsolutePath;
@@ -81,11 +94,13 @@ export async function openDaemon(
   // Before the store: a loser never runs `integrity_check` (review S8). The
   // lock file needs only the store directory.
   let lock: DaemonLock | null | LockWaitEnd;
+  const waitMs = awaitLockMs ?? vacantLockWaitMs;
   try {
     const path = lockFileFor(commonDir, worktreeId);
     lock = acquireDaemonLock(path);
-    if (lock === null && awaitLockMs !== undefined) {
-      lock = await awaitDaemonLock(path, { timeoutMs: awaitLockMs, giveUp: takenOver(root) });
+    if (lock === null && waitMs > 0) {
+      const giveUp = awaitLockMs === undefined ? servedElsewhere(root, now) : takenOver(root);
+      lock = await awaitDaemonLock(path, { timeoutMs: waitMs, giveUp });
     }
   } catch (error) {
     return exit("start-failed", 1, `could not take the daemon lock: ${message(error)}`);
@@ -93,7 +108,13 @@ export async function openDaemon(
   if (lock === null || lock === "gave-up") {
     return exit("lost-lock", 0, `another daemon serves ${root}`);
   }
-  if (lock === "timed-out") return lockWaitTimedOut(commonDir, worktreeId, now, awaitLockMs ?? 0);
+  if (lock === "timed-out") {
+    const text =
+      awaitLockMs === undefined
+        ? `a daemon gave up: the lock was still held after ${waitMs} ms with no daemon serving; the next hook boundary starts one`
+        : `a successor daemon gave up: the lock was still held after ${waitMs} ms; the next hook boundary starts one`;
+    return lockWaitTimedOut(commonDir, worktreeId, now, text);
+  }
 
   let store: Store;
   try {
@@ -153,17 +174,30 @@ function takenOver(root: AbsolutePath): () => boolean {
 }
 
 /**
- * The successor gives up: the daemon it waited for still holds the lock. A
- * note says so, written without the lock, beside the serving daemon's; the
- * next hook boundary starts a daemon once the lock is free.
+ * Task 001-340, the wait of a daemon started without `--await-lock` (a hook's
+ * spawn, `squeal start`): waiting on is pointless once the store records a
+ * daemon with a fresh heartbeat (another daemon serves, the ordinary loser,
+ * which leaves no note), or once the root is gone. While none is recorded the
+ * holder is a daemon past its record and its socket, stopping (the
+ * shutdown clears both before the lock goes) or one still starting, so the
+ * lock comes free or a record appears.
+ */
+function servedElsewhere(root: AbsolutePath, now: () => EpochMs): () => boolean {
+  return () => !existsSync(root) || liveDaemonRecorded(root, now());
+}
+
+/**
+ * A lock wait ran out with the lock still held: a successor's, or one with
+ * no daemon serving (task 001-340). A note says so, written without the
+ * lock, beside the holder's; the next hook boundary starts a daemon once the
+ * lock is free.
  */
 function lockWaitTimedOut(
   commonDir: AbsolutePath,
   worktreeId: WorktreeId,
   now: () => EpochMs,
-  waitedMs: number,
+  text: string,
 ): DaemonExit {
-  const text = `a successor daemon gave up: the lock was still held after ${waitedMs} ms; the next hook boundary starts one`;
   try {
     const store = openStore(commonDir, { create: false, busyTimeoutMs: DAEMON_BUSY_TIMEOUT_MS });
     if (!isStoreOpenFailure(store)) {

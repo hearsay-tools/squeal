@@ -142,6 +142,14 @@ export function recordedDaemon(root: AbsolutePath, busyTimeoutMs = 100): DaemonR
 }
 
 /**
+ * Whether the store records a daemon of the worktree at `root` with a fresh
+ * heartbeat (D9's grace), by `recordedDaemon`.
+ */
+export function liveDaemonRecorded(root: AbsolutePath, now: number = Date.now()): boolean {
+  return daemonLiveness(recordedDaemon(root), now).state === "alive";
+}
+
+/**
  * Makes sure a daemon serves the worktree at `root`, without waiting for one
  * to start.
  *

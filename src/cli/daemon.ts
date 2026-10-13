@@ -8,7 +8,9 @@ const USAGE = "usage: squeal daemon <root> [--await-lock <ms>]\n";
  * `squeal daemon <root>`: the daemon of one worktree, in the foreground.
  * Hooks start it detached (spec 001 D10). With `--await-lock <ms>`, the
  * successor a step-down spawns (task 001-130), it waits up to that long for
- * the lock the old daemon holds instead of exiting at once. It moves out of the root and
+ * the lock the old daemon holds; without it, a daemon that loses the lock
+ * waits only while no daemon is recorded serving (task 001-340,
+ * `VACANT_LOCK_WAIT_MS`). It moves out of the root and
  * into its own temp directory however it was started. Logs to stderr. Exit code 0 when
  * it stopped normally or another daemon serves the worktree, 1 when it could
  * not serve.
