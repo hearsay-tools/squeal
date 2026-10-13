@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished } from "vitest";
 import type { Delta, TestCheckId } from "../../src/core/types/index.js";
 import { waitFor } from "../watcher/helpers.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
@@ -9,6 +9,13 @@ const adds: TestCheckId = {
   testPath: "test/math.test.ts",
   fullName: "adds",
 };
+
+/**
+ * Only the hanging file may reach it (task 001-335, added by the
+ * coordinator). Each ordinary file runs alone here: 127-427 ms beside a
+ * full suite at load 13-28, against the 2 s this was.
+ */
+const TIMEOUT_MS = 30_000;
 
 const revisionOf = (h: Harness) => h.store.revisions.latest(h.worktreeId)?.number ?? 0;
 
@@ -60,20 +67,29 @@ describe("scheduler: discards and timeouts (S5, S10)", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, {
       tierSize: 1,
-      timeoutMs: 2_000,
+      timeoutMs: TIMEOUT_MS,
+    });
+    onTestFinished(() => {
+      const runs = h.runner.runs.map(
+        (r) => `${r.files.map((f) => f.path).join("+")} ${r.report.end} ${r.report.durationMs} ms`,
+      );
+      console.log(`001-335 hung run: ${runs.join(", ")}`);
     });
     await h.scheduler.start();
     await h.scheduler.idle();
 
+    // Blocks its worker as a busy loop would, ignoring a cancel, without using a core while it waits.
     h.write(
       "test/hang.test.ts",
-      'import { it } from "vitest";\nit("hangs", () => {\n  while (true) {}\n});\n',
+      'import { it } from "vitest";\nit("hangs", () => {\n  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0);\n});\n',
     );
     await h.batch("test/hang.test.ts");
     await h.scheduler.idle();
     expect(h.runsOf("test/hang.test.ts").map((r) => r.report.end)).toEqual(["timed-out"]);
     // Alone in its tier, it is `unknown` and not run again (task 001-179).
-    expect(h.sink.callsOf("markUnknown").map((c) => c.reason)).toEqual(["timed out after 2 s"]);
+    expect(h.sink.callsOf("markUnknown").map((c) => c.reason)).toEqual([
+      `timed out after ${TIMEOUT_MS / 1000} s`,
+    ]);
 
     h.write("src/math.ts", "export const add = (a: number, b: number) => b + a;\n");
     await h.batch("src/math.ts");
