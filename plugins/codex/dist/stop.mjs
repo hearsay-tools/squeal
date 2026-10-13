@@ -789,18 +789,9 @@ function stopSlowWaitMs(policy) {
 function stopWaitMetaKey(worktreeId) {
   return worktreeMetaKey("stopWait", worktreeId);
 }
-function read2(store, worktreeId) {
-  const raw = store.meta.get(stopWaitMetaKey(worktreeId));
-  if (raw === null) return {};
-  try {
-    const value = JSON.parse(raw);
-    return isRecord(value) ? value : {};
-  } catch {
-    return {};
-  }
-}
-function stopWaitRuns(store, worktreeId, harness, version) {
-  return read2(store, worktreeId)[harness] === version;
+function stopWaitRuns(store, consumer, harness, version) {
+  const value = readSlot(store, stopWaitMetaKey(consumer.worktreeId), consumer);
+  return isRecord(value) && value[harness] === version;
 }
 
 // src/core/state/slow-sources.ts
@@ -3374,23 +3365,23 @@ function readGitHead(root) {
   const gitDir = gitDirOf(root);
   const commonDir = resolveCommonDir(root);
   if (gitDir === null || commonDir === null) return null;
-  let value = read3(join7(gitDir, "HEAD"));
+  let value = read2(join7(gitDir, "HEAD"));
   for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
     if (SHA.test(value)) return value;
     const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
     if (ref === void 0) return null;
-    value = read3(join7(gitDir, ref)) ?? read3(join7(commonDir, ref)) ?? packed(commonDir, ref);
+    value = read2(join7(gitDir, ref)) ?? read2(join7(commonDir, ref)) ?? packed(commonDir, ref);
   }
   return null;
 }
 function packed(commonDir, ref) {
-  for (const line of (read3(join7(commonDir, "packed-refs")) ?? "").split("\n")) {
+  for (const line of (read2(join7(commonDir, "packed-refs")) ?? "").split("\n")) {
     const [sha, name] = line.split(" ");
     if (name === ref && sha !== void 0 && SHA.test(sha)) return sha;
   }
   return null;
 }
-function read3(path) {
+function read2(path) {
   try {
     return readFileSync4(path, "utf8").trim();
   } catch (error) {
@@ -3836,8 +3827,8 @@ function createDelivery(store, options) {
       }
       if (idle) startTurn(store, consumer);
       const told = toldRevision(store, consumer);
-      const read4 = readLiveHeader(store, consumer.worktreeId, at2, states, told);
-      const live = withTold(read4, toldLiveness(store, consumer), at2);
+      const read3 = readLiveHeader(store, consumer.worktreeId, at2, states, told);
+      const live = withTold(read3, toldLiveness(store, consumer), at2);
       tellRevision(store, consumer, live.revision);
       const { entries, header, stillFailing } = annotate(
         store,
@@ -3889,8 +3880,8 @@ function createDelivery(store, options) {
         states.map((s) => toView2(s, at2))
       );
       const told = startingSince === void 0 ? null : { startingSince };
-      const read4 = readLiveHeader(store, consumer.worktreeId, at2, states);
-      const live = told === null ? read4 : withTold(read4, told, at2);
+      const read3 = readLiveHeader(store, consumer.worktreeId, at2, states);
+      const live = told === null ? read3 : withTold(read3, told, at2);
       const knownFailures = states.flatMap((s) => toKnownFailure(s, live.revision) ?? []);
       const header = withDependencies(store, consumer.worktreeId, live, knownFailures.length > 0);
       const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
@@ -4440,7 +4431,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.143";
+  if (true) return "0.1.144";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4586,13 +4577,13 @@ var SKIPPED = /* @__PURE__ */ new Set([
 ]);
 var MAX_HOPS = 4;
 function findHarnessProcess(lookup = {}) {
-  const read4 = lookup.read ?? readProcStat;
+  const read3 = lookup.read ?? readProcStat;
   const namespace = (lookup.namespace ?? pidNamespace)();
   if (namespace === null) return null;
   let pid = lookup.ppid ?? process.ppid;
   try {
     for (let hop = 0; hop < MAX_HOPS && pid > 1; hop++) {
-      const stat = read4(pid);
+      const stat = read3(pid);
       if (stat === null || stat.state === "Z" || stat.comm === "systemd") return null;
       if (!SKIPPED.has(stat.comm)) {
         return { pid, startTime: stat.startTime, pidNamespace: namespace };
@@ -4795,7 +4786,7 @@ function stopTurn(input, location2, deps) {
           stopHookActive: input.stopHookActive,
           slowElsewhere: input.agent_id === void 0 && stopWaitRuns(
             context.store,
-            context.consumer.worktreeId,
+            context.consumer,
             input.harness,
             deps.squealVersion ?? squealVersion()
           ),
