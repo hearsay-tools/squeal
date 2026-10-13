@@ -508,7 +508,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.145";
+  if (true) return "0.1.146";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -1005,9 +1005,16 @@ function slowFilesNotCurrent(states, keys, isSlow) {
 function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId), isSlow) {
   const revision = store.revisions.latest(worktreeId)?.number ?? 0;
   const counts = { current: 0, pending: 0, stale: 0, unknown: 0 };
+  const fileLevelCounts = {
+    current: 0,
+    pending: 0,
+    stale: 0,
+    unknown: 0
+  };
   let inheritedCount = 0;
   for (const state of states) {
     counts[state.validity]++;
+    if (state.check.kind === "file") fileLevelCounts[state.validity]++;
     if (state.validity === "current" && state.origin?.kind === "inherited") inheritedCount++;
   }
   const last = store.checkpoints.lastCompleted(worktreeId);
@@ -1020,6 +1027,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
   return {
     revision,
     counts,
+    fileLevelCounts,
     testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
     fullSuite: {
       atCurrentRevision: !awaiting && last !== null && last.revision === revision,
@@ -3503,18 +3511,29 @@ function breakdown(states, keys) {
   const filePhase = new Map(keys.map((k) => [testFileId(k.testFile), k.pending]));
   const currentByOutcome = { pass: 0, fail: 0, skip: 0, unknown: 0 };
   const pendingByPhase = { queued: 0, running: 0 };
+  const fileLevelByOutcome = { pass: 0, fail: 0, skip: 0, unknown: 0 };
+  const fileLevelByPhase = { queued: 0, running: 0 };
   const filesWithChecks = /* @__PURE__ */ new Set();
   for (const s of states) {
     const file = testFileKeyOf(s.check);
     filesWithChecks.add(file);
-    if (s.validity === "current") currentByOutcome[s.outcome]++;
-    if (s.validity === "pending")
-      pendingByPhase[s.pendingPhase ?? filePhase.get(file) ?? "queued"]++;
+    const fileLevel = s.check.kind === "file";
+    if (s.validity === "current") {
+      currentByOutcome[s.outcome]++;
+      if (fileLevel) fileLevelByOutcome[s.outcome]++;
+    }
+    if (s.validity === "pending") {
+      const phase = s.pendingPhase ?? filePhase.get(file) ?? "queued";
+      pendingByPhase[phase]++;
+      if (fileLevel) fileLevelByPhase[phase]++;
+    }
   }
   const without = keys.filter((k) => !filesWithChecks.has(testFileId(k.testFile)));
   return {
     currentByOutcome,
     pendingByPhase,
+    fileLevelByOutcome,
+    fileLevelByPhase,
     testFiles: keys.length,
     testFilesWithoutChecks: without.length,
     testFilesWithoutChecksRunning: without.filter((k) => k.pending === "running").length
@@ -3951,6 +3970,28 @@ function createDelivery(store, options) {
   };
 }
 
+// src/core/status/checks.ts
+function countChecks(checks) {
+  const testFiles = checks.filter((check) => check.kind === "file").length;
+  return { tests: checks.length - testFiles, testFiles };
+}
+function checkPartsText({ tests, testFiles }, fileLevel = "loaded") {
+  return [
+    ...tests > 0 ? [plural(tests, "test")] : [],
+    ...testFiles > 0 ? [`${plural(testFiles, "test file")} ${fileLevel}`] : []
+  ].join(", ");
+}
+function countedText(count, label, fileLevel) {
+  const head = `${count} ${label}`;
+  if (count === 0 || fileLevel === void 0) return head;
+  const parts = { tests: count - fileLevel, testFiles: fileLevel };
+  return `${head} (${checkPartsText(parts)})`;
+}
+function failureCountText(checks) {
+  if (checks.length === 0) return "0";
+  return `${checks.length} (${checkPartsText(countChecks(checks), "that did not load")})`;
+}
+
 // src/core/delivery/provenance.ts
 var upper = (outcome) => outcome.toUpperCase();
 var TOUCHED_SHOWN = 3;
@@ -4058,13 +4099,16 @@ function changedText(paths) {
   return ` (changed ${shown}${more > 0 ? ` and ${more} more` : ""})`;
 }
 function headerLine(header, command) {
-  const { revision, counts, testFilesWithoutChecks: files2 } = header;
+  const { revision, counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files2 } = header;
   const inherited = (header.inheritedCount ?? 0) === 0 ? "" : ` Inherited: ${header.inheritedCount} of ${counts.current} current.`;
   const withoutChecks = files2.pending + files2.unknown === 0 ? "" : ` Test files without checks: ${files2.pending} pending, ${files2.unknown} unknown.`;
   const listed = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
   const runnerPart = header.runnerPartPending === true ? ` ${capitalize(runnerPartText(revision))} is pending; test files it adds are not counted yet.` : "";
   const awaiting = awaitingInstallSentence(header);
-  return `Revision ${revision}${changedText(header.changedPaths)}: ${counts.current} current, ${counts.pending} pending, ${counts.stale} stale, ${counts.unknown} unknown.${inherited}${withoutChecks}${listed}${runnerPart} Full-suite checkpoint: ${fullSuiteText(header, command)}.` + livenessSentence(header.daemon, revision) + (awaiting === null ? installSentences(header) : ` ${awaiting}`);
+  return `Revision ${revision}${changedText(header.changedPaths)}: ${countsText(counts, fileLevel)}.${inherited}${withoutChecks}${listed}${runnerPart} Full-suite checkpoint: ${fullSuiteText(header, command)}.` + livenessSentence(header.daemon, revision) + (awaiting === null ? installSentences(header) : ` ${awaiting}`);
+}
+function countsText(counts, fileLevel) {
+  return ["current", "pending", "stale", "unknown"].map((validity) => countedText(counts[validity], validity, fileLevel?.[validity])).join(", ");
 }
 function headerLines(header, command) {
   const slow = slowTierText(header, command);
@@ -4235,7 +4279,7 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
     ...headerLines(header, command),
     // Spec 001 D4 (task 001-176): said once, at registration; status lists it among the notes.
     ...header.optimizerOff === void 0 ? [] : [header.optimizerOff],
-    `Known failures: ${knownFailures.length}`
+    `Known failures: ${failureCountText(knownFailures.map((f) => f.check))}`
   ].join("\n");
   const blocks = knownFailures.map(
     (f) => block(
