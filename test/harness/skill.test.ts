@@ -121,6 +121,51 @@ describe("the squeal skill", () => {
     expect(body).toContain("a gate the repository requires is still yours to run");
   });
 
+  /*
+   * Spec 005 D6 (005-15): the deeper layer for agents that load the skill.
+   * A new failure's own re-run (001-171) answers whether it is flaky, so the
+   * agent does not re-run it; the path form of the wait (D2) is for a test
+   * file the agent's edits did not re-key; `squeal why`'s changed-since line
+   * (001-225) is explained; a revision is defined once, in the primer, so the
+   * header glossary points at it rather than defining it again.
+   */
+  it("says Squeal re-runs a new failure once, so the agent lets it answer", () => {
+    const step = body.slice(body.indexOf("2. **"), body.indexOf("3. **"));
+    expect(step).toContain("Squeal re-runs a new failure once on its own");
+    expect(step).toContain("`Flaky: FAIL -> PASS under the same inputs`");
+    expect(step).toContain("rather than re-running a failed test yourself");
+  });
+
+  it("names the path form of the wait for a test file the edits did not re-key", () => {
+    expect(read("commands.md")).toContain(
+      "such as a test file your edits did not re-key, which the wait above does not hold for, name them: `squeal status --wait 60000 <path>...`",
+    );
+  });
+
+  it("explains `squeal why`'s changed-since line, and defines a revision only in the primer", () => {
+    expect(read("commands.md")).toContain("a `Changed since revision N:` line lists each path");
+    expect(read("reports.md")).toContain("- **revision**: as the SQUEAL primer defines it;");
+    for (const text of [body, ...references.map(read)]) {
+      expect(text).not.toContain("A revision is ");
+      expect(text).not.toContain("counter of workspace changes");
+    }
+    expect(PRIMER).toContain("A revision is Squeal's number for each saved change");
+  });
+
+  /*
+   * The human (2026-10-12): 005 words the coverage around 001-292's line. A
+   * test file the agent adds is covered when it matches; what else the
+   * repository checks, and a file the uncovered-edit line names, is the
+   * agent's to run.
+   */
+  it("says added test files are picked up, and the rest is the agent's to run", () => {
+    expect(body).toContain("a test file you add that matches them is picked up too");
+    expect(body).toContain("anything else the repository checks are yours to run");
+    const step = body.slice(body.indexOf("5. **"), body.indexOf("## Reading a header"));
+    expect(step).toContain("`No result for <path>: no test Squeal runs reads it`");
+    expect(step).toContain("run whatever tests it yourself");
+  });
+
   it("states the next-tool-call default before every `squeal status --wait`", () => {
     const texts = [body, ...references.map(read), PRIMER];
     let pointers = 0;

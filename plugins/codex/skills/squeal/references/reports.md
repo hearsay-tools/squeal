@@ -12,7 +12,7 @@ Registration, at the start of a session, reports every known failure once. After
 
 Every SQUEAL message and `squeal status` carry a header like `Revision 12: 40 current, 3 pending, 1 stale, 2 unknown.` In a SQUEAL message it also names the files changed since your last report: `Revision 12 (changed src/math.ts, src/parse.ts and 2 more): ...`. Those are the edits since you were last told, not the cause of a failure in the message.
 
-- **revision**: Squeal's counter of workspace changes. It is not a git commit.
+- **revision**: as the SQUEAL primer defines it; not a git commit. Edits by a build, another session or a person move it too, and the header's file list says which files did.
 - **current**: the result was produced from exactly the files as they are now.
 - **pending**: a run for the current files is queued or running. The outcome shown is the last one known.
 - **stale**: a result exists, but for older file contents. Nothing is queued for it yet.
