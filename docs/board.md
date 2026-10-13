@@ -635,9 +635,9 @@ Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the hu
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 005-22 repair: the named wait's deadline, joined counts | running (worker 80936a0b, Opus high) | B1, S2. | B1's probe states exit 3; S2's count. |
-| 005-23 repair: compound gates, an unusable config | running (worker 77926854, Opus high) | B2, S1 (`--check` exits 1 for an unusable config, the coordinator's decision). | Compound spans refused or kept whole; S1 exits 1. |
-| 005-24 repair: a block remove cannot find | running (worker bfc1039e, Opus high) | B3. | Nested round trip; unterminated nested block under "Still there". |
+| 005-22 repair: the named wait's deadline, joined counts | done (0.1.134; a deadline before sync exits 3; joined counts credit the joined checkpoint) | B1, S2. | B1's probe states exit 3; S2's count. |
+| 005-23 repair: compound gates, an unusable config | done (0.1.134; compound gates refused with a reason; `--check` exits 1 for an unusable config) | B2, S1 (`--check` exits 1 for an unusable config, the coordinator's decision). | Compound spans refused or kept whole; S1 exits 1. |
+| 005-24 repair: a block remove cannot find | done (0.1.134; `remove` finds nested blocks; `--block` takes only AGENTS.md, CLAUDE.md, CLAUDE.local.md) | B3. | Nested round trip; unterminated nested block under "Still there". |
 | 005-25 re-review of wave 1.5 | planned | `/reviewer` on gpt-6.1-sol, limited to B1 to B3, S1, S2 and their nearest variants. | `reviews/wave-1.5.md`. |
 
 ### Wave 2: install, setup, the skill and the texts
