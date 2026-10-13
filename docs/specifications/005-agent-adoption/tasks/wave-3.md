@@ -43,3 +43,14 @@ Use /worker. Shape: slice.
 **Owns:** `plugins/*/skills/setup/**`, the skill-copy test, and the plugin build or manifest lines only if a new skill directory must be listed. **Leave alone:** `src/cli/setup/` (ask in a request if a flag the skill needs is missing), `plugins/*/skills/squeal/` (005-15).
 
 **Done when:** both copies identical (test); a test that every `squeal setup` flag the skill names exists in `src/cli/setup/command.ts`'s usage; the skill text stays under the existing skill size test; lint, typecheck, suite green.
+
+## 005-33 review of wave 3
+
+Use /reviewer. Range: the 005-21, 005-15 and 005-19 commits and the 0.1.146 build on main; ignore 001 and 006 commits. Read D1, D3 "The skill", D6 and `status.md` 2026-10-13.
+
+**Look hardest at:**
+- 005-21: does every count of checks a model reads (status, delivery header, `status --wait`, registration's `Known failures`) split tests and test files loaded, with the parts summing to the total? Is the 10,000-character cap held? Does S2's join pick the right checkpoint when two end at once?
+- 005-15: does any primer or skill sentence claim what Squeal does not do (silence means a pass only for checks Squeal ran; the re-run once and its exceptions)? Does the primer stay under 1,500 characters in both harnesses with every coverage name intact?
+- 005-19: does the skill write nothing in a session that cannot ask (`-p`, Codex outside Plan mode)? Does every answer map to a flag `squeal setup` takes, `--slow none` included? Does it never commit or stage? Is the Codex copy reachable without the build copying it?
+
+**Rules:** no model session, never the real `claude` or `codex`; stub CLIs in scratch homes only; scratch roots inside your own directory. Output `reviews/wave-3.md` on your branch; change no source.
