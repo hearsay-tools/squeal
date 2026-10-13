@@ -101,7 +101,7 @@ The first findings commit, `9492a24a`, was inside the brief's first 15 minutes. 
 
 ## Verdict
 
-**PASS** on the bounded re-review: 0 blocking findings. B1, B2's false re-run promise, B3, B4 and S1's original scenarios are repaired. One proven nonblocking wording note (S2), and one proven nonblocking provenance note (N1). A pending full-suite command is unverified, never a blocker by itself.
+**PASS** on the bounded re-review: 0 blocking findings. B1, B2's false re-run promise, B3, B4 and S1's original scenarios are repaired. One proven nonblocking wording note (S2), and one proven nonblocking provenance note (N1). The authorized replacement independent full suite passed, with 465 files and 3,915 tests; one file and ten tests skipped.
 
 ## Blockers
 
@@ -166,4 +166,48 @@ The skill and references show current/pending and passed/running/queued counts w
 3. Keep `FullSuiteCheckpoint.owner` on the scheduler-to-front-desk result and `RunAllResponse.owner` beside, not inside, the persisted checkpoint. Own ID means independent work; another ID means a real join; absence means an older daemon whose owner cannot be inferred. No timestamp fallback.
 4. Keep harness unanswered (`null`) distinct from declined-all (`[]`), apply explicit answers, and retain `--no-warmup` when the skill handles warm-up separately.
 5. Keep the 10,000-character delivery cap and whole status/why pointers. Both Squeal references stay in parity; the Codex-only CLI note remains deliberate.
-6. The proof wave owns real harness/model sessions. This review ran none. The parent-authorized replacement capped full suite will be recorded below. The first capped attempt was interrupted; neither its partial failures nor a pending replacement changes this bounded verdict.
+6. The proof wave owns real harness/model sessions. This review ran none. The parent-authorized replacement capped full suite is recorded below and passed. The first capped attempt was interrupted; its partial failures do not constitute a completed full-suite failure verdict.
+
+## Final independent full-suite verification
+
+The parent-authorized replacement started and ended on clean review-only commit `965d92247fdff876278525fcd246c11364925766`. Source, tests, bundles and package metadata are identical to `a69ba49d`; `git diff --quiet a69ba49d -- src test plugins package.json package-lock.json` exits 0. This is verified for `965d9224`, and **unverified for the exact candidate SHA** under the reviewer's provenance rule. No source changed during the run. The suite ran unchanged, including its own isolated Codex integration as the parent permitted; reviewer-owned probes used only stubs.
+
+```text
+$ npx vitest run --maxWorkers=4
+npm warn Unknown env config "store-dir". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/1715a73b-c398-4d72-b32b-8198f23a7da5
+
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/1715a73b-c398-4d72-b32b-8198f23a7da5/test/fixtures/scheduler/.tmp/acb954ee-c92b-401c-8d4e-0ae0330ae5a9/main/.git/worktrees/staged/gitdir
+squeal tests: killing 1 process(es) an earlier run left: 3747403
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/1715a73b-c398-4d72-b32b-8198f23a7da5/test/fixtures/scheduler/.tmp/5bf42a3c-9498-4872-adda-7638da0ae374/main/.git/worktrees/staged/gitdir
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+
+ Test Files  465 passed | 1 skipped (466)
+      Tests  3915 passed | 10 skipped (3925)
+   Start at  20:52:12
+   Duration  729.70s (tests 96%, import 2%, transform 1%)
+
+    Isolate  466 workers spawned · ~229ms startup each (spawn + environment, per file)
+             at least ~26.49s faster with isolate: false — reuses workers across files instead of one per file
+
+exit 0
+
+$ git rev-parse HEAD
+965d92247fdff876278525fcd246c11364925766
+
+$ git status --short
+(empty after suite, before this final report extension)
+
+$ git diff --quiet a69ba49d -- src test plugins package.json package-lock.json
+exit 0
+```
+
+The replacement's 465 passing files include the count/inheritance, setup, skill, checkpoint tracker and front-desk regression tests. The first attempt's two Stop timing cases passed in this completed run. Npm's existing `store-dir` warning, experimental runner typecheck warnings, fixture gitdir repairs and cleanup of one earlier process are preserved above; none prevented the exit-0 verdict. Load sampled 106 early in the replacement, then 63, 51 and 34; duration was 729.70 seconds. No additional full run was made.
+
+Final bounded verdict remains **PASS**, 0 blockers, S2 a proven nonblocking wording follow-up, N1 a proven nonblocking provenance note. The reviewer changed and committed only this findings file.
