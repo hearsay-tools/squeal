@@ -131,12 +131,14 @@ describe.runIf(process.platform === "linux")("the watch of a linked directory's 
     const before = inotifyWatches();
     await startFeed();
     install(join(target, "node_modules"));
-    // The install's directories are reported, so the watch saw it appear.
-    await waitFor(() => log.paths().some((p) => p.startsWith("lib/node_modules/")), 3_000);
-    await waitFor(() => inotifyWatches() - before <= bound(), 5_000);
+    // The install's directories are reported, so the watch saw it appear. The
+    // watch reaches its 100 directories and reconciles its 2,000 files in this
+    // process: seconds on a loaded runner, so each wait is sized for one (task 001-309).
+    await waitFor(() => log.paths().some((p) => p.startsWith("lib/node_modules/")), 30_000);
+    await waitFor(() => inotifyWatches() - before <= bound(), 30_000);
     appendFileSync(join(root, "lib/index.ts"), "y\n");
-    await waitFor(() => watched("lib/index.ts"), 3_000);
-  }, 15_000);
+    await waitFor(() => watched("lib/index.ts"), 30_000);
+  }, 120_000);
 
   it("watches a directory again once the target's .gitignore stops naming it", async () => {
     write(target, ".gitignore", "gen/\n");
