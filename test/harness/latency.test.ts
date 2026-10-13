@@ -2,6 +2,7 @@ import { writeFileSync } from "node:fs";
 import { loadavg } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { testCommandDeniedMetaKey } from "../../src/core/delivery/test-command-denied.js";
 import { writeTurn } from "../../src/core/delivery/turn.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import { check, result } from "../state/helpers.js";
@@ -131,6 +132,17 @@ const CASES: readonly Case[] = [
     overrides: { tool_name: "Bash", tool_input: { command: "sleep 15" } },
     before: (r) => r.store.transaction(() => writeTurn(r.store, r.consumer(), null)),
   },
+  // Spec 005 D8: with `testCommand.denyWhenCurrent` on, a test command every file of which is current.
+  {
+    hook: "pre-tool-use",
+    name: "pre-tool-use (test command, denied)",
+    input: "pre-tool-use",
+    overrides: { tool_name: "Bash", tool_input: { command: "npx vitest run" } },
+    before: (r) => {
+      r.policy({ testCommand: { denyWhenCurrent: true } });
+      r.store.meta.delete(testCommandDeniedMetaKey(r.worktreeId));
+    },
+  },
   { hook: "stop", input: "stop", before: flip },
   // Nothing to deliver: Stop ends the turn (task 001-85), recording what the waiter waits for.
   { hook: "stop", name: "stop (silent)", input: "stop" },
@@ -186,6 +198,7 @@ describe("bundled hook latency", () => {
           });
           expect(out.code, `${c.hook}: ${out.stderr}`).toBe(0);
           if (c.name?.endsWith("(silent)")) expect(out.stdout, c.name).toBe("");
+          if (c.name?.endsWith("(denied)")) expect(out.stdout, c.name).toContain('"deny"');
           samples.push(out.ms);
         }
         if (best === null || p95(samples) < p95(best)) best = samples;
