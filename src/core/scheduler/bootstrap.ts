@@ -17,6 +17,7 @@ import { durationOf, type FileState } from "./files.js";
 import { takeHeldFiles } from "./held.js";
 import type { Ledger } from "./ledger.js";
 import { persistedNoteTexts, unmatchedInputNotes } from "./notes.js";
+import { listTestFilesOf } from "./omitted-test-files.js";
 import { priorityOf } from "./queue.js";
 import { restoreReruns } from "./rerun.js";
 import { readEnvironments, resolveClosures } from "./revision.js";
@@ -99,13 +100,13 @@ export async function baseline(
   ledger: Ledger,
   changed: ReadonlySet<RelativePath> = NOTHING_CHANGED,
 ): Promise<void> {
-  const { store, keys, runner, worktreeId, policy } = context;
+  const { store, keys, worktreeId, policy } = context;
   const bound = runnerPartBound(context);
   const failures: Failures = new Map();
   // The lookup below finds a file a heal left held as a miss (review wave 13i, B1).
   takeHeldFiles(store, worktreeId);
   await readEnvironments(context, failures, bound);
-  const listed = await tryRunner(context, "testFiles", () => bound.call(() => runner.testFiles()));
+  const listed = await tryRunner(context, "testFiles", () => listTestFilesOf(context, bound));
   ledger.listingFailed = listed === null;
   const previousKeys = new Map(
     store.testFileKeys.list(worktreeId).map((row) => [testFileId(row.testFile), row]),

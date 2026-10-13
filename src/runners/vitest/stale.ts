@@ -73,7 +73,19 @@ export async function invalidateStructural(
       vitest.projects.some((project) => project.matchesTestGlob(p.abs, () => "")),
     );
     if (testGlob) vitest.clearSpecificationsCache();
+    for (const project of vitest.projects) forgetTypecheckFiles(project);
   }
+}
+
+/**
+ * Task 005-26: Vitest globs a project's typecheck files once per instance,
+ * into a private list `clearSpecificationsCache` leaves, and its test-glob
+ * match ignores `typecheck.include`. The listing counts those files, which
+ * Squeal does not run, so after an add or delete it globs them again.
+ */
+function forgetTypecheckFiles(project: TestProject): void {
+  if (!project.config.typecheck.enabled) return;
+  (project as unknown as { typecheckFilesList: string[] | null }).typecheckFilesList = null;
 }
 
 /**

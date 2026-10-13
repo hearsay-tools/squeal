@@ -50,6 +50,7 @@ export function withSlowInstance(
     closure: (testFile) => fast.closure(testFile),
     enumerate: (testFile) => fast.enumerate(testFile),
     testFiles: () => fast.testFiles(),
+    omittedTestFiles: () => fast.omittedTestFiles?.() ?? 0,
     environment: () => fast.environment(),
     ...(lane === undefined ? {} : { lane }),
     async run(testFiles, options) {

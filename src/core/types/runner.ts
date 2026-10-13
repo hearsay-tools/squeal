@@ -361,6 +361,13 @@ export interface RunnerAdapter {
   /** Every test file of every project, from the runner's own include globs. */
   testFiles(): Promise<readonly TestFileRef[]>;
 
+  /**
+   * How many test files the last successful `testFiles()` left out because
+   * the adapter does not run them, such as Vitest's typecheck files (spec 005
+   * D8 step 3, task 005-26). Absent for a runner that lists every file.
+   */
+  omittedTestFiles?(): number;
+
   /** Runner-side environment hash inputs, one entry per project. */
   environment(): Promise<readonly RunnerEnvironment[]>;
 

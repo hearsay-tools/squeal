@@ -102,6 +102,21 @@ export const ALL_TEST_FILES = [
 
 export const outcomes = (report: RunReport) => report.results.map((r) => r.outcome);
 
+/** Review wave-2 B1: a configuration whose typecheck files Squeal's listing leaves out. */
+export const TYPECHECKED = {
+  "vitest.config.ts": [
+    "export default {",
+    '  test: { include: ["test/*.test.ts"], typecheck: { enabled: true, include: ["test/*.test-d.ts"] } },',
+    "};",
+    "",
+  ].join("\n"),
+  "test/outside.test-d.ts": [
+    'import { expectTypeOf, test } from "vitest";',
+    'test("bad type", () => expectTypeOf(1).toEqualTypeOf<string>());',
+    "",
+  ].join("\n"),
+};
+
 /** A test file that imports `which` from `specifier` and expects it to be `expected`. */
 export const readsTest = (specifier: string, expected: string) =>
   [

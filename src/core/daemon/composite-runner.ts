@@ -93,6 +93,8 @@ export function createCompositeRunner(adapters: readonly RunnerAdapter[]): Runne
         );
       return parts.flatMap((part) => part.value);
     },
+    omittedTestFiles: () =>
+      adapters.reduce((sum, adapter) => sum + (adapter.omittedTestFiles?.() ?? 0), 0),
     environment,
     async run(testFiles, options) {
       const groups = new Map<RunnerAdapter, TestFileRef[]>();

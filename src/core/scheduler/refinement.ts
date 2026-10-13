@@ -13,6 +13,7 @@ import { type SchedulerContext, tryRunner } from "./context.js";
 import { type Failures, failed, settleFailures } from "./failures.js";
 import type { Ledger } from "./ledger.js";
 import { listPaths } from "./notes.js";
+import { listTestFilesOf } from "./omitted-test-files.js";
 import { applyListing, type ContentRekey, storeClosures, toInvalidatedPath } from "./revision.js";
 import { RunnerPartBound, runnerPartBoundMs } from "./runner-work-bound.js";
 
@@ -108,7 +109,7 @@ export async function fetchRunnerPart(
       : null;
   const listed =
     structural || recreated.size > 0 || ledger.listingFailed
-      ? await tryRunner(context, "testFiles", () => bound.call(() => runner.testFiles()))
+      ? await tryRunner(context, "testFiles", () => listTestFilesOf(context, bound))
       : undefined;
 
   // Test files as the listing leaves them: the ones to re-resolve are among these.
