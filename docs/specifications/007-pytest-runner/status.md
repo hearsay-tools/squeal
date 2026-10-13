@@ -6,6 +6,8 @@ Started: 2026-10-13
 ## Decisions so far
 
 - 2026-10-13, the human: start preparing pytest support. ADR 0001 named pytest the second runner; ADR 0004 moved it behind Codex and node:test because no project of ours needed it then. This spec is the third runner.
+- 2026-10-13, the human: testmon may be the thing to use. 007-02 evaluates it as a component (driving `pytest-testmon` or reading its data), against goal 4 and the shared store, beside a static graph.
+- 2026-10-13, the human: dispatch mixed (Astra on `pytest-runner-api`, Opus on the other two); a generic fixture, no reference project.
 - The product promise holds as in ADR 0004: only the needed tests run, and only the delta reaches the agent. A design that re-runs a whole pytest invocation on every revision does not meet it and is out.
 - The adapter implements `RunnerAdapter` from `src/core/types/runner.ts`. A finding that seems to need an interface change is an open question for the spec, not a decision. node:test (spec 003) is the closest precedent: no warm instance in the daemon's own runtime, a static graph checked by an observed one.
 - Check keys stay computable in a fresh worktree without running anything (spec 001 goal 4). For Python this is harder than for node:test: the daemon runs on Node, the plugin is an esbuild bundle without native addons (003 status, before wave 1), and a fresh worktree often has no virtual environment yet.
