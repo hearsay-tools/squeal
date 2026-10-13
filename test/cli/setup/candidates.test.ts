@@ -1,11 +1,17 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { main } from "../../../src/cli/main.js";
 import { holdsArtifact } from "../../../src/cli/setup/artifacts.js";
 import { buildPlan } from "../../../src/cli/setup/plan.js";
-import { initRepo } from "../../hash/git-repo.js";
-import { capture, cleanupFixtures, harnessEnv, json, scratch, squealShaped } from "./fixture.js";
+import {
+  capture,
+  cezarionShaped,
+  cleanupFixtures,
+  harnessEnv,
+  json,
+  squealShaped,
+} from "./fixture.js";
 
 /*
  * Spec 005 D3, "Slow tests and their inputs", row 005-12: the candidates
@@ -108,44 +114,6 @@ describe("this repository's shape", () => {
     expect(await main(["setup", "--check"], io)).toBe(0);
   });
 });
-
-/** Cezarion at `c07b0bf`, reduced: the same scripts, manifest fields and test strings. */
-function cezarionShaped(): string {
-  const root = scratch("squeal-setup-cezarion-");
-  const unit = "node --import tsx --test test/unit/*.test.ts";
-  initRepo(root, {
-    "package.json": json({
-      private: true,
-      workspaces: ["packages/*"],
-      scripts: {
-        test: "vitest run",
-        "test:e2e": "sh .ai/scripts/e2e.sh",
-        "test:package": "npm run test:package -w @wjarka/cezar",
-      },
-      devDependencies: { vitest: "^3.0.0" },
-    }),
-    ".gitignore": "node_modules/\ndist/\n",
-    "packages/cezar/package.json": json({
-      name: "@wjarka/cezar",
-      bin: { cezar: "./dist/cli.js" },
-      exports: { ".": "./dist/index.js" },
-      files: ["dist", "web/dist", "scripts"],
-      scripts: {
-        build: "tsc -p tsconfig.json",
-        "test:unit": unit,
-        "test:package": "node --import tsx --test test/e2e/*.test.ts",
-      },
-    }),
-    "packages/cezar/tsconfig.json": `{\n  // comments, as tsc allows\n  "compilerOptions": { "outDir": "./dist" }\n}\n`,
-    "packages/cezar/scripts/release.sh": "\n",
-    "packages/cezar/test/e2e/update.test.ts": `import("../../dist/application-update/service.js");\n`,
-    "packages/cezar/test/e2e/package-cli.test.ts": `expect(files).toContain("web/dist/index.html");\n`,
-    "packages/cezar/test/unit/a.test.ts": "\n",
-    "packages/cezar/src/workflows/monitoring-turn.test.ts": "\n",
-  });
-  mkdirSync(join(root, "packages/cezar/dist"), { recursive: true });
-  return root;
-}
 
 describe("cezarion's shape", () => {
   it("finds the e2e group, a test/unit group not slow by default, and the three artifact candidates", async () => {

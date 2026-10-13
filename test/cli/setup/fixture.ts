@@ -87,6 +87,48 @@ export function squealShaped(files: Readonly<Record<string, string>> = {}): stri
   return root;
 }
 
+/**
+ * Cezarion at `c07b0bf`, reduced: the same scripts, manifest fields and test
+ * strings. `files` adds or replaces files, as `squealShaped` takes them.
+ */
+export function cezarionShaped(files: Readonly<Record<string, string>> = {}): string {
+  const root = scratch("squeal-setup-cezarion-");
+  const unit = "node --import tsx --test test/unit/*.test.ts";
+  initRepo(root, {
+    "package.json": json({
+      private: true,
+      workspaces: ["packages/*"],
+      scripts: {
+        test: "vitest run",
+        "test:e2e": "sh .ai/scripts/e2e.sh",
+        "test:package": "npm run test:package -w @wjarka/cezar",
+      },
+      devDependencies: { vitest: "^3.0.0" },
+    }),
+    ".gitignore": "node_modules/\ndist/\n",
+    "packages/cezar/package.json": json({
+      name: "@wjarka/cezar",
+      bin: { cezar: "./dist/cli.js" },
+      exports: { ".": "./dist/index.js" },
+      files: ["dist", "web/dist", "scripts"],
+      scripts: {
+        build: "tsc -p tsconfig.json",
+        "test:unit": unit,
+        "test:package": "node --import tsx --test test/e2e/*.test.ts",
+      },
+    }),
+    "packages/cezar/tsconfig.json": `{\n  // comments, as tsc allows\n  "compilerOptions": { "outDir": "./dist" }\n}\n`,
+    "packages/cezar/scripts/release.sh": "\n",
+    "packages/cezar/test/e2e/update.test.ts": `import("../../dist/application-update/service.js");\n`,
+    "packages/cezar/test/e2e/package-cli.test.ts": `expect(files).toContain("web/dist/index.html");\n`,
+    "packages/cezar/test/unit/a.test.ts": "\n",
+    "packages/cezar/src/workflows/monitoring-turn.test.ts": "\n",
+    ...files,
+  });
+  mkdirSync(join(root, "packages/cezar/dist"), { recursive: true });
+  return root;
+}
+
 /** An environment with a scratch HOME, the named harness CLIs on PATH and nothing else. */
 export function harnessEnv(
   harnesses: readonly ("claude" | "codex")[] = [],
