@@ -54,7 +54,9 @@ export function mayEdit(toolNames: readonly string[] | undefined): boolean {
  * boundary that `edited` adds one line saying the edit has no result, every
  * time, so silence never reads as no failures (task 001-112). Without that
  * line, a boundary that `edited` names the changed code files no test Squeal
- * runs reads, once each (task 001-292). The line counts against the cap.
+ * runs reads, once each (task 001-292). The line counts against the cap and
+ * is bounded first (`UNCOVERED_LINE_CAP_CHARS`), so the delta's room is never
+ * negative (review wave 13as, B3).
  */
 export async function deliver(
   context: HookContext,
