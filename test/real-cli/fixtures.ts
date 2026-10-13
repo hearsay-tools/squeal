@@ -6,9 +6,12 @@ import { type Machine, ok } from "./machine.js";
 /*
  * The two fixture shapes of spec 005's end-to-end tests, made runnable: the
  * files of `squealShaped` and `cezarionShaped` (row 005-12), each test file a
- * real Vitest test that keeps the strings setup reads as evidence. Built here
- * under /tmp, then copied by `tar` into the case as the throwaway user, with
- * `node_modules` linked to a copy of the e2e suite's cached Vitest install.
+ * real test that keeps the strings setup reads as evidence: Vitest's here, and
+ * in cezarion's shape node:test's under `test/` (`node --import tsx --test`,
+ * as cezarion runs them) with Vitest kept to `src/`. Built here under /tmp,
+ * then copied by `tar` into the case as the throwaway user, with
+ * `node_modules` linked to a copy of the e2e suite's cached install (the
+ * node:test one, which holds tsx beside Vitest, for cezarion).
  */
 
 export type Shape = "squeal" | "cezarion";
@@ -20,6 +23,20 @@ test("names its artifacts", () => {
   expect(named.length).toBe(${strings.length});
 });
 `;
+
+const nodeTest = (strings: readonly string[]) =>
+  `import assert from "node:assert/strict";
+import { test } from "node:test";
+const named: string[] = ${JSON.stringify(strings)};
+test("names its artifacts", () => {
+  assert.equal(named.length, ${strings.length});
+});
+`;
+
+const INSTALL: Readonly<Record<Shape, "vitest" | "node-test">> = {
+  squeal: "vitest",
+  cezarion: "node-test",
+};
 
 const BUILD: Readonly<Record<Shape, () => string>> = {
   squeal: () =>
@@ -33,11 +50,12 @@ const BUILD: Readonly<Record<Shape, () => string>> = {
     }),
   cezarion: () =>
     cezarionShaped({
-      "packages/cezar/test/e2e/update.test.ts": passing([
+      "vitest.config.ts": `export default { test: { include: ["packages/*/src/**/*.test.ts"] } };\n`,
+      "packages/cezar/test/e2e/update.test.ts": nodeTest([
         "../../dist/application-update/service.js",
       ]),
-      "packages/cezar/test/e2e/package-cli.test.ts": passing(["web/dist/index.html"]),
-      "packages/cezar/test/unit/a.test.ts": passing([]),
+      "packages/cezar/test/e2e/package-cli.test.ts": nodeTest(["web/dist/index.html"]),
+      "packages/cezar/test/unit/a.test.ts": nodeTest([]),
       "packages/cezar/src/workflows/monitoring-turn.test.ts": passing([]),
     }),
 };
@@ -45,35 +63,39 @@ const BUILD: Readonly<Record<Shape, () => string>> = {
 const tarOf = (dir: string, ...paths: string[]) =>
   execFileSync("tar", ["-c", "-C", dir, ...paths], { maxBuffer: 1 << 30 });
 
-const deps = new WeakMap<Machine, Promise<string>>();
+const deps = new WeakMap<Machine, Map<string, Promise<string>>>();
 
-/** The case's copy of the cached Vitest install, made once per machine. */
-function vitestOf(m: Machine): Promise<string> {
-  let made = deps.get(m);
+/** The case's copy of the cached install of `kind`, made once per machine. */
+function depsOf(m: Machine, kind: "vitest" | "node-test"): Promise<string> {
+  const mine = deps.get(m) ?? new Map<string, Promise<string>>();
+  deps.set(m, mine);
+  let made = mine.get(kind);
   if (made === undefined) {
     made = (async () => {
-      const install = await fixtureInstall("vitest");
-      if (!install.ok) throw new Error(`no Vitest for the fixtures: ${install.reason}`);
-      const dir = `${m.root}/deps`;
+      const install = await fixtureInstall(kind);
+      if (!install.ok) throw new Error(`no ${kind} install for the fixtures: ${install.reason}`);
+      const dir = `${m.root}/deps/${kind}`;
       ok(
         await m.run("tar", ["-x", "-C", dir], {
           input: tarOf(install.dir, "node_modules"),
           cwd: dir,
           timeoutMs: 300_000,
         }),
-        "copy the Vitest install",
+        `copy the ${kind} install`,
       );
       return `${dir}/node_modules`;
     })();
-    deps.set(m, made);
+    mine.set(kind, made);
   }
   return made;
 }
 
+let made = 0;
+
 /** A fixture repository of `shape` in the case, owned by the throwaway user; its path. */
 export async function fixture(m: Machine, shape: Shape): Promise<string> {
   const local = BUILD[shape]();
-  const dest = `${m.root}/fx/${shape}`;
+  const dest = `${m.root}/fx/${shape}-${++made}`;
   try {
     ok(
       await m.run("tar", ["-x", "-C", dest], { input: tarOf(local, "."), cwd: dest }),
@@ -82,7 +104,10 @@ export async function fixture(m: Machine, shape: Shape): Promise<string> {
   } finally {
     cleanupFixtures();
   }
-  ok(await m.run("ln", ["-s", await vitestOf(m), "node_modules"], { cwd: dest }), "link Vitest");
+  ok(
+    await m.run("ln", ["-s", await depsOf(m, INSTALL[shape]), "node_modules"], { cwd: dest }),
+    "link Vitest",
+  );
   return dest;
 }
 
