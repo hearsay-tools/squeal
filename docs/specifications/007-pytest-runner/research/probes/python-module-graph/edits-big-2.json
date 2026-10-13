@@ -1,0 +1,4 @@
+[
+ {"name": "E7 module now raises at import", "path": "src/big/a2/b24/m496.py", "op": "append", "text": "\nraise RuntimeError('boom')\n"},
+ {"name": "E8 module-level constant rebinding a name importers use", "path": "src/big/a2/b24/m496.py", "op": "append", "text": "\ndef f():\n    return 'changed'\n"}
+]
