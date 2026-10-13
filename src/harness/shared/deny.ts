@@ -8,6 +8,7 @@ import {
 import { resumeTurn } from "../../core/delivery/turn.js";
 import { isRecord } from "../../core/fs/index.js";
 import { testFileId } from "../../core/keys/index.js";
+import { readOmittedTestFiles } from "../../core/scheduler/omitted-test-files.js";
 import { testFileKeyOf } from "../../core/state/index.js";
 import type { DeltaKind, EpochMs, KnownState, Policy } from "../../core/types/index.js";
 import type { HookContext, HookLocation } from "./context.js";
@@ -101,8 +102,9 @@ function rootScripts(root: string): Readonly<Record<string, string>> {
  * write transaction, as 001-305's Stop wait decides, so two calls never both
  * deny. It runs when the consumer is not registered or was denied before,
  * no daemon is validating, the worktree is not listed, the runner part of
- * the revision is pending, the command does not resolve completely, or one
- * file is pending, stale, unknown or without checks.
+ * the revision is pending, the command does not resolve completely (the
+ * listing left out a file the command runs, task 005-26), or one file is
+ * pending, stale, unknown or without checks.
  */
 export function denyCurrentTestCommand(
   context: HookContext,
@@ -124,6 +126,7 @@ export function denyCurrentTestCommand(
       keys.map((k) => k.testFile),
       context.root,
       names,
+      readOmittedTestFiles(store, consumer.worktreeId),
     );
     if (files === null) return null;
     const rows = new Map(keys.map((row) => [testFileId(row.testFile), row]));
