@@ -110,6 +110,19 @@ describe("squeal init with setup choices", () => {
     expect(existsSync(join(root, ".claude", "settings.json"))).toBe(false);
   });
 
+  it("refuses to reword a compound gate and writes nothing (review 005-13 B2)", async () => {
+    const compound = "Run `npm run lint && npx vitest run && npm run build`.\n";
+    const root = squealShaped({ "CLAUDE.md": compound });
+    const { code, stdout, stderr } = await init(root, ["--gate", "CLAUDE.md:1=reword"]);
+    expect(code).toBe(1);
+    expect(stdout).toBe("");
+    expect(stderr).toBe(
+      "squeal init: CLAUDE.md:1: runs more than the test command: `npm run lint && npx vitest run && npm run build`; reword it by hand; nothing changed\n",
+    );
+    expect(read(root, "CLAUDE.md")).toBe(compound);
+    expect(existsSync(join(root, ".claude", "settings.json"))).toBe(false);
+  });
+
   it("refuses malformed flags as usage errors", async () => {
     const root = squealShaped();
     for (const args of [
