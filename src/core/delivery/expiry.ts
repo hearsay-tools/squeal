@@ -25,6 +25,7 @@ import { tellLiveness, tellRevision } from "./liveness.js";
 import { park } from "./registered.js";
 import { slot } from "./slots.js";
 import { writeTurn } from "./turn.js";
+import { recordUncoveredTold, uncoveredTold } from "./uncovered.js";
 
 export interface ExpiryOptions {
   /**
@@ -137,7 +138,10 @@ export function dropGoneHarnesses(
  * stamps the worktree's last departure. Call inside a transaction.
  */
 export function drop(store: Store, consumer: Consumer, at: EpochMs): void {
-  park(store, consumer, at, { said: editsSaid(store, consumer) });
+  park(store, consumer, at, {
+    said: editsSaid(store, consumer),
+    uncovered: uncoveredTold(store, consumer),
+  });
   store.consumers.unregister(consumer);
   forget(store, consumer);
   store.meta.set(departedMetaKey(consumer.worktreeId), String(at));
@@ -159,8 +163,9 @@ export function lastDeparture(store: Store, worktreeId: WorktreeId): EpochMs | n
 }
 
 /**
- * Drops what an unregistered consumer was told, its turn state, its harness
- * process, its version and its edit state, beside its view.
+ * Drops what an unregistered consumer was told, the paths no test reads
+ * among it, its turn state, its harness process, its version and its edit
+ * state, beside its view.
  */
 function forget(store: Store, consumer: Consumer): void {
   tellLiveness(store, consumer, null);
@@ -169,6 +174,7 @@ function forget(store: Store, consumer: Consumer): void {
   recordHarness(store, consumer, null);
   recordVersion(store, consumer, null);
   forgetEdits(store, consumer);
+  recordUncoveredTold(store, consumer, []);
 }
 
 /** `ConsumerRepo.idleSince` for one record. */
