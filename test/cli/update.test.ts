@@ -39,7 +39,8 @@ function squeal(m: Machine) {
   return { version: (JSON.parse(r.stdout) as { version: string }).version, stderr: r.stderr };
 }
 
-describe("squeal update", () => {
+// Each test runs install.sh first, about ten processes; 8.4 s at a load of 155 on 24 cores.
+describe("squeal update", { timeout: 30_000 }, () => {
   it("brings two harness versions to one, and the launcher follows without a re-copy", async () => {
     const m = installed("0.1.131");
     // Codex upgrades at a session start by itself; Claude Code stays behind.
