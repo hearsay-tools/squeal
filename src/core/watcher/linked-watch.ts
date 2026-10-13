@@ -94,8 +94,9 @@ export class LinkedWatches {
       queued: false,
     };
     try {
-      target.excluded = await linkedExclusions(this.root, this.linksOf(path), path);
-      target.sub = await this.subscribe(path, target);
+      const excluded = await linkedExclusions(this.root, this.linksOf(path), path);
+      target.sub = await this.subscribe(path, target, excluded);
+      target.excluded = excluded;
     } catch (error) {
       this.listener.onError(
         new Error(`squeal: cannot watch the linked directory ${path}: ${(error as Error).message}`),
@@ -104,9 +105,13 @@ export class LinkedWatches {
     return target;
   }
 
-  private subscribe(path: AbsolutePath, target: Target): Promise<WatchSubscription> {
+  private subscribe(
+    path: AbsolutePath,
+    target: Target,
+    excluded: AbsolutePath[],
+  ): Promise<WatchSubscription> {
     return this.backend.watch(
-      { root: path, excluded: target.excluded, extraFiles: [] },
+      { root: path, excluded, extraFiles: [] },
       {
         onHints: (hints) => {
           this.listener.onHints(hints.flatMap((hint) => this.mapped(path, hint)));
@@ -167,8 +172,10 @@ export class LinkedWatches {
     if (sameList(target.excluded, excluded) || !this.links.has(path)) return;
     const freed = target.excluded.filter((dir) => !excluded.includes(dir));
     const old = target.sub;
+    // Installed only once the replacement holds: a rejected one keeps the old
+    // watch and its exclusions, so the next step tries it again (task 001-304).
+    target.sub = await this.subscribe(path, target, excluded);
     target.excluded = excluded;
-    target.sub = await this.subscribe(path, target);
     await old?.close();
     if (freed.length > 0) {
       this.listener.onHints(
