@@ -52,6 +52,7 @@ export interface Machine {
   readonly home: string;
   readonly claudeConfig: string;
   readonly codexHome: string;
+  /** The hub's Git URL, as `SQUEAL_MARKETPLACE` names it to `install.sh`. */
   readonly hub: string;
   readonly launcher: string;
   readonly env: Readonly<Record<string, string>>;
@@ -95,6 +96,51 @@ for h in "$@"; do ln -s "${CLI_BIN}/$h" "bin/$h"; done
 printf '[init]\\n\\tdefaultBranch = main\\n[advice]\\n\\tdetachedHead = false\\n' > home/.gitconfig
 `;
 
+/**
+ * The hub's server: `git http-backend` behind HTTP on 127.0.0.1, serving the
+ * case root. Neither CLI takes a `file://` marketplace ("expected owner/repo,
+ * a git URL, or a local marketplace path"); Codex upgrades only a Git
+ * marketplace, and Claude Code clones it shallow, which dumb HTTP refuses.
+ * `node -e` with the root and port: run as the throwaway user, until the
+ * case's teardown kills what names its root.
+ */
+const HUB_SERVER = `const http = require("node:http");
+const { spawn } = require("node:child_process");
+const [root, port] = process.argv.slice(1);
+http.createServer((req, res) => {
+  const url = new URL(req.url, "http://127.0.0.1");
+  const h = req.headers;
+  const cgi = spawn("git", ["http-backend"], { env: { ...process.env,
+    GIT_PROJECT_ROOT: root, GIT_HTTP_EXPORT_ALL: "1", PATH_INFO: decodeURIComponent(url.pathname),
+    QUERY_STRING: url.search.slice(1), REQUEST_METHOD: req.method, REMOTE_ADDR: "127.0.0.1",
+    CONTENT_TYPE: h["content-type"] ?? "", GIT_PROTOCOL: h["git-protocol"] ?? "",
+    HTTP_CONTENT_ENCODING: h["content-encoding"] ?? "",
+    ...(h["content-length"] ? { CONTENT_LENGTH: h["content-length"] } : {}) } });
+  req.pipe(cgi.stdin);
+  let head = Buffer.alloc(0);
+  let body = false;
+  cgi.stdout.on("data", (d) => {
+    if (body) return void res.write(d);
+    head = Buffer.concat([head, d]);
+    const crlf = head.indexOf("\\r\\n\\r\\n");
+    const lf = head.indexOf("\\n\\n");
+    const at = crlf >= 0 && (lf < 0 || crlf < lf) ? crlf : lf;
+    if (at < 0) return;
+    for (const line of head.subarray(0, at).toString().split(/\\r?\\n/)) {
+      const i = line.indexOf(":");
+      const k = line.slice(0, i).trim();
+      const v = line.slice(i + 1).trim();
+      if (k.toLowerCase() === "status") res.statusCode = parseInt(v, 10);
+      else res.setHeader(k, v);
+    }
+    body = true;
+    res.write(head.subarray(at + (at === crlf ? 4 : 2)));
+  });
+  cgi.stdout.on("end", () => res.end());
+  cgi.on("error", () => { res.statusCode = 500; res.end(); });
+}).listen(Number(port), "127.0.0.1");
+`;
+
 /** Rewrites the tool repository's plugins to `$2` from `$1`: manifests and the bundles' built-in version. */
 const SET_VERSION = `set -eu
 was=$(printf %s "$1" | sed 's/\\./\\\\./g')
@@ -111,6 +157,8 @@ export async function machine(
   const claudeConfig = `${home}/.claude`;
   const codexHome = `${root}/codex`;
   const hub = `${root}/hub`;
+  const port = 20_000 + (randomBytes(2).readUInt16BE() % 30_000);
+  const hubUrl = `http://127.0.0.1:${port}/hub/.git`;
   const tools = `${root}/tools`;
   const launcher = `${home}/.local/bin/squeal`;
   const env: Record<string, string> = {
@@ -126,7 +174,7 @@ export async function machine(
     GIT_COMMITTER_NAME: "real-cli",
     GIT_COMMITTER_EMAIL: "real-cli@invalid",
     DISABLE_AUTOUPDATER: "1",
-    SQUEAL_MARKETPLACE: hub,
+    SQUEAL_MARKETPLACE: hubUrl,
     LANG: "C.UTF-8",
   };
   const path = [`${home}/.local/bin`, `${root}/bin`];
@@ -176,7 +224,7 @@ export async function machine(
     home,
     claudeConfig,
     codexHome,
-    hub,
+    hub: hubUrl,
     launcher,
     env,
     run,
@@ -249,6 +297,16 @@ for (const pid of fs.readdirSync("/proc").filter((p) => /^\\d+$/.test(p))) {
     ),
     "build the tool repository",
   );
+  ok(
+    await sh('nohup node -e "$1" "$2" "$3" >/dev/null 2>&1 &', [HUB_SERVER, root, String(port)]),
+    "start the hub's server",
+  );
   await m.publish(BASE_VERSION);
+  for (let tries = 0; ; tries++) {
+    const r = await run("git", ["ls-remote", hubUrl], { timeoutMs: 10_000 });
+    if (r.status === 0) break;
+    if (tries === 20) ok(r, `reach the hub at ${hubUrl}`);
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
   return m;
 }
