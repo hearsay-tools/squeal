@@ -98,67 +98,76 @@ const CASES = (["squeal", "cezarion"] as const).flatMap((shape) =>
 describe.skipIf(!MODELS).each(CASES)(
   "the setup skill, $harness on the $shape shape",
   ({ shape, harness }) => {
-    it("applies the answers the prompt gives, shows the diff, and commits nothing", async () => {
-      const m = await machine(["claude", "codex"]);
-      current = m;
-      const preserve = providerVariables(harness, process.env, REAL_CODEX_CONFIG);
-      if (harness === "codex")
-        ok(
-          await m.run("tee", [`${m.codexHome}/config.toml`], {
-            input: codexConfig(REAL_CODEX_CONFIG, "gpt-6-luna"),
-          }),
-          "write the Codex provider config",
+    it(
+      "applies the answers the prompt gives, shows the diff, and commits nothing",
+      async () => {
+        const m = await machine(["claude", "codex"]);
+        current = m;
+        const preserve = providerVariables(harness, process.env, REAL_CODEX_CONFIG);
+        if (harness === "codex")
+          ok(
+            await m.run("tee", [`${m.codexHome}/config.toml`], {
+              input: codexConfig(REAL_CODEX_CONFIG, "gpt-6-luna"),
+            }),
+            "write the Codex provider config",
+          );
+        ok(await m.install(), "install.sh");
+        const fx = await fixture(m, shape);
+        const head = (await m.sh("git rev-parse HEAD", [], { cwd: fx })).stdout.trim();
+
+        const { load, cpus } = await calm(30 * 60_000);
+        if (load >= cpus)
+          throw new Error(`load ${load} stayed at or above ${cpus} CPUs: not started`);
+        const prompt = `${invocation[harness]}\n\nMy answers to every setup question, so do not ask them: ${ANSWERS[shape]}`;
+        const [cmd, args] = session(harness, prompt);
+        const started = new Date().toISOString();
+        const raw = await m.run(cmd, args, { cwd: fx, preserve, timeoutMs: 15 * 60_000 });
+        // The Codex provider's URL is not in this environment: redact it too before anything prints.
+        const r = {
+          ...raw,
+          stdout: redact(raw.stdout, SECRETS),
+          stderr: redact(raw.stderr, SECRETS),
+        };
+        mkdirSync(OUT, { recursive: true });
+        writeFileSync(
+          join(OUT, `${shape}-${harness}.jsonl`),
+          `${r.stdout}\n--- stderr\n${r.stderr}`,
         );
-      ok(await m.install(), "install.sh");
-      const fx = await fixture(m, shape);
-      const head = (await m.sh("git rev-parse HEAD", [], { cwd: fx })).stdout.trim();
+        console.log(
+          `${shape} ${harness}: started ${started} at load ${load.toFixed(1)} on ${cpus} CPUs, exit ${r.status}, ${Math.round(r.ms / 1000)} s`,
+        );
+        expect(r.status, shown(r)).toBe(0);
 
-      const { load, cpus } = await calm(30 * 60_000);
-      if (load >= cpus)
-        throw new Error(`load ${load} stayed at or above ${cpus} CPUs: not started`);
-      const prompt = `${invocation[harness]}\n\nMy answers to every setup question, so do not ask them: ${ANSWERS[shape]}`;
-      const [cmd, args] = session(harness, prompt);
-      const started = new Date().toISOString();
-      const raw = await m.run(cmd, args, { cwd: fx, preserve, timeoutMs: 15 * 60_000 });
-      // The Codex provider's URL is not in this environment: redact it too before anything prints.
-      const r = {
-        ...raw,
-        stdout: redact(raw.stdout, SECRETS),
-        stderr: redact(raw.stderr, SECRETS),
-      };
-      mkdirSync(OUT, { recursive: true });
-      writeFileSync(join(OUT, `${shape}-${harness}.jsonl`), `${r.stdout}\n--- stderr\n${r.stderr}`);
-      console.log(
-        `${shape} ${harness}: started ${started} at load ${load.toFixed(1)} on ${cpus} CPUs, exit ${r.status}, ${Math.round(r.ms / 1000)} s`,
-      );
-      expect(r.status, shown(r)).toBe(0);
+        const e = EXPECTED[shape];
+        const block = (await m.read(`${fx}/${e.block}`)) ?? "";
+        expect(block, shown(r)).toMatch(
+          /<!-- squeal:begin v\d+ [^\n]*-->[\s\S]*<!-- squeal:end -->/,
+        );
+        if (e.gate !== null) expect(block).toContain(e.gate);
+        const config = JSON.parse((await m.read(`${fx}/squeal.config.json`)) ?? "{}") as {
+          slow?: { include?: string[] };
+          inputs?: Record<string, string[]>;
+        };
+        expect(config.slow?.include).toContain(e.slow);
+        expect(
+          Object.values(config.inputs ?? {})
+            .flat()
+            .some((g) => g.startsWith(e.input)),
+        ).toBe(true);
+        const settings = JSON.parse((await m.read(`${fx}/.claude/settings.json`)) ?? "{}") as {
+          enabledPlugins?: Record<string, boolean>;
+        };
+        expect(settings.enabledPlugins?.["squeal@hearsay"]).toBe(true);
+        const plan = JSON.parse(
+          ok(await m.squeal(["setup", "--plan", "--json"], fx), "setup --plan").stdout,
+        ) as { codexTrust: { state: string } };
+        expect(plan.codexTrust.state).toBe("trusted");
 
-      const e = EXPECTED[shape];
-      const block = (await m.read(`${fx}/${e.block}`)) ?? "";
-      expect(block, shown(r)).toMatch(/<!-- squeal:begin v\d+ [^\n]*-->[\s\S]*<!-- squeal:end -->/);
-      if (e.gate !== null) expect(block).toContain(e.gate);
-      const config = JSON.parse((await m.read(`${fx}/squeal.config.json`)) ?? "{}") as {
-        slow?: { include?: string[] };
-        inputs?: Record<string, string[]>;
-      };
-      expect(config.slow?.include).toContain(e.slow);
-      expect(
-        Object.values(config.inputs ?? {})
-          .flat()
-          .some((g) => g.startsWith(e.input)),
-      ).toBe(true);
-      const settings = JSON.parse((await m.read(`${fx}/.claude/settings.json`)) ?? "{}") as {
-        enabledPlugins?: Record<string, boolean>;
-      };
-      expect(settings.enabledPlugins?.["squeal@hearsay"]).toBe(true);
-      const plan = JSON.parse(
-        ok(await m.squeal(["setup", "--plan", "--json"], fx), "setup --plan").stdout,
-      ) as { codexTrust: { state: string } };
-      expect(plan.codexTrust.state).toBe("trusted");
-
-      // Never commits or stages.
-      expect((await m.sh("git rev-parse HEAD", [], { cwd: fx })).stdout.trim()).toBe(head);
-      expect((await m.sh("git diff --cached --quiet", [], { cwd: fx })).status).toBe(0);
-    });
+        // Never commits or stages.
+        expect((await m.sh("git rev-parse HEAD", [], { cwd: fx })).stdout.trim()).toBe(head);
+        expect((await m.sh("git diff --cached --quiet", [], { cwd: fx })).status).toBe(0);
+      },
+      50 * 60_000,
+    );
   },
 );
