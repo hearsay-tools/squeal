@@ -1,6 +1,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { chmodSync, mkdtempSync, rmSync } from "node:fs";
 import { createServer, type Server } from "node:net";
+import { dirname } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { lockFreed } from "../../src/cli/stop.js";
@@ -172,6 +173,52 @@ describe("squeal stop with a lock it cannot probe (review 001-344, B1)", () => {
       expect(await lockFreed(r.root, null, 300)).toMatchObject({ state: "unchecked" });
     } finally {
       lock?.release();
+    }
+  });
+});
+
+describe("squeal stop with a lock directory it cannot search (review 001-347, B1)", () => {
+  /*
+   * `existsSync` is false for a path under a directory without search
+   * permission as well as for a missing one: only a lookup that says the
+   * path is missing proves the lock gone.
+   */
+  it("with the holder's process alive, reports the lock unchecked at its bound, never free", async () => {
+    const r = squealRepo();
+    r.daemon("none");
+    const lock = acquireDaemonLock(lockFile(r));
+    expect(lock).not.toBeNull();
+    chmodSync(dirname(lockFile(r)), 0o000);
+    try {
+      const check = await lockFreed(r.root, { pid: process.pid, startedAt: 7 }, 200);
+      expect(check).toMatchObject({ state: "unchecked", error: expect.any(String) });
+      expect(await lockFreed(r.root, null, 200)).toMatchObject({ state: "unchecked" });
+    } finally {
+      chmodSync(dirname(lockFile(r)), 0o700);
+      lock?.release();
+    }
+  });
+
+  it("does not say stopped until the daemon's process is gone", async () => {
+    const r = squealRepo();
+    r.daemon("none");
+    const daemon = spawn(process.execPath, ["-e", "setTimeout(() => {}, 60_000)"]);
+    const exited = new Promise((resolve) => daemon.once("exit", resolve));
+    const lock = acquireDaemonLock(lockFile(r));
+    expect(lock).not.toBeNull();
+    try {
+      await fakeDaemon(socketPathFor(r.worktreeId as WorktreeId), daemon.pid ?? 0);
+      chmodSync(dirname(lockFile(r)), 0o000);
+      const killed = new Promise((resolve) => setTimeout(resolve, 600)).then(() => daemon.kill());
+      const stopped = await stop(r.root);
+      await killed;
+      expect(stopped).toMatchObject({ code: 0, stdout: `Squeal daemon stopped for ${r.root}\n` });
+      expect(stopped.ms).toBeGreaterThanOrEqual(550);
+    } finally {
+      chmodSync(dirname(lockFile(r)), 0o700);
+      lock?.release();
+      daemon.kill("SIGKILL");
+      await exited;
     }
   });
 });

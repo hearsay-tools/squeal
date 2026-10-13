@@ -1,8 +1,7 @@
-import { existsSync } from "node:fs";
 import { setTimeout as sleep } from "node:timers/promises";
 import { recordedDaemon } from "../core/daemon/ensure.js";
 import { acquireDaemonLock } from "../core/daemon/lock.js";
-import { resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
+import { lstatOrNull, resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
 import { lockFileFor } from "../core/store/index.js";
 import type { AbsolutePath } from "../core/types/index.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
@@ -78,9 +77,10 @@ export type LockCheck =
  * start time, which registers only once it holds the lock: a daemon spawned
  * meanwhile may take the lock the moment it comes free, and its pid may name
  * another process by then. Also free when no common dir or lock file is left
- * to hold. A probe that throws proves nothing (review 001-344, B1): the
- * process and the record still may, and at the bound the lock is
- * `unchecked`.
+ * to hold, which only a lookup that finds the path missing proves: `existsSync`
+ * is false under a directory it cannot search too (review 001-347, B1). A
+ * probe or lookup that throws proves nothing (review 001-344, B1): the process
+ * and the record still may, and at the bound the lock is `unchecked`.
  */
 export async function lockFreed(
   root: AbsolutePath,
@@ -92,7 +92,7 @@ export async function lockFreed(
   const path = lockFileFor(commonDir, worktreeIdFor(root));
   const deadline = Date.now() + ms;
   for (;;) {
-    if (!existsSync(path) || (daemon !== null && gone(root, daemon))) return { state: "free" };
+    if (missing(path) || (daemon !== null && gone(root, daemon))) return { state: "free" };
     const probe = probeLock(path);
     if (probe.state === "free" || Date.now() > deadline) return probe;
     await sleep(50);
@@ -104,6 +104,15 @@ function gone(root: AbsolutePath, daemon: { readonly pid: number; readonly start
   if (processGone(daemon.pid)) return true;
   const record = recordedDaemon(root);
   return record !== null && record.startedAt !== daemon.startedAt;
+}
+
+/** A lookup of `path` says it does not exist; one that fails otherwise proves nothing. */
+function missing(path: AbsolutePath): boolean {
+  try {
+    return lstatOrNull(path) === null;
+  } catch {
+    return false;
+  }
 }
 
 /** The lock at `path`, taken and released at once. */
