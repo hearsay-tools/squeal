@@ -53,7 +53,7 @@ export function formatPlan(plan: SetupPlan): string {
     lines.push(`  ${gate.id}: ${gate.text.trim()}`);
     lines.push(
       gate.proposed === null
-        ? "    inside a code block: reword it by hand"
+        ? `    ${gate.reason}: reword it by hand`
         : `    reworded: ${gate.proposed.trim()}`,
     );
   }
