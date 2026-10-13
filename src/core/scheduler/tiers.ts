@@ -258,8 +258,15 @@ function startable(ledger: Ledger, p: TierFile): TierFile[] {
   return [{ ...p, waits }];
 }
 
-/** Runs a tier. Never rejects: a runner that throws is a crash (D12). */
-export async function executeTier(context: SchedulerContext, tier: Tier): Promise<RunReport> {
+/**
+ * Runs a tier; with `observeIgnored`, for a warm-up (task 001-307). Never
+ * rejects: a runner that throws is a crash (D12).
+ */
+export async function executeTier(
+  context: SchedulerContext,
+  tier: Tier,
+  observeIgnored = false,
+): Promise<RunReport> {
   const started = context.now();
   try {
     return await context.runner.run(
@@ -270,6 +277,7 @@ export async function executeTier(context: SchedulerContext, tier: Tier): Promis
         timeoutMs: context.policy.runner.timeoutMs,
         ...(tier.cancel === null ? {} : { signal: tier.cancel.signal }),
         lane: tier.lane,
+        ...(observeIgnored ? { observeIgnored } : {}),
       },
     );
   } catch (error) {

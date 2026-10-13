@@ -252,6 +252,7 @@ export const WORKTREE_META_ROWS = {
   baselineFindings: { prefix: "state.baseline-findings.", owner: "state/baseline" },
   stopWait: { prefix: "stop-wait:", owner: "slow/stop-wait" },
   testCommandDenied: { prefix: "test-command-denied:", owner: "delivery/test-command-denied" },
+  ignoredReads: { prefix: "ignored-reads:", owner: "scheduler/ignored-reads" },
 } as const;
 
 export type WorktreeMetaRow = keyof typeof WORKTREE_META_ROWS;

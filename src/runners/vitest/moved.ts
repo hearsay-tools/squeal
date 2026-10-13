@@ -54,8 +54,8 @@ function reaches(
 }
 
 /**
- * `report` without `dropped`: their results, errors, durations and observed
- * inputs go, and `failure` says which files moved, so the scheduler records
+ * `report` without `dropped`: their results, errors, durations, observed
+ * inputs and reads go, and `failure` says which files moved, so the scheduler records
  * them `unknown` with that reason (D5) instead of storing what they ran.
  */
 export function withoutFiles(
@@ -87,7 +87,7 @@ function dropFiles(report: RunReport, dropped: readonly TestFileRef[], reason: s
   if (dropped.length === 0) return report;
   const gone = new Set(dropped.map(refKey));
   const kept = (ref: TestFileRef) => !gone.has(refKey(ref));
-  const { fileDurations, observed } = report;
+  const { fileDurations, observed, reads } = report;
   return {
     ...report,
     completedFiles: report.completedFiles.filter(kept),
@@ -98,5 +98,6 @@ function dropFiles(report: RunReport, dropped: readonly TestFileRef[], reason: s
     failure: report.failure === null ? reason : `${report.failure}\n${reason}`,
     ...(fileDurations ? { fileDurations: fileDurations.filter((d) => kept(d.testFile)) } : {}),
     ...(observed ? { observed: observed.filter((o) => kept(o.testFile)) } : {}),
+    ...(reads ? { reads: reads.filter((o) => kept(o.testFile)) } : {}),
   };
 }

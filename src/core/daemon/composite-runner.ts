@@ -165,6 +165,7 @@ function merge(parts: readonly Part[]): RunReport {
   );
   const timed = reports.some((report) => report.fileDurations !== undefined);
   const observed = reports.some((report) => report.observed !== undefined);
+  const read = reports.some((report) => report.reads !== undefined);
   const environment = reports.flatMap((report) => report.environmentObserved ?? []);
   return {
     end,
@@ -175,6 +176,7 @@ function merge(parts: readonly Part[]): RunReport {
     failure: failures.length === 0 ? null : failures.join("; "),
     ...(timed ? { fileDurations: reports.flatMap((report) => report.fileDurations ?? []) } : {}),
     ...(observed ? { observed: reports.flatMap((report) => report.observed ?? []) } : {}),
+    ...(read ? { reads: reports.flatMap((report) => report.reads ?? []) } : {}),
     ...(environment.length > 0 ? { environmentObserved: environment } : {}),
   };
 }

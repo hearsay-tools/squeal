@@ -6,6 +6,7 @@ import {
   type DaemonResponse,
   daemonIncarnation,
   type EpochMs,
+  type FullSuiteRequest,
   PAYLOAD_SCHEMA_VERSION,
   type RevisionNumber,
   type RunAllResponse,
@@ -37,7 +38,7 @@ export interface HandlerContext {
    * Hands a `run --all` to the scheduler once it has started. Never awaited
    * by a handler: the scheduler may be busy with a batch or a runner call.
    */
-  readonly requestFullSuite: (force: boolean) => Promise<CheckpointRecord>;
+  readonly requestFullSuite: (request: FullSuiteRequest) => Promise<CheckpointRecord>;
   /**
    * Hands a `run --slow` to the scheduler (spec 004 D2), like
    * `requestFullSuite`. Absent: this daemon has no slow tier.
@@ -141,7 +142,11 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
         const requestId = randomUUID();
         const state: RunAllState = { checkpoint: null, error: null };
         remember(requests, requestId, state);
-        context.requestFullSuite(request.force === true).then(
+        const full = {
+          force: request.force === true,
+          observeIgnored: request.observeIgnored === true,
+        };
+        context.requestFullSuite(full).then(
           (checkpoint) => {
             state.checkpoint = checkpoint;
           },

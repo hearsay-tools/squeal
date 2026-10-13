@@ -1,7 +1,12 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
-import type { CheckpointRecord, DaemonPhase, SyncAnswer } from "../types/index.js";
+import type {
+  CheckpointRecord,
+  DaemonPhase,
+  FullSuiteRequest,
+  SyncAnswer,
+} from "../types/index.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
 import { createHandlers } from "./handlers.js";
 import type { SlowSuiteRequested } from "./run-slow.js";
@@ -19,7 +24,7 @@ export interface DeskEvents {
   readonly onActivity: () => void;
   /** A hook's nudge (task 001-281); absent: a nudge is only activity. */
   readonly onNudge?: () => void;
-  readonly requestFullSuite: (force: boolean) => Promise<CheckpointRecord>;
+  readonly requestFullSuite: (request: FullSuiteRequest) => Promise<CheckpointRecord>;
   readonly requestSlowSuite: () => Promise<SlowSuiteRequested>;
   /** A `status --wait` reconciliation pass (lessons, defect 30). */
   readonly requestSync: () => Promise<SyncAnswer>;
@@ -172,7 +177,7 @@ async function inWorker(
           events.onNudge?.();
           return;
         case "run-all":
-          events.requestFullSuite(message.force).then(
+          events.requestFullSuite(message.request).then(
             (checkpoint) =>
               post({ type: "run-all-result", id: message.id, checkpoint, error: null }),
             (error: unknown) =>

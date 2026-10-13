@@ -50,6 +50,7 @@ import {
   type Tier,
   unstableInputs,
 } from "./tiers.js";
+import { WarmUp } from "./warm-up.js";
 
 /** A tier in flight: its lane is busy until `done`, which never rejects. */
 interface InFlight {
@@ -80,6 +81,8 @@ class TierScheduler implements Scheduler {
   #draining: Promise<void> | null = null;
   /** The tiers in flight by lane, at most one per lane; a backlog tier carries its `cancel`. */
   readonly #inFlight = new Map<string, InFlight>();
+  /** A `run --all` with `observeIgnored` (task 001-307). */
+  readonly #warmUp = new WarmUp();
   /** Something the pump waits for happened: a tier ended, runner work drained, a batch or request came. */
   #woken = false;
   #wake: (() => void) | null = null;
@@ -259,6 +262,12 @@ class TierScheduler implements Scheduler {
    */
   async requestFullSuite(request: FullSuiteRequest = {}): Promise<CheckpointRecord> {
     const force = request.force === true;
+    const queue = (ledger: Ledger) => {
+      const record = queueFullSuite(ledger, force);
+      if (request.observeIgnored === true)
+        this.#warmUp.start(this.#started().context, ledger, record);
+      return record;
+    };
     // An install the next reconciliation pass would find ends the wait first; still waiting,
     // nothing can be listed or keyed and the checkpoint is abandoned at once (review wave 11, B1).
     if (this.#awaitingInstall) await this.handleBatch({ trigger: "interval", paths: [] });
@@ -268,13 +277,13 @@ class TierScheduler implements Scheduler {
         const { ledger } = this.#started();
         if (this.#awaitingInstall || this.#reinstalled) return abandonFullSuite(ledger);
         if (ledger.broken || this.#runnerWork.size > 0 || this.#runnerWork.refining) return null;
-        return queueFullSuite(ledger, force);
+        return queue(ledger);
       })) ??
       (await this.#runnerWork.afterTier(async () => {
         const { context, ledger } = this.#started();
         if (this.#awaitingInstall || this.#reinstalled) return abandonFullSuite(ledger);
         await retryRunner(context, ledger);
-        return queueFullSuite(ledger, force);
+        return queue(ledger);
       }));
     this.#pump();
     return record;
@@ -477,7 +486,8 @@ class TierScheduler implements Scheduler {
     const done = (async () => {
       let recorded = false;
       try {
-        const ran = await executeTier(context, tier);
+        const ran = await executeTier(context, tier, this.#warmUp.observes(tier));
+        const ignored = await this.#warmUp.read(context, tier, ran);
         // The completion barrier (task 001-168): a touch since selection withholds the run.
         const inputs = await unstableInputs(context, tier);
         const installMoved = this.#reinstalled || (await this.#install.stamp()) !== installStamp;
@@ -494,6 +504,7 @@ class TierScheduler implements Scheduler {
           const report = withheldForTouch(ran, touched);
           // Spec 004 D8: a slow run's artifact and activity go with its results (review wave 2, B1, B2).
           return context.store.transaction(() => {
+            this.#warmUp.record(context, ignored);
             const result = recordTier(
               context,
               ledger,

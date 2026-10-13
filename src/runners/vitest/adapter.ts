@@ -414,8 +414,12 @@ export class VitestAdapter implements RunnerAdapter {
         // Review wave-13e B1: a path the run wrote itself counts too. Writing its bytes proves
         // nothing about which bytes a cache served the run.
         const touched = heard.sort();
+        // A warm-up's reads are what the recorder saw, ignored paths too (task 001-307).
+        const reads = observed !== undefined && options.observeIgnored === true;
         const kept = withoutFiles(
-          observed === undefined ? built : { ...built, observed },
+          observed === undefined
+            ? built
+            : { ...built, observed, ...(reads ? { reads: observed } : {}) },
           mayHaveRun(vitest, moved, testFiles, this.paths),
           moved,
           this.paths,

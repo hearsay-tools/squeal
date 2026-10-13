@@ -2,6 +2,7 @@ import type {
   CheckpointRecord,
   DaemonPhase,
   EpochMs,
+  FullSuiteRequest,
   SyncAnswer,
   WorktreeId,
 } from "../types/index.js";
@@ -48,7 +49,7 @@ export type FromDesk =
   | { readonly type: "failed"; readonly error: string }
   | { readonly type: "activity" }
   | { readonly type: "nudge" }
-  | { readonly type: "run-all"; readonly id: string; readonly force: boolean }
+  | { readonly type: "run-all"; readonly id: string; readonly request: FullSuiteRequest }
   | { readonly type: "run-slow"; readonly id: string }
   | { readonly type: "sync"; readonly id: string }
   | { readonly type: "stop" }

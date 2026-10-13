@@ -170,6 +170,12 @@ export function parseCheckpointProgress(raw: string | null): CheckpointProgress 
 export interface FullSuiteRequest {
   /** Run every test file, even those with a result under their current key. */
   readonly force?: boolean;
+  /**
+   * A warm-up (task 001-307): the checkpoint's tiers report the gitignored
+   * worktree paths each file read, stored for setup as `readIgnoredReads`
+   * returns them. Keys, closures and results are as without it.
+   */
+  readonly observeIgnored?: boolean;
 }
 
 /**

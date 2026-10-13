@@ -43,11 +43,11 @@ function bind(identity: DeskIdentity): void {
     startedAt: identity.startedAt,
     token: identity.token,
     phase: () => phase,
-    requestFullSuite: (force) =>
+    requestFullSuite: (request) =>
       new Promise((resolve, reject) => {
         const id = randomUUID();
         waiting.set(id, { resolve, reject });
-        post({ type: "run-all", id, force });
+        post({ type: "run-all", id, request });
       }),
     requestSlowSuite: () =>
       new Promise((resolve, reject) => {

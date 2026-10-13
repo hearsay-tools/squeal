@@ -225,6 +225,12 @@ export interface RunOptions {
    * it.
    */
   readonly childEnv?: Readonly<Record<string, string>>;
+  /**
+   * A warm-up's checkpoint (task 001-307): report what each completed file
+   * read as `RunReport.reads`, ignored paths too. It changes no key, closure
+   * or result. Absent: the run reports no `reads`.
+   */
+  readonly observeIgnored?: boolean;
 }
 
 /** The lane of a slow file is this and its runner's lane (spec 004 D2, task 004-18). */
@@ -297,6 +303,13 @@ export interface RunReport {
    * the runner observes (task 001-132). Absent: nothing observed.
    */
   readonly observed?: readonly ObservedInputs[];
+  /**
+   * Of the completed files, what each read at run time, in a run with
+   * `RunOptions.observeIgnored` (task 001-307). Only for the warm-up's list of
+   * ignored paths: never keyed, never a closure. Absent: not asked, or the
+   * runner cannot observe.
+   */
+  readonly reads?: readonly ObservedInputs[];
   /**
    * Per project, the environment files the run was observed to load: what a
    * node:test preload loads by a computed specifier (spec 003 D5; task

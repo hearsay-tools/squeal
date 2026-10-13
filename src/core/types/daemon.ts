@@ -46,6 +46,8 @@ export interface NudgeRequest {
 export interface RunAllRequest {
   readonly type: "run-all";
   readonly force?: boolean;
+  /** A warm-up (task 001-307): the checkpoint's runs report the ignored paths each file read. */
+  readonly observeIgnored?: boolean;
 }
 
 /** The checkpoint a `run-all` request created, once the scheduler created it. */
