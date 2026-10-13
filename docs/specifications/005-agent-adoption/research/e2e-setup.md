@@ -95,3 +95,13 @@ Reproduced without a model, 0.1.151 (*verified by experiment*): `squeal setup --
 - The `.claude/settings.json` setup writes names `hearsay-tools/marketplace` (`source: github`) whatever marketplace the plugin came from; with the hub private (open question 11), a collaborator without access cannot follow it.
 - Cezarion's shape runs its `test/` files under node:test (`node --import tsx --test`) and keeps Vitest to `src/`, as cezarion does; with Vitest-style files there, the warm-up reported three files that did not load (`Cannot find package 'tsx'`), a fixture error, not Squeal's.
 - An `inputs` glob for an empty `packages/cezar/dist` gets the note `inputs glob "packages/cezar/dist/**" matches no file`, as expected for an unbuilt worktree.
+
+## Checks of this row
+
+- `npx vitest run --maxWorkers=4` (the regular suite, which leaves `test/real-cli/` out): 465 files passed, 1 skipped; 3,915 tests passed, 10 skipped; 713 s at a starting load of 21. Unchanged by this row, whose only change outside `test/real-cli/` is moving `cezarionShaped` into `test/cli/setup/fixture.ts`.
+- `squeal run --all --wait` at revision 52: 0 known failures, 4,381 checks passed, 10 skipped.
+- `npm run lint`, `npm run typecheck`: pass. `npm run build` not run (the row owns no bundle).
+
+## For the release run
+
+Run against the final main SHA: `SQ_REAL_CLI_CANDIDATE=<sha> npx vitest run --config vitest.real-cli.config.ts`, once with `SQ_REAL_CLI_NODE=22` and once with `24`, then the four sessions with `SQ_REAL_CLI_MODELS=1` on the coordinator's go. Bullet 3 and the Codex session on this repository's shape stay red until the rows for defects 1 and 4 land, or the Testing bullet is amended.
