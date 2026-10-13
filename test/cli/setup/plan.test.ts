@@ -154,6 +154,20 @@ describe("squeal setup --check and usage", () => {
     }
   });
 
+  it("says why a gate line is not offered for rewording", async () => {
+    const root = squealShaped({ "CLAUDE.md": "```\nnpm test\n```\nRun `CI=1 npm test`.\n" });
+    const { io, out } = capture(root);
+    expect(await main(["setup", "--plan"], io)).toBe(0);
+    expect(out.stdout).toContain(
+      [
+        "  CLAUDE.md:2: npm test",
+        "    inside a code block: reword it by hand",
+        "  CLAUDE.md:4: Run `CI=1 npm test`.",
+        "    runs more than the test command: `CI=1 npm test`: reword it by hand",
+      ].join("\n"),
+    );
+  });
+
   it("takes --plan or --check, and nothing else", async () => {
     const root = squealShaped();
     for (const args of [[], ["--yes"], ["--plan", "--force"]]) {
