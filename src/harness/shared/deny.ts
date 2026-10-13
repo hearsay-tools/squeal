@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { formatDelta, readLiveHeader } from "../../core/delivery/index.js";
 import {
@@ -65,11 +65,20 @@ export function testCommandOf(
   call: { readonly toolName: string; readonly command?: string; readonly cwd: string },
 ): TestCommand | null {
   if (!policy.testCommand.denyWhenCurrent || call.toolName !== "Bash") return null;
-  if (call.command === undefined || resolve(call.cwd) !== location.root) return null;
+  if (call.command === undefined || realPath(call.cwd) !== location.root) return null;
   return recognizeTestCommand(call.command, {
     scripts: rootScripts(location.root),
     nodeTest: policy.nodeTest,
   });
+}
+
+/** `path`'s real path, as `findWorktreeRoot` resolves the root; `null` when it does not exist. */
+function realPath(path: string): string | null {
+  try {
+    return realpathSync(resolve(path));
+  } catch {
+    return null;
+  }
 }
 
 /** The root `package.json`'s scripts; none when it is missing or unreadable. */
