@@ -99,6 +99,15 @@ Brief: `research/README.md`. Topics `adoption-baseline`, `instruction-surfaces`,
 
 - 2026-10-13, re-review 005-25 PASS (`reviews/wave-1.5.md`): B1 to B3 and S1 closed; S2's variant where the joined checkpoint completes before `run --all` reads the join still miscounts reuse (verdict and exit code right), folded into 005-21. The reviewer's suite had two Codex 5 s timeouts in unchanged tests (`test/cli/codex.test.ts:103`, `test/harness/codex/plugin.test.ts:89`) that passed alone, seen in the coordinator's runs under load too; sent to the 001 coordinator for 001-309. Wave 1 closed.
 
+- 2026-10-13, the human asked to check 005-20 against the one-time deny discussed on 2026-10-10. D8 is that deny (opt-in, every file current, once per consumer); the board row's name now says so. The 001 coordinator (open question 9): nothing recorded in 001 contradicts D8, and it fits today's code this way:
+  - "`Bash` is never denied" is written in `src/harness/codex/handlers.ts`, `denyOnRegression` in `src/harness/shared/deny.ts` and 001 D9; 005-20 amends them behind its flag.
+  - It reuses the hook, not a record: `denyOnRegression` (001-101) has no per-consumer record, so 005-20 adds its own "denied once" meta row keyed by consumer, listed in `WORKTREE_META_ROWS` (001-254), as a sibling export in `deny.ts`, run in the same `PreToolUse` call after the regression deny, with one reason per call.
+  - Currentness is decided in one store read at the live revision, as 001-305's Stop slow wait does; a daemon not validating, an unlisted worktree or a pending runner part means the command runs.
+  - The `sh` fast path stays and the flag is checked before the store opens (001-93's p95 under 10 ms).
+  - No collision with 001-292's C1 (PostToolUse); the only overlap with 001's planned rows is `src/core/daemon/policy.ts`, whichever lands second rebases.
+  005-20 stays held for the human's agreement.
+- 2026-10-13, 001-307 dispatched by the 001 coordinator: `run-all` takes `observeIgnored: true`, that checkpoint stores capped ignored reads per test file in one meta row, read with `readIgnoredReads(store, worktreeId)`. `squeal warmup` (005-14a) keeps a seam for it; the coordinator wires it after 001-307 lands.
+
 ## Dogfooding
 
 - 2026-10-09, `97144d9`, decided by the human ("Both": reword this repository's gate now and write the spec beside it): `CLAUDE.md` (and `AGENTS.md`, a symlink to it) and the worker skill take the suite through `squeal run --all --wait`, read `Known failures`, and fall back to `npx vitest run` when Squeal cannot answer or is doubted; reviewers, the coordinator's landing check and CI keep `npx vitest run` as the independent run. Baseline before it, from `research/adoption-baseline.md` 3 (`probes/adoption-baseline/metric.mjs` over this repository's Cezar sessions to 2026-10-09 16:25 local): 10.8 own runs per editing session, 9.0 outside a full-suite gate, 6.7 min of test wall time, gate runs 17% of runs and 39% of test wall time, 32% of sessions pulling Squeal. Sessions started after `97144d9` are the comparison.
