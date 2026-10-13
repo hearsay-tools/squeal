@@ -1,6 +1,6 @@
 # 006 Model evals: status
 
-Stage: approved (2026-10-11, by the human; waves on `docs/board.md`, briefs under `tasks/`)
+Stage: shipped (2026-10-13; proof: 0.1.131's release evals and 006-38, `lessons.md`). Approved 2026-10-11 by the human; waves on `docs/board.md`, briefs under `tasks/`.
 Started: 2026-10-10
 
 ## Decisions so far
@@ -114,3 +114,4 @@ Started: 2026-10-10
 - 2026-10-13, the human: 006-38 runs before 006 ships. It is restated against 0.1.131: `a2-slow` as shipped (`stop.requireSlowSuite` off, the default) against on, side by side, 80 sessions. 006-48 lets the atomic runner run a variant arm. 006-37 closed after its Haiku part.
 - 2026-10-13, 006-48 landed. `run-baseline.mjs --atomic --variant <name>` runs both arms into `<date>-<version>.<run>.<name>.atomic-variant.json`, which both tables leave out. `evals/bin/atomic-compare.mjs` prints per model, scenario and measure each arm's count with its Wilson range and a two-sided Fisher p. D10 amended.
 - 2026-10-13, 006-38 ran: run `20261013T102030Z-ae0c65`, `a2-slow` on `9c762e65`, as shipped against `stop.requireSlowSuite` on, 80 sessions, 0 failed, load 6.6 to 117. No model moved significantly. Haiku leaned better with it on: `slow-through-squeal` 7/10 to 10/10, two-sided p = 0.21, and its own Vitest runs fell from 20 to 6. Sonnet and sol met every measure in both arms. luna's four `claim-true` misses, two per arm, were `unknown` claims during load spikes. The Stop block fired in only 4 of 40 sessions; the arms differ in every session by the session-start line about Stop. Results and the comparison report are committed; the full reading is in `lessons.md`.
+- 2026-10-13, 006 shipped. Every goal held at 0.1.131's release, with goal 3 amended (`lessons.md`'s verdict), and no blocker remains. The human chose "Finish 006: 006-38 first". Row 006-49 runs the spec's `/quality` scan. Its eval baseline beside it is 0.1.131's release evals, since 006 changed only `evals/` and no Squeal code. The spec's open choices became possible rows on the human's word, listed in the handoff.
