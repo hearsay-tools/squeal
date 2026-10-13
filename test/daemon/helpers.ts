@@ -43,13 +43,25 @@ export interface BuiltCli {
   readonly cleanup: () => void;
 }
 
+/** The runtime recorder `tsc` does not emit (`src/runners/observe/runtime.ts`). */
+const OBSERVE_FILES = ["recorder.cjs", "fs.cjs", "spawn.cjs"] as const;
+
+export interface BuildOptions {
+  /**
+   * Copies the observe recorder beside the compiled `runtime.js`, as the
+   * plugin bundles ship it, so runners report what each file read (a
+   * warm-up's ignored reads, 001-307). Off by default, as before.
+   */
+  readonly observe?: boolean;
+}
+
 /**
  * Builds `src` into a private `dist` so tests spawn the real `squeal` binary.
  * Under `node_modules/`, so the build resolves `vitest` and `chokidar`, with
  * the package manifest beside it for `squeal --version`; in this run's
  * directory there, so the global teardown finds daemons it leaves (`strays.ts`).
  */
-export function buildCli(): BuiltCli {
+export function buildCli(options: BuildOptions = {}): BuiltCli {
   const dir = testBuildDir(expect.getState().testPath);
   execFileSync(
     process.execPath,
@@ -67,6 +79,14 @@ export function buildCli(): BuiltCli {
     { cwd: repoRoot, stdio: "pipe" },
   );
   copyFileSync(join(repoRoot, "package.json"), join(dir, "package.json"));
+  if (options.observe === true) {
+    for (const file of OBSERVE_FILES) {
+      copyFileSync(
+        join(repoRoot, "src/runners/observe", file),
+        join(dir, "dist/runners/observe", file),
+      );
+    }
+  }
   return {
     cli: join(dir, "dist/cli/index.js"),
     cleanup: () => rmSync(dir, { recursive: true, force: true }),
@@ -307,13 +327,13 @@ export interface DaemonSuite {
 }
 
 /** Builds the CLI once per file; after each test, stops its daemons and then runs its cleanups. */
-export function daemonSuite(): DaemonSuite {
+export function daemonSuite(options: BuildOptions = {}): DaemonSuite {
   let built: BuiltCli | null = null;
   const processes: SpawnedProcess[] = [];
   const roots: string[] = [];
   const cleanups: (() => void)[] = [];
   beforeAll(() => {
-    built = buildCli();
+    built = buildCli(options);
   });
   afterAll(() => built?.cleanup());
   afterEach(async () => {
