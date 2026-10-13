@@ -194,7 +194,7 @@ describe("B3: the line fits inside the delivery cap", () => {
     r.apply(...failing);
     const text = await hook(r, "post-tool-batch");
     expect(text.length).toBeLessThanOrEqual(MESSAGE_CAP_CHARS);
-    expect(text).toMatch(/^SQUEAL · 200 checks changed at revision 3\n/);
+    expect(text).toMatch(/^SQUEAL · 200 checks changed \(200 tests\) at revision 3\n/);
     expect(text).toMatch(/\nNo result for …\S+ and 2 more: no test Squeal runs reads them\./);
   });
 

@@ -197,7 +197,7 @@ describe.each(PLUGINS)("the $name plugin as a marketplace install ships it", (ki
     const context = (
       JSON.parse(batch.stdout) as { hookSpecificOutput: { additionalContext: string } }
     ).hookSpecificOutput.additionalContext;
-    expect(context).toMatch(/^SQUEAL · 1 check changed at revision \d+\n/);
+    expect(context).toMatch(/^SQUEAL · 1 check changed \(1 test\) at revision \d+\n/);
     expect(context).toContain("FAIL  test/math.test.ts > math > adds");
     expect(context).toContain("PASS -> FAIL");
 

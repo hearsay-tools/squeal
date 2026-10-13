@@ -122,7 +122,9 @@ describe("bundled Codex hooks, recorded JSON in and JSON out", () => {
     r.apply(r.fail(), r.fail(SUBTRACTS));
     expect(await json("stop")).toEqual({
       decision: "block",
-      reason: expect.stringMatching(/^SQUEAL · 1 check changed at revision 3\n[\s\S]*PASS -> FAIL/),
+      reason: expect.stringMatching(
+        /^SQUEAL · 1 check changed \(1 test\) at revision 3\n[\s\S]*PASS -> FAIL/,
+      ),
     });
     expect(await json("subagent-stop")).toBeNull();
     expect(await json("interrupt")).toBeNull();

@@ -97,7 +97,7 @@ describe("PostToolBatch", () => {
     });
     const text = (json(first) as { hookSpecificOutput: { additionalContext: string } })
       .hookSpecificOutput.additionalContext;
-    expect(text).toMatch(/^SQUEAL · 1 check changed at revision 2\n/);
+    expect(text).toMatch(/^SQUEAL · 1 check changed \(1 test\) at revision 2\n/);
     expect(text).toContain("FAIL  src/math.test.ts > math > adds");
     expect(second).toEqual(SILENT);
   });
@@ -231,7 +231,7 @@ describe("Stop and SubagentStop", () => {
     const text = (json(out) as { hookSpecificOutput: { additionalContext: string } })
       .hookSpecificOutput.additionalContext;
     expect(text).toMatch(
-      /^SQUEAL · 1 check changed at revision 2\nRevision 2 \(changed src\/math\.ts\): /,
+      /^SQUEAL · 1 check changed \(1 test\) at revision 2\nRevision 2 \(changed src\/math\.ts\): /,
     );
     expect(text).toContain("PASS -> FAIL");
     // Task 001-222: the count names the failures.

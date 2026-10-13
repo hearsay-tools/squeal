@@ -48,7 +48,7 @@ describe("idle waiter", () => {
 
     expect(out.exitCode).toBe(2);
     expect(out.stdout).toBe("");
-    expect(out.stderr).toMatch(/^SQUEAL · 1 check changed at revision 3\n/);
+    expect(out.stderr).toMatch(/^SQUEAL · 1 check changed \(1 test\) at revision 3\n/);
     expect(out.stderr).toContain("PASS -> FAIL");
     // Delivered: the next tool boundary has nothing new.
     const batch = await runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps());

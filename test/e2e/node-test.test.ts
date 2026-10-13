@@ -103,7 +103,7 @@ describe.each(PLUGINS)("node:test end to end, $name", (plugin) => {
     expect(ranSince(e, e.main, from)).toEqual(new Set([MATH_TEST]));
     const fail = await e.hook("post-tool-batch", e.main);
     expect(fail).toMatchObject({ code: 0, stderr: "" });
-    expect(fail.text).toMatch(/^SQUEAL · 1 check changed at revision \d+\n/);
+    expect(fail.text).toMatch(/^SQUEAL · 1 check changed \(1 test\) at revision \d+\n/);
     expect(headerRevision(fail.text ?? "")).toBe(broken.revision);
     expect(fail.text).toContain(
       `FAIL  ${ADDS}\n      PASS -> FAIL, seen by Squeal's run at revision ${broken.revision}`,

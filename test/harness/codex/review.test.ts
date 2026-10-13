@@ -79,7 +79,7 @@ describe("an inline /review thread (D2 as amended)", () => {
       hookSpecificOutput: {
         hookEventName: "PostToolUse",
         additionalContext: expect.stringMatching(
-          /^SQUEAL · 1 check changed at revision 2\n[\s\S]*PASS -> FAIL/,
+          /^SQUEAL · 1 check changed \(1 test\) at revision 2\n[\s\S]*PASS -> FAIL/,
         ),
       },
     });
