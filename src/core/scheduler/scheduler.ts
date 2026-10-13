@@ -258,14 +258,17 @@ class TierScheduler implements Scheduler {
   /**
    * Queues the checkpoint at once, unless it needs the runner: while a
    * runner failure is outstanding the runner is retried first, and while a
-   * revision waits for its runner part the checkpoint follows it.
+   * revision waits for its runner part the checkpoint follows it. A warm-up
+   * (`observeIgnored`) runs every runnable file forced, in a checkpoint of
+   * its own: only its own tiers run flagged, and a forced checkpoint counts
+   * only its own tiers' results (review wave 13ar, B1).
    */
   async requestFullSuite(request: FullSuiteRequest = {}): Promise<CheckpointRecord> {
-    const force = request.force === true;
+    const warmUp = request.observeIgnored === true;
+    const force = request.force === true || warmUp;
     const queue = (ledger: Ledger) => {
-      const record = queueFullSuite(ledger, force);
-      if (request.observeIgnored === true)
-        this.#warmUp.start(this.#started().context, ledger, record);
+      const record = queueFullSuite(ledger, force, warmUp);
+      if (warmUp) this.#warmUp.start(this.#started().context, ledger, record);
       return record;
     };
     // An install the next reconciliation pass would find ends the wait first; still waiting,

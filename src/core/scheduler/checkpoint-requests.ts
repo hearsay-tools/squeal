@@ -28,9 +28,11 @@ export function abandonFullSuite(ledger: Ledger): CheckpointRecord {
  * Task 001-217: when the open checkpoint already runs every file the request
  * needs (a forced one: runs them forced), the request joins it and ends with
  * it rather than abandoning it for an identical one. A request that needs
- * nothing completes at once and leaves the open one be.
+ * nothing completes at once and leaves the open one be. A `fresh` request
+ * never joins: a warm-up's files run flagged, so a tier already in flight
+ * cannot count for them (review wave 13ar, B1).
  */
-export function queueFullSuite(ledger: Ledger, force: boolean): CheckpointRecord {
+export function queueFullSuite(ledger: Ledger, force: boolean, fresh = false): CheckpointRecord {
   const id = randomUUID();
   const revision = ledger.revision.number;
   const { checkpoints } = ledger;
@@ -41,6 +43,7 @@ export function queueFullSuite(ledger: Ledger, force: boolean): CheckpointRecord
   const runnable = files.filter((file) => file.key !== null && file.blocked === null);
   const open = force ? runnable : runnable.filter((file) => classify(file) !== "current");
   const joins =
+    !fresh &&
     open.length + unrunnable.length > 0 &&
     checkpoints.covers(refs([...open, ...unrunnable]), force);
   const attributed = joins ? (checkpoints.active?.record.id ?? id) : id;

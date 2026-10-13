@@ -17,6 +17,7 @@ import type {
   RunReport,
   TestFileRef,
 } from "../../core/types/index.js";
+import { readsOfEvery } from "../observe/index.js";
 import { affectedTestFiles } from "./affected.js";
 import { closeBroken, instanceTempDirs, runnerFailure } from "./broken.js";
 import { ConfigStamps } from "./config-stamps.js";
@@ -423,12 +424,14 @@ export class VitestAdapter implements RunnerAdapter {
         // Review wave-13e B1: a path the run wrote itself counts too. Writing its bytes proves
         // nothing about which bytes a cache served the run.
         const touched = heard.sort();
-        // A warm-up's reads are what the recorder saw, ignored paths too (task 001-307).
-        const reads = observed !== undefined && options.observeIgnored === true;
+        // A warm-up's reads are what the recorder saw, ignored paths too, of every completed
+        // file (tasks 001-307, 001-312).
+        const reads =
+          observed !== undefined && options.observeIgnored === true
+            ? { reads: readsOfEvery(observed, built.completedFiles) }
+            : {};
         const kept = withoutFiles(
-          observed === undefined
-            ? built
-            : { ...built, observed, ...(reads ? { reads: observed } : {}) },
+          observed === undefined ? built : { ...built, observed, ...reads },
           mayHaveRun(vitest, moved, testFiles, this.paths),
           moved,
           this.paths,

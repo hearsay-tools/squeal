@@ -7,6 +7,7 @@ import {
   OBSERVE_VARIABLE,
   observedInputs,
   observeRecorder,
+  readsOfEvery,
   takeRecorded,
 } from "../../observe/index.js";
 import { quoteNodeOption } from "./node-options.js";
@@ -53,8 +54,8 @@ export class NodeTestReads {
     };
   }
 
-  /** What each of `completed` read; the recorder's files are read and removed. */
+  /** What each of `completed` read, none for one that read none; the recorder's files are read and removed. */
   take(completed: readonly TestFileRef[], paths: WorktreePaths): ObservedInputs[] {
-    return observedInputs(takeRecorded(this.out), completed, paths);
+    return readsOfEvery(observedInputs(takeRecorded(this.out), completed, paths), completed);
   }
 }
