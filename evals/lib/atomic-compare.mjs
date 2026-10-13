@@ -3,7 +3,7 @@
 // 95% range, and a two-sided Fisher exact p. One run holds both arms under the same conditions, so
 // the arms are compared directly; no flag, no threshold.
 import { countText, lnChoose } from "./atomic-trend.mjs";
-import { rate } from "./behaviours.mjs";
+import { modelKey, rate } from "./behaviours.mjs";
 
 /**
  * Two-sided Fisher exact p of `a` ({ k, n }) against `b`: with both margins fixed, the chance of a
@@ -22,8 +22,6 @@ export function fisherTwoSided(a, b) {
   }
   return Math.min(1, p);
 }
-
-const modelKey = (c) => `${c.harness} ${c.model}`;
 
 /**
  * The comparison of results file `data` (`kind: "atomic-variant"`): `{ arms, rows }`, the arms

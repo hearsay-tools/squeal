@@ -217,6 +217,9 @@ export const CONTEXT = [
 ];
 
 /** Whether `c`'s claim was `claim` and false against ground truth; `null` where none is graded. */
+/** A cell's model as the tables key it: harness and model. */
+export const modelKey = (c) => `${c.harness} ${c.model}`;
+
 export function falseClaim(c, claim) {
   if (c.claim === null || c.claim === undefined || typeof c.truthPass !== "boolean") return null;
   return c.claim === claim && (claim === "pass") !== c.truthPass;

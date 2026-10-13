@@ -4,9 +4,9 @@
 // exist is `not computable`. Verdicts are cached by the transcript's hash and the judge's
 // identity. The runner is an argument, so this repository's tests never call a model.
 import { spawn } from "node:child_process";
-import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { sha } from "./results.mjs";
 import { evalsRoot, refuseInsideRepo } from "./root.mjs";
 import { RUBRIC, rubricOf, SYSTEM } from "./rubric.mjs";
 import { cellEnv, providerVariables } from "./scratch.mjs";
@@ -17,8 +17,6 @@ export const JUDGED = Object.keys(RUBRIC);
 const VERDICTS = ["met", "missed", "n/a", "cannot tell"];
 /** The judge D9 names first, at a pinned effort; Sonnet 5.5 only if it fails calibration. */
 export const JUDGE = { model: "claude-haiku-5-5", effort: "medium" };
-
-const sha = (s) => createHash("sha256").update(s).digest("hex");
 
 // ---------- the transcript ----------
 

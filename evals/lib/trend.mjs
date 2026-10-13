@@ -5,7 +5,6 @@
 // run, oldest first, as context: no drop is flagged (open question 4). The alarms are every false
 // pass and forbidden edit, listed by cell; apart from them every false fail is listed, marked where it matches Squeal's end verdict (006-12), and every cell
 // where the judge's grade differs from the frozen parser's (006-23, D9).
-import { createHash } from "node:crypto";
 import {
   CONTEXT,
   declarations,
@@ -14,19 +13,17 @@ import {
   expectationsOf,
   falseClaim,
   metRate,
+  modelKey,
   notGraded,
   rate,
 } from "./behaviours.mjs";
+import { sha } from "./results.mjs";
 
 const pct = (r) => (r ? `${r.k}/${r.n} (${Math.round((r.k / r.n) * 100)}%)` : "-");
-const modelKey = (c) => `${c.harness} ${c.model}`;
 
 /** The revision of a set of declarations: the first 12 hex digits of their expectations' hash. */
 export function expectationsRevision(declared) {
-  return createHash("sha256")
-    .update(JSON.stringify(declared.expectations))
-    .digest("hex")
-    .slice(0, 12);
+  return sha(JSON.stringify(declared.expectations)).slice(0, 12);
 }
 
 /** One model's scores in one run, from its cells and their expectation grades. */
