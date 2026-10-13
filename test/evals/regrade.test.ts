@@ -214,6 +214,29 @@ describe("evals/bin/regrade.mjs", () => {
     expect(readFileSync(r.file, "utf8")).toBe(once);
   });
 
+  it("reads only baseline and variant files, and leaves an atomic file byte for byte", () => {
+    const r = regrade(committed);
+    const atomic = (kind: string, name: string) => {
+      const file = join(r.dir, name);
+      const text = `${JSON.stringify({ ...results(committed), kind }, null, 1)}\n`;
+      writeFileSync(file, text);
+      return { file, text };
+    };
+    const files = [
+      atomic("atomic", "2026-10-12-0.1.127.y.atomic.json"),
+      atomic("atomic-variant", "2026-10-13-0.1.131.z.stop-slow.atomic-variant.json"),
+    ];
+    const out = r.run();
+    expect(out.status, out.stderr).toBe(0);
+    for (const f of files) expect(readFileSync(f.file, "utf8")).toBe(f.text);
+    expect(out.stdout).not.toMatch(/atomic/);
+    expect(out.stdout).toContain("TREND.md from 1 results file(s)");
+    expect(r.read().regraded).toEqual([
+      expect.objectContaining({ by: "006-12" }),
+      expectationsNote,
+    ]);
+  });
+
   it("refuses an `unknown` claim it cannot grade against Squeal from the kept fields", () => {
     // Squeal's `unknown` verdict is also an unsupported status's; only the old grade told them apart.
     const cell = unread(record(1, "TESTS: unknown | evidence: pending", true, "unknown"));

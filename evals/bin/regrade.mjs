@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Re-applies the claim grading of 006-12 and the expectations of evals/tasks/tasks.json (spec 006
-// D4, 006-14) to committed results files, then regenerates TREND.md:
+// D4, 006-14) to committed baseline and variant results files, then regenerates TREND.md:
 //   node evals/bin/regrade.mjs [dir] [--date YYYY-MM-DD]
 // `dir` defaults to evals/results. Each cell's `claim` is re-read from its `claimLine` with the
 // current parser, and `claimTrue` and `claimMatchesSqueal` are recomputed from it, `truthPass`
@@ -173,11 +173,13 @@ async function judge(data) {
 }
 
 // Every file is regraded before any is written, so a refusal leaves them all as they were.
-// The judge's calibration files (D9) live beside the results and are not regraded.
+// Only baseline and variant files are regraded, as the trend reads them: the judge's calibration
+// files (D9) and the atomic tier's files (D10, regraded by atomic-regrade.mjs) are left as they are.
 const runs = readdirSync(dir)
-  .filter((f) => f.endsWith(".json") && !f.startsWith("judge-calibration-"))
-  .map((f) => {
-    const data = JSON.parse(readFileSync(join(dir, f), "utf8"));
+  .filter((f) => f.endsWith(".json"))
+  .map((f) => ({ f, data: JSON.parse(readFileSync(join(dir, f), "utf8")) }))
+  .filter(({ data }) => data.kind === "baseline" || data.kind === "variant")
+  .map(({ f, data }) => {
     const changed = [];
     for (const cell of data.cells) {
       const next = regradeCell(cell);
