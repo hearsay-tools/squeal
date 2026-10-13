@@ -3,7 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { afterEach, describe, expect, it } from "vitest";
-import type { RunReport } from "../../../src/core/types/index.js";
+import { createVitest } from "vitest/node";
+import type { AbsolutePath, RunReport } from "../../../src/core/types/index.js";
+import { WorktreePaths } from "../../../src/runners/vitest/paths.js";
+import { SourceStamps } from "../../../src/runners/vitest/sources.js";
 import { type FixtureProject, openFixture, outcomes, paths, ref, SLOW } from "./helpers.js";
 
 /*
@@ -281,4 +284,70 @@ describe("vitest adapter: the runner part beside a run (001-150)", SLOW, () => {
     expect(report.completedFiles).toEqual([HELD]);
     expect(outcomes(report)).toEqual(["pass"]);
   });
+
+  /*
+   * Review wave-13bi S1: Vite's `_pendingRequests` branch. A request for a
+   * module invalidated while its first transform is in flight aborts the
+   * pending entry and loads again while the first promise is live: the first
+   * returns the bytes it read, the second those on disk, and the second load
+   * replaces the first's stamp.
+   */
+  it.each([
+    { first: OLD, stale: true },
+    { first: NEW, stale: false },
+  ])(
+    "compares a pending read a second request replaced while it was live (stale: $stale)",
+    async (c) => {
+      const fx = await openFixture("basic", { "src/mod.ts": c.first });
+      const root = fx.root as AbsolutePath;
+      const file = `${root}/src/mod.ts` as AbsolutePath;
+      let entered = (): void => {};
+      let release = (): void => {};
+      const transforming = new Promise<void>((resolve) => {
+        entered = resolve;
+      });
+      const go = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let transforms = 0;
+      const vitest = await createVitest(
+        "test",
+        { root, watch: false, reporters: [] },
+        {
+          plugins: [
+            {
+              name: "hold-first-transform",
+              async transform(_code, id) {
+                if (id !== file || ++transforms > 1) return null;
+                entered();
+                await go;
+                return null;
+              },
+            },
+          ],
+        },
+      );
+      try {
+        const stamps = new SourceStamps(new WorktreePaths(root));
+        stamps.attach(vitest);
+        const since = Date.now();
+        const ssr = vitest.projects[0]?.vite.environments.ssr;
+        if (!ssr) throw new Error("no ssr environment");
+        const first = ssr.transformRequest(file);
+        await transforming;
+        fx.write("src/mod.ts", NEW);
+        vitest.invalidateFile(file);
+        const second = await ssr.transformRequest(file);
+        release();
+        expect((await first)?.code).toContain(c.first === OLD ? '"old"' : '"new"');
+        expect(second?.code).toContain('"new"');
+        expect(transforms).toBe(2);
+        expect(await stamps.stale(vitest, since)).toEqual(c.stale ? [file] : []);
+        // The replaced read is let go; the cached transform holds the bytes on disk.
+        expect(await stamps.stale(vitest, since)).toEqual([]);
+      } finally {
+        await vitest.close();
+      }
+    },
+  );
 });
