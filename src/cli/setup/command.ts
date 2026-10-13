@@ -8,7 +8,7 @@ import type { HarnessId } from "./harnesses.js";
 import { buildPlan } from "./plan.js";
 import type { GivenAnswers } from "./questions.js";
 
-export const SETUP_USAGE = `Usage: squeal setup [--yes] [--harness <claude-code|codex>]... [--block <file|none>]...
+export const SETUP_USAGE = `Usage: squeal setup [--yes] [--harness <claude-code|codex|none>]... [--block <file|none>]...
          [--gate <id>=<reword|keep>]... [--slow <glob|none>]... [--input <test glob>=<input glob>]...
          [--no-trust] [--no-warmup]
        squeal setup --plan [--json]
@@ -67,7 +67,7 @@ function parseSetupArgs(args: readonly string[]): SetupArgs | string {
   }
   // `--block` may be given once per instruction file here; init takes it once.
   const blocks: string[] = [];
-  const harnesses: HarnessId[] = [];
+  const harnesses: (HarnessId | "none")[] = [];
   const rest: string[] = [];
   for (let i = 0; i < args.length; i++) {
     const arg = args[i] as string;
@@ -79,8 +79,9 @@ function parseSetupArgs(args: readonly string[]): SetupArgs | string {
     const value = arg === flag ? args[++i] : arg.slice(flag.length + 1);
     if (value === undefined || value === "") return `${flag} takes a value`;
     if (flag === "--block") blocks.push(value);
-    else if (value === "claude-code" || value === "codex") harnesses.push(value);
-    else return `--harness takes claude-code or codex, not "${value}"`;
+    else if (value === "claude-code" || value === "codex" || value === "none")
+      harnesses.push(value);
+    else return `--harness takes claude-code, codex or none, not "${value}"`;
   }
   const setup = takeSetupFlags(rest);
   if (typeof setup === "string") return setup;
@@ -89,6 +90,9 @@ function parseSetupArgs(args: readonly string[]): SetupArgs | string {
   if (unknown !== undefined) return `unknown argument "${unknown}"`;
   if (setup.rest.includes("--json")) return "--json goes with --plan or --check";
   if (blocks.includes("none") && blocks.length > 1) return "--block none goes alone";
+  // `--harness none` answers "no" to every harness, which leaving the flag out cannot say.
+  const noHarness = harnesses.includes("none");
+  if (noHarness && harnesses.length > 1) return "--harness none goes alone";
   const { gates, inputs } = setup.choices;
   // `--slow none` answers every slow group "not slow", which no glob can say.
   const noSlow = setup.choices.slow.includes("none");
@@ -98,7 +102,7 @@ function parseSetupArgs(args: readonly string[]): SetupArgs | string {
     mode: "apply",
     yes: setup.rest.includes("--yes"),
     given: {
-      harnesses: harnesses.length > 0 ? harnesses : null,
+      harnesses: harnesses.length > 0 ? harnesses.filter((h) => h !== "none") : null,
       blocks: blocks.length > 0 ? blocks : null,
       gates,
       slow: noSlow || slow.length + inputs.length > 0 ? { slow, inputs } : null,

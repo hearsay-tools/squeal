@@ -152,6 +152,61 @@ describe("squeal setup --yes", () => {
     }
   });
 
+  /*
+   * Review wave 3 B3: the setup skill passes "no" to both harnesses back as
+   * a flag. Without one, `--yes` took the default and wrote Claude Code's
+   * settings after the user declined it.
+   */
+  it("sets up no harness with --harness none, which goes alone, and applies the other answers", async () => {
+    const root = squealShaped();
+    const env = harnessEnv(["claude", "codex"]);
+    const home = env.HOME as string;
+    const { code, stdout, stderr } = await setup(
+      root,
+      [
+        "--yes",
+        "--harness",
+        "none",
+        "--block",
+        "none",
+        "--gate",
+        "CLAUDE.md:3=reword",
+        "--slow",
+        "test/e2e/**/*.test.ts",
+        "--no-trust",
+        "--no-warmup",
+      ],
+      env,
+    );
+    expect(stderr).toBe("");
+    expect(code).toBe(0);
+    expect(stdout).not.toMatch(/Set up (Claude Code|Codex) here/);
+    expect(existsSync(join(root, ".claude/settings.json"))).toBe(false);
+    for (const dir of [join(root, ".codex"), join(home, ".claude"), join(home, ".codex")]) {
+      expect(existsSync(dir), dir).toBe(false);
+    }
+    // Only the answered choices changed the worktree: the gate line and the slow group.
+    expect(
+      git(root, ["status", "--porcelain"])
+        .trim()
+        .split("\n")
+        .map((l) => l.trim())
+        .sort(),
+    ).toEqual(["M CLAUDE.md", "M squeal.config.json"]);
+    expect(read(root, "CLAUDE.md")).toContain("`squeal run --all --wait 110000`");
+    expect(JSON.parse(read(root, "squeal.config.json")).slow).toEqual({
+      include: ["test/e2e/**/*.test.ts"],
+    });
+    for (const args of [
+      ["--harness", "none", "--harness", "codex"],
+      ["--harness=claude-code", "--harness=none"],
+    ]) {
+      const rejected = await setup(root, ["--yes", ...args], env);
+      expect(rejected.code, args.join(" ")).toBe(2);
+      expect(rejected.stderr).toContain("--harness none goes alone");
+    }
+  });
+
   it("offers an outdated repository its upgrade", async () => {
     const old =
       "<!-- squeal:begin v0 (managed by Squeal setup) -->\nRun tests.\n<!-- squeal:end -->\n";
