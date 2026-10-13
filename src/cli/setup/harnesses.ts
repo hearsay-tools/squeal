@@ -81,7 +81,7 @@ function claudeCodePlugin(root: string, env: Env): HarnessFact["plugin"] {
 }
 
 /** The newest version directory of `<CODEX_HOME>/plugins/cache/hearsay/squeal/`. */
-function codexPlugin(env: Env): HarnessFact["plugin"] {
+export function codexPlugin(env: Env): HarnessFact["plugin"] {
   const home = env.CODEX_HOME ?? join(env.HOME ?? "", ".codex");
   let versions: string[];
   try {

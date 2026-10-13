@@ -309,5 +309,7 @@ describe("squeal setup and Codex trust", () => {
     );
     expect(stdout).toContain("squeal init: Codex wrote the trust; its hooks now:");
     expect(readFileSync(log, "utf8")).toContain("config/batchWrite\n");
+    // Init ran twice for Codex, which has the plugin: no install hint (row 005-40).
+    expect(stdout).not.toContain("Each user installs the Codex plugin once");
   });
 });

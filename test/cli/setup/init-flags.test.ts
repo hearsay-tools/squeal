@@ -1,9 +1,16 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { main } from "../../../src/cli/main.js";
 import { git } from "../../hash/git-repo.js";
-import { capture, cleanupFixtures, json, squealShaped, VITEST_GATE } from "./fixture.js";
+import {
+  capture,
+  cleanupFixtures,
+  harnessEnv,
+  json,
+  squealShaped,
+  VITEST_GATE,
+} from "./fixture.js";
 
 /* Spec 005 D3 step 4, row 005-12: `squeal init` takes one flag per setup choice. */
 
@@ -145,5 +152,27 @@ describe("squeal init with setup choices", () => {
     expect(code).toBe(0);
     expect(stdout).toContain("Each user installs the Codex plugin once");
     expect(stdout).toContain("squeal init: wrote no Squeal block\n");
+  });
+});
+
+describe("the Codex install hint (row 005-40)", () => {
+  const HINT = "Each user installs the Codex plugin once";
+  const count = (text: string) => text.split(HINT).length - 1;
+
+  it("is printed once per setup run without the plugin, and never with it", async () => {
+    const root = squealShaped();
+    const env = harnessEnv(["claude", "codex"]);
+    const args = ["setup", "--yes", "--harness", "codex", "--block", "none", "--no-warmup"];
+    const without = capture(root, env);
+    expect(await main(args, without.io)).toBe(0);
+    expect(count(without.out.stdout)).toBe(1);
+
+    mkdirSync(join(env.HOME as string, ".codex/plugins/cache/hearsay/squeal/0.1.151"), {
+      recursive: true,
+    });
+    const init = capture(root, env);
+    expect(await main(["init", "--harness", "codex"], init.io)).toBe(0);
+    expect(init.out.stdout).toContain("squeal init: kept squeal.config.json");
+    expect(count(init.out.stdout)).toBe(0);
   });
 });
