@@ -69,6 +69,10 @@ const statusPointer = (command: string) => `\`${command} status\` lists every kn
 /** What a block counts as when it is left out: an outcome, or a retired failure. */
 type Shown = KnownOutcome | "resolved";
 
+/** `9 tests, 3 test files loaded`: the parts of `checks` (spec 005 D1). */
+const partsText = (checks: readonly CheckId[], fileLevel?: string) =>
+  checkPartsText(countChecks(checks), fileLevel);
+
 /** How a file-level check is worded in a count of `shown` checks (spec 005 D1). */
 const fileLevelWord = (shown: Shown) => (shown === "fail" ? "that did not load" : "loaded");
 
@@ -265,7 +269,7 @@ function collapsedBlock({ head, lines }: Collapsed, shown: Shown, checks: CheckI
 /** Recoveries, one block each up to `LISTED_MAX`, else one summary (task 001-91). */
 function recoveryBlocks(entries: readonly TransitionEntry[], delta: Delta): Block[] {
   const checks = entries.map((e) => e.check);
-  const head = `PASS  ${checksText(checks)} recovered (FAIL -> PASS)`;
+  const head = `PASS  ${plural(checks.length, "check")} recovered (FAIL -> PASS): ${partsText(checks)}`;
   const collapsed = collapse(head, checks, delta.stillFailing);
   if (collapsed !== null) return [collapsedBlock(collapsed, "pass", checks)];
   return entries.map((e) => entryBlock(e, delta.header.revision));
@@ -274,7 +278,7 @@ function recoveryBlocks(entries: readonly TransitionEntry[], delta: Delta): Bloc
 /** Retired failures, collapsed like recoveries (task 001-91). */
 function retiredBlocks(entries: readonly RetiredEntry[], delta: Delta): Block[] {
   const checks = entries.map((e) => e.check);
-  const head = `RESOLVED  ${checksText(checks)} no longer reported by the runner (FAIL -> RESOLVED)`;
+  const head = `RESOLVED  ${plural(checks.length, "check")} no longer reported by the runner (FAIL -> RESOLVED): ${partsText(checks)}`;
   const collapsed = collapse(head, checks, delta.stillFailing);
   if (collapsed !== null) return [collapsedBlock(collapsed, "resolved", checks)];
   return entries.map(retiredBlock);
@@ -293,7 +297,7 @@ function unknownBlocks(entries: readonly TransitionEntry[]): Block[] {
       group.filter((e) => e.from === outcome).map((e) => e.check);
     const counts = (["pass", "fail"] as const)
       .filter((o) => from(o).length > 0)
-      .map((o) => `${upper(o)} -> UNKNOWN (${checkPartsText(countChecks(from(o)))})`);
+      .map((o) => `${upper(o)} -> UNKNOWN (${partsText(from(o))})`);
     const listed = files.slice(0, 5).join(", ");
     const more = files.length > 5 ? ` and ${plural(files.length - 5, "more file")}` : "";
     return block(
@@ -366,12 +370,8 @@ export function formatDelta(
     const by = (["fail", "pass", "unknown", "resolved"] as const)
       .map((o) => [o, counted.filter((c) => c.shown === o).map((c) => c.check)] as const)
       .filter(([, checks]) => checks.length > 0)
-      .map(([o, checks]) => {
-        const { testFiles } = countChecks(checks);
-        return `${checks.length} ${upper(o)}${partsSuffix(checks.length, testFiles, fileLevelWord(o))}`;
-      });
-    const all = counted.map((c) => c.check);
-    return `Not shown: ${checksText(all, "more changed check")}: ${by.join(", ")}. ${statusPointer(command)}`;
+      .map(([o, checks]) => `${checks.length} ${upper(o)}: ${partsText(checks, fileLevelWord(o))}`);
+    return `Not shown: ${counted.length} more changed checks (${by.join("; ")}). ${statusPointer(command)}`;
   };
   const tail = failed === undefined ? null : whyLine(failed.check, command);
   return assemble(

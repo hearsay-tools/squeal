@@ -358,7 +358,7 @@ describe("formatDelta", () => {
     expect(blank).toBe("");
     expect(why).toBe('Full output: squeal why "tests/f0.test.ts > case 0"');
     expect(last).toBe(
-      `Not shown: ${2_001 - shown} more changed checks (${2_001 - shown} tests): ${2_000 - shown} FAIL (${2_000 - shown} tests), 1 PASS (1 test). \`squeal status\` lists every known failure.`,
+      `Not shown: ${2_001 - shown} more changed checks (${2_000 - shown} FAIL: ${2_000 - shown} tests; 1 PASS: 1 test). \`squeal status\` lists every known failure.`,
     );
   });
 
