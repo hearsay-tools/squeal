@@ -13,6 +13,7 @@ import {
   type Store,
 } from "../../src/core/types/index.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
+import { later, timed } from "./wait-clock.js";
 
 /*
  * Spec 001 D7 as amended: "`squeal status --wait <ms>` blocks until nothing
@@ -86,10 +87,6 @@ const currentPass =
   (c = ADDS) =>
   (id: string) =>
     state(id, c, { observedAt: 3 });
-
-function later(ms: number, fn: () => void) {
-  setTimeout(fn, ms);
-}
 
 function settle(store: Store, id: string, ...states: KnownState[]) {
   store.knownStates.upsertMany(states.map((s) => ({ ...s, worktreeId: id })));
@@ -335,18 +332,17 @@ describe("status --wait decides quiet at the daemon's pass (lessons, defect 30)"
     const { repo, store } = repoWith(currentPass());
     const hand = handSync();
     later(300, () => hand.set(synced(4)));
-    later(1_200, () => appendRevisions(store, repo.mainId, 1, { head: null, dirty: false }));
+    const stored = later(1_200, () =>
+      appendRevisions(store, repo.mainId, 1, { head: null, dirty: false }),
+    );
 
-    const wait = await waitForStatus(repo.main, {
-      timeoutMs: 5_000,
-      pollMs: 20,
-      now: () => NOW,
-      sync: hand.sync,
-    });
+    const { wait, endedBy } = await timed(() =>
+      waitForStatus(repo.main, { timeoutMs: 5_000, pollMs: 20, now: () => NOW, sync: hand.sync }),
+    );
 
     expect(wait.outcome).toBe("quiet");
     expect(wait.result).toMatchObject({ revision: 4 });
-    expect(wait.waitedMs).toBeGreaterThanOrEqual(1_150);
+    expect(endedBy).toBeGreaterThanOrEqual(stored.at);
   });
 
   it("times out rather than say quiet while the pass is not stored", async () => {

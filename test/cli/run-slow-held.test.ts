@@ -17,6 +17,7 @@ import {
   options,
   repoWith,
   SLOW_FILE,
+  timed,
 } from "./status-wait-fixture.js";
 
 /*
@@ -100,12 +101,13 @@ describe("a held slow file stays held whatever the policy says later (review wav
     const sync = onFirstRead(answering(store, repo.mainId, []).sync, 100, () =>
       config(repo.main, {}),
     );
-    later(600, () => finish(store, repo.mainId, SLOW_FILE));
+    const finished = later(600, () => finish(store, repo.mainId, SLOW_FILE));
 
-    const wait = await waitForStatus(repo.main, { ...options(sync, 10_000), holdSlow: true });
+    const held = { ...options(sync, 10_000), holdSlow: true };
+    const { wait, endedBy } = await timed(() => waitForStatus(repo.main, held));
 
     expect(wait.outcome).toBe("quiet");
-    expect(wait.waitedMs).toBeGreaterThanOrEqual(600);
+    expect(endedBy).toBeGreaterThanOrEqual(finished.at);
     expect(wait).toMatchObject({ slow: { held: 1, pending: [] } });
   });
 });

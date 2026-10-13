@@ -26,6 +26,7 @@ import {
   NOW,
   ref,
   repoWith,
+  timed,
 } from "./status-wait-fixture.js";
 
 /*
@@ -148,15 +149,12 @@ describe("selectNamedFiles", () => {
 describe("waitForNamed", () => {
   it("returns when the named pending file's result lands, while another stays pending", async () => {
     const { repo, store } = repoWith([A, B]);
-    later(300, () => finish(store, repo.mainId, A));
-    const wait = await waitForNamed(
-      repo.main,
-      [A],
-      options(() => synced()),
-    );
+    const finished = later(300, () => finish(store, repo.mainId, A));
+    const named = options(() => synced());
+    const { wait, endedBy } = await timed(() => waitForNamed(repo.main, [A], named));
     if (wait.outcome === "unavailable") throw new Error("unavailable");
     expect(wait.outcome).toBe("settled");
-    expect(wait.waitedMs).toBeGreaterThanOrEqual(250);
+    expect(endedBy).toBeGreaterThanOrEqual(finished.at);
     expect(wait.result.counts.pending).toBeGreaterThan(0);
     expect(namedCode(wait)).toBe(0);
   });

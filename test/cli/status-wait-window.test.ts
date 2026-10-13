@@ -18,6 +18,7 @@ import {
   repoWith,
   resolveMoves,
   SLOW_FILE,
+  timed,
 } from "./status-wait-fixture.js";
 
 /*
@@ -60,15 +61,15 @@ describe("the wait's window starts where the session was last told (task 001-186
   it("counts the revision last heard of while its files have no result", async () => {
     const { repo, store } = repoWith([A, B]);
     told(store, repo.mainId, 4);
-    later(300, () => finish(store, repo.mainId, A));
+    const finished = later(300, () => finish(store, repo.mainId, A));
 
-    const wait = await waitForStatus(repo.main, {
-      ...options(answering(store, repo.mainId, [A]).sync),
-      session: "s1",
-    });
+    const daemon = answering(store, repo.mainId, [A]);
+    const { wait, endedBy } = await timed(() =>
+      waitForStatus(repo.main, { ...options(daemon.sync), session: "s1" }),
+    );
 
     expect(wait.outcome).toBe("quiet");
-    expect(wait.waitedMs).toBeGreaterThanOrEqual(300);
+    expect(endedBy).toBeGreaterThanOrEqual(finished.at);
     expect(wait).toMatchObject({ edit: { since: 4, testFiles: 1 } });
   });
 });
@@ -79,15 +80,15 @@ describe("the wait keeps an earlier edit the session was told about (task 001-19
     const { repo, store } = repoWith([A, B, C], [], { [A]: 2 });
     told(store, repo.mainId, 3);
     later(100, () => finish(store, repo.mainId, B));
-    later(500, () => finish(store, repo.mainId, A));
+    const finished = later(500, () => finish(store, repo.mainId, A));
 
-    const wait = await waitForStatus(repo.main, {
-      ...options(answering(store, repo.mainId, [[A, 3], B]).sync),
-      session: "s1",
-    });
+    const daemon = answering(store, repo.mainId, [[A, 3], B]);
+    const { wait, endedBy } = await timed(() =>
+      waitForStatus(repo.main, { ...options(daemon.sync), session: "s1" }),
+    );
 
     expect(wait.outcome).toBe("quiet");
-    expect(wait.waitedMs).toBeGreaterThanOrEqual(500);
+    expect(endedBy).toBeGreaterThanOrEqual(finished.at);
     expect(wait).toMatchObject({ edit: { since: 3, testFiles: 2, pending: 0 } });
   });
 
