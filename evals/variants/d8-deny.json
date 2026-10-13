@@ -1,5 +1,5 @@
 {
-  "description": "Pending: spec 005 D8's opt-in deny, policy key testCommand.denyWhenCurrent, not in 0.1.98. The runner refuses a variant whose policy key the pinned CLI reports as unknown.",
+  "description": "Spec 005 D8's opt-in deny, policy key testCommand.denyWhenCurrent, added by 005-20 (82e09e6a, 2026-10-13). Whether it joins as a scenario is the human's call (spec 006 goal 6). The runner refuses a variant whose policy key the pinned CLI reports as unknown, so it runs only against a build with the key.",
   "plugin": true,
   "policy": {
     "testCommand": {
