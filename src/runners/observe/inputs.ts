@@ -1,6 +1,7 @@
 import { statSync } from "node:fs";
 import { compare } from "../../core/fs/index.js";
 import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
+import { testFileId } from "../../core/keys/index.js";
 import type {
   AbsolutePath,
   ObservedInputs,
@@ -61,4 +62,20 @@ export function observedInputs(
     }
   }
   return out;
+}
+
+/**
+ * A warm-up's reads (task 001-312, with spec 005): `observed` with an empty
+ * entry for each of `completed` it lacks, so every file the recorder
+ * watched is named and a file without one was not observed.
+ */
+export function readsOfEvery(
+  observed: readonly ObservedInputs[],
+  completed: readonly TestFileRef[],
+): ObservedInputs[] {
+  const named = new Set(observed.map((o) => testFileId(o.testFile)));
+  const empty = completed
+    .filter((testFile) => !named.has(testFileId(testFile)))
+    .map((testFile) => ({ testFile, paths: [], directories: [] }));
+  return [...observed, ...empty];
 }

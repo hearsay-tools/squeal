@@ -172,6 +172,10 @@ export interface Harness {
   readonly worktreeId: string;
   /** The Vitest adapter; with `HarnessOptions.nodeTest` one part of the scheduler's composite. */
   readonly runner: RecordingRunner;
+  /** Awaited before every run the scheduler starts, node:test's too, with the options it chose. */
+  readonly gate: {
+    before: ((files: readonly TestFileRef[], options: RunOptions) => unknown) | null;
+  };
   readonly sink: RecordingSink;
   readonly scheduler: Scheduler;
   readonly extraFiles: string[][];
@@ -274,8 +278,15 @@ export async function openHarness(
       }),
     ),
   );
-  const schedulerRunner =
-    nodeTest.length === 0 ? runner : createCompositeRunner([runner, ...nodeTest]);
+  const parts = nodeTest.length === 0 ? runner : createCompositeRunner([runner, ...nodeTest]);
+  const gate: Harness["gate"] = { before: null };
+  const schedulerRunner: RunnerAdapter = {
+    ...parts,
+    run: async (files, runOptions) => {
+      await gate.before?.(files, runOptions);
+      return parts.run(files, runOptions);
+    },
+  };
   const sink = new RecordingSink(store, worktreeId);
   const extraFiles: string[][] = [];
   const errors: Error[] = [];
@@ -335,6 +346,7 @@ export async function openHarness(
     store,
     worktreeId,
     runner,
+    gate,
     sink,
     scheduler,
     extraFiles,

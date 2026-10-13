@@ -9,37 +9,40 @@ import type { Tier } from "./tiers.js";
 /** A tier's ignored reads, for the warm-up record `record`. */
 export interface WarmUpReads {
   readonly record: string;
-  /** By `testFileId`: the gitignored paths the file read beyond its closure, listings as `dir/`. */
+  /**
+   * By `testFileId`, each file the runner observed: the gitignored paths it
+   * read beyond its closure, listings as `dir/`; none when it read none.
+   */
   readonly files: ReadonlyMap<string, readonly RelativePath[]>;
 }
 
 /**
  * The warm-up in progress (task 001-307; spec 005 D3, open question 6): a
- * `run --all` checkpoint requested with `observeIgnored`. Its tiers run with
- * `RunOptions.observeIgnored`, and of what each completed file read
- * (`RunReport.reads`), the gitignored worktree paths its closure lacks go to
- * the worktree's `ignored-reads` row (`ignored-reads.ts`), which the
- * request replaced. Nothing of it reaches a key, a closure, a result or a
+ * `run --all` checkpoint requested with `observeIgnored`. It never joins and
+ * runs every file forced (`queueFullSuite`), so only its own tiers count for
+ * it, and they run with `RunOptions.observeIgnored` (review wave 13ar, B1).
+ * Of what each completed file read (`RunReport.reads`), the gitignored
+ * worktree paths its closure lacks go to the worktree's `ignored-reads` row
+ * (`ignored-reads.ts`), which the request replaced: every file the runner
+ * observed has an entry, empty when it read none, and a file it could not
+ * observe has none. Nothing of it reaches a key, a closure, a result or a
  * revision. A later checkpoint, warm-up or not, ends it: its tiers carry
  * another checkpoint id.
  */
 export class WarmUp {
-  /** The checkpoint id its tiers carry, and the record id the request returned (they differ when joined). */
-  #current: { readonly checkpoint: string; readonly record: string } | null = null;
+  /** The warm-up's checkpoint id, which its tiers carry. */
+  #current: string | null = null;
 
   /** Under the lock, after `queueFullSuite` returned `record` for a warm-up request. */
   start(context: SchedulerContext, ledger: Ledger, record: CheckpointRecord): void {
     startIgnoredReads(context.store, context.worktreeId, record.id, record.revision);
-    const active = ledger.checkpoints.active;
-    this.#current =
-      record.end === null && active !== null
-        ? { checkpoint: active.record.id, record: record.id }
-        : null;
+    const open = ledger.checkpoints.active?.record.id === record.id;
+    this.#current = open ? record.id : null;
   }
 
   /** Whether `tier` runs for the warm-up, so its runner reports what each file read. */
   observes(tier: Tier): boolean {
-    return this.#current !== null && tier.checkpointId === this.#current.checkpoint;
+    return this.#current !== null && tier.checkpointId === this.#current;
   }
 
   /** Outside the lock: the tier's ignored reads, or `null` when it is no warm-up's or git failed. */
@@ -49,11 +52,9 @@ export class WarmUp {
     report: RunReport,
   ): Promise<WarmUpReads | null> {
     const current = this.#current;
-    if (current === null || tier.checkpointId !== current.checkpoint) return null;
+    if (current === null || tier.checkpointId !== current) return null;
     const asked = new Set(
-      tier.files
-        .filter((f) => f.checkpointId === current.checkpoint)
-        .map((f) => testFileId(f.file.ref)),
+      tier.files.filter((f) => f.checkpointId === current).map((f) => testFileId(f.file.ref)),
     );
     const seen: { id: string; paths: RelativePath[] }[] = [];
     for (const read of report.reads ?? []) {
@@ -74,10 +75,12 @@ export class WarmUp {
     }
     const files = new Map<string, RelativePath[]>();
     for (const { id, paths } of seen) {
-      const kept = paths.filter((path) => ignored.has(listedDirectory(path) ?? path));
-      if (kept.length > 0) files.set(id, kept);
+      files.set(
+        id,
+        paths.filter((path) => ignored.has(listedDirectory(path) ?? path)),
+      );
     }
-    return { record: current.record, files };
+    return { record: current, files };
   }
 
   /** In the tier's store transaction. */
