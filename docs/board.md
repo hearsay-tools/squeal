@@ -776,7 +776,7 @@ Spec: `specifications/006-model-evals/spec.md`, approved 2026-10-11 by the human
 
 ## Feature 007: pytest runner
 
-Spec: none yet. Status and research brief: `specifications/007-pytest-runner/status.md`, `research/README.md` (human, 2026-10-13: start preparing pytest support). Research done 2026-10-13 (mixed models, generic fixture); the spec is written from the three findings files.
+Spec: `specifications/007-pytest-runner/spec.md`, draft 2026-10-13, awaiting approval; sections D1 to D8. Status and research brief: `specifications/007-pytest-runner/status.md`, `research/README.md` (human, 2026-10-13: start preparing pytest support). Research done 2026-10-13 (mixed models, generic fixture); the spec is written from the three findings files.
 
 ### Research
 

@@ -1,6 +1,6 @@
 # 007 pytest runner: status
 
-Stage: research (brief in `research/README.md`; no spec yet).
+Stage: draft spec (`spec.md`, 2026-10-13, from the three findings files; awaiting the human's approval).
 Started: 2026-10-13
 
 ## Decisions so far
