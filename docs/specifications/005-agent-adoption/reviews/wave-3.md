@@ -32,16 +32,44 @@ $ git status --short
 (empty after build)
 
 $ npx vitest run
-IN PROGRESS: independent full run started on the clean checkout.
+INTERRUPTED by the coordinator (SIGTERM, shell observed exit 143).
+The uncapped run reached 52 workers and host load 323; it has no full-suite verdict.
+
+$ npx vitest run --maxWorkers=4
+npm warn Unknown env config "store-dir". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/b2b02654-06c3-4ecd-9447-797745a75240
+
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/b2b02654-06c3-4ecd-9447-797745a75240/test/fixtures/scheduler/.tmp/00a75699-be49-4aab-8b5f-49020f4502fb/main/.git/worktrees/staged/gitdir
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/b2b02654-06c3-4ecd-9447-797745a75240/test/fixtures/scheduler/.tmp/40bc0813-dbc0-43cd-ac06-655d4cbf19cb/main/.git/worktrees/staged/gitdir
+squeal tests: killing 1 process(es) an earlier run left: 2861019
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+
+ Test Files  458 passed | 1 skipped (459)
+      Tests  3864 passed | 10 skipped (3874)
+   Start at  17:27:57
+   Duration  670.04s (tests 95%, transform 3%, import 2%)
+
+    Isolate  459 workers spawned · ~225ms startup each (spawn + environment, per file)
+             at least ~25.54s faster with isolate: false — reuses workers across files instead of one per file
+exit 0
+
+$ git status --short
+(empty after capped full suite, HEAD a3781b51)
 ```
 
-Npm emitted its existing `store-dir` configuration warning and install-script notices for esbuild and @parcel/watcher. Full-suite output will be appended when it ends. At 15:21 UTC the host load was `201.95 103.12 75.43`; timing failures are already appearing. They are not a proven break by this wave.
+Npm emitted its existing `store-dir` configuration warning and install-script notices for esbuild and @parcel/watcher. The capped run also printed fixture gitdir repair lines, a cleanup of one process left by an earlier run, and experimental typecheck warnings; it nevertheless completed with exit 0 and no reported test failures. The coordinator stopped the uncapped run because its concurrency drove host load to 323 and other gates were timing out. That interrupted run is **unverified**, not a completed failure verdict. The capped rerun started and ended on clean review-only commit `a3781b51`; its full output is above. It passed: 458 files, 3,864 tests, with one file and ten tests skipped, in 670.04 s. No timing failure remained in this run. At 15:21 UTC the uncapped run had load `201.95 103.12 75.43`. Its timing failures are not findings against the wave. Observations before interruption included Codex bundle-parse and hook waits, daemon restart/idle timing, scheduler backlog duration bounds, and runner-part deadline failures. The interrupted run never produced a complete summary. All are superseded for verification by the passing capped full suite; no source changed between runs.
 
-The verification above is at the actual checkout, not the literal candidate SHA, so is **unverified for the exact candidate** under the reviewer rule. The product tree is identical. Probes use only ignored scratch directories inside this worktree (`node_modules/.review-00533`), synthetic store data and stub CLIs in a scratch HOME. No model or real harness session ran. No source changed.
+The verification above is at the actual checkout (install/lint/typecheck/build at `b36a5b5b`, capped suite at clean `a3781b51`), not the literal candidate SHA, so is **unverified for the exact candidate** under the reviewer rule. It is verified for those recorded clean commits; the product tree is identical to the candidate. The initial report commit changes only this review file. Probes use only ignored scratch directories inside this worktree (`node_modules/.review-00533`), synthetic store data and stub CLIs in a scratch HOME. No model or real harness session ran. No source changed.
 
 ## Verdict
 
-**FAIL**: 3 proven blockers, 0 should-fix items, 1 proven nonblocking scope note. This initial report preserves the three reproduced issues before extending the review. Only a proven spec or done-when break blocks.
+**FAIL**: 4 proven blockers, 1 proven nonblocking should-fix item, 1 proven nonblocking scope note. The first three blockers were committed in `a3781b51` within the requested first 15 minutes. Only a proven spec or done-when break blocks.
 
 ## Blockers
 
@@ -79,7 +107,7 @@ forced=true, eligible ordinary file, queued=0, enqueue calls=0
 
 The skill says "Squeal re-runs a new failure once on its own (not a slow file's, nor when more than eight fail anew at once)" and tells the agent to let that re-run answer. A fresh failure in `run --all --force` or a warm-up is excluded by the scheduler even with one fast file; the promised follow-up never arrives. A key already re-run is excluded too.
 
-**Worker-sized fix:** qualify the sentence in both skill copies to match `queueReruns`' eligibility (ordinary, not forced, not already re-run at the same key, not slow, within cap). Test the actual exceptions in the text contract; do not change scheduler policy to fit the prose. Keep the skill copies identical and within the size budget.
+**Worker-sized fix:** qualify the sentence in both skill copies to match `queueReruns`' eligibility (ordinary, not forced, not already re-run at the same key, not slow, within cap). Test the actual exceptions in the text contract; do not change scheduler policy to fit the prose. Name the cap as eight eligible test files in one tier, not eight individual failing tests. Keep the skill copies in parity and within the size budget.
 
 ### B3. Proven: declining both harnesses cannot be passed back by the setup skill
 
@@ -103,9 +131,34 @@ No flags means `given.harnesses = null`, so `--yes` takes defaults. Both explici
 
 **Worker-sized fix:** add an explicit empty-harness answer (for example `--harness none`, exclusive with named harnesses), parsing it to `[]`, and document that mapping in both skills. Cover both declines with the actual setup command in scratch homes; assert neither harness config is written while separately accepted config/gate choices can still apply.
 
+### B4. Proven: equal completion milliseconds invent a join and change the reuse/run counts
+
+**Locations:** `src/cli/run.ts:279` to `:286` (005-21), consuming the guessed owner at `:178`; test gap `test/cli/run-all-verdict.test.ts:296` and `:329`.
+
+**Contract:** goal 1 requires the first line to state how many files the checkpoint reused and ran. D1 takes a joined checkpoint's work only for a request that joined it. 005-33 specifically asks whether S2 picks the right checkpoint when two end at once. Vision requires trustworthy provenance.
+
+**Smallest proof:** a stub daemon serving the real CLI, with real `Checkpoints`, a fixed millisecond clock (`1234`), and one current listed file. Before the CLI request, `start(owner, baseline, [a])` publishes the open owner. When the stub receives `run-all`, call `finish("completed")` for the owner, then `start(request, run-all, [])`. **Never call `join()`**. Both real records complete at `1234`; the new empty request is independent and should say one already current, zero run now.
+
+```text
+no join() calls; real Checkpoints.finish/start clock=1234; exit=0
+Checkpoint request completed at revision 1: no known failures; 1 test file, 0 already current, 1 run by the baseline checkpoint owner it joined
+Checkpoint request started at revision 1: 0 test files to run, 1 already current, joining the baseline checkpoint owner already running them; both had ended when this command read them
+owner completedAt=1234 request completedAt=1234
+```
+
+Only generated checkpoint suffixes are shortened above. The socket lived inside this worktree's scratch root through a `/proc/self/fd` path alias to satisfy the Unix socket path-length limit.
+
+`joinedCheckpoint` equates equal `end` and `completedAt` with a join. Completion within one wall-clock millisecond is not a relationship. The verdict and exit code remain correct, but the required reuse/run counts and claimed provenance are wrong, hence blocking under goal 1. The new joined test seeds matching timestamps directly; the new non-join test avoids the bug by ending the owner 1,000 ms later. Neither distinguishes a real join from this collision.
+
+**Worker-sized fix:** carry an explicit owner ID from the actual `Checkpoints.join()` decision to the CLI (persisted with the request or returned consistently by `run-all` and `run-all-status`). Count an owner's work only with that evidence. Clear the core/daemon interface change with 001's owner. Add paired tests using the real checkpoint tracker: a real completed-before-read join, and an independent empty request completed in the same millisecond. Keep exit codes unchanged.
+
 ## Should-fix
 
-None yet. The completed-checkpoint join inference is being probed separately: equal end timestamps do not themselves record a join.
+### S1. Proven, nonblocking: the skill's status examples still show the old combined counts
+
+**Locations:** both `skills/squeal/SKILL.md:22`; both `skills/squeal/references/commands.md:12` and `references/reports.md:23`.
+
+D6 says the checkpoint/status units follow D1. The main skill still shows `40 current, 3 pending` without parts; `commands.md` shows `Affected checks: 47 passed, 3 running, 12 queued`. These examples no longer match the wave's primary status output. The literals were present before this wave, so this is an integration follow-up, not another blocker against unchanged text. Update them alongside B1 to show the split, including the inherited example, and keep both harness copies in parity.
 
 ## Nits and scope notes
 
@@ -119,11 +172,15 @@ None yet. The completed-checkpoint join inference is being probed separately: eq
 - Registration's nonzero `Known failures` uses the actual check identities via `failureCountText`, rather than guessing the unit.
 - The setup skill has identical copies, reads the JSON plan, prints questions without a terminal, and explicitly ends a session that cannot ask before apply. No model-based compliance claim is made.
 - `--slow none` represents the all-not-slow answer, and is exclusive with positive slow/input answers. The remaining missing empty choice is harness selection (B3).
-- Build completed without tracked bundle drift.
+- Build completed without tracked bundle drift. The committed Codex setup directory exists under the plugin root's standard `skills/` directory and survives the build despite being outside its copy list. No real harness discovery session was run.
+- The setup skills are byte-identical at 3,912 characters. The Squeal skills have matching content and references after removing the pre-existing Codex-only CLI note; that deliberate build addition is their sole diff, not a new parity defect.
+- A 1,000-entry mixed test/file failure delta rendered at 9,839 characters. Primer probes for Vitest only, Vitest plus two node:test projects/slow files, and node:test only/slow files stayed at 809 to 1,425 characters for normal commands; a 4,028-character CLI command fell back to shorter command naming and stayed at 834 to 1,297. Each retained the revision definition exactly once, configured coverage names in this matrix, and the complete not-covered sentence. Combined registration/primer stayed under 10,000.
+- Real setup without a terminal exited 1, printed harness questions, and left `git status --porcelain` unchanged. This verifies the command's refusal; it does not claim model compliance.
 
 ## Inputs for the fix/next wave
 
 1. Counts worker: preserve `readHeader`/snapshot's same-revision store read and add the inherited split at that boundary. Formatting should consume exact check identities when it has them. Do not infer file counts from paths or drop the combined total. Keep the 10,000-character delivery cap.
 2. Text worker: change only the new re-run wording and its parity/size tests. `queueReruns(context, ledger, failures)` is the source of truth; forced and already-re-run keys are excluded before the cap is applied. No scheduler-policy change is requested.
 3. Setup worker: parser must distinguish unanswered (`null`) from declined-all (`[]`); run `setup --plan --json`, interview, then apply with an explicit flag for every answer. Gates remain applied before blocks; `--no-warmup` remains on the apply command when the skill handles warm-up separately. Never stage/commit during setup.
-4. Next proof wave owns real harness sessions. This review runs none. Confirm noninteractive no-write behavior there; preserve the stated 1,500-character primer and skill size budgets.
+4. Join worker: timestamps cannot identify an owner. Only `Checkpoints.join()` establishes the relationship; return or persist that owner through the daemon/CLI boundary, including when the owner finishes before the CLI reads. Pair the true-join probe with the no-join collision probe; clear any additive core type change with 001.
+5. Next proof wave owns real harness sessions. This review runs none. Confirm noninteractive no-write behavior there; preserve the stated 1,500-character primer and skill size budgets.
