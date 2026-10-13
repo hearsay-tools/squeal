@@ -160,13 +160,14 @@ const stateOf = (root: string, testPath: string) =>
     testPath,
   ).map((r) => `${r.validity} ${r.outcome}`);
 
-/** Whether a revision after `after` named `path`: then the watcher saw the reverted bytes. */
-const revised = (root: string, path: string, after: number) =>
+/** How many revisions after `after` named `path`. */
+const revisions = (root: string, path: string, after: number) =>
   query<{ changes: string }>(
     root,
     "SELECT changes FROM revisions WHERE worktree_id = ? AND number > ?",
     after,
-  ).some((r) => (JSON.parse(r.changes) as { path: string }[]).some((c) => c.path === path));
+  ).filter((r) => (JSON.parse(r.changes) as { path: string }[]).some((c) => c.path === path))
+    .length;
 
 /** Exit code of a fresh `vitest run` of `testPath` in `root`. */
 const freshRun = (root: string, testPath: string) =>
@@ -187,9 +188,18 @@ describe("a sub-second revert-and-restore of an imported module (001-146)", () =
       writeFileSync(join(root, "test/reverting.test.ts"), reverting(attempt));
       await settle(root, at);
       const loaded = existsSync(LOADED) ? readFileSync(LOADED, "utf8") : null;
-      planted = loaded === "old" && !revised(root, "src/mod.ts", at);
+      // A revision naming the module: the watcher saw the reverted bytes. Task 001-343: two
+      // naming the test file (a write seen as its truncation, then its bytes) re-run it after
+      // the armed run, unarmed, and that run's pass is the restored bytes' own.
+      planted =
+        loaded === "old" &&
+        revisions(root, "src/mod.ts", at) === 0 &&
+        revisions(root, "test/reverting.test.ts", at) === 1;
     }
-    expect(planted, "a run loaded the reverted bytes and no revision named them").toBe(true);
+    expect(
+      planted,
+      "a run loaded the reverted bytes, one revision named the test file, none the module",
+    ).toBe(true);
     expect(readFileSync(join(root, "src/mod.ts"), "utf8")).toBe(NEW);
     // The reverting run executed bytes no key names: not stored as current.
     expect(stateOf(root, "test/reverting.test.ts")).not.toContain("current pass");
