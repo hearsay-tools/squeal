@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { POLICY_FILE } from "../../core/daemon/policy.js";
 import { init } from "../init.js";
 import type { CliIo } from "../main.js";
@@ -75,7 +75,7 @@ export async function runSetup(run: SetupRun, io: CliIo): Promise<number> {
     }
     if (code === 0) code = warm.code;
   }
-  showChanges(plan, io);
+  showChanges(plan, answers.blocks, io);
   return code;
 }
 
@@ -112,22 +112,39 @@ async function apply(answers: SetupAnswers, io: CliIo): Promise<number> {
   return 0;
 }
 
-/** D3 step 5: `git diff --stat`, the diff of every instruction file, and what to commit. */
-function showChanges(plan: SetupPlan, io: CliIo): void {
+/**
+ * D3 step 5: `git diff --stat`, the diff of every instruction file, and what
+ * to commit. A file new to Git is shown against an empty one, read-only:
+ * setup never stages. `blocks` are the files the answers wrote a block to.
+ */
+function showChanges(plan: SetupPlan, blocks: readonly string[], io: CliIo): void {
+  // `diff --no-index` exits 1 when the files differ: its output is read either way.
   const git = (args: string[]) => {
-    try {
-      return execFileSync("git", ["-C", plan.root, ...args], { encoding: "utf8" });
-    } catch {
-      return "";
-    }
+    const run = spawnSync("git", ["-C", plan.root, ...args], { encoding: "utf8" });
+    return run.status === 0 || run.status === 1 ? run.stdout : "";
   };
-  const files = [...new Set(plan.instructions.flatMap((f) => [f.path, ...f.aliases]))];
+  const files = [
+    ...new Set([...plan.instructions.flatMap((f) => [f.path, ...f.aliases]), ...blocks]),
+  ];
   const stat = git(["diff", "--stat"]);
-  const diff = files.length === 0 ? "" : git(["diff", "--", ...files]);
-  const untracked = git(["status", "--porcelain", "--", POLICY_FILE, ".claude/settings.json"])
+  const untracked = git([
+    "status",
+    "--porcelain",
+    "--untracked-files=all",
+    "--",
+    POLICY_FILE,
+    ".claude/settings.json",
+    ...files,
+  ])
     .split("\n")
     .filter((line) => line.startsWith("??"))
     .map((line) => line.slice(3));
+  const diff = [
+    files.length === 0 ? "" : git(["diff", "--", ...files]),
+    ...files
+      .filter((f) => untracked.includes(f))
+      .map((f) => git(["diff", "--no-index", "--", "/dev/null", f])),
+  ].join("");
   const changed = git(["diff", "--name-only"])
     .split("\n")
     .filter((l) => l !== "");
