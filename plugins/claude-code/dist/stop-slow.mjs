@@ -508,7 +508,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.149";
+  if (true) return "0.1.150";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -835,6 +835,9 @@ function recordStopWait(store, consumer, harness, version) {
     const key = stopWaitMetaKey(consumer.worktreeId);
     writeSlot(store, key, consumer, { registeredAt, [harness]: version });
   });
+}
+function forgetStopWait(store, consumer) {
+  writeSlot(store, stopWaitMetaKey(consumer.worktreeId), consumer, null);
 }
 
 // src/core/state/slow-sources.ts
@@ -3897,6 +3900,7 @@ function createDelivery(store, options) {
       const at2 = now();
       const registered = store.consumers.get(consumer) !== null;
       store.consumers.register(consumer, at2);
+      forgetStopWait(store, consumer);
       const states = store.knownStates.list(consumer.worktreeId);
       store.views.writeMany(
         consumer,
