@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { countedText } from "../../src/core/status/checks.js";
 import { PLUGIN_DIR } from "../../src/harness/claude-code/build.js";
 import { CODEX_PLUGIN_DIR, CODEX_SKILL } from "../../src/harness/codex/build.js";
 import { PRIMER } from "../../src/harness/shared/primer.js";
@@ -133,7 +134,26 @@ describe("the squeal skill", () => {
     const step = body.slice(body.indexOf("2. **"), body.indexOf("3. **"));
     expect(step).toContain("Squeal re-runs a new failure once on its own");
     expect(step).toContain("`Flaky: FAIL -> PASS under the same inputs`");
-    expect(step).toContain("rather than re-running a failed test yourself");
+    expect(step).toContain("rather than re-running such a failure yourself");
+  });
+
+  /*
+   * Review wave 3 B2: the re-run is promised only where `queueReruns`
+   * (`src/core/scheduler/rerun.ts`) queues one. A forced run's failure
+   * (`run --all --force`, a warm-up, a re-run), a key already re-run and a
+   * slow file's are left out before the cap, and the cap counts test files
+   * failing anew in one tier, not failing tests.
+   */
+  it("names every failure Squeal does not re-run, as the scheduler decides it", () => {
+    const step = body.slice(body.indexOf("2. **"), body.indexOf("3. **"));
+    expect(step).toContain(
+      "not one from a forced run (`squeal run --all --force`, `squeal warmup`, a re-run), one already re-run at the same inputs, a slow file's, nor any when more than eight test files fail anew in one tier",
+    );
+    expect(step).not.toContain("more than eight fail anew at once");
+  });
+
+  it("stays within its budget", () => {
+    expect(body.length).toBeLessThan(5_000);
   });
 
   it("names the path form of the wait for a test file the edits did not re-key", () => {
@@ -180,5 +200,37 @@ describe("the squeal skill", () => {
       }
     }
     expect(pointers).toBeGreaterThanOrEqual(3);
+  });
+
+  /*
+   * Review wave 3 S1 (spec 005 D1, D6): the examples print counts of checks
+   * as Squeal does, tests and test files loaded apart, built here by the
+   * formatter itself so an example cannot drift from the output.
+   */
+  it("shows every count of checks with tests and test files loaded apart", () => {
+    const counts = (parts: [number, string, number][]) =>
+      parts.map(([count, label, files]) => countedText(count, label, files)).join(", ");
+    const validity = (current: number, files: number, pending: number, stale = 0, unknown = 0) =>
+      counts([
+        [current, "current", files],
+        [pending, "pending", 0],
+        [stale, "stale", 0],
+        [unknown, "unknown", 0],
+      ]);
+    expect(body).toContain(`\`Revision 21 (changed src/math.ts): ${validity(40, 6, 3)}.\``);
+    expect(read("reports.md")).toContain(`\`Revision 12: ${validity(40, 6, 3, 1, 2)}.\``);
+    expect(read("commands.md")).toContain(
+      `Affected checks: ${counts([
+        [47, "passed", 7],
+        [3, "running", 0],
+        [12, "queued", 2],
+      ])}\n`,
+    );
+    expect(read("reports.md")).toContain(
+      "`Inherited: 30 of 40 current (25 tests, 5 test files loaded).`",
+    );
+    for (const text of [body, read("reports.md"), read("commands.md")]) {
+      expect(text).not.toMatch(/\b\d+ current, \d+ pending|\d+ passed, \d+ running/);
+    }
   });
 });
