@@ -86,150 +86,155 @@ const pidOf = (child: ChildProcess | null): number => child?.pid ?? -1;
 const gone = (pid: number) =>
   expect.poll(() => isAlive(pid), { timeout: 10_000, message: `${pid} gone` }).toBe(false);
 
-describe.runIf(process.platform === "linux")("afterEachRun, a mark per lane (task 004-18)", () => {
-  it("stops a short run's escape when it ends, never the long run's worker", async () => {
-    const children = new EscapedChildren();
-    let release = () => {};
-    const held = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    let worker: ChildProcess | null = null;
-    let leftover: ChildProcess | null = null;
-    const notes: string[] = [];
-    const runner = afterEachRun(
-      fakeRunner(async (testFiles, runOptions) => {
-        if (testFiles.includes(LONG)) {
-          // A worker that lives for the whole run, then exits with it.
-          worker = carrier(runOptions, false);
-          await held;
-          worker.kill("SIGTERM");
-        } else {
-          leftover = carrier(runOptions, true);
-        }
-        return completed(testFiles);
-      }),
-      children,
-      ({ text }) => notes.push(text),
-    );
-    expect(runner.lane?.(SHORT)).toBe("node-test");
+// Up to two 10 s polls and the stop's 1 s grace in one test (task 001-320).
+describe.runIf(process.platform === "linux")(
+  "afterEachRun, a mark per lane (task 004-18)",
+  () => {
+    it("stops a short run's escape when it ends, never the long run's worker", async () => {
+      const children = new EscapedChildren();
+      let release = () => {};
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let worker: ChildProcess | null = null;
+      let leftover: ChildProcess | null = null;
+      const notes: string[] = [];
+      const runner = afterEachRun(
+        fakeRunner(async (testFiles, runOptions) => {
+          if (testFiles.includes(LONG)) {
+            // A worker that lives for the whole run, then exits with it.
+            worker = carrier(runOptions, false);
+            await held;
+            worker.kill("SIGTERM");
+          } else {
+            leftover = carrier(runOptions, true);
+          }
+          return completed(testFiles);
+        }),
+        children,
+        ({ text }) => notes.push(text),
+      );
+      expect(runner.lane?.(SHORT)).toBe("node-test");
 
-    const long = runner.run([LONG], options("long"));
-    await expect.poll(() => worker).not.toBeNull();
-    await runner.run([SHORT], options("short"));
-    const escaped = pidOf(leftover);
-    await gone(escaped);
-    expect(isAlive(pidOf(worker))).toBe(true);
-    expect(notes).toEqual([
-      expect.stringMatching(
-        new RegExp(
-          `^stopped 1 process a test left running after its tier: ${escaped} .*, run short\\)$`,
+      const long = runner.run([LONG], options("long"));
+      await expect.poll(() => worker).not.toBeNull();
+      await runner.run([SHORT], options("short"));
+      const escaped = pidOf(leftover);
+      await gone(escaped);
+      expect(isAlive(pidOf(worker))).toBe(true);
+      expect(notes).toEqual([
+        expect.stringMatching(
+          new RegExp(
+            `^stopped 1 process a test left running after its tier: ${escaped} .*, run short\\)$`,
+          ),
         ),
-      ),
-    ]);
-    release();
-    await long;
-    expect(notes).toHaveLength(1);
-  });
-
-  it("never stops a worker another lane starts while a settled run's stop is under way (review 001-149 B1)", async () => {
-    const children = new EscapedChildren();
-    // The reviewer's probe: the stop after lane node-test's run waits at a barrier before its scan.
-    let atBarrier = false;
-    let pass = () => {};
-    const barrier = new Promise<void>((resolve) => {
-      pass = resolve;
-    });
-    const sweeper: RunSweeper = {
-      mark: () => children.mark(),
-      envFor: (lane) => children.envFor(lane),
-      carriers: (lane, since) => children.carriers(lane, since),
-      async afterRun(lane, since, alone) {
-        if (lane === "node-test") {
-          atBarrier = true;
-          await barrier;
-        }
-        return children.afterRun(lane, since, alone);
-      },
-    };
-    let release = () => {};
-    const held = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    let worker: ChildProcess | null = null;
-    const notes: string[] = [];
-    const runner = afterEachRun(
-      fakeRunner(async (testFiles, runOptions) => {
-        if (testFiles.includes(LONG)) {
-          worker = carrier(runOptions, true);
-          await held;
-        }
-        return completed(testFiles);
-      }),
-      sweeper,
-      ({ text }) => notes.push(text),
-    );
-    onTestFinished(() => {
-      pass();
+      ]);
       release();
+      await long;
+      expect(notes).toHaveLength(1);
     });
 
-    // Lane node-test settles alone, so its stop reaches the bare mark and orphans too.
-    const short = runner.run([SHORT], options("short"));
-    await expect.poll(() => atBarrier).toBe(true);
-    // Lane vitest starts meanwhile; its detached worker carries its own lane's mark.
-    const long = runner.run([LONG], options("long"));
-    await expect.poll(() => worker).not.toBeNull();
-    const working = pidOf(worker);
-    await expect.poll(() => isAlive(working)).toBe(true);
-    pass();
-    await short;
-    expect(isAlive(working)).toBe(true);
-    expect(notes).toEqual([]);
+    it("never stops a worker another lane starts while a settled run's stop is under way (review 001-149 B1)", async () => {
+      const children = new EscapedChildren();
+      // The reviewer's probe: the stop after lane node-test's run waits at a barrier before its scan.
+      let atBarrier = false;
+      let pass = () => {};
+      const barrier = new Promise<void>((resolve) => {
+        pass = resolve;
+      });
+      const sweeper: RunSweeper = {
+        mark: () => children.mark(),
+        envFor: (lane) => children.envFor(lane),
+        carriers: (lane, since) => children.carriers(lane, since),
+        async afterRun(lane, since, alone) {
+          if (lane === "node-test") {
+            atBarrier = true;
+            await barrier;
+          }
+          return children.afterRun(lane, since, alone);
+        },
+      };
+      let release = () => {};
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let worker: ChildProcess | null = null;
+      const notes: string[] = [];
+      const runner = afterEachRun(
+        fakeRunner(async (testFiles, runOptions) => {
+          if (testFiles.includes(LONG)) {
+            worker = carrier(runOptions, true);
+            await held;
+          }
+          return completed(testFiles);
+        }),
+        sweeper,
+        ({ text }) => notes.push(text),
+      );
+      onTestFinished(() => {
+        pass();
+        release();
+      });
 
-    // Its own stop reaches it once its run settles.
-    release();
-    await long;
-    await gone(working);
-    expect(notes).toEqual([
-      expect.stringMatching(
-        new RegExp(`^stopped 1 process a test left running after its tier: ${working} `),
-      ),
-    ]);
-  });
+      // Lane node-test settles alone, so its stop reaches the bare mark and orphans too.
+      const short = runner.run([SHORT], options("short"));
+      await expect.poll(() => atBarrier).toBe(true);
+      // Lane vitest starts meanwhile; its detached worker carries its own lane's mark.
+      const long = runner.run([LONG], options("long"));
+      await expect.poll(() => worker).not.toBeNull();
+      const working = pidOf(worker);
+      await expect.poll(() => isAlive(working)).toBe(true);
+      pass();
+      await short;
+      expect(isAlive(working)).toBe(true);
+      expect(notes).toEqual([]);
 
-  it("runs a slow lane's processes at nice 10, and a fast run's stop leaves them running", async () => {
-    const children = new EscapedChildren();
-    let release = () => {};
-    const held = new Promise<void>((resolve) => {
-      release = resolve;
+      // Its own stop reaches it once its run settles.
+      release();
+      await long;
+      await gone(working);
+      expect(notes).toEqual([
+        expect.stringMatching(
+          new RegExp(`^stopped 1 process a test left running after its tier: ${working} `),
+        ),
+      ]);
     });
-    let worker: ChildProcess | null = null;
-    let fast: ChildProcess | null = null;
-    const runner = afterEachRun(
-      fakeRunner(async (testFiles, runOptions) => {
-        if (runOptions.lane === "slow:vitest") {
-          worker = carrier(runOptions, false);
-          await held;
-        } else {
-          // A fast tier that leaves a process behind and settles while the slow file runs.
-          fast = carrier(runOptions, true);
-          await expect.poll(() => getPriority(pidOf(worker)), { timeout: 10_000 }).toBe(10);
-          expect(getPriority(pidOf(fast))).toBe(getPriority());
-        }
-        return completed(testFiles);
-      }),
-      children,
-      () => {},
-    );
-    const slow = runner.run([LONG], options("slow", "slow:vitest"));
-    await expect.poll(() => worker).not.toBeNull();
-    await runner.run([SHORT], options("fast"));
-    await gone(pidOf(fast));
-    expect(isAlive(pidOf(worker))).toBe(true);
-    release();
-    await slow;
-  });
-});
+
+    it("runs a slow lane's processes at nice 10, and a fast run's stop leaves them running", async () => {
+      const children = new EscapedChildren();
+      let release = () => {};
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let worker: ChildProcess | null = null;
+      let fast: ChildProcess | null = null;
+      const runner = afterEachRun(
+        fakeRunner(async (testFiles, runOptions) => {
+          if (runOptions.lane === "slow:vitest") {
+            worker = carrier(runOptions, false);
+            await held;
+          } else {
+            // A fast tier that leaves a process behind and settles while the slow file runs.
+            fast = carrier(runOptions, true);
+            await expect.poll(() => getPriority(pidOf(worker)), { timeout: 10_000 }).toBe(10);
+            expect(getPriority(pidOf(fast))).toBe(getPriority());
+          }
+          return completed(testFiles);
+        }),
+        children,
+        () => {},
+      );
+      const slow = runner.run([LONG], options("slow", "slow:vitest"));
+      await expect.poll(() => worker).not.toBeNull();
+      await runner.run([SHORT], options("fast"));
+      await gone(pidOf(fast));
+      expect(isAlive(pidOf(worker))).toBe(true);
+      release();
+      await slow;
+    });
+  },
+  30_000,
+);
 
 /**
  * Leads a process group of its own and, per line on stdin, leaves an

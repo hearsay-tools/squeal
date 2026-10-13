@@ -38,7 +38,9 @@ async function setupYes(root: string, harnesses: readonly ("claude" | "codex")[]
 const read = (root: string, path: string) => readFileSync(join(root, path), "utf8");
 const count = (text: string, part: string) => text.split(part).length - 1;
 
-describe("squeal setup shows a new instruction file", () => {
+// Setup runs git for each file it shows: past the 5 s default under a loaded
+// full suite (task 001-320).
+describe("squeal setup shows a new instruction file", { timeout: 30_000 }, () => {
   it("shows and lists a fresh repository's new AGENTS.md once", async () => {
     const root = withoutInstructions();
     const { changes, commit } = await setupYes(root, ["claude"]);

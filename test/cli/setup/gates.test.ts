@@ -16,7 +16,10 @@ const FALLBACK = (command: string) =>
 
 const tracked = (root: string) => git(root, ["ls-files"]).trim().split("\n");
 
-describe("gate detection", () => {
+/** Each fixture is a git repository built by git processes: past 5 s under load (task 001-320). */
+const FIXTURES = { timeout: 30_000 } as const;
+
+describe("gate detection", FIXTURES, () => {
   it("lists this repository's old gate with its rewording, and the skill's line as a mention", async () => {
     const root = squealShaped();
     const plan = await buildPlan(root, { env: harnessEnv() });
@@ -144,7 +147,7 @@ describe("gate detection", () => {
   });
 });
 
-describe("rewording gate lines", () => {
+describe("rewording gate lines", FIXTURES, () => {
   it("writes only the lines named, through the symlink, and refuses an unknown id", () => {
     const root = squealShaped({
       "CLAUDE.md": `# Agents\n\n${VITEST_GATE}\n\nAlso run \`npm test\`.\n`,

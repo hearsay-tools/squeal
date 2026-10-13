@@ -317,6 +317,9 @@ function snapshot(dir: string): Record<string, string> {
   return files;
 }
 
+/** Each answer from the real app-server, sized for a loaded CI runner. */
+const APP_SERVER_WAIT_MS = 60_000;
+
 describe.skipIf(!codexOnPath)("squeal init --harness codex --trust --yes against Codex", () => {
   it("installs the plugin from this checkout under the hub's name, trusts every Squeal hook, and only Codex writes", async () => {
     const scratch = runtimeDir();
@@ -345,7 +348,9 @@ describe.skipIf(!codexOnPath)("squeal init --harness codex --trust --yes against
 
     const repo = fakeRepo();
     const { io, out } = capture(repo.main, env);
-    const code = await main(["init", "--harness", "codex", "--trust", "--yes"], io);
+    // The real app-server, past the 10 s product deadline at load 62 (task 001-320);
+    // the stub's tests above keep that deadline and `main`'s flags.
+    const code = await initCodex(io, { trust: true, yes: true }, { timeoutMs: APP_SERVER_WAIT_MS });
     expect({ code, stderr: out.stderr }).toEqual({ code: 0, stderr: "" });
     const events = [...out.stdout.matchAll(/^ {2}(\w+)\s+trusted$/gm)].map((m) => m[1]);
     // Nine events, ten handlers: Stop's second is the slow-tier wait (001-285).
@@ -365,7 +370,9 @@ describe.skipIf(!codexOnPath)("squeal init --harness codex --trust --yes against
 
     // A fresh app-server reads the trust back from Codex's own config.
     const again = capture(repo.main, env);
-    expect(await main(["init", "--harness", "codex", "--trust"], again.io)).toBe(0);
+    expect(
+      await initCodex(again.io, { trust: true, yes: false }, { timeoutMs: APP_SERVER_WAIT_MS }),
+    ).toBe(0);
     expect(again.out.stdout).toContain("every hook of squeal@hearsay is trusted");
 
     // No bypass flag anywhere in the command's source.
@@ -373,5 +380,5 @@ describe.skipIf(!codexOnPath)("squeal init --harness codex --trust --yes against
     for (const file of ["src/cli/codex/trust.ts", "src/cli/codex/init.ts", "src/cli/init.ts"]) {
       expect(readFileSync(join(REPO_ROOT, file), "utf8"), file).not.toContain(bypass);
     }
-  }, 120_000);
+  }, 300_000);
 });

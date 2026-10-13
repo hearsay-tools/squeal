@@ -107,53 +107,59 @@ function commits(r: SquealRepo, edits: readonly ("edit" | "queue")[]): void {
   };
 }
 
-describe.each(HARNESSES)("Stop's last retry keeps its revision guard, $name (B2)", (harness) => {
-  it("blocks when the slow file is queued right before the last endTurn", async () => {
-    expect(STOP_DECISIONS).toBe(3);
-    const r = await repo(harness);
-    commits(r, ["edit", "edit", "queue"]);
-    const out = decision((await harness.stop(r)).stdout);
-    expect(hooks.calls).toEqual(AT_REVISIONS_1_TO_3);
-    expect(out.decision).toBe("block");
-    expect(out.reason).toMatch(
-      /^Squeal: the revision changed 3 times while Stop decided, now past revision 3; stop again to decide at the newest\./,
-    );
-    const turn = await harness.stop(r, { stop_hook_active: true });
-    expect(decision(turn.stdout).decision).toBeUndefined();
-    r.store.close();
-  });
-
-  it("ends the turn at the revision its third decision checked (control)", async () => {
-    const r = await repo(harness);
-    commits(r, ["edit", "edit"]);
-    expect((await harness.stop(r)).stdout).toBe("");
-    expect(hooks.calls).toEqual(AT_REVISIONS_1_TO_3);
-    r.store.close();
-  });
-
-  it("ends the turn at the revision a retry found the slow file queued at, for the waiting entry (control)", async () => {
-    // 004 D9 as amended 2026-10-12: the 2 s entry leaves slow files to `stop-slow`.
-    const r = await repo(harness);
-    commits(r, ["edit", "queue"]);
-    expect((await harness.stop(r)).stdout).toBe("");
-    expect(hooks.calls).toEqual(AT_REVISIONS_1_TO_3);
-    const [record] = r.store.consumers.list(r.worktreeId);
-    expect(record && readTurn(r.store, record.consumer)).toMatchObject({
-      turn: "idle",
-      revision: 3,
-      testFiles: [testFileId(FILE)],
-      keys: { [testFileId(FILE)]: "k2" },
-      handoff: { at: expect.any(Number) },
+// Each test runs three hooks in process on a real store: past the 5 s default
+// under a loaded full suite (task 001-320).
+describe.each(HARNESSES)(
+  "Stop's last retry keeps its revision guard, $name (B2)",
+  (harness) => {
+    it("blocks when the slow file is queued right before the last endTurn", async () => {
+      expect(STOP_DECISIONS).toBe(3);
+      const r = await repo(harness);
+      commits(r, ["edit", "edit", "queue"]);
+      const out = decision((await harness.stop(r)).stdout);
+      expect(hooks.calls).toEqual(AT_REVISIONS_1_TO_3);
+      expect(out.decision).toBe("block");
+      expect(out.reason).toMatch(
+        /^Squeal: the revision changed 3 times while Stop decided, now past revision 3; stop again to decide at the newest\./,
+      );
+      const turn = await harness.stop(r, { stop_hook_active: true });
+      expect(decision(turn.stdout).decision).toBeUndefined();
+      r.store.close();
     });
-    r.store.close();
-  });
 
-  it("never blocks at the bound while an earlier block keeps the agent going (stop_hook_active)", async () => {
-    const r = await repo(harness);
-    commits(r, ["edit", "edit", "queue"]);
-    expect((await harness.stop(r, { stop_hook_active: true })).stdout).toBe("");
-    expect(hooks.calls).toHaveLength(1);
-    expect(hooks.calls[0]?.atRevision).toBeUndefined();
-    r.store.close();
-  });
-});
+    it("ends the turn at the revision its third decision checked (control)", async () => {
+      const r = await repo(harness);
+      commits(r, ["edit", "edit"]);
+      expect((await harness.stop(r)).stdout).toBe("");
+      expect(hooks.calls).toEqual(AT_REVISIONS_1_TO_3);
+      r.store.close();
+    });
+
+    it("ends the turn at the revision a retry found the slow file queued at, for the waiting entry (control)", async () => {
+      // 004 D9 as amended 2026-10-12: the 2 s entry leaves slow files to `stop-slow`.
+      const r = await repo(harness);
+      commits(r, ["edit", "queue"]);
+      expect((await harness.stop(r)).stdout).toBe("");
+      expect(hooks.calls).toEqual(AT_REVISIONS_1_TO_3);
+      const [record] = r.store.consumers.list(r.worktreeId);
+      expect(record && readTurn(r.store, record.consumer)).toMatchObject({
+        turn: "idle",
+        revision: 3,
+        testFiles: [testFileId(FILE)],
+        keys: { [testFileId(FILE)]: "k2" },
+        handoff: { at: expect.any(Number) },
+      });
+      r.store.close();
+    });
+
+    it("never blocks at the bound while an earlier block keeps the agent going (stop_hook_active)", async () => {
+      const r = await repo(harness);
+      commits(r, ["edit", "edit", "queue"]);
+      expect((await harness.stop(r, { stop_hook_active: true })).stdout).toBe("");
+      expect(hooks.calls).toHaveLength(1);
+      expect(hooks.calls[0]?.atRevision).toBeUndefined();
+      r.store.close();
+    });
+  },
+  30_000,
+);
