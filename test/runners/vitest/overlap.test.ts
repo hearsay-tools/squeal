@@ -25,6 +25,7 @@ afterEach(() => {
   for (const dir of markerDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 const MATH = ref("test/math.test.ts");
+const REREAD = ref("test/reread.test.ts");
 
 /** Imports `src/mod.ts`, writes `started`, waits while `hold` exists. */
 function heldTest(hold: string, started: string): string {
@@ -194,12 +195,15 @@ describe("vitest adapter: the runner part beside a run (001-150)", SLOW, () => {
    * after Vite read the reverted bytes and before their transform is cached.
    * Vite returns that transform to the run but does not cache it, so `hold`
    * finds nothing cached to keep and the run's own check nothing to compare.
+   * With `reread`, a second file loads the module again in the same run once
+   * the restored bytes are on disk.
    */
-  async function inFlightRun(revert: boolean): Promise<RunReport> {
+  async function inFlightRun(revert: boolean, reread = false): Promise<RunReport> {
     const markers = mkdtempSync(join(tmpdir(), "squeal-001-343-"));
     markerDirs.push(markers);
     const transforming = join(markers, "transforming");
     const go = join(markers, "go");
+    const restoredMarker = join(markers, "restored");
     const fx = await openFixture("basic", {
       // Holds the module's transform after Vite loaded it, until `go` exists.
       "vitest.config.ts": [
@@ -232,12 +236,25 @@ describe("vitest adapter: the runner part beside a run (001-150)", SLOW, () => {
         '  const target = "../src/mod" + ".ts";',
         "  const { which } = await import(/* @vite-ignore */ target);",
         "  writeFileSync(file, restored);",
+        `  writeFileSync(${JSON.stringify(restoredMarker)}, "");`,
+        '  expect(which).toBe("new");',
+        "}, 120_000);",
+        "",
+      ].join("\n"),
+      [REREAD.path]: [
+        'import { existsSync } from "node:fs";',
+        'import { setTimeout as delay } from "node:timers/promises";',
+        'import { expect, it } from "vitest";',
+        'it("loads the restored module", async () => {',
+        `  while (!existsSync(${JSON.stringify(restoredMarker)})) await delay(20);`,
+        '  const target = "../src/mod" + ".ts";',
+        "  const { which } = await import(/* @vite-ignore */ target);",
         '  expect(which).toBe("new");',
         "}, 120_000);",
         "",
       ].join("\n"),
     });
-    const run = fx.adapter.run([HELD], fx.runOptions());
+    const run = fx.adapter.run(reread ? [HELD, REREAD] : [HELD], fx.runOptions());
     await expect.poll(() => existsSync(transforming), { timeout: 60_000 }).toBe(true);
     // A revision named src/mod.ts while its transform was in flight; its runner part lands now.
     await fx.adapter.invalidate([{ path: "src/mod.ts", kind: "change" }]);
@@ -249,6 +266,13 @@ describe("vitest adapter: the runner part beside a run (001-150)", SLOW, () => {
     const report = await inFlightRun(true);
     expect(report.completedFiles).toEqual([]);
     expect(report.results).toEqual([]);
+    expect(report.failure).toContain("src/mod.ts changed on disk after this run loaded it");
+  });
+
+  it("drops a file whose in-flight read a later load of the module in the same run replaced (001-343)", async () => {
+    const report = await inFlightRun(true, true);
+    expect(report.completedFiles).not.toContainEqual(HELD);
+    expect(report.results.map((r) => r.check.testPath)).not.toContain(HELD.path);
     expect(report.failure).toContain("src/mod.ts changed on disk after this run loaded it");
   });
 
