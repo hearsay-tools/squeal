@@ -46,6 +46,7 @@ const SEAMS = [
   "src/cli/main.ts -> src/cli/status-command.ts", // `squeal status`: reads the store
   "src/cli/main.ts -> src/cli/status-wait.ts", // `squeal status --wait`: polls the store
   "src/cli/main.ts -> src/cli/stop.ts", // `squeal stop`: asks a daemon to exit
+  "src/cli/main.ts -> src/cli/update.ts", // `squeal update`: updates the plugin through each harness's CLI
   "src/cli/main.ts -> src/cli/wait-arg.ts", // parses `--wait <ms>`
   "src/cli/main.ts -> src/cli/warmup.ts", // `squeal warmup`: starts a daemon and waits for a checkpoint through run.ts
   "src/cli/main.ts -> src/core/status/index.ts", // `squeal status` and `why`: read the store and render it
