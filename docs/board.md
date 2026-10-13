@@ -663,6 +663,7 @@ Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the hu
 | 005-29 the warm-up reports 001-307's ignored reads | done (0.1.138; interim wording for a file without an entry until 001-312; narrow it then) | D3: the warm-up's `run-all` asks `observeIgnored`, then prints `readIgnoredReads` as unkeyed suggestions. | A gitignored read named after `squeal warmup`; a plain `run --all` stores nothing. |
 | 005-30 re-review of wave 2.5 | done: PASS (`reviews/wave-2.5.md`, at `3dc61b4d`; B1 to B3 and S1 closed; new S2 nonblocking, fixed in 005-31; full suite 1 known failure, 001-309 item 3); wave 2 closed | `/reviewer` on gpt-6.1-sol, limited to B1 to B3, S1, their variants and 005-29. | `reviews/wave-2.5.md`. |
 | 005-31 the warm-up keeps every pool's ignored reads of one slow file | done (coordinator's own hands; paths merged, overflow said as "at least"/"up to") | S2 of `reviews/wave-2.5.md`. | A unit test with two pools' entries for one path. |
+| 005-32 the warm-up's lines narrowed after 001-312 | done (0.1.142; coordinator's own hands) | A missing entry now means not observed, an empty one read nothing outside its declared inputs (001-312, 0.1.141). | "no ignored read recorded for X: not observed by this warm-up"; "X read no ignored path outside its declared inputs". |
 
 ### Wave 3: proof
 
