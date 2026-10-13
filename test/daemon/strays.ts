@@ -128,6 +128,7 @@ export function isAlive(pid: number): boolean {
   try {
     return !/^\d+ \(.*\) Z/.test(readFileSync(`/proc/${pid}/stat`, "utf8"));
   } catch {
-    return true;
+    // On Linux it was reaped between the two reads; elsewhere there is no `/proc` to ask.
+    return process.platform !== "linux";
   }
 }
