@@ -47,6 +47,7 @@ const SEAMS = [
   "src/cli/main.ts -> src/cli/status-wait.ts", // `squeal status --wait`: polls the store
   "src/cli/main.ts -> src/cli/stop.ts", // `squeal stop`: asks a daemon to exit
   "src/cli/main.ts -> src/cli/wait-arg.ts", // parses `--wait <ms>`
+  "src/cli/main.ts -> src/cli/warmup.ts", // `squeal warmup`: starts a daemon and waits for a checkpoint through run.ts
   "src/cli/main.ts -> src/core/status/index.ts", // `squeal status` and `why`: read the store and render it
   // Whether a daemon is alive, to start one: never what it stores.
   "src/core/daemon/ensure.ts -> src/core/delivery/liveness.ts",
