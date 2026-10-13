@@ -8,6 +8,8 @@ import {
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
+import { runGit, splitNul } from "../../core/fs/index.js";
+import type { AbsolutePath } from "../../core/types/index.js";
 import type { HarnessId } from "./harnesses.js";
 import type { BlockState, InstructionFile } from "./plan.js";
 
@@ -196,14 +198,59 @@ export function writeBlockFile(root: string, path: string, block: string): Block
   return { path, result: "written" };
 }
 
+/** The root files `removeBlocks` checks by name, whether git lists them or not. */
+const ROOT_FILES = ["AGENTS.md", ...CLAUDE_FILES];
+
+/** The file names `init --block` writes and `squeal remove` finds at any depth (row 005-24). */
+export const BLOCK_FILE_NAMES = ["AGENTS.md", "CLAUDE.md", "CLAUDE.local.md"];
+
 /**
- * Takes the block out of every file a harness may read at the root, each
- * real file once; a file left empty is deleted, since setup made it.
+ * Why `squeal remove` could not find a block written to `path`
+ * (worktree-relative), `null` when it could: it finds the root files by
+ * name and the others among the files git lists, tracked or untracked,
+ * so a nested file git ignores is out of its reach.
  */
-export function removeBlocks(root: string): BlockEdit[] {
+export async function unfindableBlock(root: AbsolutePath, path: string): Promise<string | null> {
+  const names = BLOCK_FILE_NAMES.join(", ").replace(/, (?=[^,]*$)/, " or ");
+  const reason = `squeal remove could not find a block in "${path}"`;
+  if (!BLOCK_FILE_NAMES.includes(basename(path))) return `--block takes ${names}; ${reason}`;
+  if (ROOT_FILES.includes(path)) return null;
+  // check-ignore names an ignored path and exits 1 for one it does not ignore; a tracked file never is.
+  const ignored = await runGit(root, ["check-ignore", "--", path], { okCodes: [0, 1] }).catch(
+    () => "",
+  );
+  return ignored === "" ? null : `git ignores it, so ${reason}`;
+}
+
+/**
+ * The files `removeBlocks` looks in: the root files, then every file git
+ * lists by a block file name, tracked or untracked and not ignored, where
+ * `init --block` may have written one. The root files alone when git
+ * cannot list them.
+ */
+export async function blockFiles(root: AbsolutePath): Promise<string[]> {
+  const out = await runGit(root, [
+    "ls-files",
+    "-z",
+    "--cached",
+    "--others",
+    "--exclude-standard",
+    "--",
+    ...BLOCK_FILE_NAMES.map((name) => `:(glob)**/${name}`),
+  ]).catch(() => "");
+  const listed = [...new Set(splitNul(out))].filter((path) => !ROOT_FILES.includes(path)).sort();
+  return [...ROOT_FILES, ...listed];
+}
+
+/**
+ * Takes the block out of `paths` (worktree-relative; by default every file
+ * a harness may read at the root), each real file once; a file left empty
+ * is deleted, since setup made it.
+ */
+export function removeBlocks(root: string, paths: readonly string[] = ROOT_FILES): BlockEdit[] {
   const edits: BlockEdit[] = [];
   const seen = new Set<string>();
-  for (const path of ["AGENTS.md", ...CLAUDE_FILES]) {
+  for (const path of paths) {
     if (!existsSync(join(root, path))) continue;
     const real = resolved(root, path);
     if (seen.has(real)) continue;
