@@ -1,0 +1,47 @@
+# 001-320 notes: more tests that hit the 5 s default under load, and `isAlive`
+
+001-309's method: for each test, what it waits on, why load broke the wait, and the fix. None showed a product defect, so every change is to tests.
+
+## `isAlive` (`reviews/wave-13ay.md` S1)
+
+`test/daemon/strays.ts` `isAlive` now reads only `ENOENT` or `ESRCH` from `/proc/<pid>/stat` as gone, the process reaped between the signal probe and the read. Any other read error (`EACCES`, `EIO`) is no evidence of exit and answers alive, as before 001-309. Outside Linux it still answers alive. The stat reader is an optional second parameter, so `test/daemon/strays.test.ts` injects each error: a missing stat after a successful probe is gone, a zombie is gone, a permission or I/O error is alive. A live pid and a dead one are checked for real.
+
+## Per-test bounds: CPU and child processes under the 5 s default
+
+Each of these waits on its own work finishing: in-process hooks or CLI commands on a real SQLite store, git or bundle processes. Nothing in them waits on a timer the product could skip. The fix is the bound, as 001-309 (4) and (5) did, at describe level where every sibling has the same shape, so a sibling does not fail next (001-309 (3)).
+
+| Test | Waits on | Bound |
+| --- | --- | --- |
+| `test/cli/status-wait.test.ts` (every describe) | The CLI's `status --wait` returning: its own wait of 300 ms to 5 s plus a store open and read every 250 ms poll | 30 s (`WAITS`) |
+| `test/harness/stop-retry-bound.test.ts` | Three hooks in process, each opening the store | 30 s |
+| `test/harness/stop-slow-untold.test.ts` | Both Stop entries in process; the waiting one polls the store up to `slowWaitMs` | 30 s |
+| `test/cli/remove.test.ts` "deletes nothing and exits 1 while a daemon will not let go of its lock" | The product's 300 ms lock wait, after the store open and the stop request to a daemon that is not there | 30 s |
+| `test/cli/setup/gates.test.ts` (both describes) | A fixture repository built by git processes, then `buildPlan` | 30 s (`FIXTURES`) |
+| `test/cli/setup/setup-changes.test.ts` | `squeal setup --yes`, which runs git for each file it shows | 30 s |
+| `test/harness/codex/bundles.test.ts` "without a usable store" | A bundle process per test | 60 s, the file's build bound |
+| `test/daemon/escaped-overlap.test.ts` "afterEachRun, a mark per lane" | Up to two 10 s polls (`gone`, the nice-10 priority) and the stop's 1 s grace, which already ran past the 5 s test default | 30 s |
+
+## `test/cli/codex-trust.test.ts`: the real Codex app-server
+
+**Cause: a product deadline sized for a person, not a loaded runner.** `CODEX_APP_SERVER_TIMEOUT_MS` (10 s) bounds each app-server answer. The real app-server missed `initialize` within it at load 62 (`reviews/wave-13aw.md`).
+
+**Fix:** the real-Codex test calls `initCodex` with `timeoutMs: 60_000` instead of `main`, so it waits on the same answer with a bound sized for CI. The test timeout goes from 120 s to 300 s to hold two app-server sessions and two `codex plugin` commands. The 10 s product default is unchanged. The stub's tests still go through `main` with `--trust --yes` (`:231`), and `:276` still checks that a silent app-server ends the command at its deadline (300 ms there).
+
+## `test/scheduler/backlog-tiers.test.ts`: 200-file backlog against a direct run
+
+**Cause: unpaired minima, 001-309 (8)'s shape.** The best of two direct runs was measured first, then one backlog minutes later under different load: backlog 15,336 ms against direct 5,103 ms in 001-309's background run.
+
+**Fix:** a cold direct run first, unmeasured. Then three rounds, each a direct run immediately followed by a config edit that re-queues all 200 files. The median of the three backlog-to-direct ratios is asserted `< 2`, the same bound. Each round still checks 200 files, every tier completed and at most 3 tiers. The test timeout goes from 300 s to 600 s. At load about 100 it took 116 s.
+
+## `test/e2e/lifecycle.test.ts`: the dead-daemon hook budgets
+
+**Cause: a clock bound.** `HOOK_BUDGET_MS` (2 s, spec 001 D9's `timeout: 2`) asserted on one hook's wall time. Measured here at load 115, the same hook kind ranged from 94 to 2,189 ms (codex session-end) across one file's run. Squeal's baseline at load about 120 saw 5,281 ms for "is named in the delivered header" (`told`).
+
+**Fix: pair it with the bundle's fixed cost.** Right after each budgeted hook, three PreToolUse runs go through the same plugin bundle. PreToolUse only reads the store and never ensures a daemon (`src/harness/shared/ensure.ts` is called from PostToolBatch, Stop, SessionStart and the prompt hook only), so the extra runs change nothing the test reads next. The bound is `max(HOOK_BUDGET_MS, 5 × median)`. One PreToolUse took 115 ms (claude-code) and 273 ms (codex) here at load 115, so the 2 s budget decides until the median passes 400 ms. A hook stuck on a 2 s socket timeout on a calm runner still fails. Under load the bound grows with the bundle's own start. A load spike on the budgeted hook alone can still fail it. That is the same trade as 001-309 (1): an inflated reference can hide a smaller delay. This covers the replacement SessionStart, `pre` and `told`.
+
+"a bad squeal.config.json > yields one note and a running daemon" makes no `HOOK_BUDGET_MS` assertion, and its 240 s bound is far from the 5 s default. It failed once here at 52.8 s, in the first run after the edit above at load about 50. I did not capture the message. It passed in the next five runs (one alone, four in parallel) and is unchanged. If it fails again, keep the message: its waits are `registered`, `e.edit`, the `stop` CLI and `daemonReady`, each with its own bound in `test/e2e/harness.ts`.
+
+## Seen beside this row, not changed
+
+- `test/harness/stop-slow-untold.test.ts` "13an S2: a pending file moved and failed between two polls blocks once" (codex) failed once in a parallel batch with these files at load about 90: decision `block`, reason not matching `FAILS_AT(2)`, at 5,098 ms. It was an assertion, not a timeout. I did not capture the reason. Injected 2.1 s stalls at the handoff, the first poll and the second poll each gave the expected reason or silence, never another block. It then passed 8 parallel runs of the file (320 tests) and the stress loop below. The test's 2 s `slowWaitMs` is a wall-clock bound its schedule needs the second poll to beat. If it fails again, capture the reason first.
+- Squeal's baseline in this worktree at load 113 to 126, while my own runs added load, hit the 5 s default in more files of the same shape as 001-309's "nine hook-bundle tests": `test/harness/{bundles,hooks,liveness,pre-tool-use,primer-coverage,session-lifecycle,starting-daemon,stop-nudge,stop-require-slow,stop-slow-boundary}.test.ts` and `test/evals/malformed.test.ts`. `test/harness/codex/latency.test.ts` and `test/harness/starting-daemon.test.ts` hit the 10 s hook default in `test/store/helpers.ts`. The same baseline failed `test/daemon/handover.test.ts`, `test/daemon/step-down.test.ts` (`alive` where `spawned` was expected) and `test/cli/warmup.test.ts`. All three passed together at load 58 (16 of 16). The row does not name them, so they are unchanged. They are the shared cause 001-309's notes name: the 5 s default against a loaded host.
