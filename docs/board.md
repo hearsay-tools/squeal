@@ -628,7 +628,7 @@ Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the hu
 | 005-11 a wait on named files | done (0.1.133; reads only, no reordering, the human 2026-10-13: not for now; review in 005-13) | D2: `status --wait <ms> <path>...` restricts the wait to the test files the paths select, by test or source path; no new priority (001 coordinator, 2026-10-10). | Selection tests; a wait on a pending named file returns when that file's result lands. |
 | 005-12 the setup engine | done (0.1.133; plan, `--check`, block, gates, candidates, `init` flags; Codex trust reported not checked; KEY_FORMAT_VERSION 9; review in 005-13) | D3's `squeal setup --plan [--json]`, `--check` and `init`'s per-choice flags (no new flag behaves as today), slow and artifact candidates with their evidence and `--slow`/`--input`, D4's block, D5's gate detection and rewording; `squeal remove` takes the block out. | Plan JSON, block and gate tests, the symlinked-file case included. |
 | 005-21 tests and file-level checks counted apart in status and headers | planned, after 001-292 | D1's counting rule in `squeal status` and the delivery headers (`src/core/status/format-status.ts`, `src/core/delivery/`), split from 005-10 on 2026-10-12 because 001-292 may change both. | Status and header snapshot tests name tests and test files loaded apart; the 10,000-character cap holds. |
-| 005-13 review of wave 1 | planned | `/reviewer` on gpt-6.1-sol. | `reviews/wave-1.md`. |
+| 005-13 review of wave 1 | running (reviewer 755e5d81, gpt-6.1-sol high; range `ce1425a1^..d1d3522a`) | `/reviewer` on gpt-6.1-sol. | `reviews/wave-1.md`. |
 
 ### Wave 2: install, setup, the skill and the texts
 
