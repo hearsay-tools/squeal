@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { CheckpointRecord, TestFileRef } from "../types/index.js";
+import type { CheckpointRecord, FullSuiteCheckpoint, TestFileRef } from "../types/index.js";
 import { NOTHING_CHANGED } from "./context.js";
 import { classify, type FileState } from "./files.js";
 import type { Ledger } from "./ledger.js";
@@ -10,11 +10,11 @@ import { priorityOf } from "./queue.js";
  * or keyed, so the checkpoint over the files an earlier daemon listed is
  * abandoned at once and never claims a full suite (review wave 11, B1).
  */
-export function abandonFullSuite(ledger: Ledger): CheckpointRecord {
+export function abandonFullSuite(ledger: Ledger): FullSuiteCheckpoint {
   const files = [...ledger.files.values()].map((file) => file.ref);
   const record = ledger.checkpoints.abandon(randomUUID(), "run-all", ledger.revision.number, files);
   ledger.commit();
-  return record;
+  return { ...record, owner: record.id };
 }
 
 /**
@@ -30,9 +30,10 @@ export function abandonFullSuite(ledger: Ledger): CheckpointRecord {
  * it rather than abandoning it for an identical one. A request that needs
  * nothing completes at once and leaves the open one be. A `fresh` request
  * never joins: a warm-up's files run flagged, so a tier already in flight
- * cannot count for them (review wave 13ar, B1).
+ * cannot count for them (review wave 13ar, B1). The joined one is its
+ * `owner`, which the CLI counts the work of (review wave-3, B4).
  */
-export function queueFullSuite(ledger: Ledger, force: boolean, fresh = false): CheckpointRecord {
+export function queueFullSuite(ledger: Ledger, force: boolean, fresh = false): FullSuiteCheckpoint {
   const id = randomUUID();
   const revision = ledger.revision.number;
   const { checkpoints } = ledger;
@@ -74,7 +75,7 @@ export function queueFullSuite(ledger: Ledger, force: boolean, fresh = false): C
     for (const file of unrunnable) checkpoints.failed(file.ref);
   }
   ledger.commit();
-  return record;
+  return { ...record, owner: joins ? attributed : record.id };
 }
 
 /**

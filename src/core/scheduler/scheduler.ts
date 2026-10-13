@@ -5,7 +5,7 @@ import { describeFailure } from "../state/index.js";
 import { plural } from "../text.js";
 import {
   type CandidateBatch,
-  type CheckpointRecord,
+  type FullSuiteCheckpoint,
   type FullSuiteRequest,
   isSlowLane,
   type RelativePath,
@@ -263,7 +263,7 @@ class TierScheduler implements Scheduler {
    * its own: only its own tiers run flagged, and a forced checkpoint counts
    * only its own tiers' results (review wave 13ar, B1).
    */
-  async requestFullSuite(request: FullSuiteRequest = {}): Promise<CheckpointRecord> {
+  async requestFullSuite(request: FullSuiteRequest = {}): Promise<FullSuiteCheckpoint> {
     const warmUp = request.observeIgnored === true;
     const force = request.force === true || warmUp;
     const queue = (ledger: Ledger) => {

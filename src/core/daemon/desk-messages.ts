@@ -1,7 +1,7 @@
 import type {
-  CheckpointRecord,
   DaemonPhase,
   EpochMs,
+  FullSuiteCheckpoint,
   FullSuiteRequest,
   SyncAnswer,
   WorktreeId,
@@ -26,7 +26,7 @@ export type ToDesk =
   | {
       readonly type: "run-all-result";
       readonly id: string;
-      readonly checkpoint: CheckpointRecord | null;
+      readonly checkpoint: FullSuiteCheckpoint | null;
       readonly error: string | null;
     }
   | {
