@@ -21,10 +21,17 @@ import {
  * `{ "<session>\n<agent>": { "<harness>": "<version>" } }`. Another session
  * in the worktree, with another config, launcher or trust, never inherits
  * it: its first Stop blocks on slow files as before, and its own waiting
- * entry, if it runs, marks it. The evidence lasts while the consumer is
- * registered; a slot of one no longer registered is dropped on the next
- * write. A waiting entry disabled mid-session is not seen: the slot stays
- * until the session ends.
+ * entry, if it runs, marks it.
+ *
+ * Task 001-322 (review wave 13aw S1): the evidence is one registration's,
+ * `{ "registeredAt": <ms>, "<harness>": "<version>" }`, and counts only while
+ * the consumer's `registeredAt` is that one. A registration again, after an
+ * unregister, an expiry or a `startup` or `resume` of the same session id,
+ * starts unmarked, so a session resumed with its waiting entry turned off
+ * blocks on slow files as before; its waiting entry, if it runs, marks it at
+ * its next Stop. Compaction keeps the registration and so the evidence. A
+ * slot without `registeredAt`, written before, reads unmarked. A waiting
+ * entry disabled within one registration is not seen.
  */
 
 /**
@@ -54,11 +61,17 @@ export function stopWaitRuns(
   harness: StopWaitHarness,
   version: string,
 ): boolean {
+  const registeredAt = store.consumers.get(consumer)?.registeredAt;
+  if (registeredAt === undefined) return false;
   const value = readSlot(store, stopWaitMetaKey(consumer.worktreeId), consumer);
-  return isRecord(value) && value[harness] === version;
+  return isRecord(value) && value.registeredAt === registeredAt && value[harness] === version;
 }
 
-/** Records that `harness`'s waiting entry runs for `consumer` at `version`; writes only a change. */
+/**
+ * Records that `harness`'s waiting entry runs for `consumer`'s current
+ * registration at `version`; writes only a change, and nothing for a
+ * consumer not registered.
+ */
 export function recordStopWait(
   store: Store,
   consumer: Consumer,
@@ -66,7 +79,9 @@ export function recordStopWait(
   version: string,
 ): void {
   store.transaction(() => {
-    if (stopWaitRuns(store, consumer, harness, version)) return;
-    writeSlot(store, stopWaitMetaKey(consumer.worktreeId), consumer, { [harness]: version });
+    const registeredAt = store.consumers.get(consumer)?.registeredAt;
+    if (registeredAt === undefined || stopWaitRuns(store, consumer, harness, version)) return;
+    const key = stopWaitMetaKey(consumer.worktreeId);
+    writeSlot(store, key, consumer, { registeredAt, [harness]: version });
   });
 }
