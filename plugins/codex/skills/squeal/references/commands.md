@@ -32,7 +32,7 @@ Its first line says why it returned, with the revision and the time waited:
 
 The exit code is 0 in all four cases. Keep the limit below your shell tool's own timeout. On a busy host give it `120000`: at load 100 to 170 on 24 CPUs, an edited file's result took 1 to 16 s at the median and up to 51 s. A daemon from an older release names no files: the wait then returns when nothing at all is pending, or on any check's change. With `--json`, stdout is the snapshot with a `wait` field (`outcome` is `quiet`, `news`, `no-daemon` or `timeout`; `edit`, when the daemon named the files, holds `since`, the first revision of the window, `testFiles`, `pending` and `otherTransitions`) and the line goes to stderr.
 
-Results for particular files also arrive with your next tool call; when you need them first, name them: `squeal status --wait 60000 <path>...`. A test file's path selects that test file, and any other path selects the test files that import or read it, as far as Squeal's record for this worktree knows. The wait returns when every selected file has a result at the current revision, or at the deadline. Its first line is their verdict, `Named test files at revision N: no known failures; ...` or `Named test files have no verdict: ...`, then the files it selected, their failures in full, and status. It exits 0 with every selected file current and passing, 1 with a known failure among them, and 3 without a verdict (a file pending at the deadline or unknown, no daemon). A path that selects nothing exits 3 with `No verdict: no test file's closure holds <path>`; name the test file itself instead. Other files' work and changes do not affect it.
+Results for particular files also arrive with your next tool call; when you need them first, such as a test file your edits did not re-key, which the wait above does not hold for, name them: `squeal status --wait 60000 <path>...`. A test file's path selects that test file, and any other path selects the test files that import or read it, as far as Squeal's record for this worktree knows. The wait returns when every selected file has a result at the current revision, or at the deadline. Its first line is their verdict, `Named test files at revision N: no known failures; ...` or `Named test files have no verdict: ...`, then the files it selected, their failures in full, and status. It exits 0 with every selected file current and passing, 1 with a known failure among them, and 3 without a verdict (a file pending at the deadline or unknown, no daemon). A path that selects nothing exits 3 with `No verdict: no test file's closure holds <path>`; name the test file itself instead. Other files' work and changes do not affect it.
 
 ## Red/green: checking that a test catches the bug
 
@@ -54,6 +54,8 @@ Full output: squeal why "src/math.test.ts > math > adds"
 ```
 
 Use a name exactly as a SQUEAL message or `squeal status` printed it. Any unique part of the name also works.
+
+When the result shown ran at a revision older than the current one, a `Changed since revision N:` line lists each path changed after it, with the revisions that changed it (at most 20 of each). Those changes are what the result has not seen; at the current revision the line is absent.
 
 Its `Run log:` line names the `vitest.log` of the run that produced the result shown, from the worktree it was inherited from when it was. That file holds the run's `console` output, but it covers every test file of that run, not only this check. To see only this check's test file's lines, add `--include-logs`:
 
