@@ -133,9 +133,10 @@ describe.skipIf(!MODELS).each(CASES)(
           join(OUT, `${shape}-${harness}.jsonl`),
           `${r.stdout}\n--- stderr\n${r.stderr}`,
         );
-        console.log(
-          `${shape} ${harness}: started ${started} at load ${load.toFixed(1)} on ${cpus} CPUs, exit ${r.status}, ${Math.round(r.ms / 1000)} s`,
-        );
+        // Vitest prints a passing test's console only on failure: the record goes beside the transcript.
+        const meta = { shape, harness, started, load, cpus, exit: r.status, wallMs: r.ms };
+        writeFileSync(join(OUT, `${shape}-${harness}.meta.json`), `${JSON.stringify(meta)}\n`);
+        console.log(JSON.stringify(meta));
         expect(r.status, shown(r)).toBe(0);
 
         const e = EXPECTED[shape];
