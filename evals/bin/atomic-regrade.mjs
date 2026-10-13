@@ -5,11 +5,13 @@
 //   node evals/bin/atomic-regrade.mjs [file.atomic.json ...] [--date YYYY-MM-DD]
 // With no file, every `*.atomic.json` in evals/results. Each file gets a `regraded` note naming
 // the cells whose measures changed; nothing else changes. No session and no model call. Every
-// file is regraded before any is written, so a failure leaves them all as they were.
+// file is regraded before any is written, so a failure leaves them all as they were. Then
+// ATOMIC.md is regenerated in each directory a regraded file lives in, from every atomic file there.
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
 import { atomicConfig, regradeAtomic } from "../lib/atomic.mjs";
+import { writeAtomicMarkdown } from "../lib/atomic-trend.mjs";
 import { EVALS } from "../lib/prepare.mjs";
 
 const { values, positionals } = parseArgs({
@@ -37,6 +39,10 @@ for (const { file, data, changed } of regraded) {
   writeFileSync(file, `${JSON.stringify(data, null, 1)}\n`);
   console.log(`${file}: ${changed.length} of ${data.cells.length} cells changed`);
   for (const line of tally(data.cells)) console.log(`  ${line}`);
+}
+for (const dir of new Set(files.map((f) => dirname(f)))) {
+  const n = writeAtomicMarkdown(dir);
+  console.log(`${join(dir, "ATOMIC.md")} from ${n} atomic results file(s)`);
 }
 
 /** Per scenario, measure and model: met of computable, as `a2-slow slow-through-squeal m 8/20`. */

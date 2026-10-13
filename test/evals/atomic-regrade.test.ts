@@ -1,7 +1,9 @@
-import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { copyFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { atomicConfig, type Json, regradeAtomic } from "../../evals/lib/index.mjs";
+import { atomicConfig, atomicMarkdown, type Json, regradeAtomic } from "../../evals/lib/index.mjs";
 
 // 006-35: the two committed atomic runs, regraded by evals/bin/atomic-regrade.mjs under D10's
 // measures from what each cell kept. a1-break is as it was; a2-slow's `slow-through-squeal`
@@ -84,5 +86,26 @@ describe("the committed atomic runs, regraded", () => {
     const r = regradeAtomic(stale as unknown as Json, config, "2026-10-12");
     expect(r.changed).toEqual([data.cells[i]?.id]);
     expect((r.data as unknown as Results).cells).toEqual(data.cells);
+  });
+});
+
+describe("evals/bin/atomic-regrade.mjs", () => {
+  it("regenerates ATOMIC.md beside the files it regraded, from every atomic file there", () => {
+    const dir = mkdtempSync(join(tmpdir(), "squeal-evals-atomic-regrade-"));
+    try {
+      const name = "2026-10-12-0.1.127.20261012T203134Z-4ed2a0.atomic";
+      copyFileSync(join(RESULTS, `${name}.json`), join(dir, `${name}.json`));
+      const out = spawnSync(
+        process.execPath,
+        ["evals/bin/atomic-regrade.mjs", join(dir, `${name}.json`), "--date", "2026-10-12"],
+        { encoding: "utf8" },
+      );
+      expect(out.status, out.stderr).toBe(0);
+      const data = JSON.parse(readFileSync(join(dir, `${name}.json`), "utf8"));
+      expect(readFileSync(join(dir, "ATOMIC.md"), "utf8")).toBe(atomicMarkdown([{ name, data }]));
+      expect(out.stdout).toContain(`${join(dir, "ATOMIC.md")} from 1 atomic results file(s)`);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
