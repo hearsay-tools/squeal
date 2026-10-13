@@ -1,0 +1,34 @@
+// Probe 001-343 (throwaway, uncommitted as a test): the cost of the run's end check with many modules.
+import { appendFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+import { openFixture, ref } from "./helpers.js";
+
+const N = Number(process.env.SQ343_N ?? "2000");
+const OUT = process.env.SQ343_OUT ?? "/tmp/probe-343.jsonl";
+
+describe("probe 001-343: end-check cost", () => {
+  it(`runs a test that loads ${N} modules, twice`, { timeout: 600_000 }, async () => {
+    const files: Record<string, string> = {};
+    const lines: string[] = [];
+    for (let i = 0; i < N; i++) {
+      files[`src/big/m${i}.ts`] = `export const v${i} = ${i};\n`;
+      lines.push(`export { v${i} } from "./m${i}.ts";`);
+    }
+    files["src/big/index.ts"] = `${lines.join("\n")}\n`;
+    files["test/big.test.ts"] = [
+      'import { expect, it } from "vitest";',
+      'import * as big from "../src/big/index.ts";',
+      `it("loads", () => expect(Object.keys(big).length).toBe(${N}));`,
+      "",
+    ].join("\n");
+    const fx = await openFixture("basic", files);
+    for (let round = 1; round <= 3; round++) {
+      (globalThis as { probe343?: unknown[] }).probe343 = [];
+      if (round === 3) fx.write("src/big/m0.ts", "export const v0 = 0; // touched\n");
+      const report = await fx.adapter.run([ref("test/big.test.ts")], fx.runOptions());
+      expect(report.completedFiles).toEqual([ref("test/big.test.ts")]);
+      const probe = (globalThis as { probe343?: { seen: number; added: number; loopMs: number }[] }).probe343 ?? [];
+      appendFileSync(OUT, `${JSON.stringify({ n: N, round, probe: probe.map(({ seen, added, loopMs, checks }: any) => ({ seen, added, loopMs: Number(loopMs.toFixed(3)), checks })) })}\n`);
+    }
+  });
+});
