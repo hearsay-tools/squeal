@@ -61,6 +61,8 @@ const SEAMS = [
   "src/core/scheduler/claims.ts -> src/core/status/snapshot.ts",
   // Whether a consumer is in a turn decides when the slow tier runs, not what it records.
   "src/core/scheduler/slow-tier.ts -> src/core/delivery/turn.ts",
+  // Whether this session's waiting Stop entry ran decides where Stop waits, not what it records (001-297).
+  "src/core/slow/stop-wait.ts -> src/core/delivery/slots.ts",
   "src/core/state/slow.ts -> src/core/delivery/slots.ts",
   // The adapters' own versions (D4).
   "src/runners/node-test/adapter.ts -> src/runners/node-test/version.ts",
