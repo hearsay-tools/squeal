@@ -6454,11 +6454,11 @@ var init_revision = __esm({
 });
 
 // src/core/scheduler/context.ts
-async function tryRunner(context, subject, call, onFailure) {
+async function tryRunner(context, subject2, call, onFailure) {
   try {
     return await call();
   } catch (error) {
-    const reason2 = `runner ${subject} failed: ${error instanceof Error ? error.message : String(error)}`;
+    const reason2 = `runner ${subject2} failed: ${error instanceof Error ? error.message : String(error)}`;
     context.note(reason2);
     onFailure?.(reason2);
     return null;
@@ -10809,8 +10809,8 @@ var init_slow_tier = __esm({
         for (const { ref: ref2 } of files2) {
           if (!view.isSlow(ref2)) continue;
           const declared = context.keys.declaredFor(ref2.path);
-          const subject = { path: ref2.path, slow: true };
-          if (inheritsAcrossWorktrees(subject, declared, testFiles, view.globs)) continue;
+          const subject2 = { path: ref2.path, slow: true };
+          if (inheritsAcrossWorktrees(subject2, declared, testFiles, view.globs)) continue;
           const paths = byProject.get(ref2.project) ?? [];
           paths.push(ref2.path);
           byProject.set(ref2.project, paths);
@@ -10950,7 +10950,7 @@ var init_scheduler2 = __esm({
         started: () => this.#started(),
         closed: () => this.#closed,
         pump: () => this.#pump(),
-        backgroundError: (subject, error) => this.#backgroundError(subject, error)
+        backgroundError: (subject2, error) => this.#backgroundError(subject2, error)
       });
       #slow;
       #context = null;
@@ -11498,8 +11498,8 @@ var init_scheduler2 = __esm({
         return { context: this.#context, ledger: this.#ledger };
       }
       /** An error of work no caller awaits: a note for status, and `onError`. */
-      #backgroundError(subject, error) {
-        this.#note(`${subject}: ${String(error)}`);
+      #backgroundError(subject2, error) {
+        this.#note(`${subject2}: ${String(error)}`);
         this.options.onError?.(error instanceof Error ? error : new Error(String(error)));
       }
       /** Persists a note for `squeal status` (D7, review S6). */
@@ -34905,7 +34905,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.159";
+  if (true) return "0.1.160";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -39285,6 +39285,10 @@ var BEGIN2 = /^<!-- squeal:begin v\d+/;
 var END2 = /^<!-- squeal:end -->/;
 var FENCE = /^\s*(```|~~~)/;
 var REWORDED = /squeal run --all/;
+var SQUEAL = /\bsqueal\b/i;
+var NEGATION = /\b(?:do not|don['’]t|never|instead of|avoid)\b/i;
+var SENTENCE_END = /[.!?][)\]*_"'”’]*$/;
+var BLOCK_START = /^\s*(?:[-*+]\s|\d+[.)]\s|#|>|\||```|~~~|<!--)/;
 var SHELL_OPERATOR = /&&|\|\||[;|&<>]|\$\(/;
 var ENV_PREFIX = /(?:^|\s)(?:[A-Za-z_]\w*=|(?:cross-)?env\s)/;
 function commandPattern(nodeTest) {
@@ -39320,10 +39324,10 @@ function scanGates(root, tracked, options) {
     } catch {
       continue;
     }
-    for (const { line, text: lineText, command, fenced } of commandLines(text2, pattern2)) {
-      if (!instruction) mentions.push({ file, line, text: lineText });
+    for (const { line, text: lineText, command, fenced, next } of commandLines(text2, pattern2)) {
+      if (!instruction || notRun(lineText, pattern2)) mentions.push({ file, line, text: lineText });
       else {
-        const reason2 = fenced ? "inside a code block" : compound(lineText, pattern2);
+        const reason2 = fenced ? "inside a code block" : unfit(lineText, next, pattern2) ?? compound(lineText, pattern2) ?? subject(lineText, pattern2);
         const proposed = reason2 === null ? reword(lineText, pattern2) : null;
         gates.push({
           id: `${file}:${line}`,
@@ -39339,11 +39343,31 @@ function scanGates(root, tracked, options) {
   }
   return { gates, mentions };
 }
+function squealLine(root, path) {
+  let text2;
+  try {
+    text2 = readFileSync22(resolved(root, path), "utf8");
+  } catch {
+    return null;
+  }
+  let inBlock = false;
+  const lines = text2.split("\n");
+  for (const [i2, line] of lines.entries()) {
+    if (BEGIN2.test(line)) inBlock = true;
+    if (inBlock) {
+      if (END2.test(line)) inBlock = false;
+      continue;
+    }
+    if (SQUEAL.test(line)) return { file: path, line: i2 + 1, text: line };
+  }
+  return null;
+}
 function commandLines(text2, pattern2) {
   const found = [];
   let fenced = false;
   let inBlock = false;
-  text2.split("\n").forEach((line, i2) => {
+  const lines = text2.split("\n");
+  lines.forEach((line, i2) => {
     if (BEGIN2.test(line)) inBlock = true;
     if (inBlock) {
       if (END2.test(line)) inBlock = false;
@@ -39355,7 +39379,8 @@ function commandLines(text2, pattern2) {
     }
     const match2 = pattern2.exec(line);
     if (match2 === null || REWORDED.test(line)) return;
-    found.push({ line: i2 + 1, text: line, command: commandOf(line, pattern2), fenced });
+    const command = commandOf(line, pattern2);
+    found.push({ line: i2 + 1, text: line, command, fenced, next: lines[i2 + 1] });
   });
   return found;
 }
@@ -39364,6 +39389,43 @@ function commandOf(line, pattern2) {
     if (pattern2.test(span[1])) return span[1];
   }
   return pattern2.exec(line)[0];
+}
+function commandAt(line, pattern2) {
+  for (const span of line.matchAll(/`([^`]+)`/g)) {
+    if (pattern2.test(span[1])) return span.index;
+  }
+  return pattern2.exec(line).index;
+}
+function prose(line) {
+  return line.replace(/`[^`]*`/g, (span) => "x".repeat(span.length));
+}
+function leadIn(line, pattern2) {
+  const at2 = commandAt(line, pattern2);
+  const last = [
+    ...prose(line).slice(0, at2).matchAll(/[.!?]\s+/g)
+  ].at(-1);
+  return line.slice(last === void 0 ? 0 : last.index + last[0].length, at2);
+}
+function sentenceEnd(line, from) {
+  const stop = /[.!?][)\]*_"'”’]*(?=\s+\S)/g;
+  stop.lastIndex = from;
+  const match2 = stop.exec(prose(line));
+  return match2 === null ? null : match2.index + match2[0].length;
+}
+function notRun(line, pattern2) {
+  return SQUEAL.test(line) || NEGATION.test(leadIn(line, pattern2));
+}
+function unfit(line, next, pattern2) {
+  if (/^\s*\|/.test(line)) return "a table row";
+  if (sentenceEnd(line, commandAt(line, pattern2)) !== null) return null;
+  const body = line.trimEnd();
+  if (SENTENCE_END.test(body)) return null;
+  const continued = next !== void 0 && next.trim() !== "" && !BLOCK_START.test(next);
+  if (/[,;:\-–—]$/.test(body) || continued) return "its sentence goes on past the line";
+  return null;
+}
+function subject(line, pattern2) {
+  return /^\s*(?:[-*+]\s+|\d+[.)]\s+)?[*_]*$/.test(leadIn(line, pattern2)) ? "its sentence describes the test command rather than running it" : null;
 }
 function compound(line, pattern2) {
   const spans = [...line.matchAll(/`([^`]+)`/g)].map((span) => span[1]);
@@ -39388,9 +39450,12 @@ function reword(line, pattern2 = commandPattern(true)) {
     (span, inner) => pattern2.test(inner) ? `\`${checkpoint}\`` : span
   );
   if (replaced === line) replaced = line.replace(pattern2, checkpoint);
+  const fallback = `If it exits 3 at its deadline, run it again; if it exits 3 for another reason, \`squeal\` is unavailable, or you doubt its result, run \`${command}\` instead.`;
+  const end = sentenceEnd(replaced, replaced.indexOf(checkpoint));
+  if (end !== null) return `${replaced.slice(0, end)} ${fallback}${replaced.slice(end)}`;
   const body = replaced.trimEnd();
-  const stop = /[.!?:]$/.test(body) ? "" : ".";
-  return `${body}${stop} If it exits 3 at its deadline, run it again; if it exits 3 for another reason, \`squeal\` is unavailable, or you doubt its result, run \`${command}\` instead.`;
+  const stop = SENTENCE_END.test(body) ? "" : ".";
+  return `${body}${stop} ${fallback}`;
 }
 function rewordGates(root, tracked, ids, options) {
   const { gates } = scanGates(root, tracked, options);
@@ -39761,6 +39826,7 @@ async function readPlan(root, options) {
     runners,
     config,
     instructions,
+    squealMentions: instructions.flatMap((f) => squealLine(root, f.path) ?? []),
     gates,
     mentions,
     slow,
@@ -41666,6 +41732,12 @@ function formatPlan(plan) {
     lines.push(
       `  ${file.path}${aliases}: read by ${file.harnesses.join(" and ")}; ${file.exists ? block2 : "does not exist"}`
     );
+    const squeal = plan.squealMentions.find((m) => m.file === file.path);
+    if (squeal !== void 0) {
+      lines.push(
+        `    Squeal already named outside the block, line ${squeal.line}: ${squeal.text.trim()}`
+      );
+    }
   }
   lines.push("", "Gate lines:");
   if (plan.gates.length === 0) lines.push("  none");
@@ -41676,7 +41748,7 @@ function formatPlan(plan) {
     );
   }
   if (plan.mentions.length > 0) {
-    lines.push("  The test command elsewhere (not offered as edits):");
+    lines.push("  The test command where it is no gate (not offered as edits):");
     for (const m of plan.mentions) lines.push(`    ${m.file}:${m.line}: ${m.text.trim()}`);
   }
   lines.push("", "Slow groups:");
