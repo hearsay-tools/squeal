@@ -1,0 +1,11 @@
+$ mkdir -p /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi
+$ curl -fsSL -o /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/.unpack.W9suoN/source.tar.gz file:///home/squeal-e2e/dogfood-009/src/squeal--v0.1.172.tar.gz
+$ tar -xzf /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/.unpack.W9suoN/source.tar.gz -C /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/.unpack.W9suoN/source --strip-components=1
+$ mv /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/.unpack.W9suoN/source/plugins/pi /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.172
+$ pi install /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.172
+Installing /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.172...
+Installed /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.172
+$ mkdir -p /home/squeal-e2e/dogfood-009/home/.local/bin
+$ cp /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.172/bin/squeal-launcher /home/squeal-e2e/dogfood-009/home/.local/bin/squeal
+$ chmod 755 /home/squeal-e2e/dogfood-009/home/.local/bin/squeal
+Next, in each repository: squeal setup

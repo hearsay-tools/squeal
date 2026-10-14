@@ -1,0 +1,16 @@
+$ curl -fsSL -o /home/squeal-e2e/dogfood-009/tmp/squeal-update-HrbrPo/install.sh file:///home/squeal-e2e/dogfood-009/src/install-0.1.174.sh
+$ sh /home/squeal-e2e/dogfood-009/tmp/squeal-update-HrbrPo/install.sh --pi
+$ mkdir -p /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi
+$ curl -fsSL -o /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/.unpack.xZERX8/source.tar.gz file:///home/squeal-e2e/dogfood-009/src/squeal--v0.1.174.tar.gz
+$ tar -xzf /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/.unpack.xZERX8/source.tar.gz -C /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/.unpack.xZERX8/source --strip-components=1
+$ mv /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/.unpack.xZERX8/source/plugins/pi /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.174
+$ pi install /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.174
+Installing /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.174...
+Installed /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.174
+$ rm -rf /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.172
+$ pi remove /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.173
+Removing /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.173...
+Removed /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.173
+Pi sessions already open keep the Squeal they loaded; /reload in each loads 0.1.174
+Pi: Squeal 0.1.174, was 0.1.173
+A running session keeps the version it loaded until it restarts, or until /reload-plugins in Claude Code or /reload in Pi.

@@ -16,7 +16,9 @@ What `../lessons.md` was observed with. Everything ran as `squeal-e2e` under `/h
 | `proxy.mjs`, `proxy.sh`, `proxy-start.sh`, `proxy-stop.sh` | The model endpoint: forwards to cliproxy adding the key, appends each request body and the streamed answer to `logs/<session>.requests.jsonl`. |
 | `models.json` | Pi's provider `cliproxy` at the proxy, with the four models used. |
 | `cezar-drive.mjs`, `scenarios/*.json` | The Cezar-shaped RPC session: the installed Cezar 0.16.0-dev.1634 `PiRunner` (copied unchanged into `dogfood-009/cezar-source`) in persistent mode, prompts sent after each `turn-end`, then held open for a wake. `rpc-astra.json` (s2), `rpc-grok.json` (s3), `rpc-sol.json` (s4). |
-| `tui.sh` | One Pi TUI in a tmux server private to the dogfood user: start, send, keys, screen capture. s5 was driven by hand with it; `pair.sh` is s6. |
+| `tui.sh` | One Pi TUI in a tmux server private to the dogfood user: start, send, keys, screen capture. s5 was driven by hand with it. |
+| `pair.sh`, `turn-state.py` | The controlled pair for defect 1, not run (load). One fresh TUI on gpt-6-luna: experiment A before any `/reload`, B after one, each a novel `purry.ts` edit whose failures land after the run settles; after each, `turn-state.py` reads the consumer's turn state from the clone's store. Run from this directory after the setup, below load 24: `sh gate.sh && sh pair.sh`. |
+| `lock-probe.mjs` | Falsifies hypothesis (a) of defect 1: a worker thread takes an exclusive SQLite lock and is terminated; prints whether the same and another process can take it afterwards. `node lock-probe.mjs <dir>`. |
 | `gate.sh` | Waits for load below 24 and no other `squeal-e2e` process. |
 | `tree.sh` | Lists the agent dir and HOME (without the clone, npm cache and package bodies), before and after the install. |
 | `condense.py`, `stats.py`, `collect.sh` | Turn a proxy log into a timeline (new messages per model request, SQUEAL texts, tool calls, whether the primer is in the system prompt), count per session, and copy the condensed record into `logs/`. |
@@ -24,7 +26,7 @@ What `../lessons.md` was observed with. Everything ran as `squeal-e2e` under `/h
 
 ## Logs
 
-`logs/<session>.timeline.md` per session (from the proxy, so it is what reached the model), `logs/<session>.cezar-events.txt` for the RPC sessions (Cezar's events with time in ms and load), `logs/stats.txt`, the install, setup and update transcripts, `s5-tui.screens.txt` and `s6-pair.screens.txt` (TUI screen captures with time and load), `s5-tui.ps-before-quit.txt` (the zombie of defect 2), and `tree-*.txt` (goal 8). `s0-claude-refused.*` is the refused Claude request.
+`logs/<session>.timeline.md` per session (from the proxy, so it is what reached the model), `logs/<session>.cezar-events.txt` for the RPC sessions (Cezar's events with time in ms and load), `logs/stats.txt`, the install, setup and update transcripts, `s5-tui.screens.txt` (TUI screen captures with time and load), `s5-tui.ps-before-quit.txt` (the zombie of defect 2), and `tree-*.txt` (goal 8). `s0-claude-refused.*` is the refused Claude request.
 
 ## Repeat
 

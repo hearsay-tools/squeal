@@ -1,0 +1,50 @@
+0 15.2 start --mode rpc --extension /home/squeal-e2e/dogfood-009/cezar-source/scripts/pi-retry-degraded-service.mjs --model cliproxy/gpt-6-astra
+7 ui turn.started
+8 15.2 pid 3628481
+5604 14.4 call read {"path": "CONTRIBUTING.md"}
+11692 13.1 call bash {"command": "git status --short; rg -n 'words|digit|[Ss]plitOnNumbers' packages/remeda/src/internal/words* packages/remeda/src/*Case*; rg -n 'internal/words' pa
+21474 11.8 call read {"path": "packages/remeda/src/internal/words.ts"}
+21475 11.8 call read {"path": "packages/remeda/src/internal/words.test.ts"}
+21475 11.8 call read {"path": "/home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.172/skills/squeal/SKILL.md"}
+21475 11.8 call read {"path": "packages/remeda/src/toCamelCase.ts"}
+21475 11.8 call read {"path": "packages/remeda/src/toTitleCase.ts"}
+26375 12.4 text I’ll keep this local, remove digit-boundary splitting, and update the affected case-conversion types and tests so their inferred results still match runtime behavior.
+26377 12.4 call bash {"command": "rg -n 'splitOnNumbers|Words<' node_modules/type-fest/source/{words,camel-case,delimiter-case,kebab-case,snake-case}.d.ts; rg -n '[0-9]' packages/re
+30045 12.4 call read {"path": "packages/remeda/src/toSnakeCase.ts"}
+30045 12.4 call read {"path": "node_modules/type-fest/source/camel-case.d.ts"}
+30045 12.4 call read {"path": "packages/remeda/src/toKebabCase.test.ts"}
+30046 12.4 call read {"path": "/home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.172/skills/squeal/references/commands.md"}
+40054 12.6 call edit {"path": "packages/remeda/src/internal/words.test.ts", "edits": [{"oldText": "    { input: \"item0\", output: [\"item\", \"0\"] },\n    { input: \"item01\", out
+42993 14.2 call bash {"command": "\"/opt/squeal-e2e/node24/bin/node\" --disable-warning=ExperimentalWarning \"/home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.172/dist/c
+49395 17.9 call edit {"path": "packages/remeda/src/internal/words.ts", "edits": [{"oldText": "): string extends S ? string[] : Words<S> => {", "newText": "): string extends S ? stri
+52422 21.6 call read {"path": "packages/remeda/src/toKebabCase.ts", "limit": 12}
+64749 30.9 call edit {"path": "packages/remeda/src/toKebabCase.ts", "edits": [{"oldText": "Join<Words<S>, \"-\">", "newText": "Join<Words<S, { splitOnNumbers: false }>, \"-\">"}]}
+64949 30.9 call edit {"path": "packages/remeda/src/toSnakeCase.ts", "edits": [{"oldText": "Join<Words<S>, \"_\">", "newText": "Join<Words<S, { splitOnNumbers: false }>, \"_\">"}]}
+65140 30.9 call edit {"path": "packages/remeda/src/toTitleCase.ts", "edits": [{"oldText": "Words<IsEqual<S, Uppercase<S>> extends true ? Lowercase<S> : S>", "newText": "Words<\n    
+65199 30.9 call edit {"path": "packages/remeda/src/toCamelCase.ts", "edits": [{"oldText": "  CamelCaseOptions as BaseCamelCaseOptions,", "newText": "  CamelCaseOptions as BaseCamelC
+65256 30.9 call edit {"path": "packages/remeda/src/toTitleCase.test.ts", "edits": [{"oldText": "toBe(\"Foo 123 Bar\")", "newText": "toBe(\"Foo123bar\")"}, {"oldText": "toBe(\"Versio
+65312 30.9 call edit {"path": "packages/remeda/src/toTitleCase.test-d.ts", "edits": [{"oldText": "toEqualTypeOf<\"Foo 123 Bar\">()", "newText": "toEqualTypeOf<\"Foo123bar\">()"}, {"
+65393 30.9 call edit {"path": "packages/remeda/src/toKebabCase.test-d.ts", "edits": [{"oldText": "\"hello-world-123\"", "newText": "\"hello-world123\""}]}
+65495 30.9 call edit {"path": "packages/remeda/src/toSnakeCase.test-d.ts", "edits": [{"oldText": "\"hello_world_123\"", "newText": "\"hello_world123\""}]}
+71756 35.5 call bash {"command": "rg -n '^describe|^import' packages/remeda/src/to{Camel,Snake,Kebab,Title}Case.test{,-d}.ts; git diff --stat"}
+82805 40.7 call edit {"path": "packages/remeda/src/toCamelCase.test.ts", "edits": [{"oldText": "describe(\"data-last\", () => {", "newText": "test(\"keeps embedded digits in the sam
+82894 40.7 call edit {"path": "packages/remeda/src/toCamelCase.test-d.ts", "edits": [{"oldText": "describe(\"data-last\", () => {", "newText": "test(\"keeps embedded digits in the s
+83010 40.7 call edit {"path": "packages/remeda/src/toKebabCase.test.ts", "edits": [{"oldText": "describe(\"data-first\", () => {", "newText": "test(\"keeps digits attached while spl
+83122 40.7 call edit {"path": "packages/remeda/src/toSnakeCase.test.ts", "edits": [{"oldText": "describe(\"data-first\", () => {", "newText": "test(\"keeps digits attached while spl
+91351 50.1 call write {"path": "packages/remeda/src/internal/words.test-d.ts", "content": "import { expectTypeOf, test } from \"vitest\";\nimport { words } from \"./words\";\n\ntest(
+97519 51.0 call edit {"path": "packages/remeda/src/toCamelCase.ts", "edits": [{"oldText": "import type {\n  CamelCase,\n  CamelCaseOptions as BaseCamelCaseOptions,\n} from \"type-fe
+103420 53.5 call edit {"path": "packages/remeda/src/toCamelCase.ts", "edits": [{"oldText": "import type {\n  CamelCase,\n  CamelCaseOptions as BaseCamelCaseOptions,\n} from \"type-fe
+111711 55.3 text The updated digit tests failed against the old implementation and pass with the change. Separator and case-boundary splitting remain intact. I also updated all four case converters’ literal return types and the title-case expectations affected by the new behavior.
+111712 55.3 call bash {"command": "git diff --check; \"/opt/squeal-e2e/node24/bin/node\" --disable-warning=ExperimentalWarning \"/home/squeal-e2e/dogfood-009/home/.local/share/squeal
+118454 61.8 text Implemented locally in `packages/remeda`.  - `src/internal/words.ts` no longer splits at digit boundaries: `item0` and `abc123def` each remain one word. - Existing separator and case-boundary splitting is preserved. - Updated literal return types for `words`, `toCamelCase`, `toKebabCase`, `toSnakeCa
+118765 ui turn.completed
+118765 61.8 TURN-END
+119774 61.8 prompt One more change: `words` should also stop treating `_` as a separator. Only edit src/internal/words.ts, then reply in one line. Do not run, read or check anything else.
+119775 ui turn.started
+122877 61.2 call edit {"path": "packages/remeda/src/internal/words.ts", "edits": [{"oldText": "const WORD_SEPARATORS = new Set([\"-\", \"_\", ...WHITESPACE]);", "newText": "const WOR
+128106 62.3 text Updated `packages/remeda/src/internal/words.ts` so `_` is no longer a separator; no other files were edited or checks run.
+130761 62.3 text Squeal’s automatic run reports 32 failing tests after the underscore change; I’ve left the requested edit intact and made no further changes.
+130934 ui turn.completed
+130935 64.8 TURN-END
+311034 30.1 end 
+311111 ui session.ended

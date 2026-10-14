@@ -1,0 +1,19 @@
+```text
+Revision: 0
+Known failures: 0
+Affected checks: 2411 passed (2236 tests, 175 test files loaded), 0 running, 0 queued, 2 skipped (2 tests)
+Full-suite checkpoint: completed at revision 0
+
+Worktree: /home/squeal-e2e/dogfood-009/home/remeda (HEAD 8e6e78f, dirty state not known: no daemon is validating)
+Daemon: no daemon running since 2026-10-14T18:56:19.737Z
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+  2026-10-14T18:56:21.910Z, revision 0: daemon stopped: squeal stop
+  2026-10-14T18:56:22.811Z, revision 0: stopped 1 process the runners left running when the daemon exited: 2434631 /home/squeal-e2e/dogfood-009/home/remeda/node_modules/@esbuild/linux-x64/bin/esbuild --service=0.28.2 --ping (parent 2434026 /opt/squeal-e2e/node24/bin/node /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.172/dist/cli/squeal.mjs ..., 6 min 27 s old, SIGTERM)
+Pi: no Squeal consumer is registered for this session in this worktree (PI_SESSION_ID 01a13bde-34e0-7337-9908-acd20389eaca). Either the Squeal Pi extension is not loaded in it, or it has not registered the session yet: a session that started before the store existed registers at its next tool call. Without the extension, install it with pi install "/home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.172", then start Pi again.
+```
+
+Yes, it mentions Pi.

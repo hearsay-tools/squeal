@@ -1,0 +1,27 @@
+/home/squeal-e2e/dogfood-009/home/.local/bin/squeal
+0.1.172
+Squeal setup plan for /home/squeal-e2e/dogfood-009/home/remeda
+
+Harnesses:
+  claude-code: not on the PATH, plugin not installed
+  codex: not on the PATH, plugin not installed
+
+Runners: Vitest
+Config: squeal.config.json is missing
+
+Instruction files:
+  AGENTS.md (also CLAUDE.md): read by claude-code and codex; no Squeal block
+
+Gate lines:
+  none
+  The test command where it is no gate (not offered as edits):
+    packages/stackblitz-template/AGENTS.md:10: npm test  # run runtime + type tests (vitest --typecheck)
+
+Slow groups:
+  none found
+
+Codex trust: not checked; squeal init --harness codex --trust checks it
+Warm-up: runs all 175 test files, 175 without a current result (estimated: no daemon has listed them)
+
+Outdated:
+  squeal.config.json is missing: worktrees run on defaults

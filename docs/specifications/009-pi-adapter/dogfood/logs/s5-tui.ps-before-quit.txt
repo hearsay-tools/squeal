@@ -1,0 +1,8 @@
+    PID    PPID STAT     ELAPSED COMMAND
+ 339785  339783 Sl         15:16 node /home/squeal-e2e/dogfood-009/scripts/proxy.mjs 47319 /home/squeal-e2e/dogfood-009/logs/s5-tui.requests.jsonl
+ 340625    1049 Ss         15:15 tmux -S /home/squeal-e2e/dogfood-009/tmp/tmux.sock new-session -d -s tui -x 200 -y 50 -c /home/squeal-e2e/dogfood-009/home/remeda pi --mo
+ 340661  340625 Ssl+       15:15 pi
+ 402890  340661 Zs         13:12 [MainThread] <defunct>
+ 625325  340661 Ssl        08:48 /opt/squeal-e2e/node24/bin/node /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.174/dist/cli/squeal.mjs daemon /home/squeal-
+ 625857  625325 Sl         08:47 /home/squeal-e2e/dogfood-009/home/remeda/node_modules/@esbuild/linux-x64/bin/esbuild --service=0.28.2 --ping
+ 989461  989437 S    441077234-00:18:40 tee /home/squeal-e2e/dogfood-009/logs/s5-tui.ps-before-quit.txt
