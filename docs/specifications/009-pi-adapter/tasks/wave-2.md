@@ -34,3 +34,9 @@ Use /worker.
 Shape: review. `/reviewer` over wave 1's landing, `502eb7f1..7ac131df` (009-12, 009-13, the key re-pin, the Node 22 warning fix `7ac131df`). Focus: D3's honesty rules: one delivery per batch and none on the final turn, the deny once per regression, the continuation guard and silence after shutdown and on abort; every handler bounded by D4; `install.sh` against 005 D3's rules (no partial run, idempotent, `--uninstall` removes only what it recorded, the archive's version check) and the launcher's format 2; the status line's wording. Verify in a temporary detached worktree at `7ac131df` if you build, and remove it after. Write `docs/specifications/009-pi-adapter/reviews/wave-1.md`.
 
 Use /reviewer.
+
+## 009-21 focused re-review of the B1 fix
+
+Shape: review. `/reviewer` over `02249f23` (009-15's B1 commit) only, against B1 of `reviews/wave-1.md` and D3 as amended (run flags reset only at `before_agent_start`; `input` cancels the idle wait and resets nothing). The last round on wave 1. Confirm the regression test fails without the fix, and that no other run flag can now leak from one run into the next (a run with no `input`, an aborted run, a settle with an `error` outcome). Verify in a temporary detached worktree at `c4c59482` (0.1.172) if you build, and remove it after. Write `docs/specifications/009-pi-adapter/reviews/wave-1.5.md`.
+
+Use /reviewer.
