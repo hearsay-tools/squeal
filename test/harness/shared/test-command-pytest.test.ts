@@ -110,7 +110,13 @@ describe("recognizeTestCommand, pytest (spec 007 D8)", () => {
     const atRoot: CommandContext = {
       scripts: {},
       nodeTest: [],
-      pytest: [{ project: { ...SVC, cwd: undefined }, dir: ROOT, env: null } as PytestHere],
+      pytest: [
+        {
+          project: { name: "svc", args: [], env: {}, include: ["tests/**"] },
+          dir: ROOT,
+          env: null,
+        },
+      ],
     };
     expect(recognizeTestCommand("pytest tests", atRoot)).toEqual({
       runner: "pytest",

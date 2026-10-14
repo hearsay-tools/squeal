@@ -18,13 +18,16 @@ import type { HookContext } from "./context.js";
 export interface Coverage {
   /**
    * Whether the daemon builds a Vitest runner here, by its own rule (spec 003
-   * D7): Vitest detected at the root, or no node:test project configured.
+   * D7): Vitest detected at the root, or no node:test or pytest project
+   * configured.
    */
   readonly vitest: boolean;
   /** The config file Vitest finds at the root, as Vitest looks for it; `null` without one. */
   readonly vitestConfig: string | null;
   /** Each `nodeTest` project: its name and its include globs, relative to the root. */
   readonly nodeTest: readonly { readonly name: string; readonly include: readonly string[] }[];
+  /** Spec 007 D8: each `pytest` project, as `nodeTest`'s. Absent means none. */
+  readonly pytest?: readonly { readonly name: string; readonly include: readonly string[] }[];
   /**
    * `null` without slow files declared (spec 004 D1); otherwise how many test
    * files the daemon last listed are slow, `null` while it has listed none.
@@ -53,19 +56,18 @@ const CONFIG_EXTENSIONS = [".ts", ".mts", ".cts", ".js", ".mjs", ".cjs"];
 export function coverageOf(context: HookContext): Coverage {
   const policy = readPolicy(context.root);
   const keys = context.store.testFileKeys.list(context.consumer.worktreeId);
-  const nodeTestNames = new Set(policy.nodeTest.map((project) => project.name));
-  const vitest = policy.nodeTest.length === 0 || vitestDetected(context.root);
-  // A row no runner built here could have listed is not counted: without Vitest, only node:test's.
-  const listed = vitest ? keys : keys.filter((row) => nodeTestNames.has(row.testFile.project));
+  const others = [...policy.nodeTest, ...policy.pytest];
+  const otherNames = new Set(others.map((project) => project.name));
+  const vitest = others.length === 0 || vitestDetected(context.root);
+  // A row no runner built here could have listed is not counted: without Vitest, only node:test's and pytest's.
+  const listed = vitest ? keys : keys.filter((row) => otherNames.has(row.testFile.project));
   const view = slowPolicyView(policy);
   return {
     vitest,
     vitestConfig: vitest ? vitestConfig(context.root) : null,
     vitestExcluded: vitest ? policy.vitest.excludeProjects : [],
-    nodeTest: policy.nodeTest.map(({ name, cwd, include }) => ({
-      name,
-      include: include.map((glob) => (cwd === undefined ? glob : posix.join(cwd, glob))),
-    })),
+    nodeTest: policy.nodeTest.map(fromRoot),
+    pytest: policy.pytest.map(fromRoot),
     slow:
       view === null
         ? null
@@ -73,6 +75,22 @@ export function coverageOf(context: HookContext): Coverage {
             files:
               keys.length === 0 ? null : listed.filter((row) => view.isSlow(row.testFile)).length,
           },
+  };
+}
+
+/** A project's name and its include globs, relative to the root. */
+function fromRoot({
+  name,
+  cwd,
+  include,
+}: {
+  name: string;
+  cwd?: string;
+  include: readonly string[];
+}) {
+  return {
+    name,
+    include: include.map((glob) => (cwd === undefined ? glob : posix.join(cwd, glob))),
   };
 }
 

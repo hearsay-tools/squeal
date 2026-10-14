@@ -19,7 +19,7 @@ const A: TestFileRef = { project: "svc", path: "svc/tests/test_a.py" };
 const B: TestFileRef = { project: "svc", path: "svc/tests/unit/test_b.py" };
 const POLICY = {
   testCommand: { denyWhenCurrent: true },
-  pytest: [{ name: "svc", cwd: "svc", include: ["tests/**/test_*.py"] }],
+  pytest: [{ name: "svc", cwd: "svc", args: [], env: {}, include: ["tests/**/test_*.py"] }],
 };
 
 /** Registered, the Vitest file and both pytest files passing and current; `svc/.venv` synced. */
