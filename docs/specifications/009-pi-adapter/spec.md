@@ -1,6 +1,6 @@
 # 009 Pi adapter
 
-Stage: draft, for the human's review. Amendments: `status.md`. Research: `research/pi-extension-events.md` (009-01), `research/pi-sessions-and-packaging.md` (009-02), both on Pi 1.0.4, Linux, with a scripted fake provider. Spec 001 D6 (state and delivery views), D9 (the Claude Code adapter), D10 (daemon) and D11 (policy) hold, and spec 002 is the closest precedent, unless a section here says otherwise.
+Stage: approved 2026-10-14 by the human. Amendments: `status.md`. Research: `research/pi-extension-events.md` (009-01), `research/pi-sessions-and-packaging.md` (009-02), both on Pi 1.0.4, Linux, with a scripted fake provider. Spec 001 D6 (state and delivery views), D9 (the Claude Code adapter), D10 (daemon) and D11 (policy) hold, and spec 002 is the closest precedent, unless a section here says otherwise.
 
 ## Problem
 
@@ -16,7 +16,7 @@ Each goal is testable, and each holds under `pi -p`, under a Cezar-shaped `pi --
 4. The end of a run speaks only with news, as one continuation; a run with no news costs no model request; Squeal never continues a run twice.
 5. A primer telling the agent to leave the tests to Squeal, with the CLI's absolute path, is in every model request of the session, including after compaction.
 6. No Squeal handler holds Pi for longer than its deadline (D4), a dead or missing daemon or store degrades to silence, and nothing Squeal opens crashes Pi or keeps `pi -p` alive after its run.
-7. In the TUI and a persistent RPC session, an idle agent whose pending tests finish with news is woken with the report (D5); never under `-p` or `json`.
+7. In the TUI and an RPC session that stays open, an idle agent whose pending tests finish with news is woken with the report (D5); never under `-p` or `json`.
 8. Pi's own `pi install` installs Squeal at user scope with no project trust step and no file written by Squeal under `~/.pi`; `squeal status` in a Pi shell where the extension never ran says so.
 
 ## Non-goals
@@ -64,7 +64,7 @@ A per-event child process, the hook shape, was weighed and rejected: it costs a 
 
 After `agent_settled`, in modes `tui` and `rpc` only, the extension arms `waitForDelta` (001 D9 as amended by 001-85: only entries of the test files pending when the turn ended). On a delta it calls `pi.sendMessage(<custom squeal>, { triggerTurn: true, deliverAs: "followUp" })`, which starts one run while the session is idle; a prompt from the user first cancels the wait. Under `-p` and `json` Pi exits after its run, and no wake is armed (research, packaging 1).
 
-Cezar drives Pi over RPC and treats the woken run as a second turn it did not start: in a persistent session it runs; under Cezar's auto-end, which closes 250 ms after settling, a later wake is lost. Whether Squeal wakes a Cezar session at all is open question 1.
+The rule follows Pi, not a launcher: any RPC client gets a run it did not request, as Claude Code's waiter wakes any interactive session (001 D9). Cezar is one such client (human, 2026-10-14: the adapter is not bound to how Cezar works); a Cezar session that ends 250 ms after settling simply loses a later wake, and its news waits for the next prompt.
 
 ### D6. Shared code and bundles
 
@@ -80,7 +80,7 @@ Cezar drives Pi over RPC and treats the woken run as a second turn it did not st
 
 ### D9. Policy
 
-No new keys, unless open question 1 adds one. `interrupt.onRegression` governs the `edit` and `write` block.
+No new keys. `interrupt.onRegression` governs the `edit` and `write` block.
 
 ## Testing
 
@@ -96,7 +96,7 @@ No new keys, unless open question 1 adds one. `interrupt.onRegression` governs t
 
 Owner is the coordinator unless noted.
 
-1. Idle wake in Cezar Pi sessions: wake in every RPC session (Cezar's persistent sessions get an unrequested turn; auto-end runs lose late wakes), only in the TUI, or behind a policy key. Human.
+1. Decided 2026-10-14 by the human: idle wake follows Pi's modes, not a launcher; it is armed in `tui` and `rpc`, with no Cezar case and no policy key (D5).
 2. Whether a real model treats a Squeal `custom_message`, which reaches it as bare user text, as Squeal's report and not an instruction from the user. Dogfooding.
 3. The release asset that carries the Pi package, its name, and whether the hub lists it. Wave-0 check.
 4. Pi 1.0.4 delivers `session_start` twice per RPC replacement and runs a settle continuation after `session_shutdown` (research, events 7 and 4). D2 and D3 tolerate both; whether to report them upstream.
