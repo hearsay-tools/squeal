@@ -893,8 +893,8 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 009-10 extension skeleton, delivery host, Pi package | planned | D1 layout, D2, D4, D6; D3's `session_start` and `session_shutdown`: `src/harness/pi/`, the worker-thread host with deadlines, `plugins/pi/` with committed `dist/`, drift and version checks. | Stalled or dead worker is silence within its deadline; idempotent start; shutdown leaves nothing alive; per-call cost measured; full suite green. |
-| 009-11 fake-provider Pi fixture | planned | Testing: Pi 1.0.4 pinned devDependency, the scripted provider, `test/helpers/pi.ts`; open question 5 (does Pi write outside `PI_CODING_AGENT_DIR`). | Fixture test in `-p`, `json`, `rpc` green in CI on Node 22 and 24; `research/wave-0-checks.md` committed. |
+| 009-10 extension skeleton, delivery host, Pi package | running (worker 8b62d0bb, opus high) | D1 layout, D2, D4, D6; D3's `session_start` and `session_shutdown`: `src/harness/pi/`, the worker-thread host with deadlines, `plugins/pi/` with committed `dist/`, drift and version checks. | Stalled or dead worker is silence within its deadline; idempotent start; shutdown leaves nothing alive; per-call cost measured; full suite green. |
+| 009-11 fake-provider Pi fixture | running (worker e9ae1a4f, opus high) | Testing: Pi 1.0.4 pinned devDependency, the scripted provider, `test/helpers/pi.ts`; open question 5 (does Pi write outside `PI_CODING_AGENT_DIR`). | Fixture test in `-p`, `json`, `rpc` green in CI on Node 22 and 24; `research/wave-0-checks.md` committed. |
 
 ## Later
 
