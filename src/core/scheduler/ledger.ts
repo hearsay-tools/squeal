@@ -28,6 +28,7 @@ import { type Priority, priorityOf, RunQueue } from "./queue.js";
 import { adoptsAtFirstCommit, recordMoves } from "./rekeyed-moves.js";
 import { recordRekeyed } from "./rekeyed-record.js";
 import { endRerun } from "./rerun.js";
+import { SetupFailures } from "./setup.js";
 import { slowView } from "./slow.js";
 
 /** Results `applyResults` made current, owed to the sink at the next commit. */
@@ -92,6 +93,8 @@ export class Ledger {
   broken = false;
   /** The last test file listing failed; the next revision lists again. */
   listingFailed = false;
+  /** Global setups that failed to start a run, and their outcomes owed to the sink (task 001-382). */
+  readonly setups = new SetupFailures();
 
   readonly #dirty = new Set<string>();
   readonly #removed: TestFileRef[] = [];
@@ -413,6 +416,7 @@ export class Ledger {
     const applied = this.#applied;
     const unknown = this.#unknown;
     const retired = this.#retired;
+    const setups = this.setups.take();
     this.#applied = [];
     this.#unknown = [];
     this.#retired = [];
@@ -438,6 +442,7 @@ export class Ledger {
         sink.markUnknown(worktreeId, revision, testFiles, reason);
       }
       if (retired.length > 0) sink.retire(worktreeId, retired);
+      for (const outcome of setups) sink.setupOutcome(worktreeId, revision, outcome);
       // Only rows that changed: no other file's key, phase or validity moved.
       // Each file is attributed to the checkpoint that requested it (review S9).
       for (const [checkpointId, testFiles] of this.#byCheckpoint(rows)) {

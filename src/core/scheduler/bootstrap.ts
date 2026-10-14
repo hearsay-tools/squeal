@@ -112,7 +112,7 @@ export async function baseline(
     store.testFileKeys.list(worktreeId).map((row) => [testFileId(row.testFile), row]),
   );
   const refs = listed ?? [...previousKeys.values()].map((row) => row.testFile);
-  const known = knownChecks(context);
+  const known = knownChecks(context, ledger);
   const fromStore = new Set<string>();
   const unresolved: TestFileRef[] = [];
   for (const ref of refs) {
@@ -224,9 +224,11 @@ interface Known {
 }
 
 /** Checks the sink holds for this worktree, by test file. */
-function knownChecks(context: SchedulerContext): Map<string, Known> {
+function knownChecks(context: SchedulerContext, ledger: Ledger): Map<string, Known> {
   const byFile = new Map<string, Known>();
-  for (const state of context.store.knownStates.list(context.worktreeId)) {
+  const states = context.store.knownStates.list(context.worktreeId);
+  ledger.setups.restore(states);
+  for (const state of states) {
     const id = testFileId({ project: state.check.project, path: state.check.testPath });
     let known = byFile.get(id);
     if (!known) {

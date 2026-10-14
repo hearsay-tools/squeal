@@ -71,12 +71,20 @@ export function readVerdict(
       if (state.outcome === "fail") failures[state.check.kind === "test" ? "tests" : "testFiles"]++;
     }
   }
+  // Task 001-382: a failed global setup is no test file's, and counts for the project's files.
+  const projects = new Set(ids.map((id) => rows.get(id)?.testFile.project));
+  const setups = states.filter(
+    (s) =>
+      s.check.kind === "setup" &&
+      s.outcome === "fail" &&
+      (files === null || projects.has(s.check.project)),
+  ).length;
   return {
     revision: header.revision,
     testFiles: ids.length,
     byClass,
     unlisted: header.runnerPartPending === true || header.awaitingInstall === true,
-    failures,
+    failures: setups > 0 ? { ...failures, setups } : failures,
   };
 }
 
@@ -119,5 +127,5 @@ export function failuresText(failures: CheckCounts): string {
 }
 
 function failureCount(failures: CheckCounts): number {
-  return failures.tests + failures.testFiles;
+  return failures.tests + failures.testFiles + (failures.setups ?? 0);
 }

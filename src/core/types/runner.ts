@@ -335,6 +335,29 @@ export interface RunReport {
    * Absent: no file skipped itself (Vitest and node:test never set it).
    */
   readonly skippedFiles?: readonly SkippedFile[];
+  /**
+   * The run failed to start: it rejected with one error before any test file
+   * ran, as a `globalSetup` that throws (task 001-382). The core stores
+   * nothing under a key, blocks the projects' files through D5's runner
+   * failure path and keeps one known failure per project, its `setup` check.
+   * Absent: the run started.
+   */
+  readonly startupFailure?: StartupFailure;
+}
+
+/** A run that failed to start (`RunReport.startupFailure`). */
+export interface StartupFailure {
+  /**
+   * The projects whose files cannot run: the one whose `globalSetup` file
+   * the error names, else every project of the run.
+   */
+  readonly projects: readonly ProjectName[];
+  /** The run's test files, none of which ran: the files of other projects among them run again. */
+  readonly testFiles: readonly TestFileRef[];
+  /** That `globalSetup` file, `null` when the error names none. */
+  readonly setupFile: RelativePath | null;
+  /** The error, with its code and bounded cause chain (task 001-361), phase `setup`. */
+  readonly error: CheckError;
 }
 
 /** A completed file whose module skipped itself (`RunReport.skippedFiles`). */

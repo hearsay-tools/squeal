@@ -21,6 +21,7 @@ import {
   testFileKeyOf,
   unknownState,
 } from "./derive.js";
+import { describeFailure } from "./fingerprint.js";
 import { failureKeysOnce, heldFailure } from "./inherited.js";
 import { transitionKind } from "./transitions.js";
 
@@ -143,6 +144,27 @@ export function createStateSink(store: Store, options: StateSinkOptions = {}): S
           if (included(testFileId(key.testFile))) next.set(id, stateWithoutResult(state, key));
         }
         return commit(revision, [...next.values()], provenance.checkpointId);
+      }),
+
+    setupOutcome: (worktreeId, revision, { check, commit, error }) =>
+      store.transaction(() => {
+        const { commit: write } = begin(worktreeId);
+        const failure = error === null ? null : describeFailure([error], error.location);
+        const state: KnownState = {
+          worktreeId,
+          check,
+          outcome: failure === null ? "pass" : "fail",
+          validity: "current",
+          pendingPhase: null,
+          observedAt: revision,
+          commit,
+          origin: { kind: "own" },
+          durationMs: null,
+          location: error?.location ?? null,
+          summary: failure?.summary ?? null,
+          fingerprint: failure?.fingerprint ?? null,
+        };
+        return write(revision, [state], null);
       }),
 
     // A told failure stays in the view: delivery reports it once as no longer reported (D6).

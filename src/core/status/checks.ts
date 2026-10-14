@@ -5,12 +5,19 @@ import type { CheckId } from "../types/index.js";
 export interface CheckCounts {
   readonly tests: number;
   readonly testFiles: number;
+  /** Global setups that failed (task 001-382); absent when none did. */
+  readonly setups?: number;
 }
 
 /** The checks of `checks` counted apart. */
 export function countChecks(checks: readonly CheckId[]): CheckCounts {
   const testFiles = checks.filter((check) => check.kind === "file").length;
-  return { tests: checks.length - testFiles, testFiles };
+  const setups = checks.filter((check) => check.kind === "setup").length;
+  return {
+    tests: checks.length - testFiles - setups,
+    testFiles,
+    ...(setups > 0 ? { setups } : {}),
+  };
 }
 
 /**
@@ -18,10 +25,14 @@ export function countChecks(checks: readonly CheckId[]): CheckCounts {
  * of every count of checks Squeal prints (spec 005 D1). `fileLevel` words
  * the file-level checks, `that did not load` for failures.
  */
-export function checkPartsText({ tests, testFiles }: CheckCounts, fileLevel = "loaded"): string {
+export function checkPartsText(
+  { tests, testFiles, setups = 0 }: CheckCounts,
+  fileLevel = "loaded",
+): string {
   return [
     ...(tests > 0 ? [plural(tests, "test")] : []),
     ...(testFiles > 0 ? [`${plural(testFiles, "test file")} ${fileLevel}`] : []),
+    ...(setups > 0 ? [plural(setups, "global setup")] : []),
   ].join(", ");
 }
 

@@ -237,6 +237,7 @@ function breakdown(
   const fileLevelByPhase = { queued: 0, running: 0 };
   const filesWithChecks = new Set<string>();
   for (const s of states) {
+    if (s.check.kind === "setup") continue;
     const file = testFileKeyOf(s.check);
     filesWithChecks.add(file);
     const fileLevel = s.check.kind === "file";

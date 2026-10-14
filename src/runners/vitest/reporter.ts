@@ -50,6 +50,11 @@ export class RunCollector {
     this.#requested = new Map(requested.map((r) => [refKey(r), r]));
   }
 
+  /** The test files the run was asked for. */
+  get requested(): Iterable<TestFileRef> {
+    return this.#requested.values();
+  }
+
   #ref(project: string, moduleId: string): TestFileRef | null {
     const path = this.paths.toRelative(moduleId);
     return path === null ? null : (this.#requested.get(refKey({ project, path })) ?? null);

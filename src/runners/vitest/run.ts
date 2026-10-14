@@ -28,6 +28,8 @@ export interface RunExecution {
   readonly failure: string | null;
   /** The run did not settle even after a forced cancel. The instance must be dropped. */
   readonly hung: boolean;
+  /** `runTestSpecifications` rejected with this error; the instance is closed (task 001-382). */
+  readonly rejected?: { readonly error: unknown };
 }
 
 /**
@@ -53,6 +55,7 @@ export async function execute(
       end: "crashed",
       failure: describeError(error),
       hung: false,
+      rejected: { error },
     }),
   );
   if (timeoutMs === null && signal === undefined) return run;
