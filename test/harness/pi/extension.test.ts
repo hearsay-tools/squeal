@@ -1,11 +1,10 @@
-import { Worker } from "node:worker_threads";
 import { describe, expect, it } from "vitest";
-import type { PiContext } from "../../../src/harness/pi/api.js";
 import {
   EVENT_DEADLINE_MS,
   SHUTDOWN_DEADLINE_MS,
   squealExtension,
 } from "../../../src/harness/pi/extension.js";
+import { fakeWorker } from "./fake-worker.js";
 import { piContext, stubPi } from "./stub-pi.js";
 
 /*
@@ -14,39 +13,19 @@ import { piContext, stubPi } from "./stub-pi.js";
  * after it, and no handler that throws or outlasts its deadline.
  */
 
-const KINDS = ["start", "shutdown", "boundary", "ping"] as const;
-
-/**
- * A worker standing in for the delivery worker: counts each request kind in
- * shared memory and answers a start with `header`, unless `stall`.
- */
-function fakeWorker(options: { stall?: boolean } = {}) {
-  const counts = new Int32Array(new SharedArrayBuffer(4 * KINDS.length));
-  let starts = 0;
-  const start = () => {
-    starts++;
-    return new Worker(
-      `const { parentPort, workerData } = require("node:worker_threads");
-       const counts = new Int32Array(workerData.counts);
-       const kinds = ${JSON.stringify(KINDS)};
-       parentPort.on("message", ({ id, request }) => {
-         Atomics.add(counts, kinds.indexOf(request.kind), 1);
-         if (${options.stall === true}) return;
-         parentPort.postMessage({ id, ok: true, text: request.kind === "start" ? "header" : null });
-       });`,
-      { eval: true, workerData: { counts: counts.buffer } },
-    );
-  };
-  const count = (kind: (typeof KINDS)[number]) => Atomics.load(counts, KINDS.indexOf(kind));
-  return { start, count, starts: () => starts };
-}
+/** The fake delivery worker of these tests: a start answers `header`. */
+const headerWorker = (options: { stall?: boolean } = {}) =>
+  fakeWorker({
+    answers: { start: "header" },
+    ...(options.stall ? { stall: ["start", "shutdown"] } : {}),
+  });
 
 const SESSION = "019a0000-0000-7000-8000-000000000001";
 
-function loaded(worker = fakeWorker()) {
+function loaded(fake = headerWorker()) {
   const pi = stubPi();
-  squealExtension(worker.start)(pi.api);
-  return { pi, worker, ctx: piContext(SESSION) };
+  squealExtension(fake.start)(pi.api);
+  return { pi, worker: fake, ctx: piContext(SESSION) };
 }
 
 describe("the Pi extension's session events", () => {
@@ -107,15 +86,9 @@ describe("the Pi extension's session events", () => {
 
   it("is silent on a stale context", async () => {
     const { pi, worker } = loaded();
-    const stale: PiContext = {
-      mode: "rpc",
-      cwd: "/",
-      sessionManager: {
-        getSessionId: () => {
-          throw new Error("This extension ctx is stale after session replacement or reload.");
-        },
-      },
-    };
+    const stale = piContext(() => {
+      throw new Error("This extension ctx is stale after session replacement or reload.");
+    });
     await expect(pi.start("startup", stale)).resolves.toBeUndefined();
     await expect(pi.shutdown("quit", stale)).resolves.toBeUndefined();
     expect(worker.starts()).toBe(0);
@@ -131,7 +104,7 @@ describe("the Pi extension's session events", () => {
   });
 
   it("returns silence within the deadline when the worker stalls", async () => {
-    const { pi, worker, ctx } = loaded(fakeWorker({ stall: true }));
+    const { pi, worker, ctx } = loaded(headerWorker({ stall: true }));
     const started = performance.now();
     await pi.start("startup", ctx);
     const ms = performance.now() - started;
@@ -142,7 +115,7 @@ describe("the Pi extension's session events", () => {
   });
 
   it("bounds session_shutdown by its deadline when the worker stalls", async () => {
-    const { pi, worker, ctx } = loaded(fakeWorker({ stall: true }));
+    const { pi, worker, ctx } = loaded(headerWorker({ stall: true }));
     await pi.start("startup", ctx);
     const started = performance.now();
     await pi.shutdown("quit", ctx);

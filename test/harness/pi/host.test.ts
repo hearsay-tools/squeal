@@ -16,7 +16,7 @@ const inline = (onMessage: string) => () =>
     { eval: true },
   );
 
-const ECHO = inline(`parentPort.postMessage({ id, ok: true, text: request.kind });`);
+const ECHO = inline(`parentPort.postMessage({ id, ok: true, answer: request.kind });`);
 const STALL = inline(``);
 const PING = { kind: "ping" } as const;
 
@@ -77,7 +77,7 @@ describe("DeliveryHost", () => {
 
   it("answers concurrent requests by id", async () => {
     const h = host(
-      inline(`setTimeout(() => parentPort.postMessage({ id, ok: true, text: String(id) }),
+      inline(`setTimeout(() => parentPort.postMessage({ id, ok: true, answer: String(id) }),
                          id === 1 ? 50 : 0);`),
     );
     const [a, b] = await Promise.all([h.call(PING, 2_000), h.call(PING, 2_000)]);

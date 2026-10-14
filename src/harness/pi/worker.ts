@@ -3,7 +3,8 @@ import type { MessagePort } from "node:worker_threads";
 import { shellWord } from "../../core/delivery/index.js";
 import { findHarnessProcess } from "../shared/harness-process.js";
 import type { HookDeps } from "../shared/hook.js";
-import type { FromWorker, PiRequest, ToWorker } from "./protocol.js";
+import type { FromWorker, PiAnswer, PiRequest, ToWorker } from "./protocol.js";
+import { endRun, settle, startRun, toolCall } from "./run.js";
 import { shutdownSession, startSession, toolBoundary } from "./session.js";
 
 /**
@@ -31,15 +32,23 @@ export function workerDeps(module: URL): HookDeps {
   };
 }
 
-/** Runs one request on the shared code. */
-export function handle(request: PiRequest, deps: HookDeps): Promise<string | null> {
+/** Runs one request on the shared code; the answer is of the request's kind (`PiAnswers`). */
+export function handle(request: PiRequest, deps: HookDeps): Promise<PiAnswer> {
   switch (request.kind) {
     case "start":
       return startSession(request, deps);
     case "shutdown":
       return shutdownSession(request, deps);
     case "boundary":
-      return toolBoundary(request, deps);
+      return toolBoundary(request, deps, request.edited);
+    case "run":
+      return startRun(request, deps);
+    case "toolCall":
+      return toolCall(request, deps);
+    case "settle":
+      return settle(request, deps);
+    case "endTurn":
+      return endRun(request, deps);
     case "ping":
       return Promise.resolve(null);
   }
@@ -50,7 +59,7 @@ export function serve(port: MessagePort, deps: HookDeps): void {
   port.on("message", ({ id, request }: ToWorker) => {
     const answer = (message: FromWorker) => port.postMessage(message);
     handle(request, deps).then(
-      (text) => answer({ id, ok: true, text }),
+      (result) => answer({ id, ok: true, answer: result }),
       () => answer({ id, ok: false }),
     );
   });

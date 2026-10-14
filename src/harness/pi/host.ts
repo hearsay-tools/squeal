@@ -1,5 +1,5 @@
 import type { Worker } from "node:worker_threads";
-import type { FromWorker, PiRequest, ToWorker } from "./protocol.js";
+import type { FromWorker, PiAnswer, PiAnswers, PiRequest, ToWorker } from "./protocol.js";
 
 /**
  * Spec 009 D4: the shared code runs in a worker thread the extension owns, so
@@ -8,18 +8,18 @@ import type { FromWorker, PiRequest, ToWorker } from "./protocol.js";
  */
 export interface DeliveryHost {
   /**
-   * Posts `request` and resolves the worker's text, or `null` when the worker
+   * Posts `request` and resolves the worker's answer, or `null` when the worker
    * misses `deadlineMs`, dies, throws or cannot start, or the host is
    * stopped. Never rejects. After a miss or a death the worker is terminated
    * and the next call starts a fresh one.
    */
-  call(request: PiRequest, deadlineMs: number): Promise<string | null>;
+  call<R extends PiRequest>(request: R, deadlineMs: number): Promise<PiAnswers[R["kind"]] | null>;
   /** Terminates the worker and resolves every pending call `null`. Idempotent; later calls are `null`. */
   stop(): void;
 }
 
 interface Pending {
-  readonly resolve: (text: string | null) => void;
+  readonly resolve: (answer: PiAnswer | null) => void;
   readonly timer: NodeJS.Timeout;
 }
 
@@ -38,12 +38,12 @@ export function createDeliveryHost(start: () => Worker): DeliveryHost {
   let next = 1;
   const pending = new Map<number, Pending>();
 
-  const settle = (id: number, text: string | null) => {
+  const settle = (id: number, answer: PiAnswer | null) => {
     const call = pending.get(id);
     if (call === undefined) return;
     pending.delete(id);
     clearTimeout(call.timer);
-    call.resolve(text);
+    call.resolve(answer);
   };
 
   /** Drops `dead` (when it is still the current worker) and silences its calls. */
@@ -58,7 +58,7 @@ export function createDeliveryHost(start: () => Worker): DeliveryHost {
     if (worker !== null) return worker;
     const started = start();
     started.on("message", (message: FromWorker) => {
-      if (worker === started) settle(message.id, message.ok ? message.text : null);
+      if (worker === started) settle(message.id, message.ok ? message.answer : null);
     });
     started.on("error", () => discard(started));
     started.on("exit", () => discard(started));
@@ -71,9 +71,9 @@ export function createDeliveryHost(start: () => Worker): DeliveryHost {
   };
 
   return {
-    call(request, deadlineMs) {
+    call<R extends PiRequest>(request: R, deadlineMs: number) {
       if (stopped) return Promise.resolve(null);
-      return new Promise((resolve) => {
+      return new Promise<PiAnswers[R["kind"]] | null>((resolve) => {
         let target: Worker | null;
         try {
           target = current();
@@ -87,7 +87,8 @@ export function createDeliveryHost(start: () => Worker): DeliveryHost {
           settle(id, null);
           discard(target);
         }, deadlineMs);
-        pending.set(id, { resolve, timer });
+        // The worker answers a request with the answer of its kind (`handle`).
+        pending.set(id, { resolve: resolve as Pending["resolve"], timer });
         try {
           target.postMessage({ id, request } satisfies ToWorker);
         } catch {

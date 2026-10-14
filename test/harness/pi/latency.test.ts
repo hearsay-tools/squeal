@@ -62,10 +62,10 @@ beforeAll(async () => {
 }, 60_000);
 afterAll(() => built.cleanup());
 
-async function timed(host: DeliveryHost, request: PiRequest): Promise<[number, string | null]> {
+async function timed(host: DeliveryHost, request: PiRequest): Promise<[number, unknown]> {
   const started = performance.now();
-  const text = await host.call(request, 2_000);
-  return [performance.now() - started, text];
+  const answer = await host.call(request, 2_000);
+  return [performance.now() - started, answer];
 }
 
 describe("the Pi delivery worker's round trip", () => {
@@ -101,19 +101,19 @@ describe("the Pi delivery worker's round trip", () => {
       await measure("ping", RUNS, async () => (await timed(host, { kind: "ping" }))[0]);
       await measure("boundary (delivers)", RUNS, async (run) => {
         r.apply(run % 2 === 0 ? r.fail() : r.pass());
-        const [ms, text] = await timed(host, { kind: "boundary", ...session });
+        const [ms, text] = await timed(host, { kind: "boundary", edited: true, ...session });
         expect(text).toMatch(/^SQUEAL/);
         return ms;
       });
       await measure("boundary (silent)", RUNS, async () => {
-        const [ms, text] = await timed(host, { kind: "boundary", ...session });
+        const [ms, text] = await timed(host, { kind: "boundary", edited: true, ...session });
         expect(text).toBeNull();
         return ms;
       });
       await measure("boundary on a fresh worker", COLD_RUNS, async () => {
         const fresh = createDeliveryHost(start);
         hosts.push(fresh);
-        return (await timed(fresh, { kind: "boundary", ...session }))[0];
+        return (await timed(fresh, { kind: "boundary", edited: true, ...session }))[0];
       });
 
       const load = loadavg();
