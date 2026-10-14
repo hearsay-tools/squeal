@@ -109,6 +109,11 @@ export class PiE2E {
     };
   }
 
+  /** Writes `file` as `writeCall` would, from outside Pi: a change no tool call made. */
+  edit(file: Source, body: string): void {
+    this.#write(SOURCE_PATH[file], body);
+  }
+
   #write(path: string, body: string): void {
     const at = join(this.project, path);
     mkdirSync(dirname(at), { recursive: true });

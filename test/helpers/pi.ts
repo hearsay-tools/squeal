@@ -49,6 +49,8 @@ export interface FakeStep {
   delayMs?: number;
   /** Hold the response until Pi aborts the request. */
   waitAbort?: boolean;
+  /** Hold the response until this file exists (bounded by the fake provider; abort ends it). */
+  release?: string;
 }
 
 /** A message as the provider received it (Pi's `context.messages`). */

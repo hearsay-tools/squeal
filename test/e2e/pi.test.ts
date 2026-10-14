@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it, type TestContext } from "vitest";
 import { waiterLockState } from "../../src/core/waiter-lock/index.js";
@@ -29,11 +29,6 @@ if (unavailable && process.env.CI) throw new Error(`Pi unavailable on CI: ${unav
 
 const FAIL = "PASS -> FAIL";
 const ADDS = "FAIL  test/math.test.ts > math > adds";
-/**
- * The fake model's delay on the request the deny scenario's re-run lands in: the daemon's
- * debounce, a Vitest run of one file and its store write, with room for a loaded host.
- */
-const RERUN_WINDOW_MS = 15_000;
 
 let install: Install = { ok: false, reason: "the install did not run" };
 beforeAll(async () => {
@@ -141,33 +136,35 @@ describe.skipIf(unavailable !== undefined)(
       const e2e = fixture(ctx);
       await e2e.baseline();
       const out = { name: "write", arguments: { path: "out.txt", content: "x\n" } };
-      let landed: number | null = null;
+      const release = join(e2e.base, "release.1");
       const run = await e2e.run(
         {
           mode: "print",
           prompts: ["work"],
-          // The model breaks a test; its re-run lands while the next request is in flight, after
-          // the batch's boundary, so the write that request returns is the first to meet it.
+          // Two barriers instead of a window: the test breaks `math > adds` only once request 1
+          // is in flight, past the batch's boundary, and the fake model returns that request's
+          // write only once the re-run has landed, so the write is the first to meet it.
           plan: [
-            { tools: [breakMath(e2e), gateCall(0)] },
-            { tools: [out], delayMs: RERUN_WINDOW_MS },
+            { tools: [gateCall(0)] },
+            { tools: [out], release },
             { tools: [out] },
             { text: "done" },
           ],
         },
         async (world, done) => {
-          const log = await atGate(world, 0, done);
-          if (log === null) return;
-          await requestStarted(log, 1, done);
-          const started = performance.now();
-          await e2e.settled("fail");
-          landed = performance.now() - started;
+          try {
+            const log = await atGate(world, 0, done);
+            if (log === null) return;
+            await requestStarted(log, 1, done);
+            if (done()) return;
+            e2e.edit("math", MATH("-"));
+            await e2e.settled("fail");
+          } finally {
+            writeFileSync(release, "");
+          }
         },
       );
       expectClean(run);
-      // A re-run slower than the delay meets no write, and the assertions below would mislead.
-      expect(landed, "the re-run landed inside the fake model's delay").not.toBeNull();
-      expect(landed).toBeLessThan(RERUN_WINDOW_MS);
       const [, boundary, blocked, reissued, more] = run.requests;
       expect(more).toBeUndefined();
       expect(mentions(FAIL, boundary)).toBe(0);
