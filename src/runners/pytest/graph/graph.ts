@@ -1,14 +1,13 @@
 import { existsSync } from "node:fs";
 import { basename, dirname, join, relative, sep } from "node:path";
 import type { AbsolutePath, InvalidatedPath, RelativePath } from "../../../core/types/index.js";
-import { ClosureIndex } from "./closures.js";
+import { ClosureIndex, type RawClosure, walk } from "./closures.js";
 import { ModuleTable } from "./modules.js";
 import { Resolver } from "./resolver.js";
 import { type ImportMode, type SearchPath, searchPath } from "./search-path.js";
 
-/** The static closure of one test file (spec 007 D4). */
-export interface TestFileClosure {
-  readonly testFile: RelativePath;
+/** A static closure (spec 007 D4). */
+export interface StaticClosure {
   /**
    * The file, its parent packages' `__init__.py`, its conftest chain, the
    * `pytest_plugins` modules, their transitive static closure inside the
@@ -19,6 +18,11 @@ export interface TestFileClosure {
   /** False when `incomplete` has a reason: a computed import, a computed `pytest_plugins`, a parse error. */
   readonly complete: boolean;
   readonly incomplete: readonly string[];
+}
+
+/** The static closure of one test file. */
+export interface TestFileClosure extends StaticClosure {
+  readonly testFile: RelativePath;
 }
 
 /** `AffectedTestFiles` of `src/core/types/runner.ts`, in worktree-relative paths. */
@@ -110,13 +114,24 @@ export class Graph {
     if (closure === undefined) {
       throw new Error(`pytest graph: ${testFile} is not a test file of this project`);
     }
-    const paths = [...closure.members].map((p) => this.rel(p)).sort();
-    return {
-      testFile,
-      paths,
-      complete: closure.incomplete.length === 0,
-      incomplete: closure.incomplete,
-    };
+    return { testFile, ...this.present(closure) };
+  }
+
+  /**
+   * D2: the closure of plugin modules (`pytest11` entry points, `-p`) inside
+   * the worktree, loaded as pytest loads a plugin, for the environment hash.
+   */
+  pluginClosure(modules: readonly string[]): StaticClosure {
+    const roots: AbsolutePath[] = [];
+    const candidates: AbsolutePath[] = [];
+    for (const module of modules) {
+      const resolution = this.resolver.resolve(module);
+      roots.push(...resolution.files);
+      candidates.push(...resolution.candidates);
+    }
+    this.table.reach(roots);
+    const closure = walk((path) => this.table.node(path), roots);
+    return this.present({ ...closure, members: new Set([...closure.members, ...candidates]) });
   }
 
   /**
@@ -183,6 +198,11 @@ export class Graph {
       at = dirname(at);
     }
     return dirs.map((d) => join(d, "conftest.py")).filter((c) => c !== file && existsSync(c));
+  }
+
+  private present(closure: RawClosure): StaticClosure {
+    const paths = [...closure.members].map((p) => this.rel(p)).sort();
+    return { paths, complete: closure.incomplete.length === 0, incomplete: closure.incomplete };
   }
 
   private sorted(paths: Iterable<AbsolutePath>): RelativePath[] {
