@@ -64,29 +64,24 @@ export function matchesFilter(file: AbsolutePath, filter: string, root: Absolute
 }
 
 /**
- * Spec 007 D8: a pytest command's files among its project's listed ones. A
- * file path is that file; a directory, the root included, is every listed
- * file under it, at least one; no path is the project's every file. A path outside the
- * worktree or naming no listed file does not resolve.
+ * Spec 007 D8: a pytest command's files among its project's listed ones,
+ * only when every path names one. No path and a directory, the root
+ * included, do not resolve: pytest's own discovery would run every test
+ * file under them, and Squeal's `include` and `exclude` need not list them
+ * all, so the files it holds results for prove nothing about the rest
+ * (review 007-19 B4). Nor does a path outside the worktree or naming no
+ * listed file.
  */
 function pytestFiles(
   command: PytestCommand,
   listing: readonly TestFileRef[],
   root: AbsolutePath,
 ): readonly TestFileRef[] | null {
+  if (command.paths === null) return null;
   const own = listing.filter((ref) => ref.project === command.project);
-  if (command.paths === null) return own.length === 0 ? null : own;
-  const selected = new Set<TestFileRef>();
-  for (const path of command.paths) {
-    const rel = path === root ? "" : worktreePath(root, path);
-    const hits =
-      rel === null
-        ? []
-        : own.filter((ref) => rel === "" || ref.path === rel || ref.path.startsWith(`${rel}/`));
-    if (hits.length === 0) return null;
-    for (const ref of hits) selected.add(ref);
-  }
-  return own.filter((ref) => selected.has(ref));
+  const named = new Set(command.paths.map((path) => worktreePath(root, path)));
+  if (![...named].every((rel) => own.some((ref) => ref.path === rel))) return null;
+  return own.filter((ref) => named.has(ref.path));
 }
 
 /** `path` relative to `root` with `/` separators; `null` outside it. */
