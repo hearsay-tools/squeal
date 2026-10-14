@@ -106,6 +106,11 @@ export interface PiRunOptions {
   /** Extensions under test, loaded with `-e` after the fake provider. */
   extensions?: string[];
   /**
+   * Pi packages installed with `pi install <path>` into the run's agent dir before Pi starts,
+   * so they load from Pi's settings as a user's install does, not with `-e`.
+   */
+  install?: string[];
+  /**
    * An existing project directory to run Pi in instead of a fresh one in the run's directory.
    * It may be inside a repository: Pi reads no context files, skills or `.pi` from it.
    */
@@ -187,6 +192,12 @@ export async function runPi(options: PiRunOptions): Promise<PiRun> {
     PI_FIXTURE_PLAN: planPath,
     PI_FIXTURE_LOG: logPath,
   };
+  try {
+    for (const source of options.install ?? []) await piInstall(source, dir, env);
+  } catch (error) {
+    rmSync(dir, { recursive: true, force: true });
+    throw error;
+  }
   const args = [PI_CLI, ...NO_PROJECT_RESOURCES, "--provider", "fake", "--model", "fake-1"];
   args.push("-e", FAKE_PROVIDER);
   for (const extension of options.extensions ?? []) args.push("-e", extension);
@@ -227,6 +238,20 @@ export async function runPi(options: PiRunOptions): Promise<PiRun> {
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** `pi install <source>` at user scope in the run's isolated environment, from outside any project. */
+async function piInstall(source: string, dir: string, env: NodeJS.ProcessEnv): Promise<void> {
+  const child = spawn(process.execPath, [PI_CLI, "install", source], {
+    cwd: dir,
+    env,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const out = collect(child);
+  const timer = setTimeout(() => child.kill("SIGKILL"), 30_000);
+  const exitCode = await out.exited.finally(() => clearTimeout(timer));
+  if (exitCode !== 0)
+    throw new Error(`pi install ${source} exited ${exitCode}\n${out.stderr()}\n${out.stdout()}`);
 }
 
 /** The text parts of a message's content. */
