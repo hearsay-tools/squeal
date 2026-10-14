@@ -1,0 +1,14 @@
+node_modules/
+*.jsonl
+*-result.json
+*-session.json
+*-stderr.txt
+probe.sock
+detached.txt
+hello.txt
+!noReply-result.json
+!large-result.json
+!idle-result.json
+!hang-result.json
+!runtime-result.json
+!detached-result.json

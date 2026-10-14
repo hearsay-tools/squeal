@@ -1,0 +1,305 @@
+{
+  "hooks": [
+    "init",
+    "sqlite",
+    "socket",
+    "nodeProcess",
+    "detached",
+    "config",
+    "event",
+    "chat.message",
+    "small_model",
+    "system",
+    "chat.params",
+    "chat.headers",
+    "tool.definition",
+    "messages.transform",
+    "text.complete",
+    "wake.start",
+    "wake.done",
+    "dispose"
+  ],
+  "events": [
+    "session.created",
+    "session.updated",
+    "message.updated",
+    "message.part.updated",
+    "session.status",
+    "session.diff",
+    "plugin.added",
+    "catalog.updated",
+    "reference.updated",
+    "integration.updated",
+    "message.part.delta",
+    "session.idle"
+  ],
+  "rows": [
+    {
+      "at": 1791991682176,
+      "kind": "init",
+      "directory": "/home/squeal-e2e/008-plugins",
+      "worktree": "/home/squeal-e2e/008-plugins",
+      "project": {
+        "id": "global",
+        "worktree": "/home/squeal-e2e/008-plugins",
+        "vcs": "git",
+        "time": {
+          "created": 1791991313422,
+          "updated": 1791991682040
+        },
+        "sandboxes": []
+      },
+      "bun": "1.3.14",
+      "node": "24.3.0",
+      "execPath": "/home/squeal-e2e/.npm-global/lib/node_modules/opencode-ai/bin/opencode.exe"
+    },
+    {
+      "at": 1791991682176,
+      "kind": "sqlite",
+      "error": "ResolveMessage: No such built-in module: node:sqlite"
+    },
+    {
+      "at": 1791991682204,
+      "kind": "socket",
+      "n": 50,
+      "p50": 0.22192800000016177,
+      "p95": 0.5396049999999377
+    },
+    {
+      "at": 1791991682954,
+      "kind": "nodeProcess",
+      "n": 30,
+      "p50": 24.72520799999984,
+      "p95": 29.354311000000052
+    },
+    {
+      "at": 1791991682955,
+      "kind": "detached",
+      "pid": 3614716
+    },
+    {
+      "at": 1791991682955,
+      "kind": "config"
+    },
+    {
+      "at": 1791991683156,
+      "kind": "event",
+      "type": "session.created",
+      "properties": {
+        "sessionID": "ses_ec4f8e7b2ffeOydIM2zWRFfa86",
+        "info": {
+          "id": "ses_ec4f8e7b2ffeOydIM2zWRFfa86",
+          "slug": "glowing-rocket",
+          "version": "1.18.35",
+          "projectID": "global",
+          "directory": "/home/squeal-e2e/008-plugins",
+          "path": "",
+          "title": "New session - 2026-10-14T15:28:03.150Z",
+          "permission": [
+            {
+              "permission": "question",
+              "pattern": "*",
+              "action": "deny"
+            },
+            {
+              "permission": "plan_enter",
+              "pattern": "*",
+              "action": "deny"
+            },
+            {
+              "permission": "plan_exit",
+              "pattern": "*",
+              "action": "deny"
+            }
+          ],
+          "cost": 0,
+          "tokens": {
+            "input": 0,
+            "output": 0,
+            "reasoning": 0,
+            "cache": {
+              "read": 0,
+              "write": 0
+            }
+          },
+          "time": {
+            "created": 1791991683150,
+            "updated": 1791991683150
+          }
+        }
+      }
+    },
+    {
+      "at": 1791991683211,
+      "kind": "chat.message",
+      "sessionID": "ses_ec4f8e7b2ffeOydIM2zWRFfa86",
+      "messageID": "msg_13b071881001hclP5QnPJCfK5V",
+      "parts": [
+        {
+          "type": "text",
+          "text": "\"Reply OK briefly.\"",
+          "messageID": "msg_13b071881001hclP5QnPJCfK5V",
+          "sessionID": "ses_ec4f8e7b2ffeOydIM2zWRFfa86",
+          "id": "prt_13b07188a001rc6ZCqt94r0H8z"
+        }
+      ]
+    },
+    {
+      "at": 1791991683792,
+      "kind": "small_model"
+    },
+    {
+      "at": 1791991683812,
+      "kind": "system",
+      "sessionID": "ses_ec4f8e7b2ffeOydIM2zWRFfa86"
+    },
+    {
+      "at": 1791991683812,
+      "kind": "chat.params",
+      "sessionID": "ses_ec4f8e7b2ffeOydIM2zWRFfa86",
+      "messageID": "msg_13b071881001hclP5QnPJCfK5V"
+    },
+    {
+      "at": 1791991683813,
+      "kind": "chat.headers",
+      "sessionID": "ses_ec4f8e7b2ffeOydIM2zWRFfa86"
+    },
+    {
+      "at": 1791991683887,
+      "kind": "tool.definition",
+      "toolID": "invalid"
+    },
+    {
+      "at": 1791991683887,
+      "kind": "tool.definition",
+      "toolID": "question"
+    },
+    {
+      "at": 1791991683887,
+      "kind": "tool.definition",
+      "toolID": "bash"
+    },
+    {
+      "at": 1791991683887,
+      "kind": "tool.definition",
+      "toolID": "read"
+    },
+    {
+      "at": 1791991683887,
+      "kind": "tool.definition",
+      "toolID": "glob"
+    },
+    {
+      "at": 1791991683888,
+      "kind": "tool.definition",
+      "toolID": "grep"
+    },
+    {
+      "at": 1791991683888,
+      "kind": "tool.definition",
+      "toolID": "task"
+    },
+    {
+      "at": 1791991683888,
+      "kind": "tool.definition",
+      "toolID": "webfetch"
+    },
+    {
+      "at": 1791991683888,
+      "kind": "tool.definition",
+      "toolID": "todowrite"
+    },
+    {
+      "at": 1791991683888,
+      "kind": "tool.definition",
+      "toolID": "skill"
+    },
+    {
+      "at": 1791991683888,
+      "kind": "tool.definition",
+      "toolID": "apply_patch"
+    },
+    {
+      "at": 1791991683895,
+      "kind": "messages.transform",
+      "messages": [
+        {
+          "id": "msg_13b071881001hclP5QnPJCfK5V",
+          "role": "user",
+          "parts": [
+            {
+              "type": "text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "at": 1791991684457,
+      "kind": "system",
+      "sessionID": "ses_ec4f8e7b2ffeOydIM2zWRFfa86"
+    },
+    {
+      "at": 1791991684458,
+      "kind": "chat.params",
+      "sessionID": "ses_ec4f8e7b2ffeOydIM2zWRFfa86",
+      "messageID": "msg_13b071881001hclP5QnPJCfK5V"
+    },
+    {
+      "at": 1791991684458,
+      "kind": "chat.headers",
+      "sessionID": "ses_ec4f8e7b2ffeOydIM2zWRFfa86"
+    },
+    {
+      "at": 1791991685975,
+      "kind": "text.complete",
+      "sessionID": "ses_ec4f8e7b2ffeOydIM2zWRFfa86",
+      "messageID": "msg_13b071ac3001m73F86MOm8iKKY",
+      "partID": "prt_13b07223f001ORDkDt1j84XznE"
+    },
+    {
+      "at": 1791991686064,
+      "kind": "event",
+      "type": "session.idle",
+      "properties": {
+        "sessionID": "ses_ec4f8e7b2ffeOydIM2zWRFfa86"
+      }
+    },
+    {
+      "at": 1791991686065,
+      "kind": "wake.start"
+    },
+    {
+      "at": 1791991686070,
+      "kind": "chat.message",
+      "sessionID": "ses_ec4f8e7b2ffeOydIM2zWRFfa86",
+      "messageID": "msg_13b0723b5001hk9cJcG2E9NFr4",
+      "parts": [
+        {
+          "type": "text",
+          "text": "News: reply WAKE_SEEN briefly.",
+          "synthetic": true,
+          "messageID": "msg_13b0723b5001hk9cJcG2E9NFr4",
+          "sessionID": "ses_ec4f8e7b2ffeOydIM2zWRFfa86",
+          "id": "prt_13b0723b6001npNc202B7GFYIv"
+        }
+      ]
+    },
+    {
+      "at": 1791991686089,
+      "kind": "event",
+      "type": "session.idle",
+      "properties": {
+        "sessionID": "ses_ec4f8e7b2ffeOydIM2zWRFfa86"
+      }
+    },
+    {
+      "at": 1791991686098,
+      "kind": "wake.done"
+    },
+    {
+      "at": 1791991686098,
+      "kind": "dispose"
+    }
+  ]
+}

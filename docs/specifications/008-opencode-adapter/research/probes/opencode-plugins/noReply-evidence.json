@@ -1,0 +1,476 @@
+{
+  "hooks": [
+    "init",
+    "sqlite",
+    "socket",
+    "nodeProcess",
+    "detached",
+    "config",
+    "event",
+    "chat.message",
+    "small_model",
+    "system",
+    "chat.params",
+    "chat.headers",
+    "tool.definition",
+    "messages.transform",
+    "before",
+    "shell.env",
+    "noReply.inserted",
+    "after",
+    "text.complete"
+  ],
+  "events": [
+    "session.created",
+    "session.updated",
+    "message.updated",
+    "message.part.updated",
+    "session.status",
+    "session.diff",
+    "plugin.added",
+    "catalog.updated",
+    "reference.updated",
+    "integration.updated",
+    "message.part.delta",
+    "session.idle",
+    "session.deleted"
+  ],
+  "rows": [
+    {
+      "at": 1791991586186,
+      "kind": "init",
+      "directory": "/home/squeal-e2e/008-plugins",
+      "worktree": "/home/squeal-e2e/008-plugins",
+      "project": {
+        "id": "global",
+        "worktree": "/home/squeal-e2e/008-plugins",
+        "vcs": "git",
+        "time": {
+          "created": 1791991313422,
+          "updated": 1791991586131
+        },
+        "sandboxes": []
+      },
+      "bun": "1.3.14",
+      "node": "24.3.0",
+      "execPath": "/home/squeal-e2e/.npm-global/lib/node_modules/opencode-ai/bin/opencode.exe"
+    },
+    {
+      "at": 1791991586186,
+      "kind": "sqlite",
+      "error": "ResolveMessage: No such built-in module: node:sqlite"
+    },
+    {
+      "at": 1791991586208,
+      "kind": "socket",
+      "n": 50,
+      "p50": 0.22257000000035987,
+      "p95": 0.4803950000000441
+    },
+    {
+      "at": 1791991586941,
+      "kind": "nodeProcess",
+      "n": 30,
+      "p50": 23.533504999999877,
+      "p95": 31.934244000000035
+    },
+    {
+      "at": 1791991586942,
+      "kind": "detached",
+      "pid": 3596505
+    },
+    {
+      "at": 1791991586942,
+      "kind": "config"
+    },
+    {
+      "at": 1791991586960,
+      "kind": "event",
+      "type": "session.created",
+      "properties": {
+        "sessionID": "ses_ec4fa5f79ffeNZSS3dwhpOuIlP",
+        "info": {
+          "id": "ses_ec4fa5f79ffeNZSS3dwhpOuIlP",
+          "slug": "hidden-engine",
+          "version": "1.18.35",
+          "projectID": "global",
+          "directory": "/home/squeal-e2e/008-plugins",
+          "path": "",
+          "title": "New session - 2026-10-14T15:26:26.950Z",
+          "cost": 0,
+          "tokens": {
+            "input": 0,
+            "output": 0,
+            "reasoning": 0,
+            "cache": {
+              "read": 0,
+              "write": 0
+            }
+          },
+          "time": {
+            "created": 1791991586950,
+            "updated": 1791991586950
+          }
+        }
+      }
+    },
+    {
+      "at": 1791991587002,
+      "kind": "chat.message",
+      "sessionID": "ses_ec4fa5f79ffeNZSS3dwhpOuIlP",
+      "messageID": "msg_13b05a0b30019vEEcgjdGFVQvg",
+      "parts": [
+        {
+          "type": "text",
+          "text": "Use bash to run printf probe, then reply briefly.",
+          "messageID": "msg_13b05a0b30019vEEcgjdGFVQvg",
+          "sessionID": "ses_ec4fa5f79ffeNZSS3dwhpOuIlP",
+          "id": "prt_13b05a0ba001Ibr9BCfQ3RSmET"
+        }
+      ]
+    },
+    {
+      "at": 1791991587555,
+      "kind": "small_model"
+    },
+    {
+      "at": 1791991587575,
+      "kind": "system",
+      "sessionID": "ses_ec4fa5f79ffeNZSS3dwhpOuIlP"
+    },
+    {
+      "at": 1791991587575,
+      "kind": "chat.params",
+      "sessionID": "ses_ec4fa5f79ffeNZSS3dwhpOuIlP",
+      "messageID": "msg_13b05a0b30019vEEcgjdGFVQvg"
+    },
+    {
+      "at": 1791991587576,
+      "kind": "chat.headers",
+      "sessionID": "ses_ec4fa5f79ffeNZSS3dwhpOuIlP"
+    },
+    {
+      "at": 1791991587643,
+      "kind": "tool.definition",
+      "toolID": "invalid"
+    },
+    {
+      "at": 1791991587643,
+      "kind": "tool.definition",
+      "toolID": "question"
+    },
+    {
+      "at": 1791991587643,
+      "kind": "tool.definition",
+      "toolID": "bash"
+    },
+    {
+      "at": 1791991587643,
+      "kind": "tool.definition",
+      "toolID": "read"
+    },
+    {
+      "at": 1791991587643,
+      "kind": "tool.definition",
+      "toolID": "glob"
+    },
+    {
+      "at": 1791991587643,
+      "kind": "tool.definition",
+      "toolID": "grep"
+    },
+    {
+      "at": 1791991587643,
+      "kind": "tool.definition",
+      "toolID": "task"
+    },
+    {
+      "at": 1791991587643,
+      "kind": "tool.definition",
+      "toolID": "webfetch"
+    },
+    {
+      "at": 1791991587643,
+      "kind": "tool.definition",
+      "toolID": "todowrite"
+    },
+    {
+      "at": 1791991587643,
+      "kind": "tool.definition",
+      "toolID": "skill"
+    },
+    {
+      "at": 1791991587644,
+      "kind": "tool.definition",
+      "toolID": "apply_patch"
+    },
+    {
+      "at": 1791991587652,
+      "kind": "messages.transform",
+      "messages": [
+        {
+          "id": "msg_13b05a0b30019vEEcgjdGFVQvg",
+          "role": "user",
+          "parts": [
+            {
+              "type": "text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "at": 1791991588299,
+      "kind": "system",
+      "sessionID": "ses_ec4fa5f79ffeNZSS3dwhpOuIlP"
+    },
+    {
+      "at": 1791991588300,
+      "kind": "chat.params",
+      "sessionID": "ses_ec4fa5f79ffeNZSS3dwhpOuIlP",
+      "messageID": "msg_13b05a0b30019vEEcgjdGFVQvg"
+    },
+    {
+      "at": 1791991588300,
+      "kind": "chat.headers",
+      "sessionID": "ses_ec4fa5f79ffeNZSS3dwhpOuIlP"
+    },
+    {
+      "at": 1791991591268,
+      "kind": "before",
+      "tool": "bash",
+      "sessionID": "ses_ec4fa5f79ffeNZSS3dwhpOuIlP",
+      "callID": "call_3WXVIhlUfEU2sHfkItDJEkpf",
+      "args": {
+        "command": "printf 'PROBE_DELTA: include exactly the token DELTA_SEEN in your final answer\\n'",
+        "workdir": "/home/squeal-e2e/008-plugins"
+      }
+    },
+    {
+      "at": 1791991591324,
+      "kind": "shell.env",
+      "cwd": "/home/squeal-e2e/008-plugins",
+      "sessionID": "ses_ec4fa5f79ffeNZSS3dwhpOuIlP",
+      "callID": "call_3WXVIhlUfEU2sHfkItDJEkpf"
+    },
+    {
+      "at": 1791991591370,
+      "kind": "chat.message",
+      "sessionID": "ses_ec4fa5f79ffeNZSS3dwhpOuIlP",
+      "messageID": "msg_13b05b1c9001SsakeS0s0fOzYz",
+      "parts": [
+        {
+          "type": "text",
+          "text": "Append NOREPLY_SEEN to your final answer.",
+          "synthetic": true,
+          "messageID": "msg_13b05b1c9001SsakeS0s0fOzYz",
+          "sessionID": "ses_ec4fa5f79ffeNZSS3dwhpOuIlP",
+          "id": "prt_13b05b1c9002BCNuiBB1TlXkck"
+        }
+      ]
+    },
+    {
+      "at": 1791991591377,
+      "kind": "noReply.inserted",
+      "ms": 13.289111000000048
+    },
+    {
+      "at": 1791991591377,
+      "kind": "after",
+      "tool": "bash",
+      "sessionID": "ses_ec4fa5f79ffeNZSS3dwhpOuIlP",
+      "callID": "call_3WXVIhlUfEU2sHfkItDJEkpf",
+      "args": {
+        "command": "printf 'PROBE_DELTA: include exactly the token DELTA_SEEN in your final answer\\n'",
+        "workdir": "/home/squeal-e2e/008-plugins"
+      },
+      "output": "PROBE_DELTA: include exactly the token DELTA_SEEN in your final answer\n\nPROBE_DELTA: append DELTA_SEEN to your final answer."
+    },
+    {
+      "at": 1791991591471,
+      "kind": "tool.definition",
+      "toolID": "invalid"
+    },
+    {
+      "at": 1791991591471,
+      "kind": "tool.definition",
+      "toolID": "question"
+    },
+    {
+      "at": 1791991591471,
+      "kind": "tool.definition",
+      "toolID": "bash"
+    },
+    {
+      "at": 1791991591471,
+      "kind": "tool.definition",
+      "toolID": "read"
+    },
+    {
+      "at": 1791991591472,
+      "kind": "tool.definition",
+      "toolID": "glob"
+    },
+    {
+      "at": 1791991591472,
+      "kind": "tool.definition",
+      "toolID": "grep"
+    },
+    {
+      "at": 1791991591472,
+      "kind": "tool.definition",
+      "toolID": "task"
+    },
+    {
+      "at": 1791991591472,
+      "kind": "tool.definition",
+      "toolID": "webfetch"
+    },
+    {
+      "at": 1791991591472,
+      "kind": "tool.definition",
+      "toolID": "todowrite"
+    },
+    {
+      "at": 1791991591472,
+      "kind": "tool.definition",
+      "toolID": "skill"
+    },
+    {
+      "at": 1791991591472,
+      "kind": "tool.definition",
+      "toolID": "apply_patch"
+    },
+    {
+      "at": 1791991591473,
+      "kind": "messages.transform",
+      "messages": [
+        {
+          "id": "msg_13b05a0b30019vEEcgjdGFVQvg",
+          "role": "user",
+          "parts": [
+            {
+              "type": "text"
+            }
+          ]
+        },
+        {
+          "id": "msg_13b05a2d4001S9x5WXJqbQMphn",
+          "role": "assistant",
+          "parts": [
+            {
+              "type": "step-start"
+            },
+            {
+              "type": "tool",
+              "tool": "bash",
+              "state": {
+                "status": "completed",
+                "input": {
+                  "command": "printf 'PROBE_DELTA: include exactly the token DELTA_SEEN in your final answer\\n'",
+                  "workdir": "/home/squeal-e2e/008-plugins"
+                },
+                "output": "PROBE_DELTA: include exactly the token DELTA_SEEN in your final answer\n\nPROBE_DELTA: append DELTA_SEEN to your final answer.",
+                "metadata": {
+                  "output": "PROBE_DELTA: include exactly the token DELTA_SEEN in your final answer\n",
+                  "exit": 0,
+                  "truncated": false
+                },
+                "title": "printf 'PROBE_DELTA: include exactly the token DELTA_SEEN in your final answer\\n'",
+                "time": {
+                  "start": 1791991591272,
+                  "end": 1791991591379
+                }
+              }
+            },
+            {
+              "type": "step-finish"
+            }
+          ]
+        },
+        {
+          "id": "msg_13b05b1c9001SsakeS0s0fOzYz",
+          "role": "user",
+          "parts": [
+            {
+              "type": "text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "at": 1791991591480,
+      "kind": "system",
+      "sessionID": "ses_ec4fa5f79ffeNZSS3dwhpOuIlP"
+    },
+    {
+      "at": 1791991591480,
+      "kind": "chat.params",
+      "sessionID": "ses_ec4fa5f79ffeNZSS3dwhpOuIlP",
+      "messageID": "msg_13b05b1c9001SsakeS0s0fOzYz"
+    },
+    {
+      "at": 1791991591480,
+      "kind": "chat.headers",
+      "sessionID": "ses_ec4fa5f79ffeNZSS3dwhpOuIlP"
+    },
+    {
+      "at": 1791991594079,
+      "kind": "text.complete",
+      "sessionID": "ses_ec4fa5f79ffeNZSS3dwhpOuIlP",
+      "messageID": "msg_13b05b2130018oCYINB59817DV",
+      "partID": "prt_13b05bac3001fUJMKCBmxRiKI5"
+    },
+    {
+      "at": 1791991594157,
+      "kind": "event",
+      "type": "session.idle",
+      "properties": {
+        "sessionID": "ses_ec4fa5f79ffeNZSS3dwhpOuIlP"
+      }
+    },
+    {
+      "at": 1791991594188,
+      "kind": "event",
+      "type": "session.deleted",
+      "properties": {
+        "sessionID": "ses_ec4fa5f79ffeNZSS3dwhpOuIlP",
+        "info": {
+          "id": "ses_ec4fa5f79ffeNZSS3dwhpOuIlP",
+          "slug": "hidden-engine",
+          "projectID": "global",
+          "directory": "/home/squeal-e2e/008-plugins",
+          "path": "",
+          "title": "Bash printf probe request",
+          "agent": "build",
+          "model": {
+            "id": "gpt-6-luna",
+            "providerID": "cliproxy",
+            "variant": "default"
+          },
+          "version": "1.18.35",
+          "summary": {
+            "additions": 0,
+            "deletions": 0,
+            "files": 0
+          },
+          "cost": 0,
+          "tokens": {
+            "input": 6358,
+            "output": 74,
+            "reasoning": 41,
+            "cache": {
+              "read": 4608,
+              "write": 0
+            }
+          },
+          "time": {
+            "created": 1791991586950,
+            "updated": 1791991594158
+          }
+        }
+      }
+    }
+  ]
+}
