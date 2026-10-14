@@ -21,8 +21,8 @@ import { PYTHONS, requireSynced, type Synced, syncFixture } from "../../helpers/
  * Review wave 2, B1 and B2, on a uv-synced copy of the small fixture: the
  * adapter admits an environment only once its fingerprint held still for a
  * second (a controlled clock rewrites a `.pth` at every poll it should),
- * and an empty `invalidate`, the scheduler's recheck at each
- * reconciliation pass, finds an installed-set change no watched file shows.
+ * and `recheck`, which the scheduler calls at a quiet reconciliation pass
+ * (task 007-26), finds an installed-set change no watched file shows.
  */
 
 const small = resolve(import.meta.dirname, "../../fixtures/pytest/small");
@@ -113,12 +113,12 @@ describe.each(PYTHONS)("pytest adapter admission under Python %s (B1, B2)", (ver
         expect(report).toMatchObject({ end: "crashed", completedFiles: [], results: [] });
 
         // Still changing at the recheck: still unsettled, the note not repeated.
-        expect(await adapter.invalidate([])).toEqual({ recreatedProjects: [] });
+        expect(await adapter.recheck?.()).toEqual({ recreatedProjects: [] });
         expect(notes.filter((t) => /kept changing/.test(t))).toHaveLength(1);
 
         writing = false;
         const before = clock.elapsed();
-        expect(await adapter.invalidate([])).toEqual({ recreatedProjects: ["small"] });
+        expect(await adapter.recheck?.()).toEqual({ recreatedProjects: ["small"] });
         expect(clock.elapsed() - before).toBeGreaterThanOrEqual(SETTLE_MS);
         expect((await adapter.environment())[0]?.runnerVersion).toMatch(/^\d+\.\d+/);
         expect(notes).toContainEqual(expect.stringMatching(/environment is ready/));
@@ -158,7 +158,7 @@ describe.each(PYTHONS)("pytest adapter admission under Python %s (B1, B2)", (ver
   );
 
   it(
-    "an empty invalidate finds an installed upgrade and a .pth change no watched file shows (B1)",
+    "a recheck finds an installed upgrade and a .pth change no watched file shows (B1)",
     SLOW,
     async (ctx) => {
       const clock = controlled();
@@ -166,7 +166,7 @@ describe.each(PYTHONS)("pytest adapter admission under Python %s (B1, B2)", (ver
       const watched = new Set((await adapter.environment())[0]?.files);
       // A still environment: the recheck re-keys nothing and does not wait.
       const still = clock.elapsed();
-      expect(await adapter.invalidate([])).toEqual({ recreatedProjects: [] });
+      expect(await adapter.recheck?.()).toEqual({ recreatedProjects: [] });
       expect(clock.elapsed()).toBe(still);
 
       const v1 = join(site, "reviewdep-1.0.dist-info");
@@ -179,7 +179,7 @@ describe.each(PYTHONS)("pytest adapter admission under Python %s (B1, B2)", (ver
         mkdirSync(v1);
         writeFileSync(join(v1, "METADATA"), "Name: reviewdep\nVersion: 1.0\n");
         const first = (await adapter.environment())[0]?.resolvedConfig;
-        expect(await adapter.invalidate([])).toEqual({ recreatedProjects: ["small"] });
+        expect(await adapter.recheck?.()).toEqual({ recreatedProjects: ["small"] });
         const installed = (await adapter.environment())[0]?.resolvedConfig;
         expect(installed).not.toBe(first);
 
@@ -188,23 +188,26 @@ describe.each(PYTHONS)("pytest adapter admission under Python %s (B1, B2)", (ver
         mkdirSync(v2);
         writeFileSync(join(v2, "METADATA"), "Name: reviewdep\nVersion: 2.0\n");
         writeFileSync(join(pkg, "__init__.py"), "VALUE = 2\n");
-        expect(await adapter.invalidate([])).toEqual({ recreatedProjects: ["small"] });
+        expect(await adapter.recheck?.()).toEqual({ recreatedProjects: ["small"] });
         const upgraded = (await adapter.environment())[0]?.resolvedConfig;
         expect(upgraded).not.toBe(installed);
 
         writeFileSync(pth, "# one\n");
-        expect(await adapter.invalidate([])).toEqual({ recreatedProjects: ["small"] });
+        expect(await adapter.recheck?.()).toEqual({ recreatedProjects: ["small"] });
         const added = (await adapter.environment())[0]?.resolvedConfig;
         writeFileSync(pth, "# two\n");
-        expect(await adapter.invalidate([])).toEqual({ recreatedProjects: ["small"] });
+        expect(await adapter.recheck?.()).toEqual({ recreatedProjects: ["small"] });
         expect((await adapter.environment())[0]?.resolvedConfig).not.toBe(added);
+        // An empty invalidate, the observed-paths refinement, reads the environment too.
+        writeFileSync(pth, "# three\n");
+        expect(await adapter.invalidate([])).toEqual({ recreatedProjects: ["small"] });
         // None of it was a watched file: only the recheck could see it.
         for (const path of [v1, v2, pkg, pth]) {
           expect([...watched].some((w) => path.endsWith(w))).toBe(false);
         }
       } finally {
         for (const path of [v1, v2, pkg, pth]) rmSync(path, { recursive: true, force: true });
-        await adapter.invalidate([]);
+        await adapter.recheck?.();
       }
     },
   );

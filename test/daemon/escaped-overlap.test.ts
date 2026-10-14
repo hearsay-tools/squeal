@@ -87,6 +87,17 @@ const gone = (pid: number) =>
   expect.poll(() => isAlive(pid), { timeout: 10_000, message: `${pid} gone` }).toBe(false);
 
 // Up to two 10 s polls and the stop's 1 s grace in one test (task 001-320).
+describe("afterEachRun forwards a recheck (007-26)", () => {
+  it("as the runner has it, or none", async () => {
+    const noted = () => {};
+    const plain = fakeRunner(async (testFiles) => completed(testFiles));
+    expect(afterEachRun(plain, new EscapedChildren(), noted).recheck).toBeUndefined();
+    const rechecking = { ...plain, recheck: async () => ({ recreatedProjects: ["py"] }) };
+    const runner = afterEachRun(rechecking, new EscapedChildren(), noted);
+    expect(await runner.recheck?.()).toEqual({ recreatedProjects: ["py"] });
+  });
+});
+
 describe.runIf(process.platform === "linux")(
   "afterEachRun, a mark per lane (task 004-18)",
   () => {
