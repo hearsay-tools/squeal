@@ -183,6 +183,15 @@ class Daemon {
     });
   }
 
+  /** The pool's numbers: the options' when a caller set them, else the user's config (task 001-377). */
+  #poolCapacity(): PoolCapacity {
+    if (this.options.capacity !== undefined) return this.options.capacity;
+    const { hostSlots, projectSlots } = this.#capacity();
+    if (projectSlots === undefined) return { hostSlots };
+    const id = repositoryRootOf(this.opened.commonDir);
+    return { hostSlots, project: { id, slots: projectSlots } };
+  }
+
   async start(desk: PreparedDesk): Promise<RunningDaemon | DaemonExit> {
     const { root, worktreeId } = this.opened;
     try {
@@ -461,8 +470,9 @@ class Daemon {
         onReinstall: (note) => void this.#shutdown("reinstalled", 0, note),
         onDropped: (reason) =>
           this.#note(`watcher dropped events (${reason}); a full reconciliation follows`),
-        // Spec 001 D11 Capacity (task 001-376): backlog and checkpoint tiers share the user's pool.
-        capacity: { dir: slowSlotDir(this.options.env), ...this.options.capacity },
+        // Spec 001 D11 Capacity (tasks 001-376, 001-377): backlog and checkpoint tiers share the
+        // user's pool, sized from the user's config as read when the loop starts.
+        capacity: { dir: slowSlotDir(this.options.env), ...this.#poolCapacity() },
       });
       this.#loop = loop;
       await loop.start();
