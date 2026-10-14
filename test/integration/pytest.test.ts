@@ -170,6 +170,28 @@ function diagnose(main: string, wt: string): string {
         coreClosure: q(
           "SELECT closure_paths, updated_by FROM test_files WHERE path = 'tests/unit/test_core.py'",
         ),
+        mainRuns: q(
+          "SELECT revision, test_files, started_at, ended_at, end_state FROM runs WHERE worktree_id = ? ORDER BY started_at",
+          m,
+        ).map((r) => ({
+          ...r,
+          test_files: String(r.test_files).replace(/"project":"small",/g, ""),
+        })),
+        mainRevisions: q(
+          "SELECT number, created_at, trigger, substr(changes, 1, 300) AS changes FROM revisions WHERE worktree_id = ? ORDER BY number",
+          m,
+        ),
+        coreResults: q(
+          "SELECT substr(r.key, 1, 8) AS key, c.full_name, r.outcome, r.worktree_id, r.revision, r.recorded_at FROM results r JOIN checks c ON c.id = r.check_id WHERE c.test_path = 'tests/unit/test_core.py' AND c.full_name = '' ORDER BY r.recorded_at",
+        ).map(name),
+        mainTrace: existsSync(join(main, ".git/squeal/pytest-trace.jsonl"))
+          ? readFileSync(join(main, ".git/squeal/pytest-trace.jsonl"), "utf8")
+              .split("\n")
+              .filter(
+                (l) => l.includes('"who":"main"') && /"call":"(run|invalidate|recheck)"/.test(l),
+              )
+              .map((l) => l.slice(0, 1500))
+          : null,
         trace: existsSync(join(main, ".git/squeal/pytest-trace.jsonl"))
           ? readFileSync(join(main, ".git/squeal/pytest-trace.jsonl"), "utf8")
               .split("\n")
