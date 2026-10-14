@@ -116,3 +116,32 @@ The 001 commits in between are reviewed by 001.
 - Run no model session and never the real `claude` or `codex`.
 - `test/real-cli` is read-only for you.
 - One `npx vitest run --maxWorkers=4`.
+
+## Wave 6.5: repairs from 005-42
+
+The release waits on these, then on one narrow re-review. Read `reviews/wave-4-6.md`. Every full Vitest run uses `--maxWorkers=4`. Do not run `npm run build`. Run no model session and never the real `claude` or `codex`.
+
+### 005-43 the validation universe subtracts node:test exclusions (B1)
+
+Use /worker.
+
+- **Outcome.** `init`, setup's apply step and `--check` validate against one effective runner file set: each node:test project's include minus its exclude, joined with what Vitest lists. So a declaration that selects only an excluded file is refused on both write paths, and `--check` exits 1 for one already written.
+- **Seam.** `src/cli/setup/test-globs.ts:18` (`testFileUniverse`) and `src/cli/setup/plan.ts:251`, where the seam drops `exclude`. Follow the review's fix, and keep the node:test adapter's include-minus-exclude contract unchanged.
+- **Owns.** `test-globs.ts`, `plan.ts`, `apply.ts`, `command.ts`, `test/cli/setup/init-flags.test.ts` and `setup-changes.test.ts`.
+- **Done when.**
+  - The review's B1 reproduction is a regression test.
+  - A file excluded in one project but listed by another runner still validates.
+  - Lint, typecheck and the capped suite pass.
+
+### 005-44 an explicit relative path keeps its named evidence (B2), and argv secrecy (S1)
+
+Use /worker.
+
+- **Outcome, B2.** A string that resolves to a candidate from the test file's own directory, such as `../../dist/cli/squeal.mjs`, stays "named" whatever another tracked path ends with. Only the ambiguous bare string, such as `dist/cli/squeal.mjs`, is vetoed by a tracked suffix.
+- **Outcome, S1.** `test/real-cli/isolated.ts`'s guard also refuses a known secret in `cmd` or `args`.
+- **Seam.** `src/cli/setup/artifacts.ts:188` (`names`), qualified by the base that resolved the string, and the guard at `test/real-cli/isolated.ts:115`.
+- **Owns.** `artifacts.ts`, `questions.ts`, `test/cli/setup/candidates.test.ts`, `test/real-cli/isolated.ts`, and a new `test/real-cli/isolated-guard.test.ts`. The new test runs under the normal config and spawns nothing: it uses synthetic credentials and calls `guard` only.
+- **Done when.**
+  - The review's B2 reproduction is a regression test: root `dist` outranks `plugins`, and the bare-string negative still holds.
+  - The guard test passes.
+  - Lint, typecheck and the capped suite pass.
