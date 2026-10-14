@@ -1,6 +1,6 @@
 # 008 OpenCode adapter: status
 
-Stage: draft (research; no spec yet)
+Stage: draft (`spec.md` written 2026-10-14 from both findings; for the human's review)
 Started: 2026-10-14
 
 ## Decisions so far
@@ -14,6 +14,7 @@ Started: 2026-10-14
 - 2026-10-14, the human: probes run OpenCode on `cliproxy/gpt-6-luna`; researchers mixed, Astra (Codex `gpt-6-astra`) on `opencode-plugins`, Opus on `opencode-sessions-and-wake`.
 - 2026-10-14, the human, after research: ship the idle wake. The plugin wakes an idle session once per news through its own `client.session.promptAsync` wherever the process stays open (`serve`, the TUI); under `opencode run` and Cezar's auto-ending steps the message is stored and read at the next resume. Not bound to how Cezar counts turns, as 009 decided for Pi ("Cezar is just one use case").
 - 2026-10-14, coordinator, from both findings: a thin auto-loaded plugin hands each event to a short Node process running `src/harness/shared/`, as the Codex hooks do; OpenCode's embedded Bun 1.3.14 has no `node:sqlite` (008-01 Q6). No held daemon socket and no core change.
+- 2026-10-14, the human: install as Pi does (009 D1): `install.sh` unpacks `plugins/opencode/` into a versioned directory and runs OpenCode's own `opencode plugin file:<dir> -g`; no npm. OpenCode 1.18.35 has no remove command (`opencode plugin --help`, run as `squeal-e2e`), so how an update replaces the older entry is open question 1.
 
 ## Amendments after approval
 
