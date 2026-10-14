@@ -206,8 +206,12 @@ class TierScheduler implements Scheduler {
         if (missing !== null) return this.#reinstall(ledger);
       }
       // Task 001-159: the runner hears of a touched-unchanged file before the next tier.
+      // 007 review wave 2, B1: every reconciliation pass reaches it too, with nothing changed, so
+      // an adapter rechecks what no watched file shows (a pytest environment's installed set).
       if (applied === null) {
-        if (touched.length > 0) this.#runnerWork.queueTouched(touched);
+        if (touched.length > 0 || batch.trigger === "interval") {
+          this.#runnerWork.queueTouched(touched);
+        }
         return;
       }
       this.#slow.preempt();
