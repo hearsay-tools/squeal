@@ -1,4 +1,4 @@
-import { readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type {
@@ -148,6 +148,47 @@ describe.each(PYTHONS)("pytest adapter start-up observations under Python %s (B5
       });
     },
   );
+
+  it(
+    "a conftest and the test packages it loads at collection are its files', not the session's (007-36)",
+    SLOW,
+    async (ctx) => {
+      const include = [CORE_TEST, "tests/test_resources.py"];
+      const store = memoryStore();
+      const { adapter, root } = await open(ctx, store, { name: "small", args: [], env: {}, include });
+      const report = await adapter.run(include.map(ref), runOptions(root));
+      expect(report.completedFiles).toEqual(include.map(ref));
+      expect(report.environmentObserved).toBeUndefined();
+      expect(store.session).toEqual([]);
+      const files = (await adapter.environment())[0]?.files ?? [];
+      expect(files.filter((p) => p.startsWith("tests/"))).toEqual([]);
+      // D5: the nested conftest and its package affect the files below them only.
+      for (const path of ["tests/unit/conftest.py", "tests/unit/__init__.py"]) {
+        const { direct, transitive } = await adapter.affected([path]);
+        expect([...direct, ...transitive].map((f) => f.path)).toEqual([CORE_TEST]);
+      }
+    },
+  );
+
+  it("a batch closes its events file: no ResourceWarning in its stderr (007-36)", SLOW, async (ctx) => {
+    const include = [CORE_TEST, "tests/test_resources.py"];
+    // Python's own filters hide a ResourceWarning; a project's may show it (briefcase's did).
+    const { adapter, root } = await open(ctx, memoryStore(), {
+      name: "small",
+      args: [],
+      env: { PYTHONWARNINGS: "error::ResourceWarning" },
+      include,
+    });
+    const options = runOptions(root);
+    const report = await adapter.run(include.map(ref), options);
+    expect(report.completedFiles).toEqual(include.map(ref));
+    const logs = join(options.logDir, "pytest", "small");
+    const stderr = readdirSync(logs).filter((f) => f.startsWith("stderr-"));
+    expect(stderr.length).toBeGreaterThan(0);
+    for (const file of stderr) {
+      expect(readFileSync(join(logs, file), "utf8")).not.toContain("ResourceWarning");
+    }
+  });
 
   it("a -p plugin's dynamic import is observed the same way", SLOW, async (ctx) => {
     const project = { name: "small", args: ["-p", "app.startup"], env: {}, include: [CORE_TEST] };
