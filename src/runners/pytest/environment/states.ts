@@ -40,7 +40,7 @@ export function environmentState(root: AbsolutePath, project: PytestProject): En
     return {
       state: "none",
       command: discovery.command,
-      note: `pytest project "${project.name}": no Python environment (looked at ${discovery.looked.map((path) => displayDir(root, path)).join(", ")}); run \`${discovery.command}\` in ${where} to create one. Its checks stay unknown until then.`,
+      note: `pytest project "${project.name}": no Python environment (looked at ${discovery.looked.map((path) => displayDir(root, path)).join(", ")}); ${create(discovery, where)} Its checks stay unknown until then.`,
     };
   }
   const editables = outsideEditables(root, discovery.env);
@@ -51,6 +51,17 @@ export function environmentState(root: AbsolutePath, project: PytestProject): En
     editables,
     note: `pytest project "${project.name}": the environment ${displayDir(root, discovery.env)} installs ${named} editable, outside this worktree, so tests would import another worktree's code. Nothing runs until this worktree has its own environment (run \`uv sync\` or your project's install in ${where}).`,
   };
+}
+
+/**
+ * D2's no-environment instruction: the command a lockfile or requirements
+ * file names, else a new environment the project's own install fills
+ * (task 007-39, lessons.md defect 9).
+ */
+function create(discovery: Extract<Discovery, { kind: "none" }>, where: string): string {
+  if (discovery.from !== null) return `run \`${discovery.command}\` in ${where} to create one.`;
+  const venv = discovery.command.slice("python -m venv ".length);
+  return `no lockfile or requirements file names an install, so create \`${venv}\` in ${where} with the project's own install (\`${discovery.command}\`, then its documented \`pip install\` into \`${venv}/bin/pip\`).`;
 }
 
 /**

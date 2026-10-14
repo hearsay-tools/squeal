@@ -72,6 +72,7 @@ describe("discoverEnvironment (spec 007 D2)", () => {
       kind: "none",
       looked: [join(root, ".venv-missing")],
       command: "poetry install",
+      from: join(root, "poetry.lock"),
     });
   });
 
@@ -111,7 +112,8 @@ describe("discoverEnvironment (spec 007 D2)", () => {
     expect(discoverEnvironment(worktree, project())).toEqual({
       kind: "none",
       looked: [join(worktree, ".venv"), join(worktree, ".pdm-python")],
-      command: "uv sync",
+      command: "python -m venv .venv",
+      from: null,
     });
   });
 
@@ -124,9 +126,12 @@ describe("discoverEnvironment (spec 007 D2)", () => {
     });
   });
 
-  it("names poetry install from poetry.lock and uv sync without any lockfile", () => {
+  it("names poetry install from poetry.lock and a new .venv without any lockfile", () => {
     const root = tempDir();
-    expect(discoverEnvironment(root, project())).toMatchObject({ command: "uv sync" });
+    expect(discoverEnvironment(root, project())).toMatchObject({
+      command: "python -m venv .venv",
+      from: null,
+    });
     write(root, { "poetry.lock": "" });
     expect(discoverEnvironment(root, project())).toMatchObject({ command: "poetry install" });
   });
