@@ -47,6 +47,12 @@ Both score `claim-true` and `no-false-pass`. New measures:
 
 The service test and its instructions reach only these scenarios, through a knob; every other scenario's fixture stays byte for byte.
 
+Where the service is checked decides what the agent sees (the 001 coordinator, 2026-10-14):
+- If a test file fetches the service, the agent sees a FAIL on that file.
+- If a setup file (`globalSetup`) checks it, the agent sees one setup failure (001-382), which a successful setup or `squeal retry --reason environment` clears.
+
+Build the per-file form; 001-348's dogfood saw it (web e2e files, "fetch failed"). Add the setup form only if 001's landed texts make it a different decision for the agent. 001 sends the texts for a retry request, a pending retry, a retry that passes and a load retry's wait.
+
 **Owns:** as 006-54, plus the fixture files under the knob.
 
 **Done when:** reference sessions show each measure met and missed; the other scenarios' fixtures are unchanged (a test); the gate is green.
