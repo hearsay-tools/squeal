@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { type Json, pilotRecord, scenarioOf, situationOf } from "../../evals/lib/index.mjs";
+import { pilotRecord, scenarioOf, situationOf } from "../../evals/lib/index.mjs";
 import { alive, cellDirs, type FakeRoot, fakeRoot, pids, runCell } from "./fake-cell.js";
 import { CLAIM, graded, type Harness, REGISTERED, type Step } from "./reference-sessions.js";
 
@@ -28,7 +28,7 @@ describe("the load-hold knob", { timeout: 30_000 }, () => {
       .split("\n")
       .filter(Boolean)
       .map((l) => JSON.parse(l) as { args: string[]; slow: Record<string, unknown> });
-    const hold = scenarioOf("a8-load-hold")?.knobs.loadHold;
+    const hold = scenarioOf("a8-load-hold")?.knobs.loadHold as Record<string, number>;
     expect(hold).toEqual({ maxLoadPerCpu: 0.0001, maxDeferMs: 120000 });
     // The warm-up ran on the fixture's own policy; the daemon stopped before the keys landed.
     expect(calls.map((c) => c.args.slice(0, 2))).toEqual([
@@ -130,9 +130,12 @@ describe("a8-load-hold's measures over reference sessions", () => {
   const scenario = scenarioOf("a8-load-hold");
   if (!scenario) throw new Error("no a8-load-hold");
   const measuresOf = (steps: Step[], harness: Harness) =>
-    pilotRecord(graded(steps, { truthPass: false, status: "fail", harness }) as Json, {
-      scenario,
-    }).measures;
+    pilotRecord(
+      { ...graded(steps, { truthPass: false, status: "fail", harness }) },
+      {
+        scenario,
+      },
+    ).measures;
 
   for (const harness of ["codex", "claude"] as const)
     for (const [name, s] of Object.entries(SESSIONS))
