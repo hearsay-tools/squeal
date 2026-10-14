@@ -11,17 +11,18 @@ import type {
   TestFileRef,
 } from "../../core/types/index.js";
 import { type ProjectSettings, projectSettings, sameSettings } from "./adapter-config.js";
-import { environmentDir, environmentSignature, projectEnvironment } from "./adapter-environment.js";
+import {
+  type AdapterEnvironment,
+  admitEnvironment,
+  environmentDir,
+  environmentSignature,
+  projectEnvironment,
+} from "./adapter-environment.js";
 import { listTestFiles } from "./adapter-files.js";
 import { Observed, type ObservedStore } from "./adapter-observed.js";
-import { runProject, unavailable } from "./adapter-run.js";
+import { quiet, runProject, unavailable } from "./adapter-run.js";
 import { enumerate } from "./enumerate.js";
-import {
-  type PytestEnvironment,
-  projectDir,
-  readEnvironment,
-  runEnvironment,
-} from "./environment/index.js";
+import { projectDir, readEnvironment, runEnvironment } from "./environment/index.js";
 import { createPytestGraph, type PytestGraph } from "./graph/index.js";
 import { PYTEST_ADAPTER_VERSION } from "./version.js";
 
@@ -96,7 +97,7 @@ export async function createPytestAdapter(
   const read = async () => {
     const dir = environmentDir(root, project);
     return {
-      environment: await readEnvironment(root, project, source),
+      environment: admitEnvironment(root, project, await readEnvironment(root, project, source)),
       dir,
       settings: projectSettings(root, project, runEnvironment(dir, project, source)),
     };
@@ -108,7 +109,7 @@ export async function createPytestAdapter(
   let built: Built | null = null;
   let failure: string | null = null;
 
-  const announce = (env: PytestEnvironment) => {
+  const announce = (env: AdapterEnvironment) => {
     if (env.state !== "ready") once(env.note);
   };
   const build = async (): Promise<boolean> => {
@@ -164,7 +165,12 @@ export async function createPytestAdapter(
     name: "pytest",
     adapterVersion: PYTEST_ADAPTER_VERSION,
     async invalidate(paths) {
-      const next = await read();
+      let next = await read();
+      if (environmentSignature(next.environment) !== environmentSignature(environment)) {
+        // D2: a sync writes on after its first file; key the environment it leaves.
+        await quiet(next.environment);
+        next = await read();
+      }
       const moved =
         stale || environmentSignature(next.environment) !== environmentSignature(environment);
       const rebuild = next.dir !== dir || !sameSettings(next.settings, settings);
@@ -254,7 +260,7 @@ export async function createPytestAdapter(
 /** D2: the closure inside the worktree of the `pytest11` plugins and the `-p` modules. */
 function pluginPaths(
   built: Built | null,
-  environment: PytestEnvironment,
+  environment: AdapterEnvironment,
   settings: ProjectSettings,
 ): readonly RelativePath[] {
   if (built === null) return [];
