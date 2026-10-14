@@ -1,8 +1,9 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { readDaemonNotes } from "../../src/core/notes.js";
-import type { TestCheckId } from "../../src/core/types/index.js";
+import type { Store, TestCheckId } from "../../src/core/types/index.js";
+import { claimRepo, fileName, side } from "./claims-fixture.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 /*
@@ -28,6 +29,24 @@ function touchDuringRuns(h: Harness, times: number): void {
   };
 }
 
+/**
+ * The run ids of every result `store` is given from now on (review 007-31,
+ * S1): `putMany` replaces a check's result at its key, so the final store
+ * cannot show that a withheld run's result was there for a moment.
+ */
+function puts(store: Store, testPath?: string): () => string[] {
+  const spy = vi.spyOn(store.results, "putMany");
+  return () => [
+    ...new Set(
+      spy.mock.calls.flatMap(([records]) =>
+        records
+          .filter((r) => testPath === undefined || r.check.testPath === testPath)
+          .map((r) => r.provenance.runId),
+      ),
+    ),
+  ];
+}
+
 const notes = (h: Harness) => readDaemonNotes(h.store, h.worktreeId).map((note) => note.text);
 
 describe("a tier the completion barrier withholds (task 007-30)", SLOW, () => {
@@ -37,11 +56,15 @@ describe("a tier the completion barrier withholds (task 007-30)", SLOW, () => {
       tierSize: 1,
     });
     touchDuringRuns(h, 1);
+    const put = puts(h.store, MATH);
     await h.scheduler.start();
     await h.scheduler.idle();
 
     const runs = h.runsOf(MATH);
     expect(runs).toHaveLength(2);
+    // Not even for a moment: the withheld run gave the store nothing (review 007-31, S1).
+    expect(put()).not.toContain(runs[0]?.options.runId);
+    expect(put()).toContain(runs[1]?.options.runId);
     // Nothing of the withheld run is stored: the result is the second run's.
     const kept = h.store.results.listForCheck(adds, 10).map((r) => r.provenance.runId);
     expect(kept).toEqual([runs[1]?.options.runId]);
@@ -94,5 +117,101 @@ describe("a tier the completion barrier withholds (task 007-30)", SLOW, () => {
     await h.scheduler.idle();
     expect(h.runsOf(MATH)).toHaveLength(2);
     expect(notes(h).filter((text) => text.includes("stays unknown"))).toHaveLength(1);
+  });
+
+  it("keeps a validated file's state while its retry is pending", async () => {
+    const repo = createRepo();
+    const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
+      tierSize: 1,
+    });
+    await h.scheduler.start();
+    await h.scheduler.idle();
+    expect(h.sink.stateOf(adds)).toMatchObject({ outcome: "pass", validity: "current" });
+    const validated = h.store.results.listForCheck(adds, 10).map((r) => r.provenance.runId);
+
+    // An edit re-keys it; its run at the new key is touched and withheld.
+    h.write("src/math.ts", `${readFileSync(join(h.root, "src/math.ts"), "utf8")}\n`);
+    const put = puts(h.store, MATH);
+    const before = h.runsOf(MATH).length;
+    touchDuringRuns(h, 1);
+    let pending: unknown = null;
+    const touch = h.runner.beforeRun;
+    h.runner.beforeRun = (files) => {
+      if (h.runsOf(MATH).length === before + 1 && files.some((f) => f.path === MATH)) {
+        // The retry is starting: the withheld run stored nothing and marked nothing unknown.
+        pending = {
+          state: h.sink.stateOf(adds),
+          unknown: h.sink.callsOf("markUnknown"),
+          stored: h.store.results.listForCheck(adds, 10).map((r) => r.provenance.runId),
+          put: put(),
+        };
+      }
+      return touch?.(files);
+    };
+    await h.batch("src/math.ts");
+    await h.scheduler.idle();
+
+    const runs = h.runsOf(MATH).slice(before);
+    expect(runs).toHaveLength(2);
+    expect(pending).toEqual({
+      state: expect.objectContaining({ outcome: "pass" }),
+      unknown: [],
+      stored: validated,
+      put: [],
+    });
+    expect(put()).toEqual([runs[1]?.options.runId]);
+    expect(h.sink.stateOf(adds)).toMatchObject({ outcome: "pass", validity: "current" });
+  });
+
+  it("runs once more when a re-keyed file is withheld at its new key", async () => {
+    const repo = createRepo();
+    const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
+      tierSize: 1,
+    });
+    // The first run is withheld at K1 and edited, so the run once more is at K2, and withheld too.
+    touchDuringRuns(h, 2);
+    const touch = h.runner.beforeRun;
+    let edited = false;
+    h.runner.beforeRun = (files) => {
+      touch?.(files);
+      if (edited || !files.some((f) => f.path === MATH)) return;
+      edited = true;
+      writeFileSync(join(h.root, MATH), `${readFileSync(join(h.root, MATH), "utf8")}\n`);
+    };
+    const put = puts(h.store, MATH);
+    await h.scheduler.start();
+    await h.scheduler.idle();
+
+    // K2 is new work: its first withhold is a first one, so it runs once more and is current.
+    const runs = h.runsOf(MATH);
+    expect(runs).toHaveLength(3);
+    expect(put()).toEqual([runs[2]?.options.runId]);
+    expect(h.sink.stateOf(adds)).toMatchObject({ outcome: "pass", validity: "current" });
+    expect(notes(h).filter((text) => text.includes("runs once more"))).toHaveLength(2);
+    expect(notes(h).filter((text) => text.includes("stays unknown"))).toEqual([]);
+  });
+
+  it("stops a file at its second withhold even beside a file withheld once (review 007-31, B1)", async () => {
+    const { main } = claimRepo(3);
+    const a = side(main, { count: 3, tierSize: 2, backlogTierSize: 2 });
+    a.runner.during = (files) => {
+      for (const file of files) {
+        const path = join(main, file.path);
+        writeFileSync(path, readFileSync(path));
+      }
+    };
+    const put = puts(a.store);
+    await a.scheduler.start();
+    await a.scheduler.idle();
+
+    // No revision moves a key: each file runs twice at its key, whatever tier it shares.
+    expect([0, 1, 2].map((i) => a.runner.ran(fileName(i)))).toEqual([2, 2, 2]);
+    expect(put()).toEqual([]);
+    expect([0, 1, 2].map((i) => a.phase(fileName(i)))).toEqual([null, null, null]);
+    // Each file's second withhold is named once, in the note of the tier it stopped in.
+    const stopped = readDaemonNotes(a.store, a.worktreeId)
+      .map((note) => / in a row of (.*) and ended as it was/.exec(note.text)?.[1])
+      .flatMap((ran) => ran?.split(", ") ?? []);
+    expect(stopped.sort()).toEqual([0, 1, 2].map(fileName));
   });
 });
