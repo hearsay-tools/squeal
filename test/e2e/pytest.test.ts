@@ -1,5 +1,6 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import type { StatusSnapshot } from "../../src/core/types/index.js";
 import { PYTHONS } from "../helpers/pytest-env.js";
@@ -132,8 +133,45 @@ async function withEvidence(
             };
       console.error(`${root}: ${JSON.stringify({ status, runs: e.runs(root) })}`);
     }
+    console.error(`store: ${JSON.stringify(storeEvidence(e.main))}`);
     throw error;
   }
+}
+
+/** The store's pytest meta rows and each pytest run's report, minus its results. */
+function storeEvidence(main: string): object {
+  const squeal = join(main, ".git/squeal");
+  const db = new DatabaseSync(join(squeal, "store.sqlite"), { readOnly: true });
+  let meta: unknown[];
+  try {
+    meta = db.prepare("SELECT key, value FROM meta WHERE key LIKE 'pytest%'").all();
+  } finally {
+    db.close();
+  }
+  const runs: object[] = [];
+  for (const run of readdirSync(join(squeal, "runs"))) {
+    const dir = join(squeal, "runs", run, "pytest");
+    if (!existsSync(dir)) continue;
+    for (const project of readdirSync(dir)) {
+      const at = join(dir, project);
+      const json = JSON.parse(readFileSync(join(at, "run.json"), "utf8")) as {
+        batches: unknown;
+        report: Record<string, unknown> & { results?: unknown[] };
+        notes: unknown;
+      };
+      const { results, ...report } = json.report;
+      const stderr = readdirSync(at).filter((f) => f.startsWith("stderr"));
+      runs.push({
+        run,
+        project,
+        results: results?.length,
+        report,
+        notes: json.notes,
+        stderr: stderr.map((f) => readFileSync(join(at, f), "utf8").slice(-1500)),
+      });
+    }
+  }
+  return { meta, runs };
 }
 
 /** Runs `command` through the plugin's PreToolUse as the agent's Bash call from `cwd`. */
