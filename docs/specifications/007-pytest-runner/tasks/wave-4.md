@@ -94,3 +94,25 @@ For every remaining row and review of this spec:
 - Every independent full run, whether a reviewer's or the coordinator's landing gate, takes the host's turn with `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`.
 - There is one gate per bundle of rows, and at most 3 of this coordinator's workers and reviewers run at once.
 - A file that fails a loaded gate and passes alone is named in the landing note.
+
+## Review of wave 4 (candidate 0.1.181)
+
+Outcome: a verdict, PASS or FAIL, on whether wave 4 repairs lessons defects 1 to 5, 7 to 9, 11 and 13 without breaking D2, D4, the honesty rules or 001's note contract, and whether the candidate may land.
+
+Shape: review. Ranges:
+- the candidate, `origin/main..cand/0.1.181`: 007-37 and 007-39, including `85aa5c21` and `e4871cd6` in core notes and the daemon;
+- the landed 0.1.178 commits `c84f3720^..a2904a98`: 007-35, 007-36 and 007-38.
+Read `docs/vision.md`, `docs/styleguide.md`, spec 007 with its `status.md`, `lessons.md` and these briefs, and 001 D7 and D12.
+
+Look hardest at four things:
+- whether note topics can hide or drop a note a consumer should get (001's four conditions are in 001's `status.md`);
+- whether 007-36's import attribution can leave a file's real dependency out of its key;
+- whether 007-38's version-free hash can share a result across a real dependency change;
+- whether 007-37's scrubbing can merge two different failures into one fingerprint.
+A finding on the landed range becomes a repair row and does not block the candidate unless the candidate makes it worse.
+
+Owns: `reviews/wave-4.md` only, which you commit. Your full run follows the host test-run policy above.
+
+Done when: every finding has a file and line, a failure scenario and a severity (blocker, should-fix, plausible), and the verdict names the candidate SHA.
+
+Use /reviewer.
