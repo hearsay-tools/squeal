@@ -87,6 +87,7 @@ const SHAPE: Shape = {
   },
   nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
   pytest: (v) => pytestProjects(v, "pytest"),
+  vitest: { excludeProjects: strings },
   slow: {
     include: slowInclude,
     maxWorkers: positiveInteger,

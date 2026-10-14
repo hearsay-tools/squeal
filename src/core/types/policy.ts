@@ -87,6 +87,15 @@ export interface Policy {
    * skipped (001 D11). Default `[]`.
    */
   readonly pytest: readonly PytestProject[];
+  readonly vitest: {
+    /**
+     * Spec 001 D11 (task 001-349): Vitest project names Squeal never runs,
+     * so a project added later runs by default. An excluded project is never
+     * created, keyed or counted; a name no project has is a problem, and the
+     * rest apply. Default `[]`.
+     */
+    readonly excludeProjects: readonly string[];
+  };
   /** Spec 004 D1, D7: the slow suites and how the slow tier runs them. */
   readonly slow: SlowPolicy;
   readonly delivery: {
@@ -222,6 +231,7 @@ export const DEFAULT_POLICY: Policy = {
   runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 600_000 },
   nodeTest: [],
   pytest: [],
+  vitest: { excludeProjects: [] },
   slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 600_000, maxParallel: 4 },
   delivery: { uncoveredEdits: true },
   daemon: { idleExitMinutes: 60 },
