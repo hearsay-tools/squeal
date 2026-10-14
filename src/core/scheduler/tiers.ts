@@ -321,10 +321,12 @@ export function unstableInputs(context: SchedulerContext, tier: Tier): Promise<M
  * - Any input changed on disk since selection, or in a revision during the
  *   run: discarded and re-queued (D5 stability check). Returns those paths so
  *   the caller reconciles them; the watcher may not have reported them yet.
- * - The install moved during the run (`installMoved`, `InstallStamps`), or
+ * - The install moved during the run (`requeue`, `InstallStamps`), or
  *   went and ends the daemon (task 001-113): the whole tier is re-queued
  *   uncounted and nothing is stored (task 001-107). A file the ledger no
- *   longer holds as it was selected records nothing either.
+ *   longer holds as it was selected records nothing either. A set of file
+ *   ids re-queues only those files; the rest record the report as usual
+ *   (task 007-34).
  * - Otherwise one `putMany` per file under the key it ran under. When that is
  *   still the file's key the results become current; else they wait in the
  *   store for a lookup, and the file is already queued for its new key.
@@ -348,7 +350,7 @@ export function recordTier(
   tier: Tier,
   report: RunReport,
   changedOnDisk: ReadonlySet<RelativePath>,
-  installMoved = false,
+  requeue: boolean | ReadonlySet<string> = false,
   observed: TierObservations = NOTHING_OBSERVED,
 ): RelativePath[] {
   const { store, worktreeId } = context;
@@ -381,7 +383,8 @@ export function recordTier(
     for (const { file, key, inputs, checkpointId, forced, recent } of tier.files) {
       ledger.setRunning(file, null);
       if (ledger.files.get(file.id) !== file) continue;
-      if (installMoved || (cancelled && !completed.has(file.id))) {
+      const queued = typeof requeue === "boolean" ? requeue : requeue.has(file.id);
+      if (queued || (cancelled && !completed.has(file.id))) {
         if (file.key !== null && file.blocked === null) {
           ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), forced);
         }
