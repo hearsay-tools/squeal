@@ -1,0 +1,13 @@
+{
+  "name": "squeal-opencode",
+  "version": "0.1.173",
+  "private": true,
+  "description": "Squeal for OpenCode: install with `opencode plugin file:<this directory> -g`. Its version follows the root package; dist/ is built by `npm run build:plugin`.",
+  "type": "module",
+  "exports": {
+    "./server": "./dist/plugin.mjs"
+  },
+  "engines": {
+    "opencode": ">=1.18.35"
+  }
+}

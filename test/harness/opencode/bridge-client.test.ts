@@ -1,5 +1,6 @@
-import { readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type BridgeCommand, callBridge } from "../../../src/harness/opencode/bridge-client.js";
 import { tempDir } from "../../store/helpers.js";
@@ -24,6 +25,24 @@ process.stdin.on("data", (c) => (input += c));
 process.stdin.on("end", () => process.stdout.write(JSON.stringify({ answer: { got: JSON.parse(input), cwd: process.cwd() } })));
 `;
 
+const CLIENT = resolve(import.meta.dirname, "../../../src/harness/opencode/bridge-client.ts");
+const BUN =
+  (process.env.PATH ?? "")
+    .split(":")
+    .map((dir) => join(dir, "bun"))
+    .find((path) => path !== "bun" && existsSync(path)) ?? null;
+
+/** A bridge that starts a grandchild in its group, records both pids in `pids`, then stalls. */
+function stallingBridge(pids: string): BridgeCommand {
+  return bridge(`
+    import { spawn } from "node:child_process";
+    import { writeFileSync } from "node:fs";
+    const child = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "ignore" });
+    writeFileSync(${JSON.stringify(pids)}, JSON.stringify([process.pid, child.pid]));
+    setInterval(() => {}, 1000);
+  `);
+}
+
 const alive = (pid: number): boolean => {
   try {
     process.kill(pid, 0);
@@ -44,14 +63,7 @@ describe("callBridge", () => {
 
   it("is silent at its deadline when the bridge never answers, its process group gone", async () => {
     const pids = join(tempDir("squeal-oc-pids-"), "pids.json");
-    // The bridge starts a grandchild in its group, records both pids, then stalls.
-    const stalled = bridge(`
-      import { spawn } from "node:child_process";
-      import { writeFileSync } from "node:fs";
-      const child = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "ignore" });
-      writeFileSync(${JSON.stringify(pids)}, JSON.stringify([process.pid, child.pid]));
-      setInterval(() => {}, 1000);
-    `);
+    const stalled = stallingBridge(pids);
     const started = performance.now();
     expect(await callBridge(stalled, {}, tempDir("squeal-oc-cwd-"), 1_000)).toBeNull();
     const ms = performance.now() - started;
@@ -92,4 +104,28 @@ describe("callBridge", () => {
       ),
     ).toBeNull();
   });
+
+  it.skipIf(BUN === null)(
+    "under Bun, OpenCode's runtime, kills the stalled bridge's group at its deadline",
+    async () => {
+      const pids = join(tempDir("squeal-oc-pids-"), "pids.json");
+      const stalled = stallingBridge(pids);
+      const script = join(tempDir("squeal-oc-bun-"), "call.ts");
+      writeFileSync(
+        script,
+        `import { callBridge } from ${JSON.stringify(CLIENT)};
+const started = performance.now();
+const answer = await callBridge(${JSON.stringify(stalled)}, {}, process.cwd(), 1_000);
+process.stdout.write(JSON.stringify({ answer, ms: performance.now() - started }));`,
+      );
+      const out = JSON.parse(execFileSync(BUN ?? "", [script], { encoding: "utf8" })) as {
+        answer: unknown;
+        ms: number;
+      };
+      expect(out.answer).toBeNull();
+      expect(out.ms).toBeLessThan(1_500);
+      const [leader, grandchild] = JSON.parse(readFileSync(pids, "utf8")) as [number, number];
+      await expect.poll(() => alive(leader) || alive(grandchild), { timeout: 2_000 }).toBe(false);
+    },
+  );
 });
