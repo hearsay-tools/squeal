@@ -1,3 +1,4 @@
+import type { PoolCapacity } from "../capacity/index.js";
 import type { Hasher } from "../hash/index.js";
 import type { HeadState } from "../revision/index.js";
 import type {
@@ -86,6 +87,20 @@ export interface SchedulerOptions {
   readonly now?: () => EpochMs;
   /** How the slow tier waits (spec 004 D2, D3); defaults suit a daemon. */
   readonly slow?: SlowTierOptions;
+  /**
+   * The per-user pool of test processes (spec 001 D11 Capacity, task
+   * 001-376): backlog and checkpoint tiers take a grant from it, an edit's
+   * tier never does. Absent: no pool, and no tier carries a grant.
+   */
+  readonly capacity?: CapacityOptions;
+}
+
+/** Where the pool is and how large; the numbers come from the user's config (task 001-377). */
+export interface CapacityOptions extends PoolCapacity {
+  /** The pool's directory: the slow slot's, `slowSlotDir()` (spec 004 D2). */
+  readonly dir: AbsolutePath;
+  /** How often a daemon running a backlog tier refreshes its mark; default `MARK_REFRESH_MS`. */
+  readonly refreshMs?: number;
 }
 
 /** The slow tier's surroundings, for tests and the daemon. */

@@ -231,6 +231,14 @@ export interface RunOptions {
    * or result. Absent: the run reports no `reads`.
    */
   readonly observeIgnored?: boolean;
+  /**
+   * The tier's grant from the per-user pool (spec 001 D11 Capacity, task
+   * 001-376): how many test processes a backlog or checkpoint tier may run,
+   * the daemon's free worker included. Absent for an edit's tier, which runs
+   * at `runner.tierSize`, and without a pool. Adapters size their runs from
+   * it from task 001-378 on.
+   */
+  readonly workers?: number;
 }
 
 /** The lane of a slow file is this and its runner's lane (spec 004 D2, task 004-18). */

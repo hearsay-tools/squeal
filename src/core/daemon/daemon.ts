@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
+import type { PoolCapacity } from "../capacity/index.js";
 import type { DaemonLoop } from "../daemon-loop/index.js";
 import { linkedWorktreeDir } from "../fs/index.js";
+import { slowSlotDir } from "../slow/index.js";
 import { recordOptimizerOff } from "../state/optimizer-note.js";
 import { setBusyTimeout } from "../store/index.js";
 import type {
@@ -74,6 +76,12 @@ export interface DaemonOptions {
    * for the lock instead of exiting at once (`squeal daemon --await-lock`).
    */
   readonly awaitLockMs?: number;
+  /**
+   * The user's `capacity` numbers for this repository (spec 001 D11
+   * Capacity): the host's slots and the project's cap. Absent: CPUs − 1 and
+   * no project cap. The pool is the slow slot's directory under `env`.
+   */
+  readonly capacity?: PoolCapacity;
 }
 
 /** A daemon that owns its worktree: lock held, socket bound, worktree registered. */
@@ -453,6 +461,8 @@ class Daemon {
         onReinstall: (note) => void this.#shutdown("reinstalled", 0, note),
         onDropped: (reason) =>
           this.#note(`watcher dropped events (${reason}); a full reconciliation follows`),
+        // Spec 001 D11 Capacity (task 001-376): backlog and checkpoint tiers share the user's pool.
+        capacity: { dir: slowSlotDir(this.options.env), ...this.options.capacity },
       });
       this.#loop = loop;
       await loop.start();
