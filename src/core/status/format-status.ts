@@ -49,6 +49,7 @@ export function formatStatus(
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
     ...checkpointLine(result, now, command),
     ...slowLine(result, command),
+    ...excludedLine(result),
     "",
     worktreeLine(result),
     daemonLine(result, now),
@@ -73,6 +74,16 @@ export function formatStatus(
 function slowLine(s: StatusSnapshot, command: string): string[] {
   const text = slowTierText(s, command);
   return text === null ? [] : [text];
+}
+
+/** Task 001-349: the Vitest projects Squeal never runs, named so the agent runs them itself. */
+function excludedLine(s: StatusSnapshot): string[] {
+  const names = (s.vitestExcluded ?? []).map((name) => JSON.stringify(name));
+  if (names.length === 0) return [];
+  const last = names.pop() as string;
+  const list = names.length === 0 ? last : `${names.join(", ")} and ${last}`;
+  const noun = names.length === 0 ? "project" : "projects";
+  return [`Not run: Vitest ${noun} ${list}, excluded by squeal.config.json`];
 }
 
 /**

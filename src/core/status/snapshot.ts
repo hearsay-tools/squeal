@@ -1,3 +1,5 @@
+import { readPolicy } from "../daemon/policy.js";
+import { vitestDetected } from "../daemon/runner.js";
 import { worktreeIdFor } from "../fs/index.js";
 import { CLOSURE_METHOD, testFileId } from "../keys/index.js";
 import { readDaemonNotes } from "../notes.js";
@@ -126,7 +128,19 @@ function snapshot(
     notes,
     daemonNotes: readDaemonNotes(store, worktreeId),
     ...openCheckpoint(store, worktreeId, daemon),
+    ...vitestExcluded(worktree?.root ?? root),
   };
+}
+
+/**
+ * Task 001-349: the Vitest projects the policy at `root` excludes, by the
+ * daemon's rule for building Vitest (spec 003 D7), as the primer names them.
+ */
+function vitestExcluded(root: AbsolutePath): { vitestExcluded?: readonly string[] } {
+  const policy = readPolicy(root);
+  const names = policy.vitest.excludeProjects;
+  if (names.length === 0) return {};
+  return policy.nodeTest.length === 0 || vitestDetected(root) ? { vitestExcluded: names } : {};
 }
 
 /**
