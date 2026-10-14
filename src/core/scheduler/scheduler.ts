@@ -492,7 +492,7 @@ class TierScheduler implements Scheduler {
     const { context, ledger } = this.#started();
     const done = (async () => {
       let recorded = false;
-      let withheld: string | null = null;
+      const withheld: string[] = [];
       try {
         const ran = await executeTier(context, tier, this.#warmUp.observes(tier));
         const ignored = await this.#warmUp.read(context, tier, ran);
@@ -510,11 +510,20 @@ class TierScheduler implements Scheduler {
             environment === undefined || read === undefined ? read : { ...read, environment };
           const touched = [...new Set([...inputs.touched, ...(observed?.touched ?? [])])].sort();
           const report = withheldForTouch(ran, touched);
-          // Task 007-30: no revision follows the touch; a first withhold queues the tier's files
-          // again as a moved install does, their previous state standing.
-          const retry = touched.length > 0 && this.#withholds.retry(tier.files);
-          if (touched.length === 0) this.#withholds.clear(tier.files);
-          else withheld = withholdNote(touched, tier.files, retry);
+          // Task 007-30: no revision follows the touch; a file's first withhold at its key queues it
+          // again as a moved install does, its previous state standing, and a second leaves it
+          // `unknown`, per file whatever tier it shares (review 007-31, B1).
+          const withhold = touched.length === 0 ? null : this.#withholds.record(tier.files);
+          if (withhold === null) this.#withholds.clear(tier.files);
+          else {
+            const notes = [
+              withholdNote(touched, withhold.again, true),
+              withholdNote(touched, withhold.exhausted, false),
+            ];
+            withheld.push(...notes.filter((note) => note !== null));
+          }
+          const exhausted = withhold?.exhausted ?? [];
+          const again = (withhold?.again.length ?? 0) > 0;
           // Spec 004 D8: a slow run's artifact and activity go with its results (review wave 2, B1, B2).
           return context.store.transaction(() => {
             this.#warmUp.record(context, ignored);
@@ -524,9 +533,15 @@ class TierScheduler implements Scheduler {
               tier,
               report,
               inputs.changed,
-              installMoved || retry,
+              installMoved || again,
               observed,
             );
+            // The tier was queued again for its first withholds: its exhausted files are not.
+            if (again && !installMoved && exhausted.length > 0) {
+              const held = exhausted.filter(({ file }) => ledger.files.get(file.id) === file);
+              ledger.markUnknown(held, report.failure ?? `run ${report.end}`);
+              ledger.commit();
+            }
             if (slow === null) forgetSlowRuns(context, ledger, tier);
             else this.#slow.recorded(slow, ledger);
             // The runner hears the touches too, so its next run reads the disk again.
@@ -534,7 +549,7 @@ class TierScheduler implements Scheduler {
           });
         });
         recorded = true;
-        if (withheld !== null) this.#note(withheld);
+        for (const note of withheld) this.#note(note);
         slow?.slot.release();
         // The watcher may not have reported these yet; reconciling twice is harmless.
         if (moved.length > 0) await this.#reconcilePaths(moved);

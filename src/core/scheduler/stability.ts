@@ -92,29 +92,39 @@ export function withheldForTouch(report: RunReport, touched: readonly RelativePa
 }
 
 /** A file of a tier and the key it ran under. */
-interface Ran {
+export interface Ran {
   readonly file: { readonly id: string; readonly ref: TestFileRef };
   readonly key: CheckKey;
+}
+
+/** A withheld tier's files: those withheld at their key for the first time, and the rest. */
+export interface Withheld<T extends Ran> {
+  readonly again: readonly T[];
+  readonly exhausted: readonly T[];
 }
 
 /**
  * Task 007-30: no revision follows a touch that ended as it was, so a tier
  * `withheldForTouch` withholds would leave its files `unknown` with nothing
- * queued. Instead it runs once more under its keys, once the runner heard
- * the touch. Each withheld file is remembered with the key it ran under
- * until a run of it is recorded unwithheld; a tier whose files were all
- * withheld at those keys already is withheld for good. A path touched on
- * every run ends there: each retry needs a file not yet withheld at its key,
- * and only a revision moves a key.
+ * queued. Instead each file runs once more under its key, once the runner
+ * heard the touch. Each withheld file is remembered with the key it ran
+ * under until a run of it is recorded unwithheld; a file withheld at that
+ * key already is withheld for good, whatever tier it shares (review 007-31,
+ * B1). A path touched on every run ends there: only a revision moves a key,
+ * and a new key is new work, with its own run once more.
  */
 export class Withholds {
   readonly #keys = new Map<string, CheckKey>();
 
-  /** Records the withhold of `files`; whether their tier runs once more. */
-  retry(files: readonly Ran[]): boolean {
-    const again = files.some(({ file, key }) => this.#keys.get(file.id) !== key);
-    for (const { file, key } of files) this.#keys.set(file.id, key);
-    return again;
+  /** Records the withhold of `files`, each first or exhausted at its key. */
+  record<T extends Ran>(files: readonly T[]): Withheld<T> {
+    const again: T[] = [];
+    const exhausted: T[] = [];
+    for (const ran of files) {
+      (this.#keys.get(ran.file.id) === ran.key ? exhausted : again).push(ran);
+      this.#keys.set(ran.file.id, ran.key);
+    }
+    return { again, exhausted };
   }
 
   /** `files` were recorded unwithheld: their withholds are no longer in a row. */
@@ -132,7 +142,8 @@ export function withholdNote(
   touched: readonly RelativePath[],
   files: readonly Ran[],
   retry: boolean,
-): string {
+): string | null {
+  if (files.length === 0) return null;
   const paths = listPaths(touched);
   const ran = listPaths(files.map(({ file }) => file.ref.path));
   return retry
