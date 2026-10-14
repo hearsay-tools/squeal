@@ -35,14 +35,16 @@ A worker's request gets a decision, not a discussion: pick, state the contract, 
 
 ## 5. Collect and verify
 
-A settled status is a clean exit, not a finished row. In the worker's own worktree: `npm ci`, `npm run lint`, `npm run typecheck`, `npx vitest run`, then the changed-file list against the brief's ownership. Leave `npm run build` out of a worker tree *(Squeal)*: a rebuilt bundle there makes Cezar's destroy fail. A worker that only mapped seams or left uncommitted work is a resume (`worker send <id> ... --resume`), not a new spawn.
+A settled status is a clean exit, not a finished row. In the worker's own worktree: `npm ci`, `npm run lint`, `npm run typecheck`, `squeal run --all --wait` (`npx vitest run --maxWorkers=4` only without Squeal; `docs/process.md`, test runs on a shared host), then the changed-file list against the brief's ownership. Leave `npm run build` out of a worker tree *(Squeal)*: a rebuilt bundle there makes Cezar's destroy fail. A worker that only mapped seams or left uncommitted work is a resume (`worker send <id> ... --resume`), not a new spawn.
 
 ## 6. Integrate
 
-Onto this branch, in ownership order, the bundle-owning branch last with its bundle commit left out: `git merge --ff-only` when the branch sits on your head, otherwise `git cherry-pick -x <first>^..<last>`. A conflict keeps both sides' intent. Then once: `npm ci`, raise the patch version in `package.json` when the bundles will change, `npm run build`, commit the bundles with the version before the end-to-end suite runs (it archives from HEAD); CI fails a bundle change without a raise (`npm run check:version -- origin/main`) *(Squeal)*; full suite, lint, typecheck. Land only on green:
+Onto this branch, in ownership order, the bundle-owning branch last with its bundle commit left out: `git merge --ff-only` when the branch sits on your head, otherwise `git cherry-pick -x <first>^..<last>`. A conflict keeps both sides' intent. Then once: `npm ci`, raise the patch version in `package.json` when the bundles will change, `npm run build`, commit the bundles with the version before the end-to-end suite runs (it archives from HEAD); CI fails a bundle change without a raise (`npm run check:version -- origin/main`) *(Squeal)*; full suite under the host's lock (`flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`), lint, typecheck. On green, push the candidate and have it reviewed before main (section 8; `docs/process.md` step 6):
 
 ```sh
-git push origin <branch> && git push origin HEAD:main && git -C <main checkout> merge --ff-only <branch>
+git push origin HEAD:refs/heads/cand/<version>   # then the /reviewer, pinned to this SHA
+# after its PASS:
+git fetch && git rebase origin/main && git push origin HEAD:main && git -C <main checkout> merge --ff-only HEAD
 ```
 
 A rejected push means another session landed first: inspect their commits, rebase, re-run the checks, push again. Board rows read `done`.
@@ -55,7 +57,7 @@ Before each landing, read the CI result of main's last landing (`gh run list --b
 
 ## 8. Review and triage
 
-Decide whether the wave earns a review: skip when the whole diff is local, reversible, already read by you, and green; spawn one `/reviewer` when the blast radius is honesty rules, store schema, hook contracts, the daemon, or anything whose failure is hard to see. On return, file nothing by hand: the reviewer committed its file. Triage: a blocker is a proven break and becomes a fix wave `N.5` before the next wave; plausible and should-fix items fold into the next wave's briefs; a finding that widens a row becomes a new row, not a repair. Every accepted deviation becomes a dated line in `status.md` and an edit to the spec section it changes. One repair and one re-review settle an ordinary wave; a second failing review on the same slice ends the loop and the reply names what remains and what it cost. Do not buy a third round.
+Every product landing gets one `/reviewer`, pinned to its candidate's SHA, before main (human, 2026-10-15); a docs-only change lands without one. On return, file nothing by hand: the reviewer committed its file. Triage: a blocker is a proven break and becomes a fix wave `N.5` before the next wave; plausible and should-fix items fold into the next wave's briefs; a finding that widens a row becomes a new row, not a repair. Every accepted deviation becomes a dated line in `status.md` and an edit to the spec section it changes. One repair and one re-review settle an ordinary wave; a second failing review on the same slice ends the loop and the reply names what remains and what it cost. Do not buy a third round.
 
 ## 9. Handoff
 
