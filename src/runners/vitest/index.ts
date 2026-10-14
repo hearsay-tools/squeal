@@ -26,9 +26,10 @@ export interface VitestAdapterOptions {
    */
   readonly childEnv?: Readonly<Record<string, string>>;
   /**
-   * Vitest's `maxWorkers` for this instance, over the config's: the slow
-   * tier's instance takes policy `slow.maxWorkers` (spec 004 D2). Absent:
-   * the config's own.
+   * The width of a run without a grant (`RunOptions.workers`): the slow
+   * tier's instance takes policy `slow.maxWorkers` (spec 004 D2). Like a
+   * grant, at least 2 and never above the project's own `maxWorkers` (001
+   * D11 Capacity, task 001-378). Absent: the config's own.
    */
   readonly maxWorkers?: number;
   /**
