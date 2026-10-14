@@ -19,6 +19,7 @@ describe("core types", () => {
       env: { allowlist: [] },
       runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 600_000 },
       nodeTest: [],
+      pytest: [],
       slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 600_000, maxParallel: 4 },
       delivery: { uncoveredEdits: true },
       daemon: { idleExitMinutes: 60 },

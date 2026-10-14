@@ -72,10 +72,15 @@ export type ProjectEntries<T> =
   | string
   | { readonly kept: readonly T[]; readonly problems: readonly string[] };
 
+/** A check across an entry's keys once each key is valid: the key at fault and why, or `null`. */
+export type EntryCheck = (
+  entry: Readonly<Record<string, unknown>>,
+) => { readonly key: string; readonly problem: string } | null;
+
 /**
  * One rule for every runner's project list (001 D11): each entry is checked
- * against `fields`, an invalid or repeated-name entry is one problem and is
- * left out, the others are kept with `withDefaults` applied.
+ * against `fields`, then `check`; an invalid or repeated-name entry is one
+ * problem and is left out, the others are kept with `withDefaults` applied.
  */
 export function projectEntries<T extends { readonly name: string }>(
   value: unknown,
@@ -83,13 +88,14 @@ export function projectEntries<T extends { readonly name: string }>(
   fields: Readonly<Record<keyof T, Field>>,
   required: ReadonlySet<string>,
   withDefaults: (entry: Partial<T>) => T,
+  check?: EntryCheck,
 ): ProjectEntries<T> {
   if (!Array.isArray(value)) return "an array of projects";
   const kept: T[] = [];
   const problems: string[] = [];
   value.forEach((entry: unknown, index) => {
     const at = `${path}[${index}]`;
-    const problem = entryProblem(entry, at, kept, fields, required);
+    const problem = entryProblem(entry, at, kept, fields, required, check);
     if (problem === null) kept.push(withDefaults(entry as Partial<T>));
     else problems.push(problem);
   });
@@ -102,6 +108,7 @@ function entryProblem(
   kept: readonly { readonly name: string }[],
   fields: Readonly<Record<string, Field>>,
   required: ReadonlySet<string>,
+  check: EntryCheck | undefined,
 ): string | null {
   if (!isRecord(entry))
     return `"${at}" must be an object, got ${JSON.stringify(entry)}; it is skipped`;
@@ -121,6 +128,8 @@ function entryProblem(
         : `must be ${expected}, got ${given === undefined ? "undefined" : JSON.stringify(given)}`;
     return `"${at}.${key}" ${why}; ${skipped}`;
   }
+  const across = check?.(entry) ?? null;
+  if (across !== null) return `"${at}.${across.key}" ${across.problem}; ${skipped}`;
   if (kept.some((project) => project.name === named)) {
     return `"${at}.name" repeats ${JSON.stringify(named)} of an earlier project; it is skipped`;
   }

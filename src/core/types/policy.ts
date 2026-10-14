@@ -81,6 +81,12 @@ export interface Policy {
    * (001 D11). Default `[]`.
    */
   readonly nodeTest: readonly NodeTestProject[];
+  /**
+   * Spec 007 D1: pytest projects, validated beside the Vitest and node:test
+   * projects of the repository. A bad entry is a problem with that project
+   * skipped (001 D11). Default `[]`.
+   */
+  readonly pytest: readonly PytestProject[];
   /** Spec 004 D1, D7: the slow suites and how the slow tier runs them. */
   readonly slow: SlowPolicy;
   readonly delivery: {
@@ -156,6 +162,32 @@ export interface NodeTestProject {
   readonly slow?: boolean;
 }
 
+/**
+ * One pytest project (spec 007 D1). Its identity is `(runner "pytest", name)`.
+ */
+export interface PytestProject {
+  /** Unique among `pytest` entries. */
+  readonly name: string;
+  /** Relative to the worktree root; absent means the root. pytest runs from here. */
+  readonly cwd?: string;
+  /**
+   * An environment directory or interpreter path relative to `cwd`, inside
+   * the worktree; absolute only for a declared out-of-tree environment.
+   * Absent means D2's discovery (`.venv`, then `.pdm-python`).
+   */
+  readonly python?: string;
+  /** Arguments the project's own command passes that change semantics, such as `--ds=settings`. Default `[]`. */
+  readonly args: readonly string[];
+  /** Merged over the run environment, never replacing it. Default `{}`. */
+  readonly env: Readonly<Record<string, string>>;
+  /** Test-file globs relative to `cwd`. At least one. */
+  readonly include: readonly string[];
+  /** Globs relative to `cwd` removed from `include`. */
+  readonly exclude?: readonly string[];
+  /** Spec 004 D1: every file `include` lists is a slow file. Absent means `false`. */
+  readonly slow?: boolean;
+}
+
 /** True when `A` and `B` are the same type. */
 type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 
@@ -189,6 +221,7 @@ export const DEFAULT_POLICY: Policy = {
   env: { allowlist: [] },
   runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 600_000 },
   nodeTest: [],
+  pytest: [],
   slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 600_000, maxParallel: 4 },
   delivery: { uncoveredEdits: true },
   daemon: { idleExitMinutes: 60 },

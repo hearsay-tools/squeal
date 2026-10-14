@@ -65,6 +65,7 @@ describe("loadPolicy (spec 001 D11)", () => {
       env: { allowlist: ["TZ"] },
       runner: { tierSize: 2, backlogTierSize: 50, timeoutMs: null },
       nodeTest: [],
+      pytest: [],
       slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 600_000, maxParallel: 4 },
       delivery: { uncoveredEdits: false },
       daemon: { idleExitMinutes: 0.5 },
