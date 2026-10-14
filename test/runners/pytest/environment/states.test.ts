@@ -72,6 +72,31 @@ describe("environmentState (spec 007 D2)", () => {
     });
   });
 
+  it("refuses an in-tree editable path that is a symlink to another tree (review 007-16 B3)", () => {
+    const other = tempDir();
+    const root = tempDir();
+    write(other, { "src/app/__init__.py": "" });
+    link(join(other, "src"), join(root, "src"));
+    venv(root, ".venv", { "app-0.1.0.dist-info/direct_url.json": editable(join(root, "src")) });
+    expect(environmentState(root, project())).toMatchObject({
+      state: "editable-outside",
+      editables: [{ distribution: "app", path: join(other, "src") }],
+    });
+  });
+
+  it("is ready when the worktree root itself is reached through a symlink", () => {
+    const parent = tempDir();
+    const real = join(parent, "real");
+    write(real, { "src/app/__init__.py": "", "packages/b/x.py": "" });
+    const root = join(parent, "via");
+    link(real, root);
+    venv(real, ".venv", {
+      "app-0.1.0.dist-info/direct_url.json": editable(join(root, "src")),
+      "b-0.1.0.dist-info/direct_url.json": editable(join(real, "packages/b")),
+    });
+    expect(environmentState(root, project())).toMatchObject({ state: "ready" });
+  });
+
   it("reads a non-editable or torn direct_url.json as nothing", () => {
     const root = tempDir();
     venv(root, ".venv", {

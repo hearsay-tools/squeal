@@ -10,7 +10,7 @@ import { listOptional, readOptional, sitePackagesDir } from "./site.js";
 export interface OutsideEditable {
   /** The distribution name from its `.dist-info` directory. */
   readonly distribution: string;
-  /** The project directory `direct_url.json` names. */
+  /** The project directory `direct_url.json` names, symlinks resolved when it exists. */
   readonly path: AbsolutePath;
 }
 
@@ -74,8 +74,11 @@ export function outsideEditables(
   const found: OutsideEditable[] = [];
   for (const name of listOptional(site)) {
     if (!name.endsWith(".dist-info")) continue;
-    const path = editableDir(readOptional(join(site, name, "direct_url.json")));
-    if (path === null || roots.some((r) => path === r || toRelative(r, path) !== null)) continue;
+    const named = editableDir(readOptional(join(site, name, "direct_url.json")));
+    if (named === null) continue;
+    // Python follows symlinks, so an in-tree link to another tree is outside.
+    const path = realOr(named);
+    if (roots.some((r) => path === r || toRelative(r, path) !== null)) continue;
     found.push({ distribution: name.slice(0, -".dist-info".length).split("-")[0] as string, path });
   }
   return found;
