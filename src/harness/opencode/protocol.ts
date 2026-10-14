@@ -33,7 +33,7 @@ export type OcRequest =
   /**
    * `tool.execute.before` (D3): put an idle consumer back in a turn; the
    * regression deny on `edit`, `write` and `apply_patch`, 005 D8's on a
-   * `bash` `command` run in `workdir`.
+   * `bash` `command` run in `workdir`, an absolute path.
    */
   | About<"before", { readonly tool: string; readonly command?: string; readonly workdir?: string }>
   /** `tool.execute.after` (D3): the tool boundary's delta. */

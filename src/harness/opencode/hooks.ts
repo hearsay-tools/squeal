@@ -1,4 +1,4 @@
-import { delimiter } from "node:path";
+import { delimiter, resolve } from "node:path";
 import type { OcClient, OcHooks } from "./api.js";
 import { type CallOptions, callBridge } from "./bridge-client.js";
 import { type Deadline, deadlineIn, within } from "./deadline.js";
@@ -158,12 +158,15 @@ export function squealHooks(host: HookHost): OcHooks {
       const consumer = await map.consumerOf(input.sessionID, deadline);
       if (consumer === null) return null;
       const { command, workdir } = (args ?? {}) as { command?: unknown; workdir?: unknown };
-      const request = {
-        consumer,
-        tool: input.tool,
-        ...(input.tool === "bash" && typeof command === "string" ? { command } : {}),
-        ...(typeof workdir === "string" ? { workdir } : {}),
-      };
+      // The shell runs in `workdir`, relative to the instance's directory, or in that directory.
+      const bash =
+        input.tool === "bash" && typeof command === "string"
+          ? {
+              command,
+              workdir: resolve(host.directory, typeof workdir === "string" ? workdir : "."),
+            }
+          : {};
+      const request = { consumer, tool: input.tool, ...bash };
       return (await ask("before", request, deadline))?.reason ?? null;
     } catch {
       return null;
