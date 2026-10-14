@@ -343,6 +343,13 @@ export interface RunReport {
    * Absent: the run started.
    */
   readonly startupFailure?: StartupFailure;
+  /**
+   * The projects whose run got past global setup, whatever their files then
+   * did: a test that times out or a crash still proves the setup ran (review
+   * wave-13bp B4). The core passes their setup checks, with the projects of
+   * `completedFiles`. Absent: only the completed files' projects started.
+   */
+  readonly startedProjects?: readonly ProjectName[];
 }
 
 /** A run that failed to start (`RunReport.startupFailure`). */
