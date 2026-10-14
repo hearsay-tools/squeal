@@ -170,6 +170,36 @@ describe.each(PYTHONS)("pytest adapter start-up observations under Python %s (B5
     },
   );
 
+  it(
+    "a module a conftest loads through a library is that conftest's files', not the session's (007-36)",
+    SLOW,
+    async (ctx) => {
+      // As briefcase's modules load platforms through entry points while its root conftest imports them.
+      const version = `import pkgutil\nLOADED = pkgutil.resolve_name("app.startup_hidden")\nVERSION = "0.1.0"\n`;
+      const include = [CORE_TEST, "tests/test_resources.py"];
+      await withFiles(
+        ctx,
+        { "src/app/version.py": version, [STARTUP_HIDDEN]: "X = 1\n" },
+        async () => {
+          const store = memoryStore();
+          const { adapter, root } = await open(ctx, store, {
+            name: "small",
+            args: [],
+            env: {},
+            include,
+          });
+          const report = await adapter.run(include.map(ref), runOptions(root));
+          expect(report.completedFiles).toEqual(include.map(ref));
+          expect(report.environmentObserved).toBeUndefined();
+          expect(store.session).toEqual([]);
+          for (const file of include) {
+            expect((await adapter.closure(ref(file))).paths).toContain(STARTUP_HIDDEN);
+          }
+        },
+      );
+    },
+  );
+
   it("a batch closes its events file: no ResourceWarning in its stderr (007-36)", SLOW, async (ctx) => {
     const include = [CORE_TEST, "tests/test_resources.py"];
     // Python's own filters hide a ResourceWarning; a project's may show it (briefcase's did).
