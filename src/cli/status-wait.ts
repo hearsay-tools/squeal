@@ -61,11 +61,15 @@ export interface StatusWaitOptions {
   /** Clock for heartbeat ages in the snapshot. Default `Date.now`. */
   readonly now?: () => EpochMs;
   /**
-   * The harness session the wait runs in (`CLAUDE_CODE_SESSION_ID`,
-   * `CODEX_SESSION_ID`): its consumers' told revision starts the window
-   * (`lastHeard`). Default none.
+   * The harness session the wait runs in (`waitConsumer`): its consumers'
+   * told revision starts the window (`lastHeard`). Default none.
    */
   readonly session?: string | null;
+  /**
+   * The agent of `session` the wait runs in, when the shell names one: only
+   * that consumer's told revision counts. Default every consumer of `session`.
+   */
+  readonly agent?: string | null;
   /** Default `syncDaemon`; tests replace it. */
   readonly sync?: (root: AbsolutePath, pollMs: number) => DaemonSync;
   /**
@@ -193,6 +197,7 @@ export async function waitForStatus(
   const settleMs = options.settleMs ?? STATUS_WAIT_SETTLE_MS;
   const startSync = options.sync ?? syncDaemon;
   const session = options.session ?? null;
+  const agent = options.agent ?? null;
   const started = performance.now();
   const elapsed = () => performance.now() - started;
   let start: readonly ViewEntry[] | null = null;
@@ -227,7 +232,7 @@ export async function waitForStatus(
           syncing.sinceSeq = movesSeq(store, id) ?? 0;
         }
         const news = newsOf(start, states, header.revision);
-        syncing.heard ??= lastHeard(store, id, header.revision, session);
+        syncing.heard ??= lastHeard(store, id, header.revision, session, agent);
         const heard = syncing.heard;
         syncing.sync ??= startSync(root, pollMs);
         const current = syncing.sync.current();
@@ -355,6 +360,26 @@ function newsOf(
 }
 
 /**
+ * The consumer a wait runs as, from its shell: the session from
+ * `CLAUDE_CODE_SESSION_ID`, `CODEX_SESSION_ID` or `OPENCODE_SESSION_ID`, and,
+ * for OpenCode alone, the agent from `OPENCODE_AGENT_ID` (`main` for a root
+ * session, the child session's id for a child, spec 008 D2), so a child's pull
+ * is credited to `(root, child)`. Codex's shell names no agent: every consumer
+ * of its session counts.
+ */
+export function waitConsumer(env: Readonly<Record<string, string | undefined>>): {
+  readonly session: string | null;
+  readonly agent: string | null;
+} {
+  const session = env.CLAUDE_CODE_SESSION_ID ?? env.CODEX_SESSION_ID ?? null;
+  if (session !== null) return { session, agent: null };
+  const opencode = env.OPENCODE_SESSION_ID;
+  if (opencode === undefined || opencode === "") return { session: null, agent: null };
+  const agent = env.OPENCODE_AGENT_ID;
+  return { session: opencode, agent: agent === undefined || agent === "" ? null : agent };
+}
+
+/**
  * `squeal status [--json] --wait <ms>`. Exit code 0 on quiet, news, no daemon
  * or timeout; 1 when status is unavailable. The line saying why the wait
  * ended comes first in the human rendering and goes to stderr with `--json`,
@@ -383,11 +408,10 @@ export async function statusWaitCommand(
       sync: syncDaemon,
     });
   }
-  const session = env.CLAUDE_CODE_SESSION_ID ?? env.CODEX_SESSION_ID ?? null;
   const wait = await waitForStatus(io.cwd ?? process.cwd(), {
     timeoutMs,
     now,
-    session,
+    ...waitConsumer(env),
     holdSlow,
   });
   const result: StatusResult = wait.result;
