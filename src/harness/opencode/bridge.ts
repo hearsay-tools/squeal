@@ -6,7 +6,7 @@ import { locate, usesSqueal } from "../shared/context.js";
 import { coverageOf } from "../shared/coverage.js";
 import { ensure, ensureToRegister } from "../shared/ensure.js";
 import { findHarnessProcess } from "../shared/harness-process.js";
-import { type HookDeps, withContext } from "../shared/hook.js";
+import { type HookDeps, isRegistered, withContext } from "../shared/hook.js";
 import { primer } from "../shared/primer.js";
 import { submitPrompt } from "../shared/prompt.js";
 import { endSession } from "../shared/session.js";
@@ -98,8 +98,10 @@ export async function register(
 /**
  * `chat.message` on a consumer this instance registered (D3): `startTurn`,
  * and the delta not yet delivered as the text to add, with `stop.waitMs`, so
- * a changed policy reaches idle's deadline (D4); one the daemon expired
- * meanwhile is registered again, as 001's prompt registers.
+ * a changed policy reaches idle's deadline (D4), and the primer, so a
+ * coverage that changed since registration reaches the system prompt
+ * (008-22); one the daemon expired meanwhile is registered again, as 001's
+ * prompt registers.
  */
 export async function prompt(
   request: Extract<OcRequest, { kind: "prompt" }>,
@@ -107,10 +109,12 @@ export async function prompt(
 ): Promise<OcAnswers["prompt"]> {
   const location = locate(request.worktree);
   if (location === null) return { text: null };
-  const text = await submitPrompt(consumerInput(request.consumer), location, deps, {
-    register: true,
-  });
-  return { text, stopWaitMs: readPolicy(location.root).stop.waitMs };
+  const input = consumerInput(request.consumer);
+  const text = await submitPrompt(input, location, deps, { register: true });
+  const current = await withContext(input, location, deps, async (context) =>
+    isRegistered(context) ? primer(deps.command, coverageOf(context)) : null,
+  );
+  return { text, stopWaitMs: readPolicy(location.root).stop.waitMs, primer: current };
 }
 
 /**

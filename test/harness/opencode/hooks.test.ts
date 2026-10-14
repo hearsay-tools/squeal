@@ -70,6 +70,35 @@ describe("experimental.chat.system.transform", () => {
       expect(output.system).toEqual(["OpenCode's own", long.slice(0, PRIMER_CAP_CHARS)]);
     }
   });
+
+  it("takes the primer from the tool boundary that registered the consumer, with no store at the message (008-22)", async () => {
+    const { bridge, hooks } = await started({
+      register: { header: null, registered: false, primer: null },
+      after: { text: `SQUEAL · registered\n\n${PRIMER_TEXT}`, primer: PRIMER_TEXT },
+    });
+    await say(hooks, ROOT_ID);
+    const call = { tool: "bash", sessionID: ROOT_ID, callID: "c1", args: {} };
+    await hook(hooks, "tool.execute.after")(call, { title: "bash", output: "ok", metadata: {} });
+    const output = { system: ["OpenCode's own"] };
+    await hook(hooks, "experimental.chat.system.transform")({ sessionID: ROOT_ID }, output);
+    expect(output.system).toEqual(["OpenCode's own", PRIMER_TEXT]);
+    // Asked for while the plugin has none, and not after.
+    await hook(hooks, "tool.execute.after")(
+      { ...call, callID: "c2" },
+      { title: "bash", output: "ok", metadata: {} },
+    );
+    const afters = bridge.requests().filter((r) => r.kind === "after");
+    expect(afters.map((r) => (r as { primer?: boolean }).primer)).toEqual([true, undefined]);
+  });
+
+  it("takes a newer primer from a registered consumer's prompt (008-22)", async () => {
+    const { hooks } = await started({ prompt: { text: null, primer: "newer primer" } });
+    await say(hooks, ROOT_ID);
+    await say(hooks, ROOT_ID, "next");
+    const output = { system: [] as string[] };
+    await hook(hooks, "experimental.chat.system.transform")({ sessionID: ROOT_ID }, output);
+    expect(output.system).toEqual(["newer primer"]);
+  });
 });
 
 describe("tool.execute.before", () => {

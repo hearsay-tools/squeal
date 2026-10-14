@@ -67,10 +67,16 @@ describe("prompt", () => {
     expect(text).toMatch(/^SQUEAL · /);
     expect(text).toContain("PASS -> FAIL");
     expect(readTurn(r.store, r.consumer()).turn).not.toBe("idle");
-    expect(await prompt({ kind: "prompt", ...about(r) }, deps())).toEqual({
+    expect(await prompt({ kind: "prompt", ...about(r) }, deps())).toMatchObject({
       text: null,
       stopWaitMs: 0,
     });
+  });
+
+  it("answers the primer as the consumer's coverage now has it (008-22)", async () => {
+    const r = await registered();
+    const { primer } = await prompt({ kind: "prompt", ...about(r) }, deps());
+    expect(primer).toContain(COMMAND);
   });
 
   it("answers the policy's stop.waitMs, for the deadline at idle (review 008-16 B1)", async () => {
@@ -170,6 +176,20 @@ describe("after", () => {
   it("is silent outside a git worktree", async () => {
     const answer = await after({ kind: "after", ...about(outsideGit()), tool: "bash" }, deps());
     expect(answer).toEqual({ text: null });
+    const asked = { kind: "after", ...about(outsideGit()), tool: "bash", primer: true } as const;
+    expect(await after(asked, deps())).toEqual({ text: null });
+  });
+
+  it("asked, registers a consumer the message could not and answers the primer and stop.waitMs (008-22)", async () => {
+    const r = squealRepo();
+    r.policy({ stop: { waitMs: 1_200 } });
+    const answer = await after({ kind: "after", ...about(r), tool: "bash", primer: true }, deps());
+    expect(answer.text).toMatch(/^SQUEAL · registered/);
+    expect(answer.primer).toContain(COMMAND);
+    expect(answer.stopWaitMs).toBe(1_200);
+    expect(r.store.consumers.get(r.consumer())).not.toBeNull();
+    // Not asked: the delta alone.
+    expect(Object.keys(await boundary(r))).toEqual(["text"]);
   });
 });
 

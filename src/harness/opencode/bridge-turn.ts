@@ -1,8 +1,10 @@
 import { readPolicy } from "../../core/daemon/policy.js";
 import { locate } from "../shared/context.js";
+import { coverageOf } from "../shared/coverage.js";
 import { deliver } from "../shared/deliver.js";
 import { denyCurrentTestCommand, denyOnRegression, testCommandOf } from "../shared/deny.js";
 import { withContext } from "../shared/hook.js";
+import { primer } from "../shared/primer.js";
 import { stopTurn } from "../shared/stop.js";
 import { waitIdle } from "../shared/waiter.js";
 import { consumerInput, type OcHandler } from "./bridge.js";
@@ -74,16 +76,29 @@ export const before: OcHandler<"before"> = async (request, deps) => {
 /**
  * `tool.execute.after` (D3), the primary push: once per call, so the
  * delivery view keeps it idempotent; the second call of a parallel batch
- * finds nothing undelivered. A consumer not registered is registered here.
+ * finds nothing undelivered. A consumer not registered is registered here,
+ * so, asked, the answer carries the primer and `stop.waitMs` as `register`'s
+ * does: a session whose first message found no store gets them (008-22).
  */
 export const after: OcHandler<"after"> = async (request, deps) => {
   const location = locate(request.worktree);
   if (location === null) return { text: null };
   const edited = !OPENCODE_READ_ONLY_TOOLS.has(request.tool);
-  const text = await withContext(consumerInput(request.consumer), location, deps, (context) =>
-    deliver(context, deps, edited),
+  const answer = await withContext(
+    consumerInput(request.consumer),
+    location,
+    deps,
+    async (context) => {
+      const text = await deliver(context, deps, edited);
+      if (request.primer !== true) return { text };
+      return {
+        text,
+        primer: primer(deps.command, coverageOf(context)),
+        stopWaitMs: readPolicy(location.root).stop.waitMs,
+      };
+    },
   );
-  return { text };
+  return answer ?? { text: null };
 };
 
 /**
