@@ -37,3 +37,13 @@ Use /worker. Outcome: the OpenCode tests no longer depend on process scheduling 
 - Seam: the assertions that compare request-log order; assert the set and the causal facts (no continuation, the report once) instead. Then an `afterEach` that kills every pid a test recorded. Then the bridge's spawn environment in `src/harness/opencode/bridge-client.ts`: drop `NODE_USE_ENV_PROXY` for the bridge only (the bridge and the daemon it spawns make no HTTP requests; check that claim in the shared code before relying on it), with a test.
 - Owns: `test/harness/opencode/idle.test.ts`, `test/harness/opencode/bridge-client.test.ts`, `src/harness/opencode/bridge-client.ts`.
 - Done when: the idle test passes 10 runs in a row under a loaded full suite or at load above 24; a failing bridge-client test leaves no process; the bridge's spawn environment test; `latency.test.ts` reported at the load you have; lint, typecheck, full suite green or each load failure named.
+
+## 008-22 the primer after a first registration at a tool boundary
+
+Use /worker. Outcome: an OpenCode session that starts in a repository with no store yet (the first session after `squeal setup`, before any daemon ran) carries the primer from the first request after its consumer exists, not only after the next user message (goal 5; found by 008-19).
+
+- Defect: `chat.message`'s `register` answers `registered: false` with no store, so `squealHooks`' `primer` stays `null`. The bridge's `after` starts the daemon and registers the consumer at the first tool call, but only `register()` sets `primer` (`src/harness/opencode/hooks.ts` near `primer = answer.primer ?? primer`), so under `opencode run` the whole session goes without it.
+- Shape: repair.
+- Seam: `OcAnswers.after` (and `prompt`) in `src/harness/opencode/protocol.ts` carry `primer` and `stopWaitMs` when the bridge registered or found the consumer; `hooks.ts` takes them as `register()` does. First edit: a `hooks` unit test where `register` answers `registered: false`, `after` answers a primer, and the next `experimental.chat.system.transform` carries it.
+- Owns: `src/harness/opencode/**` except `bridge-client.ts`'s `bridgeStart`, `test/harness/opencode/**`. Leaves alone: `test/e2e/**`, `test/helpers/opencode.ts` (008-19). Do not commit `plugins/*/dist`, raise the version or the key format.
+- Done when: the unit test fails before and passes after; a real-OpenCode run through `runOpenCode` in a fresh repository whose second model request carries the primer; lint, typecheck, the opencode tests green.
