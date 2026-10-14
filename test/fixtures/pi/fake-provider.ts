@@ -5,12 +5,21 @@
 //   PI_FIXTURE_PLAN  a JSON file: an array of steps (`FakeStep` in the helper)
 //   PI_FIXTURE_LOG   a JSONL file: one `{ n, systemPrompt, messages }` line per request
 import * as fs from "node:fs";
-import { createAssistantMessageEventStream, getCurrentSystemPrompt } from "@earendil-works/pi-ai";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import {
+  type AssistantMessage,
+  createAssistantMessageEventStream,
+  getCurrentSystemPrompt,
+  type JsonObject,
+} from "@earendil-works/pi-ai";
+import type { ExtensionAPI, ProviderConfig } from "@earendil-works/pi-coding-agent";
+
+// Typed against Pi 1.0.4's exports. The file is outside tsconfig and Biome (Pi loads it with
+// jiti); check it with
+//   npx tsc --ignoreConfig --noEmit --strict --module nodenext --skipLibCheck --types node <file>
 
 interface Step {
   text?: string;
-  tools?: { name: string; arguments: Record<string, unknown> }[];
+  tools?: { name: string; arguments: JsonObject }[];
   delayMs?: number;
   waitAbort?: boolean;
 }
@@ -22,6 +31,66 @@ const PLAN: Step[] = process.env.PI_FIXTURE_PLAN
 
 // Pi may load the factory again when an RPC session is replaced; the plan stays one sequence.
 const g = globalThis as { __piFixtureRequests?: number };
+
+const streamSimple: NonNullable<ProviderConfig["streamSimple"]> = (model, context, options) => {
+  const stream = createAssistantMessageEventStream();
+  const n = g.__piFixtureRequests ?? 0;
+  g.__piFixtureRequests = n + 1;
+  const step: Step = PLAN[n] ?? { text: `plan exhausted at request ${n}` };
+  if (LOG) {
+    const systemPrompt = getCurrentSystemPrompt(context.messages) ?? "";
+    fs.appendFileSync(LOG, `${JSON.stringify({ n, systemPrompt, messages: context.messages })}\n`);
+  }
+  (async () => {
+    const output: AssistantMessage = {
+      role: "assistant",
+      content: [],
+      api: model.api,
+      provider: model.provider,
+      model: model.id,
+      usage: {
+        input: 10,
+        output: 5,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 15,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      },
+      stopReason: "pending",
+      timestamp: Date.now(),
+    };
+    stream.push({ type: "start", partial: output });
+    if (step.waitAbort) {
+      await new Promise<void>((resolve) => {
+        if (options?.signal?.aborted) return resolve();
+        options?.signal?.addEventListener("abort", () => resolve());
+      });
+      output.stopReason = "aborted";
+      output.errorMessage = "Request was aborted";
+      stream.push({ type: "error", reason: "aborted", error: output });
+      stream.end();
+      return;
+    }
+    if (step.delayMs) await new Promise((r) => setTimeout(r, step.delayMs));
+    if (step.text) {
+      output.content.push({ type: "text", text: step.text });
+      stream.push({ type: "text_start", contentIndex: 0, partial: output });
+      stream.push({ type: "text_end", contentIndex: 0, content: step.text, partial: output });
+    }
+    for (const [i, call] of (step.tools ?? []).entries()) {
+      const toolCall = { type: "toolCall" as const, id: `call_${n}_${i}`, ...call };
+      output.content.push(toolCall);
+      const contentIndex = output.content.length - 1;
+      stream.push({ type: "toolcall_start", contentIndex, partial: output });
+      stream.push({ type: "toolcall_end", contentIndex, toolCall, partial: output });
+    }
+    const reason = step.tools?.length ? "toolUse" : "stop";
+    output.stopReason = reason;
+    stream.push({ type: "done", reason, message: output });
+    stream.end();
+  })();
+  return stream;
+};
 
 export default function (pi: ExtensionAPI) {
   pi.registerProvider("fake", {
@@ -39,63 +108,6 @@ export default function (pi: ExtensionAPI) {
         maxTokens: 4096,
       },
     ],
-    streamSimple: (model: any, context: any, options: any) => {
-      const stream = createAssistantMessageEventStream();
-      const n = g.__piFixtureRequests ?? 0;
-      g.__piFixtureRequests = n + 1;
-      const step: Step = PLAN[n] ?? { text: `plan exhausted at request ${n}` };
-      if (LOG) {
-        const systemPrompt = getCurrentSystemPrompt(context.messages) ?? "";
-        fs.appendFileSync(LOG, `${JSON.stringify({ n, systemPrompt, messages: context.messages })}\n`);
-      }
-      (async () => {
-        const output: any = {
-          role: "assistant",
-          content: [],
-          api: model.api,
-          provider: model.provider,
-          model: model.id,
-          usage: {
-            input: 10,
-            output: 5,
-            cacheRead: 0,
-            cacheWrite: 0,
-            totalTokens: 15,
-            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-          },
-          stopReason: "pending",
-          timestamp: Date.now(),
-        };
-        stream.push({ type: "start", partial: output });
-        if (step.waitAbort) {
-          await new Promise<void>((resolve) => {
-            if (options?.signal?.aborted) return resolve();
-            options?.signal?.addEventListener("abort", () => resolve());
-          });
-          output.stopReason = "aborted";
-          output.errorMessage = "Request was aborted";
-          stream.push({ type: "error", reason: "aborted", error: output });
-          stream.end();
-          return;
-        }
-        if (step.delayMs) await new Promise((r) => setTimeout(r, step.delayMs));
-        if (step.text) {
-          output.content.push({ type: "text", text: step.text });
-          stream.push({ type: "text_start", contentIndex: 0, partial: output });
-          stream.push({ type: "text_end", contentIndex: 0, content: step.text, partial: output });
-        }
-        for (const [i, call] of (step.tools ?? []).entries()) {
-          const toolCall = { type: "toolCall", id: `call_${n}_${i}`, name: call.name, arguments: call.arguments };
-          output.content.push(toolCall);
-          const contentIndex = output.content.length - 1;
-          stream.push({ type: "toolcall_start", contentIndex, partial: output });
-          stream.push({ type: "toolcall_end", contentIndex, toolCall, partial: output });
-        }
-        output.stopReason = step.tools?.length ? "toolUse" : "stop";
-        stream.push({ type: "done", reason: output.stopReason, message: output });
-        stream.end();
-      })();
-      return stream;
-    },
-  } as any);
+    streamSimple,
+  });
 }
