@@ -148,9 +148,13 @@ describe.skipIf(unavailable !== undefined)(
       const fix = added(last, fixed);
       expect(mentions("FAIL -> PASS", fix)).toBe(1);
       expect(mentions(FAIL, fix)).toBe(0);
-      // No primer assertion on this path: registered at a tool call rather than a message, the
-      // plugin has no primer until the next message (row 008-22, the primer after a first
-      // registration at a tool boundary). The started tests assert goal 5.
+      // Goal 5 from a tool boundary (008-22): no primer before the store exists, then the
+      // primer from the request after the tool call that registered the consumer.
+      expect(system(start)).not.toContain(PRIMER_OPENING);
+      for (const request of run.requests.slice(1)) {
+        expect(system(request)).toContain(PRIMER_OPENING);
+        expect(system(request)).toContain(e2e.cliPath);
+      }
       // A daemon that left with its session may have been replaced: the copy's either way.
       expect(daemonPids(e2e.plugin)).toHaveLength(1);
     });
