@@ -123,3 +123,8 @@ Started: 2026-10-10
   - The human also corrected how I reported 006-38: Haiku's 7/10 to 10/10 is a large gain (+30 points) that 10 sessions a side cannot confirm, not a lean. `lessons.md` and the board say so now; the 006-38 entry above stands as written then.
 - 2026-10-13, 006-52 ran: run `20261013T144318Z-86541e`, Haiku `a2-slow` on `8ac219c8` (0.1.145), 001-317's new off-line against the old one, 30 sessions an arm, 0 failed. `slow-through-squeal` was 28/30 with the new line and 30/30 with the old, a 7-point gap, p = 0.49, unconfirmed. Both misses ran Vitest themselves at calm load; no session claimed before the slow result (`claim-true` 30/30 both). The old line did not reproduce 006-38's 7/10: on 0.1.145 it was 30/30, against 16/20 on 0.1.131 (p = 0.021, across runs, cause not isolated). So 006-38's gap was not the line alone. Results and report committed; `lessons.md` has the reading.
 - 2026-10-13, the 001 coordinator kept 001-317's line on 006-52's result, as recorded on that row: a 7-point gap, p = 0.49, unconfirmed, and no false claim in either arm. The row reopens if a later run confirms a gap.
+- 2026-10-14, the human chose three gaps found after shipping, against 0.1.176:
+  - Squeal's retry (001-348, implemented by 001-368, still planned): row 006-53, dispatched once 001-368 lands.
+  - Slow files held for host load, which 006-38 met only by accident: row 006-54, `a8-load-hold`.
+  - A wait on named files (005-11), which the grader records without its paths: row 006-55.
+  Left for when their specs ship: OpenCode (008), Pi (009), whose models are never Claude, and a Python part for pytest (007). Goal 6's list gains the two new situations; D10's table gains each scenario as its row lands. Brief `tasks/wave-13.md`.
