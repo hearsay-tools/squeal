@@ -1,0 +1,14 @@
+{
+  "providers": {
+    "cliproxy": {
+      "baseUrl": "http://127.0.0.1:47319/v1",
+      "api": "openai-completions",
+      "apiKey": "added-by-proxy",
+      "models": [
+        { "id": "claude-haiku-5-5", "contextWindow": 200000, "maxTokens": 32000 },
+        { "id": "claude-sonnet-5-5", "contextWindow": 200000, "maxTokens": 32000 },
+        { "id": "claude-opus-5-5", "contextWindow": 200000, "maxTokens": 32000 }
+      ]
+    }
+  }
+}
