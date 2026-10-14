@@ -131,8 +131,6 @@ export async function createNodeTestAdapter(
     adapterVersion: NODE_TEST_ADAPTER_VERSION,
     async invalidate(paths) {
       if (inner !== null) return inner.invalidate(paths);
-      // 007 review wave 2, B1: the scheduler's empty recheck never builds a failed project again.
-      if (paths.length === 0) return { recreatedProjects: [] };
       if (!mayFix(paths) || !(await attempt())) return { recreatedProjects: [] };
       context.note(`${where} builds again; the project started`);
       return { recreatedProjects: [project.name] };

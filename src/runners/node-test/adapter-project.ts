@@ -90,8 +90,6 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
     name: "node-test",
     adapterVersion: context.adapterVersion,
     async invalidate(paths) {
-      // 007 review wave 2, B1: an empty batch is the scheduler's recheck, which node:test does not need.
-      if (paths.length === 0) return { recreatedProjects: [] };
       observed.refresh();
       graph.invalidate(paths);
       if (paths.some((p) => p.kind !== "change")) {
