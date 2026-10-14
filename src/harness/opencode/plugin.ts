@@ -10,7 +10,7 @@ export {
   MAIN_AGENT,
   WAIT_DEADLINE_MS,
 } from "./hooks.js";
-export { partId } from "./parts.js";
+export { partAfter, partId } from "./parts.js";
 
 /** `client.app.log`'s service name. */
 export const LOG_SERVICE = "squeal";

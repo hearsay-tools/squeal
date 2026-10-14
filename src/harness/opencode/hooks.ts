@@ -2,7 +2,7 @@ import { delimiter } from "node:path";
 import type { OcClient, OcHooks } from "./api.js";
 import { type CallOptions, callBridge } from "./bridge-client.js";
 import { type Deadline, deadlineIn, within } from "./deadline.js";
-import { partId } from "./parts.js";
+import { partAfter } from "./parts.js";
 import type { OcAnswers, OcConsumer, OcKind, OcRequest } from "./protocol.js";
 import { keyOf, sessions } from "./sessions.js";
 
@@ -251,9 +251,12 @@ export function squealHooks(host: HookHost): OcHooks {
           text = await register(consumer, deadline);
         }
         if (text === null || disposed) return;
+        // D3 as amended: without an id that sorts last OpenCode fails the prompt, so nothing is added.
+        const id = partAfter(output.parts);
+        if (id === null) return;
         const { message } = output;
         output.parts.push({
-          id: partId(),
+          id,
           sessionID: message.sessionID,
           messageID: message.id,
           type: "text",
