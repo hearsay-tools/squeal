@@ -36,6 +36,8 @@ export class RunCollector {
   readonly unhandledErrors: SerializedError[] = [];
   /** Raw output for the run log, absolute paths kept. */
   readonly log: string[] = [];
+  /** Requested modules Vitest queued: past every run project's `globalSetup` (review wave-13bp B4). */
+  queued = 0;
   reason: TestRunEndReason | null = null;
   cancelRequested = false;
   /** Set once `vitest.log` is written; later notes are appended to it. */
@@ -80,6 +82,10 @@ export class RunCollector {
       this.#names.set(testCase.module, names);
     }
     return names.get(testCase.id) ?? testCase.fullName;
+  }
+
+  moduleQueued(module: TestModule): void {
+    if (this.#ref(module.project.name, module.moduleId)) this.queued++;
   }
 
   moduleEnd(module: TestModule): void {
@@ -157,6 +163,7 @@ export function createSquealReporter(current: () => RunCollector | null): Report
       vitest = instance;
     },
     onTestCaseResult: (testCase) => current()?.testCase(testCase),
+    onTestModuleQueued: (module) => current()?.moduleQueued(module),
     onTestModuleEnd: (module) => current()?.moduleEnd(module),
     onTestRunEnd: (_modules, unhandledErrors, reason) => current()?.runEnd(unhandledErrors, reason),
     onUserConsoleLog: (log) => current()?.console(log.type, log.content, moduleOf(log.taskId)),
