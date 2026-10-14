@@ -2316,10 +2316,10 @@ function cap(text2, max) {
   return text2.length <= max ? text2 : `${text2.slice(0, max - 3)}...`;
 }
 function excludedProjectsText(entries3) {
-  const quoted2 = (list2, join95) => {
+  const quoted2 = (list2, join96) => {
     const all = list2.map((entry3) => JSON.stringify(entry3));
     const last = all.pop();
-    return all.length === 0 ? last : `${all.join(", ")} ${join95} ${last}`;
+    return all.length === 0 ? last : `${all.join(", ")} ${join96} ${last}`;
   };
   const names3 = entries3.filter((entry3) => !entry3.includes("*"));
   const patterns = entries3.filter((entry3) => entry3.includes("*"));
@@ -25921,9 +25921,9 @@ var require_CachedInputFileSystem = __commonJS({
         const readFile9 = this._readFileBackend.provide;
         this.readFile = /** @type {FileSystem["readFile"]} */
         readFile9;
-        const readFileSync35 = this._readFileBackend.provideSync;
+        const readFileSync36 = this._readFileBackend.provideSync;
         this.readFileSync = /** @type {SyncFileSystem["readFileSync"]} */
-        readFileSync35;
+        readFileSync36;
         this._readJsonBackend = createBackend(
           duration2,
           // prettier-ignore
@@ -27229,7 +27229,7 @@ var require_path = __commonJS({
       }
       return posixNormalize(maybePath);
     };
-    var join95 = (rootPath, request) => {
+    var join96 = (rootPath, request) => {
       if (!request) return normalize7(rootPath);
       const requestType = getType(request);
       switch (requestType) {
@@ -27274,7 +27274,7 @@ var require_path = __commonJS({
           cacheEntry = inner.get(request);
           if (cacheEntry !== void 0) return cacheEntry;
         }
-        cacheEntry = join95(rootPath, request);
+        cacheEntry = join96(rootPath, request);
         inner.set(request, cacheEntry);
         return cacheEntry;
       };
@@ -27390,7 +27390,7 @@ var require_path = __commonJS({
     module2.exports.isRelativeRequest = isRelativeRequest;
     module2.exports.isSubPath = isSubPath;
     module2.exports.isWindowsPath = isWindowsPath;
-    module2.exports.join = join95;
+    module2.exports.join = join96;
     module2.exports.normalize = normalize7;
     module2.exports.toPath = toPath;
   }
@@ -33405,7 +33405,7 @@ var require_ResolverFactory = __commonJS({
     var TsconfigPathsPlugin = require_TsconfigPathsPlugin();
     var UnsafeCachePlugin = require_UnsafeCachePlugin();
     var UseFilePlugin = require_UseFilePlugin();
-    var { PathType, getType, join: join95, toPath } = require_path();
+    var { PathType, getType, join: join96, toPath } = require_path();
     function processPnpApiOption(option) {
       if (option === void 0 && /** @type {NodeJS.ProcessVersions & { pnp: string }} */
       versions.pnp) {
@@ -33460,7 +33460,7 @@ var require_ResolverFactory = __commonJS({
           "The 'packageMap' option needs an absolute 'configFile' in an environment without a working directory"
         );
       }
-      return join95(cwd(), file);
+      return join96(cwd(), file);
     }
     function normalizePackageMap(packageMap) {
       if (packageMap === void 0) return null;
@@ -44228,7 +44228,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.180";
+  if (true) return "0.1.181";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -50023,6 +50023,9 @@ function readSettings(path) {
   return { value, text: text2, indent: /^([ \t]+)"/m.exec(text2)?.[1] ?? 2 };
 }
 
+// src/cli/opencode/status.ts
+init_fs();
+
 // src/cli/pi/status.ts
 import { existsSync as existsSync32, readFileSync as readFileSync32 } from "node:fs";
 import { dirname as dirname37, join as join91 } from "node:path";
@@ -50053,6 +50056,28 @@ function piStatusLine(cwd, env, cli) {
   if (registered === true) return null;
   if (registered !== false && registered.reason !== "no-store") return null;
   return `Pi: no Squeal consumer is registered for this session in this worktree (PI_SESSION_ID ${session}). Either the Squeal Pi extension is not loaded in it, or it has not registered the session yet: a session that started before the store existed registers at its next tool call. Without the extension, install it with ${piInstallCommand(cli)}, then start Pi again.
+`;
+}
+
+// src/cli/opencode/status.ts
+function opencodeCliCommand(cli, node = process.execPath) {
+  return `${shellWord(node)} --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
+}
+function opencodeStatusLine(cwd, env) {
+  const session = env.OPENCODE_SESSION_ID;
+  if (session === void 0 || session === "") {
+    if (env.OPENCODE !== "1") return null;
+    return `OpenCode: this shell runs under OpenCode (OPENCODE=1) without OPENCODE_SESSION_ID, so the Squeal OpenCode plugin did not run in this session. Install it with ${INSTALL_SH_COMMAND}, then start OpenCode again.
+`;
+  }
+  const registered = withStatusStore(
+    cwd,
+    {},
+    ({ store, root }) => store.consumers.list(worktreeIdFor(root)).some((c) => c.consumer.sessionId === session)
+  );
+  if (registered === true) return null;
+  if (registered !== false && registered.reason !== "no-store") return null;
+  return `OpenCode: no Squeal consumer is registered for this session in this worktree (OPENCODE_SESSION_ID ${session}). The Squeal OpenCode plugin ran in it but has not registered the session here yet: it registers at the session's next message, also when it started before the store existed, and a session may be registered in another worktree of the repository. If the plugin is not installed, install it with ${INSTALL_SH_COMMAND}, then start OpenCode again.
 `;
 }
 
@@ -50334,6 +50359,9 @@ function statusCommand(env, cli = fileURLToPath12(import.meta.url)) {
     return codexCommand(env, cli);
   }
   if (env.PI_SESSION_ID !== void 0 && env.PI_SESSION_ID !== "") return piCliCommand(cli);
+  if (env.OPENCODE_SESSION_ID !== void 0 && env.OPENCODE_SESSION_ID !== "") {
+    return opencodeCliCommand(cli);
+  }
   return SQUEAL_COMMAND;
 }
 
@@ -50391,9 +50419,11 @@ async function syncOnce(root, pollMs, stopped) {
 // src/cli/status-wait-edit.ts
 init_keys();
 init_state3();
-function lastHeard(store, worktreeId, revision, session) {
+function lastHeard(store, worktreeId, revision, session, agent = null) {
   if (session === null) return revision;
-  const told = store.consumers.list(worktreeId).filter((record) => record.consumer.sessionId === session).flatMap((record) => toldRevision(store, record.consumer) ?? []);
+  const told = store.consumers.list(worktreeId).filter(
+    ({ consumer }) => consumer.sessionId === session && (agent === null || consumer.agentId === agent)
+  ).flatMap((record) => toldRevision(store, record.consumer) ?? []);
   return Math.min(revision, ...told);
 }
 function editWindow(store, worktreeId, heard, revision, rekeyed) {
@@ -50744,6 +50774,7 @@ async function waitForStatus(cwd, options) {
   const settleMs = options.settleMs ?? STATUS_WAIT_SETTLE_MS;
   const startSync = options.sync ?? syncDaemon;
   const session = options.session ?? null;
+  const agent = options.agent ?? null;
   const started2 = performance.now();
   const elapsed = () => performance.now() - started2;
   let start2 = null;
@@ -50762,7 +50793,7 @@ async function waitForStatus(cwd, options) {
           syncing.sinceSeq = movesSeq(store, id2) ?? 0;
         }
         const news = newsOf(start2, states, header.revision);
-        syncing.heard ??= lastHeard(store, id2, header.revision, session);
+        syncing.heard ??= lastHeard(store, id2, header.revision, session, agent);
         const heard = syncing.heard;
         syncing.sync ??= startSync(root, pollMs);
         const current2 = syncing.sync.current();
@@ -50854,6 +50885,14 @@ function newsOf(start2, states, revision) {
     revision
   }).entries;
 }
+function waitConsumer(env) {
+  const session = env.CLAUDE_CODE_SESSION_ID ?? env.CODEX_SESSION_ID ?? null;
+  if (session !== null) return { session, agent: null };
+  const opencode = env.OPENCODE_SESSION_ID;
+  if (opencode === void 0 || opencode === "") return { session: null, agent: null };
+  const agent = env.OPENCODE_AGENT_ID;
+  return { session: opencode, agent: agent === void 0 || agent === "" ? null : agent };
+}
 async function statusWaitCommand(timeoutMs, json3, io, holdSlow = false, paths = []) {
   const now = io.now ?? Date.now;
   const env = io.env ?? process.env;
@@ -50868,11 +50907,10 @@ async function statusWaitCommand(timeoutMs, json3, io, holdSlow = false, paths =
       sync: syncDaemon
     });
   }
-  const session = env.CLAUDE_CODE_SESSION_ID ?? env.CODEX_SESSION_ID ?? null;
   const wait = await waitForStatus(io.cwd ?? process.cwd(), {
     timeoutMs,
     now,
-    session,
+    ...waitConsumer(env),
     holdSlow
   });
   const result = wait.result;
@@ -51995,11 +52033,76 @@ import {
   existsSync as existsSync34,
   mkdtempSync as mkdtempSync4,
   readdirSync as readdirSync19,
-  readFileSync as readFileSync34,
+  readFileSync as readFileSync35,
   rmSync as rmSync14
 } from "node:fs";
 import { tmpdir as tmpdir6 } from "node:os";
-import { delimiter as delimiter4, join as join94, resolve as resolve20 } from "node:path";
+import { delimiter as delimiter4, join as join95 } from "node:path";
+
+// src/cli/update-packages.ts
+init_fs();
+import { readFileSync as readFileSync34 } from "node:fs";
+import { join as join94, resolve as resolve20 } from "node:path";
+function packagesHome(harness, env) {
+  return join94(env.XDG_DATA_HOME || join94(env.HOME ?? "", ".local", "share"), "squeal", harness);
+}
+function piPackage(env) {
+  const home = env.HOME ?? "";
+  let agent = env.PI_CODING_AGENT_DIR || join94(home, ".pi", "agent");
+  if (agent === "~") agent = home;
+  else if (agent.startsWith("~/")) agent = join94(home, agent.slice(2));
+  let packages = [];
+  try {
+    const file = JSON.parse(readFileSync34(join94(agent, "settings.json"), "utf8"));
+    if (isRecord(file)) packages = file.packages;
+  } catch {
+    return null;
+  }
+  const versions = [];
+  for (const entry3 of Array.isArray(packages) ? packages : []) {
+    const source = isRecord(entry3) ? entry3.source : entry3;
+    if (typeof source !== "string" || /^(npm|git|https?|ssh):/.test(source)) continue;
+    const dir2 = resolve20(agent, source);
+    if (resolve20(dir2, "..") !== resolve20(packagesHome("pi", env))) continue;
+    try {
+      const manifest = JSON.parse(readFileSync34(join94(dir2, "package.json"), "utf8"));
+      if (isRecord(manifest) && typeof manifest.version === "string")
+        versions.push(manifest.version);
+    } catch {
+    }
+  }
+  const newest = versions.sort(compareVersions).at(-1);
+  return newest === void 0 ? null : { version: newest };
+}
+function openCodePackage(env) {
+  const link = join94(packagesHome("opencode", env), "current");
+  const spec = `file:${link}`;
+  const config = join94(env.XDG_CONFIG_HOME || join94(env.HOME ?? "", ".config"), "opencode");
+  const listed2 = ["opencode.json", "opencode.jsonc", "config.json"].some((name2) => {
+    let text2;
+    try {
+      text2 = readFileSync34(join94(config, name2), "utf8");
+    } catch {
+      return false;
+    }
+    try {
+      const file = JSON.parse(text2);
+      const plugins = isRecord(file) && Array.isArray(file.plugin) ? file.plugin : [];
+      return plugins.some((p) => (Array.isArray(p) ? p[0] : p) === spec);
+    } catch {
+      return text2.includes(JSON.stringify(spec));
+    }
+  });
+  if (!listed2) return null;
+  try {
+    const manifest = JSON.parse(readFileSync34(join94(link, "package.json"), "utf8"));
+    return isRecord(manifest) && typeof manifest.version === "string" ? { version: manifest.version } : null;
+  } catch {
+    return null;
+  }
+}
+
+// src/cli/update.ts
 var NAMES2 = { "claude-code": "Claude Code", codex: "Codex" };
 var LATEST_INSTALL_SH = "https://github.com/hearsay-tools/squeal/releases/latest/download/install.sh";
 var UPDATE_COMMANDS = {
@@ -52024,7 +52127,7 @@ function updateCommand(args2, io) {
       `curl -fsSL ${LATEST_INSTALL_SH} | sh`
     ];
     io.stderr(
-      `squeal update: no harness on the PATH has ${PLUGIN_ID} installed, and Pi has no Squeal package. Install it:
+      `squeal update: no harness on the PATH has ${PLUGIN_ID} installed, and neither Pi nor OpenCode has a Squeal package. Install it:
 ${commands.map((c) => `  ${c}
 `).join("")}`
     );
@@ -52071,18 +52174,27 @@ function updateTargets(cwd, env, io) {
     targets.push({
       name: "Pi: Squeal",
       version: pi.version,
-      update: () => updatePi(cwd, env, io),
+      update: () => runInstallSh("--pi", cwd, env, io),
       versionAfter: () => piPackage(env)?.version ?? null
+    });
+  }
+  const openCode = openCodePackage(env);
+  if (onPath2("opencode", env) && openCode !== null) {
+    targets.push({
+      name: "OpenCode: Squeal",
+      version: openCode.version,
+      update: () => runInstallSh("--opencode", cwd, env, io),
+      versionAfter: () => openCodePackage(env)?.version ?? null
     });
   }
   return targets;
 }
-function updatePi(cwd, env, io) {
-  const dir2 = mkdtempSync4(join94(tmpdir6(), "squeal-update-"));
+function runInstallSh(flag2, cwd, env, io) {
+  const dir2 = mkdtempSync4(join95(tmpdir6(), "squeal-update-"));
   try {
-    const script = join94(dir2, "install.sh");
+    const script = join95(dir2, "install.sh");
     const url = env.SQUEAL_INSTALL_SH ?? LATEST_INSTALL_SH;
-    return run3(["curl", "-fsSL", "-o", script, url], cwd, env, io) && run3(["sh", script, "--pi"], cwd, env, io);
+    return run3(["curl", "-fsSL", "-o", script, url], cwd, env, io) && run3(["sh", script, flag2], cwd, env, io);
   } finally {
     rmSync14(dir2, { recursive: true, force: true });
   }
@@ -52115,19 +52227,19 @@ function run3(command, cwd, env, io) {
 var FORMAT = /^# squeal-launcher format (\d+)$/m;
 function launcherFormat(path) {
   try {
-    const match2 = FORMAT.exec(readFileSync34(path, "utf8"));
+    const match2 = FORMAT.exec(readFileSync35(path, "utf8"));
     return match2 === null ? null : Number(match2[1]);
   } catch {
     return null;
   }
 }
 function recopyLauncher(env, io) {
-  const target = join94(env.SQUEAL_BIN_DIR ?? join94(env.HOME ?? "", ".local", "bin"), "squeal");
+  const target = join95(env.SQUEAL_BIN_DIR ?? join95(env.HOME ?? "", ".local", "bin"), "squeal");
   const current2 = launcherFormat(target);
   if (current2 === null) return;
   let newest = null;
   for (const dir2 of pluginDirs(env)) {
-    const path = join94(dir2, "bin", "squeal-launcher");
+    const path = join95(dir2, "bin", "squeal-launcher");
     const format = launcherFormat(path);
     if (format !== null && format > (newest?.format ?? current2)) newest = { path, format };
   }
@@ -52140,10 +52252,10 @@ function recopyLauncher(env, io) {
 function pluginDirs(env) {
   const home = env.HOME ?? "";
   const dirs = [];
-  const config = env.CLAUDE_CONFIG_DIR ?? join94(home, ".claude");
+  const config = env.CLAUDE_CONFIG_DIR ?? join95(home, ".claude");
   try {
     const file = JSON.parse(
-      readFileSync34(join94(config, "plugins", "installed_plugins.json"), "utf8")
+      readFileSync35(join95(config, "plugins", "installed_plugins.json"), "utf8")
     );
     const entries3 = isRecord(file) && isRecord(file.plugins) ? file.plugins[PLUGIN_ID] : null;
     for (const entry3 of Array.isArray(entries3) ? entries3 : []) {
@@ -52151,54 +52263,25 @@ function pluginDirs(env) {
     }
   } catch {
   }
-  const cache2 = join94(
-    env.CODEX_HOME ?? join94(home, ".codex"),
+  const cache2 = join95(
+    env.CODEX_HOME ?? join95(home, ".codex"),
     "plugins",
     "cache",
     MARKETPLACE_NAME,
     PLUGIN_NAME
   );
-  if (existsSync34(cache2)) for (const version2 of readdirSync19(cache2)) dirs.push(join94(cache2, version2));
-  const pi = piHome(env);
-  if (existsSync34(pi)) for (const version2 of readdirSync19(pi)) dirs.push(join94(pi, version2));
+  if (existsSync34(cache2)) for (const version2 of readdirSync19(cache2)) dirs.push(join95(cache2, version2));
+  for (const packages of [packagesHome("pi", env), packagesHome("opencode", env)]) {
+    if (existsSync34(packages))
+      for (const version2 of readdirSync19(packages)) dirs.push(join95(packages, version2));
+  }
   return dirs;
-}
-function piHome(env) {
-  return join94(env.XDG_DATA_HOME || join94(env.HOME ?? "", ".local", "share"), "squeal", "pi");
-}
-function piPackage(env) {
-  const home = env.HOME ?? "";
-  let agent = env.PI_CODING_AGENT_DIR || join94(home, ".pi", "agent");
-  if (agent === "~") agent = home;
-  else if (agent.startsWith("~/")) agent = join94(home, agent.slice(2));
-  let packages = [];
-  try {
-    const file = JSON.parse(readFileSync34(join94(agent, "settings.json"), "utf8"));
-    if (isRecord(file)) packages = file.packages;
-  } catch {
-    return null;
-  }
-  const versions = [];
-  for (const entry3 of Array.isArray(packages) ? packages : []) {
-    const source = isRecord(entry3) ? entry3.source : entry3;
-    if (typeof source !== "string" || /^(npm|git|https?|ssh):/.test(source)) continue;
-    const dir2 = resolve20(agent, source);
-    if (resolve20(dir2, "..") !== resolve20(piHome(env))) continue;
-    try {
-      const manifest = JSON.parse(readFileSync34(join94(dir2, "package.json"), "utf8"));
-      if (isRecord(manifest) && typeof manifest.version === "string")
-        versions.push(manifest.version);
-    } catch {
-    }
-  }
-  const newest = versions.sort(compareVersions).at(-1);
-  return newest === void 0 ? null : { version: newest };
 }
 function onPath2(name2, env) {
   return (env.PATH ?? "").split(delimiter4).some((dir2) => {
     if (dir2 === "") return false;
     try {
-      accessSync2(join94(dir2, name2), constants3.X_OK);
+      accessSync2(join95(dir2, name2), constants3.X_OK);
       return true;
     } catch {
       return false;
@@ -52304,7 +52387,7 @@ function status(args2, io) {
   const cwd = io.cwd ?? process.cwd();
   const result = readStatus(cwd, { now });
   const env = io.env ?? process.env;
-  const harness = parsed.json ? null : codexStatusLine(cwd, env) ?? piStatusLine(cwd, env, fileURLToPath13(import.meta.url));
+  const harness = parsed.json ? null : codexStatusLine(cwd, env) ?? piStatusLine(cwd, env, fileURLToPath13(import.meta.url)) ?? opencodeStatusLine(cwd, env);
   const human = () => `${formatStatus(result, now(), statusCommand(env), { allNotes })}${harness ?? ""}`;
   io.stdout(parsed.json ? json2(result) : human());
   return result.available ? 0 : 1;

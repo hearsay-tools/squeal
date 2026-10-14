@@ -1,12 +1,17 @@
-// src/harness/opencode/plugin.ts
-import { delimiter as delimiter2 } from "node:path";
+// src/harness/opencode/hooks.ts
+import { delimiter, resolve } from "node:path";
 
 // src/harness/opencode/bridge-client.ts
 import { spawn } from "node:child_process";
-function callBridge(command, event, cwd, deadlineMs) {
-  return new Promise((resolve) => {
+var EXIT_DRAIN_MS = 50;
+function unrefPipe(pipe) {
+  const unref = pipe?.unref;
+  if (typeof unref === "function") unref.call(pipe);
+}
+function callBridge(command, event, cwd, deadlineMs, options = {}) {
+  return new Promise((resolve2) => {
+    if (options.signal?.aborted) return resolve2(null);
     let settled = false;
-    let exited = false;
     const out = [];
     let child;
     try {
@@ -16,11 +21,12 @@ function callBridge(command, event, cwd, deadlineMs) {
         stdio: ["pipe", "pipe", "ignore"]
       });
     } catch {
-      resolve(null);
+      resolve2(null);
       return;
     }
+    let code = null;
     const killGroup = () => {
-      if (exited || child.pid === void 0) return;
+      if (child.pid === void 0) return;
       try {
         process.kill(-child.pid, "SIGKILL");
       } catch {
@@ -30,25 +36,38 @@ function callBridge(command, event, cwd, deadlineMs) {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      if (answer === null) killGroup();
+      clearTimeout(drain);
+      options.signal?.removeEventListener("abort", cancel);
+      if (code === null) killGroup();
       child.stdout?.destroy();
       child.stdin?.destroy();
       child.unref();
-      resolve(answer);
+      resolve2(answer);
     };
+    const answered = () => settle(code === 0 ? parseAnswer(Buffer.concat(out).toString("utf8")) : null);
     const timer = setTimeout(() => settle(null), deadlineMs);
+    let drain;
+    const cancel = () => settle(null);
+    options.signal?.addEventListener("abort", cancel);
+    if (options.background) {
+      timer.unref?.();
+      child.unref();
+      unrefPipe(child.stdout);
+      unrefPipe(child.stdin);
+    }
     child.on("error", () => settle(null));
     child.stdout?.on("data", (chunk) => out.push(chunk));
     child.stdout?.on("error", () => settle(null));
+    child.stdout?.on("end", () => {
+      if (code !== null) answered();
+    });
     child.stdin?.on("error", () => {
     });
-    child.on("exit", () => {
-      exited = true;
-    });
-    child.on("close", (code) => {
-      exited = true;
-      if (code !== 0) return settle(null);
-      settle(parseAnswer(Buffer.concat(out).toString("utf8")));
+    child.on("exit", (exitCode) => {
+      code = exitCode ?? -1;
+      killGroup();
+      if (code !== 0 || child.stdout === null || child.stdout.readableEnded) return answered();
+      drain = setTimeout(answered, EXIT_DRAIN_MS);
     });
     child.stdin?.end(JSON.stringify(event));
   });
@@ -63,10 +82,403 @@ function parseAnswer(stdout) {
   }
 }
 
+// src/harness/opencode/deadline.ts
+function deadlineIn(ms) {
+  const end = performance.now() + ms;
+  return () => Math.max(0, end - performance.now());
+}
+function within(promise, ms) {
+  return new Promise((resolve2) => {
+    const timer = setTimeout(() => resolve2(null), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve2(value);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve2(null);
+      }
+    );
+  });
+}
+
+// src/harness/opencode/parts.ts
+var BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+function partId(now = Date.now()) {
+  const time = (BigInt(now) * 0x1000n + 0xfffn).toString(16).padStart(12, "0").slice(-12);
+  const bytes = crypto.getRandomValues(new Uint8Array(14));
+  return `prt_${time}${Array.from(bytes, (byte) => BASE62[byte % 62]).join("")}`;
+}
+function partAfter(parts, now = Date.now()) {
+  let last = "";
+  for (const part of parts) {
+    const id = part?.id;
+    if (typeof id !== "string" || !id.startsWith("prt")) return null;
+    if (id > last) last = id;
+  }
+  const fresh = partId(now);
+  return fresh > last ? fresh : `${last}z`;
+}
+
+// src/harness/opencode/sessions.ts
+var MAX_DEPTH = 8;
+var keyOf = (consumer) => `${consumer.sessionId}
+${consumer.agentId ?? ""}`;
+function sessions(client) {
+  const parents = /* @__PURE__ */ new Map();
+  const parentOf = async (id, deadline) => {
+    const known = parents.get(id);
+    if (known !== void 0) return known;
+    const result = await within(
+      client.session.get({ path: { id } }),
+      deadline()
+    );
+    if (result?.data === void 0) return void 0;
+    const parent = result.data.parentID ?? null;
+    parents.set(id, parent);
+    return parent;
+  };
+  return {
+    saw: (info) => parents.set(info.id, info.parentID ?? null),
+    forget: (id) => parents.delete(id),
+    async consumerOf(id, deadline) {
+      let root = id;
+      const seen = /* @__PURE__ */ new Set([id]);
+      for (let hops = 0; hops <= MAX_DEPTH; hops++) {
+        const parent = await parentOf(root, deadline);
+        if (parent === void 0) return null;
+        if (parent === null)
+          return root === id ? { sessionId: id } : { sessionId: root, agentId: id };
+        if (seen.has(parent)) return null;
+        seen.add(parent);
+        root = parent;
+      }
+      return null;
+    }
+  };
+}
+
+// src/harness/opencode/turns.ts
+var PROMPT_DEADLINE_MS = 2e3;
+var WAIT_DEADLINE_MS = 36e5;
+var textOf = (part) => {
+  const p = part;
+  return p?.type === "text" && typeof p.text === "string" ? p.text : null;
+};
+function turns(client, ask) {
+  const all = /* @__PURE__ */ new Map();
+  let stopped = false;
+  const turnOf = (id) => {
+    let turn = all.get(id);
+    if (turn === void 0) {
+      turn = {
+        open: false,
+        continued: false,
+        aborted: false,
+        own: null,
+        epoch: 0,
+        held: [],
+        waiter: null
+      };
+      all.set(id, turn);
+    }
+    return turn;
+  };
+  const current = (id, turn, epoch) => !stopped && all.get(id) === turn && turn.epoch === epoch;
+  const cancelWait = (turn) => {
+    turn.waiter?.abort();
+    turn.waiter = null;
+  };
+  const say = async (id, turn, text, deadline, epoch) => {
+    const left = deadline();
+    if (left <= 0 || !current(id, turn, epoch)) {
+      turn.held.push(text);
+      return false;
+    }
+    turn.continued = true;
+    turn.own = text;
+    const cancel = new AbortController();
+    const parts = [{ type: "text", text }];
+    const result = await within(
+      client.session.promptAsync({ path: { id }, body: { parts }, signal: cancel.signal }),
+      left
+    );
+    if (result !== null && result.error === void 0) return true;
+    cancel.abort();
+    turn.held.push(text);
+    return false;
+  };
+  const armWait = (consumer, turn) => {
+    cancelWait(turn);
+    if (stopped) return;
+    const waiter = new AbortController();
+    turn.waiter = waiter;
+    const options = { signal: waiter.signal, background: true };
+    void ask("wait", { consumer }, deadlineIn(WAIT_DEADLINE_MS), options).then(async (answer) => {
+      if (turn.waiter !== waiter) return;
+      turn.waiter = null;
+      if (answer?.text == null || stopped) return;
+      const deadline = deadlineIn(PROMPT_DEADLINE_MS);
+      await say(consumer.sessionId, turn, answer.text, deadline, turn.epoch);
+    }).catch(() => {
+    });
+  };
+  return {
+    message(id, parts) {
+      const turn = turnOf(id);
+      turn.open = true;
+      turn.epoch++;
+      cancelWait(turn);
+      const own = turn.own;
+      if (own !== null && parts.some((part) => textOf(part) === own)) {
+        turn.own = null;
+        turn.held = turn.held.filter((text) => text !== own);
+        return;
+      }
+      turn.continued = false;
+      turn.aborted = false;
+    },
+    aborted(id) {
+      const turn = turnOf(id);
+      turn.aborted = true;
+      turn.epoch++;
+    },
+    take(id) {
+      const turn = all.get(id);
+      if (turn === void 0 || turn.held.length === 0) return null;
+      const text = turn.held.join("\n\n");
+      turn.held = [];
+      return text;
+    },
+    async idle(consumer, deadline) {
+      const id = consumer.sessionId;
+      const turn = turnOf(id);
+      if (!turn.open) return;
+      turn.open = false;
+      const epoch = turn.epoch;
+      if (turn.aborted || turn.continued) {
+        turn.aborted = false;
+        await ask("endTurn", { consumer }, deadline);
+      } else {
+        const report = (await ask("stop", { consumer }, deadline))?.report ?? null;
+        if (report !== null && await say(id, turn, report, deadline, epoch)) return;
+      }
+      if (current(id, turn, epoch)) armWait(consumer, turn);
+    },
+    forget(id) {
+      const turn = all.get(id);
+      if (turn !== void 0) cancelWait(turn);
+      all.delete(id);
+    },
+    stop() {
+      stopped = true;
+      for (const turn of all.values()) cancelWait(turn);
+    }
+  };
+}
+
+// src/harness/opencode/hooks.ts
+var EVENT_DEADLINE_MS = 2e3;
+var STOP_WAIT_CAP_MS = 1500;
+var IDLE_MARGIN_MS = 500;
+var IDLE_DEADLINE_MS = STOP_WAIT_CAP_MS + IDLE_MARGIN_MS;
+var DISPOSE_DEADLINE_MS = 3e3;
+var MAIN_AGENT = "main";
+var PRIMER_CAP_CHARS = 8e3;
+var joined = (first, second) => first === null ? second : second === null ? first : `${first}
+
+${second}`;
+function squealHooks(host) {
+  const { client } = host;
+  const map = sessions(client);
+  const registered = /* @__PURE__ */ new Map();
+  const registering = /* @__PURE__ */ new Map();
+  let primer = null;
+  let stopWaitMs = null;
+  let disposed = false;
+  const ask = async (kind, request, deadline, options) => {
+    const left = deadline();
+    if (left <= 0) return null;
+    const event = { kind, ...request, worktree: host.worktree, pid: host.pid };
+    const command = { node: host.node, entry: host.bridge(kind) };
+    return callBridge(command, event, host.directory, left, options);
+  };
+  const turn = turns(client, ask);
+  const identify = async (id, deadline) => {
+    const consumer = await map.consumerOf(id, deadline);
+    return disposed ? null : consumer;
+  };
+  const held = (consumer) => consumer.agentId === void 0 ? turn.take(consumer.sessionId) : null;
+  const register = (consumer, deadline) => {
+    const key = keyOf(consumer);
+    const run = (async () => {
+      const answer = await ask("register", { consumer }, deadline);
+      if (answer === null || !answer.registered) return null;
+      primer = answer.primer ?? primer;
+      stopWaitMs = answer.stopWaitMs ?? stopWaitMs;
+      registered.set(key, consumer);
+      return disposed ? null : answer.header;
+    })();
+    registering.set(key, run);
+    return run.finally(() => registering.delete(key));
+  };
+  const blockReason = async (input, args) => {
+    try {
+      if (disposed) return null;
+      const deadline = deadlineIn(EVENT_DEADLINE_MS);
+      const consumer = await identify(input.sessionID, deadline);
+      if (consumer === null) return null;
+      const { command, workdir } = args ?? {};
+      const bash = input.tool === "bash" && typeof command === "string" ? {
+        command,
+        workdir: resolve(host.directory, typeof workdir === "string" ? workdir : ".")
+      } : {};
+      const request = { consumer, tool: input.tool, ...bash };
+      return (await ask("before", request, deadline))?.reason ?? null;
+    } catch {
+      return null;
+    }
+  };
+  const idle = async (id) => {
+    const wait = Math.max(0, Math.min(stopWaitMs ?? STOP_WAIT_CAP_MS, STOP_WAIT_CAP_MS));
+    const deadline = deadlineIn(wait + IDLE_MARGIN_MS);
+    const consumer = await identify(id, deadline);
+    if (consumer === null) return;
+    if (consumer.agentId !== void 0) {
+      registered.delete(keyOf(consumer));
+      await ask("end", { sessions: [], consumers: [consumer] }, deadline);
+      return;
+    }
+    await turn.idle(consumer, deadline);
+  };
+  return {
+    async event({ event }) {
+      try {
+        if (disposed) return;
+        const { info, sessionID, error } = event.properties;
+        if (event.type === "session.created" && info !== void 0) {
+          map.saw(info);
+        } else if (event.type === "session.deleted" && info !== void 0) {
+          map.saw(info);
+          const deadline = deadlineIn(EVENT_DEADLINE_MS);
+          const consumer = await identify(info.id, deadline);
+          map.forget(info.id);
+          turn.forget(info.id);
+          if (consumer === null) return;
+          const root = consumer.agentId === void 0;
+          for (const [key, c] of registered) {
+            if (key === keyOf(consumer) || root && c.sessionId === info.id)
+              registered.delete(key);
+          }
+          const request = root ? { sessions: [info.id], consumers: [] } : { sessions: [], consumers: [consumer] };
+          await ask("end", request, deadline);
+        } else if (event.type === "session.error" && sessionID !== void 0) {
+          if (error?.name === "MessageAbortedError") turn.aborted(sessionID);
+        } else if (event.type === "session.idle" && sessionID !== void 0) {
+          await idle(sessionID);
+        }
+      } catch {
+      }
+    },
+    async "chat.message"(input, output) {
+      try {
+        if (disposed) return;
+        const deadline = deadlineIn(EVENT_DEADLINE_MS);
+        const consumer = await identify(input.sessionID, deadline);
+        if (consumer === null) return;
+        if (consumer.agentId === void 0) turn.message(consumer.sessionId, output.parts);
+        const key = keyOf(consumer);
+        let text;
+        if (registered.has(key)) {
+          const answer = await ask("prompt", { consumer }, deadline);
+          stopWaitMs = answer?.stopWaitMs ?? stopWaitMs;
+          text = answer?.text ?? null;
+        } else {
+          const inFlight = registering.get(key);
+          if (inFlight !== void 0) {
+            await within(inFlight, deadline());
+            return;
+          }
+          text = await register(consumer, deadline);
+        }
+        if (disposed) return;
+        const id = partAfter(output.parts);
+        if (id === null) return;
+        const added = joined(held(consumer), text);
+        if (added === null) return;
+        const { message } = output;
+        output.parts.push({
+          id,
+          sessionID: message.sessionID,
+          messageID: message.id,
+          type: "text",
+          text: added,
+          synthetic: true
+        });
+      } catch {
+      }
+    },
+    async "experimental.chat.system.transform"(_input, output) {
+      try {
+        if (disposed || primer === null) return;
+        output.system.push(primer.slice(0, PRIMER_CAP_CHARS));
+      } catch {
+      }
+    },
+    async "tool.execute.before"(input, output) {
+      const reason = await blockReason(input, output.args);
+      if (reason !== null) throw new Error(reason);
+    },
+    async "tool.execute.after"(input, output) {
+      try {
+        if (disposed || typeof output.output !== "string") return;
+        const deadline = deadlineIn(EVENT_DEADLINE_MS);
+        const consumer = await identify(input.sessionID, deadline);
+        if (consumer === null) return;
+        const text = (await ask("after", { consumer, tool: input.tool }, deadline))?.text ?? null;
+        if (disposed) return;
+        const added = joined(held(consumer), text);
+        if (added !== null) output.output = `${output.output}
+
+${added}`;
+      } catch {
+      }
+    },
+    async "shell.env"(input, output) {
+      try {
+        if (disposed) return;
+        const path = output.env.PATH ?? host.env.PATH;
+        output.env.PATH = path === void 0 || path === "" ? host.bin : `${host.bin}${delimiter}${path}`;
+        if (input.sessionID === void 0) return;
+        const consumer = await identify(input.sessionID, deadlineIn(EVENT_DEADLINE_MS));
+        if (consumer === null) return;
+        output.env.OPENCODE_SESSION_ID = consumer.sessionId;
+        output.env.OPENCODE_AGENT_ID = consumer.agentId ?? MAIN_AGENT;
+      } catch {
+      }
+    },
+    async dispose() {
+      try {
+        if (disposed) return;
+        disposed = true;
+        turn.stop();
+        const deadline = deadlineIn(DISPOSE_DEADLINE_MS);
+        await within(Promise.all(registering.values()), deadline());
+        const consumers = [...registered.values()];
+        registered.clear();
+        if (consumers.length === 0) return;
+        await ask("end", { sessions: [], consumers }, deadline);
+      } catch {
+      }
+    }
+  };
+}
+
 // src/harness/opencode/host.ts
 import { spawn as spawn2 } from "node:child_process";
 import { accessSync, constants, existsSync, readFileSync, statSync } from "node:fs";
-import { delimiter, dirname, isAbsolute, join } from "node:path";
+import { delimiter as delimiter2, dirname, isAbsolute, join } from "node:path";
 var MIN_NODE = [22, 13];
 var NODE_PROBE_MS = 2e3;
 var isFile = (path) => {
@@ -101,7 +513,7 @@ function usesSquealAt(dir) {
   }
 }
 function nodeOnPath(path) {
-  for (const dir of (path ?? "").split(delimiter)) {
+  for (const dir of (path ?? "").split(delimiter2)) {
     if (dir === "") continue;
     const candidate = join(dir, "node");
     try {
@@ -119,29 +531,29 @@ function meetsMinimum(version) {
   return major > MIN_NODE[0] || major === MIN_NODE[0] && minor >= MIN_NODE[1];
 }
 function nodeVersion(node, timeoutMs = NODE_PROBE_MS) {
-  return new Promise((resolve) => {
+  return new Promise((resolve2) => {
     let out = "";
     let child;
     try {
       child = spawn2(node, ["-p", "process.versions.node"], { stdio: ["ignore", "pipe", "ignore"] });
     } catch {
-      resolve(null);
+      resolve2(null);
       return;
     }
     const timer = setTimeout(() => {
       child.kill("SIGKILL");
-      resolve(null);
+      resolve2(null);
     }, timeoutMs);
     child.stdout?.on("data", (chunk) => {
       out += chunk.toString("utf8");
     });
     child.on("error", () => {
       clearTimeout(timer);
-      resolve(null);
+      resolve2(null);
     });
     child.on("close", (code) => {
       clearTimeout(timer);
-      resolve(code === 0 ? out.trim() : null);
+      resolve2(code === 0 ? out.trim() : null);
     });
   });
 }
@@ -153,36 +565,8 @@ async function findNode(env) {
 }
 
 // src/harness/opencode/plugin.ts
-var EVENT_DEADLINE_MS = 2e3;
-var DISPOSE_DEADLINE_MS = 3e3;
-var LOOKUP_DEADLINE_MS = 2e3;
-var MAIN_AGENT = "main";
 var LOG_SERVICE = "squeal";
 var NO_NODE_LOG = "Squeal: no Node 22.13 or later on the PATH, so Squeal is off in this OpenCode process.";
-var MAX_DEPTH = 8;
-function within(promise, ms) {
-  return new Promise((resolve) => {
-    const timer = setTimeout(() => resolve(null), ms);
-    promise.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      () => {
-        clearTimeout(timer);
-        resolve(null);
-      }
-    );
-  });
-}
-function partId(now = Date.now()) {
-  const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-  const time = (BigInt(now) * 0x1000n + 0xfffn).toString(16).padStart(12, "0").slice(-12);
-  const bytes = crypto.getRandomValues(new Uint8Array(14));
-  return `prt_${time}${Array.from(bytes, (byte) => chars[byte % 62]).join("")}`;
-}
-var keyOf = (consumer) => `${consumer.sessionId}
-${consumer.agentId ?? ""}`;
 function squealPlugin(options) {
   return async (input) => {
     try {
@@ -193,13 +577,16 @@ function squealPlugin(options) {
         log(input.client, NO_NODE_LOG);
         return {};
       }
-      return hooks(
-        { node, entry: options.entry },
-        input.client,
-        input.directory,
-        input.worktree,
-        options
-      );
+      return squealHooks({
+        node,
+        bridge: options.bridge,
+        client: input.client,
+        directory: input.directory,
+        worktree: input.worktree,
+        pid: options.pid ?? process.pid,
+        bin: options.bin,
+        env
+      });
     } catch {
       return {};
     }
@@ -212,121 +599,17 @@ function log(client, message) {
   } catch {
   }
 }
-function hooks(bridge, client, directory, worktree, options) {
-  const env = options.env ?? process.env;
-  const pid = options.pid ?? process.pid;
-  const parents = /* @__PURE__ */ new Map();
-  const registered = /* @__PURE__ */ new Map();
-  const registering = /* @__PURE__ */ new Map();
-  let disposed = false;
-  const ask = (kind, request, deadlineMs) => callBridge(bridge, { kind, ...request, worktree, pid }, directory, deadlineMs);
-  const parentOf = async (id) => {
-    const known = parents.get(id);
-    if (known !== void 0) return known;
-    const result = await within(
-      client.session.get({ path: { id } }),
-      LOOKUP_DEADLINE_MS
-    );
-    if (result?.data === void 0) return null;
-    const parent = result.data.parentID ?? null;
-    parents.set(id, parent);
-    return parent;
-  };
-  const consumerOf = async (sessionId) => {
-    let root = sessionId;
-    for (let depth = 0; depth < MAX_DEPTH; depth++) {
-      const parent = await parentOf(root);
-      if (parent === null) break;
-      root = parent;
-    }
-    return root === sessionId ? { sessionId } : { sessionId: root, agentId: sessionId };
-  };
-  const registerOnce = async (consumer, message, parts) => {
-    const answer = await ask("register", { consumer }, EVENT_DEADLINE_MS);
-    if (answer === null || disposed) return;
-    registered.set(keyOf(consumer), consumer);
-    if (answer.header === null) return;
-    parts.push({
-      id: partId(),
-      sessionID: message.sessionID,
-      messageID: message.id,
-      type: "text",
-      text: answer.header,
-      synthetic: true
-    });
-  };
-  return {
-    async event({ event }) {
-      try {
-        const info = event.properties.info;
-        if (disposed || info === void 0) return;
-        if (event.type === "session.created") {
-          parents.set(info.id, info.parentID ?? null);
-        } else if (event.type === "session.deleted") {
-          parents.set(info.id, info.parentID ?? null);
-          const consumer = await consumerOf(info.id);
-          parents.delete(info.id);
-          for (const [key, c] of registered) {
-            if (key === keyOf(consumer) || consumer.agentId === void 0 && c.sessionId === info.id)
-              registered.delete(key);
-          }
-          if (consumer.agentId === void 0) {
-            await ask("end", { sessions: [info.id], consumers: [] }, EVENT_DEADLINE_MS);
-          } else {
-            await ask("end", { sessions: [], consumers: [consumer] }, EVENT_DEADLINE_MS);
-          }
-        }
-      } catch {
-      }
-    },
-    async "chat.message"(input, output) {
-      try {
-        if (disposed) return;
-        const consumer = await consumerOf(input.sessionID);
-        const key = keyOf(consumer);
-        if (registered.has(key)) return;
-        const inFlight = registering.get(key);
-        if (inFlight !== void 0) return await inFlight;
-        const registration = registerOnce(consumer, output.message, output.parts);
-        registering.set(key, registration);
-        try {
-          await registration;
-        } finally {
-          registering.delete(key);
-        }
-      } catch {
-      }
-    },
-    async "shell.env"(input, output) {
-      try {
-        const path = output.env.PATH ?? env.PATH;
-        output.env.PATH = path === void 0 || path === "" ? options.bin : `${options.bin}${delimiter2}${path}`;
-        if (input.sessionID === void 0) return;
-        const consumer = await consumerOf(input.sessionID);
-        output.env.OPENCODE_SESSION_ID = consumer.sessionId;
-        output.env.OPENCODE_AGENT_ID = consumer.agentId ?? MAIN_AGENT;
-      } catch {
-      }
-    },
-    async dispose() {
-      try {
-        if (disposed) return;
-        disposed = true;
-        const consumers = [...registered.values()];
-        registered.clear();
-        if (consumers.length === 0) return;
-        await ask("end", { sessions: [], consumers }, DISPOSE_DEADLINE_MS);
-      } catch {
-      }
-    }
-  };
+
+// src/harness/opencode/protocol.ts
+function bridgeFile(kind) {
+  return `${kind.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}.mjs`;
 }
 
 // src/harness/opencode/entries/plugin.ts
 var at = (relative) => decodeURIComponent(new URL(relative, import.meta.url).pathname);
 var plugin_default = {
   id: "squeal",
-  server: squealPlugin({ entry: at("./hooks/opencode.mjs"), bin: at("../bin") })
+  server: squealPlugin({ bridge: (kind) => at(`./hooks/${bridgeFile(kind)}`), bin: at("../bin") })
 };
 export {
   plugin_default as default

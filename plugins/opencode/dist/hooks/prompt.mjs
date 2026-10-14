@@ -1,11 +1,74 @@
 import { createRequire as __squealCreateRequire } from "node:module";
 const require = __squealCreateRequire(import.meta.url);
 
-// src/harness/opencode/entries/hooks/opencode.ts
-import { readFileSync as readFileSync7 } from "node:fs";
-
 // src/harness/opencode/bridge.ts
+import { readFileSync as readFileSync7 } from "node:fs";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
+
+// src/core/daemon/policy.ts
+import { join as join2 } from "node:path";
+
+// src/core/fs/errors.ts
+function isMissing(error) {
+  const code = error?.code;
+  return code === "ENOENT" || code === "ENOTDIR" || code === "EISDIR";
+}
+
+// src/core/fs/git-layout.ts
+import { createHash } from "node:crypto";
+import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
+import { dirname, isAbsolute, join, resolve } from "node:path";
+var GITDIR_LINE = /^gitdir:\s*(.+?)\s*$/m;
+function findWorktreeRoot(path) {
+  let dir = resolve(path);
+  if (existsSync(dir)) dir = realpathSync(dir);
+  for (; ; ) {
+    if (existsSync(join(dir, ".git"))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+function worktreeIdFor(root) {
+  return createHash("sha256").update(realpathSync(root)).digest("hex").slice(0, 16);
+}
+function gitDirOf(root) {
+  return dotGit(root)?.gitDir ?? null;
+}
+function resolveCommonDir(root) {
+  const entry2 = dotGit(root);
+  if (entry2 === null) return null;
+  if (!entry2.isFile) return realpathSync(entry2.gitDir);
+  const { gitDir } = entry2;
+  if (lstatOrNull(gitDir) === null) return null;
+  const commondirFile = join(gitDir, "commondir");
+  if (lstatOrNull(commondirFile) === null) return realpathSync(gitDir);
+  const commondir = readFileSync(commondirFile, "utf8").trim();
+  const common = isAbsolute(commondir) ? commondir : resolve(gitDir, commondir);
+  return lstatOrNull(common) === null ? null : realpathSync(common);
+}
+function lstatOrNull(path) {
+  try {
+    return lstatSync(path);
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+}
+function dotGit(root) {
+  const path = join(root, ".git");
+  const stat = lstatOrNull(path);
+  if (stat === null) return null;
+  if (stat.isDirectory()) return { gitDir: path, isFile: false };
+  if (!stat.isFile()) return null;
+  const match = GITDIR_LINE.exec(readFileSync(path, "utf8"));
+  return match?.[1] ? { gitDir: resolve(root, match[1]), isFile: true } : null;
+}
+
+// src/core/fs/json.ts
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 // src/core/types/common.ts
 var PAYLOAD_SCHEMA_VERSION = 1;
@@ -132,303 +195,6 @@ function parseCheckpointProgress(raw) {
 var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
 var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
 
-// src/core/fs/errors.ts
-function isMissing(error) {
-  const code = error?.code;
-  return code === "ENOENT" || code === "ENOTDIR" || code === "EISDIR";
-}
-
-// src/core/fs/git-layout.ts
-import { createHash } from "node:crypto";
-import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
-import { dirname, isAbsolute, join, resolve } from "node:path";
-var GITDIR_LINE = /^gitdir:\s*(.+?)\s*$/m;
-function findWorktreeRoot(path) {
-  let dir = resolve(path);
-  if (existsSync(dir)) dir = realpathSync(dir);
-  for (; ; ) {
-    if (existsSync(join(dir, ".git"))) return dir;
-    const parent = dirname(dir);
-    if (parent === dir) return null;
-    dir = parent;
-  }
-}
-function worktreeIdFor(root) {
-  return createHash("sha256").update(realpathSync(root)).digest("hex").slice(0, 16);
-}
-function gitDirOf(root) {
-  return dotGit(root)?.gitDir ?? null;
-}
-function resolveCommonDir(root) {
-  const entry2 = dotGit(root);
-  if (entry2 === null) return null;
-  if (!entry2.isFile) return realpathSync(entry2.gitDir);
-  const { gitDir } = entry2;
-  if (lstatOrNull(gitDir) === null) return null;
-  const commondirFile = join(gitDir, "commondir");
-  if (lstatOrNull(commondirFile) === null) return realpathSync(gitDir);
-  const commondir = readFileSync(commondirFile, "utf8").trim();
-  const common = isAbsolute(commondir) ? commondir : resolve(gitDir, commondir);
-  return lstatOrNull(common) === null ? null : realpathSync(common);
-}
-function lstatOrNull(path) {
-  try {
-    return lstatSync(path);
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
-}
-function dotGit(root) {
-  const path = join(root, ".git");
-  const stat = lstatOrNull(path);
-  if (stat === null) return null;
-  if (stat.isDirectory()) return { gitDir: path, isFile: false };
-  if (!stat.isFile()) return null;
-  const match = GITDIR_LINE.exec(readFileSync(path, "utf8"));
-  return match?.[1] ? { gitDir: resolve(root, match[1]), isFile: true } : null;
-}
-
-// src/core/fs/json.ts
-function isRecord(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-// src/core/keys/glob.ts
-function globToRegExp(glob) {
-  if (glob.startsWith("!")) throw new Error(`squeal: negated input glob is not supported: ${glob}`);
-  if (glob.startsWith("/")) throw new Error(`squeal: input glob must be relative: ${glob}`);
-  const source = glob.startsWith("./") ? glob.slice(2) : glob;
-  return new RegExp(`^${compile(source, glob)}$`, "s");
-}
-function createInputMatcher(globs2) {
-  if (globs2.length === 0) return () => false;
-  const patterns = globs2.map(globToRegExp);
-  return (path) => patterns.some((pattern) => pattern.test(path));
-}
-function compile(glob, original) {
-  let out = "";
-  let i = 0;
-  while (i < glob.length) {
-    const char = glob[i];
-    if (char === "*") {
-      if (glob[i + 1] === "*") {
-        const atStart = i === 0 || glob[i - 1] === "/";
-        const atEnd = i + 2 === glob.length || glob[i + 2] === "/";
-        if (atStart && atEnd) {
-          if (i + 2 === glob.length) out += ".+";
-          else out += "(?:.+/)?";
-          i += 3;
-          continue;
-        }
-      }
-      out += "[^/]*";
-      i += glob[i + 1] === "*" ? 2 : 1;
-    } else if (char === "?") {
-      out += "[^/]";
-      i++;
-    } else if (char === "[") {
-      const end2 = glob.indexOf("]", i + 2);
-      if (end2 === -1) throw new Error(`squeal: unclosed [ in input glob: ${original}`);
-      let body = glob.slice(i + 1, end2);
-      const negated = body.startsWith("!");
-      if (negated) body = body.slice(1);
-      out += `[${negated ? "^/" : ""}${body.replace(/[\\\]]/g, "\\$&")}]`;
-      i = end2 + 1;
-    } else if (char === "{") {
-      const end2 = matchingBrace(glob, i, original);
-      const alternatives = splitTopLevel(glob.slice(i + 1, end2));
-      out += `(?:${alternatives.map((alt) => compile(alt, original)).join("|")})`;
-      i = end2 + 1;
-    } else {
-      out += char.replace(/[.+^$()|\\{}\]]/, "\\$&");
-      i++;
-    }
-  }
-  return out;
-}
-function matchingBrace(glob, open, original) {
-  let depth = 0;
-  for (let i = open; i < glob.length; i++) {
-    if (glob[i] === "{") depth++;
-    else if (glob[i] === "}" && --depth === 0) return i;
-  }
-  throw new Error(`squeal: unclosed { in input glob: ${original}`);
-}
-function splitTopLevel(body) {
-  const parts = [];
-  let depth = 0;
-  let start = 0;
-  for (let i = 0; i < body.length; i++) {
-    if (body[i] === "{") depth++;
-    else if (body[i] === "}") depth--;
-    else if (body[i] === "," && depth === 0) {
-      parts.push(body.slice(start, i));
-      start = i + 1;
-    }
-  }
-  parts.push(body.slice(start));
-  return parts;
-}
-
-// src/core/keys/closure.ts
-var CLOSURE_METHOD = "static imports plus declared inputs";
-function isInputList(inputs2) {
-  return Array.isArray(inputs2);
-}
-
-// src/core/keys/hidden-lockfile.ts
-var HIDDEN_LOCKFILE = "node_modules/.package-lock.json";
-
-// src/core/keys/environment.ts
-var LOCKFILES = [
-  { path: HIDDEN_LOCKFILE, patches: "patches" },
-  { path: "node_modules/.yarn-state.yml", patches: null },
-  { path: ".pnp.cjs", patches: ".yarn/patches" },
-  { path: ".pnp.js", patches: ".yarn/patches" },
-  { path: "node_modules/.yarn-integrity", patches: "patches" },
-  { path: "node_modules/.pnpm/lock.yaml", patches: null },
-  { path: ".rush/temp/shrinkwrap-deps.json", patches: null },
-  { path: "bun.lock", patches: "patches" },
-  { path: "bun.lockb", patches: "patches" }
-];
-function isInstalledLockfile(path) {
-  return LOCKFILES.some((format) => path === format.path || path.endsWith(`/${format.path}`));
-}
-
-// src/core/keys/reverse-index.ts
-function testFileId(ref) {
-  return `${ref.project}\0${ref.path}`;
-}
-
-// src/core/state/fingerprint.ts
-import { realpathSync as realpathSync2 } from "node:fs";
-import { tmpdir } from "node:os";
-
-// src/core/text.ts
-function plural(count, word) {
-  return `${count} ${word}${count === 1 ? "" : "s"}`;
-}
-function cap(text, max) {
-  return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
-}
-function excludedProjectsText(entries) {
-  const quoted = (list, join12) => {
-    const all = list.map((entry2) => JSON.stringify(entry2));
-    const last = all.pop();
-    return all.length === 0 ? last : `${all.join(", ")} ${join12} ${last}`;
-  };
-  const names = entries.filter((entry2) => !entry2.includes("*"));
-  const patterns = entries.filter((entry2) => entry2.includes("*"));
-  const parts = [
-    ...names.length === 0 ? [] : [`${names.length === 1 ? "project" : "projects"} ${quoted(names, "and")}`],
-    ...patterns.length === 0 ? [] : [`projects matching ${quoted(patterns, "or")}`]
-  ];
-  return { text: parts.join(" and "), plural: patterns.length > 0 || names.length > 1 };
-}
-
-// src/core/state/fingerprint.ts
-var SUMMARY_MAX_CHARS = 300;
-var VOLATILE = [
-  [/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g, "<time>"],
-  [/\b\d+(?:\.\d+)?\s?ms\b/g, "<n>ms"],
-  [/\b0x[0-9a-f]+\b/gi, "0x<addr>"],
-  // A cache path names a tool's scratch space; its segments are hashes and run ids.
-  [/(?:[^\s'"`(]*\/)?node_modules\/\.cache\/[^\s'"`):,]*/g, "<cache>"],
-  ...tempPrefixes().map((prefix) => [
-    new RegExp(`(?<![\\w.-])${escapeRegExp(prefix)}/[^\\s/'"\`):,]+`, "g"),
-    "<tmp>"
-  ]),
-  [/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "<uuid>"],
-  // At least one letter, so a long decimal value in an assertion is kept.
-  [/\b(?=[0-9a-f]*[a-f])[0-9a-f]{16,}\b/gi, "<hex>"]
-];
-function tempPrefixes() {
-  const dir = tmpdir().replace(/\/+$/, "");
-  let real = dir;
-  try {
-    real = realpathSync2(dir);
-  } catch {
-  }
-  return [.../* @__PURE__ */ new Set([dir, real, "/tmp"])].filter((p) => p !== "").sort((a, b) => b.length - a.length);
-}
-function escapeRegExp(text) {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-// src/core/state/derive.ts
-function checkIdentity(check) {
-  const name = check.kind === "test" ? check.fullName : "";
-  return `${check.kind}\0${check.project}\0${check.testPath}\0${name}`;
-}
-function testFileKeyOf(check) {
-  return testFileId(testFileOf(check));
-}
-function testFileOf(check) {
-  return { project: check.project, path: check.testPath };
-}
-
-// src/core/state/baseline.ts
-function baselineMetaKey(worktreeId) {
-  return worktreeMetaKey("baselineFindings", worktreeId);
-}
-function entry(check, fingerprint) {
-  return `${checkIdentity(check)}\0${fingerprint ?? ""}`;
-}
-function read(store, worktreeId) {
-  const raw = store.meta.get(baselineMetaKey(worktreeId));
-  return raw === null ? null : JSON.parse(raw);
-}
-function baselineFindings(store, worktreeId) {
-  const entries = new Set(read(store, worktreeId)?.entries);
-  return (check, fingerprint) => entries.has(entry(check, fingerprint));
-}
-
-// src/core/state/check-name.ts
-var FILE_LEVEL = " (file-level)";
-var GLOBAL_SETUP = "(global setup)";
-function formatCheck(check) {
-  const project = check.project === "" ? "" : `[${check.project}] `;
-  if (check.kind === "setup") {
-    return `${project}${check.testPath === "" ? "" : `${check.testPath} `}${GLOBAL_SETUP}`;
-  }
-  return check.kind === "test" ? `${project}${check.testPath} > ${check.fullName}` : `${project}${check.testPath}${FILE_LEVEL}`;
-}
-
-// src/core/state/flaky.ts
-var FLAKY_META_KEY = "flaky-checks";
-function readFlakyNotes(store) {
-  const raw = store.meta.get(FLAKY_META_KEY);
-  if (raw === null) return /* @__PURE__ */ new Map();
-  try {
-    const value = JSON.parse(raw);
-    if (typeof value !== "object" || value === null || Array.isArray(value)) return /* @__PURE__ */ new Map();
-    return new Map(
-      Object.entries(value).filter((entry2) => isNote(entry2[1]))
-    );
-  } catch {
-    return /* @__PURE__ */ new Map();
-  }
-}
-var OUTCOMES = /* @__PURE__ */ new Set(["pass", "fail"]);
-function isNote(value) {
-  if (typeof value !== "object" || value === null) return false;
-  const v = value;
-  return typeof v.key === "string" && OUTCOMES.has(v.from) && OUTCOMES.has(v.to) && typeof v.fromWorktreeId === "string" && typeof v.toWorktreeId === "string" && typeof v.at === "number";
-}
-
-// src/core/state/optimizer-note.ts
-function optimizerOffMetaKey(worktreeId) {
-  return worktreeMetaKey("optimizerOff", worktreeId);
-}
-function readOptimizerOff(store, worktreeId) {
-  const text = store.meta.get(optimizerOffMetaKey(worktreeId));
-  return text === null || text === "" ? void 0 : text;
-}
-
-// src/core/daemon/policy.ts
-import { join as join2 } from "node:path";
-
 // src/core/notes.ts
 function readDaemonNotes(store, worktreeId) {
   return parseList(store.meta.get(notesMetaKey(worktreeId))).flatMap(toNote).slice(-MAX_PERSISTED_NOTES);
@@ -518,6 +284,85 @@ function merge(shape, defaults, given, prefix, problems) {
 
 // src/core/daemon/policy-node-test.ts
 import { isAbsolute as isAbsolute2, posix } from "node:path";
+
+// src/core/keys/glob.ts
+function globToRegExp(glob) {
+  if (glob.startsWith("!")) throw new Error(`squeal: negated input glob is not supported: ${glob}`);
+  if (glob.startsWith("/")) throw new Error(`squeal: input glob must be relative: ${glob}`);
+  const source = glob.startsWith("./") ? glob.slice(2) : glob;
+  return new RegExp(`^${compile(source, glob)}$`, "s");
+}
+function createInputMatcher(globs2) {
+  if (globs2.length === 0) return () => false;
+  const patterns = globs2.map(globToRegExp);
+  return (path) => patterns.some((pattern) => pattern.test(path));
+}
+function compile(glob, original) {
+  let out = "";
+  let i = 0;
+  while (i < glob.length) {
+    const char = glob[i];
+    if (char === "*") {
+      if (glob[i + 1] === "*") {
+        const atStart = i === 0 || glob[i - 1] === "/";
+        const atEnd = i + 2 === glob.length || glob[i + 2] === "/";
+        if (atStart && atEnd) {
+          if (i + 2 === glob.length) out += ".+";
+          else out += "(?:.+/)?";
+          i += 3;
+          continue;
+        }
+      }
+      out += "[^/]*";
+      i += glob[i + 1] === "*" ? 2 : 1;
+    } else if (char === "?") {
+      out += "[^/]";
+      i++;
+    } else if (char === "[") {
+      const end = glob.indexOf("]", i + 2);
+      if (end === -1) throw new Error(`squeal: unclosed [ in input glob: ${original}`);
+      let body = glob.slice(i + 1, end);
+      const negated = body.startsWith("!");
+      if (negated) body = body.slice(1);
+      out += `[${negated ? "^/" : ""}${body.replace(/[\\\]]/g, "\\$&")}]`;
+      i = end + 1;
+    } else if (char === "{") {
+      const end = matchingBrace(glob, i, original);
+      const alternatives = splitTopLevel(glob.slice(i + 1, end));
+      out += `(?:${alternatives.map((alt) => compile(alt, original)).join("|")})`;
+      i = end + 1;
+    } else {
+      out += char.replace(/[.+^$()|\\{}\]]/, "\\$&");
+      i++;
+    }
+  }
+  return out;
+}
+function matchingBrace(glob, open, original) {
+  let depth = 0;
+  for (let i = open; i < glob.length; i++) {
+    if (glob[i] === "{") depth++;
+    else if (glob[i] === "}" && --depth === 0) return i;
+  }
+  throw new Error(`squeal: unclosed { in input glob: ${original}`);
+}
+function splitTopLevel(body) {
+  const parts = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < body.length; i++) {
+    if (body[i] === "{") depth++;
+    else if (body[i] === "}") depth--;
+    else if (body[i] === "," && depth === 0) {
+      parts.push(body.slice(start, i));
+      start = i + 1;
+    }
+  }
+  parts.push(body.slice(start));
+  return parts;
+}
+
+// src/core/daemon/policy-node-test.ts
 function compiles(globs2) {
   for (const glob of globs2) {
     try {
@@ -697,6 +542,164 @@ function readPolicy(root) {
 }
 function isNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+// src/core/keys/closure.ts
+var CLOSURE_METHOD = "static imports plus declared inputs";
+function isInputList(inputs2) {
+  return Array.isArray(inputs2);
+}
+
+// src/core/keys/hidden-lockfile.ts
+var HIDDEN_LOCKFILE = "node_modules/.package-lock.json";
+
+// src/core/keys/environment.ts
+var LOCKFILES = [
+  { path: HIDDEN_LOCKFILE, patches: "patches" },
+  { path: "node_modules/.yarn-state.yml", patches: null },
+  { path: ".pnp.cjs", patches: ".yarn/patches" },
+  { path: ".pnp.js", patches: ".yarn/patches" },
+  { path: "node_modules/.yarn-integrity", patches: "patches" },
+  { path: "node_modules/.pnpm/lock.yaml", patches: null },
+  { path: ".rush/temp/shrinkwrap-deps.json", patches: null },
+  { path: "bun.lock", patches: "patches" },
+  { path: "bun.lockb", patches: "patches" }
+];
+function isInstalledLockfile(path) {
+  return LOCKFILES.some((format) => path === format.path || path.endsWith(`/${format.path}`));
+}
+
+// src/core/keys/reverse-index.ts
+function testFileId(ref) {
+  return `${ref.project}\0${ref.path}`;
+}
+
+// src/core/state/fingerprint.ts
+import { realpathSync as realpathSync2 } from "node:fs";
+import { tmpdir } from "node:os";
+
+// src/core/text.ts
+function plural(count, word) {
+  return `${count} ${word}${count === 1 ? "" : "s"}`;
+}
+function cap(text, max) {
+  return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
+}
+function excludedProjectsText(entries) {
+  const quoted = (list, join12) => {
+    const all = list.map((entry2) => JSON.stringify(entry2));
+    const last = all.pop();
+    return all.length === 0 ? last : `${all.join(", ")} ${join12} ${last}`;
+  };
+  const names = entries.filter((entry2) => !entry2.includes("*"));
+  const patterns = entries.filter((entry2) => entry2.includes("*"));
+  const parts = [
+    ...names.length === 0 ? [] : [`${names.length === 1 ? "project" : "projects"} ${quoted(names, "and")}`],
+    ...patterns.length === 0 ? [] : [`projects matching ${quoted(patterns, "or")}`]
+  ];
+  return { text: parts.join(" and "), plural: patterns.length > 0 || names.length > 1 };
+}
+
+// src/core/state/fingerprint.ts
+var SUMMARY_MAX_CHARS = 300;
+var VOLATILE = [
+  [/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g, "<time>"],
+  [/\b\d+(?:\.\d+)?\s?ms\b/g, "<n>ms"],
+  [/\b0x[0-9a-f]+\b/gi, "0x<addr>"],
+  // A cache path names a tool's scratch space; its segments are hashes and run ids.
+  [/(?:[^\s'"`(]*\/)?node_modules\/\.cache\/[^\s'"`):,]*/g, "<cache>"],
+  ...tempPrefixes().map((prefix) => [
+    new RegExp(`(?<![\\w.-])${escapeRegExp(prefix)}/[^\\s/'"\`):,]+`, "g"),
+    "<tmp>"
+  ]),
+  [/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "<uuid>"],
+  // At least one letter, so a long decimal value in an assertion is kept.
+  [/\b(?=[0-9a-f]*[a-f])[0-9a-f]{16,}\b/gi, "<hex>"]
+];
+function tempPrefixes() {
+  const dir = tmpdir().replace(/\/+$/, "");
+  let real = dir;
+  try {
+    real = realpathSync2(dir);
+  } catch {
+  }
+  return [.../* @__PURE__ */ new Set([dir, real, "/tmp"])].filter((p) => p !== "").sort((a, b) => b.length - a.length);
+}
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// src/core/state/derive.ts
+function checkIdentity(check) {
+  const name = check.kind === "test" ? check.fullName : "";
+  return `${check.kind}\0${check.project}\0${check.testPath}\0${name}`;
+}
+function testFileKeyOf(check) {
+  return testFileId(testFileOf(check));
+}
+function testFileOf(check) {
+  return { project: check.project, path: check.testPath };
+}
+
+// src/core/state/baseline.ts
+function baselineMetaKey(worktreeId) {
+  return worktreeMetaKey("baselineFindings", worktreeId);
+}
+function entry(check, fingerprint) {
+  return `${checkIdentity(check)}\0${fingerprint ?? ""}`;
+}
+function read(store, worktreeId) {
+  const raw = store.meta.get(baselineMetaKey(worktreeId));
+  return raw === null ? null : JSON.parse(raw);
+}
+function baselineFindings(store, worktreeId) {
+  const entries = new Set(read(store, worktreeId)?.entries);
+  return (check, fingerprint) => entries.has(entry(check, fingerprint));
+}
+
+// src/core/state/check-name.ts
+var FILE_LEVEL = " (file-level)";
+var GLOBAL_SETUP = "(global setup)";
+function formatCheck(check) {
+  const project = check.project === "" ? "" : `[${check.project}] `;
+  if (check.kind === "setup") {
+    return `${project}${check.testPath === "" ? "" : `${check.testPath} `}${GLOBAL_SETUP}`;
+  }
+  return check.kind === "test" ? `${project}${check.testPath} > ${check.fullName}` : `${project}${check.testPath}${FILE_LEVEL}`;
+}
+
+// src/core/state/flaky.ts
+var FLAKY_META_KEY = "flaky-checks";
+function readFlakyNotes(store) {
+  const raw = store.meta.get(FLAKY_META_KEY);
+  if (raw === null) return /* @__PURE__ */ new Map();
+  try {
+    const value = JSON.parse(raw);
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return /* @__PURE__ */ new Map();
+    return new Map(
+      Object.entries(value).filter((entry2) => isNote(entry2[1]))
+    );
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+var OUTCOMES = /* @__PURE__ */ new Set(["pass", "fail"]);
+function isNote(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value;
+  return typeof v.key === "string" && OUTCOMES.has(v.from) && OUTCOMES.has(v.to) && typeof v.fromWorktreeId === "string" && typeof v.toWorktreeId === "string" && typeof v.at === "number";
+}
+function flakyText(note) {
+  return `flaky: ${note.from.toUpperCase()} -> ${note.to.toUpperCase()} under the same inputs`;
+}
+
+// src/core/state/optimizer-note.ts
+function optimizerOffMetaKey(worktreeId) {
+  return worktreeMetaKey("optimizerOff", worktreeId);
+}
+function readOptimizerOff(store, worktreeId) {
+  const text = store.meta.get(optimizerOffMetaKey(worktreeId));
+  return text === null || text === "" ? void 0 : text;
 }
 
 // src/core/delivery/slots.ts
@@ -1233,9 +1236,9 @@ function checkPartsText({ tests, testFiles, setups = 0 }, fileLevel = "loaded") 
     ...setups > 0 ? [plural(setups, "global setup")] : []
   ].join(", ");
 }
-function partsSuffix(count, fileLevel, fileLevelWord) {
+function partsSuffix(count, fileLevel, fileLevelWord2) {
   if (count === 0 || fileLevel === void 0) return "";
-  return ` (${checkPartsText({ tests: count - fileLevel, testFiles: fileLevel }, fileLevelWord)})`;
+  return ` (${checkPartsText({ tests: count - fileLevel, testFiles: fileLevel }, fileLevelWord2)})`;
 }
 function countedText(count, label, fileLevel) {
   return `${count} ${label}${partsSuffix(count, fileLevel)}`;
@@ -1250,8 +1253,41 @@ function failureCountText(checks) {
 }
 
 // src/core/delivery/collapse.ts
+var LISTED_MAX = 5;
+var FILES_SHOWN = 10;
 function checkName(check) {
   return cap(formatCheck(check), SUMMARY_MAX_CHARS);
+}
+var fileName = (check) => `${check.project === "" ? "" : `[${check.project}] `}${check.testPath}`;
+function nameLines(checks, fileLevel) {
+  if (checks.length <= LISTED_MAX) return checks.map(checkName);
+  const grouped = byFile(checks, fileLevel);
+  return grouped.length < checks.length ? grouped : checks.map(checkName);
+}
+function byFile(checks, fileLevel) {
+  const byFile2 = /* @__PURE__ */ new Map();
+  for (const check of checks) {
+    byFile2.set(fileName(check), [...byFile2.get(fileName(check)) ?? [], check]);
+  }
+  const files2 = [...byFile2].sort(
+    ([a, m], [b, n]) => n.length - m.length || (a < b ? -1 : a > b ? 1 : 0)
+  );
+  const parts = (list) => checkPartsText(countChecks(list), fileLevel);
+  const lines = files2.slice(0, FILES_SHOWN).map(([file, list]) => `${parts(list)} in ${file}`);
+  const rest = files2.slice(FILES_SHOWN);
+  if (rest.length === 0) return lines;
+  const restChecks = rest.flatMap(([, list]) => list);
+  return [...lines, `and ${plural(rest.length, "more test file")} (${parts(restChecks)})`];
+}
+function collapse(head, changed, stillFailing) {
+  if (changed.length <= LISTED_MAX) return null;
+  const changedLines = nameLines(changed);
+  if (stillFailing === void 0) return { head, lines: changedLines };
+  const failingLines = [
+    `still failing: ${failureCountText(stillFailing)}`,
+    ...nameLines(stillFailing, "that did not load")
+  ];
+  return { head, lines: failingLines.length <= changedLines.length ? failingLines : changedLines };
 }
 
 // src/core/delivery/consumer-version.ts
@@ -2061,8 +2097,8 @@ function createRunRepo(conn) {
       );
       return { ...record, endedAt: null, end: null };
     },
-    finish: (id, end2, at2) => {
-      conn.run("UPDATE runs SET end_state = ?, ended_at = ? WHERE id = ?", end2, at2, id);
+    finish: (id, end, at2) => {
+      conn.run("UPDATE runs SET end_state = ?, ended_at = ? WHERE id = ?", end, at2, id);
     },
     get: (id) => {
       const row = conn.get("SELECT * FROM runs WHERE id = ?", id);
@@ -2104,8 +2140,8 @@ function createCheckpointRepo(conn) {
       );
       return { ...record, completedAt: null, end: null };
     },
-    finish: (id, end2, at2) => {
-      conn.run("UPDATE checkpoints SET end_state = ?, completed_at = ? WHERE id = ?", end2, at2, id);
+    finish: (id, end, at2) => {
+      conn.run("UPDATE checkpoints SET end_state = ?, completed_at = ? WHERE id = ?", end, at2, id);
     },
     get: (id) => {
       const row = conn.get("SELECT * FROM checkpoints WHERE id = ?", id);
@@ -2808,10 +2844,10 @@ function isCorruption(error) {
 }
 function recover(paths, options) {
   mkdirSync(paths.locksDir, { recursive: true });
-  const lock2 = new DatabaseSync(join5(paths.locksDir, "store-recovery.sqlite"));
+  const lock = new DatabaseSync(join5(paths.locksDir, "store-recovery.sqlite"));
   try {
-    lock2.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
-    lock2.exec("BEGIN EXCLUSIVE");
+    lock.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
+    lock.exec("BEGIN EXCLUSIVE");
     const again = connect(paths, { ...options, checkIntegrity: true });
     if (!("corrupt" in again)) return again;
     const now = options.now ?? Date.now;
@@ -2825,8 +2861,8 @@ function recover(paths, options) {
     }
     return fresh2;
   } finally {
-    rollback(lock2);
-    lock2.close();
+    rollback(lock);
+    lock.close();
   }
 }
 function moveAside(database, at2) {
@@ -2842,12 +2878,12 @@ function moveAside(database, at2) {
 function closureFor(store, worktreeId) {
   const keys = /* @__PURE__ */ new Map();
   const keyOf = (id, ref) => {
-    let byFile = keys.get(id);
-    if (byFile === void 0) {
-      byFile = new Map(store.testFileKeys.list(id).map((r) => [testFileId(r.testFile), r.key]));
-      keys.set(id, byFile);
+    let byFile2 = keys.get(id);
+    if (byFile2 === void 0) {
+      byFile2 = new Map(store.testFileKeys.list(id).map((r) => [testFileId(r.testFile), r.key]));
+      keys.set(id, byFile2);
     }
-    return byFile.get(testFileId(ref)) ?? null;
+    return byFile2.get(testFileId(ref)) ?? null;
   };
   return (ref) => {
     const record = store.testFiles.get(ref);
@@ -3063,8 +3099,8 @@ function beforeFailing(history, state) {
   const passed = entered.from === "unknown" ? passBeforeUnknown(history, at2) : null;
   return passed ?? { outcome: entered.from, fingerprint: entered.fromFingerprint };
 }
-function passBeforeUnknown(history, end2) {
-  for (let i = end2 - 1; i >= 0 && history[i]?.to === "unknown"; i--) {
+function passBeforeUnknown(history, end) {
+  for (let i = end - 1; i >= 0 && history[i]?.to === "unknown"; i--) {
     const from = history[i]?.from;
     if (from === "pass") return { outcome: "pass", fingerprint: null };
     if (from !== "unknown") return null;
@@ -3270,37 +3306,7 @@ function settled(since, rekeyed, states) {
 }
 
 // src/core/waiter-lock/waiter-lock.ts
-import { createHash as createHash3 } from "node:crypto";
-import { existsSync as existsSync4, mkdirSync as mkdirSync2, rmSync as rmSync3 } from "node:fs";
-import { join as join6 } from "node:path";
 import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
-function waiterLockPath(locksDir, consumer) {
-  const id = createHash3("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
-  return join6(locksDir, `waiter-${id}.sqlite`);
-}
-function removeWaiterLock(locksDir, consumer) {
-  const path = waiterLockPath(locksDir, consumer);
-  if (!existsSync4(path)) return;
-  const db = lock(path);
-  if (db === null) return;
-  try {
-    rmSync3(path, { force: true });
-  } finally {
-    db.close();
-  }
-}
-function lock(path) {
-  const db = new DatabaseSync2(path);
-  try {
-    db.exec("PRAGMA busy_timeout = 0");
-    db.exec("PRAGMA locking_mode = EXCLUSIVE");
-    db.exec("BEGIN EXCLUSIVE");
-    return db;
-  } catch {
-    db.close();
-    return null;
-  }
-}
 
 // src/core/delivery/harness-process.ts
 import { readFileSync as readFileSync3, readlinkSync } from "node:fs";
@@ -3337,26 +3343,26 @@ function recordHarness(store, consumer, harness) {
 }
 
 // src/core/status/died.ts
-import { existsSync as existsSync5 } from "node:fs";
+import { existsSync as existsSync4 } from "node:fs";
 
 // src/core/daemon/lock.ts
-import { mkdirSync as mkdirSync3 } from "node:fs";
+import { mkdirSync as mkdirSync2 } from "node:fs";
 import { dirname as dirname2 } from "node:path";
 import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
 function acquireDaemonLock(path) {
   const db = lockDatabase(path);
-  let lock2;
+  let lock;
   try {
-    lock2 = tryLock(db);
+    lock = tryLock(db);
   } catch (error) {
     db.close();
     throw error;
   }
-  if (lock2 === null) db.close();
-  return lock2;
+  if (lock === null) db.close();
+  return lock;
 }
 function lockDatabase(path) {
-  mkdirSync3(dirname2(path), { recursive: true });
+  mkdirSync2(dirname2(path), { recursive: true });
   const db = new DatabaseSync3(path);
   try {
     db.exec("PRAGMA busy_timeout = 0");
@@ -3411,11 +3417,11 @@ function shutDown(store, worktreeId, self) {
 }
 function daemonGone(worktree) {
   const path = lockFileFor(worktree.commonDir, worktree.id);
-  if (!existsSync5(path)) return false;
+  if (!existsSync4(path)) return false;
   try {
-    const lock2 = acquireDaemonLock(path);
-    lock2?.release();
-    return lock2 !== null;
+    const lock = acquireDaemonLock(path);
+    lock?.release();
+    return lock !== null;
   } catch {
     return false;
   }
@@ -3433,7 +3439,7 @@ function files(refs) {
 
 // src/core/daemon/runner.ts
 import { readdirSync, readFileSync as readFileSync4 } from "node:fs";
-import { join as join7 } from "node:path";
+import { join as join6 } from "node:path";
 var VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
 function vitestDetected(root) {
   let names;
@@ -3445,7 +3451,7 @@ function vitestDetected(root) {
   if (names.some((name) => VITEST_CONFIG.test(name))) return true;
   let manifest;
   try {
-    manifest = JSON.parse(readFileSync4(join7(root, "package.json"), "utf8"));
+    manifest = JSON.parse(readFileSync4(join6(root, "package.json"), "utf8"));
   } catch {
     return false;
   }
@@ -3458,24 +3464,24 @@ function vitestDetected(root) {
 
 // src/core/status/git-head.ts
 import { readFileSync as readFileSync5 } from "node:fs";
-import { join as join8 } from "node:path";
+import { join as join7 } from "node:path";
 var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 var MAX_REF_DEPTH = 5;
 function readGitHead(root) {
   const gitDir = gitDirOf(root);
   const commonDir = resolveCommonDir(root);
   if (gitDir === null || commonDir === null) return null;
-  let value = read2(join8(gitDir, "HEAD"));
+  let value = read2(join7(gitDir, "HEAD"));
   for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
     if (SHA.test(value)) return value;
     const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
     if (ref === void 0) return null;
-    value = read2(join8(gitDir, ref)) ?? read2(join8(commonDir, ref)) ?? packed(commonDir, ref);
+    value = read2(join7(gitDir, ref)) ?? read2(join7(commonDir, ref)) ?? packed(commonDir, ref);
   }
   return null;
 }
 function packed(commonDir, ref) {
-  for (const line of (read2(join8(commonDir, "packed-refs")) ?? "").split("\n")) {
+  for (const line of (read2(join7(commonDir, "packed-refs")) ?? "").split("\n")) {
     const [sha, name] = line.split(" ");
     if (name === ref && sha !== void 0 && SHA.test(sha)) return sha;
   }
@@ -4079,6 +4085,70 @@ function createDelivery(store, options) {
 }
 
 // src/core/delivery/provenance.ts
+var upper = (outcome) => outcome.toUpperCase();
+var TOUCHED_SHOWN = 3;
+function change(entry2) {
+  switch (entry2.kind) {
+    case "first-seen-fail":
+      return entry2.from === null ? "first observed: FAIL" : `${upper(entry2.from)} -> FAIL`;
+    case "fail-changed":
+      return "FAIL -> FAIL, failure changed";
+    default:
+      return `${entry2.from === null ? "NONE" : upper(entry2.from)} -> ${upper(entry2.to)}`;
+  }
+}
+function inheritedFrom(entry2) {
+  if (entry2.origin.kind !== "inherited") return null;
+  const commit = entry2.origin.commit === null ? "no commit" : `commit ${entry2.origin.commit.slice(0, 12)}`;
+  return `${entry2.originRoot ?? `worktree ${entry2.origin.worktreeId}`} at ${commit}`;
+}
+function validityText(entry2, revision) {
+  if (entry2.validity === "pending") return `revision ${revision} pending`;
+  return entry2.validity === "stale" ? "stale" : null;
+}
+function seenLine(entry2, revision) {
+  const from = inheritedFrom(entry2);
+  const baseline = entry2.baseline === true;
+  const parts = [
+    change(entry2),
+    from === null ? `seen by Squeal's ${baseline ? "baseline " : ""}run at revision ${entry2.observedAt}` : `seen by Squeal's run in ${from}, inherited ${baseline ? "by the baseline " : ""}at revision ${entry2.observedAt}`,
+    validityText(entry2, revision)
+  ];
+  return parts.filter((p) => p !== null).join(", ");
+}
+function slowSeenLine(entry2, revision) {
+  const artifact = entry2.slowArtifact;
+  const from = inheritedFrom(entry2);
+  const parts = [
+    change(entry2),
+    from === null ? `slow tier, Squeal's run saw it at revision ${entry2.observedAt}` : `slow tier, Squeal's run in ${from} saw it, inherited at revision ${entry2.observedAt}`,
+    artifact === null ? "declared artifact unknown" : artifact === void 0 || artifact.length === 0 ? "against no declared artifact" : `against ${artifact.join(", ")} as of revision ${entry2.observedAt}`,
+    validityText(entry2, revision)
+  ];
+  return parts.filter((p) => p !== null).join(", ");
+}
+function recoveryProvenance(entry2, revision) {
+  const parts = [];
+  if (entry2.validity === "stale") parts.push(`stale, observed at revision ${entry2.observedAt}`);
+  if (entry2.validity === "pending") {
+    parts.push(`observed at revision ${entry2.observedAt}, revision ${revision} pending`);
+  }
+  const from = inheritedFrom(entry2);
+  if (from !== null) parts.push(`inherited from ${from}`);
+  return parts.length === 0 ? null : parts.join("; ");
+}
+var CHANGED_HERE = "files changed here since this session started";
+function touchesLine(entry2) {
+  const paths = entry2.changesInClosure;
+  if (paths === void 0) return null;
+  if (paths.length === 0) return `none of the ${CHANGED_HERE} are in its imports`;
+  const more = paths.length - TOUCHED_SHOWN;
+  const shown = paths.slice(0, TOUCHED_SHOWN).join(", ");
+  return `touches ${CHANGED_HERE}: ${shown}${more > 0 ? ` and ${more} more` : ""}`;
+}
+function loadLine(entry2) {
+  return entry2.loadAverage === void 0 ? null : `load average ${entry2.loadAverage.toFixed(2)} when it ran`;
+}
 function installSentences(header) {
   if (header.dependenciesInstalled === false) {
     return " No dependencies are installed in this worktree; failures that cannot find a package are expected until an install.";
@@ -4093,6 +4163,9 @@ var OVERFLOW_RESERVE = 400;
 var INDENT = "      ";
 var SQUEAL_COMMAND = "squeal";
 var statusPointer = (command) => `\`${command} status\` lists every known failure.`;
+var partsText = (checks, fileLevel) => checkPartsText(countChecks(checks), fileLevel);
+var fileLevelWord = (shown) => shown === "fail" ? "that did not load" : "loaded";
+var upper2 = (outcome) => outcome.toUpperCase();
 var capitalize = (text) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 function shellWord(text) {
   return /["$`\\]/.test(text) ? `'${text.replaceAll("'", "'\\''")}'` : `"${text}"`;
@@ -4149,11 +4222,73 @@ function block(head, lines, counted) {
   const body = lines.filter((l) => l !== null).map((l) => `${INDENT}${l}`);
   return { text: [head, ...body].join("\n"), counted };
 }
+function entryBlock(entry2, revision) {
+  const failed = entry2.to === "fail";
+  const slow = failed && entry2.slowArtifact !== void 0;
+  return block(
+    `${upper2(entry2.to)}  ${checkName(entry2.check)}`,
+    [
+      slow ? slowSeenLine(entry2, revision) : failed ? seenLine(entry2, revision) : change(entry2),
+      entry2.summary === null ? null : cap(entry2.summary, SUMMARY_MAX_CHARS),
+      entry2.location === null ? null : at(entry2.location),
+      ...failed ? [slow ? null : touchesLine(entry2), loadLine(entry2)] : [recoveryProvenance(entry2, revision)],
+      entry2.flaky === void 0 ? null : capitalize(flakyText(entry2.flaky))
+    ],
+    [{ check: entry2.check, shown: entry2.to }]
+  );
+}
+function retiredBlock(entry2) {
+  return block(
+    `RESOLVED  ${checkName(entry2.check)}`,
+    ["FAIL -> no longer reported by the runner"],
+    [{ check: entry2.check, shown: "resolved" }]
+  );
+}
+function collapsedBlock({ head, lines }, shown, checks) {
+  return block(
+    head,
+    lines,
+    checks.map((check) => ({ check, shown }))
+  );
+}
+function recoveryBlocks(entries, delta) {
+  const checks = entries.map((e) => e.check);
+  const head = `PASS  ${plural(checks.length, "check")} recovered (FAIL -> PASS): ${partsText(checks)}`;
+  const collapsed = collapse(head, checks, delta.stillFailing);
+  if (collapsed !== null) return [collapsedBlock(collapsed, "pass", checks)];
+  return entries.map((e) => entryBlock(e, delta.header.revision));
+}
+function retiredBlocks(entries, delta) {
+  const checks = entries.map((e) => e.check);
+  const head = `RESOLVED  ${plural(checks.length, "check")} no longer reported by the runner (FAIL -> RESOLVED): ${partsText(checks)}`;
+  const collapsed = collapse(head, checks, delta.stillFailing);
+  if (collapsed !== null) return [collapsedBlock(collapsed, "resolved", checks)];
+  return entries.map(retiredBlock);
+}
+function unknownBlocks(entries) {
+  const byReason = /* @__PURE__ */ new Map();
+  for (const e of entries) {
+    const reason = e.summary ?? "no trusted result";
+    byReason.set(reason, [...byReason.get(reason) ?? [], e]);
+  }
+  return [...byReason].map(([reason, group]) => {
+    const files2 = [...new Set(group.map((e) => e.check.testPath))];
+    const from = (outcome) => group.filter((e) => e.from === outcome).map((e) => e.check);
+    const counts = ["pass", "fail"].filter((o) => from(o).length > 0).map((o) => `${upper2(o)} -> UNKNOWN (${partsText(from(o))})`);
+    const listed2 = files2.slice(0, 5).join(", ");
+    const more = files2.length > 5 ? ` and ${plural(files2.length - 5, "more file")}` : "";
+    return block(
+      `UNKNOWN  ${checksText(group.map((e) => e.check))} in ${plural(files2.length, "test file")}`,
+      [counts.join(", "), cap(reason, SUMMARY_MAX_CHARS), `${listed2}${more}`],
+      group.map((e) => ({ check: e.check, shown: "unknown" }))
+    );
+  });
+}
 function assemble(head, blocks, overflow, tail, max) {
-  const end2 = tail === null ? "" : `
+  const end = tail === null ? "" : `
 
 ${tail}`;
-  const room = max - end2.length;
+  const room = max - end.length;
   let out = head;
   for (const [i, b] of blocks.entries()) {
     const next = `${out}
@@ -4166,9 +4301,66 @@ ${b.text}`;
     }
     return `${cap(`${out}
 
-${overflow(blocks.slice(i))}`, room)}${end2}`;
+${overflow(blocks.slice(i))}`, room)}${end}`;
   }
-  return `${out}${end2}`;
+  return `${out}${end}`;
+}
+function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS) {
+  const { header, entries } = delta;
+  const changed = entries.filter((e) => e.kind !== "fail-retired");
+  const retired = entries.filter((e) => e.kind === "fail-retired");
+  const title = entries.length === 0 ? delta.liveness === void 0 ? `SQUEAL \xB7 revision ${header.revision}` : livenessTitle(delta.liveness, header.revision) : delta.label === "baseline" ? `SQUEAL \xB7 Squeal's baseline run found ${checksText(checksOf(entries), "failing check", "that did not load")} at revision ${header.revision}` : `SQUEAL \xB7 ${plural(entries.length, "check")} changed (${partsText(checksOf(entries))}) at revision ${header.revision}`;
+  const blocks = [
+    ...changed.filter((e) => e.to === "fail").map((e) => entryBlock(e, header.revision)),
+    ...unknownBlocks(changed.filter((e) => e.to === "unknown")),
+    ...recoveryBlocks(
+      changed.filter((e) => e.to === "pass"),
+      delta
+    ),
+    ...retiredBlocks(retired, delta)
+  ];
+  const failed = changed.find((e) => e.to === "fail");
+  const overflow = (left) => {
+    const counted = left.flatMap((b) => b.counted);
+    const by = ["fail", "pass", "unknown", "resolved"].map((o) => [o, counted.filter((c) => c.shown === o).map((c) => c.check)]).filter(([, checks]) => checks.length > 0).map(([o, checks]) => `${checks.length} ${upper2(o)}: ${partsText(checks, fileLevelWord(o))}`);
+    return `Not shown: ${counted.length} more changed checks (${by.join("; ")}). ${statusPointer(command)}`;
+  };
+  const tail = failed === void 0 ? null : whyLine(failed.check, command);
+  return assemble(
+    [title, ...headerLines(header, command), ...editLines(delta)].join("\n"),
+    blocks,
+    overflow,
+    tail,
+    max
+  );
+}
+function sawEditLine(queued) {
+  return `Squeal saw your edit and queued ${plural(queued, "test file")}; results arrive with later tool calls, and passing ones stay silent.`;
+}
+function settledLine({ since, files: files2, unknown }) {
+  const which = `${files2 === 1 ? "The test file" : `All ${files2} test files`} your edits since revision ${since} re-keyed`;
+  if (unknown === 0) return `${which} ${files2 === 1 ? "is" : "are"} current.`;
+  return `${which} finished: ${files2 - unknown} current, ${unknown} with no result (unknown).`;
+}
+function sawSettledLine({ files: files2, unknown }) {
+  const head = "Squeal saw your edit; ";
+  const tail = "passing results stay silent.";
+  if (unknown === 0) {
+    const which = files2 === 1 ? "the 1 test file" : `all ${files2} test files`;
+    return `${head}${which} it re-keyed ${files2 === 1 ? "is" : "are"} current, and ${tail}`;
+  }
+  return `${head}of the ${plural(files2, "test file")} it re-keyed, ${files2 - unknown} current and ${unknown} with no result (unknown); ${tail}`;
+}
+function editLines({ sawEdit, editsSettled }) {
+  if (sawEdit !== void 0 && editsSettled !== void 0) return [sawSettledLine(editsSettled)];
+  return [
+    ...sawEdit === void 0 ? [] : [sawEditLine(sawEdit.queued)],
+    ...editsSettled === void 0 ? [] : [settledLine(editsSettled)]
+  ];
+}
+var checksOf = (entries) => entries.map((e) => e.check);
+function livenessTitle(liveness2, revision) {
+  return liveness2?.state === "alive" ? `SQUEAL \xB7 a daemon is validating again at revision ${revision}` : `SQUEAL \xB7 no daemon is validating at revision ${revision}`;
 }
 function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQUEAL_COMMAND) {
   const { header, knownFailures } = registration2;
@@ -4206,8 +4398,8 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
 }
 
 // src/harness/shared/context.ts
-import { existsSync as existsSync6 } from "node:fs";
-import { join as join9 } from "node:path";
+import { existsSync as existsSync5 } from "node:fs";
+import { join as join8 } from "node:path";
 function locate(cwd) {
   const root = findWorktreeRoot(cwd);
   if (root === null) return null;
@@ -4215,7 +4407,7 @@ function locate(cwd) {
   return commonDir === null ? null : { root, commonDir };
 }
 function usesSqueal(location2) {
-  return existsSync6(storePaths(location2.commonDir).database) || existsSync6(join9(location2.root, "squeal.config.json"));
+  return existsSync5(storePaths(location2.commonDir).database) || existsSync5(join8(location2.root, "squeal.config.json"));
 }
 function openContext(input, location2, options = {}) {
   const store = openStore(location2.commonDir, {
@@ -4242,6 +4434,55 @@ function openContext(input, location2, options = {}) {
     store.close();
     throw error;
   }
+}
+
+// src/harness/shared/coverage.ts
+import { existsSync as existsSync6 } from "node:fs";
+import { join as join9, posix as posix4 } from "node:path";
+var VITEST_ONLY = {
+  vitest: true,
+  vitestConfig: null,
+  nodeTest: [],
+  slow: null
+};
+var CONFIG_NAMES = ["vitest.config", "vite.config"];
+var CONFIG_EXTENSIONS = [".ts", ".mts", ".cts", ".js", ".mjs", ".cjs"];
+function coverageOf(context) {
+  const policy = readPolicy(context.root);
+  const keys = context.store.testFileKeys.list(context.consumer.worktreeId);
+  const others = [...policy.nodeTest, ...policy.pytest];
+  const otherNames = new Set(others.map((project) => project.name));
+  const vitest = others.length === 0 || vitestDetected(context.root);
+  const listed2 = vitest ? keys : keys.filter((row) => otherNames.has(row.testFile.project));
+  const view = slowPolicyView(policy);
+  return {
+    vitest,
+    vitestConfig: vitest ? vitestConfig(context.root) : null,
+    vitestExcluded: vitest ? policy.vitest.excludeProjects : [],
+    nodeTest: policy.nodeTest.map(fromRoot),
+    pytest: policy.pytest.map(fromRoot),
+    slow: view === null ? null : {
+      files: keys.length === 0 ? null : listed2.filter((row) => view.isSlow(row.testFile)).length
+    }
+  };
+}
+function fromRoot({
+  name,
+  cwd,
+  include
+}) {
+  return {
+    name,
+    include: include.map((glob) => cwd === void 0 ? glob : posix4.join(cwd, glob))
+  };
+}
+function vitestConfig(root) {
+  for (const name of CONFIG_NAMES) {
+    for (const extension of CONFIG_EXTENSIONS) {
+      if (existsSync6(join9(root, `${name}${extension}`))) return `${name}${extension}`;
+    }
+  }
+  return null;
 }
 
 // src/harness/shared/ensure.ts
@@ -4271,10 +4512,10 @@ function requestDaemon(socketPath, request, timeoutMs) {
 `));
     socket.on("data", (chunk) => {
       buffer += chunk;
-      const end2 = buffer.indexOf("\n");
-      if (end2 < 0) return;
+      const end = buffer.indexOf("\n");
+      if (end < 0) return;
       try {
-        settle2(null, JSON.parse(buffer.slice(0, end2)));
+        settle2(null, JSON.parse(buffer.slice(0, end)));
       } catch {
         settle2(failure("EPROTO", `malformed answer from ${socketPath}`));
       }
@@ -4295,7 +4536,7 @@ function failure(code, message) {
 
 // src/core/daemon/ensure.ts
 import { spawn } from "node:child_process";
-import { existsSync as existsSync7, mkdirSync as mkdirSync4 } from "node:fs";
+import { existsSync as existsSync7, mkdirSync as mkdirSync3 } from "node:fs";
 
 // src/core/daemon/paths.ts
 import { dirname as dirname3, isAbsolute as isAbsolute4, join as join10 } from "node:path";
@@ -4381,7 +4622,7 @@ async function ensureDaemon(root, options = {}) {
     const commonDir = resolveCommonDir(root);
     if (commonDir === null) return "unavailable";
     const cwd = storePaths(commonDir).dir;
-    mkdirSync4(cwd, { recursive: true });
+    mkdirSync3(cwd, { recursive: true });
     const child = spawn(process.execPath, [cli, "daemon", root, ...lockWait], {
       cwd,
       detached: true,
@@ -4408,7 +4649,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.180";
+  if (true) return "0.1.181";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4563,14 +4804,9 @@ async function withContext(input, location2, deps, fn, overrides = {}) {
     context.close();
   }
 }
-
-// src/harness/shared/coverage.ts
-var VITEST_ONLY = {
-  vitest: true,
-  vitestConfig: null,
-  nodeTest: [],
-  slow: null
-};
+function isRegistered(context) {
+  return context.store.consumers.get(context.consumer) !== null;
+}
 
 // src/harness/shared/primer.ts
 var PRIMER_CAP_CHARS = 1500;
@@ -4655,51 +4891,32 @@ function slowSentences(command, naming) {
   ];
 }
 var PRIMER = primer();
+function withPrimer(registration2, command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
+  const tail = primer(command, coverage);
+  const max = MESSAGE_CAP_CHARS - tail.length - 2;
+  return `${formatRegistration(registration2, max, command)}
 
-// src/harness/shared/sweep.ts
-async function unregisterSession(context, sessionId, options) {
-  const { store, delivery } = context;
-  const worktrees = /* @__PURE__ */ new Set([
-    context.consumer.worktreeId,
-    ...store.worktrees.list().map((w) => w.id)
-  ]);
-  const consumers = [...worktrees].flatMap(
-    (id) => store.consumers.list(id).map((record) => record.consumer).filter((consumer) => consumer.sessionId === sessionId && !same(consumer, options.except))
-  );
-  const errors = [];
-  const attempt = async (fn) => {
-    try {
-      await fn();
-    } catch (error) {
-      errors.push(error);
+${tail}`;
+}
+
+// src/harness/shared/prompt.ts
+function submitPrompt(input, location2, deps, options) {
+  if (!usesSqueal(location2)) return Promise.resolve(null);
+  return withContext(input, location2, deps, async (context) => {
+    const now = (deps.now ?? Date.now)();
+    if (isRegistered(context)) {
+      const delta = await context.delivery.startTurn(context.consumer);
+      return delta === null ? null : formatDelta(delta, deps.command);
     }
-  };
-  for (const consumer of consumers) await attempt(() => delivery.unregister(consumer));
-  if (options.removeLocks) {
-    const { locksDir } = storePaths(context.commonDir);
-    for (const consumer of consumers) await attempt(() => removeWaiterLock(locksDir, consumer));
-  }
-  if (errors.length === 1) throw errors[0];
-  if (errors.length > 1) {
-    throw new AggregateError(
-      errors,
-      `squeal: ${errors.length} errors unregistering session ${sessionId}`
-    );
-  }
-  return consumers;
-}
-function same(a, b) {
-  return b !== void 0 && a.worktreeId === b.worktreeId && a.sessionId === b.sessionId && a.agentId === b.agentId;
-}
-
-// src/harness/shared/session.ts
-async function endSession(input, locations, deps) {
-  for (const at2 of locations) {
-    await withContext(input, at2, deps, async (context) => {
-      await unregisterSession(context, input.session_id, { removeLocks: true });
-      return null;
+    if (!options.register) return null;
+    const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
+    const startingSince = daemonLiveness(record, now).state === "alive" ? void 0 : await ensureToRegister(location2, deps, context);
+    const registration2 = await context.delivery.register(context.consumer, {
+      inTurn: true,
+      ...startingSince === void 0 ? {} : { startingSince }
     });
-  }
+    return withPrimer(registration2, deps.command, coverageOf(context));
+  });
 }
 
 // src/harness/opencode/bridge.ts
@@ -4719,65 +4936,35 @@ var consumerInput = (consumer) => ({
   session_id: consumer.sessionId,
   ...consumer.agentId === void 0 ? {} : { agent_id: consumer.agentId }
 });
-async function register(request, deps) {
+async function prompt(request, deps) {
   const location2 = locate(request.worktree);
-  if (location2 === null || !usesSqueal(location2)) return { header: null };
-  let ensured = false;
-  const header = await withContext(
-    consumerInput(request.consumer),
-    location2,
-    deps,
-    async (context) => {
-      ensured = true;
-      const startingSince = await ensureToRegister(location2, deps, context);
-      const registration2 = await context.delivery.register(context.consumer, {
-        atStart: true,
-        ...startingSince === void 0 ? {} : { startingSince }
-      });
-      return formatRegistration(registration2, MESSAGE_CAP_CHARS, deps.command);
-    }
-  );
-  if (!ensured) await ensure(location2, deps);
-  return { header };
+  if (location2 === null) return { text: null };
+  const text = await submitPrompt(consumerInput(request.consumer), location2, deps, {
+    register: true
+  });
+  return { text, stopWaitMs: readPolicy(location2.root).stop.waitMs };
 }
-async function end(request, deps) {
-  const location2 = locate(request.worktree);
-  if (location2 === null) return { ended: 0 };
-  for (const sessionId of request.sessions) {
-    await endSession({ session_id: sessionId }, [location2], deps);
-  }
-  for (const consumer of request.consumers) {
-    await withContext(consumerInput(consumer), location2, deps, async (context) => {
-      await context.delivery.unregister(context.consumer);
-      return null;
-    });
-  }
-  return { ended: request.sessions.length + request.consumers.length };
-}
-function handle(request, deps) {
-  switch (request.kind) {
-    case "register":
-      return register(request, deps);
-    case "end":
-      return end(request, deps);
-    case "ping":
-      return Promise.resolve({ pong: true });
-  }
-}
-async function runBridge(stdin2, module) {
+async function runBridge(stdin, module, kind, handler) {
   try {
-    const request = JSON.parse(stdin2);
-    const answer = await handle(request, bridgeDeps(module, request));
+    const request = JSON.parse(stdin);
+    if (request.kind !== kind) throw new Error(`not a ${kind} request`);
+    const answer = await handler(
+      request,
+      bridgeDeps(module, request)
+    );
     process.stdout.write(JSON.stringify({ answer }));
   } catch {
     process.exitCode = 1;
   }
 }
-
-// src/harness/opencode/entries/hooks/opencode.ts
-var stdin = "";
-try {
-  stdin = readFileSync7(0, "utf8");
-} catch {
+async function runEntry(module, kind, handler) {
+  let stdin = "";
+  try {
+    stdin = readFileSync7(0, "utf8");
+  } catch {
+  }
+  await runBridge(stdin, new URL(module), kind, handler);
 }
-await runBridge(stdin, new URL(import.meta.url));
+
+// src/harness/opencode/entries/hooks/prompt.ts
+await runEntry(import.meta.url, "prompt", prompt);
