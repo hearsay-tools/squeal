@@ -10,6 +10,7 @@ import { BLOCK_VERSION, instructionFiles } from "./block.js";
 import { slowCandidates } from "./candidates.js";
 import { scanGates, squealLine } from "./gates.js";
 import { type HarnessFact, readHarnesses } from "./harnesses.js";
+import { type PytestRunner, pytestRunners } from "./pytest.js";
 import { otherWorktrees, type RepoFacts, readJson, readRepoFacts } from "./repo.js";
 import { testFileUniverse, unselected } from "./test-globs.js";
 
@@ -52,6 +53,8 @@ export interface Runners {
     readonly include: readonly string[];
     readonly source: "config" | "seed";
   }[];
+  /** Spec 007 D1: `config` when `squeal.config.json` lists `pytest` projects; else what setup would seed. */
+  readonly pytest?: readonly PytestRunner[];
 }
 
 export interface ConfigFact {
@@ -63,7 +66,7 @@ export interface ConfigFact {
   /** What `loadPolicy` reports: unknown keys, wrong types, unreadable JSON. */
   readonly problems: readonly string[];
   /** Keys specs 002 to 005 added that the repository's evidence calls for and the file lacks. */
-  readonly missingKeys: readonly ("nodeTest" | "slow")[];
+  readonly missingKeys: readonly ("nodeTest" | "slow" | "pytest")[];
 }
 
 export interface InstructionFile {
@@ -183,7 +186,8 @@ export async function readPlan(
   const { policy, problems } = loadPolicy(root);
   const raw = readJson(join(root, POLICY_FILE));
   const projects = nodeTestProjects(facts, policy, raw);
-  const runners = readRunners(facts, projects);
+  const pytest = pytestRunners(facts, policy, raw, options.env);
+  const runners: Runners = { ...readRunners(facts, projects), pytest };
   const exists = existsSync(join(root, POLICY_FILE));
   const slow = await slowCandidates(facts, policy, runners);
   const config: ConfigFact = {
@@ -197,6 +201,10 @@ export async function readPlan(
       ...(exists && !(isRecord(raw) && "slow" in raw) && slow.groups.some((g) => g.defaultSlow)
         ? ["slow" as const]
         : []),
+      // Spec 007 D1: only an absent key; init's default `pytest: []` is seeded over, not reported.
+      ...(exists && !(isRecord(raw) && "pytest" in raw) && pytest.some((p) => p.source === "seed")
+        ? ["pytest" as const]
+        : []),
     ],
   };
   const { testFiles } = facts;
@@ -205,7 +213,7 @@ export async function readPlan(
     nodeTest: runners.nodeTest.length > 0,
   });
   const harnesses = readHarnesses(root, options.env);
-  const universe = testFileUniverse(facts, projects);
+  const universe = testFileUniverse(facts, [...projects, ...pytest]);
   const plan: SetupPlan = {
     schemaVersion: SETUP_PLAN_SCHEMA_VERSION,
     root,

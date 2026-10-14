@@ -8,6 +8,7 @@ import type { CliIo } from "../main.js";
 import { blockText, resolved, unfindableBlock, withBlock, writeBlockFile } from "./block.js";
 import { rewordGates } from "./gates.js";
 import { readPlan, type SetupPlan } from "./plan.js";
+import { writePytestSeed } from "./pytest.js";
 import { asDirectoryGlob, directoryIn, holdsTestFile, selectsAny } from "./test-globs.js";
 
 /*
@@ -230,7 +231,11 @@ function applyChoices(root: AbsolutePath, choices: SetupChoices, plan: SetupPlan
     lines.push(`kept gate line ${id}`);
   }
   if (choices.block !== null && choices.block !== "none") {
-    const runners = { vitest: plan.runners.vitest, nodeTest: plan.runners.nodeTest.length > 0 };
+    const runners = {
+      vitest: plan.runners.vitest,
+      nodeTest: plan.runners.nodeTest.length > 0,
+      pytest: (plan.runners.pytest?.length ?? 0) > 0,
+    };
     const edit = writeBlockFile(root, choices.block, blockText(runners));
     lines.push(
       edit.result === "unchanged"
@@ -240,6 +245,7 @@ function applyChoices(root: AbsolutePath, choices: SetupChoices, plan: SetupPlan
   } else if (choices.block === "none") lines.push("wrote no Squeal block");
   if (choices.slow.length > 0 || choices.inputs.length > 0)
     lines.push(...editConfig(root, choices));
+  lines.push(...writePytestSeed(root, plan));
   return lines;
 }
 
