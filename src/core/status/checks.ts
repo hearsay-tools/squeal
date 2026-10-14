@@ -61,8 +61,8 @@ export function countedText(count: number, label: string, fileLevel: number | un
 
 /** `3 checks (2 tests, 1 test file loaded)`: `checks` counted with `noun`, then their parts. */
 export function checksText(checks: readonly CheckId[], noun = "check", fileLevel?: string): string {
-  const { testFiles } = countChecks(checks);
-  return `${plural(checks.length, noun)}${partsSuffix(checks.length, testFiles, fileLevel)}`;
+  const parts = checks.length === 0 ? "" : ` (${checkPartsText(countChecks(checks), fileLevel)})`;
+  return `${plural(checks.length, noun)}${parts}`;
 }
 
 /** `3 (2 tests, 1 test file that did not load)`, or `0`: the count of a `Known failures:` line. */

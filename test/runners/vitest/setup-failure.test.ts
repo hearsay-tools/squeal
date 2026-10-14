@@ -2,7 +2,13 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readVerdict, verdictCode } from "../../../src/cli/verdict.js";
-import { failureCountText } from "../../../src/core/status/index.js";
+import { formatDelta } from "../../../src/core/delivery/index.js";
+import {
+  failureCountText,
+  formatCheck,
+  parseCheck,
+  readWhy,
+} from "../../../src/core/status/index.js";
 import type { KnownState } from "../../../src/core/types/index.js";
 import { knownFailuresLine } from "../../../src/harness/shared/text.js";
 import {
@@ -64,11 +70,27 @@ function setupRepo() {
 const failing = (h: Harness): KnownState[] =>
   h.store.knownStates.list(h.worktreeId).filter((s) => s.outcome === "fail");
 
+describe("a setup check's name", () => {
+  it("round-trips through the one formatter, with and without a project and a file", () => {
+    for (const check of [
+      SETUP_CHECK,
+      { kind: "setup", project: "e2e", testPath: "packages/web/e2e/environment.ts" },
+      { kind: "setup", project: "e2e", testPath: "" },
+    ] as const) {
+      expect(parseCheck(formatCheck(check))).toEqual(check);
+    }
+    expect(formatCheck({ kind: "setup", project: "e2e", testPath: "" })).toBe(
+      "[e2e] (global setup)",
+    );
+  });
+});
+
 describe("a global setup that throws once", SLOW, () => {
   it("is one known failure with its cause and no file FAIL, and the next revision runs the setup again", async () => {
     const { repo, count } = setupRepo();
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir);
+    const { delivery, consumer } = await h.consumer();
     await h.scheduler.start();
     await h.scheduler.idle();
 
@@ -96,6 +118,15 @@ describe("a global setup that throws once", SLOW, () => {
     expect(knownFailuresLine(failing(h).map((s) => s.check))).toBe(
       "Known failures: 1 (setup.ts (global setup))",
     );
+    // One line delivered, naming the setup error with its code and cause; `squeal why` finds it.
+    const delta = await delivery.onToolBoundary(consumer);
+    const text = delta === null ? "" : formatDelta(delta);
+    expect(text).toContain(`FAIL  setup.ts (global setup)\n      first observed: FAIL`);
+    expect(text).toContain(SUMMARY);
+    expect(text).toMatch(/^SQUEAL · 1 check changed \(1 global setup\) at revision 0\n/);
+    expect(text).not.toMatch(/FAIL {2}test\//);
+    const why = readWhy(repo.main, "setup.ts (global setup)");
+    expect("knownState" in why ? why.knownState?.summary : why).toBe(SUMMARY);
     const blocked = readVerdict(store, h.worktreeId);
     expect(blocked.failures).toEqual({ tests: 0, testFiles: 0, setups: 1 });
     expect(blocked.byClass.unknown).toBe(ALL_TEST_FILES.length);
@@ -110,9 +141,28 @@ describe("a global setup that throws once", SLOW, () => {
     expect(count()).toBe(2);
     expect(failing(h)).toEqual([]);
     expect(store.knownStates.get(h.worktreeId, SETUP_CHECK)?.outcome).toBe("pass");
+    const recovered = await delivery.onToolBoundary(consumer);
+    expect(recovered === null ? "" : formatDelta(recovered)).toContain(
+      "PASS  setup.ts (global setup)",
+    );
     const settled = readVerdict(store, h.worktreeId);
     expect(settled.byClass.current).toBe(ALL_TEST_FILES.length);
     expect(verdictCode(settled)).toBe(0);
+  });
+
+  it("runs the setup again at `run --all` with no edit", async () => {
+    const { repo, count } = setupRepo();
+    const store = openRepoStore(repo.commonDir);
+    const h = await openHarness(repo.main, store, repo.commonDir);
+    await h.scheduler.start();
+    await h.scheduler.idle();
+    expect(failing(h).map((s) => s.check)).toEqual([SETUP_CHECK]);
+
+    await h.scheduler.requestFullSuite({});
+    await h.scheduler.idle();
+    expect(count()).toBe(2);
+    expect(failing(h)).toEqual([]);
+    expect(verdictCode(readVerdict(store, h.worktreeId))).toBe(0);
   });
 
   it("keeps its failure across a daemon restart, and the restarted daemon's run clears it", async () => {
