@@ -1,0 +1,80 @@
+3a5d161 remove squeal.config.json (005-18 arm b)
+fa994be cezar 5dbb4b09 (git archive)
+ls: cannot access 'squeal.config.json': No such file or directory
+Squeal setup plan for /home/squeal-e2e/runs/sq18-cz/fresh
+
+Harnesses:
+  claude-code: on the PATH, plugin not installed
+    install: claude plugin marketplace add hearsay-tools/marketplace
+    install: claude plugin install squeal@hearsay
+  codex: on the PATH, plugin not installed
+    install: codex plugin marketplace add hearsay-tools/marketplace
+    install: codex plugin add squeal@hearsay
+
+Runners: Vitest, node:test test:unit (squeal init would seed it), node:test test:package (squeal init would seed it)
+Config: squeal.config.json is missing here; one is in /home/squeal-e2e/runs/sq18-cz/asis/squeal.config.json
+
+Instruction files:
+  AGENTS.md (also CLAUDE.md): read by claude-code and codex; no Squeal block
+
+Gate lines:
+  AGENTS.md:172: | Cockpit e2e specs (`packages/web/e2e/*.e2e.ts`, the browser seam, a flaky shard) | `packages/web/e2e/README.md`, then `packages/web/e2e/agent-browser.ts` and `packages/web/e2e/contrast.ts` | Wait, then read, as one step: `click`/`hover`/`fill` auto-wait for their selector, `waitForValue` polls an expression and returns the sample that passed (hearsay-tools/cezarion#409); a one-shot `expect(browser.…)` right after an action is a race. `packages/web/src/test/e2e-wait-discipline.test.ts` scans every spec on `npm test` against a baseline that only shrinks. A red shard leaves a failure bundle (`.ai/qa/failures/`); read it before theorizing, and no flake fix lands without one or a local reproduction. |
+    reworded: | Cockpit e2e specs (`packages/web/e2e/*.e2e.ts`, the browser seam, a flaky shard) | `packages/web/e2e/README.md`, then `packages/web/e2e/agent-browser.ts` and `packages/web/e2e/contrast.ts` | Wait, then read, as one step: `click`/`hover`/`fill` auto-wait for their selector, `waitForValue` polls an expression and returns the sample that passed (hearsay-tools/cezarion#409); a one-shot `expect(browser.…)` right after an action is a race. `packages/web/src/test/e2e-wait-discipline.test.ts` scans every spec on `squeal run --all --wait 110000` against a baseline that only shrinks. A red shard leaves a failure bundle (`.ai/qa/failures/`); read it before theorizing, and no flake fix lands without one or a local reproduction. |. If it exits 3 at its deadline, run it again; if it exits 3 for another reason, `squeal` is unavailable, or you doubt its result, run `npm test` instead.
+  AGENTS.md:185: Do not duplicate those background runs with `npm test`,
+    reworded: Do not duplicate those background runs with `squeal run --all --wait 110000`,. If it exits 3 at its deadline, run it again; if it exits 3 for another reason, `squeal` is unavailable, or you doubt its result, run `npm test` instead.
+  AGENTS.md:201: browser is an error in a Squeal run. `npm test` and `npm run test:watch` select
+    reworded: browser is an error in a Squeal run. `squeal run --all --wait 110000` and `npm run test:watch` select. If it exits 3 at its deadline, run it again; if it exits 3 for another reason, `squeal` is unavailable, or you doubt its result, run `npm test` instead.
+  AGENTS.md:224: npm test            # vitest — server + cockpit unit suites
+    inside a code block: reword it by hand
+  AGENTS.md:237: `npm test` and `npm run test:unit` are the fast unit gate: no server, no browser. They must stay that way. `npm run test:package` needs a completed `npm run build` (it packs the tarball). Pull request CI runs packaged CLI E2E and cockpit browser E2E as separate checks; the required aggregate fails if the cockpit suite is skipped or failed.
+    reworded: `squeal run --all --wait 110000` and `npm run test:unit` are the fast unit gate: no server, no browser. They must stay that way. `npm run test:package` needs a completed `npm run build` (it packs the tarball). Pull request CI runs packaged CLI E2E and cockpit browser E2E as separate checks; the required aggregate fails if the cockpit suite is skipped or failed. If it exits 3 at its deadline, run it again; if it exits 3 for another reason, `squeal` is unavailable, or you doubt its result, run `npm test` instead.
+  AGENTS.md:239: **When a manual Vitest run is needed, use npm, never `npx vitest`.** It is a devDependency of this repo, so `npm test`
+    runs the test command more than once: reword it by hand
+  AGENTS.md:245: npm test -- packages/web/src/routes/settings   # one directory
+    inside a code block: reword it by hand
+  AGENTS.md:246: npm test -- --testTimeout=30000 path/to/one.test.ts
+    inside a code block: reword it by hand
+  AGENTS.md:247: npm test -- -t "the name of one test"
+    inside a code block: reword it by hand
+  AGENTS.md:326: | Verification | Local: Squeal when installed and validating, otherwise focused npm checks. Full gate in CI: `npm run typecheck`, `npm test`, `npm run test:unit`, `npm run build`, `npm run test:package`, `npm run test:e2e` |
+    reworded: | Verification | Local: Squeal when installed and validating, otherwise focused npm checks. Full gate in CI: `npm run typecheck`, `squeal run --all --wait 110000`, `npm run test:unit`, `npm run build`, `npm run test:package`, `npm run test:e2e` |. If it exits 3 at its deadline, run it again; if it exits 3 for another reason, `squeal` is unavailable, or you doubt its result, run `npm test` instead.
+
+Slow groups:
+  packages/cezar/test/e2e (13 files): under a directory named e2e; run by npm script .:test:package; run by npm script packages/cezar:test:package; node:test project test:package
+    not declared slow; default slow; inputs: none
+    artifact? packages/cezar/dist
+      packages/cezar/package.json bin "dist/index.js"
+      packages/cezar/package.json exports "./dist/index.js"
+      packages/cezar/package.json exports "./dist/server/app-type.js"
+      packages/cezar/package.json files "dist" (weak)
+      build script packages/cezar:build (tsc) writes packages/cezar/dist
+      gitignored, named by 9 of 13 test files, such as "dist/"
+    artifact? packages/cezar/scripts
+      packages/cezar/package.json files "scripts" (weak)
+      named by 3 of 13 test files, such as "scripts/mock-cursor-print.mjs"
+    artifact? packages/cezar/web
+      gitignored, named by 2 of 13 test files, such as "web/dist"
+    artifact? packages/cezar/web/dist
+      packages/cezar/package.json files "web/dist" (weak)
+      gitignored, named by 2 of 13 test files, such as "web/dist/index.html"
+  packages/cezar/test/unit (10 files): node:test project test:unit
+    not declared slow; default not slow; inputs: none
+    artifact? packages/cezar/dist
+      packages/cezar/package.json bin "dist/index.js"
+      packages/cezar/package.json exports "./dist/index.js"
+      packages/cezar/package.json exports "./dist/server/app-type.js"
+      packages/cezar/package.json files "dist" (weak)
+      build script packages/cezar:build (tsc) writes packages/cezar/dist
+      gitignored, named by 2 of 10 test files, such as "packages/cezar/dist/index.js"
+    artifact? packages/cezar/scripts
+      packages/cezar/package.json files "scripts" (weak)
+      named by 1 of 10 test files, such as "../../scripts/mock-cursor-hang-stdin.mjs"
+    artifact? packages/cezar/web/dist
+      packages/cezar/package.json files "web/dist" (weak)
+  not resolved statically: .:test:e2e = sh .ai/scripts/e2e.sh
+
+Codex trust: not checked; squeal init --harness codex --trust checks it
+Warm-up: runs all 744 test files, 744 without a current result (estimated: no daemon has listed them)
+
+Outdated:
+  squeal.config.json is only in /home/squeal-e2e/runs/sq18-cz/asis/squeal.config.json: this worktree runs on defaults
