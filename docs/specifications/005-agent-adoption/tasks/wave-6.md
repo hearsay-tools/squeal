@@ -90,3 +90,29 @@ The eval slot is shared with the other coordinators. Start each session only whi
 - `lessons.md` answers each Proof bullet, with the evidence and the n behind it. Lead with the effect size, then p and the n that would confirm it.
 - Every session is listed with its model, load and result.
 - A credential scan of everything committed finds nothing.
+
+## 005-42 review of waves 4 to 6
+
+Use /reviewer.
+
+**Outcome.** A findings file, `reviews/wave-4-6.md`, on 005's commits from `00c98842` to `8dfe244d`. It must be written within 15 minutes of starting, then extended.
+
+**Scope.** Only 005's commits in that range, listed with `git log --grep '00[5]-'`:
+- 005-17, the real-CLI suite and its isolation;
+- 005-38, the default-input ranking;
+- 005-40, refused or normalized globs, `--check`, and the Codex hint;
+- 005-39 and 005-41, the warm-up texts.
+
+The 001 commits in between are reviewed by 001.
+
+**Check.**
+- Setup never writes a config that silently selects nothing.
+- The default input never leaves out the artifact the evidence names.
+- `--check` agrees with what is written.
+- The two setup skill copies are identical and say only what Squeal does.
+- `runIsolated`'s guard holds: no real HOME, no credential in argv or output.
+
+**Rules.**
+- Run no model session and never the real `claude` or `codex`.
+- `test/real-cli` is read-only for you.
+- One `npx vitest run --maxWorkers=4`.
