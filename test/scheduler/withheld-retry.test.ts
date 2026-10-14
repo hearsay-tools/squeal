@@ -214,4 +214,35 @@ describe("a tier the completion barrier withholds (task 007-30)", SLOW, () => {
       .flatMap((ran) => ran?.split(", ") ?? []);
     expect(stopped.sort()).toEqual([0, 1, 2].map(fileName));
   });
+
+  it("never queues an exhausted file again under a forced checkpoint (review 007-33, B1)", async () => {
+    const { main } = claimRepo(3);
+    const a = side(main, { count: 3, tierSize: 2, backlogTierSize: 2 });
+    await a.scheduler.start();
+    await a.scheduler.idle();
+    const files = [0, 1, 2].map(fileName);
+    const before = files.map((path) => a.runner.ran(path));
+    const keys = files.map((path) => a.keyOf(path));
+    const revision = a.store.revisions.latest(a.worktreeId)?.number;
+    a.runner.during = (ran) => {
+      for (const file of ran) {
+        const path = join(main, file.path);
+        writeFileSync(path, readFileSync(path));
+      }
+    };
+    const put = puts(a.store);
+    await a.scheduler.requestFullSuite({ force: true });
+    await a.scheduler.idle();
+
+    // The forced entry of a file withheld twice is not queued again: each runs twice at its key.
+    expect(files.map((path, i) => a.runner.ran(path) - (before[i] ?? 0))).toEqual([2, 2, 2]);
+    expect(files.map((path) => a.keyOf(path))).toEqual(keys);
+    expect(a.store.revisions.latest(a.worktreeId)?.number).toBe(revision);
+    expect(put()).toEqual([]);
+    expect(files.map((path) => a.phase(path))).toEqual([null, null, null]);
+    const stopped = readDaemonNotes(a.store, a.worktreeId)
+      .map((note) => / in a row of (.*) and ended as it was/.exec(note.text)?.[1])
+      .flatMap((ran) => ran?.split(", ") ?? []);
+    expect(stopped.sort()).toEqual(files);
+  });
 });
