@@ -2555,6 +2555,9 @@ var init_baseline = __esm({
 // src/core/state/check-name.ts
 function formatCheck(check) {
   const project = check.project === "" ? "" : `[${check.project}] `;
+  if (check.kind === "setup") {
+    return `${project}${check.testPath === "" ? "" : `${check.testPath} `}${GLOBAL_SETUP}`;
+  }
   return check.kind === "test" ? `${project}${check.testPath} > ${check.fullName}` : `${project}${check.testPath}${FILE_LEVEL}`;
 }
 function parseCheck(name2) {
@@ -2563,6 +2566,9 @@ function parseCheck(name2) {
   const project = match2[1] ?? "";
   const rest = match2[2] ?? "";
   const split2 = rest.indexOf(" > ");
+  if (split2 === -1 && rest.endsWith(GLOBAL_SETUP)) {
+    return { kind: "setup", project, testPath: rest.slice(0, -GLOBAL_SETUP.length).trimEnd() };
+  }
   if (split2 === -1) {
     const testPath = rest.endsWith(FILE_LEVEL) ? rest.slice(0, -FILE_LEVEL.length) : rest;
     return { kind: "file", project, testPath };
@@ -2574,11 +2580,12 @@ function parseCheck(name2) {
     fullName: rest.slice(split2 + 3)
   };
 }
-var FILE_LEVEL;
+var FILE_LEVEL, GLOBAL_SETUP;
 var init_check_name = __esm({
   "src/core/state/check-name.ts"() {
     "use strict";
     FILE_LEVEL = " (file-level)";
+    GLOBAL_SETUP = "(global setup)";
   }
 });
 
@@ -3443,6 +3450,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
   let inheritedCount = 0;
   let inheritedFileLevelCount = 0;
   for (const state of states) {
+    if (state.check.kind === "setup") continue;
     counts[state.validity]++;
     if (state.check.kind === "file") fileLevelCounts[state.validity]++;
     if (state.validity === "current" && state.origin?.kind === "inherited") {
@@ -3690,6 +3698,25 @@ function createStateSink(store, options = {}) {
       }
       return commit(revision, [...next.values()], provenance.checkpointId);
     }),
+    setupOutcome: (worktreeId, revision, { check, commit, error }) => store.transaction(() => {
+      const { commit: write2 } = begin(worktreeId);
+      const failure2 = error === null ? null : describeFailure([error], error.location);
+      const state = {
+        worktreeId,
+        check,
+        outcome: failure2 === null ? "pass" : "fail",
+        validity: "current",
+        pendingPhase: null,
+        observedAt: revision,
+        commit,
+        origin: { kind: "own" },
+        durationMs: null,
+        location: error?.location ?? null,
+        summary: failure2?.summary ?? null,
+        fingerprint: failure2?.fingerprint ?? null
+      };
+      return write2(revision, [state], null);
+    }),
     // A told failure stays in the view: delivery reports it once as no longer reported (D6).
     retire: (worktreeId, checks) => store.transaction(() => {
       store.knownStates.removeMany(worktreeId, checks);
@@ -3708,6 +3735,7 @@ var init_sink = __esm({
     init_state2();
     init_baseline();
     init_derive();
+    init_fingerprint();
     init_inherited();
     init_transitions();
   }
@@ -4237,9 +4265,8 @@ function checkParams(check) {
 function checkFrom(row) {
   const project = str(row, "check_project");
   const testPath = str(row, "check_test_path");
-  if (oneOf2(row, "check_kind", ["test", "file"]) === "file") {
-    return { kind: "file", project, testPath };
-  }
+  const kind = oneOf2(row, "check_kind", ["test", "file", "setup"]);
+  if (kind !== "test") return { kind, project, testPath };
   return { kind: "test", project, testPath, fullName: str(row, "check_full_name") };
 }
 function findCheckId(conn, check) {
@@ -6051,6 +6078,7 @@ function breakdown(states, keys) {
   const fileLevelByPhase = { queued: 0, running: 0 };
   const filesWithChecks = /* @__PURE__ */ new Set();
   for (const s of states) {
+    if (s.check.kind === "setup") continue;
     const file = testFileKeyOf(s.check);
     filesWithChecks.add(file);
     const fileLevel = s.check.kind === "file";
@@ -6858,12 +6886,12 @@ function settleFailures(ledger, failures, retrying, changed) {
   if (failures.size > 0) block(ledger, failures);
   else if (retrying) ledger.settle(unblock(ledger), changed);
 }
-function block(ledger, failures) {
+function block(ledger, failures, only = () => true) {
   const every = failures.get(null);
   const byReason = /* @__PURE__ */ new Map();
   for (const file of ledger.files.values()) {
     const reason2 = every ?? failures.get(file.ref.project);
-    if (reason2 === void 0 || file.blocked !== null) continue;
+    if (reason2 === void 0 || file.blocked !== null || !only(file)) continue;
     file.blocked = reason2;
     if (!ledger.queue.isForced(file.ref)) ledger.queue.remove(file.ref);
     const files2 = byReason.get(reason2);
@@ -6877,6 +6905,7 @@ function block(ledger, failures) {
     );
   }
   ledger.broken = true;
+  return [...byReason.values()].flat();
 }
 function unblock(ledger) {
   const refs2 = [];
@@ -8594,6 +8623,65 @@ var init_rerun = __esm({
   }
 });
 
+// src/core/scheduler/setup.ts
+function notStartedReason(startup) {
+  return startup.setupFile === null ? "not run: the run failed to start" : `not run: global setup ${startup.setupFile} failed`;
+}
+function failStartup(ledger, startup, notStarted, commit) {
+  const projects2 = new Set(startup.projects);
+  const inTier = new Set(notStarted.map(({ file }) => file.id));
+  for (const { file, forced } of notStarted) {
+    if (projects2.has(file.ref.project) || file.key === null || file.blocked !== null) continue;
+    ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), forced);
+  }
+  const failures = /* @__PURE__ */ new Map();
+  for (const project of projects2) failed(failures, project, notStartedReason(startup));
+  const waiting = (file) => inTier.has(file.id) || ledger.queue.has(file.ref);
+  for (const file of block(ledger, failures, waiting)) ledger.queue.remove(file.ref);
+  for (const project of projects2) {
+    const check = { kind: "setup", project, testPath: startup.setupFile ?? "" };
+    ledger.setups.fail(check, startup.error, commit);
+  }
+}
+var SetupFailures;
+var init_setup = __esm({
+  "src/core/scheduler/setup.ts"() {
+    "use strict";
+    init_derive();
+    init_context();
+    init_failures();
+    init_queue();
+    SetupFailures = class {
+      #failing = /* @__PURE__ */ new Map();
+      #owed = [];
+      /** Takes in the failing setup checks a previous daemon left (bootstrap). */
+      restore(states) {
+        for (const { check, outcome: outcome2 } of states) {
+          if (check.kind === "setup" && outcome2 === "fail") {
+            this.#failing.set(checkIdentity(check), check);
+          }
+        }
+      }
+      fail(check, error, commit) {
+        this.#failing.set(checkIdentity(check), check);
+        this.#owed.push({ check, commit, error });
+      }
+      /** A run of `projects` started: their failing setups pass. */
+      pass(projects2, commit) {
+        for (const [id2, check] of this.#failing) {
+          if (!projects2.has(check.project)) continue;
+          this.#failing.delete(id2);
+          this.#owed.push({ check, commit, error: null });
+        }
+      }
+      /** The outcomes owed to the sink since the last commit. */
+      take() {
+        return this.#owed.splice(0);
+      }
+    };
+  }
+});
+
 // src/core/scheduler/slow.ts
 function slowView(policy) {
   let view = views.get(policy);
@@ -8647,6 +8735,7 @@ var init_ledger = __esm({
     init_rekeyed_moves();
     init_rekeyed_record();
     init_rerun();
+    init_setup();
     init_slow3();
     MAX_DISCARDS = 3;
     Ledger = class {
@@ -8678,6 +8767,8 @@ var init_ledger = __esm({
       broken = false;
       /** The last test file listing failed; the next revision lists again. */
       listingFailed = false;
+      /** Global setups that failed to start a run, and their outcomes owed to the sink (task 001-382). */
+      setups = new SetupFailures();
       #dirty = /* @__PURE__ */ new Set();
       #removed = [];
       #applied = [];
@@ -8953,6 +9044,7 @@ var init_ledger = __esm({
         const applied = this.#applied;
         const unknown = this.#unknown;
         const retired = this.#retired;
+        const setups = this.setups.take();
         this.#applied = [];
         this.#unknown = [];
         this.#retired = [];
@@ -8974,6 +9066,7 @@ var init_ledger = __esm({
             sink.markUnknown(worktreeId, revision, testFiles, reason2);
           }
           if (retired.length > 0) sink.retire(worktreeId, retired);
+          for (const outcome2 of setups) sink.setupOutcome(worktreeId, revision, outcome2);
           for (const [checkpointId, testFiles] of this.#byCheckpoint(rows)) {
             sink.refresh(worktreeId, revision, { checkpointId }, testFiles);
           }
@@ -9549,6 +9642,9 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, requeue = fal
   const firstSeen = [];
   const grewEnvironment = [];
   const failedAnew = [];
+  const notStarted = [];
+  const startup = report2.startupFailure;
+  const startupIds = new Set((startup?.testFiles ?? []).map(testFileId));
   const { environment } = observed;
   const unstable = (path) => changedOnDisk.has(path) || duringRun.has(path) || observed.changed.has(path);
   store.transaction(() => {
@@ -9564,7 +9660,8 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, requeue = fal
         continue;
       }
       if (!completed.has(file.id)) {
-        if (splitCap === null) unknown.push({ file, key: key2 });
+        if (startupIds.has(file.id)) notStarted.push({ file, forced });
+        else if (splitCap === null) unknown.push({ file, key: key2 });
         else requeueSplit(ledger, file, splitCap, forced, recent === true);
         continue;
       }
@@ -9629,6 +9726,10 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, requeue = fal
       context,
       grown.map((g2) => g2.ref)
     );
+    const started2 = new Set(report2.completedFiles.map((f) => f.project));
+    for (const project of startup?.projects ?? []) started2.delete(project);
+    ledger.setups.pass(started2, provenance.commit);
+    if (startup !== void 0) failStartup(ledger, startup, notStarted, provenance.commit);
     const timedOut = report2.end === "timed-out" ? timedOutReason(context.policy.runner.timeoutMs) : null;
     const reason2 = timedOut ?? report2.failure ?? `run ${report2.end}`;
     ledger.markUnknown(unknown, reason2);
@@ -9650,6 +9751,7 @@ var init_tiers = __esm({
     init_records();
     init_rerun();
     init_revision2();
+    init_setup();
     init_sharing();
     init_slow3();
     init_stability();
@@ -9785,7 +9887,7 @@ async function baseline(context, ledger, changed = NOTHING_CHANGED) {
     store.testFileKeys.list(worktreeId).map((row) => [testFileId(row.testFile), row])
   );
   const refs2 = listed2 ?? [...previousKeys.values()].map((row) => row.testFile);
-  const known2 = knownChecks(context);
+  const known2 = knownChecks(context, ledger);
   const fromStore = /* @__PURE__ */ new Set();
   const unresolved = [];
   for (const ref2 of refs2) {
@@ -9873,9 +9975,11 @@ function newestResults(store, ref2) {
 function testFilePaths(ledger) {
   return [...ledger.files.values()].map((file) => file.ref.path);
 }
-function knownChecks(context) {
+function knownChecks(context, ledger) {
   const byFile = /* @__PURE__ */ new Map();
-  for (const state of context.store.knownStates.list(context.worktreeId)) {
+  const states = context.store.knownStates.list(context.worktreeId);
+  ledger.setups.restore(states);
+  for (const state of states) {
     const id2 = testFileId({ project: state.check.project, path: state.check.testPath });
     let known2 = byFile.get(id2);
     if (!known2) {
@@ -15759,6 +15863,10 @@ var init_reporter = __esm({
       logFile = null;
       #requested;
       #names = /* @__PURE__ */ new WeakMap();
+      /** The test files the run was asked for. */
+      get requested() {
+        return this.#requested.values();
+      }
       #ref(project, moduleId) {
         const path = this.paths.toRelative(moduleId);
         return path === null ? null : this.#requested.get(refKey({ project, path })) ?? null;
@@ -16743,7 +16851,8 @@ async function execute(vitest, specs, timeoutMs, collector, signal2) {
     (error) => ({
       end: "crashed",
       failure: describeError(error),
-      hung: false
+      hung: false,
+      rejected: { error }
     })
   );
   if (timeoutMs === null && signal2 === void 0) return run4;
@@ -17368,6 +17477,65 @@ var init_sources = __esm({
   }
 });
 
+// src/runners/vitest/startup.ts
+function startupFailure(vitest, specs, collector, error, paths) {
+  if (collector.modules.size > 0 || collector.results.length > 0) return null;
+  const text2 = errorTexts(error);
+  const named = vitest.projects.flatMap(
+    (project) => setupFiles(project.config.globalSetup).filter((file) => text2.includes(file)).map((file) => ({ project: project.name, file }))
+  )[0];
+  const projects2 = named ? [named.project] : [...new Set(specs.map((spec) => spec.project.name))].sort(compare);
+  const setupFile = named ? paths.toRelative(named.file) : null;
+  const checkError = toCheckError(error, paths);
+  const location2 = named ? frameOf(text2, named.file, paths) : null;
+  return {
+    projects: projects2,
+    testFiles: [...collector.requested],
+    setupFile,
+    error: { ...checkError, location: location2 ?? checkError.location, phase: "setup" }
+  };
+}
+function withStartup(report2, startup) {
+  if (startup === null) return report2;
+  const { message: message2, code, causes = [] } = startup.error;
+  const chain = causes.map((cause) => `; cause: ${causeText(cause)}`).join("");
+  const where2 = startup.setupFile === null ? "the run failed to start" : `global setup ${startup.setupFile} failed`;
+  const failure2 = `${where2}: ${withCode(message2.split("\n")[0] ?? "", code)}${chain}`;
+  return { ...report2, failure: failure2, startupFailure: startup };
+}
+async function closeRejected(vitest, collector) {
+  await vitest.close().catch(
+    (error) => collector.note(`close() of an instance whose run rejected failed: ${String(error)}`)
+  );
+}
+function setupFiles(globalSetup) {
+  const files2 = Array.isArray(globalSetup) ? globalSetup : [globalSetup];
+  return files2.filter((file) => typeof file === "string" && file !== "");
+}
+function errorTexts(error) {
+  const texts = [];
+  for (let link = error, depth = 0; link != null && depth < 4; depth++) {
+    if (typeof link !== "object") break;
+    const { message: message2, stack } = link;
+    texts.push(String(message2 ?? ""), String(stack ?? ""));
+    link = "cause" in link ? link.cause : void 0;
+  }
+  return texts.join("\n");
+}
+function frameOf(text2, file, paths) {
+  const escaped = file.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match2 = new RegExp(`(?:file://)?${escaped}:(\\d+):(\\d+)`).exec(text2);
+  return match2 ? paths.location(file, Number(match2[1]), Number(match2[2])) : null;
+}
+var init_startup = __esm({
+  "src/runners/vitest/startup.ts"() {
+    "use strict";
+    init_fs();
+    init_fingerprint();
+    init_results2();
+  }
+});
+
 // src/runners/vitest/version.ts
 var VITEST_ADAPTER_VERSION;
 var init_version = __esm({
@@ -17411,6 +17579,7 @@ var init_adapter = __esm({
     init_run();
     init_sources();
     init_stale();
+    init_startup();
     init_version();
     VitestAdapter = class {
       /**
@@ -17730,17 +17899,23 @@ var init_adapter = __esm({
             this.#running = false;
             const heard = [...new Set(this.#touched)];
             const broken = runnerFailure(collector, { paths: this.paths, tempDirs: this.#tempDirs });
-            if (execution.hung || broken !== null) {
+            const rejected = execution.rejected;
+            const startup = rejected === void 0 ? null : startupFailure(vitest, specs, collector, rejected.error, this.paths);
+            if (execution.hung || broken !== null || rejected !== void 0) {
               const ran2 = execution;
               execution = await hold.exclusive(async () => {
                 if (this.#vitest !== vitest) return ran2;
                 this.#vitest = null;
                 if (ran2.hung) abandon2(vitest, collector);
                 else if (broken !== null) return closeBroken(vitest, collector, broken);
+                else await closeRejected(vitest, collector);
                 return ran2;
               });
             }
-            const built = buildReport(collector, execution, Math.round(performance.now() - started2));
+            const built = withStartup(
+              buildReport(collector, execution, Math.round(performance.now() - started2)),
+              startup
+            );
             const observed = this.#observer.take(built.completedFiles);
             const touched = heard.sort();
             const reads = observed !== void 0 && options.observeIgnored === true ? { reads: readsOfEvery(observed, built.completedFiles) } : {};
@@ -43945,6 +44120,7 @@ function merge2(parts2) {
   const read4 = reports.some((report2) => report2.reads !== void 0);
   const environment = reports.flatMap((report2) => report2.environmentObserved ?? []);
   const skipped2 = reports.flatMap((report2) => report2.skippedFiles ?? []);
+  const startup = reports.find((report2) => report2.startupFailure !== void 0)?.startupFailure;
   return {
     end,
     durationMs: reports.reduce((sum, report2) => sum + report2.durationMs, 0),
@@ -43956,7 +44132,8 @@ function merge2(parts2) {
     ...observed ? { observed: reports.flatMap((report2) => report2.observed ?? []) } : {},
     ...read4 ? { reads: reports.flatMap((report2) => report2.reads ?? []) } : {},
     ...environment.length > 0 ? { environmentObserved: environment } : {},
-    ...skipped2.length > 0 ? { skippedFiles: skipped2 } : {}
+    ...skipped2.length > 0 ? { skippedFiles: skipped2 } : {},
+    ...startup === void 0 ? {} : { startupFailure: startup }
   };
 }
 function compareRefs2(a, b) {
@@ -44051,7 +44228,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.179";
+  if (true) return "0.1.180";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -44096,12 +44273,18 @@ init_state3();
 init_text();
 function countChecks(checks) {
   const testFiles = checks.filter((check) => check.kind === "file").length;
-  return { tests: checks.length - testFiles, testFiles };
+  const setups = checks.filter((check) => check.kind === "setup").length;
+  return {
+    tests: checks.length - testFiles - setups,
+    testFiles,
+    ...setups > 0 ? { setups } : {}
+  };
 }
-function checkPartsText({ tests, testFiles }, fileLevel = "loaded") {
+function checkPartsText({ tests, testFiles, setups = 0 }, fileLevel = "loaded") {
   return [
     ...tests > 0 ? [plural(tests, "test")] : [],
-    ...testFiles > 0 ? [`${plural(testFiles, "test file")} ${fileLevel}`] : []
+    ...testFiles > 0 ? [`${plural(testFiles, "test file")} ${fileLevel}`] : [],
+    ...setups > 0 ? [plural(setups, "global setup")] : []
   ].join(", ");
 }
 function partsSuffix(count, fileLevel, fileLevelWord) {
@@ -44950,12 +45133,16 @@ function readVerdict(store, worktreeId, files2 = null) {
       if (state.outcome === "fail") failures[state.check.kind === "test" ? "tests" : "testFiles"]++;
     }
   }
+  const projects2 = new Set(ids.map((id2) => rows.get(id2)?.testFile.project));
+  const setups = states.filter(
+    (s) => s.check.kind === "setup" && s.outcome === "fail" && (files2 === null || projects2.has(s.check.project))
+  ).length;
   return {
     revision: header.revision,
     testFiles: ids.length,
     byClass,
     unlisted: header.runnerPartPending === true || header.awaitingInstall === true,
-    failures
+    failures: setups > 0 ? { ...failures, setups } : failures
   };
 }
 function verdictCode(verdict) {
@@ -44984,7 +45171,7 @@ function failuresText(failures) {
   return `${plural(total, "known failure")}: ${checkPartsText(failures, "that did not load")}`;
 }
 function failureCount(failures) {
-  return failures.tests + failures.testFiles;
+  return failures.tests + failures.testFiles + (failures.setups ?? 0);
 }
 
 // src/cli/setup/repo.ts

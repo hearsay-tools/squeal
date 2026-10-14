@@ -655,8 +655,12 @@ function baselineFindings(store, worktreeId) {
 
 // src/core/state/check-name.ts
 var FILE_LEVEL = " (file-level)";
+var GLOBAL_SETUP = "(global setup)";
 function formatCheck(check) {
   const project = check.project === "" ? "" : `[${check.project}] `;
+  if (check.kind === "setup") {
+    return `${project}${check.testPath === "" ? "" : `${check.testPath} `}${GLOBAL_SETUP}`;
+  }
   return check.kind === "test" ? `${project}${check.testPath} > ${check.fullName}` : `${project}${check.testPath}${FILE_LEVEL}`;
 }
 
@@ -1023,6 +1027,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
   let inheritedCount = 0;
   let inheritedFileLevelCount = 0;
   for (const state of states) {
+    if (state.check.kind === "setup") continue;
     counts[state.validity]++;
     if (state.check.kind === "file") fileLevelCounts[state.validity]++;
     if (state.validity === "current" && state.origin?.kind === "inherited") {
@@ -1210,12 +1215,18 @@ function capitalized(text) {
 // src/core/status/checks.ts
 function countChecks(checks) {
   const testFiles = checks.filter((check) => check.kind === "file").length;
-  return { tests: checks.length - testFiles, testFiles };
+  const setups = checks.filter((check) => check.kind === "setup").length;
+  return {
+    tests: checks.length - testFiles - setups,
+    testFiles,
+    ...setups > 0 ? { setups } : {}
+  };
 }
-function checkPartsText({ tests, testFiles }, fileLevel = "loaded") {
+function checkPartsText({ tests, testFiles, setups = 0 }, fileLevel = "loaded") {
   return [
     ...tests > 0 ? [plural(tests, "test")] : [],
-    ...testFiles > 0 ? [`${plural(testFiles, "test file")} ${fileLevel}`] : []
+    ...testFiles > 0 ? [`${plural(testFiles, "test file")} ${fileLevel}`] : [],
+    ...setups > 0 ? [plural(setups, "global setup")] : []
   ].join(", ");
 }
 function partsSuffix(count, fileLevel, fileLevelWord) {
@@ -1226,8 +1237,8 @@ function countedText(count, label, fileLevel) {
   return `${count} ${label}${partsSuffix(count, fileLevel)}`;
 }
 function checksText(checks, noun = "check", fileLevel) {
-  const { testFiles } = countChecks(checks);
-  return `${plural(checks.length, noun)}${partsSuffix(checks.length, testFiles, fileLevel)}`;
+  const parts = checks.length === 0 ? "" : ` (${checkPartsText(countChecks(checks), fileLevel)})`;
+  return `${plural(checks.length, noun)}${parts}`;
 }
 function failureCountText(checks) {
   if (checks.length === 0) return "0";
@@ -1632,9 +1643,8 @@ function checkParams(check) {
 function checkFrom(row) {
   const project = str(row, "check_project");
   const testPath = str(row, "check_test_path");
-  if (oneOf2(row, "check_kind", ["test", "file"]) === "file") {
-    return { kind: "file", project, testPath };
-  }
+  const kind = oneOf2(row, "check_kind", ["test", "file", "setup"]);
+  if (kind !== "test") return { kind, project, testPath };
   return { kind: "test", project, testPath, fullName: str(row, "check_full_name") };
 }
 var CHECK_WHERE = "project = ? AND test_path = ? AND kind = ? AND full_name = ?";
@@ -3607,6 +3617,7 @@ function breakdown(states, keys) {
   const fileLevelByPhase = { queued: 0, running: 0 };
   const filesWithChecks = /* @__PURE__ */ new Set();
   for (const s of states) {
+    if (s.check.kind === "setup") continue;
     const file = testFileKeyOf(s.check);
     filesWithChecks.add(file);
     const fileLevel = s.check.kind === "file";
@@ -4403,7 +4414,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.179";
+  if (true) return "0.1.180";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
