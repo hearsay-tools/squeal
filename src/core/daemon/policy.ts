@@ -10,6 +10,7 @@ import {
   type WorktreeId,
 } from "../types/index.js";
 import { compiles, nodeTestProjects } from "./policy-node-test.js";
+import { pytestProjects } from "./policy-pytest.js";
 import { slowInclude } from "./policy-slow.js";
 
 /** Spec 001 D11: "`squeal.config.json` at the repository root, committed, all keys optional". */
@@ -85,6 +86,7 @@ const SHAPE: Shape = {
     timeoutMs: orNull(positiveInteger),
   },
   nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
+  pytest: (v) => pytestProjects(v, "pytest"),
   slow: {
     include: slowInclude,
     maxWorkers: positiveInteger,
