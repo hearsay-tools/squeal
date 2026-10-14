@@ -45,9 +45,11 @@ export function currentFingerprint(environment: ReadyEnvironment): string {
  * Spec 007 D6 through `runPytest`, with D2's sync check around it: an
  * environment whose fingerprint moved since it was keyed, or during the
  * run, stores nothing (`moved`), and the adapter reads it again at the next
- * call. A completed file whose module skipped itself gets a `skip` for
- * each check it lists statically (D6: "a module-level skip skips the
- * file's known checks").
+ * call. A completed file whose module skipped itself is listed in
+ * `skippedFiles`, for the core to skip the checks it knows of the file (D6:
+ * "a module-level skip skips the file's known checks"), with a `skip` for
+ * each check the file lists statically as the fallback for a file the core
+ * never saw (task 007-23).
  */
 export async function runProject(
   context: ProjectRun,
@@ -77,14 +79,18 @@ export async function runProject(
   const skipped = await Promise.all(
     run.skippedFiles.map(({ testFile }) => skipKnown(root, testFile, context.names)),
   );
-  const report =
+  const report: RunReport =
     skipped.length === 0
       ? run.report
-      : { ...run.report, results: [...run.report.results, ...skipped.flat()] };
+      : {
+          ...run.report,
+          results: [...run.report.results, ...skipped.flat()],
+          skippedFiles: run.skippedFiles,
+        };
   return { kind: "ran", run, report };
 }
 
-/** A `skip` for every check a skipped module lists statically. */
+/** A `skip` for every check a skipped module lists statically: the fallback of `skippedFiles`. */
 async function skipKnown(
   root: AbsolutePath,
   testFile: TestFileRef,
