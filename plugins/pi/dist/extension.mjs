@@ -202,7 +202,11 @@ function squealExtension(start) {
 }
 
 // src/harness/pi/entries/extension.ts
-var extension_default = squealExtension(() => new Worker(new URL("./worker.mjs", import.meta.url)));
+var extension_default = squealExtension(
+  () => new Worker(new URL("./worker.mjs", import.meta.url), {
+    execArgv: ["--disable-warning=ExperimentalWarning"]
+  })
+);
 export {
   extension_default as default
 };
