@@ -5,9 +5,12 @@ import { delimiter, dirname, join, resolve } from "node:path";
 
 /**
  * The real Pi with a scripted fake model (spec 009 Testing). Each run gets its own temp
- * directory holding Pi's agent dir, HOME, TMPDIR and the project, so nothing reaches the
- * user's `~/.pi`, `~/.agents/skills` or the shared `/tmp` caches; the wave-0 isolation check
- * (`docs/specifications/009-pi-adapter/research/wave-0-checks.md`) found no write outside it.
+ * directory under `piBase()` holding Pi's agent dir, HOME, TMPDIR and the project, so nothing
+ * reaches the user's `~/.pi`, `~/.agents/skills` or the shared `/tmp` caches; the wave-0
+ * isolation check (`docs/specifications/009-pi-adapter/research/wave-0-checks.md`) found no
+ * write outside it. A caller cannot override those variables, and Pi runs with no context
+ * files, skills or project-trusted resources, so a `cwd` inside a repository reads none of the
+ * repository's `AGENTS.md`, `CLAUDE.md`, `.agents/skills` or `.pi`.
  * The model is `test/fixtures/pi/fake-provider.ts`: it plays `plan` one step per request and
  * records every request, which the run returns.
  */
@@ -20,6 +23,22 @@ export const FAKE_PROVIDER = join(ROOT, "test/fixtures/pi/fake-provider.ts");
 /** The Pi version the isolation check ran against; another version skips until it is re-run. */
 const CHECKED_VERSION = "1.0.4";
 const MIN_NODE = [22, 19];
+
+/** The variables that isolate a run; `runPi` throws on a caller's override of any. */
+const PROTECTED_ENV = [
+  "HOME",
+  "TMPDIR",
+  "PI_CODING_AGENT_DIR",
+  "PI_OFFLINE",
+  "PI_FIXTURE_PLAN",
+  "PI_FIXTURE_LOG",
+] as const;
+
+/**
+ * Flags every run passes: no `AGENTS.md` or `CLAUDE.md` from the cwd and its parents, no
+ * discovered skills, and no trust-gated project resources (`.pi`, ancestor `.agents/skills`).
+ */
+const NO_PROJECT_RESOURCES = ["--no-context-files", "--no-skills", "--no-approve"];
 
 export type PiMode = "print" | "json" | "rpc";
 
@@ -66,11 +85,12 @@ export interface PiRunOptions {
   extensions?: string[];
   /**
    * An existing project directory to run Pi in instead of a fresh one in the run's directory.
-   * It must be outside this repository, as the run's own is (Pi loads `AGENTS.md` up the tree).
+   * It may be inside a repository: Pi reads no context files, skills or `.pi` from it.
    */
   cwd?: string;
   /** Files written into the project before Pi starts, by relative path. */
   files?: Record<string, string>;
+  /** Added to the run's environment; overriding one of `PROTECTED_ENV` throws before Pi starts. */
   env?: Record<string, string>;
   timeoutMs?: number;
 }
@@ -102,8 +122,28 @@ export function piUnavailable(): string | undefined {
   return undefined;
 }
 
+/**
+ * Where runs make their directories: `os.tmpdir()` when no ancestor holds `.git`, otherwise
+ * `/tmp`. Under Cezar `os.tmpdir()` sits inside the main checkout.
+ */
+export function piBase(): string {
+  for (const base of [tmpdir(), "/tmp"]) if (!inRepository(base)) return base;
+  throw new Error(`no temp directory outside a repository: ${tmpdir()} and /tmp are inside one`);
+}
+
+/** Whether `path` or one of its ancestors holds `.git`. */
+export function inRepository(path: string): boolean {
+  for (let dir = resolve(path); ; dir = dirname(dir)) {
+    if (existsSync(join(dir, ".git"))) return true;
+    if (dirname(dir) === dir) return false;
+  }
+}
+
 export async function runPi(options: PiRunOptions): Promise<PiRun> {
-  const dir = mkdtempSync(join(tmpdir(), "squeal-pi-"));
+  const overridden = PROTECTED_ENV.filter((key) => key in (options.env ?? {}));
+  if (overridden.length > 0)
+    throw new Error(`runPi isolates ${overridden.join(", ")}; a caller cannot override them`);
+  const dir = mkdtempSync(join(piBase(), "squeal-pi-"));
   const cwd = options.cwd ?? join(dir, "proj");
   const agentDir = join(dir, "agent");
   for (const sub of ["proj", "agent", "home", "tmp"]) mkdirSync(join(dir, sub));
@@ -117,15 +157,16 @@ export async function runPi(options: PiRunOptions): Promise<PiRun> {
 
   const env: NodeJS.ProcessEnv = {
     PATH: [dirname(process.execPath), process.env.PATH ?? ""].join(delimiter),
+    ...options.env,
     HOME: join(dir, "home"),
     TMPDIR: join(dir, "tmp"),
     PI_CODING_AGENT_DIR: agentDir,
     PI_OFFLINE: "1",
     PI_FIXTURE_PLAN: planPath,
     PI_FIXTURE_LOG: logPath,
-    ...options.env,
   };
-  const args = [PI_CLI, "--provider", "fake", "--model", "fake-1", "-e", FAKE_PROVIDER];
+  const args = [PI_CLI, ...NO_PROJECT_RESOURCES, "--provider", "fake", "--model", "fake-1"];
+  args.push("-e", FAKE_PROVIDER);
   for (const extension of options.extensions ?? []) args.push("-e", extension);
   const [first = ""] = options.prompts;
   const prompt = typeof first === "string" ? first : "";
