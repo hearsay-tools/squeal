@@ -121,6 +121,7 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
     ],
     exit: null,
     read: null,
+    edges: [],
   }));
 
   const python = environment.discovery.python;
@@ -155,7 +156,9 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
       running.add(group);
       batch.exit = await group.exited;
       running.delete(group);
-      batch.read = readBatch(parsePytestEvents(readOr(events)), batch.files, rootdir, paths);
+      const parsed = parsePytestEvents(readOr(events));
+      batch.read = readBatch(parsed, batch.files, rootdir, paths);
+      batch.edges = parsed.flatMap((e) => (e.type === "import" ? [e] : []));
     }
   };
   const width = Math.max(1, Math.min(options.concurrency ?? batches.length, batches.length));
@@ -171,7 +174,8 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
       refusedAtRun ??= refusalNote(project, flags);
       return false;
     }
-    if (code === 5) notes.push(`pytest collected nothing in ${names(b)}.`);
+    if (code === 5)
+      notes.push(`pytest project "${project.name}" collected nothing in ${names(b)}.`);
     // D6: "3 (internal error) and 4 (usage error) are runner failures".
     return code !== 3 && code !== 4;
   });
@@ -198,12 +202,7 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
     failure: refusedAtRun ?? failure,
     fileDurations: done.map((f) => ({ testFile: f.testFile, durationMs: f.durationMs })),
   };
-  const observed = trusted.map((b) => {
-    const edges = parsePytestEvents(
-      readOr(join(options.logDir, `events-${b.index}.jsonl`)),
-    ).flatMap((e) => (e.type === "import" ? [e] : []));
-    return observeBatch(edges, b.files, paths);
-  });
+  const observed = trusted.map((b) => observeBatch(b.edges, b.files, paths));
   const completed = new Set(report.completedFiles);
   writeRunLog(options.logDir, { python, cwd, batches, report, notes });
   return {
