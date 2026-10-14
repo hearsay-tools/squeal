@@ -181,9 +181,14 @@ export function selectTier(
     ledger.commit();
     return null;
   }
-  const tier =
-    picked.length === 0 ? null : startTier(context, ledger, picked, backlog, lease ?? undefined);
-  if (tier === null) lease?.release();
+  let tier: Tier | null = null;
+  try {
+    tier =
+      picked.length === 0 ? null : startTier(context, ledger, picked, backlog, lease ?? undefined);
+  } finally {
+    // The tier owns the lease once it starts; until then it is returned here (review 001-384, B2).
+    if (tier === null) lease?.release();
+  }
   if (tier !== null) {
     ledger.queue.tierSelected(tookBacklog);
     return tier;
