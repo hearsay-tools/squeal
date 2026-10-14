@@ -1,9 +1,7 @@
 import { realpathSync, statSync } from "node:fs";
-import { join, relative, sep } from "node:path";
 import { compare, sameList, toAbsolute, toRelative } from "../../core/fs/index.js";
 import type {
   AbsolutePath,
-  InvalidatedPath,
   PytestProject,
   RelativePath,
   RunnerAdapter,
@@ -18,7 +16,9 @@ import {
   type Clock,
   environmentDir,
   environmentSignature,
+  moving,
   projectEnvironment,
+  structural,
 } from "./adapter-environment.js";
 import { listTestFiles } from "./adapter-files.js";
 import { Observed, type ObservedStore } from "./adapter-observed.js";
@@ -269,14 +269,8 @@ export async function createPytestAdapter(
       }
       built.observed.record(outcome.run.observed, new Set(files));
       for (const text of outcome.run.notes) once(text);
-      const { graph } = built;
-      const plugins = new Set(pluginPaths(built, environment, settings));
-      const everywhere = (path: RelativePath) => {
-        const { direct, transitive } = graph.affected([path]);
-        return direct.length + transitive.length >= files.length;
-      };
-      const keyed = (path: RelativePath) => plugins.has(path) || everywhere(path);
-      const session = built.observed.recordSession(outcome.run.session, keyed);
+      const plugins = pluginPaths(built, environment, settings);
+      const session = built.observed.recordSession(outcome.run.session, plugins, files.length);
       if (session.length === 0) return outcome.report;
       // B5: the core stores nothing for a file whose key lacked one of these, re-keys and reruns it.
       return {
@@ -286,14 +280,6 @@ export async function createPytestAdapter(
     },
     close: async () => {},
   };
-}
-
-/** Whether a fresh read moved from the admitted environment: by fingerprint when both are ready. */
-function moving(read: AdapterEnvironment, admitted: AdapterEnvironment): boolean {
-  if (read.state === "ready" && admitted.state === "ready") {
-    return read.fingerprint !== admitted.fingerprint;
-  }
-  return environmentSignature(read) !== environmentSignature(admitted);
 }
 
 /** D2: the closure inside the worktree of the `pytest11` plugins and the `-p` modules. */
@@ -308,12 +294,6 @@ function pluginPaths(
     ...settings.pluginModules,
   ];
   return modules.length === 0 ? [] : built.graph.pluginClosure([...new Set(modules)]).paths;
-}
-
-/** A change to `pyvenv.cfg`, which re-derives the graph's search path (D5). */
-function structural(root: AbsolutePath, dir: AbsolutePath): InvalidatedPath[] {
-  // An environment outside the worktree too: the graph reads the name, not the place.
-  return [{ path: relative(root, join(dir, "pyvenv.cfg")).split(sep).join("/"), kind: "change" }];
 }
 
 function isDirectory(path: AbsolutePath): boolean {
