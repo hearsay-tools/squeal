@@ -1,3 +1,4 @@
+export type * from "./capacity.js";
 export type * from "./check.js";
 export * from "./common.js";
 export * from "./daemon.js";

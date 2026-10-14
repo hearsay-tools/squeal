@@ -5,6 +5,7 @@ import { recordOptimizerOff } from "../state/optimizer-note.js";
 import { setBusyTimeout } from "../store/index.js";
 import type {
   AbsolutePath,
+  Capacity,
   DaemonExit,
   DaemonExitReason,
   DaemonPhase,
@@ -48,6 +49,7 @@ import { describeProblems, lastPolicyNote, loadPolicy, POLICY_FILE } from "./pol
 import { requestSlowSuite, type SlowSuiteRequested } from "./run-slow.js";
 import type { RecoveringRunner } from "./runner.js";
 import { adoptScratch, inRootWhileRunning, removeScratch } from "./scratch.js";
+import { capacityReader, repositoryRootOf } from "./user-config.js";
 import { squealVersion } from "./version.js";
 
 export type { DaemonTimings } from "./lifecycle.js";
@@ -132,6 +134,8 @@ class Daemon {
   readonly #version = squealVersion();
   #phase: DaemonPhase = "starting";
   #policy: Policy = DEFAULT_POLICY;
+  /** D11 Capacity from the user-level config, read at each call; the permit pool's input (001-376). */
+  readonly #capacity: () => Capacity;
   #desk: FrontDesk | null = null;
   #runner: RunnerAdapter | null = null;
   /** The Vitest part of `#runner`, which `run --all` asks to retry its creation. */
@@ -163,6 +167,12 @@ class Daemon {
     this.#startedAt = this.#now();
     this.#lastActive = this.#startedAt;
     this.#presence = { since: this.#startedAt, lastPresentAt: null };
+    this.#capacity = capacityReader({
+      repositoryRoot: repositoryRootOf(opened.commonDir),
+      env: options.env,
+      lastNote: (path) => lastPolicyNote(opened.store, opened.worktreeId, path),
+      note: (text) => this.#note(text),
+    });
   }
 
   async start(desk: PreparedDesk): Promise<RunningDaemon | DaemonExit> {
@@ -183,6 +193,8 @@ class Daemon {
       const { policy, problems } = loadPolicy(root);
       this.#policy = policy;
       this.#notePolicyProblems(problems);
+      // Its problems are noted at start, as the policy's are, not at the first backlog tier.
+      this.#capacity();
       this.#startTimers();
     } catch (error) {
       return this.#shutdown("start-failed", 1, `daemon exited: could not start: ${message(error)}`);
