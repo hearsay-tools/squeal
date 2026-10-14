@@ -7087,11 +7087,36 @@ function withheldForTouch(report2, touched) {
 ${reason2}`
   };
 }
+function withholdNote(touched, files2, retry) {
+  if (files2.length === 0) return null;
+  const paths = listPaths(touched);
+  const ran = listPaths(files2.map(({ file }) => file.ref.path));
+  return retry ? `squeal: ${paths} was written while ${ran} ran and ended as it was; the run is withheld and runs once more (tasks 001-168, 007-30)` : `squeal: ${paths} was written during 2 runs in a row of ${ran} and ended as it was; ${ran} stays unknown until an input changes, so write it outside the worktree or under an ignored path, or declare it (tasks 001-168, 007-30)`;
+}
+var Withholds;
 var init_stability = __esm({
   "src/core/scheduler/stability.ts"() {
     "use strict";
     init_hash();
     init_revision();
+    init_notes2();
+    Withholds = class {
+      #keys = /* @__PURE__ */ new Map();
+      /** Records the withhold of `files`, each first or exhausted at its key. */
+      record(files2) {
+        const again = [];
+        const exhausted = [];
+        for (const ran of files2) {
+          (this.#keys.get(ran.file.id) === ran.key ? exhausted : again).push(ran);
+          this.#keys.set(ran.file.id, ran.key);
+        }
+        return { again, exhausted };
+      }
+      /** `files` were recorded unwithheld: their withholds are no longer in a row. */
+      clear(files2) {
+        for (const { file } of files2) this.#keys.delete(file.id);
+      }
+    };
   }
 });
 
@@ -9105,7 +9130,7 @@ function unstableInputs(context, tier) {
   for (const path of inputs2) if (listedDirectory(path) !== null) inputs2.delete(path);
   return changedSince2(tier.snapshot, inputs2, context.hasher);
 }
-function recordTier(context, ledger, tier, report2, changedOnDisk, installMoved = false, observed = NOTHING_OBSERVED) {
+function recordTier(context, ledger, tier, report2, changedOnDisk, requeue = false, observed = NOTHING_OBSERVED) {
   const { store, worktreeId } = context;
   const duringRun = tier.changes;
   endTier(context, ledger, tier);
@@ -9134,7 +9159,8 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, installMoved 
     for (const { file, key: key2, inputs: inputs2, checkpointId, forced, recent } of tier.files) {
       ledger.setRunning(file, null);
       if (ledger.files.get(file.id) !== file) continue;
-      if (installMoved || cancelled && !completed.has(file.id)) {
+      const queued = typeof requeue === "boolean" ? requeue : requeue.has(file.id);
+      if (queued || cancelled && !completed.has(file.id)) {
         if (file.key !== null && file.blocked === null) {
           ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), forced);
         }
@@ -11234,6 +11260,8 @@ var init_scheduler2 = __esm({
       #inFlight = /* @__PURE__ */ new Map();
       /** A `run --all` with `observeIgnored` (task 001-307). */
       #warmUp = new WarmUp();
+      /** Task 007-30: files the completion barrier withheld, so a withheld tier runs once more. */
+      #withholds = new Withholds();
       /** Something the pump waits for happened: a tier ended, runner work drained, a batch or request came. */
       #woken = false;
       #wake = null;
@@ -11588,6 +11616,7 @@ var init_scheduler2 = __esm({
         const { context, ledger } = this.#started();
         const done = (async () => {
           let recorded2 = false;
+          const withheld = [];
           try {
             const ran = await executeTier(context, tier, this.#warmUp.observes(tier));
             const ignored = await this.#warmUp.read(context, tier, ran);
@@ -11599,6 +11628,16 @@ var init_scheduler2 = __esm({
               const observed = environment === void 0 || read4 === void 0 ? read4 : { ...read4, environment };
               const touched = [.../* @__PURE__ */ new Set([...inputs2.touched, ...observed?.touched ?? []])].sort();
               const report2 = withheldForTouch(ran, touched);
+              const withhold = touched.length === 0 ? null : this.#withholds.record(tier.files);
+              if (withhold === null) this.#withholds.clear(tier.files);
+              else {
+                const notes2 = [
+                  withholdNote(touched, withhold.again, true),
+                  withholdNote(touched, withhold.exhausted, false)
+                ];
+                withheld.push(...notes2.filter((note) => note !== null));
+              }
+              const requeue = installMoved || withhold === null ? installMoved : new Set(withhold.again.map(({ file }) => file.id));
               return context.store.transaction(() => {
                 this.#warmUp.record(context, ignored);
                 const result = recordTier(
@@ -11607,7 +11646,7 @@ var init_scheduler2 = __esm({
                   tier,
                   report2,
                   inputs2.changed,
-                  installMoved,
+                  requeue,
                   observed
                 );
                 if (slow === null) forgetSlowRuns(context, ledger, tier);
@@ -11616,6 +11655,7 @@ var init_scheduler2 = __esm({
               });
             });
             recorded2 = true;
+            for (const note of withheld) this.#note(note);
             slow?.slot.release();
             if (moved2.length > 0) await this.#reconcilePaths(moved2);
             if (slow !== null) await this.#releaseIfDrained(tier.lane);
@@ -43480,7 +43520,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.176";
+  if (true) return "0.1.177";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
