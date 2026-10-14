@@ -1,0 +1,103 @@
+# npx tsx run.ts main  (Squeal adapter + recordsForFile), 2026-10-14T09:39:09Z, vitest 5.0.3, node v24.21.0
+RUN end=completed completed=11/11
+
+main/a-pass.test.ts: fileErrors=0
+  PASS passes
+  PASS <file>
+
+main/b-assert.test.ts: fileErrors=0
+  FAIL asserts wrongly  | expected 2 to be 3 // Object.is equality; diff (- Expected, + Received): - 3 | + 2
+  PASS passes beside it
+  PASS <file>
+
+main/c-import.test.ts: fileErrors=1
+  FAIL <file>  | Cannot find module './does-not-exist.js' imported from main/c-import.test.ts
+  (+1 FAIL when the key already holds 1 enumerated test(s) that this run did not report)
+  error name=Error location=main/c-import.test.ts:2
+
+main/d-beforeall-fetch.test.ts: fileErrors=1
+  SKIP first
+  SKIP second
+  FAIL <file>  | fetch failed
+  error name=TypeError location=none
+
+main/e-beforeall-provider.test.ts: fileErrors=1
+  SKIP first
+  SKIP second
+  FAIL <file>  | cezar e2e: the agent-browser provider is not installed (no binary on PATH)
+  error name=Error location=main/e-beforeall-provider.test.ts:4
+
+main/f-describe-beforeall.test.ts: fileErrors=0
+  SKIP group > inside
+  PASS outside
+  PASS <file>
+
+main/g-top-level-await.test.ts: fileErrors=1
+  FAIL <file>  | fetch failed
+  (+1 FAIL when the key already holds 1 enumerated test(s) that this run did not report)
+  error name=TypeError location=none
+
+main/h-zero-tests.test.ts: fileErrors=1
+  FAIL <file>  | No test suite found in file main/h-zero-tests.test.ts
+  error name=Error location=none
+
+main/i-bug-econnrefused.test.ts: fileErrors=0
+  FAIL client reaches the server it was given  | fetch failed
+  PASS <file>
+
+main/j-env-in-test.test.ts: fileErrors=0
+  FAIL talks to the dev server  | fetch failed
+  PASS pure logic beside it
+  PASS <file>
+
+main/l-bug-in-beforeall.test.ts: fileErrors=1
+  SKIP health
+  FAIL <file>  | fetch failed
+  error name=TypeError location=none
+
+--- run log <tmp>/envfail-SiZB5M/vitest.log (file-level and unhandled lines) ---
+squeal vitest run probe
+end: completed, 414 ms
+MODULE failed [main] main/i-bug-econnrefused.test.ts
+MODULE failed [main] main/d-beforeall-fetch.test.ts
+    file-level error: TypeError: fetch failed
+MODULE failed [main] main/l-bug-in-beforeall.test.ts
+    file-level error: TypeError: fetch failed
+MODULE failed [main] main/e-beforeall-provider.test.ts
+    file-level error: Error: cezar e2e: the agent-browser provider is not installed (no binary on PATH)
+MODULE failed [main] main/j-env-in-test.test.ts
+MODULE failed [main] main/c-import.test.ts
+    file-level error: Error: Cannot find module './does-not-exist.js' imported from docs/specifications/001-core-loop/research/probes/environment-failures/fixture/main/c-import.test.ts
+MODULE failed [main] main/b-assert.test.ts
+MODULE failed [main] main/h-zero-tests.test.ts
+    file-level error: Error: No test suite found in file docs/specifications/001-core-loop/research/probes/environment-failures/fixture/main/h-zero-tests.test.ts
+MODULE passed [main] main/a-pass.test.ts
+MODULE failed [main] main/f-describe-beforeall.test.ts
+MODULE failed [main] main/g-top-level-await.test.ts
+    file-level error: TypeError: fetch failed
+RUN END failed, 0 unhandled error(s)
+
+# npx tsx run.ts gs
+RUN end=crashed completed=0/1
+RUN failure: Error: Browser E2E could not run: the agent-browser provider is not installed
+
+gs/k-under-global-setup.test.ts: not completed (scheduler records unknown)
+
+--- run log <tmp>/envfail-nZJIpi/vitest.log (file-level and unhandled lines) ---
+squeal vitest run probe
+end: crashed (Error: Browser E2E could not run: the agent-browser provider is not installed
+RUN END failed, 0 unhandled error(s)
+
+# cd fixture && npx vitest run --project main --reporter=./dump-reporter.ts (what Vitest hands a reporter)
+DUMP module main/a-pass.test.ts state=passed errors=[]
+DUMP module main/b-assert.test.ts state=failed errors=[]
+DUMP module main/c-import.test.ts state=failed errors=[{"name":"Error","message":"Cannot find module './does-not-exist.js' imported from main/c-import.test.ts","code":"ERR_MODULE_NOT_FOUND"}]
+DUMP module main/d-beforeall-fetch.test.ts state=failed errors=[{"name":"TypeError","message":"fetch failed","cause":{"name":"Error","message":"connect ECONNREFUSED 127.0.0.1:59321","code":"ECONNREFUSED"}}]
+DUMP module main/e-beforeall-provider.test.ts state=failed errors=[{"name":"Error","message":"cezar e2e: the agent-browser provider is not installed (no binary on PATH)"}]
+DUMP module main/f-describe-beforeall.test.ts state=failed errors=[] suite "group" state=failed errors=[{"name":"Error","message":"connect ECONNREFUSED 127.0.0.1:5432"}]
+DUMP module main/g-top-level-await.test.ts state=failed errors=[{"name":"TypeError","message":"fetch failed","cause":{"name":"Error","message":"connect ECONNREFUSED 127.0.0.1:59321","code":"ECONNREFUSED"}}]
+DUMP module main/h-zero-tests.test.ts state=failed errors=[{"name":"Error","message":"No test suite found in file main/h-zero-tests.test.ts"}]
+DUMP module main/i-bug-econnrefused.test.ts state=failed errors=[]
+DUMP module main/j-env-in-test.test.ts state=failed errors=[]
+DUMP module main/l-bug-in-beforeall.test.ts state=failed errors=[{"name":"TypeError","message":"fetch failed","cause":{"name":"Error","message":"connect ECONNREFUSED 127.0.0.1:39536","code":"ECONNREFUSED"}}]
+DUMP run reason=failed unhandled=[]
