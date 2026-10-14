@@ -880,7 +880,7 @@ Spec: not written yet; research first. Status and research brief: `specification
 
 ## Feature 009: Pi adapter
 
-Spec: `specifications/009-pi-adapter/` (draft; research done, spec next). Research brief: `specifications/009-pi-adapter/research/README.md`.
+Spec: `specifications/009-pi-adapter/spec.md` (draft, for the human's review; no waves until approval). Research brief: `specifications/009-pi-adapter/research/README.md`.
 
 ### Research
 
