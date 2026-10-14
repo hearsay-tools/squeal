@@ -1,6 +1,6 @@
 # 008 wave 2: proof, and the test hardening the reviews asked for
 
-Read `../spec.md` (as amended), `../status.md` and `../reviews/wave-1.5.md` first. Host test-run policy (the human, 2026-10-15, relayed by the 001 coordinator): your full-suite verdict is `squeal run --all --wait`, not `npx vitest run`; any independent full run uses `--maxWorkers=4` under `flock /run/user/$(id -u)/squeal-full-run.lock`. 008-19 and 008-21 run in parallel on disjoint files; 008-20 starts once 008-19 has landed, so the dogfood installs a package an end-to-end test has already proven.
+Read `../spec.md` (as amended), `../status.md` and `../reviews/wave-1.5.md` first. Host test-run policy (the human, 2026-10-15, relayed by the 001 coordinator): your full-suite verdict is `squeal run --all --wait`, not `npx vitest run`; any independent full run uses `--maxWorkers=4` under `flock /run/user/$(id -u)/squeal-full-run.lock`. 008-19 and 008-21 run in parallel on disjoint files; 008-20 starts once 008-19 has landed, so the dogfood installs a package an end-to-end test has already proven. Landing (`docs/process.md` steps 5 and 6): the coordinator integrates 008-19 and 008-21 onto `cand/<version>`, and a reviewer passes that exact SHA before main; workers never raise the version.
 
 ## 008-19 end to end with the shipped OpenCode package
 
