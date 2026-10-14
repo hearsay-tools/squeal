@@ -55,8 +55,12 @@ const call = (r: SquealRepo, tool: string, command?: string) =>
     },
     deps(),
   );
-const boundary = (r: SquealRepo, tool = "bash", consumer: OcConsumer = ROOT) =>
-  after({ kind: "after", ...about(r, consumer), tool }, deps());
+const boundary = (
+  r: SquealRepo | string,
+  tool = "bash",
+  consumer: OcConsumer = ROOT,
+  primer = false,
+) => after({ kind: "after", ...about(r, consumer), tool, ...(primer ? { primer } : {}) }, deps());
 
 describe("prompt", () => {
   it("starts the turn and gives the undelivered delta", async () => {
@@ -176,14 +180,13 @@ describe("after", () => {
   it("is silent outside a git worktree", async () => {
     const answer = await after({ kind: "after", ...about(outsideGit()), tool: "bash" }, deps());
     expect(answer).toEqual({ text: null });
-    const asked = { kind: "after", ...about(outsideGit()), tool: "bash", primer: true } as const;
-    expect(await after(asked, deps())).toEqual({ text: null });
+    expect(await boundary(outsideGit(), "bash", ROOT, true)).toEqual({ text: null });
   });
 
   it("asked, registers a consumer the message could not and answers the primer and stop.waitMs (008-22)", async () => {
     const r = squealRepo();
     r.policy({ stop: { waitMs: 1_200 } });
-    const answer = await after({ kind: "after", ...about(r), tool: "bash", primer: true }, deps());
+    const answer = await boundary(r, "bash", ROOT, true);
     expect(answer.text).toMatch(/^SQUEAL · registered/);
     expect(answer.primer).toContain(COMMAND);
     expect(answer.stopWaitMs).toBe(1_200);
