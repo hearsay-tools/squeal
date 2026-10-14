@@ -145,8 +145,9 @@ export function createPytestRunners(
   projects: readonly PytestProject[],
   options: PytestRunnersOptions,
 ): RecoveringRunner[] {
-  return projects.map((project) =>
-    createRecoveringRunner({
+  return projects.map((project) => {
+    const { batchSize } = project;
+    return createRecoveringRunner({
       name: "pytest",
       adapterVersion: PYTEST_ADAPTER_VERSION,
       create: () =>
@@ -155,12 +156,13 @@ export function createPytestRunners(
           observed: pytestObservedStore(options.store, project.name),
           note: options.note,
           concurrency: options.tierSize,
+          ...(batchSize === undefined ? {} : { batchSize: () => batchSize }),
           tempDir: options.tempDir,
           cacheDir: pytestCacheDir(options.stateDir, options.root, project.name),
           ...(options.childEnv === undefined ? {} : { childEnv: options.childEnv }),
         }),
       onFailure: (text) => options.note(`${text} (pytest project ${JSON.stringify(project.name)})`),
       onRecovered: () => options.note(`pytest project ${JSON.stringify(project.name)} started`),
-    }),
-  );
+    });
+  });
 }

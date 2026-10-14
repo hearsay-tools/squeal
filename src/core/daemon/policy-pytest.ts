@@ -23,8 +23,14 @@ const FIELDS: Readonly<Record<keyof PytestProject, Field>> = {
   include: globs,
   exclude: globs,
   slow: boolean,
+  batchSize: positiveInteger,
 };
 const REQUIRED: ReadonlySet<string> = new Set(["name", "include"]);
+
+/** D6: files per pytest process; absent means the adapter's default of 5. */
+function positiveInteger(value: unknown): string | null {
+  return Number.isInteger(value) && (value as number) > 0 ? null : "a positive integer";
+}
 
 /**
  * The `pytest` rule of the policy loader (spec 007 D1), with 003 D1's entry

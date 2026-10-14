@@ -195,6 +195,8 @@ export interface PytestProject {
   readonly exclude?: readonly string[];
   /** Spec 004 D1: every file `include` lists is a slow file. Absent means `false`. */
   readonly slow?: boolean;
+  /** Spec 007 D6: test files per pytest process. Absent means 5. */
+  readonly batchSize?: number;
 }
 
 /** True when `A` and `B` are the same type. */
