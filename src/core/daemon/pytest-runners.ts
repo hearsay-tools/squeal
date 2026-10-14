@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
-import { appendFileSync } from "node:fs";
-import { basename, join } from "node:path";
+import { join } from "node:path";
 import {
   createPytestAdapter,
   type ObservedPaths,
@@ -150,52 +149,18 @@ export function createPytestRunners(
     createRecoveringRunner({
       name: "pytest",
       adapterVersion: PYTEST_ADAPTER_VERSION,
-      create: async () =>
-        traced(
-          options,
-          await createPytestAdapter(project, {
-            root: options.root,
-            observed: pytestObservedStore(options.store, project.name),
-            note: options.note,
-            concurrency: options.tierSize,
-            tempDir: options.tempDir,
-            cacheDir: pytestCacheDir(options.stateDir, options.root, project.name),
-            ...(options.childEnv === undefined ? {} : { childEnv: options.childEnv }),
-          }),
-        ),
+      create: () =>
+        createPytestAdapter(project, {
+          root: options.root,
+          observed: pytestObservedStore(options.store, project.name),
+          note: options.note,
+          concurrency: options.tierSize,
+          tempDir: options.tempDir,
+          cacheDir: pytestCacheDir(options.stateDir, options.root, project.name),
+          ...(options.childEnv === undefined ? {} : { childEnv: options.childEnv }),
+        }),
       onFailure: (text) => options.note(`${text} (pytest project ${JSON.stringify(project.name)})`),
       onRecovered: () => options.note(`pytest project ${JSON.stringify(project.name)} started`),
     }),
   );
-}
-
-// TEMPORARY (007-28 diagnosis): every adapter call and answer, to `<stateDir>/pytest-trace.jsonl`.
-function traced<T extends object>(options: PytestRunnersOptions, adapter: T): T {
-  const file = join(options.stateDir, "pytest-trace.jsonl");
-  const who = basename(options.root);
-  const log = (call: string, args: unknown, out: unknown) => {
-    try {
-      appendFileSync(
-        file,
-        `${JSON.stringify({ at: Date.now(), who, call, args, out }, (k, v) => (k === "results" && Array.isArray(v) ? v.map((r) => `${r.check?.fullName}:${r.outcome}`) : v))}\n`,
-      );
-    } catch {}
-  };
-  return new Proxy(adapter, {
-    get(target, prop, receiver) {
-      const value = Reflect.get(target, prop, receiver);
-      if (typeof value !== "function" || prop === "enumerate") return value;
-      return (...args: unknown[]) => {
-        const result = value.apply(target, args);
-        if (result instanceof Promise) {
-          return result.then((out) => {
-            log(String(prop), args, out);
-            return out;
-          });
-        }
-        log(String(prop), args, result);
-        return result;
-      };
-    },
-  });
 }
