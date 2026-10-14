@@ -403,8 +403,10 @@ class TierScheduler implements Scheduler {
    * as long as its tier runs.
    *
    * A slow tier (spec 004 D2) is selected when no slow tier and no edit's
-   * tier is in flight (`#slowMayStart`): a backlog tier may run beside it
-   * (D2 as amended 2026-10-09, task 004-34). It runs in a lane of its own
+   * tier is in flight (`#slowMayStart`); the slow tier itself waits for this
+   * daemon's fast backlog unless `run --slow` asked (D2 as amended
+   * 2026-10-14, task 004-60), and a backlog tier that arrives while it runs
+   * starts beside it (task 004-34). It runs in a lane of its own
    * (`laneOf`, task 004-18), so an edit's fast tier starts beside it. A fast
    * tier that ends gives way at once from the slow tier's load guard, so the
    * backlog's next tier is not held behind the wait.
@@ -463,7 +465,7 @@ class TierScheduler implements Scheduler {
           }
           if (this.#reinstalled) break;
           if (this.#slowMayStart()) {
-            // Spec 004 D2: no edit's fast work pending or running; a slow tier may start.
+            // Spec 004 D2: no edit's fast work pending or running; the slow tier decides the rest.
             const after = await this.#slow.next();
             if (after === "again") continue;
             if (after !== null) {

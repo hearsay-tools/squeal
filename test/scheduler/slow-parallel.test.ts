@@ -2,8 +2,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import { afterEach, describe, expect, it, onTestFinished } from "vitest";
-import { DEFAULT_POLICY, type TestFileRef } from "../../src/core/types/index.js";
+import { afterEach, describe, expect, it } from "vitest";
+import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 import { waitFor } from "../watcher/helpers.js";
 import {
   addWorktree,
@@ -16,11 +16,10 @@ import {
 } from "./helpers.js";
 
 /*
- * Spec 004 D2 as amended 2026-10-09 (task 004-34, lessons defect 3): the slow
- * tier starts beside background fast work (the baseline, an environment
- * change, `run --all`), never beside an edit's; when the machine is idle a
- * slow tier takes up to `slow.maxParallel` files at once, holding as many of
- * the user's slot permits. In the `basic` fixture `test/gen.test.ts`,
+ * Spec 004 D2 as amended 2026-10-09 (task 004-34, lessons defect 3): when the
+ * machine is idle a slow tier takes up to `slow.maxParallel` files at once,
+ * holding as many of the user's slot permits. That it waits for its daemon's
+ * fast backlog (004-60) is `slow-backlog.test.ts`. In the `basic` fixture `test/gen.test.ts`,
  * `test/math.test.ts` and `test/plain.test.ts` are fast here unless listed.
  */
 
@@ -53,59 +52,10 @@ function options(
   };
 }
 
-/** Holds the first run `which` picks until `release`; `held` is true while it waits. */
-function holdFirst(h: Harness, which: (files: readonly TestFileRef[]) => boolean) {
-  let release = () => {};
-  const gate = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  const state = { held: false, files: [] as string[], release: () => release() };
-  onTestFinished(() => release());
-  let taken = false;
-  const before = h.runner.beforeRun;
-  h.runner.beforeRun = async (files) => {
-    await before?.(files);
-    if (taken || !which(files)) return;
-    taken = true;
-    state.held = true;
-    state.files = files.map((f) => f.path);
-    await gate;
-    state.held = false;
-  };
-  return state;
-}
-
 const slowRunsOf = (h: Harness, slow: readonly string[]) =>
   h.runner.runs
     .map((run) => run.files.map((f) => f.path))
     .filter((files) => files.some((path) => slow.includes(path)));
-
-describe("the slow tier beside background work (spec 004 D2 as amended)", SLOW, () => {
-  it("runs slow files one at a time beside a held backlog tier", async () => {
-    const repo = createRepo();
-    const store = openRepoStore(repo.commonDir);
-    const slow = [STRINGS, UPPER];
-    const h = await openHarness(
-      repo.main,
-      store,
-      repo.commonDir,
-      // One file per backlog tier: the baseline's other fast files stay queued behind the held one.
-      options(slow, 4, { backlogTierSize: 1 }),
-    );
-    const backlog = holdFirst(h, (files) => !files.some((f) => slow.includes(f.path)));
-    await h.scheduler.start();
-    await waitFor(() => backlog.held, 60_000);
-    await waitFor(() => slowRunsOf(h, slow).length === 2, 60_000);
-    expect(backlog.held).toBe(true);
-    // Fast work is in flight and queued: the machine is not idle, so one file per tier.
-    expect(slowRunsOf(h, slow).sort()).toEqual([[STRINGS], [UPPER]]);
-    backlog.release();
-    await h.scheduler.idle();
-    for (const path of ["test/gen.test.ts", "test/math.test.ts", PLAIN]) {
-      expect(h.runsOf(path)).toHaveLength(1);
-    }
-  });
-});
 
 describe("an idle slow tier takes several files (spec 004 D2, slow.maxParallel)", SLOW, () => {
   it("runs up to slow.maxParallel files in one tier once nothing fast is left", async () => {
