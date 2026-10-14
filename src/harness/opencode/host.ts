@@ -1,0 +1,123 @@
+import { spawn } from "node:child_process";
+import { accessSync, constants, existsSync, readFileSync, statSync } from "node:fs";
+import { delimiter, dirname, isAbsolute, join } from "node:path";
+
+/*
+ * What the plugin checks once at init, in OpenCode's process (spec 008 D4):
+ * whether Squeal is in use here, and which Node runs the bridge. Only
+ * `node:fs`, `node:path` and `node:child_process`.
+ */
+
+/** Squeal's minimum Node, `engines.node` in the root `package.json`. */
+export const MIN_NODE: readonly [number, number] = [22, 13];
+
+/** How long the plugin waits for `node -p process.versions.node` at init. */
+export const NODE_PROBE_MS = 2_000;
+
+const isFile = (path: string): boolean => {
+  try {
+    return statSync(path).isFile();
+  } catch {
+    return false;
+  }
+};
+
+const firstLine = (path: string): string => readFileSync(path, "utf8").split("\n")[0] ?? "";
+
+/**
+ * 001 D9's `sh` fast path, in-process: `dir` or its worktree root holds a
+ * `squeal.config.json`, or the repository's git common dir holds a store
+ * (`squeal/`). The walk up stops at the first `.git`, file or directory; a
+ * `.git` file names the git dir, whose `commondir` names the common one.
+ * Never throws.
+ */
+export function usesSquealAt(dir: string): boolean {
+  try {
+    if (dir === "") return false;
+    let root = dir;
+    if (isFile(join(root, "squeal.config.json"))) return true;
+    while (!existsSync(join(root, ".git"))) {
+      const up = dirname(root);
+      if (up === root) return false;
+      root = up;
+    }
+    if (isFile(join(root, "squeal.config.json"))) return true;
+    let git = join(root, ".git");
+    if (isFile(git)) {
+      const named = firstLine(git)
+        .replace(/^gitdir:/, "")
+        .trim();
+      git = isAbsolute(named) ? named : join(root, named);
+      const common = isFile(join(git, "commondir")) ? firstLine(join(git, "commondir")).trim() : "";
+      if (common !== "") git = isAbsolute(common) ? common : join(git, common);
+    }
+    return existsSync(join(git, "squeal"));
+  } catch {
+    return false;
+  }
+}
+
+/** The first executable regular file named `node` on `path`, or `null`. */
+export function nodeOnPath(path: string | undefined): string | null {
+  for (const dir of (path ?? "").split(delimiter)) {
+    if (dir === "") continue;
+    const candidate = join(dir, "node");
+    try {
+      accessSync(candidate, constants.X_OK);
+      if (isFile(candidate)) return candidate;
+    } catch {
+      // Not here.
+    }
+  }
+  return null;
+}
+
+/** Whether `version` (`process.versions.node`) is at least `MIN_NODE`. */
+export function meetsMinimum(version: string): boolean {
+  const [major, minor] = version.trim().split(".").map(Number);
+  if (major === undefined || minor === undefined || Number.isNaN(major) || Number.isNaN(minor))
+    return false;
+  return major > MIN_NODE[0] || (major === MIN_NODE[0] && minor >= MIN_NODE[1]);
+}
+
+/** Runs `node -p process.versions.node`; its output, or `null` on a failure or past `timeoutMs`. */
+export function nodeVersion(node: string, timeoutMs = NODE_PROBE_MS): Promise<string | null> {
+  return new Promise((resolve) => {
+    let out = "";
+    let child: ReturnType<typeof spawn>;
+    try {
+      child = spawn(node, ["-p", "process.versions.node"], { stdio: ["ignore", "pipe", "ignore"] });
+    } catch {
+      resolve(null);
+      return;
+    }
+    const timer = setTimeout(() => {
+      child.kill("SIGKILL");
+      resolve(null);
+    }, timeoutMs);
+    child.stdout?.on("data", (chunk: Buffer) => {
+      out += chunk.toString("utf8");
+    });
+    child.on("error", () => {
+      clearTimeout(timer);
+      resolve(null);
+    });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      resolve(code === 0 ? out.trim() : null);
+    });
+  });
+}
+
+/**
+ * D4: a Node of at least `MIN_NODE` on `PATH`, looked up once at init, never
+ * `process.execPath`, which is OpenCode. `null` when there is none.
+ */
+export async function findNode(
+  env: Readonly<Record<string, string | undefined>>,
+): Promise<string | null> {
+  const node = nodeOnPath(env.PATH);
+  if (node === null) return null;
+  const version = await nodeVersion(node);
+  return version !== null && meetsMinimum(version) ? node : null;
+}

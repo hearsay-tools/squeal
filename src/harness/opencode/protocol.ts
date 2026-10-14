@@ -23,10 +23,14 @@ export type OcRequest =
   /** `chat.message` on a consumer this instance has not registered (D3): ensure the daemon, register. */
   | ({ readonly kind: "register"; readonly consumer: OcConsumer } & OcHost)
   /**
-   * `session.deleted` and `dispose` (D3): unregister each consumer, or, for
-   * one without `agentId`, every consumer of its session.
+   * `session.deleted` and `dispose` (D3): end each of `sessions`, its main
+   * agent and every child, then unregister each of `consumers`.
    */
-  | ({ readonly kind: "end"; readonly consumers: readonly OcConsumer[] } & OcHost)
+  | ({
+      readonly kind: "end";
+      readonly sessions: readonly string[];
+      readonly consumers: readonly OcConsumer[];
+    } & OcHost)
   /** The bare round trip, for the per-call cost (D4). */
   | ({ readonly kind: "ping" } & OcHost);
 
