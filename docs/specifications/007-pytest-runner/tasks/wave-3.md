@@ -101,3 +101,17 @@ Owns: `src/core/scheduler/stability.ts`, the withheld branch in `scheduler.ts`, 
 Done when: the review's three-file, two-file-tier regression gives exactly two runs per unchanged key; the `putMany` spy rejects nothing; lint, typecheck and the full suite are green apart from the bundle drift.
 
 Use /worker.
+
+## 007-34 repair of 007-33: exhausted files are never re-queued (the human, 2026-10-14)
+
+Outcome: a file that has used its one retry stops at its second withhold, under a forced checkpoint as well. The scheduler re-queues only first-withheld files, in one write.
+
+Read: `reviews/wave-3-007-32.md` (B1 residual, its reproduction and the observed tiers); the 007-30, 007-32 sections above; `src/core/scheduler/tiers.ts` `recordTier` (the `installMoved` re-queue branch, about line 384); the withheld branch in `scheduler.ts` (about lines 515 to 545); `ledger.markUnknown`.
+
+Shape: repair, core, test first. Seam: `recordTier` takes, additively, the set of files to re-queue (the shape 001's coordinator approved), and the yes/no callers stay unchanged. The withheld branch passes only the first-withheld files; exhausted files are marked `unknown` inside the same `recordTier` transaction, forced or not, and the second ledger commit goes away. Keep `forced` on the re-queued files.
+
+Owns: `src/core/scheduler/tiers.ts` (that parameter only; 001 gave the go), the withheld branch in `scheduler.ts`, `stability.ts`, `test/scheduler/withheld-retry.test.ts`. Change no other existing test.
+
+Done when: the review's forced-checkpoint probe is a regression that gives `[3, 2, 2]` on `823ab34d` and `[2, 2, 2]` after, with unchanged keys and revision and nothing reaching `putMany`; the existing withheld, claims, slow-tier and stamps tests pass; lint, typecheck and the full suite are green apart from the bundle drift. Verified by the coordinator and signed off by 001's coordinator, with no further review (the human).
+
+Use /worker.
