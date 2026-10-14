@@ -67,21 +67,15 @@ const done = { exit: 0, signal: null, timedOut: false, spawnError: null };
 
 export type Harness = "codex" | "claude";
 
-/** The cell record a run commits for `steps` on `task`, ending with `status` and ground truth. */
-export function session(
-  task: string,
-  steps: readonly Step[],
-  {
-    truthPass,
-    status,
-    harness = "codex",
-  }: {
-    truthPass: boolean;
-    status: keyof typeof STATUS;
-    harness?: Harness | undefined;
-  },
-): CellRecord {
-  const g = gradeCell({
+interface Ending {
+  truthPass: boolean;
+  status: keyof typeof STATUS;
+  harness?: Harness | undefined;
+}
+
+/** The mechanical grade (`out/grade.json`'s) of `steps`, ending with `status` and ground truth. */
+export function graded(steps: readonly Step[], { truthPass, status, harness = "codex" }: Ending) {
+  return gradeCell({
     timeline: harness === "codex" ? codexSession(steps) : claudeSession(steps),
     truth: {
       vitest: report(truthPass),
@@ -92,6 +86,12 @@ export function session(
     },
     statusEnd: STATUS[status],
   });
+}
+
+/** The cell record a run commits for `steps` on `task`, ending with `status` and ground truth. */
+export function session(task: string, steps: readonly Step[], ending: Ending): CellRecord {
+  const { harness = "codex" } = ending;
+  const g = graded(steps, ending);
   const model = harness === "codex" ? "gpt-6-luna" : "haiku";
   return cellRecord({
     ...g,

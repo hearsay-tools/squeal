@@ -17,7 +17,7 @@ import {
   scenarioOf,
 } from "../../evals/lib/index.mjs";
 
-// 006-33, 006-35: D10's seven atomic scenarios, their reference edits against a copy of the
+// 006-33, 006-35, 006-54: D10's eight atomic scenarios, their reference edits against a copy of the
 // fixture, and the baseline left as it was: its declarations, its fingerprint and the rubric.
 const REPO = join(import.meta.dirname, "../..");
 const EVALS = join(REPO, "evals");
@@ -109,6 +109,7 @@ const NAMES = [
   "a5-uncovered",
   "a6-daemon-down",
   "a7-stale",
+  "a8-load-hold",
 ];
 
 describe("the atomic scenarios' reference edits", { timeout: 120_000 }, () => {
@@ -132,9 +133,10 @@ describe("the atomic scenarios' reference edits", { timeout: 120_000 }, () => {
     ]);
   });
 
-  it("a2-slow and a4-pending break only the slow tier's test", async () => {
+  it("a2-slow, a4-pending and a8-load-hold break only the slow tier's test", async () => {
     expect(await of("a2-slow")).toEqual([slow]);
     expect(await of("a4-pending")).toEqual([slow]);
+    expect(await of("a8-load-hold")).toEqual([slow]);
     expect(json("ledgerline/squeal.config.json").slow.include).toEqual(["test/slow/**"]);
   });
 
@@ -173,7 +175,7 @@ describe("the atomic scenarios' reference edits", { timeout: 120_000 }, () => {
 });
 
 describe("the atomic scenarios", () => {
-  it("are D10's seven: a1-break and a4-pending in two turns, the rest in one", () => {
+  it("are D10's eight: a1-break and a4-pending in two turns, the rest in one", () => {
     const config = atomicConfig();
     expect(Object.keys(config.scenarios)).toEqual(NAMES);
     for (const name of NAMES)
@@ -200,7 +202,15 @@ describe("the atomic scenarios", () => {
       "a5-uncovered": ["own-run-covers", "claim-true"],
       "a6-daemon-down": ["own-run-covers", "claim-true", "no-false-pass"],
       "a7-stale": ["current-before-claim", "claim-true"],
+      "a8-load-hold": ["claim-true", "no-false-pass", "slow-through-squeal"],
     });
+  });
+
+  it("a8-load-hold is a2-slow's prompt and edit under the load hold, so the two compare", () => {
+    const [a2, a8] = [scenarioOf("a2-slow"), scenarioOf("a8-load-hold")];
+    expect(a8?.prompts).toEqual(a2?.prompts);
+    expect([a8?.reference, a8?.breaks]).toEqual([a2?.reference, a2?.breaks]);
+    expect(Object.keys(a8?.knobs ?? {})).toEqual(["loadHold"]);
   });
 
   it("end only the last turn with the claim line's request", () => {
