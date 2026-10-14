@@ -18,6 +18,7 @@ export interface BatchObserved {
    * Reachable from what the batch imported outside every collector, item
    * and conftest: start-up plugins (`pytest11`, `-p`), which D2 puts in the
    * environment hash, and the modules pytest imports for `pytest_plugins`.
+   * For the adapter (007-14); nothing here keys a test file.
    */
   readonly session: readonly RelativePath[];
 }
@@ -71,5 +72,12 @@ export function observeBatch(
     );
     return { testFile, paths: reach([real, ...own]) };
   });
+  // A module loaded past the wrapper (an entry point's `import_module`, bound
+  // before the plugin loaded) shows only as an importer.
+  const imported = new Set(edges.map((e) => e.to));
+  const tests = new Set(files.map((f) => f.real as string));
+  for (const { from } of edges) {
+    if (from !== null && !imported.has(from) && !tests.has(from)) session.add(from);
+  }
   return { closures, session: reach([...session].filter((p) => !conftests.has(p))) };
 }
