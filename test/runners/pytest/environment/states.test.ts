@@ -36,13 +36,52 @@ describe("environmentState (spec 007 D2)", () => {
     });
   });
 
-  it("is none with the command and where Squeal looked", () => {
+  // Task 007-39, lessons.md defect 9: "chosen from the lockfile present", and "create `.venv`" without one.
+  const looked = "looked at services/app/.venv, services/app/.pdm-python";
+  it.each([
+    [
+      "uv.lock",
+      { "services/app/uv.lock": "" },
+      "uv sync",
+      `${looked}); run \`uv sync\` in services/app to create one.`,
+    ],
+    [
+      "poetry.lock",
+      { "services/app/poetry.lock": "", "services/app/requirements.txt": "" },
+      "poetry install",
+      `${looked}); run \`poetry install\` in services/app to create one.`,
+    ],
+    [
+      "requirements files",
+      {
+        "services/app/requirements.txt": "",
+        "services/app/requirements-dev.txt": "",
+        "services/app/notes.txt": "",
+      },
+      "python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt -r requirements.txt",
+      `${looked}); run \`python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt -r requirements.txt\` in services/app to create one.`,
+    ],
+    [
+      "no lockfile",
+      { "services/app/pyproject.toml": "" },
+      "python -m venv .venv",
+      `${looked}); no lockfile or requirements file names an install, so create \`.venv\` in services/app with the project's own install (\`python -m venv .venv\`, then its documented \`pip install\` into \`.venv/bin/pip\`).`,
+    ],
+  ])("is none with the command from %s and where Squeal looked", (_, files, command, text) => {
     const root = tempDir();
-    write(root, { "services/app/uv.lock": "" });
+    write(root, files);
     expect(environmentState(root, project({ cwd: "services/app" }))).toEqual({
       state: "none",
-      command: "uv sync",
-      note: 'pytest project "app": no Python environment (looked at services/app/.venv, services/app/.pdm-python); run `uv sync` in services/app to create one. Its checks stay unknown until then.',
+      command,
+      note: `pytest project "app": no Python environment (${text} Its checks stay unknown until then.`,
+    });
+  });
+
+  it("names the declared environment, not .venv, without a lockfile", () => {
+    const root = tempDir();
+    expect(environmentState(root, project({ python: "envs/test/bin/python" }))).toMatchObject({
+      command: "python -m venv envs/test",
+      note: expect.stringContaining("create `envs/test` in the worktree root"),
     });
   });
 

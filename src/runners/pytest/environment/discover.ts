@@ -1,5 +1,5 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { isMissing, toAbsolute, toRelative } from "../../../core/fs/index.js";
 import type { AbsolutePath, PytestProject } from "../../../core/types/index.js";
 
@@ -25,6 +25,8 @@ export type Discovery =
       readonly looked: readonly AbsolutePath[];
       /** D2: "the command that creates one [...], chosen from the lockfile present". */
       readonly command: string;
+      /** The lockfile or first requirements file `command` comes from; `null` without one. */
+      readonly from: AbsolutePath | null;
     };
 
 /** The project's `cwd` as an absolute path. */
@@ -48,13 +50,14 @@ export function discoverEnvironment(root: AbsolutePath, project: PytestProject):
     const declared = resolve(cwd, project.python);
     if (isDirectory(declared)) return found("declared", declared, join(declared, "bin", "python"));
     if (existsSync(declared)) return found("declared", dirname(dirname(declared)), declared);
-    return none(root, cwd, [declared]);
+    const target = basename(declared).startsWith("python") ? dirname(dirname(declared)) : declared;
+    return none(root, cwd, [declared], target);
   }
   const venv = join(cwd, ".venv");
   if (existsSync(join(venv, "pyvenv.cfg"))) return found("venv", venv, join(venv, "bin", "python"));
   const pdm = pdmPython(root, cwd);
   if (pdm !== null) return found("pdm-python", dirname(dirname(pdm)), pdm);
-  return none(root, cwd, [venv, join(cwd, ".pdm-python")]);
+  return none(root, cwd, [venv, join(cwd, ".pdm-python")], venv);
 }
 
 function found(source: EnvironmentSource, env: AbsolutePath, python: AbsolutePath): Discovery {
@@ -81,18 +84,53 @@ const LOCKFILES: readonly (readonly [string, string])[] = [
   ["pdm.lock", "pdm install"],
 ];
 
+/** `requirements.txt`, `requirements-dev.txt`, `test-requirements.txt` and their kind. */
+const REQUIREMENTS = /^(?:[\w.-]+[-_])?requirements(?:[-_.][\w.-]+)?\.txt$/;
+
 /**
  * No environment. The command comes from the first lockfile from `cwd` up
  * to the worktree root (a uv workspace member's lock sits at the workspace
- * root); without one, `uv sync`.
+ * root), else from the requirements files of the nearest directory holding
+ * any, each installed into a new `target`; without either, only the new
+ * `target`, which the project's own install then fills (task 007-39,
+ * lessons.md defect 9: `uv sync` cannot lock every project without a lock).
  */
-function none(root: AbsolutePath, cwd: AbsolutePath, looked: readonly AbsolutePath[]): Discovery {
+function none(
+  root: AbsolutePath,
+  cwd: AbsolutePath,
+  looked: readonly AbsolutePath[],
+  target: AbsolutePath,
+): Discovery {
+  const venv = relative(cwd, target) || ".";
+  const dirs: AbsolutePath[] = [];
   for (let dir = cwd; ; dir = dirname(dir)) {
-    const hit = LOCKFILES.find(([file]) => existsSync(join(dir, file)));
-    if (hit !== undefined) return { kind: "none", looked, command: hit[1] };
+    dirs.push(dir);
     if (toRelative(root, dir) === null) break;
   }
-  return { kind: "none", looked, command: "uv sync" };
+  for (const dir of dirs) {
+    const hit = LOCKFILES.find(([file]) => existsSync(join(dir, file)));
+    if (hit !== undefined)
+      return { kind: "none", looked, command: hit[1], from: join(dir, hit[0]) };
+  }
+  for (const dir of dirs) {
+    const files = requirementsIn(dir).map((file) => join(dir, file));
+    if (files.length === 0) continue;
+    const install = files.map((file) => `-r ${relative(cwd, file)}`).join(" ");
+    const command = `python -m venv ${venv} && ${venv}/bin/pip install ${install}`;
+    return { kind: "none", looked, command, from: files[0] as AbsolutePath };
+  }
+  return { kind: "none", looked, command: `python -m venv ${venv}`, from: null };
+}
+
+function requirementsIn(dir: AbsolutePath): string[] {
+  let names: string[];
+  try {
+    names = readdirSync(dir);
+  } catch (error) {
+    if (isMissing(error)) return [];
+    throw error;
+  }
+  return names.filter((name) => REQUIREMENTS.test(name)).sort();
 }
 
 function isDirectory(path: AbsolutePath): boolean {
