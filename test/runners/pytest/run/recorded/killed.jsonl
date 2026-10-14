@@ -1,0 +1,24 @@
+{"type": "start", "pid": 1754532, "python": "3.13.14", "pytest": "9.1.1"}
+{"type": "import", "from": "<root>/packages/other/src/other/__init__.py", "to": "<root>/packages/other/src/other/__init__.py", "ctx": null}
+{"type": "import", "from": "<root>/packages/other/src/other/__init__.py", "to": "<root>/packages/other/src/other/calc.py", "ctx": null}
+{"type": "import", "from": "<root>/packages/other/src/other/plugin.py", "to": "<root>/packages/other/src/other/__init__.py", "ctx": null}
+{"type": "import", "from": "<root>/packages/other/src/other/plugin.py", "to": "<root>/packages/other/src/other/calc.py", "ctx": null}
+{"type": "collect", "nodeid": ".", "kind": "Dir", "path": "<root>", "outcome": "passed", "longrepr": null}
+{"type": "collect", "nodeid": "outcomes", "kind": "Dir", "path": "<root>/outcomes", "outcome": "passed", "longrepr": null}
+{"type": "collect", "nodeid": "outcomes", "kind": "Dir", "path": "<root>/outcomes", "outcome": "passed", "longrepr": null}
+{"type": "collect", "nodeid": "", "kind": "Session", "path": "<root>", "outcome": "passed", "longrepr": null}
+{"type": "import", "from": "<root>/src/app/__init__.py", "to": "<root>/src/app/__init__.py", "ctx": "<root>/outcomes/test_pass.py"}
+{"type": "import", "from": "<root>/src/app/__init__.py", "to": "<root>/src/app/version.py", "ctx": "<root>/outcomes/test_pass.py"}
+{"type": "import", "from": "<root>/outcomes/test_pass.py", "to": "<root>/src/app/__init__.py", "ctx": "<root>/outcomes/test_pass.py"}
+{"type": "import", "from": "<root>/outcomes/test_pass.py", "to": "<root>/src/app/helpers.py", "ctx": "<root>/outcomes/test_pass.py"}
+{"type": "import", "from": null, "to": "<root>/outcomes/test_pass.py", "ctx": "<root>/outcomes/test_pass.py"}
+{"type": "collect", "nodeid": "outcomes/test_pass.py", "kind": "Module", "path": "<root>/outcomes/test_pass.py", "outcome": "passed", "longrepr": null}
+{"type": "import", "from": null, "to": "<root>/outcomes/test_hang.py", "ctx": "<root>/outcomes/test_hang.py"}
+{"type": "collect", "nodeid": "outcomes/test_hang.py", "kind": "Module", "path": "<root>/outcomes/test_hang.py", "outcome": "passed", "longrepr": null}
+{"type": "collected", "items": [{"nodeid": "outcomes/test_pass.py::test_passes", "path": "<root>/outcomes/test_pass.py"}, {"nodeid": "outcomes/test_hang.py::test_hang", "path": "<root>/outcomes/test_hang.py"}]}
+{"type": "item", "nodeid": "outcomes/test_pass.py::test_passes", "last": false}
+{"type": "phase", "nodeid": "outcomes/test_pass.py::test_passes", "when": "setup", "outcome": "passed", "duration": 0.0001284930003748741, "location": {"path": "outcomes/test_pass.py", "line": 3, "domain": "test_passes"}, "longrepr": null, "crash": null, "wasxfail": null}
+{"type": "phase", "nodeid": "outcomes/test_pass.py::test_passes", "when": "call", "outcome": "passed", "duration": 9.849700018094154e-05, "location": {"path": "outcomes/test_pass.py", "line": 3, "domain": "test_passes"}, "longrepr": null, "crash": null, "wasxfail": null}
+{"type": "phase", "nodeid": "outcomes/test_pass.py::test_passes", "when": "teardown", "outcome": "passed", "duration": 0.00010033000035036821, "location": {"path": "outcomes/test_pass.py", "line": 3, "domain": "test_passes"}, "longrepr": null, "crash": null, "wasxfail": null}
+{"type": "item", "nodeid": "outcomes/test_hang.py::test_hang", "last": true}
+{"type": "phase", "nodeid": "outcomes/test_hang.py::test_hang", "when": "setup", "outcome": "passed", "duration": 9.285600026487373e-05, "location": {"path": "outcomes/test_hang.py", "line": 6, "domain": "test_hang"}, "longrepr": null, "crash": null, "wasxfail": null}
