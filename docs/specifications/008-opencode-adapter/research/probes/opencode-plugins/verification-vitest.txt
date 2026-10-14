@@ -1,0 +1,17 @@
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/86b69255-d325-4e00-a0ac-076247b9e943
+
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/86b69255-d325-4e00-a0ac-076247b9e943/test/fixtures/scheduler/.tmp/70912bcb-a2fd-4f8f-a68d-e65ea708c045/main/.git/worktrees/staged/gitdir
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/86b69255-d325-4e00-a0ac-076247b9e943/test/fixtures/scheduler/.tmp/52cade2b-68f9-4b18-b8c9-238b18280919/main/.git/worktrees/staged/gitdir
+squeal tests: killing 1 process(es) an earlier run left: 3713012
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+
+ Test Files  516 passed | 1 skipped (517)
+      Tests  4348 passed | 10 skipped (4358)
+   Start at  17:28:33
+   Duration  194.57s (tests 96%, import 2%, transform 1%)
