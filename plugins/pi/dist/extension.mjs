@@ -27,7 +27,6 @@ function createDeliveryHost(start) {
   const current = () => {
     if (worker !== null) return worker;
     const started = start();
-    started.unref();
     started.on("message", (message) => {
       if (worker === started) settle(message.id, message.ok ? message.text : null);
     });
@@ -35,6 +34,7 @@ function createDeliveryHost(start) {
     started.on("exit", () => discard(started));
     started.on("messageerror", () => {
     });
+    started.unref();
     worker = started;
     return started;
   };
