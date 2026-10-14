@@ -5,6 +5,7 @@ import {
   acquireSlowSlot,
   clearSlotWaiter,
   inheritsAcrossWorktrees,
+  loadPerCpu,
   markSlotWaiter,
   othersWaitingForSlot,
   SLOW_LOCK_FILE,
@@ -75,6 +76,16 @@ export interface SlowRun {
   readonly artifacts: ReadonlyMap<string, readonly string[]>;
 }
 
+/**
+ * What the load guard let through: the load a file runs under once
+ * `slow.maxDeferMs` is spent (its note), else `null`; and whether the load is
+ * below `slow.maxLoadPerCpu`, as D2's idle width needs.
+ */
+interface Guarded {
+  readonly ranUnderLoad: number | null;
+  readonly idle: boolean;
+}
+
 /** `next`: a slow run, `"again"` when the pump should plan again, `null` when nothing slow starts now. */
 export type SlowNext = SlowRun | "again" | null;
 
@@ -85,7 +96,8 @@ export type SlowNext = SlowRun | "again" | null;
  * holds: every registered consumer is idle or none is (`consumersIdle`), a
  * `run --slow` request is open (`request`), or a `run --all` checkpoint
  * requested the file. Then `next` waits for the load guard with what is left
- * of the pass's `slow.maxDeferMs`, takes the per-user slot, and selects a
+ * of the pass's `slow.maxDeferMs`, unless a `run --slow` request is open (D3
+ * as amended 2026-10-14, task 004-59), takes the per-user slot, and selects a
  * tier: one file, or up to `slow.maxParallel` files of one lane when the
  * machine is idle (no fast work at all and the load below the guard's
  * threshold), holding a permit per file. The pump runs and records it as any
@@ -119,9 +131,14 @@ export class SlowTier {
     private readonly options: SlowTierOptions = {},
   ) {}
 
-  /** `run --slow`: the pending slow files run behind fast work, whatever the turns (trigger b). */
+  /**
+   * `run --slow`: the pending slow files run behind fast work, whatever the
+   * turns and the load (trigger b; D3 as amended 2026-10-14, task 004-59). A
+   * load guard wait in progress gives way, so the pump plans again without it.
+   */
   request(): void {
     this.#requested = true;
+    this.preempt();
   }
 
   /**
@@ -163,10 +180,11 @@ export class SlowTier {
       return null;
     }
     if (preemptions !== this.#preemptions) return "again";
-    const load = await this.#waitForCapacity(context);
-    if (load === "preempted" || preemptions !== this.#preemptions) return "again";
+    const guard = this.#requested ? this.#skipGuard(context) : await this.#waitForCapacity(context);
+    if (guard === "preempted" || preemptions !== this.#preemptions) return "again";
     const { maxParallel } = context.policy.slow;
-    const want = load === null && this.host.fastIdle() ? Math.min(maxParallel, refs.length) : 1;
+    const load = guard.ranUnderLoad;
+    const want = guard.idle && this.host.fastIdle() ? Math.min(maxParallel, refs.length) : 1;
     const yieldTurn = this.#tookLast && othersWaitingForSlot(dir, context.worktreeId);
     const owner = { pid: process.pid, worktreeId: context.worktreeId };
     const slot = yieldTurn ? null : acquireSlowSlot({ dir, owner, permits: maxParallel, want });
@@ -250,8 +268,22 @@ export class SlowTier {
     return (ref) => idle || this.#requested || (runAll && ledger.checkpoints.idFor(ref) !== null);
   }
 
+  /**
+   * An open `run --slow` request skips the load guard (D3 as amended
+   * 2026-10-14, task 004-59): no wait, no budget spent, no "ran under load"
+   * note. The load is still read once, since D2's idle width needs it below
+   * `slow.maxLoadPerCpu`: under load the request runs one file at a time.
+   */
+  #skipGuard(context: SchedulerContext): Guarded {
+    const load = loadPerCpu({
+      ...(this.options.load === undefined ? {} : { load: this.options.load }),
+      ...(this.options.cpus === undefined ? {} : { cpus: this.options.cpus }),
+    });
+    return { ranUnderLoad: null, idle: load <= context.policy.slow.maxLoadPerCpu };
+  }
+
   /** The load guard (D3) with the pass's remaining budget; the load it runs under at the bound. */
-  async #waitForCapacity(context: SchedulerContext): Promise<number | null | "preempted"> {
+  async #waitForCapacity(context: SchedulerContext): Promise<Guarded | "preempted"> {
     const { slow } = context.policy;
     const budget = this.#budgetMs ?? slow.maxDeferMs;
     const wait = new AbortController();
@@ -269,7 +301,7 @@ export class SlowTier {
         ...(this.options.load === undefined ? {} : { load: this.options.load }),
         ...(this.options.cpus === undefined ? {} : { cpus: this.options.cpus }),
       });
-      return waited.ranUnderLoad;
+      return { ranUnderLoad: waited.ranUnderLoad, idle: waited.ranUnderLoad === null };
     } catch (error) {
       if (wait.signal.aborted) return "preempted";
       throw error;
