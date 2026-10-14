@@ -45,6 +45,11 @@ export interface PytestAdapterOptions {
    * in status (task 007-39).
    */
   readonly note?: (text: string, topic?: string) => void;
+  /**
+   * Whether status already lists a note, so an environment note a restart
+   * finds listed is not written again; default never.
+   */
+  readonly noted?: (text: string) => boolean;
   /** Batches at once, read per run: policy `runner.tierSize`. Default every batch. */
   readonly concurrency?: () => number;
   /** Files per batch, read per run (D6); default 5. */
@@ -116,8 +121,9 @@ export async function createPytestAdapter(
   const environmentNote = (text: string) => {
     if (text === told) return;
     told = text;
-    raw(text, topic);
+    if (!options.noted?.(text)) raw(text, topic);
   };
+  const ready = `${label}: its Python environment is ready`;
   const ref = (path: RelativePath): TestFileRef => ({ project: project.name, path });
   const source = options.source ?? process.env;
 
@@ -187,7 +193,9 @@ export async function createPytestAdapter(
 
   // B2: the first admission settles as every later one; the graph builds meanwhile.
   let [environment] = await Promise.all([settle(), build()]);
-  announce(environment);
+  // Ready at start: noted too, replacing the note an earlier daemon may have left on the topic.
+  if (environment.state === "ready") environmentNote(ready);
+  else announce(environment);
 
   /** D2: reads the environment and the settings again; whether either moved. */
   const reread = async (): Promise<Moved> => {
@@ -199,7 +207,7 @@ export async function createPytestAdapter(
     const rebuild = next.dir !== dir || !sameSettings(next.settings, settings);
     stale = false;
     if (moved && next.environment.state === "ready" && environment.state !== "ready") {
-      environmentNote(`${label}: its Python environment is ready`);
+      environmentNote(ready);
     }
     ({ environment, dir, settings } = next);
     if (moved) announce(environment);
