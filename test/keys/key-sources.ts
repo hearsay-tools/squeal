@@ -55,6 +55,7 @@ export const GUARDED_WITHIN: Readonly<Record<string, string>> = {
   "src/harness/build.ts": "what the bundles hold, how they are built and which runtime files ship",
   "src/harness/claude-code/build.ts": "the Claude Code plugin's build",
   "src/harness/codex/build.ts": "the Codex plugin's build",
+  "src/harness/pi/build.ts": "the Pi package's build",
 };
 
 /** Manifest fields dropped before hashing, each with why. */
