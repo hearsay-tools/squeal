@@ -1,0 +1,260 @@
+07:18:02Z +0s Squeal setup plan for /home/squeal-e2e/runs/sq18-cz/fresh
+07:18:02Z +0s 
+07:18:02Z +0s Harnesses:
+07:18:02Z +0s   claude-code: on the PATH, plugin not installed
+07:18:02Z +0s     install: claude plugin marketplace add hearsay-tools/marketplace
+07:18:02Z +0s     install: claude plugin install squeal@hearsay
+07:18:02Z +0s   codex: on the PATH, plugin not installed
+07:18:02Z +0s     install: codex plugin marketplace add hearsay-tools/marketplace
+07:18:02Z +0s     install: codex plugin add squeal@hearsay
+07:18:02Z +0s 
+07:18:02Z +0s Runners: Vitest, node:test test:unit (squeal init would seed it), node:test test:package (squeal init would seed it)
+07:18:02Z +0s Config: squeal.config.json is missing here; one is in /home/squeal-e2e/runs/sq18-cz/asis/squeal.config.json
+07:18:02Z +0s 
+07:18:02Z +0s Instruction files:
+07:18:02Z +0s   AGENTS.md (also CLAUDE.md): read by claude-code and codex; no Squeal block
+07:18:02Z +0s 
+07:18:02Z +0s Gate lines:
+07:18:02Z +0s   AGENTS.md:172: | Cockpit e2e specs (`packages/web/e2e/*.e2e.ts`, the browser seam, a flaky shard) | `packages/web/e2e/README.md`, then `packages/web/e2e/agent-browser.ts` and `packages/web/e2e/contrast.ts` | Wait, then read, as one step: `click`/`hover`/`fill` auto-wait for their selector, `waitForValue` polls an expression and returns the sample that passed (hearsay-tools/cezarion#409); a one-shot `expect(browser.…)` right after an action is a race. `packages/web/src/test/e2e-wait-discipline.test.ts` scans every spec on `npm test` against a baseline that only shrinks. A red shard leaves a failure bundle (`.ai/qa/failures/`); read it before theorizing, and no flake fix lands without one or a local reproduction. |
+07:18:02Z +0s     reworded: | Cockpit e2e specs (`packages/web/e2e/*.e2e.ts`, the browser seam, a flaky shard) | `packages/web/e2e/README.md`, then `packages/web/e2e/agent-browser.ts` and `packages/web/e2e/contrast.ts` | Wait, then read, as one step: `click`/`hover`/`fill` auto-wait for their selector, `waitForValue` polls an expression and returns the sample that passed (hearsay-tools/cezarion#409); a one-shot `expect(browser.…)` right after an action is a race. `packages/web/src/test/e2e-wait-discipline.test.ts` scans every spec on `squeal run --all --wait 110000` against a baseline that only shrinks. A red shard leaves a failure bundle (`.ai/qa/failures/`); read it before theorizing, and no flake fix lands without one or a local reproduction. |. If it exits 3 at its deadline, run it again; if it exits 3 for another reason, `squeal` is unavailable, or you doubt its result, run `npm test` instead.
+07:18:02Z +0s   AGENTS.md:185: Do not duplicate those background runs with `npm test`,
+07:18:02Z +0s     reworded: Do not duplicate those background runs with `squeal run --all --wait 110000`,. If it exits 3 at its deadline, run it again; if it exits 3 for another reason, `squeal` is unavailable, or you doubt its result, run `npm test` instead.
+07:18:02Z +0s   AGENTS.md:201: browser is an error in a Squeal run. `npm test` and `npm run test:watch` select
+07:18:02Z +0s     reworded: browser is an error in a Squeal run. `squeal run --all --wait 110000` and `npm run test:watch` select. If it exits 3 at its deadline, run it again; if it exits 3 for another reason, `squeal` is unavailable, or you doubt its result, run `npm test` instead.
+07:18:02Z +0s   AGENTS.md:224: npm test            # vitest — server + cockpit unit suites
+07:18:02Z +0s     inside a code block: reword it by hand
+07:18:02Z +0s   AGENTS.md:237: `npm test` and `npm run test:unit` are the fast unit gate: no server, no browser. They must stay that way. `npm run test:package` needs a completed `npm run build` (it packs the tarball). Pull request CI runs packaged CLI E2E and cockpit browser E2E as separate checks; the required aggregate fails if the cockpit suite is skipped or failed.
+07:18:02Z +0s     reworded: `squeal run --all --wait 110000` and `npm run test:unit` are the fast unit gate: no server, no browser. They must stay that way. `npm run test:package` needs a completed `npm run build` (it packs the tarball). Pull request CI runs packaged CLI E2E and cockpit browser E2E as separate checks; the required aggregate fails if the cockpit suite is skipped or failed. If it exits 3 at its deadline, run it again; if it exits 3 for another reason, `squeal` is unavailable, or you doubt its result, run `npm test` instead.
+07:18:02Z +0s   AGENTS.md:239: **When a manual Vitest run is needed, use npm, never `npx vitest`.** It is a devDependency of this repo, so `npm test`
+07:18:02Z +0s     runs the test command more than once: reword it by hand
+07:18:02Z +0s   AGENTS.md:245: npm test -- packages/web/src/routes/settings   # one directory
+07:18:02Z +0s     inside a code block: reword it by hand
+07:18:02Z +0s   AGENTS.md:246: npm test -- --testTimeout=30000 path/to/one.test.ts
+07:18:02Z +0s     inside a code block: reword it by hand
+07:18:02Z +0s   AGENTS.md:247: npm test -- -t "the name of one test"
+07:18:02Z +0s     inside a code block: reword it by hand
+07:18:02Z +0s   AGENTS.md:326: | Verification | Local: Squeal when installed and validating, otherwise focused npm checks. Full gate in CI: `npm run typecheck`, `npm test`, `npm run test:unit`, `npm run build`, `npm run test:package`, `npm run test:e2e` |
+07:18:02Z +0s     reworded: | Verification | Local: Squeal when installed and validating, otherwise focused npm checks. Full gate in CI: `npm run typecheck`, `squeal run --all --wait 110000`, `npm run test:unit`, `npm run build`, `npm run test:package`, `npm run test:e2e` |. If it exits 3 at its deadline, run it again; if it exits 3 for another reason, `squeal` is unavailable, or you doubt its result, run `npm test` instead.
+07:18:02Z +0s 
+07:18:02Z +0s Slow groups:
+07:18:02Z +0s   packages/cezar/test/e2e (13 files): under a directory named e2e; run by npm script .:test:package; run by npm script packages/cezar:test:package; node:test project test:package
+07:18:02Z +0s     not declared slow; default slow; inputs: none
+07:18:02Z +0s     artifact? packages/cezar/dist
+07:18:02Z +0s       packages/cezar/package.json bin "dist/index.js"
+07:18:02Z +0s       packages/cezar/package.json exports "./dist/index.js"
+07:18:02Z +0s       packages/cezar/package.json exports "./dist/server/app-type.js"
+07:18:02Z +0s       packages/cezar/package.json files "dist" (weak)
+07:18:02Z +0s       build script packages/cezar:build (tsc) writes packages/cezar/dist
+07:18:02Z +0s       gitignored, named by 9 of 13 test files, such as "dist/"
+07:18:02Z +0s     artifact? packages/cezar/scripts
+07:18:02Z +0s       packages/cezar/package.json files "scripts" (weak)
+07:18:02Z +0s       named by 3 of 13 test files, such as "scripts/mock-cursor-print.mjs"
+07:18:02Z +0s     artifact? packages/cezar/web
+07:18:02Z +0s       gitignored, named by 2 of 13 test files, such as "web/dist"
+07:18:02Z +0s     artifact? packages/cezar/web/dist
+07:18:02Z +0s       packages/cezar/package.json files "web/dist" (weak)
+07:18:02Z +0s       gitignored, named by 2 of 13 test files, such as "web/dist/index.html"
+07:18:02Z +0s   packages/cezar/test/unit (10 files): node:test project test:unit
+07:18:02Z +0s     not declared slow; default not slow; inputs: none
+07:18:02Z +0s     artifact? packages/cezar/dist
+07:18:02Z +0s       packages/cezar/package.json bin "dist/index.js"
+07:18:02Z +0s       packages/cezar/package.json exports "./dist/index.js"
+07:18:02Z +0s       packages/cezar/package.json exports "./dist/server/app-type.js"
+07:18:02Z +0s       packages/cezar/package.json files "dist" (weak)
+07:18:02Z +0s       build script packages/cezar:build (tsc) writes packages/cezar/dist
+07:18:02Z +0s       gitignored, named by 2 of 10 test files, such as "packages/cezar/dist/index.js"
+07:18:02Z +0s     artifact? packages/cezar/scripts
+07:18:02Z +0s       packages/cezar/package.json files "scripts" (weak)
+07:18:02Z +0s       named by 1 of 10 test files, such as "../../scripts/mock-cursor-hang-stdin.mjs"
+07:18:02Z +0s     artifact? packages/cezar/web/dist
+07:18:02Z +0s       packages/cezar/package.json files "web/dist" (weak)
+07:18:02Z +0s   not resolved statically: .:test:e2e = sh .ai/scripts/e2e.sh
+07:18:02Z +0s 
+07:18:02Z +0s Codex trust: not checked; squeal init --harness codex --trust checks it
+07:18:02Z +0s Warm-up: runs all 744 test files, 744 without a current result (estimated: no daemon has listed them)
+07:18:02Z +0s 
+07:18:02Z +0s Outdated:
+07:18:02Z +0s   squeal.config.json is only in /home/squeal-e2e/runs/sq18-cz/asis/squeal.config.json: this worktree runs on defaults
+07:18:02Z +0s 
+07:18:02Z +0s Set up Claude Code here (on the PATH, plugin not installed)?
+07:18:02Z +0s   yes (default, --yes)
+07:18:02Z +0s Set up Codex here (on the PATH, plugin not installed)?
+07:18:02Z +0s   yes (default, --yes)
+07:18:02Z +0s Write the Squeal block to AGENTS.md (read by Claude Code and Codex)?
+07:18:02Z +0s   write it (default, --yes)
+07:18:02Z +0s Gate line AGENTS.md:172:
+07:18:02Z +0s     | Cockpit e2e specs (`packages/web/e2e/*.e2e.ts`, the browser seam, a flaky shard) | `packages/web/e2e/README.md`, then `packages/web/e2e/agent-browser.ts` and `packages/web/e2e/contrast.ts` | Wait, then read, as one step: `click`/`hover`/`fill` auto-wait for their selector, `waitForValue` polls an expression and returns the sample that passed (hearsay-tools/cezarion#409); a one-shot `expect(browser.…)` right after an action is a race. `packages/web/src/test/e2e-wait-discipline.test.ts` scans every spec on `npm test` against a baseline that only shrinks. A red shard leaves a failure bundle (`.ai/qa/failures/`); read it before theorizing, and no flake fix lands without one or a local reproduction. |
+07:18:02Z +0s   reworded:
+07:18:02Z +0s     | Cockpit e2e specs (`packages/web/e2e/*.e2e.ts`, the browser seam, a flaky shard) | `packages/web/e2e/README.md`, then `packages/web/e2e/agent-browser.ts` and `packages/web/e2e/contrast.ts` | Wait, then read, as one step: `click`/`hover`/`fill` auto-wait for their selector, `waitForValue` polls an expression and returns the sample that passed (hearsay-tools/cezarion#409); a one-shot `expect(browser.…)` right after an action is a race. `packages/web/src/test/e2e-wait-discipline.test.ts` scans every spec on `squeal run --all --wait 110000` against a baseline that only shrinks. A red shard leaves a failure bundle (`.ai/qa/failures/`); read it before theorizing, and no flake fix lands without one or a local reproduction. |. If it exits 3 at its deadline, run it again; if it exits 3 for another reason, `squeal` is unavailable, or you doubt its result, run `npm test` instead.
+07:18:02Z +0s   Reword it?
+07:18:02Z +0s   reword (default, --yes)
+07:18:02Z +0s Gate line AGENTS.md:185:
+07:18:02Z +0s     Do not duplicate those background runs with `npm test`,
+07:18:02Z +0s   reworded:
+07:18:02Z +0s     Do not duplicate those background runs with `squeal run --all --wait 110000`,. If it exits 3 at its deadline, run it again; if it exits 3 for another reason, `squeal` is unavailable, or you doubt its result, run `npm test` instead.
+07:18:02Z +0s   Reword it?
+07:18:02Z +0s   reword (default, --yes)
+07:18:02Z +0s Gate line AGENTS.md:201:
+07:18:02Z +0s     browser is an error in a Squeal run. `npm test` and `npm run test:watch` select
+07:18:02Z +0s   reworded:
+07:18:02Z +0s     browser is an error in a Squeal run. `squeal run --all --wait 110000` and `npm run test:watch` select. If it exits 3 at its deadline, run it again; if it exits 3 for another reason, `squeal` is unavailable, or you doubt its result, run `npm test` instead.
+07:18:02Z +0s   Reword it?
+07:18:02Z +0s   reword (default, --yes)
+07:18:02Z +0s Gate line AGENTS.md:237:
+07:18:02Z +0s     `npm test` and `npm run test:unit` are the fast unit gate: no server, no browser. They must stay that way. `npm run test:package` needs a completed `npm run build` (it packs the tarball). Pull request CI runs packaged CLI E2E and cockpit browser E2E as separate checks; the required aggregate fails if the cockpit suite is skipped or failed.
+07:18:02Z +0s   reworded:
+07:18:02Z +0s     `squeal run --all --wait 110000` and `npm run test:unit` are the fast unit gate: no server, no browser. They must stay that way. `npm run test:package` needs a completed `npm run build` (it packs the tarball). Pull request CI runs packaged CLI E2E and cockpit browser E2E as separate checks; the required aggregate fails if the cockpit suite is skipped or failed. If it exits 3 at its deadline, run it again; if it exits 3 for another reason, `squeal` is unavailable, or you doubt its result, run `npm test` instead.
+07:18:02Z +0s   Reword it?
+07:18:02Z +0s   reword (default, --yes)
+07:18:02Z +0s Gate line AGENTS.md:326:
+07:18:02Z +0s     | Verification | Local: Squeal when installed and validating, otherwise focused npm checks. Full gate in CI: `npm run typecheck`, `npm test`, `npm run test:unit`, `npm run build`, `npm run test:package`, `npm run test:e2e` |
+07:18:02Z +0s   reworded:
+07:18:02Z +0s     | Verification | Local: Squeal when installed and validating, otherwise focused npm checks. Full gate in CI: `npm run typecheck`, `squeal run --all --wait 110000`, `npm run test:unit`, `npm run build`, `npm run test:package`, `npm run test:e2e` |. If it exits 3 at its deadline, run it again; if it exits 3 for another reason, `squeal` is unavailable, or you doubt its result, run `npm test` instead.
+07:18:02Z +0s   Reword it?
+07:18:02Z +0s   reword (default, --yes)
+07:18:02Z +0s packages/cezar/test/e2e/** (13 files: under a directory named e2e; run by npm script .:test:package; run by npm script packages/cezar:test:package; node:test project test:package). Run these tests in the slow tier?
+07:18:02Z +0s   slow (default, --yes)
+07:18:02Z +0s packages/cezar/test/e2e/** may test these artifacts, which Squeal does not see change:
+07:18:02Z +0s     packages/cezar/dist: packages/cezar/package.json bin "dist/index.js"; packages/cezar/package.json exports "./dist/index.js"; packages/cezar/package.json exports "./dist/server/app-type.js"; packages/cezar/package.json files "dist" (weak); build script packages/cezar:build (tsc) writes packages/cezar/dist; gitignored, named by 9 of 13 test files, such as "dist/"
+07:18:02Z +0s     packages/cezar/scripts: packages/cezar/package.json files "scripts" (weak); named by 3 of 13 test files, such as "scripts/mock-cursor-print.mjs"
+07:18:02Z +0s     packages/cezar/web: gitignored, named by 2 of 13 test files, such as "web/dist"
+07:18:02Z +0s     packages/cezar/web/dist: packages/cezar/package.json files "web/dist" (weak); gitignored, named by 2 of 13 test files, such as "web/dist/index.html"
+07:18:02Z +0s   With an input, each rebuild re-runs the group and its results can be shared across worktrees;
+07:18:02Z +0s   without one, the group stays current after a rebuild until its own files change, and every
+07:18:02Z +0s   worktree runs it itself. Squeal never builds: keeping the artifact built stays your job.
+07:18:02Z +0s   Re-run these tests when this changes?
+07:18:02Z +0s   packages/cezar/dist/** (default, --yes)
+07:18:02Z +0s packages/cezar/test/unit/** (10 files: node:test project test:unit). Run these tests in the slow tier?
+07:18:02Z +0s   not slow (default, --yes)
+07:18:02Z +0s Warm up now: run all 744 test files on this terminal's daemon, current ones too, to record the ignored paths each reads?
+07:18:02Z +0s   yes (default, --yes)
+07:18:02Z +0s 
+07:18:02Z +0s squeal init: wrote squeal.config.json with every default policy key
+07:18:02Z +0s squeal init: script "test:unit" in package.json is not `node [flags...] --test <globs...>` (a chain); add its nodeTest entry by hand from the template below
+07:18:02Z +0s squeal init: seeded nodeTest project "test:unit" from packages/cezar/package.json
+07:18:02Z +0s squeal init: seeded nodeTest project "test:package" from packages/cezar/package.json
+07:18:02Z +0s squeal init: added the hearsay marketplace to .claude/settings.json
+07:18:02Z +0s squeal init: enabled squeal@hearsay in .claude/settings.json
+07:18:02Z +0s nodeTest entries to complete by hand:
+07:18:02Z +0s [
+07:18:02Z +0s   {
+07:18:02Z +0s     "name": "root:test:unit",
+07:18:02Z +0s     "argv": [],
+07:18:02Z +0s     "include": [
+07:18:02Z +0s       "<test-file glob>"
+07:18:02Z +0s     ]
+07:18:02Z +0s   }
+07:18:02Z +0s ]
+07:18:02Z +0s Each collaborator installs the plugin once: claude plugin install squeal@hearsay --scope project
+07:18:02Z +0s squeal init: reworded gate line AGENTS.md:172
+07:18:02Z +0s squeal init: reworded gate line AGENTS.md:185
+07:18:02Z +0s squeal init: reworded gate line AGENTS.md:201
+07:18:02Z +0s squeal init: reworded gate line AGENTS.md:237
+07:18:02Z +0s squeal init: reworded gate line AGENTS.md:326
+07:18:02Z +0s squeal init: wrote the Squeal block to AGENTS.md
+07:18:02Z +0s squeal init: added packages/cezar/test/e2e/** to slow.include in squeal.config.json
+07:18:02Z +0s squeal init: added packages/cezar/dist/** to inputs["packages/cezar/test/e2e/**"] in squeal.config.json
+07:18:02Z +0s squeal init: kept squeal.config.json
+07:18:02Z +0s Each user installs the Codex plugin once; Codex writes its own config:
+07:18:02Z +0s   codex plugin marketplace add hearsay-tools/marketplace
+07:18:02Z +0s   codex plugin add squeal@hearsay
+07:18:02Z +0s Then trust its hooks once: open the Codex TUI, run /hooks and trust the hooks of squeal@hearsay. Codex skips untrusted hooks silently.
+07:18:02Z +0s 
+07:18:02Z +0s squeal warmup: runs about 744 test files, counted from the repository (no daemon has listed them yet), to record the ignored paths each reads
+07:18:02Z +0s Squeal daemon spawned for /home/squeal-e2e/runs/sq18-cz/fresh
+07:18:06Z +4s squeal warmup: 0 of 92 test files done
+07:18:07Z +5s squeal warmup: 1 of 92 test files done
+07:18:08Z +6s squeal warmup: 0 of 779 test files done
+07:18:17Z +15s Checkpoint 9248880a-7bc1-4412-92f9-a9419ba0a0a8 has no verdict: revision 1 was recorded after the checkpoint's revision 0
+07:18:17Z +15s Checkpoint 9248880a-7bc1-4412-92f9-a9419ba0a0a8 started at revision 0: 779 test files to run, 0 already current
+07:18:17Z +15s 
+07:18:17Z +15s Revision: 1
+07:18:17Z +15s Known failures: 0
+07:18:17Z +15s Affected checks: 16080 passed (15392 tests, 688 test files loaded), 0 running, 2 queued (1 test, 1 test file loaded), 2 skipped (2 tests); 90 test files without checks yet: 79 running, 11 queued; the runner part of revision 1 is pending, so test files it adds are not counted yet
+07:18:17Z +15s Full-suite checkpoint: none completed at any revision (the counts are for revision 1; `squeal run --all` requests one)
+07:18:17Z +15s Checkpoint in progress: `run --all` requested at revision 0, started 9 s ago: 0 of 779 test files done (`squeal run --all --wait` waits for it)
+07:18:17Z +15s Slow tier: 13 test files; 13 pending, running packages/cezar/test/e2e/application-update.test.ts since 09:18 (no earlier run). Squeal runs them when the agent pauses; `squeal run --slow` runs them now.
+07:18:17Z +15s 
+07:18:17Z +15s Worktree: /home/squeal-e2e/runs/sq18-cz/fresh (HEAD 3a5d161, dirty at revision 1)
+07:18:17Z +15s Daemon: running, last heartbeat 5 s ago
+07:18:17Z +15s Inherited from other worktrees: 16071 current results (15384 tests, 687 test files loaded)
+07:18:17Z +15s   16071 (15384 tests, 687 test files loaded) from /home/squeal-e2e/runs/sq18-cz/asis at fa994be
+07:18:17Z +15s Test files without checks: 90 pending, 0 unknown
+07:18:17Z +15s Closure method: static imports plus declared inputs
+07:18:17Z +15s Store schema: 1
+07:18:17Z +15s Notes:
+07:18:17Z +15s   2026-10-14T07:18:02.907Z: node-test project "test:package": 2 test file(s) with an incomplete static closure, keyed by what their runs load: packages/cezar/test/e2e/delegation.test.ts (import() with a computed specifier at packages/cezar/test/e2e/delegation.test.ts:41:29; import() with a computed specifier at packages/cezar/test/e2e/delegation.test.ts:99:36), packages/cezar/test/e2e/inline-contract.test.ts (import() with a computed specifier at packages/cezar/test/e2e/inline-contract.test.ts:128:26; import() with a computed specifier at packages/cezar/test/e2e/inline-contract.test.ts:129:26)
+07:18:17Z +15s   2026-10-14T07:18:02.909Z: node-test project "test:unit": 1 test file(s) with an incomplete static closure, keyed by what their runs load: packages/cezar/test/unit/resolve-browser-launch.test.ts (import() with a computed specifier at packages/cezar/test/unit/resolve-browser-launch.test.ts:15:11)
+07:18:17Z +15s   2026-10-14T07:18:07.369Z, revision 0: node-test project "test:package": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: packages/cezar/test/e2e/alias-bin-exports.test.ts
+07:18:17Z +15s 
+07:18:17Z +15s squeal warmup: no verdict, so some test files may still lack a result; run squeal warmup again, or npx vitest run.
+07:18:17Z +15s 
+07:18:17Z +15s Changes:
+07:18:17Z +15s  AGENTS.md | 16 +++++++++++-----
+07:18:17Z +15s  1 file changed, 11 insertions(+), 5 deletions(-)
+07:18:17Z +15s 
+07:18:17Z +15s diff --git a/AGENTS.md b/AGENTS.md
+07:18:17Z +15s index 93fe124..46face9 100644
+07:18:17Z +15s --- a/AGENTS.md
+07:18:17Z +15s +++ b/AGENTS.md
+07:18:17Z +15s @@ -169,7 +169,7 @@ Rules that follow from that:
+07:18:17Z +15s  | Runs store / state persistence                                                                                                                                                                                | `packages/cezar/src/runs/store.ts`                                                                                                                                                                                                                           | One embedded SQLite file per project, `.ai/cezar/runs.db` (`node:sqlite`, WAL; Node 24.15 is the floor and CI proves it), plus one append-only NDJSON event file per run. **Read first, in this order: `runs/run-database.ts` (the only SQL; schema, `transaction()`, claims, fenced writes), `runs/run-row.ts` (record to row: columns, summary, `isLiveRecord`), `runs/raw-record.ts` (keeps unknown fields across a write), `runs/store.ts` (`RunStore`, import, open), then `runs/run-index.ts` (read-only cold reader), `runs/legacy-index.ts` and `runs/store-open-error.ts`.** Each row holds the complete `RunRecord` JSON plus a stored `toRunSummary()` column and the few columns the store queries; `RunRecord` stays a zod schema, so new fields must still be optional or defaulted and rows written by an older cezar still parse. **Only the live set is in memory**: queued, running and waiting runs, runs a `RunManager` holds, pending wake timers and parents waiting on workers (`isLiveRecord`, plus `pin`). Finished runs load from the row on demand as fresh copies (frozen under vitest), so never keep or mutate one, and never rebuild a full scan of `runs`: add an indexed column. A delegation family is held, claimed and released as one unit (`run_claims`: session UUID, pid and start identity, checked inside the write transaction), so two processes on one project never both write a run. A foreign live run is readable and every control answers 409 `{ error }` (`requireRunControl`); `run_claims` and `run_conflicts` are private. `runs.json` is imported once on first open into `runs.db` (exact bytes kept in `runs.json.pre-sqlite.bak`, completion marker in the same transaction), never written again and never deleted; there is no dual-write, so an older cezar sees only history up to the import. **A store that cannot open never reads as empty**: `RunStore.open` throws a typed `RunStoreOpenError` (`corrupt`, `busy`, `permission`, `disk-full`, `unsupported-schema`, `legacy-writer`, `other`), a damaged file is left byte-for-byte alone, and `serve` answers 409 `{ error }` for that project's routes instead of treating it as no runs. Recovery steps live in `BACKWARD_COMPATIBILITY.md` section 3. Cold readers (`readRunIndexFromDisk`) open `runs.db` read-only and never build a context. Spec: `.ai/specs/2026-10-05-sqlite-run-store.md`. A **queued** run's prompt stays editable until the scheduler picks it up (open-mercato/cezar#472): `task` plus the optional `queuedMessages` stack are folded into `{{task}}` at dequeue, and that fold is read-only — never write it back to the record. The store is also the in-process event bus for SSE.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+07:18:17Z +15s  | Web UI (cockpit)                                                                                                                                                                                              | `packages/web/src/app.tsx`, then `packages/web/src/routes.tsx`, `packages/web/src/api/`, and the affected component/route                                                                                                                                    | React 19 + Vite + Tailwind v4 + shadcn/ui; source lives in `packages/web/` (its own npm workspace, `@open-mercato/cezar-web`, with the React/Vite/Tailwind deps in ITS manifest, not the root's), build output in ignored `packages/cezar/web/dist/`. Anything the server and the cockpit BOTH speak — the v2 protocol types, the `/api/v1/p/:projectId` scope helpers, and (as it grows) the typed API client — lives in the third workspace `packages/api-client/` (`@open-mercato/cezar-api-client`), which must stay Node-free: no `node:*` import and no `@types/node`, because it is bundled into the browser AND imported by the Node service. Keep one global SSE connection and patch the TanStack Query cache in place; authoritative refetch happens on reconnect/visibility. Preserve light/dark/system theming, mobile safe areas, keyboard access, and unit coverage. The legacy vanilla web app was deleted in R7; when `packages/cezar/web/dist` is missing the server answers every shell route with a built-in "run `npm run build:web`" hint page (`packages/cezar/src/server/static-ui.ts`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+07:18:17Z +15s  | Agent config files (Settings → Agent config; grouped by agent, MCP as a per-agent subsection — spec 2026-07-17-agent-config-by-agent, descriptor table in `packages/web/src/routes/settings/agent-descriptors.ts`) | `packages/cezar/src/agent-config/` (`catalog.ts`, `files.ts`, `validate.ts`, `service.ts`, `seed.ts`), then `packages/cezar/src/paths.ts` and the `/api/v1/agent-config` routes in `packages/cezar/src/server/server.ts`                                                                      | Read and edit the coding agents' OWN config files (Claude/Codex/OpenCode settings, MCP, memory), raw and per-scope (spec open-mercato/cezar#404). `catalog.ts` is the ONLY place vendor knowledge about config FILES lives — paths + verbatim precedence strings; keep it accurate and dated. Its sibling `src/core/agent-profiles.ts` owns the other half: the env var that relocates each agent's whole home (spec `2026-07-29-agent-profiles`). Never re-serialize a file cezar opened (byte-exact round-trip). Files are addressed by catalog id, never a path. **Writing is a local-machine capability: every `PUT /api/agent-config/:id` 409s when `capabilities().localHandoff` is false — this closes a hooks-based RCE path, do not weaken it.** The gitignored personal layer is seeded into run worktrees (`seed.ts`, guarded by `git check-ignore`).                                                                                                                                                                                                                                                                                                                                                                                                                               |
+07:18:17Z +15s -| Cockpit e2e specs (`packages/web/e2e/*.e2e.ts`, the browser seam, a flaky shard) | `packages/web/e2e/README.md`, then `packages/web/e2e/agent-browser.ts` and `packages/web/e2e/contrast.ts` | Wait, then read, as one step: `click`/`hover`/`fill` auto-wait for their selector, `waitForValue` polls an expression and returns the sample that passed (hearsay-tools/cezarion#409); a one-shot `expect(browser.…)` right after an action is a race. `packages/web/src/test/e2e-wait-discipline.test.ts` scans every spec on `npm test` against a baseline that only shrinks. A red shard leaves a failure bundle (`.ai/qa/failures/`); read it before theorizing, and no flake fix lands without one or a local reproduction. |
+07:18:17Z +15s +| Cockpit e2e specs (`packages/web/e2e/*.e2e.ts`, the browser seam, a flaky shard) | `packages/web/e2e/README.md`, then `packages/web/e2e/agent-browser.ts` and `packages/web/e2e/contrast.ts` | Wait, then read, as one step: `click`/`hover`/`fill` auto-wait for their selector, `waitForValue` polls an expression and returns the sample that passed (hearsay-tools/cezarion#409); a one-shot `expect(browser.…)` right after an action is a race. `packages/web/src/test/e2e-wait-discipline.test.ts` scans every spec on `squeal run --all --wait 110000` against a baseline that only shrinks. A red shard leaves a failure bundle (`.ai/qa/failures/`); read it before theorizing, and no flake fix lands without one or a local reproduction. |. If it exits 3 at its deadline, run it again; if it exits 3 for another reason, `squeal` is unavailable, or you doubt its result, run `npm test` instead.
+07:18:17Z +15s  | Feature specs / design history                                                                                                                                                                                | `.ai/specs/`                                                                                                                                                                                                                                  | Numbered and dated specs are the design record — code comments cite them (`spec 006`, `open-mercato/cezar#348`). Read the relevant spec before changing a feature it covers; keep new work consistent with it or update the spec.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+07:18:17Z +15s  | Upstream drift (what open-mercato/cezar shipped, what we ported, declined, or solved differently) | `.ai/upstream/README.md`, then `.ai/upstream/ledger.yaml`, `.github/scripts/upstream-scan.cjs`, spec `.ai/specs/2026-09-18-upstream-ledger.md` | One entry per upstream commit since the fork point, keyed by sha; `pending` rows come from the weekly `upstream-scan.yml` PR and are decided by editing `status`, `fork` and `reason` in the YAML, then `node .github/scripts/upstream-scan.cjs render` so `LEDGER.md` matches. The unit gate validates every row. **Never add a git remote named `upstream`**: `gh` prefers it over `origin` and cezar's GitHub tab starts showing the upstream repo; the scan fetches into `refs/cez-upstream/main` instead. |
+07:18:17Z +15s  
+07:18:17Z +15s @@ -182,7 +182,7 @@ Read the `SQUEAL` reports and follow its installed skill. `squeal.config.json`
+07:18:17Z +15s  covers the four unit Vitest projects, both fast `node:test` groups from
+07:18:17Z +15s  `npm run test:unit`, and both E2E suites in its slow tier: packaged CLI
+07:18:17Z +15s  (`npm run test:package`) and cockpit browser (`npm run test:e2e`).
+07:18:17Z +15s -Do not duplicate those background runs with `npm test`,
+07:18:17Z +15s +Do not duplicate those background runs with `squeal run --all --wait 110000`,. If it exits 3 at its deadline, run it again; if it exits 3 for another reason, `squeal` is unavailable, or you doubt its result, run `npm test` instead.
+07:18:17Z +15s  `npm run test:unit`, `npm run test:package`, `npm run test:e2e`, or `npm run test:changed`.
+07:18:17Z +15s  Use `squeal why <check>` for failure details and, when a result is needed,
+07:18:17Z +15s  `squeal status --wait 60000`.
+07:18:17Z +15s @@ -198,7 +198,7 @@ Packaged CLI E2E exercises built output: run `npm run build` after relevant sour
+07:18:17Z +15s  changes before relying on its results. The config declares the server and cockpit
+07:18:17Z +15s  build artifacts as inputs. The browser project's globalSetup uses the existing
+07:18:17Z +15s  test environment bootstrap to prepare or reuse the app and Chrome; a missing
+07:18:17Z +15s -browser is an error in a Squeal run. `npm test` and `npm run test:watch` select
+07:18:17Z +15s +browser is an error in a Squeal run. `squeal run --all --wait 110000` and `npm run test:watch` select. If it exits 3 at its deadline, run it again; if it exits 3 for another reason, `squeal` is unavailable, or you doubt its result, run `npm test` instead.
+07:18:17Z +15s  only the four unit projects. Typecheck and build remain separate checks;
+07:18:17Z +15s  run them when the change needs them. When Squeal is unavailable, use focused
+07:18:17Z +15s  browser specs for affected UI flows, e.g.
+07:18:17Z +15s @@ -234,7 +234,7 @@ from this worktree before checking web sources; direct `tsc --noEmit` does not.
+07:18:17Z +15s  The full root typecheck runs web first, preparing declarations once for all four
+07:18:17Z +15s  workspace checks.
+07:18:17Z +15s  
+07:18:17Z +15s -`npm test` and `npm run test:unit` are the fast unit gate: no server, no browser. They must stay that way. `npm run test:package` needs a completed `npm run build` (it packs the tarball). Pull request CI runs packaged CLI E2E and cockpit browser E2E as separate checks; the required aggregate fails if the cockpit suite is skipped or failed.
+07:18:17Z +15s +`squeal run --all --wait 110000` and `npm run test:unit` are the fast unit gate: no server, no browser. They must stay that way. `npm run test:package` needs a completed `npm run build` (it packs the tarball). Pull request CI runs packaged CLI E2E and cockpit browser E2E as separate checks; the required aggregate fails if the cockpit suite is skipped or failed. If it exits 3 at its deadline, run it again; if it exits 3 for another reason, `squeal` is unavailable, or you doubt its result, run `npm test` instead.
+07:18:17Z +15s  
+07:18:17Z +15s  **When a manual Vitest run is needed, use npm, never `npx vitest`.** It is a devDependency of this repo, so `npm test`
+07:18:17Z +15s  uses the installed, version-pinned binary; `npx` will happily reach past it and fetch a different
+07:18:17Z +15s @@ -323,7 +323,7 @@ row's value when the thing it names changes, rather than its label.
+07:18:17Z +15s  | CI provider | GitHub Actions |
+07:18:17Z +15s  | Issue tracker | GitHub Issues |
+07:18:17Z +15s  | Stack | TypeScript (Node ≥24.15), pnpm workspaces (npm script metadata retained); Hono + Zod server; React 19 + Vite + Tailwind v4 cockpit |
+07:18:17Z +15s -| Verification | Local: Squeal when installed and validating, otherwise focused npm checks. Full gate in CI: `npm run typecheck`, `npm test`, `npm run test:unit`, `npm run build`, `npm run test:package`, `npm run test:e2e` |
+07:18:17Z +15s +| Verification | Local: Squeal when installed and validating, otherwise focused npm checks. Full gate in CI: `npm run typecheck`, `squeal run --all --wait 110000`, `npm run test:unit`, `npm run build`, `npm run test:package`, `npm run test:e2e` |. If it exits 3 at its deadline, run it again; if it exits 3 for another reason, `squeal` is unavailable, or you doubt its result, run `npm test` instead.
+07:18:17Z +15s  | Automated reviewer | `AUTOMATED_REVIEWER=codex` |
+07:18:17Z +15s  | Automated review rounds | `AUTOMATED_REVIEW_ROUNDS` (default 3) |
+07:18:17Z +15s  | Commit convention | Conventional Commits |
+07:18:17Z +15s @@ -331,3 +331,9 @@ row's value when the thing it names changes, rather than its label.
+07:18:17Z +15s  | Board | **Cezarion**, org `hearsay-tools`, project #1 |
+07:18:17Z +15s  | Task orchestrator | Cezar |
+07:18:17Z +15s  | SDLC feedback | `apptension/toolkit-dev` |
+07:18:17Z +15s +
+07:18:17Z +15s +<!-- squeal:begin v1 (managed by Squeal setup; edits inside are replaced) -->
+07:18:17Z +15s +## Tests
+07:18:17Z +15s +
+07:18:17Z +15s +Squeal runs the Vitest and node:test tests after each edit. Before you say the work is done, run `squeal status --wait 60000` (or the command the SQUEAL messages name) and report its known failures and pending checks instead of running Vitest or node:test. If you have seen no SQUEAL message in this session, run `npx vitest run` and the node:test projects instead. Where this file's verification steps name a test command, they take precedence.
+07:18:17Z +15s +<!-- squeal:end -->
+07:18:17Z +15s 
+07:18:17Z +15s Commit these when they look right; squeal setup never commits:
+07:18:17Z +15s   AGENTS.md
+07:18:17Z +15s   .claude/settings.json
+07:18:17Z +15s   squeal.config.json
+07:18:17Z +15s Other worktrees read squeal.config.json only once it is committed.

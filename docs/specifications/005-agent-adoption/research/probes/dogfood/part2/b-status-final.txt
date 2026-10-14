@@ -1,0 +1,28 @@
+Revision: 9
+Known failures: 1 (1 test)
+  FAIL  [test:package] packages/cezar/test/e2e/package-cli.test.ts > the installed tarball warms cold histories through its emitted worker
+        Command failed: /opt/squeal-e2e/node24/bin/node /tmp/cezar-facts-package-BaHTyJ/consumer/facts-smoke.mjs
+        at packages/cezar/test/e2e/package-cli.test.ts:343:1, observed at revision 6, current
+Affected checks: 10985 passed (10478 tests, 507 test files loaded), 0 running, 5179 queued (4985 tests, 194 test files loaded), 2 skipped (2 tests)
+Full-suite checkpoint: none completed at any revision (the counts are for revision 9; `squeal run --all` requests one)
+Checkpoint in progress: `run --all` requested at revision 0, started 43 min ago: 775 of 779 test files done (`squeal run --all --wait` waits for it)
+Slow tier: 13 test files; 13 current against packages/cezar/dist/** as of revision 6, sources changed since. Squeal runs them when the agent pauses.
+
+Worktree: /home/squeal-e2e/runs/sq18-cz/fresh (HEAD 3a5d161, dirty at revision 9)
+Daemon: running, last heartbeat 5 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Test files without checks: 78 pending, 0 unknown
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-14T07:18:02.907Z: node-test project "test:package": 2 test file(s) with an incomplete static closure, keyed by what their runs load: packages/cezar/test/e2e/delegation.test.ts (import() with a computed specifier at packages/cezar/test/e2e/delegation.test.ts:41:29; import() with a computed specifier at packages/cezar/test/e2e/delegation.test.ts:99:36), packages/cezar/test/e2e/inline-contract.test.ts (import() with a computed specifier at packages/cezar/test/e2e/inline-contract.test.ts:128:26; import() with a computed specifier at packages/cezar/test/e2e/inline-contract.test.ts:129:26)
+  2026-10-14T07:18:02.909Z: node-test project "test:unit": 1 test file(s) with an incomplete static closure, keyed by what their runs load: packages/cezar/test/unit/resolve-browser-launch.test.ts (import() with a computed specifier at packages/cezar/test/unit/resolve-browser-launch.test.ts:15:11)
+  2026-10-14T07:18:07.369Z, revision 0: node-test project "test:package": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: packages/cezar/test/e2e/alias-bin-exports.test.ts
+  2026-10-14T07:18:49.343Z, revision 5: node-test project "test:unit": 3 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: packages/cezar/test/unit/cursor-hang-stdin.test.ts, packages/cezar/test/unit/test-env-launcher.test.ts, packages/cezar/test/unit/web-typecheck.test.ts
+  2026-10-14T07:19:09.708Z, revision 6: node-test project "test:package": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: packages/cezar/test/e2e/cockpit-ownership.test.ts
+  2026-10-14T07:19:24.875Z, revision 6: node-test project "test:package": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: packages/cezar/test/e2e/cursor-print.test.ts
+  2026-10-14T07:20:21.592Z, revision 6: stopped 2 processes a test left running after its tier: 669169 /opt/squeal-e2e/node24/bin/node /home/squeal-e2e/runs/sq18-cz/fresh/packages/cezar/src/preview/__fixtures__/fake-dev-... (parent 1021 /usr/lib/systemd/systemd --user, 2.0 s old, SIGTERM, run c1f1e36d-9380-4f37-8543-c065e644ee57); 669170 /opt/squeal-e2e/node24/bin/node /home/squeal-e2e/runs/sq18-cz/fresh/packages/cezar/src/preview/__fixtures__/fake-dev-... (parent 1021 /usr/lib/systemd/systemd --user, 2.0 s old, SIGTERM, run c1f1e36d-9380-4f37-8543-c065e644ee57)
+  2026-10-14T07:21:09.632Z, revision 6: node-test project "test:package": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: packages/cezar/test/e2e/release-snapshot.test.ts
+  2026-10-14T07:21:19.056Z, revision 6: node-test project "test:package": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: packages/cezar/test/e2e/release.test.ts
+  2026-10-14T07:54:54.990Z, revision 7: the last session ended with a `run --all` checkpoint (4 test files left) pending; this daemon runs that work before it exits, for at most 60 min (daemon.idleExitMinutes)
+  2026-10-14T07:58:06.810Z, revision 9: the last session ended with a `run --all` checkpoint (4 test files left) pending; this daemon runs that work before it exits, for at most 60 min (daemon.idleExitMinutes)

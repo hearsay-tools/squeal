@@ -1,0 +1,285 @@
+06:35:22Z +0s squeal warmup: runs all 819 test files, current ones too, to record the ignored paths each reads
+06:35:22Z +0s Squeal daemon spawned for /home/squeal-e2e/runs/sq18-cz/asis
+06:35:23Z +1s squeal warmup: 0 of 819 test files done
+06:35:55Z +33s squeal warmup: 1 of 819 test files done
+06:35:59Z +37s squeal warmup: 2 of 819 test files done
+06:36:09Z +47s squeal warmup: 3 of 819 test files done
+06:37:21Z +119s squeal warmup: 53 of 819 test files done
+06:38:37Z +195s squeal warmup: 54 of 819 test files done
+06:38:39Z +197s squeal warmup: 56 of 819 test files done
+06:38:40Z +198s squeal warmup: 57 of 819 test files done
+06:38:41Z +199s squeal warmup: 58 of 819 test files done
+06:38:42Z +200s squeal warmup: 59 of 819 test files done
+06:38:44Z +202s squeal warmup: 60 of 819 test files done
+06:38:48Z +206s squeal warmup: 61 of 819 test files done
+06:38:50Z +208s squeal warmup: 62 of 819 test files done
+06:38:51Z +209s squeal warmup: 63 of 819 test files done
+06:38:53Z +211s squeal warmup: 65 of 819 test files done
+06:38:54Z +212s squeal warmup: 67 of 819 test files done
+06:38:56Z +214s squeal warmup: 69 of 819 test files done
+06:38:57Z +215s squeal warmup: 70 of 819 test files done
+06:38:58Z +216s squeal warmup: 73 of 819 test files done
+06:39:00Z +218s squeal warmup: 75 of 819 test files done
+06:39:02Z +221s squeal warmup: 76 of 819 test files done
+06:39:04Z +222s squeal warmup: 77 of 819 test files done
+06:39:05Z +223s squeal warmup: 78 of 819 test files done
+06:39:07Z +225s squeal warmup: 79 of 819 test files done
+06:39:08Z +226s squeal warmup: 81 of 819 test files done
+06:39:10Z +228s squeal warmup: 82 of 819 test files done
+06:39:11Z +229s squeal warmup: 83 of 819 test files done
+06:39:12Z +230s squeal warmup: 86 of 819 test files done
+06:39:14Z +232s squeal warmup: 87 of 819 test files done
+06:39:15Z +233s squeal warmup: 90 of 819 test files done
+06:39:19Z +237s squeal warmup: 91 of 819 test files done
+06:39:19Z +237s Checkpoint 9d905212-1dc7-4076-89ef-2fb734231d5e has no verdict: revision 1 was recorded after the checkpoint's revision 0
+06:39:19Z +237s Checkpoint 9d905212-1dc7-4076-89ef-2fb734231d5e started at revision 0: 819 test files to run, 0 already current
+06:39:19Z +237s 
+06:39:19Z +237s Revision: 1
+06:39:19Z +237s Known failures: 75 (35 tests, 40 test files that did not load)
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/application-update.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/artifact-project-links.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/assistant-line-breaks.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/assistant-reply-copy.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/automations.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/chat-code-fence.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/command-palette.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/commit-list.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/composer-defaults.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/composer.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/diff-scroll.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/empty-states.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/git-sidebar.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/github-core.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/github-layout.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/github-pr-review.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/github-sidebar.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/github-states.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/good-css.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/inbox.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/ios-sweep.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/issue-linked-tasks.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/live-preview.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/mobile-projects.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/mobile-tab-bar.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/mobile-task-controls.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/new-task-hierarchy.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/new-task-picker-layout.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/new-task.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/page-headings.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/plan-mode.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/progressive-history.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/project-groups.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/project-order.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/project-rail.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/queued-stack.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/quick-list.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/repo-git-diff.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/repo-git.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [e2e] packages/web/e2e/review-gate.e2e.ts (file-level)
+06:39:19Z +237s         cezar e2e: cannot read .ai/qa/test-env.json. Run `npm run test:e2e`, which boots the env first.
+06:39:19Z +237s         at packages/web/e2e/agent-browser.ts:278:11, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > App client only creates the PR; native CI and retries use the normal client
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > PR permission failure leaves release finalization available and reports each outcome
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > a branch created concurrently at the source commit is not fast-forwarded
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > a bump PR targeting a different base is a conflict, not a second PR
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > a changelog marker naming another source commit is rejected
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > a closed unmerged PR is reported for manual recovery without another PR
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > a conflicting tag blocks release creation without overwriting it
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > a merged PR whose branch was deleted is reused without resurrecting it
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > a release with conflicting metadata is not silently accepted or changed
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > an identical tree from a different source commit is a conflict
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > an unavailable lookup fails closed instead of creating new GitHub objects
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > changelog retries retain the original range after more tags appear
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > changelog retry uses the recorded base commit after the old tag moves
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > conflicting remote contents stay untouched and identify manual recovery
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > dry-run and skipped finalization summaries make no completion claims
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > edited generated changelog is rejected without overwriting the release
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > existing bump PR missing native CI reports manual recovery without dispatch
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > existing release tag without a Release still gets the previous range
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > existing version finalization needs no bump PR and can reuse a source tag
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > first release changelog includes all history through the published source, never later HEAD
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > incomplete history fails finalization instead of publishing an incomplete changelog
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > large first-release changelog stays bounded and retries without losing the full-history link
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > long commit subjects remain bounded and render as text, not injected markup
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > maintenance changelog ignores tags on unrelated branches
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > maintenance release PR targets the dispatched branch
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > matching legacy release metadata is reused without rewriting old releases
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > native CI lookup failure does not prevent GitHub Release creation
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > previous release selection compares version numbers numerically
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > release changelog includes only commits after the previous stable ancestor tag
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > release failure never claims a tag exists based only on npm success
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > release on the same commit as its predecessor reports an empty changelog
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > repeated GitHub finalization reuses the matching release and annotated tag
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > retry after a pushed branch and denied PR reuses the original commit
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] .github/scripts/release-finalization.test.cjs > verbose native CI failure keeps recovery in the bounded summary
+06:39:19Z +237s         spawnSync pnpm ENOENT
+06:39:19Z +237s         at .github/scripts/release-finalization.test.cjs:34:22, observed at revision 0, current
+06:39:19Z +237s   FAIL  [root:test:unit] scripts/test-changed.test.mjs > falls back to full Vitest for shared/configuration/unknown input: package.json
+06:39:19Z +237s         node:internal/modules/package_json_reader:197
+06:39:19Z +237s         at scripts/test-changed.test.mjs:29:10, observed at revision 0, current
+06:39:19Z +237s Affected checks: 656 passed (606 tests, 50 test files loaded), 0 running, 0 queued, 380 skipped (380 tests); 728 test files without checks yet: 201 running, 527 queued; the runner part of revision 1 is pending, so test files it adds are not counted yet
+06:39:19Z +237s Full-suite checkpoint: none completed at any revision (the counts are for revision 1; `squeal run --all` requests one)
+06:39:19Z +237s Checkpoint in progress: `run --all` requested at revision 0, started 4 min ago: 91 of 819 test files done (`squeal run --all --wait` waits for it)
+06:39:19Z +237s Slow tier: 88 test files; 40 current against .ai/browsers/agent-browser.md, .ai/scripts/test-env-up.sh, packages/cezar/dist/**, packages/cezar/web/dist/**, packages/web/e2e/**, pnpm-lock.yaml as of revision 0; 47 pending, running packages/web/e2e/run-header-ci-wait.e2e.ts since 08:39 (no earlier run); 1 not run at revision 1. Squeal runs the pending ones when the agent pauses and has not queued the rest; `squeal run --slow` runs them now.
+06:39:19Z +237s 
+06:39:19Z +237s Worktree: /home/squeal-e2e/runs/sq18-cz/asis (HEAD fa994be, dirty at revision 1)
+06:39:19Z +237s Daemon: running, last heartbeat 1 s ago
+06:39:19Z +237s Inherited from other worktrees: none (every current result here was run in this worktree)
+06:39:19Z +237s Test files without checks: 728 pending, 1 unknown
+06:39:19Z +237s Closure method: static imports plus declared inputs
+06:39:19Z +237s Store schema: 1
+06:39:19Z +237s Notes:
+06:39:19Z +237s   2026-10-14T06:33:11.612Z: node-test project "test:package": 2 test file(s) with an incomplete static closure, keyed by what their runs load: packages/cezar/test/e2e/delegation.test.ts (import() with a computed specifier at packages/cezar/test/e2e/delegation.test.ts:41:29; import() with a computed specifier at packages/cezar/test/e2e/delegation.test.ts:99:36), packages/cezar/test/e2e/inline-contract.test.ts (import() with a computed specifier at packages/cezar/test/e2e/inline-contract.test.ts:128:26; import() with a computed specifier at packages/cezar/test/e2e/inline-contract.test.ts:129:26)
+06:39:19Z +237s   2026-10-14T06:33:11.613Z: node-test project "root:test:unit": 3 test file(s) with an incomplete static closure, keyed by what their runs load: .github/scripts/ci-sweep-workflow.test.cjs (require() with a computed specifier at .github/scripts/ci-sweep-workflow.test.cjs:17:20), .github/scripts/ci-test-sequencer.test.cjs (import() with a computed specifier at .github/scripts/ci-test-sequencer.test.cjs:77:40; import() with a computed specifier at .github/scripts/ci-test-sequencer.test.cjs:9:17), .github/scripts/failure-workflow.test.cjs (require() with a computed specifier at .github/scripts/failure-workflow.test.cjs:14:73)
+06:39:19Z +237s   2026-10-14T06:33:11.614Z: node-test project "test:unit": 1 test file(s) with an incomplete static closure, keyed by what their runs load: packages/cezar/test/unit/resolve-browser-launch.test.ts (import() with a computed specifier at packages/cezar/test/unit/resolve-browser-launch.test.ts:15:11)
+06:39:19Z +237s   2026-10-14T06:35:23.313Z: node-test project "test:package": 2 test file(s) with an incomplete static closure, keyed by what their runs load: packages/cezar/test/e2e/delegation.test.ts (import() with a computed specifier at packages/cezar/test/e2e/delegation.test.ts:41:29; import() with a computed specifier at packages/cezar/test/e2e/delegation.test.ts:99:36), packages/cezar/test/e2e/inline-contract.test.ts (import() with a computed specifier at packages/cezar/test/e2e/inline-contract.test.ts:128:26; import() with a computed specifier at packages/cezar/test/e2e/inline-contract.test.ts:129:26)
+06:39:19Z +237s   2026-10-14T06:35:23.314Z: node-test project "root:test:unit": 3 test file(s) with an incomplete static closure, keyed by what their runs load: .github/scripts/ci-sweep-workflow.test.cjs (require() with a computed specifier at .github/scripts/ci-sweep-workflow.test.cjs:17:20), .github/scripts/ci-test-sequencer.test.cjs (import() with a computed specifier at .github/scripts/ci-test-sequencer.test.cjs:77:40; import() with a computed specifier at .github/scripts/ci-test-sequencer.test.cjs:9:17), .github/scripts/failure-workflow.test.cjs (require() with a computed specifier at .github/scripts/failure-workflow.test.cjs:14:73)
+06:39:19Z +237s   2026-10-14T06:35:23.315Z: node-test project "test:unit": 1 test file(s) with an incomplete static closure, keyed by what their runs load: packages/cezar/test/unit/resolve-browser-launch.test.ts (import() with a computed specifier at packages/cezar/test/unit/resolve-browser-launch.test.ts:15:11)
+06:39:19Z +237s   2026-10-14T06:36:56.044Z, revision 0: node-test project "test:unit": 3 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: packages/cezar/test/unit/cursor-hang-stdin.test.ts, packages/cezar/test/unit/test-env-launcher.test.ts, packages/cezar/test/unit/web-typecheck.test.ts
+06:39:19Z +237s   2026-10-14T06:37:21.079Z, revision 0: node-test project "root:test:unit": 16 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: .github/scripts/automated-code-review.workflow.test.cjs, .github/scripts/ci-dispatch.workflow.test.cjs, .github/scripts/ci-package-manager.test.cjs, .github/scripts/ci.workflow.test.cjs, .github/scripts/cockpit-test-sequencer.test.cjs, .github/scripts/e2e-runner.test.cjs, .github/scripts/issue-intake.workflow.test.cjs, .github/scripts/issue-template.test.cjs, .github/scripts/node-floor-reporter.test.cjs, .github/scripts/release-finalization.test.cjs, .github/scripts/release.workflow.test.cjs, .github/scripts/require-e2e-passed.test.cjs, .github/scripts/transcript-facts-responsiveness.workflow.test.cjs, .github/scripts/vitest-actions-report.test.cjs, scripts/squeal-browser.test.mjs, scripts/test-changed.test.mjs
+06:39:20Z +238s 
+06:39:20Z +238s squeal warmup: no verdict, so some test files may still lack a result; run squeal warmup again, or npx vitest run.

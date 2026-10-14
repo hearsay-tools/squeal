@@ -64,7 +64,7 @@ $SETUP" ;;
 $SETUP" ;;
     edit-claude) session "$id" claude_s fresh "$EDIT" ;;
     edit-codex)
-      as fresh /bin/sh -c 'git checkout -q -- packages && git clean -qfd packages'
+      as fresh /bin/sh -c 'git checkout -q -- packages .ai/specs && git clean -qfd packages'
       session "$id" codex_s fresh "$EDIT" ;;
   esac
 done
