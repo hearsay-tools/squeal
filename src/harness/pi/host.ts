@@ -14,13 +14,27 @@ export interface DeliveryHost {
    * and the next call starts a fresh one.
    */
   call<R extends PiRequest>(request: R, deadlineMs: number): Promise<PiAnswers[R["kind"]] | null>;
+  /**
+   * Posts a `wait` (D5), which has no deadline: it answers when it has news,
+   * and is `null` when cancelled, when the worker dies or is replaced, or
+   * when the host stops. A pending wait holds no timer, so it never keeps
+   * the process alive.
+   */
+  wait(request: Extract<PiRequest, { kind: "wait" }>): PendingWait;
   /** Terminates the worker and resolves every pending call `null`. Idempotent; later calls are `null`. */
   stop(): void;
 }
 
+/** A `wait` in flight. */
+export interface PendingWait {
+  readonly answer: Promise<string | null>;
+  /** Resolves `answer` `null` at once and tells the worker to release the wait. Idempotent. */
+  cancel(): void;
+}
+
 interface Pending {
   readonly resolve: (answer: PiAnswer | null) => void;
-  readonly timer: NodeJS.Timeout;
+  readonly timer: NodeJS.Timeout | null;
 }
 
 /**
@@ -42,7 +56,7 @@ export function createDeliveryHost(start: () => Worker): DeliveryHost {
     const call = pending.get(id);
     if (call === undefined) return;
     pending.delete(id);
-    clearTimeout(call.timer);
+    if (call.timer !== null) clearTimeout(call.timer);
     call.resolve(answer);
   };
 
@@ -95,6 +109,36 @@ export function createDeliveryHost(start: () => Worker): DeliveryHost {
           settle(id, null);
         }
       });
+    },
+    wait(request) {
+      let on: Worker | null;
+      try {
+        on = stopped ? null : current();
+      } catch {
+        on = null;
+      }
+      if (on === null) return { answer: Promise.resolve(null), cancel() {} };
+      const id = next++;
+      const answer = new Promise<string | null>((resolve) => {
+        pending.set(id, { resolve: resolve as Pending["resolve"], timer: null });
+      });
+      try {
+        on.postMessage({ id, request } satisfies ToWorker);
+      } catch {
+        settle(id, null);
+      }
+      return {
+        answer,
+        cancel() {
+          if (!pending.has(id)) return;
+          settle(id, null);
+          try {
+            on.postMessage({ cancel: id } satisfies ToWorker);
+          } catch {
+            // The worker is gone, and its wait with it.
+          }
+        },
+      };
     },
     stop() {
       stopped = true;

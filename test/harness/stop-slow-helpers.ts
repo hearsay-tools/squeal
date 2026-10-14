@@ -29,7 +29,8 @@ export interface Out {
 }
 
 export interface Harness {
-  readonly name: StopWaitHarness;
+  /** A harness with a waiting Stop entry: Pi has none. */
+  readonly name: Exclude<StopWaitHarness, "pi">;
   startTurn(r: SquealRepo, overrides?: object, hookDeps?: HookDeps): Promise<void>;
   stop(r: SquealRepo, overrides?: object, hookDeps?: HookDeps): Promise<Out>;
   stopSlow(r: SquealRepo, overrides?: object, hookDeps?: HookDeps): Promise<Out>;

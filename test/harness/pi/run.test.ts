@@ -3,8 +3,10 @@ import { squealVersion } from "../../../src/core/daemon/version.js";
 import { readTurn } from "../../../src/core/delivery/turn.js";
 import { omittedTestFilesMetaKey } from "../../../src/core/scheduler/omitted-test-files.js";
 import { recordStopWait } from "../../../src/core/slow/index.js";
+import { storePaths } from "../../../src/core/store/index.js";
 import { DEFAULT_POLICY } from "../../../src/core/types/index.js";
-import { endRun, settle, startRun, toolCall } from "../../../src/harness/pi/run.js";
+import { waiterLockState } from "../../../src/core/waiter-lock/index.js";
+import { endRun, idleWait, settle, startRun, toolCall } from "../../../src/harness/pi/run.js";
 import { startSession, toolBoundary } from "../../../src/harness/pi/session.js";
 import { piCommand, workerDeps } from "../../../src/harness/pi/worker.js";
 import type { HookDeps } from "../../../src/harness/shared/hook.js";
@@ -160,5 +162,49 @@ describe("the end of an aborted run", () => {
     await startRun(about(r), deps());
     expect(await endRun(about(r), deps())).toBeNull();
     expect(readTurn(r.store, r.consumer()).turn).toBe("idle");
+  });
+});
+
+describe("the idle wait", () => {
+  const waitDeps = (): HookDeps => ({ ...deps(), pollIntervalMs: 10, waiterTimeoutMs: 5_000 });
+
+  /** Registered, then idle at a settle that found the re-run of `math > adds` queued. */
+  async function idle(): Promise<SquealRepo> {
+    const r = await registered();
+    await startRun(about(r), deps());
+    r.queue("k2");
+    expect(await settle(about(r), deps())).toEqual({ report: null });
+    return r;
+  }
+
+  it("gives the idle delta once the pending file's result lands, naming the CLI as D7 says", async () => {
+    const r = await idle();
+    setTimeout(() => r.apply(r.fail()), 150);
+    const text = await idleWait(about(r), waitDeps());
+    expect(text).toMatch(/^SQUEAL · 1 check changed \(1 test\) at revision 3\n/);
+    expect(text).toContain("PASS -> FAIL");
+    expect(text).toContain(`Full output: ${COMMAND} why`);
+    expect(await startRun(about(r), deps())).toMatchObject({ news: null });
+  });
+
+  it("is null at once when cancelled, and frees the consumer's waiter lock", async () => {
+    const r = await idle();
+    const cancel = new AbortController();
+    const waiting = idleWait(about(r), waitDeps(), cancel.signal);
+    const locks = storePaths(r.repo.commonDir).locksDir;
+    while (waiterLockState(locks, r.consumer()) !== "held")
+      await new Promise((d) => setTimeout(d, 10));
+    const started = performance.now();
+    cancel.abort();
+    expect(await waiting).toBeNull();
+    expect(performance.now() - started).toBeLessThan(500);
+    expect(waiterLockState(locks, r.consumer())).toBe("free");
+    // The news the cancelled wait did not take waits for the next prompt.
+    r.apply(r.fail());
+    expect((await startRun(about(r), deps())).news).toContain("PASS -> FAIL");
+  });
+
+  it("is null outside a git worktree", async () => {
+    expect(await idleWait({ sessionId: SESSION, cwd: outsideGit() }, waitDeps())).toBeNull();
   });
 });

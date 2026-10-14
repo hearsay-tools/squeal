@@ -37,6 +37,12 @@ export type PiRequest =
   | ({ readonly kind: "settle" } & PiSession)
   /** `agent_settled` after a run no settle ended (D3, 002's Interrupt): `null`. */
   | ({ readonly kind: "endTurn" } & PiSession)
+  /**
+   * The idle wake (D5), armed at `agent_settled`: the idle delta as text once
+   * there is one, or `null` at expiry, on a cancel or with no store. It has
+   * no deadline (`DeliveryHost.wait`).
+   */
+  | ({ readonly kind: "wait" } & PiSession)
   /** The bare round trip, for the per-call cost (D4): `null`. */
   | { readonly kind: "ping" };
 
@@ -64,16 +70,16 @@ export interface PiAnswers {
   readonly toolCall: string | null;
   readonly settle: SettleAnswer;
   readonly endTurn: null;
+  readonly wait: string | null;
   readonly ping: null;
 }
 
 export type PiAnswer = PiAnswers[PiRequest["kind"]];
 
-/** A request as posted, with the id its answer carries. */
-export interface ToWorker {
-  readonly id: number;
-  readonly request: PiRequest;
-}
+/** A request as posted, with the id its answer carries; or the cancel of the `wait` posted as `cancel`. */
+export type ToWorker =
+  | { readonly id: number; readonly request: PiRequest }
+  | { readonly cancel: number };
 
 /** The answer: the handler's result, or `ok: false` when it threw. */
 export type FromWorker =
