@@ -2309,6 +2309,20 @@ function plural(count, word) {
 function cap(text2, max) {
   return text2.length <= max ? text2 : `${text2.slice(0, max - 3)}...`;
 }
+function excludedProjectsText(entries2) {
+  const quoted2 = (list2, join69) => {
+    const all = list2.map((entry2) => JSON.stringify(entry2));
+    const last = all.pop();
+    return all.length === 0 ? last : `${all.join(", ")} ${join69} ${last}`;
+  };
+  const names2 = entries2.filter((entry2) => !entry2.includes("*"));
+  const patterns = entries2.filter((entry2) => entry2.includes("*"));
+  const parts = [
+    ...names2.length === 0 ? [] : [`${names2.length === 1 ? "project" : "projects"} ${quoted2(names2, "and")}`],
+    ...patterns.length === 0 ? [] : [`projects matching ${quoted2(patterns, "or")}`]
+  ];
+  return { text: parts.join(" and "), plural: patterns.length > 0 || names2.length > 1 };
+}
 var init_text = __esm({
   "src/core/text.ts"() {
     "use strict";
@@ -15469,24 +15483,38 @@ var init_environment2 = __esm({
 });
 
 // src/runners/vitest/exclude.ts
-function projectFilter(names2) {
-  return names2.length === 0 ? void 0 : names2.map((name) => `!${name}`);
+async function exclusion(node, root, names2) {
+  if (names2.length === 0) return { project: void 0, unknown: Promise.resolve([]) };
+  const configured = await resolveProjects(node, { root, watch: false });
+  const project = [...configured.filter, ...names2.map((name) => `!${name}`)];
+  const unknown = configured.filter.length === 0 ? Promise.resolve(unknownIn(names2, configured.known)) : unknownExclusions(node, root, names2);
+  return { project, unknown };
 }
 async function unknownExclusions(node, root, names2) {
   if (names2.length === 0) return [];
-  let known2;
   try {
-    const config = await node.resolveConfig({ root, watch: false });
-    const entries2 = config.test?.resolvedProjects ?? [];
-    known2 = entries2.flatMap((entry2) => [entry2.projectConfig.name, ...entry2.ancestors ?? []]);
+    return unknownIn(
+      names2,
+      (await resolveProjects(node, { root, watch: false, project: [] })).known
+    );
   } catch {
     return [];
   }
+}
+function unknownIn(names2, known2) {
   return names2.flatMap(
     (name, index) => known2.some((project) => matches(name, project)) ? [] : [
       `"vitest.excludeProjects[${index}]" names no Vitest project (${JSON.stringify(name)}); it is left out`
     ]
   );
+}
+async function resolveProjects(node, options) {
+  const config = await node.resolveConfig(options);
+  const entries2 = config.test?.resolvedProjects ?? [];
+  return {
+    filter: config.test?.project ?? [],
+    known: entries2.flatMap((entry2) => [entry2.projectConfig.name, ...entry2.ancestors ?? []])
+  };
 }
 function matches(pattern2, name) {
   const escaped = pattern2.split("*").map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
@@ -16891,8 +16919,7 @@ var init_adapter = __esm({
         const sources = new SourceStamps(this.paths);
         const config = await ConfigStamps.take(this.paths, this.#configFiles);
         const excluded = [...this.#exclude()];
-        const project = projectFilter(excluded);
-        const unknown = unknownExclusions(this.#node, this.paths.root, excluded);
+        const { project, unknown } = await exclusion(this.#node, this.paths.root, excluded);
         const vitest = await this.#node.createVitest("test", {
           root: this.paths.root,
           watch: false,
@@ -17011,8 +17038,8 @@ var init_adapter = __esm({
           const triggers = await recreateTriggers(vitest);
           const lockfiles = /* @__PURE__ */ new Set([...this.#lockfiles, ...await this.#installedLockfiles(vitest)]);
           if (abs.some((p) => lockfiles.has(p.abs))) this.#reload = true;
-          const exclusion = JSON.stringify(this.#exclude()) !== this.#excluded;
-          if (exclusion || abs.some((p) => triggers.has(p.abs) || lockfiles.has(p.abs))) {
+          const exclusion2 = JSON.stringify(this.#exclude()) !== this.#excluded;
+          if (exclusion2 || abs.some((p) => triggers.has(p.abs) || lockfiles.has(p.abs))) {
             const before = vitest.projects.map((p) => p.name);
             const fresh = await hold.exclusive(async () => {
               if (this.#closed) throw new Error("vitest adapter: closed");
@@ -35118,12 +35145,9 @@ function slowLine(s, command) {
   return text2 === null ? [] : [text2];
 }
 function excludedLine(s) {
-  const names2 = (s.vitestExcluded ?? []).map((name) => JSON.stringify(name));
-  if (names2.length === 0) return [];
-  const last = names2.pop();
-  const list2 = names2.length === 0 ? last : `${names2.join(", ")} and ${last}`;
-  const noun = names2.length === 0 ? "project" : "projects";
-  return [`Not run: Vitest ${noun} ${list2}, excluded by squeal.config.json`];
+  const entries2 = s.vitestExcluded ?? [];
+  if (entries2.length === 0) return [];
+  return [`Not run: Vitest ${excludedProjectsText(entries2).text}, excluded by squeal.config.json`];
 }
 function inheritedLine(s) {
   return s.inherited.count === 0 ? "Inherited from other worktrees: none (every current result here was run in this worktree)" : `Inherited from other worktrees: ${plural(s.inherited.count, "current result")}${partsSuffix(s.inherited.count, s.inheritedFileLevelCount)}`;

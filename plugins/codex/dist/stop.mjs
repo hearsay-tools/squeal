@@ -579,6 +579,20 @@ function plural(count, word) {
 function cap(text, max) {
   return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
 }
+function excludedProjectsText(entries) {
+  const quoted = (list2, join12) => {
+    const all = list2.map((entry2) => JSON.stringify(entry2));
+    const last = all.pop();
+    return all.length === 0 ? last : `${all.join(", ")} ${join12} ${last}`;
+  };
+  const names = entries.filter((entry2) => !entry2.includes("*"));
+  const patterns = entries.filter((entry2) => entry2.includes("*"));
+  const parts = [
+    ...names.length === 0 ? [] : [`${names.length === 1 ? "project" : "projects"} ${quoted(names, "and")}`],
+    ...patterns.length === 0 ? [] : [`projects matching ${quoted(patterns, "or")}`]
+  ];
+  return { text: parts.join(" and "), plural: patterns.length > 0 || names.length > 1 };
+}
 
 // src/core/state/fingerprint.ts
 var SUMMARY_MAX_CHARS = 300;
@@ -4811,10 +4825,10 @@ function coversSentence(coverage, node) {
   return `Squeal covers ${suites.join(" and ")}${slow}.`;
 }
 function excluded(coverage) {
-  const names = (coverage.vitestExcluded ?? []).map((name) => JSON.stringify(name));
-  if (names.length === 0) return "";
-  const list2 = named("project", names, names.length);
-  return `; its ${list2} ${names.length === 1 ? "is" : "are"} not run, excluded by squeal.config.json`;
+  const entries = coverage.vitestExcluded ?? [];
+  if (entries.length === 0) return "";
+  const { text, plural: plural2 } = excludedProjectsText(entries);
+  return `; its ${text} ${plural2 ? "are" : "is"} not run, excluded by squeal.config.json`;
 }
 function named(noun, entries, shown) {
   const nouns = entries.length === 1 ? noun : `${noun}s`;

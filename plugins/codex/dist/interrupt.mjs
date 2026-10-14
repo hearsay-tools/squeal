@@ -570,6 +570,24 @@ function testFileId(ref) {
 // src/core/state/fingerprint.ts
 import { realpathSync as realpathSync2 } from "node:fs";
 import { tmpdir } from "node:os";
+
+// src/core/text.ts
+function excludedProjectsText(entries) {
+  const quoted = (list, join10) => {
+    const all = list.map((entry2) => JSON.stringify(entry2));
+    const last = all.pop();
+    return all.length === 0 ? last : `${all.join(", ")} ${join10} ${last}`;
+  };
+  const names = entries.filter((entry2) => !entry2.includes("*"));
+  const patterns = entries.filter((entry2) => entry2.includes("*"));
+  const parts = [
+    ...names.length === 0 ? [] : [`${names.length === 1 ? "project" : "projects"} ${quoted(names, "and")}`],
+    ...patterns.length === 0 ? [] : [`projects matching ${quoted(patterns, "or")}`]
+  ];
+  return { text: parts.join(" and "), plural: patterns.length > 0 || names.length > 1 };
+}
+
+// src/core/state/fingerprint.ts
 var VOLATILE = [
   [/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g, "<time>"],
   [/\b\d+(?:\.\d+)?\s?ms\b/g, "<n>ms"],
@@ -4037,10 +4055,10 @@ function coversSentence(coverage, node) {
   return `Squeal covers ${suites.join(" and ")}${slow}.`;
 }
 function excluded(coverage) {
-  const names = (coverage.vitestExcluded ?? []).map((name) => JSON.stringify(name));
-  if (names.length === 0) return "";
-  const list = named("project", names, names.length);
-  return `; its ${list} ${names.length === 1 ? "is" : "are"} not run, excluded by squeal.config.json`;
+  const entries = coverage.vitestExcluded ?? [];
+  if (entries.length === 0) return "";
+  const { text, plural: plural2 } = excludedProjectsText(entries);
+  return `; its ${text} ${plural2 ? "are" : "is"} not run, excluded by squeal.config.json`;
 }
 function named(noun, entries, shown) {
   const nouns = entries.length === 1 ? noun : `${noun}s`;
