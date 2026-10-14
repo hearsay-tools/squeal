@@ -36,8 +36,12 @@ export type OcRequest =
    * `bash` `command` run in `workdir`, an absolute path.
    */
   | About<"before", { readonly tool: string; readonly command?: string; readonly workdir?: string }>
-  /** `tool.execute.after` (D3): the tool boundary's delta. */
-  | About<"after", { readonly tool: string }>
+  /**
+   * `tool.execute.after` (D3): the tool boundary's delta; `primer` while the
+   * plugin has none, so a consumer first registered here, as with no store
+   * at its first message, gets one (008-22).
+   */
+  | About<"after", { readonly tool: string; readonly primer?: true }>
   /** `session.idle` of a root session Squeal has not continued (D3, 002's Stop). */
   | About<"stop">
   /** `session.idle` after Squeal's continuation or an abort (D3): end the turn. */
@@ -76,11 +80,23 @@ export interface RegisterAnswer {
 /** The answer to each request kind. Every answer is an object, so `null` is only a miss. */
 export interface OcAnswers {
   readonly register: RegisterAnswer;
-  /** The delta to add, and the policy's `stop.waitMs` for the deadline at idle (D4). */
-  readonly prompt: { readonly text: string | null; readonly stopWaitMs?: number };
+  /**
+   * The delta to add, the policy's `stop.waitMs` for the deadline at idle
+   * (D4), and the primer as the consumer's coverage now has it (008-22).
+   */
+  readonly prompt: {
+    readonly text: string | null;
+    readonly stopWaitMs?: number;
+    readonly primer?: string | null;
+  };
   /** The reason to block the call, or `null` to let it run. */
   readonly before: { readonly reason: string | null };
-  readonly after: { readonly text: string | null };
+  /** The delta; with the request's `primer`, the primer and `stop.waitMs` once the consumer exists. */
+  readonly after: {
+    readonly text: string | null;
+    readonly primer?: string | null;
+    readonly stopWaitMs?: number;
+  };
   /** The report to continue the turn with, or `null` when Stop was silent and ended the turn. */
   readonly stop: { readonly report: string | null };
   readonly endTurn: { readonly ended: boolean };

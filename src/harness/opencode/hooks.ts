@@ -179,6 +179,7 @@ export function squealHooks(host: HookHost): OcHooks {
         let text: string | null;
         if (registered.has(key)) {
           const answer = await ask("prompt", { consumer }, deadline);
+          primer = answer?.primer ?? primer;
           stopWaitMs = answer?.stopWaitMs ?? stopWaitMs;
           text = answer?.text ?? null;
         } else {
@@ -230,7 +231,16 @@ export function squealHooks(host: HookHost): OcHooks {
         const deadline = deadlineIn(EVENT_DEADLINE_MS);
         const consumer = await identify(input.sessionID, deadline);
         if (consumer === null) return;
-        const text = (await ask("after", { consumer, tool: input.tool }, deadline))?.text ?? null;
+        // A consumer first registered here gets the primer too (008-22).
+        const request = {
+          consumer,
+          tool: input.tool,
+          ...(primer === null ? { primer: true as const } : {}),
+        };
+        const answer = await ask("after", request, deadline);
+        primer = answer?.primer ?? primer;
+        stopWaitMs = answer?.stopWaitMs ?? stopWaitMs;
+        const text = answer?.text ?? null;
         if (disposed) return;
         const added = joined(held(consumer), text);
         if (added !== null) output.output = `${output.output}\n\n${added}`;
