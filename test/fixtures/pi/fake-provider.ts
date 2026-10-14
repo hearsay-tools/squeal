@@ -4,6 +4,8 @@
 // From research/probes/pi-extension-events/probe.ts. Driven by `test/helpers/pi.ts`:
 //   PI_FIXTURE_PLAN  a JSON file: an array of steps (`FakeStep` in the helper)
 //   PI_FIXTURE_LOG   a JSONL file: one `{ n, systemPrompt, messages }` line per request
+// A step's `release` holds its response until that file exists, so a test lands a result while
+// the request is in flight, at a point it chose rather than inside a fixed delay.
 import * as fs from "node:fs";
 import {
   type AssistantMessage,
@@ -22,6 +24,32 @@ interface Step {
   tools?: { name: string; arguments: JsonObject }[];
   delayMs?: number;
   waitAbort?: boolean;
+  release?: string;
+}
+
+/** How long a `release` step waits for its file before it fails the request. */
+const RELEASE_WAIT_MS = 120_000;
+
+/**
+ * Until `path` exists: `released`, `aborted` when Pi aborts the request first, `timeout` after
+ * `RELEASE_WAIT_MS`. The poll and the abort listener go either way.
+ */
+function released(path: string, signal: AbortSignal | undefined) {
+  return new Promise<"released" | "aborted" | "timeout">((resolve) => {
+    const started = Date.now();
+    const finish = (outcome: "released" | "aborted" | "timeout") => {
+      clearInterval(poll);
+      signal?.removeEventListener("abort", onAbort);
+      resolve(outcome);
+    };
+    const onAbort = () => finish("aborted");
+    const poll = setInterval(() => {
+      if (fs.existsSync(path)) finish("released");
+      else if (Date.now() - started > RELEASE_WAIT_MS) finish("timeout");
+    }, 10);
+    if (signal?.aborted) finish("aborted");
+    else signal?.addEventListener("abort", onAbort);
+  });
 }
 
 const LOG = process.env.PI_FIXTURE_LOG;
@@ -70,6 +98,19 @@ const streamSimple: NonNullable<ProviderConfig["streamSimple"]> = (model, contex
       stream.push({ type: "error", reason: "aborted", error: output });
       stream.end();
       return;
+    }
+    if (step.release) {
+      const outcome = await released(step.release, options?.signal);
+      if (outcome !== "released") {
+        output.stopReason = outcome === "aborted" ? "aborted" : "error";
+        output.errorMessage =
+          outcome === "aborted"
+            ? "Request was aborted"
+            : `fake provider: ${step.release} did not appear in ${RELEASE_WAIT_MS} ms`;
+        stream.push({ type: "error", reason: output.stopReason, error: output });
+        stream.end();
+        return;
+      }
     }
     if (step.delayMs) await new Promise((r) => setTimeout(r, step.delayMs));
     if (step.text) {
