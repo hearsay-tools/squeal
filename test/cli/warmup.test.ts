@@ -189,7 +189,8 @@ describe(
       const waiting = out.match(
         /^squeal warmup: \d+ of \d+ test files done; 1 slow test file waiting for host load to drop$/gm,
       );
-      expect(waiting, out).toHaveLength(1);
+      // Fast files may finish while the slow one waits: each change of count is a new line.
+      expect(waiting?.length ?? 0, out).toBeGreaterThanOrEqual(1);
       const progress = out.match(/^squeal warmup: \d+ of \d+ test files done.*$/gm) ?? [];
       expect(new Set(progress).size, out).toBe(progress.length);
       // The held file runs 3 s once the bound passes: the wait is no longer claimed.
