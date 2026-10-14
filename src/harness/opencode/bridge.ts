@@ -36,8 +36,8 @@ export function opencodeCommand(cli: string, node: string = process.execPath): s
 }
 
 /**
- * The deps of one request. Bundled, the bridge is `dist/hooks/opencode.mjs`
- * and the CLI `dist/cli/squeal.mjs` (D1). The consumer's harness process is
+ * The deps of one request. Bundled, the bridge is one entry per kind,
+ * `dist/hooks/<kind>.mjs`, and the CLI `dist/cli/squeal.mjs` (D1). The consumer's harness process is
  * OpenCode's, the pid the plugin sent (D2).
  */
 export function bridgeDeps(module: URL, host: OcHost): HookDeps {

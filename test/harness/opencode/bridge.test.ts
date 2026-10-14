@@ -26,7 +26,7 @@ import { SESSION, type SquealRepo, squealRepo } from "../helpers.js";
  */
 
 const CHILD = "ses_ec4f61774ffeIWyJMttM94R8E9";
-const BUNDLE = new URL("file:///pkg/dist/hooks/opencode.mjs");
+const BUNDLE = new URL("file:///pkg/dist/hooks/register.mjs");
 
 let ensured = 0;
 function deps(overrides: Partial<HookDeps> = {}): HookDeps {

@@ -13,7 +13,8 @@ import {
 
 /*
  * The OpenCode package's build (spec 008 D1, D4, D6), on the shared one in
- * src/harness/build.ts: the bridge `dist/hooks/opencode.mjs` beside the CLI,
+ * src/harness/build.ts: the bridge, one entry per request kind
+ * (`dist/hooks/<kind>.mjs`, `bridgeFile`), beside the CLI,
  * the daemon and the runtime files, the root version in the package's
  * `package.json`, and the plugin `dist/plugin.mjs`, a bundle of its own: it
  * runs in OpenCode's Bun, so it gets no Node banner and reaches nothing of
