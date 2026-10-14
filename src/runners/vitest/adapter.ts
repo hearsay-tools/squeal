@@ -23,7 +23,7 @@ import { affectedTestFiles } from "./affected.js";
 import { closeBroken, instanceTempDirs, runnerFailure } from "./broken.js";
 import { ConfigStamps } from "./config-stamps.js";
 import { projectEnvironment } from "./environment.js";
-import { projectFilter, unknownExclusions } from "./exclude.js";
+import { exclusion } from "./exclude.js";
 import { Gate, type Hold } from "./gate.js";
 import { importClosure, resolutionCandidates } from "./graph.js";
 import { loadVitest, type VitestNode } from "./load.js";
@@ -153,8 +153,7 @@ export class VitestAdapter implements RunnerAdapter {
     const sources = new SourceStamps(this.paths);
     const config = await ConfigStamps.take(this.paths, this.#configFiles);
     const excluded = [...this.#exclude()];
-    const project = projectFilter(excluded);
-    const unknown = unknownExclusions(this.#node, this.paths.root, excluded);
+    const { project, unknown } = await exclusion(this.#node, this.paths.root, excluded);
     const vitest = await this.#node.createVitest("test", {
       root: this.paths.root,
       watch: false,
