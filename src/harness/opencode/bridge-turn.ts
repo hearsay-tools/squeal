@@ -50,7 +50,7 @@ export const before: OcHandler<"before"> = async (request, deps) => {
     request.tool === "bash" && request.command !== undefined
       ? testCommandOf(location, policy, {
           toolName: "Bash",
-          cwd: request.workdir ?? process.cwd(),
+          cwd: request.workdir ?? request.worktree,
           command: request.command,
         })
       : null;
