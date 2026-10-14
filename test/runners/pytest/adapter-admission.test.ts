@@ -1,4 +1,4 @@
-import { mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type {
@@ -23,6 +23,9 @@ import { PYTHONS, requireSynced, type Synced, syncFixture } from "../../helpers/
  * second (a controlled clock rewrites a `.pth` at every poll it should),
  * and `recheck`, which the scheduler calls at a quiet reconciliation pass
  * (task 007-26), finds an installed-set change no watched file shows.
+ * Task 007-39 (lessons.md defect 8): an environment whose `pyvenv.cfg`
+ * appears before pytest is installed is admitted once pytest lands, not
+ * only at the interval recheck a minute later.
  */
 
 const small = resolve(import.meta.dirname, "../../fixtures/pytest/small");
@@ -153,6 +156,77 @@ describe.each(PYTHONS)("pytest adapter admission under Python %s (B1, B2)", (ver
         expect((await adapter.environment())[0]?.runnerVersion).toBe("unavailable");
       } finally {
         rmSync(pth, { force: true });
+      }
+    },
+  );
+
+  it(
+    "an environment that gains pytest after its pyvenv.cfg is admitted within 5 s (007-39)",
+    SLOW,
+    async (ctx) => {
+      const fixture = requireSynced(ctx, synced);
+      const venv = join(fixture.root, ".venv");
+      const hidden = join(fixture.root, ".venv-hidden");
+      const pytest = join(sitePackagesDir(venv as AbsolutePath) as string, "pytest");
+      const aside = join(fixture.root, "..", "pytest-aside");
+      let polls = 0;
+      let installedAt: number | null = null;
+      const clock = controlled(() => {
+        // The sync installs pytest at the third look after pyvenv.cfg appeared.
+        if (polls++ === 3 && installedAt === null) {
+          renameSync(aside, pytest);
+          installedAt = clock.now();
+        }
+      });
+      renameSync(venv, hidden);
+      try {
+        const { adapter, notes } = await open(ctx, clock);
+        expect((await adapter.environment())[0]?.resolvedConfig).toContain('"state":"none"');
+
+        // The sync writes pyvenv.cfg, then its packages; pytest is not there yet.
+        renameSync(hidden, venv);
+        renameSync(pytest, aside);
+        polls = 0;
+        expect(await adapter.invalidate([{ path: ".venv/pyvenv.cfg", kind: "add" }])).toEqual({
+          recreatedProjects: ["small"],
+        });
+        expect(installedAt).not.toBeNull();
+        expect(clock.elapsed() - (installedAt ?? 0)).toBeLessThan(5_000);
+        expect((await adapter.environment())[0]?.runnerVersion).toMatch(/^\d+\.\d+/);
+        expect(notes).toContainEqual(expect.stringMatching(/environment is ready/));
+        expect(notes.filter((t) => /pytest is not installed/.test(t))).toEqual([]);
+      } finally {
+        if (existsSync(hidden)) renameSync(hidden, venv);
+        if (existsSync(aside)) renameSync(aside, pytest);
+      }
+    },
+  );
+
+  it(
+    "an environment without pytest through 20 s is refused once with its note (007-39)",
+    SLOW,
+    async (ctx) => {
+      const fixture = requireSynced(ctx, synced);
+      const pytest = join(
+        sitePackagesDir(join(fixture.root, ".venv") as AbsolutePath) as string,
+        "pytest",
+      );
+      const aside = join(fixture.root, "..", "pytest-aside");
+      renameSync(pytest, aside);
+      try {
+        const clock = controlled();
+        const { adapter, root, notes } = await open(ctx, clock);
+        expect(clock.elapsed()).toBeGreaterThanOrEqual(SETTLE_LIMIT_MS);
+        expect((await adapter.environment())[0]?.resolvedConfig).toContain('"state":"no-pytest"');
+        expect(notes.filter((t) => /pytest is not installed/.test(t))).toHaveLength(1);
+        const report = await adapter.run([ref("tests/unit/test_core.py")], runOptions(root));
+        expect(report).toMatchObject({ end: "crashed", completedFiles: [] });
+        // Still without pytest: the recheck neither waits again nor re-keys.
+        const before = clock.elapsed();
+        expect(await adapter.recheck?.()).toEqual({ recreatedProjects: [] });
+        expect(clock.elapsed()).toBe(before);
+      } finally {
+        renameSync(aside, pytest);
       }
     },
   );

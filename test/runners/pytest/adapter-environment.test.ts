@@ -12,13 +12,19 @@ import {
  * Review wave 2, B2: D2's admission under a controlled clock. A ready
  * environment is admitted only once its fingerprint held still for a
  * second and a fresh read finds it there; still moving at 20 s it is
- * `unsettled`, never ready.
+ * `unsettled`, never ready. One without pytest is read again until pytest
+ * lands or the same limit passes (task 007-39).
  */
 
 const PROJECT: PytestProject = { name: "small", args: [], env: {}, include: [] };
 
 /** An environment whose fingerprint `tick` may move at each simulated poll. */
-function scene(tick: (now: number, env: { fingerprint: string }) => void = () => {}) {
+function scene(
+  tick: (
+    now: number,
+    env: { fingerprint: string; state: AdapterEnvironment["state"] },
+  ) => void = () => {},
+) {
   let now = 0;
   const env = { fingerprint: "a", state: "ready" as AdapterEnvironment["state"] };
   let reads = 0;
@@ -111,12 +117,37 @@ describe("admit (spec 007 D2, review wave 2 B2)", () => {
     expect(s.now()).toBeLessThan(SETTLE_LIMIT_MS + 400);
   });
 
-  it("a state other than ready is returned as read, at once", async () => {
+  it.each(["none", "editable-outside"] as const)(
+    "the %s state is returned as read, at once",
+    async (state) => {
+      const s = scene();
+      s.env.state = state;
+      const admission = await s.run();
+      expect(admission).toMatchObject({ outcome: "stable", fingerprint: null });
+      expect(admission.environment.state).toBe(state);
+      expect(s.now()).toBe(0);
+    },
+  );
+
+  // Task 007-39, lessons.md defect 8: pyvenv.cfg comes first, pytest with the packages after it.
+  it("an environment without pytest is read again until pytest lands, then settles", async () => {
+    const s = scene((now, env) => {
+      if (now === 600) env.state = "ready";
+    });
+    s.env.state = "no-pytest";
+    const admission = await s.run();
+    expect(admission).toMatchObject({ outcome: "stable", fingerprint: "a" });
+    expect(s.now()).toBeGreaterThanOrEqual(600 + SETTLE_MS);
+    expect(s.now()).toBeLessThan(600 + SETTLE_MS + 400);
+  });
+
+  it("an environment without pytest through the 20 s limit is no-pytest", async () => {
     const s = scene();
     s.env.state = "no-pytest";
     const admission = await s.run();
     expect(admission).toMatchObject({ outcome: "stable", fingerprint: null });
     expect(admission.environment.state).toBe("no-pytest");
-    expect(s.now()).toBe(0);
+    expect(s.now()).toBeGreaterThanOrEqual(SETTLE_LIMIT_MS);
+    expect(s.now()).toBeLessThan(SETTLE_LIMIT_MS + 400);
   });
 });

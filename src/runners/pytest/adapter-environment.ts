@@ -70,7 +70,11 @@ type Ready = Extract<AdapterEnvironment, { state: "ready" }>;
  * keys it is what settled. Any other state is returned as read: nothing
  * runs under it. Still moving after `SETTLE_LIMIT_MS`, it is `unsettled`,
  * which keys and runs as every state but `ready` does; a later recheck
- * admits it again.
+ * admits it again. An environment without pytest is read again every
+ * `SETTLE_POLL_MS` up to the same limit, since a sync writes `pyvenv.cfg`
+ * before the packages and no watched file shows pytest landing (task
+ * 007-39, lessons.md defect 8); without pytest at the limit, it is
+ * `no-pytest`.
  */
 export async function admit(
   project: PytestProject,
@@ -80,6 +84,10 @@ export async function admit(
 ): Promise<Admission> {
   const end = clock.now() + SETTLE_LIMIT_MS;
   let environment = await read();
+  while (environment.state === "no-pytest" && clock.now() < end) {
+    await clock.sleep(SETTLE_POLL_MS);
+    environment = await read();
+  }
   while (environment.state === "ready") {
     let last = environment.fingerprint;
     let since = clock.now();
