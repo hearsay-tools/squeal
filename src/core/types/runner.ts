@@ -412,3 +412,12 @@ export function nodeTestObservedMetaKey(project: ProjectName): string {
 export function nodeTestObservedPreloadsMetaKey(project: ProjectName): string {
   return `nodeTest.observedPreloads.${project}`;
 }
+
+/**
+ * Spec 007 D4: the observed-only paths of one pytest project, a map from test
+ * path to paths, shared by every worktree of the repository as
+ * {@link nodeTestObservedMetaKey} is (003 D3).
+ */
+export function pytestObservedMetaKey(project: ProjectName): string {
+  return `pytest.observed.${project}`;
+}

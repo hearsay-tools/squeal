@@ -320,6 +320,7 @@ class Daemon {
         { createStateSink, describeFailure },
         vitest,
         nodeTest,
+        pytest,
         runnerModule,
         { createCompositeRunner },
         { withSlowInstance },
@@ -329,6 +330,7 @@ class Daemon {
         import("../state/index.js"),
         import("../../runners/vitest/index.js"),
         import("./node-test-runners.js"),
+        import("./pytest-runners.js"),
         import("./runner.js"),
         import("./composite-runner.js"),
         import("./slow-instance.js"),
@@ -342,6 +344,7 @@ class Daemon {
       // built when detected, or when nothing else is configured, so a project
       // with neither keeps the "project without Vitest" failure note (001 D11).
       const configured = this.#policy.nodeTest;
+      const configuredPytest = this.#policy.pytest;
       // Each Vitest instance's workers carry the mark of its lane (001 D12, task 004-18).
       const vitestInstance = (lane: string, maxWorkers?: number) => () =>
         vitest.createVitestAdapter({
@@ -354,7 +357,7 @@ class Daemon {
           ...(maxWorkers === undefined ? {} : { maxWorkers }),
         });
       const vitestRunner =
-        configured.length === 0 || runnerModule.vitestDetected(root)
+        configured.length + configuredPytest.length === 0 || runnerModule.vitestDetected(root)
           ? runnerModule.createRecoveringRunner({
               name: "vitest",
               adapterVersion: vitest.VITEST_ADAPTER_VERSION,
@@ -387,10 +390,21 @@ class Daemon {
         tierSize: () => this.#policy.runner.tierSize,
         note: (text) => this.#note(text),
       });
+      // Spec 007 D8: pytest's cache and bytecode live under the state directory (open question 3).
+      const pytestRunners = pytest.createPytestRunners(configuredPytest, {
+        root,
+        store,
+        stateDir: storePaths(commonDir).dir,
+        tempDir: this.opened.scratch.tempDir,
+        childEnv: this.#children.env,
+        tierSize: () => this.#policy.runner.tierSize,
+        note: (text) => this.#note(text),
+      });
       const runner = afterEachRun(
         createCompositeRunner([
           ...(vitestRunner === null ? [] : [withSlowInstance(vitestRunner, slowVitest)]),
           ...nodeTestRunners,
+          ...pytestRunners,
         ]),
         this.#children,
         ({ text, stopped }) => this.#note(text, stopped),
@@ -403,6 +417,7 @@ class Daemon {
       await Promise.all([
         ...((await awaitsInstall(root)) ? [] : [vitestRunner?.open()]),
         ...nodeTestRunners.map((r) => r.open()),
+        ...pytestRunners.map((r) => r.open()),
       ]);
       if (this.#phase === "stopping") return;
       const loop = createDaemonLoop({
