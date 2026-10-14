@@ -1,4 +1,5 @@
-import { writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
@@ -165,6 +166,28 @@ function diagnose(main: string, wt: string): string {
           w,
         ).map((r) => ({ ...r, origin_worktree: names.get(r.origin_worktree) ?? null })),
         notes: status(wt).daemonNotes,
+        coreObserved: metaValue(main, "observed.small"),
+        coreClosure: q(
+          "SELECT closure_paths, updated_by FROM test_files WHERE path = 'tests/unit/test_core.py'",
+        ),
+        uv: execFileSync("uv", ["--version"], { encoding: "utf8" }).trim(),
+        site: Object.fromEntries(
+          [main, wt].map((root) => {
+            const site = join(root, ".venv/lib/python3.13/site-packages");
+            const listed = existsSync(site) ? readdirSync(site) : [];
+            return [
+              root === main ? "main" : "wt",
+              listed
+                .filter((n) => /\.pth$|editable/.test(n))
+                .map((n) => [
+                  n,
+                  statSync(join(site, n)).isFile()
+                    ? readFileSync(join(site, n), "utf8").slice(0, 400)
+                    : "dir",
+                ]),
+            ];
+          }),
+        ),
       },
       null,
       1,
