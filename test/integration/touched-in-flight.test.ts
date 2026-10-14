@@ -3,16 +3,26 @@ import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import { type Harness, openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
-import { BASE, createRepo, slowOptions, stored, withSlowLanes } from "./stamps-repo.js";
+import {
+  BASE,
+  createRepo,
+  scheduledRuns,
+  slowOptions,
+  stored,
+  withheldByBarrier,
+  withSlowLanes,
+} from "./stamps-repo.js";
 import { touchHeard } from "./touched-repo.js";
 
 /*
  * Task 001-159: a touch heard while a run is in flight. When something else
  * wrote the file, the run may have read its other bytes from any cache, so
- * none of its files is stored; they are unknown with a reason that names
- * the file, as task 001-146 does for a file that moved during a run. An
- * unknown file has no stored state. A file the run wrote itself counts too
- * (review wave-13e B1, task 001-168).
+ * none of its files is stored. When the completion barrier withholds it
+ * too, no revision follows, so the files run once more with a note naming
+ * the file (task 007-30). A file the run writes itself on every run counts
+ * too (review wave-13e B1, task 001-168): its files are unknown with a
+ * reason that names the file, as task 001-146 does for a file that moved
+ * during a run. An unknown file has no stored state.
  *
  * `test/holds.test.ts` writes `flags/started` (git-ignored) and waits for
  * `flags/heard`; with `SELF` it first rewrites `fixtures/data.txt` with the
@@ -84,15 +94,16 @@ describe("a touch heard during a run (task 001-159)", () => {
         runnerPartBesideRun: true,
         observe,
       });
+      const runs = scheduledRuns(h);
       await touchDuringRun(h, "src/mod.ts", true);
 
-      expect(stored(h)).toEqual([]);
-      expect(reasons(h, "test/holds.test.ts")).toEqual([
-        expect.stringMatching(reason("src/mod.ts")),
+      // What is stored is the run once more's, on the bytes on disk (task 007-30).
+      expect(stored(h)).toEqual([
+        ["", "test/holds.test.ts", "current", "pass"],
+        ["", "test/other.test.ts", "current", "pass"],
       ]);
-      expect(reasons(h, "test/other.test.ts")).toEqual([
-        expect.stringMatching(reason("src/mod.ts")),
-      ]);
+      withheldByBarrier(h, runs, "test/holds.test.ts");
+      withheldByBarrier(h, runs, "test/other.test.ts");
     },
   );
 
@@ -105,14 +116,19 @@ describe("a touch heard during a run (task 001-159)", () => {
       runnerPartBesideRun: true,
     });
     const lanes = withSlowLanes(h, repo.main, slotDir, async () => {});
+    const runs = scheduledRuns(h);
     await touchDuringRun(h, "src/mod.ts", true);
 
     // Spec 004 D2 as amended (004-34): an idle slow tier takes up to `slow.maxParallel` files,
-    // so both ran in the one slow run that heard the touch.
+    // so both ran in the one slow run that heard the touch, then once more (task 007-30).
     expect(lanes.made()).toBe(1);
-    expect(stored(h)).toEqual([]);
-    expect(reasons(h, "test/holds.test.ts")).toEqual([expect.stringMatching(reason("src/mod.ts"))]);
-    expect(reasons(h, "test/other.test.ts")).toEqual([expect.stringMatching(reason("src/mod.ts"))]);
+    expect(runs.filter((run) => run.files.length === 2)).toHaveLength(2);
+    expect(stored(h)).toEqual([
+      ["", "test/holds.test.ts", "current", "pass"],
+      ["", "test/other.test.ts", "current", "pass"],
+    ]);
+    withheldByBarrier(h, runs, "test/holds.test.ts");
+    withheldByBarrier(h, runs, "test/other.test.ts");
   });
 });
 

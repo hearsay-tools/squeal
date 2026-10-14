@@ -5,6 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { afterAll, expect } from "vitest";
 import { createRecoveringRunner } from "../../src/core/daemon/runner.js";
 import { withSlowInstance } from "../../src/core/daemon/slow-instance.js";
+import { readDaemonNotes } from "../../src/core/notes.js";
 import {
   DEFAULT_POLICY,
   type RunnerAdapter,
@@ -141,16 +142,47 @@ export function withSlowLanes(
   return { made: () => made };
 }
 
+/** A run the scheduler started, slow lanes' too: its files and run id. */
+export interface ScheduledRun {
+  readonly files: readonly TestFileRef[];
+  readonly runId: string;
+}
+
+/** The scheduler's runs from now on (`Harness.gate`). Call before the scheduler starts. */
+export function scheduledRuns(h: Harness): ScheduledRun[] {
+  const runs: ScheduledRun[] = [];
+  const before = h.gate.before;
+  h.gate.before = (files, options) => {
+    runs.push({ files, runId: options.runId });
+    return before?.(files, options);
+  };
+  return runs;
+}
+
 /**
- * Task 001-168: `testPath` was recorded unknown by the completion barrier,
- * since `path` was restored after the tier's snapshot and no batch said so
- * before the run ended.
+ * Task 001-168 as amended by 007-30: the completion barrier withheld the
+ * first of `runs` holding `testPath`, since `path` was restored after the
+ * tier's snapshot and no batch said so before the run ended, and the file
+ * ran once more. A note names the path; the file's stored results are a
+ * later run's, none the withheld run's.
  */
-export function withheldByBarrier(h: Harness, testPath: string, path = "src/mod.ts"): void {
-  const reasons = h.sink
-    .callsOf("markUnknown")
-    .filter((call) => call.testFiles.some((f) => f.path === testPath))
-    .map((call) => call.reason);
-  const barrier = new RegExp(`${path} was written while this run was in flight.*task 001-168`);
-  expect(reasons).toContainEqual(expect.stringMatching(barrier));
+export function withheldByBarrier(
+  h: Harness,
+  runs: readonly ScheduledRun[],
+  testPath: string,
+  path = "src/mod.ts",
+): void {
+  const notes = readDaemonNotes(h.store, h.worktreeId).map((note) => note.text);
+  const note = new RegExp(`${path} was written while .*${testPath}.* runs once more.*001-168`);
+  expect(notes).toContainEqual(expect.stringMatching(note));
+  const ran = runs.filter((run) => run.files.some((f) => f.path === testPath)).map((r) => r.runId);
+  expect(ran.length).toBeGreaterThanOrEqual(2);
+  const kept = h.sink
+    .states()
+    .filter((s) => s.check.testPath === testPath)
+    .flatMap((s) => h.store.results.listForCheck(s.check, 10))
+    .map((result) => result.provenance.runId);
+  expect(kept.length).toBeGreaterThan(0);
+  expect(kept).not.toContain(ran[0]);
+  for (const runId of kept) expect(ran.slice(1)).toContain(runId);
 }

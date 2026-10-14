@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_POLICY, type PolicyInputs } from "../../src/core/types/index.js";
 import { type Harness, openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
-import { createRepo, freshOutcomes, NEW, OLD, stored } from "./stamps-repo.js";
+import {
+  createRepo,
+  freshOutcomes,
+  NEW,
+  OLD,
+  scheduledRuns,
+  stored,
+  withheldByBarrier,
+} from "./stamps-repo.js";
 import {
   CSS_HELD,
   NEW_CSS,
@@ -16,8 +24,10 @@ import {
  * Review wave-13e B1 (task 001-168): a run that rewrites a file with the
  * bytes it holds, while a cache serves it that file's other bytes. Its own
  * write proves nothing about which bytes it ran, so the touch withholds it
- * with observation on as with it off. The stylesheet is in no closure, so
- * only the runner's touch, not the scheduler's barrier, can withhold it.
+ * with observation on as with it off. The barrier's withhold runs the
+ * files once more, on the bytes on disk (task 007-30). The stylesheet is in
+ * no closure, so only the runner's touch, not the scheduler's barrier, can
+ * withhold it.
  */
 
 const ref = (path: string) => ({ project: "", path });
@@ -57,6 +67,7 @@ describe("a run that rewrites a cached virtual module's declared input (review w
 
   it.each([true, false])("stores none of the run (observe %s)", SLOW, async (observe) => {
     const h = await open(VIRTUAL_HELD, observe, ["src/mod.ts"]);
+    const runs = scheduledRuns(h);
     await touchWhileHeld(
       h,
       async (adapter) => {
@@ -65,8 +76,11 @@ describe("a run that rewrites a cached virtual module's declared input (review w
       },
       "src/mod.ts",
     );
-    expect(stored(h)).toEqual([]);
-    expect(reasons(h, "test/virtual.test.ts")).toEqual([written("src/mod.ts")]);
+    expect(stored(h)).toEqual([
+      ["", "test/plain.test.ts", "current", "fail"],
+      ["", "test/virtual.test.ts", "current", "fail"],
+    ]);
+    withheldByBarrier(h, runs, "test/virtual.test.ts");
   });
 });
 
