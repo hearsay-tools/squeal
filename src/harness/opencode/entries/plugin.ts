@@ -1,5 +1,6 @@
 import type { OcPluginModule } from "../api.js";
 import { squealPlugin } from "../plugin.js";
+import { bridgeFile } from "../protocol.js";
 
 /*
  * The OpenCode package's plugin (spec 008 D1, D4), bundled as
@@ -10,5 +11,5 @@ const at = (relative: string) => decodeURIComponent(new URL(relative, import.met
 
 export default {
   id: "squeal",
-  server: squealPlugin({ entry: at("./hooks/opencode.mjs"), bin: at("../bin") }),
+  server: squealPlugin({ bridge: (kind) => at(`./hooks/${bridgeFile(kind)}`), bin: at("../bin") }),
 } satisfies OcPluginModule;

@@ -2,7 +2,11 @@ import { loadavg } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type BridgeCommand, callBridge } from "../../../src/harness/opencode/bridge-client.js";
-import type { OcAnswers, OcRequest } from "../../../src/harness/opencode/protocol.js";
+import {
+  bridgeFile,
+  type OcAnswers,
+  type OcRequest,
+} from "../../../src/harness/opencode/protocol.js";
 import { check, result } from "../../state/helpers.js";
 import { liveSocket, quietCli, runtimeDir } from "../bundle-helpers.js";
 import { SESSION, type SquealRepo, squealRepo } from "../helpers.js";
@@ -66,13 +70,13 @@ describe("the OpenCode bridge's per-call cost", () => {
     // The bridge inherits this process's environment, as it inherits OpenCode's.
     process.env.XDG_RUNTIME_DIR = dir;
     process.env.SQUEAL_CLI = quietCli().cli;
-    const bridge: BridgeCommand = {
-      node: process.execPath,
-      entry: join(built.dir, "hooks", "opencode.mjs"),
-    };
     const host = { worktree: r.root, pid: process.pid };
     const timed = async <K extends OcRequest["kind"]>(request: OcRequest & { kind: K }) => {
       const started = performance.now();
+      const bridge: BridgeCommand = {
+        node: process.execPath,
+        entry: join(built.dir, "hooks", bridgeFile(request.kind)),
+      };
       const answer = await callBridge<OcAnswers[K]>(bridge, request, r.root, 2_000);
       return [performance.now() - started, answer] as const;
     };

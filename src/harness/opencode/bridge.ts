@@ -1,16 +1,28 @@
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { formatRegistration, MESSAGE_CAP_CHARS, shellWord } from "../../core/delivery/index.js";
 import { locate, usesSqueal } from "../shared/context.js";
+import { coverageOf } from "../shared/coverage.js";
 import { ensure, ensureToRegister } from "../shared/ensure.js";
 import { findHarnessProcess } from "../shared/harness-process.js";
 import { type HookDeps, withContext } from "../shared/hook.js";
+import { primer } from "../shared/primer.js";
+import { submitPrompt } from "../shared/prompt.js";
 import { endSession } from "../shared/session.js";
-import type { OcAnswer, OcAnswers, OcConsumer, OcHost, OcRequest } from "./protocol.js";
+import type { OcAnswer, OcAnswers, OcConsumer, OcHost, OcKind, OcRequest } from "./protocol.js";
 
 /*
  * The bridge's side of spec 008 D4: one request per process, run on the
- * shared hook code (D6) unchanged.
+ * shared hook code (D6) unchanged. Each kind's entry loads its handler
+ * alone, so a tool call's bridge loads no more than the Codex hook it
+ * stands for (open question 3).
  */
+
+/** One kind's handler. */
+export type OcHandler<K extends OcKind> = (
+  request: Extract<OcRequest, { kind: K }>,
+  deps: HookDeps,
+) => Promise<OcAnswers[K]>;
 
 /**
  * How OpenCode texts name the Squeal CLI (D7): the Node the plugin found,
@@ -37,7 +49,7 @@ export function bridgeDeps(module: URL, host: OcHost): HookDeps {
   };
 }
 
-const consumerInput = (consumer: OcConsumer) => ({
+export const consumerInput = (consumer: OcConsumer) => ({
   session_id: consumer.sessionId,
   ...(consumer.agentId === undefined ? {} : { agent_id: consumer.agentId }),
 });
@@ -45,9 +57,9 @@ const consumerInput = (consumer: OcConsumer) => ({
 /**
  * `chat.message` on a consumer this instance has not registered (D3): ensure
  * the daemon (001 D10, spawned detached, D8), register, and answer the
- * registration header. A repository that does not use Squeal gets nothing,
- * not even a daemon; without a usable store the daemon is still ensured and
- * the header is `null`. No sweep of the session's other consumers: one left
+ * registration header and the primer (D3: the system prompt's). A repository
+ * that does not use Squeal gets nothing, not even a daemon; without a usable
+ * store the daemon is still ensured, and nothing is registered. No sweep of the session's other consumers: one left
  * by an earlier OpenCode process ends with that process (001 D10).
  */
 export async function register(
@@ -55,10 +67,10 @@ export async function register(
   deps: HookDeps,
 ): Promise<OcAnswers["register"]> {
   const location = locate(request.worktree);
-  if (location === null || !usesSqueal(location)) return { header: null, registered: false };
+  const silent = { header: null, registered: false, primer: null };
+  if (location === null || !usesSqueal(location)) return silent;
   let ensured = false;
-  let registered = false;
-  const header = await withContext(
+  const answer = await withContext(
     consumerInput(request.consumer),
     location,
     deps,
@@ -69,12 +81,32 @@ export async function register(
         atStart: true,
         ...(startingSince === undefined ? {} : { startingSince }),
       });
-      registered = true;
-      return formatRegistration(registration, MESSAGE_CAP_CHARS, deps.command);
+      return {
+        header: formatRegistration(registration, MESSAGE_CAP_CHARS, deps.command),
+        registered: true,
+        primer: primer(deps.command, coverageOf(context)),
+      };
     },
   );
   if (!ensured) await ensure(location, deps);
-  return { header, registered };
+  return answer ?? silent;
+}
+
+/**
+ * `chat.message` on a consumer this instance registered (D3): `startTurn`,
+ * and the delta not yet delivered as the text to add; one the daemon expired
+ * meanwhile is registered again, as 001's prompt registers.
+ */
+export async function prompt(
+  request: Extract<OcRequest, { kind: "prompt" }>,
+  deps: HookDeps,
+): Promise<OcAnswers["prompt"]> {
+  const location = locate(request.worktree);
+  if (location === null) return { text: null };
+  const text = await submitPrompt(consumerInput(request.consumer), location, deps, {
+    register: true,
+  });
+  return { text };
 }
 
 /**
@@ -100,30 +132,46 @@ export async function end(
   return { ended: request.sessions.length + request.consumers.length };
 }
 
-/** Runs one request on the shared code; the answer is of the request's kind. */
-export function handle(request: OcRequest, deps: HookDeps): Promise<OcAnswer> {
-  switch (request.kind) {
-    case "register":
-      return register(request, deps);
-    case "end":
-      return end(request, deps);
-    case "ping":
-      return Promise.resolve({ pong: true });
-  }
-}
+/** The bare round trip (D4). */
+export const ping: OcHandler<"ping"> = async () => ({ pong: true });
 
 /**
- * The bridge process (D4): `stdin` is one request; the answer is printed as
- * `{"answer": ...}`. A request that does not parse, or a handler that throws,
- * prints nothing and sets exit code 1, which the plugin reads as silence.
- * Never calls `process.exit`, so piped output is flushed.
+ * The bridge process (D4): `stdin` is one request of `kind`; `handler`'s
+ * answer is printed as `{"answer": ...}`. A request that does not parse or is
+ * of another kind, or a handler that throws, prints nothing and sets exit
+ * code 1, which the plugin reads as silence. Never calls `process.exit`, so
+ * piped output is flushed.
  */
-export async function runBridge(stdin: string, module: URL): Promise<void> {
+export async function runBridge<K extends OcKind>(
+  stdin: string,
+  module: URL,
+  kind: K,
+  handler: OcHandler<K>,
+): Promise<void> {
   try {
     const request = JSON.parse(stdin) as OcRequest;
-    const answer = await handle(request, bridgeDeps(module, request));
+    if (request.kind !== kind) throw new Error(`not a ${kind} request`);
+    const answer: OcAnswer = await handler(
+      request as Extract<OcRequest, { kind: K }>,
+      bridgeDeps(module, request),
+    );
     process.stdout.write(JSON.stringify({ answer }));
   } catch {
     process.exitCode = 1;
   }
+}
+
+/** A bridge entry's body: its stdin, then `runBridge`. */
+export async function runEntry<K extends OcKind>(
+  module: string,
+  kind: K,
+  handler: OcHandler<K>,
+): Promise<void> {
+  let stdin = "";
+  try {
+    stdin = readFileSync(0, "utf8");
+  } catch {
+    // No readable stdin: no request, so no answer.
+  }
+  await runBridge(stdin, new URL(module), kind, handler);
 }

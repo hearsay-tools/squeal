@@ -67,7 +67,15 @@ describe("the fast path", () => {
 
   it("returns hooks where a config is found", async () => {
     const hooks = await startPlugin(squealDir(), stubClient(), { entry: stubBridge().entry });
-    expect(Object.keys(hooks).sort()).toEqual(["chat.message", "dispose", "event", "shell.env"]);
+    expect(Object.keys(hooks).sort()).toEqual([
+      "chat.message",
+      "dispose",
+      "event",
+      "experimental.chat.system.transform",
+      "shell.env",
+      "tool.execute.after",
+      "tool.execute.before",
+    ]);
   });
 
   it("returns no hooks without a Node, and logs one line through the client", async () => {
@@ -82,8 +90,8 @@ describe("the fast path", () => {
 });
 
 describe("chat.message", () => {
-  it("registers a root once, as (session, main), and adds the header as one synthetic part", async () => {
-    const bridge = stubBridge();
+  it("registers a root once, as (session, main), adds the header as one synthetic part, then starts turns", async () => {
+    const bridge = stubBridge("answer", { answers: { prompt: { text: "SQUEAL · delta" } } });
     const hooks = await startPlugin(squealDir(), stubClient(), { entry: bridge.entry });
     await hook(hooks, "event")(created(ROOT_ID));
     const first = chatOutput(ROOT_ID);
@@ -91,13 +99,14 @@ describe("chat.message", () => {
     const second = chatOutput(ROOT_ID, "msg_2");
     await hook(hooks, "chat.message")({ sessionID: ROOT_ID }, second);
 
+    const about = {
+      consumer: { sessionId: ROOT_ID },
+      worktree: expect.any(String),
+      pid: process.pid,
+    };
     expect(bridge.requests()).toEqual([
-      {
-        kind: "register",
-        consumer: { sessionId: ROOT_ID },
-        worktree: expect.any(String),
-        pid: process.pid,
-      },
+      { kind: "register", ...about },
+      { kind: "prompt", ...about },
     ]);
     expect(first.parts).toHaveLength(2);
     expect(first.parts[1]).toMatchObject({
@@ -107,7 +116,8 @@ describe("chat.message", () => {
       sessionID: ROOT_ID,
       messageID: first.message.id,
     });
-    expect(second.parts).toHaveLength(1);
+    expect(second.parts).toHaveLength(2);
+    expect(second.parts[1]).toMatchObject({ text: "SQUEAL · delta", synthetic: true });
   });
 
   it("registers a child as (root, child), from session.created", async () => {
@@ -132,7 +142,7 @@ describe("chat.message", () => {
     const hooks = await startPlugin(squealDir(), client, { entry: bridge.entry });
     await hook(hooks, "chat.message")({ sessionID: CHILD_ID }, chatOutput(CHILD_ID));
     await hook(hooks, "chat.message")({ sessionID: CHILD_ID }, chatOutput(CHILD_ID));
-    expect(bridge.requests()).toHaveLength(1);
+    expect(bridge.requests().map((r) => r.kind)).toEqual(["register", "prompt"]);
     expect(bridge.requests()[0]).toMatchObject({
       consumer: { sessionId: ROOT_ID, agentId: CHILD_ID },
     });

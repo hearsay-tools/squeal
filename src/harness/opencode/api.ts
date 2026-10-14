@@ -18,10 +18,22 @@ export interface OcResult<T> {
   readonly error?: unknown;
 }
 
+/** `TextPartInput` (SDK), as `promptAsync` takes it. */
+export interface OcTextPartInput {
+  readonly type: "text";
+  readonly text: string;
+  readonly synthetic?: boolean;
+}
+
 /** `PluginInput.client`, the methods Squeal calls. */
 export interface OcClient {
   readonly session: {
     get(options: { path: { id: string } }): Promise<OcResult<OcSessionInfo>>;
+    /** `POST /session/{id}/prompt_async`: starts a turn on an idle session and returns (D5). */
+    promptAsync(options: {
+      path: { id: string };
+      body: { parts: OcTextPartInput[] };
+    }): Promise<OcResult<unknown>>;
   };
   readonly app: {
     log(options: {
@@ -37,10 +49,18 @@ export interface OcPluginInput {
   readonly worktree: string;
 }
 
-/** A bus event (`Event`): `session.created`, `session.deleted` and the rest. */
+/**
+ * A bus event (`Event`): `session.created` and `session.deleted` carry
+ * `info`; `session.idle` and `session.error` a `sessionID`, the error with
+ * its `name` (`MessageAbortedError` for an abort).
+ */
 export interface OcEvent {
   readonly type: string;
-  readonly properties: { readonly info?: OcSessionInfo; readonly sessionID?: string };
+  readonly properties: {
+    readonly info?: OcSessionInfo;
+    readonly sessionID?: string;
+    readonly error?: { readonly name?: string };
+  };
 }
 
 /** `TextPart` (SDK), as a plugin adds one to a user message. */
@@ -60,6 +80,18 @@ export interface OcHooks {
   "chat.message"?: (
     input: { sessionID: string; agent?: string; messageID?: string },
     output: { message: { id: string; sessionID: string }; parts: unknown[] },
+  ) => Promise<void>;
+  "tool.execute.before"?: (
+    input: { tool: string; sessionID: string; callID: string },
+    output: { args: unknown },
+  ) => Promise<void>;
+  "tool.execute.after"?: (
+    input: { tool: string; sessionID: string; callID: string; args: unknown },
+    output: { title: string; output: string; metadata: unknown },
+  ) => Promise<void>;
+  "experimental.chat.system.transform"?: (
+    input: { sessionID?: string },
+    output: { system: string[] },
   ) => Promise<void>;
   "shell.env"?: (
     input: { cwd: string; sessionID?: string; callID?: string },
