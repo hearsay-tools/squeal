@@ -144,7 +144,7 @@ describe("the launcher", () => {
     expect(launch(m).ran?.version).toBe("0.1.172");
   });
 
-  it("names every harness and install.sh for Pi when Pi's version differs", () => {
+  it("names every harness and squeal update when Pi's version differs", () => {
     const m = machine();
     claudeInstalls(m, [{ scope: "user", version: "0.1.170" }]);
     codexInstalls(m, ["0.1.170"]);
@@ -152,7 +152,7 @@ describe("the launcher", () => {
     const r = launch(m);
     expect(r.ran?.harness).toBe("pi");
     expect(r.stderr).toBe(
-      "squeal: Claude Code has squeal 0.1.170, Codex has 0.1.170 and Pi has 0.1.171; running 0.1.171. Run squeal update, and install.sh for Pi, to bring them to one version.\n",
+      "squeal: Claude Code has squeal 0.1.170, Codex has 0.1.170 and Pi has 0.1.171; running 0.1.171. Run squeal update to bring them to one version.\n",
     );
   });
 
