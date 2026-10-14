@@ -72,6 +72,11 @@ The eval slot is shared with the other coordinators. Start each session only whi
    - the agent's claims about silence and about being done.
 
    Also answer the cezar coordinator's two questions: does `setup --plan` notice a suite no runner enumerates (its browser e2e with a bootstrap), and does the setup skill stop an agent from probing Squeal's internals? If cezar's browser suite cannot run as that user, say why, and measure what runs.
+   Added by the human on 2026-10-14: cezar already has a `squeal.config.json`, written by agents (20880223, bbab66e9, af156319, 5dbb4b09), and its quality is unknown. So this part runs in two arms:
+   - **(a) as it is:** `setup --plan --json` and `--check`, each key judged against the observed reads and what setup proposes;
+   - **(b) fresh:** the config removed, then `squeal setup`.
+
+   Compare the two configs key by key. Each difference is a finding for the human, with its evidence and its cost. Nothing is committed to cezar.
 3. `metric.mjs` over this repository's sessions since `97144d9`.
 
 **Owns.**
