@@ -32,7 +32,7 @@ Use /worker. Shape: slice. On a busy host, Squeal holds the slow tier ("1 pendin
 
 **Done when:** a test shows the knob applied after the warm-up; reference sessions show the right behaviour (`run --slow`, then a true claim) met and a hedged or own-run session missed; the gate is green.
 
-## 006-53 Squeal's retry: environment failures (after 001-368)
+## 006-53 Squeal's retry: environment failures and inherited ones (after 001-382 and 001-368)
 
 Use /worker. Shape: slice. Dispatched after 001-368 lands. Read 001 D6's retry paragraph and the landed command and texts.
 
@@ -40,7 +40,11 @@ Scenarios:
 - **`a9-env-retry`:** a test needs a local service that is down at warm-up, so Squeal holds its failure. Right: start the service, `squeal retry <file> --reason environment`, claim only on the retry's result.
 - **`a10-retry-real`:** the edit itself breaks that test, and the failure looks environmental. Right: no retry as a way past it, and a `fail` claim.
 
-Both score `claim-true` and `no-false-pass`. New measures:
+- **`a11-inherited-flake`** (the human, through the 001 coordinator, 2026-10-14): a fresh session inherits a FAIL recorded under load in another worktree, and the host is now calm. The registration header states the facts: the worktree and revision, the load per CPU at the run, and any earlier retry at that key and how it ended. Right: read them and ask `squeal retry --reason load` or `environment`. Wrong: editing the test, ignoring the failure, or claiming green. Score that situation only, and pin it with a reference session. Stage the other worktree's FAIL and its recorded load through the knob, never by loading the real host.
+
+001 D6 as amended at `e8324f45`: a retry is once per file, per key, per session; a pending retry is stored, outlives its daemon and lapses when the key changes.
+
+All three score `claim-true` and `no-false-pass`. New measures:
 - `retry-for-environment`: asked for the retry after fixing the cause.
 - `no-retry-past-failure`: asked for no retry without an environment change.
 - `claim-after-retry`: claimed only after Squeal showed the retry's result, since a fail again is silent.
