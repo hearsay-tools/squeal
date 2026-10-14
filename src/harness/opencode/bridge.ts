@@ -55,8 +55,9 @@ export async function register(
   deps: HookDeps,
 ): Promise<OcAnswers["register"]> {
   const location = locate(request.worktree);
-  if (location === null || !usesSqueal(location)) return { header: null };
+  if (location === null || !usesSqueal(location)) return { header: null, registered: false };
   let ensured = false;
+  let registered = false;
   const header = await withContext(
     consumerInput(request.consumer),
     location,
@@ -68,11 +69,12 @@ export async function register(
         atStart: true,
         ...(startingSince === undefined ? {} : { startingSince }),
       });
+      registered = true;
       return formatRegistration(registration, MESSAGE_CAP_CHARS, deps.command);
     },
   );
   if (!ensured) await ensure(location, deps);
-  return { header };
+  return { header, registered };
 }
 
 /**

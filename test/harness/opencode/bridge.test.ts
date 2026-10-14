@@ -61,8 +61,9 @@ describe("register", () => {
   it("registers a root session as (session, main) and answers the header", async () => {
     const r = squealRepo();
     r.apply(r.fail());
-    const { header } = await reg(r.root);
-    expect(header).toMatch(/^SQUEAL · registered at revision \d+\n/);
+    const answer = await reg(r.root);
+    expect(answer.header).toMatch(/^SQUEAL · registered at revision \d+\n/);
+    expect(answer.registered).toBe(true);
     expect(registered(r)).toBe(true);
     expect(ensured).toBe(1);
   });
@@ -90,19 +91,19 @@ describe("register", () => {
   });
 
   it("is silent, and starts no daemon, where neither a store nor a config exists", async () => {
-    expect(await reg(noStore().root)).toEqual({ header: null });
+    expect(await reg(noStore().root)).toEqual({ header: null, registered: false });
     expect(ensured).toBe(0);
   });
 
   it("is silent outside a git worktree", async () => {
-    expect(await reg(outsideGit())).toEqual({ header: null });
+    expect(await reg(outsideGit())).toEqual({ header: null, registered: false });
     expect(ensured).toBe(0);
   });
 
   it("is silent with a config and no store, and ensures the daemon", async () => {
     const r = noStore();
     writeFileSync(join(r.root, "squeal.config.json"), "{}\n");
-    expect(await reg(r.root)).toEqual({ header: null });
+    expect(await reg(r.root)).toEqual({ header: null, registered: false });
     expect(ensured).toBe(1);
   });
 
@@ -112,7 +113,7 @@ describe("register", () => {
     const db = new DatabaseSync(storePaths(r.repo.commonDir).database);
     db.exec("PRAGMA user_version = 999");
     db.close();
-    expect(await reg(r.root)).toEqual({ header: null });
+    expect(await reg(r.root)).toEqual({ header: null, registered: false });
   });
 });
 
