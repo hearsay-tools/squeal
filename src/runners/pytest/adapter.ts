@@ -207,7 +207,8 @@ export async function createPytestAdapter(
       built.observed.refresh();
       built.graph.invalidate(moved ? [...paths, ...structural(root, dir)] : paths);
       notes();
-      return { recreatedProjects: moved ? [project.name] : [] };
+      const grew = built.observed.takeRecreate(paths.map((p) => p.path));
+      return { recreatedProjects: moved || grew ? [project.name] : [] };
     },
     async affected(changed) {
       if (built === null) return { direct: [], transitive: [] };
@@ -245,7 +246,11 @@ export async function createPytestAdapter(
           adapterVersion: PYTEST_ADAPTER_VERSION,
           configFile: settings.config?.path ?? null,
           envDir: dir,
-          pluginPaths: pluginPaths(built, environment, settings).filter((p) => !outside(p)),
+          // B5: what the plugins imported at start-up beyond their static closure too.
+          pluginPaths: [
+            ...pluginPaths(built, environment, settings),
+            ...(built?.observed.sessionPaths() ?? []),
+          ].filter((p) => !outside(p)),
         }),
       ];
     },
@@ -264,7 +269,20 @@ export async function createPytestAdapter(
       }
       built.observed.record(outcome.run.observed, new Set(files));
       for (const text of outcome.run.notes) once(text);
-      return outcome.report;
+      const { graph } = built;
+      const plugins = new Set(pluginPaths(built, environment, settings));
+      const everywhere = (path: RelativePath) => {
+        const { direct, transitive } = graph.affected([path]);
+        return direct.length + transitive.length >= files.length;
+      };
+      const keyed = (path: RelativePath) => plugins.has(path) || everywhere(path);
+      const session = built.observed.recordSession(outcome.run.session, keyed);
+      if (session.length === 0) return outcome.report;
+      // B5: the core stores nothing for a file whose key lacked one of these, re-keys and reruns it.
+      return {
+        ...outcome.report,
+        environmentObserved: [{ project: project.name, paths: session }],
+      };
     },
     close: async () => {},
   };

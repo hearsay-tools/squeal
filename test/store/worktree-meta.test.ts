@@ -8,6 +8,7 @@ import {
   nodeTestObservedMetaKey,
   nodeTestObservedPreloadsMetaKey,
   pytestObservedMetaKey,
+  pytestObservedSessionMetaKey,
   WORKTREE_META_ROWS,
   type WorktreeMetaRow,
   worktreeMetaKey,
@@ -29,6 +30,7 @@ const SHARED_KEY_FUNCTIONS = [
   "nodeTestObservedMetaKey",
   "nodeTestObservedPreloadsMetaKey",
   "pytestObservedMetaKey",
+  "pytestObservedSessionMetaKey",
 ];
 /** `meta` key constants of rows shared across worktrees. */
 const SHARED_KEY_CONSTANTS = ["FLAKY_META_KEY", "META_STORE_RECOVERED"];
@@ -58,6 +60,7 @@ describe("worktree removal and its meta rows (task 001-254, review wave 13u S1)"
       nodeTestObservedMetaKey("gone"),
       nodeTestObservedPreloadsMetaKey("gone"),
       pytestObservedMetaKey("gone"),
+      pytestObservedSessionMetaKey("gone"),
       "unlisted:gone",
     ];
     for (const key of shared) store.meta.set(key, "{}");
