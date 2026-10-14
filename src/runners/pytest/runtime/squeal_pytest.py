@@ -103,6 +103,7 @@ _original_import_module = importlib.import_module
 
 
 def _import(name, globals=None, locals=None, fromlist=(), level=0):
+    __tracebackhide__ = True
     module = _original_import(name, globals, locals, fromlist, level)
     try:
         # A direct `__import__("a.b")` call passes no globals: the caller's frame has them.
@@ -121,6 +122,7 @@ def _import(name, globals=None, locals=None, fromlist=(), level=0):
 
 
 def _import_module(name, package=None):
+    __tracebackhide__ = True
     module = _original_import_module(name, package)
     try:
         caller = sys._getframe(1).f_globals
