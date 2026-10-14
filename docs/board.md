@@ -725,7 +725,7 @@ Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the hu
 | 005-43 repair: the validation universe subtracts node:test exclusions | done (0.1.159) | B1 of `reviews/wave-4-6.md`. | Both write paths refuse; `--check` exits 1. |
 | 005-44 repair: an explicit relative path keeps its named evidence; argv secrecy | done (0.1.159) | B2 and S1 of `reviews/wave-4-6.md`. | Root `dist` outranks `plugins` on the review's probe; the guard refuses a secret in argv. |
 | 005-46 a load flake in node-test-packages (for 001) | planned | Seen in 005's 0.1.159 gate (load about 5 to 20): `test/integration/node-test-packages.test.ts` "re-runs and fails exactly the files that reach ext" got each failing file once, not twice (the 001-171 re-run missing); 3 of 3 passed alone. Owner: the 001 coordinator, whose re-run code it tests. | Cause named, or a planned 001 row. |
-| 005-45 narrow re-review of 005-42 | running (brief `tasks/wave-6.md`; the release waits for it) | `/reviewer` on gpt-6.1-sol: B1, B2, S1 and the warm-up test premise only. | `reviews/wave-6.5.md`. |
+| 005-45 narrow re-review of 005-42 | running (5327f1ba; brief `tasks/wave-6.md`; the release waits for it) | `/reviewer` on gpt-6.1-sol: B1, B2, S1 and the warm-up test premise only. | `reviews/wave-6.5.md`. |
 | 005-18 dogfooding | running (3edab64b; brief `tasks/wave-6.md`; subject sessions as `squeal-e2e`; plan to the coordinator before any session; human 2026-10-14) | Goal 6: controlled sessions on 006's suite (the atomic tier, D10, and the long baseline) in both harnesses, and `metric.mjs` over this repository's sessions since `97144d9` and since the release. | `lessons.md`. |
 
 ## Feature 006: model evals
