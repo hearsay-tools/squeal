@@ -293,6 +293,25 @@ describe("createCompositeRunner (spec 003 D7)", () => {
     expect(report.failure).toBe("node-test: run exceeded 1000 ms");
   });
 
+  it("carries a part's skipped files, and none when no part skipped one (task 007-23)", async () => {
+    const { composite } = pair({
+      run: async (testFiles) => ({
+        end: "completed",
+        durationMs: 4,
+        completedFiles: testFiles,
+        results: [],
+        fileErrors: [],
+        failure: null,
+        skippedFiles: testFiles.map((testFile) => ({ testFile, reason: "no service" })),
+      }),
+    });
+    await composite.testFiles();
+    const report = await composite.run([A, C], OPTIONS);
+    expect(report.skippedFiles).toEqual([{ testFile: C, reason: "no service" }]);
+    expect(report.completedFiles).toEqual([A, C]);
+    expect(await composite.run([A], OPTIONS)).not.toHaveProperty("skippedFiles");
+  });
+
   it("closes each adapter even when one fails to close, then rejects", async () => {
     const vitest = fake("vitest", {}, { close: () => Promise.reject(new Error("busy")) });
     const node = fake("node-test", {});
