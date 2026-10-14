@@ -6,12 +6,17 @@ import {
   createPermitPool,
   type PermitPool,
   type PoolCapacity,
+  type PoolLease,
 } from "../../src/core/capacity/index.js";
+import { readMarks } from "../../src/core/capacity/marks.js";
 
 /*
  * Spec 001 D11 Capacity (task 001-376): the slow slot's lock files extended
  * into one per-user pool. Each pool here is one simulated daemon; they share
- * a temporary directory, never the user's runtime directory.
+ * a temporary directory, never the user's runtime directory. Every tier
+ * starts as the scheduler starts one (`startTier`): acquire, then shrink to
+ * the files that start (review 001-384, B1: tests that skipped the shrink
+ * missed the demand it erased).
  */
 
 let root: string;
@@ -41,61 +46,76 @@ function daemon(worktreeId: string, capacity: PoolCapacity = { hostSlots: 8 }): 
   return pool;
 }
 
+/** A backlog tier of `files` files, as `selectTier` and `startTier` take its lease. */
+function tier(pool: PermitPool, files: number): PoolLease | null {
+  const lease = pool.acquire(files);
+  lease?.shrinkTo(files);
+  return lease;
+}
+
+/** What the other daemons read in `id`'s mark. */
+function markOf(id: string): { want: number; grant: number } | undefined {
+  const mark = readMarks(dir, "reader", clock).find((m) => m.id === id);
+  return mark === undefined ? undefined : { want: mark.want, grant: mark.grant };
+}
+
 describe("the per-user permit pool", () => {
   test("a lone daemon takes the host's slots: its free worker and every permit", () => {
-    const lease = daemon("a").acquire(200);
+    const lease = tier(daemon("a"), 200);
     expect(lease?.grant).toBe(8);
     expect(lease?.permits).toBe(7);
   });
 
   test("a tier that wants fewer workers takes fewer permits; one file runs on the free worker", () => {
     const a = daemon("a");
-    expect(a.acquire(1)?.permits).toBe(0);
-    const b = daemon("b").acquire(3);
+    expect(tier(a, 1)?.permits).toBe(0);
+    const b = tier(daemon("b"), 3);
     expect(b?.grant).toBe(3);
   });
 
   test("fair share across daemons: the newcomer waits one tier on its free worker, then both run their share", () => {
     const a = daemon("a");
     const b = daemon("b");
-    const first = a.acquire(200);
+    const first = tier(a, 200);
     expect(first?.grant).toBe(8);
 
     // No preemption: a's tier keeps its permits, b runs on its free worker and marks itself waiting.
     clock += 1_000;
-    const waiting = b.acquire(200);
+    const waiting = tier(b, 200);
     expect(waiting?.grant).toBe(1);
+    // Review 001-384, B1: b's shrink to the files it starts keeps its demand, not its grant.
+    expect(markOf("b")).toEqual({ want: 200, grant: 1 });
 
     // At a's next tier boundary it takes no more than its share and leaves b's lack free.
     first?.release();
     clock += 1_000;
-    const second = a.acquire(200);
+    const second = tier(a, 200);
     expect(second?.grant).toBe(4);
 
     waiting?.release();
     clock += 1_000;
-    expect(b.acquire(200)?.grant).toBe(4);
+    expect(tier(b, 200)?.grant).toBe(4);
   });
 
   test("slots one daemon cannot use go to the others", () => {
     const a = daemon("a");
     const b = daemon("b");
     const c = daemon("c");
-    expect(c.acquire(2)?.grant).toBe(2);
+    expect(tier(c, 2)?.grant).toBe(2);
     // c wants only 2: b, alone beside it, takes the other 6.
-    const wide = b.acquire(200);
+    const wide = tier(b, 200);
     expect(wide?.grant).toBe(6);
     // a's share of the 6 is 3; one permit is free, so it waits for the rest.
     clock += 1_000;
-    const short = a.acquire(200);
+    const short = tier(a, 200);
     expect(short?.grant).toBe(2);
     // b's next boundary leaves a its lack; then a runs its share.
     wide?.release();
     clock += 1_000;
-    expect(b.acquire(200)?.grant).toBe(3);
+    expect(tier(b, 200)?.grant).toBe(3);
     short?.release();
     clock += 1_000;
-    expect(a.acquire(200)?.grant).toBe(3);
+    expect(tier(a, 200)?.grant).toBe(3);
   });
 
   test("the longest waiter is served first, whichever reaches its boundary first", () => {
@@ -105,13 +125,13 @@ describe("the per-user permit pool", () => {
     ] as const) {
       const a = daemon(`a-${older}`);
       const pools = { b: daemon(`b-${older}`), c: daemon(`c-${older}`) };
-      const holder = a.acquire(200);
+      const holder = tier(a, 200);
       expect(holder?.grant).toBe(8);
       // Both wait on their free worker, `older` since earlier.
       clock += 1_000;
-      const olderTier = pools[older].acquire(200);
+      const olderTier = tier(pools[older], 200);
       clock += 1_000;
-      const youngerTier = pools[younger].acquire(200);
+      const youngerTier = tier(pools[younger], 200);
       expect([olderTier?.grant, youngerTier?.grant]).toEqual([1, 1]);
 
       // The holder gives back two permits, then has no more backlog work.
@@ -119,36 +139,51 @@ describe("the per-user permit pool", () => {
       // The younger waiter's boundary comes first, yet it leaves both permits to the older.
       youngerTier?.release();
       clock += 1_000;
-      const youngerNext = pools[younger].acquire(200);
+      const youngerNext = tier(pools[younger], 200);
       expect(youngerNext?.grant).toBe(1);
       olderTier?.release();
       clock += 1_000;
-      expect(pools[older].acquire(200)?.grant).toBe(3);
+      expect(tier(pools[older], 200)?.grant).toBe(3);
 
       for (const pool of [a, pools.b, pools.c]) pool.close();
     }
   });
 
+  test("a lane's release leaves the other lane's demand in the mark, not its grant", () => {
+    const a = daemon("a");
+    const laneOne = tier(a, 3);
+    expect(laneOne?.grant).toBe(3);
+    const laneTwo = tier(a, 50);
+    expect(laneTwo?.grant).toBe(5);
+    expect(markOf("a")).toEqual({ want: 53, grant: 8 });
+    laneOne?.release();
+    expect(markOf("a")).toEqual({ want: 50, grant: 5 });
+    // A newcomer's share is still half: a's lane two wants far more than it holds.
+    clock += 1_000;
+    expect(tier(daemon("b"), 200)?.grant).toBe(3);
+    expect(markOf("b")).toEqual({ want: 200, grant: 3 });
+  });
+
   test("a daemon whose free worker another lane holds waits for a permit, and runs on one", () => {
     const a = daemon("a", { hostSlots: 2 });
     const b = daemon("b", { hostSlots: 2 });
-    const other = b.acquire(5);
+    const other = tier(b, 5);
     expect(other?.grant).toBe(2);
-    const laneOne = a.acquire(1);
+    const laneOne = tier(a, 1);
     expect(laneOne?.grant).toBe(1);
     // The only permit is b's: a's second lane may not start.
-    expect(a.acquire(5)).toBeNull();
+    expect(tier(a, 5)).toBeNull();
     other?.release();
-    expect(a.acquire(5)?.grant).toBe(1);
+    expect(tier(a, 5)?.grant).toBe(1);
   });
 
   test("a capped project's daemons together stay within its slots", () => {
     const project = { id: "/repo/p", slots: 4 };
     const p1 = daemon("p1", { hostSlots: 8, project });
     const p2 = daemon("p2", { hostSlots: 8, project });
-    expect(p1.acquire(200)?.grant).toBe(4);
+    expect(tier(p1, 200)?.grant).toBe(4);
     // No preemption: p1 holds the project's slots, p2 runs on its free worker.
-    expect(p2.acquire(200)?.grant).toBe(1);
-    expect(daemon("q").acquire(200)?.grant).toBe(4);
+    expect(tier(p2, 200)?.grant).toBe(1);
+    expect(tier(daemon("q"), 200)?.grant).toBe(4);
   });
 });
