@@ -85,6 +85,22 @@ describe("session.deleted and dispose", () => {
     expect(output.parts).toHaveLength(1);
   }, 10_000);
 
+  it("dispose during the identity lookup leaves no registration behind (review 008-16 S1)", async () => {
+    const bridge = stubBridge();
+    const client = stubClient([{ id: ROOT_ID }]);
+    const get = client.session.get;
+    client.session.get = (options) =>
+      new Promise((done) => setTimeout(() => done(get(options)), 800));
+    const hooks = await startPlugin(squealDir(), client, { entry: bridge.entry });
+    const output = chatOutput(ROOT_ID);
+    const message = hook(hooks, "chat.message")({ sessionID: ROOT_ID }, output);
+    await new Promise((done) => setTimeout(done, 200));
+    await hook(hooks, "dispose")();
+    await message;
+    expect(bridge.requests()).toEqual([]);
+    expect(output.parts).toHaveLength(1);
+  }, 10_000);
+
   it("dispose with nothing registered starts no bridge", async () => {
     const bridge = stubBridge();
     const hooks = await startPlugin(squealDir(), stubClient(), { entry: bridge.entry });
