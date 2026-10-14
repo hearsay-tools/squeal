@@ -10,9 +10,14 @@ import { stdlibNames } from "./stdlib-names.js";
 /** pytest's `--import-mode` (runner-api F4). */
 export type ImportMode = "prepend" | "append" | "importlib";
 
-/** One `sys.path` location: a directory, or the standard library's names standing in for its directories. */
+/**
+ * One `sys.path` location: a directory, or the standard library's names
+ * standing in for its directories. A `basedir` is one pytest inserts as it
+ * imports a test file or conftest, so whether it is on the path yet, and
+ * where, depends on the batch (review 007-16 B2).
+ */
 export type Location =
-  | { readonly kind: "dir"; readonly dir: AbsolutePath }
+  | { readonly kind: "dir"; readonly dir: AbsolutePath; readonly basedir?: true }
   | { readonly kind: "stdlib"; readonly names: ReadonlySet<string> };
 
 /** Spec 007 D4's `sys.path` model of one project, from files. */
@@ -40,7 +45,8 @@ export interface SearchPathInputs {
 
 /**
  * The search path pytest would see, in order (D4, module-graph Q1): the
- * basedirs `prepend` inserts, each at the front unless already present;
+ * basedirs `prepend` inserts, each at the front unless already present, and
+ * marked, since a batch inserts them in its own order or not at all;
  * `pythonpath`; `cwd`; the standard library, always as the bundled names of
  * the environment's minor, or of the `.python-version` pin, or of every
  * measured minor, so a synced and an unsynced worktree resolve alike
@@ -75,12 +81,17 @@ export function searchPath(inputs: SearchPathInputs): SearchPath {
   for (const path of inputs.pythonpath.toReversed()) insert(path);
   const basedirs = inputs.pytestModules.map(basedir);
   if (inputs.importMode === "prepend") for (const path of basedirs) insert(path);
-  const locations = [...front.map(dir), dir(inputs.cwd), ...tail];
+  const inserted = new Set(inputs.importMode === "prepend" ? basedirs : []);
+  const locations = [
+    ...front.map((path) => (inserted.has(path) ? basedirLocation(path) : dir(path))),
+    dir(inputs.cwd),
+    ...tail,
+  ];
   if (inputs.importMode === "append") {
     for (const path of basedirs) {
       if (known.has(path)) continue;
       known.add(path);
-      locations.push(dir(path));
+      locations.push(basedirLocation(path));
     }
   }
   return { locations, mapped, source: env === null ? "derived" : "environment", notes };
@@ -94,6 +105,11 @@ export function basedir(file: AbsolutePath): AbsolutePath {
 }
 
 const dir = (path: AbsolutePath): Location => ({ kind: "dir", dir: path });
+const basedirLocation = (path: AbsolutePath): Location => ({
+  kind: "dir",
+  dir: path,
+  basedir: true,
+});
 
 /** The minor a `.python-version` pin names at `cwd` or the worktree root. */
 function pin(inputs: SearchPathInputs): string | null {

@@ -11,6 +11,18 @@ interface Spec {
   readonly sub: readonly AbsolutePath[] | null;
 }
 
+/**
+ * Every spec a name can have and the absent candidates of every way to look
+ * it up: more than one spec where a batch decides, since pytest inserts
+ * basedirs in its own order and the first import of a name is cached for the
+ * rest of the process (review 007-16 B2). Empty specs: the name does not
+ * resolve.
+ */
+interface Found {
+  readonly specs: readonly Spec[];
+  readonly candidates: readonly AbsolutePath[];
+}
+
 /** The worktree files and absent candidates one dotted name reaches. */
 export interface Resolution {
   readonly files: readonly AbsolutePath[];
@@ -30,7 +42,7 @@ const STDLIB: Spec = { origin: null, sub: [] };
  */
 export class Resolver {
   private readonly stats = new Map<string, 0 | 1 | 2>();
-  private readonly specs = new Map<string, Spec | null>();
+  private readonly specs = new Map<string, Found>();
   private readonly prefix: string;
 
   constructor(
@@ -54,20 +66,22 @@ export class Resolver {
     const candidates: AbsolutePath[] = [];
     const parts = name.split(".");
     for (let k = 1; k <= parts.length; k++) {
-      const prefix = parts.slice(0, k).join(".");
-      candidates.push(...this.candidates(prefix));
-      const spec = this.find(prefix);
-      if (spec === null) return { files, candidates, resolved: false };
-      if (spec.origin !== null && this.inside(spec.origin)) files.push(spec.origin);
+      const found = this.find(parts.slice(0, k).join("."));
+      candidates.push(...found.candidates);
+      if (found.specs.length === 0) return { files, candidates, resolved: false };
+      files.push(...this.origins(found));
     }
     return { files, candidates, resolved: true };
   }
 
   /** `from a import b` after `a` resolved: `a.b` when it is a submodule, else a name. */
   member(name: string): Resolution {
-    const spec = this.find(name);
-    const files = spec?.origin != null && this.inside(spec.origin) ? [spec.origin] : [];
-    return { files, candidates: this.candidates(name), resolved: spec !== null };
+    const found = this.find(name);
+    return {
+      files: this.origins(found),
+      candidates: [...found.candidates],
+      resolved: found.specs.length > 0,
+    };
   }
 
   /** Inside the worktree and outside its environment. */
@@ -84,30 +98,55 @@ export class Resolver {
     return this.kind(path) === 1;
   }
 
-  private find(name: string): Spec | null {
-    let spec = this.specs.get(name);
-    if (spec !== undefined) return spec;
+  private find(name: string): Found {
+    let found = this.specs.get(name);
+    if (found !== undefined) return found;
     const dot = name.lastIndexOf(".");
-    if (dot < 0) spec = this.findTop(name);
+    if (dot < 0) found = this.findTop(name);
     else {
-      const parent = this.find(name.slice(0, dot));
-      spec = parent?.sub ? this.findIn(name, name.slice(dot + 1), parent.sub) : null;
+      const last = name.slice(dot + 1);
+      const specs: Spec[] = [];
+      const candidates: AbsolutePath[] = [];
+      for (const parent of this.find(name.slice(0, dot)).specs) {
+        if (!parent.sub) continue;
+        const spec = this.findIn(last, parent.sub);
+        if (spec !== null) specs.push(spec);
+        candidates.push(...this.absent(parent.sub, last, spec));
+      }
+      found = { specs, candidates };
     }
-    this.specs.set(name, spec);
-    return spec;
+    this.specs.set(name, found);
+    return found;
   }
 
-  private findTop(name: string): Spec | null {
+  /**
+   * `PathFinder` over the search path, then the editable finders. A hit in
+   * a basedir pytest inserts is one possible spec and the scan goes on; the
+   * first hit elsewhere ends it.
+   */
+  private findTop(name: string): Found {
     const portions: AbsolutePath[] = [];
+    const specs: Spec[] = [];
+    let last: Spec | null = null;
     for (const location of this.path.locations) {
       if (location.kind === "stdlib") {
         // A regular module anywhere on the path wins over namespace portions found before it.
-        if (location.names.has(name)) return STDLIB;
-        continue;
+        if (location.names.has(name)) last = STDLIB;
+      } else {
+        const found = this.lookIn(location.dir, name, portions);
+        if (found !== null && location.basedir) specs.push(found);
+        else last = found;
       }
-      const found = this.lookIn(location.dir, name, portions);
-      if (found !== null) return found;
+      if (last !== null) break;
     }
+    last ??= this.mapped(name);
+    if (last === null && portions.length > 0) last = namespace(portions);
+    if (last !== null) specs.push(last);
+    const dirs = this.path.locations.flatMap((l) => (l.kind === "dir" ? [l.dir] : []));
+    return { specs, candidates: this.absent(dirs, name, last) };
+  }
+
+  private mapped(name: string): Spec | null {
     for (const mapped of this.path.mapped) {
       if (mapped.module !== name) continue;
       if (mapped.finder === "setuptools" && this.kind(mapped.path) === 2) {
@@ -116,16 +155,22 @@ export class Resolver {
       const isInit = mapped.path.endsWith(`${sep}__init__.py`);
       return { origin: mapped.path, sub: isInit ? [dirname(mapped.path)] : null };
     }
-    return portions.length > 0 ? namespace(portions) : null;
+    return null;
   }
 
-  private findIn(_name: string, last: string, locations: readonly AbsolutePath[]): Spec | null {
+  private findIn(last: string, locations: readonly AbsolutePath[]): Spec | null {
     const portions: AbsolutePath[] = [];
     for (const location of locations) {
       const found = this.lookIn(location, last, portions);
       if (found !== null) return found;
     }
     return portions.length > 0 ? namespace(portions) : null;
+  }
+
+  private origins(found: Found): AbsolutePath[] {
+    return found.specs.flatMap((s) =>
+      s.origin !== null && this.inside(s.origin) ? [s.origin] : [],
+    );
   }
 
   /** `FileFinder` in one directory: a regular package, then a module; a bare directory is a portion. */
@@ -140,23 +185,18 @@ export class Resolver {
 
   /**
    * D4 as amended: the absent `<loc>/<last>.py` and `<loc>/<last>/__init__.py`
-   * in each worktree location before the winning one; a winner outside the
-   * worktree, the stdlib or site-packages, does not end the scan.
+   * in each worktree location before the one `won` came from; a winner
+   * outside the worktree, the stdlib or site-packages, does not end the scan.
    */
-  private candidates(name: string): AbsolutePath[] {
-    const dot = name.lastIndexOf(".");
-    const last = name.slice(dot + 1);
-    let locations: readonly AbsolutePath[];
-    if (dot < 0) {
-      locations = this.path.locations.flatMap((l) => (l.kind === "dir" ? [l.dir] : []));
-    } else {
-      locations = this.find(name.slice(0, dot))?.sub ?? [];
-    }
-    const spec = this.find(name);
-    const won = spec?.origin != null && this.inside(spec.origin) ? dirname(spec.origin) : null;
+  private absent(
+    locations: readonly AbsolutePath[],
+    last: string,
+    won: Spec | null,
+  ): AbsolutePath[] {
+    const at = won?.origin != null && this.inside(won.origin) ? dirname(won.origin) : null;
     const found: AbsolutePath[] = [];
     for (const location of locations) {
-      if (won !== null && (won === location || won === join(location, last))) break;
+      if (at !== null && (at === location || at === join(location, last))) break;
       if (!this.inside(location) && location !== this.root) continue;
       for (const path of [join(location, `${last}.py`), join(location, last, "__init__.py")]) {
         if (this.kind(path) !== 1) found.push(path);
