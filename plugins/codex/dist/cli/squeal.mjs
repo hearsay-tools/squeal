@@ -34905,7 +34905,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.157";
+  if (true) return "0.1.158";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -41420,6 +41420,7 @@ init_fs();
 init_keys();
 init_files();
 init_classify();
+init_state2();
 init_text();
 init_types();
 
@@ -41532,7 +41533,7 @@ function ignoredReadText(read4) {
   const count = bound ? read4.paths.length : read4.paths.length + read4.more;
   const more = read4.more > 0 ? [`and ${bound ? "up to " : ""}${read4.more} more`] : [];
   const listed = [...read4.paths, ...more];
-  return `${read4.path} read ${bound ? "at least " : ""}${plural(count, "gitignored path")}, unkeyed: a change to ${count === 1 ? "it" : "them"} re-runs nothing until declared; squeal setup --input ${read4.path}=<glob> declares one${listed.map((p) => `
+  return `${read4.path} read ${bound ? "at least " : ""}${plural(count, "gitignored path")}, unkeyed: a change to ${count === 1 ? "it" : "them"} re-runs nothing until declared; squeal setup --input ${read4.path}=<glob> declares one; declare build output, never a file the suite's own bootstrap rewrites (a descriptor, a log, a PID file), or every boot re-runs it${listed.map((p) => `
     ${p}`).join("")}`;
 }
 function ignoredReadNotes({ reads, unobserved }) {
@@ -41588,22 +41589,28 @@ function verdictText(code) {
   }
 }
 async function reportProgress(root, id2, io, running) {
+  const { policy } = loadPolicy(root);
+  const isSlow = slowFiles(policy, policy.nodeTest);
   let last = "";
   while (running()) {
     await new Promise((resolve12) => setTimeout(resolve12, PROGRESS_POLL_MS));
     if (!running()) return;
-    const open4 = withStatusStore(
-      root,
-      {},
-      ({ store }) => parseCheckpointProgress(store.meta.get(checkpointMetaKey(id2)))
-    );
-    if (open4 === null || "available" in open4) continue;
-    const line = `${open4.done} of ${plural(open4.total, "test file")} done`;
-    if (line === last) continue;
+    const line = withStatusStore(root, {}, ({ store }) => {
+      const open4 = parseCheckpointProgress(store.meta.get(checkpointMetaKey(id2)));
+      if (open4 === null) return null;
+      const activity = readSlowActivity(store, id2);
+      const queued = activity?.kind === "waiting" && activity.for === "load" ? store.testFileKeys.list(id2).filter((row) => row.pending === "queued" && isSlow(row.testFile)).length : 0;
+      return progressText(open4.done, open4.total, queued);
+    });
+    if (typeof line !== "string" || line === last) continue;
     last = line;
     io.stdout(`squeal warmup: ${line}
 `);
   }
+}
+function progressText(done, total, waitingForLoad) {
+  const line = `${done} of ${plural(total, "test file")} done`;
+  return waitingForLoad === 0 ? line : `${line}; ${plural(waitingForLoad, "slow test file")} waiting for host load to drop`;
 }
 function slowCandidates2(root, id2) {
   const { policy } = loadPolicy(root);
