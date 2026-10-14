@@ -6,6 +6,7 @@ import type { AbsolutePath, PytestProject } from "../../../core/types/index.js";
 import type { PytestConfigFile } from "./config.js";
 import type { EnvironmentFiles } from "./fingerprint.js";
 import type { InterpreterInfo } from "./interpreter.js";
+import { editableDir, insideWorktree } from "./states.js";
 
 /**
  * D2's allow-listed variables: each changes which code runs or which
@@ -87,15 +88,17 @@ export interface EnvironmentHashInputs {
 export function environmentHash(inputs: EnvironmentHashInputs): string {
   const { root, project, files, interpreter, config } = inputs;
   const portable = portablePaths(root);
+  const editables = worktreeEditables(root, files.directUrls);
+  const plain = (entry: string) => unversioned(editables, entry);
   const encoded = JSON.stringify([
     portable(interpreter.realPath),
     interpreter.version,
     interpreter.implementation,
     interpreter.cacheTag,
     files.pyvenvCfg === null ? null : portable(files.pyvenvCfg),
-    files.siteEntries,
-    files.pth.map(([name, text]) => [name, portable(text)]),
-    files.directUrls.map(([name, text]) => [name, portable(text)]),
+    files.siteEntries.map(plain).sort(compare),
+    files.pth.map(([name, text]) => [plain(name), portable(plain(text))]),
+    files.directUrls.map(([name, text]) => [plain(name), portable(text)]),
     config === null ? null : (toRelative(root, config.path) ?? config.path),
     inputs.configText,
     project.python ?? null,
@@ -104,6 +107,49 @@ export function environmentHash(inputs: EnvironmentHashInputs): string {
     Object.entries(inputs.variables).sort(([a], [b]) => compare(a, b)),
   ]);
   return createHash("sha256").update(encoded).digest("hex");
+}
+
+/**
+ * D2, amended 2026-10-15 (lessons defect 3): `[<name>-<version>, <name>]`
+ * of each distribution whose `direct_url.json` names an editable install
+ * inside the worktree. setuptools_scm, hatch-vcs and versioneer put the
+ * commit in that version, and the closure already keys the code.
+ */
+function worktreeEditables(
+  root: AbsolutePath,
+  directUrls: EnvironmentFiles["directUrls"],
+): readonly (readonly [string, string])[] {
+  const stems: (readonly [string, string])[] = [];
+  for (const [distInfo, text] of directUrls) {
+    const dir = editableDir(text);
+    if (dir === null || !insideWorktree(root, dir)) continue;
+    const stem = distInfo.slice(0, -".dist-info".length);
+    const at = stem.indexOf("-");
+    if (at > 0) stems.push([stem, stem.slice(0, at)]);
+  }
+  return stems;
+}
+
+/**
+ * Drops those distributions' versions from `text`, a site-packages entry
+ * name or a `.pth` file's bytes, in the shapes setuptools writes:
+ * `<name>-<version>.dist-info`, `__editable__.<name>-<version>.pth` and the
+ * finder module `__editable___<name>_<version>_finder` in identifier form.
+ * Every other distribution keeps name and version.
+ */
+function unversioned(stems: readonly (readonly [string, string])[], text: string): string {
+  for (const [stem, name] of stems) {
+    if (text === `${stem}.dist-info`) return `${name}.dist-info`;
+    text = text
+      .replaceAll(`__editable__.${stem}.`, `__editable__.${name}.`)
+      .replaceAll(finder(stem), finder(name));
+  }
+  return text;
+}
+
+/** The finder module's name: setuptools' `safe_identifier` makes every non-word character `_`. */
+function finder(stem: string): string {
+  return `__editable___${stem}_finder`.replace(/\W/g, "_");
 }
 
 /**
