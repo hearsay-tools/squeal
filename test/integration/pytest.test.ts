@@ -66,7 +66,7 @@ const observedKey = (main: string) =>
  * any result is stored under it, and every closure path whose hash differs
  * between the two worktrees; the shared observed keys and the runs of `wt`.
  */
-function whyNotInherited(main: string, wt: string): string {
+function diagnose(main: string, wt: string): string {
   const db = new DatabaseSync(join(main, ".git/squeal/store.sqlite"), { readOnly: true });
   try {
     const [m, w] = [worktreeIdFor(main), worktreeIdFor(wt)];
@@ -123,13 +123,48 @@ function whyNotInherited(main: string, wt: string): string {
     const environmentDiffers = [...new Set([...hm.keys(), ...hw.keys()])]
       .filter((p) => p.startsWith(".venv/") && hm.get(p) !== hw.get(p))
       .map((p) => ({ path: p, main: hm.get(p) ?? null, wt: hw.get(p) ?? null }));
+    const q = (sql: string, ...args: (string | number)[]) =>
+      db.prepare(sql).all(...args) as Record<string, unknown>[];
+    const names = new Map(
+      q("SELECT id, root FROM worktrees").map((r) => [r.id, String(r.root).split("/").pop()]),
+    );
+    const name = (r: Record<string, unknown>) => ({ ...r, worktree_id: names.get(r.worktree_id) });
+    const resultRows = files.flatMap((f) =>
+      [f.main?.key, f.wt?.key]
+        .filter((k): k is string => typeof k === "string")
+        .filter((k, i, all) => all.indexOf(k) === i)
+        .flatMap((k) =>
+          q(
+            "SELECT r.key, c.full_name, r.outcome, r.worktree_id, r.revision, r.run_id, r.recorded_at FROM results r JOIN checks c ON c.id = r.check_id WHERE r.key = ? AND c.test_path = ?",
+            k,
+            f.path,
+          ).map((r) => ({ ...name(r), key: String(r.key).slice(0, 8) })),
+        ),
+    );
     return JSON.stringify(
       {
         files,
         environmentDiffers,
         observed: metaValue(main, pytestObservedMetaKey("small")),
         observedSession: metaValue(main, pytestObservedSessionMetaKey("small")),
-        runs: runs(main, wt),
+        results: resultRows,
+        revisions: q(
+          "SELECT number, created_at, trigger, substr(changes, 1, 600) AS changes FROM revisions WHERE worktree_id = ? ORDER BY number",
+          w,
+        ),
+        runs: q(
+          "SELECT id, revision, test_files, started_at, ended_at, end_state FROM runs WHERE worktree_id = ? ORDER BY started_at",
+          w,
+        ),
+        transitions: q(
+          "SELECT t.revision, t.at, c.test_path, c.full_name, t.kind, t.from_outcome, t.to_outcome FROM transitions t JOIN checks c ON c.id = t.check_id WHERE t.worktree_id = ? ORDER BY t.id",
+          w,
+        ),
+        known: q(
+          "SELECT c.test_path, c.full_name, k.outcome, k.validity, k.pending_phase, k.origin_kind, k.origin_worktree FROM known_states k JOIN checks c ON c.id = k.check_id WHERE k.worktree_id = ?",
+          w,
+        ).map((r) => ({ ...r, origin_worktree: names.get(r.origin_worktree) ?? null })),
+        notes: status(wt).daemonNotes,
       },
       null,
       1,
@@ -165,7 +200,9 @@ describe("a repository with a Vitest suite and a pytest project (spec 007)", () 
         wt3,
         "the third baseline",
         (s) => s.counts.current === CHECKS && ranFiles(main, wt3).length >= 2,
-      );
+      ).catch((error: unknown) => {
+        throw new Error(`${String(error)}\n${diagnose(main, wt3)}`);
+      });
       // test_resources.py too: its baseline in main imported `app.data` through
       // `importlib.resources`, observed only, and growth a worktree's own run finds keys its
       // stored result at the next edit (003 D3), so main's result lacks it.
@@ -226,7 +263,7 @@ describe("a repository with a Vitest suite and a pytest project (spec 007)", () 
         "the synced second worktree",
         (s) => s.counts.current === CHECKS,
       );
-      expect(second.inherited.count, whyNotInherited(main, wt2)).toBe(CHECKS);
+      expect(second.inherited.count, diagnose(main, wt2)).toBe(CHECKS);
       expect(second.knownFailures).toEqual([]);
       // Tiers keyed while the sync ran end before starting pytest (D2); none completed.
       expect(runs(main, wt2).slice(from)).toEqual(
