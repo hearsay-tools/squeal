@@ -23,7 +23,21 @@ No stale pass occurred. Both agents ended on a correct verdict: the project's ow
 
 Batch size is not a policy key in 0.1.174 (defect 5). `DEFAULT_BATCH_SIZE = 5` in `run.ts` is the only value. So `bench.sh` ran sizes 1 and 10 from a copy of the plugin with that constant changed. Each row is a full baseline of a separate clone (`bench/`) with a fresh store. The tier size is 4 (the policy default), and a run starts only while the one-minute load is below 8.
 
-Pending: the bench waits for a load below 8. The table and its reading follow when it has run.
+Runs 1 to 5 of the planned order (1, 5, 10, 10, 5, 1) ran between 19:35 and 19:45, as the load dipped below 8. The repeat at size 1 never started: the load went back to 60, and I stopped the bench. Batch size 1 is already three times slower than 5 or 10, so a repeat would not change the reading. The load in each row is the one-minute load at start and at end. A fresh store cools Squeal's bytecode cache, the same for every row.
+
+| Batch size | Run | Load at start, end | Wall, `squeal start` to `run --all --wait` | 200-file tiers (each runs 4 batches at once) | File-runs |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 1 | 7.6, 10.1 | **196.5 s** | 36.3 to 39.7 s | 1,002 |
+| 5 (default) | 2 | 7.0, 7.1 | **64.3 s** | 10.6 to 12.8 s | 1,002 |
+| 5 (default) | 5 | 6.1, 18.6 | 74.3 s | 10.1 to 19.6 s (the 19.6 s tier ran as the load climbed to 18) | 1,002 |
+| 10 | 3 | 6.7, 8.1 | **51.7 s** | 8.8 to 9.5 s, the last 7.2 s | 1,002 |
+| 10 | 4 | 7.1, 6.1 | **49.2 s** | 8.8 to 9.6 s, the last 7.0 s | 1,002 |
+
+Reading:
+- Per 200-file tier, batch 10 is about 20% faster than 5 (9.2 s against 11.6 s, comparing the calm runs), and 1 is about 3.3 times slower than 5. With 4 batches at once, one process per file pays pytest's start-up (about 0.7 s here) 200 times per tier.
+- Briefcase has no slow session fixture: its 4,286 tests take 43 s serially, about 0.1 s per file. So the crossover with slow session fixtures (runner-api F5) does not appear on this suite, and nothing here argues against a larger batch. It is one project, two runs per size, near load 8.
+- Each baseline ran the suite about 2.5 times (1,002 file-runs, defect 2), so every wall time here is about 2.5 passes. One pass at batch 10 is roughly 20 s against the project's own 43 s serial run. One pass at batch 5 is roughly 25 s.
+- Proposal for the coordinator, not decided here: keep 5 as the default until a suite with costly session fixtures is measured, and make the size a policy key first (defect 5). On briefcase, 10 is the better value.
 
 ### Open question 7: a run reading a half-synced environment
 
