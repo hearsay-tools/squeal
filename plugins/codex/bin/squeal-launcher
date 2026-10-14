@@ -1,5 +1,5 @@
 #!/bin/sh
-# squeal-launcher format 2
+# squeal-launcher format 3
 # Squeal on the terminal's PATH (spec 005 D3): install.sh copies this file to
 # ~/.local/bin/squeal. At each call it finds the installed plugin's CLI and runs
 # it with Node, so a plugin update needs no launcher update. Claude Code's

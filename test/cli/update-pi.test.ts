@@ -1,8 +1,11 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/main.js";
+import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import {
   install,
+  LAUNCHER,
   laterLauncher,
   launcherOf,
   type Machine,
@@ -51,6 +54,9 @@ const squealVersion = (m: Machine) =>
   (JSON.parse(m.sh([launcherOf(m)]).stdout) as { version: string }).version;
 
 const LATEST = (m: Machine) => m.env.SQUEAL_INSTALL_SH;
+
+/** The launcher release 0.1.172 shipped, before `squeal update` reached Pi (review 009-22 N1). */
+const RELEASED_0_1_172 = readFileSync(join(REPO_ROOT, "test/fixtures/pi/launcher-0.1.172"), "utf8");
 
 // Each test runs install.sh at least twice, about ten processes each.
 describe("squeal update in Pi", { timeout: 60_000 }, () => {
@@ -160,12 +166,26 @@ describe("squeal update in Pi", { timeout: 60_000 }, () => {
     );
   });
 
-  it("re-copies the launcher from the Pi package when its copy has a newer format", async () => {
-    const m = installed("0.1.170");
-    m.publish("0.1.171", laterLauncher(3));
+  it("re-copies the launcher 0.1.172 installed, format 2, which still names install.sh for Pi", async () => {
+    const m = machine(["pi"]);
+    m.publish("0.1.172", RELEASED_0_1_172);
+    expect(install(m).status).toBe(0);
+    expect(readFileSync(launcherOf(m), "utf8")).toBe(RELEASED_0_1_172);
+    m.publish("0.1.173");
     const r = await update(m);
     expect(r.code).toBe(0);
     expect(r.stdout).toContain(`Copied the launcher (format 2, now 3) to ${launcherOf(m)}\n`);
-    expect(readFileSync(launcherOf(m), "utf8")).toBe(laterLauncher(3));
+    expect(readFileSync(launcherOf(m), "utf8")).toBe(readFileSync(LAUNCHER, "utf8"));
+    expect(readFileSync(launcherOf(m), "utf8")).not.toContain("install.sh for Pi");
+    expect(squealVersion(m)).toBe("0.1.173");
+  });
+
+  it("re-copies the launcher from the Pi package when its copy has a newer format", async () => {
+    const m = installed("0.1.170");
+    m.publish("0.1.171", laterLauncher(4));
+    const r = await update(m);
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain(`Copied the launcher (format 3, now 4) to ${launcherOf(m)}\n`);
+    expect(readFileSync(launcherOf(m), "utf8")).toBe(laterLauncher(4));
   });
 });
