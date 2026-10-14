@@ -23,6 +23,17 @@ describe("status names the excluded Vitest projects (001-349)", () => {
     );
   });
 
+  it("a pattern as a selector, since no project has its name (001-370, review S2)", () => {
+    const { snapshot, text } = statusOf({ vitest: { excludeProjects: ["e2e", "E*", "*-bench"] } });
+    expect(snapshot.vitestExcluded).toEqual(["e2e", "E*", "*-bench"]);
+    expect(text.split("\n")).toContain(
+      'Not run: Vitest project "e2e" and projects matching "E*" or "*-bench", excluded by squeal.config.json',
+    );
+    expect(formatStatus({ ...snapshot, vitestExcluded: ["E*"] }, NOW).split("\n")).toContain(
+      'Not run: Vitest projects matching "E*", excluded by squeal.config.json',
+    );
+  });
+
   it("nothing without the key", () => {
     const { snapshot, text } = statusOf(null);
     expect(snapshot.vitestExcluded).toBeUndefined();

@@ -3,6 +3,7 @@ import {
   MESSAGE_CAP_CHARS,
   SQUEAL_COMMAND,
 } from "../../core/delivery/index.js";
+import { excludedProjectsText } from "../../core/text.js";
 import type { Registration } from "../../core/types/index.js";
 import { type Coverage, VITEST_ONLY } from "./coverage.js";
 
@@ -116,10 +117,10 @@ function coversSentence(coverage: Coverage, node: number): string {
  * run, so the agent runs them itself when its change needs them.
  */
 function excluded(coverage: Coverage): string {
-  const names = (coverage.vitestExcluded ?? []).map((name) => JSON.stringify(name));
-  if (names.length === 0) return "";
-  const list = named("project", names, names.length);
-  return `; its ${list} ${names.length === 1 ? "is" : "are"} not run, excluded by squeal.config.json`;
+  const entries = coverage.vitestExcluded ?? [];
+  if (entries.length === 0) return "";
+  const { text, plural } = excludedProjectsText(entries);
+  return `; its ${text} ${plural ? "are" : "is"} not run, excluded by squeal.config.json`;
 }
 
 /** `entries` as "projects a, b and c", the first `shown` of them, the rest as "and N more". */
