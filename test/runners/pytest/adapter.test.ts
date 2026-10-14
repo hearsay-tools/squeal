@@ -136,6 +136,20 @@ describe.each(PYTHONS)("createPytestAdapter under Python %s (spec 007)", (versio
       expect(environment?.runnerVersion).toMatch(/^\d+\.\d+/);
       expect(environment?.files).toContain(".venv/pyvenv.cfg");
       expect(environment?.files).toContain("pyproject.toml");
+      // Task 007-28: uv hardlinks site-packages from its cache where it can (CI's ext4), so
+      // a sync or a removal anywhere moves their ctime; none of them, pytest's own or a
+      // third-party plugin's, is a watched file or a closure path. `pyvenv.cfg` is the
+      // environment's own, which uv writes.
+      const site = `.venv/lib/python${version}/site-packages`;
+      const shared = [`${site}/pytest/__init__.py`, `${site}/pytest_mock/plugin.py`];
+      for (const path of shared) expect(existsSync(join(root, path))).toBe(true);
+      expect(environment?.files.filter((p) => p.startsWith(".venv/"))).toEqual([
+        ".venv/pyvenv.cfg",
+      ]);
+      for (const file of TEST_FILES) {
+        const { paths } = await adapter.closure(ref(file));
+        expect(paths.filter((p) => p.startsWith(".venv/"))).toEqual([]);
+      }
       // D2: the `pytest11` plugin of the workspace member is in the environment.
       expect(environment?.files).toContain("packages/other/src/other/plugin.py");
       expect((await adapter.closure(ref(CORE_TEST))).paths).not.toContain(OBSERVED_ONLY);
