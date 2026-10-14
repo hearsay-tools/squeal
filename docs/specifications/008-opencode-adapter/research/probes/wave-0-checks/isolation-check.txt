@@ -1,0 +1,198 @@
+# bash test/fixtures/opencode/isolation-check.sh, 2026-10-14, as squeal-e2e (OpenCode 1.18.35, Node 24.21.0)
+temp dir: /tmp/oc-iso.gzDBLG
+== version.bare: 0 model requests; exit 0 
+  mkdir /home/squeal-e2e/.cache/opencode/bin unfinished
+  mkdir /home/squeal-e2e/.config/opencode unfinished
+  mkdir /home/squeal-e2e/.local/share/opencode EEXIST
+  mkdir /home/squeal-e2e/.local/share/opencode/... EEXIST (x2)
+  mkdir /home/squeal-e2e/.local/state/opencode EEXIST
+  mkdir /tmp/opencode unfinished
+  openat /sys/kernel/debug/tracing/trace_marker EACCES
+  looked at /home/squeal-e2e/.cache/opencode/bin
+  looked at /home/squeal-e2e/.config/opencode
+  looked at /home/squeal-e2e/.local/share/opencode
+  looked at /home/squeal-e2e/.local/share/opencode/... (x2)
+  looked at /home/squeal-e2e/.local/state/opencode
+== run.bare: 3 model requests; exit 0 out.txt: written 
+  chmod /home/squeal-e2e/.local/share/opencode/... ok (x13)
+  chmod /home/squeal-e2e/.local/share/opencode/... unfinished
+  link /home/squeal-e2e/.local/share/opencode/... ok (x4)
+  mkdir /home/squeal-e2e/.cache/opencode/bin unfinished
+  mkdir /home/squeal-e2e/.config/opencode EEXIST
+  mkdir /home/squeal-e2e/.config/opencode unfinished
+  mkdir /home/squeal-e2e/.local/share/opencode EEXIST
+  mkdir /home/squeal-e2e/.local/share/opencode/... EEXIST (x12)
+  mkdir /home/squeal-e2e/.local/share/opencode/... ok (x14)
+  mkdir /home/squeal-e2e/.local/share/opencode/... unfinished (x4)
+  mkdir /home/squeal-e2e/.local/state/opencode EEXIST
+  mkdir /home/squeal-e2e/.local/state/opencode/... EEXIST
+  mkdir /home/squeal-e2e/.local/state/opencode/... ok
+  mkdir /tmp/opencode unfinished
+  openat /home/squeal-e2e/.cache/opencode/models.json.1101734.1792001856405.tmp ok
+  openat /home/squeal-e2e/.local/share/opencode/... ENOENT (x4)
+  openat /home/squeal-e2e/.local/share/opencode/... ok (x51)
+  openat /home/squeal-e2e/.local/share/opencode/... unfinished (x3)
+  openat /home/squeal-e2e/.local/state/opencode/... ok (x2)
+  openat /sys/kernel/debug/tracing/trace_marker EACCES
+  openat <TMPDIR fd>/.<hash>.so|.node (Bun native-module extraction) ok (x2)
+  rename /home/squeal-e2e/.cache/opencode/models.json.1101734.1792001856405.tmp ok
+  rename /home/squeal-e2e/.local/share/opencode/... ok (x18)
+  symlink testing ok
+  unlink /home/squeal-e2e/.local/share/opencode/... ok (x8)
+  unlink /tmp/.5eff7e36bdf3df49-00000001.node ok
+  unlinkat /home/squeal-e2e/.local/state/opencode/... EISDIR
+  unlinkat /home/squeal-e2e/.local/state/opencode/... ok
+  unlinkat heartbeat ok
+  unlinkat meta.json ok
+  looked at /home/squeal-e2e/.agents
+  looked at /home/squeal-e2e/.cache/opencode/bin
+  looked at /home/squeal-e2e/.cache/opencode/bin/...
+  looked at /home/squeal-e2e/.cache/opencode/models.json (x3)
+  looked at /home/squeal-e2e/.claude
+  looked at /home/squeal-e2e/.claude/CLAUDE.md (x2)
+  looked at /home/squeal-e2e/.config/git/attributes (x7)
+  looked at /home/squeal-e2e/.config/git/config (x173)
+  looked at /home/squeal-e2e/.config/git/ignore (x18)
+  looked at /home/squeal-e2e/.config/opencode (x13)
+  looked at /home/squeal-e2e/.config/opencode/.gitignore
+  looked at /home/squeal-e2e/.config/opencode/AGENTS.md (x2)
+  looked at /home/squeal-e2e/.config/opencode/agent (x2)
+  looked at /home/squeal-e2e/.config/opencode/agents (x2)
+  looked at /home/squeal-e2e/.config/opencode/command (x2)
+  looked at /home/squeal-e2e/.config/opencode/commands (x2)
+  looked at /home/squeal-e2e/.config/opencode/config
+  looked at /home/squeal-e2e/.config/opencode/config.json
+  looked at /home/squeal-e2e/.config/opencode/mode (x2)
+  looked at /home/squeal-e2e/.config/opencode/modes (x2)
+  looked at /home/squeal-e2e/.config/opencode/node_modules
+  looked at /home/squeal-e2e/.config/opencode/opencode.json (x2)
+  looked at /home/squeal-e2e/.config/opencode/opencode.jsonc (x4)
+  looked at /home/squeal-e2e/.config/opencode/package-lock.json
+  looked at /home/squeal-e2e/.config/opencode/package.json
+  looked at /home/squeal-e2e/.config/opencode/plugin (x2)
+  looked at /home/squeal-e2e/.config/opencode/plugins (x2)
+  looked at /home/squeal-e2e/.config/opencode/skill
+  looked at /home/squeal-e2e/.config/opencode/skills
+  looked at /home/squeal-e2e/.config/opencode/tool
+  looked at /home/squeal-e2e/.config/opencode/tools
+  looked at /home/squeal-e2e/.gitconfig (x221)
+  looked at /home/squeal-e2e/.local (x15)
+  looked at /home/squeal-e2e/.local/share (x15)
+  looked at /home/squeal-e2e/.local/share/opencode (x17)
+  looked at /home/squeal-e2e/.local/share/opencode/... (x884)
+  looked at /home/squeal-e2e/.local/state/opencode
+  looked at /home/squeal-e2e/.local/state/opencode/... (x3)
+  looked at /home/squeal-e2e/.opencode
+  connect 104.20.32.17:443 (x2)
+  connect 127.0.0.53:53
+  connect 172.66.173.149:443 (x2)
+  connect 2606:4700:10::6814:2011:443 (x2)
+  connect 2606:4700:10::ac42:ad95:443 (x2)
+== serve.bare: 3 model requests; exit null SIGTERM out.txt: written 
+  link /home/squeal-e2e/.local/share/opencode/... ok (x3)
+  mkdir /home/squeal-e2e/.cache/opencode/bin EEXIST
+  mkdir /home/squeal-e2e/.config/opencode EEXIST
+  mkdir /home/squeal-e2e/.config/opencode unfinished
+  mkdir /home/squeal-e2e/.local/share/opencode EEXIST
+  mkdir /home/squeal-e2e/.local/share/opencode/... EEXIST (x11)
+  mkdir /home/squeal-e2e/.local/share/opencode/... ok (x3)
+  mkdir /home/squeal-e2e/.local/share/opencode/... unfinished (x3)
+  mkdir /home/squeal-e2e/.local/state/opencode EEXIST
+  mkdir /tmp/opencode unfinished
+  openat /home/squeal-e2e/.local/share/opencode/... ENOENT (x3)
+  openat /home/squeal-e2e/.local/share/opencode/... ok (x22)
+  openat /home/squeal-e2e/.local/share/opencode/... unfinished (x2)
+  openat /sys/kernel/debug/tracing/trace_marker EACCES
+  openat <TMPDIR fd>/.<hash>.so|.node (Bun native-module extraction) ok (x2)
+  rename /home/squeal-e2e/.local/share/opencode/... ok (x4)
+  unlink /home/squeal-e2e/.local/share/opencode/... ok (x5)
+  unlink /tmp/.5eff7e36bdf3df6b-00000001.node ok
+  utimensat /home/squeal-e2e/.local/share/opencode/... ok
+  looked at /home/squeal-e2e/.agents
+  looked at /home/squeal-e2e/.cache/opencode/bin
+  looked at /home/squeal-e2e/.cache/opencode/bin/...
+  looked at /home/squeal-e2e/.cache/opencode/models.json (x3)
+  looked at /home/squeal-e2e/.claude
+  looked at /home/squeal-e2e/.claude/CLAUDE.md (x2)
+  looked at /home/squeal-e2e/.config/git/attributes (x11)
+  looked at /home/squeal-e2e/.config/git/config (x149)
+  looked at /home/squeal-e2e/.config/git/ignore (x18)
+  looked at /home/squeal-e2e/.config/opencode (x13)
+  looked at /home/squeal-e2e/.config/opencode/.gitignore
+  looked at /home/squeal-e2e/.config/opencode/AGENTS.md (x2)
+  looked at /home/squeal-e2e/.config/opencode/agent (x2)
+  looked at /home/squeal-e2e/.config/opencode/agents (x2)
+  looked at /home/squeal-e2e/.config/opencode/command (x2)
+  looked at /home/squeal-e2e/.config/opencode/commands (x2)
+  looked at /home/squeal-e2e/.config/opencode/config (x2)
+  looked at /home/squeal-e2e/.config/opencode/config.json (x2)
+  looked at /home/squeal-e2e/.config/opencode/mode (x2)
+  looked at /home/squeal-e2e/.config/opencode/modes (x2)
+  looked at /home/squeal-e2e/.config/opencode/node_modules
+  looked at /home/squeal-e2e/.config/opencode/opencode.json (x3)
+  looked at /home/squeal-e2e/.config/opencode/opencode.jsonc (x7)
+  looked at /home/squeal-e2e/.config/opencode/package-lock.json
+  looked at /home/squeal-e2e/.config/opencode/package.json
+  looked at /home/squeal-e2e/.config/opencode/plugin (x2)
+  looked at /home/squeal-e2e/.config/opencode/plugins (x2)
+  looked at /home/squeal-e2e/.config/opencode/skill
+  looked at /home/squeal-e2e/.config/opencode/skills
+  looked at /home/squeal-e2e/.config/opencode/tool
+  looked at /home/squeal-e2e/.config/opencode/tools
+  looked at /home/squeal-e2e/.gitconfig (x197)
+  looked at /home/squeal-e2e/.local (x13)
+  looked at /home/squeal-e2e/.local/share (x13)
+  looked at /home/squeal-e2e/.local/share/opencode (x16)
+  looked at /home/squeal-e2e/.local/share/opencode/... (x658)
+  looked at /home/squeal-e2e/.local/state/opencode
+  looked at /home/squeal-e2e/.opencode
+== run.unseeded: 3 model requests; exit 0 out.txt: written 
+  openat /sys/kernel/debug/tracing/trace_marker EACCES
+  openat <TMPDIR fd>/.<hash>.so|.node (Bun native-module extraction) ok (x2)
+  symlink testing ok
+  connect 104.16.0.34:443 (x3)
+  connect 104.16.1.34:443
+  connect 104.16.10.34:443
+  connect 104.16.11.34:443
+  connect 104.16.2.34:443
+  connect 104.16.3.34:443
+  connect 104.16.4.34:443 (x3)
+  connect 104.16.5.34:443 (x3)
+  connect 104.16.6.34:443
+  connect 104.16.7.34:443
+  connect 104.16.8.34:443
+  connect 104.16.9.34:443 (x3)
+  connect 127.0.0.53:53
+  connect 2606:4700::6810:122:443
+  connect 2606:4700::6810:222:443
+  connect 2606:4700::6810:22:443
+  connect 2606:4700::6810:322:443
+  connect 2606:4700::6810:422:443 (x3)
+  connect 2606:4700::6810:522:443
+  connect 2606:4700::6810:622:443
+  connect 2606:4700::6810:722:443
+  connect 2606:4700::6810:822:443
+  connect 2606:4700::6810:922:443
+  connect 2606:4700::6810:a22:443
+  connect 2606:4700::6810:b22:443
+== run.helper: 3 model requests; exit 0 out.txt: written 
+  openat /sys/kernel/debug/tracing/trace_marker EACCES
+  openat <TMPDIR fd>/.<hash>.so|.node (Bun native-module extraction) ok (x2)
+  symlink testing ok
+== serve.helper: 3 model requests; exit null SIGTERM out.txt: written 
+  openat /sys/kernel/debug/tracing/trace_marker EACCES
+  openat <TMPDIR fd>/.<hash>.so|.node (Bun native-module extraction) ok (x2)
+== changes under HOME (~/runs excluded) and to this user's files in /tmp, /var/tmp, /dev/shm:
+        1 < /home/squeal-e2e/.cache/opencode
+        1 < /home/squeal-e2e/.cache/opencode/models.json
+        5 < /home/squeal-e2e/.local/share/opencode
+        1 < /home/squeal-e2e/.local/state/opencode
+        1 < /tmp/sortrrKb6F
+        1 > /home/squeal-e2e/.cache/opencode
+        1 > /home/squeal-e2e/.cache/opencode/models.json
+       49 > /home/squeal-e2e/.local/share/opencode
+        1 > /home/squeal-e2e/.local/state/opencode
+        1 > /tmp/.bcdffd3eb58fb7bd-00000000.so
+        1 > /tmp/.bcdffd3ebd95f23e-00000000.so
+        1 > /tmp/sort08fTAL
+exit 0
