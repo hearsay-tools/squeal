@@ -1,5 +1,5 @@
 {
   "name": "squeal",
-  "version": "0.1.171",
+  "version": "0.1.172",
   "description": "Continuous validation for coding agents: test transitions at tool boundaries, honest status on demand."
 }

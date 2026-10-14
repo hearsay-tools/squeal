@@ -14,7 +14,7 @@ function createDeliveryHost(start) {
     const call = pending.get(id);
     if (call === void 0) return;
     pending.delete(id);
-    clearTimeout(call.timer);
+    if (call.timer !== null) clearTimeout(call.timer);
     call.resolve(answer);
   };
   const discard = (dead) => {
@@ -62,6 +62,36 @@ function createDeliveryHost(start) {
         }
       });
     },
+    wait(request) {
+      let on;
+      try {
+        on = stopped ? null : current();
+      } catch {
+        on = null;
+      }
+      if (on === null) return { answer: Promise.resolve(null), cancel() {
+      } };
+      const id = next++;
+      const answer = new Promise((resolve) => {
+        pending.set(id, { resolve, timer: null });
+      });
+      try {
+        on.postMessage({ id, request });
+      } catch {
+        settle(id, null);
+      }
+      return {
+        answer,
+        cancel() {
+          if (!pending.has(id)) return;
+          settle(id, null);
+          try {
+            on.postMessage({ cancel: id });
+          } catch {
+          }
+        }
+      };
+    },
     stop() {
       stopped = true;
       if (worker !== null) discard(worker);
@@ -79,6 +109,7 @@ var PRIMER_SECTION = "squeal";
 var PRIMER_SECTION_CAP_CHARS = 8e3;
 var READ_ONLY_TOOLS = /* @__PURE__ */ new Set(["read", "grep", "find", "ls"]);
 var ASKED_TOOLS = /* @__PURE__ */ new Set(["edit", "write", "bash"]);
+var WAKE_MODES = /* @__PURE__ */ new Set(["tui", "rpc"]);
 function sessionOf(ctx) {
   try {
     return { sessionId: ctx.sessionManager.getSessionId(), cwd: ctx.cwd };
@@ -103,6 +134,7 @@ function squealExtension(start) {
     let continued = false;
     let ended = false;
     let lastPrimer = null;
+    let waiting = null;
     const ask = async (ctx, request, deadlineMs) => {
       try {
         const session = sessionOf(ctx);
@@ -113,9 +145,36 @@ function squealExtension(start) {
         return null;
       }
     };
+    const cancelWait = () => {
+      waiting?.cancel();
+      waiting = null;
+    };
     const startRun = () => {
+      cancelWait();
       continued = false;
       ended = false;
+    };
+    const armWait = (ctx) => {
+      cancelWait();
+      let mode;
+      try {
+        mode = ctx.mode;
+      } catch {
+        return;
+      }
+      const session = sessionOf(ctx);
+      if (shutDown || host === null || session === null || !WAKE_MODES.has(mode)) return;
+      const wait = host.wait({ kind: "wait", ...session });
+      waiting = wait;
+      void wait.answer.then((text) => {
+        if (waiting !== wait) return;
+        waiting = null;
+        if (text === null || shutDown) return;
+        try {
+          pi.sendMessage(message(text), { triggerTurn: true, deliverAs: "followUp" });
+        } catch {
+        }
+      });
     };
     pi.on("session_start", async (event, ctx) => {
       try {
@@ -130,7 +189,7 @@ function squealExtension(start) {
       }
     });
     pi.on("input", () => {
-      startRun();
+      cancelWait();
       return void 0;
     });
     pi.on("before_agent_start", async (event, ctx) => {
@@ -178,13 +237,16 @@ function squealExtension(start) {
       return { entries: [entry(answer.report)], continue: true };
     });
     pi.on("agent_settled", async (_event, ctx) => {
-      if (ended) return;
-      ended = true;
-      await ask(ctx, { kind: "endTurn" }, END_TURN_DEADLINE_MS);
+      if (!ended) {
+        ended = true;
+        await ask(ctx, { kind: "endTurn" }, END_TURN_DEADLINE_MS);
+      }
+      armWait(ctx);
     });
     pi.on("session_shutdown", async (event, ctx) => {
       if (shutDown) return;
       shutDown = true;
+      cancelWait();
       const running = host;
       host = null;
       if (running === null) return;
