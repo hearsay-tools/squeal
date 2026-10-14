@@ -821,7 +821,7 @@ Spec: `specifications/007-pytest-runner/spec.md`, approved 2026-10-14 by the hum
 | 007-10 `pytest` policy and the Python environment | done (0.1.161, `46bd72b8`) | D1, D2: `PytestProject` and its loader; `src/runners/pytest/environment/`: discovery inside the worktree only, the no-environment, editable-outside and sync states, the environment hash, the `sys.path` model from `pyvenv.cfg`, `.pth` and finder literals, the pytest config file. No adapter. | Synthetic-tree tests cover every discovery case and state; a foreign `VIRTUAL_ENV` changes nothing; a lockfile edit keeps the hash; full suite green. |
 | 007-11 pytest fixtures and CI Pythons | done (0.1.161, `46bd72b8`) | Testing: `test/fixtures/pytest/` (the research's small project, the 1,000-module generator, edge-case and outcome files, the `ast_graph.py` oracle), `test/helpers/pytest-env.ts` (uv sync into a temp copy), CI installs uv with Pythons 3.10 and 3.13. | `fixtures.test.ts` runs every designed outcome under plain pytest on both Pythons; no Python artefacts in the tree; full suite and the branch's CI green. |
 
-### Wave 1: graph and runner (parallel, after wave 0; briefs written from wave 0 and 007-04)
+### Wave 1: graph and runner (parallel; briefs in `specifications/007-pytest-runner/tasks/wave-1.md`)
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
