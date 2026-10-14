@@ -161,6 +161,10 @@ function diagnose(main: string, wt: string): string {
           "SELECT t.revision, t.at, c.test_path, c.full_name, t.kind, t.from_outcome, t.to_outcome FROM transitions t JOIN checks c ON c.id = t.check_id WHERE t.worktree_id = ? ORDER BY t.id",
           w,
         ),
+        mainKnown: q(
+          "SELECT c.full_name, k.outcome, k.validity, k.pending_phase, k.origin_kind FROM known_states k JOIN checks c ON c.id = k.check_id WHERE k.worktree_id = ? AND c.test_path = 'tests/unit/test_core.py'",
+          m,
+        ),
         known: q(
           "SELECT c.test_path, c.full_name, k.outcome, k.validity, k.pending_phase, k.origin_kind, k.origin_worktree FROM known_states k JOIN checks c ON c.id = k.check_id WHERE k.worktree_id = ?",
           w,
@@ -265,7 +269,11 @@ describe("a repository with a Vitest suite and a pytest project (spec 007)", () 
       let from = runs(main, main).length;
       let at = status(main).revision;
       writeFileSync(join(main, OBSERVED_ONLY), "# edited\nX = 3\n");
-      await settle(main, "the edit of alpha.py", () => true, at);
+      await settle(main, "the edit of alpha.py", (s) => s.counts.current === CHECKS, at).catch(
+        (error: unknown) => {
+          throw new Error(`${String(error)}\n${diagnose(main, main)}`);
+        },
+      );
       expect(ranSince(main, main, from)).toEqual([CORE_TEST]);
       git(main, ["add", OBSERVED_ONLY]);
       commit(main, "alpha");
