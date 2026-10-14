@@ -64,3 +64,5 @@ Build the per-file form; 001-348's dogfood saw it (web e2e files, "fetch failed"
 **Owns:** as 006-54, plus the fixture files under the knob.
 
 **Done when:** reference sessions show each measure met and missed; the other scenarios' fixtures are unchanged (a test); the gate is green.
+
+The coordinator pushes the integrated candidate to `cand/006-53`. A `/reviewer` review must pass on that SHA, with branch CI green, before it lands (the human, 2026-10-15).
