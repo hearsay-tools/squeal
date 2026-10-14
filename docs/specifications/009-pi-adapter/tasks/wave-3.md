@@ -30,7 +30,20 @@ Use /worker.
 
 ## 009-20 dogfooding
 
-Waits for 009-18, 009-19 and the human's go: it installs Squeal into a real Pi with real model credentials, which no isolated run can. A Cezar worker on Pi and a TUI session working this repository, on models the brief names per session (board, Standing models); whether a model reads a Squeal message as Squeal's and not the user's (open question 2); update with a session open. Report in `../lessons.md`. Brief written at dispatch.
+Outcome: `lessons.md` resolves spec 009's open questions with evidence from real models using Squeal in Pi: does a `PASS -> FAIL` reach the agent and change what it does, does it leave the tests to Squeal, does it read a Squeal message as Squeal's and not the user's (open question 2), and does an update with a session open behave as 009-18 says.
+
+- Read: `../spec.md` goals 1 to 8, `../status.md` (every 2026-10-14 line, the human's dogfooding decision last), `../research/pi-sessions-and-packaging.md` 1 and 2, `test/e2e/pi.test.ts` and `test/helpers/pi.ts` for how Pi is isolated and driven, 002's and 007's `lessons.md` for the report's shape.
+- Shape: proof. You are the judge; the sessions you start are the users.
+- Where: only as `squeal-e2e` (`sudo -n --preserve-env=CLIPROXY_API_KEY -u squeal-e2e -H env -i ...`, cwd `/`; Pi 1.0.4 is in its `~/.npm-global`). Its own `PI_CODING_AGENT_DIR` under `/home/squeal-e2e/dogfood-009/`. Never the agent user's `~/.pi`, never the real `claude` or `codex`. The key goes by name only; a Pi `models.json` provider names the variable, never its value (`docs/custom-provider.md`, `docs/models.md`).
+- Provider and models: `cliproxy` at `https://cliproxy.home.jarka.pl/v1`. `claude-haiku-5-5` for sessions where only the daemon is observed; `claude-sonnet-5-5` for an ordinary task where the agent's reading of Squeal's messages matters; `claude-opus-5-5` for the trust question (does it trust the report or run the suite itself; does it treat the custom message as a user instruction). Never Fable.
+- Install as a user would: `install.sh` of 0.1.172 (`git show c4c59482:install.sh`) with `SQUEAL_SOURCE` pointing at a local `git archive` of that commit, then, with a TUI session open (tmux), `install.sh --pi` of 0.1.173 from an archive of `3fd4916d`: what the open session does, then after `/reload`.
+- Project: a real open-source TypeScript library with a Vitest suite of 50 to 300 test files, cloned at a pinned commit into the user's home, with `squeal setup` run in it. Name it and why.
+- Sessions: at least one Cezar-shaped `rpc` session (a copy of the installed Cezar `PiRunner` driving Pi, as `research/probes/pi-sessions-and-packaging/cezar.mjs` did), including an idle wake; one TUI session; per model as above. Record the load average beside every timing; start sessions only below the host's CPU count.
+- Defects: write each into `lessons.md` with its evidence and a proposed row. Fix nothing in `src/`.
+- Owns: `docs/specifications/009-pi-adapter/lessons.md`, `docs/specifications/009-pi-adapter/dogfood/**` (scripts and condensed logs; no key, no session file with secrets).
+- Done when: `lessons.md` answers open question 2, goals 1, 3, 5, 7 and 8 observed with real models, the update behaviour, and each defect; nothing of the run is left running; the `squeal-e2e` home holds only `dogfood-009/`, the clone and the npm prefix.
+
+Use /worker.
 
 ## 009-22 review of waves 2 and 3
 
