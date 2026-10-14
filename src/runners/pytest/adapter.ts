@@ -227,8 +227,7 @@ export async function createPytestAdapter(
   return {
     name: "pytest",
     adapterVersion: PYTEST_ADAPTER_VERSION,
-    invalidate: async (paths) =>
-      paths.length === 0 ? recheck() : invalidate(paths, await reread()),
+    invalidate: async (paths) => invalidate(paths, await reread()),
     recheck,
     async affected(changed) {
       if (built === null) return { direct: [], transitive: [] };
