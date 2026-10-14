@@ -145,3 +145,19 @@ Use /worker.
   - The review's B2 reproduction is a regression test: root `dist` outranks `plugins`, and the bare-string negative still holds.
   - The guard test passes.
   - Lint, typecheck and the capped suite pass.
+
+## 005-45 narrow re-review of 005-42's findings
+
+Use /reviewer.
+
+**Outcome.** `reviews/wave-6.5.md`, written within 15 minutes of starting, then extended. It covers `d967555b`, `f83fc7fa`, `b2c28837` and `f5d64f5f`, at `309fc44a` and later (0.1.159).
+
+**Scope.** Only these four items:
+- B1: node:test exclusions in setup's validation and in `--check`;
+- B2: an explicit relative path keeps its named evidence, and the bare-string negative still holds;
+- S1: the real-CLI guard checks argv;
+- the coordinator's correction of the 005-39 warm-up test premise (`f5d64f5f`).
+
+Re-run the review's own two reproductions on the candidate. Anything new outside the scope goes under "Next", not as a blocker.
+
+**Rules.** Run no model session and never the real `claude` or `codex`, and nothing as `squeal-e2e`. One `npx vitest run --maxWorkers=4`. Do not run `npm run build`.
