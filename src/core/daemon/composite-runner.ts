@@ -169,6 +169,7 @@ function merge(parts: readonly Part[]): RunReport {
   const observed = reports.some((report) => report.observed !== undefined);
   const read = reports.some((report) => report.reads !== undefined);
   const environment = reports.flatMap((report) => report.environmentObserved ?? []);
+  const skipped = reports.flatMap((report) => report.skippedFiles ?? []);
   return {
     end,
     durationMs: reports.reduce((sum, report) => sum + report.durationMs, 0),
@@ -180,6 +181,7 @@ function merge(parts: readonly Part[]): RunReport {
     ...(observed ? { observed: reports.flatMap((report) => report.observed ?? []) } : {}),
     ...(read ? { reads: reports.flatMap((report) => report.reads ?? []) } : {}),
     ...(environment.length > 0 ? { environmentObserved: environment } : {}),
+    ...(skipped.length > 0 ? { skippedFiles: skipped } : {}),
   };
 }
 
