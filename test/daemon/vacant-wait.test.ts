@@ -1,8 +1,10 @@
+import { type ChildProcess, spawn } from "node:child_process";
 import { afterEach, describe, expect, it } from "vitest";
 import { startDaemon } from "../../src/core/daemon/daemon.js";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
+import { DAEMON_BUSY_TIMEOUT_MS, openDaemon } from "../../src/core/daemon/open.js";
 import { squealVersion } from "../../src/core/daemon/version.js";
-import { lockFileFor, openStore } from "../../src/core/store/index.js";
+import { lockFileFor, openStore, storePaths } from "../../src/core/store/index.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/index.js";
 import { createFixtureRepo, type FixtureRepo, readNotes } from "./helpers.js";
 
@@ -15,7 +17,9 @@ import { createFixtureRepo, type FixtureRepo, readNotes } from "./helpers.js";
  */
 
 const repos: FixtureRepo[] = [];
+const blockers: ChildProcess[] = [];
 afterEach(() => {
+  for (const blocker of blockers.splice(0)) blocker.kill("SIGKILL");
   for (const repo of repos.splice(0)) repo.cleanup();
 });
 
@@ -114,4 +118,93 @@ describe("a lock waiter decides again once it holds the lock (review 001-347, B2
     expect(result).toMatchObject({ reason: "lost-lock", code: 0 });
     expect(readNotes(repo)).toEqual([]);
   });
+});
+
+/**
+ * Another process holds the store exclusively for `holdMs`, so no
+ * connection can read it until then. Resolves once it holds it.
+ */
+async function storeHeld(repo: FixtureRepo, holdMs: number): Promise<void> {
+  const code = `const { DatabaseSync } = await import("node:sqlite");
+const db = new DatabaseSync(process.argv[1]);
+db.exec("PRAGMA busy_timeout = 1000; PRAGMA locking_mode = EXCLUSIVE; BEGIN EXCLUSIVE");
+process.send("held");
+setTimeout(() => { db.exec("ROLLBACK"); db.close(); process.disconnect(); }, ${holdMs});`;
+  const database = storePaths(repo.commonDir as AbsolutePath).database;
+  const blocker = spawn(
+    process.execPath,
+    ["--disable-warning=ExperimentalWarning", "--input-type=module", "-e", code, database],
+    { stdio: ["ignore", "ignore", "pipe", "ipc"] },
+  );
+  blockers.push(blocker);
+  let stderr = "";
+  blocker.stderr?.on("data", (data) => {
+    stderr += data;
+  });
+  await new Promise<void>((resolve, reject) => {
+    blocker.once("message", () => resolve());
+    blocker.once("exit", (code) => reject(new Error(`the store holder exited ${code}: ${stderr}`)));
+  });
+}
+
+/*
+ * Review 001-351, B1: the waiter's last-version read under the lock gave up
+ * after its 5 s busy timeout and counted as no daemon recorded, while the
+ * store open after it waits 2 minutes, so a store busy for longer than the
+ * read and shorter than the open let an older waiter serve over a newer
+ * recorded daemon. An unread version is unknown, never absent.
+ */
+describe("a lock waiter that cannot yet read the last recorded daemon (review 001-351, B1)", () => {
+  const holdMs = DAEMON_BUSY_TIMEOUT_MS + 2_000;
+
+  for (const mode of ["vacant", "--await-lock"] as const) {
+    it(`a ${mode} waiter reads again and exits as a loser, no note, once the store is readable`, async () => {
+      const repo = createFixtureRepo();
+      repos.push(repo);
+      registeredAndStopped(repo, "999.0.0");
+      const holder = acquireDaemonLock(lockFile(repo));
+      if (holder === null) throw new Error("the lock is taken");
+      await storeHeld(repo, holdMs);
+      setTimeout(() => holder.release(), 50);
+      const at = performance.now();
+      const result = await startDaemon({
+        root: repo.root,
+        env: repo.env,
+        ...(mode === "--await-lock" ? { awaitLockMs: 15_000 } : {}),
+      });
+      const elapsed = performance.now() - at;
+      holder.release();
+      if (!("reason" in result)) await result.stop("stop-requested");
+      // The premise: the first read under the lock found the store busy.
+      expect(elapsed).toBeGreaterThanOrEqual(DAEMON_BUSY_TIMEOUT_MS);
+      expect(result).toMatchObject({ reason: "lost-lock", code: 0 });
+      expect(readNotes(repo)).toEqual([]);
+      const lock = acquireDaemonLock(lockFile(repo));
+      expect(lock).not.toBeNull();
+      lock?.release();
+    }, 30_000);
+  }
+
+  it("a waiter that cannot decide within its budget lets go of the lock and exits with one note, code 0", async () => {
+    const repo = createFixtureRepo();
+    repos.push(repo);
+    registeredAndStopped(repo, "999.0.0");
+    const holder = acquireDaemonLock(lockFile(repo));
+    if (holder === null) throw new Error("the lock is taken");
+    await storeHeld(repo, 2_500);
+    setTimeout(() => holder.release(), 50);
+    const now = () => Date.now() as EpochMs;
+    const result = await openDaemon(repo.root, now, 15_000, undefined, 1_000);
+    holder.release();
+    if (!("reason" in result)) {
+      result.lock.release();
+      result.store.close();
+    }
+    expect(result).toMatchObject({ reason: "lock-wait-timed-out", code: 0 });
+    expect((result as { message: string }).message).toMatch(/could not read/);
+    expect(readNotes(repo)).toHaveLength(1);
+    const lock = acquireDaemonLock(lockFile(repo));
+    expect(lock).not.toBeNull();
+    lock?.release();
+  }, 30_000);
 });

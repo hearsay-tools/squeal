@@ -1,7 +1,8 @@
 import { existsSync, realpathSync } from "node:fs";
 import { join } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 import { runGit, worktreeIdFor } from "../fs/index.js";
-import { isStoreOpenFailure, lockFileFor, openStore } from "../store/index.js";
+import { isBusy, isStoreOpenFailure, lockFileFor, openStore } from "../store/index.js";
 import type {
   AbsolutePath,
   DaemonExit,
@@ -65,7 +66,9 @@ export const DAEMON_START_BUSY_TIMEOUT_MS = 120_000;
  * `vacantLockWaitMs` while no daemon is recorded serving and the last one
  * recorded is no newer than this one (tasks 001-340, 001-345); a waiter
  * that takes the lock while the last one recorded is newer exits as a loser
- * too (review 001-347, B2);
+ * too (review 001-347, B2), and one that cannot read it within
+ * `decideWithinMs` lets go of the lock and exits as a timed-out wait
+ * (review 001-351, B1);
  * the store with `integrity_check` (D12) and the start's busy timeout
  * (`DAEMON_START_BUSY_TIMEOUT_MS`), exiting with a note on a newer
  * schema (D8); then the temp directory, emptied (D10, lessons defect 13).
@@ -77,6 +80,7 @@ export async function openDaemon(
   now: () => EpochMs,
   awaitLockMs?: number,
   vacantLockWaitMs = VACANT_LOCK_WAIT_MS,
+  decideWithinMs = DAEMON_START_BUSY_TIMEOUT_MS,
 ): Promise<OpenedDaemon | DaemonExit> {
   let root: AbsolutePath;
   let commonDir: AbsolutePath;
@@ -97,6 +101,7 @@ export async function openDaemon(
   // Before the store: a loser never runs `integrity_check` (review S8). The
   // lock file needs only the store directory.
   let lock: DaemonLock | null | LockWaitEnd;
+  let undecided: string | null = null;
   const waitMs = awaitLockMs ?? vacantLockWaitMs;
   try {
     const path = lockFileFor(commonDir, worktreeId);
@@ -110,10 +115,17 @@ export async function openDaemon(
       // Review 001-347, B2: the wait takes the lock between its checks, so
       // a waiter descheduled across a newer daemon's registration and
       // shutdown takes the lock it freed. Nothing registers while this one
-      // holds it, so it decides once more here.
-      if (typeof lock !== "string" && newerRecorded(commonDir, worktreeId)) {
-        lock.release();
-        lock = "gave-up";
+      // holds it, so it decides once more here. Review 001-351, B1: a read
+      // that fails proves nothing, so it never counts as no daemon recorded.
+      if (typeof lock !== "string") {
+        const last = await lastDaemonVersion(commonDir, worktreeId, decideWithinMs);
+        if ("unread" in last) {
+          lock.release();
+          undecided = last.unread;
+        } else if (isNewer(last.version)) {
+          lock.release();
+          lock = "gave-up";
+        }
       }
     }
   } catch (error) {
@@ -127,6 +139,10 @@ export async function openDaemon(
       awaitLockMs === undefined
         ? `a daemon gave up: the lock was still held after ${waitMs} ms with no daemon serving; the next hook boundary starts one`
         : `a successor daemon gave up: the lock was still held after ${waitMs} ms; the next hook boundary starts one`;
+    return lockWaitTimedOut(commonDir, worktreeId, now, text);
+  }
+  if (undecided !== null) {
+    const text = `a daemon gave up: it took the lock but could not read the last daemon recorded within ${decideWithinMs} ms (${undecided}); the next hook boundary starts one`;
     return lockWaitTimedOut(commonDir, worktreeId, now, text);
   }
 
@@ -211,32 +227,70 @@ function servedElsewhere(
     newerRecorded(commonDir, worktreeId, 100);
 }
 
-/** The daemon the worktree's row last recorded, cleared or not, is newer than this one. */
+/** The daemon the worktree's row last recorded, cleared or not, is newer than this one; `false` when unread. */
 function newerRecorded(
   commonDir: AbsolutePath,
   worktreeId: WorktreeId,
-  busyTimeoutMs = DAEMON_BUSY_TIMEOUT_MS,
+  busyTimeoutMs: number,
 ): boolean {
-  const last = lastDaemonVersion(commonDir, worktreeId, busyTimeoutMs);
-  return last !== null && isNewerVersion(last, squealVersion());
+  const last = readLastDaemon(commonDir, worktreeId, busyTimeoutMs);
+  return "version" in last && isNewer(last.version);
 }
 
-/** The version of the daemon the worktree's row last recorded, cleared or not; `null` with none. */
-function lastDaemonVersion(
+function isNewer(version: string | null): boolean {
+  return version !== null && isNewerVersion(version, squealVersion());
+}
+
+/** What a read of the last recorded daemon found: its version, `null` with none or no store yet, or why it is unknown. */
+type LastDaemon =
+  | { readonly version: string | null }
+  | { readonly unread: string; readonly busy: boolean };
+
+/**
+ * Review 001-351, B1: the version of the daemon the worktree's row last
+ * recorded, cleared or not, read again while the store is busy until
+ * `withinMs` has passed, each read waiting at most `DAEMON_BUSY_TIMEOUT_MS`.
+ */
+async function lastDaemonVersion(
+  commonDir: AbsolutePath,
+  worktreeId: WorktreeId,
+  withinMs: number,
+): Promise<LastDaemon> {
+  const deadline = performance.now() + withinMs;
+  for (;;) {
+    const left = Math.ceil(deadline - performance.now());
+    const last = readLastDaemon(
+      commonDir,
+      worktreeId,
+      Math.min(DAEMON_BUSY_TIMEOUT_MS, Math.max(left, 0)),
+    );
+    if (!("unread" in last) || !last.busy || performance.now() >= deadline) {
+      return last;
+    }
+    await sleep(10);
+  }
+}
+
+/** One read of the last recorded daemon's version. */
+function readLastDaemon(
   commonDir: AbsolutePath,
   worktreeId: WorktreeId,
   busyTimeoutMs: number,
-): string | null {
+): LastDaemon {
   try {
     const store = openStore(commonDir, { create: false, busyTimeoutMs });
-    if (isStoreOpenFailure(store)) return null;
+    if (isStoreOpenFailure(store)) {
+      // The serving open after it refuses a newer schema with its note.
+      if (store.reason === "missing" || store.reason === "newer-schema") return { version: null };
+      return { unread: `store ${store.reason}`, busy: false };
+    }
     try {
-      return store.worktrees.lastDaemon(worktreeId)?.squealVersion ?? null;
+      return { version: store.worktrees.lastDaemon(worktreeId)?.squealVersion ?? null };
     } finally {
       store.close();
     }
-  } catch {
-    return null;
+  } catch (error) {
+    return { unread: message(error), busy: isBusy(error) };
   }
 }
 
