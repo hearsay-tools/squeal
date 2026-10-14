@@ -875,7 +875,8 @@ Spec: `specifications/007-pytest-runner/spec.md`, approved 2026-10-14 by the hum
 | 007-29 a pytest run never executes stale bytecode | done (0.1.173): a private bytecode prefix per run; +40 to 200 ms per tier | Found by 007-17: a same-size edit within the same second runs the cached `.pyc` under `PYTHONPYCACHEPREFIX`, and a stale FAIL is stored as current. | Regression on 3.10 and 3.13; start-up cost measured. |
 | 007-30 a withheld tier is run again, and says why when it is not | finished, rebased on 0.1.174 on `cez/2ab5b448` (8355e372..2554229f), not landed: review 007-31 FAIL | Core: the completion barrier's withheld files are re-queued once when no revision follows; a repeat leaves a note naming the path. Promotes the Later row; blocks 007-17. | Scheduler regression; 007-17's e2e green in CI on both Nodes. |
 | 007-31 review of 007-30 for 001's sign-off | done: FAIL at 2554229f (`reviews/wave-3-007-30.md`): B1 per-tier retry lets a twice-withheld file run a third time; S1 transient publication untested |  |  |
-| 007-32 repair of 007-31 | running (worker 0bf0bbdb, opus high; brief `tasks/wave-3.md`) | Per-file retry and exhaustion; review regression; `putMany` spy. First round; a second FAIL goes to the human. | Two runs per unchanged key; spy rejects nothing; suite green. |
+| 007-32 repair of 007-31 | done on `cez/2ab5b448` (73761476, 5486741a, key pin 823ab34d), not landed | Per-file retry and exhaustion; review regression; `putMany` spy. First round; a second FAIL goes to the human. | Two runs per unchanged key; spy rejects nothing; suite green. |
+| 007-33 re-review of 007-32 | done: FAIL at 823ab34d (`reviews/wave-3-007-32.md`): residual B1, an exhausted forced file stays queued and runs a third time under `run --all --force`; S1, re-key retry and transaction safety pass. Last round; disposition with the human |  |  |
 
 ## Feature 008: OpenCode adapter
 
