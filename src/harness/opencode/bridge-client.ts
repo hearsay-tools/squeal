@@ -25,6 +25,35 @@ export interface CallOptions {
   readonly background?: boolean;
 }
 
+/** Node sets up an HTTP proxy at its start when this is set, about 50 ms on every bridge (008-21). */
+const PROXY_SWITCH = "NODE_USE_ENV_PROXY";
+/** Where `PROXY_SWITCH` waits out the bridge's start. */
+const CARRIED_SWITCH = "SQUEAL_CARRIED_NODE_USE_ENV_PROXY";
+/** Run after Node's start, before the entry: puts the switch back for what the bridge spawns. */
+const RESTORE_SWITCH = `data:text/javascript,process.env.${PROXY_SWITCH}=process.env.${CARRIED_SWITCH};delete process.env.${CARRIED_SWITCH}`;
+
+/**
+ * The bridge's arguments and environment: `env` itself, or, when it sets
+ * `NODE_USE_ENV_PROXY`, `env` with the switch carried past Node's start and
+ * restored by a preload. The bridge makes no HTTP request, so it skips the
+ * proxy setup; the daemon it may spawn, and so the tests that daemon runs,
+ * still inherit the switch, as spec 001 D11 has the hook's environment
+ * reach them.
+ */
+export function bridgeStart(
+  entry: string,
+  env: NodeJS.ProcessEnv,
+): { args: string[]; env: NodeJS.ProcessEnv } {
+  const flags = ["--disable-warning=ExperimentalWarning"];
+  const value = env[PROXY_SWITCH];
+  if (value === undefined) return { args: [...flags, entry], env };
+  const { [PROXY_SWITCH]: _switch, ...rest } = env;
+  return {
+    args: [...flags, "--import", RESTORE_SWITCH, entry],
+    env: { ...rest, [CARRIED_SWITCH]: value },
+  };
+}
+
 /** Unreferences a pipe where the runtime lets it (Node's sockets; Bun's may not). */
 function unrefPipe(pipe: unknown): void {
   const unref = (pipe as { unref?: () => void } | null)?.unref;
@@ -32,8 +61,8 @@ function unrefPipe(pipe: unknown): void {
 }
 
 /**
- * Runs one bridge process: `node <entry>` in its own process group with cwd
- * `cwd`, `event` written to its stdin as JSON, and its stdout read as one JSON
+ * Runs one bridge process: `node <entry>`, as `bridgeStart` says, in its own
+ * process group with cwd `cwd`, `event` written to its stdin as JSON, and its stdout read as one JSON
  * answer. Resolves the answer, or `null` when the bridge misses `deadlineMs`,
  * exits non-zero, writes no or invalid JSON, or cannot be spawned. Never
  * rejects. At a missed deadline the whole group is killed: OpenCode awaits
@@ -58,8 +87,10 @@ export function callBridge<A>(
     const out: Buffer[] = [];
     let child: ReturnType<typeof spawn>;
     try {
-      child = spawn(command.node, ["--disable-warning=ExperimentalWarning", command.entry], {
+      const start = bridgeStart(command.entry, process.env);
+      child = spawn(command.node, start.args, {
         cwd,
+        env: start.env,
         detached: true,
         stdio: ["pipe", "pipe", "ignore"],
       });
