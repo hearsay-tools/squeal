@@ -13,14 +13,16 @@ import type {
 import { type ProjectSettings, projectSettings, sameSettings } from "./adapter-config.js";
 import {
   type AdapterEnvironment,
+  admit,
   admitEnvironment,
+  type Clock,
   environmentDir,
   environmentSignature,
   projectEnvironment,
 } from "./adapter-environment.js";
 import { listTestFiles } from "./adapter-files.js";
 import { Observed, type ObservedStore } from "./adapter-observed.js";
-import { quiet, runProject, unavailable } from "./adapter-run.js";
+import { currentFingerprint, runProject, unavailable } from "./adapter-run.js";
 import { enumerate } from "./enumerate.js";
 import { projectDir, readEnvironment, runEnvironment } from "./environment/index.js";
 import { createPytestGraph, type PytestGraph } from "./graph/index.js";
@@ -52,6 +54,8 @@ export interface PytestAdapterOptions {
   readonly cacheDir?: AbsolutePath;
   /** The environment runs inherit before D2's clean-up; default the daemon's. */
   readonly source?: NodeJS.ProcessEnv;
+  /** Time for D2's admission (`admit`); default the real one. */
+  readonly clock?: Clock;
 }
 
 /** How many incomplete closures one note names before it only counts. */
@@ -68,13 +72,15 @@ interface Built {
  * rejects for the project's sake, as 003's adapter does not.
  *
  * The graph builds with or without an environment (D4, as amended). The
- * environment is read from files at start and at every batch: every state
- * but `ready` keys `runnerVersion` "unavailable", runs nothing and notes
- * why once, so its checks are `unknown` and nothing is stored (D2). A
- * changed state or hash recreates the project, which re-keys it; so does a
- * changed pytest config, which also rebuilds the graph with its settings.
- * A run whose environment moved before or during it stores nothing and
- * reads the environment again at the next batch (D2's sync state).
+ * environment is admitted (`admit`) at start and whenever a batch, or an
+ * empty one, the scheduler's recheck at each reconciliation pass, finds
+ * its fingerprint moved: every state but `ready` keys `runnerVersion`
+ * "unavailable", runs nothing and notes why once, so its checks are
+ * `unknown` and nothing is stored (D2). A changed state or hash recreates
+ * the project, which re-keys it; so does a changed pytest config, which
+ * also rebuilds the graph with its settings. A run whose environment moved
+ * before or during it stores nothing and the environment is admitted again
+ * at the next call (D2's sync state).
  */
 export async function createPytestAdapter(
   project: PytestProject,
@@ -94,15 +100,15 @@ export async function createPytestAdapter(
   const ref = (path: RelativePath): TestFileRef => ({ project: project.name, path });
   const source = options.source ?? process.env;
 
-  const read = async () => {
+  const readNow = async () =>
+    admitEnvironment(root, project, await readEnvironment(root, project, source));
+  const settle = async () =>
+    (await admit(project, readNow, currentFingerprint, options.clock)).environment;
+  const place = () => {
     const dir = environmentDir(root, project);
-    return {
-      environment: admitEnvironment(root, project, await readEnvironment(root, project, source)),
-      dir,
-      settings: projectSettings(root, project, runEnvironment(dir, project, source)),
-    };
+    return { dir, settings: projectSettings(root, project, runEnvironment(dir, project, source)) };
   };
-  let { environment, dir, settings } = await read();
+  let { dir, settings } = place();
   /** A run found the environment moved: the next call reads it again. */
   let stale = false;
   let files = isDirectory(cwd) ? listTestFiles(root, project) : [];
@@ -158,19 +164,23 @@ export async function createPytestAdapter(
     );
   };
 
+  // B2: the first admission settles as every later one; the graph builds meanwhile.
+  let [environment] = await Promise.all([settle(), build()]);
   announce(environment);
-  await build();
 
   return {
     name: "pytest",
     adapterVersion: PYTEST_ADAPTER_VERSION,
     async invalidate(paths) {
-      let next = await read();
-      if (environmentSignature(next.environment) !== environmentSignature(environment)) {
-        // D2: a sync writes on after its first file; key the environment it leaves.
-        await quiet(next.environment);
-        next = await read();
+      // B1: an empty batch is the scheduler's recheck; a still environment costs one fingerprint.
+      if (paths.length === 0 && !stale && environment.state === "ready") {
+        if (currentFingerprint(environment) === environment.fingerprint) {
+          return { recreatedProjects: [] };
+        }
       }
+      const next = { ...place(), environment };
+      const raw = stale ? null : await readNow();
+      next.environment = raw === null || moving(raw, environment) ? await settle() : raw;
       const moved =
         stale || environmentSignature(next.environment) !== environmentSignature(environment);
       const rebuild = next.dir !== dir || !sameSettings(next.settings, settings);
@@ -222,7 +232,8 @@ export async function createPytestAdapter(
     async environment() {
       if (stale) {
         stale = false;
-        ({ environment } = await read());
+        environment = await settle();
+        announce(environment);
       }
       return [
         projectEnvironment({
@@ -255,6 +266,14 @@ export async function createPytestAdapter(
     },
     close: async () => {},
   };
+}
+
+/** Whether a fresh read moved from the admitted environment: by fingerprint when both are ready. */
+function moving(read: AdapterEnvironment, admitted: AdapterEnvironment): boolean {
+  if (read.state === "ready" && admitted.state === "ready") {
+    return read.fingerprint !== admitted.fingerprint;
+  }
+  return environmentSignature(read) !== environmentSignature(admitted);
 }
 
 /** D2: the closure inside the worktree of the `pytest11` plugins and the `-p` modules. */
