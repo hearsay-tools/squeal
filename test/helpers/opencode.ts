@@ -69,7 +69,24 @@ export interface OpenCodeRunOptions {
   files?: Record<string, string>;
   /** Added to the run's environment; overriding one of `PROTECTED_ENV` throws before OpenCode starts. */
   env?: Record<string, string>;
+  /** Called with the project after its `git init` and `files`, before OpenCode starts. */
+  setup?: (cwd: string) => void | Promise<void>;
+  /**
+   * Under `serve`, called after the first reply and before the SIGTERM that ends the server, so
+   * a test can wait for a turn OpenCode starts itself or send another message. `requests` is the
+   * provider's live array, title requests included (their `model` is not `PLANNED_MODEL`).
+   */
+  afterReply?: (live: OpenCodeLive) => Promise<void>;
   timeoutMs?: number;
+}
+
+/** A `serve` run between its first reply and its end (`afterReply`). */
+export interface OpenCodeLive {
+  url: string;
+  sessionID: string;
+  requests: ScriptedRequest[];
+  /** One more `POST /session/:id/message`, its reply awaited. */
+  message(text: string): Promise<void>;
 }
 
 export interface OpenCodeRun {
@@ -129,6 +146,7 @@ export async function runOpenCode(options: OpenCodeRunOptions): Promise<OpenCode
       mkdirSync(dirname(join(cwd, path)), { recursive: true });
       writeFileSync(join(cwd, path), text);
     }
+    await options.setup?.(cwd);
     const args =
       options.mode === "run"
         ? ["run", "--format", "json", "-m", `scripted/${PLANNED_MODEL}`, options.prompt]
@@ -152,8 +170,19 @@ export async function runOpenCode(options: OpenCodeRunOptions): Promise<OpenCode
     deadline.catch(() => undefined);
     let sessionID: string | undefined;
     if (options.mode === "serve") {
-      sessionID = await Promise.race([converse(out, cwd, options.prompt), deadline]);
-      killGroup(child, "SIGTERM");
+      const server = child;
+      try {
+        const live = await Promise.race([converse(out, cwd, options.prompt), deadline]);
+        sessionID = live.sessionID;
+        const { afterReply } = options;
+        if (afterReply) {
+          const message = (text: string) => live.post(`/session/${live.sessionID}/message`, text);
+          const reply = { ...live, requests: provider.requests, message };
+          await Promise.race([afterReply(reply), deadline]);
+        }
+      } finally {
+        killGroup(server, "SIGTERM");
+      }
     }
     const exitCode = await Promise.race([out.exited, deadline]);
     const events = options.mode === "run" ? out.lines().flatMap(parseEvent) : [];
@@ -258,7 +287,7 @@ async function converse(
   out: ReturnType<typeof collect>,
   cwd: string,
   prompt: string,
-): Promise<string> {
+): Promise<{ url: string; sessionID: string; post(path: string, text: string): Promise<void> }> {
   const url = await new Promise<string>((done, fail) => {
     const check = () => {
       const match = out.stdout().match(/listening on (http:\/\/\S+)/);
@@ -283,8 +312,11 @@ async function converse(
     return response.json() as Promise<{ id: string }>;
   };
   const session = await post("/session", {});
-  await post(`/session/${session.id}/message`, { parts: [{ type: "text", text: prompt }] });
-  return session.id;
+  const message = async (path: string, text: string) => {
+    await post(path, { parts: [{ type: "text", text }] });
+  };
+  await message(`/session/${session.id}/message`, prompt);
+  return { url, sessionID: session.id, post: message };
 }
 
 function killGroup(child: ChildProcess, signal: NodeJS.Signals): void {
