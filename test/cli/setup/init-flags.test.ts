@@ -302,3 +302,80 @@ describe("setup --check", () => {
     expect(JSON.parse(plan.out.stdout).outdated).toHaveLength(2);
   });
 });
+
+describe("a test glob over a node:test project's exclusions (review 005-42 B1)", () => {
+  const VITEST_SRC = `export default { test: { include: ["packages/cezar/src/**/*.test.ts"] } };\n`;
+  const unit = (extra: Record<string, unknown>[] = []) =>
+    json({
+      slow: { include: [] },
+      nodeTest: [
+        {
+          name: "unit",
+          cwd: "packages/cezar",
+          include: ["test/unit/*.test.ts"],
+          exclude: ["test/unit/a.test.ts"],
+        },
+        ...extra,
+      ],
+      inputs: {},
+    });
+  const EXCLUDED = "packages/cezar/test/unit/a.test.ts";
+  const args = ["--slow", EXCLUDED, "--input", `${EXCLUDED}=packages/cezar/dist/**`];
+
+  it("is refused on both write paths when only an excluded file matches", async () => {
+    const root = cezarionShaped({ "vitest.config.ts": VITEST_SRC, "squeal.config.json": unit() });
+    const viaInit = await init(root, ["--harness", "codex", "--block", "none", ...args]);
+    expect(viaInit.code).toBe(1);
+    expect(viaInit.stderr).toBe(
+      `squeal init: --slow ${EXCLUDED} selects no test file; nothing changed\n`,
+    );
+    const { io, out } = capture(root, harnessEnv(["claude"]));
+    const viaSetup = await main(
+      ["setup", "--yes", "--harness", "claude-code", "--no-warmup", "--block", "none", ...args],
+      io,
+    );
+    expect(viaSetup).toBe(1);
+    expect(out.stderr).toBe(
+      `squeal setup: --slow ${EXCLUDED} selects no test file; nothing changed\n`,
+    );
+    expect(git(root, ["status", "--porcelain"])).toBe("");
+  });
+
+  it("makes setup --check exit 1 for one already written", async () => {
+    const root = cezarionShaped({
+      "vitest.config.ts": VITEST_SRC,
+      "squeal.config.json": json({
+        ...JSON.parse(unit()),
+        slow: { include: [EXCLUDED] },
+        inputs: { [EXCLUDED]: ["packages/cezar/dist/**"] },
+      }),
+    });
+    const { io, out } = capture(root);
+    expect(await main(["setup", "--check"], io)).toBe(1);
+    expect(out.stdout).toContain(
+      `squeal.config.json: the slow.include entry "${EXCLUDED}" selects no test file\n`,
+    );
+    expect(out.stdout).toContain(
+      `squeal.config.json: the inputs key "${EXCLUDED}" selects no test file\n`,
+    );
+  });
+
+  it("still validates a file another project or Vitest lists", async () => {
+    const other = { name: "a", cwd: "packages/cezar/test", include: ["unit/a.test.ts"] };
+    const cases = {
+      "another node:test project": {
+        "vitest.config.ts": VITEST_SRC,
+        "squeal.config.json": unit([other]),
+      },
+      Vitest: { "squeal.config.json": unit() },
+    };
+    for (const [lister, files] of Object.entries(cases)) {
+      const root = cezarionShaped(files);
+      const { code, stderr } = await init(root, ["--harness", "codex", "--block", "none", ...args]);
+      expect(stderr, lister).toBe("");
+      expect(code, lister).toBe(0);
+      expect(JSON.parse(read(root, "squeal.config.json")).slow.include, lister).toEqual([EXCLUDED]);
+      expect(await main(["setup", "--check"], capture(root).io), lister).toBe(0);
+    }
+  });
+});
