@@ -94,16 +94,21 @@ process.exit(i >= 0 ? Number(args[i + 1]) : 0);
 `;
 }
 
-/** Writes a plugin directory as the harness installs it: manifest, launcher, CLI. */
+/** Writes a plugin directory as the harness installs it, or the Pi package: manifest, launcher, CLI. */
 export function writePlugin(
   dir: string,
-  harness: "claude-code" | "codex",
+  harness: "claude-code" | "codex" | "pi",
   version: string,
   launcher = readFileSync(LAUNCHER, "utf8"),
 ): void {
-  const manifest = harness === "claude-code" ? ".claude-plugin" : ".codex-plugin";
-  mkdirSync(join(dir, manifest), { recursive: true });
-  writeFileSync(join(dir, manifest, "plugin.json"), JSON.stringify({ name: "squeal", version }));
+  mkdirSync(dir, { recursive: true });
+  if (harness === "pi") {
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "squeal-pi", version }));
+  } else {
+    const manifest = harness === "claude-code" ? ".claude-plugin" : ".codex-plugin";
+    mkdirSync(join(dir, manifest), { recursive: true });
+    writeFileSync(join(dir, manifest, "plugin.json"), JSON.stringify({ name: "squeal", version }));
+  }
   mkdirSync(join(dir, "bin"), { recursive: true });
   writeFileSync(join(dir, "bin", "squeal-launcher"), launcher);
   chmodSync(join(dir, "bin", "squeal-launcher"), 0o755);

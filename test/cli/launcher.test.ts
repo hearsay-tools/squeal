@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
@@ -30,6 +30,12 @@ function claudeInstalls(m: Machine, entries: readonly Entry[]): void {
 function codexInstalls(m: Machine, versions: readonly string[]): void {
   for (const v of versions)
     writePlugin(join(m.codexHome, "plugins", "cache", "hearsay", "squeal", v), "codex", v);
+}
+
+/** Pi packages as install.sh unpacks them (spec 009 D1), under `XDG_DATA_HOME` when it is set. */
+function piInstalls(m: Machine, versions: readonly string[]): void {
+  const data = m.env.XDG_DATA_HOME ?? join(m.home, ".local", "share");
+  for (const v of versions) writePlugin(join(data, "squeal", "pi", v), "pi", v);
 }
 
 /** Runs the launcher in `cwd` and reads the fake CLI's report. */
@@ -125,6 +131,31 @@ describe("the launcher", () => {
     }
   });
 
+  it("runs the newest Pi package when only Pi has Squeal, under XDG_DATA_HOME when set", () => {
+    const m = machine();
+    piInstalls(m, ["0.1.170", "0.1.99"]);
+    // A directory without a CLI, as a cut unpack leaves it, is not a package.
+    mkdirSync(join(m.home, ".local", "share", "squeal", "pi", "0.1.171"), { recursive: true });
+    const r = launch(m, ["status"]);
+    expect(r.ran).toEqual({ version: "0.1.170", harness: "pi", args: ["status"] });
+    expect(r.stderr).toBe("");
+    m.env.XDG_DATA_HOME = join(m.root, "data");
+    piInstalls(m, ["0.1.172"]);
+    expect(launch(m).ran?.version).toBe("0.1.172");
+  });
+
+  it("names every harness and install.sh for Pi when Pi's version differs", () => {
+    const m = machine();
+    claudeInstalls(m, [{ scope: "user", version: "0.1.170" }]);
+    codexInstalls(m, ["0.1.170"]);
+    piInstalls(m, ["0.1.171"]);
+    const r = launch(m);
+    expect(r.ran?.harness).toBe("pi");
+    expect(r.stderr).toBe(
+      "squeal: Claude Code has squeal 0.1.170, Codex has 0.1.170 and Pi has 0.1.171; running 0.1.171. Run squeal update, and install.sh for Pi, to bring them to one version.\n",
+    );
+  });
+
   it("says nothing when both harnesses hold one version", () => {
     const m = machine();
     claudeInstalls(m, [{ scope: "user", version: "0.1.134" }]);
@@ -141,18 +172,21 @@ describe("the launcher", () => {
     const r = launch(m, ["status"]);
     expect(r.status).toBe(1);
     expect(r.stdout).toBe("");
-    expect(r.stderr).toContain("no squeal@hearsay plugin is installed in Claude Code or Codex");
+    expect(r.stderr).toContain(
+      "no squeal@hearsay plugin is installed in Claude Code or Codex, and no Squeal package in Pi",
+    );
     expect(r.stderr).toContain("claude plugin install squeal@hearsay");
     expect(r.stderr).toContain("codex plugin add squeal@hearsay");
     expect(r.stderr).toContain("install.sh");
   });
 
-  it("is the same file in both plugins, and carries its format line", () => {
-    const codex = readFileSync(
-      join(REPO_ROOT, "plugins", "codex", "bin", "squeal-launcher"),
-      "utf8",
-    );
-    expect(codex).toBe(readFileSync(LAUNCHER, "utf8"));
-    expect(codex).toMatch(/^#!\/bin\/sh\n# squeal-launcher format \d+\n/);
-  });
+  it.each([["codex"], ["pi"]])(
+    "is the same executable file in the %s plugin, and carries its format line",
+    (plugin) => {
+      const copy = join(REPO_ROOT, "plugins", plugin, "bin", "squeal-launcher");
+      expect(readFileSync(copy, "utf8")).toBe(readFileSync(LAUNCHER, "utf8"));
+      expect(readFileSync(copy, "utf8")).toMatch(/^#!\/bin\/sh\n# squeal-launcher format \d+\n/);
+      expect(statSync(copy).mode & 0o111).toBe(0o111);
+    },
+  );
 });
