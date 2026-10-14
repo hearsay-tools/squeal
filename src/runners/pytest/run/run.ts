@@ -18,7 +18,7 @@ import { type Batch, ending, names, readOr, realOr, split, writeRunLog } from ".
 import { inheritedArgs, pytestArgs, refusalNote, refusedFlags } from "./command.js";
 import { parsePytestEvents } from "./events.js";
 import { observeBatch, type PytestObservedClosure } from "./observed.js";
-import { readBatch } from "./report.js";
+import { type PytestFileReport, readBatch } from "./report.js";
 
 type ReadyEnvironment = Extract<PytestEnvironment, { state: "ready" }>;
 
@@ -53,7 +53,7 @@ export interface PytestRun {
   readonly session: readonly RelativePath[];
   /** Completed files whose module skipped itself: the adapter skips their known checks (D6). */
   readonly skippedFiles: readonly { readonly testFile: TestFileRef; readonly reason: string }[];
-  /** D3 and D6's notes: refused flags, exit 5, node ids holding a memory address. */
+  /** D3 and D6's notes: refused flags, exit 5, node ids holding a memory address, every test skipped. */
   readonly notes: readonly string[];
 }
 
@@ -193,6 +193,8 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
     python,
     logDir: options.logDir,
   });
+  const skippedAll = end === "completed" ? allSkippedNote(project, done) : null;
+  if (skippedAll !== null) notes.push(skippedAll);
   const report: RunReport = {
     end,
     durationMs: Math.round(performance.now() - started),
@@ -214,6 +216,22 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
     ),
     notes,
   };
+}
+
+/**
+ * D3: "A project whose run skipped every collected test gets one note, since
+ * pytest exits 0 then." Skips, xfails and module-level skips count; a run
+ * that collected nothing (exit 5's note) or failed to collect a file does not.
+ */
+export function allSkippedNote(
+  project: PytestProject,
+  files: readonly PytestFileReport[],
+): string | null {
+  const results = files.flatMap((f) => f.results);
+  const skipped = results.length + files.filter((f) => f.skipped !== null).length;
+  if (skipped === 0 || files.some((f) => f.fileError !== null)) return null;
+  if (results.some((r) => r.outcome !== "skip")) return null;
+  return `pytest project "${project.name}" skipped every collected test (${skipped} skipped) in ${files.length === 1 ? "its one file" : `${files.length} files`}; pytest exits 0 then, so check what skips them (a missing setting or service often does).`;
 }
 
 function refusal(note: string, started: number): PytestRun {

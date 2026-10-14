@@ -235,6 +235,44 @@ describe.each(PYTHONS)("runPytest under Python %s (spec 007 D6)", (version) => {
     },
   );
 
+  it(
+    "notes a run that skipped every collected test, and no other (review 007-16 S1)",
+    SLOW,
+    async (ctx) => {
+      const fixture = requireSynced(ctx, synced);
+      const path = join(fixture.root, "outcomes", "test_all_skipped.py");
+      writeFileSync(
+        path,
+        [
+          "import pytest",
+          "",
+          "@pytest.mark.skip(reason='on purpose')",
+          "def test_skipped():",
+          "    pass",
+          "",
+          "@pytest.mark.xfail(reason='expected')",
+          "def test_xfail():",
+          "    assert False",
+          "",
+        ].join("\n"),
+      );
+      try {
+        const skipped = await run(ctx, refs("outcomes/test_all_skipped.py"));
+        expect(outcomes(skipped.report.results)).toEqual({
+          test_skipped: "skip",
+          test_xfail: "skip",
+        });
+        expect(skipped.notes).toEqual([
+          'pytest project "small" skipped every collected test (2 skipped) in its one file; pytest exits 0 then, so check what skips them (a missing setting or service often does).',
+        ]);
+        const mixed = await run(ctx, refs("outcomes/test_all_skipped.py", "outcomes/test_pass.py"));
+        expect(mixed.notes).toEqual([]);
+      } finally {
+        rmSync(path);
+      }
+    },
+  );
+
   it("overrides -x and -n 2 in addopts", SLOW, async (ctx) => {
     const fixture = requireSynced(ctx, synced);
     execFileSync("uv", ["pip", "install", "--python", fixture.python, "pytest-xdist==3.8.0"], {
