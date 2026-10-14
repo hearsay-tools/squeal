@@ -1,10 +1,11 @@
 import { delimiter, resolve } from "node:path";
 import type { OcClient, OcHooks } from "./api.js";
-import { type CallOptions, callBridge } from "./bridge-client.js";
+import { callBridge } from "./bridge-client.js";
 import { type Deadline, deadlineIn, within } from "./deadline.js";
 import { partAfter } from "./parts.js";
-import type { OcAnswers, OcConsumer, OcKind, OcRequest } from "./protocol.js";
+import type { OcConsumer, OcKind } from "./protocol.js";
 import { keyOf, sessions } from "./sessions.js";
+import { type Ask, turns } from "./turns.js";
 
 /** Spec 008 D4: the deadline of `chat.message`, `tool.execute.before`, `tool.execute.after` and an event's call. */
 export const EVENT_DEADLINE_MS = 2_000;
@@ -12,8 +13,6 @@ export const EVENT_DEADLINE_MS = 2_000;
 export const IDLE_DEADLINE_MS = 2_000;
 /** D4: the deadline of `dispose`. */
 export const DISPOSE_DEADLINE_MS = 3_000;
-/** D5: the waiter's own bound (`IDLE_WAIT_MS`, 59 minutes) and a minute; it exits first. */
-export const WAIT_DEADLINE_MS = 3_600_000;
 /** 001 D9: a root session's consumer is its main agent. */
 export const MAIN_AGENT = "main";
 /** D3: the primer's cap in the system prompt (002 D3). */
@@ -34,25 +33,6 @@ export interface HookHost {
   readonly env: Readonly<Record<string, string | undefined>>;
 }
 
-/** A root session's turn (D3) and its idle wait (D5). */
-interface Turn {
-  /** Squeal continued or woke this turn: its idle ends the turn, silent (002's `stop_hook_active`). */
-  continued: boolean;
-  /** A `MessageAbortedError` came since the last idle (002's Interrupt). */
-  aborted: boolean;
-  /** The text Squeal last sent, so its `chat.message` is known as Squeal's own. */
-  own: string | null;
-  waiter: AbortController | null;
-}
-
-/** The request of kind `K`, without what every request carries. */
-type About<K extends OcKind> = Omit<Extract<OcRequest, { kind: K }>, "kind" | "worktree" | "pid">;
-
-const textOf = (part: unknown): string | null => {
-  const p = part as { type?: unknown; text?: unknown } | null;
-  return p?.type === "text" && typeof p.text === "string" ? p.text : null;
-};
-
 /**
  * The hooks of spec 008 D3 for one plugin instance. No hook throws, except
  * `tool.execute.before` to block an edit, or outlasts its deadline: a miss
@@ -64,66 +44,17 @@ export function squealHooks(host: HookHost): OcHooks {
   /** Consumers this instance registered, by `keyOf`, and registrations in flight. */
   const registered = new Map<string, OcConsumer>();
   const registering = new Map<string, Promise<string | null>>();
-  const turns = new Map<string, Turn>();
   let primer: string | null = null;
   let disposed = false;
 
-  const ask = async <K extends OcKind>(
-    kind: K,
-    request: About<K>,
-    deadline: Deadline,
-    options?: CallOptions,
-  ): Promise<OcAnswers[K] | null> => {
+  const ask: Ask = async (kind, request, deadline, options) => {
     const left = deadline();
     if (left <= 0) return null;
     const event = { kind, ...request, worktree: host.worktree, pid: host.pid };
     const command = { node: host.node, entry: host.bridge(kind) };
-    return callBridge<OcAnswers[K]>(command, event, host.directory, left, options);
+    return callBridge(command, event, host.directory, left, options);
   };
-
-  const turnOf = (id: string): Turn => {
-    let turn = turns.get(id);
-    if (turn === undefined) {
-      turn = { continued: false, aborted: false, own: null, waiter: null };
-      turns.set(id, turn);
-    }
-    return turn;
-  };
-
-  const cancelWait = (turn: Turn) => {
-    turn.waiter?.abort();
-    turn.waiter = null;
-  };
-
-  /** Starts one more turn with `text` (D3's continuation, D5's wake); whether OpenCode took it. */
-  const say = async (id: string, turn: Turn, text: string): Promise<boolean> => {
-    turn.continued = true;
-    turn.own = text;
-    const result = await within(
-      client.session.promptAsync({ path: { id }, body: { parts: [{ type: "text", text }] } }),
-      EVENT_DEADLINE_MS,
-    );
-    if (result !== null && result.error === undefined) return true;
-    turn.own = null;
-    return false;
-  };
-
-  /** D5: after a root's idle, waits for the idle delta and wakes the agent with it, once. */
-  const armWait = (consumer: OcConsumer, turn: Turn) => {
-    cancelWait(turn);
-    if (disposed) return;
-    const waiter = new AbortController();
-    turn.waiter = waiter;
-    const options = { signal: waiter.signal, background: true };
-    void ask("wait", { consumer }, deadlineIn(WAIT_DEADLINE_MS), options)
-      .then(async (answer) => {
-        if (turn.waiter !== waiter) return;
-        turn.waiter = null;
-        if (answer?.text == null || disposed) return;
-        await say(consumer.sessionId, turn, answer.text);
-      })
-      .catch(() => {});
-  };
+  const turn = turns(client, ask);
 
   /** Registers `consumer` once per instance; its header, or `null`. */
   const register = (consumer: OcConsumer, deadline: Deadline): Promise<string | null> => {
@@ -138,13 +69,6 @@ export function squealHooks(host: HookHost): OcHooks {
     })();
     registering.set(key, run);
     return run.finally(() => registering.delete(key));
-  };
-
-  /** Whether `parts` are the message Squeal last sent in `turn`. */
-  const isOwn = (turn: Turn, parts: readonly unknown[]): boolean => {
-    if (turn.own === null || !parts.some((part) => textOf(part) === turn.own)) return false;
-    turn.own = null;
-    return true;
   };
 
   /** The `tool.execute.before` reason to block, or `null`; never throws. */
@@ -183,15 +107,7 @@ export function squealHooks(host: HookHost): OcHooks {
       await ask("end", { sessions: [], consumers: [consumer] }, deadline);
       return;
     }
-    const turn = turnOf(id);
-    if (turn.aborted || turn.continued) {
-      turn.aborted = false;
-      await ask("endTurn", { consumer }, deadline);
-    } else {
-      const report = (await ask("stop", { consumer }, deadline))?.report ?? null;
-      if (report !== null && !disposed && (await say(id, turn, report))) return;
-    }
-    armWait(consumer, turn);
+    await turn.idle(consumer, deadline);
   };
 
   return {
@@ -205,9 +121,7 @@ export function squealHooks(host: HookHost): OcHooks {
           map.saw(info);
           const consumer = await map.consumerOf(info.id, deadlineIn(EVENT_DEADLINE_MS));
           map.forget(info.id);
-          const turn = turns.get(info.id);
-          if (turn !== undefined) cancelWait(turn);
-          turns.delete(info.id);
+          turn.forget(info.id);
           if (consumer === null) return;
           const root = consumer.agentId === undefined;
           for (const [key, c] of registered) {
@@ -219,7 +133,7 @@ export function squealHooks(host: HookHost): OcHooks {
             : { sessions: [], consumers: [consumer] };
           await ask("end", request, deadlineIn(EVENT_DEADLINE_MS));
         } else if (event.type === "session.error" && sessionID !== undefined) {
-          if (error?.name === "MessageAbortedError") turnOf(sessionID).aborted = true;
+          if (error?.name === "MessageAbortedError") turn.aborted(sessionID);
         } else if (event.type === "session.idle" && sessionID !== undefined) {
           await idle(sessionID);
         }
@@ -234,12 +148,8 @@ export function squealHooks(host: HookHost): OcHooks {
         const deadline = deadlineIn(EVENT_DEADLINE_MS);
         const consumer = await map.consumerOf(input.sessionID, deadline);
         if (consumer === null) return;
-        if (consumer.agentId === undefined) {
-          // D5: a message, the user's or Squeal's own, ends the idle wait.
-          const turn = turnOf(consumer.sessionId);
-          cancelWait(turn);
-          if (!isOwn(turn, output.parts)) turn.continued = false;
-        }
+        // D5: a message, the user's or Squeal's own, ends the idle wait.
+        if (consumer.agentId === undefined) turn.message(consumer.sessionId, output.parts);
         const key = keyOf(consumer);
         let text: string | null;
         if (registered.has(key)) {
@@ -318,7 +228,7 @@ export function squealHooks(host: HookHost): OcHooks {
       try {
         if (disposed) return;
         disposed = true;
-        for (const turn of turns.values()) cancelWait(turn);
+        turn.stop();
         const deadline = deadlineIn(DISPOSE_DEADLINE_MS);
         // S1: a registration in flight lands first. Its own deadline (2 s) ends within this one.
         await within(Promise.all(registering.values()), deadline());

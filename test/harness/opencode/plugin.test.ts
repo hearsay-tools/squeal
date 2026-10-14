@@ -1,20 +1,15 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { OcHooks } from "../../../src/harness/opencode/api.js";
-import {
-  DISPOSE_DEADLINE_MS,
-  EVENT_DEADLINE_MS,
-  NO_NODE_LOG,
-  partAfter,
-  partId,
-} from "../../../src/harness/opencode/plugin.js";
+import { EVENT_DEADLINE_MS, NO_NODE_LOG } from "../../../src/harness/opencode/plugin.js";
 import { tempDir } from "../../store/helpers.js";
 import { outsideGit } from "../bundle-helpers.js";
 import {
   CHILD_ID,
   chatOutput,
+  created,
   HEADER,
+  hook,
   ROOT_ID,
   squealDir,
   startPlugin,
@@ -27,26 +22,6 @@ import {
  * plugin: the fast path, the session map, one registration per consumer, the
  * agent shell's identity, and silence on every failure.
  */
-
-const created = (id: string, parentID?: string) => ({
-  event: {
-    type: "session.created",
-    properties: { info: { id, ...(parentID === undefined ? {} : { parentID }) } },
-  },
-});
-const deleted = (id: string, parentID?: string) => ({
-  event: {
-    type: "session.deleted",
-    properties: { info: { id, ...(parentID === undefined ? {} : { parentID }) } },
-  },
-});
-
-/** Calls a hook the plugin must have returned. */
-function hook<K extends keyof OcHooks>(hooks: OcHooks, name: K): NonNullable<OcHooks[K]> {
-  const fn = hooks[name];
-  if (fn === undefined) throw new Error(`no ${name} hook`);
-  return fn;
-}
 
 describe("the fast path", () => {
   it("returns no hooks outside a git worktree, without looking for Node", async () => {
@@ -291,119 +266,6 @@ describe("shell.env", () => {
     const output = { env: {} as Record<string, string> };
     await hook(hooks, "shell.env")({ cwd: "/" }, output);
     expect(output.env).toEqual({ PATH: "/pkg/bin:/usr/bin" });
-  });
-});
-
-describe("session.deleted and dispose", () => {
-  async function registeredRootAndChild() {
-    const bridge = stubBridge();
-    const hooks = await startPlugin(squealDir(), stubClient(), { entry: bridge.entry });
-    await hook(hooks, "event")(created(ROOT_ID));
-    await hook(hooks, "event")(created(CHILD_ID, ROOT_ID));
-    await hook(hooks, "chat.message")({ sessionID: ROOT_ID }, chatOutput(ROOT_ID));
-    await hook(hooks, "chat.message")({ sessionID: CHILD_ID }, chatOutput(CHILD_ID));
-    const ends = () => bridge.requests().filter((r) => r.kind === "end");
-    return { hooks, ends };
-  }
-
-  it("session.deleted of a root ends its session whole", async () => {
-    const { hooks, ends } = await registeredRootAndChild();
-    await hook(hooks, "event")(deleted(ROOT_ID));
-    expect(ends()).toMatchObject([{ sessions: [ROOT_ID], consumers: [] }]);
-    // Nothing is left for dispose to unregister.
-    await hook(hooks, "dispose")();
-    expect(ends()).toHaveLength(1);
-  });
-
-  it("session.deleted of a child unregisters its consumer alone", async () => {
-    const { hooks, ends } = await registeredRootAndChild();
-    await hook(hooks, "event")(deleted(CHILD_ID, ROOT_ID));
-    expect(ends()).toMatchObject([
-      { sessions: [], consumers: [{ sessionId: ROOT_ID, agentId: CHILD_ID }] },
-    ]);
-  });
-
-  it("dispose unregisters what this instance registered, once, then every hook is silent", async () => {
-    const { hooks, ends } = await registeredRootAndChild();
-    await hook(hooks, "dispose")();
-    await hook(hooks, "dispose")();
-    expect(ends()).toMatchObject([
-      {
-        sessions: [],
-        consumers: [{ sessionId: ROOT_ID }, { sessionId: ROOT_ID, agentId: CHILD_ID }],
-      },
-    ]);
-    const output = chatOutput("ses_new");
-    await hook(hooks, "chat.message")({ sessionID: "ses_new" }, output);
-    expect(output.parts).toHaveLength(1);
-    // Review 008-15 N1: shell.env too.
-    const shell = { env: {} as Record<string, string> };
-    await hook(hooks, "shell.env")({ cwd: "/", sessionID: ROOT_ID }, shell);
-    expect(shell.env).toEqual({});
-    expect(ends()).toHaveLength(1);
-  });
-
-  it("dispose waits for a registration in flight and unregisters it (review 008-15 S1)", async () => {
-    const bridge = stubBridge("answer", { delays: { register: 800 } });
-    const hooks = await startPlugin(squealDir(), stubClient(), { entry: bridge.entry });
-    await hook(hooks, "event")(created(ROOT_ID));
-    const output = chatOutput(ROOT_ID);
-    const message = hook(hooks, "chat.message")({ sessionID: ROOT_ID }, output);
-    await new Promise((done) => setTimeout(done, 200));
-    const started = performance.now();
-    await hook(hooks, "dispose")();
-    expect(performance.now() - started).toBeLessThan(DISPOSE_DEADLINE_MS);
-    await message;
-    expect(bridge.requests().filter((r) => r.kind === "end")).toMatchObject([
-      { sessions: [], consumers: [{ sessionId: ROOT_ID }] },
-    ]);
-    // Disposed before it answered: nothing is added to the message.
-    expect(output.parts).toHaveLength(1);
-  }, 10_000);
-
-  it("dispose with nothing registered starts no bridge", async () => {
-    const bridge = stubBridge();
-    const hooks = await startPlugin(squealDir(), stubClient(), { entry: bridge.entry });
-    await hook(hooks, "dispose")();
-    expect(bridge.requests()).toEqual([]);
-  });
-});
-
-describe("the added part's id (review 008-15 S2)", () => {
-  it("sorts after a last part dated later than the clock", async () => {
-    const hooks = await startPlugin(squealDir(), stubClient(), { entry: stubBridge().entry });
-    await hook(hooks, "event")(created(ROOT_ID));
-    const output = chatOutput(ROOT_ID);
-    const later = partId(Date.now() + 60_000);
-    output.parts = [{ ...(output.parts[0] as object), id: later }];
-    await hook(hooks, "chat.message")({ sessionID: ROOT_ID }, output);
-    const added = (output.parts[1] as { id: string }).id;
-    expect(added > later).toBe(true);
-    expect(added).toMatch(/^prt/);
-  });
-
-  it("adds nothing when a part has no prt id", async () => {
-    const hooks = await startPlugin(squealDir(), stubClient(), { entry: stubBridge().entry });
-    await hook(hooks, "event")(created(ROOT_ID));
-    const output = chatOutput(ROOT_ID);
-    output.parts = [{ ...(output.parts[0] as object), id: "x_1" }];
-    await hook(hooks, "chat.message")({ sessionID: ROOT_ID }, output);
-    expect(output.parts).toHaveLength(1);
-  });
-
-  it("is a fresh id when that already sorts last", () => {
-    const earlier = partId(Date.now() - 60_000);
-    const id = partAfter([{ id: earlier }]);
-    expect(id).toMatch(/^prt_[0-9a-f]{12}[0-9A-Za-z]{14}$/);
-    expect(id !== null && id > earlier).toBe(true);
-  });
-});
-
-describe("partId", () => {
-  it("is an ascending OpenCode part id for the time given", () => {
-    const id = partId(1_791_991_860_085);
-    expect(id).toMatch(/^prt_[0-9a-f]{12}[0-9A-Za-z]{14}$/);
-    expect(id.slice(0, 16) > partId(1_791_991_860_084).slice(0, 16)).toBe(true);
   });
 });
 

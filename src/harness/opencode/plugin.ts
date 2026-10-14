@@ -8,9 +8,9 @@ export {
   EVENT_DEADLINE_MS,
   IDLE_DEADLINE_MS,
   MAIN_AGENT,
-  WAIT_DEADLINE_MS,
 } from "./hooks.js";
 export { partAfter, partId } from "./parts.js";
+export { WAIT_DEADLINE_MS } from "./turns.js";
 
 /** `client.app.log`'s service name. */
 export const LOG_SERVICE = "squeal";
