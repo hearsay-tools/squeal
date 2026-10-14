@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { PoolCapacity } from "../capacity/index.js";
 import type { DaemonLoop } from "../daemon-loop/index.js";
 import { linkedWorktreeDir } from "../fs/index.js";
-import { persistedNoteTexts } from "../scheduler/notes.js";
+import { readDaemonNotes } from "../notes.js";
 import { slowSlotDir } from "../slow/index.js";
 import { recordOptimizerOff } from "../state/optimizer-note.js";
 import { setBusyTimeout } from "../store/index.js";
@@ -434,7 +434,8 @@ class Daemon {
         childEnv: this.#children.env,
         tierSize: () => this.#policy.runner.tierSize,
         note: (text, topic) => this.#note(text, undefined, undefined, topic),
-        noted: (text) => persistedNoteTexts(store, this.opened.worktreeId).has(text),
+        latestNote: (topic) =>
+          readDaemonNotes(store, this.opened.worktreeId).findLast((n) => n.topic === topic)?.text,
       });
       const runner = afterEachRun(
         createCompositeRunner([
