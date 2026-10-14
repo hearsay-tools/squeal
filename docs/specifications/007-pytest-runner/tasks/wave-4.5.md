@@ -25,3 +25,19 @@ Owns: those files and their tests. Leave `key-format.ts`, `plugins/*/dist` and `
 Done when: every test above fails on `bd86815c` where it should, and passes after.
 
 Use /worker.
+
+## Re-review of the repaired candidate (cand/0.1.183)
+
+Outcome: a verdict, PASS or FAIL, on whether `cand/0.1.183` at `6b43de67` repairs `reviews/wave-4.md` B1 and B2, resolves S2 as `status.md` records, and may land.
+
+Shape: narrow re-review. Scope:
+- the repair commits `87a86efc` (B1, scrubbing) and `986e9c25` (B2, the start note through `latestNote(topic)`);
+- `test/e2e/pytest.test.ts`, which must pass unchanged with the rebuilt bundles;
+- whether rebasing the candidate onto main `ef4e5c78` (the earlier commits picked again; key 10 re-pinned; version 0.1.183) dropped or changed anything against `bd86815c`. Use `git range-diff`.
+Do not re-review the rest of wave 4; S1 is row 007-42.
+
+Owns: `reviews/wave-4.5.md` only, which you commit. Your full run follows the host test-run policy.
+
+Done when: B1, B2 and S2 each have a verdict backed by a probe or test. The reviewer's probes are in `reviews/wave-4.md`; the left.json and right.json probe and the untagged-ready probe are re-run against the candidate. The verdict names `6b43de67`.
+
+Use /reviewer.
