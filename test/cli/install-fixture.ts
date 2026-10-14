@@ -5,6 +5,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  readlinkSync,
   rmSync,
   statSync,
   symlinkSync,
@@ -17,9 +18,9 @@ import { runtimeDir } from "../harness/bundle-helpers.js";
 /*
  * A scratch machine for `install.sh`, the launcher and `squeal update` (spec
  * 005 D3): its own HOME, CLAUDE_CONFIG_DIR and CODEX_HOME, stub `claude`,
- * `codex` and `pi` first on a PATH that holds only them, a `node` link and the
+ * `codex`, `pi` and `opencode` first on a PATH that holds only them, a `node` link and the
  * system directories, a `file://` hub, `file://` tag archives (spec 009
- * D1) and the latest release's `install.sh` at `SQUEAL_INSTALL_SH`. No real
+ * D1, 008 D1) and the latest release's `install.sh` at `SQUEAL_INSTALL_SH`. No real
  * harness runs, and the real plugin's `bin/` is never on this PATH.
  */
 
@@ -27,14 +28,18 @@ export const LAUNCHER = join(REPO_ROOT, "plugins", "claude-code", "bin", "squeal
 export const INSTALL_SH = join(REPO_ROOT, "install.sh");
 
 /**
- * Stub `claude`, `codex` and `pi`: each call goes to `STUB_LOG`, and each
+ * Stub `claude`, `codex`, `pi` and `opencode`: each call goes to `STUB_LOG`, and each
  * command changes the scratch home the way the harness's own does, from the
  * hub's current plugin directories. `marketplace add` of a marketplace already
  * added fails; `STUB_PRIVATE` makes it fail as a hub without access does, and
  * `STUB_FAIL` fails every call that starts with it (`codex plugin`). `pi
  * install <dir>` and `pi remove <dir>` edit Pi's user settings as Pi 1.0.4
  * does: a local source relative to the agent directory, an install of a listed
- * source changes nothing, a remove of an unlisted one fails.
+ * source changes nothing, a remove of an unlisted one fails. `opencode plugin
+ * <spec> -g` appends the spec to OpenCode's global config as 1.18.35 does
+ * (research/wave-0-checks.md 3): `opencode.json`, or `opencode.jsonc` when
+ * only that exists; the same spec again changes nothing, another `file:` spec
+ * is appended, `--force` or not.
  */
 const STUB = `#!${process.execPath}
 const fs = require("node:fs");
@@ -64,6 +69,19 @@ if (tool === "pi") {
     writeJson(settings, { ...file, packages: packages.filter((s) => !listed(s)) });
     console.log("Removed " + args[1]);
   } else fail("stub: unknown command " + cmd);
+  process.exit(0);
+}
+if (tool === "opencode") {
+  const spec = args[1] ?? "";
+  if (args[0] !== "plugin" || !args.includes("-g") || !spec.startsWith("file:")) fail("stub: unknown command " + cmd);
+  const dir = p.join(env.XDG_CONFIG_HOME || p.join(env.HOME, ".config"), "opencode");
+  const jsonc = p.join(dir, "opencode.jsonc");
+  const config = !fs.existsSync(p.join(dir, "opencode.json")) && fs.existsSync(jsonc) ? jsonc : p.join(dir, "opencode.json");
+  const file = readJson(config, { $schema: "https://opencode.ai/config.json" });
+  const plugins = file.plugin ?? [];
+  if (!fs.existsSync(p.join(spec.slice(5), "package.json"))) fail("no package at " + spec);
+  if (!plugins.includes(spec)) writeJson(config, { ...file, plugin: [...plugins, spec] });
+  console.log("Installed " + spec);
   process.exit(0);
 }
 const home = tool === "claude" ? p.join(env.CLAUDE_CONFIG_DIR, "plugins") : env.CODEX_HOME;
@@ -116,16 +134,19 @@ process.exit(i >= 0 ? Number(args[i + 1]) : 0);
 `;
 }
 
-/** Writes a plugin directory as the harness installs it, or the Pi package: manifest, launcher, CLI. */
+/** Writes a plugin directory as the harness installs it, or the Pi or OpenCode package: manifest, launcher, CLI. */
 export function writePlugin(
   dir: string,
-  harness: "claude-code" | "codex" | "pi",
+  harness: "claude-code" | "codex" | "pi" | "opencode",
   version: string,
   launcher = readFileSync(LAUNCHER, "utf8"),
 ): void {
   mkdirSync(dir, { recursive: true });
-  if (harness === "pi") {
-    writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "squeal-pi", version }));
+  if (harness === "pi" || harness === "opencode") {
+    writeFileSync(
+      join(dir, "package.json"),
+      JSON.stringify({ name: `squeal-${harness}`, version }),
+    );
   } else {
     const manifest = harness === "claude-code" ? ".claude-plugin" : ".codex-plugin";
     mkdirSync(join(dir, manifest), { recursive: true });
@@ -159,7 +180,7 @@ export interface Machine {
   readonly version: string;
   /**
    * The hub's plugins at `version` in both harnesses, the tag's source archive
-   * with the Pi package, and its `install.sh` as the latest release's.
+   * with the Pi and OpenCode packages, and its `install.sh` as the latest release's.
    */
   publish(version: string, launcher?: string): void;
   /** Every stub call since the last `clearLog`. */
@@ -169,6 +190,8 @@ export interface Machine {
   sh(args: readonly string[], options?: { input?: string; cwd?: string }): Result;
 }
 
+export type Harness = "claude" | "codex" | "pi" | "opencode";
+
 export interface Result {
   readonly status: number | null;
   readonly stdout: string;
@@ -176,9 +199,7 @@ export interface Result {
 }
 
 /** A scratch machine; `harnesses` names the stubs on its PATH. */
-export function machine(
-  harnesses: readonly ("claude" | "codex" | "pi")[] = ["claude", "codex"],
-): Machine {
+export function machine(harnesses: readonly Harness[] = ["claude", "codex"]): Machine {
   const root = runtimeDir();
   const home = join(root, "home");
   const claudeConfig = join(home, ".claude");
@@ -250,12 +271,13 @@ export function machine(
 /**
  * The tag's source archive as GitHub serves it: one top directory, here named
  * as GitHub names it for `squeal--v<version>`, holding the repository, of which
- * only `plugins/pi/` is written.
+ * only `plugins/pi/` and `plugins/opencode/` are written.
  */
 function writeArchive(dir: string, version: string, launcher?: string): void {
   const staging = join(dir, `staging-${version}`);
   const top = `squeal-squeal-v${version}`;
   writePlugin(join(staging, top, "plugins", "pi"), "pi", version, launcher);
+  writePlugin(join(staging, top, "plugins", "opencode"), "opencode", version, launcher);
   const r = spawnSync("tar", ["-czf", join(dir, `squeal--v${version}.tar.gz`), "-C", staging, top]);
   if (r.status !== 0) throw new Error(`tar failed: ${r.stderr}`);
   rmSync(staging, { recursive: true });
@@ -279,13 +301,14 @@ export function install(m: Machine, ...args: string[]): Result {
 
 export const launcherOf = (m: Machine): string => join(m.home, ".local", "bin", "squeal");
 
-/** Every file under `dir` with its content and mode, for "a second run changed nothing". */
+/** Every file under `dir` with its content and mode, and each link with its target, for "a second run changed nothing". */
 export function snapshot(dir: string): Record<string, string> {
   const out: Record<string, string> = {};
   const walk = (at: string) => {
     for (const name of readdirSync(at, { withFileTypes: true })) {
       const path = join(at, name.name);
       if (name.isDirectory()) walk(path);
+      else if (name.isSymbolicLink()) out[relative(dir, path)] = `-> ${readlinkSync(path)}`;
       else
         out[relative(dir, path)] =
           `${(statSync(path).mode & 0o777).toString(8)} ${readFileSync(path, "utf8")}`;
@@ -309,4 +332,26 @@ export function piPackagesOf(m: Machine): string[] {
   return (
     JSON.parse(readFileSync(join(m.piAgent, "settings.json"), "utf8")) as { packages: string[] }
   ).packages;
+}
+
+/** Where `install.sh` unpacks OpenCode packages, one directory per version and `current` (spec 008 D1). */
+export const openCodeHomeOf = (m: Machine): string =>
+  join(m.home, ".local", "share", "squeal", "opencode");
+
+export const openCodeDirOf = (m: Machine, version = m.version): string =>
+  join(openCodeHomeOf(m), version);
+
+/** The link OpenCode's config names, which an update repoints. */
+export const openCodeLinkOf = (m: Machine): string => join(openCodeHomeOf(m), "current");
+
+/** OpenCode's global config directory. */
+export const openCodeConfigOf = (m: Machine): string => join(m.home, ".config", "opencode");
+
+/** The plugins OpenCode's global `opencode.json` lists. */
+export function openCodePluginsOf(m: Machine): string[] {
+  return (
+    JSON.parse(readFileSync(join(openCodeConfigOf(m), "opencode.json"), "utf8")) as {
+      plugin: string[];
+    }
+  ).plugin;
 }
