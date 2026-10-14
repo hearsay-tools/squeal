@@ -39,7 +39,7 @@ jobs:
         run: npm run build
       - name: Bundles match the build
         # The plugin ships the committed bundles; a build that differs here, on this Node, is stale.
-        run: git diff --exit-code -- plugins/claude-code/dist
+        run: git diff --exit-code -- plugins/claude-code/dist plugins/pi/dist
 
   version:
     # 001-76: Claude Code updates an installed plugin only when its manifest's version changes,
