@@ -139,7 +139,9 @@ describe("recordsForFile", () => {
       [test("subtracts"), "fail"],
       [{ kind: "file", project: "", testPath: file.path }, "fail"],
     ]);
-    expect(records.every((r) => r.key === "k2" && r.errors[0] === importError)).toBe(true);
+    expect(records.every((r) => r.key === "k2")).toBe(true);
+    // Task 001-361: no test of the file reported, so the error is a load error.
+    for (const r of records) expect(r.errors).toEqual([{ ...importError, phase: "load" }]);
     expect(records[0]?.location).toEqual(importError.location);
   });
 
@@ -161,6 +163,26 @@ describe("recordsForFile", () => {
       ["test", "pass"],
       ["file", "fail"],
     ]);
+  });
+
+  it("words a file-level error after the file's tests reported as setup failed (task 001-361)", () => {
+    const hookError: CheckError = { ...importError, message: "fetch failed" };
+    const records = recordsForFile({
+      ref: file,
+      key: "k5",
+      report: report({
+        results: [
+          { check: test("adds"), outcome: "skip", durationMs: 0, location: null, errors: [] },
+        ],
+        fileErrors: [{ testFile: file, errors: [hookError] }],
+      }),
+      previousChecks: [test("adds")],
+      provenance,
+      describe: describeFailure,
+    });
+    const fileLevel = records.find((r) => r.check.kind === "file");
+    expect(fileLevel?.errors).toEqual([{ ...hookError, phase: "setup" }]);
+    expect(fileLevel?.summary).toBe("setup failed: fetch failed");
   });
 
   it("records a pass for the file-level check of a file that loaded with no tests (S1)", () => {

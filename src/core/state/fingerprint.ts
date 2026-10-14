@@ -2,7 +2,12 @@ import { realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { stripVTControlCharacters } from "node:util";
 import { cap } from "../text.js";
-import type { CheckError, DiagnosticFingerprint, SourceLocation } from "../types/index.js";
+import type {
+  CheckError,
+  CheckErrorCause,
+  DiagnosticFingerprint,
+  SourceLocation,
+} from "../types/index.js";
 
 /** Longest `summary`, in characters. Deltas show it whole; full text stays in the run log. */
 export const SUMMARY_MAX_CHARS = 300;
@@ -97,12 +102,38 @@ export function describeFailure(
   const line = firstLine(first.message);
   const location = first.location ?? fallback;
   const more = errors.length - 1;
-  const text = line === "" ? first.name : line;
+  const text = withCauses(
+    `${first.phase === "setup" ? "setup failed: " : ""}${withCode(line === "" ? first.name : line, first.code)}`,
+    first.causes ?? [],
+  );
   const summary = more > 0 ? `${text} (${more} more error${more === 1 ? "" : "s"})` : text;
   return {
     fingerprint: `${first.name}: ${normalize(line)} @ ${where(location)}`,
     summary: withDiff(summary, first.diff === null ? null : diffText(first.diff)),
   };
+}
+
+/** One link of a cause chain as Squeal prints it: its message, with its code when the message lacks it. */
+export function causeText(cause: CheckErrorCause): string {
+  return withCode(cause.message === "" ? (cause.code ?? "") : cause.message, cause.code);
+}
+
+/** `text (CODE)`, unless the text already names the code. */
+export function withCode(text: string, code: string | undefined): string {
+  return code === undefined || text.includes(code) ? text : `${text} (${code})`;
+}
+
+/**
+ * Task 001-361: `fetch failed; cause: connect ECONNREFUSED 127.0.0.1:3000`.
+ * The causes keep their room in `SUMMARY_MAX_CHARS`, so a long first line
+ * cannot cut the code that names the failure's reason; the line keeps at
+ * least `LINE_MIN_CHARS`.
+ */
+function withCauses(text: string, causes: readonly CheckErrorCause[]): string {
+  if (causes.length === 0) return text;
+  const chain = causes.map((c) => `; cause: ${causeText(c)}`).join("");
+  const shown = cap(chain, SUMMARY_MAX_CHARS - Math.min(text.length, LINE_MIN_CHARS));
+  return `${cap(text, SUMMARY_MAX_CHARS - shown.length)}${shown}`;
 }
 
 /** Room the first line keeps beside a diff, so a long assertion still says what failed. */
