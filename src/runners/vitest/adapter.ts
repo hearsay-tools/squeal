@@ -47,6 +47,7 @@ import { invalidateStale, SourceStamps } from "./sources.js";
 import { invalidateStructural } from "./stale.js";
 import { closeRejected, startupFailure, withStartup } from "./startup.js";
 import { VITEST_ADAPTER_VERSION } from "./version.js";
+import { Widths } from "./width.js";
 
 /**
  * Vitest adapter over one warm `vitest/node` instance per worktree.
@@ -82,6 +83,8 @@ export class VitestAdapter implements RunnerAdapter {
    * 001-168).
    */
   #touched: RelativePath[] = [];
+  /** The current instance's projects' own `maxWorkers`, each run sized under them (task 001-378). */
+  #widths: Widths | null = null;
   /** Installed lockfiles the current instance started with. */
   #lockfiles = new Set<AbsolutePath>();
   /** The next start imports `vitest/node` again: the installed dependencies changed. */
@@ -112,9 +115,9 @@ export class VitestAdapter implements RunnerAdapter {
    * `observe` is policy `observe.runtimeInputs`, read before each call
    * (task 001-132); absent, nothing is observed. `childEnv` goes into every
    * worker's env beside the recorder's and, like it, stays out of the
-   * environment hash (D12, task 001-142). `maxWorkers` overrides the
-   * config's (spec 004 D2: the slow tier's instance); not keyed, since the
-   * slow instance's environment is never asked for. `optimizer` hears, at
+   * environment hash (D12, task 001-142). `maxWorkers` is the width of a
+   * run without a grant (spec 004 D2: the slow tier's instance), under the
+   * project's own as a grant is (D11, task 001-378). `optimizer` hears, at
    * each start, the projects whose config turns the dependency optimizer on,
    * none included (task 001-181). `exclude` is policy
    * `vitest.excludeProjects`, read at each start (task 001-349).
@@ -166,7 +169,6 @@ export class VitestAdapter implements RunnerAdapter {
       // so it reaches every project.
       fsModuleCache: false,
       ...(Object.keys(env).length === 0 ? {} : { env }),
-      ...(this.#maxWorkers === undefined ? {} : { maxWorkers: this.#maxWorkers }),
       ...(project === undefined ? {} : { project }),
     });
     // Review wave-13 B2: every project server's, not only the root's, before any load.
@@ -180,6 +182,7 @@ export class VitestAdapter implements RunnerAdapter {
       await vitest.standalone();
       this.#observer.configure(vitest);
       this.#tempDirs = instanceTempDirs(vitest);
+      this.#widths = new Widths(vitest);
       this.#lockfiles = await this.#installedLockfiles(vitest);
       this.#configFiles = configFiles(vitest);
       this.#config = config;
@@ -410,6 +413,8 @@ export class VitestAdapter implements RunnerAdapter {
         writeRunLog(options, collector, empty);
         return empty;
       }
+      // D11 Capacity (task 001-378): the tier's grant, under each project's own width.
+      this.#widths?.apply(vitest, options.workers ?? this.#maxWorkers);
       const exitCode = process.exitCode;
       const unsure = this.#unsure;
       const loadedSince = Date.now();
