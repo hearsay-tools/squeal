@@ -125,14 +125,31 @@ describe("recovering runner: a broken config is a state, never an exit (review B
     expect(f.attempts()).toBe(2);
   });
 
-  it("is no retry on the scheduler's empty recheck, only on a batch (007 B1)", async () => {
+  it("is no retry on a quiet pass's recheck, only on a batch, an empty one too (007-26)", async () => {
     const f = factory(["broken"]);
     const { adapter } = runner(f);
     await adapter.open();
-    expect(await adapter.invalidate([])).toEqual({ recreatedProjects: [] });
+    expect(await adapter.recheck?.()).toEqual({ recreatedProjects: [] });
     expect(f.attempts()).toBe(1);
-    expect(await adapter.invalidate(change)).toEqual({ recreatedProjects: ["e2e", "unit"] });
+    expect(await adapter.invalidate([])).toEqual({ recreatedProjects: ["e2e", "unit"] });
     expect(f.attempts()).toBe(2);
+  });
+
+  it("forwards a recheck to a built adapter, and to none without one (007-26)", async () => {
+    const f = factory([]);
+    const { adapter } = runner(f);
+    await adapter.open();
+    expect(await adapter.recheck?.()).toEqual({ recreatedProjects: [] });
+
+    const built = fakeAdapter([]);
+    const rechecking = createRecoveringRunner({
+      name: "pytest",
+      adapterVersion: "1",
+      create: async () => ({ ...built, recheck: async () => ({ recreatedProjects: ["py"] }) }),
+      onFailure: () => {},
+    });
+    await rechecking.open();
+    expect(await rechecking.recheck?.()).toEqual({ recreatedProjects: ["py"] });
   });
 
   it("strips colour codes from the error, since notes are plain text", async () => {

@@ -137,10 +137,10 @@ describe.each(PYTHONS)("pytest adapter start-up observations under Python %s (B5
           recreatedProjects: [],
         });
 
-        // The other worktree finds the growth at its next refinement and re-keys the project.
-        expect(await other.adapter.invalidate([{ path: "README.md", kind: "change" }])).toEqual({
-          recreatedProjects: ["small"],
-        });
+        // The other worktree finds the growth at its observed-paths refinement, which changes
+        // no path (007 R1), and re-keys the project; its quiet recheck reads no observation.
+        expect(await other.adapter.recheck?.()).toEqual({ recreatedProjects: [] });
+        expect(await other.adapter.invalidate([])).toEqual({ recreatedProjects: ["small"] });
         expect((await other.adapter.environment())[0]?.files).toContain(HIDDEN);
         // A worktree started after it keys the path before any run.
         const third = await open(ctx, store, project);

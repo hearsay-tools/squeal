@@ -219,6 +219,8 @@ export interface HarnessOptions {
   readonly slow?: SchedulerOptions["slow"];
   /** node:test projects beside Vitest, behind the daemon's composite (spec 003 D7). */
   readonly nodeTest?: readonly NodeTestProject[];
+  /** Adapters behind the composite after node:test's, as built (task 007-26: a pytest one). */
+  readonly adapters?: readonly RunnerAdapter[];
   /** Their processes at once follow policy `runner.tierSize`, as the daemon's adapters do (task 004-37). */
   readonly nodeTestTierSize?: boolean;
   /**
@@ -280,7 +282,8 @@ export async function openHarness(
       }),
     ),
   );
-  const parts = nodeTest.length === 0 ? runner : createCompositeRunner([runner, ...nodeTest]);
+  const others = [...nodeTest, ...(options.adapters ?? [])];
+  const parts = others.length === 0 ? runner : createCompositeRunner([runner, ...others]);
   const gate: Harness["gate"] = { before: null };
   // Delegates to `parts` at each call, so a test that replaces `h.runner.closure` is still heard.
   const schedulerRunner: RunnerAdapter = Object.create(parts, {

@@ -55,6 +55,23 @@ const options = (lane?: string): RunOptions => ({
 const changed = (path: string): InvalidatedPath[] => [{ path, kind: "change" }];
 
 describe("withSlowInstance (spec 004 D2, task 004-18)", () => {
+  it("forwards a recheck to the fast instance only, and has none without one (007-26)", async () => {
+    const log: string[] = [];
+    expect(withSlowInstance(fake("fast", log), () => fake("slow", log)).recheck).toBeUndefined();
+
+    const fast = {
+      ...fake("fast", log),
+      recheck: async () => {
+        log.push("fast recheck");
+        return { recreatedProjects: ["py"] };
+      },
+    };
+    const runner = withSlowInstance(fast, () => fake("slow", log));
+    await runner.run([FILE], options("slow:vitest"));
+    expect(await runner.recheck?.()).toEqual({ recreatedProjects: ["py"] });
+    expect(log).toEqual(["slow run slow:vitest", "fast recheck"]);
+  });
+
   it("runs a slow lane in an instance of its own, made per pass, and the rest in the fast one", async () => {
     const log: string[] = [];
     let made = 0;

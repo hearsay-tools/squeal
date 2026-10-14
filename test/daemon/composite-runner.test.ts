@@ -154,6 +154,18 @@ describe("createCompositeRunner (spec 003 D7)", () => {
     expect(node.calls).toEqual(["invalidate squeal.config.json"]);
   });
 
+  it("asks recheck only of the adapters that have one, and merges what they recreated (007-26)", async () => {
+    const vitest = fake("vitest", { "": [] });
+    const pytest = {
+      ...fake("pytest", { b: [], a: [] }),
+      recheck: async () => ({ recreatedProjects: ["b", "a"] }),
+    };
+    const composite = createCompositeRunner([vitest, pytest]);
+    expect(await composite.recheck?.()).toEqual({ recreatedProjects: ["a", "b"] });
+    expect(vitest.calls).toEqual([]);
+    expect(pytest.calls).toEqual([]);
+  });
+
   it("fans out affected and merges direct and transitive, sorted", async () => {
     const D = ref("test:unit", "test/unit/d.test.ts");
     const vitest = fake("vitest", { "": [] }, { affected: { direct: [B], transitive: [A] } });
