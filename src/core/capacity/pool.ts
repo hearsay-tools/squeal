@@ -31,9 +31,13 @@ export interface PoolLease {
   /** The workers the tier may run: its permits, and the daemon's free worker when it had it. */
   readonly grant: number;
   readonly permits: number;
-  /** Keeps at most `workers`, at least 1, and returns the other permits. */
+  /**
+   * The tier starts `workers` wide: keeps at most that many, at least 1, and
+   * returns the other permits. Its demand becomes `workers`, whatever it was
+   * granted. Never throws.
+   */
   shrinkTo(workers: number): void;
-  /** Idempotent. The OS also returns the permits when the process dies. */
+  /** Idempotent; never throws. The OS also returns the permits when the process dies. */
   release(): void;
 }
 
@@ -42,6 +46,7 @@ export interface PermitPool {
    * The grant for a tier that wants `want` workers, or `null` when it may
    * not start yet: the daemon's free worker is another lane's tier's and no
    * permit is free. Never blocks; that other tier's end is the next chance.
+   * When it throws it holds nothing it took.
    */
   acquire(want: number): PoolLease | null;
   /** Releases every lease and clears the mark. */
@@ -68,6 +73,8 @@ export function createPermitPool(options: PermitPoolOptions): PermitPool {
 interface Lease {
   readonly permits: DatabaseSync[];
   free: boolean;
+  /** The workers its tier wants, kept above its grant while it waits (review 001-384, B1). */
+  want: number;
 }
 
 /**
@@ -85,9 +92,15 @@ interface Lease {
  *   and returns them at once.
  * - A daemon that gets less than its share is a waiter from then until it
  *   gets it; its mark says since when. A held permit is never taken back.
+ * - The mark states the daemon's demand, what its tiers want, apart from
+ *   what they hold, so a waiter that runs on its free worker still counts
+ *   for its whole tier (review 001-384, B1).
  * - The mark is written at each boundary and refreshed while a lease is
  *   held, and cleared when the last lease goes. The waiter's age is kept
  *   across that gap between tiers, and forgotten after 30 s without a lease.
+ * - A mark that cannot be written fails the acquisition, which returns what
+ *   it took; after a shrink or a release the refresh writes it again
+ *   (review 001-384, B2).
  */
 class LockFilePool implements PermitPool {
   readonly #options: PermitPoolOptions;
@@ -118,9 +131,10 @@ class LockFilePool implements PermitPool {
     const wanted = Math.max(1, Math.floor(want));
     const others = readMarks(dir, owner.worktreeId, now);
     const inUse = this.#inUse();
+    const demand = this.#demand() + wanted;
     const me = {
       id: owner.worktreeId,
-      want: inUse + wanted,
+      want: demand,
       since: this.#since,
       ...(project === undefined ? {} : { project }),
     };
@@ -141,14 +155,22 @@ class LockFilePool implements PermitPool {
       .reduce((sum, o) => sum + Math.max(0, (shares.get(o.id) ?? 1) - o.grant), 0);
     const permits = this.#take(Math.max(0, target - (free ? 1 : 0)), reserve);
     const grant = permits.length + (free ? 1 : 0);
-    this.#since = grant >= Math.max(entitled, free ? 1 : 0) ? null : (this.#since ?? now);
-    if (grant === 0) {
-      this.#publish(inUse + wanted, inUse);
-      return null;
+    const since = this.#since;
+    const mark = this.#mark;
+    this.#since = grant >= Math.max(entitled, free ? 1 : 0) ? null : (since ?? now);
+    const lease: Lease = { permits, free, want: wanted };
+    if (grant > 0) this.#leases.add(lease);
+    try {
+      this.#publish(demand, inUse + grant);
+    } catch (error) {
+      // Nothing is held for a tier that never gets its lease.
+      this.#leases.delete(lease);
+      for (const db of permits.splice(0)) db.close();
+      this.#since = since;
+      this.#mark = mark;
+      throw error;
     }
-    const lease: Lease = { permits, free };
-    this.#leases.add(lease);
-    this.#publish(inUse + wanted, inUse + grant);
+    if (grant === 0) return null;
     this.#startRefresh();
     return this.#handle(lease);
   }
@@ -187,14 +209,16 @@ class LockFilePool implements PermitPool {
     const pool = this;
     return {
       get grant() {
-        return lease.permits.length + (lease.free ? 1 : 0);
+        return grantOf(lease);
       },
       get permits() {
         return lease.permits.length;
       },
       shrinkTo(workers) {
-        const keep = Math.max(lease.free ? 0 : 1, Math.max(1, workers) - (lease.free ? 1 : 0));
+        const wanted = Math.max(1, Math.floor(workers));
+        const keep = Math.max(lease.free ? 0 : 1, wanted - (lease.free ? 1 : 0));
         for (const db of lease.permits.splice(keep)) db.close();
+        lease.want = wanted;
         pool.#republish();
       },
       release() {
@@ -217,7 +241,14 @@ class LockFilePool implements PermitPool {
 
   #inUse(): number {
     let sum = 0;
-    for (const lease of this.#leases) sum += lease.permits.length + (lease.free ? 1 : 0);
+    for (const lease of this.#leases) sum += grantOf(lease);
+    return sum;
+  }
+
+  /** What the held leases' tiers want, each at least what it holds. */
+  #demand(): number {
+    let sum = 0;
+    for (const lease of this.#leases) sum += Math.max(lease.want, grantOf(lease));
     return sum;
   }
 
@@ -233,10 +264,17 @@ class LockFilePool implements PermitPool {
     writeMark(dir, this.#mark);
   }
 
-  /** After a lease shrank or went: the mark states what the others hold now. */
+  /**
+   * After a lease shrank or went: the mark states what the tiers still held
+   * want and hold. Never throws: a mark that cannot be written now is the
+   * refresh's to write.
+   */
   #republish(): void {
-    const inUse = this.#inUse();
-    this.#publish(inUse, inUse);
+    try {
+      this.#publish(this.#demand(), this.#inUse());
+    } catch {
+      // `#mark` is set before the write, so the refresh writes this one.
+    }
   }
 
   #clear(): void {
@@ -265,4 +303,8 @@ class LockFilePool implements PermitPool {
     if (this.#timer !== null) clearInterval(this.#timer);
     this.#timer = null;
   }
+}
+
+function grantOf(lease: Lease): number {
+  return lease.permits.length + (lease.free ? 1 : 0);
 }
