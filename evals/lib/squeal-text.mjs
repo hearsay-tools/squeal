@@ -31,6 +31,7 @@ export function squealEvidence(text, from, failures = 0) {
           tier,
         );
   const listed = /^Known failures: (\d+)/m.exec(t);
+  const selected = selectedOf(t);
   const step = {
     k: "squeal",
     from,
@@ -42,6 +43,7 @@ export function squealEvidence(text, from, failures = 0) {
     daemon,
     known: listed ? Number(listed[1]) : null,
     checks: checksOf(t),
+    ...(selected.length > 0 ? { selected } : {}),
   };
   const before = typeof failures === "number" ? { named: [], unnamed: failures } : failures;
   return settled(step, failingAfter(before, step));
@@ -63,7 +65,7 @@ export function settled(step, after) {
     failures,
     ...(after.uncertain ? { uncertain: true } : {}),
     verdict,
-    files: [...new Set(current.map((c) => c.file))],
+    files: [...new Set([...current.map((c) => c.file), ...(step.selected ?? [])])],
     failing: [...new Set(current.filter((c) => c.to === "fail").map((c) => c.file))],
   };
 }
@@ -115,6 +117,23 @@ export function currentCheck(s, c) {
   return c.observed === null || c.observed === s.revision;
 }
 
+/** A named-files wait's verdict line, when each selected test file has a current result. */
+const NAMED = /^Named test files at revision \d+: .*, each with a current result, after /m;
+
+/**
+ * The test files a `status --wait <ms> <path>...` answered (spec 005 D2, row 006-55): those its
+ * `Selected:` line names, when its first line gives their verdict; none without a verdict. Files
+ * past the line's "and N more" are not named, so not credited.
+ */
+function selectedOf(t) {
+  if (!NAMED.test(t)) return [];
+  const line = /^Selected: (.+)$/m.exec(t)?.[1] ?? "";
+  return line
+    .replace(/ and \d+ more$/, "")
+    .split(", ")
+    .filter((f) => f !== "");
+}
+
 /** Pending, stale and unknown counts in a delivered header or a status, or `null` for none. */
 function countsOf(t) {
   let pending;
@@ -133,8 +152,14 @@ function countsOf(t) {
     pending += Number(files[1]);
     unknown += Number(files[2]);
   }
-  // Counts that leave out test files not listed yet, or a runner part still to come.
-  if (/has not listed this worktree's test files|test files it adds/.test(t)) pending++;
+  // Counts that leave out test files not listed yet, a runner part still to come, or edits a
+  // named wait's deadline came before the daemon stored (row 006-55).
+  if (
+    /has not listed this worktree's test files|test files it adds|has not listed the test files of revision|has not stored its pass|the daemon's pass is at revision/.test(
+      t,
+    )
+  )
+    pending++;
   if (/No dependencies are installed|until an install/.test(t)) unknown++;
   return { pending, stale, unknown };
 }
