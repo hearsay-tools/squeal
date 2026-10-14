@@ -880,7 +880,7 @@ Spec: not written yet; research first. Status and research brief: `specification
 
 ## Feature 009: Pi adapter
 
-Spec: `specifications/009-pi-adapter/spec.md` (draft, for the human's review; no waves until approval). Research brief: `specifications/009-pi-adapter/research/README.md`.
+Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human. Research brief: `specifications/009-pi-adapter/research/README.md`.
 
 ### Research
 
@@ -888,6 +888,13 @@ Spec: `specifications/009-pi-adapter/spec.md` (draft, for the human's review; no
 |---|---|---|---|
 | 009-01 research: pi-extension-events | done (Opus, `research/pi-extension-events.md`) | Topic `pi-extension-events`: event payloads, mid-turn injection, `tool_call` deny, end-of-run continuation, the primer, handler failure modes and cost, subagents and forks; Pi 1.0.4 as `squeal-e2e` with a fake provider. | `research/pi-extension-events.md` committed with every question tagged or "not determined, because". |
 | 009-02 research: pi-sessions-and-packaging | done (Astra, `research/pi-sessions-and-packaging.md`) | Topic `pi-sessions-and-packaging`: idle wake, how Cezar drives Pi over RPC, Pi packages and trust, bundled extensions and the CLI path, daemon lifecycle, session identity. | `research/pi-sessions-and-packaging.md` committed with every question tagged or "not determined, because". |
+
+### Wave 0: extension host and test fixture (parallel; briefs in `specifications/009-pi-adapter/tasks/wave-0.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 009-10 extension skeleton, delivery host, Pi package | planned | D1 layout, D2, D4, D6; D3's `session_start` and `session_shutdown`: `src/harness/pi/`, the worker-thread host with deadlines, `plugins/pi/` with committed `dist/`, drift and version checks. | Stalled or dead worker is silence within its deadline; idempotent start; shutdown leaves nothing alive; per-call cost measured; full suite green. |
+| 009-11 fake-provider Pi fixture | planned | Testing: Pi 1.0.4 pinned devDependency, the scripted provider, `test/helpers/pi.ts`; open question 5 (does Pi write outside `PI_CODING_AGENT_DIR`). | Fixture test in `-p`, `json`, `rpc` green in CI on Node 22 and 24; `research/wave-0-checks.md` committed. |
 
 ## Later
 
