@@ -33,6 +33,8 @@ export interface OcClient {
     promptAsync(options: {
       path: { id: string };
       body: { parts: OcTextPartInput[] };
+      /** Aborts the request (the SDK's options take `RequestInit`'s). */
+      signal?: AbortSignal;
     }): Promise<OcResult<unknown>>;
   };
   readonly app: {

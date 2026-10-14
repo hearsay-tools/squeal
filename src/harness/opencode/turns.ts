@@ -9,7 +9,7 @@ import type { OcAnswers, OcConsumer, OcKind, OcRequest } from "./protocol.js";
  * idle waiter. Runs in OpenCode's Bun.
  */
 
-/** D4: how long `promptAsync` may take to accept a continuation or a wake. */
+/** D4: how long `promptAsync` may take to accept a wake (D5); a continuation has what is left of idle's deadline. */
 export const PROMPT_DEADLINE_MS = 2_000;
 /** D5: the waiter's own bound (`IDLE_WAIT_MS`, 59 minutes) and a minute; it exits first. */
 export const WAIT_DEADLINE_MS = 3_600_000;
@@ -82,15 +82,30 @@ export function turns(client: OcClient, ask: Ask): Turns {
     turn.waiter = null;
   };
 
-  /** Starts one more turn with `text` (D3's continuation, D5's wake); whether OpenCode took it. */
-  const say = async (id: string, turn: Turn, text: string): Promise<boolean> => {
+  /**
+   * Starts one more turn with `text` (D3's continuation, D5's wake) within
+   * what is left of `deadline`; whether OpenCode took it. Past the deadline
+   * the request is aborted, so it starts no late continuation (review 008-16
+   * B1); with none left it is not sent.
+   */
+  const say = async (
+    id: string,
+    turn: Turn,
+    text: string,
+    deadline: Deadline,
+  ): Promise<boolean> => {
+    const left = deadline();
+    if (left <= 0) return false;
     turn.continued = true;
     turn.own = text;
+    const cancel = new AbortController();
+    const parts = [{ type: "text" as const, text }];
     const result = await within(
-      client.session.promptAsync({ path: { id }, body: { parts: [{ type: "text", text }] } }),
-      PROMPT_DEADLINE_MS,
+      client.session.promptAsync({ path: { id }, body: { parts }, signal: cancel.signal }),
+      left,
     );
     if (result !== null && result.error === undefined) return true;
+    cancel.abort();
     turn.own = null;
     return false;
   };
@@ -107,7 +122,7 @@ export function turns(client: OcClient, ask: Ask): Turns {
         if (turn.waiter !== waiter) return;
         turn.waiter = null;
         if (answer?.text == null || stopped) return;
-        await say(consumer.sessionId, turn, answer.text);
+        await say(consumer.sessionId, turn, answer.text, deadlineIn(PROMPT_DEADLINE_MS));
       })
       .catch(() => {});
   };
@@ -133,7 +148,7 @@ export function turns(client: OcClient, ask: Ask): Turns {
         await ask("endTurn", { consumer }, deadline);
       } else {
         const report = (await ask("stop", { consumer }, deadline))?.report ?? null;
-        if (report !== null && !stopped && (await say(id, turn, report))) return;
+        if (report !== null && !stopped && (await say(id, turn, report, deadline))) return;
       }
       armWait(consumer, turn);
     },

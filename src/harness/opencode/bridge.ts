@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { readPolicy } from "../../core/daemon/policy.js";
 import { formatRegistration, MESSAGE_CAP_CHARS, shellWord } from "../../core/delivery/index.js";
 import { locate, usesSqueal } from "../shared/context.js";
 import { coverageOf } from "../shared/coverage.js";
@@ -57,7 +58,8 @@ export const consumerInput = (consumer: OcConsumer) => ({
 /**
  * `chat.message` on a consumer this instance has not registered (D3): ensure
  * the daemon (001 D10, spawned detached, D8), register, and answer the
- * registration header and the primer (D3: the system prompt's). A repository
+ * registration header, the primer (D3: the system prompt's) and `stop.waitMs`
+ * (D4: the deadline at idle). A repository
  * that does not use Squeal gets nothing, not even a daemon; without a usable
  * store the daemon is still ensured, and nothing is registered. No sweep of the session's other consumers: one left
  * by an earlier OpenCode process ends with that process (001 D10).
@@ -85,6 +87,7 @@ export async function register(
         header: formatRegistration(registration, MESSAGE_CAP_CHARS, deps.command),
         registered: true,
         primer: primer(deps.command, coverageOf(context)),
+        stopWaitMs: readPolicy(location.root).stop.waitMs,
       };
     },
   );
@@ -94,7 +97,8 @@ export async function register(
 
 /**
  * `chat.message` on a consumer this instance registered (D3): `startTurn`,
- * and the delta not yet delivered as the text to add; one the daemon expired
+ * and the delta not yet delivered as the text to add, with `stop.waitMs`, so
+ * a changed policy reaches idle's deadline (D4); one the daemon expired
  * meanwhile is registered again, as 001's prompt registers.
  */
 export async function prompt(
@@ -106,7 +110,7 @@ export async function prompt(
   const text = await submitPrompt(consumerInput(request.consumer), location, deps, {
     register: true,
   });
-  return { text };
+  return { text, stopWaitMs: readPolicy(location.root).stop.waitMs };
 }
 
 /**
