@@ -6,8 +6,9 @@
 # installed_plugins.json gives the first entry that is user scope, or project
 # scope for the working directory, as a session there loads it
 # (research/wave-0-checks.md 5); the Codex plugin cache gives its newest version;
-# the Pi packages install.sh unpacks under ${XDG_DATA_HOME:-~/.local/share}/squeal/pi
-# give theirs (spec 009 D1). When they differ it runs the newest, since no hook
+# the Pi and OpenCode packages install.sh unpacks under
+# ${XDG_DATA_HOME:-~/.local/share}/squeal/pi and .../squeal/opencode give theirs
+# (spec 009 D1, 008 D1). When they differ it runs the newest, since no hook
 # of an older plugin can replace a newer daemon. Every plugin ships this same
 # file; `squeal update` re-copies it when the format line above grows.
 set -eu
@@ -56,20 +57,22 @@ try {
     .at(-1);
   if (version) found.push({ harness: "Codex", version, dir: join(cache, version) });
 } catch {}
-try {
-  const pi = join(env.XDG_DATA_HOME || join(home, ".local", "share"), "squeal", "pi");
-  const version = readdirSync(pi)
-    .filter((v) => /^\d+(\.\d+)*$/.test(v) && existsSync(cliOf(join(pi, v))))
-    .sort(compare)
-    .at(-1);
-  if (version) found.push({ harness: "Pi", version, dir: join(pi, version) });
-} catch {}
+for (const [harness, name] of [["Pi", "pi"], ["OpenCode", "opencode"]]) {
+  try {
+    const packages = join(env.XDG_DATA_HOME || join(home, ".local", "share"), "squeal", name);
+    const version = readdirSync(packages)
+      .filter((v) => /^\d+(\.\d+)*$/.test(v) && existsSync(cliOf(join(packages, v))))
+      .sort(compare)
+      .at(-1);
+    if (version) found.push({ harness, version, dir: join(packages, version) });
+  } catch {}
+}
 if (found.length === 0) {
   process.stderr.write(
-    "squeal: no squeal@hearsay plugin is installed in Claude Code or Codex, and no Squeal package in Pi. Install it:\n" +
+    "squeal: no squeal@hearsay plugin is installed in Claude Code or Codex, and no Squeal package in Pi or OpenCode. Install it:\n" +
       "  claude plugin marketplace add hearsay-tools/marketplace && claude plugin install squeal@hearsay\n" +
       "  codex plugin marketplace add hearsay-tools/marketplace && codex plugin add squeal@hearsay\n" +
-      "or run install.sh as https://github.com/hearsay-tools/squeal#install shows, which also installs Squeal in Pi.\n",
+      "or run install.sh as https://github.com/hearsay-tools/squeal#install shows, which also installs Squeal in Pi and OpenCode.\n",
   );
   process.exit(1);
 }

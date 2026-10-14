@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
@@ -36,6 +36,13 @@ function codexInstalls(m: Machine, versions: readonly string[]): void {
 function piInstalls(m: Machine, versions: readonly string[]): void {
   const data = m.env.XDG_DATA_HOME ?? join(m.home, ".local", "share");
   for (const v of versions) writePlugin(join(data, "squeal", "pi", v), "pi", v);
+}
+
+/** OpenCode packages as install.sh unpacks them (spec 008 D1), with `current` at `linked`. */
+function openCodeInstalls(m: Machine, versions: readonly string[], linked?: string): void {
+  const home = join(m.env.XDG_DATA_HOME ?? join(m.home, ".local", "share"), "squeal", "opencode");
+  for (const v of versions) writePlugin(join(home, v), "opencode", v);
+  if (linked !== undefined) symlinkSync(linked, join(home, "current"));
 }
 
 /** Runs the launcher in `cwd` and reads the fake CLI's report. */
@@ -156,6 +163,34 @@ describe("the launcher", () => {
     );
   });
 
+  it("runs the newest OpenCode package when only OpenCode has Squeal, whatever current names", () => {
+    const m = machine();
+    // current still at the older one, as between an unpack and its repoint.
+    openCodeInstalls(m, ["0.1.176", "0.1.99", "0.1.177"], "0.1.176");
+    // A directory without a CLI, as a cut unpack leaves it, is not a package.
+    mkdirSync(join(m.home, ".local", "share", "squeal", "opencode", "0.1.178"), {
+      recursive: true,
+    });
+    const r = launch(m, ["status"]);
+    expect(r.ran).toEqual({ version: "0.1.177", harness: "opencode", args: ["status"] });
+    expect(r.stderr).toBe("");
+    m.env.XDG_DATA_HOME = join(m.root, "data");
+    openCodeInstalls(m, ["0.1.179"]);
+    expect(launch(m).ran?.version).toBe("0.1.179");
+  });
+
+  it("names OpenCode with the others when its version differs", () => {
+    const m = machine();
+    claudeInstalls(m, [{ scope: "user", version: "0.1.176" }]);
+    piInstalls(m, ["0.1.176"]);
+    openCodeInstalls(m, ["0.1.177"], "0.1.177");
+    const r = launch(m);
+    expect(r.ran?.harness).toBe("opencode");
+    expect(r.stderr).toBe(
+      "squeal: Claude Code has squeal 0.1.176, Pi has 0.1.176 and OpenCode has 0.1.177; running 0.1.177. Run squeal update to bring them to one version.\n",
+    );
+  });
+
   it("says nothing when both harnesses hold one version", () => {
     const m = machine();
     claudeInstalls(m, [{ scope: "user", version: "0.1.134" }]);
@@ -173,14 +208,14 @@ describe("the launcher", () => {
     expect(r.status).toBe(1);
     expect(r.stdout).toBe("");
     expect(r.stderr).toContain(
-      "no squeal@hearsay plugin is installed in Claude Code or Codex, and no Squeal package in Pi",
+      "no squeal@hearsay plugin is installed in Claude Code or Codex, and no Squeal package in Pi or OpenCode",
     );
     expect(r.stderr).toContain("claude plugin install squeal@hearsay");
     expect(r.stderr).toContain("codex plugin add squeal@hearsay");
     expect(r.stderr).toContain("install.sh");
   });
 
-  it.each([["codex"], ["pi"]])(
+  it.each([["codex"], ["pi"], ["opencode"]])(
     "is the same executable file in the %s plugin, and carries its format line",
     (plugin) => {
       const copy = join(REPO_ROOT, "plugins", plugin, "bin", "squeal-launcher");
