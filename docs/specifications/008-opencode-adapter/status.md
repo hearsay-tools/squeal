@@ -19,3 +19,10 @@ Started: 2026-10-14
 ## Amendments after approval
 
 - 2026-10-14, at approval, the human: the spec stands as drafted. Wave 0 (008-10, 008-11) dispatched; the `install.sh` row waits for 009's install rows (shared files).
+- 2026-10-14, wave 0 (008-10, 008-11), 0.1.175, coordinator accepting the workers' decisions and folding `research/wave-0-checks.md`:
+  - D1 amended (open question 1 closed): `--force` does not replace a `file:` entry, so both versions would load; `install.sh` installs `file:<...>/squeal/opencode/current` once and updates by repointing that link, keeping older directories a running process names, as for Pi.
+  - D3 amended (open question 2 closed): a part added in `chat.message` reaches the model if it carries a `prt` id; without one OpenCode fails the prompt, so the plugin derives the id or adds nothing. `noReply` is not needed.
+  - Testing amended: the isolation check found nothing outside the run directory, so `runOpenCode` runs locally as the agent user, not only in CI.
+  - 008-10: the plugin's OpenCode types are a local copy of `@opencode-ai/plugin` 1.18.35 (`src/harness/opencode/api.ts`), now also a devDependency for a later switch; `dist/plugin.mjs` is its own esbuild pass without the Node banner, which imports `node:module`; a failed or missed registration leaves the consumer unregistered, so the next message retries; no sweep of a session's other consumers at registration, since one left by an earlier process ends with it (001 D10).
+  - Open question 3 not answered: the bridge measured only at load 32 (p95 98 ms bare, 148 ms registering); re-measured at calm load before wave 1's review.
+  - `KEY_FORMAT_VERSION` 10 (unreleased) re-pinned for the `build:plugin` line; `src/harness/opencode/build.ts` joins `GUARDED_WITHIN`.
