@@ -875,8 +875,8 @@ Spec: not written yet; research first. Status and research brief: `specification
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 008-01 research: opencode-plugins | running (worker 86b69255, codex gpt-6-astra high) | Topic `opencode-plugins`: extension surfaces and trust, every hook and bus event under `run` and `serve`, mid-turn injection and the primer, deny, `session.idle` as Stop, failure modes and the cost of in-process, per-event `node` and socket shapes. Real OpenCode runs only as `squeal-e2e`. | `research/opencode-plugins.md` committed with every question tagged or "not determined, because". |
-| 008-02 research: opencode-sessions-and-wake | running (worker bf9cbdb3, opus high) | Topic `opencode-sessions-and-wake`: how Cezar drives OpenCode, idle wake, identity in shells and plugins, packaging and install, lifecycle and child processes, worktrees. Real OpenCode runs only as `squeal-e2e`. | `research/opencode-sessions-and-wake.md` committed with every question tagged or "not determined, because". |
+| 008-01 research: opencode-plugins | done (`3b325995`, Astra, `research/opencode-plugins.md`) | Topic `opencode-plugins`: extension surfaces and trust, every hook and bus event under `run` and `serve`, mid-turn injection and the primer, deny, `session.idle` as Stop, failure modes and the cost of in-process, per-event `node` and socket shapes. Real OpenCode runs only as `squeal-e2e`. | `research/opencode-plugins.md` committed with every question tagged or "not determined, because". |
+| 008-02 research: opencode-sessions-and-wake | done (`03e9afaf`, Opus, `research/opencode-sessions-and-wake.md`) | Topic `opencode-sessions-and-wake`: how Cezar drives OpenCode, idle wake, identity in shells and plugins, packaging and install, lifecycle and child processes, worktrees. Real OpenCode runs only as `squeal-e2e`. | `research/opencode-sessions-and-wake.md` committed with every question tagged or "not determined, because". |
 
 ## Feature 009: Pi adapter
 
