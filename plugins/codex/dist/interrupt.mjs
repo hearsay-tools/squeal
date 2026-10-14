@@ -1008,6 +1008,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
   let inheritedCount = 0;
   let inheritedFileLevelCount = 0;
   for (const state of states) {
+    if (state.check.kind === "setup") continue;
     counts[state.validity]++;
     if (state.check.kind === "file") fileLevelCounts[state.validity]++;
     if (state.validity === "current" && state.origin?.kind === "inherited") {
@@ -1496,9 +1497,8 @@ function checkParams(check) {
 function checkFrom(row) {
   const project = str(row, "check_project");
   const testPath = str(row, "check_test_path");
-  if (oneOf2(row, "check_kind", ["test", "file"]) === "file") {
-    return { kind: "file", project, testPath };
-  }
+  const kind = oneOf2(row, "check_kind", ["test", "file", "setup"]);
+  if (kind !== "test") return { kind, project, testPath };
   return { kind: "test", project, testPath, fullName: str(row, "check_full_name") };
 }
 var CHECK_WHERE = "project = ? AND test_path = ? AND kind = ? AND full_name = ?";
@@ -3425,6 +3425,7 @@ function breakdown(states, keys) {
   const fileLevelByPhase = { queued: 0, running: 0 };
   const filesWithChecks = /* @__PURE__ */ new Set();
   for (const s of states) {
+    if (s.check.kind === "setup") continue;
     const file = testFileKeyOf(s.check);
     filesWithChecks.add(file);
     const fileLevel = s.check.kind === "file";
@@ -3902,7 +3903,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.179";
+  if (true) return "0.1.180";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
