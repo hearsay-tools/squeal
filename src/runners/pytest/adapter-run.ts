@@ -10,7 +10,6 @@ import {
   type TestFileRef,
 } from "../../core/types/index.js";
 import type { PytestAdapterOptions } from "./adapter.js";
-import type { AdapterEnvironment } from "./adapter-environment.js";
 import { type CollectionNames, enumerate } from "./enumerate.js";
 import {
   environmentFingerprint,
@@ -117,27 +116,6 @@ function childEnvOf(
     ...runEnv,
     ...(tempDir === undefined ? {} : { TMPDIR: tempDir, TMP: tempDir, TEMP: tempDir }),
   };
-}
-
-/** How long an environment's fingerprint must hold still before it is keyed, and the most to wait. */
-const QUIET_MS = 1_000;
-const QUIET_LIMIT_MS = 20_000;
-const POLL_MS = 200;
-
-/** Until the fingerprint of a ready environment held still for `QUIET_MS`, at most `QUIET_LIMIT_MS`. */
-export async function quiet(environment: AdapterEnvironment): Promise<void> {
-  if (environment.state !== "ready") return;
-  const end = Date.now() + QUIET_LIMIT_MS;
-  let last = currentFingerprint(environment);
-  let since = Date.now();
-  while (Date.now() < end && Date.now() - since < QUIET_MS) {
-    await new Promise((done) => setTimeout(done, POLL_MS));
-    const now = currentFingerprint(environment);
-    if (now !== last) {
-      last = now;
-      since = Date.now();
-    }
-  }
 }
 
 /** A run of a project that cannot run: nothing completed (001 D12). */

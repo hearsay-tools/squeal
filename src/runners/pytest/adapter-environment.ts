@@ -34,7 +34,83 @@ export function environmentDir(root: AbsolutePath, project: PytestProject): Abso
  */
 export type AdapterEnvironment =
   | PytestEnvironment
-  | { readonly state: "no-pytest"; readonly note: string };
+  | { readonly state: "no-pytest"; readonly note: string }
+  | { readonly state: "unsettled"; readonly note: string };
+
+/** How long a ready environment's fingerprint holds still before it is admitted, the most to wait, how often to look. */
+export const SETTLE_MS = 1_000;
+export const SETTLE_LIMIT_MS = 20_000;
+export const SETTLE_POLL_MS = 200;
+
+/** Time for {@link admit}; tests drive it. */
+export interface Clock {
+  now(): number;
+  sleep(ms: number): Promise<void>;
+}
+
+export const REAL_CLOCK: Clock = {
+  now: () => Date.now(),
+  sleep: (ms) => new Promise((done) => setTimeout(done, ms)),
+};
+
+/** What {@link admit} decided, and the fingerprint it held still at when `stable` and ready. */
+export interface Admission {
+  readonly outcome: "stable" | "timeout";
+  readonly environment: AdapterEnvironment;
+  readonly fingerprint: string | null;
+}
+
+type Ready = Extract<AdapterEnvironment, { state: "ready" }>;
+
+/**
+ * D2's admission, the one path for the first and every later one (review
+ * wave 2, B2): a ready environment is admitted once its fingerprint held
+ * still for `SETTLE_MS`, read again and found at that fingerprint, so what
+ * keys it is what settled. Any other state is returned as read: nothing
+ * runs under it. Still moving after `SETTLE_LIMIT_MS`, it is `unsettled`,
+ * which keys and runs as every state but `ready` does; a later recheck
+ * admits it again.
+ */
+export async function admit(
+  project: PytestProject,
+  read: () => Promise<AdapterEnvironment>,
+  fingerprint: (environment: Ready) => string,
+  clock: Clock = REAL_CLOCK,
+): Promise<Admission> {
+  const end = clock.now() + SETTLE_LIMIT_MS;
+  let environment = await read();
+  while (environment.state === "ready") {
+    let last = environment.fingerprint;
+    let since = clock.now();
+    while (clock.now() - since < SETTLE_MS) {
+      if (clock.now() >= end) return unsettled(project);
+      await clock.sleep(SETTLE_POLL_MS);
+      const now = fingerprint(environment);
+      if (now !== last) {
+        last = now;
+        since = clock.now();
+      }
+    }
+    const settled = last;
+    environment = await read();
+    if (environment.state === "ready" && environment.fingerprint === settled) {
+      return { outcome: "stable", environment, fingerprint: settled };
+    }
+    if (clock.now() >= end) return unsettled(project);
+  }
+  return { outcome: "stable", environment, fingerprint: null };
+}
+
+function unsettled(project: PytestProject): Admission {
+  return {
+    outcome: "timeout",
+    fingerprint: null,
+    environment: {
+      state: "unsettled",
+      note: `pytest project "${project.name}": the Python environment kept changing for ${SETTLE_LIMIT_MS / 1_000} s (a sync or install in progress). Its checks stay unknown until it holds still for ${SETTLE_MS / 1_000} s.`,
+    },
+  };
+}
 
 /** `<site-packages>/pytest/__init__.py` of the environment once its `pyvenv.cfg` names one. */
 export function pytestMarker(envDir: AbsolutePath): AbsolutePath | null {
