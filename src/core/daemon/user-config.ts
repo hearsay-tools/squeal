@@ -1,7 +1,7 @@
-import { realpathSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { availableParallelism, homedir } from "node:os";
-import { basename, dirname, isAbsolute, join, resolve } from "node:path";
-import { isRecord } from "../fs/index.js";
+import { dirname, isAbsolute, join, resolve } from "node:path";
+import { gitDirOf, isRecord } from "../fs/index.js";
 import type { AbsolutePath, Capacity, LoadedUserConfig, UserConfig } from "../types/index.js";
 import {
   describeProblems,
@@ -62,11 +62,11 @@ export function resolveCapacity(config: UserConfig, repositoryRoot: AbsolutePath
 }
 
 /**
- * One daemon's capacity (D11 Capacity), for the permit pool to call at each
- * tier boundary: it reads the file at every call, so an edit applies at the
- * next tier without a restart, and notes its problems as the daemon notes
- * `squeal.config.json`'s, one note per distinct problem set, none when the
- * newest note about the file already says the same.
+ * One daemon's capacity (D11 Capacity). Each call reads the file again and
+ * notes its problems as the daemon notes `squeal.config.json`'s, one note
+ * per distinct problem set, none when the newest note about the file already
+ * says the same. The daemon calls it when it starts and sizes its pool from
+ * that reading, so an edit applies to daemons started after (D11 as amended).
  */
 export function capacityReader(options: {
   readonly repositoryRoot: AbsolutePath;
@@ -88,11 +88,54 @@ export function capacityReader(options: {
 
 /**
  * The repository root `capacity.projects` names, shared by every worktree of
- * the repository: the directory holding the common `.git` directory, or the
- * common directory itself for a bare repository.
+ * the repository: its main worktree's root, read from Git's layout rather
+ * than from the common directory's name (review 001-384, B3).
+ *
+ * - The worktree at `root` is the main one when its git dir is the common
+ *   dir: an ordinary repository, a `--separate-git-dir` one, a submodule.
+ * - A linked worktree's main root is the common dir's `core.worktree` (a
+ *   submodule's checkout) or its parent, whichever has the common dir as its
+ *   git dir.
+ * - Git records no main worktree for a bare repository, nor for a linked
+ *   worktree of a `--separate-git-dir` one: the common dir names those.
  */
-export function repositoryRootOf(commonDir: AbsolutePath): AbsolutePath {
-  return basename(commonDir) === ".git" ? dirname(commonDir) : commonDir;
+export function repositoryRootOf(root: AbsolutePath, commonDir: AbsolutePath): AbsolutePath {
+  if (gitDirIs(root, commonDir)) return root;
+  for (const candidate of [coreWorktree(commonDir), dirname(commonDir)]) {
+    if (candidate !== null && gitDirIs(candidate, commonDir)) return normalize(candidate);
+  }
+  return commonDir;
+}
+
+/** The worktree at `worktree` has `commonDir` as its own git dir. */
+function gitDirIs(worktree: AbsolutePath, commonDir: AbsolutePath): boolean {
+  try {
+    const gitDir = gitDirOf(worktree);
+    return gitDir !== null && realpathSync(gitDir) === realpathSync(commonDir);
+  } catch {
+    return false;
+  }
+}
+
+/** `core.worktree` in the common dir's config, resolved against it, as Git resolves it. */
+function coreWorktree(commonDir: AbsolutePath): AbsolutePath | null {
+  let text: string;
+  try {
+    text = readFileSync(join(commonDir, "config"), "utf8");
+  } catch {
+    return null;
+  }
+  let core = false;
+  for (const line of text.split("\n")) {
+    const section = /^\s*\[\s*([^\]\s"]+)/.exec(line);
+    if (section?.[1] !== undefined) {
+      core = section[1].toLowerCase() === "core";
+      continue;
+    }
+    const entry = core ? /^\s*worktree\s*=\s*(.*?)\s*$/i.exec(line) : null;
+    if (entry?.[1]) return resolve(commonDir, entry[1].replace(/^"(.*)"$/, "$1"));
+  }
+  return null;
 }
 
 /**

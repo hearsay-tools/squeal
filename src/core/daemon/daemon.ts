@@ -142,8 +142,13 @@ class Daemon {
   readonly #version = squealVersion();
   #phase: DaemonPhase = "starting";
   #policy: Policy = DEFAULT_POLICY;
-  /** D11 Capacity from the user-level config, read at each call; the permit pool's input (001-376). */
+  /**
+   * D11 Capacity from the user-level config, read again at each call. The
+   * daemon calls it at start and sizes its pool from that reading (001-376).
+   */
   readonly #capacity: () => Capacity;
+  /** The main worktree's root: `capacity.projects`' key and the pool's project id (review 001-384, B3). */
+  readonly #repositoryRoot: AbsolutePath;
   #desk: FrontDesk | null = null;
   #runner: RunnerAdapter | null = null;
   /** The Vitest part of `#runner`, which `run --all` asks to retry its creation. */
@@ -175,8 +180,9 @@ class Daemon {
     this.#startedAt = this.#now();
     this.#lastActive = this.#startedAt;
     this.#presence = { since: this.#startedAt, lastPresentAt: null };
+    this.#repositoryRoot = repositoryRootOf(opened.root, opened.commonDir);
     this.#capacity = capacityReader({
-      repositoryRoot: repositoryRootOf(opened.commonDir),
+      repositoryRoot: this.#repositoryRoot,
       env: options.env,
       lastNote: (path) => lastPolicyNote(opened.store, opened.worktreeId, path),
       note: (text) => this.#note(text),
@@ -188,8 +194,7 @@ class Daemon {
     if (this.options.capacity !== undefined) return this.options.capacity;
     const { hostSlots, projectSlots } = this.#capacity();
     if (projectSlots === undefined) return { hostSlots };
-    const id = repositoryRootOf(this.opened.commonDir);
-    return { hostSlots, project: { id, slots: projectSlots } };
+    return { hostSlots, project: { id: this.#repositoryRoot, slots: projectSlots } };
   }
 
   async start(desk: PreparedDesk): Promise<RunningDaemon | DaemonExit> {
