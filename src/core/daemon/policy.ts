@@ -1,6 +1,5 @@
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { isMissing, isRecord } from "../fs/index.js";
+import { isRecord } from "../fs/index.js";
 import { readDaemonNotes } from "../notes.js";
 import {
   DEFAULT_POLICY,
@@ -9,27 +8,21 @@ import {
   type Store,
   type WorktreeId,
 } from "../types/index.js";
+import {
+  describeProblems,
+  type Leaf,
+  loadConfigFile,
+  positiveInteger,
+  type Shape,
+} from "./config-file.js";
 import { compiles, nodeTestProjects } from "./policy-node-test.js";
 import { pytestProjects } from "./policy-pytest.js";
 import { slowInclude } from "./policy-slow.js";
 
+export { describeProblems };
+
 /** Spec 001 D11: "`squeal.config.json` at the repository root, committed, all keys optional". */
 export const POLICY_FILE = "squeal.config.json";
-
-/**
- * Checks one leaf value; returns what was expected when the value does not
- * fit, a whole `problem` when the value has the right type but cannot be
- * used, or the part of a list it keeps with one problem per dropped entry.
- */
-type Leaf = (value: unknown) => string | { readonly problem: string } | Kept | null;
-/** What a list leaf keeps of its value, and why it dropped the rest. */
-interface Kept {
-  readonly kept: unknown;
-  readonly problems: readonly string[];
-}
-interface Shape {
-  readonly [key: string]: Leaf | Shape;
-}
 
 const boolean: Leaf = (v) => (typeof v === "boolean" ? null : "true or false");
 const strings: Leaf = (v) =>
@@ -52,8 +45,6 @@ const inputs: Leaf = (v) => {
 
 const atLeastZero: Leaf = (v) => (isNumber(v) && v >= 0 ? null : "a number >= 0");
 const aboveZero: Leaf = (v) => (isNumber(v) && v > 0 ? null : "a number > 0");
-const positiveInteger: Leaf = (v) =>
-  Number.isInteger(v) && (v as number) > 0 ? null : "a positive integer";
 const orNull =
   (leaf: Leaf): Leaf =>
   (v) => {
@@ -110,27 +101,8 @@ const SHAPE: Shape = {
  * the defaults with one problem.
  */
 export function loadPolicy(root: string): LoadedPolicy {
-  let text: string;
-  try {
-    text = readFileSync(join(root, POLICY_FILE), "utf8");
-  } catch (error) {
-    if (isMissing(error)) return { policy: DEFAULT_POLICY, problems: [] };
-    return defaultsBecause(`could not be read: ${String(error)}`);
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch (error) {
-    return defaultsBecause(`not valid JSON (${(error as Error).message})`);
-  }
-  if (!isRecord(parsed)) {
-    return defaultsBecause(
-      `must be a JSON object, got ${Array.isArray(parsed) ? "an array" : JSON.stringify(parsed)}`,
-    );
-  }
-  const problems: string[] = [];
-  const merged = merge(SHAPE, DEFAULT_POLICY, parsed, "", problems);
-  return { policy: merged as unknown as Policy, problems };
+  const { value, problems } = loadConfigFile(join(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
+  return { policy: value, problems };
 }
 
 /** The policy alone, for callers that act on it and leave reporting to the daemon (the hooks). */
@@ -138,52 +110,16 @@ export function readPolicy(root: string): Policy {
   return loadPolicy(root).policy;
 }
 
-function defaultsBecause(problem: string): LoadedPolicy {
-  return { policy: DEFAULT_POLICY, problems: [problem] };
-}
-
-function merge(
-  shape: Shape,
-  defaults: object,
-  given: Record<string, unknown>,
-  prefix: string,
-  problems: string[],
-): Record<string, unknown> {
-  const result: Record<string, unknown> = { ...defaults };
-  for (const [key, value] of Object.entries(given)) {
-    const path = `${prefix}${key}`;
-    const rule = Object.hasOwn(shape, key) ? shape[key] : undefined;
-    if (rule === undefined) {
-      problems.push(`unknown key "${path}"`);
-    } else if (typeof rule === "function") {
-      const expected = rule(value);
-      if (expected === null) result[key] = value;
-      else if (typeof expected === "object" && "kept" in expected) {
-        result[key] = expected.kept;
-        problems.push(...expected.problems);
-      } else if (typeof expected === "object") problems.push(`"${path}" ${expected.problem}`);
-      else problems.push(`"${path}" must be ${expected}, got ${JSON.stringify(value)}`);
-    } else if (!isRecord(value)) {
-      problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);
-    } else {
-      const nested = (defaults as Record<string, object>)[key] ?? {};
-      result[key] = merge(rule, nested, value, `${path}.`, problems);
-    }
-  }
-  return result;
-}
-
 function isNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-/** Problems for a note, with what follows from them. */
-export function describeProblems(problems: readonly string[]): string {
-  return `${problems.join("; ")}; the defaults apply in their place`;
-}
-
-/** Text of the newest persisted note about `squeal.config.json`, or `null`. */
-export function lastPolicyNote(store: Store, worktreeId: WorktreeId): string | null {
+/** Text of the newest persisted note about `file` (default `squeal.config.json`), or `null`. */
+export function lastPolicyNote(
+  store: Store,
+  worktreeId: WorktreeId,
+  file: string = POLICY_FILE,
+): string | null {
   const texts = readDaemonNotes(store, worktreeId).map((note) => note.text);
-  return texts.findLast((text) => text.startsWith(POLICY_FILE)) ?? null;
+  return texts.findLast((text) => text.startsWith(file)) ?? null;
 }

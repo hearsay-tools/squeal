@@ -141,7 +141,7 @@ export function createFixtureRepo(options: FixtureOptions = {}): FixtureRepo {
   };
 }
 
-/** The test's environment without what would leak a test runner or a repository into a daemon. */
+/** The test's environment without what would leak a test runner, a repository or the user's config into a daemon. */
 export function childEnv(runtimeDir: string): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {};
   for (const [name, value] of Object.entries(process.env)) {
@@ -149,6 +149,8 @@ export function childEnv(runtimeDir: string): NodeJS.ProcessEnv {
     env[name] = value;
   }
   env.XDG_RUNTIME_DIR = runtimeDir;
+  // The user-level config of D11 Capacity: a path in the test's own runtime dir, never the real one.
+  env.XDG_CONFIG_HOME = join(runtimeDir, "config");
   return env;
 }
 
