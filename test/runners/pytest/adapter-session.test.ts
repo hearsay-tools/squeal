@@ -155,7 +155,12 @@ describe.each(PYTHONS)("pytest adapter start-up observations under Python %s (B5
     async (ctx) => {
       const include = [CORE_TEST, "tests/test_resources.py"];
       const store = memoryStore();
-      const { adapter, root } = await open(ctx, store, { name: "small", args: [], env: {}, include });
+      const { adapter, root } = await open(ctx, store, {
+        name: "small",
+        args: [],
+        env: {},
+        include,
+      });
       const report = await adapter.run(include.map(ref), runOptions(root));
       expect(report.completedFiles).toEqual(include.map(ref));
       expect(report.environmentObserved).toBeUndefined();
@@ -200,25 +205,29 @@ describe.each(PYTHONS)("pytest adapter start-up observations under Python %s (B5
     },
   );
 
-  it("a batch closes its events file: no ResourceWarning in its stderr (007-36)", SLOW, async (ctx) => {
-    const include = [CORE_TEST, "tests/test_resources.py"];
-    // Python's own filters hide a ResourceWarning; a project's may show it (briefcase's did).
-    const { adapter, root } = await open(ctx, memoryStore(), {
-      name: "small",
-      args: [],
-      env: { PYTHONWARNINGS: "error::ResourceWarning" },
-      include,
-    });
-    const options = runOptions(root);
-    const report = await adapter.run(include.map(ref), options);
-    expect(report.completedFiles).toEqual(include.map(ref));
-    const logs = join(options.logDir, "pytest", "small");
-    const stderr = readdirSync(logs).filter((f) => f.startsWith("stderr-"));
-    expect(stderr.length).toBeGreaterThan(0);
-    for (const file of stderr) {
-      expect(readFileSync(join(logs, file), "utf8")).not.toContain("ResourceWarning");
-    }
-  });
+  it(
+    "a batch closes its events file: no ResourceWarning in its stderr (007-36)",
+    SLOW,
+    async (ctx) => {
+      const include = [CORE_TEST, "tests/test_resources.py"];
+      // Python's own filters hide a ResourceWarning; a project's may show it (briefcase's did).
+      const { adapter, root } = await open(ctx, memoryStore(), {
+        name: "small",
+        args: [],
+        env: { PYTHONWARNINGS: "error::ResourceWarning" },
+        include,
+      });
+      const options = runOptions(root);
+      const report = await adapter.run(include.map(ref), options);
+      expect(report.completedFiles).toEqual(include.map(ref));
+      const logs = join(options.logDir, "pytest", "small");
+      const stderr = readdirSync(logs).filter((f) => f.startsWith("stderr-"));
+      expect(stderr.length).toBeGreaterThan(0);
+      for (const file of stderr) {
+        expect(readFileSync(join(logs, file), "utf8")).not.toContain("ResourceWarning");
+      }
+    },
+  );
 
   it("a -p plugin's dynamic import is observed the same way", SLOW, async (ctx) => {
     const project = { name: "small", args: ["-p", "app.startup"], env: {}, include: [CORE_TEST] };
