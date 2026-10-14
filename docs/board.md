@@ -12,8 +12,6 @@ Every spawn passes `--backend`, `--model` and `--effort` explicitly. Workers and
 
 Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 
-For 001's coordinator, from 007 (2026-10-14): row 007-30 (worker e7554c5a) changes `src/core/scheduler/` additively. A tier the completion barrier (001-168, `withheldForTouch`) withholds is re-queued once when no revision follows, and a repeat adds a note naming the touched path. Brief: `specifications/007-pytest-runner/tasks/wave-3.md`. Tell the 007 coordinator if it crosses a 001 row.
-
 ### Wave 0: scaffold
 
 | Task | Status | Scope | Done when |
@@ -880,15 +878,15 @@ Spec: `specifications/007-pytest-runner/spec.md`, approved 2026-10-14 by the hum
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 007-17 end to end | finished on `cez/dcd4db61` (`0fbcaedf`), not landed: 1 of 16 CI scenario runs strands a withheld tier (007-30) | The shipped plugin against the fixture, as 001's `test/e2e`; the fixture on pytest 8 as well as 9 (review 007-16 input 7). | e2e suite green in CI. |
+| 007-17 end to end | done (0.1.177, `fc5e5287`): 8 e2e tests, both plugins, Python 3.10 and 3.13, pytest 8 and 9 | The shipped plugin against the fixture, as 001's `test/e2e`; the fixture on pytest 8 as well as 9 (review 007-16 input 7). | e2e suite green in CI. |
 | 007-18 dogfooding | done (`lessons.md`): both agents trusted Squeal and were right; 13 defects, rows 007-35 to 007-40 | A real open-source pytest project of a few hundred test files, a Cezar worker on Claude Code and one on Codex; batch size revisited. | `lessons.md` resolves the open questions with evidence. |
 | 007-28 main CI: synced second worktree inherits 6 of 13 on GitHub runners | done (0.1.173, `643752b1`): uv hardlinks on ext4 runners moved ctime of watched `.venv` files; environment paths left the touch-judged set; `PYTEST_ADAPTER_VERSION` 2 | `test/integration/pytest.test.ts:149` red on main since 0.1.169 (run 38582092315), CI-only; on the 007 branch since wave 2.5, hidden by expected drift. Blocks the next landing. | Cause named from CI; local regression; branch CI green. |
 | 007-29 a pytest run never executes stale bytecode | done (0.1.173): a private bytecode prefix per run; +40 to 200 ms per tier | Found by 007-17: a same-size edit within the same second runs the cached `.pyc` under `PYTHONPYCACHEPREFIX`, and a stale FAIL is stored as current. | Regression on 3.10 and 3.13; start-up cost measured. |
-| 007-30 a withheld tier is run again, and says why when it is not | finished, rebased on 0.1.174 on `cez/2ab5b448` (8355e372..2554229f), not landed: review 007-31 FAIL | Core: the completion barrier's withheld files are re-queued once when no revision follows; a repeat leaves a note naming the path. Promotes the Later row; blocks 007-17. | Scheduler regression; 007-17's e2e green in CI on both Nodes. |
+| 007-30 a withheld tier is run again, and says why when it is not | done (0.1.177; signed off by 001) | Core: the completion barrier's withheld files are re-queued once when no revision follows; a repeat leaves a note naming the path. Promotes the Later row; blocks 007-17. | Scheduler regression; 007-17's e2e green in CI on both Nodes. |
 | 007-31 review of 007-30 for 001's sign-off | done: FAIL at 2554229f (`reviews/wave-3-007-30.md`): B1 per-tier retry lets a twice-withheld file run a third time; S1 transient publication untested |  |  |
-| 007-32 repair of 007-31 | done on `cez/2ab5b448` (73761476, 5486741a, key pin 823ab34d), not landed | Per-file retry and exhaustion; review regression; `putMany` spy. First round; a second FAIL goes to the human. | Two runs per unchanged key; spy rejects nothing; suite green. |
+| 007-32 repair of 007-31 | done (0.1.177) | Per-file retry and exhaustion; review regression; `putMany` spy. First round; a second FAIL goes to the human. | Two runs per unchanged key; spy rejects nothing; suite green. |
 | 007-33 re-review of 007-32 | done: FAIL at 823ab34d (`reviews/wave-3-007-32.md`): residual B1, an exhausted forced file stays queued and runs a third time under `run --all --force`; S1, re-key retry and transaction safety pass. Last round; the human chose the narrow repair 007-34 |  |  |
-| 007-34 repair of 007-33 | running (worker 098daf31, opus high; brief `tasks/wave-3.md`) | `recordTier` takes the re-queue set (001 approved, additive); exhausted files are `unknown` in one transaction, forced or not. | Forced probe `[2, 2, 2]`; coordinator verifies, 001 signs off, no further review. |
+| 007-34 repair of 007-33 | done (0.1.177): `recordTier` takes the re-queue set; forced probe `[2, 2, 2]`; edge filed as 001-383 | `recordTier` takes the re-queue set (001 approved, additive); exhausted files are `unknown` in one transaction, forced or not. | Forced probe `[2, 2, 2]`; coordinator verifies, 001 signs off, no further review. |
 
 ## Feature 008: OpenCode adapter
 
