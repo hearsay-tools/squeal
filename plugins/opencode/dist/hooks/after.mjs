@@ -4677,7 +4677,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.182";
+  if (true) return "0.1.184";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -5039,13 +5039,21 @@ var after = async (request, deps) => {
   const location2 = locate(request.worktree);
   if (location2 === null) return { text: null };
   const edited = !OPENCODE_READ_ONLY_TOOLS.has(request.tool);
-  const text = await withContext(
+  const answer = await withContext(
     consumerInput(request.consumer),
     location2,
     deps,
-    (context) => deliver(context, deps, edited)
+    async (context) => {
+      const text = await deliver(context, deps, edited);
+      if (request.primer !== true) return { text };
+      return {
+        text,
+        primer: primer(deps.command, coverageOf(context)),
+        stopWaitMs: readPolicy(location2.root).stop.waitMs
+      };
+    }
   );
-  return { text };
+  return answer ?? { text: null };
 };
 
 // src/harness/opencode/entries/hooks/after.ts
