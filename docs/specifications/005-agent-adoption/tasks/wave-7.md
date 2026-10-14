@@ -185,3 +185,26 @@ Use /reviewer.
 - Same as 005-56.
 - Exactly one `npx vitest run --maxWorkers=4`.
 - Commit the findings file only.
+
+## Wave 7.7: `--yes` keeps every gate line (005-60, 005-61)
+
+The human decided on 2026-10-14, after 005-59: `--yes` keeps every gate line, and 005-59's N1, N2 and S1 become row 005-62 after the release. The coordinator made 005-60 itself, as `c8d5d54d` with its bundle `1a6b14f0` (0.1.167).
+
+### 005-61 short review of 005-60
+
+Use /reviewer.
+
+**Outcome.** `reviews/wave-7.7.md` on `c8d5d54d`, at its bundle commit `1a6b14f0`. Write it within 10 minutes of starting.
+
+**Check.**
+- `squeal setup --yes` with no `--gate` flag rewords no gate line, and says "kept gate line" for each.
+- `--gate <id>=reword` still rewords exactly that line.
+- The interactive question still shows each proposal and offers reword, with keep as its first choice.
+- D5 (`spec.md`), the setup skill and the flow tests all say the same thing.
+- The change in `test/real-cli/setup.real.ts` keeps its check meaningful. That file is read only for you.
+
+**Rules.**
+- Run no model session and never the real `claude` or `codex`, and nothing as `squeal-e2e`.
+- Run exactly one `npx vitest run --maxWorkers=4`.
+- Don't run `npm run build`.
+- Commit the findings file only.
