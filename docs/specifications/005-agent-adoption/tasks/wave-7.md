@@ -83,3 +83,41 @@ Look for a realistic instruction line that is still mis-reworded. Use this repos
 - Never write to cezar.
 - Run exactly one `npx vitest run --maxWorkers=4`.
 - Don't run `npm run build`.
+
+## Wave 7.5: 005-55 gate rewording by allow-list (005-54 B1 to B3)
+
+Use /worker.
+
+**Outcome.** Setup proposes rewording only for a line that plainly tells the agent to run the test command. Every other line holding the command becomes a mention that the plan shows. This turns 005-47's deny-list round the other way: 005-54 showed that listing exceptions misses real prose.
+
+**Read.**
+- `reviews/wave-7.md`, B1 to B3 and its corpus appendix;
+- spec 005 D5;
+- `src/cli/setup/gates.ts` at 0.1.160.
+
+**Shape.** A repair.
+
+**Seam.** `src/cli/setup/gates.ts`, `scanGates`, `commandLines`, `reword` and their helpers. A line is a gate only when all of the following hold:
+- (a) The sentence holding the command starts, after an optional list marker or a bold or `Label:` prefix such as `Verification:`, with an imperative from a short list: `Run`, `Use`, `Execute`, `Verify with`, `Before you finish, run`. Choose the final list from the corpus and write it in the comment.
+- (b) The line does not continue a sentence begun on the line before.
+- (c) No negation precedes the command in its sentence: `e.g.`, `i.e.`, `etc.`, `vs.` and a dot inside parentheses never end a sentence.
+- (d) The fallback goes right after that sentence's real end.
+
+Anything not matched is a mention: the plan lists it with the reason "not an instruction to run it". `--gate <id>=reword` is refused for it.
+
+**Owns.**
+- `src/cli/setup/gates.ts`;
+- `test/cli/setup/gates.test.ts`, `init-flags.test.ts` and `plan.test.ts`;
+- both setup skill copies, if their wording on gates changes, and `test/harness/setup-skill.test.ts`.
+
+**Done when.**
+- Each B1 to B3 fixture from the review is a regression test.
+- Every proposal in the review's corpus appendix is either a true instruction, reworded exactly, or a mention, and a test pins a sample of 10 from it.
+- These are still reworded exactly: D5's first example (`VITEST_GATE`), "Run `npm test` before you finish.", and "Do not commit generated files. Run `npm test` before you finish.".
+- Lint, typecheck and the capped suite pass.
+
+**Rules.**
+- Run no model session and never the real `claude` or `codex`.
+- Read cezar only through `git show`.
+- Run every full Vitest run with `--maxWorkers=4`.
+- Don't run `npm run build`.
