@@ -11,7 +11,7 @@
 //
 // Only node builtins, so the file runs outside this repository. It is outside tsconfig and Biome
 // as a fixture; the helper's import typechecks it.
-import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 
@@ -25,7 +25,15 @@ export interface ScriptedStep {
   text?: string;
   tools?: { name: string; arguments: Record<string, unknown> }[];
   delayMs?: number;
+  /**
+   * A file that holds this step's response until it exists, so a test lands a result while the
+   * request is in flight, at a point it chose rather than inside a fixed delay.
+   */
+  release?: string;
 }
+
+/** How long a `release` step waits for its file before it fails the request. */
+const RELEASE_WAIT_MS = 120_000;
 
 /** A chat message as OpenCode sent it (OpenAI chat format). */
 export interface ChatMessage {
@@ -90,6 +98,7 @@ export async function startScriptedProvider(options: {
         ? { text: TITLE }
         : (options.plan[n] ?? { text: `plan exhausted at request ${n}` });
     if (step.delayMs) await new Promise((done) => setTimeout(done, step.delayMs));
+    if (step.release) await released(step.release);
     if (body.stream) stream(res, model, n, step);
     else json(res, completion(model, n, step));
   }
@@ -105,6 +114,15 @@ export async function startScriptedProvider(options: {
         server.close(() => done());
       }),
   };
+}
+
+/** Until `path` exists; throws after `RELEASE_WAIT_MS`, which fails the request. */
+async function released(path: string): Promise<void> {
+  const started = Date.now();
+  while (!existsSync(path)) {
+    if (Date.now() - started > RELEASE_WAIT_MS) throw new Error(`${path} was not released`);
+    await new Promise((done) => setTimeout(done, 10));
+  }
 }
 
 function toolCalls(n: number, step: ScriptedStep) {
