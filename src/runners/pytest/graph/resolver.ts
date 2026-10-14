@@ -101,7 +101,8 @@ export class Resolver {
     const portions: AbsolutePath[] = [];
     for (const location of this.path.locations) {
       if (location.kind === "stdlib") {
-        if (location.names.has(name)) return portions.length > 0 ? namespace(portions) : STDLIB;
+        // A regular module anywhere on the path wins over namespace portions found before it.
+        if (location.names.has(name)) return STDLIB;
         continue;
       }
       const found = this.lookIn(location.dir, name, portions);
