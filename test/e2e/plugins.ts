@@ -151,7 +151,7 @@ export const PLUGINS: readonly Plugin[] = [CLAUDE_CODE, CODEX];
  * ship, as a marketplace install would not have them; a tracked file deleted
  * in the worktree is left out, as its commit would leave it out.
  */
-export function copyPlugin(name: PluginName | "pi", dest: string, repo: string = REPO_ROOT): void {
+export function copyPlugin(name: PluginName | "pi" | "opencode", dest: string, repo: string = REPO_ROOT): void {
   const prefix = `plugins/${name}/`;
   const listed = execFileSync("git", ["ls-files", "-z", "--", prefix], {
     cwd: repo,
