@@ -101,7 +101,7 @@ function runGit(cwd, args2, options = {}) {
   const okCodes = options.okCodes ?? [0];
   const env = { ...process.env, GIT_OPTIONAL_LOCKS: "0" };
   for (const name2 of REPOSITORY_VARIABLES) delete env[name2];
-  return new Promise((resolve19, reject) => {
+  return new Promise((resolve20, reject) => {
     const child = spawn("git", args2, { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
     const stdout = [];
     const stderr = [];
@@ -112,7 +112,7 @@ function runGit(cwd, args2, options = {}) {
     });
     child.on("close", (code) => {
       if (code !== null && okCodes.includes(code)) {
-        resolve19(Buffer.concat(stdout).toString("utf8"));
+        resolve20(Buffer.concat(stdout).toString("utf8"));
         return;
       }
       const message2 = Buffer.concat(stderr).toString("utf8").trim();
@@ -8645,7 +8645,7 @@ import { realpath as realpath3 } from "node:fs/promises";
 import { dirname as dirname11, join as join31, relative as relative2, sep as sep4 } from "node:path";
 async function linkTargets(root, paths) {
   const directories = /* @__PURE__ */ new Map();
-  const resolve19 = (directory) => {
+  const resolve20 = (directory) => {
     let real2 = directories.get(directory);
     if (real2 === void 0) {
       real2 = realpath3(join31(root, directory)).then(
@@ -8660,7 +8660,7 @@ async function linkTargets(root, paths) {
     [...paths].map(async (path) => {
       const directory = dirname11(path);
       if (directory === ".") return null;
-      const real2 = await resolve19(directory);
+      const real2 = await resolve20(directory);
       if (real2 === null || real2 === directory) return null;
       const target = real2 === "" ? path.slice(directory.length + 1) : `${real2}/${path.slice(directory.length + 1)}`;
       return kept(target) ? target : null;
@@ -10628,9 +10628,9 @@ var init_runner_work = __esm({
       /** Runs `task` under the lock once the runner work before it is done. */
       afterTier(task) {
         if (this.host.closed()) return Promise.reject(new Error("squeal scheduler: closed"));
-        return new Promise((resolve19, reject) => {
+        return new Promise((resolve20, reject) => {
           this.#tasks.push({
-            run: () => this.host.lock.run(task).then(resolve19, reject),
+            run: () => this.host.lock.run(task).then(resolve20, reject),
             cancel: () => reject(new Error("squeal scheduler: closed"))
           });
           this.host.pump();
@@ -11419,7 +11419,7 @@ var init_scheduler2 = __esm({
       }
       idle() {
         if (this.#isIdle()) return Promise.resolve();
-        return new Promise((resolve19) => this.#idle.push(resolve19));
+        return new Promise((resolve20) => this.#idle.push(resolve20));
       }
       slowPending() {
         if (this.#closed || !this.#ledger) return false;
@@ -11457,7 +11457,7 @@ var init_scheduler2 = __esm({
           if (this.#context) this.#retireSlow();
           if (this.#awaitingInstall) stopWaiting(this.options);
         });
-        for (const resolve19 of this.#idle.splice(0)) resolve19();
+        for (const resolve20 of this.#idle.splice(0)) resolve20();
       }
       /**
        * Runs tiers until the queue is empty, one at a time per lane (spec 001 D5
@@ -11557,7 +11557,7 @@ var init_scheduler2 = __esm({
             if (this.#reinstalled) this.#tellReinstall();
             const again = !this.#stalled || this.#asked;
             if (!this.#closed && again && this.#hasWork()) this.#pump();
-            else if (this.#isIdle()) for (const resolve19 of this.#idle.splice(0)) resolve19();
+            else if (this.#isIdle()) for (const resolve20 of this.#idle.splice(0)) resolve20();
           }
         })();
       }
@@ -11657,8 +11657,8 @@ var init_scheduler2 = __esm({
       /** Settles when `#notify` is called; at once when it was since the pump's last pass began. */
       #nextEvent() {
         if (this.#woken) return Promise.resolve();
-        return new Promise((resolve19) => {
-          this.#wake = resolve19;
+        return new Promise((resolve20) => {
+          this.#wake = resolve20;
         });
       }
       #notify() {
@@ -12708,7 +12708,7 @@ var init_handler = __esm({
             this._addToNodeFs(path, initialAdd, wh, depth + 1);
           }
         }).on(EV.ERROR, this._boundHandleError);
-        return new Promise((resolve19, reject) => {
+        return new Promise((resolve20, reject) => {
           if (!stream)
             return reject();
           stream.once(STR_END, () => {
@@ -12717,7 +12717,7 @@ var init_handler = __esm({
               return;
             }
             const wasThrottled = throttler ? throttler.clear() : false;
-            resolve19(void 0);
+            resolve20(void 0);
             previous.getChildren().filter((item) => {
               return item !== directory && !current2.has(item);
             }).forEach((item) => {
@@ -13599,7 +13599,7 @@ async function open3(spec, filter, listener) {
   watcher.on("error", (error) => {
     listener.onError(error instanceof Error ? error : new Error(String(error)));
   });
-  await new Promise((resolve19) => watcher.once("ready", () => resolve19()));
+  await new Promise((resolve20) => watcher.once("ready", () => resolve20()));
   return watcher;
 }
 function inNestedRepo(root, path) {
@@ -15622,19 +15622,19 @@ var init_gate = __esm({
       }
       async exclusive(fn) {
         if (this.#sections++ === 0) {
-          this.#clear = new Promise((resolve19) => {
-            this.#cleared = resolve19;
+          this.#clear = new Promise((resolve20) => {
+            this.#cleared = resolve20;
           });
         }
         const turn = this.#turn;
         let done = () => {
         };
-        this.#turn = new Promise((resolve19) => {
-          done = resolve19;
+        this.#turn = new Promise((resolve20) => {
+          done = resolve20;
         });
         try {
           await turn;
-          while (this.#holders > 0) await new Promise((resolve19) => this.#idle.push(resolve19));
+          while (this.#holders > 0) await new Promise((resolve20) => this.#idle.push(resolve20));
           return await fn();
         } finally {
           done();
@@ -15665,7 +15665,7 @@ var init_gate = __esm({
       }
       #leave() {
         if (--this.#holders > 0) return;
-        for (const resolve19 of this.#idle.splice(0)) resolve19();
+        for (const resolve20 of this.#idle.splice(0)) resolve20();
       }
     };
   }
@@ -16253,9 +16253,9 @@ async function execute(vitest, specs, timeoutMs, collector, signal2) {
 async function settleOrStop(run4, timeoutMs, signal2) {
   let timer;
   let onAbort;
-  const stop2 = new Promise((resolve19) => {
-    if (timeoutMs !== null) timer = setTimeout(() => resolve19("timeout"), timeoutMs);
-    onAbort = () => resolve19("abort");
+  const stop2 = new Promise((resolve20) => {
+    if (timeoutMs !== null) timer = setTimeout(() => resolve20("timeout"), timeoutMs);
+    onAbort = () => resolve20("abort");
     signal2?.addEventListener("abort", onAbort, { once: true });
   });
   try {
@@ -16275,8 +16275,8 @@ function abandon2(vitest, collector) {
 }
 async function settleWithin(promise, ms) {
   let timer;
-  const timeout = new Promise((resolve19) => {
-    timer = setTimeout(() => resolve19(null), ms);
+  const timeout = new Promise((resolve20) => {
+    timer = setTimeout(() => resolve20(null), ms);
   });
   try {
     return await Promise.race([promise, timeout]);
@@ -25325,7 +25325,7 @@ var require_CachedInputFileSystem = __commonJS({
 // node_modules/graceful-fs/polyfills.js
 var require_polyfills = __commonJS({
   "node_modules/graceful-fs/polyfills.js"(exports, module2) {
-    var constants3 = __require("constants");
+    var constants4 = __require("constants");
     var origCwd = process.cwd;
     var cwd = null;
     var platform = process.env.GRACEFUL_FS_PLATFORM || process.platform;
@@ -25349,7 +25349,7 @@ var require_polyfills = __commonJS({
     var chdir;
     module2.exports = patch;
     function patch(fs3) {
-      if (constants3.hasOwnProperty("O_SYMLINK") && process.version.match(/^v0\.6\.[0-2]|^v0\.5\./)) {
+      if (constants4.hasOwnProperty("O_SYMLINK") && process.version.match(/^v0\.6\.[0-2]|^v0\.5\./)) {
         patchLchmod(fs3);
       }
       if (!fs3.lutimes) {
@@ -25451,7 +25451,7 @@ var require_polyfills = __commonJS({
         fs4.lchmod = function(path, mode, callback2) {
           fs4.open(
             path,
-            constants3.O_WRONLY | constants3.O_SYMLINK,
+            constants4.O_WRONLY | constants4.O_SYMLINK,
             mode,
             function(err2, fd) {
               if (err2) {
@@ -25467,7 +25467,7 @@ var require_polyfills = __commonJS({
           );
         };
         fs4.lchmodSync = function(path, mode) {
-          var fd = fs4.openSync(path, constants3.O_WRONLY | constants3.O_SYMLINK, mode);
+          var fd = fs4.openSync(path, constants4.O_WRONLY | constants4.O_SYMLINK, mode);
           var threw = true;
           var ret;
           try {
@@ -25487,9 +25487,9 @@ var require_polyfills = __commonJS({
         };
       }
       function patchLutimes(fs4) {
-        if (constants3.hasOwnProperty("O_SYMLINK") && fs4.futimes) {
+        if (constants4.hasOwnProperty("O_SYMLINK") && fs4.futimes) {
           fs4.lutimes = function(path, at2, mt, cb) {
-            fs4.open(path, constants3.O_SYMLINK, function(er, fd) {
+            fs4.open(path, constants4.O_SYMLINK, function(er, fd) {
               if (er) {
                 if (cb) cb(er);
                 return;
@@ -25502,7 +25502,7 @@ var require_polyfills = __commonJS({
             });
           };
           fs4.lutimesSync = function(path, at2, mt) {
-            var fd = fs4.openSync(path, constants3.O_SYMLINK);
+            var fd = fs4.openSync(path, constants4.O_SYMLINK);
             var ret;
             var threw = true;
             try {
@@ -28004,7 +28004,7 @@ var require_ExtensionAliasPlugin = __commonJS({
           const isAliasString = typeof alias === "string";
           const sourceBase = source.slice(0, -extension.length);
           const relativePathBase = !useRequest && request.relativePath && request.relativePath.endsWith(extension) ? request.relativePath.slice(0, -extension.length) : null;
-          const resolve19 = (alias2, callback3, index) => {
+          const resolve20 = (alias2, callback3, index) => {
             const newValue = `${sourceBase}${alias2}`;
             const nextRequest = useRequest ? {
               ...request,
@@ -28046,11 +28046,11 @@ var require_ExtensionAliasPlugin = __commonJS({
             return callback2(null, null);
           };
           if (isAliasString) {
-            resolve19(alias, stoppingCallback);
+            resolve20(alias, stoppingCallback);
           } else if (alias.length > 1) {
-            forEachBail(alias, resolve19, stoppingCallback);
+            forEachBail(alias, resolve20, stoppingCallback);
           } else {
-            resolve19(alias[0], stoppingCallback);
+            resolve20(alias[0], stoppingCallback);
           }
         });
       }
@@ -30631,10 +30631,10 @@ var require_Resolver = __commonJS({
         * @returns {Promise<string | false>} result
         */
         (self, context, path, request, resolveContext) => {
-          const { promise, resolve: resolve19, reject } = Promise.withResolvers();
+          const { promise, resolve: resolve20, reject } = Promise.withResolvers();
           self.resolve(context, path, request, resolveContext, (err2, res) => {
             if (err2) reject(err2);
-            else resolve19(
+            else resolve20(
               /** @type {string | false} */
               res
             );
@@ -30650,10 +30650,10 @@ var require_Resolver = __commonJS({
         * @param {ResolveContext} resolveContext resolve context
         * @returns {Promise<string | false>} result
         */
-        (self, context, path, request, resolveContext) => new Promise((resolve19, reject) => {
+        (self, context, path, request, resolveContext) => new Promise((resolve20, reject) => {
           self.resolve(context, path, request, resolveContext, (err2, res) => {
             if (err2) reject(err2);
-            else resolve19(
+            else resolve20(
               /** @type {string | false} */
               res
             );
@@ -33433,7 +33433,7 @@ var require_lib2 = __commonJS({
         fileSystem: getNodeFileSystem()
       })
     );
-    var resolve19 = (
+    var resolve20 = (
       /**
        * @param {object | string | URL} context context
        * @param {string | URL} parent parent path
@@ -33612,7 +33612,7 @@ var require_lib2 = __commonJS({
         Object.freeze(obj)
       );
     };
-    module2.exports = mergeExports(resolve19, {
+    module2.exports = mergeExports(resolve20, {
       get sync() {
         return resolveSync;
       },
@@ -34120,16 +34120,16 @@ function startGroup(options) {
     } catch {
     }
   };
-  const exited = new Promise((resolve19) => {
+  const exited = new Promise((resolve20) => {
     child.once("error", (error) => {
       done = true;
-      resolve19({ code: null, signal: null, error: error.message });
+      resolve20({ code: null, signal: null, error: error.message });
     });
     child.once("exit", (code, signal2) => {
       if (done) return;
       done = true;
       kill("SIGKILL");
-      resolve19({ code, signal: signal2, error: null });
+      resolve20({ code, signal: signal2, error: null });
     });
   });
   return { exited, kill: (signal2) => done ? void 0 : kill(signal2) };
@@ -37053,13 +37053,13 @@ async function Module2(moduleArg = {}) {
       }
       readAsync = /* @__PURE__ */ __name(async (url) => {
         if (isFileURI(url)) {
-          return new Promise((resolve19, reject) => {
+          return new Promise((resolve20, reject) => {
             var xhr = new XMLHttpRequest();
             xhr.open("GET", url, true);
             xhr.responseType = "arraybuffer";
             xhr.onload = () => {
               if (xhr.status == 200 || xhr.status == 0 && xhr.response) {
-                resolve19(xhr.response);
+                resolve20(xhr.response);
                 return;
               }
               reject(xhr.status);
@@ -37255,9 +37255,9 @@ async function Module2(moduleArg = {}) {
     __name(receiveInstantiationResult, "receiveInstantiationResult");
     var info2 = getWasmImports();
     if (Module["instantiateWasm"]) {
-      return new Promise((resolve19, reject) => {
+      return new Promise((resolve20, reject) => {
         Module["instantiateWasm"](info2, (mod, inst) => {
-          resolve19(receiveInstance(mod, inst));
+          resolve20(receiveInstance(mod, inst));
         });
       });
     }
@@ -38590,8 +38590,8 @@ async function Module2(moduleArg = {}) {
   if (runtimeInitialized) {
     moduleRtn = Module;
   } else {
-    moduleRtn = new Promise((resolve19, reject) => {
-      readyPromiseResolve = resolve19;
+    moduleRtn = new Promise((resolve20, reject) => {
+      readyPromiseResolve = resolve20;
       readyPromiseReject = reject;
     });
   }
@@ -44804,16 +44804,16 @@ async function openAppServer(root, env, timeoutMs) {
 }
 function terminalAsk() {
   if (process.stdin.isTTY !== true || process.stdout.isTTY !== true) return null;
-  return (question) => new Promise((resolve19) => {
+  return (question) => new Promise((resolve20) => {
     const rl = createInterface({ input: process.stdin, output: process.stdout });
     let answered = false;
     rl.on("close", () => {
-      if (!answered) resolve19("");
+      if (!answered) resolve20("");
     });
     rl.question(question, (answer2) => {
       answered = true;
       rl.close();
-      resolve19(answer2);
+      resolve20(answer2);
     });
   });
 }
@@ -44858,7 +44858,7 @@ var AppServer = class {
     });
     this.failed.catch(() => {
     });
-    this.exited = new Promise((resolve19) => this.child.on("close", () => resolve19()));
+    this.exited = new Promise((resolve20) => this.child.on("close", () => resolve20()));
     this.child.on("error", (error) => {
       fail(
         new AppServerError(
@@ -44923,7 +44923,7 @@ var AppServer = class {
     const id2 = this.nextId++;
     let timer;
     const answered = new Promise(
-      (resolve19) => this.pending.set(id2, resolve19)
+      (resolve20) => this.pending.set(id2, resolve20)
     );
     const silent = new Promise((_, reject) => {
       timer = setTimeout(
@@ -45304,9 +45304,9 @@ async function createDaemonServer(socketPath, handle2) {
   return {
     socketPath,
     close() {
-      closing ??= new Promise((resolve19) => {
+      closing ??= new Promise((resolve20) => {
         if (stillBound(socketPath, bound)) rmSync3(socketPath, { force: true });
-        server.close(() => resolve19());
+        server.close(() => resolve20());
         for (const socket of connections2) socket.destroy();
       });
       return closing;
@@ -45319,11 +45319,11 @@ async function bindAt(server, socketPath) {
     Math.max(2, basename2(socketPath).length)
   );
   const staging = join22(dirname8(socketPath), name2);
-  await new Promise((resolve19, reject) => {
+  await new Promise((resolve20, reject) => {
     server.once("error", reject);
     server.listen(staging, () => {
       server.off("error", reject);
-      resolve19();
+      resolve20();
     });
   });
   try {
@@ -45332,7 +45332,7 @@ async function bindAt(server, socketPath) {
     renameSync2(staging, socketPath);
     return { dev, ino };
   } catch (error) {
-    await new Promise((resolve19) => server.close(() => resolve19()));
+    await new Promise((resolve20) => server.close(() => resolve20()));
     throw error;
   }
 }
@@ -45451,12 +45451,12 @@ async function inWorker(worker, identity, events) {
   let listening = false;
   let closing = false;
   let closed = null;
-  const listen = new Promise((resolve19, reject) => {
+  const listen = new Promise((resolve20, reject) => {
     worker.on("message", (message2) => {
       switch (message2.type) {
         case "listening":
           listening = true;
-          resolve19();
+          resolve20();
           return;
         case "failed":
           reject(new Error(message2.error));
@@ -45532,8 +45532,8 @@ async function inWorker(worker, identity, events) {
     async close() {
       if (closing) return;
       closing = true;
-      await new Promise((resolve19) => {
-        closed = resolve19;
+      await new Promise((resolve20) => {
+        closed = resolve20;
         post({ type: "close" });
       });
       await worker.terminate();
@@ -46624,7 +46624,7 @@ init_types();
 // src/core/daemon/client.ts
 import { createConnection } from "node:net";
 function requestDaemon(socketPath, request, timeoutMs) {
-  return new Promise((resolve19, reject) => {
+  return new Promise((resolve20, reject) => {
     const socket = createConnection(socketPath);
     let buffer = "";
     let settled = false;
@@ -46634,7 +46634,7 @@ function requestDaemon(socketPath, request, timeoutMs) {
       clearTimeout(timer);
       socket.destroy();
       if (error) reject(error);
-      else resolve19(response);
+      else resolve20(response);
     };
     const timer = setTimeout(
       () => settle(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
@@ -47129,8 +47129,8 @@ var Daemon = class {
   #registered = false;
   #resolveExit = () => {
   };
-  #exited = new Promise((resolve19) => {
-    this.#resolveExit = resolve19;
+  #exited = new Promise((resolve20) => {
+    this.#resolveExit = resolve20;
   });
   async start(desk) {
     const { root, worktreeId } = this.opened;
@@ -50474,7 +50474,7 @@ async function reportProgress(root, id2, io, running) {
   const isSlow = slowFiles(policy, policy.nodeTest);
   let last = "";
   while (running()) {
-    await new Promise((resolve19) => setTimeout(resolve19, PROGRESS_POLL_MS));
+    await new Promise((resolve20) => setTimeout(resolve20, PROGRESS_POLL_MS));
     if (!running()) return;
     const line = withStatusStore(root, {}, ({ store }) => {
       const open4 = parseCheckpointProgress(store.meta.get(checkpointMetaKey(id2)));
@@ -51069,9 +51069,21 @@ function processGone(pid) {
 // src/cli/update.ts
 init_fs();
 import { spawnSync as spawnSync2 } from "node:child_process";
-import { chmodSync as chmodSync3, copyFileSync, existsSync as existsSync33, readdirSync as readdirSync18, readFileSync as readFileSync33 } from "node:fs";
-import { join as join91 } from "node:path";
+import {
+  accessSync as accessSync2,
+  chmodSync as chmodSync3,
+  constants as constants3,
+  copyFileSync,
+  existsSync as existsSync33,
+  mkdtempSync as mkdtempSync4,
+  readdirSync as readdirSync18,
+  readFileSync as readFileSync33,
+  rmSync as rmSync13
+} from "node:fs";
+import { tmpdir as tmpdir6 } from "node:os";
+import { delimiter as delimiter4, join as join91, resolve as resolve19 } from "node:path";
 var NAMES2 = { "claude-code": "Claude Code", codex: "Codex" };
+var LATEST_INSTALL_SH = "https://github.com/hearsay-tools/squeal/releases/latest/download/install.sh";
 var UPDATE_COMMANDS = {
   "claude-code": [
     ["claude", "plugin", "marketplace", "update", MARKETPLACE_NAME],
@@ -51087,43 +51099,75 @@ function updateCommand(args2, io) {
   }
   const env = io.env ?? process.env;
   const cwd = io.cwd ?? process.cwd();
-  const before = readHarnesses(cwd, env).filter((h) => h.onPath && h.plugin !== null);
-  if (before.length === 0) {
-    const commands = readHarnesses(cwd, env).flatMap((h) => h.installCommands);
+  const targets = updateTargets(cwd, env, io);
+  if (targets.length === 0) {
+    const commands = [
+      ...readHarnesses(cwd, env).flatMap((h) => h.installCommands),
+      `curl -fsSL ${LATEST_INSTALL_SH} | sh`
+    ];
     io.stderr(
-      `squeal update: no harness on the PATH has ${PLUGIN_ID} installed. Install it:
+      `squeal update: no harness on the PATH has ${PLUGIN_ID} installed, and Pi has no Squeal package. Install it:
 ${commands.map((c) => `  ${c}
 `).join("")}`
     );
     return 1;
   }
-  const failed2 = /* @__PURE__ */ new Set();
-  for (const harness of before) {
-    if (!UPDATE_COMMANDS[harness.id].every((command) => run3(command, cwd, env, io))) {
-      failed2.add(harness.id);
-    }
-  }
+  const failed2 = new Set(targets.filter((t) => !t.update()));
   let ok = failed2.size === 0;
-  const after = new Map(readHarnesses(cwd, env).map((h) => [h.id, h.plugin?.version ?? null]));
-  for (const harness of before) {
-    const was = harness.plugin?.version;
-    const now = after.get(harness.id) ?? "not installed";
-    const how = now !== was ? `was ${was}` : failed2.has(harness.id) ? "not updated" : "up to date";
-    io.stdout(`${NAMES2[harness.id]}: ${PLUGIN_ID} ${now}, ${how}
+  const versions = /* @__PURE__ */ new Set();
+  for (const target of targets) {
+    const now = target.versionAfter();
+    versions.add(now);
+    const how = now !== target.version ? `was ${target.version}` : failed2.has(target) ? "not updated" : "up to date";
+    io.stdout(`${target.name} ${now ?? "not installed"}, ${how}
 `);
   }
-  const versions = new Set(before.map((h) => after.get(h.id)));
   if (versions.size > 1) {
     io.stdout("The harnesses still hold different versions; the launcher runs the newer.\n");
     ok = false;
   }
   recopyLauncher(env, io);
   if (ok) {
+    const pi = targets.some((t) => t.name.startsWith("Pi:")) ? " or /reload in Pi" : "";
     io.stdout(
-      "A running session keeps the version it loaded until it restarts, or until /reload-plugins in Claude Code.\n"
+      `A running session keeps the version it loaded until it restarts, or until /reload-plugins in Claude Code${pi}.
+`
     );
   }
   return ok ? 0 : 1;
+}
+function updateTargets(cwd, env, io) {
+  const after = () => new Map(readHarnesses(cwd, env).map((h) => [h.id, h.plugin?.version ?? null]));
+  const targets = readHarnesses(cwd, env).flatMap(
+    (h) => h.onPath && h.plugin !== null ? [
+      {
+        name: `${NAMES2[h.id]}: ${PLUGIN_ID}`,
+        version: h.plugin.version,
+        update: () => UPDATE_COMMANDS[h.id].every((command) => run3(command, cwd, env, io)),
+        versionAfter: () => after().get(h.id) ?? null
+      }
+    ] : []
+  );
+  const pi = piPackage(env);
+  if (onPath2("pi", env) && pi !== null) {
+    targets.push({
+      name: "Pi: Squeal",
+      version: pi.version,
+      update: () => updatePi(cwd, env, io),
+      versionAfter: () => piPackage(env)?.version ?? null
+    });
+  }
+  return targets;
+}
+function updatePi(cwd, env, io) {
+  const dir2 = mkdtempSync4(join91(tmpdir6(), "squeal-update-"));
+  try {
+    const script = join91(dir2, "install.sh");
+    const url = env.SQUEAL_INSTALL_SH ?? LATEST_INSTALL_SH;
+    return run3(["curl", "-fsSL", "-o", script, url], cwd, env, io) && run3(["sh", script, "--pi"], cwd, env, io);
+  } finally {
+    rmSync13(dir2, { recursive: true, force: true });
+  }
 }
 function run3(command, cwd, env, io) {
   const [file = "", ...args2] = command;
@@ -51197,7 +51241,51 @@ function pluginDirs(env) {
     PLUGIN_NAME
   );
   if (existsSync33(cache2)) for (const version2 of readdirSync18(cache2)) dirs.push(join91(cache2, version2));
+  const pi = piHome(env);
+  if (existsSync33(pi)) for (const version2 of readdirSync18(pi)) dirs.push(join91(pi, version2));
   return dirs;
+}
+function piHome(env) {
+  return join91(env.XDG_DATA_HOME || join91(env.HOME ?? "", ".local", "share"), "squeal", "pi");
+}
+function piPackage(env) {
+  const home = env.HOME ?? "";
+  let agent = env.PI_CODING_AGENT_DIR || join91(home, ".pi", "agent");
+  if (agent === "~") agent = home;
+  else if (agent.startsWith("~/")) agent = join91(home, agent.slice(2));
+  let packages = [];
+  try {
+    const file = JSON.parse(readFileSync33(join91(agent, "settings.json"), "utf8"));
+    if (isRecord(file)) packages = file.packages;
+  } catch {
+    return null;
+  }
+  const versions = [];
+  for (const entry3 of Array.isArray(packages) ? packages : []) {
+    const source = isRecord(entry3) ? entry3.source : entry3;
+    if (typeof source !== "string" || /^(npm|git|https?|ssh):/.test(source)) continue;
+    const dir2 = resolve19(agent, source);
+    if (resolve19(dir2, "..") !== resolve19(piHome(env))) continue;
+    try {
+      const manifest = JSON.parse(readFileSync33(join91(dir2, "package.json"), "utf8"));
+      if (isRecord(manifest) && typeof manifest.version === "string")
+        versions.push(manifest.version);
+    } catch {
+    }
+  }
+  const newest = versions.sort(compareVersions).at(-1);
+  return newest === void 0 ? null : { version: newest };
+}
+function onPath2(name2, env) {
+  return (env.PATH ?? "").split(delimiter4).some((dir2) => {
+    if (dir2 === "") return false;
+    try {
+      accessSync2(join91(dir2, name2), constants3.X_OK);
+      return true;
+    } catch {
+      return false;
+    }
+  });
 }
 
 // src/cli/main.ts
