@@ -117,33 +117,48 @@ describe("register", () => {
 });
 
 describe("end", () => {
-  const endOf = (r: SquealRepo | string, consumers: OcConsumer[]) =>
+  const endOf = (r: SquealRepo | string, sessions: string[], consumers: OcConsumer[] = []) =>
     end(
-      { kind: "end", consumers, worktree: typeof r === "string" ? r : r.root, pid: process.pid },
+      {
+        kind: "end",
+        sessions,
+        consumers,
+        worktree: typeof r === "string" ? r : r.root,
+        pid: process.pid,
+      },
       deps(),
     );
 
-  it("ends a root session: its main agent and every child", async () => {
+  it("ends a session whole: its main agent and every child", async () => {
     const r = squealRepo();
     await reg(r.root);
     await reg(r.root, child);
-    expect(await endOf(r, [ROOT])).toEqual({ ended: 1 });
+    expect(await endOf(r, [SESSION])).toEqual({ ended: 1 });
     expect(registered(r)).toBe(false);
     expect(registered(r, CHILD)).toBe(false);
   });
 
-  it("ends a child session alone", async () => {
+  it("unregisters a child consumer alone", async () => {
     const r = squealRepo();
     await reg(r.root);
     await reg(r.root, child);
-    await endOf(r, [child]);
+    await endOf(r, [], [child]);
     expect(registered(r, CHILD)).toBe(false);
     expect(registered(r)).toBe(true);
   });
 
+  it("unregisters a root consumer alone, leaving its children", async () => {
+    const r = squealRepo();
+    await reg(r.root);
+    await reg(r.root, child);
+    await endOf(r, [], [ROOT]);
+    expect(registered(r)).toBe(false);
+    expect(registered(r, CHILD)).toBe(true);
+  });
+
   it("is silent outside a git worktree and without a store", async () => {
-    expect(await endOf(outsideGit(), [ROOT])).toEqual({ ended: 0 });
-    expect(await endOf(noStore(), [ROOT])).toEqual({ ended: 1 });
+    expect(await endOf(outsideGit(), [SESSION])).toEqual({ ended: 0 });
+    expect(await endOf(noStore(), [SESSION], [child])).toEqual({ ended: 2 });
   });
 });
 

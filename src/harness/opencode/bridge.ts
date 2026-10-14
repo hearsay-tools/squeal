@@ -76,9 +76,9 @@ export async function register(
 }
 
 /**
- * `session.deleted` and `dispose` (D3): a consumer with an `agentId` is
- * unregistered alone (a child session); one without ends its whole session,
- * the main agent and every child, as 001's SessionEnd. Store writes only.
+ * `session.deleted` and `dispose` (D3): each of `sessions` ends whole, its
+ * main agent and every child, as 001's SessionEnd; each of `consumers` is
+ * unregistered alone. Store writes only. Answers how many it ended.
  */
 export async function end(
   request: Extract<OcRequest, { kind: "end" }>,
@@ -86,19 +86,16 @@ export async function end(
 ): Promise<OcAnswers["end"]> {
   const location = locate(request.worktree);
   if (location === null) return { ended: 0 };
-  let ended = 0;
-  for (const consumer of request.consumers) {
-    if (consumer.agentId === undefined) {
-      await endSession(consumerInput(consumer), [location], deps);
-    } else {
-      await withContext(consumerInput(consumer), location, deps, async (context) => {
-        await context.delivery.unregister(context.consumer);
-        return null;
-      });
-    }
-    ended++;
+  for (const sessionId of request.sessions) {
+    await endSession({ session_id: sessionId }, [location], deps);
   }
-  return { ended };
+  for (const consumer of request.consumers) {
+    await withContext(consumerInput(consumer), location, deps, async (context) => {
+      await context.delivery.unregister(context.consumer);
+      return null;
+    });
+  }
+  return { ended: request.sessions.length + request.consumers.length };
 }
 
 /** Runs one request on the shared code; the answer is of the request's kind. */
