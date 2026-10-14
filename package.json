@@ -40,7 +40,8 @@
     "chokidar": "^5.0.0",
     "enhanced-resolve": "^5.26.0",
     "es-module-lexer": "^3.0.3",
-    "smol-toml": "^1.9.1"
+    "smol-toml": "^1.9.1",
+    "web-tree-sitter": "^0.27.1"
   },
   "optionalDependencies": {
     "@parcel/watcher": "^2.6.0"
