@@ -64,9 +64,18 @@ export async function shutdownSession(session: PiSession, deps: HookDeps): Promi
   return null;
 }
 
-/** A tool boundary: the consumer's delta as text, registering one that is not (shared `deliver`). */
-export async function toolBoundary(session: PiSession, deps: HookDeps): Promise<string | null> {
+/**
+ * A tool boundary: the consumer's delta as text, registering one that is not
+ * (shared `deliver`); `edited` when a call of the batch may have changed files.
+ */
+export async function toolBoundary(
+  session: PiSession,
+  deps: HookDeps,
+  edited = true,
+): Promise<string | null> {
   const location = locate(session.cwd);
   if (location === null) return null;
-  return withContext(consumerInput(session), location, deps, (context) => deliver(context, deps));
+  return withContext(consumerInput(session), location, deps, (context) =>
+    deliver(context, deps, edited),
+  );
 }

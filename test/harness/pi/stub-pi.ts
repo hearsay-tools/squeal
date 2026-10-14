@@ -12,6 +12,8 @@ export interface StubPi {
   readonly sent: { message: PiCustomMessage; options: unknown }[];
   start(reason: SessionStartEvent["reason"], ctx: PiContext): Promise<void>;
   shutdown(reason: SessionShutdownEvent["reason"], ctx: PiContext): Promise<void>;
+  /** Fires `type` with `event`'s fields and resolves what the handler returned. */
+  fire(type: string, event: object, ctx: PiContext): Promise<unknown>;
 }
 
 export function stubPi(): StubPi {
@@ -25,19 +27,24 @@ export function stubPi(): StubPi {
     sendMessage(message: PiCustomMessage, options?: unknown) {
       sent.push({ message, options });
     },
-  } as PiApi;
-  const fire = async (type: string, event: object, ctx: PiContext) => {
-    await handlers.get(type)?.({ type, ...event }, ctx);
-  };
+  } as unknown as PiApi;
+  const fire = async (type: string, event: object, ctx: PiContext) =>
+    handlers.get(type)?.({ type, ...event }, ctx);
   return {
     api,
     sent,
-    start: (reason, ctx) => fire("session_start", { reason }, ctx),
-    shutdown: (reason, ctx) => fire("session_shutdown", { reason }, ctx),
+    fire,
+    start: async (reason, ctx) => {
+      await fire("session_start", { reason }, ctx);
+    },
+    shutdown: async (reason, ctx) => {
+      await fire("session_shutdown", { reason }, ctx);
+    },
   };
 }
 
-/** A handler context for session `sessionId` in `cwd`. */
-export function piContext(sessionId: string, cwd = "/"): PiContext {
-  return { mode: "print", cwd, sessionManager: { getSessionId: () => sessionId } };
+/** A handler context whose session id is `getSessionId()`'s, in `cwd`. */
+export function piContext(sessionId: string | (() => string), cwd = "/"): PiContext {
+  const getSessionId = typeof sessionId === "string" ? () => sessionId : sessionId;
+  return { mode: "print", cwd, sessionManager: { getSessionId } } as unknown as PiContext;
 }
