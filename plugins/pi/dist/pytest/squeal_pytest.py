@@ -19,12 +19,16 @@ flushed line per record so a killed process leaves a readable prefix:
 before any conftest. Each import writes `(importer, imported)` as files: the
 importer is the calling module's `__file__`, and the file of the collector or
 item in progress (`ctx`) stands in when the importer is not a project file,
-such as pytest importing a test module. The imported module's parent packages
-are edges too, since importing `a.b.c` runs `a` and `a.b`. Only files under
+such as pytest importing a test module. Outside every collector the nearest
+project frame stands in, and with none pytest imported a conftest or a plugin.
+The imported module's parent packages are edges too, since importing `a.b.c`
+runs `a` and `a.b`; from that module itself when nothing stands in, so a
+conftest's test packages belong to the files below it. Only files under
 `SQUEAL_PYTEST_ROOT` and outside the environment are written, once per
 `(ctx, importer, imported)`.
 """
 
+import atexit
 import builtins
 import importlib
 import json
@@ -38,9 +42,14 @@ _PREFIXES = tuple(
     {os.path.join(os.path.realpath(p), "") for p in (sys.prefix, sys.base_prefix, sys.exec_prefix)}
 )
 _out = open(os.environ.get("SQUEAL_PYTEST_EVENTS", os.devnull), "a", encoding="utf-8")
+# Closed at `pytest_unconfigure`, or at exit when pytest stops before it, so
+# no unclosed-file warning reaches a project that shows them (task 007-36).
+atexit.register(_out.close)
 
 
 def _write(record):
+    if _out.closed:
+        return
     _out.write(json.dumps(record, default=str) + "\n")
     _out.flush()
 
@@ -79,23 +88,53 @@ def _module_file(name):
     return None if module is None else getattr(module, "__file__", None)
 
 
-def _note(importer, ctx, target, fromlist):
-    """Writes the edges from `importer` (or `ctx`) to `target`, its parents and `fromlist` submodules."""
-    source = _project_file(importer)
+def _edge(ctx, source, imported):
+    key = (ctx, source, imported)
+    if key not in _seen:
+        _seen.add(key)
+        _write({"type": "import", "from": source, "to": imported, "ctx": ctx})
+
+
+def _calling_project_file(frame):
+    """The file of the nearest project frame above `frame`, or None."""
+    while frame is not None:
+        found = _project_file(frame.f_globals.get("__file__"))
+        if found is not None:
+            return found
+        frame = frame.f_back
+    return None
+
+
+def _note(importer, ctx, target, fromlist, frame=None):
+    """Writes the edges from `importer` (or `ctx`) to `target`, its parents and `fromlist` submodules.
+
+    With neither, pytest or a library imports `target` outside every
+    collector, at start-up or while a conftest loads. The importer is then
+    the nearest project frame of the `frame` stack, such as a project module
+    loading an entry point through `importlib.metadata` while the root
+    conftest imports it. With none, pytest itself imports a conftest or a
+    plugin: its parent packages are edges from `target`, so a conftest's test
+    packages belong to the files below it, never to the session (task 007-36).
+    """
     parts = target.split(".")
-    names = [".".join(parts[: i + 1]) for i in range(len(parts))]
+    parents = [".".join(parts[: i + 1]) for i in range(len(parts) - 1)]
+    names = [target]
     for item in fromlist or ():
         if isinstance(item, str) and item != "*":
             names.append(target + "." + item)
-    for name in names:
-        imported = _project_file(_module_file(name))
-        if imported is None:
-            continue
-        key = (ctx, source, imported)
-        if key in _seen:
-            continue
-        _seen.add(key)
-        _write({"type": "import", "from": source, "to": imported, "ctx": ctx})
+    above = [f for f in (_project_file(_module_file(n)) for n in parents) if f is not None]
+    files = [f for f in (_project_file(_module_file(n)) for n in names) if f is not None]
+    if not above and not files:
+        return
+    source = _project_file(importer)
+    if source is None and ctx is None and frame is not None:
+        source = _calling_project_file(frame.f_back)
+    leaf = _project_file(_module_file(target))
+    via = leaf if source is None and ctx is None and leaf is not None else source
+    for imported in above:
+        _edge(ctx, via, imported)
+    for imported in files:
+        _edge(ctx, source, imported)
 
 
 _original_import = builtins.__import__
@@ -107,7 +146,8 @@ def _import(name, globals=None, locals=None, fromlist=(), level=0):
     module = _original_import(name, globals, locals, fromlist, level)
     try:
         # A direct `__import__("a.b")` call passes no globals: the caller's frame has them.
-        caller = sys._getframe(1).f_globals if globals is None else globals
+        frame = sys._getframe(1)
+        caller = frame.f_globals if globals is None else globals
         if level:
             package = caller.get("__package__") or ""
             target = importlib._bootstrap._resolve_name(name, package, level) if name else package
@@ -115,7 +155,7 @@ def _import(name, globals=None, locals=None, fromlist=(), level=0):
             target = getattr(module, "__name__", name)
         else:
             target = name
-        _note(caller.get("__file__"), _ctx[0], target, fromlist)
+        _note(caller.get("__file__"), _ctx[0], target, fromlist, frame)
     except Exception:
         pass
     return module
@@ -125,8 +165,8 @@ def _import_module(name, package=None):
     __tracebackhide__ = True
     module = _original_import_module(name, package)
     try:
-        caller = sys._getframe(1).f_globals
-        _note(caller.get("__file__"), _ctx[0], module.__name__, ())
+        frame = sys._getframe(1)
+        _note(frame.f_globals.get("__file__"), _ctx[0], module.__name__, (), frame)
     except Exception:
         pass
     return module
@@ -287,3 +327,8 @@ def pytest_warning_recorded(warning_message, when, nodeid, location):
 @pytest.hookimpl(trylast=True)
 def pytest_sessionfinish(session, exitstatus):
     _write({"type": "session", "exitstatus": int(exitstatus)})
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_unconfigure(config):
+    _out.close()
