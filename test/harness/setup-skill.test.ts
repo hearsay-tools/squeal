@@ -67,6 +67,13 @@ describe("the setup skill", () => {
     );
   });
 
+  // Row 005-47: cezar's hand-written Squeal paragraph got a second, managed one beside it.
+  it("shows the user a file's Squeal instructions outside the block", () => {
+    expect(body).toContain(
+      "When the plan's `squealMentions` names a line, that file already holds Squeal instructions outside the block: show the user that line with the block question",
+    );
+  });
+
   it("finds the CLI in each harness", () => {
     expect(body).toContain(`\`"\${CLAUDE_PLUGIN_ROOT}/bin/squeal"\``);
     expect(body).toContain(
