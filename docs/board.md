@@ -980,7 +980,7 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 | 008-13 status and pull credit under OpenCode | done (integrated for 0.1.178, not landed) | D2 `shell.env` variables, D7: pull credit for root and child, the `OpenCode:` status line. | Both D7 causes tested; root and child pulls credited; other harnesses' status tests unchanged. |
 | 008-14 install and update through OpenCode | done (integrated for 0.1.178, not landed) | D1 as amended: `install.sh` OpenCode step with the `current` link, update, uninstall, `squeal update`, the launcher's search. | Install, reinstall, update with kept directories and uninstall tested; never `--force`, never an OpenCode config edit. |
 | 008-15 review of wave 0 | done: FAIL at eae020fc, four blockers (`reviews/wave-0.md`); B1 to B4, S1, S2, N1 folded into 008-12 | `/reviewer` over `c12dc371~1..eae020fc`: deadlines, no `node:sqlite` in the plugin, the fast path, D2 identity, `runOpenCode` isolation, the latency test. | `reviews/wave-0.md` committed. |
-| 008-16 review of wave 1, re-review of B1 to B4 | running | `/reviewer` over wave 1 as integrated; the last round on `reviews/wave-0.md` B1 to B4. | `reviews/wave-1.md` committed. |
+| 008-16 review of wave 1, re-review of B1 to B4 | running (worker d519fab8, codex gpt-6.1-sol high) | `/reviewer` over wave 1 as integrated; the last round on `reviews/wave-0.md` B1 to B4. | `reviews/wave-1.md` committed. |
 
 ### Wave 4: dogfooding repairs (from `lessons.md`, 007-18)
 
