@@ -52,7 +52,9 @@ const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
  */
 function gatedStop(report: string) {
   const dir = tempDir("squeal-oc-gate-");
-  const [entry, began, gate] = ["stop.mjs", "began", "release"].map((name) => join(dir, name));
+  const entry = join(dir, "stop.mjs");
+  const began = join(dir, "began");
+  const gate = join(dir, "release");
   writeFileSync(
     entry,
     `import { existsSync, readFileSync, writeFileSync } from "node:fs";
