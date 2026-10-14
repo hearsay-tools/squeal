@@ -22,6 +22,13 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
+      # Spec 007: the pytest fixtures sync uv environments on both Pythons; on CI an absent
+      # uv or Python fails those tests instead of skipping them.
+      - uses: astral-sh/setup-uv@v10
+        with:
+          version: "0.12.2"
+      - name: Pythons for the pytest fixtures
+        run: uv python install 3.10 3.13
       - name: Lint and format
         run: npx biome check .
       - name: Typecheck
