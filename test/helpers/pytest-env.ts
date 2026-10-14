@@ -8,7 +8,10 @@ import type { TestContext } from "vitest";
  * uv environments for the pytest fixtures (spec 007 Testing). A fixture is copied to a
  * temp directory and synced there, so no `.venv`, `__pycache__` or `.pytest_cache`
  * reaches the repository tree. uv keeps its own cache and managed Pythons; it never
- * reads the user's uv config, never uses a system Python and never downloads one.
+ * reads the user's uv config, never uses a system Python and never downloads one. It
+ * hardlinks packages from its cache, as on CI's ext4 runners (task 007-28): every
+ * environment then shares those inodes, and a sync elsewhere moves their ctime.
+ * A copy-on-write filesystem would otherwise clone them, and hide that.
  */
 
 export type PythonVersion = "3.10" | "3.13";
@@ -45,6 +48,7 @@ export function pythonEnv(): NodeJS.ProcessEnv {
     UV_NO_CONFIG: "1",
     UV_PYTHON_PREFERENCE: "only-managed",
     UV_PYTHON_DOWNLOADS: "never",
+    UV_LINK_MODE: "hardlink",
     PYTHONDONTWRITEBYTECODE: "1",
     PYTHONNOUSERSITE: "1",
   };
