@@ -7070,11 +7070,31 @@ function withheldForTouch(report2, touched) {
 ${reason2}`
   };
 }
+function withholdNote(touched, files2, retry) {
+  const paths = listPaths(touched);
+  const ran = listPaths(files2.map(({ file }) => file.ref.path));
+  return retry ? `squeal: ${paths} was written while ${ran} ran and ended as it was; the run is withheld and runs once more (tasks 001-168, 007-30)` : `squeal: ${paths} was written during 2 runs in a row of ${ran} and ended as it was; ${ran} stays unknown until an input changes, so write it outside the worktree or under an ignored path, or declare it (tasks 001-168, 007-30)`;
+}
+var Withholds;
 var init_stability = __esm({
   "src/core/scheduler/stability.ts"() {
     "use strict";
     init_hash();
     init_revision();
+    init_notes2();
+    Withholds = class {
+      #keys = /* @__PURE__ */ new Map();
+      /** Records the withhold of `files`; whether their tier runs once more. */
+      retry(files2) {
+        const again = files2.some(({ file, key: key2 }) => this.#keys.get(file.id) !== key2);
+        for (const { file, key: key2 } of files2) this.#keys.set(file.id, key2);
+        return again;
+      }
+      /** `files` were recorded unwithheld: their withholds are no longer in a row. */
+      clear(files2) {
+        for (const { file } of files2) this.#keys.delete(file.id);
+      }
+    };
   }
 });
 
@@ -11216,6 +11236,8 @@ var init_scheduler2 = __esm({
       #inFlight = /* @__PURE__ */ new Map();
       /** A `run --all` with `observeIgnored` (task 001-307). */
       #warmUp = new WarmUp();
+      /** Task 007-30: files the completion barrier withheld, so a withheld tier runs once more. */
+      #withholds = new Withholds();
       /** Something the pump waits for happened: a tier ended, runner work drained, a batch or request came. */
       #woken = false;
       #wake = null;
@@ -11570,6 +11592,7 @@ var init_scheduler2 = __esm({
         const { context, ledger } = this.#started();
         const done = (async () => {
           let recorded2 = false;
+          let withheld = null;
           try {
             const ran = await executeTier(context, tier, this.#warmUp.observes(tier));
             const ignored = await this.#warmUp.read(context, tier, ran);
@@ -11581,6 +11604,9 @@ var init_scheduler2 = __esm({
               const observed = environment === void 0 || read4 === void 0 ? read4 : { ...read4, environment };
               const touched = [.../* @__PURE__ */ new Set([...inputs2.touched, ...observed?.touched ?? []])].sort();
               const report2 = withheldForTouch(ran, touched);
+              const retry = touched.length > 0 && this.#withholds.retry(tier.files);
+              if (touched.length === 0) this.#withholds.clear(tier.files);
+              else withheld = withholdNote(touched, tier.files, retry);
               return context.store.transaction(() => {
                 this.#warmUp.record(context, ignored);
                 const result = recordTier(
@@ -11589,7 +11615,7 @@ var init_scheduler2 = __esm({
                   tier,
                   report2,
                   inputs2.changed,
-                  installMoved,
+                  installMoved || retry,
                   observed
                 );
                 if (slow === null) forgetSlowRuns(context, ledger, tier);
@@ -11598,6 +11624,7 @@ var init_scheduler2 = __esm({
               });
             });
             recorded2 = true;
+            if (withheld !== null) this.#note(withheld);
             slow?.slot.release();
             if (moved2.length > 0) await this.#reconcilePaths(moved2);
             if (slow !== null) await this.#releaseIfDrained(tier.lane);
