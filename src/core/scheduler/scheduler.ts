@@ -522,8 +522,12 @@ class TierScheduler implements Scheduler {
             ];
             withheld.push(...notes.filter((note) => note !== null));
           }
-          const exhausted = withhold?.exhausted ?? [];
-          const again = (withhold?.again.length ?? 0) > 0;
+          // Only the first withholds are queued again; the exhausted files, forced or not, record
+          // the withheld report and are `unknown` in the same commit (review 007-33, B1).
+          const requeue =
+            installMoved || withhold === null
+              ? installMoved
+              : new Set(withhold.again.map(({ file }) => file.id));
           // Spec 004 D8: a slow run's artifact and activity go with its results (review wave 2, B1, B2).
           return context.store.transaction(() => {
             this.#warmUp.record(context, ignored);
@@ -533,15 +537,9 @@ class TierScheduler implements Scheduler {
               tier,
               report,
               inputs.changed,
-              installMoved || again,
+              requeue,
               observed,
             );
-            // The tier was queued again for its first withholds: its exhausted files are not.
-            if (again && !installMoved && exhausted.length > 0) {
-              const held = exhausted.filter(({ file }) => ledger.files.get(file.id) === file);
-              ledger.markUnknown(held, report.failure ?? `run ${report.end}`);
-              ledger.commit();
-            }
             if (slow === null) forgetSlowRuns(context, ledger, tier);
             else this.#slow.recorded(slow, ledger);
             // The runner hears the touches too, so its next run reads the disk again.
