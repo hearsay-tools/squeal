@@ -47,3 +47,15 @@ Use /worker. Outcome: an OpenCode session that starts in a repository with no st
 - Seam: `OcAnswers.after` (and `prompt`) in `src/harness/opencode/protocol.ts` carry `primer` and `stopWaitMs` when the bridge registered or found the consumer; `hooks.ts` takes them as `register()` does. First edit: a `hooks` unit test where `register` answers `registered: false`, `after` answers a primer, and the next `experimental.chat.system.transform` carries it.
 - Owns: `src/harness/opencode/**` except `bridge-client.ts`'s `bridgeStart`, `test/harness/opencode/**`. Leaves alone: `test/e2e/**`, `test/helpers/opencode.ts` (008-19). Do not commit `plugins/*/dist`, raise the version or the key format.
 - Done when: the unit test fails before and passes after; a real-OpenCode run through `runOpenCode` in a fresh repository whose second model request carries the primer; lint, typecheck, the opencode tests green.
+
+## 008-23 review of `cand/0.1.184` (wave 2)
+
+Use /reviewer. Outcome: `reviews/wave-2.md` committed with a verdict on the exact candidate SHA the spawn names. Every finding is labelled proven, plausible or unverified, and it is this candidate's landing gate (`docs/process.md` step 6).
+
+- Range: the spawn names it, from `origin/main` to the candidate: 008-21, 008-22 and 008-19 cherry-picked, the coordinator's test commit, then the version and bundle commit. Spec: D2 to D5, goals 1 to 9 as amended; `reviews/wave-1.5.md`.
+- Questions:
+  - 008-21: does `bridgeStart`'s `--import data:` preload restore `NODE_USE_ENV_PROXY` exactly, with an empty value and with none, for what the bridge spawns, including the daemon and the tests it runs (001 D11)? Can it break the bridge on Node 22.13?
+  - 008-22: can `after` or `prompt` now carry a primer for a consumer that does not exist, or one stale against D3's cap? Is the second store open per user message within D4's deadline?
+  - 008-19: does the e2e run the shipped copy, never the source tree, and stay off the real `HOME`?
+  - The coordinator's change to `opencode-hooks.test.ts:131`: is weakening the root-consumer assertion honest given 001 D10's sweep?
+- Writes only `docs/specifications/008-opencode-adapter/reviews/wave-2.md`. Runs real OpenCode only through `runOpenCode`. Takes the full-suite verdict from `squeal run --all --wait`; any independent full run uses `--maxWorkers=4` under `flock /run/user/$(id -u)/squeal-full-run.lock`.
