@@ -186,12 +186,17 @@ export interface EnvironmentParts {
  * worktree path written as `<worktree>`, so two worktrees synced from one
  * lock key alike; not `ready`, it carries the state's note. `files` are the
  * paths the core hashes and watches: the config file, the plugins' closure,
- * and, when the environment sits in the worktree, `<env>/pyvenv.cfg` and
- * pytest's own `__init__.py` in it, so the environment's appearance, a
- * recreated environment and pytest's install are each a batch (D2:
- * "re-checked when `<env>/pyvenv.cfg` appears or changes"). Both hash
- * alike in every worktree synced from one lock. `packages` is empty: no
- * JavaScript lockfile keys a Python test.
+ * and, when the environment sits in the worktree, `<env>/pyvenv.cfg`, so the
+ * environment's appearance and a recreated environment are each a batch
+ * (D2: "re-checked when `<env>/pyvenv.cfg` appears or changes"); it hashes
+ * alike in every worktree synced from one lock. No site-packages file is
+ * among them (task 007-28): uv hardlinks those from its cache wherever it
+ * cannot clone them, so every environment synced from the cache shares
+ * their inodes, and a sync or removal anywhere moves their ctime, a touch
+ * that withholds every run in flight (task 001-168). pytest's install is
+ * found by `recheck` instead, whose fingerprint lists site-packages
+ * (task 007-26). `packages` is empty: no JavaScript lockfile keys a Python
+ * test.
  */
 export function projectEnvironment(parts: EnvironmentParts): RunnerEnvironment {
   const { root, project, environment } = parts;
@@ -206,11 +211,7 @@ export function projectEnvironment(parts: EnvironmentParts): RunnerEnvironment {
     ...(ready ? { hash: environment.hash } : { note: environment.note }),
   };
   const files = new Set(parts.pluginPaths);
-  for (const path of [
-    parts.configFile,
-    join(parts.envDir, "pyvenv.cfg"),
-    pytestMarker(parts.envDir),
-  ]) {
+  for (const path of [parts.configFile, join(parts.envDir, "pyvenv.cfg")]) {
     const inside = path === null ? null : toRelative(root, path);
     if (inside !== null) files.add(inside);
   }
