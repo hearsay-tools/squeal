@@ -185,6 +185,29 @@ describe("chat.message", () => {
     expect(bridge.requests()).toEqual([]);
   }, 10_000);
 
+  it("never guesses a root when the lookup fails, and looks up again at the next message (review 008-15)", async () => {
+    const bridge = stubBridge();
+    const client = stubClient([{ id: ROOT_ID }, { id: CHILD_ID, parentID: ROOT_ID }]);
+    const get = client.session.get;
+    client.session.get = async () => {
+      throw new Error("server busy");
+    };
+    const hooks = await startPlugin(squealDir(), client, { entry: bridge.entry });
+    const first = chatOutput(CHILD_ID);
+    await hook(hooks, "chat.message")({ sessionID: CHILD_ID }, first);
+    const env = { env: {} as Record<string, string> };
+    await hook(hooks, "shell.env")({ cwd: "/", sessionID: CHILD_ID }, env);
+    expect(first.parts).toHaveLength(1);
+    expect(bridge.requests()).toEqual([]);
+    expect(env.env).toEqual({ PATH: "/pkg/bin:/usr/bin" });
+
+    client.session.get = get;
+    await hook(hooks, "chat.message")({ sessionID: CHILD_ID }, chatOutput(CHILD_ID));
+    expect(bridge.requests().map((r) => r.kind === "register" && r.consumer)).toEqual([
+      { sessionId: ROOT_ID, agentId: CHILD_ID },
+    ]);
+  });
+
   it("never throws: a failing bridge, a rejecting client, a frozen output", async () => {
     const client = stubClient();
     client.session.get = async () => {

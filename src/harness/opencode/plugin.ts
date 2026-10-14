@@ -153,25 +153,34 @@ function hooks(
     return callBridge<OcAnswers[K]>(bridge, { kind, ...request, worktree, pid }, directory, left);
   };
 
-  /** The parent of `id`, from the map or one `client.session.get`; `null` for a root or an unknown. */
-  const parentOf = async (id: string, deadline: Deadline): Promise<string | null> => {
+  /**
+   * The parent of `id`, from the map or one `client.session.get`: `null` for a
+   * root, `undefined` when the lookup failed or missed the deadline, which is
+   * not remembered, so the next hook looks again (review 008-15).
+   */
+  const parentOf = async (id: string, deadline: Deadline): Promise<string | null | undefined> => {
     const known = parents.get(id);
     if (known !== undefined) return known;
     const result = await within<{ data?: OcSessionInfo }>(
       client.session.get({ path: { id } }),
       deadline(),
     );
-    if (result?.data === undefined) return null;
+    if (result?.data === undefined) return undefined;
     const parent = result.data.parentID ?? null;
     parents.set(id, parent);
     return parent;
   };
 
-  /** D2: a root session's consumer is `(id, main)`; a child's is `(root, child)`. */
-  const consumerOf = async (sessionId: string, deadline: Deadline): Promise<OcConsumer> => {
+  /**
+   * D2: a root session's consumer is `(id, main)`; a child's is `(root, child)`.
+   * `null` when a lookup on the way failed: a guess of root would register a
+   * child as `(child, main)` (review 008-15), so the hook does nothing.
+   */
+  const consumerOf = async (sessionId: string, deadline: Deadline): Promise<OcConsumer | null> => {
     let root = sessionId;
     for (let depth = 0; depth < MAX_DEPTH; depth++) {
       const parent = await parentOf(root, deadline);
+      if (parent === undefined) return null;
       if (parent === null) break;
       root = parent;
     }
@@ -211,6 +220,7 @@ function hooks(
           parents.set(info.id, info.parentID ?? null);
           const consumer = await consumerOf(info.id, deadline);
           parents.delete(info.id);
+          if (consumer === null) return;
           for (const [key, c] of registered) {
             if (
               key === keyOf(consumer) ||
@@ -234,6 +244,7 @@ function hooks(
         if (disposed) return;
         const deadline = deadlineIn(EVENT_DEADLINE_MS);
         const consumer = await consumerOf(input.sessionID, deadline);
+        if (consumer === null) return;
         const key = keyOf(consumer);
         if (registered.has(key)) return;
         const inFlight = registering.get(key);
@@ -260,6 +271,7 @@ function hooks(
           path === undefined || path === "" ? options.bin : `${options.bin}${delimiter}${path}`;
         if (input.sessionID === undefined) return;
         const consumer = await consumerOf(input.sessionID, deadlineIn(EVENT_DEADLINE_MS));
+        if (consumer === null) return;
         output.env.OPENCODE_SESSION_ID = consumer.sessionId;
         output.env.OPENCODE_AGENT_ID = consumer.agentId ?? MAIN_AGENT;
       } catch {
