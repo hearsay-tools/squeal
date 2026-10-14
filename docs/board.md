@@ -939,8 +939,8 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 008-10 plugin, bridge and the OpenCode package | running (worker 2c75d8ea, opus high) | D1 layout, D2, D4, D6, D8; D3's registration, `session.deleted` and `dispose`: `src/harness/opencode/`, `plugins/opencode/`, a per-event `node` bridge with deadlines, the in-process fast path, `build:plugin`. | Stalled or failing bridge is silent within its deadline; the plugin bundle has no `node:sqlite`; bridge p95 recorded with load; full suite green. |
-| 008-11 scripted-provider fixture and wave-0 checks | running (worker 96a798b2, opus high) | Testing: an OpenAI-compatible scripted provider, `test/helpers/opencode.ts`, OpenCode 1.18.35 pinned; as `squeal-e2e`: isolation, offline provider, open questions 1 (update without remove) and 2 (`chat.message` part). | Fixture test green under `run` and `serve` in CI on Node 22 and 24; `research/wave-0-checks.md` committed. |
+| 008-10 plugin, bridge and the OpenCode package | done (0.1.176; bridge cost open question 3 to 008-12) | D1 layout, D2, D4, D6, D8; D3's registration, `session.deleted` and `dispose`: `src/harness/opencode/`, `plugins/opencode/`, a per-event `node` bridge with deadlines, the in-process fast path, `build:plugin`. | Stalled or failing bridge is silent within its deadline; the plugin bundle has no `node:sqlite`; bridge p95 recorded with load; full suite green. |
+| 008-11 scripted-provider fixture and wave-0 checks | done (0.1.176; open questions 1 and 2 closed, `research/wave-0-checks.md`) | Testing: an OpenAI-compatible scripted provider, `test/helpers/opencode.ts`, OpenCode 1.18.35 pinned; as `squeal-e2e`: isolation, offline provider, open questions 1 (update without remove) and 2 (`chat.message` part). | Fixture test green under `run` and `serve` in CI on Node 22 and 24; `research/wave-0-checks.md` committed. |
 
 ## Later
 
