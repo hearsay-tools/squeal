@@ -1,0 +1,95 @@
+import { spawn } from "node:child_process";
+
+/*
+ * Spec 008 D4: the plugin's side of the bridge. It runs in OpenCode's Bun, so
+ * it imports only `node:child_process` here (the bundle's import list is
+ * asserted by a build test).
+ */
+
+/** How to start the bridge: a Node of Squeal's minimum, and the bridge entry it runs. */
+export interface BridgeCommand {
+  readonly node: string;
+  readonly entry: string;
+}
+
+/**
+ * Runs one bridge process: `node <entry>` in its own process group with cwd
+ * `cwd`, `event` written to its stdin as JSON, and its stdout read as one JSON
+ * answer. Resolves the answer, or `null` when the bridge misses `deadlineMs`,
+ * exits non-zero, writes no or invalid JSON, or cannot be spawned. Never
+ * rejects. At a missed deadline the whole group is killed: OpenCode awaits
+ * plugin hooks with no timeout, so this deadline is the hook's only bound.
+ *
+ * Nothing it holds keeps the host alive past the call: the deadline timer is
+ * cleared when the call settles, and the child and its pipes are unreferenced
+ * once it has.
+ */
+export function callBridge<A>(
+  command: BridgeCommand,
+  event: object,
+  cwd: string,
+  deadlineMs: number,
+): Promise<A | null> {
+  return new Promise((resolve) => {
+    let settled = false;
+    let exited = false;
+    const out: Buffer[] = [];
+    let child: ReturnType<typeof spawn>;
+    try {
+      child = spawn(command.node, ["--disable-warning=ExperimentalWarning", command.entry], {
+        cwd,
+        detached: true,
+        stdio: ["pipe", "pipe", "ignore"],
+      });
+    } catch {
+      resolve(null);
+      return;
+    }
+    const killGroup = () => {
+      // Only while the leader lives: its pid is then the group's, and cannot name another.
+      if (exited || child.pid === undefined) return;
+      try {
+        process.kill(-child.pid, "SIGKILL");
+      } catch {
+        // Already gone.
+      }
+    };
+    const settle = (answer: A | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (answer === null) killGroup();
+      child.stdout?.destroy();
+      child.stdin?.destroy();
+      child.unref();
+      resolve(answer);
+    };
+    const timer = setTimeout(() => settle(null), deadlineMs);
+    child.on("error", () => settle(null));
+    child.stdout?.on("data", (chunk: Buffer) => out.push(chunk));
+    child.stdout?.on("error", () => settle(null));
+    child.stdin?.on("error", () => {
+      // EPIPE when the bridge exits before reading: its exit settles the call.
+    });
+    child.on("exit", () => {
+      exited = true;
+    });
+    child.on("close", (code) => {
+      exited = true;
+      if (code !== 0) return settle(null);
+      settle(parseAnswer<A>(Buffer.concat(out).toString("utf8")));
+    });
+    child.stdin?.end(JSON.stringify(event));
+  });
+}
+
+/** The bridge prints `{"answer": ...}`; anything else is no answer. */
+function parseAnswer<A>(stdout: string): A | null {
+  try {
+    const parsed: unknown = JSON.parse(stdout);
+    if (typeof parsed !== "object" || parsed === null || !("answer" in parsed)) return null;
+    return (parsed as { answer: A }).answer;
+  } catch {
+    return null;
+  }
+}
