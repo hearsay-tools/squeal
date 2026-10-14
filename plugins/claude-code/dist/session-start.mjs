@@ -873,10 +873,10 @@ function artifactSources(store, keys, view) {
   };
 }
 function undeclaredClosures(store, keys, view) {
-  const listed = new Set(keys.map((row) => testFileId(row.testFile)));
+  const listed2 = new Set(keys.map((row) => testFileId(row.testFile)));
   const paths = /* @__PURE__ */ new Set();
   for (const record of store.testFiles.list()) {
-    if (!listed.has(testFileId(record.testFile))) continue;
+    if (!listed2.has(testFileId(record.testFile))) continue;
     const declared = createInputMatcher(view.artifactFor(record.testFile.path));
     for (const path of record.closure.paths) if (!declared(path)) paths.add(path);
   }
@@ -4109,10 +4109,10 @@ function headerLine(header, command) {
   const inheritedCount = header.inheritedCount ?? 0;
   const inherited = inheritedCount === 0 ? "" : ` Inherited: ${inheritedCount} of ${counts.current} current${partsSuffix(inheritedCount, header.inheritedFileLevelCount)}.`;
   const withoutChecks = files2.pending + files2.unknown === 0 ? "" : ` Test files without checks: ${files2.pending} pending, ${files2.unknown} unknown.`;
-  const listed = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
+  const listed2 = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
   const runnerPart = header.runnerPartPending === true ? ` ${capitalize(runnerPartText(revision))} is pending; test files it adds are not counted yet.` : "";
   const awaiting = awaitingInstallSentence(header);
-  return `Revision ${revision}${changedText(header.changedPaths)}: ${countsText(counts, fileLevel)}.${inherited}${withoutChecks}${listed}${runnerPart} Full-suite checkpoint: ${fullSuiteText(header, command)}.` + livenessSentence(header.daemon, revision) + (awaiting === null ? installSentences(header) : ` ${awaiting}`);
+  return `Revision ${revision}${changedText(header.changedPaths)}: ${countsText(counts, fileLevel)}.${inherited}${withoutChecks}${listed2}${runnerPart} Full-suite checkpoint: ${fullSuiteText(header, command)}.` + livenessSentence(header.daemon, revision) + (awaiting === null ? installSentences(header) : ` ${awaiting}`);
 }
 function countsText(counts, fileLevel) {
   return ["current", "pending", "stale", "unknown"].map((validity) => countedText(counts[validity], validity, fileLevel?.[validity])).join(", ");
@@ -4241,21 +4241,30 @@ var CONFIG_EXTENSIONS = [".ts", ".mts", ".cts", ".js", ".mjs", ".cjs"];
 function coverageOf(context) {
   const policy = readPolicy(context.root);
   const keys = context.store.testFileKeys.list(context.consumer.worktreeId);
-  const nodeTestNames = new Set(policy.nodeTest.map((project) => project.name));
-  const vitest = policy.nodeTest.length === 0 || vitestDetected(context.root);
-  const listed = vitest ? keys : keys.filter((row) => nodeTestNames.has(row.testFile.project));
+  const others = [...policy.nodeTest, ...policy.pytest];
+  const otherNames = new Set(others.map((project) => project.name));
+  const vitest = others.length === 0 || vitestDetected(context.root);
+  const listed2 = vitest ? keys : keys.filter((row) => otherNames.has(row.testFile.project));
   const view = slowPolicyView(policy);
   return {
     vitest,
     vitestConfig: vitest ? vitestConfig(context.root) : null,
     vitestExcluded: vitest ? policy.vitest.excludeProjects : [],
-    nodeTest: policy.nodeTest.map(({ name, cwd, include }) => ({
-      name,
-      include: include.map((glob) => cwd === void 0 ? glob : posix4.join(cwd, glob))
-    })),
+    nodeTest: policy.nodeTest.map(fromRoot),
+    pytest: policy.pytest.map(fromRoot),
     slow: view === null ? null : {
-      files: keys.length === 0 ? null : listed.filter((row) => view.isSlow(row.testFile)).length
+      files: keys.length === 0 ? null : listed2.filter((row) => view.isSlow(row.testFile)).length
     }
+  };
+}
+function fromRoot({
+  name,
+  cwd,
+  include
+}) {
+  return {
+    name,
+    include: include.map((glob) => cwd === void 0 ? glob : posix4.join(cwd, glob))
   };
 }
 function vitestConfig(root) {
@@ -4431,7 +4440,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.168";
+  if (true) return "0.1.169";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4597,7 +4606,7 @@ var REVISION = "A revision is Squeal's number for each saved change to this work
 function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
   const names = runnerNames(coverage);
   const sentences = (covers2, naming) => [
-    `${PRIMER_OPENING}${names.join(" and ")} tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run ${names.join(" or ")} to learn whether your edits broke something.`,
+    `${PRIMER_OPENING}${listed(names, "and")} tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run ${listed(names, "or")} to learn whether your edits broke something.`,
     `Wait only when you need a result before your next step, for example before saying the task is done: ${naming === "none" ? "`status --wait 60000` on the CLI SQUEAL messages name" : `\`${command} status --wait 60000\``}.`,
     ...coverage.slow === null ? [] : slowSentences(command, naming),
     "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
@@ -4606,8 +4615,9 @@ function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
     "Squeal does not cover typecheck, build or any other test suite: run those yourself."
   ].join(" ");
   let text = "";
+  const most = Math.max(coverage.nodeTest.length, coverage.pytest?.length ?? 0);
   for (const naming of ["every", "first", "none"]) {
-    for (let node = coverage.nodeTest.length; node >= 0; node--) {
+    for (let node = most; node >= 0; node--) {
       text = sentences(coversSentence(coverage, node), naming);
       if (text.length <= PRIMER_CAP_CHARS) return text;
     }
@@ -4616,7 +4626,16 @@ function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
 }
 function runnerNames(coverage) {
   const nodeTest = coverage.nodeTest.length > 0;
-  return [...coverage.vitest || !nodeTest ? ["Vitest"] : [], ...nodeTest ? ["node:test"] : []];
+  const pytest = (coverage.pytest?.length ?? 0) > 0;
+  return [
+    ...coverage.vitest || !nodeTest && !pytest ? ["Vitest"] : [],
+    ...nodeTest ? ["node:test"] : [],
+    ...pytest ? ["pytest"] : []
+  ];
+}
+function listed(words, conjunction) {
+  if (words.length <= 2) return words.join(` ${conjunction} `);
+  return `${words.slice(0, -1).join(", ")} ${conjunction} ${words.at(-1)}`;
 }
 function coversSentence(coverage, node) {
   const suites = runnerNames(coverage).includes("Vitest") ? [
@@ -4629,9 +4648,16 @@ function coversSentence(coverage, node) {
     const list = named("project", entries, node);
     suites.push(node === 0 ? `node:test (${list})` : `node:test ${list}`);
   }
+  if (coverage.pytest !== void 0 && coverage.pytest.length > 0) {
+    const entries = coverage.pytest.map(
+      ({ name, include }) => `${JSON.stringify(name)} (${include.join(", ")})`
+    );
+    const list = named("project", entries, node);
+    suites.push(node === 0 ? `pytest (${list})` : `pytest ${list}`);
+  }
   const files2 = coverage.slow?.files;
   const slow = coverage.slow === null ? "" : files2 === null || files2 === void 0 ? ", with slow test files not counted yet" : `, with ${files2} slow test ${files2 === 1 ? "file" : "files"} at the daemon's last listing`;
-  return `Squeal covers ${suites.join(" and ")}${slow}.`;
+  return `Squeal covers ${listed(suites, "and")}${slow}.`;
 }
 function excluded(coverage) {
   const entries = coverage.vitestExcluded ?? [];
@@ -4642,9 +4668,9 @@ function excluded(coverage) {
 function named(noun, entries, shown) {
   const nouns = entries.length === 1 ? noun : `${noun}s`;
   if (shown === 0) return `${entries.length} ${nouns}`;
-  const listed = entries.slice(0, shown);
+  const listed2 = entries.slice(0, shown);
   const rest = entries.length - shown;
-  const tail = rest > 0 ? [...listed, `${rest} more`] : listed;
+  const tail = rest > 0 ? [...listed2, `${rest} more`] : listed2;
   const last = tail.pop();
   return `${nouns} ${tail.length === 0 ? last : `${tail.join(", ")} and ${last}`}`;
 }
