@@ -10,6 +10,7 @@ Queries:
   batches      per run, the pytest batches' wall times from its log directory, if kept
   transitions  every transition in this worktree
   keys         keyed and unkeyed files, by pending phase
+  stored       per run: revision, end state, files per project, results stored
 """
 
 import json
@@ -103,5 +104,16 @@ elif query == "keys":
     ).fetchall()
     for key, n in sorted(Counter(rows).items(), key=lambda kv: tuple(map(str, kv[0]))):
         print(n, *key)
+elif query == "stored":
+    # results stored per run of this worktree
+    rows = db.execute(
+        "SELECT r.id, r.revision, r.end_state, r.test_files, "
+        "(SELECT COUNT(*) FROM results s WHERE s.run_id = r.id) FROM runs r "
+        "WHERE r.worktree_id = ? ORDER BY r.started_at",
+        (wt,),
+    ).fetchall()
+    for rid, rev, state, files, n in rows:
+        projects = Counter(f["project"] if isinstance(f, dict) else "?" for f in json.loads(files))
+        print(f"{rid[:8]} r{rev} {state:9s} {dict(projects)} stored {n}")
 else:
     sys.exit(f"unknown query {query}")

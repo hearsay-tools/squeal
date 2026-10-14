@@ -16,6 +16,7 @@
 #              changes committed on `dogfood` so linked worktrees carry them
 #     bench    a clone of repo/ at `dogfood` with its own environments and store, for the
 #              batch-size baselines and the project's own pytest run
+#     worktrees  the two session worktrees, with the seeded bug (see the step)
 # No model runs here. Each step's output goes to stdout; the caller keeps a trimmed copy.
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
@@ -82,6 +83,16 @@ for step in "$@"; do
       as bench/debugger uv venv -q --clear --python 3.13 --managed-python .venv
       as bench/debugger uv pip install -q -e '.[pdb,debugpy]' --group test
       as bench git log --oneline -1
+      ;;
+    worktrees)
+      # wt-claude: branch `claude` from `dogfood` plus the seeded bug, committed; wt-codex: branch
+      # `codex` at the same commit. Neither has an environment yet.
+      as repo git worktree add -q -b claude ../wt-claude dogfood
+      as wt-claude sed -i 's/binary_name = app.formal_name.replace(" ", "_")/binary_name = app.formal_name.replace(" ", "-")/' \
+        src/briefcase/platforms/linux/flatpak.py
+      as wt-claude git commit -qam "Tidy the Flatpak distribution file name"
+      as repo git worktree add -q -b codex ../wt-codex claude
+      as wt-claude git show --stat --oneline HEAD
       ;;
     *) echo "unknown step $step"; exit 2 ;;
   esac
