@@ -73,14 +73,23 @@ export interface RpcCompact {
   type: "compact";
 }
 
+/**
+ * Under `rpc`, a run nobody prompts: after the previous entry, `then` runs (a test lands a
+ * result there), and the driver waits for one more run to settle, the one Pi starts itself.
+ */
+export interface RpcIdle {
+  type: "idle";
+  then?: () => Promise<void> | void;
+}
+
 export interface PiRunOptions {
   mode: PiMode;
   plan: FakeStep[];
   /**
    * One prompt for `print` and `json`; under `rpc` each is sent after the previous run settles,
-   * and a `compact` command after the previous one answers.
+   * a `compact` command after the previous one answers, and an `idle` entry sends nothing.
    */
-  prompts: (string | RpcCompact)[];
+  prompts: (string | RpcCompact | RpcIdle)[];
   /** Extensions under test, loaded with `-e` after the fake provider. */
   extensions?: string[];
   /**
@@ -241,21 +250,25 @@ function collect(child: ChildProcess) {
   };
 }
 
-// Each prompt waits for the run it starts to settle, a compact for its response; stdin closes
-// after the last, which ends Pi.
+// Each prompt waits for the run it starts to settle, a compact for its response, an idle entry
+// for a run Pi starts itself; stdin closes after the last, which ends Pi.
 async function drive(
   child: ChildProcess,
   out: ReturnType<typeof collect>,
-  prompts: (string | RpcCompact)[],
+  prompts: (string | RpcCompact | RpcIdle)[],
   timeoutMs: number,
 ): Promise<void> {
   const count = (marker: string) => out.lines().filter((line) => line.includes(marker)).length;
   for (const [index, input] of prompts.entries()) {
-    const marker = typeof input === "string" ? '"type":"agent_settled"' : '"command":"compact"';
+    const compact = typeof input !== "string" && input.type === "compact";
+    const marker = compact ? '"command":"compact"' : '"type":"agent_settled"';
     const settled = () => count(marker);
     const before = settled();
-    const command = typeof input === "string" ? { type: "prompt", message: input } : input;
-    child.stdin?.write(`${JSON.stringify({ id: `p${index}`, ...command })}\n`);
+    if (typeof input !== "string" && input.type === "idle") await input.then?.();
+    else {
+      const command = typeof input === "string" ? { type: "prompt", message: input } : input;
+      child.stdin?.write(`${JSON.stringify({ id: `p${index}`, ...command })}\n`);
+    }
     await new Promise<void>((done, fail) => {
       const check = () => {
         if (settled() > before) finish(done);
