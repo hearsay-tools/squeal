@@ -13,9 +13,9 @@ Worker notes, 2026-10-14. D11 as amended by the human the same day: a config key
 
 - `src/core/types/policy.ts`, `src/core/daemon/policy.ts`: `vitest: { excludeProjects: [] }` with the loader's `strings` leaf. A wrong type gives `"vitest.excludeProjects" must be an array of strings, got …` and the default `[]`. An unknown key under `vitest` is reported as usual.
 - `src/runners/vitest/exclude.ts`:
-  - `projectFilter` turns the list into Vitest's `project` option.
+  - `projectFilter` turns the list into Vitest's `project` option. *(Corrected by 001-370: that option replaced a config's own `test.project` filter. `exclusion` now passes the configured filter with the `!name` entries.)*
   - `unknownExclusions` resolves the config again, unfiltered, through the project's own `vitest/node` `resolveConfig`, which creates no project. It returns one problem per name that matches no project name or ancestor: `"vitest.excludeProjects[<index>]" names no Vitest project ("<name>"); it is left out`. The matching is Vitest's, so the check and the filter never disagree about a name.
-  - The resolution runs beside `createVitest`, so it adds CPU but no latency. A config that fails to resolve reports nothing here; the instance's own failure says why.
+  - The resolution runs beside `createVitest`. *(Corrected by 001-370, review wave-13bl N1: the start awaits it, so a slow resolution can extend startup, and it evaluates every declared config again, excluded projects' config code and plugin hooks included. It was also not unfiltered: a config's `test.project` survived, review B1; it now passes `project: []`.)* A config that fails to resolve reports nothing here; the instance's own failure says why.
 - `src/runners/vitest/adapter.ts`:
   - At each start it reads the list (`excludeProjects`, a getter like `observe`), passes the filter and records what it started with.
   - Each unknown name becomes a note, `squeal.config.json: <problem>`, once per text per worktree root (`noteOnce`, as the optimizer note does).
@@ -34,7 +34,7 @@ Worker notes, 2026-10-14. D11 as amended by the human the same day: a config key
 
 1. **Names match as Vitest's `--project` matches.** Wildcards work, case is ignored, and a name drops its nested projects. The spec says "names of Vitest projects". An exact match would need the full name list before the instance starts, and could still disagree with Vitest's own match. 005-57 can copy the test script's `--project` flags verbatim.
 2. **The unknown-name check resolves the config a second time.** Only when the list is non-empty, beside the start. The filtered instance never learns the excluded names, and no Vitest hook exposes them.
-3. **Editing the key re-keys the remaining projects once.** Every project's config files and packages are inputs of each project's environment (D3), so the excluded project's config file leaves them. The filter itself never reaches the config tests receive (pinned in the test). After that, an edit to the excluded project's config no longer re-keys the others, which is the point.
+3. **Editing the key re-keys the remaining projects once.** Every project's config files and packages are inputs of each project's environment (D3), so the excluded project's config file leaves them. *(Corrected by 001-370, review wave-13bl S1: only when the excluded project has its own config file. Excluding an inline project changes no other environment, so nothing re-keys.)* The filter itself never reaches the config tests receive (pinned in the test). After that, an edit to the excluded project's config no longer re-keys the others, which is the point.
 4. **Every project excluded** is a runner failure (Vitest throws). Not special-cased.
 
 ## Key format
