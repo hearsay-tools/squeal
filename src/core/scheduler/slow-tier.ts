@@ -1,4 +1,5 @@
 import { setTimeout as delay } from "node:timers/promises";
+import type { PoolLease } from "../capacity/index.js";
 import { POLICY_FILE } from "../daemon/policy.js";
 import { readTurn } from "../delivery/turn.js";
 import {
@@ -31,6 +32,7 @@ import {
   type TestFileRef,
   type WorktreeId,
 } from "../types/index.js";
+import { perFileLease, WAIT_FOR_CAPACITY } from "./capacity.js";
 import { claimOf } from "./claims.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { classify } from "./files.js";
@@ -206,6 +208,12 @@ export class SlowTier {
       const selected = await this.host.lock.run(() => this.#select(refs, load, slot));
       // Every file another worktree runs: the pump waits on the claims, not the slot (task 001-205).
       if (selected === "claimed") return null;
+      if (selected === WAIT_FOR_CAPACITY) {
+        // Another lane's tier has the daemon's free worker and no pool permit is free: its end pumps.
+        this.#publish({ kind: "waiting", for: "slot" });
+        this.#arm();
+        return null;
+      }
       if (selected === null) return "again";
       run = { ...selected, slot };
       return run;
@@ -323,12 +331,22 @@ export class SlowTier {
    * `"claimed"` when no file runs because other worktrees run their keys
    * (task 001-205). The permits, notes and artifacts follow the files the
    * tier starts.
+   *
+   * Before the start the tier takes its workers from the per-user pool, as
+   * a backlog tier does (001 D11 Capacity, task 001-386): `slow.maxWorkers`
+   * per file, and as many files as its grant holds, at least one. Without a
+   * grant it waits (`WAIT_FOR_CAPACITY`), unless a `run --slow` request is
+   * open: that runs now, without a grant, as an edit's tier does.
    */
   #select(
     refs: readonly TestFileRef[],
     ranUnderLoad: number | null,
     slot: SlowSlot,
-  ): { tier: Tier; artifacts: ReadonlyMap<string, readonly string[]> } | "claimed" | null {
+  ):
+    | { tier: Tier; artifacts: ReadonlyMap<string, readonly string[]> }
+    | "claimed"
+    | typeof WAIT_FOR_CAPACITY
+    | null {
     const { context, ledger } = this.host.started();
     if (this.host.editPending()) return null;
     const width = this.host.fastIdle() ? slot.permits : 1;
@@ -341,23 +359,24 @@ export class SlowTier {
       if (tierFile !== null) picked.push(tierFile);
     }
     if (picked.length === 0) return ledger.claims.waiting ? "claimed" : null;
+    const perFile = context.policy.slow.maxWorkers;
+    const taken = context.capacity?.take(picked.length * perFile) ?? null;
+    if (taken === WAIT_FOR_CAPACITY && !this.#requested) {
+      ledger.commit();
+      return WAIT_FOR_CAPACITY;
+    }
+    const lease =
+      taken === WAIT_FOR_CAPACITY || taken === null ? undefined : perFileLease(taken, perFile);
+    if (lease !== undefined) picked.splice(Math.max(1, Math.floor(lease.grant / perFile)));
     const since = context.now();
     // The activity names the files in the transaction that marks them running (review wave 2, B1; 004-35).
-    const tier = context.store.transaction(() => {
-      const tier = startTier(context, ledger, picked, false);
-      const first = tier?.files[0];
-      if (tier === null || first === undefined) return null;
-      const lastDurationMs = longest(tier.files.map(({ file }) => file.durationMs));
-      const paths = tier.files.map(({ file }) => file.ref.path);
-      this.#publish({
-        kind: "running",
-        path: first.file.ref.path,
-        ...(paths.length > 1 ? { paths } : {}),
-        since,
-        lastDurationMs,
-      });
-      return tier;
-    });
+    let started: Tier | null = null;
+    try {
+      started = this.#start(context, ledger, picked, since, lease);
+    } finally {
+      if (started === null) lease?.release();
+    }
+    const tier = started;
     if (tier === null) {
       // A result recorded since the pick settled one: the queue moved (review wave 13o, B1).
       return picked.some(({ file }) => !ledger.queue.has(file.ref)) ? null : "claimed";
@@ -377,6 +396,31 @@ export class SlowTier {
       tier.files.map(({ file }) => [file.id, view?.artifactFor(file.ref.path) ?? []] as const),
     );
     return { tier, artifacts };
+  }
+
+  /** `startTier` of `picked`, and the activity naming its files in the same transaction. */
+  #start(
+    context: SchedulerContext,
+    ledger: Ledger,
+    picked: readonly TierFile[],
+    since: EpochMs,
+    lease: PoolLease | undefined,
+  ): Tier | null {
+    return context.store.transaction(() => {
+      const tier = startTier(context, ledger, picked, false, lease);
+      const first = tier?.files[0];
+      if (tier === null || first === undefined) return null;
+      const lastDurationMs = longest(tier.files.map(({ file }) => file.durationMs));
+      const paths = tier.files.map(({ file }) => file.ref.path);
+      this.#publish({
+        kind: "running",
+        path: first.file.ref.path,
+        ...(paths.length > 1 ? { paths } : {}),
+        since,
+        lastDurationMs,
+      });
+      return tier;
+    });
   }
 
   /**

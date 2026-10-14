@@ -53,3 +53,20 @@ export class TierCapacity {
     this.#pool.close();
   }
 }
+
+/**
+ * A slow tier's pool lease counted in files: `startTier` keeps the workers
+ * of the files that start, `perFile` (`slow.maxWorkers`) each.
+ */
+export function perFileLease(lease: PoolLease, perFile: number): PoolLease {
+  return {
+    get grant() {
+      return lease.grant;
+    },
+    get permits() {
+      return lease.permits;
+    },
+    shrinkTo: (files) => lease.shrinkTo(files * perFile),
+    release: () => lease.release(),
+  };
+}
