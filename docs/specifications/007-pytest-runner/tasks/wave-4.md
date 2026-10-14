@@ -86,3 +86,11 @@ Owns: those, and their tests.
 Done when: there are text tests for each case.
 
 Use /worker.
+
+## Host test-run policy (from 2026-10-15, adopted by the human)
+
+For every remaining row and review of this spec:
+- A worker's full-suite verdict is `squeal run --all --wait`. Only when Squeal is unavailable does it fall back to `npx vitest run --maxWorkers=4`, and its report says so.
+- Every independent full run, whether a reviewer's or the coordinator's landing gate, takes the host's turn with `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`.
+- There is one gate per bundle of rows, and at most 3 of this coordinator's workers and reviewers run at once.
+- A file that fails a loaded gate and passes alone is named in the landing note.
