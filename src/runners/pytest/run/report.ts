@@ -9,6 +9,7 @@ import type {
   SourceLocation,
   TestFileRef,
 } from "../../../core/types/index.js";
+import { scrubBasetemp } from "./basetemp.js";
 import type { CollectedItem, PhaseEvent, PytestEvent } from "./events.js";
 
 /** A test file of a batch: its ref and its real absolute path, as the plugin writes paths. */
@@ -48,14 +49,17 @@ export interface BatchReport {
 /**
  * Maps one batch's events to per-file results (spec 007 D3, D6). Results
  * come only from the event file; the exit code is the caller's to judge.
- * `rootdir` is pytest's, against which `location` paths are written.
+ * `rootdir` is pytest's, against which `location` paths are written;
+ * `basetemp`, the batch's, is written as `scrubBasetemp` does (task 007-37).
  */
 export function readBatch(
   events: readonly PytestEvent[],
   files: readonly BatchFile[],
   rootdir: AbsolutePath,
   paths: WorktreePaths,
+  basetemp: AbsolutePath | null = null,
 ): BatchReport {
+  const scrub = (text: string) => (basetemp === null ? text : scrubBasetemp(text, basetemp));
   const collected = events.find((e) => e.type === "collected");
   const phases = new Map<string, PhaseEvent[]>();
   for (const e of events) {
@@ -74,7 +78,7 @@ export function readBatch(
     const skip = collects.find((c) => c.outcome === "skipped" && c.path === file.real);
     const done = own.every((item) => phases.get(item.nodeid)?.some((p) => p.when === "teardown"));
     const results = done
-      ? own.map((item) => joinPhases(item, file.testFile, phases, rootdir, paths))
+      ? own.map((item) => joinPhases(item, file.testFile, phases, rootdir, paths, scrub))
       : [];
     return {
       testFile: file.testFile,
@@ -83,7 +87,7 @@ export function readBatch(
       fileError:
         failed === undefined
           ? null
-          : { testFile: file.testFile, errors: [collectionError(failed.longrepr, paths)] },
+          : { testFile: file.testFile, errors: [collectionError(failed.longrepr, paths, scrub)] },
       skipped: skip === undefined ? null : skipReason(skip.longrepr),
       durationMs: Math.round(results.reduce((sum, r) => sum + r.durationMs, 0)),
     };
@@ -110,6 +114,7 @@ function joinPhases(
   phases: ReadonlyMap<string, readonly PhaseEvent[]>,
   rootdir: AbsolutePath,
   paths: WorktreePaths,
+  scrub: (text: string) => string,
 ): CheckRunResult {
   const own = phases.get(item.nodeid) ?? [];
   const phase = (when: PhaseEvent["when"]) => own.find((p) => p.when === when);
@@ -120,15 +125,15 @@ function joinPhases(
   let outcome: RunOutcome = "pass";
   if (setup?.outcome === "failed") {
     outcome = "fail";
-    errors.push(phaseError(setup, paths));
+    errors.push(phaseError(setup, paths, scrub));
   } else if (setup?.outcome === "skipped" || call?.outcome === "skipped") outcome = "skip";
   else if (call?.outcome === "failed") {
     outcome = "fail";
-    errors.push(phaseError(call, paths));
+    errors.push(phaseError(call, paths, scrub));
   }
   if (teardown?.outcome === "failed") {
     outcome = "fail";
-    errors.push(phaseError(teardown, paths));
+    errors.push(phaseError(teardown, paths, scrub));
   }
   const first = setup ?? call ?? teardown;
   return {
@@ -159,9 +164,15 @@ function checkLocation(
 }
 
 /** D3: "an error's location is `reprcrash` when present, which may name a helper or fixture line." */
-function phaseError(phase: PhaseEvent, paths: WorktreePaths): CheckError {
-  const text = phase.longrepr ?? "";
-  const { name, message } = splitException(phase.crash?.message ?? lastErrorLine(text) ?? text);
+function phaseError(
+  phase: PhaseEvent,
+  paths: WorktreePaths,
+  scrub: (text: string) => string,
+): CheckError {
+  const text = scrub(phase.longrepr ?? "");
+  const { name, message } = splitException(
+    phase.crash === null ? (lastErrorLine(text) ?? text) : scrub(phase.crash.message),
+  );
   // A long report ends `<path>:<line>: <type>`; reprcrash of an assertion holds no type.
   const type = /:\d+: ([A-Za-z_][\w.]*)$/.exec(text.trimEnd())?.[1];
   return {
@@ -174,8 +185,12 @@ function phaseError(phase: PhaseEvent, paths: WorktreePaths): CheckError {
 }
 
 /** D6: "A failed collection report is a `FileLevelError` with its traceback". */
-function collectionError(longrepr: string | null, paths: WorktreePaths): CheckError {
-  const text = longrepr ?? "collection failed";
+function collectionError(
+  longrepr: string | null,
+  paths: WorktreePaths,
+  scrub: (text: string) => string,
+): CheckError {
+  const text = scrub(longrepr ?? "collection failed");
   const { name, message } = splitException(lastErrorLine(text) ?? text.split("\n")[0] ?? text);
   return { name, message, stack: paths.relativizeText(text), location: null, diff: null };
 }

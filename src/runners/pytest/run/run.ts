@@ -14,6 +14,7 @@ import type {
 } from "../../../core/types/index.js";
 import { startGroup } from "../../node-test/run/process.js";
 import type { PytestEnvironment } from "../environment/index.js";
+import { runBasetemp } from "./basetemp.js";
 import { type Batch, ending, names, readOr, realOr, split, writeRunLog } from "./batches.js";
 import { keptDirs, runBytecode } from "./bytecode.js";
 import { inheritedArgs, pytestArgs, refusalNote, refusedFlags } from "./command.js";
@@ -68,7 +69,8 @@ export const KILL_GRACE_MS = 2_000;
  * up to `concurrency` at once, each a fresh `<env>/bin/python -m pytest` in
  * its own process group from the project's `cwd`, `squeal_pytest` on
  * `PYTHONPATH` behind the project's entries and writing
- * `<logDir>/events-<i>.jsonl`. On the deadline every running group gets
+ * `<logDir>/events-<i>.jsonl`, and a `--basetemp` of its own removed after
+ * the run (`runBasetemp`). On the deadline every running group gets
  * SIGTERM, then SIGKILL, and batches not yet started stay unrun. A refused
  * flag in the config's `addopts`, `PYTEST_ADDOPTS` or `args` runs nothing.
  */
@@ -107,6 +109,7 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
   );
   const rootdir = realOr(environment.config?.rootdir ?? cwd);
 
+  const basetemp = runBasetemp(cacheDir);
   const batches: Batch[] = split(
     options.files,
     options.batchSize ?? DEFAULT_BATCH_SIZE,
@@ -117,8 +120,10 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
       testFile,
       real: realOr(toAbsolute(options.root, testFile.path)),
     })),
+    // After `args`, so it wins over the project's own `--basetemp` (task 007-37).
     args: [
       ...args,
+      `--basetemp=${basetemp.dir(index)}`,
       ...files.map((f) => relative(cwd, toAbsolute(options.root, f.path)).split(sep).join("/")),
     ],
     exit: null,
@@ -163,7 +168,7 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
       batch.exit = await group.exited;
       running.delete(group);
       const parsed = parsePytestEvents(readOr(events));
-      batch.read = readBatch(parsed, batch.files, rootdir, paths);
+      batch.read = readBatch(parsed, batch.files, rootdir, paths, basetemp.dir(batch.index));
       batch.edges = parsed.flatMap((e) => (e.type === "import" ? [e] : []));
     }
   };
@@ -173,6 +178,7 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
   } finally {
     for (const timer of timers) clearTimeout(timer);
     bytecode.remove();
+    basetemp.remove();
   }
 
   const notes: string[] = [];
