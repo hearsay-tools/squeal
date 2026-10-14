@@ -1,6 +1,6 @@
 # 007 pytest runner
 
-Status: draft, 2026-10-13, written from `research/pytest-runner-api.md` (007-01), `research/python-module-graph.md` (007-02) and `research/python-environments.md` (007-03). Not approved.
+Status: approved 2026-10-14 by the human; amendments in `status.md`. Written from `research/pytest-runner-api.md` (007-01), `research/python-module-graph.md` (007-02) and `research/python-environments.md` (007-03). Not approved.
 
 ## Problem
 
@@ -111,7 +111,7 @@ Squeal's `runner.timeoutMs` is the deadline, one per tier: on expiry each proces
 
 Owner is the coordinator unless noted.
 
-1. For the human: a fresh worktree without an environment inherits nothing until it is synced (D2, D4), so Cezar workers in a Python repository start with zero inherited results unless their worktree setup runs `uv sync`. The alternative, resolving `src` from the build backend's declared layout without an environment, is unmeasured (module-graph open question 2).
+1. For the human: a fresh worktree without an environment inherits nothing until it is synced (D2, D4), so Cezar workers in a Python repository start with zero inherited results unless their worktree setup runs `uv sync`. The alternative, resolving `src` from the build backend's declared layout without an environment, is unmeasured (module-graph open question 2). The human, 2026-10-14: measure it first; research row 007-04.
 2. Data files read at run time (`importlib.resources`, `Path(__file__).parent / "data"`) enter no closure; they are declared `inputs` until a Python counterpart of `observe.runtimeInputs` (an audit hook on `open`) is measured for cost and per-file separation. Measure in wave 1.
 3. `PYTHONPYCACHEPREFIX` keeps the tree clean but gives up the project's existing `__pycache__`: measure the start-up cost in wave 1; the fallback is the watcher ignoring `__pycache__`.
 4. A nested conftest's `pytest_plugins` errors under the project's own `pytest` but passes when files are named (module-graph Q2). Squeal reports it as a runner note rather than reproducing the error. Decided here unless wave 1 shows otherwise.
