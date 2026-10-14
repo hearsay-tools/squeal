@@ -16,23 +16,23 @@ export function compiles(globs: readonly string[]): { readonly problem: string }
 }
 
 /** Checks one key of an entry: `null`, what was expected, or a whole problem. */
-type Field = (value: unknown) => string | { readonly problem: string } | null;
+export type Field = (value: unknown) => string | { readonly problem: string } | null;
 
-const boolean: Field = (v) => (typeof v === "boolean" ? null : "true or false");
-const nonEmptyString: Field = (v) =>
+export const boolean: Field = (v) => (typeof v === "boolean" ? null : "true or false");
+export const nonEmptyString: Field = (v) =>
   typeof v === "string" && v.length > 0 ? null : "a non-empty string";
-const strings: Field = (v) =>
+export const strings: Field = (v) =>
   Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
-const globs: Field = (v) =>
+export const globs: Field = (v) =>
   Array.isArray(v) && v.length > 0 && v.every((s) => typeof s === "string")
     ? compiles(v as string[])
     : "a non-empty array of strings";
-const variables: Field = (v) =>
+export const variables: Field = (v) =>
   isRecord(v) && Object.values(v).every((s) => typeof s === "string")
     ? null
     : "an object from variable name to string";
 /** Spec 003 D1: "`cwd` (relative to the worktree root, default the root)". */
-const insideRoot: Field = (v) => {
+export const insideRoot: Field = (v) => {
   if (typeof v !== "string") return "a path inside the worktree, relative to its root";
   const normal = posix.normalize(v.replaceAll("\\", "/"));
   return isAbsolute(v) || normal === ".." || normal.startsWith("../")
@@ -59,37 +59,60 @@ const REQUIRED: ReadonlySet<string> = new Set(["name", "include"]);
  * left out, the others are kept: "a bad entry is a problem note with that
  * project skipped, never a crash." `argv` defaults to `[]` and `env` to `{}`.
  */
-export function nodeTestProjects(
-  value: unknown,
-  path: string,
-): string | { readonly kept: readonly NodeTestProject[]; readonly problems: readonly string[] } {
-  if (!Array.isArray(value)) return "an array of projects";
-  const kept: NodeTestProject[] = [];
-  const problems: string[] = [];
-  value.forEach((entry: unknown, index) => {
-    const at = `${path}[${index}]`;
-    const problem = entryProblem(entry, at, kept);
-    if (problem === null) kept.push(withDefaults(entry as Partial<NodeTestProject>));
-    else problems.push(problem);
-  });
-  return { kept, problems };
+export function nodeTestProjects(value: unknown, path: string): ProjectEntries<NodeTestProject> {
+  return projectEntries(value, path, FIELDS, REQUIRED, withDefaults);
 }
 
 function withDefaults(entry: Partial<NodeTestProject>): NodeTestProject {
   return { ...entry, argv: entry.argv ?? [], env: entry.env ?? {} } as NodeTestProject;
 }
 
-function entryProblem(entry: unknown, at: string, kept: readonly NodeTestProject[]): string | null {
+/** What a project-list rule returns: what was expected, or the kept entries and the problems. */
+export type ProjectEntries<T> =
+  | string
+  | { readonly kept: readonly T[]; readonly problems: readonly string[] };
+
+/**
+ * One rule for every runner's project list (001 D11): each entry is checked
+ * against `fields`, an invalid or repeated-name entry is one problem and is
+ * left out, the others are kept with `withDefaults` applied.
+ */
+export function projectEntries<T extends { readonly name: string }>(
+  value: unknown,
+  path: string,
+  fields: Readonly<Record<keyof T, Field>>,
+  required: ReadonlySet<string>,
+  withDefaults: (entry: Partial<T>) => T,
+): ProjectEntries<T> {
+  if (!Array.isArray(value)) return "an array of projects";
+  const kept: T[] = [];
+  const problems: string[] = [];
+  value.forEach((entry: unknown, index) => {
+    const at = `${path}[${index}]`;
+    const problem = entryProblem(entry, at, kept, fields, required);
+    if (problem === null) kept.push(withDefaults(entry as Partial<T>));
+    else problems.push(problem);
+  });
+  return { kept, problems };
+}
+
+function entryProblem(
+  entry: unknown,
+  at: string,
+  kept: readonly { readonly name: string }[],
+  fields: Readonly<Record<string, Field>>,
+  required: ReadonlySet<string>,
+): string | null {
   if (!isRecord(entry))
     return `"${at}" must be an object, got ${JSON.stringify(entry)}; it is skipped`;
   const named = nonEmptyString(entry.name) === null ? (entry.name as string) : null;
   const skipped = named === null ? "it is skipped" : `project ${JSON.stringify(named)} is skipped`;
   for (const key of Object.keys(entry)) {
-    if (!Object.hasOwn(FIELDS, key)) return `unknown key "${at}.${key}"; ${skipped}`;
+    if (!Object.hasOwn(fields, key)) return `unknown key "${at}.${key}"; ${skipped}`;
   }
-  for (const [key, field] of Object.entries(FIELDS)) {
+  for (const [key, field] of Object.entries(fields)) {
     const given = entry[key];
-    if (given === undefined && !REQUIRED.has(key)) continue;
+    if (given === undefined && !required.has(key)) continue;
     const expected = field(given);
     if (expected === null) continue;
     const why =
