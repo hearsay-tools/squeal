@@ -136,14 +136,16 @@ export async function warmUp(root: AbsolutePath, io: CliIo): Promise<WarmupResul
 
 /**
  * D3: a slow file's ignored reads as a suggestion for its `inputs`, said to
- * be unkeyed so it never reads as coverage. Nothing declares them.
+ * be unkeyed so it never reads as coverage. Nothing declares them. Only
+ * build output is an input: a file the suite's own bootstrap rewrites, as
+ * cezar's `.ai/qa/test-env.json`, would re-key the file at each boot (005-41).
  */
 export function ignoredReadText(read: IgnoredRead): string {
   const bound = read.moreAtMost === true && read.more > 0;
   const count = bound ? read.paths.length : read.paths.length + read.more;
   const more = read.more > 0 ? [`and ${bound ? "up to " : ""}${read.more} more`] : [];
   const listed = [...read.paths, ...more];
-  return `${read.path} read ${bound ? "at least " : ""}${plural(count, "gitignored path")}, unkeyed: a change to ${count === 1 ? "it" : "them"} re-runs nothing until declared; squeal setup --input ${read.path}=<glob> declares one${listed.map((p) => `\n    ${p}`).join("")}`;
+  return `${read.path} read ${bound ? "at least " : ""}${plural(count, "gitignored path")}, unkeyed: a change to ${count === 1 ? "it" : "them"} re-runs nothing until declared; squeal setup --input ${read.path}=<glob> declares one; declare build output, never a file the suite's own bootstrap rewrites (a descriptor, a log, a PID file), or every boot re-runs it${listed.map((p) => `\n    ${p}`).join("")}`;
 }
 
 /**
