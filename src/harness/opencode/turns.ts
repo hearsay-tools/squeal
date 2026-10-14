@@ -30,27 +30,50 @@ export type Ask = <K extends OcKind>(
 
 /** A root session's turn (D3) and its idle wait (D5). */
 interface Turn {
+  /**
+   * A message came since the last idle, so the next idle ends a turn. OpenCode
+   * 1.18.35 emits a second `session.idle` after an abort, which ends none
+   * (review 008-16 B2).
+   */
+  open: boolean;
   /** Squeal continued or woke this turn: its idle ends the turn, silent (002's `stop_hook_active`). */
   continued: boolean;
   /** A `MessageAbortedError` came since the last idle (002's Interrupt). */
   aborted: boolean;
   /** The text Squeal last sent, so its `chat.message` is known as Squeal's own. */
   own: string | null;
+  /**
+   * Counts the root's messages and aborts. An idle decision taken at another
+   * count is stale: only the turn that went idle, still live and not
+   * aborted, may be continued (review 008-16 B2).
+   */
+  epoch: number;
+  /**
+   * Reports Stop or the waiter answered whose continuation was cancelled or
+   * not taken: delivered already, so they ride on the next message or tool
+   * result instead (`take`).
+   */
+  held: string[];
   waiter: AbortController | null;
 }
 
 export interface Turns {
   /**
-   * A root's `chat.message`: the idle wait ends; a message that is not the
-   * one Squeal sent clears the continuation flag.
+   * A root's `chat.message`: the idle wait ends, and an idle decision still
+   * pending is stale; a message that is not the one Squeal sent clears the
+   * continuation flag and starts a turn with no abort.
    */
   message(id: string, parts: readonly unknown[]): void;
-  /** A root's `session.error` with `MessageAbortedError`. */
+  /** A root's `session.error` with `MessageAbortedError`; an idle decision still pending is stale. */
   aborted(id: string): void;
+  /** The reports held for the root `id`, once, or `null`. */
+  take(id: string): string | null;
   /**
    * A root's `session.idle`, 002's Stop: after an abort or Squeal's own turn
    * the turn ends, silent; otherwise news continues it once through
-   * `promptAsync`. Unless continued, the idle wait is armed (D5).
+   * `promptAsync`, unless a message or an abort came meanwhile. Unless
+   * continued or overtaken, the idle wait is armed (D5). An idle with no
+   * message since the last one ends no turn.
    */
   idle(consumer: OcConsumer, deadline: Deadline): Promise<void>;
   /** `session.deleted`: the session's wait ends and its state goes. */
@@ -71,11 +94,23 @@ export function turns(client: OcClient, ask: Ask): Turns {
   const turnOf = (id: string): Turn => {
     let turn = all.get(id);
     if (turn === undefined) {
-      turn = { continued: false, aborted: false, own: null, waiter: null };
+      turn = {
+        open: false,
+        continued: false,
+        aborted: false,
+        own: null,
+        epoch: 0,
+        held: [],
+        waiter: null,
+      };
       all.set(id, turn);
     }
     return turn;
   };
+
+  /** Whether `turn` is still the live root `id`, at `epoch`. */
+  const current = (id: string, turn: Turn, epoch: number) =>
+    !stopped && all.get(id) === turn && turn.epoch === epoch;
 
   const cancelWait = (turn: Turn) => {
     turn.waiter?.abort();
@@ -84,18 +119,25 @@ export function turns(client: OcClient, ask: Ask): Turns {
 
   /**
    * Starts one more turn with `text` (D3's continuation, D5's wake) within
-   * what is left of `deadline`; whether OpenCode took it. Past the deadline
-   * the request is aborted, so it starts no late continuation (review 008-16
-   * B1); with none left it is not sent.
+   * what is left of `deadline`, if the turn is still the one at `epoch`;
+   * whether OpenCode took it. Past the deadline the request is aborted, so
+   * it starts no late continuation (review 008-16 B1); with none left, or
+   * the turn stale (B2), it is not sent. A text not taken is held for the
+   * next message or tool result, and stays Squeal's own in case OpenCode
+   * took it after all.
    */
   const say = async (
     id: string,
     turn: Turn,
     text: string,
     deadline: Deadline,
+    epoch: number,
   ): Promise<boolean> => {
     const left = deadline();
-    if (left <= 0) return false;
+    if (left <= 0 || !current(id, turn, epoch)) {
+      turn.held.push(text);
+      return false;
+    }
     turn.continued = true;
     turn.own = text;
     const cancel = new AbortController();
@@ -106,7 +148,7 @@ export function turns(client: OcClient, ask: Ask): Turns {
     );
     if (result !== null && result.error === undefined) return true;
     cancel.abort();
-    turn.own = null;
+    turn.held.push(text);
     return false;
   };
 
@@ -122,7 +164,8 @@ export function turns(client: OcClient, ask: Ask): Turns {
         if (turn.waiter !== waiter) return;
         turn.waiter = null;
         if (answer?.text == null || stopped) return;
-        await say(consumer.sessionId, turn, answer.text, deadlineIn(PROMPT_DEADLINE_MS));
+        const deadline = deadlineIn(PROMPT_DEADLINE_MS);
+        await say(consumer.sessionId, turn, answer.text, deadline, turn.epoch);
       })
       .catch(() => {});
   };
@@ -130,27 +173,46 @@ export function turns(client: OcClient, ask: Ask): Turns {
   return {
     message(id, parts) {
       const turn = turnOf(id);
+      turn.open = true;
+      turn.epoch++;
       cancelWait(turn);
-      if (turn.own !== null && parts.some((part) => textOf(part) === turn.own)) {
+      const own = turn.own;
+      if (own !== null && parts.some((part) => textOf(part) === own)) {
         turn.own = null;
+        // Squeal's own, perhaps taken after its deadline: what it carries reached the model.
+        turn.held = turn.held.filter((text) => text !== own);
         return;
       }
       turn.continued = false;
+      turn.aborted = false;
     },
     aborted(id) {
-      turnOf(id).aborted = true;
+      const turn = turnOf(id);
+      turn.aborted = true;
+      turn.epoch++;
+    },
+    take(id) {
+      const turn = all.get(id);
+      if (turn === undefined || turn.held.length === 0) return null;
+      const text = turn.held.join("\n\n");
+      turn.held = [];
+      return text;
     },
     async idle(consumer, deadline) {
       const id = consumer.sessionId;
       const turn = turnOf(id);
+      if (!turn.open) return;
+      turn.open = false;
+      const epoch = turn.epoch;
       if (turn.aborted || turn.continued) {
         turn.aborted = false;
         await ask("endTurn", { consumer }, deadline);
       } else {
         const report = (await ask("stop", { consumer }, deadline))?.report ?? null;
-        if (report !== null && !stopped && (await say(id, turn, report, deadline))) return;
+        if (report !== null && (await say(id, turn, report, deadline, epoch))) return;
       }
-      armWait(consumer, turn);
+      // A newer message or an abort decides for itself, at its own idle.
+      if (current(id, turn, epoch)) armWait(consumer, turn);
     },
     forget(id) {
       const turn = all.get(id);
