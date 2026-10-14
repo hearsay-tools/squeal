@@ -176,7 +176,7 @@ describe("chat.message", () => {
     const answering = await startPlugin(squealDir(), stubClient(), { entry: stubBridge().entry });
     const frozen = {
       message: { id: "m", sessionID: ROOT_ID },
-      parts: Object.freeze([]) as unknown[],
+      parts: Object.freeze([]) as unknown as unknown[],
     };
     await expect(hook(answering, "chat.message")({ sessionID: ROOT_ID }, frozen)).resolves.toBe(
       undefined,
