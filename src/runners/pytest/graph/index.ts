@@ -77,16 +77,24 @@ export interface PytestGraph {
 export async function createPytestGraph(options: PytestGraphOptions): Promise<PytestGraph> {
   await pythonParserReady();
   const root = realpathSync(options.root);
-  const real = (path: AbsolutePath) => resolve(root, realpathSync(path));
-  const cwd = real(options.cwd);
+  const cwd = realpathSync(options.cwd);
+  // Every prefix compares with the real root; a path that does not exist yet stays as given.
+  const real = (path: AbsolutePath) => {
+    const absolute = resolve(cwd, path);
+    try {
+      return realpathSync(absolute);
+    } catch {
+      return absolute;
+    }
+  };
   const graph = new Graph({
     root,
     cwd,
-    env: options.env === null ? null : resolve(cwd, options.env),
+    env: options.env === null ? null : real(options.env),
     rootdir: options.rootdir === undefined ? cwd : real(options.rootdir),
     importMode: options.importMode ?? "prepend",
-    pythonpath: options.pythonpath ?? [],
-    configFile: options.configFile ?? null,
+    pythonpath: (options.pythonpath ?? []).map(real),
+    configFile: options.configFile == null ? null : real(options.configFile),
   });
   graph.build(options.testFiles);
   return {
