@@ -21,6 +21,14 @@ const END = /^<!-- squeal:end -->/;
 const FENCE = /^\s*(```|~~~)/;
 /** A line already reworded: it runs the checkpoint, with the old command as its fallback. */
 const REWORDED = /squeal run --all/;
+/** A line naming Squeal is Squeal's own instruction, never a gate (row 005-47). */
+const SQUEAL = /\bsqueal\b/i;
+/** Words that, before the command in its sentence, tell the agent not to run it (row 005-47). */
+const NEGATION = /\b(?:do not|don['’]t|never|instead of|avoid)\b/i;
+/** A sentence's end, past closing quotes, brackets and emphasis. */
+const SENTENCE_END = /[.!?][)\]*_"'”’]*$/;
+/** A line that starts a block of its own, so the line before it ended its paragraph. */
+const BLOCK_START = /^\s*(?:[-*+]\s|\d+[.)]\s|#|>|\||```|~~~|<!--)/;
 /** Shell syntax that runs more than one command: chains, pipes, background jobs, redirects, substitutions. */
 const SHELL_OPERATOR = /&&|\|\||[;|&<>]|\$\(/;
 /** An environment assignment, or `env`/`cross-env` setting one, ahead of the test command. */
@@ -39,6 +47,7 @@ function commandPattern(nodeTest: boolean): RegExp {
 
 export interface GateScan {
   readonly gates: readonly GateLine[];
+  /** Lines naming the test command that are no gate: in other files, negated, or naming Squeal. */
   readonly mentions: readonly Mention[];
 }
 
@@ -75,10 +84,14 @@ export function scanGates(
     } catch {
       continue;
     }
-    for (const { line, text: lineText, command, fenced } of commandLines(text, pattern)) {
-      if (!instruction) mentions.push({ file, line, text: lineText });
+    for (const { line, text: lineText, command, fenced, next } of commandLines(text, pattern)) {
+      if (!instruction || notRun(lineText, pattern)) mentions.push({ file, line, text: lineText });
       else {
-        const reason = fenced ? "inside a code block" : compound(lineText, pattern);
+        const reason = fenced
+          ? "inside a code block"
+          : (unfit(lineText, next, pattern) ??
+            compound(lineText, pattern) ??
+            subject(lineText, pattern));
         const proposed = reason === null ? reword(lineText, pattern) : null;
         gates.push({
           id: `${file}:${line}`,
@@ -100,6 +113,8 @@ interface Found {
   readonly text: string;
   readonly command: string;
   readonly fenced: boolean;
+  /** The line after it, `undefined` at the end of the file. */
+  readonly next: string | undefined;
 }
 
 /** Lines running a test command, outside the Squeal block and not yet reworded. */
@@ -107,7 +122,8 @@ function commandLines(text: string, pattern: RegExp): Found[] {
   const found: Found[] = [];
   let fenced = false;
   let inBlock = false;
-  text.split("\n").forEach((line, i) => {
+  const lines = text.split("\n");
+  lines.forEach((line, i) => {
     if (BEGIN.test(line)) inBlock = true;
     if (inBlock) {
       if (END.test(line)) inBlock = false;
@@ -119,7 +135,8 @@ function commandLines(text: string, pattern: RegExp): Found[] {
     }
     const match = pattern.exec(line);
     if (match === null || REWORDED.test(line)) return;
-    found.push({ line: i + 1, text: line, command: commandOf(line, pattern), fenced });
+    const command = commandOf(line, pattern);
+    found.push({ line: i + 1, text: line, command, fenced, next: lines[i + 1] });
   });
   return found;
 }
@@ -130,6 +147,74 @@ function commandOf(line: string, pattern: RegExp): string {
     if (pattern.test(span[1] as string)) return span[1] as string;
   }
   return (pattern.exec(line) as RegExpExecArray)[0];
+}
+
+/** Where the line's test command starts: its code span's backtick, else the matched words. */
+function commandAt(line: string, pattern: RegExp): number {
+  for (const span of line.matchAll(/`([^`]+)`/g)) {
+    if (pattern.test(span[1] as string)) return span.index;
+  }
+  return (pattern.exec(line) as RegExpExecArray).index;
+}
+
+/** The line with each code span blanked, so a stop inside a command ends no sentence. */
+function prose(line: string): string {
+  return line.replace(/`[^`]*`/g, (span) => "x".repeat(span.length));
+}
+
+/** The part of the command's sentence before the command. */
+function leadIn(line: string, pattern: RegExp): string {
+  const at = commandAt(line, pattern);
+  const last = [
+    ...prose(line)
+      .slice(0, at)
+      .matchAll(/[.!?]\s+/g),
+  ].at(-1);
+  return line.slice(last === undefined ? 0 : last.index + last[0].length, at);
+}
+
+/** Where the sentence holding `from` ends, when another sentence follows it on the line. */
+function sentenceEnd(line: string, from: number): number | null {
+  const stop = /[.!?][)\]*_"'”’]*(?=\s+\S)/g;
+  stop.lastIndex = from;
+  const match = stop.exec(prose(line));
+  return match === null ? null : match.index + match[0].length;
+}
+
+/**
+ * Row 005-47: a line that names Squeal, or tells the agent not to run the
+ * command, is no gate. Cezar's "Do not duplicate those background runs with
+ * `npm test`," was reworded into an instruction to run it.
+ */
+function notRun(line: string, pattern: RegExp): boolean {
+  return SQUEAL.test(line) || NEGATION.test(leadIn(line, pattern));
+}
+
+/**
+ * Why the exit-3 sentence cannot follow the command's sentence, or `null`
+ * when it can: a table row, or a sentence that goes on past the line (row
+ * 005-47). A line with no closing stop ends its sentence only where its
+ * paragraph ends.
+ */
+function unfit(line: string, next: string | undefined, pattern: RegExp): string | null {
+  if (/^\s*\|/.test(line)) return "a table row";
+  if (sentenceEnd(line, commandAt(line, pattern)) !== null) return null;
+  const body = line.trimEnd();
+  if (SENTENCE_END.test(body)) return null;
+  const continued = next !== undefined && next.trim() !== "" && !BLOCK_START.test(next);
+  if (/[,;:\-–—]$/.test(body) || continued) return "its sentence goes on past the line";
+  return null;
+}
+
+/**
+ * Row 005-47, cezar's "`npm test` and `npm run test:unit` are the fast unit
+ * gate": a sentence that opens with the command says what the command is,
+ * so the checkpoint cannot take its place.
+ */
+function subject(line: string, pattern: RegExp): string | null {
+  return /^\s*(?:[-*+]\s+|\d+[.)]\s+)?[*_]*$/.test(leadIn(line, pattern))
+    ? "its sentence describes the test command rather than running it"
+    : null;
 }
 
 /**
@@ -158,7 +243,8 @@ function compound(line: string, pattern: RegExp): string | null {
 /**
  * D5's rewording: every code span (or bare command) running the test
  * command becomes the checkpoint, and one sentence for the cases Squeal
- * cannot answer names the old command as the fallback.
+ * cannot answer names the old command as the fallback. That sentence
+ * follows the checkpoint's own, so its "it" is the checkpoint (row 005-47).
  */
 export function reword(line: string, pattern: RegExp = commandPattern(true)): string {
   const command = commandOf(line, pattern);
@@ -167,9 +253,12 @@ export function reword(line: string, pattern: RegExp = commandPattern(true)): st
     pattern.test(inner) ? `\`${checkpoint}\`` : span,
   );
   if (replaced === line) replaced = line.replace(pattern, checkpoint);
+  const fallback = `If it exits 3 at its deadline, run it again; if it exits 3 for another reason, \`squeal\` is unavailable, or you doubt its result, run \`${command}\` instead.`;
+  const end = sentenceEnd(replaced, replaced.indexOf(checkpoint));
+  if (end !== null) return `${replaced.slice(0, end)} ${fallback}${replaced.slice(end)}`;
   const body = replaced.trimEnd();
-  const stop = /[.!?:]$/.test(body) ? "" : ".";
-  return `${body}${stop} If it exits 3 at its deadline, run it again; if it exits 3 for another reason, \`squeal\` is unavailable, or you doubt its result, run \`${command}\` instead.`;
+  const stop = SENTENCE_END.test(body) ? "" : ".";
+  return `${body}${stop} ${fallback}`;
 }
 
 /**
