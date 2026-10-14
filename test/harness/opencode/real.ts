@@ -54,6 +54,8 @@ export interface SquealRunOptions {
   readonly mode: "run" | "serve";
   readonly plan: ScriptedStep[];
   readonly prompt: string;
+  /** On the seeded repository before OpenCode starts. */
+  readonly prepare?: (r: SquealRepo) => void;
   /** Once the first consumer registers, as soon as the bridge wrote it. */
   readonly onRegistered?: (r: SquealRepo, consumer: ConsumerRecord) => void;
   readonly afterReply?: (live: OpenCodeLive, r: SquealRepo) => Promise<void>;
@@ -78,6 +80,7 @@ export async function squealOpenCode(options: SquealRunOptions): Promise<SquealR
       setup: async (cwd) => {
         const r = squealRepo(repoAt(cwd));
         r.apply(r.pass());
+        options.prepare?.(r);
         repo = r;
         sockets.push(await liveSocket(join(dir, `squeal-${r.worktreeId}.sock`)));
         const { onRegistered } = options;
