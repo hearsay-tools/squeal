@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { afterAll, expect } from "vitest";
+import { afterAll, expect, vi } from "vitest";
 import { createRecoveringRunner } from "../../src/core/daemon/runner.js";
 import { withSlowInstance } from "../../src/core/daemon/slow-instance.js";
 import { readDaemonNotes } from "../../src/core/notes.js";
@@ -148,9 +148,20 @@ export interface ScheduledRun {
   readonly runId: string;
 }
 
-/** The scheduler's runs from now on (`Harness.gate`). Call before the scheduler starts. */
+/** The run ids of every result `scheduledRuns` saw stored, per its runs (review 007-31, S1). */
+const putRunIds = new WeakMap<readonly ScheduledRun[], () => readonly string[]>();
+
+/**
+ * The scheduler's runs from now on (`Harness.gate`), and the results it
+ * stores from them. Call before the scheduler starts.
+ */
 export function scheduledRuns(h: Harness): ScheduledRun[] {
   const runs: ScheduledRun[] = [];
+  // `putMany` replaces a result at its check and key: only the calls show what was there for a moment.
+  const puts = vi.spyOn(h.store.results, "putMany");
+  putRunIds.set(runs, () =>
+    puts.mock.calls.flatMap(([records]) => records.map((r) => r.provenance.runId)),
+  );
   const before = h.gate.before;
   h.gate.before = (files, options) => {
     runs.push({ files, runId: options.runId });
@@ -164,7 +175,8 @@ export function scheduledRuns(h: Harness): ScheduledRun[] {
  * first of `runs` holding `testPath`, since `path` was restored after the
  * tier's snapshot and no batch said so before the run ended, and the file
  * ran once more. A note names the path; the file's stored results are a
- * later run's, none the withheld run's.
+ * later run's, and the withheld run's never reached the store, even for a
+ * moment (review 007-31, S1).
  */
 export function withheldByBarrier(
   h: Harness,
@@ -185,4 +197,7 @@ export function withheldByBarrier(
   expect(kept.length).toBeGreaterThan(0);
   expect(kept).not.toContain(ran[0]);
   for (const runId of kept) expect(ran.slice(1)).toContain(runId);
+  const put = putRunIds.get(runs)?.() ?? [];
+  expect(put).toEqual(expect.arrayContaining(kept));
+  expect(put).not.toContain(ran[0]);
 }
