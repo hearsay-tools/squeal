@@ -31,6 +31,8 @@ import {
 
 const small = resolve(import.meta.dirname, "../../../fixtures/pytest/small");
 const SLOW = { timeout: 90_000 } as const;
+/** Removing a synced fixture copy, `.venv` and all, under a loaded suite. */
+const CLEANUP_MS = 60_000;
 const PROJECT: PytestProject = {
   name: "small",
   args: [],
@@ -80,7 +82,7 @@ describe.each(PYTHONS)("runPytest under Python %s (spec 007 D6)", (version) => {
   afterAll(() => {
     if (synced.ok) synced.env.cleanup();
     if (scratch !== "") rmSync(scratch, { recursive: true, force: true });
-  });
+  }, CLEANUP_MS);
 
   let runs = 0;
   async function run(

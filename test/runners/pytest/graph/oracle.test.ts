@@ -28,6 +28,8 @@ interface OracleFile {
 }
 
 const SLOW = { timeout: 120_000 } as const;
+/** Removing a synced fixture copy, `.venv` and all, under a loaded suite. */
+const CLEANUP_MS = 60_000;
 const synced = new Map<PythonVersion, Synced>();
 const sync = (version: PythonVersion) => {
   let s = synced.get(version);
@@ -37,9 +39,11 @@ const sync = (version: PythonVersion) => {
   }
   return s;
 };
+// Deleting two synced `.venv` copies outran the default 10 s hook budget
+// under a loaded full suite (review 007-16 S2); a failure still fails the hook.
 afterAll(() => {
   for (const s of synced.values()) if (s.ok) s.env.cleanup();
-});
+}, CLEANUP_MS);
 
 /** The oracle's closure: the file, its conftest chain and `pytest_plugins`, then edges. */
 function oracleClosure(root: string, files: Record<string, OracleFile>, testFile: string) {
