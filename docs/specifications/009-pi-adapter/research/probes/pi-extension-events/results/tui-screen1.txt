@@ -1,0 +1,25 @@
+ ▀▀█  v1.0.4
+ █▀ █ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+ Pi can explain its own features and look up its docs. Ask it how to use or extend Pi.
+[Extensions]
+  probe.ts
+ Warning: tmux extended-keys is off. Modified Enter keys may not work. Add `set -g extended-keys on` to ~/.tmux.conf and restart tmux.
+ first prompt
+ read a.txt
+ [squeal-probe]
+ INJECT-turn_end-0
+ [squeal-probe]
+ INJECT-steer-call_0_0
+ done-first
+ [squeal-probe]
+ INJECT-turn_end-1
+ [squeal-probe]
+ SETTLE-news-1
+ after-settle
+ [squeal-probe]
+ INJECT-turn_end-0
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/pee/proj
+↑30 ↓15 0.0%/1.0M (auto)                                                                                                                        fake-1

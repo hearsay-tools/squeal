@@ -1,0 +1,1 @@
+[{"send":{"id":"p1","type":"prompt","message":"one"}},{"waitFor":"agent_settled","timeoutMs":20000},{"close":true}]

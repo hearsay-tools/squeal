@@ -1,0 +1,22 @@
+ first prompt
+ read a.txt
+ [squeal-probe]
+ INJECT-turn_end-0
+ [squeal-probe]
+ INJECT-steer-call_0_0
+ done-first
+ [squeal-probe]
+ INJECT-turn_end-1
+ [squeal-probe]
+ SETTLE-news-1
+ after-settle
+ [squeal-probe]
+ INJECT-turn_end-0
+ second prompt
+ Operation aborted
+ [squeal-probe]
+ INJECT-turn_end-0
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/pee/proj
+↑40 ↓20 0.0%/1.0M (auto)                                                                                                                        fake-1

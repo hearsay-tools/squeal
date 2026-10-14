@@ -1,0 +1,66 @@
+{"ev":"factory","factoryRuns":1,"flags":[],"argv":["--mode","rpc","--provider","fake","--model","fake-1","-e","/home/squeal-e2e/pee/probe/probe.ts","--session-dir","/home/squeal-e2e/pee/out/events-rpc/sessions"]}
+{"ev":"session_start","reason":"startup","sid":"01a13af2","mode":"rpc","idle":true}
+{"ev":"STATE","moduleState":1,"factoryRuns":1}
+{"ev":"input","text":"probe the environment","source":"rpc","sid":"01a13af2","mode":"rpc","idle":true}
+{"ev":"before_agent_start","prompt":"probe the environment","sections":[],"appendSystemPromptLen":0,"contextFiles":[],"skills":[],"systemPromptLen":2766,"sid":"01a13af2","mode":"rpc","idle":true}
+{"ev":"agent_start","sid":"01a13af2","mode":"rpc","idle":false}
+{"ev":"turn_start","turnIndex":0,"sid":"01a13af2","mode":"rpc","idle":false}
+{"ev":"PROVIDER_REQUEST","n":0,"messageCount":2,"systemPromptLen":2766,"systemPromptMarkers":[],"markers":[],"tail":[{"role":"system","sections":["preamble","tools","rules","docs","cwd"],"len":0},{"role":"user","text":"probe the environment"}]}
+{"ev":"tool_execution_start","toolCallId":"call_0_0","toolName":"bash","sid":"01a13af2","mode":"rpc","idle":false}
+{"ev":"tool_call","toolCallId":"call_0_0","toolName":"bash","input":{"command":"env | grep -E \"^(PI_|AI_AGENT|SQUEAL_PROBE)\" | sort; echo PWD=$PWD"},"sid":"01a13af2","mode":"rpc","idle":false}
+{"ev":"tool_result","toolCallId":"call_0_0","toolName":"bash","input":{"command":"env | grep -E \"^(PI_|AI_AGENT|SQUEAL_PROBE)\" | sort; echo PWD=$PWD"},"isError":false,"text":"AI_AGENT=pi\nPI_CODING_AGENT=true\nPI_CODING_AGENT_DIR=/home/squeal-e2e/pee/agent\nPI_MODEL=fake-1\nPI_OFFLINE=1\nPI_PROVIDER=fake\nPI_REASONING_LEVEL=off\nPI_SESSION_FILE=/home/squeal-e2e/pee/out/events-rpc/sessions/2026-1
+{"ev":"tool_execution_end","toolCallId":"call_0_0","toolName":"bash","isError":false,"sid":"01a13af2","mode":"rpc","idle":false}
+{"ev":"turn_end","turnIndex":0,"msg":{"role":"assistant","text":"probing env","toolCalls":["bash"]},"toolResults":1,"entries":[],"continue":false,"outcome":"completed","canContinue":true,"pending":0,"sid":"01a13af2","mode":"rpc","idle":false}
+{"ev":"turn_start","turnIndex":1,"sid":"01a13af2","mode":"rpc","idle":false}
+{"ev":"PROVIDER_REQUEST","n":1,"messageCount":4,"systemPromptLen":2766,"systemPromptMarkers":[],"markers":[],"tail":[{"role":"system","sections":["preamble","tools","rules","docs","cwd"],"len":0},{"role":"user","text":"probe the environment"},{"role":"assistant","text":"probing env","toolCalls":["bash"]},{"role":"toolResult","toolName":"bash","id":"call_0_0","isError":false,"text":"AI_AGENT=pi\nPI
+{"ev":"tool_execution_start","toolCallId":"call_1_0","toolName":"write","sid":"01a13af2","mode":"rpc","idle":false}
+{"ev":"tool_call","toolCallId":"call_1_0","toolName":"write","input":{"path":"out.txt","content":"hello\n"},"sid":"01a13af2","mode":"rpc","idle":false}
+{"ev":"tool_result","toolCallId":"call_1_0","toolName":"write","input":{"path":"out.txt","content":"hello\n"},"isError":false,"text":"Successfully wrote to out.txt","sid":"01a13af2","mode":"rpc","idle":false}
+{"ev":"tool_execution_end","toolCallId":"call_1_0","toolName":"write","isError":false,"sid":"01a13af2","mode":"rpc","idle":false}
+{"ev":"turn_end","turnIndex":1,"msg":{"role":"assistant","text":"","toolCalls":["write"]},"toolResults":1,"entries":[],"continue":false,"outcome":"completed","canContinue":true,"pending":0,"sid":"01a13af2","mode":"rpc","idle":false}
+{"ev":"turn_start","turnIndex":2,"sid":"01a13af2","mode":"rpc","idle":false}
+{"ev":"PROVIDER_REQUEST","n":2,"messageCount":6,"systemPromptLen":2766,"systemPromptMarkers":[],"markers":[],"tail":[{"role":"system","sections":["preamble","tools","rules","docs","cwd"],"len":0},{"role":"user","text":"probe the environment"},{"role":"assistant","text":"probing env","toolCalls":["bash"]},{"role":"toolResult","toolName":"bash","id":"call_0_0","isError":false,"text":"AI_AGENT=pi\nPI
+{"ev":"turn_end","turnIndex":2,"msg":{"role":"assistant","text":"done-1","toolCalls":[]},"toolResults":0,"entries":[],"continue":false,"outcome":"completed","canContinue":false,"pending":0,"sid":"01a13af2","mode":"rpc","idle":false}
+{"ev":"agent_end","messages":7,"roles":["system","user","assistant","toolResult","assistant","toolResult","assistant"],"sid":"01a13af2","mode":"rpc","idle":false}
+{"ev":"agent_before_settle","entries":[],"continue":false,"outcome":"completed","canContinue":false,"pending":0,"sid":"01a13af2","mode":"rpc","idle":false}
+{"ev":"agent_settled","sid":"01a13af2","mode":"rpc","idle":true}
+{"ev":"input","text":"second prompt","source":"rpc","sid":"01a13af2","mode":"rpc","idle":true}
+{"ev":"before_agent_start","prompt":"second prompt","sections":[],"appendSystemPromptLen":0,"contextFiles":[],"skills":[],"systemPromptLen":2766,"sid":"01a13af2","mode":"rpc","idle":true}
+{"ev":"agent_start","sid":"01a13af2","mode":"rpc","idle":false}
+{"ev":"turn_start","turnIndex":0,"sid":"01a13af2","mode":"rpc","idle":false}
+{"ev":"PROVIDER_REQUEST","n":3,"messageCount":8,"systemPromptLen":2766,"systemPromptMarkers":[],"markers":[],"tail":[{"role":"assistant","text":"probing env","toolCalls":["bash"]},{"role":"toolResult","toolName":"bash","id":"call_0_0","isError":false,"text":"AI_AGENT=pi\nPI_CODING_AGENT=true\nPI_CODING_AGENT_DIR=/home/squeal-e2e/pee/agent\nPI_MODEL=fake-1\nPI_OFFLINE=1\nPI_PROVIDER=fake\nPI_REASON
+{"ev":"turn_end","turnIndex":0,"msg":{"role":"assistant","text":"done-2","toolCalls":[]},"toolResults":0,"entries":[],"continue":false,"outcome":"completed","canContinue":false,"pending":0,"sid":"01a13af2","mode":"rpc","idle":false}
+{"ev":"agent_end","messages":2,"roles":["user","assistant"],"sid":"01a13af2","mode":"rpc","idle":false}
+{"ev":"agent_before_settle","entries":[],"continue":false,"outcome":"completed","canContinue":false,"pending":0,"sid":"01a13af2","mode":"rpc","idle":false}
+{"ev":"agent_settled","sid":"01a13af2","mode":"rpc","idle":true}
+{"ev":"session_shutdown","reason":"quit","sid":"01a13af2","mode":"rpc","idle":true}
+--- stderr
+--- rpc (non-message records)
+{"t":1791990343603,"dir":"in","cmd":{"id":"p1","type":"prompt","message":"probe the environment"}}
+{"t":1791990344115,"dir":"out","type":"response","r":{"id":"p1","type":"response","command":"prompt","success":true,"data":{"disposition":"started"}}}
+{"t":1791990344116,"dir":"out","type":"agent_start","r":{"type":"agent_start"}}
+{"t":1791990344116,"dir":"out","type":"turn_start","r":{"type":"turn_start"}}
+{"t":1791990344121,"dir":"out","type":"tool_execution_start","r":{"type":"tool_execution_start","toolCallId":"call_0_0","toolName":"bash","args":{"command":"env | grep -E \"^(PI_|AI_AGENT|SQUEAL_PROBE)\" | sort; echo PWD=$PWD"}}}
+{"t":1791990344124,"dir":"out","type":"tool_execution_update","r":{"type":"tool_execution_update","toolCallId":"call_0_0","toolName":"bash","args":{"command":"env | grep -E \"^(PI_|AI_AGENT|SQUEAL_PROBE)\" | sort; echo PWD=$PWD"},"partialResult":"[omitted]"}}
+{"t":1791990344132,"dir":"out","type":"tool_execution_update","r":{"type":"tool_execution_update","toolCallId":"call_0_0","toolName":"bash","args":{"command":"env | grep -E \"^(PI_|AI_AGENT|SQUEAL_PROBE)\" | sort; echo PWD=$PWD"},"partialResult":"[omitted]"}}
+{"t":1791990344134,"dir":"out","type":"tool_execution_update","r":{"type":"tool_execution_update","toolCallId":"call_0_0","toolName":"bash","args":{"command":"env | grep -E \"^(PI_|AI_AGENT|SQUEAL_PROBE)\" | sort; echo PWD=$PWD"},"partialResult":"[omitted]"}}
+{"t":1791990344135,"dir":"out","type":"tool_execution_end","r":{"type":"tool_execution_end","toolCallId":"call_0_0","toolName":"bash","result":"[omitted]","isError":false}}
+{"t":1791990344137,"dir":"out","type":"turn_end","r":{"type":"turn_end","message":"[omitted]","toolResults":"[omitted]"}}
+{"t":1791990344138,"dir":"out","type":"turn_start","r":{"type":"turn_start"}}
+{"t":1791990344139,"dir":"out","type":"tool_execution_start","r":{"type":"tool_execution_start","toolCallId":"call_1_0","toolName":"write","args":{"path":"out.txt","content":"hello\n"}}}
+{"t":1791990344142,"dir":"out","type":"tool_execution_end","r":{"type":"tool_execution_end","toolCallId":"call_1_0","toolName":"write","result":"[omitted]","isError":false}}
+{"t":1791990344143,"dir":"out","type":"turn_end","r":{"type":"turn_end","message":"[omitted]","toolResults":"[omitted]"}}
+{"t":1791990344143,"dir":"out","type":"turn_start","r":{"type":"turn_start"}}
+{"t":1791990344144,"dir":"out","type":"turn_end","r":{"type":"turn_end","message":"[omitted]","toolResults":"[omitted]"}}
+{"t":1791990344145,"dir":"out","type":"agent_end","r":{"type":"agent_end","messages":"[omitted]","willRetry":false}}
+{"t":1791990344149,"dir":"out","type":"agent_settled","r":{"type":"agent_settled"}}
+{"t":1791990344169,"dir":"wait","for":"agent_settled","ok":true}
+{"t":1791990344169,"dir":"in","cmd":{"id":"p2","type":"prompt","message":"second prompt"}}
+{"t":1791990344171,"dir":"out","type":"response","r":{"id":"p2","type":"response","command":"prompt","success":true,"data":{"disposition":"started"}}}
+{"t":1791990344171,"dir":"out","type":"agent_start","r":{"type":"agent_start"}}
+{"t":1791990344171,"dir":"out","type":"turn_start","r":{"type":"turn_start"}}
+{"t":1791990344173,"dir":"out","type":"turn_end","r":{"type":"turn_end","message":"[omitted]","toolResults":"[omitted]"}}
+{"t":1791990344173,"dir":"out","type":"agent_end","r":{"type":"agent_end","messages":"[omitted]","willRetry":false}}
+{"t":1791990344174,"dir":"out","type":"agent_settled","r":{"type":"agent_settled"}}
+{"t":1791990344190,"dir":"wait","for":"agent_settled","ok":true}
+{"t":1791990344211,"dir":"exit","code":0,"signal":null}

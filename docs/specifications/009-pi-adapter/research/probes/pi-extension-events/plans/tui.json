@@ -1,0 +1,30 @@
+[
+  {
+    "tools": [
+      {
+        "name": "read",
+        "arguments": {
+          "path": "a.txt"
+        }
+      }
+    ]
+  },
+  {
+    "text": "done-first"
+  },
+  {
+    "text": "after-settle"
+  },
+  {
+    "waitAbort": true
+  },
+  {
+    "text": "final"
+  },
+  {
+    "text": "x"
+  },
+  {
+    "text": "y"
+  }
+]

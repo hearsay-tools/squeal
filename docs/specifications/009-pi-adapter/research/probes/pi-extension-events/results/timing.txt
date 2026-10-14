@@ -1,0 +1,9 @@
+none run=1 requests=301 mean ms between provider requests=3.311
+none run=2 requests=301 mean ms between provider requests=3.087
+none run=3 requests=301 mean ms between provider requests=2.65
+trivial run=1 requests=301 mean ms between provider requests=2.793
+trivial run=2 requests=301 mean ms between provider requests=3.339
+trivial run=3 requests=301 mean ms between provider requests=2.626
+socket run=1 requests=301 mean ms between provider requests=3.753
+socket run=2 requests=301 mean ms between provider requests=3.492
+socket run=3 requests=301 mean ms between provider requests=3.142

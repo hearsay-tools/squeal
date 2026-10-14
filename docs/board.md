@@ -878,6 +878,17 @@ Spec: not written yet; research first. Status and research brief: `specification
 | 008-01 research: opencode-plugins | running (worker 86b69255, codex gpt-6-astra high) | Topic `opencode-plugins`: extension surfaces and trust, every hook and bus event under `run` and `serve`, mid-turn injection and the primer, deny, `session.idle` as Stop, failure modes and the cost of in-process, per-event `node` and socket shapes. Real OpenCode runs only as `squeal-e2e`. | `research/opencode-plugins.md` committed with every question tagged or "not determined, because". |
 | 008-02 research: opencode-sessions-and-wake | running (worker bf9cbdb3, opus high) | Topic `opencode-sessions-and-wake`: how Cezar drives OpenCode, idle wake, identity in shells and plugins, packaging and install, lifecycle and child processes, worktrees. Real OpenCode runs only as `squeal-e2e`. | `research/opencode-sessions-and-wake.md` committed with every question tagged or "not determined, because". |
 
+## Feature 009: Pi adapter
+
+Spec: `specifications/009-pi-adapter/` (draft; research done, spec next). Research brief: `specifications/009-pi-adapter/research/README.md`.
+
+### Research
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 009-01 research: pi-extension-events | done (Opus, `research/pi-extension-events.md`) | Topic `pi-extension-events`: event payloads, mid-turn injection, `tool_call` deny, end-of-run continuation, the primer, handler failure modes and cost, subagents and forks; Pi 1.0.4 as `squeal-e2e` with a fake provider. | `research/pi-extension-events.md` committed with every question tagged or "not determined, because". |
+| 009-02 research: pi-sessions-and-packaging | done (Astra, `research/pi-sessions-and-packaging.md`) | Topic `pi-sessions-and-packaging`: idle wake, how Cezar drives Pi over RPC, Pi packages and trust, bundled extensions and the CLI path, daemon lifecycle, session identity. | `research/pi-sessions-and-packaging.md` committed with every question tagged or "not determined, because". |
+
 ## Later
 
 - 007: observed closure growth outside `observe.runtimeInputs`: a pytest file whose run imports a path outside its static closure and outside the shared session key makes the result incomplete but does not grow the stored closure for the next key (007-14 option (b), 2026-10-14).
@@ -899,6 +910,5 @@ Spec: not written yet; research first. Status and research brief: `specification
 
 - `squeal init` with a harness choice and the policy keys 002 and 003 add; the one seam the two specs share. Topic 005-02 reads it as a home for the install step, so it may join spec 005.
 - Inherited-pass re-verification policy, if dogfooding shows stale escapes.
-- Pi adapter (OpenCode is spec 008, started 2026-10-14).
 - 010 pull credit: a pull through `squeal status` suppresses the same news in the next push (design H in `specifications/001-core-loop/research/pull-advances-push.md`; changes D6 to D9 and adds a `pulls` table; one worker plus a reviewer). Parked 2026-10-07: the repeat is harmless.
 - macOS verification before any public release.

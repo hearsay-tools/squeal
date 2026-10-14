@@ -1,0 +1,42 @@
+{
+  "local-install": {
+    "exit": 0,
+    "marker_loaded": false,
+    "output": "Installing /home/squeal-e2e/pi-sessions-packaging-probe/marker-package...\nInstalled /home/squeal-e2e/pi-sessions-packaging-probe/marker-package",
+    "settings": {
+      "packages": [
+        "../../marker-package"
+      ]
+    }
+  },
+  "trust-default": {
+    "exit": 0,
+    "marker_loaded": false,
+    "output": "FAKE_REPLY_1"
+  },
+  "trust-refused": {
+    "exit": 0,
+    "marker_loaded": false,
+    "output": "FAKE_REPLY_1"
+  },
+  "trust-approved": {
+    "exit": 0,
+    "marker_loaded": true,
+    "output": "FAKE_REPLY_1"
+  },
+  "local-remove": {
+    "exit": 0,
+    "marker_loaded": false,
+    "output": "Removing /home/squeal-e2e/pi-sessions-packaging-probe/marker-package...\nRemoved /home/squeal-e2e/pi-sessions-packaging-probe/marker-package"
+  },
+  "implicit-mjs": {
+    "exit": 0,
+    "marker_loaded": false,
+    "output": "FAKE_REPLY_1"
+  },
+  "implicit-js": {
+    "exit": 0,
+    "marker_loaded": true,
+    "output": "FAKE_REPLY_1"
+  }
+}

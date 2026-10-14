@@ -1,0 +1,30 @@
+[
+  {
+    "tools": [
+      {
+        "name": "read",
+        "arguments": {
+          "path": "a.txt"
+        }
+      },
+      {
+        "name": "read",
+        "arguments": {
+          "path": "b.txt"
+        }
+      },
+      {
+        "name": "bash",
+        "arguments": {
+          "command": "sleep 0.3; echo slow"
+        }
+      }
+    ]
+  },
+  {
+    "text": "done"
+  },
+  {
+    "text": "extra"
+  }
+]

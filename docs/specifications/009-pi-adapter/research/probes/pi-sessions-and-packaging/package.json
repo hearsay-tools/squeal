@@ -1,0 +1,8 @@
+{
+  "name": "squeal-pi-packaging-probe",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "pi": { "extensions": ["./probe.mjs"] },
+  "peerDependencies": { "@earendil-works/pi-ai": "*" }
+}

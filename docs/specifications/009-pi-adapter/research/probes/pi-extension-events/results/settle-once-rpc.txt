@@ -1,0 +1,52 @@
+{"ev":"factory","factoryRuns":1,"flags":["settle_once"],"argv":["--mode","rpc","--provider","fake","--model","fake-1","-e","/home/squeal-e2e/pee/probe/probe.ts","--session-dir","/home/squeal-e2e/pee/out/settle-once-rpc/sessions"]}
+{"ev":"session_start","reason":"startup","sid":"01a13af6","mode":"rpc","idle":true}
+{"ev":"STATE","moduleState":1,"factoryRuns":1}
+{"ev":"input","text":"probe the environment","source":"rpc","sid":"01a13af6","mode":"rpc","idle":true}
+{"ev":"before_agent_start","prompt":"probe the environment","sections":[],"appendSystemPromptLen":0,"contextFiles":[],"skills":[],"systemPromptLen":2766,"sid":"01a13af6","mode":"rpc","idle":true}
+{"ev":"agent_start","sid":"01a13af6","mode":"rpc","idle":false}
+{"ev":"turn_start","turnIndex":0,"sid":"01a13af6","mode":"rpc","idle":false}
+{"ev":"PROVIDER_REQUEST","n":0,"messageCount":2,"systemPromptLen":2766,"systemPromptMarkers":[],"markers":[],"tail":[{"role":"system","sections":["preamble","tools","rules","docs","cwd"],"len":0},{"role":"user","text":"probe the environment"}]}
+{"ev":"turn_end","turnIndex":0,"msg":{"role":"assistant","text":"r0","toolCalls":[]},"toolResults":0,"entries":[],"continue":false,"outcome":"completed","canContinue":false,"pending":0,"sid":"01a13af6","mode":"rpc","idle":false}
+{"ev":"agent_end","messages":3,"roles":["system","user","assistant"],"sid":"01a13af6","mode":"rpc","idle":false}
+{"ev":"agent_before_settle","entries":[],"continue":false,"outcome":"completed","canContinue":false,"pending":0,"sid":"01a13af6","mode":"rpc","idle":false}
+{"ev":"agent_start","sid":"01a13af6","mode":"rpc","idle":false}
+{"ev":"turn_start","turnIndex":0,"sid":"01a13af6","mode":"rpc","idle":false}
+{"ev":"PROVIDER_REQUEST","n":1,"messageCount":4,"systemPromptLen":2766,"systemPromptMarkers":[],"markers":["SETTLE-news-1"],"tail":[{"role":"system","sections":["preamble","tools","rules","docs","cwd"],"len":0},{"role":"user","text":"probe the environment"},{"role":"assistant","text":"r0","toolCalls":[]},{"role":"user","text":"SETTLE-news-1"}]}
+{"ev":"turn_end","turnIndex":0,"msg":{"role":"assistant","text":"r1","toolCalls":[]},"toolResults":0,"entries":[],"continue":false,"outcome":"completed","canContinue":false,"pending":0,"sid":"01a13af6","mode":"rpc","idle":false}
+{"ev":"agent_end","messages":1,"roles":["assistant"],"sid":"01a13af6","mode":"rpc","idle":false}
+{"ev":"agent_before_settle","entries":[],"continue":false,"outcome":"completed","canContinue":false,"pending":0,"sid":"01a13af6","mode":"rpc","idle":false}
+{"ev":"agent_settled","sid":"01a13af6","mode":"rpc","idle":true}
+{"ev":"input","text":"second prompt","source":"rpc","sid":"01a13af6","mode":"rpc","idle":true}
+{"ev":"before_agent_start","prompt":"second prompt","sections":[],"appendSystemPromptLen":0,"contextFiles":[],"skills":[],"systemPromptLen":2766,"sid":"01a13af6","mode":"rpc","idle":true}
+{"ev":"agent_start","sid":"01a13af6","mode":"rpc","idle":false}
+{"ev":"turn_start","turnIndex":0,"sid":"01a13af6","mode":"rpc","idle":false}
+{"ev":"PROVIDER_REQUEST","n":2,"messageCount":6,"systemPromptLen":2766,"systemPromptMarkers":[],"markers":["SETTLE-news-1"],"tail":[{"role":"system","sections":["preamble","tools","rules","docs","cwd"],"len":0},{"role":"user","text":"probe the environment"},{"role":"assistant","text":"r0","toolCalls":[]},{"role":"user","text":"SETTLE-news-1"},{"role":"assistant","text":"r1","toolCalls":[]},{"role"
+{"ev":"turn_end","turnIndex":0,"msg":{"role":"assistant","text":"r2","toolCalls":[]},"toolResults":0,"entries":[],"continue":false,"outcome":"completed","canContinue":false,"pending":0,"sid":"01a13af6","mode":"rpc","idle":false}
+{"ev":"agent_end","messages":2,"roles":["user","assistant"],"sid":"01a13af6","mode":"rpc","idle":false}
+{"ev":"agent_before_settle","entries":[],"continue":false,"outcome":"completed","canContinue":false,"pending":0,"sid":"01a13af6","mode":"rpc","idle":false}
+{"ev":"agent_settled","sid":"01a13af6","mode":"rpc","idle":true}
+{"ev":"session_shutdown","reason":"quit","sid":"01a13af6","mode":"rpc","idle":true}
+--- stderr
+--- rpc (non-message records)
+{"t":1791990584910,"dir":"in","cmd":{"id":"p1","type":"prompt","message":"probe the environment"}}
+{"t":1791990587512,"dir":"out","type":"response","r":{"id":"p1","type":"response","command":"prompt","success":true,"data":{"disposition":"started"}}}
+{"t":1791990587518,"dir":"out","type":"agent_start","r":{"type":"agent_start"}}
+{"t":1791990587518,"dir":"out","type":"turn_start","r":{"type":"turn_start"}}
+{"t":1791990587535,"dir":"out","type":"turn_end","r":{"type":"turn_end","message":"[omitted]","toolResults":"[omitted]"}}
+{"t":1791990587536,"dir":"out","type":"agent_end","r":{"type":"agent_end","messages":"[omitted]","willRetry":false}}
+{"t":1791990587543,"dir":"out","type":"entry_appended","r":{"type":"entry_appended","entry":{"type":"custom_message","customType":"squeal-probe","content":"SETTLE-news-1","display":true,"id":"8b1d2cf4","parentId":"1c9f9db7","timestamp":"2026-10-14T15:09:47.541Z"}}}
+{"t":1791990587543,"dir":"out","type":"agent_start","r":{"type":"agent_start"}}
+{"t":1791990587543,"dir":"out","type":"turn_start","r":{"type":"turn_start"}}
+{"t":1791990587546,"dir":"out","type":"turn_end","r":{"type":"turn_end","message":"[omitted]","toolResults":"[omitted]"}}
+{"t":1791990587546,"dir":"out","type":"agent_end","r":{"type":"agent_end","messages":"[omitted]","willRetry":false}}
+{"t":1791990587547,"dir":"out","type":"agent_settled","r":{"type":"agent_settled"}}
+{"t":1791990587561,"dir":"wait","for":"agent_settled","ok":true}
+{"t":1791990587562,"dir":"in","cmd":{"id":"p2","type":"prompt","message":"second prompt"}}
+{"t":1791990587567,"dir":"out","type":"response","r":{"id":"p2","type":"response","command":"prompt","success":true,"data":{"disposition":"started"}}}
+{"t":1791990587567,"dir":"out","type":"agent_start","r":{"type":"agent_start"}}
+{"t":1791990587567,"dir":"out","type":"turn_start","r":{"type":"turn_start"}}
+{"t":1791990587571,"dir":"out","type":"turn_end","r":{"type":"turn_end","message":"[omitted]","toolResults":"[omitted]"}}
+{"t":1791990587573,"dir":"out","type":"agent_end","r":{"type":"agent_end","messages":"[omitted]","willRetry":false}}
+{"t":1791990587573,"dir":"out","type":"agent_settled","r":{"type":"agent_settled"}}
+{"t":1791990587584,"dir":"wait","for":"agent_settled","ok":true}
+{"t":1791990587645,"dir":"exit","code":0,"signal":null}

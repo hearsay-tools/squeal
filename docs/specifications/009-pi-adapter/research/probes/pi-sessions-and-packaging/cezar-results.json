@@ -1,0 +1,194 @@
+{
+  "false-200": {
+    "args": [
+      "--mode",
+      "rpc",
+      "--extension",
+      "/home/squeal-e2e/pi-sessions-packaging-probe/cezar-source/scripts/pi-retry-degraded-service.mjs",
+      "--model",
+      "squeal-fake/scripted"
+    ],
+    "events": [
+      {
+        "type": "session",
+        "sessionId": "01a13af3-e630-772d-8d22-cfd48a43b852"
+      },
+      {
+        "type": "text",
+        "text": "FAKE_REPLY_1"
+      },
+      {
+        "type": "token-usage",
+        "tokensUsed": 2
+      },
+      {
+        "type": "cost",
+        "usd": 0
+      },
+      {
+        "type": "turn-end"
+      },
+      {
+        "type": "text",
+        "text": "FAKE_REPLY_2"
+      },
+      {
+        "type": "token-usage",
+        "tokensUsed": 4
+      },
+      {
+        "type": "cost",
+        "usd": 0
+      },
+      {
+        "type": "turn-end"
+      },
+      {
+        "type": "done"
+      }
+    ],
+    "uiTypes": [
+      "turn.started",
+      "session.started",
+      "item.started",
+      "item.delta",
+      "item.completed",
+      "usage.updated",
+      "turn.completed",
+      "turn.started",
+      "item.started",
+      "item.delta",
+      "item.completed",
+      "usage.updated",
+      "turn.completed",
+      "session.ended"
+    ],
+    "result": {
+      "text": "FAKE_REPLY_1\nFAKE_REPLY_2",
+      "toolCalls": [],
+      "tokensUsed": 4,
+      "sessionId": "01a13af3-e630-772d-8d22-cfd48a43b852"
+    }
+  },
+  "true-200": {
+    "args": [
+      "--mode",
+      "rpc",
+      "--extension",
+      "/home/squeal-e2e/pi-sessions-packaging-probe/cezar-source/scripts/pi-retry-degraded-service.mjs",
+      "--model",
+      "squeal-fake/scripted"
+    ],
+    "events": [
+      {
+        "type": "session",
+        "sessionId": "01a13af3-e963-76e7-881e-970a175daaeb"
+      },
+      {
+        "type": "text",
+        "text": "FAKE_REPLY_1"
+      },
+      {
+        "type": "token-usage",
+        "tokensUsed": 2
+      },
+      {
+        "type": "cost",
+        "usd": 0
+      },
+      {
+        "type": "turn-end"
+      },
+      {
+        "type": "text",
+        "text": "FAKE_REPLY_2"
+      },
+      {
+        "type": "token-usage",
+        "tokensUsed": 4
+      },
+      {
+        "type": "cost",
+        "usd": 0
+      },
+      {
+        "type": "turn-end"
+      },
+      {
+        "type": "done"
+      }
+    ],
+    "uiTypes": [
+      "turn.started",
+      "session.started",
+      "item.started",
+      "item.delta",
+      "item.completed",
+      "usage.updated",
+      "turn.completed",
+      "turn.started",
+      "item.started",
+      "item.delta",
+      "item.completed",
+      "usage.updated",
+      "turn.completed",
+      "session.ended"
+    ],
+    "result": {
+      "text": "FAKE_REPLY_1\nFAKE_REPLY_2",
+      "toolCalls": [],
+      "tokensUsed": 4,
+      "sessionId": "01a13af3-e963-76e7-881e-970a175daaeb"
+    }
+  },
+  "true-600": {
+    "args": [
+      "--mode",
+      "rpc",
+      "--extension",
+      "/home/squeal-e2e/pi-sessions-packaging-probe/cezar-source/scripts/pi-retry-degraded-service.mjs",
+      "--model",
+      "squeal-fake/scripted"
+    ],
+    "events": [
+      {
+        "type": "session",
+        "sessionId": "01a13af3-ecd7-766d-bd47-fefb47e5d47f"
+      },
+      {
+        "type": "text",
+        "text": "FAKE_REPLY_1"
+      },
+      {
+        "type": "token-usage",
+        "tokensUsed": 2
+      },
+      {
+        "type": "cost",
+        "usd": 0
+      },
+      {
+        "type": "turn-end"
+      },
+      {
+        "type": "done"
+      }
+    ],
+    "uiTypes": [
+      "turn.started",
+      "session.started",
+      "item.started",
+      "item.delta",
+      "item.completed",
+      "usage.updated",
+      "turn.completed",
+      "session.ended"
+    ],
+    "result": {
+      "text": "FAKE_REPLY_1",
+      "toolCalls": [],
+      "tokensUsed": 2,
+      "sessionId": "01a13af3-ecd7-766d-bd47-fefb47e5d47f"
+    }
+  }
+}

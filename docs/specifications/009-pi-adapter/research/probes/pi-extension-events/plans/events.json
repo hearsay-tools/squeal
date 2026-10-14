@@ -1,0 +1,30 @@
+[
+  {
+    "text": "probing env",
+    "tools": [
+      {
+        "name": "bash",
+        "arguments": {
+          "command": "env | grep -E \"^(PI_|AI_AGENT|SQUEAL_PROBE)\" | sort; echo PWD=$PWD"
+        }
+      }
+    ]
+  },
+  {
+    "tools": [
+      {
+        "name": "write",
+        "arguments": {
+          "path": "out.txt",
+          "content": "hello\n"
+        }
+      }
+    ]
+  },
+  {
+    "text": "done-1"
+  },
+  {
+    "text": "done-2"
+  }
+]

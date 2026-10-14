@@ -1,0 +1,1 @@
+[{"send":{"id":"p1","type":"prompt","message":"first"}},{"waitFor":"agent_settled","timeoutMs":20000},{"send":{"id":"p2","type":"prompt","message":"second"}},{"waitFor":"agent_settled","timeoutMs":20000},{"forkFirstUserMessage":true},{"sleep":1500},{"send":{"id":"p3","type":"prompt","message":"in fork"}},{"waitFor":"agent_settled","timeoutMs":20000},{"close":true}]

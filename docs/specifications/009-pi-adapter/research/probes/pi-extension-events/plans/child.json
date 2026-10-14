@@ -1,0 +1,15 @@
+[
+  {
+    "tools": [
+      {
+        "name": "bash",
+        "arguments": {
+          "command": "env | grep -E \"^(PI_SESSION|SQUEAL_PROBE)\" | sort"
+        }
+      }
+    ]
+  },
+  {
+    "text": "child-done"
+  }
+]

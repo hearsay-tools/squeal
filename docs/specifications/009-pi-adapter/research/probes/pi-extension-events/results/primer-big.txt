@@ -1,0 +1,16 @@
+{"ev":"factory","factoryRuns":1,"flags":["primer_section"],"argv":["--provider","fake","--model","fake-1","-e","/home/squeal-e2e/pee/probe/probe.ts","--session-dir","/home/squeal-e2e/pee/out/primer-big/sessions","-p","big"]}
+{"ev":"session_start","reason":"startup","sid":"01a13af8","mode":"print","idle":true}
+{"ev":"STATE","moduleState":1,"factoryRuns":1}
+{"ev":"input","text":"big","source":"interactive","sid":"01a13af8","mode":"print","idle":true}
+{"ev":"before_agent_start","prompt":"big","sections":[],"appendSystemPromptLen":0,"contextFiles":[],"skills":[],"systemPromptLen":2766,"sid":"01a13af8","mode":"print","idle":true}
+{"ev":"agent_start","sid":"01a13af8","mode":"print","idle":false}
+{"ev":"turn_start","turnIndex":0,"sid":"01a13af8","mode":"print","idle":false}
+{"ev":"PROVIDER_REQUEST","n":0,"messageCount":2,"systemPromptLen":202802,"systemPromptMarkers":["PRIMER-section"],"markers":["PRIMER-section"],"tail":[{"role":"system","sections":["preamble","tools","rules","docs","cwd","squeal"],"len":0},{"role":"user","text":"big"}]}
+{"ev":"turn_end","turnIndex":0,"msg":{"role":"assistant","text":"r0","toolCalls":[]},"toolResults":0,"entries":[],"continue":false,"outcome":"completed","canContinue":false,"pending":0,"sid":"01a13af8","mode":"print","idle":false}
+{"ev":"agent_end","messages":3,"roles":["system","user","assistant"],"sid":"01a13af8","mode":"print","idle":false}
+{"ev":"agent_before_settle","entries":[],"continue":false,"outcome":"completed","canContinue":false,"pending":0,"sid":"01a13af8","mode":"print","idle":false}
+{"ev":"agent_settled","sid":"01a13af8","mode":"print","idle":true}
+{"ev":"session_shutdown","reason":"quit","sid":"01a13af8","mode":"print","idle":true}
+--- stderr
+wall=0.65
+exit=0
