@@ -14,9 +14,13 @@ export function formatPlan(plan: SetupPlan): string {
   const nodeTest = plan.runners.nodeTest.map(
     (p) => `${p.name}${p.source === "seed" ? " (squeal init would seed it)" : ""}`,
   );
+  const pytest = (plan.runners.pytest ?? []).map(
+    (p) => `pytest ${p.name}${p.source === "seed" ? " (squeal setup would seed it)" : ""}`,
+  );
   lines.push(
     "",
-    `Runners: ${[plan.runners.vitest ? "Vitest" : null, ...nodeTest.map((n) => `node:test ${n}`)].filter((r) => r !== null).join(", ") || "none found"}`,
+    `Runners: ${[plan.runners.vitest ? "Vitest" : null, ...nodeTest.map((n) => `node:test ${n}`), ...pytest].filter((r) => r !== null).join(", ") || "none found"}`,
+    ...(plan.runners.pytest ?? []).flatMap((p) => p.notes.map((n) => `  note: ${n}`)),
   );
   const config = plan.config;
   lines.push(

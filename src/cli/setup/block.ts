@@ -27,9 +27,12 @@ const END = /^<!-- squeal:end -->\s*$/;
 export interface BlockRunners {
   readonly vitest: boolean;
   readonly nodeTest: boolean;
+  /** Spec 007 D8: pytest projects are configured or seeded. Absent means none. */
+  readonly pytest?: boolean;
 }
 
 export function blockText(runners: BlockRunners = { vitest: true, nodeTest: false }): string {
+  if (runners.pytest === true) return withPytest(runners);
   const names = [
     ...(runners.vitest || !runners.nodeTest ? ["Vitest"] : []),
     ...(runners.nodeTest ? ["node:test"] : []),
@@ -45,6 +48,35 @@ export function blockText(runners: BlockRunners = { vitest: true, nodeTest: fals
     "<!-- squeal:end -->",
     "",
   ].join("\n");
+}
+
+/**
+ * Spec 007 D8: the block of a repository with pytest projects, naming them
+ * where the block names node:test's, in the same sentences. Vitest is named
+ * only when detected, as the daemon builds it (003 D7).
+ */
+function withPytest(runners: BlockRunners): string {
+  const names = [
+    ...(runners.vitest ? ["Vitest"] : []),
+    ...(runners.nodeTest ? ["node:test"] : []),
+    "pytest",
+  ];
+  const projects = `the ${runners.nodeTest ? "node:test and pytest" : "pytest"} projects`;
+  const fallback = runners.vitest ? `\`npx vitest run\` and ${projects}` : `${projects} yourself`;
+  return [
+    `<!-- squeal:begin v${BLOCK_VERSION} (managed by Squeal setup; edits inside are replaced) -->`,
+    "## Tests",
+    "",
+    `Squeal runs the ${listed(names, "and")} tests after each edit. Before you say the work is done, run \`squeal status --wait 60000\` (or the command the SQUEAL messages name) and report its known failures and pending checks instead of running ${listed(names, "or")}. If you have seen no SQUEAL message in this session, run ${fallback} instead. Where this file's verification steps name a test command, they take precedence.`,
+    "<!-- squeal:end -->",
+    "",
+  ].join("\n");
+}
+
+/** `words` as "a and b", or "a, b and c" past two, as the primer lists runners. */
+function listed(words: readonly string[], conjunction: "and" | "or"): string {
+  if (words.length <= 2) return words.join(` ${conjunction} `);
+  return `${words.slice(0, -1).join(", ")} ${conjunction} ${words.at(-1)}`;
 }
 
 /** Where the block lies in `text`: 0-based line indexes, `end` exclusive. */
