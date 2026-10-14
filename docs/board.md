@@ -910,7 +910,8 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 |---|---|---|---|
 | 009-15 idle wake | running (worker 9859b465, opus high) | D5: wait at `agent_settled` in `tui` and `rpc`, wake with `triggerTurn`, cancel on input and shutdown; `"pi"` in `StopWaitHarness`; review S2's native-blocked exit test. | Real Pi in `rpc` woken once by a late result; none under `-p`; a prompt cancels the wait; full suite green. |
 | 009-16 the Pi fixture's isolation | running (worker dce22e41, opus high) | Review S1 (protected env), N1 (typed fake provider), a base directory outside any repository. | Protected override has no effect; Pi's project outside the repository under a repository `TMPDIR`; full suite green. |
-| 009-17 review of wave 1 | running (worker eb7c1a7e, gpt-6.1-sol high) | `/reviewer` over `502eb7f1..7ac131df`: D3 honesty rules, D4 bounds, `install.sh` against 005 D3, launcher format 2, status line. | `reviews/wave-1.md` committed. |
+| 009-17 review of wave 1 | done: FAIL at 7ac131df, B1 (steered input resets the continuation flag); fix in 009-15 (`reviews/wave-1.md`) | `/reviewer` over `502eb7f1..7ac131df`: D3 honesty rules, D4 bounds, `install.sh` against 005 D3, launcher format 2, status line. | `reviews/wave-1.md` committed. |
+| 009-21 focused re-review of the B1 fix | planned | `/reviewer` over 009-15's B1 commit against `reviews/wave-1.md` B1; last round on wave 1. | `reviews/wave-1.5.md` committed. |
 
 ### Wave 3: updates and proof (planned)
 
