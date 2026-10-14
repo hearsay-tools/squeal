@@ -42,6 +42,21 @@ describe("searchPath (spec 007 D4)", () => {
     expect(order("append")).toEqual([".", "<stdlib>", "packages/other/src", "src", "outcomes"]);
   });
 
+  it("marks the basedirs pytest inserts, whose order a batch decides, and no other location", () => {
+    const marked = (importMode: ImportMode) =>
+      searchPath({
+        root,
+        cwd: root,
+        env: null,
+        importMode,
+        pythonpath: [],
+        pytestModules: modules,
+      }).locations.flatMap((l) => (l.kind === "dir" && l.basedir ? [relative(root, l.dir)] : []));
+    expect(marked("prepend")).toEqual(["outcomes"]);
+    expect(marked("append")).toEqual(["outcomes"]);
+    expect(marked("importlib")).toEqual([]);
+  });
+
   it("takes the stdlib names of a .python-version pin, else of every measured minor", () => {
     const names = () => {
       const stdlib = searchPath({
