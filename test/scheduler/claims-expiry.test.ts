@@ -41,6 +41,9 @@ describe("claims: expiry and takeover (task 001-205)", { timeout: 30_000 }, () =
     expect(Date.now() - stopped).toBeLessThan(2 * 1_000 + CLAIM_RECHECK_MS + 1_500);
   });
 
+  // Task 007-30: the claimant runs a tier the completion barrier withheld once more, so whichever
+  // side claims the file first runs it, and the other takes that result.
+  const WITHHELD = "withheld by the completion barrier: its input was touched";
   it.each([
     [
       "crashed",
@@ -62,13 +65,13 @@ describe("claims: expiry and takeover (task 001-205)", { timeout: 30_000 }, () =
       },
     ],
     [
-      "withheld by the completion barrier: its input was touched",
+      WITHHELD,
       (a: Side) => {
         const path = join(a.root, F0);
         writeFileSync(path, readFileSync(path));
       },
     ],
-  ])("3. a claimant's tier that %s stores nothing: the waiter runs the file", async (_, end) => {
+  ])("3. a claimant's tier that %s stores nothing: the waiter runs the file", async (how, end) => {
     const { main, other } = claimRepo(1);
     const a = side(main, { count: 1 });
     const b = side(other, { count: 1 });
@@ -77,7 +80,10 @@ describe("claims: expiry and takeover (task 001-205)", { timeout: 30_000 }, () =
     await end(a);
     a.runner.release();
     await b.scheduler.idle();
-    expect(b.runner.ran(F0)).toBe(1);
+    if (how === WITHHELD) {
+      await a.scheduler.idle();
+      expect(a.runner.ran(F0) - 1 + b.runner.ran(F0)).toBe(1);
+    } else expect(b.runner.ran(F0)).toBe(1);
     expect(b.keyOf(F0)).toBe(key);
     expect(b.passing()).toBe(1);
   });
