@@ -95,6 +95,25 @@ The run: `20261013T144318Z-86541e` on `8ac219c8` (001-317, 0.1.145).
 
 What 006-38 hoped to fix is no longer there to fix: on 0.1.145, Haiku runs the slow tier through Squeal with either line. Whether to keep the new line is the 001 coordinator's call on the human's word. The data supports neither changing it back nor rewording it further.
 
+## `a8-load-hold`: slow files held for host load, 0.1.179
+
+The first run: `20261014T212723Z-dd4056` on `1bc146f0`. That is 0.1.179, where an explicit `run --slow` skips the load guard (004-59). The hold uses the default `maxDeferMs`.
+- 10 sessions per model, 40 in all, 0 failed.
+- Load 17 to 110. Three or four sessions per model peaked above 24.
+
+| Model | `slow-through-squeal` | `claim-true` | `no-false-pass` |
+| --- | --- | --- | --- |
+| Haiku | 6/10 | 10/10 | 10/10 |
+| Sonnet | 10/10 | 10/10 | 10/10 |
+| luna | 10/10 | 10/10 | 10/10 |
+| sol | 10/10 | 10/10 | 10/10 |
+
+- **No false claim from any model.** Every session that got the slow result claimed it truly.
+- **Haiku ran the held slow test through Squeal in 6 of 10.** The other four ran the full Vitest suite themselves and claimed `fail` truly.
+  - Three of the four misses were at calm load (peaks 20 to 22); one peaked at 42.
+  - That is 30 points below its `a2-slow` without the hold on 0.1.168, 9/10. The gap is unconfirmed: p = 0.30 at 10 sessions an arm, across runs. Confirming a 60% against 90% gap takes about 30 sessions an arm (p ≈ 0.015).
+- **Every session that met the measure ran `squeal run --slow`.** So agents do act on the line's "runs them now", which 004-59 made true.
+
 ## Open questions
 
 - Open question 3 (the Claude allow-list): resolved. `Bash(node:*)` is in the list. The refusals that remain are compound shell commands Claude Code asks about: Haiku in 0 to 3 of 10 atomic sessions per scenario, Sonnet in none. They explain none of Sonnet's misses.
