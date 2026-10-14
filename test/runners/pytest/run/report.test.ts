@@ -143,6 +143,28 @@ describe("readBatch on a batch killed mid-file (spec 007 D6)", () => {
   });
 });
 
+describe("readBatch's node ids (spec 007 D3)", () => {
+  it("names the ids holding a memory address, which change every run", () => {
+    const [file] = batch(["test_ids.py"]);
+    const real = file?.real ?? "";
+    const read = readBatch(
+      [
+        {
+          type: "collected",
+          items: [
+            { nodeid: "outcomes/test_ids.py::test_id[<object at 0x7f3a2c1d9e50>]", path: real },
+            { nodeid: "outcomes/test_ids.py::test_id[value0]", path: real },
+          ],
+        },
+      ],
+      file === undefined ? [] : [file],
+      ROOT,
+      paths,
+    );
+    expect(read.addressIds).toEqual(["outcomes/test_ids.py::test_id[<object at 0x7f3a2c1d9e50>]"]);
+  });
+});
+
 describe("observeBatch (spec 007 D6)", () => {
   const ref = (path: string): TestFileRef => ({ project: "p", path });
   const file = (path: string): BatchFile => ({
