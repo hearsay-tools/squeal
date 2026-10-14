@@ -40,7 +40,7 @@ type Naming = "every" | "first" | "none";
  * repository is never told Vitest is covered).
  *
  * Task 001-234: it lists what Squeal covers, the Vitest config, each
- * node:test project with its globs, and the slow files as a count, then says
+ * node:test and pytest project with its globs (spec 007 D8), and the slow files as a count, then says
  * typecheck, build and any other test suite are not, so the agent can work
  * out what is left to run (005's pilot: every false "pass" came from an
  * uncovered node:test suite).
@@ -59,7 +59,7 @@ export function primer(command: string = SQUEAL_COMMAND, coverage: Coverage = VI
   const names = runnerNames(coverage);
   const sentences = (covers: string, naming: Naming) =>
     [
-      `${PRIMER_OPENING}${names.join(" and ")} tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run ${names.join(" or ")} to learn whether your edits broke something.`,
+      `${PRIMER_OPENING}${listed(names, "and")} tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run ${listed(names, "or")} to learn whether your edits broke something.`,
       `Wait only when you need a result before your next step, for example before saying the task is done: ${
         naming === "none"
           ? "`status --wait 60000` on the CLI SQUEAL messages name"
@@ -71,10 +71,11 @@ export function primer(command: string = SQUEAL_COMMAND, coverage: Coverage = VI
       covers,
       "Squeal does not cover typecheck, build or any other test suite: run those yourself.",
     ].join(" ");
-  // Fold the node:test projects first, then name the CLI less, until the primer fits.
+  // Fold the node:test and pytest projects first, then name the CLI less, until the primer fits.
   let text = "";
+  const most = Math.max(coverage.nodeTest.length, coverage.pytest?.length ?? 0);
   for (const naming of ["every", "first", "none"] as const) {
-    for (let node = coverage.nodeTest.length; node >= 0; node--) {
+    for (let node = most; node >= 0; node--) {
       text = sentences(coversSentence(coverage, node), naming);
       if (text.length <= PRIMER_CAP_CHARS) return text;
     }
@@ -85,10 +86,21 @@ export function primer(command: string = SQUEAL_COMMAND, coverage: Coverage = VI
 /** The runners the daemon builds: Vitest when detected or when nothing else is configured (spec 003 D7). */
 function runnerNames(coverage: Coverage): string[] {
   const nodeTest = coverage.nodeTest.length > 0;
-  return [...(coverage.vitest || !nodeTest ? ["Vitest"] : []), ...(nodeTest ? ["node:test"] : [])];
+  const pytest = (coverage.pytest?.length ?? 0) > 0;
+  return [
+    ...(coverage.vitest || (!nodeTest && !pytest) ? ["Vitest"] : []),
+    ...(nodeTest ? ["node:test"] : []),
+    ...(pytest ? ["pytest"] : []),
+  ];
 }
 
-/** What Squeal covers, naming the first `node` node:test projects. */
+/** `words` as "a and b", or "a, b and c" past two (spec 007 D8: the third runner). */
+function listed(words: readonly string[], conjunction: "and" | "or"): string {
+  if (words.length <= 2) return words.join(` ${conjunction} `);
+  return `${words.slice(0, -1).join(", ")} ${conjunction} ${words.at(-1)}`;
+}
+
+/** What Squeal covers, naming the first `node` node:test and pytest projects of each runner. */
 function coversSentence(coverage: Coverage, node: number): string {
   const suites = runnerNames(coverage).includes("Vitest")
     ? [
@@ -102,6 +114,13 @@ function coversSentence(coverage: Coverage, node: number): string {
     const list = named("project", entries, node);
     suites.push(node === 0 ? `node:test (${list})` : `node:test ${list}`);
   }
+  if (coverage.pytest !== undefined && coverage.pytest.length > 0) {
+    const entries = coverage.pytest.map(
+      ({ name, include }) => `${JSON.stringify(name)} (${include.join(", ")})`,
+    );
+    const list = named("project", entries, node);
+    suites.push(node === 0 ? `pytest (${list})` : `pytest ${list}`);
+  }
   const files = coverage.slow?.files;
   const slow =
     coverage.slow === null
@@ -109,7 +128,7 @@ function coversSentence(coverage: Coverage, node: number): string {
       : files === null || files === undefined
         ? ", with slow test files not counted yet"
         : `, with ${files} slow test ${files === 1 ? "file" : "files"} at the daemon's last listing`;
-  return `Squeal covers ${suites.join(" and ")}${slow}.`;
+  return `Squeal covers ${listed(suites, "and")}${slow}.`;
 }
 
 /**
