@@ -1,6 +1,7 @@
 import { type Hasher, StatCache, sameStat } from "../hash/index.js";
 import { type BatchDiff, diffCandidates, statCandidates } from "../revision/index.js";
-import type { RelativePath, RunReport } from "../types/index.js";
+import type { CheckKey, RelativePath, RunReport, TestFileRef } from "../types/index.js";
+import { listPaths } from "./notes.js";
 
 /**
  * A copy of the stat cache entries of `paths`: the inputs a tier's keys were
@@ -88,4 +89,53 @@ export function withheldForTouch(report: RunReport, touched: readonly RelativePa
     fileErrors: [],
     failure: report.failure === null ? reason : `${report.failure}\n${reason}`,
   };
+}
+
+/** A file of a tier and the key it ran under. */
+interface Ran {
+  readonly file: { readonly id: string; readonly ref: TestFileRef };
+  readonly key: CheckKey;
+}
+
+/**
+ * Task 007-30: no revision follows a touch that ended as it was, so a tier
+ * `withheldForTouch` withholds would leave its files `unknown` with nothing
+ * queued. Instead it runs once more under its keys, once the runner heard
+ * the touch. Each withheld file is remembered with the key it ran under
+ * until a run of it is recorded unwithheld; a tier whose files were all
+ * withheld at those keys already is withheld for good. A path touched on
+ * every run ends there: each retry needs a file not yet withheld at its key,
+ * and only a revision moves a key.
+ */
+export class Withholds {
+  readonly #keys = new Map<string, CheckKey>();
+
+  /** Records the withhold of `files`; whether their tier runs once more. */
+  retry(files: readonly Ran[]): boolean {
+    const again = files.some(({ file, key }) => this.#keys.get(file.id) !== key);
+    for (const { file, key } of files) this.#keys.set(file.id, key);
+    return again;
+  }
+
+  /** `files` were recorded unwithheld: their withholds are no longer in a row. */
+  clear(files: readonly Ran[]): void {
+    for (const { file } of files) this.#keys.delete(file.id);
+  }
+}
+
+/**
+ * The daemon note of a withhold (task 007-30), naming the touched paths:
+ * the 001-168 reason reaches status while the retry is pending, and a file
+ * with no known check, whose summaries show nothing, still has it.
+ */
+export function withholdNote(
+  touched: readonly RelativePath[],
+  files: readonly Ran[],
+  retry: boolean,
+): string {
+  const paths = listPaths(touched);
+  const ran = listPaths(files.map(({ file }) => file.ref.path));
+  return retry
+    ? `squeal: ${paths} was written while ${ran} ran and ended as it was; the run is withheld and runs once more (tasks 001-168, 007-30)`
+    : `squeal: ${paths} was written during 2 runs in a row of ${ran} and ended as it was; ${ran} stays unknown until an input changes, so write it outside the worktree or under an ignored path, or declare it (tasks 001-168, 007-30)`;
 }
