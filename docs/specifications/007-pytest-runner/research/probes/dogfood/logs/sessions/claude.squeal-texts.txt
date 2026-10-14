@@ -1,0 +1,61 @@
+===== 1792004749.370 SessionStart
+SQUEAL · registered at revision 1
+Revision 1 (changed debugger/.venv/pyvenv.cfg): 4766 current (4360 tests, 406 test files loaded), 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 1; `squeal run --all` requests one). No dependencies are installed in this worktree; failures that cannot find a package are expected until an install.
+Known failures: 2 (2 tests)
+
+FAIL  [pytest] tests/platforms/linux/flatpak/test_mixin.py > test_distribution_path
+      assert PosixPath('/tmp/squeal-1002/tmp/452ec2cac1487f11/pytest-of-squeal-e2e/pytest-76/test_distribution_path0/base_path/dist/First-App-0.0.1-gothic.flatpak') == PosixPath('/tmp/squeal-1002/tmp/452ec2cac1487f11/pytest-of-squeal-e2e/pytest-76/test_distribution_path0/base_path/dist/First_App-0.0.1-...
+      at tests/platforms/linux/flatpak/test_mixin.py:53:1
+
+FAIL  [pytest] tests/platforms/linux/flatpak/test_package.py > test_package
+      expected call not found.
+      at tests/platforms/linux/flatpak/test_package.py:19:1
+
+Full output: squeal why "[pytest] tests/platforms/linux/flatpak/test_mixin.py > test_distribution_path"
+
+Squeal runs this repository's pytest tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run pytest to learn whether your edits broke something. Wait only when you need a result before your next step, for example before saying the task is done: `squeal status --wait 60000`. Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it. A revision is Squeal's number for each saved change to this worktree's files; every result names the revision it ran at, and a header names the files its revision changed. Squeal covers pytest projects "pytest" (tests/**/test_*.py, tests/**/*_test.py) and "debugger" (debugger/**/test_*.py, debugger/**/*_test.py). Squeal does not cover typecheck, build or any other test suite: run those yourself.
+===== 1792004761.174 PostToolBatch
+SQUEAL · 2 checks changed (2 tests) at revision 2
+Revision 2 (changed src/briefcase/platforms/linux/flatpak.py): 87 current (75 tests, 12 test files loaded), 4679 pending (4285 tests, 394 test files loaded), 0 stale, 0 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 2; `squeal run --all` requests one).
+Squeal saw your edit and queued 402 test files; results arrive with later tool calls, and passing ones stay silent.
+
+PASS  [pytest] tests/platforms/linux/flatpak/test_mixin.py > test_distribution_path
+      FAIL -> PASS
+      at tests/platforms/linux/flatpak/test_mixin.py:46:1
+
+PASS  [pytest] tests/platforms/linux/flatpak/test_package.py > test_package
+      FAIL -> PASS
+      at tests/platforms/linux/flatpak/test_package.py:19:1
+===== 1792004824.161 tool result
+Returned on timeout after 60.1 s: 402 of the 402 test files the edits since revision 2 re-keyed pending at revision 4; 4733 checks (4331 tests, 402 test files loaded) pending in all
+
+Revision: 4
+Known failures: 0
+Affected checks: 28 passed (24 tests, 4 test files loaded), 1356 running (1156 tests, 200 test files loaded), 3377 queued (3175 tests, 202 test files loaded), 5 skipped (5 tests)
+Full-suite checkpoint: none completed at any revision (the counts are for revision 4; `squeal run --all` requests one)
+
+Worktree: /home/squeal-e2e/runs/sq07-18/wt-claude (HEAD 0aa6a5e, dirty at revision 4)
+Daemon: running, last heartbeat 4 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-14T19:02:57.064Z: pytest project "pytest": 210 test file(s) with an incomplete static closure, keyed by what their runs import: tests/commands/base/test_app_module_path.py (src/briefcase/commands/base.py:382: computed import), tests/commands/base/test_cookiecutter_logging.py (src/briefcase/commands/base.py:382: computed import), tests/commands/base/test_end_of_life.py (src/briefcase/commands/base.py:382: computed import), ...
+  2026-10-14T19:02:57.065Z: pytest project "pytest": no Python environment (looked at .venv, .pdm-python); run `uv sync` in the worktree root to create one. Its checks stay unknown until then.
+  2026-10-14T19:02:57.065Z: pytest project "debugger": no Python environment (looked at debugger/.venv, debugger/.pdm-python); run `uv sync` in debugger to create one. Its checks stay unknown until then.
+  2026-10-14T19:03:00.148Z, revision 1: pytest project "debugger": pytest is not installed in debugger/.venv (a sync in progress, or pytest missing from the project's dependencies). Its checks stay unknown until it is.
+  2026-10-14T19:03:01.179Z, revision 1: pytest project "pytest": its Python environment is ready
+  2026-10-14T19:03:50.489Z, revision 1: pytest project "debugger": its Python environment is ready
+===== 1792004829.384 final
+Both changes are made. The full suite hadn't finished when I stopped waiting, so I can't confirm nothing else broke.
+
+1. **Test fix:** The last commit changed `distribution_path` in `src/briefcase/platforms/linux/flatpak.py` to replace spaces with `-` instead of `_` in the Flatpak file name. I put the `_` back. The two tests that were failing, `test_distribution_path` and `test_package` in `tests/platforms/linux/flatpak/`, now pass.
+2. **Refactor:** In `src/briefcase/cmdline.py`, the platform and format resolution now lives in a module-level function, `resolve_platform_and_format(extra, platforms)`. It returns the platform, the output format and the available formats. It still removes the platform and format from `extra`, as before. `parse_cmdline` calls it, and the command lookup and its error handling stay in `parse_cmdline`.
+
+I made these choices without asking, as you instructed:
+- I added a changelog fragment, `changes/3089.misc.md`. The number 3089 is a guess, so rename it if there's a real issue number.
+- `ruff` isn't installed here, so I didn't run the formatter or linter on the refactor.
+
+After the refactor, the full-suite run was still going. `squeal status --wait 60000` timed out with 0 known failures, 28 checks passed, 1,356 running and 3,377 queued.
+
+TESTS: unknown, evidence: the two flatpak tests went from fail to pass, but the full-suite run after the refactor was still pending (0 known failures, 3,377 queued) when I stopped waiting.

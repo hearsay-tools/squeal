@@ -1,0 +1,9 @@
+== repo edit src/briefcase/cmdline.py at 2026-10-14T19:18:55Z load 76.04 53.22 42.19
+19:18:59 load 77.08 runs 1 open 1 file-runs 2 distinct 2 meta {'pytest.observedSession.pytest': 85, 'pytest.observed.pytest': 56} | Affected checks: 4612 passed (4208 tests, 404 test files loaded), 82 running (80 tests, 2 test files loaded), 0 queued, 72 skipped (72 tests)
+19:19:02 load 77.39 runs 1 open 1 file-runs 2 distinct 2 meta {'pytest.observedSession.pytest': 85, 'pytest.observed.pytest': 56} | Affected checks: 4612 passed (4208 tests, 404 test files loaded), 82 running (80 tests, 2 test files loaded), 0 queued, 72 skipped (72 tests)
+19:19:05 load 77.39 runs 1 open 0 file-runs 2 distinct 2 meta {'pytest.observedSession.pytest': 85, 'pytest.observed.pytest': 56} | Affected checks: 4692 passed (4286 tests, 406 test files loaded), 0 running, 0 queued, 74 skipped (74 tests)
+19:19:08 load 78.88 runs 1 open 0 file-runs 2 distinct 2 meta {'pytest.observedSession.pytest': 85, 'pytest.observed.pytest': 56} | Affected checks: 4692 passed (4286 tests, 406 test files loaded), 0 running, 0 queued, 74 skipped (74 tests)
+19:19:11 load 79.13 runs 1 open 0 file-runs 2 distinct 2 meta {'pytest.observedSession.pytest': 85, 'pytest.observed.pytest': 56} | Affected checks: 4692 passed (4286 tests, 406 test files loaded), 0 running, 0 queued, 74 skipped (74 tests)
+19:19:14 load 79.13 runs 1 open 0 file-runs 2 distinct 2 meta {'pytest.observedSession.pytest': 85, 'pytest.observed.pytest': 56} | Affected checks: 4692 passed (4286 tests, 406 test files loaded), 0 running, 0 queued, 74 skipped (74 tests)
+19:19:17 load 80.48 runs 1 open 0 file-runs 2 distinct 2 meta {'pytest.observedSession.pytest': 85, 'pytest.observed.pytest': 56} | Affected checks: 4692 passed (4286 tests, 406 test files loaded), 0 running, 0 queued, 74 skipped (74 tests)
+== end 2026-10-14T19:19:17Z

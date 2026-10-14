@@ -1,0 +1,99 @@
+===== 1792005150.731 say
+I’ll investigate and fix the regression first, then extract the command-line resolution logic without changing behavior. I’m using the Squeal skill to check the results. Where a choice is needed, I’ll use the existing repository conventions.
+===== 1792005152.367 /runs/sq07-18/codex/plugins/cache/hearsay/squeal/0.1.174/skills/squeal/SKILL.md'
+---
+name: squeal
+description: Use when about to run tests (vitest, npm test) or to check whether a change broke something, in a repository that uses Squeal (it has squeal.config.json, or SQUEAL messages appear). Squeal already runs the suites its primer lists as covered; this says when to wait for their results and how to read its reports.
+---
+
+# Squeal
+
+Under Codex `squeal` is not on the PATH: wherever this skill and its references say `squeal`, run the command the SQUEAL primer names, `node --disable-warning=ExperimentalWarning "<plugin root>/dist/cli/squeal.mjs"`, the plugin root being the directory that holds `skills/squeal/`. The last line of a FAIL report names it too.
+
+Squeal runs this repository's tests in the background after every edit. It reports only changes, in messages that start with `SQUEAL ·`: a check that went `PASS -> FAIL`, `FAIL -> PASS`, or failed differently. It covers what the SQUEAL primer lists from `squeal.config.json`: the Vitest tests, the node:test tests of the `nodeTest` projects, the pytest tests of the `pytest` projects, and the slow test files `slow` marks; a test file you add that matches them is picked up too. Typecheck, build and anything else the repository checks are yours to run.
+
+## Steps
+
+1. **Keep working, and read the reports.** Results arrive with your next tool call, as SQUEAL messages. No message means nothing changed, not that everything passes. Running the test files beside your edit to learn sooner duplicates what Squeal is already running. Done when you have read every FAIL in every SQUEAL message that arrived.
+2. **On a FAIL**, read its first error line and location. When they are not enough, run the message's last line, `Full output: squeal why "<name>"`, for the full output and history. Squeal re-runs a new failure once on its own, but not one from a forced run (`squeal run --all --force`, `squeal warmup`, a re-run), one already re-run at the same inputs, a slow file's, nor any when more than eight eligible test files fail anew in one tier; a re-run that passes arrives as a PASS with the line `Flaky: FAIL -> PASS under the same inputs`. So rather than re-running such a failure yourself to see whether it is flaky, let that re-run answer. After your fix the recovery arrives as `FAIL -> PASS`. Done when each FAIL is fixed or you can say why it stays.
+3. **Wait only when you need a result before your next step**, for example before saying the task is done; otherwise results arrive with your next tool call. Run `squeal status --wait 60000`, or `--wait 120000` on a busy host: it returns as soon as the test files your edits re-keyed have their results, or one of their checks changed. It does not wait for slow files (step 4). Done when its first line says `Returned on quiet` or `Returned on news`; on `Returned on timeout`, wait again.
+4. **Before you say the task is done, make the evidence current.** Where `squeal.config.json` marks slow test files, the header's second line starts `Slow tier:`; while 
+===== 1792005152.623 ' -g 'squeal.config.json'; git show -- src/briefcase/platforms/linux/flatpak.py"
+commit 0aa6a5eea788137af3823e2a7abf6ead5cbafb4f
+Author: dogfood <dogfood@squeal-e2e.invalid>
+Date:   Wed Oct 14 21:02:37 2026 +0200
+
+    Tidy the Flatpak distribution file name
+
+ src/briefcase/platforms/linux/flatpak.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+AGENTS.md
+squeal.config.json
+commit 0aa6a5eea788137af3823e2a7abf6ead5cbafb4f
+Author: dogfood <dogfood@squeal-e2e.invalid>
+Date:   Wed Oct 14 21:02:37 2026 +0200
+
+    Tidy the Flatpak distribution file name
+
+diff --git a/src/briefcase/platforms/linux/flatpak.py b/src/briefcase/platforms/linux/flatpak.py
+index 0b16afcc..41d4c047 100644
+--- a/src/briefcase/platforms/linux/flatpak.py
++++ b/src/briefcase/platforms/linux/flatpak.py
+@@ -35,7 +35,7 @@ class LinuxFlatpakMixin(LinuxMixin):
+         return self.bundle_path(app)
+ 
+     def distribution_path(self, app):
+-        binary_name = app.formal_name.replace(" ", "_")
++        binary_name = app.formal_name.replace(" ", "-")
+         return (
+             self.dist_path
+             / f"{binary_name}-{app.version}-{self.tools.host_arch}.flatpak"
+
+===== 1792005187.778 say
+The last commit changed spaces in Flatpak filenames from underscores to hyphens, causing both reported failures. I’ll restore the underscore naming in `src/` and leave the tests unchanged.
+===== 1792005191.829 x/plugins/cache/hearsay/squeal/0.1.174/dist/cli/squeal.mjs" status --wait 60000'
+Returned on news: 2 transitions in the 402 test files the edits since revision 1 re-keyed, at revision 1 after 1.0 s; 481 checks (455 tests, 26 test files loaded) pending in all
+
+Revision: 1
+Known failures: 0
+Affected checks: 4213 passed (3833 tests, 380 test files loaded), 31 running (27 tests, 4 test files loaded), 450 queued (428 tests, 22 test files loaded), 72 skipped (72 tests)
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `node --disable-warning=ExperimentalWarning "/home/squeal-e2e/runs/sq07-18/codex/plugins/cache/hearsay/squeal/0.1.174/dist/cli/squeal.mjs" run --all` requests one)
+
+Worktree: /home/squeal-e2e/runs/sq07-18/wt-codex (HEAD 0aa6a5e, dirty at revision 1)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: 4285 current results (3905 tests, 380 test files loaded)
+  4285 (3905 tests, 380 test files loaded) from /home/squeal-e2e/runs/sq07-18/wt-claude at 0aa6a5e
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-14T19:05:03.041Z: pytest project "pytest": 210 test file(s) with an incomplete static closure, keyed by what their runs import: tests/commands/base/test_app_module_path.py (src/briefcase/commands/base.py:382: computed import), tests/commands/base/test_cookiecutter_logging.py (src/briefcase/commands/base.py:382: computed import), tests/commands/base/test_end_of_life.py (src/briefcase/commands/base.py:382: computed import), ...
+  2026-10-14T19:11:06.089Z, revision 0: daemon stopped: no session registered for 3 s after its last one ended
+  2026-10-14T19:12:22.026Z: pytest project "pytest": 210 test file(s) with an incomplete static closure, keyed by what their runs import: tests/commands/base/test_app_module_path.py (src/briefcase/commands/base.py:382: computed import), tests/commands/base/test_cookiecutter_logging.py (src/briefcase/commands/base.py:382: computed import), tests/commands/base/test_end_of_life.py (src/briefcase/commands/base.py:382: computed import), ...
+
+===== 1792005215.075 say
+Both Flatpak tests now pass. Next I’ll extract the platform-dependent command lookup into `resolve_platform_command()`, preserving defaults, case handling, argument consumption, and errors. The existing command-line tests cover those behaviors.
+===== 1792005266.774 x/plugins/cache/hearsay/squeal/0.1.174/dist/cli/squeal.mjs" status --wait 60000'
+Returned on quiet: nothing the edits since revision 2 re-keyed is pending (402 test files) at revision 4 after 31.9 s
+
+Revision: 4
+Known failures: 0
+Affected checks: 4692 passed (4286 tests, 406 test files loaded), 0 running, 0 queued, 74 skipped (74 tests)
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 4; `node --disable-warning=ExperimentalWarning "/home/squeal-e2e/runs/sq07-18/codex/plugins/cache/hearsay/squeal/0.1.174/dist/cli/squeal.mjs" run --all` requests one)
+
+Worktree: /home/squeal-e2e/runs/sq07-18/wt-codex (HEAD 0aa6a5e, dirty at revision 4)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: 33 current results (29 tests, 4 test files loaded)
+  33 (29 tests, 4 test files loaded) from /home/squeal-e2e/runs/sq07-18/wt-claude at 0aa6a5e
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-14T19:05:03.041Z: pytest project "pytest": 210 test file(s) with an incomplete static closure, keyed by what their runs import: tests/commands/base/test_app_module_path.py (src/briefcase/commands/base.py:382: computed import), tests/commands/base/test_cookiecutter_logging.py (src/briefcase/commands/base.py:382: computed import), tests/commands/base/test_end_of_life.py (src/briefcase/commands/base.py:382: computed import), ...
+  2026-10-14T19:11:06.089Z, revision 0: daemon stopped: no session registered for 3 s after its last one ended
+  2026-10-14T19:12:22.026Z: pytest project "pytest": 210 test file(s) with an incomplete static closure, keyed by what their runs import: tests/commands/base/test_app_module_path.py (src/briefcase/commands/base.py:382: computed import), tests/commands/base/test_cookiecutter_logging.py (src/briefcase/commands/base.py:382: computed import), tests/commands/base/test_end_of_life.py (src/briefcase/commands/base.py:382: computed import), ...
+
+===== 1792005284.040 say
+Fixed the Flatpak regression by restoring underscores in distribution filenames. Then extracted platform and output-format resolution into `resolve_platform_command()` with unchanged behavior.
+
+Tests remain unchanged; changelog fragments added. `tox -e pre-commit` passed.
+
+TESTS: pass, evidence: Squeal revision 4 reports 4,286 tests passed, 74 skipped, zero failures and zero pending checks.

@@ -1,0 +1,10 @@
+== repo edit src/briefcase/cmdline.py at 2026-10-14T19:18:19Z load 63.16 48.41 40.29
+19:18:22 load 65.31 runs 1 open 1 file-runs 2 distinct 2 meta {'pytest.observedSession.pytest': 85, 'pytest.observed.pytest': 56} | Affected checks: 4612 passed (4208 tests, 404 test files loaded), 82 running (80 tests, 2 test files loaded), 0 queued, 72 skipped (72 tests)
+19:18:25 load 65.31 runs 1 open 1 file-runs 2 distinct 2 meta {'pytest.observedSession.pytest': 85, 'pytest.observed.pytest': 56} | Affected checks: 4612 passed (4208 tests, 404 test files loaded), 82 running (80 tests, 2 test files loaded), 0 queued, 72 skipped (72 tests)
+19:18:28 load 67.61 runs 1 open 1 file-runs 2 distinct 2 meta {'pytest.observedSession.pytest': 85, 'pytest.observed.pytest': 56} | Affected checks: 4612 passed (4208 tests, 404 test files loaded), 82 running (80 tests, 2 test files loaded), 0 queued, 72 skipped (72 tests)
+19:18:31 load 69.00 runs 1 open 0 file-runs 2 distinct 2 meta {'pytest.observedSession.pytest': 85, 'pytest.observed.pytest': 56} | Affected checks: 4692 passed (4286 tests, 406 test files loaded), 0 running, 0 queued, 74 skipped (74 tests)
+19:18:34 load 69.00 runs 1 open 0 file-runs 2 distinct 2 meta {'pytest.observedSession.pytest': 85, 'pytest.observed.pytest': 56} | Affected checks: 4692 passed (4286 tests, 406 test files loaded), 0 running, 0 queued, 74 skipped (74 tests)
+19:18:37 load 69.32 runs 1 open 0 file-runs 2 distinct 2 meta {'pytest.observedSession.pytest': 85, 'pytest.observed.pytest': 56} | Affected checks: 4692 passed (4286 tests, 406 test files loaded), 0 running, 0 queued, 74 skipped (74 tests)
+19:18:40 load 69.32 runs 1 open 0 file-runs 2 distinct 2 meta {'pytest.observedSession.pytest': 85, 'pytest.observed.pytest': 56} | Affected checks: 4692 passed (4286 tests, 406 test files loaded), 0 running, 0 queued, 74 skipped (74 tests)
+19:18:43 load 71.46 runs 1 open 0 file-runs 2 distinct 2 meta {'pytest.observedSession.pytest': 85, 'pytest.observed.pytest': 56} | Affected checks: 4692 passed (4286 tests, 406 test files loaded), 0 running, 0 queued, 74 skipped (74 tests)
+== end 2026-10-14T19:18:44Z

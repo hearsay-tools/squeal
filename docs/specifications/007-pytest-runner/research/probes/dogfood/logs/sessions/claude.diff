@@ -1,0 +1,131 @@
+ M src/briefcase/cmdline.py
+ M src/briefcase/platforms/linux/flatpak.py
+?? changes/3089.misc.md
+diff --git a/src/briefcase/cmdline.py b/src/briefcase/cmdline.py
+index 5e6d7d17..ef68ead4 100644
+--- a/src/briefcase/cmdline.py
++++ b/src/briefcase/cmdline.py
+@@ -44,6 +44,61 @@ COMMANDS = [
+ ]
+ 
+ 
++def resolve_platform_and_format(extra: list[str], platforms: dict):
++    """Determine the platform and output format for a command.
++
++    The platform and format are consumed from the front of `extra` if they have
++    been provided; otherwise they are inferred.
++
++    :param extra: The unparsed arguments following the command; modified in place
++    :param platforms: The registered platforms, mapping name to module
++    :returns: A tuple of the platform name, output format name, and the mapping of
++        available output formats for that platform
++    """
++    # Commands dependent on the platform and format. The general form of such a
++    # command is `briefcase <cmd> <platform> <format>`; but the format will be
++    # inferred from the platform if one isn't specified, and the platform will be
++    # inferred from the operating system if it isn't explicitly given.
++    #
++    # <platform> and <format> aren't parsed as regular arguments due to ambiguities
++    # in interpreting those arguments; instead, they're handled directly from the
++    # argument list, with the expectation that they *must* be the first and second
++    # arguments (after the command) if provided. There's no other bare arguments, so
++    # we only need to look for whether the arguments start with "-".
++    if extra and not extra[0].startswith("-"):
++        name = extra.pop(0)
++        # Normalize the platform name to the registered capitalization
++        platform = {n.lower(): n for n in platforms}.get(name.lower(), name)
++    else:
++        platform = {
++            "darwin": "macOS",
++            "linux": "linux",
++            "win32": "windows",
++        }[sys.platform]
++
++    # Import the platform module
++    try:
++        platform_module = platforms[platform]
++    except KeyError:
++        raise InvalidPlatformError(platform, platforms.keys()) from None
++
++    # If the output format wasn't explicitly specified, check to see
++    # Otherwise, extract and use the default output_format for the platform.
++    if extra and not extra[0].startswith("-") and extra[0] != "--":
++        output_format = extra.pop(0)
++    else:
++        output_format = platform_module.DEFAULT_OUTPUT_FORMAT
++
++    output_formats = get_output_formats(platform)
++
++    # Normalise casing of output_format to be more forgiving.
++    output_format = {n.lower(): n for n in output_formats}.get(
++        output_format.lower(), output_format
++    )
++
++    return platform, output_format, output_formats
++
++
+ def parse_cmdline(args, console: Console | None = None):
+     """Parses the command line to determine the Command and its arguments.
+ 
+@@ -139,45 +194,9 @@ def parse_cmdline(args, console: Console | None = None):
+     elif options.command == "upgrade":
+         Command = UpgradeCommand
+     else:
+-        # Commands dependent on the platform and format. The general form of such a
+-        # command is `briefcase <cmd> <platform> <format>`; but the format will be
+-        # inferred from the platform if one isn't specified, and the platform will be
+-        # inferred from the operating system if it isn't explicitly given.
+-        #
+-        # <platform> and <format> aren't parsed as regular arguments due to ambiguities
+-        # in interpreting those arguments; instead, they're handled directly from the
+-        # argument list, with the expectation that they *must* be the first and second
+-        # arguments (after the command) if provided. There's no other bare arguments, so
+-        # we only need to look for whether the arguments start with "-".
+-        if extra and not extra[0].startswith("-"):
+-            name = extra.pop(0)
+-            # Normalize the platform name to the registered capitalization
+-            platform = {n.lower(): n for n in platforms}.get(name.lower(), name)
+-        else:
+-            platform = {
+-                "darwin": "macOS",
+-                "linux": "linux",
+-                "win32": "windows",
+-            }[sys.platform]
+-
+-        # Import the platform module
+-        try:
+-            platform_module = platforms[platform]
+-        except KeyError:
+-            raise InvalidPlatformError(platform, platforms.keys()) from None
+-
+-        # If the output format wasn't explicitly specified, check to see
+-        # Otherwise, extract and use the default output_format for the platform.
+-        if extra and not extra[0].startswith("-") and extra[0] != "--":
+-            output_format = extra.pop(0)
+-        else:
+-            output_format = platform_module.DEFAULT_OUTPUT_FORMAT
+-
+-        output_formats = get_output_formats(platform)
+-
+-        # Normalise casing of output_format to be more forgiving.
+-        output_format = {n.lower(): n for n in output_formats}.get(
+-            output_format.lower(), output_format
++        platform, output_format, output_formats = resolve_platform_and_format(
++            extra,
++            platforms,
+         )
+ 
+         # We now know the command, platform, and format.
+diff --git a/src/briefcase/platforms/linux/flatpak.py b/src/briefcase/platforms/linux/flatpak.py
+index 41d4c047..0b16afcc 100644
+--- a/src/briefcase/platforms/linux/flatpak.py
++++ b/src/briefcase/platforms/linux/flatpak.py
+@@ -35,7 +35,7 @@ class LinuxFlatpakMixin(LinuxMixin):
+         return self.bundle_path(app)
+ 
+     def distribution_path(self, app):
+-        binary_name = app.formal_name.replace(" ", "-")
++        binary_name = app.formal_name.replace(" ", "_")
+         return (
+             self.dist_path
+             / f"{binary_name}-{app.version}-{self.tools.host_arch}.flatpak"

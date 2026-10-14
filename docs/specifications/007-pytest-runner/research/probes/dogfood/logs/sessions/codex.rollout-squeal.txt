@@ -1,0 +1,63 @@
+===== 2026-10-14T19:12:20.754Z
+<skills_instructions>
+## Skills
+A skill is a set of local instructions to follow that is stored in a `SKILL.md` file. Below is the list of skills that can be used. Each entry includes a name, description, and a short path that can be expanded into an absolute path using the skill roots table.
+### Skill roots
+- `r0` = `/home/squeal-e2e/runs/sq07-18/codex/skills/.system`
+- `r1` = `/home/squeal-e2e/runs/sq07-18/codex/plugins/cache/hearsay/squeal/0.1.174/skills`
+### Available skills
+- imagegen: Generate or edit raster images when the task benefits from AI-created bitmap visuals such as photos, illustrations, textures, sprites, mockups, or transparent-background cutouts. Use when Codex should create a brand-new image, transform an existing image, or derive visual variants from references, and the output should be a bitmap asset rather than repo-native code or vector. Do not use when the task is better handled by editing existing SVG/vector/code-native assets, extending an established icon or logo system, or building the visual directly in HTML/CSS/canvas. (file: r0/imagegen/SKILL.md)
+- openai-docs: Use for Codex models/pricing, scheduled tasks, skills, settings, setup, troubleshooting, customization, automations, and self-knowledge—including 'you,' 'your,' 'this app,' or 'this coding agent' when they refer to Codex—and for OpenAI APIs/products and ChatGPT Work. Also use for model choice/migration, prompting, SDKs, Responses, Realtime, agents, evals, and Chat/Work/Codex comparisons. Do not use for generic app/software tasks that merely mention Codex. (file: r0/openai-docs/SKILL.md)
+- skill-creator: Create or update a Codex skill with appropriately scoped instructions and any needed supporting resources. (file: r0/skill-creator/SKILL.md)
+- skill-installer: Install Codex skills into $CODEX_HOME/skills from a curated list or a GitHub repo path. Use when a user asks to list installable skills, install a curated skill, or install a skill from another repo (including private repos). (file: r0/skill-installer/SKILL.md)
+- squeal:setup: Use when the user asks to set Squeal up in this repository, or to upgrade or change its setup (/squeal:setup in Claude Code, $squeal:setup in Codex). Runs squeal setup's plan, asks its questions, applies the answers and shows the diff. (file: r1/setup/SKILL.md)
+- squeal:squeal: Use when about to run tests (vitest, npm test) or to check whether a change broke something, in a repository that uses Squeal (it has squeal.config.json, or SQUEAL messages appear). Squeal already runs the suites its primer lists as covered; this says when to wait for their results and how to read its reports. (file: r1/squeal/SKILL.md)
+</skills_instructions><permissions instructions>
+Filesystem sandboxing defines which files can be read or written. `sandbox_mode` is `danger-full-access`: No filesystem sandboxing - all commands are permitted. Network access is enabled.
+Approval policy is currently never. Do not provide the `sandbox_permissions` for any reason, commands will be rejected.
+</permissions instructions><collaboration_mode># Collaboration Mode: Default
+
+You are now in Default mode. Any previous instructions for other modes (e.g. Plan mode) are no longer active.
+
+Your active mode changes only when new developer instructions with a different `<collaboration_mode>...</collaboration_mode>` change it; user requests or tool descriptions do not change mode by themselves. Known mode names are Default and Plan.
+
+## request_user_input availability
+
+Use the `request_user_input` tool only when it is listed in the available tools for this turn.
+
+Use the `request_user_input` tool only for optional questions where the answer would materially improve the quality of the work.
+
+If `request_user_input` returns no answers, continue with best judgment instead of asking again or treating the turn as blocked.
+
+Never use the `request_user_input` tool for permission requests or permission-related escalations.
+</collaboration_mode>
+===== 2026-10-14T19:12:21.122Z
+SQUEAL · registered at revision 0
+Revision 0: 4766 current (4360 tests, 406 test files loaded), 0 pending, 0 stale, 0 unknown. Inherited: 4752 of 4766 current (4348 tests, 404 test files loaded). Full-suite checkpoint: completed at revision 0. No dependencies are installed in this worktree; failures that cannot find a package are expected until an install.
+Known failures: 2 (2 tests)
+
+FAIL  [pytest] tests/platforms/linux/flatpak/test_mixin.py > test_distribution_path
+      assert PosixPath('/tmp/squeal-1002/tmp/8c2412ef54e0de16/pytest-of-squeal-e2e/pytest-0/test_distribution_path0/base_path/dist/First-App-0.0.1-gothic.flatpak') == PosixPath('/tmp/squeal-1002/tmp/8c2412ef54e0de16/pytest-of-squeal-e2e/pytest-0/test_distribution_path0/base_path/dist/First_App-0.0.1-go...
+      at tests/platforms/linux/flatpak/test_mixin.py:53:1
+
+FAIL  [pytest] tests/platforms/linux/flatpak/test_package.py > test_package
+      expected call not found.
+      at tests/platforms/linux/flatpak/test_package.py:19:1
+
+Full output: node --disable-warning=ExperimentalWarning "/home/squeal-e2e/runs/sq07-18/codex/plugins/cache/hearsay/squeal/0.1.174/dist/cli/squeal.mjs" why "[pytest] tests/platforms/linux/flatpak/test_mixin.py > test_distribution_path"
+
+Squeal runs this repository's pytest tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run pytest to learn whether your edits broke something. Wait only when you need a result before your next step, for example before saying the task is done: `node --disable-warning=ExperimentalWarning "/home/squeal-e2e/runs/sq07-18/codex/plugins/cache/hearsay/squeal/0.1.174/dist/cli/squeal.mjs" status --wait 60000`. Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it. A revision is Squeal's number for each saved change to this worktree's files; every result names the revision it ran at, and a header names the files its revision changed. Squeal covers pytest projects "pytest" (tests/**/test_*.py, tests/**/*_test.py) and "debugger" (debugger/**/test_*.py, debugger/**/*_test.py). Squeal does not cover typecheck, build or any other test suite: run those yourself.
+===== 2026-10-14T19:13:11.991Z
+SQUEAL · 2 checks changed (2 tests) at revision 1
+Revision 1 (changed changes/flatpak-filename.bugfix.md, src/briefcase/platforms/linux/flatpak.py): 4285 current (3905 tests, 380 test files loaded), 481 pending (455 tests, 26 test files loaded), 0 stale, 0 unknown. Inherited: 4285 of 4285 current (3905 tests, 380 test files loaded). Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `node --disable-warning=ExperimentalWarning "/home/squeal-e2e/runs/sq07-18/codex/plugins/cache/hearsay/squeal/0.1.174/dist/cli/squeal.mjs" run --all` requests one).
+Squeal saw your edit and queued 402 test files; results arrive with later tool calls, and passing ones stay silent.
+
+PASS  [pytest] tests/platforms/linux/flatpak/test_mixin.py > test_distribution_path
+      FAIL -> PASS
+      at tests/platforms/linux/flatpak/test_mixin.py:46:1
+      inherited from /home/squeal-e2e/runs/sq07-18/wt-claude at commit 0aa6a5eea788
+
+PASS  [pytest] tests/platforms/linux/flatpak/test_package.py > test_package
+      FAIL -> PASS
+      at tests/platforms/linux/flatpak/test_package.py:19:1
+      inherited from /home/squeal-e2e/runs/sq07-18/wt-claude at commit 0aa6a5eea788

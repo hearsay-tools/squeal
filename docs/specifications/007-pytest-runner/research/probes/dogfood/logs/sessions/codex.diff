@@ -1,0 +1,161 @@
+ M src/briefcase/cmdline.py
+ M src/briefcase/platforms/linux/flatpak.py
+?? changes/cmdline-resolution.misc.md
+?? changes/flatpak-filename.bugfix.md
+diff --git a/src/briefcase/cmdline.py b/src/briefcase/cmdline.py
+index 5e6d7d17..a22b63e1 100644
+--- a/src/briefcase/cmdline.py
++++ b/src/briefcase/cmdline.py
+@@ -44,6 +44,76 @@ COMMANDS = [
+ ]
+ 
+ 
++def resolve_platform_command(command, platforms, extra):
++    """Resolve the command class for a platform and output format.
++
++    :param command: the command name
++    :param platforms: the registered platform modules
++    :param extra: remaining command-line arguments; platform and format are consumed
++        from this list when explicitly provided
++    :returns: the command class for the resolved platform and output format
++    """
++    # Commands dependent on the platform and format. The general form of such a
++    # command is `briefcase <cmd> <platform> <format>`; but the format will be
++    # inferred from the platform if one isn't specified, and the platform will be
++    # inferred from the operating system if it isn't explicitly given.
++    #
++    # <platform> and <format> aren't parsed as regular arguments due to ambiguities
++    # in interpreting those arguments; instead, they're handled directly from the
++    # argument list, with the expectation that they *must* be the first and second
++    # arguments (after the command) if provided. There's no other bare arguments, so
++    # we only need to look for whether the arguments start with "-".
++    if extra and not extra[0].startswith("-"):
++        name = extra.pop(0)
++        # Normalize the platform name to the registered capitalization
++        platform = {n.lower(): n for n in platforms}.get(name.lower(), name)
++    else:
++        platform = {
++            "darwin": "macOS",
++            "linux": "linux",
++            "win32": "windows",
++        }[sys.platform]
++
++    # Import the platform module
++    try:
++        platform_module = platforms[platform]
++    except KeyError:
++        raise InvalidPlatformError(platform, platforms.keys()) from None
++
++    # If the output format wasn't explicitly specified, check to see
++    # Otherwise, extract and use the default output_format for the platform.
++    if extra and not extra[0].startswith("-") and extra[0] != "--":
++        output_format = extra.pop(0)
++    else:
++        output_format = platform_module.DEFAULT_OUTPUT_FORMAT
++
++    output_formats = get_output_formats(platform)
++
++    # Normalise casing of output_format to be more forgiving.
++    output_format = {n.lower(): n for n in output_formats}.get(
++        output_format.lower(),
++        output_format,
++    )
++
++    # We now know the command, platform, and format.
++    # Get the command class that corresponds to that definition.
++    try:
++        format_module = output_formats[output_format]
++        Command = getattr(format_module, command)
++    except KeyError:
++        raise InvalidFormatError(
++            requested=output_format,
++            choices=list(output_formats.keys()),
++        ) from None
++    except AttributeError:
++        raise UnsupportedCommandError(
++            platform=platform,
++            output_format=output_format,
++            command=command,
++        ) from None
++    return Command
++
++
+ def parse_cmdline(args, console: Console | None = None):
+     """Parses the command line to determine the Command and its arguments.
+ 
+@@ -139,61 +209,5 @@ def parse_cmdline(args, console: Console | None = None):
+     elif options.command == "upgrade":
+         Command = UpgradeCommand
+     else:
+-        # Commands dependent on the platform and format. The general form of such a
+-        # command is `briefcase <cmd> <platform> <format>`; but the format will be
+-        # inferred from the platform if one isn't specified, and the platform will be
+-        # inferred from the operating system if it isn't explicitly given.
+-        #
+-        # <platform> and <format> aren't parsed as regular arguments due to ambiguities
+-        # in interpreting those arguments; instead, they're handled directly from the
+-        # argument list, with the expectation that they *must* be the first and second
+-        # arguments (after the command) if provided. There's no other bare arguments, so
+-        # we only need to look for whether the arguments start with "-".
+-        if extra and not extra[0].startswith("-"):
+-            name = extra.pop(0)
+-            # Normalize the platform name to the registered capitalization
+-            platform = {n.lower(): n for n in platforms}.get(name.lower(), name)
+-        else:
+-            platform = {
+-                "darwin": "macOS",
+-                "linux": "linux",
+-                "win32": "windows",
+-            }[sys.platform]
+-
+-        # Import the platform module
+-        try:
+-            platform_module = platforms[platform]
+-        except KeyError:
+-            raise InvalidPlatformError(platform, platforms.keys()) from None
+-
+-        # If the output format wasn't explicitly specified, check to see
+-        # Otherwise, extract and use the default output_format for the platform.
+-        if extra and not extra[0].startswith("-") and extra[0] != "--":
+-            output_format = extra.pop(0)
+-        else:
+-            output_format = platform_module.DEFAULT_OUTPUT_FORMAT
+-
+-        output_formats = get_output_formats(platform)
+-
+-        # Normalise casing of output_format to be more forgiving.
+-        output_format = {n.lower(): n for n in output_formats}.get(
+-            output_format.lower(), output_format
+-        )
+-
+-        # We now know the command, platform, and format.
+-        # Get the command class that corresponds to that definition.
+-        try:
+-            format_module = output_formats[output_format]
+-            Command = getattr(format_module, options.command)
+-        except KeyError:
+-            raise InvalidFormatError(
+-                requested=output_format,
+-                choices=list(output_formats.keys()),
+-            ) from None
+-        except AttributeError:
+-            raise UnsupportedCommandError(
+-                platform=platform,
+-                output_format=output_format,
+-                command=options.command,
+-            ) from None
++        Command = resolve_platform_command(options.command, platforms, extra)
+     return Command, extra
+diff --git a/src/briefcase/platforms/linux/flatpak.py b/src/briefcase/platforms/linux/flatpak.py
+index 41d4c047..0b16afcc 100644
+--- a/src/briefcase/platforms/linux/flatpak.py
++++ b/src/briefcase/platforms/linux/flatpak.py
+@@ -35,7 +35,7 @@ class LinuxFlatpakMixin(LinuxMixin):
+         return self.bundle_path(app)
+ 
+     def distribution_path(self, app):
+-        binary_name = app.formal_name.replace(" ", "-")
++        binary_name = app.formal_name.replace(" ", "_")
+         return (
+             self.dist_path
+             / f"{binary_name}-{app.version}-{self.tools.host_arch}.flatpak"
