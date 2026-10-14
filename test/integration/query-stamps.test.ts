@@ -8,6 +8,7 @@ import {
   NEW,
   OLD,
   readsNew,
+  scheduledRuns,
   slowOptions,
   stored,
   warmOptions,
@@ -23,7 +24,8 @@ import {
  * the scheduler's run, and nothing hashes it in between. The keys name the
  * restored bytes, so what is stored as current must be what they give. No
  * batch reports the restore before the run ends, so the completion barrier
- * withholds the run (task 001-168).
+ * withholds the run (task 001-168) and the files run once more on the bytes
+ * on disk (task 007-30).
  */
 
 const VARIANT = { project: "", path: "test/variant.test.ts" };
@@ -88,9 +90,10 @@ describe("a query-suffixed import (review wave-13c B1)", () => {
       const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
         observe,
       });
+      const runs = scheduledRuns(h);
       await probe(h);
-      expect(stored(h)).toEqual([]);
-      withheldByBarrier(h, "test/variant.test.ts");
+      expect(stored(h)).toEqual([["", "test/variant.test.ts", "current", "fail"]]);
+      withheldByBarrier(h, runs, "test/variant.test.ts");
     },
   );
 
@@ -102,9 +105,13 @@ describe("a query-suffixed import (review wave-13c B1)", () => {
       const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
         observe,
       });
+      const runs = scheduledRuns(h);
       await probe(h, [PLAIN]);
-      expect(stored(h)).toEqual([]);
-      withheldByBarrier(h, "test/variant.test.ts");
+      expect(stored(h)).toEqual([
+        ["", "test/plain.test.ts", "current", "fail"],
+        ["", "test/variant.test.ts", "current", "fail"],
+      ]);
+      withheldByBarrier(h, runs, "test/variant.test.ts");
     },
   );
 
@@ -121,12 +128,16 @@ describe("a query-suffixed import (review wave-13c B1)", () => {
         observe,
       });
       const lanes = withSlowLanes(h, repo.main, slotDir, (adapter) => plant(h, adapter, [PLAIN]));
+      const runs = scheduledRuns(h);
       await h.scheduler.start();
       await h.scheduler.idle();
 
       expect(lanes.made()).toBeGreaterThan(0);
-      expect(stored(h)).toEqual([]);
-      withheldByBarrier(h, "test/variant.test.ts");
+      expect(stored(h)).toEqual([
+        ["", "test/plain.test.ts", "current", "fail"],
+        ["", "test/variant.test.ts", "current", "fail"],
+      ]);
+      withheldByBarrier(h, runs, "test/variant.test.ts");
     },
   );
 });
