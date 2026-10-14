@@ -3328,6 +3328,17 @@ function waiterLockPath(locksDir, consumer) {
   const id = createHash3("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
   return join7(locksDir, `waiter-${id}.sqlite`);
 }
+function acquireWaiterLock(locksDir, consumer) {
+  mkdirSync2(locksDir, { recursive: true });
+  const db = lock(waiterLockPath(locksDir, consumer));
+  if (db === null) return null;
+  return {
+    release(remove) {
+      db.close();
+      if (remove) removeWaiterLock(locksDir, consumer);
+    }
+  };
+}
 function removeWaiterLock(locksDir, consumer) {
   const path = waiterLockPath(locksDir, consumer);
   if (!existsSync4(path)) return;
@@ -5232,7 +5243,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.171";
+  if (true) return "0.1.172";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -5608,6 +5619,53 @@ async function waitForPending(context, waitMs, pollMs, isSlow) {
   }
 }
 
+// src/harness/shared/waiter.ts
+import { setTimeout as sleep4 } from "node:timers/promises";
+var REGISTRATION_GRACE_MS = 1e4;
+var WAIT_CHUNK_MS = 1e3;
+var REGISTRATION_POLL_MS = 100;
+function waitIdle(input, location2, deps, timeoutMs, signal) {
+  return withContext(input, location2, deps, async (context) => {
+    if (signal?.aborted) return null;
+    const lock2 = acquireWaiterLock(storePaths(location2.commonDir).locksDir, context.consumer);
+    if (lock2 === null) return null;
+    let gone = false;
+    try {
+      const outcome = await waitForDelta(context, timeoutMs, signal);
+      gone = outcome === "unregistered";
+      if (outcome === null) {
+        context.store.consumers.touch(context.consumer, (deps.now ?? Date.now)(), false);
+      }
+      return outcome === "unregistered" || outcome === null ? null : formatDelta(outcome, deps.command);
+    } finally {
+      lock2.release(gone);
+    }
+  });
+}
+async function waitForDelta(context, timeoutMs, signal) {
+  const started = performance.now();
+  const deadline = started + timeoutMs;
+  let seen = false;
+  for (; ; ) {
+    const left = deadline - performance.now();
+    if (left <= 0 || signal?.aborted) return null;
+    if (!isRegistered(context)) {
+      if (seen || performance.now() - started >= REGISTRATION_GRACE_MS) return "unregistered";
+      await sleep4(Math.min(REGISTRATION_POLL_MS, left), void 0, signal ? { signal } : {}).catch(
+        () => {
+        }
+      );
+      continue;
+    }
+    seen = true;
+    const delta = await context.delivery.waitForDelta(context.consumer, {
+      timeoutMs: Math.min(WAIT_CHUNK_MS, left),
+      ...signal === void 0 ? {} : { signal }
+    });
+    if (delta !== null) return delta;
+  }
+}
+
 // src/harness/pi/run.ts
 var consumerInput = (session) => ({ session_id: session.sessionId });
 var PI_EDIT_TOOLS = /* @__PURE__ */ new Set(["edit", "write"]);
@@ -5660,7 +5718,7 @@ async function settle2(session, deps) {
   const location2 = locate(session.cwd);
   if (location2 === null) return { report: null };
   const outcome = await stopTurn(
-    { ...consumerInput(session), stopHookActive: false, harness: "codex" },
+    { ...consumerInput(session), stopHookActive: false, harness: "pi" },
     location2,
     deps
   );
@@ -5675,6 +5733,18 @@ async function endRun(session, deps) {
     return null;
   });
   return null;
+}
+var IDLE_WAIT_MS = 354e4;
+async function idleWait(session, deps, signal) {
+  const location2 = locate(session.cwd);
+  if (location2 === null) return null;
+  return waitIdle(
+    consumerInput(session),
+    location2,
+    deps,
+    deps.waiterTimeoutMs ?? IDLE_WAIT_MS,
+    signal
+  );
 }
 
 // src/harness/shared/uncovered-edit.ts
@@ -5838,7 +5908,7 @@ function workerDeps(module) {
     harnessProcess: () => findHarnessProcess({ ppid: process.pid })
   };
 }
-function handle(request, deps) {
+function handle(request, deps, signal) {
   switch (request.kind) {
     case "start":
       return startSession(request, deps);
@@ -5854,17 +5924,27 @@ function handle(request, deps) {
       return settle2(request, deps);
     case "endTurn":
       return endRun(request, deps);
+    case "wait":
+      return idleWait(request, deps, signal);
     case "ping":
       return Promise.resolve(null);
   }
 }
 function serve(port, deps) {
-  port.on("message", ({ id, request }) => {
-    const answer = (message) => port.postMessage(message);
-    handle(request, deps).then(
+  const waits = /* @__PURE__ */ new Map();
+  port.on("message", (message) => {
+    if ("cancel" in message) {
+      waits.get(message.cancel)?.abort();
+      return;
+    }
+    const { id, request } = message;
+    const cancel = request.kind === "wait" ? new AbortController() : null;
+    if (cancel !== null) waits.set(id, cancel);
+    const answer = (message2) => port.postMessage(message2);
+    handle(request, deps, cancel?.signal).then(
       (result) => answer({ id, ok: true, answer: result }),
       () => answer({ id, ok: false })
-    );
+    ).finally(() => waits.delete(id));
   });
 }
 

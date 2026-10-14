@@ -4373,7 +4373,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.171";
+  if (true) return "0.1.172";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4490,38 +4490,43 @@ function isRegistered(context) {
 var REGISTRATION_GRACE_MS = 1e4;
 var WAIT_CHUNK_MS = 1e3;
 var REGISTRATION_POLL_MS = 100;
-function waitIdle(input, location2, deps, timeoutMs) {
+function waitIdle(input, location2, deps, timeoutMs, signal) {
   return withContext(input, location2, deps, async (context) => {
+    if (signal?.aborted) return null;
     const lock2 = acquireWaiterLock(storePaths(location2.commonDir).locksDir, context.consumer);
     if (lock2 === null) return null;
     let gone = false;
     try {
-      const outcome = await waitForDelta(context, timeoutMs);
+      const outcome = await waitForDelta(context, timeoutMs, signal);
       gone = outcome === "unregistered";
       if (outcome === null) {
         context.store.consumers.touch(context.consumer, (deps.now ?? Date.now)(), false);
       }
-      return outcome === "unregistered" || outcome === null ? null : formatDelta(outcome);
+      return outcome === "unregistered" || outcome === null ? null : formatDelta(outcome, deps.command);
     } finally {
       lock2.release(gone);
     }
   });
 }
-async function waitForDelta(context, timeoutMs) {
+async function waitForDelta(context, timeoutMs, signal) {
   const started = performance.now();
   const deadline = started + timeoutMs;
   let seen = false;
   for (; ; ) {
     const left = deadline - performance.now();
-    if (left <= 0) return null;
+    if (left <= 0 || signal?.aborted) return null;
     if (!isRegistered(context)) {
       if (seen || performance.now() - started >= REGISTRATION_GRACE_MS) return "unregistered";
-      await sleep2(Math.min(REGISTRATION_POLL_MS, left));
+      await sleep2(Math.min(REGISTRATION_POLL_MS, left), void 0, signal ? { signal } : {}).catch(
+        () => {
+        }
+      );
       continue;
     }
     seen = true;
     const delta = await context.delivery.waitForDelta(context.consumer, {
-      timeoutMs: Math.min(WAIT_CHUNK_MS, left)
+      timeoutMs: Math.min(WAIT_CHUNK_MS, left),
+      ...signal === void 0 ? {} : { signal }
     });
     if (delta !== null) return delta;
   }
