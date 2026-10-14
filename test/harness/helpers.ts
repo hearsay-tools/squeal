@@ -56,8 +56,7 @@ export interface SquealRepo {
   daemon(state: "alive" | "stale" | "none", staleSince?: number): void;
 }
 
-export function squealRepo(): SquealRepo {
-  const repo = fakeRepo();
+export function squealRepo(repo: FakeRepo = fakeRepo()): SquealRepo {
   const store = seedStore(repo);
   const worktreeId = repo.mainId;
   const row = {
