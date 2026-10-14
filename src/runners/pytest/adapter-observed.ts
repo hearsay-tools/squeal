@@ -1,0 +1,103 @@
+import { compare } from "../../core/fs/index.js";
+import type { RelativePath } from "../../core/types/index.js";
+import type { PytestGraph } from "./graph/index.js";
+import type { PytestObservedClosure } from "./run/observed.js";
+
+/** Observed-only paths per test file of one project, worktree-relative (spec 007 D4, 003 D3). */
+export type ObservedPaths = Readonly<Record<RelativePath, readonly RelativePath[]>>;
+
+/**
+ * The project's `pytest.observed.<project>` meta key, kept by the daemon so
+ * the adapter never opens the store (003 D3 as amended).
+ */
+export interface ObservedStore {
+  /** Every worktree's observations so far: read at start and at each refinement, so it must be cheap. */
+  read(): ObservedPaths;
+  /** Merges `additions` into the key, and into the stored closures, in one transaction. */
+  write(additions: ObservedPaths): void;
+}
+
+/**
+ * What runs imported beyond the static graph, per test file (spec 007 D4,
+ * D6: "an observed path outside it makes the result incomplete, is stored
+ * with its hash, blocks inheritance when its content differs, and schedules
+ * the file when it changes"). This worktree's runs add to it; the shared
+ * store adds what other worktrees' runs found, read at start and at each
+ * refinement. Growth another worktree found is reported once by
+ * `takeGrown`, so the scheduler fetches those files' closures again; growth
+ * this worktree's run found waits for the next edit, as 003 D3 has it.
+ */
+export class Observed {
+  private readonly tests = new Map<RelativePath, Set<RelativePath>>();
+  /** Test files whose set another worktree grew, not yet reported. */
+  private readonly grown = new Set<RelativePath>();
+
+  constructor(
+    private readonly graph: PytestGraph,
+    private readonly store: ObservedStore | undefined,
+    /** Paths never recorded: the environment's, which its hash covers. */
+    private readonly outside: (path: RelativePath) => boolean,
+    private readonly note: (text: string) => void,
+  ) {
+    this.refresh();
+    this.grown.clear();
+  }
+
+  /** Merges what the store holds now. */
+  refresh(): void {
+    if (this.store === undefined) return;
+    let tests: ObservedPaths;
+    try {
+      tests = this.store.read();
+    } catch (error) {
+      this.note(`could not read observed paths: ${String(error)}`);
+      return;
+    }
+    for (const [testFile, paths] of Object.entries(tests)) {
+      if (this.add(testFile, paths).length > 0) this.grown.add(testFile);
+    }
+  }
+
+  /** The observed-only paths of one test file. */
+  of(testFile: RelativePath): ReadonlySet<RelativePath> | undefined {
+    return this.tests.get(testFile);
+  }
+
+  /** Listed test files another worktree's observations re-key, once each. */
+  takeGrown(listed: ReadonlySet<RelativePath>): RelativePath[] {
+    const out = [...this.grown].filter((f) => listed.has(f)).sort(compare);
+    this.grown.clear();
+    return out;
+  }
+
+  /** Records what each completed, listed file of a run imported beyond its static closure. */
+  record(seen: readonly PytestObservedClosure[], listed: ReadonlySet<RelativePath>): void {
+    const additions: Record<RelativePath, RelativePath[]> = {};
+    for (const { testFile, paths } of seen) {
+      if (!listed.has(testFile.path)) continue;
+      const closure = new Set(this.graph.closure(testFile.path).paths);
+      const added = this.add(
+        testFile.path,
+        paths.filter((p) => !closure.has(p)),
+      );
+      if (added.length > 0) additions[testFile.path] = added;
+    }
+    if (this.store === undefined || Object.keys(additions).length === 0) return;
+    try {
+      this.store.write(additions);
+    } catch (error) {
+      this.note(`could not store observed paths: ${String(error)}`);
+    }
+  }
+
+  /** Adds paths to one test file's set; returns the new ones. */
+  private add(testFile: RelativePath, paths: readonly RelativePath[]): RelativePath[] {
+    const known = this.tests.get(testFile) ?? new Set<RelativePath>();
+    const added = paths.filter((p) => !known.has(p) && !this.outside(p));
+    if (added.length === 0) return [];
+    for (const path of added) known.add(path);
+    this.tests.set(testFile, known);
+    this.graph.recordObserved(testFile, [...known]);
+    return added;
+  }
+}
