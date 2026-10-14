@@ -1,0 +1,53 @@
+== start 2026-10-14T18:58:08Z load 92.07 63.79 55.31 dir repo cli launcher
+Squeal daemon spawned for /home/squeal-e2e/runs/sq07-18/repo
+
+Revision: 0
+Known failures: 0
+Affected checks: none counted; the daemon has not listed this worktree's test files yet
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+
+Worktree: /home/squeal-e2e/runs/sq07-18/repo (HEAD 5b42429, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 0 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+18:58:19 load 93.33 | Revision: 0
+18:58:30 load 87.57 | Revision: 0
+18:58:40 load 80.44 | Revision: 0
+18:58:50 load 73.18 | Revision: 0
+18:59:01 load 62.90 | Revision: 0
+18:59:11 load 55.12 | Revision: 0
+18:59:21 load 48.29 | Revision: 0
+18:59:31 load 42.92 | Revision: 0
+Checkpoint 7bfd1521-90ff-4e65-ac13-348fb06db979 completed at revision 0: no known failures; 406 test files, 0 already current, 406 run by the baseline checkpoint 80e1d7ee-c561-4375-a310-0b2da6863cf4 it joined
+Checkpoint 7bfd1521-90ff-4e65-ac13-348fb06db979 started at revision 0: 406 test files to run, 0 already current, joining the baseline checkpoint 80e1d7ee-c561-4375-a310-0b2da6863cf4 already running them (0 of 406 test files done); it ends when that one ends
+
+Revision: 0
+Known failures: 0
+Affected checks: 4692 passed (4286 tests, 406 test files loaded), 0 running, 0 queued, 74 skipped (74 tests)
+Full-suite checkpoint: completed at revision 0
+
+Worktree: /home/squeal-e2e/runs/sq07-18/repo (HEAD 5b42429, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 4 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+  2026-10-14T18:58:13.781Z: pytest project "pytest": 210 test file(s) with an incomplete static closure, keyed by what their runs import: tests/commands/base/test_app_module_path.py (src/briefcase/commands/base.py:382: computed import), tests/commands/base/test_cookiecutter_logging.py (src/briefcase/commands/base.py:382: computed import), tests/commands/base/test_end_of_life.py (src/briefcase/commands/base.py:382: computed import), ...
+== end 2026-10-14T18:59:40Z exit 0 wall 91.978577634 s load 40.60 55.74 53.36
+Revision: 0
+Known failures: 0
+Affected checks: 4692 passed (4286 tests, 406 test files loaded), 0 running, 0 queued, 74 skipped (74 tests)
+Full-suite checkpoint: completed at revision 0
+
+Worktree: /home/squeal-e2e/runs/sq07-18/repo (HEAD 5b42429, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 5 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+  2026-10-14T18:58:13.781Z: pytest project "pytest": 210 test file(s) with an incomplete static closure, keyed by what their runs import: tests/commands/base/test_app_module_path.py (src/briefcase/commands/base.py:382: computed import), tests/commands/base/test_cookiecutter_logging.py (src/briefcase/commands/base.py:382: computed import), tests/commands/base/test_end_of_life.py (src/briefcase/commands/base.py:382: computed import), ...

@@ -1,0 +1,24 @@
+Squeal setup plan for /home/squeal-e2e/runs/sq07-18/repo
+
+Harnesses:
+  claude-code: on the PATH, plugin 0.1.174 (user)
+  codex: on the PATH, plugin 0.1.174 (user)
+
+Runners: pytest pytest (squeal setup would seed it), pytest debugger (squeal setup would seed it)
+  note: pytest project "debugger" has no environment yet; `uv sync` in debugger creates one
+Config: squeal.config.json is missing
+
+Instruction files:
+  AGENTS.md: read by claude-code and codex; no Squeal block
+
+Gate lines:
+  none
+
+Slow groups:
+  none found
+
+Codex trust: 10 of 10 hooks of the plugin not trusted; squeal init --harness codex --trust has Codex trust them
+Warm-up: runs all 0 test files, 0 without a current result (estimated: no daemon has listed them)
+
+Outdated:
+  squeal.config.json is missing: worktrees run on defaults

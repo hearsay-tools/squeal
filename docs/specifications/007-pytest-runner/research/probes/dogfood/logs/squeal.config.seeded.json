@@ -1,0 +1,78 @@
+{
+  "interrupt": {
+    "onRegression": true
+  },
+  "stop": {
+    "blockOnKnownFailures": false,
+    "requireFullSuite": false,
+    "waitMs": 0,
+    "requireSlowSuite": false,
+    "slowWaitMs": 120000
+  },
+  "testCommand": {
+    "denyWhenCurrent": false
+  },
+  "baseline": {
+    "onStart": "lookup-then-run-missing"
+  },
+  "inputs": [],
+  "observe": {
+    "runtimeInputs": true
+  },
+  "env": {
+    "allowlist": []
+  },
+  "runner": {
+    "tierSize": 4,
+    "backlogTierSize": 200,
+    "timeoutMs": 600000
+  },
+  "nodeTest": [],
+  "pytest": [
+    {
+      "name": "pytest",
+      "include": [
+        "tests/**/test_*.py",
+        "tests/**/*_test.py"
+      ]
+    },
+    {
+      "name": "debugger",
+      "cwd": "debugger",
+      "include": [
+        "**/test_*.py",
+        "**/*_test.py"
+      ],
+      "exclude": [
+        "**/.*/**",
+        "**/*.egg/**",
+        "**/_darcs/**",
+        "**/build/**",
+        "**/CVS/**",
+        "**/dist/**",
+        "**/node_modules/**",
+        "**/venv/**"
+      ]
+    }
+  ],
+  "vitest": {
+    "excludeProjects": []
+  },
+  "slow": {
+    "include": [],
+    "maxWorkers": 2,
+    "maxLoadPerCpu": 1,
+    "maxDeferMs": 600000,
+    "maxParallel": 4
+  },
+  "delivery": {
+    "uncoveredEdits": true
+  },
+  "daemon": {
+    "idleExitMinutes": 60
+  },
+  "store": {
+    "retentionDays": 7,
+    "maxSizeMb": null
+  }
+}

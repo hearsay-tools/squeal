@@ -1,0 +1,106 @@
+== setup 2026-10-14T18:57:37Z load 91.19
+Squeal setup plan for /home/squeal-e2e/runs/sq07-18/repo
+
+Harnesses:
+  claude-code: on the PATH, plugin 0.1.174 (user)
+  codex: on the PATH, plugin 0.1.174 (user)
+
+Runners: pytest pytest (squeal setup would seed it), pytest debugger (squeal setup would seed it)
+Config: squeal.config.json is missing
+
+Instruction files:
+  AGENTS.md: read by claude-code and codex; no Squeal block
+
+Gate lines:
+  none
+
+Slow groups:
+  none found
+
+Codex trust: 10 of 10 hooks of the plugin not trusted; squeal init --harness codex --trust has Codex trust them
+Warm-up: runs all 0 test files, 0 without a current result (estimated: no daemon has listed them)
+
+Outdated:
+  squeal.config.json is missing: worktrees run on defaults
+
+Set up Claude Code here (on the PATH, plugin 0.1.174)?
+  yes (default, --yes)
+Set up Codex here (on the PATH, plugin 0.1.174)?
+  yes (default, --yes)
+Write the Squeal block to AGENTS.md (read by Claude Code and Codex)?
+  write it (default, --yes)
+Codex has not trusted 10 of the plugin's 10 hooks, and skips them silently. Have Codex trust them (once per user)?
+  yes (default, --yes)
+
+squeal init: wrote squeal.config.json with every default policy key
+squeal init: added the hearsay marketplace to .claude/settings.json
+squeal init: enabled squeal@hearsay in .claude/settings.json
+Each collaborator installs the plugin once: claude plugin install squeal@hearsay --scope project
+squeal init: wrote the Squeal block to AGENTS.md
+squeal init: seeded pytest project "pytest" in squeal.config.json
+squeal init: seeded pytest project "debugger" in squeal.config.json
+squeal init: kept squeal.config.json
+Then trust its hooks once: open the Codex TUI, run /hooks and trust the hooks of squeal@hearsay. Codex skips untrusted hooks silently.
+squeal init: kept squeal.config.json
+Then trust its hooks once: open the Codex TUI, run /hooks and trust the hooks of squeal@hearsay. Codex skips untrusted hooks silently.
+squeal init: Codex has not trusted 10 hooks of squeal@hearsay:
+  PreToolUse        untrusted  sha256:0c132913495a596585c293ba3dc3ee08e28d27884a83274999b617bcd8e91b96
+    s() { [ -n "$1" ] || return 1; d=$1; [ -f "$d/squeal.config.json" ] && return 0; while [ ! -e "$d/.git" ]; do [ -n "$d" ] || return 1; d=${d%/*}; done; [ -f "$d/squeal.config.json" ] && return 0; g=$d/.git; if [ -f "$g" ]; then l=; IFS= read -r l <"$g"; g=${l#gitdir:}; g=${g#"${g%%[! ]*}"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f "$g/commondir" ] && IFS= read -r c <"$g/commondir"; case $c in "") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e "$g/squeal" ]; }; s "$PWD" 2>/dev/null || exit 0; exec node --disable-warning=ExperimentalWarning "/home/squeal-e2e/runs/sq07-18/codex/plugins/cache/hearsay/squeal/0.1.174/dist/pre-tool-use.mjs"
+  PostToolUse       untrusted  sha256:0c6cd3bc8223b7538d1f39dc491bf8cd61388f2fdcc481910368cef0e9190bf1
+    s() { [ -n "$1" ] || return 1; d=$1; [ -f "$d/squeal.config.json" ] && return 0; while [ ! -e "$d/.git" ]; do [ -n "$d" ] || return 1; d=${d%/*}; done; [ -f "$d/squeal.config.json" ] && return 0; g=$d/.git; if [ -f "$g" ]; then l=; IFS= read -r l <"$g"; g=${l#gitdir:}; g=${g#"${g%%[! ]*}"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f "$g/commondir" ] && IFS= read -r c <"$g/commondir"; case $c in "") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e "$g/squeal" ]; }; s "$PWD" 2>/dev/null || exit 0; exec node --disable-warning=ExperimentalWarning "/home/squeal-e2e/runs/sq07-18/codex/plugins/cache/hearsay/squeal/0.1.174/dist/post-tool-use.mjs"
+  SessionStart      untrusted  sha256:3c90c7d3e66843cbd6f9259f28634223d82e8617aabbdc7f05996fe116460cdc
+    node --disable-warning=ExperimentalWarning "/home/squeal-e2e/runs/sq07-18/codex/plugins/cache/hearsay/squeal/0.1.174/dist/session-start.mjs"
+  SessionEnd        untrusted  sha256:6e9f03274a16b162ba7f3c16f691e3bc437b9e8eba2c545311a58d23e8e0de89
+    node --disable-warning=ExperimentalWarning "/home/squeal-e2e/runs/sq07-18/codex/plugins/cache/hearsay/squeal/0.1.174/dist/session-end.mjs"
+  UserPromptSubmit  untrusted  sha256:60bd87acc17ba299a0318c36f946bbf94030ed3099976781498b07880c6ae0e4
+    node --disable-warning=ExperimentalWarning "/home/squeal-e2e/runs/sq07-18/codex/plugins/cache/hearsay/squeal/0.1.174/dist/user-prompt-submit.mjs"
+  SubagentStart     untrusted  sha256:32e6dbd1fa103e891ad039499fce4bcaad9fb57cc45110e65c81387dfa8a333d
+    node --disable-warning=ExperimentalWarning "/home/squeal-e2e/runs/sq07-18/codex/plugins/cache/hearsay/squeal/0.1.174/dist/subagent-start.mjs"
+  SubagentStop      untrusted  sha256:a4a1287ccb38a20484fc59bb7067cd47c8b7e7210dc34664e296848741415aaa
+    node --disable-warning=ExperimentalWarning "/home/squeal-e2e/runs/sq07-18/codex/plugins/cache/hearsay/squeal/0.1.174/dist/subagent-stop.mjs"
+  Stop              untrusted  sha256:f8c8dc32300fba6a3edb5b7e2777162170a8bd42326b17499b67ca2a761f0234
+    node --disable-warning=ExperimentalWarning "/home/squeal-e2e/runs/sq07-18/codex/plugins/cache/hearsay/squeal/0.1.174/dist/stop.mjs"
+  Stop              untrusted  sha256:3292fa42376f0d13699689ebbcc2f18c043e84d64e04fc0af8620774e462d539
+    node --disable-warning=ExperimentalWarning "/home/squeal-e2e/runs/sq07-18/codex/plugins/cache/hearsay/squeal/0.1.174/dist/stop-slow.mjs"
+  Interrupt         untrusted  sha256:6d3a0b166e716f1139a99204e22dcd1d149b435b0ebaaa89c9820702d352fa31
+    node --disable-warning=ExperimentalWarning "/home/squeal-e2e/runs/sq07-18/codex/plugins/cache/hearsay/squeal/0.1.174/dist/interrupt.mjs"
+squeal init: Codex wrote the trust to /home/squeal-e2e/runs/sq07-18/codex/config.toml; its hooks now:
+  PreToolUse        trusted
+  PostToolUse       trusted
+  SessionStart      trusted
+  SessionEnd        trusted
+  UserPromptSubmit  trusted
+  SubagentStart     trusted
+  SubagentStop      trusted
+  Stop              trusted
+  Stop              trusted
+  Interrupt         trusted
+
+Changes:
+ AGENTS.md | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/AGENTS.md b/AGENTS.md
+index d9df4490..808249af 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -345,3 +345,9 @@ When submitting a pull request, you must include all information requested in th
+ ```
+ 
+ The details of the change, and linking any related issue should come first. The PR checklist at the end must be present, and filled out appropriately; all three boxes must be checked, and `Assisted-by:` must be followed by the assisting model.
++
++<!-- squeal:begin v1 (managed by Squeal setup; edits inside are replaced) -->
++## Tests
++
++Squeal runs the pytest tests after each edit. Before you say the work is done, run `squeal status --wait 60000` (or the command the SQUEAL messages name) and report its known failures and pending checks instead of running pytest. If you have seen no SQUEAL message in this session, run the pytest projects yourself instead. Where this file's verification steps name a test command, they take precedence.
++<!-- squeal:end -->
+
+Commit these when they look right; squeal setup never commits:
+  AGENTS.md
+  .claude/settings.json
+  squeal.config.json
+Other worktrees read squeal.config.json only once it is committed.
+ M AGENTS.md
+?? .claude/
+?? squeal.config.json
+5b424296 squeal setup (007-18 dogfood)
