@@ -143,3 +143,45 @@ Anything outside this scope goes under "Next".
 - Run exactly one `npx vitest run --maxWorkers=4`.
 - Don't run `npm run build`.
 - Commit the findings file only.
+
+## Wave 7.6: the third round on gate rewording (005-56 R1, R2)
+
+The human bought this third round on 2026-10-14. Its worker runs on codex `gpt-6-astra` for this row only. Every full Vitest run uses `--maxWorkers=4`. Don't run `npm run build`. Run no model session and never the real `claude` or `codex`.
+
+### 005-58 repair: quoted examples and verbs that don't run the command
+
+Use /worker.
+
+**Outcome.** Setup no longer proposes either R1 or R2 of `reviews/wave-7.5.md`. Each becomes a mention.
+
+**Read.**
+- `reviews/wave-7.5.md`, R1, R2 and "Inputs for the next wave";
+- spec 005 D5;
+- `src/cli/setup/gates.ts` as of `f6f75749`.
+
+**Shape.** A repair.
+
+**Seam.** `src/cli/setup/gates.ts`.
+- `stops` (about line 227) and `instructs` (about line 258). A command inside a quotation (`"…"`, `“…”`) is a mention: a stop inside a quotation ends no sentence.
+- `INSTRUCTION` (line 39). The allowed verb must take the command as its object. A command followed by `as an example`, or one that a `to document`, `to describe` or `to explain` phrase holds, is a mention. Stay conservative: when unsure, make it a mention.
+
+**Owns.**
+- `src/cli/setup/gates.ts`;
+- `test/cli/setup/gates.test.ts` and `gates-allow-list.test.ts`.
+
+**Done when.**
+- R1's fixture and R2's two fixtures are regression tests, through scan and through `--gate <id>=reword` refusal.
+- These are still reworded exactly: D5's first example (`VITEST_GATE`), "Run `npm test` before you finish.", "Do not commit generated files. Run `npm test` before you finish.", and "Use `npm test` to check your change.".
+- The B1 to B3 fixtures from 005-55 still pass.
+- Lint, typecheck and the capped suite pass.
+
+### 005-59 narrow re-review of 005-58
+
+Use /reviewer.
+
+**Outcome.** `reviews/wave-7.6.md` on the commit the coordinator names, written within 15 minutes of starting. It re-runs R1, R2, the seven earlier fixtures and the corpus from `reviews/wave-7.5.md`. The blocker rule is unchanged: a line that is still reworded into a wrong or broken instruction. A missed gate is a should-fix. This is the last round: the human gets whatever remains.
+
+**Rules.**
+- Same as 005-56.
+- Exactly one `npx vitest run --maxWorkers=4`.
+- Commit the findings file only.
