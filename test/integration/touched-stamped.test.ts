@@ -7,6 +7,7 @@ import {
   NEW,
   OLD,
   readsNew,
+  scheduledRuns,
   slowOptions,
   stored,
   withheldByBarrier,
@@ -118,13 +119,18 @@ describe.each([true, false])("a touched restore after a stamped probe (observe %
       await heard;
     });
     heard = touchHeard(h);
+    const runs = scheduledRuns(h);
     await h.scheduler.start();
     await h.scheduler.idle();
 
     // The slow instance is made, and planted, after its tier was selected: the touch is over the
-    // run's interval, so the completion barrier withholds it (task 001-168).
+    // run's interval, so the completion barrier withholds it (task 001-168) and it runs once
+    // more on the bytes on disk (task 007-30).
     expect(lanes.made()).toBeGreaterThan(0);
-    expect(stored(h)).toEqual([]);
-    withheldByBarrier(h, "test/variant.test.ts");
+    expect(stored(h)).toEqual([
+      ["", "test/plain.test.ts", "current", "fail"],
+      ["", "test/variant.test.ts", "current", "fail"],
+    ]);
+    withheldByBarrier(h, runs, "test/variant.test.ts");
   });
 });

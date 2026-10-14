@@ -4,16 +4,26 @@ import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { git } from "../hash/git-repo.js";
 import { openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
-import { createRepo, freshOutcomes, NEW, OLD, stored, withheldByBarrier } from "./stamps-repo.js";
+import {
+  createRepo,
+  freshOutcomes,
+  NEW,
+  OLD,
+  scheduledRuns,
+  stored,
+  withheldByBarrier,
+} from "./stamps-repo.js";
 import { VIRTUAL, warmOn } from "./touched-repo.js";
 
 /*
  * Review wave-13e B2 (task 001-168): the scheduler's adapter caches the
  * virtual module on transient bytes, the disk is restored, and the tier
  * runs and ends before the restore's batch reaches the scheduler. The
- * completion barrier finds the touch first: nothing is stored under the key
- * that names the restored bytes, so neither this worktree's lookup after the
- * late batch nor another worktree's inherits the cached PASS.
+ * completion barrier finds the touch first: nothing of that run is stored
+ * under the key that names the restored bytes, so neither this worktree's
+ * lookup after the late batch nor another worktree's inherits the cached
+ * PASS. The file runs once more once the runner heard the touch (task
+ * 007-30), and the key holds the FAIL the restored bytes give.
  */
 
 const ref = (path: string) => ({ project: "", path });
@@ -49,22 +59,32 @@ describe("a touch whose batch arrives after the run ended (review wave-13e B2)",
         }
         return closure(testFile);
       };
+      const runs = scheduledRuns(h);
       await h.scheduler.start();
       await h.scheduler.idle();
       expect(planted).toBe(true);
-      // The warm-up and the scheduled run.
-      expect(h.runsOf("test/virtual.test.ts")).toHaveLength(2);
+      // The warm-up, the withheld run, its run once more (task 007-30) and the re-run of its new
+      // fail (task 001-171).
+      expect(h.runsOf("test/virtual.test.ts")).toHaveLength(4);
 
       // The restore's batch, late.
       await h.batch("src/mod.ts");
       await h.scheduler.idle();
-      expect(stored(h)).toEqual([]);
-      withheldByBarrier(h, "test/virtual.test.ts");
+      expect(stored(h)).toEqual([
+        ["", "test/plain.test.ts", "current", "fail"],
+        ["", "test/virtual.test.ts", "current", "fail"],
+      ]);
+      withheldByBarrier(h, runs, "test/virtual.test.ts");
       const key = h.keyOf("test/virtual.test.ts");
       expect(key).not.toBeNull();
-      expect(store.results.byKey(key ?? "", Date.now())).toEqual([]);
+      // The test's own check holds the restored bytes' FAIL, never the cached PASS.
+      const underKey = store.results.byKey(key ?? "", Date.now());
+      const outcomes = underKey.filter((r) => r.check.kind === "test").map((r) => r.outcome);
+      expect(outcomes).toEqual(["fail"]);
 
       // Inheritance: a worktree on the same bytes and store keys the file alike and runs it.
+      const pass = (r: { check: { kind: string }; outcome: string }) =>
+        r.check.kind === "test" && r.outcome === "pass";
       const other = join(dirname(repo.main), randomUUID());
       git(repo.main, ["worktree", "add", "-q", "-b", "other", other]);
       const second = await openHarness(realpathSync(other), store, repo.commonDir, options);
@@ -75,8 +95,10 @@ describe("a touch whose batch arrives after the run ended (review wave-13e B2)",
         ["", "test/plain.test.ts", "current", "fail"],
         ["", "test/virtual.test.ts", "current", "fail"],
       ]);
-      // Its run and the re-run of its new fail (task 001-171).
-      expect(second.runsOf("test/virtual.test.ts")).toHaveLength(2);
+      // The FAIL it found under the key is pending until it runs the file (task 001-170); that run
+      // confirms it, so it is no new fail to re-run (task 001-171).
+      expect(second.runsOf("test/virtual.test.ts")).toHaveLength(1);
+      expect(store.results.byKey(key ?? "", Date.now()).some(pass)).toBe(false);
     },
   );
 });
