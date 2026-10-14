@@ -354,7 +354,7 @@ export function formatDelta(
         : livenessTitle(delta.liveness, header.revision)
       : delta.label === "baseline"
         ? `SQUEAL · Squeal's baseline run found ${checksText(checksOf(entries), "failing check", "that did not load")} at revision ${header.revision}`
-        : `SQUEAL · ${plural(entries.length, "check")} changed${partsSuffix(entries.length, countChecks(checksOf(entries)).testFiles)} at revision ${header.revision}`;
+        : `SQUEAL · ${plural(entries.length, "check")} changed (${partsText(checksOf(entries))}) at revision ${header.revision}`;
   const blocks = [
     ...changed.filter((e) => e.to === "fail").map((e) => entryBlock(e, header.revision)),
     ...unknownBlocks(changed.filter((e) => e.to === "unknown")),
