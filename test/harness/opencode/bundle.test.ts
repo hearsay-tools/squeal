@@ -12,7 +12,7 @@ import { CHILD_ID } from "./stub.js";
  * Spec 008 D1, D4 and goal 6: the built `dist/plugin.mjs` loads in plain Node
  * against a stub `client`, registers a root and a child through the real
  * bridge, and holds nothing that keeps the process alive, with or without
- * `dispose`. Where Bun is on the PATH it runs under Bun too: OpenCode's
+ * `dispose`, an idle wait armed (D5) included. Where Bun is on the PATH it runs under Bun too: OpenCode's
  * runtime, without OpenCode.
  */
 
@@ -25,15 +25,20 @@ afterAll(() => built.cleanup());
 /**
  * An OpenCode stand-in: imports the plugin module, starts it on `dir`, sees
  * the root and its child created, sends each a first message and the child
- * one more, asks the child's shell env, with `dispose` disposes, then prints
+ * one more, asks the child's shell env, lets the root go idle, which arms
+ * the idle wait, with `dispose` disposes, then prints
  * what it saw and leaves the process to exit on its own.
  */
 const HOST = `
 const [plugin, dir, root, child, dispose] = process.argv.slice(2);
 const { default: mod } = await import(plugin);
 const logged = [];
+const prompted = [];
 const client = {
-  session: { get: async () => ({ error: { name: "NotFoundError" } }) },
+  session: {
+    get: async () => ({ error: { name: "NotFoundError" } }),
+    promptAsync: async ({ body }) => { prompted.push(body); return { data: undefined }; },
+  },
   app: { log: async ({ body }) => { logged.push(body.message); } },
 };
 const hooks = await mod.server({ client, directory: dir, worktree: dir });
@@ -45,6 +50,7 @@ const outputs = [message(root, "msg_1"), message(child, "msg_2"), message(child,
 for (const output of outputs) await hooks["chat.message"]({ sessionID: output.message.sessionID }, output);
 const shell = { env: {} };
 await hooks["shell.env"]({ cwd: dir, sessionID: child, callID: "call_1" }, shell);
+await hooks.event({ event: { type: "session.idle", properties: { sessionID: root } } });
 if (dispose === "1") await hooks.dispose();
 process.stdout.write(JSON.stringify({
   id: mod.id,
@@ -52,6 +58,7 @@ process.stdout.write(JSON.stringify({
   parts: outputs.map((o) => o.parts),
   env: shell.env,
   logged,
+  prompted,
   doneAt: performance.now(),
 }));
 `;
@@ -62,6 +69,7 @@ interface Printed {
   parts: { type: string; text: string; synthetic: boolean; id: string }[][];
   env: Record<string, string>;
   logged: string[];
+  prompted: unknown[];
   doneAt: number;
 }
 
@@ -127,7 +135,15 @@ describe.each(runtimes)("dist/plugin.mjs in %s", (name, runtime) => {
       const { r, out, printed, spawnedDaemon } = await runHost(runtime ?? "", true);
       expect(out.code).toBe(0);
       expect(printed.id).toBe("squeal");
-      expect(printed.hooks).toEqual(["chat.message", "dispose", "event", "shell.env"]);
+      expect(printed.hooks).toEqual([
+        "chat.message",
+        "dispose",
+        "event",
+        "experimental.chat.system.transform",
+        "shell.env",
+        "tool.execute.after",
+        "tool.execute.before",
+      ]);
       expect(printed.parts.map((parts) => parts.length)).toEqual([1, 1, 0]);
       for (const [part] of printed.parts.slice(0, 2)) {
         expect(part).toMatchObject({ type: "text", synthetic: true });
@@ -140,6 +156,8 @@ describe.each(runtimes)("dist/plugin.mjs in %s", (name, runtime) => {
         OPENCODE_AGENT_ID: CHILD_ID,
       });
       expect(printed.logged).toEqual([]);
+      // The registration said the failure; the idle has no news, so no continuation.
+      expect(printed.prompted).toEqual([]);
       expect(r.store.consumers.get(r.consumer())).toBeNull();
       expect(r.store.consumers.get(r.consumer(CHILD_ID))).toBeNull();
       expect(spawnedDaemon).toBe(false);

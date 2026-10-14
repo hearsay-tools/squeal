@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { OcClient, OcHooks, OcSessionInfo } from "../../../src/harness/opencode/api.js";
 import { type SquealPluginOptions, squealPlugin } from "../../../src/harness/opencode/plugin.js";
-import type { OcRequest } from "../../../src/harness/opencode/protocol.js";
+import type { OcKind, OcRequest } from "../../../src/harness/opencode/protocol.js";
 import { tempDir } from "../../store/helpers.js";
 
 /*
@@ -16,20 +16,29 @@ export const ROOT_ID = "ses_ec4f634c2ffeXYZG21QrpEdkY4";
 export const CHILD_ID = "ses_ec4f61774ffeIWyJMttM94R8E9";
 export const MESSAGE_ID = "msg_13b09cb6c001RFZu5JnQn7fcX3";
 export const HEADER = "SQUEAL · registered at revision 3\nstub header";
+export const PRIMER_TEXT = "Squeal runs this repository's tests; stub primer";
 
 export interface StubClient extends OcClient {
   readonly logged: string[];
   readonly lookups: string[];
+  /** Each `promptAsync`: the session and its text. */
+  readonly prompted: { id: string; text: string }[];
 }
 
 /** A client that knows `sessions`; `get` of any other id is an HTTP 404, as the SDK returns it. */
 export function stubClient(sessions: readonly OcSessionInfo[] = []): StubClient {
   const logged: string[] = [];
   const lookups: string[] = [];
+  const prompted: { id: string; text: string }[] = [];
   return {
     logged,
     lookups,
+    prompted,
     session: {
+      promptAsync: async ({ path, body }) => {
+        prompted.push({ id: path.id, text: body.parts.map((part) => part.text).join("") });
+        return { data: undefined };
+      },
       get: async ({ path }) => {
         lookups.push(path.id);
         const data = sessions.find((s) => s.id === path.id);
@@ -45,31 +54,52 @@ export function stubClient(sessions: readonly OcSessionInfo[] = []): StubClient 
   };
 }
 
+/** What `stubBridge` answers each kind, when not told otherwise. */
+export const STUB_ANSWERS: Record<OcKind, unknown> = {
+  register: { header: HEADER, registered: true, primer: PRIMER_TEXT },
+  prompt: { text: null },
+  before: { reason: null },
+  after: { text: null },
+  stop: { report: null },
+  endTurn: { ended: true },
+  wait: { text: null },
+  end: { ended: 1 },
+  ping: { pong: true },
+};
+
 /**
- * A bridge that records every request in `log` and answers `register` with
- * `HEADER`; `unregistered` answers it as a worktree with no store yet does;
- * `stall` never answers.
+ * A bridge that records every request in `log` and answers each kind as
+ * `STUB_ANSWERS` or `answers` say, after `delays`; an answer of `"stall"`
+ * never comes. `unregistered` answers `register` as a worktree with no store
+ * yet does; `fail` exits 1; `stall` never answers.
  */
-export function stubBridge(behaviour: "answer" | "unregistered" | "fail" | "stall" = "answer"): {
+export function stubBridge(
+  behaviour: "answer" | "unregistered" | "fail" | "stall" = "answer",
+  options: {
+    answers?: Partial<Record<OcKind, unknown>>;
+    delays?: Partial<Record<OcKind, number>>;
+  } = {},
+): {
   entry: string;
   requests: () => OcRequest[];
 } {
   const dir = tempDir("squeal-oc-stub-");
   const log = join(dir, "requests.jsonl");
   const entry = join(dir, "bridge.mjs");
+  const answers = { ...STUB_ANSWERS, ...options.answers };
+  if (behaviour === "unregistered")
+    answers.register = { header: null, registered: false, primer: null };
   writeFileSync(
     entry,
     `import { appendFileSync, readFileSync } from "node:fs";
 const request = JSON.parse(readFileSync(0, "utf8"));
 appendFileSync(${JSON.stringify(log)}, JSON.stringify(request) + "\\n");
 const behaviour = ${JSON.stringify(behaviour)};
-if (behaviour === "stall") setInterval(() => {}, 1000);
+const answer = ${JSON.stringify(answers)}[request.kind];
+const delay = ${JSON.stringify(options.delays ?? {})}[request.kind] ?? 0;
+if (behaviour === "stall" || answer === "stall") setInterval(() => {}, 1000);
 else if (behaviour === "fail") process.exitCode = 1;
-else {
-  const register = behaviour === "unregistered" ? { header: null, registered: false } : { header: ${JSON.stringify(HEADER)}, registered: true };
-  const answers = { register, end: { ended: 1 }, ping: { pong: true } };
-  process.stdout.write(JSON.stringify({ answer: answers[request.kind] }));
-}
+else setTimeout(() => process.stdout.write(JSON.stringify({ answer })), delay);
 `,
   );
   const requests = () =>
@@ -95,11 +125,13 @@ export function startPlugin(
   client: OcClient,
   options: Partial<SquealPluginOptions> & { entry: string },
 ): Promise<OcHooks> {
+  const { entry, ...rest } = options;
   return squealPlugin({
+    bridge: () => entry,
     bin: "/pkg/bin",
     env: { PATH: "/usr/bin" },
     findNode: async () => process.execPath,
-    ...options,
+    ...rest,
   })({ client, directory, worktree: directory });
 }
 

@@ -15,6 +15,22 @@ export interface BridgeCommand {
   readonly entry: string;
 }
 
+export interface CallOptions {
+  /** Aborting it kills the bridge's group and settles the call as silence (D5's cancel). */
+  readonly signal?: AbortSignal;
+  /**
+   * Holds nothing that keeps the host alive while the call runs, not only
+   * once it settles: the idle waiter (D5) must not keep `opencode run` open.
+   */
+  readonly background?: boolean;
+}
+
+/** Unreferences a pipe where the runtime lets it (Node's sockets; Bun's may not). */
+function unrefPipe(pipe: unknown): void {
+  const unref = (pipe as { unref?: () => void } | null)?.unref;
+  if (typeof unref === "function") unref.call(pipe);
+}
+
 /**
  * Runs one bridge process: `node <entry>` in its own process group with cwd
  * `cwd`, `event` written to its stdin as JSON, and its stdout read as one JSON
@@ -34,8 +50,10 @@ export function callBridge<A>(
   event: object,
   cwd: string,
   deadlineMs: number,
+  options: CallOptions = {},
 ): Promise<A | null> {
   return new Promise((resolve) => {
+    if (options.signal?.aborted) return resolve(null);
     let settled = false;
     const out: Buffer[] = [];
     let child: ReturnType<typeof spawn>;
@@ -63,6 +81,7 @@ export function callBridge<A>(
       settled = true;
       clearTimeout(timer);
       clearTimeout(drain);
+      options.signal?.removeEventListener("abort", cancel);
       if (code === null) killGroup();
       child.stdout?.destroy();
       child.stdin?.destroy();
@@ -73,6 +92,14 @@ export function callBridge<A>(
       settle(code === 0 ? parseAnswer<A>(Buffer.concat(out).toString("utf8")) : null);
     const timer = setTimeout(() => settle(null), deadlineMs);
     let drain: ReturnType<typeof setTimeout> | undefined;
+    const cancel = () => settle(null);
+    options.signal?.addEventListener("abort", cancel);
+    if (options.background) {
+      timer.unref?.();
+      child.unref();
+      unrefPipe(child.stdout);
+      unrefPipe(child.stdin);
+    }
     child.on("error", () => settle(null));
     child.stdout?.on("data", (chunk: Buffer) => out.push(chunk));
     child.stdout?.on("error", () => settle(null));

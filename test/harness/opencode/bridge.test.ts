@@ -9,6 +9,7 @@ import {
   bridgeDeps,
   end,
   opencodeCommand,
+  ping,
   register,
   runBridge,
 } from "../../../src/harness/opencode/bridge.js";
@@ -64,6 +65,7 @@ describe("register", () => {
     const answer = await reg(r.root);
     expect(answer.header).toMatch(/^SQUEAL · registered at revision \d+\n/);
     expect(answer.registered).toBe(true);
+    expect(answer.primer).toContain(opencodeCommand("/pkg/dist/cli/squeal.mjs"));
     expect(registered(r)).toBe(true);
     expect(ensured).toBe(1);
   });
@@ -91,19 +93,19 @@ describe("register", () => {
   });
 
   it("is silent, and starts no daemon, where neither a store nor a config exists", async () => {
-    expect(await reg(noStore().root)).toEqual({ header: null, registered: false });
+    expect(await reg(noStore().root)).toEqual({ header: null, registered: false, primer: null });
     expect(ensured).toBe(0);
   });
 
   it("is silent outside a git worktree", async () => {
-    expect(await reg(outsideGit())).toEqual({ header: null, registered: false });
+    expect(await reg(outsideGit())).toEqual({ header: null, registered: false, primer: null });
     expect(ensured).toBe(0);
   });
 
   it("is silent with a config and no store, and ensures the daemon", async () => {
     const r = noStore();
     writeFileSync(join(r.root, "squeal.config.json"), "{}\n");
-    expect(await reg(r.root)).toEqual({ header: null, registered: false });
+    expect(await reg(r.root)).toEqual({ header: null, registered: false, primer: null });
     expect(ensured).toBe(1);
   });
 
@@ -113,7 +115,7 @@ describe("register", () => {
     const db = new DatabaseSync(storePaths(r.repo.commonDir).database);
     db.exec("PRAGMA user_version = 999");
     db.close();
-    expect(await reg(r.root)).toEqual({ header: null, registered: false });
+    expect(await reg(r.root)).toEqual({ header: null, registered: false, primer: null });
   });
 });
 
@@ -178,14 +180,23 @@ describe("runBridge", () => {
 
   it("prints the answer to one request", async () => {
     capture();
-    await runBridge(JSON.stringify({ kind: "ping", worktree: "/", pid: process.pid }), BUNDLE);
+    const request = JSON.stringify({ kind: "ping", worktree: "/", pid: process.pid });
+    await runBridge(request, BUNDLE, "ping", ping);
     expect(written).toEqual(['{"answer":{"pong":true}}']);
     expect(process.exitCode).toBeUndefined();
   });
 
+  it("prints nothing and exits 1 on a request of another kind", async () => {
+    capture();
+    const request = JSON.stringify({ kind: "end", worktree: "/", pid: process.pid });
+    await runBridge(request, BUNDLE, "ping", ping);
+    expect(written).toEqual([]);
+    expect(process.exitCode).toBe(1);
+  });
+
   it("prints nothing and exits 1 on a request that does not parse", async () => {
     capture();
-    await runBridge("{", BUNDLE);
+    await runBridge("{", BUNDLE, "ping", ping);
     expect(written).toEqual([]);
     expect(process.exitCode).toBe(1);
   });
