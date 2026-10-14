@@ -138,16 +138,18 @@ describe("resolveTestFiles, pytest (spec 007 D8)", () => {
   const resolve = (command: TestCommand, omitted: number | null = 0) =>
     resolveTestFiles(command, listing, ROOT, new Set(["svc", "api"]), omitted);
 
-  it("resolves no path to the project's every file", () => {
-    expect(resolve(pytest())).toEqual([A, B]);
+  it("does not resolve no path or a directory, whose discovery Squeal cannot prove it covers", () => {
+    expect(resolve(pytest())).toBeNull();
+    expect(resolve(pytest("tests/unit"))).toBeNull();
+    expect(resolve(pytest("tests"))).toBeNull();
+    expect(resolve(pytest("."))).toBeNull();
+    expect(resolve(pytest("tests/test_a.py", "tests/unit"))).toBeNull();
   });
 
-  it("resolves files, node IDs' files and directories to the project's listed files", () => {
+  it("resolves named files and node IDs' files to the project's listed files", () => {
     expect(resolve(pytest("tests/test_a.py"))).toEqual([A]);
-    expect(resolve(pytest("tests/unit"))).toEqual([B]);
-    expect(resolve(pytest("tests"))).toEqual([A, B]);
     expect(resolve(pytest("tests/unit/test_b.py", "tests/test_a.py"))).toEqual([A, B]);
-    expect(resolve(pytest("."))).toEqual([A, B]);
+    expect(resolve(pytest("tests/test_a.py", "./tests/test_a.py"))).toEqual([A]);
   });
 
   it("does not resolve a path naming no listed file of the project", () => {
@@ -158,7 +160,8 @@ describe("resolveTestFiles, pytest (spec 007 D8)", () => {
   });
 
   it("does not resolve a project with no listed file", () => {
-    expect(resolveTestFiles(pytest(), [VITEST], ROOT, new Set(["svc"]), 0)).toBeNull();
+    const command = pytest("tests/test_a.py");
+    expect(resolveTestFiles(command, [VITEST], ROOT, new Set(["svc"]), 0)).toBeNull();
   });
 
   it("leaves pytest files out of a Vitest command's", () => {
