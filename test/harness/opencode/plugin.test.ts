@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { OcHooks } from "../../../src/harness/opencode/api.js";
 import {
+  DISPOSE_DEADLINE_MS,
   EVENT_DEADLINE_MS,
   NO_NODE_LOG,
   partAfter,
@@ -341,6 +342,24 @@ describe("session.deleted and dispose", () => {
     expect(shell.env).toEqual({});
     expect(ends()).toHaveLength(1);
   });
+
+  it("dispose waits for a registration in flight and unregisters it (review 008-15 S1)", async () => {
+    const bridge = stubBridge("answer", { delays: { register: 800 } });
+    const hooks = await startPlugin(squealDir(), stubClient(), { entry: bridge.entry });
+    await hook(hooks, "event")(created(ROOT_ID));
+    const output = chatOutput(ROOT_ID);
+    const message = hook(hooks, "chat.message")({ sessionID: ROOT_ID }, output);
+    await new Promise((done) => setTimeout(done, 200));
+    const started = performance.now();
+    await hook(hooks, "dispose")();
+    expect(performance.now() - started).toBeLessThan(DISPOSE_DEADLINE_MS);
+    await message;
+    expect(bridge.requests().filter((r) => r.kind === "end")).toMatchObject([
+      { sessions: [], consumers: [{ sessionId: ROOT_ID }] },
+    ]);
+    // Disposed before it answered: nothing is added to the message.
+    expect(output.parts).toHaveLength(1);
+  }, 10_000);
 
   it("dispose with nothing registered starts no bridge", async () => {
     const bridge = stubBridge();

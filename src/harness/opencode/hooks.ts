@@ -133,9 +133,8 @@ export function squealHooks(host: HookHost): OcHooks {
       // A miss, or no consumer written (no store yet), leaves it unregistered: the next message tries again.
       if (answer === null || !answer.registered) return null;
       primer = answer.primer ?? primer;
-      if (disposed) return null;
       registered.set(key, consumer);
-      return answer.header;
+      return disposed ? null : answer.header;
     })();
     registering.set(key, run);
     return run.finally(() => registering.delete(key));
@@ -318,6 +317,8 @@ export function squealHooks(host: HookHost): OcHooks {
         disposed = true;
         for (const turn of turns.values()) cancelWait(turn);
         const deadline = deadlineIn(DISPOSE_DEADLINE_MS);
+        // S1: a registration in flight lands first. Its own deadline (2 s) ends within this one.
+        await within(Promise.all(registering.values()), deadline());
         const consumers = [...registered.values()];
         registered.clear();
         if (consumers.length === 0) return;
