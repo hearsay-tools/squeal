@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { compare, toRelative } from "../../core/fs/index.js";
 import type {
@@ -26,10 +27,42 @@ export function environmentDir(root: AbsolutePath, project: PytestProject): Abso
 }
 
 /**
+ * D2's environment as the adapter admits it: `ready` only once pytest is
+ * installed. A sync writes `pyvenv.cfg` first and the packages after it,
+ * so an environment without pytest is most likely one still syncing, and
+ * running it would only report pytest missing.
+ */
+export type AdapterEnvironment =
+  | PytestEnvironment
+  | { readonly state: "no-pytest"; readonly note: string };
+
+/** `<site-packages>/pytest/__init__.py` of the environment once its `pyvenv.cfg` names one. */
+export function pytestMarker(envDir: AbsolutePath): AbsolutePath | null {
+  const site = sitePackagesDir(envDir);
+  return site === null ? null : join(site, "pytest", "__init__.py");
+}
+
+/** `environment`, or `no-pytest` when it is ready but pytest is not installed in it. */
+export function admitEnvironment(
+  root: AbsolutePath,
+  project: PytestProject,
+  environment: PytestEnvironment,
+): AdapterEnvironment {
+  if (environment.state !== "ready") return environment;
+  const marker = pytestMarker(environment.discovery.env);
+  if (marker !== null && existsSync(marker)) return environment;
+  const where = toRelative(root, environment.discovery.env) ?? environment.discovery.env;
+  return {
+    state: "no-pytest",
+    note: `pytest project "${project.name}": pytest is not installed in ${where} (a sync in progress, or pytest missing from the project's dependencies). Its checks stay unknown until it is.`,
+  };
+}
+
+/**
  * What `ready` and every other state key by, and what a change of compares:
  * D2's hash, or the state and its note.
  */
-export function environmentSignature(environment: PytestEnvironment): string {
+export function environmentSignature(environment: AdapterEnvironment): string {
   return environment.state === "ready"
     ? `ready:${environment.hash}`
     : `${environment.state}:${environment.note}`;
@@ -39,7 +72,7 @@ export function environmentSignature(environment: PytestEnvironment): string {
  * The installed pytest's version from its `.dist-info` name, for
  * `runnerVersion`; the hash holds every site-packages entry anyway.
  */
-export function pytestVersion(environment: PytestEnvironment): string {
+export function pytestVersion(environment: AdapterEnvironment): string {
   if (environment.state !== "ready") return PYTEST_UNAVAILABLE;
   const site = sitePackagesDir(environment.discovery.env);
   const entry =
@@ -52,7 +85,7 @@ export function pytestVersion(environment: PytestEnvironment): string {
 export interface EnvironmentParts {
   readonly root: AbsolutePath;
   readonly project: PytestProject;
-  readonly environment: PytestEnvironment;
+  readonly environment: AdapterEnvironment;
   readonly adapterVersion: string;
   /** The config file, if any. */
   readonly configFile: AbsolutePath | null;
@@ -68,9 +101,11 @@ export interface EnvironmentParts {
  * worktree path written as `<worktree>`, so two worktrees synced from one
  * lock key alike; not `ready`, it carries the state's note. `files` are the
  * paths the core hashes and watches: the config file, the plugins' closure,
- * and `<env>/pyvenv.cfg` when the environment sits in the worktree, so its
- * appearance or a recreated environment is a batch (D2: "re-checked when
- * `<env>/pyvenv.cfg` appears or changes"). `packages` is empty: no
+ * and, when the environment sits in the worktree, `<env>/pyvenv.cfg` and
+ * pytest's own `__init__.py` in it, so the environment's appearance, a
+ * recreated environment and pytest's install are each a batch (D2:
+ * "re-checked when `<env>/pyvenv.cfg` appears or changes"). Both hash
+ * alike in every worktree synced from one lock. `packages` is empty: no
  * JavaScript lockfile keys a Python test.
  */
 export function projectEnvironment(parts: EnvironmentParts): RunnerEnvironment {
@@ -86,7 +121,11 @@ export function projectEnvironment(parts: EnvironmentParts): RunnerEnvironment {
     ...(ready ? { hash: environment.hash } : { note: environment.note }),
   };
   const files = new Set(parts.pluginPaths);
-  for (const path of [parts.configFile, join(parts.envDir, "pyvenv.cfg")]) {
+  for (const path of [
+    parts.configFile,
+    join(parts.envDir, "pyvenv.cfg"),
+    pytestMarker(parts.envDir),
+  ]) {
     const inside = path === null ? null : toRelative(root, path);
     if (inside !== null) files.add(inside);
   }
