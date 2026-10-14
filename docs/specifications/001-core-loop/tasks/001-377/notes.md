@@ -66,3 +66,10 @@ Lower-level exports, for tests or another caller (warmup, `squeal status`):
 - **Spec wording.** "A map from a repository root path" leaves open what a linked worktree's repository root is. The code uses the main worktree's root (the common `.git` directory's parent). A proposed parenthesis: "(the main worktree's root, which every linked worktree shares)".
 - **Residual isolation gap.** Test files outside `test/daemon` and `test/integration` that spawn daemons with their own env (`test/cli/*`, `test/harness/*`, `test/e2e/*`) still inherit the real `XDG_CONFIG_HOME`/`HOME`. Those daemons only read `~/.config/squeal/config.json`, never write it. If that file had problems, they would add a note to their own temp stores. No test I found asserts that no notes exist. Closing the gap fully means a temp `XDG_CONFIG_HOME` in each of those env builders, or one shared helper. I left that alone because it is outside this row's seam.
 - **Not done here (other rows):** the pool (001-376) and sizing (001-378). Neither `squeal status` nor setup shows the resolved capacity yet.
+
+## For integration
+
+The full suite at bc651f98 has seven expected failures, and none of them is a behaviour failure:
+
+- **The four committed-bundle drift tests** (`test/harness/plugin.test.ts`, `codex/plugin.test.ts`, `opencode/package.test.ts`, `pi/package.test.ts`). The daemon's source changed and the brief leaves the `dist` rebuild to the coordinator.
+- **The three `test/keys/key-format.test.ts` checks.** `src/core/daemon/*` and `src/core/types/*` are guarded sources, so the guard asks to pin `96de2f09b75632a3c417c8ba6996d5c5b3223ef14873239e81f78dbfc31221f7`. Format 10 is still unreleased (there is no `squeal--v0.1.17*` tag), so `KEY_SOURCES_HASHES[10]` can be re-pinned in place in the integration build commit, as was done for 001-360/361, 009-23 and 008. 001-376 changes guarded sources too, so pin once after both land. This row changes no key: the user config never enters an environment hash.
