@@ -79,6 +79,8 @@ export interface CommandInputs {
   readonly inherited: InheritedArgs;
   /** pytest's cache directory, under Squeal's temp directory. */
   readonly cacheDir: AbsolutePath;
+  /** An empty `pytest.ini` Squeal owns, passed with `-c` when the project has no config. */
+  readonly emptyConfig: AbsolutePath;
 }
 
 /**
@@ -87,7 +89,10 @@ export interface CommandInputs {
  * them. The overrides follow `args`, since the last of a repeated option
  * wins: `--maxfail=0`; `-n 0` when xdist loads and `--no-cov` when
  * pytest-cov does (an unknown flag is a usage error); `-o cache_dir=`.
- * Without a config file the cwd is the rootdir.
+ * Without a config file pytest would take one from above the worktree, which
+ * no hash covers (review 007-16 B1): Squeal passes its own empty one, the cwd
+ * as the rootdir and as the conftest cut, which pytest would otherwise put
+ * at the empty file's directory.
  */
 export function pytestArgs(inputs: CommandInputs, cwd: AbsolutePath): string[] {
   const { project, config } = inputs;
@@ -98,7 +103,9 @@ export function pytestArgs(inputs: CommandInputs, cwd: AbsolutePath): string[] {
   return [
     "-m",
     "pytest",
-    ...(config === null ? [`--rootdir=${cwd}`] : ["-c", config.path]),
+    ...(config === null
+      ? ["-c", inputs.emptyConfig, `--rootdir=${cwd}`, `--confcutdir=${cwd}`]
+      : ["-c", config.path]),
     "-p",
     "squeal_pytest",
     "--continue-on-collection-errors",

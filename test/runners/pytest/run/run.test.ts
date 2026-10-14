@@ -5,6 +5,7 @@ import {
   readdirSync,
   readFileSync,
   realpathSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -271,6 +272,66 @@ describe.each(PYTHONS)("runPytest under Python %s (spec 007 D6)", (version) => {
         expect(mixed.notes).toEqual([]);
       } finally {
         rmSync(path);
+      }
+    },
+  );
+
+  it(
+    "runs a project without a config the same whatever config or conftest sits above it (review 007-16 B1)",
+    SLOW,
+    async (ctx) => {
+      const fixture = requireSynced(ctx, synced);
+      const pyproject = join(fixture.root, "pyproject.toml");
+      const parked = `${pyproject}.parked`;
+      const above = resolve(fixture.root, "..");
+      const test = join(fixture.root, "outcomes", "test_no_config.py");
+      renameSync(pyproject, parked);
+      writeFileSync(join(above, "parent_only.py"), "");
+      writeFileSync(
+        join(above, "conftest.py"),
+        "raise RuntimeError('an ancestor conftest loaded')\n",
+      );
+      writeFileSync(
+        test,
+        [
+          "import importlib.util",
+          "",
+          "def test_no_parent_pythonpath():",
+          "    assert importlib.util.find_spec('parent_only') is None",
+          "",
+        ].join("\n"),
+      );
+      try {
+        const ini = join(above, "pytest.ini");
+        const runs = [];
+        for (const text of ["[pytest]\naddopts = -k nonexistent\npythonpath = .\n", "[pytest]\n"]) {
+          writeFileSync(ini, text);
+          const { PYTHONDONTWRITEBYTECODE: _, ...source } = fixture.env;
+          const environment = await readEnvironment(
+            realpathSync(fixture.root) as AbsolutePath,
+            PROJECT,
+            source,
+          );
+          expect(environment).toMatchObject({ state: "ready", config: null });
+          const { report } = await run(
+            ctx,
+            refs("outcomes/test_no_config.py", "outcomes/test_pass.py"),
+          );
+          runs.push({ hash: environment.state === "ready" ? environment.hash : "", report });
+        }
+        for (const { report } of runs) {
+          expect(report).toMatchObject({ end: "completed", failure: null });
+          expect(outcomes(report.results)).toEqual({
+            test_no_parent_pythonpath: "pass",
+            test_passes: "pass",
+          });
+        }
+        expect(runs[0]?.hash).toBe(runs[1]?.hash);
+      } finally {
+        renameSync(parked, pyproject);
+        for (const name of ["pytest.ini", "conftest.py", "parent_only.py"])
+          rmSync(join(above, name), { force: true });
+        rmSync(test, { force: true });
       }
     },
   );
