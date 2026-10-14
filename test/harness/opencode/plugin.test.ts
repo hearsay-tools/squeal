@@ -208,6 +208,20 @@ describe("chat.message", () => {
     ]);
   });
 
+  it("registers again at the next message when the bridge wrote no consumer (review 008-15)", async () => {
+    const bridge = stubBridge("unregistered");
+    const hooks = await startPlugin(squealDir(), stubClient(), { entry: bridge.entry });
+    await hook(hooks, "event")(created(ROOT_ID));
+    const first = chatOutput(ROOT_ID);
+    await hook(hooks, "chat.message")({ sessionID: ROOT_ID }, first);
+    await hook(hooks, "chat.message")({ sessionID: ROOT_ID }, chatOutput(ROOT_ID, "msg_2"));
+    expect(first.parts).toHaveLength(1);
+    expect(bridge.requests().map((r) => r.kind)).toEqual(["register", "register"]);
+    // Nothing registered, so nothing for dispose to end.
+    await hook(hooks, "dispose")();
+    expect(bridge.requests()).toHaveLength(2);
+  });
+
   it("never throws: a failing bridge, a rejecting client, a frozen output", async () => {
     const client = stubClient();
     client.session.get = async () => {

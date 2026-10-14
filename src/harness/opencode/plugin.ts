@@ -194,8 +194,8 @@ function hooks(
     deadline: Deadline,
   ): Promise<void> => {
     const answer = await ask("register", { consumer }, deadline);
-    // A miss leaves the consumer unregistered, so the next message tries again.
-    if (answer === null || disposed) return;
+    // A miss, or no consumer written (no store yet), leaves it unregistered: the next message tries again.
+    if (answer === null || !answer.registered || disposed) return;
     registered.set(keyOf(consumer), consumer);
     if (answer.header === null) return;
     parts.push({

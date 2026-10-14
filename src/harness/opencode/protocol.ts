@@ -34,9 +34,14 @@ export type OcRequest =
   /** The bare round trip, for the per-call cost (D4). */
   | ({ readonly kind: "ping" } & OcHost);
 
-/** `register`'s answer: the registration header to put in the message, or `null`. */
+/**
+ * `register`'s answer: the registration header to put in the message, or
+ * `null`, and whether a consumer row was written. Without a store yet there
+ * is none, and the plugin asks again at the next message (review 008-15).
+ */
 export interface RegisterAnswer {
   readonly header: string | null;
+  readonly registered: boolean;
 }
 
 /** The answer to each request kind. Every answer is an object, so `null` is only a miss. */

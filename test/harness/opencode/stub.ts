@@ -45,8 +45,12 @@ export function stubClient(sessions: readonly OcSessionInfo[] = []): StubClient 
   };
 }
 
-/** A bridge that records every request in `log` and answers `register` with `HEADER`; `stall` never answers. */
-export function stubBridge(behaviour: "answer" | "fail" | "stall" = "answer"): {
+/**
+ * A bridge that records every request in `log` and answers `register` with
+ * `HEADER`; `unregistered` answers it as a worktree with no store yet does;
+ * `stall` never answers.
+ */
+export function stubBridge(behaviour: "answer" | "unregistered" | "fail" | "stall" = "answer"): {
   entry: string;
   requests: () => OcRequest[];
 } {
@@ -62,7 +66,8 @@ const behaviour = ${JSON.stringify(behaviour)};
 if (behaviour === "stall") setInterval(() => {}, 1000);
 else if (behaviour === "fail") process.exitCode = 1;
 else {
-  const answers = { register: { header: ${JSON.stringify(HEADER)} }, end: { ended: 1 }, ping: { pong: true } };
+  const register = behaviour === "unregistered" ? { header: null, registered: false } : { header: ${JSON.stringify(HEADER)}, registered: true };
+  const answers = { register, end: { ended: 1 }, ping: { pong: true } };
   process.stdout.write(JSON.stringify({ answer: answers[request.kind] }));
 }
 `,
