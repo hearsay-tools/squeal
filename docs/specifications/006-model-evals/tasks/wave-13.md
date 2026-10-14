@@ -6,6 +6,10 @@ Rules for every row in this wave:
 - Code, tests and synthetic reference sessions only.
 - Never run `run-baseline.mjs`, `run-cell.mjs`, `judge-calibrate.mjs`, `regrade.mjs` or `atomic-regrade.mjs`.
 - No `claude` or `codex` session, and no `npm run build`.
+- The host's test-run policy (the human, 2026-10-15):
+  - Your full-suite verdict is `squeal run --all --wait`.
+  - Only when Squeal is unavailable, run `npx vitest run --maxWorkers=4`, and say so.
+  - A file that fails under load and passes alone is named in your final message.
 - The coordinator runs each new scenario once its row lands.
 
 ## 006-55 a wait on named files is not the whole suite current
