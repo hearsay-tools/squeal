@@ -93,9 +93,11 @@ const SECRETS = secretsOf(process.env);
  * Throws unless the command keeps to its case: run as another user than this
  * one; HOME and every scratch directory strictly under the case root, never
  * the real home or the user's own; PATH additions and cwd under the root; no
- * variable outside the allowed set, and no value that is a credential.
+ * variable outside the allowed set, and no credential in a value, the command
+ * or an argument, since all of them reach process argv (005-42 S1). `secrets`
+ * defaults to the host's.
  */
-export function guard(s: Spawn): void {
+export function guard(s: Spawn, secrets: readonly string[] = SECRETS): void {
   if (userInfo().username === USER) throw new Error(`refused: the suite itself runs as ${USER}`);
   const root = posix.normalize(s.root);
   if (!/^\/home\/squeal-e2e\/runs\/[a-z0-9-]+$/.test(root))
@@ -115,9 +117,16 @@ export function guard(s: Spawn): void {
   for (const [name, value] of Object.entries(s.env)) {
     if (!ALLOWED.has(name)) throw new Error(`refused: variable ${name} is not a scratch variable`);
     if (/[\n\0]/.test(value)) throw new Error(`refused: ${name} holds a newline`);
-    if (SECRETS.some((secret) => value.includes(secret)))
+    if (secrets.some((secret) => value.includes(secret)))
       throw new Error(`refused: ${name} holds a credential`);
   }
+  const argv = new Map([
+    ["the command", s.cmd],
+    ...s.args.map((arg, i) => [`argument ${i + 1}`, arg] as const),
+  ]);
+  for (const [what, value] of argv)
+    if (secrets.some((secret) => value.includes(secret)))
+      throw new Error(`refused: ${what} holds a credential`);
   for (const dir of s.path)
     if (!strictlyInside(posix.normalize(dir), root))
       throw new Error(`refused: PATH entry ${dir} is outside ${root}`);
