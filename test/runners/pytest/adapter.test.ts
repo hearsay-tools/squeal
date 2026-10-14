@@ -94,12 +94,16 @@ describe.each(PYTHONS)("createPytestAdapter under Python %s (spec 007)", (versio
     logDir: join(scratch, `logs-${runs++}`),
     timeoutMs: 60_000,
   });
-  const open = async (ctx: Parameters<typeof requireSynced>[0], store?: ObservedStore) => {
+  const open = async (
+    ctx: Parameters<typeof requireSynced>[0],
+    store?: ObservedStore,
+    project: PytestProject = PROJECT,
+  ) => {
     const fixture = requireSynced(ctx, synced);
     const root = realpathSync(fixture.root) as AbsolutePath;
     const { PYTHONDONTWRITEBYTECODE: _, ...source } = fixture.env;
     const notes: string[] = [];
-    const adapter = await createPytestAdapter(PROJECT, {
+    const adapter = await createPytestAdapter(project, {
       root,
       source,
       note: (text) => notes.push(text),
@@ -218,4 +222,32 @@ describe.each(PYTHONS)("createPytestAdapter under Python %s (spec 007)", (versio
       writeFileSync(pyproject, text);
     }
   });
+
+  it(
+    "skips a skipped module's known checks and passes on a collection error (D6)",
+    SLOW,
+    async (ctx) => {
+      const outcomes = {
+        ...PROJECT,
+        include: ["outcomes/test_*.py"],
+        exclude: ["outcomes/test_hang.py"],
+      };
+      const { adapter } = await open(ctx, undefined, outcomes);
+      const files = [ref("outcomes/test_collection_error.py"), ref("outcomes/test_module_skip.py")];
+      const report = await adapter.run(files, runOptions());
+      expect(report.completedFiles).toEqual(files);
+      expect(report.results).toMatchObject([
+        {
+          check: { testPath: "outcomes/test_module_skip.py", fullName: "test_never_run" },
+          outcome: "skip",
+        },
+      ]);
+      expect(report.fileErrors).toMatchObject([
+        {
+          testFile: ref("outcomes/test_collection_error.py"),
+          errors: [{ name: "ModuleNotFoundError" }],
+        },
+      ]);
+    },
+  );
 });
