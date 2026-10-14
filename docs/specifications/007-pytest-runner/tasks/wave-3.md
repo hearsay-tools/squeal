@@ -29,3 +29,17 @@ Owns: `docs/specifications/007-pytest-runner/lessons.md`, `research/probes/dogfo
 Done when: `lessons.md` is committed with the baseline's wall time, inherited and run counts, each session's transitions and whether the agent trusted them, the batch-size table, and every defect numbered with its reproduction.
 
 Use /worker.
+
+## 007-28 main CI: a synced second worktree inherits only 6 of 13 on GitHub's runners
+
+Outcome: main's CI is green again, with the cause of the CI-only inheritance gap named and fixed where it lives (product or test), not hidden.
+
+Evidence: CI run 38582092315 (main, 0.1.169) and every `cez/2ab5b448` run since 38571579506 fail `test/integration/pytest.test.ts:149`, `expected 6 to be 13`, on Node 22 and 24; locally on this host the same commit inherits 13 of 13. Run 38563859087 timed out on the third baseline in the same test. GitHub's runners differ by no git identity, cold uv and npm caches, another uv and Python build, other paths and timing (`docs/process.md`). Unrelated and known: `test/watcher/reconcile-pass.test.ts:72` under load.
+
+Shape: repair, CI-driven. Push your branch and read `gh run view <id> --log-failed`. First edit: make the failing assertion say which checks ran instead of inheriting and why (each check's key parts from the second worktree's status or the store: closure hash, environment hash, the session meta key), so one CI run names the differing input. Then fix that input: a path or byte in the environment hash or session observations that is not rewritten to `<worktree>`, an admission timing that keys before the sync settles, or a test that waits on the wrong condition. Raise nothing in `key-format.ts`; say if keys change.
+
+Owns: `src/runners/pytest/**`, `src/core/daemon/pytest-runners.ts`, `test/integration/pytest*.test.ts`, `test/helpers/pytest-env.ts`, tests under `test/runners/pytest/`. Leave alone: `test/e2e/**` and `test/fixtures/e2e/**` (007-17 is running there), everything else.
+
+Done when: the cause is named with the CI log line that shows it; a local regression reproduces it (for example a second worktree whose sync differs the way CI's does); your branch's CI is green on both Node versions apart from known load-sensitive tests; lint, typecheck and the full suite green locally.
+
+Use /worker.
