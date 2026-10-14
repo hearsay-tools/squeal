@@ -359,6 +359,18 @@ export interface RunnerAdapter {
   invalidate(paths: readonly InvalidatedPath[]): Promise<InvalidateResult>;
 
   /**
+   * A bounded look at inputs no watched file shows, such as a pytest
+   * environment's installed set in an ignored `.venv` (spec 007 D2 as
+   * amended, task 007-26). The scheduler calls it at a reconciliation pass
+   * that applied and touched nothing, and nothing else at that pass unless a
+   * project is reported recreated, which it then re-keys as it does one
+   * `invalidate` reports. So it must cost next to nothing when nothing
+   * moved. `invalidate` looks at the same inputs, so a refinement stands in
+   * for it. Absent: the runner has no such inputs.
+   */
+  recheck?(): Promise<InvalidateResult>;
+
+  /**
    * Spec 001 D4: "`affected(changedPaths) -> test files`: the `related` walk
    * [...]. Squeal adds what Vitest's walk misses: all test files of a project
    * when a setup file, its closure, `globalSetup`, or the config changed; the

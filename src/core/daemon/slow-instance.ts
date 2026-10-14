@@ -24,6 +24,7 @@ export function withSlowInstance(
   let closing: Promise<void> = Promise.resolve();
   let pending: InvalidatedPath[] = [];
   const lane = fast.lane?.bind(fast);
+  const recheck = fast.recheck?.bind(fast);
 
   const drop = (): Promise<void> => {
     const closed = slow;
@@ -46,6 +47,8 @@ export function withSlowInstance(
       }
       return fast.invalidate(paths);
     },
+    // Task 007-26: the fast instance is rechecked; a slow one lives for one slow pass.
+    ...(recheck === undefined ? {} : { recheck }),
     affected: (changedPaths) => fast.affected(changedPaths),
     closure: (testFile) => fast.closure(testFile),
     enumerate: (testFile) => fast.enumerate(testFile),

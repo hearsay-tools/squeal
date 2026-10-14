@@ -116,6 +116,12 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
         const projects = new Set((await fresh.environment()).map((e) => e.project));
         return { recreatedProjects: [...projects].sort() };
       }),
+    // Task 007-26: a recheck is no batch, so it never retries a failed creation.
+    recheck: () =>
+      around(async (): Promise<InvalidateResult> => {
+        if (inner === null || closed) return { recreatedProjects: [] };
+        return (await inner.recheck?.()) ?? { recreatedProjects: [] };
+      }),
     affected: (changedPaths) => around(async () => (await adapter()).affected(changedPaths)),
     closure: (testFile: TestFileRef) => around(async () => (await adapter()).closure(testFile)),
     enumerate: (testFile: TestFileRef) => around(async () => (await adapter()).enumerate(testFile)),

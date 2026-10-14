@@ -280,12 +280,14 @@ export function afterEachRun(
   let overlapped: string[] = [];
   const lane = runner.lane?.bind(runner);
   const releaseLane = runner.releaseLane?.bind(runner);
+  const recheck = runner.recheck?.bind(runner);
   const laneOf = (testFiles: readonly TestFileRef[], options: RunOptions): string =>
     options.lane ?? (testFiles[0] === undefined ? "" : (lane?.(testFiles[0]) ?? ""));
   return {
     name: runner.name,
     adapterVersion: runner.adapterVersion,
     invalidate: (paths) => runner.invalidate(paths),
+    ...(recheck === undefined ? {} : { recheck }),
     affected: (changedPaths) => runner.affected(changedPaths),
     closure: (testFile) => runner.closure(testFile),
     enumerate: (testFile) => runner.enumerate(testFile),
