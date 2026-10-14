@@ -1,8 +1,9 @@
 import { existsSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
 import { compare, toRelative } from "../../core/fs/index.js";
 import type {
   AbsolutePath,
+  InvalidatedPath,
   PytestProject,
   RelativePath,
   RunnerEnvironment,
@@ -144,6 +145,14 @@ export function environmentSignature(environment: AdapterEnvironment): string {
     : `${environment.state}:${environment.note}`;
 }
 
+/** Whether a fresh read moved from the admitted environment: by fingerprint when both are ready. */
+export function moving(read: AdapterEnvironment, admitted: AdapterEnvironment): boolean {
+  if (read.state === "ready" && admitted.state === "ready") {
+    return read.fingerprint !== admitted.fingerprint;
+  }
+  return environmentSignature(read) !== environmentSignature(admitted);
+}
+
 /**
  * The installed pytest's version from its `.dist-info` name, for
  * `runnerVersion`; the hash holds every site-packages entry anyway.
@@ -215,4 +224,10 @@ export function projectEnvironment(parts: EnvironmentParts): RunnerEnvironment {
     files: [...files].sort(compare),
     packages: { imports: [], builtins: [] },
   };
+}
+
+/** A change to `pyvenv.cfg`, which re-derives the graph's search path (D5). */
+export function structural(root: AbsolutePath, dir: AbsolutePath): InvalidatedPath[] {
+  // An environment outside the worktree too: the graph reads the name, not the place.
+  return [{ path: relative(root, join(dir, "pyvenv.cfg")).split(sep).join("/"), kind: "change" }];
 }

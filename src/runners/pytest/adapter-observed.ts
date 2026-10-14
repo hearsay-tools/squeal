@@ -95,18 +95,24 @@ export class Observed {
   }
 
   /**
-   * Records what a run's start-up imported beyond what `keyed` says a key
-   * already holds (the plugins' static closure, a module in every test
-   * file's, as a root conftest's `pytest_plugins` are), and returns every
-   * such path of the run, keyed or not: `RunReport.environmentObserved`, so
-   * the core stores nothing for a file whose key lacked one and runs it
-   * again under the key that holds it.
+   * Records what a run's start-up imported beyond what a key already holds,
+   * `plugins`, the plugins' static closure, and a module in the static
+   * closure of every one of the `listed` test files, as a root conftest's
+   * `pytest_plugins` are, and returns every such path of the run, keyed or
+   * not: `RunReport.environmentObserved`, so the core stores nothing for a
+   * file whose key lacked one and runs it again under the key that holds it.
    */
   recordSession(
     seen: readonly RelativePath[],
-    keyed: (path: RelativePath) => boolean,
+    plugins: readonly RelativePath[],
+    listed: number,
   ): RelativePath[] {
-    const paths = seen.filter((p) => !keyed(p) && !this.outside(p));
+    const known = new Set(plugins);
+    const everywhere = (path: RelativePath) => {
+      const { direct, transitive } = this.graph.affected([path]);
+      return direct.length + transitive.length >= listed;
+    };
+    const paths = seen.filter((p) => !known.has(p) && !this.outside(p) && !everywhere(p));
     const added = this.addSession(paths);
     if (this.store !== undefined && added.length > 0) {
       try {
