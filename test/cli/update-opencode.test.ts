@@ -2,9 +2,11 @@ import { mkdirSync, readdirSync, readFileSync, readlinkSync, writeFileSync } fro
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/main.js";
+import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import {
   type Harness,
   install,
+  LAUNCHER,
   laterLauncher,
   launcherOf,
   type Machine,
@@ -14,7 +16,14 @@ import {
   openCodeHomeOf,
   openCodeLinkOf,
   piDirOf,
+  writePlugin,
 } from "./install-fixture.js";
+
+/** The launcher 0.1.177 shipped: format 3, its search without OpenCode's package. */
+const RELEASED_0_1_177 = readFileSync(
+  join(REPO_ROOT, "test/fixtures/opencode/launcher-0.1.177"),
+  "utf8",
+);
 
 /*
  * Spec 008 D1 with 005 D3, `squeal update` in OpenCode: when OpenCode's
@@ -160,10 +169,26 @@ describe("squeal update in OpenCode", { timeout: 60_000 }, () => {
 
   it("re-copies the launcher from the OpenCode package when its copy has a newer format", async () => {
     const m = installed("0.1.176");
-    m.publish("0.1.177", laterLauncher(4));
+    m.publish("0.1.177", laterLauncher(5));
     const r = await update(m);
     expect(r.code).toBe(0);
+    expect(r.stdout).toContain(`Copied the launcher (format 4, now 5) to ${launcherOf(m)}\n`);
+    expect(readFileSync(launcherOf(m), "utf8")).toBe(laterLauncher(5));
+  });
+
+  it("re-copies the launcher 0.1.177 installed, format 3, which never finds OpenCode's package (review 008-16 S3)", async () => {
+    const m = machine(["opencode"]);
+    m.publish("0.1.177", RELEASED_0_1_177);
+    expect(install(m).status).toBe(0);
+    expect(readFileSync(launcherOf(m), "utf8")).toBe(RELEASED_0_1_177);
+    // An older Pi package left on disk: all the format-3 launcher can find.
+    writePlugin(piDirOf(m, "0.1.175"), "pi", "0.1.175");
+    m.publish("0.1.178");
+    const r = await update(m);
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("OpenCode: Squeal 0.1.178, was 0.1.177\n");
     expect(r.stdout).toContain(`Copied the launcher (format 3, now 4) to ${launcherOf(m)}\n`);
-    expect(readFileSync(launcherOf(m), "utf8")).toBe(laterLauncher(4));
+    expect(readFileSync(launcherOf(m), "utf8")).toBe(readFileSync(LAUNCHER, "utf8"));
+    expect(squealVersion(m)).toBe("0.1.178");
   });
 });
