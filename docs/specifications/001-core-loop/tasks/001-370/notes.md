@@ -47,7 +47,7 @@ Measured on the five-projects fixture, host load 37 to 60: `resolveConfig` 22 to
 
 ## Key format
 
-`exclude.ts` and the adapter are guarded sources; `test/keys/key-format.test.ts` may need the coordinator's re-pin. I left the version and the pin alone.
+`exclude.ts` and the adapter are guarded sources. `test/keys/key-format.test.ts` fails its three pin tests: the guarded hash moves from `535feb18...` to `97b81e808185e7dda9fc2b18ed51cd12a548786deb4c17c3f5119c9adeff6517`. Format 9 is not released yet (review wave-13bl, What fits), so the coordinator re-pins format 9. I left the version and the pin alone.
 
 ## D11 wording changed (spec.md, the `vitest.excludeProjects` bullet)
 
