@@ -1,0 +1,8 @@
+== install 2026-10-14T18:56:34Z load 96.85
+Adding marketplace…✔ Successfully added marketplace: hearsay (declared in user settings)
+Installing plugin "squeal@hearsay"...✔ Successfully installed plugin: squeal@hearsay (scope: user)
+Added marketplace `hearsay` from /home/squeal-e2e/runs/sq07-18/pin.
+Installed marketplace root: /home/squeal-e2e/runs/sq07-18/pin
+Added plugin `squeal` from marketplace `hearsay`.
+Installed plugin root: /home/squeal-e2e/runs/sq07-18/codex/plugins/cache/hearsay/squeal/0.1.174
+0.1.174
