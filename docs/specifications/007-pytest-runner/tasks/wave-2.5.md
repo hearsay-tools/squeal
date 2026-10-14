@@ -45,3 +45,25 @@ Use /worker.
 Shape: review. `/reviewer` over the three repair rows' commits against `reviews/wave-2.md`. Write `reviews/wave-2.5.md`. This is the second and last round on wave 2.
 
 Use /reviewer.
+
+## 007-26 a bounded environment recheck that keeps empty invalidation (R1, R2)
+
+Outcome: an idle daemon notices a changed pytest environment with one fingerprint read and nothing else, and `invalidate([])` again means what it meant before wave 2.5 (the human chose this narrow repair, 2026-10-14).
+
+Read: `reviews/wave-2.5.md` in full (R1 and R2 with their reproductions); `fb0bbbf0` and `c28d8014` on this branch, which introduced both.
+
+Contract, decided by the coordinator (additive, amending D2's recheck): `RunnerAdapter` gains optional `recheck?(): Promise<InvalidateResult>`, a bounded look at inputs no watched file shows. Only pytest implements it: one fingerprint read, and on a difference the bounded admission and a recreation. Every wrapper forwards it (composite, the recovering runner without retrying a failed one, `escaped.ts`, `slow-instance.ts`). On a quiet interval with nothing applied or touched, the scheduler calls `recheck` and stops unless a project was recreated, in which case it re-keys as a reported recreation does today. It never calls `affected`, `testFiles` or `environment` otherwise.
+
+Shape: repair. Seams: `src/core/types/runner.ts` (the method, with its doc comment), the interval branch of `scheduler.ts` `handleBatch`. Then revert the empty-path guards to pre-2.5 behaviour: `src/runners/node-test/adapter-project.ts`, `adapter.ts`, `src/core/daemon/runner.ts`, and the pytest adapter's empty-path early return, which must again refresh shared session observations and report startup growth like node:test.
+
+Owns: those files, `src/core/daemon/composite-runner.ts`, `escaped.ts`, `slow-instance.ts`, `src/core/scheduler/runner-work.ts` and `refinement.ts` if needed, `src/runners/pytest/adapter*.ts`, and their tests. Leave alone: `src/harness/**`, `src/cli/**`, `key-format.ts`, `plugins/*/dist`. 001's coordinator works in `src/core/scheduler/`: keep the change additive and in its own commits.
+
+Done when: R1's pytest case (the open adapter's `invalidate([])` reports `small` recreated on 3.10 and 3.13) and R1's node:test differential key regression pass; R2's idle regression over a composite of Vitest, node:test and pytest counts a whole quiet pass: zero `affected`, no Vitest discovery, no observation scans, one pytest fingerprint read; B1's installed-upgrade and `.pth` daemon regressions still pass; each new test fails on `6530bf2d`. Lint, typecheck and the full suite green apart from the expected drift. Do not run `npm run build`.
+
+Use /worker.
+
+## 007-27 focused review of 007-26
+
+Shape: review. `/reviewer` over 007-26's commits only, against R1 and R2 of `reviews/wave-2.5.md` and the contract above. Write `reviews/wave-2.75.md`. Not a re-review of wave 2.
+
+Use /reviewer.

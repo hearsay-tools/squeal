@@ -31,3 +31,5 @@ Started: 2026-10-13
   - B5: modules a startup plugin imports dynamically enter no key.
 
   Repairs in wave 2.5: 007-22 (B1, B2, B5), 007-23 (B3), 007-24 (B4), then re-review 007-25. Decided by the coordinator for B3, an additive interface change amending D6: `RunReport.skippedFiles` (optional). The scheduler expands a skipped file to its known checks as it does `fileErrors`. Vitest and node:test never set it.
+
+- 2026-10-14: Review 007-25 FAIL (`reviews/wave-2.5.md`). B1 to B5 fixed. Two new proven blockers in the interval recheck agreed for B1: R1, empty-path guards drop shared startup-input growth (a node:test regression); R2, a quiet interval calls `affected([])`, so Vitest rediscovers its suite every pass. The human chose a narrow repair over reverting B1's recheck: 007-26 adds optional `RunnerAdapter.recheck()` (additive, amending D2: only pytest implements it, one fingerprint read when nothing moved) and restores `invalidate([])` to its pre-2.5 meaning; 007-27 reviews that commit only.
