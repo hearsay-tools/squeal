@@ -189,6 +189,7 @@ var DEFAULT_POLICY = {
   env: { allowlist: [] },
   runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5 },
   nodeTest: [],
+  pytest: [],
   slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 6e5, maxParallel: 4 },
   delivery: { uncoveredEdits: true },
   daemon: { idleExitMinutes: 60 },
@@ -389,41 +390,76 @@ var FIELDS = {
 };
 var REQUIRED = /* @__PURE__ */ new Set(["name", "include"]);
 function nodeTestProjects(value, path) {
+  return projectEntries(value, path, FIELDS, REQUIRED, withDefaults);
+}
+function withDefaults(entry2) {
+  return { ...entry2, argv: entry2.argv ?? [], env: entry2.env ?? {} };
+}
+function projectEntries(value, path, fields, required, withDefaults3, check) {
   if (!Array.isArray(value)) return "an array of projects";
   const kept = [];
   const problems = [];
   value.forEach((entry2, index) => {
     const at2 = `${path}[${index}]`;
-    const problem = entryProblem(entry2, at2, kept);
-    if (problem === null) kept.push(withDefaults(entry2));
+    const problem = entryProblem(entry2, at2, kept, fields, required, check);
+    if (problem === null) kept.push(withDefaults3(entry2));
     else problems.push(problem);
   });
   return { kept, problems };
 }
-function withDefaults(entry2) {
-  return { ...entry2, argv: entry2.argv ?? [], env: entry2.env ?? {} };
-}
-function entryProblem(entry2, at2, kept) {
+function entryProblem(entry2, at2, kept, fields, required, check) {
   if (!isRecord(entry2))
     return `"${at2}" must be an object, got ${JSON.stringify(entry2)}; it is skipped`;
   const named = nonEmptyString(entry2.name) === null ? entry2.name : null;
   const skipped = named === null ? "it is skipped" : `project ${JSON.stringify(named)} is skipped`;
   for (const key of Object.keys(entry2)) {
-    if (!Object.hasOwn(FIELDS, key)) return `unknown key "${at2}.${key}"; ${skipped}`;
+    if (!Object.hasOwn(fields, key)) return `unknown key "${at2}.${key}"; ${skipped}`;
   }
-  for (const [key, field] of Object.entries(FIELDS)) {
+  for (const [key, field] of Object.entries(fields)) {
     const given = entry2[key];
-    if (given === void 0 && !REQUIRED.has(key)) continue;
+    if (given === void 0 && !required.has(key)) continue;
     const expected = field(given);
     if (expected === null) continue;
     const why = typeof expected === "object" ? expected.problem : `must be ${expected}, got ${given === void 0 ? "undefined" : JSON.stringify(given)}`;
     return `"${at2}.${key}" ${why}; ${skipped}`;
   }
+  const across = check?.(entry2) ?? null;
+  if (across !== null) return `"${at2}.${across.key}" ${across.problem}; ${skipped}`;
   if (kept.some((project) => project.name === named)) {
     return `"${at2}.name" repeats ${JSON.stringify(named)} of an earlier project; it is skipped`;
   }
   return null;
 }
+
+// src/core/daemon/policy-pytest.ts
+import { isAbsolute as isAbsolute3, posix as posix2 } from "node:path";
+var FIELDS2 = {
+  name: nonEmptyString,
+  cwd: insideRoot,
+  python: nonEmptyString,
+  args: strings,
+  env: variables,
+  include: globs,
+  exclude: globs,
+  slow: boolean
+};
+var REQUIRED2 = /* @__PURE__ */ new Set(["name", "include"]);
+function pytestProjects(value, path) {
+  return projectEntries(value, path, FIELDS2, REQUIRED2, withDefaults2, pythonInsideRoot);
+}
+function withDefaults2(entry2) {
+  return { ...entry2, args: entry2.args ?? [], env: entry2.env ?? {} };
+}
+var pythonInsideRoot = (entry2) => {
+  const python = entry2.python;
+  if (python === void 0 || isAbsolute3(python)) return null;
+  const path = posix2.join(entry2.cwd ?? ".", python.replaceAll("\\", "/"));
+  if (insideRoot(path) === null) return null;
+  return {
+    key: "python",
+    problem: `must stay inside the worktree when relative (absolute only for an environment outside it), got ${JSON.stringify(python)}`
+  };
+};
 
 // src/core/daemon/policy-slow.ts
 function slowInclude(value) {
@@ -480,6 +516,7 @@ var SHAPE = {
     timeoutMs: orNull(positiveInteger)
   },
   nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
+  pytest: (v) => pytestProjects(v, "pytest"),
   slow: {
     include: slowInclude,
     maxWorkers: positiveInteger,
@@ -555,7 +592,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.160";
+  if (true) return "0.1.161";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -771,7 +808,7 @@ function slowFiles(policy, projects) {
 }
 
 // src/core/slow/inherit.ts
-import { posix as posix2 } from "node:path";
+import { posix as posix3 } from "node:path";
 function inheritsAcrossWorktrees(testFile, declaredInputs, testFiles, slowGlobs2) {
   if (!testFile.slow) return true;
   const covered = slowGlobs2.map(coveredPrefix);
@@ -784,7 +821,7 @@ function slowGlobs(policy, projects) {
   for (const project of projects) {
     if (project.slow !== true) continue;
     const cwd = project.cwd ?? ".";
-    for (const glob of project.include) globs2.push(posix2.join(cwd, glob));
+    for (const glob of project.include) globs2.push(posix3.join(cwd, glob));
   }
   return globs2;
 }
@@ -4437,7 +4474,7 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 
 // src/core/daemon/paths.ts
-import { dirname as dirname4, isAbsolute as isAbsolute3, join as join9 } from "node:path";
+import { dirname as dirname4, isAbsolute as isAbsolute4, join as join9 } from "node:path";
 function runtimeDir(env = process.env) {
   return xdgRuntimeDir(env) ?? userTmpDir();
 }
@@ -4452,7 +4489,7 @@ function userTmpDir(uid = currentUid()) {
 }
 function xdgRuntimeDir(env) {
   const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute3(xdg) ? xdg : null;
+  return xdg !== void 0 && xdg !== "" && isAbsolute4(xdg) ? xdg : null;
 }
 function currentUid() {
   return process.getuid?.() ?? 0;

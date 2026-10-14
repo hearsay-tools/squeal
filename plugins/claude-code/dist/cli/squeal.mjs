@@ -359,6 +359,7 @@ var init_policy = __esm({
       env: { allowlist: [] },
       runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5 },
       nodeTest: [],
+      pytest: [],
       slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 6e5, maxParallel: 4 },
       delivery: { uncoveredEdits: true },
       daemon: { idleExitMinutes: 60 },
@@ -2703,36 +2704,41 @@ function compiles(globs2) {
   return null;
 }
 function nodeTestProjects(value, path) {
+  return projectEntries(value, path, FIELDS, REQUIRED, withDefaults);
+}
+function withDefaults(entry2) {
+  return { ...entry2, argv: entry2.argv ?? [], env: entry2.env ?? {} };
+}
+function projectEntries(value, path, fields, required, withDefaults3, check) {
   if (!Array.isArray(value)) return "an array of projects";
   const kept2 = [];
   const problems = [];
   value.forEach((entry2, index) => {
     const at2 = `${path}[${index}]`;
-    const problem = entryProblem(entry2, at2, kept2);
-    if (problem === null) kept2.push(withDefaults(entry2));
+    const problem = entryProblem(entry2, at2, kept2, fields, required, check);
+    if (problem === null) kept2.push(withDefaults3(entry2));
     else problems.push(problem);
   });
   return { kept: kept2, problems };
 }
-function withDefaults(entry2) {
-  return { ...entry2, argv: entry2.argv ?? [], env: entry2.env ?? {} };
-}
-function entryProblem(entry2, at2, kept2) {
+function entryProblem(entry2, at2, kept2, fields, required, check) {
   if (!isRecord(entry2))
     return `"${at2}" must be an object, got ${JSON.stringify(entry2)}; it is skipped`;
   const named = nonEmptyString(entry2.name) === null ? entry2.name : null;
   const skipped2 = named === null ? "it is skipped" : `project ${JSON.stringify(named)} is skipped`;
   for (const key2 of Object.keys(entry2)) {
-    if (!Object.hasOwn(FIELDS, key2)) return `unknown key "${at2}.${key2}"; ${skipped2}`;
+    if (!Object.hasOwn(fields, key2)) return `unknown key "${at2}.${key2}"; ${skipped2}`;
   }
-  for (const [key2, field] of Object.entries(FIELDS)) {
+  for (const [key2, field] of Object.entries(fields)) {
     const given = entry2[key2];
-    if (given === void 0 && !REQUIRED.has(key2)) continue;
+    if (given === void 0 && !required.has(key2)) continue;
     const expected = field(given);
     if (expected === null) continue;
     const why2 = typeof expected === "object" ? expected.problem : `must be ${expected}, got ${given === void 0 ? "undefined" : JSON.stringify(given)}`;
     return `"${at2}.${key2}" ${why2}; ${skipped2}`;
   }
+  const across = check?.(entry2) ?? null;
+  if (across !== null) return `"${at2}.${across.key}" ${across.problem}; ${skipped2}`;
   if (kept2.some((project) => project.name === named)) {
     return `"${at2}.name" repeats ${JSON.stringify(named)} of an earlier project; it is skipped`;
   }
@@ -2765,6 +2771,43 @@ var init_policy_node_test = __esm({
       slow: boolean
     };
     REQUIRED = /* @__PURE__ */ new Set(["name", "include"]);
+  }
+});
+
+// src/core/daemon/policy-pytest.ts
+import { isAbsolute as isAbsolute5, posix as posix6 } from "node:path";
+function pytestProjects(value, path) {
+  return projectEntries(value, path, FIELDS2, REQUIRED2, withDefaults2, pythonInsideRoot);
+}
+function withDefaults2(entry2) {
+  return { ...entry2, args: entry2.args ?? [], env: entry2.env ?? {} };
+}
+var FIELDS2, REQUIRED2, pythonInsideRoot;
+var init_policy_pytest = __esm({
+  "src/core/daemon/policy-pytest.ts"() {
+    "use strict";
+    init_policy_node_test();
+    FIELDS2 = {
+      name: nonEmptyString,
+      cwd: insideRoot,
+      python: nonEmptyString,
+      args: strings,
+      env: variables,
+      include: globs,
+      exclude: globs,
+      slow: boolean
+    };
+    REQUIRED2 = /* @__PURE__ */ new Set(["name", "include"]);
+    pythonInsideRoot = (entry2) => {
+      const python = entry2.python;
+      if (python === void 0 || isAbsolute5(python)) return null;
+      const path = posix6.join(entry2.cwd ?? ".", python.replaceAll("\\", "/"));
+      if (insideRoot(path) === null) return null;
+      return {
+        key: "python",
+        problem: `must stay inside the worktree when relative (absolute only for an environment outside it), got ${JSON.stringify(python)}`
+      };
+    };
   }
 });
 
@@ -2863,6 +2906,7 @@ var init_policy2 = __esm({
     init_notes();
     init_types();
     init_policy_node_test();
+    init_policy_pytest();
     init_policy_slow();
     POLICY_FILE = "squeal.config.json";
     boolean2 = (v) => typeof v === "boolean" ? null : "true or false";
@@ -2903,6 +2947,7 @@ var init_policy2 = __esm({
         timeoutMs: orNull(positiveInteger)
       },
       nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
+      pytest: (v) => pytestProjects(v, "pytest"),
       slow: {
         include: slowInclude,
         maxWorkers: positiveInteger,
@@ -2969,7 +3014,7 @@ var init_classify = __esm({
 });
 
 // src/core/slow/inherit.ts
-import { posix as posix6 } from "node:path";
+import { posix as posix7 } from "node:path";
 function inheritsAcrossWorktrees(testFile, declaredInputs, testFiles, slowGlobs2) {
   if (!testFile.slow) return true;
   const covered = slowGlobs2.map(coveredPrefix);
@@ -2982,7 +3027,7 @@ function slowGlobs(policy, projects) {
   for (const project of projects) {
     if (project.slow !== true) continue;
     const cwd = project.cwd ?? ".";
-    for (const glob of project.include) globs2.push(posix6.join(cwd, glob));
+    for (const glob of project.include) globs2.push(posix7.join(cwd, glob));
   }
   return globs2;
 }
@@ -5985,7 +6030,7 @@ var init_turn = __esm({
 
 // src/core/daemon/paths.ts
 import { chmodSync as chmodSync2, lstatSync as lstatSync3, mkdirSync as mkdirSync5 } from "node:fs";
-import { dirname as dirname9, isAbsolute as isAbsolute5, join as join23 } from "node:path";
+import { dirname as dirname9, isAbsolute as isAbsolute6, join as join23 } from "node:path";
 function runtimeDir(env = process.env) {
   return xdgRuntimeDir(env) ?? userTmpDir();
 }
@@ -6030,7 +6075,7 @@ function userTmpDir(uid = currentUid()) {
 }
 function xdgRuntimeDir(env) {
   const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute5(xdg) ? xdg : null;
+  return xdg !== void 0 && xdg !== "" && isAbsolute6(xdg) ? xdg : null;
 }
 function currentUid() {
   return process.getuid?.() ?? 0;
@@ -7157,11 +7202,11 @@ var init_guard = __esm({
 // src/core/slow/slot.ts
 import { createHash as createHash13 } from "node:crypto";
 import { readdirSync as readdirSync7, rmSync as rmSync6, statSync as statSync3, writeFileSync as writeFileSync3 } from "node:fs";
-import { isAbsolute as isAbsolute6, join as join29 } from "node:path";
+import { isAbsolute as isAbsolute7, join as join29 } from "node:path";
 import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
 function slowSlotDir(env = process.env) {
   const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute6(xdg) ? join29(xdg, "squeal") : userTmpDir();
+  return xdg !== void 0 && xdg !== "" && isAbsolute7(xdg) ? join29(xdg, "squeal") : userTmpDir();
 }
 function acquireSlowSlot(request) {
   const { dir, owner: owner2, signal: signal2 } = request;
@@ -15772,7 +15817,7 @@ var init_lexer = __esm({
 
 // src/runners/vitest/packages.ts
 import { readFile as readFile6 } from "node:fs/promises";
-import { dirname as dirname21, isAbsolute as isAbsolute8 } from "node:path";
+import { dirname as dirname21, isAbsolute as isAbsolute9 } from "node:path";
 function closurePackages(graph, paths) {
   const imports = [];
   const builtins = new Set(graph.builtins);
@@ -15862,7 +15907,7 @@ function configModules(config) {
   const serializers = Array.isArray(config.snapshotSerializers) ? config.snapshotSerializers : [];
   const values = [...serializers, config.runner, config.snapshotEnvironment, config.diff];
   return values.filter(
-    (value) => typeof value === "string" && isAbsolute8(value)
+    (value) => typeof value === "string" && isAbsolute9(value)
   );
 }
 async function loadsOf(file) {
@@ -33335,7 +33380,7 @@ var require_lib2 = __commonJS({
 });
 
 // src/runners/node-test/graph/tsconfig.ts
-import { dirname as dirname25, isAbsolute as isAbsolute9, join as join54, resolve as resolve10 } from "node:path";
+import { dirname as dirname25, isAbsolute as isAbsolute10, join as join54, resolve as resolve10 } from "node:path";
 function readTsconfigPaths(file, read4) {
   const files2 = [];
   const load = (config, seen) => {
@@ -33364,7 +33409,7 @@ function readTsconfigPaths(file, read4) {
 }
 function locate(specifier, dir, read4) {
   const exists2 = (path) => read4(path) !== null;
-  if (specifier.startsWith(".") || isAbsolute9(specifier)) {
+  if (specifier.startsWith(".") || isAbsolute10(specifier)) {
     const path = resolve10(dir, specifier);
     return [path, `${path}.json`].find(exists2) ?? null;
   }
@@ -34905,7 +34950,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.160";
+  if (true) return "0.1.161";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -35762,7 +35807,7 @@ import { delimiter, join as join18 } from "node:path";
 init_fs();
 init_glob();
 import { existsSync as existsSync6, readFileSync as readFileSync9 } from "node:fs";
-import { join as join17, posix as posix7 } from "node:path";
+import { join as join17, posix as posix8 } from "node:path";
 
 // src/cli/verdict.ts
 init_keys();
@@ -35834,10 +35879,10 @@ async function readRepoFacts(root) {
   const tracked = splitNul(await runGit(root, ["ls-files", "-z"]));
   const manifests = [];
   for (const path of tracked) {
-    if (posix7.basename(path) !== "package.json" || path.split("/").includes("node_modules"))
+    if (posix8.basename(path) !== "package.json" || path.split("/").includes("node_modules"))
       continue;
     const value = readJson(join17(root, path));
-    if (isRecord(value)) manifests.push({ dir: posix7.dirname(path).replace(/^\.$/, ""), value });
+    if (isRecord(value)) manifests.push({ dir: posix8.dirname(path).replace(/^\.$/, ""), value });
   }
   return { root, tracked, manifests, testFiles: listTestFiles(root, tracked) };
 }
@@ -35856,7 +35901,7 @@ function readText(path) {
   }
 }
 function nearestManifest(facts, dir) {
-  for (let d = dir; ; d = posix7.dirname(d)) {
+  for (let d = dir; ; d = posix8.dirname(d)) {
     const key2 = d === "." ? "" : d;
     const found = facts.manifests.find((m) => m.dir === key2);
     if (found !== void 0) return found;
@@ -39080,7 +39125,7 @@ init_policy2();
 init_fs();
 init_glob();
 import { readFileSync as readFileSync23, writeFileSync as writeFileSync8 } from "node:fs";
-import { isAbsolute as isAbsolute10, join as join64, normalize as normalize3 } from "node:path";
+import { isAbsolute as isAbsolute11, join as join64, normalize as normalize3 } from "node:path";
 
 // src/cli/setup/block.ts
 init_fs();
@@ -39279,7 +39324,7 @@ function removeBlocks(root, paths = ROOT_FILES) {
 
 // src/cli/setup/gates.ts
 import { readFileSync as readFileSync22, writeFileSync as writeFileSync7 } from "node:fs";
-import { posix as posix8 } from "node:path";
+import { posix as posix9 } from "node:path";
 var GATE_WAIT_MS = 11e4;
 var BEGIN2 = /^<!-- squeal:begin v\d+/;
 var END2 = /^<!-- squeal:end -->/;
@@ -39301,7 +39346,7 @@ function commandPattern(nodeTest) {
   return new RegExp(`(?<![\\w-])(?:${commands.join("|")})`);
 }
 function isInstructionFile(path) {
-  return ["AGENTS.md", "CLAUDE.md", "CLAUDE.local.md"].includes(posix8.basename(path));
+  return ["AGENTS.md", "CLAUDE.md", "CLAUDE.local.md"].includes(posix9.basename(path));
 }
 function isAgentFile(path) {
   return /^\.(claude|agents|codex)\//.test(path) && path.endsWith(".md");
@@ -39485,12 +39530,12 @@ import { join as join63 } from "node:path";
 
 // src/cli/setup/candidates.ts
 init_glob();
-import { posix as posix10 } from "node:path";
+import { posix as posix11 } from "node:path";
 
 // src/cli/setup/artifacts.ts
 init_fs();
-import { join as join61, posix as posix9 } from "node:path";
-var FIELDS2 = ["bin", "main", "module", "exports", "files"];
+import { join as join61, posix as posix10 } from "node:path";
+var FIELDS3 = ["bin", "main", "module", "exports", "files"];
 async function artifactCandidates(facts, dir, files2) {
   const manifest = nearestManifest(facts, dir);
   const found = [...fieldCandidates(manifest), ...buildCandidates(facts, manifest)];
@@ -39513,14 +39558,14 @@ async function artifactCandidates(facts, dir, files2) {
 function fieldCandidates(manifest) {
   const where2 = `${manifest.dir || "."}/package.json`;
   const found = [];
-  for (const rule of FIELDS2) {
+  for (const rule of FIELDS3) {
     for (const value of strings3(manifest.value[rule])) {
       const clean = value.replace(/^\.\//, "").replace(/\/+$/, "");
       const parts = clean.split("/");
       const dir = rule === "files" ? /\.\w+$/.test(clean) || /[*?{[]/.test(clean) ? null : clean : parts.length > 1 ? parts[0] : null;
       if (dir === null || dir === "" || dir === "..") continue;
       found.push({
-        path: posix9.join(manifest.dir, dir),
+        path: posix10.join(manifest.dir, dir),
         rule,
         detail: `${where2} ${rule} "${value}"`,
         weak: rule === "files"
@@ -39542,11 +39587,11 @@ function buildCandidates(facts, manifest) {
     for (const part of text2.split(/&&|;|\|\|/)) {
       const words = part.trim().split(/\s+/);
       const flag2 = words.findIndex((w2) => ["--outDir", "--outdir", "-o"].includes(w2));
-      let out = flag2 === -1 ? null : posix9.join(manifest.dir, words[flag2 + 1] ?? "");
+      let out = flag2 === -1 ? null : posix10.join(manifest.dir, words[flag2 + 1] ?? "");
       if (flag2 === -1 && words[0] === "tsc") {
         const project = words.findIndex((w2) => w2 === "-p" || w2 === "--project");
         const tsconfig = project === -1 ? "tsconfig.json" : words[project + 1] ?? "tsconfig.json";
-        out = outDir(facts, posix9.join(manifest.dir, tsconfig), 0);
+        out = outDir(facts, posix10.join(manifest.dir, tsconfig), 0);
       }
       if (out === null || out === "." || out === "") continue;
       const path = out.replace(/\/+$/, "");
@@ -39561,16 +39606,16 @@ function buildCandidates(facts, manifest) {
   return found;
 }
 function outDir(facts, tsconfig, depth) {
-  const path = tsconfig.endsWith(".json") ? tsconfig : posix9.join(tsconfig, "tsconfig.json");
+  const path = tsconfig.endsWith(".json") ? tsconfig : posix10.join(tsconfig, "tsconfig.json");
   const text2 = readText(join61(facts.root, path));
   if (text2 === null || depth > 4) return null;
   const parsed = readJson(join61(facts.root, path));
   const options = isRecord(parsed) ? parsed.compilerOptions : null;
   const dir = isRecord(options) && typeof options.outDir === "string" ? options.outDir : null;
   const value = dir ?? /"outDir"\s*:\s*"([^"]+)"/.exec(text2)?.[1] ?? null;
-  if (value !== null) return posix9.join(posix9.dirname(path), value);
+  if (value !== null) return posix10.join(posix10.dirname(path), value);
   const extended = /"extends"\s*:\s*"(\.[^"]+)"/.exec(text2)?.[1];
-  return extended === void 0 ? null : outDir(facts, posix9.join(posix9.dirname(path), extended), depth + 1);
+  return extended === void 0 ? null : outDir(facts, posix10.join(posix10.dirname(path), extended), depth + 1);
 }
 async function namedCandidates(facts, manifest, files2, found) {
   const ignored = /* @__PURE__ */ new Set([
@@ -39584,7 +39629,7 @@ async function namedCandidates(facts, manifest, files2, found) {
   const out = [];
   for (const dir of [.../* @__PURE__ */ new Set([...inPackage, ...found.map((f) => f.path)])].sort()) {
     const hits = literals.flatMap(({ file, strings: strings4 }) => {
-      const hit = strings4.find((s) => names(facts, posix9.dirname(file), manifest.dir, s, dir));
+      const hit = strings4.find((s) => names(facts, posix10.dirname(file), manifest.dir, s, dir));
       return hit === void 0 ? [] : [hit];
     });
     if (hits.length === 0) continue;
@@ -39606,7 +39651,7 @@ function stringLiterals(facts, file) {
 }
 function names(facts, from, pkg, s, dir) {
   if (s === "" || s.startsWith("/") || s.includes("${")) return false;
-  const under = (base) => posix9.join(base, s).startsWith(`${dir}/`);
+  const under = (base) => posix10.join(base, s).startsWith(`${dir}/`);
   if (/^\.\.?\//.test(s) && under(from)) return true;
   if (![from, pkg, ""].some(under)) return false;
   const tail = s.replace(/^(\.\.?\/)+/, "");
@@ -39628,7 +39673,7 @@ var NODE_TEST2 = "node:test project";
 async function slowCandidates(facts, policy, runners) {
   const projects = runners.nodeTest.map((p) => ({
     name: p.name,
-    files: facts.tracked.filter(globMatcher(p.include.map((g2) => posix10.join(p.cwd, g2)))),
+    files: facts.tracked.filter(globMatcher(p.include.map((g2) => posix11.join(p.cwd, g2)))),
     slow: policy.nodeTest.some((q) => q.name === p.name && q.slow === true)
   }));
   const universe = [.../* @__PURE__ */ new Set([...facts.testFiles.paths, ...projects.flatMap((p) => p.files)])];
@@ -39638,7 +39683,7 @@ async function slowCandidates(facts, policy, runners) {
   };
   for (const file of universe) {
     if (file.split("/").slice(0, -1).includes("e2e")) add(file, "under a directory named e2e");
-    if (posix10.basename(file).includes(".e2e.")) add(file, "named *.e2e.*");
+    if (posix11.basename(file).includes(".e2e.")) add(file, "named *.e2e.*");
   }
   const known2 = new Set(universe);
   const unresolvedScripts = [];
@@ -39658,7 +39703,7 @@ async function slowCandidates(facts, policy, runners) {
   for (const file of universe) if (isDeclared(file)) add(file, "declared slow");
   const byDir = /* @__PURE__ */ new Map();
   for (const file of [...reasons.keys()].sort()) {
-    const dir = posix10.dirname(file);
+    const dir = posix11.dirname(file);
     byDir.set(dir, [...byDir.get(dir) ?? [], file]);
   }
   const groups = [];
@@ -39692,7 +39737,7 @@ function scriptFiles(facts, manifest, name, universe, depth) {
   const parsed = parseTestScript(text2);
   if (parsed !== null && typeof parsed !== "string") {
     return facts.tracked.filter(
-      globMatcher(parsed.include.map((g2) => posix10.join(manifest.dir, g2)))
+      globMatcher(parsed.include.map((g2) => posix11.join(manifest.dir, g2)))
     );
   }
   const npm = /^npm run (\S+)(?: (?:-w|--workspace)(?: |=)(\S+))?\s*$/.exec(text2);
@@ -39702,7 +39747,7 @@ function scriptFiles(facts, manifest, name, universe, depth) {
   }
   const vitest = /^vitest run((?: [^-\s]\S*)+)\s*$/.exec(text2);
   if (vitest !== null) {
-    const prefixes = vitest[1].trim().split(/\s+/).map((p) => posix10.join(manifest.dir, p));
+    const prefixes = vitest[1].trim().split(/\s+/).map((p) => posix11.join(manifest.dir, p));
     return universe.filter(
       (file) => prefixes.some((p) => file === p || file.startsWith(`${p.replace(/\/$/, "")}/`))
     );
@@ -39736,10 +39781,10 @@ function globMatcher(globs2) {
 init_policy2();
 init_glob();
 import { statSync as statSync8 } from "node:fs";
-import { join as join62, posix as posix11 } from "node:path";
+import { join as join62, posix as posix12 } from "node:path";
 function testFileUniverse(facts, projects) {
   const inProjects = projects.map((p) => {
-    const under = (globs2) => matcher2(globs2.map((g2) => posix11.join(p.cwd ?? "", g2)));
+    const under = (globs2) => matcher2(globs2.map((g2) => posix12.join(p.cwd ?? "", g2)));
     const include = under(p.include);
     const exclude = under(p.exclude ?? []);
     return (path) => include(path) && !exclude(path);
@@ -40022,7 +40067,7 @@ async function checkChoices(root, choices, env) {
   }
   if (choices.block !== null && choices.block !== "none") {
     const path = choices.block;
-    if (isAbsolute10(path) || normalize3(path).startsWith("..")) {
+    if (isAbsolute11(path) || normalize3(path).startsWith("..")) {
       return `--block takes a file inside the worktree, not "${path}"`;
     }
     const unfindable = await unfindableBlock(root, path);
@@ -40849,7 +40894,7 @@ function pendingText2(snapshot3) {
 
 // src/cli/status-wait-paths.ts
 import { realpathSync as realpathSync10 } from "node:fs";
-import { isAbsolute as isAbsolute11, relative as relative14, resolve as resolve11, sep as sep16 } from "node:path";
+import { isAbsolute as isAbsolute12, relative as relative14, resolve as resolve11, sep as sep16 } from "node:path";
 import { setTimeout as sleep8 } from "node:timers/promises";
 init_fs();
 init_keys();
@@ -40890,7 +40935,7 @@ function worktreePath(root, cwd, path) {
   for (const base of [cwd, realOrNull(cwd)]) {
     if (base === null) continue;
     const rel = relative14(root, resolve11(base, path));
-    const outside = rel === ".." || rel.startsWith(`..${sep16}`) || isAbsolute11(rel);
+    const outside = rel === ".." || rel.startsWith(`..${sep16}`) || isAbsolute12(rel);
     if (rel !== "" && !outside) return rel.split(sep16).join("/");
   }
   return null;
