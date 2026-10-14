@@ -156,13 +156,26 @@ describe("the end of a run", () => {
     expect(worker.count("endTurn")).toBe(1);
   });
 
-  it("continues again in the next run, after its input", async () => {
+  it("continues again in the next run, from its before_agent_start", async () => {
     const { pi, worker } = await started({ answers: { settle: { report: "SQUEAL · FAIL" } } });
     await settle(pi);
     await pi.fire("agent_settled", {}, ctx);
-    await pi.fire("input", { text: "again", source: "rpc" }, ctx);
+    await prompt(pi).result;
     expect(await settle(pi)).toMatchObject({ continue: true });
     expect(worker.count("settle")).toBe(2);
+  });
+
+  it("never continues twice when a steer's input arrives in the continuation (review 009-17 B1)", async () => {
+    const { pi, worker } = await started({ answers: { settle: { report: "SQUEAL · FAIL" } } });
+    await pi.fire("input", { text: "go", source: "rpc" }, ctx);
+    await prompt(pi).result;
+    expect(await settle(pi)).toMatchObject({ continue: true });
+    await pi.fire("input", { text: "and this", source: "rpc" }, ctx);
+    expect(await settle(pi)).toBeUndefined();
+    expect(await settle(pi)).toBeUndefined();
+    await pi.fire("agent_settled", {}, ctx);
+    expect(worker.count("settle")).toBe(1);
+    expect(worker.count("endTurn")).toBe(1);
   });
 
   it("is silent when Stop is, and leaves the turn ended", async () => {

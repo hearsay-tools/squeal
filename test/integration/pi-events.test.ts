@@ -10,6 +10,7 @@ import {
   gateCall,
   lastMessage,
   piWorld,
+  requestStarted,
   runWithExtension,
   squealMessages,
 } from "../harness/pi/real-pi.js";
@@ -165,4 +166,48 @@ describe.skipIf(unavailable !== undefined)("the Pi events with real Pi", () => {
       expect(after).toBeUndefined();
     },
   );
+
+  it("rpc: a steer during Squeal's continuation continues the run no second time (review 009-17 B1)", {
+    timeout: 60_000,
+  }, async () => {
+    const r = passing();
+    r.policy({ stop: { blockOnKnownFailures: true } });
+    r.apply(r.fail());
+    const world = await piWorld(r);
+    let streaming = () => {};
+    const inFlight = new Promise<void>((resolve) => {
+      streaming = resolve;
+    });
+    const run = await runWithExtension(
+      extension,
+      {
+        mode: "rpc",
+        cwd: r.root,
+        prompts: ["work", { type: "steer", message: "and this", when: () => inFlight }],
+        env: world.env,
+        plan: [
+          { tools: [gateCall(0)] },
+          { text: "done" },
+          { text: "seen", delayMs: 1_500 },
+          { text: "steered" },
+        ],
+      },
+      async (done) => {
+        const log = await atGate(world, 0, done);
+        // The steer goes in while Squeal's continuation, request 2, streams.
+        if (log !== null) await requestStarted(log, 2, done);
+        streaming();
+      },
+    );
+    runs.push(run);
+
+    expect(run.exitCode, run.stderr).toBe(0);
+    const [, , continued, steered, more] = run.requests;
+    const policy = /known failure/i;
+    expect(textOf(lastMessage(continued))).toMatch(policy);
+    expect(textOf(lastMessage(steered))).toBe("and this");
+    // One continuation: the policy report once, and no request after the steer's.
+    expect(squealMessages(steered).filter((m) => policy.test(textOf(m)))).toHaveLength(1);
+    expect(more).toBeUndefined();
+  });
 });

@@ -67,10 +67,12 @@ type About<K extends PiRequest["kind"]> = Omit<Extract<PiRequest, { kind: K }>, 
  * - `session_start` starts the delivery host and registers once per session
  *   id (RPC delivers it twice per replacement, D2), then queues the header
  *   for the next prompt at no extra request.
- * - `input` and `before_agent_start` start a run: Squeal has neither
- *   continued nor ended it, and the idle wake is cancelled. `before_agent_start` sets the primer section,
- *   the last one the worker gave when this call gives none, and returns the
- *   run's news as its message.
+ * - `input` cancels the idle wake, and nothing else: a steer arrives as
+ *   `input` inside a run, Squeal's continuation too (review 009-17 B1).
+ * - `before_agent_start` starts a run, which a settle continuation does
+ *   not: Squeal has neither continued nor ended it, and the idle wake is
+ *   cancelled. It sets the primer section, the last one the worker gave
+ *   when this call gives none, and returns the run's news as its message.
  * - `turn_end` after tool calls delivers the delta as one entry; the final
  *   `turn_end`, with no tool calls, delivers nothing (the settle speaks).
  * - `tool_call` blocks an `edit` or `write` over an undelivered regression,
@@ -165,7 +167,7 @@ export function squealExtension(start: () => Worker): (pi: PiApi) => void {
     });
 
     pi.on("input", () => {
-      startRun();
+      cancelWait();
       return undefined;
     });
 
