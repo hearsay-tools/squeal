@@ -53,3 +53,23 @@ Use /reviewer. Outcome: `reviews/wave-1.md` committed, every finding labelled pr
 - Re-review: B1 to B4, S1, S2 and N1 of `reviews/wave-0.md`, each fixed in its own 008-12 commit; say for each whether the fix holds, with the probe that proved the break re-run. This is the last round on those blockers.
 - Questions for wave 1: can any hook throw except the deliberate deny, or hold OpenCode past its deadline, or keep `opencode run` alive (the waiter included); does the end of turn continue at most once and never after an abort; is a child its own consumer and unregistered at its idle; does a pull from a root and a child shell credit the right consumer; can `install.sh` edit OpenCode's config, use `--force`, delete a directory a running process names, or leave two Squeal plugins loaded; does `runOpenCode` still keep every run off the real `HOME` with `setup` and `afterReply`.
 - Writes only `docs/specifications/008-opencode-adapter/reviews/wave-1.md`. Runs real OpenCode only through `runOpenCode` or as `squeal-e2e`. Latency is the coordinator's, at calm load; do not rule on it.
+
+## Wave 1.5: repairs of `reviews/wave-1.md`
+
+### 008-17 idle deadline, abort overlap, lifecycle notes, launcher format
+
+Use /worker. Outcome: every finding of `reviews/wave-1.md` except B3 (the coordinator removed the stale bundle in `d1a3e903`) is fixed, each in its own commit with a regression test whose subject names the finding.
+
+- Read `../reviews/wave-1.md` in full; each finding names its lines, its probe and its fix.
+- B1: one absolute deadline carried through lookup, Stop bridge and `promptAsync`, each await taking the remaining time; idle's bound is `min(stop.waitMs, 1500) + 500` ms; the deletion path reuses its deadline for `end`; a late continuation is suppressed after expiry.
+- B2: abort and user input invalidate pending idle work; re-check the same live, non-aborted turn immediately before `promptAsync`; cancelled news stays undelivered for the next prompt. Include the review's real-OpenCode scenario through `runOpenCode` as a test.
+- S1: re-check `disposed` after identity resolution, or track whole in-flight messages in disposal.
+- S2: track visited ids; a cycle or exhaustion leaves the identity unresolved.
+- S3: launcher format 4 in all four `plugins/*/bin/squeal-launcher` copies, with a migration test from the real format-3 launcher, as 009-23 N1 did; update the format pins in `test/cli/update*.test.ts`.
+- Also: `plugins/opencode/README.md`, `src/harness/opencode/build.ts` and `bridge.ts` still name the retired `dist/hooks/opencode.mjs`; name the per-kind entries.
+- Owns: `src/harness/opencode/**`, `test/harness/opencode/**`, `test/harness/opencode-*.test.ts`, `plugins/opencode/README.md`, `plugins/*/bin/squeal-launcher`, `test/cli/update*.test.ts`, `test/cli/launcher.test.ts`. Do not commit `plugins/*/dist`, raise the version or the key format.
+- Done when: each regression fails before its fix and passes after; lint, typecheck and the tests you touched green. The host's disk has been saturated (load above 100): if the full suite cannot finish, say so with the partial output rather than retrying it.
+
+### 008-18 focused re-review of 008-17
+
+Use /reviewer, after 008-17. Last round on `reviews/wave-1.md`: re-run each finding's probe against 008-17's commits and say whether the fix holds. Writes `reviews/wave-1.5.md`.
