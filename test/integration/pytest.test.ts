@@ -41,7 +41,7 @@ const SMALL = join(REPO, "test/fixtures/pytest/small");
 const scratch = join(REPO, "test/fixtures/vitest/.tmp", `pytest-${randomUUID()}`);
 const runtime = realpathSync(mkdtempSync("/tmp/sq-"));
 const SLOW = { timeout: 600_000 } as const;
-const SETTLE_MS = Number(process.env.SETTLE_MS ?? 180_000);
+const SETTLE_MS = 180_000;
 const VERSION = "3.13";
 
 const daemons: ChildProcess[] = [];
@@ -50,7 +50,7 @@ afterAll(async () => {
   await Promise.all(
     daemons.map((d) => (d.exitCode === null ? new Promise((done) => d.once("exit", done)) : null)),
   );
-  if (process.env.KEEP_SCRATCH === undefined) rmSync(scratch, { recursive: true, force: true });
+  rmSync(scratch, { recursive: true, force: true });
   rmSync(runtime, { recursive: true, force: true });
 });
 
