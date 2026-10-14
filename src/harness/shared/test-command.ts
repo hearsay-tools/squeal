@@ -1,4 +1,5 @@
 import type { NodeTestProject } from "../../core/types/index.js";
+import { type PytestCommand, type PytestHere, pytestCommand } from "./test-command-pytest.js";
 
 /*
  * Spec 005 D8 step 1: recognize an agent's own test command, narrowly. The
@@ -19,12 +20,17 @@ export type TestCommand =
       readonly project: string;
       /** The test files it was narrowed to, as written; `null` runs the project's every file. */
       readonly files: readonly string[] | null;
-    };
+    }
+  | PytestCommand;
 
 /** What recognition reads besides the command: the root `package.json`'s scripts and the policy. */
 export interface CommandContext {
   readonly scripts: Readonly<Record<string, string>>;
   readonly nodeTest: readonly NodeTestProject[];
+  /** Spec 007 D8: the pytest projects run from the command's directory. Absent means none. */
+  readonly pytest?: readonly PytestHere[];
+  /** `false` when the command runs from a directory other than the worktree root, where only pytest is recognized. Absent means `true`. */
+  readonly atRoot?: boolean;
 }
 
 /**
@@ -35,7 +41,11 @@ export interface CommandContext {
 export function recognizeTestCommand(command: string, context: CommandContext): TestCommand | null {
   const words = shellWords(command);
   if (words === null) return null;
-  return vitestCommand(words) ?? npmCommand(words, context) ?? nodeTestCommand(words, context);
+  const atRoot =
+    context.atRoot === false
+      ? null
+      : (vitestCommand(words) ?? npmCommand(words, context) ?? nodeTestCommand(words, context));
+  return atRoot ?? pytestCommand(words, context.pytest ?? []);
 }
 
 /**
