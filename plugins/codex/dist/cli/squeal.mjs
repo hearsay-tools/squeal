@@ -35008,7 +35008,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.164";
+  if (true) return "0.1.165";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -39400,6 +39400,9 @@ var FENCE = /^\s*(```|~~~)/;
 var REWORDED = /squeal run --all/;
 var SQUEAL = /\bsqueal\b/i;
 var INSTRUCTION = /^(?:[-*+]\s+|\d+[.)]\s+)?[*_]*(?:verification:[*_]*\s+(?=`)|(?:[a-z]\w*(?: \w+)?:[*_]*\s+)?(?:(?:always|also|then),?\s+)?(?:run|use|execute|verify with|before you finish,\s+run)\s(?!\s*of\b))/i;
+var OBJECT_PREFIX = /^(?:(?:exactly|one|full|and|then)\s+|`[^`]+`[\s,]*)*$/i;
+var EXAMPLE = /\bas\s+an?\s+example\b/i;
+var QUOTATION = /"[^"]*(?:"|$)|“[^”]*(?:”|$)/g;
 var NEGATION = /\b(?:do not|don['’]t|never|not|instead of|rather than|avoid|without|except)\b/i;
 var CLOSERS = /^[)\]*_"'”’]*/;
 var ABBREVIATION = /(?:^|[^\w.])(?:e\.g|i\.e|etc|vs|cf)$/i;
@@ -39525,7 +39528,7 @@ function prose(line) {
   return line.replace(/`[^`]*`/g, (span) => "x".repeat(span.length));
 }
 function stops(line) {
-  const text2 = prose(line);
+  const text2 = prose(line).replace(QUOTATION, (quote) => "x".repeat(quote.length));
   const ends = [];
   let depth = 0;
   for (let i2 = 0; i2 < text2.length; i2++) {
@@ -39550,10 +39553,17 @@ function instructs(found, pattern2) {
   const { text: line, fenced, previous } = found;
   if (fenced || SQUEAL.test(line)) return false;
   const at2 = commandAt(line, pattern2);
-  const start = stops(line).filter((end) => end <= at2).at(-1);
+  if ([...prose(line).matchAll(QUOTATION)].some((q) => q.index <= at2 && at2 < q.index + q[0].length)) {
+    return false;
+  }
+  const start = stops(line).filter((end2) => end2 <= at2).at(-1);
   if (start === void 0 && continues(previous, line)) return false;
   const sentence = line.slice(start ?? 0, at2).trimStart();
-  return INSTRUCTION.test(sentence) && !NEGATION.test(sentence);
+  const instruction = INSTRUCTION.exec(sentence);
+  if (instruction === null || NEGATION.test(sentence)) return false;
+  const end = sentenceEnd(line, at2) ?? line.length;
+  if (EXAMPLE.test(prose(line).slice(at2, end))) return false;
+  return OBJECT_PREFIX.test(sentence.slice(instruction[0].length)) || compound(line, pattern2) !== null;
 }
 function continues(previous, line) {
   if (previous === void 0 || previous.trim() === "") return false;
