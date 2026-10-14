@@ -45,6 +45,12 @@ export function formatPlan(plan: SetupPlan): string {
     lines.push(
       `  ${file.path}${aliases}: read by ${file.harnesses.join(" and ")}; ${file.exists ? block : "does not exist"}`,
     );
+    const squeal = plan.squealMentions.find((m) => m.file === file.path);
+    if (squeal !== undefined) {
+      lines.push(
+        `    Squeal already named outside the block, line ${squeal.line}: ${squeal.text.trim()}`,
+      );
+    }
   }
 
   lines.push("", "Gate lines:");
@@ -58,7 +64,7 @@ export function formatPlan(plan: SetupPlan): string {
     );
   }
   if (plan.mentions.length > 0) {
-    lines.push("  The test command elsewhere (not offered as edits):");
+    lines.push("  The test command where it is no gate (not offered as edits):");
     for (const m of plan.mentions) lines.push(`    ${m.file}:${m.line}: ${m.text.trim()}`);
   }
 
