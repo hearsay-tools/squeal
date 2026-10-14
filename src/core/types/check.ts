@@ -59,4 +59,28 @@ export interface CheckError {
    * Windows, and in failure texts stored before task 001-91.
    */
   readonly loadAverage?: number;
+  /**
+   * The error's own `code`, kept whole (`ERR_MODULE_NOT_FOUND`); absent when
+   * it has none and in failure texts stored before task 001-361.
+   */
+  readonly code?: string;
+  /**
+   * The error's `cause` chain, outermost first, bounded (task 001-361,
+   * research environment-failures Q1): undici's "fetch failed" says only in
+   * its cause that the connection was refused. Absent when it has none.
+   */
+  readonly causes?: readonly CheckErrorCause[];
+  /**
+   * Where a file-level error happened (task 001-361): `load` when none of the
+   * file's tests were collected (an import, a syntax error, a top-level
+   * throw), `setup` when they were and a hook threw. Absent on a test's own
+   * errors and in failure texts stored before 001-361.
+   */
+  readonly phase?: "load" | "setup";
+}
+
+/** One link of `CheckError.causes`: its first line, capped, and its code, whole. */
+export interface CheckErrorCause {
+  readonly message: string;
+  readonly code?: string;
 }

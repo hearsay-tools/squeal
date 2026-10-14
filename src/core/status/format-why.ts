@@ -1,6 +1,6 @@
 import { basename, dirname } from "node:path";
 import { testFileLabel } from "../run-log.js";
-import { flakyText, formatCheck } from "../state/index.js";
+import { causeText, flakyText, formatCheck } from "../state/index.js";
 import { plural } from "../text.js";
 import type {
   KnownOutcome,
@@ -147,7 +147,14 @@ function resultLines(why: WhyReport, { result, worktreeRoot, logDir }: WhyResult
   ];
   if (result.summary !== null) lines.push(`${INDENT}${result.summary}`);
   for (const error of result.errors) {
-    const text = [error.stack ?? `${error.name}: ${error.message}`, error.diff]
+    const head = error.stack ?? `${error.name}: ${error.message}`;
+    // Task 001-361: the code and the causes a stack does not print.
+    const text = [
+      head,
+      error.code === undefined || head.includes(error.code) ? null : `code: ${error.code}`,
+      ...(error.causes ?? []).map((cause) => `Caused by: ${causeText(cause)}`),
+      error.diff,
+    ]
       .filter((part) => part !== null)
       .join("\n");
     for (const line of text.split("\n")) lines.push(`${INDENT}${line}`);

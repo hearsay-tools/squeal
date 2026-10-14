@@ -1,8 +1,10 @@
 import { loadavg } from "node:os";
 import type { SerializedError, TestCase, TestModule } from "vitest/node";
 import { compare } from "../../core/fs/index.js";
+import { cap } from "../../core/text.js";
 import type {
   CheckError,
+  CheckErrorCause,
   CheckRunResult,
   EnumeratedCheck,
   RunOutcome,
@@ -21,13 +23,49 @@ const OUTCOMES: Record<string, RunOutcome | undefined> = {
 export function toCheckError(error: SerializedError, paths: WorktreePaths): CheckError {
   const frame = error.stacks?.find((f) => paths.isProjectFile(f.file));
   const diff = typeof error.diff === "string" ? error.diff : null;
+  const code = codeOf(error);
+  const causes = causeChain(error.cause, paths);
   return {
     name: error.name ?? "Error",
     message: paths.relativizeText(error.message ?? ""),
     stack: error.stack ? paths.relativizeText(error.stack) : null,
     location: frame ? paths.location(frame.file, frame.line, frame.column) : null,
     diff: diff === null ? null : paths.relativizeText(diff),
+    ...(code === undefined ? {} : { code }),
+    ...(causes.length === 0 ? {} : { causes }),
   };
+}
+
+/** Links of a cause chain kept, outermost first (task 001-361). */
+export const CAUSE_DEPTH = 3;
+
+/** Characters a cause's message keeps; its code is kept whole. */
+export const CAUSE_MESSAGE_CHARS = 200;
+
+/** A Node error code (`ECONNREFUSED`), or a numeric one as text. */
+function codeOf(error: unknown): string | undefined {
+  if (typeof error !== "object" || error === null || !("code" in error)) return undefined;
+  const code = error.code;
+  return typeof code === "string" || typeof code === "number" ? String(code) : undefined;
+}
+
+/**
+ * Task 001-361, research environment-failures Q1: undici's "fetch failed"
+ * names the refused connection only in its `cause`. Each link keeps its
+ * message's first line, capped and relativized, and its code. A cause that is
+ * not an error (`{ cause: "text" }`) is its text.
+ */
+function causeChain(cause: unknown, paths: WorktreePaths): CheckErrorCause[] {
+  const chain: CheckErrorCause[] = [];
+  for (let link = cause; link != null && chain.length < CAUSE_DEPTH; ) {
+    const object = typeof link === "object" ? link : null;
+    const raw = object === null ? link : "message" in object ? object.message : "";
+    const line = paths.relativizeText(String(raw ?? "")).split(/\r?\n/)[0] ?? "";
+    const code = codeOf(link);
+    chain.push({ message: cap(line.trim(), CAUSE_MESSAGE_CHARS), ...(code ? { code } : {}) });
+    link = object !== null && "cause" in object ? object.cause : undefined;
+  }
+  return chain;
 }
 
 /** Vitest's message for a test or hook that ran past its timeout. */
