@@ -57,7 +57,6 @@ export function createDeliveryHost(start: () => Worker): DeliveryHost {
   const current = (): Worker | null => {
     if (worker !== null) return worker;
     const started = start();
-    started.unref();
     started.on("message", (message: FromWorker) => {
       if (worker === started) settle(message.id, message.ok ? message.text : null);
     });
@@ -65,6 +64,8 @@ export function createDeliveryHost(start: () => Worker): DeliveryHost {
     started.on("exit", () => discard(started));
     // A `messageerror` (an answer that does not deserialize) leaves its call to the deadline.
     started.on("messageerror", () => {});
+    // After the listeners: a `message` listener refs the worker's port again.
+    started.unref();
     worker = started;
     return started;
   };
