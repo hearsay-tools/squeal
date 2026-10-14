@@ -155,16 +155,22 @@ describe("squeal setup --check and usage", () => {
     }
   });
 
-  it("says why a gate line is not offered for rewording", async () => {
-    const root = squealShaped({ "CLAUDE.md": "```\nnpm test\n```\nRun `CI=1 npm test`.\n" });
+  it("says why a gate line is not offered for rewording, and lists what is no gate", async () => {
+    const root = squealShaped({
+      "CLAUDE.md":
+        "```\nnpm test\n```\nRun `CI=1 npm test`.\nThe `npm test` command runs the unit suite.\n",
+    });
     const { io, out } = capture(root);
     expect(await main(["setup", "--plan"], io)).toBe(0);
+    // Row 005-55: a fenced command and a description are mentions, not gates.
     expect(out.stdout).toContain(
       [
-        "  CLAUDE.md:2: npm test",
-        "    inside a code block: reword it by hand",
         "  CLAUDE.md:4: Run `CI=1 npm test`.",
         "    runs more than the test command: `CI=1 npm test`: reword it by hand",
+        "  The test command where it is no gate (not offered as edits):",
+        "    .claude/skills/worker/SKILL.md:1: Run `npx vitest run` and paste it.",
+        "    CLAUDE.md:2: npm test",
+        "    CLAUDE.md:5: The `npm test` command runs the unit suite.",
       ].join("\n"),
     );
   });

@@ -132,6 +132,20 @@ describe("squeal init with setup choices", () => {
     expect(existsSync(join(root, ".claude", "settings.json"))).toBe(false);
   });
 
+  // Row 005-55: a line that only names the test command is listed by the plan, never reworded.
+  it("refuses to reword a mention, naming the plan, and writes nothing", async () => {
+    const mention = "The `npm test` command runs the unit suite.\n";
+    const root = squealShaped({ "CLAUDE.md": mention });
+    const { code, stdout, stderr } = await init(root, ["--gate", "CLAUDE.md:1=reword"]);
+    expect(code).toBe(1);
+    expect(stdout).toBe("");
+    expect(stderr).toBe(
+      "squeal init: no gate line CLAUDE.md:1; squeal setup --plan lists them; nothing changed\n",
+    );
+    expect(read(root, "CLAUDE.md")).toBe(mention);
+    expect(existsSync(join(root, ".claude", "settings.json"))).toBe(false);
+  });
+
   it("refuses malformed flags as usage errors", async () => {
     const root = squealShaped();
     for (const args of [

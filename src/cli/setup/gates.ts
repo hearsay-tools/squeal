@@ -7,7 +7,8 @@ import type { GateLine, Mention } from "./plan.js";
  * Spec 005 D5: a gate line is a line of a committed instruction file that
  * runs the test command. The plan lists each with a proposed rewording to
  * `squeal run --all --wait <ms>`; each is written only on its own yes.
- * Mentions in other files, such as skills, are listed and never edited.
+ * Every other line naming the command, in a skill or in prose that does not
+ * tell the agent to run it, is a mention: listed and never edited.
  */
 
 /**
@@ -23,12 +24,29 @@ const FENCE = /^\s*(```|~~~)/;
 const REWORDED = /squeal run --all/;
 /** A line naming Squeal is Squeal's own instruction, never a gate (row 005-47). */
 const SQUEAL = /\bsqueal\b/i;
+/**
+ * Row 005-55, review 005-54: a gate is allowed, never inferred by ruling
+ * prose out. The sentence holding the command opens, after an optional list
+ * marker, emphasis or a one- or two-word `Label:`, with one of these
+ * imperatives, or is D5's first example: `Verification:` and the commands'
+ * code spans. From the review's corpus of 80 proposals, the true
+ * instructions open with `Run` ("Run one full ...") and `Before you finish,
+ * run`; `Use`, `Execute` and `Verify with` are the brief's, and `Always`,
+ * `Also` or `Then` may precede any. A longer label let "Same prompt within
+ * each matrix: run exactly ..." pass for one; "Use of" and "Run-time" are nouns.
+ */
+const INSTRUCTION =
+  /^(?:[-*+]\s+|\d+[.)]\s+)?[*_]*(?:verification:[*_]*\s+(?=`)|(?:[a-z]\w*(?: \w+)?:[*_]*\s+)?(?:(?:always|also|then),?\s+)?(?:run|use|execute|verify with|before you finish,\s+run)\s(?!\s*of\b))/i;
 /** Words that, before the command in its sentence, tell the agent not to run it (row 005-47). */
-const NEGATION = /\b(?:do not|don['’]t|never|instead of|avoid)\b/i;
-/** A sentence's end, past closing quotes, brackets and emphasis. */
-const SENTENCE_END = /[.!?][)\]*_"'”’]*$/;
+const NEGATION = /\b(?:do not|don['’]t|never|not|instead of|rather than|avoid|without|except)\b/i;
+/** A stop's closing quotes, brackets and emphasis. */
+const CLOSERS = /^[)\]*_"'”’]*/;
+/** Stops that end no sentence: "e.g. via", "i.e. not" (review 005-54 B2, B3). */
+const ABBREVIATION = /(?:^|[^\w.])(?:e\.g|i\.e|etc|vs|cf)$/i;
 /** A line that starts a block of its own, so the line before it ended its paragraph. */
 const BLOCK_START = /^\s*(?:[-*+]\s|\d+[.)]\s|#|>|\||```|~~~|<!--)/;
+/** A line that is a block by itself, so the line after it starts anew. */
+const ONE_LINE_BLOCK = /^\s*(?:#|\||```|~~~|<!--)|-->\s*$/;
 /** Shell syntax that runs more than one command: chains, pipes, background jobs, redirects, substitutions. */
 const SHELL_OPERATOR = /&&|\|\||[;|&<>]|\$\(/;
 /** An environment assignment, or `env`/`cross-env` setting one, ahead of the test command. */
@@ -47,7 +65,7 @@ function commandPattern(nodeTest: boolean): RegExp {
 
 export interface GateScan {
   readonly gates: readonly GateLine[];
-  /** Lines naming the test command that are no gate: in other files, negated, or naming Squeal. */
+  /** Lines naming the test command that are no gate: in other files, or not an instruction to run it. */
   readonly mentions: readonly Mention[];
 }
 
@@ -84,14 +102,12 @@ export function scanGates(
     } catch {
       continue;
     }
-    for (const { line, text: lineText, command, fenced, next } of commandLines(text, pattern)) {
-      if (!instruction || notRun(lineText, pattern)) mentions.push({ file, line, text: lineText });
-      else {
-        const reason = fenced
-          ? "inside a code block"
-          : (unfit(lineText, next, pattern) ??
-            compound(lineText, pattern) ??
-            subject(lineText, pattern));
+    for (const found of commandLines(text, pattern)) {
+      const { line, text: lineText, command, next } = found;
+      if (!instruction || !instructs(found, pattern)) {
+        mentions.push({ file, line, text: lineText });
+      } else {
+        const reason = unfit(lineText, next, pattern) ?? compound(lineText, pattern);
         const proposed = reason === null ? reword(lineText, pattern) : null;
         gates.push({
           id: `${file}:${line}`,
@@ -138,7 +154,8 @@ interface Found {
   readonly text: string;
   readonly command: string;
   readonly fenced: boolean;
-  /** The line after it, `undefined` at the end of the file. */
+  /** The lines before and after it, `undefined` at either end of the file. */
+  readonly previous: string | undefined;
   readonly next: string | undefined;
 }
 
@@ -161,7 +178,14 @@ function commandLines(text: string, pattern: RegExp): Found[] {
     const match = pattern.exec(line);
     if (match === null || REWORDED.test(line)) return;
     const command = commandOf(line, pattern);
-    found.push({ line: i + 1, text: line, command, fenced, next: lines[i + 1] });
+    found.push({
+      line: i + 1,
+      text: line,
+      command,
+      fenced,
+      previous: lines[i - 1],
+      next: lines[i + 1],
+    });
   });
   return found;
 }
@@ -187,59 +211,75 @@ function prose(line: string): string {
   return line.replace(/`[^`]*`/g, (span) => "x".repeat(span.length));
 }
 
-/** The part of the command's sentence before the command. */
-function leadIn(line: string, pattern: RegExp): string {
-  const at = commandAt(line, pattern);
-  const last = [
-    ...prose(line)
-      .slice(0, at)
-      .matchAll(/[.!?]\s+/g),
-  ].at(-1);
-  return line.slice(last === undefined ? 0 : last.index + last[0].length, at);
+/**
+ * Where each sentence on the line ends, past its stop's closing marks. A
+ * stop inside brackets or after an abbreviation ends none: review 005-54
+ * found "e.g." and "(e.g. after code review)." split sentences (B2, B3).
+ */
+function stops(line: string): number[] {
+  const text = prose(line);
+  const ends: number[] = [];
+  let depth = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i] as string;
+    if (c === "(" || c === "[") depth++;
+    else if ((c === ")" || c === "]") && depth > 0) depth--;
+    else if (depth === 0 && ".!?".includes(c) && !ABBREVIATION.test(text.slice(0, i))) {
+      const end = i + 1 + (CLOSERS.exec(text.slice(i + 1)) as RegExpExecArray)[0].length;
+      if (end === text.length || /\s/.test(text[end] as string)) ends.push(end);
+    }
+  }
+  return ends;
+}
+
+/** Whether the line's last sentence ends with it. */
+function endsSentence(line: string): boolean {
+  return stops(line).at(-1) === line.trimEnd().length;
 }
 
 /** Where the sentence holding `from` ends, when another sentence follows it on the line. */
 function sentenceEnd(line: string, from: number): number | null {
-  const stop = /[.!?][)\]*_"'”’]*(?=\s+\S)/g;
-  stop.lastIndex = from;
-  const match = stop.exec(prose(line));
-  return match === null ? null : match.index + match[0].length;
+  const end = stops(line).find((at) => at > from);
+  return end === undefined || line.slice(end).trim() === "" ? null : end;
 }
 
 /**
- * Row 005-47: a line that names Squeal, or tells the agent not to run the
- * command, is no gate. Cezar's "Do not duplicate those background runs with
- * `npm test`," was reworded into an instruction to run it.
+ * Row 005-55: whether the line tells the agent to run the test command,
+ * the allow-list review 005-54 asked for. Outside a code block, not naming
+ * Squeal (row 005-47), the command's sentence starts on this line, opens
+ * with an instruction and holds no negation before the command. Any other
+ * line is a mention: "The `npm test` command runs the unit suite." and
+ * "Do not run the whole suite,\nincluding `npm test`." each became one.
  */
-function notRun(line: string, pattern: RegExp): boolean {
-  return SQUEAL.test(line) || NEGATION.test(leadIn(line, pattern));
+function instructs(found: Found, pattern: RegExp): boolean {
+  const { text: line, fenced, previous } = found;
+  if (fenced || SQUEAL.test(line)) return false;
+  const at = commandAt(line, pattern);
+  const start = stops(line)
+    .filter((end) => end <= at)
+    .at(-1);
+  if (start === undefined && continues(previous, line)) return false;
+  const sentence = line.slice(start ?? 0, at).trimStart();
+  return INSTRUCTION.test(sentence) && !NEGATION.test(sentence);
+}
+
+/** Whether `line` goes on with a sentence begun on the line before it. */
+function continues(previous: string | undefined, line: string): boolean {
+  if (previous === undefined || previous.trim() === "") return false;
+  if (BLOCK_START.test(line) || ONE_LINE_BLOCK.test(previous)) return false;
+  return !endsSentence(previous);
 }
 
 /**
  * Why the exit-3 sentence cannot follow the command's sentence, or `null`
- * when it can: a table row, or a sentence that goes on past the line (row
- * 005-47). A line with no closing stop ends its sentence only where its
- * paragraph ends.
+ * when it can: the sentence goes on past the line (row 005-47). A line with
+ * no closing stop ends its sentence only where its paragraph ends.
  */
 function unfit(line: string, next: string | undefined, pattern: RegExp): string | null {
-  if (/^\s*\|/.test(line)) return "a table row";
-  if (sentenceEnd(line, commandAt(line, pattern)) !== null) return null;
-  const body = line.trimEnd();
-  if (SENTENCE_END.test(body)) return null;
+  if (sentenceEnd(line, commandAt(line, pattern)) !== null || endsSentence(line)) return null;
   const continued = next !== undefined && next.trim() !== "" && !BLOCK_START.test(next);
-  if (/[,;:\-–—]$/.test(body) || continued) return "its sentence goes on past the line";
+  if (/[,;:\-–—]$/.test(line.trimEnd()) || continued) return "its sentence goes on past the line";
   return null;
-}
-
-/**
- * Row 005-47, cezar's "`npm test` and `npm run test:unit` are the fast unit
- * gate": a sentence that opens with the command says what the command is,
- * so the checkpoint cannot take its place.
- */
-function subject(line: string, pattern: RegExp): string | null {
-  return /^\s*(?:[-*+]\s+|\d+[.)]\s+)?[*_]*$/.test(leadIn(line, pattern))
-    ? "its sentence describes the test command rather than running it"
-    : null;
 }
 
 /**
@@ -282,8 +322,7 @@ export function reword(line: string, pattern: RegExp = commandPattern(true)): st
   const end = sentenceEnd(replaced, replaced.indexOf(checkpoint));
   if (end !== null) return `${replaced.slice(0, end)} ${fallback}${replaced.slice(end)}`;
   const body = replaced.trimEnd();
-  const stop = SENTENCE_END.test(body) ? "" : ".";
-  return `${body}${stop} ${fallback}`;
+  return `${body}${endsSentence(body) ? "" : "."} ${fallback}`;
 }
 
 /**
