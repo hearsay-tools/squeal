@@ -955,7 +955,7 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 | 008-12 the OpenCode hooks and the idle wake | running (worker 440a861d, opus high) | D3 (delivery after, deny before, primer, `chat.message` delta, idle continuation, child idle), D5, D9; the bridge's per-event cost (open question 3). | Unit and real-OpenCode tests of each hook under `run` and `serve`; bridge p95 within 10 ms of the matching Codex hook in one run; full suite green. |
 | 008-13 status and pull credit under OpenCode | running (worker 02b8780e, opus high) | D2 `shell.env` variables, D7: pull credit for root and child, the `OpenCode:` status line. | Both D7 causes tested; root and child pulls credited; other harnesses' status tests unchanged. |
 | 008-14 install and update through OpenCode | running (worker 8719cf53, opus high) | D1 as amended: `install.sh` OpenCode step with the `current` link, update, uninstall, `squeal update`, the launcher's search. | Install, reinstall, update with kept directories and uninstall tested; never `--force`, never an OpenCode config edit. |
-| 008-15 review of wave 0 | running (worker 66fa437c, codex gpt-6.1-sol high) | `/reviewer` over `c12dc371~1..eae020fc`: deadlines, no `node:sqlite` in the plugin, the fast path, D2 identity, `runOpenCode` isolation, the latency test. | `reviews/wave-0.md` committed. |
+| 008-15 review of wave 0 | done: FAIL at eae020fc, four blockers (`reviews/wave-0.md`); B1 to B4, S1, S2, N1 folded into 008-12 | `/reviewer` over `c12dc371~1..eae020fc`: deadlines, no `node:sqlite` in the plugin, the fast path, D2 identity, `runOpenCode` isolation, the latency test. | `reviews/wave-0.md` committed. |
 
 ### Wave 4: dogfooding repairs (from `lessons.md`, 007-18)
 
