@@ -56,6 +56,12 @@ export function squealHooks(host: HookHost): OcHooks {
   };
   const turn = turns(client, ask);
 
+  /** The consumer of session `id`, or `null`; `null` too once disposed meanwhile (review 008-16 S1). */
+  const identify = async (id: string, deadline: Deadline): Promise<OcConsumer | null> => {
+    const consumer = await map.consumerOf(id, deadline);
+    return disposed ? null : consumer;
+  };
+
   /** Registers `consumer` once per instance; its header, or `null`. */
   const register = (consumer: OcConsumer, deadline: Deadline): Promise<string | null> => {
     const key = keyOf(consumer);
@@ -79,7 +85,7 @@ export function squealHooks(host: HookHost): OcHooks {
     try {
       if (disposed) return null;
       const deadline = deadlineIn(EVENT_DEADLINE_MS);
-      const consumer = await map.consumerOf(input.sessionID, deadline);
+      const consumer = await identify(input.sessionID, deadline);
       if (consumer === null) return null;
       const { command, workdir } = (args ?? {}) as { command?: unknown; workdir?: unknown };
       // The shell runs in `workdir`, relative to the instance's directory, or in that directory.
@@ -99,7 +105,7 @@ export function squealHooks(host: HookHost): OcHooks {
 
   const idle = async (id: string): Promise<void> => {
     const deadline = deadlineIn(IDLE_DEADLINE_MS);
-    const consumer = await map.consumerOf(id, deadline);
+    const consumer = await identify(id, deadline);
     if (consumer === null) return;
     if (consumer.agentId !== undefined) {
       // A child's idle is 002's SubagentStop: its consumer ends; a resumed child registers again.
@@ -119,7 +125,7 @@ export function squealHooks(host: HookHost): OcHooks {
           map.saw(info);
         } else if (event.type === "session.deleted" && info !== undefined) {
           map.saw(info);
-          const consumer = await map.consumerOf(info.id, deadlineIn(EVENT_DEADLINE_MS));
+          const consumer = await identify(info.id, deadlineIn(EVENT_DEADLINE_MS));
           map.forget(info.id);
           turn.forget(info.id);
           if (consumer === null) return;
@@ -146,7 +152,7 @@ export function squealHooks(host: HookHost): OcHooks {
       try {
         if (disposed) return;
         const deadline = deadlineIn(EVENT_DEADLINE_MS);
-        const consumer = await map.consumerOf(input.sessionID, deadline);
+        const consumer = await identify(input.sessionID, deadline);
         if (consumer === null) return;
         // D5: a message, the user's or Squeal's own, ends the idle wait.
         if (consumer.agentId === undefined) turn.message(consumer.sessionId, output.parts);
@@ -199,7 +205,7 @@ export function squealHooks(host: HookHost): OcHooks {
       try {
         if (disposed || typeof output.output !== "string") return;
         const deadline = deadlineIn(EVENT_DEADLINE_MS);
-        const consumer = await map.consumerOf(input.sessionID, deadline);
+        const consumer = await identify(input.sessionID, deadline);
         if (consumer === null) return;
         const text = (await ask("after", { consumer, tool: input.tool }, deadline))?.text ?? null;
         if (text !== null && !disposed) output.output = `${output.output}\n\n${text}`;
@@ -215,7 +221,7 @@ export function squealHooks(host: HookHost): OcHooks {
         output.env.PATH =
           path === undefined || path === "" ? host.bin : `${host.bin}${delimiter}${path}`;
         if (input.sessionID === undefined) return;
-        const consumer = await map.consumerOf(input.sessionID, deadlineIn(EVENT_DEADLINE_MS));
+        const consumer = await identify(input.sessionID, deadlineIn(EVENT_DEADLINE_MS));
         if (consumer === null) return;
         output.env.OPENCODE_SESSION_ID = consumer.sessionId;
         output.env.OPENCODE_AGENT_ID = consumer.agentId ?? MAIN_AGENT;
