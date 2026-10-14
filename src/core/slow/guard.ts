@@ -23,6 +23,13 @@ export interface CapacityWaited {
   readonly ranUnderLoad: number | null;
 }
 
+/** The 1-minute load average per CPU, as the guard reads it. */
+export function loadPerCpu(wait: Pick<CapacityWait, "load" | "cpus"> = {}): number {
+  const load = wait.load ?? loadavg;
+  const cpus = wait.cpus ?? availableParallelism;
+  return (load()[0] ?? 0) / Math.max(1, cpus());
+}
+
 /**
  * Spec 004 D3: before a slow file, waits while the 1-minute load average per
  * CPU is above `maxLoadPerCpu`, rechecking every `recheckMs`, for at most
@@ -31,12 +38,10 @@ export interface CapacityWaited {
  * a slow file is delayed, never skipped.
  */
 export async function waitForCapacity(wait: CapacityWait): Promise<CapacityWaited> {
-  const load = wait.load ?? loadavg;
-  const cpus = wait.cpus ?? availableParallelism;
   const sleep = wait.sleep ?? delay;
   const now = wait.now ?? (() => performance.now());
   const recheckMs = wait.recheckMs ?? 15_000;
-  const perCpu = (): number => (load()[0] ?? 0) / Math.max(1, cpus());
+  const perCpu = (): number => loadPerCpu(wait);
   const start = now();
   for (;;) {
     const current = perCpu();
