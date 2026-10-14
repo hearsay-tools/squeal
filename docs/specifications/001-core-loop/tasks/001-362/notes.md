@@ -92,3 +92,7 @@ D8 and D10 need no change: no product behaviour changed. If the coordinator want
 - `probe-store.ts`: the start's store work alone, beside the writers.
 
 All of them work only in a temporary directory given as an argument, or in the test's fixture.
+
+## Verification
+
+`test/daemon/busy-store.test.ts` with the fix, 10 runs in a row from 14:21 to 14:35: 10 of 10 passed, 43 to 115 s each. The one-minute load was 83.7 at the start of the first run and 22.7 at the end of the last, peaking at 145 between them. Before that, 4 of 4 load-gated runs had passed, 43 to 59 s each. The full suite, `npx vitest run --maxWorkers=4`, started at load 21.8 and ended at load 8.1: 478 files passed, 1 skipped, 4,056 tests passed, 10 skipped, 515 s.
