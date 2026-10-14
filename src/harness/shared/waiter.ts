@@ -22,8 +22,9 @@ const REGISTRATION_POLL_MS = 100;
  * the idle one (`HarnessDelivery.waitForDelta`), so it prints only while the
  * consumer is idle and only for the test files pending when the turn ended;
  * a message it wrote mid-turn would land after PostToolBatch's newer one.
- * Timeout after `timeoutMs`, a lost lock race or an unregistered consumer
- * return `null`.
+ * Timeout after `timeoutMs`, an aborted `signal` (a host that stays up,
+ * spec 009 D5, cancels its waiter rather than killing it), a lost lock race
+ * or an unregistered consumer return `null`.
  *
  * The held lock is the session's liveness: the daemon expires a consumer
  * whose lock file no waiter holds after `WAITERLESS_EXPIRY_MS` (task
@@ -36,18 +37,22 @@ export function waitIdle(
   location: HookLocation,
   deps: HookDeps,
   timeoutMs: number,
+  signal?: AbortSignal,
 ): Promise<string | null> {
   return withContext(input, location, deps, async (context) => {
+    if (signal?.aborted) return null;
     const lock = acquireWaiterLock(storePaths(location.commonDir).locksDir, context.consumer);
     if (lock === null) return null;
     let gone = false;
     try {
-      const outcome = await waitForDelta(context, timeoutMs);
+      const outcome = await waitForDelta(context, timeoutMs, signal);
       gone = outcome === "unregistered";
       if (outcome === null) {
         context.store.consumers.touch(context.consumer, (deps.now ?? Date.now)(), false);
       }
-      return outcome === "unregistered" || outcome === null ? null : formatDelta(outcome);
+      return outcome === "unregistered" || outcome === null
+        ? null
+        : formatDelta(outcome, deps.command);
     } finally {
       lock.release(gone);
     }
@@ -57,21 +62,25 @@ export function waitIdle(
 async function waitForDelta(
   context: HookContext,
   timeoutMs: number,
+  signal: AbortSignal | undefined,
 ): Promise<Delta | "unregistered" | null> {
   const started = performance.now();
   const deadline = started + timeoutMs;
   let seen = false;
   for (;;) {
     const left = deadline - performance.now();
-    if (left <= 0) return null;
+    if (left <= 0 || signal?.aborted) return null;
     if (!isRegistered(context)) {
       if (seen || performance.now() - started >= REGISTRATION_GRACE_MS) return "unregistered";
-      await sleep(Math.min(REGISTRATION_POLL_MS, left));
+      await sleep(Math.min(REGISTRATION_POLL_MS, left), undefined, signal ? { signal } : {}).catch(
+        () => {},
+      );
       continue;
     }
     seen = true;
     const delta = await context.delivery.waitForDelta(context.consumer, {
       timeoutMs: Math.min(WAIT_CHUNK_MS, left),
+      ...(signal === undefined ? {} : { signal }),
     });
     if (delta !== null) return delta;
   }

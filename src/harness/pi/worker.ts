@@ -4,7 +4,7 @@ import { shellWord } from "../../core/delivery/index.js";
 import { findHarnessProcess } from "../shared/harness-process.js";
 import type { HookDeps } from "../shared/hook.js";
 import type { FromWorker, PiAnswer, PiRequest, ToWorker } from "./protocol.js";
-import { endRun, settle, startRun, toolCall } from "./run.js";
+import { endRun, idleWait, settle, startRun, toolCall } from "./run.js";
 import { shutdownSession, startSession, toolBoundary } from "./session.js";
 
 /**
@@ -32,8 +32,15 @@ export function workerDeps(module: URL): HookDeps {
   };
 }
 
-/** Runs one request on the shared code; the answer is of the request's kind (`PiAnswers`). */
-export function handle(request: PiRequest, deps: HookDeps): Promise<PiAnswer> {
+/**
+ * Runs one request on the shared code; the answer is of the request's kind
+ * (`PiAnswers`). `signal` cancels a `wait`.
+ */
+export function handle(
+  request: PiRequest,
+  deps: HookDeps,
+  signal?: AbortSignal,
+): Promise<PiAnswer> {
   switch (request.kind) {
     case "start":
       return startSession(request, deps);
@@ -49,18 +56,33 @@ export function handle(request: PiRequest, deps: HookDeps): Promise<PiAnswer> {
       return settle(request, deps);
     case "endTurn":
       return endRun(request, deps);
+    case "wait":
+      return idleWait(request, deps, signal);
     case "ping":
       return Promise.resolve(null);
   }
 }
 
-/** Answers every request posted on `port`, one answer each; a throw answers `ok: false`. */
+/**
+ * Answers every request posted on `port`, one answer each; a throw answers
+ * `ok: false`. A cancel aborts its `wait`, which then answers `null`.
+ */
 export function serve(port: MessagePort, deps: HookDeps): void {
-  port.on("message", ({ id, request }: ToWorker) => {
+  const waits = new Map<number, AbortController>();
+  port.on("message", (message: ToWorker) => {
+    if ("cancel" in message) {
+      waits.get(message.cancel)?.abort();
+      return;
+    }
+    const { id, request } = message;
+    const cancel = request.kind === "wait" ? new AbortController() : null;
+    if (cancel !== null) waits.set(id, cancel);
     const answer = (message: FromWorker) => port.postMessage(message);
-    handle(request, deps).then(
-      (result) => answer({ id, ok: true, answer: result }),
-      () => answer({ id, ok: false }),
-    );
+    handle(request, deps, cancel?.signal)
+      .then(
+        (result) => answer({ id, ok: true, answer: result }),
+        () => answer({ id, ok: false }),
+      )
+      .finally(() => waits.delete(id));
   });
 }

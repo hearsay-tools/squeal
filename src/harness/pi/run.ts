@@ -8,6 +8,7 @@ import { ensureToRegister } from "../shared/ensure.js";
 import { type HookDeps, withContext } from "../shared/hook.js";
 import { primer } from "../shared/primer.js";
 import { stopTurn } from "../shared/stop.js";
+import { waitIdle } from "../shared/waiter.js";
 import type { PiSession, RunAnswer, SettleAnswer } from "./protocol.js";
 
 /*
@@ -122,4 +123,31 @@ export async function endRun(session: PiSession, deps: HookDeps): Promise<null> 
     return null;
   });
   return null;
+}
+
+/**
+ * How long one idle wake waits: 001 D9's waiter bound (`WAITER_TIMEOUT_MS`
+ * of the Claude Code adapter). Expiry is silent and the next settle re-arms.
+ */
+export const IDLE_WAIT_MS = 3_540_000;
+
+/**
+ * The idle wake (D5): 001 D9's waiter on the consumer, under its lock, until
+ * the idle delta of the test files pending when the turn ended is non-empty;
+ * that delta as text, or `null` at expiry, on `signal`, or with no store.
+ */
+export async function idleWait(
+  session: PiSession,
+  deps: HookDeps,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  const location = locate(session.cwd);
+  if (location === null) return null;
+  return waitIdle(
+    consumerInput(session),
+    location,
+    deps,
+    deps.waiterTimeoutMs ?? IDLE_WAIT_MS,
+    signal,
+  );
 }

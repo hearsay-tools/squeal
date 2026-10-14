@@ -1,7 +1,7 @@
 import type { Worker } from "node:worker_threads";
 import type { CustomMessageEntryDraft } from "@earendil-works/pi-coding-agent";
 import type { PiApi, PiContext, PiCustomMessage } from "./api.js";
-import { createDeliveryHost, type DeliveryHost } from "./host.js";
+import { createDeliveryHost, type DeliveryHost, type PendingWait } from "./host.js";
 import type { PiAnswers, PiRequest, PiSession } from "./protocol.js";
 
 /** Spec 009 D4: the deadline of `session_start`, `turn_end`, `tool_call` and `before_agent_start`. */
@@ -27,6 +27,8 @@ export const PRIMER_SECTION_CAP_CHARS = 8_000;
 const READ_ONLY_TOOLS: ReadonlySet<string> = new Set(["read", "grep", "find", "ls"]);
 /** The calls `tool_call` asks the worker about: the writers, and `bash` for 005 D8. */
 const ASKED_TOOLS: ReadonlySet<string> = new Set(["edit", "write", "bash"]);
+/** D5: the modes that stay open after a run, where an idle agent can be woken. */
+const WAKE_MODES: ReadonlySet<string> = new Set(["tui", "rpc"]);
 
 /**
  * D2: the session a handler is about, read from its context on every event.
@@ -66,7 +68,7 @@ type About<K extends PiRequest["kind"]> = Omit<Extract<PiRequest, { kind: K }>, 
  *   id (RPC delivers it twice per replacement, D2), then queues the header
  *   for the next prompt at no extra request.
  * - `input` and `before_agent_start` start a run: Squeal has neither
- *   continued nor ended it. `before_agent_start` sets the primer section,
+ *   continued nor ended it, and the idle wake is cancelled. `before_agent_start` sets the primer section,
  *   the last one the worker gave when this call gives none, and returns the
  *   run's news as its message.
  * - `turn_end` after tool calls delivers the delta as one entry; the final
@@ -76,10 +78,12 @@ type About<K extends PiRequest["kind"]> = Omit<Extract<PiRequest, { kind: K }>, 
  * - `agent_before_settle` of a completed run Squeal has not continued is
  *   002's Stop: a report continues the run once; silence ended the turn.
  * - `agent_settled` ends the turn when no settle did: an abort, an error,
- *   a missed deadline, or the end of Squeal's continuation.
- * - `session_shutdown` unregisters the outgoing session, except on `reload`,
- *   whose next instance takes it over, then stops the host. After it every
- *   event of the instance is silent.
+ *   a missed deadline, or the end of Squeal's continuation. Then, in `tui`
+ *   and `rpc`, it arms the idle wake (D5): the idle delta, once there is
+ *   one, starts a run as a follow-up. Under `-p` and `json` Pi exits.
+ * - `session_shutdown` cancels the wake and unregisters the outgoing
+ *   session, except on `reload`, whose next instance takes it over, then
+ *   stops the host. After it every event of the instance is silent.
  *
  * No handler throws or outlasts its deadline: a miss is silence (D4).
  */
@@ -92,6 +96,7 @@ export function squealExtension(start: () => Worker): (pi: PiApi) => void {
     let continued = false;
     let ended = false;
     let lastPrimer: string | null = null;
+    let waiting: PendingWait | null = null;
 
     /** Asks the worker about `ctx`'s session; `null` after shutdown, before a start, or on a miss. */
     const ask = async <K extends PiRequest["kind"]>(
@@ -109,9 +114,40 @@ export function squealExtension(start: () => Worker): (pi: PiApi) => void {
       }
     };
 
+    const cancelWait = () => {
+      waiting?.cancel();
+      waiting = null;
+    };
+
     const startRun = () => {
+      cancelWait();
       continued = false;
       ended = false;
+    };
+
+    /** D5: in a mode that stays open, waits for the idle delta and wakes the agent with it. */
+    const armWait = (ctx: PiContext) => {
+      cancelWait();
+      let mode: string;
+      try {
+        mode = ctx.mode;
+      } catch {
+        return;
+      }
+      const session = sessionOf(ctx);
+      if (shutDown || host === null || session === null || !WAKE_MODES.has(mode)) return;
+      const wait = host.wait({ kind: "wait", ...session });
+      waiting = wait;
+      void wait.answer.then((text) => {
+        if (waiting !== wait) return;
+        waiting = null;
+        if (text === null || shutDown) return;
+        try {
+          pi.sendMessage(message(text), { triggerTurn: true, deliverAs: "followUp" });
+        } catch {
+          // D4: silence; the news waits for the next prompt.
+        }
+      });
     };
 
     pi.on("session_start", async (event, ctx) => {
@@ -186,14 +222,17 @@ export function squealExtension(start: () => Worker): (pi: PiApi) => void {
     });
 
     pi.on("agent_settled", async (_event, ctx) => {
-      if (ended) return;
-      ended = true;
-      await ask(ctx, { kind: "endTurn" }, END_TURN_DEADLINE_MS);
+      if (!ended) {
+        ended = true;
+        await ask(ctx, { kind: "endTurn" }, END_TURN_DEADLINE_MS);
+      }
+      armWait(ctx);
     });
 
     pi.on("session_shutdown", async (event, ctx) => {
       if (shutDown) return;
       shutDown = true;
+      cancelWait();
       const running = host;
       host = null;
       if (running === null) return;

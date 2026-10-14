@@ -19,6 +19,7 @@ const inline = (onMessage: string) => () =>
 const ECHO = inline(`parentPort.postMessage({ id, ok: true, answer: request.kind });`);
 const STALL = inline(``);
 const PING = { kind: "ping" } as const;
+const WAIT = { kind: "wait", sessionId: "s", cwd: "/" } as const;
 
 let hosts: DeliveryHost[] = [];
 afterEach(() => {
@@ -97,5 +98,59 @@ describe("DeliveryHost", () => {
       throw new Error("no worker");
     });
     expect(await h.call(PING, 2_000)).toBeNull();
+  });
+
+  it("answers a wait whenever the worker does, with no deadline", async () => {
+    const h = host(
+      inline(`setTimeout(() => parentPort.postMessage({ id, ok: true, answer: "news" }), 300);`),
+    );
+    expect(await h.wait(WAIT).answer).toBe("news");
+  });
+
+  it("keeps the worker while a wait is pending, for every other request", async () => {
+    let starts = 0;
+    const h = host(() => {
+      starts++;
+      return inline(
+        `if (request.kind !== "wait") parentPort.postMessage({ id, ok: true, answer: "ping" });`,
+      )();
+    });
+    const wait = h.wait(WAIT);
+    expect(await h.call(PING, 2_000)).toBe("ping");
+    expect(starts).toBe(1);
+    wait.cancel();
+    expect(await wait.answer).toBeNull();
+  });
+
+  it("resolves a cancelled wait null at once, and tells the worker which", async () => {
+    const told: number[] = [];
+    const h = host(() => {
+      const worker = new Worker(
+        `const { parentPort } = require("node:worker_threads");
+         parentPort.on("message", (m) => { if ("cancel" in m) parentPort.postMessage({ id: 0, told: m.cancel }); });`,
+        { eval: true },
+      );
+      worker.on("message", (message: { told: number }) => told.push(message.told));
+      return worker;
+    });
+    const wait = h.wait(WAIT);
+    wait.cancel();
+    wait.cancel();
+    expect(await wait.answer).toBeNull();
+    while (told.length === 0) await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(told).toEqual([1]);
+  });
+
+  it("resolves a pending wait null when the host stops or the worker dies", async () => {
+    const stopped = host(STALL);
+    const wait = stopped.wait(WAIT);
+    stopped.stop();
+    expect(await wait.answer).toBeNull();
+    expect(await stopped.wait(WAIT).answer).toBeNull();
+
+    const dying = host(inline(`if (request.kind === "ping") process.exit(3);`));
+    const orphan = dying.wait(WAIT);
+    expect(await dying.call(PING, 2_000)).toBeNull();
+    expect(await orphan.answer).toBeNull();
   });
 });

@@ -43,8 +43,12 @@ export function stubPi(): StubPi {
   };
 }
 
-/** A handler context whose session id is `getSessionId()`'s, in `cwd`. */
-export function piContext(sessionId: string | (() => string), cwd = "/"): PiContext {
+/** A handler context whose session id is `getSessionId()`'s, in `cwd`, in Pi's `mode`. */
+export function piContext(
+  sessionId: string | (() => string),
+  cwd = "/",
+  mode: PiContext["mode"] = "print",
+): PiContext {
   const getSessionId = typeof sessionId === "string" ? () => sessionId : sessionId;
-  return { mode: "print", cwd, sessionManager: { getSessionId } } as unknown as PiContext;
+  return { mode, cwd, sessionManager: { getSessionId } } as unknown as PiContext;
 }
