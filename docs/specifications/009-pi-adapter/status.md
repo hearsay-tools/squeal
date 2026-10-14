@@ -22,3 +22,7 @@ Started: 2026-10-14
   - D7: the CLI is named as `"<process.execPath>" --disable-warning=ExperimentalWarning "<package>/dist/cli/squeal.mjs"`, since Pi's Node need not be on the `PATH`.
   - `src/harness/pi/api.ts` is a local copy of the Pi 1.0.4 types the extension uses; with the devDependency landed, wave 1 types against the real package.
   - `KEY_FORMAT_VERSION` 10 (unreleased) re-pinned: the `build:plugin` line in `package.json` is a guarded source, and `src/harness/pi/build.ts` joins `GUARDED_WITHIN`.
+- 2026-10-14, review 009-14 (`reviews/wave-0.md`, PASS at 8d401144, gpt-6.1-sol, at load 120+): no blockers. Coordinator triage, all into wave 2 briefs:
+  - S2, plausible: a worker blocked in a native SQLite call cannot be terminated; the probe's handler returned at its 3 s deadline and Node exited 2.15 s later, under an injected 5 s busy timeout. D4 amended: a missed deadline returns silence at once, but a worker stuck in a native call holds the process until that call returns, which the shared store's 1 s busy timeout bounds; a native-blocked exit test pins it.
+  - S1, plausible: `test/helpers/pi.ts` lets a caller's `env` override the isolation variables; protect them.
+  - N1: the fake provider's `any` casts need a reason or Pi's real types.
