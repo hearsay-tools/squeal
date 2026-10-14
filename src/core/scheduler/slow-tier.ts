@@ -60,10 +60,14 @@ export interface SlowHost {
   /**
    * An edit's fast work is pending or running: runner work, a recent fast
    * file queued, or an edit's tier in flight. It goes first (D2 as amended
-   * 2026-10-09); background fast work does not hold the slow tier back.
+   * 2026-10-09), even before a `run --slow` request.
    */
   editPending(): boolean;
-  /** No fast work at all is pending or running: an idle slow tier may take several files (D2). */
+  /**
+   * No fast work at all is pending or running: only then does a slow tier
+   * start without a `run --slow` request (D2 as amended 2026-10-14, task
+   * 004-60), and an idle slow tier may take several files (D2).
+   */
   fastIdle(): boolean;
 }
 
@@ -93,14 +97,15 @@ export type SlowNext = SlowRun | "again" | null;
 
 /**
  * Spec 004 D2 to D5: the slow tier of one worktree. Slow files wait in the
- * queue's slow class until no edit's fast work is pending or running (D2 as
- * amended 2026-10-09: background fast work runs beside them) and a trigger
- * holds: every registered consumer is idle or none is (`consumersIdle`), a
+ * queue's slow class until no fast work of this daemon is pending or
+ * running, its backlog's included (D2 as amended 2026-10-14, task 004-60;
+ * an open `run --slow` request waits only for an edit's, `#fastFirst`), and
+ * a trigger holds: every registered consumer is idle or none is (`consumersIdle`), a
  * `run --slow` request is open (`request`), or a `run --all` checkpoint
  * requested the file. Then `next` waits for the load guard with what is left
  * of the pass's `slow.maxDeferMs`, unless a `run --slow` request is open (D3
  * as amended 2026-10-14, task 004-59), takes the per-user slot, and selects a
- * tier: one file, or up to `slow.maxParallel` files of one lane when the
+ * tier, its workers from the per-user pool (001 D11 Capacity, task 001-386): one file, or up to `slow.maxParallel` files of one lane when the
  * machine is idle (no fast work at all and the load below the guard's
  * threshold), holding a permit per file. The pump runs and records it as any
  * tier (D4: the stability check discards and re-queues). A pass ends when no
@@ -222,6 +227,17 @@ export class SlowTier {
     }
   }
 
+  /**
+   * Fast work of this daemon goes first: an edit's always (D2 as amended
+   * 2026-10-09), its fast backlog (a baseline, a checkpoint, `run --all`)
+   * queued or running unless a `run --slow` request is open (D2 as amended
+   * 2026-10-14, task 004-60), so a warm-up's slow files never contend with
+   * its fast ones.
+   */
+  #fastFirst(): boolean {
+    return this.host.editPending() || (!this.#requested && !this.host.fastIdle());
+  }
+
   #unmark(dir: AbsolutePath, worktreeId: WorktreeId): void {
     if (!this.#marked) return;
     this.#marked = false;
@@ -245,7 +261,7 @@ export class SlowTier {
       this.#publish(null);
       return [];
     }
-    if (this.host.editPending()) {
+    if (this.#fastFirst()) {
       this.#publish({ kind: "waiting", for: "fast" });
       return [];
     }
@@ -348,7 +364,7 @@ export class SlowTier {
     | typeof WAIT_FOR_CAPACITY
     | null {
     const { context, ledger } = this.host.started();
-    if (this.host.editPending()) return null;
+    if (this.#fastFirst()) return null;
     const width = this.host.fastIdle() ? slot.permits : 1;
     const triggered = this.#trigger(context, ledger);
     const picked: TierFile[] = [];
@@ -480,7 +496,7 @@ export class SlowTier {
     const { context, ledger } = this.host.started();
     const queued = ledger.orderedSlow();
     if (queued.length === 0) this.#publish(null);
-    else if (this.host.editPending()) this.#publish({ kind: "waiting", for: "fast" });
+    else if (this.#fastFirst()) this.#publish({ kind: "waiting", for: "fast" });
     else if (queued.some(this.#trigger(context, ledger))) this.#publish(null);
     else this.#publish({ kind: "waiting", for: "idle" });
   }
