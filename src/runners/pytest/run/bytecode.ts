@@ -37,10 +37,7 @@ export function runBytecode(
   kept: readonly AbsolutePath[],
 ): RunBytecode {
   const shared = join(cacheDir, "pycache");
-  const runs = join(cacheDir, "pycache-runs");
-  mkdirSync(runs, { recursive: true });
-  sweep(runs);
-  const prefix = mkdtempSync(join(runs, "run-")) as AbsolutePath;
+  const { dir: prefix, remove } = runScratch(join(cacheDir, "pycache-runs"));
   const links = linkPoints(root, kept);
   prune(shared, root, links);
   for (const link of links) {
@@ -48,7 +45,25 @@ export function runBytecode(
     mkdirSync(dirname(join(prefix, link)), { recursive: true });
     symlinkSync(join(shared, link), join(prefix, link));
   }
-  return { prefix, remove: () => rmSync(prefix, { recursive: true, force: true }) };
+  return { prefix, remove };
+}
+
+/** A directory of one run's own, and how to remove it. */
+export interface RunScratch {
+  readonly dir: AbsolutePath;
+  remove(): void;
+}
+
+/**
+ * A new `run-<random>` directory under `parent`, for one run to remove
+ * after it; one a process left as it died is removed by a later run after
+ * `ABANDONED_MS`.
+ */
+export function runScratch(parent: string): RunScratch {
+  mkdirSync(parent, { recursive: true });
+  sweep(parent);
+  const dir = mkdtempSync(join(parent, "run-")) as AbsolutePath;
+  return { dir, remove: () => rmSync(dir, { recursive: true, force: true }) };
 }
 
 /**
