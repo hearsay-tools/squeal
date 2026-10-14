@@ -1,3 +1,5 @@
+import { existsSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { OcHooks } from "../../../src/harness/opencode/api.js";
 import {
@@ -6,6 +8,7 @@ import {
   IDLE_MARGIN_MS,
 } from "../../../src/harness/opencode/hooks.js";
 import type { OcKind } from "../../../src/harness/opencode/protocol.js";
+import { tempDir } from "../../store/helpers.js";
 import {
   CHILD_ID,
   chatOutput,
@@ -41,6 +44,49 @@ const aborted = (sessionID: string) => ({
   },
 });
 const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
+
+/**
+ * A Stop bridge that marks its start and answers `report` only once
+ * released (review 008-18 S1): the test orders what overlaps Stop by these
+ * two facts, not by when independent bridge processes reach their first line.
+ */
+function gatedStop(report: string) {
+  const dir = tempDir("squeal-oc-gate-");
+  const [entry, began, gate] = ["stop.mjs", "began", "release"].map((name) => join(dir, name));
+  writeFileSync(
+    entry,
+    `import { existsSync, readFileSync, writeFileSync } from "node:fs";
+readFileSync(0, "utf8");
+writeFileSync(${JSON.stringify(began)}, "");
+const answer = JSON.stringify({ answer: { report: ${JSON.stringify(report)} } });
+const poll = setInterval(() => {
+  if (!existsSync(${JSON.stringify(gate)})) return;
+  clearInterval(poll);
+  process.stdout.write(answer);
+}, 5);
+`,
+  );
+  return {
+    entry,
+    /** Resolves once the Stop bridge runs, the idle hook awaiting it. */
+    began: () => expect.poll(() => existsSync(began), { timeout: 5_000 }).toBe(true),
+    release: () => writeFileSync(gate, ""),
+  };
+}
+
+/** `started`, with Stop answered through `gatedStop`. */
+async function startedGated() {
+  const stop = gatedStop(REPORT);
+  const bridge = stubBridge("answer");
+  const client = stubClient();
+  const hooks = await startPlugin(squealDir(), client, {
+    entry: bridge.entry,
+    bridge: (kind) => (kind === "stop" ? stop.entry : bridge.entry),
+  });
+  await hook(hooks, "event")(created(ROOT_ID));
+  const kinds = () => bridge.requests().map((r) => r.kind);
+  return { stop, client, hooks, kinds };
+}
 
 async function started(
   answers: Partial<Record<OcKind, unknown>>,
@@ -115,14 +161,15 @@ describe("one deadline at idle (review 008-16 B1)", () => {
 
 describe("only the turn that went idle is continued (review 008-16 B2)", () => {
   it("an abort while Stop is pending starts no continuation; the news rides on the next message", async () => {
-    const { client, hooks, kinds } = await started({ stop: { report: REPORT } }, { stop: 800 });
+    const { stop, client, hooks, kinds } = await startedGated();
     await say(hooks, ROOT_ID);
     const pending = hook(hooks, "event")(idle(ROOT_ID));
-    await sleep(200);
+    await stop.began();
     await hook(hooks, "event")(aborted(ROOT_ID));
+    stop.release();
     await pending;
     expect(client.prompted).toEqual([]);
-    expect(kinds()).toEqual(["register", "stop"]);
+    expect(kinds()).toEqual(["register"]);
     const next = await say(hooks, ROOT_ID, "next");
     expect(textsOf(next.parts)).toEqual(["next", REPORT]);
     // Told once.
@@ -131,14 +178,16 @@ describe("only the turn that went idle is continued (review 008-16 B2)", () => {
   }, 10_000);
 
   it("a user message while Stop is pending starts no continuation; the news rides on the next tool result", async () => {
-    const { client, hooks, kinds } = await started({ stop: { report: REPORT } }, { stop: 800 });
+    const { stop, client, hooks, kinds } = await startedGated();
     await say(hooks, ROOT_ID);
     const pending = hook(hooks, "event")(idle(ROOT_ID));
-    await sleep(200);
-    await say(hooks, ROOT_ID, "next");
+    await stop.began();
+    // The message completes, its own bridge call included, before Stop answers.
+    expect(textsOf((await say(hooks, ROOT_ID, "next")).parts)).toEqual(["next"]);
+    stop.release();
     await pending;
     expect(client.prompted).toEqual([]);
-    expect(kinds()).toEqual(["register", "stop", "prompt"]);
+    expect(kinds()).toEqual(["register", "prompt"]);
     const output = { title: "bash", output: "done", metadata: {} };
     const call = { tool: "bash", sessionID: ROOT_ID, callID: "c1", args: {} };
     await hook(hooks, "tool.execute.after")(call, output);
