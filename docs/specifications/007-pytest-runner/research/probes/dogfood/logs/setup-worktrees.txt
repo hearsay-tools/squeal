@@ -1,0 +1,4 @@
+== worktrees 2026-10-14T19:02:36Z load 30.96
+0aa6a5ee Tidy the Flatpak distribution file name
+ src/briefcase/platforms/linux/flatpak.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)

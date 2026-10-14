@@ -1,0 +1,89 @@
+== wt-claude early start 2026-10-14T19:02:54Z load 33.10 40.16 47.32
+Squeal daemon spawned for /home/squeal-e2e/runs/sq07-18/wt-claude
+
+Revision: 0
+Known failures: 0
+Affected checks: none counted; the daemon has not listed this worktree's test files yet
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+
+Worktree: /home/squeal-e2e/runs/sq07-18/wt-claude (HEAD 0aa6a5e, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 0 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+Revision: 0
+Known failures: 0
+Affected checks: none counted; the daemon has not listed this worktree's test files yet
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+
+Worktree: /home/squeal-e2e/runs/sq07-18/wt-claude (HEAD 0aa6a5e, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 0 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+19:02:55.588 sync root: uv venv
+19:02:55.784 sync root: uv pip install -e . --group test
+19:02:55.583 poll | Affected checks: none counted; the daemon has not listed this worktree's test files yet | 
+19:02:57.246 poll | Affected checks: none counted; the daemon has not listed this worktree's test files yet |   2026-10-14T19:02:57.065Z: pytest project "pytest": no Python environment (looked at .venv, .pdm-python); run `uv sync` in the worktree root to create one. Its checks stay unknown until then.   2026-10-14T19:02:57.065Z: pytest project "debugger": no Python environment (looked at debugger/.venv, debugger/.pdm-python); run `uv sync` in debugger to create one. Its checks stay unknown until then. 
+19:02:58.461 sync debugger: uv venv
+19:02:58.608 sync debugger: uv pip install -e .[pdb,debugpy] --group test
+19:02:58.890 poll | Affected checks: none counted; the daemon has not listed this worktree's test files yet |   2026-10-14T19:02:57.065Z: pytest project "pytest": no Python environment (looked at .venv, .pdm-python); run `uv sync` in the worktree root to create one. Its checks stay unknown until then.   2026-10-14T19:02:57.065Z: pytest project "debugger": no Python environment (looked at debugger/.venv, debugger/.pdm-python); run `uv sync` in debugger to create one. Its checks stay unknown until then. 
+19:03:00.689 sync done
+19:03:00.629 poll | Affected checks: 0 passed, 0 running, 0 queued; the runner part of revision 1 is pending, so test files it adds are not counted yet |   2026-10-14T19:03:00.148Z, revision 1: pytest project "debugger": pytest is not installed in debugger/.venv (a sync in progress, or pytest missing from the project's dependencies). Its checks stay unknown until it is.   2026-10-14T19:03:01.179Z, revision 1: pytest project "pytest": its Python environment is ready 
+19:03:02.312 poll | Affected checks: 0 passed, 0 running, 0 queued; 406 test files without checks yet: 200 running, 206 queued |   2026-10-14T19:03:00.148Z, revision 1: pytest project "debugger": pytest is not installed in debugger/.venv (a sync in progress, or pytest missing from the project's dependencies). Its checks stay unknown until it is.   2026-10-14T19:03:01.179Z, revision 1: pytest project "pytest": its Python environment is ready 
+19:03:04.050 poll | Affected checks: 0 passed, 0 running, 0 queued; 406 test files without checks yet: 200 running, 206 queued |   2026-10-14T19:03:00.148Z, revision 1: pytest project "debugger": pytest is not installed in debugger/.venv (a sync in progress, or pytest missing from the project's dependencies). Its checks stay unknown until it is.   2026-10-14T19:03:01.179Z, revision 1: pytest project "pytest": its Python environment is ready 
+19:03:05.696 run --all --wait, load 34.60
+Checkpoint 09e120a3-ce55-49df-b54a-b16fc64c227b has no verdict: it was abandoned before every test file had a result (a newer request replaced it, a tier crashed or timed out, or the daemon stopped)
+Checkpoint 09e120a3-ce55-49df-b54a-b16fc64c227b started at revision 1: 406 test files to run, 0 already current
+
+Revision: 1
+Known failures: 2 (2 tests)
+  FAIL  [pytest] tests/platforms/linux/flatpak/test_mixin.py > test_distribution_path
+        assert PosixPath('/tmp/squeal-1002/tmp/452ec2cac1487f11/pytest-of-squeal-e2e/pytest-76/test_distribution_path0/base_path/dist/First-App-0.0.1-gothic.flatpak') == PosixPath('/tmp/squeal-1002/tmp/452ec2cac1487f11/pytest-of-squeal-e2e/pytest-76/test_distribution_path0/base_path/dist/First_App-0.0.1-...
+        at tests/platforms/linux/flatpak/test_mixin.py:53:1, observed at revision 1, current
+  FAIL  [pytest] tests/platforms/linux/flatpak/test_package.py > test_package
+        expected call not found.
+        at tests/platforms/linux/flatpak/test_package.py:19:1, observed at revision 1, current
+Affected checks: 4662 passed (4260 tests, 402 test files loaded), 0 running, 0 queued, 69 skipped (69 tests)
+Full-suite checkpoint: none completed at any revision (the counts are for revision 1; `squeal run --all` requests one)
+
+Worktree: /home/squeal-e2e/runs/sq07-18/wt-claude (HEAD 0aa6a5e, clean at revision 1)
+Daemon: running, last heartbeat 3 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Test files without checks: 0 pending, 4 unknown
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-14T19:02:57.064Z: pytest project "pytest": 210 test file(s) with an incomplete static closure, keyed by what their runs import: tests/commands/base/test_app_module_path.py (src/briefcase/commands/base.py:382: computed import), tests/commands/base/test_cookiecutter_logging.py (src/briefcase/commands/base.py:382: computed import), tests/commands/base/test_end_of_life.py (src/briefcase/commands/base.py:382: computed import), ...
+  2026-10-14T19:02:57.065Z: pytest project "pytest": no Python environment (looked at .venv, .pdm-python); run `uv sync` in the worktree root to create one. Its checks stay unknown until then.
+  2026-10-14T19:02:57.065Z: pytest project "debugger": no Python environment (looked at debugger/.venv, debugger/.pdm-python); run `uv sync` in debugger to create one. Its checks stay unknown until then.
+  2026-10-14T19:03:00.148Z, revision 1: pytest project "debugger": pytest is not installed in debugger/.venv (a sync in progress, or pytest missing from the project's dependencies). Its checks stay unknown until it is.
+  2026-10-14T19:03:01.179Z, revision 1: pytest project "pytest": its Python environment is ready
+19:03:38.532 run --all --wait exit 3 wall 32.832287059 s load 30.87
+Revision: 1
+Known failures: 2 (2 tests)
+  FAIL  [pytest] tests/platforms/linux/flatpak/test_mixin.py > test_distribution_path
+        assert PosixPath('/tmp/squeal-1002/tmp/452ec2cac1487f11/pytest-of-squeal-e2e/pytest-76/test_distribution_path0/base_path/dist/First-App-0.0.1-gothic.flatpak') == PosixPath('/tmp/squeal-1002/tmp/452ec2cac1487f11/pytest-of-squeal-e2e/pytest-76/test_distribution_path0/base_path/dist/First_App-0.0.1-...
+        at tests/platforms/linux/flatpak/test_mixin.py:53:1, observed at revision 1, current
+  FAIL  [pytest] tests/platforms/linux/flatpak/test_package.py > test_package
+        expected call not found.
+        at tests/platforms/linux/flatpak/test_package.py:19:1, observed at revision 1, current
+Affected checks: 4662 passed (4260 tests, 402 test files loaded), 0 running, 0 queued, 69 skipped (69 tests)
+Full-suite checkpoint: none completed at any revision (the counts are for revision 1; `squeal run --all` requests one)
+
+Worktree: /home/squeal-e2e/runs/sq07-18/wt-claude (HEAD 0aa6a5e, clean at revision 1)
+Daemon: running, last heartbeat 4 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Test files without checks: 0 pending, 4 unknown
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-14T19:02:57.064Z: pytest project "pytest": 210 test file(s) with an incomplete static closure, keyed by what their runs import: tests/commands/base/test_app_module_path.py (src/briefcase/commands/base.py:382: computed import), tests/commands/base/test_cookiecutter_logging.py (src/briefcase/commands/base.py:382: computed import), tests/commands/base/test_end_of_life.py (src/briefcase/commands/base.py:382: computed import), ...
+  2026-10-14T19:02:57.065Z: pytest project "pytest": no Python environment (looked at .venv, .pdm-python); run `uv sync` in the worktree root to create one. Its checks stay unknown until then.
+  2026-10-14T19:02:57.065Z: pytest project "debugger": no Python environment (looked at debugger/.venv, debugger/.pdm-python); run `uv sync` in debugger to create one. Its checks stay unknown until then.
+  2026-10-14T19:03:00.148Z, revision 1: pytest project "debugger": pytest is not installed in debugger/.venv (a sync in progress, or pytest missing from the project's dependencies). Its checks stay unknown until it is.
+  2026-10-14T19:03:01.179Z, revision 1: pytest project "pytest": its Python environment is ready

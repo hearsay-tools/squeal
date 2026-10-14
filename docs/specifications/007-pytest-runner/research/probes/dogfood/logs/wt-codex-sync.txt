@@ -1,0 +1,65 @@
+== wt-codex late start 2026-10-14T19:04:56Z load 15.59 31.72 43.38
+19:04:56.261 sync root: uv venv
+19:04:56.393 sync root: uv pip install -e . --group test
+19:04:59.064 sync debugger: uv venv
+19:04:59.212 sync debugger: uv pip install -e .[pdb,debugpy] --group test
+19:05:00.913 sync done
+Squeal daemon spawned for /home/squeal-e2e/runs/sq07-18/wt-codex
+
+Revision: 0
+Known failures: 0
+Affected checks: none counted; the daemon has not listed this worktree's test files yet
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+
+Worktree: /home/squeal-e2e/runs/sq07-18/wt-codex (HEAD 0aa6a5e, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 0 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+19:05:01.454 run --all --wait, load 17.46
+Checkpoint 0b8ca7d6-fb77-46aa-9a1e-40ec4e1a681e completed at revision 0: 2 known failures: 2 tests; 406 test files, 404 already current, 2 run by the baseline checkpoint 30d2acb2-8e14-4f7d-8013-45b2f1f35968 it joined
+Checkpoint 0b8ca7d6-fb77-46aa-9a1e-40ec4e1a681e started at revision 0: 2 test files to run, 404 already current, joining the baseline checkpoint 30d2acb2-8e14-4f7d-8013-45b2f1f35968 already running them (0 of 2 test files done); it ends when that one ends
+
+Revision: 0
+Known failures: 2 (2 tests)
+  FAIL  [pytest] tests/platforms/linux/flatpak/test_mixin.py > test_distribution_path
+        assert PosixPath('/tmp/squeal-1002/tmp/8c2412ef54e0de16/pytest-of-squeal-e2e/pytest-0/test_distribution_path0/base_path/dist/First-App-0.0.1-gothic.flatpak') == PosixPath('/tmp/squeal-1002/tmp/8c2412ef54e0de16/pytest-of-squeal-e2e/pytest-0/test_distribution_path0/base_path/dist/First_App-0.0.1-go...
+        at tests/platforms/linux/flatpak/test_mixin.py:53:1, observed at revision 0, current
+  FAIL  [pytest] tests/platforms/linux/flatpak/test_package.py > test_package
+        expected call not found.
+        at tests/platforms/linux/flatpak/test_package.py:19:1, observed at revision 0, current
+Affected checks: 4690 passed (4284 tests, 406 test files loaded), 0 running, 0 queued, 74 skipped (74 tests)
+Full-suite checkpoint: completed at revision 0
+
+Worktree: /home/squeal-e2e/runs/sq07-18/wt-codex (HEAD 0aa6a5e, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 3 s ago
+Inherited from other worktrees: 4752 current results (4348 tests, 404 test files loaded)
+  4752 (4348 tests, 404 test files loaded) from /home/squeal-e2e/runs/sq07-18/wt-claude at 0aa6a5e
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+  2026-10-14T19:05:03.041Z: pytest project "pytest": 210 test file(s) with an incomplete static closure, keyed by what their runs import: tests/commands/base/test_app_module_path.py (src/briefcase/commands/base.py:382: computed import), tests/commands/base/test_cookiecutter_logging.py (src/briefcase/commands/base.py:382: computed import), tests/commands/base/test_end_of_life.py (src/briefcase/commands/base.py:382: computed import), ...
+19:05:09.502 run --all --wait exit 1 wall 8.047260017 s load 19.03
+Revision: 0
+Known failures: 2 (2 tests)
+  FAIL  [pytest] tests/platforms/linux/flatpak/test_mixin.py > test_distribution_path
+        assert PosixPath('/tmp/squeal-1002/tmp/8c2412ef54e0de16/pytest-of-squeal-e2e/pytest-0/test_distribution_path0/base_path/dist/First-App-0.0.1-gothic.flatpak') == PosixPath('/tmp/squeal-1002/tmp/8c2412ef54e0de16/pytest-of-squeal-e2e/pytest-0/test_distribution_path0/base_path/dist/First_App-0.0.1-go...
+        at tests/platforms/linux/flatpak/test_mixin.py:53:1, observed at revision 0, current
+  FAIL  [pytest] tests/platforms/linux/flatpak/test_package.py > test_package
+        expected call not found.
+        at tests/platforms/linux/flatpak/test_package.py:19:1, observed at revision 0, current
+Affected checks: 4690 passed (4284 tests, 406 test files loaded), 0 running, 0 queued, 74 skipped (74 tests)
+Full-suite checkpoint: completed at revision 0
+
+Worktree: /home/squeal-e2e/runs/sq07-18/wt-codex (HEAD 0aa6a5e, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 3 s ago
+Inherited from other worktrees: 4752 current results (4348 tests, 404 test files loaded)
+  4752 (4348 tests, 404 test files loaded) from /home/squeal-e2e/runs/sq07-18/wt-claude at 0aa6a5e
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+  2026-10-14T19:05:03.041Z: pytest project "pytest": 210 test file(s) with an incomplete static closure, keyed by what their runs import: tests/commands/base/test_app_module_path.py (src/briefcase/commands/base.py:382: computed import), tests/commands/base/test_cookiecutter_logging.py (src/briefcase/commands/base.py:382: computed import), tests/commands/base/test_end_of_life.py (src/briefcase/commands/base.py:382: computed import), ...
