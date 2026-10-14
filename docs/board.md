@@ -862,7 +862,7 @@ Spec: `specifications/007-pytest-runner/spec.md`, approved 2026-10-14 by the hum
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 007-17 end to end | planned (brief `tasks/wave-3.md`) | The shipped plugin against the fixture, as 001's `test/e2e`; the fixture on pytest 8 as well as 9 (review 007-16 input 7). | e2e suite green in CI. |
+| 007-17 end to end | running (worker dcd4db61, opus high; brief `tasks/wave-3.md`) | The shipped plugin against the fixture, as 001's `test/e2e`; the fixture on pytest 8 as well as 9 (review 007-16 input 7). | e2e suite green in CI. |
 | 007-18 dogfooding | planned (brief `tasks/wave-3.md`; waits for 005's release evals on `squeal-e2e`) | A real open-source pytest project of a few hundred test files, a Cezar worker on Claude Code and one on Codex; batch size revisited. | `lessons.md` resolves the open questions with evidence. |
 
 ## Later
