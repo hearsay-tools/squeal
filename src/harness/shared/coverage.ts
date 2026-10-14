@@ -30,6 +30,11 @@ export interface Coverage {
    * files the daemon last listed are slow, `null` while it has listed none.
    */
   readonly slow: { readonly files: number | null } | null;
+  /**
+   * Policy `vitest.excludeProjects` while Vitest is built: projects Squeal
+   * never runs (001 D11, task 001-349). Absent or empty: none.
+   */
+  readonly vitestExcluded?: readonly string[];
 }
 
 /** A Vitest-only repository whose files are not listed yet: what `PRIMER` says. */
@@ -56,6 +61,7 @@ export function coverageOf(context: HookContext): Coverage {
   return {
     vitest,
     vitestConfig: vitest ? vitestConfig(context.root) : null,
+    vitestExcluded: vitest ? policy.vitest.excludeProjects : [],
     nodeTest: policy.nodeTest.map(({ name, cwd, include }) => ({
       name,
       include: include.map((glob) => (cwd === undefined ? glob : posix.join(cwd, glob))),

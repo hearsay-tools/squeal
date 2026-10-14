@@ -90,7 +90,9 @@ function runnerNames(coverage: Coverage): string[] {
 /** What Squeal covers, naming the first `node` node:test projects. */
 function coversSentence(coverage: Coverage, node: number): string {
   const suites = runnerNames(coverage).includes("Vitest")
-    ? [coverage.vitestConfig === null ? "Vitest" : `Vitest (${coverage.vitestConfig})`]
+    ? [
+        `${coverage.vitestConfig === null ? "Vitest" : `Vitest (${coverage.vitestConfig})`}${excluded(coverage)}`,
+      ]
     : [];
   if (coverage.nodeTest.length > 0) {
     const entries = coverage.nodeTest.map(
@@ -107,6 +109,17 @@ function coversSentence(coverage: Coverage, node: number): string {
         ? ", with slow test files not counted yet"
         : `, with ${files} slow test ${files === 1 ? "file" : "files"} at the daemon's last listing`;
   return `Squeal covers ${suites.join(" and ")}${slow}.`;
+}
+
+/**
+ * Task 001-349: the Vitest projects `vitest.excludeProjects` lists, as not
+ * run, so the agent runs them itself when its change needs them.
+ */
+function excluded(coverage: Coverage): string {
+  const names = (coverage.vitestExcluded ?? []).map((name) => JSON.stringify(name));
+  if (names.length === 0) return "";
+  const list = named("project", names, names.length);
+  return `; its ${list} ${names.length === 1 ? "is" : "are"} not run, excluded by squeal.config.json`;
 }
 
 /** `entries` as "projects a, b and c", the first `shown` of them, the rest as "and N more". */
