@@ -1,0 +1,174 @@
+# bash docs/specifications/008-opencode-adapter/research/probes/wave-0-checks/checks.sh, 2026-10-14, as squeal-e2e (OpenCode 1.18.35, Node 24.21.0)
+temp dir: /tmp/oc-wave0.vtVZvB
+== check 3 (open question 1): opencode plugin file:<dir> -g, then file:<v2> -g --force
+-- opencode plugin file:/tmp/oc-wave0.vtVZvB/q1/pkgs/squeal-0.0.1 -g
+   ◆  Installed file:/tmp/oc-wave0.vtVZvB/q1/pkgs/squeal-0.0.1
+   │
+   ●  Scope: global (/tmp/oc-wave0.vtVZvB/q1/xdg/config/opencode)
+   │
+   └  Done
+   
+   global config:
+     {
+       "$schema": "https://opencode.ai/config.json",
+       "plugin": [
+         "file:/tmp/oc-wave0.vtVZvB/q1/pkgs/squeal-0.0.1"
+       ]
+     }
+   cache packages:
+     packages
+     packages/file:
+     packages/file:/tmp
+     packages/file:/tmp/oc-wave0.vtVZvB
+     packages/file:/tmp/oc-wave0.vtVZvB/q1
+-- run v1
+   exit 0
+   plugin inits since last look:
+     init 0.0.1 from file:///tmp/oc-wave0.vtVZvB/q1/pkgs/squeal-0.0.1/dist/plugin.js
+-- v1's directory edited in place (dist/plugin.js now says 0.0.1-edited)
+-- run v1edit
+   exit 0
+   plugin inits since last look:
+     init 0.0.1-edited from file:///tmp/oc-wave0.vtVZvB/q1/pkgs/squeal-0.0.1/dist/plugin.js
+-- opencode plugin file:/tmp/oc-wave0.vtVZvB/q1/pkgs/squeal-0.0.2 -g (no --force)
+   ◆  Installed file:/tmp/oc-wave0.vtVZvB/q1/pkgs/squeal-0.0.2
+   │
+   ●  Scope: global (/tmp/oc-wave0.vtVZvB/q1/xdg/config/opencode)
+   │
+   └  Done
+   
+   global config:
+     {
+       "$schema": "https://opencode.ai/config.json",
+       "plugin": [
+         "file:/tmp/oc-wave0.vtVZvB/q1/pkgs/squeal-0.0.1",
+         "file:/tmp/oc-wave0.vtVZvB/q1/pkgs/squeal-0.0.2"
+       ]
+     }
+-- opencode plugin file:/tmp/oc-wave0.vtVZvB/q1/pkgs/squeal-0.0.2 -g --force
+   ◆  Installed file:/tmp/oc-wave0.vtVZvB/q1/pkgs/squeal-0.0.2
+   │
+   ●  Scope: global (/tmp/oc-wave0.vtVZvB/q1/xdg/config/opencode)
+   │
+   └  Done
+   
+   global config:
+     {
+       "$schema": "https://opencode.ai/config.json",
+       "plugin": [
+         "file:/tmp/oc-wave0.vtVZvB/q1/pkgs/squeal-0.0.1",
+         "file:/tmp/oc-wave0.vtVZvB/q1/pkgs/squeal-0.0.2"
+       ]
+     }
+   cache packages:
+     packages
+     packages/file:
+     packages/file:/tmp
+     packages/file:/tmp/oc-wave0.vtVZvB
+     packages/file:/tmp/oc-wave0.vtVZvB/q1
+-- run v2
+   exit 0
+   plugin inits since last look:
+     init 0.0.1-edited from file:///tmp/oc-wave0.vtVZvB/q1/pkgs/squeal-0.0.1/dist/plugin.js
+     init 0.0.1-edited from file:///tmp/oc-wave0.vtVZvB/q1/pkgs/squeal-0.0.1/dist/plugin.js
+     init 0.0.2 from file:///tmp/oc-wave0.vtVZvB/q1/pkgs/squeal-0.0.2/dist/plugin.js
+     init 0.0.1-edited from file:///tmp/oc-wave0.vtVZvB/q1/pkgs/squeal-0.0.1/dist/plugin.js
+     init 0.0.2 from file:///tmp/oc-wave0.vtVZvB/q1/pkgs/squeal-0.0.2/dist/plugin.js
+-- v1's directory deleted
+-- run v2-v1gone
+   exit 0
+   plugin inits since last look:
+     init 0.0.2 from file:///tmp/oc-wave0.vtVZvB/q1/pkgs/squeal-0.0.2/dist/plugin.js
+   stderr tail:
+== check 3b: an absolute-path spec (no file: prefix), then --force with the next version
+-- opencode plugin /tmp/oc-wave0.vtVZvB/q1b/pkgs/squeal-0.0.1 -g
+   ◆  Installed /tmp/oc-wave0.vtVZvB/q1b/pkgs/squeal-0.0.1
+   │
+   ●  Scope: global (/tmp/oc-wave0.vtVZvB/q1b/xdg/config/opencode)
+   │
+   └  Done
+   
+   global config:
+     {
+       "$schema": "https://opencode.ai/config.json",
+       "plugin": [
+         "/tmp/oc-wave0.vtVZvB/q1b/pkgs/squeal-0.0.1"
+       ]
+     }
+   cache packages:
+-- run p1
+   exit 0
+   plugin inits since last look:
+     init 0.0.1 from file:///tmp/oc-wave0.vtVZvB/q1b/pkgs/squeal-0.0.1/dist/plugin.js
+-- opencode plugin /tmp/oc-wave0.vtVZvB/q1b/pkgs/squeal-0.0.2 -g --force
+   ◆  Installed /tmp/oc-wave0.vtVZvB/q1b/pkgs/squeal-0.0.2
+   │
+   ●  Scope: global (/tmp/oc-wave0.vtVZvB/q1b/xdg/config/opencode)
+   │
+   └  Done
+   
+   global config:
+     {
+       "$schema": "https://opencode.ai/config.json",
+       "plugin": [
+         "/tmp/oc-wave0.vtVZvB/q1b/pkgs/squeal-0.0.1",
+         "/tmp/oc-wave0.vtVZvB/q1b/pkgs/squeal-0.0.2"
+       ]
+     }
+-- run p2
+   exit 0
+   plugin inits since last look:
+     init 0.0.1 from file:///tmp/oc-wave0.vtVZvB/q1b/pkgs/squeal-0.0.1/dist/plugin.js
+     init 0.0.1 from file:///tmp/oc-wave0.vtVZvB/q1b/pkgs/squeal-0.0.1/dist/plugin.js
+     init 0.0.2 from file:///tmp/oc-wave0.vtVZvB/q1b/pkgs/squeal-0.0.2/dist/plugin.js
+== check 3c: a stable symlink (pkgs/current) installed with file:, then repointed to the next version
+-- opencode plugin file:/tmp/oc-wave0.vtVZvB/q1c/pkgs/current -g
+   ◆  Installed file:/tmp/oc-wave0.vtVZvB/q1c/pkgs/current
+   │
+   ●  Scope: global (/tmp/oc-wave0.vtVZvB/q1c/xdg/config/opencode)
+   │
+   └  Done
+   
+   global config:
+     {
+       "$schema": "https://opencode.ai/config.json",
+       "plugin": [
+         "file:/tmp/oc-wave0.vtVZvB/q1c/pkgs/current"
+       ]
+     }
+   cache packages:
+     packages
+     packages/file:
+     packages/file:/tmp
+     packages/file:/tmp/oc-wave0.vtVZvB
+     packages/file:/tmp/oc-wave0.vtVZvB/q1c
+-- run c1
+   exit 0
+   plugin inits since last look:
+     init 0.0.1 from file:///tmp/oc-wave0.vtVZvB/q1c/pkgs/squeal-0.0.1/dist/plugin.js
+-- pkgs/current -> squeal-0.0.2
+-- run c2
+   exit 0
+   plugin inits since last look:
+     init 0.0.2 from file:///tmp/oc-wave0.vtVZvB/q1c/pkgs/squeal-0.0.2/dist/plugin.js
+== check 4 (open question 2): a text part pushed to output.parts in chat.message
+-- run q2
+   exit 0
+   after: 2 requests; plugin: pushed after part prt_13bb6fb680016rjMy8HPwLQa9Sz 
+   first request user messages: [{"role":"user","content":[{"type":"text","text":"hello"},{"type":"text","text":"SQUEAL-Q2-after"}]}]
+   SQUEAL-Q2 in first request: true
+   stderr tail: 
+-- run q2
+   exit 0
+   synthetic: 2 requests; plugin: pushed synthetic part prt_13bb73639001kP7Tpi42ERzZghz 
+   first request user messages: [{"role":"user","content":[{"type":"text","text":"hello"},{"type":"text","text":"SQUEAL-Q2-synthetic"}]}]
+   SQUEAL-Q2 in first request: true
+   stderr tail: 
+-- run q2
+   exit 1
+   noid: 0 requests; plugin: pushed noid part (no id) 
+   first request user messages: []
+   SQUEAL-Q2 in first request: false
+   log: timestamp=2026-10-14T18:40:48.776Z level=ERROR run=0ee951e1 message="invalid user part before save" sessionID=ses_ec4486f55ffecc5O742ec3wxwZ messageID=msg_13bb7926a001ndkerDh7mrT3VB partID=undefined partType=text index=1 cause="SchemaError: Missing key\n  at [\"id\"]" part.type=text part.text=SQUEAL
+   stderr tail: 
+exit 0
