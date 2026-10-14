@@ -25,6 +25,7 @@ are edges too, since importing `a.b.c` runs `a` and `a.b`. Only files under
 `(ctx, importer, imported)`.
 """
 
+import atexit
 import builtins
 import importlib
 import json
@@ -38,9 +39,14 @@ _PREFIXES = tuple(
     {os.path.join(os.path.realpath(p), "") for p in (sys.prefix, sys.base_prefix, sys.exec_prefix)}
 )
 _out = open(os.environ.get("SQUEAL_PYTEST_EVENTS", os.devnull), "a", encoding="utf-8")
+# Closed at `pytest_unconfigure`, or at exit when pytest stops before it, so
+# no unclosed-file warning reaches a project that shows them (task 007-36).
+atexit.register(_out.close)
 
 
 def _write(record):
+    if _out.closed:
+        return
     _out.write(json.dumps(record, default=str) + "\n")
     _out.flush()
 
@@ -79,23 +85,37 @@ def _module_file(name):
     return None if module is None else getattr(module, "__file__", None)
 
 
+def _edge(ctx, source, imported):
+    key = (ctx, source, imported)
+    if key not in _seen:
+        _seen.add(key)
+        _write({"type": "import", "from": source, "to": imported, "ctx": ctx})
+
+
 def _note(importer, ctx, target, fromlist):
-    """Writes the edges from `importer` (or `ctx`) to `target`, its parents and `fromlist` submodules."""
+    """Writes the edges from `importer` (or `ctx`) to `target`, its parents and `fromlist` submodules.
+
+    With neither, pytest itself imports `target` outside every collector: a
+    conftest, or a plugin. Its parent packages are then edges from `target`,
+    so a conftest's test packages belong to the files below it, not the session.
+    """
     source = _project_file(importer)
     parts = target.split(".")
-    names = [".".join(parts[: i + 1]) for i in range(len(parts))]
+    parents = [".".join(parts[: i + 1]) for i in range(len(parts) - 1)]
+    names = [target]
     for item in fromlist or ():
         if isinstance(item, str) and item != "*":
             names.append(target + "." + item)
+    leaf = _project_file(_module_file(target))
+    via = leaf if source is None and ctx is None and leaf is not None else source
+    for name in parents:
+        imported = _project_file(_module_file(name))
+        if imported is not None:
+            _edge(ctx, via, imported)
     for name in names:
         imported = _project_file(_module_file(name))
-        if imported is None:
-            continue
-        key = (ctx, source, imported)
-        if key in _seen:
-            continue
-        _seen.add(key)
-        _write({"type": "import", "from": source, "to": imported, "ctx": ctx})
+        if imported is not None:
+            _edge(ctx, source, imported)
 
 
 _original_import = builtins.__import__
@@ -287,3 +307,8 @@ def pytest_warning_recorded(warning_message, when, nodeid, location):
 @pytest.hookimpl(trylast=True)
 def pytest_sessionfinish(session, exitstatus):
     _write({"type": "session", "exitstatus": int(exitstatus)})
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_unconfigure(config):
+    _out.close()
