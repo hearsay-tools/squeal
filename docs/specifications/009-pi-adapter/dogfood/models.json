@@ -5,9 +5,26 @@
       "api": "openai-completions",
       "apiKey": "added-by-proxy",
       "models": [
-        { "id": "claude-haiku-5-5", "contextWindow": 200000, "maxTokens": 32000 },
-        { "id": "claude-sonnet-5-5", "contextWindow": 200000, "maxTokens": 32000 },
-        { "id": "claude-opus-5-5", "contextWindow": 200000, "maxTokens": 32000 }
+        {
+          "id": "gpt-6-luna",
+          "contextWindow": 200000,
+          "maxTokens": 32000
+        },
+        {
+          "id": "gpt-6-astra",
+          "contextWindow": 200000,
+          "maxTokens": 32000
+        },
+        {
+          "id": "gpt-6.1-sol",
+          "contextWindow": 200000,
+          "maxTokens": 32000
+        },
+        {
+          "id": "grok-4.7",
+          "contextWindow": 200000,
+          "maxTokens": 32000
+        }
       ]
     }
   }

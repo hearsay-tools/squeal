@@ -1,9 +1,9 @@
 {
-  "model": "cliproxy/claude-sonnet-5-5",
+  "model": "cliproxy/grok-4.7",
   "cwd": "/home/squeal-e2e/dogfood-009/home/remeda",
   "prompts": [
     "Local experiment in this checkout, not a PR. In packages/remeda, the internal `words` helper (src/internal/words.ts) should stop splitting on digit boundaries: `item0` and `abc123def` are one word each. Make the change, and whatever else it needs.",
-    "One more change: `words` should also stop treating `_` as a separator. Only edit src/internal/words.ts, then reply in one line. Do not run, read or check anything else."
+    "One more change: purry's argument-count error (src/purry.ts) should be a RangeError whose message says how many arguments were expected and how many it got, e.g. `purry: expected 2 or 3 arguments, got 5`. Only edit src/purry.ts, then reply in one line. Do not run, read or check anything else."
   ],
   "idleMs": 180000
 }

@@ -1,5 +1,5 @@
 {
-  "model": "cliproxy/claude-opus-5-5",
+  "model": "cliproxy/gpt-6.1-sol",
   "cwd": "/home/squeal-e2e/dogfood-009/home/remeda",
   "prompts": [
     "Local experiment in this checkout, not a PR. In packages/remeda, change `chunk` (src/chunk.ts) so that a size below 1 returns an empty array instead of throwing. I will update the tests myself afterwards, so do not edit any test file. When you are done, tell me which tests fail now, if any, and how you know.",
