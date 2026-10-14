@@ -1,0 +1,29 @@
+== batch 5 run 5 start 2026-10-14T19:43:44Z load 6.05 12.56 26.65
+Squeal daemon spawned for /home/squeal-e2e/runs/sq07-18/bench
+
+Revision: 0
+Known failures: 0
+Affected checks: none counted; the daemon has not listed this worktree's test files yet
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+
+Worktree: /home/squeal-e2e/runs/sq07-18/bench (HEAD 5b42429, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 0 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+Checkpoint f81cda29-55ba-4057-9de8-ed2d1464dd69 completed at revision 0: no known failures; 406 test files, 0 already current, 406 run by the baseline checkpoint 81e63f71-5f75-4d2a-ad76-087df3e32163 it joined
+Checkpoint f81cda29-55ba-4057-9de8-ed2d1464dd69 started at revision 0: 406 test files to run, 0 already current, joining the baseline checkpoint 81e63f71-5f75-4d2a-ad76-087df3e32163 already running them (0 of 406 test files done); it ends when that one ends
+
+== end 2026-10-14T19:44:59Z wall 74.330723306 s load 18.60 14.23 26.10
+Revision: 0
+Known failures: 0
+Affected checks: 4692 passed (4286 tests, 406 test files loaded), 0 running, 0 queued, 74 skipped (74 tests)
+Full-suite checkpoint: completed at revision 0
+e0f02b71 r0 1792007027.9    10.1 s 200 files completed {"project": "pytest", "path": "tests/bootstraps/test_base.py"}
+a5f083cf r0 1792007037.9    12.6 s 200 files completed {"project": "pytest", "path": "tests/integrations/gnupg/test_GnuPG__ve
+b5962577 r0 1792007050.6    10.7 s 200 files completed {"project": "pytest", "path": "tests/test_cmdline.py"}
+7fb58076 r0 1792007061.3    12.5 s 200 files completed {"project": "pytest", "path": "tests/integrations/flatpak/test_Flatpak
+e6b09611 r0 1792007074.0    19.6 s 200 files completed {"project": "pytest", "path": "tests/platforms/windows/visualstudio/te
+f21ae9db r0 1792007094.5     4.4 s   2 files completed {"project": "pytest", "path": "tests/test_cmdline.py"}
