@@ -432,7 +432,7 @@ class Daemon {
         tempDir: this.opened.scratch.tempDir,
         childEnv: this.#children.env,
         tierSize: () => this.#policy.runner.tierSize,
-        note: (text) => this.#note(text),
+        note: (text, topic) => this.#note(text, undefined, undefined, topic),
       });
       const runner = afterEachRun(
         createCompositeRunner([
@@ -592,13 +592,14 @@ class Daemon {
    * (task 001-255); `exitOf`, this daemon's incarnation, on its shutdown's
    * note, so status tells that it left from a death (review wave-13af B1).
    */
-  #note(text: string, stopped?: StoppedProcesses, exitOf?: string): void {
+  #note(text: string, stopped?: StoppedProcesses, exitOf?: string, topic?: string): void {
     this.#log(text);
     const revision = this.#loop?.scheduler.status().revision ?? null;
     const note = {
       text,
       ...(stopped === undefined ? {} : { stopped }),
       ...(exitOf === undefined ? {} : { exitOf }),
+      ...(topic === undefined ? {} : { topic }),
     };
     writeNote(
       this.opened.store,

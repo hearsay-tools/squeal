@@ -38,8 +38,13 @@ export interface PytestAdapterOptions {
   readonly root: AbsolutePath;
   /** Absent: observations live only as long as the adapter. */
   readonly observed?: ObservedStore;
-  /** Problem notes: D2's states, the graph's notes, incomplete closures, the run's notes. */
-  readonly note?: (text: string) => void;
+  /**
+   * Problem notes: D2's states, the graph's notes, incomplete closures, the
+   * run's notes. D2's state notes and the ready note carry the topic
+   * `pytest-environment:<project>`, so the latest replaces the earlier ones
+   * in status (task 007-39).
+   */
+  readonly note?: (text: string, topic?: string) => void;
   /** Batches at once, read per run: policy `runner.tierSize`. Default every batch. */
   readonly concurrency?: () => number;
   /** Files per batch, read per run (D6); default 5. */
@@ -105,6 +110,14 @@ export async function createPytestAdapter(
     raw(text);
   };
   const note = (text: string) => once(`${label}: ${text}`);
+  // Task 007-39: each change of D2's state is noted, under one topic per project.
+  const topic = `pytest-environment:${project.name}`;
+  let told: string | null = null;
+  const environmentNote = (text: string) => {
+    if (text === told) return;
+    told = text;
+    raw(text, topic);
+  };
   const ref = (path: RelativePath): TestFileRef => ({ project: project.name, path });
   const source = options.source ?? process.env;
 
@@ -124,7 +137,7 @@ export async function createPytestAdapter(
   let failure: string | null = null;
 
   const announce = (env: AdapterEnvironment) => {
-    if (env.state !== "ready") once(env.note);
+    if (env.state !== "ready") environmentNote(env.note);
   };
   const build = async (): Promise<boolean> => {
     const previous = failure;
@@ -186,7 +199,7 @@ export async function createPytestAdapter(
     const rebuild = next.dir !== dir || !sameSettings(next.settings, settings);
     stale = false;
     if (moved && next.environment.state === "ready" && environment.state !== "ready") {
-      note("its Python environment is ready");
+      environmentNote(`${label}: its Python environment is ready`);
     }
     ({ environment, dir, settings } = next);
     if (moved) announce(environment);
