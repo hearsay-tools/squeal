@@ -113,11 +113,11 @@ export function environmentHash(inputs: EnvironmentHashInputs): string {
  */
 function portablePaths(root: AbsolutePath): (text: string) => string {
   const roots = [...new Set([root, realOr(root)])].sort((a, b) => b.length - a.length);
-  const pattern = new RegExp(`(${roots.map(escape).join("|")})(?=[/"'\\s]|$)`, "g");
+  const pattern = new RegExp(`(${roots.map(escapeRegExp).join("|")})(?=[/"'\\s]|$)`, "g");
   return (text) => text.replace(pattern, "<worktree>");
 }
 
-function escape(text: string): string {
+function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
