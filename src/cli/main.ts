@@ -1,9 +1,11 @@
+import { fileURLToPath } from "node:url";
 import { squealVersion } from "../core/daemon/version.js";
 import { formatStatus, formatWhy, readStatus, readWhy } from "../core/status/index.js";
 import type { EpochMs } from "../core/types/index.js";
 import { codexStatusLine } from "./codex/status.js";
 import { daemonCommand } from "./daemon.js";
 import { init } from "./init.js";
+import { piStatusLine } from "./pi/status.js";
 import { removeCommand } from "./remove.js";
 import { runCommand } from "./run.js";
 import { setupCommand } from "./setup/command.js";
@@ -138,9 +140,11 @@ function status(args: readonly string[], io: CliIo): number | Promise<number> {
   const cwd = io.cwd ?? process.cwd();
   const result = readStatus(cwd, { now });
   const env = io.env ?? process.env;
-  const codex = parsed.json ? null : codexStatusLine(cwd, env);
+  const harness = parsed.json
+    ? null
+    : (codexStatusLine(cwd, env) ?? piStatusLine(cwd, env, fileURLToPath(import.meta.url)));
   const human = () =>
-    `${formatStatus(result, now(), statusCommand(env), { allNotes })}${codex ?? ""}`;
+    `${formatStatus(result, now(), statusCommand(env), { allNotes })}${harness ?? ""}`;
   io.stdout(parsed.json ? json(result) : human());
   return result.available ? 0 : 1;
 }
