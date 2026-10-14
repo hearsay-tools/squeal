@@ -900,9 +900,9 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 009-12 the Pi events | planned | D3, D4, D9: primer section, `turn_end` push, `tool_call` deny, settle continuation with Squeal's guard, abort, shutdown silence; types from the real Pi package. | Real Pi in `-p`, `json`, `rpc` with the fake provider: each delivery in the next request, one continuation then silence, deny then re-issue, primer after compact, dead daemon silent; full suite green. |
-| 009-13 install, status and texts | planned | D1 install (`install.sh` from the tag's source archive, `pi install`, uninstall), D7 status line for `PI_SESSION_ID`, README and skill notes; open question 3. | Install, update, uninstall with Pi alone and with all three harnesses (stub `pi`); status line test; full suite green. |
-| 009-14 review of wave 0 | planned | `/reviewer` over `a19b6638..8d401144`: D4 deadlines and liveness, registration and `reload`, shutdown reasons, the fixture's isolation, the package manifest. | `reviews/wave-0.md` committed. |
+| 009-12 the Pi events | running (worker fa418cf5, opus high) | D3, D4, D9: primer section, `turn_end` push, `tool_call` deny, settle continuation with Squeal's guard, abort, shutdown silence; types from the real Pi package. | Real Pi in `-p`, `json`, `rpc` with the fake provider: each delivery in the next request, one continuation then silence, deny then re-issue, primer after compact, dead daemon silent; full suite green. |
+| 009-13 install, status and texts | running (worker c5915ca5, opus high) | D1 install (`install.sh` from the tag's source archive, `pi install`, uninstall), D7 status line for `PI_SESSION_ID`, README and skill notes; open question 3. | Install, update, uninstall with Pi alone and with all three harnesses (stub `pi`); status line test; full suite green. |
+| 009-14 review of wave 0 | running (worker e17433e6, gpt-6.1-sol high) | `/reviewer` over `a19b6638..8d401144`: D4 deadlines and liveness, registration and `reload`, shutdown reasons, the fixture's isolation, the package manifest. | `reviews/wave-0.md` committed. |
 
 ## Later
 
