@@ -43,6 +43,13 @@ export function situationOf(knobs = {}) {
     parts.push(
       `${knobs.staleEdit.path} was edited outside the session before it began, so Squeal's starting results are from an older revision`,
     );
+  // 006-54: maxLoadPerCpu far below any real load holds the slow tier on every host. The bound
+  // (120 s in a8-load-hold) works around `squeal run --slow` not skipping the hold (reported to
+  // 001); once it does, the bound becomes the default 600000 and the hold lasts the session.
+  if (knobs.loadHold)
+    parts.push(
+      `after the warm-up, the slow tier's load guard holds at any host load (slow.maxLoadPerCpu ${knobs.loadHold.maxLoadPerCpu}), so after each edit Squeal holds the slow test "waiting for host load to drop" for up to slow.maxDeferMs (${knobs.loadHold.maxDeferMs / 1000} s), then runs it`,
+    );
   if (knobs.flakeColdRuns)
     parts.push(
       "a flaky calendar test in test/clock.test.ts fails in Squeal's runs after each change to src/clock.ts; that failure is the flake, not the agent's work",

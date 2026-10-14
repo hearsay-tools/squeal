@@ -221,6 +221,25 @@ async function lifecycle() {
     await stopDaemon("daemon knob");
     env.SQUEAL_CLI = join(CELL, "no-daemon", "squeal.mjs"); // names no file: nothing can start one
   }
+  // 006-54: the slow tier held for host load, set after the warm-up so the warm-up's slow file ran.
+  // The keys go into the committed policy, so the session's `git status` stays clean; its daemon
+  // starts on the new policy as for a stale edit.
+  if (knobs.loadHold) {
+    if (plugin) await stopDaemon("load-hold knob");
+    const file = join(WORK, "squeal.config.json");
+    const policy = JSON.parse(readFileSync(file, "utf8"));
+    policy.slow = { ...policy.slow, ...knobs.loadHold };
+    writeFileSync(file, `${JSON.stringify(policy, null, 2)}\n`);
+    sh("git", ["commit", "-q", "-m", "Hold slow tests while the host is busy", "--", file], {
+      env: {
+        GIT_AUTHOR_NAME: "ledgerline",
+        GIT_AUTHOR_EMAIL: "dev@ledgerline.invalid",
+        GIT_COMMITTER_NAME: "ledgerline",
+        GIT_COMMITTER_EMAIL: "dev@ledgerline.invalid",
+      },
+    });
+    log(`load hold: slow ${JSON.stringify(knobs.loadHold)}`);
+  }
   if (knobs.staleEdit) {
     if (plugin) await stopDaemon("stale-edit knob");
     appendFileSync(join(WORK, knobs.staleEdit.path), knobs.staleEdit.append);

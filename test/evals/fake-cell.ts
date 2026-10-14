@@ -35,6 +35,12 @@ import { fileURLToPath } from "node:url";
 const [cmd, ...rest] = process.argv.slice(2);
 const root = process.cwd();
 const pidFile = join(root, ".git/squeal/fake.pid");
+// Each command, with the slow policy it met (006-54: the load-hold knob lands after the warm-up).
+if (cmd !== "daemon") {
+  let slow = null;
+  try { slow = JSON.parse(readFileSync(join(root, "squeal.config.json"), "utf8")).slow ?? null; } catch {}
+  appendFileSync(join(process.env.FAKE_LOG, "squeal"), JSON.stringify({ args: [cmd, ...rest], slow }) + "\\n");
+}
 if (cmd === "daemon") setInterval(() => {}, 1000);
 else if (cmd === "start") {
   mkdirSync(join(root, ".git/squeal"), { recursive: true });
