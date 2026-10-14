@@ -924,7 +924,6 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 
 ## Later
 
-- 001: a tier withheld by the completion barrier (task 001-168, `withheldForTouch`) leaves its files `unknown` with no re-run and no note when the touch makes no revision: a touch that changes only a file's ctime (a hardlink added or dropped by `uv sync` in another worktree on ext4) stranded pytest files on GitHub's runners (found by 007-28, 2026-10-14; the pytest side is fixed in 007-28 by keeping environment files out of touch judgement). Either re-queue a withheld tier when no revision follows, or judge a touch by mtime and size instead of ctime. Reported by the 007 coordinator.
 - 007: observed closure growth outside `observe.runtimeInputs`: a pytest file whose run imports a path outside its static closure and outside the shared session key makes the result incomplete but does not grow the stored closure for the next key (007-14 option (b), 2026-10-14).
 - 007: data files read at run time enter no pytest closure (spec 007 open question 2); an audit hook on `open` was measured in wave 1 and not shipped. A row once a dogfood shows a missed data-file edit.
 
