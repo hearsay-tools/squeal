@@ -34905,7 +34905,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.158";
+  if (true) return "0.1.159";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -39519,7 +39519,7 @@ async function namedCandidates(facts, manifest, files2, found) {
   const out = [];
   for (const dir of [.../* @__PURE__ */ new Set([...inPackage, ...found.map((f) => f.path)])].sort()) {
     const hits = literals.flatMap(({ file, strings: strings4 }) => {
-      const hit = strings4.find((s) => names(facts, [posix9.dirname(file), manifest.dir], s, dir));
+      const hit = strings4.find((s) => names(facts, posix9.dirname(file), manifest.dir, s, dir));
       return hit === void 0 ? [] : [hit];
     });
     if (hits.length === 0) continue;
@@ -39539,10 +39539,11 @@ function stringLiterals(facts, file) {
     (m) => m[2].split(/\s/)[0]
   );
 }
-function names(facts, bases2, s, dir) {
+function names(facts, from, pkg, s, dir) {
   if (s === "" || s.startsWith("/") || s.includes("${")) return false;
-  const under = [...bases2, ""].some((base) => posix9.join(base, s).startsWith(`${dir}/`));
-  if (!under) return false;
+  const under = (base) => posix9.join(base, s).startsWith(`${dir}/`);
+  if (/^\.\.?\//.test(s) && under(from)) return true;
+  if (![from, pkg, ""].some(under)) return false;
   const tail = s.replace(/^(\.\.?\/)+/, "");
   return !facts.tracked.some(
     (file) => !file.startsWith(`${dir}/`) && (file === tail || file.endsWith(`/${tail}`))
@@ -39671,9 +39672,14 @@ init_policy2();
 init_glob();
 import { statSync as statSync8 } from "node:fs";
 import { join as join62, posix as posix11 } from "node:path";
-function testFileUniverse(facts, runners) {
-  const projects = runners.nodeTest.flatMap((p) => p.include.map((g2) => posix11.join(p.cwd, g2)));
-  const inProject = matcher2(projects);
+function testFileUniverse(facts, projects) {
+  const inProjects = projects.map((p) => {
+    const under = (globs2) => matcher2(globs2.map((g2) => posix11.join(p.cwd ?? "", g2)));
+    const include = under(p.include);
+    const exclude = under(p.exclude ?? []);
+    return (path) => include(path) && !exclude(path);
+  });
+  const inProject = (path) => inProjects.some((test) => test(path));
   return [.../* @__PURE__ */ new Set([...facts.testFiles.paths, ...facts.tracked.filter(inProject)])];
 }
 function unselected(policy, files2) {
@@ -39726,7 +39732,8 @@ async function readPlan(root, options) {
   const facts = await readRepoFacts(root);
   const { policy, problems } = loadPolicy(root);
   const raw = readJson(join63(root, POLICY_FILE));
-  const runners = readRunners(facts, policy, raw);
+  const projects = nodeTestProjects2(facts, policy, raw);
+  const runners = readRunners(facts, projects);
   const exists2 = existsSync21(join63(root, POLICY_FILE));
   const slow = await slowCandidates(facts, policy, runners);
   const config = {
@@ -39746,7 +39753,7 @@ async function readPlan(root, options) {
     nodeTest: runners.nodeTest.length > 0
   });
   const harnesses = readHarnesses(root, options.env);
-  const universe = testFileUniverse(facts, runners);
+  const universe = testFileUniverse(facts, projects);
   const plan = {
     schemaVersion: SETUP_PLAN_SCHEMA_VERSION,
     root,
@@ -39774,13 +39781,15 @@ async function codexTrust(root, harnesses, options) {
   }
   return { ...await readCodexTrust(root, options.env, PLUGIN_ID), command: TRUST_COMMAND };
 }
-function readRunners(facts, policy, raw) {
+function nodeTestProjects2(facts, policy, raw) {
+  const declared = isRecord(raw) && "nodeTest" in raw;
+  return declared ? policy.nodeTest.map((p) => ({ ...p, source: "config" })) : seeded(facts.root).map((p) => ({ ...p, source: "seed" }));
+}
+function readRunners(facts, projects) {
   const deps = (value) => isRecord(value) ? Object.keys(value) : [];
   const vitest = facts.manifests.some(
     (m) => [...deps(m.value.dependencies), ...deps(m.value.devDependencies)].includes("vitest")
   ) || facts.tracked.some((path) => /^vite(st)?\.config\.[cm]?[jt]s$/.test(path));
-  const declared = isRecord(raw) && "nodeTest" in raw;
-  const projects = declared ? policy.nodeTest.map((p) => ({ ...p, source: "config" })) : seeded(facts.root).map((p) => ({ ...p, source: "seed" }));
   return {
     vitest,
     nodeTest: projects.map((p) => ({
