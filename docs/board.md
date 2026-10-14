@@ -893,8 +893,16 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 009-10 extension skeleton, delivery host, Pi package | running (worker 8b62d0bb, opus high) | D1 layout, D2, D4, D6; D3's `session_start` and `session_shutdown`: `src/harness/pi/`, the worker-thread host with deadlines, `plugins/pi/` with committed `dist/`, drift and version checks. | Stalled or dead worker is silence within its deadline; idempotent start; shutdown leaves nothing alive; per-call cost measured; full suite green. |
-| 009-11 fake-provider Pi fixture | running (worker e9ae1a4f, opus high) | Testing: Pi 1.0.4 pinned devDependency, the scripted provider, `test/helpers/pi.ts`; open question 5 (does Pi write outside `PI_CODING_AGENT_DIR`). | Fixture test in `-p`, `json`, `rpc` green in CI on Node 22 and 24; `research/wave-0-checks.md` committed. |
+| 009-10 extension skeleton, delivery host, Pi package | done (0.1.170, `8d401144`) | D1 layout, D2, D4, D6; D3's `session_start` and `session_shutdown`: `src/harness/pi/`, the worker-thread host with deadlines, `plugins/pi/` with committed `dist/`, drift and version checks. | Stalled or dead worker is silence within its deadline; idempotent start; shutdown leaves nothing alive; per-call cost measured; full suite green. |
+| 009-11 fake-provider Pi fixture | done (0.1.170, `8d401144`; open question 5 closed) | Testing: Pi 1.0.4 pinned devDependency, the scripted provider, `test/helpers/pi.ts`; open question 5 (does Pi write outside `PI_CODING_AGENT_DIR`). | Fixture test in `-p`, `json`, `rpc` green in CI on Node 22 and 24; `research/wave-0-checks.md` committed. |
+
+### Wave 1: the events, install and status (parallel; review of wave 0 beside it; briefs in `specifications/009-pi-adapter/tasks/wave-1.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 009-12 the Pi events | planned | D3, D4, D9: primer section, `turn_end` push, `tool_call` deny, settle continuation with Squeal's guard, abort, shutdown silence; types from the real Pi package. | Real Pi in `-p`, `json`, `rpc` with the fake provider: each delivery in the next request, one continuation then silence, deny then re-issue, primer after compact, dead daemon silent; full suite green. |
+| 009-13 install, status and texts | planned | D1 install (`install.sh` from the tag's source archive, `pi install`, uninstall), D7 status line for `PI_SESSION_ID`, README and skill notes; open question 3. | Install, update, uninstall with Pi alone and with all three harnesses (stub `pi`); status line test; full suite green. |
+| 009-14 review of wave 0 | planned | `/reviewer` over `a19b6638..8d401144`: D4 deadlines and liveness, registration and `reload`, shutdown reasons, the fixture's isolation, the package manifest. | `reviews/wave-0.md` committed. |
 
 ## Later
 

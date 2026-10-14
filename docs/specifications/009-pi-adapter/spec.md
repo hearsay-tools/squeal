@@ -72,7 +72,7 @@ The rule follows Pi, not a launcher: any RPC client gets a run it did not reques
 
 ### D7. Status under Pi
 
-`squeal status` and the header are unchanged. Run in a shell where `PI_SESSION_ID` is set and no consumer of that session exists, `squeal status` adds one line: the Squeal Pi extension has not run in this session, with the install command. The primer and the FAIL report's `squeal why` line name the CLI by its absolute path, `node "<package>/dist/cli/squeal.mjs"`, since installing a Pi package puts nothing on the PATH (research, packaging 4).
+`squeal status` and the header are unchanged. Run in a shell where `PI_SESSION_ID` is set and no consumer of that session exists, `squeal status` adds one line: the Squeal Pi extension has not run in this session, with the install command. The primer and the FAIL report's `squeal why` line name the CLI by its absolute path, `"<process.execPath>" --disable-warning=ExperimentalWarning "<package>/dist/cli/squeal.mjs"`, since installing a Pi package puts nothing on the PATH and Pi's Node need not be on it either (research, packaging 4).
 
 ### D8. Daemon and worktrees
 
@@ -85,7 +85,7 @@ No new keys. `interrupt.onRegression` governs the `edit` and `write` block.
 ## Testing
 
 - The fake provider becomes a test fixture under `test/fixtures/pi/`: an extension registering a scripted provider that plays planned tool calls and records every request it receives, as `research/probes/pi-extension-events/` built it. Pi 1.0.4 is a pinned devDependency, so the real Pi runs in tests with no credentials and no network (`PI_OFFLINE=1`).
-- Isolation: a test that starts Pi gives it its own `PI_CODING_AGENT_DIR` in a temp directory. It runs in CI; locally only under the `squeal-e2e` contract until a wave-0 check proves that Pi with that variable writes nothing under the real `HOME`; otherwise it is skipped with a note.
+- Isolation: a test that starts Pi sets `HOME`, `TMPDIR` and `PI_CODING_AGENT_DIR` into its temp directory and runs with a cwd outside the repository (`test/helpers/pi.ts`); then Pi touches nothing outside it (`research/wave-0-checks.md`), and the test runs locally and in CI.
 - Unit tests on the handlers with recorded event payloads: the D3 shapes; one delivery per `turn_end` over three parallel calls; no delivery on a final `turn_end`; the block once per regression and never on `bash` by default; the continuation flag; abort ends the turn; silence after shutdown; idempotent duplicate starts.
 - The delivery host: a stalled worker misses its deadline and the handler returns silence within it; a dead worker is replaced; a missing store, missing config and a newer schema are silent; per-call cost at calm load asserted as 001 does, skipped above a load threshold.
 - Real Pi with the fake provider, in `-p`, `json` and `rpc`: each delivery asserted in the next request; a block then a re-issued edit; one continuation then silence; the primer after `compact`; a dead daemon without a crash; `pi -p` exits promptly after its run; a wake in RPC.
@@ -100,7 +100,7 @@ Owner is the coordinator unless noted.
 2. Whether a real model treats a Squeal `custom_message`, which reaches it as bare user text, as Squeal's report and not an instruction from the user. Dogfooding.
 3. The release asset that carries the Pi package, its name, and whether the hub lists it. Wave-0 check.
 4. Pi 1.0.4 delivers `session_start` twice per RPC replacement and runs a settle continuation after `session_shutdown` (research, events 7 and 4). D2 and D3 tolerate both; whether to report them upstream.
-5. Whether Pi with `PI_CODING_AGENT_DIR` set writes anything under the real `HOME`. Wave-0 check, before any local test runs Pi as the agent user.
+5. Decided 2026-10-14 by `research/wave-0-checks.md`: `PI_CODING_AGENT_DIR` alone leaks caches into `os.tmpdir()` and reads `~/.agents/skills`; moving `HOME` and `TMPDIR` too isolates Pi (Testing).
 
 ## References
 

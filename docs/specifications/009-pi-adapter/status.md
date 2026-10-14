@@ -15,3 +15,10 @@ Started: 2026-10-14
 ## Amendments after approval
 
 - 2026-10-14, at approval, the human: the spec stands as drafted. Open question 1, idle wake in Cezar: "Cezar is just one use case"; the implementation is not bound to how Cezar works. The coordinator decided from that and 001's precedent: wake is armed in every Pi mode that stays open (`tui`, `rpc`), never under `-p` or `json`, with no launcher case and no policy key; D5 and D9 amended.
+- 2026-10-14, wave 0 (009-10, 009-11), 0.1.170, coordinator accepting the workers' decisions:
+  - Open question 5 closed (`research/wave-0-checks.md`): with only `PI_CODING_AGENT_DIR`, Pi 1.0.4 writes nothing under `HOME` but writes jiti and Node compile caches under `os.tmpdir()` and reads `~/.agents/skills`; with `HOME`, `TMPDIR` and `PI_CODING_AGENT_DIR` all in the run's temp directory and the cwd outside the repository it touches nothing outside. `test/helpers/pi.ts` sets all three, so Pi tests run locally as the agent user; a Pi upgrade re-runs `test/fixtures/pi/isolation-check.sh`. Testing amended.
+  - D2 `reload`: a still-registered consumer keeps its view and gets no header; `session_shutdown(reload)` does not unregister, since the next instance takes the session over. A start whose worker call times out is not retried; the next tool boundary registers.
+  - D3 `session_start` sends the registration header only; the primer is the system-prompt section of `before_agent_start` (wave 1). The Pi start is its own function in `src/harness/pi/session.ts`; `src/harness/shared/` needed no change (`HookDeps` already takes the harness process and consumer).
+  - D7: the CLI is named as `"<process.execPath>" --disable-warning=ExperimentalWarning "<package>/dist/cli/squeal.mjs"`, since Pi's Node need not be on the `PATH`.
+  - `src/harness/pi/api.ts` is a local copy of the Pi 1.0.4 types the extension uses; with the devDependency landed, wave 1 types against the real package.
+  - `KEY_FORMAT_VERSION` 10 (unreleased) re-pinned: the `build:plugin` line in `package.json` is a guarded source, and `src/harness/pi/build.ts` joins `GUARDED_WITHIN`.
