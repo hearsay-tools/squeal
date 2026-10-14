@@ -2,6 +2,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { main } from "../../../src/cli/main.js";
+import { blockText } from "../../../src/cli/setup/block.js";
 import { buildPlan, type SetupPlan } from "../../../src/cli/setup/plan.js";
 import { git } from "../../hash/git-repo.js";
 import { capture, cleanupFixtures, harnessEnv, json, scratch, squealShaped } from "./fixture.js";
@@ -166,6 +167,42 @@ describe("squeal setup --check and usage", () => {
         "    runs more than the test command: `CI=1 npm test`: reword it by hand",
       ].join("\n"),
     );
+  });
+
+  // Row 005-47: cezar's hand-written Squeal paragraph, beside which setup said "no Squeal block".
+  it("names a file that already holds Squeal instructions outside the block", async () => {
+    const root = squealShaped({
+      "CLAUDE.md": [
+        "# Agents",
+        "",
+        "**If Squeal is installed and validating this worktree, use it for iteration.**",
+        "Do not duplicate those background runs with `npm test`,",
+        "`npm run test:e2e`, or `npm run test:changed`.",
+        "",
+      ].join("\n"),
+    });
+    const plan = await planJson(root);
+    expect(plan.squealMentions).toEqual([
+      {
+        file: "CLAUDE.md",
+        line: 3,
+        text: "**If Squeal is installed and validating this worktree, use it for iteration.**",
+      },
+    ]);
+    expect(plan.gates).toEqual([]);
+    expect(plan.mentions).toContainEqual({
+      file: "CLAUDE.md",
+      line: 4,
+      text: "Do not duplicate those background runs with `npm test`,",
+    });
+    const { io, out } = capture(root);
+    expect(await main(["setup", "--plan"], io)).toBe(0);
+    expect(out.stdout).toContain(
+      "no Squeal block\n    Squeal already named outside the block, line 3: **If Squeal is installed",
+    );
+    // The managed block itself is not a mention of Squeal.
+    const blocked = squealShaped({ "CLAUDE.md": `# Agents\n\n${blockText()}` });
+    expect((await planJson(blocked)).squealMentions).toEqual([]);
   });
 
   it("takes --plan or --check with --json alone, and setup's own flags without them", async () => {

@@ -8,7 +8,7 @@ import { seedNodeTest } from "../node-test-seed.js";
 import { PLUGIN_ID } from "../plugin-id.js";
 import { BLOCK_VERSION, instructionFiles } from "./block.js";
 import { slowCandidates } from "./candidates.js";
-import { scanGates } from "./gates.js";
+import { scanGates, squealLine } from "./gates.js";
 import { type HarnessFact, readHarnesses } from "./harnesses.js";
 import { otherWorktrees, type RepoFacts, readJson, readRepoFacts } from "./repo.js";
 import { testFileUniverse, unselected } from "./test-globs.js";
@@ -29,9 +29,11 @@ export interface SetupPlan {
   readonly config: ConfigFact;
   /** The instruction file each harness reads (D4), one entry per file they resolve to. */
   readonly instructions: readonly InstructionFile[];
+  /** Each instruction file's first line naming Squeal outside the managed block (row 005-47). */
+  readonly squealMentions: readonly Mention[];
   /** Gate lines of committed instruction files (D5). */
   readonly gates: readonly GateLine[];
-  /** The test command in other files, such as skills: listed, never offered as edits (D5). */
+  /** The test command where it is no gate: other files, negated or naming Squeal (D5, 005-47). */
   readonly mentions: readonly Mention[];
   readonly slow: SlowFacts;
   readonly codexTrust: CodexTrust;
@@ -211,6 +213,7 @@ export async function readPlan(
     runners,
     config,
     instructions,
+    squealMentions: instructions.flatMap((f) => squealLine(root, f.path) ?? []),
     gates,
     mentions,
     slow,

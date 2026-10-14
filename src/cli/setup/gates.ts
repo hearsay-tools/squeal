@@ -108,6 +108,31 @@ export function scanGates(
   return { gates, mentions };
 }
 
+/**
+ * The first line naming Squeal outside the managed block of an instruction
+ * file, `null` when none does. Cezar's AGENTS.md held a hand-written Squeal
+ * paragraph, and setup reported "no Squeal block" beside it (row 005-47).
+ */
+export function squealLine(root: string, path: string): Mention | null {
+  let text: string;
+  try {
+    text = readFileSync(resolved(root, path), "utf8");
+  } catch {
+    return null;
+  }
+  let inBlock = false;
+  const lines = text.split("\n");
+  for (const [i, line] of lines.entries()) {
+    if (BEGIN.test(line)) inBlock = true;
+    if (inBlock) {
+      if (END.test(line)) inBlock = false;
+      continue;
+    }
+    if (SQUEAL.test(line)) return { file: path, line: i + 1, text: line };
+  }
+  return null;
+}
+
 interface Found {
   readonly line: number;
   readonly text: string;
