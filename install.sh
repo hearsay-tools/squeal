@@ -10,7 +10,11 @@
 # the hub. With pi on the PATH it unpacks the Pi package of this release from
 # the tag's source archive into ${XDG_DATA_HOME:-~/.local/share}/squeal/pi/<version>
 # and runs pi install on it, which makes every write under ~/.pi (spec 009 D1);
-# an update installs the new directory, then removes the one it replaces.
+# an update installs the new directory and pi removes the older ones, but keeps
+# the files of the one before it, and of any older one a running process names
+# (the daemon of a session still open), so a Pi session open across the update
+# still finds its extension's files until /reload loads the new one.
+# `sh -s -- --pi` updates only Pi, as squeal update runs it.
 # SQUEAL_SOURCE overrides where the archives are. Each plugin, Pi package and
 # launcher it creates is recorded in ${XDG_STATE_HOME:-~/.local/state}/squeal/installed,
 # and `sh -s -- --uninstall` removes only those, so one that was there before stays.
@@ -203,12 +207,54 @@ install_pi() {
   set -- $(owned_pi)
   unset IFS
   set +f
+  keep=$(previous_pi "$dir" "$@")
+  removed=no
   for old in "$@"; do
     [ "$old" = "$dir" ] && continue
-    if pi_has "$old"; then run pi remove "$old" || fail "pi remove $old failed"; fi
+    if pi_has "$old"; then
+      run pi remove "$old" || fail "pi remove $old failed"
+      removed=yes
+    fi
+    [ "$old" = "$keep" ] && continue
+    if in_use "$old"; then
+      say "Kept $old: a running process uses it"
+      continue
+    fi
     run rm -rf "$old"
     forget "pi $old"
   done
+  if [ "$removed" = yes ]; then
+    say "Pi sessions already open keep the Squeal they loaded; /reload in each loads $SQUEAL_VERSION"
+  fi
+}
+
+# The newest recorded directory other than $1, by its version, which an update keeps.
+previous_pi() {
+  node -e '
+const [dir, ...dirs] = process.argv.slice(1);
+const v = (d) => d.split("/").at(-1).split(".").map(Number);
+const newer = (a, b) => {
+  const x = v(a);
+  const y = v(b);
+  for (let i = 0; i < Math.max(x.length, y.length); i++) {
+    const d = (x[i] ?? 0) - (y[i] ?? 0);
+    if (d !== 0) return d > 0;
+  }
+  return false;
+};
+const keep = dirs.filter((d) => d !== dir).reduce((a, b) => (a === undefined || newer(b, a) ? b : a), undefined);
+if (keep) console.log(keep);
+' "$@"
+}
+
+# Whether a running process names a file under $1, as a daemon spawned from it
+# does. Matched in this shell, since a grep would name $1 itself.
+in_use() {
+  procs=$(ps -A -o args= 2>/dev/null) || return 1
+  case "$procs" in
+  *"$1/"*) return 0 ;;
+  esac
+  return 1
 }
 
 # Every Pi package directory the record holds, one per line.
@@ -251,6 +297,13 @@ install() {
   if has pi; then install_pi; fi
   copy_launcher
   say "Next, in each repository: squeal setup"
+}
+
+# squeal update's Pi step: this release in Pi and nothing else; squeal update copies the launcher.
+install_pi_only() {
+  check_node
+  has pi || fail "pi is not on the PATH"
+  install_pi
 }
 
 # $1: claude or codex; $2: its name; $3: its remove subcommand.
@@ -329,8 +382,9 @@ main() {
   case "$*" in
   "$COMPLETE") install ;;
   "--uninstall $COMPLETE") uninstall ;;
+  "--pi $COMPLETE") install_pi_only ;;
   *)
-    say "usage: install.sh [--uninstall]" >&2
+    say "usage: install.sh [--uninstall | --pi]" >&2
     exit 2
     ;;
   esac
