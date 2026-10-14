@@ -170,6 +170,12 @@ function diagnose(main: string, wt: string): string {
         coreClosure: q(
           "SELECT closure_paths, updated_by FROM test_files WHERE path = 'tests/unit/test_core.py'",
         ),
+        trace: existsSync(join(main, ".git/squeal/pytest-trace.jsonl"))
+          ? readFileSync(join(main, ".git/squeal/pytest-trace.jsonl"), "utf8")
+              .split("\n")
+              .filter((l) => l.includes(`"who":"${wt.split("/").pop()}"`))
+              .map((l) => l.slice(0, 4000))
+          : null,
         uv: execFileSync("uv", ["--version"], { encoding: "utf8" }).trim(),
         site: Object.fromEntries(
           [main, wt].map((root) => {
