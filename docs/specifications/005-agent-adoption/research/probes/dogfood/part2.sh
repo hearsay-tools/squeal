@@ -10,7 +10,8 @@
 #     a      arm (a): `squeal warmup` on cezar's own config, then status
 #     b      arm (b): `squeal setup --yes` (every default, warm-up included) in fresh, then its
 #            diff, config and status
-# Every output line is timestamped (UTC, seconds since the step's start) as it arrives.
+# Every output line is timestamped (UTC, seconds since the step's start) as it arrives. Each step
+# starts only while the one-minute load is below 24.
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
 out=$1
@@ -18,16 +19,21 @@ shift
 mkdir -p "$out"
 R=/home/squeal-e2e/runs/sq18-cz
 export E2E_VAR_COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+# agent-browser's socket path under the case HOME is 104 bytes, over its 103 limit (arm a's
+# browser-doctor.json): a short socket directory lets cezar's browser e2e launch Chrome.
+export E2E_VAR_AGENT_BROWSER_SOCKET_DIR=/tmp/sq18-ab
 as() { dir=$1; shift; node "$here/as-e2e.mjs" "$R" "$R/$dir" "$@"; }
-stamp() { python3 -I -u -c '
-import sys, time
-t0 = time.time()
-for line in sys.stdin:
-    print(f"{time.strftime(\"%H:%M:%SZ\", time.gmtime())} +{time.time() - t0:7.1f}s {line}", end="", flush=True)
-'; }
+stamp() {
+  t0=$(date +%s)
+  while IFS= read -r line; do printf '%s +%ss %s\n' "$(date -u +%H:%M:%SZ)" "$(($(date +%s) - t0))" "$line"; done
+}
+calm() { # each step starts only while the one-minute load is below the 24 CPUs
+  while [ "$(cut -d' ' -f1 /proc/loadavg | cut -d. -f1)" -ge 24 ]; do sleep 30; done
+}
 step() {
   name=$1
   shift
+  calm
   echo "== $name start $(date -u +%FT%TZ) load $(cut -d' ' -f1 /proc/loadavg)"
   "$@" 2>&1 | stamp > "$out/$name.log"
   echo "== $name end $(date -u +%FT%TZ) load $(cut -d' ' -f1 /proc/loadavg)"
