@@ -2372,12 +2372,27 @@ function describeFailure(errors, fallback) {
   const line = firstLine(first.message);
   const location2 = first.location ?? fallback;
   const more = errors.length - 1;
-  const text2 = line === "" ? first.name : line;
+  const text2 = withCauses(
+    `${first.phase === "setup" ? "setup failed: " : ""}${withCode(line === "" ? first.name : line, first.code)}`,
+    first.causes ?? []
+  );
   const summary = more > 0 ? `${text2} (${more} more error${more === 1 ? "" : "s"})` : text2;
   return {
     fingerprint: `${first.name}: ${normalize(line)} @ ${where(location2)}`,
     summary: withDiff(summary, first.diff === null ? null : diffText(first.diff))
   };
+}
+function causeText(cause) {
+  return withCode(cause.message === "" ? cause.code ?? "" : cause.message, cause.code);
+}
+function withCode(text2, code) {
+  return code === void 0 || text2.includes(code) ? text2 : `${text2} (${code})`;
+}
+function withCauses(text2, causes) {
+  if (causes.length === 0) return text2;
+  const chain = causes.map((c) => `; cause: ${causeText(c)}`).join("");
+  const shown = cap(chain, SUMMARY_MAX_CHARS - Math.min(text2.length, LINE_MIN_CHARS));
+  return `${cap(text2, SUMMARY_MAX_CHARS - shown.length)}${shown}`;
 }
 function diffText(diff) {
   const lines = stripVTControlCharacters(diff).split(/\r?\n/);
@@ -3776,6 +3791,7 @@ __export(state_exports, {
   FLAKY_META_KEY: () => FLAKY_META_KEY,
   SUMMARY_MAX_CHARS: () => SUMMARY_MAX_CHARS,
   baselineFindings: () => baselineFindings,
+  causeText: () => causeText,
   checkIdentity: () => checkIdentity,
   classify: () => classify,
   classifySlowFiles: () => classifySlowFiles,
@@ -3803,6 +3819,7 @@ __export(state_exports, {
   testFileOf: () => testFileOf,
   toKnownFailure: () => toKnownFailure,
   transitionKind: () => transitionKind,
+  withCode: () => withCode,
   worktreeSlowView: () => worktreeSlowView
 });
 var init_state3 = __esm({
@@ -8772,7 +8789,8 @@ function recordsForFile(input) {
       provenance
     });
   }
-  const errors = report2.fileErrors.filter((e) => e.testFile.project === ref2.project && e.testFile.path === ref2.path).flatMap((e) => e.errors);
+  const phase = ran.size > 0 ? "setup" : "load";
+  const errors = report2.fileErrors.filter((e) => e.testFile.project === ref2.project && e.testFile.path === ref2.path).flatMap((e) => e.errors.map((error) => ({ ...error, phase })));
   const fileMs = report2.fileDurations?.find(
     (d) => d.testFile.project === ref2.project && d.testFile.path === ref2.path
   )?.durationMs;
@@ -15113,13 +15131,34 @@ import { loadavg as loadavg2 } from "node:os";
 function toCheckError(error, paths) {
   const frame = error.stacks?.find((f) => paths.isProjectFile(f.file));
   const diff = typeof error.diff === "string" ? error.diff : null;
+  const code = codeOf(error);
+  const causes = causeChain(error.cause, paths);
   return {
     name: error.name ?? "Error",
     message: paths.relativizeText(error.message ?? ""),
     stack: error.stack ? paths.relativizeText(error.stack) : null,
     location: frame ? paths.location(frame.file, frame.line, frame.column) : null,
-    diff: diff === null ? null : paths.relativizeText(diff)
+    diff: diff === null ? null : paths.relativizeText(diff),
+    ...code === void 0 ? {} : { code },
+    ...causes.length === 0 ? {} : { causes }
   };
+}
+function codeOf(error) {
+  if (typeof error !== "object" || error === null || !("code" in error)) return void 0;
+  const code = error.code;
+  return typeof code === "string" || typeof code === "number" ? String(code) : void 0;
+}
+function causeChain(cause, paths) {
+  const chain = [];
+  for (let link = cause; link != null && chain.length < CAUSE_DEPTH; ) {
+    const object = typeof link === "object" ? link : null;
+    const raw = object === null ? link : "message" in object ? object.message : "";
+    const line = paths.relativizeText(String(raw ?? "")).split(/\r?\n/)[0] ?? "";
+    const code = codeOf(link);
+    chain.push({ message: cap(line.trim(), CAUSE_MESSAGE_CHARS), ...code ? { code } : {} });
+    link = object !== null && "cause" in object ? object.cause : void 0;
+  }
+  return chain;
 }
 function withLoad(error, load = currentLoad) {
   if (!TIMEOUT.test(error.message)) return error;
@@ -15176,16 +15215,19 @@ function toCheckRunResult(testCase, testFile, paths, fullName) {
 function compareRefs(a, b) {
   return a.project === b.project ? compare(a.path, b.path) : compare(a.project, b.project);
 }
-var OUTCOMES5, TIMEOUT, currentLoad, refKey;
+var OUTCOMES5, CAUSE_DEPTH, CAUSE_MESSAGE_CHARS, TIMEOUT, currentLoad, refKey;
 var init_results2 = __esm({
   "src/runners/vitest/results.ts"() {
     "use strict";
     init_fs();
+    init_text();
     OUTCOMES5 = {
       passed: "pass",
       failed: "fail",
       skipped: "skip"
     };
+    CAUSE_DEPTH = 3;
+    CAUSE_MESSAGE_CHARS = 200;
     TIMEOUT = /^(?:Test|Hook) timed out in \d+ms/;
     currentLoad = () => process.platform === "win32" ? null : loadavg2()[0] ?? null;
     refKey = (ref2) => `${ref2.project}\0${ref2.path}`;
@@ -43775,7 +43817,13 @@ function resultLines(why2, { result, worktreeRoot: worktreeRoot2, logDir }) {
   ];
   if (result.summary !== null) lines.push(`${INDENT}${result.summary}`);
   for (const error of result.errors) {
-    const text2 = [error.stack ?? `${error.name}: ${error.message}`, error.diff].filter((part) => part !== null).join("\n");
+    const head = error.stack ?? `${error.name}: ${error.message}`;
+    const text2 = [
+      head,
+      error.code === void 0 || head.includes(error.code) ? null : `code: ${error.code}`,
+      ...(error.causes ?? []).map((cause) => `Caused by: ${causeText(cause)}`),
+      error.diff
+    ].filter((part) => part !== null).join("\n");
     for (const line of text2.split("\n")) lines.push(`${INDENT}${line}`);
   }
   return lines;
