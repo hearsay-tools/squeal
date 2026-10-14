@@ -37,6 +37,12 @@ const SQUEAL = /\bsqueal\b/i;
  */
 const INSTRUCTION =
   /^(?:[-*+]\s+|\d+[.)]\s+)?[*_]*(?:verification:[*_]*\s+(?=`)|(?:[a-z]\w*(?: \w+)?:[*_]*\s+)?(?:(?:always|also|then),?\s+)?(?:run|use|execute|verify with|before you finish,\s+run)\s(?!\s*of\b))/i;
+/** Only command-list items and execution modifiers may separate the verb from its object (005-58 R2). */
+const OBJECT_PREFIX = /^(?:(?:exactly|one|full|and|then)\s+|`[^`]+`[\s,]*)*$/i;
+/** A documented example is not an instruction to execute the command (005-58 R2). */
+const EXAMPLE = /\bas\s+an?\s+example\b/i;
+/** Quoted prose, including an unclosed quotation: its commands and stops are examples (005-58 R1). */
+const QUOTATION = /"[^"]*(?:"|$)|“[^”]*(?:”|$)/g;
 /** Words that, before the command in its sentence, tell the agent not to run it (row 005-47). */
 const NEGATION = /\b(?:do not|don['’]t|never|not|instead of|rather than|avoid|without|except)\b/i;
 /** A stop's closing quotes, brackets and emphasis. */
@@ -217,7 +223,7 @@ function prose(line: string): string {
  * found "e.g." and "(e.g. after code review)." split sentences (B2, B3).
  */
 function stops(line: string): number[] {
-  const text = prose(line);
+  const text = prose(line).replace(QUOTATION, (quote) => "x".repeat(quote.length));
   const ends: number[] = [];
   let depth = 0;
   for (let i = 0; i < text.length; i++) {
@@ -255,12 +261,24 @@ function instructs(found: Found, pattern: RegExp): boolean {
   const { text: line, fenced, previous } = found;
   if (fenced || SQUEAL.test(line)) return false;
   const at = commandAt(line, pattern);
+  if (
+    [...prose(line).matchAll(QUOTATION)].some((q) => q.index <= at && at < q.index + q[0].length)
+  ) {
+    return false;
+  }
   const start = stops(line)
     .filter((end) => end <= at)
     .at(-1);
   if (start === undefined && continues(previous, line)) return false;
   const sentence = line.slice(start ?? 0, at).trimStart();
-  return INSTRUCTION.test(sentence) && !NEGATION.test(sentence);
+  const instruction = INSTRUCTION.exec(sentence);
+  if (instruction === null || NEGATION.test(sentence)) return false;
+  const end = sentenceEnd(line, at) ?? line.length;
+  if (EXAMPLE.test(prose(line).slice(at, end))) return false;
+  // A bare compound command still gets its existing refusal reason, never a proposal.
+  return (
+    OBJECT_PREFIX.test(sentence.slice(instruction[0].length)) || compound(line, pattern) !== null
+  );
 }
 
 /** Whether `line` goes on with a sentence begun on the line before it. */
