@@ -97,6 +97,7 @@ Started: 2026-10-08
 
 - 2026-10-10, 001-205, 0.1.93 (the 001 lane's derived claims, by agreement with the 002/003/004 coordinator; recorded by 001-210 for the 001 lane's `reviews/wave-13o.md` N1): D6 amended, claims gate only files that may inherit. A slow file waits on another worktree's claim of its key only when that worktree's result could stand for it: its key holds the artifact it tests and no stored fail is withheld; a slow file that may not inherit never waits and runs here. The slow tier's candidates wait on a claim without taking the slot, and a result that lands is applied there, so a drain before exit (004-29) ends with it. 001-210 (`reviews/wave-13o.md` B2) keeps D2's one permit per file: the slot shrinks to the files the start's transaction actually runs, after its lookups and claims, and the per-file notes and artifact records follow those files; a start that runs none releases the slot once and publishes no running activity.
 - 2026-10-14, 004-59 (the human; found by 006-54's worker): D3 amended. An explicit `squeal run --slow` skips the load guard for the tier it starts; the status line "`squeal run --slow` runs them now" promised it while the guard held the files until `slow.maxDeferMs`.
+- 2026-10-14, 004-59 done, 0.1.179 (`tasks/004-59/notes.md`): an open `run --slow` request skips the load guard and cuts a guard wait short; one file at a time above `slow.maxLoadPerCpu`, up to `slow.maxParallel` below; the idle trigger and `run --all` keep the guard.
 
 ## Research
 

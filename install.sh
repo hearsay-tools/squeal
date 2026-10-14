@@ -26,7 +26,7 @@
 set -eu
 
 # The release this script belongs to; the Pi package comes from its tag.
-SQUEAL_VERSION=0.1.178
+SQUEAL_VERSION=0.1.179
 PLUGIN=squeal@hearsay
 HUB=hearsay-tools/marketplace
 SOURCE=https://github.com/hearsay-tools/squeal/archive/refs/tags
