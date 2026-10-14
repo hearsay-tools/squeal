@@ -6499,11 +6499,11 @@ var init_revision = __esm({
 });
 
 // src/core/scheduler/context.ts
-async function tryRunner(context, subject2, call, onFailure) {
+async function tryRunner(context, subject, call, onFailure) {
   try {
     return await call();
   } catch (error) {
-    const reason2 = `runner ${subject2} failed: ${error instanceof Error ? error.message : String(error)}`;
+    const reason2 = `runner ${subject} failed: ${error instanceof Error ? error.message : String(error)}`;
     context.note(reason2);
     onFailure?.(reason2);
     return null;
@@ -10854,8 +10854,8 @@ var init_slow_tier = __esm({
         for (const { ref: ref2 } of files2) {
           if (!view.isSlow(ref2)) continue;
           const declared = context.keys.declaredFor(ref2.path);
-          const subject2 = { path: ref2.path, slow: true };
-          if (inheritsAcrossWorktrees(subject2, declared, testFiles, view.globs)) continue;
+          const subject = { path: ref2.path, slow: true };
+          if (inheritsAcrossWorktrees(subject, declared, testFiles, view.globs)) continue;
           const paths = byProject.get(ref2.project) ?? [];
           paths.push(ref2.path);
           byProject.set(ref2.project, paths);
@@ -10995,7 +10995,7 @@ var init_scheduler2 = __esm({
         started: () => this.#started(),
         closed: () => this.#closed,
         pump: () => this.#pump(),
-        backgroundError: (subject2, error) => this.#backgroundError(subject2, error)
+        backgroundError: (subject, error) => this.#backgroundError(subject, error)
       });
       #slow;
       #context = null;
@@ -11543,8 +11543,8 @@ var init_scheduler2 = __esm({
         return { context: this.#context, ledger: this.#ledger };
       }
       /** An error of work no caller awaits: a note for status, and `onError`. */
-      #backgroundError(subject2, error) {
-        this.#note(`${subject2}: ${String(error)}`);
+      #backgroundError(subject, error) {
+        this.#note(`${subject}: ${String(error)}`);
         this.options.onError?.(error instanceof Error ? error : new Error(String(error)));
       }
       /** Persists a note for `squeal status` (D7, review S6). */
@@ -34950,7 +34950,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.161";
+  if (true) return "0.1.162";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -39331,9 +39331,12 @@ var END2 = /^<!-- squeal:end -->/;
 var FENCE = /^\s*(```|~~~)/;
 var REWORDED = /squeal run --all/;
 var SQUEAL = /\bsqueal\b/i;
-var NEGATION = /\b(?:do not|don['’]t|never|instead of|avoid)\b/i;
-var SENTENCE_END = /[.!?][)\]*_"'”’]*$/;
+var INSTRUCTION = /^(?:[-*+]\s+|\d+[.)]\s+)?[*_]*(?:verification:[*_]*\s+(?=`)|(?:[a-z]\w*(?: \w+)?:[*_]*\s+)?(?:(?:always|also|then),?\s+)?(?:run|use|execute|verify with|before you finish,\s+run)\s(?!\s*of\b))/i;
+var NEGATION = /\b(?:do not|don['’]t|never|not|instead of|rather than|avoid|without|except)\b/i;
+var CLOSERS = /^[)\]*_"'”’]*/;
+var ABBREVIATION = /(?:^|[^\w.])(?:e\.g|i\.e|etc|vs|cf)$/i;
 var BLOCK_START = /^\s*(?:[-*+]\s|\d+[.)]\s|#|>|\||```|~~~|<!--)/;
+var ONE_LINE_BLOCK = /^\s*(?:#|\||```|~~~|<!--)|-->\s*$/;
 var SHELL_OPERATOR = /&&|\|\||[;|&<>]|\$\(/;
 var ENV_PREFIX = /(?:^|\s)(?:[A-Za-z_]\w*=|(?:cross-)?env\s)/;
 function commandPattern(nodeTest) {
@@ -39369,10 +39372,12 @@ function scanGates(root, tracked, options) {
     } catch {
       continue;
     }
-    for (const { line, text: lineText, command, fenced, next } of commandLines(text2, pattern2)) {
-      if (!instruction || notRun(lineText, pattern2)) mentions.push({ file, line, text: lineText });
-      else {
-        const reason2 = fenced ? "inside a code block" : unfit(lineText, next, pattern2) ?? compound(lineText, pattern2) ?? subject(lineText, pattern2);
+    for (const found of commandLines(text2, pattern2)) {
+      const { line, text: lineText, command, next } = found;
+      if (!instruction || !instructs(found, pattern2)) {
+        mentions.push({ file, line, text: lineText });
+      } else {
+        const reason2 = unfit(lineText, next, pattern2) ?? compound(lineText, pattern2);
         const proposed = reason2 === null ? reword(lineText, pattern2) : null;
         gates.push({
           id: `${file}:${line}`,
@@ -39425,7 +39430,14 @@ function commandLines(text2, pattern2) {
     const match2 = pattern2.exec(line);
     if (match2 === null || REWORDED.test(line)) return;
     const command = commandOf(line, pattern2);
-    found.push({ line: i2 + 1, text: line, command, fenced, next: lines[i2 + 1] });
+    found.push({
+      line: i2 + 1,
+      text: line,
+      command,
+      fenced,
+      previous: lines[i2 - 1],
+      next: lines[i2 + 1]
+    });
   });
   return found;
 }
@@ -39444,33 +39456,47 @@ function commandAt(line, pattern2) {
 function prose(line) {
   return line.replace(/`[^`]*`/g, (span) => "x".repeat(span.length));
 }
-function leadIn(line, pattern2) {
-  const at2 = commandAt(line, pattern2);
-  const last = [
-    ...prose(line).slice(0, at2).matchAll(/[.!?]\s+/g)
-  ].at(-1);
-  return line.slice(last === void 0 ? 0 : last.index + last[0].length, at2);
+function stops(line) {
+  const text2 = prose(line);
+  const ends = [];
+  let depth = 0;
+  for (let i2 = 0; i2 < text2.length; i2++) {
+    const c = text2[i2];
+    if (c === "(" || c === "[") depth++;
+    else if ((c === ")" || c === "]") && depth > 0) depth--;
+    else if (depth === 0 && ".!?".includes(c) && !ABBREVIATION.test(text2.slice(0, i2))) {
+      const end = i2 + 1 + CLOSERS.exec(text2.slice(i2 + 1))[0].length;
+      if (end === text2.length || /\s/.test(text2[end])) ends.push(end);
+    }
+  }
+  return ends;
+}
+function endsSentence(line) {
+  return stops(line).at(-1) === line.trimEnd().length;
 }
 function sentenceEnd(line, from) {
-  const stop = /[.!?][)\]*_"'”’]*(?=\s+\S)/g;
-  stop.lastIndex = from;
-  const match2 = stop.exec(prose(line));
-  return match2 === null ? null : match2.index + match2[0].length;
+  const end = stops(line).find((at2) => at2 > from);
+  return end === void 0 || line.slice(end).trim() === "" ? null : end;
 }
-function notRun(line, pattern2) {
-  return SQUEAL.test(line) || NEGATION.test(leadIn(line, pattern2));
+function instructs(found, pattern2) {
+  const { text: line, fenced, previous } = found;
+  if (fenced || SQUEAL.test(line)) return false;
+  const at2 = commandAt(line, pattern2);
+  const start = stops(line).filter((end) => end <= at2).at(-1);
+  if (start === void 0 && continues(previous, line)) return false;
+  const sentence = line.slice(start ?? 0, at2).trimStart();
+  return INSTRUCTION.test(sentence) && !NEGATION.test(sentence);
+}
+function continues(previous, line) {
+  if (previous === void 0 || previous.trim() === "") return false;
+  if (BLOCK_START.test(line) || ONE_LINE_BLOCK.test(previous)) return false;
+  return !endsSentence(previous);
 }
 function unfit(line, next, pattern2) {
-  if (/^\s*\|/.test(line)) return "a table row";
-  if (sentenceEnd(line, commandAt(line, pattern2)) !== null) return null;
-  const body = line.trimEnd();
-  if (SENTENCE_END.test(body)) return null;
+  if (sentenceEnd(line, commandAt(line, pattern2)) !== null || endsSentence(line)) return null;
   const continued = next !== void 0 && next.trim() !== "" && !BLOCK_START.test(next);
-  if (/[,;:\-–—]$/.test(body) || continued) return "its sentence goes on past the line";
+  if (/[,;:\-–—]$/.test(line.trimEnd()) || continued) return "its sentence goes on past the line";
   return null;
-}
-function subject(line, pattern2) {
-  return /^\s*(?:[-*+]\s+|\d+[.)]\s+)?[*_]*$/.test(leadIn(line, pattern2)) ? "its sentence describes the test command rather than running it" : null;
 }
 function compound(line, pattern2) {
   const spans = [...line.matchAll(/`([^`]+)`/g)].map((span) => span[1]);
@@ -39499,8 +39525,7 @@ function reword(line, pattern2 = commandPattern(true)) {
   const end = sentenceEnd(replaced, replaced.indexOf(checkpoint));
   if (end !== null) return `${replaced.slice(0, end)} ${fallback}${replaced.slice(end)}`;
   const body = replaced.trimEnd();
-  const stop = SENTENCE_END.test(body) ? "" : ".";
-  return `${body}${stop} ${fallback}`;
+  return `${body}${endsSentence(body) ? "" : "."} ${fallback}`;
 }
 function rewordGates(root, tracked, ids, options) {
   const { gates } = scanGates(root, tracked, options);
