@@ -57,3 +57,22 @@ Owns: `src/runners/pytest/run/**`, `test/runners/pytest/run/**`. Leave alone: th
 Done when: a regression (same size, same second, a changed constant) fails on main and passes after on Python 3.10 and 3.13; the start-up cost of each option measured is in your report; lint, typecheck and the full suite green.
 
 Use /worker.
+
+## 007-30 a withheld tier is run again, and says why when it is not
+
+Outcome: a tier the completion barrier withholds (task 001-168, `withheldForTouch` in `src/core/scheduler/stability.ts`) because a path was touched in flight is selected again when no revision follows the touch, so its files never stay `unknown` with nothing pending. Found by 007-28 on GitHub's runners and still seen in 007-17's e2e on Node 24 (CI 38603848731, branch `cez/3b5befb1-probe-007-17`, now deleted). Unblocks 007-17's landing.
+
+Read: the Later row "a tier withheld by the completion barrier" in `docs/board.md`; `stability.ts` (`withheldForTouch`, the touch detection above it); its call site in `scheduler.ts` (about line 509); `src/core/scheduler/runner-work.ts`; 007-28's final report in `status.md`.
+
+Shape: slice, core, test first. Seam: the call site that records a withheld report. Its files' previous state stands, and the files are queued for one more run under their current keys. A second withhold of the same file and key in a row leaves it `unknown` and adds a daemon note naming the touched path. Today the reason exists only in known-check summaries, so a file with no known checks shows nothing. Bound the retry so that a path touched on every run cannot loop.
+
+Owns: `src/core/scheduler/stability.ts`, the withheld branch in `scheduler.ts`, `runner-work.ts` if needed, and tests under `test/scheduler/`. 001's coordinator works in `src/core/scheduler/`: keep the change additive and in its own commits, and change no existing test. Leave alone: `src/runners/**` and `test/e2e/**`.
+
+Done when:
+- A scheduler test with a touch during a run and no following revision first shows the files `unknown` with nothing pending on main, then shows them current after one re-run.
+- A path touched on every run gives one note and stops.
+- Vitest and node:test runs are unchanged.
+- Lint, typecheck and the full suite are green.
+- 007-17's e2e (`cez/dcd4db61`, `0fbcaedf`), merged onto your branch for one CI run only, is green on both Node versions; paste that run.
+
+Use /worker.
