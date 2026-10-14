@@ -1,6 +1,8 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { storePaths } from "../../../src/core/store/index.js";
+import { waiterLockState } from "../../../src/core/waiter-lock/index.js";
 import { tempDir } from "../../store/helpers.js";
 import { liveSocket, quietCli, runNode, runtimeDir } from "../bundle-helpers.js";
 import { SESSION, squealRepo } from "../helpers.js";
@@ -19,24 +21,30 @@ beforeAll(async () => {
 afterAll(() => built.cleanup());
 
 /**
- * A Pi stand-in: imports the extension, fires `session_start` twice and,
- * with `shutdown`, `session_shutdown(quit)`, then prints what was sent and
- * when, and leaves the process to exit on its own.
+ * A Pi stand-in in `mode`: imports the extension, fires `session_start`
+ * twice, in `rpc` `agent_settled` (arming the idle wake, D5) and, with
+ * `shutdown`, `session_shutdown(quit)`, then prints what was sent and when,
+ * and leaves the process to exit on its own.
  */
 const HOST = `
-const [extension, cwd, session, shutdown] = process.argv.slice(2);
+const [extension, cwd, session, shutdown, mode] = process.argv.slice(2);
 const { default: factory } = await import(extension);
 const handlers = new Map();
 const sent = [];
 factory({ on: (event, handler) => handlers.set(event, handler), sendMessage: (message, options) => sent.push({ message, options }) });
-const ctx = { mode: "print", cwd, sessionManager: { getSessionId: () => session } };
+const ctx = { mode, cwd, sessionManager: { getSessionId: () => session } };
 await handlers.get("session_start")({ type: "session_start", reason: "startup" }, ctx);
 await handlers.get("session_start")({ type: "session_start", reason: "startup" }, ctx);
+if (mode === "rpc") {
+  await handlers.get("agent_settled")({ type: "agent_settled" }, ctx);
+  // The wake's waiter holds its lock once armed.
+  await new Promise((resolve) => setTimeout(resolve, 300));
+}
 if (shutdown === "1") await handlers.get("session_shutdown")({ type: "session_shutdown", reason: "quit" }, ctx);
 process.stdout.write(JSON.stringify({ sent, doneAt: performance.now() }));
 `;
 
-async function runHost(shutdown: boolean) {
+async function runHost(shutdown: boolean, mode: "print" | "rpc" = "print") {
   const r = squealRepo();
   r.apply(r.fail());
   const dir = runtimeDir();
@@ -45,7 +53,7 @@ async function runHost(shutdown: boolean) {
   const script = join(tempDir("squeal-pi-host-"), "host.mjs");
   writeFileSync(script, HOST);
   const out = await runNode(
-    [script, join(built.dir, "extension.mjs"), r.root, SESSION, shutdown ? "1" : "0"],
+    [script, join(built.dir, "extension.mjs"), r.root, SESSION, shutdown ? "1" : "0", mode],
     "",
     { XDG_RUNTIME_DIR: dir, SQUEAL_CLI: quiet.cli },
   );
@@ -83,4 +91,20 @@ describe("dist/extension.mjs in plain Node", () => {
     expect(r.store.consumers.get(r.consumer())).not.toBeNull();
     expect(out.ms - printed.doneAt).toBeLessThan(1_000);
   }, 30_000);
+
+  it.each([true, false])(
+    "rpc: an armed idle wake holds nothing, so Node exits (session_shutdown: %s)",
+    async (shutdown) => {
+      const { r, out, printed } = await runHost(shutdown, "rpc");
+      expect(out.stderr).toBe("");
+      expect(out.code).toBe(0);
+      // Armed, the wake took its lock; the shutdown's cancel released it and the unregistration
+      // removed its file. Without one, the exit released it and the file stays for expiry.
+      expect(waiterLockState(storePaths(r.repo.commonDir).locksDir, r.consumer())).toBe(
+        shutdown ? "absent" : "free",
+      );
+      expect(out.ms - printed.doneAt).toBeLessThan(1_000);
+    },
+    30_000,
+  );
 });
