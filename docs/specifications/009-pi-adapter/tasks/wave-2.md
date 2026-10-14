@@ -31,6 +31,6 @@ Use /worker.
 
 ## 009-17 review of wave 1
 
-Shape: review. `/reviewer` over wave 1's landing, `502eb7f1..d428340c` (009-12, 009-13, the key re-pin). Focus: D3's honesty rules: one delivery per batch and none on the final turn, the deny once per regression, the continuation guard and silence after shutdown and on abort; every handler bounded by D4; `install.sh` against 005 D3's rules (no partial run, idempotent, `--uninstall` removes only what it recorded, the archive's version check) and the launcher's format 2; the status line's wording. Verify in a temporary detached worktree at `d428340c` if you build, and remove it after. Write `docs/specifications/009-pi-adapter/reviews/wave-1.md`.
+Shape: review. `/reviewer` over wave 1's landing, `502eb7f1..7ac131df` (009-12, 009-13, the key re-pin, the Node 22 warning fix `7ac131df`). Focus: D3's honesty rules: one delivery per batch and none on the final turn, the deny once per regression, the continuation guard and silence after shutdown and on abort; every handler bounded by D4; `install.sh` against 005 D3's rules (no partial run, idempotent, `--uninstall` removes only what it recorded, the archive's version check) and the launcher's format 2; the status line's wording. Verify in a temporary detached worktree at `7ac131df` if you build, and remove it after. Write `docs/specifications/009-pi-adapter/reviews/wave-1.md`.
 
 Use /reviewer.
