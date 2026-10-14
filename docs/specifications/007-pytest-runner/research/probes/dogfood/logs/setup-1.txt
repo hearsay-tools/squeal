@@ -1,0 +1,10 @@
+== dirs 2026-10-14T18:54:58Z load 53.97
+uv 0.12.2 (x86_64-unknown-linux-gnu)
+== pin 2026-10-14T18:54:59Z load 53.97
+  "name": "hearsay",
+      "name": "hearsay",
+  "name": "hearsay",
+    "name": "Hearsay"
+      "name": "hearsay",
+== clone 2026-10-14T18:54:59Z load 53.97
+bffc7303 Add release notes and template hashes for v0.4.6 release.
