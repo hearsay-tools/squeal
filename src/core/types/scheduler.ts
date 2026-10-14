@@ -48,6 +48,13 @@ export interface DaemonNote {
    * before task 001-272 wrote.
    */
   readonly exitOf?: string;
+  /**
+   * What the note is about, `<owner>:<subject>`, such as
+   * `pytest-environment:<project>`: status lists only the latest stored
+   * note of a topic, while the store keeps up to 3 (task 007-39, agreed
+   * with 001). Absent on every note that replaces nothing.
+   */
+  readonly topic?: string;
 }
 
 /** The processes one stop stopped (`describe` in `src/core/daemon/terminate.ts`). */

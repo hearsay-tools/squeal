@@ -131,7 +131,8 @@ export interface PytestRunnersOptions {
   readonly childEnv?: Readonly<Record<string, string>>;
   /** Policy `runner.tierSize`, read per run. */
   readonly tierSize: () => number;
-  readonly note: (text: string) => void;
+  /** A note, with the topic that replaces the project's earlier note on it (task 007-39). */
+  readonly note: (text: string, topic?: string) => void;
 }
 
 /**

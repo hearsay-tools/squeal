@@ -30,19 +30,48 @@ export function appendNote(store: Store, worktreeId: WorktreeId, note: DaemonNot
 /**
  * The stored list with `note` appended, newest `MAX_PERSISTED_NOTES` kept.
  * Items are kept as stored, so a store a newer Squeal wrote keeps its shape.
+ *
+ * Topics (task 007-39, agreed with 001): a note may carry a `topic`,
+ * namespaced `<owner>:<subject>` so owners never replace each other's
+ * notes, such as `pytest-environment:<project>`. The list keeps the
+ * replaced notes too, since persisted notes are the daemon's only record
+ * (D12: no log file in v1), but at most `NOTES_PER_TOPIC` of one topic, its
+ * oldest dropped first, so a topic coming and going never evicts other
+ * notes. `readDaemonNotes`, which status reads, lists the latest note of
+ * each topic. A replacing note is appended as any new note is, so a reader
+ * told the old one is told it once.
  */
 export function withNote(raw: unknown, note: DaemonNote): unknown[] {
-  return [...parseList(raw), note].slice(-MAX_PERSISTED_NOTES);
+  const list = [...parseList(raw), note];
+  const { topic } = note;
+  const ofTopic = list.flatMap((item, i) =>
+    topic !== undefined && topicOf(item) === topic ? [i] : [],
+  );
+  const dropped = new Set(ofTopic.slice(0, -NOTES_PER_TOPIC));
+  return list.filter((_, i) => !dropped.has(i)).slice(-MAX_PERSISTED_NOTES);
+}
+
+/** Stored notes kept per topic, the latest among them listed. */
+export const NOTES_PER_TOPIC = 3;
+
+function topicOf(item: unknown): unknown {
+  return typeof item === "object" && item !== null
+    ? (item as { topic?: unknown }).topic
+    : undefined;
 }
 
 /**
- * The worktree's persisted notes, oldest first, at most `MAX_PERSISTED_NOTES`.
- * A missing or malformed value is no notes; a malformed item is skipped.
+ * The worktree's persisted notes, oldest first, at most `MAX_PERSISTED_NOTES`,
+ * with only the latest of each topic (`withNote`). A missing or malformed
+ * value is no notes; a malformed item is skipped.
  */
 export function readDaemonNotes(store: Store, worktreeId: WorktreeId): readonly DaemonNote[] {
-  return parseList(store.meta.get(notesMetaKey(worktreeId)))
+  const notes = parseList(store.meta.get(notesMetaKey(worktreeId)))
     .flatMap(toNote)
     .slice(-MAX_PERSISTED_NOTES);
+  const latest = new Map<string, DaemonNote>();
+  for (const note of notes) if (note.topic !== undefined) latest.set(note.topic, note);
+  return notes.filter((note) => note.topic === undefined || latest.get(note.topic) === note);
 }
 
 function parseList(raw: unknown): unknown[] {
@@ -60,7 +89,7 @@ function toNote(item: unknown): DaemonNote[] {
   const { at, revision, text } = item as Record<string, unknown>;
   if (typeof at !== "number" || typeof text !== "string") return [];
   if (revision !== null && typeof revision !== "number") return [];
-  const { stopped: rawStopped, exitOf } = item as Record<string, unknown>;
+  const { stopped: rawStopped, exitOf, topic } = item as Record<string, unknown>;
   const stopped = stoppedOf(rawStopped);
   return [
     {
@@ -69,6 +98,7 @@ function toNote(item: unknown): DaemonNote[] {
       text,
       ...(stopped === undefined ? {} : { stopped }),
       ...(typeof exitOf === "string" ? { exitOf } : {}),
+      ...(typeof topic === "string" ? { topic } : {}),
     },
   ];
 }
