@@ -25,7 +25,8 @@ import type {
 
 /**
  * The revision the wait last heard of: the oldest revision a consumer of
- * `session` in this worktree was last told about. Without one (no session
+ * `session` in this worktree was last told about, only `agent`'s when one is
+ * named (an OpenCode shell's `OPENCODE_AGENT_ID`, spec 008 D2). Without one (no session
  * in the environment, none registered, or none told), the revision current
  * when the wait started. The window is the revisions after it, and those up
  * to it whose files the wait has not seen through (`editWindow`).
@@ -35,11 +36,15 @@ export function lastHeard(
   worktreeId: WorktreeId,
   revision: RevisionNumber,
   session: string | null,
+  agent: string | null = null,
 ): RevisionNumber {
   if (session === null) return revision;
   const told = store.consumers
     .list(worktreeId)
-    .filter((record) => record.consumer.sessionId === session)
+    .filter(
+      ({ consumer }) =>
+        consumer.sessionId === session && (agent === null || consumer.agentId === agent),
+    )
     .flatMap((record) => toldRevision(store, record.consumer) ?? []);
   return Math.min(revision, ...told);
 }
