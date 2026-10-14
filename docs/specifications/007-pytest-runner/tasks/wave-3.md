@@ -87,3 +87,17 @@ Shape: review. `/reviewer` over 007-30's rebased range, pinned to its exact SHA,
 Write `docs/specifications/007-pytest-runner/reviews/wave-3-007-30.md`.
 
 Use /reviewer.
+
+## 007-32 repair of 007-31: the retry budget is per file
+
+Outcome: a file withheld twice at one key stops at its second withhold even when it shares a tier with a fresh file, and the tests prove that a withheld run never publishes, even for a moment. First-round repair, so the coordinator decides it; 001's coordinator signs off.
+
+Read: `reviews/wave-3-007-30.md` (B1 and S1 with their reproductions and fixes); the 007-30 section above; `src/core/scheduler/stability.ts` (`Withholds`) and its call in `scheduler.ts`.
+
+Shape: repair, core, test first. B1: classify each withheld file per file and key as first or exhausted, and pass that into recording. Queue only first-withheld files and keep their previous state. Mark exhausted files `unknown` and do not re-queue them. Each subset gets its own note. Withhold every result of the report; never store the other files' results as a shortcut. S1: spy on the test store's `results.putMany` and reject any record whose provenance names a withheld run; also assert that a previously validated file's prior state survives its first withhold while the retry is pending.
+
+Owns: `src/core/scheduler/stability.ts`, the withheld branch in `scheduler.ts`, `test/scheduler/withheld-retry.test.ts`, `test/integration/stamps-repo.ts` and the claims fixture if the regression needs it. Change no other existing test; keep the existing single-file, slow-tier, provenance and claims tests green.
+
+Done when: the review's three-file, two-file-tier regression gives exactly two runs per unchanged key; the `putMany` spy rejects nothing; lint, typecheck and the full suite are green apart from the bundle drift.
+
+Use /worker.
