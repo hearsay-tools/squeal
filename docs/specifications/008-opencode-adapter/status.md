@@ -1,6 +1,6 @@
 # 008 OpenCode adapter: status
 
-Stage: draft (`spec.md` written 2026-10-14 from both findings; for the human's review)
+Stage: approved (2026-10-14, the human); waves on `docs/board.md`, briefs under `tasks/`.
 Started: 2026-10-14
 
 ## Decisions so far
@@ -18,4 +18,4 @@ Started: 2026-10-14
 
 ## Amendments after approval
 
-None yet.
+- 2026-10-14, at approval, the human: the spec stands as drafted. Wave 0 (008-10, 008-11) dispatched; the `install.sh` row waits for 009's install rows (shared files).

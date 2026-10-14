@@ -873,7 +873,7 @@ Spec: `specifications/007-pytest-runner/spec.md`, approved 2026-10-14 by the hum
 
 ## Feature 008: OpenCode adapter
 
-Spec: not written yet; research first. Status and research brief: `specifications/008-opencode-adapter/status.md`, `research/README.md` (human, 2026-10-14: start working on OpenCode support). OpenCode only; Pi stays on the Later list.
+Spec: `specifications/008-opencode-adapter/spec.md`, approved 2026-10-14 by the human; sections D1 to D9. Status and research brief: `specifications/008-opencode-adapter/status.md`, `research/README.md` (human, 2026-10-14: start working on OpenCode support). Pi is spec 009.
 
 ### Research
 
@@ -925,6 +925,13 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 | 009-19 end to end | done (0.1.173; CI green on Node 22 and 24 for `test/e2e/pi.test.ts`) | The Pi package archived from HEAD, `pi install` into an isolated agent dir, a fixture repository, the shipped daemon (spec Testing). | e2e suite green in CI. |
 | 009-22 review of waves 2 and 3 | running (worker 3200a117, gpt-6.1-sol high) | `/reviewer` over `cf1e952c..3fd4916d`: D5 idle wake (never holds Pi, cancel on input and shutdown, `tui`/`rpc` only), the shared waiter's `signal` and `command`, `squeal update` and `install.sh --pi` against 005 D3 (ownership record, kept directories, the `ps` check), the e2e's 15 s deny timing, the fixture isolation. | `reviews/wave-3.md` committed. |
 | 009-20 dogfooding | running (worker 4e5b70ac, opus high; the human: as `squeal-e2e`, models tiered, `cliproxy`) | Cezar-shaped `rpc` and TUI sessions with real models on a real Vitest project; whether a model reads a Squeal message as Squeal's (open question 2); `lessons.md`. | `lessons.md` resolves the open questions with evidence. |
+
+### Wave 0: plugin, bridge and test fixture (parallel; briefs in `specifications/008-opencode-adapter/tasks/wave-0.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 008-10 plugin, bridge and the OpenCode package | planned | D1 layout, D2, D4, D6, D8; D3's registration, `session.deleted` and `dispose`: `src/harness/opencode/`, `plugins/opencode/`, a per-event `node` bridge with deadlines, the in-process fast path, `build:plugin`. | Stalled or failing bridge is silent within its deadline; the plugin bundle has no `node:sqlite`; bridge p95 recorded with load; full suite green. |
+| 008-11 scripted-provider fixture and wave-0 checks | planned | Testing: an OpenAI-compatible scripted provider, `test/helpers/opencode.ts`, OpenCode 1.18.35 pinned; as `squeal-e2e`: isolation, offline provider, open questions 1 (update without remove) and 2 (`chat.message` part). | Fixture test green under `run` and `serve` in CI on Node 22 and 24; `research/wave-0-checks.md` committed. |
 
 ## Later
 
