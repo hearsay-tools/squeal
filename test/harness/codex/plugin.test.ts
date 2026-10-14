@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   bundleOptions,
   copyNodeTestRuntime,
+  copyPytestRuntime,
   hookEntries,
   REPO_ROOT,
   rootVersion,
@@ -194,6 +195,34 @@ describe("node:test runtime copy (task 003-13)", () => {
     const outdir = tempDir("squeal-dist-");
     copyNodeTestRuntime(outdir, join(outdir, "missing"));
     expect(existsSync(join(outdir, "node-test"))).toBe(false);
+  });
+});
+
+describe("pytest runtime copy (spec 007 D4, D6)", () => {
+  it("copies the runtime's .py files and both .wasm files into dist/pytest, no __pycache__", () => {
+    const runtime = tempDir("squeal-pytest-runtime-");
+    writeFileSync(join(runtime, "squeal_pytest.py"), "pass\n");
+    mkdirSync(join(runtime, "__pycache__"));
+    writeFileSync(join(runtime, "__pycache__", "squeal_pytest.cpython-313.pyc"), "");
+    const wasmDir = tempDir("squeal-wasm-");
+    writeFileSync(join(wasmDir, "a.wasm"), "");
+    writeFileSync(join(wasmDir, "b.wasm"), "");
+    const outdir = tempDir("squeal-dist-");
+    mkdirSync(join(outdir, "pytest"));
+    writeFileSync(join(outdir, "pytest", "stale.py"), "");
+    copyPytestRuntime(outdir, runtime, [join(wasmDir, "a.wasm"), join(wasmDir, "b.wasm")]);
+    expect(readdirSync(join(outdir, "pytest")).sort()).toEqual([
+      "a.wasm",
+      "b.wasm",
+      "squeal_pytest.py",
+    ]);
+  });
+
+  it("fails the build when a .wasm is missing", () => {
+    const outdir = tempDir("squeal-dist-");
+    expect(() =>
+      copyPytestRuntime(outdir, join(outdir, "none"), [join(outdir, "missing.wasm")]),
+    ).toThrow(/missing\.wasm is missing/);
   });
 });
 

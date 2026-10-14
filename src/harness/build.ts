@@ -8,7 +8,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { type BuildOptions, build } from "esbuild";
 
 /*
@@ -35,6 +35,15 @@ export const NODE_TEST_RUNTIME = "src/runners/node-test/runtime";
  * bundled CLI finds at `<plugin>/dist/observe/` (`observeRecorder`).
  */
 export const OBSERVE_RUNTIME = "src/runners/observe";
+
+/**
+ * Spec 007 D4 and D6: what the bundled CLI finds at `<plugin>/dist/pytest/`:
+ * the dependency-free `squeal_pytest.py` reporter, the vendored
+ * tree-sitter-python grammar and web-tree-sitter's own runtime `.wasm`.
+ */
+export const PYTEST_RUNTIME = "src/runners/pytest/runtime";
+export const PYTEST_GRAMMAR = "src/runners/pytest/graph/tree-sitter-python.wasm";
+export const TREE_SITTER_RUNTIME = "node_modules/web-tree-sitter/web-tree-sitter.wasm";
 
 export interface PluginBuild {
   /** The plugin directory, absolute. */
@@ -148,11 +157,33 @@ export function copyObserveRuntime(
   for (const file of files) copyFileSync(join(from, file), join(outdir, "observe", file));
 }
 
-/** What `dist/` holds, built into `outdir`: the bundles, the node:test runtime and the recorder. */
+/**
+ * Copies the `.py` files of `runtime` (never its `__pycache__`) and the two
+ * `.wasm` files into `<outdir>/pytest/`, replaced as a whole. Throws when a
+ * `.wasm` is missing, since the bundled graph cannot parse without it.
+ */
+export function copyPytestRuntime(
+  outdir: string,
+  runtime: string = join(REPO_ROOT, PYTEST_RUNTIME),
+  wasm: readonly string[] = [join(REPO_ROOT, PYTEST_GRAMMAR), join(REPO_ROOT, TREE_SITTER_RUNTIME)],
+): void {
+  const files = existsSync(runtime) ? readdirSync(runtime).filter((f) => f.endsWith(".py")) : [];
+  const target = join(outdir, "pytest");
+  rmSync(target, { recursive: true, force: true });
+  mkdirSync(target, { recursive: true });
+  for (const file of files) copyFileSync(join(runtime, file), join(target, file));
+  for (const path of wasm) {
+    if (!existsSync(path)) throw new Error(`build: ${path} is missing`);
+    copyFileSync(path, join(target, basename(path)));
+  }
+}
+
+/** What `dist/` holds, built into `outdir`: the bundles, the node:test and pytest runtimes and the recorder. */
 export async function buildDist(plugin: PluginBuild, outdir: string): Promise<void> {
   await build(bundleOptions(plugin, outdir));
   copyNodeTestRuntime(outdir);
   copyObserveRuntime(outdir);
+  copyPytestRuntime(outdir);
 }
 
 /** Builds `plugin` in place: versions, copied trees, then `dist/`. */
