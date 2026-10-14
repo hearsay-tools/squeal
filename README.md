@@ -17,19 +17,21 @@ Status: spec 001 (core loop, Vitest, Claude Code) shipped 2026-10-06; see [docs/
 
 ## Install
 
-Once per machine, with Node 22.13 or later and Claude Code, Codex or both on the `PATH`. `<version>` is a release; its tag is `squeal--v<version>`, so what you read is what runs:
+Once per machine, with Node 22.13 or later and Claude Code, Codex or both on the `PATH`:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/hearsay-tools/squeal/squeal--v<version>/install.sh | sh
+curl -fsSL https://github.com/hearsay-tools/squeal/releases/latest/download/install.sh | sh
 ```
 
-Or download it, read it, then run it:
+That is the `install.sh` of the latest release. Or download it, read it, then run it:
 
 ```sh
-curl -fsSLO https://raw.githubusercontent.com/hearsay-tools/squeal/squeal--v<version>/install.sh
+curl -fsSLO https://github.com/hearsay-tools/squeal/releases/latest/download/install.sh
 less install.sh
 sh install.sh
 ```
+
+To use one release's script instead, replace `latest/download` with `download/squeal--v<version>`. The script installs the plugin the hub pins, which is the latest release either way.
 
 For each of `claude` and `codex` on the `PATH`, `install.sh` adds the hub marketplace and installs `squeal@hearsay` at user scope through that harness's own CLI (`claude plugin marketplace add hearsay-tools/marketplace`, `claude plugin install squeal@hearsay`; `codex plugin marketplace add hearsay-tools/marketplace`, `codex plugin add squeal@hearsay`). It writes nothing under `~/.claude` or `~/.codex` itself. Then it copies the plugin's launcher to `~/.local/bin/squeal` (`SQUEAL_BIN_DIR` overrides) and says how to put that directory on the `PATH` when it is not. It prints each command before running it, asks nothing and needs no sudo. A second run changes nothing. The hub `hearsay-tools/marketplace` is private for now: the marketplace step needs your access to it and git credentials for GitHub (`gh auth login`, or an SSH key), and when it fails the script says so.
 
