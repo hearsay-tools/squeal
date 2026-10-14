@@ -110,7 +110,7 @@
     "a8-load-hold": {
       "turns": ["a8-load-hold.txt"],
       "knobs": {
-        "loadHold": { "maxLoadPerCpu": 0.0001, "maxDeferMs": 120000 }
+        "loadHold": { "maxLoadPerCpu": 0.0001, "maxDeferMs": 600000 }
       },
       "reference": {
         "path": "src/invoice.ts",

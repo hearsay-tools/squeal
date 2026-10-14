@@ -43,12 +43,13 @@ export function situationOf(knobs = {}) {
     parts.push(
       `${knobs.staleEdit.path} was edited outside the session before it began, so Squeal's starting results are from an older revision`,
     );
-  // 006-54: maxLoadPerCpu far below any real load holds the slow tier on every host. The bound
-  // (120 s in a8-load-hold) works around `squeal run --slow` not skipping the hold (reported to
-  // 001); once it does, the bound becomes the default 600000 and the hold lasts the session.
+  // 006-54: maxLoadPerCpu far below any real load holds the slow tier on every host, for the
+  // default bound (600 s), so the hold lasts the session. Since 004-59 (0.1.179) an explicit
+  // `squeal run --slow` skips the guard and runs the file at once; the idle trigger and
+  // `run --all` keep it.
   if (knobs.loadHold)
     parts.push(
-      `after the warm-up, the slow tier's load guard holds at any host load (slow.maxLoadPerCpu ${knobs.loadHold.maxLoadPerCpu}), so after each edit Squeal holds the slow test "waiting for host load to drop" for up to slow.maxDeferMs (${knobs.loadHold.maxDeferMs / 1000} s), then runs it`,
+      `after the warm-up, the slow tier's load guard holds at any host load (slow.maxLoadPerCpu ${knobs.loadHold.maxLoadPerCpu}), so after each edit Squeal holds the slow test "waiting for host load to drop" for up to slow.maxDeferMs (${knobs.loadHold.maxDeferMs / 1000} s); an explicit \`squeal run --slow\` runs it at once`,
     );
   if (knobs.flakeColdRuns)
     parts.push(
