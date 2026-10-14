@@ -9,8 +9,12 @@ import { git, makeRepo } from "./helpers.js";
 
 const MAX_LOAD_FOR_TIMING = 8;
 const TRACKED = 10_000;
-/** Review N2: the pass runs every 30 s when idle; a 10k-file worktree must stay well under that. */
-const PASS_BUDGET_MS = 500;
+/**
+ * Review N2: the pass runs every 30 s when idle; a 10k-file worktree must stay well under that.
+ * Hosted CI runners measure the same code between 278 and 723 ms (2026-10-14), so the budget
+ * sits above that spread and still fails a pass that regresses by an order of magnitude.
+ */
+const PASS_BUDGET_MS = 1500;
 
 describe("reconciliation pass", () => {
   let cleanup = () => {};
