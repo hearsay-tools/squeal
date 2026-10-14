@@ -43,3 +43,17 @@ Owns: `src/runners/pytest/**`, `src/core/daemon/pytest-runners.ts`, `test/integr
 Done when: the cause is named with the CI log line that shows it; a local regression reproduces it (for example a second worktree whose sync differs the way CI's does); your branch's CI is green on both Node versions apart from known load-sensitive tests; lint, typecheck and the full suite green locally.
 
 Use /worker.
+
+## 007-29 a pytest run never executes stale bytecode
+
+Outcome: a result Squeal stores for a revision always comes from that revision's source, even when an edit keeps a module's size and lands in the same second as the previous run (found by 007-17, 2026-10-14).
+
+Evidence: `src/runners/pytest/run/run.ts` sets `PYTHONPYCACHEPREFIX` under Squeal's state directory. CPython accepts a timestamp `.pyc` when the source's whole-second mtime and size match, so `RATE_PERCENT = 25 -> 20` rewritten within a second of the previous run executes the old constant. Squeal stores that stale FAIL as current at the new revision and never corrects it. Repro: 007-17's e2e fixture, `python/billing/src/billing/rates.py`.
+
+Shape: repair. Seam: the environment `run.ts` builds (`PYTHONPYCACHEPREFIX`, about line 92). Pick the cheapest sound option and measure it on `small` and `gen-big.py`'s output against today: no bytecode cache for project sources (`PYTHONDONTWRITEBYTECODE`), checked-hash `.pyc` files in the prefix, or removing the prefix's `.pyc` for every source changed since the last run. The project's own `__pycache__` stays untouched. Raise the pytest adapter version if keys change, and say so.
+
+Owns: `src/runners/pytest/run/**`, `test/runners/pytest/run/**`. Leave alone: the rest of `src/runners/pytest/**` and `test/integration/pytest*` (007-28), `test/e2e/**` (007-17).
+
+Done when: a regression (same size, same second, a changed constant) fails on main and passes after on Python 3.10 and 3.13; the start-up cost of each option measured is in your report; lint, typecheck and the full suite green.
+
+Use /worker.
