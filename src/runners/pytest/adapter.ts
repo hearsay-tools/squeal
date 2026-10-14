@@ -190,6 +190,8 @@ export async function createPytestAdapter(
       }
       ({ environment, dir, settings } = next);
       if (moved) announce(environment);
+      // Nothing moved at a recheck: no listing, and a graph that failed is not built again.
+      if (paths.length === 0 && !moved && !rebuild) return { recreatedProjects: [] };
       if (paths.some((p) => p.kind !== "change") || built === null) {
         const listed = isDirectory(cwd) ? listTestFiles(root, project) : [];
         if (!sameList(listed, files)) {

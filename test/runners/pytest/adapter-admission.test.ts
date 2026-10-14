@@ -1,4 +1,4 @@
-import { realpathSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type {
@@ -153,6 +153,58 @@ describe.each(PYTHONS)("pytest adapter admission under Python %s (B1, B2)", (ver
         expect((await adapter.environment())[0]?.runnerVersion).toBe("unavailable");
       } finally {
         rmSync(pth, { force: true });
+      }
+    },
+  );
+
+  it(
+    "an empty invalidate finds an installed upgrade and a .pth change no watched file shows (B1)",
+    SLOW,
+    async (ctx) => {
+      const clock = controlled();
+      const { adapter, site } = await open(ctx, clock);
+      const watched = new Set((await adapter.environment())[0]?.files);
+      // A still environment: the recheck re-keys nothing and does not wait.
+      const still = clock.elapsed();
+      expect(await adapter.invalidate([])).toEqual({ recreatedProjects: [] });
+      expect(clock.elapsed()).toBe(still);
+
+      const v1 = join(site, "reviewdep-1.0.dist-info");
+      const v2 = join(site, "reviewdep-2.0.dist-info");
+      const pkg = join(site, "reviewdep");
+      const pth = join(site, "reviewdep.pth");
+      try {
+        mkdirSync(pkg);
+        writeFileSync(join(pkg, "__init__.py"), "VALUE = 1\n");
+        mkdirSync(v1);
+        writeFileSync(join(v1, "METADATA"), "Name: reviewdep\nVersion: 1.0\n");
+        const first = (await adapter.environment())[0]?.resolvedConfig;
+        expect(await adapter.invalidate([])).toEqual({ recreatedProjects: ["small"] });
+        const installed = (await adapter.environment())[0]?.resolvedConfig;
+        expect(installed).not.toBe(first);
+
+        // The upgrade: no worktree source, config, pyvenv.cfg or pytest marker changes.
+        rmSync(v1, { recursive: true });
+        mkdirSync(v2);
+        writeFileSync(join(v2, "METADATA"), "Name: reviewdep\nVersion: 2.0\n");
+        writeFileSync(join(pkg, "__init__.py"), "VALUE = 2\n");
+        expect(await adapter.invalidate([])).toEqual({ recreatedProjects: ["small"] });
+        const upgraded = (await adapter.environment())[0]?.resolvedConfig;
+        expect(upgraded).not.toBe(installed);
+
+        writeFileSync(pth, "# one\n");
+        expect(await adapter.invalidate([])).toEqual({ recreatedProjects: ["small"] });
+        const added = (await adapter.environment())[0]?.resolvedConfig;
+        writeFileSync(pth, "# two\n");
+        expect(await adapter.invalidate([])).toEqual({ recreatedProjects: ["small"] });
+        expect((await adapter.environment())[0]?.resolvedConfig).not.toBe(added);
+        // None of it was a watched file: only the recheck could see it.
+        for (const path of [v1, v2, pkg, pth]) {
+          expect([...watched].some((w) => path.endsWith(w))).toBe(false);
+        }
+      } finally {
+        for (const path of [v1, v2, pkg, pth]) rmSync(path, { recursive: true, force: true });
+        await adapter.invalidate([]);
       }
     },
   );
