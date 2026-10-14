@@ -147,7 +147,7 @@ describe("install.sh", { timeout: 30_000 }, () => {
     const m = machine();
     const r = install(m, "--yes");
     expect(r.status).toBe(2);
-    expect(r.stderr).toBe("usage: install.sh [--uninstall]\n");
+    expect(r.stderr).toBe("usage: install.sh [--uninstall | --pi]\n");
     expect(m.calls()).toEqual([]);
   });
 

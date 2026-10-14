@@ -287,3 +287,19 @@ export function snapshot(dir: string): Record<string, string> {
   walk(dir);
   return out;
 }
+
+/** The record of what `install.sh` created. */
+export const ownedOf = (m: Machine): string =>
+  join(m.home, ".local", "state", "squeal", "installed");
+
+/** Where `install.sh` unpacks Pi packages, one directory per version (spec 009 D1). */
+export const piHomeOf = (m: Machine): string => join(m.home, ".local", "share", "squeal", "pi");
+
+export const piDirOf = (m: Machine, version = m.version): string => join(piHomeOf(m), version);
+
+/** The packages Pi's user settings list. */
+export function piPackagesOf(m: Machine): string[] {
+  return (
+    JSON.parse(readFileSync(join(m.piAgent, "settings.json"), "utf8")) as { packages: string[] }
+  ).packages;
+}
