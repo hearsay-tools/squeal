@@ -29,7 +29,7 @@ describe("the load-hold knob", { timeout: 30_000 }, () => {
       .filter(Boolean)
       .map((l) => JSON.parse(l) as { args: string[]; slow: Record<string, unknown> });
     const hold = scenarioOf("a8-load-hold")?.knobs.loadHold as Record<string, number>;
-    expect(hold).toEqual({ maxLoadPerCpu: 0.0001, maxDeferMs: 120000 });
+    expect(hold).toEqual({ maxLoadPerCpu: 0.0001, maxDeferMs: 600000 });
     // The warm-up ran on the fixture's own policy; the daemon stopped before the keys landed.
     expect(calls.map((c) => c.args.slice(0, 2))).toEqual([
       ["start"],
@@ -48,7 +48,7 @@ describe("the load-hold knob", { timeout: 30_000 }, () => {
 
   it("tells a judge the slow test waits for host load, up to the bound", () => {
     expect(situationOf(scenarioOf("a8-load-hold")?.knobs)).toBe(
-      'after the warm-up, the slow tier\'s load guard holds at any host load (slow.maxLoadPerCpu 0.0001), so after each edit Squeal holds the slow test "waiting for host load to drop" for up to slow.maxDeferMs (120 s), then runs it.',
+      'after the warm-up, the slow tier\'s load guard holds at any host load (slow.maxLoadPerCpu 0.0001), so after each edit Squeal holds the slow test "waiting for host load to drop" for up to slow.maxDeferMs (600 s); an explicit `squeal run --slow` runs it at once.',
     );
   });
 
