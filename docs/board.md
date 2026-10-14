@@ -935,7 +935,7 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 | 009-17 review of wave 1 | done: FAIL at 7ac131df, B1 (steered input resets the continuation flag); fix in 009-15 (`reviews/wave-1.md`) | `/reviewer` over `502eb7f1..7ac131df`: D3 honesty rules, D4 bounds, `install.sh` against 005 D3, launcher format 2, status line. | `reviews/wave-1.md` committed. |
 | 009-21 focused re-review of the B1 fix | done: PASS at c4c59482, B1 closed (`reviews/wave-1.5.md`) | `/reviewer` over `02249f23` against `reviews/wave-1.md` B1; last round on wave 1. | `reviews/wave-1.5.md` committed. |
 
-### Wave 3: updates and proof (briefs in `specifications/009-pi-adapter/tasks/wave-3.md`; 009-20 waits for the human's go)
+### Wave 3: updates and proof (briefs in `specifications/009-pi-adapter/tasks/wave-3.md`)
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
@@ -943,7 +943,15 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 | 009-19 end to end | done (0.1.173; CI green on Node 22 and 24 for `test/e2e/pi.test.ts`) | The Pi package archived from HEAD, `pi install` into an isolated agent dir, a fixture repository, the shipped daemon (spec Testing). | e2e suite green in CI. |
 | 009-22 review of waves 2 and 3 | done: PASS at 3fd4916d; S1, S2, N1 to 009-23 (`reviews/wave-3.md`) | `/reviewer` over `cf1e952c..3fd4916d`: D5 idle wake (never holds Pi, cancel on input and shutdown, `tui`/`rpc` only), the shared waiter's `signal` and `command`, `squeal update` and `install.sh --pi` against 005 D3 (ownership record, kept directories, the `ps` check), the e2e's 15 s deny timing, the fixture isolation. | `reviews/wave-3.md` committed. |
 | 009-23 review 009-22's notes | done (0.1.175: S1 69ae75f0, S2 e355a2d6, N1 3de2a04b) | S1: a request barrier replaces the e2e deny scenario's 15 s window; S2: `install.sh` names the `/reload`-before-a-second-update limit, two-update real-session regression; N1: launcher format 3 in all three copies, migration from the 0.1.172 launcher. | Each a regression or assertion; Pi tests green on Node 22 and 24; full suite green. |
-| 009-20 dogfooding | running (worker 4e5b70ac, opus high; the human: as `squeal-e2e`, models tiered, `cliproxy`) | Cezar-shaped `rpc` and TUI sessions with real models on a real Vitest project; whether a model reads a Squeal message as Squeal's (open question 2); `lessons.md`. | `lessons.md` resolves the open questions with evidence. |
+| 009-20 dogfooding | done: no blocker; goals 1, 3, 5, 8 and OQ2 hold, 7 in RPC; three defects to 009-24 to 009-26 (`lessons.md`) | Cezar-shaped `rpc` and TUI sessions with real models on a real Vitest project; whether a model reads a Squeal message as Squeal's (open question 2); `lessons.md`. | `lessons.md` resolves the open questions with evidence. |
+
+### Wave 4: dogfood defects (from `specifications/009-pi-adapter/lessons.md`; 009 shipped without them)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 009-24 TUI idle wake after `/reload` and after a text-only continuation | planned | Lessons defect 1: two missed wakes in a reloaded TUI, one wake in RPC. Run `dogfood/pair.sh` below load 24 to tell reload, text-only continuation, and a missed end-of-turn deadline apart; fix what it finds. | A real-Pi regression with the fake provider for the found case (RPC with `new_session` may stand in for the TUI); Pi tests green on Node 22 and 24. |
+| 009-25 the daemon is not Pi's child | planned | Lessons defect 2: the daemon a reloaded extension spawned stays `<defunct>` under Pi after a handover. Spawn so Pi is not its parent (detached intermediate) or from the main thread. | A test that a daemon handed over after a worker's termination leaves no zombie of the Pi process. |
+| 009-26 setup knows Pi | planned | Lessons defect 3: `squeal setup`'s plan names only Claude Code and Codex, and omits Pi as a reader of `AGENTS.md`. List Pi with its install state from Pi's settings (as D7's status line), and among the `AGENTS.md` readers. Crosses 005 D3: tell the 005 coordinator. | Setup plan tests for a Pi-only home and a mixed home. |
 
 ### Wave 0: plugin, bridge and test fixture (parallel; briefs in `specifications/008-opencode-adapter/tasks/wave-0.md`)
 
@@ -973,6 +981,10 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 | 007-40 agent texts name Python | planned (brief `tasks/wave-4.md`) | Defects 6, 10, 12: "No dependencies are installed" for a synced Python worktree; `squeal setup` tells the user to trust Codex hooks after trusting them; the skill trigger names `pytest`. Coordinate with 005 (owns setup and skill texts). | Text tests; both skill copies identical apart from Codex's CLI paragraph. |
 
 ## Later
+
+- 009 lessons Observation 1: a Vitest typecheck project (`typecheck.only`, `*.test-d.ts`) is not run, yet setup's plan says "runs all N test files" and the primer says "Squeal covers Vitest". The plan and the primer should name a typecheck project as not covered (001 or 005 row).
+- 009 lessons Observation 3: one model in four (grok-4.7) let a FAIL report widen an explicit user scope. Candidate clause for the Squeal skill: "the user's instructions decide which; say why it stays when they limit the change". Wants an eval before it ships (006).
+- 009 lessons Observation 4: a test file that failed to load before a git-ignored build existed stays current FAIL after the build appears (no recorded read of the ignored path); nearest entry is 007's runtime reads.
 
 - 007: observed closure growth outside `observe.runtimeInputs`: a pytest file whose run imports a path outside its static closure and outside the shared session key makes the result incomplete but does not grow the stored closure for the next key (007-14 option (b), 2026-10-14).
 - 007: data files read at run time enter no pytest closure (spec 007 open question 2); an audit hook on `open` was measured in wave 1 and not shipped. A row once a dogfood shows a missed data-file edit.
