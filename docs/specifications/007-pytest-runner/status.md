@@ -1,6 +1,6 @@
 # 007 pytest runner: status
 
-Stage: draft spec (`spec.md`, 2026-10-13, from the three findings files; awaiting the human's approval).
+Stage: approved (2026-10-14, the human); waves on `docs/board.md`, briefs under `tasks/`.
 Started: 2026-10-13
 
 ## Decisions so far
@@ -15,5 +15,7 @@ Started: 2026-10-13
 - Slow pytest suites (integration, e2e marked tests) take spec 004's policy; this spec makes them runnable, not scheduled.
 
 ## Amendments after approval
+
+- 2026-10-14, at approval, the human: the spec stands as drafted. Open question 1 is not decided yet: research row 007-04 (`research/README.md`, topic `no-venv-resolution`) measures resolving a worktree without an environment from the build backend's declared layout; D2 and D4 keep `unknown` without an environment until its findings land, and the graph row (007-12) leaves room for the fallback.
 
 None yet.

@@ -783,7 +783,7 @@ Spec: `specifications/006-model-evals/spec.md`, approved 2026-10-11 by the human
 
 ## Feature 007: pytest runner
 
-Spec: `specifications/007-pytest-runner/spec.md`, draft 2026-10-13, awaiting approval; sections D1 to D8. Status and research brief: `specifications/007-pytest-runner/status.md`, `research/README.md` (human, 2026-10-13: start preparing pytest support). Research done 2026-10-13 (mixed models, generic fixture); the spec is written from the three findings files.
+Spec: `specifications/007-pytest-runner/spec.md`, approved 2026-10-14 by the human; sections D1 to D8. Open question 1 (a worktree without an environment) is measured by 007-04 before the graph row settles it. Status and research brief: `specifications/007-pytest-runner/status.md`, `research/README.md` (human, 2026-10-13: start preparing pytest support). Research done 2026-10-13 (mixed models, generic fixture); the spec is written from the three findings files.
 
 ### Research
 
@@ -792,6 +792,36 @@ Spec: `specifications/007-pytest-runner/spec.md`, draft 2026-10-13, awaiting app
 | 007-01 research: pytest-runner-api | done (`add4e985`, Astra, `research/pytest-runner-api.md`) | Topic `pytest-runner-api`: a process per run against a long-lived or forking Python worker, results through a `-p` reporting plugin, collection and node IDs, config discovery and `addopts`, xdist against Squeal's own processes, timeouts and exit codes, sharp edges. | `research/pytest-runner-api.md` committed with every question tagged or "not determined, because". |
 | 007-02 research: python-module-graph | done (`68791090`, Opus, `research/python-module-graph.md`) | Topic `python-module-graph`: static imports resolved as the interpreter would (src layout, editables, namespace packages) from a Node bundle without native addons, conftest and plugins as closure or environment, observed graph, which graph keys, re-resolve cost on 1,000 modules, testmon as a component (human, 2026-10-13), prior art. | `research/python-module-graph.md` committed with every question tagged or "not determined, because". |
 | 007-03 research: python-environments | done (`fbc1e7be`, Opus, `research/python-environments.md`) | Topic `python-environments`: interpreter discovery (venv, uv, Poetry, PDM, Hatch, conda), fresh and shared-venv worktrees, editable installs pointing at another worktree, the environment hash, what `squeal setup` seeds. | `research/python-environments.md` committed with every question tagged or "not determined, because". |
+| 007-04 research: no-venv-resolution | planned (brief in `specifications/007-pytest-runner/tasks/wave-0.md`) | Topic `no-venv-resolution` (the human at approval, 2026-10-14: measure the fallback): import roots derived from build-backend config against what `uv sync` writes, closures without `.venv` against the oracle, the lockfile as an environment stand-in for inheritance. | `research/no-venv-resolution.md` committed with every question tagged or "not determined, because". |
+
+### Wave 0: policy, environment and fixtures (parallel with 007-04; briefs in `specifications/007-pytest-runner/tasks/wave-0.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 007-10 `pytest` policy and the Python environment | planned | D1, D2: `PytestProject` and its loader; `src/runners/pytest/environment/`: discovery inside the worktree only, the no-environment, editable-outside and sync states, the environment hash, the `sys.path` model from `pyvenv.cfg`, `.pth` and finder literals, the pytest config file. No adapter. | Synthetic-tree tests cover every discovery case and state; a foreign `VIRTUAL_ENV` changes nothing; a lockfile edit keeps the hash; full suite green. |
+| 007-11 pytest fixtures and CI Pythons | planned | Testing: `test/fixtures/pytest/` (the research's small project, the 1,000-module generator, edge-case and outcome files, the `ast_graph.py` oracle), `test/helpers/pytest-env.ts` (uv sync into a temp copy), CI installs uv with Pythons 3.10 and 3.13. | `fixtures.test.ts` runs every designed outcome under plain pytest on both Pythons; no Python artefacts in the tree; full suite and the branch's CI green. |
+
+### Wave 1: graph and runner (parallel, after wave 0; briefs written from wave 0 and 007-04)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 007-12 graph, invalidation and enumeration | planned | D4, D5, D7: tree-sitter-python WASM bundled, the resolver over 007-10's `sys.path` model and pytest's import modes, closures with conftest chains and candidates, the reverse index, full re-resolve on structural change, enumeration; 007-04's verdict on resolving without an environment. | Closures equal the oracle on the small fixture; the candidate cases re-key exactly; cost relative to the cold build on the generator. |
+| 007-13 runner and the `squeal_pytest` reporter | planned | D3, D6: batched fresh processes in process groups, the JSON-lines reporter with the import-edge recorder, phase joining and outcomes, collection errors, overrides and refused flags, the deadline; measures open questions 2 (an `open` audit hook) and 3 (`PYTHONPYCACHEPREFIX`). | Runner tests of the spec's Testing list on recorded and live runs on both Pythons. |
+
+### Wave 2: assembly and the agent surfaces
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 007-14 the pytest adapter in the daemon | planned | `RunnerAdapter` over 007-10, 007-12, 007-13; the observed-closure `meta` key as 003 D3; the composite; runtime files copied into both plugins' `dist/pytest/`. | Integration: baseline, inheritance into a synced second worktree, a `PASS -> FAIL` through the Claude Code and Codex hooks. |
+| 007-15 agent surfaces and setup | planned | D8, D1 setup: 005 texts, skill and instruction block name pytest; 005 D8 recognises pytest commands; `squeal setup` seeds `pytest` projects. | Setup seeds both fixture projects; the deny recognises and falls through as D8 lists. |
+| 007-16 review of waves 0 to 2 | planned | `/reviewer` over the spec's range: keys, the environment refusal states, the reporter's completion rule. | `reviews/wave-2.md` committed. |
+
+### Wave 3: proof
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 007-17 end to end | planned | The shipped plugin against the fixture, as 001's `test/e2e`. | e2e suite green in CI. |
+| 007-18 dogfooding | planned | A real open-source pytest project of a few hundred test files, a Cezar worker on Claude Code and one on Codex; batch size revisited. | `lessons.md` resolves the open questions with evidence. |
 
 ## Later
 
