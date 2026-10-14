@@ -158,7 +158,7 @@ describe("the warm-up's ignored reads on a real daemon", SLOW, () => {
     );
     expect(entry?.[1]).toEqual({ paths: ["build/out.txt"], more: 0 });
     expect(out).toContain(
-      "Suggestions; squeal warmup applies none:\n  test/build.test.ts read 1 gitignored path, unkeyed: a change to it re-runs nothing until declared; squeal setup --input test/build.test.ts=<glob> declares one\n    build/out.txt\n",
+      "Suggestions; squeal warmup applies none:\n  test/build.test.ts read 1 gitignored path, unkeyed: a change to it re-runs nothing until declared; squeal setup --input test/build.test.ts=<glob> declares one; declare build output, never a file the suite's own bootstrap rewrites (a descriptor, a log, a PID file), or every boot re-runs it\n    build/out.txt\n",
     );
     expect(out).not.toContain("no ignored read recorded");
     // A fast file's reads are no slow suggestion.

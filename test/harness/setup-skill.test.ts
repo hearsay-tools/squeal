@@ -60,6 +60,13 @@ describe("the setup skill", () => {
     expect(body).toContain("the glob ending in `/**`");
   });
 
+  // Row 005-41, from cezar: `.ai/qa/test-env.json` is rewritten on each boot, so never an input.
+  it("says an input is build output, never what the suite's bootstrap rewrites", () => {
+    expect(body).toContain(
+      "An input is build output the group tests, never a file the suite's own bootstrap rewrites on each run (an environment descriptor, a log, a PID file): declared, every boot re-runs the group.",
+    );
+  });
+
   it("finds the CLI in each harness", () => {
     expect(body).toContain(`\`"\${CLAUDE_PLUGIN_ROOT}/bin/squeal"\``);
     expect(body).toContain(
