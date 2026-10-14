@@ -11,11 +11,12 @@ import {
   rmSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { delimiter, join, resolve } from "node:path";
+import { delimiter, join } from "node:path";
 import { isRecord } from "../core/fs/index.js";
 import type { CliIo } from "./main.js";
 import { MARKETPLACE_NAME, PLUGIN_ID, PLUGIN_NAME } from "./plugin-id.js";
-import { compareVersions, type HarnessId, readHarnesses } from "./setup/harnesses.js";
+import { type HarnessId, readHarnesses } from "./setup/harnesses.js";
+import { openCodePackage, packagesHome, piPackage } from "./update-packages.js";
 
 /*
  * `squeal update`, spec 005 D3: updates the plugin in every harness that has
@@ -25,7 +26,9 @@ import { compareVersions, type HarnessId, readHarnesses } from "./setup/harnesse
  * D1) has no update for a local package, so it runs the latest release's
  * `install.sh --pi` (`SQUEAL_INSTALL_SH` overrides where it is), which
  * installs that release and keeps the previous directory for open sessions.
- * Then it re-copies the launcher when an installed copy has a newer format.
+ * OpenCode (spec 008 D1) loads the package `install.sh` links as `current`,
+ * so it runs `install.sh --opencode`, which repoints the link, when OpenCode's
+ * config lists it. Then it re-copies the launcher when an installed copy has a newer format.
  */
 
 const NAMES: Record<HarnessId, string> = { "claude-code": "Claude Code", codex: "Codex" };
@@ -68,7 +71,7 @@ export function updateCommand(args: readonly string[], io: CliIo): number {
       `curl -fsSL ${LATEST_INSTALL_SH} | sh`,
     ];
     io.stderr(
-      `squeal update: no harness on the PATH has ${PLUGIN_ID} installed, and Pi has no Squeal package. Install it:\n${commands.map((c) => `  ${c}\n`).join("")}`,
+      `squeal update: no harness on the PATH has ${PLUGIN_ID} installed, and neither Pi nor OpenCode has a Squeal package. Install it:\n${commands.map((c) => `  ${c}\n`).join("")}`,
     );
     return 1;
   }
@@ -100,7 +103,7 @@ export function updateCommand(args: readonly string[], io: CliIo): number {
   return ok ? 0 : 1;
 }
 
-/** Claude Code and Codex when on the PATH with the plugin, then Pi when on the PATH with a package. */
+/** Claude Code and Codex when on the PATH with the plugin, then Pi and OpenCode when on the PATH with a package. */
 function updateTargets(cwd: string, env: Env, io: CliIo): Target[] {
   const after = () =>
     new Map(readHarnesses(cwd, env).map((h) => [h.id, h.plugin?.version ?? null]));
@@ -121,22 +124,31 @@ function updateTargets(cwd: string, env: Env, io: CliIo): Target[] {
     targets.push({
       name: "Pi: Squeal",
       version: pi.version,
-      update: () => updatePi(cwd, env, io),
+      update: () => runInstallSh("--pi", cwd, env, io),
       versionAfter: () => piPackage(env)?.version ?? null,
+    });
+  }
+  const openCode = openCodePackage(env);
+  if (onPath("opencode", env) && openCode !== null) {
+    targets.push({
+      name: "OpenCode: Squeal",
+      version: openCode.version,
+      update: () => runInstallSh("--opencode", cwd, env, io),
+      versionAfter: () => openCodePackage(env)?.version ?? null,
     });
   }
   return targets;
 }
 
-/** Downloads the latest release's `install.sh` and runs its Pi step; the script is deleted after. */
-function updatePi(cwd: string, env: Env, io: CliIo): boolean {
+/** Downloads the latest release's `install.sh` and runs its step `flag`; the script is deleted after. */
+function runInstallSh(flag: string, cwd: string, env: Env, io: CliIo): boolean {
   const dir = mkdtempSync(join(tmpdir(), "squeal-update-"));
   try {
     const script = join(dir, "install.sh");
     const url = env.SQUEAL_INSTALL_SH ?? LATEST_INSTALL_SH;
     return (
       run(["curl", "-fsSL", "-o", script, url], cwd, env, io) &&
-      run(["sh", script, "--pi"], cwd, env, io)
+      run(["sh", script, flag], cwd, env, io)
     );
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -199,7 +211,7 @@ function recopyLauncher(env: Env, io: CliIo): void {
   io.stdout(`Copied the launcher (format ${current}, now ${newest.format}) to ${target}\n`);
 }
 
-/** Every installed plugin directory: each Claude Code entry, each Codex cache version, each Pi package. */
+/** Every installed plugin directory: each Claude Code entry, each Codex cache version, each Pi and OpenCode package. */
 function pluginDirs(env: Env): string[] {
   const home = env.HOME ?? "";
   const dirs: string[] = [];
@@ -223,49 +235,11 @@ function pluginDirs(env: Env): string[] {
     PLUGIN_NAME,
   );
   if (existsSync(cache)) for (const version of readdirSync(cache)) dirs.push(join(cache, version));
-  const pi = piHome(env);
-  if (existsSync(pi)) for (const version of readdirSync(pi)) dirs.push(join(pi, version));
+  for (const packages of [packagesHome("pi", env), packagesHome("opencode", env)]) {
+    if (existsSync(packages))
+      for (const version of readdirSync(packages)) dirs.push(join(packages, version));
+  }
   return dirs;
-}
-
-/** Where `install.sh` unpacks Pi packages, one directory per version. */
-function piHome(env: Env): string {
-  return join(env.XDG_DATA_HOME || join(env.HOME ?? "", ".local", "share"), "squeal", "pi");
-}
-
-/**
- * The newest Pi package of `install.sh` that Pi's user settings list: a local
- * source, relative to Pi's agent directory, under `piHome`. A Squeal package
- * installed from elsewhere is the user's, and `install.sh` would not replace it.
- */
-function piPackage(env: Env): { readonly version: string } | null {
-  const home = env.HOME ?? "";
-  let agent = env.PI_CODING_AGENT_DIR || join(home, ".pi", "agent");
-  if (agent === "~") agent = home;
-  else if (agent.startsWith("~/")) agent = join(home, agent.slice(2));
-  let packages: unknown = [];
-  try {
-    const file: unknown = JSON.parse(readFileSync(join(agent, "settings.json"), "utf8"));
-    if (isRecord(file)) packages = file.packages;
-  } catch {
-    return null;
-  }
-  const versions: string[] = [];
-  for (const entry of Array.isArray(packages) ? packages : []) {
-    const source = isRecord(entry) ? entry.source : entry;
-    if (typeof source !== "string" || /^(npm|git|https?|ssh):/.test(source)) continue;
-    const dir = resolve(agent, source);
-    if (resolve(dir, "..") !== resolve(piHome(env))) continue;
-    try {
-      const manifest: unknown = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
-      if (isRecord(manifest) && typeof manifest.version === "string")
-        versions.push(manifest.version);
-    } catch {
-      // Listed but gone: Pi itself skips it.
-    }
-  }
-  const newest = versions.sort(compareVersions).at(-1);
-  return newest === undefined ? null : { version: newest };
 }
 
 /** Whether an executable `name` is on the PATH. */
