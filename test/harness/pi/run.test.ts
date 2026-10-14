@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
+import { squealVersion } from "../../../src/core/daemon/version.js";
 import { readTurn } from "../../../src/core/delivery/turn.js";
 import { omittedTestFilesMetaKey } from "../../../src/core/scheduler/omitted-test-files.js";
+import { recordStopWait } from "../../../src/core/slow/index.js";
+import { DEFAULT_POLICY } from "../../../src/core/types/index.js";
 import { endRun, settle, startRun, toolCall } from "../../../src/harness/pi/run.js";
 import { startSession, toolBoundary } from "../../../src/harness/pi/session.js";
 import { piCommand, workerDeps } from "../../../src/harness/pi/worker.js";
 import type { HookDeps } from "../../../src/harness/shared/hook.js";
 import { PRIMER_OPENING } from "../../../src/harness/shared/primer.js";
 import { outsideGit } from "../bundle-helpers.js";
-import { SESSION, type SquealRepo, squealRepo } from "../helpers.js";
+import { FILE, SESSION, type SquealRepo, squealRepo } from "../helpers.js";
+import { SLOW_FILE, slowKey } from "../stop-slow-helpers.js";
 
 /*
  * The worker's side of spec 009 D3 for one run on the shared code: the
@@ -125,6 +129,22 @@ describe("a run's settle", () => {
     r.apply(r.fail());
     await toolBoundary(about(r), deps());
     expect((await settle(about(r), deps())).report).toMatch(/known failure/i);
+  });
+
+  it("answers for the slow tier itself: Pi has no waiting Stop entry, whatever another harness recorded", async () => {
+    const r = await registered();
+    r.policy({
+      slow: { ...DEFAULT_POLICY.slow, include: [SLOW_FILE.path, FILE.path] },
+      stop: { requireSlowSuite: true },
+    });
+    slowKey(r, "queued");
+    await startRun(about(r), deps());
+    for (const harness of ["claude-code", "codex"] as const) {
+      recordStopWait(r.store, r.consumer(), harness, squealVersion());
+    }
+    expect((await settle(about(r), deps())).report).toMatch(
+      /stop.requireSlowSuite is on and 1 slow test file is not current/,
+    );
   });
 
   it("is silent outside a git worktree", async () => {

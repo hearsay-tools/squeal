@@ -51,8 +51,11 @@ export function stopSlowWaitMs(policy: Policy): number | null {
   return Math.max(0, Math.min(policy.stop.slowWaitMs, STOP_SLOW_WAIT_CAP_MS));
 }
 
-/** The harnesses with a waiting Stop entry. */
-export type StopWaitHarness = "claude-code" | "codex";
+/**
+ * The harnesses whose Stop asks after a waiting Stop entry: Claude Code and
+ * Codex have one; Pi has none, so its entry never runs (spec 009 D3).
+ */
+export type StopWaitHarness = "claude-code" | "codex" | "pi";
 
 /** `meta` key of a worktree's waiting-entry record. */
 export function stopWaitMetaKey(worktreeId: WorktreeId): string {
