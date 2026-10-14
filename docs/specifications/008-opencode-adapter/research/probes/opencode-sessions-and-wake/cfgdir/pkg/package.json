@@ -1,0 +1,1 @@
+{ "name": "squeal-probe-pkg", "version": "0.0.1", "type": "module", "exports": { "./server": "./index.js" }, "engines": { "opencode": ">=1.18.0" } }

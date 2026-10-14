@@ -1,0 +1,3 @@
+3776836    1049 3776836 tmux -L oc008s new-session -d -x 160 -y 45 cd /home/squeal-e2e/008-sessions/repo && PROBE_LABEL=t1 PROBE_WAKE=delay:3000 PROBE_LOG=/home
+3776837 3776836 3776837 bash -c cd /home/squeal-e2e/008-sessions/repo && PROBE_LABEL=t1 PROBE_WAKE=delay:3000 PROBE_LOG=/home/squeal-e2e/008-sessions/log/events
+3776839 3776837 3776837 opencode -m cliproxy/gpt-6-luna

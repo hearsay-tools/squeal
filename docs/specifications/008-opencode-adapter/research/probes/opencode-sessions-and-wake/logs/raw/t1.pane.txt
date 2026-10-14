@@ -1,0 +1,45 @@
+
+  ┃                                                                                                                     TUI-FIRST response request
+  ┃  Reply with exactly TUI-FIRST and nothing else.
+  ┃                                                                                                                     Context
+                                                                                                                        5,449 tokens
+     TUI-FIRST                                                                                                          0% used
+                                                                                                                        $0.00 spent
+     ▣  Build · gpt-6-luna · 2.7s
+                                                                                                                        LSP
+  ┃                                                                                                                     LSPs are disabled
+  ┃  Squeal: tests/add.test.js PASS -> FAIL at revision 3. Reply with exactly WAKE-OK and nothing else.
+  ┃
+
+     WAKE-OK
+
+     ▣  Build · gpt-6-luna · 2.0s
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  ┃
+  ┃
+  ┃
+  ┃  Build · gpt-6-luna cliproxy                                                                                        ~/008-sessions/repo:main
+  ╹▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+   /home/squeal-e2e/008-sessions/repo                                                          5.4K  ctrl+p commands    • OpenCode 1.18.35
+
