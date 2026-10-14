@@ -1,40 +1,48 @@
 /*
  * A busy daemon's writes as task 001-161 found them, for `busy-store.test.ts`:
  * the store's write lock held `holdMs` at a time, as recording a 250-file
- * tier held it 6 to 67 s before the fix. Between holds it rests `restMs` and
- * then retries every 250 ms without waiting, so a waiter in SQLite's busy
- * handler can take the lock in the gap. Run as
- * `node --import tsx long-writer.ts <store> <holdMs> <restMs>`; prints
- * `holding` at its first hold; stops on SIGTERM.
+ * tier held it 6 to 67 s before the fix. Writers take turns on one schedule
+ * from `epochMs`: slot s, `holdMs + restMs` long from `epochMs + s * (holdMs
+ * + restMs)`, is writer `s % writers`'s, held to `holdMs` into it, so the lock
+ * is free `restMs` between any two holds and a waiter in SQLite's busy
+ * handler, which tries again every 100 ms, takes it there. Task 001-362:
+ * writers that each retried every 250 ms left it free only as long as their
+ * race, 5 to 20 ms for minutes, and a daemon start waited out its 120 s. A
+ * hold waits behind the waiter's write. Run as `node --import tsx
+ * long-writer.ts <store> <holdMs> <restMs> <turn> <writers> <epochMs>`;
+ * prints `holding` at its first hold; stops on SIGTERM.
  */
 import { DatabaseSync } from "node:sqlite";
 import { setTimeout as sleep } from "node:timers/promises";
 
-const [database, hold, rest] = process.argv.slice(2);
-if (database === undefined || hold === undefined || rest === undefined) {
-  throw new Error("usage: long-writer.ts <store> <holdMs> <restMs>");
+const [database, ...numbers] = process.argv.slice(2);
+const [hold, rest, turn, writers, epoch] = numbers.map(Number);
+if (
+  database === undefined ||
+  hold === undefined ||
+  rest === undefined ||
+  turn === undefined ||
+  writers === undefined ||
+  epoch === undefined
+) {
+  throw new Error("usage: long-writer.ts <store> <holdMs> <restMs> <turn> <writers> <epochMs>");
 }
 const db = new DatabaseSync(database);
-db.exec("PRAGMA busy_timeout = 0");
+db.exec("PRAGMA busy_timeout = 60000");
 let stopping = false;
 process.on("SIGTERM", () => {
   stopping = true;
 });
-let first = true;
-while (!stopping) {
-  try {
-    db.exec("BEGIN IMMEDIATE");
-  } catch {
-    await sleep(250);
-    continue;
-  }
+for (let slot = turn; !stopping; slot += writers) {
+  const start = epoch + slot * (hold + rest);
+  await sleep(Math.max(0, start - Date.now()));
+  if (stopping) break;
+  db.exec("BEGIN IMMEDIATE");
   db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('long-writer', ?)").run(
     String(process.pid),
   );
-  if (first) process.stdout.write("holding\n");
-  first = false;
-  await sleep(Number(hold));
+  if (slot === turn) process.stdout.write("holding\n");
+  await sleep(Math.max(0, start + hold - Date.now()));
   db.exec("COMMIT");
-  await sleep(Number(rest));
 }
 db.close();

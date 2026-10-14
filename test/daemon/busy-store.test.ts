@@ -21,7 +21,9 @@ import {
  * writes a tier in well under a second, but a start must survive a long
  * writer anyway: here two writers stand in for the busy daemons, each
  * holding the write lock 7 s at a time, and a daemon starts beside them
- * three times in a row.
+ * three times in a row. They take turns with the lock free 1 s between
+ * holds: SQLite queues no waiter, so writers racing for the lock can keep
+ * one out for good (task 001-362).
  */
 
 const suite = daemonSuite();
@@ -30,11 +32,17 @@ const LONG_WRITER = join(import.meta.dirname, "long-writer.ts");
 const HOLD_MS = 7_000;
 const REST_MS = 1_000;
 const STARTS = 3;
+const WRITERS = 2;
 const LOCKED = /database is locked|store busy/;
 /** A start that failed; after ready the daemon's 5 s busy timeout is not this test's subject. */
 const START_FAILED = /could not start/;
 
-function startWriter(database: string, env: NodeJS.ProcessEnv): SpawnedProcess {
+function startWriter(
+  database: string,
+  env: NodeJS.ProcessEnv,
+  turn: number,
+  epoch: number,
+): SpawnedProcess {
   const child = spawn(
     process.execPath,
     [
@@ -47,6 +55,9 @@ function startWriter(database: string, env: NodeJS.ProcessEnv): SpawnedProcess {
       database,
       String(HOLD_MS),
       String(REST_MS),
+      String(turn),
+      String(WRITERS),
+      String(epoch),
     ],
     { env, stdio: ["ignore", "pipe", "pipe"] },
   );
@@ -72,7 +83,11 @@ describe("a daemon starting beside long writers on the shared store (task 001-16
     created.close();
 
     const database = storePaths(repo.commonDir).database;
-    const writers = [startWriter(database, repo.env), startWriter(database, repo.env)];
+    // Past both writers' start-up; a writer late for its slot only holds it shorter.
+    const epoch = Date.now() + 2_000;
+    const writers = Array.from({ length: WRITERS }, (_, turn) =>
+      startWriter(database, repo.env, turn, epoch),
+    );
     suite.cleanup(() => {
       for (const writer of writers) writer.child.kill("SIGKILL");
     });
