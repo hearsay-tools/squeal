@@ -1,6 +1,6 @@
 # 007 wave 3 briefs: proof
 
-Two rows on 0.1.169 (key format 10). 007-17 runs now; 007-18 waits until 005's release evals on `squeal-e2e` finish (they take turns on that user and on the host's load). Workers read `docs/vision.md`, `docs/styleguide.md`, spec 007 as amended and `status.md` (every 2026-10-14 entry) first. Python environments only through `test/helpers/pytest-env.ts` or uv inside a scratch directory of your own; never the system or user Python, never the real `HOME`. Do not run `npm run build` in your worktree; the coordinator builds at integration. Load is high on this host: re-run a failing file alone before calling the failure yours.
+Two rows on 0.1.169 (key format 10). 007-17 ran first; 007-18 starts after 005's release evals (finished 2026-10-14). Take batch-size timings only while the one-minute load is below 8 and say the load beside each number. Workers read `docs/vision.md`, `docs/styleguide.md`, spec 007 as amended and `status.md` (every 2026-10-14 entry) first. Python environments only through `test/helpers/pytest-env.ts` or uv inside a scratch directory of your own; never the system or user Python, never the real `HOME`. Do not run `npm run build` in your worktree; the coordinator builds at integration. Load is high on this host: re-run a failing file alone before calling the failure yours.
 
 ## 007-17 end to end: the shipped plugins validate pytest projects
 
@@ -22,7 +22,7 @@ Outcome: evidence in `lessons.md` that Squeal validates a real open-source pytes
 
 Read: spec Goals and Open questions; `docs/specifications/003-node-test-runner/lessons.md` (the shape of the report); the `squeal-e2e` user (`docs/board.md` and 005's e2e rows): real `claude` and `codex` run only as that user, credentials passed by name, never in argv.
 
-Shape: survey. Pick a permissively licensed project with a few hundred test files, a `src` layout and a uv- or pip-syncable `pyproject.toml`; name the commit. Clone and sync it under `squeal-e2e`'s home only. Install the 0.1.169 plugins as `squeal-e2e`, run `squeal setup`, then one Claude Code session (`sonnet`) and one Codex session (`gpt-6.1-sol`) each given an ordinary task in the project: fix a seeded failing test, then refactor a module two test files import. Measure batch sizes 1, 5 and 10 on the full baseline (open question 5) and watch for a run reading a half-synced environment (open question 7).
+Shape: survey. Pick a permissively licensed project with a few hundred test files, a `src` layout and a uv- or pip-syncable `pyproject.toml`; name the commit. Clone and sync it under `squeal-e2e`'s home only. Build both plugins from your baseline (main, 0.1.174 or later, never the hub's copy) and install them as `squeal-e2e` by `git archive` of your tree, run `squeal setup`, then one Claude Code session (`sonnet`) and one Codex session (`gpt-6.1-sol`) each given an ordinary task in the project: fix a seeded failing test, then refactor a module two test files import. Measure batch sizes 1, 5 and 10 on the full baseline (open question 5) and watch for a run reading a half-synced environment (open question 7).
 
 Owns: `docs/specifications/007-pytest-runner/lessons.md`, `research/probes/dogfood/` (scripts, prompts, trimmed logs, a README naming every rule followed). Leave alone: everything else; defects become report lines, never fixes.
 
