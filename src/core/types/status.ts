@@ -414,6 +414,11 @@ export interface StatusSnapshot extends StatusHeader {
   readonly daemonNotes: readonly DaemonNote[];
   /** The open checkpoint, running or owed (tasks 001-217, 001-219). Absent when none is. */
   readonly checkpoint?: CheckpointInProgress;
+  /**
+   * Policy `vitest.excludeProjects` while Vitest is built: the projects
+   * Squeal never runs (001 D11, task 001-349). Absent when none is listed.
+   */
+  readonly vitestExcluded?: readonly string[];
 }
 
 /**
