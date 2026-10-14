@@ -217,6 +217,8 @@ export interface HarnessOptions {
   readonly observe?: boolean;
   /** `SchedulerOptions.slow` (spec 004): give tests with slow files their own slot directory. */
   readonly slow?: SchedulerOptions["slow"];
+  /** `SchedulerOptions.capacity` (001 D11 Capacity): a pool in a temporary directory. Default none. */
+  readonly capacity?: SchedulerOptions["capacity"];
   /** node:test projects beside Vitest, behind the daemon's composite (spec 003 D7). */
   readonly nodeTest?: readonly NodeTestProject[];
   /** Adapters behind the composite after node:test's, as built (task 007-26: a pytest one). */
@@ -335,6 +337,7 @@ export async function openHarness(
         }),
     ...(options.onReinstall === undefined ? {} : { onReinstall: options.onReinstall }),
     ...(options.slow === undefined ? {} : { slow: options.slow }),
+    ...(options.capacity === undefined ? {} : { capacity: options.capacity }),
     ...(options.rerunCap === undefined ? {} : { rerunCap: options.rerunCap }),
     ...(options.runnerPartMs === undefined ? {} : { runnerPartMs: options.runnerPartMs }),
     ...(options.now === undefined ? {} : { now: options.now }),

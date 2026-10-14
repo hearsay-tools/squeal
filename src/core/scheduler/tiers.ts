@@ -1,10 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
+import type { PoolLease } from "../capacity/index.js";
 import type { StatCache } from "../hash/index.js";
 import { listedDirectory, testFileId } from "../keys/index.js";
 import type { CheckKey, Provenance, RelativePath, RunReport, TestFileRef } from "../types/index.js";
 import { SLOW_LANE_PREFIX } from "../types/index.js";
 import { backlogBudget } from "./backlog.js";
+import { WAIT_FOR_CAPACITY } from "./capacity.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { rerunGrown } from "./environment-growth.js";
 import type { FileState } from "./files.js";
@@ -59,6 +61,8 @@ export interface Tier {
   readonly snapshot: StatCache;
   /** A backlog tier, which an edit cancels (`Scheduler.handleBatch`); `null` for an edit's tier. */
   readonly cancel: AbortController | null;
+  /** A backlog or checkpoint tier's grant from the per-user pool, returned when it ends (`endTier`). */
+  readonly lease?: PoolLease;
 }
 
 /**
@@ -109,6 +113,13 @@ export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
  * against the budget (`Claims`, D5 step 4 as amended, task 001-205); a
  * backlog tier is split with the other daemons that have its keys pending
  * (`Claims.backlogSize`).
+ *
+ * A backlog tier takes its grant from the per-user pool after its files are
+ * picked and before `startTier` claims their keys, so a daemon that waits for
+ * capacity holds no claim (D11 Capacity, task 001-376). It waits only while
+ * another lane's backlog tier of this daemon has its free worker and no
+ * permit is free: that tier's end wakes the pump. An edit's tier takes no
+ * grant and never waits on the pool.
  */
 export function selectTier(
   context: SchedulerContext,
@@ -164,7 +175,14 @@ export function selectTier(
     const inputs = keys.stabilityPaths(ref);
     picked.push({ file, key, inputs, checkpointId, forced, recent, waits });
   }
-  const tier = picked.length === 0 ? null : startTier(context, ledger, picked, backlog);
+  const lease = picked.length > 0 && backlog ? context.capacity?.take(picked.length) : null;
+  if (lease === WAIT_FOR_CAPACITY) {
+    ledger.commit();
+    return null;
+  }
+  const tier =
+    picked.length === 0 ? null : startTier(context, ledger, picked, backlog, lease ?? undefined);
+  if (tier === null) lease?.release();
   if (tier !== null) {
     ledger.queue.tierSelected(tookBacklog);
     return tier;
@@ -188,12 +206,14 @@ export function selectTier(
  * daemons take one key). Then the stability snapshot. `null` when every file
  * settled or stayed queued; what settled is committed. `cancellable` for a
  * backlog tier, which an edit cancels; never for an edit's or a slow tier.
+ * `lease` is a backlog tier's grant, kept for as many files as start.
  */
 export function startTier(
   context: SchedulerContext,
   ledger: Ledger,
   picked: readonly TierFile[],
   cancellable: boolean,
+  lease?: PoolLease,
 ): Tier | null {
   const { store, keys } = context;
   return store.transaction(() => {
@@ -219,7 +239,9 @@ export function startTier(
         files.flatMap((p) => p.inputs),
       ),
       cancel: cancellable ? new AbortController() : null,
+      ...(lease === undefined ? {} : { lease }),
     };
+    lease?.shrinkTo(files.length);
     for (const { file, key } of files) {
       ledger.queue.remove(file.ref);
       ledger.claims.taken(key);
@@ -278,6 +300,7 @@ export async function executeTier(
         ...(tier.cancel === null ? {} : { signal: tier.cancel.signal }),
         lane: tier.lane,
         ...(observeIgnored ? { observeIgnored } : {}),
+        ...(tier.lease === undefined ? {} : { workers: tier.lease.grant }),
       },
     );
   } catch (error) {
@@ -294,6 +317,7 @@ export async function executeTier(
 
 /** The tier is no longer in flight: recorded, or put back after an error. Once per tier. */
 export function endTier(context: SchedulerContext, ledger: Ledger, tier: Tier): void {
+  tier.lease?.release();
   if (ledger.tierChanges.delete(tier.changes)) context.keys.endRun();
 }
 

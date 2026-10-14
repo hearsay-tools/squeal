@@ -11,6 +11,7 @@ import type {
   Store,
   WorktreeId,
 } from "../types/index.js";
+import type { TierCapacity } from "./capacity.js";
 import type { WorktreeKeys } from "./keying.js";
 import type { FailureDescriber } from "./records.js";
 
@@ -43,6 +44,8 @@ export interface SchedulerContext {
   readonly incarnation?: string;
   /** `SchedulerOptions.predecessor`; absent, not known. */
   readonly predecessor?: string | null;
+  /** The per-user pool backlog and checkpoint tiers take permits from (`SchedulerOptions.capacity`). */
+  readonly capacity?: TierCapacity;
 }
 
 /** Paths that changed at no revision: for baseline and `run --all` ordering. */

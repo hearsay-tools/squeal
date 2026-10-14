@@ -104,8 +104,12 @@ function permitFile(i: number): string {
   return i === 0 ? SLOW_LOCK_FILE : `slow.${i}.lock`;
 }
 
-/** One permit's exclusive lock, kept by the returned connection until it closes; `null` when held. */
-function takePermit(path: AbsolutePath, owner: SlowSlotOwner): DatabaseSync | null {
+/**
+ * One permit's exclusive lock, kept by the returned connection until it
+ * closes; `null` when held. The per-user pool's permits are these locks too
+ * (`createPermitPool`, spec 001 D11 Capacity).
+ */
+export function takePermit(path: AbsolutePath, owner: SlowSlotOwner): DatabaseSync | null {
   const db = new DatabaseSync(path);
   try {
     db.exec("PRAGMA busy_timeout = 0");

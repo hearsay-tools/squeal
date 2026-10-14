@@ -16,6 +16,7 @@ import {
 import { cancelsBacklog } from "./backlog.js";
 import { reconcileBatch } from "./batch.js";
 import { baseline, scan } from "./bootstrap.js";
+import { TierCapacity } from "./capacity.js";
 import { abandonFullSuite, queueFullSuite } from "./checkpoint-requests.js";
 import { claimWake } from "./claims.js";
 import type { SchedulerContext } from "./context.js";
@@ -101,9 +102,15 @@ class TierScheduler implements Scheduler {
   #reinstalled = false;
   #reinstallTold = false;
   readonly #install: InstallStamps;
+  /** The per-user pool's side of this scheduler (spec 001 D11 Capacity); `null` without one. */
+  readonly #capacity: TierCapacity | null;
 
   constructor(private readonly options: SchedulerOptions) {
     this.#install = new InstallStamps(options.root);
+    this.#capacity =
+      options.capacity === undefined
+        ? null
+        : new TierCapacity(options.capacity, options.worktreeId, (message) => this.#note(message));
     this.#slow = new SlowTier(
       {
         lock: this.#lock,
@@ -156,6 +163,7 @@ class TierScheduler implements Scheduler {
         ...(options.runnerPartMs === undefined ? {} : { runnerPartMs: options.runnerPartMs }),
         ...(options.incarnation === undefined ? {} : { incarnation: options.incarnation }),
         ...(options.predecessor === undefined ? {} : { predecessor: options.predecessor }),
+        ...(this.#capacity === null ? {} : { capacity: this.#capacity }),
       };
       const ledger = new Ledger(context);
       // Notes written during the baseline carry its revision.
@@ -365,6 +373,7 @@ class TierScheduler implements Scheduler {
     this.#slow.close();
     this.#notify();
     await this.#pumping;
+    this.#capacity?.close();
     this.#runnerWork.cancel();
     await this.#lock.run(() => {
       // Task 001-219: an explicit checkpoint left open is the next daemon's to resume.
@@ -557,6 +566,7 @@ class TierScheduler implements Scheduler {
         if (!recorded) await this.#requeue(tier, slow !== null);
       } finally {
         slow?.slot.release();
+        tier.lease?.release();
         this.#inFlight.delete(tier.lane);
         // A fast tier's lane is free: the slow tier's load guard gives way to its next tier.
         if (slow === null) this.#slow.preempt();

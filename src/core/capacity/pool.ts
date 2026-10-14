@@ -1,0 +1,268 @@
+import { availableParallelism } from "node:os";
+import { join } from "node:path";
+import type { DatabaseSync } from "node:sqlite";
+import { currentUid, preparePrivateDir } from "../daemon/paths.js";
+import { SLOT_WAITER_FRESH_MS, type SlowSlotOwner, takePermit } from "../slow/index.js";
+import type { AbsolutePath } from "../types/index.js";
+import { clearMark, type PoolMark, readMarks, writeMark } from "./marks.js";
+import { fairShares } from "./share.js";
+
+/** The numbers of the user-level `capacity` keys (spec 001 D11), injected by the daemon. */
+export interface PoolCapacity {
+  /** `capacity.hostSlots`: test processes for every daemon of the user. Default CPUs − 1, at least 1. */
+  readonly hostSlots?: number;
+  /** This repository's `capacity.projects` entry: `id` its root path, `slots` its daemons' cap together. */
+  readonly project?: { readonly id: string; readonly slots: number };
+}
+
+export interface PermitPoolOptions extends PoolCapacity {
+  /** The pool's directory, the slow slot's (`slowSlotDir`, spec 004 D2). */
+  readonly dir: AbsolutePath;
+  readonly owner: SlowSlotOwner;
+  /** The uid the directory must belong to. Default: this process's. */
+  readonly uid?: number;
+  readonly now?: () => number;
+  /** How often a daemon running a backlog tier refreshes its mark. Default `MARK_REFRESH_MS`. */
+  readonly refreshMs?: number;
+}
+
+/** One backlog or checkpoint tier's grant, held until the tier ends. */
+export interface PoolLease {
+  /** The workers the tier may run: its permits, and the daemon's free worker when it had it. */
+  readonly grant: number;
+  readonly permits: number;
+  /** Keeps at most `workers`, at least 1, and returns the other permits. */
+  shrinkTo(workers: number): void;
+  /** Idempotent. The OS also returns the permits when the process dies. */
+  release(): void;
+}
+
+export interface PermitPool {
+  /**
+   * The grant for a tier that wants `want` workers, or `null` when it may
+   * not start yet: the daemon's free worker is another lane's tier's and no
+   * permit is free. Never blocks; that other tier's end is the next chance.
+   */
+  acquire(want: number): PoolLease | null;
+  /** Releases every lease and clears the mark. */
+  close(): void;
+}
+
+/** Half the mark's freshness, so a live holder's mark never goes stale. */
+export const MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
+
+/** Permit `i` of the pool. The slow slot's files (`slow.lock`, `slow.<i>.lock`) are its own. */
+export function poolPermitFile(i: number): string {
+  return `pool.${i}.lock`;
+}
+
+/** CPUs − 1, at least 1: run-mode Vitest's, Jest's and node:test's default (research/host-capacity.md 5). */
+export function defaultHostSlots(): number {
+  return Math.max(1, availableParallelism() - 1);
+}
+
+export function createPermitPool(options: PermitPoolOptions): PermitPool {
+  return new LockFilePool(options);
+}
+
+interface Lease {
+  readonly permits: DatabaseSync[];
+  free: boolean;
+}
+
+/**
+ * Spec 001 D11 Capacity (task 001-376): the slow slot's lock files (004 D2)
+ * extended to backlog and checkpoint tiers of every lane, one pool per user
+ * in the slot's directory.
+ *
+ * - The pool is `hostSlots − 1` permits, each `pool.<i>.lock` taken as
+ *   `takePermit` takes a slow permit: the OS returns it when its holder dies.
+ *   With each daemon's free worker beside them a lone daemon runs `hostSlots`.
+ * - At each tier boundary a daemon reads the fresh marks (`readMarks`) and
+ *   takes at most its fair share (`fairShares`), less what its other lanes'
+ *   tiers hold. It leaves free what the waiters older than itself lack, the
+ *   longest waiter first: it takes those permits too, to count what is free,
+ *   and returns them at once.
+ * - A daemon that gets less than its share is a waiter from then until it
+ *   gets it; its mark says since when. A held permit is never taken back.
+ * - The mark is written at each boundary and refreshed while a lease is
+ *   held, and cleared when the last lease goes. The waiter's age is kept
+ *   across that gap between tiers, and forgotten after 30 s without a lease.
+ */
+class LockFilePool implements PermitPool {
+  readonly #options: PermitPoolOptions;
+  readonly #hostSlots: number;
+  readonly #now: () => number;
+  readonly #leases = new Set<Lease>();
+  #since: number | null = null;
+  #idleSince: number | null = null;
+  #timer: NodeJS.Timeout | null = null;
+  #mark: PoolMark | null = null;
+  #closed = false;
+
+  constructor(options: PermitPoolOptions) {
+    this.#options = options;
+    this.#hostSlots = Math.max(1, Math.floor(options.hostSlots ?? defaultHostSlots()));
+    this.#now = options.now ?? Date.now;
+  }
+
+  acquire(want: number): PoolLease | null {
+    if (this.#closed) return null;
+    const { dir, owner, project } = this.#options;
+    preparePrivateDir(dir, this.#options.uid ?? currentUid(), "capacity pool directory");
+    const now = this.#now();
+    if (this.#leases.size === 0 && this.#idleSince !== null) {
+      if (now - this.#idleSince >= SLOT_WAITER_FRESH_MS) this.#since = null;
+    }
+    this.#idleSince = null;
+    const wanted = Math.max(1, Math.floor(want));
+    const others = readMarks(dir, owner.worktreeId, now);
+    const inUse = this.#inUse();
+    const me = {
+      id: owner.worktreeId,
+      want: inUse + wanted,
+      since: this.#since,
+      ...(project === undefined ? {} : { project }),
+    };
+    const shares = fairShares(this.#hostSlots, [me, ...others]);
+    const free = [...this.#leases].every((lease) => !lease.free);
+    const entitled = Math.min(wanted, Math.max(0, (shares.get(me.id) ?? 1) - inUse));
+    let target = entitled;
+    if (project !== undefined) {
+      // No preemption: what the project's other daemons hold now stays theirs.
+      const theirs = others.filter((o) => o.project?.id === project.id);
+      const held = theirs.reduce((sum, o) => sum + o.grant, 0);
+      target = Math.min(target, Math.max(0, project.slots - held - inUse));
+    }
+    if (free) target = Math.max(1, target);
+    const rank = this.#since ?? now;
+    const reserve = others
+      .filter((o) => o.since !== null && o.since < rank)
+      .reduce((sum, o) => sum + Math.max(0, (shares.get(o.id) ?? 1) - o.grant), 0);
+    const permits = this.#take(Math.max(0, target - (free ? 1 : 0)), reserve);
+    const grant = permits.length + (free ? 1 : 0);
+    this.#since = grant >= Math.max(entitled, free ? 1 : 0) ? null : (this.#since ?? now);
+    if (grant === 0) {
+      this.#publish(inUse + wanted, inUse);
+      return null;
+    }
+    const lease: Lease = { permits, free };
+    this.#leases.add(lease);
+    this.#publish(inUse + wanted, inUse + grant);
+    this.#startRefresh();
+    return this.#handle(lease);
+  }
+
+  close(): void {
+    this.#closed = true;
+    for (const lease of this.#leases) for (const db of lease.permits.splice(0)) db.close();
+    this.#leases.clear();
+    this.#stopRefresh();
+    this.#clear();
+  }
+
+  /**
+   * Up to `count` free permits, after leaving `reserve` for older waiters.
+   * Takes up to both, so what is free is counted, then returns the excess.
+   */
+  #take(count: number, reserve: number): DatabaseSync[] {
+    if (count === 0) return [];
+    const { dir, owner } = this.#options;
+    const held: DatabaseSync[] = [];
+    try {
+      for (let i = 0; i < this.#hostSlots - 1 && held.length < count + reserve; i++) {
+        const db = takePermit(join(dir, poolPermitFile(i)), owner);
+        if (db !== null) held.push(db);
+      }
+    } catch (error) {
+      for (const db of held) db.close();
+      throw error;
+    }
+    const keep = Math.min(count, Math.max(0, held.length - reserve));
+    for (const db of held.splice(keep)) db.close();
+    return held;
+  }
+
+  #handle(lease: Lease): PoolLease {
+    const pool = this;
+    return {
+      get grant() {
+        return lease.permits.length + (lease.free ? 1 : 0);
+      },
+      get permits() {
+        return lease.permits.length;
+      },
+      shrinkTo(workers) {
+        const keep = Math.max(lease.free ? 0 : 1, Math.max(1, workers) - (lease.free ? 1 : 0));
+        for (const db of lease.permits.splice(keep)) db.close();
+        pool.#republish();
+      },
+      release() {
+        pool.#release(lease);
+      },
+    };
+  }
+
+  #release(lease: Lease): void {
+    if (!this.#leases.delete(lease)) return;
+    for (const db of lease.permits.splice(0)) db.close();
+    if (this.#leases.size > 0) {
+      this.#republish();
+      return;
+    }
+    this.#stopRefresh();
+    this.#idleSince = this.#now();
+    this.#clear();
+  }
+
+  #inUse(): number {
+    let sum = 0;
+    for (const lease of this.#leases) sum += lease.permits.length + (lease.free ? 1 : 0);
+    return sum;
+  }
+
+  #publish(want: number, grant: number): void {
+    const { dir, owner, project } = this.#options;
+    this.#mark = {
+      id: owner.worktreeId,
+      want: Math.max(1, want),
+      grant,
+      since: this.#since,
+      ...(project === undefined ? {} : { project }),
+    };
+    writeMark(dir, this.#mark);
+  }
+
+  /** After a lease shrank or went: the mark states what the others hold now. */
+  #republish(): void {
+    const inUse = this.#inUse();
+    this.#publish(inUse, inUse);
+  }
+
+  #clear(): void {
+    this.#mark = null;
+    try {
+      clearMark(this.#options.dir, this.#options.owner.worktreeId);
+    } catch {
+      // The runtime directory went: there is nothing to clear.
+    }
+  }
+
+  #startRefresh(): void {
+    if (this.#timer !== null) return;
+    this.#timer = setInterval(() => {
+      if (this.#mark === null) return;
+      try {
+        writeMark(this.#options.dir, this.#mark);
+      } catch {
+        // The next boundary writes it again; until then the mark may go stale.
+      }
+    }, this.#options.refreshMs ?? MARK_REFRESH_MS);
+    this.#timer.unref();
+  }
+
+  #stopRefresh(): void {
+    if (this.#timer !== null) clearInterval(this.#timer);
+    this.#timer = null;
+  }
+}
