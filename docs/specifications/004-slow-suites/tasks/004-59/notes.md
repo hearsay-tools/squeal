@@ -11,7 +11,7 @@ Spec 004 D3 as amended 2026-10-14. Found by 006-54: under load, `run --slow --wa
 
 ## Decision the amendment did not settle
 
-The width under load. D2 lets a tier take up to `slow.maxParallel` files only "when the machine is idle", with the load below `slow.maxLoadPerCpu` as part of the definition. The amendment says the request's files run "within `slow.maxParallel` permits". I kept D2's idle width: a request under load runs one file at a time, without waiting between files; below the threshold it takes up to `maxParallel` as before. The alternative is one line: `idle: true` in `#skipGuard`, so a request takes up to `maxParallel` files under load too. Asked the coordinator.
+The width under load. D2 lets a tier take up to `slow.maxParallel` files only "when the machine is idle", with the load below `slow.maxLoadPerCpu` as part of the definition. The amendment says the request's files run "within `slow.maxParallel` permits". I kept D2's idle width: a request under load runs one file at a time, without waiting between files; below the threshold it takes up to `maxParallel` as before. The alternative was one line: `idle: true` in `#skipGuard`, so a request takes up to `maxParallel` files under load too. The coordinator confirmed the default on 2026-10-14 ("runs them now" stays true and the host is spared) and words D3 to match.
 
 ## The status line
 
