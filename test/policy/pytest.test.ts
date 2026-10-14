@@ -8,7 +8,8 @@ import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 /*
  * Spec 007 D1: "`squeal.config.json` gains `pytest`, a list of projects,
  * each with `name`, `cwd`, `python`, `args`, `env`, `include` and optional
- * `exclude`, `slow`. The 001 D11 loader rules apply."
+ * `exclude`, `slow`. The 001 D11 loader rules apply." D6: "Batch size is a
+ * policy value, default 5" (task 007-39, lessons.md defect 5).
  */
 
 const dirs: string[] = [];
@@ -44,6 +45,13 @@ describe("policy pytest (spec 007 D1)", () => {
     const { policy, problems } = load([APP, other]);
     expect(problems).toEqual([]);
     expect(policy.pytest).toEqual([APP, { ...other, args: [], env: {} }]);
+  });
+
+  it("accepts batchSize as given and leaves it absent for the adapter's default of 5", () => {
+    const { policy, problems } = load([{ ...APP, batchSize: 10 }]);
+    expect(problems).toEqual([]);
+    expect(policy.pytest).toEqual([{ ...APP, batchSize: 10 }]);
+    expect(load([APP]).policy.pytest[0]).not.toHaveProperty("batchSize");
   });
 
   it.each([
@@ -83,6 +91,11 @@ describe("policy pytest (spec 007 D1)", () => {
       { name: "u", cwd: "services/app", python: "../../../main/.venv", include: ["t.py"] },
       `"pytest[0].python" must stay inside the worktree when relative (absolute only for an environment outside it), got "../../../main/.venv"; project "u" is skipped`,
     ],
+    ...[0, 2.5, "5"].map((batchSize): [string, object, string] => [
+      `with batchSize ${JSON.stringify(batchSize)}`,
+      { name: "u", include: ["t.py"], batchSize },
+      `"pytest[0].batchSize" must be a positive integer, got ${JSON.stringify(batchSize)}; project "u" is skipped`,
+    ]),
     [
       "with the node:test key argv",
       { name: "u", argv: ["-x"], include: ["t.py"] },
