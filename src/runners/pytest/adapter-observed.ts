@@ -70,7 +70,13 @@ export class Observed {
     return out;
   }
 
-  /** Records what each completed, listed file of a run imported beyond its static closure. */
+  /**
+   * Records what each completed, listed file of a run imported beyond its
+   * static closure. The run's own result is stored under the key it ran
+   * under, without these paths (003 D3, kept for 007 by the coordinator,
+   * review wave 1 input 4): another worktree keys the file with them from
+   * the stored closure and re-runs it once. A spare run, never a stale pass.
+   */
   record(seen: readonly PytestObservedClosure[], listed: ReadonlySet<RelativePath>): void {
     const additions: Record<RelativePath, RelativePath[]> = {};
     for (const { testFile, paths } of seen) {
