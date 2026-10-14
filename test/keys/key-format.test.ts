@@ -39,6 +39,7 @@ const SEAMS = [
   // The dispatcher's commands, none of which keys, runs or records; `squeal daemon` is guarded.
   "src/cli/main.ts -> src/cli/codex/status.ts", // the Codex status line: renders the store
   "src/cli/main.ts -> src/cli/init.ts", // `squeal init`: writes the user's config files
+  "src/cli/main.ts -> src/cli/pi/status.ts", // the Pi status line: renders the store
   "src/cli/main.ts -> src/cli/remove.ts", // `squeal remove`: stops daemons, deletes the store
   "src/cli/main.ts -> src/cli/run.ts", // `squeal run`: asks a daemon for a checkpoint or the slow tier
   "src/cli/main.ts -> src/cli/setup/command.ts", // `squeal setup`: reads the repository and writes instruction files and the config
