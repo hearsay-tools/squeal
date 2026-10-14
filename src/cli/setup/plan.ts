@@ -180,7 +180,8 @@ export async function readPlan(
   const facts = await readRepoFacts(root);
   const { policy, problems } = loadPolicy(root);
   const raw = readJson(join(root, POLICY_FILE));
-  const runners = readRunners(facts, policy, raw);
+  const projects = nodeTestProjects(facts, policy, raw);
+  const runners = readRunners(facts, projects);
   const exists = existsSync(join(root, POLICY_FILE));
   const slow = await slowCandidates(facts, policy, runners);
   const config: ConfigFact = {
@@ -202,7 +203,7 @@ export async function readPlan(
     nodeTest: runners.nodeTest.length > 0,
   });
   const harnesses = readHarnesses(root, options.env);
-  const universe = testFileUniverse(facts, runners);
+  const universe = testFileUniverse(facts, projects);
   const plan: SetupPlan = {
     schemaVersion: SETUP_PLAN_SCHEMA_VERSION,
     root,
@@ -236,16 +237,20 @@ async function codexTrust(
   return { ...(await readCodexTrust(root, options.env, PLUGIN_ID)), command: TRUST_COMMAND };
 }
 
-function readRunners(facts: RepoFacts, policy: Policy, raw: unknown): Runners {
+/** The node:test projects the config declares, else those `squeal init` would seed. */
+function nodeTestProjects(facts: RepoFacts, policy: Policy, raw: unknown) {
+  const declared = isRecord(raw) && "nodeTest" in raw;
+  return declared
+    ? policy.nodeTest.map((p) => ({ ...p, source: "config" as const }))
+    : seeded(facts.root).map((p) => ({ ...p, source: "seed" as const }));
+}
+
+function readRunners(facts: RepoFacts, projects: ReturnType<typeof nodeTestProjects>): Runners {
   const deps = (value: unknown) => (isRecord(value) ? Object.keys(value) : []);
   const vitest =
     facts.manifests.some((m) =>
       [...deps(m.value.dependencies), ...deps(m.value.devDependencies)].includes("vitest"),
     ) || facts.tracked.some((path) => /^vite(st)?\.config\.[cm]?[jt]s$/.test(path));
-  const declared = isRecord(raw) && "nodeTest" in raw;
-  const projects = declared
-    ? policy.nodeTest.map((p) => ({ ...p, source: "config" as const }))
-    : seeded(facts.root).map((p) => ({ ...p, source: "seed" as const }));
   return {
     vitest,
     nodeTest: projects.map((p) => ({

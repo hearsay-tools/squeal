@@ -2,8 +2,7 @@ import { statSync } from "node:fs";
 import { join, posix } from "node:path";
 import { POLICY_FILE } from "../../core/daemon/policy.js";
 import { globToRegExp } from "../../core/keys/glob.js";
-import type { Policy } from "../../core/types/index.js";
-import type { Runners } from "./plan.js";
+import type { NodeTestProject, Policy } from "../../core/types/index.js";
 import type { RepoFacts } from "./repo.js";
 
 /*
@@ -13,10 +12,23 @@ import type { RepoFacts } from "./repo.js";
  * matches no file, so it is taken as `test/e2e/**` and said so.
  */
 
-/** The test files Squeal validates here: the listed ones and every node:test project's. */
-export function testFileUniverse(facts: RepoFacts, runners: Runners): string[] {
-  const projects = runners.nodeTest.flatMap((p) => p.include.map((g) => posix.join(p.cwd, g)));
-  const inProject = matcher(projects);
+/**
+ * The test files Squeal validates here: the listed ones and every node:test
+ * project's, each its `include` minus its `exclude` as the adapter lists them
+ * (review 005-42 B1).
+ */
+export function testFileUniverse(
+  facts: RepoFacts,
+  projects: readonly Pick<NodeTestProject, "cwd" | "include" | "exclude">[],
+): string[] {
+  const inProjects = projects.map((p) => {
+    const under = (globs: readonly string[]) =>
+      matcher(globs.map((g) => posix.join(p.cwd ?? "", g)));
+    const include = under(p.include);
+    const exclude = under(p.exclude ?? []);
+    return (path: string) => include(path) && !exclude(path);
+  });
+  const inProject = (path: string) => inProjects.some((test) => test(path));
   return [...new Set([...facts.testFiles.paths, ...facts.tracked.filter(inProject)])];
 }
 
