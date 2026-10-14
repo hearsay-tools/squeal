@@ -845,15 +845,15 @@ Spec: `specifications/007-pytest-runner/spec.md`, approved 2026-10-14 by the hum
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 007-14 the pytest adapter in the daemon | review (worker be040772 finished at 8a6fd0e9; integrated with 007-15 at 62b9ea96 on cez/2ab5b448, off main until 005 tags) | `RunnerAdapter` over 007-10, 007-12, 007-13; the observed-closure `meta` key as 003 D3; the composite; runtime files copied into both plugins' `dist/pytest/`. | Integration: baseline, inheritance into a synced second worktree, a `PASS -> FAIL` through the Claude Code and Codex hooks. |
-| 007-15 agent surfaces and setup | review (worker eb0ceb11 finished at 3240897b; integrated at 62b9ea96, off main until 005 tags) | D8, D1 setup: 005 texts, skill and instruction block name pytest; 005 D8 recognises pytest commands; `squeal setup` seeds `pytest` projects. | Setup seeds both fixture projects; the deny recognises and falls through as D8 lists. |
+| 007-14 the pytest adapter in the daemon | done (0.1.169, `6c9fed9e`; reviews wave-2, wave-2.5, wave-2.75) | `RunnerAdapter` over 007-10, 007-12, 007-13; the observed-closure `meta` key as 003 D3; the composite; runtime files copied into both plugins' `dist/pytest/`. | Integration: baseline, inheritance into a synced second worktree, a `PASS -> FAIL` through the Claude Code and Codex hooks. |
+| 007-15 agent surfaces and setup | done (0.1.169, `6c9fed9e`) | D8, D1 setup: 005 texts, skill and instruction block name pytest; 005 D8 recognises pytest commands; `squeal setup` seeds `pytest` projects. | Setup seeds both fixture projects; the deny recognises and falls through as D8 lists. |
 | 007-16 review of waves 0 and 1 | done: FAIL at a67407f8, three blockers (`reviews/wave-1.md`) (brief in `specifications/007-pytest-runner/tasks/wave-2.md`; the next hub release waits on it, 005's human, 2026-10-14) | `/reviewer` over `638fb159..a67407f8`: the `policy-node-test.ts` refactor, keys, D2's refusal states, D6's completion rule, refused flags. | `reviews/wave-1.md` committed. |
-| 007-22 environment admission, installed-set changes, startup plugins | integrated on `cez/2ab5b448` (9eeaa6c5..80643c30), awaiting 007-25 | `reviews/wave-2.md` B1, B2, B5. | Each reproduction a regression; full suite green. |
-| 007-23 a module skip keeps known check identities | integrated on `cez/2ab5b448` (326186bb..047559ac), awaiting 007-25 | B3: `RunReport.skippedFiles` (additive, decided), scheduler expansion, the adapter's skip. | Parametrized baseline then module skip keeps both IDs; inherited too. |
-| 007-24 a bare or directory pytest command runs | integrated on `cez/2ab5b448` (e7358895), awaiting 007-25 | B4: only named, listed, current files and node IDs can be denied. | Hook regressions for narrower include, excluded and unlisted files. |
+| 007-22 environment admission, installed-set changes, startup plugins | done (0.1.169) | `reviews/wave-2.md` B1, B2, B5. | Each reproduction a regression; full suite green. |
+| 007-23 a module skip keeps known check identities | done (0.1.169) | B3: `RunReport.skippedFiles` (additive, decided), scheduler expansion, the adapter's skip. | Parametrized baseline then module skip keeps both IDs; inherited too. |
+| 007-24 a bare or directory pytest command runs | done (0.1.169) | B4: only named, listed, current files and node IDs can be denied. | Hook regressions for narrower include, excluded and unlisted files. |
 | 007-25 re-review of wave 2.5 | FAIL (`reviews/wave-2.5.md`): B1 to B5 fixed; R1 empty-path guards drop shared startup-input growth (node:test regression), R2 quiet interval runs Vitest discovery. Last round; disposition: narrow repair 007-26 (human, 2026-10-14) | `/reviewer` over 007-22 to 007-24 against `reviews/wave-2.md`; last round on wave 2. | `reviews/wave-2.5.md` committed. |
-| 007-26 bounded environment recheck (R1, R2) | integrated on `cez/2ab5b448` (af1be9ae..fc80de8f), awaiting 007-27 | Optional `RunnerAdapter.recheck()`, only pytest; `invalidate([])` restored to pre-2.5 meaning (human chose the narrow repair, 2026-10-14). | R1 pytest and node:test regressions; idle pass: zero `affected`, one fingerprint read. |
-| 007-27 focused review of 007-26 | running (worker ffcc7a21, codex gpt-6.1-sol high; range 5c7a05bf..fc80de8f) | `/reviewer` over 007-26's commits against R1, R2. | `reviews/wave-2.75.md` committed. |
+| 007-26 bounded environment recheck (R1, R2) | done (0.1.169; 18 runner calls over three idle passes became 3 pytest rechecks) | Optional `RunnerAdapter.recheck()`, only pytest; `invalidate([])` restored to pre-2.5 meaning (human chose the narrow repair, 2026-10-14). | R1 pytest and node:test regressions; idle pass: zero `affected`, one fingerprint read. |
+| 007-27 focused review of 007-26 | done: PASS at fc80de8f (`reviews/wave-2.75.md`) | `/reviewer` over 007-26's commits against R1, R2. | `reviews/wave-2.75.md` committed. |
 | 007-20 repairs of `reviews/wave-1.md` | done (0.1.166, `6c927ec1`; brief in `tasks/wave-2.md`) | B1 ancestor config unhashed, B2 per-file import context, B3 symlinked editable, S1 all-skipped note, S2 oracle cleanup budget. | Each reproduction a regression test; full suite green. |
 | 007-21 re-review of 007-20 | done: PASS at 0013080e (`reviews/wave-1.5.md`, `75fa4326`) | `/reviewer` over 007-20, against `reviews/wave-1.md`; last round. | `reviews/wave-1.5.md` committed. |
 | 007-19 review of wave 2 | done: FAIL at 62b9ea96, five blockers (`reviews/wave-2.md`) | `/reviewer` over 007-14, 007-15 and any 007-16 repair. | `reviews/wave-2.md` committed. |
@@ -862,10 +862,13 @@ Spec: `specifications/007-pytest-runner/spec.md`, approved 2026-10-14 by the hum
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 007-17 end to end | planned | The shipped plugin against the fixture, as 001's `test/e2e`; the fixture on pytest 8 as well as 9 (review 007-16 input 7). | e2e suite green in CI. |
-| 007-18 dogfooding | planned | A real open-source pytest project of a few hundred test files, a Cezar worker on Claude Code and one on Codex; batch size revisited. | `lessons.md` resolves the open questions with evidence. |
+| 007-17 end to end | planned (brief `tasks/wave-3.md`) | The shipped plugin against the fixture, as 001's `test/e2e`; the fixture on pytest 8 as well as 9 (review 007-16 input 7). | e2e suite green in CI. |
+| 007-18 dogfooding | planned (brief `tasks/wave-3.md`; waits for 005's release evals on `squeal-e2e`) | A real open-source pytest project of a few hundred test files, a Cezar worker on Claude Code and one on Codex; batch size revisited. | `lessons.md` resolves the open questions with evidence. |
 
 ## Later
+
+- 007: observed closure growth outside `observe.runtimeInputs`: a pytest file whose run imports a path outside its static closure and outside the shared session key makes the result incomplete but does not grow the stored closure for the next key (007-14 option (b), 2026-10-14).
+- 007: data files read at run time enter no pytest closure (spec 007 open question 2); an audit hook on `open` was measured in wave 1 and not shipped. A row once a dogfood shows a missed data-file edit.
 
 
 - 001: a SubagentStop report restarts the subagent in Claude Code, so the parent receives the subagent's reply to the report instead of its answer to the task (005 `research/instruction-surfaces.md` 1, session `can-c`; 2.1.295). Probe first.
