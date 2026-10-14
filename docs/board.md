@@ -867,6 +867,17 @@ Spec: `specifications/007-pytest-runner/spec.md`, approved 2026-10-14 by the hum
 | 007-28 main CI: synced second worktree inherits 6 of 13 on GitHub runners | running (worker 3b5befb1, opus high; brief `tasks/wave-3.md`) | `test/integration/pytest.test.ts:149` red on main since 0.1.169 (run 38582092315), CI-only; on the 007 branch since wave 2.5, hidden by expected drift. Blocks the next landing. | Cause named from CI; local regression; branch CI green. |
 | 007-29 a pytest run never executes stale bytecode | running (worker 785b3f5b, opus high; brief `tasks/wave-3.md`) | Found by 007-17: a same-size edit within the same second runs the cached `.pyc` under `PYTHONPYCACHEPREFIX`, and a stale FAIL is stored as current. | Regression on 3.10 and 3.13; start-up cost measured. |
 
+## Feature 008: OpenCode adapter
+
+Spec: not written yet; research first. Status and research brief: `specifications/008-opencode-adapter/status.md`, `research/README.md` (human, 2026-10-14: start working on OpenCode support). OpenCode only; Pi stays on the Later list.
+
+### Research
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 008-01 research: opencode-plugins | planned | Topic `opencode-plugins`: extension surfaces and trust, every hook and bus event under `run` and `serve`, mid-turn injection and the primer, deny, `session.idle` as Stop, failure modes and the cost of in-process, per-event `node` and socket shapes. Real OpenCode runs only as `squeal-e2e`. | `research/opencode-plugins.md` committed with every question tagged or "not determined, because". |
+| 008-02 research: opencode-sessions-and-wake | planned | Topic `opencode-sessions-and-wake`: how Cezar drives OpenCode, idle wake, identity in shells and plugins, packaging and install, lifecycle and child processes, worktrees. Real OpenCode runs only as `squeal-e2e`. | `research/opencode-sessions-and-wake.md` committed with every question tagged or "not determined, because". |
+
 ## Later
 
 - 007: observed closure growth outside `observe.runtimeInputs`: a pytest file whose run imports a path outside its static closure and outside the shared session key makes the result incomplete but does not grow the stored closure for the next key (007-14 option (b), 2026-10-14).
@@ -887,7 +898,7 @@ Spec: `specifications/007-pytest-runner/spec.md`, approved 2026-10-14 by the hum
 - 001 follow-up, filed 2026-10-08 by the 002/003 coordinator (the 001 coordinator's session had ended): tests under `test/daemon/` and `test/scheduler/` that start a daemon from the sources through tsx in a child process declare no `inputs`, so their keys do not change when the daemon code they run changes and a pass can stay current after a `src` edit (002 `lessons.md` defect 5, same shape). Declaring `src/**/*.ts` for them is correct and costs a re-run on every `src` edit: a cost trade-off for the 001 coordinator.
 
 - `squeal init` with a harness choice and the policy keys 002 and 003 add; the one seam the two specs share. Topic 005-02 reads it as a home for the install step, so it may join spec 005.
-- 008 inherited-pass re-verification policy, if dogfooding shows stale escapes.
-- 009 Pi and OpenCode adapters.
+- Inherited-pass re-verification policy, if dogfooding shows stale escapes.
+- Pi adapter (OpenCode is spec 008, started 2026-10-14).
 - 010 pull credit: a pull through `squeal status` suppresses the same news in the next push (design H in `specifications/001-core-loop/research/pull-advances-push.md`; changes D6 to D9 and adds a `pulls` table; one worker plus a reviewer). Parked 2026-10-07: the repeat is harmless.
 - macOS verification before any public release.
