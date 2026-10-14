@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -139,6 +139,13 @@ async function queuedInTurn(maxParallel: number) {
   };
   for (const name of SLOW_NAMES) files[slowPath(name)] = heldTest(dir, name);
   const repo = suite.fixture(files);
+  // The pool's size pinned, not the host's CPUs − 1: each slow file leases slow.maxWorkers permits (001 D11).
+  const userConfig = join(repo.runtimeDir, "config", "squeal");
+  mkdirSync(userConfig, { recursive: true });
+  writeFileSync(
+    join(userConfig, "config.json"),
+    `${JSON.stringify({ capacity: { hostSlots: 16 } })}\n`,
+  );
   const spawned = suite.daemon(repo);
   await waitFor(() => ping(repo.socketPath, 500), 60_000, "a daemon serving");
   await start(repo, "s1");
