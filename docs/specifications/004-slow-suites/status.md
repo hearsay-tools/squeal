@@ -99,6 +99,7 @@ Started: 2026-10-08
 - 2026-10-14, 004-59 (the human; found by 006-54's worker): D3 amended. An explicit `squeal run --slow` skips the load guard for the tier it starts; the status line "`squeal run --slow` runs them now" promised it while the guard held the files until `slow.maxDeferMs`.
 - 2026-10-14, 004-59 done, 0.1.179 (`tasks/004-59/notes.md`): an open `run --slow` request skips the load guard and cuts a guard wait short; one file at a time above `slow.maxLoadPerCpu`, up to `slow.maxParallel` below; the idle trigger and `run --all` keep the guard.
 - 2026-10-14, 004-60 (the human): D2 amended. The slow tier waits for its own daemon's fast backlog to drain (baseline, checkpoint, `run --all`); `run --slow` overrides; slow files count against 001 D11's per-user pool (001-386).
+- 2026-10-15, 004-60 done, 0.1.182 (`tasks/004-60/notes.md`): the slow tier waits for its own daemon's fast backlog unless `run --slow` asked; slow tiers take their workers from 001 D11's pool (001-386).
 
 ## Research
 
