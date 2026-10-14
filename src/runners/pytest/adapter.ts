@@ -242,9 +242,11 @@ export async function createPytestAdapter(
       built.observed.refresh();
       const { paths } = built.graph.closure(testFile.path);
       const extra = built.observed.of(testFile.path) ?? [];
+      // Task 007-28: nothing under the environment, whose hash covers it and whose files uv hardlinks.
+      const inside = [...new Set([...paths, ...extra])].filter((p) => !outside(p));
       return {
         testFile,
-        paths: [...new Set([...paths, ...extra])].sort(compare),
+        paths: inside.sort(compare),
         packages: { imports: [], builtins: [] },
       };
     },
