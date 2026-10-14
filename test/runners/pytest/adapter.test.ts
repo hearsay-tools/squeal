@@ -51,15 +51,25 @@ const OBSERVED_ONLY = "src/app/plugins/alpha.py";
 const ref = (path: string): TestFileRef => ({ project: "small", path });
 
 /** The daemon's meta key, in memory. */
-function memoryStore(): ObservedStore & { value: Record<string, string[]> } {
+function memoryStore(): ObservedStore & {
+  value: Record<string, string[]>;
+  session: string[];
+} {
   const value: Record<string, string[]> = {};
+  const session: string[] = [];
   return {
     value,
+    session,
     read: () => value as ObservedPaths,
     write(additions) {
       for (const [file, paths] of Object.entries(additions)) {
         value[file] = [...new Set([...(value[file] ?? []), ...paths])].sort();
       }
+    },
+    readSession: () => session,
+    writeSession(additions) {
+      for (const path of additions) if (!session.includes(path)) session.push(path);
+      session.sort();
     },
   };
 }

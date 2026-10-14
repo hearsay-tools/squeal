@@ -12,11 +12,13 @@ import {
   type ProjectName,
   type PytestProject,
   pytestObservedMetaKey,
+  pytestObservedSessionMetaKey,
+  type RelativePath,
   type Store,
 } from "../types/index.js";
 import { createRecoveringRunner, type RecoveringRunner } from "./runner.js";
 
-export { pytestObservedMetaKey };
+export { pytestObservedMetaKey, pytestObservedSessionMetaKey };
 
 /**
  * The adapter's read and write of its project's observed paths (spec 007
@@ -25,15 +27,19 @@ export { pytestObservedMetaKey };
  * daemons never drop each other's paths, and a worktree that starts later
  * keys the file from that closure (001 D5 step 3) before its adapter is
  * asked: it must not inherit a result whose observed inputs it never compared.
+ * The start-up plugins' paths (B5) merge into their own key the same way.
  */
 export function pytestObservedStore(store: Store, project: ProjectName): ObservedStore {
   const key = pytestObservedMetaKey(project);
-  let last: { raw: string | null; value: ObservedPaths } | null = null;
+  const sessionKey = pytestObservedSessionMetaKey(project);
   return {
-    read() {
-      const raw = store.meta.get(key);
-      if (last === null || last.raw !== raw) last = { raw, value: parseObserved(raw) };
-      return last.value;
+    read: cachedRead(store, key, parseObserved),
+    readSession: cachedRead(store, sessionKey, parsePaths),
+    writeSession(additions) {
+      store.transaction(() => {
+        const merged = new Set([...parsePaths(store.meta.get(sessionKey)), ...additions]);
+        store.meta.set(sessionKey, JSON.stringify([...merged].sort(compare)));
+      });
     },
     write(additions) {
       store.transaction(() => {
@@ -59,6 +65,27 @@ export function pytestObservedStore(store: Store, project: ProjectName): Observe
       });
     },
   };
+}
+
+/** One point query per read, parsed only when the value changed: the adapter reads at every refinement. */
+function cachedRead<T>(store: Store, key: string, parse: (raw: string | null) => T): () => T {
+  let last: { raw: string | null; value: T } | null = null;
+  return () => {
+    const raw = store.meta.get(key);
+    if (last === null || last.raw !== raw) last = { raw, value: parse(raw) };
+    return last.value;
+  };
+}
+
+/** A missing or malformed key reads as no paths. */
+function parsePaths(raw: string | null): RelativePath[] {
+  if (raw === null) return [];
+  try {
+    const value: unknown = JSON.parse(raw);
+    return Array.isArray(value) ? value.filter((p) => typeof p === "string") : [];
+  } catch {
+    return [];
+  }
 }
 
 /** A missing or malformed key reads as nothing observed. */

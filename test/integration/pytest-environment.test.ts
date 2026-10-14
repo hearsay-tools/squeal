@@ -2,8 +2,18 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { AbsolutePath, StatusSnapshot } from "../../src/core/types/index.js";
+import { pytestObservedSessionMetaKey } from "../../src/core/types/index.js";
 import { sitePackagesDir } from "../../src/runners/pytest/environment/site.js";
-import { pytestRepos, settle, status } from "./pytest-repo.js";
+import {
+  ENTRY_TEST,
+  git,
+  metaValue,
+  pytestRepos,
+  ranSince,
+  runs,
+  settle,
+  status,
+} from "./pytest-repo.js";
 
 /*
  * 007 review wave 2, B1 and B5, through one daemon per worktree run from the
@@ -19,8 +29,10 @@ import { pytestRepos, settle, status } from "./pytest-repo.js";
 const SLOW = { timeout: 600_000 } as const;
 const PROJECT = { name: "small", include: ["tests/**/test_*.py"] };
 const INSTALLED_TEST = "tests/test_installed.py";
+const PLUGIN = "packages/other/src/other/plugin.py";
+const HIDDEN = "packages/other/src/other/hidden.py";
 
-const { createRepo, uvSync, startDaemon, sync } = pytestRepos("pytest-env");
+const { createRepo, addWorktree, uvSync, startDaemon, sync } = pytestRepos("pytest-env");
 
 const failing = (s: StatusSnapshot) =>
   s.knownFailures
@@ -91,6 +103,57 @@ describe("installed-set changes and start-up plugins reach the daemon (007 B1, B
       const moved = await settle(main, "the .pth change", (s) => failing(s).length === 2);
       expect(failing(moved)).toEqual(["test_installed_dependency", "test_pth_path"]);
       expect(status(main).revision).toBe(at);
+    },
+  );
+
+  it(
+    "a pytest11 plugin's computed import is keyed: its edit re-runs, a differing worktree does not inherit",
+    SLOW,
+    async (ctx) => {
+      const main = createRepo("plugin", {
+        ".gitignore": "node_modules/\n.venv/\n",
+        "squeal.config.json": `${JSON.stringify({ pytest: [PROJECT] }, null, 2)}\n`,
+        [PLUGIN]: [
+          "import importlib",
+          "import pytest",
+          'name = "other." + "hidden"',
+          "hidden = importlib.import_module(name)",
+          "",
+          "@pytest.fixture",
+          "def other_fixture():",
+          "    return hidden.VALUE",
+          "",
+        ].join("\n"),
+        [HIDDEN]: "VALUE = 2\n",
+      });
+      uvSync(ctx, main);
+      await startDaemon(main);
+      const baseline = await settle(main, "the baseline", (s) => s.counts.current > 0);
+      expect(failing(baseline)).toEqual([]);
+      expect(metaValue(main, pytestObservedSessionMetaKey("small"))).toContain(HIDDEN);
+
+      // The edit of the hidden module re-runs the plugin's test, which fails.
+      const from = runs(main, main).length;
+      writeFileSync(join(main, HIDDEN), "VALUE = 3\n");
+      const edited = await settle(
+        main,
+        "the edit of hidden.py",
+        (s) => failing(s).length === 1,
+        baseline.revision,
+      );
+      expect(failing(edited)).toEqual(["test_entry_plugin"]);
+      expect(ranSince(main, main, from)).toContain(ENTRY_TEST);
+      git(main, ["checkout", "--", HIDDEN]);
+      await settle(main, "the revert", (s) => failing(s).length === 0);
+
+      // A second synced worktree whose hidden module differs keys it before any run.
+      const wt2 = addWorktree(main, "wt2");
+      writeFileSync(join(wt2, HIDDEN), "VALUE = 5\n");
+      uvSync(ctx, wt2);
+      await startDaemon(wt2);
+      const second = await settle(wt2, "the second worktree", (s) => s.counts.current > 0);
+      expect(failing(second)).toEqual(["test_entry_plugin"]);
+      expect(ranSince(main, wt2, 0)).toContain(ENTRY_TEST);
     },
   );
 });

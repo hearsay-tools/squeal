@@ -15,6 +15,10 @@ export interface ObservedStore {
   read(): ObservedPaths;
   /** Merges `additions` into the key, and into the stored closures, in one transaction. */
   write(additions: ObservedPaths): void;
+  /** What start-up plugins imported beyond their static closure, every worktree's (B5). */
+  readSession(): readonly RelativePath[];
+  /** Merges `additions` into the session key in one transaction. */
+  writeSession(additions: readonly RelativePath[]): void;
 }
 
 /**
@@ -26,11 +30,21 @@ export interface ObservedStore {
  * refinement. Growth another worktree found is reported once by
  * `takeGrown`, so the scheduler fetches those files' closures again; growth
  * this worktree's run found waits for the next edit, as 003 D3 has it.
+ *
+ * What start-up plugins (`pytest11`, `-p`) imported beyond their static
+ * closure is the project's, not a test file's (review wave 2, B5): D2 puts
+ * the plugins' closure in the environment, so these paths join its files,
+ * as node:test's observed preloads do (003 D5, task 003-43).
  */
 export class Observed {
   private readonly tests = new Map<RelativePath, Set<RelativePath>>();
   /** Test files whose set another worktree grew, not yet reported. */
   private readonly grown = new Set<RelativePath>();
+  private readonly session = new Set<RelativePath>();
+  /** The session paths the last `sessionPaths` returned: what the environment keys. */
+  private keyed = new Set<RelativePath>();
+  /** Another worktree grew the session set since the last `takeRecreate`. */
+  private sessionGrew = false;
 
   constructor(
     private readonly graph: PytestGraph,
@@ -41,14 +55,17 @@ export class Observed {
   ) {
     this.refresh();
     this.grown.clear();
+    this.sessionGrew = false;
   }
 
   /** Merges what the store holds now. */
   refresh(): void {
     if (this.store === undefined) return;
     let tests: ObservedPaths;
+    let session: readonly RelativePath[];
     try {
       tests = this.store.read();
+      session = this.store.readSession();
     } catch (error) {
       this.note(`could not read observed paths: ${String(error)}`);
       return;
@@ -56,6 +73,55 @@ export class Observed {
     for (const [testFile, paths] of Object.entries(tests)) {
       if (this.add(testFile, paths).length > 0) this.grown.add(testFile);
     }
+    if (this.addSession(session).length > 0) this.sessionGrew = true;
+  }
+
+  /** The start-up plugins' observed-only paths, sorted, as the environment returns them now. */
+  sessionPaths(): RelativePath[] {
+    this.keyed = new Set(this.session);
+    return [...this.session].sort(compare);
+  }
+
+  /**
+   * True when the scheduler must read the environment again: another
+   * worktree grew the session set, or `changed` holds a session path the
+   * last environment did not carry.
+   */
+  takeRecreate(changed: readonly RelativePath[]): boolean {
+    const recreate =
+      this.sessionGrew || changed.some((p) => this.session.has(p) && !this.keyed.has(p));
+    this.sessionGrew = false;
+    return recreate;
+  }
+
+  /**
+   * Records what a run's start-up imported beyond what `keyed` says a key
+   * already holds (the plugins' static closure, a module in every test
+   * file's, as a root conftest's `pytest_plugins` are), and returns every
+   * such path of the run, keyed or not: `RunReport.environmentObserved`, so
+   * the core stores nothing for a file whose key lacked one and runs it
+   * again under the key that holds it.
+   */
+  recordSession(
+    seen: readonly RelativePath[],
+    keyed: (path: RelativePath) => boolean,
+  ): RelativePath[] {
+    const paths = seen.filter((p) => !keyed(p) && !this.outside(p));
+    const added = this.addSession(paths);
+    if (this.store !== undefined && added.length > 0) {
+      try {
+        this.store.writeSession(added);
+      } catch (error) {
+        this.note(`could not store observed paths: ${String(error)}`);
+      }
+    }
+    return [...paths].sort(compare);
+  }
+
+  private addSession(paths: readonly RelativePath[]): RelativePath[] {
+    const added = paths.filter((p) => !this.session.has(p) && !this.outside(p));
+    for (const path of added) this.session.add(path);
+    return added;
   }
 
   /** The observed-only paths of one test file. */

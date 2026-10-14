@@ -437,3 +437,13 @@ export function nodeTestObservedPreloadsMetaKey(project: ProjectName): string {
 export function pytestObservedMetaKey(project: ProjectName): string {
   return `pytest.observed.${project}`;
 }
+
+/**
+ * 007 review wave 2, B5: the paths one pytest project's start-up plugins
+ * (`pytest11`, `-p`) imported at run time outside their static closure, a
+ * sorted array, shared like {@link pytestObservedMetaKey}. They are
+ * environment inputs of the project, as {@link nodeTestObservedPreloadsMetaKey}'s are.
+ */
+export function pytestObservedSessionMetaKey(project: ProjectName): string {
+  return `pytest.observedSession.${project}`;
+}
