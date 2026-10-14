@@ -62,3 +62,24 @@ Write the file within 15 minutes of starting, then extend it.
 - Run one full `npx vitest run --maxWorkers=4`.
 - Don't run `npm run build`.
 - Commit the findings file only.
+
+## 005-54 narrow review of 005-47
+
+Use /reviewer.
+
+**Outcome.** `reviews/wave-7.md` on `970af7ba..32168eec` (005-47), at 0.1.160. Write it within 15 minutes of starting, then extend it.
+
+**Check.**
+- No gate line that is negated, names Squeal, or describes the command is reworded.
+- No rewording leaves a broken sentence, and the fallback sentence follows the command's own sentence.
+- A plain gate is still reworded, D5's first example is reworded exactly, and this repository's line is not proposed again.
+- `squealMentions` in the plan and the skill sentence match what setup does.
+- The two skill copies are identical.
+
+Look for a realistic instruction line that is still mis-reworded. Use this repository's `docs/`, the skills and cezar's `AGENTS.md` through `git -C /home/agent/projects/cezar show 5dbb4b09:AGENTS.md` as a corpus, and report every line setup would reword along with its result.
+
+**Rules.**
+- Run no model session and never the real `claude` or `codex`.
+- Never write to cezar.
+- Run exactly one `npx vitest run --maxWorkers=4`.
+- Don't run `npm run build`.
