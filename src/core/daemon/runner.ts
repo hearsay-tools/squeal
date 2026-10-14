@@ -109,6 +109,8 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
     invalidate: (paths: readonly InvalidatedPath[]) =>
       around(async (): Promise<InvalidateResult> => {
         if (inner !== null || closed) return (await adapter()).invalidate(paths);
+        // 007 review wave 2, B1: the scheduler's empty recheck at each pass is no retry.
+        if (paths.length === 0) return { recreatedProjects: [] };
         retry = true;
         const fresh = await adapter();
         const projects = new Set((await fresh.environment()).map((e) => e.project));
