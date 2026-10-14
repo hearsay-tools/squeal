@@ -298,6 +298,7 @@ export function squealHooks(host: HookHost): OcHooks {
 
     async "shell.env"(input, output) {
       try {
+        if (disposed) return;
         const path = output.env.PATH ?? host.env.PATH;
         output.env.PATH =
           path === undefined || path === "" ? host.bin : `${host.bin}${delimiter}${path}`;

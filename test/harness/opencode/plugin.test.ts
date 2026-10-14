@@ -335,6 +335,10 @@ describe("session.deleted and dispose", () => {
     const output = chatOutput("ses_new");
     await hook(hooks, "chat.message")({ sessionID: "ses_new" }, output);
     expect(output.parts).toHaveLength(1);
+    // Review 008-15 N1: shell.env too.
+    const shell = { env: {} as Record<string, string> };
+    await hook(hooks, "shell.env")({ cwd: "/", sessionID: ROOT_ID }, shell);
+    expect(shell.env).toEqual({});
     expect(ends()).toHaveLength(1);
   });
 
