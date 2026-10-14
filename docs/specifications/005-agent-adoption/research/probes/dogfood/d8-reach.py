@@ -131,20 +131,27 @@ def files(args):
                         yield os.path.join(d, f)
 
 
-counts, sessions_with = Counter(), Counter()
-examples = {}
-for f in files(sys.argv[1:]):
-    seen = set()
-    for cmd in commands(f):
-        if not cmd or not TEST.search(cmd):
-            continue
-        k = classify(cmd)
-        counts[k] += 1
-        seen.add(k)
-        examples.setdefault(k, cmd[:160].replace("\n", " ⏎ "))
-    for k in seen:
-        sessions_with[k] += 1
-total = sum(counts.values())
-print(f"test commands: {total}")
-for k, n in counts.most_common():
-    print(f"  {n:5d} {n / total:6.1%}  sessions {sessions_with[k]:4d}  {k}   e.g. {examples[k]}")
+def main(args):
+    counts, sessions_with = Counter(), Counter()
+    examples = {}
+    for f in files(args):
+        seen = set()
+        for cmd in commands(f):
+            if not cmd or not TEST.search(cmd):
+                continue
+            k = classify(cmd)
+            counts[k] += 1
+            seen.add(k)
+            examples.setdefault(k, cmd[:160].replace("\n", " ⏎ "))
+        for k in seen:
+            sessions_with[k] += 1
+    total = sum(counts.values())
+    print(f"test commands: {total}")
+    for k, n in counts.most_common():
+        print(f"  {n:5d} {n / total:6.1%}  sessions {sessions_with[k]:4d}  {k}   e.g. {examples[k]}")
+
+
+# Concatenated ahead of another script (analyze-part1.py) with AS_LIBRARY = True, only the
+# functions load.
+if not globals().get("AS_LIBRARY"):
+    main(sys.argv[1:])
