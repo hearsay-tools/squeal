@@ -1,9 +1,10 @@
-import type { SerializedError, TestSpecification, Vitest } from "vitest/node";
+import type { SerializedError, TestProject, TestSpecification, Vitest } from "vitest/node";
 import { compare } from "../../core/fs/index.js";
 import { causeText, withCode } from "../../core/state/fingerprint.js";
 import type {
   AbsolutePath,
   CheckError,
+  ProjectName,
   RunReport,
   StartupFailure,
 } from "../../core/types/index.js";
@@ -21,8 +22,9 @@ import { toCheckError } from "./results.js";
 
 /**
  * The startup failure of a run that rejected with `error` before any test
- * file reported, or `null` when one did: Vitest reports a failed start as
- * one error and runs nothing, as `vitest run` does.
+ * file was queued, or `null` when one was: Vitest reports a failed start as
+ * one error and runs nothing, as `vitest run` does. Never throws, so the
+ * caller closes the instance whatever the error is (review wave-13bp B2).
  */
 export function startupFailure(
   vitest: Vitest,
@@ -31,25 +33,71 @@ export function startupFailure(
   error: unknown,
   paths: WorktreePaths,
 ): StartupFailure | null {
-  if (collector.modules.size > 0 || collector.results.length > 0) return null;
+  if (collector.queued > 0 || collector.modules.size > 0 || collector.results.length > 0) {
+    return null;
+  }
+  try {
+    return classify(vitest, specs, collector, thrown(error), paths);
+  } catch (failure) {
+    collector.note(`reading the error of a run that failed to start failed: ${String(failure)}`);
+    return null;
+  }
+}
+
+function classify(
+  vitest: Vitest,
+  specs: readonly TestSpecification[],
+  collector: RunCollector,
+  error: SerializedError,
+  paths: WorktreePaths,
+): StartupFailure {
   const text = errorTexts(error);
-  const named = vitest.projects.flatMap((project) =>
-    setupFiles(project.config.globalSetup)
-      .filter((file) => text.includes(file))
-      .map((file) => ({ project: project.name, file })),
-  )[0];
-  const projects = named
-    ? [named.project]
-    : [...new Set(specs.map((spec) => spec.project.name))].sort(compare);
-  const setupFile = named ? paths.toRelative(named.file) : null;
-  const checkError = toCheckError(error as SerializedError, paths);
-  const location = named ? frameOf(text, named.file, paths) : null;
+  const owner = setupOwner(vitest, specs, text);
+  const checkError = toCheckError(error, paths);
+  const location = owner ? frameOf(text, owner.file, paths) : null;
   return {
-    projects,
+    projects: owner?.projects ?? runProjects(specs),
     testFiles: [...collector.requested],
-    setupFile,
+    setupFile: owner ? paths.toRelative(owner.file) : null,
     error: { ...checkError, location: location ?? checkError.location, phase: "setup" },
   };
+}
+
+/**
+ * The setup file the error names and the run's projects it fails, or `null`
+ * when it names none or several (review wave-13bp B3). Only the run's
+ * projects run their setups, with the root project's, which Vitest
+ * initializes for every run: a file of the root project's setup fails every
+ * project of the run, and a file shared by run projects fails each of them.
+ */
+function setupOwner(
+  vitest: Vitest,
+  specs: readonly TestSpecification[],
+  text: string,
+): { readonly projects: ProjectName[]; readonly file: AbsolutePath } | null {
+  const named = (project: TestProject) =>
+    setupFiles(project.config.globalSetup).filter((file) => text.includes(file));
+  const run = [...new Set(specs.map((spec) => spec.project))];
+  const root = vitest.getRootProject();
+  const owners = run.flatMap((project) => named(project).map((file) => ({ project, file })));
+  const rootFiles = run.includes(root) ? [] : named(root);
+  const files = new Set([...owners.map((o) => o.file), ...rootFiles]);
+  const [file] = files;
+  if (file === undefined || files.size > 1) return null;
+  if (rootFiles.length > 0) return { projects: runProjects(specs), file };
+  return { projects: [...new Set(owners.map((o) => o.project.name))].sort(compare), file };
+}
+
+function runProjects(specs: readonly TestSpecification[]): ProjectName[] {
+  return [...new Set(specs.map((spec) => spec.project.name))].sort(compare);
+}
+
+/** `error` as Vitest serializes one; a thrown `null`, `undefined` or primitive keeps its text. */
+function thrown(error: unknown): SerializedError {
+  if (typeof error === "object" && error !== null) return error as SerializedError;
+  const message =
+    typeof error === "string" ? error : `the run rejected with ${String(error)}, not an Error`;
+  return { name: "Error", message, stack: "" } as SerializedError;
 }
 
 /**
