@@ -1,21 +1,27 @@
-import { type ChildProcess, execFileSync, spawn } from "node:child_process";
-import { randomUUID } from "node:crypto";
-import { cpSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
-import { createRequire } from "node:module";
-import { dirname, join, resolve } from "node:path";
-import { DatabaseSync } from "node:sqlite";
-import { pathToFileURL } from "node:url";
-import { afterAll, describe, expect, it, type TestContext } from "vitest";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { readStatus } from "../../src/core/status/index.js";
-import type { StatusSnapshot } from "../../src/core/types/index.js";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import { pytestObservedMetaKey } from "../../src/core/types/index.js";
 import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
 import { runCodexHook } from "../../src/harness/codex/index.js";
-import { childEnv, ping } from "../daemon/helpers.js";
-import { readRuns, until } from "../e2e/support.js";
+import { until } from "../e2e/support.js";
 import { codexRecorded, sessionOf } from "../harness/codex/helpers.js";
 import { recorded } from "../harness/helpers.js";
-import { findPython, pythonEnv } from "../helpers/pytest-env.js";
+import {
+  CORE_TEST,
+  git,
+  metaValue,
+  PYTEST_FILES,
+  pytestRepos,
+  RESOURCES_TEST,
+  ranFiles,
+  ranSince,
+  runs,
+  SETTLE_MS,
+  settle,
+  status,
+  VITEST_FILE,
+} from "./pytest-repo.js";
 
 /*
  * Spec 007 goal 8 and Testing, integration: one daemon per worktree, run from
@@ -30,128 +36,18 @@ import { findPython, pythonEnv } from "../helpers/pytest-env.js";
  * until `uv sync` runs there.
  */
 
-const REPO = resolve(import.meta.dirname, "../..");
-const CLI = join(REPO, "src/cli/index.ts");
-const TSX = pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href;
-const SMALL = join(REPO, "test/fixtures/pytest/small");
-/**
- * Inside the repository, so the fixture's Vitest suite resolves `vitest` from
- * its `node_modules`; not under `test/fixtures/pytest`, which must hold no `.venv`.
- */
-const scratch = join(REPO, "test/fixtures/vitest/.tmp", `pytest-${randomUUID()}`);
-const runtime = realpathSync(mkdtempSync("/tmp/sq-"));
 const SLOW = { timeout: 600_000 } as const;
-const SETTLE_MS = 180_000;
-const VERSION = "3.13";
-
-const daemons: ChildProcess[] = [];
-afterAll(async () => {
-  for (const daemon of daemons) daemon.kill("SIGTERM");
-  await Promise.all(
-    daemons.map((d) => (d.exitCode === null ? new Promise((done) => d.once("exit", done)) : null)),
-  );
-  rmSync(scratch, { recursive: true, force: true });
-  rmSync(runtime, { recursive: true, force: true });
-  // Stopping daemons and removing synced environments outlasts Vitest's 10 s hook default under load.
-}, 120_000);
-
-const git = (cwd: string, args: readonly string[]) =>
-  execFileSync("git", args, { cwd, stdio: "pipe", encoding: "utf8" });
-const commit = (cwd: string, message: string) =>
-  git(cwd, ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", message]);
-
 const PROJECT = { name: "small", include: ["tests/**/test_*.py"] };
-const CORE_TEST = "tests/unit/test_core.py";
-const RESOURCES_TEST = "tests/test_resources.py";
 const OBSERVED_ONLY = "src/app/plugins/alpha.py";
-const PYTEST_FILES = ["tests/test_entry_plugin.py", RESOURCES_TEST, CORE_TEST];
-const VITEST_FILE = "vitest/sum.test.ts";
 /** The pytest fixture's eight tests and the Vitest one, plus each file's file-level check. */
 const CHECKS = 9 + 4;
 
 const FILES: Readonly<Record<string, string>> = {
   ".gitignore": "node_modules/\n.venv/\n",
-  "package.json": `${JSON.stringify({ name: "mixed", private: true, type: "module" })}\n`,
-  "vitest.config.ts": `import { defineConfig } from "vitest/config";\nexport default defineConfig({ test: { include: ["vitest/**/*.test.ts"] } });\n`,
   "squeal.config.json": `${JSON.stringify({ pytest: [PROJECT] }, null, 2)}\n`,
-  "js/sum.ts": "export const sum = (a: number, b: number) => a + b;\n",
-  [VITEST_FILE]: `import { expect, test } from "vitest";\nimport { sum } from "../js/sum.js";\ntest("sums", () => expect(sum(1, 2)).toBe(3));\n`,
 };
 
-function createRepo(): string {
-  const main = join(scratch, "main");
-  cpSync(SMALL, main, {
-    recursive: true,
-    filter: (src) => !/(^|\/)(\.venv|__pycache__)$/.test(src),
-  });
-  for (const [path, text] of Object.entries(FILES)) {
-    mkdirSync(dirname(join(main, path)), { recursive: true });
-    writeFileSync(join(main, path), text);
-  }
-  git(main, ["init", "-q", "-b", "main"]);
-  git(main, ["add", "-A"]);
-  commit(main, "fixture");
-  return realpathSync(main);
-}
-
-function addWorktree(main: string, name: string): string {
-  const root = join(scratch, name);
-  git(main, ["worktree", "add", "-q", "-b", name, root]);
-  return realpathSync(root);
-}
-
-/** `uv sync --locked` in `root` on the fixture's Python; skips the test without uv, fails on CI. */
-function uvSync(ctx: TestContext, root: string): void {
-  const found = findPython(VERSION);
-  if (!found.ok) {
-    if (process.env.CI) throw new Error(`pytest fixture unavailable on CI: ${found.reason}`);
-    ctx.skip(`uv or Python ${VERSION} is absent: ${found.reason}`);
-    return;
-  }
-  execFileSync("uv", ["sync", "--locked", "--python", found.python], {
-    cwd: root,
-    env: pythonEnv(),
-    stdio: "pipe",
-  });
-}
-
-/** `squeal daemon <root>` from the sources, as the hooks would spawn it from a plugin. */
-async function startDaemon(root: string): Promise<void> {
-  const env = childEnv(runtime);
-  const child = spawn(process.execPath, ["--import", TSX, CLI, "daemon", root], {
-    cwd: root,
-    env,
-    stdio: "ignore",
-  });
-  daemons.push(child);
-  const { socketPathFor } = await import("../../src/core/daemon/paths.js");
-  const socket = socketPathFor(worktreeIdFor(root), env);
-  await until(`the daemon of ${root}`, SETTLE_MS, async () => {
-    const answer = await ping(socket, 1_000);
-    return answer?.phase === "ready" ? answer : null;
-  });
-}
-
-const status = (root: string): StatusSnapshot => {
-  const result = readStatus(root);
-  if (!result.available) throw new Error(`status unavailable: ${result.message}`);
-  return result;
-};
-
-/** Status once nothing is pending past revision `after` and `accept` holds. */
-const settle = (root: string, what: string, accept: (s: StatusSnapshot) => boolean, after = -1) =>
-  until(what, SETTLE_MS, async () => {
-    const s = status(root);
-    const quiet =
-      s.revision > after &&
-      s.runnerPartPending !== true &&
-      s.counts.pending + s.testFilesWithoutChecks.pending === 0;
-    if (quiet && accept(s)) return s;
-    const { revision, counts, testFilesWithoutChecks, knownFailures, daemonNotes } = s;
-    throw new Error(
-      JSON.stringify({ revision, counts, testFilesWithoutChecks, knownFailures, daemonNotes }),
-    );
-  });
+const { commit, createRepo, addWorktree, uvSync, startDaemon } = pytestRepos("pytest");
 
 const deps: HookDeps = { env: {}, ensureDaemon: async () => "alive" };
 const CODEX_SESSION = sessionOf("exec", "session-start");
@@ -160,34 +56,15 @@ const claude = async (name: "session-start" | "post-tool-batch", root: string) =
 const codex = async (name: "session-start" | "post-tool-use", root: string) =>
   (await runCodexHook(name, codexRecorded("exec", name, root, CODEX_SESSION), deps)).stdout;
 
-const storePath = (main: string) => join(main, ".git/squeal/store.sqlite");
-const runs = (main: string, root: string) => readRuns(storePath(main), worktreeIdFor(root));
-const ranFiles = (main: string, root: string) => runs(main, root).flatMap((r) => r.testFiles);
-/** The test files of the runs of `root` after its first `from` runs. */
-const ranSince = (main: string, root: string, from: number) =>
-  runs(main, root)
-    .slice(from)
-    .flatMap((r) => r.testFiles);
-
-function observedKey(main: string): Record<string, string[]> {
-  const db = new DatabaseSync(storePath(main), { readOnly: true });
-  try {
-    const row = db.prepare("SELECT value FROM meta WHERE key = ?").get("pytest.observed.small") as
-      | { value: string }
-      | undefined;
-    return row === undefined ? {} : (JSON.parse(row.value) as Record<string, string[]>);
-  } finally {
-    db.close();
-  }
-}
+const observedKey = (main: string) =>
+  (metaValue(main, pytestObservedMetaKey("small")) ?? {}) as Record<string, string[]>;
 
 describe("a repository with a Vitest suite and a pytest project (spec 007)", () => {
   it(
     "baselines, inherits into a synced worktree, keys observed paths and delivers a pytest PASS -> FAIL",
     SLOW,
     async (ctx) => {
-      mkdirSync(scratch, { recursive: true });
-      const main = createRepo();
+      const main = createRepo("main", FILES);
       uvSync(ctx, main);
       await startDaemon(main);
       expect(await claude("session-start", main)).toMatch(/SQUEAL · registered at revision \d+/);
