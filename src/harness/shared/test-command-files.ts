@@ -1,13 +1,14 @@
 import { isAbsolute, join, relative, resolve } from "node:path";
 import type { AbsolutePath, TestFileRef } from "../../core/types/index.js";
 import type { TestCommand } from "./test-command.js";
+import type { PytestCommand } from "./test-command-pytest.js";
 
 /**
  * Spec 005 D8 step 2: the test files `command` would run, from Squeal's own
  * listing of the worktree (`listing`, every test file of every project), or
  * `null` when they cannot be resolved completely. The command runs from
- * `root`. `nodeTest` names the listing's node:test projects; the rest are
- * Vitest's. `omitted` counts the test files the listing left out because
+ * `root`. `nodeTest` names the listing's node:test and pytest projects; the
+ * rest are Vitest's. `omitted` counts the test files the listing left out because
  * Squeal does not run them, `null` when the daemon recorded no count.
  *
  * A Vitest command resolves only while the listing has one Vitest project:
@@ -30,6 +31,7 @@ export function resolveTestFiles(
     const files = command.files.map((file) => byPath.get(worktreePath(root, file) ?? ""));
     return files.every((ref) => ref !== undefined) ? unique(files) : null;
   }
+  if (command.runner === "pytest") return pytestFiles(command, listing, root);
   if (omitted !== 0) return null;
   const vitest = listing.filter((ref) => !nodeTest.has(ref.project));
   if (new Set(vitest.map((ref) => ref.project)).size !== 1) return null;
@@ -59,6 +61,32 @@ export function matchesFilter(file: AbsolutePath, filter: string, root: Absolute
     testFile.includes(filter.toLocaleLowerCase()) ||
     testFile.includes(relativePath.toLocaleLowerCase())
   );
+}
+
+/**
+ * Spec 007 D8: a pytest command's files among its project's listed ones. A
+ * file path is that file; a directory, the root included, is every listed
+ * file under it, at least one; no path is the project's every file. A path outside the
+ * worktree or naming no listed file does not resolve.
+ */
+function pytestFiles(
+  command: PytestCommand,
+  listing: readonly TestFileRef[],
+  root: AbsolutePath,
+): readonly TestFileRef[] | null {
+  const own = listing.filter((ref) => ref.project === command.project);
+  if (command.paths === null) return own.length === 0 ? null : own;
+  const selected = new Set<TestFileRef>();
+  for (const path of command.paths) {
+    const rel = path === root ? "" : worktreePath(root, path);
+    const hits =
+      rel === null
+        ? []
+        : own.filter((ref) => rel === "" || ref.path === rel || ref.path.startsWith(`${rel}/`));
+    if (hits.length === 0) return null;
+    for (const ref of hits) selected.add(ref);
+  }
+  return own.filter((ref) => selected.has(ref));
 }
 
 /** `path` relative to `root` with `/` separators; `null` outside it. */

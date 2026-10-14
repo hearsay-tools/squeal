@@ -1,5 +1,6 @@
 import { readFileSync, realpathSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { readPolicy } from "../../core/daemon/policy.js";
 import { formatDelta, readLiveHeader } from "../../core/delivery/index.js";
 import {
   recordTestCommandDenied,
@@ -10,10 +11,18 @@ import { isRecord } from "../../core/fs/index.js";
 import { testFileId } from "../../core/keys/index.js";
 import { readOmittedTestFiles } from "../../core/scheduler/omitted-test-files.js";
 import { testFileKeyOf } from "../../core/state/index.js";
-import type { DeltaKind, EpochMs, KnownState, Policy } from "../../core/types/index.js";
+import type {
+  AbsolutePath,
+  DeltaKind,
+  EpochMs,
+  KnownState,
+  Policy,
+} from "../../core/types/index.js";
+import { discoverEnvironment, projectDir } from "../../runners/pytest/environment/discover.js";
 import type { HookContext, HookLocation } from "./context.js";
 import { recognizeTestCommand, type TestCommand } from "./test-command.js";
 import { resolveTestFiles } from "./test-command-files.js";
+import type { PytestHere } from "./test-command-pytest.js";
 import { testCommandReason } from "./test-command-reason.js";
 import { denialSentence } from "./text.js";
 
@@ -57,8 +66,9 @@ export async function denyOnRegression(
 /**
  * Spec 005 D8 step 1, before the store opens: the test command a `Bash`
  * call's `command` is, run from `cwd`, with `testCommand.denyWhenCurrent` on;
- * `null` for any other call, a working directory other than the worktree
- * root, or a command that falls through.
+ * `null` for any other call, a working directory outside the worktree, or a
+ * command that falls through. Away from the root only a pytest project's
+ * command run from its `cwd` is recognized (spec 007 D8).
  */
 export function testCommandOf(
   location: HookLocation,
@@ -66,10 +76,35 @@ export function testCommandOf(
   call: { readonly toolName: string; readonly command?: string; readonly cwd: string },
 ): TestCommand | null {
   if (!policy.testCommand.denyWhenCurrent || call.toolName !== "Bash") return null;
-  if (call.command === undefined || realPath(call.cwd) !== location.root) return null;
+  if (call.command === undefined) return null;
+  const { root } = location;
+  const cwd = realPath(call.cwd);
+  if (cwd === null || (cwd !== root && !cwd.startsWith(`${root}/`))) return null;
   return recognizeTestCommand(call.command, {
-    scripts: rootScripts(location.root),
+    scripts: cwd === root ? rootScripts(root) : {},
     nodeTest: policy.nodeTest,
+    pytest: pytestHere(root, cwd, policy.pytest),
+    atRoot: cwd === root,
+  });
+}
+
+/** The pytest projects whose `cwd` is `cwd`, each with its environment by 007 D2's discovery. */
+function pytestHere(
+  root: AbsolutePath,
+  cwd: string,
+  projects: Policy["pytest"],
+): readonly PytestHere[] {
+  return projects.flatMap((project) => {
+    const dir = projectDir(root, project);
+    if (realPath(dir) !== cwd) return [];
+    let env: AbsolutePath | null = null;
+    try {
+      const found = discoverEnvironment(root, project);
+      if (found.kind === "found") env = found.env;
+    } catch {
+      // An unreadable `.pdm-python` is no environment: only `pytest`, `python` and `uv run` match.
+    }
+    return [{ project, dir, env }];
   });
 }
 
@@ -120,7 +155,9 @@ export function denyCurrentTestCommand(
     const header = readLiveHeader(store, consumer.worktreeId, now, states, null, keys);
     if (header.daemon?.state !== "alive" || header.testFilesListed === false) return null;
     if (header.runnerPartPending === true || header.awaitingInstall === true) return null;
-    const names = new Set(nodeTest.map((p) => p.name));
+    // Vitest's files are the listing's others: the policy's pytest projects are read only for it.
+    const pytest = command.runner === "vitest" ? readPolicy(context.root).pytest : [];
+    const names = new Set([...nodeTest, ...pytest].map((p) => p.name));
     const files = resolveTestFiles(
       command,
       keys.map((k) => k.testFile),
