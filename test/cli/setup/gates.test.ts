@@ -30,7 +30,8 @@ describe("gate detection", FIXTURES, () => {
         line: 3,
         text: VITEST_GATE,
         command: "npx vitest run",
-        proposed: `Verification: \`npm run lint\`, \`npm run typecheck\`, \`npm run build\`, and \`squeal run --all --wait 110000\`. Paste the output in your final message.${FALLBACK("npx vitest run")}`,
+        // Row 005-47: the fallback follows the checkpoint's sentence, the gate's last stays last.
+        proposed: `Verification: \`npm run lint\`, \`npm run typecheck\`, \`npm run build\`, and \`squeal run --all --wait 110000\`.${FALLBACK("npx vitest run")} Paste the output in your final message.`,
         reason: null,
       },
     ]);
@@ -139,6 +140,15 @@ describe("gate detection", FIXTURES, () => {
     );
   });
 
+  it("rewords a plain gate, and a bold one without breaking its emphasis", () => {
+    expect(reword("Run `npm test` before you finish.")).toBe(
+      `Run \`squeal run --all --wait 110000\` before you finish.${FALLBACK("npm test")}`,
+    );
+    expect(reword("**Run `npm test` before you finish.**")).toBe(
+      `**Run \`squeal run --all --wait 110000\` before you finish.**${FALLBACK("npm test")}`,
+    );
+  });
+
   it("rewords a bare command and keeps the rest of the line", () => {
     expect(GATE_WAIT_MS).toBe(110_000);
     expect(reword("- Run npm test and paste its output")).toBe(
@@ -189,5 +199,120 @@ describe("rewording gate lines", FIXTURES, () => {
         "CLAUDE.md:2: runs more than the test command: `npm run lint && npx vitest run && npm run build`",
     });
     expect(readFileSync(join(root, "CLAUDE.md"), "utf8")).toBe(before);
+  });
+});
+
+/*
+ * Row 005-47, from cezar (`5dbb4b09:AGENTS.md`, `lessons.md` proposed row 2):
+ * `--yes` inverted line 185 and broke its sentence, and appended the
+ * fallback mid-paragraph or after a table row on the other four.
+ */
+const CEZAR = {
+  172: "| Cockpit e2e specs (`packages/web/e2e/*.e2e.ts`, the browser seam, a flaky shard) | `packages/web/e2e/README.md`, then `packages/web/e2e/agent-browser.ts` and `packages/web/e2e/contrast.ts` | Wait, then read, as one step: `click`/`hover`/`fill` auto-wait for their selector, `waitForValue` polls an expression and returns the sample that passed (hearsay-tools/cezarion#409); a one-shot `expect(browser.…)` right after an action is a race. `packages/web/src/test/e2e-wait-discipline.test.ts` scans every spec on `npm test` against a baseline that only shrinks. A red shard leaves a failure bundle (`.ai/qa/failures/`); read it before theorizing, and no flake fix lands without one or a local reproduction. |",
+  185: "Do not duplicate those background runs with `npm test`,",
+  201: "browser is an error in a Squeal run. `npm test` and `npm run test:watch` select",
+  237: "`npm test` and `npm run test:unit` are the fast unit gate: no server, no browser. They must stay that way. `npm run test:package` needs a completed `npm run build` (it packs the tarball). Pull request CI runs packaged CLI E2E and cockpit browser E2E as separate checks; the required aggregate fails if the cockpit suite is skipped or failed.",
+  326: "| Verification | Local: Squeal when installed and validating, otherwise focused npm checks. Full gate in CI: `npm run typecheck`, `npm test`, `npm run test:unit`, `npm run build`, `npm run test:package`, `npm run test:e2e` |",
+} as const;
+
+describe("lines that are no gate, or cannot take the fallback (row 005-47)", FIXTURES, () => {
+  const scan = (lines: readonly string[]) => {
+    const root = squealShaped({ "AGENTS.md": `${lines.join("\n")}\n` });
+    const found = scanGates(root, tracked(root), { nodeTest: false });
+    return {
+      gates: found.gates.filter((g) => g.file === "AGENTS.md"),
+      mentions: found.mentions.filter((m) => m.file === "AGENTS.md").map((m) => m.line),
+    };
+  };
+
+  it("proposes none of cezar's five lines, and lists those naming Squeal or negated as mentions", () => {
+    const { gates, mentions } = scan([
+      CEZAR[172],
+      "",
+      CEZAR[185],
+      "`npm run test:unit`, `npm run test:package`, `npm run test:e2e`, or `npm run test:changed`.",
+      "",
+      CEZAR[201],
+      "only the four unit projects.",
+      "",
+      CEZAR[237],
+      "",
+      CEZAR[326],
+    ]);
+    expect(mentions).toEqual([3, 6, 11]);
+    expect(gates.map((g) => [g.line, g.proposed, g.reason])).toEqual([
+      [1, null, "a table row"],
+      [9, null, "its sentence describes the test command rather than running it"],
+    ]);
+  });
+
+  it("would not reword 185, 201 or 326 even without Squeal's name or the negation", () => {
+    const { gates } = scan([
+      "Duplicate those background runs with `npm test`,",
+      "`npm run test:unit` too.",
+      "",
+      "Then `npm test` and `npm run test:watch` select",
+      "only the four unit projects.",
+      "",
+      CEZAR[326].replace("Squeal", "a watcher"),
+    ]);
+    expect(gates.map((g) => [g.line, g.reason])).toEqual([
+      [1, "its sentence goes on past the line"],
+      [4, "its sentence goes on past the line"],
+      [7, "a table row"],
+    ]);
+  });
+
+  it("lists every negated line as a mention, but not a negation in an earlier sentence", () => {
+    const { gates, mentions } = scan([
+      "Never run `npx vitest run` by hand.",
+      "Don't use `npm test` here.",
+      "Avoid `npm test` in hooks.",
+      "Use the editor's runner instead of `npm test`.",
+      "Do not commit generated files. Run `npm test` before you finish.",
+    ]);
+    expect(mentions).toEqual([1, 2, 3, 4]);
+    expect(gates.map((g) => [g.line, g.reason])).toEqual([[5, null]]);
+  });
+
+  it("lists this repository's own gate line, which names Squeal, as a mention only", () => {
+    const line = readFileSync(join(import.meta.dirname, "../../../CLAUDE.md"), "utf8")
+      .split("\n")
+      .find((l) => l.startsWith("Verification:")) as string;
+    expect(line).toContain("`npx vitest run`");
+    expect(scan([line]).gates).toEqual([]);
+    expect(
+      scan([line.replace("squeal run --all --wait", "squeal status --wait")]).mentions,
+    ).toEqual([1]);
+  });
+
+  // The cost of the subject rule, accepted by the coordinator: reported, never reworded wrongly.
+  it("reports a gate whose sentence opens with the command", () => {
+    const { gates } = scan([
+      "`npm test` must pass before you finish.",
+      "- `npx vitest run` is the gate.",
+    ]);
+    expect(gates.map((g) => [g.line, g.proposed, g.reason])).toEqual([
+      [1, null, "its sentence describes the test command rather than running it"],
+      [2, null, "its sentence describes the test command rather than running it"],
+    ]);
+  });
+
+  it("appends to a list item that ends its paragraph, and refuses one that goes on", () => {
+    const { gates } = scan([
+      "- Run `npm test` before committing",
+      "- Lint",
+      "",
+      "Run `npm test` and",
+      "paste it.",
+    ]);
+    expect(gates.map((g) => [g.line, g.proposed, g.reason])).toEqual([
+      [
+        1,
+        `- Run \`squeal run --all --wait 110000\` before committing.${FALLBACK("npm test")}`,
+        null,
+      ],
+      [4, null, "its sentence goes on past the line"],
+    ]);
   });
 });
