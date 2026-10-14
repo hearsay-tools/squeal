@@ -1,6 +1,7 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import {
   INSTALL_SH,
   install,
@@ -88,12 +89,14 @@ describe("install.sh", { timeout: 30_000 }, () => {
     expect(r.stdout).not.toContain("not on your PATH");
   });
 
-  it("stops before any harness command when neither claude nor codex is on the PATH", () => {
+  it("stops before any harness command when none of claude, codex and pi is on the PATH", () => {
     const m = machine([]);
     m.publish("0.1.134");
     const r = install(m);
     expect(r.status).toBe(1);
-    expect(r.stderr).toContain("neither claude nor codex is on the PATH");
+    expect(r.stderr).toContain(
+      "none of claude, codex and pi is on the PATH: install Claude Code, Codex or Pi first",
+    );
     expect(existsSync(launcherOf(m))).toBe(false);
   });
 
@@ -186,6 +189,14 @@ describe("install.sh", { timeout: 30_000 }, () => {
       expect(snapshot(m.home)).toEqual(before);
     },
   );
+
+  it("names the release it belongs to, the root package's version", () => {
+    const { version } = JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8")) as {
+      version: string;
+    };
+    // Raised with the root version at each bump, so a release's script fetches its own tag.
+    expect(/^SQUEAL_VERSION=(.*)$/m.exec(SCRIPT)?.[1]).toBe(version);
+  });
 
   it("is POSIX sh with set -eu, reads no stdin, and calls main last with its completion argument", () => {
     expect(SCRIPT.startsWith("#!/bin/sh\n")).toBe(true);

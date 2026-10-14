@@ -16,21 +16,24 @@ import { runtimeDir } from "../harness/bundle-helpers.js";
 
 /*
  * A scratch machine for `install.sh`, the launcher and `squeal update` (spec
- * 005 D3): its own HOME, CLAUDE_CONFIG_DIR and CODEX_HOME, stub `claude` and
- * `codex` first on a PATH that holds only them, a `node` link and the system
- * directories, and a `file://` hub. No real harness runs, and the real
- * plugin's `bin/` is never on this PATH.
+ * 005 D3): its own HOME, CLAUDE_CONFIG_DIR and CODEX_HOME, stub `claude`,
+ * `codex` and `pi` first on a PATH that holds only them, a `node` link and the
+ * system directories, a `file://` hub and `file://` tag archives (spec 009
+ * D1). No real harness runs, and the real plugin's `bin/` is never on this PATH.
  */
 
 export const LAUNCHER = join(REPO_ROOT, "plugins", "claude-code", "bin", "squeal-launcher");
 export const INSTALL_SH = join(REPO_ROOT, "install.sh");
 
 /**
- * Stub `claude` and `codex`: each call goes to `STUB_LOG`, and each command
- * changes the scratch home the way the harness's own does, from the hub's
- * current plugin directories. `marketplace add` of a marketplace already added
- * fails; `STUB_PRIVATE` makes it fail as a hub without access does, and
- * `STUB_FAIL` fails every call that starts with it (`codex plugin`).
+ * Stub `claude`, `codex` and `pi`: each call goes to `STUB_LOG`, and each
+ * command changes the scratch home the way the harness's own does, from the
+ * hub's current plugin directories. `marketplace add` of a marketplace already
+ * added fails; `STUB_PRIVATE` makes it fail as a hub without access does, and
+ * `STUB_FAIL` fails every call that starts with it (`codex plugin`). `pi
+ * install <dir>` and `pi remove <dir>` edit Pi's user settings as Pi 1.0.4
+ * does: a local source relative to the agent directory, an install of a listed
+ * source changes nothing, a remove of an unlisted one fails.
  */
 const STUB = `#!${process.execPath}
 const fs = require("node:fs");
@@ -44,6 +47,24 @@ const readJson = (f, d) => { try { return JSON.parse(fs.readFileSync(f, "utf8"))
 const writeJson = (f, v) => { fs.mkdirSync(p.dirname(f), { recursive: true }); fs.writeFileSync(f, JSON.stringify(v, null, 2) + "\\n"); };
 const cmd = args.join(" ");
 if (env.STUB_FAIL && (tool + " " + cmd).startsWith(env.STUB_FAIL)) fail("stub failure");
+if (tool === "pi") {
+  const agent = env.PI_CODING_AGENT_DIR ?? p.join(env.HOME, ".pi", "agent");
+  const settings = p.join(agent, "settings.json");
+  const file = readJson(settings, {});
+  const packages = file.packages ?? [];
+  const dir = p.resolve(args[1] ?? "");
+  const listed = (s) => p.resolve(agent, s) === dir;
+  if (args[0] === "install" && args.length === 2) {
+    if (!fs.existsSync(p.join(dir, "package.json"))) fail("no package at " + args[1]);
+    if (!packages.some(listed)) writeJson(settings, { ...file, packages: [...packages, p.relative(agent, dir) || "."] });
+    console.log("Installed " + args[1]);
+  } else if (args[0] === "remove" && args.length === 2) {
+    if (!packages.some(listed)) fail("No matching package found for " + args[1]);
+    writeJson(settings, { ...file, packages: packages.filter((s) => !listed(s)) });
+    console.log("Removed " + args[1]);
+  } else fail("stub: unknown command " + cmd);
+  process.exit(0);
+}
 const home = tool === "claude" ? p.join(env.CLAUDE_CONFIG_DIR, "plugins") : env.CODEX_HOME;
 const known = p.join(home, tool === "claude" ? "known_marketplaces.json" : "stub-marketplaces.json");
 const hub = () => readJson(known, {}).hearsay?.source ?? fail("marketplace hearsay is not added");
@@ -130,8 +151,12 @@ export interface Machine {
   readonly claudeConfig: string;
   readonly codexHome: string;
   readonly hub: string;
+  /** Pi's agent directory, where `pi install` writes `settings.json`. */
+  readonly piAgent: string;
   readonly env: Record<string, string>;
-  /** The hub's plugins at `version` in both harnesses. */
+  /** The release `install.sh` belongs to: the last `publish`. */
+  readonly version: string;
+  /** The hub's plugins at `version` in both harnesses, and the tag's source archive with the Pi package. */
   publish(version: string, launcher?: string): void;
   /** Every stub call since the last `clearLog`. */
   calls(): string[];
@@ -147,7 +172,9 @@ export interface Result {
 }
 
 /** A scratch machine; `harnesses` names the stubs on its PATH. */
-export function machine(harnesses: readonly ("claude" | "codex")[] = ["claude", "codex"]): Machine {
+export function machine(
+  harnesses: readonly ("claude" | "codex" | "pi")[] = ["claude", "codex"],
+): Machine {
   const root = runtimeDir();
   const home = join(root, "home");
   const claudeConfig = join(home, ".claude");
@@ -169,19 +196,27 @@ export function machine(harnesses: readonly ("claude" | "codex")[] = ["claude", 
     CODEX_HOME: codexHome,
     PATH: `${stubs}:${nodeBin}:/usr/bin:/bin`,
     SQUEAL_MARKETPLACE: `file://${hub}`,
+    SQUEAL_SOURCE: `file://${join(hub, "archive")}`,
     STUB_LOG: log,
   };
+  let version = "";
   return {
     root,
     home,
     claudeConfig,
     codexHome,
     hub,
+    piAgent: join(home, ".pi", "agent"),
     env,
-    publish(version, launcher) {
+    get version() {
+      return version;
+    },
+    publish(v, launcher) {
+      version = v;
       rmSync(join(hub, "plugins"), { recursive: true, force: true });
-      writePlugin(join(hub, "plugins", "claude-code"), "claude-code", version, launcher);
-      writePlugin(join(hub, "plugins", "codex"), "codex", version, launcher);
+      writePlugin(join(hub, "plugins", "claude-code"), "claude-code", v, launcher);
+      writePlugin(join(hub, "plugins", "codex"), "codex", v, launcher);
+      writeArchive(join(hub, "archive"), v, launcher);
     },
     calls: () =>
       readFileSync(log, "utf8")
@@ -205,11 +240,34 @@ export function machine(harnesses: readonly ("claude" | "codex")[] = ["claude", 
   };
 }
 
-/** Runs `install.sh` as `curl … | sh` runs it, the script on stdin; `args` after `sh -s --`. */
+/**
+ * The tag's source archive as GitHub serves it: one top directory, here named
+ * as GitHub names it for `squeal--v<version>`, holding the repository, of which
+ * only `plugins/pi/` is written.
+ */
+function writeArchive(dir: string, version: string, launcher?: string): void {
+  const staging = join(dir, `staging-${version}`);
+  const top = `squeal-squeal-v${version}`;
+  writePlugin(join(staging, top, "plugins", "pi"), "pi", version, launcher);
+  const r = spawnSync("tar", ["-czf", join(dir, `squeal--v${version}.tar.gz`), "-C", staging, top]);
+  if (r.status !== 0) throw new Error(`tar failed: ${r.stderr}`);
+  rmSync(staging, { recursive: true });
+}
+
+/** `install.sh` as the release `version` ships it. */
+export function scriptOf(version: string): string {
+  const script = readFileSync(INSTALL_SH, "utf8");
+  return version === ""
+    ? script
+    : script.replace(/^SQUEAL_VERSION=.*$/m, `SQUEAL_VERSION=${version}`);
+}
+
+/**
+ * Runs `install.sh` of the machine's release as `curl … | sh` runs it, the
+ * script on stdin; `args` after `sh -s --`.
+ */
 export function install(m: Machine, ...args: string[]): Result {
-  return m.sh(args.length === 0 ? [] : ["-s", "--", ...args], {
-    input: readFileSync(INSTALL_SH, "utf8"),
-  });
+  return m.sh(args.length === 0 ? [] : ["-s", "--", ...args], { input: scriptOf(m.version) });
 }
 
 export const launcherOf = (m: Machine): string => join(m.home, ".local", "bin", "squeal");
