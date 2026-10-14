@@ -73,6 +73,23 @@ describe("callBridge", () => {
     await expect.poll(() => alive(leader) || alive(grandchild), { timeout: 2_000 }).toBe(false);
   });
 
+  it("answers at the bridge's exit when a descendant holds its stdout, then kills the group (review 008-15)", async () => {
+    const pids = join(tempDir("squeal-oc-pids-"), "pids.json");
+    const leaking = bridge(`
+      import { spawn } from "node:child_process";
+      import { writeFileSync } from "node:fs";
+      const child = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: ["ignore", "inherit", "ignore"] });
+      writeFileSync(${JSON.stringify(pids)}, JSON.stringify([process.pid, child.pid]));
+      process.stdout.write('{"answer":{"ok":true}}');
+      child.unref();
+    `);
+    const started = performance.now();
+    expect(await callBridge(leaking, {}, tempDir("squeal-oc-cwd-"), 3_000)).toEqual({ ok: true });
+    expect(performance.now() - started).toBeLessThan(1_500);
+    const [, grandchild] = JSON.parse(readFileSync(pids, "utf8")) as [number, number];
+    await expect.poll(() => alive(grandchild), { timeout: 2_000 }).toBe(false);
+  });
+
   it("is silent when the bridge exits non-zero, even after printing an answer", async () => {
     const failing = bridge(`process.stdout.write('{"answer":1}'); process.exitCode = 3;`);
     expect(await callBridge(failing, {}, tempDir("squeal-oc-cwd-"), 5_000)).toBeNull();

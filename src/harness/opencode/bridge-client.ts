@@ -6,6 +6,9 @@ import { spawn } from "node:child_process";
  * asserted by a build test).
  */
 
+/** How long after the bridge's exit its last output may take to arrive. */
+export const EXIT_DRAIN_MS = 50;
+
 /** How to start the bridge: a Node of Squeal's minimum, and the bridge entry it runs. */
 export interface BridgeCommand {
   readonly node: string;
@@ -19,6 +22,8 @@ export interface BridgeCommand {
  * exits non-zero, writes no or invalid JSON, or cannot be spawned. Never
  * rejects. At a missed deadline the whole group is killed: OpenCode awaits
  * plugin hooks with no timeout, so this deadline is the hook's only bound.
+ * The bridge's own exit settles the call, not its stdout's end, which a
+ * descendant holding the pipe would delay; the group is killed then too.
  *
  * Nothing it holds keeps the host alive past the call: the deadline timer is
  * cleared when the call settles, and the child and its pipes are unreferenced
@@ -32,7 +37,6 @@ export function callBridge<A>(
 ): Promise<A | null> {
   return new Promise((resolve) => {
     let settled = false;
-    let exited = false;
     const out: Buffer[] = [];
     let child: ReturnType<typeof spawn>;
     try {
@@ -45,9 +49,9 @@ export function callBridge<A>(
       resolve(null);
       return;
     }
+    let code: number | null = null;
     const killGroup = () => {
-      // Only while the leader lives: its pid is then the group's, and cannot name another.
-      if (exited || child.pid === undefined) return;
+      if (child.pid === undefined) return;
       try {
         process.kill(-child.pid, "SIGKILL");
       } catch {
@@ -58,26 +62,35 @@ export function callBridge<A>(
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      if (answer === null) killGroup();
+      clearTimeout(drain);
+      if (code === null) killGroup();
       child.stdout?.destroy();
       child.stdin?.destroy();
       child.unref();
       resolve(answer);
     };
+    const answered = () =>
+      settle(code === 0 ? parseAnswer<A>(Buffer.concat(out).toString("utf8")) : null);
     const timer = setTimeout(() => settle(null), deadlineMs);
+    let drain: ReturnType<typeof setTimeout> | undefined;
     child.on("error", () => settle(null));
     child.stdout?.on("data", (chunk: Buffer) => out.push(chunk));
     child.stdout?.on("error", () => settle(null));
+    // Its end once every writer closed it; a descendant that inherited it may never close it.
+    child.stdout?.on("end", () => {
+      if (code !== null) answered();
+    });
     child.stdin?.on("error", () => {
       // EPIPE when the bridge exits before reading: its exit settles the call.
     });
-    child.on("exit", () => {
-      exited = true;
-    });
-    child.on("close", (code) => {
-      exited = true;
-      if (code !== 0) return settle(null);
-      settle(parseAnswer<A>(Buffer.concat(out).toString("utf8")));
+    // The leader's exit settles the call (review 008-15): its group is killed at once, while
+    // the pgid is still its own, and what it wrote is read to the pipe's end, which that kill
+    // brings, or within `EXIT_DRAIN_MS`.
+    child.on("exit", (exitCode) => {
+      code = exitCode ?? -1;
+      killGroup();
+      if (code !== 0 || child.stdout === null || child.stdout.readableEnded) return answered();
+      drain = setTimeout(answered, EXIT_DRAIN_MS);
     });
     child.stdin?.end(JSON.stringify(event));
   });
