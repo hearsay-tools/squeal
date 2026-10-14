@@ -91,6 +91,26 @@ describe("the review's blockers (005-54 B1 to B3)", FIXTURES, () => {
   });
 });
 
+describe("quoted examples and non-executing verbs (005-58 R1, R2)", FIXTURES, () => {
+  const mentions = [
+    'Keep "Do not commit generated files. Run `npm test` before you finish." unchanged.',
+    "Keep “Do not commit generated files. Run `npm test` before you finish.” unchanged.",
+    'Run "npm test" as an example.',
+    "Use `npm test` as an example in the README.",
+    "Run the documentation generator to document `npm test`.",
+    "Run the documentation generator to describe `npm test`.",
+    "Run the documentation generator to explain `npm test`.",
+  ];
+
+  it.each(mentions)("lists the example as a mention: %s", (line) => {
+    expect(scan([line])).toMatchObject({ gates: [], mentions: [1] });
+  });
+
+  it.each(mentions)("refuses selecting the example for rewording: %s", (line) => {
+    refusesEach([line]);
+  });
+});
+
 describe("instructions still reworded exactly", FIXTURES, () => {
   it("rewords D5's first example, a plain gate, and one after an unrelated negation", () => {
     const { gates, mentions } = scan([
@@ -99,6 +119,8 @@ describe("instructions still reworded exactly", FIXTURES, () => {
       "Run `npm test` before you finish.",
       "",
       "Do not commit generated files. Run `npm test` before you finish.",
+      "",
+      "Use `npm test` to check your change.",
     ]);
     expect(mentions).toEqual([]);
     expect(gates).toEqual([
@@ -111,6 +133,7 @@ describe("instructions still reworded exactly", FIXTURES, () => {
         5,
         `Do not commit generated files. Run ${CHECKPOINT} before you finish.${FALLBACK("npm test")}`,
       ],
+      [7, `Use ${CHECKPOINT} to check your change.${FALLBACK("npm test")}`],
     ]);
   });
 
