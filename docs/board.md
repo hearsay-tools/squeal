@@ -1004,7 +1004,8 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 |---|---|---|---|
 | 008-19 end to end | running (worker 2841c17b, opus high) | The shipped OpenCode package installed with the real `opencode plugin file:` into an isolated home; baseline, `PASS -> FAIL`, deny, one continuation, wake under `serve`, status credit, no daemon. | Green locally and in CI on Node 22 and 24. |
 | 008-20 dogfooding | planned | Real models (`gpt-6-luna`, `gpt-6-astra`, one Grok) as `squeal-e2e` on a real Vitest library: Cezar-shaped `serve` with a wake, `run`, TUI; an update with a session open. | `lessons.md` answers open question 4 and the goals with evidence. |
-| 008-21 test hardening and the bridge's environment | running (worker 388e742a, opus high) | `reviews/wave-1.5.md` ordering note; `bridge-client.test.ts` process leaks; drop `NODE_USE_ENV_PROXY` for the bridge (about 90 ms against 42 ms Node start). | Idle test 10 green under load; no leaked process; env test. |
+| 008-21 test hardening and the bridge's environment | verified, awaiting candidate (worker 388e742a, head ec4a2162) | `reviews/wave-1.5.md` ordering note; `bridge-client.test.ts` process leaks; drop `NODE_USE_ENV_PROXY` for the bridge (about 90 ms against 42 ms Node start). | Idle test 10 green under load; no leaked process; env test. |
+| 008-22 the primer after a first registration at a tool boundary | running (worker 388e742a resumed, opus high) | Found by 008-19: with no store at `chat.message`, the consumer registers at the first tool call but the primer waits for the next user message; `after` and `prompt` answers carry the primer (goal 5). | Unit test red then green; real-OpenCode fresh repository carries the primer from the second request. |
 
 ## Later
 
