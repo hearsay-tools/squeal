@@ -18,7 +18,8 @@ export interface Sessions {
   forget(id: string): void;
   /**
    * D2: a root session's consumer is `(id, main)`; a child's is `(root,
-   * child)`. `null` when a lookup on the way failed or missed `deadline`: a
+   * child)`. `null` when a lookup on the way failed or missed `deadline`, or
+   * the walk met a cycle or went past `MAX_DEPTH` without a root: a
    * guess of root would register a child as `(child, main)` (review 008-15),
    * so the caller does nothing, and the next hook looks again.
    */
@@ -48,13 +49,18 @@ export function sessions(client: OcClient): Sessions {
     forget: (id) => parents.delete(id),
     async consumerOf(id, deadline) {
       let root = id;
-      for (let depth = 0; depth < MAX_DEPTH; depth++) {
+      const seen = new Set([id]);
+      for (let hops = 0; hops <= MAX_DEPTH; hops++) {
         const parent = await parentOf(root, deadline);
         if (parent === undefined) return null;
-        if (parent === null) break;
+        if (parent === null)
+          return root === id ? { sessionId: id } : { sessionId: root, agentId: id };
+        // Review 008-16 S2: a cycle names no root; nor does a chain past `MAX_DEPTH`.
+        if (seen.has(parent)) return null;
+        seen.add(parent);
         root = parent;
       }
-      return root === id ? { sessionId: id } : { sessionId: root, agentId: id };
+      return null;
     },
   };
 }
