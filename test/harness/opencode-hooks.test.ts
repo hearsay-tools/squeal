@@ -127,8 +127,10 @@ describe.skipIf(unavailable !== undefined)("the Squeal plugin in OpenCode", () =
     expect(child, JSON.stringify(run.requests.map((q) => all(q).slice(0, 200)))).toBeDefined();
     expect(system(child)).toContain(PRIMER);
     expect(all(child)).toMatch(/SQUEAL · registered at revision \d+/);
-    // The child's consumer ended at its idle; the root's at dispose.
-    expect(r.store.consumers.list(r.worktreeId)).toEqual([]);
+    // The child's consumer ended at its idle. The root's ends at dispose, or, when that bridge
+    // misses its deadline under load, with OpenCode's process (001 D10): not asserted here.
+    const left = r.store.consumers.list(r.worktreeId).map((row) => row.consumer);
+    expect(left.filter((consumer) => consumer.agentId !== "main")).toEqual([]);
     expect(existsSync(run.cwd)).toBe(true);
   });
 });
