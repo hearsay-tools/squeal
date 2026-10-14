@@ -2,12 +2,14 @@ import type {
   CheckError,
   CheckId,
   CheckKey,
+  CheckRunResult,
   DiagnosticFingerprint,
   FileCheckId,
   Provenance,
   ResultRecord,
   RunReport,
   SourceLocation,
+  TestCheckId,
   TestFileRef,
 } from "../types/index.js";
 import { checkId } from "./files.js";
@@ -52,6 +54,12 @@ export interface FileRecordsInput {
  * duration, so the durations of a file's results add up to the whole file:
  * D5 step 4 orders by it, after a run and after a lookup alike (review wave
  * 4.5, N1).
+ *
+ * A file whose module skipped itself (`RunReport.skippedFiles`, spec 007 D6:
+ * "a module-level skip skips the file's known checks") records `skip` for
+ * every test check of its previous key, inherited ones included, in place of
+ * the runner's results for it; those stand only when the key held none
+ * (task 007-23).
  */
 export function recordsForFile(input: FileRecordsInput): ResultRecord[] {
   const { ref, key, report, provenance, describe } = input;
@@ -59,8 +67,7 @@ export function recordsForFile(input: FileRecordsInput): ResultRecord[] {
   const records: ResultRecord[] = [];
   const ran = new Set<string>();
   let testsMs = 0;
-  for (const result of report.results) {
-    if (!inFile(result.check)) continue;
+  for (const result of fileResults(input, inFile)) {
     ran.add(checkId(result.check));
     testsMs += result.durationMs;
     const failure =
@@ -122,4 +129,27 @@ export function recordsForFile(input: FileRecordsInput): ResultRecord[] {
   }
   records.push({ ...failed(fileCheck(ref)), durationMs: outsideTestsMs });
   return records;
+}
+
+/** The run's results of the file, or a `skip` for each known check of a skipped module. */
+function fileResults(
+  { ref, report, previousChecks }: FileRecordsInput,
+  inFile: (check: CheckId) => boolean,
+): readonly CheckRunResult[] {
+  const listed = report.results.filter((result) => inFile(result.check));
+  const skipped = report.skippedFiles?.some(
+    (s) => s.testFile.project === ref.project && s.testFile.path === ref.path,
+  );
+  if (skipped !== true) return listed;
+  const known = previousChecks.filter(
+    (check): check is TestCheckId => check.kind === "test" && inFile(check),
+  );
+  if (known.length === 0) return listed;
+  return known.map((check) => ({
+    check,
+    outcome: "skip",
+    durationMs: 0,
+    location: null,
+    errors: [],
+  }));
 }

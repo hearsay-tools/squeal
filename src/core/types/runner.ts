@@ -318,6 +318,22 @@ export interface RunReport {
    * under the key that holds it. Absent: nothing observed.
    */
   readonly environmentObserved?: readonly EnvironmentObserved[];
+  /**
+   * Of the completed files, those whose module skipped itself as a whole: a
+   * pytest module-level skip (spec 007 D6, task 007-23). The core records
+   * `skip` for every check of the file's previous key and a `pass` for its
+   * file-level check, as it expands `fileErrors`; the file's `results` are the
+   * runner's fallback, kept only when the core knows no check of the file.
+   * Absent: no file skipped itself (Vitest and node:test never set it).
+   */
+  readonly skippedFiles?: readonly SkippedFile[];
+}
+
+/** A completed file whose module skipped itself (`RunReport.skippedFiles`). */
+export interface SkippedFile {
+  readonly testFile: TestFileRef;
+  /** The skip's reason, as the runner reported it. */
+  readonly reason: string;
 }
 
 /** One project's observed environment files (`RunReport.environmentObserved`). */
