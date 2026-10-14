@@ -7134,7 +7134,7 @@ import { setTimeout as delay2 } from "node:timers/promises";
 async function waitForCapacity(wait) {
   const load = wait.load ?? loadavg;
   const cpus = wait.cpus ?? availableParallelism;
-  const sleep13 = wait.sleep ?? delay2;
+  const sleep14 = wait.sleep ?? delay2;
   const now = wait.now ?? (() => performance.now());
   const recheckMs = wait.recheckMs ?? 15e3;
   const perCpu = () => (load()[0] ?? 0) / Math.max(1, cpus());
@@ -7145,7 +7145,7 @@ async function waitForCapacity(wait) {
     if (current2 <= wait.maxLoadPerCpu) return { waitedMs, ranUnderLoad: null };
     const left = wait.maxDeferMs - waitedMs;
     if (left <= 0) return { waitedMs, ranUnderLoad: current2 };
-    await sleep13(Math.min(recheckMs, left));
+    await sleep14(Math.min(recheckMs, left));
   }
 }
 var init_guard = __esm({
@@ -38080,6 +38080,7 @@ init_fs();
 init_store3();
 import { existsSync as existsSync13, realpathSync as realpathSync3 } from "node:fs";
 import { join as join25 } from "node:path";
+import { setTimeout as sleep5 } from "node:timers/promises";
 
 // src/core/daemon/ensure.ts
 import { spawn as spawn3 } from "node:child_process";
@@ -38352,7 +38353,7 @@ function chdirQuietly(dir) {
 var VACANT_LOCK_WAIT_MS = 3e4;
 var DAEMON_BUSY_TIMEOUT_MS = 5e3;
 var DAEMON_START_BUSY_TIMEOUT_MS = 12e4;
-async function openDaemon(rootArgument, now, awaitLockMs, vacantLockWaitMs = VACANT_LOCK_WAIT_MS) {
+async function openDaemon(rootArgument, now, awaitLockMs, vacantLockWaitMs = VACANT_LOCK_WAIT_MS, decideWithinMs = DAEMON_START_BUSY_TIMEOUT_MS) {
   let root;
   let commonDir;
   try {
@@ -38369,6 +38370,7 @@ async function openDaemon(rootArgument, now, awaitLockMs, vacantLockWaitMs = VAC
   }
   const worktreeId = worktreeIdFor(root);
   let lock2;
+  let undecided = null;
   const waitMs = awaitLockMs ?? vacantLockWaitMs;
   try {
     const path = lockFileFor(commonDir, worktreeId);
@@ -38376,9 +38378,15 @@ async function openDaemon(rootArgument, now, awaitLockMs, vacantLockWaitMs = VAC
     if (lock2 === null && waitMs > 0) {
       const giveUp2 = awaitLockMs === void 0 ? servedElsewhere(root, commonDir, worktreeId, now) : takenOver(root);
       lock2 = await awaitDaemonLock(path, { timeoutMs: waitMs, giveUp: giveUp2 });
-      if (typeof lock2 !== "string" && newerRecorded(commonDir, worktreeId)) {
-        lock2.release();
-        lock2 = "gave-up";
+      if (typeof lock2 !== "string") {
+        const last = await lastDaemonVersion(commonDir, worktreeId, decideWithinMs);
+        if ("unread" in last) {
+          lock2.release();
+          undecided = last.unread;
+        } else if (isNewer(last.version)) {
+          lock2.release();
+          lock2 = "gave-up";
+        }
       }
     }
   } catch (error) {
@@ -38389,6 +38397,10 @@ async function openDaemon(rootArgument, now, awaitLockMs, vacantLockWaitMs = VAC
   }
   if (lock2 === "timed-out") {
     const text2 = awaitLockMs === void 0 ? `a daemon gave up: the lock was still held after ${waitMs} ms with no daemon serving; the next hook boundary starts one` : `a successor daemon gave up: the lock was still held after ${waitMs} ms; the next hook boundary starts one`;
+    return lockWaitTimedOut(commonDir, worktreeId, now, text2);
+  }
+  if (undecided !== null) {
+    const text2 = `a daemon gave up: it took the lock but could not read the last daemon recorded within ${decideWithinMs} ms (${undecided}); the next hook boundary starts one`;
     return lockWaitTimedOut(commonDir, worktreeId, now, text2);
   }
   let store;
@@ -38442,21 +38454,42 @@ function takenOver(root) {
 function servedElsewhere(root, commonDir, worktreeId, now) {
   return () => !existsSync13(root) || liveDaemonRecorded(root, now()) || newerRecorded(commonDir, worktreeId, 100);
 }
-function newerRecorded(commonDir, worktreeId, busyTimeoutMs = DAEMON_BUSY_TIMEOUT_MS) {
-  const last = lastDaemonVersion(commonDir, worktreeId, busyTimeoutMs);
-  return last !== null && isNewerVersion(last, squealVersion());
+function newerRecorded(commonDir, worktreeId, busyTimeoutMs) {
+  const last = readLastDaemon(commonDir, worktreeId, busyTimeoutMs);
+  return "version" in last && isNewer(last.version);
 }
-function lastDaemonVersion(commonDir, worktreeId, busyTimeoutMs) {
+function isNewer(version2) {
+  return version2 !== null && isNewerVersion(version2, squealVersion());
+}
+async function lastDaemonVersion(commonDir, worktreeId, withinMs) {
+  const deadline = performance.now() + withinMs;
+  for (; ; ) {
+    const left = Math.ceil(deadline - performance.now());
+    const last = readLastDaemon(
+      commonDir,
+      worktreeId,
+      Math.min(DAEMON_BUSY_TIMEOUT_MS, Math.max(left, 0))
+    );
+    if (!("unread" in last) || !last.busy || performance.now() >= deadline) {
+      return last;
+    }
+    await sleep5(10);
+  }
+}
+function readLastDaemon(commonDir, worktreeId, busyTimeoutMs) {
   try {
     const store = openStore(commonDir, { create: false, busyTimeoutMs });
-    if (isStoreOpenFailure(store)) return null;
+    if (isStoreOpenFailure(store)) {
+      if (store.reason === "missing" || store.reason === "newer-schema") return { version: null };
+      return { unread: `store ${store.reason}`, busy: false };
+    }
     try {
-      return store.worktrees.lastDaemon(worktreeId)?.squealVersion ?? null;
+      return { version: store.worktrees.lastDaemon(worktreeId)?.squealVersion ?? null };
     } finally {
       store.close();
     }
-  } catch {
-    return null;
+  } catch (error) {
+    return { unread: message(error), busy: isBusy(error) };
   }
 }
 function lockWaitTimedOut(commonDir, worktreeId, now, text2) {
@@ -40230,7 +40263,7 @@ function readSettings(path) {
 // src/cli/remove.ts
 import { existsSync as existsSync23, lstatSync as lstatSync6, readdirSync as readdirSync13, readFileSync as readFileSync25, rmSync as rmSync11 } from "node:fs";
 import { basename as basename17, dirname as dirname28, join as join66 } from "node:path";
-import { setTimeout as sleep5 } from "node:timers/promises";
+import { setTimeout as sleep6 } from "node:timers/promises";
 init_lock();
 init_paths4();
 init_fs();
@@ -40424,7 +40457,7 @@ async function holdDaemonLocks(commonDir, waitMs) {
         for (const lock3 of held2) lock3.release();
         return { held: name.slice(0, -".sqlite".length), lockPath };
       }
-      await sleep5(50);
+      await sleep6(50);
     }
   }
   return held2;
@@ -40473,17 +40506,17 @@ function safeList2(dir) {
 // src/cli/run.ts
 init_fs();
 init_keys();
-import { setTimeout as sleep10 } from "node:timers/promises";
+import { setTimeout as sleep11 } from "node:timers/promises";
 init_store3();
 init_text();
 init_types();
 
 // src/cli/run-slow.ts
-import { setTimeout as sleep9 } from "node:timers/promises";
+import { setTimeout as sleep10 } from "node:timers/promises";
 init_text();
 
 // src/cli/status-wait.ts
-import { setTimeout as sleep8 } from "node:timers/promises";
+import { setTimeout as sleep9 } from "node:timers/promises";
 init_fs();
 init_rekeyed_moves();
 init_state3();
@@ -40506,7 +40539,7 @@ function statusCommand(env, cli = fileURLToPath9(import.meta.url)) {
 }
 
 // src/cli/status-sync.ts
-import { setTimeout as sleep6 } from "node:timers/promises";
+import { setTimeout as sleep7 } from "node:timers/promises";
 var UNSUPPORTED = { state: "unsupported" };
 function syncDaemon(root, pollMs) {
   let current2 = { state: "pending" };
@@ -40544,7 +40577,7 @@ async function syncOnce(root, pollMs, stopped) {
       return { state: "synced", revision: state.revision, incarnation };
     }
     if (state.error !== null) return UNSUPPORTED;
-    await sleep6(pollMs, void 0, { ref: false });
+    await sleep7(pollMs, void 0, { ref: false });
     if (stopped()) return UNSUPPORTED;
     const next = await askDaemon(socketPath, {
       type: "sync-status",
@@ -40742,7 +40775,7 @@ function pendingText2(snapshot3) {
 // src/cli/status-wait-paths.ts
 import { realpathSync as realpathSync10 } from "node:fs";
 import { isAbsolute as isAbsolute11, relative as relative14, resolve as resolve11, sep as sep16 } from "node:path";
-import { setTimeout as sleep7 } from "node:timers/promises";
+import { setTimeout as sleep8 } from "node:timers/promises";
 init_fs();
 init_keys();
 function selectNamedFiles(store, worktreeId, root, cwd, paths) {
@@ -40825,7 +40858,7 @@ async function waitForNamed(cwd, paths, options) {
       }
       first = false;
       const remaining = options.timeoutMs - elapsed();
-      if (remaining > 0) await sleep7(Math.min(options.pollMs, remaining));
+      if (remaining > 0) await sleep8(Math.min(options.pollMs, remaining));
     }
   } finally {
     sync?.stop();
@@ -40999,7 +41032,7 @@ async function waitForStatus(cwd, options) {
         return { ...read4, waitedMs: elapsed() };
       }
       const remaining = options.timeoutMs - elapsed();
-      if (remaining > 0) await sleep8(Math.min(pollMs, remaining));
+      if (remaining > 0) await sleep9(Math.min(pollMs, remaining));
     }
   } finally {
     syncing.sync?.stop();
@@ -41142,7 +41175,7 @@ async function taken(socketPath, first, io) {
       );
       return null;
     }
-    await sleep9(POLL_MS);
+    await sleep10(POLL_MS);
     const next = await askDaemon(socketPath, {
       type: "run-slow-status",
       requestId: state.requestId
@@ -41272,7 +41305,7 @@ async function recorded(socketPath, first, deadline) {
     if (state.checkpoint !== null) return { checkpoint: state.checkpoint, owner: state.owner };
     if (state.error !== null) return `run --all failed: ${state.error}`;
     if (Date.now() > deadline) return null;
-    await sleep10(POLL_MS2);
+    await sleep11(POLL_MS2);
     const next = await askDaemon(socketPath, {
       type: "run-all-status",
       requestId: first.requestId
@@ -41348,7 +41381,7 @@ async function ended(root, socketPath, checkpoint, deadline) {
     if (polls % 20 === 19 && await askDaemon(socketPath, { type: "ping" }) === null) {
       return { kind: "stopped" };
     }
-    await sleep10(Math.max(0, Math.min(STORE_POLL_MS, deadline - Date.now())));
+    await sleep11(Math.max(0, Math.min(STORE_POLL_MS, deadline - Date.now())));
   }
 }
 
@@ -41391,7 +41424,7 @@ init_text();
 init_types();
 
 // src/cli/start.ts
-import { setTimeout as sleep11 } from "node:timers/promises";
+import { setTimeout as sleep12 } from "node:timers/promises";
 var SPAWN_WAIT_MS = 1e4;
 async function startCommand(args, io) {
   if (args.length > 1 || args[0]?.startsWith("-")) {
@@ -41415,7 +41448,7 @@ async function startCommand(args, io) {
 `);
         return 1;
       }
-      await sleep11(50);
+      await sleep12(50);
     }
   }
   io.stdout(`Squeal daemon ${result} for ${root}
@@ -42037,7 +42070,7 @@ function parseSetupArgs(args) {
 }
 
 // src/cli/stop.ts
-import { setTimeout as sleep12 } from "node:timers/promises";
+import { setTimeout as sleep13 } from "node:timers/promises";
 init_lock();
 init_fs();
 init_store3();
@@ -42071,7 +42104,7 @@ async function stopCommand(args, io) {
 `);
       return 0;
     }
-    await sleep12(50);
+    await sleep13(50);
   }
   const lock2 = await lockFreed(root, daemon, LOCK_WAIT_MS);
   const after = `${LOCK_WAIT_MS / 1e3} s`;
@@ -42102,7 +42135,7 @@ async function lockFreed(root, daemon, ms) {
     if (missing(path) || daemon !== null && gone(root, daemon)) return { state: "free" };
     const probe = probeLock(path);
     if (probe.state === "free" || Date.now() > deadline) return probe;
-    await sleep12(50);
+    await sleep13(50);
   }
 }
 function gone(root, daemon) {
