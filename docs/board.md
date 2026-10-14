@@ -836,9 +836,9 @@ Spec: `specifications/007-pytest-runner/spec.md`, approved 2026-10-14 by the hum
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 007-14 the pytest adapter in the daemon | planned | `RunnerAdapter` over 007-10, 007-12, 007-13; the observed-closure `meta` key as 003 D3; the composite; runtime files copied into both plugins' `dist/pytest/`. | Integration: baseline, inheritance into a synced second worktree, a `PASS -> FAIL` through the Claude Code and Codex hooks. |
-| 007-15 agent surfaces and setup | planned | D8, D1 setup: 005 texts, skill and instruction block name pytest; 005 D8 recognises pytest commands; `squeal setup` seeds `pytest` projects. | Setup seeds both fixture projects; the deny recognises and falls through as D8 lists. |
-| 007-16 review of waves 0 and 1 | planned (brief in `specifications/007-pytest-runner/tasks/wave-2.md`; the next hub release waits on it, 005's human, 2026-10-14) | `/reviewer` over `638fb159..a67407f8`: the `policy-node-test.ts` refactor, keys, D2's refusal states, D6's completion rule, refused flags. | `reviews/wave-1.md` committed. |
+| 007-14 the pytest adapter in the daemon | running (worker be040772, opus high) | `RunnerAdapter` over 007-10, 007-12, 007-13; the observed-closure `meta` key as 003 D3; the composite; runtime files copied into both plugins' `dist/pytest/`. | Integration: baseline, inheritance into a synced second worktree, a `PASS -> FAIL` through the Claude Code and Codex hooks. |
+| 007-15 agent surfaces and setup | running (worker eb0ceb11, opus high) | D8, D1 setup: 005 texts, skill and instruction block name pytest; 005 D8 recognises pytest commands; `squeal setup` seeds `pytest` projects. | Setup seeds both fixture projects; the deny recognises and falls through as D8 lists. |
+| 007-16 review of waves 0 and 1 | running (worker 55e21fb9, codex gpt-6.1-sol high; brief in `specifications/007-pytest-runner/tasks/wave-2.md`; the next hub release waits on it, 005's human, 2026-10-14) | `/reviewer` over `638fb159..a67407f8`: the `policy-node-test.ts` refactor, keys, D2's refusal states, D6's completion rule, refused flags. | `reviews/wave-1.md` committed. |
 | 007-19 review of wave 2 | planned | `/reviewer` over 007-14, 007-15 and any 007-16 repair. | `reviews/wave-2.md` committed. |
 
 ### Wave 3: proof
