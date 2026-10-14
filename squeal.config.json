@@ -25,6 +25,7 @@
       "test/fixtures/node-test/**",
       "src/runners/node-test/runtime/**"
     ],
+    "test/runners/pytest/**/*.test.ts": ["test/fixtures/pytest/**"],
     "test/runners/node-test/graph-memory.test.ts": ["src/runners/node-test/graph/**"],
     "test/runners/node-test/graph-bundle.test.ts": [
       "src/runners/node-test/graph/**",
