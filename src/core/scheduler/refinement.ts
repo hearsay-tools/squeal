@@ -15,7 +15,7 @@ import type { Ledger } from "./ledger.js";
 import { listPaths } from "./notes.js";
 import { listTestFilesOf } from "./omitted-test-files.js";
 import { applyListing, type ContentRekey, storeClosures, toInvalidatedPath } from "./revision.js";
-import { RunnerPartBound, runnerPartBoundMs } from "./runner-work-bound.js";
+import { RunnerPartBound, runnerPartBound, runnerPartBoundMs } from "./runner-work-bound.js";
 
 /**
  * What the runner said about one revision: the runner phase of its
@@ -49,7 +49,8 @@ export interface RunnerPart {
  *
  * - `runner.invalidate` with every change, and as `touch` each path its
  *   batch touched with no change (task 001-159), whose referencing test
- *   files' closures are fetched again;
+ *   files' closures are fetched again; after a recheck that recreated
+ *   projects (`recheckRunner`, task 007-26), those projects instead;
  * - the environment is read again when the runner recreated a project, when
  *   an environment input changed, or while a runner failure is outstanding;
  * - the test file list is re-read after an add, a delete, a recreate, or a
@@ -76,6 +77,7 @@ export async function fetchRunnerPart(
   content: ContentRekey,
   carried: Iterable<TestFileRef>,
   touched: readonly RelativePath[] = [],
+  rechecked?: readonly ProjectName[],
 ): Promise<RunnerPart> {
   const { keys, runner } = context;
   const bound = new RunnerPartBound(
@@ -91,12 +93,15 @@ export async function fetchRunnerPart(
     ...touched.map((path) => ({ path, kind: "touch" as const })),
   ];
 
-  const invalidated = await tryRunner(
-    context,
-    `invalidate (${listPaths(invalidations.map((p) => p.path))})`,
-    () => bound.call(() => runner.invalidate(invalidations)),
-    (reason) => failed(failures, null, reason),
-  );
+  const invalidated =
+    rechecked === undefined
+      ? await tryRunner(
+          context,
+          `invalidate (${listPaths(invalidations.map((p) => p.path))})`,
+          () => bound.call(() => runner.invalidate(invalidations)),
+          (reason) => failed(failures, null, reason),
+        )
+      : { recreatedProjects: rechecked };
   const recreated = new Set<ProjectName>(invalidated?.recreatedProjects ?? []);
   const environments =
     recreated.size > 0 || content.environment || retrying
@@ -161,6 +166,20 @@ export async function fetchRunnerPart(
     reresolved: [...reresolve.values()],
     closures,
   };
+}
+
+/**
+ * A quiet pass's look at what no watched file shows (`RunnerAdapter.recheck`,
+ * task 007-26), bounded as a runner part's call: the projects it recreated,
+ * which the caller refines as `fetchRunnerPart`'s `rechecked`. None when
+ * the runner has no recheck or the call failed, which is a note and no
+ * state: the next pass looks again.
+ */
+export async function recheckRunner(context: SchedulerContext): Promise<readonly ProjectName[]> {
+  const recheck = context.runner.recheck?.bind(context.runner);
+  if (recheck === undefined) return [];
+  const result = await tryRunner(context, "recheck", () => runnerPartBound(context).call(recheck));
+  return result?.recreatedProjects ?? [];
 }
 
 /**

@@ -73,6 +73,13 @@ export function createCompositeRunner(adapters: readonly RunnerAdapter[]): Runne
       const projects = new Set(parts.flatMap((part) => part.recreatedProjects));
       return { recreatedProjects: [...projects].sort(compare) };
     },
+    async recheck() {
+      const parts = await Promise.all(
+        adapters.map((adapter) => adapter.recheck?.() ?? { recreatedProjects: [] }),
+      );
+      const projects = new Set(parts.flatMap((part) => part.recreatedProjects));
+      return { recreatedProjects: [...projects].sort(compare) };
+    },
     async affected(changedPaths) {
       const parts = await Promise.all(adapters.map((adapter) => adapter.affected(changedPaths)));
       return {

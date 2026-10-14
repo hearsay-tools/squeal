@@ -2,6 +2,8 @@ import { realpathSync, statSync } from "node:fs";
 import { compare, sameList, toAbsolute, toRelative } from "../../core/fs/index.js";
 import type {
   AbsolutePath,
+  InvalidatedPath,
+  InvalidateResult,
   PytestProject,
   RelativePath,
   RunnerAdapter,
@@ -61,6 +63,12 @@ export interface PytestAdapterOptions {
 /** How many incomplete closures one note names before it only counts. */
 const NAMED_INCOMPLETE = 3;
 
+/** What `reread` found: the environment moved, the graph's settings or directory moved. */
+interface Moved {
+  readonly moved: boolean;
+  readonly rebuild: boolean;
+}
+
 /** The graph of a project whose `cwd` exists, with what its runs observed beyond it. */
 interface Built {
   readonly graph: PytestGraph;
@@ -72,15 +80,15 @@ interface Built {
  * rejects for the project's sake, as 003's adapter does not.
  *
  * The graph builds with or without an environment (D4, as amended). The
- * environment is admitted (`admit`) at start and whenever a batch, or an
- * empty one, the scheduler's recheck at each reconciliation pass, finds
- * its fingerprint moved: every state but `ready` keys `runnerVersion`
- * "unavailable", runs nothing and notes why once, so its checks are
- * `unknown` and nothing is stored (D2). A changed state or hash recreates
- * the project, which re-keys it; so does a changed pytest config, which
- * also rebuilds the graph with its settings. A run whose environment moved
- * before or during it stores nothing and the environment is admitted again
- * at the next call (D2's sync state).
+ * environment is admitted (`admit`) at start and whenever a batch or the
+ * scheduler's `recheck` at a quiet pass (task 007-26) finds it moved; a
+ * ready one's recheck reads only its fingerprint. Every state but `ready`
+ * keys `runnerVersion` "unavailable", runs nothing and notes why once, so
+ * its checks are `unknown` and nothing is stored (D2). A changed state or
+ * hash recreates the project, which re-keys it; so does a changed pytest
+ * config, which also rebuilds the graph with its settings. A run whose
+ * environment moved before or during it stores nothing and the environment
+ * is admitted again at the next call (D2's sync state).
  */
 export async function createPytestAdapter(
   project: PytestProject,
@@ -168,48 +176,60 @@ export async function createPytestAdapter(
   let [environment] = await Promise.all([settle(), build()]);
   announce(environment);
 
+  /** D2: reads the environment and the settings again; whether either moved. */
+  const reread = async (): Promise<Moved> => {
+    const next = { ...place(), environment };
+    const raw = stale ? null : await readNow();
+    next.environment = raw === null || moving(raw, environment) ? await settle() : raw;
+    const moved =
+      stale || environmentSignature(next.environment) !== environmentSignature(environment);
+    const rebuild = next.dir !== dir || !sameSettings(next.settings, settings);
+    stale = false;
+    if (moved && next.environment.state === "ready" && environment.state !== "ready") {
+      note("its Python environment is ready");
+    }
+    ({ environment, dir, settings } = next);
+    if (moved) announce(environment);
+    return { moved, rebuild };
+  };
+  const invalidate = async (paths: readonly InvalidatedPath[], { moved, rebuild }: Moved) => {
+    if (paths.some((p) => p.kind !== "change") || built === null) {
+      const listed = isDirectory(cwd) ? listTestFiles(root, project) : [];
+      if (!sameList(listed, files)) {
+        files = listed;
+        built?.graph.setTestFiles(files);
+      }
+    }
+    if (built === null || rebuild) {
+      const was = built !== null;
+      if (!(await build())) return { recreatedProjects: was ? [project.name] : [] };
+      return { recreatedProjects: [project.name] };
+    }
+    built.observed.refresh();
+    built.graph.invalidate(moved ? [...paths, ...structural(root, dir)] : paths);
+    notes();
+    const grew = built.observed.takeRecreate(paths.map((p) => p.path));
+    return { recreatedProjects: moved || grew ? [project.name] : [] };
+  };
+
+  // Task 007-26: a ready environment that held still costs one fingerprint read, nothing else.
+  const recheck = async (): Promise<InvalidateResult> => {
+    const still =
+      !stale &&
+      environment.state === "ready" &&
+      currentFingerprint(environment) === environment.fingerprint;
+    if (still) return { recreatedProjects: [] };
+    const moved = await reread();
+    if (!moved.moved && !moved.rebuild) return { recreatedProjects: [] };
+    return invalidate([], moved);
+  };
+
   return {
     name: "pytest",
     adapterVersion: PYTEST_ADAPTER_VERSION,
-    async invalidate(paths) {
-      // B1: an empty batch is the scheduler's recheck; a still environment costs one fingerprint.
-      if (paths.length === 0 && !stale && environment.state === "ready") {
-        if (currentFingerprint(environment) === environment.fingerprint) {
-          return { recreatedProjects: [] };
-        }
-      }
-      const next = { ...place(), environment };
-      const raw = stale ? null : await readNow();
-      next.environment = raw === null || moving(raw, environment) ? await settle() : raw;
-      const moved =
-        stale || environmentSignature(next.environment) !== environmentSignature(environment);
-      const rebuild = next.dir !== dir || !sameSettings(next.settings, settings);
-      stale = false;
-      if (moved && next.environment.state === "ready" && environment.state !== "ready") {
-        note("its Python environment is ready");
-      }
-      ({ environment, dir, settings } = next);
-      if (moved) announce(environment);
-      // Nothing moved at a recheck: no listing, and a graph that failed is not built again.
-      if (paths.length === 0 && !moved && !rebuild) return { recreatedProjects: [] };
-      if (paths.some((p) => p.kind !== "change") || built === null) {
-        const listed = isDirectory(cwd) ? listTestFiles(root, project) : [];
-        if (!sameList(listed, files)) {
-          files = listed;
-          built?.graph.setTestFiles(files);
-        }
-      }
-      if (built === null || rebuild) {
-        const was = built !== null;
-        if (!(await build())) return { recreatedProjects: was ? [project.name] : [] };
-        return { recreatedProjects: [project.name] };
-      }
-      built.observed.refresh();
-      built.graph.invalidate(moved ? [...paths, ...structural(root, dir)] : paths);
-      notes();
-      const grew = built.observed.takeRecreate(paths.map((p) => p.path));
-      return { recreatedProjects: moved || grew ? [project.name] : [] };
-    },
+    invalidate: async (paths) =>
+      paths.length === 0 ? recheck() : invalidate(paths, await reread()),
+    recheck,
     async affected(changed) {
       if (built === null) return { direct: [], transitive: [] };
       built.observed.refresh();

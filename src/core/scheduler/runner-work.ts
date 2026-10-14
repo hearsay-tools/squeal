@@ -8,7 +8,7 @@ import {
 import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
 import type { Mutex } from "./mutex.js";
-import { applyRunnerPart, fetchRunnerPart } from "./refinement.js";
+import { applyRunnerPart, fetchRunnerPart, recheckRunner } from "./refinement.js";
 import type { ContentRekey } from "./revision.js";
 
 /**
@@ -23,6 +23,8 @@ interface RunnerTask {
   readonly refine?: true;
   /** A runner-only refinement of touched paths (`queueTouched`), until it starts. */
   readonly touched?: Set<RelativePath>;
+  /** A recheck (`queueRecheck`), which stands in for no refinement. */
+  readonly recheck?: true;
 }
 
 /** A runner-only refinement re-keys no content. */
@@ -115,7 +117,7 @@ export class RunnerWork {
    * asks the same, so it stands in for this one.
    */
   queueObserved(): void {
-    if (this.#tasks.some((task) => task.refine === true)) return;
+    if (this.#tasks.some((task) => task.refine === true && task.recheck !== true)) return;
     this.#tasks.push({
       run: () => {
         const { context, ledger } = this.host.started();
@@ -123,6 +125,26 @@ export class RunnerWork {
       },
       cancel: () => {},
       refine: true,
+    });
+  }
+
+  /**
+   * Queues a recheck for a reconciliation pass that applied and touched
+   * nothing (task 007-26): the runner looks at what no watched file shows
+   * (`RunnerAdapter.recheck`), and only the projects it reports recreated
+   * are refined, as a recreate `invalidate` reports is. Any refinement
+   * queued and not started yet stands in, since `invalidate` looks too.
+   */
+  queueRecheck(): void {
+    if (this.#tasks.some((task) => task.refine === true)) return;
+    this.#tasks.push({
+      run: () => {
+        const { context, ledger } = this.host.started();
+        return this.#refine(unchanged(context, ledger), NO_CONTENT, null, [], true);
+      },
+      cancel: () => {},
+      refine: true,
+      recheck: true,
     });
   }
 
@@ -152,14 +174,26 @@ export class RunnerWork {
     content: ContentRekey,
     refined: Revision["number"] | null,
     touched: readonly RelativePath[] = [],
+    recheck = false,
   ): Promise<void> {
     const { context, ledger } = this.host.started();
     this.#refining = true;
     try {
       ledger.refineChanges = new Set();
+      const rechecked = recheck ? await recheckRunner(context) : undefined;
+      // Nothing moved: no other runner call at a quiet pass.
+      if (rechecked?.length === 0) return;
       const carried = [...this.#carried.values()];
       this.#carried.clear();
-      const part = await fetchRunnerPart(context, ledger, revision, content, carried, touched);
+      const part = await fetchRunnerPart(
+        context,
+        ledger,
+        revision,
+        content,
+        carried,
+        touched,
+        rechecked,
+      );
       await this.host.lock.run(async () => {
         const changedMeanwhile = ledger.refineChanges ?? new Set<RelativePath>();
         ledger.refineChanges = null;
