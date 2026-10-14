@@ -41,7 +41,7 @@ export class ClosureIndex {
  * `pytest_plugins` of every module pytest loads as a test, conftest or
  * plugin, and every reached module's candidates.
  */
-function walk(
+export function walk(
   node: (path: AbsolutePath) => ModuleNode | undefined,
   roots: readonly AbsolutePath[],
 ): RawClosure {

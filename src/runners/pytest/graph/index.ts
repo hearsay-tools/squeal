@@ -1,12 +1,12 @@
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import type { AbsolutePath, InvalidatedPath, RelativePath } from "../../../core/types/index.js";
-import { type AffectedPaths, Graph, type TestFileClosure } from "./graph.js";
+import { type AffectedPaths, Graph, type StaticClosure, type TestFileClosure } from "./graph.js";
 import { pythonParserReady } from "./parse.js";
 import type { ImportMode, SearchPath } from "./search-path.js";
 
 export type { DerivedRoots } from "./derive-roots.js";
-export type { AffectedPaths, TestFileClosure } from "./graph.js";
+export type { AffectedPaths, StaticClosure, TestFileClosure } from "./graph.js";
 export {
   type ParsedPython,
   type PythonImport,
@@ -48,6 +48,11 @@ export interface PytestGraphOptions {
 export interface PytestGraph {
   /** D4's closure of one listed test file; throws for a file not listed. */
   closure(testFile: RelativePath): TestFileClosure;
+  /**
+   * D2: the closure of plugin modules (`pytest11` entry points, `-p`) by
+   * dotted name, inside the worktree, for the environment hash.
+   */
+  pluginClosure(modules: readonly string[]): StaticClosure;
   /** D5: test files affected by changed paths, split direct and transitive. */
   affected(changed: readonly RelativePath[]): AffectedPaths;
   /**
@@ -86,6 +91,7 @@ export async function createPytestGraph(options: PytestGraphOptions): Promise<Py
   graph.build(options.testFiles);
   return {
     closure: (testFile) => graph.closure(testFile),
+    pluginClosure: (modules) => graph.pluginClosure(modules),
     affected: (changed) => graph.affected(changed),
     invalidate: (paths) => graph.invalidate(paths),
     setTestFiles: (testFiles) => graph.setTestFiles(testFiles),

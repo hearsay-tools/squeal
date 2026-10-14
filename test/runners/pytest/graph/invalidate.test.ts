@@ -148,3 +148,19 @@ describe("pytest graph: without an environment (D4 as amended)", () => {
     ]);
   });
 });
+
+describe("pytest graph: plugin closures for the environment hash (D2)", () => {
+  it("resolves a pytest11 plugin module and its imports inside the worktree", async () => {
+    const { graph } = await small();
+    const plugin = graph.pluginClosure(["other.plugin"]);
+    expect(plugin.complete).toBe(true);
+    expect(plugin.paths).toEqual(
+      expect.arrayContaining([
+        "packages/other/src/other/__init__.py",
+        "packages/other/src/other/calc.py",
+        "packages/other/src/other/plugin.py",
+      ]),
+    );
+    expect(plugin.paths).not.toContain("tests/conftest.py");
+  });
+});
