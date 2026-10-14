@@ -54,7 +54,9 @@ export function projectEnvironment(
  * (Vitest 5) and `isAgent` (Vitest 4): std-env's agent detection, which
  * workers read only to turn colours off; keyed, they made the launching
  * harness re-key every check (task 001-260). What `CI` sets stays keyed:
- * `allowOnly` and `browser.*` change outcomes.
+ * `allowOnly` and `browser.*` change outcomes. `maxWorkers` is dropped too:
+ * each tier runs at its grant, under the project's own value (D11 Capacity,
+ * task 001-378), and worktrees with different grants share results.
  */
 export function canonicalConfig(
   project: TestProject,
@@ -66,6 +68,7 @@ export function canonicalConfig(
     env,
     disableColors: _colors,
     isAgent: _agent,
+    maxWorkers: _workers,
     ...config
   } = project.serializedConfig as typeof project.serializedConfig & { isAgent?: unknown };
   const { seed: _seed, ...stableSequence } = sequence;
