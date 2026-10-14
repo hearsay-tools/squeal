@@ -1,0 +1,27 @@
+[
+  {
+    "tools": [
+      {
+        "name": "write",
+        "arguments": {
+          "path": "blocked.txt",
+          "content": "x"
+        }
+      }
+    ]
+  },
+  {
+    "tools": [
+      {
+        "name": "write",
+        "arguments": {
+          "path": "ok.txt",
+          "content": "y"
+        }
+      }
+    ]
+  },
+  {
+    "text": "done"
+  }
+]

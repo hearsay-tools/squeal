@@ -1,0 +1,391 @@
+{
+  "install": {
+    "exit": 0,
+    "packages": [
+      "../package"
+    ],
+    "stdout": "Installing /home/squeal-e2e/pi-sessions-packaging-probe/package...\nInstalled /home/squeal-e2e/pi-sessions-packaging-probe/package"
+  },
+  "rpc-custom-steer": {
+    "before_manual_requests": 2,
+    "requests": 2,
+    "wake_messages_in_last_request": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "WAKE_custom-steer"
+          }
+        ]
+      }
+    ],
+    "events_before_manual": [
+      "agent_start",
+      "agent_settled",
+      "agent_start",
+      "agent_settled"
+    ],
+    "exit": 0
+  },
+  "rpc-custom-followUp": {
+    "before_manual_requests": 2,
+    "requests": 2,
+    "wake_messages_in_last_request": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "WAKE_custom-followUp"
+          }
+        ]
+      }
+    ],
+    "events_before_manual": [
+      "agent_start",
+      "agent_settled",
+      "agent_start",
+      "agent_settled"
+    ],
+    "exit": 0
+  },
+  "rpc-custom-silent": {
+    "before_manual_requests": 1,
+    "requests": 2,
+    "wake_messages_in_last_request": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "WAKE_custom-silent"
+          }
+        ]
+      }
+    ],
+    "events_before_manual": [
+      "agent_start",
+      "agent_settled"
+    ],
+    "exit": 0
+  },
+  "rpc-custom-nextTurn": {
+    "before_manual_requests": 1,
+    "requests": 2,
+    "wake_messages_in_last_request": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "WAKE_custom-nextTurn"
+          }
+        ]
+      }
+    ],
+    "events_before_manual": [
+      "agent_start",
+      "agent_settled"
+    ],
+    "exit": 0
+  },
+  "rpc-user-steer": {
+    "before_manual_requests": 2,
+    "requests": 2,
+    "wake_messages_in_last_request": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "WAKE_user-steer"
+          }
+        ]
+      }
+    ],
+    "events_before_manual": [
+      "agent_start",
+      "agent_settled",
+      "agent_start",
+      "agent_settled"
+    ],
+    "exit": 0
+  },
+  "rpc-user-followUp": {
+    "before_manual_requests": 2,
+    "requests": 2,
+    "wake_messages_in_last_request": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "WAKE_user-followUp"
+          }
+        ]
+      }
+    ],
+    "events_before_manual": [
+      "agent_start",
+      "agent_settled",
+      "agent_start",
+      "agent_settled"
+    ],
+    "exit": 0
+  },
+  "print": {
+    "exit": 0,
+    "output": "FAKE_REPLY_1",
+    "requests": 1,
+    "wake_fired": false,
+    "shutdown": true,
+    "detached_child_survived": true
+  },
+  "shutdown-eof": {
+    "exit": 0,
+    "shutdown": [
+      {
+        "type": "session_shutdown",
+        "reason": "quit"
+      }
+    ],
+    "detached_child_survived": true
+  },
+  "shutdown-term": {
+    "exit": 143,
+    "shutdown": [
+      {
+        "type": "session_shutdown",
+        "reason": "quit"
+      }
+    ],
+    "detached_child_survived": true
+  },
+  "shutdown-kill": {
+    "exit": -9,
+    "shutdown": [],
+    "detached_child_survived": true
+  },
+  "tui-custom-steer": {
+    "requests": 2,
+    "wake_messages_in_last_request": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "WAKE_custom-steer"
+          }
+        ]
+      }
+    ],
+    "shutdown": true,
+    "detached_child_survived": true,
+    "custom_visible": true,
+    "exit": 0
+  },
+  "tui-custom-followUp": {
+    "requests": 2,
+    "wake_messages_in_last_request": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "WAKE_custom-followUp"
+          }
+        ]
+      }
+    ],
+    "shutdown": true,
+    "detached_child_survived": true,
+    "custom_visible": true,
+    "exit": 0
+  },
+  "tui-custom-silent": {
+    "requests": 1,
+    "wake_messages_in_last_request": [],
+    "shutdown": true,
+    "detached_child_survived": true,
+    "custom_visible": true,
+    "exit": 0
+  },
+  "tui-custom-nextTurn": {
+    "requests": 1,
+    "wake_messages_in_last_request": [],
+    "shutdown": true,
+    "detached_child_survived": true,
+    "custom_visible": false,
+    "exit": 0
+  },
+  "tui-user-steer": {
+    "requests": 2,
+    "wake_messages_in_last_request": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "WAKE_user-steer"
+          }
+        ]
+      }
+    ],
+    "shutdown": true,
+    "detached_child_survived": true,
+    "custom_visible": false,
+    "exit": 0
+  },
+  "tui-user-followUp": {
+    "requests": 2,
+    "wake_messages_in_last_request": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "WAKE_user-followUp"
+          }
+        ]
+      }
+    ],
+    "shutdown": true,
+    "detached_child_survived": true,
+    "custom_visible": false,
+    "exit": 0
+  },
+  "bash": {
+    "exit": 0,
+    "toolResults": [
+      {
+        "role": "toolResult",
+        "toolCallId": "bash-1",
+        "toolName": "bash",
+        "content": [
+          {
+            "type": "text",
+            "text": "consumer=01a13af2-1ce9-717a-a11e-536fbb01eac6 native=01a13af2-1ce9-717a-a11e-536fbb01eac6 file=/home/squeal-e2e/pi-sessions-packaging-probe/agent/sessions/--home-squeal-e2e-pi-sessions-packaging-probe--/2026-10-14T15-05-08-073Z_01a13af2-1ce9-717a-a11e-536fbb01eac6.jsonl\n"
+          }
+        ],
+        "isError": false,
+        "timestamp": 1791990308282
+      }
+    ]
+  },
+  "identity": {
+    "initial": "01a13af2-1ec8-764f-b245-a27792280b63",
+    "compact": "01a13af2-1ec8-764f-b245-a27792280b63",
+    "fork": "01a13af2-234b-764f-b245-a27c037cc69c",
+    "new": "01a13af2-2412-764f-b245-a27f1a0a056f",
+    "switch_back": "01a13af2-1ec8-764f-b245-a27792280b63",
+    "events": [
+      {
+        "type": "session_start",
+        "session": "01a13af2-1ec8-764f-b245-a27792280b63",
+        "factory": "afd62601-24aa-4f05-8a36-03e880659ae8",
+        "event_reason": "startup"
+      },
+      {
+        "type": "session_before_compact",
+        "session": "01a13af2-1ec8-764f-b245-a27792280b63",
+        "factory": "afd62601-24aa-4f05-8a36-03e880659ae8",
+        "event_reason": "manual"
+      },
+      {
+        "type": "session_compact",
+        "session": "01a13af2-1ec8-764f-b245-a27792280b63",
+        "factory": "afd62601-24aa-4f05-8a36-03e880659ae8",
+        "event_reason": "manual"
+      },
+      {
+        "type": "session_before_fork",
+        "session": "01a13af2-1ec8-764f-b245-a27792280b63",
+        "factory": "afd62601-24aa-4f05-8a36-03e880659ae8",
+        "event_reason": null
+      },
+      {
+        "type": "session_shutdown",
+        "session": "01a13af2-1ec8-764f-b245-a27792280b63",
+        "factory": "afd62601-24aa-4f05-8a36-03e880659ae8",
+        "event_reason": "fork"
+      },
+      {
+        "type": "session_start",
+        "session": "01a13af2-234b-764f-b245-a27c037cc69c",
+        "factory": "53ea13e9-196a-48f2-9fb6-bc16f8b49bd5",
+        "event_reason": "fork"
+      },
+      {
+        "type": "session_start",
+        "session": "01a13af2-234b-764f-b245-a27c037cc69c",
+        "factory": "53ea13e9-196a-48f2-9fb6-bc16f8b49bd5",
+        "event_reason": "fork"
+      },
+      {
+        "type": "session_before_switch",
+        "session": "01a13af2-234b-764f-b245-a27c037cc69c",
+        "factory": "53ea13e9-196a-48f2-9fb6-bc16f8b49bd5",
+        "event_reason": "new"
+      },
+      {
+        "type": "session_shutdown",
+        "session": "01a13af2-234b-764f-b245-a27c037cc69c",
+        "factory": "53ea13e9-196a-48f2-9fb6-bc16f8b49bd5",
+        "event_reason": "new"
+      },
+      {
+        "type": "session_start",
+        "session": "01a13af2-2412-764f-b245-a27f1a0a056f",
+        "factory": "eb2cc936-0de5-4f4d-aca0-e216a9251c73",
+        "event_reason": "new"
+      },
+      {
+        "type": "session_start",
+        "session": "01a13af2-2412-764f-b245-a27f1a0a056f",
+        "factory": "eb2cc936-0de5-4f4d-aca0-e216a9251c73",
+        "event_reason": "new"
+      },
+      {
+        "type": "session_before_switch",
+        "session": "01a13af2-2412-764f-b245-a27f1a0a056f",
+        "factory": "eb2cc936-0de5-4f4d-aca0-e216a9251c73",
+        "event_reason": "resume"
+      },
+      {
+        "type": "session_shutdown",
+        "session": "01a13af2-2412-764f-b245-a27f1a0a056f",
+        "factory": "eb2cc936-0de5-4f4d-aca0-e216a9251c73",
+        "event_reason": "resume"
+      },
+      {
+        "type": "session_start",
+        "session": "01a13af2-1ec8-764f-b245-a27792280b63",
+        "factory": "9688861f-272f-483c-a54a-adca8abcd15c",
+        "event_reason": "resume"
+      },
+      {
+        "type": "session_start",
+        "session": "01a13af2-1ec8-764f-b245-a27792280b63",
+        "factory": "9688861f-272f-483c-a54a-adca8abcd15c",
+        "event_reason": "resume"
+      }
+    ],
+    "compacted": true
+  },
+  "cli-session": {
+    "exit": 0,
+    "session": "01a13af2-1ec8-764f-b245-a27792280b63",
+    "stderr": ""
+  },
+  "cli-continue": {
+    "exit": 0,
+    "session": "01a13af2-1ec8-764f-b245-a27792280b63",
+    "stderr": ""
+  },
+  "cli-fork": {
+    "exit": 0,
+    "session": "01a13af2-2abf-723f-bba4-c6ae8608f924",
+    "stderr": ""
+  }
+}

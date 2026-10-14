@@ -1,0 +1,19 @@
+{"ev":"factory","factoryRuns":1,"flags":["socket"],"argv":["--provider","fake","--model","fake-1","-e","/home/squeal-e2e/pee/probe/probe.ts","--session-dir","/home/squeal-e2e/pee/out/dead-daemon/sessions","-p","no daemon"]}
+{"ev":"session_start","reason":"startup","sid":"01a13afc","mode":"print","idle":true}
+--- stderr
+node:events:505
+    throw er; // Unhandled 'error' event
+    ^
+
+Error: connect ENOENT /home/squeal-e2e/pee/daemon.sock
+Emitted 'error' event on Socket instance at:
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'connect',
+  address: '/home/squeal-e2e/pee/daemon.sock'
+}
+
+Node.js v24.21.0
+Command exited with non-zero status 1
+wall=0.61
+exit=1

@@ -1,0 +1,15 @@
+[
+  {
+    "tools": [
+      {
+        "name": "bash",
+        "arguments": {
+          "command": "PROBE_PLAN=/home/squeal-e2e/pee/probe/plans/child.json pi --provider fake --model fake-1 --mode json -p --no-session child </dev/null | tail -c 300"
+        }
+      }
+    ]
+  },
+  {
+    "text": "parent-done"
+  }
+]

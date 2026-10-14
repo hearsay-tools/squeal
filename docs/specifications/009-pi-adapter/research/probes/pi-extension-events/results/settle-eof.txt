@@ -1,0 +1,22 @@
+{"ev":"factory","factoryRuns":1,"flags":["settle_once","inject_turn_end"],"argv":["--mode","rpc","--provider","fake","--model","fake-1","-e","/home/squeal-e2e/pee/probe/probe.ts","--session-dir","/home/squeal-e2e/pee/out/settle-eof/sessions"]}
+{"ev":"session_start","reason":"startup","sid":"01a13aff","mode":"rpc","idle":true}
+{"ev":"STATE","moduleState":1,"factoryRuns":1}
+{"ev":"input","text":"stdin closes mid-run","source":"rpc","sid":"01a13aff","mode":"rpc","idle":true}
+{"ev":"before_agent_start","prompt":"stdin closes mid-run","sections":[],"appendSystemPromptLen":0,"contextFiles":[],"skills":[],"systemPromptLen":2766,"sid":"01a13aff","mode":"rpc","idle":true}
+{"ev":"agent_start","sid":"01a13aff","mode":"rpc","idle":false}
+{"ev":"turn_start","turnIndex":0,"sid":"01a13aff","mode":"rpc","idle":false}
+{"ev":"PROVIDER_REQUEST","n":0,"messageCount":2,"systemPromptLen":2766,"systemPromptMarkers":[],"markers":[],"tail":[{"role":"system","sections":["preamble","tools","rules","docs","cwd"],"len":0},{"role":"user","text":"stdin closes mid-run"}]}
+{"ev":"session_shutdown","reason":"quit","sid":"01a13aff","mode":"rpc","idle":false}
+{"ev":"PROVIDER_ABORTED","n":0}
+{"ev":"agent_before_settle","entries":[],"continue":false,"outcome":"aborted","canContinue":true,"pending":0,"sid":"","mode":null,"idle":null}
+{"ev":"PROVIDER_REQUEST","n":1,"messageCount":3,"systemPromptLen":2766,"systemPromptMarkers":[],"markers":["SETTLE-news-1"],"tail":[{"role":"system","sections":["preamble","tools","rules","docs","cwd"],"len":0},{"role":"user","text":"stdin closes mid-run"},{"role":"user","text":"SETTLE-news-1"}]}
+{"ev":"agent_before_settle","entries":[],"continue":false,"outcome":"completed","canContinue":true,"pending":0,"sid":"","mode":null,"idle":null}
+{"ev":"agent_settled","sid":"","mode":null,"idle":null}
+--- rpc (non-message records)
+{"t":1791991160092,"dir":"in","cmd":{"id":"p1","type":"prompt","message":"stdin closes mid-run"}}
+{"t":1791991160624,"dir":"out","type":"response","r":{"id":"p1","type":"response","command":"prompt","success":true,"data":{"disposition":"started"}}}
+{"t":1791991160624,"dir":"out","type":"agent_start","r":{"type":"agent_start"}}
+{"t":1791991160624,"dir":"out","type":"turn_start","r":{"type":"turn_start"}}
+{"t":1791991160637,"dir":"wait","for":"turn_start","ok":true}
+{"t":1791991161140,"dir":"out","type":"extension_error","r":{"type":"extension_error","extensionPath":"<boundary>","event":"turn_end","error":"turn_end could not resolve the persisted assistant entry ID"}}
+{"t":1791991161161,"dir":"exit","code":0,"signal":null}

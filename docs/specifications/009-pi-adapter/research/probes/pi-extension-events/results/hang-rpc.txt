@@ -1,0 +1,25 @@
+{"ev":"factory","factoryRuns":1,"flags":[],"argv":["--mode","rpc","--provider","fake","--model","fake-1","-e","/home/squeal-e2e/pee/probe/probe.ts","--session-dir","/home/squeal-e2e/pee/out/hang-rpc/sessions"]}
+{"ev":"session_start","reason":"startup","sid":"01a13af3","mode":"rpc","idle":true}
+{"ev":"STATE","moduleState":1,"factoryRuns":1}
+{"ev":"input","text":"hang","source":"rpc","sid":"01a13af3","mode":"rpc","idle":true}
+{"ev":"before_agent_start","prompt":"hang","sections":[],"appendSystemPromptLen":0,"contextFiles":[],"skills":[],"systemPromptLen":2766,"sid":"01a13af3","mode":"rpc","idle":true}
+{"ev":"agent_start","sid":"01a13af3","mode":"rpc","idle":false}
+{"ev":"turn_start","turnIndex":0,"sid":"01a13af3","mode":"rpc","idle":false}
+{"ev":"PROVIDER_REQUEST","n":0,"messageCount":2,"systemPromptLen":2766,"systemPromptMarkers":[],"markers":[],"tail":[{"role":"system","sections":["preamble","tools","rules","docs","cwd"],"len":0},{"role":"user","text":"hang"}]}
+{"ev":"tool_execution_start","toolCallId":"call_0_0","toolName":"read","sid":"01a13af3","mode":"rpc","idle":false}
+{"ev":"tool_call","toolCallId":"call_0_0","toolName":"read","input":{"path":"a.txt"},"sid":"01a13af3","mode":"rpc","idle":false}
+{"ev":"tool_result","toolCallId":"call_0_0","toolName":"read","input":{"path":"a.txt"},"isError":false,"text":"alpha\n","sid":"01a13af3","mode":"rpc","idle":false}
+{"ev":"HANG_BEGIN","in":"tool_result"}
+{"ev":"session_shutdown","reason":"quit","sid":"01a13af3","mode":"rpc","idle":false}
+--- stderr
+--- rpc (non-message records)
+{"t":1791990408199,"dir":"in","cmd":{"id":"p1","type":"prompt","message":"hang"}}
+{"t":1791990408781,"dir":"out","type":"response","r":{"id":"p1","type":"response","command":"prompt","success":true,"data":{"disposition":"started"}}}
+{"t":1791990408781,"dir":"out","type":"agent_start","r":{"type":"agent_start"}}
+{"t":1791990408781,"dir":"out","type":"turn_start","r":{"type":"turn_start"}}
+{"t":1791990408786,"dir":"out","type":"tool_execution_start","r":{"type":"tool_execution_start","toolCallId":"call_0_0","toolName":"read","args":{"path":"a.txt"}}}
+{"t":1791990411202,"dir":"in","cmd":{"id":"s1","type":"get_state"}}
+{"t":1791990411203,"dir":"out","type":"response","r":{"id":"s1","type":"response","command":"get_state","success":true,"data":{"model":{"id":"fake-1","name":"Fake 1","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000000,"maxTokens":4096
+{"t":1791990411504,"dir":"in","cmd":{"id":"a1","type":"abort"}}
+{"t":1791990416520,"dir":"wait","for":"agent_settled","ok":false}
+{"t":1791990416537,"dir":"exit","code":0,"signal":null}

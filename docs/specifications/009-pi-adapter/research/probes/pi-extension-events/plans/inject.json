@@ -1,0 +1,28 @@
+[
+  {
+    "tools": [
+      {
+        "name": "read",
+        "arguments": {
+          "path": "a.txt"
+        }
+      }
+    ]
+  },
+  {
+    "tools": [
+      {
+        "name": "read",
+        "arguments": {
+          "path": "b.txt"
+        }
+      }
+    ]
+  },
+  {
+    "text": "done"
+  },
+  {
+    "text": "second-run"
+  }
+]

@@ -1,0 +1,41 @@
+{"ev":"factory","factoryRuns":1,"flags":[],"argv":["--provider","fake","--model","fake-1","--session-dir","/home/squeal-e2e/pee/out/nested/sessions","-p","parent"]}
+{"ev":"session_start","reason":"startup","sid":"01a13afa","mode":"print","idle":true}
+{"ev":"STATE","moduleState":1,"factoryRuns":1}
+{"ev":"input","text":"parent","source":"interactive","sid":"01a13afa","mode":"print","idle":true}
+{"ev":"before_agent_start","prompt":"parent","sections":[],"appendSystemPromptLen":0,"contextFiles":[],"skills":[],"systemPromptLen":2766,"sid":"01a13afa","mode":"print","idle":true}
+{"ev":"agent_start","sid":"01a13afa","mode":"print","idle":false}
+{"ev":"turn_start","turnIndex":0,"sid":"01a13afa","mode":"print","idle":false}
+{"ev":"PROVIDER_REQUEST","n":0,"messageCount":2,"systemPromptLen":2766,"systemPromptMarkers":[],"markers":[],"tail":[{"role":"system","sections":["preamble","tools","rules","docs","cwd"],"len":0},{"role":"user","text":"parent"}]}
+{"ev":"tool_execution_start","toolCallId":"call_0_0","toolName":"bash","sid":"01a13afa","mode":"print","idle":false}
+{"ev":"tool_call","toolCallId":"call_0_0","toolName":"bash","input":{"command":"PROBE_PLAN=/home/squeal-e2e/pee/probe/plans/child.json pi --provider fake --model fake-1 --mode json -p --no-session child </dev/null | tail -c 300"},"sid":"01a13afa","mode":"print","idle":false}
+{"ev":"factory","factoryRuns":1,"flags":[],"argv":["--provider","fake","--model","fake-1","--mode","json","-p","--no-session","child"]}
+{"ev":"session_start","reason":"startup","sid":"01a13afa","mode":"json","idle":true}
+{"ev":"STATE","moduleState":1,"factoryRuns":1}
+{"ev":"input","text":"child","source":"interactive","sid":"01a13afa","mode":"json","idle":true}
+{"ev":"before_agent_start","prompt":"child","sections":[],"appendSystemPromptLen":0,"contextFiles":[],"skills":[],"systemPromptLen":2766,"sid":"01a13afa","mode":"json","idle":true}
+{"ev":"agent_start","sid":"01a13afa","mode":"json","idle":false}
+{"ev":"turn_start","turnIndex":0,"sid":"01a13afa","mode":"json","idle":false}
+{"ev":"PROVIDER_REQUEST","n":0,"messageCount":2,"systemPromptLen":2766,"systemPromptMarkers":[],"markers":[],"tail":[{"role":"system","sections":["preamble","tools","rules","docs","cwd"],"len":0},{"role":"user","text":"child"}]}
+{"ev":"tool_execution_start","toolCallId":"call_0_0","toolName":"bash","sid":"01a13afa","mode":"json","idle":false}
+{"ev":"tool_call","toolCallId":"call_0_0","toolName":"bash","input":{"command":"env | grep -E \"^(PI_SESSION|SQUEAL_PROBE)\" | sort"},"sid":"01a13afa","mode":"json","idle":false}
+{"ev":"tool_result","toolCallId":"call_0_0","toolName":"bash","input":{"command":"env | grep -E \"^(PI_SESSION|SQUEAL_PROBE)\" | sort"},"isError":false,"text":"PI_SESSION_ID=01a13afa-318e-74ba-8ede-c290e21b11f6\nSQUEAL_PROBE_PARENT=inherited\n","sid":"01a13afa","mode":"json","idle":false}
+{"ev":"tool_execution_end","toolCallId":"call_0_0","toolName":"bash","isError":false,"sid":"01a13afa","mode":"json","idle":false}
+{"ev":"turn_end","turnIndex":0,"msg":{"role":"assistant","text":"","toolCalls":["bash"]},"toolResults":1,"entries":[],"continue":false,"outcome":"completed","canContinue":true,"pending":0,"sid":"01a13afa","mode":"json","idle":false}
+{"ev":"turn_start","turnIndex":1,"sid":"01a13afa","mode":"json","idle":false}
+{"ev":"PROVIDER_REQUEST","n":1,"messageCount":4,"systemPromptLen":2766,"systemPromptMarkers":[],"markers":[],"tail":[{"role":"system","sections":["preamble","tools","rules","docs","cwd"],"len":0},{"role":"user","text":"child"},{"role":"assistant","text":"","toolCalls":["bash"]},{"role":"toolResult","toolName":"bash","id":"call_0_0","isError":false,"text":"PI_SESSION_ID=01a13afa-318e-74ba-8ede-c290
+{"ev":"turn_end","turnIndex":1,"msg":{"role":"assistant","text":"child-done","toolCalls":[]},"toolResults":0,"entries":[],"continue":false,"outcome":"completed","canContinue":false,"pending":0,"sid":"01a13afa","mode":"json","idle":false}
+{"ev":"agent_end","messages":5,"roles":["system","user","assistant","toolResult","assistant"],"sid":"01a13afa","mode":"json","idle":false}
+{"ev":"agent_before_settle","entries":[],"continue":false,"outcome":"completed","canContinue":false,"pending":0,"sid":"01a13afa","mode":"json","idle":false}
+{"ev":"agent_settled","sid":"01a13afa","mode":"json","idle":true}
+{"ev":"session_shutdown","reason":"quit","sid":"01a13afa","mode":"json","idle":true}
+{"ev":"tool_result","toolCallId":"call_0_0","toolName":"bash","input":{"command":"PROBE_PLAN=/home/squeal-e2e/pee/probe/plans/child.json pi --provider fake --model fake-1 --mode json -p --no-session child </dev/null | tail -c 300"},"isError":false,"text":"pi\",\"provider\":\"fake\",\"model\":\"fake-1\",\"usage\":{\"input\":10,\"output\":5,\"cacheRead\":0,\"cacheWrite\":0,\"totalTokens\":15,\"cost\
+{"ev":"tool_execution_end","toolCallId":"call_0_0","toolName":"bash","isError":false,"sid":"01a13afa","mode":"print","idle":false}
+{"ev":"turn_end","turnIndex":0,"msg":{"role":"assistant","text":"","toolCalls":["bash"]},"toolResults":1,"entries":[],"continue":false,"outcome":"completed","canContinue":true,"pending":0,"sid":"01a13afa","mode":"print","idle":false}
+{"ev":"turn_start","turnIndex":1,"sid":"01a13afa","mode":"print","idle":false}
+{"ev":"PROVIDER_REQUEST","n":1,"messageCount":4,"systemPromptLen":2766,"systemPromptMarkers":[],"markers":[],"tail":[{"role":"system","sections":["preamble","tools","rules","docs","cwd"],"len":0},{"role":"user","text":"parent"},{"role":"assistant","text":"","toolCalls":["bash"]},{"role":"toolResult","toolName":"bash","id":"call_0_0","isError":false,"text":"pi\",\"provider\":\"fake\",\"model\":\"fa
+{"ev":"turn_end","turnIndex":1,"msg":{"role":"assistant","text":"parent-done","toolCalls":[]},"toolResults":0,"entries":[],"continue":false,"outcome":"completed","canContinue":false,"pending":0,"sid":"01a13afa","mode":"print","idle":false}
+{"ev":"agent_end","messages":5,"roles":["system","user","assistant","toolResult","assistant"],"sid":"01a13afa","mode":"print","idle":false}
+{"ev":"agent_before_settle","entries":[],"continue":false,"outcome":"completed","canContinue":false,"pending":0,"sid":"01a13afa","mode":"print","idle":false}
+{"ev":"agent_settled","sid":"01a13afa","mode":"print","idle":true}
+{"ev":"session_shutdown","reason":"quit","sid":"01a13afa","mode":"print","idle":true}
+--- stderr

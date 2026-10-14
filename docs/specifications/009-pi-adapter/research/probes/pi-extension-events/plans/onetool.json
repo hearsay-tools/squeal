@@ -1,0 +1,21 @@
+[
+  {
+    "tools": [
+      {
+        "name": "read",
+        "arguments": {
+          "path": "a.txt"
+        }
+      }
+    ]
+  },
+  {
+    "text": "done"
+  },
+  {
+    "text": "r2"
+  },
+  {
+    "text": "r3"
+  }
+]

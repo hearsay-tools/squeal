@@ -1,0 +1,1 @@
+[{"send":{"id":"p1","type":"prompt","message":"hang"}},{"sleep":3000},{"send":{"id":"s1","type":"get_state"}},{"sleep":300},{"send":{"id":"a1","type":"abort"}},{"waitFor":"agent_settled","timeoutMs":5000},{"close":true}]

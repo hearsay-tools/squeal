@@ -1,0 +1,44 @@
+{"ev":"factory","factoryRuns":1,"flags":[],"argv":["--mode","rpc","--provider","fake","--model","fake-1","-e","/home/squeal-e2e/pee/probe/probe.ts","--session-dir","/home/squeal-e2e/pee/out/throw-rpc/sessions"]}
+{"ev":"session_start","reason":"startup","sid":"01a13af3","mode":"rpc","idle":true}
+{"ev":"STATE","moduleState":1,"factoryRuns":1}
+{"ev":"input","text":"one","source":"rpc","sid":"01a13af3","mode":"rpc","idle":true}
+{"ev":"before_agent_start","prompt":"one","sections":[],"appendSystemPromptLen":0,"contextFiles":[],"skills":[],"systemPromptLen":2766,"sid":"01a13af3","mode":"rpc","idle":true}
+{"ev":"agent_start","sid":"01a13af3","mode":"rpc","idle":false}
+{"ev":"turn_start","turnIndex":0,"sid":"01a13af3","mode":"rpc","idle":false}
+{"ev":"PROVIDER_REQUEST","n":0,"messageCount":2,"systemPromptLen":2766,"systemPromptMarkers":[],"markers":[],"tail":[{"role":"system","sections":["preamble","tools","rules","docs","cwd"],"len":0},{"role":"user","text":"one"}]}
+{"ev":"tool_execution_start","toolCallId":"call_0_0","toolName":"read","sid":"01a13af3","mode":"rpc","idle":false}
+{"ev":"tool_call","toolCallId":"call_0_0","toolName":"read","input":{"path":"a.txt"},"sid":"01a13af3","mode":"rpc","idle":false}
+{"ev":"tool_result","toolCallId":"call_0_0","toolName":"read","input":{"path":"a.txt"},"isError":false,"text":"alpha\n","sid":"01a13af3","mode":"rpc","idle":false}
+{"ev":"tool_execution_end","toolCallId":"call_0_0","toolName":"read","isError":false,"sid":"01a13af3","mode":"rpc","idle":false}
+{"ev":"turn_end","turnIndex":0,"msg":{"role":"assistant","text":"","toolCalls":["read"]},"toolResults":1,"entries":[],"continue":false,"outcome":"completed","canContinue":true,"pending":0,"sid":"01a13af3","mode":"rpc","idle":false}
+{"ev":"turn_start","turnIndex":1,"sid":"01a13af3","mode":"rpc","idle":false}
+{"ev":"PROVIDER_REQUEST","n":1,"messageCount":4,"systemPromptLen":2766,"systemPromptMarkers":[],"markers":[],"tail":[{"role":"system","sections":["preamble","tools","rules","docs","cwd"],"len":0},{"role":"user","text":"one"},{"role":"assistant","text":"","toolCalls":["read"]},{"role":"toolResult","toolName":"read","id":"call_0_0","isError":false,"text":"alpha\n"}]}
+{"ev":"turn_end","turnIndex":1,"msg":{"role":"assistant","text":"done","toolCalls":[]},"toolResults":0,"entries":[],"continue":false,"outcome":"completed","canContinue":false,"pending":0,"sid":"01a13af3","mode":"rpc","idle":false}
+{"ev":"agent_end","messages":5,"roles":["system","user","assistant","toolResult","assistant"],"sid":"01a13af3","mode":"rpc","idle":false}
+{"ev":"agent_before_settle","entries":[],"continue":false,"outcome":"completed","canContinue":false,"pending":0,"sid":"01a13af3","mode":"rpc","idle":false}
+{"ev":"agent_settled","sid":"01a13af3","mode":"rpc","idle":true}
+{"ev":"session_shutdown","reason":"quit","sid":"01a13af3","mode":"rpc","idle":true}
+--- stderr
+--- rpc (non-message records)
+{"t":1791990394890,"dir":"in","cmd":{"id":"p1","type":"prompt","message":"one"}}
+{"t":1791990395375,"dir":"out","type":"extension_error","r":{"type":"extension_error","extensionPath":"/home/squeal-e2e/pee/probe/probe.ts","event":"session_start","error":"probe throws in session_start"}}
+{"t":1791990395378,"dir":"out","type":"extension_error","r":{"type":"extension_error","extensionPath":"/home/squeal-e2e/pee/probe/probe.ts","event":"before_agent_start","error":"probe throws in before_agent_start"}}
+{"t":1791990395380,"dir":"out","type":"response","r":{"id":"p1","type":"response","command":"prompt","success":true,"data":{"disposition":"started"}}}
+{"t":1791990395380,"dir":"out","type":"agent_start","r":{"type":"agent_start"}}
+{"t":1791990395380,"dir":"out","type":"turn_start","r":{"type":"turn_start"}}
+{"t":1791990395382,"dir":"out","type":"extension_error","r":{"type":"extension_error","extensionPath":"/home/squeal-e2e/pee/probe/probe.ts","event":"context","error":"probe throws in context"}}
+{"t":1791990395385,"dir":"out","type":"tool_execution_start","r":{"type":"tool_execution_start","toolCallId":"call_0_0","toolName":"read","args":{"path":"a.txt"}}}
+{"t":1791990395388,"dir":"out","type":"extension_error","r":{"type":"extension_error","extensionPath":"/home/squeal-e2e/pee/probe/probe.ts","event":"tool_result","error":"probe throws in tool_result"}}
+{"t":1791990395389,"dir":"out","type":"tool_execution_end","r":{"type":"tool_execution_end","toolCallId":"call_0_0","toolName":"read","result":"[omitted]","isError":false}}
+{"t":1791990395390,"dir":"out","type":"extension_error","r":{"type":"extension_error","extensionPath":"/home/squeal-e2e/pee/probe/probe.ts","event":"turn_end","error":"probe throws in turn_end"}}
+{"t":1791990395390,"dir":"out","type":"turn_end","r":{"type":"turn_end","message":"[omitted]","toolResults":"[omitted]"}}
+{"t":1791990395391,"dir":"out","type":"turn_start","r":{"type":"turn_start"}}
+{"t":1791990395391,"dir":"out","type":"extension_error","r":{"type":"extension_error","extensionPath":"/home/squeal-e2e/pee/probe/probe.ts","event":"context","error":"probe throws in context"}}
+{"t":1791990395392,"dir":"out","type":"extension_error","r":{"type":"extension_error","extensionPath":"/home/squeal-e2e/pee/probe/probe.ts","event":"turn_end","error":"probe throws in turn_end"}}
+{"t":1791990395392,"dir":"out","type":"turn_end","r":{"type":"turn_end","message":"[omitted]","toolResults":"[omitted]"}}
+{"t":1791990395392,"dir":"out","type":"extension_error","r":{"type":"extension_error","extensionPath":"/home/squeal-e2e/pee/probe/probe.ts","event":"agent_end","error":"probe throws in agent_end"}}
+{"t":1791990395392,"dir":"out","type":"agent_end","r":{"type":"agent_end","messages":"[omitted]","willRetry":false}}
+{"t":1791990395393,"dir":"out","type":"extension_error","r":{"type":"extension_error","extensionPath":"/home/squeal-e2e/pee/probe/probe.ts","event":"agent_before_settle","error":"probe throws in agent_before_settle"}}
+{"t":1791990395393,"dir":"out","type":"agent_settled","r":{"type":"agent_settled"}}
+{"t":1791990395394,"dir":"wait","for":"agent_settled","ok":true}
+{"t":1791990395411,"dir":"exit","code":0,"signal":null}
