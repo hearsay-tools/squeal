@@ -1,16 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { OcHooks } from "../../../src/harness/opencode/api.js";
 import { IDLE_WAIT_MS } from "../../../src/harness/opencode/bridge-turn.js";
-import {
-  EVENT_DEADLINE_MS,
-  PRIMER_CAP_CHARS,
-  WAIT_DEADLINE_MS,
-} from "../../../src/harness/opencode/hooks.js";
+import { EVENT_DEADLINE_MS, PRIMER_CAP_CHARS } from "../../../src/harness/opencode/hooks.js";
 import type { OcKind } from "../../../src/harness/opencode/protocol.js";
+import { WAIT_DEADLINE_MS } from "../../../src/harness/opencode/turns.js";
 import {
   alive,
   CHILD_ID,
   chatOutput,
+  hook,
   PRIMER_TEXT,
   ROOT_ID,
   squealDir,
@@ -28,12 +26,6 @@ import {
  */
 
 const REPORT = "SQUEAL · 1 check changed (1 test) at revision 4\nPASS -> FAIL";
-
-function hook<K extends keyof OcHooks>(hooks: OcHooks, name: K): NonNullable<OcHooks[K]> {
-  const fn = hooks[name];
-  if (fn === undefined) throw new Error(`no ${name} hook`);
-  return fn;
-}
 
 const event = (type: string, properties: object) => ({ event: { type, properties } });
 const created = (id: string, parentID?: string) =>

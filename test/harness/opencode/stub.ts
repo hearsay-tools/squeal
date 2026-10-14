@@ -165,3 +165,24 @@ export function chatOutput(sessionID: string, id = MESSAGE_ID) {
     parts: [{ id: "prt_0", sessionID, messageID: id, type: "text", text: "hello" }] as unknown[],
   };
 }
+
+/** Calls a hook the plugin must have returned. */
+export function hook<K extends keyof OcHooks>(hooks: OcHooks, name: K): NonNullable<OcHooks[K]> {
+  const fn = hooks[name];
+  if (fn === undefined) throw new Error(`no ${name} hook`);
+  return fn;
+}
+
+const info = (id: string, parentID?: string) => ({
+  info: { id, ...(parentID === undefined ? {} : { parentID }) },
+});
+
+/** `session.created` of `id`, a child of `parentID` if given. */
+export const created = (id: string, parentID?: string) => ({
+  event: { type: "session.created", properties: info(id, parentID) },
+});
+
+/** `session.deleted` of `id`, a child of `parentID` if given. */
+export const deleted = (id: string, parentID?: string) => ({
+  event: { type: "session.deleted", properties: info(id, parentID) },
+});
