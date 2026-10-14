@@ -900,17 +900,17 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 009-12 the Pi events | running (worker fa418cf5, opus high) | D3, D4, D9: primer section, `turn_end` push, `tool_call` deny, settle continuation with Squeal's guard, abort, shutdown silence; types from the real Pi package. | Real Pi in `-p`, `json`, `rpc` with the fake provider: each delivery in the next request, one continuation then silence, deny then re-issue, primer after compact, dead daemon silent; full suite green. |
-| 009-13 install, status and texts | running (worker c5915ca5, opus high) | D1 install (`install.sh` from the tag's source archive, `pi install`, uninstall), D7 status line for `PI_SESSION_ID`, README and skill notes; open question 3. | Install, update, uninstall with Pi alone and with all three harnesses (stub `pi`); status line test; full suite green. |
+| 009-12 the Pi events | done (0.1.171, `d428340c`; Node 22 fix `7ac131df`) | D3, D4, D9: primer section, `turn_end` push, `tool_call` deny, settle continuation with Squeal's guard, abort, shutdown silence; types from the real Pi package. | Real Pi in `-p`, `json`, `rpc` with the fake provider: each delivery in the next request, one continuation then silence, deny then re-issue, primer after compact, dead daemon silent; full suite green. |
+| 009-13 install, status and texts | done (0.1.171, `d428340c`; open question 3 closed) | D1 install (`install.sh` from the tag's source archive, `pi install`, uninstall), D7 status line for `PI_SESSION_ID`, README and skill notes; open question 3. | Install, update, uninstall with Pi alone and with all three harnesses (stub `pi`); status line test; full suite green. |
 | 009-14 review of wave 0 | done: PASS at 8d401144, no blockers; S1, S2, N1 to wave 2 (`reviews/wave-0.md`) | `/reviewer` over `a19b6638..8d401144`: D4 deadlines and liveness, registration and `reload`, shutdown reasons, the fixture's isolation, the package manifest. | `reviews/wave-0.md` committed. |
 
 ### Wave 2: idle wake and fixes (parallel; review of wave 1 beside it; briefs in `specifications/009-pi-adapter/tasks/wave-2.md`)
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 009-15 idle wake | planned | D5: wait at `agent_settled` in `tui` and `rpc`, wake with `triggerTurn`, cancel on input and shutdown; `"pi"` in `StopWaitHarness`; review S2's native-blocked exit test. | Real Pi in `rpc` woken once by a late result; none under `-p`; a prompt cancels the wait; full suite green. |
-| 009-16 the Pi fixture's isolation | planned | Review S1 (protected env), N1 (typed fake provider), a base directory outside any repository. | Protected override has no effect; Pi's project outside the repository under a repository `TMPDIR`; full suite green. |
-| 009-17 review of wave 1 | planned | `/reviewer` over `502eb7f1..7ac131df`: D3 honesty rules, D4 bounds, `install.sh` against 005 D3, launcher format 2, status line. | `reviews/wave-1.md` committed. |
+| 009-15 idle wake | running (worker 9859b465, opus high) | D5: wait at `agent_settled` in `tui` and `rpc`, wake with `triggerTurn`, cancel on input and shutdown; `"pi"` in `StopWaitHarness`; review S2's native-blocked exit test. | Real Pi in `rpc` woken once by a late result; none under `-p`; a prompt cancels the wait; full suite green. |
+| 009-16 the Pi fixture's isolation | running (worker dce22e41, opus high) | Review S1 (protected env), N1 (typed fake provider), a base directory outside any repository. | Protected override has no effect; Pi's project outside the repository under a repository `TMPDIR`; full suite green. |
+| 009-17 review of wave 1 | running (worker eb7c1a7e, gpt-6.1-sol high) | `/reviewer` over `502eb7f1..7ac131df`: D3 honesty rules, D4 bounds, `install.sh` against 005 D3, launcher format 2, status line. | `reviews/wave-1.md` committed. |
 
 ## Later
 
