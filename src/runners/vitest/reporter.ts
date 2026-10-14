@@ -11,7 +11,10 @@ type TestRunEndReason = Parameters<NonNullable<Reporter["onTestRunEnd"]>>[2];
 export interface ModuleEnd {
   readonly ref: TestFileRef;
   readonly state: ReturnType<TestModule["state"]>;
-  /** Errors outside any test case: import, syntax, `beforeAll`/`afterAll` at file level. */
+  /**
+   * Errors outside any test case: import, syntax, `beforeAll`/`afterAll` at
+   * file level, then each suite's own hook errors (`suiteErrors`).
+   */
   readonly errors: readonly SerializedError[];
   /** Ended after a timeout cancel was requested: its results are not trusted. */
   readonly afterCancel: boolean;
@@ -77,7 +80,8 @@ export class RunCollector {
   moduleEnd(module: TestModule): void {
     const ref = this.#ref(module.project.name, module.moduleId);
     if (!ref) return;
-    const errors = module.errors();
+    const suites = suiteErrors(module);
+    const errors = [...module.errors(), ...suites.flatMap((s) => s.errors)];
     this.modules.set(refKey(ref), {
       ref,
       state: module.state(),
@@ -86,7 +90,13 @@ export class RunCollector {
       durationMs: moduleDuration(module),
     });
     this.log.push(`MODULE ${module.state()} ${label(ref)}`);
-    for (const error of errors) this.log.push(indent(`file-level error: ${errorText(error)}`));
+    for (const error of module.errors()) {
+      this.log.push(indent(`file-level error: ${errorText(error)}`));
+    }
+    for (const { name, errors } of suites) {
+      for (const error of errors)
+        this.log.push(indent(`suite-level error (${name}): ${errorText(error)}`));
+    }
   }
 
   runEnd(unhandledErrors: readonly SerializedError[], reason: TestRunEndReason): void {
@@ -146,6 +156,21 @@ export function createSquealReporter(current: () => RunCollector | null): Report
     onTestRunEnd: (_modules, unhandledErrors, reason) => current()?.runEnd(unhandledErrors, reason),
     onUserConsoleLog: (log) => current()?.console(log.type, log.content, moduleOf(log.taskId)),
   };
+}
+
+/**
+ * The errors of each `describe` that has its own, in declaration order.
+ *
+ * Task 001-360 (research environment-failures Q1): a `beforeAll` or
+ * `afterAll` inside a `describe` fails that suite, not the module, and its
+ * tests report `skipped`, so the file was stored PASS. Vitest keeps the error
+ * on the suite whose hook threw and never copies it to a parent, so a nested
+ * failure is read once, from the innermost suite.
+ */
+function suiteErrors(module: TestModule): { name: string; errors: readonly SerializedError[] }[] {
+  return [...module.children.allSuites()]
+    .map((suite) => ({ name: suite.fullName, errors: suite.errors() }))
+    .filter((suite) => suite.errors.length > 0);
 }
 
 /**

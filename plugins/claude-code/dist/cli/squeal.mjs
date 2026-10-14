@@ -15211,6 +15211,9 @@ function createSquealReporter(current2) {
     onUserConsoleLog: (log) => current2()?.console(log.type, log.content, moduleOf(log.taskId))
   };
 }
+function suiteErrors(module2) {
+  return [...module2.children.allSuites()].map((suite) => ({ name: suite.fullName, errors: suite.errors() })).filter((suite) => suite.errors.length > 0);
+}
 function moduleDuration(module2) {
   const d = module2.diagnostic();
   const parts2 = [
@@ -15277,7 +15280,8 @@ var init_reporter = __esm({
       moduleEnd(module2) {
         const ref2 = this.#ref(module2.project.name, module2.moduleId);
         if (!ref2) return;
-        const errors = module2.errors();
+        const suites = suiteErrors(module2);
+        const errors = [...module2.errors(), ...suites.flatMap((s) => s.errors)];
         this.modules.set(refKey(ref2), {
           ref: ref2,
           state: module2.state(),
@@ -15286,7 +15290,13 @@ var init_reporter = __esm({
           durationMs: moduleDuration(module2)
         });
         this.log.push(`MODULE ${module2.state()} ${label(ref2)}`);
-        for (const error of errors) this.log.push(indent(`file-level error: ${errorText(error)}`));
+        for (const error of module2.errors()) {
+          this.log.push(indent(`file-level error: ${errorText(error)}`));
+        }
+        for (const { name: name2, errors: errors2 } of suites) {
+          for (const error of errors2)
+            this.log.push(indent(`suite-level error (${name2}): ${errorText(error)}`));
+        }
       }
       runEnd(unhandledErrors, reason2) {
         this.unhandledErrors.push(...unhandledErrors);
