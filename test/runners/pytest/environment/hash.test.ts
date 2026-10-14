@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync } from "node:fs";
+import { mkdirSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { PytestProject } from "../../../../src/core/types/index.js";
@@ -6,7 +6,7 @@ import {
   type PytestEnvironment,
   readEnvironment,
 } from "../../../../src/runners/pytest/environment/index.js";
-import { editable, fakePython, SITE, tempDir, venv, write } from "./tree.js";
+import { editable, fakePython, link, SITE, tempDir, venv, write } from "./tree.js";
 
 /*
  * Spec 007 D2: the environment hash of a pytest project: the interpreter,
@@ -100,6 +100,97 @@ describe("the pytest environment hash (spec 007 D2)", () => {
     const before = await ready(root);
     change(root);
     expect((await ready(root)).hash).not.toBe(before.hash);
+  });
+
+  describe("a distribution versioned from git, editable inside the worktree (lessons defect 3)", () => {
+    /** setuptools_scm's layout: the commit in the .dist-info, the .pth and the finder names. */
+    function scm(python: string, version: string, finder: boolean, dir = tempDir()): string {
+      const stem = `app-${version}`;
+      const ident = stem.replace(/[^A-Za-z0-9_]/g, "_");
+      mkdirSync(join(dir, "src"), { recursive: true });
+      write(dir, { "pyproject.toml": "[project]\nname = 'app'\ndynamic = ['version']\n" });
+      venv(
+        dir,
+        ".venv",
+        {
+          [`${stem}.dist-info/direct_url.json`]: editable(dir),
+          [`__editable__.${stem}.pth`]: finder
+            ? `import __editable___${ident}_finder; __editable___${ident}_finder.install()\n`
+            : `${join(dir, "src")}\n`,
+          ...(finder ? { [`__editable___${ident}_finder.py`]: `MAPPING = {}\n` } : {}),
+          "pytest-9.1.1.dist-info/METADATA": "",
+        },
+        python,
+      );
+      return dir;
+    }
+
+    it.each([
+      ["a static .pth", false],
+      ["a finder", true],
+    ])("hashes equal at two commits with %s", async (_, finder) => {
+      const python = fakePython(tempDir(), "3.13.14");
+      const a = await ready(scm(python, "0.1.dev1+gAAA", finder));
+      const b = await ready(scm(python, "0.1.dev2+gBBB", finder));
+      expect(b.hash).toBe(a.hash);
+      expect(b.fingerprint).not.toBe(a.fingerprint);
+    });
+
+    it("drops the version when direct_url.json reaches the worktree through a symlink", async () => {
+      const root = scm(fakePython(tempDir(), "3.13.14"), "0.1.dev1+gAAA", false);
+      const alias = join(tempDir(), "alias");
+      link(root, alias);
+      const site = join(root, ".venv", SITE);
+      const sync = (version: string) => {
+        for (const name of readdirSync(site)) rmSync(join(site, name), { recursive: true });
+        write(site, {
+          [`app-${version}.dist-info/direct_url.json`]: editable(alias),
+          [`__editable__.app-${version}.pth`]: `${join(root, "src")}\n`,
+        });
+      };
+      sync("0.1.dev1+gAAA");
+      const before = await ready(root);
+      sync("0.1.dev2+gBBB");
+      expect((await ready(root)).hash).toBe(before.hash);
+    });
+
+    it("keeps the version of a distribution whose name ends in the editable's", async () => {
+      const python = fakePython(tempDir(), "3.13.14");
+      const root = scm(python, "0.1.dev1+gAAA", false);
+      write(root, { [`.venv/${SITE}/myapp-0.1.dev1+gAAA.dist-info/METADATA`]: "" });
+      const before = await ready(root);
+      rmSync(join(root, `.venv/${SITE}/myapp-0.1.dev1+gAAA.dist-info`), { recursive: true });
+      write(root, { [`.venv/${SITE}/myapp.dist-info/METADATA`]: "" });
+      expect((await ready(root)).hash).not.toBe(before.hash);
+    });
+
+    it("still moves with a third-party version", async () => {
+      const python = fakePython(tempDir(), "3.13.14");
+      const root = scm(python, "0.1.dev1+gAAA", false);
+      const before = await ready(root);
+      rmSync(join(root, `.venv/${SITE}/pytest-9.1.1.dist-info`), { recursive: true });
+      write(root, { [`.venv/${SITE}/pytest-9.1.2.dist-info/METADATA`]: "" });
+      expect((await ready(root)).hash).not.toBe(before.hash);
+    });
+
+    it("keeps the version of an editable outside the worktree's own code", async () => {
+      const python = fakePython(tempDir(), "3.13.14");
+      const lib = tempDir();
+      const versioned = (version: string) => {
+        const root = scm(python, "0.1.dev1+gAAA", false);
+        write(root, {
+          [`.venv/${SITE}/lib-${version}.dist-info/direct_url.json`]: JSON.stringify({
+            url: "https://example.com/lib.tar.gz",
+            archive_info: {},
+          }),
+          [`.venv/${SITE}/__editable__.lib-${version}.pth`]: `${lib}\n`,
+        });
+        return root;
+      };
+      const a = await ready(versioned("1.0"));
+      const b = await ready(versioned("2.0"));
+      expect(b.hash).not.toBe(a.hash);
+    });
   });
 
   it("differs between 3.10 and 3.13 interpreters", async () => {
