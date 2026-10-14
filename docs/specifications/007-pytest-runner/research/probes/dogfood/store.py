@@ -10,6 +10,7 @@ Queries:
   batches      per run, the pytest batches' wall times from its log directory, if kept
   transitions  every transition in this worktree
   keys         keyed and unkeyed files, by pending phase
+  holders p.. how many stored closures hold each path; closure sizes
   stored       per run: revision, end state, files per project, results stored
 """
 
@@ -115,5 +116,13 @@ elif query == "stored":
     for rid, rev, state, files, n in rows:
         projects = Counter(f["project"] if isinstance(f, dict) else "?" for f in json.loads(files))
         print(f"{rid[:8]} r{rev} {state:9s} {dict(projects)} stored {n}")
+elif query == "holders":
+    # test files whose stored closure (static plus observed) holds each path given
+    rows = db.execute("SELECT project, path, closure_paths, complete FROM test_files").fetchall()
+    for target in args:
+        held = [r for r in rows if target in json.loads(r[2])]
+        print(f"{target}: {len(held)} of {len(rows)} stored closures", [r[1] for r in held][:4])
+    sizes = sorted(len(json.loads(r[2])) for r in rows)
+    print("closure sizes: min", sizes[0], "median", sizes[len(sizes) // 2], "max", sizes[-1])
 else:
     sys.exit(f"unknown query {query}")

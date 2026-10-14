@@ -1,0 +1,8 @@
+Two things in this repository, in order. I will not answer questions in this session: wherever you would ask me, take the default and tell me what you chose.
+
+1. A test started failing with the last commit on this branch. Find it and fix the cause in src/; do not change the tests.
+
+2. Then refactor src/briefcase/cmdline.py: move the platform and output-format resolution out of parse_cmdline into its own module-level function, with no change in behaviour.
+
+When you are finished, end your reply with one line in exactly this form, choosing one of the three words:
+TESTS: pass | fail | unknown, evidence: <what you base it on>
