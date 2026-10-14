@@ -177,6 +177,28 @@ describe("the input question's default (005-38)", () => {
     expect(inputs).toEqual([{ test: "test/e2e/**", input: "plugins/**" }]);
   });
 
+  it("an explicit relative import of root dist keeps dist named past plugins' suffix (005-42 B2)", async () => {
+    const root = squealShaped({
+      "squeal.config.json": json({}),
+      "test/e2e/plugin-copy.test.ts": `await import("../../dist/cli/squeal.mjs");\nconst bundled = "plugins/codex/dist/cli/squeal.mjs";\n`,
+      // The bare string stays ambiguous: it ends plugins' tracked bundle too.
+      "test/e2e/shipped-plugin.test.ts": `const bundle = "dist/cli/squeal.mjs";\n`,
+    });
+    mkdirSync(join(root, "dist/cli"), { recursive: true });
+    writeFileSync(join(root, "dist/cli/squeal.mjs"), "\n");
+    const [e2e] = (await plan(root)).slow.groups;
+    expect(e2e?.artifacts.map((a) => [a.path, a.evidence.map((e) => e.rule)])).toEqual([
+      ["dist", ["bin", "files", "build-script", "named"]],
+      ["plugins", ["files", "named"]],
+    ]);
+    expect(e2e?.artifacts[0]?.evidence.at(-1)?.detail).toBe(
+      'gitignored, named by 1 of 2 test files, such as "../../dist/cli/squeal.mjs"',
+    );
+    const { choices, inputs } = await inputQuestions(root);
+    expect(choices[0]?.[0]).toBe("dist/**");
+    expect(inputs).toEqual([{ test: "test/e2e/**", input: "dist/**" }]);
+  });
+
   it("cezarion's shape: packages/cezar/dist/**, never the scripts source directory", async () => {
     const { choices, inputs } = await inputQuestions(cezarionShaped());
     expect(choices).toEqual([
