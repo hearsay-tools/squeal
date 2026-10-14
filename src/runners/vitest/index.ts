@@ -37,6 +37,12 @@ export interface VitestAdapterOptions {
    * the newest config does (D4, task 001-181). Dropped when absent.
    */
   readonly optimizer?: (projects: readonly string[]) => void;
+  /**
+   * Policy `vitest.excludeProjects`, read at each start: Vitest projects the
+   * instance never creates, a name no project has noted once (D11, task
+   * 001-349). A revision that moves it recreates the instance. Absent: none.
+   */
+  readonly excludeProjects?: () => readonly string[];
 }
 
 /**
@@ -54,6 +60,7 @@ export async function createVitestAdapter(options: VitestAdapterOptions): Promis
     options.childEnv,
     options.maxWorkers,
     options.optimizer,
+    options.excludeProjects,
   );
   await adapter.open();
   return adapter;

@@ -1,4 +1,5 @@
 import type { TestSpecification, Vitest } from "vitest/node";
+import { POLICY_FILE } from "../../core/daemon/policy.js";
 import { compare } from "../../core/fs/index.js";
 import { findInstalledLockfile } from "../../core/keys/index.js";
 import { optimizerOffNote } from "../../core/state/optimizer-note.js";
@@ -22,6 +23,7 @@ import { affectedTestFiles } from "./affected.js";
 import { closeBroken, instanceTempDirs, runnerFailure } from "./broken.js";
 import { ConfigStamps } from "./config-stamps.js";
 import { projectEnvironment } from "./environment.js";
+import { projectFilter, unknownExclusions } from "./exclude.js";
 import { Gate, type Hold } from "./gate.js";
 import { importClosure, resolutionCandidates } from "./graph.js";
 import { loadVitest, type VitestNode } from "./load.js";
@@ -98,6 +100,9 @@ export class VitestAdapter implements RunnerAdapter {
   readonly #observer: VitestObserver;
   readonly #childEnv: Readonly<Record<string, string>>;
   readonly #maxWorkers: number | undefined;
+  readonly #exclude: () => readonly string[];
+  /** Policy `vitest.excludeProjects` as the current instance started with it (task 001-349). */
+  #excluded = "[]";
 
   /**
    * `vitest` is the project's own `vitest/node` (`loadVitest`). Only types
@@ -110,7 +115,8 @@ export class VitestAdapter implements RunnerAdapter {
    * config's (spec 004 D2: the slow tier's instance); not keyed, since the
    * slow instance's environment is never asked for. `optimizer` hears, at
    * each start, the projects whose config turns the dependency optimizer on,
-   * none included (task 001-181).
+   * none included (task 001-181). `exclude` is policy
+   * `vitest.excludeProjects`, read at each start (task 001-349).
    */
   constructor(
     readonly paths: WorktreePaths,
@@ -120,7 +126,9 @@ export class VitestAdapter implements RunnerAdapter {
     childEnv: Readonly<Record<string, string>> = {},
     maxWorkers?: number,
     optimizer: (projects: readonly string[]) => void = () => {},
+    exclude: () => readonly string[] = () => [],
   ) {
+    this.#exclude = exclude;
     this.#node = vitest;
     this.#optimizer = optimizer;
     this.#sources = new SourceStamps(paths);
@@ -144,6 +152,9 @@ export class VitestAdapter implements RunnerAdapter {
     const heard = this.#touched.length;
     const sources = new SourceStamps(this.paths);
     const config = await ConfigStamps.take(this.paths, this.#configFiles);
+    const excluded = [...this.#exclude()];
+    const project = projectFilter(excluded);
+    const unknown = unknownExclusions(this.#node, this.paths.root, excluded);
     const vitest = await this.#node.createVitest("test", {
       root: this.paths.root,
       watch: false,
@@ -156,6 +167,7 @@ export class VitestAdapter implements RunnerAdapter {
       fsModuleCache: false,
       ...(Object.keys(env).length === 0 ? {} : { env }),
       ...(this.#maxWorkers === undefined ? {} : { maxWorkers: this.#maxWorkers }),
+      ...(project === undefined ? {} : { project }),
     });
     // Review wave-13 B2: every project server's, not only the root's, before any load.
     sources.attach(vitest);
@@ -173,6 +185,10 @@ export class VitestAdapter implements RunnerAdapter {
       this.#config = config;
       this.#unsure = await config.unsure(this.#configFiles);
       this.#touched = this.#touched.slice(heard);
+      this.#excluded = JSON.stringify(excluded);
+      for (const problem of await unknown) {
+        noteOnce(this.paths.root, `${POLICY_FILE}: ${problem}`, this.#note);
+      }
     } catch (error) {
       await vitest.close();
       throw error;
@@ -273,7 +289,9 @@ export class VitestAdapter implements RunnerAdapter {
       // removal, the one found now an install into a worktree that had none.
       const lockfiles = new Set([...this.#lockfiles, ...(await this.#installedLockfiles(vitest))]);
       if (abs.some((p) => lockfiles.has(p.abs))) this.#reload = true;
-      if (abs.some((p) => triggers.has(p.abs) || lockfiles.has(p.abs))) {
+      // Task 001-349: a revision that moved `vitest.excludeProjects` reloaded the policy first.
+      const exclusion = JSON.stringify(this.#exclude()) !== this.#excluded;
+      if (exclusion || abs.some((p) => triggers.has(p.abs) || lockfiles.has(p.abs))) {
         const before = vitest.projects.map((p) => p.name);
         // A run in flight uses the instance: the recreate waits for it, and the next run for the recreate.
         const fresh = await hold.exclusive(async () => {

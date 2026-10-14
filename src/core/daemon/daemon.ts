@@ -349,6 +349,7 @@ class Daemon {
           note: (text) => this.#note(text),
           optimizer: (projects) => this.#optimizerOff(projects),
           observe: () => this.#policy.observe.runtimeInputs,
+          excludeProjects: () => this.#policy.vitest.excludeProjects,
           childEnv: this.#children.envFor(lane),
           ...(maxWorkers === undefined ? {} : { maxWorkers }),
         });
