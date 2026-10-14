@@ -4,6 +4,19 @@ import { delimiter, resolve } from "node:path";
 // src/harness/opencode/bridge-client.ts
 import { spawn } from "node:child_process";
 var EXIT_DRAIN_MS = 50;
+var PROXY_SWITCH = "NODE_USE_ENV_PROXY";
+var CARRIED_SWITCH = "SQUEAL_CARRIED_NODE_USE_ENV_PROXY";
+var RESTORE_SWITCH = `data:text/javascript,process.env.${PROXY_SWITCH}=process.env.${CARRIED_SWITCH};delete process.env.${CARRIED_SWITCH}`;
+function bridgeStart(entry, env) {
+  const flags = ["--disable-warning=ExperimentalWarning"];
+  const value = env[PROXY_SWITCH];
+  if (value === void 0) return { args: [...flags, entry], env };
+  const { [PROXY_SWITCH]: _switch, ...rest } = env;
+  return {
+    args: [...flags, "--import", RESTORE_SWITCH, entry],
+    env: { ...rest, [CARRIED_SWITCH]: value }
+  };
+}
 function unrefPipe(pipe) {
   const unref = pipe?.unref;
   if (typeof unref === "function") unref.call(pipe);
@@ -15,8 +28,10 @@ function callBridge(command, event, cwd, deadlineMs, options = {}) {
     const out = [];
     let child;
     try {
-      child = spawn(command.node, ["--disable-warning=ExperimentalWarning", command.entry], {
+      const start = bridgeStart(command.entry, process.env);
+      child = spawn(command.node, start.args, {
         cwd,
+        env: start.env,
         detached: true,
         stdio: ["pipe", "pipe", "ignore"]
       });
@@ -392,6 +407,7 @@ function squealHooks(host) {
         let text;
         if (registered.has(key)) {
           const answer = await ask("prompt", { consumer }, deadline);
+          primer = answer?.primer ?? primer;
           stopWaitMs = answer?.stopWaitMs ?? stopWaitMs;
           text = answer?.text ?? null;
         } else {
@@ -436,7 +452,15 @@ function squealHooks(host) {
         const deadline = deadlineIn(EVENT_DEADLINE_MS);
         const consumer = await identify(input.sessionID, deadline);
         if (consumer === null) return;
-        const text = (await ask("after", { consumer, tool: input.tool }, deadline))?.text ?? null;
+        const request = {
+          consumer,
+          tool: input.tool,
+          ...primer === null ? { primer: true } : {}
+        };
+        const answer = await ask("after", request, deadline);
+        primer = answer?.primer ?? primer;
+        stopWaitMs = answer?.stopWaitMs ?? stopWaitMs;
+        const text = answer?.text ?? null;
         if (disposed) return;
         const added = joined(held(consumer), text);
         if (added !== null) output.output = `${output.output}

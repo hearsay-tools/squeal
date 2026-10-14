@@ -4649,7 +4649,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.182";
+  if (true) return "0.1.184";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4939,10 +4939,15 @@ var consumerInput = (consumer) => ({
 async function prompt(request, deps) {
   const location2 = locate(request.worktree);
   if (location2 === null) return { text: null };
-  const text = await submitPrompt(consumerInput(request.consumer), location2, deps, {
-    register: true
-  });
-  return { text, stopWaitMs: readPolicy(location2.root).stop.waitMs };
+  const input = consumerInput(request.consumer);
+  const text = await submitPrompt(input, location2, deps, { register: true });
+  const current = await withContext(
+    input,
+    location2,
+    deps,
+    async (context) => isRegistered(context) ? primer(deps.command, coverageOf(context)) : null
+  );
+  return { text, stopWaitMs: readPolicy(location2.root).stop.waitMs, primer: current };
 }
 async function runBridge(stdin, module, kind, handler) {
   try {
