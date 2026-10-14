@@ -44,3 +44,12 @@ Use /reviewer. Outcome: `reviews/wave-0.md` committed, every finding labelled pr
 - Range: wave 0 as landed (the spawn names the commits). Spec: D1, D2, D4, D6, D8; `wave-0-checks.md`.
 - Questions: can the plugin ever throw, hang OpenCode, or keep `opencode run` alive (D4's deadlines, the process-group kill, `dispose`); does the plugin bundle reach `node:sqlite` or `process.execPath`; is the fast path right outside and inside a Squeal repository and in a linked worktree (`worktree` against `project`); is the consumer identity of D2 right for a root, a child and a resume; does `runOpenCode` keep every run off the real `HOME`; is the bridge latency test honest at load.
 - Writes only `docs/specifications/008-opencode-adapter/reviews/wave-0.md`. Runs real OpenCode only through `runOpenCode` or as `squeal-e2e`.
+
+## 008-16 review of wave 1 and re-review of wave 0's blockers
+
+Use /reviewer. Outcome: `reviews/wave-1.md` committed, every finding labelled proven, plausible or unverified.
+
+- Range: wave 1 as integrated for 0.1.178, `47a3e4ad~1..f0c45b2f` (rows 008-13, 008-14, 008-12, then the bundle commit). Spec: D1 to D9 as amended; `reviews/wave-0.md`.
+- Re-review: B1 to B4, S1, S2 and N1 of `reviews/wave-0.md`, each fixed in its own 008-12 commit; say for each whether the fix holds, with the probe that proved the break re-run. This is the last round on those blockers.
+- Questions for wave 1: can any hook throw except the deliberate deny, or hold OpenCode past its deadline, or keep `opencode run` alive (the waiter included); does the end of turn continue at most once and never after an abort; is a child its own consumer and unregistered at its idle; does a pull from a root and a child shell credit the right consumer; can `install.sh` edit OpenCode's config, use `--force`, delete a directory a running process names, or leave two Squeal plugins loaded; does `runOpenCode` still keep every run off the real `HOME` with `setup` and `afterReply`.
+- Writes only `docs/specifications/008-opencode-adapter/reviews/wave-1.md`. Runs real OpenCode only through `runOpenCode` or as `squeal-e2e`. Latency is the coordinator's, at calm load; do not rule on it.
