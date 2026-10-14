@@ -22,6 +22,10 @@ export const MAIN_AGENT = "main";
 /** D3: the primer's cap in the system prompt (002 D3). */
 export const PRIMER_CAP_CHARS = 8_000;
 
+/** Two texts for one place, a blank line between; `null` when neither is. */
+const joined = (first: string | null, second: string | null): string | null =>
+  first === null ? second : second === null ? first : `${first}\n\n${second}`;
+
 /** How the hooks reach the bridge and OpenCode. */
 export interface HookHost {
   readonly node: string;
@@ -67,6 +71,10 @@ export function squealHooks(host: HookHost): OcHooks {
     const consumer = await map.consumerOf(id, deadline);
     return disposed ? null : consumer;
   };
+
+  /** News a cancelled continuation carried, once, for a root's next message or tool result (review 008-16 B2). */
+  const held = (consumer: OcConsumer): string | null =>
+    consumer.agentId === undefined ? turn.take(consumer.sessionId) : null;
 
   /** Registers `consumer` once per instance; its header, or `null`. */
   const register = (consumer: OcConsumer, deadline: Deadline): Promise<string | null> => {
@@ -181,17 +189,19 @@ export function squealHooks(host: HookHost): OcHooks {
           }
           text = await register(consumer, deadline);
         }
-        if (text === null || disposed) return;
+        if (disposed) return;
         // D3 as amended: without an id that sorts last OpenCode fails the prompt, so nothing is added.
         const id = partAfter(output.parts);
         if (id === null) return;
+        const added = joined(held(consumer), text);
+        if (added === null) return;
         const { message } = output;
         output.parts.push({
           id,
           sessionID: message.sessionID,
           messageID: message.id,
           type: "text",
-          text,
+          text: added,
           synthetic: true,
         });
       } catch {
@@ -221,7 +231,9 @@ export function squealHooks(host: HookHost): OcHooks {
         const consumer = await identify(input.sessionID, deadline);
         if (consumer === null) return;
         const text = (await ask("after", { consumer, tool: input.tool }, deadline))?.text ?? null;
-        if (text !== null && !disposed) output.output = `${output.output}\n\n${text}`;
+        if (disposed) return;
+        const added = joined(held(consumer), text);
+        if (added !== null) output.output = `${output.output}\n\n${added}`;
       } catch {
         // D4: silence.
       }
