@@ -2316,10 +2316,10 @@ function cap(text2, max) {
   return text2.length <= max ? text2 : `${text2.slice(0, max - 3)}...`;
 }
 function excludedProjectsText(entries2) {
-  const quoted2 = (list2, join90) => {
+  const quoted2 = (list2, join91) => {
     const all = list2.map((entry3) => JSON.stringify(entry3));
     const last = all.pop();
-    return all.length === 0 ? last : `${all.join(", ")} ${join90} ${last}`;
+    return all.length === 0 ? last : `${all.join(", ")} ${join91} ${last}`;
   };
   const names3 = entries2.filter((entry3) => !entry3.includes("*"));
   const patterns = entries2.filter((entry3) => entry3.includes("*"));
@@ -12582,9 +12582,9 @@ var init_handler = __esm({
         if (this.fsw.closed) {
           return;
         }
-        const dirname36 = sp.dirname(file);
+        const dirname37 = sp.dirname(file);
         const basename21 = sp.basename(file);
-        const parent2 = this.fsw._getWatchedDir(dirname36);
+        const parent2 = this.fsw._getWatchedDir(dirname37);
         let prevStats = stats;
         if (parent2.has(basename21))
           return;
@@ -12611,7 +12611,7 @@ var init_handler = __esm({
                 prevStats = newStats2;
               }
             } catch (error) {
-              this.fsw._remove(dirname36, basename21);
+              this.fsw._remove(dirname37, basename21);
             }
           } else if (parent2.has(basename21)) {
             const at2 = newStats.atimeMs;
@@ -24657,7 +24657,7 @@ var require_CachedInputFileSystem = __commonJS({
   "node_modules/enhanced-resolve/lib/CachedInputFileSystem.js"(exports, module2) {
     "use strict";
     var { nextTick } = __require("process");
-    var dirname36 = (path) => {
+    var dirname37 = (path) => {
       let idx = path.length - 1;
       while (idx >= 0) {
         const char = path.charCodeAt(idx);
@@ -25082,12 +25082,12 @@ var require_CachedInputFileSystem = __commonJS({
           this.purge();
         } else if (typeof what === "string" || Buffer.isBuffer(what) || what instanceof URL || typeof what === "number") {
           const strWhat = typeof what !== "string" ? what.toString() : what;
-          this.purge(dirname36(strWhat));
+          this.purge(dirname37(strWhat));
         } else {
           const set = /* @__PURE__ */ new Set();
           for (const item of what) {
             const strItem = typeof item !== "string" ? item.toString() : item;
-            set.add(dirname36(strItem));
+            set.add(dirname37(strItem));
           }
           this.purge(set);
         }
@@ -25230,9 +25230,9 @@ var require_CachedInputFileSystem = __commonJS({
         const readFile9 = this._readFileBackend.provide;
         this.readFile = /** @type {FileSystem["readFile"]} */
         readFile9;
-        const readFileSync33 = this._readFileBackend.provideSync;
+        const readFileSync34 = this._readFileBackend.provideSync;
         this.readFileSync = /** @type {SyncFileSystem["readFileSync"]} */
-        readFileSync33;
+        readFileSync34;
         this._readJsonBackend = createBackend(
           duration2,
           // prettier-ignore
@@ -26425,7 +26425,7 @@ var require_path = __commonJS({
   "node_modules/enhanced-resolve/lib/util/path.js"(exports, module2) {
     "use strict";
     var path = __require("path");
-    var { fileURLToPath: fileURLToPath13 } = __require("url");
+    var { fileURLToPath: fileURLToPath14 } = __require("url");
     var CHAR_HASH = "#".charCodeAt(0);
     var CHAR_SLASH = "/".charCodeAt(0);
     var CHAR_BACKSLASH = "\\".charCodeAt(0);
@@ -26538,7 +26538,7 @@ var require_path = __commonJS({
       }
       return posixNormalize(maybePath);
     };
-    var join90 = (rootPath, request) => {
+    var join91 = (rootPath, request) => {
       if (!request) return normalize6(rootPath);
       const requestType = getType(request);
       switch (requestType) {
@@ -26565,7 +26565,7 @@ var require_path = __commonJS({
       }
       return posixNormalize(rootPath);
     };
-    var dirname36 = (maybePath) => {
+    var dirname37 = (maybePath) => {
       switch (getType(maybePath)) {
         case PathType.AbsoluteWin:
           return path.win32.dirname(maybePath);
@@ -26583,7 +26583,7 @@ var require_path = __commonJS({
           cacheEntry = inner.get(request);
           if (cacheEntry !== void 0) return cacheEntry;
         }
-        cacheEntry = join90(rootPath, request);
+        cacheEntry = join91(rootPath, request);
         inner.set(request, cacheEntry);
         return cacheEntry;
       };
@@ -26594,7 +26594,7 @@ var require_path = __commonJS({
       const fn = (maybePath) => {
         const cacheEntry = cache2.get(maybePath);
         if (cacheEntry !== void 0) return cacheEntry;
-        const result = dirname36(maybePath);
+        const result = dirname37(maybePath);
         cache2.set(maybePath, result);
         return result;
       };
@@ -26683,15 +26683,15 @@ var require_path = __commonJS({
       return (c0 === CHAR_LOWER_F || c0 === CHAR_F) && FILE_URL_REGEXP.test(maybePath);
     };
     var toPath = (maybeURL) => {
-      if (maybeURL instanceof URL) return fileURLToPath13(maybeURL);
-      return isFileURL(maybeURL) ? fileURLToPath13(maybeURL) : maybeURL;
+      if (maybeURL instanceof URL) return fileURLToPath14(maybeURL);
+      return isFileURL(maybeURL) ? fileURLToPath14(maybeURL) : maybeURL;
     };
     module2.exports.PathType = PathType;
     module2.exports.createCachedBasename = createCachedBasename;
     module2.exports.createCachedDirname = createCachedDirname;
     module2.exports.createCachedJoin = createCachedJoin;
     module2.exports.deprecatedInvalidSegmentRegEx = deprecatedInvalidSegmentRegEx;
-    module2.exports.dirname = dirname36;
+    module2.exports.dirname = dirname37;
     module2.exports.getType = getType;
     module2.exports.invalidSegmentRegEx = invalidSegmentRegEx;
     module2.exports.isFileURL = isFileURL;
@@ -26699,7 +26699,7 @@ var require_path = __commonJS({
     module2.exports.isRelativeRequest = isRelativeRequest;
     module2.exports.isSubPath = isSubPath;
     module2.exports.isWindowsPath = isWindowsPath;
-    module2.exports.join = join90;
+    module2.exports.join = join91;
     module2.exports.normalize = normalize6;
     module2.exports.toPath = toPath;
   }
@@ -27285,7 +27285,7 @@ var require_DirectoryExistsPlugin = __commonJS({
 var require_identifier = __commonJS({
   "node_modules/enhanced-resolve/lib/util/identifier.js"(exports, module2) {
     "use strict";
-    var { fileURLToPath: fileURLToPath13 } = __require("url");
+    var { fileURLToPath: fileURLToPath14 } = __require("url");
     var { isFileURL } = require_path();
     var PATH_QUERY_FRAGMENT_REGEXP = /^(#?(?:\0.|[^?#\0])*)(\?(?:\0.|[^#\0])*)?(#.*)?$/;
     var ZERO_ESCAPE_REGEXP = /\0(.)/g;
@@ -27301,7 +27301,7 @@ var require_identifier = __commonJS({
         return null;
       }
       if (isFileURL(identifier)) {
-        identifier = fileURLToPath13(identifier);
+        identifier = fileURLToPath14(identifier);
       }
       const firstEscape = identifier.indexOf("\0");
       if (firstEscape !== -1) {
@@ -28748,7 +28748,7 @@ var require_fileURLToPath = __commonJS({
       }
       return decodeURIComponent(pathname);
     }
-    function fileURLToPath13(path, options) {
+    function fileURLToPath14(path, options) {
       const url = typeof path === "string" ? new URL(path) : path;
       if (url.protocol !== "file:") {
         throw new TypeError("The URL must be of scheme file");
@@ -28756,7 +28756,7 @@ var require_fileURLToPath = __commonJS({
       const windows = options && options.windows !== void 0 ? options.windows : isWindows2;
       return windows ? getPathFromURLWin32(url) : getPathFromURLPosix(url);
     }
-    module2.exports = fileURLToPath13;
+    module2.exports = fileURLToPath14;
   }
 });
 
@@ -28820,7 +28820,7 @@ var require_pathToFileURL = __commonJS({
 var require_packageMap = __commonJS({
   "node_modules/enhanced-resolve/lib/util/packageMap.js"(exports, module2) {
     "use strict";
-    var fileURLToPath13 = require_fileURLToPath();
+    var fileURLToPath14 = require_fileURLToPath();
     var { isInside, normalize: normalize6 } = require_path();
     var pathToFileURL4 = require_pathToFileURL();
     function createError(message2, code) {
@@ -28847,7 +28847,7 @@ var require_packageMap = __commonJS({
           "ERR_INVALID_PACKAGE_MAP"
         );
       }
-      return normalize6(fileURLToPath13(parsed));
+      return normalize6(fileURLToPath14(parsed));
     }
     function parsePackageMap(data2, configFilePath) {
       if (!data2 || typeof data2 !== "object" || Array.isArray(data2)) {
@@ -32714,7 +32714,7 @@ var require_ResolverFactory = __commonJS({
     var TsconfigPathsPlugin = require_TsconfigPathsPlugin();
     var UnsafeCachePlugin = require_UnsafeCachePlugin();
     var UseFilePlugin = require_UseFilePlugin();
-    var { PathType, getType, join: join90, toPath } = require_path();
+    var { PathType, getType, join: join91, toPath } = require_path();
     function processPnpApiOption(option) {
       if (option === void 0 && /** @type {NodeJS.ProcessVersions & { pnp: string }} */
       versions.pnp) {
@@ -32769,7 +32769,7 @@ var require_ResolverFactory = __commonJS({
           "The 'packageMap' option needs an absolute 'configFile' in an environment without a working directory"
         );
       }
-      return join90(cwd(), file);
+      return join91(cwd(), file);
     }
     function normalizePackageMap(packageMap) {
       if (packageMap === void 0) return null;
@@ -43338,6 +43338,9 @@ var init_slow_instance = __esm({
   }
 });
 
+// src/cli/main.ts
+import { fileURLToPath as fileURLToPath13 } from "node:url";
+
 // src/core/daemon/version.ts
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -43345,7 +43348,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.170";
+  if (true) return "0.1.171";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -49022,9 +49025,42 @@ function readSettings(path) {
   return { value, text: text2, indent: /^([ \t]+)"/m.exec(text2)?.[1] ?? 2 };
 }
 
+// src/cli/pi/status.ts
+import { existsSync as existsSync30, readFileSync as readFileSync31 } from "node:fs";
+import { dirname as dirname35, join as join87 } from "node:path";
+init_fs();
+var INSTALL_SH_COMMAND = "curl -fsSL https://github.com/hearsay-tools/squeal/releases/latest/download/install.sh | sh";
+function piCliCommand(cli, node = process.execPath) {
+  return `${shellWord(node)} --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
+}
+function piInstallCommand(cli) {
+  const root = dirname35(dirname35(dirname35(cli)));
+  try {
+    const manifest = join87(root, "package.json");
+    if (existsSync30(manifest) && JSON.parse(readFileSync31(manifest, "utf8")).name === "squeal-pi") {
+      return `pi install ${shellWord(root)}`;
+    }
+  } catch {
+  }
+  return INSTALL_SH_COMMAND;
+}
+function piStatusLine(cwd, env, cli) {
+  const session = env.PI_SESSION_ID;
+  if (session === void 0 || session === "") return null;
+  const registered = withStatusStore(
+    cwd,
+    {},
+    ({ store, root }) => store.consumers.list(worktreeIdFor(root)).some((c) => c.consumer.sessionId === session)
+  );
+  if (registered === true) return null;
+  if (registered !== false && registered.reason !== "no-store") return null;
+  return `Pi: no Squeal consumer is registered for this session in this worktree (PI_SESSION_ID ${session}). Either the Squeal Pi extension is not loaded in it, or it has not registered the session yet: a session that started before the store existed registers at its next tool call. Without the extension, install it with ${piInstallCommand(cli)}, then start Pi again.
+`;
+}
+
 // src/cli/remove.ts
-import { existsSync as existsSync30, lstatSync as lstatSync6, readdirSync as readdirSync16, readFileSync as readFileSync31, rmSync as rmSync11 } from "node:fs";
-import { basename as basename20, dirname as dirname35, join as join87 } from "node:path";
+import { existsSync as existsSync31, lstatSync as lstatSync6, readdirSync as readdirSync16, readFileSync as readFileSync32, rmSync as rmSync11 } from "node:fs";
+import { basename as basename20, dirname as dirname36, join as join88 } from "node:path";
 import { setTimeout as sleep6 } from "node:timers/promises";
 init_lock();
 init_paths4();
@@ -49073,7 +49109,7 @@ async function removeCommand(args2, io, options = {}) {
     return 1;
   }
   const storeDir = storePaths(commonDir).dir;
-  const configPath = join87(root, "squeal.config.json");
+  const configPath = join88(root, "squeal.config.json");
   const removed = [];
   const failed2 = [];
   const remove = (path, line) => {
@@ -49085,7 +49121,7 @@ async function removeCommand(args2, io, options = {}) {
       failed2.push(`${path}: could not delete it (${code}); delete it by hand`);
     }
   };
-  if (existsSync30(storeDir)) {
+  if (existsSync31(storeDir)) {
     const worktrees = recordedWorktrees(commonDir);
     const stopped = [];
     for (const worktree of worktrees) if (await askToStop(worktree)) stopped.push(worktree.root);
@@ -49112,7 +49148,7 @@ ${stopped.map((r) => `  ${r}
       for (const lock2 of locks) lock2.release();
     }
   }
-  if (config && existsSync30(configPath)) {
+  if (config && existsSync31(configPath)) {
     const tracked = await isTracked(root, "squeal.config.json");
     remove(
       configPath,
@@ -49120,7 +49156,7 @@ ${stopped.map((r) => `  ${r}
     );
   }
   for (const edit of removeBlocks(root, await blockFiles(root))) {
-    const path = join87(root, edit.path);
+    const path = join88(root, edit.path);
     if (edit.result === "unterminated") {
       failed2.push(
         `${path}: its Squeal block begins at line ${edit.line} with no end marker; delete it by hand`
@@ -49140,7 +49176,7 @@ ${removed.map((line) => `  ${line}
   io.stdout("Still there:\n");
   for (const line of failed2) io.stdout(`  ${line}
 `);
-  if (existsSync30(configPath)) {
+  if (existsSync31(configPath)) {
     io.stdout(
       `  ${configPath}: the next Claude Code session here starts Squeal again. It is committed; delete it, or run squeal remove --config.
 `
@@ -49158,7 +49194,7 @@ ${removed.map((line) => `  ${line}
 function pluginLine(root) {
   let settings = null;
   try {
-    settings = JSON.parse(readFileSync31(join87(root, ".claude", "settings.json"), "utf8"));
+    settings = JSON.parse(readFileSync32(join88(root, ".claude", "settings.json"), "utf8"));
   } catch {
   }
   const keys = (field, names3) => {
@@ -49184,7 +49220,7 @@ async function isTracked(root, path) {
 }
 async function otherConfigs(root) {
   const out2 = await runGit(root, ["worktree", "list", "--porcelain", "-z"]).catch(() => "");
-  return splitNul(out2).filter((field) => field.startsWith("worktree ") && field !== `worktree ${root}`).map((field) => join87(field.slice("worktree ".length), "squeal.config.json")).filter((path) => existsSync30(path));
+  return splitNul(out2).filter((field) => field.startsWith("worktree ") && field !== `worktree ${root}`).map((field) => join88(field.slice("worktree ".length), "squeal.config.json")).filter((path) => existsSync31(path));
 }
 function recordedWorktrees(commonDir) {
   const store = openStore(commonDir, { create: false, busyTimeoutMs: CLI_SOCKET_TIMEOUT_MS });
@@ -49196,7 +49232,7 @@ function recordedWorktrees(commonDir) {
   }
 }
 async function askToStop(worktree) {
-  const socketPath = existsSync30(worktree.root) ? (await locateDaemon(worktree.root, CLI_SOCKET_TIMEOUT_MS, { record: worktree.daemon })).socketPath : worktree.daemon?.socketPath ?? socketPathFor(worktree.id);
+  const socketPath = existsSync31(worktree.root) ? (await locateDaemon(worktree.root, CLI_SOCKET_TIMEOUT_MS, { record: worktree.daemon })).socketPath : worktree.daemon?.socketPath ?? socketPathFor(worktree.id);
   const response = await askDaemon(socketPath, { type: "stop" }).catch(() => null);
   return response?.ok === true;
 }
@@ -49208,7 +49244,7 @@ async function holdDaemonLocks(commonDir, waitMs) {
   const held2 = [];
   const deadline = Date.now() + waitMs;
   for (const name2 of names3) {
-    const lockPath = join87(locksDir, name2);
+    const lockPath = join88(locksDir, name2);
     for (; ; ) {
       const lock2 = acquireDaemonLock(lockPath);
       if (lock2 !== null) {
@@ -49225,19 +49261,19 @@ async function holdDaemonLocks(commonDir, waitMs) {
   return held2;
 }
 function tempDirs(commonDir, worktrees) {
-  if (!existsSync30(join87(storePaths(commonDir).dir, "repository-id"))) return [];
+  if (!existsSync31(join88(storePaths(commonDir).dir, "repository-id"))) return [];
   const uid = currentUid();
   const dirs = [];
   for (const { root } of worktrees) {
     const scratch = daemonScratch(commonDir, root, uid);
     const key2 = basename20(scratch.tempDir);
     if (isPrivate(scratch.userDir, uid)) {
-      const tmp = dirname35(scratch.tempDir);
+      const tmp = dirname36(scratch.tempDir);
       dirs.push(...entries(tmp).filter((path) => isOwnDir(path, uid, `${scratch.tempDir}.old-`)));
-      if (existsSync30(scratch.tempDir)) dirs.push(scratch.tempDir);
+      if (existsSync31(scratch.tempDir)) dirs.push(scratch.tempDir);
     }
     const fallback = `${userTmpDir(uid)}-${key2}-`;
-    dirs.push(...entries(dirname35(fallback)).filter((path) => isOwnDir(path, uid, fallback)));
+    dirs.push(...entries(dirname36(fallback)).filter((path) => isOwnDir(path, uid, fallback)));
   }
   return dirs;
 }
@@ -49255,7 +49291,7 @@ function isOwnDir(path, uid, prefix) {
   return stat7?.isDirectory() === true && stat7.uid === uid;
 }
 function entries(dir2) {
-  return safeList2(dir2).map((name2) => join87(dir2, name2));
+  return safeList2(dir2).map((name2) => join88(dir2, name2));
 }
 function safeList2(dir2) {
   try {
@@ -49287,17 +49323,20 @@ init_state3();
 import { fileURLToPath as fileURLToPath12 } from "node:url";
 
 // src/harness/codex/command.ts
-import { join as join88 } from "node:path";
+import { join as join89 } from "node:path";
 function codexCommand(env, bundleCli) {
   const root = env.PLUGIN_ROOT;
-  const cli = root === void 0 || root === "" ? bundleCli : join88(root, "dist/cli/squeal.mjs");
+  const cli = root === void 0 || root === "" ? bundleCli : join89(root, "dist/cli/squeal.mjs");
   return `node --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
 }
 
 // src/cli/status-command.ts
 function statusCommand(env, cli = fileURLToPath12(import.meta.url)) {
-  const session = env.CODEX_SESSION_ID;
-  return session === void 0 || session === "" ? SQUEAL_COMMAND : codexCommand(env, cli);
+  if (env.CODEX_SESSION_ID !== void 0 && env.CODEX_SESSION_ID !== "") {
+    return codexCommand(env, cli);
+  }
+  if (env.PI_SESSION_ID !== void 0 && env.PI_SESSION_ID !== "") return piCliCommand(cli);
+  return SQUEAL_COMMAND;
 }
 
 // src/cli/status-sync.ts
@@ -50950,8 +50989,8 @@ function processGone(pid) {
 // src/cli/update.ts
 init_fs();
 import { spawnSync as spawnSync2 } from "node:child_process";
-import { chmodSync as chmodSync3, copyFileSync, existsSync as existsSync31, readdirSync as readdirSync17, readFileSync as readFileSync32 } from "node:fs";
-import { join as join89 } from "node:path";
+import { chmodSync as chmodSync3, copyFileSync, existsSync as existsSync32, readdirSync as readdirSync17, readFileSync as readFileSync33 } from "node:fs";
+import { join as join90 } from "node:path";
 var NAMES2 = { "claude-code": "Claude Code", codex: "Codex" };
 var UPDATE_COMMANDS = {
   "claude-code": [
@@ -51034,19 +51073,19 @@ function run3(command, cwd, env, io) {
 var FORMAT = /^# squeal-launcher format (\d+)$/m;
 function launcherFormat(path) {
   try {
-    const match2 = FORMAT.exec(readFileSync32(path, "utf8"));
+    const match2 = FORMAT.exec(readFileSync33(path, "utf8"));
     return match2 === null ? null : Number(match2[1]);
   } catch {
     return null;
   }
 }
 function recopyLauncher(env, io) {
-  const target = join89(env.SQUEAL_BIN_DIR ?? join89(env.HOME ?? "", ".local", "bin"), "squeal");
+  const target = join90(env.SQUEAL_BIN_DIR ?? join90(env.HOME ?? "", ".local", "bin"), "squeal");
   const current2 = launcherFormat(target);
   if (current2 === null) return;
   let newest = null;
   for (const dir2 of pluginDirs(env)) {
-    const path = join89(dir2, "bin", "squeal-launcher");
+    const path = join90(dir2, "bin", "squeal-launcher");
     const format = launcherFormat(path);
     if (format !== null && format > (newest?.format ?? current2)) newest = { path, format };
   }
@@ -51059,10 +51098,10 @@ function recopyLauncher(env, io) {
 function pluginDirs(env) {
   const home = env.HOME ?? "";
   const dirs = [];
-  const config = env.CLAUDE_CONFIG_DIR ?? join89(home, ".claude");
+  const config = env.CLAUDE_CONFIG_DIR ?? join90(home, ".claude");
   try {
     const file = JSON.parse(
-      readFileSync32(join89(config, "plugins", "installed_plugins.json"), "utf8")
+      readFileSync33(join90(config, "plugins", "installed_plugins.json"), "utf8")
     );
     const entries2 = isRecord(file) && isRecord(file.plugins) ? file.plugins[PLUGIN_ID] : null;
     for (const entry3 of Array.isArray(entries2) ? entries2 : []) {
@@ -51070,14 +51109,14 @@ function pluginDirs(env) {
     }
   } catch {
   }
-  const cache2 = join89(
-    env.CODEX_HOME ?? join89(home, ".codex"),
+  const cache2 = join90(
+    env.CODEX_HOME ?? join90(home, ".codex"),
     "plugins",
     "cache",
     MARKETPLACE_NAME,
     PLUGIN_NAME
   );
-  if (existsSync31(cache2)) for (const version2 of readdirSync17(cache2)) dirs.push(join89(cache2, version2));
+  if (existsSync32(cache2)) for (const version2 of readdirSync17(cache2)) dirs.push(join90(cache2, version2));
   return dirs;
 }
 
@@ -51179,8 +51218,8 @@ function status(args2, io) {
   const cwd = io.cwd ?? process.cwd();
   const result = readStatus(cwd, { now });
   const env = io.env ?? process.env;
-  const codex = parsed.json ? null : codexStatusLine(cwd, env);
-  const human = () => `${formatStatus(result, now(), statusCommand(env), { allNotes })}${codex ?? ""}`;
+  const harness = parsed.json ? null : codexStatusLine(cwd, env) ?? piStatusLine(cwd, env, fileURLToPath13(import.meta.url));
+  const human = () => `${formatStatus(result, now(), statusCommand(env), { allNotes })}${harness ?? ""}`;
   io.stdout(parsed.json ? json2(result) : human());
   return result.available ? 0 : 1;
 }

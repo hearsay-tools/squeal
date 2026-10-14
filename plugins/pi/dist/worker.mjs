@@ -194,6 +194,17 @@ function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+// src/core/fs/paths.ts
+import { isAbsolute as isAbsolute2, join as join2, relative, sep } from "node:path";
+function toRelative(root, abs) {
+  const rel = relative(root, abs);
+  if (rel === "" || rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute2(rel)) return null;
+  return sep === "/" ? rel : rel.split(sep).join("/");
+}
+function toAbsolute(root, rel) {
+  return join2(root, ...rel.split("/"));
+}
+
 // src/core/keys/glob.ts
 function globToRegExp(glob) {
   if (glob.startsWith("!")) throw new Error(`squeal: negated input glob is not supported: ${glob}`);
@@ -313,10 +324,10 @@ function cap(text, max) {
   return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
 }
 function excludedProjectsText(entries) {
-  const quoted = (list, join14) => {
-    const all = list.map((entry2) => JSON.stringify(entry2));
+  const quoted = (list2, join19) => {
+    const all = list2.map((entry2) => JSON.stringify(entry2));
     const last = all.pop();
-    return all.length === 0 ? last : `${all.join(", ")} ${join14} ${last}`;
+    return all.length === 0 ? last : `${all.join(", ")} ${join19} ${last}`;
   };
   const names = entries.filter((entry2) => !entry2.includes("*"));
   const patterns = entries.filter((entry2) => entry2.includes("*"));
@@ -427,7 +438,7 @@ function readOptimizerOff(store, worktreeId) {
 
 // src/core/daemon/policy.ts
 import { readFileSync as readFileSync2 } from "node:fs";
-import { join as join2 } from "node:path";
+import { join as join3 } from "node:path";
 
 // src/core/notes.ts
 function readDaemonNotes(store, worktreeId) {
@@ -467,7 +478,7 @@ function stoppedOf(value) {
 }
 
 // src/core/daemon/policy-node-test.ts
-import { isAbsolute as isAbsolute2, posix } from "node:path";
+import { isAbsolute as isAbsolute3, posix } from "node:path";
 function compiles(globs2) {
   for (const glob of globs2) {
     try {
@@ -486,7 +497,7 @@ var variables = (v) => isRecord(v) && Object.values(v).every((s) => typeof s ===
 var insideRoot = (v) => {
   if (typeof v !== "string") return "a path inside the worktree, relative to its root";
   const normal = posix.normalize(v.replaceAll("\\", "/"));
-  return isAbsolute2(v) || normal === ".." || normal.startsWith("../") ? "a path inside the worktree, relative to its root" : null;
+  return isAbsolute3(v) || normal === ".." || normal.startsWith("../") ? "a path inside the worktree, relative to its root" : null;
 };
 var FIELDS = {
   name: nonEmptyString,
@@ -542,7 +553,7 @@ function entryProblem(entry2, at2, kept, fields, required, check) {
 }
 
 // src/core/daemon/policy-pytest.ts
-import { isAbsolute as isAbsolute3, posix as posix2 } from "node:path";
+import { isAbsolute as isAbsolute4, posix as posix2 } from "node:path";
 var FIELDS2 = {
   name: nonEmptyString,
   cwd: insideRoot,
@@ -562,7 +573,7 @@ function withDefaults2(entry2) {
 }
 var pythonInsideRoot = (entry2) => {
   const python = entry2.python;
-  if (python === void 0 || isAbsolute3(python)) return null;
+  if (python === void 0 || isAbsolute4(python)) return null;
   const path = posix2.join(entry2.cwd ?? ".", python.replaceAll("\\", "/"));
   if (insideRoot(path) === null) return null;
   return {
@@ -642,7 +653,7 @@ var SHAPE = {
 function loadPolicy(root) {
   let text;
   try {
-    text = readFileSync2(join2(root, POLICY_FILE), "utf8");
+    text = readFileSync2(join3(root, POLICY_FILE), "utf8");
   } catch (error) {
     if (isMissing(error)) return { policy: DEFAULT_POLICY, problems: [] };
     return defaultsBecause(`could not be read: ${String(error)}`);
@@ -846,6 +857,12 @@ function stopSlowWaitMs(policy) {
 function stopWaitMetaKey(worktreeId) {
   return worktreeMetaKey("stopWait", worktreeId);
 }
+function stopWaitRuns(store, consumer, harness, version) {
+  const registeredAt = store.consumers.get(consumer)?.registeredAt;
+  if (registeredAt === void 0) return false;
+  const value = readSlot(store, stopWaitMetaKey(consumer.worktreeId), consumer);
+  return isRecord(value) && value.registeredAt === registeredAt && value[harness] === version;
+}
 function forgetStopWait(store, consumer) {
   writeSlot(store, stopWaitMetaKey(consumer.worktreeId), consumer, null);
 }
@@ -1014,6 +1031,9 @@ function consumerInTurn(store, worktreeId) {
     return isRecord(turn) && turn.turn === "in-turn";
   });
 }
+function slowFilesNotCurrent(states, keys, isSlow) {
+  return [...classifySlowFiles(states, keys, isSlow).values()].filter((file) => file.class !== "current").map((file) => file.ref);
+}
 
 // src/core/state/header.ts
 function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId), isSlow) {
@@ -1068,13 +1088,19 @@ function readRefined(store, worktreeId) {
   const value = raw === null ? Number.NaN : Number(raw);
   return Number.isInteger(value) ? value : null;
 }
+function isFastPending(header) {
+  const slow = header.slowPending;
+  const checks = header.counts.pending - (slow?.checks ?? 0);
+  const files2 = header.testFilesWithoutChecks.pending - (slow?.testFilesWithoutChecks ?? 0);
+  return checks + files2 > 0 || header.runnerPartPending === true;
+}
 function runnerPartText(revision) {
   return `the runner part of revision ${revision}`;
 }
 function fullSuiteText({ revision, fullSuite }, command) {
   if (fullSuite.atCurrentRevision) return `completed at revision ${revision}`;
-  const none = fullSuite.lastCompletedRevision === null ? "none completed at any revision" : `none completed since revision ${fullSuite.lastCompletedRevision}`;
-  return `${none} (the counts are for revision ${revision}; \`${command} run --all\` requests one)`;
+  const none2 = fullSuite.lastCompletedRevision === null ? "none completed at any revision" : `none completed since revision ${fullSuite.lastCompletedRevision}`;
+  return `${none2} (the counts are for revision ${revision}; \`${command} run --all\` requests one)`;
 }
 function countFilesWithoutChecks(states, keys) {
   const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
@@ -1259,11 +1285,11 @@ function byFile(checks, fileLevel) {
   const files2 = [...byFile2].sort(
     ([a, m], [b, n]) => n.length - m.length || (a < b ? -1 : a > b ? 1 : 0)
   );
-  const parts = (list) => checkPartsText(countChecks(list), fileLevel);
-  const lines = files2.slice(0, FILES_SHOWN).map(([file, list]) => `${parts(list)} in ${file}`);
+  const parts = (list2) => checkPartsText(countChecks(list2), fileLevel);
+  const lines = files2.slice(0, FILES_SHOWN).map(([file, list2]) => `${parts(list2)} in ${file}`);
   const rest = files2.slice(FILES_SHOWN);
   if (rest.length === 0) return lines;
-  const restChecks = rest.flatMap(([, list]) => list);
+  const restChecks = rest.flatMap(([, list2]) => list2);
   return [...lines, `and ${plural(rest.length, "more test file")} (${parts(restChecks)})`];
 }
 function collapse(head, changed, stillFailing) {
@@ -1387,22 +1413,22 @@ function isBusy(error) {
 
 // src/core/store/open.ts
 import { existsSync as existsSync3, mkdirSync, renameSync, rmSync as rmSync2 } from "node:fs";
-import { join as join5 } from "node:path";
+import { join as join6 } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 // src/core/store/paths.ts
-import { join as join3 } from "node:path";
+import { join as join4 } from "node:path";
 function storePaths(commonDir) {
-  const dir = join3(commonDir, "squeal");
+  const dir = join4(commonDir, "squeal");
   return {
     dir,
-    database: join3(dir, "store.sqlite"),
-    runsDir: join3(dir, "runs"),
-    locksDir: join3(dir, "locks")
+    database: join4(dir, "store.sqlite"),
+    runsDir: join4(dir, "runs"),
+    locksDir: join4(dir, "locks")
   };
 }
 function lockFileFor(commonDir, worktreeId) {
-  return join3(storePaths(commonDir).locksDir, `${worktreeId}.sqlite`);
+  return join4(storePaths(commonDir).locksDir, `${worktreeId}.sqlite`);
 }
 
 // src/core/store/schema.ts
@@ -1698,7 +1724,7 @@ function flag(value) {
 
 // src/core/store/prune.ts
 import { existsSync as existsSync2, rmSync } from "node:fs";
-import { join as join4, resolve as resolve2, sep } from "node:path";
+import { join as join5, resolve as resolve2, sep as sep2 } from "node:path";
 var DAY_MS = 24 * 60 * 60 * 1e3;
 var EVICTION_BATCH = 32;
 var DELETE_BATCH = 256;
@@ -1725,7 +1751,7 @@ function prune(conn, worktrees, paths, options) {
   const cutoff = options.now - options.retentionDays * DAY_MS;
   let worktreesRemoved = 0;
   for (const worktree of worktrees.list()) {
-    if (existsSync2(join4(worktree.root, ".git"))) continue;
+    if (existsSync2(join5(worktree.root, ".git"))) continue;
     worktrees.remove(worktree.id);
     worktreesRemoved++;
   }
@@ -1834,7 +1860,7 @@ function pragmaNumber(conn, name) {
 function removeRunLog(paths, logDir) {
   const runsDir = resolve2(paths.runsDir);
   const target = resolve2(logDir);
-  if (target.startsWith(runsDir + sep)) rmSync(target, { recursive: true, force: true });
+  if (target.startsWith(runsDir + sep2)) rmSync(target, { recursive: true, force: true });
 }
 
 // src/core/store/repos/consumers.ts
@@ -2777,10 +2803,10 @@ function connect(paths, options) {
   try {
     db = new DatabaseSync(paths.database);
     db.exec(`PRAGMA busy_timeout = ${busyTimeout(options)}`);
-    const found = userVersion(db);
-    if (found > SCHEMA_VERSION) {
+    const found2 = userVersion(db);
+    if (found2 > SCHEMA_VERSION) {
       db.close();
-      return { reason: "newer-schema", found, supported: SCHEMA_VERSION };
+      return { reason: "newer-schema", found: found2, supported: SCHEMA_VERSION };
     }
     if (options.checkIntegrity === true) {
       const problem = integrityProblem(db);
@@ -2832,7 +2858,7 @@ function isCorruption(error) {
 }
 function recover(paths, options) {
   mkdirSync(paths.locksDir, { recursive: true });
-  const lock2 = new DatabaseSync(join5(paths.locksDir, "store-recovery.sqlite"));
+  const lock2 = new DatabaseSync(join6(paths.locksDir, "store-recovery.sqlite"));
   try {
     lock2.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
     lock2.exec("BEGIN EXCLUSIVE");
@@ -3296,11 +3322,11 @@ function settled(since, rekeyed, states) {
 // src/core/waiter-lock/waiter-lock.ts
 import { createHash as createHash3 } from "node:crypto";
 import { existsSync as existsSync4, mkdirSync as mkdirSync2, rmSync as rmSync3 } from "node:fs";
-import { join as join6 } from "node:path";
+import { join as join7 } from "node:path";
 import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 function waiterLockPath(locksDir, consumer) {
   const id = createHash3("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
-  return join6(locksDir, `waiter-${id}.sqlite`);
+  return join7(locksDir, `waiter-${id}.sqlite`);
 }
 function removeWaiterLock(locksDir, consumer) {
   const path = waiterLockPath(locksDir, consumer);
@@ -3457,7 +3483,7 @@ function files(refs) {
 
 // src/core/daemon/runner.ts
 import { readdirSync, readFileSync as readFileSync4 } from "node:fs";
-import { join as join7 } from "node:path";
+import { join as join8 } from "node:path";
 var VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
 function vitestDetected(root) {
   let names;
@@ -3469,7 +3495,7 @@ function vitestDetected(root) {
   if (names.some((name) => VITEST_CONFIG.test(name))) return true;
   let manifest;
   try {
-    manifest = JSON.parse(readFileSync4(join7(root, "package.json"), "utf8"));
+    manifest = JSON.parse(readFileSync4(join8(root, "package.json"), "utf8"));
   } catch {
     return false;
   }
@@ -3482,24 +3508,24 @@ function vitestDetected(root) {
 
 // src/core/status/git-head.ts
 import { readFileSync as readFileSync5 } from "node:fs";
-import { join as join8 } from "node:path";
+import { join as join9 } from "node:path";
 var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 var MAX_REF_DEPTH = 5;
 function readGitHead(root) {
   const gitDir = gitDirOf(root);
   const commonDir = resolveCommonDir(root);
   if (gitDir === null || commonDir === null) return null;
-  let value = read2(join8(gitDir, "HEAD"));
+  let value = read2(join9(gitDir, "HEAD"));
   for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
     if (SHA.test(value)) return value;
     const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
     if (ref === void 0) return null;
-    value = read2(join8(gitDir, ref)) ?? read2(join8(commonDir, ref)) ?? packed(commonDir, ref);
+    value = read2(join9(gitDir, ref)) ?? read2(join9(commonDir, ref)) ?? packed(commonDir, ref);
   }
   return null;
 }
 function packed(commonDir, ref) {
-  for (const line of (read2(join8(commonDir, "packed-refs")) ?? "").split("\n")) {
+  for (const line of (read2(join9(commonDir, "packed-refs")) ?? "").split("\n")) {
     const [sha, name] = line.split(" ");
     if (name === ref && sha !== void 0 && SHA.test(sha)) return sha;
   }
@@ -3788,6 +3814,13 @@ function writeTurn(store, consumer, state) {
 }
 function startTurn(store, consumer) {
   writeTurn(store, consumer, IN_TURN);
+}
+function resumeTurn(store, consumer) {
+  if (readTurn(store, consumer).turn !== "idle") return;
+  store.transaction(() => {
+    if (store.consumers.get(consumer) === null) return;
+    if (readTurn(store, consumer).turn === "idle") startTurn(store, consumer);
+  });
 }
 function currentKeys(keys) {
   return new Map(keys.map((k) => [testFileId(k.testFile), k.key]));
@@ -4486,7 +4519,14 @@ function findHarnessProcess(lookup = {}) {
 
 // src/harness/shared/context.ts
 import { existsSync as existsSync6 } from "node:fs";
-import { join as join9 } from "node:path";
+import { join as join10 } from "node:path";
+
+// src/core/status/format-status.ts
+function shortCommit(commit) {
+  return commit === null ? "no commit" : commit.slice(0, 7);
+}
+
+// src/harness/shared/context.ts
 function locate(cwd) {
   const root = findWorktreeRoot(cwd);
   if (root === null) return null;
@@ -4494,7 +4534,7 @@ function locate(cwd) {
   return commonDir === null ? null : { root, commonDir };
 }
 function usesSqueal(location2) {
-  return existsSync6(storePaths(location2.commonDir).database) || existsSync6(join9(location2.root, "squeal.config.json"));
+  return existsSync6(storePaths(location2.commonDir).database) || existsSync6(join10(location2.root, "squeal.config.json"));
 }
 function openContext(input, location2, options = {}) {
   const store = openStore(location2.commonDir, {
@@ -4525,7 +4565,7 @@ function openContext(input, location2, options = {}) {
 
 // src/harness/shared/coverage.ts
 import { existsSync as existsSync7 } from "node:fs";
-import { join as join10, posix as posix4 } from "node:path";
+import { join as join11, posix as posix4 } from "node:path";
 var VITEST_ONLY = {
   vitest: true,
   vitestConfig: null,
@@ -4566,10 +4606,466 @@ function fromRoot({
 function vitestConfig(root) {
   for (const name of CONFIG_NAMES) {
     for (const extension of CONFIG_EXTENSIONS) {
-      if (existsSync7(join10(root, `${name}${extension}`))) return `${name}${extension}`;
+      if (existsSync7(join11(root, `${name}${extension}`))) return `${name}${extension}`;
     }
   }
   return null;
+}
+
+// src/harness/shared/deny.ts
+import { readFileSync as readFileSync7, realpathSync as realpathSync3 } from "node:fs";
+import { join as join15, resolve as resolve6 } from "node:path";
+
+// src/core/delivery/test-command-denied.ts
+function testCommandDeniedMetaKey(worktreeId) {
+  return worktreeMetaKey("testCommandDenied", worktreeId);
+}
+function testCommandDenied(store, consumer) {
+  return readSlot(store, testCommandDeniedMetaKey(consumer.worktreeId), consumer) !== void 0;
+}
+function recordTestCommandDenied(store, consumer, revision) {
+  writeSlot(store, testCommandDeniedMetaKey(consumer.worktreeId), consumer, revision);
+}
+
+// src/core/scheduler/omitted-test-files.ts
+function omittedTestFilesMetaKey(worktreeId) {
+  return worktreeMetaKey("omittedTestFiles", worktreeId);
+}
+function readOmittedTestFiles(store, worktreeId) {
+  const raw = store.meta.get(omittedTestFilesMetaKey(worktreeId));
+  const count = raw === null ? Number.NaN : Number(raw);
+  return Number.isInteger(count) && count >= 0 ? count : null;
+}
+
+// src/runners/pytest/environment/discover.ts
+import { existsSync as existsSync8, readFileSync as readFileSync6, statSync } from "node:fs";
+import { dirname as dirname3, isAbsolute as isAbsolute5, join as join12, resolve as resolve3 } from "node:path";
+function projectDir(root, project) {
+  return project.cwd === void 0 ? root : toAbsolute(root, project.cwd);
+}
+function discoverEnvironment(root, project) {
+  const cwd = projectDir(root, project);
+  if (project.python !== void 0) {
+    const declared = resolve3(cwd, project.python);
+    if (isDirectory(declared)) return found("declared", declared, join12(declared, "bin", "python"));
+    if (existsSync8(declared)) return found("declared", dirname3(dirname3(declared)), declared);
+    return none(root, cwd, [declared]);
+  }
+  const venv = join12(cwd, ".venv");
+  if (existsSync8(join12(venv, "pyvenv.cfg"))) return found("venv", venv, join12(venv, "bin", "python"));
+  const pdm = pdmPython(root, cwd);
+  if (pdm !== null) return found("pdm-python", dirname3(dirname3(pdm)), pdm);
+  return none(root, cwd, [venv, join12(cwd, ".pdm-python")]);
+}
+function found(source, env, python) {
+  return { kind: "found", source, env, python };
+}
+function pdmPython(root, cwd) {
+  let text;
+  try {
+    text = readFileSync6(join12(cwd, ".pdm-python"), "utf8").trim();
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+  if (!isAbsolute5(text) || toRelative(root, text) === null || !existsSync8(text)) return null;
+  return text;
+}
+var LOCKFILES2 = [
+  ["uv.lock", "uv sync"],
+  ["poetry.lock", "poetry install"],
+  ["pdm.lock", "pdm install"]
+];
+function none(root, cwd, looked) {
+  for (let dir = cwd; ; dir = dirname3(dir)) {
+    const hit = LOCKFILES2.find(([file]) => existsSync8(join12(dir, file)));
+    if (hit !== void 0) return { kind: "none", looked, command: hit[1] };
+    if (toRelative(root, dir) === null) break;
+  }
+  return { kind: "none", looked, command: "uv sync" };
+}
+function isDirectory(path) {
+  try {
+    return statSync(path).isDirectory();
+  } catch (error) {
+    if (isMissing(error)) return false;
+    throw error;
+  }
+}
+
+// src/harness/shared/test-command-pytest.ts
+import { join as join13, resolve as resolve4 } from "node:path";
+var OUTPUT_FLAG = /^(-[qvs]+|-r[fEsxXpPaAwN]+|--tb=(auto|long|short|line|native|no))$/;
+function pytestCommand(words, here) {
+  if (here.length !== 1) return null;
+  const { project, dir, env } = here[0];
+  if (Object.keys(project.env).length > 0) return null;
+  const start = invocation(words, dir, env);
+  if (start === null) return null;
+  const rest = words.slice(start);
+  const { args } = project;
+  if (!args.every((arg, i) => rest[i] === arg)) return null;
+  const paths = [];
+  for (const word of rest.slice(args.length)) {
+    if (OUTPUT_FLAG.test(word)) continue;
+    const path = word.split("::")[0];
+    if (word.startsWith("-") || path === "") return null;
+    paths.push(resolve4(dir, path));
+  }
+  return { runner: "pytest", project: project.name, paths: paths.length === 0 ? null : paths };
+}
+function invocation(words, dir, env) {
+  const [first, second, third] = words;
+  const inEnv = (name) => env !== null && first?.includes("/") === true && resolve4(dir, first) === join13(env, "bin", name);
+  if (first === "pytest" || inEnv("pytest")) return 1;
+  if (first === "uv" && second === "run" && third === "pytest") return 3;
+  if ((first === "python" || inEnv("python")) && second === "-m" && third === "pytest") return 3;
+  return null;
+}
+
+// src/harness/shared/test-command.ts
+function recognizeTestCommand(command, context) {
+  const words = shellWords(command);
+  if (words === null) return null;
+  const atRoot = context.atRoot === false ? null : vitestCommand(words) ?? npmCommand(words, context) ?? nodeTestCommand(words, context);
+  return atRoot ?? pytestCommand(words, context.pytest ?? []);
+}
+var REPORTER = "--reporter";
+var SILENT_VALUES = /* @__PURE__ */ new Set(["true", "false", "yes", "no", "passed-only"]);
+function vitestCommand(words) {
+  const start = words[0] === "npx" ? 1 : 0;
+  if (words[start] !== "vitest" || words[start + 1] !== "run") return null;
+  const filters = [];
+  const rest = words.slice(start + 2);
+  for (let i = 0; i < rest.length; i++) {
+    const word = rest[i];
+    if (word === "--silent") {
+      const next = rest[i + 1];
+      if (next !== void 0 && !next.startsWith("-")) {
+        if (!SILENT_VALUES.has(next)) return null;
+        i++;
+      }
+    } else if (word.startsWith("--silent=")) {
+      if (!SILENT_VALUES.has(word.slice("--silent=".length))) return null;
+    } else if (word === REPORTER) {
+      const next = rest[i + 1];
+      if (next === void 0 || next.startsWith("-")) return null;
+      i++;
+    } else if (word.startsWith(`${REPORTER}=`)) {
+      if (word === `${REPORTER}=`) return null;
+    } else if (word.startsWith("-") || word === "" || /:\d+(-\d+)?$/.test(word)) {
+      return null;
+    } else {
+      filters.push(word);
+    }
+  }
+  return { runner: "vitest", filters };
+}
+function npmCommand(words, context) {
+  if (words[0] !== "npm") return null;
+  const name = words.length === 2 && words[1] === "test" ? "test" : words.length === 3 && words[1] === "run" ? words[2] : void 0;
+  if (name === void 0) return null;
+  const { scripts } = context;
+  if (!Object.hasOwn(scripts, name)) return null;
+  if (Object.hasOwn(scripts, `pre${name}`) || Object.hasOwn(scripts, `post${name}`)) return null;
+  const script = shellWords(scripts[name]);
+  return script === null ? null : vitestCommand(script);
+}
+function nodeTestCommand(words, context) {
+  const at2 = words.indexOf("--test");
+  if (at2 === -1) return null;
+  const argv = words.slice(1, at2);
+  const args = words.slice(at2 + 1);
+  if (args.length === 0) return null;
+  const project = context.nodeTest.find(
+    (p) => (p.node ?? "node") === words[0] && (p.cwd === void 0 || p.cwd === "." || p.cwd === "") && Object.keys(p.env).length === 0 && same(p.argv, argv)
+  );
+  if (project === void 0) return null;
+  if (same(project.include, args))
+    return { runner: "node-test", project: project.name, files: null };
+  if (args.some((arg) => arg.startsWith("-") || /[*?[\]{}]/.test(arg))) return null;
+  return { runner: "node-test", project: project.name, files: args };
+}
+function same(a, b) {
+  return a.length === b.length && a.every((word, i) => word === b[i]);
+}
+var SPECIAL = /[|&;()<>$`\\#*?[\]{}~!\n\r]/;
+function shellWords(text) {
+  const words = [];
+  let word = null;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (char === " " || char === "	") {
+      if (word !== null) words.push(word);
+      word = null;
+    } else if (char === "'" || char === '"') {
+      const end = text.indexOf(char, i + 1);
+      if (end === -1) return null;
+      const quoted = text.slice(i + 1, end);
+      if (char === '"' && /[$`\\]/.test(quoted)) return null;
+      word = (word ?? "") + quoted;
+      i = end;
+    } else if (SPECIAL.test(char)) {
+      return null;
+    } else {
+      word = (word ?? "") + char;
+    }
+  }
+  if (word !== null) words.push(word);
+  if (words.length === 0 || /^[A-Za-z_][A-Za-z0-9_]*=/.test(words[0])) return null;
+  return words;
+}
+
+// src/harness/shared/test-command-files.ts
+import { isAbsolute as isAbsolute6, join as join14, relative as relative2, resolve as resolve5 } from "node:path";
+function resolveTestFiles(command, listing, root, nodeTest, omitted) {
+  if (command.runner === "node-test") {
+    const own = listing.filter((ref) => ref.project === command.project);
+    if (command.files === null) return own.length === 0 ? null : own;
+    const byPath = new Map(own.map((ref) => [ref.path, ref]));
+    const files2 = command.files.map((file) => byPath.get(worktreePath(root, file) ?? ""));
+    return files2.every((ref) => ref !== void 0) ? unique(files2) : null;
+  }
+  if (command.runner === "pytest") return pytestFiles(command, listing, root);
+  if (omitted !== 0) return null;
+  const vitest = listing.filter((ref) => !nodeTest.has(ref.project));
+  if (new Set(vitest.map((ref) => ref.project)).size !== 1) return null;
+  if (command.filters.length === 0) return vitest;
+  const selected = /* @__PURE__ */ new Set();
+  for (const filter of command.filters) {
+    const hits = vitest.filter((ref) => matchesFilter(join14(root, ref.path), filter, root));
+    if (hits.length === 0) return null;
+    for (const ref of hits) selected.add(ref);
+  }
+  return vitest.filter((ref) => selected.has(ref));
+}
+function matchesFilter(file, filter, root) {
+  if (isAbsolute6(filter) && file.startsWith(filter)) return true;
+  const testFile = relative2(root, file).toLocaleLowerCase();
+  const rel = relative2(root, resolve5(root, filter));
+  const relativePath = filter.endsWith("/") ? join14(rel, "/") : rel;
+  return testFile.includes(filter.toLocaleLowerCase()) || testFile.includes(relativePath.toLocaleLowerCase());
+}
+function pytestFiles(command, listing, root) {
+  if (command.paths === null) return null;
+  const own = listing.filter((ref) => ref.project === command.project);
+  const named2 = new Set(command.paths.map((path) => worktreePath(root, path)));
+  if (![...named2].every((rel) => own.some((ref) => ref.path === rel))) return null;
+  return own.filter((ref) => named2.has(ref.path));
+}
+function worktreePath(root, path) {
+  const rel = relative2(root, resolve5(root, path));
+  if (rel === "" || rel === ".." || rel.startsWith("../") || isAbsolute6(rel)) return null;
+  return rel;
+}
+function unique(files2) {
+  return [...new Set(files2)];
+}
+
+// src/harness/shared/test-command-reason.ts
+var NAMED_FILES = 10;
+function testCommandReason(answer) {
+  const { revision, files: files2, states } = answer;
+  const failures = states.flatMap((s) => toKnownFailure(s, revision) ?? []);
+  const passed = states.filter((s) => s.outcome === "pass").length;
+  const skipped = states.filter((s) => s.outcome === "skip").length;
+  const counts = [
+    `${plural(passed, "check")} passed`,
+    ...skipped > 0 ? [`${skipped} skipped`] : [],
+    failures.length === 0 ? "no known failures" : plural(failures.length, "known failure"),
+    inheritedText(answer)
+  ];
+  const lines = [
+    `The command did not run. Squeal holds current results at revision ${revision} for the ${plural(files2.length, "test file")} it runs (${filesText2(files2)}): ${counts.join(", ")}.`,
+    ...failures.flatMap((f) => [
+      `  FAIL  ${formatCheck(f.check)}`,
+      ...f.summary === "" ? [] : [`        ${f.summary}`],
+      ...f.location === null ? [] : [`        at ${f.location.path}:${f.location.line}:${f.location.column}`]
+    ]),
+    "Squeal does not cover typecheck, build, or test suites it is not configured for. Run the command again to run it anyway; it will not be stopped again this session."
+  ];
+  return lines.join("\n");
+}
+function filesText2(files2) {
+  if (files2.length <= NAMED_FILES) return files2.map((f) => f.path).join(", ");
+  const byDir = /* @__PURE__ */ new Map();
+  for (const { path } of files2) {
+    const at2 = path.lastIndexOf("/");
+    const dir = at2 === -1 ? "./" : path.slice(0, at2 + 1);
+    byDir.set(dir, (byDir.get(dir) ?? 0) + 1);
+  }
+  return [...byDir].map(([dir, count]) => `${dir} (${count})`).join(", ");
+}
+function inheritedText({ states, rootOf }) {
+  const sources = /* @__PURE__ */ new Map();
+  for (const { origin } of states) {
+    if (origin?.kind !== "inherited") continue;
+    const from2 = `${rootOf(origin.worktreeId) ?? origin.worktreeId} at ${shortCommit(origin.commit)}`;
+    sources.set(from2, (sources.get(from2) ?? 0) + 1);
+  }
+  if (sources.size === 0) return "none inherited";
+  const total = [...sources.values()].reduce((a, b) => a + b, 0);
+  const from = [...sources].map(([source, count]) => `${count} from ${source}`).join(", ");
+  return `${total} inherited (${from})`;
+}
+
+// src/harness/shared/text.ts
+var LISTED_FAILURES = 10;
+var NAMED_FAILURES = 5;
+function statusText(header, failures, command = SQUEAL_COMMAND) {
+  return [
+    `SQUEAL \xB7 status at revision ${header.revision}`,
+    ...headerLines(header, command),
+    knownFailuresLine(
+      failures.map((f) => f.check),
+      command
+    )
+  ].join("\n");
+}
+function knownFailuresLine(failures, command = SQUEAL_COMMAND) {
+  if (failures.length === 0) return "Known failures: 0";
+  const named2 = failures.slice(0, NAMED_FAILURES).map(checkName).join(", ");
+  const more = failures.length - NAMED_FAILURES;
+  const rest = more > 0 ? ` and ${more} more; \`${command} status\` lists every one` : "";
+  return `Known failures: ${failures.length} (${named2}${rest})`;
+}
+function denialSentence(toolName) {
+  return `Squeal policy interrupt.onRegression denied this ${toolName} call, so the edit was not applied. The same call can be re-issued; this regression does not deny again.`;
+}
+function list(names) {
+  const shown = names.slice(0, LISTED_FAILURES);
+  const more = names.length - shown.length;
+  return more > 0 ? `${shown.join(", ")} and ${more} more` : shown.join(", ");
+}
+function knownFailuresReason(revision, current, earlier2 = []) {
+  const verb = current.length === 1 ? "exists" : "exist";
+  const sentences = [
+    `Squeal policy stop.blockOnKnownFailures is on and ${plural(current.length, "known failure")} ${verb} at revision ${revision}: ${list(current.map((f) => formatCheck(f.check)))}.`
+  ];
+  const named2 = (fs) => list(fs.map((f) => `${formatCheck(f.check)} (failed at revision ${f.observedAt})`));
+  const pending = earlier2.filter((f) => f.validity === "pending");
+  if (pending.length > 0) {
+    const its = pending.length === 1 ? "its re-run" : "their re-runs";
+    sentences.push(
+      `${plural(pending.length, "check")} last failed at an earlier revision and ${its} at revision ${revision} ${pending.length === 1 ? "is" : "are"} pending: ${named2(pending)}.`
+    );
+  }
+  const unrun = earlier2.filter((f) => f.validity !== "pending");
+  if (unrun.length > 0) {
+    sentences.push(
+      `${plural(unrun.length, "check")} last failed at an earlier revision and ${unrun.length === 1 ? "has" : "have"} no result for the current files: ${named2(unrun)}.`
+    );
+  }
+  return sentences.join(" ");
+}
+function fullSuiteReason(header, command = SQUEAL_COMMAND) {
+  const last = header.fullSuite.lastCompletedRevision;
+  const before = last === null ? "none completed at any revision" : `the last one completed at revision ${last}`;
+  return `Squeal policy stop.requireFullSuite is on and no full-suite checkpoint completed at revision ${header.revision}; ${before}. \`${command} run --all\` starts one.`;
+}
+function slowSuiteReason(revision, files2, command = SQUEAL_COMMAND) {
+  const verb = files2.length === 1 ? "is" : "are";
+  return `Squeal policy stop.requireSlowSuite is on and ${plural(files2.length, "slow test file")} ${verb} not current at revision ${revision}: ${list(files2.map((f) => f.path))}. \`${command} run --slow --wait\` runs them and waits for their results.`;
+}
+
+// src/harness/shared/deny.ts
+var DENIED_KINDS = ["pass-to-fail"];
+async function denyOnRegression(context, policy, call) {
+  if (!call.edit || !policy.interrupt.onRegression) {
+    resumeTurn(context.store, context.consumer);
+    return null;
+  }
+  const delta = await context.delivery.peek(context.consumer, { kinds: DENIED_KINDS });
+  if (delta === null) return null;
+  return `${formatDelta(delta, call.command)}
+
+${denialSentence(call.toolName)}`;
+}
+function testCommandOf(location2, policy, call) {
+  if (!policy.testCommand.denyWhenCurrent || call.toolName !== "Bash") return null;
+  if (call.command === void 0) return null;
+  const { root } = location2;
+  const cwd = realPath(call.cwd);
+  if (cwd === null || cwd !== root && !cwd.startsWith(`${root}/`)) return null;
+  return recognizeTestCommand(call.command, {
+    scripts: cwd === root ? rootScripts(root) : {},
+    nodeTest: policy.nodeTest,
+    pytest: pytestHere(root, cwd, policy.pytest),
+    atRoot: cwd === root
+  });
+}
+function pytestHere(root, cwd, projects) {
+  return projects.flatMap((project) => {
+    const dir = projectDir(root, project);
+    if (realPath(dir) !== cwd) return [];
+    let env = null;
+    try {
+      const found2 = discoverEnvironment(root, project);
+      if (found2.kind === "found") env = found2.env;
+    } catch {
+    }
+    return [{ project, dir, env }];
+  });
+}
+function realPath(path) {
+  try {
+    return realpathSync3(resolve6(path));
+  } catch {
+    return null;
+  }
+}
+function rootScripts(root) {
+  try {
+    const manifest = JSON.parse(readFileSync7(join15(root, "package.json"), "utf8"));
+    if (!isRecord(manifest) || !isRecord(manifest.scripts)) return {};
+    return Object.fromEntries(
+      Object.entries(manifest.scripts).filter(([, text]) => typeof text === "string")
+    );
+  } catch {
+    return {};
+  }
+}
+function denyCurrentTestCommand(context, command, nodeTest, now) {
+  const { store, consumer } = context;
+  return store.transaction(() => {
+    if (store.consumers.get(consumer) === null || testCommandDenied(store, consumer)) return null;
+    const states = store.knownStates.list(consumer.worktreeId);
+    const keys = store.testFileKeys.list(consumer.worktreeId);
+    const header = readLiveHeader(store, consumer.worktreeId, now, states, null, keys);
+    if (header.daemon?.state !== "alive" || header.testFilesListed === false) return null;
+    if (header.runnerPartPending === true || header.awaitingInstall === true) return null;
+    const pytest = command.runner === "vitest" ? readPolicy(context.root).pytest : [];
+    const names = new Set([...nodeTest, ...pytest].map((p) => p.name));
+    const files2 = resolveTestFiles(
+      command,
+      keys.map((k) => k.testFile),
+      context.root,
+      names,
+      readOmittedTestFiles(store, consumer.worktreeId)
+    );
+    if (files2 === null) return null;
+    const rows = new Map(keys.map((row) => [testFileId(row.testFile), row]));
+    const byFile2 = /* @__PURE__ */ new Map();
+    for (const state of states) {
+      const id = testFileKeyOf(state.check);
+      byFile2.set(id, [...byFile2.get(id) ?? [], state]);
+    }
+    const answered = [];
+    for (const file of files2) {
+      const row = rows.get(testFileId(file));
+      const own = byFile2.get(testFileId(file)) ?? [];
+      if (row === void 0 || row.key === null || row.pending !== null) return null;
+      if (own.length === 0 || own.some((s) => s.validity !== "current")) return null;
+      answered.push(...own);
+    }
+    recordTestCommandDenied(store, consumer, header.revision);
+    return testCommandReason({
+      revision: header.revision,
+      files: files2,
+      states: answered,
+      rootOf: (id) => store.worktrees.get(id)?.root ?? null
+    });
+  });
 }
 
 // src/harness/shared/ensure.ts
@@ -4578,20 +5074,20 @@ import { setTimeout as sleep2 } from "node:timers/promises";
 // src/core/daemon/client.ts
 import { createConnection } from "node:net";
 function requestDaemon(socketPath, request, timeoutMs) {
-  return new Promise((resolve3, reject) => {
+  return new Promise((resolve7, reject) => {
     const socket = createConnection(socketPath);
     let buffer = "";
     let settled2 = false;
-    const settle2 = (error, response) => {
+    const settle3 = (error, response) => {
       if (settled2) return;
       settled2 = true;
       clearTimeout(timer);
       socket.destroy();
       if (error) reject(error);
-      else resolve3(response);
+      else resolve7(response);
     };
     const timer = setTimeout(
-      () => settle2(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
+      () => settle3(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
       timeoutMs
     );
     socket.setEncoding("utf8");
@@ -4602,18 +5098,18 @@ function requestDaemon(socketPath, request, timeoutMs) {
       const end = buffer.indexOf("\n");
       if (end < 0) return;
       try {
-        settle2(null, JSON.parse(buffer.slice(0, end)));
+        settle3(null, JSON.parse(buffer.slice(0, end)));
       } catch {
-        settle2(failure("EPROTO", `malformed answer from ${socketPath}`));
+        settle3(failure("EPROTO", `malformed answer from ${socketPath}`));
       }
     });
     socket.on(
       "error",
-      (error) => settle2(failure(error.code ?? "EIO", error.message))
+      (error) => settle3(failure(error.code ?? "EIO", error.message))
     );
     socket.on(
       "close",
-      () => settle2(failure("ECONNRESET", `${socketPath} closed without an answer`))
+      () => settle3(failure("ECONNRESET", `${socketPath} closed without an answer`))
     );
   });
 }
@@ -4623,25 +5119,25 @@ function failure(code, message) {
 
 // src/core/daemon/ensure.ts
 import { spawn } from "node:child_process";
-import { existsSync as existsSync8, mkdirSync as mkdirSync4 } from "node:fs";
+import { existsSync as existsSync9, mkdirSync as mkdirSync4 } from "node:fs";
 
 // src/core/daemon/paths.ts
-import { dirname as dirname3, isAbsolute as isAbsolute4, join as join11 } from "node:path";
+import { dirname as dirname4, isAbsolute as isAbsolute7, join as join16 } from "node:path";
 function runtimeDir(env = process.env) {
   return xdgRuntimeDir(env) ?? userTmpDir();
 }
 var MAX_SOCKET_PATH_BYTES = 103;
 function socketPathFor(worktreeId, env = process.env) {
   const name = `squeal-${worktreeId}.sock`;
-  const path = join11(runtimeDir(env), name);
-  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join11(userTmpDir(), name);
+  const path = join16(runtimeDir(env), name);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join16(userTmpDir(), name);
 }
 function userTmpDir(uid = currentUid()) {
-  return join11("/tmp", `squeal-${uid}`);
+  return join16("/tmp", `squeal-${uid}`);
 }
 function xdgRuntimeDir(env) {
   const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute4(xdg) ? xdg : null;
+  return xdg !== void 0 && xdg !== "" && isAbsolute7(xdg) ? xdg : null;
 }
 function currentUid() {
   return process.getuid?.() ?? 0;
@@ -4704,7 +5200,7 @@ async function ensureDaemon(root, options = {}) {
   }
   const lockWait = options.awaitLockMs === void 0 ? [] : ["--await-lock", String(options.awaitLockMs)];
   const cli = daemonCliEntry(options.cli, options.env);
-  if (cli === null || !existsSync8(cli)) return "unavailable";
+  if (cli === null || !existsSync9(cli)) return "unavailable";
   try {
     const commonDir = resolveCommonDir(root);
     if (commonDir === null) return "unavailable";
@@ -4730,28 +5226,28 @@ function daemonCliEntry(cli, env = process.env) {
 }
 
 // src/core/daemon/version.ts
-import { readFileSync as readFileSync6 } from "node:fs";
-import { dirname as dirname4, join as join12 } from "node:path";
+import { readFileSync as readFileSync8 } from "node:fs";
+import { dirname as dirname5, join as join17 } from "node:path";
 import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.170";
+  if (true) return "0.1.171";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
-  let dir = dirname4(fileURLToPath(module));
+  let dir = dirname5(fileURLToPath(module));
   for (; ; ) {
-    const version = readVersion(join12(dir, "package.json"));
+    const version = readVersion(join17(dir, "package.json"));
     if (version !== null) return version;
-    const parent = dirname4(dir);
+    const parent = dirname5(dir);
     if (parent === dir) return null;
     dir = parent;
   }
 }
 function readVersion(path) {
   try {
-    const parsed = JSON.parse(readFileSync6(path, "utf8"));
+    const parsed = JSON.parse(readFileSync8(path, "utf8"));
     if (typeof parsed !== "object" || parsed === null) return null;
     const { name, version } = parsed;
     return name === PACKAGE_NAME && typeof version === "string" ? version : null;
@@ -4852,6 +5348,7 @@ function startingAfter(ensured, at2) {
 }
 
 // src/harness/shared/hook.ts
+var HOOK_TIMEOUT_MS = 2e3;
 async function withContext(input, location2, deps, fn, overrides = {}) {
   const options = {
     ...deps.now === void 0 ? {} : { now: deps.now },
@@ -4918,15 +5415,15 @@ function coversSentence(coverage, node) {
     const entries = coverage.nodeTest.map(
       ({ name, include }) => `${JSON.stringify(name)} (${include.join(", ")})`
     );
-    const list = named("project", entries, node);
-    suites.push(node === 0 ? `node:test (${list})` : `node:test ${list}`);
+    const list2 = named("project", entries, node);
+    suites.push(node === 0 ? `node:test (${list2})` : `node:test ${list2}`);
   }
   if (coverage.pytest !== void 0 && coverage.pytest.length > 0) {
     const entries = coverage.pytest.map(
       ({ name, include }) => `${JSON.stringify(name)} (${include.join(", ")})`
     );
-    const list = named("project", entries, node);
-    suites.push(node === 0 ? `pytest (${list})` : `pytest ${list}`);
+    const list2 = named("project", entries, node);
+    suites.push(node === 0 ? `pytest (${list2})` : `pytest ${list2}`);
   }
   const files2 = coverage.slow?.files;
   const slow = coverage.slow === null ? "" : files2 === null || files2 === void 0 ? ", with slow test files not counted yet" : `, with ${files2} slow test ${files2 === 1 ? "file" : "files"} at the daemon's last listing`;
@@ -4963,9 +5460,226 @@ function withPrimer(registration2, command = SQUEAL_COMMAND, coverage = VITEST_O
 ${tail}`;
 }
 
+// src/harness/shared/stop.ts
+import { setTimeout as sleep3 } from "node:timers/promises";
+
+// src/core/slow/slot.ts
+import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
+
+// src/harness/shared/stop.ts
+var STOP_WAIT_CAP_MS = 1500;
+var STOP_MARGIN_MS = 250;
+var STOP_POLL_MS = 100;
+function stopBusyTimeoutMs(waitMs) {
+  const left = HOOK_TIMEOUT_MS - STOP_MARGIN_MS - SOCKET_TIMEOUT_MS - waitMs;
+  return Math.min(STATUS_BUSY_TIMEOUT_MS, left);
+}
+function stopTurn(input, location2, deps) {
+  const project = readPolicy(location2.root);
+  const policy = project.stop;
+  const wait = Math.max(0, Math.min(policy.waitMs, STOP_WAIT_CAP_MS));
+  return withContext(
+    input,
+    location2,
+    deps,
+    async (context) => {
+      if (input.agent_id !== void 0 && !isRegistered(context)) return null;
+      const at2 = (deps.now ?? Date.now)();
+      const starting = startingAfter(await ensureIfStale(context, deps), at2);
+      const isSlow = slowFiles(project, project.nodeTest);
+      if (wait > 0) {
+        await waitForPending(context, wait, deps.pollIntervalMs ?? STOP_POLL_MS, isSlow);
+      }
+      const { consumer } = context;
+      const news = await newsText(context, starting, deps.command);
+      const now = deps.now ?? Date.now;
+      const blocking = !input.stopHookActive && (policy.blockOnKnownFailures || policy.requireFullSuite || policy.requireSlowSuite);
+      for (let decision = 1; ; decision++) {
+        const { header, failures, reasons } = decide(context, policy, isSlow, now(), {
+          stopHookActive: input.stopHookActive,
+          slowElsewhere: input.agent_id === void 0 && stopWaitRuns(
+            context.store,
+            context.consumer,
+            input.harness,
+            deps.squealVersion ?? squealVersion()
+          ),
+          command: deps.command
+        });
+        if (reasons.length > 0) {
+          const text = news ?? statusText(header, failures, deps.command);
+          return { block: `${reasons.join("\n")}
+
+${text}` };
+        }
+        if (input.agent_id !== void 0) await finishSubagent(context);
+        else if (news === null) {
+          const at3 = {
+            ...blocking ? { atRevision: header.revision } : {},
+            // Task 001-295: what the waiting entry beside this one waits for.
+            ...policy.requireSlowSuite ? { handoff: true } : {}
+          };
+          if (!await context.delivery.endTurn(consumer, at3)) {
+            if (decision < STOP_DECISIONS) continue;
+            const text = statusText(header, failures, deps.command);
+            return { block: `${retriesReason(header.revision)}
+
+${text}` };
+          }
+          await nudgeSlow(context, header);
+        }
+        return news === null ? null : { news };
+      }
+    },
+    { busyTimeoutMs: stopBusyTimeoutMs(wait) }
+  );
+}
+var STOP_DECISIONS = 3;
+function retriesReason(decided) {
+  return `Squeal: the revision changed ${STOP_DECISIONS} times while Stop decided, now past revision ${decided}; stop again to decide at the newest.`;
+}
+function decide(context, policy, isSlow, now, {
+  stopHookActive,
+  slowElsewhere,
+  command
+}) {
+  const { store, consumer } = context;
+  return readTransaction(store, () => {
+    const states = store.knownStates.list(consumer.worktreeId);
+    const keys = store.testFileKeys.list(consumer.worktreeId);
+    const header = readLiveHeader(store, consumer.worktreeId, now, states, null, keys);
+    const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
+    const current = failures.filter((f) => f.validity === "current");
+    const reasons = [];
+    if (stopHookActive) return { header, failures, reasons };
+    if (policy.blockOnKnownFailures && current.length > 0) {
+      reasons.push(knownFailuresReason(header.revision, current, earlier(failures)));
+    }
+    if (policy.requireFullSuite && !header.fullSuite.atCurrentRevision) {
+      reasons.push(fullSuiteReason(header, command));
+    }
+    if (policy.requireSlowSuite && !slowElsewhere) {
+      const open = slowFilesNotCurrent(states, keys, isSlow);
+      if (open.length > 0) reasons.push(slowSuiteReason(header.revision, open, command));
+    }
+    return { header, failures, reasons };
+  });
+}
+function earlier(failures) {
+  return failures.filter((f) => f.validity !== "current");
+}
+async function finishSubagent(context) {
+  await context.delivery.unregister(context.consumer);
+  removeWaiterLock(storePaths(context.commonDir).locksDir, context.consumer);
+}
+async function newsText(context, starting, command, atRevision) {
+  const { store, delivery, consumer } = context;
+  if (!isRegistered(context)) {
+    const registration2 = await delivery.register(consumer, { inTurn: true, ...starting });
+    return registration2.knownFailures.length > 0 ? formatRegistration(registration2, void 0, command) : null;
+  }
+  const delta = await delivery.onToolBoundary(consumer, {
+    stop: true,
+    ...atRevision === void 0 ? {} : { atRevision }
+  });
+  if (delta === null) return null;
+  const failures = store.knownStates.list(consumer.worktreeId).filter((s) => s.outcome === "fail").map((s) => s.check);
+  return `${formatDelta(delta, command)}
+${knownFailuresLine(failures, command)}`;
+}
+async function nudgeSlow(context, header) {
+  if ((header.slowPending?.testFiles ?? 0) === 0) return;
+  const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
+  if (record === null) return;
+  await requestDaemon(record.socketPath, { type: "nudge" }, SOCKET_TIMEOUT_MS).catch(() => {
+  });
+}
+async function waitForPending(context, waitMs, pollMs, isSlow) {
+  const deadline = performance.now() + waitMs;
+  for (; ; ) {
+    const { store, consumer } = context;
+    const header = readTransaction(
+      store,
+      () => readHeader(store, consumer.worktreeId, void 0, void 0, isSlow)
+    );
+    if (!isFastPending(header)) return;
+    const left = deadline - performance.now();
+    if (left <= 0) return;
+    await sleep3(Math.min(pollMs, left));
+  }
+}
+
+// src/harness/pi/run.ts
+var consumerInput = (session) => ({ session_id: session.sessionId });
+var PI_EDIT_TOOLS = /* @__PURE__ */ new Set(["edit", "write"]);
+var SILENT_RUN = { primer: null, news: null };
+async function startRun(session, deps) {
+  const location2 = locate(session.cwd);
+  if (location2 === null || !usesSqueal(location2)) return SILENT_RUN;
+  const answer = await withContext(consumerInput(session), location2, deps, async (context) => {
+    const section = primer(deps.command, coverageOf(context));
+    if (context.store.consumers.get(context.consumer) !== null) {
+      const delta = await context.delivery.startTurn(context.consumer);
+      return { primer: section, news: delta === null ? null : formatDelta(delta, deps.command) };
+    }
+    const now = (deps.now ?? Date.now)();
+    const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
+    const startingSince = daemonLiveness(record, now).state === "alive" ? void 0 : await ensureToRegister(location2, deps, context);
+    const registration2 = await context.delivery.register(context.consumer, {
+      inTurn: true,
+      ...startingSince === void 0 ? {} : { startingSince }
+    });
+    return {
+      primer: section,
+      news: formatRegistration(registration2, MESSAGE_CAP_CHARS, deps.command)
+    };
+  });
+  return answer ?? SILENT_RUN;
+}
+async function toolCall(call, deps) {
+  const location2 = locate(call.cwd);
+  if (location2 === null) return null;
+  const edit = PI_EDIT_TOOLS.has(call.toolName);
+  const policy = readPolicy(location2.root);
+  const testCommand = call.toolName === "bash" ? testCommandOf(location2, policy, {
+    toolName: "Bash",
+    cwd: call.cwd,
+    ...call.command === void 0 ? {} : { command: call.command }
+  }) : null;
+  if (!edit && testCommand === null) return null;
+  return withContext(consumerInput(call), location2, deps, async (context) => {
+    const denied = edit ? await denyOnRegression(context, policy, {
+      edit: true,
+      toolName: call.toolName,
+      command: deps.command
+    }) : null;
+    if (denied !== null || testCommand === null) return denied;
+    return denyCurrentTestCommand(context, testCommand, policy.nodeTest, (deps.now ?? Date.now)());
+  });
+}
+async function settle2(session, deps) {
+  const location2 = locate(session.cwd);
+  if (location2 === null) return { report: null };
+  const outcome = await stopTurn(
+    { ...consumerInput(session), stopHookActive: false, harness: "codex" },
+    location2,
+    deps
+  );
+  if (outcome === null) return { report: null };
+  return { report: "block" in outcome ? outcome.block : outcome.news };
+}
+async function endRun(session, deps) {
+  const location2 = locate(session.cwd);
+  if (location2 === null) return null;
+  await withContext(consumerInput(session), location2, deps, async (context) => {
+    await context.delivery.endTurn(context.consumer);
+    return null;
+  });
+  return null;
+}
+
 // src/harness/shared/uncovered-edit.ts
-import { existsSync as existsSync9 } from "node:fs";
-import { join as join13 } from "node:path";
+import { existsSync as existsSync10 } from "node:fs";
+import { join as join18 } from "node:path";
 var SHOWN = 3;
 var UNCOVERED_LINE_CAP_CHARS = 1e3;
 var PREFIX = "SQUEAL \xB7 ";
@@ -4975,7 +5689,7 @@ function uncoveredEditLine(context) {
   const paths = tellUncovered(
     context.store,
     context.consumer,
-    (path) => existsSync9(join13(context.root, path))
+    (path) => existsSync10(join18(context.root, path))
   );
   return paths.length === 0 ? null : fitUncovered(paths);
 }
@@ -5030,7 +5744,7 @@ async function unregisterSession(context, sessionId, options) {
     ...store.worktrees.list().map((w) => w.id)
   ]);
   const consumers = [...worktrees].flatMap(
-    (id) => store.consumers.list(id).map((record) => record.consumer).filter((consumer) => consumer.sessionId === sessionId && !same(consumer, options.except))
+    (id) => store.consumers.list(id).map((record) => record.consumer).filter((consumer) => consumer.sessionId === sessionId && !same2(consumer, options.except))
   );
   const errors = [];
   const attempt = async (fn) => {
@@ -5054,7 +5768,7 @@ async function unregisterSession(context, sessionId, options) {
   }
   return consumers;
 }
-function same(a, b) {
+function same2(a, b) {
   return b !== void 0 && a.worktreeId === b.worktreeId && a.sessionId === b.sessionId && a.agentId === b.agentId;
 }
 
@@ -5070,12 +5784,12 @@ async function endSession(input, locations, deps) {
 
 // src/harness/pi/session.ts
 var SWEEP_REASONS = /* @__PURE__ */ new Set(["startup", "resume"]);
-var consumerInput = (session) => ({ session_id: session.sessionId });
+var consumerInput2 = (session) => ({ session_id: session.sessionId });
 async function startSession(session, deps) {
   const location2 = locate(session.cwd);
   if (location2 === null || !usesSqueal(location2)) return null;
   let ensured = false;
-  const text = await withContext(consumerInput(session), location2, deps, async (context) => {
+  const text = await withContext(consumerInput2(session), location2, deps, async (context) => {
     ensured = true;
     const startingSince = await ensureToRegister(location2, deps, context);
     const reload = session.reason === "reload";
@@ -5097,13 +5811,18 @@ async function startSession(session, deps) {
 }
 async function shutdownSession(session, deps) {
   const location2 = locate(session.cwd);
-  if (location2 !== null) await endSession(consumerInput(session), [location2], deps);
+  if (location2 !== null) await endSession(consumerInput2(session), [location2], deps);
   return null;
 }
-async function toolBoundary(session, deps) {
+async function toolBoundary(session, deps, edited = true) {
   const location2 = locate(session.cwd);
   if (location2 === null) return null;
-  return withContext(consumerInput(session), location2, deps, (context) => deliver(context, deps));
+  return withContext(
+    consumerInput2(session),
+    location2,
+    deps,
+    (context) => deliver(context, deps, edited)
+  );
 }
 
 // src/harness/pi/worker.ts
@@ -5126,7 +5845,15 @@ function handle(request, deps) {
     case "shutdown":
       return shutdownSession(request, deps);
     case "boundary":
-      return toolBoundary(request, deps);
+      return toolBoundary(request, deps, request.edited);
+    case "run":
+      return startRun(request, deps);
+    case "toolCall":
+      return toolCall(request, deps);
+    case "settle":
+      return settle2(request, deps);
+    case "endTurn":
+      return endRun(request, deps);
     case "ping":
       return Promise.resolve(null);
   }
@@ -5135,7 +5862,7 @@ function serve(port, deps) {
   port.on("message", ({ id, request }) => {
     const answer = (message) => port.postMessage(message);
     handle(request, deps).then(
-      (text) => answer({ id, ok: true, text }),
+      (result) => answer({ id, ok: true, answer: result }),
       () => answer({ id, ok: false })
     );
   });
