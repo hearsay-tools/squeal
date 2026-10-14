@@ -45,6 +45,7 @@ import { compareRefs, enumeratedChecks } from "./results.js";
 import { abandon, buildReport, execute, writeRunLog } from "./run.js";
 import { invalidateStale, SourceStamps } from "./sources.js";
 import { invalidateStructural } from "./stale.js";
+import { closeRejected, startupFailure, withStartup } from "./startup.js";
 import { VITEST_ADAPTER_VERSION } from "./version.js";
 
 /**
@@ -424,7 +425,12 @@ export class VitestAdapter implements RunnerAdapter {
         // Task 001-159: touched after this run's instance began to start, so heard during the run.
         const heard = [...new Set(this.#touched)];
         const broken = runnerFailure(collector, { paths: this.paths, tempDirs: this.#tempDirs });
-        if (execution.hung || broken !== null) {
+        const rejected = execution.rejected;
+        const startup =
+          rejected === undefined
+            ? null
+            : startupFailure(vitest, specs, collector, rejected.error, this.paths);
+        if (execution.hung || broken !== null || rejected !== undefined) {
           // The runner part may be using the instance: it is dropped once that call returns.
           const ran = execution;
           execution = await hold.exclusive(async () => {
@@ -433,10 +439,15 @@ export class VitestAdapter implements RunnerAdapter {
             // The workers ignore cancellation. Abandon the instance; the next call starts a new one.
             if (ran.hung) abandon(vitest, collector);
             else if (broken !== null) return closeBroken(vitest, collector, broken);
+            // Task 001-382: a rejected run leaves a global setup Vitest will not run again.
+            else await closeRejected(vitest, collector);
             return ran;
           });
         }
-        const built = buildReport(collector, execution, Math.round(performance.now() - started));
+        const built = withStartup(
+          buildReport(collector, execution, Math.round(performance.now() - started)),
+          startup,
+        );
         const observed = this.#observer.take(built.completedFiles);
         // Review wave-13e B1: a path the run wrote itself counts too. Writing its bytes proves
         // nothing about which bytes a cache served the run.

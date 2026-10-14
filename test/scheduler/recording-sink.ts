@@ -3,6 +3,7 @@ import type {
   CheckId,
   KnownState,
   RevisionNumber,
+  SetupOutcome,
   StateProvenance,
   StateSink,
   Store,
@@ -30,7 +31,12 @@ export type SinkCall =
       readonly testFiles: readonly TestFileRef[] | undefined;
       readonly checkpointId: string | null;
     }
-  | { readonly method: "retire"; readonly checks: readonly CheckId[] };
+  | { readonly method: "retire"; readonly checks: readonly CheckId[] }
+  | {
+      readonly method: "setupOutcome";
+      readonly revision: RevisionNumber;
+      readonly outcome: SetupOutcome;
+    };
 
 /**
  * The store-backed `StateSink` of task 001-21 for one worktree, recording
@@ -87,6 +93,16 @@ export class RecordingSink implements StateSink {
     this.#own(worktreeId);
     this.calls.push({ method: "retire", checks });
     this.#inner.retire(worktreeId, checks);
+  }
+
+  setupOutcome(
+    worktreeId: WorktreeId,
+    revision: RevisionNumber,
+    outcome: SetupOutcome,
+  ): readonly Transition[] {
+    this.#own(worktreeId);
+    this.calls.push({ method: "setupOutcome", revision, outcome });
+    return this.#inner.setupOutcome(worktreeId, revision, outcome);
   }
 
   /** Every call of one method. */

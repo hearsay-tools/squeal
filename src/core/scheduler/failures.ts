@@ -30,14 +30,19 @@ export function settleFailures(
  * for a project, every test file of that project becomes `unknown` at this
  * revision with the runner's message as the reason". A blocked file is not
  * queued until `unblock`; the next revision or `run --all` retries the runner
- * (`Ledger.broken`).
+ * (`Ledger.broken`). `only` narrows the files blocked (task 001-382: those
+ * a run that failed to start kept from running). Returns the files blocked.
  */
-export function block(ledger: Ledger, failures: Failures): void {
+export function block(
+  ledger: Ledger,
+  failures: Failures,
+  only: (file: FileState) => boolean = () => true,
+): FileState[] {
   const every = failures.get(null);
   const byReason = new Map<string, FileState[]>();
   for (const file of ledger.files.values()) {
     const reason = every ?? failures.get(file.ref.project);
-    if (reason === undefined || file.blocked !== null) continue;
+    if (reason === undefined || file.blocked !== null || !only(file)) continue;
     file.blocked = reason;
     if (!ledger.queue.isForced(file.ref)) ledger.queue.remove(file.ref);
     const files = byReason.get(reason);
@@ -51,6 +56,7 @@ export function block(ledger: Ledger, failures: Failures): void {
     );
   }
   ledger.broken = true;
+  return [...byReason.values()].flat();
 }
 
 /** The runner works again: every blocked file is settled anew. Returns them. */

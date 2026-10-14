@@ -3,17 +3,24 @@ import type { CheckId } from "../types/index.js";
 /** Printed after the path of a file-level check. */
 const FILE_LEVEL = " (file-level)";
 
+/** Printed after the `globalSetup` file of a setup check (task 001-382). */
+const GLOBAL_SETUP = "(global setup)";
+
 /**
  * How a check is named in deltas, status and `squeal why`, in the shape
  * Vitest prints: `[project] path > describe > test`. The project prefix is
  * left out for the default project `""`. A file-level check is its path
- * followed by `(file-level)`.
+ * followed by `(file-level)`; a setup check its `globalSetup` file followed
+ * by `(global setup)`.
  *
  * Spec 001 D6: "check names are printed and parsed by one shared formatter so
  * that a name an agent was told round-trips into `squeal why`."
  */
 export function formatCheck(check: CheckId): string {
   const project = check.project === "" ? "" : `[${check.project}] `;
+  if (check.kind === "setup") {
+    return `${project}${check.testPath === "" ? "" : `${check.testPath} `}${GLOBAL_SETUP}`;
+  }
   return check.kind === "test"
     ? `${project}${check.testPath} > ${check.fullName}`
     : `${project}${check.testPath}${FILE_LEVEL}`;
@@ -30,6 +37,9 @@ export function parseCheck(name: string): CheckId | null {
   const project = match[1] ?? "";
   const rest = match[2] ?? "";
   const split = rest.indexOf(" > ");
+  if (split === -1 && rest.endsWith(GLOBAL_SETUP)) {
+    return { kind: "setup", project, testPath: rest.slice(0, -GLOBAL_SETUP.length).trimEnd() };
+  }
   if (split === -1) {
     const testPath = rest.endsWith(FILE_LEVEL) ? rest.slice(0, -FILE_LEVEL.length) : rest;
     return { kind: "file", project, testPath };

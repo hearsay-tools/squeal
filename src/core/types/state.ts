@@ -1,4 +1,4 @@
-import type { CheckId } from "./check.js";
+import type { CheckError, CheckId, SetupCheckId } from "./check.js";
 import type { CommitSha, EpochMs, RevisionNumber, SourceLocation, WorktreeId } from "./common.js";
 import type { CheckKey, TestFileRef } from "./keys.js";
 import type { ResultRecord } from "./store-records.js";
@@ -204,4 +204,23 @@ export interface StateSink {
    * longer reported by the runner (D6, `RetiredEntry`).
    */
   retire(worktreeId: WorktreeId, checks: readonly CheckId[]): void;
+
+  /**
+   * Task 001-382: the known state of a project's global setup, `fail` with
+   * `error` when a run failed to start, `pass` when a later run of the
+   * project started. Current at `revision`; nothing is stored under a key.
+   */
+  setupOutcome(
+    worktreeId: WorktreeId,
+    revision: RevisionNumber,
+    outcome: SetupOutcome,
+  ): readonly Transition[];
+}
+
+/** A global setup's outcome (`StateSink.setupOutcome`). */
+export interface SetupOutcome {
+  readonly check: SetupCheckId;
+  readonly commit: CommitSha | null;
+  /** The setup's error; `null` when the run started. */
+  readonly error: CheckError | null;
 }

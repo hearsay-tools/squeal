@@ -77,9 +77,8 @@ export function checkParams(check: CheckId) {
 export function checkFrom(row: Row): CheckId {
   const project = str(row, "check_project");
   const testPath = str(row, "check_test_path");
-  if (oneOf(row, "check_kind", ["test", "file"] as const) === "file") {
-    return { kind: "file", project, testPath };
-  }
+  const kind = oneOf(row, "check_kind", ["test", "file", "setup"] as const);
+  if (kind !== "test") return { kind, project, testPath };
   return { kind: "test", project, testPath, fullName: str(row, "check_full_name") };
 }
 

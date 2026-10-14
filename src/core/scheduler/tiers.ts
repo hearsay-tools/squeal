@@ -22,6 +22,7 @@ import {
   rememberReruns,
 } from "./rerun.js";
 import { storeClosures } from "./revision.js";
+import { failStartup } from "./setup.js";
 import { joinSpan, type TierSpan } from "./sharing.js";
 import { slowView } from "./slow.js";
 import { changedSince, type Moved, snapshotInputs } from "./stability.js";
@@ -399,6 +400,9 @@ export function recordTier(
   const firstSeen: FileState[] = [];
   const grewEnvironment: FileState[] = [];
   const failedAnew: NewFailure[] = [];
+  const notStarted: { file: FileState; forced: boolean }[] = [];
+  const startup = report.startupFailure;
+  const startupIds = new Set((startup?.testFiles ?? []).map(testFileId));
   const { environment } = observed;
   const unstable = (path: RelativePath) =>
     changedOnDisk.has(path) || duringRun.has(path) || observed.changed.has(path);
@@ -415,7 +419,8 @@ export function recordTier(
         continue;
       }
       if (!completed.has(file.id)) {
-        if (splitCap === null) unknown.push({ file, key });
+        if (startupIds.has(file.id)) notStarted.push({ file, forced });
+        else if (splitCap === null) unknown.push({ file, key });
         else requeueSplit(ledger, file, splitCap, forced, recent === true);
         continue;
       }
@@ -488,6 +493,11 @@ export function recordTier(
       context,
       grown.map((g) => g.ref),
     );
+    // Task 001-382: one setup failure, not a FAIL per file; a run of a project that started passes it.
+    const started = new Set(report.completedFiles.map((f) => f.project));
+    for (const project of startup?.projects ?? []) started.delete(project);
+    ledger.setups.pass(started, provenance.commit);
+    if (startup !== undefined) failStartup(ledger, startup, notStarted, provenance.commit);
     const timedOut =
       report.end === "timed-out" ? timedOutReason(context.policy.runner.timeoutMs) : null;
     const reason = timedOut ?? report.failure ?? `run ${report.end}`;

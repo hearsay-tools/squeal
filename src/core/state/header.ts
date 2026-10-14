@@ -67,6 +67,8 @@ export function readHeader(
   let inheritedCount = 0;
   let inheritedFileLevelCount = 0;
   for (const state of states) {
+    // Task 001-382: a global setup is no test's check; it counts among known failures only.
+    if (state.check.kind === "setup") continue;
     counts[state.validity]++;
     if (state.check.kind === "file") fileLevelCounts[state.validity]++;
     if (state.validity === "current" && state.origin?.kind === "inherited") {

@@ -28,7 +28,21 @@ export interface FileCheckId {
   readonly testPath: RelativePath;
 }
 
-export type CheckId = TestCheckId | FileCheckId;
+/**
+ * The global setup of one project (task 001-382): a run that failed to start
+ * is one failure of this check, not a failure of each test file it kept from
+ * running. `testPath` is the `globalSetup` file, `""` when the error named
+ * none. It has no key and no stored result: its known state is written by
+ * the daemon of the worktree whose run failed, and a run of the project that
+ * starts makes it `pass`.
+ */
+export interface SetupCheckId {
+  readonly kind: "setup";
+  readonly project: ProjectName;
+  readonly testPath: RelativePath;
+}
+
+export type CheckId = TestCheckId | FileCheckId | SetupCheckId;
 
 /**
  * Outcome of one check in one run, as the runner reports it.
