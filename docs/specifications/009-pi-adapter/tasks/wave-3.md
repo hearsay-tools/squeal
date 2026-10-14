@@ -31,3 +31,9 @@ Use /worker.
 ## 009-20 dogfooding
 
 Waits for 009-18, 009-19 and the human's go: it installs Squeal into a real Pi with real model credentials, which no isolated run can. A Cezar worker on Pi and a TUI session working this repository, on models the brief names per session (board, Standing models); whether a model reads a Squeal message as Squeal's and not the user's (open question 2); update with a session open. Report in `../lessons.md`. Brief written at dispatch.
+
+## 009-22 review of waves 2 and 3
+
+Shape: review. `/reviewer` over `cf1e952c..3fd4916d` (0.1.172 and 0.1.173: 009-15, 009-16, 009-18, 009-19; the B1 commit `02249f23` is already settled by `reviews/wave-1.5.md`). Focus: D5's idle wake never holds Pi, is cancelled by input, a new run and shutdown, and arms only in `tui` and `rpc`; the shared waiter's new `signal` and `command` leave Claude Code's behaviour unchanged; `squeal update` and `install.sh --pi` against 005 D3's rules (only what the record owns is removed, the kept previous directory, the `ps` in-use check, the transition before a `--pi` release); whether the e2e's 15 s held request makes the deny scenario flaky under load; `runPi`'s isolation. Build only in a temporary detached worktree at `3fd4916d`, removed after. Write `docs/specifications/009-pi-adapter/reviews/wave-3.md`.
+
+Use /reviewer.
