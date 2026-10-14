@@ -69,12 +69,15 @@ export interface RegisterAnswer {
   readonly header: string | null;
   readonly registered: boolean;
   readonly primer: string | null;
+  /** The policy's `stop.waitMs`, for the deadline at idle (D4); absent when nothing registered. */
+  readonly stopWaitMs?: number;
 }
 
 /** The answer to each request kind. Every answer is an object, so `null` is only a miss. */
 export interface OcAnswers {
   readonly register: RegisterAnswer;
-  readonly prompt: { readonly text: string | null };
+  /** The delta to add, and the policy's `stop.waitMs` for the deadline at idle (D4). */
+  readonly prompt: { readonly text: string | null; readonly stopWaitMs?: number };
   /** The reason to block the call, or `null` to let it run. */
   readonly before: { readonly reason: string | null };
   readonly after: { readonly text: string | null };

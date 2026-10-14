@@ -67,7 +67,17 @@ describe("prompt", () => {
     expect(text).toMatch(/^SQUEAL · /);
     expect(text).toContain("PASS -> FAIL");
     expect(readTurn(r.store, r.consumer()).turn).not.toBe("idle");
-    expect(await prompt({ kind: "prompt", ...about(r) }, deps())).toEqual({ text: null });
+    expect(await prompt({ kind: "prompt", ...about(r) }, deps())).toEqual({
+      text: null,
+      stopWaitMs: 0,
+    });
+  });
+
+  it("answers the policy's stop.waitMs, for the deadline at idle (review 008-16 B1)", async () => {
+    const r = await registered();
+    r.policy({ stop: { waitMs: 1_200 } });
+    expect((await prompt({ kind: "prompt", ...about(r) }, deps())).stopWaitMs).toBe(1_200);
+    expect((await register({ kind: "register", ...about(r) }, deps())).stopWaitMs).toBe(1_200);
   });
 
   it("registers a consumer the daemon expired, its header naming the CLI by path", async () => {

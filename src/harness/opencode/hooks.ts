@@ -9,8 +9,12 @@ import { type Ask, turns } from "./turns.js";
 
 /** Spec 008 D4: the deadline of `chat.message`, `tool.execute.before`, `tool.execute.after` and an event's call. */
 export const EVENT_DEADLINE_MS = 2_000;
-/** D4: the deadline at `session.idle`, `stop.waitMs` plus 500 ms at the longest wait Stop honours (1,500 ms). */
-export const IDLE_DEADLINE_MS = 2_000;
+/** The longest `stop.waitMs` Stop honours (`STOP_WAIT_CAP_MS`, which the plugin bundle cannot import). */
+export const STOP_WAIT_CAP_MS = 1_500;
+/** D4: what the deadline at `session.idle` gives beyond `stop.waitMs`. */
+export const IDLE_MARGIN_MS = 500;
+/** D4: the deadline at `session.idle` at the longest wait, and while `stop.waitMs` is not known yet. */
+export const IDLE_DEADLINE_MS = STOP_WAIT_CAP_MS + IDLE_MARGIN_MS;
 /** D4: the deadline of `dispose`. */
 export const DISPOSE_DEADLINE_MS = 3_000;
 /** 001 D9: a root session's consumer is its main agent. */
@@ -45,6 +49,8 @@ export function squealHooks(host: HookHost): OcHooks {
   const registered = new Map<string, OcConsumer>();
   const registering = new Map<string, Promise<string | null>>();
   let primer: string | null = null;
+  /** `stop.waitMs`, from the last registration or prompt; `null` until one answers. */
+  let stopWaitMs: number | null = null;
   let disposed = false;
 
   const ask: Ask = async (kind, request, deadline, options) => {
@@ -70,6 +76,7 @@ export function squealHooks(host: HookHost): OcHooks {
       // A miss, or no consumer written (no store yet), leaves it unregistered: the next message tries again.
       if (answer === null || !answer.registered) return null;
       primer = answer.primer ?? primer;
+      stopWaitMs = answer.stopWaitMs ?? stopWaitMs;
       registered.set(key, consumer);
       return disposed ? null : answer.header;
     })();
@@ -104,7 +111,9 @@ export function squealHooks(host: HookHost): OcHooks {
   };
 
   const idle = async (id: string): Promise<void> => {
-    const deadline = deadlineIn(IDLE_DEADLINE_MS);
+    // D4: `stop.waitMs` plus 500 ms, the lookup, Stop and `promptAsync` within it (review 008-16 B1).
+    const wait = Math.max(0, Math.min(stopWaitMs ?? STOP_WAIT_CAP_MS, STOP_WAIT_CAP_MS));
+    const deadline = deadlineIn(wait + IDLE_MARGIN_MS);
     const consumer = await identify(id, deadline);
     if (consumer === null) return;
     if (consumer.agentId !== undefined) {
@@ -125,7 +134,9 @@ export function squealHooks(host: HookHost): OcHooks {
           map.saw(info);
         } else if (event.type === "session.deleted" && info !== undefined) {
           map.saw(info);
-          const consumer = await identify(info.id, deadlineIn(EVENT_DEADLINE_MS));
+          // One deadline for the lookup and the end (review 008-16 B1).
+          const deadline = deadlineIn(EVENT_DEADLINE_MS);
+          const consumer = await identify(info.id, deadline);
           map.forget(info.id);
           turn.forget(info.id);
           if (consumer === null) return;
@@ -137,7 +148,7 @@ export function squealHooks(host: HookHost): OcHooks {
           const request = root
             ? { sessions: [info.id], consumers: [] }
             : { sessions: [], consumers: [consumer] };
-          await ask("end", request, deadlineIn(EVENT_DEADLINE_MS));
+          await ask("end", request, deadline);
         } else if (event.type === "session.error" && sessionID !== undefined) {
           if (error?.name === "MessageAbortedError") turn.aborted(sessionID);
         } else if (event.type === "session.idle" && sessionID !== undefined) {
@@ -159,7 +170,9 @@ export function squealHooks(host: HookHost): OcHooks {
         const key = keyOf(consumer);
         let text: string | null;
         if (registered.has(key)) {
-          text = (await ask("prompt", { consumer }, deadline))?.text ?? null;
+          const answer = await ask("prompt", { consumer }, deadline);
+          stopWaitMs = answer?.stopWaitMs ?? stopWaitMs;
+          text = answer?.text ?? null;
         } else {
           const inFlight = registering.get(key);
           if (inFlight !== undefined) {
