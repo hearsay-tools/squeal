@@ -3,6 +3,7 @@ import { compare, findWorktreeRoot, worktreeIdFor } from "../core/fs/index.js";
 import { testFileId } from "../core/keys/index.js";
 import { durationOf } from "../core/scheduler/files.js";
 import { slowFiles } from "../core/slow/classify.js";
+import { readSlowActivity } from "../core/slow/state.js";
 import { type IgnoredReads, readIgnoredReads, withStatusStore } from "../core/status/index.js";
 import { plural } from "../core/text.js";
 import {
@@ -230,26 +231,48 @@ function verdictText(code: 0 | 1 | 3): string {
   }
 }
 
-/** Prints `N of M test files done` from the open checkpoint each time N changes, until `running` is false. */
+/**
+ * Prints `N of M test files done` from the open checkpoint each time it
+ * changes, until `running` is false, with the slow files the load guard
+ * holds (004 D3) in the status line's words (`slow-text.ts`), so a busy
+ * host's wait of up to `maxDeferMs` is named, not silent (005-39).
+ */
 async function reportProgress(
   root: AbsolutePath,
   id: WorktreeId,
   io: CliIo,
   running: () => boolean,
 ): Promise<void> {
+  const { policy } = loadPolicy(root);
+  const isSlow = slowFiles(policy, policy.nodeTest);
   let last = "";
   while (running()) {
     await new Promise((resolve) => setTimeout(resolve, PROGRESS_POLL_MS));
     if (!running()) return;
-    const open = withStatusStore(root, {}, ({ store }) =>
-      parseCheckpointProgress(store.meta.get(checkpointMetaKey(id))),
-    );
-    if (open === null || "available" in open) continue;
-    const line = `${open.done} of ${plural(open.total, "test file")} done`;
-    if (line === last) continue;
+    const line = withStatusStore(root, {}, ({ store }) => {
+      const open = parseCheckpointProgress(store.meta.get(checkpointMetaKey(id)));
+      if (open === null) return null;
+      const activity = readSlowActivity(store, id);
+      const queued =
+        activity?.kind === "waiting" && activity.for === "load"
+          ? store.testFileKeys
+              .list(id)
+              .filter((row) => row.pending === "queued" && isSlow(row.testFile)).length
+          : 0;
+      return progressText(open.done, open.total, queued);
+    });
+    if (typeof line !== "string" || line === last) continue;
     last = line;
     io.stdout(`squeal warmup: ${line}\n`);
   }
+}
+
+/** `1 of 3 test files done; 2 slow test files waiting for host load to drop`. */
+export function progressText(done: number, total: number, waitingForLoad: number): string {
+  const line = `${done} of ${plural(total, "test file")} done`;
+  return waitingForLoad === 0
+    ? line
+    : `${line}; ${plural(waitingForLoad, "slow test file")} waiting for host load to drop`;
 }
 
 /** 004 D1: fast test files whose last run took longer than `SLOW_CANDIDATE_MS`, slowest first. */

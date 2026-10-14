@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { readVerdict } from "../../src/cli/verdict.js";
+import { progressText } from "../../src/cli/warmup.js";
 import { readIgnoredReads } from "../../src/core/status/index.js";
 import { daemonSuite, SLOW, spawnCli, withStore } from "../daemon/helpers.js";
 
@@ -168,6 +169,37 @@ describe("the warm-up's ignored reads on a real daemon", SLOW, () => {
 });
 
 /**
+ * Row 005-39 (`research/e2e-setup.md` defect 2): the load bound no host
+ * meets holds the slow file for `maxDeferMs`, long enough for several polls;
+ * the warm-up names that wait in the status line's words, once per change.
+ */
+describe(
+  "the warm-up's progress while the slow tier waits for load, on a real daemon",
+  SLOW,
+  () => {
+    it("says the slow file waits for host load to drop, and stops saying so once it runs", async () => {
+      const repo = suite.fixture({
+        "test/held.test.ts": HELD,
+        "squeal.config.json": `${JSON.stringify({ slow: { include: ["test/held.test.ts"], maxLoadPerCpu: 1e-9, maxDeferMs: 6000 } })}\n`,
+      });
+      const run = warmup(repo);
+      const exited = await run.exited;
+      const out = run.stdout();
+      expect(exited, `${out}${run.stderr()}`).toEqual({ code: 0, signal: null });
+      const waiting = out.match(
+        /^squeal warmup: \d+ of \d+ test files done; 1 slow test file waiting for host load to drop$/gm,
+      );
+      expect(waiting, out).toHaveLength(1);
+      const progress = out.match(/^squeal warmup: \d+ of \d+ test files done.*$/gm) ?? [];
+      expect(new Set(progress).size, out).toBe(progress.length);
+      // The held file runs 3 s once the bound passes: the wait is no longer claimed.
+      expect(progress.at(-1), out).toMatch(/^squeal warmup: \d+ of \d+ test files done$/);
+      everyFileCurrent(repo);
+    });
+  },
+);
+
+/**
  * A scratch HOME, Claude Code and Codex config dirs, and a PATH holding only
  * `git`: neither harness CLI, nor the installed plugin's `bin/`, can be found.
  */
@@ -208,6 +240,18 @@ describe("squeal setup --yes on a real daemon", SLOW, () => {
     // No harness on the PATH: setup writes no instruction file, only the config's layout.
     expect(out).toMatch(/squeal setup never commits:\n {2}squeal\.config\.json\n$/);
     everyFileCurrent(repo);
+  });
+});
+
+describe("the warm-up's progress line", () => {
+  it("counts the files done, and names the slow files the load guard holds", () => {
+    expect(progressText(1, 3, 0)).toBe("1 of 3 test files done");
+    expect(progressText(1, 3, 2)).toBe(
+      "1 of 3 test files done; 2 slow test files waiting for host load to drop",
+    );
+    expect(progressText(0, 1, 1)).toBe(
+      "0 of 1 test file done; 1 slow test file waiting for host load to drop",
+    );
   });
 });
 
