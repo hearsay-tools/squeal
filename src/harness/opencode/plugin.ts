@@ -8,8 +8,6 @@ import type { OcAnswers, OcConsumer, OcRequest } from "./protocol.js";
 export const EVENT_DEADLINE_MS = 2_000;
 /** D4: the deadline of `dispose`. */
 export const DISPOSE_DEADLINE_MS = 3_000;
-/** D2: how long a `client.session.get` for an unseen session's parent may take. */
-export const LOOKUP_DEADLINE_MS = 2_000;
 /** 001 D9: a root session's consumer is its main agent. */
 export const MAIN_AGENT = "main";
 /** `client.app.log`'s service name. */
@@ -32,6 +30,15 @@ export interface SquealPluginOptions {
   readonly findNode?: (env: Readonly<Record<string, string | undefined>>) => Promise<string | null>;
   /** OpenCode's process (D2). Default `process.pid`. */
   readonly pid?: number;
+}
+
+/** A hook's one deadline (D4): what is left of it, for each wait in the hook. */
+export type Deadline = () => number;
+
+/** The deadline `ms` from now. */
+export function deadlineIn(ms: number): Deadline {
+  const end = performance.now() + ms;
+  return () => Math.max(0, end - performance.now());
 }
 
 /** Resolves `promise`, or `null` past `ms` or on a rejection. */
@@ -136,20 +143,23 @@ function hooks(
     Extract<OcRequest, { kind: K }>,
     "kind" | "worktree" | "pid"
   >;
-  const ask = <K extends OcRequest["kind"]>(
+  const ask = async <K extends OcRequest["kind"]>(
     kind: K,
     request: About<K>,
-    deadlineMs: number,
-  ): Promise<OcAnswers[K] | null> =>
-    callBridge<OcAnswers[K]>(bridge, { kind, ...request, worktree, pid }, directory, deadlineMs);
+    deadline: Deadline,
+  ): Promise<OcAnswers[K] | null> => {
+    const left = deadline();
+    if (left <= 0) return null;
+    return callBridge<OcAnswers[K]>(bridge, { kind, ...request, worktree, pid }, directory, left);
+  };
 
   /** The parent of `id`, from the map or one `client.session.get`; `null` for a root or an unknown. */
-  const parentOf = async (id: string): Promise<string | null> => {
+  const parentOf = async (id: string, deadline: Deadline): Promise<string | null> => {
     const known = parents.get(id);
     if (known !== undefined) return known;
     const result = await within<{ data?: OcSessionInfo }>(
       client.session.get({ path: { id } }),
-      LOOKUP_DEADLINE_MS,
+      deadline(),
     );
     if (result?.data === undefined) return null;
     const parent = result.data.parentID ?? null;
@@ -158,10 +168,10 @@ function hooks(
   };
 
   /** D2: a root session's consumer is `(id, main)`; a child's is `(root, child)`. */
-  const consumerOf = async (sessionId: string): Promise<OcConsumer> => {
+  const consumerOf = async (sessionId: string, deadline: Deadline): Promise<OcConsumer> => {
     let root = sessionId;
     for (let depth = 0; depth < MAX_DEPTH; depth++) {
-      const parent = await parentOf(root);
+      const parent = await parentOf(root, deadline);
       if (parent === null) break;
       root = parent;
     }
@@ -172,8 +182,9 @@ function hooks(
     consumer: OcConsumer,
     message: { id: string; sessionID: string },
     parts: unknown[],
+    deadline: Deadline,
   ): Promise<void> => {
-    const answer = await ask("register", { consumer }, EVENT_DEADLINE_MS);
+    const answer = await ask("register", { consumer }, deadline);
     // A miss leaves the consumer unregistered, so the next message tries again.
     if (answer === null || disposed) return;
     registered.set(keyOf(consumer), consumer);
@@ -193,11 +204,12 @@ function hooks(
       try {
         const info = event.properties.info;
         if (disposed || info === undefined) return;
+        const deadline = deadlineIn(EVENT_DEADLINE_MS);
         if (event.type === "session.created") {
           parents.set(info.id, info.parentID ?? null);
         } else if (event.type === "session.deleted") {
           parents.set(info.id, info.parentID ?? null);
-          const consumer = await consumerOf(info.id);
+          const consumer = await consumerOf(info.id, deadline);
           parents.delete(info.id);
           for (const [key, c] of registered) {
             if (
@@ -207,9 +219,9 @@ function hooks(
               registered.delete(key);
           }
           if (consumer.agentId === undefined) {
-            await ask("end", { sessions: [info.id], consumers: [] }, EVENT_DEADLINE_MS);
+            await ask("end", { sessions: [info.id], consumers: [] }, deadline);
           } else {
-            await ask("end", { sessions: [], consumers: [consumer] }, EVENT_DEADLINE_MS);
+            await ask("end", { sessions: [], consumers: [consumer] }, deadline);
           }
         }
       } catch {
@@ -220,12 +232,16 @@ function hooks(
     async "chat.message"(input, output) {
       try {
         if (disposed) return;
-        const consumer = await consumerOf(input.sessionID);
+        const deadline = deadlineIn(EVENT_DEADLINE_MS);
+        const consumer = await consumerOf(input.sessionID, deadline);
         const key = keyOf(consumer);
         if (registered.has(key)) return;
         const inFlight = registering.get(key);
-        if (inFlight !== undefined) return await inFlight;
-        const registration = registerOnce(consumer, output.message, output.parts);
+        if (inFlight !== undefined) {
+          await within(inFlight, deadline());
+          return;
+        }
+        const registration = registerOnce(consumer, output.message, output.parts, deadline);
         registering.set(key, registration);
         try {
           await registration;
@@ -243,7 +259,7 @@ function hooks(
         output.env.PATH =
           path === undefined || path === "" ? options.bin : `${options.bin}${delimiter}${path}`;
         if (input.sessionID === undefined) return;
-        const consumer = await consumerOf(input.sessionID);
+        const consumer = await consumerOf(input.sessionID, deadlineIn(EVENT_DEADLINE_MS));
         output.env.OPENCODE_SESSION_ID = consumer.sessionId;
         output.env.OPENCODE_AGENT_ID = consumer.agentId ?? MAIN_AGENT;
       } catch {
@@ -258,7 +274,7 @@ function hooks(
         const consumers = [...registered.values()];
         registered.clear();
         if (consumers.length === 0) return;
-        await ask("end", { sessions: [], consumers }, DISPOSE_DEADLINE_MS);
+        await ask("end", { sessions: [], consumers }, deadlineIn(DISPOSE_DEADLINE_MS));
       } catch {
         // Silence; a consumer left registered ends with OpenCode's process (001 D10).
       }

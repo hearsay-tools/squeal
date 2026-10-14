@@ -162,6 +162,29 @@ describe("chat.message", () => {
     expect(bridge.requests()).toHaveLength(2);
   }, 10_000);
 
+  it("holds OpenCode no longer than one deadline when both the lookup and the bridge stall (review 008-15)", async () => {
+    const bridge = stubBridge("stall");
+    const client = stubClient();
+    client.session.get = () => new Promise(() => {});
+    const hooks = await startPlugin(squealDir(), client, { entry: bridge.entry });
+    const output = chatOutput(CHILD_ID);
+    const started = performance.now();
+    await hook(hooks, "chat.message")({ sessionID: CHILD_ID }, output);
+    expect(performance.now() - started).toBeLessThan(EVENT_DEADLINE_MS + 500);
+    expect(output.parts).toHaveLength(1);
+  }, 10_000);
+
+  it("asks no bridge once a stalled lookup has spent the deadline", async () => {
+    const bridge = stubBridge();
+    const client = stubClient();
+    client.session.get = () => new Promise(() => {});
+    const hooks = await startPlugin(squealDir(), client, { entry: bridge.entry });
+    const output = chatOutput(CHILD_ID);
+    await hook(hooks, "chat.message")({ sessionID: CHILD_ID }, output);
+    expect(output.parts).toHaveLength(1);
+    expect(bridge.requests()).toEqual([]);
+  }, 10_000);
+
   it("never throws: a failing bridge, a rejecting client, a frozen output", async () => {
     const client = stubClient();
     client.session.get = async () => {
