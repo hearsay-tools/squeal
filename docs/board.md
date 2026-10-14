@@ -865,6 +865,7 @@ Spec: `specifications/007-pytest-runner/spec.md`, approved 2026-10-14 by the hum
 | 007-17 end to end | running (worker dcd4db61, opus high; brief `tasks/wave-3.md`) | The shipped plugin against the fixture, as 001's `test/e2e`; the fixture on pytest 8 as well as 9 (review 007-16 input 7). | e2e suite green in CI. |
 | 007-18 dogfooding | planned (brief `tasks/wave-3.md`; waits for 005's release evals on `squeal-e2e`) | A real open-source pytest project of a few hundred test files, a Cezar worker on Claude Code and one on Codex; batch size revisited. | `lessons.md` resolves the open questions with evidence. |
 | 007-28 main CI: synced second worktree inherits 6 of 13 on GitHub runners | running (worker 3b5befb1, opus high; brief `tasks/wave-3.md`) | `test/integration/pytest.test.ts:149` red on main since 0.1.169 (run 38582092315), CI-only; on the 007 branch since wave 2.5, hidden by expected drift. Blocks the next landing. | Cause named from CI; local regression; branch CI green. |
+| 007-29 a pytest run never executes stale bytecode | running (worker 785b3f5b, opus high; brief `tasks/wave-3.md`) | Found by 007-17: a same-size edit within the same second runs the cached `.pyc` under `PYTHONPYCACHEPREFIX`, and a stale FAIL is stored as current. | Regression on 3.10 and 3.13; start-up cost measured. |
 
 ## Later
 
