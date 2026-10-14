@@ -1,0 +1,3 @@
+/home/squeal-e2e/dogfood-009/agent
+/home/squeal-e2e/dogfood-009/agent/models.json
+/home/squeal-e2e/dogfood-009/home

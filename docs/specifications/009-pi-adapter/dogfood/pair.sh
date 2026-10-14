@@ -20,6 +20,7 @@ $T send "Experiment A: in src/purry.ts pass undefined instead of lazy to lazyDat
 sleep 90
 $T shot $L
 $U -C $D/home/remeda squeal status | sed -n 1,3p
+sudo -n -u squeal-e2e python3 -I $D/scripts/turn-state.py $D/home/remeda
 stamp "restore A"
 $T send "Put src/purry.ts back exactly as it was originally. Only edit that file and reply with the single word ok."
 sleep 45
@@ -32,6 +33,7 @@ $T send "Experiment B: in src/purry.ts pass undefined instead of lazy to lazyDat
 sleep 90
 $T shot $L
 $U -C $D/home/remeda squeal status | sed -n 1,3p
+sudo -n -u squeal-e2e python3 -I $D/scripts/turn-state.py $D/home/remeda
 ps -u squeal-e2e -o pid,ppid,stat,args | cut -c1-170
 pid=$(ps -u squeal-e2e -o pid=,args= | awk '$2=="pi" {print $1}' | head -1)
 sudo -n -u squeal-e2e sh -c "ls -l /proc/$pid/fd | grep waiter-"

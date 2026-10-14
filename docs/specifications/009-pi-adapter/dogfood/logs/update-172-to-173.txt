@@ -1,0 +1,11 @@
+$ mkdir -p /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi
+$ curl -fsSL -o /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/.unpack.vG4OPm/source.tar.gz file:///home/squeal-e2e/dogfood-009/src/squeal--v0.1.173.tar.gz
+$ tar -xzf /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/.unpack.vG4OPm/source.tar.gz -C /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/.unpack.vG4OPm/source --strip-components=1
+$ mv /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/.unpack.vG4OPm/source/plugins/pi /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.173
+$ pi install /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.173
+Installing /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.173...
+Installed /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.173
+$ pi remove /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.172
+Removing /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.172...
+Removed /home/squeal-e2e/dogfood-009/home/.local/share/squeal/pi/0.1.172
+Pi sessions already open keep the Squeal they loaded; /reload in each loads 0.1.173

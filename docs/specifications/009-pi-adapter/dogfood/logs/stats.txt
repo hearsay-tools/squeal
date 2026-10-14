@@ -1,0 +1,10 @@
+s2-astra: 20 requests, primer in 20; SQUEAL as user text 7, as a denied tool result 0
+s3-grok: 34 requests, primer in 34; SQUEAL as user text 8, as a denied tool result 1
+  ran tests itself: npx vitest run --project types src/internal/words.test-d.ts src/toCamelCase.test-d.ts src/toSnakeCase.test-d.ts src/toKebabCase.test-d.ts src/toTitleCase.test-d
+  ran tests itself: npm run test:types -- src/toCamelCase.test-d.ts src/toSnakeCase.test-d.ts src/toKebabCase.test-d.ts src/toTitleCase.test-d.ts && npm run check
+  ran tests itself: pwd; ls packages/remeda/package.json && npm run test:types --prefix packages/remeda -- src/toCamelCase.test-d.ts src/toSnakeCase.test-d.ts src/toKebabCase.test-
+  ran tests itself: cd packages/remeda && npm run test:types -- src/toCamelCase.test-d.ts src/toSnakeCase.test-d.ts src/toKebabCase.test-d.ts src/toTitleCase.test-d.ts && npm run c
+s4-sol: 8 requests, primer in 8; SQUEAL as user text 2, as a denied tool result 0
+  request 23 has no primer; system prompt starts: 'You are a context summarization assistant. Your task is to read a conversation between a u'
+  request 24 has no primer; system prompt starts: 'You are a context summarization assistant. Your task is to read a conversation between a u'
+s5-tui: 48 requests, primer in 46; SQUEAL as user text 11, as a denied tool result 0
