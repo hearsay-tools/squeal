@@ -70,22 +70,31 @@ export function outsideEditables(
 ): readonly OutsideEditable[] {
   const site = sitePackagesDir(env);
   if (site === null) return [];
-  const roots = [root, realOr(root)];
   const found: OutsideEditable[] = [];
   for (const name of listOptional(site)) {
     if (!name.endsWith(".dist-info")) continue;
     const named = editableDir(readOptional(join(site, name, "direct_url.json")));
-    if (named === null) continue;
-    // Python follows symlinks, so an in-tree link to another tree is outside.
-    const path = realOr(named);
-    if (roots.some((r) => path === r || toRelative(r, path) !== null)) continue;
-    found.push({ distribution: name.slice(0, -".dist-info".length).split("-")[0] as string, path });
+    if (named === null || insideWorktree(root, named)) continue;
+    found.push({
+      distribution: name.slice(0, -".dist-info".length).split("-")[0] as string,
+      path: realOr(named),
+    });
   }
   return found;
 }
 
+/**
+ * Whether an editable's project directory lies inside `root`, as given or
+ * as its real path. Python follows symlinks, so an in-tree link to another
+ * tree is outside.
+ */
+export function insideWorktree(root: AbsolutePath, dir: AbsolutePath): boolean {
+  const path = realOr(dir);
+  return [root, realOr(root)].some((r) => path === r || toRelative(r, path) !== null);
+}
+
 /** PEP 610: the local directory of an editable `direct_url.json`, else `null`. */
-function editableDir(text: string | null): AbsolutePath | null {
+export function editableDir(text: string | null): AbsolutePath | null {
   if (text === null) return null;
   let parsed: unknown;
   try {
