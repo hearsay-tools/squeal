@@ -6,14 +6,19 @@ import { fileURLToPath } from "node:url";
  * CI check (001-76): when any plugin's dist differs between two commits, the root
  * package.json version must be greater at the later one. Claude Code updates an installed
  * plugin only when the manifest's version changes, Codex caches each plugin by its version
- * (spec 002 D5), install.sh puts the Pi package in a directory named by its version (spec 009
- * D1), and the build writes every version from package.json. Self-contained so Node runs it
+ * (spec 002 D5), install.sh puts the Pi and OpenCode packages in directories named by their
+ * version (spec 009 D1, spec 008 D1), and the build writes every version from package.json. Self-contained so Node runs it
  * with type stripping:
  *
  *   node --experimental-strip-types scripts/check-version-bump.ts <base> [head]
  */
 
-const BUNDLES = ["plugins/claude-code/dist", "plugins/codex/dist", "plugins/pi/dist"] as const;
+const BUNDLES = [
+  "plugins/claude-code/dist",
+  "plugins/codex/dist",
+  "plugins/pi/dist",
+  "plugins/opencode/dist",
+] as const;
 
 const git = (cwd: string, args: readonly string[]) =>
   execFileSync("git", args, { cwd, encoding: "utf8" });
