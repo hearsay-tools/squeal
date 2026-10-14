@@ -1,6 +1,6 @@
 # 009 Pi adapter: status
 
-Stage: draft (research)
+Stage: draft (spec written 2026-10-14, for the human's review)
 Started: 2026-10-14
 
 ## Decisions so far
@@ -10,3 +10,4 @@ Started: 2026-10-14
 - Pi 1.0.4 has no hook processes: extensions run in the Pi process for the session's life (`docs/extensions.md`). Research measures what that changes against 002's per-event hook processes: a held daemon connection, mid-turn injection, and idle wake.
 - Research probes run Pi only as the throwaway user `squeal-e2e`, with a scripted fake provider and no model credentials (`research/README.md`).
 - Dispatch: two researchers in parallel, Opus on `pi-extension-events`, Astra on `pi-sessions-and-packaging` (board Standing models). Both done 2026-10-14; findings in `research/`.
+- 2026-10-14, coordinator, writing `spec.md` from both findings: a Squeal handler must not run `node:sqlite` on Pi's main thread, because Pi has no handler timeout and the store's busy timeout would freeze the TUI and the RPC stream; D4 puts the shared code in a worker thread with per-event deadlines (a choice of the coordinator, measured in wave 0). The final `turn_end` of a run delivers nothing so the end-of-run continuation carries the news (research 009-01 found a final-turn entry waits for the next prompt). No held daemon socket. Install through `install.sh` and `pi install <local dir>`, not a git install of this repository.
