@@ -28,12 +28,11 @@ export async function unknownExclusions(
   if (names.length === 0) return [];
   let known: string[];
   try {
-    const config = await node.resolveConfig({ root, watch: false });
-    // `ancestors` names the projects a nested one is declared under; Vitest's filter matches them too.
-    const entries = (config.test?.resolvedProjects ?? []) as readonly {
-      readonly projectConfig: { readonly name: string };
-      readonly ancestors?: readonly string[];
-    }[];
+    // Vite's type has `test` only where Vitest's augmentation is loaded; `ancestors` is internal.
+    const config = (await node.resolveConfig({ root, watch: false })) as {
+      readonly test?: { readonly resolvedProjects?: readonly ResolvedEntry[] };
+    };
+    const entries = config.test?.resolvedProjects ?? [];
     known = entries.flatMap((entry) => [entry.projectConfig.name, ...(entry.ancestors ?? [])]);
   } catch {
     return [];
@@ -45,6 +44,12 @@ export async function unknownExclusions(
           `"vitest.excludeProjects[${index}]" names no Vitest project (${JSON.stringify(name)}); it is left out`,
         ],
   );
+}
+
+/** A project as Vitest resolved it, and the projects it is declared under, which the filter matches too. */
+interface ResolvedEntry {
+  readonly projectConfig: { readonly name: string };
+  readonly ancestors?: readonly string[];
 }
 
 /** Vitest 5's `wildcardPatternToRegExp`, which its project filter uses. */
