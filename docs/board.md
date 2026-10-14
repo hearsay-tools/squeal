@@ -942,6 +942,15 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 | 008-10 plugin, bridge and the OpenCode package | done (0.1.176; bridge cost open question 3 to 008-12) | D1 layout, D2, D4, D6, D8; D3's registration, `session.deleted` and `dispose`: `src/harness/opencode/`, `plugins/opencode/`, a per-event `node` bridge with deadlines, the in-process fast path, `build:plugin`. | Stalled or failing bridge is silent within its deadline; the plugin bundle has no `node:sqlite`; bridge p95 recorded with load; full suite green. |
 | 008-11 scripted-provider fixture and wave-0 checks | done (0.1.176; open questions 1 and 2 closed, `research/wave-0-checks.md`) | Testing: an OpenAI-compatible scripted provider, `test/helpers/opencode.ts`, OpenCode 1.18.35 pinned; as `squeal-e2e`: isolation, offline provider, open questions 1 (update without remove) and 2 (`chat.message` part). | Fixture test green under `run` and `serve` in CI on Node 22 and 24; `research/wave-0-checks.md` committed. |
 
+### Wave 1: hooks and wake, status, install, review of wave 0 (parallel; briefs in `specifications/008-opencode-adapter/tasks/wave-1.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 008-12 the OpenCode hooks and the idle wake | running (worker 440a861d, opus high) | D3 (delivery after, deny before, primer, `chat.message` delta, idle continuation, child idle), D5, D9; the bridge's per-event cost (open question 3). | Unit and real-OpenCode tests of each hook under `run` and `serve`; bridge p95 within 10 ms of the matching Codex hook in one run; full suite green. |
+| 008-13 status and pull credit under OpenCode | running (worker 02b8780e, opus high) | D2 `shell.env` variables, D7: pull credit for root and child, the `OpenCode:` status line. | Both D7 causes tested; root and child pulls credited; other harnesses' status tests unchanged. |
+| 008-14 install and update through OpenCode | running (worker 8719cf53, opus high) | D1 as amended: `install.sh` OpenCode step with the `current` link, update, uninstall, `squeal update`, the launcher's search. | Install, reinstall, update with kept directories and uninstall tested; never `--force`, never an OpenCode config edit. |
+| 008-15 review of wave 0 | running (worker 66fa437c, codex gpt-6.1-sol high) | `/reviewer` over `c12dc371~1..eae020fc`: deadlines, no `node:sqlite` in the plugin, the fast path, D2 identity, `runOpenCode` isolation, the latency test. | `reviews/wave-0.md` committed. |
+
 ## Later
 
 - 007: observed closure growth outside `observe.runtimeInputs`: a pytest file whose run imports a path outside its static closure and outside the shared session key makes the result incomplete but does not grow the stored closure for the next key (007-14 option (b), 2026-10-14).
