@@ -17,6 +17,8 @@ Full-suite checkpoint: none completed at revision 187; last completed at revisio
 
 `squeal status --json` gives the same snapshot as a versioned JSON object.
 
+In a Codex or Pi shell, status adds a line starting `Codex:` or `Pi:` when no Squeal consumer of this session is registered in this worktree: Squeal's hooks or Pi extension do not run in the session, or have not registered it yet. The line names the step that enables them (trusting the hooks, installing the Pi package); tell the user, and leave the step to them.
+
 ## Waiting for pending checks
 
 Results arrive with your next tool call, so by default keep working. Only when you need a result before your next step, for example before saying the task is done, run `squeal status --wait 60000`. It replaces `sleep` and polling.

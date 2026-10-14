@@ -4,7 +4,11 @@ Spec 009 D1, D4 and D6. This directory is a Pi package: `package.json` declares 
 
 ## Install
 
-`pi install <this directory>` at user scope. Pi writes its own settings and references a local directory in place, without copying it; Squeal writes nothing under `~/.pi`. `install.sh` gains this step in wave 1.
+`pi install <this directory>` at user scope. Pi writes its own settings and references a local directory in place, without copying it; Squeal writes nothing under `~/.pi`.
+
+`install.sh` (the root README's Install) does this for a release: with `pi` on the `PATH` it unpacks this directory from the tag's source archive into `${XDG_DATA_HOME:-~/.local/share}/squeal/pi/<version>/` and runs `pi install` on it. A later release's `install.sh` installs its own directory, then `pi remove`s the older one; `--uninstall` runs `pi remove` and deletes the directory. Both act only on what `install.sh` recorded in `~/.local/state/squeal/installed`. `bin/squeal-launcher` is the launcher every plugin ships; with only Pi, `install.sh` copies it from here to `~/.local/bin/squeal`, and it finds the newest package under that data directory.
+
+A package puts nothing on the `PATH`, so Squeal's texts in Pi name the CLI as the Node that runs Pi with `--disable-warning=ExperimentalWarning "<this directory>/dist/cli/squeal.mjs"`. In a Pi shell where the extension never registered the session (`PI_SESSION_ID` set, no consumer of it), `squeal status` adds a line saying so, with the install command.
 
 ## How it runs
 
