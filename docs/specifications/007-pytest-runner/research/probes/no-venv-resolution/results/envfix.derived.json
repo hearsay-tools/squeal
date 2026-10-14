@@ -1,0 +1,16 @@
+{
+ "entries": [
+  {
+   "pth": "app.pth",
+   "path": "src",
+   "from": ". uv_build"
+  },
+  {
+   "pth": "lib.pth",
+   "path": "packages/lib/src",
+   "from": "packages/lib uv_build"
+  }
+ ],
+ "mappings": [],
+ "notes": []
+}

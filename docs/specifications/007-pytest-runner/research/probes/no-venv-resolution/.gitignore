@@ -1,0 +1,9 @@
+.venv*/
+__pycache__/
+.pytest_cache/
+.uv/
+.home/
+node_modules/
+work/
+*.egg-info/
+results/q2/

@@ -1,0 +1,11 @@
+{
+ "entries": [
+  {
+   "pth": "__editable__.pluggy-<dynamic>.pth",
+   "path": "src",
+   "from": ". setuptools.build_meta"
+  }
+ ],
+ "mappings": [],
+ "notes": []
+}

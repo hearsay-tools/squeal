@@ -1,0 +1,6 @@
+[project]
+name = "hauto"
+version = "0.1.0"
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

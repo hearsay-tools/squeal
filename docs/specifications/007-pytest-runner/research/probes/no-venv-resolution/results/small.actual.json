@@ -1,0 +1,14 @@
+{
+ "entries": [
+  {
+   "pth": "__editable__.other-0.1.0.pth",
+   "path": "packages/other/src"
+  },
+  {
+   "pth": "_editable_impl_app.pth",
+   "path": "src"
+  }
+ ],
+ "mappings": [],
+ "notes": []
+}

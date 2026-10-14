@@ -1,0 +1,9 @@
+[project]
+name = "uvflat"
+version = "0.1.0"
+[tool.uv.build-backend]
+module-root = ""
+module-name = "uvb_flat"
+[build-system]
+requires = ["uv_build>=0.8,<0.13"]
+build-backend = "uv_build"

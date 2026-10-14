@@ -1,0 +1,8 @@
+layouts {"d4":{"median":8,"max":106,"files_median":3},"sym":{"median":12,"max":122,"files_median":3}}
+small {"d4":{"median":10,"max":28,"files_median":6},"sym":{"median":22,"max":44,"files_median":6}}
+envfix {"d4":{"median":28,"max":28,"files_median":5},"sym":{"median":36,"max":36,"files_median":5}}
+hook {"d4":{"median":4,"max":4,"files_median":3},"sym":{"median":4,"max":4,"files_median":3}}
+attrs {"d4":{"median":114,"max":166,"files_median":17},"sym":{"median":156,"max":210,"files_median":17}}
+click {"d4":{"median":104,"max":112,"files_median":19},"sym":{"median":178,"max":190,"files_median":19}}
+pluggy {"d4":{"median":28,"max":30,"files_median":10},"sym":{"median":42,"max":46,"files_median":10}}
+cleo {"d4":{"median":52,"max":96,"files_median":32},"sym":{"median":80,"max":152,"files_median":32}}

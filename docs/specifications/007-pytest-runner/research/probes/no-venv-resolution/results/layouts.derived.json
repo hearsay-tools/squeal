@@ -1,0 +1,54 @@
+{
+ "entries": [
+  {
+   "pth": "__editable__.pathed-0.1.0.pth",
+   "path": "vendor/pathed/src",
+   "from": "vendor/pathed setuptools.build_meta"
+  },
+  {
+   "pth": "__editable__.sfind-0.1.0.pth",
+   "path": "packages/sfind/lib",
+   "from": "packages/sfind setuptools.build_meta"
+  },
+  {
+   "pth": "_editable_impl_hauto.pth",
+   "path": "packages/hauto/src",
+   "from": "packages/hauto hatchling.build"
+  },
+  {
+   "pth": "_editable_impl_pdmb.pth",
+   "path": "packages/pdmb/src",
+   "from": "packages/pdmb pdm.backend"
+  },
+  {
+   "pth": "app.pth",
+   "path": "src",
+   "from": ". uv_build"
+  },
+  {
+   "pth": "flitm.pth",
+   "path": "packages/flitm/src",
+   "from": "packages/flitm flit_core.buildapi"
+  },
+  {
+   "pth": "poet.pth",
+   "path": "packages/poet/source",
+   "from": "packages/poet poetry.core.masonry.api"
+  },
+  {
+   "pth": "uvflat.pth",
+   "path": "packages/uvflat",
+   "from": "packages/uvflat uv_build"
+  }
+ ],
+ "mappings": [
+  {
+   "name": "sflat",
+   "path": "packages/sflat/sflat",
+   "from": "packages/sflat setuptools.build_meta"
+  }
+ ],
+ "notes": [
+  "path source pathdep (vendor/pathdep) installed as a copy, resolves to site-packages"
+ ]
+}

@@ -1,0 +1,43 @@
+{
+ "entries": [
+  {
+   "pth": "__editable__.pathed-0.1.0.pth",
+   "path": "vendor/pathed/src"
+  },
+  {
+   "pth": "__editable__.sfind-0.1.0.pth",
+   "path": "packages/sfind/lib"
+  },
+  {
+   "pth": "_editable_impl_hauto.pth",
+   "path": "packages/hauto/src"
+  },
+  {
+   "pth": "_editable_impl_pdmb.pth",
+   "path": "packages/pdmb/src"
+  },
+  {
+   "pth": "app.pth",
+   "path": "src"
+  },
+  {
+   "pth": "flitm.pth",
+   "path": "packages/flitm/src"
+  },
+  {
+   "pth": "poet.pth",
+   "path": "packages/poet/source"
+  },
+  {
+   "pth": "uvflat.pth",
+   "path": "packages/uvflat"
+  }
+ ],
+ "mappings": [
+  {
+   "name": "sflat",
+   "path": "packages/sflat/sflat"
+  }
+ ],
+ "notes": []
+}

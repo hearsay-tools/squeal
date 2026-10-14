@@ -1,0 +1,18 @@
+same   interpreter realpath
+same   pyvenv.cfg
+same   site-packages names
+DIFFER pth __editable__.other-0.1.0.pth
+DIFFER pth _editable_impl_app.pth
+same   pth _virtualenv.pth
+DIFFER direct_url app-0.1.0.dist-info
+DIFFER direct_url other-0.1.0.dist-info
+-- uv.lock identical: yes
+-- sample bytes (b's path replaced by <wt>):
+<wt>/src
+{"url":"file://<wt>","dir_info":{"editable":true}}
+home = <probe>/.uv/python/cpython-3.13-linux-x86_64-gnu/bin
+implementation = CPython
+uv = 0.12.2
+version_info = 3.13
+include-system-site-packages = false
+prompt = app

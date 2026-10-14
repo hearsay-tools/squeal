@@ -1,0 +1,8 @@
+[project]
+name = "poet"
+version = "0.1.0"
+[tool.poetry]
+packages = [{ include = "poet_pkg", from = "source" }]
+[build-system]
+requires = ["poetry-core>=2"]
+build-backend = "poetry.core.masonry.api"

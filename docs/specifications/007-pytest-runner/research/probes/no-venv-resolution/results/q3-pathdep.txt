@@ -1,0 +1,12 @@
+synced: installed pathdep = 'VALUE = 1 '
+source edited: uv lock --check exit 0 | uv.lock changed: no
+source edited: uv sync --check exit 0
+after uv sync: installed pathdep = 'VALUE = 1 '
+after --reinstall-package pathdep: installed pathdep = 'VALUE = 2 '
+-- direct_url.json of the copy:
+{"url":"file://<wt>/vendor/pathdep","dir_info":{"editable":false}}
+-- uv.lock entry:
+name = "pathdep"
+version = "0.1.0"
+source = { directory = "vendor/pathdep" }
+

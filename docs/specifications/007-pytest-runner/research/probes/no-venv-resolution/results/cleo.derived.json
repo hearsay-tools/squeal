@@ -1,0 +1,11 @@
+{
+ "entries": [
+  {
+   "pth": "cleo.pth",
+   "path": "src",
+   "from": ". poetry.core.masonry.api"
+  }
+ ],
+ "mappings": [],
+ "notes": []
+}
