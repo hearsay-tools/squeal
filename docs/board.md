@@ -870,7 +870,7 @@ Spec: `specifications/007-pytest-runner/spec.md`, approved 2026-10-14 by the hum
 | Task | Status | Scope | Done when |
 |---|---|---|---|
 | 007-17 end to end | finished on `cez/dcd4db61` (`0fbcaedf`), not landed: 1 of 16 CI scenario runs strands a withheld tier (007-30) | The shipped plugin against the fixture, as 001's `test/e2e`; the fixture on pytest 8 as well as 9 (review 007-16 input 7). | e2e suite green in CI. |
-| 007-18 dogfooding | running (worker c93d1ae0, opus high; from main 15afd525; brief `tasks/wave-3.md`) | A real open-source pytest project of a few hundred test files, a Cezar worker on Claude Code and one on Codex; batch size revisited. | `lessons.md` resolves the open questions with evidence. |
+| 007-18 dogfooding | done (`lessons.md`): both agents trusted Squeal and were right; 13 defects, rows 007-35 to 007-40 | A real open-source pytest project of a few hundred test files, a Cezar worker on Claude Code and one on Codex; batch size revisited. | `lessons.md` resolves the open questions with evidence. |
 | 007-28 main CI: synced second worktree inherits 6 of 13 on GitHub runners | done (0.1.173, `643752b1`): uv hardlinks on ext4 runners moved ctime of watched `.venv` files; environment paths left the touch-judged set; `PYTEST_ADAPTER_VERSION` 2 | `test/integration/pytest.test.ts:149` red on main since 0.1.169 (run 38582092315), CI-only; on the 007 branch since wave 2.5, hidden by expected drift. Blocks the next landing. | Cause named from CI; local regression; branch CI green. |
 | 007-29 a pytest run never executes stale bytecode | done (0.1.173): a private bytecode prefix per run; +40 to 200 ms per tier | Found by 007-17: a same-size edit within the same second runs the cached `.pyc` under `PYTHONPYCACHEPREFIX`, and a stale FAIL is stored as current. | Regression on 3.10 and 3.13; start-up cost measured. |
 | 007-30 a withheld tier is run again, and says why when it is not | finished, rebased on 0.1.174 on `cez/2ab5b448` (8355e372..2554229f), not landed: review 007-31 FAIL | Core: the completion barrier's withheld files are re-queued once when no revision follows; a repeat leaves a note naming the path. Promotes the Later row; blocks 007-17. | Scheduler regression; 007-17's e2e green in CI on both Nodes. |
@@ -950,6 +950,17 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 | 008-13 status and pull credit under OpenCode | running (worker 02b8780e, opus high) | D2 `shell.env` variables, D7: pull credit for root and child, the `OpenCode:` status line. | Both D7 causes tested; root and child pulls credited; other harnesses' status tests unchanged. |
 | 008-14 install and update through OpenCode | running (worker 8719cf53, opus high) | D1 as amended: `install.sh` OpenCode step with the `current` link, update, uninstall, `squeal update`, the launcher's search. | Install, reinstall, update with kept directories and uninstall tested; never `--force`, never an OpenCode config edit. |
 | 008-15 review of wave 0 | running (worker 66fa437c, codex gpt-6.1-sol high) | `/reviewer` over `c12dc371~1..eae020fc`: deadlines, no `node:sqlite` in the plugin, the fast path, D2 identity, `runOpenCode` isolation, the latency test. | `reviews/wave-0.md` committed. |
+
+### Wave 4: dogfooding repairs (from `lessons.md`, 007-18)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 007-35 every configured test file is listed | planned | Defect 1: `build`, `dist`, `venv` directories are skipped whatever `include` and `norecursedirs` say (70 briefcase tests never validated); honour pytest's `norecursedirs` and note what is skipped. | A test under `build/` is listed and run; a skipped directory is named in a note. |
+| 007-36 a first pass runs each file once | planned | Defect 2: 1,002 file-runs for 406 files; find why the static-key first run re-runs (adapter with core). | A baseline runs each file once on `small` and a 400-file generated project. |
+| 007-37 the start-up set and failure text are stable | planned | Defects 4, 7, 13: test packages' `__init__.py` and nested `conftest.py` leave the session set; pytest's temporary paths are normalised in failure fingerprints; `squeal_pytest` closes its events file. | Editing a test `__init__.py` re-runs its directory only; one failure keeps one fingerprint across runs; no `ResourceWarning`. |
+| 007-38 projects versioned from git share results across commits | planned | Defect 3: setuptools_scm, hatch-vcs and versioneer name the editable install after the commit, so D2's hash changes every commit. Spec amendment first. | A commit with no dependency change inherits. |
+| 007-39 pytest policy and environment notes | planned | Defects 5, 8, 9, 11: `pytest[].batchSize` (default 5, open question 5); prompt admission when pytest appears after `pyvenv.cfg`; the no-environment note names a sync that works for the project; resolved notes leave status. | Policy test; admission within a second; notes tests. |
+| 007-40 agent texts name Python | planned | Defects 6, 10, 12: "No dependencies are installed" for a synced Python worktree; `squeal setup` tells the user to trust Codex hooks after trusting them; the skill trigger names `pytest`. Coordinate with 005 (owns setup and skill texts). | Text tests; both skill copies identical apart from Codex's CLI paragraph. |
 
 ## Later
 
