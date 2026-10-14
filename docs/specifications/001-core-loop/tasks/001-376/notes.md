@@ -91,5 +91,6 @@ Worker notes, 2026-10-14. Spec 001 D11 Capacity (decided 2026-10-14), `research/
   - The floor of 2 unless the project set 1, and the project's own `maxWorkers` ceiling, are that row's.
   - This row left `maxWorkers` and the environment hash alone.
 - **001-379** (PSI shrink): the natural seam is `fairShares`'s `hostSlots` argument, or `TierCapacity.take`, at each backlog boundary. Edit tiers never reach it.
-- **Bundles**: `plugins/claude-code/dist`, and the Pi and OpenCode bundles, drift from this source until the coordinator rebuilds (`test/harness/*/package.test.ts` "has the bundles exactly as `npm run build:plugin` produces them" fails). That drift is expected.
+- **Bundles**: `plugins/claude-code/dist`, and the Pi and OpenCode bundles, drift from this source until the coordinator rebuilds (the four bundle tests in `test/harness/plugin.test.ts`, `codex/plugin.test.ts`, `pi/package.test.ts` and `opencode/package.test.ts` fail). That drift is expected.
+- **Key format**: the change touches guarded sources, so `test/keys/key-format.test.ts` asks for the `KEY_FORMAT_VERSION` 10 pin (unreleased) to be redone. That is three tests: "is bumped whenever the guarded sources change" and the two "an adapter-only bump" tests. No key's meaning changes: the pool adds no key input, and `RunOptions.workers` is not read yet. The re-pin belongs to the coordinator's build commit, after 001-377 and 001-378 also land. 001-378 bumps the format anyway when `maxWorkers` leaves the hash.
 - **Probe P3** (row 001-380) is not run here; it needs a calm host.
