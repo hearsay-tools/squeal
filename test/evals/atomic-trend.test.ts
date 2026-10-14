@@ -254,9 +254,23 @@ describe("ATOMIC.md from the committed atomic results", () => {
   const LUNA_A5 = "a5-uncovered.p0.codex-gpt-6-luna.";
   const LUNA_A5_FROM = "20261013T112437Z-e23b55";
   const LUNA_A5_CEILING = 0.3;
+  /**
+   * The human (2026-10-14): haiku on a5-uncovered is accepted the same way, at the
+   * 4 of 10 of 0.1.168's release run (746295); a later run must not do worse. That
+   * run's flag on own-run-covers (0 of 10 against 0.1.131's pooled 11 of 20) is
+   * accepted as unconfirmed: 0.1.131's commit re-run the same day (b3bbc5) gave 3
+   * of 10, a 30-point gap at p = 0.105.
+   */
+  const HAIKU_A5 = "a5-uncovered.p0.claude-claude-haiku-5-5.";
+  const HAIKU_A5_FROM = "20261014T131649Z-746295";
+  const HAIKU_A5_CEILING = 0.4;
+  const ACCEPTED_FLAGS = [
+    { run: HAIKU_A5_FROM, model: HAIKU, scenario: "a5-uncovered", measure: "own-run-covers" },
+  ];
   const ACCEPTED = (a: { run: string; cell: string }) =>
     (a.run === "20261012T134945Z-3f2edd" && a.cell.startsWith("a5-uncovered.")) ||
-    (a.run >= LUNA_A5_FROM && a.cell.startsWith(LUNA_A5));
+    (a.run >= LUNA_A5_FROM && a.cell.startsWith(LUNA_A5)) ||
+    (a.run >= HAIKU_A5_FROM && a.cell.startsWith(HAIKU_A5));
 
   it("shows no flag and no alarm beyond the accepted ones", () => {
     const runs = readdirSync(RESULTS)
@@ -267,26 +281,45 @@ describe("ATOMIC.md from the committed atomic results", () => {
       }));
     expect(runs.length).toBeGreaterThanOrEqual(2);
     const t = atomicTrend(runs);
-    expect(t.groups.flatMap((g) => g.runs.flatMap((r) => r.flags))).toEqual([]);
+    const flags = t.groups.flatMap((g) =>
+      g.runs.flatMap((r) =>
+        r.flags.map((f) => ({
+          run: r.run,
+          model: g.model,
+          scenario: g.scenario,
+          measure: f.measure,
+        })),
+      ),
+    );
+    expect(flags).toEqual(ACCEPTED_FLAGS);
     expect(t.alarms.filter((a) => !ACCEPTED(a))).toEqual([]);
-    expect(atomicMarkdown(runs)).not.toMatch(FLAGGED);
+    // Each accepted flag shows once in the list and once in its table, nowhere else.
+    const md = atomicMarkdown(runs);
+    expect(md.match(/^- ⚑/gm)?.length ?? 0).toBe(ACCEPTED_FLAGS.length);
+    expect(md.match(/⚑ \|/g)?.length ?? 0).toBe(ACCEPTED_FLAGS.length);
   });
 
-  it("keeps luna's a5-uncovered false passes at or under 3 in 10 per run from e23b55", () => {
-    interface Run {
-      run: string;
-      cells: { id: string; atomic?: { falsePass?: boolean } }[];
-    }
-    const runs = readdirSync(RESULTS)
-      .filter((f) => f.endsWith(".atomic.json"))
-      .map((f) => JSON.parse(readFileSync(join(RESULTS, f), "utf8")) as Run);
-    const checked = runs.filter((r) => r.run >= LUNA_A5_FROM);
-    expect(checked.length).toBeGreaterThanOrEqual(1);
-    for (const r of checked) {
-      const cells = r.cells.filter((c) => c.id.startsWith(LUNA_A5));
-      if (cells.length === 0) continue;
-      const falsePasses = cells.filter((c) => c.atomic?.falsePass === true).length;
-      expect(falsePasses / cells.length, r.run).toBeLessThanOrEqual(LUNA_A5_CEILING);
-    }
-  });
+  it.each([
+    ["luna", LUNA_A5, LUNA_A5_FROM, LUNA_A5_CEILING],
+    ["haiku", HAIKU_A5, HAIKU_A5_FROM, HAIKU_A5_CEILING],
+  ])(
+    "keeps %s's a5-uncovered false passes at or under its ceiling per run from its acceptance",
+    (_, cell, from, ceiling) => {
+      interface Run {
+        run: string;
+        cells: { id: string; atomic?: { falsePass?: boolean } }[];
+      }
+      const runs = readdirSync(RESULTS)
+        .filter((f) => f.endsWith(".atomic.json"))
+        .map((f) => JSON.parse(readFileSync(join(RESULTS, f), "utf8")) as Run);
+      const checked = runs.filter((r) => r.run >= from);
+      expect(checked.length).toBeGreaterThanOrEqual(1);
+      for (const r of checked) {
+        const cells = r.cells.filter((c) => c.id.startsWith(cell));
+        if (cells.length === 0) continue;
+        const falsePasses = cells.filter((c) => c.atomic?.falsePass === true).length;
+        expect(falsePasses / cells.length, r.run).toBeLessThanOrEqual(ceiling);
+      }
+    },
+  );
 });
