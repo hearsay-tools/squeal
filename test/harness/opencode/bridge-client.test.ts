@@ -2,8 +2,12 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
-import { type BridgeCommand, callBridge } from "../../../src/harness/opencode/bridge-client.js";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  type BridgeCommand,
+  bridgeStart,
+  callBridge,
+} from "../../../src/harness/opencode/bridge-client.js";
 import { tempDir } from "../../store/helpers.js";
 import { alive } from "./stub.js";
 
@@ -49,6 +53,7 @@ function pidFile(): string {
 }
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   for (const path of pidFiles.splice(0)) {
     const pids = existsSync(path) ? (JSON.parse(readFileSync(path, "utf8")) as number[]) : [];
     for (const pid of pids) {
@@ -141,6 +146,43 @@ describe("callBridge", () => {
         5_000,
       ),
     ).toBeNull();
+  });
+
+  it("starts the bridge without Node's proxy setup, and hands NODE_USE_ENV_PROXY to what it spawns (008-21)", async () => {
+    vi.stubEnv("NODE_USE_ENV_PROXY", "1");
+    // What the bridge sees, whether Node set up the proxy at its start, and what a child sees.
+    const probe = bridge(`
+      import { execFileSync } from "node:child_process";
+      const proxyAtStart = process.moduleLoadList.includes("NativeModule _http_agent");
+      const child = execFileSync(process.execPath, ["-p", "process.env.NODE_USE_ENV_PROXY"], { encoding: "utf8" }).trim();
+      const carried = Object.keys(process.env).filter((name) => name.startsWith("SQUEAL_CARRIED"));
+      process.stdout.write(JSON.stringify({ answer: { switch: process.env.NODE_USE_ENV_PROXY, proxyAtStart, child, carried } }));
+    `);
+    expect(await callBridge(probe, {}, tempDir("squeal-oc-cwd-"), 10_000)).toEqual({
+      switch: "1",
+      proxyAtStart: false,
+      child: "1",
+      carried: [],
+    });
+    // The control: the same entry run as before 008-21 does set the proxy up, on a Node that has it.
+    const plain = JSON.parse(
+      execFileSync(process.execPath, [probe.entry], { encoding: "utf8" }),
+    ) as {
+      answer: { proxyAtStart: boolean };
+    };
+    const [major = 0, minor = 0] = process.versions.node.split(".").map(Number);
+    if (major > 24 || (major === 24 && minor >= 5)) expect(plain.answer.proxyAtStart).toBe(true);
+  });
+
+  it("leaves an environment without NODE_USE_ENV_PROXY as it is", () => {
+    const env = { PATH: "/usr/bin", HTTPS_PROXY: "http://proxy.invalid:3128" };
+    expect(bridgeStart("/b.mjs", env)).toEqual({
+      args: ["--disable-warning=ExperimentalWarning", "/b.mjs"],
+      env,
+    });
+    const carried = bridgeStart("/b.mjs", { ...env, NODE_USE_ENV_PROXY: "1" });
+    expect(carried.env).toEqual({ ...env, SQUEAL_CARRIED_NODE_USE_ENV_PROXY: "1" });
+    expect(carried.args.at(-1)).toBe("/b.mjs");
   });
 
   it.skipIf(BUN === null)(
