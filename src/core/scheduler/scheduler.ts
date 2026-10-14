@@ -40,7 +40,7 @@ import { RERUN_CAP } from "./rerun.js";
 import { retryRunner } from "./revision.js";
 import { RunnerWork } from "./runner-work.js";
 import { forgetSlowRuns, queueSlowSuite, type SlowRun, SlowTier } from "./slow-tier.js";
-import { withheldForTouch } from "./stability.js";
+import { Withholds, withheldForTouch, withholdNote } from "./stability.js";
 import {
   endTier,
   executeTier,
@@ -83,6 +83,8 @@ class TierScheduler implements Scheduler {
   readonly #inFlight = new Map<string, InFlight>();
   /** A `run --all` with `observeIgnored` (task 001-307). */
   readonly #warmUp = new WarmUp();
+  /** Task 007-30: files the completion barrier withheld, so a withheld tier runs once more. */
+  readonly #withholds = new Withholds();
   /** Something the pump waits for happened: a tier ended, runner work drained, a batch or request came. */
   #woken = false;
   #wake: (() => void) | null = null;
@@ -490,6 +492,7 @@ class TierScheduler implements Scheduler {
     const { context, ledger } = this.#started();
     const done = (async () => {
       let recorded = false;
+      let withheld: string | null = null;
       try {
         const ran = await executeTier(context, tier, this.#warmUp.observes(tier));
         const ignored = await this.#warmUp.read(context, tier, ran);
@@ -507,6 +510,11 @@ class TierScheduler implements Scheduler {
             environment === undefined || read === undefined ? read : { ...read, environment };
           const touched = [...new Set([...inputs.touched, ...(observed?.touched ?? [])])].sort();
           const report = withheldForTouch(ran, touched);
+          // Task 007-30: no revision follows the touch; a first withhold queues the tier's files
+          // again as a moved install does, their previous state standing.
+          const retry = touched.length > 0 && this.#withholds.retry(tier.files);
+          if (touched.length === 0) this.#withholds.clear(tier.files);
+          else withheld = withholdNote(touched, tier.files, retry);
           // Spec 004 D8: a slow run's artifact and activity go with its results (review wave 2, B1, B2).
           return context.store.transaction(() => {
             this.#warmUp.record(context, ignored);
@@ -516,7 +524,7 @@ class TierScheduler implements Scheduler {
               tier,
               report,
               inputs.changed,
-              installMoved,
+              installMoved || retry,
               observed,
             );
             if (slow === null) forgetSlowRuns(context, ledger, tier);
@@ -526,6 +534,7 @@ class TierScheduler implements Scheduler {
           });
         });
         recorded = true;
+        if (withheld !== null) this.#note(withheld);
         slow?.slot.release();
         // The watcher may not have reported these yet; reconciling twice is harmless.
         if (moved.length > 0) await this.#reconcilePaths(moved);
