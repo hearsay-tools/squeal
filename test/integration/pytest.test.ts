@@ -52,7 +52,8 @@ afterAll(async () => {
   );
   rmSync(scratch, { recursive: true, force: true });
   rmSync(runtime, { recursive: true, force: true });
-});
+  // Stopping daemons and removing synced environments outlasts Vitest's 10 s hook default under load.
+}, 120_000);
 
 const git = (cwd: string, args: readonly string[]) =>
   execFileSync("git", args, { cwd, stdio: "pipe", encoding: "utf8" });
