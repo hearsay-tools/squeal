@@ -48,3 +48,23 @@ Use /reviewer.
 Shape: review. `/reviewer` over the landings of 007-14 and 007-15 and any 007-16 repair. Focus: the adapter's assembly, inheritance across synced worktrees, the observed-only `meta` key, and the deny's fall-through. Write `reviews/wave-2.md`.
 
 Use /reviewer.
+
+## 007-20 repairs of `reviews/wave-1.md`
+
+Outcome: the three proven blockers and two should-fix findings of review 007-16 are fixed, each with the regression the review describes.
+
+Read: `reviews/wave-1.md` (B1, B2, B3, S1, S2 with their reproductions and suggested fixes); spec D1, D2, D4, D6 as amended 2026-10-14.
+
+Shape: repair. Seams, one commit each: B1 `src/runners/pytest/run/command.ts` (no-config runs must not discover an ancestor config; pass an owned empty config file plus the rootdir, and keep the hash and graph contract aligned); B2 `src/runners/pytest/graph/search-path.ts` (resolve each test file and what it reaches under its own import context, not one global path; where batch order or the module cache can change the origin, include every possible origin or mark it, and keep synced and unsynced candidate equality); B3 `src/runners/pytest/environment/states.ts` (realpath an existing editable target before the containment check); S1 the all-skipped note in `run/run.ts`; S2 an explicit cleanup budget in `test/runners/pytest/graph/oracle.test.ts`.
+
+Owns: the files named above, with `environment/config.ts`, `environment/hash.ts`, `graph/graph.ts` and `graph/modules.ts` where a fix needs them, and their tests under `test/runners/pytest/`. Leave alone: `src/runners/pytest/adapter*.ts`, `src/core/**` (007-14, running beside you; if a signature it may call changes, say so in your report), `src/harness/**`, `src/cli/**` (007-15).
+
+Done when: each reproduction in the review is a test that failed before and passes after (B2 in both file orders and batch sizes 1 and 2); lint, typecheck and the full suite green apart from the expected drift.
+
+Use /worker.
+
+## 007-21 re-review of 007-20
+
+Shape: review. `/reviewer` over 007-20's commits only, against `reviews/wave-1.md`. Write `reviews/wave-1.5.md`. Second and last round on this slice.
+
+Use /reviewer.
