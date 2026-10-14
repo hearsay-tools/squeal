@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,16 +9,16 @@ import type {
   AbsolutePath,
   PytestProject,
   RelativePath,
-  RunEnd,
   RunReport,
   TestFileRef,
 } from "../../../core/types/index.js";
-import { type ProcessExit, startGroup } from "../../node-test/run/process.js";
+import { startGroup } from "../../node-test/run/process.js";
 import type { PytestEnvironment } from "../environment/index.js";
+import { type Batch, ending, names, readOr, realOr, split, writeRunLog } from "./batches.js";
 import { inheritedArgs, pytestArgs, refusalNote, refusedFlags } from "./command.js";
 import { parsePytestEvents } from "./events.js";
 import { observeBatch, type PytestObservedClosure } from "./observed.js";
-import { type BatchFile, type BatchReport, readBatch } from "./report.js";
+import { readBatch } from "./report.js";
 
 type ReadyEnvironment = Extract<PytestEnvironment, { state: "ready" }>;
 
@@ -61,14 +61,6 @@ export const DEFAULT_BATCH_SIZE = 5;
 
 /** SIGKILL follows SIGTERM after this long (D6). */
 export const KILL_GRACE_MS = 2_000;
-
-interface Batch {
-  readonly index: number;
-  readonly files: readonly BatchFile[];
-  readonly args: readonly string[];
-  exit: ProcessExit | null;
-  read: BatchReport | null;
-}
 
 /**
  * Runs a tier of pytest files (spec 007 D6): batches of `batchSize` files,
@@ -113,7 +105,11 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
   );
   const rootdir = realOr(environment.config?.rootdir ?? cwd);
 
-  const batches: Batch[] = split(options).map((files, index) => ({
+  const batches: Batch[] = split(
+    options.files,
+    options.batchSize ?? DEFAULT_BATCH_SIZE,
+    options.alone,
+  ).map((files, index) => ({
     index,
     files: files.map((testFile) => ({
       testFile,
@@ -187,7 +183,12 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
       `pytest project "${project.name}": these test ids hold a memory address, so they change every run: ${addresses.join(", ")}.`,
     );
   }
-  const { end, failure } = ending(batches, new Set(done.map((f) => f.testFile)), expired, options);
+  const { end, failure } = ending(batches, new Set(done.map((f) => f.testFile)), expired, {
+    total: options.files.length,
+    timeoutMs: options.timeoutMs,
+    python,
+    logDir: options.logDir,
+  });
   const report: RunReport = {
     end,
     durationMs: Math.round(performance.now() - started),
@@ -216,25 +217,6 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
   };
 }
 
-/** The tier in batches, in the order given; a file `alone` names gets one of its own. */
-function split(options: PytestRunOptions): TestFileRef[][] {
-  const size = Math.max(1, options.batchSize ?? DEFAULT_BATCH_SIZE);
-  const batches: TestFileRef[][] = [];
-  let open: TestFileRef[] = [];
-  for (const file of options.files) {
-    if (options.alone?.(file) === true) batches.push([file]);
-    else {
-      open.push(file);
-      if (open.length === size) {
-        batches.push(open);
-        open = [];
-      }
-    }
-  }
-  if (open.length > 0) batches.push(open);
-  return batches;
-}
-
 function refusal(note: string, started: number): PytestRun {
   return {
     report: {
@@ -250,54 +232,6 @@ function refusal(note: string, started: number): PytestRun {
     skippedFiles: [],
     notes: [note],
   };
-}
-
-/**
- * `timed-out` when the deadline passed; `completed` when every file
- * completed; otherwise `completed` naming the unfinished files when some
- * completed, `crashed` when none did.
- */
-function ending(
-  batches: readonly Batch[],
-  done: ReadonlySet<TestFileRef>,
-  expired: boolean,
-  options: PytestRunOptions,
-): { end: RunEnd; failure: string | null } {
-  const unfinished = batches.filter((b) => b.files.some((f) => !done.has(f.testFile)));
-  const total = options.files.length;
-  if (expired) {
-    const count = total - done.size;
-    return {
-      end: "timed-out",
-      failure: `deadline of ${options.timeoutMs} ms passed with ${count} of ${total} test files unfinished`,
-    };
-  }
-  if (unfinished.length === 0) return { end: "completed", failure: null };
-  const what = unfinished
-    .map((b) => `${names(b, (f) => !done.has(f.testFile))} (${describeExit(b, options)})`)
-    .join(", ");
-  const failure = `pytest ended without a complete report for ${what}`;
-  return { end: done.size === 0 ? "crashed" : "completed", failure };
-}
-
-function names(batch: Batch, keep: (file: BatchFile) => boolean = () => true): string {
-  return batch.files
-    .filter(keep)
-    .map((f) => f.testFile.path)
-    .join(", ");
-}
-
-function describeExit(batch: Batch, options: PytestRunOptions): string {
-  const exit = batch.exit;
-  if (exit === null) return "not started";
-  if (exit.error !== null)
-    return `cannot run ${options.environment.discovery.python}: ${exit.error}`;
-  const how = exit.signal === null ? `exit code ${exit.code}` : `signal ${exit.signal}`;
-  const tail = readOr(join(options.logDir, `stderr-${batch.index}.log`))
-    .trim()
-    .split("\n")
-    .slice(-3);
-  return tail[0] === "" ? how : `${how}: ${tail.join(" | ")}`;
 }
 
 /** Where the bytecode and pytest's cache go: outside the worktree, one directory per worktree and project. */
@@ -321,45 +255,4 @@ export function pytestRuntimeDir(module: URL = new URL(import.meta.url)): Absolu
   throw new Error(
     `pytest runtime files not found beside ${module.href}: tried ${tried.join(", ")}`,
   );
-}
-
-function realOr(path: string): AbsolutePath {
-  try {
-    return realpathSync(path) as AbsolutePath;
-  } catch {
-    return path as AbsolutePath;
-  }
-}
-
-function readOr(path: string): string {
-  try {
-    return readFileSync(path, "utf8");
-  } catch {
-    return "";
-  }
-}
-
-/** `run.json`: each batch's command line and exit, which nothing trusts for a verdict (D6), the report and notes. */
-function writeRunLog(
-  logDir: AbsolutePath,
-  log: {
-    python: string;
-    cwd: string;
-    batches: readonly Batch[];
-    report: RunReport;
-    notes: readonly string[];
-  },
-): void {
-  const batches = log.batches.map((b) => ({
-    files: b.files.map((f) => f.testFile.path),
-    command: [log.python, ...b.args],
-    exit: b.exit,
-    session: b.read?.session ?? false,
-  }));
-  const text = JSON.stringify(
-    { cwd: log.cwd, batches, report: log.report, notes: log.notes },
-    null,
-    2,
-  );
-  writeFileSync(join(logDir, "run.json"), `${text}\n`);
 }
