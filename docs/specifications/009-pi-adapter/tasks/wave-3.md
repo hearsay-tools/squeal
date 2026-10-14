@@ -50,3 +50,17 @@ Use /worker.
 Shape: review. `/reviewer` over `cf1e952c..3fd4916d` (0.1.172 and 0.1.173: 009-15, 009-16, 009-18, 009-19; the B1 commit `02249f23` is already settled by `reviews/wave-1.5.md`). Focus: D5's idle wake never holds Pi, is cancelled by input, a new run and shutdown, and arms only in `tui` and `rpc`; the shared waiter's new `signal` and `command` leave Claude Code's behaviour unchanged; `squeal update` and `install.sh --pi` against 005 D3's rules (only what the record owns is removed, the kept previous directory, the `ps` in-use check, the transition before a `--pi` release); whether the e2e's 15 s held request makes the deny scenario flaky under load; `runPi`'s isolation. Build only in a temporary detached worktree at `3fd4916d`, removed after. Write `docs/specifications/009-pi-adapter/reviews/wave-3.md`.
 
 Use /reviewer.
+
+## 009-23 review 009-22's notes
+
+Use /worker. Shape: repair. Outcome: the three notes of `reviews/wave-3.md` (S1, S2, N1) are closed, each by a regression.
+
+Read: `reviews/wave-3.md` sections S1, S2, N1 and "Inputs for the next wave"; spec D1 (updates) and D8 (e2e).
+
+- **S1.** Starting seam: the fake provider under `test/fixtures/pi/`; add an optional per-request release file, so `test/e2e/pi.test.ts` holds request 1's model response until it has seen the regression, and holds the re-run until that request starts. Bounded waits, cleanup on abort. The 15 s window goes; the error-result and re-issue assertions stay.
+- **S2.** `install.sh:227`'s message also says an open Pi session whose old package has no running daemon must `/reload` before a second update. Add the reviewer's two-update real-session regression (runPi isolation, local fixture archives). No new retention mechanism.
+- **N1.** Launcher format 3 in all three launcher copies, with a regression that starts from the 0.1.172 launcher (format 2) and shows `squeal update` recopies it.
+
+Owns: `test/fixtures/pi/**`, `test/e2e/pi*.ts`, `install.sh`, the three launchers, their tests. Leave alone: `src/harness/**`, `plugins/*/dist`, docs outside this spec's `notes`. Do not run `npm run build`; if a guarded key source moves, say so and leave the pin to the coordinator.
+
+Done when: each note has a test that fails before your change; Pi tests green on Node 22 and 24; lint, typecheck, `npx vitest run` green apart from known reds.
