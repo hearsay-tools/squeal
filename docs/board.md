@@ -910,7 +910,7 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 |---|---|---|---|
 | 009-15 idle wake | planned | D5: wait at `agent_settled` in `tui` and `rpc`, wake with `triggerTurn`, cancel on input and shutdown; `"pi"` in `StopWaitHarness`; review S2's native-blocked exit test. | Real Pi in `rpc` woken once by a late result; none under `-p`; a prompt cancels the wait; full suite green. |
 | 009-16 the Pi fixture's isolation | planned | Review S1 (protected env), N1 (typed fake provider), a base directory outside any repository. | Protected override has no effect; Pi's project outside the repository under a repository `TMPDIR`; full suite green. |
-| 009-17 review of wave 1 | planned | `/reviewer` over `502eb7f1..d428340c`: D3 honesty rules, D4 bounds, `install.sh` against 005 D3, launcher format 2, status line. | `reviews/wave-1.md` committed. |
+| 009-17 review of wave 1 | planned | `/reviewer` over `502eb7f1..7ac131df`: D3 honesty rules, D4 bounds, `install.sh` against 005 D3, launcher format 2, status line. | `reviews/wave-1.md` committed. |
 
 ## Later
 
