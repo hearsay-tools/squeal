@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   cpSync,
@@ -13,6 +13,7 @@ import {
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
+import { findPython, PYTHONS, type PythonVersion, pythonEnv } from "../helpers/pytest-env.js";
 
 /*
  * The fixture repository's own `npm install` of Vitest, done once per machine
@@ -21,7 +22,9 @@ import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
  * test files race to install; the first rename wins and the others discard
  * their copy. The node:test fixture (spec 003) has its own: tsx beside
  * Vitest, installed in a workspace root with the fixture's package
- * manifests, so its lockfiles and links are the ones npm writes.
+ * manifests, so its lockfiles and links are the ones npm writes. The pytest
+ * fixture (spec 007) takes the Vitest install and needs uv with both
+ * Pythons; each worktree's environments are its own `uv sync`.
  */
 
 /** The Vitest the fixture installs: the repository's own, so the npm cache has it offline. */
@@ -46,8 +49,8 @@ const CACHE_ROOT = "/tmp/squeal-e2e-cache";
 const PLATFORM = `node${process.versions.node.split(".")[0]}-${process.platform}-${process.arch}`;
 const INSTALL_TIMEOUT_MS = 180_000;
 
-/** Which fixture the install is for: Vitest alone, or the node:test workspace. */
-export type InstallKind = "vitest" | "node-test";
+/** Which fixture the install is for: Vitest alone, the node:test workspace, or pytest beside Vitest. */
+export type InstallKind = "vitest" | "node-test" | "pytest";
 
 /** The workspace packages of `test/fixtures/e2e/node-test`, whose manifests npm links. */
 const WORKSPACE = join(REPO_ROOT, "test/fixtures/e2e/node-test/packages");
@@ -63,7 +66,7 @@ interface Recipe {
 function recipe(kind: InstallKind): Recipe {
   const vitest = `vitest@${VITEST_VERSION}`;
   const vite = `vite@${VITE_VERSION}`;
-  if (kind === "vitest")
+  if (kind === "vitest" || kind === "pytest")
     return {
       key: `vitest-${VITEST_VERSION}-vite-${VITE_VERSION}-${PLATFORM}`,
       packages: [vitest, vite],
@@ -117,7 +120,7 @@ const pending = new Map<InstallKind, Promise<Install>>();
 export function fixtureInstall(kind: InstallKind = "vitest"): Promise<Install> {
   let made = pending.get(kind);
   if (made === undefined) {
-    made = install(recipe(kind));
+    made = install(recipe(kind)).then((npm) => (kind === "pytest" && npm.ok ? pythons(npm) : npm));
     pending.set(kind, made);
   }
   return made;
@@ -163,5 +166,34 @@ async function install({ key, packages, root }: Recipe): Promise<Install> {
     return { ok: false, reason: `${what} could not be cached: ${String(error)}` };
   } finally {
     rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+/** The pytest fixture's projects, by repository path: each has its own `uv.lock` and `.venv`. */
+export const PYTEST_PROJECTS = ["python/billing", "python/small"] as const;
+
+/** `install` when uv has both Pythons the pytest fixture runs on; else why not. */
+function pythons(install: Install): Install {
+  for (const version of PYTHONS) {
+    const found = findPython(version);
+    if (!found.ok) return found;
+  }
+  return install;
+}
+
+/**
+ * `uv sync --locked` in each pytest project of the worktree `root` on
+ * `version`, as a user syncs a fresh worktree: uv's own cache and managed
+ * Pythons, never the caller's Python settings (`test/helpers/pytest-env.ts`).
+ */
+export function uvSync(root: string, version: PythonVersion): void {
+  const found = findPython(version);
+  if (!found.ok) throw new Error(found.reason);
+  for (const project of PYTEST_PROJECTS) {
+    execFileSync("uv", ["sync", "--locked", "--python", found.python], {
+      cwd: join(root, project),
+      env: pythonEnv(),
+      stdio: "pipe",
+    });
   }
 }
