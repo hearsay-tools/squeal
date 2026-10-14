@@ -65,12 +65,22 @@ export interface OpenCodeRunOptions {
   prompt: string;
   /** Plugin files under test, linked into the run's `OPENCODE_CONFIG_DIR/plugins/`. */
   plugins?: string[];
+  /**
+   * Plugin packages installed with `opencode plugin file:<dir> -g` into the run's isolated config
+   * before OpenCode starts, so they load from OpenCode's global config as a user's install does.
+   */
+  install?: string[];
   /** Files written into the project before OpenCode starts, by relative path. */
   files?: Record<string, string>;
   /** Added to the run's environment; overriding one of `PROTECTED_ENV` throws before OpenCode starts. */
   env?: Record<string, string>;
   /** Called with the project after its `git init` and `files`, before OpenCode starts. */
   setup?: (cwd: string) => void | Promise<void>;
+  /**
+   * Called before OpenCode starts with the provider's live array of requests, title requests
+   * included, so a test can act once a request is in flight (a step's `release` holds it).
+   */
+  onRequests?: (requests: ScriptedRequest[]) => void;
   /**
    * Under `serve`, called after the first reply and before the SIGTERM that ends the server, so
    * a test can wait for a turn OpenCode starts itself or send another message. `requests` is the
@@ -142,11 +152,13 @@ export async function runOpenCode(options: OpenCodeRunOptions): Promise<OpenCode
   try {
     const cwd = join(dir, "proj");
     const env = isolate(dir, options, provider.url);
+    for (const plugin of options.install ?? []) await pluginInstall(binary, plugin, cwd, env);
     for (const [path, text] of Object.entries(options.files ?? {})) {
       mkdirSync(dirname(join(cwd, path)), { recursive: true });
       writeFileSync(join(cwd, path), text);
     }
     await options.setup?.(cwd);
+    options.onRequests?.(provider.requests);
     const args =
       options.mode === "run"
         ? ["run", "--format", "json", "-m", `scripted/${PLANNED_MODEL}`, options.prompt]
@@ -317,6 +329,33 @@ async function converse(
   };
   await message(`/session/${session.id}/message`, prompt);
   return { url, sessionID: session.id, post: message };
+}
+
+/**
+ * `opencode plugin file:<dir> -g` in the run's environment, from the project before the test's
+ * files are written: it writes the run's global `opencode.json` and links `dir` from the run's
+ * cache (wave-0 check 3).
+ */
+async function pluginInstall(
+  binary: string,
+  dir: string,
+  cwd: string,
+  env: NodeJS.ProcessEnv,
+): Promise<void> {
+  const child = spawn(binary, ["plugin", `file:${dir}`, "-g"], {
+    cwd,
+    env,
+    detached: true,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const out = collect(child);
+  const timer = setTimeout(() => killGroup(child, "SIGKILL"), 60_000);
+  const exitCode = await out.exited.finally(() => clearTimeout(timer));
+  killGroup(child, "SIGKILL");
+  if (exitCode !== 0)
+    throw new Error(
+      `opencode plugin file:${dir} -g exited ${exitCode}\n${out.stderr()}\n${out.stdout()}`,
+    );
 }
 
 function killGroup(child: ChildProcess, signal: NodeJS.Signals): void {
