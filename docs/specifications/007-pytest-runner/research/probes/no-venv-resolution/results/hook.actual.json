@@ -1,0 +1,14 @@
+{
+ "entries": [],
+ "mappings": [
+  {
+   "name": "hpkg",
+   "path": "h/src/hpkg/__init__.py"
+  },
+  {
+   "name": "spkg",
+   "path": "s/lib_src"
+  }
+ ],
+ "notes": []
+}

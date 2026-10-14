@@ -1,0 +1,29 @@
+[project]
+name = "app"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = ["hauto", "sflat", "sfind", "pdmb", "flitm", "poet", "uvflat", "pathdep", "pathed"]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["uv_build>=0.8,<0.13"]
+build-backend = "uv_build"
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+hauto = { workspace = true }
+sflat = { workspace = true }
+sfind = { workspace = true }
+pdmb = { workspace = true }
+flitm = { workspace = true }
+poet = { workspace = true }
+uvflat = { workspace = true }
+pathdep = { path = "vendor/pathdep" }
+pathed = { path = "vendor/pathed", editable = true }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,16 @@
+{
+ "entries": [
+  {
+   "pth": "__editable__.other-0.1.0.pth",
+   "path": "packages/other/src",
+   "from": "packages/other setuptools.build_meta"
+  },
+  {
+   "pth": "_editable_impl_app.pth",
+   "path": "src",
+   "from": ". hatchling.build"
+  }
+ ],
+ "mappings": [],
+ "notes": []
+}

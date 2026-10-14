@@ -1,0 +1,19 @@
+{
+ "entries": [],
+ "mappings": [
+  {
+   "name": "hpkg",
+   "path": "h/src/hpkg/__init__.py",
+   "from": "h hatchling.build"
+  },
+  {
+   "name": "spkg",
+   "path": "s/lib_src",
+   "from": "s setuptools.build_meta"
+  }
+ ],
+ "notes": [
+  "declared editable: h",
+  "declared editable: s"
+ ]
+}

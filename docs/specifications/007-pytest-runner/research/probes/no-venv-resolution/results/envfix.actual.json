@@ -1,0 +1,14 @@
+{
+ "entries": [
+  {
+   "pth": "app.pth",
+   "path": "src"
+  },
+  {
+   "pth": "lib.pth",
+   "path": "packages/lib/src"
+  }
+ ],
+ "mappings": [],
+ "notes": []
+}

@@ -1,0 +1,24 @@
+layouts 3.10 node(venv)~noenv: tests 11 | files differ 0 | candidates differ 2 | cand only in B: import pathdep x32
+layouts 3.10 sym:node(venv)~noenv: tests 11 | files differ 0 | candidates differ 0 | 
+layouts 3.10 sym:node(venv)~noenv+stdlib: tests 11 | files differ 0 | candidates differ 0 | 
+small 3.10 node(venv)~noenv: tests 3 | files differ 0 | candidates differ 3 | cand only in B: import pytest x12; cand only in B: import importlib x8; cand only in B: import json x4
+small 3.10 sym:node(venv)~noenv: tests 3 | files differ 0 | candidates differ 0 | 
+small 3.10 sym:node(venv)~noenv+stdlib: tests 3 | files differ 0 | candidates differ 0 | 
+envfix 3.10 node(venv)~noenv: tests 2 | files differ 0 | candidates differ 1 | cand only in B: import pytest x4; cand only in B: import os x4
+envfix 3.10 sym:node(venv)~noenv: tests 2 | files differ 0 | candidates differ 0 | 
+envfix 3.10 sym:node(venv)~noenv+stdlib: tests 2 | files differ 0 | candidates differ 0 | 
+hook 3.10 node(venv)~noenv: tests 1 | files differ 0 | candidates differ 0 | 
+hook 3.10 sym:node(venv)~noenv: tests 1 | files differ 0 | candidates differ 0 | 
+hook 3.10 sym:node(venv)~noenv+stdlib: tests 1 | files differ 0 | candidates differ 0 | 
+attrs 3.10 node(venv)~noenv: tests 26 | files differ 0 | candidates differ 26 | cand only in B: import pytest x52; cand only in B: import contextlib x52; cand only in B: import operator x52
+attrs 3.10 sym:node(venv)~noenv: tests 26 | files differ 0 | candidates differ 0 | 
+attrs 3.10 sym:node(venv)~noenv+stdlib: tests 26 | files differ 0 | candidates differ 0 | 
+click 3.10 node(venv)~noenv: tests 20 | files differ 0 | candidates differ 20 | cand only in B: import pytest x40; cand only in B: import collections x40; cand only in B: import contextlib x40
+click 3.10 sym:node(venv)~noenv: tests 20 | files differ 0 | candidates differ 1 | cand only in B: import Literal x2
+click 3.10 sym:node(venv)~noenv+stdlib: tests 20 | files differ 0 | candidates differ 0 | 
+pluggy 3.10 node(venv)~noenv: tests 9 | files differ 0 | candidates differ 9 | cand only in B: import pytest x18; cand only in B: import typing x18; cand only in B: import types x18
+pluggy 3.10 sym:node(venv)~noenv: tests 9 | files differ 0 | candidates differ 0 | 
+pluggy 3.10 sym:node(venv)~noenv+stdlib: tests 9 | files differ 0 | candidates differ 0 | 
+cleo 3.10 node(venv)~noenv: tests 25 | files differ 0 | candidates differ 25 | cand only in B: import io x50; cand only in B: import os x50; cand only in B: import pytest x50
+cleo 3.10 sym:node(venv)~noenv: tests 25 | files differ 0 | candidates differ 0 | 
+cleo 3.10 sym:node(venv)~noenv+stdlib: tests 25 | files differ 0 | candidates differ 0 | 

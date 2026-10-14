@@ -1,0 +1,11 @@
+{
+ "entries": [
+  {
+   "pth": "_editable_impl_attrs.pth",
+   "path": "src",
+   "from": ". hatchling.build"
+  }
+ ],
+ "mappings": [],
+ "notes": []
+}

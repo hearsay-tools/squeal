@@ -1,0 +1,5 @@
+no .python-version, requires-python >=3.10: 3.13
+.python-version 3.10, UV_NO_CONFIG=1 (ignores the pin file): 3.13
+.python-version 3.10, UV_NO_CONFIG unset (HOME and XDG still inside the probe, no /etc/uv): 3.10
+UV_PYTHON=3.10 in the environment, no pin file: 3.10
+uv.lock names: requires-python = ">=3.10"

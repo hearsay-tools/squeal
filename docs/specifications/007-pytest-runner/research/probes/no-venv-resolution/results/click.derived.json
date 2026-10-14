@@ -1,0 +1,11 @@
+{
+ "entries": [
+  {
+   "pth": "click.pth",
+   "path": "src",
+   "from": ". flit_core.buildapi"
+  }
+ ],
+ "mappings": [],
+ "notes": []
+}

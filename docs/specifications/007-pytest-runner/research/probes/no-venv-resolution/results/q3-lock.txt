@@ -1,0 +1,19 @@
+default: lock 983c765166b6 | py 3.13 | flags '' | sync --check exit 0 | app iniconfig other packaging pluggy pygments pytest pytest_mock 
+py310: lock 983c765166b6 | py 3.10 | flags '' | sync --check exit 0 | app exceptiongroup iniconfig other packaging pluggy pygments pytest pytest_mock tomli typing_extensions 
+no-dev: lock 983c765166b6 | py 3.13 | flags '--no-dev' | sync --check exit 1 | app other 
+extra: lock 983c765166b6 | py 3.13 | flags '--extra yaml' | sync --check exit 1 | app iniconfig other packaging pluggy pygments pytest pytest_mock pyyaml 
+all-groups: lock 983c765166b6 | py 3.13 | flags '--all-groups' | sync --check exit 1 | app iniconfig other packaging pluggy pygments pytest pytest_mock six 
+by-hand: lock 983c765166b6 | py 3.13 | flags '' | sync --check exit 1 | app iniconfig other packaging pluggy pygments pytest pytest_mock six 
+-- lock records markers and the extra without choosing:
+16:    { name = "colorama", marker = "sys_platform == 'win32'" },
+18:    { name = "tomli", marker = "python_full_version < '3.11'" },
+21:[package.optional-dependencies]
+26:[package.dev-dependencies]
+37:    { name = "colorama", marker = "sys_platform == 'win32'" },
+39:    { name = "pyyaml", marker = "extra == 'yaml'" },
+40:    { name = "tomli", marker = "python_full_version < '3.11'" },
+52:name = "colorama"
+118:    { name = "colorama", marker = "sys_platform == 'win32'" },
+119:    { name = "exceptiongroup", marker = "python_full_version < '3.11'" },
+124:    { name = "tomli", marker = "python_full_version < '3.11'" },
+144:name = "pyyaml"
