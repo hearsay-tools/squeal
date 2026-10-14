@@ -908,12 +908,12 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 009-15 idle wake | running (worker 9859b465, opus high) | D5: wait at `agent_settled` in `tui` and `rpc`, wake with `triggerTurn`, cancel on input and shutdown; `"pi"` in `StopWaitHarness`; review S2's native-blocked exit test. | Real Pi in `rpc` woken once by a late result; none under `-p`; a prompt cancels the wait; full suite green. |
-| 009-16 the Pi fixture's isolation | running (worker dce22e41, opus high) | Review S1 (protected env), N1 (typed fake provider), a base directory outside any repository. | Protected override has no effect; Pi's project outside the repository under a repository `TMPDIR`; full suite green. |
+| 009-15 idle wake | done (0.1.172, `c4c59482`; B1 fix `02249f23`, S2 pinned) | D5: wait at `agent_settled` in `tui` and `rpc`, wake with `triggerTurn`, cancel on input and shutdown; `"pi"` in `StopWaitHarness`; review S2's native-blocked exit test. | Real Pi in `rpc` woken once by a late result; none under `-p`; a prompt cancels the wait; full suite green. |
+| 009-16 the Pi fixture's isolation | done (0.1.172; S1, N1, repository-safe flags) | Review S1 (protected env), N1 (typed fake provider), a base directory outside any repository. | Protected override has no effect; Pi's project outside the repository under a repository `TMPDIR`; full suite green. |
 | 009-17 review of wave 1 | done: FAIL at 7ac131df, B1 (steered input resets the continuation flag); fix in 009-15 (`reviews/wave-1.md`) | `/reviewer` over `502eb7f1..7ac131df`: D3 honesty rules, D4 bounds, `install.sh` against 005 D3, launcher format 2, status line. | `reviews/wave-1.md` committed. |
-| 009-21 focused re-review of the B1 fix | planned | `/reviewer` over 009-15's B1 commit against `reviews/wave-1.md` B1; last round on wave 1. | `reviews/wave-1.5.md` committed. |
+| 009-21 focused re-review of the B1 fix | planned (brief in `tasks/wave-2.md`) | `/reviewer` over `02249f23` against `reviews/wave-1.md` B1; last round on wave 1. | `reviews/wave-1.5.md` committed. |
 
-### Wave 3: updates and proof (planned)
+### Wave 3: updates and proof (briefs in `specifications/009-pi-adapter/tasks/wave-3.md`; 009-20 waits for the human's go)
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
@@ -945,4 +945,5 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 - Inherited-pass re-verification policy, if dogfooding shows stale escapes.
 - 010 pull credit: a pull through `squeal status` suppresses the same news in the next push (design H in `specifications/001-core-loop/research/pull-advances-push.md`; changes D6 to D9 and adds a `pulls` table; one worker plus a reviewer). Parked 2026-10-07: the repeat is harmless.
 - 001: a test that reads an esbuild bundle built from sources Squeal's import tracing does not follow (`test/harness/pi/package.test.ts` builds `src/harness/pi/entries/*`) stays current after a source edit; 009-12 saw the Pi bundle drift fail under `npx vitest run` while Squeal showed it current. Declare `inputs` for bundle tests, as the 001 follow-up above proposes for daemon tests. Reported by the 009 coordinator, 2026-10-14.
+- Main CI red since `bdd05f15` (2026-10-14): `test/evals/atomic-trend.test.ts` fails on a flagged drop in `own-run-covers` in the 0.1.168 release atomic tier. It belongs to the coordinator releasing 0.1.168 (process step 6a.2: re-check against the previous release, then to the human); not caused by spec 009. Noted by the 009 coordinator so landings can proceed.
 - macOS verification before any public release.
