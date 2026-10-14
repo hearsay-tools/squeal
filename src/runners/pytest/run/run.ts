@@ -194,7 +194,14 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
     python,
     logDir: options.logDir,
   });
-  const skippedAll = end === "completed" ? allSkippedNote(project, done) : null;
+  // Only for a tier every file of which completed: a skip before a file that ended the
+  // process says nothing of the tests that did not report (review 007-21 S1).
+  const whole =
+    end === "completed" &&
+    failure === null &&
+    refusedAtRun === null &&
+    done.length === options.files.length;
+  const skippedAll = whole ? allSkippedNote(project, done) : null;
   if (skippedAll !== null) notes.push(skippedAll);
   const report: RunReport = {
     end,

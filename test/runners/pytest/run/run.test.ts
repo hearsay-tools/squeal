@@ -244,6 +244,7 @@ describe.each(PYTHONS)("runPytest under Python %s (spec 007 D6)", (version) => {
     async (ctx) => {
       const fixture = requireSynced(ctx, synced);
       const path = join(fixture.root, "outcomes", "test_all_skipped.py");
+      const exit = join(fixture.root, "outcomes", "test_exit.py");
       writeFileSync(
         path,
         [
@@ -270,8 +271,23 @@ describe.each(PYTHONS)("runPytest under Python %s (spec 007 D6)", (version) => {
         ]);
         const mixed = await run(ctx, refs("outcomes/test_all_skipped.py", "outcomes/test_pass.py"));
         expect(mixed.notes).toEqual([]);
+        // Review 007-21 S1: a later file of the batch that ends the process makes the tier
+        // incomplete; the earlier skips stay, and no note claims every test skipped.
+        writeFileSync(exit, "import os\n\ndef test_exit():\n    os._exit(2)\n");
+        const partial = await run(
+          ctx,
+          refs("outcomes/test_all_skipped.py", "outcomes/test_exit.py"),
+        );
+        expect(partial.report.completedFiles).toEqual(refs("outcomes/test_all_skipped.py"));
+        expect(outcomes(partial.report.results)).toEqual({
+          test_skipped: "skip",
+          test_xfail: "skip",
+        });
+        expect(partial.report.failure).toContain("outcomes/test_exit.py");
+        expect(partial.notes).toEqual([]);
       } finally {
         rmSync(path);
+        rmSync(exit, { force: true });
       }
     },
   );
