@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { SQUEAL_COMMAND } from "../core/delivery/index.js";
 import { codexCommand } from "../harness/codex/command.js";
+import { opencodeCliCommand } from "./opencode/status.js";
 import { piCliCommand } from "./pi/status.js";
 
 /**
@@ -8,7 +9,9 @@ import { piCliCommand } from "./pi/status.js";
  * (`CODEX_SESSION_ID` set, spec 002 D6) `squeal` is not on the PATH, so the
  * Codex command its hooks name (spec 002 D1 as amended), with this bundle as
  * the CLI; in a Pi shell (`PI_SESSION_ID` set, spec 009 D7) the Pi command,
- * this Node and this bundle by absolute path; `squeal` otherwise. `cli` is for
+ * this Node and this bundle by absolute path, and in an OpenCode shell the
+ * plugin ran in (`OPENCODE_SESSION_ID` set, spec 008 D7) the same; `squeal`
+ * otherwise. `cli` is for
  * tests: bundled, this module is `dist/cli/squeal.mjs`.
  */
 export function statusCommand(
@@ -19,5 +22,8 @@ export function statusCommand(
     return codexCommand(env, cli);
   }
   if (env.PI_SESSION_ID !== undefined && env.PI_SESSION_ID !== "") return piCliCommand(cli);
+  if (env.OPENCODE_SESSION_ID !== undefined && env.OPENCODE_SESSION_ID !== "") {
+    return opencodeCliCommand(cli);
+  }
   return SQUEAL_COMMAND;
 }

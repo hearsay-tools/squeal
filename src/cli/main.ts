@@ -5,6 +5,7 @@ import type { EpochMs } from "../core/types/index.js";
 import { codexStatusLine } from "./codex/status.js";
 import { daemonCommand } from "./daemon.js";
 import { init } from "./init.js";
+import { opencodeStatusLine } from "./opencode/status.js";
 import { piStatusLine } from "./pi/status.js";
 import { removeCommand } from "./remove.js";
 import { runCommand } from "./run.js";
@@ -79,7 +80,7 @@ export interface CliIo {
   readonly cwd?: string;
   /** Clock for heartbeat ages. Default `Date.now`. */
   readonly now?: () => EpochMs;
-  /** Environment, read for `CODEX_SESSION_ID` (spec 002 D6). Default `process.env`. */
+  /** Environment, read for the harness shell's session (`statusCommand`, `waitConsumer`). Default `process.env`. */
   readonly env?: Readonly<Record<string, string | undefined>>;
 }
 
@@ -142,7 +143,9 @@ function status(args: readonly string[], io: CliIo): number | Promise<number> {
   const env = io.env ?? process.env;
   const harness = parsed.json
     ? null
-    : (codexStatusLine(cwd, env) ?? piStatusLine(cwd, env, fileURLToPath(import.meta.url)));
+    : (codexStatusLine(cwd, env) ??
+      piStatusLine(cwd, env, fileURLToPath(import.meta.url)) ??
+      opencodeStatusLine(cwd, env));
   const human = () =>
     `${formatStatus(result, now(), statusCommand(env), { allNotes })}${harness ?? ""}`;
   io.stdout(parsed.json ? json(result) : human());
