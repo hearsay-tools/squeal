@@ -74,22 +74,35 @@ export interface RpcCompact {
 }
 
 /**
- * Under `rpc`, a run nobody prompts: after the previous entry, `then` runs (a test lands a
+ * Under `rpc`, a run nobody prompts: after the previous entry, `land` runs (a test lands a
  * result there), and the driver waits for one more run to settle, the one Pi starts itself.
  */
 export interface RpcIdle {
   type: "idle";
-  then?: () => Promise<void> | void;
+  land?: () => Promise<void> | void;
 }
+
+/**
+ * Under `rpc`, a prompt with `streamingBehavior: "steer"`, sent during the run of the prompt
+ * before it once `when` resolves; that run settles once, with the steer in it.
+ */
+export interface RpcSteer {
+  type: "steer";
+  message: string;
+  when: () => Promise<void>;
+}
+
+export type RpcEntry = string | RpcCompact | RpcIdle | RpcSteer;
 
 export interface PiRunOptions {
   mode: PiMode;
   plan: FakeStep[];
   /**
    * One prompt for `print` and `json`; under `rpc` each is sent after the previous run settles,
-   * a `compact` command after the previous one answers, and an `idle` entry sends nothing.
+   * a `compact` command after the previous one answers, an `idle` entry sends nothing, and a
+   * `steer` goes into the run before it.
    */
-  prompts: (string | RpcCompact | RpcIdle)[];
+  prompts: RpcEntry[];
   /** Extensions under test, loaded with `-e` after the fake provider. */
   extensions?: string[];
   /**
@@ -251,24 +264,34 @@ function collect(child: ChildProcess) {
 }
 
 // Each prompt waits for the run it starts to settle, a compact for its response, an idle entry
-// for a run Pi starts itself; stdin closes after the last, which ends Pi.
+// for a run Pi starts itself; the steers after a prompt go in while its run streams. stdin
+// closes after the last, which ends Pi.
 async function drive(
   child: ChildProcess,
   out: ReturnType<typeof collect>,
-  prompts: (string | RpcCompact | RpcIdle)[],
+  prompts: RpcEntry[],
   timeoutMs: number,
 ): Promise<void> {
   const count = (marker: string) => out.lines().filter((line) => line.includes(marker)).length;
+  const send = (id: string, command: object) =>
+    child.stdin?.write(`${JSON.stringify({ id, ...command })}\n`);
+  const isSteer = (entry: RpcEntry | undefined): entry is RpcSteer =>
+    typeof entry === "object" && entry.type === "steer";
   for (const [index, input] of prompts.entries()) {
+    if (isSteer(input)) continue;
     const compact = typeof input !== "string" && input.type === "compact";
     const marker = compact ? '"command":"compact"' : '"type":"agent_settled"';
     const settled = () => count(marker);
     const before = settled();
-    if (typeof input !== "string" && input.type === "idle") await input.then?.();
-    else {
-      const command = typeof input === "string" ? { type: "prompt", message: input } : input;
-      child.stdin?.write(`${JSON.stringify({ id: `p${index}`, ...command })}\n`);
-    }
+    if (typeof input !== "string" && input.type === "idle") await input.land?.();
+    else send(`p${index}`, typeof input === "string" ? { type: "prompt", message: input } : input);
+    void (async () => {
+      for (let next = index + 1; isSteer(prompts[next]); next++) {
+        const steer = prompts[next] as RpcSteer;
+        await steer.when();
+        send(`p${next}`, { type: "prompt", message: steer.message, streamingBehavior: "steer" });
+      }
+    })();
     await new Promise<void>((done, fail) => {
       const check = () => {
         if (settled() > before) finish(done);
