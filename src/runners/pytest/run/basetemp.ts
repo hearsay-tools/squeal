@@ -28,17 +28,25 @@ export function runBasetemp(cacheDir: AbsolutePath): RunBasetemp {
   };
 }
 
+/** A character of one path component in failure text, and what ends one. */
+const NAME = "[^/\\s'\"`):,]";
+const END = "[/\\s'\"`):,]";
+
 /**
  * Failure text with a batch's basetemp written as Squeal writes it every
- * run: a directory just below it, a test's numbered `tmp_path` or a
- * factory's `mktemp`, as `<tmp_path>`; the basetemp itself as `<basetemp>`.
+ * run: the basetemp itself as `<basetemp>`, and the counter pytest appends
+ * to a numbered directory just below it, a test's `tmp_path` or a factory's
+ * `mktemp`, as `<n>` (`test_reads0` is `test_reads<n>`). Task 007-41: no
+ * other part of a path is replaced, so two failures naming two different
+ * files keep two fingerprints.
  */
 export function scrubBasetemp(text: string, basetemp: AbsolutePath): string {
-  return text
-    .split(`${basetemp}/`)
-    .map((part, i) => (i === 0 ? part : part.replace(/^[^/\s'"`):,]*/, "<tmp_path>")))
-    .join("")
-    .replace(new RegExp(`${escapeRegExp(basetemp)}(?![\\w.-])`, "g"), "<basetemp>");
+  const numbered = `/(${NAME}*?)\\d+(?=${END}|$)`;
+  return text.replace(
+    new RegExp(`${escapeRegExp(basetemp)}(?:${numbered})?(?![\\w.-])`, "g"),
+    (_, prefix: string | undefined) =>
+      prefix === undefined ? "<basetemp>" : `<basetemp>/${prefix}<n>`,
+  );
 }
 
 function escapeRegExp(text: string): string {
