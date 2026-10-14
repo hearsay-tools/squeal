@@ -80,12 +80,10 @@ describe("squeal setup on a terminal", () => {
     expect(await setupCommand(["--no-warmup"], io, { asker: terminal.asker })).toBe(0);
     expect(out.stdout).toContain("Answer 1 to 2, or press Enter for 1.");
     // Claude Code: "9" then "no"; the rest took their defaults when input ended. With no
-    // harness chosen, no block is offered; the gate is reworded by default.
+    // harness chosen, no block is offered; the gate is kept by default (D5).
     expect(existsSync(join(root, ".claude/settings.json"))).toBe(false);
     expect(out.stdout).not.toContain("Squeal block to");
-    const claude = read(root, "CLAUDE.md");
-    expect(claude).toContain("`squeal run --all --wait 110000`");
-    expect(claude).not.toContain("squeal:begin");
+    expect(read(root, "CLAUDE.md")).toBe(`# Agents\n\n${VITEST_GATE}\n`);
   });
 });
 
@@ -98,8 +96,10 @@ describe("squeal setup --yes", () => {
     expect(stdout).toContain(
       "Write the Squeal block to CLAUDE.md (read by Claude Code)?\n  write it (default, --yes)\n",
     );
+    // --yes rewords no gate line: each is written only on its own yes (D5).
+    expect(stdout).toContain("squeal init: kept gate line CLAUDE.md:3");
     const claude = read(root, "CLAUDE.md");
-    expect(claude).toContain("`squeal run --all --wait 110000`");
+    expect(claude).toContain(VITEST_GATE);
     expect(claude).toContain("<!-- squeal:begin v1");
     expect(JSON.parse(read(root, "squeal.config.json")).slow).toEqual({
       include: ["test/e2e/**"],

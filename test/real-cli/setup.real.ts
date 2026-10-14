@@ -22,7 +22,11 @@ beforeAll(async () => {
 afterAll(() => m.dispose());
 
 interface Plan {
-  readonly gates: readonly { readonly id: string; readonly proposed: string | null }[];
+  readonly gates: readonly {
+    readonly id: string;
+    readonly text: string;
+    readonly proposed: string | null;
+  }[];
   readonly slow: {
     readonly groups: readonly {
       readonly dir: string;
@@ -206,7 +210,11 @@ describe.each(["squeal", "cezarion"] as const)(
       expect((await m.sh("git rev-parse HEAD", [], { cwd: fx })).stdout.trim()).toBe(head);
       const block = (await m.read(`${fx}/${c.block}`)) ?? "";
       expect(block).toMatch(/<!-- squeal:begin v\d+ [^\n]*-->[\s\S]*<!-- squeal:end -->/);
-      for (const gate of before.gates) expect(block).toContain(gate.proposed as string);
+      // A gate is reworded only on its own `--gate <id>=reword`; --yes keeps the rest (D5).
+      for (const gate of before.gates) {
+        const reworded = c.flags.includes(`${gate.id}=reword`);
+        expect(block).toContain(reworded ? (gate.proposed as string) : gate.text);
+      }
       const config = JSON.parse((await m.read(`${fx}/squeal.config.json`)) ?? "{}") as {
         slow?: { include?: string[] };
         inputs?: Record<string, string[]>;

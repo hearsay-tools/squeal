@@ -98,12 +98,14 @@ export async function answerPlan(
     }
   }
 
+  // D5: a gate line is written only on its own yes, so keep is the default and
+  // `--yes` rewords none (005-59: a false proposal written unseen).
   const gates = [...given.gates];
   for (const gate of plan.gates) {
     if (gate.proposed === null || gates.some((g) => g.id === gate.id)) continue;
     const reword = await yes(
       `Gate line ${gate.id}:\n    ${gate.text.trim()}\n  reworded:\n    ${gate.proposed.trim()}\n  Reword it?`,
-      true,
+      false,
       "reword",
       "keep",
     );
