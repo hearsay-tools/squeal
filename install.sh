@@ -224,7 +224,8 @@ install_pi() {
     forget "pi $old"
   done
   if [ "$removed" = yes ]; then
-    say "Pi sessions already open keep the Squeal they loaded; /reload in each loads $SQUEAL_VERSION"
+    # Only one previous version is kept for a session with no running daemon (spec 009 D1).
+    say "Pi sessions already open keep the Squeal they loaded; /reload in each loads $SQUEAL_VERSION. Reload them before the next update: it removes the version they loaded unless its daemon is running"
   fi
 }
 

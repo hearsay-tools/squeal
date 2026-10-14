@@ -46,7 +46,8 @@ describe("install.sh updating Squeal in Pi", { timeout: 60_000 }, () => {
     expect(m.calls()).toEqual([`pi install ${piDirOf(m)}`, `pi remove ${old}`]);
     expect(r.stdout).not.toContain("rm -rf");
     expect(r.stdout).toContain(
-      "Pi sessions already open keep the Squeal they loaded; /reload in each loads 0.1.171\n",
+      "Pi sessions already open keep the Squeal they loaded; /reload in each loads 0.1.171. " +
+        "Reload them before the next update: it removes the version they loaded unless its daemon is running\n",
     );
     expect(readdirSync(piHomeOf(m)).sort()).toEqual(["0.1.170", "0.1.171"]);
     expect(piPackagesOf(m)).toEqual(["../../.local/share/squeal/pi/0.1.171"]);

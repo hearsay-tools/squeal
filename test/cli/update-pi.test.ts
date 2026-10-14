@@ -68,7 +68,8 @@ describe("squeal update in Pi", { timeout: 60_000 }, () => {
       ),
     );
     expect(r.stdout).toContain(
-      "Pi sessions already open keep the Squeal they loaded; /reload in each loads 0.1.171\n",
+      "Pi sessions already open keep the Squeal they loaded; /reload in each loads 0.1.171. " +
+        "Reload them before the next update: it removes the version they loaded unless its daemon is running\n",
     );
     expect(r.stdout.split("\n").slice(-3)).toEqual([
       "Pi: Squeal 0.1.171, was 0.1.170",
