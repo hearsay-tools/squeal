@@ -23,4 +23,4 @@ Use `TEMPLATE.md` for a new spec. Reference code by commit hash or PR number; do
 | 006 | Model evals (a recurring baseline of how models use Squeal) | draft |
 | 007 | pytest runner (third runner: environment, Python module graph, results) | approved |
 | 008 | OpenCode adapter | draft |
-| 009 | Pi adapter (in-process extension: delivery, wake, install) | approved |
+| 009 | Pi adapter (in-process extension: delivery, wake, install) | shipped |
