@@ -1,9 +1,11 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 import { type BridgeCommand, callBridge } from "../../../src/harness/opencode/bridge-client.js";
 import { tempDir } from "../../store/helpers.js";
+import { alive } from "./stub.js";
 
 /*
  * Spec 008 D4: the plugin spawns `node <entry>` per event in its own process
@@ -32,6 +34,34 @@ const BUN =
     .map((dir) => join(dir, "bun"))
     .find((path) => path !== "bun" && existsSync(path)) ?? null;
 
+/**
+ * Each test's pid files, outside `tempDir` so its cleanup cannot remove them
+ * first: whatever they name is killed after the test, passed or failed, so a
+ * red run leaves no stalled bridge or grandchild behind.
+ */
+const pidFiles: string[] = [];
+
+/** A file a bridge records its pids in, as `[leader, grandchild]`. */
+function pidFile(): string {
+  const path = join(mkdtempSync(join(tmpdir(), "squeal-oc-pids-")), "pids.json");
+  pidFiles.push(path);
+  return path;
+}
+
+afterEach(() => {
+  for (const path of pidFiles.splice(0)) {
+    const pids = existsSync(path) ? (JSON.parse(readFileSync(path, "utf8")) as number[]) : [];
+    for (const pid of pids) {
+      try {
+        process.kill(pid, "SIGKILL");
+      } catch {
+        // Already gone, as a passing test leaves it.
+      }
+    }
+    rmSync(dirname(path), { recursive: true, force: true });
+  }
+});
+
 /** A bridge that starts a grandchild in its group, records both pids in `pids`, then stalls. */
 function stallingBridge(pids: string): BridgeCommand {
   return bridge(`
@@ -43,15 +73,6 @@ function stallingBridge(pids: string): BridgeCommand {
   `);
 }
 
-const alive = (pid: number): boolean => {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
-};
-
 describe("callBridge", () => {
   it("writes the event to stdin and resolves the answer, in cwd", async () => {
     const cwd = tempDir("squeal-oc-cwd-");
@@ -62,7 +83,7 @@ describe("callBridge", () => {
   });
 
   it("is silent at its deadline when the bridge never answers, its process group gone", async () => {
-    const pids = join(tempDir("squeal-oc-pids-"), "pids.json");
+    const pids = pidFile();
     const stalled = stallingBridge(pids);
     const started = performance.now();
     expect(await callBridge(stalled, {}, tempDir("squeal-oc-cwd-"), 1_000)).toBeNull();
@@ -74,7 +95,7 @@ describe("callBridge", () => {
   });
 
   it("answers at the bridge's exit when a descendant holds its stdout, then kills the group (review 008-15)", async () => {
-    const pids = join(tempDir("squeal-oc-pids-"), "pids.json");
+    const pids = pidFile();
     const leaking = bridge(`
       import { spawn } from "node:child_process";
       import { writeFileSync } from "node:fs";
@@ -125,7 +146,7 @@ describe("callBridge", () => {
   it.skipIf(BUN === null)(
     "under Bun, OpenCode's runtime, kills the stalled bridge's group at its deadline",
     async () => {
-      const pids = join(tempDir("squeal-oc-pids-"), "pids.json");
+      const pids = pidFile();
       const stalled = stallingBridge(pids);
       const script = join(tempDir("squeal-oc-bun-"), "call.ts");
       writeFileSync(
