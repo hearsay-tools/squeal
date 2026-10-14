@@ -50,9 +50,9 @@ describe("gate detection", FIXTURES, () => {
       "AGENTS.md": [
         "Run npm test before you commit.",
         "Run `npm run test` too.",
-        "Then `vitest run --coverage`.",
+        "Then run `vitest run --coverage`.",
         "Not `npm run test:e2e`, `npm run lint` or `pnpm vitest`.",
-        "And `node --import tsx --test test/*.test.ts`.",
+        "Also run `node --import tsx --test test/*.test.ts`.",
         "",
       ].join("\n"),
     });
@@ -69,7 +69,7 @@ describe("gate detection", FIXTURES, () => {
     ]);
   });
 
-  it("skips the Squeal block and lines already reworded; a fenced line is not offered", () => {
+  it("skips the Squeal block and lines already reworded; a fenced line is a mention", () => {
     const root = squealShaped({
       "CLAUDE.md": [
         "Run `squeal run --all --wait`; run `npx vitest run` when it cannot answer.",
@@ -80,16 +80,10 @@ describe("gate detection", FIXTURES, () => {
         blockText(),
       ].join("\n"),
     });
-    expect(scanGates(root, tracked(root), { nodeTest: false }).gates).toEqual([
-      {
-        id: "CLAUDE.md:3",
-        file: "CLAUDE.md",
-        line: 3,
-        text: "npx vitest run",
-        command: "npx vitest run",
-        proposed: null,
-        reason: "inside a code block",
-      },
+    const { gates, mentions } = scanGates(root, tracked(root), { nodeTest: false });
+    expect(gates).toEqual([]);
+    expect(mentions.filter((m) => m.file === "CLAUDE.md")).toEqual([
+      { file: "CLAUDE.md", line: 3, text: "npx vitest run" },
     ]);
   });
 
@@ -178,12 +172,12 @@ describe("rewording gate lines", FIXTURES, () => {
     ]);
   });
 
-  it("refuses a fenced line and writes nothing", () => {
+  it("refuses a fenced line, a mention, and writes nothing", () => {
     const root = squealShaped({ "CLAUDE.md": "```\nnpm test\n```\n\nRun `npm test`.\n" });
     const before = readFileSync(join(root, "CLAUDE.md"), "utf8");
     expect(
       rewordGates(root, tracked(root), ["CLAUDE.md:5", "CLAUDE.md:2"], { nodeTest: false }),
-    ).toEqual({ refused: "CLAUDE.md:2: inside a code block" });
+    ).toEqual({ refused: "no gate line CLAUDE.md:2" });
     expect(readFileSync(join(root, "CLAUDE.md"), "utf8")).toBe(before);
   });
 
@@ -225,7 +219,7 @@ describe("lines that are no gate, or cannot take the fallback (row 005-47)", FIX
     };
   };
 
-  it("proposes none of cezar's five lines, and lists those naming Squeal or negated as mentions", () => {
+  it("proposes none of cezar's five lines: each is a mention", () => {
     const { gates, mentions } = scan([
       CEZAR[172],
       "",
@@ -239,15 +233,12 @@ describe("lines that are no gate, or cannot take the fallback (row 005-47)", FIX
       "",
       CEZAR[326],
     ]);
-    expect(mentions).toEqual([3, 6, 11]);
-    expect(gates.map((g) => [g.line, g.proposed, g.reason])).toEqual([
-      [1, null, "a table row"],
-      [9, null, "its sentence describes the test command rather than running it"],
-    ]);
+    expect(mentions).toEqual([1, 3, 6, 9, 11]);
+    expect(gates).toEqual([]);
   });
 
   it("would not reword 185, 201 or 326 even without Squeal's name or the negation", () => {
-    const { gates } = scan([
+    const { gates, mentions } = scan([
       "Duplicate those background runs with `npm test`,",
       "`npm run test:unit` too.",
       "",
@@ -256,11 +247,8 @@ describe("lines that are no gate, or cannot take the fallback (row 005-47)", FIX
       "",
       CEZAR[326].replace("Squeal", "a watcher"),
     ]);
-    expect(gates.map((g) => [g.line, g.reason])).toEqual([
-      [1, "its sentence goes on past the line"],
-      [4, "its sentence goes on past the line"],
-      [7, "a table row"],
-    ]);
+    expect(gates).toEqual([]);
+    expect(mentions).toEqual([1, 4, 7]);
   });
 
   it("lists every negated line as a mention, but not a negation in an earlier sentence", () => {
@@ -286,16 +274,14 @@ describe("lines that are no gate, or cannot take the fallback (row 005-47)", FIX
     ).toEqual([1]);
   });
 
-  // The cost of the subject rule, accepted by the coordinator: reported, never reworded wrongly.
-  it("reports a gate whose sentence opens with the command", () => {
-    const { gates } = scan([
+  // The cost of the allow-list, accepted by the coordinator: listed, never reworded wrongly.
+  it("lists a sentence that opens with the command as a mention", () => {
+    const { gates, mentions } = scan([
       "`npm test` must pass before you finish.",
       "- `npx vitest run` is the gate.",
     ]);
-    expect(gates.map((g) => [g.line, g.proposed, g.reason])).toEqual([
-      [1, null, "its sentence describes the test command rather than running it"],
-      [2, null, "its sentence describes the test command rather than running it"],
-    ]);
+    expect(gates).toEqual([]);
+    expect(mentions).toEqual([1, 2]);
   });
 
   it("appends to a list item that ends its paragraph, and refuses one that goes on", () => {
