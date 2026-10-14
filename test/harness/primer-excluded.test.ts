@@ -22,6 +22,17 @@ describe("the primer names the excluded Vitest projects (001-349)", () => {
     );
   });
 
+  it.each(HARNESSES)("a pattern as a selector, under %s (001-370, review S2)", async (harness) => {
+    const r = repoFor({ policy: { vitest: { excludeProjects: ["E*"] } }, files: [] });
+    expect(primerOf(await sessionStart(r, harness)).primer).toContain(
+      `Squeal covers Vitest (vitest.config.ts); its projects matching "E*" are not run, excluded by squeal.config.json. ${NOT_COVERED}`,
+    );
+    const both = repoFor({ policy: { vitest: { excludeProjects: ["e2e", "E*"] } }, files: [] });
+    expect(primerOf(await sessionStart(both, harness)).primer).toContain(
+      `Squeal covers Vitest (vitest.config.ts); its project "e2e" and projects matching "E*" are not run, excluded by squeal.config.json. ${NOT_COVERED}`,
+    );
+  });
+
   it.each(HARNESSES)("none without the key, under %s", async (harness) => {
     const text = primerOf(await sessionStart(repoFor({ policy: {}, files: [] }), harness)).primer;
     expect(text).toContain(`Squeal covers Vitest (vitest.config.ts). ${NOT_COVERED}`);

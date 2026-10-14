@@ -1,5 +1,5 @@
 import { formatCheck, fullSuiteText, runnerPartText, slowTierText } from "../state/index.js";
-import { plural } from "../text.js";
+import { excludedProjectsText, plural } from "../text.js";
 import type {
   CommitSha,
   DaemonNote,
@@ -78,12 +78,9 @@ function slowLine(s: StatusSnapshot, command: string): string[] {
 
 /** Task 001-349: the Vitest projects Squeal never runs, named so the agent runs them itself. */
 function excludedLine(s: StatusSnapshot): string[] {
-  const names = (s.vitestExcluded ?? []).map((name) => JSON.stringify(name));
-  if (names.length === 0) return [];
-  const last = names.pop() as string;
-  const list = names.length === 0 ? last : `${names.join(", ")} and ${last}`;
-  const noun = names.length === 0 ? "project" : "projects";
-  return [`Not run: Vitest ${noun} ${list}, excluded by squeal.config.json`];
+  const entries = s.vitestExcluded ?? [];
+  if (entries.length === 0) return [];
+  return [`Not run: Vitest ${excludedProjectsText(entries).text}, excluded by squeal.config.json`];
 }
 
 /**
