@@ -825,8 +825,8 @@ Spec: `specifications/007-pytest-runner/spec.md`, approved 2026-10-14 by the hum
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 007-12 graph, invalidation and enumeration | planned | D4, D5, D7: tree-sitter-python WASM bundled, the resolver over 007-10's `sys.path` model and pytest's import modes, closures with conftest chains and candidates, the reverse index, full re-resolve on structural change, enumeration; 007-04's verdict on resolving without an environment. | Closures equal the oracle on the small fixture; the candidate cases re-key exactly; cost relative to the cold build on the generator. |
-| 007-13 runner and the `squeal_pytest` reporter | planned | D3, D6: batched fresh processes in process groups, the JSON-lines reporter with the import-edge recorder, phase joining and outcomes, collection errors, overrides and refused flags, the deadline; measures open questions 2 (an `open` audit hook) and 3 (`PYTHONPYCACHEPREFIX`). | Runner tests of the spec's Testing list on recorded and live runs on both Pythons. |
+| 007-12 graph, invalidation and enumeration | running (worker f26a6e1b, opus high) | D4, D5, D7: tree-sitter-python WASM bundled, the resolver over 007-10's `sys.path` model and pytest's import modes, closures with conftest chains and candidates, the reverse index, full re-resolve on structural change, enumeration; 007-04's verdict on resolving without an environment. | Closures equal the oracle on the small fixture; the candidate cases re-key exactly; cost relative to the cold build on the generator. |
+| 007-13 runner and the `squeal_pytest` reporter | running (worker 786b5fe0, opus high) | D3, D6: batched fresh processes in process groups, the JSON-lines reporter with the import-edge recorder, phase joining and outcomes, collection errors, overrides and refused flags, the deadline; measures open questions 2 (an `open` audit hook) and 3 (`PYTHONPYCACHEPREFIX`). | Runner tests of the spec's Testing list on recorded and live runs on both Pythons. |
 
 ### Wave 2: assembly and the agent surfaces
 
