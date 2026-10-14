@@ -76,10 +76,8 @@ if (found.length === 0) {
 const run = found.reduce((a, b) => (compare(b.version, a.version) > 0 ? b : a));
 if (found.some((f) => f.version !== run.version)) {
   const has = found.map((f, i) => `${f.harness} has ${i === 0 ? "squeal " : ""}${f.version}`);
-  // squeal update does not reach Pi; the install.sh of a release installs that release in Pi.
-  const pi = found.some((f) => f.harness === "Pi") ? ", and install.sh for Pi," : "";
   process.stderr.write(
-    `squeal: ${has.slice(0, -1).join(", ")} and ${has.at(-1)}; running ${run.version}. Run squeal update${pi} to bring them to one version.\n`,
+    `squeal: ${has.slice(0, -1).join(", ")} and ${has.at(-1)}; running ${run.version}. Run squeal update to bring them to one version.\n`,
   );
 }
 process.stdout.write(cliOf(run.dir));

@@ -18,8 +18,9 @@ import { runtimeDir } from "../harness/bundle-helpers.js";
  * A scratch machine for `install.sh`, the launcher and `squeal update` (spec
  * 005 D3): its own HOME, CLAUDE_CONFIG_DIR and CODEX_HOME, stub `claude`,
  * `codex` and `pi` first on a PATH that holds only them, a `node` link and the
- * system directories, a `file://` hub and `file://` tag archives (spec 009
- * D1). No real harness runs, and the real plugin's `bin/` is never on this PATH.
+ * system directories, a `file://` hub, `file://` tag archives (spec 009
+ * D1) and the latest release's `install.sh` at `SQUEAL_INSTALL_SH`. No real
+ * harness runs, and the real plugin's `bin/` is never on this PATH.
  */
 
 export const LAUNCHER = join(REPO_ROOT, "plugins", "claude-code", "bin", "squeal-launcher");
@@ -156,7 +157,10 @@ export interface Machine {
   readonly env: Record<string, string>;
   /** The release `install.sh` belongs to: the last `publish`. */
   readonly version: string;
-  /** The hub's plugins at `version` in both harnesses, and the tag's source archive with the Pi package. */
+  /**
+   * The hub's plugins at `version` in both harnesses, the tag's source archive
+   * with the Pi package, and its `install.sh` as the latest release's.
+   */
   publish(version: string, launcher?: string): void;
   /** Every stub call since the last `clearLog`. */
   calls(): string[];
@@ -197,6 +201,7 @@ export function machine(
     PATH: `${stubs}:${nodeBin}:/usr/bin:/bin`,
     SQUEAL_MARKETPLACE: `file://${hub}`,
     SQUEAL_SOURCE: `file://${join(hub, "archive")}`,
+    SQUEAL_INSTALL_SH: `file://${join(hub, "releases", "latest", "install.sh")}`,
     STUB_LOG: log,
   };
   let version = "";
@@ -217,6 +222,8 @@ export function machine(
       writePlugin(join(hub, "plugins", "claude-code"), "claude-code", v, launcher);
       writePlugin(join(hub, "plugins", "codex"), "codex", v, launcher);
       writeArchive(join(hub, "archive"), v, launcher);
+      mkdirSync(join(hub, "releases", "latest"), { recursive: true });
+      writeFileSync(join(hub, "releases", "latest", "install.sh"), scriptOf(v));
     },
     calls: () =>
       readFileSync(log, "utf8")
