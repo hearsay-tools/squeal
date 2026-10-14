@@ -12,6 +12,8 @@ Every spawn passes `--backend`, `--model` and `--effort` explicitly. Workers and
 
 Spec: `specifications/001-core-loop/spec.md`. Sections referenced as D1 to D12.
 
+For 001's coordinator, from 007 (2026-10-14): row 007-30 (worker e7554c5a) changes `src/core/scheduler/` additively. A tier the completion barrier (001-168, `withheldForTouch`) withholds is re-queued once when no revision follows, and a repeat adds a note naming the touched path. Brief: `specifications/007-pytest-runner/tasks/wave-3.md`. Tell the 007 coordinator if it crosses a 001 row.
+
 ### Wave 0: scaffold
 
 | Task | Status | Scope | Done when |
