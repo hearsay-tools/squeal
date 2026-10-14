@@ -1,7 +1,9 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { pytestObservedMetaKey } from "../../src/core/types/index.js";
+import { worktreeIdFor } from "../../src/core/fs/index.js";
+import { pytestObservedMetaKey, pytestObservedSessionMetaKey } from "../../src/core/types/index.js";
 import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
 import { runCodexHook } from "../../src/harness/codex/index.js";
 import { until } from "../e2e/support.js";
@@ -58,6 +60,84 @@ const codex = async (name: "session-start" | "post-tool-use", root: string) =>
 
 const observedKey = (main: string) =>
   (metaValue(main, pytestObservedMetaKey("small")) ?? {}) as Record<string, string[]>;
+
+/**
+ * Why `wt` did not inherit: per test file, its key beside `main`'s, whether
+ * any result is stored under it, and every closure path whose hash differs
+ * between the two worktrees; the shared observed keys and the runs of `wt`.
+ */
+function whyNotInherited(main: string, wt: string): string {
+  const db = new DatabaseSync(join(main, ".git/squeal/store.sqlite"), { readOnly: true });
+  try {
+    const [m, w] = [worktreeIdFor(main), worktreeIdFor(wt)];
+    const keyOf = (id: string, path: string) =>
+      (db
+        .prepare(
+          "SELECT key, revision, pending FROM test_file_keys WHERE worktree_id = ? AND path = ?",
+        )
+        .get(id, path) as
+        | { key: string | null; revision: number; pending: string | null }
+        | undefined) ?? null;
+    const hashes = (id: string) =>
+      new Map(
+        (
+          db.prepare("SELECT path, hash FROM file_hashes WHERE worktree_id = ?").all(id) as {
+            path: string;
+            hash: string;
+          }[]
+        ).map((r) => [r.path, r.hash]),
+      );
+    const [hm, hw] = [hashes(m), hashes(w)];
+    const files = (
+      db.prepare("SELECT project, path, closure_paths, complete, method FROM test_files").all() as {
+        project: string;
+        path: string;
+        closure_paths: string;
+        complete: number;
+        method: string;
+      }[]
+    ).map((f) => {
+      const km = keyOf(m, f.path);
+      const kw = keyOf(w, f.path);
+      const closure = JSON.parse(f.closure_paths) as string[];
+      return {
+        path: f.path,
+        complete: f.complete,
+        method: f.method,
+        main: km,
+        wt: kw,
+        sameKey: km?.key === kw?.key,
+        resultsUnderWtKey:
+          kw?.key == null
+            ? 0
+            : (
+                db.prepare("SELECT count(*) AS n FROM results WHERE key = ?").get(kw.key) as {
+                  n: number;
+                }
+              ).n,
+        closureDiffers: closure
+          .filter((p) => hm.get(p) !== hw.get(p))
+          .map((p) => ({ path: p, main: hm.get(p) ?? null, wt: hw.get(p) ?? null })),
+      };
+    });
+    const environmentDiffers = [...new Set([...hm.keys(), ...hw.keys()])]
+      .filter((p) => p.startsWith(".venv/") && hm.get(p) !== hw.get(p))
+      .map((p) => ({ path: p, main: hm.get(p) ?? null, wt: hw.get(p) ?? null }));
+    return JSON.stringify(
+      {
+        files,
+        environmentDiffers,
+        observed: metaValue(main, pytestObservedMetaKey("small")),
+        observedSession: metaValue(main, pytestObservedSessionMetaKey("small")),
+        runs: runs(main, wt),
+      },
+      null,
+      1,
+    );
+  } finally {
+    db.close();
+  }
+}
 
 describe("a repository with a Vitest suite and a pytest project (spec 007)", () => {
   it(
@@ -146,7 +226,7 @@ describe("a repository with a Vitest suite and a pytest project (spec 007)", () 
         "the synced second worktree",
         (s) => s.counts.current === CHECKS,
       );
-      expect(second.inherited.count).toBe(CHECKS);
+      expect(second.inherited.count, whyNotInherited(main, wt2)).toBe(CHECKS);
       expect(second.knownFailures).toEqual([]);
       // Tiers keyed while the sync ran end before starting pytest (D2); none completed.
       expect(runs(main, wt2).slice(from)).toEqual(
