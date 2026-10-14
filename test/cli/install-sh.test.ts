@@ -89,13 +89,13 @@ describe("install.sh", { timeout: 30_000 }, () => {
     expect(r.stdout).not.toContain("not on your PATH");
   });
 
-  it("stops before any harness command when none of claude, codex and pi is on the PATH", () => {
+  it("stops before any harness command when none of claude, codex, pi and opencode is on the PATH", () => {
     const m = machine([]);
     m.publish("0.1.134");
     const r = install(m);
     expect(r.status).toBe(1);
     expect(r.stderr).toContain(
-      "none of claude, codex and pi is on the PATH: install Claude Code, Codex or Pi first",
+      "none of claude, codex, pi and opencode is on the PATH: install Claude Code, Codex, Pi or OpenCode first",
     );
     expect(existsSync(launcherOf(m))).toBe(false);
   });
@@ -147,7 +147,7 @@ describe("install.sh", { timeout: 30_000 }, () => {
     const m = machine();
     const r = install(m, "--yes");
     expect(r.status).toBe(2);
-    expect(r.stderr).toBe("usage: install.sh [--uninstall | --pi]\n");
+    expect(r.stderr).toBe("usage: install.sh [--uninstall | --pi | --opencode]\n");
     expect(m.calls()).toEqual([]);
   });
 
