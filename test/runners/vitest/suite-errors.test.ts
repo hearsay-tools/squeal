@@ -109,4 +109,22 @@ describe("vitest adapter: suite-level hook errors", SLOW, () => {
       "suite-level error (group): Error: group teardown failed",
     );
   });
+
+  // Vitest fails a `describe` with no test unless `passWithNoTests` is set, on the suite.
+  it("fails a file with an empty describe, as Vitest does", async () => {
+    const fx = await openFixture("basic", {
+      "test/empty-describe.test.ts": [
+        'import { describe, test } from "vitest";',
+        'describe("empty", () => {});',
+        'test("runs", () => {});',
+        "",
+      ].join("\n"),
+    });
+    const report = await fx.adapter.run([ref("test/empty-describe.test.ts")], fx.runOptions());
+
+    expect(report.results.map((r) => [r.check.fullName, r.outcome])).toEqual([["runs", "pass"]]);
+    expect(report.fileErrors[0]?.errors.map((e) => e.message)).toEqual([
+      "No test found in suite empty",
+    ]);
+  });
 });
