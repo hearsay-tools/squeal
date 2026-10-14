@@ -976,13 +976,13 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 008-12 the OpenCode hooks and the idle wake | done (integrated for 0.1.178, not landed; review 008-15 B1 to B4, S1, S2, N1 fixed; latency at calm load pending) | D3 (delivery after, deny before, primer, `chat.message` delta, idle continuation, child idle), D5, D9; the bridge's per-event cost (open question 3). | Unit and real-OpenCode tests of each hook under `run` and `serve`; bridge p95 within 10 ms of the matching Codex hook in one run; full suite green. |
-| 008-13 status and pull credit under OpenCode | done (integrated for 0.1.178, not landed) | D2 `shell.env` variables, D7: pull credit for root and child, the `OpenCode:` status line. | Both D7 causes tested; root and child pulls credited; other harnesses' status tests unchanged. |
-| 008-14 install and update through OpenCode | done (integrated for 0.1.178, not landed) | D1 as amended: `install.sh` OpenCode step with the `current` link, update, uninstall, `squeal update`, the launcher's search. | Install, reinstall, update with kept directories and uninstall tested; never `--force`, never an OpenCode config edit. |
+| 008-12 the OpenCode hooks and the idle wake | done (0.1.181; review 008-15 B1 to B4, S1, S2, N1 fixed) | D3 (delivery after, deny before, primer, `chat.message` delta, idle continuation, child idle), D5, D9; the bridge's per-event cost (open question 3). | Unit and real-OpenCode tests of each hook under `run` and `serve`; bridge p95 within 10 ms of the matching Codex hook in one run; full suite green. |
+| 008-13 status and pull credit under OpenCode | done (0.1.181) | D2 `shell.env` variables, D7: pull credit for root and child, the `OpenCode:` status line. | Both D7 causes tested; root and child pulls credited; other harnesses' status tests unchanged. |
+| 008-14 install and update through OpenCode | done (0.1.181; launcher format 4 by 008-17) | D1 as amended: `install.sh` OpenCode step with the `current` link, update, uninstall, `squeal update`, the launcher's search. | Install, reinstall, update with kept directories and uninstall tested; never `--force`, never an OpenCode config edit. |
 | 008-15 review of wave 0 | done: FAIL at eae020fc, four blockers (`reviews/wave-0.md`); B1 to B4, S1, S2, N1 folded into 008-12 | `/reviewer` over `c12dc371~1..eae020fc`: deadlines, no `node:sqlite` in the plugin, the fast path, D2 identity, `runOpenCode` isolation, the latency test. | `reviews/wave-0.md` committed. |
 | 008-16 review of wave 1, re-review of B1 to B4 | done: FAIL at f0c45b2f (`reviews/wave-1.md`); wave-0 B1 to B4 closed; new B1 idle deadline, B2 abort overlap, B3 stale bundle (fixed `d1a3e903`); S1 to S3 | `/reviewer` over wave 1 as integrated; the last round on `reviews/wave-0.md` B1 to B4. | `reviews/wave-1.md` committed. |
-| 008-17 repairs of `reviews/wave-1.md` | done (integrated on the coordinator branch, not landed) | B1, B2, S1, S2, S3 (launcher format 4), stale bundle names (brief `tasks/wave-1.md`). | Each finding a regression test that failed before; lint, typecheck green. |
-| 008-18 focused re-review of 008-17 | running (worker 43f78dfe, codex gpt-6.1-sol high) | `/reviewer`, last round on `reviews/wave-1.md`. | `reviews/wave-1.5.md` committed. |
+| 008-17 repairs of `reviews/wave-1.md` | done (0.1.181) | B1, B2, S1, S2, S3 (launcher format 4), stale bundle names (brief `tasks/wave-1.md`). | Each finding a regression test that failed before; lint, typecheck green. |
+| 008-18 focused re-review of 008-17 | done: PASS at 60a2ac8c (`reviews/wave-1.5.md`); two notes to 008-21 and Later | `/reviewer`, last round on `reviews/wave-1.md`. | `reviews/wave-1.5.md` committed. |
 
 ### Wave 4: dogfooding repairs (from `lessons.md`, 007-18)
 
@@ -994,6 +994,14 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 | 007-38 projects versioned from git share results across commits | done (0.1.178) | Defect 3: setuptools_scm, hatch-vcs and versioneer name the editable install after the commit, so D2's hash changes every commit. Spec amendment first. | A commit with no dependency change inherits. |
 | 007-39 pytest policy and environment notes | running (worker 319136ee, opus high; brief `tasks/wave-4.md`) | Defects 5, 8, 9, 11: `pytest[].batchSize` (default 5, open question 5); prompt admission when pytest appears after `pyvenv.cfg`; the no-environment note names a sync that works for the project; resolved notes leave status. | Policy test; admission within a second; notes tests. |
 | 007-40 agent texts name Python | planned (brief `tasks/wave-4.md`) | Defects 6, 10, 12: "No dependencies are installed" for a synced Python worktree; `squeal setup` tells the user to trust Codex hooks after trusting them; the skill trigger names `pytest`. Coordinate with 005 (owns setup and skill texts). | Text tests; both skill copies identical apart from Codex's CLI paragraph. |
+
+### Wave 2: proof and test hardening (briefs in `specifications/008-opencode-adapter/tasks/wave-2.md`; 008-20 after 008-19 lands)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 008-19 end to end | planned | The shipped OpenCode package installed with the real `opencode plugin file:` into an isolated home; baseline, `PASS -> FAIL`, deny, one continuation, wake under `serve`, status credit, no daemon. | Green locally and in CI on Node 22 and 24. |
+| 008-20 dogfooding | planned | Real models (`gpt-6-luna`, `gpt-6-astra`, one Grok) as `squeal-e2e` on a real Vitest library: Cezar-shaped `serve` with a wake, `run`, TUI; an update with a session open. | `lessons.md` answers open question 4 and the goals with evidence. |
+| 008-21 test hardening and the bridge's environment | planned | `reviews/wave-1.5.md` ordering note; `bridge-client.test.ts` process leaks; drop `NODE_USE_ENV_PROXY` for the bridge (about 90 ms against 42 ms Node start). | Idle test 10 green under load; no leaked process; env test. |
 
 ## Later
 
