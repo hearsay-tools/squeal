@@ -102,7 +102,7 @@ Owner is the coordinator unless noted.
 
 1. Closed 2026-10-14 by `research/wave-0-checks.md` 3: a `file:` install links; `--force` does not replace a `file:` entry; a stable `current` link installed once and repointed does (D1).
 2. Closed 2026-10-14 by `research/wave-0-checks.md` 4: an added part with a `prt` id reaches the model; without an id the prompt fails (D3).
-3. The bridge's per-call p95 against 002's 80 ms. 008-10 measured it only at load 32 on 24 CPUs: 98 ms for Node start plus the bridge, 148 ms for a registration. Not answered; re-measure below load 4 (`test/harness/opencode/latency.test.ts`) before the review of wave 1.
+3. The bridge's per-call p95 against 002's 80 ms. 008-10 measured it only at load 32 on 24 CPUs: 98 ms for Node start plus the bridge, 148 ms for a registration. Re-measured by the coordinator at load 8.2 beside Codex's latency test in the same minute: bridge p95 85 ms bare and 107 ms registering, Codex hooks 42 to 83 ms (PostToolUse 60, SessionStart 71). The bridge is 25 to 45 ms slower than the hook it replaces, with Node start common to both; 008-12 brings it within 10 ms of Codex's per hook.
 4. Whether a real model treats a Squeal continuation or wake, which arrives as a user message, as Squeal's report and not an instruction from the user. Dogfooding.
 5. Whether to tell Cezar's maintainers that a plugin can start a turn Cezar did not submit (research, sessions open questions). The human's.
 6. `install.sh`, the launcher and `squeal update` are shared with 009's rows; 008's install row runs after 009's install rows land.
