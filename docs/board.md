@@ -904,6 +904,14 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 | 009-13 install, status and texts | running (worker c5915ca5, opus high) | D1 install (`install.sh` from the tag's source archive, `pi install`, uninstall), D7 status line for `PI_SESSION_ID`, README and skill notes; open question 3. | Install, update, uninstall with Pi alone and with all three harnesses (stub `pi`); status line test; full suite green. |
 | 009-14 review of wave 0 | done: PASS at 8d401144, no blockers; S1, S2, N1 to wave 2 (`reviews/wave-0.md`) | `/reviewer` over `a19b6638..8d401144`: D4 deadlines and liveness, registration and `reload`, shutdown reasons, the fixture's isolation, the package manifest. | `reviews/wave-0.md` committed. |
 
+### Wave 2: idle wake and fixes (parallel; review of wave 1 beside it; briefs in `specifications/009-pi-adapter/tasks/wave-2.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 009-15 idle wake | planned | D5: wait at `agent_settled` in `tui` and `rpc`, wake with `triggerTurn`, cancel on input and shutdown; `"pi"` in `StopWaitHarness`; review S2's native-blocked exit test. | Real Pi in `rpc` woken once by a late result; none under `-p`; a prompt cancels the wait; full suite green. |
+| 009-16 the Pi fixture's isolation | planned | Review S1 (protected env), N1 (typed fake provider), a base directory outside any repository. | Protected override has no effect; Pi's project outside the repository under a repository `TMPDIR`; full suite green. |
+| 009-17 review of wave 1 | planned | `/reviewer` over `502eb7f1..d428340c`: D3 honesty rules, D4 bounds, `install.sh` against 005 D3, launcher format 2, status line. | `reviews/wave-1.md` committed. |
+
 ## Later
 
 - 007: observed closure growth outside `observe.runtimeInputs`: a pytest file whose run imports a path outside its static closure and outside the shared session key makes the result incomplete but does not grow the stored closure for the next key (007-14 option (b), 2026-10-14).
@@ -926,4 +934,5 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 - `squeal init` with a harness choice and the policy keys 002 and 003 add; the one seam the two specs share. Topic 005-02 reads it as a home for the install step, so it may join spec 005.
 - Inherited-pass re-verification policy, if dogfooding shows stale escapes.
 - 010 pull credit: a pull through `squeal status` suppresses the same news in the next push (design H in `specifications/001-core-loop/research/pull-advances-push.md`; changes D6 to D9 and adds a `pulls` table; one worker plus a reviewer). Parked 2026-10-07: the repeat is harmless.
+- 001: a test that reads an esbuild bundle built from sources Squeal's import tracing does not follow (`test/harness/pi/package.test.ts` builds `src/harness/pi/entries/*`) stays current after a source edit; 009-12 saw the Pi bundle drift fail under `npx vitest run` while Squeal showed it current. Declare `inputs` for bundle tests, as the 001 follow-up above proposes for daemon tests. Reported by the 009 coordinator, 2026-10-14.
 - macOS verification before any public release.
