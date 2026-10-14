@@ -24,6 +24,8 @@ import {
 const fixtures = resolve(import.meta.dirname, "../../fixtures/pytest");
 const small = join(fixtures, "small");
 const SLOW = { timeout: 60_000 } as const;
+/** Removing a synced fixture copy, `.venv` and all, under a loaded suite. */
+const CLEANUP_MS = 60_000;
 
 interface PytestRun {
   readonly code: number | null;
@@ -78,7 +80,7 @@ describe.each(PYTHONS)("the small fixture under Python %s", (version) => {
   }, 300_000);
   afterAll(() => {
     if (synced.ok) synced.env.cleanup();
-  });
+  }, CLEANUP_MS);
 
   it("syncs a .venv on the requested Python", SLOW, (ctx) => {
     const env = requireSynced(ctx, synced);
