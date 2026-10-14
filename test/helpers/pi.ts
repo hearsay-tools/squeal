@@ -49,13 +49,26 @@ export interface PiRequest {
   messages: PiMessage[];
 }
 
+/** RPC `compact`: Pi summarizes the session with one model request. */
+export interface RpcCompact {
+  type: "compact";
+}
+
 export interface PiRunOptions {
   mode: PiMode;
   plan: FakeStep[];
-  /** One prompt for `print` and `json`; under `rpc` each is sent after the previous run settles. */
-  prompts: string[];
+  /**
+   * One prompt for `print` and `json`; under `rpc` each is sent after the previous run settles,
+   * and a `compact` command after the previous one answers.
+   */
+  prompts: (string | RpcCompact)[];
   /** Extensions under test, loaded with `-e` after the fake provider. */
   extensions?: string[];
+  /**
+   * An existing project directory to run Pi in instead of a fresh one in the run's directory.
+   * It must be outside this repository, as the run's own is (Pi loads `AGENTS.md` up the tree).
+   */
+  cwd?: string;
   /** Files written into the project before Pi starts, by relative path. */
   files?: Record<string, string>;
   env?: Record<string, string>;
@@ -91,7 +104,7 @@ export function piUnavailable(): string | undefined {
 
 export async function runPi(options: PiRunOptions): Promise<PiRun> {
   const dir = mkdtempSync(join(tmpdir(), "squeal-pi-"));
-  const cwd = join(dir, "proj");
+  const cwd = options.cwd ?? join(dir, "proj");
   const agentDir = join(dir, "agent");
   for (const sub of ["proj", "agent", "home", "tmp"]) mkdirSync(join(dir, sub));
   for (const [path, text] of Object.entries(options.files ?? {})) {
@@ -114,7 +127,8 @@ export async function runPi(options: PiRunOptions): Promise<PiRun> {
   };
   const args = [PI_CLI, "--provider", "fake", "--model", "fake-1", "-e", FAKE_PROVIDER];
   for (const extension of options.extensions ?? []) args.push("-e", extension);
-  const [prompt = ""] = options.prompts;
+  const [first = ""] = options.prompts;
+  const prompt = typeof first === "string" ? first : "";
   if (options.mode === "print") args.push("-p", prompt);
   if (options.mode === "json") args.push("--mode", "json", "-p", prompt);
   if (options.mode === "rpc") args.push("--mode", "rpc");
@@ -186,18 +200,21 @@ function collect(child: ChildProcess) {
   };
 }
 
-// Each prompt waits for the run it starts to settle; stdin closes after the last, which ends Pi.
+// Each prompt waits for the run it starts to settle, a compact for its response; stdin closes
+// after the last, which ends Pi.
 async function drive(
   child: ChildProcess,
   out: ReturnType<typeof collect>,
-  prompts: string[],
+  prompts: (string | RpcCompact)[],
   timeoutMs: number,
 ): Promise<void> {
-  const settled = () =>
-    out.lines().filter((line) => line.includes('"type":"agent_settled"')).length;
-  for (const [index, message] of prompts.entries()) {
+  const count = (marker: string) => out.lines().filter((line) => line.includes(marker)).length;
+  for (const [index, input] of prompts.entries()) {
+    const marker = typeof input === "string" ? '"type":"agent_settled"' : '"command":"compact"';
+    const settled = () => count(marker);
     const before = settled();
-    child.stdin?.write(`${JSON.stringify({ id: `p${index}`, type: "prompt", message })}\n`);
+    const command = typeof input === "string" ? { type: "prompt", message: input } : input;
+    child.stdin?.write(`${JSON.stringify({ id: `p${index}`, ...command })}\n`);
     await new Promise<void>((done, fail) => {
       const check = () => {
         if (settled() > before) finish(done);
