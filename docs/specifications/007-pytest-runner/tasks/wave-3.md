@@ -76,3 +76,14 @@ Done when:
 - 007-17's e2e (`cez/dcd4db61`, `0fbcaedf`), merged onto your branch for one CI run only, is green on both Node versions; paste that run.
 
 Use /worker.
+
+## 007-31 review of 007-30 (for 001's sign-off)
+
+Shape: review. `/reviewer` over 007-30's rebased range, pinned to its exact SHA, against spec 001 D6 and D10 and the 001-168 barrier (`specifications/001-core-loop/` review wave 13e B2). 001's coordinator asked for this review (2026-10-14) and signs off from its findings. Check three things:
+1. The re-queue fires at most once per withhold. A second withhold produces only a daemon note, and its `unknown` state shows in `status` and in Stop like any other unknown.
+2. The `test(001-168)` commits keep their intent: nothing from a withheld run is stored. Check `claims-expiry.test.ts` case 3 (`a.ran - 1 + b.ran == 1`) against the claims-expiry spec text; it is the riskiest change.
+3. There is no key-format effect beyond the re-pin of key 10.
+
+Write `docs/specifications/007-pytest-runner/reviews/wave-3-007-30.md`.
+
+Use /reviewer.
