@@ -36,7 +36,8 @@ export interface PytestConfigFile {
  * pytest's own precedence at `cwd` [...]; configs never merge." The walk
  * goes from `cwd` up to the worktree root and never above it, as pytest's
  * does from its arguments; `null` when no directory there holds one, in
- * which case pytest itself would look above the worktree.
+ * which case the runner passes its own empty config so that pytest does not
+ * look above the worktree (review 007-16 B1).
  */
 export function findPytestConfig(root: AbsolutePath, cwd: AbsolutePath): PytestConfigFile | null {
   let fallback: AbsolutePath | null = null;

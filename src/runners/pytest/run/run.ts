@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -100,6 +100,7 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
       env,
       inherited,
       cacheDir: join(cacheDir, "pytest-cache") as AbsolutePath,
+      emptyConfig: ownEmptyConfig(cacheDir),
     },
     cwd,
   );
@@ -232,6 +233,15 @@ export function allSkippedNote(
   if (skipped === 0 || files.some((f) => f.fileError !== null)) return null;
   if (results.some((r) => r.outcome !== "skip")) return null;
   return `pytest project "${project.name}" skipped every collected test (${skipped} skipped) in ${files.length === 1 ? "its one file" : `${files.length} files`}; pytest exits 0 then, so check what skips them (a missing setting or service often does).`;
+}
+
+/** `<cacheDir>/no-config/pytest.ini`, which pytest reads as a config even empty (D1). */
+function ownEmptyConfig(cacheDir: AbsolutePath): AbsolutePath {
+  const dir = join(cacheDir, "no-config");
+  mkdirSync(dir, { recursive: true });
+  const path = join(dir, "pytest.ini") as AbsolutePath;
+  writeFileSync(path, "[pytest]\n");
+  return path;
 }
 
 function refusal(note: string, started: number): PytestRun {

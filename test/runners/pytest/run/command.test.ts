@@ -34,6 +34,7 @@ function args(
       env,
       inherited,
       cacheDir: "/tmp/c" as AbsolutePath,
+      emptyConfig: "/tmp/c/no-config/pytest.ini" as AbsolutePath,
     },
     CWD,
   );
@@ -67,7 +68,7 @@ describe("pytestArgs (spec 007 D6)", () => {
     expect(args([XDIST], none, { ...off, PYTEST_PLUGINS: "xdist.plugin" })).toContain("-n");
   });
 
-  it("makes the cwd the rootdir without a config file", () => {
+  it("passes Squeal's empty config, the cwd as rootdir and conftest cut, without a config file", () => {
     const own = pytestArgs(
       {
         project,
@@ -76,10 +77,17 @@ describe("pytestArgs (spec 007 D6)", () => {
         env: {},
         inherited: none,
         cacheDir: "/c" as AbsolutePath,
+        emptyConfig: "/c/no-config/pytest.ini" as AbsolutePath,
       },
       CWD,
     );
-    expect(own.slice(2, 3)).toEqual(["--rootdir=/w"]);
+    expect(own.slice(2, 7)).toEqual([
+      "-c",
+      "/c/no-config/pytest.ini",
+      "--rootdir=/w",
+      "--confcutdir=/w",
+      "-p",
+    ]);
   });
 });
 
