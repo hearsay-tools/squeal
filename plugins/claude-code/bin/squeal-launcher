@@ -1,14 +1,15 @@
 #!/bin/sh
-# squeal-launcher format 1
+# squeal-launcher format 2
 # Squeal on the terminal's PATH (spec 005 D3): install.sh copies this file to
 # ~/.local/bin/squeal. At each call it finds the installed plugin's CLI and runs
 # it with Node, so a plugin update needs no launcher update. Claude Code's
 # installed_plugins.json gives the first entry that is user scope, or project
 # scope for the working directory, as a session there loads it
-# (research/wave-0-checks.md 5); the Codex plugin cache gives its newest version.
-# When the two differ it runs the newer, since no hook of the older plugin can
-# replace a newer daemon. Both plugins ship this same file; `squeal update`
-# re-copies it when the format line above grows.
+# (research/wave-0-checks.md 5); the Codex plugin cache gives its newest version;
+# the Pi packages install.sh unpacks under ${XDG_DATA_HOME:-~/.local/share}/squeal/pi
+# give theirs (spec 009 D1). When they differ it runs the newest, since no hook
+# of an older plugin can replace a newer daemon. Every plugin ships this same
+# file; `squeal update` re-copies it when the format line above grows.
 set -eu
 command -v node >/dev/null 2>&1 || {
   echo "squeal: Node 22.13 or later is needed, and node is not on the PATH" >&2
@@ -55,20 +56,30 @@ try {
     .at(-1);
   if (version) found.push({ harness: "Codex", version, dir: join(cache, version) });
 } catch {}
+try {
+  const pi = join(env.XDG_DATA_HOME || join(home, ".local", "share"), "squeal", "pi");
+  const version = readdirSync(pi)
+    .filter((v) => /^\d+(\.\d+)*$/.test(v) && existsSync(cliOf(join(pi, v))))
+    .sort(compare)
+    .at(-1);
+  if (version) found.push({ harness: "Pi", version, dir: join(pi, version) });
+} catch {}
 if (found.length === 0) {
   process.stderr.write(
-    "squeal: no squeal@hearsay plugin is installed in Claude Code or Codex. Install it:\n" +
+    "squeal: no squeal@hearsay plugin is installed in Claude Code or Codex, and no Squeal package in Pi. Install it:\n" +
       "  claude plugin marketplace add hearsay-tools/marketplace && claude plugin install squeal@hearsay\n" +
       "  codex plugin marketplace add hearsay-tools/marketplace && codex plugin add squeal@hearsay\n" +
-      "or run install.sh as https://github.com/hearsay-tools/squeal#install shows.\n",
+      "or run install.sh as https://github.com/hearsay-tools/squeal#install shows, which also installs Squeal in Pi.\n",
   );
   process.exit(1);
 }
-const [a, b] = found;
-const run = b !== undefined && compare(b.version, a.version) > 0 ? b : a;
-if (b !== undefined && a.version !== b.version) {
+const run = found.reduce((a, b) => (compare(b.version, a.version) > 0 ? b : a));
+if (found.some((f) => f.version !== run.version)) {
+  const has = found.map((f, i) => `${f.harness} has ${i === 0 ? "squeal " : ""}${f.version}`);
+  // squeal update does not reach Pi; the install.sh of a release installs that release in Pi.
+  const pi = found.some((f) => f.harness === "Pi") ? ", and install.sh for Pi," : "";
   process.stderr.write(
-    `squeal: ${a.harness} has squeal ${a.version} and ${b.harness} has ${b.version}; running ${run.version}. Run squeal update to bring them to one version.\n`,
+    `squeal: ${has.slice(0, -1).join(", ")} and ${has.at(-1)}; running ${run.version}. Run squeal update${pi} to bring them to one version.\n`,
   );
 }
 process.stdout.write(cliOf(run.dir));
