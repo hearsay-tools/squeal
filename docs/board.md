@@ -981,7 +981,7 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 | 008-14 install and update through OpenCode | done (integrated for 0.1.178, not landed) | D1 as amended: `install.sh` OpenCode step with the `current` link, update, uninstall, `squeal update`, the launcher's search. | Install, reinstall, update with kept directories and uninstall tested; never `--force`, never an OpenCode config edit. |
 | 008-15 review of wave 0 | done: FAIL at eae020fc, four blockers (`reviews/wave-0.md`); B1 to B4, S1, S2, N1 folded into 008-12 | `/reviewer` over `c12dc371~1..eae020fc`: deadlines, no `node:sqlite` in the plugin, the fast path, D2 identity, `runOpenCode` isolation, the latency test. | `reviews/wave-0.md` committed. |
 | 008-16 review of wave 1, re-review of B1 to B4 | done: FAIL at f0c45b2f (`reviews/wave-1.md`); wave-0 B1 to B4 closed; new B1 idle deadline, B2 abort overlap, B3 stale bundle (fixed `d1a3e903`); S1 to S3 | `/reviewer` over wave 1 as integrated; the last round on `reviews/wave-0.md` B1 to B4. | `reviews/wave-1.md` committed. |
-| 008-17 repairs of `reviews/wave-1.md` | running | B1, B2, S1, S2, S3 (launcher format 4), stale bundle names (brief `tasks/wave-1.md`). | Each finding a regression test that failed before; lint, typecheck green. |
+| 008-17 repairs of `reviews/wave-1.md` | running (worker 75e37017, opus high) | B1, B2, S1, S2, S3 (launcher format 4), stale bundle names (brief `tasks/wave-1.md`). | Each finding a regression test that failed before; lint, typecheck green. |
 | 008-18 focused re-review of 008-17 | planned | `/reviewer`, last round on `reviews/wave-1.md`. | `reviews/wave-1.5.md` committed. |
 
 ### Wave 4: dogfooding repairs (from `lessons.md`, 007-18)
