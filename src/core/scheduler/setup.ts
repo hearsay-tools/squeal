@@ -77,7 +77,7 @@ export function failStartup(
   notStarted: readonly { readonly file: FileState; readonly forced: boolean }[],
   commit: CommitSha | null,
 ): void {
-  const projects = new Set(startup.projects);
+  const projects = failedProjects(startup, notStarted);
   const inTier = new Set(notStarted.map(({ file }) => file.id));
   for (const { file, forced } of notStarted) {
     if (projects.has(file.ref.project) || file.key === null || file.blocked !== null) continue;
@@ -92,4 +92,20 @@ export function failStartup(
     const check = { kind: "setup", project, testPath: startup.setupFile ?? "" } as const;
     ledger.setups.fail(check, startup.error, commit);
   }
+}
+
+/**
+ * The projects of the tier the failure names; every project of the tier when
+ * it names none of them (review wave-13bp B3). A failure blamed on a project
+ * outside the run would queue the run's own files again, and their new
+ * instance would start the failing setup at once, at the same revision.
+ */
+function failedProjects(
+  startup: StartupFailure,
+  notStarted: readonly { readonly file: FileState }[],
+): Set<ProjectName> {
+  const tier = new Set(notStarted.map(({ file }) => file.ref.project));
+  const named = startup.projects.filter((project) => tier.has(project));
+  if (named.length > 0) return new Set(named);
+  return tier.size > 0 ? tier : new Set(startup.projects);
 }

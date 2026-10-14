@@ -1,8 +1,10 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { SerializedError, TestSpecification, Vitest } from "vitest/node";
+import { compare } from "../../core/fs/index.js";
 import type {
   FileLevelError,
+  ProjectName,
   RelativePath,
   RunEnd,
   RunOptions,
@@ -66,9 +68,16 @@ export async function execute(
   const reason = timedOut ? TIMEOUT_REASON : CANCEL_REASON;
   const failure = timedOut ? `run exceeded timeoutMs (${timeoutMs} ms)` : CANCELLED;
   // A cancelled run that crashed meanwhile stays crashed: nothing in it is trusted (D12).
+  // A rejection during either grace keeps its marker, so the instance is closed (review
+  // wave-13bp B1).
   const stopped = (execution: RunExecution): RunExecution =>
     timedOut
-      ? { end: "timed-out", failure, hung: false }
+      ? {
+          end: "timed-out",
+          failure,
+          hung: false,
+          ...(execution.rejected === undefined ? {} : { rejected: execution.rejected }),
+        }
       : { ...execution, failure: execution.failure ?? failure };
   cancel(vitest, collector, reason);
   const graceful = await settleWithin(run, GRACE_BEFORE_FORCE_MS);
@@ -163,6 +172,7 @@ export function buildReport(
           .map((m) => m.ref)
           .sort(compareRefs);
   const completedKeys = new Set(completed.map(refKey));
+  const started = startedProjects(collector);
 
   const errors = new Map<string, FileLevelError>();
   const addErrors = (ref: TestFileRef, list: FileLevelError["errors"]) => {
@@ -201,7 +211,19 @@ export function buildReport(
       .filter((m) => completedKeys.has(refKey(m.ref)) && m.durationMs !== null)
       .sort((a, b) => compareRefs(a.ref, b.ref))
       .map((m) => ({ testFile: m.ref, durationMs: m.durationMs ?? 0 })),
+    ...(started.length === 0 ? {} : { startedProjects: started }),
   };
+}
+
+/**
+ * The projects of the run once any requested module was queued (review
+ * wave-13bp B4): Vitest's `runFiles` awaits every run project's
+ * `globalSetup` before its pool queues a file, so a queued module proves the
+ * setups ran, whatever its tests then did.
+ */
+function startedProjects(collector: RunCollector): ProjectName[] {
+  if (collector.queued === 0) return [];
+  return [...new Set([...collector.requested].map((ref) => ref.project))].sort(compare);
 }
 
 /** The worktree-relative test file an unhandled error names, or `null`. */

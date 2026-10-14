@@ -498,8 +498,12 @@ export function recordTier(
       context,
       grown.map((g) => g.ref),
     );
-    // Task 001-382: one setup failure, not a FAIL per file; a run of a project that started passes it.
-    const started = new Set(report.completedFiles.map((f) => f.project));
+    // Task 001-382: one setup failure, not a FAIL per file; a run of a project that started passes
+    // it, whatever its tests then did (review wave-13bp B4).
+    const started = new Set([
+      ...(report.startedProjects ?? []),
+      ...report.completedFiles.map((f) => f.project),
+    ]);
     for (const project of startup?.projects ?? []) started.delete(project);
     ledger.setups.pass(started, provenance.commit);
     if (startup !== undefined) failStartup(ledger, startup, notStarted, provenance.commit);
