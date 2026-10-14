@@ -60,6 +60,7 @@ export function venv(
   });
   if (python === undefined) write(env, { "bin/python": "" });
   else link(python, join(env, "bin", "python"));
+  mkdirSync(join(env, SITE), { recursive: true });
   write(join(env, SITE), site);
   return env;
 }
