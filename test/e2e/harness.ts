@@ -17,13 +17,14 @@ import { worktreeIdFor } from "../../src/core/fs/index.js";
 import type { PingResponse, StatusSnapshot } from "../../src/core/types/index.js";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
-import { fixtureInstall, type Install, type InstallKind } from "./install.js";
+import type { PythonVersion } from "../helpers/pytest-env.js";
+import { fixtureInstall, type Install, type InstallKind, uvSync } from "./install.js";
 import { copyPlugin, type HookName, type Plugin } from "./plugins.js";
-import { DEMO, MATH, SLOW, SOURCE_PATH, type Source, STRINGS } from "./sources.js";
+import { DEMO, MATH, RATES, SLOW, SOURCE_PATH, type Source, STRINGS } from "./sources.js";
 import { daemonPids, metric, type RunRow, readRuns, registeredSessions, until } from "./support.js";
 
 export { type HookName, PLUGINS, type Plugin } from "./plugins.js";
-export { DEMO, MATH, SLOW, SLOW_MS, STRINGS } from "./sources.js";
+export { DEMO, MATH, RATES, RESOURCES, SLOW, SLOW_MS, STRINGS } from "./sources.js";
 export { hasNodeModulesAbove, until } from "./support.js";
 
 /*
@@ -41,6 +42,7 @@ export { hasNodeModulesAbove, until } from "./support.js";
  */
 
 const FIXTURE = join(REPO_ROOT, "test/fixtures/e2e");
+const SMALL = join(REPO_ROOT, "test/fixtures/pytest/small");
 const TMPFS = "/dev/shm";
 /** Spec 001 D9: every hook has `timeout: 2`. */
 export const HOOK_BUDGET_MS = 2_000;
@@ -90,6 +92,8 @@ export interface FixtureOptions {
    * rest of the hook stayed under 600 ms.
    */
   readonly tmpfs?: boolean;
+  /** The Python a `pytest` suite's fixture syncs its environments on; default 3.13. */
+  readonly python?: PythonVersion;
 }
 
 interface BuildOptions extends FixtureOptions {
@@ -100,6 +104,13 @@ interface BuildOptions extends FixtureOptions {
    * from its scripts, and `policy` is unused.
    */
   readonly nodeTest?: boolean;
+  /**
+   * Spec 007: the fixture adds `test/fixtures/pytest/small` as `python/small`
+   * and `test/fixtures/e2e/pytest`, syncs both projects on `python` and has
+   * the shipped CLI's `squeal setup` write `squeal.config.json`, seeding them;
+   * `policy` is unused.
+   */
+  readonly pytest?: boolean;
 }
 
 const git = (cwd: string, args: readonly string[]) =>
@@ -115,6 +126,8 @@ export class E2E {
   readonly #worktrees: string[] = [];
   /** Set by `keep`: cleanup stops the daemons but leaves `base` for a failure's evidence. */
   #kept = false;
+  /** The Python of a pytest fixture's environments. */
+  #python: PythonVersion = "3.13";
 
   private constructor(
     readonly kind: Plugin,
@@ -147,10 +160,18 @@ export class E2E {
 
     const repo = this.main;
     const nodeTest = options.nodeTest === true;
+    const pytest = options.pytest === true;
+    this.#python = options.python ?? this.#python;
     cpSync(join(FIXTURE, "project"), repo, { recursive: true });
     execFileSync("mv", [join(repo, "_gitignore"), join(repo, ".gitignore")]);
     if (options.slow === true) cpSync(join(FIXTURE, "slow"), repo, { recursive: true });
     if (nodeTest) cpSync(join(FIXTURE, "node-test"), repo, { recursive: true });
+    if (pytest) {
+      cpSync(SMALL, join(repo, "python/small"), { recursive: true });
+      // Its README describes the fixture; setup would read it as the repository's own.
+      const readme = join(FIXTURE, "pytest/README.md");
+      cpSync(join(FIXTURE, "pytest"), repo, { recursive: true, filter: (src) => src !== readme });
+    }
     if (options.overlay !== undefined) {
       cpSync(join(FIXTURE, options.overlay), repo, { recursive: true });
     }
@@ -158,6 +179,7 @@ export class E2E {
     this.write(repo, "strings", STRINGS());
     if (options.slow === true) this.write(repo, "slow", SLOW());
     if (nodeTest) this.write(repo, "demo", DEMO());
+    if (pytest) this.write(repo, "rates", RATES());
     for (const [path, body] of Object.entries(options.files ?? {})) this.writeAt(repo, path, body);
     this.#copyInstall(repo, true);
     git(repo, ["init", "-q", "-b", "main"]);
@@ -170,6 +192,21 @@ export class E2E {
           cwd: repo,
           stdio: "pipe",
           env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", ...this.#env },
+        },
+      );
+    } else if (pytest) {
+      // Spec 007 D1: the projects a user gets from setup, seeded from the tracked files.
+      this.syncPython(repo);
+      git(repo, ["add", "-A"]);
+      const args = ["setup", "--yes", "--harness", this.kind.name, "--no-trust", "--no-warmup"];
+      execFileSync(
+        process.execPath,
+        ["--disable-warning=ExperimentalWarning", this.#cliPath, ...args],
+        // A HOME of its own: setup reads the harnesses' user config and may start `codex`.
+        {
+          cwd: repo,
+          stdio: "pipe",
+          env: { PATH: process.env.PATH ?? "", HOME: this.#home, ...this.#env },
         },
       );
     } else {
@@ -190,6 +227,18 @@ export class E2E {
 
   get #cliPath(): string {
     return join(this.plugin, "dist/cli/squeal.mjs");
+  }
+
+  /** An empty HOME for the CLI where it reads user config, as on a fresh machine. */
+  get #home(): string {
+    const home = join(this.base, "home");
+    mkdirSync(home, { recursive: true });
+    return home;
+  }
+
+  /** `uv sync` of the pytest fixture's projects in `root`, as a user syncs a worktree (spec 007 D2). */
+  syncPython(root: string): void {
+    uvSync(root, this.#python);
   }
 
   /** package.json, its lockfile and node_modules from the cached install, as `npm install` leaves them. */
@@ -220,7 +269,8 @@ export class E2E {
   writeAt(root: string, path: string, body: string): void {
     const at = join(root, path);
     mkdirSync(dirname(at), { recursive: true });
-    writeFileSync(at, `// edit ${this.#edits++}\n${body}`);
+    const comment = path.endsWith(".py") ? "#" : "//";
+    writeFileSync(at, `${comment} edit ${this.#edits++}\n${body}`);
   }
 
   /** Runs a hook the way the plugin's harness does, fed the recorded input with `cwd` set to `root`. */
@@ -390,7 +440,8 @@ export class E2E {
  * Registers the suite's install and cleanup; returns a fixture factory that
  * skips the test, with the reason, when the install cannot be made (fails it
  * on CI). Every
- * fixture of a `node-test` suite is the node:test workspace (`BuildOptions`).
+ * fixture of a `node-test` suite is the node:test workspace, of a `pytest`
+ * suite the pytest projects beside Vitest (`BuildOptions`).
  */
 export function e2eSuite(
   kind: InstallKind = "vitest",
@@ -417,7 +468,11 @@ export function e2eSuite(
     // On CI a failed install fails the test, so a broken npm cannot hide the suite.
     if (!ready.ok && process.env.CI) throw new Error(`end to end install failed: ${ready.reason}`);
     if (!ready.ok) return ctx.skip(`end to end skipped: ${ready.reason}`);
-    const fixture = E2E.create(plugin, ready.dir, { ...options, nodeTest: kind === "node-test" });
+    const fixture = E2E.create(plugin, ready.dir, {
+      ...options,
+      nodeTest: kind === "node-test",
+      pytest: kind === "pytest",
+    });
     fixtures.push(fixture);
     return fixture;
   };
