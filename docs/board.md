@@ -912,6 +912,14 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 | 009-16 the Pi fixture's isolation | running (worker dce22e41, opus high) | Review S1 (protected env), N1 (typed fake provider), a base directory outside any repository. | Protected override has no effect; Pi's project outside the repository under a repository `TMPDIR`; full suite green. |
 | 009-17 review of wave 1 | running (worker eb7c1a7e, gpt-6.1-sol high) | `/reviewer` over `502eb7f1..7ac131df`: D3 honesty rules, D4 bounds, `install.sh` against 005 D3, launcher format 2, status line. | `reviews/wave-1.md` committed. |
 
+### Wave 3: updates and proof (planned)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 009-18 updating Squeal in Pi | planned | Raised by the human's question, 2026-10-14. `squeal update` covers only Claude Code and Codex; Pi has no auto-update for a local package, so today a Pi user re-runs a newer `install.sh`. That deletes the previous version's directory while open Pi sessions still have its extension loaded: read in code, not tested, their worker cannot restart from deleted files and the primer names a deleted CLI, so Squeal goes quiet there until `/reload` or a restart. Scope: `squeal update` installs the newest release in Pi; keep the previous version directory until no Pi process has it loaded (or keep one back); tell the user to `/reload` open sessions. | Update with a Pi session open: the session stays silent-safe, and after `/reload` it runs the new version; `squeal update` with Pi alone and with all three harnesses; full suite green. |
+| 009-19 end to end | planned | The Pi package archived from HEAD, `pi install` into an isolated agent dir, a fixture repository, the shipped daemon (spec Testing). | e2e suite green in CI. |
+| 009-20 dogfooding | planned | A Cezar worker on Pi and a TUI session with a real model; whether a model reads a Squeal message as Squeal's (open question 2); `lessons.md`. | `lessons.md` resolves the open questions with evidence. |
+
 ## Later
 
 - 001: a tier withheld by the completion barrier (task 001-168, `withheldForTouch`) leaves its files `unknown` with no re-run and no note when the touch makes no revision: a touch that changes only a file's ctime (a hardlink added or dropped by `uv sync` in another worktree on ext4) stranded pytest files on GitHub's runners (found by 007-28, 2026-10-14; the pytest side is fixed in 007-28 by keeping environment files out of touch judgement). Either re-queue a withheld tier when no revision follows, or judge a touch by mtime and size instead of ctime. Reported by the 007 coordinator.
