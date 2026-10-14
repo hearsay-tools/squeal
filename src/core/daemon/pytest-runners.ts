@@ -133,6 +133,8 @@ export interface PytestRunnersOptions {
   readonly tierSize: () => number;
   /** A note, with the topic that replaces the project's earlier note on it (task 007-39). */
   readonly note: (text: string, topic?: string) => void;
+  /** Whether status already lists a note (the adapter's `noted`). */
+  readonly noted?: (text: string) => boolean;
 }
 
 /**
@@ -156,6 +158,7 @@ export function createPytestRunners(
           root: options.root,
           observed: pytestObservedStore(options.store, project.name),
           note: options.note,
+          ...(options.noted === undefined ? {} : { noted: options.noted }),
           concurrency: options.tierSize,
           ...(batchSize === undefined ? {} : { batchSize: () => batchSize }),
           tempDir: options.tempDir,
