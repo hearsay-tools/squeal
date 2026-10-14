@@ -1,10 +1,9 @@
-import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { pytestObservedMetaKey, pytestObservedSessionMetaKey } from "../../src/core/types/index.js";
+import { pytestObservedMetaKey } from "../../src/core/types/index.js";
 import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
 import { runCodexHook } from "../../src/harness/codex/index.js";
 import { until } from "../e2e/support.js";
@@ -63,164 +62,34 @@ const observedKey = (main: string) =>
   (metaValue(main, pytestObservedMetaKey("small")) ?? {}) as Record<string, string[]>;
 
 /**
- * Why `wt` did not inherit: per test file, its key beside `main`'s, whether
- * any result is stored under it, and every closure path whose hash differs
- * between the two worktrees; the shared observed keys and the runs of `wt`.
+ * Why `root`'s checks are not all current (task 007-28): per test file, its
+ * key, who stored the results under it and each check's state there; the
+ * runs of `root` and its daemon notes.
  */
-function diagnose(main: string, wt: string): string {
+function whyNotCurrent(main: string, root: string): string {
   const db = new DatabaseSync(join(main, ".git/squeal/store.sqlite"), { readOnly: true });
+  const all = (sql: string, ...args: string[]) =>
+    db.prepare(sql).all(...args) as Record<string, unknown>[];
   try {
-    const [m, w] = [worktreeIdFor(main), worktreeIdFor(wt)];
-    const keyOf = (id: string, path: string) =>
-      (db
-        .prepare(
-          "SELECT key, revision, pending FROM test_file_keys WHERE worktree_id = ? AND path = ?",
-        )
-        .get(id, path) as
-        | { key: string | null; revision: number; pending: string | null }
-        | undefined) ?? null;
-    const hashes = (id: string) =>
-      new Map(
-        (
-          db.prepare("SELECT path, hash FROM file_hashes WHERE worktree_id = ?").all(id) as {
-            path: string;
-            hash: string;
-          }[]
-        ).map((r) => [r.path, r.hash]),
-      );
-    const [hm, hw] = [hashes(m), hashes(w)];
-    const files = (
-      db.prepare("SELECT project, path, closure_paths, complete, method FROM test_files").all() as {
-        project: string;
-        path: string;
-        closure_paths: string;
-        complete: number;
-        method: string;
-      }[]
-    ).map((f) => {
-      const km = keyOf(m, f.path);
-      const kw = keyOf(w, f.path);
-      const closure = JSON.parse(f.closure_paths) as string[];
-      return {
-        path: f.path,
-        complete: f.complete,
-        method: f.method,
-        main: km,
-        wt: kw,
-        sameKey: km?.key === kw?.key,
-        resultsUnderWtKey:
-          kw?.key == null
-            ? 0
-            : (
-                db.prepare("SELECT count(*) AS n FROM results WHERE key = ?").get(kw.key) as {
-                  n: number;
-                }
-              ).n,
-        closureDiffers: closure
-          .filter((p) => hm.get(p) !== hw.get(p))
-          .map((p) => ({ path: p, main: hm.get(p) ?? null, wt: hw.get(p) ?? null })),
-      };
-    });
-    const environmentDiffers = [...new Set([...hm.keys(), ...hw.keys()])]
-      .filter((p) => p.startsWith(".venv/") && hm.get(p) !== hw.get(p))
-      .map((p) => ({ path: p, main: hm.get(p) ?? null, wt: hw.get(p) ?? null }));
-    const q = (sql: string, ...args: (string | number)[]) =>
-      db.prepare(sql).all(...args) as Record<string, unknown>[];
-    const names = new Map(
-      q("SELECT id, root FROM worktrees").map((r) => [r.id, String(r.root).split("/").pop()]),
-    );
-    const name = (r: Record<string, unknown>) => ({ ...r, worktree_id: names.get(r.worktree_id) });
-    const resultRows = files.flatMap((f) =>
-      [f.main?.key, f.wt?.key]
-        .filter((k): k is string => typeof k === "string")
-        .filter((k, i, all) => all.indexOf(k) === i)
-        .flatMap((k) =>
-          q(
-            "SELECT r.key, c.full_name, r.outcome, r.worktree_id, r.revision, r.run_id, r.recorded_at FROM results r JOIN checks c ON c.id = r.check_id WHERE r.key = ? AND c.test_path = ?",
-            k,
-            f.path,
-          ).map((r) => ({ ...name(r), key: String(r.key).slice(0, 8) })),
-        ),
+    const id = worktreeIdFor(root);
+    const names = new Map(all("SELECT id, root FROM worktrees").map((r) => [r.id, r.root]));
+    const files = all("SELECT path, key FROM test_file_keys WHERE worktree_id = ?", id).map(
+      ({ path, key }) => ({
+        path,
+        key,
+        storedBy: all(
+          "SELECT DISTINCT worktree_id, revision FROM results WHERE key = ?",
+          String(key),
+        ).map((r) => `${names.get(r.worktree_id)} at ${r.revision}`),
+        states: all(
+          "SELECT c.full_name, k.validity, k.origin_kind FROM known_states k JOIN checks c ON c.id = k.check_id WHERE k.worktree_id = ? AND c.test_path = ?",
+          id,
+          String(path),
+        ).map((r) => `${r.full_name || "(file)"}: ${r.validity} ${r.origin_kind ?? ""}`),
+      }),
     );
     return JSON.stringify(
-      {
-        files,
-        environmentDiffers,
-        observed: metaValue(main, pytestObservedMetaKey("small")),
-        observedSession: metaValue(main, pytestObservedSessionMetaKey("small")),
-        results: resultRows,
-        revisions: q(
-          "SELECT number, created_at, trigger, substr(changes, 1, 600) AS changes FROM revisions WHERE worktree_id = ? ORDER BY number",
-          w,
-        ),
-        runs: q(
-          "SELECT id, revision, test_files, started_at, ended_at, end_state FROM runs WHERE worktree_id = ? ORDER BY started_at",
-          w,
-        ),
-        transitions: q(
-          "SELECT t.revision, t.at, c.test_path, c.full_name, t.kind, t.from_outcome, t.to_outcome FROM transitions t JOIN checks c ON c.id = t.check_id WHERE t.worktree_id = ? ORDER BY t.id",
-          w,
-        ),
-        mainKnown: q(
-          "SELECT c.full_name, k.outcome, k.validity, k.pending_phase, k.origin_kind FROM known_states k JOIN checks c ON c.id = k.check_id WHERE k.worktree_id = ? AND c.test_path = 'tests/unit/test_core.py'",
-          m,
-        ),
-        known: q(
-          "SELECT c.test_path, c.full_name, k.outcome, k.validity, k.pending_phase, k.origin_kind, k.origin_worktree FROM known_states k JOIN checks c ON c.id = k.check_id WHERE k.worktree_id = ?",
-          w,
-        ).map((r) => ({ ...r, origin_worktree: names.get(r.origin_worktree) ?? null })),
-        notes: status(wt).daemonNotes,
-        coreObserved: metaValue(main, "observed.small"),
-        coreClosure: q(
-          "SELECT closure_paths, updated_by FROM test_files WHERE path = 'tests/unit/test_core.py'",
-        ),
-        mainRuns: q(
-          "SELECT revision, test_files, started_at, ended_at, end_state FROM runs WHERE worktree_id = ? ORDER BY started_at",
-          m,
-        ).map((r) => ({
-          ...r,
-          test_files: String(r.test_files).replace(/"project":"small",/g, ""),
-        })),
-        mainRevisions: q(
-          "SELECT number, created_at, trigger, substr(changes, 1, 300) AS changes FROM revisions WHERE worktree_id = ? ORDER BY number",
-          m,
-        ),
-        coreResults: q(
-          "SELECT substr(r.key, 1, 8) AS key, c.full_name, r.outcome, r.worktree_id, r.revision, r.recorded_at FROM results r JOIN checks c ON c.id = r.check_id WHERE c.test_path = 'tests/unit/test_core.py' AND c.full_name = '' ORDER BY r.recorded_at",
-        ).map(name),
-        mainTrace: existsSync(join(main, ".git/squeal/pytest-trace.jsonl"))
-          ? readFileSync(join(main, ".git/squeal/pytest-trace.jsonl"), "utf8")
-              .split("\n")
-              .filter(
-                (l) => l.includes('"who":"main"') && /"call":"(run|invalidate|recheck)"/.test(l),
-              )
-              .map((l) => l.slice(0, 1500))
-          : null,
-        trace: existsSync(join(main, ".git/squeal/pytest-trace.jsonl"))
-          ? readFileSync(join(main, ".git/squeal/pytest-trace.jsonl"), "utf8")
-              .split("\n")
-              .filter((l) => l.includes(`"who":"${wt.split("/").pop()}"`))
-              .map((l) => l.slice(0, 4000))
-          : null,
-        uv: execFileSync("uv", ["--version"], { encoding: "utf8" }).trim(),
-        site: Object.fromEntries(
-          [main, wt].map((root) => {
-            const site = join(root, ".venv/lib/python3.13/site-packages");
-            const listed = existsSync(site) ? readdirSync(site) : [];
-            return [
-              root === main ? "main" : "wt",
-              listed
-                .filter((n) => /\.pth$|editable/.test(n))
-                .map((n) => [
-                  n,
-                  statSync(join(site, n)).isFile()
-                    ? readFileSync(join(site, n), "utf8").slice(0, 400)
-                    : "dir",
-                ]),
-            ];
-          }),
-        ),
-      },
+      { files, runs: runs(main, root), notes: status(root).daemonNotes },
       null,
       1,
     );
@@ -256,7 +125,7 @@ describe("a repository with a Vitest suite and a pytest project (spec 007)", () 
         "the third baseline",
         (s) => s.counts.current === CHECKS && ranFiles(main, wt3).length >= 2,
       ).catch((error: unknown) => {
-        throw new Error(`${String(error)}\n${diagnose(main, wt3)}`);
+        throw new Error(`${String(error)}\n${whyNotCurrent(main, wt3)}`);
       });
       // test_resources.py too: its baseline in main imported `app.data` through
       // `importlib.resources`, observed only, and growth a worktree's own run finds keys its
@@ -265,13 +134,14 @@ describe("a repository with a Vitest suite and a pytest project (spec 007)", () 
       expect(observedKey(main)[RESOURCES_TEST]).toContain("src/app/data/__init__.py");
       expect(third.knownFailures.map((f) => f.check.testPath)).toEqual([CORE_TEST]);
 
-      // An edit of the observed-only module re-runs its test file, and only it.
+      // An edit of the observed-only module re-runs its test file, and only it, and its result
+      // stands: under uv's hardlinks a sync elsewhere once withheld it, left unknown (007-28).
       let from = runs(main, main).length;
       let at = status(main).revision;
       writeFileSync(join(main, OBSERVED_ONLY), "# edited\nX = 3\n");
       await settle(main, "the edit of alpha.py", (s) => s.counts.current === CHECKS, at).catch(
         (error: unknown) => {
-          throw new Error(`${String(error)}\n${diagnose(main, main)}`);
+          throw new Error(`${String(error)}\n${whyNotCurrent(main, main)}`);
         },
       );
       expect(ranSince(main, main, from)).toEqual([CORE_TEST]);
@@ -322,7 +192,7 @@ describe("a repository with a Vitest suite and a pytest project (spec 007)", () 
         "the synced second worktree",
         (s) => s.counts.current === CHECKS,
       );
-      expect(second.inherited.count, diagnose(main, wt2)).toBe(CHECKS);
+      expect(second.inherited.count, whyNotCurrent(main, wt2)).toBe(CHECKS);
       expect(second.knownFailures).toEqual([]);
       // Tiers keyed while the sync ran end before starting pytest (D2); none completed.
       expect(runs(main, wt2).slice(from)).toEqual(
