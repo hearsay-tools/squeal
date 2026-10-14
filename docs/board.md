@@ -832,13 +832,14 @@ Spec: `specifications/007-pytest-runner/spec.md`, approved 2026-10-14 by the hum
 | 007-12 graph, invalidation and enumeration | done (0.1.163, `e3b6bf3a`) | D4, D5, D7: tree-sitter-python WASM bundled, the resolver over 007-10's `sys.path` model and pytest's import modes, closures with conftest chains and candidates, the reverse index, full re-resolve on structural change, enumeration; 007-04's verdict on resolving without an environment. | Closures equal the oracle on the small fixture; the candidate cases re-key exactly; cost relative to the cold build on the generator. |
 | 007-13 runner and the `squeal_pytest` reporter | done (0.1.163, `e3b6bf3a`) | D3, D6: batched fresh processes in process groups, the JSON-lines reporter with the import-edge recorder, phase joining and outcomes, collection errors, overrides and refused flags, the deadline; measures open questions 2 (an `open` audit hook) and 3 (`PYTHONPYCACHEPREFIX`). | Runner tests of the spec's Testing list on recorded and live runs on both Pythons. |
 
-### Wave 2: assembly and the agent surfaces
+### Wave 2: assembly and the agent surfaces (briefs in `specifications/007-pytest-runner/tasks/wave-2.md`; 007-16 runs beside 007-14 and 007-15)
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
 | 007-14 the pytest adapter in the daemon | planned | `RunnerAdapter` over 007-10, 007-12, 007-13; the observed-closure `meta` key as 003 D3; the composite; runtime files copied into both plugins' `dist/pytest/`. | Integration: baseline, inheritance into a synced second worktree, a `PASS -> FAIL` through the Claude Code and Codex hooks. |
 | 007-15 agent surfaces and setup | planned | D8, D1 setup: 005 texts, skill and instruction block name pytest; 005 D8 recognises pytest commands; `squeal setup` seeds `pytest` projects. | Setup seeds both fixture projects; the deny recognises and falls through as D8 lists. |
-| 007-16 review of waves 0 to 2 | planned | `/reviewer` over the spec's range: keys, the environment refusal states, the reporter's completion rule. | `reviews/wave-2.md` committed. |
+| 007-16 review of waves 0 and 1 | planned (brief in `specifications/007-pytest-runner/tasks/wave-2.md`; the next hub release waits on it, 005's human, 2026-10-14) | `/reviewer` over `638fb159..a67407f8`: the `policy-node-test.ts` refactor, keys, D2's refusal states, D6's completion rule, refused flags. | `reviews/wave-1.md` committed. |
+| 007-19 review of wave 2 | planned | `/reviewer` over 007-14, 007-15 and any 007-16 repair. | `reviews/wave-2.md` committed. |
 
 ### Wave 3: proof
 
