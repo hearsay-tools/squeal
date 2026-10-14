@@ -1,0 +1,284 @@
+2026-10-14T06:10:10Z start r1a load 11.58
+atomic run 20261014T061010Z-9e6ed6: Squeal 0.1.156 at f8d3c10a322f, 8 cells, 2 at once below load 24
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r1] fixture b192f479e3a40f6f621c9be4982b06ac7a74055b, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/p0, run 20261014T061010Z-9e6ed6, load 11.6
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r1] warm-up: Known failures: 0
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r1] session claude claude-haiku-5-5 effort medium start, load 9.6
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r1] fixture 071f766957ef8210af8ddac840acde9a1b3be26c, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/d8-deny, run 20261014T061010Z-9e6ed6, load 10.0
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r1] warm-up: Known failures: 0
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r1] session claude claude-haiku-5-5 effort medium start, load 8.6
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r1] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 42.2 s
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r1] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 30.7 s
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r1] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/20261014T061010Z-9e6ed6/a2-slow.p0.claude-claude-haiku-5-5.e-medium.r1/work; []
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r1] graded: a2-slow.p0.claude-claude-haiku-5-5.e-medium.r1	vitest 3	node:test 0	waits 1	sleep 0	skill 0	refused 0	claim fail truth fail -> true
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r1] pilot: claim-true true, no-false-pass true, slow-through-squeal true, no-rerun-answered false
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r1] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r2] fixture b192f479e3a40f6f621c9be4982b06ac7a74055b, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/p0, run 20261014T061010Z-9e6ed6, load 7.9
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r1] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/20261014T061010Z-9e6ed6/a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r1/work; []
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r1] graded: a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r1	vitest 0	node:test 0	waits 1	sleep 0	skill 0	refused 0	claim fail truth fail -> true
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r1] pilot: claim-true true, no-false-pass true, slow-through-squeal true, no-rerun-answered true
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r1] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r2] fixture 071f766957ef8210af8ddac840acde9a1b3be26c, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/d8-deny, run 20261014T061010Z-9e6ed6, load 7.2
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r2] warm-up: Known failures: 0
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r2] session claude claude-haiku-5-5 effort medium start, load 6.8
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r2] warm-up: Known failures: 0
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r2] session claude claude-haiku-5-5 effort medium start, load 6.4
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r2] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 27.4 s
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r2] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 25.6 s
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r2] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/20261014T061010Z-9e6ed6/a2-slow.p0.claude-claude-haiku-5-5.e-medium.r2/work; []
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r2] graded: a2-slow.p0.claude-claude-haiku-5-5.e-medium.r2	vitest 0	node:test 0	waits 2	sleep 0	skill 0	refused 0	claim fail truth fail -> true
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r2] pilot: claim-true true, no-false-pass true, slow-through-squeal true, no-rerun-answered true
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r2] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r3] fixture b192f479e3a40f6f621c9be4982b06ac7a74055b, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/p0, run 20261014T061010Z-9e6ed6, load 4.7
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r2] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/20261014T061010Z-9e6ed6/a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r2/work; []
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r2] graded: a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r2	vitest 0	node:test 0	waits 1	sleep 0	skill 0	refused 0	claim fail truth fail -> true
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r2] pilot: claim-true true, no-false-pass true, slow-through-squeal true, no-rerun-answered true
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r2] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r3] fixture 071f766957ef8210af8ddac840acde9a1b3be26c, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/d8-deny, run 20261014T061010Z-9e6ed6, load 4.4
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r3] warm-up: Known failures: 0
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r3] session claude claude-haiku-5-5 effort medium start, load 4.8
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r3] warm-up: Known failures: 0
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r3] session claude claude-haiku-5-5 effort medium start, load 5.3
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r3] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 33.3 s
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r3] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/20261014T061010Z-9e6ed6/a2-slow.p0.claude-claude-haiku-5-5.e-medium.r3/work; []
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r3] graded: a2-slow.p0.claude-claude-haiku-5-5.e-medium.r3	vitest 0	node:test 0	waits 1	sleep 0	skill 0	refused 0	claim fail truth fail -> true
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r3] pilot: claim-true true, no-false-pass true, slow-through-squeal true, no-rerun-answered true
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r3] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r4] fixture b192f479e3a40f6f621c9be4982b06ac7a74055b, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/p0, run 20261014T061010Z-9e6ed6, load 4.6
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r3] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 42.1 s
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r4] warm-up: Known failures: 0
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r4] session claude claude-haiku-5-5 effort medium start, load 4.3
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r3] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/20261014T061010Z-9e6ed6/a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r3/work; []
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r3] graded: a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r3	vitest 3	node:test 0	waits 1	sleep 0	skill 0	refused 0	claim fail truth fail -> true
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r3] pilot: claim-true true, no-false-pass true, slow-through-squeal true, no-rerun-answered false
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r3] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r4] fixture 071f766957ef8210af8ddac840acde9a1b3be26c, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/d8-deny, run 20261014T061010Z-9e6ed6, load 4.3
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r4] warm-up: Known failures: 0
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r4] session claude claude-haiku-5-5 effort medium start, load 3.8
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r4] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 43.9 s
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r4] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 31.0 s
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r4] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/20261014T061010Z-9e6ed6/a2-slow.p0.claude-claude-haiku-5-5.e-medium.r4/work; []
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r4] graded: a2-slow.p0.claude-claude-haiku-5-5.e-medium.r4	vitest 3	node:test 0	waits 1	sleep 0	skill 0	refused 0	claim fail truth fail -> true
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r4] pilot: claim-true true, no-false-pass true, slow-through-squeal true, no-rerun-answered true
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r4] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r4] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/20261014T061010Z-9e6ed6/a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r4/work; []
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r4] graded: a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r4	vitest 0	node:test 0	waits 2	sleep 0	skill 0	refused 0	claim fail truth fail -> true
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r4] pilot: claim-true true, no-false-pass true, slow-through-squeal true, no-rerun-answered true
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r4] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+wrote /home/squeal-e2e/runs/sq18-p1/repo/evals/results/2026-10-14-0.1.156.20261014T061010Z-9e6ed6.d8-deny.atomic-variant.json: 8 cells, 0 failed, missing: none
+ATOMIC.md from 5 atomic results file(s)
+2026-10-14T06:14:28Z end r1a exit 0
+2026-10-14T06:14:28Z start r1b load 2.34
+atomic run 20261014T061428Z-a8e6fa: Squeal 0.1.156 at f8d3c10a322f, 4 cells, 2 at once below load 24
+[a1-break.p0.claude-claude-haiku-5-5.e-medium.r1] fixture b192f479e3a40f6f621c9be4982b06ac7a74055b, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/p0, run 20261014T061428Z-a8e6fa, load 2.3
+[a1-break.p0.claude-claude-haiku-5-5.e-medium.r1] warm-up: Known failures: 0
+[a1-break.p0.claude-claude-haiku-5-5.e-medium.r1] session claude claude-haiku-5-5 effort medium turn 1 start, load 2.1
+[a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r1] fixture 071f766957ef8210af8ddac840acde9a1b3be26c, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/d8-deny, run 20261014T061428Z-a8e6fa, load 2.0
+[a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r1] warm-up: Known failures: 0
+[a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r1] session claude claude-haiku-5-5 effort medium turn 1 start, load 2.0
+[a1-break.p0.claude-claude-haiku-5-5.e-medium.r1] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 23.2 s
+[a1-break.p0.claude-claude-haiku-5-5.e-medium.r1] turn 2: nothing pending after 0.1 s
+[a1-break.p0.claude-claude-haiku-5-5.e-medium.r1] session claude claude-haiku-5-5 effort medium turn 2 start, load 1.9
+[a1-break.p0.claude-claude-haiku-5-5.e-medium.r1] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 26.2 s
+[a1-break.p0.claude-claude-haiku-5-5.e-medium.r1] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/20261014T061428Z-a8e6fa/a1-break.p0.claude-claude-haiku-5-5.e-medium.r1/work; []
+[a1-break.p0.claude-claude-haiku-5-5.e-medium.r1] graded: a1-break.p0.claude-claude-haiku-5-5.e-medium.r1	vitest 0	node:test 0	waits 1	sleep 0	skill 0	refused 0	claim fail truth fail -> true
+[a1-break.p0.claude-claude-haiku-5-5.e-medium.r1] pilot: claim-true true, no-false-pass true, no-rerun-answered true
+[a1-break.p0.claude-claude-haiku-5-5.e-medium.r1] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+[a1-break.p0.claude-claude-haiku-5-5.e-medium.r2] fixture b192f479e3a40f6f621c9be4982b06ac7a74055b, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/p0, run 20261014T061428Z-a8e6fa, load 1.8
+[a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r1] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 26.5 s
+[a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r1] turn 2: nothing pending after 0.1 s
+[a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r1] session claude claude-haiku-5-5 effort medium turn 2 start, load 2.1
+[a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r1] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 29.6 s
+[a1-break.p0.claude-claude-haiku-5-5.e-medium.r2] warm-up: Known failures: 0
+[a1-break.p0.claude-claude-haiku-5-5.e-medium.r2] session claude claude-haiku-5-5 effort medium turn 1 start, load 2.3
+[a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r1] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/20261014T061428Z-a8e6fa/a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r1/work; []
+[a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r1] graded: a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r1	vitest 0	node:test 0	waits 1	sleep 0	skill 0	refused 2	claim fail truth fail -> true
+[a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r1] pilot: claim-true true, no-false-pass true, no-rerun-answered true
+[a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r1] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+[a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r2] fixture 071f766957ef8210af8ddac840acde9a1b3be26c, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/d8-deny, run 20261014T061428Z-a8e6fa, load 2.7
+[a1-break.p0.claude-claude-haiku-5-5.e-medium.r2] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 11.2 s
+[a1-break.p0.claude-claude-haiku-5-5.e-medium.r2] turn 2: nothing pending after 11.9 s
+[a1-break.p0.claude-claude-haiku-5-5.e-medium.r2] session claude claude-haiku-5-5 effort medium turn 2 start, load 3.4
+[a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r2] warm-up: Known failures: 0
+[a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r2] session claude claude-haiku-5-5 effort medium turn 1 start, load 3.4
+[a1-break.p0.claude-claude-haiku-5-5.e-medium.r2] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 27.5 s
+[a1-break.p0.claude-claude-haiku-5-5.e-medium.r2] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/20261014T061428Z-a8e6fa/a1-break.p0.claude-claude-haiku-5-5.e-medium.r2/work; []
+[a1-break.p0.claude-claude-haiku-5-5.e-medium.r2] graded: a1-break.p0.claude-claude-haiku-5-5.e-medium.r2	vitest 0	node:test 0	waits 0	sleep 0	skill 0	refused 1	claim fail truth fail -> true
+[a1-break.p0.claude-claude-haiku-5-5.e-medium.r2] pilot: claim-true true, no-false-pass true, no-rerun-answered true
+[a1-break.p0.claude-claude-haiku-5-5.e-medium.r2] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+[a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r2] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 26.7 s
+[a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r2] turn 2: nothing pending after 0.1 s
+[a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r2] session claude claude-haiku-5-5 effort medium turn 2 start, load 3.3
+[a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r2] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 31.8 s
+[a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r2] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/20261014T061428Z-a8e6fa/a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r2/work; []
+[a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r2] graded: a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r2	vitest 0	node:test 0	waits 1	sleep 0	skill 0	refused 0	claim fail truth fail -> true
+[a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r2] pilot: claim-true true, no-false-pass true, no-rerun-answered true
+[a1-break.d8-deny.claude-claude-haiku-5-5.e-medium.r2] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+wrote /home/squeal-e2e/runs/sq18-p1/repo/evals/results/2026-10-14-0.1.156.20261014T061428Z-a8e6fa.d8-deny.atomic-variant.json: 4 cells, 0 failed, missing: none
+ATOMIC.md from 5 atomic results file(s)
+2026-10-14T06:16:44Z end r1b exit 0
+2026-10-14T06:16:44Z start r1c load 3.22
+atomic run 20261014T061644Z-e0169f: Squeal 0.1.156 at f8d3c10a322f, 4 cells, 2 at once below load 24
+[a1-break.p0.codex-gpt-6-luna.e-medium.r1] fixture b192f479e3a40f6f621c9be4982b06ac7a74055b, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/p0, run 20261014T061644Z-e0169f, load 3.2
+[a1-break.p0.codex-gpt-6-luna.e-medium.r1] codex trust:   Interrupt         trusted
+[a1-break.p0.codex-gpt-6-luna.e-medium.r1] warm-up: Known failures: 0
+[a1-break.p0.codex-gpt-6-luna.e-medium.r1] session codex gpt-6-luna effort medium turn 1 start, load 3.0
+[a1-break.d8-deny.codex-gpt-6-luna.e-medium.r1] fixture 071f766957ef8210af8ddac840acde9a1b3be26c, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/d8-deny, run 20261014T061644Z-e0169f, load 3.7
+[a1-break.d8-deny.codex-gpt-6-luna.e-medium.r1] codex trust:   Interrupt         trusted
+[a1-break.p0.codex-gpt-6-luna.e-medium.r1] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 10.8 s
+[a1-break.d8-deny.codex-gpt-6-luna.e-medium.r1] warm-up: Known failures: 0
+[a1-break.d8-deny.codex-gpt-6-luna.e-medium.r1] session codex gpt-6-luna effort medium turn 1 start, load 9.3
+[a1-break.d8-deny.codex-gpt-6-luna.e-medium.r1] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 8.6 s
+[a1-break.p0.codex-gpt-6-luna.e-medium.r1] turn 2: nothing pending after 23.4 s
+[a1-break.p0.codex-gpt-6-luna.e-medium.r1] session codex gpt-6-luna effort medium turn 2 start, load 9.0
+[a1-break.p0.codex-gpt-6-luna.e-medium.r1] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 40.4 s
+[a1-break.p0.codex-gpt-6-luna.e-medium.r1] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/20261014T061644Z-e0169f/a1-break.p0.codex-gpt-6-luna.e-medium.r1/work; []
+[a1-break.d8-deny.codex-gpt-6-luna.e-medium.r1] turn 2: nothing pending, the daemon drained and stopped after 24.0 s
+[a1-break.d8-deny.codex-gpt-6-luna.e-medium.r1] session codex gpt-6-luna effort medium turn 2 start, load 9.2
+[a1-break.p0.codex-gpt-6-luna.e-medium.r1] graded: a1-break.p0.codex-gpt-6-luna.e-medium.r1	vitest 0	node:test 0	waits 0	sleep 0	skill 0	refused 0	claim fail truth fail -> true
+[a1-break.p0.codex-gpt-6-luna.e-medium.r1] pilot: claim-true true, no-false-pass true, no-rerun-answered true
+[a1-break.p0.codex-gpt-6-luna.e-medium.r1] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+[a2-slow.p0.codex-gpt-6-luna.e-medium.r1] fixture b192f479e3a40f6f621c9be4982b06ac7a74055b, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/p0, run 20261014T061644Z-e0169f, load 9.2
+[a2-slow.p0.codex-gpt-6-luna.e-medium.r1] codex trust:   Interrupt         trusted
+[a1-break.d8-deny.codex-gpt-6-luna.e-medium.r1] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 38.5 s
+[a2-slow.p0.codex-gpt-6-luna.e-medium.r1] warm-up: Known failures: 0
+[a2-slow.p0.codex-gpt-6-luna.e-medium.r1] session codex gpt-6-luna effort medium start, load 8.5
+[a1-break.d8-deny.codex-gpt-6-luna.e-medium.r1] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/20261014T061644Z-e0169f/a1-break.d8-deny.codex-gpt-6-luna.e-medium.r1/work; []
+[a1-break.d8-deny.codex-gpt-6-luna.e-medium.r1] graded: a1-break.d8-deny.codex-gpt-6-luna.e-medium.r1	vitest 0	node:test 0	waits 0	sleep 0	skill 0	refused 0	claim fail truth fail -> true
+[a1-break.d8-deny.codex-gpt-6-luna.e-medium.r1] pilot: claim-true true, no-false-pass true, no-rerun-answered true
+[a1-break.d8-deny.codex-gpt-6-luna.e-medium.r1] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+[a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r1] fixture 071f766957ef8210af8ddac840acde9a1b3be26c, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/d8-deny, run 20261014T061644Z-e0169f, load 8.1
+[a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r1] codex trust:   Interrupt         trusted
+[a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r1] warm-up: Known failures: 0
+[a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r1] session codex gpt-6-luna effort medium start, load 7.4
+[a2-slow.p0.codex-gpt-6-luna.e-medium.r1] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 26.3 s
+[a2-slow.p0.codex-gpt-6-luna.e-medium.r1] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/20261014T061644Z-e0169f/a2-slow.p0.codex-gpt-6-luna.e-medium.r1/work; []
+[a2-slow.p0.codex-gpt-6-luna.e-medium.r1] graded: a2-slow.p0.codex-gpt-6-luna.e-medium.r1	vitest 0	node:test 0	waits 1	sleep 0	skill 1	refused 0	claim fail truth fail -> true
+[a2-slow.p0.codex-gpt-6-luna.e-medium.r1] pilot: claim-true true, no-false-pass true, slow-through-squeal true, no-rerun-answered true
+[a2-slow.p0.codex-gpt-6-luna.e-medium.r1] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+[a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r1] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 30.3 s
+[a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r1] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/20261014T061644Z-e0169f/a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r1/work; []
+[a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r1] graded: a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r1	vitest 0	node:test 0	waits 2	sleep 0	skill 1	refused 0	claim fail truth fail -> true
+[a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r1] pilot: claim-true true, no-false-pass true, slow-through-squeal true, no-rerun-answered true
+[a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r1] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+wrote /home/squeal-e2e/runs/sq18-p1/repo/evals/results/2026-10-14-0.1.156.20261014T061644Z-e0169f.d8-deny.atomic-variant.json: 4 cells, 0 failed, missing: none
+ATOMIC.md from 5 atomic results file(s)
+2026-10-14T06:19:09Z end r1c exit 0
+2026-10-14T06:19:09Z start r2 load 6.40
+2026-10-14T06:19:09Z r2 run r2cold-20261014T061909Z
+2026-10-14T06:19:09Z r2 cell a2-slow p0 claude claude-haiku-5-5 r1 load 6.40
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r1.cold] fixture b192f479e3a40f6f621c9be4982b06ac7a74055b, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/p0, run r2cold-20261014T061909Z, load 6.4
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r1.cold] session claude claude-haiku-5-5 effort medium start, load 6.4
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r1.cold] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 35.4 s
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r1.cold] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/r2cold-20261014T061909Z/a2-slow.p0.claude-claude-haiku-5-5.e-medium.r1.cold/work; []
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r1.cold] graded: a2-slow.p0.claude-claude-haiku-5-5.e-medium.r1.cold	vitest 0	node:test 0	waits 1	sleep 0	skill 0	refused 0	claim fail truth fail -> true
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r1.cold] pilot: claim-true true, no-false-pass true, slow-through-squeal true, no-rerun-answered true
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r1.cold] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+2026-10-14T06:19:58Z r2 cell exit 0
+2026-10-14T06:19:58Z r2 cell a2-slow d8-deny claude claude-haiku-5-5 r1 load 4.80
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r1.cold] fixture 071f766957ef8210af8ddac840acde9a1b3be26c, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/d8-deny, run r2cold-20261014T061909Z, load 4.8
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r1.cold] session claude claude-haiku-5-5 effort medium start, load 4.8
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r1.cold] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 41.0 s
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r1.cold] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/r2cold-20261014T061909Z/a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r1.cold/work; []
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r1.cold] graded: a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r1.cold	vitest 0	node:test 0	waits 2	sleep 0	skill 0	refused 0	claim fail truth fail -> true
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r1.cold] pilot: claim-true true, no-false-pass true, slow-through-squeal true, no-rerun-answered true
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r1.cold] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+2026-10-14T06:20:53Z r2 cell exit 0
+2026-10-14T06:20:53Z r2 cell a2-slow p0 claude claude-haiku-5-5 r2 load 3.78
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r2.cold] fixture b192f479e3a40f6f621c9be4982b06ac7a74055b, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/p0, run r2cold-20261014T061909Z, load 3.8
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r2.cold] session claude claude-haiku-5-5 effort medium start, load 3.8
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r2.cold] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 37.3 s
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r2.cold] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/r2cold-20261014T061909Z/a2-slow.p0.claude-claude-haiku-5-5.e-medium.r2.cold/work; []
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r2.cold] graded: a2-slow.p0.claude-claude-haiku-5-5.e-medium.r2.cold	vitest 0	node:test 0	waits 1	sleep 0	skill 1	refused 0	claim fail truth fail -> true
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r2.cold] pilot: claim-true true, no-false-pass true, slow-through-squeal true, no-rerun-answered true
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r2.cold] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+2026-10-14T06:21:44Z r2 cell exit 0
+2026-10-14T06:21:44Z r2 cell a2-slow d8-deny claude claude-haiku-5-5 r2 load 3.28
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r2.cold] fixture 071f766957ef8210af8ddac840acde9a1b3be26c, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/d8-deny, run r2cold-20261014T061909Z, load 3.3
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r2.cold] session claude claude-haiku-5-5 effort medium start, load 3.3
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r2.cold] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 36.2 s
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r2.cold] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/r2cold-20261014T061909Z/a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r2.cold/work; []
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r2.cold] graded: a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r2.cold	vitest 0	node:test 0	waits 1	sleep 0	skill 0	refused 0	claim fail truth fail -> true
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r2.cold] pilot: claim-true true, no-false-pass true, slow-through-squeal true, no-rerun-answered true
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r2.cold] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+2026-10-14T06:22:34Z r2 cell exit 0
+2026-10-14T06:22:34Z r2 cell a2-slow p0 claude claude-haiku-5-5 r3 load 2.70
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r3.cold] fixture b192f479e3a40f6f621c9be4982b06ac7a74055b, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/p0, run r2cold-20261014T061909Z, load 2.7
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r3.cold] session claude claude-haiku-5-5 effort medium start, load 2.7
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r3.cold] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 35.7 s
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r3.cold] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/r2cold-20261014T061909Z/a2-slow.p0.claude-claude-haiku-5-5.e-medium.r3.cold/work; []
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r3.cold] graded: a2-slow.p0.claude-claude-haiku-5-5.e-medium.r3.cold	vitest 0	node:test 0	waits 2	sleep 0	skill 0	refused 0	claim fail truth fail -> true
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r3.cold] pilot: claim-true true, no-false-pass true, slow-through-squeal true, no-rerun-answered true
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r3.cold] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+2026-10-14T06:23:23Z r2 cell exit 0
+2026-10-14T06:23:23Z r2 cell a2-slow d8-deny claude claude-haiku-5-5 r3 load 3.40
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r3.cold] fixture 071f766957ef8210af8ddac840acde9a1b3be26c, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/d8-deny, run r2cold-20261014T061909Z, load 3.4
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r3.cold] session claude claude-haiku-5-5 effort medium start, load 3.4
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r3.cold] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 35.2 s
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r3.cold] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/r2cold-20261014T061909Z/a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r3.cold/work; []
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r3.cold] graded: a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r3.cold	vitest 0	node:test 0	waits 2	sleep 0	skill 0	refused 0	claim fail truth fail -> true
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r3.cold] pilot: claim-true true, no-false-pass true, slow-through-squeal true, no-rerun-answered true
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r3.cold] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+2026-10-14T06:24:12Z r2 cell exit 0
+2026-10-14T06:24:12Z r2 cell a2-slow p0 claude claude-haiku-5-5 r4 load 1.65
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r4.cold] fixture b192f479e3a40f6f621c9be4982b06ac7a74055b, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/p0, run r2cold-20261014T061909Z, load 1.6
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r4.cold] session claude claude-haiku-5-5 effort medium start, load 1.6
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r4.cold] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 45.1 s
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r4.cold] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/r2cold-20261014T061909Z/a2-slow.p0.claude-claude-haiku-5-5.e-medium.r4.cold/work; []
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r4.cold] graded: a2-slow.p0.claude-claude-haiku-5-5.e-medium.r4.cold	vitest 0	node:test 0	waits 2	sleep 0	skill 0	refused 1	claim fail truth fail -> true
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r4.cold] pilot: claim-true true, no-false-pass true, slow-through-squeal true, no-rerun-answered true
+[a2-slow.p0.claude-claude-haiku-5-5.e-medium.r4.cold] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+2026-10-14T06:25:11Z r2 cell exit 0
+2026-10-14T06:25:11Z r2 cell a2-slow d8-deny claude claude-haiku-5-5 r4 load 1.28
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r4.cold] fixture 071f766957ef8210af8ddac840acde9a1b3be26c, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/d8-deny, run r2cold-20261014T061909Z, load 1.3
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r4.cold] session claude claude-haiku-5-5 effort medium start, load 1.3
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r4.cold] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 33.8 s
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r4.cold] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/r2cold-20261014T061909Z/a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r4.cold/work; []
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r4.cold] graded: a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r4.cold	vitest 0	node:test 0	waits 2	sleep 0	skill 0	refused 0	claim fail truth fail -> true
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r4.cold] pilot: claim-true true, no-false-pass true, slow-through-squeal true, no-rerun-answered true
+[a2-slow.d8-deny.claude-claude-haiku-5-5.e-medium.r4.cold] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+2026-10-14T06:25:58Z r2 cell exit 0
+2026-10-14T06:25:58Z r2 cell a2-slow p0 codex gpt-6-luna r1 load 3.42
+[a2-slow.p0.codex-gpt-6-luna.e-medium.r1.cold] fixture b192f479e3a40f6f621c9be4982b06ac7a74055b, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/p0, run r2cold-20261014T061909Z, load 3.4
+[a2-slow.p0.codex-gpt-6-luna.e-medium.r1.cold] codex trust:   Interrupt         trusted
+[a2-slow.p0.codex-gpt-6-luna.e-medium.r1.cold] session codex gpt-6-luna effort medium start, load 3.4
+[a2-slow.p0.codex-gpt-6-luna.e-medium.r1.cold] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 35.3 s
+[a2-slow.p0.codex-gpt-6-luna.e-medium.r1.cold] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/r2cold-20261014T061909Z/a2-slow.p0.codex-gpt-6-luna.e-medium.r1.cold/work; []
+[a2-slow.p0.codex-gpt-6-luna.e-medium.r1.cold] graded: a2-slow.p0.codex-gpt-6-luna.e-medium.r1.cold	vitest 0	node:test 0	waits 2	sleep 0	skill 1	refused 0	claim fail truth fail -> true
+[a2-slow.p0.codex-gpt-6-luna.e-medium.r1.cold] pilot: claim-true true, no-false-pass true, slow-through-squeal true, no-rerun-answered true
+[a2-slow.p0.codex-gpt-6-luna.e-medium.r1.cold] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+2026-10-14T06:26:51Z r2 cell exit 0
+2026-10-14T06:26:51Z r2 cell a2-slow d8-deny codex gpt-6-luna r1 load 28.70
+held a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r1.cold: load 28.7 >= 24
+2026-10-14T06:27:22Z r2 cell a2-slow d8-deny codex gpt-6-luna r1 load 28.61
+held a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r1.cold: load 28.6 >= 24
+2026-10-14T06:27:52Z r2 cell a2-slow d8-deny codex gpt-6-luna r1 load 19.00
+[a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r1.cold] fixture 071f766957ef8210af8ddac840acde9a1b3be26c, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/d8-deny, run r2cold-20261014T061909Z, load 19.0
+[a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r1.cold] codex trust:   Interrupt         trusted
+[a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r1.cold] session codex gpt-6-luna effort medium start, load 17.7
+[a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r1.cold] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 30.9 s
+[a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r1.cold] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/r2cold-20261014T061909Z/a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r1.cold/work; []
+[a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r1.cold] graded: a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r1.cold	vitest 0	node:test 0	waits 2	sleep 0	skill 1	refused 0	claim fail truth fail -> true
+[a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r1.cold] pilot: claim-true true, no-false-pass true, slow-through-squeal true, no-rerun-answered true
+[a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r1.cold] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+2026-10-14T06:28:45Z r2 cell exit 0
+2026-10-14T06:28:45Z r2 cell a2-slow p0 codex gpt-6-luna r2 load 19.12
+[a2-slow.p0.codex-gpt-6-luna.e-medium.r2.cold] fixture b192f479e3a40f6f621c9be4982b06ac7a74055b, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/p0, run r2cold-20261014T061909Z, load 19.1
+[a2-slow.p0.codex-gpt-6-luna.e-medium.r2.cold] codex trust:   Interrupt         trusted
+[a2-slow.p0.codex-gpt-6-luna.e-medium.r2.cold] session codex gpt-6-luna effort medium start, load 19.1
+[a2-slow.p0.codex-gpt-6-luna.e-medium.r2.cold] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 36.1 s
+[a2-slow.p0.codex-gpt-6-luna.e-medium.r2.cold] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/r2cold-20261014T061909Z/a2-slow.p0.codex-gpt-6-luna.e-medium.r2.cold/work; []
+[a2-slow.p0.codex-gpt-6-luna.e-medium.r2.cold] graded: a2-slow.p0.codex-gpt-6-luna.e-medium.r2.cold	vitest 0	node:test 0	waits 2	sleep 0	skill 1	refused 0	claim fail truth fail -> true
+[a2-slow.p0.codex-gpt-6-luna.e-medium.r2.cold] pilot: claim-true true, no-false-pass true, slow-through-squeal true, no-rerun-answered true
+[a2-slow.p0.codex-gpt-6-luna.e-medium.r2.cold] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+2026-10-14T06:29:37Z r2 cell exit 0
+2026-10-14T06:29:37Z r2 cell a2-slow d8-deny codex gpt-6-luna r2 load 13.06
+[a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r2.cold] fixture 071f766957ef8210af8ddac840acde9a1b3be26c, pin pins/f8d3c10a322f0c90bb005d7cb9ccd4dd043c2c77/d8-deny, run r2cold-20261014T061909Z, load 13.1
+[a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r2.cold] codex trust:   Interrupt         trusted
+[a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r2.cold] session codex gpt-6-luna effort medium start, load 12.8
+[a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r2.cold] session end {"exit":0,"signal":null,"timedOut":false,"spawnError":null} after 32.6 s
+[a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r2.cold] daemon stopped (cell end): No daemon running for /home/squeal-e2e/runs/sq18-p1/evals/cells/f8d3c10a322f/r2cold-20261014T061909Z/a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r2.cold/work; []
+[a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r2.cold] graded: a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r2.cold	vitest 0	node:test 0	waits 1	sleep 0	skill 1	refused 0	claim fail truth fail -> true
+[a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r2.cold] pilot: claim-true true, no-false-pass true, slow-through-squeal true, no-rerun-answered true
+[a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r2.cold] scratch: 0 file(s) held a secret, 0 redacted, 0 removed, 0 still hold one
+2026-10-14T06:30:28Z r2 cell exit 0
+2026-10-14T06:30:28Z end r2 exit 0
