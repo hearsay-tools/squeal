@@ -119,7 +119,7 @@ export async function createPytestAdapter(
   let { dir, settings } = place();
   /** A run found the environment moved: the next call reads it again. */
   let stale = false;
-  let files = isDirectory(cwd) ? listTestFiles(root, project) : [];
+  let files = isDirectory(cwd) ? listTestFiles(root, project, note) : [];
   let built: Built | null = null;
   let failure: string | null = null;
 
@@ -194,7 +194,7 @@ export async function createPytestAdapter(
   };
   const invalidate = async (paths: readonly InvalidatedPath[], { moved, rebuild }: Moved) => {
     if (paths.some((p) => p.kind !== "change") || built === null) {
-      const listed = isDirectory(cwd) ? listTestFiles(root, project) : [];
+      const listed = isDirectory(cwd) ? listTestFiles(root, project, note) : [];
       if (!sameList(listed, files)) {
         files = listed;
         built?.graph.setTestFiles(files);
