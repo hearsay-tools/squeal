@@ -99,13 +99,13 @@ export async function toolCall(
  * extension asks once per run): the news or the policy block to continue the
  * run with, or `null` when Stop was silent and so ended the turn. Pi has no
  * waiting Stop entry, so slow files are this Stop's whatever the policy:
- * `stopWaitRuns` finds no Codex entry for a Pi session id.
+ * `stopWaitRuns` finds no Pi entry ever recorded.
  */
 export async function settle(session: PiSession, deps: HookDeps): Promise<SettleAnswer> {
   const location = locate(session.cwd);
   if (location === null) return { report: null };
   const outcome = await stopTurn(
-    { ...consumerInput(session), stopHookActive: false, harness: "codex" },
+    { ...consumerInput(session), stopHookActive: false, harness: "pi" },
     location,
     deps,
   );
