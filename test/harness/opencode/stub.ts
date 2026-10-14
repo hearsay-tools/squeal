@@ -82,9 +82,12 @@ export function stubBridge(
 ): {
   entry: string;
   requests: () => OcRequest[];
+  /** The pid of each bridge process, by kind, in start order. */
+  pids: (kind: OcKind) => number[];
 } {
   const dir = tempDir("squeal-oc-stub-");
   const log = join(dir, "requests.jsonl");
+  const pidLog = join(dir, "pids.jsonl");
   const entry = join(dir, "bridge.mjs");
   const answers = { ...STUB_ANSWERS, ...options.answers };
   if (behaviour === "unregistered")
@@ -94,6 +97,7 @@ export function stubBridge(
     `import { appendFileSync, readFileSync } from "node:fs";
 const request = JSON.parse(readFileSync(0, "utf8"));
 appendFileSync(${JSON.stringify(log)}, JSON.stringify(request) + "\\n");
+appendFileSync(${JSON.stringify(pidLog)}, JSON.stringify([request.kind, process.pid]) + "\\n");
 const behaviour = ${JSON.stringify(behaviour)};
 const answer = ${JSON.stringify(answers)}[request.kind];
 const delay = ${JSON.stringify(options.delays ?? {})}[request.kind] ?? 0;
@@ -109,7 +113,26 @@ else setTimeout(() => process.stdout.write(JSON.stringify({ answer })), delay);
           .split("\n")
           .map((line) => JSON.parse(line) as OcRequest)
       : [];
-  return { entry, requests };
+  const pids = (kind: OcKind) =>
+    existsSync(pidLog)
+      ? readFileSync(pidLog, "utf8")
+          .trim()
+          .split("\n")
+          .map((line) => JSON.parse(line) as [OcKind, number])
+          .filter(([k]) => k === kind)
+          .map(([, pid]) => pid)
+      : [];
+  return { entry, requests, pids };
+}
+
+/** Whether `pid` names a live process. */
+export function alive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** A directory that uses Squeal by the fast path's first test: it holds a `squeal.config.json`. */
