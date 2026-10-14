@@ -1,4 +1,12 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach } from "vitest";
@@ -68,4 +76,15 @@ export function venv(
 /** A PEP 610 `direct_url.json` for an editable install of `projectDir`. */
 export function editable(projectDir: string): string {
   return JSON.stringify({ url: `file://${projectDir}`, dir_info: { editable: true } });
+}
+
+/** A shell script answering D2's interpreter query as CPython `version` would. */
+export function fakePython(dir: string, version: string): string {
+  const [major, minor] = version.split(".");
+  const path = join(dir, `python${version}`);
+  write(dir, {
+    [`python${version}`]: `#!/bin/sh\necho '["${version} (main)", "cpython", "cpython-${major}${minor}"]'\n`,
+  });
+  chmodSync(path, 0o755);
+  return path;
 }
