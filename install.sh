@@ -7,9 +7,13 @@
 # at user scope through that harness's own CLI, which makes every write under
 # ~/.claude and ~/.codex. Then it copies the plugin's launcher to
 # ~/.local/bin/squeal (SQUEAL_BIN_DIR overrides). SQUEAL_MARKETPLACE overrides
-# the hub. Each plugin and launcher it creates is recorded in
-# ${XDG_STATE_HOME:-~/.local/state}/squeal/installed, and `sh -s -- --uninstall`
-# removes only those, so a plugin or launcher that was there before stays.
+# the hub. With pi on the PATH it unpacks the Pi package of this release from
+# the tag's source archive into ${XDG_DATA_HOME:-~/.local/share}/squeal/pi/<version>
+# and runs pi install on it, which makes every write under ~/.pi (spec 009 D1);
+# an update installs the new directory, then removes the one it replaces.
+# SQUEAL_SOURCE overrides where the archives are. Each plugin, Pi package and
+# launcher it creates is recorded in ${XDG_STATE_HOME:-~/.local/state}/squeal/installed,
+# and `sh -s -- --uninstall` removes only those, so one that was there before stays.
 #
 # Under a pipe stdin is this script, so nothing here reads stdin. Every step
 # sits inside main, and the last line calls it with a completion argument after
@@ -17,8 +21,11 @@
 # without that argument, and runs nothing (research/wave-0-checks.md 4).
 set -eu
 
+# The release this script belongs to; the Pi package comes from its tag.
+SQUEAL_VERSION=0.1.170
 PLUGIN=squeal@hearsay
 HUB=hearsay-tools/marketplace
+SOURCE=https://github.com/hearsay-tools/squeal/archive/refs/tags
 MARKER="squeal-launcher format"
 COMPLETE=squeal-install-complete
 
@@ -35,8 +42,8 @@ run() {
 has() { command -v "$1" >/dev/null 2>&1; }
 
 # The ownership record: one line per resource this script created, `claude`,
-# `codex` or `launcher <path>`, written right after it, so a run that fails
-# halfway still owns what it made.
+# `codex`, `pi <dir>` or `launcher <path>`, written right after it, so a run
+# that fails halfway still owns what it made.
 owns() { [ -f "$OWNED" ] && grep -qxF "$1" "$OWNED"; }
 record() {
   owns "$1" && return 0
@@ -61,7 +68,8 @@ check_node() {
 }
 
 # "<version> <dir>" of the newest installed plugin, or nothing. $1: claude (user
-# scope only), codex, or any (every Claude Code entry and the Codex cache).
+# scope only), codex, or any (every Claude Code entry, the Codex cache and the
+# Pi packages under $PI_HOME).
 installed() {
   node -e '
 const { existsSync, readFileSync, readdirSync } = require("node:fs");
@@ -96,8 +104,38 @@ if (want !== "claude") {
     for (const v of readdirSync(cache)) if (/^\d+(\.\d+)*$/.test(v)) found.push([v, join(cache, v)]);
   } catch {}
 }
+if (want === "any") {
+  try {
+    for (const v of readdirSync(env.PI_HOME)) if (/^\d+(\.\d+)*$/.test(v)) found.push([v, join(env.PI_HOME, v)]);
+  } catch {}
+}
 const newest = found.sort((a, b) => compare(a[0], b[0])).at(-1);
 if (newest) console.log(`${newest[0]} ${newest[1]}`);
+' "$1"
+}
+
+# Whether Pi's user settings list the local package $1. Pi stores a local
+# source relative to its agent directory and resolves it from there.
+pi_has() {
+  node -e '
+const { readFileSync } = require("node:fs");
+const { homedir } = require("node:os");
+const { join, resolve } = require("node:path");
+const env = process.env;
+const home = env.HOME || homedir();
+let dir = env.PI_CODING_AGENT_DIR || join(home, ".pi", "agent");
+if (dir === "~") dir = home;
+else if (dir.startsWith("~/")) dir = join(home, dir.slice(2));
+let packages = [];
+try {
+  packages = JSON.parse(readFileSync(join(dir, "settings.json"), "utf8")).packages ?? [];
+} catch {}
+const want = resolve(process.argv[1]);
+const listed = packages.some((p) => {
+  const source = typeof p === "string" ? p : p?.source;
+  return typeof source === "string" && !/^(npm|git|https?|ssh):/.test(source) && resolve(dir, source) === want;
+});
+process.exit(listed ? 0 : 1);
 ' "$1"
 }
 
@@ -124,6 +162,58 @@ install_in() {
     fail "installing $PLUGIN in $2 failed"
   fi
   record "$1"
+}
+
+# Unpacks this release's plugins/pi/ into $1 from the tag's source archive.
+unpack_pi() {
+  has curl || fail "installing Squeal in Pi needs curl, and curl is not on the PATH"
+  archive="$SOURCE/squeal--v$SQUEAL_VERSION.tar.gz"
+  run mkdir -p "$PI_HOME"
+  TMP_DIR=$(mktemp -d "$PI_HOME/.unpack.XXXXXX")
+  run curl -fsSL -o "$TMP_DIR/source.tar.gz" "$archive" || fail "downloading $archive failed"
+  mkdir "$TMP_DIR/source"
+  run tar -xzf "$TMP_DIR/source.tar.gz" -C "$TMP_DIR/source" --strip-components=1 ||
+    fail "unpacking $archive failed"
+  package="$TMP_DIR/source/plugins/pi"
+  version=$(node -e 'try { console.log(require(process.argv[1]).version ?? "") } catch { console.log("") }' "$package/package.json")
+  [ "$version" = "$SQUEAL_VERSION" ] ||
+    fail "$archive holds no Pi package of squeal $SQUEAL_VERSION at plugins/pi"
+  run mv "$package" "$1"
+  rm -rf "$TMP_DIR"
+  TMP_DIR=
+}
+
+# Installs this release in Pi, then removes each older package this script installed.
+install_pi() {
+  dir="$PI_HOME/$SQUEAL_VERSION"
+  if pi_has "$dir" && [ -f "$dir/package.json" ]; then
+    say "Pi has Squeal $SQUEAL_VERSION from $dir"
+  else
+    if [ ! -f "$dir/package.json" ]; then
+      [ ! -e "$dir" ] || run rm -rf "$dir"
+      unpack_pi "$dir"
+      record "pi $dir"
+    fi
+    run pi install "$dir" || fail "pi install $dir failed"
+  fi
+  # The function's arguments become the recorded directories, split on newlines only.
+  set -f
+  IFS='
+'
+  set -- $(owned_pi)
+  unset IFS
+  set +f
+  for old in "$@"; do
+    [ "$old" = "$dir" ] && continue
+    if pi_has "$old"; then run pi remove "$old" || fail "pi remove $old failed"; fi
+    run rm -rf "$old"
+    forget "pi $old"
+  done
+}
+
+# Every Pi package directory the record holds, one per line.
+owned_pi() {
+  [ ! -f "$OWNED" ] || sed -n 's/^pi //p' "$OWNED"
 }
 
 is_launcher() { [ -f "$1" ] && grep -q "^# $MARKER " "$1"; }
@@ -155,9 +245,10 @@ copy_launcher() {
 
 install() {
   check_node
-  has claude || has codex || fail "neither claude nor codex is on the PATH: install Claude Code or Codex first"
+  has claude || has codex || has pi || fail "none of claude, codex and pi is on the PATH: install Claude Code, Codex or Pi first"
   if has claude; then install_in claude "Claude Code" install; fi
   if has codex; then install_in codex Codex add; fi
+  if has pi; then install_pi; fi
   copy_launcher
   say "Next, in each repository: squeal setup"
 }
@@ -180,6 +271,30 @@ uninstall_in() {
   fi
 }
 
+uninstall_pi() {
+  # The function's arguments become the recorded directories, split on newlines only.
+  set -f
+  IFS='
+'
+  set -- $(owned_pi)
+  unset IFS
+  set +f
+  for dir in "$@"; do
+    if ! has pi; then
+      say "pi is not on the PATH, so Squeal stays in Pi from $dir, and in $OWNED"
+      continue
+    fi
+    if pi_has "$dir"; then run pi remove "$dir" || fail "pi remove $dir failed"; fi
+    run rm -rf "$dir"
+    forget "pi $dir"
+  done
+  dir="$PI_HOME/$SQUEAL_VERSION"
+  if has pi && ! owns "pi $dir" && pi_has "$dir"; then
+    say "Pi had Squeal from $dir before install.sh ran, so it stays; pi remove $dir removes it"
+  fi
+  rmdir "$PI_HOME" "${PI_HOME%/*}" 2>/dev/null || true
+}
+
 uninstall() {
   to="$BIN_DIR/squeal"
   if ! is_launcher "$to"; then
@@ -193,6 +308,7 @@ uninstall() {
   fi
   uninstall_in claude "Claude Code" uninstall
   uninstall_in codex Codex remove
+  uninstall_pi
   say "The hearsay marketplace stays added; claude plugin marketplace remove hearsay and codex plugin marketplace remove hearsay remove it."
 }
 
@@ -204,6 +320,12 @@ main() {
   MARKETPLACE=${SQUEAL_MARKETPLACE:-$HUB}
   BIN_DIR=${SQUEAL_BIN_DIR:-$HOME/.local/bin}
   OWNED=${XDG_STATE_HOME:-$HOME/.local/state}/squeal/installed
+  SOURCE=${SQUEAL_SOURCE:-$SOURCE}
+  PI_HOME=${XDG_DATA_HOME:-$HOME/.local/share}/squeal/pi
+  export PI_HOME
+  # A failed unpack leaves no download behind.
+  TMP_DIR=
+  trap '[ -z "$TMP_DIR" ] || rm -rf "$TMP_DIR"' EXIT
   case "$*" in
   "$COMPLETE") install ;;
   "--uninstall $COMPLETE") uninstall ;;
