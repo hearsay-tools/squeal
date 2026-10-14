@@ -876,7 +876,8 @@ Spec: `specifications/007-pytest-runner/spec.md`, approved 2026-10-14 by the hum
 | 007-30 a withheld tier is run again, and says why when it is not | finished, rebased on 0.1.174 on `cez/2ab5b448` (8355e372..2554229f), not landed: review 007-31 FAIL | Core: the completion barrier's withheld files are re-queued once when no revision follows; a repeat leaves a note naming the path. Promotes the Later row; blocks 007-17. | Scheduler regression; 007-17's e2e green in CI on both Nodes. |
 | 007-31 review of 007-30 for 001's sign-off | done: FAIL at 2554229f (`reviews/wave-3-007-30.md`): B1 per-tier retry lets a twice-withheld file run a third time; S1 transient publication untested |  |  |
 | 007-32 repair of 007-31 | done on `cez/2ab5b448` (73761476, 5486741a, key pin 823ab34d), not landed | Per-file retry and exhaustion; review regression; `putMany` spy. First round; a second FAIL goes to the human. | Two runs per unchanged key; spy rejects nothing; suite green. |
-| 007-33 re-review of 007-32 | done: FAIL at 823ab34d (`reviews/wave-3-007-32.md`): residual B1, an exhausted forced file stays queued and runs a third time under `run --all --force`; S1, re-key retry and transaction safety pass. Last round; disposition with the human |  |  |
+| 007-33 re-review of 007-32 | done: FAIL at 823ab34d (`reviews/wave-3-007-32.md`): residual B1, an exhausted forced file stays queued and runs a third time under `run --all --force`; S1, re-key retry and transaction safety pass. Last round; the human chose the narrow repair 007-34 |  |  |
+| 007-34 repair of 007-33 | running (worker 098daf31, opus high; brief `tasks/wave-3.md`) | `recordTier` takes the re-queue set (001 approved, additive); exhausted files are `unknown` in one transaction, forced or not. | Forced probe `[2, 2, 2]`; coordinator verifies, 001 signs off, no further review. |
 
 ## Feature 008: OpenCode adapter
 
