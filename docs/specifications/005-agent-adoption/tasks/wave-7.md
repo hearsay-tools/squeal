@@ -121,3 +121,25 @@ Anything not matched is a mention: the plan lists it with the reason "not an ins
 - Read cezar only through `git show`.
 - Run every full Vitest run with `--maxWorkers=4`.
 - Don't run `npm run build`.
+
+## 005-56 narrow re-review of 005-55
+
+Use /reviewer.
+
+**Outcome.** `reviews/wave-7.5.md` on `f6f75749` (005-55) at 0.1.162. Write it within 15 minutes of starting, then extend it.
+
+**Check.**
+- B1 to B3 of `reviews/wave-7.md` hold: re-run the review's own fixtures on the candidate.
+- Re-run the corpus appendix (this repository's `docs/`, both skills' trees, and cezar's `AGENTS.md` through `git -C /home/agent/projects/cezar show 5dbb4b09:AGENTS.md`). List every line setup still proposes with its result. Each must be a true instruction, reworded with the fallback right after its own sentence.
+- These are still reworded exactly: D5's first example (`VITEST_GATE`), "Run `npm test` before you finish.", and "Do not commit generated files. Run `npm test` before you finish.".
+- `--gate <id>=reword` on a mention is refused with a message that names `squeal setup --plan`.
+- Look hard for a realistic gate the allow-list now misses. A missed gate is a should-fix, not a blocker: setup lists it as a mention, and nothing is broken. A blocker is a line that is still reworded into a wrong or broken instruction.
+
+Anything outside this scope goes under "Next".
+
+**Rules.**
+- Run no model session and never the real `claude` or `codex`, and nothing as `squeal-e2e`.
+- Never write to cezar.
+- Run exactly one `npx vitest run --maxWorkers=4`.
+- Don't run `npm run build`.
+- Commit the findings file only.
