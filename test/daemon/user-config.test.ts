@@ -170,8 +170,8 @@ describe("resolveCapacity (spec 001 D11 Capacity)", () => {
     for (const root of [main, linked]) {
       const commonDir = resolveCommonDir(root);
       expect(commonDir).not.toBeNull();
-      expect(repositoryRootOf(commonDir as string)).toBe(main);
-      expect(resolveCapacity(config, repositoryRootOf(commonDir as string))).toEqual({
+      expect(repositoryRootOf(root, commonDir as string)).toBe(main);
+      expect(resolveCapacity(config, repositoryRootOf(root, commonDir as string))).toEqual({
         hostSlots: 7,
         projectSlots: 2,
       });
