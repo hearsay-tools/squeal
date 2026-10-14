@@ -64,7 +64,8 @@ describe("squeal init with setup choices", () => {
       ].join("\n"),
     );
     const claude = read(root, "CLAUDE.md");
-    expect(claude).toContain("`squeal run --all --wait 110000`. Paste the output");
+    expect(claude).toContain("`squeal run --all --wait 110000`. If it exits 3 at its deadline");
+    expect(claude).toContain("instead. Paste the output in your final message.");
     expect(claude).toContain("<!-- squeal:begin v1");
     expect(JSON.parse(read(root, "squeal.config.json"))).toEqual({
       inputs: {
