@@ -42,7 +42,7 @@ Use /worker.
 
 Outcome: two worktrees synced at different commits, with no dependency change, inherit each other's results.
 
-Decided by the coordinator (2026-10-15), amending D2: when a distribution's `direct_url.json` names an editable install inside the worktree, the environment hash takes that distribution's name without its version. The closure already keys its code. Every other distribution keeps name and version.
+Decided by the coordinator (2026-10-15), amending D2: when a distribution's `direct_url.json` names an editable install inside the worktree, the environment hash takes that distribution's site-packages entries (its `.dist-info` and its `__editable__` `.pth` or finder files) without their version. The closure already keys its code. Every other distribution keeps name and version.
 
 Shape: repair. Seam: the installed-set part of `src/runners/pytest/environment/hash.ts`.
 
