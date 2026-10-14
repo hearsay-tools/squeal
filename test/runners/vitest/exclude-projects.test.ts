@@ -41,6 +41,11 @@ describe("vitest.excludeProjects (001 D11, task 001-349)", () => {
     const report = await fx.adapter.run(FOUR, fx.runOptions());
     expect(outcomes(report)).toEqual(["pass", "pass", "pass", "pass"]);
     expect(existsSync(join(fx.root, "e2e/booted"))).toBe(false);
+    // A file only e2e reads is in no listed closure: uncovered under delivery.uncoveredEdits.
+    const affected = await fx.adapter.affected(["src/browser-only.ts"]);
+    expect([...affected.direct, ...affected.transitive]).toEqual([]);
+    const shared = await fx.adapter.affected(["src/shared.ts"]);
+    expect(sorted([...shared.direct, ...shared.transitive])).toEqual(FOUR);
     expect(notes).toEqual([]);
   });
 

@@ -141,6 +141,7 @@ var DEFAULT_POLICY = {
   runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5 },
   nodeTest: [],
   pytest: [],
+  vitest: { excludeProjects: [] },
   slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 6e5, maxParallel: 4 },
   delivery: { uncoveredEdits: true },
   daemon: { idleExitMinutes: 60 },
@@ -468,6 +469,7 @@ var SHAPE = {
   },
   nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
   pytest: (v) => pytestProjects(v, "pytest"),
+  vitest: { excludeProjects: strings2 },
   slow: {
     include: slowInclude,
     maxWorkers: positiveInteger,
@@ -3450,26 +3452,51 @@ function files(refs) {
   return `${shown.join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
 }
 
-// src/core/status/git-head.ts
-import { readFileSync as readFileSync4 } from "node:fs";
+// src/core/daemon/runner.ts
+import { readdirSync, readFileSync as readFileSync4 } from "node:fs";
 import { join as join7 } from "node:path";
+var VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
+function vitestDetected(root) {
+  let names;
+  try {
+    names = readdirSync(root);
+  } catch {
+    return false;
+  }
+  if (names.some((name) => VITEST_CONFIG.test(name))) return true;
+  let manifest;
+  try {
+    manifest = JSON.parse(readFileSync4(join7(root, "package.json"), "utf8"));
+  } catch {
+    return false;
+  }
+  if (!isRecord(manifest)) return false;
+  return ["dependencies", "devDependencies"].some((field) => {
+    const deps = manifest[field];
+    return isRecord(deps) && Object.hasOwn(deps, "vitest");
+  });
+}
+
+// src/core/status/git-head.ts
+import { readFileSync as readFileSync5 } from "node:fs";
+import { join as join8 } from "node:path";
 var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 var MAX_REF_DEPTH = 5;
 function readGitHead(root) {
   const gitDir = gitDirOf(root);
   const commonDir = resolveCommonDir(root);
   if (gitDir === null || commonDir === null) return null;
-  let value = read2(join7(gitDir, "HEAD"));
+  let value = read2(join8(gitDir, "HEAD"));
   for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
     if (SHA.test(value)) return value;
     const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
     if (ref === void 0) return null;
-    value = read2(join7(gitDir, ref)) ?? read2(join7(commonDir, ref)) ?? packed(commonDir, ref);
+    value = read2(join8(gitDir, ref)) ?? read2(join8(commonDir, ref)) ?? packed(commonDir, ref);
   }
   return null;
 }
 function packed(commonDir, ref) {
-  for (const line of (read2(join7(commonDir, "packed-refs")) ?? "").split("\n")) {
+  for (const line of (read2(join8(commonDir, "packed-refs")) ?? "").split("\n")) {
     const [sha, name] = line.split(" ");
     if (name === ref && sha !== void 0 && SHA.test(sha)) return sha;
   }
@@ -3477,7 +3504,7 @@ function packed(commonDir, ref) {
 }
 function read2(path) {
   try {
-    return readFileSync4(path, "utf8").trim();
+    return readFileSync5(path, "utf8").trim();
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
@@ -3550,8 +3577,15 @@ function snapshot(store, worktreeId, root, now) {
     storeSchemaVersion: store.schemaVersion,
     notes,
     daemonNotes: readDaemonNotes(store, worktreeId),
-    ...openCheckpoint(store, worktreeId, daemon)
+    ...openCheckpoint(store, worktreeId, daemon),
+    ...vitestExcluded(worktree?.root ?? root)
   };
+}
+function vitestExcluded(root) {
+  const policy = readPolicy(root);
+  const names = policy.vitest.excludeProjects;
+  if (names.length === 0) return {};
+  return policy.nodeTest.length === 0 || vitestDetected(root) ? { vitestExcluded: names } : {};
 }
 function openCheckpoint(store, worktreeId, daemon) {
   const progress = parseCheckpointProgress(store.meta.get(checkpointMetaKey(worktreeId)));
@@ -4436,18 +4470,18 @@ import { spawn } from "node:child_process";
 import { existsSync as existsSync6, mkdirSync as mkdirSync4 } from "node:fs";
 
 // src/core/daemon/paths.ts
-import { dirname as dirname3, isAbsolute as isAbsolute4, join as join8 } from "node:path";
+import { dirname as dirname3, isAbsolute as isAbsolute4, join as join9 } from "node:path";
 function runtimeDir(env = process.env) {
   return xdgRuntimeDir(env) ?? userTmpDir();
 }
 var MAX_SOCKET_PATH_BYTES = 103;
 function socketPathFor(worktreeId, env = process.env) {
   const name = `squeal-${worktreeId}.sock`;
-  const path = join8(runtimeDir(env), name);
-  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join8(userTmpDir(), name);
+  const path = join9(runtimeDir(env), name);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join9(userTmpDir(), name);
 }
 function userTmpDir(uid = currentUid()) {
-  return join8("/tmp", `squeal-${uid}`);
+  return join9("/tmp", `squeal-${uid}`);
 }
 function xdgRuntimeDir(env) {
   const xdg = env.XDG_RUNTIME_DIR;
@@ -4540,8 +4574,8 @@ function daemonCliEntry(cli, env = process.env) {
 }
 
 // src/core/daemon/version.ts
-import { readFileSync as readFileSync5 } from "node:fs";
-import { dirname as dirname4, join as join9 } from "node:path";
+import { readFileSync as readFileSync6 } from "node:fs";
+import { dirname as dirname4, join as join10 } from "node:path";
 import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
@@ -4552,7 +4586,7 @@ function squealVersion() {
 function manifestVersion(module) {
   let dir = dirname4(fileURLToPath(module));
   for (; ; ) {
-    const version = readVersion(join9(dir, "package.json"));
+    const version = readVersion(join10(dir, "package.json"));
     if (version !== null) return version;
     const parent = dirname4(dir);
     if (parent === dir) return null;
@@ -4561,7 +4595,7 @@ function manifestVersion(module) {
 }
 function readVersion(path) {
   try {
-    const parsed = JSON.parse(readFileSync5(path, "utf8"));
+    const parsed = JSON.parse(readFileSync6(path, "utf8"));
     if (typeof parsed !== "object" || parsed === null) return null;
     const { name, version } = parsed;
     return name === PACKAGE_NAME && typeof version === "string" ? version : null;
@@ -4762,7 +4796,9 @@ function runnerNames(coverage) {
   return [...coverage.vitest || !nodeTest ? ["Vitest"] : [], ...nodeTest ? ["node:test"] : []];
 }
 function coversSentence(coverage, node) {
-  const suites = runnerNames(coverage).includes("Vitest") ? [coverage.vitestConfig === null ? "Vitest" : `Vitest (${coverage.vitestConfig})`] : [];
+  const suites = runnerNames(coverage).includes("Vitest") ? [
+    `${coverage.vitestConfig === null ? "Vitest" : `Vitest (${coverage.vitestConfig})`}${excluded(coverage)}`
+  ] : [];
   if (coverage.nodeTest.length > 0) {
     const entries = coverage.nodeTest.map(
       ({ name, include }) => `${JSON.stringify(name)} (${include.join(", ")})`
@@ -4773,6 +4809,12 @@ function coversSentence(coverage, node) {
   const files2 = coverage.slow?.files;
   const slow = coverage.slow === null ? "" : files2 === null || files2 === void 0 ? ", with slow test files not counted yet" : `, with ${files2} slow test ${files2 === 1 ? "file" : "files"} at the daemon's last listing`;
   return `Squeal covers ${suites.join(" and ")}${slow}.`;
+}
+function excluded(coverage) {
+  const names = (coverage.vitestExcluded ?? []).map((name) => JSON.stringify(name));
+  if (names.length === 0) return "";
+  const list2 = named("project", names, names.length);
+  return `; its ${list2} ${names.length === 1 ? "is" : "are"} not run, excluded by squeal.config.json`;
 }
 function named(noun, entries, shown) {
   const nouns = entries.length === 1 ? noun : `${noun}s`;
@@ -5050,14 +5092,14 @@ var stop = async (input, location2, deps) => {
 };
 
 // src/harness/codex/main.ts
-import { readFileSync as readFileSync6 } from "node:fs";
+import { readFileSync as readFileSync7 } from "node:fs";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // src/harness/codex/command.ts
-import { join as join10 } from "node:path";
+import { join as join11 } from "node:path";
 function codexCommand(env, bundleCli) {
   const root = env.PLUGIN_ROOT;
-  const cli = root === void 0 || root === "" ? bundleCli : join10(root, "dist/cli/squeal.mjs");
+  const cli = root === void 0 || root === "" ? bundleCli : join11(root, "dist/cli/squeal.mjs");
   return `node --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
 }
 
@@ -5115,7 +5157,7 @@ async function runCodexHandler(name, handler, stdin, deps) {
 async function runMain(name, handler) {
   let stdin = "";
   try {
-    stdin = readFileSync6(0, "utf8");
+    stdin = readFileSync7(0, "utf8");
   } catch {
   }
   const cli = fileURLToPath2(new URL("./cli/squeal.mjs", import.meta.url));

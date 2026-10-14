@@ -140,6 +140,7 @@ var DEFAULT_POLICY = {
   runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5 },
   nodeTest: [],
   pytest: [],
+  vitest: { excludeProjects: [] },
   slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 6e5, maxParallel: 4 },
   delivery: { uncoveredEdits: true },
   daemon: { idleExitMinutes: 60 },
@@ -467,6 +468,7 @@ var SHAPE = {
   },
   nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
   pytest: (v) => pytestProjects(v, "pytest"),
+  vitest: { excludeProjects: strings2 },
   slow: {
     include: slowInclude,
     maxWorkers: positiveInteger,
@@ -536,8 +538,8 @@ function isNumber(value) {
 }
 
 // src/harness/shared/deny.ts
-import { readFileSync as readFileSync5, realpathSync as realpathSync3 } from "node:fs";
-import { join as join8, resolve as resolve4 } from "node:path";
+import { readFileSync as readFileSync6, realpathSync as realpathSync3 } from "node:fs";
+import { join as join9, resolve as resolve4 } from "node:path";
 
 // src/core/keys/closure.ts
 var CLOSURE_METHOD = "static imports plus declared inputs";
@@ -3401,26 +3403,51 @@ function files(refs) {
   return `${shown.join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
 }
 
-// src/core/status/git-head.ts
-import { readFileSync as readFileSync4 } from "node:fs";
+// src/core/daemon/runner.ts
+import { readdirSync, readFileSync as readFileSync4 } from "node:fs";
 import { join as join6 } from "node:path";
+var VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
+function vitestDetected(root) {
+  let names;
+  try {
+    names = readdirSync(root);
+  } catch {
+    return false;
+  }
+  if (names.some((name) => VITEST_CONFIG.test(name))) return true;
+  let manifest;
+  try {
+    manifest = JSON.parse(readFileSync4(join6(root, "package.json"), "utf8"));
+  } catch {
+    return false;
+  }
+  if (!isRecord(manifest)) return false;
+  return ["dependencies", "devDependencies"].some((field) => {
+    const deps = manifest[field];
+    return isRecord(deps) && Object.hasOwn(deps, "vitest");
+  });
+}
+
+// src/core/status/git-head.ts
+import { readFileSync as readFileSync5 } from "node:fs";
+import { join as join7 } from "node:path";
 var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 var MAX_REF_DEPTH = 5;
 function readGitHead(root) {
   const gitDir = gitDirOf(root);
   const commonDir = resolveCommonDir(root);
   if (gitDir === null || commonDir === null) return null;
-  let value = read2(join6(gitDir, "HEAD"));
+  let value = read2(join7(gitDir, "HEAD"));
   for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
     if (SHA.test(value)) return value;
     const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
     if (ref === void 0) return null;
-    value = read2(join6(gitDir, ref)) ?? read2(join6(commonDir, ref)) ?? packed(commonDir, ref);
+    value = read2(join7(gitDir, ref)) ?? read2(join7(commonDir, ref)) ?? packed(commonDir, ref);
   }
   return null;
 }
 function packed(commonDir, ref) {
-  for (const line of (read2(join6(commonDir, "packed-refs")) ?? "").split("\n")) {
+  for (const line of (read2(join7(commonDir, "packed-refs")) ?? "").split("\n")) {
     const [sha, name] = line.split(" ");
     if (name === ref && sha !== void 0 && SHA.test(sha)) return sha;
   }
@@ -3428,7 +3455,7 @@ function packed(commonDir, ref) {
 }
 function read2(path) {
   try {
-    return readFileSync4(path, "utf8").trim();
+    return readFileSync5(path, "utf8").trim();
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
@@ -3501,8 +3528,15 @@ function snapshot(store, worktreeId, root, now) {
     storeSchemaVersion: store.schemaVersion,
     notes,
     daemonNotes: readDaemonNotes(store, worktreeId),
-    ...openCheckpoint(store, worktreeId, daemon)
+    ...openCheckpoint(store, worktreeId, daemon),
+    ...vitestExcluded(worktree?.root ?? root)
   };
+}
+function vitestExcluded(root) {
+  const policy = readPolicy(root);
+  const names = policy.vitest.excludeProjects;
+  if (names.length === 0) return {};
+  return policy.nodeTest.length === 0 || vitestDetected(root) ? { vitestExcluded: names } : {};
 }
 function openCheckpoint(store, worktreeId, daemon) {
   const progress = parseCheckpointProgress(store.meta.get(checkpointMetaKey(worktreeId)));
@@ -4421,7 +4455,7 @@ function shellWords(text) {
 }
 
 // src/harness/shared/test-command-files.ts
-import { isAbsolute as isAbsolute4, join as join7, relative, resolve as resolve3 } from "node:path";
+import { isAbsolute as isAbsolute4, join as join8, relative, resolve as resolve3 } from "node:path";
 function resolveTestFiles(command, listing, root, nodeTest, omitted) {
   if (command.runner === "node-test") {
     const own = listing.filter((ref) => ref.project === command.project);
@@ -4436,7 +4470,7 @@ function resolveTestFiles(command, listing, root, nodeTest, omitted) {
   if (command.filters.length === 0) return vitest;
   const selected = /* @__PURE__ */ new Set();
   for (const filter of command.filters) {
-    const hits = vitest.filter((ref) => matchesFilter(join7(root, ref.path), filter, root));
+    const hits = vitest.filter((ref) => matchesFilter(join8(root, ref.path), filter, root));
     if (hits.length === 0) return null;
     for (const ref of hits) selected.add(ref);
   }
@@ -4446,7 +4480,7 @@ function matchesFilter(file, filter, root) {
   if (isAbsolute4(filter) && file.startsWith(filter)) return true;
   const testFile = relative(root, file).toLocaleLowerCase();
   const rel = relative(root, resolve3(root, filter));
-  const relativePath = filter.endsWith("/") ? join7(rel, "/") : rel;
+  const relativePath = filter.endsWith("/") ? join8(rel, "/") : rel;
   return testFile.includes(filter.toLocaleLowerCase()) || testFile.includes(relativePath.toLocaleLowerCase());
 }
 function worktreePath(root, path) {
@@ -4545,7 +4579,7 @@ function realPath(path) {
 }
 function rootScripts(root) {
   try {
-    const manifest = JSON.parse(readFileSync5(join8(root, "package.json"), "utf8"));
+    const manifest = JSON.parse(readFileSync6(join9(root, "package.json"), "utf8"));
     if (!isRecord(manifest) || !isRecord(manifest.scripts)) return {};
     return Object.fromEntries(
       Object.entries(manifest.scripts).filter(([, text]) => typeof text === "string")
@@ -4597,8 +4631,8 @@ function denyCurrentTestCommand(context, command, nodeTest, now) {
 }
 
 // src/core/daemon/version.ts
-import { readFileSync as readFileSync6 } from "node:fs";
-import { dirname as dirname3, join as join9 } from "node:path";
+import { readFileSync as readFileSync7 } from "node:fs";
+import { dirname as dirname3, join as join10 } from "node:path";
 import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
@@ -4609,7 +4643,7 @@ function squealVersion() {
 function manifestVersion(module) {
   let dir = dirname3(fileURLToPath(module));
   for (; ; ) {
-    const version = readVersion(join9(dir, "package.json"));
+    const version = readVersion(join10(dir, "package.json"));
     if (version !== null) return version;
     const parent = dirname3(dir);
     if (parent === dir) return null;
@@ -4618,7 +4652,7 @@ function manifestVersion(module) {
 }
 function readVersion(path) {
   try {
-    const parsed = JSON.parse(readFileSync6(path, "utf8"));
+    const parsed = JSON.parse(readFileSync7(path, "utf8"));
     if (typeof parsed !== "object" || parsed === null) return null;
     const { name, version } = parsed;
     return name === PACKAGE_NAME && typeof version === "string" ? version : null;
@@ -4749,7 +4783,7 @@ var preToolUse = async (input, location2, deps) => {
 };
 
 // src/harness/claude-code/main.ts
-import { readFileSync as readFileSync7 } from "node:fs";
+import { readFileSync as readFileSync8 } from "node:fs";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // src/harness/claude-code/input.ts
@@ -4819,7 +4853,7 @@ function projectDir(name, deps) {
 async function runMain(name, handler) {
   let stdin = "";
   try {
-    stdin = readFileSync7(0, "utf8");
+    stdin = readFileSync8(0, "utf8");
   } catch {
   }
   const result = await runHandler(name, handler, stdin, {
