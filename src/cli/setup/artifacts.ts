@@ -138,7 +138,9 @@ function outDir(facts: RepoFacts, tsconfig: string, depth: number): string | nul
  * `plugins` here can be named too). A string names a directory only when, read
  * relative to the test file, its package or the root, it is a path under it;
  * and not when it ends a tracked file's path outside it, as
- * `dist/cli/squeal.mjs` ends `plugins/codex/dist/cli/squeal.mjs` here.
+ * `dist/cli/squeal.mjs` ends `plugins/codex/dist/cli/squeal.mjs` here, unless
+ * it is explicitly relative and the test file's own directory resolves it
+ * (005-42 B2: `../../dist/cli/squeal.mjs` from `test/e2e` names root `dist`).
  */
 async function namedCandidates(
   facts: RepoFacts,
@@ -157,7 +159,7 @@ async function namedCandidates(
   const out: Found[] = [];
   for (const dir of [...new Set([...inPackage, ...found.map((f) => f.path)])].sort()) {
     const hits = literals.flatMap(({ file, strings }) => {
-      const hit = strings.find((s) => names(facts, [posix.dirname(file), manifest.dir], s, dir));
+      const hit = strings.find((s) => names(facts, posix.dirname(file), manifest.dir, s, dir));
       return hit === undefined ? [] : [hit];
     });
     if (hits.length === 0) continue;
@@ -180,11 +182,12 @@ function stringLiterals(facts: RepoFacts, file: string): string[] {
   );
 }
 
-/** Whether string `s` is a path under `dir` read from one of `bases` or the root. */
-function names(facts: RepoFacts, bases: readonly string[], s: string, dir: string): boolean {
+/** Whether string `s` is a path under `dir` read from test directory `from`, package `pkg` or the root. */
+function names(facts: RepoFacts, from: string, pkg: string, s: string, dir: string): boolean {
   if (s === "" || s.startsWith("/") || s.includes("${")) return false;
-  const under = [...bases, ""].some((base) => posix.join(base, s).startsWith(`${dir}/`));
-  if (!under) return false;
+  const under = (base: string) => posix.join(base, s).startsWith(`${dir}/`);
+  if (/^\.\.?\//.test(s) && under(from)) return true;
+  if (![from, pkg, ""].some(under)) return false;
   const tail = s.replace(/^(\.\.?\/)+/, "");
   return !facts.tracked.some(
     (file) => !file.startsWith(`${dir}/`) && (file === tail || file.endsWith(`/${tail}`)),
