@@ -378,9 +378,10 @@ describe.each(PYTHONS)("runPytest under Python %s (spec 007 D6)", (version) => {
   it("leaves no bytecode and no pytest cache in the worktree", SLOW, async (ctx) => {
     const { root } = await run(ctx, refs("tests/unit/test_core.py", "outcomes/test_pass.py"));
     expect(artefacts(root)).toEqual([]);
-    const cached = readdirSync(join(scratch, "cache", "pycache"), { recursive: true });
-    expect(
-      cached.some((name) => String(name).endsWith(`core.cpython-${version.replace(".", "")}.pyc`)),
-    ).toBe(true);
+    // The environment's bytecode is shared across runs, the worktree's never (007-29).
+    const cached = readdirSync(join(scratch, "cache", "pycache"), { recursive: true }).map(String);
+    const tag = `cpython-${version.replace(".", "")}`;
+    expect(cached.some((name) => name.endsWith(`_pytest/python.${tag}.pyc`))).toBe(true);
+    expect(cached.some((name) => name.endsWith(`core.${tag}.pyc`))).toBe(false);
   });
 });

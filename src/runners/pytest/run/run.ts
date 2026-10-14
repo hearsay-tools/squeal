@@ -15,6 +15,7 @@ import type {
 import { startGroup } from "../../node-test/run/process.js";
 import type { PytestEnvironment } from "../environment/index.js";
 import { type Batch, ending, names, readOr, realOr, split, writeRunLog } from "./batches.js";
+import { keptDirs, runBytecode } from "./bytecode.js";
 import { inheritedArgs, pytestArgs, refusalNote, refusedFlags } from "./command.js";
 import { parsePytestEvents } from "./events.js";
 import { observeBatch, type PytestObservedClosure } from "./observed.js";
@@ -37,7 +38,7 @@ export interface PytestRunOptions {
   readonly batchSize?: number;
   /** A slow file (004) runs in a batch of its own. */
   readonly alone?: (testFile: TestFileRef) => boolean;
-  /** Squeal's temp directory for pytest's cache and the bytecode; default one per worktree and project under the OS's. */
+  /** Squeal's temp directory for pytest's cache and the bytecode (`runBytecode`); default one per worktree and project under the OS's. */
   readonly cacheDir?: AbsolutePath;
   /** What the processes add to their environment (`RunOptions.childEnv`). */
   readonly childEnv?: Readonly<Record<string, string>>;
@@ -83,13 +84,13 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
   const cacheDir = options.cacheDir ?? defaultCacheDir(options.root, project);
   mkdirSync(options.logDir, { recursive: true });
   mkdirSync(cacheDir, { recursive: true });
+  const runtimeDir = options.runtimeDir ?? pytestRuntimeDir();
   const env: NodeJS.ProcessEnv = {
     ...environment.runEnv,
     ...options.childEnv,
-    PYTHONPATH: [environment.runEnv.PYTHONPATH, options.runtimeDir ?? pytestRuntimeDir()]
+    PYTHONPATH: [environment.runEnv.PYTHONPATH, runtimeDir]
       .filter((p) => p !== undefined && p !== "")
       .join(delimiter),
-    PYTHONPYCACHEPREFIX: join(cacheDir, "pycache"),
     SQUEAL_PYTEST_ROOT: options.root,
   };
   const args = pytestArgs(
@@ -143,6 +144,10 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
     );
   }
   const queue = [...batches];
+  const bytecode = runBytecode(cacheDir, options.root, [
+    ...keptDirs(environment.discovery.env, environment.discovery.python),
+    runtimeDir,
+  ]);
   const worker = async () => {
     for (let batch = queue.shift(); batch !== undefined && !expired; batch = queue.shift()) {
       const events = join(options.logDir, `events-${batch.index}.jsonl`);
@@ -150,7 +155,7 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
         command: python,
         args: batch.args,
         cwd,
-        env: { ...env, SQUEAL_PYTEST_EVENTS: events },
+        env: { ...env, PYTHONPYCACHEPREFIX: bytecode.prefix, SQUEAL_PYTEST_EVENTS: events },
         stdout: join(options.logDir, `stdout-${batch.index}.log`),
         stderr: join(options.logDir, `stderr-${batch.index}.log`),
       });
@@ -163,8 +168,12 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
     }
   };
   const width = Math.max(1, Math.min(options.concurrency ?? batches.length, batches.length));
-  await Promise.all(Array.from({ length: width }, worker));
-  for (const timer of timers) clearTimeout(timer);
+  try {
+    await Promise.all(Array.from({ length: width }, worker));
+  } finally {
+    for (const timer of timers) clearTimeout(timer);
+    bytecode.remove();
+  }
 
   const notes: string[] = [];
   let refusedAtRun: string | null = null;
