@@ -142,10 +142,17 @@ describe("node:test under a daemon: an install bump re-runs what reaches the pac
 
     const from = runs(root).length;
     writeInstall(root, ext(2));
+    // Task 001-386: a queued re-run leaves its file's fail current, so status shows nothing
+    // pending between the fail's record and the re-run's start; wait for the re-runs' rows too.
+    const rerun = () => {
+      const since = runs(root).slice(from);
+      const files = since.flatMap((r) => r.testFiles).length;
+      return files >= 2 * REACHING.length && since.every((r) => r.end !== null);
+    };
     const bumped = await settle(
       root,
-      "the install bump",
-      (s) => s.knownFailures.length > 0 && s.counts.current === checks,
+      "the install bump and its re-runs",
+      (s) => s.knownFailures.length > 0 && s.counts.current === checks && rerun(),
       baseline.revision,
     );
     expect(
