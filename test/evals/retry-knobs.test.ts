@@ -1,5 +1,13 @@
 import { execFile, execFileSync, spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+} from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -71,25 +79,29 @@ describe("the pinLoad knob", () => {
   });
 });
 
-/** A fixture copy with the service's files and its port file under the copy's directory. */
+/**
+ * A fixture copy with the service's files, its port file in the copy's own HOME. The service
+ * starts as the agent's shell would and the test runs as Squeal's daemon would: one HOME, each
+ * its own TMPDIR, and no variable naming the port file (006-62).
+ */
 function serviceFixture() {
   const dir = scratch();
   const work = join(dir, "work");
   cpSync(join(EVALS, "ledgerline"), work, { recursive: true });
   for (const f of SERVICE_FILES) cpSync(join(ATOMIC, "retry", f), join(work, f));
   symlinkSync(MODULES, join(work, "node_modules"));
-  const port = join(dir, "rates.port");
+  for (const d of ["home", "shell-tmp", "daemon-tmp"]) mkdirSync(join(dir, d));
+  const port = join(dir, "home/.ledgerline-rates.port");
   ports.push(port);
-  const env = {
+  const env = (tmp: string) => ({
     PATH: process.env.PATH ?? "",
-    HOME: dir,
-    TMPDIR: dir,
-    LEDGERLINE_RATES_PORT_FILE: port,
-  };
+    HOME: join(dir, "home"),
+    TMPDIR: join(dir, tmp),
+  });
   const service = () =>
     spawnSync(process.execPath, ["scripts/rates-service.mjs"], {
       cwd: work,
-      env,
+      env: env("shell-tmp"),
       encoding: "utf8",
       timeout: 20_000,
     }).stdout;
@@ -97,7 +109,7 @@ function serviceFixture() {
     promisify(execFile)(
       process.execPath,
       [join(dirname(VITEST), "vitest.mjs"), "run", "test/rates.test.ts"],
-      { cwd, env },
+      { cwd, env: env("daemon-tmp") },
     ).then(
       (r) => ({ ok: true, out: r.stdout + r.stderr }),
       (e: { stdout: string; stderr: string }) => ({ ok: false, out: e.stdout + e.stderr }),
