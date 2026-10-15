@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { describeFailure } from "../../../src/core/state/index.js";
 import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import { openFixture, ref, SLOW } from "./helpers.js";
 
@@ -71,4 +72,53 @@ describe("vitest adapter: a recorder a test cannot tell is there (task 001-390)"
       );
     },
   );
+
+  it("names the recorder in a failure with its signature, and only under it", async () => {
+    const files = {
+      // Node 16 and 18 before 18.18 refuse `--import` in NODE_OPTIONS with this line and exit 9 (probe)
+      "scripts/old-node.sh": `case "$NODE_OPTIONS" in *--import*) echo "$0: --import is not allowed in NODE_OPTIONS" >&2; exit 9;; esac\n`,
+      "scripts/pre.cjs": "",
+      "test/signatures.test.ts": `import { execFileSync } from "node:child_process";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { it } from "vitest";
+const script = (name: string) => new URL(\`../scripts/\${name}\`, import.meta.url).pathname;
+it("runs an old Node", () => {
+  execFileSync("/bin/sh", [script("old-node.sh")], { encoding: "utf8", stdio: "pipe" });
+});
+it("runs Node with its own --require where package.json is not JSON", () => {
+  const dir = mkdtempSync(join(tmpdir(), "bad-package-"));
+  writeFileSync(join(dir, "package.json"), "export const value = 1;\\n");
+  const args = ["--require", script("pre.cjs"), script("pre.cjs")];
+  execFileSync(process.execPath, args, { cwd: dir, encoding: "utf8", stdio: "pipe" });
+});
+`,
+    };
+    const signatures = async (observe: boolean) => {
+      const fx = await openFixture("observed", files, (root) =>
+        createVitestAdapter({ root, observe: () => observe }),
+      );
+      const report = await fx.adapter.run(
+        [ref("test/signatures.test.ts", "forks")],
+        fx.runOptions(),
+      );
+      return report.results.map((r) => [
+        r.outcome,
+        r.errors[0]?.recorder,
+        r.outcome === "fail" &&
+          describeFailure(r.errors, null).summary.includes("Squeal's recorder"),
+      ]);
+    };
+
+    expect(await signatures(true)).toEqual([
+      ["fail", "Node before 18.18 rejects its --import", true],
+      ["fail", expect.stringContaining("ERR_INVALID_PACKAGE_CONFIG"), true],
+    ]);
+    // without the recorder the old Node starts; the project's own --require fails as before, unnamed
+    expect(await signatures(false)).toEqual([
+      ["pass", undefined, false],
+      ["fail", undefined, false],
+    ]);
+  });
 });

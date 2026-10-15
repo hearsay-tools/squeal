@@ -18,7 +18,7 @@ import type {
   RunReport,
   TestFileRef,
 } from "../../core/types/index.js";
-import { readsOfEvery } from "../observe/index.js";
+import { readsOfEvery, withRecorderSignatures } from "../observe/index.js";
 import { affectedTestFiles } from "./affected.js";
 import { closeBroken, instanceTempDirs, runnerFailure } from "./broken.js";
 import { ConfigStamps } from "./config-stamps.js";
@@ -459,9 +459,13 @@ export class VitestAdapter implements RunnerAdapter {
             return ran;
           });
         }
-        const built = withStartup(
-          buildReport(collector, execution, Math.round(performance.now() - started)),
-          startup,
+        // Spec 001 D11 Fidelity (task 001-390): a recorder signature says so.
+        const built = withRecorderSignatures(
+          withStartup(
+            buildReport(collector, execution, Math.round(performance.now() - started)),
+            startup,
+          ),
+          this.#observer.active,
         );
         const observed = this.#observer.take(built.completedFiles);
         // Review wave-13e B1: a path the run wrote itself counts too. Writing its bytes proves

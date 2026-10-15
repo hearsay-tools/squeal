@@ -107,10 +107,28 @@ export function describeFailure(
     first.causes ?? [],
   );
   const summary = more > 0 ? `${text} (${more} more error${more === 1 ? "" : "s"})` : text;
+  const recorder = errors.find((e) => e.recorder !== undefined)?.recorder;
   return {
     fingerprint: `${first.name}: ${normalize(line)} @ ${where(location)}`,
-    summary: withDiff(summary, first.diff === null ? null : diffText(first.diff)),
+    summary: withRecorder(
+      withDiff(summary, first.diff === null ? null : diffText(first.diff)),
+      recorder,
+    ),
   };
+}
+
+/**
+ * Spec 001 D11 Fidelity (task 001-390): a failure with a signature of
+ * Squeal's recorder says it ran under it, within `SUMMARY_MAX_CHARS`; the note
+ * keeps its room, as causes do. Not in the fingerprint.
+ */
+function withRecorder(summary: string, recorder: string | undefined): string {
+  if (recorder === undefined) return summary;
+  const note = cap(
+    `; ran under Squeal's recorder in NODE_OPTIONS: ${recorder}`,
+    SUMMARY_MAX_CHARS / 2,
+  );
+  return `${cap(summary, SUMMARY_MAX_CHARS - note.length)}${note}`;
 }
 
 /** One link of a cause chain as Squeal prints it: its message, with its code when the message lacks it. */
