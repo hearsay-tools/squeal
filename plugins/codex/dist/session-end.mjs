@@ -3223,6 +3223,7 @@ function editNotes(store, consumer, states, delivering) {
   return {
     ...sawEdit === void 0 ? {} : { sawEdit },
     ...editsSettled === void 0 ? {} : { editsSettled },
+    rekeyed: new Set(rekeyed.map((k) => testFileId(k.testFile))),
     tell: () => {
       writeState(store, consumer, {
         since: editsSettled === void 0 ? state.since : revision,
@@ -3231,6 +3232,11 @@ function editNotes(store, consumer, states, delivering) {
       if (editsSettled !== void 0) prune2(store, consumer.worktreeId);
     }
   };
+}
+function carriesEditResult(notes, checks, header) {
+  if (notes.sawEdit === void 0 || notes.editsSettled !== void 0) return false;
+  const pending = header.counts.pending > 0 || header.testFilesWithoutChecks.pending > 0 || header.runnerPartPending === true;
+  return !pending && checks.some((check) => notes.rekeyed.has(testFileKeyOf(check)));
 }
 function settled(since, rekeyed, states) {
   if (rekeyed.length === 0) return void 0;
@@ -3920,6 +3926,11 @@ function createDelivery(store, options) {
         states
       );
       notes?.tell();
+      const sawEdit = notes === null || carriesEditResult(
+        notes,
+        entries.map((e) => e.check),
+        header
+      ) ? void 0 : notes.sawEdit;
       const label = delta.entries.length > 0 && delta.entries.every(isBaselineEntry) ? "baseline" : "transitions";
       return {
         schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -3929,7 +3940,7 @@ function createDelivery(store, options) {
         entries,
         stillFailing,
         ...changed === null ? {} : { liveness: changed },
-        ...notes?.sawEdit === void 0 ? {} : { sawEdit: notes.sawEdit },
+        ...sawEdit === void 0 ? {} : { sawEdit },
         ...notes?.editsSettled === void 0 ? {} : { editsSettled: notes.editsSettled }
       };
     });
@@ -4063,7 +4074,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.187";
+  if (true) return "0.1.189";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
