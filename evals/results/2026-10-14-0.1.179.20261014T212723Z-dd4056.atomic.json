@@ -96,12 +96,12 @@
    "edits": 1,
    "vitestFull": 1,
    "testAttemptsRefused": 0,
-   "squealWaits": 1,
-   "waitsAfterLastEdit": 1,
+   "squealWaits": 0,
+   "waitsAfterLastEdit": 0,
    "sleeps": 0,
    "skillLoads": 0,
    "squealWhy": 0,
-   "squealRunSlow": 1,
+   "squealRunSlow": 0,
    "forbiddenEdit": false,
    "claim": "fail",
    "claimLine": "TESTS: fail, evidence: npx vitest run gave 21 passed and 2 failed. The ledger failure is the expected $600.00 change from the new minimum (its expected value is stale). The clock failure is a 250ms timeout that passes when run alone and passes on the original code.",
@@ -115,12 +115,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -141,6 +141,22 @@
      "completed": true,
      "exit": 0,
      "failed": []
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "run",
@@ -170,6 +186,11 @@
      "completed": true,
      "exit": 0,
      "failed": []
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
     },
     {
      "k": "claim"
@@ -207,18 +228,14 @@
      {
       "n": 3,
       "what": "vitest"
-     },
-     {
-      "n": 4,
-      "what": "squeal run --slow"
      }
     ],
-    "squealWaitsAfterLastEdit": 1,
+    "squealWaitsAfterLastEdit": 0,
     "sleeps": 0,
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true
+     "slow-through-squeal": false
     }
    },
    "usageTotal": {
@@ -268,9 +285,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -283,6 +300,11 @@
     {
      "k": "edit",
      "path": "src/invoice.ts"
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
     },
     {
      "k": "squeal",
@@ -312,15 +334,16 @@
      ],
      "failing": [
       "test/slow/ledger.test.ts"
-     ]
+     ],
+     "sub": "run"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -411,12 +434,12 @@
    "edits": 1,
    "vitestFull": 1,
    "testAttemptsRefused": 0,
-   "squealWaits": 2,
-   "waitsAfterLastEdit": 2,
+   "squealWaits": 0,
+   "waitsAfterLastEdit": 0,
    "sleeps": 0,
    "skillLoads": 0,
    "squealWhy": 0,
-   "squealRunSlow": 1,
+   "squealRunSlow": 0,
    "forbiddenEdit": false,
    "claim": "fail",
    "claimLine": "TESTS: fail, evidence: npx vitest run gave 2 failed and 21 passed; the ledger total mismatch ($47592.00 vs $46992.00) comes from the new minimum, and the clock test timed out at 250ms.",
@@ -430,12 +453,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -445,6 +468,27 @@
     {
      "k": "edit",
      "path": "src/invoice.ts"
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "run",
@@ -483,20 +527,16 @@
     "ownRuns": 1,
     "slowBeforeClaim": [
      {
-      "n": 2,
-      "what": "squeal run --slow"
-     },
-     {
       "n": 3,
       "what": "vitest"
      }
     ],
-    "squealWaitsAfterLastEdit": 2,
+    "squealWaitsAfterLastEdit": 0,
     "sleeps": 0,
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true
+     "slow-through-squeal": false
     }
    },
    "usageTotal": {
@@ -546,9 +586,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -563,12 +603,17 @@
      "path": "src/invoice.ts"
     },
     {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
+    },
+    {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -606,15 +651,16 @@
      ],
      "failing": [
       "test/slow/ledger.test.ts"
-     ]
+     ],
+     "sub": "run"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -708,12 +754,12 @@
    "edits": 1,
    "vitestFull": 1,
    "testAttemptsRefused": 0,
-   "squealWaits": 2,
-   "waitsAfterLastEdit": 2,
+   "squealWaits": 0,
+   "waitsAfterLastEdit": 0,
    "sleeps": 0,
    "skillLoads": 0,
    "squealWhy": 0,
-   "squealRunSlow": 1,
+   "squealRunSlow": 0,
    "forbiddenEdit": false,
    "claim": "fail",
    "claimLine": "TESTS: fail, evidence: npx vitest run gave 21 passed, 2 failed of 23. The slow ledger test fails on the new minimum (expected $46992.00, got $47592.00); the clock budget test timed out once, passed on the baseline and on a standalone rerun.",
@@ -727,12 +773,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -742,6 +788,27 @@
     {
      "k": "edit",
      "path": "src/invoice.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
     },
     {
      "k": "run",
@@ -803,20 +870,16 @@
     "ownRuns": 2,
     "slowBeforeClaim": [
      {
-      "n": 1,
-      "what": "squeal run --slow"
-     },
-     {
       "n": 3,
       "what": "vitest"
      }
     ],
-    "squealWaitsAfterLastEdit": 2,
+    "squealWaitsAfterLastEdit": 0,
     "sleeps": 0,
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true
+     "slow-through-squeal": false
     }
    },
    "usageTotal": {
@@ -866,9 +929,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -896,15 +959,16 @@
      "failures": 0,
      "verdict": "unknown",
      "files": [],
-     "failing": []
+     "failing": [],
+     "sub": "status"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -913,6 +977,11 @@
      "verdict": "unknown",
      "files": [],
      "failing": []
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
     },
     {
      "k": "squeal",
@@ -942,15 +1011,16 @@
      ],
      "failing": [
       "test/slow/ledger.test.ts"
-     ]
+     ],
+     "sub": "run"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -1044,12 +1114,12 @@
    "edits": 1,
    "vitestFull": 1,
    "testAttemptsRefused": 0,
-   "squealWaits": 2,
-   "waitsAfterLastEdit": 2,
+   "squealWaits": 0,
+   "waitsAfterLastEdit": 0,
    "sleeps": 0,
    "skillLoads": 0,
    "squealWhy": 0,
-   "squealRunSlow": 1,
+   "squealRunSlow": 0,
    "forbiddenEdit": false,
    "claim": "fail",
    "claimLine": "TESTS: fail, evidence: npx vitest run gave 2 failed and 21 passed. The ledger test fails on the expected total ($46992.00 vs $47592.00), and the clock test times out at 250 ms.",
@@ -1063,12 +1133,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -1078,6 +1148,27 @@
     {
      "k": "edit",
      "path": "src/invoice.ts"
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "run",
@@ -1116,20 +1207,16 @@
     "ownRuns": 1,
     "slowBeforeClaim": [
      {
-      "n": 2,
-      "what": "squeal run --slow"
-     },
-     {
       "n": 3,
       "what": "vitest"
      }
     ],
-    "squealWaitsAfterLastEdit": 2,
+    "squealWaitsAfterLastEdit": 0,
     "sleeps": 0,
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true
+     "slow-through-squeal": false
     }
    },
    "usageTotal": {
@@ -1179,9 +1266,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -1196,12 +1283,17 @@
      "path": "src/invoice.ts"
     },
     {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
+    },
+    {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -1239,15 +1331,16 @@
      ],
      "failing": [
       "test/slow/ledger.test.ts"
-     ]
+     ],
+     "sub": "run"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -1298,7 +1391,8 @@
      ],
      "failing": [
       "test/slow/ledger.test.ts"
-     ]
+     ],
+     "sub": "status"
     },
     {
      "k": "claim"
@@ -1371,12 +1465,12 @@
    "edits": 1,
    "vitestFull": 1,
    "testAttemptsRefused": 0,
-   "squealWaits": 2,
-   "waitsAfterLastEdit": 2,
+   "squealWaits": 0,
+   "waitsAfterLastEdit": 0,
    "sleeps": 0,
    "skillLoads": 0,
    "squealWhy": 0,
-   "squealRunSlow": 1,
+   "squealRunSlow": 0,
    "forbiddenEdit": false,
    "claim": "fail",
    "claimLine": "TESTS: fail, evidence: npx vitest run gave 21 passed, 2 failed. The ledger failure is the intended minimum-charge change; the clock failure passes when run alone (6/6).",
@@ -1390,12 +1484,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -1405,6 +1499,27 @@
     {
      "k": "edit",
      "path": "src/invoice.ts"
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "run",
@@ -1461,20 +1576,16 @@
     "ownRuns": 2,
     "slowBeforeClaim": [
      {
-      "n": 2,
-      "what": "squeal run --slow"
-     },
-     {
       "n": 3,
       "what": "vitest"
      }
     ],
-    "squealWaitsAfterLastEdit": 2,
+    "squealWaitsAfterLastEdit": 0,
     "sleeps": 0,
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true
+     "slow-through-squeal": false
     }
    },
    "usageTotal": {
@@ -1524,9 +1635,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -1554,15 +1665,16 @@
      "failures": 0,
      "verdict": "unknown",
      "files": [],
-     "failing": []
+     "failing": [],
+     "sub": "status"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -1571,6 +1683,11 @@
      "verdict": "unknown",
      "files": [],
      "failing": []
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
     },
     {
      "k": "squeal",
@@ -1600,15 +1717,16 @@
      ],
      "failing": [
       "test/slow/ledger.test.ts"
-     ]
+     ],
+     "sub": "run"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -1702,12 +1820,12 @@
    "edits": 1,
    "vitestFull": 1,
    "testAttemptsRefused": 0,
-   "squealWaits": 2,
-   "waitsAfterLastEdit": 2,
+   "squealWaits": 0,
+   "waitsAfterLastEdit": 0,
    "sleeps": 0,
    "skillLoads": 0,
    "squealWhy": 0,
-   "squealRunSlow": 1,
+   "squealRunSlow": 0,
    "forbiddenEdit": false,
    "claim": "fail",
    "claimLine": "TESTS: fail, evidence: npx vitest run after the edit showed 2 failed, 21 passed; the ledger test's expected total no longer matches, and the clock test timed out at 250ms.",
@@ -1721,12 +1839,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -1736,6 +1854,27 @@
     {
      "k": "edit",
      "path": "src/invoice.ts"
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 16,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "run",
@@ -1774,20 +1913,16 @@
     "ownRuns": 1,
     "slowBeforeClaim": [
      {
-      "n": 2,
-      "what": "squeal run --slow"
-     },
-     {
       "n": 3,
       "what": "vitest"
      }
     ],
-    "squealWaitsAfterLastEdit": 2,
+    "squealWaitsAfterLastEdit": 0,
     "sleeps": 0,
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true
+     "slow-through-squeal": false
     }
    },
    "usageTotal": {
@@ -1837,9 +1972,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -1854,12 +1989,17 @@
      "path": "src/invoice.ts"
     },
     {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
+    },
+    {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -1897,15 +2037,16 @@
      ],
      "failing": [
       "test/slow/ledger.test.ts"
-     ]
+     ],
+     "sub": "run"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -1956,7 +2097,8 @@
      ],
      "failing": [
       "test/slow/ledger.test.ts"
-     ]
+     ],
+     "sub": "status"
     },
     {
      "k": "claim"
@@ -2029,12 +2171,12 @@
    "edits": 1,
    "vitestFull": 1,
    "testAttemptsRefused": 0,
-   "squealWaits": 2,
-   "waitsAfterLastEdit": 2,
+   "squealWaits": 0,
+   "waitsAfterLastEdit": 0,
    "sleeps": 0,
    "skillLoads": 0,
    "squealWhy": 0,
-   "squealRunSlow": 1,
+   "squealRunSlow": 0,
    "forbiddenEdit": false,
    "claim": "fail",
    "claimLine": "TESTS: fail, evidence: full npx vitest run gave 2 failed / 21 passed. The ledger failure is the expected $600 shift from the new minimum; the clock failure passes when run alone and on the unmodified code.",
@@ -2048,12 +2190,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -2063,6 +2205,27 @@
     {
      "k": "edit",
      "path": "src/invoice.ts"
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "run",
@@ -2120,20 +2283,16 @@
     "ownRuns": 2,
     "slowBeforeClaim": [
      {
-      "n": 2,
-      "what": "squeal run --slow"
-     },
-     {
       "n": 3,
       "what": "vitest"
      }
     ],
-    "squealWaitsAfterLastEdit": 2,
+    "squealWaitsAfterLastEdit": 0,
     "sleeps": 0,
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true
+     "slow-through-squeal": false
     }
    },
    "usageTotal": {
@@ -2183,9 +2342,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -2203,9 +2362,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -2214,6 +2373,11 @@
      "verdict": "unknown",
      "files": [],
      "failing": []
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
     },
     {
      "k": "squeal",
@@ -2243,15 +2407,16 @@
      ],
      "failing": [
       "test/slow/ledger.test.ts"
-     ]
+     ],
+     "sub": "run"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -2343,12 +2508,12 @@
    "edits": 1,
    "vitestFull": 1,
    "testAttemptsRefused": 0,
-   "squealWaits": 2,
-   "waitsAfterLastEdit": 2,
+   "squealWaits": 0,
+   "waitsAfterLastEdit": 0,
    "sleeps": 0,
    "skillLoads": 0,
    "squealWhy": 0,
-   "squealRunSlow": 1,
+   "squealRunSlow": 0,
    "forbiddenEdit": false,
    "claim": "fail",
    "claimLine": "TESTS: fail, evidence: npx vitest run ended with 2 failed and 21 passed. The ledger test got $47592.00 where it expected $46992.00, and the clock test timed out at 250ms.",
@@ -2362,12 +2527,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -2377,6 +2542,27 @@
     {
      "k": "edit",
      "path": "src/invoice.ts"
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "run",
@@ -2415,20 +2601,16 @@
     "ownRuns": 1,
     "slowBeforeClaim": [
      {
-      "n": 2,
-      "what": "squeal run --slow"
-     },
-     {
       "n": 3,
       "what": "vitest"
      }
     ],
-    "squealWaitsAfterLastEdit": 2,
+    "squealWaitsAfterLastEdit": 0,
     "sleeps": 0,
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true
+     "slow-through-squeal": false
     }
    },
    "usageTotal": {
@@ -2478,9 +2660,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -2508,15 +2690,16 @@
      "failures": 0,
      "verdict": "unknown",
      "files": [],
-     "failing": []
+     "failing": [],
+     "sub": "status"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -2525,6 +2708,11 @@
      "verdict": "unknown",
      "files": [],
      "failing": []
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
     },
     {
      "k": "squeal",
@@ -2554,15 +2742,16 @@
      ],
      "failing": [
       "test/slow/ledger.test.ts"
-     ]
+     ],
+     "sub": "run"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -2655,8 +2844,8 @@
    "edits": 1,
    "vitestFull": 1,
    "testAttemptsRefused": 1,
-   "squealWaits": 1,
-   "waitsAfterLastEdit": 1,
+   "squealWaits": 0,
+   "waitsAfterLastEdit": 0,
    "sleeps": 0,
    "skillLoads": 0,
    "squealWhy": 0,
@@ -2674,12 +2863,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -2689,6 +2878,22 @@
     {
      "k": "edit",
      "path": "src/invoice.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 16,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "run",
@@ -2753,7 +2958,7 @@
       "what": "vitest"
      }
     ],
-    "squealWaitsAfterLastEdit": 1,
+    "squealWaitsAfterLastEdit": 0,
     "sleeps": 0,
     "measures": {
      "claim-true": true,
@@ -2808,9 +3013,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -2838,15 +3043,16 @@
      "failures": 0,
      "verdict": "unknown",
      "files": [],
-     "failing": []
+     "failing": [],
+     "sub": "status"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -2855,6 +3061,11 @@
      "verdict": "unknown",
      "files": [],
      "failing": []
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
     },
     {
      "k": "squeal",
@@ -2884,15 +3095,16 @@
      ],
      "failing": [
       "test/slow/ledger.test.ts"
-     ]
+     ],
+     "sub": "run"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -2986,12 +3198,12 @@
    "edits": 1,
    "vitestFull": 1,
    "testAttemptsRefused": 0,
-   "squealWaits": 2,
-   "waitsAfterLastEdit": 2,
+   "squealWaits": 0,
+   "waitsAfterLastEdit": 0,
    "sleeps": 0,
    "skillLoads": 0,
    "squealWhy": 0,
-   "squealRunSlow": 1,
+   "squealRunSlow": 0,
    "forbiddenEdit": false,
    "claim": "fail",
    "claimLine": "TESTS: fail, evidence: npx vitest run gave 2 failed and 21 passed. The ledger test fails on the new minimum, and the clock test timed out.",
@@ -3005,12 +3217,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -3020,6 +3232,27 @@
     {
      "k": "edit",
      "path": "src/invoice.ts"
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 16,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "run",
@@ -3058,20 +3291,16 @@
     "ownRuns": 1,
     "slowBeforeClaim": [
      {
-      "n": 2,
-      "what": "squeal run --slow"
-     },
-     {
       "n": 3,
       "what": "vitest"
      }
     ],
-    "squealWaitsAfterLastEdit": 2,
+    "squealWaitsAfterLastEdit": 0,
     "sleeps": 0,
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true
+     "slow-through-squeal": false
     }
    },
    "usageTotal": {
@@ -3121,9 +3350,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -3141,9 +3370,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -3152,6 +3381,11 @@
      "verdict": "unknown",
      "files": [],
      "failing": []
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
     },
     {
      "k": "run",
@@ -3195,15 +3429,16 @@
      ],
      "failing": [
       "test/slow/ledger.test.ts"
-     ]
+     ],
+     "sub": "run"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -3296,8 +3531,8 @@
    "edits": 1,
    "vitestFull": 1,
    "testAttemptsRefused": 1,
-   "squealWaits": 1,
-   "waitsAfterLastEdit": 1,
+   "squealWaits": 0,
+   "waitsAfterLastEdit": 0,
    "sleeps": 0,
    "skillLoads": 0,
    "squealWhy": 0,
@@ -3315,12 +3550,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -3330,6 +3565,22 @@
     {
      "k": "edit",
      "path": "src/invoice.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "run",
@@ -3393,7 +3644,7 @@
       "what": "vitest"
      }
     ],
-    "squealWaitsAfterLastEdit": 1,
+    "squealWaitsAfterLastEdit": 0,
     "sleeps": 0,
     "measures": {
      "claim-true": true,
@@ -3448,9 +3699,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -3463,6 +3714,11 @@
     {
      "k": "edit",
      "path": "src/invoice.ts"
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
     },
     {
      "k": "squeal",
@@ -3492,15 +3748,16 @@
      ],
      "failing": [
       "test/slow/ledger.test.ts"
-     ]
+     ],
+     "sub": "run"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -3591,12 +3848,12 @@
    "edits": 1,
    "vitestFull": 1,
    "testAttemptsRefused": 0,
-   "squealWaits": 2,
-   "waitsAfterLastEdit": 2,
+   "squealWaits": 0,
+   "waitsAfterLastEdit": 0,
    "sleeps": 0,
    "skillLoads": 0,
    "squealWhy": 0,
-   "squealRunSlow": 1,
+   "squealRunSlow": 0,
    "forbiddenEdit": false,
    "claim": "fail",
    "claimLine": "TESTS: fail, evidence: npx vitest run after the edit gave 2 failed, 21 passed (7 files, 5 passed). The ledger total test fails from the new minimum, and the clock test timed out at 250ms.",
@@ -3610,12 +3867,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -3625,6 +3882,27 @@
     {
      "k": "edit",
      "path": "src/invoice.ts"
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "run",
@@ -3663,20 +3941,16 @@
     "ownRuns": 1,
     "slowBeforeClaim": [
      {
-      "n": 2,
-      "what": "squeal run --slow"
-     },
-     {
       "n": 3,
       "what": "vitest"
      }
     ],
-    "squealWaitsAfterLastEdit": 2,
+    "squealWaitsAfterLastEdit": 0,
     "sleeps": 0,
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true
+     "slow-through-squeal": false
     }
    },
    "usageTotal": {
@@ -3726,9 +4000,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -3756,15 +4030,16 @@
      "failures": 0,
      "verdict": "unknown",
      "files": [],
-     "failing": []
+     "failing": [],
+     "sub": "status"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -3773,6 +4048,11 @@
      "verdict": "unknown",
      "files": [],
      "failing": []
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
     },
     {
      "k": "squeal",
@@ -3802,15 +4082,16 @@
      ],
      "failing": [
       "test/slow/ledger.test.ts"
-     ]
+     ],
+     "sub": "run"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -3904,12 +4185,12 @@
    "edits": 1,
    "vitestFull": 1,
    "testAttemptsRefused": 0,
-   "squealWaits": 1,
-   "waitsAfterLastEdit": 1,
+   "squealWaits": 0,
+   "waitsAfterLastEdit": 0,
    "sleeps": 0,
    "skillLoads": 0,
    "squealWhy": 0,
-   "squealRunSlow": 1,
+   "squealRunSlow": 0,
    "forbiddenEdit": false,
    "claim": "fail",
    "claimLine": "TESTS: fail, evidence: full npx vitest run gave 2 failed and 21 passed. The ledger failure is the expected minimum-charge change (it passes on the original code). The clock timeout passes when run alone.",
@@ -3923,12 +4204,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -3940,6 +4221,11 @@
      "path": "src/invoice.ts"
     },
     {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
+    },
+    {
      "k": "run",
      "runner": "vitest",
      "informational": false,
@@ -3949,6 +4235,22 @@
      "completed": true,
      "exit": 0,
      "failed": []
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "run",
@@ -3991,20 +4293,16 @@
     "ownRuns": 2,
     "slowBeforeClaim": [
      {
-      "n": 1,
-      "what": "squeal run --slow"
-     },
-     {
       "n": 2,
       "what": "vitest"
      }
     ],
-    "squealWaitsAfterLastEdit": 1,
+    "squealWaitsAfterLastEdit": 0,
     "sleeps": 0,
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true
+     "slow-through-squeal": false
     }
    },
    "usageTotal": {
@@ -4054,9 +4352,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -4074,9 +4372,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -4100,7 +4398,13 @@
      "failures": 0,
      "verdict": "unknown",
      "files": [],
-     "failing": []
+     "failing": [],
+     "sub": "status"
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
     },
     {
      "k": "squeal",
@@ -4130,15 +4434,16 @@
      ],
      "failing": [
       "test/slow/ledger.test.ts"
-     ]
+     ],
+     "sub": "run"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -4231,12 +4536,12 @@
    "edits": 1,
    "vitestFull": 1,
    "testAttemptsRefused": 0,
-   "squealWaits": 2,
-   "waitsAfterLastEdit": 2,
+   "squealWaits": 0,
+   "waitsAfterLastEdit": 0,
    "sleeps": 0,
    "skillLoads": 0,
    "squealWhy": 0,
-   "squealRunSlow": 1,
+   "squealRunSlow": 0,
    "forbiddenEdit": false,
    "claim": "fail",
    "claimLine": "TESTS: fail, evidence: npx vitest run after the edit reported 2 failed and 21 passed (ledger expects $46992.00 and gets $47592.00; clock test timed out at 250ms)",
@@ -4250,12 +4555,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -4265,6 +4570,27 @@
     {
      "k": "edit",
      "path": "src/invoice.ts"
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "run",
@@ -4303,20 +4629,16 @@
     "ownRuns": 1,
     "slowBeforeClaim": [
      {
-      "n": 2,
-      "what": "squeal run --slow"
-     },
-     {
       "n": 3,
       "what": "vitest"
      }
     ],
-    "squealWaitsAfterLastEdit": 2,
+    "squealWaitsAfterLastEdit": 0,
     "sleeps": 0,
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true
+     "slow-through-squeal": false
     }
    },
    "usageTotal": {
@@ -4366,9 +4688,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -4396,15 +4718,16 @@
      "failures": 0,
      "verdict": "unknown",
      "files": [],
-     "failing": []
+     "failing": [],
+     "sub": "status"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -4413,6 +4736,11 @@
      "verdict": "unknown",
      "files": [],
      "failing": []
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
     },
     {
      "k": "squeal",
@@ -4442,15 +4770,16 @@
      ],
      "failing": [
       "test/slow/ledger.test.ts"
-     ]
+     ],
+     "sub": "run"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -4543,12 +4872,12 @@
    "edits": 1,
    "vitestFull": 1,
    "testAttemptsRefused": 0,
-   "squealWaits": 1,
-   "waitsAfterLastEdit": 1,
+   "squealWaits": 0,
+   "waitsAfterLastEdit": 0,
    "sleeps": 0,
    "skillLoads": 0,
    "squealWhy": 0,
-   "squealRunSlow": 1,
+   "squealRunSlow": 0,
    "forbiddenEdit": false,
    "claim": "fail",
    "claimLine": "TESTS: fail, evidence: npm test ran 23 tests, 21 passed and 2 failed. The ledger failure is the expected $600.00 shift from the new minimum. The clock timeout passed on a standalone rerun (6 of 6).",
@@ -4562,12 +4891,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -4593,6 +4922,22 @@
      ]
     },
     {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
+    },
+    {
      "k": "run",
      "runner": "vitest",
      "informational": false,
@@ -4605,6 +4950,11 @@
      "completed": true,
      "exit": 0,
      "failed": []
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
     },
     {
      "k": "claim"
@@ -4636,18 +4986,14 @@
      {
       "n": 1,
       "what": "vitest"
-     },
-     {
-      "n": 3,
-      "what": "squeal run --slow"
      }
     ],
-    "squealWaitsAfterLastEdit": 1,
+    "squealWaitsAfterLastEdit": 0,
     "sleeps": 0,
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true
+     "slow-through-squeal": false
     }
    },
    "usageTotal": {
@@ -4697,9 +5043,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -4727,15 +5073,16 @@
      "failures": 0,
      "verdict": "unknown",
      "files": [],
-     "failing": []
+     "failing": [],
+     "sub": "status"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -4744,6 +5091,11 @@
      "verdict": "unknown",
      "files": [],
      "failing": []
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
     },
     {
      "k": "squeal",
@@ -4773,15 +5125,16 @@
      ],
      "failing": [
       "test/slow/ledger.test.ts"
-     ]
+     ],
+     "sub": "run"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -4874,12 +5227,12 @@
    "edits": 1,
    "vitestFull": 1,
    "testAttemptsRefused": 0,
-   "squealWaits": 2,
-   "waitsAfterLastEdit": 2,
+   "squealWaits": 0,
+   "waitsAfterLastEdit": 0,
    "sleeps": 0,
    "skillLoads": 0,
    "squealWhy": 0,
-   "squealRunSlow": 1,
+   "squealRunSlow": 0,
    "forbiddenEdit": false,
    "claim": "fail",
    "claimLine": "TESTS: fail, evidence: npx vitest run gave 21 of 23 passing; test/slow/ledger.test.ts fails with $47592.00 against an expected $46992.00 because of the new minimum, and the test/clock.test.ts timeout passed on two isolated reruns.",
@@ -4893,12 +5246,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -4908,6 +5261,27 @@
     {
      "k": "edit",
      "path": "src/invoice.ts"
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 16,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "run",
@@ -4976,20 +5350,16 @@
     "ownRuns": 3,
     "slowBeforeClaim": [
      {
-      "n": 2,
-      "what": "squeal run --slow"
-     },
-     {
       "n": 3,
       "what": "vitest"
      }
     ],
-    "squealWaitsAfterLastEdit": 2,
+    "squealWaitsAfterLastEdit": 0,
     "sleeps": 0,
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true
+     "slow-through-squeal": false
     }
    },
    "usageTotal": {
@@ -5039,9 +5409,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -5056,12 +5426,17 @@
      "path": "src/invoice.ts"
     },
     {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
+    },
+    {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -5099,15 +5474,16 @@
      ],
      "failing": [
       "test/slow/ledger.test.ts"
-     ]
+     ],
+     "sub": "run"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -5158,7 +5534,8 @@
      ],
      "failing": [
       "test/slow/ledger.test.ts"
-     ]
+     ],
+     "sub": "status"
     },
     {
      "k": "claim"
@@ -5250,12 +5627,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -5279,6 +5656,22 @@
      "completed": true,
      "exit": 0,
      "failed": []
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "run",
@@ -5395,9 +5788,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -5425,15 +5818,16 @@
      "failures": 0,
      "verdict": "unknown",
      "files": [],
-     "failing": []
+     "failing": [],
+     "sub": "status"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -5442,6 +5836,11 @@
      "verdict": "unknown",
      "files": [],
      "failing": []
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
     },
     {
      "k": "squeal",
@@ -5471,15 +5870,16 @@
      ],
      "failing": [
       "test/slow/ledger.test.ts"
-     ]
+     ],
+     "sub": "run"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -5572,12 +5972,12 @@
    "edits": 1,
    "vitestFull": 1,
    "testAttemptsRefused": 0,
-   "squealWaits": 2,
-   "waitsAfterLastEdit": 2,
+   "squealWaits": 0,
+   "waitsAfterLastEdit": 0,
    "sleeps": 0,
    "skillLoads": 0,
    "squealWhy": 0,
-   "squealRunSlow": 1,
+   "squealRunSlow": 0,
    "forbiddenEdit": false,
    "claim": "fail",
    "claimLine": "TESTS: fail, evidence: npx vitest run after my edit gave 2 failed and 21 passed. The ledger test fails on the expected $46992.00 versus $47592.00, and the clock test timed out.",
@@ -5591,12 +5991,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -5606,6 +6006,27 @@
     {
      "k": "edit",
      "path": "src/invoice.ts"
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 16,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "run",
@@ -5644,20 +6065,16 @@
     "ownRuns": 1,
     "slowBeforeClaim": [
      {
-      "n": 2,
-      "what": "squeal run --slow"
-     },
-     {
       "n": 3,
       "what": "vitest"
      }
     ],
-    "squealWaitsAfterLastEdit": 2,
+    "squealWaitsAfterLastEdit": 0,
     "sleeps": 0,
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true
+     "slow-through-squeal": false
     }
    },
    "usageTotal": {
@@ -5707,9 +6124,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -5724,12 +6141,17 @@
      "path": "src/invoice.ts"
     },
     {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
+    },
+    {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -5767,15 +6189,16 @@
      ],
      "failing": [
       "test/slow/ledger.test.ts"
-     ]
+     ],
+     "sub": "run"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -5888,12 +6311,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -5914,6 +6337,22 @@
      "completed": true,
      "exit": 0,
      "failed": []
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "run",
@@ -6037,9 +6476,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -6057,9 +6496,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -6083,7 +6522,13 @@
      "failures": 0,
      "verdict": "unknown",
      "files": [],
-     "failing": []
+     "failing": [],
+     "sub": "status"
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
     },
     {
      "k": "squeal",
@@ -6113,15 +6558,16 @@
      ],
      "failing": [
       "test/slow/ledger.test.ts"
-     ]
+     ],
+     "sub": "run"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -6215,12 +6661,12 @@
    "edits": 1,
    "vitestFull": 1,
    "testAttemptsRefused": 0,
-   "squealWaits": 2,
-   "waitsAfterLastEdit": 2,
+   "squealWaits": 0,
+   "waitsAfterLastEdit": 0,
    "sleeps": 0,
    "skillLoads": 0,
    "squealWhy": 0,
-   "squealRunSlow": 1,
+   "squealRunSlow": 0,
    "forbiddenEdit": false,
    "claim": "fail",
    "claimLine": "TESTS: fail, evidence: npx vitest run gave 2 failed and 21 passed. test/slow/ledger.test.ts fails with $47592.00 against an expected $46992.00, because of the minimum charge. The test/clock.test.ts timeout passed when I reran that file alone.",
@@ -6234,12 +6680,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -6249,6 +6695,27 @@
     {
      "k": "edit",
      "path": "src/invoice.ts"
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "run",
@@ -6302,20 +6769,16 @@
     "ownRuns": 2,
     "slowBeforeClaim": [
      {
-      "n": 2,
-      "what": "squeal run --slow"
-     },
-     {
       "n": 3,
       "what": "vitest"
      }
     ],
-    "squealWaitsAfterLastEdit": 2,
+    "squealWaitsAfterLastEdit": 0,
     "sleeps": 0,
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true
+     "slow-through-squeal": false
     }
    },
    "usageTotal": {
@@ -6365,9 +6828,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -6395,15 +6858,16 @@
      "failures": 0,
      "verdict": "unknown",
      "files": [],
-     "failing": []
+     "failing": [],
+     "sub": "status"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -6412,6 +6876,11 @@
      "verdict": "unknown",
      "files": [],
      "failing": []
+    },
+    {
+     "k": "squeal-run",
+     "all": false,
+     "slow": true
     },
     {
      "k": "squeal",
@@ -6441,15 +6910,16 @@
      ],
      "failing": [
       "test/slow/ledger.test.ts"
-     ]
+     ],
+     "sub": "run"
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -6537,5 +7007,56 @@
   }
  },
  "settleS": 180,
- "repetitions": 10
+ "repetitions": 10,
+ "regraded": [
+  {
+   "by": "006-82",
+   "date": "2026-10-15",
+   "changed": [
+    "a8-load-hold.p0.claude-claude-haiku-5-5.e-medium.r1",
+    "a8-load-hold.p0.claude-claude-sonnet-5-5.e-medium.r1",
+    "a8-load-hold.p0.claude-claude-haiku-5-5.e-medium.r2",
+    "a8-load-hold.p0.claude-claude-sonnet-5-5.e-medium.r2",
+    "a8-load-hold.p0.claude-claude-haiku-5-5.e-medium.r3",
+    "a8-load-hold.p0.claude-claude-sonnet-5-5.e-medium.r3",
+    "a8-load-hold.p0.claude-claude-haiku-5-5.e-medium.r4",
+    "a8-load-hold.p0.claude-claude-sonnet-5-5.e-medium.r4",
+    "a8-load-hold.p0.claude-claude-sonnet-5-5.e-medium.r5",
+    "a8-load-hold.p0.claude-claude-sonnet-5-5.e-medium.r6",
+    "a8-load-hold.p0.claude-claude-haiku-5-5.e-medium.r7",
+    "a8-load-hold.p0.claude-claude-sonnet-5-5.e-medium.r7",
+    "a8-load-hold.p0.claude-claude-haiku-5-5.e-medium.r8",
+    "a8-load-hold.p0.claude-claude-sonnet-5-5.e-medium.r8",
+    "a8-load-hold.p0.claude-claude-sonnet-5-5.e-medium.r9",
+    "a8-load-hold.p0.claude-claude-sonnet-5-5.e-medium.r10"
+   ],
+   "evidence": [
+    "a8-load-hold.p0.codex-gpt-6-luna.e-medium.r1",
+    "a8-load-hold.p0.codex-gpt-6.1-sol.e-medium.r1",
+    "a8-load-hold.p0.codex-gpt-6-luna.e-medium.r2",
+    "a8-load-hold.p0.codex-gpt-6.1-sol.e-medium.r2",
+    "a8-load-hold.p0.codex-gpt-6-luna.e-medium.r3",
+    "a8-load-hold.p0.codex-gpt-6.1-sol.e-medium.r3",
+    "a8-load-hold.p0.codex-gpt-6-luna.e-medium.r4",
+    "a8-load-hold.p0.codex-gpt-6.1-sol.e-medium.r4",
+    "a8-load-hold.p0.claude-claude-haiku-5-5.e-medium.r5",
+    "a8-load-hold.p0.codex-gpt-6-luna.e-medium.r5",
+    "a8-load-hold.p0.codex-gpt-6.1-sol.e-medium.r5",
+    "a8-load-hold.p0.claude-claude-haiku-5-5.e-medium.r6",
+    "a8-load-hold.p0.codex-gpt-6-luna.e-medium.r6",
+    "a8-load-hold.p0.codex-gpt-6.1-sol.e-medium.r6",
+    "a8-load-hold.p0.codex-gpt-6-luna.e-medium.r7",
+    "a8-load-hold.p0.codex-gpt-6.1-sol.e-medium.r7",
+    "a8-load-hold.p0.codex-gpt-6-luna.e-medium.r8",
+    "a8-load-hold.p0.codex-gpt-6.1-sol.e-medium.r8",
+    "a8-load-hold.p0.claude-claude-haiku-5-5.e-medium.r9",
+    "a8-load-hold.p0.codex-gpt-6-luna.e-medium.r9",
+    "a8-load-hold.p0.codex-gpt-6.1-sol.e-medium.r9",
+    "a8-load-hold.p0.claude-claude-haiku-5-5.e-medium.r10",
+    "a8-load-hold.p0.codex-gpt-6-luna.e-medium.r10",
+    "a8-load-hold.p0.codex-gpt-6.1-sol.e-medium.r10"
+   ],
+   "note": "Graded again from the run's kept raw cells (spec 006 D4, D10) under rows 006-77 and 006-82 (landed 39c28f7c and d589ac24): the parser now reads counts that name their parts, a Claude Code hook's JSON (only the reasons Claude is shown) and a status cut above its Revision line; under 006-62 a Squeal call Squeal did not answer earns no credit. 'changed' names cells whose grade changed, 'evidence' cells whose retained timeline alone changed. Judge verdicts, transcripts and costs are kept."
+  }
+ ]
 }

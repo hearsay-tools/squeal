@@ -132,12 +132,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -152,15 +152,72 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 5,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [
+      {
+       "check": "test/csv.test.ts > every row has the header's four fields",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      },
+      {
+       "check": "test/money.test.ts > formatMoney > formats large amounts",
+       "file": "test/money.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      },
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
+     "failures": 4,
+     "verdict": "fail",
+     "files": [
+      "test/csv.test.ts",
+      "test/money.test.ts",
+      "test/report.test.ts"
+     ],
+     "failing": [
+      "test/csv.test.ts",
+      "test/money.test.ts",
+      "test/report.test.ts"
+     ]
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 5,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
      "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
+     "failures": 4,
+     "verdict": "fail",
      "files": [],
      "failing": []
     },
@@ -188,16 +245,53 @@
      "k": "squeal",
      "from": "push",
      "revision": 5,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/csv.test.ts > every row has the header's four fields",
+       "file": "test/csv.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/money.test.ts > formatMoney > formats large amounts",
+       "file": "test/money.test.ts",
+       "to": "resolved",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
      "failures": 0,
      "verdict": "unknown",
-     "files": [],
+     "files": [
+      "test/csv.test.ts",
+      "test/report.test.ts",
+      "test/money.test.ts"
+     ],
      "failing": []
     },
     {
@@ -344,9 +438,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -384,9 +478,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -538,12 +632,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -562,15 +656,72 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [
+      {
+       "check": "test/csv.test.ts > every row has the header's four fields",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      },
+      {
+       "check": "test/money.test.ts > formatMoney > formats large amounts",
+       "file": "test/money.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      },
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      }
+     ],
+     "failures": 4,
+     "verdict": "fail",
+     "files": [
+      "test/csv.test.ts",
+      "test/money.test.ts",
+      "test/report.test.ts"
+     ],
+     "failing": [
+      "test/csv.test.ts",
+      "test/money.test.ts",
+      "test/report.test.ts"
+     ]
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
      "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
+     "failures": 4,
+     "verdict": "fail",
      "files": [],
      "failing": []
     },
@@ -582,17 +733,38 @@
      "k": "squeal",
      "from": "push",
      "revision": 3,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "checks": [
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "fail",
+       "observed": 3,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > every row has the header's four fields",
+       "file": "test/csv.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
+     "failures": 3,
+     "verdict": "fail",
+     "files": [
+      "test/csv.test.ts"
+     ],
+     "failing": [
+      "test/csv.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -653,16 +825,45 @@
      "k": "squeal",
      "from": "push",
      "revision": 7,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/money.test.ts > formatMoney > formats large amounts",
+       "file": "test/money.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
      "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "verdict": "pass",
+     "files": [
+      "test/csv.test.ts",
+      "test/money.test.ts",
+      "test/report.test.ts"
+     ],
      "failing": []
     },
     {
@@ -734,8 +935,8 @@
    },
    "parser": {
     "no-rerun-answered": "met",
-    "current-before-claim": "missed",
-    "no-overclaim": "missed"
+    "current-before-claim": "met",
+    "no-overclaim": "met"
    },
    "expectations": {
     "no-rerun-answered": "met",
@@ -786,9 +987,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -840,9 +1041,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -999,12 +1200,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -1059,17 +1260,38 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      },
+      {
+       "check": "test/clock.test.ts > due dates > moves a Sunday due date to Monday",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
      "failures": 2,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -1110,16 +1332,27 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > moves a Sunday due date to Monday",
+       "file": "test/clock.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
+     "files": [
+      "test/clock.test.ts"
+     ],
      "failing": []
     },
     {
@@ -1330,9 +1563,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -1390,9 +1623,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -1439,9 +1672,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -1622,12 +1855,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -1682,17 +1915,38 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      },
+      {
+       "check": "test/clock.test.ts > due dates > moves a Sunday due date to Monday",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
      "failures": 2,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -1763,16 +2017,27 @@
      "k": "squeal",
      "from": "push",
      "revision": 6,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > moves a Sunday due date to Monday",
+       "file": "test/clock.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
+     "files": [
+      "test/clock.test.ts"
+     ],
      "failing": []
     },
     {
@@ -1889,16 +2154,27 @@
      "k": "squeal",
      "from": "push",
      "revision": 7,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 1,
-     "verdict": "fail",
-     "files": [],
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
+     "failures": 0,
+     "verdict": "pass",
+     "files": [
+      "test/clock.test.ts"
+     ],
      "failing": []
     },
     {
@@ -1916,13 +2192,22 @@
      "k": "squeal",
      "from": "push",
      "revision": 8,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 6,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
      "files": [],
@@ -2085,9 +2370,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -2145,9 +2430,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -2243,9 +2528,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 6,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -2432,12 +2717,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -2456,17 +2741,92 @@
      "k": "squeal",
      "from": "push",
      "revision": 3,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "checks": [
+      {
+       "check": "test/contract/invoice-json.test.ts > amounts are integer cents",
+       "file": "test/contract/invoice-json.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 3,
+       "validity": "current"
+      },
+      {
+       "check": "test/contract/invoice-json.test.ts > invoice JSON has exactly the schema's fields",
+       "file": "test/contract/invoice-json.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 3,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > every row has the header's four fields",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 3,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 3,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > quotes a customer name with a comma",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 3,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > discount applies to the subtotal",
+       "file": "test/invoice.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 3,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > tax applies after the discount",
+       "file": "test/invoice.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 3,
+       "validity": "current"
+      },
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 3,
+       "validity": "current"
+      }
+     ],
+     "failures": 8,
+     "verdict": "fail",
+     "files": [
+      "test/contract/invoice-json.test.ts",
+      "test/csv.test.ts",
+      "test/invoice.test.ts",
+      "test/report.test.ts"
+     ],
+     "failing": [
+      "test/contract/invoice-json.test.ts",
+      "test/csv.test.ts",
+      "test/invoice.test.ts",
+      "test/report.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -2508,17 +2868,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 11,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "checks": [
+      {
+       "check": "test/invoice.test.ts > invoice totals > tax applies after the discount",
+       "file": "test/invoice.test.ts",
+       "to": "fail",
+       "from": "fail",
+       "observed": 11,
+       "validity": "current"
+      }
+     ],
+     "failures": 8,
+     "verdict": "fail",
+     "files": [
+      "test/invoice.test.ts"
+     ],
+     "failing": [
+      "test/invoice.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -2528,13 +2901,18 @@
      "k": "squeal",
      "from": "push",
      "revision": 13,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "to": "pass",
+       "count": 8
+      }
+     ],
      "failures": 0,
      "verdict": "unknown",
      "files": [],
@@ -2727,9 +3105,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -2755,9 +3133,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -2771,9 +3149,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 3,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -2964,12 +3342,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -2996,17 +3374,68 @@
      "k": "squeal",
      "from": "push",
      "revision": 5,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "checks": [
+      {
+       "check": "test/contract/invoice-json.test.ts > amounts are integer cents",
+       "file": "test/contract/invoice-json.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 5,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 5,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > discount applies to the subtotal",
+       "file": "test/invoice.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 5,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > tax applies after the discount",
+       "file": "test/invoice.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 5,
+       "validity": "current"
+      },
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 5,
+       "validity": "current"
+      }
+     ],
+     "failures": 5,
+     "verdict": "fail",
+     "files": [
+      "test/contract/invoice-json.test.ts",
+      "test/csv.test.ts",
+      "test/invoice.test.ts",
+      "test/report.test.ts"
+     ],
+     "failing": [
+      "test/contract/invoice-json.test.ts",
+      "test/csv.test.ts",
+      "test/invoice.test.ts",
+      "test/report.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -3028,16 +3457,44 @@
      "k": "squeal",
      "from": "push",
      "revision": 8,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "checks": [
+      {
+       "check": "test/contract/invoice-json.test.ts > amounts are integer cents",
+       "file": "test/contract/invoice-json.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > discount applies to the subtotal",
+       "file": "test/invoice.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > tax applies after the discount",
+       "file": "test/invoice.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
+     "failures": 2,
+     "verdict": "fail",
+     "files": [
+      "test/contract/invoice-json.test.ts",
+      "test/invoice.test.ts"
+     ],
      "failing": []
     },
     {
@@ -3155,17 +3612,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 9,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices",
+       "file": "test/slow/ledger.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 9,
+       "validity": "current"
+      }
+     ],
      "failures": 3,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/slow/ledger.test.ts"
+     ],
+     "failing": [
+      "test/slow/ledger.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -3197,16 +3667,45 @@
      "k": "squeal",
      "from": "push",
      "revision": 10,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices",
+       "file": "test/slow/ledger.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
      "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "verdict": "pass",
+     "files": [
+      "test/csv.test.ts",
+      "test/report.test.ts",
+      "test/slow/ledger.test.ts"
+     ],
      "failing": []
     },
     {
@@ -3291,8 +3790,8 @@
    },
    "parser": {
     "no-rerun-answered": "met",
-    "current-before-claim": "missed",
-    "no-overclaim": "missed"
+    "current-before-claim": "met",
+    "no-overclaim": "met"
    },
    "expectations": {
     "no-rerun-answered": "met",
@@ -3343,9 +3842,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -3383,9 +3882,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -3555,12 +4054,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -3760,9 +4259,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -3982,12 +4481,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -4282,9 +4781,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -4609,12 +5108,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -4629,15 +5128,72 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [
+      {
+       "check": "test/csv.test.ts > every row has the header's four fields",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      },
+      {
+       "check": "test/money.test.ts > formatMoney > formats large amounts",
+       "file": "test/money.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      },
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
+     "failures": 4,
+     "verdict": "fail",
+     "files": [
+      "test/csv.test.ts",
+      "test/money.test.ts",
+      "test/report.test.ts"
+     ],
+     "failing": [
+      "test/csv.test.ts",
+      "test/money.test.ts",
+      "test/report.test.ts"
+     ]
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
      "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
+     "failures": 4,
+     "verdict": "fail",
      "files": [],
      "failing": []
     },
@@ -4665,16 +5221,53 @@
      "k": "squeal",
      "from": "push",
      "revision": 5,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/csv.test.ts > every row has the header's four fields",
+       "file": "test/csv.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/money.test.ts > formatMoney > formats large amounts",
+       "file": "test/money.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
      "failures": 0,
      "verdict": "unknown",
-     "files": [],
+     "files": [
+      "test/csv.test.ts",
+      "test/money.test.ts",
+      "test/report.test.ts"
+     ],
      "failing": []
     },
     {
@@ -4825,9 +5418,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -4857,9 +5450,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -4904,9 +5497,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -4993,9 +5586,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -5048,9 +5641,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 3,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -5065,7 +5658,7 @@
       }
      ],
      "failures": 0,
-     "verdict": "unknown",
+     "verdict": "pass",
      "files": [
       "test/slow/ledger.test.ts"
      ],
@@ -5150,8 +5743,8 @@
    },
    "parser": {
     "no-rerun-answered": "met",
-    "current-before-claim": "missed",
-    "no-overclaim": "missed"
+    "current-before-claim": "met",
+    "no-overclaim": "met"
    },
    "expectations": {
     "no-rerun-answered": "met",
@@ -5202,12 +5795,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -5222,17 +5815,58 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "checks": [
+      {
+       "check": "test/csv.test.ts > every row has the header's four fields",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      },
+      {
+       "check": "test/money.test.ts > formatMoney > formats large amounts",
+       "file": "test/money.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      },
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
+     "failures": 4,
+     "verdict": "fail",
+     "files": [
+      "test/csv.test.ts",
+      "test/money.test.ts",
+      "test/report.test.ts"
+     ],
+     "failing": [
+      "test/csv.test.ts",
+      "test/money.test.ts",
+      "test/report.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -5254,16 +5888,44 @@
      "k": "squeal",
      "from": "push",
      "revision": 4,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "checks": [
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "fail",
+       "observed": 2,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > every row has the header's four fields",
+       "file": "test/csv.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/money.test.ts > formatMoney > formats large amounts",
+       "file": "test/money.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
+     "failures": 2,
+     "verdict": "fail",
+     "files": [
+      "test/csv.test.ts",
+      "test/money.test.ts"
+     ],
      "failing": []
     },
     {
@@ -5278,16 +5940,27 @@
      "k": "squeal",
      "from": "push",
      "revision": 6,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "checks": [
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [
+      "test/csv.test.ts"
+     ],
      "failing": []
     },
     {
@@ -5333,16 +6006,27 @@
      "k": "squeal",
      "from": "push",
      "revision": 7,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
      "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "verdict": "pass",
+     "files": [
+      "test/report.test.ts"
+     ],
      "failing": []
     },
     {
@@ -5416,8 +6100,8 @@
    },
    "parser": {
     "no-rerun-answered": "met",
-    "current-before-claim": "missed",
-    "no-overclaim": "missed"
+    "current-before-claim": "met",
+    "no-overclaim": "met"
    },
    "expectations": {
     "no-rerun-answered": "met",
@@ -5468,9 +6152,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -5508,9 +6192,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 23,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -5682,12 +6366,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -5716,17 +6400,38 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      },
+      {
+       "check": "test/clock.test.ts > due dates > moves a Sunday due date to Monday",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
+     "failures": 2,
+     "verdict": "fail",
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -5736,16 +6441,27 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 6,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > moves a Sunday due date to Monday",
+       "file": "test/clock.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [
+      "test/clock.test.ts"
+     ],
      "failing": []
     },
     {
@@ -5847,7 +6563,7 @@
     {
      "k": "squeal",
      "from": "pull",
-     "revision": 2,
+     "revision": 5,
      "pending": 0,
      "stale": 0,
      "unknown": 0,
@@ -5959,7 +6675,7 @@
    "parser": {
     "no-rerun-answered": "met",
     "own-run-uncovered": "met",
-    "current-before-claim": "missed"
+    "current-before-claim": "met"
    },
    "expectations": {
     "no-rerun-answered": "met",
@@ -6010,9 +6726,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -6070,9 +6786,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -6150,9 +6866,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -6376,12 +7092,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -6436,17 +7152,38 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      },
+      {
+       "check": "test/clock.test.ts > due dates > moves a Sunday due date to Monday",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
      "failures": 2,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -6476,16 +7213,27 @@
      "k": "squeal",
      "from": "push",
      "revision": 6,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 2,
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > moves a Sunday due date to Monday",
+       "file": "test/clock.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "fail",
-     "files": [],
+     "files": [
+      "test/clock.test.ts"
+     ],
      "failing": []
     },
     {
@@ -6796,9 +7544,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -6856,9 +7604,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -6940,9 +7688,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -7174,12 +7922,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -7198,17 +7946,92 @@
      "k": "squeal",
      "from": "push",
      "revision": 3,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "checks": [
+      {
+       "check": "test/contract/invoice-json.test.ts > amounts are integer cents",
+       "file": "test/contract/invoice-json.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 3,
+       "validity": "current"
+      },
+      {
+       "check": "test/contract/invoice-json.test.ts > invoice JSON has exactly the schema's fields",
+       "file": "test/contract/invoice-json.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 3,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > every row has the header's four fields",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 3,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 3,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > quotes a customer name with a comma",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 3,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > discount applies to the subtotal",
+       "file": "test/invoice.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 3,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > tax applies after the discount",
+       "file": "test/invoice.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 3,
+       "validity": "current"
+      },
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 3,
+       "validity": "current"
+      }
+     ],
+     "failures": 8,
+     "verdict": "fail",
+     "files": [
+      "test/contract/invoice-json.test.ts",
+      "test/csv.test.ts",
+      "test/invoice.test.ts",
+      "test/report.test.ts"
+     ],
+     "failing": [
+      "test/contract/invoice-json.test.ts",
+      "test/csv.test.ts",
+      "test/invoice.test.ts",
+      "test/report.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -7217,18 +8040,47 @@
     {
      "k": "squeal",
      "from": "push",
-     "revision": 4,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "revision": 3,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
      "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
+     "failures": 8,
+     "verdict": "fail",
      "files": [],
      "failing": []
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 4,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [
+      {
+       "check": "test/invoice.test.ts > invoice totals > tax applies after the discount",
+       "file": "test/invoice.test.ts",
+       "to": "fail",
+       "from": "fail",
+       "observed": 4,
+       "validity": "current"
+      }
+     ],
+     "failures": 8,
+     "verdict": "fail",
+     "files": [
+      "test/invoice.test.ts"
+     ],
+     "failing": [
+      "test/invoice.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -7242,17 +8094,92 @@
      "k": "squeal",
      "from": "push",
      "revision": 5,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "checks": [
+      {
+       "check": "test/contract/invoice-json.test.ts > amounts are integer cents",
+       "file": "test/contract/invoice-json.test.ts",
+       "to": "fail",
+       "from": "fail",
+       "observed": 5,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "fail",
+       "observed": 5,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > discount applies to the subtotal",
+       "file": "test/invoice.test.ts",
+       "to": "fail",
+       "from": "fail",
+       "observed": 5,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > tax applies after the discount",
+       "file": "test/invoice.test.ts",
+       "to": "fail",
+       "from": "fail",
+       "observed": 5,
+       "validity": "current"
+      },
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "fail",
+       "from": "fail",
+       "observed": 5,
+       "validity": "current"
+      },
+      {
+       "check": "test/contract/invoice-json.test.ts > invoice JSON has exactly the schema's fields",
+       "file": "test/contract/invoice-json.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > every row has the header's four fields",
+       "file": "test/csv.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > quotes a customer name with a comma",
+       "file": "test/csv.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
+     "failures": 5,
+     "verdict": "fail",
+     "files": [
+      "test/contract/invoice-json.test.ts",
+      "test/csv.test.ts",
+      "test/invoice.test.ts",
+      "test/report.test.ts"
+     ],
+     "failing": [
+      "test/contract/invoice-json.test.ts",
+      "test/csv.test.ts",
+      "test/invoice.test.ts",
+      "test/report.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -7266,16 +8193,36 @@
      "k": "squeal",
      "from": "push",
      "revision": 7,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "checks": [
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > discount applies to the subtotal",
+       "file": "test/invoice.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
+     "failures": 3,
+     "verdict": "fail",
+     "files": [
+      "test/csv.test.ts",
+      "test/invoice.test.ts"
+     ],
      "failing": []
     },
     {
@@ -7286,16 +8233,45 @@
      "k": "squeal",
      "from": "push",
      "revision": 9,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/contract/invoice-json.test.ts > amounts are integer cents",
+       "file": "test/contract/invoice-json.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > tax applies after the discount",
+       "file": "test/invoice.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
      "failures": 0,
      "verdict": "unknown",
-     "files": [],
+     "files": [
+      "test/contract/invoice-json.test.ts",
+      "test/invoice.test.ts",
+      "test/report.test.ts"
+     ],
      "failing": []
     },
     {
@@ -7496,9 +8472,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -7520,9 +8496,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -7536,9 +8512,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 3,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -7615,9 +8591,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 4,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -7648,9 +8624,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 5,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -7718,9 +8694,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 7,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -7891,12 +8867,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -7923,17 +8899,68 @@
      "k": "squeal",
      "from": "push",
      "revision": 5,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "checks": [
+      {
+       "check": "test/contract/invoice-json.test.ts > amounts are integer cents",
+       "file": "test/contract/invoice-json.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 5,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 5,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > discount applies to the subtotal",
+       "file": "test/invoice.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 5,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > tax applies after the discount",
+       "file": "test/invoice.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 5,
+       "validity": "current"
+      },
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 5,
+       "validity": "current"
+      }
+     ],
+     "failures": 5,
+     "verdict": "fail",
+     "files": [
+      "test/contract/invoice-json.test.ts",
+      "test/csv.test.ts",
+      "test/invoice.test.ts",
+      "test/report.test.ts"
+     ],
+     "failing": [
+      "test/contract/invoice-json.test.ts",
+      "test/csv.test.ts",
+      "test/invoice.test.ts",
+      "test/report.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -7955,17 +8982,38 @@
      "k": "squeal",
      "from": "push",
      "revision": 8,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "checks": [
+      {
+       "check": "test/invoice.test.ts > invoice totals > discount applies to the subtotal",
+       "file": "test/invoice.test.ts",
+       "to": "fail",
+       "from": "fail",
+       "observed": 8,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > tax applies after the discount",
+       "file": "test/invoice.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
+     "failures": 4,
+     "verdict": "fail",
+     "files": [
+      "test/invoice.test.ts"
+     ],
+     "failing": [
+      "test/invoice.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -8011,16 +9059,45 @@
      "k": "squeal",
      "from": "push",
      "revision": 10,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > discount applies to the subtotal",
+       "file": "test/invoice.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
+     "files": [
+      "test/csv.test.ts",
+      "test/invoice.test.ts",
+      "test/report.test.ts"
+     ],
      "failing": []
     },
     {
@@ -8103,16 +9180,27 @@
      "k": "squeal",
      "from": "push",
      "revision": 11,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/contract/invoice-json.test.ts > amounts are integer cents",
+       "file": "test/contract/invoice-json.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
      "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "verdict": "pass",
+     "files": [
+      "test/contract/invoice-json.test.ts"
+     ],
      "failing": []
     },
     {
@@ -8200,8 +9288,8 @@
    },
    "parser": {
     "no-rerun-answered": "missed",
-    "current-before-claim": "missed",
-    "no-overclaim": "missed"
+    "current-before-claim": "met",
+    "no-overclaim": "met"
    },
    "expectations": {
     "no-rerun-answered": "missed",
@@ -8252,9 +9340,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -8292,9 +9380,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -8485,12 +9573,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -8830,9 +9918,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -9043,12 +10131,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -9296,9 +10384,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -9603,12 +10691,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -9623,17 +10711,58 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "checks": [
+      {
+       "check": "test/csv.test.ts > every row has the header's four fields",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      },
+      {
+       "check": "test/money.test.ts > formatMoney > formats large amounts",
+       "file": "test/money.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      },
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
+     "failures": 4,
+     "verdict": "fail",
+     "files": [
+      "test/csv.test.ts",
+      "test/money.test.ts",
+      "test/report.test.ts"
+     ],
+     "failing": [
+      "test/csv.test.ts",
+      "test/money.test.ts",
+      "test/report.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -9659,16 +10788,36 @@
      "k": "squeal",
      "from": "push",
      "revision": 5,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "checks": [
+      {
+       "check": "test/money.test.ts > formatMoney > formats large amounts",
+       "file": "test/money.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
+     "failures": 2,
+     "verdict": "fail",
+     "files": [
+      "test/money.test.ts",
+      "test/report.test.ts"
+     ],
      "failing": []
     },
     {
@@ -9696,16 +10845,35 @@
      "k": "squeal",
      "from": "push",
      "revision": 7,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/csv.test.ts > every row has the header's four fields",
+       "file": "test/csv.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
      "failures": 0,
      "verdict": "unknown",
-     "files": [],
+     "files": [
+      "test/csv.test.ts"
+     ],
      "failing": []
     },
     {
@@ -9868,9 +11036,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -9896,9 +11064,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -9943,9 +11111,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -10032,9 +11200,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -10114,9 +11282,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 3,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -10131,7 +11299,7 @@
       }
      ],
      "failures": 0,
-     "verdict": "unknown",
+     "verdict": "pass",
      "files": [
       "test/slow/ledger.test.ts"
      ],
@@ -10219,8 +11387,8 @@
    },
    "parser": {
     "no-rerun-answered": "met",
-    "current-before-claim": "missed",
-    "no-overclaim": "missed"
+    "current-before-claim": "met",
+    "no-overclaim": "met"
    },
    "expectations": {
     "no-rerun-answered": "met",
@@ -10271,12 +11439,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -10295,15 +11463,72 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [
+      {
+       "check": "test/csv.test.ts > every row has the header's four fields",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      },
+      {
+       "check": "test/money.test.ts > formatMoney > formats large amounts",
+       "file": "test/money.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      },
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      }
+     ],
+     "failures": 4,
+     "verdict": "fail",
+     "files": [
+      "test/csv.test.ts",
+      "test/money.test.ts",
+      "test/report.test.ts"
+     ],
+     "failing": [
+      "test/csv.test.ts",
+      "test/money.test.ts",
+      "test/report.test.ts"
+     ]
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
      "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
+     "failures": 4,
+     "verdict": "fail",
      "files": [],
      "failing": []
     },
@@ -10331,16 +11556,44 @@
      "k": "squeal",
      "from": "push",
      "revision": 7,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "checks": [
+      {
+       "check": "test/csv.test.ts > every row has the header's four fields",
+       "file": "test/csv.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/money.test.ts > formatMoney > formats large amounts",
+       "file": "test/money.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [
+      "test/csv.test.ts",
+      "test/money.test.ts"
+     ],
      "failing": []
     },
     {
@@ -10390,16 +11643,27 @@
      "k": "squeal",
      "from": "push",
      "revision": 8,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
      "failures": 0,
      "verdict": "unknown",
-     "files": [],
+     "files": [
+      "test/report.test.ts"
+     ],
      "failing": []
     },
     {
@@ -10554,9 +11818,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -10594,9 +11858,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 23,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -10767,12 +12031,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -10801,17 +12065,38 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      },
+      {
+       "check": "test/clock.test.ts > due dates > moves a Sunday due date to Monday",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
+     "failures": 2,
+     "verdict": "fail",
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -10848,16 +12133,27 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > moves a Sunday due date to Monday",
+       "file": "test/clock.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [
+      "test/clock.test.ts"
+     ],
      "failing": []
     },
     {
@@ -11044,7 +12340,7 @@
     ]
    },
    "parser": {
-    "no-rerun-answered": "met",
+    "no-rerun-answered": "missed",
     "own-run-uncovered": "met",
     "current-before-claim": "met"
    },
@@ -11097,9 +12393,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -11157,9 +12453,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -11206,9 +12502,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -11442,12 +12738,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -11502,17 +12798,38 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      },
+      {
+       "check": "test/clock.test.ts > due dates > moves a Sunday due date to Monday",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
      "failures": 2,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -11583,16 +12900,27 @@
      "k": "squeal",
      "from": "push",
      "revision": 6,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > moves a Sunday due date to Monday",
+       "file": "test/clock.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
+     "files": [
+      "test/clock.test.ts"
+     ],
      "failing": []
     },
     {
@@ -11894,9 +13222,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -11954,9 +13282,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -12007,9 +13335,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -12240,12 +13568,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -12264,17 +13592,92 @@
      "k": "squeal",
      "from": "push",
      "revision": 3,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "checks": [
+      {
+       "check": "test/contract/invoice-json.test.ts > amounts are integer cents",
+       "file": "test/contract/invoice-json.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 3,
+       "validity": "current"
+      },
+      {
+       "check": "test/contract/invoice-json.test.ts > invoice JSON has exactly the schema's fields",
+       "file": "test/contract/invoice-json.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 3,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > every row has the header's four fields",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 3,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 3,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > quotes a customer name with a comma",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 3,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > discount applies to the subtotal",
+       "file": "test/invoice.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 3,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > tax applies after the discount",
+       "file": "test/invoice.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 3,
+       "validity": "current"
+      },
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 3,
+       "validity": "current"
+      }
+     ],
+     "failures": 8,
+     "verdict": "fail",
+     "files": [
+      "test/contract/invoice-json.test.ts",
+      "test/csv.test.ts",
+      "test/invoice.test.ts",
+      "test/report.test.ts"
+     ],
+     "failing": [
+      "test/contract/invoice-json.test.ts",
+      "test/csv.test.ts",
+      "test/invoice.test.ts",
+      "test/report.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -12283,18 +13686,47 @@
     {
      "k": "squeal",
      "from": "push",
-     "revision": 4,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "revision": 3,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
      "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
+     "failures": 8,
+     "verdict": "fail",
      "files": [],
      "failing": []
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 4,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [
+      {
+       "check": "test/invoice.test.ts > invoice totals > tax applies after the discount",
+       "file": "test/invoice.test.ts",
+       "to": "fail",
+       "from": "fail",
+       "observed": 4,
+       "validity": "current"
+      }
+     ],
+     "failures": 8,
+     "verdict": "fail",
+     "files": [
+      "test/invoice.test.ts"
+     ],
+     "failing": [
+      "test/invoice.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -12312,17 +13744,84 @@
      "k": "squeal",
      "from": "push",
      "revision": 6,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "checks": [
+      {
+       "check": "test/contract/invoice-json.test.ts > amounts are integer cents",
+       "file": "test/contract/invoice-json.test.ts",
+       "to": "fail",
+       "from": "fail",
+       "observed": 6,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "fail",
+       "observed": 6,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > discount applies to the subtotal",
+       "file": "test/invoice.test.ts",
+       "to": "fail",
+       "from": "fail",
+       "observed": 6,
+       "validity": "current"
+      },
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "fail",
+       "from": "fail",
+       "observed": 6,
+       "validity": "current"
+      },
+      {
+       "check": "test/contract/invoice-json.test.ts > invoice JSON has exactly the schema's fields",
+       "file": "test/contract/invoice-json.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > every row has the header's four fields",
+       "file": "test/csv.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > quotes a customer name with a comma",
+       "file": "test/csv.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
+     "failures": 5,
+     "verdict": "fail",
+     "files": [
+      "test/contract/invoice-json.test.ts",
+      "test/csv.test.ts",
+      "test/invoice.test.ts",
+      "test/report.test.ts"
+     ],
+     "failing": [
+      "test/contract/invoice-json.test.ts",
+      "test/csv.test.ts",
+      "test/invoice.test.ts",
+      "test/report.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -12344,32 +13843,91 @@
      "k": "squeal",
      "from": "push",
      "revision": 10,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "checks": [
+      {
+       "check": "test/invoice.test.ts > invoice totals > tax applies after the discount",
+       "file": "test/invoice.test.ts",
+       "to": "fail",
+       "from": "fail",
+       "observed": 10,
+       "validity": "current"
+      },
+      {
+       "check": "test/contract/invoice-json.test.ts > amounts are integer cents",
+       "file": "test/contract/invoice-json.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > discount applies to the subtotal",
+       "file": "test/invoice.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [
+      "test/invoice.test.ts",
+      "test/contract/invoice-json.test.ts",
+      "test/csv.test.ts",
+      "test/report.test.ts"
+     ],
+     "failing": [
+      "test/invoice.test.ts"
+     ]
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 11,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/invoice.test.ts > invoice totals > tax applies after the discount",
+       "file": "test/invoice.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
      "failures": 0,
      "verdict": "unknown",
-     "files": [],
+     "files": [
+      "test/invoice.test.ts"
+     ],
      "failing": []
     },
     {
@@ -12572,9 +14130,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -12596,9 +14154,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -12616,9 +14174,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 3,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -12687,9 +14245,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 4,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -12779,9 +14337,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 6,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -12796,7 +14354,7 @@
       }
      ],
      "failures": 0,
-     "verdict": "unknown",
+     "verdict": "pass",
      "files": [
       "test/invoice.test.ts"
      ],
@@ -12879,8 +14437,8 @@
    },
    "parser": {
     "no-rerun-answered": "met",
-    "current-before-claim": "missed",
-    "no-overclaim": "missed"
+    "current-before-claim": "met",
+    "no-overclaim": "met"
    },
    "expectations": {
     "no-rerun-answered": "met",
@@ -12931,12 +14489,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -12963,17 +14521,68 @@
      "k": "squeal",
      "from": "push",
      "revision": 5,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "checks": [
+      {
+       "check": "test/contract/invoice-json.test.ts > amounts are integer cents",
+       "file": "test/contract/invoice-json.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 5,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 5,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > discount applies to the subtotal",
+       "file": "test/invoice.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 5,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > tax applies after the discount",
+       "file": "test/invoice.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 5,
+       "validity": "current"
+      },
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 5,
+       "validity": "current"
+      }
+     ],
+     "failures": 5,
+     "verdict": "fail",
+     "files": [
+      "test/contract/invoice-json.test.ts",
+      "test/csv.test.ts",
+      "test/invoice.test.ts",
+      "test/report.test.ts"
+     ],
+     "failing": [
+      "test/contract/invoice-json.test.ts",
+      "test/csv.test.ts",
+      "test/invoice.test.ts",
+      "test/report.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -12991,16 +14600,62 @@
      "k": "squeal",
      "from": "push",
      "revision": 7,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/contract/invoice-json.test.ts > amounts are integer cents",
+       "file": "test/contract/invoice-json.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > discount applies to the subtotal",
+       "file": "test/invoice.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > tax applies after the discount",
+       "file": "test/invoice.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      },
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
      "failures": 0,
      "verdict": "unknown",
-     "files": [],
+     "files": [
+      "test/contract/invoice-json.test.ts",
+      "test/csv.test.ts",
+      "test/invoice.test.ts",
+      "test/report.test.ts"
+     ],
      "failing": []
     },
     {
@@ -13011,17 +14666,92 @@
      "k": "squeal",
      "from": "push",
      "revision": 9,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "checks": [
+      {
+       "check": "test/contract/invoice-json.test.ts > amounts are integer cents",
+       "file": "test/contract/invoice-json.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 9,
+       "validity": "current"
+      },
+      {
+       "check": "test/contract/invoice-json.test.ts > invoice JSON has exactly the schema's fields",
+       "file": "test/contract/invoice-json.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 9,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > every row has the header's four fields",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 9,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 9,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > quotes a customer name with a comma",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 9,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > discount applies to the subtotal",
+       "file": "test/invoice.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 9,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > tax applies after the discount",
+       "file": "test/invoice.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 9,
+       "validity": "current"
+      },
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 9,
+       "validity": "current"
+      }
+     ],
+     "failures": 8,
+     "verdict": "fail",
+     "files": [
+      "test/contract/invoice-json.test.ts",
+      "test/csv.test.ts",
+      "test/invoice.test.ts",
+      "test/report.test.ts"
+     ],
+     "failing": [
+      "test/contract/invoice-json.test.ts",
+      "test/csv.test.ts",
+      "test/invoice.test.ts",
+      "test/report.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -13043,17 +14773,86 @@
      "k": "squeal",
      "from": "push",
      "revision": 12,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "checks": [
+      {
+       "check": "test/contract/invoice-json.test.ts > amounts are integer cents",
+       "file": "test/contract/invoice-json.test.ts",
+       "to": "fail",
+       "from": "fail",
+       "observed": 11,
+       "validity": "current"
+      },
+      {
+       "check": "test/contract/invoice-json.test.ts > invoice JSON has exactly the schema's fields",
+       "file": "test/contract/invoice-json.test.ts",
+       "to": "fail",
+       "from": "fail",
+       "observed": 11,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > every row has the header's four fields",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "fail",
+       "observed": 11,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > exports the formatted total",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "fail",
+       "observed": 11,
+       "validity": "current"
+      },
+      {
+       "check": "test/csv.test.ts > quotes a customer name with a comma",
+       "file": "test/csv.test.ts",
+       "to": "fail",
+       "from": "fail",
+       "observed": 11,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > discount applies to the subtotal",
+       "file": "test/invoice.test.ts",
+       "to": "fail",
+       "from": "fail",
+       "observed": 12,
+       "validity": "current"
+      },
+      {
+       "check": "test/invoice.test.ts > invoice totals > tax applies after the discount",
+       "file": "test/invoice.test.ts",
+       "to": "fail",
+       "from": "fail",
+       "observed": 12,
+       "validity": "current"
+      },
+      {
+       "check": "test/report.test.ts > summarises one month's invoices",
+       "file": "test/report.test.ts",
+       "to": "fail",
+       "from": "fail",
+       "observed": 11,
+       "validity": "current"
+      }
+     ],
+     "failures": 8,
+     "verdict": "fail",
+     "files": [
+      "test/invoice.test.ts"
+     ],
+     "failing": [
+      "test/invoice.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -13063,29 +14862,47 @@
      "k": "squeal",
      "from": "push",
      "revision": 13,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "checks": [
+      {
+       "check": "test/invoice.test.ts > invoice totals > tax applies after the discount",
+       "file": "test/invoice.test.ts",
+       "to": "fail",
+       "from": "fail",
+       "observed": 13,
+       "validity": "current"
+      }
+     ],
+     "failures": 8,
+     "verdict": "fail",
+     "files": [
+      "test/invoice.test.ts"
+     ],
+     "failing": [
+      "test/invoice.test.ts"
+     ]
     },
     {
      "k": "squeal",
      "from": "push",
      "revision": 14,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "to": "pass",
+       "count": 8
+      }
+     ],
      "failures": 0,
      "verdict": "unknown",
      "files": [],
@@ -13255,9 +15072,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -13309,9 +15126,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -13492,12 +15309,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -13794,9 +15611,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -14051,12 +15868,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -14305,9 +16122,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -14595,5 +16412,64 @@
    }
   }
  ],
- "expectationsRevision": "a42e2e58ddaa"
+ "expectationsRevision": "a42e2e58ddaa",
+ "regraded": [
+  {
+   "by": "006-82",
+   "date": "2026-10-15",
+   "changed": [
+    "t1-thousands.p0.claude-claude-sonnet-5-5.e-medium.r1",
+    "t3-tax.p0.claude-claude-sonnet-5-5.e-medium.r1",
+    "t1-thousands.p0.codex-gpt-6-luna.e-medium.r2",
+    "t1-thousands.p0.claude-claude-sonnet-5-5.e-medium.r2",
+    "t2-weekend.p0.claude-claude-haiku-5-5.e-medium.r2",
+    "t3-tax.p0.claude-claude-sonnet-5-5.e-medium.r2",
+    "t1-thousands.p0.codex-gpt-6-luna.e-medium.r3",
+    "t2-weekend.p0.claude-claude-haiku-5-5.e-medium.r3",
+    "t3-tax.p0.codex-gpt-6-luna.e-medium.r3"
+   ],
+   "evidence": [
+    "t1-thousands.p0.claude-claude-haiku-5-5.e-medium.r1",
+    "t1-thousands.p0.codex-gpt-6-luna.e-medium.r1",
+    "t1-thousands.p0.codex-gpt-6.1-sol.e-medium.r1",
+    "t2-weekend.p0.claude-claude-haiku-5-5.e-medium.r1",
+    "t2-weekend.p0.codex-gpt-6-luna.e-medium.r1",
+    "t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r1",
+    "t2-weekend.p0.codex-gpt-6.1-sol.e-medium.r1",
+    "t3-tax.p0.claude-claude-haiku-5-5.e-medium.r1",
+    "t3-tax.p0.codex-gpt-6-luna.e-medium.r1",
+    "t3-tax.p0.codex-gpt-6.1-sol.e-medium.r1",
+    "t4-contract.p0.claude-claude-haiku-5-5.e-medium.r1",
+    "t4-contract.p0.codex-gpt-6-luna.e-medium.r1",
+    "t4-contract.p0.claude-claude-sonnet-5-5.e-medium.r1",
+    "t4-contract.p0.codex-gpt-6.1-sol.e-medium.r1",
+    "t1-thousands.p0.claude-claude-haiku-5-5.e-medium.r2",
+    "t1-thousands.p0.codex-gpt-6.1-sol.e-medium.r2",
+    "t2-weekend.p0.codex-gpt-6-luna.e-medium.r2",
+    "t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r2",
+    "t2-weekend.p0.codex-gpt-6.1-sol.e-medium.r2",
+    "t3-tax.p0.claude-claude-haiku-5-5.e-medium.r2",
+    "t3-tax.p0.codex-gpt-6-luna.e-medium.r2",
+    "t3-tax.p0.codex-gpt-6.1-sol.e-medium.r2",
+    "t4-contract.p0.claude-claude-haiku-5-5.e-medium.r2",
+    "t4-contract.p0.codex-gpt-6-luna.e-medium.r2",
+    "t4-contract.p0.claude-claude-sonnet-5-5.e-medium.r2",
+    "t4-contract.p0.codex-gpt-6.1-sol.e-medium.r2",
+    "t1-thousands.p0.claude-claude-haiku-5-5.e-medium.r3",
+    "t1-thousands.p0.claude-claude-sonnet-5-5.e-medium.r3",
+    "t1-thousands.p0.codex-gpt-6.1-sol.e-medium.r3",
+    "t2-weekend.p0.codex-gpt-6-luna.e-medium.r3",
+    "t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r3",
+    "t2-weekend.p0.codex-gpt-6.1-sol.e-medium.r3",
+    "t3-tax.p0.claude-claude-haiku-5-5.e-medium.r3",
+    "t3-tax.p0.claude-claude-sonnet-5-5.e-medium.r3",
+    "t3-tax.p0.codex-gpt-6.1-sol.e-medium.r3",
+    "t4-contract.p0.claude-claude-haiku-5-5.e-medium.r3",
+    "t4-contract.p0.codex-gpt-6-luna.e-medium.r3",
+    "t4-contract.p0.claude-claude-sonnet-5-5.e-medium.r3",
+    "t4-contract.p0.codex-gpt-6.1-sol.e-medium.r3"
+   ],
+   "note": "Graded again from the run's kept raw cells (spec 006 D4, D10) under rows 006-77 and 006-82 (landed 39c28f7c and d589ac24): the parser now reads counts that name their parts, a Claude Code hook's JSON (only the reasons Claude is shown) and a status cut above its Revision line; under 006-62 a Squeal call Squeal did not answer earns no credit. 'changed' names cells whose grade changed, 'evidence' cells whose retained timeline alone changed. Judge verdicts, transcripts and costs are kept."
+  }
+ ]
 }

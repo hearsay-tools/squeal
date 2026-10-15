@@ -188,3 +188,14 @@ Started: 2026-10-10
 - Gates on `98e4b67d`: mine and the reviewer's, 634 files green each. Branch CI green.
 - Main CI was red on docs-only `f0a8810d` (`test/integration/pytest.test.ts:198`, CI-only, unrelated); named as row 007-53 and landed past.
 - Cost: one worker (one pass), one reviewer (two rounds), one coordinator repair, three gates (one stopped as moot).
+- 2026-10-15, 006-82 and 006-80 landed (`d589ac24`): worker 9f84c440, review 006-84 PASS on `7e518efe` (`reviews/wave-13.9.md`). Gates: mine and the reviewer's full runs green, 635 files each. Branch CI green.
+  - `evals/bin/regrade-cells.mjs` grades a run's kept cells again from `out/`, with no model call. Judge verdicts, transcripts, costs and identity are kept.
+  - A file is written only where a cell changed. Its note splits `changed` (grade changes) from `evidence` (cells whose stored timeline alone changed). The coordinator chose that split so 251 refreshed timelines do not bury the grade changes.
+  - `atomic-regrade.mjs` takes `--by` and `--note`, and no longer stamps unchanged files.
+  - Review N1, a maintenance note: the new reader of a cell's `out/` duplicates `grade.mjs`'s.
+- The coordinator then ran it on the 8 runs with kept cells (251 cells; 24 files have none and stay as committed). 30 grade changes:
+  - c94221: 9 cells. 15 judge/parser disagreements resolve, and one is added: t2 Haiku r3 `no-rerun-answered`, judge met and parser missed. There the parser is right (a delivery named the file's check, then the agent re-ran it with no edit). It is a judge calibration candidate.
+  - a9 Claude, 5 cells: `claim-after-retry` true for Sonnet r1 in 9edb7b and r3, r4, r6 in 21c18e, and Haiku r4 in 21c18e n/a.
+  - dd4056 Claude a8, 16 cells: under 006-62 the broken launcher's replies earn no credit, so `slow-through-squeal` is Haiku 0/10 (was 6/10) and Sonnet 0/10 (was 10/10). Lessons already called that half invalid; 320f5e's re-run stands.
+- Main CI: a second CI-only flake on a docs-only commit (run 38769103748, `test/runners/node-test/run.test.ts:120`, a busy-loop file completed before its deadline). Folded into row 007-53, landed past.
+- Cost: one worker (one pass, one decision relayed), one reviewer (one round), one gate.

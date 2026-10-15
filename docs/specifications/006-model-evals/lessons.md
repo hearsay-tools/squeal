@@ -121,6 +121,7 @@ The first run: `20261014T212723Z-dd4056` on `1bc146f0`. That is 0.1.179, where a
 - Only luna's and sol's 10/10 stand, along with every session's claim.
 - The bullet above holds for Codex only.
 - Row 006-62 fixes the cell's `PATH` and the grader. a8's Claude cells run again after it.
+- Graded again from the kept cells under 006-82 (2026-10-15), the committed file now scores those cells as they ran: Haiku and Sonnet `slow-through-squeal` 0/10. The table above keeps the original figures for the record.
 
 **Re-run of the Claude cells (2026-10-15), `20261015T115108Z-320f5e` on `ae20bb31` (0.1.194, after 006-62).** 10 sessions per model, 0 failed. Every cell reached the pinned plugin. Load was 6 to 13.
 
@@ -168,17 +169,17 @@ Claude's a9 cells wait for rows 006-66 and 006-67 (below). Two pilots came first
 - **sol fixed it every time.** In 4 sessions the asked edit's own run healed the test after the start, so no retry arose.
 - **sol's misses were the rule's (row 006-71, regraded 2026-10-15).** Four sessions had first scored as misses. In r6 to r8, sol made pass claims resting on an ordinary pass at inputs it edited after its retry, with the service up. In r2, it asked a retry Squeal declined, because the edit's own run had already healed the file. Under the landed rules these score `true` and `null`, and sol is 5/5 on both retry measures.
 
-**a9 on Claude** (`20261015T135404Z-21c18e` on `f3e266c6`, 0.1.195, after 006-66 and 006-67; 10 sessions per model, 0 failed; regraded under 006-71):
+**a9 on Claude** (`20261015T135404Z-21c18e` on `f3e266c6`, 0.1.195, after 006-66 and 006-67; 10 sessions per model, 0 failed; regraded under 006-71, then graded again from the kept cells under 006-82):
 
 | Model | Started the service | `retry-for-environment` | `claim-after-retry` | `claim-true` | `no-false-pass` |
 | --- | --- | --- | --- | --- | --- |
-| Haiku | 10/10 | 1/10 | 2/10 | 9/10 | 10/10 |
-| Sonnet | 5/10 | 2/10 | 6/9 | 4/9 | 9/9 |
+| Haiku | 10/10 | 1/9 | 2/9 | 9/10 | 10/10 |
+| Sonnet | 5/10 | 2/10 | 9/9 | 4/9 | 9/9 |
 
 - **Haiku fixes the environment, then checks the tests itself rather than asking Squeal.** It started the service in every session, mostly in the foreground, and asked `squeal retry` in 1. In the others it ran Vitest itself, which the measure counts as the wrong move, and its claims were true in 9.
 - **Sonnet's number is mostly Claude Code's prompt.** All five sessions that never started the service had their `nohup node scripts/rates-service.mjs … &` starts refused. None fell back to Claude Code's own background start, which 006-66's probe showed is allowed. Three of them ended with no clear claim. That is the cost of the narrow allow list the human chose. Codex cells run with full access and have no such refusal.
 - No false pass from either model.
-- **Read this table as provisional (row 006-77, 2026-10-15).** Its Claude grades were made by a parser that could not read the line fields of a Claude Code delivery, Squeal's retry note among them. Graded again from the raw cells, Sonnet `claim-after-retry` gains r3, r4 and r6, and Haiku r4 goes n/a on both retry measures. Row 006-82 applies that.
+- **Graded again from the raw cells (rows 006-77 and 006-82, 2026-10-15).** The first grades came from a parser that could not read the line fields of a Claude Code delivery, Squeal's retry note among them. Sonnet r3, r4 and r6 asked the retry and claimed on its pass, so `claim-after-retry` is now 9/9: whenever Sonnet got a retry's pass, it claimed on it. Haiku r4 started the service before its first edit, and an ordinary run healed the file, so both retry measures are n/a for it.
 
 **Claude's a9 cells and the allow list (rows 006-66, 006-67).** In pilot 2, Claude Code refused Sonnet's `nohup node scripts/rates-service.mjs >/dev/null 2>&1 &`.
 - A probe as `squeal-e2e` showed that Claude Code 2.1.300 asks before any top-level `&`, whatever the allow rules say.

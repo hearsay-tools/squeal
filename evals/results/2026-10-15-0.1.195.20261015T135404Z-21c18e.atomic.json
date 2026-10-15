@@ -103,21 +103,50 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "edit",
      "path": "src/rates.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "service",
@@ -348,21 +377,50 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "edit",
      "path": "src/rates.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "squeal",
@@ -478,17 +536,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "service",
@@ -519,16 +590,27 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
      "failures": 0,
      "verdict": "unknown",
-     "files": [],
+     "files": [
+      "test/rates.test.ts"
+     ],
      "failing": []
     },
     {
@@ -677,21 +759,50 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "edit",
      "path": "src/rates.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "squeal-run",
@@ -817,17 +928,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -849,6 +973,22 @@
     {
      "k": "service",
      "started": true
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "run",
@@ -1038,21 +1178,50 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "edit",
      "path": "src/rates.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "squeal-run",
@@ -1101,16 +1270,28 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current",
+       "retried": "environment"
+      }
+     ],
      "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "verdict": "pass",
+     "files": [
+      "test/rates.test.ts"
+     ],
      "failing": []
     },
     {
@@ -1151,7 +1332,7 @@
      "claim-true": true,
      "no-false-pass": true,
      "retry-for-environment": false,
-     "claim-after-retry": false
+     "claim-after-retry": true
     }
    },
    "usageTotal": {
@@ -1202,17 +1383,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "service",
@@ -1226,16 +1420,27 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
      "failures": 0,
      "verdict": "unknown",
-     "files": [],
+     "files": [
+      "test/rates.test.ts"
+     ],
      "failing": []
     },
     {
@@ -1326,8 +1531,8 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "retry-for-environment": false,
-     "claim-after-retry": false
+     "retry-for-environment": null,
+     "claim-after-retry": null
     }
    },
    "usageTotal": {
@@ -1378,21 +1583,50 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "edit",
      "path": "src/rates.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "retry",
@@ -1452,16 +1686,28 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current",
+       "retried": "environment"
+      }
+     ],
      "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "verdict": "pass",
+     "files": [
+      "test/rates.test.ts"
+     ],
      "failing": []
     },
     {
@@ -1502,7 +1748,7 @@
      "claim-true": true,
      "no-false-pass": true,
      "retry-for-environment": false,
-     "claim-after-retry": false
+     "claim-after-retry": true
     }
    },
    "usageTotal": {
@@ -1553,17 +1799,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -1572,6 +1831,22 @@
     {
      "k": "service",
      "started": true
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "squeal",
@@ -1798,21 +2073,50 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "edit",
      "path": "src/rates.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "squeal",
@@ -1928,21 +2232,50 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "edit",
      "path": "src/rates.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "service",
@@ -1984,16 +2317,27 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
      "failures": 0,
      "verdict": "unknown",
-     "files": [],
+     "files": [
+      "test/rates.test.ts"
+     ],
      "failing": []
     },
     {
@@ -2131,21 +2475,50 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "edit",
      "path": "src/rates.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "retry",
@@ -2205,16 +2578,28 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current",
+       "retried": "environment"
+      }
+     ],
      "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "verdict": "pass",
+     "files": [
+      "test/rates.test.ts"
+     ],
      "failing": []
     },
     {
@@ -2255,7 +2640,7 @@
      "claim-true": true,
      "no-false-pass": true,
      "retry-for-environment": false,
-     "claim-after-retry": false
+     "claim-after-retry": true
     }
    },
    "usageTotal": {
@@ -2306,17 +2691,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -2341,6 +2739,22 @@
      "started": true
     },
     {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
+    },
+    {
      "k": "edit",
      "path": "test/rates.test.ts"
     },
@@ -2361,16 +2775,27 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
      "failures": 0,
      "verdict": "unknown",
-     "files": [],
+     "files": [
+      "test/rates.test.ts"
+     ],
      "failing": []
     },
     {
@@ -2521,21 +2946,50 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "edit",
      "path": "src/rates.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "squeal",
@@ -2693,17 +3147,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "service",
@@ -2717,16 +3184,27 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
      "failures": 0,
      "verdict": "unknown",
-     "files": [],
+     "files": [
+      "test/rates.test.ts"
+     ],
      "failing": []
     },
     {
@@ -2884,21 +3362,50 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "edit",
      "path": "src/rates.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "service",
@@ -2923,16 +3430,28 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current",
+       "retried": "environment"
+      }
+     ],
      "failures": 0,
      "verdict": "unknown",
-     "files": [],
+     "files": [
+      "test/rates.test.ts"
+     ],
      "failing": []
     },
     {
@@ -3049,17 +3568,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -3068,6 +3600,22 @@
     {
      "k": "service",
      "started": true
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "edit",
@@ -3090,16 +3638,27 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current"
+      }
+     ],
      "failures": 0,
      "verdict": "unknown",
-     "files": [],
+     "files": [
+      "test/rates.test.ts"
+     ],
      "failing": []
     },
     {
@@ -3250,21 +3809,50 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "edit",
      "path": "src/rates.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "squeal-run",
@@ -3390,17 +3978,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -3409,6 +4010,22 @@
     {
      "k": "edit",
      "path": "test/rates.test.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "run",
@@ -3432,17 +4049,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts cents at today's rate, rounded to whole cents",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 2,
+       "validity": "current"
+      }
+     ],
+     "failures": 2,
+     "verdict": "fail",
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "squeal-run",
@@ -3556,16 +4186,37 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts cents at today's rate, rounded to whole cents",
+       "file": "test/rates.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current",
+       "retried": "environment"
+      },
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current",
+       "retried": "environment"
+      }
+     ],
      "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "verdict": "pass",
+     "files": [
+      "test/rates.test.ts"
+     ],
      "failing": []
     },
     {
@@ -3669,21 +4320,50 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "edit",
      "path": "src/rates.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "service",
@@ -3743,16 +4423,28 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current",
+       "retried": "environment"
+      }
+     ],
      "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "verdict": "pass",
+     "files": [
+      "test/rates.test.ts"
+     ],
      "failing": []
     },
     {
@@ -3825,6 +4517,35 @@
     "a9-env-retry.p0.claude-claude-sonnet-5-5.e-medium.r10"
    ],
    "note": "Measures recomputed (spec 006 D10) under rows 006-71, 006-75 and 006-78 (landed 54b6e385): in a9, a pass claim after a queued retry rests on an ordinary pass of the file at later inputs with the service up (claim-after-retry true), a retry Squeal did not queue because the file had no known failure is not a retry (both retry measures null, the edit's own run healed it), and any later FAIL of the file, from Squeal or an own run, revokes a credited pass and closes the retry window (a11 as well)."
+  },
+  {
+   "by": "006-82",
+   "date": "2026-10-15",
+   "changed": [
+    "a9-env-retry.p0.claude-claude-sonnet-5-5.e-medium.r3",
+    "a9-env-retry.p0.claude-claude-haiku-5-5.e-medium.r4",
+    "a9-env-retry.p0.claude-claude-sonnet-5-5.e-medium.r4",
+    "a9-env-retry.p0.claude-claude-sonnet-5-5.e-medium.r6"
+   ],
+   "evidence": [
+    "a9-env-retry.p0.claude-claude-haiku-5-5.e-medium.r1",
+    "a9-env-retry.p0.claude-claude-sonnet-5-5.e-medium.r1",
+    "a9-env-retry.p0.claude-claude-haiku-5-5.e-medium.r2",
+    "a9-env-retry.p0.claude-claude-sonnet-5-5.e-medium.r2",
+    "a9-env-retry.p0.claude-claude-haiku-5-5.e-medium.r3",
+    "a9-env-retry.p0.claude-claude-haiku-5-5.e-medium.r5",
+    "a9-env-retry.p0.claude-claude-sonnet-5-5.e-medium.r5",
+    "a9-env-retry.p0.claude-claude-haiku-5-5.e-medium.r6",
+    "a9-env-retry.p0.claude-claude-haiku-5-5.e-medium.r7",
+    "a9-env-retry.p0.claude-claude-sonnet-5-5.e-medium.r7",
+    "a9-env-retry.p0.claude-claude-haiku-5-5.e-medium.r8",
+    "a9-env-retry.p0.claude-claude-sonnet-5-5.e-medium.r8",
+    "a9-env-retry.p0.claude-claude-haiku-5-5.e-medium.r9",
+    "a9-env-retry.p0.claude-claude-sonnet-5-5.e-medium.r9",
+    "a9-env-retry.p0.claude-claude-haiku-5-5.e-medium.r10",
+    "a9-env-retry.p0.claude-claude-sonnet-5-5.e-medium.r10"
+   ],
+   "note": "Graded again from the run's kept raw cells (spec 006 D4, D10) under rows 006-77 and 006-82 (landed 39c28f7c and d589ac24): the parser now reads counts that name their parts, a Claude Code hook's JSON (only the reasons Claude is shown) and a status cut above its Revision line; under 006-62 a Squeal call Squeal did not answer earns no credit. 'changed' names cells whose grade changed, 'evidence' cells whose retained timeline alone changed. Judge verdicts, transcripts and costs are kept."
   }
  ]
 }
