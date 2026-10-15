@@ -173,8 +173,6 @@ These host claims hold. The break is Squeal's cancellation ownership across thos
 - Keep one disposal deadline of 3 seconds, the reserved end-consumer time, no-reply storage acknowledgement, and no continuation for aborted or superseded turns. Do not solve cancellation by dropping ordinary `run` news.
 - Keep 008-24's proxy/coverage cases and signal cleanup tests, and 008-26's cause/reload wording. They need no repair from this review.
 - S1 is diagnostic follow-up, not a reason to weaken the stored-once e2e assertion. The coordinator still owns its independent full run and branch CI. This file reports no independent full-suite result.
-<<<<<<< HEAD
-=======
 
 ## Round 2: repair 008-28
 
@@ -291,4 +289,3 @@ No legitimate-store cancellation was reproduced in the requested two-session, co
 - B1 needs no further repair at `2695a2ef`. The coordinator retains the landing gate and branch-CI responsibility; this report is not a full-suite verdict.
 - Preserve the initial targeted abort-test failure in verification history. It did not prove a product break; the focused rerun and both independent causal replays passed.
 - S1 is unchanged and belongs to its separate row. This round neither implements nor accepts its diagnostics.
->>>>>>> da806e7a (docs(008-27): pass B1 repair re-review at 2695a2ef)

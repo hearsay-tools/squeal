@@ -46,3 +46,13 @@ Use /worker, on `cand/0.1.186` (ceea98c2). Outcome: B1 of `reviews/wave-3.md` fi
 - Tests: both causally gated real-OpenCode cases of B1 (new input; abort after the second request), via `runOpenCode` and `serve`, without sleeps deciding the race; the matching hook tests; the existing `run --continue` e2e still passes. S1: when that e2e's stored-once assertion fails, it prints the timestamps for idle, Stop's answer, dispose entry, the store and dispose return.
 - Owns: `src/harness/opencode/**`, `test/harness/opencode/**`, `test/harness/opencode-*.test.ts`, `test/e2e/opencode*`. No dist, version or key format.
 - Done when: each new test fails at ceea98c2 and passes after; lint, typecheck, the opencode tests and the e2e file green.
+
+## 008-29 the OpenCode e2e's misses under load
+
+Use /worker. Outcome: when the `run --continue` e2e or the dispose regressions fail, they say why, and they do not fail only because the host is loaded.
+
+- Inputs: `reviews/wave-3.md` S1. The `run --continue` e2e missed its stored report once at load 69, then passed; 008-28 traced the fixture's idle deadline at about 500 ms (`stop.waitMs` 0), which a loaded host can miss. Round 2: the abort regression in `test/harness/opencode-dispose.test.ts` once timed out waiting for its gated Stop to answer, then passed.
+- Shape: repair, tests only. No trace code in the shipped plugin (coordinator decision, 008-28).
+- Seam: the fixture's `stop.waitMs` in `test/e2e/opencode-fixture.ts`, set so the idle deadline is not the variable under test; then the test-side timings the e2e can see (requests, the session's messages, process exits) printed in the failure message; then the dispose regression's barrier timeout and what it prints when it expires.
+- Owns: `test/e2e/opencode*`, `test/harness/opencode-dispose.test.ts`. Leaves alone: `src/**`.
+- Done when: each test passes 10 runs in a row at a load above the CPU count, or each failure names its cause; lint, typecheck and `squeal run --all --wait` are green.
