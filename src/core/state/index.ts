@@ -14,6 +14,14 @@ export {
   toKnownFailure,
 } from "./header.js";
 export { failureKeysOnce, heldFailure } from "./inherited.js";
+export {
+  FAILURE_PRODUCERS_KEPT,
+  type FailureProducer,
+  failureProducersMetaKey,
+  producingResult,
+  readFailureProducers,
+  recordFailureProducers,
+} from "./producers.js";
 export { readRevisionCommit, revisionText } from "./revision-commit.js";
 export { observedSince, shownResult } from "./shown-result.js";
 export { createStateSink, type StateSinkOptions } from "./sink.js";

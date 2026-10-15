@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { recordRunLoad } from "../../src/core/retry/index.js";
+import { createStateSink, recordFailureProducers } from "../../src/core/state/index.js";
 import { formatStatus, readStatus } from "../../src/core/status/index.js";
 import { result } from "../store/helpers.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "./helpers.js";
@@ -34,9 +35,14 @@ function seeded(recordedAt: number) {
       pending: null,
     },
   ]);
-  store.results.putMany([
-    result(AUTH, "k1", { outcome: "fail", worktreeId: repo.mainId, runId: "run-1", recordedAt }),
-  ]);
+  const produced = result(AUTH, "k1", {
+    outcome: "fail",
+    worktreeId: repo.mainId,
+    runId: "run-1",
+    recordedAt,
+  });
+  store.results.putMany([produced]);
+  recordFailureProducers(store, repo.mainId, [produced]);
   store.knownStates.upsertMany([
     state(repo.mainId, AUTH, {
       outcome: "fail",
@@ -46,7 +52,7 @@ function seeded(recordedAt: number) {
       fingerprint: "AssertionError: expected 1 to be 2 @ src/a.test.ts:3:5",
     }),
   ]);
-  return { repo, store };
+  return { repo, store, produced };
 }
 
 describe("status: a known failure's age and load (001-404)", () => {
@@ -148,7 +154,7 @@ describe("status: a failure's age comes from the result that produced it (review
   });
 
   it("an inherited failure recorded after its revision began keeps its source's facts", () => {
-    const { repo, store } = seeded(OLD);
+    const { repo, store, produced } = seeded(OLD);
     const b = repo.addWorktree("b");
     store.worktrees.upsert({
       id: b.id,
@@ -178,11 +184,70 @@ describe("status: a failure's age comes from the result that produced it (review
         fingerprint: "AssertionError: expected 1 to be 2 @ src/a.test.ts:3:5",
       }),
     ]);
+    recordFailureProducers(store, b.id, [produced]);
     const status = readStatus(b.root, { now: () => NOW });
     if (!status.available) throw new Error("status unavailable");
     expect(status.knownFailures[0]?.recorded).toMatchObject({
       worktreeId: repo.mainId,
       recordedAt: OLD,
     });
+  });
+});
+
+/*
+ * Review 001-417 round 2, B3: through the real state sink, a worktree
+ * inherits main's failure, then main replaces that row with the identical
+ * failure from a later run. Status shows neither the replacement's time nor
+ * its load.
+ */
+describe("status: an identical same-key replacement is not the producer (review 001-417 B3)", () => {
+  it("says the age and load are unknown instead of the replacement's", () => {
+    const { repo, store, produced } = seeded(NOW - 5 * 3_600_000);
+    recordRunLoad(store, "run-1", 1.5);
+    const b = repo.addWorktree("b");
+    store.worktrees.upsert({
+      id: b.id,
+      root: b.root,
+      commonDir: repo.commonDir,
+      isMain: false,
+      registeredAt: 1,
+      daemon: null,
+    });
+    appendRevisions(store, b.id, 1, { head: null, dirty: true, createdAt: 1 });
+    store.testFileKeys.upsertMany([
+      {
+        worktreeId: b.id,
+        testFile: { project: "", path: "src/auth.test.ts" },
+        key: "k1",
+        revision: 1,
+        pending: null,
+      },
+    ]);
+    const sink = createStateSink(store);
+    const own = result(AUTH, "k1", { outcome: "fail", worktreeId: b.id, runId: "run-b" });
+    store.results.putMany([own]);
+    sink.applyResults(b.id, 1, [own], { checkpointId: null });
+    store.results.putMany([produced]);
+    sink.refresh(b.id, 1, { checkpointId: null });
+    expect(store.knownStates.get(b.id, AUTH)?.origin?.kind).toBe("inherited");
+    const facts = readStatus(b.root, { now: () => NOW });
+    expect(facts.available && facts.knownFailures[0]?.recorded?.loadPerCpu).toBe(1.5);
+
+    store.results.putMany([
+      {
+        ...produced,
+        provenance: { ...produced.provenance, runId: "run-new", recordedAt: NOW - 1_000 },
+      },
+    ]);
+    recordRunLoad(store, "run-new", 9.9);
+
+    const status = readStatus(b.root, { now: () => NOW });
+    if (!status.available) throw new Error("status unavailable");
+    expect(status.knownFailures[0]?.recorded).toBeUndefined();
+    expect(status.knownFailures[0]?.recordedUnknown).toBe(true);
+    const text = formatStatus(status, NOW);
+    expect(text).toContain("recorded at an unknown time and load");
+    expect(text).not.toContain("9.90");
+    expect(text).not.toContain("just now");
   });
 });

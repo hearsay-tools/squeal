@@ -23,6 +23,7 @@ import {
 } from "./derive.js";
 import { describeFailure } from "./fingerprint.js";
 import { failureKeysOnce, heldFailure } from "./inherited.js";
+import { recordFailureProducers } from "./producers.js";
 import { transitionKind } from "./transitions.js";
 
 export interface StateSinkOptions {
@@ -102,6 +103,7 @@ export function createStateSink(store: Store, options: StateSinkOptions = {}): S
           stateFromResult(worktreeId, revision, r, keyOf(r), prior(r)),
         );
         recordFailureKeys(store, worktreeId, failureKeys(results));
+        recordFailureProducers(store, worktreeId, results);
         return commit(revision, next, provenance.checkpointId);
       }),
 
@@ -138,6 +140,7 @@ export function createStateSink(store: Store, options: StateSinkOptions = {}): S
           }
         }
         recordFailureKeys(store, worktreeId, failureKeys(hits));
+        recordFailureProducers(store, worktreeId, hits);
         for (const [id, state] of previous) {
           const key = keyOf(state);
           if (key === undefined || next.has(id)) continue;
