@@ -474,3 +474,94 @@ The range-diff output above is summarized. As a separate content check, a read-o
 ### Inputs for landing
 
 No repair is requested in this scope. Preserve the exact candidate and its reproducible bundles. Round 3's settled findings stand; its load-sensitive real-test notes remain qualified as written. This PASS covers the shared files at `63289a86`, with no independent full-suite verdict from this worker. The coordinator owns the remaining landing gate and CI decision.
+
+
+## Round 5: shared-file re-review at 9ffd66f4
+
+Verdict: **PASS 9ffd66f4**. **0 blockers, 0 should-fix findings, 0 nits.** Reviewed 2026-10-15 at exact candidate `9ffd66f43a6285c163694ba0ee9d3f7982e752d1` (`cand/0.1.192`). Row 008-36 was read after `git fetch origin` from `origin/main` at `cd79540c56c42cdc24a0ce3da0663b871bc529d7`. This round covers process step 6's shared files after 007-42 landed 0.1.191 (`85d830c5`), following Round 4's PASS at `63289a86`. The 14 non-build commits were re-picked onto `7f739bc6`, then built and versioned once. B1, B2 and the other settled OpenCode behavior remain closed and outside this round.
+
+### Verification output
+
+HEAD matched the assigned candidate. The worktree was clean before installation and remained clean after all checks, including the build. `npm ci` preceded the checks. The existing review file matched fetched main's Rounds 1-4 byte-for-byte before this append. No full suite, Squeal checkpoint or real OpenCode session was requested. The targeted Vitest run is the explicit key-format gate required by the brief.
+
+```text
+$ git rev-parse HEAD origin/main
+9ffd66f43a6285c163694ba0ee9d3f7982e752d1
+cd79540c56c42cdc24a0ce3da0663b871bc529d7
+$ git status --short
+(no output)
+$ npm ci
+npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+added 196 packages, and audited 197 packages in 8s
+32 packages are looking for funding
+found 0 vulnerabilities
+npm warn install-scripts 6 packages have install scripts not yet covered by allowScripts:
+  @google/genai@2.21.0, @parcel/watcher@2.6.0, esbuild@0.28.2,
+  msgpackr-extract@3.0.4, opencode-ai@1.18.35, protobufjs@7.6.6
+exit 0
+$ npm run lint
+> squeal@0.1.192 lint
+> biome check .
+Checked 1272 files in 773ms. No fixes applied.
+exit 0
+$ npm run typecheck
+> squeal@0.1.192 typecheck
+> tsc --noEmit
+exit 0
+$ npm run build
+> squeal@0.1.192 build
+> tsc -p tsconfig.build.json && npm run build:plugin
+> squeal@0.1.192 build:plugin
+> tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts
+exit 0
+$ npm run check:version -- origin/main
+> squeal@0.1.192 check:version
+> node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-version-bump.ts origin/main
+version bump: 0.1.191 -> 0.1.192, ok
+exit 0
+$ npx vitest run test/keys/key-format.test.ts
+Test Files  1 passed (1)
+     Tests  29 passed (29)
+  Duration  2.33s (tests 80%, transform 14%, import 6%)
+exit 0
+$ git status --short
+(no output)
+```
+
+The Git comparison ran on the same clean candidate:
+
+```text
+$ git range-diff --no-color '63289a86~15..63289a86~1' 'HEAD~15..HEAD~1'
+ 1: 837f3424 =  1: 16a4bb59
+ 2: b17ff54d =  2: bab92f0a
+ 3: 4c5a8f3a =  3: 455ac4cf
+ 4: c3ba3cef =  4: d977252e
+ 5: 3478535c =  5: 77140223
+ 6: 0685b5bc =  6: cfb94901
+ 7: 4cf4c624 =  7: 40153c7d
+ 8: 2930b56c =  8: 61fd8923
+ 9: b69ab6f1 =  9: 07d84780
+10: b64dcc77 = 10: df161fac
+11: b00b958a = 11: ef3543ad
+12: 6e53f421 = 12: 746c94c5
+13: e0f14111 = 13: e3b4ab63
+14: f6b22661 = 14: bd7f8dda
+exit 0
+```
+
+The range-diff above omits subjects only. An additional read-only Python comparison of `git diff --no-ext-diff --binary <commit>^ <commit>` confirmed all 14 ordered patch pairs are byte-identical. All 14 source/test files touched by the previously reviewed candidate are also byte-identical between `63289a86` and `9ffd66f4`.
+
+### What fits
+
+- **Proven by Git comparison:** intersecting the non-doc paths changed by `63289a86~15..63289a86` with those changed by `63289a86~15..9ffd66f4~15` gives exactly eight version files and 31 files under `plugins/*/dist`. No source, test or eval path is shared. Fetched main differs from the new base `7f739bc6` only in the board and wave-3 task brief. The new build commit changes only version metadata and bundles.
+- **Proven by parsed metadata and diff:** version `0.1.192` appears in root `package.json`, all three plugin package files (`claude-code`, `pi`, `opencode`), both manifests (`claude-code`, `codex`), `install.sh`'s `SQUEAL_VERSION`, and both root and `packages[""].version` in `package-lock.json`. These eight files change only their versions from `0.1.191`. The version gate against fetched main passes.
+- **Proven by clean installation and build:** the committed bundles reproduce from the combined source tree and lockfile without tracked drift. Lint and typecheck pass on the same clean candidate. This verifies that the shared bundles include the combined sources without carrying the earlier build commit forward.
+- **Proven by source comparison and the targeted test:** 007-42's `src/runners/pytest/adapter.ts`, `test/runners/pytest/adapter-files.test.ts` and `src/core/keys/key-format.ts` are preserved byte-for-byte from the new main base. The key-format file also matches fetched main: format remains 10 with pin `a0457b0f84c025c51a5ee196d689b6d45d2f08278081680696cffaceededf806`. All 29 key-format tests pass. No additional re-pin is required by this candidate.
+
+### Blockers, should-fix and nits
+
+None in this scope. No plausible or unverified defect is raised. **Unverified in this round:** full-suite behavior and real OpenCode execution, intentionally excluded by the brief. Round 3's qualified load-sensitive real-test notes remain as written; this round supplies no new evidence about them.
+
+### Inputs for landing
+
+No repair is requested. This PASS applies to the shared files at exact candidate `9ffd66f43a6285c163694ba0ee9d3f7982e752d1`. Keep the reproduced bundles and 007's key pin. The coordinator owns the remaining landing gate under the host lock and CI decision.
