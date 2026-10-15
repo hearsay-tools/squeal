@@ -204,3 +204,4 @@ Started: 2026-10-10
   - D4 "Retained evidence" adds the regrade from a kept cell's `out/`.
   - D10's cost line prices 11 scenarios, 440 sessions.
   - Slices 1 to 4 and row 006-86 wait for the human. Slice 3 would change a D10 rule though no committed grade.
+- 2026-10-15, the human: "Quality: All": row 006-86 with slice 1, and row 006-87 for slices 2 to 4 (`tasks/wave-14.md`), one candidate and one review. Row 007-53, the main CI flakes, goes to 001's coordinator.
