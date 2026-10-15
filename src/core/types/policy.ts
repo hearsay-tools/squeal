@@ -109,6 +109,12 @@ export interface Policy {
   readonly daemon: {
     /** Spec 001 D10: idle exit "with no registered consumers (default 60 minutes)". */
     readonly idleExitMinutes: number;
+    /**
+     * Spec 001 D10 as amended (task 001-415): a daemon with a consumer
+     * registered and no edit, tier, wait or request for this long stops; the
+     * next hook starts it again. Default `30`.
+     */
+    readonly unusedExitMinutes: number;
   };
   readonly store: {
     /** Spec 001 D8: "drop other keys after 7 days". Default `7`. */
@@ -236,7 +242,7 @@ export const DEFAULT_POLICY: Policy = {
   vitest: { excludeProjects: [] },
   slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 600_000, maxParallel: 4 },
   delivery: { uncoveredEdits: true },
-  daemon: { idleExitMinutes: 60 },
+  daemon: { idleExitMinutes: 60, unusedExitMinutes: 30 },
   store: { retentionDays: 7, maxSizeMb: null },
 };
 
