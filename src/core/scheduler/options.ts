@@ -1,5 +1,6 @@
 import type { PoolCapacity } from "../capacity/index.js";
 import type { Hasher } from "../hash/index.js";
+import type { HostLoad } from "../retry/index.js";
 import type { HeadState } from "../revision/index.js";
 import type {
   AbsolutePath,
@@ -35,6 +36,11 @@ export interface SchedulerOptions {
    * more, none is, and a note says why. Defaults to `RERUN_CAP`.
    */
   readonly rerunCap?: number;
+  /**
+   * The host's one-minute load and CPU count, read when a `load` retry may
+   * run and when a tier starts (001-368). Defaults to `hostLoad`.
+   */
+  readonly hostLoad?: () => HostLoad;
   /**
    * The longest one runner-part call is awaited before it is abandoned (task
    * 001-228). Defaults to `runnerPartBoundMs` of policy `runner.timeoutMs`.

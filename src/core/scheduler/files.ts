@@ -65,6 +65,11 @@ export interface FileState {
    */
   rerunPending: boolean;
   /**
+   * The key at which this daemon claimed and queued the agent's retry
+   * (001-368); `null` when none. Its run's result ends the shared request.
+   */
+  retryKey: CheckKey | null;
+  /**
    * Why the file is `unknown` because a runner call it needs failed (spec 001
    * D5: "A runner call that fails is a state, never a skip"). It is not run
    * until the runner recovers; `null` otherwise.
@@ -94,6 +99,7 @@ export function newFileState(ref: TestFileRef): FileState {
     discards: 0,
     rerunKey: null,
     rerunPending: false,
+    retryKey: null,
     blocked: null,
     tierCap: null,
   };
