@@ -12,6 +12,7 @@ import type {
   WhyResultEntry,
   WhyRunLog,
 } from "../types/index.js";
+import { durationsText } from "./durations.js";
 import { formatUnavailable, shortCommit } from "./format-status.js";
 
 const INDENT = "        ";
@@ -23,7 +24,10 @@ export function formatWhy(why: WhyResult): string {
     if (why.candidates.length === 0) return `No check matches "${why.query}" in this worktree.\n`;
     return `${[
       `"${why.query}" matches ${why.candidates.length} checks in this worktree:`,
-      ...why.candidates.map((c) => `  ${formatCheck(c)}`),
+      ...why.candidates.map((c, i) => {
+        const d = why.candidateDurations[i];
+        return `  ${formatCheck(c)}${d == null ? "" : `  ${durationsText(d)}`}`;
+      }),
     ].join("\n")}\n`;
   }
   const lines = [
@@ -35,6 +39,7 @@ export function formatWhy(why: WhyResult): string {
     "",
     ...history(why.history),
     "",
+    ...durationsLine(why),
     ...results(why),
     "",
     ...runLog(why),
@@ -124,6 +129,11 @@ function transitionText(t: Transition): string {
   if (t.kind === "first-seen-fail") return "first seen FAIL";
   const change = `${t.from === null ? "NONE" : upper(t.from)} -> ${upper(t.to)}`;
   return t.kind === "fail-changed" ? `${change}, failure changed` : change;
+}
+
+/** Task 001-411: one line above the results, over every stored result of the check. */
+function durationsLine(why: WhyReport): string[] {
+  return why.durations === null ? [] : [`Durations ${durationsText(why.durations)}`];
 }
 
 function results(why: WhyReport): string[] {
