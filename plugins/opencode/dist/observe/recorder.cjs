@@ -1,8 +1,8 @@
 // Squeal's runtime-input recorder (spec 001 D3, D4; task 001-132; research
-// observed-runtime-inputs F1). Loaded as a `--require` preload through
-// `NODE_OPTIONS`, in every Vitest worker and in every process and thread a test
-// starts. CommonJS, so it loads synchronously on any Node; it requires only Node
-// built-ins.
+// observed-runtime-inputs F1). Loaded as an `--import` of its `file:` URL
+// through `NODE_OPTIONS`, a `--require` beside a project's own (task 001-390),
+// in every Vitest worker and in every process and thread a test starts.
+// CommonJS, so either loads it synchronously; it requires only Node built-ins.
 //
 // Records, per test file, the worktree paths a process reads, stats, lists,
 // loads or executes, and the ones it writes: the `fs` calls (`fs.cjs`), the
@@ -11,8 +11,8 @@
 // is recorded with its target too, when the target is kept (task 001-135):
 // the link's spelling and the bytes read both key the file. Never changes a
 // call's arguments or result, except the env of a child: at every valid spawn,
-// sync or async, and every Worker, it puts `--require <this file>` into the
-// child's `NODE_OPTIONS` and its settings into `SQUEAL_OBSERVE`, whatever env
+// sync or async, and every Worker, it puts itself into the child's
+// `NODE_OPTIONS` and its settings into `SQUEAL_OBSERVE`, whatever env
 // the caller passed (`env: {}` too), so grandchildren are recorded
 // (`spawn.cjs`). Any error of its own is swallowed.
 //
