@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CLAIM, graded, STATUS_TEXT, type Step } from "./reference-sessions.js";
 import {
+  AT,
   a9Open,
   a11Open,
   CALENDAR,
@@ -29,8 +30,6 @@ const NORMAL: Step = {
   cmd: "squeal run --all --force --wait",
   out: `Checkpoint 0c1d completed at revision 1: no known failures; 9 test files, 0 already current, 9 run now\n\n${STATUS_TEXT(1)}`,
 };
-const AT = "test/rates.test.ts:4:1";
-
 const SESSIONS: Record<string, { name: string; steps: Step[]; misses: string[] }> = {};
 for (const [form, run] of [
   ["redirected", REDIRECTED],

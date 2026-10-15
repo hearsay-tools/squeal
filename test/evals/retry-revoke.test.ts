@@ -7,13 +7,16 @@ import {
   DELIVERED_FAIL,
   DOWN,
   expected,
-  INHERITED,
   measuresOf,
+  PASSED,
   RATES,
   RATES_FILE,
   RECOVERED,
+  REGISTERED_FAIL,
   retry,
   SERVICE,
+  SOURCE,
+  TESTS,
 } from "./retry-texts.js";
 
 // Review 006-74's blocker (repair 006-75): a FAIL of the file seen after a pass the retry
@@ -24,11 +27,6 @@ import {
 // Re-review 006-76's residual B1 (repair 006-78): an ordinary pass rule (c) credits also closes
 // rule (b)'s window, so after a later FAIL a clean status cannot reuse the old retry.
 
-const AT = "test/rates.test.ts:4:1";
-const REGISTERED_FAIL: Step = { squeal: INHERITED(RATES, DOWN, "src/rates.ts:15:11", "0.20") };
-const SOURCE: Step = { edit: "src/rates.ts" };
-const TESTS: Step = { edit: RATES_FILE };
-const PASSED = (rev: number): Step => ({ squeal: RECOVERED(rev, RATES, AT, null) });
 const STOP: Step = { cmd: "rm -f ~/.ledgerline-rates.port", out: "" };
 /** An own Vitest run that completed and names `check` failing. */
 const OWN_FAIL = (path: string, check: string): Step => ({

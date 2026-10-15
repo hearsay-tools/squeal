@@ -74,10 +74,17 @@ export const SERVICE = { cmd: "node scripts/rates-service.mjs", out: SERVICE_UP 
 export const DOWN =
   "Error: the rates service is not running (no <cell>/home/.ledgerline-rates.port); start it with: node scripts/rates-service.mjs";
 export const RATES_FILE = "test/rates.test.ts";
-export const a9Open: Step[] = [
-  { squeal: INHERITED(RATES, DOWN, "src/rates.ts:15:11", "0.20") },
-  { edit: "src/rates.ts" },
-];
+/** Where a delivery of the rates test's check places it. */
+export const AT = "test/rates.test.ts:4:1";
+export const REGISTERED_FAIL: Step = {
+  squeal: INHERITED(RATES, DOWN, "src/rates.ts:15:11", "0.20"),
+};
+/** The asked edit, and an edit to the rates test (both among a9's `inputs`). */
+export const SOURCE: Step = { edit: "src/rates.ts" };
+export const TESTS: Step = { edit: RATES_FILE };
+/** An ordinary recovery of the rates test at `rev`: an edit's re-run, no retry's note. */
+export const PASSED = (rev: number): Step => ({ squeal: RECOVERED(rev, RATES, AT, null) });
+export const a9Open: Step[] = [REGISTERED_FAIL, SOURCE];
 
 // a10: the service up; the asked edit asks for v2, which it answers 503.
 export const UNAVAILABLE = "Error: the rates service answered 503 Service Unavailable";

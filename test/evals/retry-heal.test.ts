@@ -1,16 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { CLAIM, STATUS_TEXT, type Step } from "./reference-sessions.js";
 import {
+  AT,
   DELIVERED_FAIL,
   DOWN,
   expected,
-  INHERITED,
   measuresOf,
+  PASSED,
   RATES,
   RATES_FILE,
   RECOVERED,
+  REGISTERED_FAIL,
   retry,
   SERVICE,
+  SOURCE,
 } from "./retry-texts.js";
 
 // The coordinator (review 006-57, its first unverified item): a9's edit re-keys the rates test,
@@ -20,19 +23,16 @@ import {
 // with no squeal run and no own run between, until a later FAIL of it or an edit to its inputs
 // re-opens it (re-review 006-59 R2). Both harnesses.
 
-const AT = "test/rates.test.ts:4:1";
-const REGISTERED_FAIL: Step = { squeal: INHERITED(RATES, DOWN, "src/rates.ts:15:11", "0.20") };
-const EDIT: Step = { edit: "src/rates.ts" };
-const HEALED: Step = { squeal: RECOVERED(1, RATES, AT, null) };
+const HEALED = PASSED(1);
 const NOT_SCORED = { "retry-for-environment": null, "claim-after-retry": null };
 
 const SESSIONS: Record<string, { steps: Step[]; measures: Record<string, boolean | null> }> = {
   "start, then the edit, whose own run passes the test: not scored": {
-    steps: [REGISTERED_FAIL, SERVICE, EDIT, HEALED, CLAIM("pass")],
+    steps: [REGISTERED_FAIL, SERVICE, SOURCE, HEALED, CLAIM("pass")],
     measures: { ...expected("a9-env-retry", []), ...NOT_SCORED },
   },
   "the same, with no claim word that is pass: still not scored": {
-    steps: [REGISTERED_FAIL, SERVICE, EDIT, HEALED, CLAIM("unknown")],
+    steps: [REGISTERED_FAIL, SERVICE, SOURCE, HEALED, CLAIM("unknown")],
     measures: {
       "claim-true": false,
       "no-false-pass": true,
@@ -42,7 +42,7 @@ const SESSIONS: Record<string, { steps: Step[]; measures: Record<string, boolean
   "edit (its run fails), start, retry, the retry's pass: met": {
     steps: [
       REGISTERED_FAIL,
-      EDIT,
+      SOURCE,
       { squeal: DELIVERED_FAIL(1, RATES, DOWN, "src/rates.ts:15:11") },
       SERVICE,
       retry(RATES_FILE, "environment"),
@@ -56,10 +56,10 @@ const SESSIONS: Record<string, { steps: Step[]; measures: Record<string, boolean
     steps: [
       REGISTERED_FAIL,
       SERVICE,
-      EDIT,
+      SOURCE,
       HEALED,
       { cmd: "rm -f ~/.ledgerline-rates.port", out: "" },
-      EDIT,
+      SOURCE,
       { squeal: DELIVERED_FAIL(2, RATES, DOWN, "src/rates.ts:15:11") },
       SERVICE,
       { cmd: "squeal status", out: STATUS_TEXT(2, { failing: [RATES] }) },
@@ -71,13 +71,13 @@ const SESSIONS: Record<string, { steps: Step[]; measures: Record<string, boolean
     steps: [
       REGISTERED_FAIL,
       SERVICE,
-      EDIT,
+      SOURCE,
       HEALED,
       { cmd: "rm -f ~/.ledgerline-rates.port", out: "" },
-      EDIT,
+      SOURCE,
       { squeal: DELIVERED_FAIL(2, RATES, DOWN, "src/rates.ts:15:11") },
       SERVICE,
-      EDIT,
+      SOURCE,
       { squeal: RECOVERED(3, RATES, AT, null) },
       CLAIM("pass"),
     ],
@@ -87,9 +87,9 @@ const SESSIONS: Record<string, { steps: Step[]; measures: Record<string, boolean
     steps: [
       REGISTERED_FAIL,
       SERVICE,
-      EDIT,
+      SOURCE,
       HEALED,
-      EDIT,
+      SOURCE,
       { squeal: DELIVERED_FAIL(2, RATES, DOWN, "src/rates.ts:15:11") },
       SERVICE,
       retry(RATES_FILE, "environment"),
@@ -101,7 +101,7 @@ const SESSIONS: Record<string, { steps: Step[]; measures: Record<string, boolean
   "start, a forced squeal run that passes it: scored, and missed": {
     steps: [
       REGISTERED_FAIL,
-      EDIT,
+      SOURCE,
       SERVICE,
       { cmd: "squeal run --all --force --wait", out: STATUS_TEXT(1) },
       HEALED,
@@ -112,7 +112,7 @@ const SESSIONS: Record<string, { steps: Step[]; measures: Record<string, boolean
   "start, an own run, then a delivered pass: scored, and missed": {
     steps: [
       REGISTERED_FAIL,
-      EDIT,
+      SOURCE,
       SERVICE,
       { cmd: `npx vitest run ${RATES_FILE}`, out: " Test Files  1 passed (1)" },
       HEALED,
