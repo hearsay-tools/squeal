@@ -25,7 +25,7 @@ import { ConfigStamps } from "./config-stamps.js";
 import { projectEnvironment } from "./environment.js";
 import { exclusion } from "./exclude.js";
 import { Gate, type Hold } from "./gate.js";
-import { importClosure, resolutionCandidates } from "./graph.js";
+import { importClosure, missingCandidates } from "./graph.js";
 import { loadVitest, type VitestNode } from "./load.js";
 import { mayHaveRun, withoutFiles, withoutTouched } from "./moved.js";
 import { VitestObserver } from "./observe.js";
@@ -339,12 +339,11 @@ export class VitestAdapter implements RunnerAdapter {
       // Spec 001 D3: the snapshot path whether or not the file exists, and
       // every resolution candidate of an unresolved import, so the key
       // changes when one appears, incrementally and at bootstrap (review B1).
-      const files = new Set(graph.files);
+      const files = new Set([
+        ...graph.files,
+        ...missingCandidates(graph, resolveExtensions(project)),
+      ]);
       files.add(snapshotPath(project, abs));
-      const extensions = resolveExtensions(project);
-      for (const target of graph.missing) {
-        for (const candidate of resolutionCandidates(target, extensions)) files.add(candidate);
-      }
       const paths = [...files]
         .filter((f) => this.paths.isProjectFile(f))
         .map((f) => this.paths.toRelative(f))

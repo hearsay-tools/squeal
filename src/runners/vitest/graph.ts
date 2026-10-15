@@ -271,6 +271,22 @@ export function resolutionCandidates(
 }
 
 /**
+ * Every resolution candidate of the closure's missing targets (D3). Test file
+ * closures and the environment's setup closures list them, so an add that
+ * resolves one re-keys what imports it.
+ */
+export function missingCandidates(
+  closure: ImportClosure,
+  extensions: readonly string[],
+): Set<AbsolutePath> {
+  const candidates = new Set<AbsolutePath>();
+  for (const target of closure.missing) {
+    for (const candidate of resolutionCandidates(target, extensions)) candidates.add(candidate);
+  }
+  return candidates;
+}
+
+/**
  * The inverse of `resolutionCandidates`: every import target that has `path`
  * among its candidates. An import of one of these targets may resolve to
  * `path` once it exists, whether it was unresolved or resolved to another
