@@ -199,3 +199,8 @@ Started: 2026-10-10
   - dd4056 Claude a8, 16 cells: under 006-62 the broken launcher's replies earn no credit, so `slow-through-squeal` is Haiku 0/10 (was 6/10) and Sonnet 0/10 (was 10/10). Lessons already called that half invalid; 320f5e's re-run stands.
 - Main CI: a second CI-only flake on a docs-only commit (run 38769103748, `test/runners/node-test/run.test.ts:120`, a busy-loop file completed before its deadline). Folded into row 007-53, landed past.
 - Cost: one worker (one pass, one decision relayed), one reviewer (one round), one gate.
+- 2026-10-15, quality pass 006-85 (`quality/2026-10-15.md`): 0 drop candidates, row 006-86, 6 slices.
+  - The coordinator did slices 5 and 6 in place: `evals/README.md` names `regrade-cells.mjs` and `atomic-regrade.mjs`'s `--by`/`--note`, and drops "a change to any recorded count applies only to later runs".
+  - D4 "Retained evidence" adds the regrade from a kept cell's `out/`.
+  - D10's cost line prices 11 scenarios, 440 sessions.
+  - Slices 1 to 4 and row 006-86 wait for the human. Slice 3 would change a D10 rule though no committed grade.
