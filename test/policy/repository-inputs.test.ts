@@ -125,6 +125,39 @@ describe("policy: this repository's squeal.config.json", () => {
     expect(testFiles.filter((path) => after[path] !== before[path])).toEqual(plugin);
   });
 
+  /*
+   * Task 001-399: the OpenCode and Pi tests build their bundles from
+   * `src/harness/*` in an esbuild child process and read the committed
+   * package, neither of which tracing follows.
+   */
+  it.each([
+    ["opencode", "plugins/opencode/dist/plugin.mjs"],
+    ["pi", "plugins/pi/dist/extension.mjs"],
+  ])("re-keys exactly the %s harness tests when its package changes", async (harness, bundle) => {
+    const tests = testFiles.filter((path) => path.startsWith(`test/harness/${harness}/`));
+    expect(tests).toContain(`test/harness/${harness}/package.test.ts`);
+    const before = allKeys();
+
+    write(bundle, "// rebuilt\n");
+    const revision = await batch(bundle);
+    keys.index.rekey(revision?.changes.map((c) => c.path) ?? []);
+
+    const after = allKeys();
+    expect(testFiles.filter((path) => after[path] !== before[path])).toEqual(tests);
+  });
+
+  it("re-keys the OpenCode and Pi package tests when a source they bundle changes", async () => {
+    const before = allKeys();
+    write("src/harness/opencode/bridge-turn.ts", "// edited, not rebuilt\n");
+    const revision = await batch("src/harness/opencode/bridge-turn.ts");
+    keys.index.rekey(revision?.changes.map((c) => c.path) ?? []);
+
+    const after = allKeys();
+    const rekeyed = testFiles.filter((path) => after[path] !== before[path]);
+    expect(rekeyed).toContain("test/harness/opencode/package.test.ts");
+    expect(rekeyed).toContain("test/harness/pi/package.test.ts");
+  });
+
   it("re-keys the adapter tests, and no others, when a vitest fixture changes", async () => {
     const adapter = testFiles.filter((path) => path.startsWith("test/runners/vitest/"));
     expect(adapter.length).toBeGreaterThan(0);
