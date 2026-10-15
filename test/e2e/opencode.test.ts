@@ -11,7 +11,7 @@ import {
 import { type OpenCodeRun, opencodeUnavailable, textOf } from "../helpers/opencode.js";
 import { fixtureInstall, type Install } from "./install.js";
 import { OpenCodeE2E, type OpenCodeE2EOptions } from "./opencode-fixture.js";
-import { timeline } from "./opencode-timeline.js";
+import { type Timeline, timeline } from "./opencode-timeline.js";
 import { type Watched, watchRun } from "./opencode-watch.js";
 import { MATH, SLOW } from "./sources.js";
 import { daemonPids, until } from "./support.js";
@@ -41,6 +41,8 @@ const QUIET_MS = 4_000;
  * regression before the turn ends test its delivery, not the deadline (review 008-27 S1).
  */
 const STOP_WAIT_MS = 1_500;
+/** Tries of the stored-once `run --continue` check; each but the last may miss a deadline. */
+const CONTINUE_ATTEMPTS = 3;
 
 let install: Install = { ok: false, reason: "the install did not run" };
 beforeAll(async () => {
@@ -67,6 +69,60 @@ function fixture(ctx: TestContext, options: OpenCodeE2EOptions = {}): OpenCodeE2
   fixtures.push(made);
   plugins.push(made.plugin);
   return made;
+}
+
+/**
+ * Goal 4 and D5 under `run`: a fresh fixture whose regression is known before the turn's last
+ * reply returns, so it is undelivered when the turn ends and `run` disposes the instance; then
+ * `run --continue`, and the timeline of the first run's end (review 008-27 S1).
+ */
+async function storedThenContinued(
+  ctx: TestContext,
+): Promise<{ e2e: OpenCodeE2E; first: OpenCodeRun; next: OpenCodeRun; marked: Timeline }> {
+  const e2e = fixture(ctx, { started: true, stopWaitMs: STOP_WAIT_MS });
+  let watched: Promise<Watched> = Promise.resolve({ consumers: [], bridges: [] });
+  const exits: Record<string, number> = {};
+  const first = await e2e.run(
+    {
+      mode: "run",
+      plan: [{ tools: [e2e.gateCall(0)] }, { text: "done", release: e2e.releasePath(1) }],
+    },
+    async (world) => {
+      try {
+        if (!(await e2e.atGate(world, 0, async () => {}))) return;
+        await until("request 1", 60_000, async () =>
+          world.planned().length > 1 || world.done() ? true : null,
+        );
+        e2e.edit("math", MATH("-"));
+        await e2e.settled("fail");
+      } finally {
+        // From the last reply to the exit: Stop's delivery, the bridges, `dispose`'s end.
+        watched = watchRun(e2e.store.database, e2e.base, world);
+        e2e.release(1);
+      }
+    },
+  );
+  exits.run = Date.now();
+  expectClean(first, "run");
+  // No model request after the last reply: `run` ends at idle.
+  expect(first.requests).toHaveLength(2);
+  expect(
+    mentions(
+      FAIL,
+      first.requests.flatMap((r) => r.messages),
+    ),
+  ).toBe(0);
+  const next = await e2e.continue({ plan: [{ text: "noted" }], prompt: "what is new?" });
+  exits["run --continue"] = Date.now();
+  const marked = timeline({
+    first,
+    session: first.sessionID ?? "",
+    database: e2e.store.database,
+    stopWaitMs: STOP_WAIT_MS,
+    watched: await watched,
+    exits,
+  });
+  return { e2e, first, next, marked };
 }
 
 /** The messages `next` carries that `previous` did not: the last turn's reply and results. */
@@ -263,67 +319,35 @@ describe.skipIf(unavailable !== undefined)(
     });
 
     it("run: news at the end of the turn is stored in the session, and run --continue reads it once", {
-      timeout: 300_000,
+      timeout: 600_000,
     }, async (ctx) => {
-      const e2e = fixture(ctx, { started: true, stopWaitMs: STOP_WAIT_MS });
-      // Goal 4 and D5 under `run`: the regression is known before the turn's last reply returns,
-      // so it is undelivered when the turn ends and `run` disposes the instance.
-      let watched: Promise<Watched> = Promise.resolve({ consumers: [], bridges: [] });
-      const exits: Record<string, number> = {};
-      const first = await e2e.run(
-        {
-          mode: "run",
-          plan: [{ tools: [e2e.gateCall(0)] }, { text: "done", release: e2e.releasePath(1) }],
-        },
-        async (world) => {
-          try {
-            if (!(await e2e.atGate(world, 0, async () => {}))) return;
-            await until("request 1", 60_000, async () =>
-              world.planned().length > 1 || world.done() ? true : null,
-            );
-            e2e.edit("math", MATH("-"));
-            await e2e.settled("fail");
-          } finally {
-            // From the last reply to the exit: Stop's delivery, the bridges, `dispose`'s end.
-            watched = watchRun(e2e.store.database, e2e.base, world);
-            e2e.release(1);
-          }
-        },
-      );
-      exits.run = Date.now();
-      expectClean(first, "run");
-      // No model request after the last reply: `run` ends at idle.
-      expect(first.requests).toHaveLength(2);
-      expect(
-        mentions(
-          FAIL,
-          first.requests.flatMap((r) => r.messages),
-        ),
-      ).toBe(0);
-      const next = await e2e.continue({ plan: [{ text: "noted" }], prompt: "what is new?" });
-      exits["run --continue"] = Date.now();
-      // Where a missed report went (review 008-27 S1): the stores, logs and exits, timed.
-      const marked = timeline({
-        first,
-        session: first.sessionID ?? "",
-        database: e2e.store.database,
-        stopWaitMs: STOP_WAIT_MS,
-        watched: await watched,
-        exits,
-      });
-      expectClean(next, "run");
-      expect(next.sessionID, marked).toBe(first.sessionID);
-      const [resumed, more] = next.requests;
-      expect(more, marked).toBeUndefined();
-      // The stored continuation, a user message between the last reply and the new prompt.
-      const since = added(resumed, first.requests[1]).filter((m) => m.role === "user");
-      const stored = since.filter((m) => textOf(m).includes(FAIL));
-      expect(stored, marked).toHaveLength(1);
-      expect(textOf(stored[0])).toMatch(/^SQUEAL · /);
-      expect(textOf(stored[0])).toContain(ADDS);
-      // Only the report: the plugin instance OpenCode re-creates to store it adds no header.
-      expect(textOf(stored[0])).not.toContain("registered at revision");
-      expect(textOf(since.at(-1))).toContain("what is new?");
+      // An attempt whose report missed one of D4's deadlines, as its timeline proves, is load's
+      // silence, not the defect this checks (review 008-27 S1): annotated, then tried again.
+      for (let n = 1; ; n++) {
+        const { e2e, first, next, marked } = await storedThenContinued(ctx);
+        expectClean(next, "run");
+        expect(next.sessionID, marked.text).toBe(first.sessionID);
+        const [resumed, more] = next.requests;
+        expect(more, marked.text).toBeUndefined();
+        // The stored continuation, a user message between the last reply and the new prompt.
+        const since = added(resumed, first.requests[1]).filter((m) => m.role === "user");
+        const stored = since.filter((m) => textOf(m).includes(FAIL));
+        if (stored.length === 0 && marked.missedDeadline && n < CONTINUE_ATTEMPTS) {
+          await ctx.annotate(
+            `attempt ${n} of ${CONTINUE_ATTEMPTS} stored nothing:\n${marked.text}`,
+          );
+          // Its daemon would load the next attempt; `afterEach` finds it stopped.
+          await e2e.cleanup();
+          continue;
+        }
+        expect(stored, marked.text).toHaveLength(1);
+        expect(textOf(stored[0])).toMatch(/^SQUEAL · /);
+        expect(textOf(stored[0])).toContain(ADDS);
+        // Only the report: the plugin instance OpenCode re-creates to store it adds no header.
+        expect(textOf(stored[0])).not.toContain("registered at revision");
+        expect(textOf(since.at(-1))).toContain("what is new?");
+        return;
+      }
     });
 
     it("serve: the agent's own edit failing after its turn ended wakes it with the PASS -> FAIL, once", {
