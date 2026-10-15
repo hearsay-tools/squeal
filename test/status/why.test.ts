@@ -57,6 +57,7 @@ describe("readWhy", () => {
         revision 1  2026-10-04T09:30:00.000Z  first seen FAIL
         revision 2  2026-10-04T11:00:00.000Z  FAIL -> PASS
 
+      Durations (2 results, 1 pass / 1 fail): min 12 ms, median 12 ms, p95 12 ms, max 12 ms
       Results (2, newest first):
         PASS  2026-10-04T10:30:00.000Z  <main>, revision 3, commit abc1234, clean
               run run-a1, 12 ms, key k1
@@ -103,11 +104,16 @@ describe("readWhy", () => {
         check("src/auth.test.ts", "auth > login twice"),
         check("src/auth.test.ts", "auth > logout"),
       ],
+      candidateDurations: [
+        { results: 2, pass: 1, fail: 1, skip: 0, minMs: 12, medianMs: 12, p95Ms: 12, maxMs: 12 },
+        null,
+        null,
+      ],
     });
     expect(formatWhy(ambiguous)).toBe(
       [
         '"auth > log" matches 3 checks in this worktree:',
-        "  src/auth.test.ts > auth > login",
+        "  src/auth.test.ts > auth > login  (2 results, 1 pass / 1 fail): min 12 ms, median 12 ms, p95 12 ms, max 12 ms",
         "  src/auth.test.ts > auth > login twice",
         "  src/auth.test.ts > auth > logout",
         "",

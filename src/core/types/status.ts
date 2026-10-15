@@ -585,6 +585,28 @@ export interface WhyReport {
    * Absent for a known state at the current revision, or with none.
    */
   readonly changedSince?: WhyChangedSince;
+  /**
+   * Durations over every stored result of the check, not only the listed
+   * ones (task 001-411). `null` when no pass or fail is stored.
+   */
+  readonly durations: WhyDurations | null;
+}
+
+/**
+ * Durations of a check's stored results across worktrees (task 001-411):
+ * passes and fails, as a skip runs nothing. Nearest-rank median and p95.
+ */
+export interface WhyDurations {
+  /** Results timed: `pass + fail`. */
+  readonly results: number;
+  readonly pass: number;
+  readonly fail: number;
+  /** Stored skips, counted and left out of the figures. */
+  readonly skip: number;
+  readonly minMs: number;
+  readonly medianMs: number;
+  readonly p95Ms: number;
+  readonly maxMs: number;
 }
 
 /** What changed in this worktree since an older result's revision. Task 001-225. */
@@ -653,6 +675,8 @@ export interface WhyNoMatch {
   readonly query: string;
   /** Checks of this worktree whose name contains the query; empty when none does. */
   readonly candidates: readonly CheckId[];
+  /** Each candidate's durations, in the order of `candidates` (task 001-411). */
+  readonly candidateDurations: readonly (WhyDurations | null)[];
 }
 
 export type WhyResult = WhyReport | WhyNoMatch | StatusUnavailable;
