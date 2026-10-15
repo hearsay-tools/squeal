@@ -467,7 +467,7 @@ export function recordTier(
       const prior = storeResults(context, records);
       recordFailedLoad(context, tier.runId, tier.loadPerCpu ?? null, records);
       if (forced && file.rerunKey === key) endRerun(context, file);
-      if (forced) endRetry(context, file, key, records);
+      if (forced) endRetry(context, file, key, records, tier.runId);
       // A grown file's results become current at `storeKey` through `settle` below; its new
       // failure is judged here, before the sink applies them (review wave 13i, B3).
       if (growth !== undefined || file.key === key) {
@@ -516,9 +516,9 @@ export function recordTier(
     const timedOut =
       report.end === "timed-out" ? timedOutReason(context.policy.runner.timeoutMs) : null;
     const reason = timedOut ?? report.failure ?? `run ${report.end}`;
-    for (const { file, key } of unknown) endRetry(context, file, key, null);
+    for (const { file, key } of unknown) endRetry(context, file, key, null, tier.runId);
     for (const { file } of notStarted)
-      if (file.key !== null) endRetry(context, file, file.key, null);
+      if (file.key !== null) endRetry(context, file, file.key, null, tier.runId);
     ledger.markUnknown(unknown, reason);
     ledger.commit();
   });
