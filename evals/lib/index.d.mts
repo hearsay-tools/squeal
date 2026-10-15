@@ -444,6 +444,8 @@ export function squealEvidence(
   failures?: number | Failing,
 ): Evidence | null;
 export function failingAfter(before: Failing, step: Evidence): Failing;
+/** The text a Claude Code hook's JSON reply delivers to the model; any other text as it is. */
+export function hookText(text: string): string;
 export function currentCheck(step: Evidence, check: CheckSeen): boolean;
 export function replayed(timeline: readonly Step[]): Step[];
 export function completedRuns(out: unknown): { vitest: number; "node:test": number };
