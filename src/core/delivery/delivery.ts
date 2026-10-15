@@ -20,7 +20,7 @@ import {
 import { annotate, withDependencies } from "./attribution.js";
 import { recordVersion } from "./consumer-version.js";
 import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from "./delta.js";
-import { editNotes, startEdits } from "./edits.js";
+import { carriesEditResult, editNotes, startEdits } from "./edits.js";
 import { drop } from "./expiry.js";
 import { recordHarness } from "./harness-process.js";
 import {
@@ -207,6 +207,15 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         states,
       );
       notes?.tell();
+      const sawEdit =
+        notes === null ||
+        carriesEditResult(
+          notes,
+          entries.map((e) => e.check),
+          header,
+        )
+          ? undefined
+          : notes.sawEdit;
       const label =
         delta.entries.length > 0 && delta.entries.every(isBaselineEntry)
           ? "baseline"
@@ -219,7 +228,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         entries,
         stillFailing,
         ...(changed === null ? {} : { liveness: changed }),
-        ...(notes?.sawEdit === undefined ? {} : { sawEdit: notes.sawEdit }),
+        ...(sawEdit === undefined ? {} : { sawEdit }),
         ...(notes?.editsSettled === undefined ? {} : { editsSettled: notes.editsSettled }),
       };
     });
