@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { e2eSuite, MATH, PLUGINS } from "./harness.js";
-import { daemonProcesses, lockHolders, stoppedItself } from "./restart-evidence.js";
+import { daemonProcesses, lockHolders, resume, stoppedItself } from "./restart-evidence.js";
 
 /*
  * Task 001-340, from 001-337's reproduction: the daemon's shutdown unlinks
@@ -49,7 +49,7 @@ describe.runIf(process.platform === "linux").each(PLUGINS)(
         expect.soft(stopped, "stop has not said stopped while the lock is held").toBe(false);
         console.log(`001-340 frozen:\n${await daemonProcesses(e)}`);
       } finally {
-        process.kill(first.pid, "SIGCONT");
+        resume(first.pid);
       }
 
       const done = await stop;
