@@ -1,0 +1,118 @@
+import { describe, expect, it } from "vitest";
+import {
+  askRetry,
+  cancelRetries,
+  claimRetries,
+  endRetries,
+  loadAllows,
+  RETRIES_KEPT,
+  RETRIES_META_KEY,
+  readRetries,
+  readRunLoads,
+  recordRunLoad,
+  releaseRetries,
+} from "../../src/core/retry/index.js";
+import { FILE, freshStore, OTHER, WT } from "../state/helpers.js";
+
+/*
+ * Spec 001 D6 as amended (001-368): a retry is asked once per test file per
+ * key per session; the request is kept in the shared store, claimed by one
+ * daemon at its key and ended by its run.
+ */
+
+const ask = (session: string, key = "k1", reason: "load" | "environment" = "load") => ({
+  testFile: FILE,
+  key,
+  session,
+  reason,
+  at: 1,
+  worktreeId: WT,
+});
+
+describe("askRetry", () => {
+  it("queues once per session at a key; another session or another key has its own", () => {
+    const store = freshStore();
+    expect(askRetry(store, ask("s1")).kind).toBe("queued");
+    const again = askRetry(store, ask("s1"));
+    expect(again).toMatchObject({ kind: "spent", record: { session: "s1", end: null } });
+    expect(askRetry(store, ask("s2")).kind).toBe("queued");
+    expect(askRetry(store, ask("s1", "k2")).kind).toBe("queued");
+    expect(readRetries(store)).toHaveLength(3);
+  });
+
+  it("stays spent after a run gave a result, and is free again after a cancel or a run with none", () => {
+    const store = freshStore();
+    askRetry(store, ask("s1"));
+    endRetries(store, FILE, "k1", { outcome: "failed", at: 2, worktreeId: WT });
+    expect(askRetry(store, ask("s1"))).toMatchObject({
+      kind: "spent",
+      record: { end: { outcome: "failed" } },
+    });
+
+    askRetry(store, ask("s2"));
+    expect(cancelRetries(store, FILE, "k1", WT, 3)).toHaveLength(1);
+    expect(askRetry(store, ask("s2")).kind).toBe("queued");
+    endRetries(store, FILE, "k1", { outcome: "unknown", at: 4, worktreeId: WT });
+    expect(askRetry(store, ask("s2")).kind).toBe("queued");
+  });
+
+  it("keeps the newest requests only", () => {
+    const store = freshStore();
+    for (let i = 0; i <= RETRIES_KEPT; i++) askRetry(store, ask(`s${i}`));
+    const kept = readRetries(store);
+    expect(kept).toHaveLength(RETRIES_KEPT);
+    expect(kept[0]?.session).toBe("s1");
+  });
+
+  it("reads nothing from a row that does not parse", () => {
+    const store = freshStore();
+    store.meta.set(RETRIES_META_KEY, "{");
+    expect(readRetries(store)).toEqual([]);
+  });
+});
+
+describe("claimRetries", () => {
+  it("lets one live daemon take a request; its own worktree or a dead claimant's successor takes it again", () => {
+    const store = freshStore();
+    askRetry(store, ask("s1"));
+    const live = new Set([WT, OTHER]);
+    const isLive = (id: string) => live.has(id);
+    expect(claimRetries(store, FILE, "k1", WT, 5, isLive)).toBe(true);
+    expect(claimRetries(store, FILE, "k1", OTHER, 6, isLive)).toBe(false);
+    expect(claimRetries(store, FILE, "k1", WT, 7, isLive)).toBe(true);
+    live.delete(WT);
+    expect(claimRetries(store, FILE, "k1", OTHER, 8, isLive)).toBe(true);
+    expect(readRetries(store)[0]?.claim).toEqual({ worktreeId: OTHER, at: 8 });
+  });
+
+  it("frees a claim its worktree gives back, and never takes an ended request", () => {
+    const store = freshStore();
+    askRetry(store, ask("s1"));
+    const isLive = () => true;
+    claimRetries(store, FILE, "k1", WT, 5, isLive);
+    releaseRetries(store, FILE, WT);
+    expect(claimRetries(store, FILE, "k1", OTHER, 6, isLive)).toBe(true);
+    endRetries(store, FILE, "k1", { outcome: "passed", at: 7, worktreeId: OTHER });
+    expect(claimRetries(store, FILE, "k1", OTHER, 8, isLive)).toBe(false);
+  });
+});
+
+describe("loads", () => {
+  it("allows a load retry below the CPU count or with no load known", () => {
+    expect(loadAllows({ oneMinute: 7.9, cpus: 8 })).toBe(true);
+    expect(loadAllows({ oneMinute: 8, cpus: 8 })).toBe(false);
+    expect(loadAllows({ oneMinute: null, cpus: 8 })).toBe(true);
+  });
+
+  it("keeps a run's load per CPU", () => {
+    const store = freshStore();
+    recordRunLoad(store, "run-1", 0.5);
+    recordRunLoad(store, "run-2", 1.25);
+    expect(readRunLoads(store)).toEqual(
+      new Map([
+        ["run-1", 0.5],
+        ["run-2", 1.25],
+      ]),
+    );
+  });
+});
