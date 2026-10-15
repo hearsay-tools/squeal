@@ -110,19 +110,20 @@ async function baseline(): Promise<void> {
   await delivery.register(C1);
 }
 
-/** The consumer's watched edit of `src/a.ts` at revision 1 moves `FILE` to key B. */
-function edit(): void {
+/** The consumer's watched edit of `src/a.ts` at the next revision moves `refs` to `to` (`FILE` to key B). */
+function edit(refs: readonly TestFileRef[] = [FILE], to: CheckKey = key("b")): void {
+  const latest = store.revisions.latest(WT)?.number ?? 0;
   const revision = store.revisions.append({
     worktreeId: WT,
-    createdAt: 1,
+    createdAt: latest + 1,
     head: null,
     dirty: true,
     trigger: "watch",
-    changes: [{ path: "src/a.ts", oldHash: null, newHash: "h1" }],
+    changes: [{ path: "src/a.ts", oldHash: null, newHash: `h${latest + 1}` }],
   }).number;
   ledger.revision = { number: revision, head: null, dirty: true };
-  keys.set(FILE.path, key("b"));
-  ledger.settle([FILE], new Set(), { keyedAt: revision });
+  for (const ref of refs) keys.set(ref.path, to);
+  ledger.settle(refs, new Set(), { keyedAt: revision });
   ledger.commit({ refined: revision });
 }
 
@@ -191,5 +192,40 @@ describe("the settled line over an edited file's confirmation run (review wave 1
     const window = editWindow(store, WT as WorktreeId, 0, 1, rekeyed);
     expect(window.ids).toEqual(new Set([testFileId(FILE)]));
     expect(heldPending(window, store.testFileKeys.list(WT))).toBe(0);
+  });
+});
+
+/*
+ * Task 001-396 (008 lessons, defect 4(b)): the edit's first result fails
+ * anew, so its confirmation keeps the file's row pending and the settled line
+ * held, while the header says 0 pending. The message that delivers that
+ * result does not also say "results arrive with later tool calls".
+ */
+describe("the 001-224 line beside the edit's own result (task 001-396)", () => {
+  const SAW = "Squeal saw your edit";
+
+  it("is left out with nothing pending, and spent: the next edit does not say it", async () => {
+    await baseline();
+    edit();
+    land(FILE, key("b"), [result(A, "fail", { key: key("b") })]);
+    const delta = await delivery.onToolBoundary(C1, { stop: false });
+    expect(delta?.sawEdit).toBeUndefined();
+    const first = delta === null ? "" : formatDelta(delta);
+    expect(first).toContain("0 pending");
+    expect(first).toContain("PASS -> FAIL");
+    expect(first).not.toContain(SAW);
+
+    edit([FILE], key("c"));
+    expect(await text()).toBeNull();
+  });
+
+  it("is kept while the edit's other file is pending", async () => {
+    await baseline();
+    edit([FILE, OTHER_FILE]);
+    land(FILE, key("b"), [result(A, "fail", { key: key("b") })]);
+    const kept = await text();
+    expect(kept).toContain("PASS -> FAIL");
+    expect(kept).toMatch(/[1-9]\d* pending/);
+    expect(kept).toContain(`${SAW} and queued 2 test files; results arrive with later tool calls`);
   });
 });
