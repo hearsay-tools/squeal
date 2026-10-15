@@ -59,3 +59,13 @@ Use /reviewer. Outcome: `reviews/wave-2.md` committed with a verdict on the exac
   - 008-19: does the e2e run the shipped copy, never the source tree, and stay off the real `HOME`?
   - The coordinator's change to `opencode-hooks.test.ts:131`: is weakening the root-consumer assertion honest given 001 D10's sweep?
 - Writes only `docs/specifications/008-opencode-adapter/reviews/wave-2.md`. Runs real OpenCode only through `runOpenCode`. Takes the full-suite verdict from `squeal run --all --wait`; any independent full run uses `--maxWorkers=4` under `flock /run/user/$(id -u)/squeal-full-run.lock`.
+
+## 008-24 the review's coverage note and an orphaned `opencode serve`
+
+Use /worker. Outcome: the committed tests run the cases review 008-23 S1 proved only by probe, and an OpenCode that `runOpenCode` started never outlives the test process that started it.
+
+- Inputs: `reviews/wave-2.md` S1. After 008-19, an `opencode serve` under a `runOpenCode` temp home was found alive about 50 minutes after its worktree's tests, reparented to systemd. `test/helpers/opencode.ts` kills the group in its `finally`, but nothing kills it when the Vitest worker itself ends first (a timeout or a killed fork).
+- Shape: repair.
+- Seam: `test/harness/opencode/bridge-client.test.ts`'s proxy test, parameterised over absent, empty and `"1"`, each executed through the bridge. Then the prompt-primer test in `test/harness/opencode/turn.test.ts`: coverage changes after registration and the primer follows it. Then `test/helpers/opencode.ts`: a set of live process groups, killed on the worker's `exit`, with a test that starts a child and ends its worker.
+- Owns: those three files. Leaves alone: `src/**`, `test/e2e/**`.
+- Done when: each new case fails against a deliberately broken copy (say how), lint and typecheck pass, the touched files pass, and the full-suite verdict from `squeal run --all --wait` is green.
