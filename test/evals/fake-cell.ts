@@ -93,6 +93,8 @@ leak)
   git add -A >/dev/null 2>&1; git commit -qm leak >/dev/null 2>&1 ;;
 locked)
   mkdir locked; echo "$ANTHROPIC_AUTH_TOKEN" > locked/leak.txt; chmod 444 locked/leak.txt; chmod 555 locked ;;
+squeal)
+  squeal --version >> "$FAKE_LOG/bare" 2>&1 ;;
 hang)
   trap '' TERM
   (trap '' TERM; echo $$ >> "$FAKE_LOG/harness"; while :; do sleep 1; done) &
@@ -131,12 +133,25 @@ export function fakeRoot(): FakeRoot {
   write(join(base, "plugins/claude-code/.claude-plugin/plugin.json"), '{ "version": "0.0.0" }\n');
   for (const p of ["claude-code", "codex"])
     write(join(base, "plugins", p, "dist/cli/squeal.mjs"), FAKE_SQUEAL);
+  // The plugins' own `squeal`s, which a cell's PATH starts with (006-62).
+  for (const [p, f] of [
+    ["claude-code", "squeal"],
+    ["codex", "squeal-launcher"],
+  ] as const)
+    write(
+      join(base, "plugins", p, "bin", f),
+      readFileSync(join(REPO, "plugins", p, "bin", f), "utf8"),
+      0o755,
+    );
   write(join(root, "nm/.done"), "");
   mkdirSync(join(root, "nm/node_modules"), { recursive: true });
   const bin = join(dir, "bin");
   write(join(bin, "claude"), FAKE_HARNESS, 0o755);
   write(join(bin, "codex"), FAKE_CODEX, 0o755);
   write(join(bin, "npx"), FAKE_NPX, 0o755);
+  // The host's terminal launcher (spec 005 D3), first on the host's PATH as on this host.
+  const hostBin = join(dir, "home/.local/bin");
+  write(join(hostBin, "squeal"), '#!/bin/sh\necho "host launcher"\nexit 1\n', 0o755);
   mkdirSync(join(dir, "node"));
   symlinkSync(process.execPath, join(dir, "node/node"));
   write(
@@ -152,7 +167,7 @@ export function fakeRoot(): FakeRoot {
   const log = join(dir, "log");
   mkdirSync(log);
   const env = {
-    PATH: `${bin}:${join(dir, "node")}:/usr/bin:/bin`,
+    PATH: `${hostBin}:${bin}:${join(dir, "node")}:/usr/bin:/bin`,
     HOME: join(dir, "home"),
     SQ_EVALS_ROOT: root,
     ANTHROPIC_AUTH_TOKEN: TOKEN,

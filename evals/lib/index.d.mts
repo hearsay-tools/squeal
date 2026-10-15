@@ -202,6 +202,8 @@ export function cellEnv(
   cell: string,
   provider?: readonly string[],
 ): Record<string, string | undefined>;
+export function squealBin(harness: "claude" | "codex", cell: string, pin: string): string;
+export function pathFirst(path: string | undefined, dir: string): string;
 export function providerVariables(
   harness: "claude" | "codex",
   parent: Record<string, string | undefined>,

@@ -81,9 +81,11 @@ import {
   clearScratch,
   codexConfig,
   keepRecords,
+  pathFirst,
   providerVariables,
   redact,
   secretsOf,
+  squealBin,
 } from "../lib/scratch.mjs";
 import { groundTruth, killRunning, runSession, sessionCommand } from "../lib/session.mjs";
 import { buildPin } from "../lib/variant.mjs";
@@ -183,6 +185,8 @@ async function lifecycle() {
     variant,
   );
   CLI = join(PIN, "plugins", harness === "codex" ? "codex" : "claude-code", "dist/cli/squeal.mjs");
+  // 006-62: a bare `squeal` is the pinned plugin's, never the host's launcher.
+  if (plugin) env.PATH = pathFirst(env.PATH, squealBin(harness, CELL, PIN));
   const head = buildFixture({ work: WORK, variant, env, modules: fixtureModules(ROOT) });
   log(`fixture ${head}, pin ${relative(ROOT, PIN)}, run ${run}, load ${load1().toFixed(1)}`);
   const git = (a) => sh("git", a); // cellEnv's author and committer
