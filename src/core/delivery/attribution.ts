@@ -239,17 +239,20 @@ export function withDependencies(
   return installed === undefined ? header : { ...header, dependenciesInstalled: installed };
 }
 
+/** A JavaScript or TypeScript file: the only test files a Node runner runs. */
+const NODE_TEST_FILE = /\.[cm]?[jt]sx?$/;
+
 /**
  * Whether a check in `failing` belongs to a Node runner (Vitest or node:test):
  * one whose project is not a pytest project of the worktree's policy and whose
- * test file is not a Python file. Project names are unique across runners
- * (`createCompositeRunner`). Review wave-5.5 B1: the defaults a policy falls
- * back to name no pytest project, so ownership is established only from a
+ * test file is a JavaScript or TypeScript file. Project names are unique across
+ * runners (`createCompositeRunner`). Review wave-5.5 B1: the defaults a policy
+ * falls back to name no pytest project, so ownership is established only from a
  * policy that loaded without problems, or from no policy file at all; with
  * problems, or with no worktree row, it is unknown and the sentence is not
- * said. A Python test file is never a Node runner's, so a pytest failure stored
- * before its project left the policy does not become one; the file only ever
- * withholds the sentence.
+ * said. Review wave-5.75: a pytest failure stored before its project left the
+ * policy can come from any file a doctest glob matches, so a Node runner's is
+ * known by its file too; the file only ever withholds the sentence.
  */
 function nodeFailing(store: Store, worktreeId: WorktreeId, failing: readonly CheckId[]): boolean {
   if (failing.length === 0) return false;
@@ -258,5 +261,5 @@ function nodeFailing(store: Store, worktreeId: WorktreeId, failing: readonly Che
   const { policy, problems } = loadPolicy(root);
   if (problems.length > 0) return false;
   const pytest = new Set(policy.pytest.map((p) => p.name));
-  return failing.some((check) => !pytest.has(check.project) && !check.testPath.endsWith(".py"));
+  return failing.some((check) => !pytest.has(check.project) && NODE_TEST_FILE.test(check.testPath));
 }
