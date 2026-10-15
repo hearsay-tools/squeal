@@ -3,11 +3,13 @@ import { testFileId } from "../keys/index.js";
 import { pruneRekeyed, readRekeyed } from "../scheduler/rekeyed-record.js";
 import { testFileKeyOf } from "../state/index.js";
 import {
+  type CheckId,
   type Consumer,
   type EditsSettled,
   type KnownState,
   type RevisionNumber,
   refinedMetaKey,
+  type StatusHeader,
   type Store,
   type TestFileKeyRecord,
   type WorktreeId,
@@ -105,6 +107,8 @@ function refined(store: Store, worktreeId: WorktreeId): number {
 export interface EditNotes {
   readonly sawEdit?: { readonly queued: number };
   readonly editsSettled?: EditsSettled;
+  /** The test files (`testFileId`) the edits re-keyed, the ones `sawEdit` counts. */
+  readonly rekeyed: ReadonlySet<string>;
   /** Records what was said: 001-224 once, and after a settled line, edits count from its revision. */
   readonly tell: () => void;
 }
@@ -156,6 +160,7 @@ export function editNotes(
   return {
     ...(sawEdit === undefined ? {} : { sawEdit }),
     ...(editsSettled === undefined ? {} : { editsSettled }),
+    rekeyed: new Set(rekeyed.map((k) => testFileId(k.testFile))),
     tell: () => {
       writeState(store, consumer, {
         since: editsSettled === undefined ? state.since : revision,
@@ -164,6 +169,27 @@ export function editNotes(
       if (editsSettled !== undefined) prune(store, consumer.worktreeId);
     },
   };
+}
+
+/**
+ * Task 001-396: whether the 001-224 line would sit in the message that is
+ * the edit's result. It would say "queued N; results arrive with later tool
+ * calls" beside the result of a file it counts and a header with nothing
+ * pending: a file re-keyed by the edit can still be pending on its row, a
+ * new failure's confirmation run at the same key (001-171), which holds the
+ * settled line and no check. The line is then left out, and spent.
+ */
+export function carriesEditResult(
+  notes: EditNotes,
+  checks: readonly CheckId[],
+  header: StatusHeader,
+): boolean {
+  if (notes.sawEdit === undefined || notes.editsSettled !== undefined) return false;
+  const pending =
+    header.counts.pending > 0 ||
+    header.testFilesWithoutChecks.pending > 0 ||
+    header.runnerPartPending === true;
+  return !pending && checks.some((check) => notes.rekeyed.has(testFileKeyOf(check)));
 }
 
 /**
