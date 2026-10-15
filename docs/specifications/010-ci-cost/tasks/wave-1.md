@@ -19,3 +19,23 @@ Owns: `.github/workflows/ci.yml`, the list file (a name of your choosing under `
 Done when: the guard test passes and fails when you add `process.versions` to a test file outside the list (say so in your final message, then revert it); `npm run lint` and `npm run typecheck` pass; `squeal run --all --wait` output pasted; the workflow checked against the GitHub docs the research cites, no new tool installed, with any key you are unsure of named. Do not push: the coordinator pushes the candidate, whose own CI is the test (spec Testing).
 
 Final message: decisions the spec did not settle, the list's contents with a line on why each entry is version-sensitive, and the exact `cancel-in-progress` and group expressions.
+
+## 010-11 review of 010-10 and 010-12
+
+Use /reviewer. Shape: review.
+
+Outcome: `docs/specifications/010-ci-cost/reviews/wave-1.md`, a verdict on candidate `cand/010-10` at bf0a41fb (rows 010-10 and 010-12; no bundle change, no version raise).
+
+Read: `spec.md` D1 to D7 and Testing, `status.md` (the amendments of 2026-10-15), `research/ci-run-triggers.md` 3 and 4, `research/ci-pr-flow.md` 3.
+
+Range: `git diff origin/main...bf0a41fb -- .github .claude test`. The code is `.github/workflows/ci.yml`, `test/version-sensitive.txt`, `test/version-sensitive.test.ts` and section 6 of `.claude/skills/coordinator/SKILL.md` (`.agents/skills/coordinator` is a symlink).
+
+Check:
+- Each D against the workflow. Can a filter, the concurrency group or a job condition drop a run the process reads: a `cand/*` push, a main code landing, the `version` check of a main push's range, or the nightly?
+- The list: does it hold every test whose result can differ between Node 22 and 24? Should `test/e2e/plugin-copy` (no version read found) stay? Is the guard test's model of Vitest's filter right?
+- D7 cannot run from a branch: read the `schedule` trigger and the job conditions against GitHub's docs.
+- Evidence already recorded: the candidate's CI run 38776179771 (three Node 22 shards, the Node 24 job, `version` and `nightly` skipped); a new branch at the same SHA started no run (`status.md`). Read the run's result with `gh run view`; GitHub is read-only for you.
+
+Verification: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` in your tree, plus lint and typecheck.
+
+Done when: the findings file is committed alone, every finding labelled proven, plausible or unverified, and your final message gives the verdict.
