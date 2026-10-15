@@ -22,8 +22,8 @@ import {
  * path or `file:` URL from no module, which `observedClosure` roots in the
  * preloads, and lie outside the worktree, so a closure or a key is as
  * without it. The recorder carries itself into every child, ahead of what
- * the child's `NODE_OPTIONS` held, the module recorder included. Only module loads key
- * a node:test file; these reads key nothing.
+ * the child's `NODE_OPTIONS` held, the module recorder included. Only module
+ * loads key a node:test file; these reads key nothing.
  */
 export class NodeTestReads {
   private constructor(
