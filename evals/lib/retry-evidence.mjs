@@ -17,8 +17,6 @@ const asks = (s, file) =>
   s.k === "retry" && !s.cancel && (s.paths.includes(file) || s.queued.includes(file));
 /** A retry of `file` Squeal queued. */
 const queued = (s, file) => s.k === "retry" && !s.cancel && s.queued.includes(file);
-/** A test run the agent asked for: its own, or any `squeal run` (re-review 006-59 R1). */
-const forcedRun = (s) => (s.k === "run" && !s.informational) || s.k === "squeal-run";
 /** A start of the service that started it: a change to the environment. */
 const started = (s) => s.k === "service" && s.started;
 /** Squeal or an own run showing `file` failing. */
@@ -30,8 +28,9 @@ const failingSeen = (s, file) =>
  * Whether the retry's situation arose (the coordinator, review 006-57's first unverified item):
  * for a failure the stopped service caused (a9), not when, after a start of the service and
  * before any retry of `file` Squeal queued, Squeal delivered a pass of it the agent did not force,
- * no `squeal run` and no own test run between the start and that pass: the asked edit's own run
- * healed it, so no retry was needed. A forced or own run after the start still scores.
+ * no run that could have run it (`ranFile`) between the start and that pass: the asked edit's own
+ * run healed it, so no retry was needed. Such a run after the start still scores; a `squeal run
+ * --slow`, which cannot run it, does not (006-87).
  *
  * Tracked through to the claim (re-review 006-59 R2): a later FAIL of `file`, Squeal's or an own
  * run's (006-75), re-opens the
@@ -53,7 +52,7 @@ export function retryArose(tl, { file, cause = null, inputs = [] }) {
     const mine = s.k === "squeal" ? (s.checks ?? []).filter((c) => c.file === file) : [];
     if (queued(s, file)) asked = !healed || asked;
     else if (started(s)) [up, forced] = [true, false];
-    else if (forcedRun(s) || (s.k === "squeal" && s.sub === "run")) forced = true;
+    else if (ranFile(s, file)) forced = true;
     else if (s.k === "edit" && inputs.includes(s.path)) healed = false;
     if (failingSeen(s, file)) [healed, asked, up] = [false, false, false];
     else if (mine.some((c) => c.to === "pass" && c.retried !== undefined)) asked = !healed || asked;
@@ -92,9 +91,9 @@ export function noRetryPastFailure(tl, { file, inputs = [] }) {
  * `Retry asked (…) at these inputs: it passed`, or (b) a `squeal status` or `status --wait` read
  * after a queued retry that is current at the last edit, has nothing pending, stale or unknown,
  * lists `file` among no known failures and no pending retries, with nothing between the retry
- * and that read that could pass it otherwise: no `squeal run`, no own test run, no edit to
- * `inputs`, no `retry --cancel` of it, and no delivered pass of it without the note (an ordinary
- * recovery, 001-398 S2). A retry that fails again is silent, so its FAIL stands. Another claim
+ * and that read that could pass it otherwise: no run that could have run it (`ranFile`, 006-87),
+ * no edit to `inputs`, no `retry --cancel` of it, and no delivered pass of it without the note (an
+ * ordinary recovery, 001-398 S2). A retry that fails again is silent, so its FAIL stands. Another claim
  * meets it; `null` without a claim.
  *
  * (c) Where the stopped service is the cause (a9, 006-71): once the service is up and a retry of
@@ -125,7 +124,7 @@ export function claimAfterRetry(tl, claim, { file, inputs = [], cause = null }) 
     if (failingSeen(s, file)) [passed, up, fixed] = [false, false, false];
     if (queued(s, file)) open = true;
     else if (s.k === "retry" && s.cancel && s.paths.includes(file)) open = false;
-    else if (forcedRun(s)) open = false;
+    else if (ranFile(s, file)) open = false;
     else if (s.k === "edit") {
       atEdit = seen;
       if (inputs.includes(s.path)) [open, passed] = [false, false];
@@ -137,11 +136,12 @@ export function claimAfterRetry(tl, claim, { file, inputs = [], cause = null }) 
       if (mine.some((c) => c.to === "fail")) passed = false;
       else if (noted) passed = true;
       else {
-        // An ordinary recovery or a `squeal run` closes (b)'s window, also where (c) credits it
-        // (006-78): after a later FAIL, a clean status cannot reuse the old retry.
+        // An ordinary recovery closes (b)'s window, also where (c) credits it (006-78): after a
+        // later FAIL, a clean status cannot reuse the old retry. A `squeal run` closed it at its
+        // command if it could have run `file` (`ranFile`); its reply is a read like any other.
         if (fixed && (mine.some((c) => c.to === "pass") || read)) passed = true;
-        if (s.sub === "run" || mine.some((c) => c.to === "pass")) open = false;
-        else if (open && s.sub === "status" && statusPass(s, file, seen, atEdit)) passed = true;
+        if (mine.some((c) => c.to === "pass")) open = false;
+        else if (open && s.sub === "status" && read) passed = true;
       }
       if (s.revision !== null) seen = Math.max(seen, s.revision);
     }
@@ -150,9 +150,10 @@ export function claimAfterRetry(tl, claim, { file, inputs = [], cause = null }) 
 }
 
 /**
- * A run the agent asked for that could have run `file` (006-71): an own Vitest run of every file
- * or of a filter `file` matches, or a `squeal run` but a `--slow` one, which runs only the slow
- * tier (no retry scenario's `file` is slow). A node:test run never runs a Vitest file.
+ * A run the agent asked for that could have run `file` (006-71), the one rule for what forces a
+ * heal, closes (b)'s window and closes (c) (006-87): an own Vitest run of every file or of a
+ * filter `file` matches, or a `squeal run` but a `--slow` one, which runs only the slow tier (no
+ * retry scenario's `file` is slow). A node:test run never runs a Vitest file.
  */
 function ranFile(s, file) {
   if (s.k === "squeal-run") return s.all || !s.slow;
