@@ -52,10 +52,10 @@ export function lockHolders(root: string): string {
 
 /**
  * Waits until process `pid` is stopped (`T` in `/proc/<pid>/stat`): a daemon
- * run with `SQUEAL_TEST_STOP_GAP=1` stops itself between its socket's unlink
- * and its lock release (task 001-355). False past `ms`, or once it is gone.
+ * run with `SQUEAL_TEST_PAUSE=<point>` stops itself there (task 001-355).
+ * False past `ms`, or once it is gone.
  */
-export async function stoppedInGap(pid: number, ms: number): Promise<boolean> {
+export async function stoppedItself(pid: number, ms: number): Promise<boolean> {
   const deadline = Date.now() + ms;
   while (Date.now() <= deadline) {
     let stat: string;

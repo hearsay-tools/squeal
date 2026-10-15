@@ -52,7 +52,7 @@ import { describeProblems, lastPolicyNote, loadPolicy, POLICY_FILE } from "./pol
 import { requestSlowSuite, type SlowSuiteRequested } from "./run-slow.js";
 import type { RecoveringRunner } from "./runner.js";
 import { adoptScratch, inRootWhileRunning, removeScratch } from "./scratch.js";
-import { pauseInStopGap } from "./stop-gap.js";
+import { pauseAt } from "./test-pause.js";
 import { capacityReader, repositoryRootOf } from "./user-config.js";
 import { squealVersion } from "./version.js";
 
@@ -659,7 +659,7 @@ class Daemon {
       await this.#step("setDaemon", () => store.worktrees.setDaemon(worktreeId, null));
       await this.#step("store.close", () => store.close());
       await this.#step("socket close", () => this.#desk?.close());
-      pauseInStopGap();
+      pauseAt("stop-gap");
       await this.#step("lock release", () => lock.release());
       const result = exit(reason, code, text);
       this.#resolveExit(result);
