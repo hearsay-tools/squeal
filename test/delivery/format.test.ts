@@ -456,6 +456,21 @@ describe("formatRegistration", () => {
     );
   });
 
+  it("dates each failure's run and names its load: hours old, or just now (001-404)", () => {
+    const at = 1_800_000_000_000;
+    const recorded = { worktreeId: "wt-b", worktreeRoot: "/repo/b" as never, revision: 9 as never };
+    const old = { ...failure(1), recorded: { ...recorded, recordedAt: at, loadPerCpu: 3.33 } };
+    const fresh = { ...failure(2), recorded: { ...recorded, recordedAt: at, loadPerCpu: null } };
+    const later = at + 2 * 3_600_000 + 50 * 60_000;
+    const text = formatRegistration(registration([old]), undefined, undefined, later);
+    expect(text).toContain(
+      "Recorded 2 h ago in /repo/b at revision 9, load 3.33 per CPU when it ran; no retry asked at these inputs",
+    );
+    expect(formatRegistration(registration([fresh]), undefined, undefined, at + 30_000)).toContain(
+      "Recorded just now in /repo/b at revision 9, load per CPU then not recorded;",
+    );
+  });
+
   it("says no known failures, never that everything passes", () => {
     const text = formatRegistration(registration([]));
     expect(text.split("\n").at(-1)).toBe("Known failures: 0");

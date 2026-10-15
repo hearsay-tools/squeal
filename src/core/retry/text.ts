@@ -1,4 +1,4 @@
-import type { RecordedFacts, RetryFact, WorktreeId } from "../types/index.js";
+import type { EpochMs, RecordedFacts, RetryFact, WorktreeId } from "../types/index.js";
 import type { HostLoad } from "./load.js";
 import type { RetryOutcome, RetryReason } from "./records.js";
 
@@ -45,19 +45,34 @@ export function retryText(fact: RetryFact): string {
 }
 
 /**
- * A known failure's facts at registration (spec 001 D6, 001-368): where and
- * at which revision it was recorded, the load per CPU then, and the retry.
+ * How long ago a run recorded a result (001-404): "just now" under a
+ * minute, then minutes, hours and days, so an old failure reads as old.
  */
-export function recordedText(facts: RecordedFacts, here: WorktreeId): string {
+export function agoText(ms: number): string {
+  const minutes = Math.floor(Math.max(0, ms) / 60_000);
+  if (minutes < 1) return "just now";
+  if (minutes < 120) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 48) return `${hours} h ago`;
+  return `${Math.floor(hours / 24)} d ago`;
+}
+
+/**
+ * A known failure's facts at registration and in status (spec 001 D6,
+ * 001-368, 001-404): how long ago, where and at which revision it was
+ * recorded, the load per CPU then, and the retry.
+ */
+export function recordedText(facts: RecordedFacts, here: WorktreeId, now: EpochMs): string {
   const where =
     facts.worktreeId === here
       ? "this worktree"
       : (facts.worktreeRoot ?? `worktree ${facts.worktreeId}`);
+  const ago = facts.recordedAt === undefined ? "" : ` ${agoText(now - facts.recordedAt)}`;
   const load =
     facts.loadPerCpu === null
       ? "load per CPU then not recorded"
       : `load ${facts.loadPerCpu.toFixed(2)} per CPU when it ran`;
   const retry =
     facts.retry === undefined ? "no retry asked at these inputs" : retryText(facts.retry);
-  return `recorded in ${where} at revision ${facts.revision}, ${load}; ${retry}`;
+  return `recorded${ago} in ${where} at revision ${facts.revision}, ${load}; ${retry}`;
 }
