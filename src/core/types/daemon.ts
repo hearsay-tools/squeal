@@ -38,6 +38,15 @@ export interface NudgeRequest {
 }
 
 /**
+ * `squeal retry` (spec 001 D6, 001-368) stored a request or withdrew one:
+ * the scheduler takes the requests in the store that may run now. Answered
+ * at once; the requests themselves live in the store.
+ */
+export interface RetryRequest {
+  readonly type: "retry";
+}
+
+/**
  * Spec 001 D5 `squeal run --all [--force]`. Answered at once with a request
  * id; the checkpoint is recorded once the scheduler takes the request, which
  * may wait for a batch or a runner call in flight. Ask for it with
@@ -110,6 +119,7 @@ export interface StepDownRequest {
 export type DaemonRequest =
   | PingRequest
   | NudgeRequest
+  | RetryRequest
   | RunAllRequest
   | RunAllStatusRequest
   | RunSlowRequest
@@ -138,6 +148,12 @@ export interface NudgeResponse {
   readonly schemaVersion: PayloadSchemaVersion;
   readonly ok: true;
   readonly type: "nudge";
+}
+
+export interface RetryResponse {
+  readonly schemaVersion: PayloadSchemaVersion;
+  readonly ok: true;
+  readonly type: "retry";
 }
 
 /**
@@ -276,6 +292,7 @@ export interface DaemonErrorResponse {
 export type DaemonResponse =
   | PingResponse
   | NudgeResponse
+  | RetryResponse
   | RunAllResponse
   | RunSlowResponse
   | SyncResponse

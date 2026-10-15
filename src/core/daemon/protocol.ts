@@ -20,6 +20,7 @@ export function parseRequest(line: string): DaemonRequest | string {
   switch (request.type) {
     case "ping":
     case "nudge":
+    case "retry":
     case "run-slow":
     case "stop":
       return { type: request.type };
