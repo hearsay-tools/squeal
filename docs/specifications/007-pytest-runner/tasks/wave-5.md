@@ -52,3 +52,19 @@ Done when (each test fails on main and passes after):
 Full-suite verdict: `squeal run --all --wait`; expect bundle and key-format drift.
 
 Use /worker.
+
+## 007-44 the no-environment note tells the agent what installing buys
+
+The human decided OQ1 on 2026-10-15: no lock-to-environment record. Instead, the agent is told that its dependencies are missing, and that installing them brings the results other worktrees recorded. So it installs, rather than having to work that out.
+
+Outcome: D2's no-environment note (`environmentState` and `create` in `src/runners/pytest/environment/states.ts`) reads, for a project with a lockfile:
+
+> pytest project "app": no Python environment (looked at .venv), so Squeal runs none of its tests and inherits none of their results. Run `uv sync` in . to create one: Squeal then inherits every result another worktree recorded for the same code and environment, and runs the rest.
+
+The no-lockfile and requirements cases from 007-39 keep their own install advice in the same two-sentence shape. The editable-outside note and the sync note are unchanged.
+
+Shape: repair, text. Owns: `states.ts` and the tests that pin the text (`states.test.ts`, `adapter-notes.test.ts`, `test/e2e/pytest.test.ts`). Do not touch core; 001 words the Node sentence to match. Leave `key-format.ts`, `plugins/*/dist` and `package.json` alone, and do not build.
+
+Done when: a text test covers each case (uv.lock, poetry.lock, requirements, none), and every test that pinned the old text pins the new one. Full-suite verdict: `squeal run --all --wait`.
+
+Use /worker.
