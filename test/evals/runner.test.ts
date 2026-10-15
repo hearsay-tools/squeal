@@ -4,7 +4,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
-  CLAUDE_ALLOWED_TOOLS,
   cellEnv,
   codexConfig,
   patchPlugins,
@@ -116,8 +115,6 @@ describe("sessionCommand", () => {
       "medium",
     ]);
     expect(cargs).toContain("--plugin-dir");
-    expect(CLAUDE_ALLOWED_TOOLS).toContain("Bash(node:*)");
-    expect(CLAUDE_ALLOWED_TOOLS).toContain("Skill");
     const [codex, xargs] = sessionCommand({
       harness: "codex",
       prompt: "p",
