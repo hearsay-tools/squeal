@@ -1,9 +1,8 @@
-import { existsSync, readdirSync, readlinkSync, realpathSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
-import { lockFileFor } from "../../src/core/store/paths.js";
 import type { EnsureDaemonResult } from "../../src/core/types/index.js";
-import { lockHolders, stoppedInGap } from "../e2e/restart-evidence.js";
+import { lockHolders, stoppedItself } from "../e2e/restart-evidence.js";
 import { daemonSuite, delay, type FixtureRepo, ping, readNotes, SLOW, waitFor } from "./helpers.js";
 import { stepDownKit } from "./step-down-helpers.js";
 
@@ -13,7 +12,7 @@ import { stepDownKit } from "./step-down-helpers.js";
  * older plugin spawns its daemon in that gap. Since task 001-340 a daemon
  * that loses a lock no daemon serves waits for it, so it could take the lock
  * ahead of the newer successor, which then exited as a loser. The old daemon
- * stops itself in the gap (`SQUEAL_TEST_STOP_GAP`, task 001-355) and holds
+ * stops itself in the gap (`SQUEAL_TEST_PAUSE=stop-gap`, task 001-355) and holds
  * it open as long as the late spawn takes to decide. Both older daemons run this repository's build at older versions.
  *
  * A late spawn of the stopping daemon's own version still waits and may win
@@ -25,27 +24,10 @@ import { stepDownKit } from "./step-down-helpers.js";
 const suite = daemonSuite();
 const { HOOKS, buildAt, start, sockets, hookDeps, hook, exitWithin } = stepDownKit(suite);
 
-/**
- * Spins until process `pid` holds `repo`'s lock database open, a retry that
- * lasts well under a millisecond; false past `ms`. Linux, from `/proc`.
- */
-function spinUntilAtLock(pid: number, repo: FixtureRepo, ms: number): boolean {
-  const lock = realpathSync(lockFileFor(repo.commonDir, repo.worktreeId));
-  const deadline = Date.now() + ms;
-  while (Date.now() <= deadline) {
-    try {
-      for (const fd of readdirSync(`/proc/${pid}/fd`)) {
-        if (readlinkSync(`/proc/${pid}/fd/${fd}`) === lock) return true;
-      }
-    } catch {
-      // A descriptor closed while read.
-    }
-  }
-  return false;
-}
-
 /** The 0.1.1 daemon, which stops itself in its stop gap (task 001-355). */
-const STOP_GAP = { SQUEAL_TEST_STOP_GAP: "1" } as const;
+const STOP_GAP = { SQUEAL_TEST_PAUSE: "stop-gap" } as const;
+/** The successor of the second case, which stops itself once it waits for the lock. */
+const LOCK_WAIT = { SQUEAL_TEST_PAUSE: "lock-wait" } as const;
 
 /**
  * Steps down the 0.1.1 daemon serving `repo` for this source's hooks, which
@@ -55,7 +37,7 @@ async function stepDownIntoGap(repo: FixtureRepo): Promise<number> {
   const first = await waitFor(() => ping(repo.socketPath, 500), 60_000, "0.1.1 serving");
   const answer = await requestDaemon(repo.socketPath, { type: "step-down", version: HOOKS }, 5_000);
   expect(answer).toMatchObject({ ok: true, type: "step-down", steppingDown: true });
-  const stopped = await stoppedInGap(first.pid, 60_000);
+  const stopped = await stoppedItself(first.pid, 60_000);
   try {
     expect(stopped, "the daemon stopped in its stop gap").toBe(true);
     expect(existsSync(repo.socketPath), "the socket went away").toBe(false);
@@ -107,15 +89,14 @@ describe.runIf(process.platform === "linux")(
       const repo = suite.fixture();
       const old = start(buildAt("0.1.1"), repo, [], STOP_GAP);
       const frozen = await stepDownIntoGap(repo);
-      const successor = start(suite.cli, repo, ["--await-lock", "120000"]);
+      const successor = start(suite.cli, repo, ["--await-lock", "120000"], LOCK_WAIT);
       const pid = successor.child.pid ?? 0;
       try {
-        // Seen at the lock twice, so past its first retry and the check after it,
-        // which saw no record: then frozen, so the late spawn takes the lock first.
-        expect(spinUntilAtLock(pid, repo, 30_000), "the successor at the lock").toBe(true);
-        await delay(50);
-        expect(spinUntilAtLock(pid, repo, 30_000), "the successor at the lock again").toBe(true);
-        process.kill(pid, "SIGSTOP");
+        // Past its first retry and the check after it, which saw no record, it stops
+        // itself, so the late spawn takes the lock first.
+        expect(await stoppedItself(pid, 60_000), "the successor stopped in its lock wait").toBe(
+          true,
+        );
       } finally {
         process.kill(frozen, "SIGCONT");
       }

@@ -4,6 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import { setTimeout as sleep } from "node:timers/promises";
 import { isBusy } from "../store/index.js";
 import type { AbsolutePath } from "../types/index.js";
+import { pauseAt } from "./test-pause.js";
 
 /** The daemon singleton, held for the life of the process. */
 export interface DaemonLock {
@@ -71,6 +72,7 @@ export async function awaitDaemonLock(
     const at = performance.now();
     if (at >= checkAt) {
       if (wait.giveUp()) return "gave-up";
+      if (checkAt === 0) pauseAt("lock-wait");
       checkAt = at + (wait.checkMs ?? 250);
     }
     if (at >= deadline) return "timed-out";
