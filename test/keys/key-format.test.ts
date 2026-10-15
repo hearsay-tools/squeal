@@ -42,6 +42,7 @@ const SEAMS = [
   "src/cli/main.ts -> src/cli/opencode/status.ts", // the OpenCode status line: renders the store
   "src/cli/main.ts -> src/cli/pi/status.ts", // the Pi status line: renders the store
   "src/cli/main.ts -> src/cli/remove.ts", // `squeal remove`: stops daemons, deletes the store
+  "src/cli/main.ts -> src/cli/retry.ts", // `squeal retry`: a request in the store (001-368)
   "src/cli/main.ts -> src/cli/run.ts", // `squeal run`: asks a daemon for a checkpoint or the slow tier
   "src/cli/main.ts -> src/cli/setup/command.ts", // `squeal setup`: reads the repository and writes instruction files and the config
   "src/cli/main.ts -> src/cli/start.ts", // `squeal start`: starts a daemon through core/daemon/ensure.ts
@@ -61,6 +62,8 @@ const SEAMS = [
   "src/core/keys/index.ts -> src/core/keys/key-format.ts",
   // When another worktree's claim goes stale decides who runs a file, not what it records (001-205).
   "src/core/scheduler/claims.ts -> src/core/status/snapshot.ts",
+  // Whether a retry's claimant is alive decides who runs it, not what it records (001-368).
+  "src/core/scheduler/retries.ts -> src/core/delivery/liveness.ts",
   // Whether a consumer is in a turn decides when the slow tier runs, not what it records.
   "src/core/scheduler/slow-tier.ts -> src/core/delivery/turn.ts",
   // Whether this session's waiting Stop entry ran decides where Stop waits, not what it records (001-297).
