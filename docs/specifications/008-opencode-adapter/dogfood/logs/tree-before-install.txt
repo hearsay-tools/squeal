@@ -1,0 +1,37 @@
+02:35:19 load 135.71
+home
+xdg
+xdg/cache
+xdg/cache/opencode
+xdg/cache/opencode/bin
+xdg/config
+xdg/config/opencode
+xdg/config/opencode/opencode.json
+xdg/data
+xdg/data/opencode
+xdg/data/opencode/log
+xdg/data/opencode/repos
+xdg/state
+xdg/state/opencode
+== xdg/config/opencode/opencode.json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "cliproxy": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "cliproxy (dogfood proxy)",
+      "options": { "baseURL": "http://127.0.0.1:47320/v1", "apiKey": "dogfood-placeholder-not-a-key" },
+      "models": {
+        "gpt-6-luna": { "name": "gpt-6-luna" },
+        "gpt-6-astra": { "name": "gpt-6-astra" },
+        "grok-4.7": { "name": "grok-4.7" }
+      }
+    }
+  },
+  "model": "cliproxy/gpt-6-luna",
+  "small_model": "cliproxy/gpt-6-luna",
+  "permission": { "edit": "allow", "bash": "allow", "external_directory": "allow" },
+  "share": "disabled",
+  "autoupdate": false
+}
+

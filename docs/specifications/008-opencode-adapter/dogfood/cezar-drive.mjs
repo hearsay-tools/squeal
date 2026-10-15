@@ -67,3 +67,4 @@ const session = runner.startSession(
 write({ kind: "pid", pid: session.pid });
 const result = await session.result;
 write({ kind: "result", sessionId: result.sessionId, text: result.text.slice(-2000) });
+process.exit(0); // Cezar's runner leaves a handle open after the result

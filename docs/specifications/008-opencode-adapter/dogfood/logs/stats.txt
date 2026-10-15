@@ -1,0 +1,4 @@
+  request 3 has no primer
+  request 4 has no primer
+s0-nostore: 2 requests, primer in 0; SQUEAL as user text 0, after a tool result 0, as a denied edit 0
+s1-astra: 8 requests, primer in 8; SQUEAL as user text 1, after a tool result 2, as a denied edit 0
