@@ -220,3 +220,14 @@ Check first, the metric design (the human's rule: score the right behaviour per 
 - a10 and a11 are unchanged, and only sol's four `99db6d` cells change.
 
 Rules as 006-68's. **Writes:** `reviews/wave-13.7.md`, PASS or FAIL, committed.
+
+## 006-76 narrow re-review of `cand/006-71` after repair 006-75
+
+Use /reviewer. Shape: review, narrow, pinned. Read `reviews/wave-13.7.md` and the 006-75 section of `tasks/006-71/notes.md`.
+
+Check, in both harnesses:
+- the blocker's sequence and its near variants: a FAIL from Squeal, an own run, a new retry without a new start, and a heal followed by an own-run FAIL;
+- 006-75's a11 change (a noted pass, then an own-run FAIL, scores false): it is right for a11, and no committed a11 cell changes;
+- only sol's four `99db6d` a9 cells change.
+
+Rules as 006-68's. **Writes:** a re-review section in `reviews/wave-13.7.md`, PASS or FAIL, committed.
