@@ -35,6 +35,7 @@ function parseRequest(line) {
   switch (request.type) {
     case "ping":
     case "nudge":
+    case "retry":
     case "run-slow":
     case "stop":
       return { type: request.type };
@@ -145,6 +146,11 @@ function createHandlers(context) {
         context.onActivity();
         context.onNudge?.();
         return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "nudge" };
+      case "retry":
+        context.onActivity();
+        context.requestRetries?.().catch(() => {
+        });
+        return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "retry" };
       case "run-all": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         context.onActivity();
@@ -364,6 +370,7 @@ function bind(identity) {
     }),
     onActivity: () => post({ type: "activity" }),
     onNudge: () => post({ type: "nudge" }),
+    requestRetries: async () => post({ type: "retry" }),
     onStop: () => post({ type: "stop" }),
     onStepDown: (version) => post({ type: "step-down", version })
   });
