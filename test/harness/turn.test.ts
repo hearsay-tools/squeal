@@ -118,7 +118,7 @@ describe("the idle waiter and the turn state (task 001-85)", () => {
 
     expect(waiter.exitCode).toBe(2);
     expect(waiter.stderr).toContain("PASS -> FAIL");
-    expect(waiter.stderr).toContain(" 0 pending,");
+    expect(waiter.stderr).toContain("no check pending, stale or unknown.");
     expect(waiter.stderr).not.toContain("Squeal saw your edit");
   });
 
