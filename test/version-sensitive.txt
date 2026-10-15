@@ -57,7 +57,6 @@
 #   test/evals/malformed.test.ts
 #   test/evals/regrade-cells.test.ts
 #   test/evals/regrade.test.ts
-#   test/evals/run-cell.test.ts
 #   test/evals/truth.test.ts
 #   test/harness/codex/output.test.ts
 #   test/harness/opencode/turn.test.ts
@@ -77,10 +76,10 @@
 #
 # Run a real `node --test` the rule cannot see, since the call is outside
 # `test/`: `groundTruth` in `evals/lib/session.mjs`, reached directly by
-# test/evals/teardown.test.ts (listed below: it reads node:test's summary)
-# and through `evals/bin/run-cell.mjs` by test/evals/run-cell.test.ts and the
-# importers of test/evals/fake-cell.ts. Those read only the exit code, so
-# they run on Node 22 only.
+# test/evals/teardown.test.ts and through `evals/bin/run-cell.mjs` by
+# test/evals/run-cell.test.ts and the importers of test/evals/fake-cell.ts.
+# All are listed below (review 010-15). A new importer of fake-cell.ts or
+# caller of `groundTruth` must be added by hand.
 
 # The node:test adapter: test identity comes from `parentId` on Node 24 and
 # `nesting` on 22 (`src/runners/node-test/identity.ts`), and the runner
@@ -125,6 +124,16 @@ test/harness/opencode/bridge
 test/evals/atomic-scenarios
 # `node --test` in the eval ground truth, its summary read.
 test/evals/teardown
+# `node --test` in the eval ground truth through `run-cell.mjs`, its exit
+# code read: run-cell and the importers of `fake-cell.ts`.
+test/evals/run-cell
+test/evals/a8-load-hold
+test/evals/atomic-turns
+test/evals/kill-running
+test/evals/nested-evidence
+test/evals/retry-cell
+test/evals/retry-knobs
+test/evals/surviving-link
 
 # The environment key records the Node version (`src/core/keys/environment.ts`).
 test/keys/environment
