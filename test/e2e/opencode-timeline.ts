@@ -20,7 +20,7 @@ const IDLE_MARGIN_MS = 500;
 /** D4: `dispose`'s deadline, of which the store leaves `DISPOSE_END_MS` for ending consumers. */
 const DISPOSE_DEADLINE_MS = 3_000;
 const DISPOSE_END_MS = 500;
-/** A consumer last seen this close to the store's deadline was held there by the store. */
+/** A bridge started this close before the idle belongs to it. */
 const HELD_MS = 250;
 /** A stored report, as the plugin words it. */
 const REPORT = "SQUEAL · ";
@@ -274,7 +274,8 @@ function readingOf(input: TimelineInput, r: Reading): Timeline {
   const removed = consumers.find((s, i) => i > 0 && s.rows.length === 0);
   if (end === undefined && removed !== undefined && host !== null && host.alive >= removed.at) {
     const window = `dispose ended the consumer between ${since(removed.after)} and ${since(removed.at)}, while OpenCode ran`;
-    return removed.after >= r.storeDeadline - HELD_MS
+    // The plugin's deadline runs from a dispose begun after OpenCode logged it: no slack (review 008-32).
+    return removed.after >= r.storeDeadline
       ? missed(
           `${window}: the idle held dispose until the store's deadline (${since(r.storeDeadline)}). The overtaken check's read or the store did not finish in time, D4's silence at a missed deadline`,
         )
@@ -284,7 +285,7 @@ function readingOf(input: TimelineInput, r: Reading): Timeline {
   }
   if (end === undefined)
     return other("unresolved: the watcher missed the end bridge, or never saw OpenCode end");
-  if (end.started >= r.storeDeadline - HELD_MS)
+  if (end.started >= r.storeDeadline)
     return missed(
       `the idle held dispose until the store's deadline (${since(r.storeDeadline)}): the overtaken check's read or the store did not finish in time, D4's silence at a missed deadline`,
     );
