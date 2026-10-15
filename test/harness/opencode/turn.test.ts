@@ -290,7 +290,10 @@ describe("wait", () => {
 
   it("wakes with the edit's result without saying results arrive later (task 001-396)", async () => {
     const r = await idle();
-    setTimeout(() => (r.apply(r.fail()), r.confirm()), 150);
+    setTimeout(() => {
+      r.apply(r.fail());
+      r.confirm();
+    }, 150);
     const { text } = await wait({ kind: "wait", ...about(r) }, waitDeps());
     expect(text).toContain("PASS -> FAIL");
     expect(text).toContain(" 0 pending,");
