@@ -37,6 +37,12 @@ export type PytestEvent =
 
 export interface CollectedItem {
   readonly nodeid: string;
+  /**
+   * The item's `name`, the last part of its node id, which a parametrize id
+   * holding `::` makes ambiguous (task 007-43). Optional: without it only the
+   * basetemp is scrubbed.
+   */
+  readonly name?: string;
   readonly path: string;
 }
 

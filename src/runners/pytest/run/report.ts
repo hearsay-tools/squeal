@@ -46,11 +46,15 @@ export interface BatchReport {
   readonly addressIds: readonly string[];
 }
 
+/** `scrubBasetemp` on the batch's basetemp, given the test's node name if any. */
+type Scrub = (text: string, name?: string) => string;
+
 /**
  * Maps one batch's events to per-file results (spec 007 D3, D6). Results
  * come only from the event file; the exit code is the caller's to judge.
  * `rootdir` is pytest's, against which `location` paths are written;
- * `basetemp`, the batch's, is written as `scrubBasetemp` does (task 007-37).
+ * `basetemp`, the batch's, is written as `scrubBasetemp` does (task 007-37),
+ * each test's with its own node name (task 007-43).
  */
 export function readBatch(
   events: readonly PytestEvent[],
@@ -59,7 +63,8 @@ export function readBatch(
   paths: WorktreePaths,
   basetemp: AbsolutePath | null = null,
 ): BatchReport {
-  const scrub = (text: string) => (basetemp === null ? text : scrubBasetemp(text, basetemp));
+  const scrub: Scrub = (text, name) =>
+    basetemp === null ? text : scrubBasetemp(text, basetemp, name);
   const collected = events.find((e) => e.type === "collected");
   const phases = new Map<string, PhaseEvent[]>();
   for (const e of events) {
@@ -114,8 +119,10 @@ function joinPhases(
   phases: ReadonlyMap<string, readonly PhaseEvent[]>,
   rootdir: AbsolutePath,
   paths: WorktreePaths,
-  scrub: (text: string) => string,
+  scrubAll: Scrub,
 ): CheckRunResult {
+  // Task 007-43: only this test's own `tmp_path` counter is replaced.
+  const scrub: Scrub = (text) => scrubAll(text, item.name);
   const own = phases.get(item.nodeid) ?? [];
   const phase = (when: PhaseEvent["when"]) => own.find((p) => p.when === when);
   const setup = phase("setup");
@@ -164,11 +171,7 @@ function checkLocation(
 }
 
 /** D3: "an error's location is `reprcrash` when present, which may name a helper or fixture line." */
-function phaseError(
-  phase: PhaseEvent,
-  paths: WorktreePaths,
-  scrub: (text: string) => string,
-): CheckError {
+function phaseError(phase: PhaseEvent, paths: WorktreePaths, scrub: Scrub): CheckError {
   const text = scrub(phase.longrepr ?? "");
   const { name, message } = splitException(
     phase.crash === null ? (lastErrorLine(text) ?? text) : scrub(phase.crash.message),
@@ -185,11 +188,8 @@ function phaseError(
 }
 
 /** D6: "A failed collection report is a `FileLevelError` with its traceback". */
-function collectionError(
-  longrepr: string | null,
-  paths: WorktreePaths,
-  scrub: (text: string) => string,
-): CheckError {
+function collectionError(longrepr: string | null, paths: WorktreePaths, scrub: Scrub): CheckError {
+  // A collection error has no test, so only the basetemp is replaced.
   const text = scrub(longrepr ?? "collection failed");
   const { name, message } = splitException(lastErrorLine(text) ?? text.split("\n")[0] ?? text);
   return { name, message, stack: paths.relativizeText(text), location: null, diff: null };
