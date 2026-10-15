@@ -390,6 +390,10 @@ export interface Evidence {
   /** The failure count may be wrong: an overflow hid which checks were failing already. */
   uncertain?: true;
   verdict: "pass" | "fail" | "unknown";
+  /** A pull's subcommand, `status` or `run` (review 006-57 B1). */
+  sub?: string;
+  /** The test files a status lists under `Pending retries:` (row 006-53). */
+  pendingRetries?: string[];
   /** The test files a named-files wait selected, each with a current result (row 006-55). */
   selected?: string[];
   /** Test files named current at the revision, and those named failing. */

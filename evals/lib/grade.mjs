@@ -75,7 +75,7 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
         pulls.push({ ...here, sub: a.sub, wait: a.wait, all: a.all, slow: a.slow, noDaemon });
         // `squeal why` explains a result; it is not evidence of the current one (B2).
         if (a.sub === "status" || a.sub === "run")
-          at(k.t + (k.ms ?? 0), { from: "pull", text: k.out ?? "" }, 1);
+          at(k.t + (k.ms ?? 0), { from: "pull", sub: a.sub, text: k.out ?? "" }, 1);
         // In the call's order with its other actions, as a run or an edit (review 006-57 B2).
         if (a.sub === "retry") at(k.t, retryStep(a, replies.retry));
       }
