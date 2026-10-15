@@ -29,6 +29,11 @@ interface Case extends RepoCase {
   /** The runners the opening names, "A and B"; "do not run A or B". */
   readonly runners: string;
   readonly slow: boolean;
+  /**
+   * Under Codex the primer names the CLI in its first command only: with the
+   * retry sentence (001-368) the full path in every one passes the cap.
+   */
+  readonly codexFirstOnly?: boolean;
 }
 
 const SCRIPTS = { name: "scripts", argv: [], env: {}, include: ["scripts/*.test.mjs"] };
@@ -85,6 +90,7 @@ const MATRIX: Record<string, Case> = {
       'Squeal covers Vitest (vitest.config.ts) and node:test projects "scripts" (scripts/*.test.mjs) and "e2e" (e2e/**/*.test.mjs), with 2 slow test files at the daemon\'s last listing.',
     runners: "Vitest and node:test",
     slow: true,
+    codexFirstOnly: true,
   },
 };
 
@@ -104,7 +110,11 @@ describe("SessionStart's primer lists exactly what the policy and the runner cov
     // The list, then what is left, as the primer's last two sentences.
     expect(text.endsWith(` ${c.covers} ${NOT_COVERED}`)).toBe(true);
     expect(text.match(/Squeal covers /g)).toHaveLength(1);
-    expect(text.includes(`\`${command} run --slow --wait 60000\``)).toBe(c.slow);
+    const slowStep =
+      harness === "codex" && c.codexFirstOnly === true
+        ? "the CLI's `run --slow --wait 60000`"
+        : `\`${command} run --slow --wait 60000\``;
+    expect(text.includes(slowStep)).toBe(c.slow);
     expect(text.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
   });
 
