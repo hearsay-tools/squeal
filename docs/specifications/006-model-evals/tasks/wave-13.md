@@ -128,3 +128,17 @@ Probe as the throwaway user only, never as `agent`:
 - a test pins the list;
 - the notes show each form refused before and allowed after;
 - lint, typecheck and `squeal run --all --wait` pass. Name any file that fails only under load.
+
+## 006-68 review of `cand/006-66` (006-66 and 006-67)
+
+Use /reviewer. Shape: review, pinned to the candidate's SHA; the range is `origin/main..cand/006-66`. Read this file's 006-66 section, board rows 006-66 and 006-67, and the worker's `tasks/006-66/notes.md` and `tasks/006-67/notes.md`.
+
+Check first, each with a probe where it can be one:
+- **The start record's alignment.** In `gradeCell`, every executed service start takes the next line of `out/service-starts.txt`. Can a start the timeline misses, or one it counts that never ran the script, shift the lines, so that a later start takes another start's reply? Cases: a refused start, a start inside a compound or a subshell, a `node` start under `nohup`/`setsid`/`env`, a start from a Codex `&`, a failed start, and a start after the session's ground truth.
+- **Isolation.** The Read rule reaches only `service` cells, and the recorded `CLAUDE_ALLOWED_TOOLS` and the long baseline's fingerprint (586284d42fcc) are unchanged. The record leaves no file behind a cell, and nothing in it can pass a secret into `out/`.
+- **The metric design.** With the record, does `retry-for-environment` or a10's `no-retry-past-failure` now credit a start that changed nothing (the service already running)?
+- **What no test can show.** Name what the coordinator's Claude a9 run must confirm.
+
+Rules: no cell, `claude` or `codex` session; never run `run-baseline.mjs`, `run-cell.mjs`, `judge-calibrate.mjs`, `regrade.mjs` or `atomic-regrade.mjs`; no `npm run build`. Your full run is `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`; name any file that fails under load and passes alone.
+
+**Writes:** `reviews/wave-13.6.md`, PASS or FAIL with blockers, should-fix and notes, committed.
