@@ -32,6 +32,35 @@ const allowed = (command: string) =>
   });
 const source = (f: string) => readFileSync(join(ATOMIC, "retry", f), "utf8");
 
+// 006-66: pilot 2 (`20261015T104301Z-9edb7b`) refused Sonnet's `nohup node scripts/rates-service.mjs
+// >/dev/null 2>&1 &` and Haiku's `cat ~/.ledgerline-rates.port; echo`. Probed as squeal-e2e on
+// Claude Code 2.1.300 (tasks/006-66/notes.md): the read needs a Read rule for the port file, and
+// `echo` passes as read-only. No rule, prefix or exact, admits a background `&`, so the list holds
+// none for it, and nothing wider.
+describe("Claude's allow-list", () => {
+  it("is pinned, with the port file's Read rule and no shell or wildcard rule", () => {
+    expect(CLAUDE_ALLOWED_TOOLS).toEqual([
+      "Bash(git:*)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(npx vitest:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run:*)",
+      "Bash(node:*)",
+      "Bash(squeal:*)",
+      "Bash(sleep:*)",
+      "Read",
+      "Read(~/.ledgerline-rates.port)",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "Skill",
+    ]);
+  });
+});
+
 describe("a9's service starts without a prompt", () => {
   it("is started as the failure says, a command the allow-list holds", () => {
     const start = /start it with: ([^`]+)`/.exec(source("src/rates.ts"))?.[1];
