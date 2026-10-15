@@ -61,6 +61,8 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
     }
     if (SKILL_PATH.test(k.cmd)) skillLoads++;
     const summaries = completedRuns(k.out);
+    // Each retry and service start takes its own reply from the call's output, in order (006-57 B2).
+    const replies = { retry: retryReplies(k.out), service: serviceReplies(k.out) };
     for (const a of actions) {
       const here = { t: k.t, n: n++, call, ms: k.ms ?? null, exit: k.exit ?? null };
       if (a.execution !== "executed") {
@@ -74,11 +76,12 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
         // `squeal why` explains a result; it is not evidence of the current one (B2).
         if (a.sub === "status" || a.sub === "run")
           at(k.t + (k.ms ?? 0), { from: "pull", text: k.out ?? "" }, 1);
-        if (a.sub === "retry") at(k.t + (k.ms ?? 0), retryStep(a, k.out ?? ""), 1);
+        // In the call's order with its other actions, as a run or an edit (review 006-57 B2).
+        if (a.sub === "retry") at(k.t, retryStep(a, replies.retry));
       }
       // A start that found the service running changes nothing (row 006-53).
       if (a.kind === "service")
-        at(k.t, { k: "service", started: /^rates service listening/m.test(k.out ?? "") });
+        at(k.t, { k: "service", started: replies.service.shift() === "listening" });
       if (a.kind === "vitest" || a.kind === "node:test") {
         const runner = a.runner ?? a.kind;
         runs.push({ ...here, runner, scope: a.scope, cmd: k.cmd.slice(0, 160) });
@@ -166,16 +169,37 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
 /**
  * A `squeal retry` call as a retained step (row 006-53): the paths it named relative to the
  * worktree, its reason, whether it withdrew, and the test files Squeal's reply says it queued.
+ * It takes one reply line per path from `replies`, the call's in order (review 006-57 B2).
  */
-function retryStep(a, out) {
+function retryStep(a, replies) {
+  const mine = replies.splice(0, Math.max(a.paths.length, 1));
   return {
     k: "retry",
     paths: a.paths.map((p) => relPath(p) ?? p),
     reason: a.reason,
     cancel: a.cancel,
-    queued: [...String(out).matchAll(/^Retry queued \(reason: \w+\): (\S+)/gm)].map((m) => m[1]),
+    queued: mine.filter((r) => r.queued).map((r) => r.file),
   };
 }
+
+/**
+ * Squeal's per-file retry replies in `out`, in order (spec 001 D6, 001-368's texts): `{ file,
+ * queued }`, `queued` for `Retry queued`, not for a refusal or a withdrawal.
+ */
+function retryReplies(out) {
+  const re =
+    /^(?:Retry queued \(reason: \w+\): (\S+)|Not retried: (\S+)|Retry withdrawn: (\S+)|No pending retry of (\S+))/gm;
+  return [...String(out ?? "").matchAll(re)].map((m) => ({
+    file: m[1] ?? m[2] ?? m[3] ?? m[4],
+    queued: m[1] !== undefined,
+  }));
+}
+
+/** The rates service's start replies in `out`, in order: `listening` or `running`. */
+const serviceReplies = (out) =>
+  [...String(out ?? "").matchAll(/^rates service (listening|already running)/gm)].map((m) =>
+    m[1] === "listening" ? "listening" : "running",
+  );
 
 /** A path relative to the cell's worktree, or `null` for one outside it (`/tmp/...`). */
 function relPath(p) {
