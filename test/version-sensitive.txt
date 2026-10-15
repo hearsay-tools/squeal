@@ -40,7 +40,7 @@
 #
 # Exempt: they name node:test but check nothing node:test does on this Node.
 # They read or write policy, setup, primer, report or eval-record text, or
-# drive timers; run-cell reads only `node --test`'s exit code. Node 22 only.
+# drive timers. Node 22 only.
 #   test/cli/codex.test.ts
 #   test/cli/init-node-test.test.ts
 #   test/cli/run-slow-held.test.ts
