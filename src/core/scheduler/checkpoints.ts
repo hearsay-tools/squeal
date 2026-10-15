@@ -20,6 +20,11 @@ interface Active {
   readonly record: CheckpointRecord;
   /** Requests that end with it: a joined `run --all` (001-217), a resumed one (001-219). */
   readonly joined: CheckpointRecord[];
+  /**
+   * A joined one-lane request's files still without a result (review 001-417
+   * S1): it ends once they have one, never held by the open one's other lane.
+   */
+  readonly lanes: Map<string, { readonly remaining: Set<string>; failed: boolean }>;
   readonly remaining: Map<string, TestFileRef>;
   /** Files only results attributed to it count for (`run --all --force`). */
   readonly strict: Set<string>;
@@ -128,6 +133,7 @@ export class Checkpoints {
     this.#active = {
       record,
       joined: [],
+      lanes: new Map(),
       remaining: new Map(),
       strict: new Set(),
       total: 0,
@@ -140,7 +146,8 @@ export class Checkpoints {
 
   /**
    * Records a request whose files the open checkpoint runs (`covers`): it
-   * ends when, and as, the open one ends (task 001-217).
+   * ends when, and as, the open one ends (task 001-217); a one-lane one, when
+   * its own files have a result (review 001-417 S1).
    */
   join(
     id: string,
@@ -150,7 +157,13 @@ export class Checkpoints {
     lane?: CheckpointLane,
   ): CheckpointRecord {
     const record = this.#insert(id, kind, revision, testFiles, lane);
-    this.#active?.joined.push(record);
+    const active = this.#active;
+    active?.joined.push(record);
+    if (active !== null && lane !== undefined) {
+      const remaining = new Set(testFiles.map(testFileId).filter((f) => active.remaining.has(f)));
+      active.lanes.set(id, { remaining, failed: false });
+      this.#laneDone(active, null, false);
+    }
     this.#publish();
     return record;
   }
@@ -200,6 +213,7 @@ export class Checkpoints {
       this.#active = {
         record: first,
         joined: rest,
+        lanes: new Map(),
         remaining: new Map(),
         strict: new Set(),
         total: 0,
@@ -219,14 +233,17 @@ export class Checkpoints {
     const id = testFileId(ref);
     if (active.strict.has(id) && by !== active.record.id) return;
     if (!active.remaining.delete(id)) return;
+    this.#laneDone(active, id, false);
     this.#settle();
   }
 
   /** `ref` crashed or timed out: the checkpoint cannot complete. */
   failed(ref: TestFileRef): void {
     const active = this.#active;
-    if (!active?.remaining.delete(testFileId(ref))) return;
+    const id = testFileId(ref);
+    if (!active?.remaining.delete(id)) return;
     active.failed = true;
+    this.#laneDone(active, id, true);
     this.#settle();
   }
 
@@ -294,6 +311,18 @@ export class Checkpoints {
       active.remaining.set(id, ref);
     }
     for (const ref of strict) active.strict.add(testFileId(ref));
+  }
+
+  /** Ends each joined one-lane request whose own files all have a result now that `id` has one. */
+  #laneDone(active: Active, id: string | null, failed: boolean): void {
+    for (const [recordId, lane] of active.lanes) {
+      if (id !== null && lane.remaining.delete(id)) lane.failed ||= failed;
+      if (lane.remaining.size > 0) continue;
+      active.lanes.delete(recordId);
+      const at = active.joined.findIndex((record) => record.id === recordId);
+      if (at !== -1) active.joined.splice(at, 1);
+      this.store.checkpoints.finish(recordId, lane.failed ? "abandoned" : "completed", this.now());
+    }
   }
 
   #settle(): void {

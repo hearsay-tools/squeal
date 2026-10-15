@@ -44,7 +44,8 @@ export interface LaneFilter {
  * cannot count for them (review wave 13ar, B1). The joined one is its
  * `owner`, which the CLI counts the work of (review wave-3, B4). With
  * `only`, the request and its checkpoint hold that lane's files alone (task
- * 004-61), and a join needs the open one to run just those.
+ * 004-61); joined, it ends once those have a result, whatever the open one's
+ * other lane still runs (review 001-417 S1).
  */
 export function queueFullSuite(
   ledger: Ledger,
