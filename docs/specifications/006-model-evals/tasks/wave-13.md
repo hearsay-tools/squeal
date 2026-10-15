@@ -189,3 +189,22 @@ Starting seam: `evals/lib/grade.mjs` (`at`, `pairStarts`, the service branch), `
 
 Use /reviewer. Shape: review, narrow, pinned. Check 006-72's contract against B1's five probes in both harnesses, and that cells without a record grade as before. A listening line after a failure sight is a change after it: the script prints `listening` only when it found no live service. Rules as 006-68's. **Writes:** a third section in `reviews/wave-13.6.md`, PASS or FAIL, committed.
 
+
+## 006-71 a9's retry measures credit what the situation asked
+
+Use /worker. Shape: repair (measure design). Read board row 006-71, `lessons.md` "Retry scenarios a9 to a11" (the a9 table), and `retry-evidence.mjs`. The cells are sol's a9 cells r2 and r6 to r8 of run `20261015T114356Z-99db6d`: in `evals/results/…99db6d.atomic.json`, with transcripts under `/tmp/squeal-evals-1001/cells/ae20bb31621f/20261015T114356Z-99db6d/*/out`.
+
+Two situations the rule scores as misses:
+1. **An input edit after the retry** (r6 to r8): the service was started, the retry asked, then the asked edit to `src/rates.ts` ran the test and it passed with the service up. A pass claim resting on that current pass is right. `claim-after-retry` and `retryArose` call it a miss.
+2. **A retry Squeal did not queue** (r2): after the start, `squeal retry` found the file already pending at those inputs. Find Squeal's reply in r2's transcript. The agent asked at the right time; `retry-for-environment` calls it a miss.
+
+Contract: neither situation is a miss. Choose `true` or `null` for each and justify it in notes. A pass claim made while the FAIL stands, or a pass from before the start, still fails. The a11 measures are unchanged.
+
+**Owns:** `evals/lib/retry-evidence.mjs`, the retry parser in `evals/lib/` if needed, `test/evals/`, `tasks/006-71/notes.md`.
+
+**Done when:**
+- regressions in both harnesses fail before the change and pass after, plus near variants that must stay misses;
+- notes list, checked in memory only, which committed cells change;
+- lint, typecheck and `squeal run --all --wait` pass.
+
+Never run `atomic-regrade.mjs`, `run-baseline.mjs` or `run-cell.mjs`. No `npm run build`.
