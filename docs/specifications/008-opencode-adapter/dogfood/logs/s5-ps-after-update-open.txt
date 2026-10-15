@@ -1,0 +1,9 @@
+    PID    PPID     ELAPSED COMMAND
+2680907    1049       01:27 /opt/squeal-e2e/node24/bin/node /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/0.1.184/dist/cli/squeal.mjs daemon /home/squeal-e2e/dogfood-008/remeda
+2681158 2680907       01:27 /home/squeal-e2e/dogfood-008/remeda/node_modules/@esbuild/linux-x64/bin/esbuild --service=0.28.2 --ping
+2681603 2681597       01:25 node /home/squeal-e2e/dogfood-008/scripts/proxy.mjs 47320 /home/squeal-e2e/dogfood-008/logs/s5-tui.requests.jsonl
+2681847    1049       01:24 tmux -S /home/squeal-e2e/dogfood-008/tmp/tmux.sock new-session -d -s tui -x 200 -y 50 -c /home/squeal-e2e/dogfood-008/remeda opencode -m cliproxy/gpt-6-luna 
+2681848 2681847       01:24 opencode -m cliproxy/gpt-6-luna
+2703889 2681848       00:00 /opt/squeal-e2e/node24/bin/node --disable-warning=ExperimentalWarning /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/0.1.184/dist/hooks/wait.mjs
+2704048 2704040       00:00 ps -u squeal-e2e -o pid,ppid,etime,args
+2704049 2704042       00:00 tee /home/squeal-e2e/dogfood-008/logs/s5-ps-after-update-open.txt

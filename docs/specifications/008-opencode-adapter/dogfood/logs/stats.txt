@@ -3,9 +3,11 @@
 s0-nostore: 2 requests, primer in 0; SQUEAL as user text 0, after a tool result 0, as a denied edit 0
 s1-astra: 8 requests, primer in 8; SQUEAL as user text 1, after a tool result 2, as a denied edit 0
 s2-grok: 48 requests, primer in 48; SQUEAL as user text 2, after a tool result 11, as a denied edit 1
-  ran tests itself: "/opt/squeal-e2e/node24/bin/node" --disable-warning=ExperimentalWarning "/home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/0.1.184/dist/cli/squeal.mjs" stat
-  ran tests itself: "/opt/squeal-e2e/node24/bin/node" --disable-warning=ExperimentalWarning "/home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/0.1.184/dist/cli/squeal.mjs" stat
-  ran tests itself: "/opt/squeal-e2e/node24/bin/node" --disable-warning=ExperimentalWarning "/home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/0.1.184/dist/cli/squeal.mjs" stat
+  ran tests itself: squeal status --wait 60000 && npm run test:types && npm run check
+  ran tests itself: squeal status --wait 90000; npm run test:types; npm run check
+  ran tests itself: squeal status --wait 90000 && npm run test:types && npm run check
 s3-run: 5 requests, primer in 5; SQUEAL as user text 2, after a tool result 0, as a denied edit 0
 s3b-run-luna: 5 requests, primer in 5; SQUEAL as user text 1, after a tool result 1, as a denied edit 0
-s4-luna-wake: 0 requests, primer in 0; SQUEAL as user text 0, after a tool result 0, as a denied edit 0
+s4-luna-wake: 7 requests, primer in 7; SQUEAL as user text 2, after a tool result 0, as a denied edit 0
+s4b-luna-wake: 4 requests, primer in 4; SQUEAL as user text 2, after a tool result 0, as a denied edit 0
+s5-tui: 26 requests, primer in 26; SQUEAL as user text 4, after a tool result 4, as a denied edit 0

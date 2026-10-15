@@ -1,0 +1,22 @@
+03:58:37
+ 03:58:37 up 16:47,  6 users,  load average: 4.15, 3.77, 11.02
+$ curl -fsSL -o /home/squeal-e2e/dogfood-008/tmp/squeal-update-RKk8Y7/install.sh file:///home/squeal-e2e/dogfood-008/src/install-0.1.190.sh
+$ sh /home/squeal-e2e/dogfood-008/tmp/squeal-update-RKk8Y7/install.sh --opencode
+$ mkdir -p /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode
+$ curl -fsSL -o /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/.unpack.N6wna4/source.tar.gz file:///home/squeal-e2e/dogfood-008/src/squeal--v0.1.190.tar.gz
+$ tar -xzf /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/.unpack.N6wna4/source.tar.gz -C /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/.unpack.N6wna4/source --strip-components=1
+$ mv /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/.unpack.N6wna4/source/plugins/opencode /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/0.1.190
+$ ln -sfn 0.1.190 /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/current
+OpenCode sessions already open keep the Squeal they loaded until they restart. Restart them before the next update: it removes the version they loaded unless its daemon is running
+OpenCode: Squeal 0.1.190, was 0.1.184
+A running session keeps the version it loaded until it restarts, or until /reload-plugins in Claude Code.
+exit 0
+0.1.190
+0.1.184
+0.1.190
+current
+opencode /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/0.1.184
+opencode
+launcher /home/squeal-e2e/dogfood-008/home/.local/bin/squeal
+opencode /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/0.1.190
+0.1.190

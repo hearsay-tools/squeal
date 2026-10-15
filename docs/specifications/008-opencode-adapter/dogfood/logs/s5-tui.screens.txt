@@ -1,0 +1,364 @@
+
+===== 03:57:43 load 2.85 =====
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                                                                                  ▄
+                                                                                 █▀▀█ █▀▀█ █▀▀█ █▀▀▄ █▀▀▀ █▀▀█ █▀▀█ █▀▀█
+                                                                                 █  █ █  █ █▀▀▀ █  █ █    █  █ █  █ █▀▀▀
+                                                                                 ▀▀▀▀ █▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀▀
+
+
+                                                               ┃
+                                                               ┃  Ask anything… "Fix a TODO in the codebase"
+                                                               ┃
+                                                               ┃  Build · gpt-6-luna cliproxy (dogfood proxy)
+                                                               ╹▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+                                                                                                               tab agents  ctrl+p commands
+
+
+
+                                                                    ● Tip Start a message with ! to run shell commands (e.g., !ls -la)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  /home/squeal-e2e/dogfood-008/remeda                                                                                                                                                          1.18.35
+
+
+===== 03:58:32 load 4.07 =====
+  ┃         inaccuracies](https://developer.mozilla.org/en-US/docs/Web/                inaccuracies](https://developer.mozilla.org/en-US/docs/Web/
+  ┃         JavaScript/Reference/Global_Objects/String/                                JavaScript/Reference/Global_Objects/String/                              Update capitalize to lowercase
+  ┃         toLocaleUpperCase#description)_.                                           toLocaleUpperCase#description)_.                                         remaining characters
+  ┃    55     return purry(capitalizeImplementation, args);                       53     return purry(capitalizeImplementation, args);
+  ┃    56   }                                                                     54   }                                                                        Context
+  ┃    57                                                                         55                                                                            18,173 tokens
+  ┃    58   const capitalizeImplementation = <T extends string>(data: T):         56   const capitalizeImplementation = <T extends string>(data: T):            0% used
+  ┃         Capitalize<T> =>                                                           Capitalize<T> =>                                                         $0.00 spent
+  ┃    59 -   `${data[0]?.toUpperCase() ?? ""}${data.slice(1)}` as Capitalize<T>; 57 +   `${data[0]?.toUpperCase() ?? ""}${data.slice(1).toLowerCase()}` as
+  ┃                                                                                    Capitalize<T>;                                                           LSP
+  ┃                                                                                                                                                             LSPs are disabled
+
+     The implementation now lowercases the suffix, and I’ve updated both overload descriptions. I’ll wait for Squeal’s result for this revision before
+     wrapping up.
+
+  ┃
+  ┃  $ "/opt/squeal-e2e/node24/bin/node" --disable-warning=ExperimentalWarning "/home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/0.1.184/dist/cli/
+  ┃  squeal.mjs" status --wait 60000
+  ┃
+  ┃  Returned on quiet: nothing the edits since revision 37 re-keyed is pending (0 test files) at revision 38 after 0.6 s
+  ┃
+  ┃  Revision: 38
+  ┃  Known failures: 5 (5 tests)
+  ┃    FAIL  packages/remeda/src/capitalize.test.ts > data-first > on mixed case
+  ┃          expected 'Hello world' to be 'HeLlO WoRlD' // Object.is equality
+  ┃          at packages/remeda/src/capitalize.test.ts:19:39, observed at revision 38, current
+  ┃    FAIL  packages/remeda/src/capitalize.test.ts > data-first > on upper case
+  ┃          expected 'Hello world' to be 'HELLO WORLD' // Object.is equality
+  ┃          at packages/remeda/src/capitalize.test.ts:15:39, observed at revision 38, current
+  ┃  …
+  ┃
+  ┃  Click to expand
+  ┃
+
+     Updated capitalize in packages/remeda/src/capitalize.ts to uppercase the first character and lowercase the rest. Also updated both overload
+     descriptions.
+
+     Squeal reported 5 failing checks in the existing capitalize.test.ts: expectations for preserving uppercase or mixed-case suffixes, including the
+     Unicode case. Those expectations conflict with the requested behavior. The other 2,406 checks passed; no full-suite checkpoint completed for this
+     revision.
+
+     ▣  Build · gpt-6-luna · 21.7s
+
+  ┃
+  ┃
+  ┃
+  ┃  Build · gpt-6-luna cliproxy (dogfood proxy)                                                                                                                /home/squeal-e2e/dogfood-008/remeda
+  ╹▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+   /home/squeal-e2e/dogfood-008/remeda                                                                                                18.2K  ctrl+p commands    • OpenCode 1.18.35
+
+
+===== 03:59:29 load 5.12 =====
+  ┃    32    * for the runtime and the built-in [`Capitalize`](https://www.       34    * for the runtime and the built-in [`Capitalize`](https://www.
+  ┃         typescriptlang.org/docs/handbook/2/template-literal-types.                 typescriptlang.org/docs/handbook/2/template-literal-types.               Update capitalize to lowercase
+  ┃         html#capitalizestringtype)                                                 html#capitalizestringtype)                                               remaining characters
+  ┃    33    * utility type for typing and thus shares their _[locale             35    * utility type for typing and thus shares their _[locale
+  ┃         inaccuracies](https://developer.mozilla.org/en-US/docs/Web/                inaccuracies](https://developer.mozilla.org/en-US/docs/Web/              Context
+  ┃         JavaScript/Reference/Global_Objects/String/                                JavaScript/Reference/Global_Objects/String/                              19,630 tokens
+  ┃         toLocaleUpperCase#description)_.                                           toLocaleUpperCase#description)_.                                         0% used
+  ┃    53     return purry(capitalizeImplementation, args);                       55     return purry(capitalizeImplementation, args);                          $0.00 spent
+  ┃    54   }                                                                     56   }
+  ┃    55                                                                         57                                                                            LSP
+  ┃    56   const capitalizeImplementation = <T extends string>(data: T):         58   const capitalizeImplementation = <T extends string>(data: T):            LSPs are disabled
+  ┃         Capitalize<T> =>                                                           Capitalize<T> =>
+  ┃    57 -   `${data[0]?.toUpperCase() ?? ""}${data.slice(1).toLowerCase()}` as  59 +   `${data[0]?.toUpperCase() ?? ""}${data.slice(1)}` as Capitalize<T>;
+  ┃         Capitalize<T>;
+  ┃
+
+  ┃
+  ┃  $ "/opt/squeal-e2e/node24/bin/node" --disable-warning=ExperimentalWarning "/home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/0.1.184/dist/cli/
+  ┃  squeal.mjs" status --wait 60000
+  ┃
+  ┃  Returned on quiet: nothing the edits since revision 38 re-keyed is pending (0 test files) at revision 39 after 0.6 s
+  ┃
+  ┃  Revision: 39
+  ┃  Known failures: 0
+  ┃  Affected checks: 2411 passed (2236 tests, 175 test files loaded), 0 running, 0 queued, 2 skipped (2 tests)
+  ┃  Full-suite checkpoint: none completed since revision 37 (the counts are for revision 39; `"/opt/squeal-e2e/node24/bin/node" --disable-
+  ┃  warning=ExperimentalWarning "/home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/0.1.184/dist/cli/squeal.mjs" run --all` requests one)
+  ┃
+  ┃  Worktree: /home/squeal-e2e/dogfood-008/remeda (HEAD 8e6e78f, clean at revision 39)
+  ┃  Daemon: running, last heartbeat 4 s ago
+  ┃  Inherited from other worktrees: none (every current result here was run in this worktree)
+  ┃  …
+  ┃
+  ┃  Click to expand
+  ┃
+
+     Reverted packages/remeda/src/capitalize.ts to its original implementation and descriptions.
+
+     Squeal reported 0 known failures at revision 39. All 2,411 affected checks passed (2 skipped); the five capitalize checks that failed after the
+     previous change now pass. No full-suite checkpoint completed for this revision.
+
+     ▣  Build · gpt-6-luna · 11.2s
+
+  ┃
+  ┃
+  ┃
+  ┃  Build · gpt-6-luna cliproxy (dogfood proxy)                                                                                                                /home/squeal-e2e/dogfood-008/remeda
+  ╹▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+   /home/squeal-e2e/dogfood-008/remeda                                                                                                19.6K  ctrl+p commands    • OpenCode 1.18.35
+
+
+===== 04:00:16 load 4.36 =====
+  ┃  second timer and then expects 1 to equal 2; give the test a 30 second timeout. Write only that file. Do not run, wait for or check anything; reply
+  ┃  DONE as soon as the file is written.                                                                                                                       Update capitalize to lowercase
+  ┃                                                                                                                                                             remaining characters
+
+  ┃                                                                                                                                                             Context
+  ┃  # Created packages/remeda/src/zz-slow.test.ts                                                                                                              20,237 tokens
+  ┃                                                                                                                                                             0% used
+  ┃                                                                                1 + import { expect, test } from "vitest";                                   $0.00 spent
+  ┃                                                                                2 +
+  ┃                                                                                3 + test(                                                                    LSP
+  ┃                                                                                4 +   "slow check",                                                          LSPs are disabled
+  ┃                                                                                5 +   async () => {
+  ┃                                                                                6 +     await new Promise((resolve) => setTimeout(resolve, 10_000));
+  ┃                                                                                7 +     expect(1).toBe(2);
+  ┃                                                                                8 +   },
+  ┃                                                                                9 +   30_000,
+  ┃                                                                               10 + );
+  ┃
+
+     DONE
+
+     ▣  Build · gpt-6-luna · 4.8s
+
+  ┃
+  ┃  SQUEAL · 1 check changed (1 test) at revision 40
+  ┃  Revision 40 (changed packages/remeda/src/zz-slow.test.ts): 2415 current (2239 tests, 176 test files loaded), 0 pending, 0 stale, 0 unknown. Full-suite
+  ┃  checkpoint: none completed since revision 37 (the counts are for revision 40; `"/opt/squeal-e2e/node24/bin/node" --disable-warning=ExperimentalWarning
+  ┃  "/home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/0.1.184/dist/cli/squeal.mjs" run --all` requests one).
+  ┃
+  ┃  FAIL  packages/remeda/src/zz-slow.test.ts > slow check
+  ┃        first observed: FAIL, seen by Squeal's run at revision 40
+  ┃        expected 1 to be 2 // Object.is equality; diff (- Expected, + Received): - 2 | + 1
+  ┃        at packages/remeda/src/zz-slow.test.ts:7:15
+  ┃        touches files changed here since this session started: packages/remeda/src/zz-slow.test.ts
+  ┃
+  ┃  Full output: "/opt/squeal-e2e/node24/bin/node" --disable-warning=ExperimentalWarning "/home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/0.1.184/
+  ┃  dist/cli/squeal.mjs" why "packages/remeda/src/zz-slow.test.ts > slow check"
+  ┃
+
+     Squeal reported that packages/remeda/src/zz-slow.test.ts > slow check failed: it expected 1 to equal 2.
+
+     ▣  Build · gpt-6-luna · 2.2s
+
+  ┃
+  ┃
+  ┃
+  ┃  Build · gpt-6-luna cliproxy (dogfood proxy)                                                                                                                /home/squeal-e2e/dogfood-008/remeda
+  ╹▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+   /home/squeal-e2e/dogfood-008/remeda                                                                                                20.2K  ctrl+p commands    • OpenCode 1.18.35
+
+
+===== 04:00:46 load 3.64 =====
+     Objective
+                                                                                                                                                                Update capitalize to lowercase
+     - Change packages/remeda/src/capitalize.ts so capitalize uppercases the first character and lowercases the rest of the string.                             remaining characters
+     - Report what Squeal found.
+                                                                                                                                                                Context
+     Important Details                                                                                                                                          4,622 tokens
+                                                                                                                                                                0% used
+     - User constrained edits to packages/remeda/src/capitalize.ts only.                                                                                        $0.00 spent
+     - Squeal runs Vitest checks in the background; do not run Vitest manually.
+                                                                                                                                                                LSP
+     Work State                                                                                                                                                 LSPs are disabled
+
+     Completed
+
+     - Updated the implementation to lowercase data.slice(1) and updated both overload descriptions.
+     - Squeal at revision 38 reported 2,406 checks passed and 5 failed.
+
+     Active
+
+     - No further work is active.
+
+     Blocked
+
+     - Five existing expectations in packages/remeda/src/capitalize.test.ts fail because they expect suffix case to be preserved:
+       - data-first > on mixed case
+       - data-first > on upper case
+       - data-last > on mixed case
+       - data-last > on upper case
+       - unicode > maintains diacritics in rest of word
+     - No full-suite checkpoint completed for revision 38.
+
+     Next Move
+
+     1. No further action unless asked to address the failing expectations.
+     2. Preserve the user’s constraint to edit only packages/remeda/src/capitalize.ts.
+
+     Relevant Files
+
+     - packages/remeda/src/capitalize.ts: implementation and overload descriptions changed.
+     - packages/remeda/src/capitalize.test.ts: existing case-preservation expectations responsible for Squeal’s five failures; not edited.
+
+     ▣  Compaction · gpt-6-luna · 6.7s
+
+  ┃
+  ┃
+  ┃
+  ┃  Build · gpt-6-luna cliproxy (dogfood proxy)                                                                                                                /home/squeal-e2e/dogfood-008/remeda
+  ╹▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+   /home/squeal-e2e/dogfood-008/remeda                                                                                                 4.6K  ctrl+p commands    • OpenCode 1.18.35
+
+
+===== 04:01:52 load 2.67 =====
+       - data-first > on mixed case
+       - data-first > on upper case                                                                                                                             Update capitalize to lowercase
+       - data-last > on mixed case                                                                                                                              remaining characters
+       - data-last > on upper case
+       - unicode > maintains diacritics in rest of word                                                                                                         Context
+     - No full-suite checkpoint completed for revision 38.                                                                                                      11,279 tokens
+                                                                                                                                                                0% used
+     Next Move                                                                                                                                                  $0.00 spent
+
+     1. No further action unless asked to address the failing expectations.                                                                                     LSP
+     2. Preserve the user’s constraint to edit only packages/remeda/src/capitalize.ts.                                                                          LSPs are disabled
+
+     Relevant Files
+
+     - packages/remeda/src/capitalize.ts: implementation and overload descriptions changed.
+     - packages/remeda/src/capitalize.test.ts: existing case-preservation expectations responsible for Squeal’s five failures; not edited.
+
+     ▣  Compaction · gpt-6-luna · 6.7s
+
+  ┃
+  ┃  Use the task tool to start a general subagent that deletes packages/remeda/src/zz-slow.test.ts and then reports what Squeal said, if anything. Then
+  ┃  tell me its answer, and whether src/capitalize.ts currently differs from git HEAD.
+  ┃
+
+     ✓ General Task — Delete slow test
+       ↳ 2 toolcalls · 8.1s
+
+     ctrl+x down view subagents
+
+  ┃
+  ┃  $ git diff --quiet HEAD -- packages/remeda/src/capitalize.ts; result=$?; if [ "$result" -eq 0 ]; then printf 'matches git HEAD\n'; elif [ "$result" -
+  ┃  eq 1 ]; then printf 'differs from git HEAD\n'; else exit "$result"; fi
+  ┃
+  ┃  matches git HEAD
+  ┃
+
+     The subagent deleted packages/remeda/src/zz-slow.test.ts. Squeal resolved its failure and reported 0 known failures at revision 41, with 2,411 checks
+     passed and 2 skipped.
+
+     packages/remeda/src/capitalize.ts currently matches git HEAD.
+
+     ▣  Build · gpt-6-luna · 15.6s
+
+  ┃
+  ┃
+  ┃
+  ┃  Build · gpt-6-luna cliproxy (dogfood proxy)                                                                                                                /home/squeal-e2e/dogfood-008/remeda
+  ╹▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+   /home/squeal-e2e/dogfood-008/remeda                                                                                                11.3K  ctrl+p commands    • OpenCode 1.18.35
+
+
+===== 04:03:10 load 4.21 =====
+  ┃         Global_Objects/String/toUpperCase)                                         Global_Objects/String/toUpperCase)
+  ┃    34    * for the runtime and the built-in [`Capitalize`](https://www.       32    * for the runtime and the built-in [`Capitalize`](https://www.          Update capitalize to lowercase
+  ┃         typescriptlang.org/docs/handbook/2/template-literal-types.                 typescriptlang.org/docs/handbook/2/template-literal-types.               remaining characters
+  ┃         html#capitalizestringtype)                                                 html#capitalizestringtype)
+  ┃    35    * utility type for typing and thus shares their _[locale             33    * utility type for typing and thus shares their _[locale                Context
+  ┃         inaccuracies](https://developer.mozilla.org/en-US/docs/Web/                inaccuracies](https://developer.mozilla.org/en-US/docs/Web/              19,325 tokens
+  ┃         JavaScript/Reference/Global_Objects/String/                                JavaScript/Reference/Global_Objects/String/                              0% used
+  ┃         toLocaleUpperCase#description)_.                                           toLocaleUpperCase#description)_.                                         $0.00 spent
+  ┃    55     return purry(capitalizeImplementation, args);                       53     return purry(capitalizeImplementation, args);
+  ┃    56   }                                                                     54   }                                                                        LSP
+  ┃    57                                                                         55                                                                            LSPs are disabled
+  ┃    58   const capitalizeImplementation = <T extends string>(data: T):         56   const capitalizeImplementation = <T extends string>(data: T):
+  ┃         Capitalize<T> =>                                                           Capitalize<T> =>
+  ┃    59 -   `${data[0]?.toUpperCase() ?? ""}${data.slice(1)}` as Capitalize<T>; 57 +   `${data[0]?.toUpperCase() ?? ""}${data.slice(1).toLowerCase()}` as
+  ┃                                                                                    Capitalize<T>;
+  ┃
+
+  ┃
+  ┃  $ "/opt/squeal-e2e/node24/bin/node" --disable-warning=ExperimentalWarning "/home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/0.1.190/dist/cli/
+  ┃  squeal.mjs" status --wait 60000
+  ┃
+  ┃  Returned on quiet: nothing the edits since revision 41 re-keyed is pending (0 test files) at revision 42 after 0.6 s
+  ┃
+  ┃  Revision: 42
+  ┃  Known failures: 5 (5 tests)
+  ┃    FAIL  packages/remeda/src/capitalize.test.ts > data-first > on mixed case
+  ┃          expected 'Hello world' to be 'HeLlO WoRlD' // Object.is equality
+  ┃          at packages/remeda/src/capitalize.test.ts:19:39, observed at revision 38, current
+  ┃    FAIL  packages/remeda/src/capitalize.test.ts > data-first > on upper case
+  ┃          expected 'Hello world' to be 'HELLO WORLD' // Object.is equality
+  ┃          at packages/remeda/src/capitalize.test.ts:15:39, observed at revision 38, current
+  ┃  …
+  ┃
+  ┃  Click to expand
+  ┃
+
+     Updated packages/remeda/src/capitalize.ts so capitalize lowercases the rest of the string, and updated both overload descriptions to match.
+
+     Squeal reported 5 failures: the tests expecting mixed-case, uppercase, and Unicode suffixes to remain unchanged. It reported 2,406 checks passed and 2
+     skipped; no full-suite checkpoint has completed since revision 41.
+
+     ▣  Build · gpt-6-luna · 18.1s
+
+  ┃
+  ┃
+  ┃
+  ┃  Build · gpt-6-luna cliproxy (dogfood proxy)                                                                                                                /home/squeal-e2e/dogfood-008/remeda
+  ╹▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+   /home/squeal-e2e/dogfood-008/remeda                                                                                                19.3K  ctrl+p commands    • OpenCode 1.18.35
+
