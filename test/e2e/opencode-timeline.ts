@@ -119,8 +119,14 @@ export interface TimelineInput {
   readonly exits: Readonly<Record<string, number>>;
 }
 
+/** What the timeline shows, and whether it proves the report missed one of D4's deadlines. */
+export interface Timeline {
+  readonly text: string;
+  readonly missedDeadline: boolean;
+}
+
 /** Every mark as ms since the first run's idle, the deadlines, and which one the report missed. */
-export function timeline(input: TimelineInput): string {
+export function timeline(input: TimelineInput): Timeline {
   const failures: string[] = [];
   const opencode = read("OpenCode's log", () => openCodeMarks(input.first), failures);
   const messages = read(
@@ -173,14 +179,15 @@ export function timeline(input: TimelineInput): string {
   // `run` disposes about 10 ms after idle (008-25) when OpenCode's log lost the line.
   const storeDeadline = (disposing ?? idle) + DISPOSE_DEADLINE_MS - DISPOSE_END_MS;
   const reading = readingOf(input, { idle, idleDeadline, storeDeadline, messages, since });
-  return [
+  const text = [
     `timeline, ms since the first run's idle (${logged === undefined ? "its last reply's completion; OpenCode's log lost the line" : "OpenCode's log"}):`,
     ...marks.map((m) => `  ${since(m.at)} ${m.what}`),
     `  idle's deadline (stop.waitMs ${input.stopWaitMs} + ${IDLE_MARGIN_MS}): ${since(idleDeadline)}`,
     `  dispose's deadline: ${disposing === undefined ? "not in OpenCode's log" : since(disposing + DISPOSE_DEADLINE_MS)}, the store's ${since(storeDeadline)}`,
     ...failures.map((f) => `  ${f}`),
-    `reading: ${reading}`,
+    `reading: ${reading.text}`,
   ].join("\n");
+  return { text, missedDeadline: reading.missedDeadline };
 }
 
 interface Reading {
@@ -199,7 +206,7 @@ interface Reading {
  * overtaken check's read or the store ran out of time; well before it, the
  * plugin let the report go of its own accord.
  */
-function readingOf(input: TimelineInput, r: Reading): string {
+function readingOf(input: TimelineInput, r: Reading): Timeline {
   const { since } = r;
   const { consumers, bridges } = input.watched;
   const ran = input.exits.run ?? Number.POSITIVE_INFINITY;
@@ -207,8 +214,10 @@ function readingOf(input: TimelineInput, r: Reading): string {
     (m) => m.role === "user" && m.created > r.idle && m.created <= ran,
   );
   const stored = after.find((m) => m.text.startsWith(REPORT));
-  if (stored !== undefined)
-    return `a report was stored at ${since(stored.created)}: compare it with what run --continue sent`;
+  if (stored !== undefined) {
+    const text = `a report was stored at ${since(stored.created)}: compare it with what run --continue sent`;
+    return { text, missedDeadline: false };
+  }
   const delivered = consumers
     .flatMap((s) => s.rows.flatMap((c) => (c.delivered === null ? [] : [c.delivered])))
     .at(-1);
@@ -230,15 +239,20 @@ function readingOf(input: TimelineInput, r: Reading): string {
       : `dispose's end bridge started ${since(end.started)}`,
     store,
   ].join("; ");
-  const cause =
-    stop !== undefined && stop.alive >= r.idleDeadline
-      ? `Stop's bridge outlived the idle's deadline (${since(r.idleDeadline)}): the plugin killed it and dropped its answer, D4's silence at a missed deadline`
-      : delivered === undefined
-        ? "Stop had nothing to deliver, or never reached the daemon"
-        : end === undefined
-          ? "unresolved: the watcher missed the end bridge"
-          : end.started >= r.storeDeadline - HELD_MS
-            ? `the idle held dispose until the store's deadline (${since(r.storeDeadline)}): the overtaken check's read or the store did not finish in time, D4's silence at a missed deadline`
-            : `the idle let dispose go before the store's deadline (${since(r.storeDeadline)}) with nothing stored: the plugin dropped the report, its answer late or the turn judged overtaken`;
-  return `${facts}. ${cause}`;
+  const missed = (cause: string) => ({ text: `${facts}. ${cause}`, missedDeadline: true });
+  const other = (cause: string) => ({ text: `${facts}. ${cause}`, missedDeadline: false });
+  if (stop !== undefined && stop.alive >= r.idleDeadline)
+    return missed(
+      `Stop's bridge outlived the idle's deadline (${since(r.idleDeadline)}): the plugin killed it and dropped its answer, D4's silence at a missed deadline`,
+    );
+  if (delivered === undefined)
+    return other("Stop had nothing to deliver, or never reached the daemon");
+  if (end === undefined) return other("unresolved: the watcher missed the end bridge");
+  if (end.started >= r.storeDeadline - HELD_MS)
+    return missed(
+      `the idle held dispose until the store's deadline (${since(r.storeDeadline)}): the overtaken check's read or the store did not finish in time, D4's silence at a missed deadline`,
+    );
+  return other(
+    `the idle let dispose go before the store's deadline (${since(r.storeDeadline)}) with nothing stored: the plugin dropped the report, its answer late or the turn judged overtaken`,
+  );
 }
