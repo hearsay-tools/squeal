@@ -270,3 +270,17 @@ Read board row 006-77, spec D4 "Who grades what" and D9 "Cross-check", and the d
 - lint, typecheck and `squeal run --all --wait` pass. Name any file that fails under load and passes alone.
 
 Never call a model. Never run `regrade.mjs`, `atomic-regrade.mjs`, `run-baseline.mjs` or `run-cell.mjs`. No `npm run build`.
+
+## 006-81 review of `cand/006-77`
+
+Use /reviewer. Shape: review, pinned to the candidate's SHA; the range is `origin/main..cand/006-77`. Read this file's 006-77 section, `tasks/006-77/notes.md` and spec D4 "Who grades what".
+
+Check first, whether a reading can now credit the wrong moment (the human's rule: score the right behaviour per situation):
+- **Counts with parts.** Can a part in parentheses hide a pending, stale or unknown count, or a running or queued slow tier, so that the header reads as clear?
+- **The hook JSON unwrap.** `hookText` reads `additionalContext`, a deny's `permissionDecisionReason` and a stop block's `reason`. Is each of these text the agent saw at that step? Can a non-Squeal hook's JSON, or Squeal text quoted in a tool's output, now count as evidence? Does a Claude delivery naming a failure or a pending slow tier now read as such?
+- **The cut status's revision.** Can `the counts are for revision N` win over a later or truer revision, or misread a checkpoint at an older revision as current?
+- **The claims.** Regrading the committed files is unchanged, and grading the kept raw cells again changes exactly the 14 cells the notes list. Check in memory with the library functions. Judge the haiku r3 `no-rerun-answered` change and the five a9 Claude cells, true or n/a, against the rubric and D10.
+
+Rules: no cell, `claude` or `codex` session; no model call; never run `run-baseline.mjs`, `run-cell.mjs`, `grade.mjs`, `judge-calibrate.mjs`, `regrade.mjs` or `atomic-regrade.mjs`; no `npm run build`. Your full run is `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`; name any file that fails under load and passes alone.
+
+**Writes:** `reviews/wave-13.8.md`, PASS or FAIL with blockers, should-fix and notes, committed.
