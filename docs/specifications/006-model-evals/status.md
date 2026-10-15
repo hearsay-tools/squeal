@@ -167,3 +167,4 @@ Started: 2026-10-10
   - Cost: one worker (the slice and two repairs), one reviewer (three rounds), four coordinator gates.
   - No regrade ran: the worker and the reviewer each showed it changes 0 of the committed cells. Pilot 2's Sonnet a9 cell, the one 006-67 was found on, kept no start record, so it stays `retry-for-environment` false.
   - Claude's a9 cells run next, after 007's 0.1.195 baseline frees the eval slot.
+- 2026-10-15, from 007's 0.1.195 baseline (`c0c16102`): the judge Haiku 5.5 FAILED calibration on Claude Code 2.1.300 (71/72), and Sonnet 5.5 PASSED (72/72). The calibration files are committed. Release baselines on 2.1.300 judge with Sonnet until Haiku passes again. The same run's 15 judge-met, parser-missed disagreements are row 006-77.
