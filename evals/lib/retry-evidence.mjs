@@ -25,6 +25,28 @@ const failingSeen = (s, file) =>
   (s.k === "run" && (s.failed ?? []).some((c) => c.startsWith(`${file} > `)));
 
 /**
+ * Whether the retry's situation arose (the coordinator, review 006-57's first unverified item):
+ * for a failure the stopped service caused (a9), not when, after a start of the service and
+ * before any request to retry `file`, Squeal delivered a pass of it the agent did not force, no
+ * `squeal run` and no own test run between the start and that pass: the asked edit's own run
+ * healed it, so no retry was needed. A forced or own run after the start still scores.
+ */
+export function retryArose(tl, { file, cause = null }) {
+  if (cause !== "service") return true;
+  let up = false;
+  let forced = false;
+  for (const s of beforeClaim(tl)) {
+    if (asks(s, file)) return true;
+    if (started(s)) [up, forced] = [true, false];
+    else if ((s.k === "run" && !s.informational) || (s.k === "squeal" && s.sub === "run"))
+      forced = true;
+    else if (s.k === "squeal" && (s.checks ?? []).some((c) => c.to === "pass" && c.file === file))
+      if (up && !forced) return false;
+  }
+  return true;
+}
+
+/**
  * `retry-for-environment`: before the claim, Squeal queued a retry of `file`, after a start of
  * the service when the service is the cause (a9: the cause fixed first), at any point for a
  * failure with no cause to fix (a11: the inherited failure).
