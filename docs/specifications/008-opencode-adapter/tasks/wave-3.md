@@ -22,3 +22,14 @@ Use /worker. Outcome: `squeal status` in an OpenCode shell names the right cause
 - Seam: `src/cli/opencode/status.ts:43`. When the worktree fails the plugin's own fast-path test (`usesSquealAt` in `src/harness/opencode/host.ts`; import it, do not copy it), say the repository is not set up for Squeal and to run `squeal setup`. Keep the install advice for a set-up repository. Then `src/cli/update.ts:100`: name only the harnesses being updated.
 - Owns: `src/cli/opencode/**`, `src/cli/update.ts`, `test/cli/opencode-*.test.ts`, `test/cli/update*.test.ts`. Leaves alone: `src/harness/**` (008-25).
 - Done when: a CLI test for each status cause, and update texts tested for OpenCode alone, Claude Code alone and both; lint, typecheck and `squeal run --all --wait` green.
+
+## 008-27 review of `cand/0.1.186` (wave 3)
+
+Use /reviewer. Outcome: `reviews/wave-3.md` committed with a verdict on the exact candidate SHA the spawn names. Every finding is labelled proven, plausible or unverified. This is the candidate's landing gate.
+
+- Range: the spawn names it: main at 0.1.185, then 008-26, then 008-24 and 008-25 (one branch), then the 0.1.186 build commit. Spec: goal 4, D3 to D5 and D7 as amended; `reviews/wave-2.md`; `lessons.md` defects 1, 2 and 4(a).
+- Questions:
+  - 008-25: does `dispose` waiting for in-flight idles keep `run` within D4's 3 s, and leave no consumer registered? Is `session.prompt` with `noReply` at dispose stored exactly once, and never under `serve` while the server lives? Do an abort or new input during dispose still cancel the continuation (review 008-16 B2)? Can `storedBySqueal` skip a user's message, or a compaction's? Check the OpenCode 1.18.35 source claims (`effect-cmd.ts:90-93`, `plugin/index.ts:265-279`, `session/prompt.ts:1069`, `instance-registry.ts:11`) against `node_modules/opencode-ai`.
+  - 008-26: is each status cause right in a linked worktree and in a subdirectory, and does importing `usesSquealAt` into the CLI change its bundle's behaviour anywhere else?
+  - 008-24: is S1 closed, and can the helper's signal handlers change how Vitest ends a worker?
+- Writes only `docs/specifications/008-opencode-adapter/reviews/wave-3.md`. Runs real OpenCode only through `runOpenCode`. Full-suite verdict from `squeal run --all --wait`; no independent full run, since the coordinator's gate runs under the host lock.
