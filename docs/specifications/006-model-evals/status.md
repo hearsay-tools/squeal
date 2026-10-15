@@ -175,3 +175,16 @@ Started: 2026-10-10
   - Gate on `f7fe4aeb`: 633 files passed. Branch CI green.
   - Cost: one worker (the slice and two repairs), one reviewer (three rounds), and three coordinator gates, two of them stopped as moot.
   - `atomic-regrade.mjs` stamps every file with a note credited to 006-50, describing 006-50's change, and also touches files where nothing changed. Only the two changed files were committed, with the note corrected by hand. Row 006-80 fixes the script.
+- 2026-10-15, 006-77 landed (`39c28f7c`). Squeal gained no new header form; the frozen parser missed three forms it already printed.
+  - Counts that name their parts, which came with 005-21 and are in 0.1.168 too. 0.1.195's sessions claim after a delivery far more often (18 of 46 claims against 4 of 15).
+  - A Claude Code hook's JSON. Claude Code keeps the reply with its newlines escaped, so every line field of a Claude delivery went unread: checks, `Slow tier:`, `Known failures:` and the retry note.
+  - A status cut by `| tail` above its `Revision:` line.
+  - The judge was right in all 15 disagreements.
+- Review 006-81 FAILed B1: the unwrap read reasons Claude never receives (an allow's `permissionDecisionReason`, a root `reason` without a block). The coordinator's repair reads `additionalContext`, a reason on `deny` or `ask`, and a root `reason` only with `decision: "block"`. An ask counts because a cell is a `-p` run: Claude Code refuses it and the model reads the reason in the tool result, per the docs' PreToolUse field table. Re-review 006-83 PASSed on `98e4b67d`.
+- Accepted:
+  - N1 stays a note: an unrelated hook quoting Squeal in its context would count, but cells isolate plugin hooks.
+  - The reference sessions keep feeding Claude's hook text plain. Wrapping it changes the transcripts the committed judge calibration hashes, so a Claude-only form needs its own wrapped fixture, as `header-forms.test.ts` has.
+- No committed result changes, since the regrades read stored timelines. Grading the kept raw cells again changes 14 cells (row 006-82).
+- Gates on `98e4b67d`: mine and the reviewer's, 634 files green each. Branch CI green.
+- Main CI was red on docs-only `f0a8810d` (`test/integration/pytest.test.ts:198`, CI-only, unrelated); named as row 007-53 and landed past.
+- Cost: one worker (one pass), one reviewer (two rounds), one coordinator repair, three gates (one stopped as moot).
