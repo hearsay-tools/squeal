@@ -4,6 +4,7 @@ import { storePaths } from "../store/index.js";
 import {
   type AbsolutePath,
   type DaemonExitReason,
+  daemonRestMetaKey,
   type EpochMs,
   nodeTestObservedMetaKey,
   nodeTestObservedPreloadsMetaKey,
@@ -90,6 +91,15 @@ export interface TimerContext {
   readonly lastActive: () => EpochMs;
   readonly active: (at: EpochMs) => void;
   /**
+   * When the daemon was last used (D10 as amended, task 001-415): its start,
+   * a request or a wait; the timers add each edit and each check that finds
+   * a tier queued or running. Kept by the daemon. Absent: no unused stop.
+   */
+  readonly lastUsed?: () => EpochMs;
+  readonly used?: (at: EpochMs) => void;
+  /** The scheduler's revision and whether it has work (`Scheduler.busy`); `null` before it starts. */
+  readonly work?: () => { readonly revision: number; readonly busy: boolean } | null;
+  /**
    * A `nodeTest` project's observed keys changed since the last call that
    * returned true: queue a runner-only refinement. False while nothing takes
    * it (no scheduler yet, or its baseline still running: 004 review wave 2.5,
@@ -143,6 +153,15 @@ export interface TimerContext {
  * The shutdown lets a tier in flight finish and store its results (D5). Each
  * heartbeat first drops the consumers whose recorded harness process is gone.
  *
+ * Task 001-415 (the human, 2026-10-15): a daemon whose worktree has a
+ * consumer registered and that saw no edit, no tier queued or running, no
+ * wait and no request for `daemon.unusedExitMinutes` stops, reason `idle`,
+ * with one note; a registered consumer is no use, so a session that idles
+ * for hours, or a subagent whose SubagentStop never ran, keeps no daemon.
+ * It marks the rest first (`daemonRestMetaKey`), so its consumers hear
+ * nothing of it, and the next hook boundary starts it again. A drain keeps
+ * its own bound.
+ *
  * Task 003-26: with `nodeTest` projects, the shared observed keys are read
  * every `observedMs`, and a change asks for a runner-only refinement. What it
  * queues is not activity: the idle and departure exits never wait for it.
@@ -150,6 +169,7 @@ export interface TimerContext {
 export function startTimers(context: TimerContext): () => void {
   const { store, worktreeId, now, timings } = context;
   const idleMs = context.policy.daemon.idleExitMinutes * 60_000;
+  const unusedMs = context.policy.daemon.unusedExitMinutes * 60_000;
   const checkMs = timings.checkMs ?? Math.min(5_000, Math.max(50, idleMs / 10));
   const expireMs = timings.expireMs ?? 60_000;
   const pruneMs = timings.pruneMs ?? 60 * 60_000;
@@ -192,6 +212,24 @@ export function startTimers(context: TimerContext): () => void {
         );
       }
     });
+    attempt("unused check", () => unused(at));
+  };
+  /** The revision the last unused check saw: a new one is an edit. */
+  let seenRevision: number | null = null;
+  const unused = (at: EpochMs) => {
+    if (context.lastUsed === undefined || presence.draining === true) return;
+    const work = context.work?.() ?? null;
+    if (work !== null && (work.busy || work.revision !== seenRevision)) {
+      seenRevision = work.revision;
+      context.used?.(at);
+      return;
+    }
+    if (at - context.lastUsed() < unusedMs) return;
+    // With none registered, the departure grace or the idle period decides.
+    const registered = store.consumers.list(worktreeId).length;
+    if (registered === 0) return;
+    store.meta.set(daemonRestMetaKey(worktreeId), String(at));
+    context.shutdown("idle", unusedText(unusedMs, registered));
   };
   /** Counts the worktree's consumers; true when there is none. */
   const countPresence = (at: EpochMs): boolean => {
@@ -302,6 +340,14 @@ function boundText(pending: string, idleMs: number): string {
   return pending === SLOW_FILES
     ? `daemon stopped: slow files were still pending ${after}`
     : `daemon stopped: still pending ${after}: ${pending}; the next daemon resumes what is owed`;
+}
+
+function unusedText(unusedMs: number, registered: number): string {
+  const sessions = registered === 1 ? "1 session registered" : `${registered} sessions registered`;
+  return (
+    `daemon stopped: no edit, run, wait or request for ${duration(unusedMs)} ` +
+    `(daemon.unusedExitMinutes), with ${sessions}; the next hook starts it again`
+  );
 }
 
 /**
