@@ -21,6 +21,11 @@ const NOT_SECRET = /(?:PATH|FILE|DIR|HOME|SOCK)$/;
  * The cell's environment: the parent session's `CLAUDE*`, `CEZ_*` and Codex thread variables
  * removed, and every key, token or provider variable except `provider`, the names the subject
  * harness authenticates with (`providerVariables`). No other credential reaches a subject.
+ *
+ * Its own `XDG_RUNTIME_DIR`, `<cell>/run` (row 006-56): a daemon's slow slot and capacity pool
+ * live in `<runtime dir>/squeal` (spec 004 D2 as amended, 004-16), so a cell's daemon shares
+ * neither with the host's other daemons. Its socket does not fit under a cell's path (spec 001
+ * D1's 103 bytes), so it falls back to `/tmp/squeal-<uid>`, named by the cell's worktree.
  */
 export function cellEnv(parent, cell, provider = []) {
   const env = {};
@@ -32,6 +37,7 @@ export function cellEnv(parent, cell, provider = []) {
   return Object.assign(env, {
     HOME: join(cell, "home"),
     TMPDIR: join(cell, "tmp"),
+    XDG_RUNTIME_DIR: join(cell, "run"),
     CODEX_HOME: join(cell, "codex"),
     DISABLE_AUTOUPDATER: "1",
     GIT_AUTHOR_NAME: "ledgerline",
@@ -257,8 +263,8 @@ function prune(dir) {
 
 /**
  * Clears a cell's scratch and makes its retained evidence safe: scans the cell for `secrets`,
- * removes the scratch homes, temp directory and the work tree's `.git` (the diff and the store
- * copy were taken from it), then removes from `out/` and `work/` every `node_modules` and
+ * removes the scratch homes, temp and runtime directories and the work tree's `.git` (the diff
+ * and the store copy were taken from it), then removes from `out/` and `work/` every `node_modules` and
  * `.git/objects` at any depth and every link, FIFO and socket, sanitizes each text file that holds a secret and
  * removes each binary or unscannable one, and scans the whole cell again with nothing skipped.
  * The scratch Codex config holds the provider's URL by design and is removed with the rest.
@@ -269,12 +275,12 @@ export function clearScratch(cell, secrets) {
   const rel = (h) => relative(cell, h.path);
   const evidence = ["out", "work"].map((d) => join(cell, d));
   const before = scanForSecrets(
-    ["home", "codex", "tmp", "out", "work"].map((d) => join(cell, d)),
+    ["home", "codex", "tmp", "run", "out", "work"].map((d) => join(cell, d)),
     secrets,
   )
     .map(rel)
     .filter((p) => p !== "codex/config.toml");
-  for (const d of ["home", "codex", "tmp", "work/.git"])
+  for (const d of ["home", "codex", "tmp", "run", "work/.git"])
     try {
       rmSync(join(cell, d), { recursive: true, force: true });
     } catch {
