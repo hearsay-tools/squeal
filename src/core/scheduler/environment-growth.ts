@@ -67,10 +67,11 @@ export function rerunGrown(
     if (file.key === null || file.resultKey === file.key) continue;
     file.discards += 1;
     if (file.discards >= MAX_DISCARDS) {
-      const paths = listPaths(growth.files.get(file.id) ?? []);
+      const loaded = growth.files.get(file.id) ?? [];
       ledger.markUnknown(
-        [{ file, key: file.key }],
-        `${MAX_DISCARDS} runs in a row loaded environment files their key lacked (${paths})`,
+        [{ file, key: file.key, samples: loaded }],
+        `${MAX_DISCARDS} runs in a row loaded environment files their key lacked (${listPaths(loaded)})`,
+        { ran: true },
       );
     } else if (file.blocked === null && !ledger.queue.has(file.ref)) {
       ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED));

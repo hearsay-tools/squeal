@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { formatStatus, readStatus } from "../../src/core/status/index.js";
 import type { TestFileRef } from "../../src/core/types/index.js";
 import {
   addWorktree,
@@ -192,6 +193,16 @@ describe(
         expect(store.results.byKey(keyOf(h, ref) ?? "")).toEqual([]);
       }
       expect(h.header().testFilesWithoutChecks).toMatchObject({ pending: 0, unknown: 2 });
+      // Task 001-403: status names each file, why, and paths it read that no earlier run had.
+      const status = formatStatus(readStatus(repo.main), Date.now());
+      expect(status).toContain("Test files without a result: 2 (");
+      for (const pool of POOLS) {
+        expect(status).toMatch(
+          new RegExp(
+            `\\n  ${pool}: test/new-path\\.test\\.ts: ran, nothing recorded: 3 runs in a row read paths no earlier run had read \\(paths: data/new-\\d+\\.txt`,
+          ),
+        );
+      }
     });
   },
 );
