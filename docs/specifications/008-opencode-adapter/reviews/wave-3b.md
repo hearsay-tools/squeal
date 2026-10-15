@@ -393,3 +393,84 @@ The new pure pair at `opencode-timeline.test.ts:183` pins those exact observatio
 ### What fits and next input
 
 B2's requested repair and paired regression are complete. No further repair is requested in this scope. Keep both the missing-dispose guard and the independent Stop proof when changing these diagnostics. The coordinator retains the landing decision and any broader verification; this verdict does not turn the named real-test failure into a passing run.
+
+
+## Round 4: shared-file re-review at 63289a86
+
+Verdict: **PASS 63289a86**. **0 blockers, 0 should-fix findings, 0 nits.** Reviewed 2026-10-15 at exact candidate `63289a86abccc899884d42ea8240b89a46278baf` (`cand/0.1.192`). This is row 008-35, read after `git fetch origin` from `origin/main` at `b35512d1408a4109fd7e97a743f9637f26fcf302`. Scope is process step 6's shared-file re-review after Round 3's PASS on `854d66ae`: the eight version files and 31 bundles also changed by intervening main work. B1, B2 and the other settled OpenCode behavior are not reopened.
+
+### Verification output
+
+HEAD matched the assigned candidate and the worktree was clean before installation. `npm ci` ran before all checks. The tree remained clean after the build and targeted test. Only this review file was appended afterward. No full suite, Squeal checkpoint, real OpenCode session or external probe was requested in this round. The coordinator retains its independent gate under the host lock.
+
+```text
+$ git rev-parse HEAD origin/main
+63289a86abccc899884d42ea8240b89a46278baf
+b35512d1408a4109fd7e97a743f9637f26fcf302
+$ git status --short
+(no output)
+$ npm ci
+npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+added 196 packages, and audited 197 packages in 18s
+32 packages are looking for funding
+found 0 vulnerabilities
+npm warn install-scripts 6 packages have install scripts not yet covered by allowScripts:
+  @google/genai@2.21.0, @parcel/watcher@2.6.0, esbuild@0.28.2,
+  msgpackr-extract@3.0.4, opencode-ai@1.18.35, protobufjs@7.6.6
+exit 0
+$ npm run build
+> squeal@0.1.192 build
+> tsc -p tsconfig.build.json && npm run build:plugin
+> squeal@0.1.192 build:plugin
+> tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts
+exit 0
+$ git status --short
+(no output)
+$ npm run lint
+> squeal@0.1.192 lint
+> biome check .
+Checked 1272 files in 7s. No fixes applied.
+exit 0
+$ npm run typecheck
+> squeal@0.1.192 typecheck
+> tsc --noEmit
+exit 0
+$ npm run check:version -- origin/main
+> squeal@0.1.192 check:version
+> node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-version-bump.ts origin/main
+version bump: 0.1.190 -> 0.1.192, ok
+exit 0
+$ npx vitest run test/keys/key-format.test.ts
+Test Files  1 passed (1)
+     Tests  29 passed (29)
+  Duration  5.47s (tests 75%, transform 18%, import 8%)
+exit 0
+$ git status --short
+(no output)
+```
+
+Content comparison also completed at the clean candidate:
+
+```text
+$ git range-diff --no-color --creation-factor=80 981e2ce7..854d66ae 837f3424^..f6b22661
+14 non-build commits paired in order; each pair differs only in its
+commit message's added cherry-pick trailer. No patch hunk differs.
+5f425783 and d3978509 are omitted build commits, with no counterpart.
+exit 0
+$ git range-diff --no-color 74f093ba..854d66ae e0f14111..f6b22661
+854d66ae -> f6b22661: only the added cherry-pick trailer differs.
+exit 0
+```
+
+The range-diff output above is summarized. As a separate content check, a read-only Python comparison obtained each ordered non-build commit's patch with `git diff <commit>^ <commit> --no-ext-diff --binary`: all 14 original/rebased pairs were byte-identical. It also compared every source/test file changed by `981e2ce7..854d66ae` with its copy at HEAD: all 14 files were byte-identical.
+
+### What fits
+
+- **Proven by Git content comparison:** the shared non-doc paths of `981e2ce7..854d66ae` and `981e2ce7..837f3424^` are exactly eight version files and 31 files under `plugins/*/dist`. There is no shared source, test or eval path. The candidate's separate OpenCode plugin bundle also rebuilt without drift. The cherry-pick introduces no content change to the previously reviewed patches, including Round 3's B2 repair.
+- **Proven by parsed metadata and diff:** `package.json`, `plugins/{claude-code,pi,opencode}/package.json`, `plugins/claude-code/.claude-plugin/plugin.json`, `plugins/codex/.codex-plugin/plugin.json`, `install.sh`'s `SQUEAL_VERSION`, and both root and `packages[""].version` in `package-lock.json` all contain `0.1.192`. Those eight files change only their versions from `0.1.190`; no dependency, export or install logic changes. The version gate against the fetched main passes.
+- **Proven by clean installation and build:** the committed bundles reproduce from this candidate's lockfile and combined source tree. `npm ci` and `npm run build` leave no tracked drift. Lint and typecheck pass on that same clean tree.
+- **Proven by source comparison and the targeted test:** `src/core/keys/key-format.ts` is byte-identical to fetched main, including `KEY_FORMAT_VERSION = 10` and its current pin `5f033c149d273283caf5babd97a9f657b81a158e2ef107821a067cfb870d92d5`. All 29 key-format tests pass, so combining these reviewed OpenCode changes with main requires no further key re-pin in this candidate. This does not claim that main's guarded-source pin is identical to the earlier 0.1.188 tree.
+
+### Inputs for landing
+
+No repair is requested in this scope. Preserve the exact candidate and its reproducible bundles. Round 3's settled findings stand; its load-sensitive real-test notes remain qualified as written. This PASS covers the shared files at `63289a86`, with no independent full-suite verdict from this worker. The coordinator owns the remaining landing gate and CI decision.
