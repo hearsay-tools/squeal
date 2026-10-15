@@ -73,3 +73,17 @@ Check only: is B1 closed (the actual `vitest list --filesOnly` over the list hol
 Verification: lint, typecheck, the guard test and `npx vitest list` in your tree. Run the full suite under the lock only if the range touches more than the list, the guard, the workflow and the skill line.
 
 Done when: the findings file is committed alone, findings labelled proven, plausible or unverified, and your final message gives the verdict.
+
+## 010-16 `harness/opencode-dispose` fails in Node 22 shard 2
+
+Use /worker. Shape: repair (diagnose first).
+
+Outcome: the candidate's Node 22 shard 2 passes `test/harness/opencode-dispose.test.ts`, with its cause named.
+
+Evidence: candidate runs 38776179771 (bf0a41fb) and 38781585188 (98fdca2e) both fail only "serve: an abort of the new turn, then the old Stop's answer, stores nothing" in `Node 22 (2/3)`: all three attempts saw the plugin kill the held Stop at +2,067 to +2,410 ms against its +2,000 ms deadline, and the file took 52 and 54 s. Under the old single Node job it passed every run today in 13 to 21 s, on Node 22 and 24, including main run 38775688824 at the same hour. So the shard changes something. In 38781585188 it ran 18:04:24 to 18:05:18 beside `scheduler/lanes`, `scheduler/later-discharge-wait`, `runners/vitest/variants`, `daemon/handover` and others; no OpenCode test beside it. Read the logs with `gh run view <id> --log` (read-only; no reruns, no pushes).
+
+Leads, not conclusions: Vitest orders a shard's files by size without a cache, so what runs before it differs from the full run (a cold OpenCode start, a shared cache or port the earlier files warm); the shard's three workers carry a different mix. Node 22.23.3 is at `~/.nvm/versions/node/v22.23.3`: `npx vitest run --shard=2/3` on Node 22 under `flock /run/user/$(id -u)/squeal-full-run.lock` reproduces the shard locally (about 8 minutes), once or twice, not in a loop.
+
+Owns: `test/harness/opencode-dispose.test.ts` and its helpers, and `.github/workflows/ci.yml` if the cause is the layout. A cause in `src/` is a stop-and-report, not a fix: product changes need their own row.
+
+Done when: the cause is named with evidence; the fix makes the file pass in a local `--shard=2/3` run on Node 22 and alone; lint, typecheck and `squeal run --all --wait` pasted. Final message: the cause, the fix, and whether the barrier or its deadline changed meaning.
