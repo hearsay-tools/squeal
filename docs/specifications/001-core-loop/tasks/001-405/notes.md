@@ -21,7 +21,14 @@ Wave 14 W2. Commit `d0484d2c`.
 - Pi: every request carries `ctx.cwd`, Pi's own session cwd. A `cd` inside the bash tool does not change it, so nothing changed.
 - OpenCode: the bridge locates from the plugin's `worktree` input. A bash `workdir` only shapes the test-command check. Pinned by a test in `test/harness/session-root.test.ts`.
 
+## Subagents (wave 14 W2b, commit 95ffe6a0)
+
+- W2's open item is repaired: a subagent keeps the root its own SubagentStart `cwd` resolves. Its hooks keep that root, even after a `cd`, and its SubagentStop forgets it. See `tasks/001-415/notes.md` for what the hook inputs carry.
+- Keys: `rootKey(input)` is the session id for a main agent and `<session id>\0<agent id>` for a subagent. Files are `<sha(session)>` and `<sha(session)>-<sha(agent)>`, so deleting a session's key, at SessionEnd, also removes its subagents' files. That covers a SubagentStop that never ran.
+- A subagent with nothing kept falls back to the session's root, which is W2's rule.
+- The Claude Code `runHandler` forgets the subagent's root only when SubagentStop does not block, because a block keeps the subagent going. Codex forgets it at `subagent-stop`, and `subagent-start` resolves it.
+
 ## Open
 
-- A worktree-isolated Claude Code subagent now reports the session's root, not its own worktree. The rule is per session, as the human decided. A per-agent root would need SubagentStart's `cwd`, which was not checked here.
 - A session that never ends (a missed SessionEnd, or a Codex thread with none) leaves its small file in the runtime dir until logout or reboot.
+- Not isolated: a non-isolated subagent started after the main agent `cd`'d into a sibling worktree has that sibling as its SubagentStart `cwd`, so it validates there. The brief's rule ("from the subagent's own `cwd`") accepts this. Isolated worktrees are named `agent-<agent id>` (Claude Code 2.1.x bundle), which could tell the two apart if the case matters.
