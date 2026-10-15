@@ -11,6 +11,7 @@ import type {
 } from "../types/index.js";
 import { countedText, failureCountText, partsSuffix } from "./checks.js";
 import { DEATH_CAUSE, deathText } from "./died.js";
+import { unknownFilesLines } from "./unknown-files.js";
 
 export interface StatusFormatOptions {
   /** `squeal status --notes`: every note in full, none grouped (task 001-222). */
@@ -68,6 +69,7 @@ export function formatStatus(
       : [
           `Test files without checks: ${result.testFilesWithoutChecks.pending} pending, ${result.testFilesWithoutChecks.unknown} unknown`,
         ]),
+    ...unknownFilesLines(result),
     `Closure method: ${result.closureMethod}`,
     `Store schema: ${result.storeSchemaVersion}`,
     ...notes(result, command, options.allNotes === true),

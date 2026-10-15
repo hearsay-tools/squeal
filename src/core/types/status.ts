@@ -452,6 +452,29 @@ export interface StatusSnapshot extends StatusHeader {
    * it. Absent when none is pending.
    */
   readonly pendingRetries?: PendingRetries;
+  /**
+   * Task 001-403: the test files without a result at their current key and
+   * not pending, each with why, so an abandoned checkpoint's gap is named.
+   * Absent when there are none.
+   */
+  readonly unknownTestFiles?: UnknownTestFiles;
+}
+
+/** `StatusSnapshot.unknownTestFiles`: the first `files`, path order, of `total`. */
+export interface UnknownTestFiles {
+  readonly total: number;
+  readonly files: readonly UnknownTestFile[];
+}
+
+/** One test file without a result at its key (task 001-403). */
+export interface UnknownTestFile {
+  readonly testFile: TestFileRef;
+  /** Its run completed and stored nothing: "ran, nothing recorded". */
+  readonly ran: boolean;
+  /** Why it has no result; `null` when no reason was kept. */
+  readonly reason: string | null;
+  /** A few of the paths that kept it from holding still, for a first-seen growth. */
+  readonly samples: readonly RelativePath[];
 }
 
 /** `StatusSnapshot.pendingRetries`. */

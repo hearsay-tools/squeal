@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
+import { recordUnknownFiles } from "../../src/core/scheduler/unknown-files.js";
 import {
   type CheckId,
   type CheckKey,
@@ -238,7 +239,7 @@ describe("run --all --wait: the checkpoint's verdict (spec 005 D1)", () => {
     later(50, () => finish(w.store));
     const result = await run(["run", "--all", "--wait"], w.root);
     expect(result.first).toBe(
-      "Checkpoint c1 has no verdict: 1 test file without a current result at revision 3 (1 unknown)",
+      "Checkpoint c1 has no verdict: 1 test file without a current result at revision 3 (1 unknown). Without a result: test/b.test.ts: no result: no reason was kept",
     );
     expect(result.code).toBe(3);
   });
@@ -250,6 +251,43 @@ describe("run --all --wait: the checkpoint's verdict (spec 005 D1)", () => {
     later(50, () => finish(w.store, "abandoned"));
     const result = await run(["run", "--all", "--wait"], w.root);
     expect(result.first).toMatch(/^Checkpoint c1 has no verdict: it was abandoned before/);
+    expect(result.code).toBe(3);
+  });
+
+  it("names the file an abandoned checkpoint lacks, why, and the new paths it read (001-403)", async () => {
+    const w = worktree();
+    w.file(A);
+    w.store.testFileKeys.upsertMany([
+      { worktreeId: w.id, testFile: ref(B), key: "kb" as CheckKey, revision: 3, pending: null },
+    ]);
+    const reason = "3 runs in a row read paths no earlier run had read";
+    w.store.transaction(() =>
+      recordUnknownFiles(
+        w.store,
+        w.id,
+        [
+          {
+            testFile: ref(B),
+            key: "kb" as CheckKey,
+            reason,
+            ran: true,
+            samples: ["runs/1-artifacts", "runs/2-artifacts"] as never,
+            revision: 3 as RevisionNumber,
+            at: Date.now(),
+          },
+        ],
+        () => true,
+      ),
+    );
+    await daemonFor(w.socket, w.checkpoint([A, B]));
+    later(50, () => finish(w.store, "abandoned"));
+    const result = await run(["run", "--all", "--wait"], w.root);
+    const named = `${B}: ran, nothing recorded: ${reason} (paths: runs/1-artifacts, runs/2-artifacts)`;
+    expect(result.first).toBe(
+      `Checkpoint c1 has no verdict: it was abandoned before every test file had a result (a newer request replaced it, a test file's inputs never held still, a tier crashed or timed out, or the daemon stopped). Without a result: ${named}`,
+    );
+    expect(result.stdout).toContain(`\nTest files without a result: 1 (`);
+    expect(result.stdout).toContain(`\n  ${named}\n`);
     expect(result.code).toBe(3);
   });
 

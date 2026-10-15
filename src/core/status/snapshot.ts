@@ -28,6 +28,7 @@ import {
 import { withDeath } from "./died.js";
 import { readGitHead } from "./git-head.js";
 import { type StatusStoreOptions, unavailable, withStatusStore } from "./open.js";
+import { unknownTestFilesOf } from "./unknown-files.js";
 
 export interface StatusOptions extends StatusStoreOptions {
   readonly now?: () => EpochMs;
@@ -136,6 +137,7 @@ function snapshot(
     ...openCheckpoint(store, worktreeId, daemon),
     ...vitestExcluded(worktree?.root ?? root),
     ...pendingRetriesOf(store, keys),
+    ...unknownTestFilesOf(store, worktreeId, states, keys),
   };
 }
 

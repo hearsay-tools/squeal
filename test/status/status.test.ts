@@ -172,6 +172,15 @@ describe("readStatus", () => {
       counts: { current: 7, pending: 2, stale: 1, unknown: 1 },
       fileLevelCounts: { current: 2, pending: 0, stale: 0, unknown: 0 },
       testFilesWithoutChecks: { pending: 1, unknown: 1 },
+      unknownTestFiles: {
+        total: 2,
+        files: ["src/never.test.ts", "src/util.test.ts"].map((path) => ({
+          testFile: { project: "", path },
+          ran: false,
+          reason: null,
+          samples: [],
+        })),
+      },
       fullSuite: { atCurrentRevision: false, lastCompletedRevision: 1 },
       testFilesListed: true,
       inheritedCount: 2,
@@ -257,6 +266,9 @@ describe("readStatus", () => {
       Inherited from other worktrees: 2 current results (2 tests)
         2 (2 tests) from <main> at abc1234
       Test files without checks: 1 pending, 1 unknown
+      Test files without a result: 2 (nothing current at their inputs, none queued)
+        src/never.test.ts: no result: no reason was kept
+        src/util.test.ts: no result: no reason was kept
       Closure method: static imports plus declared inputs
       Store schema: 1
       Notes:

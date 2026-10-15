@@ -406,7 +406,7 @@ export function recordTier(
   const unknown: { file: FileState; key: CheckKey }[] = [];
   const rekeyed: TestFileRef[] = [];
   const grown: { ref: TestFileRef; checkpointId: string | null }[] = [];
-  const firstSeen: FileState[] = [];
+  const firstSeen: { file: FileState; firstSeen: readonly RelativePath[] }[] = [];
   const grewEnvironment: FileState[] = [];
   const failedAnew: NewFailure[] = [];
   const notStarted: { file: FileState; forced: boolean }[] = [];
@@ -442,11 +442,11 @@ export function recordTier(
         storeKey = ranUnderCurrent ? context.keys.index.key(file.ref) : null;
       }
       if (inputs.some(unstable) || growth?.growth.some(unstable)) {
-        ledger.discard(file, key, forced);
+        ledger.discard(file, key, forced, [...inputs, ...(growth?.growth ?? [])].filter(unstable));
         continue;
       }
       if (growth !== undefined && growth.firstSeen.length > 0) {
-        if (file.key === key) firstSeen.push(file);
+        if (file.key === key) firstSeen.push({ file, firstSeen: growth.firstSeen });
         continue;
       }
       if (environment?.files.has(file.id)) {

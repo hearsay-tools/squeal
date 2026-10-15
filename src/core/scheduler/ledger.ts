@@ -31,6 +31,7 @@ import { endRerun } from "./rerun.js";
 import { dropRetry, lapseRetry } from "./retries.js";
 import { SetupFailures } from "./setup.js";
 import { slowView } from "./slow.js";
+import { recordUnknownFiles, samplesOf, type UnknownFileRecord } from "./unknown-files.js";
 
 /** Results `applyResults` made current, owed to the sink at the next commit. */
 interface Applied {
@@ -101,6 +102,8 @@ export class Ledger {
   readonly #removed: TestFileRef[] = [];
   #applied: Applied[] = [];
   #unknown: { testFiles: TestFileRef[]; reason: string }[] = [];
+  /** Why each file marked since the last commit is `unknown`, owed to `meta` (task 001-403). */
+  #unknownFiles: Omit<UnknownFileRecord, "revision" | "at">[] = [];
   #retired: CheckId[] = [];
   /**
    * Files whose re-key attribution moved since the last commit, with the
@@ -350,10 +353,23 @@ export class Ledger {
    * Spec 001 D12: a crash, a timeout, or inputs that never hold still. Nothing
    * is stored under a key; the files' checks become `unknown` at this revision.
    * Spec 001 D5: a checkpoint containing an `unknown` file ends `abandoned`.
+   * Task 001-403: each file's reason is kept in `meta` for status, `ran`
+   * when its run completed and stored nothing, with a few `samples` paths.
    */
-  markUnknown(entries: readonly { file: FileState; key: CheckKey | null }[], reason: string): void {
+  markUnknown(
+    entries: readonly { file: FileState; key: CheckKey | null; samples?: Iterable<RelativePath> }[],
+    reason: string,
+    { ran = false }: { readonly ran?: boolean } = {},
+  ): void {
     if (entries.length === 0) return;
-    for (const { file, key } of entries) {
+    for (const { file, key, samples } of entries) {
+      this.#unknownFiles.push({
+        testFile: file.ref,
+        key,
+        reason,
+        ran,
+        samples: samplesOf(samples ?? []),
+      });
       file.unknownKey = key;
       if (key === file.key) this.#discharge(file);
       // A file queued again for a newer key during the run still needs that run.
@@ -371,10 +387,19 @@ export class Ledger {
    * during every run. A discard whose key moved is an edit the agent made
    * while the file ran; it is not counted (review S5).
    */
-  discard(file: FileState, key: CheckKey, forced = false): void {
+  discard(
+    file: FileState,
+    key: CheckKey,
+    forced = false,
+    changed: Iterable<RelativePath> = [],
+  ): void {
     file.discards = file.key === key ? file.discards + 1 : 0;
     if (file.discards >= MAX_DISCARDS) {
-      this.markUnknown([{ file, key }], `inputs changed during ${MAX_DISCARDS} runs in a row`);
+      this.markUnknown(
+        [{ file, key, samples: changed }],
+        `inputs changed during ${MAX_DISCARDS} runs in a row`,
+        { ran: true },
+      );
     } else if (file.key !== null && file.blocked === null) {
       // A forced run, a re-run among them (task 001-171), stays forced: its lookup would take its own fail.
       this.enqueue(file, priorityOf(file, NOTHING_CHANGED), forced && file.key === key);
@@ -390,14 +415,19 @@ export class Ledger {
    * re-run forever. A file `settle` gave a result at the new key (another
    * worktree stored it) is current and not counted.
    */
-  rerunFirstSeen(files: readonly FileState[]): void {
-    const exhausted: { file: FileState; key: CheckKey }[] = [];
-    for (const file of files) {
+  rerunFirstSeen(files: readonly { file: FileState; firstSeen: readonly RelativePath[] }[]): void {
+    const exhausted: { file: FileState; key: CheckKey; samples: readonly RelativePath[] }[] = [];
+    for (const { file, firstSeen } of files) {
       if (file.key === null || file.resultKey === file.key) continue;
       file.discards += 1;
-      if (file.discards >= MAX_DISCARDS) exhausted.push({ file, key: file.key });
+      if (file.discards >= MAX_DISCARDS)
+        exhausted.push({ file, key: file.key, samples: firstSeen });
     }
-    this.markUnknown(exhausted, `${MAX_DISCARDS} runs in a row read paths no earlier run had read`);
+    this.markUnknown(
+      exhausted,
+      `${MAX_DISCARDS} runs in a row read paths no earlier run had read`,
+      { ran: true },
+    );
   }
 
   /**
@@ -427,10 +457,16 @@ export class Ledger {
     this.#dirty.clear();
     const applied = this.#applied;
     const unknown = this.#unknown;
+    const unknownFiles = this.#unknownFiles.map((e) => ({
+      ...e,
+      revision,
+      at: this.context.now(),
+    }));
     const retired = this.#retired;
     const setups = this.setups.take();
     this.#applied = [];
     this.#unknown = [];
+    this.#unknownFiles = [];
     this.#retired = [];
 
     store.transaction(() => {
@@ -452,6 +488,13 @@ export class Ledger {
       }
       for (const { testFiles, reason } of unknown) {
         sink.markUnknown(worktreeId, revision, testFiles, reason);
+      }
+      if (unknownFiles.length > 0) {
+        // An entry stands while its file is still unknown at the key it names.
+        recordUnknownFiles(store, worktreeId, unknownFiles, ({ testFile, key }) => {
+          const file = this.file(testFile);
+          return file !== undefined && file.unknownKey === key && file.key === key;
+        });
       }
       if (retired.length > 0) sink.retire(worktreeId, retired);
       for (const outcome of setups) sink.setupOutcome(worktreeId, revision, outcome);
