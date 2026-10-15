@@ -15,6 +15,7 @@ export {
 } from "./header.js";
 export { failureKeysOnce, heldFailure } from "./inherited.js";
 export { readRevisionCommit, revisionText } from "./revision-commit.js";
+export { observedSince, shownResult } from "./shown-result.js";
 export { createStateSink, type StateSinkOptions } from "./sink.js";
 export {
   classifySlowFiles,

@@ -24,13 +24,13 @@ function seeded(recordedAt: number) {
     registeredAt: 1,
     daemon: null,
   });
-  appendRevisions(store, repo.mainId, 2, { head: null, dirty: false });
+  appendRevisions(store, repo.mainId, 4, { head: null, dirty: false });
   store.testFileKeys.upsertMany([
     {
       worktreeId: repo.mainId,
       testFile: { project: "", path: "src/auth.test.ts" },
       key: "k1",
-      revision: 2,
+      revision: 4,
       pending: null,
     },
   ]);
@@ -38,7 +38,13 @@ function seeded(recordedAt: number) {
     result(AUTH, "k1", { outcome: "fail", worktreeId: repo.mainId, runId: "run-1", recordedAt }),
   ]);
   store.knownStates.upsertMany([
-    state(repo.mainId, AUTH, { outcome: "fail", observedAt: 2, summary: "expected 1 to be 2" }),
+    state(repo.mainId, AUTH, {
+      outcome: "fail",
+      observedAt: 4,
+      commit: "abc123",
+      summary: "expected 1 to be 2",
+      fingerprint: "AssertionError: expected 1 to be 2 @ src/a.test.ts:3:5",
+    }),
   ]);
   return { repo, store };
 }
@@ -68,5 +74,115 @@ describe("status: a known failure's age and load (001-404)", () => {
     expect(text).toContain(
       "recorded just now in this worktree at revision 4, load per CPU then not recorded;",
     );
+  });
+});
+
+/*
+ * Review 001-417 B3: the age and load are the producing result's, read
+ * before any row at the file's current key is trusted.
+ */
+describe("status: a failure's age comes from the result that produced it (review 001-417 B3)", () => {
+  const OLD = NOW - 2 * 3_600_000;
+
+  function rekeyed() {
+    const seed = seeded(OLD);
+    const { repo, store } = seed;
+    recordRunLoad(store, "run-1", 1.5);
+    store.testFileKeys.upsertMany([
+      {
+        worktreeId: repo.mainId,
+        testFile: { project: "", path: "src/auth.test.ts" },
+        key: "k2",
+        revision: 4,
+        pending: null,
+      },
+    ]);
+    const known = store.knownStates.get(repo.mainId, AUTH);
+    if (known === null) throw new Error("no known state");
+    store.knownStates.upsertMany([{ ...known, validity: "pending", pendingPhase: "queued" }]);
+    return seed;
+  }
+
+  const failureOf = (repo: ReturnType<typeof fakeRepo>) => {
+    const status = readStatus(repo.main, { now: () => NOW });
+    if (!status.available) throw new Error("status unavailable");
+    return { failure: status.knownFailures[0], text: formatStatus(status, NOW) };
+  };
+
+  it("a re-keyed pending failure keeps its old run's age and load", () => {
+    const { repo } = rekeyed();
+    const { failure, text } = failureOf(repo);
+    expect(failure?.recorded).toMatchObject({ recordedAt: OLD, loadPerCpu: 1.5, revision: 4 });
+    expect(text).toContain("observed at revision 4, pending\n        recorded 2 h ago");
+  });
+
+  it("a pass another worktree cached at the new key lends it nothing", () => {
+    const { repo, store } = rekeyed();
+    store.results.putMany([
+      result(AUTH, "k2", { worktreeId: "wt-other", runId: "run-pass", recordedAt: NOW - 1_000 }),
+    ]);
+    recordRunLoad(store, "run-pass", 9.99);
+    const { failure } = failureOf(repo);
+    expect(failure?.recorded).toMatchObject({ recordedAt: OLD, loadPerCpu: 1.5 });
+  });
+
+  it("a stale failure under a re-keyed file keeps its run's age too", () => {
+    const { repo, store } = rekeyed();
+    const known = store.knownStates.get(repo.mainId, AUTH);
+    if (known === null) throw new Error("no known state");
+    store.knownStates.upsertMany([{ ...known, validity: "stale", pendingPhase: null }]);
+    expect(failureOf(repo).failure?.recorded?.recordedAt).toBe(OLD);
+  });
+
+  it("a same-key replacement by another result says the age and load are unknown", () => {
+    const { repo, store } = seeded(OLD);
+    store.results.putMany([
+      result(AUTH, "k1", { worktreeId: "wt-other", runId: "run-pass", recordedAt: NOW - 1_000 }),
+    ]);
+    const { failure, text } = failureOf(repo);
+    expect(failure?.recorded).toBeUndefined();
+    expect(failure?.recordedUnknown).toBe(true);
+    expect(text).toContain(
+      "        recorded at an unknown time and load: the result that produced it is no longer identifiable in the store\n",
+    );
+  });
+
+  it("an inherited failure recorded after its revision began keeps its source's facts", () => {
+    const { repo, store } = seeded(OLD);
+    const b = repo.addWorktree("b");
+    store.worktrees.upsert({
+      id: b.id,
+      root: b.root,
+      commonDir: repo.commonDir,
+      isMain: false,
+      registeredAt: 1,
+      daemon: null,
+    });
+    appendRevisions(store, b.id, 1, { head: null, dirty: true, createdAt: 1 });
+    store.testFileKeys.upsertMany([
+      {
+        worktreeId: b.id,
+        testFile: { project: "", path: "src/auth.test.ts" },
+        key: "k1",
+        revision: 1,
+        pending: null,
+      },
+    ]);
+    store.knownStates.upsertMany([
+      state(b.id, AUTH, {
+        outcome: "fail",
+        observedAt: 1,
+        commit: "abc123",
+        origin: { kind: "inherited", worktreeId: repo.mainId, commit: "abc123" },
+        summary: "expected 1 to be 2",
+        fingerprint: "AssertionError: expected 1 to be 2 @ src/a.test.ts:3:5",
+      }),
+    ]);
+    const status = readStatus(b.root, { now: () => NOW });
+    if (!status.available) throw new Error("status unavailable");
+    expect(status.knownFailures[0]?.recorded).toMatchObject({
+      worktreeId: repo.mainId,
+      recordedAt: OLD,
+    });
   });
 });

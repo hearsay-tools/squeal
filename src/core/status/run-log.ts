@@ -1,64 +1,10 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { consolePrefix, parseConsoleLine, testFileLabel, VITEST_LOG } from "../run-log.js";
-import type {
-  AbsolutePath,
-  CheckId,
-  CheckKey,
-  EpochMs,
-  KnownState,
-  ResultRecord,
-  WhyConsole,
-  WhyRunLog,
-  WorktreeId,
-} from "../types/index.js";
+import type { AbsolutePath, CheckId, ResultRecord, WhyConsole, WhyRunLog } from "../types/index.js";
 
 /** Most console lines `squeal why --include-logs` prints. */
 export const WHY_LOG_LINE_LIMIT = 200;
-
-/**
- * The stored result the known state shows, from all of the check's
- * `results` (review wave-13i B4). A current state was derived from the row
- * at its test file's current `key`: that row, if it is still the result the
- * state names. Otherwise the only row the state names: same outcome and
- * commit, from the producing worktree, and for an own result at the
- * revision it was observed at. `null` when no stored row is identifiably it:
- * replaced, pruned, or several keys fit. Never a nearby run. With no known
- * state, the held failure `why` shows.
- *
- * An inherited state names a row only when the row provably predates it
- * (review wave-13j B4): recorded no later than `observedSince`, the time the
- * revision the state was observed at was created. The state was applied at
- * or after that time from the row then at the key, and a row replaced later
- * is recorded later. A same-key replacement by a later run, at any commit or
- * revision, names none. An own state is re-derived from each of its own runs.
- */
-export function shownResult(
-  worktreeId: WorktreeId,
-  knownState: KnownState | null,
-  key: CheckKey | null,
-  results: readonly ResultRecord[],
-  held: ResultRecord | undefined,
-  observedSince: EpochMs | null,
-): ResultRecord | null {
-  if (knownState === null) return held ?? null;
-  const origin = knownState.origin;
-  if (origin === null) return null;
-  const names = (r: ResultRecord) =>
-    r.outcome === knownState.outcome &&
-    r.provenance.commit === knownState.commit &&
-    (origin.kind === "inherited"
-      ? r.provenance.worktreeId === origin.worktreeId &&
-        observedSince !== null &&
-        r.provenance.recordedAt <= observedSince
-      : r.provenance.worktreeId === worktreeId && r.provenance.revision === knownState.observedAt);
-  if (knownState.validity === "current" && key !== null) {
-    const atKey = results.find((r) => r.key === key);
-    return atKey !== undefined && names(atKey) ? atKey : null;
-  }
-  const named = results.filter(names);
-  return named.length === 1 ? (named[0] ?? null) : null;
-}
 
 /**
  * The run log of `result`'s run, its directory `logDir`, or under `runsDir`
