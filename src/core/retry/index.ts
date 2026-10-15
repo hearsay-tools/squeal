@@ -29,4 +29,4 @@ export {
   releaseRetries,
   retriesAt,
 } from "./records.js";
-export { loadText, outcomeText, recordedText, retryText, waitsText } from "./text.js";
+export { agoText, loadText, outcomeText, recordedText, retryText, waitsText } from "./text.js";

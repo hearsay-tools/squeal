@@ -73,6 +73,7 @@ export function withRecorded(
       worktreeId: provenance.worktreeId,
       worktreeRoot: store.worktrees.get(provenance.worktreeId)?.root ?? null,
       revision: provenance.revision,
+      recordedAt: provenance.recordedAt,
       loadPerCpu: loads.get(provenance.runId) ?? null,
       ...(retry === undefined ? {} : { retry }),
     };

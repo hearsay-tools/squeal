@@ -1,4 +1,4 @@
-import { waitsText } from "../retry/index.js";
+import { recordedText, waitsText } from "../retry/index.js";
 import { formatCheck, fullSuiteText, runnerPartText, slowTierText } from "../state/index.js";
 import { excludedProjectsText, plural } from "../text.js";
 import type {
@@ -45,6 +45,9 @@ export function formatStatus(
         `observed at revision ${f.observedAt}`,
         f.validity,
       ].join(", ")}`,
+      ...(f.recorded === undefined
+        ? []
+        : [`        ${recordedText(f.recorded, result.worktreeId, now)}`]),
     ]),
     ...retryLines(result),
     `Affected checks: ${affected(result)}`,
