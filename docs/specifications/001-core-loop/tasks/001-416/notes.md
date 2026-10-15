@@ -84,3 +84,55 @@ The subagent's own `pwd` and `git rev-parse --show-toplevel` both printed the wo
 - **Key sets:** SubagentStart's and SubagentStop's keys are exactly the ones 001-415's notes list.
 
 The probe directory `/home/squeal-e2e/probe-416` is left in place under the throwaway user.
+
+## Review 001-423
+
+Repair of cand/0.1.197 on baseline `4e314ec4`.
+
+### B1: a renewed subagent is never dropped by an old mark
+
+A SubagentStop killed after its mark leaves the mark behind. Two paths went on under it:
+
+- `register` replaced the row without clearing the slot;
+- PreToolUse on a call that is not a peeked edit (Bash, Read, or any edit with `interrupt.onRegression` off) ran `resumeTurn`, which never cleared it and returned at once for a consumer already in a turn.
+
+Fix (`1e29162d`):
+
+- `register` clears the consumer's mark in its own transaction (`delivery.ts`). A Stop that registers an unregistered consumer has no mark to clear, since `stopTurn` marks only a registered one.
+- `resumeTurn` (`turn.ts`) clears the mark in the transaction that resumes the turn, idle or not. It still reads first: a consumer in a turn and not marked takes no write lock (`isLeaving`, `leaving.ts`, a read).
+- The stopping hook's own `onToolBoundary(stop: true)` still keeps the mark; the edit's peek already cleared it through `deliver`.
+
+Tests, `test/harness/subagent-renewed.test.ts`, through real hooks with the main agent registered beside the child; the killed Stop is modelled by writing the mark, as the killed-Stop test in `subagent-leaving.test.ts` (kept) shows it is left:
+
+- SubagentStart again, child in a turn and idle: mark cleared, `dropLeft` one past the old mark's grace keeps both consumers.
+- PreToolUse Bash and Read, in a turn and idle; an edit with `onRegression` on and off: the same, and the child is in a turn.
+- A main agent's PreToolUse leaves the child's mark: the child is still dropped, the main agent kept.
+- `resumeTurn` on an unmarked consumer in a turn calls no `store.transaction`.
+
+Without the fix, 7 of the 10 fail (the `onRegression` on case, the drop case and the no-lock case pass both ways).
+
+The rule for D9, amending the proposal above: "A delivery at any later boundary of that consumer also clears it" becomes "its registration, and any later boundary of that consumer, PreToolUse on every tool included, also clears it, in the transaction that registers it or resumes its turn".
+
+### Main run 38784562554: `test/daemon/unused-stop.test.ts:100` (001-415)
+
+The failing line asserted the worktree's daemon record right after `ping` answered. The premise is false: the front desk is a worker thread that binds the socket and answers ping before the main thread's `#register()` commits (`daemon.ts` `start`: `#openDesk`, then `#register`), and that commit waits for the store's write lock under load.
+
+Reproduced with `probe/ping-before-record.test.ts` (copy it to `test/daemon/` to run). It holds `BEGIN IMMEDIATE` on a second connection while a daemon starts:
+
+```text
+{"pingAt":226,"answer":true,"rowsWhileLocked":[{... "daemon_socket":null, ...}],"recordAfter":true}
+```
+
+Ping answered 226 ms after the spawn with no record; the record appeared once the lock was released. The product already covers this window: a hook tells a daemon it spawned with no heartbeat yet as starting (001-156). So the test premise was fixed, not the product (`246680b5`): the test waits for a record whose socket answers, and checks that it is the computed socket. Three local runs passed. It could not be made to fail on demand without holding the lock the hook itself needs.
+
+### N1: the test pause is out of the shipped CLI
+
+`pauseAt` (`src/core/daemon/test-pause.ts`) now publishes the point on the `squeal:test-pause` diagnostics channel and does nothing without a subscriber (`28a24ef1`). The SIGSTOP lives in `test/daemon/pause-preload.mjs`, which `testPause(point)` (`test/e2e/restart-evidence.ts`) loads with `NODE_OPTIONS=--import=<file URL>` beside `SQUEAL_TEST_PAUSE`. The spawned daemon inherits both: `ensure` spawns with the hook's environment, and `childEnv`'s scrub of `NODE_OPTIONS` happens before the overrides are added.
+
+- Stopping at a point still needs code loaded into the process; `NODE_OPTIONS` already allows that, so the channel opens nothing new.
+- The subscriber runs synchronously inside `publish`, so the stop is at the same instruction as before and does not race.
+- `test/daemon/test-pause.test.ts` is the reviewer's probe as a regression: a plain child with only `SQUEAL_TEST_PAUSE=stop-gap` runs on and exits 0 (it hung until the timeout with the old pause), and with the preload it stops (`T`) and runs on after SIGCONT.
+- The handover-gap and e2e stop-gap tests keep their stopped-process, socket and lock-holder assertions.
+- `src/core/daemon` is guarded: key format 10 is re-pinned in place (`1c427b27`), unreleased.
+
+The committed bundles still carry wave 15's env pause until the coordinator rebuilds them.
