@@ -1,4 +1,4 @@
-import { type ChildProcess, spawn, spawnSync } from "node:child_process";
+import { type ChildProcess, type SpawnOptions, spawn, spawnSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -164,7 +164,7 @@ export async function runOpenCode(options: OpenCodeRunOptions): Promise<OpenCode
         ? ["run", "--format", "json", "-m", `scripted/${PLANNED_MODEL}`, options.prompt]
         : ["serve", "--hostname", "127.0.0.1", "--port", "0"];
     // Its own process group, so a timeout or the end of `serve` reaches what OpenCode started.
-    child = spawn(binary, args, { cwd, env, detached: true, stdio: ["ignore", "pipe", "pipe"] });
+    child = spawnGroup(binary, args, { cwd, env, stdio: ["ignore", "pipe", "pipe"] });
     const out = collect(child);
     const timeoutMs = options.timeoutMs ?? 60_000;
     const deadline = new Promise<never>((_, fail) => {
@@ -342,10 +342,9 @@ async function pluginInstall(
   cwd: string,
   env: NodeJS.ProcessEnv,
 ): Promise<void> {
-  const child = spawn(binary, ["plugin", `file:${dir}`, "-g"], {
+  const child = spawnGroup(binary, ["plugin", `file:${dir}`, "-g"], {
     cwd,
     env,
-    detached: true,
     stdio: ["ignore", "pipe", "pipe"],
   });
   const out = collect(child);
@@ -358,13 +357,54 @@ async function pluginInstall(
     );
 }
 
+/**
+ * The process groups `spawnGroup` started and no `SIGKILL` has ended yet. The `finally` that
+ * started one kills it; when the Vitest worker ends first (a timeout, or the SIGTERM Vitest
+ * stops a fork with), its end kills them, so no `opencode serve` outlives the worker. The
+ * handlers are installed once per process; each kills the groups, removes itself and re-raises
+ * its signal, leaving any other listener in place. Uncovered: a SIGKILLed worker runs nothing,
+ * so what it started outlives it.
+ */
+const liveGroups = new Set<number>();
+let endHooked = false;
+
+/** `spawn` as the leader of its own process group, which this process's end kills (`liveGroups`). */
+export function spawnGroup(
+  command: string,
+  args: readonly string[],
+  options: SpawnOptions,
+): ChildProcess {
+  if (!endHooked) {
+    endHooked = true;
+    process.on("exit", killLiveGroups);
+    for (const signal of ["SIGTERM", "SIGINT", "SIGHUP"] as const)
+      process.once(signal, () => {
+        killLiveGroups();
+        // The signal's own effect, now this listener is gone: by default, the end of the process.
+        process.kill(process.pid, signal);
+      });
+  }
+  const child = spawn(command, args, { ...options, detached: true });
+  if (child.pid !== undefined) liveGroups.add(child.pid);
+  return child;
+}
+
+function killLiveGroups(): void {
+  for (const pid of liveGroups) kill(pid, "SIGKILL");
+}
+
 function killGroup(child: ChildProcess, signal: NodeJS.Signals): void {
   if (child.pid === undefined) return;
+  kill(child.pid, signal);
+}
+
+function kill(group: number, signal: NodeJS.Signals): void {
   try {
-    process.kill(-child.pid, signal);
+    process.kill(-group, signal);
   } catch {
     // The group is gone.
   }
+  if (signal === "SIGKILL") liveGroups.delete(group);
 }
 
 /** The text of a chat message's content, string or parts. */
