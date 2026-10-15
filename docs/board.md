@@ -1004,11 +1004,12 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 008-19 end to end | verified, in `cand/0.1.184` (worker 2841c17b; branch CI green on Node 22 and 24) | The shipped OpenCode package installed with the real `opencode plugin file:` into an isolated home; baseline, `PASS -> FAIL`, deny, one continuation, wake under `serve`, status credit, no daemon. | Green locally and in CI on Node 22 and 24. |
-| 008-20 dogfooding | planned | Real models (`gpt-6-luna`, `gpt-6-astra`, one Grok) as `squeal-e2e` on a real Vitest library: Cezar-shaped `serve` with a wake, `run`, TUI; an update with a session open. | `lessons.md` answers open question 4 and the goals with evidence. |
-| 008-21 test hardening and the bridge's environment | verified, in `cand/0.1.184` | `reviews/wave-1.5.md` ordering note; `bridge-client.test.ts` process leaks; drop `NODE_USE_ENV_PROXY` for the bridge (about 90 ms against 42 ms Node start). | Idle test 10 green under load; no leaked process; env test. |
-| 008-22 the primer after a first registration at a tool boundary | verified, in `cand/0.1.184` | Found by 008-19: with no store at `chat.message`, the consumer registers at the first tool call but the primer waits for the next user message; `after` and `prompt` answers carry the primer (goal 5). | Unit test red then green; real-OpenCode fresh repository carries the primer from the second request. |
-| 008-23 review of `cand/0.1.184` | planned, after the gate on 0.1.182's rebase | `/reviewer` over wave 2 as integrated, the landing gate. | `reviews/wave-2.md` committed. |
+| 008-19 end to end | done (0.1.184) | The shipped OpenCode package installed with the real `opencode plugin file:` into an isolated home; baseline, `PASS -> FAIL`, deny, one continuation, wake under `serve`, status credit, no daemon. | Green locally and in CI on Node 22 and 24. |
+| 008-20 dogfooding | running | Real models (`gpt-6-luna`, `gpt-6-astra`, one Grok) as `squeal-e2e` on a real Vitest library: Cezar-shaped `serve` with a wake, `run`, TUI; an update with a session open. | `lessons.md` answers open question 4 and the goals with evidence. |
+| 008-21 test hardening and the bridge's environment | done (0.1.184) | `reviews/wave-1.5.md` ordering note; `bridge-client.test.ts` process leaks; drop `NODE_USE_ENV_PROXY` for the bridge (about 90 ms against 42 ms Node start). | Idle test 10 green under load; no leaked process; env test. |
+| 008-22 the primer after a first registration at a tool boundary | done (0.1.184) | Found by 008-19: with no store at `chat.message`, the consumer registers at the first tool call but the primer waits for the next user message; `after` and `prompt` answers carry the primer (goal 5). | Unit test red then green; real-OpenCode fresh repository carries the primer from the second request. |
+| 008-23 review of `cand/0.1.184` | done: PASS at 20647e10, round 2 PASS at 26d306c8 (`reviews/wave-2.md`); S1 to 008-24 | `/reviewer` over wave 2 as integrated, the landing gate. | `reviews/wave-2.md` committed. |
+| 008-24 the review's coverage note and an orphaned `opencode serve` | running | `reviews/wave-2.md` S1 (the proxy switch absent, empty and `"1"` executed; the primer follows a coverage change); `runOpenCode` kills its groups when the test worker exits. | Each new case fails against a broken copy; touched files and the suite green. |
 
 ## Later
 
