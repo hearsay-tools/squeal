@@ -29,6 +29,12 @@ Wave 15 W4. Baseline: W2's `7574faf9`. Tests: `test/delivery/news-header.test.ts
 - Eval code (006's), changed because it parses the delivered header:
   - `evals/lib/squeal-text.mjs` `countsOf` reads the news form, marked `news: true` on the step. `Test files without checks` reads either class alone.
   - `evals/lib/evidence.mjs` `replayed`: a `news` step without a `Slow tier:` line holds the slow state last seen. Only news steps do this: 0.1.127's deliveries carried no slow line, and carrying for all pushes regraded two committed a2-slow cells (`test/evals/atomic-regrade.test.ts`).
+- **What proves "nothing pending" (006's gate).** In a news header, only `Revision N: no check pending, stale or unknown.` proves it, and only when no `Test files without checks:` sentence and no unlisted or runner-part sentence follows it. Each of those adds to pending in `countsOf`.
+  - A news header that names counts (`1 pending (…)`, `1 stale (…)`, `1 unknown (…)`) is read as those counts.
+  - A header line with neither form (`Revision 3.`, `Revision 3: nothing new.`) gives `null` counts. That is never clear, so no at-claim expectation is met.
+  - The slow tier is clear only through a `Slow tier:` line: the news step's own, or the one last seen.
+  - `test/evals/header-forms.test.ts` pins each of these in both harnesses. Claude's texts are hook JSON (`cell` wraps them, and one case uses an explicit `hook(...)` and a deny). It also pins a news delivery naming a failure, which misses no-overclaim. The 006-77 cases above are unchanged (no removed lines).
+  - I ran no `evals/bin` tool. To find which change moved the committed regrade, I called `regradeAtomic` in memory from a scratch script. The script read `evals/results/2026-10-12-0.1.127.20261012T070705Z-6eec71.atomic.json` and wrote nothing. 006 runs the zero-change regrade itself.
 - Pinning tests: `test/delivery/format.test.ts` (header-detail cases now render through `full`), `edits.test.ts`, `edits-confirmation.test.ts`, `test/harness/liveness.test.ts`, `starting-daemon.test.ts`, `codex/turns.test.ts`, `codex/command.test.ts`, `skill.test.ts`, `primer-coverage.test.ts`, `test/status/slow-tier.test.ts`, `test/evals/evidence-squeal.test.ts` (a news case per variant), `test/evals/header-forms.test.ts` (four at-claim cases), and `test/e2e/agree.ts` (reads either form; no checkpoint expected in the news form).
 
 ## Open for the coordinator / 005
