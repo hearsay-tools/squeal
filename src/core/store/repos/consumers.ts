@@ -11,6 +11,7 @@ import {
   checkFrom,
   ensureCheckId,
   findCheckId,
+  inTestFiles,
   num,
   numOrNull,
   oneOf,
@@ -113,15 +114,19 @@ function toConsumer(row: Row): ConsumerRecord {
 
 export function createViewRepo(conn: Connection): ViewRepo {
   return {
-    list: (consumer) =>
-      conn
+    list: (consumer, files) => {
+      const only = files === undefined ? null : inTestFiles("v.check_id", files);
+      return conn
         .all(
           `SELECT v.*, ${CHECK_COLUMNS} FROM consumer_views v JOIN checks c ON c.id = v.check_id
            WHERE v.worktree_id = ? AND v.session_id = ? AND v.agent_id = ?
+             ${only === null ? "" : `AND ${only.sql}`}
            ORDER BY c.project, c.test_path, c.kind, c.full_name`,
           ...consumerParams(consumer),
+          ...(only?.params ?? []),
         )
-        .map(toView),
+        .map(toView);
+    },
     writeMany: (consumer, entries) =>
       conn.transaction(() => {
         for (const e of entries) {

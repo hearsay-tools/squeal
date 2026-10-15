@@ -10,6 +10,7 @@ import {
   checkFrom,
   ensureCheckId,
   findCheckId,
+  inTestFiles,
   location,
   locationParams,
   num,
@@ -36,12 +37,27 @@ const SELECT_STATES = `SELECT s.*, ${CHECK_COLUMNS} FROM known_states s JOIN che
 
 export function createKnownStateRepo(conn: Connection): KnownStateRepo {
   return {
-    list: (worktreeId) =>
-      conn
+    list: (worktreeId, files) => {
+      const only = files === undefined ? null : inTestFiles("s.check_id", files);
+      return conn
         .all(
-          `${SELECT_STATES} WHERE s.worktree_id = ?
+          `${SELECT_STATES} WHERE s.worktree_id = ? ${only === null ? "" : `AND ${only.sql}`}
            ORDER BY c.project, c.test_path, c.kind, c.full_name`,
           worktreeId,
+          ...(only?.params ?? []),
+        )
+        .map(toKnownState);
+    },
+    untold: (consumer) =>
+      conn
+        .all(
+          `${SELECT_STATES} WHERE s.worktree_id = ? AND NOT EXISTS (
+             SELECT 1 FROM consumer_views v WHERE v.worktree_id = s.worktree_id
+               AND v.session_id = ? AND v.agent_id = ? AND v.check_id = s.check_id)
+           ORDER BY c.project, c.test_path, c.kind, c.full_name`,
+          consumer.worktreeId,
+          consumer.sessionId,
+          consumer.agentId,
         )
         .map(toKnownState),
     get: (worktreeId, check) => {

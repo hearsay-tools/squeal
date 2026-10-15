@@ -1,4 +1,4 @@
-import type { CheckId, EpochMs, SourceLocation } from "../types/index.js";
+import type { CheckId, EpochMs, SourceLocation, TestFileRef } from "../types/index.js";
 import type { Connection, Row } from "./connection.js";
 
 /*
@@ -90,6 +90,23 @@ const CHECK_WHERE = "project = ? AND test_path = ? AND kind = ? AND full_name = 
  */
 export const CHECK_COLUMNS =
   "c.project AS check_project, c.test_path AS check_test_path, c.kind AS check_kind, c.full_name AS check_full_name";
+
+/**
+ * A condition that the check id in `column` is one of `files`' checks (task
+ * 001-414), as a subquery on the `checks` index so a table keyed by check id
+ * is searched rather than scanned. An empty list matches nothing.
+ */
+export function inTestFiles(
+  column: string,
+  files: readonly TestFileRef[],
+): { readonly sql: string; readonly params: readonly string[] } {
+  if (files.length === 0) return { sql: "0", params: [] };
+  const values = files.map(() => "(?, ?)").join(", ");
+  return {
+    sql: `${column} IN (SELECT id FROM checks WHERE (project, test_path) IN (VALUES ${values}))`,
+    params: files.flatMap((f) => [f.project, f.path]),
+  };
+}
 
 /** The row id of a check, or `null` if it was never stored. For read paths. */
 export function findCheckId(conn: Connection, check: CheckId): number | null {
