@@ -5,6 +5,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readdirSync,
+  readFileSync,
   realpathSync,
   rmSync,
   writeFileSync,
@@ -114,9 +115,30 @@ describe("runNodeTest", () => {
     for (const pid of pids) expect(() => process.kill(pid, 0)).toThrow(/ESRCH/);
   });
 
+  // Task 001-421: the case means the queued file never starts. That holds only while the busy
+  // loop still runs at the deadline; on CI it once ended before it, and `pass.test.ts` then
+  // started and was killed. The premise is checked first and names the loop's exit and stderr.
   it("does not start files left in the queue when the deadline passes", SLOW, async () => {
     const tier = files(edge, "test/busy-loop.test.ts", "test/pass.test.ts");
-    const { report } = await run({ project: edge, files: tier, timeoutMs: 3_000, concurrency: 1 });
+    const logDir = join(logs, randomUUID());
+    const { report } = await run({
+      project: edge,
+      files: tier,
+      timeoutMs: 3_000,
+      concurrency: 1,
+      logDir,
+    });
+    const log = JSON.parse(readFileSync(join(logDir, "run.json"), "utf8")) as {
+      files: { exit: unknown; completed: boolean }[];
+    };
+    const [loop, queued] = log.files;
+    const stderr = readFileSync(join(logDir, "stderr-0.log"), "utf8");
+    expect(
+      loop?.completed,
+      `the busy loop ended before the deadline: ${JSON.stringify(loop?.exit)}\n${stderr}`,
+    ).toBe(false);
+    expect(queued).toEqual({ ...queued, exit: null, completed: false });
+    expect(existsSync(join(logDir, "stdout-1.log"))).toBe(false);
     expect(report).toMatchObject({ end: "timed-out", completedFiles: [], results: [] });
   });
 
