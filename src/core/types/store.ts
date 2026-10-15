@@ -243,6 +243,7 @@ export const WORKTREE_META_ROWS = {
   daemonBootstrapped: { prefix: "daemon-bootstrapped:", owner: "types/daemon" },
   daemonToken: { prefix: "daemon-token:", owner: "store/repos/worktrees" },
   daemonExit: { prefix: "daemon-exit:", owner: "types/daemon" },
+  daemonRest: { prefix: "daemon-rest:", owner: "types/daemon" },
   slowTier: { prefix: "slow-tier:", owner: "slow/state" },
   slowArtifacts: { prefix: "slow-artifacts:", owner: "slow/state" },
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },

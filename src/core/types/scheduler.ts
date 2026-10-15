@@ -289,6 +289,12 @@ export interface Scheduler {
    */
   slowPending(): boolean;
   /**
+   * Work queued or running, slow files included: while it has any the daemon
+   * is in use and its unused stop waits (001 D10 as amended, task 001-415).
+   * False before the scheduler started and once it closed.
+   */
+  busy(): boolean;
+  /**
    * What the worktree is owed and the last session's departure drains
    * before the exit, as the drain's notes name it: an explicit checkpoint
    * open, or a new failure's re-run queued or running (task 001-219).

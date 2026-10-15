@@ -201,6 +201,8 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
       case "sync": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         if (context.requestSync === undefined) return errorResponse("this daemon cannot sync");
+        // A wait (`status --wait`) is use (D10 as amended, task 001-415).
+        context.onActivity();
         const requestId = randomUUID();
         const state: SyncState = { revision: null, error: null };
         remember(syncRequests, requestId, state);

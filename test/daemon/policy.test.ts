@@ -43,7 +43,7 @@ describe("loadPolicy (spec 001 D11)", () => {
           env: { allowlist: ["TZ"] },
           runner: { tierSize: 2, backlogTierSize: 50, timeoutMs: null },
           delivery: { uncoveredEdits: false },
-          daemon: { idleExitMinutes: 0.5 },
+          daemon: { idleExitMinutes: 0.5, unusedExitMinutes: 10 },
           store: { retentionDays: 3, maxSizeMb: 200 },
         }),
       ),
@@ -69,7 +69,7 @@ describe("loadPolicy (spec 001 D11)", () => {
       vitest: { excludeProjects: [] },
       slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 600_000, maxParallel: 4 },
       delivery: { uncoveredEdits: false },
-      daemon: { idleExitMinutes: 0.5 },
+      daemon: { idleExitMinutes: 0.5, unusedExitMinutes: 10 },
       store: { retentionDays: 3, maxSizeMb: 200 },
     });
   });

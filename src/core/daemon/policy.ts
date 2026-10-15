@@ -87,7 +87,7 @@ const SHAPE: Shape = {
     maxParallel: positiveInteger,
   },
   delivery: { uncoveredEdits: boolean },
-  daemon: { idleExitMinutes: aboveZero },
+  daemon: { idleExitMinutes: aboveZero, unusedExitMinutes: aboveZero },
   store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) },
 };
 

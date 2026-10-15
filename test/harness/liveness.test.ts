@@ -2,6 +2,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { EnsureDaemonOptions } from "../../src/core/daemon/ensure.js";
+import { daemonRestMetaKey } from "../../src/core/types/index.js";
 import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
 import { mayEdit } from "../../src/harness/shared/index.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
@@ -79,6 +80,27 @@ describe("liveness in delivered text", () => {
         "No daemon has validated since 2026-01-02T14:02:00.000Z; results are as of revision 1.",
     );
     expect(second.stdout).toBe("");
+  });
+
+  it("says nothing of a daemon that rests after its unused stop (task 001-415)", async () => {
+    const r = await registered();
+    r.daemon("alive");
+    const lastHeartbeat = r.store.worktrees.get(r.worktreeId)?.daemon?.heartbeatAt ?? 0;
+    r.store.worktrees.setDaemon(r.worktreeId, null);
+    const rest = (at: number) => r.store.meta.set(daemonRestMetaKey(r.worktreeId), String(at));
+    const { deps } = recording("spawned");
+
+    rest(lastHeartbeat);
+    expect(
+      await runHook("user-prompt-submit", recorded("user-prompt-submit", r.root), deps),
+    ).toEqual(expect.objectContaining({ stdout: "" }));
+    expect(
+      (await runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps)).stdout,
+    ).toBe("");
+    // A mark from before the last heartbeat is another daemon's rest: this one stopped.
+    rest(lastHeartbeat - 1);
+    const told = await runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps);
+    expect(context(told)).toMatch(/^SQUEAL · no daemon is validating at revision 1\n/);
   });
 
   it("is in a registration made while no daemon runs", async () => {

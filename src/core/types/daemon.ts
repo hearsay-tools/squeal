@@ -374,3 +374,12 @@ export function bootstrappedMetaKey(worktreeId: WorktreeId): string {
 export function daemonExitMetaKey(worktreeId: WorktreeId): string {
   return worktreeMetaKey("daemonExit", worktreeId);
 }
+
+/**
+ * `meta` key of when a daemon stopped unused (D10 as amended, task 001-415):
+ * while its record is cleared and no heartbeat came after it, the worktree's
+ * daemon rests, and its consumers are told nothing about it (`livenessChange`).
+ */
+export function daemonRestMetaKey(worktreeId: WorktreeId): string {
+  return worktreeMetaKey("daemonRest", worktreeId);
+}
