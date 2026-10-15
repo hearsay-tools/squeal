@@ -21,6 +21,8 @@
       "test/fixtures/codex-hooks/**"
     ],
     "test/plugins/codex/**/*.test.ts": ["plugins/codex/**"],
+    "test/harness/opencode/**/*.test.ts": ["plugins/opencode/**", "src/**/*.ts"],
+    "test/harness/pi/**/*.test.ts": ["plugins/pi/**", "src/**/*.ts"],
     "test/runners/node-test/**/*.test.ts": [
       "test/fixtures/node-test/**",
       "src/runners/node-test/runtime/**"
