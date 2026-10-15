@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { closeSync, openSync } from "node:fs";
+import { lowerProcess } from "../../../core/daemon/low-priority.js";
 
 /** How a test file's process ended. Recorded in the run log and trusted for nothing (D5). */
 export interface ProcessExit {
@@ -27,7 +28,9 @@ export interface GroupProcessOptions {
 /**
  * Starts `command` in its own process group with stdout and stderr written
  * to files, so they outlive a killed run. When the leader exits, whatever
- * is left of its group is killed: a test's children go with the run.
+ * is left of its group is killed: a test's children go with the run. It
+ * runs at `nice` 10 from its start, and what it spawns inherits that (001
+ * D11 Capacity, task 001-378).
  */
 export function startGroup(options: GroupProcessOptions): GroupProcess {
   const out = openSync(options.stdout, "a");
@@ -40,6 +43,7 @@ export function startGroup(options: GroupProcessOptions): GroupProcess {
   });
   closeSync(out);
   closeSync(err);
+  if (child.pid !== undefined) lowerProcess(child.pid);
   let done = false;
   const kill = (signal: NodeJS.Signals) => {
     if (child.pid === undefined) return;
