@@ -1,19 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { CLAIM, STATUS_TEXT, type Step } from "./reference-sessions.js";
 import {
+  AT,
   a11Open,
   CALENDAR,
   CALENDAR_FILE,
   DELIVERED_FAIL,
   DOWN,
   expected,
-  INHERITED,
   measuresOf,
+  PASSED,
   RATES,
   RATES_FILE,
   RECOVERED,
+  REGISTERED_FAIL,
   retry,
   SERVICE,
+  SOURCE,
+  TESTS,
 } from "./retry-texts.js";
 
 // Row 006-71: a9's retry measures score what the situation asked, from sol's a9 cells of run
@@ -24,11 +28,6 @@ import {
 // when no request is made. A pass claim while the FAIL stands, a pass from before the start, or
 // a pass a run the agent forced may have stored still misses; a11 keeps its rule. Both harnesses.
 
-const AT = "test/rates.test.ts:4:1";
-const REGISTERED_FAIL: Step = { squeal: INHERITED(RATES, DOWN, "src/rates.ts:15:11", "0.20") };
-const SOURCE: Step = { edit: "src/rates.ts" };
-const TESTS: Step = { edit: RATES_FILE };
-const PASSED = (rev: number): Step => ({ squeal: RECOVERED(rev, RATES, AT, null) });
 const FAILED = (rev: number): Step => ({
   squeal: DELIVERED_FAIL(rev, RATES, DOWN, "src/rates.ts:15:11"),
 });
