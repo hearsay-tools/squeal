@@ -46,7 +46,9 @@ export function gradeOut(out) {
     .flatMap(jsonl);
   const timeline =
     meta.harness === "claude" ? claudeTimeline(events) : codexTimeline(events, records, t0);
-  const truth = ["truth.json", "truth.vitest.json", "truth.txt"].some((f) => existsSync(join(out, f)))
+  const truth = ["truth.json", "truth.vitest.json", "truth.txt"].some((f) =>
+    existsSync(join(out, f)),
+  )
     ? { vitest: readJson("truth.vitest.json"), completion: readJson("truth.json") }
     : null;
   const variantFile = join(VARIANTS, `${meta.variant}.json`);
@@ -106,7 +108,10 @@ export function regradedCell(cell, grade, { conditions, declared, config }) {
     const scenario = config.scenarios[cell.task];
     if (scenario) {
       const { turns, turnStarts, settle } = cell.atomic;
-      next.atomic = { ...cell.atomic, ...pilotRecord(grade, { turns, turnStarts, settle, scenario }) };
+      next.atomic = {
+        ...cell.atomic,
+        ...pilotRecord(grade, { turns, turnStarts, settle, scenario }),
+      };
     }
     return next;
   }
@@ -125,7 +130,11 @@ const differences = (a, b) =>
 /** The fields that grade a cell; its other mechanical fields are the evidence they read. */
 const GRADED = ["claim", "truthPass", "claimTrue", "claimMatchesSqueal", "squealVerdict"];
 /** The per-id grades a field holds: an atomic record's measures, `parser`, `expectations`. */
-const PER_ID = { atomic: (v) => v?.measures ?? {}, parser: (v) => v ?? {}, expectations: (v) => v ?? {} };
+const PER_ID = {
+  atomic: (v) => v?.measures ?? {},
+  parser: (v) => v ?? {},
+  expectations: (v) => v ?? {},
+};
 
 /**
  * What changed between committed cell `before` and `after`: `grades`, each changed grade as
@@ -153,13 +162,16 @@ export function changesOf(before, after) {
 /**
  * Results file `data` with every cell `gradeOf(cell)` has a grade for graded again
  * (`regradedCell`). A cell without one (its `out/` is gone) stays as committed and is listed in
- * `missing`. Only when a cell changed does the file get a `regraded` note `{ by, date, changed,
- * note }`, replacing an earlier note by the same row; with none, `data` is returned as it was.
- * `diffs` gives each changed cell's `changesOf`, `{ id, grades, evidence }`.
+ * `missing`. Only when a cell's stored fields changed is the file's `regraded` note `{ by, date,
+ * changed, evidence, note }` added, replacing an earlier note by the same row: `changed` the cells
+ * whose grade changed (claim fields, expectations, `parser`, measures), as every regrade note
+ * names them, `evidence` those whose stored evidence (timeline or counts) changed alone. With
+ * none, `data` is returned as it was. `diffs` gives each changed cell's `changesOf`.
  */
 export function regradeFromOut(data, { gradeOf, declared, config, by, note, date }) {
   if (!by || !note) throw new Error("a regrade names its row (`by`) and its note");
   const changed = [];
+  const evidence = [];
   const missing = [];
   const diffs = [];
   const cells = data.cells.map((cell) => {
@@ -170,17 +182,23 @@ export function regradeFromOut(data, { gradeOf, declared, config, by, note, date
     }
     const next = regradedCell(cell, grade, { conditions: data.conditions, declared, config });
     if (JSON.stringify(cell) === JSON.stringify(next)) return cell;
-    changed.push(cell.id);
-    diffs.push({ id: cell.id, ...changesOf(cell, next) });
+    const diff = { id: cell.id, ...changesOf(cell, next) };
+    (diff.grades.length ? changed : evidence).push(cell.id);
+    diffs.push(diff);
     return next;
   });
-  if (!changed.length) return { data, changed, missing, diffs };
+  if (!diffs.length) return { data, changed, evidence, missing, diffs };
   const earlier = (data.regraded ?? []).find((n) => n.by === by);
   const others = (data.regraded ?? []).filter((n) => n !== earlier);
-  const all = [...new Set([...(earlier?.changed ?? []), ...changed])];
+  const graded = [...new Set([...(earlier?.changed ?? []), ...changed])];
+  const kept = [...new Set([...(earlier?.evidence ?? []), ...evidence])].filter(
+    (id) => !graded.includes(id),
+  );
+  const stamp = { by, date, changed: graded, evidence: kept, note };
   return {
-    data: { ...data, cells, regraded: [...others, { by, date, changed: all, note }] },
+    data: { ...data, cells, regraded: [...others, stamp] },
     changed,
+    evidence,
     missing,
     diffs,
   };

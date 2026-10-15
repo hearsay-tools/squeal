@@ -168,8 +168,15 @@ function codexSession(steps: readonly Step[]) {
   return codexTimeline(events, rollout as never, 0);
 }
 
-/** The same moves as Claude Code's `stream-json`: Squeal's texts arrive as hook output. */
 function claudeSession(steps: readonly Step[]) {
+  return claudeTimeline(claudeEvents(steps));
+}
+
+/**
+ * The same moves as Claude Code's `stream-json`, as a cell's `out/events.jsonl` keeps them:
+ * Squeal's texts arrive as hook output.
+ */
+export function claudeEvents(steps: readonly Step[]): Event[] {
   const events: Event[] = [];
   const denials: { tool_use_id: string }[] = [];
   let final = "";
@@ -230,7 +237,7 @@ function claudeSession(steps: readonly Step[]) {
     result: final,
     permission_denials: denials,
   });
-  return claudeTimeline(events);
+  return events;
 }
 
 const COUNTS = (rev: number, pending: number, stale = 0, unknown = 0) =>

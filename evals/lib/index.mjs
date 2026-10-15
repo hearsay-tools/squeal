@@ -98,6 +98,14 @@ export {
   unorderedOf,
 } from "./judge.mjs";
 export { buildFixture, cellArgs, runId } from "./prepare.mjs";
+export {
+  changesOf,
+  gradeOut,
+  MECHANICAL,
+  regradedCell,
+  regradeFromOut,
+  runDirOf,
+} from "./regrade-cells.mjs";
 export { armFixtures, cellRecord, conditionsOf, narrowed, resultsName } from "./results.mjs";
 export {
   claimAfterRetry,
