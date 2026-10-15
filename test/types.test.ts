@@ -23,7 +23,7 @@ describe("core types", () => {
       vitest: { excludeProjects: [] },
       slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 600_000, maxParallel: 4 },
       delivery: { uncoveredEdits: true },
-      daemon: { idleExitMinutes: 60 },
+      daemon: { idleExitMinutes: 60, unusedExitMinutes: 30 },
       store: { retentionDays: 7, maxSizeMb: null },
     });
   });
