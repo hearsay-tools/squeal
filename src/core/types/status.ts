@@ -164,8 +164,25 @@ export interface SlowTierState {
  * that revision, how many test files have produced no check yet and in which
  * class they are [...], and whether a full-suite checkpoint completed for it."
  */
+/**
+ * `HEAD` as the daemon last saw it, the revisions recorded since it last
+ * moved (`1bc146f0 + 3`), and whether the tree was dirty then (task 001-406).
+ * A commit moves `HEAD` and leaves the revision number as it was.
+ */
+export interface RevisionCommit {
+  readonly head: CommitSha;
+  readonly sinceHead: number;
+  readonly dirty: boolean;
+}
+
 export interface StatusHeader {
   readonly revision: RevisionNumber;
+  /**
+   * The commit beside the revision (task 001-406): revisions count per
+   * worktree, so the number alone does not compare across worktrees. Set by
+   * `readHeader` once a revision or a `HEAD` move is recorded.
+   */
+  readonly commit?: RevisionCommit;
   readonly counts: ValidityCounts;
   /**
    * The file-level checks among `counts`, one per test file (spec 001 D4);
@@ -551,6 +568,8 @@ export interface WhyReport {
   readonly worktreeRoot: AbsolutePath;
   /** Current revision of the worktree; `null` when none is recorded. */
   readonly revision: RevisionNumber | null;
+  /** The commit beside `revision` (task 001-406); absent while none is recorded. */
+  readonly commit?: RevisionCommit;
   readonly check: CheckId;
   /** Root of every worktree in the store, for naming origins and producers. */
   readonly worktreeRoots: Readonly<Record<WorktreeId, AbsolutePath>>;
