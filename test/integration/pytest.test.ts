@@ -88,8 +88,13 @@ function whyNotCurrent(main: string, root: string): string {
         ).map((r) => `${r.full_name || "(file)"}: ${r.validity} ${r.origin_kind ?? ""}`),
       }),
     );
+    // The keys this worktree stored its own results under: a run's, against `files`' current ones.
+    const own = all(
+      "SELECT c.test_path AS path, r.key, r.revision, COUNT(*) AS results FROM results r JOIN checks c ON c.id = r.check_id WHERE r.worktree_id = ? GROUP BY c.test_path, r.key, r.revision",
+      id,
+    );
     return JSON.stringify(
-      { files, runs: runs(main, root), notes: status(root).daemonNotes },
+      { files, own, runs: runs(main, root), notes: status(root).daemonNotes },
       null,
       1,
     );
@@ -195,7 +200,7 @@ describe("a repository with a Vitest suite and a pytest project (spec 007)", () 
       expect(second.inherited.count, whyNotCurrent(main, wt2)).toBe(CHECKS);
       expect(second.knownFailures).toEqual([]);
       // Tiers keyed while the sync ran end before starting pytest (D2); none completed.
-      expect(runs(main, wt2).slice(from)).toEqual(
+      expect(runs(main, wt2).slice(from), whyNotCurrent(main, wt2)).toEqual(
         runs(main, wt2)
           .slice(from)
           .filter((r) => r.end === "crashed"),
