@@ -141,6 +141,7 @@ export function squealEvidence(text, from, failures = 0) {
     stale: counts?.stale ?? null,
     unknown: counts?.unknown ?? null,
     slow,
+    ...(counts?.news ? { news: true } : {}),
     daemon,
     known: listed ? Number(listed[1]) : null,
     checks: checksOf(t),
@@ -249,23 +250,38 @@ const HEADER = new RegExp(
   ["current", "pending", "stale", "unknown"].map((v) => `(\\d+) ${v}(?: \\([^)]*\\))?`).join(", "),
 );
 
+/**
+ * A change delivery's header from 001-407 on: only the non-zero counts of what needs attention,
+ * `Revision 12: 3 pending (2 tests, 1 test file loaded), 1 stale (1 test).`, or `Revision 12: no
+ * check pending, stale or unknown.`; the revision may name its commit (`Revision 12 · 0a1b2c3d +
+ * 2, dirty: …`).
+ */
+const NEWS =
+  /^Revision \d+(?: · [^:]*)?: (no check pending, stale or unknown|\d+ (?:pending|stale|unknown)\b[^.]*)\./m;
+
 /** Pending, stale and unknown counts in a delivered header or a status, or `null` for none. */
 function countsOf(t) {
   let pending;
   let stale;
   let unknown;
   const header = HEADER.exec(t);
+  const news = NEWS.exec(t)?.[1];
   const affected = /^Affected checks: (.*)$/m.exec(t)?.[1];
   if (header) [pending, stale, unknown] = [header[2], header[3], header[4]].map(Number);
-  else if (affected !== undefined && !/^none counted/.test(affected)) {
+  else if (news !== undefined) {
+    [pending, stale, unknown] = ["pending", "stale", "unknown"].map((v) =>
+      count(new RegExp(`(\\d+) ${v}\\b`), news),
+    );
+  } else if (affected !== undefined && !/^none counted/.test(affected)) {
     pending = count(/(\d+) running/, affected) + count(/(\d+) queued/, affected);
     stale = count(/(\d+) stale/, affected);
     unknown = count(/(\d+) unknown/, affected);
   } else return null;
-  const files = /Test files without checks: (\d+) pending, (\d+) unknown/.exec(t);
-  if (files) {
-    pending += Number(files[1]);
-    unknown += Number(files[2]);
+  // Both classes in a full header and a status; a news header names only the non-zero ones.
+  const files = /Test files without checks: ([^.]*)\./.exec(t)?.[1];
+  if (files !== undefined) {
+    pending += count(/(\d+) pending/, files);
+    unknown += count(/(\d+) unknown/, files);
   }
   // Counts that leave out test files not listed yet, a runner part still to come, or edits a
   // named wait's deadline came before the daemon stored (row 006-55).
@@ -276,7 +292,7 @@ function countsOf(t) {
   )
     pending++;
   if (/No dependencies are installed|until an install/.test(t)) unknown++;
-  return { pending, stale, unknown };
+  return { pending, stale, unknown, ...(!header && news !== undefined ? { news: true } : {}) };
 }
 
 /** A check as `formatCheck` names it, `[project] path > test` or `path (file-level)`: its file. */

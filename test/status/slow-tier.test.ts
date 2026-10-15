@@ -382,7 +382,15 @@ describe("the slow-tier line (spec 004 D8)", () => {
       summary: "x".repeat(300),
       location: null,
     }));
-    const text = formatDelta({ schemaVersion: 1, consumer, header, label: "transitions", entries });
+    // Task 001-407: a change delivery carries the line when the slow tier changed.
+    const text = formatDelta({
+      schemaVersion: 1,
+      consumer,
+      header,
+      label: "transitions",
+      entries,
+      slowTierChanged: true,
+    });
     expect(text.length).toBeLessThanOrEqual(MESSAGE_CAP_CHARS);
     expect(slowLine(text)).toBe(
       "Slow tier: 2 test files; 1 pending; 1 not run at revision 2. Squeal runs the pending ones when the agent pauses and has not queued the rest; `squeal run --slow` runs them now.",

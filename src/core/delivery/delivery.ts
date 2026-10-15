@@ -34,6 +34,7 @@ import {
 } from "./liveness.js";
 import { ownEditUnknown } from "./own-edit.js";
 import { scannedDaemon, tellRegistered } from "./registered.js";
+import { slowTierChanged, tellSlowTier } from "./slow-told.js";
 import {
   currentKeys,
   endTurn,
@@ -207,6 +208,9 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         states,
       );
       notes?.tell();
+      // Task 001-407: a change delivery shows the slow-tier line when it changed; Stop always does.
+      const slowChanged = slowTierChanged(store, consumer, header.slowTier);
+      if (stop || slowChanged) tellSlowTier(store, consumer, header.slowTier);
       const sawEdit =
         notes === null ||
         carriesEditResult(
@@ -228,6 +232,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         entries,
         stillFailing,
         ...(changed === null ? {} : { liveness: changed }),
+        ...(slowChanged ? { slowTierChanged: true as const } : {}),
         ...(sawEdit === undefined ? {} : { sawEdit }),
         ...(notes?.editsSettled === undefined ? {} : { editsSettled: notes.editsSettled }),
       };
@@ -293,6 +298,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
           header.daemon?.state === "down" && header.daemon.startingSince !== undefined;
         tellLiveness(store, consumer, starting ? told : (header.daemon?.state ?? null));
         tellRevision(store, consumer, header.revision);
+        tellSlowTier(store, consumer, header.slowTier);
         if (!registered) {
           // Review wave 10d, S2: after tool calls the registration revision may hold their edits.
           const alive = atStart && header.daemon?.state === "alive";

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { squealEvidence } from "../../evals/lib/index.mjs";
-import { formatRegistration } from "../../src/core/delivery/format.js";
+import { formatDelta, formatRegistration } from "../../src/core/delivery/format.js";
 import { formatStatus } from "../../src/core/status/index.js";
 import type { StatusSnapshot } from "../../src/core/types/index.js";
 import { settled } from "./status-snapshot.js";
@@ -11,6 +11,8 @@ import { settled } from "./status-snapshot.js";
 const status = (s: StatusSnapshot) => formatStatus(s, 2_000 as never);
 const header = (s: StatusSnapshot) =>
   formatRegistration({ header: s, knownFailures: s.knownFailures } as never);
+/** A change delivery's header, the news form from 001-407 on: non-zero counts only. */
+const news = (s: StatusSnapshot) => formatDelta({ header: s, entries: [] } as never);
 const failure = {
   check: { project: "", testPath: "test/money.test.ts", name: ["money", "formats"] },
   outcome: "fail",
@@ -59,6 +61,11 @@ describe("squealEvidence", () => {
     it(`reads a ${name} delivered header`, () => {
       const { failing: _, ...rest } = want as { failing?: string[] };
       expect(squealEvidence(header(s), "push")).toMatchObject({ revision: 3, ...rest });
+    });
+    it(`reads a ${name} change delivery's header (task 001-407)`, () => {
+      const { failing: _, ...rest } = want as { failing?: string[] };
+      const known = s.knownFailures.length;
+      expect(squealEvidence(news(s), "push", known)).toMatchObject({ revision: 3, ...rest });
     });
   }
 
