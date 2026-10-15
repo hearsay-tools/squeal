@@ -9,7 +9,9 @@ import type { OpenCodeWorld } from "./opencode-fixture.js";
  * time it keeps is one a process wrote where it can: the store's consumer
  * rows (Stop's delivery), and each bridge process's start from
  * `/proc/<pid>/stat`, exact however late the poll that found it. Only a
- * bridge's end is a poll's time: the last poll that saw it alive.
+ * process's end is a poll's time: the last poll that saw it alive. The
+ * bridges' parent is OpenCode: whether the consumer rows outlived it says
+ * whether `dispose` ended them.
  */
 
 const POLL_MS = 20;
@@ -31,12 +33,25 @@ export interface Bridge {
   readonly pid: number;
   readonly kind: string;
   readonly started: number;
+  /** OpenCode's pid. */
+  readonly parent: number;
   alive: number;
+}
+
+/** OpenCode, the bridges' parent, at the last poll that saw it running. */
+export interface Host {
+  readonly pid: number;
+  alive: number;
+  /** The consumer rows that poll saw. */
+  rows: number;
 }
 
 export interface Watched {
   readonly consumers: Seen[];
   readonly bridges: Bridge[];
+  host: Host | null;
+  /** The longest time between two polls, in ms: a starved watcher can miss a short bridge. */
+  gap: number;
 }
 
 /** The consumers' rows, or null when the store is busy or not there yet. */
@@ -74,10 +89,11 @@ function bridgeOf(pid: number, base: string, boot: number): Bridge | null {
     const hook = args.find((a) => a.includes(base))?.match(/\/dist\/hooks\/([\w-]+)\.mjs$/);
     if (!hook?.[1]) return null;
     // Field 22, the start in clock ticks since boot.
-    const ticks = Number(stat(pid)?.fields[19]);
+    const fields = stat(pid)?.fields;
+    const ticks = Number(fields?.[19]);
     if (!Number.isFinite(ticks)) return null;
     const started = boot + ticks * 10;
-    return { pid, kind: hook[1], started, alive: Date.now() };
+    return { pid, kind: hook[1], started, parent: Number(fields?.[1]), alive: Date.now() };
   } catch {
     return null;
   }
@@ -92,12 +108,15 @@ export async function watchRun(
   base: string,
   world: OpenCodeWorld,
 ): Promise<Watched> {
-  const watched: Watched = { consumers: [], bridges: [] };
+  const watched: Watched = { consumers: [], bridges: [], host: null, gap: 0 };
   const boot = Date.now() - Number(readFileSync("/proc/uptime", "utf8").split(" ")[0]) * 1000;
   const known = new Map<number, Bridge | null>();
   let db: DatabaseSync | undefined;
+  let polled = Date.now();
   try {
     while (!world.done()) {
+      watched.gap = Math.max(watched.gap, Date.now() - polled);
+      polled = Date.now();
       try {
         db ??= new DatabaseSync(database, { readOnly: true });
       } catch {
@@ -114,11 +133,18 @@ export async function watchRun(
         if (!known.has(pid)) {
           known.set(pid, bridge ?? null);
           if (bridge && stat(pid)?.state !== "Z") watched.bridges.push(bridge);
+          if (bridge) watched.host ??= { pid: bridge.parent, alive: Date.now(), rows: -1 };
         } else if (bridge) {
           // An exited child its parent has not reaped yet is no longer running.
           const state = stat(pid)?.state;
           if (state !== undefined && state !== "Z") bridge.alive = Date.now();
         }
+      }
+      const { host } = watched;
+      const state = host === null ? undefined : stat(host.pid)?.state;
+      if (host !== null && state !== undefined && state !== "Z") {
+        host.alive = Date.now();
+        host.rows = rows?.length ?? host.rows;
       }
       await sleep(POLL_MS);
     }
