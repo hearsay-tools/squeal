@@ -81,6 +81,10 @@ The coordinator skill, section 6, gains two rules:
 
 Branches outside D1 get CI only through `workflow_dispatch`. `docs/process.md` is the human's: the line "docs-only pushes start no CI run" in step 5 is proposed to them, not written.
 
+### D7. Nightly Node 24
+
+The human, 2026-10-15. A `schedule` trigger runs main's head once a night (03:23 UTC) as one job: the whole suite on Node 24, which D4 runs only in part. The candidate and landing jobs do not run on a schedule, and neither does `version`. About 20 job-minutes a day. The run lists under `main` in `gh run list`, so the coordinator reads it with the landings (D6); a red nightly blocks the next landing until its cause is named.
+
 ## Testing
 
 - The candidate tests its own workflow, because D1 includes `cand/**`. Its run must show three Node 22 shard jobs and one Node 24 job, and no `version` job. Record each shard's Test wall time.
@@ -88,6 +92,7 @@ Branches outside D1 get CI only through `workflow_dispatch`. `docs/process.md` i
 - One edge probe: push `cand/010-probe` at the candidate's SHA, which is already on GitHub. Record whether a run starts, then delete the branch. The result goes in `status.md`. D6's fallback stays either way.
 - The first main landing after this shows the three shards, the Node 24 job and `version`. `version`'s range starts at the previous main push.
 - The guard test from D4 runs in the suite.
+- The first scheduled run on main after landing shows the one nightly job and is green, or its failures are named in a board row (D7). A schedule cannot be run from a branch, so the candidate does not test it.
 - A three-day measurement (row 010-20) covers:
   - runs per day, and job-minutes per hour against G5;
   - p90 queue time for Squeal's Node jobs;
