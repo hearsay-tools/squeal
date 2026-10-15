@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { pilotRecord, scenarioOf } from "../../evals/lib/index.mjs";
-import { CLAIM, graded, type Harness, REGISTERED, type Step } from "./reference-sessions.js";
+import {
+  CLAIM,
+  graded,
+  type Harness,
+  REGISTERED,
+  STATUS_TEXT,
+  type Step,
+} from "./reference-sessions.js";
 import { a11Open, CALENDAR_FILE, expected, measuresOf, retry, wait } from "./retry-texts.js";
 
 // 006-62, finding 2: a Squeal command Squeal never answered is no Squeal action. In the a8 run
@@ -86,6 +93,80 @@ describe("a Squeal command Squeal never answered", () => {
       expect(measuresOf("a11-inherited-flake", steps, harness, true)).toEqual(
         expected("a11-inherited-flake", ["claim-after-retry"]),
       );
+    });
+  }
+});
+
+// Review 006-63 B2: one call can mix the pinned CLI's absolute path and a bare `squeal`, in
+// either order. Each foreign reply is the command's whose CLI could print it, so the answered
+// status is the pull and the unanswered slow run is none; when two CLIs could have printed the
+// reply, neither command gets a pull, a wait or the slow run by its position.
+const PIN = "node /tmp/pin/dist/cli/squeal.mjs";
+const STATUS = `Returned on quiet: nothing pending at revision 1 after 4.0 s\n\n${STATUS_TEXT(1, { failing: [SLOW] })}\n`;
+const SLOW_RUN = "run --slow --wait 60000";
+
+describe("one call's Squeal commands, each with its own reply", () => {
+  for (const harness of ["codex", "claude"] as const) {
+    it.each([
+      [
+        "the pin's status, then a bare slow run",
+        `${PIN} status --wait 60000; squeal ${SLOW_RUN}`,
+        `${STATUS}${LAUNCHER}`,
+      ],
+      [
+        "a bare slow run, then the pin's status",
+        `squeal ${SLOW_RUN}; ${PIN} status --wait 60000`,
+        `${LAUNCHER}${STATUS}`,
+      ],
+    ])(`${harness}: %s credits the status alone`, (_, cmd, out) => {
+      const { g, measures } = a8([...OPENING, { cmd, out, exit: 1 }, CLAIM("fail")], harness);
+      expect(g.timeline.pulls.map((p) => p.sub)).toEqual(["status"]);
+      expect(g.squealWaits).toBe(1);
+      expect(g.squealRunSlow).toBe(0);
+      expect(measures["slow-through-squeal"]).toBe(false);
+      expect(g.retained.filter((s) => s.k === "squeal-run")).toHaveLength(1);
+      expect(g.retained.flatMap((s) => (s.k === "squeal" ? [s.sub] : []))).toContain("status");
+    });
+
+    it(`${harness}: the pin's slow run beside a bare unanswered status is the slow run`, () => {
+      const call = {
+        cmd: `squeal status --wait 60000; ${PIN} ${SLOW_RUN}`,
+        out: `${LAUNCHER}${STATUS}`,
+        exit: 1,
+      };
+      const { g, measures } = a8([...OPENING, call, CLAIM("fail")], harness);
+      expect(g.timeline.pulls.map((p) => p.sub)).toEqual(["run"]);
+      expect(g.squealRunSlow).toBe(1);
+      expect(measures["slow-through-squeal"]).toBe(true);
+    });
+
+    it(`${harness}: Node's missing file is the command that named it`, () => {
+      const missing = "Error: Cannot find module '/tmp/pin/dist/cli/squeal.mjs'\n";
+      const call = {
+        cmd: `${PIN} ${SLOW_RUN}; squeal status --wait 60000`,
+        out: `${missing}${STATUS}`,
+        exit: 1,
+      };
+      const { g } = a8([...OPENING, call, CLAIM("fail")], harness);
+      expect(g.timeline.pulls.map((p) => p.sub)).toEqual(["status"]);
+      expect(g.squealRunSlow).toBe(0);
+    });
+
+    it(`${harness}: a reply two CLIs could print credits neither by position`, () => {
+      const cmd = `squeal status --wait 60000; /home/dev/.local/bin/squeal ${SLOW_RUN}`;
+      const { g, measures } = a8(
+        [...OPENING, { cmd, out: `${STATUS}${LAUNCHER}`, exit: 1 }, CLAIM("fail")],
+        harness,
+      );
+      expect(g.squealPulls).toBe(0);
+      expect(g.squealWaits).toBe(0);
+      expect(g.squealRunSlow).toBe(0);
+      expect(measures["slow-through-squeal"]).toBe(false);
+      // R1: the run stays; the Squeal text the agent read stays once, as a run's.
+      expect(g.retained.filter((s) => s.k === "squeal-run")).toHaveLength(1);
+      expect(
+        g.retained.flatMap((s) => (s.k === "squeal" && s.from === "pull" ? [s.sub] : [])),
+      ).toEqual(["run"]);
     });
   }
 });

@@ -2,7 +2,7 @@
 import { gradeClaim, parseClaim } from "./claim.mjs";
 import { classifyShell, scopeLabel } from "./commands.mjs";
 import { completedRuns, failedChecks, NO_DAEMON, retainedOf } from "./evidence.mjs";
-import { unanswered } from "./squeal-text.mjs";
+import { answered } from "./squeal-text.mjs";
 import { SKILL_PATH, transcriptOf } from "./transcript.mjs";
 
 /** The instruction file forbids editing these (the fixture's `BASE.md`). */
@@ -64,9 +64,14 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
     const summaries = completedRuns(k.out);
     // Each retry and service start takes its own reply from the call's output, in order (006-57 B2).
     const replies = { retry: retryReplies(k.out), service: serviceReplies(k.out) };
-    // The call's first Squeal commands that another program answered (row 006-62).
+    // Which of the call's Squeal commands Squeal answered, each by its own CLI (review 006-63 B2).
     const executed = actions.filter((a) => a.kind === "squeal" && a.execution === "executed");
-    let foreign = unanswered(k.out, k.exit ?? null, executed.length);
+    const replied = answered(
+      k.out,
+      k.exit ?? null,
+      executed.map((a) => a.bin),
+    );
+    let unsure = null;
     for (const a of actions) {
       const here = { t: k.t, n: n++, call, ms: k.ms ?? null, exit: k.exit ?? null };
       if (a.execution !== "executed") {
@@ -75,13 +80,16 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
         continue;
       }
       if (a.kind === "squeal") {
-        const answered = foreign-- <= 0;
+        const reply = replied[executed.indexOf(a)];
         const noDaemon = NO_DAEMON.test(k.out ?? "");
-        if (answered)
+        // A command the output cannot say Squeal answered is no pull, wait or slow run.
+        if (reply === true)
           pulls.push({ ...here, sub: a.sub, wait: a.wait, all: a.all, slow: a.slow, noDaemon });
         // `squeal why` explains a result; it is not evidence of the current one (B2).
-        if (answered && (a.sub === "status" || a.sub === "run"))
+        if (reply === true && (a.sub === "status" || a.sub === "run"))
           at(k.t + (k.ms ?? 0), { from: "pull", sub: a.sub, text: k.out ?? "" }, 1);
+        if (reply === null && (a.sub === "status" || a.sub === "run"))
+          unsure = unsure === "run" ? "run" : a.sub;
         // In the call's order with its other actions, as a run or an edit (review 006-57 B2).
         if (a.sub === "retry") at(k.t, retryStep(a, replies.retry));
         // An executed run is an action whatever it printed: redirected, empty, or a request not
@@ -113,6 +121,10 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
         at(k.t, { k: "edit", path: relPath(a.path) });
       }
     }
+    // Squeal's text the agent read, when no command it surely answered carries it: once, as a
+    // run's when one may have printed it, so it closes a retry's window and credits no pass.
+    if (unsure !== null && !replied.includes(true))
+      at(k.t + (k.ms ?? 0), { from: "pull", sub: unsure, text: k.out ?? "" }, 1);
   }
   const lastEdit = edits.at(-1) ?? null;
   const deliveries = items.filter((k) => k.kind === "squeal").map(delivery);
