@@ -9,7 +9,11 @@ import {
   type Step as Seen,
   squealEvidence,
 } from "../../evals/lib/index.mjs";
+import { formatDelta, formatRegistration } from "../../src/core/delivery/format.js";
+import { formatStatus } from "../../src/core/status/index.js";
+import type { StatusSnapshot } from "../../src/core/types/index.js";
 import { CLAIM, type Harness, REGISTERED, type Step, session } from "./reference-sessions.js";
+import { settled } from "./status-snapshot.js";
 
 // Row 006-77: the forms of Squeal's text the judge read right and the parser missed in 0.1.195's
 // baseline (`20261015T130224Z-c94221`), as the product words them, in both harnesses: a header
@@ -294,3 +298,37 @@ describe("a Claude Code hook's JSON around Squeal's text", () => {
     expect(squealEvidence('{"knownFailures": 0}', "pull")).toBeNull();
   });
 });
+
+// Review 001-423, B2: `squeal status` ends `Test files without checks: 1 pending, 0 unknown` with
+// its line, no period, and the parser read past it as a pass. Each formatter's own text.
+const withoutChecks = (pending: number, unknown: number): StatusSnapshot => ({
+  ...settled,
+  testFilesWithoutChecks: { pending, unknown },
+  breakdown: { ...settled.breakdown, testFilesWithoutChecks: pending + unknown },
+});
+/** Each form's steps; a news header names no known failure, so the ledger's recovery comes first. */
+const formatted: [string, (s: StatusSnapshot) => Step[]][] = [
+  ["a status", (s) => [{ cmd: "squeal status", out: formatStatus(s, 2_000 as never) }]],
+  [
+    "a registration",
+    (s) => [{ squeal: formatRegistration({ header: s, knownFailures: [] } as never) }],
+  ],
+  [
+    "a news header",
+    (s) => [{ squeal: RECOVERY(3) }, { squeal: formatDelta({ header: s, entries: [] } as never) }],
+  ],
+];
+
+for (const harness of ["codex", "claude"] as const)
+  describe(`test files without checks before a pass claim (review 001-423), ${harness}`, () => {
+    for (const [form, steps] of formatted) {
+      it(`${form} with every count current is current`, () => {
+        expect(atClaim([...steps(settled), CLAIM("pass")], harness)).toEqual(MET);
+      });
+
+      it(`${form} with a pending or an unknown test file without checks stays a miss`, () => {
+        expect(atClaim([...steps(withoutChecks(1, 0)), CLAIM("pass")], harness)).toEqual(MISSED);
+        expect(atClaim([...steps(withoutChecks(0, 1)), CLAIM("pass")], harness)).toEqual(MISSED);
+      });
+    }
+  });
