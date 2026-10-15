@@ -219,3 +219,82 @@ None.
 - 008-20 still owns real-model interpretation of Squeal's user-message continuations/wakes, TUI behavior and open-session updates. This wave's scripted `run`/`serve` proof does not establish those.
 - The previously accepted limitation of cancelled reports held only in plugin memory remains as recorded in `status.md`; this diff does not repair or reopen it. Do not cite the new serve-continuation test as proof of restart durability.
 - Persist S1's cheap adversarial cases in a test-only follow-up. No fix wave is required by this review.
+
+## Round 2
+
+Verdict: **PASS 26d306c8**. **0 proven blockers**, no new should-fix notes or nits. Narrow range: `20647e10..26d306c8`; exact candidate `26d306c84c102a04f46cb144395e9b39bd1e355a`. Reviewed 2026-10-15 after the coordinator reported Node 24 branch CI run `38656267613` failing the proxy-setup control at `bridge-client.test.ts:174`.
+
+The complete delta is one comment and `vi.stubEnv("HTTPS_PROXY", "http://proxy.invalid:3128")` in the existing proxy-startup test. It changes no product code, dependencies, version or bundle. This round checks that repair only; the original review's S1 remains a nonblocking follow-up.
+
+### Verification
+
+Fetched `origin cand/0.1.184`, detached at the exact new candidate, and verified the tree was clean. Both independent targeted runs use Node 24.21.0 and one worker. No independent full suite was started.
+
+```text
+$ git rev-parse HEAD
+26d306c84c102a04f46cb144395e9b39bd1e355a
+$ git status --short
+(no output)
+
+$ npx vitest run test/harness/opencode/bridge-client.test.ts --maxWorkers=1
+Test Files  1 passed (1)
+     Tests  10 passed (10)
+  Duration  3.00s
+exit 0
+
+$ env -u HTTPS_PROXY -u HTTP_PROXY -u https_proxy -u http_proxy -u NO_PROXY -u no_proxy -u NODE_USE_ENV_PROXY npx vitest run test/harness/opencode/bridge-client.test.ts --maxWorkers=1
+Test Files  1 passed (1)
+     Tests  10 passed (10)
+  Duration  2.97s
+exit 0
+
+$ npm run lint
+> squeal@0.1.184 lint
+> biome check .
+Checked 1221 files in 589ms. No fixes applied.
+exit 0
+$ npm run typecheck
+> squeal@0.1.184 typecheck
+> tsc --noEmit
+exit 0
+$ npm run build
+> squeal@0.1.184 build
+> tsc -p tsconfig.build.json && npm run build:plugin
+> squeal@0.1.184 build:plugin
+> tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts
+exit 0
+$ git status --short
+(no output)
+```
+
+The lockfile is unchanged, so the prior `npm ci` installation was reused. The completed build leaves no tracked drift. After the build completed, on the clean exact candidate:
+
+```text
+$ node --disable-warning=ExperimentalWarning /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.168/dist/cli/squeal.mjs run --all --wait 60000
+Checkpoint 82d16818-4530-4de5-9537-1c688775ef2f completed at revision 6: no known failures; 586 test files, 586 already current, 0 run now
+Checkpoint 82d16818-4530-4de5-9537-1c688775ef2f started at revision 6: 0 test files to run, 586 already current
+
+Revision: 6
+Known failures: 0
+Affected checks: 5439 passed (4853 tests, 586 test files loaded), 0 running, 0 queued, 10 skipped (10 tests)
+Full-suite checkpoint: completed at revision 6
+
+Worktree: /home/agent/projects/squeal/.ai/cezar/worktrees/68edb989-c07e-4f04-8400-5e8cec1128d0 (HEAD 26d306c, clean at revision 6)
+Daemon: running, last heartbeat 0 s ago
+Inherited from other worktrees: 48 current results (46 tests, 2 test files loaded)
+  48 (46 tests, 2 test files loaded) from /home/agent/projects/squeal/.ai/cezar/worktrees/4dda82ed-d43b-4fa4-9246-d474cf5f9d89 at 20647e1
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-14T23:48:16.501Z, revision 0: no dependencies are installed in this worktree; Squeal lists and runs no tests until an install
+exit 0
+```
+
+### Findings and judgment
+
+- **Proven:** the repair makes the control independent of host proxy URLs. With all seven listed variables removed, a standalone Node 24.21.0 startup probe with only `NODE_USE_ENV_PROXY=1` reports `proxyAtStart: false`; supplying that same switch plus `HTTPS_PROXY=http://proxy.invalid:3128` reports `proxyAtStart: true`. The fixed test passes in both requested environments and retains its bridge `proxyAtStart: false`, restored-switch/child and plain-Node control assertions.
+- **Proven:** `afterEach` already calls `vi.unstubAllEnvs()`, so the newly stubbed URL is restored after passing or failing tests. It is an inert URL for this test: neither the probe nor the bridge makes an HTTP request. No actual proxy or external network service is needed.
+- **Proven:** the changed line is test setup for the proxy-startup precondition, not weakened production behavior or a removed assertion. D4's bridge semantics and 001 D11's descendant environment contract are unchanged.
+- **Unverified here:** a green rerun of the remote GitHub Actions jobs. The local Node 24 checks above establish the named CI failure mode is repaired; the coordinator still owns reading branch CI before landing.
+
+No repair row is required by this narrow re-review. Restore the worker branch only to commit this report; integrate no product change from this reviewer branch.
