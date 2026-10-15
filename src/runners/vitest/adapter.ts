@@ -378,6 +378,16 @@ export class VitestAdapter implements RunnerAdapter {
     return this.#omitted;
   }
 
+  /**
+   * Spec 004 D2 (review 001-394 B2): the files a slow run starts at once,
+   * under each project's own `maxWorkers` (001 D11 Runner ceiling). The
+   * slow instance has the same configs, so this instance's are read. None
+   * started yet: all of them.
+   */
+  slowWidth(testFiles: readonly TestFileRef[]): number {
+    return this.#widths?.atOnce(testFiles) ?? testFiles.length;
+  }
+
   environment(): Promise<readonly RunnerEnvironment[]> {
     return this.#part(async (vitest) => {
       const context = {

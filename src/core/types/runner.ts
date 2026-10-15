@@ -438,6 +438,15 @@ export interface RunnerAdapter {
   environment(): Promise<readonly RunnerEnvironment[]>;
 
   /**
+   * How many of `testFiles`, in order, one slow run of theirs starts at
+   * once, at least 1. Spec 004 D2: a slow tier of several files starts them
+   * all at once, so none starts after an edit or a close; the slow tier
+   * takes only these (review 001-394 B2). Synchronous: selection holds the
+   * scheduler's lock. Absent: all of them.
+   */
+  slowWidth?(testFiles: readonly TestFileRef[]): number;
+
+  /**
    * Spec 001 D4: "`run(testFiles) -> results`: `runTestSpecifications`. [...]
    * `process.exitCode` is reset after each run."
    */

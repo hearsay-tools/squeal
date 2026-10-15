@@ -103,6 +103,14 @@ export function createCompositeRunner(adapters: readonly RunnerAdapter[]): Runne
     omittedTestFiles: () =>
       adapters.reduce((sum, adapter) => sum + (adapter.omittedTestFiles?.() ?? 0), 0),
     environment,
+    // The parts run one after another: a slow tier starts only the first file's owner's (004 D2).
+    slowWidth(testFiles) {
+      const owner = testFiles[0] === undefined ? undefined : owners.get(testFiles[0].project);
+      if (owner === undefined) return testFiles.length;
+      const end = testFiles.findIndex((f) => owners.get(f.project) !== owner);
+      const own = end === -1 ? testFiles : testFiles.slice(0, end);
+      return owner.slowWidth?.(own) ?? own.length;
+    },
     async run(testFiles, options) {
       const groups = new Map<RunnerAdapter, TestFileRef[]>();
       for (const testFile of testFiles) {

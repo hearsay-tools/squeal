@@ -338,7 +338,9 @@ export class SlowTier {
   /**
    * Under the lock, after the guard and the slot: the tier, of `refs` in
    * order, as many as `slot` has permits while the machine is still idle,
-   * else one; the permits it does not use go. Nothing when an edit's fast
+   * else one, and only as many as one run starts at once
+   * (`RunnerAdapter.slowWidth`, review 001-394 B2): the rest stay queued for
+   * a later tier. The permits it does not use go. Nothing when an edit's fast
    * work arrived meanwhile. A file is passed over when it left the queue or
    * class, its trigger is gone (a consumer entered a turn during the wait;
    * the file stays queued and the pass keeps its budget), or the store now
@@ -375,6 +377,9 @@ export class SlowTier {
       if (tierFile !== null) picked.push(tierFile);
     }
     if (picked.length === 0) return ledger.claims.waiting ? "claimed" : null;
+    // 004 D2: every file starts at once, so the tier holds as many as its run starts (review 001-394 B2).
+    const atOnce = context.runner.slowWidth?.(picked.map(({ file }) => file.ref));
+    if (atOnce !== undefined) picked.splice(Math.max(1, atOnce));
     const perFile = context.policy.slow.maxWorkers;
     const taken = context.capacity?.take(picked.length * perFile) ?? null;
     if (taken === WAIT_FOR_CAPACITY && !this.#requested) {

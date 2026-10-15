@@ -289,6 +289,7 @@ export function afterEachRun(
     enumerate: (testFile) => runner.enumerate(testFile),
     testFiles: () => runner.testFiles(),
     omittedTestFiles: () => runner.omittedTestFiles?.() ?? 0,
+    slowWidth: (testFiles) => runner.slowWidth?.(testFiles) ?? testFiles.length,
     environment: () => runner.environment(),
     ...(lane === undefined ? {} : { lane }),
     ...(releaseLane === undefined ? {} : { releaseLane }),

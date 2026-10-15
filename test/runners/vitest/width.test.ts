@@ -130,3 +130,48 @@ export default defineConfig({ test: { maxWorkers: 3, projects: [
     expect(await environment()).toBe(before);
   });
 });
+
+/*
+ * Review 001-394 B2: the files a slow run starts at once, which the slow tier
+ * takes (spec 004 D2): every file of a tier starts at once, none after an
+ * edit or a close, so a tier is never wider than the project's own width.
+ */
+describe("vitest adapter: the slow width it reports (review 001-394 B2)", SLOW, () => {
+  const four = refs.slice(0, 4);
+
+  it("is the project's own maxWorkers, 1 included, and every file without one", async () => {
+    expect((await fixture(", maxWorkers: 2")).adapter.slowWidth?.(four)).toBe(2);
+    expect((await fixture(", maxWorkers: 1")).adapter.slowWidth?.(four)).toBe(1);
+    expect((await fixture()).adapter.slowWidth?.(four)).toBe(4);
+    expect((await fixture(", maxWorkers: 6")).adapter.slowWidth?.(four)).toBe(4);
+  });
+
+  it("starts that many at once on the slow tier's instance", async () => {
+    const make = (root: string) => createVitestAdapter({ root, maxWorkers: 4 });
+    for (const [test, width] of [
+      [", maxWorkers: 2", 2],
+      ["", 4],
+    ] as const) {
+      const fx = await fixture(test, make);
+      const files = four.slice(0, fx.adapter.slowWidth?.(four));
+      expect(files).toHaveLength(width);
+      // One worker each: none waits for another's end.
+      expect(new Set((await workerIds(fx, files)).values()).size).toBe(width);
+    }
+  });
+
+  it("stops at a project of another group, and holds each project's own ceiling", async () => {
+    const projects = `import { defineConfig } from "vitest/config";
+export default defineConfig({ test: { maxWorkers: 3, projects: [
+  { extends: true, test: { name: "a", include: ["test/w/*.test.ts"] } },
+  { extends: true, test: { name: "b", include: ["test/v/*.test.ts"], maxWorkers: 2, sequence: { groupOrder: 1 } } },
+] } });
+`;
+    const fx = await openFixture("basic", { "vitest.config.ts": projects });
+    const a = (i: number) => ref(`test/w/a${i}.test.ts`, "a");
+    const b = (i: number) => ref(`test/v/b${i}.test.ts`, "b");
+    expect(fx.adapter.slowWidth?.([a(0), a(1), a(2), a(3)])).toBe(3);
+    expect(fx.adapter.slowWidth?.([b(0), b(1), b(2), b(3)])).toBe(2);
+    expect(fx.adapter.slowWidth?.([a(0), b(0), a(1)])).toBe(1);
+  });
+});
