@@ -81,6 +81,8 @@ var WORKTREE_META_ROWS = {
   livenessTold: { prefix: "liveness-told:", owner: "delivery/liveness" },
   revisionTold: { prefix: "revision-told:", owner: "delivery/liveness" },
   uncoveredTold: { prefix: "uncovered-told:", owner: "delivery/uncovered" },
+  slowTierTold: { prefix: "slow-tier-told:", owner: "delivery/slow-told" },
+  leaving: { prefix: "leaving:", owner: "delivery/leaving" },
   notes: { prefix: "notes.", owner: "types/scheduler" },
   refined: { prefix: "refined.", owner: "types/scheduler" },
   awaitingInstall: { prefix: "awaiting-install.", owner: "types/scheduler" },
@@ -215,6 +217,8 @@ function parseCheckpointProgress(raw) {
 
 // src/core/types/store-records.ts
 var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
+var HOOK_TIMEOUT_MS = 2e3;
+var LEAVING_GRACE_MS = 5 * HOOK_TIMEOUT_MS;
 var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
 
 // src/core/notes.ts
@@ -1263,10 +1267,11 @@ function readFailureProducers(store, worktreeId) {
     return /* @__PURE__ */ new Map();
   }
 }
-function producingResult(state, producer, results) {
-  if (producer === void 0) return null;
+function producingResult(worktreeId, state, producer, failureKey, results) {
+  const origin = state.origin;
+  if (producer === void 0 || failureKey === void 0 || origin === null) return null;
   return results.find(
-    (r) => r.provenance.runId === producer.runId && r.provenance.recordedAt === producer.recordedAt && r.outcome === state.outcome && fingerprintOf(r) === state.fingerprint && r.provenance.commit === state.commit
+    (r) => r.provenance.runId === producer.runId && r.provenance.recordedAt === producer.recordedAt && r.key === failureKey && r.outcome === state.outcome && fingerprintOf(r) === state.fingerprint && r.provenance.commit === state.commit && (origin.kind === "inherited" ? r.provenance.worktreeId === origin.worktreeId : r.provenance.worktreeId === worktreeId && r.provenance.revision === state.observedAt)
   ) ?? null;
 }
 
@@ -1391,13 +1396,15 @@ function withRecorded(store, worktreeId, states, revision) {
   });
   if (failing.length === 0) return [];
   const producers = readFailureProducers(store, worktreeId);
+  const failureKeys = readFailureKeys(store, worktreeId);
   const retries = readRetries(store);
   const loads = readRunLoads(store);
   return failing.map(({ state, failure }) => {
     if (failure.check.kind === "setup") return failure;
     const testFile = testFileOf(failure.check);
     const results = store.results.listForCheck(failure.check, Number.MAX_SAFE_INTEGER);
-    const row = producingResult(state, producers.get(checkIdentity(state.check)), results);
+    const id = checkIdentity(state.check);
+    const row = producingResult(worktreeId, state, producers.get(id), failureKeys.get(id), results);
     if (row === null) return { ...failure, recordedUnknown: true };
     const { provenance } = row;
     const retry = retryFactOf(retriesAt(retries, testFile, row.key));
@@ -1794,6 +1801,14 @@ function checkFrom(row) {
 }
 var CHECK_WHERE = "project = ? AND test_path = ? AND kind = ? AND full_name = ?";
 var CHECK_COLUMNS = "c.project AS check_project, c.test_path AS check_test_path, c.kind AS check_kind, c.full_name AS check_full_name";
+function inTestFiles(column, files) {
+  if (files.length === 0) return { sql: "0", params: [] };
+  const values = files.map(() => "(?, ?)").join(", ");
+  return {
+    sql: `${column} IN (SELECT id FROM checks WHERE (project, test_path) IN (VALUES ${values}))`,
+    params: files.flatMap((f) => [f.project, f.path])
+  };
+}
 function findCheckId(conn, check) {
   const row = conn.get(`SELECT id FROM checks WHERE ${CHECK_WHERE}`, ...checkParams(check));
   return row === null ? null : num(row, "id");
@@ -2034,12 +2049,17 @@ function toConsumer(row) {
 }
 function createViewRepo(conn) {
   return {
-    list: (consumer) => conn.all(
-      `SELECT v.*, ${CHECK_COLUMNS} FROM consumer_views v JOIN checks c ON c.id = v.check_id
+    list: (consumer, files) => {
+      const only = files === void 0 ? null : inTestFiles("v.check_id", files);
+      return conn.all(
+        `SELECT v.*, ${CHECK_COLUMNS} FROM consumer_views v JOIN checks c ON c.id = v.check_id
            WHERE v.worktree_id = ? AND v.session_id = ? AND v.agent_id = ?
+             ${only === null ? "" : `AND ${only.sql}`}
            ORDER BY c.project, c.test_path, c.kind, c.full_name`,
-      ...consumerParams(consumer)
-    ).map(toView),
+        ...consumerParams(consumer),
+        ...only?.params ?? []
+      ).map(toView);
+    },
     writeMany: (consumer, entries) => conn.transaction(() => {
       for (const e of entries) {
         conn.run(
@@ -2356,10 +2376,23 @@ var KINDS = [
 var SELECT_STATES = `SELECT s.*, ${CHECK_COLUMNS} FROM known_states s JOIN checks c ON c.id = s.check_id`;
 function createKnownStateRepo(conn) {
   return {
-    list: (worktreeId) => conn.all(
-      `${SELECT_STATES} WHERE s.worktree_id = ?
+    list: (worktreeId, files) => {
+      const only = files === void 0 ? null : inTestFiles("s.check_id", files);
+      return conn.all(
+        `${SELECT_STATES} WHERE s.worktree_id = ? ${only === null ? "" : `AND ${only.sql}`}
            ORDER BY c.project, c.test_path, c.kind, c.full_name`,
-      worktreeId
+        worktreeId,
+        ...only?.params ?? []
+      ).map(toKnownState);
+    },
+    untold: (consumer) => conn.all(
+      `${SELECT_STATES} WHERE s.worktree_id = ? AND NOT EXISTS (
+             SELECT 1 FROM consumer_views v WHERE v.worktree_id = s.worktree_id
+               AND v.session_id = ? AND v.agent_id = ? AND v.check_id = s.check_id)
+           ORDER BY c.project, c.test_path, c.kind, c.full_name`,
+      consumer.worktreeId,
+      consumer.sessionId,
+      consumer.agentId
     ).map(toKnownState),
     get: (worktreeId, check) => {
       const id = findCheckId(conn, check);
@@ -2536,10 +2569,15 @@ function toTestFile(row) {
 }
 function createTestFileKeyRepo(conn) {
   return {
-    list: (worktreeId) => conn.all(
-      "SELECT * FROM test_file_keys WHERE worktree_id = ? ORDER BY project, path",
-      worktreeId
-    ).map(toTestFileKey),
+    list: (worktreeId, files) => {
+      if (files?.length === 0) return [];
+      const only = files === void 0 ? "" : `AND (project, path) IN (VALUES ${files.map(() => "(?, ?)").join(", ")})`;
+      return conn.all(
+        `SELECT * FROM test_file_keys WHERE worktree_id = ? ${only} ORDER BY project, path`,
+        worktreeId,
+        ...(files ?? []).flatMap((f) => [f.project, f.path])
+      ).map(toTestFileKey);
+    },
     withKey: (key) => conn.all("SELECT * FROM test_file_keys WHERE key = ? ORDER BY worktree_id, project, path", key).map(toTestFileKey),
     upsertMany: (records) => conn.transaction(() => {
       for (const r of records) {
@@ -3548,6 +3586,16 @@ function recordHarness(store, consumer, harness) {
   writeSlot(store, harnessMetaKey(consumer.worktreeId), consumer, harness);
 }
 
+// src/core/delivery/leaving.ts
+function leavingMetaKey(worktreeId) {
+  return worktreeMetaKey("leaving", worktreeId);
+}
+function markLeaving(store, consumer, at) {
+  const key = leavingMetaKey(consumer.worktreeId);
+  if (at === null && readSlot(store, key, consumer) === void 0) return;
+  writeSlot(store, key, consumer, at === null ? null : { at });
+}
+
 // src/core/status/died.ts
 import { existsSync as existsSync4 } from "node:fs";
 
@@ -3555,6 +3603,13 @@ import { existsSync as existsSync4 } from "node:fs";
 import { mkdirSync as mkdirSync2 } from "node:fs";
 import { dirname as dirname2 } from "node:path";
 import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+
+// src/core/daemon/test-pause.ts
+import { channel } from "node:diagnostics_channel";
+var TEST_PAUSE_CHANNEL = "squeal:test-pause";
+var pauses = channel(TEST_PAUSE_CHANNEL);
+
+// src/core/daemon/lock.ts
 function acquireDaemonLock(path) {
   const db = lockDatabase(path);
   let lock;
@@ -4020,6 +4075,32 @@ function tellRevision(store, consumer, revision) {
   writeSlot(store, revisionMetaKey(consumer.worktreeId), consumer, revision);
 }
 
+// src/core/delivery/slow-told.ts
+function slowToldMetaKey(worktreeId) {
+  return worktreeMetaKey("slowTierTold", worktreeId);
+}
+function slowTierState(tier) {
+  if (tier === void 0) return null;
+  return JSON.stringify([
+    tier.testFiles,
+    tier.current,
+    tier.pending,
+    tier.notRun,
+    tier.currentAt,
+    tier.currentUpTo ?? null,
+    tier.artifact,
+    tier.artifactUnknown ?? 0,
+    tier.sourcesChangedSince
+  ]);
+}
+function slowTierChanged(store, consumer, tier) {
+  const state = slowTierState(tier);
+  return state !== null && readSlot(store, slowToldMetaKey(consumer.worktreeId), consumer) !== state;
+}
+function tellSlowTier(store, consumer, tier) {
+  writeSlot(store, slowToldMetaKey(consumer.worktreeId), consumer, slowTierState(tier));
+}
+
 // src/core/delivery/turn.ts
 function turnMetaKey(worktreeId) {
   return worktreeMetaKey("turn", worktreeId);
@@ -4082,6 +4163,25 @@ function atKey(state, file, keys) {
   const recorded = state.keys?.[file];
   return recorded === void 0 || keys.get(file) === recorded;
 }
+function owedScope(store, consumer) {
+  const state = readTurn(store, consumer);
+  if (state.turn !== "idle" || state.testFiles.length === 0 && !state.newTestFiles) {
+    return "nothing";
+  }
+  const files = state.testFiles.map(fromTestFileId);
+  const owed = files.length === 0 ? [] : store.knownStates.list(consumer.worktreeId, files);
+  const untold = state.newTestFiles ? store.knownStates.untold(consumer) : [];
+  const seen = new Set(owed.map((s) => checkIdentity(s.check)));
+  return {
+    states: [...owed, ...untold.filter((s) => !seen.has(checkIdentity(s.check)))],
+    view: files.length === 0 ? [] : store.views.list(consumer, files),
+    keys: files.length === 0 ? [] : store.testFileKeys.list(consumer.worktreeId, files)
+  };
+}
+function fromTestFileId(id) {
+  const at = id.indexOf("\0");
+  return { project: id.slice(0, at), path: id.slice(at + 1) };
+}
 function waitedFor(state, entry3, keys) {
   if (state.turn !== "idle") return false;
   const file = testFileKeyOf(entry3.check);
@@ -4135,11 +4235,13 @@ function departedMetaKey(worktreeId) {
 function forget(store, consumer) {
   tellLiveness(store, consumer, null);
   tellRevision(store, consumer, null);
+  tellSlowTier(store, consumer, void 0);
   writeTurn(store, consumer, null);
   recordHarness(store, consumer, null);
   recordVersion(store, consumer, null);
   forgetEdits(store, consumer);
   recordUncoveredTold(store, consumer, []);
+  markLeaving(store, consumer, null);
 }
 
 // src/core/delivery/own-edit.ts
@@ -4172,10 +4274,10 @@ var isEmpty = (plan) => plan.entries.length === 0 && plan.writes.length === 0 &&
 function createDelivery(store, options) {
   const now = options.now ?? Date.now;
   const pollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
-  function plan(consumer, states, toldAt, keep) {
+  function plan(consumer, states, toldAt, keep, view = store.views.list(consumer)) {
     const revision = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
     const full = planDelta({
-      view: store.views.list(consumer),
+      view,
       states,
       isBaselineFinding: baselineFindings(store, consumer.worktreeId),
       toldAt,
@@ -4194,11 +4296,11 @@ function createDelivery(store, options) {
     stop = false,
     atRevision
   }) {
-    const select = (states) => {
+    const select = (states, keys = null) => {
       if (!idle) return { only: keep, trim: null };
       const turn = readTurn(store, consumer);
       if (turn.turn !== "idle") return "silent";
-      const keys = store.testFileKeys.list(consumer.worktreeId);
+      keys ??= store.testFileKeys.list(consumer.worktreeId);
       const current = currentKeys(keys);
       return {
         only: (entry3) => waitedFor(turn, entry3, current),
@@ -4207,17 +4309,20 @@ function createDelivery(store, options) {
     };
     if (!heardFrom) {
       if (store.consumers.get(consumer) === null) return null;
-      const states = store.knownStates.list(consumer.worktreeId);
-      const selection = select(states);
+      const scope = idle ? owedScope(store, consumer) : null;
+      if (scope === "nothing") return null;
+      const states = scope?.states ?? store.knownStates.list(consumer.worktreeId);
+      const selection = select(states, scope?.keys);
       if (selection === "silent") return null;
       const quiet = !liveness2 || livenessChange(store, consumer, now()) === null;
-      const empty = isEmpty(plan(consumer, states, now(), selection.only));
+      const empty = isEmpty(plan(consumer, states, now(), selection.only, scope?.view));
       if (quiet && empty && selection.trim === null) return null;
     }
     return store.transaction(() => {
       if (store.consumers.get(consumer) === null) return null;
       if (!atLatest(consumer, atRevision)) return null;
       if (heardFrom && readTurn(store, consumer).turn === "idle") startTurn(store, consumer);
+      if (heardFrom && !stop) markLeaving(store, consumer, null);
       const at = now();
       const states = store.knownStates.list(consumer.worktreeId);
       const selection = select(states);
@@ -4248,6 +4353,8 @@ function createDelivery(store, options) {
         states
       );
       notes?.tell();
+      const slowChanged = slowTierChanged(store, consumer, header.slowTier);
+      if (stop || slowChanged) tellSlowTier(store, consumer, header.slowTier);
       const sawEdit = notes === null || carriesEditResult(
         notes,
         entries.map((e) => e.check),
@@ -4262,6 +4369,7 @@ function createDelivery(store, options) {
         entries,
         stillFailing,
         ...changed === null ? {} : { liveness: changed },
+        ...slowChanged ? { slowTierChanged: true } : {},
         ...sawEdit === void 0 ? {} : { sawEdit },
         ...notes?.editsSettled === void 0 ? {} : { editsSettled: notes.editsSettled }
       };
@@ -4290,6 +4398,7 @@ function createDelivery(store, options) {
       const registered = store.consumers.get(consumer) !== null;
       store.consumers.register(consumer, at);
       forgetStopWait(store, consumer);
+      markLeaving(store, consumer, null);
       const states = store.knownStates.list(consumer.worktreeId);
       store.views.writeMany(
         consumer,
@@ -4308,6 +4417,7 @@ function createDelivery(store, options) {
       const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
       tellLiveness(store, consumer, starting ? told : header.daemon?.state ?? null);
       tellRevision(store, consumer, header.revision);
+      tellSlowTier(store, consumer, header.slowTier);
       if (!registered) {
         const alive = atStart && header.daemon?.state === "alive";
         const resumed = tellRegistered(store, consumer, header.revision, {
@@ -4437,7 +4547,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.196";
+  if (true) return "0.1.198";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4530,7 +4640,6 @@ function findHarnessProcess(lookup = {}) {
 }
 
 // src/harness/shared/hook.ts
-var HOOK_TIMEOUT_MS = 2e3;
 async function withContext(input, location2, deps, fn, overrides = {}) {
   const options = {
     ...deps.now === void 0 ? {} : { now: deps.now },
@@ -4634,7 +4743,7 @@ function named(noun, entries, shown) {
 function slowSentences(command, naming) {
   const run = naming === "every" ? `\`${command} run --slow --wait 60000\`` : "the CLI's `run --slow --wait 60000`";
   return [
-    `Slow test files run when you pause between turns; before you say the task is done, run ${run} unless the header's \`Slow tier:\` line says every slow file is current: it runs the rest and waits for them.`,
+    `Slow test files run when you pause between turns; before you say the task is done, run ${run} unless the latest \`Slow tier:\` line states every slow file is current: it runs the rest and waits for them.`,
     command === SQUEAL_COMMAND ? "A slow failure wakes you when you are idle in an interactive session; otherwise it arrives with your next prompt or tool call." : "A slow failure arrives with your next prompt or tool call."
   ];
 }

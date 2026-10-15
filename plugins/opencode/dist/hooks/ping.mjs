@@ -12,6 +12,8 @@ function isRecord(value) {
 
 // src/core/types/store-records.ts
 var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
+var HOOK_TIMEOUT_MS = 2e3;
+var LEAVING_GRACE_MS = 5 * HOOK_TIMEOUT_MS;
 var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
 
 // src/core/daemon/config-file.ts
@@ -576,6 +578,11 @@ function pidNamespace() {
 // src/core/daemon/lock.ts
 import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
 
+// src/core/daemon/test-pause.ts
+import { channel } from "node:diagnostics_channel";
+var TEST_PAUSE_CHANNEL = "squeal:test-pause";
+var pauses = channel(TEST_PAUSE_CHANNEL);
+
 // src/core/delivery/format.ts
 var SQUEAL_COMMAND = "squeal";
 function shellWord(text) {
@@ -707,7 +714,7 @@ function named(noun, entries, shown) {
 function slowSentences(command, naming) {
   const run = naming === "every" ? `\`${command} run --slow --wait 60000\`` : "the CLI's `run --slow --wait 60000`";
   return [
-    `Slow test files run when you pause between turns; before you say the task is done, run ${run} unless the header's \`Slow tier:\` line says every slow file is current: it runs the rest and waits for them.`,
+    `Slow test files run when you pause between turns; before you say the task is done, run ${run} unless the latest \`Slow tier:\` line states every slow file is current: it runs the rest and waits for them.`,
     command === SQUEAL_COMMAND ? "A slow failure wakes you when you are idle in an interactive session; otherwise it arrives with your next prompt or tool call." : "A slow failure arrives with your next prompt or tool call."
   ];
 }
