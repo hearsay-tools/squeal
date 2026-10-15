@@ -28,6 +28,11 @@ const NOT_SECRET = /(?:PATH|FILE|DIR|HOME|SOCK)$/;
  * live in `<runtime dir>/squeal` (spec 004 D2 as amended, 004-16), so a cell's daemon shares
  * neither with the host's other daemons. Its socket does not fit under a cell's path (spec 001
  * D1's 103 bytes), so it falls back to `/tmp/squeal-<uid>`, named by the cell's worktree.
+ *
+ * Its own XDG base directories, the defaults under its scratch `HOME` (review 006-63 B1): the
+ * terminal launcher (spec 005 D3, format 4) picks the newest Squeal across harnesses, Pi's and
+ * OpenCode's packages under `XDG_DATA_HOME` among them, and Squeal reads its user config from
+ * `XDG_CONFIG_HOME` (spec 001 D11), so a host's would reach the cell's pinned Squeal.
  */
 export function cellEnv(parent, cell, provider = []) {
   const env = {};
@@ -40,6 +45,10 @@ export function cellEnv(parent, cell, provider = []) {
     HOME: join(cell, "home"),
     TMPDIR: join(cell, "tmp"),
     XDG_RUNTIME_DIR: join(cell, "run"),
+    XDG_DATA_HOME: join(cell, "home/.local/share"),
+    XDG_CONFIG_HOME: join(cell, "home/.config"),
+    XDG_STATE_HOME: join(cell, "home/.local/state"),
+    XDG_CACHE_HOME: join(cell, "home/.cache"),
     CODEX_HOME: join(cell, "codex"),
     DISABLE_AUTOUPDATER: "1",
     GIT_AUTHOR_NAME: "ledgerline",

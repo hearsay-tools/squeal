@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { cellEnv, pathFirst, squealBin } from "../../evals/lib/index.mjs";
+import { userConfigPath } from "../../src/core/daemon/user-config.js";
 
 // 006-62: in the a8 run 18 of 20 Claude cells' bare `squeal` was the host's `~/.local/bin`
 // launcher, which read the cell's empty HOME and answered `no squeal@hearsay plugin is
@@ -67,6 +68,32 @@ describe("a cell's bare squeal", () => {
     expect(bare(env, cell)).toBe("host launcher");
     env.PATH = pathFirst(env.PATH, squealBin(harness, cell, pin));
     expect(bare(env, cell)).toBe(expected);
+  });
+
+  // Review 006-63 B1: format 4 runs the newest Squeal across harnesses, Pi's and OpenCode's
+  // packages under XDG_DATA_HOME among them, so a newer package in the host's data directory won
+  // over the pin while meta.json said `squealPath: "pinned"`.
+  it.each([
+    ["claude", "pi"],
+    ["claude", "opencode"],
+    ["codex", "pi"],
+    ["codex", "opencode"],
+  ] as const)("in %s runs no newer %s package from the host's data directory", (harness, pkg) => {
+    const { host, pin, cell } = fixture();
+    const data = join(host.HOME, ".local/share");
+    write(join(data, "squeal", pkg, "9.9.9/dist/cli/squeal.mjs"), says("host data"));
+    const env = cellEnv({ ...host, XDG_DATA_HOME: data }, cell);
+    env.PATH = pathFirst(env.PATH, squealBin(harness, cell, pin));
+    expect(bare(env, cell)).toBe(
+      `pinned ${harness === "codex" ? "codex" : "claude-code"} --version`,
+    );
+    // Every XDG base directory is the cell's, so is the user config Squeal's daemon reads.
+    for (const k of ["XDG_DATA_HOME", "XDG_CONFIG_HOME", "XDG_STATE_HOME", "XDG_CACHE_HOME"])
+      expect(env[k]?.startsWith(join(cell, "home/"))).toBe(true);
+    expect(userConfigPath({ ...host, XDG_CONFIG_HOME: join(host.HOME, ".config") })).not.toBe(
+      userConfigPath(env),
+    );
+    expect(userConfigPath(env).startsWith(join(cell, "home/"))).toBe(true);
   });
 
   it("puts the directory first once", () => {
