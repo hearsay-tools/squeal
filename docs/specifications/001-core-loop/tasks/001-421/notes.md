@@ -50,3 +50,37 @@ The case now reads its own premise and the meaning from `run.json`:
 - then the original `timed-out`, no completed files, no results.
 
 30 of 30 on `taskset -c 0-1` beside two busy loops.
+
+## `test/integration/pytest.test.ts`, the synced worktree's runs (coordinator, 2026-10-15)
+
+### What CI saw
+
+Run 38765313680 on f0a8810d, Node 22: `runs(main, wt2).slice(from)` after
+`uv sync` in wt2 held a revision-1 run of the three pytest files with `end:
+"completed"`, where the case expected only `crashed` tiers.
+
+### Reproduced, with evidence
+
+Run 16 of 30 here (CPUs 0-1 beside two busy loops) failed the same way. The
+assertion now prints wt2's current keys, who stored the results under them,
+its states, its runs, its notes, and every result wt2 stored itself:
+
+- the revision-1 run `completed` with the three pytest files;
+- wt2 stored no result of its own (`own: []`);
+- every check was `current inherited`, under keys main (and wt3) stored;
+- the environment's "ready" note at revision 1.
+
+So the run was not kept. The adapter's own sync check (fingerprint moved
+before or during the run) reports `crashed` (`unavailable`), so this run
+passed it, and the core's stability check discarded its results because the
+file's key moved between keying and storing; the files were then keyed again,
+matched main's keys and inherited. That is D2's "sync in progress" state: a
+tier admitted near the end of the sync (pytest installed, fingerprint still for
+1 s) may start pytest, and stores nothing. **Legitimate, not a product fault.**
+
+### The bound
+
+The case claimed more than D2: "tiers keyed while the sync ran end before
+starting pytest; none completed". It now asserts what D2 promises: after the
+sync every check is inherited (unchanged) and wt2 keeps no result of its own
+(`ownResults`), with the diagnostics above as the failure message.
