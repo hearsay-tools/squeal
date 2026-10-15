@@ -169,7 +169,7 @@ describe("the session's service starts through run-cell (006-67)", { timeout: 60
     const [cell] = cellDirs(f);
     if (!cell) throw new Error("no cell");
     expect(readFileSync(join(cell, "out/service-starts.txt"), "utf8")).toMatch(
-      /^rates service already running on 127\.0\.0\.1:\d+\n$/,
+      /^\d+\trates service already running on 127\.0\.0\.1:\d+\n$/,
     );
   });
 });

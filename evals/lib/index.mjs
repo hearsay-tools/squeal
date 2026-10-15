@@ -78,7 +78,7 @@ export {
   selects,
   squealEvidence,
 } from "./evidence.mjs";
-export { gradeCell, groundTruthOf, squealState } from "./grade.mjs";
+export { gradeCell, groundTruthOf, serviceStartsOf, squealState } from "./grade.mjs";
 export {
   claudeRunner,
   claudeVersion,

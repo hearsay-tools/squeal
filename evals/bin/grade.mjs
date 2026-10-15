@@ -8,7 +8,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { gradeCell } from "../lib/grade.mjs";
+import { gradeCell, serviceStartsOf } from "../lib/grade.mjs";
 import { claudeTimeline, codexTimeline, reportedEffort } from "../lib/transcript.mjs";
 import { walk } from "../lib/variant.mjs";
 
@@ -60,7 +60,9 @@ const grade = {
     plugin,
     diff: read("diff.patch"),
     // 006-67: the session's service starts as the service recorded them, when the cell kept them.
-    serviceStarts: existsSync(join(OUT, "service-starts.txt")) ? read("service-starts.txt") : null,
+    serviceStarts: existsSync(join(OUT, "service-starts.txt"))
+      ? serviceStartsOf(read("service-starts.txt"), T0)
+      : null,
   }),
 };
 writeFileSync(join(OUT, "grade.json"), JSON.stringify(grade, null, 2));
