@@ -67,14 +67,22 @@ export function projectEnv(
   inherited: NodeJS.ProcessEnv,
 ): NodeJS.ProcessEnv {
   const { NODE_TEST_CONTEXT: _, [OBSERVE_VARIABLE]: __, ...base } = inherited;
-  const options = base.NODE_OPTIONS;
-  const tokens = options === undefined ? null : tokenizeNodeOptions(options);
-  if (tokens !== null) {
-    const kept = withoutSquealRecorders(tokens);
-    if (kept.length === 0 && tokens.length > 0) delete base.NODE_OPTIONS;
-    else if (kept.length < tokens.length) base.NODE_OPTIONS = kept.map(asWritten).join(" ");
-  }
+  const options = base.NODE_OPTIONS === undefined ? undefined : ownNodeOptions(base.NODE_OPTIONS);
+  if (options === undefined) delete base.NODE_OPTIONS;
+  else base.NODE_OPTIONS = options;
   return { ...base, ...project.env };
+}
+
+/**
+ * `NODE_OPTIONS` without Squeal's recorders: `undefined` when they were all
+ * it held, the value as written when it held none or Node could not parse it.
+ */
+export function ownNodeOptions(options: string): string | undefined {
+  const tokens = tokenizeNodeOptions(options);
+  if (tokens === null) return options;
+  const kept = withoutSquealRecorders(tokens);
+  if (kept.length === 0 && tokens.length > 0) return undefined;
+  return kept.length < tokens.length ? kept.map(asWritten).join(" ") : options;
 }
 
 /** A token as `NODE_OPTIONS` reads it back: quoted only when it holds a space or a quote. */

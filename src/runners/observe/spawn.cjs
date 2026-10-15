@@ -23,8 +23,8 @@ const FILE_KEY = "squeal.observe.file";
 const quote = (value) => `"${value.replace(/["\\]/g, "\\$&")}"`;
 /**
  * A `--require` or `-r` token, quoted or not, with its value after a space or `=`
- * (`holdsRequire`). A match it should not make keeps the recorder a `--require`,
- * which records as much.
+ * (`holdsRequire`), in `NODE_OPTIONS`, an argument or a shell's command. A match
+ * it should not make (`rm -r`) keeps the recorder a `--require`, which records as much.
  */
 const REQUIRE = /(?:^|[\s"])(?:--require|-r)(?:[\s="]|$)/;
 
@@ -83,16 +83,19 @@ function wrapChildren(api) {
   const url = pathToFileURL(self).href;
   /**
    * `env` plus the recorder: what Node reads of it, its prototype's keys too
-   * for a spawn, its own keys only for a Worker.
+   * for a spawn, its own keys only for a Worker. A `--require` there or in the
+   * child's own `argv`, which Node runs before any `--import`, keeps the
+   * recorder a `--require`; Node parses the nearest `package.json` then anyway.
    */
-  const injected = (env, inherited = true) => {
+  const injected = (env, inherited = true, argv = []) => {
     const out = inherited ? {} : { ...env };
     if (inherited) for (const key in env) out[key] = env[key];
     // Another Squeal's settings (a test starting its own Squeal): that subtree is its.
     if (foreign(out[variable], settings.out)) return out;
     const options = typeof out.NODE_OPTIONS === "string" ? out.NODE_OPTIONS : "";
     if (!options.includes(self) && !options.includes(url)) {
-      const option = REQUIRE.test(options) ? `--require ${quote(self)}` : `--import ${quote(url)}`;
+      const require = [options, ...argv].some((a) => typeof a === "string" && REQUIRE.test(a));
+      const option = require ? `--require ${quote(self)}` : `--import ${quote(url)}`;
       out.NODE_OPTIONS = `${option}${options === "" ? "" : ` ${options}`}`;
     }
     const file = api.current();
@@ -124,7 +127,8 @@ function wrapChildren(api) {
           const at = pair.indexOf("=");
           if (at > 0) env[pair.slice(0, at)] = pair.slice(at + 1);
         }
-        options.envPairs = Object.entries(injected(env)).map(([k, v]) => `${k}=${v}`);
+        const argv = Array.isArray(options.args) ? options.args : [];
+        options.envPairs = Object.entries(injected(env, true, argv)).map(([k, v]) => `${k}=${v}`);
       }
       // `args[0]` is the command again; a shell's `-c` string names no file
       recordArguments(options?.file, options?.args?.slice(1), options?.cwd);
@@ -147,7 +151,8 @@ function wrapChildren(api) {
         if (at !== -1 && (!env || typeof env === "object")) {
           const next = [...args];
           while (next.length < at) next.push(undefined);
-          next[at] = withEnv(options, injected(env || process.env));
+          const argv = [args[0], ...(Array.isArray(args[1]) ? args[1] : [])];
+          next[at] = withEnv(options, injected(env || process.env, true, argv));
           call = next;
           if (name !== "execSync") {
             recordArguments(args[0], Array.isArray(args[1]) ? args[1] : [], options?.cwd);
@@ -176,7 +181,8 @@ function wrapChildren(api) {
         const env = options === undefined ? undefined : isOptions(options) ? options.env : null;
         if (env !== workerThreads.SHARE_ENV && (env == null || typeof env === "object")) {
           if (options === undefined || isOptions(options)) {
-            next = [withEnv(options, injected(env ?? process.env, false)), ...rest.slice(1)];
+            const argv = Array.isArray(options?.execArgv) ? options.execArgv : [];
+            next = [withEnv(options, injected(env ?? process.env, false, argv)), ...rest.slice(1)];
           }
         }
         if (typeof filename === "string" && options?.eval !== true) api.record("f", filename);
