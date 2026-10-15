@@ -459,13 +459,17 @@ export class VitestAdapter implements RunnerAdapter {
             return ran;
           });
         }
-        // Spec 001 D11 Fidelity (task 001-390): a recorder signature says so.
+        // Spec 001 D11 Fidelity (task 001-390): a signature of the recorder this run used says so.
         const built = withRecorderSignatures(
           withStartup(
             buildReport(collector, execution, Math.round(performance.now() - started)),
             startup,
           ),
-          this.#observer.active,
+          {
+            files: this.#observer.files,
+            inNodeOptions: this.#observer.active,
+            relativize: (text) => this.paths.relativizeText(text),
+          },
         );
         const observed = this.#observer.take(built.completedFiles);
         // Review wave-13e B1: a path the run wrote itself counts too. Writing its bytes proves
