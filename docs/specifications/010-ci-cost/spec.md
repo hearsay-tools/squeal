@@ -66,7 +66,7 @@ A guard test fails when a `*.test.ts` file reads either of those and is not in t
 
 ### D5. Three shards
 
-The Node 22 suite runs as three jobs, `vitest run --shard=<i>/3`. A simulation calibrated on the logged file times gives 7.2 minutes of Test wall time, and about 25 job-minutes per run together with the Node 24 job (`ci-test-time.md` 4). Each shard passes or fails on its own. There is no merge job, because the process reads a failure by test name from the failing job's log.
+The Node 22 suite runs as three jobs, `vitest run --shard=<i>/3`. A simulation calibrated on the logged file times gives 7.2 minutes of Test wall time, and about 25 job-minutes per run together with the Node 24 job (`ci-test-time.md` 4). `test/harness/opencode-dispose.test.ts` is excluded from the shards and runs alone in shard 3 after its suite: inside a shard it overlaps `scheduler/backlog-tiers`' backlog phase and misses its 2,000 ms barrier (010-16). Each shard passes or fails on its own. There is no merge job, because the process reads a failure by test name from the failing job's log.
 
 Lint and typecheck run once per run, in the Node 24 job. Build and the bundle drift check run once per Node version: in Node 22 shard 1 and in the Node 24 job.
 
