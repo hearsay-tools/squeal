@@ -1,6 +1,18 @@
 // src/harness/opencode/hooks.ts
 import { delimiter, resolve } from "node:path";
 
+// src/harness/opencode/arrivals.ts
+var KEY = /* @__PURE__ */ Symbol.for("squeal.opencode.arrivals");
+var scope = globalThis;
+scope[KEY] ??= /* @__PURE__ */ new Map();
+var counts = scope[KEY];
+function arrived(id) {
+  counts.set(id, (counts.get(id) ?? 0) + 1);
+}
+function arrivals(id) {
+  return counts.get(id) ?? 0;
+}
+
 // src/harness/opencode/bridge-client.ts
 import { spawn } from "node:child_process";
 var EXIT_DRAIN_MS = 50;
@@ -196,6 +208,8 @@ function turns(client, ask) {
         continued: false,
         aborted: false,
         own: null,
+        last: null,
+        arrivals: 0,
         epoch: 0,
         held: [],
         waiter: null
@@ -206,14 +220,28 @@ function turns(client, ask) {
   };
   const live = (id, turn, epoch) => all.get(id) === turn && turn.epoch === epoch;
   const current = (id, turn, epoch) => stopped === null && live(id, turn, epoch);
+  const latest = async (id, last, deadline) => {
+    if (last === null) return false;
+    const cancel = new AbortController();
+    const read = client.session.messages({
+      path: { id },
+      query: { limit: 1 },
+      signal: cancel.signal
+    });
+    const result = await within(read, deadline());
+    if (result === null) cancel.abort();
+    const info = result?.data?.at(-1)?.info;
+    return info?.id === last || info?.role === "assistant" && info.parentID === last;
+  };
   const cancelWait = (turn) => {
     turn.waiter?.abort();
     turn.waiter = null;
   };
   const say = async (id, turn, text, deadline, epoch) => {
     const stop = stopped;
-    const left = (stop ?? deadline)();
-    if (left <= 0 || !live(id, turn, epoch)) {
+    const left = stop ?? deadline;
+    const overtaken = async (stop2) => !await latest(id, turn.last, stop2) || arrivals(id) !== turn.arrivals;
+    if (left() <= 0 || !live(id, turn, epoch) || stop && await overtaken(stop)) {
       turn.held.push(text);
       return false;
     }
@@ -227,7 +255,7 @@ function turns(client, ask) {
       body: { parts: [{ type: "text", text, synthetic: true }], noReply: true },
       signal
     });
-    const result = await within(sent, left);
+    const result = await within(sent, left());
     if (result !== null && result.error === void 0) return true;
     cancel.abort();
     turn.held.push(text);
@@ -249,9 +277,10 @@ function turns(client, ask) {
     });
   };
   return {
-    message(id, parts) {
+    message(id, messageId, parts) {
       const turn = turnOf(id);
       turn.open = true;
+      turn.last = messageId;
       turn.epoch++;
       cancelWait(turn);
       const own = turn.own;
@@ -280,6 +309,7 @@ function turns(client, ask) {
       const turn = turnOf(id);
       if (!turn.open) return;
       turn.open = false;
+      turn.arrivals = arrivals(id);
       const epoch = turn.epoch;
       if (turn.aborted || turn.continued) {
         turn.aborted = false;
@@ -381,8 +411,10 @@ function squealHooks(host) {
   return {
     async event({ event }) {
       try {
-        if (disposed) return;
         const { info, sessionID, error } = event.properties;
+        const abort = error?.name === "MessageAbortedError";
+        if (event.type === "session.error" && sessionID !== void 0 && abort) arrived(sessionID);
+        if (disposed) return;
         if (event.type === "session.created" && info !== void 0) {
           map.saw(info);
         } else if (event.type === "session.deleted" && info !== void 0) {
@@ -400,7 +432,7 @@ function squealHooks(host) {
           const request = root ? { sessions: [info.id], consumers: [] } : { sessions: [], consumers: [consumer] };
           await ask("end", request, deadline);
         } else if (event.type === "session.error" && sessionID !== void 0) {
-          if (error?.name === "MessageAbortedError") turn.aborted(sessionID);
+          if (abort) turn.aborted(sessionID);
         } else if (event.type === "session.idle" && sessionID !== void 0) {
           const ending = idle(sessionID);
           idling.add(ending);
@@ -411,11 +443,14 @@ function squealHooks(host) {
     },
     async "chat.message"(input, output) {
       try {
-        if (disposed || storedBySqueal(output.parts)) return;
+        if (storedBySqueal(output.parts)) return;
+        arrived(input.sessionID);
+        if (disposed) return;
         const deadline = deadlineIn(EVENT_DEADLINE_MS);
         const consumer = await identify(input.sessionID, deadline);
         if (consumer === null) return;
-        if (consumer.agentId === void 0) turn.message(consumer.sessionId, output.parts);
+        if (consumer.agentId === void 0)
+          turn.message(consumer.sessionId, output.message.id, output.parts);
         const key = keyOf(consumer);
         let text;
         if (registered.has(key)) {
