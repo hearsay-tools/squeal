@@ -42,6 +42,7 @@ import { RERUN_CAP } from "./rerun.js";
 import { takeRetries } from "./retries.js";
 import { retryRunner } from "./revision.js";
 import { RunnerWork } from "./runner-work.js";
+import { slowView } from "./slow.js";
 import { forgetSlowRuns, queueSlowSuite, type SlowRun, SlowTier } from "./slow-tier.js";
 import { Withholds, withheldForTouch, withholdNote } from "./stability.js";
 import {
@@ -280,13 +281,17 @@ class TierScheduler implements Scheduler {
    * revision waits for its runner part the checkpoint follows it. A warm-up
    * (`observeIgnored`) runs every runnable file forced, in a checkpoint of
    * its own: only its own tiers run flagged, and a forced checkpoint counts
-   * only its own tiers' results (review wave 13ar, B1).
+   * only its own tiers' results (review wave 13ar, B1). With a `lane`, only
+   * that lane's test files (task 004-61).
    */
   async requestFullSuite(request: FullSuiteRequest = {}): Promise<FullSuiteCheckpoint> {
     const warmUp = request.observeIgnored === true;
     const force = request.force === true || warmUp;
+    const lane = request.lane;
     const queue = (ledger: Ledger) => {
-      const record = queueFullSuite(ledger, force, warmUp);
+      const { policy } = this.#started().context;
+      const only = lane === undefined ? undefined : { lane, isSlow: slowView(policy).isSlow };
+      const record = queueFullSuite(ledger, force, warmUp, only);
       if (warmUp) this.#warmUp.start(this.#started().context, ledger, record);
       return record;
     };

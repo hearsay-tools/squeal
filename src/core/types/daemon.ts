@@ -6,7 +6,7 @@ import type {
   WorktreeId,
 } from "./common.js";
 import { worktreeMetaKey } from "./store.js";
-import type { CheckpointRecord, DaemonRecord } from "./store-records.js";
+import type { CheckpointLane, CheckpointRecord, DaemonRecord } from "./store-records.js";
 
 /*
  * The daemon's unix socket. Spec 001 D1: "The unix socket for liveness is
@@ -57,6 +57,11 @@ export interface RunAllRequest {
   readonly force?: boolean;
   /** A warm-up (task 001-307): the checkpoint's runs report the ignored paths each file read. */
   readonly observeIgnored?: boolean;
+  /**
+   * Only this lane's test files (task 004-61). A daemon from before it reads
+   * the request as both lanes; its checkpoint then carries no `lane`.
+   */
+  readonly lane?: CheckpointLane;
 }
 
 /** The checkpoint a `run-all` request created, once the scheduler created it. */

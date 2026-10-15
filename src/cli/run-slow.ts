@@ -25,7 +25,9 @@ export async function runSlowCommand(
   usage: string,
 ): Promise<number> {
   const wait = takeWait(args);
-  const extra = typeof wait === "string" ? undefined : wait.rest.find((a) => a !== "--slow");
+  // Task 004-61: `run --all --slow` is the slow lane, as `run --slow` is.
+  const extra =
+    typeof wait === "string" ? undefined : wait.rest.find((a) => a !== "--slow" && a !== "--all");
   if (typeof wait === "string" || extra !== undefined) {
     const problem = typeof wait === "string" ? wait : `unknown argument "${extra}" with --slow`;
     io.stderr(`squeal run: ${problem}\n${usage}`);

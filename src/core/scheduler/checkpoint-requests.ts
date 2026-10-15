@@ -1,5 +1,10 @@
 import { randomUUID } from "node:crypto";
-import type { CheckpointRecord, FullSuiteCheckpoint, TestFileRef } from "../types/index.js";
+import type {
+  CheckpointLane,
+  CheckpointRecord,
+  FullSuiteCheckpoint,
+  TestFileRef,
+} from "../types/index.js";
 import { NOTHING_CHANGED } from "./context.js";
 import { classify, type FileState } from "./files.js";
 import type { Ledger } from "./ledger.js";
@@ -17,6 +22,12 @@ export function abandonFullSuite(ledger: Ledger): FullSuiteCheckpoint {
   return { ...record, owner: record.id };
 }
 
+/** Task 004-61: `run --all --fast` requests only the fast lane's files, `isSlow` says which. */
+export interface LaneFilter {
+  readonly lane: CheckpointLane;
+  readonly isSlow: (ref: TestFileRef) => boolean;
+}
+
 /**
  * Spec 001 D5: "`squeal run --all` queues every test file whose key has no
  * result, or every test file when `--force` is given." One checkpoint of kind
@@ -31,15 +42,25 @@ export function abandonFullSuite(ledger: Ledger): FullSuiteCheckpoint {
  * nothing completes at once and leaves the open one be. A `fresh` request
  * never joins: a warm-up's files run flagged, so a tier already in flight
  * cannot count for them (review wave 13ar, B1). The joined one is its
- * `owner`, which the CLI counts the work of (review wave-3, B4).
+ * `owner`, which the CLI counts the work of (review wave-3, B4). With
+ * `only`, the request and its checkpoint hold that lane's files alone (task
+ * 004-61), and a join needs the open one to run just those.
  */
-export function queueFullSuite(ledger: Ledger, force: boolean, fresh = false): FullSuiteCheckpoint {
+export function queueFullSuite(
+  ledger: Ledger,
+  force: boolean,
+  fresh = false,
+  only?: LaneFilter,
+): FullSuiteCheckpoint {
   const id = randomUUID();
   const revision = ledger.revision.number;
   const { checkpoints } = ledger;
+  const lane = only?.lane;
   // A file another worktree's heal left held here is not done (review wave 13i, B1).
   ledger.confirmHeld();
-  const files = [...ledger.files.values()];
+  const files = [...ledger.files.values()].filter(
+    (file) => only === undefined || only.isSlow(file.ref) === (only.lane === "slow"),
+  );
   const unrunnable = files.filter((file) => file.key === null || file.blocked !== null);
   const runnable = files.filter((file) => file.key !== null && file.blocked === null);
   const open = force ? runnable : runnable.filter((file) => classify(file) !== "current");
@@ -67,11 +88,11 @@ export function queueFullSuite(ledger: Ledger, force: boolean, fresh = false): F
   const testFiles = refs([...requested, ...unrunnable]);
   let record: CheckpointRecord;
   if (joins) {
-    record = checkpoints.join(id, "run-all", revision, testFiles);
+    record = checkpoints.join(id, "run-all", revision, testFiles, lane);
   } else if (testFiles.length === 0 && checkpoints.active !== null) {
-    record = checkpoints.completeAtOnce(id, "run-all", revision);
+    record = checkpoints.completeAtOnce(id, "run-all", revision, lane);
   } else {
-    record = checkpoints.start(id, "run-all", revision, testFiles, force);
+    record = checkpoints.start(id, "run-all", revision, testFiles, force, lane);
     for (const file of unrunnable) checkpoints.failed(file.ref);
   }
   ledger.commit();

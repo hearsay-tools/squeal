@@ -3,6 +3,8 @@ import {
   awaitingInstallMetaKey,
   type CheckKey,
   installCommandMetaKey,
+  type CheckpointRecord,
+  type FullSuiteState,
   type KnownFailure,
   type KnownState,
   parseAwaitingInstall,
@@ -80,10 +82,11 @@ export function readHeader(
       if (state.check.kind === "file") inheritedFileLevelCount++;
     }
   }
-  const last = store.checkpoints.lastCompleted(worktreeId);
   const refinedRevision = readRefined(store, worktreeId);
   const missing = parseAwaitingInstall(store.meta.get(awaitingInstallMetaKey(worktreeId)));
   const awaiting = missing !== null;
+  const last = store.checkpoints.lastCompletedFull(worktreeId);
+  const lane = awaiting ? null : laneAfter(store.checkpoints.lastCompleted(worktreeId), last);
   const view = worktreeSlowView(store, worktreeId);
   const slow = isSlow ?? view?.isSlow;
   const optimizerOff = readOptimizerOff(store, worktreeId);
@@ -96,6 +99,7 @@ export function readHeader(
     fullSuite: {
       atCurrentRevision: !awaiting && last !== null && last.revision === revision,
       lastCompletedRevision: last?.revision ?? null,
+      ...(lane === null ? {} : { lane }),
     },
     testFilesListed: keys.length > 0 || (!awaiting && last !== null),
     inheritedCount,
@@ -117,6 +121,18 @@ export function readHeader(
 function installCommandField(store: Store, worktreeId: WorktreeId): { installCommand?: string } {
   const command = store.meta.get(installCommandMetaKey(worktreeId));
   return command === null || command === "" ? {} : { installCommand: command };
+}
+
+/**
+ * Task 004-61: the one-lane checkpoint that completed after the last full
+ * one, by lane and revision; `null` when the newest is a full one or none.
+ */
+function laneAfter(
+  latest: CheckpointRecord | null,
+  full: CheckpointRecord | null,
+): NonNullable<FullSuiteState["lane"]> | null {
+  if (latest?.lane === undefined || latest.id === full?.id) return null;
+  return { lane: latest.lane, revision: latest.revision };
 }
 
 /** `null` when absent or not a number: a store no daemon of this version refined. */
@@ -170,7 +186,12 @@ export function fullSuiteText({ revision, fullSuite }: StatusHeader, command: st
     fullSuite.lastCompletedRevision === null
       ? "none completed at any revision"
       : `none completed since revision ${fullSuite.lastCompletedRevision}`;
-  return `${none} (the counts are for revision ${revision}; \`${command} run --all\` requests one)`;
+  // Task 004-61: a one-lane checkpoint is named, never counted as a full suite.
+  const lane =
+    fullSuite.lane === undefined
+      ? ""
+      : `; only the ${fullSuite.lane.lane} lane completed, at revision ${fullSuite.lane.revision}`;
+  return `${none}${lane} (the counts are for revision ${revision}; \`${command} run --all\` requests one)`;
 }
 
 /**
