@@ -114,6 +114,39 @@ describe("listTestFiles (spec 007 D3, task 007-35)", () => {
   });
 });
 
+describe("a live config edit relists (task 007-42, wave 4 review S1)", () => {
+  it("lists, drops and lists a build test as pytest.ini allows, disallows and re-allows it", async () => {
+    const root = tree({
+      "tests/test_b.py": "",
+      "tests/build/test_a.py": "",
+      "pytest.ini": "[pytest]\n",
+    });
+    const project: PytestProject = { ...PROJECT, include: ["tests/**/test_*.py"] };
+    // No environment: the listing follows the config before any sync.
+    const adapter = await createPytestAdapter(project, { root, source: {} });
+    const listed = async () => (await adapter.testFiles()).map((f) => f.path);
+    const edit = async (text: string) => {
+      writeFileSync(join(root, "pytest.ini"), text);
+      await adapter.invalidate([{ path: "pytest.ini", kind: "change" }]);
+      return listed();
+    };
+    try {
+      expect(await listed()).toEqual(["tests/test_b.py"]);
+      expect(await edit("[pytest]\nnorecursedirs =\n")).toEqual([
+        "tests/build/test_a.py",
+        "tests/test_b.py",
+      ]);
+      expect(await edit("[pytest]\nnorecursedirs = build\n")).toEqual(["tests/test_b.py"]);
+      expect(await edit("[pytest]\nnorecursedirs = .*\n")).toEqual([
+        "tests/build/test_a.py",
+        "tests/test_b.py",
+      ]);
+    } finally {
+      await adapter.close();
+    }
+  });
+});
+
 describe("fnmatchEx (pytest's _pytest/pathlib.py)", () => {
   const path = "/w/tests/build/x" as AbsolutePath;
   it.each([
@@ -160,41 +193,40 @@ describe("the pytest adapter lists what norecursedirs allows (task 007-35)", () 
     }
     writeFileSync(join(root, ".venv", "test_env.py"), "def test_env():\n    assert False\n");
     const { PYTHONDONTWRITEBYTECODE: _, ...source } = fixture.env;
-    const open = async () => {
-      const notes: string[] = [];
-      const adapter = await createPytestAdapter(project, {
-        root,
-        source,
-        note: (text) => notes.push(text),
-        cacheDir: join(scratch, "cache") as AbsolutePath,
-      });
-      return { adapter, notes, files: (await adapter.testFiles()).map((f) => f.path) };
-    };
-
-    const before = await open();
-    await before.adapter.close();
-    expect(before.files).not.toContain(added[0]);
-    expect(before.files).not.toContain(added[1]);
-    expect(before.notes).toContainEqual(
-      expect.stringMatching(
-        /^pytest project "small": its norecursedirs skips 2 directories .*: tests\/build, tests\/venv$/,
-      ),
-    );
-
-    const config = join(root, "pyproject.toml");
-    writeFileSync(
-      config,
-      readFileSync(config, "utf8").replace(
-        "[tool.pytest.ini_options]\n",
-        "[tool.pytest.ini_options]\nnorecursedirs = []\n",
-      ),
-    );
-    const after = await open();
+    const notes: string[] = [];
+    const adapter = await createPytestAdapter(project, {
+      root,
+      source,
+      note: (text) => notes.push(text),
+      cacheDir: join(scratch, "cache") as AbsolutePath,
+    });
+    const listed = async () => (await adapter.testFiles()).map((f) => f.path);
     try {
-      expect(after.files).toEqual(expect.arrayContaining(added));
-      expect(after.files.filter((f) => f.startsWith(".venv/"))).toEqual([]);
-      expect(after.notes.filter((n) => n.includes("norecursedirs"))).toEqual([]);
-      const report = await after.adapter.run(added.map(ref), {
+      const before = await listed();
+      expect(before).not.toContain(added[0]);
+      expect(before).not.toContain(added[1]);
+      expect(notes).toContainEqual(
+        expect.stringMatching(
+          /^pytest project "small": its norecursedirs skips 2 directories .*: tests\/build, tests\/venv$/,
+        ),
+      );
+
+      // Task 007-42: one live adapter, the config edited as a change.
+      const config = join(root, "pyproject.toml");
+      writeFileSync(
+        config,
+        readFileSync(config, "utf8").replace(
+          "[tool.pytest.ini_options]\n",
+          "[tool.pytest.ini_options]\nnorecursedirs = []\n",
+        ),
+      );
+      const noted = notes.length;
+      await adapter.invalidate([{ path: "pyproject.toml", kind: "change" }]);
+      const after = await listed();
+      expect(after).toEqual(expect.arrayContaining(added));
+      expect(after.filter((f) => f.startsWith(".venv/"))).toEqual([]);
+      expect(notes.slice(noted).filter((n) => n.includes("norecursedirs"))).toEqual([]);
+      const report = await adapter.run(added.map(ref), {
         runId: "r0",
         logDir: join(scratch, "logs"),
         timeoutMs: 60_000,
@@ -206,7 +238,7 @@ describe("the pytest adapter lists what norecursedirs allows (task 007-35)", () 
         ["test_here", "pass"],
       ]);
     } finally {
-      await after.adapter.close();
+      await adapter.close();
     }
   });
 });
