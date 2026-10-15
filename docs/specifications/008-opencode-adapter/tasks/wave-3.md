@@ -114,3 +114,13 @@ Use /reviewer, pinned to `cand/0.1.192` (63289a86). Outcome: `reviews/wave-3b.md
 Use /reviewer, pinned to `cand/0.1.192` at 9ffd66f4. Outcome: `reviews/wave-3b.md` gains a Round 5 with a verdict on that SHA. 007's 0.1.191 (007-42: `src/runners/pytest/adapter.ts`, its test, key format 10 re-pinned) landed after 008-35 passed 63289a86, so the candidate was rebuilt on it (process step 6).
 - Same questions as 008-35, against main at 0.1.191: the 14 non-build commits identical to 63289a86's by `git range-diff`; no shared source or test file; version 0.1.192 in all eight places and `check:version` passes; a clean `npm ci` and build leave no drift; the key-format test passes with 007's pin.
 - Writes only `docs/specifications/008-opencode-adapter/reviews/wave-3b.md`. No full suite.
+
+## 008-37 re-check of defect 5 with a real model
+
+Use /worker. Outcome: `lessons.md` gains a dated section showing whether, with 0.1.192 installed, a Cezar-shaped `serve` session whose continuation's own edit flips a check back gets no second continuation and the `FAIL -> PASS` reaches the model with the next prompt (defect 5, goal 4), and whether `opencode run` still stores news once for `--continue` (defect 1).
+
+- Read: `../lessons.md` (Setup, 008-30's section, defect 5 and session 030-s4), `dogfood/` scripts, `../reviews/wave-3b.md`.
+- Shape: proof, exactly as 008-30: only as `squeal-e2e` under `/home/squeal-e2e/dogfood-008/`, the key by name through the logging proxy, `gpt-6-luna`; sessions only below load 24, with the load recorded.
+- Steps: update the dogfood install to 0.1.192 with `install.sh` from a `git archive` of main; repeat 030-s4 twice; one `run` then `run --continue` session.
+- Owns: `docs/specifications/008-opencode-adapter/lessons.md` (append only) and `dogfood/**`. Fixes nothing.
+- Done when: the section answers both questions with evidence, a new defect is written with a proposed row, and nothing of the run is left running.
