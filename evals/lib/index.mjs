@@ -108,10 +108,12 @@ export {
   cellEnv,
   clearScratch,
   codexConfig,
+  pathFirst,
   providerVariables,
   redact,
   scanForSecrets,
   secretsOf,
+  squealBin,
 } from "./scratch.mjs";
 export { filtered, selectsFile, vitestFiles } from "./selection.mjs";
 export {
