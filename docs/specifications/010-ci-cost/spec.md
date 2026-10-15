@@ -85,6 +85,32 @@ Branches outside D1 get CI only through `workflow_dispatch`. `docs/process.md` i
 
 The human, 2026-10-15. A `schedule` trigger runs main's head once a night (03:23 UTC) as one job: the whole suite on Node 24, which D4 runs only in part. The candidate and landing jobs do not run on a schedule, and neither does `version`. About 20 job-minutes a day. The run lists under `main` in `gh run list`, so the coordinator reads it with the landings (D6); a red nightly blocks the next landing until its cause is named.
 
+## Step two (proposed, not approved)
+
+From `research/ci-pr-flow.md` and `research/required-checks-probe.md` (010-13, verified on throwaway branches). The human decides whether and when.
+
+### D8. A required check on main
+
+Ruleset 25176438 gains `required_status_checks`: one context, the aggregate job `CI passed`, pinned to GitHub Actions (`integration_id` 15368), `strict` off (it does nothing on a direct push). GitHub then refuses a push to main unless the pushed SHA has a green check from a `push` run on any branch: no run, a red, queued or running run, or a `workflow_dispatch`-only run are all refused with a GH013 message. Only the pushed head is checked. Main's own push trigger goes: every SHA that reaches main was checked first.
+
+### D9. Every candidate push runs; the skip moves into the jobs
+
+`push` on `cand/**` keeps no `paths` filter: a workflow skipped by `paths` leaves its SHA unlandable (probe T7). A first job classifies the push and the suites skip by `if`, which counts as passing (probe T6). The suites skip when the diff from `origin/main` to the SHA is docs only, or when the branch's previous head (`github.event.before`) has a green `CI passed` and the diff from it is docs only (a reviewed candidate rebased over docs, open question 1). Any doubt runs the full suite. `CI passed` needs every other job to have passed or been skipped by the classifier. The `docs/**/probes/**` re-include narrows to the one probe path a test reads (`docs/specifications/002-codex-adapter/research/probes/**`).
+
+### D10. `version` on candidates
+
+`version` runs on every candidate push against `origin/main`, inside `CI passed`, since main pushes no longer run.
+
+### D11. Landing docs
+
+A docs commit lands through a branch: push `cand/docs-<id8>`, wait for `CI passed` (seconds of runner time), push the same SHA to main, delete the branch. If main moved meanwhile, rebase and repeat. D6's `gh workflow run` fallback goes, since a dispatch run never satisfies the rule; without a `paths` filter every `cand/**` push starts a run (inferred, checked on the first candidate). `docs/process.md` steps 5 and 6 and the coordinator skill's section 6 change with it.
+
+### Cost
+
+- Code landing: one full run (about 23 job-minutes) instead of two, when the reviewed SHA lands or was rebased over docs only (15 of 16 landings in `ci-pr-flow.md`'s window); two when rebased over code.
+- Docs commit: about 4 s of runner time and a wait for a free runner, median 10 s and up to 147 s in 13 evening samples, longer when the pool is full (p90 8.8 min in `ci-run-triggers.md`), plus a retry when main moves first (main took a docs push every 156 s at the median). The wait and the retry, for every coordinator, are step two's price.
+- At about 0.9 code landings an hour, step two saves about 20 job-minutes an hour, and a landing can no longer turn main red.
+
 ## Testing
 
 - The candidate tests its own workflow, because D1 includes `cand/**`. Its run must show three Node 22 shard jobs and one Node 24 job, and no `version` job. Record each shard's Test wall time.
