@@ -188,9 +188,15 @@ export function gradeCell(input: {
   /** Whether the cell had the plugin; without it Squeal's state does not apply. */
   plugin?: boolean;
   diff?: string;
-  /** The rates service's record of the session's starts, a line each (006-67), or `null`. */
-  serviceStarts?: string | null;
+  /** The rates service's record of the session's starts (`serviceStartsOf`, 006-69), or `null`. */
+  serviceStarts?: readonly ServiceStart[] | null;
 }): Grade;
+/** A start the rates service recorded: when, in ms since the session's start, and what it said. */
+export interface ServiceStart {
+  t: number;
+  reply: "listening" | "running" | "failed";
+}
+export function serviceStartsOf(text: string, t0: number): ServiceStart[];
 export function groundTruthOf(input: {
   vitest: unknown;
   completion: unknown;
