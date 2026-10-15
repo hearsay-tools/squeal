@@ -77,7 +77,12 @@ describe("squeal update in OpenCode", { timeout: 60_000 }, () => {
     );
     expect(r.stdout).toContain(`$ ln -sfn 0.1.177 ${openCodeLinkOf(m)}\n`);
     expect(r.stdout).toContain("OpenCode sessions already open keep the Squeal they loaded");
-    expect(r.stdout).toContain("OpenCode: Squeal 0.1.177, was 0.1.176\n");
+    // Lessons defect 4(a): no reload command of a harness that was not updated.
+    expect(r.stdout.split("\n").slice(-3)).toEqual([
+      "OpenCode: Squeal 0.1.177, was 0.1.176",
+      "A running session keeps the version it loaded until it restarts.",
+      "",
+    ]);
     expect(readlinkSync(openCodeLinkOf(m))).toBe("0.1.177");
     expect(readdirSync(openCodeHomeOf(m)).sort()).toEqual(["0.1.176", "0.1.177", "current"]);
     expect(squealVersion(m)).toBe("0.1.177");
@@ -98,8 +103,24 @@ describe("squeal update in OpenCode", { timeout: 60_000 }, () => {
     ]);
     expect(r.stdout).toContain("Pi: Squeal 0.1.177, was 0.1.176\n");
     expect(r.stdout).toContain("OpenCode: Squeal 0.1.177, was 0.1.176\n");
+    expect(r.stdout).toContain(
+      "A running session keeps the version it loaded until it restarts, or until /reload-plugins in Claude Code or /reload in Pi.\n",
+    );
     expect(r.stdout).not.toContain("different versions");
     expect(squealVersion(m)).toBe("0.1.177");
+  });
+
+  it("names Claude Code's reload, and no Pi's, when Claude Code and OpenCode are updated", async () => {
+    const m = installed("0.1.176", ["claude", "opencode"]);
+    m.publish("0.1.177");
+    const r = await update(m);
+    expect(r.code).toBe(0);
+    expect(r.stdout.split("\n").slice(-4)).toEqual([
+      "Claude Code: squeal@hearsay 0.1.177, was 0.1.176",
+      "OpenCode: Squeal 0.1.177, was 0.1.176",
+      "A running session keeps the version it loaded until it restarts, or until /reload-plugins in Claude Code.",
+      "",
+    ]);
   });
 
   it("says up to date and changes nothing when OpenCode has the latest", async () => {

@@ -95,10 +95,15 @@ export function updateCommand(args: readonly string[], io: CliIo): number {
   }
   recopyLauncher(env, io);
   if (ok) {
-    const pi = targets.some((t) => t.name.startsWith("Pi:")) ? " or /reload in Pi" : "";
-    io.stdout(
-      `A running session keeps the version it loaded until it restarts, or until /reload-plugins in Claude Code${pi}.\n`,
-    );
+    // Only the reloads of the harnesses updated (spec 008 lessons, defect 4(a)); Codex and OpenCode have none.
+    const reloads = [
+      ...(targets.some((t) => t.name.startsWith(`${NAMES["claude-code"]}:`))
+        ? ["/reload-plugins in Claude Code"]
+        : []),
+      ...(targets.some((t) => t.name.startsWith("Pi:")) ? ["/reload in Pi"] : []),
+    ];
+    const until = reloads.length > 0 ? `, or until ${reloads.join(" or ")}` : "";
+    io.stdout(`A running session keeps the version it loaded until it restarts${until}.\n`);
   }
   return ok ? 0 : 1;
 }
