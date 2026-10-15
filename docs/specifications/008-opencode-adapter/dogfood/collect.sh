@@ -18,23 +18,6 @@ for f in $(as sh -c "cd $D/logs && ls *.txt *.run.jsonl *.run.err 2>/dev/null");
   as cat "$D/logs/$f" >"$here/logs/$f"
 done
 for f in $(as sh -c "cd $D/logs && ls *.events.jsonl 2>/dev/null"); do
-  as python3 -I -c '
-import json, sys
-for l in open(sys.argv[1]):
-    e = json.loads(l)
-    k = e["kind"]
-    pre = f"{e[\"ms\"]:>8} {e[\"at\"][11:23]} load {e[\"load\"]:>5}"
-    if k == "event":
-        ev = e["event"]; t = ev["type"]
-        if t == "text": print(pre, "text", ev["text"][:400].replace("\n", " "))
-        elif t == "tool-call": print(pre, "call", ev.get("tool"), json.dumps(ev.get("input"))[:200])
-        elif t in ("turn-end", "done"): print(pre, t.upper())
-        elif t in ("error", "note"): print(pre, t, ev.get("message", "")[:300].replace("\n", " "))
-    elif k == "ui" and e["type"] in ("turn.started", "turn.completed", "session.started", "session.ended"): print(pre, "ui", e["type"])
-    elif k == "prompt": print(pre, "PROMPT", e["text"][:200])
-    elif k in ("end", "pid"): print(pre, k, e.get("turns", e.get("pid")))
-    elif k == "start": print(pre, "start", e["scenario"].get("model"), e["scenario"].get("prompts", [""])[0][:200])
-    elif k == "result": print(pre, "result session", e.get("sessionId"))
-' "$D/logs/$f" >"$here/logs/${f%.events.jsonl}.cezar-events.txt"
+  as python3 -I "$D/scripts/events.py" "$D/logs/$f" >"$here/logs/${f%.events.jsonl}.cezar-events.txt"
 done
 ls -l "$here/logs"

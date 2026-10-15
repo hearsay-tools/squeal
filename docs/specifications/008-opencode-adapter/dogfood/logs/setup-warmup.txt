@@ -1,0 +1,43 @@
+03:01:48
+        Failed to resolve entry for package "remeda". The package may have incorrect main/module/exports specified in its package.json.
+        observed at revision 0, current
+  FAIL  packages/remeda/src/funnel.remeda-debounce.test.ts (file-level)
+        Failed to resolve entry for package "remeda". The package may have incorrect main/module/exports specified in its package.json.
+        observed at revision 0, current
+  FAIL  packages/stackblitz-template/src/runtime.test.ts (file-level)
+        Failed to resolve entry for package "remeda". The package may have incorrect main/module/exports specified in its package.json.
+        observed at revision 0, current
+Affected checks: 2330 passed (2162 tests, 168 test files loaded), 0 running, 0 queued, 1 skipped (1 test)
+Full-suite checkpoint: completed at revision 0
+
+Worktree: /home/squeal-e2e/dogfood-008/remeda (HEAD 8e6e78f, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 3 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+
+squeal warmup: every test file has a result, with the known failures above. The results carry over to this repository's other worktrees where their inputs match.
+
+Changes:
+  none to tracked files
+
+Nothing to commit.
+exit 0
+03:02:03
+locks
+repository-id
+runs
+store.sqlite
+store.sqlite-shm
+store.sqlite-wal
+build 0
+Checkpoint a36094d1-7986-452a-8ebc-ed1d3fdde336 completed at revision 0: no known failures; 175 test files, 0 already current, 175 run now
+Checkpoint a36094d1-7986-452a-8ebc-ed1d3fdde336 started at revision 0: 175 test files to run, 0 already current
+
+Revision: 0
+Known failures: 0
+Affected checks: 2411 passed (2236 tests, 175 test files loaded), 0 running, 0 queued, 2 skipped (2 tests)
+Full-suite checkpoint: completed at revision 0
+

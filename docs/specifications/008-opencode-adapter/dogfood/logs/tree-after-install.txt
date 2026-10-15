@@ -1,0 +1,66 @@
+02:35:27 load 130.81
+home
+home/.local
+home/.local/bin
+home/.local/bin/squeal
+xdg
+xdg/cache
+xdg/cache/opencode
+xdg/cache/opencode/bin
+xdg/cache/opencode/packages
+xdg/cache/opencode/packages/file:
+xdg/cache/opencode/packages/file:/home
+xdg/cache/opencode/packages/file:/home/squeal-e2e
+xdg/cache/opencode/packages/file:/home/squeal-e2e/dogfood-008
+xdg/cache/opencode/packages/file:/home/squeal-e2e/dogfood-008/xdg
+xdg/cache/opencode/packages/file:/home/squeal-e2e/dogfood-008/xdg/data
+xdg/cache/opencode/packages/file:/home/squeal-e2e/dogfood-008/xdg/data/squeal
+xdg/cache/opencode/packages/file:/home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode
+xdg/cache/opencode/packages/file:/home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/current
+xdg/cache/opencode/packages/file:/home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/current/package-lock.json
+xdg/cache/opencode/packages/file:/home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/current/package.json
+xdg/config
+xdg/config/opencode
+xdg/config/opencode/.gitignore
+xdg/config/opencode/opencode.json
+xdg/data
+xdg/data/opencode
+xdg/data/opencode/log
+xdg/data/opencode/log/opencode.log
+xdg/data/opencode/repos
+xdg/data/squeal
+xdg/data/squeal/opencode
+xdg/data/squeal/opencode/current
+xdg/state
+xdg/state/opencode
+xdg/state/opencode/locks
+xdg/state/opencode/locks/9af84605f3e4fd6ca1c12fa13f5a3a3de9263197.lock
+xdg/state/opencode/locks/9af84605f3e4fd6ca1c12fa13f5a3a3de9263197.lock/heartbeat
+xdg/state/opencode/locks/9af84605f3e4fd6ca1c12fa13f5a3a3de9263197.lock/meta.json
+xdg/state/squeal
+xdg/state/squeal/installed
+== xdg/config/opencode/opencode.json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "cliproxy": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "cliproxy (dogfood proxy)",
+      "options": { "baseURL": "http://127.0.0.1:47320/v1", "apiKey": "dogfood-placeholder-not-a-key" },
+      "models": {
+        "gpt-6-luna": { "name": "gpt-6-luna" },
+        "gpt-6-astra": { "name": "gpt-6-astra" },
+        "grok-4.7": { "name": "grok-4.7" }
+      }
+    }
+  },
+  "model": "cliproxy/gpt-6-luna",
+  "small_model": "cliproxy/gpt-6-luna",
+  "permission": { "edit": "allow", "bash": "allow", "external_directory": "allow" },
+  "share": "disabled",
+  "autoupdate": false,
+  "plugin": [
+    "file:/home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/current"
+  ]
+}
+
