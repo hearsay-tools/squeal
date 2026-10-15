@@ -216,6 +216,35 @@ export function recordMoves(
   now: EpochMs,
   by: MovesWriter,
 ): void {
+  const moves = nextMoves(store, worktreeId, marks, removed, revision, now, by);
+  if (moves !== null) store.meta.set(rekeyedMovesMetaKey(worktreeId), JSON.stringify(moves));
+}
+
+/**
+ * Whether a commit with no marks would write the record (the writer, the
+ * catch-up time, a prune). Reads only: a commit with nothing else to write
+ * skips its transaction when it would not (task 001-412).
+ */
+export function movesWouldChange(
+  store: Store,
+  worktreeId: WorktreeId,
+  revision: RevisionNumber,
+  now: EpochMs,
+  by: MovesWriter,
+): boolean {
+  return nextMoves(store, worktreeId, [], [], revision, now, by) !== null;
+}
+
+/** The record `recordMoves` would write, `null` when it would write nothing. Reads only. */
+function nextMoves(
+  store: Store,
+  worktreeId: WorktreeId,
+  marks: readonly RekeyedMark[],
+  removed: readonly string[],
+  revision: RevisionNumber,
+  now: EpochMs,
+  by: MovesWriter,
+): Moves | null {
   const read = readMoves(store, worktreeId);
   const moves = read ?? { seq: 0, caughtUpAt: null, dropped: 0, files: {}, writer: null };
   const seq = moves.seq + 1;
@@ -247,9 +276,9 @@ export function recordMoves(
   if (caughtUpAt !== null && now - caughtUpAt >= MOVES_GRACE_MS) {
     changed = prune(moves, now - MOVES_RETENTION_MS) || changed;
   }
-  if (!changed) return;
+  if (!changed) return null;
   moves.seq = seq;
-  store.meta.set(rekeyedMovesMetaKey(worktreeId), JSON.stringify(moves));
+  return moves;
 }
 
 /** One file's mark at commit `seq`; whether it changed the record. */
