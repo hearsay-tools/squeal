@@ -47,8 +47,9 @@ export const MEASURES = {
     scenario?.ownRun ? coveredRun(timeline, scenario.ownRun) : null,
   ),
   // The retry scenarios (row 006-53) over the scenario's `failure` (retry-evidence.mjs): a
-  // retry Squeal queued, after the service started where it was the cause (a9, a11); no retry
-  // without a start and no edit past the failure (a10); a pass claim only on the retry's pass.
+  // retry Squeal queued, after the service started where it was the cause (a9; a11's cause is
+  // `null`, so any queued retry counts); no retry without a start and no edit past the failure
+  // (a10); a pass claim only on the retry's pass.
   // Both `null` where the asked edit's own run healed a9's failure first (`retryArose`).
   "retry-for-environment": reads((_p, { timeline, scenario }) =>
     scenario?.failure && retryArose(timeline, scenario.failure)
