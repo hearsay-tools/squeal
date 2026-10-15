@@ -1,5 +1,6 @@
 import { readPolicy } from "../../core/daemon/policy.js";
-import { locate } from "../shared/context.js";
+import { endTurn as idleAt } from "../../core/delivery/turn.js";
+import { type HookContext, locate } from "../shared/context.js";
 import { coverageOf } from "../shared/coverage.js";
 import { deliver } from "../shared/deliver.js";
 import { denyCurrentTestCommand, denyOnRegression, testCommandOf } from "../shared/deny.js";
@@ -120,12 +121,31 @@ export const stop: OcHandler<"stop"> = async (request, deps) => {
   return { report: "block" in outcome ? outcome.block : outcome.news };
 };
 
+/**
+ * The end of a continued turn: idle, waiting for the test files pending now
+ * only. Unlike `delivery.endTurn`, not for the files of entries undelivered
+ * now: news known by the continued turn's idle waits for the next prompt, so
+ * the wake does not continue it again (goal 4, lessons defect 5).
+ */
+const endContinued = ({ store, consumer }: HookContext): boolean =>
+  store.transaction(() => {
+    if (store.consumers.get(consumer) === null) return true;
+    idleAt(store, consumer, store.knownStates.list(consumer.worktreeId), []);
+    return true;
+  });
+
 /** `session.idle` after Squeal's own continuation or an abort: end the turn, say nothing. */
 export const endTurn: OcHandler<"endTurn"> = async (request, deps) => {
   const location = locate(request.worktree);
   if (location === null) return { ended: false };
-  const ended = await withContext(consumerInput(request.consumer), location, deps, (context) =>
-    context.delivery.endTurn(context.consumer),
+  const ended = await withContext(
+    consumerInput(request.consumer),
+    location,
+    deps,
+    async (context) =>
+      request.continued === true
+        ? endContinued(context)
+        : context.delivery.endTurn(context.consumer),
   );
   return { ended: ended ?? false };
 };
