@@ -72,7 +72,8 @@ describe("squeal daemon in a worktree without installed dependencies (D5, defect
 
     const notes = readNotes(repo);
     expect(notes).toContain(
-      "no dependencies are installed in this worktree; Squeal lists and runs no tests until an install",
+      "no dependencies are installed in this worktree, so Squeal runs none of its tests and inherits none of their results. " +
+        "Run `npm install` to install them: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest",
     );
     // Opening the runner here would have noted that `vitest/node` does not resolve.
     expect(notes.filter((text) => /vitest/i.test(text))).toEqual([]);
