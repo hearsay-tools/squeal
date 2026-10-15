@@ -53,22 +53,23 @@ if (cmd !== "daemon") {
   };
   appendFileSync(join(process.env.FAKE_LOG, "squeal"), JSON.stringify({ args: [cmd, ...rest], slow, retry }) + "\\n");
 }
+// FAKE_INHERITED (006-53, review 006-57 S1, 006-62): the first command that runs the calendar
+// test, a wait naming it or \`run --all\`, stores its FAIL with the load per CPU it reads, as a real
+// daemon's baseline does once something waits on it; a plain \`status --wait\` returns before.
+const store = join(root, ".git/squeal/store.sqlite");
+if (process.env.FAKE_INHERITED && !existsSync(store) && ((cmd === "status" && rest.includes("test/clock.test.ts")) || (cmd === "run" && rest.includes("--all")))) {
+  const { DatabaseSync } = await import("node:sqlite");
+  const { loadavg, availableParallelism } = await import("node:os");
+  const db = new DatabaseSync(store);
+  db.exec("CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL); CREATE TABLE checks (id INTEGER PRIMARY KEY, test_path TEXT NOT NULL); CREATE TABLE results (check_id INTEGER NOT NULL, outcome TEXT NOT NULL, run_id TEXT NOT NULL)");
+  db.exec("INSERT INTO checks VALUES (1, 'test/clock.test.ts'); INSERT INTO results VALUES (1, 'fail', 'r1')");
+  db.prepare("INSERT INTO meta VALUES ('failed-run-loads', ?)").run(JSON.stringify({ r1: loadavg()[0] / availableParallelism() }));
+  db.close();
+}
 if (cmd === "daemon") setInterval(() => {}, 1000);
 else if (cmd === "start") {
   mkdirSync(join(root, ".git/squeal"), { recursive: true });
-  const store = join(root, ".git/squeal/store.sqlite");
-  // FAKE_INHERITED (006-53, review 006-57 S1): the first start stores the calendar test's FAIL
-  // with the load per CPU it reads, as a real daemon's warm-up would under the inherited knob.
-  if (!process.env.FAKE_INHERITED) writeFileSync(store, "store");
-  else if (!existsSync(store)) {
-    const { DatabaseSync } = await import("node:sqlite");
-    const { loadavg, availableParallelism } = await import("node:os");
-    const db = new DatabaseSync(store);
-    db.exec("CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL); CREATE TABLE checks (id INTEGER PRIMARY KEY, test_path TEXT NOT NULL); CREATE TABLE results (check_id INTEGER NOT NULL, outcome TEXT NOT NULL, run_id TEXT NOT NULL)");
-    db.exec("INSERT INTO checks VALUES (1, 'test/clock.test.ts'); INSERT INTO results VALUES (1, 'fail', 'r1')");
-    db.prepare("INSERT INTO meta VALUES ('failed-run-loads', ?)").run(JSON.stringify({ r1: loadavg()[0] / availableParallelism() }));
-    db.close();
-  }
+  if (!process.env.FAKE_INHERITED) writeFileSync(join(root, ".git/squeal/store.sqlite"), "store");
   const d = spawn(process.execPath, [fileURLToPath(import.meta.url), "daemon", root], { detached: true, stdio: "ignore" });
   d.unref();
   writeFileSync(pidFile, String(d.pid));

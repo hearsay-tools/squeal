@@ -89,23 +89,24 @@ describe("the retry knobs through run-cell", { timeout: 30_000 }, () => {
     ).toBe("");
   });
 
-  it("a11: the calendar's FAIL staged under 2.4 per CPU, checked, then a fresh daemon at the pinned load", async () => {
-    // The fake's first start stores the FAIL with the load per CPU it read (FAKE_INHERITED).
+  it("a11: the calendar's FAIL staged under 2.4 per CPU, checked, its daemon kept at the pinned load (006-62)", async () => {
+    // The fake stores the FAIL with the load per CPU of the first command that runs the calendar
+    // test (FAKE_INHERITED): a wait naming it, here at 2.4; before 006-62, \`run --all\` at 0.2.
     const c = await dry("a11-inherited-flake", { FAKE_INHERITED: "1" });
     const high = { load: 2.4, cold: "2", rates: null, preload: true };
     const low = { load: 0.2, cold: "2", rates: null, preload: true };
-    const fresh = { ...low, cold: null };
-    expect(steps(c.calls)).toEqual([
-      ["start", high],
-      ["status", "--wait", high],
-      ["run", "--all", low],
-      ["status", "--json", fresh],
-      ["stop", expect.any(String), fresh],
-      ["start", fresh],
-      ["status", "--wait", fresh],
-      ["status", "--json", fresh],
-      teardown(fresh),
+    const pinned = { ...low, cold: null };
+    expect(c.calls.map((x) => x.args.slice(0, 4).filter((a) => !/^\d+$/.test(a)))).toEqual([
+      ["start"],
+      ["status", "--wait"],
+      ["status", "--wait", "test/clock.test.ts"],
+      ["run", "--all", "--wait"],
+      ["status", "--json"],
+      ["stop", expect.any(String)],
     ]);
+    expect(c.calls.map((x) => x.retry)).toEqual([high, high, high, low, pinned, pinned]);
+    // One daemon: no stop and start between the warm-up and the session.
+    expect(c.calls.filter((x) => x.args[0] === "start")).toHaveLength(1);
     expect(c.files).toEqual(FIXTURE);
     expect(c.log).toMatch(/inherited: test\/clock\.test\.ts failed at load 2\.4 per CPU/);
   });
@@ -117,7 +118,6 @@ describe("the retry knobs through run-cell", { timeout: 30_000 }, () => {
     );
     expect(c.log).not.toMatch(/inherited: test\/clock\.test\.ts failed at load/);
     expect(existsSync(join(c.cell, "out/grade.json"))).toBe(false);
-    // No fresh daemon was started for a session.
     expect(c.calls.filter((x) => x.args[0] === "start")).toHaveLength(1);
   });
 

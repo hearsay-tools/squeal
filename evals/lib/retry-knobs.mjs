@@ -68,36 +68,34 @@ export function serviceForTruth(knobs, { work, sh, log }) {
  * The `inherited` knob (`{ file, load }`), as the warm-up: a fresh daemon runs the suite while
  * the cell's processes read `load` per CPU and the calendar's cache stays cold for two runs, so
  * the calendar test times out in the first run and in Squeal's re-run, and its FAIL is stored
- * with that load (`failed-run-loads`); once the fast tier is quiet the load drops to `pinLoad`
- * and `run --all --wait` runs the slow tier the high load held. The daemon is then restarted
- * without the cold cache: the session meets the FAIL its registration says was recorded under
- * load, and a retry passes. `squeal(args, opts)` is the cell's CLI, `stop(why)` stops its daemon,
- * `recordedLoads(file)` the loads per CPU of the stored FAILs of `file` (`storeLoads`).
+ * with that load (`failed-run-loads`). The load drops to `pinLoad` only once a wait on `file`
+ * returned its result: a plain `status --wait` returns before the baseline checkpoint runs it,
+ * and in the pilot the FAIL was stored at 0.20 (row 006-62). Then `run --all --wait` runs the
+ * slow tier the high load held. The daemon is kept: Squeal empties its temp directory, which
+ * holds the calendar's cache (`os.tmpdir()`), at every start, so a fresh daemon's retry ran cold
+ * and timed out again (006-62); this one's cache counts two loads, so a retry at the same inputs
+ * passes. `squeal(args, opts)` is the cell's CLI, `recordedLoads(file)` the loads per CPU of the
+ * stored FAILs of `file` (`storeLoads`).
  *
- * The staging checks itself (review 006-57 S1): after the warm-up, and again once the fresh
- * daemon settles, `file` is a known FAIL whose stored row ran at `load` per CPU; otherwise it
- * throws, so the cell fails setup and is never graded. Returns the warm-up's output.
+ * The staging checks itself (review 006-57 S1): once the slow tier ran, `file` is a known FAIL
+ * whose stored row ran at `load` per CPU; otherwise it throws, so the cell fails setup and is
+ * never graded. Returns the warm-up's output.
  */
-export async function stageInherited(knobs, { squeal, stop, setLoad, log, recordedLoads }) {
+export async function stageInherited(knobs, { squeal, setLoad, log, recordedLoads }) {
   const { file, load } = knobs.inherited;
   if (file !== CALENDAR) throw new Error(`inherited: only ${CALENDAR} can be staged, not ${file}`);
   if (setLoad === null) throw new Error("inherited needs pinLoad: the load the session reads");
   const cold = { env: { LEDGERLINE_CALENDAR_COLD_RUNS: "2" } };
   setLoad(load);
   squeal(["start"], cold);
-  const fast = squeal(["status", "--wait", "300000"], cold);
+  // The first wait lists the test files, so the second can name one.
+  const listed = squeal(["status", "--wait", "300000"], cold);
+  const fast = squeal(["status", "--wait", "300000", file], cold);
   setLoad(knobs.pinLoad);
   const all = squeal(["run", "--all", "--wait"], cold);
-  const out = `${fast.stdout}${fast.stderr}\n${all.stdout}${all.stderr}`;
-  const stands = async (when) => {
-    const why = await notStaged(squeal(["status", "--json"]), file, load, recordedLoads);
-    if (why !== null) throw new Error(`inherited: not staged ${when}: ${why}\n${out}`);
-  };
-  await stands("by the warm-up");
-  await stop("inherited knob");
-  squeal(["start"]);
-  squeal(["status", "--wait", "120000"]);
-  await stands("after the fresh daemon started");
+  const out = [listed, fast, all].map((r) => `${r.stdout}${r.stderr}`).join("\n");
+  const why = await notStaged(squeal(["status", "--json"]), file, load, recordedLoads);
+  if (why !== null) throw new Error(`inherited: not staged by the warm-up: ${why}\n${out}`);
   log(`inherited: ${file} failed at load ${load} per CPU; load now ${knobs.pinLoad}`);
   return out;
 }
