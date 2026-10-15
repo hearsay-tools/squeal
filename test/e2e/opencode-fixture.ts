@@ -301,6 +301,22 @@ export class OpenCodeE2E {
     return result.value;
   }
 
+  /**
+   * `opencode run --continue` after the fixture's `run`, in its directory and project: it resumes
+   * the session that run left, with a fresh provider playing `plan`.
+   */
+  continue(options: Omit<OpenCodeE2ERunOptions, "mode" | "afterReply">): Promise<OpenCodeRun> {
+    if (this.#run === undefined) throw new Error("no run to continue");
+    return runOpenCode({
+      mode: "run",
+      plan: options.plan,
+      prompt: options.prompt ?? "work",
+      env: { XDG_RUNTIME_DIR: this.runtime },
+      continue: this.#run,
+      timeoutMs: options.timeoutMs ?? 120_000,
+    });
+  }
+
   /** Stops the copy's daemon, then removes the run, the package and the runtime dir. */
   async cleanup(): Promise<void> {
     if (this.#project !== undefined) await this.cli(["stop"]).catch(() => null);

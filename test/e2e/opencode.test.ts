@@ -255,6 +255,53 @@ describe.skipIf(unavailable !== undefined)(
       expect(textOf(report[0])).toContain(ADDS);
     });
 
+    it.fails("run: news at the end of the turn is stored in the session, and run --continue reads it once", {
+      timeout: 300_000,
+    }, async (ctx) => {
+      const e2e = fixture(ctx, { started: true });
+      // Goal 4 and D5 under `run`: the regression is known before the turn's last reply returns,
+      // so it is undelivered when the turn ends and `run` disposes the instance.
+      const first = await e2e.run(
+        {
+          mode: "run",
+          plan: [{ tools: [e2e.gateCall(0)] }, { text: "done", release: e2e.releasePath(1) }],
+        },
+        async (world) => {
+          try {
+            if (!(await e2e.atGate(world, 0, async () => {}))) return;
+            await until("request 1", 60_000, async () =>
+              world.planned().length > 1 || world.done() ? true : null,
+            );
+            e2e.edit("math", MATH("-"));
+            await e2e.settled("fail");
+          } finally {
+            e2e.release(1);
+          }
+        },
+      );
+      expectClean(first, "run");
+      // No model request after the last reply: `run` ends at idle.
+      expect(first.requests).toHaveLength(2);
+      expect(
+        mentions(
+          FAIL,
+          first.requests.flatMap((r) => r.messages),
+        ),
+      ).toBe(0);
+      const next = await e2e.continue({ plan: [{ text: "noted" }], prompt: "what is new?" });
+      expectClean(next, "run");
+      expect(next.sessionID).toBe(first.sessionID);
+      const [resumed, more] = next.requests;
+      expect(more).toBeUndefined();
+      // The stored continuation, a user message between the last reply and the new prompt.
+      const since = added(resumed, first.requests[1]).filter((m) => m.role === "user");
+      const stored = since.filter((m) => textOf(m).includes(FAIL));
+      expect(stored).toHaveLength(1);
+      expect(textOf(stored[0])).toMatch(/^SQUEAL · /);
+      expect(textOf(stored[0])).toContain(ADDS);
+      expect(textOf(since.at(-1))).toContain("what is new?");
+    });
+
     it("serve: the agent's own edit failing after its turn ended wakes it with the PASS -> FAIL, once", {
       timeout: 240_000,
     }, async (ctx) => {
