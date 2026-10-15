@@ -17,6 +17,8 @@ const asks = (s, file) =>
   s.k === "retry" && !s.cancel && (s.paths.includes(file) || s.queued.includes(file));
 /** A retry of `file` Squeal queued. */
 const queued = (s, file) => s.k === "retry" && !s.cancel && s.queued.includes(file);
+/** A test run the agent asked for: its own, or any `squeal run` (re-review 006-59 R1). */
+const forcedRun = (s) => (s.k === "run" && !s.informational) || s.k === "squeal-run";
 /** A start of the service that started it: a change to the environment. */
 const started = (s) => s.k === "service" && s.started;
 /** Squeal or an own run showing `file` failing. */
@@ -38,8 +40,7 @@ export function retryArose(tl, { file, cause = null }) {
   for (const s of beforeClaim(tl)) {
     if (asks(s, file)) return true;
     if (started(s)) [up, forced] = [true, false];
-    else if ((s.k === "run" && !s.informational) || (s.k === "squeal" && s.sub === "run"))
-      forced = true;
+    else if (forcedRun(s) || (s.k === "squeal" && s.sub === "run")) forced = true;
     else if (s.k === "squeal" && (s.checks ?? []).some((c) => c.to === "pass" && c.file === file))
       if (up && !forced) return false;
   }
@@ -91,7 +92,7 @@ export function claimAfterRetry(tl, claim, { file, inputs = [] }) {
   for (const s of beforeClaim(tl)) {
     if (queued(s, file)) open = true;
     else if (s.k === "retry" && s.cancel && s.paths.includes(file)) open = false;
-    else if (s.k === "run" && !s.informational) open = false;
+    else if (forcedRun(s)) open = false;
     else if (s.k === "edit") {
       atEdit = seen;
       if (inputs.includes(s.path)) [open, passed] = [false, false];
