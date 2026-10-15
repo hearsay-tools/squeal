@@ -95,7 +95,7 @@ describe("a revision shown with its commit (task 001-406)", () => {
   it("before a first commit the revision stands alone", () => {
     edit(null);
     expect(line()).toMatch(/^Revision 1: /);
-    expect(readHeader(store, WT).commit).toEqual({ head: null, sinceHead: 1, dirty: true });
+    expect(readHeader(store, WT).commit).toBeUndefined();
   });
 });
 
