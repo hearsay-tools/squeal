@@ -191,7 +191,7 @@ async function lifecycle() {
   const head = buildFixture({ work: WORK, variant, env, modules: fixtureModules(ROOT) });
   log(`fixture ${head}, pin ${relative(ROOT, PIN)}, run ${run}, load ${load1().toFixed(1)}`);
   const git = (a) => sh("git", a); // cellEnv's author and committer
-  addService(knobs, { work: WORK, git, sh, log });
+  addService(knobs, { work: WORK, home: env.HOME, git, sh, log });
 
   // A policy key the pinned CLI does not know is a variant that cannot run here (D8 before it ships).
   if (variant.policy) {
@@ -321,7 +321,7 @@ async function lifecycle() {
     writeFileSync(join(OUT, "status-end.txt"), st.stdout + st.stderr);
     writeFileSync(join(OUT, "status-end.json"), squeal(["status", "--json"]).stdout);
   }
-  serviceForTruth(knobs, { work: WORK, sh, log });
+  serviceForTruth(knobs, { work: WORK, home: env.HOME, out: OUT, sh, log });
   await groundTruth({ cwd: WORK, env, out: OUT, log, graceMs: graceS * 1000 });
   const said = (a) => sh("git", a, { check: false }).stdout;
   writeFileSync(
