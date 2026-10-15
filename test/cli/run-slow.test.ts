@@ -122,10 +122,10 @@ describe("squeal run --slow (spec 004 D2, explicit trigger)", () => {
     );
   });
 
-  it("rejects --slow with --all or --force, and --wait without milliseconds", async () => {
+  // Task 004-61: `run --all --slow` is the slow lane, as `run --slow` is.
+  it("rejects --slow with --force, and --wait without milliseconds", async () => {
     const r = squealRepo();
     for (const argv of [
-      ["run", "--slow", "--all"],
       ["run", "--slow", "--force"],
       ["run", "--slow", "--wait"],
       ["run", "--slow", "--wait", "soon"],

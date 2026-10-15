@@ -1,7 +1,7 @@
 import type { CommitSha, EpochMs, RelativePath, RevisionNumber, WorktreeId } from "./common.js";
 import type { TestFileRef } from "./keys.js";
 import { worktreeMetaKey } from "./store.js";
-import type { CheckpointKind, CheckpointRecord } from "./store-records.js";
+import type { CheckpointKind, CheckpointLane, CheckpointRecord } from "./store-records.js";
 import type { CandidateBatch } from "./watcher.js";
 
 /** A test file and a revision whose move of its key has no result yet (`answerMoves`). */
@@ -234,6 +234,8 @@ export interface FullSuiteRequest {
    * returns them. Keys, closures and results are as without it.
    */
   readonly observeIgnored?: boolean;
+  /** Only this lane's test files (task 004-61); absent, both lanes. */
+  readonly lane?: CheckpointLane;
 }
 
 /**

@@ -162,6 +162,13 @@ export interface RunRecord {
 export type CheckpointKind = "run-all" | "baseline";
 
 /**
+ * Spec 004 D2 as amended (task 004-61): the one lane a `run --all --fast`
+ * checkpoint requested. A checkpoint without one ran both lanes; a one-lane
+ * checkpoint is never a full-suite checkpoint.
+ */
+export type CheckpointLane = "fast" | "slow";
+
+/**
  * How a checkpoint ended. `completed`: every requested test file has a
  * result. `abandoned`: it ended without one for some file (daemon stopped,
  * superseded by a newer request, a tier crashed or timed out).
@@ -188,6 +195,8 @@ export interface CheckpointRecord {
   readonly completedAt: EpochMs | null;
   /** `null` while running. */
   readonly end: CheckpointEnd | null;
+  /** The one lane it requested (task 004-61); absent when it requested both. */
+  readonly lane?: CheckpointLane;
 }
 
 /**

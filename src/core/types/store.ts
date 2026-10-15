@@ -178,12 +178,15 @@ export interface CheckpointRepo {
   start(record: Omit<CheckpointRecord, "completedAt" | "end">): CheckpointRecord;
   finish(id: string, end: CheckpointEnd, at: EpochMs): void;
   get(id: string): CheckpointRecord | null;
-  /**
-   * Newest `completed` checkpoint of a worktree. Spec 001 D7: "whether a
-   * full-suite checkpoint completed for this revision and at which revision
-   * the last one completed".
-   */
+  /** Newest `completed` checkpoint of a worktree, a one-lane one included. */
   lastCompleted(worktreeId: WorktreeId): CheckpointRecord | null;
+  /**
+   * Newest `completed` checkpoint of a worktree that requested both lanes.
+   * Spec 001 D7: "whether a full-suite checkpoint completed for this
+   * revision and at which revision the last one completed"; a one-lane
+   * checkpoint is none (task 004-61).
+   */
+  lastCompletedFull(worktreeId: WorktreeId): CheckpointRecord | null;
 }
 
 /**
@@ -260,6 +263,7 @@ export const WORKTREE_META_ROWS = {
   awaitingInstall: { prefix: "awaiting-install.", owner: "types/scheduler" },
   installCommand: { prefix: "install-command.", owner: "types/scheduler" },
   checkpoint: { prefix: "checkpoint.", owner: "types/scheduler" },
+  checkpointLanes: { prefix: "checkpoint-lanes.", owner: "store/repos/runs" },
   headMove: { prefix: "head-move.", owner: "types/scheduler" },
   daemonBootstrapped: { prefix: "daemon-bootstrapped:", owner: "types/daemon" },
   daemonToken: { prefix: "daemon-token:", owner: "store/repos/worktrees" },

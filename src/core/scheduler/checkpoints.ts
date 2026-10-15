@@ -2,6 +2,7 @@ import { testFileId } from "../keys/index.js";
 import {
   type CheckpointEnd,
   type CheckpointKind,
+  type CheckpointLane,
   type CheckpointProgress,
   type CheckpointRecord,
   checkpointMetaKey,
@@ -120,9 +121,10 @@ export class Checkpoints {
     revision: RevisionNumber,
     testFiles: readonly TestFileRef[],
     strict = false,
+    lane?: CheckpointLane,
   ): CheckpointRecord {
     this.finish("abandoned");
-    const record = this.#insert(id, kind, revision, testFiles);
+    const record = this.#insert(id, kind, revision, testFiles, lane);
     this.#active = {
       record,
       joined: [],
@@ -145,16 +147,22 @@ export class Checkpoints {
     kind: CheckpointKind,
     revision: RevisionNumber,
     testFiles: readonly TestFileRef[],
+    lane?: CheckpointLane,
   ): CheckpointRecord {
-    const record = this.#insert(id, kind, revision, testFiles);
+    const record = this.#insert(id, kind, revision, testFiles, lane);
     this.#active?.joined.push(record);
     this.#publish();
     return record;
   }
 
   /** Records a request that needs nothing run, completed at once, leaving the open one be. */
-  completeAtOnce(id: string, kind: CheckpointKind, revision: RevisionNumber): CheckpointRecord {
-    const record = this.#insert(id, kind, revision, []);
+  completeAtOnce(
+    id: string,
+    kind: CheckpointKind,
+    revision: RevisionNumber,
+    lane?: CheckpointLane,
+  ): CheckpointRecord {
+    const record = this.#insert(id, kind, revision, [], lane);
     this.store.checkpoints.finish(id, "completed", this.now());
     return record;
   }
@@ -264,6 +272,7 @@ export class Checkpoints {
     kind: CheckpointKind,
     revision: RevisionNumber,
     testFiles: readonly TestFileRef[],
+    lane?: CheckpointLane,
   ): CheckpointRecord {
     return this.store.checkpoints.start({
       id,
@@ -272,6 +281,7 @@ export class Checkpoints {
       kind,
       testFiles,
       startedAt: this.now(),
+      ...(lane === undefined ? {} : { lane }),
     });
   }
 
