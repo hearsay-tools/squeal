@@ -18,6 +18,19 @@ const HEADER = new RegExp(
     String.raw`(\d+) stale${PARTS}, (\d+) unknown${PARTS}\.`,
 );
 
+/**
+ * 001-407: a change delivery's news header names only the non-zero pending, stale and unknown
+ * counts, or "no check pending, stale or unknown", and no checkpoint.
+ */
+const NEWS = new RegExp(
+  String.raw`Revision (\d+)${COMMIT}: (no check pending, stale or unknown|\d+ (?:pending|stale|unknown)\b[^.]*)\.`,
+);
+
+/** `validity`'s count in a news header's counts, 0 when it is not named. */
+function newsCount(counts: string, validity: string): number {
+  return Number(new RegExp(String.raw`(\d+) ${validity}\b`).exec(counts)?.[1] ?? 0);
+}
+
 /** Check names of the `FAIL  <name>` or `PASS  <name>` blocks of a delivered text. */
 export function blocks(text: string, outcome: "FAIL" | "PASS"): string[] {
   return [...text.matchAll(new RegExp(`^${outcome}  (.+)$`, "gm"))].map((m) => m[1] ?? "");
@@ -25,26 +38,36 @@ export function blocks(text: string, outcome: "FAIL" | "PASS"): string[] {
 
 /** The revision a delivered header names. */
 export function headerRevision(text: string): number {
-  const match = HEADER.exec(text);
+  const match = HEADER.exec(text) ?? NEWS.exec(text);
   if (match === null) throw new Error(`no header line in:\n${text}`);
   return Number(match[1]);
 }
 
 export function expectAgrees(text: string | null, status: StatusSnapshot): void {
   if (text === null) throw new Error("nothing was delivered");
-  const match = HEADER.exec(text);
-  expect(match, `header line in:\n${text}`).not.toBeNull();
-  const [, revision, head, since, dirty, current, pending, stale, unknown] = match ?? [];
-  expect(
-    {
-      revision: Number(revision),
-      current: Number(current),
-      pending: Number(pending),
-      stale: Number(stale),
-      unknown: Number(unknown),
-    },
-    text,
-  ).toEqual({ revision: status.revision, ...status.counts });
+  const full = HEADER.exec(text);
+  const news = full === null ? NEWS.exec(text) : null;
+  expect(full ?? news, `header line in:\n${text}`).not.toBeNull();
+  const [, revision, head, since, dirty] = full ?? news ?? [];
+  if (full !== null) {
+    const [current, pending, stale, unknown] = full.slice(5).map(Number);
+    expect({ revision: Number(revision), current, pending, stale, unknown }, text).toEqual({
+      revision: status.revision,
+      ...status.counts,
+    });
+  } else {
+    const counts = news?.[5] ?? "";
+    const { pending, stale, unknown } = status.counts;
+    expect(
+      {
+        revision: Number(revision),
+        pending: newsCount(counts, "pending"),
+        stale: newsCount(counts, "stale"),
+        unknown: newsCount(counts, "unknown"),
+      },
+      text,
+    ).toEqual({ revision: status.revision, pending, stale, unknown });
+  }
   const commit = status.commit;
   expect(
     head === undefined ? undefined : { head, sinceHead: Number(since), dirty: dirty !== undefined },
@@ -54,10 +77,12 @@ export function expectAgrees(text: string | null, status: StatusSnapshot): void 
       ? undefined
       : { head: commit.head.slice(0, 8), sinceHead: commit.sinceHead, dirty: commit.dirty },
   );
-  expect(
-    text.includes(`Full-suite checkpoint: completed at revision ${status.revision}.`),
-    text,
-  ).toBe(status.fullSuite.atCurrentRevision);
+  if (full !== null) {
+    expect(
+      text.includes(`Full-suite checkpoint: completed at revision ${status.revision}.`),
+      text,
+    ).toBe(status.fullSuite.atCurrentRevision);
+  } else expect(text, text).not.toContain("Full-suite checkpoint");
   expect(/No daemon (has validated|is running)/.test(text), text).toBe(
     status.daemon.state === "down",
   );

@@ -113,7 +113,8 @@ describe("the first delivery after the consumer's first edit (task 001-224)", ()
     await delivery.register(C1);
     editA();
     const said = await text();
-    expect(said).toMatch(/^SQUEAL · revision 1\nRevision 1 \(changed src\/a\.ts\)/);
+    // Task 001-407: a change delivery's header names no changed paths.
+    expect(said).toMatch(/^SQUEAL · revision 1\nRevision 1: /);
     expect(said).toContain(
       "Squeal saw your edit and queued 1 test file; results arrive with later tool calls, and passing ones stay silent.",
     );

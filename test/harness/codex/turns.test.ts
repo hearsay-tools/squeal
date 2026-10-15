@@ -70,7 +70,7 @@ describe("PostToolUse (goal 2)", () => {
     r.confirm();
     const { stdout } = await hook(r, "post-tool-use", "post-tool-use");
     expect(stdout).toContain("PASS -> FAIL");
-    expect(stdout).toContain(" 0 pending,");
+    expect(stdout).toContain("no check pending, stale or unknown.");
     expect(stdout).not.toContain("Squeal saw your edit");
   });
 });

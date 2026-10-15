@@ -20,13 +20,13 @@ export {
 export {
   formatDelta,
   formatRegistration,
-  headerLines,
   MESSAGE_CAP_CHARS,
   notValidatedLine,
   SQUEAL_COMMAND,
   shellWord,
 } from "./format.js";
 export { harnessOf, type ProcStat, pidNamespace, readProcStat } from "./harness-process.js";
+export { type HeaderForm, headerLines } from "./header.js";
 export {
   DAEMON_START_GRACE_MS,
   daemonLiveness,
