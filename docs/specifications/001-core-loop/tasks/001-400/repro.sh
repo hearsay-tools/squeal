@@ -3,6 +3,7 @@
 # $3 MB, so its kernel-side exit lasts long, on 2 CPUs beside 2 busy loops. One line per run.
 # Usage: repro.sh <worktree> <runs> <heap MB> [log dir]. Writes test/daemon/escaped-heap.repro.ts,
 # outside the suite's include, and removes it on exit; a failing run's output is kept in the log dir.
+# With SQ400_NOTES set, the copy appends each stop's note, and the fork's pid, to that file.
 cd "$1" || exit 2
 runs=$2 mb=$3 logs=${4:-$(mktemp -d)}
 mkdir -p "$logs"
@@ -12,6 +13,10 @@ trap 'kill $h1 $h2 2>/dev/null; rm -f "$copy" "$config"' EXIT
 sed "s|^it(\"leaves two sleepers behind\", async () => {|globalThis.heap = Buffer.alloc($mb * 1048576, 1);\n&|" \
   test/daemon/escaped.test.ts > "$copy"
 grep -q "globalThis.heap" "$copy" || { echo "the fixture edit no longer applies"; exit 2; }
+if [ -n "$SQ400_NOTES" ]; then
+  sed -i "s|^      const note = record?.text ?? \"\";|&\n      (await import(\"node:fs\")).appendFileSync(\"$SQ400_NOTES\", \`fork \${spawner}: \${note}\\\\n\`);|" "$copy"
+  grep -q "appendFileSync" "$copy" || { echo "the note edit no longer applies"; exit 2; }
+fi
 printf 'export default { test: { root: %s, include: ["%s"], globalSetup: ["test/global-teardown.ts"] } };\n' \
   "\"$PWD\"" "$copy" > "$config"
 taskset -c 0-1 node -e 'for(;;){}' >/dev/null 2>&1 & h1=$!
