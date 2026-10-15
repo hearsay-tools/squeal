@@ -7,6 +7,7 @@ import {
   type Consumer,
   type DaemonLiveness,
   type DaemonRecord,
+  daemonRestMetaKey,
   type EpochMs,
   type FileChange,
   type KnownState,
@@ -160,7 +161,9 @@ export function withTold(header: StatusHeader, told: ToldLiveness, at: EpochMs):
 
 /**
  * The daemon's liveness when it differs from what `consumer` was told, else
- * `null`. A daemon still starting is no news, nor is its first heartbeat.
+ * `null`. A daemon still starting is no news, nor is its first heartbeat,
+ * nor one that rests after it stopped unused (task 001-415), which the next
+ * hook boundary starts again.
  */
 export function livenessChange(
   store: Store,
@@ -168,9 +171,19 @@ export function livenessChange(
   at: EpochMs,
 ): DaemonLiveness | null {
   const told = toldLiveness(store, consumer);
-  const live = asTold(worktreeLiveness(store.worktrees.get(consumer.worktreeId), at), told, at);
-  if (live.state === "down" && live.startingSince !== undefined) return null;
+  const worktree = store.worktrees.get(consumer.worktreeId);
+  const live = asTold(worktreeLiveness(worktree, at), told, at);
+  if (live.state === "down" && (live.startingSince !== undefined || rests(store, worktree))) {
+    return null;
+  }
   return live.state === (typeof told === "object" ? "alive" : told) ? null : live;
+}
+
+/** The worktree's daemon stopped unused, cleared its record, and none heartbeat since. */
+function rests(store: Store, worktree: WorktreeRecord | null): boolean {
+  if (worktree === null || worktree.daemon !== null) return false;
+  const rested = Number(store.meta.get(daemonRestMetaKey(worktree.id)) ?? Number.NaN);
+  return rested >= (worktree.lastHeartbeatAt ?? Number.POSITIVE_INFINITY);
 }
 
 /*

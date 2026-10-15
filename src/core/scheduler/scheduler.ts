@@ -356,6 +356,15 @@ class TierScheduler implements Scheduler {
     return new Promise((resolve) => this.#idle.push(resolve));
   }
 
+  /**
+   * Work queued or running, slow files included: the daemon is in use while
+   * it has any (D10 as amended, task 001-415).
+   */
+  busy(): boolean {
+    if (this.#closed) return false;
+    return this.#inFlight.size > 0 || !this.#isIdle() || this.slowPending();
+  }
+
   slowPending(): boolean {
     if (this.#closed || !this.#ledger) return false;
     if ([...this.#inFlight.keys()].some(isSlowLane)) return true;

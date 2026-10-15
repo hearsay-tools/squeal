@@ -160,6 +160,8 @@ class Daemon {
   #starting: Promise<void> = Promise.resolve();
   #stopTimers: () => void = () => {};
   #lastActive: EpochMs;
+  /** Last edit, tier, wait or request; registered consumers are no use (task 001-415). */
+  #lastUsed: EpochMs;
   readonly #presence: Presence;
   /** Task 003-42: a timer restart starts from the snapshot its predecessor took. */
   readonly #observedSeen: ObservedSeen = {};
@@ -180,6 +182,7 @@ class Daemon {
     this.#socketPath = socketPathFor(opened.worktreeId, options.env);
     this.#startedAt = this.#now();
     this.#lastActive = this.#startedAt;
+    this.#lastUsed = this.#startedAt;
     this.#presence = { since: this.#startedAt, lastPresentAt: null };
     this.#repositoryRoot = repositoryRootOf(opened.root, opened.commonDir);
     this.#capacity = capacityReader({
@@ -249,6 +252,17 @@ class Daemon {
       active: (at) => {
         this.#lastActive = at;
       },
+      lastUsed: () => this.#lastUsed,
+      used: (at) => {
+        this.#lastUsed = at;
+      },
+      work: () =>
+        this.#loop === null || this.#phase === "stopping"
+          ? null
+          : {
+              revision: this.#loop.scheduler.status().revision,
+              busy: this.#loop.scheduler.busy(),
+            },
       // Task 003-26: queued runner work, never activity; until the scheduler takes it, asked again.
       observedChanged: () =>
         this.#loop !== null && this.#phase !== "stopping" && this.#loop.scheduler.refreshObserved(),
@@ -492,6 +506,7 @@ class Daemon {
       // Idle counts from ready: the baseline is work, and the hook that spawned
       // this daemon registers its consumer while it runs.
       this.#lastActive = this.#now();
+      this.#lastUsed = this.#lastActive;
       if (this.#phase === "starting") this.#setPhase("ready");
       this.#log(`serving ${root} on ${this.#socketPath}`);
     } catch (error) {
@@ -516,6 +531,7 @@ class Daemon {
         requestSync: () => this.#requestSync(),
         onActivity: () => {
           this.#lastActive = this.#now();
+          this.#lastUsed = this.#lastActive;
         },
         onNudge: () => this.#loop?.scheduler.nudge(),
         requestRetries: () => this.#requestRetries(),
