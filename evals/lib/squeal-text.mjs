@@ -71,10 +71,24 @@ const count = (re, text) => {
   return m ? Number(m[1]) : 0;
 };
 
+/** The top-level keys of a Claude Code hook's JSON reply; Squeal's own `--json` uses none. */
+const HOOK_KEYS = [
+  "hookSpecificOutput",
+  "decision",
+  "reason",
+  "continue",
+  "stopReason",
+  "suppressOutput",
+  "systemMessage",
+];
+
 /**
  * The Squeal text a Claude Code hook's JSON reply carries (`hookSpecificOutput`'s
  * `additionalContext` or a deny's `permissionDecisionReason`, a stop's block `reason`), which
- * Claude Code keeps as the hook's output; any other text as it is (row 006-77).
+ * Claude Code keeps as the hook's output; any other text as it is (row 006-77). Claude Code shows
+ * the model a decision's reason only on a deny, an ask (a cell is a `-p` run, where an ask is
+ * refused and its reason is the tool's result) or a block; an allow's or a defer's reason goes to
+ * the debug log, so a reply carrying no other text reads as none (review 006-81 B1).
  */
 function hookText(t) {
   if (!t.trimStart().startsWith("{")) return t;
@@ -84,10 +98,14 @@ function hookText(t) {
   } catch {
     return t;
   }
-  const own = reply?.hookSpecificOutput ?? {};
-  const texts = [own.additionalContext, own.permissionDecisionReason, reply?.reason];
-  const found = texts.filter((x) => typeof x === "string");
-  return found.length === 0 ? t : found.join("\n");
+  if (!HOOK_KEYS.some((k) => Object.hasOwn(reply ?? {}, k))) return t;
+  const own = reply.hookSpecificOutput;
+  const texts = [
+    own?.additionalContext,
+    ["deny", "ask"].includes(own?.permissionDecision) ? own.permissionDecisionReason : undefined,
+    reply.decision === "block" ? reply.reason : undefined,
+  ];
+  return texts.filter((x) => typeof x === "string").join("\n");
 }
 
 /**
