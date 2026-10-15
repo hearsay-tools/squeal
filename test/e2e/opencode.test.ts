@@ -11,7 +11,8 @@ import {
 import { type OpenCodeRun, opencodeUnavailable, textOf } from "../helpers/opencode.js";
 import { fixtureInstall, type Install } from "./install.js";
 import { OpenCodeE2E, type OpenCodeE2EOptions } from "./opencode-fixture.js";
-import { timeline, watchConsumers } from "./opencode-timeline.js";
+import { timeline } from "./opencode-timeline.js";
+import { type Watched, watchRun } from "./opencode-watch.js";
 import { MATH, SLOW } from "./sources.js";
 import { daemonPids, until } from "./support.js";
 
@@ -267,7 +268,7 @@ describe.skipIf(unavailable !== undefined)(
       const e2e = fixture(ctx, { started: true, stopWaitMs: STOP_WAIT_MS });
       // Goal 4 and D5 under `run`: the regression is known before the turn's last reply returns,
       // so it is undelivered when the turn ends and `run` disposes the instance.
-      let consumers: ReturnType<typeof watchConsumers> = Promise.resolve([]);
+      let watched: Promise<Watched> = Promise.resolve({ consumers: [], bridges: [] });
       const exits: Record<string, number> = {};
       const first = await e2e.run(
         {
@@ -283,8 +284,8 @@ describe.skipIf(unavailable !== undefined)(
             e2e.edit("math", MATH("-"));
             await e2e.settled("fail");
           } finally {
-            // From the last reply to the exit: Stop's delivery, then `dispose`'s end.
-            consumers = watchConsumers(e2e.store.database, world);
+            // From the last reply to the exit: Stop's delivery, the bridges, `dispose`'s end.
+            watched = watchRun(e2e.store.database, e2e.base, world);
             e2e.release(1);
           }
         },
@@ -307,7 +308,7 @@ describe.skipIf(unavailable !== undefined)(
         session: first.sessionID ?? "",
         database: e2e.store.database,
         stopWaitMs: STOP_WAIT_MS,
-        consumers: await consumers,
+        watched: await watched,
         exits,
       });
       expectClean(next, "run");
