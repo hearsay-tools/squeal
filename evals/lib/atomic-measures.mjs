@@ -3,6 +3,7 @@
 // rest of the record is context. The same rules grade a new cell (pilotRecord) and regrade a
 // committed `.atomic.json` from what it kept (regradeAtomic).
 import { answeredRuns, coveredRun, currentBeforeClaim } from "./evidence.mjs";
+import { stamped } from "./results.mjs";
 import {
   claimAfterRetry,
   noRetryPastFailure,
@@ -148,11 +149,6 @@ export function regradeAtomic(data, config, date, { by, note }) {
       config.scenarios[t] ? { ...s, measures: config.scenarios[t].measures ?? [] } : s,
     ]),
   );
-  const earlier = (data.regraded ?? []).find((n) => n.by === by);
-  const others = (data.regraded ?? []).filter((n) => n !== earlier);
-  const all = [...new Set([...(earlier?.changed ?? []), ...changed])];
-  return {
-    data: { ...data, cells, scenarios, regraded: [...others, { by, date, changed: all, note }] },
-    changed,
-  };
+  const regraded = stamped(data.regraded, { by, date, changed, note });
+  return { data: { ...data, cells, scenarios, regraded }, changed };
 }

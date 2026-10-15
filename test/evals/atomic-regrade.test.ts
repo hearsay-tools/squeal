@@ -3,6 +3,7 @@ import {
   copyFileSync,
   existsSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   statSync,
@@ -71,6 +72,15 @@ describe("the committed atomic runs, regraded", () => {
     for (const f of [PILOT, SECOND]) {
       const data = read(f);
       expect(data.scenarios["a2-slow"]?.measures).toEqual(config.scenarios["a2-slow"]?.measures);
+    }
+  });
+
+  it("include the variant arms atomic-compare.mjs reads, graded under today's declarations too (006-86)", () => {
+    const variants = readdirSync(RESULTS).filter((f) => f.endsWith(".atomic-variant.json"));
+    expect(variants.length).toBeGreaterThanOrEqual(4);
+    for (const f of variants) {
+      const data = read(f) as unknown as Json;
+      expect(regradeAtomic(data, config, "2099-01-01", STAMP).changed, f).toEqual([]);
     }
   });
 

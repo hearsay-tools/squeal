@@ -1,16 +1,19 @@
 #!/usr/bin/env node
 // Re-applies the claim grading of 006-12 and the expectations of evals/tasks/tasks.json (spec 006
 // D4, 006-14) to committed baseline and variant results files, then regenerates TREND.md:
-//   node evals/bin/regrade.mjs [dir] [--date YYYY-MM-DD]
+//   node evals/bin/regrade.mjs [dir] [--by <row> --note <text>] [--date YYYY-MM-DD]
 // `dir` defaults to evals/results. Each cell's `claim` is re-read from its `claimLine` with the
 // current parser, and `claimTrue` and `claimMatchesSqueal` are recomputed from it, `truthPass`
 // and `squealVerdict` by the grader's own rule. Then each cell's `expectations` are computed from
 // its kept fields and its retained timeline (D4), and the file records the expectations revision
 // that graded it. A rule a cell lacks a field or a timeline for is `not computable`, and a task
 // whose run had other knobs is not graded;
-// both are named in the note, never guessed. Nothing else changes. Each file gets a `regraded`
-// note per change, naming the cells it changed, an empty list where it changed none. Grading is
-// not a condition, so the fingerprint stays.
+// both are named in the note, never guessed. Nothing else changes. Only a file where a claim, an
+// expectation or a judge verdict changed is written (006-86), with a `regraded` note per pass that
+// changed it, naming those cells: the claim pass's is `{ by, date, changed, note }` from --by and
+// --note, which a run that changes a claim needs; the expectations pass's names its revision.
+// Grading is not a condition, so the fingerprint stays. TREND.md is regenerated only when a file
+// was written.
 //
 // The four judged expectations (D4 "Who grades what", D9) are read from each cell's cached judge
 // verdicts, and the parser's grade beside them is refreshed. Only with --judge does it call a
@@ -27,11 +30,8 @@ import { calibratedIdentity, judgeRecord } from "../lib/calibration.mjs";
 import { gradeClaim, parseClaim } from "../lib/claim.mjs";
 import { claudeRunner, identityKey } from "../lib/judge.mjs";
 import { EVALS } from "../lib/prepare.mjs";
-import { expectationsRevision, trendMarkdown } from "../lib/trend.mjs";
-
-const BY = "006-12";
-const NOTE =
-  "Claims re-read from claimLine: one claim word followed by `|` and evidence is now a claim, and a line naming two claim words is still none. claimTrue and claimMatchesSqueal recomputed from claim, truthPass and squealVerdict; the trend now splits a false claim into false pass and false fail. The 006-12 `command -p`, `-v` and `-V` parsing fix is not applied: results files keep no transcripts, so every other count is as first graded.";
+import { stamped } from "../lib/results.mjs";
+import { expectationsRevision, writeTrendMarkdown } from "../lib/trend.mjs";
 
 const EXPECTED =
   "Expectations (spec 006 D4 as amended 2026-10-11) computed from each cell's kept fields under evals/tasks/tasks.json at this revision: met, missed, n/a where one does not apply. The trend scores these, never raw behaviours. no-rerun-answered, own-run-uncovered, current-before-claim and no-overclaim read the cell's retained timeline (006-17): the evidence the agent had seen, when, and which tests its own runs completed; since 006-19 also each check's own provenance and identity, and each run's filters and failed checks. A cell without a timeline, as every cell graded before 006-17 is, is not computable for them, never guessed from its counts or from the runner's end status; measuring them needs a new run. Since 006-23 (D9) a judge grades those four from the cell's retained transcript, and the parser's grade is kept beside it as `parser`; a cell without a transcript or a judge verdict is not computable for them. A cell whose run had other knobs for its task is not graded. Both are listed here.";
@@ -39,6 +39,8 @@ const EXPECTED =
 const { values, positionals } = parseArgs({
   allowPositionals: true,
   options: {
+    by: { type: "string" },
+    note: { type: "string" },
     date: { type: "string", default: new Date().toISOString().slice(0, 10) },
     judge: { type: "boolean", default: false },
     "max-cost": { type: "string" },
@@ -79,42 +81,47 @@ function regradeCell(cell) {
 const declared = declarations();
 const revision = expectationsRevision(declared);
 
-/** The note of the expectations pass over `data`: what changed and what could not be graded. */
+/**
+ * The expectations pass over `data`: the cells whose expectations changed and the tasks not
+ * graded. Only where a cell changed is `data` stamped with the pass's note, naming what could not
+ * be graded too.
+ */
 function expect(data) {
   const changed = [];
   const notGradedTasks = {};
   const notComputable = {};
   for (const cell of data.cells) {
+    const why = notGraded(cell, data.conditions, declared);
     const next = expectationsOf(cell, data.conditions, declared);
-    if (JSON.stringify(cell.expectations) !== JSON.stringify(next)) {
+    // The parser's grade beside a judge verdict (D9) is refreshed with them.
+    const parser =
+      cell.judge && why === null ? parserOf(cell, data.conditions, declared) : undefined;
+    if (
+      JSON.stringify(cell.expectations) !== JSON.stringify(next) ||
+      (parser !== undefined && JSON.stringify(cell.parser) !== JSON.stringify(parser))
+    ) {
       cell.expectations = next;
+      if (parser !== undefined) cell.parser = parser;
       changed.push(cell.id);
     }
-    const why = notGraded(cell, data.conditions, declared);
     if (why !== null) notGradedTasks[cell.task] = why;
     for (const [id, v] of Object.entries(next ?? {}))
       if (v === "not computable") notComputable[id] = [...(notComputable[id] ?? []), cell.id];
   }
-  const earlier = (data.regraded ?? []).find(
-    (n) => n.by === "expectations" && n.revision === revision,
-  );
-  if (changed.length === 0 && earlier && data.expectationsRevision === revision) return false;
-  data.expectationsRevision = revision;
-  const others = (data.regraded ?? []).filter((n) => n !== earlier);
-  const all = [...new Set([...(earlier?.changed ?? []), ...changed])];
-  data.regraded = [
-    ...others,
-    {
+  const notGradedList = Object.entries(notGradedTasks).map(([task, why]) => ({ task, why }));
+  if (changed.length) {
+    data.expectationsRevision = revision;
+    data.regraded = stamped(data.regraded, {
       by: "expectations",
       revision,
-      date: changed.length || !earlier ? values.date : earlier.date,
-      changed: all,
-      notGraded: Object.entries(notGradedTasks).map(([task, why]) => ({ task, why })),
+      date: values.date,
+      changed,
+      notGraded: notGradedList,
       notComputable,
       note: EXPECTED,
-    },
-  ];
-  return true;
+    });
+  }
+  return { changed, notGraded: notGradedList };
 }
 
 const maxCost = values["max-cost"] === undefined ? Infinity : Number(values["max-cost"]);
@@ -147,13 +154,14 @@ if (values.judge && identity === null) {
 
 /**
  * Re-judges `data`'s cells with a transcript whose cached verdicts are another identity's (only
- * with --judge), and refreshes the parser's grade beside every judged cell. The changed ids.
+ * with --judge). Whether a verdict changed.
  */
 async function judge(data) {
   const changed = [];
+  if (!identity) return false;
   for (const cell of data.cells) {
     if (notGraded(cell, data.conditions, declared) !== null) continue;
-    if (identity && cell.transcript) {
+    if (cell.transcript) {
       const next = await judgeRecord(cell, {
         identity,
         runner,
@@ -162,7 +170,7 @@ async function judge(data) {
       });
       if (JSON.stringify(next.judge) !== JSON.stringify(cell.judge)) changed.push(cell.id);
       Object.assign(cell, next);
-    } else if (cell.judge) cell.parser = parserOf(cell, data.conditions, declared);
+    }
   }
   if (!changed.length) return false;
   data.regraded = [
@@ -188,30 +196,39 @@ const runs = readdirSync(dir)
         changed.push(cell.id);
       }
     }
-    const earlier = (data.regraded ?? []).find((n) => n.by === BY);
-    const write = changed.length > 0 || !earlier;
-    if (write) {
-      const others = (data.regraded ?? []).filter((n) => n.by !== BY);
-      const all = [...new Set([...(earlier?.changed ?? []), ...changed])];
-      data.regraded = [...others, { by: BY, date: values.date, changed: all, note: NOTE }];
-    }
-    return { f, name: f.replace(/\.json$/, ""), data, changed, write };
+    if (changed.length)
+      data.regraded = stamped(data.regraded, {
+        by: values.by,
+        date: values.date,
+        changed,
+        note: values.note,
+      });
+    return { f, data, changed };
   });
+const claimed = runs.filter((r) => r.changed.length);
+if (claimed.length && (!values.by || !values.note)) {
+  console.error(
+    `claims changed in ${claimed.map((r) => r.f).join(", ")}: name the row and the change with --by <row> --note <text>; nothing written`,
+  );
+  process.exit(2);
+}
 for (const r of runs) {
   const judged = await judge(r.data);
-  r.write = expect(r.data) || judged || r.write;
+  r.expected = expect(r.data);
+  r.write = r.changed.length > 0 || judged || r.expected.changed.length > 0;
 }
 if (capped) {
   console.error(`--max-cost $${maxCost} reached after $${spent.toFixed(4)}; nothing written`);
   process.exit(1);
 }
 if (values.judge) console.log(`judge calls cost $${spent.toFixed(4)}`);
-for (const { f, data, changed, write } of runs) {
+for (const { f, data, changed, expected, write } of runs) {
   if (write) writeFileSync(join(dir, f), `${JSON.stringify(data, null, 1)}\n`);
-  const note = data.regraded.findLast((n) => n.by === "expectations");
   console.log(
-    `${f}: claims ${changed.length ? `regraded ${changed.join(", ")}` : "unchanged"}; expectations ${note.revision}, ${note.changed.length} cell(s) changed, not graded: ${note.notGraded.map((n) => n.task).join(", ") || "none"}`,
+    `${f}: ${write ? "written" : "unchanged, not written"}; claims ${changed.length ? `regraded ${changed.join(", ")}` : "unchanged"}; expectations ${revision}, ${expected.changed.length} cell(s) changed, not graded: ${expected.notGraded.map((n) => n.task).join(", ") || "none"}`,
   );
 }
-writeFileSync(join(dir, "TREND.md"), trendMarkdown(runs, declared));
-console.log(`TREND.md from ${runs.length} results file(s)`);
+if (runs.some((r) => r.write)) {
+  const n = writeTrendMarkdown(dir, declared);
+  console.log(`TREND.md from ${n} baseline results file(s)`);
+}

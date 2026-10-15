@@ -106,7 +106,14 @@ export {
   regradeFromOut,
   runDirOf,
 } from "./regrade-cells.mjs";
-export { armFixtures, cellRecord, conditionsOf, narrowed, resultsName } from "./results.mjs";
+export {
+  armFixtures,
+  cellRecord,
+  conditionsOf,
+  narrowed,
+  resultsName,
+  stamped,
+} from "./results.mjs";
 export {
   claimAfterRetry,
   noRetryPastFailure,
@@ -144,5 +151,5 @@ export {
   transcriptOf,
   trimOutput,
 } from "./transcript.mjs";
-export { expectationsRevision, trendLines, trendMarkdown } from "./trend.mjs";
+export { expectationsRevision, trendLines, trendMarkdown, writeTrendMarkdown } from "./trend.mjs";
 export { applyPatch, patchPlugins } from "./variant.mjs";

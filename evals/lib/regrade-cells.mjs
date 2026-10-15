@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { pilotRecord } from "./atomic-measures.mjs";
 import { expectationsOf, parserOf } from "./behaviours.mjs";
 import { gradeCell, serviceStartsOf } from "./grade.mjs";
-import { cellRecord } from "./results.mjs";
+import { cellRecord, stamped } from "./results.mjs";
 import { claudeTimeline, codexTimeline, reportedEffort } from "./transcript.mjs";
 import { walk } from "./variant.mjs";
 
@@ -188,15 +188,9 @@ export function regradeFromOut(data, { gradeOf, declared, config, by, note, date
     return next;
   });
   if (!diffs.length) return { data, changed, evidence, missing, diffs };
-  const earlier = (data.regraded ?? []).find((n) => n.by === by);
-  const others = (data.regraded ?? []).filter((n) => n !== earlier);
-  const graded = [...new Set([...(earlier?.changed ?? []), ...changed])];
-  const kept = [...new Set([...(earlier?.evidence ?? []), ...evidence])].filter(
-    (id) => !graded.includes(id),
-  );
-  const stamp = { by, date, changed: graded, evidence: kept, note };
+  const regraded = stamped(data.regraded, { by, date, changed, evidence, note });
   return {
-    data: { ...data, cells, regraded: [...others, stamp] },
+    data: { ...data, cells, regraded },
     changed,
     evidence,
     missing,
