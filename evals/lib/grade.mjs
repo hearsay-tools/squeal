@@ -2,6 +2,7 @@
 import { gradeClaim, parseClaim } from "./claim.mjs";
 import { classifyShell, scopeLabel } from "./commands.mjs";
 import { completedRuns, failedChecks, NO_DAEMON, retainedOf } from "./evidence.mjs";
+import { unanswered } from "./squeal-text.mjs";
 import { SKILL_PATH, transcriptOf } from "./transcript.mjs";
 
 /** The instruction file forbids editing these (the fixture's `BASE.md`). */
@@ -63,6 +64,9 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
     const summaries = completedRuns(k.out);
     // Each retry and service start takes its own reply from the call's output, in order (006-57 B2).
     const replies = { retry: retryReplies(k.out), service: serviceReplies(k.out) };
+    // The call's first Squeal commands that another program answered (row 006-62).
+    const executed = actions.filter((a) => a.kind === "squeal" && a.execution === "executed");
+    let foreign = unanswered(k.out, k.exit ?? null, executed.length);
     for (const a of actions) {
       const here = { t: k.t, n: n++, call, ms: k.ms ?? null, exit: k.exit ?? null };
       if (a.execution !== "executed") {
@@ -71,10 +75,12 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
         continue;
       }
       if (a.kind === "squeal") {
+        const answered = foreign-- <= 0;
         const noDaemon = NO_DAEMON.test(k.out ?? "");
-        pulls.push({ ...here, sub: a.sub, wait: a.wait, all: a.all, slow: a.slow, noDaemon });
+        if (answered)
+          pulls.push({ ...here, sub: a.sub, wait: a.wait, all: a.all, slow: a.slow, noDaemon });
         // `squeal why` explains a result; it is not evidence of the current one (B2).
-        if (a.sub === "status" || a.sub === "run")
+        if (answered && (a.sub === "status" || a.sub === "run"))
           at(k.t + (k.ms ?? 0), { from: "pull", sub: a.sub, text: k.out ?? "" }, 1);
         // In the call's order with its other actions, as a run or an edit (review 006-57 B2).
         if (a.sub === "retry") at(k.t, retryStep(a, replies.retry));

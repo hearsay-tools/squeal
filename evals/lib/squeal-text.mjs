@@ -6,6 +6,33 @@
 export const NO_DAEMON =
   /Not validated: no daemon|Returned without a daemon|^Daemon: no daemon|No daemon (?:is running|has validated)|no daemon is validating|A daemon is starting/m;
 
+/**
+ * Another program's reply in place of Squeal's, one per call it answered (row 006-62): the
+ * terminal launcher finding no plugin (spec 005 D3), the shell finding no `squeal`, Node finding
+ * no CLI file.
+ */
+const FOREIGN =
+  /^(?:squeal: no squeal@hearsay plugin is installed|.*\bsqueal(?:\.mjs)?: (?:command )?not found|.*Cannot find module '[^']*squeal\.mjs')/gm;
+/**
+ * A line only Squeal prints: a header, a count, a reply to a request, an explanation, or its own
+ * refusal (`squeal: no daemon running for …`, `squeal run: unknown argument …`).
+ */
+const SQUEALS =
+  /^(?:Revision:? \d|Known failures: \d|Run requested|Checkpoint |Retry (?:queued|withdrawn|asked)|Not retried|No pending retry|No verdict: |No daemon running|No slow files|Not validated|Check: |SQUEAL ·|Slow tier|Returned |squeal(?: [a-z-]+)?: |\s*"knownFailures": )/m;
+
+/**
+ * How many of a call's `n` Squeal commands Squeal never answered, from the call's output and
+ * exit (row 006-62): all of them for a non-zero exit with no Squeal text, else one per foreign
+ * reply. Such a command is no pull, wait or slow run through Squeal.
+ */
+export function unanswered(out, exit, n) {
+  const text = String(out ?? "");
+  const own = text.replace(FOREIGN, "");
+  const squeals = SQUEALS.test(own) || squealEvidence(own, "pull") !== null;
+  if (Number.isInteger(exit) && exit !== 0 && !squeals) return n;
+  return Math.min(n, text.match(FOREIGN)?.length ?? 0);
+}
+
 const count = (re, text) => {
   const m = re.exec(text);
   return m ? Number(m[1]) : 0;
