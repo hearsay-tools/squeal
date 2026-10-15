@@ -1,5 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
+import { askRetry } from "../../src/core/retry/index.js";
 import { storePaths } from "../../src/core/store/index.js";
 import { refinedMetaKey, type TestFileRef } from "../../src/core/types/index.js";
 import {
@@ -145,6 +146,30 @@ describe("Stop's wait for pending checks (review wave 4.5, S1)", () => {
     } finally {
       clearTimeout(refined);
     }
+  });
+});
+
+describe("Stop never waits for a retry (spec 001 D6, 001-368)", () => {
+  it("does not wait while a retry of a current failure is queued at its key", async () => {
+    const r = await twoFailures();
+    r.policy({ stop: { waitMs: 600 } });
+    askRetry(r.store, {
+      testFile: SLOW_FILE,
+      key: "s1",
+      session: "s",
+      reason: "environment",
+      at: Date.now(),
+      worktreeId: r.worktreeId,
+    });
+    // What the daemon's claim leaves: the forced run queued at the key its FAIL is current at.
+    queue(r, SLOW_FILE, "s1");
+    const started = performance.now();
+    await runHook("stop", recorded("stop", r.root), deps());
+    expect(performance.now() - started).toBeLessThan(500);
+    expect(r.store.knownStates.get(r.worktreeId, SLOW)).toMatchObject({
+      outcome: "fail",
+      validity: "current",
+    });
   });
 });
 
