@@ -10,6 +10,7 @@ import type {
   RunReport,
   TestFileRef,
 } from "../../../core/types/index.js";
+import { withRecorderSignatures } from "../../observe/index.js";
 import { projectEnv } from "../recorders.js";
 import { type NodeTestRuntime, nodeTestRuntime } from "../runtime.js";
 import { parseEvents } from "./events.js";
@@ -155,7 +156,7 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
 
   const completed = runs.filter((r) => r.stream?.completed === true);
   const { end, failure } = ending(runs, completed.length, expired, options.timeoutMs, node);
-  const report: RunReport = {
+  const built: RunReport = {
     end,
     durationMs: Math.round(performance.now() - started),
     completedFiles: completed.map((r) => r.testFile),
@@ -168,6 +169,10 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
         : [{ testFile: r.testFile, durationMs: r.stream.durationMs }],
     ),
   };
+  // Spec 001 D11 Fidelity (task 001-390): a recorder signature says so; in `NODE_OPTIONS` only
+  // when `childEnv` or the warm-up put a recorder there, argv's reaching no child.
+  const inNodeOptions = reads !== null || (env.NODE_OPTIONS ?? "").includes(runtime.recorder);
+  const report = withRecorderSignatures(built, inNodeOptions);
   const observed = completed.flatMap((r) => {
     const files = graphs(options.logDir, r.index);
     const closure = observedClosure(r.testFile, r.absolute, files, preloads, paths);
