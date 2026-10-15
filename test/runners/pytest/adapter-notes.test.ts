@@ -43,7 +43,7 @@ const PROJECT: PytestProject = {
 const READY = 'pytest project "small": its Python environment is ready';
 const TOPIC = "pytest-environment:small";
 const NO_ENVIRONMENT =
-  'pytest project "small": no Python environment (looked at .venv, .pdm-python); run `uv sync` in the worktree root to create one. Its checks stay unknown until then.';
+  'pytest project "small": no Python environment (looked at .venv, .pdm-python), so Squeal runs none of its tests and inherits none of their results. Run `uv sync` in the worktree root to create one: Squeal then inherits the results other worktrees recorded for the same code and environment, and runs the rest.';
 
 /** The daemon's note callbacks over a real note store (`daemon.ts`, `#note`). */
 function daemonNotes(store: Store) {

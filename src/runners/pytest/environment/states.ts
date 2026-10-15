@@ -40,7 +40,7 @@ export function environmentState(root: AbsolutePath, project: PytestProject): En
     return {
       state: "none",
       command: discovery.command,
-      note: `pytest project "${project.name}": no Python environment (looked at ${discovery.looked.map((path) => displayDir(root, path)).join(", ")}); ${create(discovery, where)} Its checks stay unknown until then.`,
+      note: `pytest project "${project.name}": no Python environment (looked at ${discovery.looked.map((path) => displayDir(root, path)).join(", ")}), so Squeal runs none of its tests and inherits none of their results. ${create(discovery, where)}: Squeal then inherits the results other worktrees recorded for the same code and environment, and runs the rest.`,
     };
   }
   const editables = outsideEditables(root, discovery.env);
@@ -54,14 +54,15 @@ export function environmentState(root: AbsolutePath, project: PytestProject): En
 }
 
 /**
- * D2's no-environment instruction: the command a lockfile or requirements
+ * D2's no-environment instruction, the clause before what installing buys
+ * (task 007-44, open question 1): the command a lockfile or requirements
  * file names, else a new environment the project's own install fills
  * (task 007-39, lessons.md defect 9).
  */
 function create(discovery: Extract<Discovery, { kind: "none" }>, where: string): string {
-  if (discovery.from !== null) return `run \`${discovery.command}\` in ${where} to create one.`;
+  if (discovery.from !== null) return `Run \`${discovery.command}\` in ${where} to create one`;
   const venv = discovery.command.slice("python -m venv ".length);
-  return `no lockfile or requirements file names an install, so create \`${venv}\` in ${where} with the project's own install (\`${discovery.command}\`, then its documented \`pip install\` into \`${venv}/bin/pip\`).`;
+  return `No lockfile or requirements file names an install, so create \`${venv}\` in ${where} with the project's own install (\`${discovery.command}\`, then its documented \`pip install\` into \`${venv}/bin/pip\`)`;
 }
 
 /**
