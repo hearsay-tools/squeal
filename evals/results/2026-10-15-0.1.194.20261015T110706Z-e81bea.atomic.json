@@ -124,12 +124,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -211,17 +211,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -312,9 +325,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -363,9 +376,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -470,12 +483,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -575,17 +588,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -673,9 +699,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -698,9 +724,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -844,21 +870,50 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "edit",
      "path": "src/money.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 6,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "edit",
@@ -1069,9 +1124,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 1,
@@ -1138,9 +1193,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -1238,17 +1293,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -1340,6 +1408,22 @@
      "sub": "run"
     },
     {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
+    },
+    {
      "k": "retry",
      "paths": [
       "test/clock.test.ts",
@@ -1381,16 +1465,28 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current",
+       "retried": "load"
+      }
+     ],
      "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "verdict": "pass",
+     "files": [
+      "test/clock.test.ts"
+     ],
      "failing": []
     },
     {
@@ -1482,9 +1578,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 1,
@@ -1526,9 +1622,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 23,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -1547,9 +1643,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -1681,12 +1777,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -1717,17 +1813,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "squeal-run",
@@ -1854,9 +1963,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -1874,9 +1983,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -2023,12 +2132,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -2074,17 +2183,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "squeal-run",
@@ -2209,9 +2331,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -2260,9 +2382,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -2412,21 +2534,50 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "edit",
      "path": "src/money.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "squeal-run",
@@ -2600,9 +2751,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 1,
@@ -2664,9 +2815,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -2801,17 +2952,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -2903,6 +3067,22 @@
      "sub": "run"
     },
     {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
+    },
+    {
      "k": "retry",
      "paths": [
       "test/clock.test.ts",
@@ -2944,16 +3124,28 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current",
+       "retried": "load"
+      }
+     ],
      "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "verdict": "pass",
+     "files": [
+      "test/clock.test.ts"
+     ],
      "failing": []
     },
     {
@@ -3045,9 +3237,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 1,
@@ -3089,9 +3281,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 5,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -3124,9 +3316,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -3258,12 +3450,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -3363,17 +3555,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -3461,9 +3666,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -3481,9 +3686,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -3630,12 +3835,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -3681,17 +3886,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "squeal-run",
@@ -3818,9 +4036,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -3869,9 +4087,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -4052,17 +4270,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -4098,6 +4329,22 @@
       "test/clock.test.ts"
      ],
      "sub": "status"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "squeal-run",
@@ -4364,9 +4611,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 1,
@@ -4429,9 +4676,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -4529,21 +4776,50 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "edit",
      "path": "src/money.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 6,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "squeal-run",
@@ -4706,16 +4982,28 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current",
+       "retried": "load"
+      }
+     ],
      "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "verdict": "pass",
+     "files": [
+      "test/clock.test.ts"
+     ],
      "failing": []
     },
     {
@@ -4808,9 +5096,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 1,
@@ -4852,9 +5140,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 6,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -4887,9 +5175,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -5023,12 +5311,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -5110,17 +5398,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -5209,9 +5510,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -5265,9 +5566,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -5377,12 +5678,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -5428,17 +5729,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -5521,9 +5835,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -5572,9 +5886,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -5723,21 +6037,50 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "edit",
      "path": "src/money.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 6,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "edit",
@@ -5935,9 +6278,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 1,
@@ -5999,9 +6342,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -6136,17 +6479,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -6238,6 +6594,22 @@
      "sub": "run"
     },
     {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
+    },
+    {
      "k": "retry",
      "paths": [
       "test/clock.test.ts",
@@ -6279,16 +6651,28 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current",
+       "retried": "load"
+      }
+     ],
      "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "verdict": "pass",
+     "files": [
+      "test/clock.test.ts"
+     ],
      "failing": []
     },
     {
@@ -6380,9 +6764,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 1,
@@ -6444,9 +6828,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -6538,9 +6922,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -6556,7 +6940,7 @@
       }
      ],
      "failures": 0,
-     "verdict": "unknown",
+     "verdict": "pass",
      "files": [
       "test/clock.test.ts"
      ],
@@ -6658,12 +7042,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -6694,17 +7078,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "squeal-run",
@@ -6831,9 +7228,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -6887,9 +7284,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -6999,12 +7396,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -7104,17 +7501,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -7202,9 +7612,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -7253,9 +7663,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -7405,21 +7815,50 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "edit",
      "path": "src/money.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "edit",
@@ -7598,9 +8037,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 1,
@@ -7667,9 +8106,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -7799,21 +8238,50 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "edit",
      "path": "src/money.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 23,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "squeal",
@@ -7924,16 +8392,28 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current",
+       "retried": "load"
+      }
+     ],
      "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "verdict": "pass",
+     "files": [
+      "test/clock.test.ts"
+     ],
      "failing": []
     },
     {
@@ -8028,9 +8508,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 1,
@@ -8061,9 +8541,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 5,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -8093,9 +8573,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -8228,12 +8708,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -8279,17 +8759,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "squeal-run",
@@ -8415,9 +8908,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -8471,9 +8964,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -8583,12 +9076,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -8688,17 +9181,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -8786,9 +9292,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -8837,9 +9343,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -8989,21 +9495,50 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "edit",
      "path": "src/money.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "squeal-run",
@@ -9159,9 +9694,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 1,
@@ -9223,9 +9758,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -9361,21 +9896,50 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "edit",
      "path": "src/money.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "squeal-run",
@@ -9504,16 +10068,28 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current",
+       "retried": "load"
+      }
+     ],
      "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "verdict": "pass",
+     "files": [
+      "test/clock.test.ts"
+     ],
      "failing": []
     },
     {
@@ -9605,9 +10181,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 1,
@@ -9638,9 +10214,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 23,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -9684,9 +10260,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -9822,12 +10398,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -9856,17 +10432,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "squeal-run",
@@ -9997,9 +10586,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -10044,9 +10633,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -10194,12 +10783,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -10245,17 +10834,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -10338,9 +10940,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -10363,9 +10965,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -10542,21 +11144,50 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "edit",
      "path": "src/money.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "edit",
@@ -10810,9 +11441,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 1,
@@ -10875,9 +11506,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -10975,17 +11606,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "squeal-run",
@@ -11108,6 +11752,22 @@
      "sub": "status"
     },
     {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
+    },
+    {
      "k": "squeal-run",
      "all": false,
      "slow": true
@@ -11185,16 +11845,28 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current",
+       "retried": "load"
+      }
+     ],
      "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "verdict": "pass",
+     "files": [
+      "test/clock.test.ts"
+     ],
      "failing": []
     },
     {
@@ -11289,9 +11961,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 1,
@@ -11322,9 +11994,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 23,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -11354,9 +12026,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -11488,12 +12160,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -11522,17 +12194,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
-     "failures": 0,
-     "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "run",
@@ -11679,9 +12364,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -11699,9 +12384,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -11848,12 +12533,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -11899,17 +12584,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "squeal-run",
@@ -12035,9 +12733,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -12086,9 +12784,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -12237,21 +12935,50 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "edit",
      "path": "src/money.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 5,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "squeal",
@@ -12356,16 +13083,28 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current",
+       "retried": "load"
+      }
+     ],
      "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "verdict": "pass",
+     "files": [
+      "test/clock.test.ts"
+     ],
      "failing": []
     },
     {
@@ -12462,9 +13201,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 1,
@@ -12526,9 +13265,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -12664,17 +13403,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -12766,6 +13518,22 @@
      "sub": "run"
     },
     {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
+    },
+    {
      "k": "retry",
      "paths": [
       "test/clock.test.ts",
@@ -12807,16 +13575,28 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current",
+       "retried": "load"
+      }
+     ],
      "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "verdict": "pass",
+     "files": [
+      "test/clock.test.ts"
+     ],
      "failing": []
     },
     {
@@ -12908,9 +13688,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 1,
@@ -12952,9 +13732,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -12970,7 +13750,7 @@
       }
      ],
      "failures": 0,
-     "verdict": "unknown",
+     "verdict": "pass",
      "files": [
       "test/clock.test.ts"
      ],
@@ -12997,9 +13777,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -13138,12 +13918,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -13189,17 +13969,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "squeal-run",
@@ -13327,9 +14120,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -13383,9 +14176,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": true,
      "known": null,
@@ -13495,12 +14288,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -13551,17 +14344,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -13649,9 +14455,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -13700,9 +14506,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -13851,17 +14657,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -13897,6 +14716,22 @@
       "test/clock.test.ts"
      ],
      "sub": "status"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "squeal-run",
@@ -14074,9 +14909,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 1,
@@ -14138,9 +14973,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -14275,17 +15110,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -14377,6 +15225,22 @@
      "sub": "run"
     },
     {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
+    },
+    {
      "k": "retry",
      "paths": [
       "test/clock.test.ts",
@@ -14418,16 +15282,28 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current",
+       "retried": "load"
+      }
+     ],
      "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "verdict": "pass",
+     "files": [
+      "test/clock.test.ts"
+     ],
      "failing": []
     },
     {
@@ -14519,9 +15395,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 1,
@@ -14563,9 +15439,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 23,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -14584,9 +15460,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -14718,12 +15594,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -14823,17 +15699,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -14923,9 +15812,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -14939,9 +15828,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -15088,12 +15977,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -15139,17 +16028,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/rates.test.ts > converts euros to dollars at today's rate",
+       "file": "test/rates.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 1,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/rates.test.ts"
+     ],
+     "failing": [
+      "test/rates.test.ts"
+     ]
     },
     {
      "k": "squeal-run",
@@ -15274,9 +16176,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 0,
@@ -15299,9 +16201,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -15445,17 +16347,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -15491,6 +16406,22 @@
       "test/clock.test.ts"
      ],
      "sub": "status"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
     },
     {
      "k": "edit",
@@ -15613,16 +16544,28 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current",
+       "retried": "load"
+      }
+     ],
      "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "verdict": "pass",
+     "files": [
+      "test/clock.test.ts"
+     ],
      "failing": []
     },
     {
@@ -15717,9 +16660,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 1,
@@ -15750,9 +16693,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -15919,17 +16862,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
-     "checks": [],
-     "failures": 0,
+     "known": 1,
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "fail",
+       "from": null,
+       "observed": 0,
+       "validity": "current"
+      }
+     ],
+     "failures": 1,
      "verdict": "unknown",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/clock.test.ts"
+     ],
+     "failing": [
+      "test/clock.test.ts"
+     ]
     },
     {
      "k": "edit",
@@ -16021,6 +16977,22 @@
      "sub": "run"
     },
     {
+     "k": "squeal",
+     "from": "push",
+     "revision": 1,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 1,
+     "verdict": "fail",
+     "files": [],
+     "failing": []
+    },
+    {
      "k": "retry",
      "paths": [
       "test/clock.test.ts",
@@ -16062,16 +17034,28 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
+       "file": "test/clock.test.ts",
+       "to": "pass",
+       "from": "fail",
+       "observed": null,
+       "validity": "current",
+       "retried": "load"
+      }
+     ],
      "failures": 0,
-     "verdict": "unknown",
-     "files": [],
+     "verdict": "pass",
+     "files": [
+      "test/clock.test.ts"
+     ],
      "failing": []
     },
     {
@@ -16163,9 +17147,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
      "slow": true,
      "daemon": false,
      "known": 1,
@@ -16196,9 +17180,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 23,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -16237,9 +17221,9 @@
      "k": "squeal",
      "from": "push",
      "revision": 1,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
      "slow": false,
      "daemon": true,
      "known": null,
@@ -16381,5 +17365,95 @@
   }
  },
  "settleS": 180,
- "repetitions": 10
+ "repetitions": 10,
+ "regraded": [
+  {
+   "by": "006-82",
+   "date": "2026-10-15",
+   "changed": [],
+   "evidence": [
+    "a10-retry-real.p0.claude-claude-haiku-5-5.e-medium.r1",
+    "a10-retry-real.p0.codex-gpt-6-luna.e-medium.r1",
+    "a10-retry-real.p0.claude-claude-sonnet-5-5.e-medium.r1",
+    "a10-retry-real.p0.codex-gpt-6.1-sol.e-medium.r1",
+    "a11-inherited-flake.p0.claude-claude-haiku-5-5.e-medium.r1",
+    "a11-inherited-flake.p0.codex-gpt-6-luna.e-medium.r1",
+    "a11-inherited-flake.p0.claude-claude-sonnet-5-5.e-medium.r1",
+    "a11-inherited-flake.p0.codex-gpt-6.1-sol.e-medium.r1",
+    "a10-retry-real.p0.claude-claude-haiku-5-5.e-medium.r2",
+    "a10-retry-real.p0.codex-gpt-6-luna.e-medium.r2",
+    "a10-retry-real.p0.claude-claude-sonnet-5-5.e-medium.r2",
+    "a10-retry-real.p0.codex-gpt-6.1-sol.e-medium.r2",
+    "a11-inherited-flake.p0.claude-claude-haiku-5-5.e-medium.r2",
+    "a11-inherited-flake.p0.codex-gpt-6-luna.e-medium.r2",
+    "a11-inherited-flake.p0.claude-claude-sonnet-5-5.e-medium.r2",
+    "a11-inherited-flake.p0.codex-gpt-6.1-sol.e-medium.r2",
+    "a10-retry-real.p0.claude-claude-haiku-5-5.e-medium.r3",
+    "a10-retry-real.p0.codex-gpt-6-luna.e-medium.r3",
+    "a10-retry-real.p0.claude-claude-sonnet-5-5.e-medium.r3",
+    "a10-retry-real.p0.codex-gpt-6.1-sol.e-medium.r3",
+    "a11-inherited-flake.p0.claude-claude-haiku-5-5.e-medium.r3",
+    "a11-inherited-flake.p0.codex-gpt-6-luna.e-medium.r3",
+    "a11-inherited-flake.p0.claude-claude-sonnet-5-5.e-medium.r3",
+    "a11-inherited-flake.p0.codex-gpt-6.1-sol.e-medium.r3",
+    "a10-retry-real.p0.claude-claude-haiku-5-5.e-medium.r4",
+    "a10-retry-real.p0.codex-gpt-6-luna.e-medium.r4",
+    "a10-retry-real.p0.claude-claude-sonnet-5-5.e-medium.r4",
+    "a10-retry-real.p0.codex-gpt-6.1-sol.e-medium.r4",
+    "a11-inherited-flake.p0.claude-claude-haiku-5-5.e-medium.r4",
+    "a11-inherited-flake.p0.codex-gpt-6-luna.e-medium.r4",
+    "a11-inherited-flake.p0.claude-claude-sonnet-5-5.e-medium.r4",
+    "a11-inherited-flake.p0.codex-gpt-6.1-sol.e-medium.r4",
+    "a10-retry-real.p0.claude-claude-haiku-5-5.e-medium.r5",
+    "a10-retry-real.p0.codex-gpt-6-luna.e-medium.r5",
+    "a10-retry-real.p0.claude-claude-sonnet-5-5.e-medium.r5",
+    "a10-retry-real.p0.codex-gpt-6.1-sol.e-medium.r5",
+    "a11-inherited-flake.p0.claude-claude-haiku-5-5.e-medium.r5",
+    "a11-inherited-flake.p0.codex-gpt-6-luna.e-medium.r5",
+    "a11-inherited-flake.p0.claude-claude-sonnet-5-5.e-medium.r5",
+    "a11-inherited-flake.p0.codex-gpt-6.1-sol.e-medium.r5",
+    "a10-retry-real.p0.claude-claude-haiku-5-5.e-medium.r6",
+    "a10-retry-real.p0.codex-gpt-6-luna.e-medium.r6",
+    "a10-retry-real.p0.claude-claude-sonnet-5-5.e-medium.r6",
+    "a10-retry-real.p0.codex-gpt-6.1-sol.e-medium.r6",
+    "a11-inherited-flake.p0.claude-claude-haiku-5-5.e-medium.r6",
+    "a11-inherited-flake.p0.codex-gpt-6-luna.e-medium.r6",
+    "a11-inherited-flake.p0.claude-claude-sonnet-5-5.e-medium.r6",
+    "a11-inherited-flake.p0.codex-gpt-6.1-sol.e-medium.r6",
+    "a10-retry-real.p0.claude-claude-haiku-5-5.e-medium.r7",
+    "a10-retry-real.p0.codex-gpt-6-luna.e-medium.r7",
+    "a10-retry-real.p0.claude-claude-sonnet-5-5.e-medium.r7",
+    "a10-retry-real.p0.codex-gpt-6.1-sol.e-medium.r7",
+    "a11-inherited-flake.p0.claude-claude-haiku-5-5.e-medium.r7",
+    "a11-inherited-flake.p0.codex-gpt-6-luna.e-medium.r7",
+    "a11-inherited-flake.p0.claude-claude-sonnet-5-5.e-medium.r7",
+    "a11-inherited-flake.p0.codex-gpt-6.1-sol.e-medium.r7",
+    "a10-retry-real.p0.claude-claude-haiku-5-5.e-medium.r8",
+    "a10-retry-real.p0.codex-gpt-6-luna.e-medium.r8",
+    "a10-retry-real.p0.claude-claude-sonnet-5-5.e-medium.r8",
+    "a10-retry-real.p0.codex-gpt-6.1-sol.e-medium.r8",
+    "a11-inherited-flake.p0.claude-claude-haiku-5-5.e-medium.r8",
+    "a11-inherited-flake.p0.codex-gpt-6-luna.e-medium.r8",
+    "a11-inherited-flake.p0.claude-claude-sonnet-5-5.e-medium.r8",
+    "a11-inherited-flake.p0.codex-gpt-6.1-sol.e-medium.r8",
+    "a10-retry-real.p0.claude-claude-haiku-5-5.e-medium.r9",
+    "a10-retry-real.p0.codex-gpt-6-luna.e-medium.r9",
+    "a10-retry-real.p0.claude-claude-sonnet-5-5.e-medium.r9",
+    "a10-retry-real.p0.codex-gpt-6.1-sol.e-medium.r9",
+    "a11-inherited-flake.p0.claude-claude-haiku-5-5.e-medium.r9",
+    "a11-inherited-flake.p0.codex-gpt-6-luna.e-medium.r9",
+    "a11-inherited-flake.p0.claude-claude-sonnet-5-5.e-medium.r9",
+    "a11-inherited-flake.p0.codex-gpt-6.1-sol.e-medium.r9",
+    "a10-retry-real.p0.claude-claude-haiku-5-5.e-medium.r10",
+    "a10-retry-real.p0.codex-gpt-6-luna.e-medium.r10",
+    "a10-retry-real.p0.claude-claude-sonnet-5-5.e-medium.r10",
+    "a10-retry-real.p0.codex-gpt-6.1-sol.e-medium.r10",
+    "a11-inherited-flake.p0.claude-claude-haiku-5-5.e-medium.r10",
+    "a11-inherited-flake.p0.codex-gpt-6-luna.e-medium.r10",
+    "a11-inherited-flake.p0.claude-claude-sonnet-5-5.e-medium.r10",
+    "a11-inherited-flake.p0.codex-gpt-6.1-sol.e-medium.r10"
+   ],
+   "note": "Graded again from the run's kept raw cells (spec 006 D4, D10) under rows 006-77 and 006-82 (landed 39c28f7c and d589ac24): the parser now reads counts that name their parts, a Claude Code hook's JSON (only the reasons Claude is shown) and a status cut above its Revision line; under 006-62 a Squeal call Squeal did not answer earns no credit. 'changed' names cells whose grade changed, 'evidence' cells whose retained timeline alone changed. Judge verdicts, transcripts and costs are kept."
+  }
+ ]
 }

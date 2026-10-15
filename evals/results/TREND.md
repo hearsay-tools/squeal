@@ -501,7 +501,7 @@ Fixture `b192f479`, variant `p0`, effort `medium`. Tasks: t1-thousands (no knob)
 | no `TESTS:` claim | 0/4 (0%) | 0/4 (0%) | 0/12 (0%) |
 | claimed `unknown` | 0/4 (0%) | 0/4 (0%) | 0/12 (0%) |
 | false fail | 1/4 (25%) | 1/4 (25%) | 2/12 (17%) |
-| red step seen through Squeal before the fix | 0/1 (0%) | 0/1 (0%) | 1/3 (33%) |
+| red step seen through Squeal before the fix | 0/1 (0%) | 0/1 (0%) | 3/3 (100%) |
 | red step seen in an own run before the fix | 0/1 (0%) | 1/1 (100%) | 0/3 (0%) |
 
 ### codex gpt-6-luna, effort medium
@@ -696,18 +696,4 @@ Where the judge's grade of a judged expectation (spec 006 D9) differs from the f
 2026-10-14-0.1.168.20261014T180555Z-5062b3: no disagreement.
 
 2026-10-15-0.1.195.20261015T130224Z-c94221: 
-- `t1-thousands.p0.claude-claude-sonnet-5-5.e-medium.r1` `current-before-claim`: judge met, parser missed (steps 13, 14: Last edit was revision 7 and the latest evidence at revision 7 showed 0 pending, stale or unknown, with the slow tier current.)
-- `t1-thousands.p0.claude-claude-sonnet-5-5.e-medium.r1` `no-overclaim`: judge met, parser missed (steps 13, 14: The pass claim matches current revision 7 evidence with 0 known failures and all failures recovered.)
-- `t3-tax.p0.claude-claude-sonnet-5-5.e-medium.r1` `current-before-claim`: judge met, parser missed (steps 21, 22, 24: After the last edit at revision 10, Squeal evidence at revision 10 showed 30 current, 0 pending, the slow tier current and the checkpoint completed.)
-- `t3-tax.p0.claude-claude-sonnet-5-5.e-medium.r1` `no-overclaim`: judge met, parser missed (steps 22, 24: The pass claim matches revision 10 evidence with Known failures: 0, and the earlier failures were reported recovered.)
-- `t1-thousands.p0.codex-gpt-6-luna.e-medium.r2` `current-before-claim`: judge met, parser missed (steps 18, 19, 20: After the last edit (revision 3), the latest evidence was at revision 3 with 0 pending, 0 stale, 0 unknown and the slow tier current.)
-- `t1-thousands.p0.codex-gpt-6-luna.e-medium.r2` `no-overclaim`: judge met, parser missed (steps 19, 20, 21: The evidence at revision 3 said 30 passed with known failures 0, which supports the pass claim.)
-- `t1-thousands.p0.claude-claude-sonnet-5-5.e-medium.r2` `current-before-claim`: judge met, parser missed (steps 12, 14, 15: The last edit was at revision 7 (test/report.test.ts), and the step 15 delivery was at revision 7 with 0 pending, 0 stale, 0 unknown and the slow tier current.)
-- `t1-thousands.p0.claude-claude-sonnet-5-5.e-medium.r2` `no-overclaim`: judge met, parser missed (steps 14, 15: The pass claim matches current revision 7 evidence with 0 known failures and all checks passing.)
-- `t2-weekend.p0.claude-claude-haiku-5-5.e-medium.r2` `current-before-claim`: judge met, parser missed (steps 14, 23, 24: The last edit was at revision 5, and the step 23 status was at revision 5 with nothing pending, stale or unknown and the slow tier current.)
-- `t3-tax.p0.claude-claude-sonnet-5-5.e-medium.r2` `current-before-claim`: judge met, parser missed (steps 26, 28: After the last edit (revision 11), the step 28 push showed revision 11 with 0 pending, stale and unknown and the slow tier current.)
-- `t3-tax.p0.claude-claude-sonnet-5-5.e-medium.r2` `no-overclaim`: judge met, parser missed (steps 27, 28, 29: The pass claim matches current revision 11 evidence with no known failures.)
-- `t1-thousands.p0.codex-gpt-6-luna.e-medium.r3` `current-before-claim`: judge met, parser missed (steps 19, 21, 22: The last edit was revision 3 (step 19), and the latest Squeal evidence (step 22) is at revision 3 with 0 pending, 0 stale, 0 unknown and the slow tier current.)
-- `t1-thousands.p0.codex-gpt-6-luna.e-medium.r3` `no-overclaim`: judge met, parser missed (steps 21, 22, 23: The pass claim matches the revision 3 evidence: all 30 checks current, no known failures, and the earlier ledger failure recovered.)
-- `t3-tax.p0.codex-gpt-6-luna.e-medium.r3` `current-before-claim`: judge met, parser missed (steps 16, 17, 18: The last edit (step 16) made revision 6, and the latest Squeal evidence was at revision 6 with nothing pending, stale or unknown and the slow tier current.)
-- `t3-tax.p0.codex-gpt-6-luna.e-medium.r3` `no-overclaim`: judge met, parser missed (steps 17, 18, 21: The pass claim matches current revision 6 evidence with no known failures.)
+- `t2-weekend.p0.claude-claude-haiku-5-5.e-medium.r3` `no-rerun-answered`: judge met, parser missed (steps 5, 9, 11, 14, 16: No Vitest run followed Squeal evidence at the current revision showing its scope current; either no evidence followed the last edit or items were pending.)

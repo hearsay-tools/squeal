@@ -105,12 +105,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -134,6 +134,22 @@
       "test/clock.test.ts > due dates > loads the holiday calendar within its budget",
       "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices"
      ]
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "run",
@@ -221,17 +237,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 4,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices",
+       "file": "test/slow/ledger.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 4,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/slow/ledger.test.ts"
+     ],
+     "failing": [
+      "test/slow/ledger.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -331,12 +360,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -363,6 +392,22 @@
      "files": [],
      "failing": [],
      "sub": "status"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "squeal-run",
@@ -404,17 +449,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices",
+       "file": "test/slow/ledger.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/slow/ledger.test.ts"
+     ],
+     "failing": [
+      "test/slow/ledger.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -503,12 +561,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -590,17 +648,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices",
+       "file": "test/slow/ledger.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/slow/ledger.test.ts"
+     ],
+     "failing": [
+      "test/slow/ledger.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -689,12 +760,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -776,17 +847,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices",
+       "file": "test/slow/ledger.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/slow/ledger.test.ts"
+     ],
+     "failing": [
+      "test/slow/ledger.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -873,12 +957,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -888,6 +972,22 @@
     {
      "k": "edit",
      "path": "src/invoice.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "squeal",
@@ -946,17 +1046,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices",
+       "file": "test/slow/ledger.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/slow/ledger.test.ts"
+     ],
+     "failing": [
+      "test/slow/ledger.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -1051,12 +1164,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -1083,6 +1196,22 @@
      "files": [],
      "failing": [],
      "sub": "status"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "squeal-run",
@@ -1124,17 +1253,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices",
+       "file": "test/slow/ledger.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/slow/ledger.test.ts"
+     ],
+     "failing": [
+      "test/slow/ledger.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -1223,12 +1365,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -1310,17 +1452,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices",
+       "file": "test/slow/ledger.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/slow/ledger.test.ts"
+     ],
+     "failing": [
+      "test/slow/ledger.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -1409,12 +1564,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -1496,17 +1651,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices",
+       "file": "test/slow/ledger.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/slow/ledger.test.ts"
+     ],
+     "failing": [
+      "test/slow/ledger.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -1593,12 +1761,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -1625,6 +1793,22 @@
      "files": [],
      "failing": [],
      "sub": "status"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "squeal-run",
@@ -1666,17 +1850,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices",
+       "file": "test/slow/ledger.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/slow/ledger.test.ts"
+     ],
+     "failing": [
+      "test/slow/ledger.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -1767,12 +1964,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -1854,17 +2051,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices",
+       "file": "test/slow/ledger.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/slow/ledger.test.ts"
+     ],
+     "failing": [
+      "test/slow/ledger.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -1951,12 +2161,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -1966,6 +2176,22 @@
     {
      "k": "edit",
      "path": "src/invoice.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "squeal",
@@ -2024,17 +2250,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices",
+       "file": "test/slow/ledger.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/slow/ledger.test.ts"
+     ],
+     "failing": [
+      "test/slow/ledger.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -2125,12 +2364,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -2212,17 +2451,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices",
+       "file": "test/slow/ledger.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/slow/ledger.test.ts"
+     ],
+     "failing": [
+      "test/slow/ledger.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -2310,12 +2562,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -2325,6 +2577,22 @@
     {
      "k": "edit",
      "path": "src/invoice.ts"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "squeal",
@@ -2383,17 +2651,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices",
+       "file": "test/slow/ledger.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/slow/ledger.test.ts"
+     ],
+     "failing": [
+      "test/slow/ledger.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -2483,12 +2764,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -2515,6 +2796,22 @@
      "files": [],
      "failing": [],
      "sub": "status"
+    },
+    {
+     "k": "squeal",
+     "from": "push",
+     "revision": 2,
+     "pending": 2,
+     "stale": 0,
+     "unknown": 0,
+     "slow": false,
+     "daemon": true,
+     "known": null,
+     "checks": [],
+     "failures": 0,
+     "verdict": "unknown",
+     "files": [],
+     "failing": []
     },
     {
      "k": "squeal-run",
@@ -2556,17 +2853,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices",
+       "file": "test/slow/ledger.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/slow/ledger.test.ts"
+     ],
+     "failing": [
+      "test/slow/ledger.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -2655,12 +2965,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -2711,17 +3021,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices",
+       "file": "test/slow/ledger.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/slow/ledger.test.ts"
+     ],
+     "failing": [
+      "test/slow/ledger.test.ts"
+     ]
     },
     {
      "k": "squeal",
@@ -2842,12 +3165,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -2929,17 +3252,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices",
+       "file": "test/slow/ledger.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/slow/ledger.test.ts"
+     ],
+     "failing": [
+      "test/slow/ledger.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -3026,12 +3362,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -3113,17 +3449,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices",
+       "file": "test/slow/ledger.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/slow/ledger.test.ts"
+     ],
+     "failing": [
+      "test/slow/ledger.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -3212,12 +3561,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -3299,17 +3648,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices",
+       "file": "test/slow/ledger.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/slow/ledger.test.ts"
+     ],
+     "failing": [
+      "test/slow/ledger.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -3396,12 +3758,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -3483,17 +3845,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices",
+       "file": "test/slow/ledger.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/slow/ledger.test.ts"
+     ],
+     "failing": [
+      "test/slow/ledger.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -3581,12 +3956,12 @@
      "k": "squeal",
      "from": "push",
      "revision": 0,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": false,
-     "known": null,
+     "known": 0,
      "checks": [],
      "failures": 0,
      "verdict": "unknown",
@@ -3668,17 +4043,30 @@
      "k": "squeal",
      "from": "push",
      "revision": 2,
-     "pending": null,
-     "stale": null,
-     "unknown": null,
-     "slow": null,
+     "pending": 0,
+     "stale": 0,
+     "unknown": 0,
+     "slow": true,
      "daemon": true,
      "known": null,
-     "checks": [],
+     "checks": [
+      {
+       "check": "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices",
+       "file": "test/slow/ledger.test.ts",
+       "to": "fail",
+       "from": "pass",
+       "observed": 2,
+       "validity": "current"
+      }
+     ],
      "failures": 1,
      "verdict": "fail",
-     "files": [],
-     "failing": []
+     "files": [
+      "test/slow/ledger.test.ts"
+     ],
+     "failing": [
+      "test/slow/ledger.test.ts"
+     ]
     },
     {
      "k": "claim"
@@ -3740,5 +4128,35 @@
   }
  },
  "settleS": 180,
- "repetitions": 10
+ "repetitions": 10,
+ "regraded": [
+  {
+   "by": "006-82",
+   "date": "2026-10-15",
+   "changed": [],
+   "evidence": [
+    "a8-load-hold.p0.claude-claude-haiku-5-5.e-medium.r1",
+    "a8-load-hold.p0.claude-claude-sonnet-5-5.e-medium.r1",
+    "a8-load-hold.p0.claude-claude-haiku-5-5.e-medium.r2",
+    "a8-load-hold.p0.claude-claude-sonnet-5-5.e-medium.r2",
+    "a8-load-hold.p0.claude-claude-haiku-5-5.e-medium.r3",
+    "a8-load-hold.p0.claude-claude-sonnet-5-5.e-medium.r3",
+    "a8-load-hold.p0.claude-claude-haiku-5-5.e-medium.r4",
+    "a8-load-hold.p0.claude-claude-sonnet-5-5.e-medium.r4",
+    "a8-load-hold.p0.claude-claude-haiku-5-5.e-medium.r5",
+    "a8-load-hold.p0.claude-claude-sonnet-5-5.e-medium.r5",
+    "a8-load-hold.p0.claude-claude-haiku-5-5.e-medium.r6",
+    "a8-load-hold.p0.claude-claude-sonnet-5-5.e-medium.r6",
+    "a8-load-hold.p0.claude-claude-haiku-5-5.e-medium.r7",
+    "a8-load-hold.p0.claude-claude-sonnet-5-5.e-medium.r7",
+    "a8-load-hold.p0.claude-claude-haiku-5-5.e-medium.r8",
+    "a8-load-hold.p0.claude-claude-sonnet-5-5.e-medium.r8",
+    "a8-load-hold.p0.claude-claude-haiku-5-5.e-medium.r9",
+    "a8-load-hold.p0.claude-claude-sonnet-5-5.e-medium.r9",
+    "a8-load-hold.p0.claude-claude-haiku-5-5.e-medium.r10",
+    "a8-load-hold.p0.claude-claude-sonnet-5-5.e-medium.r10"
+   ],
+   "note": "Graded again from the run's kept raw cells (spec 006 D4, D10) under rows 006-77 and 006-82 (landed 39c28f7c and d589ac24): the parser now reads counts that name their parts, a Claude Code hook's JSON (only the reasons Claude is shown) and a status cut above its Revision line; under 006-62 a Squeal call Squeal did not answer earns no credit. 'changed' names cells whose grade changed, 'evidence' cells whose retained timeline alone changed. Judge verdicts, transcripts and costs are kept."
+  }
+ ]
 }
