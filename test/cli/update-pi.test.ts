@@ -79,7 +79,7 @@ describe("squeal update in Pi", { timeout: 60_000 }, () => {
     );
     expect(r.stdout.split("\n").slice(-3)).toEqual([
       "Pi: Squeal 0.1.171, was 0.1.170",
-      "A running session keeps the version it loaded until it restarts, or until /reload-plugins in Claude Code or /reload in Pi.",
+      "A running session keeps the version it loaded until it restarts, or until /reload in Pi.",
       "",
     ]);
     expect(readdirSync(piHomeOf(m)).sort()).toEqual(["0.1.170", "0.1.171"]);
@@ -107,6 +107,9 @@ describe("squeal update in Pi", { timeout: 60_000 }, () => {
     expect(r.stdout).toContain("Claude Code: squeal@hearsay 0.1.171, was 0.1.170\n");
     expect(r.stdout).toContain("Codex: squeal@hearsay 0.1.171, was 0.1.170\n");
     expect(r.stdout).toContain("Pi: Squeal 0.1.171, was 0.1.170\n");
+    expect(r.stdout).toContain(
+      "A running session keeps the version it loaded until it restarts, or until /reload-plugins in Claude Code or /reload in Pi.\n",
+    );
     expect(r.stdout).not.toContain("different versions");
     expect(readdirSync(piHomeOf(m)).sort()).toEqual(["0.1.170", "0.1.171"]);
     expect(squealVersion(m)).toBe("0.1.171");
