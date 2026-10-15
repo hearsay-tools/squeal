@@ -419,6 +419,31 @@ export interface StatusSnapshot extends StatusHeader {
    * Squeal never runs (001 D11, task 001-349). Absent when none is listed.
    */
   readonly vitestExcluded?: readonly string[];
+  /**
+   * The agent's retries pending at this worktree's current keys (spec 001
+   * D6, 001-368), oldest first, with the host's load now when one waits for
+   * it. Absent when none is pending.
+   */
+  readonly pendingRetries?: PendingRetries;
+}
+
+/** `StatusSnapshot.pendingRetries`. */
+export interface PendingRetries {
+  readonly retries: readonly PendingRetry[];
+  /** The one-minute load average now; `null` where the platform has none. */
+  readonly loadAverage: number | null;
+  readonly cpus: number;
+}
+
+/** One test file's pending retry; several sessions' requests at its key are one run. */
+export interface PendingRetry {
+  readonly testFile: TestFileRef;
+  /** `environment` when any request at the key is: it runs at once. */
+  readonly reason: "load" | "environment";
+  readonly askedAt: EpochMs;
+  /** The worktree whose daemon queued its run; `null` while none has. */
+  readonly claimedBy: WorktreeId | null;
+  readonly requests: number;
 }
 
 /**
