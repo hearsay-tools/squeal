@@ -125,6 +125,7 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
     enumerate: (testFile: TestFileRef) => around(async () => (await adapter()).enumerate(testFile)),
     testFiles: () => around(async () => (await adapter()).testFiles()),
     omittedTestFiles: () => inner?.omittedTestFiles?.() ?? 0,
+    slowWidth: (testFiles) => inner?.slowWidth?.(testFiles) ?? testFiles.length,
     environment: () => around(async () => (await adapter()).environment()),
     run: (testFiles, runOptions) =>
       around(async () => (await adapter()).run(testFiles, runOptions)),
