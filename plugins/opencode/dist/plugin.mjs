@@ -177,13 +177,17 @@ function sessions(client) {
 // src/harness/opencode/turns.ts
 var PROMPT_DEADLINE_MS = 2e3;
 var WAIT_DEADLINE_MS = 36e5;
+var REPORT_OPENING = "SQUEAL \xB7 ";
 var textOf = (part) => {
   const p = part;
   return p?.type === "text" && typeof p.text === "string" ? p.text : null;
 };
+var storedBySqueal = (parts) => parts.length > 0 && parts.every(
+  (part) => part?.synthetic === true && textOf(part)?.startsWith(REPORT_OPENING) === true
+);
 function turns(client, ask) {
   const all = /* @__PURE__ */ new Map();
-  let stopped = false;
+  let stopped = null;
   const turnOf = (id) => {
     let turn = all.get(id);
     if (turn === void 0) {
@@ -200,25 +204,30 @@ function turns(client, ask) {
     }
     return turn;
   };
-  const current = (id, turn, epoch) => !stopped && all.get(id) === turn && turn.epoch === epoch;
+  const live = (id, turn, epoch) => all.get(id) === turn && turn.epoch === epoch;
+  const current = (id, turn, epoch) => stopped === null && live(id, turn, epoch);
   const cancelWait = (turn) => {
     turn.waiter?.abort();
     turn.waiter = null;
   };
   const say = async (id, turn, text, deadline, epoch) => {
-    const left = deadline();
-    if (left <= 0 || !current(id, turn, epoch)) {
+    const stop = stopped;
+    const left = (stop ?? deadline)();
+    if (left <= 0 || !live(id, turn, epoch)) {
       turn.held.push(text);
       return false;
     }
     turn.continued = true;
     turn.own = text;
     const cancel = new AbortController();
-    const parts = [{ type: "text", text }];
-    const result = await within(
-      client.session.promptAsync({ path: { id }, body: { parts }, signal: cancel.signal }),
-      left
-    );
+    const path = { id };
+    const signal = cancel.signal;
+    const sent = stop === null ? client.session.promptAsync({ path, body: { parts: [{ type: "text", text }] }, signal }) : client.session.prompt({
+      path,
+      body: { parts: [{ type: "text", text, synthetic: true }], noReply: true },
+      signal
+    });
+    const result = await within(sent, left);
     if (result !== null && result.error === void 0) return true;
     cancel.abort();
     turn.held.push(text);
@@ -233,7 +242,7 @@ function turns(client, ask) {
     void ask("wait", { consumer }, deadlineIn(WAIT_DEADLINE_MS), options).then(async (answer) => {
       if (turn.waiter !== waiter) return;
       turn.waiter = null;
-      if (answer?.text == null || stopped) return;
+      if (answer?.text == null || stopped !== null) return;
       const deadline = deadlineIn(PROMPT_DEADLINE_MS);
       await say(consumer.sessionId, turn, answer.text, deadline, turn.epoch);
     }).catch(() => {
@@ -286,8 +295,8 @@ function turns(client, ask) {
       if (turn !== void 0) cancelWait(turn);
       all.delete(id);
     },
-    stop() {
-      stopped = true;
+    stop(deadline) {
+      stopped = deadline;
       for (const turn of all.values()) cancelWait(turn);
     }
   };
@@ -299,6 +308,7 @@ var STOP_WAIT_CAP_MS = 1500;
 var IDLE_MARGIN_MS = 500;
 var IDLE_DEADLINE_MS = STOP_WAIT_CAP_MS + IDLE_MARGIN_MS;
 var DISPOSE_DEADLINE_MS = 3e3;
+var DISPOSE_END_MS = 500;
 var MAIN_AGENT = "main";
 var PRIMER_CAP_CHARS = 8e3;
 var joined = (first, second) => first === null ? second : second === null ? first : `${first}
@@ -309,6 +319,7 @@ function squealHooks(host) {
   const map = sessions(client);
   const registered = /* @__PURE__ */ new Map();
   const registering = /* @__PURE__ */ new Map();
+  const idling = /* @__PURE__ */ new Set();
   let primer = null;
   let stopWaitMs = null;
   let disposed = false;
@@ -358,7 +369,7 @@ function squealHooks(host) {
   const idle = async (id) => {
     const wait = Math.max(0, Math.min(stopWaitMs ?? STOP_WAIT_CAP_MS, STOP_WAIT_CAP_MS));
     const deadline = deadlineIn(wait + IDLE_MARGIN_MS);
-    const consumer = await identify(id, deadline);
+    const consumer = await map.consumerOf(id, deadline);
     if (consumer === null) return;
     if (consumer.agentId !== void 0) {
       registered.delete(keyOf(consumer));
@@ -391,14 +402,16 @@ function squealHooks(host) {
         } else if (event.type === "session.error" && sessionID !== void 0) {
           if (error?.name === "MessageAbortedError") turn.aborted(sessionID);
         } else if (event.type === "session.idle" && sessionID !== void 0) {
-          await idle(sessionID);
+          const ending = idle(sessionID);
+          idling.add(ending);
+          await ending.finally(() => idling.delete(ending));
         }
       } catch {
       }
     },
     async "chat.message"(input, output) {
       try {
-        if (disposed) return;
+        if (disposed || storedBySqueal(output.parts)) return;
         const deadline = deadlineIn(EVENT_DEADLINE_MS);
         const consumer = await identify(input.sessionID, deadline);
         if (consumer === null) return;
@@ -486,9 +499,9 @@ ${added}`;
       try {
         if (disposed) return;
         disposed = true;
-        turn.stop();
         const deadline = deadlineIn(DISPOSE_DEADLINE_MS);
-        await within(Promise.all(registering.values()), deadline());
+        turn.stop(() => deadline() - DISPOSE_END_MS);
+        await within(Promise.all([...registering.values(), ...idling]), deadline());
         const consumers = [...registered.values()];
         registered.clear();
         if (consumers.length === 0) return;

@@ -2316,10 +2316,10 @@ function cap(text2, max) {
   return text2.length <= max ? text2 : `${text2.slice(0, max - 3)}...`;
 }
 function excludedProjectsText(entries3) {
-  const quoted2 = (list2, join96) => {
+  const quoted2 = (list2, join97) => {
     const all = list2.map((entry3) => JSON.stringify(entry3));
     const last = all.pop();
-    return all.length === 0 ? last : `${all.join(", ")} ${join96} ${last}`;
+    return all.length === 0 ? last : `${all.join(", ")} ${join97} ${last}`;
   };
   const names3 = entries3.filter((entry3) => !entry3.includes("*"));
   const patterns = entries3.filter((entry3) => entry3.includes("*"));
@@ -13310,9 +13310,9 @@ var init_handler = __esm({
         if (this.fsw.closed) {
           return;
         }
-        const dirname39 = sp.dirname(file);
+        const dirname40 = sp.dirname(file);
         const basename22 = sp.basename(file);
-        const parent2 = this.fsw._getWatchedDir(dirname39);
+        const parent2 = this.fsw._getWatchedDir(dirname40);
         let prevStats = stats;
         if (parent2.has(basename22))
           return;
@@ -13339,7 +13339,7 @@ var init_handler = __esm({
                 prevStats = newStats2;
               }
             } catch (error) {
-              this.fsw._remove(dirname39, basename22);
+              this.fsw._remove(dirname40, basename22);
             }
           } else if (parent2.has(basename22)) {
             const at2 = newStats.atimeMs;
@@ -25607,7 +25607,7 @@ var require_CachedInputFileSystem = __commonJS({
   "node_modules/enhanced-resolve/lib/CachedInputFileSystem.js"(exports, module2) {
     "use strict";
     var { nextTick } = __require("process");
-    var dirname39 = (path) => {
+    var dirname40 = (path) => {
       let idx = path.length - 1;
       while (idx >= 0) {
         const char = path.charCodeAt(idx);
@@ -26032,12 +26032,12 @@ var require_CachedInputFileSystem = __commonJS({
           this.purge();
         } else if (typeof what === "string" || Buffer.isBuffer(what) || what instanceof URL || typeof what === "number") {
           const strWhat = typeof what !== "string" ? what.toString() : what;
-          this.purge(dirname39(strWhat));
+          this.purge(dirname40(strWhat));
         } else {
           const set = /* @__PURE__ */ new Set();
           for (const item of what) {
             const strItem = typeof item !== "string" ? item.toString() : item;
-            set.add(dirname39(strItem));
+            set.add(dirname40(strItem));
           }
           this.purge(set);
         }
@@ -26156,9 +26156,9 @@ var require_CachedInputFileSystem = __commonJS({
         const stat7 = this._statBackend.provide;
         this.stat = /** @type {FileSystem["stat"]} */
         stat7;
-        const statSync18 = this._statBackend.provideSync;
+        const statSync19 = this._statBackend.provideSync;
         this.statSync = /** @type {SyncFileSystem["statSync"]} */
-        statSync18;
+        statSync19;
         this._readdirBackend = createBackend(
           duration2,
           this.fileSystem.readdir,
@@ -26180,9 +26180,9 @@ var require_CachedInputFileSystem = __commonJS({
         const readFile9 = this._readFileBackend.provide;
         this.readFile = /** @type {FileSystem["readFile"]} */
         readFile9;
-        const readFileSync37 = this._readFileBackend.provideSync;
+        const readFileSync38 = this._readFileBackend.provideSync;
         this.readFileSync = /** @type {SyncFileSystem["readFileSync"]} */
-        readFileSync37;
+        readFileSync38;
         this._readJsonBackend = createBackend(
           duration2,
           // prettier-ignore
@@ -26275,7 +26275,7 @@ var require_CachedInputFileSystem = __commonJS({
 // node_modules/graceful-fs/polyfills.js
 var require_polyfills = __commonJS({
   "node_modules/graceful-fs/polyfills.js"(exports, module2) {
-    var constants4 = __require("constants");
+    var constants5 = __require("constants");
     var origCwd = process.cwd;
     var cwd = null;
     var platform = process.env.GRACEFUL_FS_PLATFORM || process.platform;
@@ -26299,7 +26299,7 @@ var require_polyfills = __commonJS({
     var chdir;
     module2.exports = patch;
     function patch(fs3) {
-      if (constants4.hasOwnProperty("O_SYMLINK") && process.version.match(/^v0\.6\.[0-2]|^v0\.5\./)) {
+      if (constants5.hasOwnProperty("O_SYMLINK") && process.version.match(/^v0\.6\.[0-2]|^v0\.5\./)) {
         patchLchmod(fs3);
       }
       if (!fs3.lutimes) {
@@ -26401,7 +26401,7 @@ var require_polyfills = __commonJS({
         fs4.lchmod = function(path, mode, callback2) {
           fs4.open(
             path,
-            constants4.O_WRONLY | constants4.O_SYMLINK,
+            constants5.O_WRONLY | constants5.O_SYMLINK,
             mode,
             function(err2, fd) {
               if (err2) {
@@ -26417,7 +26417,7 @@ var require_polyfills = __commonJS({
           );
         };
         fs4.lchmodSync = function(path, mode) {
-          var fd = fs4.openSync(path, constants4.O_WRONLY | constants4.O_SYMLINK, mode);
+          var fd = fs4.openSync(path, constants5.O_WRONLY | constants5.O_SYMLINK, mode);
           var threw = true;
           var ret;
           try {
@@ -26437,9 +26437,9 @@ var require_polyfills = __commonJS({
         };
       }
       function patchLutimes(fs4) {
-        if (constants4.hasOwnProperty("O_SYMLINK") && fs4.futimes) {
+        if (constants5.hasOwnProperty("O_SYMLINK") && fs4.futimes) {
           fs4.lutimes = function(path, at2, mt, cb) {
-            fs4.open(path, constants4.O_SYMLINK, function(er, fd) {
+            fs4.open(path, constants5.O_SYMLINK, function(er, fd) {
               if (er) {
                 if (cb) cb(er);
                 return;
@@ -26452,7 +26452,7 @@ var require_polyfills = __commonJS({
             });
           };
           fs4.lutimesSync = function(path, at2, mt) {
-            var fd = fs4.openSync(path, constants4.O_SYMLINK);
+            var fd = fs4.openSync(path, constants5.O_SYMLINK);
             var ret;
             var threw = true;
             try {
@@ -27488,7 +27488,7 @@ var require_path = __commonJS({
       }
       return posixNormalize(maybePath);
     };
-    var join96 = (rootPath, request) => {
+    var join97 = (rootPath, request) => {
       if (!request) return normalize7(rootPath);
       const requestType = getType(request);
       switch (requestType) {
@@ -27515,7 +27515,7 @@ var require_path = __commonJS({
       }
       return posixNormalize(rootPath);
     };
-    var dirname39 = (maybePath) => {
+    var dirname40 = (maybePath) => {
       switch (getType(maybePath)) {
         case PathType.AbsoluteWin:
           return path.win32.dirname(maybePath);
@@ -27533,7 +27533,7 @@ var require_path = __commonJS({
           cacheEntry = inner.get(request);
           if (cacheEntry !== void 0) return cacheEntry;
         }
-        cacheEntry = join96(rootPath, request);
+        cacheEntry = join97(rootPath, request);
         inner.set(request, cacheEntry);
         return cacheEntry;
       };
@@ -27544,7 +27544,7 @@ var require_path = __commonJS({
       const fn = (maybePath) => {
         const cacheEntry = cache2.get(maybePath);
         if (cacheEntry !== void 0) return cacheEntry;
-        const result = dirname39(maybePath);
+        const result = dirname40(maybePath);
         cache2.set(maybePath, result);
         return result;
       };
@@ -27641,7 +27641,7 @@ var require_path = __commonJS({
     module2.exports.createCachedDirname = createCachedDirname;
     module2.exports.createCachedJoin = createCachedJoin;
     module2.exports.deprecatedInvalidSegmentRegEx = deprecatedInvalidSegmentRegEx;
-    module2.exports.dirname = dirname39;
+    module2.exports.dirname = dirname40;
     module2.exports.getType = getType;
     module2.exports.invalidSegmentRegEx = invalidSegmentRegEx;
     module2.exports.isFileURL = isFileURL;
@@ -27649,7 +27649,7 @@ var require_path = __commonJS({
     module2.exports.isRelativeRequest = isRelativeRequest;
     module2.exports.isSubPath = isSubPath;
     module2.exports.isWindowsPath = isWindowsPath;
-    module2.exports.join = join96;
+    module2.exports.join = join97;
     module2.exports.normalize = normalize7;
     module2.exports.toPath = toPath;
   }
@@ -33664,7 +33664,7 @@ var require_ResolverFactory = __commonJS({
     var TsconfigPathsPlugin = require_TsconfigPathsPlugin();
     var UnsafeCachePlugin = require_UnsafeCachePlugin();
     var UseFilePlugin = require_UseFilePlugin();
-    var { PathType, getType, join: join96, toPath } = require_path();
+    var { PathType, getType, join: join97, toPath } = require_path();
     function processPnpApiOption(option) {
       if (option === void 0 && /** @type {NodeJS.ProcessVersions & { pnp: string }} */
       versions.pnp) {
@@ -33719,7 +33719,7 @@ var require_ResolverFactory = __commonJS({
           "The 'packageMap' option needs an absolute 'configFile' in an environment without a working directory"
         );
       }
-      return join96(cwd(), file);
+      return join97(cwd(), file);
     }
     function normalizePackageMap(packageMap) {
       if (packageMap === void 0) return null;
@@ -44501,7 +44501,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.185";
+  if (true) return "0.1.186";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -50304,19 +50304,54 @@ function readSettings(path) {
 // src/cli/opencode/status.ts
 init_fs();
 
+// src/harness/opencode/host.ts
+import { accessSync as accessSync2, constants as constants3, existsSync as existsSync32, readFileSync as readFileSync33, statSync as statSync18 } from "node:fs";
+import { delimiter as delimiter4, dirname as dirname37, isAbsolute as isAbsolute15, join as join91 } from "node:path";
+var isFile3 = (path) => {
+  try {
+    return statSync18(path).isFile();
+  } catch {
+    return false;
+  }
+};
+var firstLine2 = (path) => readFileSync33(path, "utf8").split("\n")[0] ?? "";
+function usesSquealAt(dir2) {
+  try {
+    if (dir2 === "") return false;
+    let root = dir2;
+    if (isFile3(join91(root, "squeal.config.json"))) return true;
+    while (!existsSync32(join91(root, ".git"))) {
+      const up = dirname37(root);
+      if (up === root) return false;
+      root = up;
+    }
+    if (isFile3(join91(root, "squeal.config.json"))) return true;
+    let git = join91(root, ".git");
+    if (isFile3(git)) {
+      const named = firstLine2(git).replace(/^gitdir:/, "").trim();
+      git = isAbsolute15(named) ? named : join91(root, named);
+      const common = isFile3(join91(git, "commondir")) ? firstLine2(join91(git, "commondir")).trim() : "";
+      if (common !== "") git = isAbsolute15(common) ? common : join91(git, common);
+    }
+    return existsSync32(join91(git, "squeal"));
+  } catch {
+    return false;
+  }
+}
+
 // src/cli/pi/status.ts
-import { existsSync as existsSync32, readFileSync as readFileSync33 } from "node:fs";
-import { dirname as dirname37, join as join91 } from "node:path";
+import { existsSync as existsSync33, readFileSync as readFileSync34 } from "node:fs";
+import { dirname as dirname38, join as join92 } from "node:path";
 init_fs();
 var INSTALL_SH_COMMAND = "curl -fsSL https://github.com/hearsay-tools/squeal/releases/latest/download/install.sh | sh";
 function piCliCommand(cli, node = process.execPath) {
   return `${shellWord(node)} --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
 }
 function piInstallCommand(cli) {
-  const root = dirname37(dirname37(dirname37(cli)));
+  const root = dirname38(dirname38(dirname38(cli)));
   try {
-    const manifest = join91(root, "package.json");
-    if (existsSync32(manifest) && JSON.parse(readFileSync33(manifest, "utf8")).name === "squeal-pi") {
+    const manifest = join92(root, "package.json");
+    if (existsSync33(manifest) && JSON.parse(readFileSync34(manifest, "utf8")).name === "squeal-pi") {
       return `pi install ${shellWord(root)}`;
     }
   } catch {
@@ -50343,8 +50378,12 @@ function opencodeCliCommand(cli, node = process.execPath) {
 }
 function opencodeStatusLine(cwd, env) {
   const session = env.OPENCODE_SESSION_ID;
-  if (session === void 0 || session === "") {
-    if (env.OPENCODE !== "1") return null;
+  const ran = session !== void 0 && session !== "";
+  if (!ran && env.OPENCODE !== "1") return null;
+  if (!usesSquealAt(cwd)) {
+    return "OpenCode: this repository is not set up for Squeal (no squeal.config.json and no Squeal store), so the Squeal OpenCode plugin stays off in it. Run squeal setup, then start OpenCode again.\n";
+  }
+  if (!ran) {
     return `OpenCode: this shell runs under OpenCode (OPENCODE=1) without OPENCODE_SESSION_ID, so the Squeal OpenCode plugin did not run in this session. Install it with ${INSTALL_SH_COMMAND}, then start OpenCode again.
 `;
   }
@@ -50360,8 +50399,8 @@ function opencodeStatusLine(cwd, env) {
 }
 
 // src/cli/remove.ts
-import { existsSync as existsSync33, lstatSync as lstatSync6, readdirSync as readdirSync18, readFileSync as readFileSync34, rmSync as rmSync13 } from "node:fs";
-import { basename as basename21, dirname as dirname38, join as join92 } from "node:path";
+import { existsSync as existsSync34, lstatSync as lstatSync6, readdirSync as readdirSync18, readFileSync as readFileSync35, rmSync as rmSync13 } from "node:fs";
+import { basename as basename21, dirname as dirname39, join as join93 } from "node:path";
 import { setTimeout as sleep6 } from "node:timers/promises";
 init_lock();
 init_paths4();
@@ -50410,7 +50449,7 @@ async function removeCommand(args2, io, options = {}) {
     return 1;
   }
   const storeDir = storePaths(commonDir).dir;
-  const configPath = join92(root, "squeal.config.json");
+  const configPath = join93(root, "squeal.config.json");
   const removed = [];
   const failed2 = [];
   const remove = (path, line) => {
@@ -50422,7 +50461,7 @@ async function removeCommand(args2, io, options = {}) {
       failed2.push(`${path}: could not delete it (${code}); delete it by hand`);
     }
   };
-  if (existsSync33(storeDir)) {
+  if (existsSync34(storeDir)) {
     const worktrees = recordedWorktrees(commonDir);
     const stopped = [];
     for (const worktree of worktrees) if (await askToStop(worktree)) stopped.push(worktree.root);
@@ -50449,7 +50488,7 @@ ${stopped.map((r) => `  ${r}
       for (const lock2 of locks) lock2.release();
     }
   }
-  if (config && existsSync33(configPath)) {
+  if (config && existsSync34(configPath)) {
     const tracked = await isTracked(root, "squeal.config.json");
     remove(
       configPath,
@@ -50457,7 +50496,7 @@ ${stopped.map((r) => `  ${r}
     );
   }
   for (const edit of removeBlocks(root, await blockFiles(root))) {
-    const path = join92(root, edit.path);
+    const path = join93(root, edit.path);
     if (edit.result === "unterminated") {
       failed2.push(
         `${path}: its Squeal block begins at line ${edit.line} with no end marker; delete it by hand`
@@ -50477,7 +50516,7 @@ ${removed.map((line) => `  ${line}
   io.stdout("Still there:\n");
   for (const line of failed2) io.stdout(`  ${line}
 `);
-  if (existsSync33(configPath)) {
+  if (existsSync34(configPath)) {
     io.stdout(
       `  ${configPath}: the next Claude Code session here starts Squeal again. It is committed; delete it, or run squeal remove --config.
 `
@@ -50495,7 +50534,7 @@ ${removed.map((line) => `  ${line}
 function pluginLine(root) {
   let settings = null;
   try {
-    settings = JSON.parse(readFileSync34(join92(root, ".claude", "settings.json"), "utf8"));
+    settings = JSON.parse(readFileSync35(join93(root, ".claude", "settings.json"), "utf8"));
   } catch {
   }
   const keys = (field, names3) => {
@@ -50521,7 +50560,7 @@ async function isTracked(root, path) {
 }
 async function otherConfigs(root) {
   const out2 = await runGit(root, ["worktree", "list", "--porcelain", "-z"]).catch(() => "");
-  return splitNul(out2).filter((field) => field.startsWith("worktree ") && field !== `worktree ${root}`).map((field) => join92(field.slice("worktree ".length), "squeal.config.json")).filter((path) => existsSync33(path));
+  return splitNul(out2).filter((field) => field.startsWith("worktree ") && field !== `worktree ${root}`).map((field) => join93(field.slice("worktree ".length), "squeal.config.json")).filter((path) => existsSync34(path));
 }
 function recordedWorktrees(commonDir) {
   const store = openStore(commonDir, { create: false, busyTimeoutMs: CLI_SOCKET_TIMEOUT_MS });
@@ -50533,7 +50572,7 @@ function recordedWorktrees(commonDir) {
   }
 }
 async function askToStop(worktree) {
-  const socketPath = existsSync33(worktree.root) ? (await locateDaemon(worktree.root, CLI_SOCKET_TIMEOUT_MS, { record: worktree.daemon })).socketPath : worktree.daemon?.socketPath ?? socketPathFor(worktree.id);
+  const socketPath = existsSync34(worktree.root) ? (await locateDaemon(worktree.root, CLI_SOCKET_TIMEOUT_MS, { record: worktree.daemon })).socketPath : worktree.daemon?.socketPath ?? socketPathFor(worktree.id);
   const response = await askDaemon(socketPath, { type: "stop" }).catch(() => null);
   return response?.ok === true;
 }
@@ -50545,7 +50584,7 @@ async function holdDaemonLocks(commonDir, waitMs) {
   const held2 = [];
   const deadline = Date.now() + waitMs;
   for (const name2 of names3) {
-    const lockPath = join92(locksDir, name2);
+    const lockPath = join93(locksDir, name2);
     for (; ; ) {
       const lock2 = acquireDaemonLock(lockPath);
       if (lock2 !== null) {
@@ -50562,19 +50601,19 @@ async function holdDaemonLocks(commonDir, waitMs) {
   return held2;
 }
 function tempDirs(commonDir, worktrees) {
-  if (!existsSync33(join92(storePaths(commonDir).dir, "repository-id"))) return [];
+  if (!existsSync34(join93(storePaths(commonDir).dir, "repository-id"))) return [];
   const uid = currentUid();
   const dirs = [];
   for (const { root } of worktrees) {
     const scratch = daemonScratch(commonDir, root, uid);
     const key2 = basename21(scratch.tempDir);
     if (isPrivate(scratch.userDir, uid)) {
-      const tmp = dirname38(scratch.tempDir);
+      const tmp = dirname39(scratch.tempDir);
       dirs.push(...entries2(tmp).filter((path) => isOwnDir(path, uid, `${scratch.tempDir}.old-`)));
-      if (existsSync33(scratch.tempDir)) dirs.push(scratch.tempDir);
+      if (existsSync34(scratch.tempDir)) dirs.push(scratch.tempDir);
     }
     const fallback = `${userTmpDir(uid)}-${key2}-`;
-    dirs.push(...entries2(dirname38(fallback)).filter((path) => isOwnDir(path, uid, fallback)));
+    dirs.push(...entries2(dirname39(fallback)).filter((path) => isOwnDir(path, uid, fallback)));
   }
   return dirs;
 }
@@ -50592,7 +50631,7 @@ function isOwnDir(path, uid, prefix) {
   return stat7?.isDirectory() === true && stat7.uid === uid;
 }
 function entries2(dir2) {
-  return safeList2(dir2).map((name2) => join92(dir2, name2));
+  return safeList2(dir2).map((name2) => join93(dir2, name2));
 }
 function safeList2(dir2) {
   try {
@@ -50624,10 +50663,10 @@ init_state3();
 import { fileURLToPath as fileURLToPath12 } from "node:url";
 
 // src/harness/codex/command.ts
-import { join as join93 } from "node:path";
+import { join as join94 } from "node:path";
 function codexCommand(env, bundleCli) {
   const root = env.PLUGIN_ROOT;
-  const cli = root === void 0 || root === "" ? bundleCli : join93(root, "dist/cli/squeal.mjs");
+  const cli = root === void 0 || root === "" ? bundleCli : join94(root, "dist/cli/squeal.mjs");
   return `node --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
 }
 
@@ -50881,7 +50920,7 @@ function pendingText2(snapshot3) {
 
 // src/cli/status-wait-paths.ts
 import { realpathSync as realpathSync19 } from "node:fs";
-import { isAbsolute as isAbsolute15, relative as relative20, resolve as resolve19, sep as sep25 } from "node:path";
+import { isAbsolute as isAbsolute16, relative as relative20, resolve as resolve19, sep as sep25 } from "node:path";
 import { setTimeout as sleep8 } from "node:timers/promises";
 init_fs();
 init_keys();
@@ -50922,7 +50961,7 @@ function worktreePath(root, cwd, path) {
   for (const base of [cwd, realOrNull(cwd)]) {
     if (base === null) continue;
     const rel2 = relative20(root, resolve19(base, path));
-    const outside = rel2 === ".." || rel2.startsWith(`..${sep25}`) || isAbsolute15(rel2);
+    const outside = rel2 === ".." || rel2.startsWith(`..${sep25}`) || isAbsolute16(rel2);
     if (rel2 !== "" && !outside) return rel2.split(sep25).join("/");
   }
   return null;
@@ -52304,34 +52343,34 @@ function processGone(pid) {
 init_fs();
 import { spawnSync as spawnSync2 } from "node:child_process";
 import {
-  accessSync as accessSync2,
+  accessSync as accessSync3,
   chmodSync as chmodSync3,
-  constants as constants3,
+  constants as constants4,
   copyFileSync,
-  existsSync as existsSync34,
+  existsSync as existsSync35,
   mkdtempSync as mkdtempSync4,
   readdirSync as readdirSync19,
-  readFileSync as readFileSync36,
+  readFileSync as readFileSync37,
   rmSync as rmSync14
 } from "node:fs";
 import { tmpdir as tmpdir6 } from "node:os";
-import { delimiter as delimiter4, join as join95 } from "node:path";
+import { delimiter as delimiter5, join as join96 } from "node:path";
 
 // src/cli/update-packages.ts
 init_fs();
-import { readFileSync as readFileSync35 } from "node:fs";
-import { join as join94, resolve as resolve20 } from "node:path";
+import { readFileSync as readFileSync36 } from "node:fs";
+import { join as join95, resolve as resolve20 } from "node:path";
 function packagesHome(harness, env) {
-  return join94(env.XDG_DATA_HOME || join94(env.HOME ?? "", ".local", "share"), "squeal", harness);
+  return join95(env.XDG_DATA_HOME || join95(env.HOME ?? "", ".local", "share"), "squeal", harness);
 }
 function piPackage(env) {
   const home = env.HOME ?? "";
-  let agent = env.PI_CODING_AGENT_DIR || join94(home, ".pi", "agent");
+  let agent = env.PI_CODING_AGENT_DIR || join95(home, ".pi", "agent");
   if (agent === "~") agent = home;
-  else if (agent.startsWith("~/")) agent = join94(home, agent.slice(2));
+  else if (agent.startsWith("~/")) agent = join95(home, agent.slice(2));
   let packages = [];
   try {
-    const file = JSON.parse(readFileSync35(join94(agent, "settings.json"), "utf8"));
+    const file = JSON.parse(readFileSync36(join95(agent, "settings.json"), "utf8"));
     if (isRecord(file)) packages = file.packages;
   } catch {
     return null;
@@ -52343,7 +52382,7 @@ function piPackage(env) {
     const dir2 = resolve20(agent, source);
     if (resolve20(dir2, "..") !== resolve20(packagesHome("pi", env))) continue;
     try {
-      const manifest = JSON.parse(readFileSync35(join94(dir2, "package.json"), "utf8"));
+      const manifest = JSON.parse(readFileSync36(join95(dir2, "package.json"), "utf8"));
       if (isRecord(manifest) && typeof manifest.version === "string")
         versions.push(manifest.version);
     } catch {
@@ -52353,13 +52392,13 @@ function piPackage(env) {
   return newest === void 0 ? null : { version: newest };
 }
 function openCodePackage(env) {
-  const link = join94(packagesHome("opencode", env), "current");
+  const link = join95(packagesHome("opencode", env), "current");
   const spec = `file:${link}`;
-  const config = join94(env.XDG_CONFIG_HOME || join94(env.HOME ?? "", ".config"), "opencode");
+  const config = join95(env.XDG_CONFIG_HOME || join95(env.HOME ?? "", ".config"), "opencode");
   const listed2 = ["opencode.json", "opencode.jsonc", "config.json"].some((name2) => {
     let text2;
     try {
-      text2 = readFileSync35(join94(config, name2), "utf8");
+      text2 = readFileSync36(join95(config, name2), "utf8");
     } catch {
       return false;
     }
@@ -52373,7 +52412,7 @@ function openCodePackage(env) {
   });
   if (!listed2) return null;
   try {
-    const manifest = JSON.parse(readFileSync35(join94(link, "package.json"), "utf8"));
+    const manifest = JSON.parse(readFileSync36(join95(link, "package.json"), "utf8"));
     return isRecord(manifest) && typeof manifest.version === "string" ? { version: manifest.version } : null;
   } catch {
     return null;
@@ -52427,11 +52466,13 @@ ${commands.map((c) => `  ${c}
   }
   recopyLauncher(env, io);
   if (ok) {
-    const pi = targets.some((t) => t.name.startsWith("Pi:")) ? " or /reload in Pi" : "";
-    io.stdout(
-      `A running session keeps the version it loaded until it restarts, or until /reload-plugins in Claude Code${pi}.
-`
-    );
+    const reloads = [
+      ...targets.some((t) => t.name.startsWith(`${NAMES2["claude-code"]}:`)) ? ["/reload-plugins in Claude Code"] : [],
+      ...targets.some((t) => t.name.startsWith("Pi:")) ? ["/reload in Pi"] : []
+    ];
+    const until = reloads.length > 0 ? `, or until ${reloads.join(" or ")}` : "";
+    io.stdout(`A running session keeps the version it loaded until it restarts${until}.
+`);
   }
   return ok ? 0 : 1;
 }
@@ -52468,9 +52509,9 @@ function updateTargets(cwd, env, io) {
   return targets;
 }
 function runInstallSh(flag2, cwd, env, io) {
-  const dir2 = mkdtempSync4(join95(tmpdir6(), "squeal-update-"));
+  const dir2 = mkdtempSync4(join96(tmpdir6(), "squeal-update-"));
   try {
-    const script = join95(dir2, "install.sh");
+    const script = join96(dir2, "install.sh");
     const url = env.SQUEAL_INSTALL_SH ?? LATEST_INSTALL_SH;
     return run3(["curl", "-fsSL", "-o", script, url], cwd, env, io) && run3(["sh", script, flag2], cwd, env, io);
   } finally {
@@ -52505,19 +52546,19 @@ function run3(command, cwd, env, io) {
 var FORMAT = /^# squeal-launcher format (\d+)$/m;
 function launcherFormat(path) {
   try {
-    const match2 = FORMAT.exec(readFileSync36(path, "utf8"));
+    const match2 = FORMAT.exec(readFileSync37(path, "utf8"));
     return match2 === null ? null : Number(match2[1]);
   } catch {
     return null;
   }
 }
 function recopyLauncher(env, io) {
-  const target = join95(env.SQUEAL_BIN_DIR ?? join95(env.HOME ?? "", ".local", "bin"), "squeal");
+  const target = join96(env.SQUEAL_BIN_DIR ?? join96(env.HOME ?? "", ".local", "bin"), "squeal");
   const current2 = launcherFormat(target);
   if (current2 === null) return;
   let newest = null;
   for (const dir2 of pluginDirs(env)) {
-    const path = join95(dir2, "bin", "squeal-launcher");
+    const path = join96(dir2, "bin", "squeal-launcher");
     const format = launcherFormat(path);
     if (format !== null && format > (newest?.format ?? current2)) newest = { path, format };
   }
@@ -52530,10 +52571,10 @@ function recopyLauncher(env, io) {
 function pluginDirs(env) {
   const home = env.HOME ?? "";
   const dirs = [];
-  const config = env.CLAUDE_CONFIG_DIR ?? join95(home, ".claude");
+  const config = env.CLAUDE_CONFIG_DIR ?? join96(home, ".claude");
   try {
     const file = JSON.parse(
-      readFileSync36(join95(config, "plugins", "installed_plugins.json"), "utf8")
+      readFileSync37(join96(config, "plugins", "installed_plugins.json"), "utf8")
     );
     const entries3 = isRecord(file) && isRecord(file.plugins) ? file.plugins[PLUGIN_ID] : null;
     for (const entry3 of Array.isArray(entries3) ? entries3 : []) {
@@ -52541,25 +52582,25 @@ function pluginDirs(env) {
     }
   } catch {
   }
-  const cache2 = join95(
-    env.CODEX_HOME ?? join95(home, ".codex"),
+  const cache2 = join96(
+    env.CODEX_HOME ?? join96(home, ".codex"),
     "plugins",
     "cache",
     MARKETPLACE_NAME,
     PLUGIN_NAME
   );
-  if (existsSync34(cache2)) for (const version2 of readdirSync19(cache2)) dirs.push(join95(cache2, version2));
+  if (existsSync35(cache2)) for (const version2 of readdirSync19(cache2)) dirs.push(join96(cache2, version2));
   for (const packages of [packagesHome("pi", env), packagesHome("opencode", env)]) {
-    if (existsSync34(packages))
-      for (const version2 of readdirSync19(packages)) dirs.push(join95(packages, version2));
+    if (existsSync35(packages))
+      for (const version2 of readdirSync19(packages)) dirs.push(join96(packages, version2));
   }
   return dirs;
 }
 function onPath2(name2, env) {
-  return (env.PATH ?? "").split(delimiter4).some((dir2) => {
+  return (env.PATH ?? "").split(delimiter5).some((dir2) => {
     if (dir2 === "") return false;
     try {
-      accessSync2(join95(dir2, name2), constants3.X_OK);
+      accessSync3(join96(dir2, name2), constants4.X_OK);
       return true;
     } catch {
       return false;
