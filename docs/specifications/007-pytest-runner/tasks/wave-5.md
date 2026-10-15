@@ -68,3 +68,22 @@ Shape: repair, text. Owns: `states.ts` and the tests that pin the text (`states.
 Done when: a text test covers each case (uv.lock, poetry.lock, requirements, none), and every test that pinned the old text pins the new one. Full-suite verdict: `squeal run --all --wait`.
 
 Use /worker.
+
+## Review of cand/0.1.195 (007-40 and 007-44)
+
+Outcome: a PASS or FAIL verdict on `cand/0.1.195` at `fa444c86`, which is main 0.1.194 plus 007-40 (`0d2fa0c6`), 007-44 (`bf27a21d`), a key re-pin and the build. The verdict decides whether it may land.
+
+Shape: review. Scope:
+- 007-40 changes core delivery: `withDependencies` now takes the failing check ids and adds the "No dependencies are installed" flag only when one belongs to a non-pytest project, read from the worktree's policy. Check:
+  - that a pytest failure can never get the sentence, in a delivery or at start;
+  - that a Node failure without an install still gets it in every path that used to (deltas, registration, status);
+  - what happens when the policy cannot be read, or the worktree row is missing;
+  - that reading the policy per failing delivery costs nothing that matters.
+- 007-44's note text in `states.ts`, against the brief and spec 007's open question 1 as decided: honest about what installing brings (inherited failures are held per 001 D6), and correct for each lockfile case.
+Not in scope: the rest of spec 007.
+
+Owns: `reviews/wave-5.5.md` only, which you commit. Your locked full run (`flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`) is also the landing gate, so name every failing test and say whether it fails alone.
+
+Done when: every finding has a file and line, a failure scenario and a severity, and the verdict names `fa444c86`.
+
+Use /reviewer.
