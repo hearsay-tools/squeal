@@ -96,6 +96,8 @@ export {
 } from "./judge.mjs";
 export { buildFixture, cellArgs, runId } from "./prepare.mjs";
 export { armFixtures, cellRecord, conditionsOf, narrowed, resultsName } from "./results.mjs";
+export { claimAfterRetry, noRetryPastFailure, retryForEnvironment } from "./retry-evidence.mjs";
+export { retryEnv, SERVICE_FILES } from "./retry-knobs.mjs";
 export { RUBRIC, rubricOf, SYSTEM } from "./rubric.mjs";
 export {
   cellEnv,

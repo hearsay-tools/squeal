@@ -29,17 +29,27 @@ const write = (p: string, s: string, mode?: number) => {
 };
 
 const FAKE_SQUEAL = `import { spawn } from "node:child_process";
-import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 const [cmd, ...rest] = process.argv.slice(2);
 const root = process.cwd();
 const pidFile = join(root, ".git/squeal/fake.pid");
-// Each command, with the slow policy it met (006-54: the load-hold knob lands after the warm-up).
+// Each command, with the slow policy it met (006-54: the load-hold knob lands after the warm-up),
+// and what the retry knobs left it (006-53): the load per CPU it reads, the calendar's cold runs,
+// whether the rates service's port file exists, and whether the load preload is set.
 if (cmd !== "daemon") {
   let slow = null;
   try { slow = JSON.parse(readFileSync(join(root, "squeal.config.json"), "utf8")).slow ?? null; } catch {}
-  appendFileSync(join(process.env.FAKE_LOG, "squeal"), JSON.stringify({ args: [cmd, ...rest], slow }) + "\\n");
+  const { loadavg, availableParallelism } = await import("node:os");
+  const e = process.env;
+  const retry = {
+    load: e.EVAL_LOAD_PER_CPU_FILE ? +(loadavg()[0] / availableParallelism()).toFixed(2) : null,
+    cold: e.LEDGERLINE_CALENDAR_COLD_RUNS ?? null,
+    rates: e.LEDGERLINE_RATES_PORT_FILE ? existsSync(e.LEDGERLINE_RATES_PORT_FILE) : null,
+    preload: /loadavg\\.mjs/.test(e.NODE_OPTIONS ?? ""),
+  };
+  appendFileSync(join(process.env.FAKE_LOG, "squeal"), JSON.stringify({ args: [cmd, ...rest], slow, retry }) + "\\n");
 }
 if (cmd === "daemon") setInterval(() => {}, 1000);
 else if (cmd === "start") {

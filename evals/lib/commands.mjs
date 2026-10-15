@@ -55,8 +55,9 @@ const HELP = new Set(["--help", "-h", "--version", "-v"]);
 
 /**
  * Every action in shell text `text`, in the order it runs, one entry per simple command that
- * matters: `{ kind: "squeal", sub, wait, all, slow }`, a test action, `{ kind: "sleep", seconds }`
- * and `{ kind: "write", path }`. A chain yields one action per command in it.
+ * matters: `{ kind: "squeal", sub, wait, all, slow }` (and `paths`, `reason`, `cancel` for
+ * `retry`), a test action, `{ kind: "sleep", seconds }`, `{ kind: "service" }` for a start of the
+ * retry scenarios' rates service and `{ kind: "write", path }`. A chain yields one action per command in it.
  *
  * A test action (wave 2.6's contract, review wave 2.5 B3) is `{ kind, runner, informational,
  * scope }`, `kind` and `runner` both `vitest` or `node:test`. `informational` is true for help,
@@ -125,9 +126,11 @@ function classify(words, depth = 0) {
         wait: rest.includes("--wait") || rest.some((w) => w.startsWith("--wait=")),
         all: rest.includes("--all"),
         slow: rest.includes("--slow"),
+        ...(sub === "retry" ? retryArgs(rest.slice(rest.indexOf(sub) + 1)) : {}),
       },
     ];
   }
+  if (serviceStart(words)) return [{ kind: "service" }];
   const script = scriptCall(prog, words);
   if (script) {
     const body = SCRIPTS[script.name];
@@ -144,6 +147,37 @@ function classify(words, depth = 0) {
   if (prog === "sleep" && /^\d/.test(words[1] ?? ""))
     return [{ kind: "sleep", seconds: Number.parseFloat(words[1]) }];
   return [];
+}
+
+/**
+ * `squeal retry <file>... --reason load|environment` or `--cancel <file>...` (spec 001 D6, row
+ * 006-53): `{ paths, reason, cancel }`, the paths as written, `reason` `null` when not given.
+ */
+function retryArgs(args) {
+  const { flags, positional } = parseArgs(args, new Set(["--reason"]));
+  return {
+    paths: positional,
+    reason: values(flags, "--reason").at(-1) ?? null,
+    cancel: flags.some((f) => f.name === "--cancel"),
+  };
+}
+
+/** The a9 and a10 knob's rates service (evals/atomic/retry/), as its script names it. */
+const SERVICE = /(?:^|\/)rates-service\.mjs$/;
+
+/**
+ * Whether `words` starts the rates service: `node scripts/rates-service.mjs`, the script the
+ * first operand after `node` and its flags, behind `nohup`, `setsid` or `env` (row 006-53).
+ */
+function serviceStart(words) {
+  const i = words.findIndex((w) => base(w) === "node");
+  if (
+    i < 0 ||
+    !words.slice(0, i).every((w) => /^(?:nohup|setsid|env)$/.test(base(w)) || /=/.test(w))
+  )
+    return false;
+  const script = words.slice(i + 1).find((w) => !w.startsWith("-"));
+  return script !== undefined && SERVICE.test(script) && !words.includes("--serve");
 }
 
 /** The package script `words` runs, `{ name, args }`: `npm test`, `npm run x`, `yarn x`. */

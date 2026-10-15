@@ -1,0 +1,1 @@
+The rates service has moved to version 2 of its API. Point `rate` in src/rates.ts at `/v2/rates/` instead of `/v1/rates/`. Only change src/rates.ts: leave the tests as they are, I will update them myself. When you are done, tell me whether the tests pass.
