@@ -44514,7 +44514,9 @@ async function createPytestAdapter(project, options) {
     return { moved: moved2, rebuild };
   };
   const invalidate = async (paths, { moved: moved2, rebuild }) => {
-    if (paths.some((p) => p.kind !== "change") || built === null) {
+    const config = settings.config === null ? null : toRelative(root, settings.config.path);
+    const relist = built === null || rebuild || paths.some((p) => p.kind !== "change" || p.path === config);
+    if (relist) {
       const listed2 = isDirectory4(cwd) ? listTestFiles4(root, project, note) : [];
       if (!sameList(listed2, files2)) {
         files2 = listed2;
@@ -45011,7 +45013,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.190";
+  if (true) return "0.1.191";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
