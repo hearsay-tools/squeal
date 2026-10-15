@@ -14,7 +14,8 @@ import { readAll, readSlot, writeSlot } from "./slots.js";
  * the harness kills it first and the registration outlives the subagent. So
  * the hook marks the consumer leaving before it waits. A block clears the
  * mark, since the subagent goes on, and so does any later boundary of the
- * consumer; the daemon drops a consumer whose mark is older than
+ * consumer, its registration and every PreToolUse included (review 001-423,
+ * B1); the daemon drops a consumer whose mark is older than
  * `LEAVING_GRACE_MS` (`dropLeft`).
  */
 
@@ -28,6 +29,11 @@ export function markLeaving(store: Store, consumer: Consumer, at: EpochMs | null
   const key = leavingMetaKey(consumer.worktreeId);
   if (at === null && readSlot(store, key, consumer) === undefined) return;
   writeSlot(store, key, consumer, at === null ? null : { at });
+}
+
+/** Whether `consumer` is marked leaving. Reads only. */
+export function isLeaving(store: Store, consumer: Consumer): boolean {
+  return readSlot(store, leavingMetaKey(consumer.worktreeId), consumer) !== undefined;
 }
 
 /** When each marked consumer of `worktreeId` was marked, by slot. */
