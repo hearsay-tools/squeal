@@ -123,3 +123,90 @@ None beyond the blockers.
 ## Inputs for the fix and next run
 
 Repair B1, B2 and B3 before rerunning the pilot. Keep the 14 committed grade objects unchanged, the host-launcher boundary and pinned marker, R1's executed-run invalidation, and a11's named-wait-before-load-drop ordering. Re-review the repairs and their paired regressions on the exact new candidate; the coordinator owns integration, scoreboard regeneration and any spec/status amendment.
+
+## Re-review 006-65
+
+2026-10-15. PASS `fd8d37f4da580ab0c62d22c469a4d320a3070792`: no remaining blockers, no should-fix items, no nits in this narrow re-review. B1, B2 and B3 are closed.
+
+HEAD matched the requested candidate and the tracked tree was clean during verification. Range: `90d44577..fd8d37f4`, the three repairs and worker notes. The rules in `tasks/006-62/notes.md` are the coordinator's decisions. Scope is the three blockers above, the judge invocation affected by B1, R1, the host-launcher condition, a11 staging, and the 14 committed atomic grades. This section is the only repository change; `docs/board.md` is untouched.
+
+### Verification output
+
+```text
+$ git rev-parse HEAD
+fd8d37f4da580ab0c62d22c469a4d320a3070792
+$ git status --short
+[empty]
+
+$ npm ci --no-audit --no-fund
+added 196 packages in 19s
+[exit 0]
+
+$ npm run lint
+> squeal@0.1.190 lint
+> biome check .
+Checked 1271 files in 1056ms. No fixes applied.
+[exit 0]
+
+$ npm run typecheck
+> squeal@0.1.190 typecheck
+> tsc --noEmit
+[exit 0]
+
+$ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
+RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/3abc575d-cd52-4150-acae-2fb92d6a78f1
+
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/3abc575d-cd52-4150-acae-2fb92d6a78f1/test/fixtures/scheduler/.tmp/10da3a83-ea3e-41ee-b0b0-dcf196ad8c56/main/.git/worktrees/staged/gitdir
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/3abc575d-cd52-4150-acae-2fb92d6a78f1/test/fixtures/scheduler/.tmp/9c385a56-5a0f-459f-9e63-e4566b2211b3/main/.git/worktrees/staged/gitdir
+squeal tests: killing 1 process(es) an earlier run left: 4016183
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+
+ Test Files  616 passed | 1 skipped (617)
+      Tests  5035 passed | 121 skipped (5156)
+   Start at  10:53:27
+   Duration  619.36s (tests 98%, import 2%)
+
+    Isolate  617 workers spawned · ~123ms startup each (spawn + environment, per file)
+             at least ~18.78s faster with isolate: false — reuses workers across files instead of one per file
+[exit 0]
+
+$ HOME=<scratch> node --import tsx <scratch>/probes.mts
+B1: Claude and Codex, each with a newer simulated host Pi and OpenCode package: PINNED CLI, exit 0
+B2: both harnesses, forward/reverse, answered slow run in either order, Node missing file, ambiguous in either order: expected pulls, waits and slow-run measures
+B3: both harnesses, why no-match and start usage: one pull, no new evidence
+R1: both harnesses, unanswered executed run invalidates the retry window
+B3 committed CLI: start --bad exits 2 with native usage
+Judge: exactly four changed environment keys; fake process receives unchanged args/stdin/cwd layout and scratch cleanup
+Atomic: 14 committed files, 1047 cells, zero changed cells; cell and measure objects identical
+[exit 0]
+
+$ HOME=<scratch> node <scratch>/regressions.mjs
+a11: named calendar wait at 2.40 precedes drop to 0.20; cold=2; daemon retained; stored load checked
+Host-launcher condition: inclusive boundary, Claude-only, pinned escape and old-root marking retained
+[exit 0]
+```
+
+Dependency installation, lint, typecheck and the independent probes used scratch HOME and npm cache paths. The full run used the original, unmodified HOME, with PATH restricted to scratch links for Node/npm/npx, `/usr/bin` and `/bin`; both real `claude` and `codex` were absent, including when resolved through `npx`. The suite's own temporary fake-harness tests remained enabled. No real Claude/Codex session, live eval cell, directly invoked prohibited eval CLI, or `npm run build` ran. Build verification is **unverified** by the task's explicit prohibition. The direct native CLI probe was only `start --bad`, in scratch HOME; it starts no daemon.
+
+The independent run took 619.36 seconds. Sampled one-minute host loads during the run were 7.76 to 12.07 on 24 CPUs; the queue had earlier seen much higher load. No test file failed, so no file needed an isolated rerun and there is no fail-under-load/pass-alone file to name. The printed Git worktree-repair, stale-process cleanup and experimental type-testing notices did not fail the run.
+
+### Previously blocking findings
+
+- **B1, closed, proven.** `evals/lib/scratch.mjs` overrides all four XDG base directories with defaults under the cell's scratch HOME. Repeating the earlier marker-package probe for both harnesses, with both Pi and OpenCode at simulated host version 9.9.9, executes only the pin. The copied Codex launcher and Claude's adjacent-CLI wrapper are preserved. All environment inputs and marker packages were disposable scratch files.
+- **B2, closed, proven.** `commands.mjs` retains each command's CLI identity; `squeal-text.mjs` associates foreign replies with matching identities and returns unknown for ambiguous matches. `grade.mjs` follows those per-command decisions. Through both harness timeline parsers, pinned status then unanswered bare slow run, and the reverse, yield only a status pull, one wait and no slow credit. An answered pinned slow run beside an unanswered bare status, in either order, yields only run credit. Node's missing-module reply is charged to the named CLI. In the ambiguous bare/path-launcher case, in either order, there are no pulls, waits, waits-after-edit or slow-run credits. The Squeal evidence survives once as a run's evidence, as the coordinator decided. Every executed run still contributes its `squeal-run` invalidator.
+- **B3, closed, proven.** Native no-match `why` and usage-only `start` refusals count once in both harnesses and introduce no current evidence beyond the opening registration. The committed CLI independently confirms the usage text and exit 2. The repair also covers multiple-match `why`, unavailable status and other native usage replies; the launcher's missing-Node refusal is explicitly foreign. The paired committed tests exercise these forms in both harnesses.
+
+### Named regression boundaries
+
+- **Judge invocation, proven.** Against `90d44577`, a synthetic parent environment passed through the old `cellEnv` and the current `judgeEnv` differs at exactly `XDG_DATA_HOME`, `XDG_CONFIG_HOME`, `XDG_STATE_HOME` and `XDG_CACHE_HOME`. `judge.mjs` itself has no diff. Running `claudeRunner` with Node as a fake command confirms unchanged argument order, stdin, scratch working-directory layout and removal. No judge session ran.
+- **R1, proven.** Both harnesses still miss `claim-after-retry` after an unanswered executed `squeal run` intervenes between a queued retry and settled passing status. Mixed and ambiguous calls retain the executed-run step too. Additional end-to-end synthetic grades in both harnesses and both ambiguous command orders still miss `claim-after-retry` after that run.
+- **Host-launcher condition, proven.** The inclusive `20261014T154710Z` boundary, Claude-only mark, `squealPath: "pinned"` escape and earlier old-root mark all hold. This repair changes none of the condition implementation.
+- **a11 staging, proven in source and injected library calls.** The staging and run-cell code are unchanged by the repair. The named calendar wait runs at 2.40 before the load drops to 0.20 and the all-files run; cold count stays 2, the stored failing load is checked, and no stop or second start occurs. The earlier review's real-fixture staging proof is not reopened by the XDG-only environment change.
+- **Atomic grades, proven in memory.** `regradeAtomic` reports zero changed cells across all 14 committed `.atomic.json` and `.atomic-variant.json` files, 1,047 cells. Every returned cell object and scenario declaration equals its committed counterpart, including every measure. Regrade provenance metadata is not a grade and can be added by the library. No result file was written and no regrade CLI was directly invoked. This checks stored pilot records, not fresh grading of every historical transcript.
+
+No new blocker or input for a repair wave. Actual harness behavior and the first-pilot confirmations listed in the original review remain outside this session's permitted scope.
