@@ -4,7 +4,8 @@
 // too), so grandchildren are recorded: as `--import` of its `file:` URL, or as
 // `--require` where the child's Node would run a `--require` (`preloads.cjs`),
 // as `recorderOption` in `runtime.ts` decides (spec 001 D11 Fidelity, task
-// 001-390). The form is chosen at each spawn, also when the env inherits the
+// 001-390); where the command cannot be read before it runs, an `--import`
+// (review wave-13bt, B2). The form is chosen at each spawn, also when the env inherits the
 // recorder already: that one is taken out first, so it runs once, in the
 // child's form (review 001-401, B1). A call Node would reject, or whose env
 // the recorder cannot extend as Node reads it, passes through untouched, so
@@ -123,7 +124,7 @@ function wrapChildren(api) {
     } else {
       const own = withoutSelf(tokens);
       const option =
-        require || own.some(isRequire) ? `--require ${quote(self)}` : `--import ${quote(url)}`;
+        require || optionsRequire(own) ? `--require ${quote(self)}` : `--import ${quote(url)}`;
       const rest = own.length === tokens.length ? options : own.map(asWritten).join(" ");
       out.NODE_OPTIONS = rest.trim() === "" ? option : `${option} ${rest}`;
     }
