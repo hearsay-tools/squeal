@@ -44,8 +44,11 @@ export type OcRequest =
   | About<"after", { readonly tool: string; readonly primer?: true }>
   /** `session.idle` of a root session Squeal has not continued (D3, 002's Stop). */
   | About<"stop">
-  /** `session.idle` after Squeal's continuation or an abort (D3): end the turn. */
-  | About<"endTurn">
+  /**
+   * `session.idle` after Squeal's continuation or an abort (D3): end the
+   * turn; `continued` after a continuation not aborted (lessons, defect 5).
+   */
+  | About<"endTurn", { readonly continued?: true }>
   /** The idle wake (D5): wait for the idle delta; no deadline but the waiter's own. */
   | About<"wait">
   /**
