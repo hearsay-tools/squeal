@@ -41,3 +41,30 @@ Owns: `reviews/wave-4.5.md` only, which you commit. Your full run follows the ho
 Done when: B1, B2 and S2 each have a verdict backed by a probe or test. The reviewer's probes are in `reviews/wave-4.md`; the left.json and right.json probe and the untagged-ready probe are re-run against the candidate. The verdict names `6b43de67`.
 
 Use /reviewer.
+
+## 007-43 B1 by the failing test's own name (the human's choice, 2026-10-15)
+
+Outcome: the counter after the failing test's own `tmp_path` folder name is the only counter replaced, so `<basetemp>/data1` and `<basetemp>/data2` keep two fingerprints, and 007-37's `tmp_path` failure keeps one.
+
+Context: `reviews/wave-4.5.md` B1 is still open after the first repair (second round). The human chose option (d) of three: derive pytest's own name for the test's folder and do not guess from digits. pytest's `_mk_tmp` (`_pytest/tmpdir.py`, identical in every copy on this host, including 8.4.2) uses `name = re.sub(r"[\W]", "_", request.node.name)[:30]` and then `factory.mktemp(name, numbered=True)`.
+
+Shape: repair, test first, one commit. Seams:
+- `scrubBasetemp` in `src/runners/pytest/run/basetemp.ts`, which takes an optional folder name;
+- `readBatch` and `joinPhases` in `run/report.ts`, which pass the item's node name (the last `::` segment of its node id, or a name field if you add one to the plugin's `collected` event; say which and why).
+
+Rules:
+- Replace `<basetemp>/<name><digits>` only when it ends at a path boundary. Python's `\W` is Unicode-aware, so mirror it, not ASCII `\W`.
+- The basetemp itself is still `<basetemp>`.
+- A collection error, which has no test, gets only the basetemp replaced.
+- Nothing else is replaced. If pytest changed its naming, the name would not match and nothing would be replaced, which fails safe.
+
+Owns: those two files, `run/events.ts` and the runtime's `collected` event if you add a field, and their tests. Leave `key-format.ts`, `plugins/*/dist` and `package.json` alone, and do not build.
+
+Done when (live, on Python 3.10 and 3.13, through `runPytest`):
+- `getbasetemp() / WHICH` with `data1` and then `data2` gives two fingerprints. This test fails on `6b43de67` and passes after.
+- `left.json` and `right.json` still give two fingerprints.
+- 007-37's `tmp_path` failure keeps one fingerprint, including the twin-name case (`test_reads1`).
+- A parametrized test (`test_x[a-1]`) and a name longer than 30 characters each keep one fingerprint across two runs.
+- A file the test names after itself but writes directly under basetemp is the accepted residual: say what it gives, and do not test for it.
+
+Use /worker.
