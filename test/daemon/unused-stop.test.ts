@@ -96,8 +96,16 @@ describe("the unused stop (task 001-415)", SLOW, () => {
     );
     const next = await runHook("post-tool-batch", recorded("post-tool-batch", repo.root), d);
     expect([prompt, next]).toEqual([SILENT, SILENT]);
-    await waitFor(() => ping(repo.socketPath, 500), 60_000, "a daemon serving again");
-    expect(recordOf(repo, repo.worktreeId)).not.toBeNull();
+    // Its front desk answers before its registration commits (review 001-423): wait for both.
+    const again = await waitFor(
+      async () => {
+        const record = recordOf(repo, repo.worktreeId);
+        return record !== null && (await ping(record.socketPath, 500)) !== null && record;
+      },
+      60_000,
+      "a daemon registered and serving again",
+    );
+    expect(again.socketPath).toBe(repo.socketPath);
   });
 
   it("a worktree subagent's SubagentStop lets its daemon stop while its parent stays registered", async () => {
