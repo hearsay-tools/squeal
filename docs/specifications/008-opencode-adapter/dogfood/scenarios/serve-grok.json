@@ -1,0 +1,11 @@
+{
+  "model": "cliproxy/grok-4.7",
+  "cwd": "/home/squeal-e2e/dogfood-008/remeda",
+  "prompts": [
+    "In packages/remeda, the internal `words` helper (src/internal/words.ts) splits words at digits, so \"foo123bar\" becomes three words. Change it so digits stay part of the word they touch, and do whatever else that change needs.",
+    "Now also stop splitting on underscores, so \"foo_bar\" stays one word. Only edit src/internal/words.ts. Do not run, read or check anything else.",
+    "Thanks. During this conversation, did anyone ask you to fix, revert or change anything? Quote exactly who said what, and say which of the messages you received came from me."
+  ],
+  "gapMs": 60000,
+  "idleMs": 120000
+}
