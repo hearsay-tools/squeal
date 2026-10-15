@@ -1,6 +1,6 @@
 import { isRecord } from "../fs/index.js";
 import { testFileId } from "../keys/index.js";
-import { readHeader, testFileKeyOf } from "../state/index.js";
+import { checkIdentity, readHeader, testFileKeyOf } from "../state/index.js";
 import {
   type CheckKey,
   type Consumer,
@@ -10,7 +10,9 @@ import {
   type StopHandoff,
   type Store,
   type TestFileKeyRecord,
+  type TestFileRef,
   type TurnState,
+  type ViewEntry,
   type WorktreeId,
   worktreeMetaKey,
 } from "../types/index.js";
@@ -139,13 +141,44 @@ function atKey(state: Idle, file: string, keys: CurrentKeys): boolean {
   return recorded === undefined || keys.get(file) === recorded;
 }
 
+/** The states and view entries an idle consumer's waiter can deliver or trim. */
+export interface OwedScope {
+  readonly states: readonly KnownState[];
+  readonly view: readonly ViewEntry[];
+  readonly keys: readonly TestFileKeyRecord[];
+}
+
 /**
- * Whether no entry can pass `waitedFor` and `trimmed` has nothing to trim:
- * in a turn, or idle with no test file owed and no new one awaited. The
- * waiter's poll then reads no state (task 001-414).
+ * Task 001-414: what the waiter's poll reads, bounded by what the turn owes,
+ * since on a shared store other daemons commit every few seconds and the
+ * change marker moves on most polls. `"nothing"` in a turn, or idle with no
+ * test file owed and no new one awaited: no entry can pass `waitedFor` and
+ * `trimmed` has nothing to trim. Otherwise the owed files' states, view
+ * entries and keys, and while new test files are awaited the states never
+ * told (`waitedFor` takes only entries from nothing, and keys only of owed
+ * files). A delta planned from these
+ * and restricted to `waitedFor`, and the trim, are those of the whole worktree.
  */
-export function owesNothing(state: TurnState): boolean {
-  return state.turn !== "idle" || (state.testFiles.length === 0 && !state.newTestFiles);
+export function owedScope(store: Store, consumer: Consumer): OwedScope | "nothing" {
+  const state = readTurn(store, consumer);
+  if (state.turn !== "idle" || (state.testFiles.length === 0 && !state.newTestFiles)) {
+    return "nothing";
+  }
+  const files = state.testFiles.map(fromTestFileId);
+  const owed = files.length === 0 ? [] : store.knownStates.list(consumer.worktreeId, files);
+  const untold = state.newTestFiles ? store.knownStates.untold(consumer) : [];
+  const seen = new Set(owed.map((s) => checkIdentity(s.check)));
+  return {
+    states: [...owed, ...untold.filter((s) => !seen.has(checkIdentity(s.check)))],
+    view: files.length === 0 ? [] : store.views.list(consumer, files),
+    keys: files.length === 0 ? [] : store.testFileKeys.list(consumer.worktreeId, files),
+  };
+}
+
+/** The test file a `testFileId` names. */
+function fromTestFileId(id: string): TestFileRef {
+  const at = id.indexOf("\0");
+  return { project: id.slice(0, at), path: id.slice(at + 1) };
 }
 
 /**
