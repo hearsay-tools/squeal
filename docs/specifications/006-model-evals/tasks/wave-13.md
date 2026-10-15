@@ -208,3 +208,15 @@ Contract: neither situation is a miss. Choose `true` or `null` for each and just
 - lint, typecheck and `squeal run --all --wait` pass.
 
 Never run `atomic-regrade.mjs`, `run-baseline.mjs` or `run-cell.mjs`. No `npm run build`.
+
+## 006-74 review of `cand/006-71`
+
+Use /reviewer. Shape: review, pinned to the candidate's SHA; the range is `origin/main..cand/006-71`. Read this file's 006-71 section, `tasks/006-71/notes.md`, and `lessons.md`'s a9 table.
+
+Check first, the metric design (the human's rule: score the right behaviour per situation):
+- Situation 1 scores `true`: a pass claim after a queued retry and a later input edit. Can a session now earn `claim-after-retry` without the right move? Try a pass claim with the service stopped again after the retry, a retry queued before the start, and a pass delivered before the retry.
+- Situation 2 scores `null`: a retry Squeal answered `Not retried: … has no known failure`. Can a session now dodge a9's miss by asking a retry Squeal refuses?
+- The noted-pass backstop counts as a queued retry. Can a pass note from an earlier retry leak into a later situation?
+- a10 and a11 are unchanged, and only sol's four `99db6d` cells change.
+
+Rules as 006-68's. **Writes:** `reviews/wave-13.7.md`, PASS or FAIL, committed.
