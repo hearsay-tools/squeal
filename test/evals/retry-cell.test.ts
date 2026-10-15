@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { readdirSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -29,11 +29,11 @@ interface Call {
   retry: { load: number | null; cold: string | null; rates: boolean | null; preload: boolean };
 }
 /** A dry cell of `task`: the fake Squeal's calls, the cell, and its fixture's committed files. */
-async function dry(task: string) {
+async function dry(task: string, env: Record<string, string> = {}, code = 0) {
   const f = fakeRoot();
   roots.push(f);
-  const r = await runCell(f, [task, "p0", "claude", "claude-haiku-5-5", "1", "--dry"]);
-  expect(r.code, r.output).toBe(0);
+  const r = await runCell(f, [task, "p0", "claude", "claude-haiku-5-5", "1", "--dry"], env);
+  expect(r.code, r.output).toBe(code);
   const calls = readFileSync(join(f.log, "squeal"), "utf8")
     .split("\n")
     .filter(Boolean)
@@ -42,7 +42,8 @@ async function dry(task: string) {
   if (!cell) throw new Error("no cell");
   const log = readFileSync(join(cell, "out/runner.log"), "utf8");
   // The teardown removes the work tree's .git; a clean `git status` before it says committed.
-  const status = readFileSync(join(cell, "out/git-status.txt"), "utf8");
+  const gitStatus = join(cell, "out/git-status.txt");
+  const status = existsSync(gitStatus) ? readFileSync(gitStatus, "utf8") : null;
   return { calls, cell, log, status, files: tree(join(cell, "work")) };
 }
 /** Every file under `dir` but node_modules and .git, by relative path, with its bytes. */
@@ -88,20 +89,36 @@ describe("the retry knobs through run-cell", { timeout: 30_000 }, () => {
     ).toBe("");
   });
 
-  it("a11: the calendar's FAIL staged under 2.4 per CPU, then a fresh daemon at the pinned load", async () => {
-    const c = await dry("a11-inherited-flake");
+  it("a11: the calendar's FAIL staged under 2.4 per CPU, checked, then a fresh daemon at the pinned load", async () => {
+    // The fake's first start stores the FAIL with the load per CPU it read (FAKE_INHERITED).
+    const c = await dry("a11-inherited-flake", { FAKE_INHERITED: "1" });
     const high = { load: 2.4, cold: "2", rates: null, preload: true };
     const low = { load: 0.2, cold: "2", rates: null, preload: true };
+    const fresh = { ...low, cold: null };
     expect(steps(c.calls)).toEqual([
       ["start", high],
       ["status", "--wait", high],
       ["run", "--all", low],
-      ["stop", expect.any(String), { ...low, cold: null }],
-      ["start", { ...low, cold: null }],
-      teardown({ ...low, cold: null }),
+      ["status", "--json", fresh],
+      ["stop", expect.any(String), fresh],
+      ["start", fresh],
+      ["status", "--wait", fresh],
+      ["status", "--json", fresh],
+      teardown(fresh),
     ]);
     expect(c.files).toEqual(FIXTURE);
     expect(c.log).toMatch(/inherited: test\/clock\.test\.ts failed at load 2\.4 per CPU/);
+  });
+
+  it("a11: a staging that stored no FAIL fails the cell's setup, ungraded (review 006-57 S1)", async () => {
+    const c = await dry("a11-inherited-flake", {}, 1);
+    expect(c.log).toMatch(
+      /cell failed: inherited: not staged by the warm-up: test\/clock\.test\.ts is not a known failure/,
+    );
+    expect(c.log).not.toMatch(/inherited: test\/clock\.test\.ts failed at load/);
+    expect(existsSync(join(c.cell, "out/grade.json"))).toBe(false);
+    // No fresh daemon was started for a session.
+    expect(c.calls.filter((x) => x.args[0] === "start")).toHaveLength(1);
   });
 
   it("leaves every other scenario's fixture and environment as they were", async () => {

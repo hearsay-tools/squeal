@@ -20,6 +20,8 @@ export const TOKEN = "made-up-anthropic-token-0123456789abcdef";
 export const PROXY_KEY = "made-up-proxy-key-0123456789abcdefghij";
 export const HOST = "proxy.example.invalid";
 export const STATUS_JSON = '{\n  "fake": true,\n  "knownFailures": 0\n}\n';
+/** `status --json` with the calendar test's FAIL known (FAKE_INHERITED). */
+const INHERITED_JSON = `${JSON.stringify({ knownFailures: [{ check: { testPath: "test/clock.test.ts" }, outcome: "fail" }] })}\n`;
 
 const REPO = join(import.meta.dirname, "../..");
 const write = (p: string, s: string, mode?: number) => {
@@ -54,7 +56,19 @@ if (cmd !== "daemon") {
 if (cmd === "daemon") setInterval(() => {}, 1000);
 else if (cmd === "start") {
   mkdirSync(join(root, ".git/squeal"), { recursive: true });
-  writeFileSync(join(root, ".git/squeal/store.sqlite"), "store");
+  const store = join(root, ".git/squeal/store.sqlite");
+  // FAKE_INHERITED (006-53, review 006-57 S1): the first start stores the calendar test's FAIL
+  // with the load per CPU it reads, as a real daemon's warm-up would under the inherited knob.
+  if (!process.env.FAKE_INHERITED) writeFileSync(store, "store");
+  else if (!existsSync(store)) {
+    const { DatabaseSync } = await import("node:sqlite");
+    const { loadavg, availableParallelism } = await import("node:os");
+    const db = new DatabaseSync(store);
+    db.exec("CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL); CREATE TABLE checks (id INTEGER PRIMARY KEY, test_path TEXT NOT NULL); CREATE TABLE results (check_id INTEGER NOT NULL, outcome TEXT NOT NULL, run_id TEXT NOT NULL)");
+    db.exec("INSERT INTO checks VALUES (1, 'test/clock.test.ts'); INSERT INTO results VALUES (1, 'fail', 'r1')");
+    db.prepare("INSERT INTO meta VALUES ('failed-run-loads', ?)").run(JSON.stringify({ r1: loadavg()[0] / availableParallelism() }));
+    db.close();
+  }
   const d = spawn(process.execPath, [fileURLToPath(import.meta.url), "daemon", root], { detached: true, stdio: "ignore" });
   d.unref();
   writeFileSync(pidFile, String(d.pid));
@@ -62,7 +76,7 @@ else if (cmd === "start") {
 } else if (cmd === "stop") {
   try { process.kill(Number(readFileSync(pidFile, "utf8")), "SIGTERM"); } catch {}
   console.log("stopped");
-} else if (cmd === "status") process.stdout.write(rest.includes("--json") ? ${JSON.stringify(STATUS_JSON)} : "Known failures: 0\\n");
+} else if (cmd === "status") process.stdout.write(rest.includes("--json") ? (process.env.FAKE_INHERITED ? ${JSON.stringify(INHERITED_JSON)} : ${JSON.stringify(STATUS_JSON)}) : "Known failures: 0\\n");
 else console.log("Known failures: 0");
 `;
 
