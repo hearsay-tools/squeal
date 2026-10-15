@@ -68,3 +68,18 @@ Done when (live, on Python 3.10 and 3.13, through `runPytest`):
 - A file the test names after itself but writes directly under basetemp is the accepted residual: say what it gives, and do not test for it.
 
 Use /worker.
+
+## Re-review of cand/0.1.190 (007-43 and the rebase)
+
+Outcome: a PASS or FAIL verdict on `cand/0.1.190` at `1bedfc23`, which is `cand/0.1.183` (`6b43de67`) rebased onto main 0.1.187, plus 007-43. The verdict decides whether it may land.
+
+Shape: narrow re-review. Scope:
+- 007-43's commit `df8f2d84`, against `reviews/wave-4.5.md` B1 and the human's option (d), recorded in `status.md`. Re-run your `data1` and `data2` probe and the `tmp_path` stability probes on both Pythons.
+- The rebase. Main changed `src/core/daemon/daemon.ts` and `src/core/types/scheduler.ts`, which the notes commits also change. Check with `git range-diff ef4e5c78..6b43de67 origin/main..1bedfc23` that every picked commit's patch is unchanged, and that the merged `daemon.ts` still wires `latestNote` and the note topic as `6b43de67` did, next to main's pool and retry changes.
+- Not in scope: B2, S2 and the rest of wave 4, which already passed.
+
+Owns: `reviews/wave-4.75.md` only, which you commit. Your independent full run follows `docs/process.md` "Test runs on a shared host". The coordinator's gate is also queued on the lock, so wait your turn.
+
+Done when: B1 and the rebase each have a verdict backed by a probe or diff, and the verdict names `1bedfc23`.
+
+Use /reviewer.
