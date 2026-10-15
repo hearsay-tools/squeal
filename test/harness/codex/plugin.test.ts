@@ -102,6 +102,7 @@ describe("Codex plugin build (spec 002 D1, D5)", () => {
       "node-test/recorder.cjs",
       "node-test/reporter.mjs",
       "observe/fs.cjs",
+      "observe/preloads.cjs",
       "observe/recorder.cjs",
       "observe/spawn.cjs",
     ]);

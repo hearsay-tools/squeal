@@ -44,7 +44,7 @@ export interface BuiltCli {
 }
 
 /** The runtime recorder `tsc` does not emit (`src/runners/observe/runtime.ts`). */
-const OBSERVE_FILES = ["recorder.cjs", "fs.cjs", "spawn.cjs"] as const;
+const OBSERVE_FILES = ["recorder.cjs", "fs.cjs", "preloads.cjs", "spawn.cjs"] as const;
 
 export interface BuildOptions {
   /**
