@@ -29,3 +29,26 @@ Owns: `reviews/wave-5.md` only, which you commit. Your locked full run (`flock /
 Done when: every finding has a file and line, a failure scenario and a severity, and the verdict names `41979b98`.
 
 Use /reviewer.
+
+## 007-40 a pytest failure is never told "No dependencies are installed" (defect 6)
+
+Narrowed by the human on 2026-10-15 (option (a)): this row is defect 6 only. Defects 10 (setup's Codex trust lines) and 12 (the skill trigger) are 005's rows 005-65 and 005-66.
+
+Outcome: the sentence "No dependencies are installed in this worktree; failures that cannot find a package are expected until an install." appears only beside a failure of a Node runner (Vitest or node:test) in a worktree with no installed Node lockfile. It never appears beside a pytest failure.
+
+Why that is the contract: a pytest check runs only in an admitted environment (D2: without one, every check of the project is `unknown` and nothing is stored). So a pytest failure always ran with its dependencies installed, and the sentence, which reads only Node's installed lockfiles, can only be false beside it.
+
+Shape: repair, test first. Seams:
+- `withDependencies` and `dependenciesInstalled` in `src/core/delivery/attribution.ts`, near line 224;
+- their callers, which decide `failing`.
+The narrowest lead: the header carries `dependenciesInstalled` only when a failing check in the delivery belongs to a Node runner. Find how a check's runner is known at that point. This is core delivery: say in the report what changed, because the coordinator tells 001.
+
+Owns: `src/core/delivery/attribution.ts`, its callers' `failing` argument, and their tests. Leave `key-format.ts`, `plugins/*/dist` and `package.json` alone, and do not build.
+
+Done when (each test fails on main and passes after):
+- a pytest-only worktree with an admitted environment and one pytest failure gets no such sentence, in a delivery or at start;
+- a Node worktree with no install and one Vitest failure still gets it, as today;
+- a mixed worktree (Node not installed, pytest admitted) gets it beside a Vitest failure and not when only a pytest file fails.
+Full-suite verdict: `squeal run --all --wait`; expect bundle and key-format drift.
+
+Use /worker.
