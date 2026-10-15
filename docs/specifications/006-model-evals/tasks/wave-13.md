@@ -231,3 +231,24 @@ Check, in both harnesses:
 - only sol's four `99db6d` a9 cells change.
 
 Rules as 006-68's. **Writes:** a re-review section in `reviews/wave-13.7.md`, PASS or FAIL, committed.
+
+## 006-78 repair of 006-76 (round 3): an ordinary recovery closes the old retry window
+
+Use /worker. Shape: repair, the third and last round of 006-71 (the human, 2026-10-15). Read `reviews/wave-13.7.md`'s 006-76 section, "B1 (proven, residual)" and "Required probes that now fit".
+
+Contract: when rule (c) credits an ordinary pass of the file, that pass also closes rule (b)'s retry window (`open = false`), as before 006-71. A later FAIL then closes rule (c), so a clean status read cannot reuse the old retry. Only a new start and a new queued retry after that FAIL open the window again.
+
+Starting seam: `evals/lib/retry-evidence.mjs:136` to `:139`, the `else if (fixed && ...)` branch.
+
+**Owns:** as 006-71's. No parser, fixture or interface change.
+
+**Done when:**
+- the reviewer's source-only sequence, with its clean-status tail, scores `claim-after-retry` false in both harnesses, failing before the fix;
+- every row of "Required probes that now fit" keeps its result;
+- sol's r2 and r6 to r8 keep theirs, and in memory only those four cells differ from the original base;
+- lint, typecheck and `squeal run --all --wait` pass.
+
+## 006-79 narrow re-review of `cand/006-71` after 006-78
+
+Use /reviewer. Shape: review, narrow, pinned. Check the source-only status-window sequence and every "Required probes that now fit" row in both harnesses, and the historical comparison. Rules as 006-68's. **Writes:** a third section in `reviews/wave-13.7.md`, PASS or FAIL, committed.
+
