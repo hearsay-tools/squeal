@@ -102,3 +102,29 @@ Rules: code, tests and synthetic sessions only. Never run `run-baseline.mjs`, `r
 - lint, typecheck and the gate pass.
 
 The coordinator integrates on `cand/006-62` for a `/reviewer`, then re-runs the pilot.
+
+## 006-66 Claude cells allow the service starts models type
+
+Use /worker. Shape: slice. The human chose narrow allowances (2026-10-15). Read board row 006-66, `status.md`'s 2026-10-15 entries, and pilot 2's Sonnet cell, `/tmp/squeal-evals-1001/cells/ae20bb31621f/20261015T104301Z-9edb7b/a9-env-retry.p0.claude-claude-sonnet-5-5.e-medium.r1/out` (`grade.json` `timeline.refused`).
+
+Outcome: Claude cells allow these forms without a prompt, and nothing else new:
+- `nohup node scripts/rates-service.mjs >/dev/null 2>&1 &`
+- `node scripts/rates-service.mjs &`
+- `(nohup node scripts/rates-service.mjs >/dev/null 2>&1 &) ; sleep 2; squeal retry test/rates.test.ts --reason environment`
+- `cat ~/.ledgerline-rates.port; echo; git status --short`
+
+Starting seam: `CLAUDE_ALLOWED_TOOLS` in `evals/lib/session.mjs`. A first lead is `Bash(nohup node scripts/rates-service.mjs:*)` and `Bash(echo:*)`. Keep only the rules a probe shows are needed. No `Bash(*)`, `sh`, `bash` or `npx` rule.
+
+Probe as the throwaway user only, never as `agent`:
+- Use `squeal-e2e` through `test/real-cli/isolated.ts`'s contract (example: `docs/specifications/005-agent-adoption/research/probes/dogfood/as-e2e.mjs`).
+- Use the cells' Claude Code, 2.1.300 on the host. Install that version into `squeal-e2e`'s own npm prefix if its copy differs.
+- Use `claude -p` with the cell's flags (`sessionCommand`) and `claude-haiku-5-5`, in a scratch git repo holding a stub `scripts/rates-service.mjs`.
+- Run each form before and after the change. Pass credentials by name only.
+- Never run `run-baseline.mjs` or `run-cell.mjs`, and no `npm run build`.
+
+**Owns:** `evals/lib/session.mjs`, `test/evals/`, `tasks/006-66/notes.md` (each probe's command and outcome). Leave everything else alone.
+
+**Done when:**
+- a test pins the list;
+- the notes show each form refused before and allowed after;
+- lint, typecheck and `squeal run --all --wait` pass. Name any file that fails only under load.
