@@ -87,7 +87,7 @@ The human, 2026-10-15. A `schedule` trigger runs main's head once a night (03:23
 
 ## Step two (proposed, not approved)
 
-From `research/ci-pr-flow.md` and `research/required-checks-probe.md` (010-13, verified on throwaway branches). The human decides whether and when.
+From `research/ci-pr-flow.md` and `research/required-checks-probe.md` (010-13, verified on throwaway branches). The human decides after 010-20's measurement (2026-10-15).
 
 ### D8. A required check on main
 
