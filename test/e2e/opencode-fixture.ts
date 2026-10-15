@@ -63,6 +63,12 @@ export interface OpenCodeE2EOptions {
    * not exist at OpenCode's first message, and the bridge spawns the daemon.
    */
   readonly started?: boolean;
+  /**
+   * The repository's `stop.waitMs`; the default is 0, which leaves Stop at idle 500 ms (D4), a
+   * deadline a loaded host can miss (review 008-27 S1). Stop waits only for pending checks, so a
+   * test that settles before the turn ends sets it to keep the deadline out of what it tests.
+   */
+  readonly stopWaitMs?: number;
 }
 
 export interface OpenCodeE2ERunOptions {
@@ -139,7 +145,11 @@ export class OpenCodeE2E {
       cpSync(join(this.install, file), join(repo, file));
     }
     execFileSync("cp", ["-a", join(this.install, "node_modules"), join(repo, "node_modules")]);
-    if (this.options.squeal !== false) writeFileSync(join(repo, "squeal.config.json"), "{}\n");
+    if (this.options.squeal !== false) {
+      const { stopWaitMs } = this.options;
+      const config = stopWaitMs === undefined ? {} : { stop: { waitMs: stopWaitMs } };
+      writeFileSync(join(repo, "squeal.config.json"), `${JSON.stringify(config)}\n`);
+    }
     git(repo, ["add", "-A"]);
     git(repo, ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "fixture"]);
     mkdirSync(join(repo, GATES));
