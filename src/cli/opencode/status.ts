@@ -2,6 +2,7 @@ import { shellWord } from "../../core/delivery/index.js";
 import { worktreeIdFor } from "../../core/fs/index.js";
 import { withStatusStore } from "../../core/status/index.js";
 import type { AbsolutePath } from "../../core/types/index.js";
+import { usesSquealAt } from "../../harness/opencode/host.js";
 import { INSTALL_SH_COMMAND } from "../pi/status.js";
 
 /*
@@ -30,14 +31,24 @@ export function opencodeCliCommand(cli: string, node: string = process.execPath)
  * register included. With `OPENCODE=1` and no session id, the plugin's
  * `shell.env` never ran in this session. Install is `install.sh`'s, which
  * adds the plugin to OpenCode only when its config does not list it (D1).
+ * Either way, a worktree that fails the plugin's own fast path (D4) keeps
+ * the plugin off whether installed or not, so that cause comes first
+ * (lessons defect 2).
  */
 export function opencodeStatusLine(
   cwd: AbsolutePath,
   env: Readonly<Record<string, string | undefined>>,
 ): string | null {
   const session = env.OPENCODE_SESSION_ID;
-  if (session === undefined || session === "") {
-    if (env.OPENCODE !== "1") return null;
+  const ran = session !== undefined && session !== "";
+  if (!ran && env.OPENCODE !== "1") return null;
+  if (!usesSquealAt(cwd)) {
+    return (
+      "OpenCode: this repository is not set up for Squeal (no squeal.config.json and no Squeal store), " +
+      "so the Squeal OpenCode plugin stays off in it. Run squeal setup, then start OpenCode again.\n"
+    );
+  }
+  if (!ran) {
     return (
       "OpenCode: this shell runs under OpenCode (OPENCODE=1) without OPENCODE_SESSION_ID, " +
       "so the Squeal OpenCode plugin did not run in this session. " +
