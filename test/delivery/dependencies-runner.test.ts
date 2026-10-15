@@ -27,6 +27,8 @@ const SENTENCE = "No dependencies are installed in this worktree";
 const C1: Consumer = { worktreeId: WT, sessionId: "s1", agentId: "main" };
 const NODE: TestFileRef = { project: "", path: "src/a.test.ts" };
 const PY: TestFileRef = { project: "py", path: "tests/test_a.py" };
+/** A text doctest (`--doctest-glob=*.txt`): a pytest check in a file that is not Python. */
+const DOC: TestFileRef = { project: "py", path: "docs/example.txt" };
 const NONE = { checkpointId: null };
 
 let root: string;
@@ -54,11 +56,12 @@ beforeEach(() => {
   delivery = createDelivery(store, { status: fixedStatus() });
   setKey(store, "k1", { file: NODE });
   setKey(store, "k1", { file: PY });
+  setKey(store, "k1", { file: DOC });
   liveDaemon(store, WT);
   // Hashed, and no installed Node lockfile among them: Node is not installed.
   store.fileHashes.upsertMany(
     WT,
-    ["src/a.test.ts", "tests/test_a.py", "uv.lock"].map((path) => ({
+    ["src/a.test.ts", "tests/test_a.py", "docs/example.txt", "uv.lock"].map((path) => ({
       path,
       mtimeMs: 1,
       ctimeMs: 1,
@@ -86,6 +89,7 @@ function apply(...results: ResultRecord[]): void {
 
 const node = check("a", NODE);
 const py = check("test_a", PY);
+const doc = check("example.txt", DOC);
 
 describe("a pytest failure", () => {
   it("is never told no dependencies are installed in a delivery", async () => {
@@ -129,11 +133,16 @@ describe("a Vitest failure in a worktree with no Node install", () => {
 });
 
 /*
- * Review wave-5.5 B1: a pytest check is known by its Python test file too, so
- * an unreadable or deleted policy, which reads as no pytest projects, does
- * not turn a stored pytest failure into a Node one.
+ * Review wave-5.5 B1: an unreadable or deleted policy, which reads as no
+ * pytest projects, does not turn a stored pytest failure into a Node one.
+ * Review wave-5.75: nor does one that no longer declares the project, for a
+ * Python test file or a text doctest alike; a Node runner's file is JavaScript
+ * or TypeScript.
  */
-describe("a pytest failure when the policy cannot name its project", () => {
+describe.each([
+  ["Python test file", py],
+  ["text doctest", doc],
+])("a pytest failure in a %s when the policy cannot name its project", (_, failing) => {
   it.each([
     ["malformed", () => writeFileSync(join(root, "squeal.config.json"), "{ not json")],
     ["missing", () => rmSync(join(root, "squeal.config.json"))],
@@ -146,10 +155,10 @@ describe("a pytest failure when the policy cannot name its project", () => {
     ],
     ["no longer declaring it", () => writeFileSync(join(root, "squeal.config.json"), "{}")],
   ])("is never told it with a %s policy", async (_, breakPolicy) => {
-    apply(result(py, "pass"));
+    apply(result(failing, "pass"));
     await delivery.register(C1, { atStart: true });
     breakPolicy();
-    apply(result(py, "fail"));
+    apply(result(failing, "fail"));
     expect(formatDelta((await delivery.onToolBoundary(C1)) as Delta)).not.toContain(SENTENCE);
     const again = { ...C1, sessionId: "s2" };
     expect(formatRegistration(await delivery.register(again, { atStart: true }))).not.toContain(
