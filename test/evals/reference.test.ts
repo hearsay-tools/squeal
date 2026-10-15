@@ -65,6 +65,19 @@ for (const harness of ["codex", "claude"] as const)
       expect(Object.entries(grade(c) ?? {}).filter(([, v]) => v !== "met")).toEqual([]);
     });
 
+    // 006-89 (c94221 Haiku r3, review wave-13.8): a delivery naming a file's check answers that
+    // file though other files are pending; paired with its rerun among the mistakes below.
+    it("t2-weekend: a rerun of a file the delivery did not name, other files pending, meets every expectation", () => {
+      const c = BUILD["t2-weekend"]?.({
+        slowPending: true,
+        rerun: true,
+        rerunFile: "test/report.test.ts",
+        harness,
+      }) as CellRecord;
+      expect((c.transcript as string[]).join("\n")).toContain("2 pending");
+      expect(Object.entries(grade(c) ?? {}).filter(([, v]) => v !== "met")).toEqual([]);
+    });
+
     for (const m of MISTAKES)
       it(`${m.task}: ${m.what} misses ${m.misses.join(" and ")} and only that`, () => {
         const g = grade(BUILD[m.task]?.({ ...m.twist, harness }) as CellRecord);
