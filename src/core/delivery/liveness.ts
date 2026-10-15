@@ -48,7 +48,8 @@ export function worktreeLiveness(worktree: WorktreeRecord | null, now: EpochMs):
 }
 
 /**
- * The shared header (D6) with the worktree's daemon liveness, the paths
+ * The shared header (D6) with the worktree's daemon liveness as delivered
+ * text reads it (`asRested`), the paths
  * changed since revision `since` (`changedSince`), which every delivered
  * message names (task 001-85; task 001-89, review wave 10 S4 (b)), and the
  * installed lockfile those changes wrote, if any (task 001-94, S1).
@@ -70,10 +71,35 @@ export function readLiveHeader(
   return {
     ...header,
     // Task 001-263: a daemon that died without its stop note is named, as status names it.
-    daemon: withDeath(store, worktree, worktreeLiveness(worktree, now)),
+    daemon: withDeath(
+      store,
+      worktree,
+      asRested(store, worktree, worktreeLiveness(worktree, now), now),
+    ),
     changedPaths: [...changes.keys()],
     ...(installed === undefined ? {} : { installedLockfile: installed.path }),
   };
+}
+
+/**
+ * D10 as amended (task 001-415, review 001-417 B2): while the worktree's
+ * daemon rests quietly (`restState`), no delivered header, news or policy
+ * report says no daemon is validating. A daemon a hook spawned after the
+ * rest is starting; before one is, the daemon rests. Status reads the
+ * record alone and still says down; an overdue start is down here too.
+ */
+function asRested(
+  store: Store,
+  worktree: WorktreeRecord | null,
+  live: DaemonLiveness,
+  at: EpochMs,
+): DaemonLiveness {
+  if (live.state !== "down" || live.startingSince !== undefined || worktree === null) return live;
+  if (restState(store, worktree, at) !== "quiet") return live;
+  const spawnedAt = readRest(store, worktree.id)?.spawnedAt;
+  return spawnedAt === undefined
+    ? { ...live, resting: true }
+    : { ...live, startingSince: spawnedAt };
 }
 
 /**

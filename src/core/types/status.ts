@@ -315,10 +315,17 @@ export type DaemonLiveness =
       readonly since: EpochMs | null;
       /**
        * Task 001-156: a daemon a hook spawned at this time has not heartbeat
-       * yet, and a registration said it is starting. Set only on a header
-       * delivered to a consumer told so, within `DAEMON_START_GRACE_MS`.
+       * yet, and a registration said it is starting, or it was spawned
+       * after a quiet rest (review 001-417 B2). Set only on a delivered
+       * header, within `DAEMON_START_GRACE_MS`.
        */
       readonly startingSince?: EpochMs;
+      /**
+       * Task 001-415, review 001-417 B2: the daemon stopped unused and no
+       * hook has started its successor yet; delivered headers only, status
+       * leaves it out.
+       */
+      readonly resting?: true;
       /**
        * Task 001-263: the recorded daemon stopped heartbeating and never shut
        * down (no stop note, its record not cleared), as a SIGKILL or a test's

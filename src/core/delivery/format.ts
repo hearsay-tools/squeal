@@ -181,6 +181,10 @@ function livenessSentence(daemon: DaemonLiveness | undefined, revision: number):
   if (daemon.startingSince !== undefined) {
     return ` A daemon is starting; results are as of revision ${revision}.${died}`;
   }
+  // Task 001-415, review 001-417 B2: a daemon that stopped unused rests; it is no warning.
+  if (daemon.resting === true) {
+    return ` The daemon stopped while unused; results are as of revision ${revision}.`;
+  }
   const since =
     daemon.since === null
       ? "No daemon is running"
