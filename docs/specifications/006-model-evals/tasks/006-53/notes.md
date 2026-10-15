@@ -54,3 +54,15 @@ Commits on `cez/89bf6484`: `8088abfb` (B2), `32da5cfa` (B1), `6b601e27` (S1), `f
 **Type changes (additive):** `Evidence.sub?`, `Evidence.pendingRetries?`; `stageInherited`, `retryArose` exported; `stageInherited`'s deps gain `recordedLoads`.
 
 **Not settled here:** spec 006 D10's scenario table still ends at a8 (the review's documentation note; the spec is the coordinator's).
+
+## Repair round 2: re-review 006-59 (`reviews/wave-13.md`, "Re-review 006-59", FAIL on `b50dff05`)
+
+Commits on `cez/89bf6484`: `d4fe14a4` (R1), `9e13fbaa` (R2). B2, S1 and S2 were closed and are untouched. Each regression runs in both harnesses and failed before its fix.
+
+**R1, an executed `squeal run` is an action.** Every executed `squeal run` (`run`, `--all`, `--force`, `--slow`, with or without `--wait`) is retained as `{ k: "squeal-run", all, slow }` in command order, at the call's start like a retry or an edit, whatever it printed: redirected, empty, or `Run requested (request …); the daemon records the checkpoint once its current work allows` (exit 1). Its output, when it carries evidence, is still a pull as before. B1's rule (a run between the queued retry and the status read voids the window) and a9's heal rule (a run after the start makes the pass forced) read it as a run the agent asked for, beside own test runs. Regressions: a11's redirected force before a clean status, a9's redirected force before an ordinary recovery, both with the unrecorded request's reply, with the normal-output contrasts and the genuine status-after-retry positive; every run form retained in order.
+
+**Other scenarios unchanged (read only, no regrade CLI, no model):** over the 13 committed `.atomic.json` and `.atomic-variant.json` files, 1,036 non-retry cells and 3,208 declared measures, the measures under this branch equal those of `833135b2` (before 006-53). Since those timelines predate the new step, the same comparison was also made with a `squeal-run` step inserted before every pull and at the end of each cell's timeline: none moved, as no older rule reads the kind.
+
+**R2, the heal exemption tracks the situation to the claim.** In `retryArose`, a FAIL of the file Squeal shows, or an edit to `failure.inputs`, re-opens the situation: it clears the heal, any request made in it, and the service start. A later pass of the file settles it again only when it follows a start made after the re-opening, with no run asked for in between and no request in the re-opened situation. A request while the situation is open keeps it arisen until it re-opens; a request after a heal does not undo the heal. Regressions: the review's renewed-failure probe (both retry measures false), a re-opened situation retried with the retry's pass (met), a second unforced heal (null), and the original heal-before-retry case (still null).
+
+**Type changes (additive):** `Step` gains `{ k: "squeal-run"; all; slow }`; `retryArose` reads `failure.inputs`.
