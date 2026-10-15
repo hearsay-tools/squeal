@@ -77,10 +77,23 @@ describe("prompt", () => {
     });
   });
 
-  it("answers the primer as the consumer's coverage now has it (008-22)", async () => {
+  it("answers the primer as the consumer's coverage now has it, changed since registration (008-22, review 008-23 S1)", async () => {
     const r = await registered();
-    const { primer } = await prompt({ kind: "prompt", ...about(r) }, deps());
-    expect(primer).toContain(COMMAND);
+    const scripts = 'node:test project "scripts" (scripts/*.test.mjs)';
+    const first = (await prompt({ kind: "prompt", ...about(r) }, deps())).primer;
+    expect(first).toContain(COMMAND);
+    expect(first).not.toContain(scripts);
+    // Coverage changes after registration: the next prompt's primer names it.
+    r.policy({
+      nodeTest: [{ name: "scripts", argv: [], env: {}, include: ["scripts/*.test.mjs"] }],
+    });
+    expect((await prompt({ kind: "prompt", ...about(r) }, deps())).primer).toContain(scripts);
+    // The daemon expires the consumer; the prompt that registers it again keeps the new coverage.
+    r.store.consumers.unregister(r.consumer());
+    const again = (await prompt({ kind: "prompt", ...about(r) }, deps())).primer;
+    expect(r.store.consumers.get(r.consumer())).not.toBeNull();
+    expect(again).toContain(scripts);
+    expect(again).toContain(COMMAND);
   });
 
   it("answers the policy's stop.waitMs, for the deadline at idle (review 008-16 B1)", async () => {
