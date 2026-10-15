@@ -33,3 +33,16 @@ Use /reviewer. Outcome: `reviews/wave-3.md` committed with a verdict on the exac
   - 008-26: is each status cause right in a linked worktree and in a subdirectory, and does importing `usesSquealAt` into the CLI change its bundle's behaviour anywhere else?
   - 008-24: is S1 closed, and can the helper's signal handlers change how Vitest ends a worker?
 - Writes only `docs/specifications/008-opencode-adapter/reviews/wave-3.md`. Runs real OpenCode only through `runOpenCode`. Full-suite verdict from `squeal run --all --wait`; no independent full run, since the coordinator's gate runs under the host lock.
+
+## Wave 3.5: repair of `reviews/wave-3.md`
+
+### 008-28 a disposal's report yields to newer input and an abort
+
+Use /worker, on `cand/0.1.186` (ceea98c2). Outcome: B1 of `reviews/wave-3.md` fixed. A report stored at `dispose` is dropped when the session has a newer message than the turn that went idle, including input routed to OpenCode's recreated plugin instance and an abort. The `run` storage path and the 3 s bound stay as they are.
+
+- Read `../reviews/wave-3.md` B1 (its five-step reproduction) and S1.
+- Shape: repair.
+- Lead: the plugin's own epoch cannot see input the new instance takes, so ask OpenCode. At idle, record the session's last message id. In `say`'s stopping path, just before `session.prompt` with `noReply`, read the session's latest messages within the remaining deadline. Store only if none is newer than that id. A failed read stores nothing, which is silence.
+- Tests: both causally gated real-OpenCode cases of B1 (new input; abort after the second request), via `runOpenCode` and `serve`, without sleeps deciding the race; the matching hook tests; the existing `run --continue` e2e still passes. S1: when that e2e's stored-once assertion fails, it prints the timestamps for idle, Stop's answer, dispose entry, the store and dispose return.
+- Owns: `src/harness/opencode/**`, `test/harness/opencode/**`, `test/harness/opencode-*.test.ts`, `test/e2e/opencode*`. No dist, version or key format.
+- Done when: each new test fails at ceea98c2 and passes after; lint, typecheck, the opencode tests and the e2e file green.
