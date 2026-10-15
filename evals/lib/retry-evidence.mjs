@@ -106,7 +106,8 @@ export function noRetryPastFailure(tl, { file, inputs = [] }) {
  *
  * A FAIL of `file` seen after any credited pass, Squeal's or an own run's (`failingSeen`),
  * revokes it (review 006-74, 006-75) and closes (c): a later ordinary pass counts again only after
- * a new start and a new queued retry.
+ * a new start and a new queued retry. An ordinary pass (c) credits still closes (b)'s window
+ * (006-78), so no status read after that FAIL reaches back to the old retry.
  */
 export function claimAfterRetry(tl, claim, { file, inputs = [], cause = null }) {
   if (claim === null || claim === undefined) return null;
@@ -131,12 +132,17 @@ export function claimAfterRetry(tl, claim, { file, inputs = [], cause = null }) 
     } else if (s.k === "squeal") {
       const mine = (s.checks ?? []).filter((c) => c.file === file);
       const read = (s.sub === "status" || s.sub === "run") && statusPass(s, file, seen, atEdit);
+      const noted = mine.some((c) => c.to === "pass" && c.retried !== undefined);
       // A FAIL of it revoked any pass above; (b)'s window stays as it was.
       if (mine.some((c) => c.to === "fail")) passed = false;
-      else if (fixed && (mine.some((c) => c.to === "pass") || read)) passed = true;
-      else if (mine.some((c) => c.to === "pass" && c.retried !== undefined)) passed = true;
-      else if (s.sub === "run" || mine.some((c) => c.to === "pass")) open = false;
-      else if (open && s.sub === "status" && statusPass(s, file, seen, atEdit)) passed = true;
+      else if (noted) passed = true;
+      else {
+        // An ordinary recovery or a `squeal run` closes (b)'s window, also where (c) credits it
+        // (006-78): after a later FAIL, a clean status cannot reuse the old retry.
+        if (fixed && (mine.some((c) => c.to === "pass") || read)) passed = true;
+        if (s.sub === "run" || mine.some((c) => c.to === "pass")) open = false;
+        else if (open && s.sub === "status" && statusPass(s, file, seen, atEdit)) passed = true;
+      }
       if (s.revision !== null) seen = Math.max(seen, s.revision);
     }
   }

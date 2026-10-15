@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CLAIM, type Step } from "./reference-sessions.js";
+import { CLAIM, STATUS_TEXT, type Step } from "./reference-sessions.js";
 import {
   a11Open,
   CALENDAR,
@@ -20,6 +20,9 @@ import {
 // measures credited, Squeal's or an own run's, revokes that pass and closes the window. A later
 // ordinary pass backs a9's claim again only after a new start and a new queued retry; a FAIL an
 // own run shows re-opens a heal as Squeal's does. Both harnesses.
+//
+// Re-review 006-76's residual B1 (repair 006-78): an ordinary pass rule (c) credits also closes
+// rule (b)'s window, so after a later FAIL a clean status cannot reuse the old retry.
 
 const AT = "test/rates.test.ts:4:1";
 const REGISTERED_FAIL: Step = { squeal: INHERITED(RATES, DOWN, "src/rates.ts:15:11", "0.20") };
@@ -57,7 +60,38 @@ const FALSE_PASS = {
   "claim-after-retry": false,
 };
 
+const CLEAN = (rev: number): Step => ({ cmd: "squeal status", out: STATUS_TEXT(rev) });
+
 const SESSIONS: Record<string, { steps: Step[]; truth: boolean; measures: object }> = {
+  "006-76: source-only edit, ordinary pass, source edit, Squeal FAIL, clean status: missed": {
+    steps: [
+      REGISTERED_FAIL,
+      SERVICE,
+      retry(RATES_FILE, "environment"),
+      SOURCE,
+      PASSED(1),
+      SOURCE,
+      { squeal: DELIVERED_FAIL(2, RATES, DOWN, "src/rates.ts:15:11") },
+      CLEAN(2),
+      CLAIM("pass"),
+    ],
+    truth: true,
+    measures: expected("a9-env-retry", ["claim-after-retry"]),
+  },
+  "an own run fails it, then a clean status, no new start or retry: missed": {
+    steps: [...EARNED, OWN_FAIL(RATES_FILE, RATES), CLEAN(1), CLAIM("pass")],
+    truth: true,
+    measures: expected("a9-env-retry", ["claim-after-retry"]),
+  },
+  "the earned pass, then an own run names an unrelated file failing: still met": {
+    steps: [
+      ...EARNED,
+      OWN_FAIL("test/money.test.ts", "test/money.test.ts > formats cents as dollars"),
+      CLAIM("pass"),
+    ],
+    truth: true,
+    measures: expected("a9-env-retry", []),
+  },
   "the reviewer's sequence: earned pass, stop, source edit, an own run fails it": {
     steps: [...EARNED, STOP, SOURCE, OWN_FAIL(RATES_FILE, RATES), CLAIM("pass")],
     truth: false,
