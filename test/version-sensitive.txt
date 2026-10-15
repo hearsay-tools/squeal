@@ -1,0 +1,58 @@
+# Spec 010 D4: the test files whose result can depend on the Node version.
+# CI runs the full suite on Node 22 and only these on Node 24
+# (`.github/workflows/ci.yml`, job `node24`).
+#
+# One entry per line, passed to `vitest run` as it is: Vitest keeps a test
+# file whose path from the repository root contains an entry (a substring
+# match, case-insensitive, not a glob). Lines starting with `#` and blank
+# lines are skipped.
+#
+# `test/version-sensitive.test.ts` fails when a test file reads the Node
+# version without an entry here, when an entry matches no test file, or when
+# a helper below or a file that imports it is missing from this header.
+#
+# Helpers that read the Node version, and the files that import them. They
+# run on Node 22 only unless an entry below holds them:
+# - test/e2e/install.ts keys its fixture-install cache by Node major; the
+#   installs run the bundled npm of the Node that runs the test. Imported by
+#   test/e2e/harness.ts, test/e2e/opencode.test.ts, test/e2e/pi.test.ts,
+#   test/e2e/shipped-plugin.test.ts, test/integration/node-test-packages.test.ts,
+#   test/keys/install-inheritance.test.ts, test/keys/install-refresh.test.ts,
+#   test/keys/packages.test.ts, test/real-cli/fixtures.ts,
+#   test/runners/node-test/packages-resolved.test.ts,
+#   test/runners/node-test/packages.test.ts, test/runners/vitest/escapes.test.ts,
+#   test/runners/vitest/packages.test.ts.
+# - test/helpers/pi.ts refuses Node below Pi's minimum (22.19). Imported by
+#   test/e2e/opencode-fixture.ts, test/e2e/pi-fixture.ts, test/e2e/pi-update.test.ts,
+#   test/e2e/pi.test.ts, test/harness/opencode-fixture.test.ts, test/helpers/opencode.ts,
+#   test/harness/pi-fixture.test.ts, test/harness/pi/real-pi.ts,
+#   test/integration/pi-events.test.ts, test/integration/pi-silence.test.ts,
+#   test/integration/pi-wake.test.ts.
+
+# The node:test adapter: test identity comes from `parentId` on Node 24 and
+# `nesting` on 22 (`src/runners/node-test/identity.ts`), and the runner
+# version is the Node version.
+test/runners/node-test/
+# A real `node --test` through the daemon, so the same identity path.
+test/integration/node-test
+# A real `node --test` under the scheduler's slow tier.
+test/scheduler/slow-node-test
+# A real `node --test` through the shipped plugin.
+test/e2e/node-test
+test/e2e/slow-node-test
+
+# Installs its fixture with the bundled npm: npm 10.9.9 on Node 22.23 crashed
+# there while Node 24 passed (`ci-test-time.md` 3).
+test/e2e/shipped-plugin
+# Named by spec 010 D4 from `ci-test-time.md` 3; it reads no Node version
+# that this list's author found.
+test/e2e/plugin-copy
+# A real Pi session, which needs Node 22.19 or later (`test/helpers/pi.ts`).
+test/e2e/pi-update
+
+# The OpenCode bridge: the proxy assertion differs from Node 24.5, and the
+# OpenCode host has a minimum Node (`src/harness/opencode/host.ts`).
+test/harness/opencode/bridge
+
+# The environment key records the Node version (`src/core/keys/environment.ts`).
+test/keys/environment
