@@ -1,3 +1,4 @@
+import { readPolicy } from "../daemon/policy.js";
 import { isInstalledLockfile, testFileId } from "../keys/index.js";
 import { passedRetry } from "../retry/index.js";
 import { readFailureKeys, readSlowArtifacts } from "../slow/state.js";
@@ -175,7 +176,7 @@ export function annotate(
       store,
       consumer.worktreeId,
       header,
-      entries.some((e) => e.to === "fail"),
+      entries.flatMap((e) => (e.to === "fail" ? [e.check] : [])),
     ),
     stillFailing: states.filter((s) => s.outcome === "fail").map((s) => s.check),
   };
@@ -220,13 +221,32 @@ function withFlaky(
   });
 }
 
-/** `header` with `dependenciesInstalled` when `failing`: the note matters only beside a failure. */
+/**
+ * `header` with `dependenciesInstalled` when a check of a Node runner is among
+ * `failing`: the note matters only beside a failure, and it reads only Node's
+ * installed lockfiles. A pytest check runs only in an admitted environment
+ * (spec 007 D2), so beside its failure the note would be false (task 007-40).
+ */
 export function withDependencies(
   store: Store,
   worktreeId: WorktreeId,
   header: StatusHeader,
-  failing: boolean,
+  failing: readonly CheckId[],
 ): StatusHeader {
-  const installed = failing ? dependenciesInstalled(store, worktreeId) : undefined;
+  const installed = nodeFailing(store, worktreeId, failing)
+    ? dependenciesInstalled(store, worktreeId)
+    : undefined;
   return installed === undefined ? header : { ...header, dependenciesInstalled: installed };
+}
+
+/**
+ * Whether a check in `failing` belongs to a Node runner (Vitest or node:test):
+ * one whose project is not a pytest project of the worktree's policy. Project
+ * names are unique across runners (`createCompositeRunner`).
+ */
+function nodeFailing(store: Store, worktreeId: WorktreeId, failing: readonly CheckId[]): boolean {
+  if (failing.length === 0) return false;
+  const root = store.worktrees.get(worktreeId)?.root;
+  const pytest = new Set(root === undefined ? [] : readPolicy(root).pytest.map((p) => p.name));
+  return failing.some((check) => !pytest.has(check.project));
 }
