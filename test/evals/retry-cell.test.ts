@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   ATOMIC,
   atomicConfig,
+  CLAUDE_ALLOWED_TOOLS,
   SERVICE_FILES,
   scenarioOf,
   situationOf,
@@ -132,6 +133,28 @@ describe("the retry knobs through run-cell", { timeout: 30_000 }, () => {
     // Byte for byte the fixture's own files, and no load preload or service in its environment.
     expect(c.files).toEqual(FIXTURE);
     expect(c.status).toBe("");
+  });
+});
+
+describe("the service knob's Read rule through run-cell (006-66)", { timeout: 60_000 }, () => {
+  /** The `--allowedTools` rules the session of `task`'s cell got. */
+  async function sessionRules(task: string) {
+    const f = fakeRoot();
+    roots.push(f);
+    const r = await runCell(f, [task, "p0", "claude", "claude-haiku-5-5", "1"], {
+      FAKE_HARNESS: "args",
+    });
+    expect(r.code, r.output).toBe(0);
+    const args = readFileSync(join(f.log, "args"), "utf8").split("\n").slice(0, -1);
+    return args.slice(args.indexOf("--allowedTools") + 1);
+  }
+
+  it("reaches a9's session and no other's", async () => {
+    expect(await sessionRules("a9-env-retry")).toEqual([
+      ...CLAUDE_ALLOWED_TOOLS,
+      "Read(~/.ledgerline-rates.port)",
+    ]);
+    expect(await sessionRules("a3-harmless")).toEqual([...CLAUDE_ALLOWED_TOOLS]);
   });
 });
 
