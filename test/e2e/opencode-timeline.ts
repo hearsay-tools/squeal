@@ -186,9 +186,10 @@ export function timeline(input: TimelineInput): Timeline {
 
   const idleDeadline = idle + input.stopWaitMs + IDLE_MARGIN_MS;
   const disposing = opencode.find((m) => m.what.startsWith("disposing instance"))?.at;
-  // `run` disposes about 10 ms after idle (008-25) when OpenCode's log lost the line.
-  const disposeDeadline = (disposing ?? idle) + DISPOSE_DEADLINE_MS;
-  const storeDeadline = disposeDeadline - DISPOSE_END_MS;
+  // Without OpenCode's dispose line no deadline of dispose's is known: none is estimated from
+  // idle, since that would turn an early loss into a miss (review 008-32 round 2, B2).
+  const disposeDeadline = disposing === undefined ? null : disposing + DISPOSE_DEADLINE_MS;
+  const storeDeadline = disposeDeadline === null ? null : disposeDeadline - DISPOSE_END_MS;
   const reading =
     timed === undefined
       ? {
@@ -200,7 +201,9 @@ export function timeline(input: TimelineInput): Timeline {
     `timeline, ms since the first run's idle (${logged !== undefined ? "OpenCode's log" : replied !== undefined ? "its last reply's completion; OpenCode's log lost the line" : "not known: since the epoch"}):`,
     ...marks.map((m) => `  ${since(m.at)} ${m.what}`),
     `  idle's deadline (stop.waitMs ${input.stopWaitMs} + ${IDLE_MARGIN_MS}): ${since(idleDeadline)}`,
-    `  dispose's deadline: ${disposing === undefined ? "not in OpenCode's log" : since(disposing + DISPOSE_DEADLINE_MS)}, the store's ${since(storeDeadline)}`,
+    disposeDeadline === null || storeDeadline === null
+      ? "  dispose's and the store's deadlines: not known, OpenCode's log lost its dispose line"
+      : `  dispose's deadline: ${since(disposeDeadline)}, the store's ${since(storeDeadline)}`,
     ...failures.map((f) => `  ${f}`),
     `reading: ${reading.text}`,
   ].join("\n");
@@ -210,8 +213,9 @@ export function timeline(input: TimelineInput): Timeline {
 interface Reading {
   readonly idle: number;
   readonly idleDeadline: number;
-  readonly storeDeadline: number;
-  readonly disposeDeadline: number;
+  /** `null` when OpenCode's log lost its dispose line. */
+  readonly storeDeadline: number | null;
+  readonly disposeDeadline: number | null;
   readonly messages: readonly Message[];
   readonly since: (at: number) => string;
 }
@@ -265,32 +269,37 @@ function readingOf(input: TimelineInput, r: Reading): Timeline {
     );
   if (delivered === undefined)
     return other("Stop had nothing to deliver, or never reached the daemon");
+  const { storeDeadline, disposeDeadline } = r;
+  if (storeDeadline === null || disposeDeadline === null)
+    return other(
+      "unresolved: OpenCode's log lost its dispose line, so no deadline of dispose's bounds this run",
+    );
   // A consumer still there once `dispose`'s deadline passed was never ended: the idle outlasted
   // the whole deadline, and `ask` had no time left for the end.
-  if (end === undefined && host !== null && host.rows > 0 && host.alive >= r.disposeDeadline)
+  if (end === undefined && host !== null && host.rows > 0 && host.alive >= disposeDeadline)
     return missed(
-      `OpenCode, still running at ${since(host.alive)}, past dispose's deadline (${since(r.disposeDeadline)}), still had the consumer: dispose never ended it, its idle held it to the deadline. The overtaken check's read or the store did not finish in time, D4's silence at a missed deadline`,
+      `OpenCode, still running at ${since(host.alive)}, past dispose's deadline (${since(disposeDeadline)}), still had the consumer: dispose never ended it, its idle held it to the deadline. The overtaken check's read or the store did not finish in time, D4's silence at a missed deadline`,
     );
   // An end bridge quicker than the watcher's gap: the rows it removed while OpenCode ran bound it.
   const removed = consumers.find((s, i) => i > 0 && s.rows.length === 0);
   if (end === undefined && removed !== undefined && host !== null && host.alive >= removed.at) {
     const window = `dispose ended the consumer between ${since(removed.after)} and ${since(removed.at)}, while OpenCode ran`;
     // The plugin's deadline runs from a dispose begun after OpenCode logged it: no slack (review 008-32).
-    return removed.after >= r.storeDeadline
+    return removed.after >= storeDeadline
       ? missed(
-          `${window}: the idle held dispose until the store's deadline (${since(r.storeDeadline)}). The overtaken check's read or the store did not finish in time, D4's silence at a missed deadline`,
+          `${window}: the idle held dispose until the store's deadline (${since(storeDeadline)}). The overtaken check's read or the store did not finish in time, D4's silence at a missed deadline`,
         )
       : other(
-          `${window}, before the store's deadline (${since(r.storeDeadline)}), with nothing stored: the plugin dropped the report, its answer late or the turn judged overtaken`,
+          `${window}, before the store's deadline (${since(storeDeadline)}), with nothing stored: the plugin dropped the report, its answer late or the turn judged overtaken`,
         );
   }
   if (end === undefined)
     return other("unresolved: the watcher missed the end bridge, or never saw OpenCode end");
-  if (end.started >= r.storeDeadline)
+  if (end.started >= storeDeadline)
     return missed(
-      `the idle held dispose until the store's deadline (${since(r.storeDeadline)}): the overtaken check's read or the store did not finish in time, D4's silence at a missed deadline`,
+      `the idle held dispose until the store's deadline (${since(storeDeadline)}): the overtaken check's read or the store did not finish in time, D4's silence at a missed deadline`,
     );
   return other(
-    `the idle let dispose go before the store's deadline (${since(r.storeDeadline)}) with nothing stored: the plugin dropped the report, its answer late or the turn judged overtaken`,
+    `the idle let dispose go before the store's deadline (${since(storeDeadline)}) with nothing stored: the plugin dropped the report, its answer late or the turn judged overtaken`,
   );
 }
