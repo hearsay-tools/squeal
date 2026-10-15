@@ -37749,7 +37749,7 @@ function environmentState(root, project) {
     return {
       state: "none",
       command: discovery.command,
-      note: `pytest project "${project.name}": no Python environment (looked at ${discovery.looked.map((path) => displayDir(root, path)).join(", ")}); ${create(discovery, where2)} Its checks stay unknown until then.`
+      note: `pytest project "${project.name}": no Python environment (looked at ${discovery.looked.map((path) => displayDir(root, path)).join(", ")}), so Squeal runs none of its tests and inherits none of their results. ${create(discovery, where2)}: Squeal then inherits the results other worktrees recorded for the same code and environment, and runs the rest.`
     };
   }
   const editables = outsideEditables(root, discovery.env);
@@ -37762,9 +37762,9 @@ function environmentState(root, project) {
   };
 }
 function create(discovery, where2) {
-  if (discovery.from !== null) return `run \`${discovery.command}\` in ${where2} to create one.`;
+  if (discovery.from !== null) return `Run \`${discovery.command}\` in ${where2} to create one`;
   const venv = discovery.command.slice("python -m venv ".length);
-  return `no lockfile or requirements file names an install, so create \`${venv}\` in ${where2} with the project's own install (\`${discovery.command}\`, then its documented \`pip install\` into \`${venv}/bin/pip\`).`;
+  return `No lockfile or requirements file names an install, so create \`${venv}\` in ${where2} with the project's own install (\`${discovery.command}\`, then its documented \`pip install\` into \`${venv}/bin/pip\`)`;
 }
 function syncNote(project, before, after) {
   if (before === after) return null;
@@ -45261,7 +45261,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.194";
+  if (true) return "0.1.195";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -47814,6 +47814,7 @@ init_store3();
 init_types();
 
 // src/core/delivery/attribution.ts
+init_policy2();
 init_keys();
 init_retry();
 init_state2();
