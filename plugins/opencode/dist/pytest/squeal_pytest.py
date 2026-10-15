@@ -7,7 +7,7 @@ flushed line per record so a killed process leaves a readable prefix:
 - `start`: the process, Python and pytest versions.
 - `refused`: a flag D6 cannot override is in force; pytest then exits 4.
 - `collect`: every collector's report (`pytest_make_collect_report`).
-- `collected`: the items left after deselection, each with its file.
+- `collected`: the items left after deselection, each with its name and file.
 - `deselected`: node ids `-k`, `-m` or a plugin deselected.
 - `item`: an item starts.
 - `phase`: every `pytest_runtest_logreport` (setup, call, teardown).
@@ -277,7 +277,7 @@ def pytest_collection_finish(session):
         {
             "type": "collected",
             "items": [
-                {"nodeid": item.nodeid, "path": os.path.realpath(item.path)}
+                {"nodeid": item.nodeid, "name": item.name, "path": os.path.realpath(item.path)}
                 for item in session.items
             ],
         }

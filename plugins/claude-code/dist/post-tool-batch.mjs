@@ -428,7 +428,10 @@ import { join as join2 } from "node:path";
 
 // src/core/notes.ts
 function readDaemonNotes(store, worktreeId) {
-  return parseList(store.meta.get(notesMetaKey(worktreeId))).flatMap(toNote).slice(-MAX_PERSISTED_NOTES);
+  const notes = parseList(store.meta.get(notesMetaKey(worktreeId))).flatMap(toNote).slice(-MAX_PERSISTED_NOTES);
+  const latest = /* @__PURE__ */ new Map();
+  for (const note of notes) if (note.topic !== void 0) latest.set(note.topic, note);
+  return notes.filter((note) => note.topic === void 0 || latest.get(note.topic) === note);
 }
 function parseList(raw) {
   if (typeof raw !== "string") return [];
@@ -444,7 +447,7 @@ function toNote(item) {
   const { at: at2, revision, text } = item;
   if (typeof at2 !== "number" || typeof text !== "string") return [];
   if (revision !== null && typeof revision !== "number") return [];
-  const { stopped: rawStopped, exitOf } = item;
+  const { stopped: rawStopped, exitOf, topic } = item;
   const stopped = stoppedOf(rawStopped);
   return [
     {
@@ -452,7 +455,8 @@ function toNote(item) {
       revision,
       text,
       ...stopped === void 0 ? {} : { stopped },
-      ...typeof exitOf === "string" ? { exitOf } : {}
+      ...typeof exitOf === "string" ? { exitOf } : {},
+      ...typeof topic === "string" ? { topic } : {}
     }
   ];
 }
@@ -598,9 +602,13 @@ var FIELDS2 = {
   env: variables,
   include: globs,
   exclude: globs,
-  slow: boolean
+  slow: boolean,
+  batchSize: positiveInteger2
 };
 var REQUIRED2 = /* @__PURE__ */ new Set(["name", "include"]);
+function positiveInteger2(value) {
+  return Number.isInteger(value) && value > 0 ? null : "a positive integer";
+}
 function pytestProjects(value, path) {
   return projectEntries(value, path, FIELDS2, REQUIRED2, withDefaults2, pythonInsideRoot);
 }
@@ -4793,7 +4801,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.187";
+  if (true) return "0.1.190";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
