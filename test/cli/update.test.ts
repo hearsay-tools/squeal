@@ -92,6 +92,21 @@ describe("squeal update", { timeout: 30_000 }, () => {
     expect(r.code).toBe(0);
     expect(m.calls()).toEqual(["codex plugin marketplace upgrade hearsay"]);
     expect(squeal(m).version).toBe("0.1.132");
+    // Codex has no reload: Claude Code's is not named (lessons 008 defect 4(a)).
+    expect(r.stdout).toContain("A running session keeps the version it loaded until it restarts.\n");
+    expect(r.stdout).not.toContain("Claude Code");
+  });
+
+  it("names /reload-plugins when Claude Code alone is updated", async () => {
+    const m = installed("0.1.131", ["claude"]);
+    m.publish("0.1.132");
+    const r = await update(m);
+    expect(r.code).toBe(0);
+    expect(r.stdout.split("\n").slice(-3)).toEqual([
+      "Claude Code: squeal@hearsay 0.1.132, was 0.1.131",
+      "A running session keeps the version it loaded until it restarts, or until /reload-plugins in Claude Code.",
+      "",
+    ]);
   });
 
   it("re-copies the launcher when the plugin's copy has a newer format", async () => {
