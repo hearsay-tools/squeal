@@ -44,9 +44,10 @@ beforeAll(async () => {
   await Promise.all([buildDist(CLAUDE_CODE_PLUGIN, claude), buildDist(CODEX_PLUGIN, codex)]);
   bundles = { claude, codex };
 }, 120_000);
+// The removal of two bundles can outlast the 10 s hook default under load (task 001-385).
 afterAll(() => {
   for (const dir of Object.values(bundles ?? {})) rmSync(dir, { recursive: true, force: true });
-});
+}, 120_000);
 
 /** Both plugins' hooks against one worktree: SessionStart, then each tool boundary. */
 function plugins(repo: FixtureRepo, cli: string) {
