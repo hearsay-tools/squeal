@@ -8,17 +8,18 @@ export const NO_DAEMON =
 
 /**
  * Another program's reply in place of Squeal's, one per call it answered (row 006-62): the
- * terminal launcher finding no plugin (spec 005 D3), the shell finding no `squeal`, Node finding
- * no CLI file.
+ * terminal launcher finding no plugin or no Node (spec 005 D3), the shell finding no `squeal`,
+ * Node finding no CLI file.
  */
 const FOREIGN =
-  /^(?:squeal: no squeal@hearsay plugin is installed|.*\bsqueal(?:\.mjs)?: (?:command )?not found|.*Cannot find module '[^']*squeal\.mjs')/gm;
+  /^(?:squeal: (?:no squeal@hearsay plugin is installed|Node [\d.]+ or later is needed)|.*\bsqueal(?:\.mjs)?: (?:command )?not found|.*Cannot find module '[^']*squeal\.mjs')/gm;
 /**
  * A line only Squeal prints: a header, a count, a reply to a request, an explanation, or its own
- * refusal (`squeal: no daemon running for …`, `squeal run: unknown argument …`).
+ * refusal (`squeal: no daemon running for …`, `squeal run: unknown argument …`, a usage line,
+ * `why`'s no match or several, a store it cannot read; review 006-63 B3).
  */
 const SQUEALS =
-  /^(?:Revision:? \d|Known failures: \d|Run requested|Checkpoint |Retry (?:queued|withdrawn|asked)|Not retried|No pending retry|No verdict: |No daemon running|No slow files|Not validated|Check: |SQUEAL ·|Slow tier|Returned |squeal(?: [a-z-]+)?: |\s*"knownFailures": )/m;
+  /^(?:Revision:? \d|Known failures: \d|Run requested|Checkpoint |Retry (?:queued|withdrawn|asked)|Not retried|No pending retry|No verdict: |No daemon running|No slow files|Not validated|Check: |SQUEAL ·|Slow tier|Returned |squeal(?: [a-z-]+)?: |\s*"knownFailures": |usage: squeal |No check matches ".*" in this worktree\.|".*" matches \d+ checks in this worktree:|Status unavailable, |Squeal daemon |Stop requested)/m;
 
 const base = (bin) => bin.replace(/^.*\//, "");
 
