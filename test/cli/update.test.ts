@@ -93,7 +93,9 @@ describe("squeal update", { timeout: 30_000 }, () => {
     expect(m.calls()).toEqual(["codex plugin marketplace upgrade hearsay"]);
     expect(squeal(m).version).toBe("0.1.132");
     // Codex has no reload: Claude Code's is not named (lessons 008 defect 4(a)).
-    expect(r.stdout).toContain("A running session keeps the version it loaded until it restarts.\n");
+    expect(r.stdout).toContain(
+      "A running session keeps the version it loaded until it restarts.\n",
+    );
     expect(r.stdout).not.toContain("Claude Code");
   });
 
