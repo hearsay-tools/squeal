@@ -1,0 +1,31 @@
+# THROWAWAY probe for spec 010 row 010-13 (research topic required-checks-probe).
+# Committed only on probe/010-13-* branches as .github/workflows/probe-010-13.yml, never on main.
+# The commit message picks the outcome: [probe-fail] exits 1, [probe-sleep] sleeps 180 s,
+# [probe-skip] skips the job by its `if`; a change only under probe-docs/ skips the workflow.
+name: Probe 010-13
+on:
+  push:
+    branches: ["probe/010-13-**", "!probe/010-13-target"]
+    paths-ignore: ["probe-docs/**"]
+  workflow_dispatch:
+    inputs:
+      mode:
+        default: pass
+permissions: {}
+jobs:
+  probe-check:
+    name: probe-check
+    if: ${{ !contains(github.event.head_commit.message, '[probe-skip]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: verdict
+        env:
+          MSG: ${{ github.event.head_commit.message }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          echo "sha=$GITHUB_SHA event=$GITHUB_EVENT_NAME ref=$GITHUB_REF"
+          case "$MSG $MODE" in
+            *probe-fail*) exit 1 ;;
+            *probe-sleep*) sleep 180 ;;
+          esac
