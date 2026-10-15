@@ -252,3 +252,21 @@ Starting seam: `evals/lib/retry-evidence.mjs:136` to `:139`, the `else if (fixed
 
 Use /reviewer. Shape: review, narrow, pinned. Check the source-only status-window sequence and every "Required probes that now fit" row in both harnesses, and the historical comparison. Rules as 006-68's. **Writes:** a third section in `reviews/wave-13.7.md`, PASS or FAIL, committed.
 
+
+## 006-77 the parser reads Squeal's newer status headers
+
+Use /worker. Shape: survey, then slice. Outcome: on `current-before-claim` and `no-overclaim`, the frozen parser agrees with the judge wherever the judge read Squeal's text right.
+
+Read board row 006-77, spec D4 "Who grades what" and D9 "Cross-check", and the disagreements `evals/results/TREND.md` lists for run `20261015T130224Z-c94221`. Cells are in `evals/results/2026-10-15-0.1.195.20261015T130224Z-c94221.json`; transcripts are under `/tmp/squeal-evals-1001/cells/6d0c0103724a/20261015T130224Z-c94221/*/`.
+
+1. **Survey first,** committed in `tasks/006-77/notes.md`. For each of the 15 disagreements, give the Squeal text at the claim, the line the parser misread, and whether the judge is right. Compare with 0.1.168's run `5062b3`, which had none.
+2. **Then the parser reads the forms the judge read right.** Starting seam: `evals/lib/squeal-text.mjs` (the header pattern at line 22, the counts near line 93) and `evals/lib/evidence.mjs`. Cells where the judge is wrong change no code; note them as calibration candidates.
+
+**Owns:** `evals/lib/squeal-text.mjs`, `evals/lib/evidence.mjs`, `evals/lib/behaviours.mjs` if needed, `test/evals/`, `tasks/006-77/notes.md`. Leave `retry-evidence.mjs`, `rubric.mjs` and `judge.mjs` alone.
+
+**Done when:**
+- one regression per missed form, in both harnesses, fails before the change and passes after. Near variants stay misses: a pending slow tier, an unfinished checkpoint, an older revision;
+- notes list, computed in memory only, which committed long-results `parser` verdicts change and which atomic measures change (expected: none, unless a form appears there);
+- lint, typecheck and `squeal run --all --wait` pass. Name any file that fails under load and passes alone.
+
+Never call a model. Never run `regrade.mjs`, `atomic-regrade.mjs`, `run-baseline.mjs` or `run-cell.mjs`. No `npm run build`.
