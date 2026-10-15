@@ -203,7 +203,10 @@ var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
 
 // src/core/notes.ts
 function readDaemonNotes(store, worktreeId) {
-  return parseList(store.meta.get(notesMetaKey(worktreeId))).flatMap(toNote).slice(-MAX_PERSISTED_NOTES);
+  const notes = parseList(store.meta.get(notesMetaKey(worktreeId))).flatMap(toNote).slice(-MAX_PERSISTED_NOTES);
+  const latest = /* @__PURE__ */ new Map();
+  for (const note of notes) if (note.topic !== void 0) latest.set(note.topic, note);
+  return notes.filter((note) => note.topic === void 0 || latest.get(note.topic) === note);
 }
 function parseList(raw) {
   if (typeof raw !== "string") return [];
@@ -219,7 +222,7 @@ function toNote(item) {
   const { at: at2, revision, text } = item;
   if (typeof at2 !== "number" || typeof text !== "string") return [];
   if (revision !== null && typeof revision !== "number") return [];
-  const { stopped: rawStopped, exitOf } = item;
+  const { stopped: rawStopped, exitOf, topic } = item;
   const stopped = stoppedOf(rawStopped);
   return [
     {
@@ -227,7 +230,8 @@ function toNote(item) {
       revision,
       text,
       ...stopped === void 0 ? {} : { stopped },
-      ...typeof exitOf === "string" ? { exitOf } : {}
+      ...typeof exitOf === "string" ? { exitOf } : {},
+      ...typeof topic === "string" ? { topic } : {}
     }
   ];
 }
@@ -452,9 +456,13 @@ var FIELDS2 = {
   env: variables,
   include: globs,
   exclude: globs,
-  slow: boolean
+  slow: boolean,
+  batchSize: positiveInteger2
 };
 var REQUIRED2 = /* @__PURE__ */ new Set(["name", "include"]);
+function positiveInteger2(value) {
+  return Number.isInteger(value) && value > 0 ? null : "a positive integer";
+}
 function pytestProjects(value, path) {
   return projectEntries(value, path, FIELDS2, REQUIRED2, withDefaults2, pythonInsideRoot);
 }
@@ -4530,8 +4538,8 @@ function readOmittedTestFiles(store, worktreeId) {
 }
 
 // src/runners/pytest/environment/discover.ts
-import { existsSync as existsSync5, readFileSync as readFileSync6, statSync } from "node:fs";
-import { dirname as dirname3, isAbsolute as isAbsolute5, join as join9, resolve as resolve3 } from "node:path";
+import { existsSync as existsSync5, readdirSync as readdirSync2, readFileSync as readFileSync6, statSync } from "node:fs";
+import { basename, dirname as dirname3, isAbsolute as isAbsolute5, join as join9, relative as relative2, resolve as resolve3 } from "node:path";
 function projectDir(root, project) {
   return project.cwd === void 0 ? root : toAbsolute(root, project.cwd);
 }
@@ -4541,13 +4549,14 @@ function discoverEnvironment(root, project) {
     const declared = resolve3(cwd, project.python);
     if (isDirectory(declared)) return found("declared", declared, join9(declared, "bin", "python"));
     if (existsSync5(declared)) return found("declared", dirname3(dirname3(declared)), declared);
-    return none(root, cwd, [declared]);
+    const target = basename(declared).startsWith("python") ? dirname3(dirname3(declared)) : declared;
+    return none(root, cwd, [declared], target);
   }
   const venv = join9(cwd, ".venv");
   if (existsSync5(join9(venv, "pyvenv.cfg"))) return found("venv", venv, join9(venv, "bin", "python"));
   const pdm = pdmPython(root, cwd);
   if (pdm !== null) return found("pdm-python", dirname3(dirname3(pdm)), pdm);
-  return none(root, cwd, [venv, join9(cwd, ".pdm-python")]);
+  return none(root, cwd, [venv, join9(cwd, ".pdm-python")], venv);
 }
 function found(source, env, python) {
   return { kind: "found", source, env, python };
@@ -4568,13 +4577,37 @@ var LOCKFILES2 = [
   ["poetry.lock", "poetry install"],
   ["pdm.lock", "pdm install"]
 ];
-function none(root, cwd, looked) {
+var REQUIREMENTS = /^(?:[\w.-]+[-_])?requirements(?:[-_.][\w.-]+)?\.txt$/;
+function none(root, cwd, looked, target) {
+  const venv = relative2(cwd, target) || ".";
+  const dirs = [];
   for (let dir = cwd; ; dir = dirname3(dir)) {
-    const hit = LOCKFILES2.find(([file]) => existsSync5(join9(dir, file)));
-    if (hit !== void 0) return { kind: "none", looked, command: hit[1] };
+    dirs.push(dir);
     if (toRelative(root, dir) === null) break;
   }
-  return { kind: "none", looked, command: "uv sync" };
+  for (const dir of dirs) {
+    const hit = LOCKFILES2.find(([file]) => existsSync5(join9(dir, file)));
+    if (hit !== void 0)
+      return { kind: "none", looked, command: hit[1], from: join9(dir, hit[0]) };
+  }
+  for (const dir of dirs) {
+    const files2 = requirementsIn(dir).map((file) => join9(dir, file));
+    if (files2.length === 0) continue;
+    const install = files2.map((file) => `-r ${relative2(cwd, file)}`).join(" ");
+    const command = `python -m venv ${venv} && ${venv}/bin/pip install ${install}`;
+    return { kind: "none", looked, command, from: files2[0] };
+  }
+  return { kind: "none", looked, command: `python -m venv ${venv}`, from: null };
+}
+function requirementsIn(dir) {
+  let names;
+  try {
+    names = readdirSync2(dir);
+  } catch (error) {
+    if (isMissing(error)) return [];
+    throw error;
+  }
+  return names.filter((name) => REQUIREMENTS.test(name)).sort();
 }
 function isDirectory(path) {
   try {
@@ -4715,7 +4748,7 @@ function shellWords(text) {
 }
 
 // src/harness/shared/test-command-files.ts
-import { isAbsolute as isAbsolute6, join as join11, relative as relative2, resolve as resolve5 } from "node:path";
+import { isAbsolute as isAbsolute6, join as join11, relative as relative3, resolve as resolve5 } from "node:path";
 function resolveTestFiles(command, listing, root, nodeTest, omitted) {
   if (command.runner === "node-test") {
     const own = listing.filter((ref) => ref.project === command.project);
@@ -4739,8 +4772,8 @@ function resolveTestFiles(command, listing, root, nodeTest, omitted) {
 }
 function matchesFilter(file, filter, root) {
   if (isAbsolute6(filter) && file.startsWith(filter)) return true;
-  const testFile = relative2(root, file).toLocaleLowerCase();
-  const rel = relative2(root, resolve5(root, filter));
+  const testFile = relative3(root, file).toLocaleLowerCase();
+  const rel = relative3(root, resolve5(root, filter));
   const relativePath = filter.endsWith("/") ? join11(rel, "/") : rel;
   return testFile.includes(filter.toLocaleLowerCase()) || testFile.includes(relativePath.toLocaleLowerCase());
 }
@@ -4752,7 +4785,7 @@ function pytestFiles(command, listing, root) {
   return own.filter((ref) => named.has(ref.path));
 }
 function worktreePath(root, path) {
-  const rel = relative2(root, resolve5(root, path));
+  const rel = relative3(root, resolve5(root, path));
   if (rel === "" || rel === ".." || rel.startsWith("../") || isAbsolute6(rel)) return null;
   return rel;
 }
@@ -4924,7 +4957,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.187";
+  if (true) return "0.1.190";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

@@ -176,9 +176,13 @@ var FIELDS2 = {
   env: variables,
   include: globs,
   exclude: globs,
-  slow: boolean
+  slow: boolean,
+  batchSize: positiveInteger2
 };
 var REQUIRED2 = /* @__PURE__ */ new Set(["name", "include"]);
+function positiveInteger2(value) {
+  return Number.isInteger(value) && value > 0 ? null : "a positive integer";
+}
 function pytestProjects(value, path) {
   return projectEntries(value, path, FIELDS2, REQUIRED2, withDefaults2, pythonInsideRoot);
 }
