@@ -946,11 +946,59 @@ export function pilotRecord(
     declared?: readonly string[];
   },
 ): PilotRecord;
+/** The row regrading and its note, stamped on a file only where a cell changed (006-80). */
+export interface RegradeStamp {
+  by: string;
+  note: string;
+}
 export function regradeAtomic(
   data: Json,
   config: AtomicConfig,
   date: string,
+  stamp: RegradeStamp,
 ): { data: Json; changed: string[] };
+
+// 006-82: committed cells graded again from their kept raw `out/`.
+/** evals/bin/grade.mjs's grade of a cell's `out/`, unwritten; `null` without meta or events. */
+export function gradeOut(out: string): Record<string, unknown> | null;
+/** The `cellRecord` fields `gradeCell` sets, refreshed from `out/`. */
+export const MECHANICAL: readonly string[];
+export interface RegradeContext {
+  conditions: Json | undefined;
+  declared: Declarations;
+  config: AtomicConfig;
+}
+export function regradedCell(
+  cell: Record<string, unknown>,
+  grade: Record<string, unknown>,
+  context: RegradeContext,
+): Record<string, unknown>;
+export interface CellChanges {
+  /** Each changed grade: `[name, before, after]`, as `parser no-overclaim`. */
+  grades: [string, unknown, unknown][];
+  /** The other changed fields' names. */
+  evidence: string[];
+}
+export function changesOf(
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+): CellChanges;
+export function regradeFromOut(
+  data: Json,
+  input: RegradeStamp & {
+    gradeOf: (cell: Record<string, unknown>) => Record<string, unknown> | null;
+    declared: Declarations;
+    config: AtomicConfig;
+    date: string;
+  },
+): {
+  data: Json;
+  changed: string[];
+  evidence: string[];
+  missing: string[];
+  diffs: (CellChanges & { id: string })[];
+};
+export function runDirOf(root: string, run: string): string | null;
 
 // 006-36: evals/results/ATOMIC.md, the atomic tier's per-model counts, flags and alarms.
 export const FLAG_P: number;

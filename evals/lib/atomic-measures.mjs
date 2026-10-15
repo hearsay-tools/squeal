@@ -122,17 +122,16 @@ export function pilotRecord(
   return record;
 }
 
-const BY = "006-50";
-const NOTE =
-  "Measures recomputed (spec 006 D10, 006-50) from each cell's kept pilot record and retained timeline under evals/atomic/atomic.json at this revision. a1-break scores D4's `no-rerun-answered` over the whole session, in place of the prototype's `no-rerun-answered-turn2`, which counted `squeal why` and pending or older evidence as an answer and scored only a turn sent once Squeal settled. The old record's `ownRunsAfterAnswered` fields stay in each cell and are read by nothing. `changed` names the cells whose measures changed.";
-
 /**
  * Results file `data` (a `.atomic.json`) with every cell's measures recomputed under `config`'s
- * declarations, its scenarios' declared measures updated, and a `regraded` note naming the cells
- * it changed (a regrade by this row replaces its own earlier note). A cell of a scenario `config`
- * no longer declares, or without a pilot record, is left as it was.
+ * declarations and its scenarios' declared measures updated. Only when a cell's measures changed
+ * does it get a `regraded` note `{ by, date, changed, note }` from `stamp`, the row regrading and
+ * its note (a regrade by the same row replaces its own earlier note); with none, `data` is
+ * returned as it was. A cell of a scenario `config` no longer declares, or without a pilot
+ * record, is left as it was.
  */
-export function regradeAtomic(data, config, date) {
+export function regradeAtomic(data, config, date, { by, note }) {
+  if (!by || !note) throw new Error("a regrade names its row (`by`) and its note");
   const changed = [];
   const cells = data.cells.map((cell) => {
     const scenario = config.scenarios[cell.task];
@@ -142,22 +141,18 @@ export function regradeAtomic(data, config, date) {
     changed.push(cell.id);
     return { ...cell, atomic: { ...cell.atomic, measures } };
   });
+  if (!changed.length) return { data, changed };
   const scenarios = Object.fromEntries(
     Object.entries(data.scenarios ?? {}).map(([t, s]) => [
       t,
       config.scenarios[t] ? { ...s, measures: config.scenarios[t].measures ?? [] } : s,
     ]),
   );
-  const others = (data.regraded ?? []).filter((n) => n.by !== BY);
-  const earlier = (data.regraded ?? []).find((n) => n.by === BY);
+  const earlier = (data.regraded ?? []).find((n) => n.by === by);
+  const others = (data.regraded ?? []).filter((n) => n !== earlier);
   const all = [...new Set([...(earlier?.changed ?? []), ...changed])];
   return {
-    data: {
-      ...data,
-      cells,
-      scenarios,
-      regraded: [...others, { by: BY, date: earlier?.date ?? date, changed: all, note: NOTE }],
-    },
+    data: { ...data, cells, scenarios, regraded: [...others, { by, date, changed: all, note }] },
     changed,
   };
 }

@@ -59,19 +59,21 @@ const graded = files.flatMap((file) => {
   };
   const by = values.by ?? "dry-run";
   const note = values.note ?? "dry-run";
-  return [{ file, ...regradeFromOut(data, { gradeOf, declared, config, by, note, date: values.date }) }];
+  return [
+    { file, ...regradeFromOut(data, { gradeOf, declared, config, by, note, date: values.date }) },
+  ];
 });
 
 const show = (v) => (v === undefined ? "absent" : JSON.stringify(v));
-for (const { file, data, changed, missing, diffs } of graded) {
+for (const { file, data, changed, evidence: only, missing, diffs } of graded) {
   const kept = data.cells.length - missing.length;
   if (!kept) continue;
-  const regraded = diffs.filter((d) => d.grades.length);
   console.log(
-    `${file}: ${changed.length} of ${kept} kept cell(s) changed, ${regraded.length} in a grade; ${missing.length} without out/`,
+    `${file}: of ${kept} kept cell(s), ${changed.length} changed in a grade, ${only.length} in evidence alone; ${missing.length} without out/`,
   );
-  for (const { id, grades } of regraded)
-    for (const [k, before, after] of grades) console.log(`  ${id} ${k}: ${show(before)} -> ${show(after)}`);
+  for (const { id, grades } of diffs)
+    for (const [k, before, after] of grades)
+      console.log(`  ${id} ${k}: ${show(before)} -> ${show(after)}`);
   const evidence = new Map();
   for (const { evidence: fields } of diffs) {
     const key = fields.join(", ");
@@ -83,7 +85,7 @@ const untouched = graded.filter((g) => g.data.cells.length === g.missing.length)
 console.log(`${untouched} results file(s) with no kept cell, left as they are`);
 
 if (dry) process.exit(0);
-const written = graded.filter((g) => g.changed.length);
+const written = graded.filter((g) => g.diffs.length);
 for (const { file, data } of written) writeFileSync(file, `${JSON.stringify(data, null, 1)}\n`);
 console.log(`wrote ${written.length} results file(s)`);
 for (const dir of new Set(written.map((g) => dirname(g.file)))) {
