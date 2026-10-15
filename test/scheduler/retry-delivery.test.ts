@@ -1,10 +1,10 @@
-import { rmSync } from "node:fs";
+import { rmSync, writeFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { createDelivery, formatDelta, formatRegistration } from "../../src/core/delivery/index.js";
 import { recordedText } from "../../src/core/retry/index.js";
 import { type Consumer, MAIN_AGENT, type Store } from "../../src/core/types/index.js";
 import { type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
-import { ask, failing, flakyRepo, loadKnob, options, pass } from "./retry-fixture.js";
+import { ask, failing, flakyRepo, flips, loadKnob, options, pass } from "./retry-fixture.js";
 
 /*
  * Spec 001 D6 as amended (001-368): a session meeting a failure at
@@ -67,6 +67,44 @@ describe("a retry as the agent reads it", SLOW, () => {
     expect(text).toContain("FAIL -> PASS");
     expect(text).toContain("Flaky: FAIL -> PASS under the same inputs");
     expect(text).toContain("Retry asked (load) at these inputs: it passed");
+  });
+
+  it("names a retry only on the recovery its run produced (review 001-398, S2)", async () => {
+    const repo = flakyRepo();
+    const load = loadKnob();
+    const store = openRepoStore(repo.commonDir);
+    const h = await openHarness(repo.main, store, repo.commonDir, options(load));
+    await failing(h);
+    const { delivery, consumer } = await registered(store, h, "s0");
+
+    // s1's retry passes; s2's, at the same key with the marker back, fails again.
+    rmSync(repo.marker);
+    ask(store, h, "s1", "environment");
+    await h.scheduler.requestRetries();
+    await h.scheduler.idle();
+    const retried = formatDelta(
+      (await delivery.onToolBoundary(consumer)) ?? expect.fail("no delta"),
+    );
+    expect(retried).toContain("Retry asked (environment) at these inputs: it passed");
+    writeFileSync(repo.marker, "");
+    await h.scheduler.requestFullSuite({ force: true });
+    await h.scheduler.idle();
+    ask(store, h, "s2", "environment");
+    await h.scheduler.requestRetries();
+    await h.scheduler.idle();
+    expect(h.sink.stateOf(flips)).toMatchObject({ outcome: "fail" });
+    await delivery.onToolBoundary(consumer);
+
+    // An ordinary forced run recovers it: no retry produced this pass.
+    rmSync(repo.marker);
+    await h.scheduler.requestFullSuite({ force: true });
+    await h.scheduler.idle();
+    const recovered = formatDelta(
+      (await delivery.onToolBoundary(consumer)) ?? expect.fail("no delta"),
+    );
+    expect(recovered).toContain("FAIL -> PASS");
+    expect(recovered).toContain("Flaky: FAIL -> PASS under the same inputs");
+    expect(recovered).not.toContain("Retry asked");
   });
 
   it("says a retry failed again in a later session's registration", async () => {

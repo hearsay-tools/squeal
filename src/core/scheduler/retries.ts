@@ -81,15 +81,16 @@ function sameFile(ref: FileState["ref"], file: FileState): boolean {
 }
 
 /**
- * In `recordTier`: a forced run of `file` at its retry's key ended the
- * requests there, `passed` or `failed` by its records, `unknown` when it
- * gave no result.
+ * In `recordTier`: a forced run of `file` at its retry's key, `runId`,
+ * ended the requests there, `passed` or `failed` by its records, `unknown`
+ * when it gave no result.
  */
 export function endRetry(
   context: SchedulerContext,
   file: FileState,
   key: CheckKey,
   records: readonly ResultRecord[] | null,
+  runId: string,
 ): void {
   if (file.retryKey !== key) return;
   file.retryKey = null;
@@ -99,6 +100,7 @@ export function endRetry(
     outcome,
     at: context.now(),
     worktreeId: context.worktreeId,
+    runId,
   });
 }
 

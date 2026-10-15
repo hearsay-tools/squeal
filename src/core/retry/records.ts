@@ -40,6 +40,11 @@ export interface RetryEnd {
   readonly at: EpochMs;
   /** The worktree whose run ended it, or that withdrew it. */
   readonly worktreeId: WorktreeId;
+  /**
+   * The run that ended it, the `Provenance.runId` of the results it stored;
+   * absent for a withdrawal and for requests ended before review 001-398, S2.
+   */
+  readonly runId?: string;
 }
 
 /** One session's request to re-run one test file at one key. */
