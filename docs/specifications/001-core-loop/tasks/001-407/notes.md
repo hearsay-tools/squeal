@@ -41,3 +41,36 @@ Wave 15 W4. Baseline: W2's `7574faf9`. Tests: `test/delivery/news-header.test.ts
 
 - `evals/lib/rubric.mjs` still gives the judge `"Revision 6: 31 current, 0 pending, 0 stale, 0 unknown"` as its example header. Changing it changes `rubricRevision`, which means judge recalibration, so I left it. The judge reads `no check pending, stale or unknown` in plain words.
 - `plugins/*/dist` is not rebuilt. The bundle-drift tests (`has the bundles exactly as npm run build:plugin produces them`) fail until the coordinator rebuilds.
+
+## Review 001-423
+
+### B2: a status's test files without checks read to the end of its line
+
+`formatStatus` ends `Test files without checks: 1 pending, 0 unknown` with its line and no period. The parser required a period, so it dropped the counts and read a pass. `countsOf` (`evals/lib/squeal-text.mjs`) now reads `/Test files without checks: ([^.\n]*)/`: up to the period or the line's end, whichever comes first, never into a later line. A news header's one-class sentence (`Test files without checks: 1 pending.`) reads as before.
+
+Tests (`3a9a23c4`):
+
+- `test/evals/evidence-squeal.test.ts` crosses every snapshot variant with every formatter (`formatStatus`, `formatRegistration`, and `formatDelta` in the news form), each as plain text and inside a Claude Code hook's JSON. 9 variants × 3 × 2 = 54 cases.
+  - Four new variants: files without checks 1 pending; 1 unknown; 1 pending and 1 unknown; the slow tier pending. The news delivery is built with `slowTierChanged: true`, so it carries the slow line as a real one does when the tier changed.
+  - Each case asserts the snapshot's pending, stale and unknown counts (test files without checks added in), its verdict, and that no variant owing anything (the slow tier included) reads as pass.
+  - Each also compares against main's parser before 001-407: `test/evals/fixtures/squeal-text-c6320866.mjs` is a frozen copy of c6320866's `evals/lib/squeal-text.mjs`, with a `.d.mts` for its types. A pass is allowed only where main's parser also reads a pass, and each count main reads must not be higher than the current parser's.
+  - Main's parser reads no news header (its counts are `null`), so a news header is compared with main's reading of the same snapshot's full header, the registration's.
+- `test/evals/header-forms.test.ts` adds, in both harnesses, each formatter's real text before a pass claim. With every count current it is met; with 1 pending or 1 unknown test file without checks it misses both `current-before-claim` and `no-overclaim`. The news case delivers `RECOVERY(3)` first, since a news header lists no known failure and the cell's ledger failure would otherwise stand. 006-77's cases are unchanged. The file is now 334 lines.
+- Without the fix, the 6 status cases of the matrix and both harnesses' status misses fail; every other case passes either way.
+
+Regrade, read-only (it exits before any write; `evals/results` unchanged):
+
+```text
+$ node evals/bin/regrade-cells.mjs --from-cells /tmp/squeal-evals-1001/cells --by 001-407 --note x --dry-run
+…20261014T212723Z-dd4056.atomic.json: of 40 kept cell(s), 0 changed in a grade, 0 in evidence alone; 0 without out/
+…20261015T071439Z-65314d.atomic.json: of 11 kept cell(s), 0 changed in a grade, 0 in evidence alone; 0 without out/
+…20261015T104301Z-9edb7b.atomic.json: of 12 kept cell(s), 0 changed in a grade, 0 in evidence alone; 0 without out/
+…20261015T110706Z-e81bea.atomic.json: of 80 kept cell(s), 0 changed in a grade, 0 in evidence alone; 0 without out/
+…20261015T114356Z-99db6d.atomic.json: of 20 kept cell(s), 0 changed in a grade, 0 in evidence alone; 0 without out/
+…20261015T115108Z-320f5e.atomic.json: of 20 kept cell(s), 0 changed in a grade, 0 in evidence alone; 0 without out/
+…20261015T130224Z-c94221.json: of 48 kept cell(s), 0 changed in a grade, 0 in evidence alone; 0 without out/
+…20261015T135404Z-21c18e.atomic.json: of 20 kept cell(s), 0 changed in a grade, 0 in evidence alone; 0 without out/
+24 results file(s) with no kept cell, left as they are
+```
+
+0 grade changes in 251 kept cells.
