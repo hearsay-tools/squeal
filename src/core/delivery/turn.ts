@@ -140,6 +140,15 @@ function atKey(state: Idle, file: string, keys: CurrentKeys): boolean {
 }
 
 /**
+ * Whether no entry can pass `waitedFor` and `trimmed` has nothing to trim:
+ * in a turn, or idle with no test file owed and no new one awaited. The
+ * waiter's poll then reads no state (task 001-414).
+ */
+export function owesNothing(state: TurnState): boolean {
+  return state.turn !== "idle" || (state.testFiles.length === 0 && !state.newTestFiles);
+}
+
+/**
  * Whether the idle waiter may deliver `entry`: its test file was pending when
  * the turn ended and is still at the key it was pending at, or it is a check
  * first observed, at or before the revision the turn ended at, while test
