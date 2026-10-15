@@ -66,10 +66,7 @@ const status = (rev: number): Step => ({
 /** The same status read through `| tail -n 12`: the lines above its `Affected checks` are cut. */
 const tailed = (rev: number, failing: string[], seen: number): Step => ({
   cmd: "squeal run --slow --wait 60000 2>&1 | tail -n 12",
-  out: STATUS(rev, failing, seen)
-    .split("\n")
-    .slice(2)
-    .join("\n"),
+  out: STATUS(rev, failing, seen).split("\n").slice(2).join("\n"),
 });
 const FLAKE = "test/clock.test.ts > due dates > loads the holiday calendar within its budget";
 
