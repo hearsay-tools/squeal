@@ -36,8 +36,12 @@ What `../lessons.md` was observed with. Everything ran as `squeal-e2e` under `/h
 | `tui.sh` | One OpenCode TUI in a tmux server private to the dogfood user: start, send, keys, screen capture. |
 | `gate.sh` | Waits for load below 24 and no other `squeal-e2e` process. |
 | `tree.sh` | Lists `home/` and `xdg/` (without package bodies) and prints OpenCode's global config, before and after the install and the update (goal 8). |
-| `condense.py`, `stats.py`, `collect.sh` | Turn a proxy log into a timeline (new messages per model request, Squeal texts and their role, tool calls, whether a system message carries the primer and which CLI it names), count per session, and copy the condensed record into `logs/`. |
+| `condense.py`, `stats.py`, `events.py`, `collect.sh` | Turn a proxy log into a timeline (new messages per model request, Squeal texts and their role, tool calls, whether a system message carries the primer and which CLI it names), count per session, condense Cezar's event log (with time and load), and copy the condensed record into `logs/`. |
 | `sync.sh` | Copies these scripts into `dogfood-008/scripts`. |
+
+## Logs
+
+`logs/<session>.timeline.md` per session (from the proxy, so it is what reached the model), `logs/<session>.cezar-events.txt` for the `serve` sessions (Cezar's events with time and load), `logs/<session>.run.txt` for `opencode run` (wall time and load), `s3b-run-luna.run.err` (OpenCode's log for defect 1), `logs/stats.txt`, the install, setup, warm-up and update transcripts, `s5-tui.screens.txt` (TUI captures with time and load), `s5-ps-*.txt` (processes around the update and the restart) and `tree-*.txt` (goal 8). Raw request logs and OpenCode's database stay in `dogfood-008`.
 
 ## Repeat
 

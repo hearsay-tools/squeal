@@ -1,0 +1,10 @@
+{
+  "model": "cliproxy/gpt-6-luna",
+  "cwd": "/home/squeal-e2e/dogfood-008/remeda",
+  "prompts": [
+    "Local experiment in this checkout, not a PR. Create packages/remeda/src/zz-slow.test.ts with one Vitest test (import { expect, test } from \"vitest\") named \"slow check\" that first awaits a 10 second timer and then expects 1 to equal 2; give the test a 30 second timeout. Write only that file. Do not run, wait for or check anything; reply DONE as soon as the file is written.",
+    "Since my first message, list each message you received and say who sent it. Did anyone ask you to change anything?"
+  ],
+  "gapMs": 90000,
+  "idleMs": 90000
+}

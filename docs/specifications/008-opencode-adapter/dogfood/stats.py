@@ -39,4 +39,4 @@ for name in sys.argv[1:]:
                         cmds.append(cmd)
     print(f"{name}: {len(reqs)} requests, primer in {primer}; SQUEAL as user text {len(as_user)}, after a tool result {len(in_tool)}, as a denied edit {len(denied)}")
     for c in cmds:
-        print(f"  ran tests itself: {c[:160]}")
+        print("  ran tests itself: " + re.sub(r'"[^"]*node" [^"]*"[^"]*squeal\.mjs"', "squeal", c)[:200])

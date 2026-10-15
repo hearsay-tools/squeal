@@ -1,0 +1,4 @@
+    PID    PPID     ELAPSED COMMAND
+2681603 2681597       04:37 node /home/squeal-e2e/dogfood-008/scripts/proxy.mjs 47320 /home/squeal-e2e/dogfood-008/logs/s5-tui.requests.jsonl
+2757856 2757855       00:00 tee /home/squeal-e2e/dogfood-008/logs/s5-ps-after-exit.txt
+2757857 2757853       00:00 ps -u squeal-e2e -o pid,ppid,etime,args

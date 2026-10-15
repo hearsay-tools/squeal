@@ -13,7 +13,7 @@ for s in $names; do
   as python3 -I "$D/scripts/condense.py" "$s" >"$here/logs/$s.timeline.md"
 done
 [ -z "$names" ] || as python3 -I "$D/scripts/stats.py" $names >"$here/logs/stats.txt"
-for f in $(as sh -c "cd $D/logs && ls *.txt *.run.jsonl *.run.err 2>/dev/null"); do
+for f in $(as sh -c "cd $D/logs && ls *.txt 2>/dev/null; find . -name '*.run.err' -size +0 | sed 's,^./,,'"); do
   case $f in npm-ci.txt) continue ;; esac
   as cat "$D/logs/$f" >"$here/logs/$f"
 done
