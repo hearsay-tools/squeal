@@ -21,6 +21,7 @@ import {
   queueReruns,
   rememberReruns,
 } from "./rerun.js";
+import { endRetry, recordFailedLoad, tierLoad } from "./retries.js";
 import { storeClosures } from "./revision.js";
 import { failStartup } from "./setup.js";
 import { joinSpan, type TierSpan } from "./sharing.js";
@@ -64,6 +65,8 @@ export interface Tier {
   readonly cancel: AbortController | null;
   /** A backlog or checkpoint tier's grant from the per-user pool, returned when it ends (`endTier`). */
   readonly lease?: PoolLease;
+  /** The host's load per CPU when the tier started (`tierLoad`, 001-368); `null` when not known. */
+  readonly loadPerCpu?: number | null;
 }
 
 /**
@@ -246,6 +249,7 @@ export function startTier(
       ),
       cancel: cancellable ? new AbortController() : null,
       ...(lease === undefined ? {} : { lease }),
+      loadPerCpu: tierLoad(context),
     };
     lease?.shrinkTo(files.length);
     for (const { file, key } of files) {
@@ -461,7 +465,9 @@ export function recordTier(
         describe: context.describe,
       });
       const prior = storeResults(context, records);
+      recordFailedLoad(context, tier.runId, tier.loadPerCpu ?? null, records);
       if (forced && file.rerunKey === key) endRerun(context, file);
+      if (forced) endRetry(context, file, key, records);
       // A grown file's results become current at `storeKey` through `settle` below; its new
       // failure is judged here, before the sink applies them (review wave 13i, B3).
       if (growth !== undefined || file.key === key) {
@@ -510,6 +516,9 @@ export function recordTier(
     const timedOut =
       report.end === "timed-out" ? timedOutReason(context.policy.runner.timeoutMs) : null;
     const reason = timedOut ?? report.failure ?? `run ${report.end}`;
+    for (const { file, key } of unknown) endRetry(context, file, key, null);
+    for (const { file } of notStarted)
+      if (file.key !== null) endRetry(context, file, file.key, null);
     ledger.markUnknown(unknown, reason);
     ledger.commit();
   });

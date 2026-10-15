@@ -28,6 +28,7 @@ import { type Priority, priorityOf, RunQueue } from "./queue.js";
 import { adoptsAtFirstCommit, recordMoves } from "./rekeyed-moves.js";
 import { recordRekeyed } from "./rekeyed-record.js";
 import { endRerun } from "./rerun.js";
+import { lapseRetry } from "./retries.js";
 import { SetupFailures } from "./setup.js";
 import { slowView } from "./slow.js";
 
@@ -191,6 +192,8 @@ export class Ledger {
         endRerun(this.context, file);
         this.queue.remove(ref);
       }
+      // The agent's retry was asked at the key it had: it lapses here (001-368).
+      if (lapseRetry(this.context, file, key) && !file.rerunPending) this.queue.remove(ref);
       if (this.queue.isForced(ref)) continue;
       if (
         key === null ||
@@ -326,6 +329,14 @@ export class Ledger {
   enqueue(file: FileState, priority: Priority, forced = false, recent = false): void {
     this.queue.add(file.ref, priority, forced, recent);
     this.#syncPhase(file);
+  }
+
+  /** Takes `file` out of the queue; whether it was queued. */
+  dequeue(file: FileState): boolean {
+    if (!this.queue.has(file.ref)) return false;
+    this.queue.remove(file.ref);
+    this.#syncPhase(file);
+    return true;
   }
 
   /** The tier holding these files starts or ends. */
