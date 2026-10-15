@@ -1101,6 +1101,23 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 | 009-28 Pi in the harness facts | planned | Quality 2026-10 finding 2. Pi's settings are read in four places: `src/cli/update.ts:232-269` (`piHome`, `piPackage`), `install.sh:123-148` (`pi_has`), the launcher (`plugins/pi/bin/squeal-launcher:60`), and `test/e2e/pi-fixture.ts:237` (`installedPackages`). Meanwhile `src/cli/setup/harnesses.ts:13` `HarnessId` knows only Claude Code and Codex, so `update.ts:119-127` special-cases Pi, and `update.ts:272` re-implements `harnesses.ts:50` `onPath`. Add `"pi"` to `readHarnesses` (on the PATH, version from Pi's settings under `piHome`); `updateTargets` then iterates it with Pi's `install.sh --pi` step; the e2e helper imports the reader. `install.sh` and the launcher stay shell-side copies, named in a comment beside the TS one. Before 009-26, which then reads the same fact. Crosses 005 D3: tell the 005 coordinator. Widened by 008 quality 2026-10 slice 8: `install.sh`'s `opencode_has` and `update-packages.ts`'s `openCodePackage` read OpenCode's config by one rule; make `openCodePackage` the one TS reader and pin both with one test (listed, tuple, JSONC with a comment, absent). | One Pi settings reader in `src/`; `update.ts` has no `onPath` or `piPackage` of its own; `squeal update` and `install-sh-pi` tests pass unchanged. Widened by 008 lessons defect 3: OpenCode too (on the PATH, installed from `current` and OpenCode's config, a reader of `AGENTS.md`); with OpenCode present, `setup --no-warmup` still leaves the repository recognisable (a config or a store). |
 | 009-29 quality 2026-10 slices | planned | `specifications/009-pi-adapter/quality/2026-10.md` slices 1 to 7: one CLI-command formatter, the skill note in the shared plugin build, one idle-wait bound, Pi's constants once, one unregistered-session check and install URL, shared child-process test helpers, the launcher copy test covers OpenCode. Slices 1, 2, 5 and 6 touch OpenCode (008) or Codex code: tell their coordinators. Widened by 008 quality 2026-10 slice 1: OpenCode's copies too, `opencodeCliCommand` (`src/cli/opencode/status.ts:20`) as a fifth formatter (slice 1), `IDLE_WAIT_MS` in `bridge-turn.ts:157` as a third wait literal (slice 3), and `opencodeStatusLine`'s unregistered-session check with its import of Pi's `INSTALL_SH_COMMAND` (slice 5). | Each slice one commit, behaviour unchanged; the suite green; the key pin re-checked if a guarded source moves. |
 
+## Feature 010: CI cost
+
+Spec: `specifications/010-ci-cost/spec.md`. Sections D1 to D6. Draft: no row starts before the human approves the spec.
+
+### Wave 1: the workflow
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 010-10 triggers, docs skip, cancellation, one full Node in three shards | planned | D1 to D5 in `.github/workflows/ci.yml`; the version-sensitive list and its guard test (D4); D6's two lines in the coordinator skill (both mirrors). No bundle change, no version raise. | Guard test green; the candidate's own CI shows three Node 22 shards and the Node 24 job, all green; Testing's push checks and the edge probe recorded in `status.md`. |
+| 010-11 review of 010-10 | planned | `/reviewer` pinned to the candidate SHA: each D against the workflow, whether any filter or group drops a run the process reads (`research/ci-run-triggers.md` 4), the list's coverage of version-dependent code. | `reviews/wave-1.md` committed. |
+
+### Wave 2: proof
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 010-20 three-day measurement | planned (three days after 010-10 lands) | `/researcher`, read-only on GitHub: G5 and the Testing measures against `research/ci-run-triggers.md` 1 and 5; shard walls; every `cand/*` push had a run; no cancelled main run. | `lessons.md` committed; open questions 1 and 2 carry numbers for the human. |
+
 ## Later
 
 - 002: CI's drift step (`.github/workflows/ci.yml:42`) diffs the committed Claude Code, Pi and OpenCode `dist` trees but not `plugins/codex/dist`, and no test compares that tree with the build (009 quality 2026-10, outside its scan).
