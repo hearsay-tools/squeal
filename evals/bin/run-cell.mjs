@@ -347,6 +347,8 @@ async function lifecycle() {
     commit,
     head,
     pin: relative(ROOT, PIN),
+    // 006-62: the cell's bare `squeal` was the pinned plugin's (the atomic trend reads it).
+    ...(plugin && { squealPath: "pinned" }),
     setupS: +setupS.toFixed(1),
     wallS: +((T1 - T0) / 1000).toFixed(1),
     exit,
