@@ -70,6 +70,15 @@ export async function stoppedItself(pid: number, ms: number): Promise<boolean> {
   return false;
 }
 
+/** SIGCONT to `pid`, which may have exited instead of stopping: then nothing to resume. */
+export function resume(pid: number): void {
+  try {
+    process.kill(pid, "SIGCONT");
+  } catch {
+    // gone
+  }
+}
+
 /** What the restart did before the wait: the stop, the third SessionStart, and the daemons after each. */
 export interface Restart {
   readonly stop: BundleRun & { readonly at: string };
