@@ -1,3 +1,4 @@
+import { readFailureKeys } from "../slow/state.js";
 import {
   checkIdentity,
   producingResult,
@@ -54,11 +55,12 @@ export function passedRetry(
 /**
  * The known failures of `states` with `recorded`, from the result that
  * produced each: the run the state sink named when it derived the state
- * (`readFailureProducers`), its age, load and the retry asked at its key.
+ * (`readFailureProducers`) at the key it recorded for the failure, its age,
+ * load and the retry asked at that key.
  * Any other row of the check, a cached pass at a new key or an identical
  * same-key failure from a later run, gives none of its facts; with no named
- * producer still stored the failure says its age and load are unknown
- * (review 001-417 B3).
+ * producer still stored, or one that describes another state, the failure
+ * says its age and load are unknown (review 001-417 B3, task 001-420).
  */
 export function withRecorded(
   store: Store,
@@ -72,13 +74,15 @@ export function withRecorded(
   });
   if (failing.length === 0) return [];
   const producers = readFailureProducers(store, worktreeId);
+  const failureKeys = readFailureKeys(store, worktreeId);
   const retries = readRetries(store);
   const loads = readRunLoads(store);
   return failing.map(({ state, failure }) => {
     if (failure.check.kind === "setup") return failure;
     const testFile = testFileOf(failure.check);
     const results = store.results.listForCheck(failure.check, Number.MAX_SAFE_INTEGER);
-    const row = producingResult(state, producers.get(checkIdentity(state.check)), results);
+    const id = checkIdentity(state.check);
+    const row = producingResult(worktreeId, state, producers.get(id), failureKeys.get(id), results);
     if (row === null) return { ...failure, recordedUnknown: true };
     const { provenance } = row;
     const retry = retryFactOf(retriesAt(retries, testFile, row.key));
