@@ -87,13 +87,18 @@ var WORKTREE_META_ROWS = {
   notes: { prefix: "notes.", owner: "types/scheduler" },
   refined: { prefix: "refined.", owner: "types/scheduler" },
   awaitingInstall: { prefix: "awaiting-install.", owner: "types/scheduler" },
+  installCommand: { prefix: "install-command.", owner: "types/scheduler" },
   checkpoint: { prefix: "checkpoint.", owner: "types/scheduler" },
+  checkpointLanes: { prefix: "checkpoint-lanes.", owner: "store/repos/runs" },
+  headMove: { prefix: "head-move.", owner: "types/scheduler" },
   daemonBootstrapped: { prefix: "daemon-bootstrapped:", owner: "types/daemon" },
   daemonToken: { prefix: "daemon-token:", owner: "store/repos/worktrees" },
   daemonExit: { prefix: "daemon-exit:", owner: "types/daemon" },
+  daemonRest: { prefix: "daemon-rest:", owner: "types/daemon" },
   slowTier: { prefix: "slow-tier:", owner: "slow/state" },
   slowArtifacts: { prefix: "slow-artifacts:", owner: "slow/state" },
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
+  failureProducers: { prefix: "failure-producers:", owner: "state/producers" },
   reruns: { prefix: "reruns:", owner: "scheduler/rerun-memory" },
   heldFiles: { prefix: "held-files:", owner: "scheduler/held" },
   rekeyed: { prefix: "rekeyed.", owner: "scheduler/rekeyed-record" },
@@ -103,7 +108,8 @@ var WORKTREE_META_ROWS = {
   stopWait: { prefix: "stop-wait:", owner: "slow/stop-wait" },
   testCommandDenied: { prefix: "test-command-denied:", owner: "delivery/test-command-denied" },
   ignoredReads: { prefix: "ignored-reads:", owner: "scheduler/ignored-reads" },
-  omittedTestFiles: { prefix: "omitted-test-files:", owner: "scheduler/omitted-test-files" }
+  omittedTestFiles: { prefix: "omitted-test-files:", owner: "scheduler/omitted-test-files" },
+  unknownFiles: { prefix: "unknown-files:", owner: "scheduler/unknown-files" }
 };
 function worktreeMetaKey(row, worktreeId) {
   return `${WORKTREE_META_ROWS[row].prefix}${worktreeId}`;
@@ -119,6 +125,9 @@ function bootstrappedMetaKey(worktreeId) {
 }
 function daemonExitMetaKey(worktreeId) {
   return worktreeMetaKey("daemonExit", worktreeId);
+}
+function daemonRestMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonRest", worktreeId);
 }
 
 // src/core/types/delivery.ts
@@ -145,7 +154,7 @@ var DEFAULT_POLICY = {
   vitest: { excludeProjects: [] },
   slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 6e5, maxParallel: 4 },
   delivery: { uncoveredEdits: true },
-  daemon: { idleExitMinutes: 60 },
+  daemon: { idleExitMinutes: 60, unusedExitMinutes: 30 },
   store: { retentionDays: 7, maxSizeMb: null }
 };
 
@@ -159,6 +168,24 @@ function refinedMetaKey(worktreeId) {
 }
 function awaitingInstallMetaKey(worktreeId) {
   return worktreeMetaKey("awaitingInstall", worktreeId);
+}
+function headMoveMetaKey(worktreeId) {
+  return worktreeMetaKey("headMove", worktreeId);
+}
+function parseHeadMove(raw) {
+  if (raw === null) return null;
+  try {
+    const value = JSON.parse(raw);
+    const { head, dirty, revision } = value;
+    if (head !== null && typeof head !== "string") return null;
+    if (typeof dirty !== "boolean" || !Number.isInteger(revision)) return null;
+    return { head, dirty, revision };
+  } catch {
+    return null;
+  }
+}
+function installCommandMetaKey(worktreeId) {
+  return worktreeMetaKey("installCommand", worktreeId);
 }
 function parseAwaitingInstall(raw) {
   if (raw === "true") return [];
@@ -536,7 +563,7 @@ var SHAPE = {
     maxParallel: positiveInteger
   },
   delivery: { uncoveredEdits: boolean2 },
-  daemon: { idleExitMinutes: aboveZero },
+  daemon: { idleExitMinutes: aboveZero, unusedExitMinutes: aboveZero },
   store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
 };
 function loadPolicy(root) {
@@ -557,7 +584,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.195";
+  if (true) return "0.1.196";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -614,6 +641,7 @@ function testFileId(ref) {
 // src/core/state/fingerprint.ts
 import { realpathSync as realpathSync2 } from "node:fs";
 import { tmpdir } from "node:os";
+import { stripVTControlCharacters } from "node:util";
 
 // src/core/text.ts
 function plural(count, word) {
@@ -650,6 +678,78 @@ function tempPrefixes() {
 }
 function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function firstLine(text) {
+  const line = stripVTControlCharacters(text).split(/\r?\n/).find((l) => l.trim() !== "");
+  return (line ?? "").trim().replace(/\s+/g, " ");
+}
+function normalize(line) {
+  return VOLATILE.reduce(
+    (text, [pattern, replacement]) => text.replace(pattern, replacement),
+    line
+  );
+}
+function where(location2) {
+  return location2 === null ? "?" : `${location2.path}:${location2.line}:${location2.column}`;
+}
+function describeFailure(errors, fallback) {
+  const first = errors[0];
+  if (first === void 0) {
+    return { fingerprint: `fail @ ${where(fallback)}`, summary: "failed without an error message" };
+  }
+  const line = firstLine(first.message);
+  const location2 = first.location ?? fallback;
+  const more = errors.length - 1;
+  const text = withCauses(
+    `${first.phase === "setup" ? "setup failed: " : ""}${withCode(line === "" ? first.name : line, first.code)}`,
+    first.causes ?? []
+  );
+  const summary = more > 0 ? `${text} (${more} more error${more === 1 ? "" : "s"})` : text;
+  const recorder = errors.find((e) => e.recorder !== void 0)?.recorder;
+  return {
+    fingerprint: `${first.name}: ${normalize(line)} @ ${where(location2)}`,
+    summary: withRecorder(
+      withDiff(summary, first.diff === null ? null : diffText(first.diff)),
+      recorder
+    )
+  };
+}
+function withRecorder(summary, recorder) {
+  if (recorder === void 0) return summary;
+  const note = cap(
+    `; ran under Squeal's recorder in NODE_OPTIONS: ${recorder}`,
+    SUMMARY_MAX_CHARS / 2
+  );
+  return `${cap(summary, SUMMARY_MAX_CHARS - note.length)}${note}`;
+}
+function causeText(cause) {
+  return withCode(cause.message === "" ? cause.code ?? "" : cause.message, cause.code);
+}
+function withCode(text, code) {
+  return code === void 0 || text.includes(code) ? text : `${text} (${code})`;
+}
+function withCauses(text, causes) {
+  if (causes.length === 0) return text;
+  const chain = causes.map((c) => `; cause: ${causeText(c)}`).join("");
+  const shown = cap(chain, SUMMARY_MAX_CHARS - Math.min(text.length, LINE_MIN_CHARS));
+  return `${cap(text, SUMMARY_MAX_CHARS - shown.length)}${shown}`;
+}
+var LINE_MIN_CHARS = 120;
+var DIFF_LINES = 8;
+function diffText(diff) {
+  const lines = stripVTControlCharacters(diff).split(/\r?\n/);
+  const legend = lines.slice(0, 2).map((l) => l.trim());
+  const labelled = /^- \S/.test(legend[0] ?? "") && /^\+ \S/.test(legend[1] ?? "");
+  const changed = (labelled ? lines.slice(2) : lines).filter((l) => /^[-+]/.test(l)).slice(0, DIFF_LINES).map((l) => `${l[0]} ${l.slice(1).trim().replace(/\s+/g, " ")}`);
+  if (changed.length === 0) return null;
+  return `diff${labelled ? ` (${legend.join(", ")})` : ""}: ${changed.join(" | ")}`;
+}
+function withDiff(summary, diff) {
+  if (diff === null) return cap(summary, SUMMARY_MAX_CHARS);
+  const separator = "; ";
+  const room = SUMMARY_MAX_CHARS - separator.length;
+  const shownDiff = cap(diff, room - Math.min(summary.length, LINE_MIN_CHARS));
+  return `${cap(summary, room - shownDiff.length)}${separator}${shownDiff}`;
 }
 
 // src/core/state/derive.ts
@@ -723,6 +823,26 @@ function optimizerOffMetaKey(worktreeId) {
 function readOptimizerOff(store, worktreeId) {
   const text = store.meta.get(optimizerOffMetaKey(worktreeId));
   return text === null || text === "" ? void 0 : text;
+}
+
+// src/core/state/revision-commit.ts
+function readRevisionCommit(store, worktreeId, latest = store.revisions.latest(worktreeId)) {
+  const moved = parseHeadMove(store.meta.get(headMoveMetaKey(worktreeId)));
+  const number = latest?.number ?? 0;
+  if (moved !== null && moved.revision >= number && moved.head !== latest?.head) {
+    return moved.head === null ? void 0 : { head: moved.head, sinceHead: 0, dirty: moved.dirty };
+  }
+  if (latest === null || latest.head === null) return void 0;
+  const current = moved !== null && moved.revision >= number;
+  const other = store.revisions.lastAtOtherHead(worktreeId, latest.head);
+  const since = moved !== null && moved.head === latest.head && moved.revision >= (other ?? 0) ? moved.revision : other === null ? 0 : other + 1;
+  const dirty = current ? moved.dirty : latest.dirty;
+  return { head: latest.head, sinceHead: Math.max(0, number - since), dirty };
+}
+function revisionText(revision, commit) {
+  if (commit === void 0 || commit.head === null) return String(revision);
+  const dirty = commit.dirty ? ", dirty" : "";
+  return `${revision} \xB7 ${commit.head.slice(0, 8)} + ${commit.sinceHead}${dirty}`;
 }
 
 // src/core/delivery/slots.ts
@@ -906,7 +1026,7 @@ function sourcesChanged(store, worktreeId, since, revision, artifact, isSource) 
   }
   const isArtifact = createInputMatcher(artifact);
   return [...now].some(
-    ([path, hash]) => hash !== tested.get(path) && path !== POLICY_FILE && !isArtifact(path) && isSource(path)
+    ([path, hash2]) => hash2 !== tested.get(path) && path !== POLICY_FILE && !isArtifact(path) && isSource(path)
   );
 }
 function artifactSources(store, keys, view) {
@@ -1063,7 +1183,9 @@ function slowFilesNotCurrent(states, keys, isSlow) {
 
 // src/core/state/header.ts
 function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId), isSlow) {
-  const revision = store.revisions.latest(worktreeId)?.number ?? 0;
+  const latest = store.revisions.latest(worktreeId);
+  const revision = latest?.number ?? 0;
+  const commit = readRevisionCommit(store, worktreeId, latest);
   const counts = { current: 0, pending: 0, stale: 0, unknown: 0 };
   const fileLevelCounts = {
     current: 0,
@@ -1082,21 +1204,24 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
       if (state.check.kind === "file") inheritedFileLevelCount++;
     }
   }
-  const last = store.checkpoints.lastCompleted(worktreeId);
   const refinedRevision = readRefined(store, worktreeId);
   const missing = parseAwaitingInstall(store.meta.get(awaitingInstallMetaKey(worktreeId)));
   const awaiting = missing !== null;
+  const last = store.checkpoints.lastCompletedFull(worktreeId);
+  const lane = awaiting ? null : laneAfter(store.checkpoints.lastCompleted(worktreeId), last);
   const view = worktreeSlowView(store, worktreeId);
   const slow = isSlow ?? view?.isSlow;
   const optimizerOff = readOptimizerOff(store, worktreeId);
   return {
     revision,
+    ...commit === void 0 ? {} : { commit },
     counts,
     fileLevelCounts,
     testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
     fullSuite: {
       atCurrentRevision: !awaiting && last !== null && last.revision === revision,
-      lastCompletedRevision: last?.revision ?? null
+      lastCompletedRevision: last?.revision ?? null,
+      ...lane === null ? {} : { lane }
     },
     testFilesListed: keys.length > 0 || !awaiting && last !== null,
     inheritedCount,
@@ -1107,8 +1232,17 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     ...view === null ? {} : { slowTier: readSlowTier(store, worktreeId, revision, states, keys, view) },
     ...awaiting ? { awaitingInstall: true } : {},
     ...missing !== null && missing.length > 0 ? { missingInstalls: missing } : {},
+    ...awaiting ? installCommandField(store, worktreeId) : {},
     ...optimizerOff === void 0 ? {} : { optimizerOff }
   };
+}
+function installCommandField(store, worktreeId) {
+  const command = store.meta.get(installCommandMetaKey(worktreeId));
+  return command === null || command === "" ? {} : { installCommand: command };
+}
+function laneAfter(latest, full) {
+  if (latest?.lane === void 0 || latest.id === full?.id) return null;
+  return { lane: latest.lane, revision: latest.revision };
 }
 function readRefined(store, worktreeId) {
   const raw = store.meta.get(refinedMetaKey(worktreeId));
@@ -1121,7 +1255,8 @@ function runnerPartText(revision) {
 function fullSuiteText({ revision, fullSuite }, command) {
   if (fullSuite.atCurrentRevision) return `completed at revision ${revision}`;
   const none = fullSuite.lastCompletedRevision === null ? "none completed at any revision" : `none completed since revision ${fullSuite.lastCompletedRevision}`;
-  return `${none} (the counts are for revision ${revision}; \`${command} run --all\` requests one)`;
+  const lane = fullSuite.lane === void 0 ? "" : `; only the ${fullSuite.lane.lane} lane completed, at revision ${fullSuite.lane.revision}`;
+  return `${none}${lane} (the counts are for revision ${revision}; \`${command} run --all\` requests one)`;
 }
 function countFilesWithoutChecks(states, keys) {
   const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
@@ -1166,6 +1301,41 @@ function toKnownFailure(state, revision) {
     fingerprint: state.fingerprint ?? "",
     location: state.location
   };
+}
+
+// src/core/state/shown-result.ts
+function fingerprintOf(result) {
+  if (result.outcome !== "fail") return null;
+  return result.fingerprint ?? describeFailure(result.errors, result.location).fingerprint;
+}
+
+// src/core/state/producers.ts
+function failureProducersMetaKey(worktreeId) {
+  return worktreeMetaKey("failureProducers", worktreeId);
+}
+function isProducer(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value;
+  return typeof v.runId === "string" && typeof v.recordedAt === "number";
+}
+function readFailureProducers(store, worktreeId) {
+  const raw = store.meta.get(failureProducersMetaKey(worktreeId));
+  if (raw === null) return /* @__PURE__ */ new Map();
+  try {
+    const value = JSON.parse(raw);
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return /* @__PURE__ */ new Map();
+    return new Map(
+      Object.entries(value).filter((e) => isProducer(e[1]))
+    );
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+function producingResult(state, producer, results) {
+  if (producer === void 0) return null;
+  return results.find(
+    (r) => r.provenance.runId === producer.runId && r.provenance.recordedAt === producer.recordedAt && r.outcome === state.outcome && fingerprintOf(r) === state.fingerprint && r.provenance.commit === state.commit
+  ) ?? null;
 }
 
 // src/core/state/transitions.ts
@@ -1427,29 +1597,28 @@ function passedRetry(store, testFile, key, runId) {
     )
   );
 }
-function withRecorded(store, worktreeId, failures) {
-  if (failures.length === 0) return [];
-  const keys = new Map(
-    store.testFileKeys.list(worktreeId).map((k) => [testFileId(k.testFile), k.key])
-  );
-  const rows = /* @__PURE__ */ new Map();
+function withRecorded(store, worktreeId, states, revision) {
+  const failing = states.flatMap((state) => {
+    const failure = toKnownFailure(state, revision);
+    return failure === null ? [] : [{ state, failure }];
+  });
+  if (failing.length === 0) return [];
+  const producers = readFailureProducers(store, worktreeId);
   const retries = readRetries(store);
   const loads = readRunLoads(store);
-  return failures.map((failure) => {
+  return failing.map(({ state, failure }) => {
     if (failure.check.kind === "setup") return failure;
     const testFile = testFileOf(failure.check);
-    const key = keys.get(testFileId(testFile));
-    if (key === void 0 || key === null) return failure;
-    if (!rows.has(key)) rows.set(key, store.results.byKey(key));
-    const identity = checkIdentity(failure.check);
-    const row = rows.get(key)?.find((r) => checkIdentity(r.check) === identity);
-    if (row === void 0) return failure;
+    const results = store.results.listForCheck(failure.check, Number.MAX_SAFE_INTEGER);
+    const row = producingResult(state, producers.get(checkIdentity(state.check)), results);
+    if (row === null) return { ...failure, recordedUnknown: true };
     const { provenance } = row;
-    const retry = retryFactOf(retriesAt(retries, testFile, key));
+    const retry = retryFactOf(retriesAt(retries, testFile, row.key));
     const recorded = {
       worktreeId: provenance.worktreeId,
       worktreeRoot: store.worktrees.get(provenance.worktreeId)?.root ?? null,
       revision: provenance.revision,
+      recordedAt: provenance.recordedAt,
       loadPerCpu: loads.get(provenance.runId) ?? null,
       ...retry === void 0 ? {} : { retry }
     };
@@ -1474,11 +1643,21 @@ function retryText(fact) {
   const asked = `retry asked (${fact.reason}) at these inputs`;
   return fact.outcome === "pending" ? `${asked}, pending` : `${asked}: ${outcomeText(fact.outcome)}`;
 }
-function recordedText(facts, here) {
-  const where = facts.worktreeId === here ? "this worktree" : facts.worktreeRoot ?? `worktree ${facts.worktreeId}`;
+function agoText(ms) {
+  const minutes = Math.floor(Math.max(0, ms) / 6e4);
+  if (minutes < 1) return "just now";
+  if (minutes < 120) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 48) return `${hours} h ago`;
+  return `${Math.floor(hours / 24)} d ago`;
+}
+var RECORDED_UNKNOWN_TEXT = "recorded at an unknown time and load: the result that produced it is no longer identifiable in the store";
+function recordedText(facts, here, now) {
+  const where2 = facts.worktreeId === here ? "this worktree" : facts.worktreeRoot ?? `worktree ${facts.worktreeId}`;
+  const ago = facts.recordedAt === void 0 ? "" : ` ${agoText(now - facts.recordedAt)}`;
   const load = facts.loadPerCpu === null ? "load per CPU then not recorded" : `load ${facts.loadPerCpu.toFixed(2)} per CPU when it ran`;
   const retry = facts.retry === void 0 ? "no retry asked at these inputs" : retryText(facts.retry);
-  return `recorded in ${where} at revision ${facts.revision}, ${load}; ${retry}`;
+  return `recorded${ago} in ${where2} at revision ${facts.revision}, ${load}; ${retry}`;
 }
 
 // src/core/store/connection.ts
@@ -2190,6 +2369,18 @@ function createResultRepo(conn) {
         limit
       ).map(toResult);
     },
+    listFailures: (filter, limit) => conn.all(
+      `${SELECT_RESULTS} WHERE ${FAILURE_WHERE} ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT ?`,
+      ...failureParams(filter),
+      limit
+    ).map(toResult),
+    countFailures: (filter) => num(
+      conn.get(
+        `SELECT COUNT(*) AS n FROM results r WHERE ${FAILURE_WHERE}`,
+        ...failureParams(filter)
+      ) ?? { n: 0 },
+      "n"
+    ),
     putMany: (records) => conn.transaction(() => {
       for (const r of records) {
         const p = r.provenance;
@@ -2228,6 +2419,10 @@ function storeFailureText(conn, summary, errors) {
     text
   );
   return id;
+}
+var FAILURE_WHERE = `r.outcome = 'fail' AND (? IS NULL OR r.worktree_id = ?) AND (? IS NULL OR r.recorded_at >= ?)`;
+function failureParams({ worktreeId, since }) {
+  return [worktreeId, worktreeId, since, since];
 }
 function toResult(row) {
   return {
@@ -2299,6 +2494,12 @@ function toRun(row) {
   };
 }
 function createCheckpointRepo(conn) {
+  const lanes = (worktreeId) => readLanes(conn, worktreeId);
+  const withLane = (row) => {
+    const record = toCheckpoint(row);
+    const lane = lanes(record.worktreeId)[record.id];
+    return lane === void 0 ? record : { ...record, lane };
+  };
   return {
     start: (record) => {
       conn.run(
@@ -2311,6 +2512,7 @@ function createCheckpointRepo(conn) {
         JSON.stringify(record.testFiles),
         record.startedAt
       );
+      if (record.lane !== void 0) writeLane(conn, record.worktreeId, record.id, record.lane);
       return { ...record, completedAt: null, end: null };
     },
     finish: (id, end, at2) => {
@@ -2318,7 +2520,7 @@ function createCheckpointRepo(conn) {
     },
     get: (id) => {
       const row = conn.get("SELECT * FROM checkpoints WHERE id = ?", id);
-      return row === null ? null : toCheckpoint(row);
+      return row === null ? null : withLane(row);
     },
     lastCompleted: (worktreeId) => {
       const row = conn.get(
@@ -2326,9 +2528,53 @@ function createCheckpointRepo(conn) {
          ORDER BY completed_at DESC, rowid DESC LIMIT 1`,
         worktreeId
       );
+      return row === null ? null : withLane(row);
+    },
+    lastCompletedFull: (worktreeId) => {
+      const oneLane = Object.keys(lanes(worktreeId));
+      const row = conn.get(
+        `SELECT * FROM checkpoints WHERE worktree_id = ? AND end_state = 'completed'
+           AND id NOT IN (SELECT value FROM json_each(?))
+         ORDER BY completed_at DESC, rowid DESC LIMIT 1`,
+        worktreeId,
+        JSON.stringify(oneLane)
+      );
       return row === null ? null : toCheckpoint(row);
     }
   };
+}
+function readLanes(conn, worktreeId) {
+  const row = conn.get(
+    "SELECT value FROM meta WHERE key = ?",
+    worktreeMetaKey("checkpointLanes", worktreeId)
+  );
+  if (row === null) return {};
+  try {
+    const parsed = JSON.parse(str(row, "value"));
+    if (typeof parsed !== "object" || parsed === null) return {};
+    const lanes = {};
+    for (const [id, lane] of Object.entries(parsed)) {
+      if (lane === "fast" || lane === "slow") lanes[id] = lane;
+    }
+    return lanes;
+  } catch {
+    return {};
+  }
+}
+function writeLane(conn, worktreeId, id, lane) {
+  const lanes = readLanes(conn, worktreeId);
+  const live = new Set(
+    conn.all(
+      "SELECT id FROM checkpoints WHERE id IN (SELECT value FROM json_each(?))",
+      JSON.stringify(Object.keys(lanes))
+    ).map((row) => str(row, "id"))
+  );
+  const kept = Object.entries(lanes).filter(([id2]) => live.has(id2));
+  conn.run(
+    "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+    worktreeMetaKey("checkpointLanes", worktreeId),
+    JSON.stringify(Object.fromEntries([...kept, [id, lane]]))
+  );
 }
 function toCheckpoint(row) {
   return {
@@ -2666,6 +2912,15 @@ function createRevisionRepo(conn) {
         worktreeId
       );
       return row === null ? null : toRevision(row);
+    },
+    lastAtOtherHead: (worktreeId, head) => {
+      const row = conn.get(
+        `SELECT number FROM revisions WHERE worktree_id = ? AND head IS NOT ?
+         ORDER BY number DESC LIMIT 1`,
+        worktreeId,
+        head
+      );
+      return row === null ? null : num(row, "number");
     },
     get: (worktreeId, number) => {
       const row = conn.get(
@@ -3705,6 +3960,58 @@ function unavailable(reason, detail) {
   };
 }
 
+// src/core/scheduler/unknown-files.ts
+function unknownFilesMetaKey(worktreeId) {
+  return worktreeMetaKey("unknownFiles", worktreeId);
+}
+function readUnknownFiles(store, worktreeId) {
+  const raw = store.meta.get(unknownFilesMetaKey(worktreeId));
+  if (raw === null) return /* @__PURE__ */ new Map();
+  let value;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+  if (!Array.isArray(value)) return /* @__PURE__ */ new Map();
+  const entries = value.filter(isEntry);
+  return new Map(entries.map((e) => [testFileId(e.testFile), e]));
+}
+function isEntry(value) {
+  if (!isRecord(value) || !isRecord(value.testFile)) return false;
+  return typeof value.testFile.path === "string" && typeof value.testFile.project === "string" && (value.key === null || typeof value.key === "string") && typeof value.reason === "string" && typeof value.ran === "boolean" && Array.isArray(value.samples) && value.samples.every((p) => typeof p === "string") && typeof value.revision === "number" && typeof value.at === "number";
+}
+
+// src/core/status/unknown-files.ts
+var UNKNOWN_FILES_LISTED = 20;
+function unknownTestFilesOf(store, worktreeId, states, keys) {
+  const checks = /* @__PURE__ */ new Map();
+  for (const state of states) {
+    const id = testFileKeyOf(state.check);
+    checks.set(id, [...checks.get(id) ?? [], state]);
+  }
+  const unknown = keys.filter((row) => {
+    const own = checks.get(testFileId(row.testFile)) ?? [];
+    if (row.key !== null && row.pending !== null || own.some((s) => s.validity === "pending")) {
+      return false;
+    }
+    return row.key === null || own.length === 0 || own.some((s) => s.validity === "unknown");
+  });
+  if (unknown.length === 0) return {};
+  const recorded = readUnknownFiles(store, worktreeId);
+  const files2 = unknown.sort((a, b) => testFileId(a.testFile).localeCompare(testFileId(b.testFile))).slice(0, UNKNOWN_FILES_LISTED).map((row) => {
+    const id = testFileId(row.testFile);
+    const entry3 = recorded.get(id);
+    if (entry3 !== void 0 && entry3.key === row.key) {
+      const { ran, reason, samples } = entry3;
+      return { testFile: row.testFile, ran, reason, samples };
+    }
+    const summary = checks.get(id)?.find((s) => s.validity === "unknown")?.summary ?? null;
+    return { testFile: row.testFile, ran: false, reason: summary, samples: [] };
+  });
+  return { unknownTestFiles: { total: unknown.length, files: files2 } };
+}
+
 // src/core/status/snapshot.ts
 var HEARTBEAT_GRACE_INTERVALS = 2;
 function createStatusBuilder(store, options = {}) {
@@ -3753,7 +4060,8 @@ function snapshot(store, worktreeId, root, now) {
     dirty: observed?.dirty ?? null,
     dirtyObservedAt: observed?.number ?? null,
     daemon,
-    knownFailures: states.flatMap((s) => toKnownFailure(s, header.revision) ?? []),
+    // Task 001-404: each failure says how old its run is and the load it ran under.
+    knownFailures: withRecorded(store, worktreeId, states, header.revision),
     inherited: inheritedSources(store, states),
     breakdown: breakdown(states, keys),
     closureMethod: CLOSURE_METHOD,
@@ -3762,7 +4070,8 @@ function snapshot(store, worktreeId, root, now) {
     daemonNotes: readDaemonNotes(store, worktreeId),
     ...openCheckpoint(store, worktreeId, daemon),
     ...vitestExcluded(worktree?.root ?? root),
-    ...pendingRetriesOf(store, keys)
+    ...pendingRetriesOf(store, keys),
+    ...unknownTestFilesOf(store, worktreeId, states, keys)
   };
 }
 function vitestExcluded(root) {
@@ -3856,8 +4165,8 @@ function recoveryNote(raw) {
   try {
     const { at: at2, movedTo } = JSON.parse(raw);
     const when = typeof at2 === "number" ? ` at ${new Date(at2).toISOString()}` : "";
-    const where = typeof movedTo === "string" ? ` (corrupt file moved to ${movedTo})` : "";
-    return `store was recovered from corruption${when}; the baseline was lost${where}`;
+    const where2 = typeof movedTo === "string" ? ` (corrupt file moved to ${movedTo})` : "";
+    return `store was recovered from corruption${when}; the baseline was lost${where2}`;
   } catch {
     return `store was recovered from corruption; the baseline was lost (${raw})`;
   }
@@ -3884,10 +4193,20 @@ function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
   return {
     ...header,
     // Task 001-263: a daemon that died without its stop note is named, as status names it.
-    daemon: withDeath(store, worktree, worktreeLiveness(worktree, now)),
+    daemon: withDeath(
+      store,
+      worktree,
+      asRested(store, worktree, worktreeLiveness(worktree, now), now)
+    ),
     changedPaths: [...changes.keys()],
     ...installed === void 0 ? {} : { installedLockfile: installed.path }
   };
+}
+function asRested(store, worktree, live, at2) {
+  if (live.state !== "down" || live.startingSince !== void 0 || worktree === null) return live;
+  if (restState(store, worktree, at2) !== "quiet") return live;
+  const spawnedAt = readRest(store, worktree.id)?.spawnedAt;
+  return spawnedAt === void 0 ? { ...live, resting: true } : { ...live, startingSince: spawnedAt };
 }
 function changedSince(store, worktreeId, revision, since) {
   const after = since === null || since >= revision ? revision - 1 : Math.max(since, 0);
@@ -3922,9 +4241,36 @@ function withTold(header, told, at2) {
 }
 function livenessChange(store, consumer, at2) {
   const told = toldLiveness(store, consumer);
-  const live = asTold(worktreeLiveness(store.worktrees.get(consumer.worktreeId), at2), told, at2);
-  if (live.state === "down" && live.startingSince !== void 0) return null;
+  const worktree = store.worktrees.get(consumer.worktreeId);
+  const live = asTold(worktreeLiveness(worktree, at2), told, at2);
+  if (live.state === "down") {
+    if (live.startingSince !== void 0) return null;
+    const rest = restState(store, worktree, at2);
+    if (rest === "quiet") return null;
+    if (rest === "overdue") store.meta.delete(daemonRestMetaKey(consumer.worktreeId));
+  }
   return live.state === (typeof told === "object" ? "alive" : told) ? null : live;
+}
+function restState(store, worktree, at2) {
+  if (worktree === null || worktree.daemon !== null) return null;
+  const rest = readRest(store, worktree.id);
+  if (rest === null || rest.at < (worktree.lastHeartbeatAt ?? Number.POSITIVE_INFINITY)) {
+    return null;
+  }
+  if (rest.spawnedAt === void 0 || at2 - rest.spawnedAt <= DAEMON_START_GRACE_MS) return "quiet";
+  return "overdue";
+}
+function readRest(store, worktreeId) {
+  const text = store.meta.get(daemonRestMetaKey(worktreeId));
+  if (text === null) return null;
+  try {
+    const rest = JSON.parse(text);
+    if (!isRecord(rest) || typeof rest.at !== "number") return null;
+    const spawnedAt = typeof rest.spawnedAt === "number" ? { spawnedAt: rest.spawnedAt } : {};
+    return { at: rest.at, ...spawnedAt };
+  } catch {
+    return null;
+  }
 }
 function revisionMetaKey(worktreeId) {
   return worktreeMetaKey("revisionTold", worktreeId);
@@ -4215,11 +4561,7 @@ function createDelivery(store, options) {
       const told = startingSince === void 0 ? null : { startingSince };
       const read4 = readLiveHeader(store, consumer.worktreeId, at2, states);
       const live = told === null ? read4 : withTold(read4, told, at2);
-      const knownFailures = withRecorded(
-        store,
-        consumer.worktreeId,
-        states.flatMap((s) => toKnownFailure(s, live.revision) ?? [])
-      );
+      const knownFailures = withRecorded(store, consumer.worktreeId, states, live.revision);
       const header = withDependencies(
         store,
         consumer.worktreeId,
@@ -4295,6 +4637,15 @@ function createDelivery(store, options) {
     },
     status: async (worktreeId) => options.status.build(worktreeId)
   };
+}
+
+// src/core/scheduler/awaiting-install.ts
+var MISSING_INSTALLS_SHOWN = 3;
+function awaitingInstallSentence(missing, command) {
+  const more = missing.length - MISSING_INSTALLS_SHOWN;
+  const where2 = missing.length === 0 ? "in this worktree" : `at this worktree's root or in ${missing.slice(0, MISSING_INSTALLS_SHOWN).join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
+  const install = command === void 0 ? "Install them" : `Run \`${command}\` to install them`;
+  return `No dependencies are installed ${where2}, so Squeal runs none of its tests and inherits none of their results. ${install}: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest.`;
 }
 
 // src/core/delivery/provenance.ts
@@ -4390,13 +4741,9 @@ function at(location2) {
   return `at ${location2.path}:${location2.line}:${location2.column}`;
 }
 var NOT_LISTED_SENTENCE = "The daemon has not listed this worktree's test files yet; these counts are not complete.";
-var MISSING_INSTALLS_SHOWN = 3;
-function awaitingInstallSentence(header) {
+function awaitingInstallText(header) {
   if (header.awaitingInstall !== true || header.daemon?.state === "down") return null;
-  const missing = header.missingInstalls ?? [];
-  const more = missing.length - MISSING_INSTALLS_SHOWN;
-  const where = missing.length === 0 ? "in this worktree" : `at this worktree's root or in ${missing.slice(0, MISSING_INSTALLS_SHOWN).join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
-  return `No dependencies are installed ${where}; Squeal lists and runs no tests until an install.`;
+  return awaitingInstallSentence(header.missingInstalls ?? [], header.installCommand);
 }
 var CHANGED_PATHS_SHOWN = 3;
 function changedText(paths) {
@@ -4412,8 +4759,8 @@ function headerLine(header, command) {
   const withoutChecks = files2.pending + files2.unknown === 0 ? "" : ` Test files without checks: ${files2.pending} pending, ${files2.unknown} unknown.`;
   const listed = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
   const runnerPart = header.runnerPartPending === true ? ` ${capitalize(runnerPartText(revision))} is pending; test files it adds are not counted yet.` : "";
-  const awaiting = awaitingInstallSentence(header);
-  return `Revision ${revision}${changedText(header.changedPaths)}: ${countsText(counts, fileLevel)}.${inherited}${withoutChecks}${listed}${runnerPart} Full-suite checkpoint: ${fullSuiteText(header, command)}.` + livenessSentence(header.daemon, revision) + (awaiting === null ? installSentences(header) : ` ${awaiting}`);
+  const awaiting = awaitingInstallText(header);
+  return `Revision ${revisionText(revision, header.commit)}${changedText(header.changedPaths)}: ${countsText(counts, fileLevel)}.${inherited}${withoutChecks}${listed}${runnerPart} Full-suite checkpoint: ${fullSuiteText(header, command)}.` + livenessSentence(header.daemon, revision) + (awaiting === null ? installSentences(header) : ` ${awaiting}`);
 }
 function countsText(counts, fileLevel) {
   return ["current", "pending", "stale", "unknown"].map((validity) => countedText(counts[validity], validity, fileLevel?.[validity])).join(", ");
@@ -4427,6 +4774,9 @@ function livenessSentence(daemon, revision) {
   const died = daemon.died === void 0 ? "" : ` The last daemon ${deathText(daemon.died)}. ${DEATH_CAUSE}`;
   if (daemon.startingSince !== void 0) {
     return ` A daemon is starting; results are as of revision ${revision}.${died}`;
+  }
+  if (daemon.resting === true) {
+    return ` The daemon stopped while unused; results are as of revision ${revision}.`;
   }
   const since = daemon.since === null ? "No daemon is running" : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
   return ` ${since}; results are as of revision ${revision}.${died}`;
@@ -4498,24 +4848,24 @@ function unknownBlocks(entries) {
     );
   });
 }
-function assemble(head, blocks, overflow, tail, max) {
+function assemble(head, blocks2, overflow, tail, max) {
   const end = tail === null ? "" : `
 
 ${tail}`;
   const room = max - end.length;
   let out = head;
-  for (const [i, b] of blocks.entries()) {
+  for (const [i, b] of blocks2.entries()) {
     const next = `${out}
 
 ${b.text}`;
-    const last = i === blocks.length - 1;
+    const last = i === blocks2.length - 1;
     if (next.length <= room - (last ? 0 : OVERFLOW_RESERVE)) {
       out = next;
       continue;
     }
     return `${cap(`${out}
 
-${overflow(blocks.slice(i))}`, room)}${end}`;
+${overflow(blocks2.slice(i))}`, room)}${end}`;
   }
   return `${out}${end}`;
 }
@@ -4524,7 +4874,7 @@ function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS) {
   const changed = entries.filter((e) => e.kind !== "fail-retired");
   const retired = entries.filter((e) => e.kind === "fail-retired");
   const title = entries.length === 0 ? delta.liveness === void 0 ? `SQUEAL \xB7 revision ${header.revision}` : livenessTitle(delta.liveness, header.revision) : delta.label === "baseline" ? `SQUEAL \xB7 Squeal's baseline run found ${checksText(checksOf(entries), "failing check", "that did not load")} at revision ${header.revision}` : `SQUEAL \xB7 ${plural(entries.length, "check")} changed (${partsText(checksOf(entries))}) at revision ${header.revision}`;
-  const blocks = [
+  const blocks2 = [
     ...changed.filter((e) => e.to === "fail").map((e) => entryBlock(e, header.revision)),
     ...unknownBlocks(changed.filter((e) => e.to === "unknown")),
     ...recoveryBlocks(
@@ -4542,7 +4892,7 @@ function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS) {
   const tail = failed === void 0 ? null : whyLine(failed.check, command);
   return assemble(
     [title, ...headerLines(header, command), ...editLines(delta)].join("\n"),
-    blocks,
+    blocks2,
     overflow,
     tail,
     max
@@ -4576,7 +4926,7 @@ var checksOf = (entries) => entries.map((e) => e.check);
 function livenessTitle(liveness2, revision) {
   return liveness2?.state === "alive" ? `SQUEAL \xB7 a daemon is validating again at revision ${revision}` : `SQUEAL \xB7 no daemon is validating at revision ${revision}`;
 }
-function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQUEAL_COMMAND) {
+function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQUEAL_COMMAND, now = Date.now()) {
   const { header, knownFailures } = registration2;
   const head = [
     `SQUEAL \xB7 registered at revision ${header.revision}`,
@@ -4585,14 +4935,14 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
     ...header.optimizerOff === void 0 ? [] : [header.optimizerOff],
     `Known failures: ${failureCountText(knownFailures.map((f) => f.check))}`
   ].join("\n");
-  const blocks = knownFailures.map(
+  const blocks2 = knownFailures.map(
     (f) => block(
       `FAIL  ${checkName(f.check)}`,
       [
         f.summary === "" ? null : cap(f.summary, SUMMARY_MAX_CHARS),
         f.location === null ? null : at(f.location),
         f.validity === "current" ? null : `${f.validity}, observed at revision ${f.observedAt}`,
-        f.recorded === void 0 ? null : capitalize(recordedText(f.recorded, registration2.consumer.worktreeId))
+        f.recorded === void 0 ? f.recordedUnknown === true ? capitalize(RECORDED_UNKNOWN_TEXT) : null : capitalize(recordedText(f.recorded, registration2.consumer.worktreeId, now))
       ],
       [{ check: f.check, shown: "fail" }]
     )
@@ -4605,7 +4955,7 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
   );
   return assemble(
     head,
-    blocks,
+    blocks2,
     (left) => `Not shown: ${notShown(left)}. ${statusPointer(command)}`,
     first === void 0 ? null : whyLine(first.check, command),
     max
@@ -4614,6 +4964,46 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
 
 // src/core/slow/slot.ts
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
+
+// src/core/daemon/paths.ts
+import { chmodSync, lstatSync as lstatSync2, mkdirSync as mkdirSync3 } from "node:fs";
+import { dirname as dirname4, isAbsolute as isAbsolute4, join as join9 } from "node:path";
+function runtimeDir(env = process.env) {
+  return xdgRuntimeDir(env) ?? userTmpDir();
+}
+function preparePrivateDir(dir, uid = currentUid(), role = "socket directory") {
+  mkdirSync3(dirname4(dir), { recursive: true });
+  try {
+    mkdirSync3(dir, { mode: 448 });
+    chmodSync(dir, 448);
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+  }
+  checkPrivateDir(dir, uid, role);
+}
+function checkPrivateDir(dir, uid, role = "socket directory") {
+  const stat = lstatSync2(dir);
+  if (!stat.isDirectory()) {
+    throw new Error(`${role} ${dir} is not a directory; refusing to use it`);
+  }
+  if (stat.uid !== uid) {
+    throw new Error(`${role} ${dir} is owned by uid ${stat.uid}, not ${uid}; refusing to use it`);
+  }
+  if ((stat.mode & 63) !== 0) {
+    const mode = (stat.mode & 511).toString(8).padStart(3, "0");
+    throw new Error(`${role} ${dir} has mode ${mode}, not 700; refusing to use it`);
+  }
+}
+function userTmpDir(uid = currentUid()) {
+  return join9("/tmp", `squeal-${uid}`);
+}
+function xdgRuntimeDir(env) {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return xdg !== void 0 && xdg !== "" && isAbsolute4(xdg) ? xdg : null;
+}
+function currentUid() {
+  return process.getuid?.() ?? 0;
+}
 
 // src/harness/shared/context.ts
 function locate(cwd) {
@@ -4893,8 +5283,100 @@ var stopSlow2 = async (input, location2, deps) => {
 };
 
 // src/harness/claude-code/main.ts
-import { readFileSync as readFileSync7 } from "node:fs";
+import { readFileSync as readFileSync8 } from "node:fs";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
+
+// src/harness/shared/session-root.ts
+import { createHash as createHash3 } from "node:crypto";
+import {
+  existsSync as existsSync5,
+  lstatSync as lstatSync3,
+  readdirSync as readdirSync2,
+  readFileSync as readFileSync7,
+  renameSync as renameSync2,
+  rmSync as rmSync3,
+  writeFileSync
+} from "node:fs";
+import { join as join10 } from "node:path";
+var AGENT_SEPARATOR = "\0";
+function rootKey(input) {
+  return input.agent_id === void 0 ? input.session_id : `${input.session_id}${AGENT_SEPARATOR}${input.agent_id}`;
+}
+var RESTART_SOURCES = /* @__PURE__ */ new Set(["startup", "resume"]);
+function sessionLocation(input, start, roots) {
+  if (roots === void 0) return locate(input.cwd);
+  if (input.agent_id !== void 0) {
+    const key = rootKey(input);
+    const own = start ? locate(input.cwd) : roots.get(key);
+    if (own !== null) {
+      if (start) roots.set(key, own);
+      return own;
+    }
+  }
+  const restart = start && input.agent_id === void 0 && (input.source === void 0 || RESTART_SOURCES.has(input.source));
+  if (!restart) {
+    const kept = roots.get(input.session_id);
+    if (kept !== null) return kept;
+  }
+  const located = locate(input.cwd);
+  if (located !== null) roots.set(input.session_id, located);
+  else if (restart) roots.delete(input.session_id);
+  return located;
+}
+function forgetRoot(input, roots) {
+  roots?.delete(rootKey(input));
+}
+function sessionRootFiles(env) {
+  const dir = join10(runtimeDir(env), "squeal-sessions");
+  const path = (key) => join10(dir, keyFile(key));
+  return {
+    get: (key) => {
+      try {
+        return readKept(path(key));
+      } catch {
+        return null;
+      }
+    },
+    set: (key, location2) => {
+      try {
+        preparePrivateDir(dir, currentUid(), "session root directory");
+        const file = path(key);
+        const temp = `${file}.${process.pid}.tmp`;
+        writeFileSync(temp, JSON.stringify({ root: location2.root, commonDir: location2.commonDir }));
+        renameSync2(temp, file);
+      } catch {
+      }
+    },
+    delete: (key) => {
+      try {
+        rmSync3(path(key), { force: true });
+        if (key.includes(AGENT_SEPARATOR)) return;
+        const agents = `${keyFile(key)}-`;
+        for (const name of readdirSync2(dir)) {
+          if (name.startsWith(agents)) rmSync3(join10(dir, name), { force: true });
+        }
+      } catch {
+      }
+    }
+  };
+}
+function keyFile(key) {
+  const [session = "", ...agent] = key.split(AGENT_SEPARATOR);
+  const own = hash(session);
+  return agent.length === 0 ? own : `${own}-${hash(agent.join(AGENT_SEPARATOR))}`;
+}
+function hash(text) {
+  return createHash3("sha256").update(text).digest("hex").slice(0, 32);
+}
+function readKept(file) {
+  const stat = lstatSync3(file, { throwIfNoEntry: false });
+  if (stat === void 0 || !stat.isFile() || stat.uid !== currentUid()) return null;
+  const kept = JSON.parse(readFileSync7(file, "utf8"));
+  if (!isRecord(kept) || typeof kept.root !== "string" || typeof kept.commonDir !== "string") {
+    return null;
+  }
+  return existsSync5(kept.root) ? { root: kept.root, commonDir: kept.commonDir } : null;
+}
 
 // src/harness/shared/test-command.ts
 function bashCommand(input) {
@@ -4945,9 +5427,13 @@ async function runHandler(name, handler, stdin, deps) {
   try {
     const input = parseHookInput(stdin);
     if (input === null) return SILENT;
-    const location2 = locate(input.cwd) ?? projectDir(name, deps);
+    const location2 = sessionLocation(input, name === "session-start", deps.sessionRoots) ?? projectDir(name, deps);
     if (location2 === null) return SILENT;
+    if (name === "session-end") forgetRoot(input, deps.sessionRoots);
     const outcome = await handler(input, location2, deps);
+    if (input.hook_event_name === "SubagentStop" && !blocks(outcome?.output)) {
+      forgetRoot(input, deps.sessionRoots);
+    }
     if (outcome === null) return SILENT;
     return {
       stdout: outcome.output === void 0 ? "" : JSON.stringify(outcome.output),
@@ -4962,6 +5448,9 @@ async function runHandler(name, handler, stdin, deps) {
     return SILENT;
   }
 }
+function blocks(output) {
+  return output !== void 0 && "decision" in output && output.decision === "block";
+}
 function projectDir(name, deps) {
   const dir = deps.env.CLAUDE_PROJECT_DIR;
   return PROJECT_DIR_FALLBACK.has(name) && dir !== void 0 && dir !== "" ? locate(dir) : null;
@@ -4971,11 +5460,12 @@ function projectDir(name, deps) {
 async function runMain(name, handler) {
   let stdin = "";
   try {
-    stdin = readFileSync7(0, "utf8");
+    stdin = readFileSync8(0, "utf8");
   } catch {
   }
   const result = await runHandler(name, handler, stdin, {
     env: process.env,
+    sessionRoots: sessionRootFiles(process.env),
     // Bundled, this module is dist/<hook>.mjs and the CLI dist/cli/squeal.mjs (review wave 3, B1).
     cli: fileURLToPath2(new URL("./cli/squeal.mjs", import.meta.url)),
     ...waiterTimeout(process.env.SQUEAL_WAITER_TIMEOUT_MS)
