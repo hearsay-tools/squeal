@@ -38,6 +38,7 @@ import { slowTierChanged, tellSlowTier } from "./slow-told.js";
 import {
   currentKeys,
   endTurn,
+  owesNothing,
   readTurn,
   startTurn,
   trimmed,
@@ -167,6 +168,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
     if (!heardFrom) {
       // Read-only first: an idle waiter takes no write lock until there is something to write.
       if (store.consumers.get(consumer) === null) return null;
+      // Task 001-414: a turn that owes the waiter nothing reads no state, whatever else committed.
+      if (idle && owesNothing(readTurn(store, consumer))) return null;
       const states = store.knownStates.list(consumer.worktreeId);
       const selection = select(states);
       if (selection === "silent") return null;

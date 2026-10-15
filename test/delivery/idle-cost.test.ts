@@ -69,6 +69,32 @@ describe("an idle waiter (task 001-178)", () => {
     expect(total(reads)).toBeLessThanOrEqual(10);
   });
 
+  it("reads no known state while it owes nothing, however often another connection commits (task 001-414)", async () => {
+    setKey(store, "k1");
+    await createDelivery(store, { status: fixedStatus(), now: () => 1 }).endTurn(C1);
+    const { store: watched, reads } = counted(store);
+    const delivery = createDelivery(watched, { status: fixedStatus(), now: () => 2 });
+    const daemon = open(commonDir);
+    for (let i = 0; i < POLLS_PER_MINUTE; i++) {
+      daemon.meta.set("heartbeat", String(i));
+      expect(await poll(delivery)).toBeNull();
+    }
+    expect(reads.get("knownStates.list") ?? 0).toBe(0);
+    expect(reads.get("views.list") ?? 0).toBe(0);
+  });
+
+  it("reads no known state during a turn, however often another connection commits (task 001-414)", async () => {
+    await createDelivery(store, { status: fixedStatus(), now: () => 1 }).startTurn(C1);
+    const { store: watched, reads } = counted(store);
+    const delivery = createDelivery(watched, { status: fixedStatus(), now: () => 2 });
+    const daemon = open(commonDir);
+    for (let i = 0; i < POLLS_PER_MINUTE; i++) {
+      daemon.meta.set("heartbeat", String(i));
+      expect(await poll(delivery)).toBeNull();
+    }
+    expect(reads.get("knownStates.list") ?? 0).toBe(0);
+  });
+
   it("notices another connection's commit within one poll", async () => {
     const delivery = createDelivery(store, { status: fixedStatus(), now: () => 2 });
     expect(await poll(delivery)).toBeNull();
