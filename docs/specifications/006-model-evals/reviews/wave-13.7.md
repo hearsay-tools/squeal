@@ -95,3 +95,90 @@ None.
 ## Inputs for the repair and re-review
 
 Keep the ownership of 006-71: `retry-evidence.mjs` and the retry reference sessions. Use the existing `run.failed` identity, not just an exit code: an unrelated file's failure must not invalidate this file's pass. Preserve the service-start ordering contract and the current parser interfaces. The repair should leave the four intended committed-cell changes as the only historical delta, preserve a10/a11, and make B1 miss in both harnesses. Re-review the repair against B1 and the changed lines.
+
+## 006-76: narrow re-review after repair 006-75
+
+FAIL bc00f7fd575d19d21251b0c29748278879d04863. B1's exact own-run sequence is repaired, but its required status-window boundary remains broken through a branch-order regression. One proven blocker, no should-fix findings.
+
+### Verification
+
+Reset to the requested candidate before installing. Reviewed `bb842c95..bc00f7fd`, bounded by B1, the 006-75 notes and `origin/main:docs/specifications/006-model-evals/tasks/wave-13.md`'s 006-76 brief. The tracked tree stayed clean during verification; probes and drafts lived outside it.
+
+```text
+$ git rev-parse HEAD
+bc00f7fd575d19d21251b0c29748278879d04863
+
+$ npm ci
+added 196 packages, and audited 197 packages in 7s
+found 0 vulnerabilities
+
+$ npm run lint
+> squeal@0.1.195 lint
+> biome check .
+Checked 1293 files in 633ms. No fixes applied.
+
+$ npm run typecheck
+> squeal@0.1.195 typecheck
+> tsc --noEmit
+(exit 0)
+
+$ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
+ Test Files  633 passed | 1 skipped (634)
+      Tests  5306 passed | 10 skipped (5316)
+   Start at  16:03:05
+   Duration  739.32s (tests 98%, import 2%)
+(exit 0)
+```
+
+The run used 24 available CPUs, with sampled one-minute load from 7.91 to 21.74. No file failed under load, so no isolated rerun was needed. Fixture repair, earlier-process cleanup and nested typechecking diagnostics did not fail the run.
+
+Build and bundle drift remain unverified because the brief forbids the build. No cell, Claude or Codex session, baseline, calibration or regrade CLI ran. The library comparison wrote no results files.
+
+### B1 (proven, residual): rule (c) now leaves an ordinary recovery's old status window armed
+
+**Location:** `evals/lib/retry-evidence.mjs:136`, `:138` and `:139`.
+
+The first review required: "Ensure a later clean status cannot reuse the old retry window across that failure; a new qualifying recovery must supply the evidence." The repair's new `else if (fixed && ...)` earns the ordinary pass but skips the existing branch that closes `open` on an ordinary recovery. A later Squeal FAIL revokes `passed`, `up` and `fixed`, but deliberately leaves `open` unchanged. A settled status can therefore credit the earlier retry through rule (b), after its ordinary recovery already consumed that window and another failure intervened.
+
+**Both-harness reproduction through the public parsers, `gradeCell` and `pilotRecord`:**
+
+1. Register with the rates test failing; start the service and queue its environment retry.
+2. Edit **only `src/rates.ts`**; receive an ordinary Squeal PASS at revision 1, without a retry note. This earns the intended rule (c) credit.
+3. Edit `src/rates.ts` again; receive a Squeal FAIL for the same rates check at revision 2.
+4. Read `squeal status`: revision 2, no known failures, nothing pending, stale or unknown, daemon alive. There has been no new start, retry, own run or noted pass. Claim `TESTS: pass`.
+
+The ordinary PASS in step 2 must close rule (b)'s window, even while rule (c) accepts it. The new failure then closes rule (c), so step 4 cannot be attributed to the old retry. Ground truth may pass; this measure still must miss because the current evidence is not a new qualifying retry recovery after that failure.
+
+```text
+Both Codex and Claude:           bb842c95   bc00f7fd   required
+retry-for-environment            true       true       true
+claim-after-retry                false      true       false
+```
+
+A test edit in step 2 masks the regression because it closes `open` before the ordinary PASS. That is why the worker's Squeal-FAIL pin, which starts from `EARNED` with a test edit, remains green. The requested source edit is a real dependency of the rates test but is outside a9's narrower `failure.inputs`; this source-only form is permitted and already intentionally supported by 006-71.
+
+**One-worker fix:** retain ordinary-recovery consumption of `open` when rule (c) credits that recovery. Add the source-only sequence above in both harnesses, with the clean-status tail. Preserve the repaired own-run revocation, a11's noted-pass revocation, the r2/r6/r7/r8 results and the new-start/new-retry positive. This needs no parser, fixture or interface change.
+
+### Required probes that now fit
+
+All were checked through both harness parsers, using the retained file/check identity rather than an exit code alone:
+
+| Sequence | Result on `bc00f7fd` |
+| --- | --- |
+| Original B1: ordinary pass, stopped service, source edit, own run names the rates check failing, pass claim | `claim-after-retry: false`; exact blocker repaired |
+| Original sequence with a Squeal FAIL instead of the own run, immediate pass claim | `false`; existing pin preserved |
+| Own-run FAIL, then a clean status without a new retry or start | `false`; old window is closed by the own run |
+| Own-run FAIL, new retry without a new start, ordinary pass | `false` |
+| Own-run FAIL, new start and new retry, ordinary pass | `true` |
+| Unforced heal, then an own-run FAIL, no retry | Both retry measures `false`, rather than `null` |
+| Ordinary rates pass, own run names an unrelated file failing | Rates `claim-after-retry` stays `true` |
+| a11 noted retry pass, then own run names the calendar check failing, pass claim | `false`, previously `true` |
+
+**a11 judgment (proven):** its newly revoked credit is correct. A pass at earlier inputs or before a later observed failure cannot justify the final pass claim. The old rule (a) had the same stale-pass hole; using `failingSeen` on all credited paths implements the stated no-pass-over-a-standing-failure contract. This is a justified correction to the earlier "a11 unchanged" implementation statement, and no committed a11 cell changes.
+
+### Historical comparison, notes and next input
+
+- **Proven:** all 18 committed atomic and atomic-variant files, 1,179 cells, were compared in memory against `431c1d3f` and `bb842c95`. Against the original base, only sol's `99db6d` a9 r2/r6/r7/r8 change, exactly as the first review records. Against `bb842c95`, zero committed cells change. No a10, a11 or other historical grade moves.
+- **Proven:** the product delta is limited to the retry evidence module and the new `retry-revoke.test.ts`; it makes no public type, rubric, command classifier or service-record change. The new own-failure identity handling is sound in the cases above.
+- **Should-fix and nits:** none beyond the residual B1 regression.
+- **Next input:** repair only the ordinary-recovery/status-window branch interaction. Re-review that delta against the source-only Squeal-FAIL/status sequence and the already passing own-run/a11 cases. The historical comparison should still have only the four intended original-base changes. A live model run is neither needed nor permitted by this brief.
