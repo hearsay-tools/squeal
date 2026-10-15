@@ -80,7 +80,12 @@ async function storedThenContinued(
   ctx: TestContext,
 ): Promise<{ e2e: OpenCodeE2E; first: OpenCodeRun; next: OpenCodeRun; marked: Timeline }> {
   const e2e = fixture(ctx, { started: true, stopWaitMs: STOP_WAIT_MS });
-  let watched: Promise<Watched> = Promise.resolve({ consumers: [], bridges: [] });
+  let watched: Promise<Watched> = Promise.resolve({
+    consumers: [],
+    bridges: [],
+    host: null,
+    gap: 0,
+  });
   const exits: Record<string, number> = {};
   const first = await e2e.run(
     {
