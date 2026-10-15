@@ -1,5 +1,10 @@
-import { testFileId } from "../keys/index.js";
-import { shownResult, testFileOf, toKnownFailure } from "../state/index.js";
+import {
+  checkIdentity,
+  producingResult,
+  readFailureProducers,
+  testFileOf,
+  toKnownFailure,
+} from "../state/index.js";
 import type {
   CheckKey,
   KnownFailure,
@@ -48,11 +53,12 @@ export function passedRetry(
 
 /**
  * The known failures of `states` with `recorded`, from the result that
- * produced each (`shownResult`, as `why` shows it): its age, load and the
- * retry asked at its key. A row at the file's current key that did not
- * produce the failure, a cached pass or a same-key replacement, gives none
- * of its facts; with no identifiable producer the failure says its age and
- * load are unknown (review 001-417 B3).
+ * produced each: the run the state sink named when it derived the state
+ * (`readFailureProducers`), its age, load and the retry asked at its key.
+ * Any other row of the check, a cached pass at a new key or an identical
+ * same-key failure from a later run, gives none of its facts; with no named
+ * producer still stored the failure says its age and load are unknown
+ * (review 001-417 B3).
  */
 export function withRecorded(
   store: Store,
@@ -65,19 +71,14 @@ export function withRecorded(
     return failure === null ? [] : [{ state, failure }];
   });
   if (failing.length === 0) return [];
-  const keys = new Map(
-    store.testFileKeys.list(worktreeId).map((k) => [testFileId(k.testFile), k.key]),
-  );
+  const producers = readFailureProducers(store, worktreeId);
   const retries = readRetries(store);
   const loads = readRunLoads(store);
   return failing.map(({ state, failure }) => {
     if (failure.check.kind === "setup") return failure;
     const testFile = testFileOf(failure.check);
-    const key = keys.get(testFileId(testFile)) ?? null;
     const results = store.results.listForCheck(failure.check, Number.MAX_SAFE_INTEGER);
-    // The producer's identity, without `why`'s proof that it predates the state: an
-    // inherited failure applied after its source's revision began keeps its facts.
-    const row = shownResult(worktreeId, state, key, results, undefined, Number.POSITIVE_INFINITY);
+    const row = producingResult(state, producers.get(checkIdentity(state.check)), results);
     if (row === null) return { ...failure, recordedUnknown: true };
     const { provenance } = row;
     const retry = retryFactOf(retriesAt(retries, testFile, row.key));

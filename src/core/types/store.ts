@@ -272,6 +272,7 @@ export const WORKTREE_META_ROWS = {
   slowTier: { prefix: "slow-tier:", owner: "slow/state" },
   slowArtifacts: { prefix: "slow-artifacts:", owner: "slow/state" },
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
+  failureProducers: { prefix: "failure-producers:", owner: "state/producers" },
   reruns: { prefix: "reruns:", owner: "scheduler/rerun-memory" },
   heldFiles: { prefix: "held-files:", owner: "scheduler/held" },
   rekeyed: { prefix: "rekeyed.", owner: "scheduler/rekeyed-record" },
