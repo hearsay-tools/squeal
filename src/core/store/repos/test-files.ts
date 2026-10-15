@@ -79,13 +79,20 @@ function toTestFile(row: Row): TestFileRecord {
 
 export function createTestFileKeyRepo(conn: Connection): TestFileKeyRepo {
   return {
-    list: (worktreeId) =>
-      conn
+    list: (worktreeId, files) => {
+      if (files?.length === 0) return [];
+      const only =
+        files === undefined
+          ? ""
+          : `AND (project, path) IN (VALUES ${files.map(() => "(?, ?)").join(", ")})`;
+      return conn
         .all(
-          "SELECT * FROM test_file_keys WHERE worktree_id = ? ORDER BY project, path",
+          `SELECT * FROM test_file_keys WHERE worktree_id = ? ${only} ORDER BY project, path`,
           worktreeId,
+          ...(files ?? []).flatMap((f) => [f.project, f.path]),
         )
-        .map(toTestFileKey),
+        .map(toTestFileKey);
+    },
     withKey: (key) =>
       conn
         .all("SELECT * FROM test_file_keys WHERE key = ? ORDER BY worktree_id, project, path", key)

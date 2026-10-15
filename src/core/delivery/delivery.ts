@@ -15,7 +15,9 @@ import {
   type RevisionNumber,
   type StatusBuilder,
   type Store,
+  type TestFileKeyRecord,
   type TurnState,
+  type ViewEntry,
 } from "../types/index.js";
 import { annotate, withDependencies } from "./attribution.js";
 import { recordVersion } from "./consumer-version.js";
@@ -38,7 +40,7 @@ import { slowTierChanged, tellSlowTier } from "./slow-told.js";
 import {
   currentKeys,
   endTurn,
-  owesNothing,
+  owedScope,
   readTurn,
   startTurn,
   trimmed,
@@ -110,10 +112,11 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
     states: readonly KnownState[],
     toldAt: EpochMs,
     keep: ((entry: DeltaEntry) => boolean) | null,
+    view: readonly ViewEntry[] = store.views.list(consumer),
   ): DeltaPlan {
     const revision = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
     const full = planDelta({
-      view: store.views.list(consumer),
+      view,
       states,
       isBaselineFinding: baselineFindings(store, consumer.worktreeId),
       toldAt,
@@ -154,11 +157,14 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
     }: DeliverOptions,
   ): Delta | null {
     /** What to deliver, and for the waiter the turn state trimmed of what is no longer owed. */
-    const select = (states: readonly KnownState[]): Selection | "silent" => {
+    const select = (
+      states: readonly KnownState[],
+      keys: readonly TestFileKeyRecord[] | null = null,
+    ): Selection | "silent" => {
       if (!idle) return { only: keep, trim: null };
       const turn = readTurn(store, consumer);
       if (turn.turn !== "idle") return "silent";
-      const keys = store.testFileKeys.list(consumer.worktreeId);
+      keys ??= store.testFileKeys.list(consumer.worktreeId);
       const current = currentKeys(keys);
       return {
         only: (entry) => waitedFor(turn, entry, current),
@@ -168,13 +174,13 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
     if (!heardFrom) {
       // Read-only first: an idle waiter takes no write lock until there is something to write.
       if (store.consumers.get(consumer) === null) return null;
-      // Task 001-414: a turn that owes the waiter nothing reads no state, whatever else committed.
-      if (idle && owesNothing(readTurn(store, consumer))) return null;
-      const states = store.knownStates.list(consumer.worktreeId);
-      const selection = select(states);
+      const scope = idle ? owedScope(store, consumer) : null;
+      if (scope === "nothing") return null;
+      const states = scope?.states ?? store.knownStates.list(consumer.worktreeId);
+      const selection = select(states, scope?.keys);
       if (selection === "silent") return null;
       const quiet = !liveness || livenessChange(store, consumer, now()) === null;
-      const empty = isEmpty(plan(consumer, states, now(), selection.only));
+      const empty = isEmpty(plan(consumer, states, now(), selection.only, scope?.view));
       if (quiet && empty && selection.trim === null) return null;
     }
     return store.transaction(() => {
