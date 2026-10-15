@@ -51,6 +51,12 @@ export interface HandlerContext {
    * The files a wait holds for are read from the store (task 001-258).
    */
   readonly requestSync?: () => Promise<SyncAnswer>;
+  /**
+   * `squeal retry` (001-368): the scheduler takes the stored requests that
+   * may run now, like `requestFullSuite`, never awaited. Absent: the
+   * requests wait in the store for a daemon that takes them.
+   */
+  readonly requestRetries?: () => Promise<void>;
   /** A nudge or a request: the daemon is in use. */
   readonly onActivity: () => void;
   /**
@@ -140,6 +146,10 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
         context.onActivity();
         context.onNudge?.();
         return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "nudge" };
+      case "retry":
+        context.onActivity();
+        context.requestRetries?.().catch(() => {});
+        return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "retry" };
       case "run-all": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         context.onActivity();

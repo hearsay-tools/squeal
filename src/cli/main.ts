@@ -8,6 +8,7 @@ import { init } from "./init.js";
 import { opencodeStatusLine } from "./opencode/status.js";
 import { piStatusLine } from "./pi/status.js";
 import { removeCommand } from "./remove.js";
+import { retryCommand } from "./retry.js";
 import { runCommand } from "./run.js";
 import { setupCommand } from "./setup/command.js";
 import { startCommand } from "./start.js";
@@ -59,6 +60,14 @@ Usage:
   squeal run --slow [--wait <ms>]
                                 Run the slow tier once no fast work is pending; with
                                 --wait, then wait as status --wait does
+  squeal retry <test file>... --reason load|environment
+                                Re-run each file's failure once, caused outside the
+                                code: load waits until the one-minute load average is
+                                below the CPU count, environment runs at once; once per
+                                file, inputs and session; the FAIL stays counted until
+                                a retry passes
+  squeal retry --cancel <test file>...
+                                Withdraw a pending retry
   squeal stop [root]            Stop this worktree's daemon
   squeal remove [--config]      Take Squeal out of this repository: stop every worktree's
                                 daemon, delete the store and temp directories; --config
@@ -111,6 +120,7 @@ export function main(argv: readonly string[], io: CliIo): number | Promise<numbe
   if (first === "daemon") return daemonCommand(rest, io);
   if (first === "start") return startCommand(rest, io);
   if (first === "run") return runCommand(rest, io);
+  if (first === "retry") return retryCommand(rest, io);
   if (first === "stop") return stopCommand(rest, io);
   if (first === "remove") return removeCommand(rest, io);
   if (first === "update") return updateCommand(rest, io);

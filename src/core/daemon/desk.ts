@@ -24,6 +24,8 @@ export interface DeskEvents {
   readonly onActivity: () => void;
   /** A hook's nudge (task 001-281); absent: a nudge is only activity. */
   readonly onNudge?: () => void;
+  /** `squeal retry` stored or withdrew a request (001-368); absent: it waits in the store. */
+  readonly requestRetries?: () => Promise<void>;
   readonly requestFullSuite: (request: FullSuiteRequest) => Promise<FullSuiteCheckpoint>;
   readonly requestSlowSuite: () => Promise<SlowSuiteRequested>;
   /** A `status --wait` reconciliation pass (lessons, defect 30). */
@@ -137,10 +139,11 @@ export function guarded(events: DeskEvents): DeskEvents {
         return Promise.reject(error);
       }
     };
-  const { onNudge } = events;
+  const { onNudge, requestRetries } = events;
   return {
     onActivity: safe(events.onActivity),
     ...(onNudge === undefined ? {} : { onNudge: safe(onNudge) }),
+    ...(requestRetries === undefined ? {} : { requestRetries: asked(requestRetries) }),
     requestFullSuite: asked(events.requestFullSuite),
     requestSlowSuite: asked(events.requestSlowSuite),
     requestSync: asked(events.requestSync),
@@ -175,6 +178,9 @@ async function inWorker(
           return;
         case "nudge":
           events.onNudge?.();
+          return;
+        case "retry":
+          events.requestRetries?.().catch(() => {});
           return;
         case "run-all":
           events.requestFullSuite(message.request).then(
@@ -270,6 +276,7 @@ async function inThread(identity: DeskIdentity, events: DeskEvents): Promise<Fro
       requestSync: events.requestSync,
       onActivity: events.onActivity,
       ...(events.onNudge === undefined ? {} : { onNudge: events.onNudge }),
+      ...(events.requestRetries === undefined ? {} : { requestRetries: events.requestRetries }),
       onStop: events.onStop,
       onStepDown: events.onStepDown,
     }),
