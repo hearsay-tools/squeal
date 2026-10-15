@@ -59,7 +59,7 @@ The human decided OQ1 on 2026-10-15: no lock-to-environment record. Instead, the
 
 Outcome: D2's no-environment note (`environmentState` and `create` in `src/runners/pytest/environment/states.ts`) reads, for a project with a lockfile:
 
-> pytest project "app": no Python environment (looked at .venv), so Squeal runs none of its tests and inherits none of their results. Run `uv sync` in . to create one: Squeal then inherits every result another worktree recorded for the same code and environment, and runs the rest.
+> pytest project "app": no Python environment (looked at .venv), so Squeal runs none of its tests and inherits none of their results. Run `uv sync` in . to create one: Squeal then inherits the results other worktrees recorded for the same code and environment, and runs the rest.
 
 The no-lockfile and requirements cases from 007-39 keep their own install advice in the same two-sentence shape. The editable-outside note and the sync note are unchanged.
 
