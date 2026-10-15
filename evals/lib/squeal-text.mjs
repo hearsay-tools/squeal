@@ -72,14 +72,37 @@ const count = (re, text) => {
 };
 
 /**
+ * The Squeal text a Claude Code hook's JSON reply carries (`hookSpecificOutput`'s
+ * `additionalContext` or a deny's `permissionDecisionReason`, a stop's block `reason`), which
+ * Claude Code keeps as the hook's output; any other text as it is (row 006-77).
+ */
+function hookText(t) {
+  if (!t.trimStart().startsWith("{")) return t;
+  let reply;
+  try {
+    reply = JSON.parse(t);
+  } catch {
+    return t;
+  }
+  const own = reply?.hookSpecificOutput ?? {};
+  const texts = [own.additionalContext, own.permissionDecisionReason, reply?.reason];
+  const found = texts.filter((x) => typeof x === "string");
+  return found.length === 0 ? t : found.join("\n");
+}
+
+/**
  * The evidence one Squeal text carries, as a `squeal` step, or `null` for a text with none (the
  * primer alone, an explanation). `failures` is what was known failing before it, a count or a
  * `failingAfter` state: a status or a registration lists every known failure, a delivery only
- * the checks that changed.
+ * the checks that changed. A status cut above its `Revision:` line (`| tail`) is at the revision
+ * its checkpoint line says its counts are for (row 006-77).
  */
 export function squealEvidence(text, from, failures = 0) {
-  const t = String(text ?? "");
-  const rev = /\bRevision:? (\d+)/.exec(t) ?? /\bat revision (\d+)/.exec(t);
+  const t = hookText(String(text ?? ""));
+  const rev =
+    /\bRevision:? (\d+)/.exec(t) ??
+    /\bthe counts are for revision (\d+)/.exec(t) ??
+    /\bat revision (\d+)/.exec(t);
   const daemon = !NO_DAEMON.test(t);
   const counts = countsOf(t);
   if (!rev && counts === null && daemon) return null;
@@ -203,12 +226,17 @@ function pendingRetriesOf(t) {
   return [...t.matchAll(/^\s+(\S+) \((?:load|environment)\): /gm)].map((m) => m[1]);
 }
 
+/** A header's counts, each of which may name its parts: `30 current (23 tests, 7 test files loaded)`. */
+const HEADER = new RegExp(
+  ["current", "pending", "stale", "unknown"].map((v) => `(\\d+) ${v}(?: \\([^)]*\\))?`).join(", "),
+);
+
 /** Pending, stale and unknown counts in a delivered header or a status, or `null` for none. */
 function countsOf(t) {
   let pending;
   let stale;
   let unknown;
-  const header = /(\d+) current, (\d+) pending, (\d+) stale, (\d+) unknown/.exec(t);
+  const header = HEADER.exec(t);
   const affected = /^Affected checks: (.*)$/m.exec(t)?.[1];
   if (header) [pending, stale, unknown] = [header[2], header[3], header[4]].map(Number);
   else if (affected !== undefined && !/^none counted/.test(affected)) {

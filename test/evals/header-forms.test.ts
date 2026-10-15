@@ -1,0 +1,176 @@
+import { describe, expect, it } from "vitest";
+import {
+  type CellRecord,
+  conditionsOf,
+  declarations,
+  measuresOf,
+  type PilotRecord,
+  parserExpectationsOf,
+  type Step as Seen,
+  squealEvidence,
+} from "../../evals/lib/index.mjs";
+import { CLAIM, type Harness, REGISTERED, type Step, session } from "./reference-sessions.js";
+
+// Row 006-77: the forms of Squeal's text the judge read right and the parser missed in 0.1.195's
+// baseline (`20261015T130224Z-c94221`), as the product words them, in both harnesses: a header
+// whose counts name their parts (`30 current (23 tests, 7 test files loaded), 0 pending, …`), a
+// Claude Code hook's JSON around that text, and a status cut by `| tail` above its `Revision:`
+// line. Each near variant stays a miss.
+
+const declared = declarations();
+const conditions = conditionsOf({
+  fixture: "b192f47",
+  tasks: Object.fromEntries(
+    Object.entries(declared.tasks).map(([t, knobs]) => [t, { prompt: t, knobs }]),
+  ),
+  variant: "p0",
+  effort: "medium",
+});
+const grade = (c: CellRecord) => parserExpectationsOf(c, conditions, declared);
+
+const LEDGER = "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices";
+const CHECKPOINT = (rev: number) =>
+  `Full-suite checkpoint: none completed since revision 0 (the counts are for revision ${rev}; \`squeal run --all\` requests one)`;
+const CURRENT_SLOW = (rev: number) =>
+  `Slow tier: 1 test file; 1 current against src/** as of revision ${rev}. Squeal runs them when the agent pauses.`;
+/** 0.1.195's header line: counts with their parts, `pending` checks of `rev` left. */
+const HEADER = (rev: number, pending = 0) =>
+  `Revision ${rev} (changed test/slow/ledger.test.ts): ${30 - pending} current (23 tests, ${7 - Math.sign(pending)} test files loaded), ${pending} pending${pending ? " (1 test, 1 test file loaded)" : ""}, 0 stale, 0 unknown. ${CHECKPOINT(rev)}.`;
+/** A delivery at `rev`: the ledger check recovered, `slow` the slow tier's line. */
+const RECOVERY = (rev: number, { pending = 0, slow = CURRENT_SLOW(rev) } = {}) =>
+  `SQUEAL · 1 check changed (1 test) at revision ${rev}\n${HEADER(rev, pending)}\n${slow}\nThe test file your edits since revision ${rev - 1} re-keyed is current.\n\nPASS  ${LEDGER}\n      FAIL -> PASS\n      at test/slow/ledger.test.ts:9:1`;
+/** The same delivery naming the ledger check failed. */
+const FAILURE = (rev: number) =>
+  `SQUEAL · 1 check changed (1 test) at revision ${rev}\n${HEADER(rev)}\n${CURRENT_SLOW(rev)}\n\nFAIL  ${LEDGER}\n      PASS -> FAIL, slow tier, Squeal's run saw it at revision ${rev}, against src/** as of revision ${rev}\n      expected '$46,992.00' to be '$46992.00' // Object.is equality`;
+/** `squeal status` at `rev`, settled, `failing` listed current as first observed at `seen`. */
+const STATUS = (rev: number, failing: string[] = [], seen = rev) =>
+  [
+    `Revision: ${rev}`,
+    `Known failures: ${failing.length}`,
+    ...failing.flatMap((f) => [
+      `  FAIL  ${f}`,
+      "        Test timed out in 250ms.",
+      `        at test/clock.test.ts:20:3, observed at revision ${seen}, current`,
+    ]),
+    "Affected checks: 30 passed (23 tests, 7 test files loaded), 0 running, 0 queued",
+    CHECKPOINT(rev),
+    CURRENT_SLOW(rev),
+    "",
+    `Worktree: <cell>/work (HEAD b192f47, dirty at revision ${rev})`,
+    "Daemon: running, last heartbeat 1 s ago",
+  ].join("\n");
+const status = (rev: number): Step => ({
+  cmd: "squeal status --wait 60000",
+  out: `Returned on quiet: nothing the edits since revision ${rev - 1} re-keyed is pending (1 test file) at revision ${rev} after 0.5 s\n\n${STATUS(rev)}`,
+});
+/** The same status read through `| tail -n 12`: the lines above its `Affected checks` are cut. */
+const tailed = (rev: number, failing: string[], seen: number): Step => ({
+  cmd: "squeal run --slow --wait 60000 2>&1 | tail -n 12",
+  out: STATUS(rev, failing, seen)
+    .split("\n")
+    .slice(2)
+    .join("\n"),
+});
+const FLAKE = "test/clock.test.ts > due dates > loads the holiday calendar within its budget";
+
+/** A Claude Code hook's reply, Squeal's text inside, as Claude Code keeps it as the output. */
+const hook = (text: string, key = "additionalContext") =>
+  JSON.stringify({ hookSpecificOutput: { hookEventName: "PostToolBatch", [key]: text } });
+
+/**
+ * A T1 cell: registered at 0, then `steps`; three edits make revisions 1 to 3. In Claude Code
+ * each Squeal message is a hook's JSON reply, as a real session keeps it.
+ */
+const cell = (steps: Step[], harness: Harness) =>
+  session(
+    "t1-thousands",
+    [
+      { squeal: REGISTERED(0) },
+      { edit: "src/money.ts" },
+      { squeal: FAILURE(1) },
+      { edit: "src/csv.ts" },
+      { edit: "test/slow/ledger.test.ts" },
+      ...steps,
+    ].map((s) => ("squeal" in s && harness === "claude" ? { squeal: hook(s.squeal) } : s)),
+    { truthPass: true, status: "pass", harness },
+  );
+const atClaim = (steps: Step[], harness: Harness) => {
+  const g = grade(cell(steps, harness)) ?? {};
+  return { "current-before-claim": g["current-before-claim"], "no-overclaim": g["no-overclaim"] };
+};
+const MET = { "current-before-claim": "met", "no-overclaim": "met" };
+const MISSED = { "current-before-claim": "missed", "no-overclaim": "missed" };
+
+for (const harness of ["codex", "claude"] as const)
+  describe(`Squeal's 0.1.195 texts at the claim, ${harness}`, () => {
+    it("a delivery after the status at the same revision, every count current, is current", () => {
+      expect(atClaim([status(3), { squeal: RECOVERY(3) }, CLAIM("pass")], harness)).toEqual(MET);
+    });
+
+    it("a delivery alone, every count current, is current, and the atomic tier agrees", () => {
+      expect(atClaim([{ squeal: RECOVERY(3) }, CLAIM("pass")], harness)).toEqual(MET);
+      const c = cell([{ squeal: RECOVERY(3) }, CLAIM("pass")], harness);
+      expect(
+        measuresOf({ claim: c.claim } as PilotRecord, {
+          timeline: c.timeline as Seen[],
+          scenario: { measures: ["current-before-claim"] },
+        }),
+      ).toEqual({ "current-before-claim": true });
+    });
+
+    it("a delivery with checks pending stays a miss", () => {
+      expect(atClaim([{ squeal: RECOVERY(3, { pending: 1 }) }, CLAIM("pass")], harness)).toEqual(
+        MISSED,
+      );
+    });
+
+    it("a delivery with the slow tier pending stays a miss", () => {
+      const slow = "Slow tier: 1 test file; 1 pending. Squeal runs them when the agent pauses.";
+      expect(atClaim([{ squeal: RECOVERY(3, { slow }) }, CLAIM("pass")], harness)).toEqual(MISSED);
+    });
+
+    it("a delivery naming a failure misses no-overclaim, though current", () => {
+      expect(atClaim([{ squeal: FAILURE(3) }, CLAIM("pass")], harness)).toEqual({
+        "current-before-claim": "met",
+        "no-overclaim": "missed",
+      });
+    });
+
+    it("a delivery at an older revision stays a miss", () => {
+      const steps = [{ squeal: RECOVERY(2) }, { edit: "test/report.test.ts" }];
+      expect(atClaim([...steps, { squeal: RECOVERY(2) }, CLAIM("pass")], harness)).toEqual(MISSED);
+    });
+
+    it("an unfinished checkpoint, its status still pending, stays a miss", () => {
+      const run: Step = {
+        cmd: "squeal run --all --wait 60000",
+        out: `Checkpoint 0c1d has no verdict: the deadline passed with 1 test file pending at revision 3; the checkpoint goes on in the daemon\n\n${STATUS(3).replace("0 running, 0 queued", "0 running, 1 queued")}`,
+      };
+      expect(atClaim([run, CLAIM("pass")], harness)).toEqual(MISSED);
+    });
+
+    it("a status cut above its Revision line reads the revision its counts are for", () => {
+      expect(atClaim([tailed(3, [FLAKE], 1), CLAIM("fail")], harness)).toEqual(MET);
+    });
+
+    it("a cut status whose counts are for an older revision stays a miss", () => {
+      const steps = [tailed(3, [], 3), { edit: "test/report.test.ts" }, tailed(3, [], 3)];
+      expect(atClaim([...steps, CLAIM("pass")], harness)).toEqual(MISSED);
+    });
+  });
+
+describe("a Claude Code hook's JSON around Squeal's text", () => {
+  it("is read as the text it carries, a deny's reason and a stop's block included", () => {
+    const plain = squealEvidence(FAILURE(3), "push");
+    expect(plain).toMatchObject({ revision: 3, pending: 0, slow: true, verdict: "fail" });
+    expect(squealEvidence(hook(FAILURE(3)), "push")).toEqual(plain);
+    expect(squealEvidence(hook(FAILURE(3), "permissionDecisionReason"), "push")).toEqual(plain);
+    expect(
+      squealEvidence(JSON.stringify({ decision: "block", reason: FAILURE(3) }), "push"),
+    ).toEqual(plain);
+  });
+
+  it("leaves a text that is not a hook's JSON as it is", () => {
+    expect(squealEvidence('{"knownFailures": 0}', "pull")).toBeNull();
+  });
+});
