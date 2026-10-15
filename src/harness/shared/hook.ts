@@ -66,8 +66,7 @@ export interface HookDeps {
   readonly sessionRoots?: SessionRoots;
 }
 
-/** Every synchronous hook in hooks.json has `timeout: 2`; Claude Code kills it after this. */
-export const HOOK_TIMEOUT_MS = 2_000;
+export { HOOK_TIMEOUT_MS } from "../../core/types/index.js";
 
 /** Runs `fn` with an open store; `null` without one. Always closes the store. */
 export async function withContext<T>(

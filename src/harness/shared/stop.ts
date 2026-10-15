@@ -5,6 +5,7 @@ import { squealVersion } from "../../core/daemon/version.js";
 import {
   formatDelta,
   formatRegistration,
+  markLeaving,
   readHeader,
   readLiveHeader,
 } from "../../core/delivery/index.js";
@@ -112,6 +113,8 @@ export function stopTurn(
     async (context) => {
       if (input.agent_id !== undefined && !isRegistered(context)) return null;
       const at = (deps.now ?? Date.now)();
+      // Task 001-416: before the wait, so a SubagentStop its timeout kills still ends the registration.
+      if (input.agent_id !== undefined) leaving(context, at);
       const starting = startingAfter(await ensureIfStale(context, deps), at);
       const isSlow = slowFiles(project, project.nodeTest);
       if (wait > 0) {
@@ -138,6 +141,7 @@ export function stopTurn(
           command: deps.command,
         });
         if (reasons.length > 0) {
+          if (input.agent_id !== undefined) leaving(context, null);
           const text = news ?? statusText(header, failures, deps.command);
           return { block: `${reasons.join("\n")}\n\n${text}` };
         }
@@ -246,6 +250,17 @@ export async function stopFork(
 /** Failures not observed at this revision: their re-run is pending, or they have no current result. */
 function earlier(failures: readonly KnownFailure[]): readonly KnownFailure[] {
   return failures.filter((f) => f.validity !== "current");
+}
+
+/**
+ * Marks the stopping subagent's consumer leaving at `at`, or clears the mark
+ * when a block keeps it going (task 001-416). The daemon drops a consumer
+ * whose mark outlives `LEAVING_GRACE_MS`; the normal end unregisters it.
+ */
+function leaving(context: HookContext, at: EpochMs | null): void {
+  context.store.transaction(() => {
+    if (isRegistered(context)) markLeaving(context.store, context.consumer, at);
+  });
 }
 
 /** SubagentStop: the subagent is done, so its consumer and view go (D9). */

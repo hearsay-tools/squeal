@@ -1,5 +1,11 @@
 import { existsSync } from "node:fs";
-import { dropGoneHarnesses, expireConsumers, lastDeparture, markRest } from "../delivery/index.js";
+import {
+  dropGoneHarnesses,
+  dropLeft,
+  expireConsumers,
+  lastDeparture,
+  markRest,
+} from "../delivery/index.js";
 import { storePaths } from "../store/index.js";
 import {
   type AbsolutePath,
@@ -273,6 +279,7 @@ export function startTimers(context: TimerContext): () => void {
   const heartbeat = () => {
     attempt("heartbeat", () => store.worktrees.heartbeat(worktreeId, now()));
     attempt("harness check", () => dropGoneHarnesses(store, worktreeId, now(), { locksDir }));
+    attempt("leaving check", () => dropLeft(store, worktreeId, now(), { locksDir }));
   };
   const observedKeys = context.policy.nodeTest.flatMap(({ name }) => [
     nodeTestObservedMetaKey(name),
