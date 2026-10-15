@@ -1,7 +1,6 @@
 import type { Stats } from "node:fs";
 import { stat } from "node:fs/promises";
 import { basename, join } from "node:path";
-import { awaitingInstallNote } from "../delivery/awaiting-install.js";
 import { isMissing } from "../fs/index.js";
 import { findInstalledLockfile, isInstalledLockfile } from "../keys/index.js";
 import {
@@ -12,6 +11,7 @@ import {
   installCommandMetaKey,
   type RelativePath,
 } from "../types/index.js";
+import { awaitingInstallNote } from "./awaiting-install.js";
 import { reconcileBatch } from "./batch.js";
 import type { SchedulerContext } from "./context.js";
 import { installCommand } from "./install-command.js";
