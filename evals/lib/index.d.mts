@@ -692,6 +692,22 @@ export function armFixtures(
   grades: readonly { variant: string; head: string }[],
   arms: readonly string[],
 ): Record<string, string | null>;
+/** A results file's `regraded` note, as a regrade stamps it (006-86). */
+export interface RegradedNote {
+  by: string;
+  date: string;
+  changed: string[];
+  /** The expectations pass's notes name the revision that graded them. */
+  revision?: string;
+  /** `regrade-cells.mjs`: the cells whose stored evidence alone changed. */
+  evidence?: string[];
+  [field: string]: unknown;
+}
+/** `regraded` with `note` added, replacing an earlier note by the same row and revision. */
+export function stamped(
+  regraded: readonly RegradedNote[] | undefined,
+  note: RegradedNote,
+): RegradedNote[];
 export function resultsName(input: {
   date: string;
   version: string;
@@ -737,6 +753,8 @@ export function trendMarkdown(
   runs: readonly { name: string; data: ResultsFile }[],
   declared?: Declarations,
 ): string;
+/** Writes `dir`/TREND.md from every results file there; returns how many baseline runs it read. */
+export function writeTrendMarkdown(dir: string, declared?: Declarations): number;
 
 // 006-33: atomic scenarios (evals/atomic/) and a session's later turns.
 export const ATOMIC: string;

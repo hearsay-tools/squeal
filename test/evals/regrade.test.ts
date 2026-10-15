@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -12,13 +12,15 @@ import {
   expectationsOf,
   expectationsRevision,
   gradeCell,
+  stamped,
 } from "../../evals/lib/index.mjs";
 import { settled } from "./status-snapshot.js";
 
 // 006-12 item 4: `evals/bin/regrade.mjs <dir>` recomputes each cell's claim and claim grades
 // from the fields a results file keeps (`claimLine`, `truthPass`, `squealVerdict`), changes
 // nothing else, notes what it changed, and regenerates TREND.md. What it writes is what the
-// grader would have written from the same session.
+// grader would have written from the same session. 006-86: the claim pass is credited to --by
+// with --note, and a file where no grade changed is not written.
 
 const root = mkdtempSync(join(tmpdir(), "squeal-evals-regrade-"));
 afterAll(() => rmSync(root, { recursive: true, force: true }));
@@ -148,16 +150,20 @@ const regradedResults = (cells: CellRecord[]) => ({
 });
 const expectationsNote = expect.objectContaining({ by: "expectations", revision });
 
-function regrade(cells: CellRecord[]) {
+const NOTE = "Claims re-read from claimLine.";
+const STAMP = ["--by", "006-12", "--note", NOTE];
+
+function regrade(cells: CellRecord[], data: object = results(cells)) {
   const dir = join(root, `r${Math.random().toString(36).slice(2)}`);
   mkdirSync(dir);
   const file = join(dir, "2026-10-11-0.1.110.x.json");
-  writeFileSync(file, `${JSON.stringify(results(cells), null, 1)}\n`);
-  const run = () =>
-    spawnSync(process.execPath, ["evals/bin/regrade.mjs", dir, "--date", "2026-10-12"], {
+  const text = `${JSON.stringify(data, null, 1)}\n`;
+  writeFileSync(file, text);
+  const run = (args = STAMP) =>
+    spawnSync(process.execPath, ["evals/bin/regrade.mjs", dir, "--date", "2026-10-12", ...args], {
       encoding: "utf8",
     });
-  return { dir, file, run, read: () => JSON.parse(readFileSync(file, "utf8")) };
+  return { dir, file, text, run, read: () => JSON.parse(readFileSync(file, "utf8")) };
 }
 
 describe("evals/bin/regrade.mjs", () => {
@@ -179,21 +185,36 @@ describe("evals/bin/regrade.mjs", () => {
         changed: [1, 2, 3, 9, 10].map(
           (i) => `t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r${i}`,
         ),
-        note: expect.stringMatching(/`command -p`.*no transcripts/s),
+        note: NOTE,
       },
       expectationsNote,
     ]);
   });
 
-  it("notes a file it changed nothing in as regraded with no change", () => {
+  it("writes nothing where no claim and no expectation changed", () => {
+    const r = regrade(fresh, regradedResults(fresh));
+    const out = r.run([]);
+    expect(out.status, out.stderr).toBe(0);
+    expect(readFileSync(r.file, "utf8")).toBe(r.text);
+    expect(existsSync(join(r.dir, "TREND.md"))).toBe(false);
+    expect(out.stdout).toContain("unchanged, not written");
+  });
+
+  it("stamps only the expectations pass where only expectations changed", () => {
     const r = regrade(fresh);
-    expect(r.run().status).toBe(0);
+    const out = r.run([]);
+    expect(out.status, out.stderr).toBe(0);
     const { regraded, ...rest } = r.read();
     expect(rest).toEqual(regradedResults(fresh));
-    expect(regraded).toEqual([
-      expect.objectContaining({ by: "006-12", changed: [] }),
-      expectationsNote,
-    ]);
+    expect(regraded).toEqual([expectationsNote]);
+  });
+
+  it("refuses a claim change without --by and --note, and writes nothing", () => {
+    const r = regrade(committed);
+    const out = r.run([]);
+    expect(out.status).toBe(2);
+    expect(out.stderr).toMatch(/--by <row> --note <text>; nothing written/);
+    expect(readFileSync(r.file, "utf8")).toBe(r.text);
   });
 
   it("regenerates TREND.md with the false fails apart", () => {
@@ -230,7 +251,7 @@ describe("evals/bin/regrade.mjs", () => {
     expect(out.status, out.stderr).toBe(0);
     for (const f of files) expect(readFileSync(f.file, "utf8")).toBe(f.text);
     expect(out.stdout).not.toMatch(/atomic/);
-    expect(out.stdout).toContain("TREND.md from 1 results file(s)");
+    expect(out.stdout).toContain("TREND.md from 1 baseline results file(s)");
     expect(r.read().regraded).toEqual([
       expect.objectContaining({ by: "006-12" }),
       expectationsNote,
@@ -243,5 +264,39 @@ describe("evals/bin/regrade.mjs", () => {
     const out = regrade([cell]).run();
     expect(out.status).not.toBe(0);
     expect(out.stderr).toMatch(/r1.*supported/);
+  });
+});
+
+describe("stamped, the one regrade note rule (006-86)", () => {
+  const note = (by: string, changed: string[], extra = {}) => ({
+    by,
+    date: "2026-10-15",
+    changed,
+    note: by,
+    ...extra,
+  });
+
+  it("replaces the same row's note, keeping the cells it named, and leaves other rows' notes", () => {
+    const earlier = [note("006-12", ["a"]), note("006-80", ["x"])];
+    expect(stamped(earlier, note("006-12", ["b", "a"]))).toEqual([
+      note("006-80", ["x"]),
+      note("006-12", ["a", "b"]),
+    ]);
+    expect(stamped(undefined, note("006-12", ["a"]))).toEqual([note("006-12", ["a"])]);
+  });
+
+  it("keeps an expectations note of another revision beside the new one", () => {
+    const old = note("expectations", ["a"], { revision: "r1" });
+    expect(stamped([old], note("expectations", ["b"], { revision: "r2" }))).toEqual([
+      old,
+      note("expectations", ["b"], { revision: "r2" }),
+    ]);
+  });
+
+  it("unions an evidence list, less the cells now changed in a grade", () => {
+    const earlier = [note("006-82", ["a"], { evidence: ["b", "c"] })];
+    expect(stamped(earlier, note("006-82", ["c"], { evidence: ["d"] }))).toEqual([
+      note("006-82", ["a", "c"], { evidence: ["b", "d"] }),
+    ]);
   });
 });

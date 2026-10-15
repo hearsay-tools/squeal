@@ -4,7 +4,8 @@
 // evals/atomic/atomic.json at this revision:
 //   node evals/bin/atomic-regrade.mjs --by <row> --note <text> [file.atomic.json ...]
 //     [--date YYYY-MM-DD]
-// With no file, every `*.atomic.json` in evals/results. Only a file where a cell's measures
+// With no file, every `*.atomic.json` and `*.atomic-variant.json` in evals/results (006-86: the
+// variant files atomic-compare.mjs reads stay under the same rule). Only a file where a cell's measures
 // changed is written, with a `regraded` note `{ by, date, changed, note }` naming those cells
 // (006-80); nothing else changes. No session and no model call. Every file is regraded before
 // any is written, so a failure leaves them all as they were. Then ATOMIC.md is regenerated in
@@ -34,7 +35,7 @@ const results = join(EVALS, "results");
 const files = positionals.length
   ? positionals
   : readdirSync(results)
-      .filter((f) => f.endsWith(".atomic.json"))
+      .filter((f) => f.endsWith(".atomic.json") || f.endsWith(".atomic-variant.json"))
       .sort()
       .map((f) => join(results, f));
 

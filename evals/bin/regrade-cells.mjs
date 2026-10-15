@@ -18,7 +18,7 @@ import { writeAtomicMarkdown } from "../lib/atomic-trend.mjs";
 import { declarations } from "../lib/behaviours.mjs";
 import { EVALS } from "../lib/prepare.mjs";
 import { gradeOut, regradeFromOut, runDirOf } from "../lib/regrade-cells.mjs";
-import { trendMarkdown } from "../lib/trend.mjs";
+import { writeTrendMarkdown } from "../lib/trend.mjs";
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -94,13 +94,7 @@ for (const dir of new Set(written.map((g) => dirname(g.file)))) {
     console.log(`${join(dir, "ATOMIC.md")} from ${n} atomic results file(s)`);
   }
   if (written.some((g) => dirname(g.file) === dir && !g.data.kind.startsWith("atomic"))) {
-    const runs = readdirSync(dir)
-      .filter((f) => f.endsWith(".json"))
-      .map((f) => ({
-        name: f.replace(/\.json$/, ""),
-        data: JSON.parse(readFileSync(join(dir, f), "utf8")),
-      }));
-    writeFileSync(join(dir, "TREND.md"), trendMarkdown(runs, declared));
-    console.log(`${join(dir, "TREND.md")} from ${runs.length} results file(s)`);
+    const n = writeTrendMarkdown(dir, declared);
+    console.log(`${join(dir, "TREND.md")} from ${n} baseline results file(s)`);
   }
 }

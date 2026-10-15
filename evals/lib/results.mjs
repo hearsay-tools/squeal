@@ -133,3 +133,21 @@ export function resultsName({ date, version, run, variant = null, atomic = false
       : "";
   return `${date}-${version}.${run}${suffix}.json`;
 }
+
+/**
+ * Results file notes `regraded` with `note` added for a regrade that changed cells (006-86), the
+ * one rule every regrade stamps by. An earlier note by the same row (and, for the expectations
+ * pass, the same revision) is replaced: its `changed` cells are kept in the new note's, and where
+ * the note keeps an `evidence` list (`regrade-cells.mjs`), its cells too, less any now in
+ * `changed`.
+ */
+export function stamped(regraded = [], note) {
+  const earlier = regraded.find((n) => n.by === note.by && n.revision === note.revision);
+  const changed = [...new Set([...(earlier?.changed ?? []), ...note.changed])];
+  const next = { ...note, changed };
+  if (note.evidence)
+    next.evidence = [...new Set([...(earlier?.evidence ?? []), ...note.evidence])].filter(
+      (id) => !changed.includes(id),
+    );
+  return [...regraded.filter((n) => n !== earlier), next];
+}

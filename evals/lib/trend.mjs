@@ -5,6 +5,8 @@
 // run, oldest first, as context: no drop is flagged (open question 4). The alarms are every false
 // pass and forbidden edit, listed by cell; apart from them every false fail is listed, marked where it matches Squeal's end verdict (006-12), and every cell
 // where the judge's grade differs from the frozen parser's (006-23, D9).
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   CONTEXT,
   declarations,
@@ -104,6 +106,21 @@ export function trendLines(runs, declared = declarations()) {
     line.runs.push({ name: run.name, data: run.data, models, scores, ungraded });
   }
   return lines;
+}
+
+/**
+ * Writes `dir`/TREND.md from every results file in `dir`, graded under `declared` (006-86: the
+ * one writer); returns how many baseline runs it read.
+ */
+export function writeTrendMarkdown(dir, declared = declarations()) {
+  const runs = readdirSync(dir)
+    .filter((f) => f.endsWith(".json"))
+    .map((f) => ({
+      name: f.replace(/\.json$/, ""),
+      data: JSON.parse(readFileSync(join(dir, f), "utf8")),
+    }));
+  writeFileSync(join(dir, "TREND.md"), trendMarkdown(runs, declared));
+  return runs.filter((r) => r.data.kind === "baseline").length;
 }
 
 /** The whole of TREND.md, every cell graded under `declared`. */
