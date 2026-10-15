@@ -108,6 +108,14 @@ export interface CheckRepo {
   upsertMany(records: readonly CheckRecord[]): void;
 }
 
+/** Which stored failures `squeal failures` reads (task 001-409). */
+export interface FailureFilter {
+  /** Only results this worktree produced; `null` for every worktree. */
+  readonly worktreeId: WorktreeId | null;
+  /** Only results recorded at or after this time; `null` for any time. */
+  readonly since: EpochMs | null;
+}
+
 export interface ResultRepo {
   /**
    * Every result stored under a key. Spec 001 D5: "looks each new key up in
@@ -133,6 +141,13 @@ export interface ResultRepo {
    * provenance of one check".
    */
   listForCheck(check: CheckId, limit: number): readonly ResultRecord[];
+  /**
+   * Stored `fail` results matching `filter`, newest first by record time, at
+   * most `limit`. Read only, as `listForCheck`. Task 001-409, `squeal failures`.
+   */
+  listFailures(filter: FailureFilter, limit: number): readonly ResultRecord[];
+  /** How many stored `fail` results match `filter`, for the cap's "first N of M". */
+  countFailures(filter: FailureFilter): number;
   /**
    * Spec 001 D5: "A result is stored only under a key whose inputs were
    * stable for the whole run." A stored result's last-used time starts at

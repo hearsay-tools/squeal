@@ -14,6 +14,12 @@ export {
   countedText,
   failureCountText,
 } from "./checks.js";
+export {
+  FAILURES_LIMIT,
+  type FailuresOptions,
+  formatFailures,
+  readFailures,
+} from "./failures.js";
 export { formatStatus, formatUnavailable } from "./format-status.js";
 export { formatWhy } from "./format-why.js";
 export {
