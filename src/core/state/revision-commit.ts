@@ -16,7 +16,9 @@ import {
  * the pass saw, the revisions after it; else after the newest revision at
  * another `HEAD`, whose successor brought this one (a checkout's files) and
  * counts as `+ 0`; with every revision at one `HEAD`, all of them. The dirty
- * flag is the one recorded with what `HEAD` came from. `undefined` while
+ * flag is the newest observation: a move recorded at the latest revision,
+ * even one back to that revision's `HEAD` (A to B to A, review 001-417 B4),
+ * else the revision's own. `undefined` while
  * nothing is recorded, and before a first commit, which there is nothing to
  * count from.
  */
@@ -31,6 +33,7 @@ export function readRevisionCommit(
     return moved.head === null ? undefined : { head: moved.head, sinceHead: 0, dirty: moved.dirty };
   }
   if (latest === null || latest.head === null) return undefined;
+  const current = moved !== null && moved.revision >= number;
   const other = store.revisions.lastAtOtherHead(worktreeId, latest.head);
   const since: RevisionNumber =
     moved !== null && moved.head === latest.head && moved.revision >= (other ?? 0)
@@ -38,7 +41,8 @@ export function readRevisionCommit(
       : other === null
         ? 0
         : other + 1;
-  return { head: latest.head, sinceHead: Math.max(0, number - since), dirty: latest.dirty };
+  const dirty = current ? moved.dirty : latest.dirty;
+  return { head: latest.head, sinceHead: Math.max(0, number - since), dirty };
 }
 
 /** `79 · 1bc146f0 + 3, dirty`: the revision, then its commit (task 001-406); the number alone without one. */
