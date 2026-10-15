@@ -38,6 +38,7 @@ const replaced = (path: string, from: string, to: string) =>
 const SEAMS = [
   // The dispatcher's commands, none of which keys, runs or records; `squeal daemon` is guarded.
   "src/cli/main.ts -> src/cli/codex/status.ts", // the Codex status line: renders the store
+  "src/cli/main.ts -> src/cli/failures.ts", // `squeal failures`: reads the store (001-409)
   "src/cli/main.ts -> src/cli/init.ts", // `squeal init`: writes the user's config files
   "src/cli/main.ts -> src/cli/opencode/status.ts", // the OpenCode status line: renders the store
   "src/cli/main.ts -> src/cli/pi/status.ts", // the Pi status line: renders the store
