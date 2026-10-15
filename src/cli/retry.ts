@@ -83,7 +83,7 @@ export async function retryCommand(
       const shown = rel ?? path;
       const answer: Answer =
         row === undefined || row.key === null
-          ? refuse(`Not retried: ${shown} is not a test file Squeal has keyed in this worktree.`)
+          ? refuse(notKeyed(store, worktreeId, rel, shown))
           : parsed.kind === "cancel"
             ? cancelLine(store, row, worktreeId, shown)
             : askLine(store, row, worktreeId, shown, parsed.reason, session(io), load);
@@ -179,6 +179,20 @@ function askLine(
       `Retry queued (reason: ${reason}): ${shown} ${when}.${joins} ` +
       "Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending.",
   };
+}
+
+/**
+ * Why `shown` has no keyed test file. A failed global setup (001-382) has no
+ * key: the next run of its project clears it, which an edit or `run --all`
+ * starts.
+ */
+function notKeyed(store: Store, worktreeId: WorktreeId, rel: string | null, shown: string): string {
+  const setup = store.knownStates
+    .list(worktreeId)
+    .some((s) => s.check.kind === "setup" && s.outcome === "fail" && s.check.testPath === rel);
+  return setup
+    ? `Not retried: ${shown} is a global setup, which has no inputs to retry at; its FAIL clears when a run of its project starts, as the next edit or squeal run --all does.`
+    : `Not retried: ${shown} is not a test file Squeal has keyed in this worktree.`;
 }
 
 function spentLine(shown: string, record: RetryRecord): string {
