@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import type { EnsureDaemonResult } from "../../src/core/types/index.js";
-import { lockHolders, resume, stoppedItself } from "../e2e/restart-evidence.js";
+import { lockHolders, resume, stoppedItself, testPause } from "../e2e/restart-evidence.js";
 import { daemonSuite, delay, type FixtureRepo, ping, readNotes, SLOW, waitFor } from "./helpers.js";
 import { stepDownKit } from "./step-down-helpers.js";
 
@@ -12,7 +12,7 @@ import { stepDownKit } from "./step-down-helpers.js";
  * older plugin spawns its daemon in that gap. Since task 001-340 a daemon
  * that loses a lock no daemon serves waits for it, so it could take the lock
  * ahead of the newer successor, which then exited as a loser. The old daemon
- * stops itself in the gap (`SQUEAL_TEST_PAUSE=stop-gap`, task 001-355) and holds
+ * stops itself in the gap (`testPause("stop-gap")`, task 001-355) and holds
  * it open as long as the late spawn takes to decide. Both older daemons run this repository's build at older versions.
  *
  * A late spawn of the stopping daemon's own version still waits and may win
@@ -25,9 +25,9 @@ const suite = daemonSuite();
 const { HOOKS, buildAt, start, sockets, hookDeps, hook, exitWithin } = stepDownKit(suite);
 
 /** The 0.1.1 daemon, which stops itself in its stop gap (task 001-355). */
-const STOP_GAP = { SQUEAL_TEST_PAUSE: "stop-gap" } as const;
+const STOP_GAP = testPause("stop-gap");
 /** The successor of the second case, which stops itself once it waits for the lock. */
-const LOCK_WAIT = { SQUEAL_TEST_PAUSE: "lock-wait" } as const;
+const LOCK_WAIT = testPause("lock-wait");
 
 /**
  * Steps down the 0.1.1 daemon serving `repo` for this source's hooks, which
