@@ -40,6 +40,11 @@ export class VitestObserver {
     return this.#out !== null;
   }
 
+  /** The recorder file the current instance's workers load: none while it does not record. */
+  get files(): readonly AbsolutePath[] {
+    return this.#out !== null && this.#recorder ? [this.#recorder] : [];
+  }
+
   /** Policy `observe.runtimeInputs` moved since the instance started: it must be recreated. */
   stale(): boolean {
     return this.enabled() !== (this.active || this.#recorderMissing());

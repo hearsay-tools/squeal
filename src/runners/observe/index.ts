@@ -8,4 +8,8 @@ export {
   RECORDER_VERSION,
   recorderOption,
 } from "./runtime.js";
-export { recorderSignature, withRecorderSignatures } from "./signature.js";
+export {
+  type RecorderUse,
+  recorderSignature,
+  withRecorderSignatures,
+} from "./signature.js";
