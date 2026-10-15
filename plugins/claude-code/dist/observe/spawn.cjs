@@ -2,44 +2,50 @@
 // 001-132, 001-135). At every spawn, sync or async, and every Worker, the
 // recorder and its settings ride in whatever env the caller passed (`env: {}`
 // too), so grandchildren are recorded: as `--import` of its `file:` URL, or as
-// `--require` beside a `--require` the env or the child's arguments hold, as
-// `recorderOption` in `runtime.ts` decides (spec 001 D11 Fidelity, task
-// 001-390). A call Node would reject, or whose env
+// `--require` where the child's Node would run a `--require` (`preloads.cjs`),
+// as `recorderOption` in `runtime.ts` decides (spec 001 D11 Fidelity, task
+// 001-390). The form is chosen at each spawn, also when the env inherits the
+// recorder already: that one is taken out first, so it runs once, in the
+// child's form (review 001-401, B1). A call Node would reject, or whose env
 // the recorder cannot extend as Node reads it, passes through untouched, so
 // Node's own validation runs (review wave 12d, B6). A thread's test file also
 // rides in its environment data, which a `SHARE_ENV` Worker gets though it
-// shares its parent's env (B4). A child whose env carries another Squeal's
-// settings, a test starting its own Squeal, is left to that recorder.
+// shares its parent's env (B4); such a Worker with a `--require` of its own
+// gets the recorder's in its `execArgv`, ahead of it, the shared env left as
+// it is. A child whose env carries another Squeal's settings, a test starting
+// its own Squeal, is left to that recorder.
 "use strict";
 const childProcess = require("node:child_process");
 const path = require("node:path");
 const workerThreads = require("node:worker_threads");
 const { statSync } = require("node:fs");
 const { pathToFileURL } = require("node:url");
+const {
+  asWritten,
+  isRequire,
+  optionsRequire,
+  shellRequires,
+  spawnRequires,
+  tokenizeNodeOptions,
+} = require("./preloads.cjs");
 
 /** The environment-data key carrying the test file into a thread. */
 const FILE_KEY = "squeal.observe.file";
 
 /** A value as `NODE_OPTIONS` reads it (`quoteNodeOption`). */
 const quote = (value) => `"${value.replace(/["\\]/g, "\\$&")}"`;
-/**
- * A `--require` or `-r` token, quoted or not, with its value after a space or `=`
- * (`holdsRequire`), in `NODE_OPTIONS`, an argument or a shell's command. A match
- * it should not make (`rm -r`) keeps the recorder a `--require`, which records as much.
- */
-const REQUIRE = /(?:^|[\s"])(?:--require|-r)(?:[\s="]|$)/;
 
 const isOptions = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 const ownEnv = (options) =>
   Object.prototype.propertyIsEnumerable.call(options, "env") ? options.env : undefined;
-/** `options` with its own `env` replaced; its prototype and other properties kept. */
-const withEnv = (options, env) => {
+/** `options` with its own `key` set to `value`; its prototype and other properties kept. */
+const withOwn = (options, key, value) => {
   const next =
     options == null
       ? {}
       : Object.create(Object.getPrototypeOf(options), Object.getOwnPropertyDescriptors(options));
-  Object.defineProperty(next, "env", {
-    value: env,
+  Object.defineProperty(next, key, {
+    value,
     enumerable: true,
     writable: true,
     configurable: true,
@@ -82,22 +88,44 @@ function foreign(value, out) {
 function wrapChildren(api) {
   const { variable, self, settings } = api;
   const url = pathToFileURL(self).href;
+  /** `tokens` without this recorder's own preload, in either form. */
+  const withoutSelf = (tokens) => {
+    const kept = [];
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i];
+      const flag = token === "--import" || isRequire(token);
+      const value = flag ? tokens[i + 1] : token.slice(token.indexOf("=") + 1);
+      const preload = flag || token.startsWith("--import=") || isRequire(token);
+      if (preload && (value === self || value === url)) {
+        if (flag) i++;
+      } else kept.push(token);
+    }
+    return kept;
+  };
   /**
    * `env` plus the recorder: what Node reads of it, its prototype's keys too
-   * for a spawn, its own keys only for a Worker. A `--require` there or in the
-   * child's own `argv`, which Node runs before any `--import`, keeps the
-   * recorder a `--require`; Node parses the nearest `package.json` then anyway.
+   * for a spawn, its own keys only for a Worker. A `--require` there or, as
+   * `require` says, in the child's own options, which Node runs before any
+   * `--import`, makes the recorder a `--require`; Node parses the nearest
+   * `package.json` then anyway. The recorder already there is taken out first.
    */
-  const injected = (env, inherited = true, argv = []) => {
+  const injected = (env, inherited = true, require = false) => {
     const out = inherited ? {} : { ...env };
     if (inherited) for (const key in env) out[key] = env[key];
     // Another Squeal's settings (a test starting its own Squeal): that subtree is its.
     if (foreign(out[variable], settings.out)) return out;
     const options = typeof out.NODE_OPTIONS === "string" ? out.NODE_OPTIONS : "";
-    if (!options.includes(self) && !options.includes(url)) {
-      const require = [options, ...argv].some((a) => typeof a === "string" && REQUIRE.test(a));
-      const option = require ? `--require ${quote(self)}` : `--import ${quote(url)}`;
-      out.NODE_OPTIONS = `${option}${options === "" ? "" : ` ${options}`}`;
+    const tokens = tokenizeNodeOptions(options);
+    // one Node rejects: as before, a `--require` unless the recorder is there
+    if (tokens === null) {
+      if (!options.includes(self) && !options.includes(url))
+        out.NODE_OPTIONS = `--require ${quote(self)} ${options}`;
+    } else {
+      const own = withoutSelf(tokens);
+      const option =
+        require || own.some(isRequire) ? `--require ${quote(self)}` : `--import ${quote(url)}`;
+      const rest = own.length === tokens.length ? options : own.map(asWritten).join(" ");
+      out.NODE_OPTIONS = rest.trim() === "" ? option : `${option} ${rest}`;
     }
     const file = api.current();
     out[variable] = JSON.stringify({ ...settings, ...(typeof file === "string" ? { file } : {}) });
@@ -128,8 +156,11 @@ function wrapChildren(api) {
           const at = pair.indexOf("=");
           if (at > 0) env[pair.slice(0, at)] = pair.slice(at + 1);
         }
-        const argv = Array.isArray(options.args) ? options.args : [];
-        options.envPairs = Object.entries(injected(env, true, argv)).map(([k, v]) => `${k}=${v}`);
+        const argv = Array.isArray(options.args) ? options.args.slice(1) : [];
+        const require = spawnRequires(options.file, argv);
+        options.envPairs = Object.entries(injected(env, true, require)).map(
+          ([k, v]) => `${k}=${v}`,
+        );
       }
       // `args[0]` is the command again; a shell's `-c` string names no file
       recordArguments(options?.file, options?.args?.slice(1), options?.cwd);
@@ -152,8 +183,13 @@ function wrapChildren(api) {
         if (at !== -1 && (!env || typeof env === "object")) {
           const next = [...args];
           while (next.length < at) next.push(undefined);
-          const argv = [args[0], ...(Array.isArray(args[1]) ? args[1] : [])];
-          next[at] = withEnv(options, injected(env || process.env, true, argv));
+          const argv = Array.isArray(args[1]) ? args[1] : [];
+          // Node's `shell` joins the command and its arguments into one shell command
+          const require =
+            name === "execSync" || options?.shell
+              ? shellRequires([args[0], ...argv].join(" "))
+              : spawnRequires(args[0], argv);
+          next[at] = withOwn(options, "env", injected(env || process.env, true, require));
           call = next;
           if (name !== "execSync") {
             recordArguments(args[0], Array.isArray(args[1]) ? args[1] : [], options?.cwd);
@@ -169,7 +205,8 @@ function wrapChildren(api) {
   }
 
   // Worker threads load the recorder from their env's NODE_OPTIONS; the env carries the test
-  // file, and so does the environment data, which a SHARE_ENV thread's env cannot.
+  // file, and so does the environment data, which a SHARE_ENV thread's env cannot. Without
+  // its own `execArgv` a Worker takes its parent thread's.
   const Worker = workerThreads.Worker;
   workerThreads.Worker = class Worker_ extends Worker {
     constructor(filename, ...rest) {
@@ -180,10 +217,18 @@ function wrapChildren(api) {
         const options = rest[0];
         // Node reads `options.env` through the prototype; null or undefined means process.env
         const env = options === undefined ? undefined : isOptions(options) ? options.env : null;
-        if (env !== workerThreads.SHARE_ENV && (env == null || typeof env === "object")) {
+        const own = Array.isArray(options?.execArgv) ? options.execArgv : process.execArgv;
+        const require = optionsRequire(own);
+        if (env === workerThreads.SHARE_ENV) {
+          // the env is the parent's own: the recorder's `--require` goes ahead of the thread's
+          if (require && isOptions(options)) {
+            const execArgv = ["--require", self, ...own];
+            next = [withOwn(options, "execArgv", execArgv), ...rest.slice(1)];
+          }
+        } else if (env == null || typeof env === "object") {
           if (options === undefined || isOptions(options)) {
-            const argv = Array.isArray(options?.execArgv) ? options.execArgv : [];
-            next = [withEnv(options, injected(env ?? process.env, false, argv)), ...rest.slice(1)];
+            const env_ = injected(env ?? process.env, false, require);
+            next = [withOwn(options, "env", env_), ...rest.slice(1)];
           }
         }
         if (typeof filename === "string" && options?.eval !== true) api.record("f", filename);
