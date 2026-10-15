@@ -1,10 +1,9 @@
 import { readFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir } from "node:os";
 import { join } from "node:path";
 
 /** Where the rates service (scripts/rates-service.mjs) writes the port it listens on. */
-export const PORT_FILE =
-  process.env.LEDGERLINE_RATES_PORT_FILE ?? join(tmpdir(), "ledgerline-rates.port");
+export const PORT_FILE = join(homedir(), ".ledgerline-rates.port");
 
 /** Today's exchange rate from `from` to `to`, from the rates service on this machine. */
 export async function rate(from: string, to: string): Promise<number> {
