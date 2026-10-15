@@ -1,5 +1,5 @@
-import { locate } from "../shared/context.js";
 import type { HookDeps } from "../shared/hook.js";
+import { sessionLocation } from "../shared/session-root.js";
 import type { CodexHandler } from "./hook.js";
 import { isUnservedThread, parseCodexInput } from "./input.js";
 
@@ -13,8 +13,10 @@ const SILENT: CodexHookResult = { stdout: "", stderr: "" };
 
 /**
  * Runs one Codex hook on its stdin text. Spec 002 D3: "Every script exits 0
- * with no output on any internal error." The root is the stdin `cwd`, the
- * thread's working directory in every mode (`research/wave-0-checks.md` 2);
+ * with no output on any internal error." The root is the one the thread's
+ * SessionStart resolved from its stdin `cwd`, the thread's working
+ * directory in every mode (`research/wave-0-checks.md` 2; task 001-405,
+ * `sessionLocation`);
  * no Codex hook reads a `CLAUDE_*` variable, which Codex passes through from
  * whatever launched it (D4). Malformed input, a cwd outside any git worktree,
  * a missing or unreadable store and every thrown error end silent, and so
@@ -32,8 +34,9 @@ export async function runCodexHandler(
   try {
     const input = parseCodexInput(stdin);
     if (input === null || isUnservedThread(input)) return SILENT;
-    const location = locate(input.cwd);
+    const location = sessionLocation(input, name === "session-start", deps.sessionRoots);
     if (location === null) return SILENT;
+    if (name === "session-end") deps.sessionRoots?.delete(input.session_id);
     const output = await handler(input, location, deps);
     return output === null ? SILENT : { stdout: JSON.stringify(output), stderr: "" };
   } catch (error) {
