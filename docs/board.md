@@ -933,7 +933,7 @@ Spec: `specifications/007-pytest-runner/spec.md`, approved 2026-10-14 by the hum
 
 ## Feature 008: OpenCode adapter
 
-Spec: `specifications/008-opencode-adapter/spec.md`, approved 2026-10-14 by the human; sections D1 to D9. Status and research brief: `specifications/008-opencode-adapter/status.md`, `research/README.md` (human, 2026-10-14: start working on OpenCode support). Pi is spec 009.
+Spec: `specifications/008-opencode-adapter/spec.md`, approved 2026-10-14 by the human, shipped 2026-10-15 (0.1.192); sections D1 to D9. Status and research brief: `specifications/008-opencode-adapter/status.md`, `research/README.md` (human, 2026-10-14: start working on OpenCode support). Pi is spec 009.
 
 ### Research
 
@@ -1059,7 +1059,8 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 | 008-34 B2's last repair and a narrow third look | done: round 3 PASS at 854d66ae; landed in 0.1.192 (163882d7) | Without OpenCode's dispose line the e2e estimates no deadline of dispose's and never retries; the review's paired tests. Candidate renumbered 0.1.192 (main at 0.1.190). | Round 3 PASS at 854d66ae, then rebase, re-version, re-gate. |
 | 008-35 re-review of `cand/0.1.192`'s shared files | done: PASS at 63289a86, 0 findings; superseded by 0.1.191 landing first | `/reviewer`, process step 6: only the version places and bundles are shared with main's code since 008-32; version, build drift, range-diff against round 3, key format 10. | `reviews/wave-3b.md` Round 4 with a verdict on 63289a86. |
 | 008-36 re-review of `cand/0.1.192` on 0.1.191 | done: PASS at 9ffd66f4, 0 findings; 0.1.192 landed as 163882d7 | `/reviewer`, process step 6 again: 007's 0.1.191 landed after 008-35; candidate rebuilt at 9ffd66f4, shared files are again only version places and bundles. | `reviews/wave-3b.md` Round 5 with a verdict on 9ffd66f4. |
-| 008-37 re-check of defect 5 with a real model | running (worker 9c8e1377) | `/worker`, proof as 008-30: with 0.1.192 installed, a Cezar-shaped `serve` session whose continuation's own edit flips a check gets no second continuation, and the news reaches the model with the next prompt; `run` still stores news once. | A dated `lessons.md` section answering both with evidence; nothing left running. |
+| 008-37 re-check of defect 5 with a real model | done: defect 5 fixed with gpt-6-luna on 0.1.192 (037-s4c, 037-s4d: one continuation, no second, `FAIL -> PASS` with the next prompt); `run` stores once (037-s3); no new defect (`lessons.md`, 008-37) | `/worker`, proof as 008-30: with 0.1.192 installed, a Cezar-shaped `serve` session whose continuation's own edit flips a check gets no second continuation, and the news reaches the model with the next prompt; `run` still stores news once. | A dated `lessons.md` section answering both with evidence; nothing left running. |
+| 008-38 OpenCode's margins under load | planned (not blocking) | Two load observations, both named and not proven to be more than a deadline: the `dispose` store used 1,091 ms of its 2,500 at load 21 (008-37) against 444 to 493 ms at load 5 to 8 (008-30); and `test/harness/opencode-wake.test.ts` "continues the turn once, then silence" once saw 1 request where 2 were expected at load 70 (review 008-32 round 3: compatible with a timeout, unverified). Measure the store's time against load, and give the wake test's failure message the timeline that names its cause, as 008-29 did for the e2e. | The store's time is recorded at three loads up to the host's CPU count with a margin decision; the wake test's failure names whether a deadline was missed. |
 
 ## Later
 
