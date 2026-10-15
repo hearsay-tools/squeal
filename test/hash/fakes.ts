@@ -1,4 +1,5 @@
 import type {
+  CommitSha,
   FileHashRecord,
   FileHashRepo,
   RelativePath,
@@ -53,6 +54,10 @@ export class FakeRevisionRepo implements RevisionRepo {
   }
   get(worktreeId: WorktreeId, number: RevisionNumber): Revision | null {
     return this.rows.find((r) => r.worktreeId === worktreeId && r.number === number) ?? null;
+  }
+  lastAtOtherHead(worktreeId: WorktreeId, head: CommitSha): RevisionNumber | null {
+    const rows = this.rows.filter((r) => r.worktreeId === worktreeId && r.head !== head);
+    return rows.at(-1)?.number ?? null;
   }
   range(worktreeId: WorktreeId, after: RevisionNumber, upTo: RevisionNumber): readonly Revision[] {
     return this.rows.filter(

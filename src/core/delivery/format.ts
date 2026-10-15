@@ -3,6 +3,7 @@ import { awaitingInstallSentence } from "../scheduler/awaiting-install.js";
 import {
   flakyText,
   fullSuiteText,
+  revisionText,
   runnerPartText,
   SUMMARY_MAX_CHARS,
   slowTierText,
@@ -142,7 +143,7 @@ function headerLine(header: StatusHeader, command: string): string {
       : "";
   const awaiting = awaitingInstallText(header);
   return (
-    `Revision ${revision}${changedText(header.changedPaths)}: ${countsText(counts, fileLevel)}.${inherited}${withoutChecks}${listed}${runnerPart} ` +
+    `Revision ${revisionText(revision, header.commit)}${changedText(header.changedPaths)}: ${countsText(counts, fileLevel)}.${inherited}${withoutChecks}${listed}${runnerPart} ` +
     `Full-suite checkpoint: ${fullSuiteText(header, command)}.` +
     livenessSentence(header.daemon, revision) +
     (awaiting === null ? installSentences(header) : ` ${awaiting}`)

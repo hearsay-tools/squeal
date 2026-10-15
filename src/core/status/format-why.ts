@@ -1,6 +1,6 @@
 import { basename, dirname } from "node:path";
 import { testFileLabel } from "../run-log.js";
-import { causeText, flakyText, formatCheck } from "../state/index.js";
+import { causeText, flakyText, formatCheck, revisionText } from "../state/index.js";
 import { plural } from "../text.js";
 import type {
   KnownOutcome,
@@ -33,7 +33,7 @@ export function formatWhy(why: WhyResult): string {
   const lines = [
     `Check: ${formatCheck(why.check)}`,
     `Worktree: ${why.worktreeRoot}`,
-    `Revision: ${why.revision ?? "none recorded"}`,
+    `Revision: ${why.revision === null ? "none recorded" : revisionText(why.revision, why.commit)}`,
     "",
     ...knownState(why, why.knownState),
     "",

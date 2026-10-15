@@ -1,5 +1,5 @@
 import type { CheckId } from "./check.js";
-import type { EpochMs, RelativePath, RevisionNumber, WorktreeId } from "./common.js";
+import type { CommitSha, EpochMs, RelativePath, RevisionNumber, WorktreeId } from "./common.js";
 import type { Consumer, ViewEntry } from "./delivery.js";
 import type { CheckKey, TestFileRef } from "./keys.js";
 import type { Revision } from "./revision.js";
@@ -56,6 +56,11 @@ export interface RevisionRepo {
   append(revision: Omit<Revision, "number">): Revision;
   latest(worktreeId: WorktreeId): Revision | null;
   get(worktreeId: WorktreeId, number: RevisionNumber): Revision | null;
+  /**
+   * The newest revision recorded at a `HEAD` other than `head`, so the ones
+   * after it share `head` (task 001-406); `null` when every one does.
+   */
+  lastAtOtherHead(worktreeId: WorktreeId, head: CommitSha): RevisionNumber | null;
   /** Revisions numbered after `after` up to `upTo`, oldest first, in one query (review wave 10b, N3). */
   range(worktreeId: WorktreeId, after: RevisionNumber, upTo: RevisionNumber): readonly Revision[];
 }
@@ -255,6 +260,7 @@ export const WORKTREE_META_ROWS = {
   awaitingInstall: { prefix: "awaiting-install.", owner: "types/scheduler" },
   installCommand: { prefix: "install-command.", owner: "types/scheduler" },
   checkpoint: { prefix: "checkpoint.", owner: "types/scheduler" },
+  headMove: { prefix: "head-move.", owner: "types/scheduler" },
   daemonBootstrapped: { prefix: "daemon-bootstrapped:", owner: "types/daemon" },
   daemonToken: { prefix: "daemon-token:", owner: "store/repos/worktrees" },
   daemonExit: { prefix: "daemon-exit:", owner: "types/daemon" },
