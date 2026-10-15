@@ -268,7 +268,10 @@ describe(
       const stamps = new InstallStamps(h.root);
       expect((await stamps.check()).missing).toBeNull();
       rmSync(join(h.root, "packages/a/node_modules"), { recursive: true, force: true });
-      expect((await stamps.check()).missing).toEqual({ workspaces: ["packages/a"] });
+      expect((await stamps.check()).missing).toEqual({
+        workspaces: ["packages/a"],
+        command: "npm install",
+      });
     });
 
     it("exits at the next reconciliation pass", async () => {
