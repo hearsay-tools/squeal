@@ -282,6 +282,8 @@ var init_store = __esm({
       livenessTold: { prefix: "liveness-told:", owner: "delivery/liveness" },
       revisionTold: { prefix: "revision-told:", owner: "delivery/liveness" },
       uncoveredTold: { prefix: "uncovered-told:", owner: "delivery/uncovered" },
+      slowTierTold: { prefix: "slow-tier-told:", owner: "delivery/slow-told" },
+      leaving: { prefix: "leaving:", owner: "delivery/leaving" },
       notes: { prefix: "notes.", owner: "types/scheduler" },
       refined: { prefix: "refined.", owner: "types/scheduler" },
       awaitingInstall: { prefix: "awaiting-install.", owner: "types/scheduler" },
@@ -478,11 +480,13 @@ var init_state = __esm({
 });
 
 // src/core/types/store-records.ts
-var CONSUMER_EXPIRY_MS, WAITERLESS_EXPIRY_MS;
+var CONSUMER_EXPIRY_MS, HOOK_TIMEOUT_MS, LEAVING_GRACE_MS, WAITERLESS_EXPIRY_MS;
 var init_store_records = __esm({
   "src/core/types/store-records.ts"() {
     "use strict";
     CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
+    HOOK_TIMEOUT_MS = 2e3;
+    LEAVING_GRACE_MS = 5 * HOOK_TIMEOUT_MS;
     WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
   }
 });
@@ -3758,10 +3762,11 @@ function recordFailureProducers(store, worktreeId, results2) {
   const newest = [...kept2].slice(-FAILURE_PRODUCERS_KEPT);
   store.meta.set(failureProducersMetaKey(worktreeId), JSON.stringify(Object.fromEntries(newest)));
 }
-function producingResult(state, producer2, results2) {
-  if (producer2 === void 0) return null;
+function producingResult(worktreeId, state, producer2, failureKey, results2) {
+  const origin = state.origin;
+  if (producer2 === void 0 || failureKey === void 0 || origin === null) return null;
   return results2.find(
-    (r) => r.provenance.runId === producer2.runId && r.provenance.recordedAt === producer2.recordedAt && r.outcome === state.outcome && fingerprintOf(r) === state.fingerprint && r.provenance.commit === state.commit
+    (r) => r.provenance.runId === producer2.runId && r.provenance.recordedAt === producer2.recordedAt && r.key === failureKey && r.outcome === state.outcome && fingerprintOf(r) === state.fingerprint && r.provenance.commit === state.commit && (origin.kind === "inherited" ? r.provenance.worktreeId === origin.worktreeId : r.provenance.worktreeId === worktreeId && r.provenance.revision === state.observedAt)
   ) ?? null;
 }
 var FAILURE_PRODUCERS_KEPT;
@@ -3964,11 +3969,15 @@ function pendingText(pending, activity, late) {
   const running = `${reported}running ${what} (${last})`;
   return pending === paths.length ? running : `${pending} pending, ${running}`;
 }
+function artifactText(artifact) {
+  const [only] = artifact;
+  return artifact.length === 1 && only !== void 0 ? only : `${artifact.length} declared artifacts`;
+}
 function currentText(tier) {
   const unknown = tier.artifactUnknown ?? 0;
   const at2 = tier.currentUpTo === void 0 ? `revision ${tier.currentAt}` : `revisions ${tier.currentAt} to ${tier.currentUpTo}`;
   if (unknown >= tier.current) return `current at ${at2}, declared artifact unknown`;
-  const against = tier.artifact.length === 0 ? `current at ${at2}, against no declared artifact` : `current against ${tier.artifact.join(", ")} as of ${at2}`;
+  const against = tier.artifact.length === 0 ? `current at ${at2}, against no declared artifact` : `current against ${artifactText(tier.artifact)} as of ${at2}`;
   return unknown === 0 ? against : `${against} (declared artifact unknown for ${unknown})`;
 }
 function slowTierText(header, command) {
@@ -4283,13 +4292,15 @@ function withRecorded(store, worktreeId, states, revision) {
   });
   if (failing.length === 0) return [];
   const producers = readFailureProducers(store, worktreeId);
+  const failureKeys2 = readFailureKeys(store, worktreeId);
   const retries = readRetries(store);
   const loads2 = readRunLoads(store);
   return failing.map(({ state, failure: failure2 }) => {
     if (failure2.check.kind === "setup") return failure2;
     const testFile = testFileOf(failure2.check);
     const results2 = store.results.listForCheck(failure2.check, Number.MAX_SAFE_INTEGER);
-    const row = producingResult(state, producers.get(checkIdentity(state.check)), results2);
+    const id2 = checkIdentity(state.check);
+    const row = producingResult(worktreeId, state, producers.get(id2), failureKeys2.get(id2), results2);
     if (row === null) return { ...failure2, recordedUnknown: true };
     const { provenance } = row;
     const retry = retryFactOf(retriesAt(retries, testFile, row.key));
@@ -4307,6 +4318,7 @@ function withRecorded(store, worktreeId, states, revision) {
 var init_recorded = __esm({
   "src/core/retry/recorded.ts"() {
     "use strict";
+    init_state2();
     init_state3();
     init_load();
     init_records();
@@ -4765,6 +4777,14 @@ function checkFrom(row) {
   if (kind !== "test") return { kind, project, testPath };
   return { kind: "test", project, testPath, fullName: str(row, "check_full_name") };
 }
+function inTestFiles(column, files2) {
+  if (files2.length === 0) return { sql: "0", params: [] };
+  const values = files2.map(() => "(?, ?)").join(", ");
+  return {
+    sql: `${column} IN (SELECT id FROM checks WHERE (project, test_path) IN (VALUES ${values}))`,
+    params: files2.flatMap((f) => [f.project, f.path])
+  };
+}
 function findCheckId(conn, check) {
   const row = conn.get(`SELECT id FROM checks WHERE ${CHECK_WHERE}`, ...checkParams(check));
   return row === null ? null : num(row, "id");
@@ -5018,12 +5038,17 @@ function toConsumer(row) {
 }
 function createViewRepo(conn) {
   return {
-    list: (consumer) => conn.all(
-      `SELECT v.*, ${CHECK_COLUMNS} FROM consumer_views v JOIN checks c ON c.id = v.check_id
+    list: (consumer, files2) => {
+      const only = files2 === void 0 ? null : inTestFiles("v.check_id", files2);
+      return conn.all(
+        `SELECT v.*, ${CHECK_COLUMNS} FROM consumer_views v JOIN checks c ON c.id = v.check_id
            WHERE v.worktree_id = ? AND v.session_id = ? AND v.agent_id = ?
+             ${only === null ? "" : `AND ${only.sql}`}
            ORDER BY c.project, c.test_path, c.kind, c.full_name`,
-      ...consumerParams(consumer)
-    ).map(toView),
+        ...consumerParams(consumer),
+        ...only?.params ?? []
+      ).map(toView);
+    },
     writeMany: (consumer, entries3) => conn.transaction(() => {
       for (const e of entries3) {
         conn.run(
@@ -5353,10 +5378,23 @@ var init_runs = __esm({
 // src/core/store/repos/states.ts
 function createKnownStateRepo(conn) {
   return {
-    list: (worktreeId) => conn.all(
-      `${SELECT_STATES} WHERE s.worktree_id = ?
+    list: (worktreeId, files2) => {
+      const only = files2 === void 0 ? null : inTestFiles("s.check_id", files2);
+      return conn.all(
+        `${SELECT_STATES} WHERE s.worktree_id = ? ${only === null ? "" : `AND ${only.sql}`}
            ORDER BY c.project, c.test_path, c.kind, c.full_name`,
-      worktreeId
+        worktreeId,
+        ...only?.params ?? []
+      ).map(toKnownState);
+    },
+    untold: (consumer) => conn.all(
+      `${SELECT_STATES} WHERE s.worktree_id = ? AND NOT EXISTS (
+             SELECT 1 FROM consumer_views v WHERE v.worktree_id = s.worktree_id
+               AND v.session_id = ? AND v.agent_id = ? AND v.check_id = s.check_id)
+           ORDER BY c.project, c.test_path, c.kind, c.full_name`,
+      consumer.worktreeId,
+      consumer.sessionId,
+      consumer.agentId
     ).map(toKnownState),
     get: (worktreeId, check) => {
       const id2 = findCheckId(conn, check);
@@ -5549,10 +5587,15 @@ function toTestFile(row) {
 }
 function createTestFileKeyRepo(conn) {
   return {
-    list: (worktreeId) => conn.all(
-      "SELECT * FROM test_file_keys WHERE worktree_id = ? ORDER BY project, path",
-      worktreeId
-    ).map(toTestFileKey),
+    list: (worktreeId, files2) => {
+      if (files2?.length === 0) return [];
+      const only = files2 === void 0 ? "" : `AND (project, path) IN (VALUES ${files2.map(() => "(?, ?)").join(", ")})`;
+      return conn.all(
+        `SELECT * FROM test_file_keys WHERE worktree_id = ? ${only} ORDER BY project, path`,
+        worktreeId,
+        ...(files2 ?? []).flatMap((f) => [f.project, f.path])
+      ).map(toTestFileKey);
+    },
     withKey: (key2) => conn.all("SELECT * FROM test_file_keys WHERE key = ? ORDER BY worktree_id, project, path", key2).map(toTestFileKey),
     upsertMany: (records) => conn.transaction(() => {
       for (const r of records) {
@@ -6155,6 +6198,20 @@ var init_store3 = __esm({
   }
 });
 
+// src/core/daemon/test-pause.ts
+import { channel } from "node:diagnostics_channel";
+function pauseAt(point) {
+  if (pauses.hasSubscribers) pauses.publish(point);
+}
+var TEST_PAUSE_CHANNEL, pauses;
+var init_test_pause = __esm({
+  "src/core/daemon/test-pause.ts"() {
+    "use strict";
+    TEST_PAUSE_CHANNEL = "squeal:test-pause";
+    pauses = channel(TEST_PAUSE_CHANNEL);
+  }
+});
+
 // src/core/daemon/lock.ts
 import { mkdirSync as mkdirSync2 } from "node:fs";
 import { dirname as dirname5 } from "node:path";
@@ -6181,6 +6238,7 @@ async function awaitDaemonLock(path, wait) {
     const at2 = performance.now();
     if (at2 >= checkAt) {
       if (wait.giveUp()) return "gave-up";
+      if (checkAt === 0) pauseAt("lock-wait");
       checkAt = at2 + (wait.checkMs ?? 250);
     }
     if (at2 >= deadline) return "timed-out";
@@ -6223,6 +6281,7 @@ var init_lock = __esm({
   "src/core/daemon/lock.ts"() {
     "use strict";
     init_store3();
+    init_test_pause();
   }
 });
 
@@ -7293,6 +7352,31 @@ var init_rekeyed_record = __esm({
   }
 });
 
+// src/core/delivery/leaving.ts
+function leavingMetaKey(worktreeId) {
+  return worktreeMetaKey("leaving", worktreeId);
+}
+function markLeaving(store, consumer, at2) {
+  const key2 = leavingMetaKey(consumer.worktreeId);
+  if (at2 === null && readSlot(store, key2, consumer) === void 0) return;
+  writeSlot(store, key2, consumer, at2 === null ? null : { at: at2 });
+}
+function leavingMarks(store, worktreeId) {
+  const marks = /* @__PURE__ */ new Map();
+  for (const [name2, value] of Object.entries(readAll(store, leavingMetaKey(worktreeId)))) {
+    if (isRecord(value) && typeof value.at === "number") marks.set(name2, value.at);
+  }
+  return marks;
+}
+var init_leaving = __esm({
+  "src/core/delivery/leaving.ts"() {
+    "use strict";
+    init_fs();
+    init_types();
+    init_slots();
+  }
+});
+
 // src/core/delivery/liveness.ts
 function daemonLiveness(record, now, lastHeartbeatAt = null) {
   if (record === null) return { state: "down", since: lastHeartbeatAt };
@@ -7373,6 +7457,7 @@ var init_turn = __esm({
     init_keys();
     init_state3();
     init_types();
+    init_leaving();
     init_slots();
     START_IDLE = { turn: "idle", testFiles: [], newTestFiles: false };
     IN_TURN = { turn: "in-turn" };
@@ -8291,6 +8376,10 @@ async function reconcileBatch(context, ledger, batch) {
   }
   const head = diff.changes.length > 0 ? await context.head() : null;
   const touched = touchedUnchanged(diff, keys.cache).filter((path) => !ignored.has(path));
+  if (diff.changes.length === 0 && diff.updates.length === 0) {
+    if (batch.trigger !== "watch") await recordHeadMove(context, ledger);
+    return { applied: null, touched };
+  }
   const applied = store.transaction(() => {
     const revision = commitBatch(diff, keys.cache, {
       worktreeId,
@@ -9297,6 +9386,7 @@ function addHeldFile(store, worktreeId, file) {
   store.meta.set(heldFilesMetaKey(worktreeId), JSON.stringify([...held2, file]));
 }
 function takeHeldFiles(store, worktreeId) {
+  if (readHeldFiles(store, worktreeId).length === 0) return [];
   return store.transaction(() => {
     const held2 = readHeldFiles(store, worktreeId);
     if (held2.length > 0) store.meta.set(heldFilesMetaKey(worktreeId), "[]");
@@ -9514,6 +9604,13 @@ function refinedRevision(store, worktreeId) {
   return Number.isInteger(refined) ? refined : null;
 }
 function recordMoves(store, worktreeId, marks, removed, revision, now, by) {
+  const moves = nextMoves(store, worktreeId, marks, removed, revision, now, by);
+  if (moves !== null) store.meta.set(rekeyedMovesMetaKey(worktreeId), JSON.stringify(moves));
+}
+function movesWouldChange(store, worktreeId, revision, now, by) {
+  return nextMoves(store, worktreeId, [], [], revision, now, by) !== null;
+}
+function nextMoves(store, worktreeId, marks, removed, revision, now, by) {
   const read4 = readMoves(store, worktreeId);
   const moves = read4 ?? { seq: 0, caughtUpAt: null, dropped: 0, files: {}, writer: null };
   const seq = moves.seq + 1;
@@ -9544,9 +9641,9 @@ function recordMoves(store, worktreeId, marks, removed, revision, now, by) {
   if (caughtUpAt !== null && now - caughtUpAt >= MOVES_GRACE_MS) {
     changed = prune3(moves, now - MOVES_RETENTION_MS) || changed;
   }
-  if (!changed) return;
+  if (!changed) return null;
   moves.seq = seq;
-  store.meta.set(rekeyedMovesMetaKey(worktreeId), JSON.stringify(moves));
+  return moves;
 }
 function apply(moves, { id: id2, open: open5, moved: moved2 }, seq, at2) {
   const file = moves.files[id2] ?? { open: null, resolved: {} };
@@ -10288,6 +10385,11 @@ var init_ledger = __esm({
         this.#unknown = [];
         this.#unknownFiles = [];
         this.#retired = [];
+        const quiet = this.#adopted && options.refined === void 0 && [rows, removed, rekeyed, applied, unknown, unknownFiles, retired, setups].every(
+          (list2) => list2.length === 0
+        );
+        const writer = { writer: this.context.incarnation ?? null };
+        if (quiet && !movesWouldChange(store, worktreeId, revision, this.context.now(), writer)) return;
         store.transaction(() => {
           const adopts = !this.#adopted && adoptsAtFirstCommit(store, worktreeId, this.context.predecessor);
           const before = adopts ? store.testFileKeys.list(worktreeId) : void 0;
@@ -10296,7 +10398,7 @@ var init_ledger = __esm({
           const removedIds = removed.map(testFileId);
           recordRekeyed(store, worktreeId, rekeyed, removedIds);
           recordMoves(store, worktreeId, rekeyed, removedIds, revision, this.context.now(), {
-            writer: this.context.incarnation ?? null,
+            ...writer,
             ...before === void 0 ? {} : { before }
           });
           for (const { results: results2, checkpointId } of mergeApplied(applied)) {
@@ -36732,10 +36834,10 @@ async function openProject(context) {
   if (!probe.ok) note(`${probe.error}; every check of the project is unknown until it runs`);
   const observed = new Observed(graph, options.observed, note);
   const noted2 = /* @__PURE__ */ new Set();
-  const once = (text2) => {
+  const once = (text2, topic) => {
     if (noted2.has(text2)) return;
     noted2.add(text2);
-    note(text2);
+    note(text2, topic);
   };
   const notes2 = () => {
     for (const text2 of graph.notes()) once(text2.replace(/^node-test: /, ""));
@@ -36746,7 +36848,8 @@ async function openProject(context) {
       const named = incomplete.slice(0, NAMED_INCOMPLETE).map(([file, reasons]) => `${file} (${reasons.join("; ")})`);
       const more = incomplete.length > NAMED_INCOMPLETE ? ", ..." : "";
       once(
-        `${incomplete.length} test file(s) with an incomplete static closure, keyed by what their runs load: ${named.join(", ")}${more}`
+        `${incomplete.length} test file(s) with an incomplete static closure, keyed by what their runs load: ${named.join(", ")}${more}`,
+        `node-test-closure:${project.name}`
       );
     }
   };
@@ -36924,7 +37027,7 @@ async function createNodeTestAdapter(project, options) {
     label: label2,
     adapterVersion: NODE_TEST_ADAPTER_VERSION,
     options,
-    note: (text2) => note(`${label2}: ${text2}`)
+    note: (text2, topic) => note(`${label2}: ${text2}`, topic)
   };
   let inner = null;
   let failure2 = null;
@@ -45868,7 +45971,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.196";
+  if (true) return "0.1.198";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -45970,7 +46073,7 @@ function formatStatus(result, now, command = "squeal", options = {}) {
     `Affected checks: ${affected(result)}`,
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
     ...checkpointLine(result, now, command),
-    ...slowLine(result, command),
+    ...slowLine(result, command, options.allNotes === true),
     ...excludedLine(result),
     "",
     worktreeLine(result),
@@ -46002,9 +46105,11 @@ function retryLines(s) {
     })
   ];
 }
-function slowLine(s, command) {
+function slowLine(s, command, all) {
   const text2 = slowTierText(s, command);
-  return text2 === null ? [] : [text2];
+  if (text2 === null) return [];
+  const artifact = s.slowTier?.artifact ?? [];
+  return all && artifact.length > 1 ? [text2, `  Declared artifacts: ${artifact.join(", ")}`] : [text2];
 }
 function excludedLine(s) {
   const entries3 = s.vitestExcluded ?? [];
@@ -46030,13 +46135,24 @@ function checkpointLine(s, now, command) {
   ];
 }
 function notes(s, command, all) {
+  const exits = /* @__PURE__ */ new Map();
+  for (const note of all ? [] : s.daemonNotes) {
+    if (note.exitOf !== void 0) exits.set(note.text, [...exits.get(note.text) ?? [], note]);
+  }
   const stamped = (n) => {
     const at2 = new Date(n.at).toISOString();
-    return n.revision === null ? `${at2}: ${n.text}` : `${at2}, revision ${n.revision}: ${n.text}`;
+    const text2 = n.revision === null ? `${at2}: ${n.text}` : `${at2}, revision ${n.revision}: ${n.text}`;
+    const same = n.exitOf === void 0 ? [] : exits.get(n.text) ?? [];
+    const [first] = same;
+    if (same.length < 2 || first === void 0) return text2;
+    const since = new Date(first.at).toISOString();
+    return `${text2} (${same.length} notes since ${since}; \`${command} status --notes\` lists each)`;
   };
   const groups = /* @__PURE__ */ new Map();
   const kept2 = [];
   for (const note of s.daemonNotes) {
+    const exit2 = note.exitOf === void 0 ? void 0 : exits.get(note.text);
+    if (exit2 !== void 0 && exit2[exit2.length - 1] !== note) continue;
     const what = all ? void 0 : note.stopped?.what;
     if (what === void 0) kept2.push(note);
     else groups.set(what, [...groups.get(what) ?? [], note]);
@@ -48818,8 +48934,35 @@ function toHarness(value) {
 }
 
 // src/core/delivery/expiry.ts
+init_leaving();
 init_liveness();
 init_slots();
+
+// src/core/delivery/slow-told.ts
+init_types();
+init_slots();
+function slowToldMetaKey(worktreeId) {
+  return worktreeMetaKey("slowTierTold", worktreeId);
+}
+function slowTierState(tier) {
+  if (tier === void 0) return null;
+  return JSON.stringify([
+    tier.testFiles,
+    tier.current,
+    tier.pending,
+    tier.notRun,
+    tier.currentAt,
+    tier.currentUpTo ?? null,
+    tier.artifact,
+    tier.artifactUnknown ?? 0,
+    tier.sourcesChangedSince
+  ]);
+}
+function tellSlowTier(store, consumer, tier) {
+  writeSlot(store, slowToldMetaKey(consumer.worktreeId), consumer, slowTierState(tier));
+}
+
+// src/core/delivery/expiry.ts
 init_turn();
 
 // src/core/delivery/uncovered.ts
@@ -48893,6 +49036,23 @@ function dropGoneHarnesses(store, worktreeId, now, options) {
   }
   return dropped;
 }
+function dropLeft(store, worktreeId, now, options) {
+  const cutoff = now - LEAVING_GRACE_MS;
+  const left = (consumer) => (leavingMarks(store, worktreeId).get(slot(consumer)) ?? now) < cutoff;
+  const dropped = [];
+  for (const { consumer } of store.consumers.list(worktreeId)) {
+    if (!left(consumer)) continue;
+    const removed = store.transaction(() => {
+      if (store.consumers.get(consumer) === null || !left(consumer)) return false;
+      drop(store, consumer, now);
+      return true;
+    });
+    if (!removed) continue;
+    removeWaiterLock(options.locksDir, consumer);
+    dropped.push(consumer);
+  }
+  return dropped;
+}
 function drop(store, consumer, at2) {
   park(store, consumer, at2, {
     said: editsSaid(store, consumer),
@@ -48912,32 +49072,41 @@ function lastDeparture(store, worktreeId) {
 function forget(store, consumer) {
   tellLiveness(store, consumer, null);
   tellRevision(store, consumer, null);
+  tellSlowTier(store, consumer, void 0);
   writeTurn(store, consumer, null);
   recordHarness(store, consumer, null);
   recordVersion(store, consumer, null);
   forgetEdits(store, consumer);
   recordUncoveredTold(store, consumer, []);
+  markLeaving(store, consumer, null);
 }
 function idle(record, cutoff) {
   return record.lastSeenAt < cutoff && (record.lastDeliveredAt ?? 0) < cutoff;
 }
 
 // src/core/delivery/delivery.ts
+init_leaving();
 init_liveness();
 init_turn();
 
 // src/core/delivery/format.ts
 init_retry();
+init_state3();
+init_text();
+
+// src/core/delivery/header.ts
 init_awaiting_install();
 init_state3();
 init_died();
-init_text();
+
+// src/core/delivery/format.ts
 var SQUEAL_COMMAND = "squeal";
 function shellWord(text2) {
   return /["$`\\]/.test(text2) ? `'${text2.replaceAll("'", "'\\''")}'` : `"${text2}"`;
 }
 
 // src/core/delivery/index.ts
+init_leaving();
 init_liveness();
 
 // src/core/daemon/lifecycle.ts
@@ -49043,6 +49212,7 @@ function startTimers(context) {
   const heartbeat = () => {
     attempt("heartbeat", () => store.worktrees.heartbeat(worktreeId, now()));
     attempt("harness check", () => dropGoneHarnesses(store, worktreeId, now(), { locksDir }));
+    attempt("leaving check", () => dropLeft(store, worktreeId, now(), { locksDir }));
   };
   const observedKeys = context.policy.nodeTest.flatMap(({ name: name2 }) => [
     nodeTestObservedMetaKey(name2),
@@ -49604,6 +49774,7 @@ function message(error) {
 // src/core/daemon/daemon.ts
 init_paths4();
 init_policy2();
+init_test_pause();
 
 // src/core/daemon/user-config.ts
 init_fs();
@@ -50013,7 +50184,7 @@ var Daemon = class {
         tempDir: this.opened.scratch.tempDir,
         childEnv: this.#children.env,
         tierSize: () => this.#policy.runner.tierSize,
-        note: (text2) => this.#note(text2)
+        note: (text2, topic) => this.#note(text2, void 0, void 0, topic)
       });
       const pytestRunners2 = pytest.createPytestRunners(configuredPytest, {
         root,
@@ -50211,6 +50382,7 @@ var Daemon = class {
       await this.#step("setDaemon", () => store.worktrees.setDaemon(worktreeId, null));
       await this.#step("store.close", () => store.close());
       await this.#step("socket close", () => this.#desk?.close());
+      pauseAt("stop-gap");
       await this.#step("lock release", () => lock2.release());
       const result = exit(reason2, code, text2);
       this.#resolveExit(result);
