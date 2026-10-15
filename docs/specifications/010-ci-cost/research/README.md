@@ -47,3 +47,22 @@ After approving D1 to D6 as a first step, the human asked two things: could some
 4. Two coordinators land concurrently. Two pull requests green against an older main can merge into a red main: what do the up-to-date rule and the merge queue cost in extra runs per landing, against what D1 to D6 leave (the landing re-test, open question 1)?
 5. Release-only or scheduled suites: which test families could leave per-landing CI for a release or a nightly run on main (e2e, pytest, harness fixtures: 119 files, 1,190 s, `ci-test-time.md` 1), and what that delays. Count from the run record how often a failure in those families first showed on `main` or a `cand/*` run and was fixed before the next release would have caught it. The coordinators' local gate already runs the full suite on Node 24 before each candidate: what does CI add beyond it, from the failures it caught that the gate passed (Node 22, clean environment, runner timing)?
 6. Recommendation: the trigger and protection design for step two, as a change to D1 to D6, with runs and job-minutes per landing against D1 to D6, and what the process (`docs/process.md`, human-owned) would have to change. Changing a repository setting is not part of this topic: read-only on GitHub, `gh api` reads only.
+
+## Topic: required-checks-probe (row 010-13, the human 2026-10-15)
+
+Can main require a passing check without requiring pull requests, so a landing costs one run instead of two (`ci-pr-flow.md`, recommendation 4 and open question 1)? The human chose to probe inside this repository, on throwaway branches, rather than in a scratch repository: the token cannot delete repositories.
+
+This topic overrides the read-only rule above, for exactly these writes and nothing else:
+
+- Branches named `probe/010-13-*`, pushed and deleted. Never `main`, `cand/*` or another session's branch. CI's own workflow does not run on them (D1).
+- One seconds-long workflow, `.github/workflows/probe-010-13.yml`, committed only on those branches, never on your findings branch; it triggers on pushes to `probe/010-13-**` and a `workflow_dispatch`. Keep its source under `research/probes/010-13/` with a README saying it is throwaway.
+- One ruleset whose `include` names only exact `refs/heads/probe/010-13-...` targets, no bypass actors. Never touch ruleset 25176438 (main). No pull requests: they stay public after closing.
+
+Questions, each answered with the exact push output and the check's state:
+
+1. Under a `required_status_checks` rule on a target branch, is a fast-forward push of a SHA accepted when its check passed in a `push` run on another probe branch? Refused with no run, a red run, a running one, or only a `workflow_dispatch` run?
+2. Does a check skipped by a job-level `if` satisfy the rule? Does a workflow skipped by a `paths` filter leave the SHA unpushable?
+3. From push to a green check under the pool's load: queue and run time of the seconds-long job (several samples, times of day named). This is the delay a docs commit would wait.
+4. Anything the docs did not say: error text, `strict` behaviour on a direct push, a check from a different workflow name.
+
+Clean up before finishing: delete the ruleset and every `probe/010-13-*` branch; show `gh api repos/hearsay-tools/squeal/rulesets` and `git ls-remote origin 'refs/heads/probe/*'` in the findings. Recommendation: whether step two (required checks on main, a short check per docs commit, `version` moved to candidates) works as `ci-pr-flow.md` sketched, and what it costs per landing.
