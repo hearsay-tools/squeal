@@ -91,3 +91,12 @@ Use /reviewer. Outcome: `reviews/wave-3b.md` committed with a verdict on the exa
   - 008-31: does a continued turn's idle now end silent in every path? That includes a continuation the user aborts, a wake's turn, and a child session. Does `endContinued` drop anything `delivery.endTurn` did that the plugin relies on (liveness, `atRevision`, the handoff)? Does news held back this way always reach the next prompt or tool result, and never get lost? Did 0.1.184 have defect 5, or did wave 3 bring it in?
   - 008-29: does a retry ever hide a failure that is not a proven D4 deadline miss? Is the timeline's reading of a cause honest? Do the watcher and its `/proc` reads stay off the real `HOME` and leave no process?
 - Writes only `docs/specifications/008-opencode-adapter/reviews/wave-3b.md`. Runs real OpenCode only through `runOpenCode`. Squeal does not key the OpenCode bundle tests to `src/harness/opencode` yet (001-399): run `npx vitest run test/harness/opencode/ test/harness/opencode-*.test.ts` yourself. Take the full-suite verdict from `squeal run --all --wait`, with no independent full run (the coordinator's gate holds the host lock).
+
+### 008-33 repair of `reviews/wave-3b.md`
+
+Use /worker, on `cand/0.1.188` at d3978509. The coordinator has already made the product fix for B1: `turns.ts` ends a continued turn as continued even when it was aborted, with a hook regression and the bundle rebuilt. It also removed the 250 ms slack from the e2e timeline's deadline checks (B2, in part). Outcome: both blockers fully repaired as the review's repair notes ask.
+
+- B1: the review's barrier-ordered real-OpenCode test (the first continuation held by a provider barrier, the recovery applied, the abort event marked, then the reply released). It asserts no third Squeal request, and that the `FAIL -> PASS` reaches the model at the next real user prompt. It must fail at 5f425783 and pass at d3978509.
+- B2: in `test/harness/opencode-dispose.test.ts`, `stopGone()` retries only when the held Stop died at or after its idle deadline. Uncertain causes fail with their observations, or are labelled unresolved without a retry. Add small timeline tests in `test/e2e/` (pure, with no OpenCode) for an early report loss, a genuine expiry, and missing timing evidence.
+- Owns: `test/harness/opencode-*.test.ts`, `test/harness/opencode/**`, `test/e2e/opencode*`. No `src`, dist or version.
+- Done when: each new test discriminates as stated; lint, typecheck and `npx vitest run test/harness/opencode/ test/harness/opencode-*.test.ts test/e2e/opencode*.test.ts` green.
