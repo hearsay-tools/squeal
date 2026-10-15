@@ -437,7 +437,7 @@ class Daemon {
         tempDir: this.opened.scratch.tempDir,
         childEnv: this.#children.env,
         tierSize: () => this.#policy.runner.tierSize,
-        note: (text) => this.#note(text),
+        note: (text, topic) => this.#note(text, undefined, undefined, topic),
       });
       // Spec 007 D8: pytest's cache and bytecode live under the state directory (open question 3).
       const pytestRunners = pytest.createPytestRunners(configuredPytest, {

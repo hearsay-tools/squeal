@@ -44,8 +44,9 @@ export interface NodeTestAdapterOptions {
   /**
    * Problem notes: a missing Node or `cwd`, a graph that cannot be built, an
    * unrecognized loader, incomplete closures, a failed observation write.
+   * A note with a `topic` replaces that topic's earlier ones in status.
    */
-  readonly note?: (text: string) => void;
+  readonly note?: (text: string, topic?: string) => void;
   /**
    * Processes at once, read per run: policy `runner.tierSize`. Default every
    * file of the tier; a slow lane's run always starts every file (task 004-37).
@@ -92,7 +93,7 @@ export async function createNodeTestAdapter(
     label,
     adapterVersion: NODE_TEST_ADAPTER_VERSION,
     options,
-    note: (text) => note(`${label}: ${text}`),
+    note: (text, topic) => note(`${label}: ${text}`, topic),
   };
 
   let inner: RunnerAdapter | null = null;
