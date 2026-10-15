@@ -135,3 +135,92 @@ These conclusions come from source and test inspection unless a probe is explici
 1. One delivery worker repairs B1. Clear the old mark in `register` and every continuing PreToolUse route, in the same transaction as the activity; never clear it from the stopping hook's own `stop: true` path. Preserve the 2 s hook timeout, the derived 10 s grace, read-first idle cost and main/child slot isolation. Test a long tool crossing the original deadline, both turn states, re-registration, killed Stop, policy block and normal unregister.
 2. One eval worker repairs B2 with 006's parser owner. The status producer's no-period line is already shipped. The parser must accept it as well as full/news sentence forms without consuming later lines. A pending or unknown file must keep both pass-claim expectations missed. Retain the full/news/Claude JSON/tailed-status and committed regrade checks; do not edit historical scores to make them pass.
 3. The coordinator folds S1 into the spec/status/board, and decides whether to replace the opt-in pause mechanism in N1. Neither is repaired by this reviewer. Rebuild committed bundles after product fixes and verify drift before the narrow re-review. Re-review B1/B2 and the repair delta; do not repeat the settled architecture review.
+
+## Round 2
+
+### Verification
+
+Candidate: `ac19c1987c790defc3d9fe2054969c1b752a36c6` (`cand/0.1.198`), based on main `37591286`. HEAD matched exactly. This is the bounded re-review of round 1's B1, B2, N1 and the D9/D10 portion of S1, plus the requested repair delta. No product, board or version file was edited. All checks below ran on the clean candidate before this review was appended; the build left all four committed plugin `dist` trees unchanged.
+
+```text
+$ git rev-parse HEAD
+ac19c1987c790defc3d9fe2054969c1b752a36c6
+$ npm ci
+added 196 packages, and audited 197 packages in 7s
+found 0 vulnerabilities
+$ npm run lint
+> squeal@0.1.198 lint
+> biome check .
+Checked 1344 files in 481ms. No fixes applied.
+$ npm run typecheck
+> squeal@0.1.198 typecheck
+> tsc --noEmit
+$ npm run build
+> squeal@0.1.198 build
+> tsc -p tsconfig.build.json && npm run build:plugin
+> squeal@0.1.198 build:plugin
+> tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts
+$ git status --short
+<empty>
+```
+
+All exited 0. npm also reported the existing `node-domexception` deprecation, funding notice and six install scripts outside `allowScripts` (`@google/genai`, `@parcel/watcher`, `esbuild`, `msgpackr-extract`, `opencode-ai`, `protobufjs`).
+
+Independent full run, including `test/e2e/`, on Node `v24.21.0`, 24 CPUs. It acquired the host lock and finished; this is not a Squeal checkpoint. One-minute host load samples during the run ranged from about 10 to 64.
+
+```text
+$ flock /run/user/$(id -u)/squeal-full-run.lock env -u CODEX_SESSION_ID GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 npx vitest run --maxWorkers=4
+RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/eba1e3f4-6dfd-471b-9d9d-166a9515e544
+
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/eba1e3f4-6dfd-471b-9d9d-166a9515e544/test/fixtures/scheduler/.tmp/3fb05efd-6f91-4370-9699-9c0f466066d1/main/.git/worktrees/staged/gitdir
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/eba1e3f4-6dfd-471b-9d9d-166a9515e544/test/fixtures/scheduler/.tmp/68a3276e-87ae-41eb-a9e8-a68b31c0cdea/main/.git/worktrees/staged/gitdir
+squeal tests: killing 1 process(es) an earlier run left: 1248072
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+
+ Test Files  661 passed | 1 skipped (662)
+      Tests  5607 passed | 10 skipped (5617)
+   Start at  22:52:30
+   Duration  877.86s (tests 97%, import 2%, transform 1%)
+
+    Isolate  662 workers spawned · ~144ms startup each (spawn + environment, per file)
+             at least ~23.74s faster with isolate: false — reuses workers across files instead of one per file
+<exit 0>
+$ git status --short
+<empty>
+```
+
+The result cache confirms that the end-to-end files were selected, including `stop-gap`, shipped-plugin, node-test, pytest, Pi and OpenCode. `test/e2e/torn-status.test.ts` is the skipped file. The targeted renewed/leaving/timer, formatter/parser, pause/handover, unused-stop, repeated-notes, version-list and key-format files all have non-failing results. No file failed the loaded run, so there is no loaded-fail/alone-pass file to name and no individual rerun was needed.
+
+### Verdict
+
+**PASS ac19c198**. Zero blockers, zero new should-fix findings, zero new notes, zero nits. B1, B2 and N1 are closed; the requested S1 fold is present on main. All required checks passed at the candidate SHA on a clean tree.
+
+### Previously reported findings
+
+- **B1 closed, proven by source and hook regressions.** `src/core/delivery/delivery.ts:294` clears the consumer's old leaving slot inside its registration transaction. `src/core/delivery/turn.ts:88` retains the read-first fast path only when already in a turn and unmarked; otherwise it checks registration, resumes an idle turn and clears the mark in the same transaction. Non-edit Bash/Read and edits with regression interrupts off reach this path through `src/harness/shared/deny.ts:57`; the edit peek still clears through delivery. `test/harness/subagent-renewed.test.ts` exercises re-registration in both turn states, Bash/Read in both states, edits with interrupts on/off, main/child isolation, expiration after the old grace and the no-transaction fast path. The stopping hook's own delivery, killed-Stop expiry and blocking-Stop tests remain intact.
+- **B2 closed, proven by formatter-to-parser evidence.** `evals/lib/squeal-text.mjs:282` stops reading unchecked-file counts at the first period or newline. It accepts the shipped status line without a period, full headers and one-class news sentences. The 54-case matrix in `test/evals/evidence-squeal.test.ts` crosses nine snapshots, three real formatters and plain/Claude-JSON wrapping. It checks exact pending/stale/unknown counts, non-pass when anything is owed, and conservatism against the frozen parser. The fixture is byte-for-byte `c6320866:evals/lib/squeal-text.mjs` after its four-line provenance prefix. News is correctly compared with the same snapshot's full header, which the old parser understands. `test/evals/header-forms.test.ts` checks that pending and unknown unchecked files miss both pass-claim expectations in both harnesses. A separate read-only probe through the three real formatters returned `unknown` for `(pending, unknown)` `(1,0)`, `(0,1)` and `(1,1)`; an appended later `99 unknown` line left the parsed counts `(1,0)`, proving the line bound. The notes' 251-cell regrade is worker evidence, not repeated here; the committed regrade tests are part of the independent run.
+- **N1 closed.** `src/core/daemon/test-pause.ts:23` now only publishes to a diagnostics channel with a subscriber. `test/daemon/pause-preload.mjs:9` owns SIGSTOP, loaded explicitly by `testPause` in `test/e2e/restart-evidence.ts:62`. The subscriber runs synchronously, retaining the precise stop-gap/lock-wait boundary. Overrides are added after child-environment scrubbing, so the intended daemon gets the preload. A scan of all 42 shipped `plugins/*/dist/**/*.mjs` files found no `SIGSTOP`, `SQUEAL_TEST_PAUSE`, `SQUEAL_TEST_STOP_GAP` or `pause-preload`. The plain-child regression verifies that the environment value alone cannot stop a process; its paired preload case verifies `T`, resume and normal exit. Handover and shipped-plugin stop-gap tests retain socket absence, lock-holder and replacement-validation assertions.
+- **S1's requested D9/D10/status fold closed.** Commit `69415c20` is already an ancestor of baseline main `37591286`. Reading those files at that baseline confirms D9 includes registration and every PreToolUse clearing the mark, and the observed Claude 2.1.300 isolated-worktree cwd; D10 includes the 10-second grace plus heartbeat, departure stamp and unused-stop backstop. The status amendment records the same rule. No documentation drift was repaired by this reviewer.
+
+### Repair delta
+
+- **Unused-stop premise accepted.** The original repair `246680b5` is integrated as `f2f7594f`. `src/core/daemon/daemon.ts:214` awaits opening the front desk before calling `#register`; the worker binds its socket and answers ping from its own identity while the main thread can be blocked on the store write transaction (`front-desk.ts:36`, `desk.ts:244`). A successful ping therefore cannot prove that registration has committed. `test/daemon/unused-stop.test.ts:100` now polls for the non-null record and a ping on its recorded socket together, then checks the computed socket. It preserves the restart and silent-rest assertions. The task's blocked-write probe agrees with this source path; it was inspected, not rerun.
+- **Pause repair accepted.** Original `28a24ef1` is integrated as `0cf679e8`. No pause environment switch or self-stop remains in shipped bundles. No new runtime dependency was introduced. The unreleased key-format-10 pin was refreshed, and the build is reproducible.
+- **Version-sensitive listing accepted.** Original `dd4173af` is integrated as `d8b88e49`. `test/version-sensitive.txt:109` includes `test/daemon/repeated-notes`, whose real daemon runs two node:test projects across three starts. CI's Node 24 step consumes this substring list; the existing list guard checks its coverage. No unrelated CI design is reopened.
+
+### Blockers, should-fix and nits
+
+None. No newly proven or plausible defect was found in the bounded repair delta. No required verification remains unverified.
+
+### What fits
+
+The repair closes the concrete old-mark expiry and false-pass parser scenarios without changing their contracts. Registration/turn activity clears the mark atomically; Stop retains its own mark until block or unregister. The parser preserves uncertainty across real formatter output and remains conservative against the fixed pre-wave parser. The pause moved to an explicitly injected test preload while the shipped plugin tests still prove the socket/lock gap. Round 1's settled architecture conclusions remain in force.
+
+### Inputs for the next wave
+
+No fix worker is required for B1, B2 or N1. Keep clearing the leaving slot in the same transaction as registration/turn resumption; keep the 2-second hook budget, 10-second leaving grace and main/child isolation. Preserve the frozen parser and the full/news/status matrix when wording changes. Tests that need the stop gap must inject `testPause`, never restore an environment-only self-stop in shipped code. Future real node:test callers must join the Node 24 list. The coordinator retains ownership of landing and its previously scheduled news-header/counted-artifact amendment entries.
