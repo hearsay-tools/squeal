@@ -34,7 +34,7 @@ afterEach(() => {
   for (const { run } of runs.splice(0)) run.cleanup();
 });
 
-const planned = (requests: { model: string }[]) =>
+const planned = <T extends { model: string }>(requests: T[]) =>
   requests.filter((q) => q.model === PLANNED_MODEL);
 
 describe.skipIf(unavailable !== undefined)("a continued turn in OpenCode", () => {
