@@ -12,7 +12,7 @@ Worker, 2026-10-15. Brief: `tasks/wave-13.md`, "006-66 Claude cells allow the se
 | `cat ~/.ledgerline-rates.port; echo; git status --short` | refused | allowed | `cat` outside the working directory: "Claude Code may only concatenate files from the allowed working directories" |
 | (control) `node scripts/rates-service.mjs` with the Bash tool's `run_in_background: true` | allowed | allowed (list unchanged for it) | none |
 
-The change: one rule, `Read(~/.ledgerline-rates.port)`, in `CLAUDE_ALLOWED_TOOLS`. `echo` passes as read-only, so no `Bash(echo:*)`. The brief's lead `Bash(nohup node scripts/rates-service.mjs:*)` was probed and does nothing, so it is not added. **Three of the four forms stay refused**: within narrow allowances, they cannot be allowed on Claude Code 2.1.300 (below). That is the decision returned to the coordinator.
+The change: one rule, `Read(~/.ledgerline-rates.port)`, for cells whose task has the `service` knob only (a9, a10): `knobTools(knobs)` in `evals/lib/retry-knobs.mjs`, which run-cell passes to `sessionCommand` as `tools`, after `CLAUDE_ALLOWED_TOOLS`. The recorded `CLAUDE_ALLOWED_TOOLS` is unchanged, so the long baseline's fingerprint stays `586284d42fcc`; the knob is already in the run conditions. `echo` passes as read-only, so no `Bash(echo:*)`. The brief's lead `Bash(nohup node scripts/rates-service.mjs:*)` was probed and does nothing, so it is not added. Three of the four forms stay refused: no narrow rule admits them on Claude Code 2.1.300 (below). The coordinator chose (a), keep the list narrow (2026-10-15, reply `26bac004`); pilot 2's Sonnet measure was decided by the grader instead (row 006-67).
 
 ## Why no rule admits `&` (Claude Code 2.1.300, read from its bundle)
 
@@ -52,10 +52,14 @@ Each probe ran `/home/squeal-e2e/.npm-global/bin/claude` with the argv `sessionC
 
 ## Tests
 
-- `test/evals/service-start.test.ts`: "Claude's allow-list is pinned", the whole list with `toEqual`. It replaces `runner.test.ts`'s two `toContain` checks.
-- `test/evals/atomic-scenarios.test.ts`, "keeps its conditions fingerprint": the list is part of the run conditions (D6, 70fadb64), so the new rule changes every Claude cell's fingerprint, the baseline's too. The test now pins the last runs' `586284d42fcc` on the list without the rule, and the next runs' `94149a6c1c14` on the list with it. **The baseline's next Claude run starts a new trend line** for a rule only a9 needs; a per-scenario list would avoid that, but it needs run-cell to pass the scenario to `sessionCommand`, outside this row.
+- `test/evals/service-start.test.ts`, "Claude's allow-list": the recorded list pinned whole with `toEqual` (it replaces `runner.test.ts`'s two `toContain` checks), and `knobTools` plus `sessionCommand` giving a9 and a10 the Read rule and a1 and a11 none.
+- `test/evals/retry-cell.test.ts`, "the service knob's Read rule through run-cell": a fake Claude (`FAKE_HARNESS=args` in `fake-cell.ts`) records its argv; a9's session gets the list plus the rule, a3's the list alone. Red with run-cell's `tools:` line removed.
+- `test/evals/atomic-scenarios.test.ts` is unchanged: the baseline fingerprint stays `586284d42fcc`.
+
+(The first commit, `cbb04cc5`, added the rule to the shared list and moved the baseline fingerprint; the next commit narrows it to the knob.)
 
 ## For the coordinator
 
-- The done-when "each form refused before and allowed after" holds for the `cat` form only. The `&` forms need a decision: (a) leave them refused and grade a refused `&` service start as the harness's (grader, not this row); (b) a broad mode for a9's Claude cells only (`bypassPermissions`, which matches the Codex cells' full access); (c) a PreToolUse hook, which covers the subshell form only.
-- Claude Code's own background path, `node scripts/rates-service.mjs` with `run_in_background: true`, is allowed today, so a model that uses it is not refused.
+- Done-when "each form refused before and allowed after" holds for the `cat` form only; the `&` forms stay refused by the coordinator's choice (a).
+- Claude Code's own background start, `node scripts/rates-service.mjs` with `run_in_background: true`, is allowed; its reply is not in its output, which row 006-67 handles in the grader.
+- `squeal-e2e`'s Claude Code is now 2.1.300 in its own prefix.

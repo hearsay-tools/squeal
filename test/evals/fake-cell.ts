@@ -96,6 +96,8 @@ locked)
   mkdir locked; echo "$ANTHROPIC_AUTH_TOKEN" > locked/leak.txt; chmod 444 locked/leak.txt; chmod 555 locked ;;
 squeal)
   squeal --version >> "$FAKE_LOG/bare" 2>&1 ;;
+args)
+  printf '%s\\n' "$@" > "$FAKE_LOG/args" ;;
 hang)
   trap '' TERM
   (trap '' TERM; echo $$ >> "$FAKE_LOG/harness"; while :; do sleep 1; done) &

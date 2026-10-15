@@ -70,6 +70,7 @@ import {
 import { cellRecord } from "../lib/results.mjs";
 import {
   addService,
+  knobTools,
   retryEnv,
   serviceForTruth,
   stageInherited,
@@ -293,6 +294,7 @@ async function lifecycle() {
         model,
         effort,
         pluginDir: plugin ? join(PIN, "plugins/claude-code") : null,
+        tools: knobTools(knobs),
         ...opts,
       }),
     session: (command, args, t0) =>

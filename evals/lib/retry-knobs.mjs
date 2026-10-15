@@ -37,6 +37,18 @@ export function retryEnv(knobs, cell, env) {
 }
 
 /**
+ * The Claude Code rules a cell's knobs add to `CLAUDE_ALLOWED_TOOLS`. The `service` knob adds a
+ * Read rule for the port file: `cat ~/.ledgerline-rates.port` reads outside the working
+ * directory, which Claude Code 2.1.300 refuses without one (row 006-66). No rule admits a start
+ * with a background `&`, which Claude Code asks for whatever the rules say; its own background
+ * start (`run_in_background`) of the bare command is allowed. The knob is in the run conditions,
+ * so the rule needs no entry of its own there, and other cells' list stays the recorded one.
+ */
+export function knobTools(knobs) {
+  return knobs.service ? ["Read(~/.ledgerline-rates.port)"] : [];
+}
+
+/**
  * The `service` knob, before the warm-up: the rates service's source, test and script committed
  * into the fixture at `work` (`git` runs git there), and for `"up"` the service started with
  * `node` (`sh`'s), so the warm-up's run of its test passes; `"down"` leaves it stopped, so that
