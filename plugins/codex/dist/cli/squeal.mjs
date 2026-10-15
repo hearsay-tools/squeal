@@ -17116,6 +17116,13 @@ function resolutionCandidates(target, extensions) {
     ...twins
   ];
 }
+function missingCandidates(closure, extensions) {
+  const candidates = /* @__PURE__ */ new Set();
+  for (const target of closure.missing) {
+    for (const candidate of resolutionCandidates(target, extensions)) candidates.add(candidate);
+  }
+  return candidates;
+}
 function resolutionBases(path, extensions) {
   const ext = extname2(path);
   const bases4 = [path];
@@ -17168,16 +17175,22 @@ async function projectInputs(vitest, project) {
     importClosure(project, project.config.setupFiles),
     importClosure(project, globalSetupFiles(project))
   ]);
-  return { configFiles: configFiles(vitest), setup, globalSetup };
+  const extensions = resolveExtensions(project);
+  const missing2 = /* @__PURE__ */ new Set([
+    ...missingCandidates(setup, extensions),
+    ...missingCandidates(globalSetup, extensions)
+  ]);
+  return { configFiles: configFiles(vitest), setup, globalSetup, missing: missing2 };
 }
 function isProjectInput(inputs2, path) {
-  return inputs2.configFiles.has(path) || inputs2.setup.files.has(path) || inputs2.setup.missing.has(path) || inputs2.globalSetup.files.has(path) || inputs2.globalSetup.missing.has(path);
+  return inputs2.configFiles.has(path) || inputs2.setup.files.has(path) || inputs2.globalSetup.files.has(path) || inputs2.missing.has(path);
 }
 async function recreateTriggers(vitest) {
   const triggers = configFiles(vitest);
   for (const project of vitest.projects) {
     const closure = await importClosure(project, globalSetupFiles(project));
-    for (const file of [...closure.files, ...closure.missing]) triggers.add(file);
+    const missing2 = missingCandidates(closure, resolveExtensions(project));
+    for (const file of [...closure.files, ...missing2]) triggers.add(file);
   }
   return triggers;
 }
@@ -17724,7 +17737,13 @@ import { fileURLToPath as fileURLToPath6 } from "node:url";
 function projectEnvironment(project, inputs2, context) {
   const { paths } = context;
   const files2 = /* @__PURE__ */ new Set();
-  for (const file of [...inputs2.configFiles, ...inputs2.setup.files, ...inputs2.globalSetup.files]) {
+  const inputFiles = [
+    ...inputs2.configFiles,
+    ...inputs2.setup.files,
+    ...inputs2.globalSetup.files,
+    ...inputs2.missing
+  ];
+  for (const file of inputFiles) {
     const rel2 = paths.toRelative(file);
     if (rel2 !== null && paths.isProjectFile(file)) files2.add(rel2);
   }
@@ -19561,12 +19580,11 @@ var init_adapter = __esm({
           const project = findProject(vitest, testFile);
           const abs = this.paths.toAbsolute(testFile.path);
           const graph = await importClosure(project, [abs]);
-          const files2 = new Set(graph.files);
+          const files2 = /* @__PURE__ */ new Set([
+            ...graph.files,
+            ...missingCandidates(graph, resolveExtensions(project))
+          ]);
           files2.add(snapshotPath(project, abs));
-          const extensions = resolveExtensions(project);
-          for (const target of graph.missing) {
-            for (const candidate of resolutionCandidates(target, extensions)) files2.add(candidate);
-          }
           const paths = [...files2].filter((f) => this.paths.isProjectFile(f)).map((f) => this.paths.toRelative(f)).filter((p) => p !== null).sort();
           return { testFile, paths, packages: closurePackages(graph, this.paths) };
         });
@@ -45971,7 +45989,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.198";
+  if (true) return "0.1.199";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
