@@ -10,6 +10,7 @@ import { pilotRecord } from "./atomic-measures.mjs";
 import { expectationsOf, parserOf } from "./behaviours.mjs";
 import { gradeCell, serviceStartsOf } from "./grade.mjs";
 import { cellRecord, stamped } from "./results.mjs";
+import { STARTS_FILE } from "./retry-knobs.mjs";
 import { claudeTimeline, codexTimeline, reportedEffort } from "./transcript.mjs";
 import { walk } from "./variant.mjs";
 
@@ -26,10 +27,11 @@ const jsonl = (f) =>
 /**
  * The grade evals/bin/grade.mjs computes from cell directory `out` (its meta, events, harness
  * records, ground truth, Squeal's end state, diff and service starts), without writing it; `null`
- * when `out` kept no `meta.json` or `events.jsonl`.
+ * when `out` kept no `meta.json`. A session that printed nothing has no `events.jsonl`, and is
+ * graded on an empty timeline (006-86: the one reader of `out/`).
  */
 export function gradeOut(out) {
-  if (!existsSync(join(out, "meta.json")) || !existsSync(join(out, "events.jsonl"))) return null;
+  if (!existsSync(join(out, "meta.json"))) return null;
   const read = (f) => (existsSync(join(out, f)) ? readFileSync(join(out, f), "utf8") : "");
   const readJson = (f) => {
     try {
@@ -46,11 +48,13 @@ export function gradeOut(out) {
     .flatMap(jsonl);
   const timeline =
     meta.harness === "claude" ? claudeTimeline(events) : codexTimeline(events, records, t0);
+  // A cell without truth files (the 005-07 import) has no truth; one with any has to have both.
   const truth = ["truth.json", "truth.vitest.json", "truth.txt"].some((f) =>
     existsSync(join(out, f)),
   )
     ? { vitest: readJson("truth.vitest.json"), completion: readJson("truth.json") }
     : null;
+  // A variant without the plugin has no Squeal state to grade the claim against.
   const variantFile = join(VARIANTS, `${meta.variant}.json`);
   const plugin =
     !existsSync(variantFile) || JSON.parse(readFileSync(variantFile, "utf8")).plugin !== false;
@@ -63,8 +67,9 @@ export function gradeOut(out) {
       statusEnd: read("status-end.json") || null,
       plugin,
       diff: read("diff.patch"),
-      serviceStarts: existsSync(join(out, "service-starts.txt"))
-        ? serviceStartsOf(read("service-starts.txt"), t0)
+      // 006-67: the session's service starts as the service recorded them, when the cell kept them.
+      serviceStarts: existsSync(join(out, STARTS_FILE))
+        ? serviceStartsOf(read(STARTS_FILE), t0)
         : null,
     }),
   };

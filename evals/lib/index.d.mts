@@ -977,7 +977,7 @@ export function regradeAtomic(
 ): { data: Json; changed: string[] };
 
 // 006-82: committed cells graded again from their kept raw `out/`.
-/** evals/bin/grade.mjs's grade of a cell's `out/`, unwritten; `null` without meta or events. */
+/** evals/bin/grade.mjs's grade of a cell's `out/`, unwritten; `null` without `meta.json`. */
 export function gradeOut(out: string): Record<string, unknown> | null;
 /** The `cellRecord` fields `gradeCell` sets, refreshed from `out/`. */
 export const MECHANICAL: readonly string[];
