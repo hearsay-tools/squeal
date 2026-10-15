@@ -1,5 +1,11 @@
 import { recordedText, waitsText } from "../retry/index.js";
-import { formatCheck, fullSuiteText, runnerPartText, slowTierText } from "../state/index.js";
+import {
+  formatCheck,
+  fullSuiteText,
+  revisionText,
+  runnerPartText,
+  slowTierText,
+} from "../state/index.js";
 import { excludedProjectsText, plural } from "../text.js";
 import type {
   CommitSha,
@@ -34,7 +40,7 @@ export function formatStatus(
 ): string {
   if (!result.available) return formatUnavailable(result);
   const lines = [
-    `Revision: ${result.revision}`,
+    `Revision: ${revisionText(result.revision, result.commit)}`,
     `Known failures: ${failureCountText(result.knownFailures.map((f) => f.check))}`,
     ...result.knownFailures.flatMap((f) => [
       `  FAIL  ${formatCheck(f.check)}`,

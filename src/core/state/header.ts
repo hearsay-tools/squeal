@@ -19,6 +19,7 @@ import {
 } from "../types/index.js";
 import { testFileKeyOf, testFileOf } from "./derive.js";
 import { readOptimizerOff } from "./optimizer-note.js";
+import { readRevisionCommit } from "./revision-commit.js";
 import { readSlowTier, worktreeSlowView } from "./slow.js";
 
 /**
@@ -57,7 +58,9 @@ export function readHeader(
   keys: readonly TestFileKeyRecord[] = store.testFileKeys.list(worktreeId),
   isSlow?: (testFile: TestFileRef) => boolean,
 ): StatusHeader {
-  const revision = store.revisions.latest(worktreeId)?.number ?? 0;
+  const latest = store.revisions.latest(worktreeId);
+  const revision = latest?.number ?? 0;
+  const commit = readRevisionCommit(store, worktreeId, latest);
   const counts: Record<Validity, number> = { current: 0, pending: 0, stale: 0, unknown: 0 };
   const fileLevelCounts: Record<Validity, number> = {
     current: 0,
@@ -86,6 +89,7 @@ export function readHeader(
   const optimizerOff = readOptimizerOff(store, worktreeId);
   return {
     revision,
+    ...(commit === undefined ? {} : { commit }),
     counts,
     fileLevelCounts,
     testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
