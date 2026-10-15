@@ -290,6 +290,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         store.consumers.register(consumer, at);
         // Review wave 13ba, B1: the waiting Stop entry's evidence is this registration's alone.
         forgetStopWait(store, consumer);
+        // Review 001-423, B1: a mark left by an earlier SubagentStop is not this registration's.
+        markLeaving(store, consumer, null);
         const states = store.knownStates.list(consumer.worktreeId);
         store.views.writeMany(
           consumer,
