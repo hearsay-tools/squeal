@@ -1,13 +1,11 @@
 import { realpathSync, renameSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { daemonScratch } from "../../src/core/daemon/scratch.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import type { PingResponse } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import {
-  type BuiltCli,
-  buildCli,
   createFixtureRepo,
   diagnose,
   type FixtureRepo,
@@ -16,6 +14,7 @@ import {
   type SpawnedProcess,
   spawnCli,
   stopProcess,
+  suiteCli,
   waitFor,
 } from "./helpers.js";
 import { exitWithin } from "./scratch-helpers.js";
@@ -31,10 +30,11 @@ import { exitWithin } from "./scratch-helpers.js";
 
 const processes: SpawnedProcess[] = [];
 const cleanups: (() => void)[] = [];
+// Each stop may wait up to 60 s for a daemon's shutdown (task 001-385).
 afterEach(async () => {
   for (const process of processes.splice(0)) await stopProcess(process);
   for (const cleanup of cleanups.splice(0).reverse()) cleanup();
-});
+}, SLOW.timeout);
 
 function fixture(): FixtureRepo {
   const repo = createFixtureRepo();
@@ -90,11 +90,7 @@ describe.runIf(process.platform === "linux")(
   "squeal daemon: a socket handed over at one path (spec 001 D10)",
   SLOW,
   () => {
-    let built: BuiltCli;
-    beforeAll(() => {
-      built = buildCli();
-    });
-    afterAll(() => built.cleanup());
+    const built = suiteCli();
 
     it("keeps the newcomer answering after the old daemon exits, when another repository's worktree took the path", async () => {
       const a = fixture();
@@ -108,7 +104,7 @@ describe.runIf(process.platform === "linux")(
         worktreeId: worktreeIdFor(root),
         socketPath: join(a.runtimeDir, `squeal-${worktreeIdFor(root)}.sock`),
       };
-      const old = start(built.cli, oldRepo);
+      const old = start(built().cli, oldRepo);
       await answering(oldRepo, old);
 
       const staged = join(b.root, "..", "staged");
@@ -117,7 +113,7 @@ describe.runIf(process.platform === "linux")(
       git(b.root, ["worktree", "repair", root]);
       // The same runtime dir and root, so the same socket path.
       const newRepo: FixtureRepo = { ...oldRepo, commonDir: b.commonDir };
-      const newcomer = start(built.cli, newRepo);
+      const newcomer = start(built().cli, newRepo);
       await answering(newRepo, newcomer);
 
       await handOver(newRepo, old, newcomer);
@@ -127,13 +123,13 @@ describe.runIf(process.platform === "linux")(
       const repo = fixture();
       const source = join(repo.root, "..", "source.git");
       git(repo.root, ["clone", "-q", "--bare", repo.root, source]);
-      const old = start(built.cli, repo);
+      const old = start(built().cli, repo);
       await answering(repo, old);
 
       const clone = join(repo.root, "..", "clone");
       git(repo.root, ["clone", "-q", source, clone]);
       swap(repo.root, clone);
-      const newcomer = start(built.cli, repo);
+      const newcomer = start(built().cli, repo);
       await answering(repo, newcomer);
 
       await handOver(repo, old, newcomer);

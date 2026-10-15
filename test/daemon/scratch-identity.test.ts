@@ -1,18 +1,17 @@
 import { existsSync, mkdirSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { daemonScratch } from "../../src/core/daemon/scratch.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { git } from "../hash/git-repo.js";
 import {
-  type BuiltCli,
-  buildCli,
   createFixtureRepo,
   type FixtureRepo,
   SLOW,
   type SpawnedProcess,
   spawnCli,
   stopProcess,
+  suiteCli,
   waitFor,
   waitReady,
   withStore,
@@ -29,10 +28,11 @@ import { exitWithin, resultOf, TMP_TEST } from "./scratch-helpers.js";
 
 const processes: SpawnedProcess[] = [];
 const cleanups: (() => void)[] = [];
+// Each stop may wait up to 60 s for a daemon's shutdown (task 001-385).
 afterEach(async () => {
   for (const process of processes.splice(0)) await stopProcess(process);
   for (const cleanup of cleanups.splice(0).reverse()) cleanup();
-});
+}, SLOW.timeout);
 
 const FILES = { "test/tmp.test.ts": TMP_TEST };
 
@@ -72,11 +72,7 @@ describe.runIf(process.platform === "linux")(
   "squeal daemon: a temp directory no other repository's daemon touches (spec 001 D10)",
   SLOW,
   () => {
-    let built: BuiltCli;
-    beforeAll(() => {
-      built = buildCli();
-    });
-    afterAll(() => built.cleanup());
+    const built = suiteCli();
 
     it("keeps both temp directories when another repository's worktree takes the path, and the newcomer's tests still pass after the old daemon exits", async () => {
       const a = fixture();
@@ -85,7 +81,7 @@ describe.runIf(process.platform === "linux")(
       git(a.root, ["worktree", "add", "-q", "--detach", path]);
       const root = realpathSync(path);
       const oldRepo = at(a, root);
-      const old = start(built.cli, oldRepo);
+      const old = start(built().cli, oldRepo);
       await waitReady(oldRepo, old);
       const oldTemp = daemonScratch(a.commonDir, root).tempDir;
       writeFileSync(join(oldTemp, "old-marker"), "");
@@ -95,7 +91,7 @@ describe.runIf(process.platform === "linux")(
       swap(root, realpathSync(staged));
       git(b.root, ["worktree", "repair", root]);
       const newRepo = at(b, root);
-      const newcomer = start(built.cli, newRepo);
+      const newcomer = start(built().cli, newRepo);
       await waitReady(newRepo, newcomer);
       const newTemp = daemonScratch(b.commonDir, root).tempDir;
       cleanups.push(() => rmSync(newTemp, { recursive: true, force: true }));
@@ -135,7 +131,7 @@ describe.runIf(process.platform === "linux")(
       const repo = fixture();
       const source = join(repo.root, "..", "source.git");
       git(repo.root, ["clone", "-q", "--bare", repo.root, source]);
-      const old = start(built.cli, repo);
+      const old = start(built().cli, repo);
       await waitReady(repo, old);
       const oldTemp = daemonScratch(repo.commonDir, repo.root).tempDir;
       writeFileSync(join(oldTemp, "old-marker"), "");
@@ -150,7 +146,7 @@ describe.runIf(process.platform === "linux")(
         env: { ...repo.env, XDG_RUNTIME_DIR: runtimeDir },
         socketPath: join(runtimeDir, `squeal-${repo.worktreeId}.sock`),
       };
-      const newcomer = start(built.cli, cloned);
+      const newcomer = start(built().cli, cloned);
       await waitReady(cloned, newcomer);
       const newTemp = daemonScratch(repo.commonDir, repo.root).tempDir;
       cleanups.push(() => rmSync(newTemp, { recursive: true, force: true }));
