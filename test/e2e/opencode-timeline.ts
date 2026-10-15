@@ -1,73 +1,33 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { setTimeout as sleep } from "node:timers/promises";
 import type { OpenCodeRun } from "../helpers/opencode.js";
-import type { OpenCodeWorld } from "./opencode-fixture.js";
+import type { Bridge, Watched } from "./opencode-watch.js";
 
 /*
  * Review 008-27 S1: when the stored-once `run --continue` e2e misses its
  * report, what the test can see says where, with no trace in the shipped
  * plugin (008-28). Each line is ms since the first run's idle: the session's
  * messages as OpenCode stored them, OpenCode's own log, the Squeal store's
- * PASS -> FAIL and its consumers as polled during the run (Stop's delivery
- * sets `last_delivered_at`, `dispose`'s end removes the row), and each
- * process's exit as the test saw it; then the deadlines D4 runs them under,
- * and which of them the report missed.
+ * PASS -> FAIL, what `opencode-watch.ts` saw during the run (Stop's delivery
+ * in the consumer rows, each bridge process's start and last sign of life),
+ * and each process's exit as the test saw it; then the deadlines D4 runs
+ * them under, and which of them the report missed.
  */
 
-const POLL_MS = 20;
 /** D4: what the idle's deadline gives beyond `stop.waitMs`. */
 const IDLE_MARGIN_MS = 500;
-/** D4: `dispose`'s deadline. */
+/** D4: `dispose`'s deadline, of which the store leaves `DISPOSE_END_MS` for ending consumers. */
 const DISPOSE_DEADLINE_MS = 3_000;
+const DISPOSE_END_MS = 500;
+/** A consumer last seen this close to the store's deadline was held there by the store. */
+const HELD_MS = 250;
 /** A stored report, as the plugin words it. */
 const REPORT = "SQUEAL · ";
 
 interface Mark {
   readonly at: number;
   readonly what: string;
-}
-
-interface Consumer {
-  readonly agent: string;
-  readonly seen: number;
-  readonly delivered: number | null;
-}
-
-/** The consumers one poll saw, when they changed. */
-export interface Seen {
-  readonly at: number;
-  readonly rows: readonly Consumer[];
-}
-
-/** Polls the store's consumers until OpenCode exits; each change is one entry. */
-export async function watchConsumers(database: string, world: OpenCodeWorld): Promise<Seen[]> {
-  const seen: Seen[] = [];
-  let db: DatabaseSync | undefined;
-  try {
-    while (!world.done()) {
-      try {
-        db ??= new DatabaseSync(database, { readOnly: true });
-        const rows = db
-          .prepare("SELECT agent_id, last_seen_at, last_delivered_at FROM consumers")
-          .all()
-          .map((r) => ({
-            agent: String(r.agent_id),
-            seen: Number(r.last_seen_at),
-            delivered: r.last_delivered_at === null ? null : Number(r.last_delivered_at),
-          }));
-        if (JSON.stringify(seen.at(-1)?.rows) !== JSON.stringify(rows))
-          seen.push({ at: Date.now(), rows });
-      } catch {
-        // Busy, or not there yet: the next poll.
-      }
-      await sleep(POLL_MS);
-    }
-  } finally {
-    db?.close();
-  }
-  return seen;
 }
 
 /** OpenCode's idle and `dispose` in its log, which can lose the last lines of a process. */
@@ -154,7 +114,7 @@ export interface TimelineInput {
   /** The Squeal store's database. */
   readonly database: string;
   readonly stopWaitMs: number;
-  readonly consumers: readonly Seen[];
+  readonly watched: Watched;
   /** When the test saw each process end, by name; `run` is the first. */
   readonly exits: Readonly<Record<string, number>>;
 }
@@ -188,7 +148,11 @@ export function timeline(input: TimelineInput): string {
       ];
     }),
     ...read("the store's transitions", () => transitions(input.database), failures),
-    ...input.consumers.map((s) => ({
+    ...input.watched.bridges.flatMap((b) => [
+      { at: b.started, what: `bridge ${b.kind} (pid ${b.pid}) started` },
+      { at: b.alive, what: `bridge ${b.kind} (pid ${b.pid}) last seen alive` },
+    ]),
+    ...input.watched.consumers.map((s) => ({
       at: s.at,
       what: `consumers polled: ${
         s.rows.length === 0
@@ -206,26 +170,75 @@ export function timeline(input: TimelineInput): string {
 
   const idleDeadline = idle + input.stopWaitMs + IDLE_MARGIN_MS;
   const disposing = opencode.find((m) => m.what.startsWith("disposing instance"))?.at;
-  const delivered = input.consumers
-    .flatMap((s) => s.rows.flatMap((c) => (c.delivered === null ? [] : [c.delivered])))
-    .at(-1);
-  const stored = messages.find(
-    (m) => m.role === "user" && m.text.startsWith(REPORT) && m.created <= ran,
-  );
-  const reading =
-    stored !== undefined
-      ? `a report was stored at ${since(stored.created)}: compare it with what run --continue sent`
-      : delivered === undefined
-        ? `Stop recorded no delivery: it was not asked, had nothing to say, or the plugin killed it at the idle's deadline (${since(idleDeadline)}) before it answered`
-        : delivered > idleDeadline
-          ? `Stop delivered at ${since(delivered)}, past the idle's deadline (${since(idleDeadline)}): the plugin had already given up on it (D4's silence)`
-          : `Stop delivered at ${since(delivered)}, within the idle's deadline (${since(idleDeadline)}), and nothing was stored before the run exited (${since(ran)}): the store missed dispose's deadline, or judged the turn overtaken`;
+  // `run` disposes about 10 ms after idle (008-25) when OpenCode's log lost the line.
+  const storeDeadline = (disposing ?? idle) + DISPOSE_DEADLINE_MS - DISPOSE_END_MS;
+  const reading = readingOf(input, { idle, idleDeadline, storeDeadline, messages, since });
   return [
     `timeline, ms since the first run's idle (${logged === undefined ? "its last reply's completion; OpenCode's log lost the line" : "OpenCode's log"}):`,
     ...marks.map((m) => `  ${since(m.at)} ${m.what}`),
     `  idle's deadline (stop.waitMs ${input.stopWaitMs} + ${IDLE_MARGIN_MS}): ${since(idleDeadline)}`,
-    `  dispose's deadline: ${disposing === undefined ? "not in OpenCode's log" : since(disposing + DISPOSE_DEADLINE_MS)}`,
+    `  dispose's deadline: ${disposing === undefined ? "not in OpenCode's log" : since(disposing + DISPOSE_DEADLINE_MS)}, the store's ${since(storeDeadline)}`,
     ...failures.map((f) => `  ${f}`),
     `reading: ${reading}`,
   ].join("\n");
+}
+
+interface Reading {
+  readonly idle: number;
+  readonly idleDeadline: number;
+  readonly storeDeadline: number;
+  readonly messages: readonly Message[];
+  readonly since: (at: number) => string;
+}
+
+/**
+ * Which deadline the report missed. Stop's delivery, in the store, against
+ * the idle's deadline; then its bridge: alive past that deadline, the plugin
+ * killed it and dropped its answer. Then `dispose`'s `end` bridge, which
+ * starts once the idle in flight is done: at the store's deadline, the
+ * overtaken check's read or the store ran out of time; well before it, the
+ * plugin let the report go of its own accord.
+ */
+function readingOf(input: TimelineInput, r: Reading): string {
+  const { since } = r;
+  const { consumers, bridges } = input.watched;
+  const ran = input.exits.run ?? Number.POSITIVE_INFINITY;
+  const after = r.messages.filter(
+    (m) => m.role === "user" && m.created > r.idle && m.created <= ran,
+  );
+  const stored = after.find((m) => m.text.startsWith(REPORT));
+  if (stored !== undefined)
+    return `a report was stored at ${since(stored.created)}: compare it with what run --continue sent`;
+  const delivered = consumers
+    .flatMap((s) => s.rows.flatMap((c) => (c.delivered === null ? [] : [c.delivered])))
+    .at(-1);
+  const near = (b: Bridge) => b.started >= r.idle - HELD_MS && b.started <= ran;
+  const stop = bridges.find((b) => b.kind === "stop" && near(b));
+  const end = bridges.find((b) => b.kind === "end" && near(b));
+  const begun = after[0];
+  const store =
+    begun === undefined
+      ? "OpenCode never created its message"
+      : `OpenCode created its message at ${since(begun.created)} and never finished it`;
+  const facts = [
+    delivered === undefined ? "Stop recorded no delivery" : `Stop delivered at ${since(delivered)}`,
+    stop === undefined
+      ? "its bridge was not seen"
+      : `its bridge ran from ${since(stop.started)}, last seen alive ${since(stop.alive)}`,
+    end === undefined
+      ? "no end bridge was seen"
+      : `dispose's end bridge started ${since(end.started)}`,
+    store,
+  ].join("; ");
+  const cause =
+    stop !== undefined && stop.alive >= r.idleDeadline
+      ? `Stop's bridge outlived the idle's deadline (${since(r.idleDeadline)}): the plugin killed it and dropped its answer, D4's silence at a missed deadline`
+      : delivered === undefined
+        ? "Stop had nothing to deliver, or never reached the daemon"
+        : end === undefined
+          ? "unresolved: the watcher missed the end bridge"
+          : end.started >= r.storeDeadline - HELD_MS
+            ? `the idle held dispose until the store's deadline (${since(r.storeDeadline)}): the overtaken check's read or the store did not finish in time, D4's silence at a missed deadline`
+            : `the idle let dispose go before the store's deadline (${since(r.storeDeadline)}) with nothing stored: the plugin dropped the report, its answer late or the turn judged overtaken`;
+  return `${facts}. ${cause}`;
 }
