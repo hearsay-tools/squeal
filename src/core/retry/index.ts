@@ -27,3 +27,4 @@ export {
   releaseRetries,
   retriesAt,
 } from "./records.js";
+export { loadText, outcomeText, retryFact, waitsText } from "./text.js";

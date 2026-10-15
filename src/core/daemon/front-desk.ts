@@ -63,6 +63,7 @@ function bind(identity: DeskIdentity): void {
       }),
     onActivity: () => post({ type: "activity" }),
     onNudge: () => post({ type: "nudge" }),
+    requestRetries: async () => post({ type: "retry" }),
     onStop: () => post({ type: "stop" }),
     onStepDown: (version) => post({ type: "step-down", version }),
   });

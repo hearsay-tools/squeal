@@ -515,6 +515,7 @@ class Daemon {
           this.#lastActive = this.#now();
         },
         onNudge: () => this.#loop?.scheduler.nudge(),
+        requestRetries: () => this.#requestRetries(),
         // After the answer is written.
         onStop: () =>
           setImmediate(
@@ -545,6 +546,13 @@ class Daemon {
     // A runner that never started gets another chance before the checkpoint is planned.
     this.#vitest?.retry();
     return this.#loop.scheduler.requestFullSuite(request);
+  }
+
+  /** `squeal retry` (001-368): the stored requests that may run now are queued. */
+  async #requestRetries(): Promise<void> {
+    await this.#starting;
+    if (this.#loop === null || this.#phase === "stopping") return;
+    await this.#loop.scheduler.requestRetries();
   }
 
   async #requestSlowSuite(): Promise<SlowSuiteRequested> {
