@@ -19,11 +19,12 @@ const FORBIDDEN = /^test\/contract\//;
  * edit and a run in one call keep theirs.
  *
  * `serviceStarts` is the rates service's own record of the session's starts, `{ t, reply }` in
- * ms since the session's start (`serviceStartsOf`, rows 006-67 and 006-69), or `null` when the
- * cell kept none. Each line goes to the latest call at or before its time with an executed start,
- * to that call's first start without one; a line no such call takes is dropped. A start's reply is
- * the one in its call's output when there is one (it still takes its line), else its line's (a
- * start in the background or redirected), else none: it started nothing.
+ * ms since the session's start (`serviceStartsOf`, rows 006-67 and 006-72), or `null` when the
+ * cell kept none. With a record, the record alone says when the service came up: each `listening`
+ * line is a service step at its own time, after every action of a call issued at or before it,
+ * and no command's (a start in the background or redirected has no reply of its own; review
+ * 006-70 B1). Start commands add no step, and `already running` and failed lines none. Without
+ * one, a start is a step at its call, started when its output's reply in turn says `listening`.
  */
 export function gradeCell({
   timeline,
@@ -41,7 +42,6 @@ export function gradeCell({
   const sleeps = [];
   const refused = [];
   const indeterminate = [];
-  const starts = [];
   let skillLoads = items.filter((k) => k.kind === "skill").length;
   let n = 0;
   // The retained timeline (D4 "Retained evidence"), each step at the time the agent saw it: a
@@ -112,11 +112,8 @@ export function gradeCell({
         if (a.sub === "run") at(k.t, { k: "squeal-run", all: a.all, slow: a.slow });
       }
       // A start that found the service running changes nothing (row 006-53).
-      if (a.kind === "service") {
-        const step = { k: "service", started: false };
-        starts.push({ t: k.t, call, step, own: replies.service.shift(), line: undefined });
-        at(k.t, step);
-      }
+      if (a.kind === "service" && serviceStarts === null)
+        at(k.t, { k: "service", started: replies.service.shift() === "listening" });
       if (a.kind === "vitest" || a.kind === "node:test") {
         const runner = a.runner ?? a.kind;
         runs.push({ ...here, runner, scope: a.scope, cmd: k.cmd.slice(0, 160) });
@@ -144,8 +141,8 @@ export function gradeCell({
     if (unsure !== null && !replied.includes(true))
       at(k.t + (k.ms ?? 0), { from: "pull", sub: unsure, text: k.out ?? "" }, 1);
   }
-  pairStarts(starts, serviceStarts ?? []);
-  for (const s of starts) s.step.started = (s.own ?? s.line) === "listening";
+  for (const { t, reply } of serviceStarts ?? [])
+    if (reply === "listening") at(t, { k: "service", started: true });
   const lastEdit = edits.at(-1) ?? null;
   const deliveries = items.filter((k) => k.kind === "squeal").map(delivery);
   const vitest = runs.filter((r) => r.runner === "vitest");
@@ -253,15 +250,6 @@ export function serviceStartsOf(text, t0) {
     .map((l) => /^(\d+)\t(.*)$/.exec(l))
     .filter((m) => m !== null)
     .map((m) => ({ t: Number(m[1]) - t0, reply: serviceReplies(m[2])[0] ?? "failed" }));
-}
-
-/** Gives each line of `lines` to its start in `starts` (in session order), as `gradeCell` says. */
-function pairStarts(starts, lines) {
-  for (const { t, reply } of [...lines].sort((a, b) => a.t - b.t)) {
-    const last = starts.findLast((s) => s.t <= t);
-    const start = last && starts.find((s) => s.call === last.call && s.line === undefined);
-    if (start) start.line = reply;
-  }
 }
 
 /** A path relative to the cell's worktree, or `null` for one outside it (`/tmp/...`). */
