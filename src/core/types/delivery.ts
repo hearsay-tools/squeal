@@ -209,6 +209,11 @@ export interface Delta {
   readonly sawEdit?: { readonly queued: number };
   /** Task 001-223: set once every test file the consumer's edits re-keyed is no longer pending. */
   readonly editsSettled?: EditsSettled;
+  /**
+   * Task 001-407: the slow tier's state differs from what this consumer was
+   * last shown, so a change delivery carries the slow-tier line.
+   */
+  readonly slowTierChanged?: true;
 }
 
 /** The test files the consumer's edits after revision `since` re-keyed, none pending any more. */

@@ -52,6 +52,9 @@ function delta(entries: DeltaEntry[], label: Delta["label"] = "transitions"): De
   return { schemaVersion: 1, consumer, header, label, entries };
 }
 
+/** A delta as Stop renders it: with the full header block (task 001-407). */
+const full = (d: Delta, command?: string) => formatDelta(d, command, undefined, "full");
+
 function failure(i: number, summary = "expected 401, received 500"): KnownFailure {
   return {
     check: test(`tests/f${i}.test.ts`, `case ${i}`),
@@ -83,7 +86,7 @@ describe("formatDelta", () => {
     expect(formatDelta(delta([regression, recovery]))).toBe(
       [
         "SQUEAL · 2 checks changed (2 tests) at revision 184",
-        "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Full-suite checkpoint: none completed since revision 170 (the counts are for revision 184; `squeal run --all` requests one).",
+        "Revision 184: 3 pending, 12 unknown.",
         "",
         "FAIL  tests/auth/login.test.ts > login > expired token",
         "      PASS -> FAIL, seen by Squeal's run at revision 184",
@@ -258,9 +261,7 @@ describe("formatDelta", () => {
 
   it("states the full-suite checkpoint as a request, not a coverage state (lessons, surprise 7; defect 27)", () => {
     const at = (fullSuite: StatusHeader["fullSuite"], command?: string) =>
-      formatDelta({ ...delta([regression]), header: { ...header, fullSuite } }, command).split(
-        "\n",
-      )[1];
+      full({ ...delta([regression]), header: { ...header, fullSuite } }, command).split("\n")[1];
     expect(at({ atCurrentRevision: true, lastCompletedRevision: 184 })).toContain(
       "Full-suite checkpoint: completed at revision 184.",
     );
@@ -277,7 +278,7 @@ describe("formatDelta", () => {
 
   it("states test files without checks by class, only when there are any", () => {
     const line = (testFilesWithoutChecks: StatusHeader["testFilesWithoutChecks"]) =>
-      formatDelta({ ...delta([regression]), header: { ...header, testFilesWithoutChecks } }).split(
+      full({ ...delta([regression]), header: { ...header, testFilesWithoutChecks } }).split(
         "\n",
       )[1];
     expect(line({ pending: 0, unknown: 0 })).toBe(
@@ -289,8 +290,7 @@ describe("formatDelta", () => {
   });
 
   it("says when the daemon has not listed the test files yet (lessons, defect 4)", () => {
-    const line = (h: StatusHeader) =>
-      formatDelta({ ...delta([regression]), header: h }).split("\n")[1];
+    const line = (h: StatusHeader) => full({ ...delta([regression]), header: h }).split("\n")[1];
     const fresh: StatusHeader = {
       revision: 0,
       counts: { current: 0, pending: 0, stale: 0, unknown: 0 },
@@ -308,7 +308,7 @@ describe("formatDelta", () => {
 
   it("names the files the revision changed, three and a count of the rest (task 001-85)", () => {
     const line = (changedPaths: string[]) =>
-      formatDelta({ ...delta([regression]), header: { ...header, changedPaths } }).split("\n")[1];
+      full({ ...delta([regression]), header: { ...header, changedPaths } }).split("\n")[1];
     const counts =
       ": 47 current, 3 pending, 0 stale, 12 unknown. " +
       "Full-suite checkpoint: none completed since revision 170 (the counts are for revision 184; `squeal run --all` requests one).";
@@ -330,12 +330,12 @@ describe("formatDelta", () => {
 
   it("counts inherited current results, only when there are any", () => {
     const line = (inheritedCount: number) =>
-      formatDelta({ ...delta([regression]), header: { ...header, inheritedCount } }).split("\n")[1];
+      full({ ...delta([regression]), header: { ...header, inheritedCount } }).split("\n")[1];
     expect(line(30)).toBe(
       "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Inherited: 30 of 47 current. " +
         "Full-suite checkpoint: none completed since revision 170 (the counts are for revision 184; `squeal run --all` requests one).",
     );
-    expect(line(0)).toBe(formatDelta(delta([regression])).split("\n")[1]);
+    expect(line(0)).toBe(full(delta([regression])).split("\n")[1]);
   });
 
   it(`caps the message at ${MESSAGE_CAP_CHARS} characters and counts what is left out`, () => {
@@ -408,8 +408,7 @@ describe("daemon liveness in the header (review wave 3, S2)", () => {
   it("titles a delta that carries only a liveness change", () => {
     expect(formatDelta({ ...delta([]), header: down, liveness: down.daemon })).toBe(
       "SQUEAL · no daemon is validating at revision 184\n" +
-        "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. " +
-        "Full-suite checkpoint: none completed since revision 170 (the counts are for revision 184; `squeal run --all` requests one). " +
+        "Revision 184: 3 pending, 12 unknown. " +
         "No daemon has validated since 2026-10-04T14:02:00.000Z; results are as of revision 184.",
     );
     const alive = { state: "alive" as const, lastHeartbeatAt: since };

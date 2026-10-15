@@ -1,22 +1,6 @@
 import { RECORDED_UNKNOWN_TEXT, recordedText, retryText } from "../retry/index.js";
-import { awaitingInstallSentence } from "../scheduler/awaiting-install.js";
-import {
-  flakyText,
-  fullSuiteText,
-  revisionText,
-  runnerPartText,
-  SUMMARY_MAX_CHARS,
-  slowTierText,
-} from "../state/index.js";
-import {
-  checkPartsText,
-  checksText,
-  countChecks,
-  countedText,
-  failureCountText,
-  partsSuffix,
-} from "../status/checks.js";
-import { DEATH_CAUSE, deathText } from "../status/died.js";
+import { flakyText, SUMMARY_MAX_CHARS } from "../state/index.js";
+import { checkPartsText, checksText, countChecks, failureCountText } from "../status/checks.js";
 import { cap, plural } from "../text.js";
 import type {
   CheckId,
@@ -29,14 +13,12 @@ import type {
   Registration,
   RetiredEntry,
   SourceLocation,
-  StatusHeader,
   TransitionEntry,
-  ValidityCounts,
 } from "../types/index.js";
 import { type Collapsed, checkName, collapse } from "./collapse.js";
+import { type HeaderForm, headerLines } from "./header.js";
 import {
   change,
-  installSentences,
   loadLine,
   recoveryProvenance,
   seenLine,
@@ -98,98 +80,6 @@ function whyLine(check: CheckId, command: string): string {
 
 function at(location: SourceLocation): string {
   return `at ${location.path}:${location.line}:${location.column}`;
-}
-
-/** Spec 001 D7 as amended: the daemon has not listed the test files, so zero counts are not complete. */
-const NOT_LISTED_SENTENCE =
-  "The daemon has not listed this worktree's test files yet; these counts are not complete.";
-
-/**
- * The install wait's sentence (`awaitingInstallSentence`). `null` when not
- * waiting, and when no daemon is live: a daemon killed while waiting left
- * the flag (review wave 11, N5).
- */
-function awaitingInstallText(header: StatusHeader): string | null {
-  if (header.awaitingInstall !== true || header.daemon?.state === "down") return null;
-  return awaitingInstallSentence(header.missingInstalls ?? [], header.installCommand);
-}
-
-/** Paths a header names before the rest is counted (task 001-85). */
-export const CHANGED_PATHS_SHOWN = 3;
-
-/** `(changed a, b, c and N more)` after the revision number; nothing without a change set. */
-function changedText(paths: readonly string[] | undefined): string {
-  if (paths === undefined || paths.length === 0) return "";
-  const shown = paths.slice(0, CHANGED_PATHS_SHOWN).join(", ");
-  const more = paths.length - CHANGED_PATHS_SHOWN;
-  return ` (changed ${shown}${more > 0 ? ` and ${more} more` : ""})`;
-}
-
-function headerLine(header: StatusHeader, command: string): string {
-  const { revision, counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files } = header;
-  const inheritedCount = header.inheritedCount ?? 0;
-  const inherited =
-    inheritedCount === 0
-      ? ""
-      : ` Inherited: ${inheritedCount} of ${counts.current} current${partsSuffix(inheritedCount, header.inheritedFileLevelCount)}.`;
-  const withoutChecks =
-    files.pending + files.unknown === 0
-      ? ""
-      : ` Test files without checks: ${files.pending} pending, ${files.unknown} unknown.`;
-  const listed = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
-  const runnerPart =
-    header.runnerPartPending === true
-      ? ` ${capitalize(runnerPartText(revision))} is pending; test files it adds are not counted yet.`
-      : "";
-  const awaiting = awaitingInstallText(header);
-  return (
-    `Revision ${revisionText(revision, header.commit)}${changedText(header.changedPaths)}: ${countsText(counts, fileLevel)}.${inherited}${withoutChecks}${listed}${runnerPart} ` +
-    `Full-suite checkpoint: ${fullSuiteText(header, command)}.` +
-    livenessSentence(header.daemon, revision) +
-    (awaiting === null ? installSentences(header) : ` ${awaiting}`)
-  );
-}
-
-/**
- * `12 current (9 tests, 3 test files loaded), 3 pending (2 tests, 1 test
- * file loaded), 0 stale, 0 unknown`: each count names its tests and
- * file-level checks apart (spec 005 D1).
- */
-function countsText(counts: ValidityCounts, fileLevel: ValidityCounts | undefined): string {
-  return (["current", "pending", "stale", "unknown"] as const)
-    .map((validity) => countedText(counts[validity], validity, fileLevel?.[validity]))
-    .join(", ");
-}
-
-/** The header line, then the slow-tier line when the repository declares slow files (spec 004 D8). */
-export function headerLines(header: StatusHeader, command: string): string[] {
-  const slow = slowTierText(header, command);
-  return slow === null ? [headerLine(header, command)] : [headerLine(header, command), slow];
-}
-
-/**
- * Spec 001 D12, review wave 3 S2: "Dead daemon: hooks still serve status and
- * deltas from the store; status says the daemon is down and since when." A
- * validating daemon adds nothing.
- */
-function livenessSentence(daemon: DaemonLiveness | undefined, revision: number): string {
-  if (daemon === undefined || daemon.state === "alive") return "";
-  // Task 001-263: the daemon that died without its stop note, and what it was running.
-  const died =
-    daemon.died === undefined ? "" : ` The last daemon ${deathText(daemon.died)}. ${DEATH_CAUSE}`;
-  // Task 001-156: a daemon a hook just spawned, before its first heartbeat.
-  if (daemon.startingSince !== undefined) {
-    return ` A daemon is starting; results are as of revision ${revision}.${died}`;
-  }
-  // Task 001-415, review 001-417 B2: a daemon that stopped unused rests; it is no warning.
-  if (daemon.resting === true) {
-    return ` The daemon stopped while unused; results are as of revision ${revision}.`;
-  }
-  const since =
-    daemon.since === null
-      ? "No daemon is running"
-      : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
-  return ` ${since}; results are as of revision ${revision}.${died}`;
 }
 
 /**
@@ -336,11 +226,14 @@ function assemble(
  * Renders a delta: header, failures first, unknowns, recoveries, retired
  * failures. `command` is how the text names the CLI (`SQUEAL_COMMAND`);
  * `max` below the cap leaves room for a line the hook adds (task 001-292).
+ * A change delivery sends the news form of the header; Stop the full block
+ * (task 001-407).
  */
 export function formatDelta(
   delta: Delta,
   command: string = SQUEAL_COMMAND,
   max: number = MESSAGE_CAP_CHARS,
+  form: HeaderForm = "news",
 ): string {
   const { header, entries } = delta;
   const changed = entries.filter((e): e is TransitionEntry => e.kind !== "fail-retired");
@@ -373,7 +266,11 @@ export function formatDelta(
   };
   const tail = failed === undefined ? null : whyLine(failed.check, command);
   return assemble(
-    [title, ...headerLines(header, command), ...editLines(delta)].join("\n"),
+    [
+      title,
+      ...headerLines(header, command, form, delta.slowTierChanged === true),
+      ...editLines(delta),
+    ].join("\n"),
     blocks,
     overflow,
     tail,

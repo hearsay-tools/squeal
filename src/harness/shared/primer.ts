@@ -177,7 +177,7 @@ function slowSentences(command: string, naming: Naming): string[] {
       ? `\`${command} run --slow --wait 60000\``
       : "the CLI's `run --slow --wait 60000`";
   return [
-    `Slow test files run when you pause between turns; before you say the task is done, run ${run} unless the header's \`Slow tier:\` line says every slow file is current: it runs the rest and waits for them.`,
+    `Slow test files run when you pause between turns; before you say the task is done, run ${run} unless the latest \`Slow tier:\` line states every slow file is current: it runs the rest and waits for them.`,
     command === SQUEAL_COMMAND
       ? "A slow failure wakes you when you are idle in an interactive session; otherwise it arrives with your next prompt or tool call."
       : "A slow failure arrives with your next prompt or tool call.",

@@ -258,6 +258,7 @@ export const WORKTREE_META_ROWS = {
   livenessTold: { prefix: "liveness-told:", owner: "delivery/liveness" },
   revisionTold: { prefix: "revision-told:", owner: "delivery/liveness" },
   uncoveredTold: { prefix: "uncovered-told:", owner: "delivery/uncovered" },
+  slowTierTold: { prefix: "slow-tier-told:", owner: "delivery/slow-told" },
   notes: { prefix: "notes.", owner: "types/scheduler" },
   refined: { prefix: "refined.", owner: "types/scheduler" },
   awaitingInstall: { prefix: "awaiting-install.", owner: "types/scheduler" },

@@ -198,7 +198,7 @@ describe("the settled line over an edited file's confirmation run (review wave 1
 /*
  * Task 001-396 (008 lessons, defect 4(b)): the edit's first result fails
  * anew, so its confirmation keeps the file's row pending and the settled line
- * held, while the header says 0 pending. The message that delivers that
+ * held, while the header says nothing is pending. The message that delivers that
  * result does not also say "results arrive with later tool calls".
  */
 describe("the 001-224 line beside the edit's own result (task 001-396)", () => {
@@ -211,7 +211,7 @@ describe("the 001-224 line beside the edit's own result (task 001-396)", () => {
     const delta = await delivery.onToolBoundary(C1, { stop: false });
     expect(delta?.sawEdit).toBeUndefined();
     const first = delta === null ? "" : formatDelta(delta);
-    expect(first).toContain("0 pending");
+    expect(first).toContain("\nRevision 1: no check pending, stale or unknown.\n");
     expect(first).toContain("PASS -> FAIL");
     expect(first).not.toContain(SAW);
 

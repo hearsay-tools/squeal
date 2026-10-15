@@ -50,6 +50,9 @@ describe("the squeal skill", () => {
   it("says a header names the files changed since the last report, not the cause", () => {
     expect(body).toContain("changed since your last report");
     expect(read("reports.md")).toContain("changed since your last report");
+    // Task 001-407: only the registration and Stop do; every other report carries the news.
+    expect(body).toContain("Other SQUEAL messages carry the news, non-zero counts only");
+    expect(read("reports.md")).toContain("Every other SQUEAL message carries the news only");
     expect(`${body}${references.map(read).join("")}`).not.toMatch(/which edit it is about/);
   });
 

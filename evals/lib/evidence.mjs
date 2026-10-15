@@ -5,7 +5,7 @@
 // A timeline is an array of steps in the order the agent saw them:
 //   { k: "edit", path }
 //   { k: "run", runner, informational, scope, completed, exit, failed }
-//   { k: "squeal", from: "push" | "pull", revision, pending, stale, unknown, slow, daemon,
+//   { k: "squeal", from: "push" | "pull", revision, pending, stale, unknown, slow, news?, daemon,
 //     known, checks, failures, verdict, files, failing }
 //   { k: "sleep", s }
 //   { k: "squeal-run", all, slow }, an executed `squeal run` whatever it printed (006-59 R1)
@@ -46,12 +46,18 @@ export function retainedOf(seen) {
 
 /**
  * Timeline `tl` with each squeal step's files, known failures and verdict derived again from its
- * checks, in order; a step without `checks` keeps what it recorded.
+ * checks, in order; a step without `checks` keeps what it recorded. From 001-407 a delivery's
+ * news header (`news`) carries the `Slow tier:` line only when the slow tier changed, so such a
+ * step without one holds the slow state last seen. Older deliveries carried none in some
+ * versions, which says nothing about the slow tier, so they keep `null`.
  */
 export function replayed(tl) {
   let failing = { named: [], unnamed: 0 };
-  return tl.map((s) => {
-    if (s.k !== "squeal") return s;
+  let slow = null;
+  return tl.map((step) => {
+    if (step.k !== "squeal") return step;
+    const s = step.news === true && step.slow === null ? { ...step, slow } : step;
+    slow = s.slow ?? null;
     if (!Array.isArray(s.checks)) {
       failing = { named: [], unnamed: s.failures ?? 0, uncertain: s.uncertain === true };
       return s;

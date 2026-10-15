@@ -283,7 +283,8 @@ export async function newsText(
     .list(consumer.worktreeId)
     .filter((s) => s.outcome === "fail")
     .map((s) => s.check);
-  return `${formatDelta(delta, command)}\n${knownFailuresLine(failures, command)}`;
+  // Task 001-407: Stop keeps the full header block.
+  return `${formatDelta(delta, command, undefined, "full")}\n${knownFailuresLine(failures, command)}`;
 }
 
 /**
