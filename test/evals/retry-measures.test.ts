@@ -95,7 +95,7 @@ const A10_SESSIONS: Record<string, { steps: Step[]; misses: string[]; truthPass?
     steps: [
       ...a10Open,
       {
-        cmd: 'curl -s "http://127.0.0.1:$(cat "$LEDGERLINE_RATES_PORT_FILE")/v1/rates/EUR/USD"',
+        cmd: 'curl -s "http://127.0.0.1:$(cat ~/.ledgerline-rates.port)/v1/rates/EUR/USD"',
         out: '{"rate":1.08}',
       },
       CLAIM("fail"),

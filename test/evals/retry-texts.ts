@@ -72,7 +72,7 @@ export const SERVICE = { cmd: "node scripts/rates-service.mjs", out: SERVICE_UP 
 
 // a9: the service down at the warm-up; the asked edit re-keys the test, which fails again.
 export const DOWN =
-  "Error: the rates service is not running (no <cell>/tmp/rates.port); start it with: node scripts/rates-service.mjs";
+  "Error: the rates service is not running (no <cell>/home/.ledgerline-rates.port); start it with: node scripts/rates-service.mjs";
 export const RATES_FILE = "test/rates.test.ts";
 export const a9Open: Step[] = [
   { squeal: INHERITED(RATES, DOWN, "src/rates.ts:15:11", "0.20") },
