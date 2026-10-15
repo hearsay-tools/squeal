@@ -204,6 +204,12 @@ export interface StatusHeader {
    */
   readonly missingInstalls?: readonly RelativePath[];
   /**
+   * While `awaitingInstall`, the command that installs the dependencies
+   * (`installCommandMetaKey`, task 001-410). Absent when a daemon from
+   * before it started the wait.
+   */
+  readonly installCommand?: string;
+  /**
    * The note saying Squeal runs Vitest without the dependency optimizer a
    * config turns on (spec 001 D4, task 001-176), for the registration
    * header. Set by `readHeader` while the newest Vitest instance's config

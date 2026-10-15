@@ -107,6 +107,15 @@ export function awaitingInstallValue(workspaces: readonly string[]): string {
   return workspaces.length === 0 ? "true" : JSON.stringify(workspaces);
 }
 
+/**
+ * `meta` key of the command that installs a waiting worktree's dependencies
+ * (`npm ci`, …), named by the header's install sentence (task 001-410).
+ * Written with `awaitingInstallMetaKey` and read only while it waits.
+ */
+export function installCommandMetaKey(worktreeId: WorktreeId): string {
+  return worktreeMetaKey("installCommand", worktreeId);
+}
+
 /** The workspaces a stored wait names, or `null` when `raw` is not a wait. */
 export function parseAwaitingInstall(raw: string | null): readonly string[] | null {
   if (raw === "true") return [];
