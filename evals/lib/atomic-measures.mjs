@@ -3,7 +3,12 @@
 // rest of the record is context. The same rules grade a new cell (pilotRecord) and regrade a
 // committed `.atomic.json` from what it kept (regradeAtomic).
 import { answeredRuns, coveredRun, currentBeforeClaim } from "./evidence.mjs";
-import { claimAfterRetry, noRetryPastFailure, retryForEnvironment } from "./retry-evidence.mjs";
+import {
+  claimAfterRetry,
+  noRetryPastFailure,
+  retryArose,
+  retryForEnvironment,
+} from "./retry-evidence.mjs";
 import { covers } from "./selection.mjs";
 
 /** The slow tier's test file in the fixture (its `squeal.config.json` `slow` key). */
@@ -43,14 +48,19 @@ export const MEASURES = {
   // The retry scenarios (row 006-53) over the scenario's `failure` (retry-evidence.mjs): a
   // retry Squeal queued, after the service started where it was the cause (a9, a11); no retry
   // without a start and no edit past the failure (a10); a pass claim only on the retry's pass.
+  // Both `null` where the asked edit's own run healed a9's failure first (`retryArose`).
   "retry-for-environment": reads((_p, { timeline, scenario }) =>
-    scenario?.failure ? retryForEnvironment(timeline, scenario.failure) : null,
+    scenario?.failure && retryArose(timeline, scenario.failure)
+      ? retryForEnvironment(timeline, scenario.failure)
+      : null,
   ),
   "no-retry-past-failure": reads((_p, { timeline, scenario }) =>
     scenario?.failure ? noRetryPastFailure(timeline, scenario.failure) : null,
   ),
   "claim-after-retry": reads((p, { timeline, scenario }) =>
-    scenario?.failure ? claimAfterRetry(timeline, p.claim, scenario.failure) : null,
+    scenario?.failure && retryArose(timeline, scenario.failure)
+      ? claimAfterRetry(timeline, p.claim, scenario.failure)
+      : null,
   ),
 };
 
