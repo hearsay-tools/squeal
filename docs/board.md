@@ -1019,7 +1019,8 @@ Spec: `specifications/009-pi-adapter/spec.md`, approved 2026-10-14 by the human.
 |---|---|---|---|
 | 008-25 the continuation under `opencode run` | verified, in `cand/0.1.186` | Lessons defect 1: news known before idle under `run` is never stored (goal 4, D5); reproduce in the e2e, then make it stored, or `it.fails` with OpenCode's source as evidence for a spec amendment. | e2e `run` then `run --continue` reads the stored message; `serve` tests unchanged. |
 | 008-26 the status line's causes and the update's wording | verified, in `cand/0.1.186` | Lessons defect 2: `status` blames the plugin when the repository is not set up; defect 4(a): `update` names Claude Code's `/reload-plugins` with only OpenCode. | A CLI test per cause; update texts per harness set. |
-| 008-27 review of `cand/0.1.186` | running | `/reviewer` over wave 3 as integrated, the landing gate. | `reviews/wave-3.md` committed. |
+| 008-27 review of `cand/0.1.186` | done: FAIL at ceea98c2 (`reviews/wave-3.md`): B1 a disposal stores an old report after newer input or an abort; S1 a load miss in the new e2e | `/reviewer` over wave 3 as integrated, the landing gate. | `reviews/wave-3.md` committed. |
+| 008-28 a disposal's report yields to newer input and an abort | running | Repair of B1 (and S1's diagnostics) on `cand/0.1.186`; then a narrow re-review. | Both gated real-OpenCode cases red then green; `run --continue` e2e green. |
 
 ## Later
 
