@@ -21,7 +21,19 @@ export function simpleCommands(text: string, options?: { exit?: number | null })
 
 export type Execution = "executed" | "refused" | "indeterminate";
 export type Action = (
-  | { kind: "squeal"; sub: string; wait: boolean; all: boolean; slow: boolean }
+  | {
+      kind: "squeal";
+      sub: string;
+      wait: boolean;
+      all: boolean;
+      slow: boolean;
+      /** `retry` only (row 006-53): the paths as written, `--reason`, `--cancel`. */
+      paths?: string[];
+      reason?: string | null;
+      cancel?: boolean;
+    }
+  /** A start of the retry scenarios' rates service (row 006-53). */
+  | { kind: "service" }
   | {
       kind: "vitest" | "node:test";
       runner: "vitest" | "node:test";
@@ -354,6 +366,10 @@ export type Step =
     }
   | Evidence
   | { k: "sleep"; s: number }
+  /** A `squeal retry` call (row 006-53): the test files Squeal's reply says it queued. */
+  | { k: "retry"; paths: string[]; reason: string | null; cancel: boolean; queued: string[] }
+  /** A start of the rates service (row 006-53); `started` when it said it listens. */
+  | { k: "service"; started: boolean }
   | { k: "claim" };
 /** The Squeal evidence one pull or delivery carried. */
 export interface Evidence {
@@ -390,6 +406,8 @@ export type CheckSeen =
       observed: number | null;
       validity: string;
       stated?: true;
+      /** On a pass a retry's own run stored: the reason it was asked for (row 006-53). */
+      retried?: string;
     }
   | { to: "fail" | "pass" | "resolved"; count: number };
 /** Known failures: check names, and a count of those no text named. */
@@ -717,7 +735,29 @@ export interface AtomicDeclaration {
   waitSettled?: boolean;
   /** What `own-run-covers` reads: D4's completed-run-covers parameters. */
   ownRun?: { runner: "vitest" | "node:test"; files: string[]; after: string | null };
+  /** What the retry measures read (row 006-53). */
+  failure?: RetryFailure;
 }
+/** The test file whose FAIL a retry scenario is about, the paths past it, and its cause. */
+export interface RetryFailure {
+  file: string;
+  inputs: string[];
+  cause: "service" | null;
+}
+export function retryForEnvironment(timeline: readonly Step[], failure: RetryFailure): boolean;
+export function noRetryPastFailure(timeline: readonly Step[], failure: RetryFailure): boolean;
+export function claimAfterRetry(
+  timeline: readonly Step[],
+  claim: string | null | undefined,
+  failure: RetryFailure,
+): boolean | null;
+/** The knobs' fixture files (evals/atomic/retry/), at their paths in the fixture. */
+export const SERVICE_FILES: readonly string[];
+export function retryEnv(
+  knobs: Record<string, unknown>,
+  cell: string,
+  env: Record<string, string | undefined>,
+): ((perCpu: number) => void) | null;
 export interface AtomicConfig {
   description: string;
   models: { harness: "claude" | "codex"; model: string }[];

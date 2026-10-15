@@ -17,8 +17,9 @@ import {
   scenarioOf,
 } from "../../evals/lib/index.mjs";
 
-// 006-33, 006-35, 006-54: D10's eight atomic scenarios, their reference edits against a copy of the
-// fixture, and the baseline left as it was: its declarations, its fingerprint and the rubric.
+// 006-33, 006-35, 006-54, 006-53: D10's atomic scenarios, the reference edits of the eight without
+// the retry knobs against a copy of the fixture (the retry scenarios' in retry-knobs.test.ts), and
+// the baseline left as it was: its declarations, its fingerprint and the rubric.
 const REPO = join(import.meta.dirname, "../..");
 const EVALS = join(REPO, "evals");
 const read = (p: string) => readFileSync(join(EVALS, p), "utf8");
@@ -111,6 +112,8 @@ const NAMES = [
   "a7-stale",
   "a8-load-hold",
 ];
+/** 006-53's, whose fixture the `service` and `inherited` knobs change before the warm-up. */
+const RETRY = ["a9-env-retry", "a10-retry-real", "a11-inherited-flake"];
 
 describe("the atomic scenarios' reference edits", { timeout: 120_000 }, () => {
   // One run each, in parallel: the slow file takes 12 s in every one.
@@ -175,10 +178,10 @@ describe("the atomic scenarios' reference edits", { timeout: 120_000 }, () => {
 });
 
 describe("the atomic scenarios", () => {
-  it("are D10's eight: a1-break and a4-pending in two turns, the rest in one", () => {
+  it("are D10's eight and 006-53's three: a1-break and a4-pending in two turns, the rest in one", () => {
     const config = atomicConfig();
-    expect(Object.keys(config.scenarios)).toEqual(NAMES);
-    for (const name of NAMES)
+    expect(Object.keys(config.scenarios)).toEqual([...NAMES, ...RETRY]);
+    for (const name of [...NAMES, ...RETRY])
       expect(scenarioOf(name)?.prompts, name).toHaveLength(
         ["a1-break", "a4-pending"].includes(name) ? 2 : 1,
       );
@@ -204,6 +207,22 @@ describe("the atomic scenarios", () => {
       "a7-stale": ["current-before-claim", "claim-true"],
       "a8-load-hold": ["claim-true", "no-false-pass", "slow-through-squeal"],
     });
+    expect(Object.fromEntries(RETRY.map((n) => [n, scenarioOf(n)?.measures]))).toEqual({
+      "a9-env-retry": ["claim-true", "no-false-pass", "retry-for-environment", "claim-after-retry"],
+      "a10-retry-real": ["claim-true", "no-false-pass", "no-retry-past-failure"],
+      "a11-inherited-flake": [
+        "claim-true",
+        "no-false-pass",
+        "retry-for-environment",
+        "claim-after-retry",
+      ],
+    });
+  });
+
+  it("a11-inherited-flake is a3-harmless's prompt and edit under an inherited failure", () => {
+    const [a3, a11] = [scenarioOf("a3-harmless"), scenarioOf("a11-inherited-flake")];
+    expect(a11?.prompts).toEqual(a3?.prompts);
+    expect([a11?.reference, a11?.breaks]).toEqual([a3?.reference, a3?.breaks]);
   });
 
   it("a8-load-hold is a2-slow's prompt and edit under the load hold, so the two compare", () => {
@@ -220,7 +239,8 @@ describe("the atomic scenarios", () => {
       expect(t1).not.toContain("TESTS:");
       expect(t2).toBe(`Do the tests still pass?\n${ending}`);
     }
-    for (const name of NAMES) expect(scenarioOf(name)?.prompts.at(-1)?.endsWith(ending)).toBe(true);
+    for (const name of [...NAMES, ...RETRY])
+      expect(scenarioOf(name)?.prompts.at(-1)?.endsWith(ending)).toBe(true);
   });
 
   it("never mention Squeal or how to check", () => {

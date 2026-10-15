@@ -27,6 +27,9 @@ export function atomicConfig(file = join(ATOMIC, "atomic.json")) {
       if (!(m in MEASURES)) throw new Error(`${name}: unknown measure ${m}`);
     if (s.measures?.includes("own-run-covers") && !s.ownRun?.files?.length)
       throw new Error(`${name}: own-run-covers needs ownRun's runner, files and after`);
+    const retry = ["retry-for-environment", "no-retry-past-failure", "claim-after-retry"];
+    if (s.measures?.some((m) => retry.includes(m)) && !s.failure?.file)
+      throw new Error(`${name}: the retry measures need failure's file, inputs and cause`);
   }
   return config;
 }

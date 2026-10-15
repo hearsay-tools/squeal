@@ -144,6 +144,10 @@ describe("the pilot record", () => {
       "no-claim-on-pending": null,
       "no-sleep": true,
       "own-run-covers": null, // no ownRun declared
+      // No failure declared (006-53).
+      "retry-for-environment": null,
+      "no-retry-past-failure": null,
+      "claim-after-retry": null,
     });
   });
 });

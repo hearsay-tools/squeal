@@ -68,6 +68,7 @@ import {
   runId,
 } from "../lib/prepare.mjs";
 import { cellRecord } from "../lib/results.mjs";
+import { addService, retryEnv, serviceForTruth, stageInherited } from "../lib/retry-knobs.mjs";
 import { evalsRoot, refuseInsideRepo } from "../lib/root.mjs";
 import {
   cellEnv,
@@ -138,6 +139,7 @@ const log = (s) => {
 
 const env = cellEnv(process.env, CELL, providerVariables(harness, process.env, realCodex));
 if (knobs.flakeColdRuns) env.LEDGERLINE_CALENDAR_COLD_RUNS = String(knobs.flakeColdRuns);
+const setLoad = retryEnv(knobs, CELL, env); // 006-53: pinLoad and service, before any process
 const sh = (cmd, args, opts = {}) => {
   const r = spawnSync(cmd, args, {
     cwd: WORK,
@@ -177,6 +179,8 @@ async function lifecycle() {
   CLI = join(PIN, "plugins", harness === "codex" ? "codex" : "claude-code", "dist/cli/squeal.mjs");
   const head = buildFixture({ work: WORK, variant, env, modules: fixtureModules(ROOT) });
   log(`fixture ${head}, pin ${relative(ROOT, PIN)}, run ${run}, load ${load1().toFixed(1)}`);
+  const git = (a) => sh("git", a); // cellEnv's author and committer
+  addService(knobs, { work: WORK, git, sh, log });
 
   // A policy key the pinned CLI does not know is a variant that cannot run here (D8 before it ships).
   if (variant.policy) {
@@ -205,7 +209,11 @@ async function lifecycle() {
   }
 
   // The daemon: warm unless --cold, then the task's knobs.
-  if (plugin && !cold) {
+  if (plugin && !cold && knobs.inherited) {
+    const w = await stageInherited(knobs, { squeal, stop: stopDaemon, setLoad, log });
+    writeFileSync(join(OUT, "warmup.txt"), w);
+    log(`warm-up: ${(w.match(/^Known failures: .*$/m) ?? ["?"])[0]}`);
+  } else if (plugin && !cold) {
     // The flake knob warms with the flake off, then restarts the daemon with it on.
     const warm = knobs.flakeColdRuns ? { env: { LEDGERLINE_CALENDAR_WARM: "1" } } : {};
     squeal(["start"], warm);
@@ -230,14 +238,7 @@ async function lifecycle() {
     const policy = JSON.parse(readFileSync(file, "utf8"));
     policy.slow = { ...policy.slow, ...knobs.loadHold };
     writeFileSync(file, `${JSON.stringify(policy, null, 2)}\n`);
-    sh("git", ["commit", "-q", "-m", "Hold slow tests while the host is busy", "--", file], {
-      env: {
-        GIT_AUTHOR_NAME: "ledgerline",
-        GIT_AUTHOR_EMAIL: "dev@ledgerline.invalid",
-        GIT_COMMITTER_NAME: "ledgerline",
-        GIT_COMMITTER_EMAIL: "dev@ledgerline.invalid",
-      },
-    });
+    git(["commit", "-q", "-m", "Hold slow tests while the host is busy", "--", file]);
     log(`load hold: slow ${JSON.stringify(knobs.loadHold)}`);
   }
   if (knobs.staleEdit) {
@@ -302,11 +303,12 @@ async function lifecycle() {
     writeFileSync(join(OUT, "status-end.txt"), st.stdout + st.stderr);
     writeFileSync(join(OUT, "status-end.json"), squeal(["status", "--json"]).stdout);
   }
+  serviceForTruth(knobs, { work: WORK, sh, log });
   await groundTruth({ cwd: WORK, env, out: OUT, log, graceMs: graceS * 1000 });
-  const git = (a) => sh("git", a, { check: false }).stdout;
+  const said = (a) => sh("git", a, { check: false }).stdout;
   writeFileSync(
     join(OUT, "diff.patch"),
-    `${git(["diff", "--stat", head])}\n${git(["status", "--short"])}\n${git(["diff", head])}`,
+    `${said(["diff", "--stat", head])}\n${said(["status", "--short"])}\n${said(["diff", head])}`,
   );
   if (plugin) {
     delete env.SQUEAL_CLI;

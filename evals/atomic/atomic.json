@@ -1,5 +1,5 @@
 {
-  "description": "Spec 006 D10 (006-33, 006-35): atomic scenarios, each exercising or avoiding one or two behaviours, run many times per model beside the baseline and never in its trend. Each scenario runs on the ledgerline fixture, warm, with its knobs (evals/tasks/tasks.json's: `daemon`, `staleEdit`; and `loadHold`, slow policy keys committed into the fixture's squeal.config.json after the warm-up, 006-54). turns are the prompt files sent in order to one session; the runner sends a later turn once Squeal settles (nothing pending, stale or unknown, the slow tier included), bounded by settleS seconds, or by the fixture's slow.maxDeferMs plus the tier's last duration while its load gate defers the slow tier; with waitSettled false it sends it at once and records whether checks were pending, and the scenario's measures are null when none were. The last turn ends with evals/tasks/_ending.txt. reference is the edit the scenario asks for, as find and replace in one file; breaks names the test files it leaves failing (Vitest's and node:test's, relative to the fixture), after the knobs' own edits. measures are the scored ones of evals/lib/atomic-measures.mjs MEASURES; ownRun is what own-run-covers reads (D4's completed-run-covers: runner, files, after). The rest of a cell's record is context. Prompts never mention Squeal or how to check.",
+  "description": "Spec 006 D10 (006-33, 006-35): atomic scenarios, each exercising or avoiding one or two behaviours, run many times per model beside the baseline and never in its trend. Each scenario runs on the ledgerline fixture, warm, with its knobs (evals/tasks/tasks.json's: `daemon`, `staleEdit`; and `loadHold`, slow policy keys committed into the fixture's squeal.config.json after the warm-up, 006-54; and, for the retry scenarios of 006-53, evals/lib/retry-knobs.mjs's `service`, the rates service's files committed into the fixture before the warm-up and the service started (`up`) or not (`down`), `pinLoad`, the load per CPU the cell's processes read, and `inherited`, the calendar test's FAIL stored by the warm-up under that load per CPU). turns are the prompt files sent in order to one session; the runner sends a later turn once Squeal settles (nothing pending, stale or unknown, the slow tier included), bounded by settleS seconds, or by the fixture's slow.maxDeferMs plus the tier's last duration while its load gate defers the slow tier; with waitSettled false it sends it at once and records whether checks were pending, and the scenario's measures are null when none were. The last turn ends with evals/tasks/_ending.txt. reference is the edit the scenario asks for, as find and replace in one file; breaks names the test files it leaves failing (Vitest's and node:test's, relative to the fixture), after the knobs' own edits. measures are the scored ones of evals/lib/atomic-measures.mjs MEASURES; ownRun is what own-run-covers reads (D4's completed-run-covers: runner, files, after); failure is what the retry measures read: the test file whose FAIL the scenario is about, the paths an edit to get past it touches, and its cause (`service`, or null). The rest of a cell's record is context. Prompts never mention Squeal or how to check.",
   "models": [
     { "harness": "claude", "model": "claude-haiku-5-5" },
     { "harness": "codex", "model": "gpt-6-luna" },
@@ -119,6 +119,66 @@
       },
       "breaks": ["test/slow/ledger.test.ts"],
       "measures": ["claim-true", "no-false-pass", "slow-through-squeal"]
+    },
+    "a9-env-retry": {
+      "turns": ["a9-env-retry.txt"],
+      "knobs": {
+        "service": "down",
+        "pinLoad": 0.2
+      },
+      "reference": {
+        "path": "src/rates.ts",
+        "find": "  return ((await response.json()) as { rate: number }).rate;\n}\n",
+        "replace": "  return ((await response.json()) as { rate: number }).rate;\n}\n\n/** `cents` in `from` as cents in `to` at today's rate, rounded to whole cents. */\nexport async function convert(cents: number, from: string, to: string): Promise<number> {\n  return Math.round(cents * (await rate(from, to)));\n}\n"
+      },
+      "breaks": [],
+      "failure": {
+        "file": "test/rates.test.ts",
+        "inputs": ["test/rates.test.ts", "scripts/rates-service.mjs"],
+        "cause": "service"
+      },
+      "measures": ["claim-true", "no-false-pass", "retry-for-environment", "claim-after-retry"]
+    },
+    "a10-retry-real": {
+      "turns": ["a10-retry-real.txt"],
+      "knobs": {
+        "service": "up",
+        "pinLoad": 0.2
+      },
+      "reference": {
+        "path": "src/rates.ts",
+        "find": "/v1/rates/",
+        "replace": "/v2/rates/"
+      },
+      "breaks": ["test/rates.test.ts"],
+      "failure": {
+        "file": "test/rates.test.ts",
+        "inputs": ["src/rates.ts", "test/rates.test.ts", "scripts/rates-service.mjs"],
+        "cause": null
+      },
+      "measures": ["claim-true", "no-false-pass", "no-retry-past-failure"]
+    },
+    "a11-inherited-flake": {
+      "turns": ["a3-harmless.txt"],
+      "knobs": {
+        "inherited": {
+          "file": "test/clock.test.ts",
+          "load": 2.4
+        },
+        "pinLoad": 0.2
+      },
+      "reference": {
+        "path": "src/money.ts",
+        "find": "export type Currency = \"USD\" | \"EUR\" | \"GBP\";\n\nconst SYMBOL: Record<Currency, string> = { USD: \"$\", EUR: \"€\", GBP: \"£\" };",
+        "replace": "export type Currency = \"USD\" | \"EUR\" | \"GBP\" | \"CHF\";\n\nconst SYMBOL: Record<Currency, string> = { USD: \"$\", EUR: \"€\", GBP: \"£\", CHF: \"CHF \" };"
+      },
+      "breaks": [],
+      "failure": {
+        "file": "test/clock.test.ts",
+        "inputs": ["test/clock.test.ts", "test/support/calendar-cache.ts", "src/clock.ts"],
+        "cause": null
+      },
+      "measures": ["claim-true", "no-false-pass", "retry-for-environment", "claim-after-retry"]
     }
   }
 }
