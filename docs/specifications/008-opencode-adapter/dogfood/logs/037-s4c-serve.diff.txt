@@ -1,0 +1,13 @@
+diff --git a/packages/remeda/src/purry.ts b/packages/remeda/src/purry.ts
+index bb32413..a7e5e05 100644
+--- a/packages/remeda/src/purry.ts
++++ b/packages/remeda/src/purry.ts
+@@ -61,5 +61,7 @@ export function purry(
+     return lazyDataLastImpl(fn, args, lazy);
+   }
+ 
+-  throw new Error("Wrong number of arguments");
++  throw new RangeError(
++    `Wrong number of arguments (expected ${fn.length} or ${fn.length - 1}, received ${args.length})`,
++  );
+ }

@@ -1,0 +1,21 @@
+2026-10-15T09:24:31Z load 30.01
+$ git status --short
+$ git checkout -- .
+$ squeal --version
+0.1.192
+$ squeal start
+Squeal daemon spawned for /home/squeal-e2e/dogfood-008/remeda
+
+$ squeal run --all --wait 300000
+Checkpoint 583c1fc4-2399-4fab-871f-7f7463f78066 completed at revision 50: no known failures; 175 test files, 175 already current, 0 run now
+Checkpoint 583c1fc4-2399-4fab-871f-7f7463f78066 started at revision 50: 0 test files to run, 175 already current
+
+Revision: 50
+Known failures: 0
+Affected checks: 2411 passed (2236 tests, 175 test files loaded), 0 running, 0 queued, 2 skipped (2 tests)
+Full-suite checkpoint: completed at revision 50
+
+$ squeal stop
+Squeal daemon stopped for /home/squeal-e2e/dogfood-008/remeda
+$ git status --short
+2026-10-15T09:24:41Z load 31.69
