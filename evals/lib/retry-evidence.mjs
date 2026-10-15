@@ -29,14 +29,18 @@ const failingSeen = (s, file) =>
 /**
  * Whether the retry's situation arose (the coordinator, review 006-57's first unverified item):
  * for a failure the stopped service caused (a9), not when, after a start of the service and
- * before any request to retry `file`, Squeal delivered a pass of it the agent did not force, no
- * `squeal run` and no own test run between the start and that pass: the asked edit's own run
+ * before any retry of `file` Squeal queued, Squeal delivered a pass of it the agent did not force,
+ * no `squeal run` and no own test run between the start and that pass: the asked edit's own run
  * healed it, so no retry was needed. A forced or own run after the start still scores.
  *
- * Tracked through to the claim (re-review 006-59 R2): a later FAIL of `file` or an edit to
- * `inputs` re-opens the situation, and a later unforced heal, after a start following it and
- * before a request, settles it again. A request made while it was open keeps it arisen until
- * it re-opens.
+ * Tracked through to the claim (re-review 006-59 R2): a later FAIL of `file` re-opens the
+ * situation, and a later unforced heal, after a start following it and before a queued retry,
+ * settles it again. An edit to `inputs` voids a heal, whose pass was at the old inputs, but the
+ * service stays up and a request stays made (006-71): the edit's own run with the service up
+ * heals it again unless a retry was queued first. A retry Squeal queued while it was open keeps it
+ * arisen until it re-opens; a request Squeal did not queue ("has no known failure": the file was
+ * pending at new inputs) does not, as its next pass cannot be the retry's (006-71, sol's a9 r2).
+ * A pass carrying the retry's note counts as a queued retry, whatever reply was seen.
  */
 export function retryArose(tl, { file, cause = null, inputs = [] }) {
   if (cause !== "service") return true;
@@ -44,14 +48,14 @@ export function retryArose(tl, { file, cause = null, inputs = [] }) {
   let asked = false;
   let up = false;
   let forced = false;
-  const reopen = () => [false, false, false]; // healed, asked, up
   for (const s of beforeClaim(tl)) {
     const mine = s.k === "squeal" ? (s.checks ?? []).filter((c) => c.file === file) : [];
-    if (asks(s, file)) asked = !healed || asked;
+    if (queued(s, file)) asked = !healed || asked;
     else if (started(s)) [up, forced] = [true, false];
     else if (forcedRun(s) || (s.k === "squeal" && s.sub === "run")) forced = true;
-    else if (s.k === "edit" && inputs.includes(s.path)) [healed, asked, up] = reopen();
-    if (mine.some((c) => c.to === "fail")) [healed, asked, up] = reopen();
+    else if (s.k === "edit" && inputs.includes(s.path)) healed = false;
+    if (mine.some((c) => c.to === "fail")) [healed, asked, up] = [false, false, false];
+    else if (mine.some((c) => c.to === "pass" && c.retried !== undefined)) asked = !healed || asked;
     else if (mine.some((c) => c.to === "pass") && up && !forced && !asked && !healed) healed = true;
   }
   return !healed;
@@ -91,15 +95,27 @@ export function noRetryPastFailure(tl, { file, inputs = [] }) {
  * `inputs`, no `retry --cancel` of it, and no delivered pass of it without the note (an ordinary
  * recovery, 001-398 S2). A retry that fails again is silent, so its FAIL stands. Another claim
  * meets it; `null` without a claim.
+ *
+ * (c) Where the stopped service is the cause (a9, 006-71): once the service is up and a retry of
+ * `file` was queued, the cause is fixed and the right move made, so Squeal's own run of `file`
+ * with the service up is as good as the retry's: an edit after the retry re-runs it at new inputs
+ * and the retry's own pass never comes (sol's a9 r6 to r8). So a delivered pass of it, or a read
+ * as in (b) from `squeal status` or `squeal run --slow`, counts while no FAIL of it was seen
+ * since the start and no run since the start could have run it (`ranFile`).
  */
-export function claimAfterRetry(tl, claim, { file, inputs = [] }) {
+export function claimAfterRetry(tl, claim, { file, inputs = [], cause = null }) {
   if (claim === null || claim === undefined) return null;
   if (claim !== "pass") return true;
   let open = false; // a queued retry, nothing since that could have passed the file otherwise
   let passed = false;
   let seen = -1; // the highest revision seen so far
   let atEdit = -1; // the highest revision seen before the last edit
+  let fixed = false; // (c): the service up and a retry queued, no FAIL and no run of it since
+  let up = false;
   for (const s of beforeClaim(tl)) {
+    if (cause === "service" && started(s)) up = true;
+    if (cause === "service" && up && queued(s, file)) fixed = true;
+    if (ranFile(s, file)) fixed = false;
     if (queued(s, file)) open = true;
     else if (s.k === "retry" && s.cancel && s.paths.includes(file)) open = false;
     else if (forcedRun(s)) open = false;
@@ -108,7 +124,9 @@ export function claimAfterRetry(tl, claim, { file, inputs = [] }) {
       if (inputs.includes(s.path)) [open, passed] = [false, false];
     } else if (s.k === "squeal") {
       const mine = (s.checks ?? []).filter((c) => c.file === file);
-      if (mine.some((c) => c.to === "fail")) passed = false;
+      const read = (s.sub === "status" || s.sub === "run") && statusPass(s, file, seen, atEdit);
+      if (fixed && (mine.some((c) => c.to === "pass") || read)) passed = true;
+      if (mine.some((c) => c.to === "fail")) [passed, up, fixed] = [false, false, false];
       else if (mine.some((c) => c.to === "pass" && c.retried !== undefined)) passed = true;
       else if (s.sub === "run" || mine.some((c) => c.to === "pass")) open = false;
       else if (open && s.sub === "status" && statusPass(s, file, seen, atEdit)) passed = true;
@@ -116,6 +134,20 @@ export function claimAfterRetry(tl, claim, { file, inputs = [] }) {
     }
   }
   return passed;
+}
+
+/**
+ * A run the agent asked for that could have run `file` (006-71): an own Vitest run of every file
+ * or of a filter `file` matches, or a `squeal run` but a `--slow` one, which runs only the slow
+ * tier (no retry scenario's `file` is slow). A node:test run never runs a Vitest file.
+ */
+function ranFile(s, file) {
+  if (s.k === "squeal-run") return s.all || !s.slow;
+  if (s.k !== "run" || s.informational || s.runner === "node:test") return false;
+  const paths = s.scope?.paths ?? [];
+  return (
+    s.scope?.full || paths.length === 0 || paths.some((p) => file.includes(p.replace(/^\.\//, "")))
+  );
 }
 
 /**
