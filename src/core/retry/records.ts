@@ -191,13 +191,25 @@ export function claimRetries(
   });
 }
 
-/** Gives back `worktreeId`'s claims on `testFile` (its key moved here): another daemon at the key may take them. */
-export function releaseRetries(store: Store, testFile: TestFileRef, worktreeId: WorktreeId): void {
+/**
+ * Gives back `worktreeId`'s claims on `testFile` (its key moved here, or it
+ * is gone), but those at `keep`, its key here: another daemon at the key may
+ * take them.
+ */
+export function releaseRetries(
+  store: Store,
+  testFile: TestFileRef,
+  worktreeId: WorktreeId,
+  keep: CheckKey | null = null,
+): void {
   store.transaction(() => {
     const records = readRetries(store);
     const id = testFileId(testFile);
     const mine = (r: RetryRecord) =>
-      r.end === null && r.claim?.worktreeId === worktreeId && testFileId(r.testFile) === id;
+      r.end === null &&
+      r.claim?.worktreeId === worktreeId &&
+      r.key !== keep &&
+      testFileId(r.testFile) === id;
     if (!records.some(mine)) return;
     writeRetries(
       store,
