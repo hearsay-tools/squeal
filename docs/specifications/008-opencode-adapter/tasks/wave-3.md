@@ -56,3 +56,13 @@ Use /worker. Outcome: when the `run --continue` e2e or the dispose regressions f
 - Seam: the fixture's `stop.waitMs` in `test/e2e/opencode-fixture.ts`, set so the idle deadline is not the variable under test; then the test-side timings the e2e can see (requests, the session's messages, process exits) printed in the failure message; then the dispose regression's barrier timeout and what it prints when it expires.
 - Owns: `test/e2e/opencode*`, `test/harness/opencode-dispose.test.ts`. Leaves alone: `src/**`.
 - Done when: each test passes 10 runs in a row at a load above the CPU count, or each failure names its cause; lint, typecheck and `squeal run --all --wait` are green.
+
+## 008-30 re-check of defect 1 with a real model
+
+Use /worker. Outcome: `lessons.md` gains a dated section showing whether, with 0.1.186 installed, a real model's `opencode run` stores news known before idle as one Squeal message that `opencode run --continue` reads (goal 4 under `run`), and whether a Cezar-shaped `serve` session still gets exactly one continuation.
+
+- Read: `../lessons.md` (defect 1, sessions s3 and s3b, and the Setup section), `dogfood/` (its scripts), `../reviews/wave-3.md`.
+- Shape: proof. As in 008-20: only as `squeal-e2e` under `/home/squeal-e2e/dogfood-008/`, with the key by name through the logging proxy; `gpt-6-luna` (only the daemon is observed); sessions only below load 24, with the load recorded.
+- Steps: update the dogfood install to 0.1.186 with `install.sh` from a `git archive` of main; repeat s3 (twice, as s3 and s3b did); repeat one Cezar-shaped `serve` session with news at the end of a turn.
+- Owns: `docs/specifications/008-opencode-adapter/lessons.md` (append only) and `dogfood/**`. Fixes nothing.
+- Done when: the section answers both questions with evidence, a new defect is written with a proposed row, and nothing of the run is left running.
