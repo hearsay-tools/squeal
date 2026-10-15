@@ -1,0 +1,282 @@
+=== 2026-10-15T19:50:58Z git push origin 74e37f00:refs/heads/probe/010-13-src 
+remote: 
+remote: Create a pull request for 'probe/010-13-src' on GitHub by visiting:        
+remote:      https://github.com/hearsay-tools/squeal/pull/new/probe/010-13-src        
+remote: 
+To https://github.com/hearsay-tools/squeal.git
+ * [new branch]        74e37f00 -> probe/010-13-src
+exit=0
+=== 2026-10-15T19:52:10Z check runs of 74e37f00
+probe-check status=completed conclusion=success app=github-actions started=2026-10-15T19:51:58Z completed=2026-10-15T19:52:01Z
+=== 2026-10-15T19:52:18Z git push origin 74e37f00:refs/heads/probe/010-13-target 
+remote: 
+remote: Create a pull request for 'probe/010-13-target' on GitHub by visiting:        
+remote:      https://github.com/hearsay-tools/squeal/pull/new/probe/010-13-target        
+remote: 
+To https://github.com/hearsay-tools/squeal.git
+ * [new branch]        74e37f00 -> probe/010-13-target
+exit=0
+{"id":25193915,"name":"probe 010-13 (throwaway)","target":"branch","source_type":"Repository","source":"hearsay-tools/squeal","enforcement":"active","conditions":{"ref_name":{"exclude":[],"include":["refs/heads/probe/010-13-target"]}},"rules":[{"type":"required_status_checks","parameters":{"strict_required_status_checks_policy":false,"do_not_enforce_on_create":false,"required_status_checks":[{"context":"probe-check"}]}}],"node_id":"RRS_lACqUmVwb3NpdG9yec5SPFNLzgGAbbs","created_at":"2026-10-15T21:52:20.143+02:00","updated_at":"2026-10-15T21:52:20.179+02:00","bypass_actors":[],"current_user_can_bypass":"never","_links":{"self":{"href":"https://api.github.com/repos/hearsay-tools/squeal/rulesets/25193915"},"html":{"href":"https://github.com/hearsay-tools/squeal/rules/25193915"}}}
+P1=c698121d8a47819ddc9ae416fdb2590e5c94349f
+--- T1: P1 has never been pushed (no run)
+=== 2026-10-15T19:52:25Z git push origin c698121d8a47819ddc9ae416fdb2590e5c94349f:refs/heads/probe/010-13-target 
+remote: error: GH013: Repository rule violations found for refs/heads/probe/010-13-target.        
+remote: Review all repository rules at https://github.com/hearsay-tools/squeal/rules?ref=refs%2Fheads%2Fprobe%2F010-13-target        
+remote: 
+remote: - Required status check "probe-check" is expected.        
+remote: 
+To https://github.com/hearsay-tools/squeal.git
+ ! [remote rejected]   c698121d8a47819ddc9ae416fdb2590e5c94349f -> probe/010-13-target (push declined due to repository rule violations)
+error: failed to push some refs to 'https://github.com/hearsay-tools/squeal.git'
+exit=1
+--- T2: P1 pushed to src, green push run, then fast-forward target
+=== 2026-10-15T19:52:33Z git push origin c698121d8a47819ddc9ae416fdb2590e5c94349f:refs/heads/probe/010-13-src 
+To https://github.com/hearsay-tools/squeal.git
+   74e37f00..c698121d  c698121d8a47819ddc9ae416fdb2590e5c94349f -> probe/010-13-src
+exit=0
+=== 2026-10-15T20:03:46Z check runs of c698121d8a47819ddc9ae416fdb2590e5c94349f
+=== 2026-10-15T20:03:47Z git push origin c698121d8a47819ddc9ae416fdb2590e5c94349f:refs/heads/probe/010-13-target 
+remote: error: GH013: Repository rule violations found for refs/heads/probe/010-13-target.        
+remote: Review all repository rules at https://github.com/hearsay-tools/squeal/rules?ref=refs%2Fheads%2Fprobe%2F010-13-target        
+remote: 
+remote: - Required status check "probe-check" is expected.        
+remote: 
+To https://github.com/hearsay-tools/squeal.git
+ ! [remote rejected]   c698121d8a47819ddc9ae416fdb2590e5c94349f -> probe/010-13-target (push declined due to repository rule violations)
+error: failed to push some refs to 'https://github.com/hearsay-tools/squeal.git'
+exit=1
+--- note 2026-10-15T20:04:03Z: P1 is an empty commit; paths-ignore skipped it, no run in 11 min (runs list shows only 74e37f00). Later commits each touch probe-touch/.
+P2=257ce57f242e14909044ed514432843aeae34555
+--- T2: P2 pushed to src, green push run, then fast-forward target (range includes P1, which has no check)
+=== 2026-10-15T20:04:04Z git push origin 257ce57f242e14909044ed514432843aeae34555:refs/heads/probe/010-13-src 
+To https://github.com/hearsay-tools/squeal.git
+   c698121d..257ce57f  257ce57f242e14909044ed514432843aeae34555 -> probe/010-13-src
+exit=0
+=== 2026-10-15T20:05:30Z 257ce57f242e14909044ed514432843aeae34555 check completed
+=== 2026-10-15T20:05:30Z check runs of 257ce57f242e14909044ed514432843aeae34555
+probe-check status=completed conclusion=success app=github-actions started=2026-10-15T20:05:20Z completed=2026-10-15T20:05:24Z
+=== 2026-10-15T20:05:31Z git push origin 257ce57f242e14909044ed514432843aeae34555:refs/heads/probe/010-13-target 
+To https://github.com/hearsay-tools/squeal.git
+   74e37f00..257ce57f  257ce57f242e14909044ed514432843aeae34555 -> probe/010-13-target
+exit=0
+P3=78e8f0490ac367408b0aa0b0d50d81607dc9ef5d
+--- T3: P3 red push run, then push target
+=== 2026-10-15T20:05:41Z git push origin 78e8f0490ac367408b0aa0b0d50d81607dc9ef5d:refs/heads/probe/010-13-src 
+To https://github.com/hearsay-tools/squeal.git
+   257ce57f..78e8f049  78e8f0490ac367408b0aa0b0d50d81607dc9ef5d -> probe/010-13-src
+exit=0
+=== 2026-10-15T20:05:57Z 78e8f0490ac367408b0aa0b0d50d81607dc9ef5d check completed
+=== 2026-10-15T20:05:57Z check runs of 78e8f0490ac367408b0aa0b0d50d81607dc9ef5d
+probe-check status=completed conclusion=failure app=github-actions started=2026-10-15T20:05:47Z completed=2026-10-15T20:05:50Z
+=== 2026-10-15T20:05:59Z git push origin 78e8f0490ac367408b0aa0b0d50d81607dc9ef5d:refs/heads/probe/010-13-target 
+remote: error: GH013: Repository rule violations found for refs/heads/probe/010-13-target.        
+remote: Review all repository rules at https://github.com/hearsay-tools/squeal/rules?ref=refs%2Fheads%2Fprobe%2F010-13-target        
+remote: 
+remote: - Required status check "probe-check" is failing.        
+remote: 
+To https://github.com/hearsay-tools/squeal.git
+ ! [remote rejected]   78e8f0490ac367408b0aa0b0d50d81607dc9ef5d -> probe/010-13-target (push declined due to repository rule violations)
+error: failed to push some refs to 'https://github.com/hearsay-tools/squeal.git'
+exit=1
+P4=747e8e448cd5109e31a9153572c46df0e27a299d
+--- T4: P4 sleeps 180 s; push target while queued/in progress, then after it completes (range includes red P3)
+=== 2026-10-15T20:06:13Z git push origin 747e8e448cd5109e31a9153572c46df0e27a299d:refs/heads/probe/010-13-src 
+To https://github.com/hearsay-tools/squeal.git
+   78e8f049..747e8e44  747e8e448cd5109e31a9153572c46df0e27a299d -> probe/010-13-src
+exit=0
+=== 2026-10-15T20:06:22Z check runs of 747e8e448cd5109e31a9153572c46df0e27a299d
+probe-check status=queued conclusion=null app=github-actions started=2026-10-15T20:06:19Z completed=null
+=== 2026-10-15T20:06:23Z git push origin 747e8e448cd5109e31a9153572c46df0e27a299d:refs/heads/probe/010-13-target 
+remote: error: GH013: Repository rule violations found for refs/heads/probe/010-13-target.        
+remote: Review all repository rules at https://github.com/hearsay-tools/squeal/rules?ref=refs%2Fheads%2Fprobe%2F010-13-target        
+remote: 
+remote: - Required status check "probe-check" is in progress.        
+remote: 
+To https://github.com/hearsay-tools/squeal.git
+ ! [remote rejected]   747e8e448cd5109e31a9153572c46df0e27a299d -> probe/010-13-target (push declined due to repository rule violations)
+error: failed to push some refs to 'https://github.com/hearsay-tools/squeal.git'
+exit=1
+=== 2026-10-15T20:06:27Z check runs of 747e8e448cd5109e31a9153572c46df0e27a299d
+probe-check status=in_progress conclusion=null app=github-actions started=2026-10-15T20:06:22Z completed=null
+=== 2026-10-15T20:06:29Z git push origin 747e8e448cd5109e31a9153572c46df0e27a299d:refs/heads/probe/010-13-target 
+remote: error: GH013: Repository rule violations found for refs/heads/probe/010-13-target.        
+remote: Review all repository rules at https://github.com/hearsay-tools/squeal/rules?ref=refs%2Fheads%2Fprobe%2F010-13-target        
+remote: 
+remote: - Required status check "probe-check" is in progress.        
+remote: 
+To https://github.com/hearsay-tools/squeal.git
+ ! [remote rejected]   747e8e448cd5109e31a9153572c46df0e27a299d -> probe/010-13-target (push declined due to repository rule violations)
+error: failed to push some refs to 'https://github.com/hearsay-tools/squeal.git'
+exit=1
+=== 2026-10-15T20:09:28Z 747e8e448cd5109e31a9153572c46df0e27a299d check completed
+=== 2026-10-15T20:09:28Z check runs of 747e8e448cd5109e31a9153572c46df0e27a299d
+probe-check status=completed conclusion=success app=github-actions started=2026-10-15T20:06:22Z completed=2026-10-15T20:09:26Z
+=== 2026-10-15T20:09:28Z git push origin 747e8e448cd5109e31a9153572c46df0e27a299d:refs/heads/probe/010-13-target 
+To https://github.com/hearsay-tools/squeal.git
+   257ce57f..747e8e44  747e8e448cd5109e31a9153572c46df0e27a299d -> probe/010-13-target
+exit=0
+P5=e3e52d3848a7da1d46687e79d6904197594cfe0a
+--- T5: P5 pushed with [skip ci] (no push run), push target; then workflow_dispatch on src at P5, push target
+=== 2026-10-15T20:09:40Z git push origin e3e52d3848a7da1d46687e79d6904197594cfe0a:refs/heads/probe/010-13-src 
+To https://github.com/hearsay-tools/squeal.git
+   747e8e44..e3e52d38  e3e52d3848a7da1d46687e79d6904197594cfe0a -> probe/010-13-src
+exit=0
+=== 2026-10-15T20:09:41Z git push origin e3e52d3848a7da1d46687e79d6904197594cfe0a:refs/heads/probe/010-13-target 
+remote: error: GH013: Repository rule violations found for refs/heads/probe/010-13-target.        
+remote: Review all repository rules at https://github.com/hearsay-tools/squeal/rules?ref=refs%2Fheads%2Fprobe%2F010-13-target        
+remote: 
+remote: - Required status check "probe-check" is expected.        
+remote: 
+To https://github.com/hearsay-tools/squeal.git
+ ! [remote rejected]   e3e52d3848a7da1d46687e79d6904197594cfe0a -> probe/010-13-target (push declined due to repository rule violations)
+error: failed to push some refs to 'https://github.com/hearsay-tools/squeal.git'
+exit=1
+=== 2026-10-15T20:09:49Z runs for P5 before dispatch:
+0
+=== 2026-10-15T20:09:49Z gh workflow run probe-010-13.yml --ref probe/010-13-src -f mode=pass
+https://github.com/hearsay-tools/squeal/actions/runs/38799718721
+exit=0
+=== 2026-10-15T20:10:18Z e3e52d3848a7da1d46687e79d6904197594cfe0a check completed
+=== 2026-10-15T20:10:18Z check runs of e3e52d3848a7da1d46687e79d6904197594cfe0a
+probe-check status=completed conclusion=success app=github-actions started=2026-10-15T20:10:10Z completed=2026-10-15T20:10:13Z
+{"conclusion":"success","event":"workflow_dispatch","headSha":"e3e52d3848a7da1d46687e79d6904197594cfe0a"}
+=== 2026-10-15T20:10:20Z git push origin e3e52d3848a7da1d46687e79d6904197594cfe0a:refs/heads/probe/010-13-target 
+remote: error: GH013: Repository rule violations found for refs/heads/probe/010-13-target.        
+remote: Review all repository rules at https://github.com/hearsay-tools/squeal/rules?ref=refs%2Fheads%2Fprobe%2F010-13-target        
+remote: 
+remote: - Required status check "probe-check" is expected.        
+remote: 
+To https://github.com/hearsay-tools/squeal.git
+ ! [remote rejected]   e3e52d3848a7da1d46687e79d6904197594cfe0a -> probe/010-13-target (push declined due to repository rule violations)
+error: failed to push some refs to 'https://github.com/hearsay-tools/squeal.git'
+exit=1
+--- T5 retry, 50+ s after the dispatch check completed
+=== 2026-10-15T20:10:29Z git push origin e3e52d3848a7da1d46687e79d6904197594cfe0a:refs/heads/probe/010-13-target 
+remote: error: GH013: Repository rule violations found for refs/heads/probe/010-13-target.        
+remote: Review all repository rules at https://github.com/hearsay-tools/squeal/rules?ref=refs%2Fheads%2Fprobe%2F010-13-target        
+remote: 
+remote: - Required status check "probe-check" is expected.        
+remote: 
+To https://github.com/hearsay-tools/squeal.git
+ ! [remote rejected]   e3e52d3848a7da1d46687e79d6904197594cfe0a -> probe/010-13-target (push declined due to repository rule violations)
+error: failed to push some refs to 'https://github.com/hearsay-tools/squeal.git'
+exit=1
+P6=c4aca1675ea919186e4a586fbee15c7e477282c1
+--- T6: P6 job skipped by its if; push target (range includes P5, dispatch-only)
+=== 2026-10-15T20:10:37Z git push origin c4aca1675ea919186e4a586fbee15c7e477282c1:refs/heads/probe/010-13-src 
+To https://github.com/hearsay-tools/squeal.git
+   e3e52d38..c4aca167  c4aca1675ea919186e4a586fbee15c7e477282c1 -> probe/010-13-src
+exit=0
+=== 2026-10-15T20:10:51Z c4aca1675ea919186e4a586fbee15c7e477282c1 check completed
+=== 2026-10-15T20:10:51Z check runs of c4aca1675ea919186e4a586fbee15c7e477282c1
+probe-check status=completed conclusion=skipped app=github-actions started=2026-10-15T20:10:48Z completed=2026-10-15T20:10:42Z
+=== 2026-10-15T20:10:51Z git push origin c4aca1675ea919186e4a586fbee15c7e477282c1:refs/heads/probe/010-13-target 
+To https://github.com/hearsay-tools/squeal.git
+   747e8e44..c4aca167  c4aca1675ea919186e4a586fbee15c7e477282c1 -> probe/010-13-target
+exit=0
+P7=88c2196188fc1594b4b8cd377feb799797990a2a
+--- T7: P7 changes only probe-docs/, workflow skipped by paths-ignore; push target after 90 s
+=== 2026-10-15T20:11:02Z git push origin 88c2196188fc1594b4b8cd377feb799797990a2a:refs/heads/probe/010-13-src 
+To https://github.com/hearsay-tools/squeal.git
+   c4aca167..88c21961  88c2196188fc1594b4b8cd377feb799797990a2a -> probe/010-13-src
+exit=0
+=== 2026-10-15T20:12:34Z runs for P7: 0
+=== 2026-10-15T20:12:35Z check runs of 88c2196188fc1594b4b8cd377feb799797990a2a
+=== 2026-10-15T20:12:35Z git push origin 88c2196188fc1594b4b8cd377feb799797990a2a:refs/heads/probe/010-13-target 
+remote: error: GH013: Repository rule violations found for refs/heads/probe/010-13-target.        
+remote: Review all repository rules at https://github.com/hearsay-tools/squeal/rules?ref=refs%2Fheads%2Fprobe%2F010-13-target        
+remote: 
+remote: - Required status check "probe-check" is expected.        
+remote: 
+To https://github.com/hearsay-tools/squeal.git
+ ! [remote rejected]   88c2196188fc1594b4b8cd377feb799797990a2a -> probe/010-13-target (push declined due to repository rule violations)
+error: failed to push some refs to 'https://github.com/hearsay-tools/squeal.git'
+exit=1
+P8=50d499016f2060345f2f0e40adbcc909f43df463
+--- T8: P8 runs under workflow name 'Probe 010-13 renamed', same job name; push target (range includes P7)
+=== 2026-10-15T20:12:46Z git push origin 50d499016f2060345f2f0e40adbcc909f43df463:refs/heads/probe/010-13-src 
+To https://github.com/hearsay-tools/squeal.git
+   88c21961..50d49901  50d499016f2060345f2f0e40adbcc909f43df463 -> probe/010-13-src
+exit=0
+=== 2026-10-15T20:12:59Z 50d499016f2060345f2f0e40adbcc909f43df463 check completed
+=== 2026-10-15T20:12:59Z check runs of 50d499016f2060345f2f0e40adbcc909f43df463
+probe-check status=completed conclusion=success app=github-actions started=2026-10-15T20:12:53Z completed=2026-10-15T20:12:56Z
+run 38800111350 name=Probe 010-13 renamed event=push
+=== 2026-10-15T20:13:00Z git push origin 50d499016f2060345f2f0e40adbcc909f43df463:refs/heads/probe/010-13-target 
+To https://github.com/hearsay-tools/squeal.git
+   c4aca167..50d49901  50d499016f2060345f2f0e40adbcc909f43df463 -> probe/010-13-target
+exit=0
+P9=ccf2f6b060be3dcf85e1e0ef1106d0a928549b04
+--- T9: required context named with the workflow, 'Probe 010-13 renamed / probe-check', then 'probe-check' pinned to integration_id 15368 (GitHub Actions)
+=== 2026-10-15T20:13:15Z ruleset 25193915 rules: {"strict_required_status_checks_policy":false,"do_not_enforce_on_create":false,"required_status_checks":[{"context":"Probe 010-13 renamed / probe-check"}]}
+=== 2026-10-15T20:13:15Z git push origin ccf2f6b060be3dcf85e1e0ef1106d0a928549b04:refs/heads/probe/010-13-src 
+To https://github.com/hearsay-tools/squeal.git
+   50d49901..ccf2f6b0  ccf2f6b060be3dcf85e1e0ef1106d0a928549b04 -> probe/010-13-src
+exit=0
+=== 2026-10-15T20:13:29Z ccf2f6b060be3dcf85e1e0ef1106d0a928549b04 check completed
+=== 2026-10-15T20:13:29Z check runs of ccf2f6b060be3dcf85e1e0ef1106d0a928549b04
+probe-check status=completed conclusion=success app=github-actions started=2026-10-15T20:13:22Z completed=2026-10-15T20:13:26Z
+=== 2026-10-15T20:13:30Z git push origin ccf2f6b060be3dcf85e1e0ef1106d0a928549b04:refs/heads/probe/010-13-target 
+remote: error: GH013: Repository rule violations found for refs/heads/probe/010-13-target.        
+remote: Review all repository rules at https://github.com/hearsay-tools/squeal/rules?ref=refs%2Fheads%2Fprobe%2F010-13-target        
+remote: 
+remote: - Required status check "Probe 010-13 renamed / probe-check" is expected.        
+remote: 
+To https://github.com/hearsay-tools/squeal.git
+ ! [remote rejected]   ccf2f6b060be3dcf85e1e0ef1106d0a928549b04 -> probe/010-13-target (push declined due to repository rule violations)
+error: failed to push some refs to 'https://github.com/hearsay-tools/squeal.git'
+exit=1
+=== 2026-10-15T20:13:31Z ruleset 25193915 rules: {"strict_required_status_checks_policy":false,"do_not_enforce_on_create":false,"required_status_checks":[{"context":"probe-check","integration_id":15368}]}
+=== 2026-10-15T20:13:32Z git push origin ccf2f6b060be3dcf85e1e0ef1106d0a928549b04:refs/heads/probe/010-13-target 
+To https://github.com/hearsay-tools/squeal.git
+   50d49901..ccf2f6b0  ccf2f6b060be3dcf85e1e0ef1106d0a928549b04 -> probe/010-13-target
+exit=0
+P10=66f28060a9e48e42d193470cbe1e2df0f8e30eb7
+S1=84bb9e7217a89c2dd9f9a553fc092d0fb0b50b80
+--- T10: strict on (Actions-pinned); fast-forward P10, then force-push S1 (green on probe/010-13-side, not containing target); then strict off and force-push S1 again
+=== 2026-10-15T20:13:45Z git push origin 66f28060a9e48e42d193470cbe1e2df0f8e30eb7:refs/heads/probe/010-13-src 
+To https://github.com/hearsay-tools/squeal.git
+   ccf2f6b0..66f28060  66f28060a9e48e42d193470cbe1e2df0f8e30eb7 -> probe/010-13-src
+exit=0
+=== 2026-10-15T20:13:46Z git push origin 84bb9e7217a89c2dd9f9a553fc092d0fb0b50b80:refs/heads/probe/010-13-side 
+remote: 
+remote: Create a pull request for 'probe/010-13-side' on GitHub by visiting:        
+remote:      https://github.com/hearsay-tools/squeal/pull/new/probe/010-13-side        
+remote: 
+To https://github.com/hearsay-tools/squeal.git
+ * [new branch]        84bb9e7217a89c2dd9f9a553fc092d0fb0b50b80 -> probe/010-13-side
+exit=0
+=== 2026-10-15T20:14:00Z 66f28060a9e48e42d193470cbe1e2df0f8e30eb7 check completed
+=== 2026-10-15T20:14:00Z 84bb9e7217a89c2dd9f9a553fc092d0fb0b50b80 check completed
+=== 2026-10-15T20:14:00Z check runs of 66f28060a9e48e42d193470cbe1e2df0f8e30eb7
+probe-check status=completed conclusion=success app=github-actions started=2026-10-15T20:13:54Z completed=2026-10-15T20:13:57Z
+=== 2026-10-15T20:14:01Z check runs of 84bb9e7217a89c2dd9f9a553fc092d0fb0b50b80
+probe-check status=completed conclusion=success app=github-actions started=2026-10-15T20:13:53Z completed=2026-10-15T20:13:57Z
+=== 2026-10-15T20:14:01Z ruleset 25193915 rules: {"strict_required_status_checks_policy":true,"do_not_enforce_on_create":false,"required_status_checks":[{"context":"probe-check","integration_id":15368}]}
+=== 2026-10-15T20:14:02Z git push origin 66f28060a9e48e42d193470cbe1e2df0f8e30eb7:refs/heads/probe/010-13-target 
+To https://github.com/hearsay-tools/squeal.git
+   ccf2f6b0..66f28060  66f28060a9e48e42d193470cbe1e2df0f8e30eb7 -> probe/010-13-target
+exit=0
+=== 2026-10-15T20:14:04Z git push origin 84bb9e7217a89c2dd9f9a553fc092d0fb0b50b80:refs/heads/probe/010-13-target --force
+To https://github.com/hearsay-tools/squeal.git
+ + 66f28060...84bb9e72 84bb9e7217a89c2dd9f9a553fc092d0fb0b50b80 -> probe/010-13-target (forced update)
+exit=0
+=== 2026-10-15T20:14:05Z ruleset 25193915 rules: {"strict_required_status_checks_policy":false,"do_not_enforce_on_create":false,"required_status_checks":[{"context":"probe-check","integration_id":15368}]}
+=== 2026-10-15T20:14:06Z git push origin 84bb9e7217a89c2dd9f9a553fc092d0fb0b50b80:refs/heads/probe/010-13-target --force
+Everything up-to-date
+exit=0
+--- cleanup
+=== 2026-10-15T21:09:04Z gh api -X DELETE repos/hearsay-tools/squeal/rulesets/25193915
+exit=0
+=== 2026-10-15T21:09:05Z git push origin --delete probe/010-13-src probe/010-13-target probe/010-13-side
+To https://github.com/hearsay-tools/squeal.git
+ - [deleted]           probe/010-13-side
+ - [deleted]           probe/010-13-src
+ - [deleted]           probe/010-13-target
+exit=0
+=== 2026-10-15T21:09:07Z gh api repos/hearsay-tools/squeal/rulesets
+[{"id":25176438,"name":"Protect main","target":"branch","source_type":"Repository","source":"hearsay-tools/squeal","enforcement":"active","node_id":"RRS_lACqUmVwb3NpdG9yec5SPFNLzgGAKXY","_links":{"self":{"href":"https://api.github.com/repos/hearsay-tools/squeal/rulesets/25176438"},"html":{"href":"https://github.com/hearsay-tools/squeal/rules/25176438"}},"created_at":"2026-10-15T18:59:09.117+02:00","updated_at":"2026-10-15T18:59:09.142+02:00"}]
+=== 2026-10-15T21:09:07Z git ls-remote origin 'refs/heads/probe/*'
+exit=0 (no lines: no probe branches)
+=== 2026-10-15T21:09:07Z gh api repos/hearsay-tools/squeal/rulesets/25176438 --jq '{name,enforcement,updated_at,rules:[.rules[].type],bypass_actors}'
+{"bypass_actors":[],"enforcement":"active","name":"Protect main","rules":["deletion","non_fast_forward"],"updated_at":"2026-10-15T18:59:09.142+02:00"}
