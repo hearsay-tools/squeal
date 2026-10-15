@@ -36,20 +36,27 @@ describe("environmentState (spec 007 D2)", () => {
     });
   });
 
-  // Task 007-39, lessons.md defect 9: "chosen from the lockfile present", and "create `.venv`" without one.
-  const looked = "looked at services/app/.venv, services/app/.pdm-python";
+  /*
+   * Task 007-39, lessons.md defect 9: "chosen from the lockfile present", and
+   * "create `.venv`" without one. Task 007-44 (open question 1): every case
+   * says what is lost now and what installing buys.
+   */
+  const lost =
+    'pytest project "app": no Python environment (looked at services/app/.venv, services/app/.pdm-python), so Squeal runs none of its tests and inherits none of their results.';
+  const buys =
+    "Squeal then inherits the results other worktrees recorded for the same code and environment, and runs the rest.";
   it.each([
     [
       "uv.lock",
       { "services/app/uv.lock": "" },
       "uv sync",
-      `${looked}); run \`uv sync\` in services/app to create one.`,
+      `Run \`uv sync\` in services/app to create one`,
     ],
     [
       "poetry.lock",
       { "services/app/poetry.lock": "", "services/app/requirements.txt": "" },
       "poetry install",
-      `${looked}); run \`poetry install\` in services/app to create one.`,
+      `Run \`poetry install\` in services/app to create one`,
     ],
     [
       "requirements files",
@@ -59,23 +66,26 @@ describe("environmentState (spec 007 D2)", () => {
         "services/app/notes.txt": "",
       },
       "python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt -r requirements.txt",
-      `${looked}); run \`python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt -r requirements.txt\` in services/app to create one.`,
+      `Run \`python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt -r requirements.txt\` in services/app to create one`,
     ],
     [
       "no lockfile",
       { "services/app/pyproject.toml": "" },
       "python -m venv .venv",
-      `${looked}); no lockfile or requirements file names an install, so create \`.venv\` in services/app with the project's own install (\`python -m venv .venv\`, then its documented \`pip install\` into \`.venv/bin/pip\`).`,
+      `No lockfile or requirements file names an install, so create \`.venv\` in services/app with the project's own install (\`python -m venv .venv\`, then its documented \`pip install\` into \`.venv/bin/pip\`)`,
     ],
-  ])("is none with the command from %s and where Squeal looked", (_, files, command, text) => {
-    const root = tempDir();
-    write(root, files);
-    expect(environmentState(root, project({ cwd: "services/app" }))).toEqual({
-      state: "none",
-      command,
-      note: `pytest project "app": no Python environment (${text} Its checks stay unknown until then.`,
-    });
-  });
+  ])(
+    "is none with the command from %s, what is lost and what installing buys",
+    (_, files, command, text) => {
+      const root = tempDir();
+      write(root, files);
+      expect(environmentState(root, project({ cwd: "services/app" }))).toEqual({
+        state: "none",
+        command,
+        note: `${lost} ${text}: ${buys}`,
+      });
+    },
+  );
 
   it("names the declared environment, not .venv, without a lockfile", () => {
     const root = tempDir();

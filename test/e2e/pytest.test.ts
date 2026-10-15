@@ -67,9 +67,9 @@ const COMPUTED_NOTE =
  */
 const OBSERVED_GROWTH = [RESOURCES_TEST, "python/small/tests/unit/test_core.py"];
 const OBSERVED_GROWTH_CHECKS = 6 + 1 + 2;
-/** D2's note for a project without an environment, naming the command that creates one. */
+/** D2's note for a project without an environment: the command that creates one and what it buys (007-44). */
 const noEnvironment = (project: string) =>
-  `pytest project "${project}": no Python environment (looked at ${project}/.venv, ${project}/.pdm-python); run \`uv sync\` in ${project} to create one. Its checks stay unknown until then.`;
+  `pytest project "${project}": no Python environment (looked at ${project}/.venv, ${project}/.pdm-python), so Squeal runs none of its tests and inherits none of their results. Run \`uv sync\` in ${project} to create one: Squeal then inherits the results other worktrees recorded for the same code and environment, and runs the rest.`;
 /** A third session, for the worktree that starts without an environment. */
 const THIRD_SESSION = "6f2a9c4e-81d3-4b7a-a0e5-3c9d2b7f1e48";
 
