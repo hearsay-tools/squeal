@@ -14,6 +14,7 @@ import {
   openContext,
 } from "./context.js";
 import { findHarnessProcess } from "./harness-process.js";
+import type { SessionRoots } from "./session-root.js";
 
 export interface HookDeps {
   /** Environment of the hook process: `CLAUDE_CODE_*` variables decide whether the waiter runs. */
@@ -56,6 +57,13 @@ export interface HookDeps {
    * with the daemon's (task 001-130, defect 26). Default `squealVersion()`.
    */
   readonly squealVersion?: string;
+  /**
+   * Where each session's root is kept between its hook processes, so every
+   * hook of a session uses the root its SessionStart resolved (task
+   * 001-405). The Claude Code and Codex bundles keep it in the runtime dir
+   * (`sessionRootFiles`); without one, each hook locates its own `cwd`.
+   */
+  readonly sessionRoots?: SessionRoots;
 }
 
 /** Every synchronous hook in hooks.json has `timeout: 2`; Claude Code kills it after this. */
