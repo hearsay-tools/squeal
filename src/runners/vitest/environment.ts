@@ -22,7 +22,9 @@ export interface EnvironmentContext {
  *
  * Spec 001 D3: "the resolved Vitest config, the contents of the config file
  * and its `configFileDependencies`, the closure of every `setupFiles` and
- * `globalSetup` entry". The adapter lists the files; the core hashes them.
+ * `globalSetup` entry". The adapter lists the files, and every resolution
+ * candidate of a missing import of those closures, as a test file's closure
+ * does (task 001-424); the core hashes them, a missing one as absent.
  */
 export function projectEnvironment(
   project: TestProject,
@@ -31,7 +33,13 @@ export function projectEnvironment(
 ): RunnerEnvironment {
   const { paths } = context;
   const files = new Set<RelativePath>();
-  for (const file of [...inputs.configFiles, ...inputs.setup.files, ...inputs.globalSetup.files]) {
+  const inputFiles = [
+    ...inputs.configFiles,
+    ...inputs.setup.files,
+    ...inputs.globalSetup.files,
+    ...inputs.missing,
+  ];
+  for (const file of inputFiles) {
     const rel = paths.toRelative(file);
     if (rel !== null && paths.isProjectFile(file)) files.add(rel);
   }
