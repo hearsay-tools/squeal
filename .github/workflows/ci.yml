@@ -1,25 +1,40 @@
 name: CI
 
+# Spec 010 D1, D2: CI runs where the process reads it, main and candidates, pull requests and on
+# request (`gh workflow run ci.yml --ref <branch>`). A branch filter also stops tag runs. A change
+# only under docs/ starts no run; the probes stay in, since `test/cli/codex-hash.test.ts` reads one.
 on:
   push:
+    branches: [main, "cand/**"]
+    paths: ["**", "!docs/**", "docs/**/probes/**"]
   pull_request:
+    paths: ["**", "!docs/**", "docs/**/probes/**"]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+# Spec 010 D3: a newer push cancels a superseded run of the same candidate or pull request. A main
+# run is never cancelled and never waits: its group is its own, so the version job checks every
+# main push's range and each landing keeps its result.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.run_id || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
-  check:
-    name: Node ${{ matrix.node }}
+  node22:
+    # Spec 010 D4, D5: the full suite on the engines floor, in three shards, each read on its own.
+    name: Node 22 (${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        node: [22, 24]
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 22
           cache: npm
       - run: npm ci
       # Spec 007: the pytest fixtures sync uv environments on both Pythons; on CI an absent
@@ -29,23 +44,46 @@ jobs:
           version: "0.12.2"
       - name: Pythons for the pytest fixtures
         run: uv python install 3.10 3.13
+      - name: Test
+        run: npx vitest run --shard=${{ matrix.shard }}/3
+      - name: Build
+        if: matrix.shard == 1
+        run: npm run build
+      - name: Bundles match the build
+        if: matrix.shard == 1
+        # The plugin ships the committed bundles; a build that differs here, on this Node, is stale.
+        run: git diff --exit-code -- plugins/claude-code/dist plugins/pi/dist plugins/opencode/dist
+
+  node24:
+    # Spec 010 D4, D5: lint and typecheck once per run, and on Node 24 only the test files whose
+    # result can depend on the Node version. None of them needs uv or Python.
+    name: Node 24 (lint, typecheck, version-sensitive)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
       - name: Lint and format
         run: npx biome check .
       - name: Typecheck
         run: npx tsc --noEmit
-      - name: Test
-        run: npx vitest run
+      - name: Test the version-sensitive files
+        # Each entry is a path substring Vitest filters on; `test/version-sensitive.test.ts` keeps it whole.
+        run: npx vitest run $(grep -Ev '^[[:space:]]*(#|$)' test/version-sensitive.txt)
       - name: Build
         run: npm run build
       - name: Bundles match the build
-        # The plugin ships the committed bundles; a build that differs here, on this Node, is stale.
         run: git diff --exit-code -- plugins/claude-code/dist plugins/pi/dist plugins/opencode/dist
 
   version:
     # 001-76: Claude Code updates an installed plugin only when its manifest's version changes,
     # so a change to the shipped bundles must raise package.json's version, which the build copies.
+    # Not on workflow_dispatch, whose event has no `before`.
     name: Bundle changes bump the version
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
