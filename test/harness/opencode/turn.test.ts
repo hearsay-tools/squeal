@@ -296,7 +296,7 @@ describe("wait", () => {
     }, 150);
     const { text } = await wait({ kind: "wait", ...about(r) }, waitDeps());
     expect(text).toContain("PASS -> FAIL");
-    expect(text).toContain(" 0 pending,");
+    expect(text).toContain("no check pending, stale or unknown.");
     expect(text).not.toContain("Squeal saw your edit");
   });
 
