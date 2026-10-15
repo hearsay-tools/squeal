@@ -8062,7 +8062,7 @@ var init_install = __esm({
 
 // src/core/capacity/marks.ts
 import { createHash as createHash14 } from "node:crypto";
-import { readdirSync as readdirSync10, readFileSync as readFileSync16, renameSync as renameSync4, rmSync as rmSync7, statSync as statSync4, writeFileSync as writeFileSync4 } from "node:fs";
+import { readdirSync as readdirSync10, readFileSync as readFileSync17, renameSync as renameSync4, rmSync as rmSync7, statSync as statSync4, writeFileSync as writeFileSync4 } from "node:fs";
 import { join as join32 } from "node:path";
 function markPath(dir2, worktreeId) {
   const name2 = createHash14("sha256").update(worktreeId).digest("hex").slice(0, 16);
@@ -8100,7 +8100,7 @@ function readMarks(dir2, worktreeId, now) {
     try {
       const stat7 = statSync4(path, { throwIfNoEntry: false });
       if (stat7 === void 0 || now - stat7.mtimeMs >= SLOT_WAITER_FRESH_MS) continue;
-      const mark = parseMark(readFileSync16(path, "utf8"));
+      const mark = parseMark(readFileSync17(path, "utf8"));
       if (mark !== null && mark.id !== worktreeId) marks.push(mark);
     } catch {
     }
@@ -15940,7 +15940,7 @@ var init_inputs = __esm({
 });
 
 // src/runners/observe/read.ts
-import { readdirSync as readdirSync11, readFileSync as readFileSync17, rmSync as rmSync8 } from "node:fs";
+import { readdirSync as readdirSync11, readFileSync as readFileSync18, rmSync as rmSync8 } from "node:fs";
 import { join as join47 } from "node:path";
 function takeRecorded(dir2) {
   const recorded2 = /* @__PURE__ */ new Map();
@@ -15954,7 +15954,7 @@ function takeRecorded(dir2) {
     const file = join47(dir2, name2);
     let text2;
     try {
-      text2 = readFileSync17(file, "utf8");
+      text2 = readFileSync18(file, "utf8");
       rmSync8(file, { force: true });
     } catch {
       continue;
@@ -16157,14 +16157,21 @@ var init_runtime = __esm({
 });
 
 // src/runners/observe/signature.ts
-function recorderSignature(error, inNodeOptions) {
+function recorderSignature(error, use) {
+  if (use.files.length === 0) return void 0;
   const text2 = [error.message, error.stack ?? "", ...(error.causes ?? []).map((c) => c.message)].join("\n").concat(error.code === void 0 ? "" : `
 ${error.code}`);
-  return SIGNATURES.find((s) => (inNodeOptions || !s.inNodeOptions) && s.pattern.test(text2))?.text;
+  if (use.inNodeOptions && PACKAGE.test(text2) && PRELOAD.test(text2)) {
+    return "a --require preload makes Node parse the nearest package.json (ERR_INVALID_PACKAGE_CONFIG)";
+  }
+  if (use.inNodeOptions && OLD_NODE.test(text2)) return "Node before 18.18 rejects its --import";
+  const spellings = use.files.flatMap((file) => [file, use.relativize(file)]);
+  return spellings.some((s) => text2.includes(`Cannot find module '${s}'`)) ? "its file is missing" : void 0;
 }
-function withRecorderSignatures(report2, inNodeOptions) {
+function withRecorderSignatures(report2, use) {
+  if (use.files.length === 0) return report2;
   const signed = (errors) => errors.map((error) => {
-    const recorder = recorderSignature(error, inNodeOptions);
+    const recorder = recorderSignature(error, use);
     return recorder === void 0 ? error : { ...error, recorder };
   });
   return {
@@ -16175,30 +16182,13 @@ function withRecorderSignatures(report2, inNodeOptions) {
     fileErrors: report2.fileErrors.map((f) => ({ ...f, errors: signed(f.errors) }))
   };
 }
-var SIGNATURES;
+var PACKAGE, PRELOAD, OLD_NODE;
 var init_signature = __esm({
   "src/runners/observe/signature.ts"() {
     "use strict";
-    SIGNATURES = [
-      {
-        // a `--require` preload, the recorder's beside a project's own, parses the nearest package.json
-        pattern: /ERR_INVALID_PACKAGE_CONFIG|Invalid package config /,
-        text: "a --require preload makes Node parse the nearest package.json (ERR_INVALID_PACKAGE_CONFIG)",
-        inNodeOptions: true
-      },
-      {
-        // Node 16 and 18 before 18.18 (probe, task 001-390)
-        pattern: /--import is not allowed in NODE_OPTIONS|bad option: --import\b/,
-        text: "Node before 18.18 rejects its --import",
-        inNodeOptions: true
-      },
-      {
-        // `Cannot find module '<plugin>/dist/observe/recorder.cjs'`, with `imported from …` under `--import`
-        pattern: /Cannot find module '[^'\n]*\/(?:observe|node-test|runtime)\/recorder\.cjs'/,
-        text: "its file is missing",
-        inNodeOptions: false
-      }
-    ];
+    PACKAGE = /ERR_INVALID_PACKAGE_CONFIG|Invalid package config /;
+    PRELOAD = /\bat trySelf \(node:[^\n]*(?:\n[ \t]+at (?!require \()[^\n]*)*?\n[ \t]+at (?:node:internal\/modules\/cjs\/loader:\d|loadPreloadModules \()/;
+    OLD_NODE = /--import is not allowed in NODE_OPTIONS|bad option: --import\b/;
   }
 });
 
@@ -16214,7 +16204,7 @@ var init_observe = __esm({
 });
 
 // src/runners/vitest/loads.ts
-import { readFileSync as readFileSync18 } from "node:fs";
+import { readFileSync as readFileSync19 } from "node:fs";
 function sourceLoads(source) {
   const requires = [];
   for (const pattern2 of [REQUIRE, RESOLVE_RELATIVE]) {
@@ -16230,7 +16220,7 @@ function moduleLoads(file, transform) {
   if (loads2 === void 0) {
     let source = null;
     try {
-      source = readFileSync18(file, "utf8");
+      source = readFileSync19(file, "utf8");
     } catch {
     }
     loads2 = source === null ? { requires: [], unnamed: true, environment: null } : sourceLoads(source);
@@ -17316,6 +17306,10 @@ var init_observe2 = __esm({
       get active() {
         return this.#out !== null;
       }
+      /** The recorder file the current instance's workers load: none while it does not record. */
+      get files() {
+        return this.#out !== null && this.#recorder ? [this.#recorder] : [];
+      }
       /** Policy `observe.runtimeInputs` moved since the instance started: it must be recreated. */
       stale() {
         return this.enabled() !== (this.active || this.#recorderMissing());
@@ -17914,7 +17908,7 @@ var init_run = __esm({
 });
 
 // src/runners/vitest/dynamic.ts
-import { readFileSync as readFileSync19 } from "node:fs";
+import { readFileSync as readFileSync20 } from "node:fs";
 function expandsFromDisk(file, transform) {
   let found2 = scanned2.get(transform);
   if (found2 === void 0) {
@@ -17926,7 +17920,7 @@ function expandsFromDisk(file, transform) {
 }
 function readSource(file) {
   try {
-    return readFileSync19(file, "utf8");
+    return readFileSync20(file, "utf8");
   } catch {
     return null;
   }
@@ -17941,7 +17935,7 @@ var init_dynamic = __esm({
 });
 
 // src/runners/vitest/stale.ts
-import { existsSync as existsSync18, readFileSync as readFileSync20 } from "node:fs";
+import { existsSync as existsSync18, readFileSync as readFileSync21 } from "node:fs";
 import { isBuiltin } from "node:module";
 import { basename as basename13, dirname as dirname23, join as join54 } from "node:path";
 async function invalidateStructural(vitest, paths, note) {
@@ -18065,7 +18059,7 @@ function packageEntries(manifest) {
 }
 function readManifest3(manifest) {
   try {
-    const fields = JSON.parse(readFileSync20(manifest, "utf8"));
+    const fields = JSON.parse(readFileSync21(manifest, "utf8"));
     return isRecord(fields) ? fields : null;
   } catch {
     return null;
@@ -18942,7 +18936,11 @@ var init_adapter = __esm({
                 buildReport(collector, execution, Math.round(performance.now() - started2)),
                 startup
               ),
-              this.#observer.active
+              {
+                files: this.#observer.files,
+                inNodeOptions: this.#observer.active,
+                relativize: (text2) => this.paths.relativizeText(text2)
+              }
             );
             const observed = this.#observer.take(built.completedFiles);
             const touched = heard.sort();
@@ -25740,7 +25738,7 @@ var init_parse = __esm({
 });
 
 // src/runners/node-test/graph/modules.ts
-import { readFileSync as readFileSync21 } from "node:fs";
+import { readFileSync as readFileSync22 } from "node:fs";
 import { dirname as dirname25, relative as relative9, sep as sep10 } from "node:path";
 function sameEdges(a, b) {
   return sameSet(a.deps, b.deps) && sameSet(a.reads, b.reads) && sameSet(a.candidates, b.candidates) && a.incomplete.join("\n") === b.incomplete.join("\n") && a.pairs.flat().join("\n") === b.pairs.flat().join("\n");
@@ -25802,7 +25800,7 @@ var init_modules = __esm({
           parsed = NO_PARSE;
           if (PARSED_EXTENSION.test(file)) {
             try {
-              parsed = parseModule(readFileSync21(file, "utf8"), relative9(this.root, file));
+              parsed = parseModule(readFileSync22(file, "utf8"), relative9(this.root, file));
             } catch {
             }
           }
@@ -26822,9 +26820,9 @@ var require_CachedInputFileSystem = __commonJS({
         const readFile9 = this._readFileBackend.provide;
         this.readFile = /** @type {FileSystem["readFile"]} */
         readFile9;
-        const readFileSync38 = this._readFileBackend.provideSync;
+        const readFileSync39 = this._readFileBackend.provideSync;
         this.readFileSync = /** @type {SyncFileSystem["readFileSync"]} */
-        readFileSync38;
+        readFileSync39;
         this._readJsonBackend = createBackend(
           duration2,
           // prettier-ignore
@@ -35922,7 +35920,7 @@ var init_report = __esm({
 });
 
 // src/runners/node-test/run/run.ts
-import { mkdirSync as mkdirSync10, readdirSync as readdirSync14, readFileSync as readFileSync22, writeFileSync as writeFileSync6 } from "node:fs";
+import { mkdirSync as mkdirSync10, readdirSync as readdirSync14, readFileSync as readFileSync23, writeFileSync as writeFileSync6 } from "node:fs";
 import { join as join61, relative as relative11, sep as sep14 } from "node:path";
 async function runNodeTest(options) {
   const started2 = performance.now();
@@ -36010,7 +36008,11 @@ async function runNodeTest(options) {
     )
   };
   const inNodeOptions = reads !== null || (env.NODE_OPTIONS ?? "").includes(runtime.recorder);
-  const report2 = withRecorderSignatures(built, inNodeOptions);
+  const report2 = withRecorderSignatures(built, {
+    files: reads === null ? [runtime.recorder] : [runtime.recorder, reads.recorder],
+    inNodeOptions,
+    relativize: (text2) => paths.relativizeText(text2)
+  });
   const observed = completed.flatMap((r) => {
     const files2 = graphs(options.logDir, r.index);
     const closure = observedClosure(r.testFile, r.absolute, files2, preloads, paths);
@@ -36050,14 +36052,14 @@ function describeExit(exit2, node) {
 }
 function readEvents(logDir, index) {
   try {
-    return parseEvents(readFileSync22(join61(logDir, `events-${index}.ndjson`), "utf8"));
+    return parseEvents(readFileSync23(join61(logDir, `events-${index}.ndjson`), "utf8"));
   } catch {
     return [];
   }
 }
 function graphs(logDir, index) {
   const prefix = `graph-${index}-`;
-  return readdirSync14(logDir).filter((name2) => name2.startsWith(prefix) && name2.endsWith(".ndjson")).map((name2) => readFileSync22(join61(logDir, name2), "utf8"));
+  return readdirSync14(logDir).filter((name2) => name2.startsWith(prefix) && name2.endsWith(".ndjson")).map((name2) => readFileSync23(join61(logDir, name2), "utf8"));
 }
 function writeRunLog2(logDir, log) {
   const files2 = log.runs.map((r) => ({
@@ -37294,7 +37296,7 @@ var init_dist = __esm({
 });
 
 // src/runners/pytest/environment/site.ts
-import { readdirSync as readdirSync15, readFileSync as readFileSync23 } from "node:fs";
+import { readdirSync as readdirSync15, readFileSync as readFileSync24 } from "node:fs";
 import { isAbsolute as isAbsolute12, join as join63, resolve as resolve12 } from "node:path";
 function parsePyvenvCfg(text2) {
   const pairs = {};
@@ -37333,7 +37335,7 @@ function listOptional(dir2) {
 }
 function readOptional(path) {
   try {
-    return readFileSync23(path, "utf8");
+    return readFileSync24(path, "utf8");
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
@@ -37545,7 +37547,7 @@ var init_config = __esm({
 });
 
 // src/runners/pytest/environment/discover.ts
-import { existsSync as existsSync20, readFileSync as readFileSync24, statSync as statSync10 } from "node:fs";
+import { existsSync as existsSync20, readFileSync as readFileSync25, statSync as statSync10 } from "node:fs";
 import { dirname as dirname29, isAbsolute as isAbsolute13, join as join65, resolve as resolve13 } from "node:path";
 function projectDir(root, project) {
   return project.cwd === void 0 ? root : toAbsolute(root, project.cwd);
@@ -37570,7 +37572,7 @@ function found(source, env, python) {
 function pdmPython(root, cwd) {
   let text2;
   try {
-    text2 = readFileSync24(join65(cwd, ".pdm-python"), "utf8").trim();
+    text2 = readFileSync25(join65(cwd, ".pdm-python"), "utf8").trim();
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
@@ -42585,7 +42587,7 @@ ${JSON.stringify(symbolNames, null, 2)}`);
 });
 
 // src/runners/pytest/graph/wasm.ts
-import { existsSync as existsSync24, readFileSync as readFileSync25 } from "node:fs";
+import { existsSync as existsSync24, readFileSync as readFileSync26 } from "node:fs";
 import { createRequire as createRequire3 } from "node:module";
 import { fileURLToPath as fileURLToPath11 } from "node:url";
 function loadWasm(module2 = new URL(import.meta.url)) {
@@ -42602,7 +42604,7 @@ function loadWasm(module2 = new URL(import.meta.url)) {
       `pytest graph: ${runtime === void 0 ? RUNTIME_WASM : GRAMMAR_WASM} not found beside ${module2.href} or in ${bundled.href}`
     );
   }
-  return { runtime: readFileSync25(runtime), grammar: readFileSync25(grammar) };
+  return { runtime: readFileSync26(runtime), grammar: readFileSync26(grammar) };
 }
 function installedRuntime(module2) {
   try {
@@ -42929,7 +42931,7 @@ var init_enumerate2 = __esm({
 });
 
 // src/runners/pytest/run/batches.ts
-import { readFileSync as readFileSync26, realpathSync as realpathSync14, writeFileSync as writeFileSync7 } from "node:fs";
+import { readFileSync as readFileSync27, realpathSync as realpathSync14, writeFileSync as writeFileSync7 } from "node:fs";
 import { join as join73 } from "node:path";
 function split(files2, size, alone) {
   const batches = [];
@@ -42982,7 +42984,7 @@ function realOr3(path) {
 }
 function readOr(path) {
   try {
-    return readFileSync26(path, "utf8");
+    return readFileSync27(path, "utf8");
   } catch {
     return "";
   }
@@ -43697,7 +43699,7 @@ var init_closures2 = __esm({
 });
 
 // src/runners/pytest/graph/modules.ts
-import { readFileSync as readFileSync27 } from "node:fs";
+import { readFileSync as readFileSync28 } from "node:fs";
 import { basename as basename18, dirname as dirname32, join as join78 } from "node:path";
 function sameNode(a, b) {
   if (a === null || b === null) return a === b;
@@ -43766,7 +43768,7 @@ var init_modules2 = __esm({
         if (parsed === void 0) {
           let source = null;
           try {
-            source = readFileSync27(path, "utf8");
+            source = readFileSync28(path, "utf8");
           } catch {
           }
           parsed = source === null ? null : parsePython(source);
@@ -47332,12 +47334,13 @@ async function inThread(identity, events) {
 init_low_priority();
 init_terminate();
 import { randomUUID as randomUUID3 } from "node:crypto";
-import { readdirSync as readdirSync8 } from "node:fs";
+import { readdirSync as readdirSync8, readFileSync as readFileSync13 } from "node:fs";
 import { readFile as readFile3 } from "node:fs/promises";
 import { setTimeout as sleep4 } from "node:timers/promises";
 var CHILD_VARIABLE = "SQUEAL_DAEMON_CHILD";
 var ROUNDS = 3;
 var CHUNK = 64;
+var ORPHANS_EVERY_MS = 1e3;
 var EscapedChildren = class {
   /** The daemon's mark with no lane: what a runner that is told no lane gives its processes. */
   env;
@@ -47350,6 +47353,9 @@ var EscapedChildren = class {
   #strangers;
   /** The marks of the daemon's children by `key`, each read once (`carriers`). */
   #childMarks = /* @__PURE__ */ new Map();
+  /** The daemon's `reapedFaults` at the last scan for orphans, and when it ran (`carriers`). */
+  #reaped = -1;
+  #orphansAt = 0;
   constructor(token = randomUUID3(), self = process.pid) {
     this.env = { [CHILD_VARIABLE]: token };
     this.#needle = `\0${CHILD_VARIABLE}=${token}`;
@@ -47401,10 +47407,18 @@ var EscapedChildren = class {
    * started since `since`, for `lowerWhile` (001 D11 Priority, task 001-393):
    * a Vitest fork worker, or a thread worker's child, from its start. Read
    * from `/proc/<daemon>/task/<tid>/children`, a few small reads where a scan of
-   * `/proc` reads every process, so it can run every 100 ms.
+   * `/proc` reads every process, so it can run every 100 ms. Also, after a
+   * child of the daemon exited, the lane's carriers in its group that its
+   * children left behind (`#orphans`, review 001-401 S1).
    */
   async carriers(lane, since) {
     if (process.platform !== "linux") return [];
+    const children = await this.#children(lane, since);
+    const known2 = new Set(children.map(key));
+    const orphans = await this.#orphans(lane, since);
+    return [...children, ...orphans.filter((entry4) => !known2.has(key(entry4)))];
+  }
+  async #children(lane, since) {
     const all = childrenOf(this.#self).flatMap((pid) => statOf(pid) ?? []);
     const now = new Set(all.map(key));
     for (const known2 of this.#childMarks.keys())
@@ -47420,6 +47434,30 @@ var EscapedChildren = class {
       })
     );
     return entries3.filter((_, i3) => marks[i3] === lane);
+  }
+  /**
+   * The members of the daemon's group carrying `lane`'s mark, started since
+   * `since`, that are no children of the daemon: a child that exited before a
+   * look found it leaves its children there. Scanned from `/proc` only when
+   * a child of the daemon was reaped since the last scan, which its children's
+   * page faults, added to the daemon's `cminflt`, tell, and at most once in
+   * `ORPHANS_EVERY_MS`. None when the daemon leads no group.
+   */
+  async #orphans(lane, since) {
+    const reaped = reapedFaults(this.#self);
+    if (reaped === this.#reaped || Date.now() - this.#orphansAt < ORPHANS_EVERY_MS) return [];
+    this.#reaped = reaped;
+    this.#orphansAt = Date.now();
+    const strangers = await this.#strangers.catch(() => null);
+    if (strangers === null) return [];
+    const entries3 = await snapshot2();
+    const foreign = lineOf(strangers, entries3);
+    const members = entries3.filter(
+      (e) => e.pgrp === this.#self && e.pid !== this.#self && e.ppid !== this.#self
+    );
+    const found2 = members.filter((e) => e.start >= since && !foreign.has(e.pid));
+    const marks = await Promise.all(found2.map(({ pid }) => this.#markOf(pid)));
+    return found2.filter((_, i3) => marks[i3] === lane);
   }
   /** `scope` `null` is the exit. */
   async #stop(scope2) {
@@ -47570,6 +47608,14 @@ async function snapshot2() {
     }
   }
   return entries3;
+}
+function reapedFaults(pid) {
+  try {
+    const stat7 = readFileSync13(`/proc/${pid}/stat`, "latin1");
+    return Number(stat7.slice(stat7.lastIndexOf(")") + 2).split(" ")[8] ?? -1);
+  } catch {
+    return -1;
+  }
 }
 function key({ pid, start: start2 }) {
   return `${pid}:${start2}`;
@@ -47857,11 +47903,11 @@ function lock(path) {
 init_fs();
 init_types();
 init_slots();
-import { readFileSync as readFileSync13, readlinkSync as readlinkSync2 } from "node:fs";
+import { readFileSync as readFileSync14, readlinkSync as readlinkSync2 } from "node:fs";
 function readProcStat(pid) {
   let text2;
   try {
-    text2 = readFileSync13(`/proc/${pid}/stat`, "utf8");
+    text2 = readFileSync14(`/proc/${pid}/stat`, "utf8");
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -48383,7 +48429,7 @@ import {
   mkdirSync as mkdirSync7,
   mkdtempSync,
   readdirSync as readdirSync9,
-  readFileSync as readFileSync14,
+  readFileSync as readFileSync15,
   renameSync as renameSync3,
   rmSync as rmSync6,
   unlinkSync,
@@ -48410,7 +48456,7 @@ function repositoryId(commonDir) {
   } finally {
     unlinkSync(draft);
   }
-  return readFileSync14(file, "utf8").trim();
+  return readFileSync15(file, "utf8").trim();
 }
 function prepareScratch(scratch, uid = currentUid()) {
   const leftovers = ownFallbacks(scratch, uid);
@@ -48687,7 +48733,7 @@ init_policy2();
 // src/core/daemon/user-config.ts
 init_fs();
 init_config_file();
-import { readFileSync as readFileSync15, realpathSync as realpathSync4 } from "node:fs";
+import { readFileSync as readFileSync16, realpathSync as realpathSync4 } from "node:fs";
 import { availableParallelism as availableParallelism3, homedir } from "node:os";
 import { dirname as dirname11, isAbsolute as isAbsolute8, join as join28, resolve as resolve5 } from "node:path";
 function userConfigPath(env = process.env) {
@@ -48739,7 +48785,7 @@ function gitDirIs(worktree, commonDir) {
 function coreWorktree(commonDir) {
   let text2;
   try {
-    text2 = readFileSync15(join28(commonDir, "config"), "utf8");
+    text2 = readFileSync16(join28(commonDir, "config"), "utf8");
   } catch {
     return null;
   }
@@ -49379,14 +49425,14 @@ function lockWait(options) {
 // src/cli/init.ts
 init_fs();
 init_types();
-import { existsSync as existsSync31, mkdirSync as mkdirSync13, readFileSync as readFileSync32, rmSync as rmSync12, writeFileSync as writeFileSync13 } from "node:fs";
+import { existsSync as existsSync31, mkdirSync as mkdirSync13, readFileSync as readFileSync33, rmSync as rmSync12, writeFileSync as writeFileSync13 } from "node:fs";
 import { join as join90 } from "node:path";
 
 // src/cli/setup/apply.ts
 init_policy2();
 init_fs();
 init_glob();
-import { readFileSync as readFileSync31, writeFileSync as writeFileSync12 } from "node:fs";
+import { readFileSync as readFileSync32, writeFileSync as writeFileSync12 } from "node:fs";
 import { isAbsolute as isAbsolute14, join as join89, normalize as normalize6 } from "node:path";
 
 // src/cli/setup/block.ts
@@ -49394,7 +49440,7 @@ init_fs();
 import {
   existsSync as existsSync29,
   lstatSync as lstatSync5,
-  readFileSync as readFileSync28,
+  readFileSync as readFileSync29,
   readlinkSync as readlinkSync3,
   realpathSync as realpathSync18,
   rmSync as rmSync11,
@@ -49542,7 +49588,7 @@ function realName(root, real2, fallback) {
 }
 function readOrNull(path) {
   try {
-    return readFileSync28(path, "utf8");
+    return readFileSync29(path, "utf8");
   } catch {
     return null;
   }
@@ -49607,7 +49653,7 @@ function removeBlocks(root, paths = ROOT_FILES) {
 }
 
 // src/cli/setup/gates.ts
-import { readFileSync as readFileSync29, writeFileSync as writeFileSync10 } from "node:fs";
+import { readFileSync as readFileSync30, writeFileSync as writeFileSync10 } from "node:fs";
 import { posix as posix9 } from "node:path";
 var GATE_WAIT_MS = 11e4;
 var BEGIN2 = /^<!-- squeal:begin v\d+/;
@@ -49655,7 +49701,7 @@ function scanGates(root, tracked, options) {
     const file = realName(root, real2, path);
     let text2;
     try {
-      text2 = readFileSync29(real2, "utf8");
+      text2 = readFileSync30(real2, "utf8");
     } catch {
       continue;
     }
@@ -49683,7 +49729,7 @@ function scanGates(root, tracked, options) {
 function squealLine(root, path) {
   let text2;
   try {
-    text2 = readFileSync29(resolved(root, path), "utf8");
+    text2 = readFileSync30(resolved(root, path), "utf8");
   } catch {
     return null;
   }
@@ -49834,7 +49880,7 @@ function rewordGates(root, tracked, ids, options) {
   for (const gate of chosen) byFile.set(gate.file, [...byFile.get(gate.file) ?? [], gate]);
   for (const [file, lines] of byFile) {
     const real2 = resolved(root, file);
-    const text2 = readFileSync29(real2, "utf8").split("\n");
+    const text2 = readFileSync30(real2, "utf8").split("\n");
     for (const gate of lines) text2[gate.line - 1] = gate.proposed;
     writeFileSync10(real2, text2.join("\n"));
   }
@@ -50099,7 +50145,7 @@ function globMatcher(globs2) {
 // src/cli/setup/pytest.ts
 init_policy2();
 init_fs();
-import { readFileSync as readFileSync30, writeFileSync as writeFileSync11 } from "node:fs";
+import { readFileSync as readFileSync31, writeFileSync as writeFileSync11 } from "node:fs";
 import { join as join86 } from "node:path";
 
 // src/cli/pytest-seed.ts
@@ -50232,7 +50278,7 @@ function writePytestSeed(root, plan) {
   let text2 = "";
   let config = {};
   try {
-    text2 = readFileSync30(path, "utf8");
+    text2 = readFileSync31(path, "utf8");
     const value = JSON.parse(text2);
     if (!isRecord(value)) return [];
     config = value;
@@ -50641,7 +50687,7 @@ function editConfig(root, choices) {
 }
 function readConfig(root) {
   try {
-    const value = JSON.parse(readFileSync31(join89(root, POLICY_FILE), "utf8"));
+    const value = JSON.parse(readFileSync32(join89(root, POLICY_FILE), "utf8"));
     return isRecord(value) ? value : null;
   } catch {
     return null;
@@ -50649,7 +50695,7 @@ function readConfig(root) {
 }
 function readOrEmpty(path) {
   try {
-    return readFileSync31(path, "utf8");
+    return readFileSync32(path, "utf8");
   } catch {
     return "";
   }
@@ -50835,7 +50881,7 @@ function initClaudeCode(io) {
 var SEEDED = "seeded nodeTest project";
 function lacksNodeTest(path) {
   try {
-    const value = JSON.parse(readFileSync32(path, "utf8"));
+    const value = JSON.parse(readFileSync33(path, "utf8"));
     return isRecord(value) && !("nodeTest" in value);
   } catch {
     return false;
@@ -50855,7 +50901,7 @@ function reason(error) {
 }
 function readSettings(path) {
   if (!existsSync31(path)) return { value: {}, text: null, indent: 2 };
-  const text2 = readFileSync32(path, "utf8");
+  const text2 = readFileSync33(path, "utf8");
   let value;
   try {
     value = JSON.parse(text2);
@@ -50870,7 +50916,7 @@ function readSettings(path) {
 init_fs();
 
 // src/harness/opencode/host.ts
-import { accessSync as accessSync2, constants as constants3, existsSync as existsSync32, readFileSync as readFileSync33, statSync as statSync18 } from "node:fs";
+import { accessSync as accessSync2, constants as constants3, existsSync as existsSync32, readFileSync as readFileSync34, statSync as statSync18 } from "node:fs";
 import { delimiter as delimiter4, dirname as dirname37, isAbsolute as isAbsolute15, join as join91 } from "node:path";
 var isFile3 = (path) => {
   try {
@@ -50879,7 +50925,7 @@ var isFile3 = (path) => {
     return false;
   }
 };
-var firstLine2 = (path) => readFileSync33(path, "utf8").split("\n")[0] ?? "";
+var firstLine2 = (path) => readFileSync34(path, "utf8").split("\n")[0] ?? "";
 function usesSquealAt(dir2) {
   try {
     if (dir2 === "") return false;
@@ -50905,7 +50951,7 @@ function usesSquealAt(dir2) {
 }
 
 // src/cli/pi/status.ts
-import { existsSync as existsSync33, readFileSync as readFileSync34 } from "node:fs";
+import { existsSync as existsSync33, readFileSync as readFileSync35 } from "node:fs";
 import { dirname as dirname38, join as join92 } from "node:path";
 init_fs();
 var INSTALL_SH_COMMAND = "curl -fsSL https://github.com/hearsay-tools/squeal/releases/latest/download/install.sh | sh";
@@ -50916,7 +50962,7 @@ function piInstallCommand(cli) {
   const root = dirname38(dirname38(dirname38(cli)));
   try {
     const manifest = join92(root, "package.json");
-    if (existsSync33(manifest) && JSON.parse(readFileSync34(manifest, "utf8")).name === "squeal-pi") {
+    if (existsSync33(manifest) && JSON.parse(readFileSync35(manifest, "utf8")).name === "squeal-pi") {
       return `pi install ${shellWord(root)}`;
     }
   } catch {
@@ -50964,7 +51010,7 @@ function opencodeStatusLine(cwd, env) {
 }
 
 // src/cli/remove.ts
-import { existsSync as existsSync34, lstatSync as lstatSync6, readdirSync as readdirSync19, readFileSync as readFileSync35, rmSync as rmSync13 } from "node:fs";
+import { existsSync as existsSync34, lstatSync as lstatSync6, readdirSync as readdirSync19, readFileSync as readFileSync36, rmSync as rmSync13 } from "node:fs";
 import { basename as basename21, dirname as dirname39, join as join93 } from "node:path";
 import { setTimeout as sleep6 } from "node:timers/promises";
 init_lock();
@@ -51099,7 +51145,7 @@ ${removed.map((line) => `  ${line}
 function pluginLine(root) {
   let settings = null;
   try {
-    settings = JSON.parse(readFileSync35(join93(root, ".claude", "settings.json"), "utf8"));
+    settings = JSON.parse(readFileSync36(join93(root, ".claude", "settings.json"), "utf8"));
   } catch {
   }
   const keys = (field, names3) => {
@@ -53044,7 +53090,7 @@ import {
   existsSync as existsSync35,
   mkdtempSync as mkdtempSync4,
   readdirSync as readdirSync20,
-  readFileSync as readFileSync37,
+  readFileSync as readFileSync38,
   rmSync as rmSync14
 } from "node:fs";
 import { tmpdir as tmpdir6 } from "node:os";
@@ -53052,7 +53098,7 @@ import { delimiter as delimiter5, join as join96 } from "node:path";
 
 // src/cli/update-packages.ts
 init_fs();
-import { readFileSync as readFileSync36 } from "node:fs";
+import { readFileSync as readFileSync37 } from "node:fs";
 import { join as join95, resolve as resolve21 } from "node:path";
 function packagesHome(harness, env) {
   return join95(env.XDG_DATA_HOME || join95(env.HOME ?? "", ".local", "share"), "squeal", harness);
@@ -53064,7 +53110,7 @@ function piPackage(env) {
   else if (agent.startsWith("~/")) agent = join95(home, agent.slice(2));
   let packages = [];
   try {
-    const file = JSON.parse(readFileSync36(join95(agent, "settings.json"), "utf8"));
+    const file = JSON.parse(readFileSync37(join95(agent, "settings.json"), "utf8"));
     if (isRecord(file)) packages = file.packages;
   } catch {
     return null;
@@ -53076,7 +53122,7 @@ function piPackage(env) {
     const dir2 = resolve21(agent, source);
     if (resolve21(dir2, "..") !== resolve21(packagesHome("pi", env))) continue;
     try {
-      const manifest = JSON.parse(readFileSync36(join95(dir2, "package.json"), "utf8"));
+      const manifest = JSON.parse(readFileSync37(join95(dir2, "package.json"), "utf8"));
       if (isRecord(manifest) && typeof manifest.version === "string")
         versions.push(manifest.version);
     } catch {
@@ -53092,7 +53138,7 @@ function openCodePackage(env) {
   const listed2 = ["opencode.json", "opencode.jsonc", "config.json"].some((name2) => {
     let text2;
     try {
-      text2 = readFileSync36(join95(config, name2), "utf8");
+      text2 = readFileSync37(join95(config, name2), "utf8");
     } catch {
       return false;
     }
@@ -53106,7 +53152,7 @@ function openCodePackage(env) {
   });
   if (!listed2) return null;
   try {
-    const manifest = JSON.parse(readFileSync36(join95(link, "package.json"), "utf8"));
+    const manifest = JSON.parse(readFileSync37(join95(link, "package.json"), "utf8"));
     return isRecord(manifest) && typeof manifest.version === "string" ? { version: manifest.version } : null;
   } catch {
     return null;
@@ -53240,7 +53286,7 @@ function run3(command, cwd, env, io) {
 var FORMAT = /^# squeal-launcher format (\d+)$/m;
 function launcherFormat(path) {
   try {
-    const match2 = FORMAT.exec(readFileSync37(path, "utf8"));
+    const match2 = FORMAT.exec(readFileSync38(path, "utf8"));
     return match2 === null ? null : Number(match2[1]);
   } catch {
     return null;
@@ -53268,7 +53314,7 @@ function pluginDirs(env) {
   const config = env.CLAUDE_CONFIG_DIR ?? join96(home, ".claude");
   try {
     const file = JSON.parse(
-      readFileSync37(join96(config, "plugins", "installed_plugins.json"), "utf8")
+      readFileSync38(join96(config, "plugins", "installed_plugins.json"), "utf8")
     );
     const entries3 = isRecord(file) && isRecord(file.plugins) ? file.plugins[PLUGIN_ID] : null;
     for (const entry4 of Array.isArray(entries3) ? entries3 : []) {
