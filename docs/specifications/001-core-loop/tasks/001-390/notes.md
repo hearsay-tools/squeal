@@ -89,3 +89,72 @@ Replace "The recorder is delivered as `--import` of a `file:` URL, `--require` k
 | 24.21.0 | 22.8 / 25.9 ms | 31.2 / 35.6 ms | 32.1 / 37.3 ms |
 
 The recorder's own cost, over none, is about 12 ms on 22.23.3 as `--require` and 21 ms as `--import`, so `--import` adds about 10 ms per spawned Node there. On 24.21.0, `--import` costs about 1 ms more than `--require`. That is per spawned child, which is small beside the 0.97 / 1.50 ratios of `tasks/001-132/notes.md`. A test that spawns hundreds of Node children on 22 pays about 1 s per hundred.
+
+## Review 001-401
+
+Repair worker notes, 2026-10-15. Findings: `reviews/wave-13bt.md` (at `6bedb6f3`), candidate `bc1f4bfc` (0.1.189). B1, B2, B3, N1 and S1. Node 24.21.0 and 22.23.3 (the nvm installs on this host). Probes ran in this task's temp directory with `env -i` and a temp `HOME`; none touched the real HOME, another checkout or cezar.
+
+### B1: the recorder's form at every spawn (`spawn.cjs`)
+
+- `injected` tokenizes the child's `NODE_OPTIONS` as Node does and takes this recorder's own preload out of it, either form, by path or `file:` URL (`withoutSelf`). It then puts the recorder back first, as `--require` when the rest of `NODE_OPTIONS` or the child's own options hold a `--require`, else as `--import`. So an inherited `--import` turns into `--require` for a child that has its own `--require`, and an inherited `--require` turns back into `--import` for a grandchild that has none. The recorder appears once. A `NODE_OPTIONS` Node would reject keeps the old behaviour: a `--require` put first unless the recorder is already there.
+- Worker: the options are `execArgv`, or the parent thread's `process.execArgv` when it has none, which Node passes on. A `SHARE_ENV` Worker's env is its parent's own, so it is left alone. When its options hold a `--require`, the recorder's `--require` goes ahead of them in its `execArgv`. Node evaluates the `.cjs` once, beside the shared env's `--import`, and `globalThis.__squealObserve` guards the install too.
+- Not covered: a test that adds a `--require` to its own `process.env.NODE_OPTIONS` at run time, then starts a `SHARE_ENV` Worker. That preload, from the shared env, runs before the execArgv recorder. Changing the shared env would change what the test sees.
+- Tests: `test/runners/observe/spawn-preload.test.ts`. They cover the default env, `{...process.env}`, `execFileSync`, a grandchild in both directions, and Workers with default, `{}` and `SHARE_ENV` env, each spawning a child with its own `--require`. They assert the preload reads, the form, and one recorder per `NODE_OPTIONS`. All 5 were red at `bc1f4bfc`. With the `SHARE_ENV` branch disabled, the Worker test fails on `pre-s.txt`.
+
+### B2: only a `--require` Node would run (`preloads.cjs`, new)
+
+- `spawnRequires(file, args)` returns true only for Node itself, a program running a Node it names (`env node`, `npx node`), or a shell (`sh`, `bash`, `dash`, `zsh`, `ksh`, `mksh`, `ash`) given a command with `-c` (`-lc` too). For a Node it reads the option region: everything before its entry, its `--`, or its first other word. The values of Node's valued options (`node --help` on 24.21.0, plus `-p`, `-pe`, `--loader`) are skipped. Probe: `node -e code -r x` runs the preload; `node -e code a -r x` passes `-r` to the program; `-rX` and `-r=X` are rejected by Node.
+- `shellCommands` splits a POSIX command the way the shell passes its words on. It removes single quotes, double quotes and backslashes, drops redirections (`2>&1`, `>out`), and splits on `;`, `&`, `|`, newlines and parentheses.
+- **Policy where a command cannot be read for certain:** a `-r` or `--require` that could be Node's counts, because a `--require` recorder loses no reads. Such a command has an expansion (`node $FLAGS a.js -r x`, `$NODE -r x`), a long option `node --help` does not list followed by a word, a here-document, an unterminated quote, or `cmd.exe`. For a here-document or an unterminated quote the old loose match applies to the whole text. `rm -r`, a `-r` after the entry, and `npx mocha -r` never count. A plain `node "$DIR/a.js"` does not count either.
+- Tests: `test/runners/observe/preloads.test.ts` (parsing) and the last two of `spawn-preload.test.ts`. The shell test covers unquoted, single-quoted and double-quoted `-r` and `--require`, `--require=` after `cd . && X=1`, and `execSync`. The plain-child test covers `' -r '`, `-r ./x.cjs` after the entry, `-e code arg --require`, and `rm -rf … && node child -r x` beside a `package.json` that is not JSON: each exits 0 with no stderr. The existing `delivery.test.ts` cases still pass: `node -r`, `--require=`, `execSync -r`, and Worker `execArgv`.
+- `preloads.cjs` ships with the recorder. `copyObserveRuntime` copies every `.cjs`. `test/daemon/helpers.ts` (`OBSERVE_FILES`) and the Codex plugin test's list now name it.
+
+### B3: the note only from the recorder files the run used (`signature.ts`)
+
+- `withRecorderSignatures(report, use)` and `recorderSignature(error, use)` take a `RecorderUse`: `files`, the recorder files the run gave its processes; `inNodeOptions`; and `relativize`, the runner's own `relativizeText`. With no files there is no note.
+  - Vitest: `VitestObserver.files` is the recorder while the instance records, none otherwise.
+  - node:test: the module recorder `runtime.recorder` (always in argv), plus the warm-up's `NodeTestReads.recorder`.
+- Missing file: `Cannot find module '<file>'` for one of those files, absolute or as the runner relativized it, which covers a recorder inside the worktree (Squeal's own). A project's `src/observe/recorder.cjs` no longer matches, and neither does an installed recorder of another path. The `--import` form names the path too: probe, `Cannot find module '/…/recorder.cjs' imported from /cwd/` on both Nodes.
+- `ERR_INVALID_PACKAGE_CONFIG` counts only with a stack that shows Node loading a preload. That stack has a `trySelf` frame, below it no `require (` frame, and then Node's preload loop: an unnamed `node:internal/modules/cjs/loader` frame on 24, and that frame plus `loadPreloadModules` on 22 (probe). A module's own load (`Object..js`) or its own `require` of a bare name beneath the bad file (`require (node:internal/modules/helpers`) does not count, and neither does a bare `code`.
+- Old Node's refusal of `--import`: unchanged, while a recorder was in `NODE_OPTIONS`.
+- Tests:
+  - `test/runners/observe/signature.test.ts`, rewritten. It covers Node 22 and 24 preload stacks, project load and require stacks, a lookalike path, a relativized recorder, and no recorder.
+  - `test/runners/vitest/observe-signature.test.ts`, new. A real project's missing `src/observe/recorder.cjs`, and a module beneath a `package.json` that is not JSON, both fail with no note, observing and not. Both cases were red against the `bc1f4bfc` signature code.
+  - `observe-fidelity.test.ts` is unchanged and green: a project's own `--require` beside the bad file is still named while observing, and unnamed without.
+- The fingerprint and the 300-character summary are untouched (`fingerprint.ts` unchanged; the summary test still passes).
+
+### N1 and S1: Priority
+
+- N1: `lowerWhile`'s doc now says each look starts `EVERY_MS` after the last one ended, with no deadline. The review's probe measured intervals of 140 ms with a 40 ms look. Wording below.
+- S1, fixed. `carriers` adds `#orphans`. When a child of the daemon was reaped since the last scan, it scans `/proc` at most once a second for the members of the daemon's group that carry the lane's mark, started since the run began, are no children of the daemon, and are not the group's strangers. A reaped child shows as growth in the daemon's `cminflt`, field 10 of `/proc/<daemon>/stat`: the page faults of the children it has reaped.
+  - Probe: `cminflt` grew 0 while idle, 109 after `spawnSync` of a shell, and 87 after an async `/bin/true`.
+  - Cost: one more `stat` read per look, 16 µs. A daemon that leads no group never scans.
+  - Worst case: a thread worker that keeps spawning short children causes one full scan a second. That costs about 18 to 23 ms CPU per scan (001-393's measure), the old poll's cost, and only while such children exit.
+- S1 test: the third case of `test/daemon/low-priority.test.ts`. A detached Node leads its own group and stands in for the daemon. Its shell leaves `sleep 30` behind and exits. Two sleepers, the second 1.1 s later, both reach nice 10 within 3 s. Two mutations make it fail: with `#orphans` off, and with the `cminflt` trigger replaced by a single scan, the result is `expected +0 to be 10`. Like the other two cases, it holds trivially under a daemon that already runs at nice 10.
+
+### Proposed D11 wording, for the coordinator
+
+Fidelity. Replace "It stays a `--require` where a `--require` is already present: in the inherited `NODE_OPTIONS`, in a spawned child's own arguments or shell command, or in a Worker's `execArgv`." with:
+
+> It is chosen at every spawn, also where the child inherits it already, and appears once. It is a `--require` where the process runs a `--require` anyway: one in its `NODE_OPTIONS`, in Node's options among its own arguments (before its entry, its `--` or its first other word), in those of a Node a shell's `-c` command starts, read as the shell passes its words on, or in a Worker's `execArgv`, or its parent's when it has none. A `SHARE_ENV` Worker gets that `--require` in its `execArgv`, and its shared env stays as it was. Where a command cannot be read for certain (an expansion, a here-document, an unterminated quote, an option Node does not list), a `-r` or `--require` that could be Node's counts, since a `--require` loses no reads. A program's own `-r` does not count (task 001-390, review 001-401).
+
+Replace "A failure whose text carries a signature of the recorder says, at the end of its summary, that it ran under Squeal's recorder, and what the signature points at: `ERR_INVALID_PACKAGE_CONFIG`, and an old Node's `--import is not allowed in NODE_OPTIONS` or `bad option: --import`, while the recorder was in the run's `NODE_OPTIONS`; a missing recorder file, always." with:
+
+> A failure whose text carries a signature of a recorder the run used says, at the end of its summary, that it ran under Squeal's recorder, and what the signature points at. The signatures are three. While a recorder was in the run's `NODE_OPTIONS`: `ERR_INVALID_PACKAGE_CONFIG` raised as Node loaded a `--require` preload, which its stack shows, and an old Node's `--import is not allowed in NODE_OPTIONS` or `bad option: --import`. And `Cannot find module` naming a recorder file the run gave its processes, as the runner wrote that path. Squeal cannot tell which `--require` made Node parse the file. The note says only that a `--require` preload did, under its recorder. A run that used no recorder gets no note, and a project's own module load gets none.
+
+Priority. Replace its third sentence with:
+
+> A Vitest fork worker, a child of the daemon carrying its lane's mark, is looked for among the daemon's children (`/proc/<daemon>/task/*/children`) and lowered with what it has started by then (task 001-393). Each look starts 100 ms after the last one ended, so a worker runs at normal priority for that polling interval plus the look's own time and the event loop's delay, with no hard deadline. A look costs about 0.5 ms CPU with 8 marked children, about 5 ms CPU a second per active lane. After a child of the daemon exits, a look also scans `/proc` for the lane's marked processes in the daemon's group whose parent left before a look found them, at most once a second, and lowers them too (review 001-401 S1).
+
+### Type changes
+
+- `RecorderUse` (new, `src/runners/observe/signature.ts`, exported). `recorderSignature` and `withRecorderSignatures` take it in place of the `inNodeOptions` boolean. Not additive, but internal: their only callers are the two runners, and the type is in no spec interface.
+- `VitestObserver.files` (new getter). `NodeTestReads.recorder` is now public and read-only.
+- `CheckError.recorder`: unchanged.
+
+### For whoever continues
+
+- Rebuild all four bundles. `dist/observe/` gains `preloads.cjs`. Key format 10 is re-pinned in place (`8e84e7c7…`). Neither the version nor `dist` was changed here.
+- `src/core/daemon/escaped.ts` is now 459 lines (407 before), past the ~300-line signal. A split candidate is the `/proc` reading (`snapshot`, `reapedFaults`, `strangersOf`, `lineOf`, `descendantsOf`).
+- The node:test module recorder is unchanged (always `--require`), as the review asked.
+- `VALUED` in `preloads.cjs` is `node --help` on 24.21.0. An option added later, followed by a word, falls under the policy for commands that cannot be read for certain.
