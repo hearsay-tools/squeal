@@ -32,10 +32,10 @@ function gitDirOf(root) {
   return dotGit(root)?.gitDir ?? null;
 }
 function resolveCommonDir(root) {
-  const entry2 = dotGit(root);
-  if (entry2 === null) return null;
-  if (!entry2.isFile) return realpathSync(entry2.gitDir);
-  const { gitDir } = entry2;
+  const entry3 = dotGit(root);
+  if (entry3 === null) return null;
+  if (!entry3.isFile) return realpathSync(entry3.gitDir);
+  const { gitDir } = entry3;
   if (lstatOrNull(gitDir) === null) return null;
   const commondirFile = join(gitDir, "commondir");
   if (lstatOrNull(commondirFile) === null) return realpathSync(gitDir);
@@ -393,38 +393,38 @@ var REQUIRED = /* @__PURE__ */ new Set(["name", "include"]);
 function nodeTestProjects(value, path) {
   return projectEntries(value, path, FIELDS, REQUIRED, withDefaults);
 }
-function withDefaults(entry2) {
-  return { ...entry2, argv: entry2.argv ?? [], env: entry2.env ?? {} };
+function withDefaults(entry3) {
+  return { ...entry3, argv: entry3.argv ?? [], env: entry3.env ?? {} };
 }
 function projectEntries(value, path, fields, required, withDefaults3, check) {
   if (!Array.isArray(value)) return "an array of projects";
   const kept = [];
   const problems = [];
-  value.forEach((entry2, index) => {
+  value.forEach((entry3, index) => {
     const at2 = `${path}[${index}]`;
-    const problem = entryProblem(entry2, at2, kept, fields, required, check);
-    if (problem === null) kept.push(withDefaults3(entry2));
+    const problem = entryProblem(entry3, at2, kept, fields, required, check);
+    if (problem === null) kept.push(withDefaults3(entry3));
     else problems.push(problem);
   });
   return { kept, problems };
 }
-function entryProblem(entry2, at2, kept, fields, required, check) {
-  if (!isRecord(entry2))
-    return `"${at2}" must be an object, got ${JSON.stringify(entry2)}; it is skipped`;
-  const named2 = nonEmptyString(entry2.name) === null ? entry2.name : null;
+function entryProblem(entry3, at2, kept, fields, required, check) {
+  if (!isRecord(entry3))
+    return `"${at2}" must be an object, got ${JSON.stringify(entry3)}; it is skipped`;
+  const named2 = nonEmptyString(entry3.name) === null ? entry3.name : null;
   const skipped = named2 === null ? "it is skipped" : `project ${JSON.stringify(named2)} is skipped`;
-  for (const key of Object.keys(entry2)) {
+  for (const key of Object.keys(entry3)) {
     if (!Object.hasOwn(fields, key)) return `unknown key "${at2}.${key}"; ${skipped}`;
   }
   for (const [key, field] of Object.entries(fields)) {
-    const given = entry2[key];
+    const given = entry3[key];
     if (given === void 0 && !required.has(key)) continue;
     const expected = field(given);
     if (expected === null) continue;
     const why = typeof expected === "object" ? expected.problem : `must be ${expected}, got ${given === void 0 ? "undefined" : JSON.stringify(given)}`;
     return `"${at2}.${key}" ${why}; ${skipped}`;
   }
-  const across = check?.(entry2) ?? null;
+  const across = check?.(entry3) ?? null;
   if (across !== null) return `"${at2}.${across.key}" ${across.problem}; ${skipped}`;
   if (kept.some((project) => project.name === named2)) {
     return `"${at2}.name" repeats ${JSON.stringify(named2)} of an earlier project; it is skipped`;
@@ -448,13 +448,13 @@ var REQUIRED2 = /* @__PURE__ */ new Set(["name", "include"]);
 function pytestProjects(value, path) {
   return projectEntries(value, path, FIELDS2, REQUIRED2, withDefaults2, pythonInsideRoot);
 }
-function withDefaults2(entry2) {
-  return { ...entry2, args: entry2.args ?? [], env: entry2.env ?? {} };
+function withDefaults2(entry3) {
+  return { ...entry3, args: entry3.args ?? [], env: entry3.env ?? {} };
 }
-var pythonInsideRoot = (entry2) => {
-  const python = entry2.python;
+var pythonInsideRoot = (entry3) => {
+  const python = entry3.python;
   if (python === void 0 || isAbsolute3(python)) return null;
-  const path = posix2.join(entry2.cwd ?? ".", python.replaceAll("\\", "/"));
+  const path = posix2.join(entry3.cwd ?? ".", python.replaceAll("\\", "/"));
   if (insideRoot(path) === null) return null;
   return {
     key: "python",
@@ -583,12 +583,12 @@ function cap(text, max) {
 }
 function excludedProjectsText(entries) {
   const quoted = (list, join14) => {
-    const all = list.map((entry2) => JSON.stringify(entry2));
+    const all = list.map((entry3) => JSON.stringify(entry3));
     const last = all.pop();
     return all.length === 0 ? last : `${all.join(", ")} ${join14} ${last}`;
   };
-  const names = entries.filter((entry2) => !entry2.includes("*"));
-  const patterns = entries.filter((entry2) => entry2.includes("*"));
+  const names = entries.filter((entry3) => !entry3.includes("*"));
+  const patterns = entries.filter((entry3) => entry3.includes("*"));
   const parts = [
     ...names.length === 0 ? [] : [`${names.length === 1 ? "project" : "projects"} ${quoted(names, "and")}`],
     ...patterns.length === 0 ? [] : [`projects matching ${quoted(patterns, "or")}`]
@@ -673,7 +673,7 @@ function readFlakyNotes(store) {
     const value = JSON.parse(raw);
     if (typeof value !== "object" || value === null || Array.isArray(value)) return /* @__PURE__ */ new Map();
     return new Map(
-      Object.entries(value).filter((entry2) => isNote(entry2[1]))
+      Object.entries(value).filter((entry3) => isNote(entry3[1]))
     );
   } catch {
     return /* @__PURE__ */ new Map();
@@ -810,7 +810,7 @@ function readSlowArtifacts(store, worktreeId) {
     if (typeof value !== "object" || value === null || Array.isArray(value)) return /* @__PURE__ */ new Map();
     return new Map(
       Object.entries(value).filter(
-        (entry2) => Array.isArray(entry2[1]) && entry2[1].every((glob) => typeof glob === "string")
+        (entry3) => Array.isArray(entry3[1]) && entry3[1].every((glob) => typeof glob === "string")
       )
     );
   } catch {
@@ -828,7 +828,7 @@ function readFailureKeys(store, worktreeId) {
     if (typeof value !== "object" || value === null || Array.isArray(value)) return /* @__PURE__ */ new Map();
     return new Map(
       Object.entries(value).filter(
-        (entry2) => typeof entry2[1] === "string"
+        (entry3) => typeof entry3[1] === "string"
       )
     );
   } catch {
@@ -1267,6 +1267,146 @@ function otherSessionVersions(store, consumer) {
 
 // src/core/delivery/delivery.ts
 import { setTimeout as sleep } from "node:timers/promises";
+
+// src/core/retry/load.ts
+import { availableParallelism, loadavg } from "node:os";
+function hostLoad() {
+  return {
+    oneMinute: process.platform === "win32" ? null : loadavg()[0] ?? null,
+    cpus: availableParallelism()
+  };
+}
+var RUN_LOADS_META_KEY = "failed-run-loads";
+function readRunLoads(store) {
+  const raw = store.meta.get(RUN_LOADS_META_KEY);
+  if (raw === null) return /* @__PURE__ */ new Map();
+  try {
+    const value = JSON.parse(raw);
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return /* @__PURE__ */ new Map();
+    return new Map(
+      Object.entries(value).filter((e) => typeof e[1] === "number")
+    );
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+
+// src/core/retry/records.ts
+var RETRIES_META_KEY = "retries";
+var RETRY_REASONS = ["load", "environment"];
+function readRetries(store) {
+  const raw = store.meta.get(RETRIES_META_KEY);
+  if (raw === null) return [];
+  try {
+    const value = JSON.parse(raw);
+    return Array.isArray(value) ? value.filter(isRecord2) : [];
+  } catch {
+    return [];
+  }
+}
+function retriesAt(records, testFile, key) {
+  const id = testFileId(testFile);
+  return records.filter((r) => r.key === key && testFileId(r.testFile) === id);
+}
+function isRecord2(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value;
+  const ref = v.testFile;
+  return typeof v.id === "string" && typeof ref === "object" && ref !== null && typeof ref.project === "string" && typeof ref.path === "string" && typeof v.key === "string" && typeof v.session === "string" && RETRY_REASONS.includes(v.reason) && typeof v.askedAt === "number" && typeof v.askedIn === "string" && (v.claim === null || typeof v.claim === "object") && (v.end === null || typeof v.end === "object");
+}
+
+// src/core/retry/pending.ts
+function pendingRetriesOf(store, keys, load = hostLoad) {
+  const current = new Map(keys.map((k) => [testFileId(k.testFile), k.key]));
+  const byFile = /* @__PURE__ */ new Map();
+  for (const r of readRetries(store)) {
+    const id = testFileId(r.testFile);
+    if (r.end !== null || current.get(id) !== r.key) continue;
+    byFile.set(id, [...byFile.get(id) ?? [], r]);
+  }
+  if (byFile.size === 0) return {};
+  const retries = [...byFile.values()].map(entry2);
+  const { oneMinute, cpus } = load();
+  return { pendingRetries: { retries, loadAverage: oneMinute, cpus } };
+}
+function entry2(records) {
+  const first = records[0];
+  const testFile = first.testFile;
+  return {
+    testFile,
+    reason: records.some((r) => r.reason === "environment") ? "environment" : "load",
+    askedAt: first.askedAt,
+    claimedBy: records.find((r) => r.claim !== null)?.claim?.worktreeId ?? null,
+    requests: records.length
+  };
+}
+
+// src/core/retry/recorded.ts
+function retryFactOf(records) {
+  const newest = records.at(-1);
+  if (newest === void 0) return void 0;
+  return { reason: newest.reason, outcome: newest.end?.outcome ?? "pending" };
+}
+function passedRetry(store, testFile, key, runId) {
+  return retryFactOf(
+    retriesAt(readRetries(store), testFile, key).filter(
+      (r) => r.end?.outcome === "passed" && r.end.runId === runId
+    )
+  );
+}
+function withRecorded(store, worktreeId, failures) {
+  if (failures.length === 0) return [];
+  const keys = new Map(
+    store.testFileKeys.list(worktreeId).map((k) => [testFileId(k.testFile), k.key])
+  );
+  const rows = /* @__PURE__ */ new Map();
+  const retries = readRetries(store);
+  const loads = readRunLoads(store);
+  return failures.map((failure2) => {
+    if (failure2.check.kind === "setup") return failure2;
+    const testFile = testFileOf(failure2.check);
+    const key = keys.get(testFileId(testFile));
+    if (key === void 0 || key === null) return failure2;
+    if (!rows.has(key)) rows.set(key, store.results.byKey(key));
+    const identity = checkIdentity(failure2.check);
+    const row = rows.get(key)?.find((r) => checkIdentity(r.check) === identity);
+    if (row === void 0) return failure2;
+    const { provenance } = row;
+    const retry = retryFactOf(retriesAt(retries, testFile, key));
+    const recorded = {
+      worktreeId: provenance.worktreeId,
+      worktreeRoot: store.worktrees.get(provenance.worktreeId)?.root ?? null,
+      revision: provenance.revision,
+      loadPerCpu: loads.get(provenance.runId) ?? null,
+      ...retry === void 0 ? {} : { retry }
+    };
+    return { ...failure2, recorded };
+  });
+}
+
+// src/core/retry/text.ts
+function outcomeText(outcome) {
+  switch (outcome) {
+    case "passed":
+      return "it passed";
+    case "failed":
+      return "it failed again";
+    case "unknown":
+      return "its run gave no result";
+    case "cancelled":
+      return "it was withdrawn";
+  }
+}
+function retryText(fact) {
+  const asked = `retry asked (${fact.reason}) at these inputs`;
+  return fact.outcome === "pending" ? `${asked}, pending` : `${asked}: ${outcomeText(fact.outcome)}`;
+}
+function recordedText(facts, here) {
+  const where = facts.worktreeId === here ? "this worktree" : facts.worktreeRoot ?? `worktree ${facts.worktreeId}`;
+  const load = facts.loadPerCpu === null ? "load per CPU then not recorded" : `load ${facts.loadPerCpu.toFixed(2)} per CPU when it ran`;
+  const retry = facts.retry === void 0 ? "no retry asked at these inputs" : retryText(facts.retry);
+  return `recorded in ${where} at revision ${facts.revision}, ${load}; ${retry}`;
+}
 
 // src/core/store/connection.ts
 var Connection = class {
@@ -2959,19 +3099,19 @@ function changedAfter(store, worktreeId, r, revision) {
 // src/core/delivery/attribution.ts
 var TIMED_OUT = /timed out in \d+ms/;
 var LOAD_RESULTS_READ = 50;
-function loadOf(store, worktreeId, entry2) {
-  if (entry2.summary === null || !TIMED_OUT.test(entry2.summary)) return void 0;
-  const from = entry2.origin.kind === "inherited" ? entry2.origin.worktreeId : worktreeId;
-  const result = store.results.listForCheck(entry2.check, LOAD_RESULTS_READ).find((r) => r.outcome === "fail" && r.provenance.worktreeId === from);
+function loadOf(store, worktreeId, entry3) {
+  if (entry3.summary === null || !TIMED_OUT.test(entry3.summary)) return void 0;
+  const from = entry3.origin.kind === "inherited" ? entry3.origin.worktreeId : worktreeId;
+  const result = store.results.listForCheck(entry3.check, LOAD_RESULTS_READ).find((r) => r.outcome === "fail" && r.provenance.worktreeId === from);
   return result?.errors.find((e) => e.loadAverage !== void 0)?.loadAverage;
 }
-function slowRunArtifact(worktreeId, slow, failureKeys, artifactOf, entry2) {
-  const { origin } = entry2;
+function slowRunArtifact(worktreeId, slow, failureKeys, artifactOf, entry3) {
+  const { origin } = entry3;
   const from = origin.kind === "inherited" ? origin.worktreeId : worktreeId;
-  const key = failureKeys.get(checkIdentity(entry2.check));
+  const key = failureKeys.get(checkIdentity(entry3.check));
   const recorded = key === void 0 ? void 0 : artifactOf(from, key);
   if (recorded !== void 0) return recorded;
-  const { project, testPath } = entry2.check;
+  const { project, testPath } = entry3.check;
   return slow?.isSlow({ project, path: testPath }) === true ? null : void 0;
 }
 function recordedArtifacts2(store) {
@@ -2994,17 +3134,17 @@ function attribute(store, consumer, entries, revision) {
   const slow = worktreeSlowView(store, consumer.worktreeId);
   const failureKeys = readFailureKeys(store, consumer.worktreeId);
   const artifactOf = recordedArtifacts2(store);
-  return entries.map((entry2) => {
-    if (entry2.kind === "fail-retired" || entry2.to !== "fail") return entry2;
-    const { project, testPath } = entry2.check;
-    const load = loadOf(store, consumer.worktreeId, entry2);
+  return entries.map((entry3) => {
+    if (entry3.kind === "fail-retired" || entry3.to !== "fail") return entry3;
+    const { project, testPath } = entry3.check;
+    const load = loadOf(store, consumer.worktreeId, entry3);
     const loaded = load === void 0 ? {} : { loadAverage: load };
-    const slowArtifact = slowRunArtifact(consumer.worktreeId, slow, failureKeys, artifactOf, entry2);
-    if (slowArtifact !== void 0) return { ...entry2, slowArtifact, ...loaded };
+    const slowArtifact = slowRunArtifact(consumer.worktreeId, slow, failureKeys, artifactOf, entry3);
+    if (slowArtifact !== void 0) return { ...entry3, slowArtifact, ...loaded };
     const closure = changed === null ? void 0 : closureOf({ project, path: testPath });
     const touched = changed === null || closure === void 0 || closure.some((p) => changed.unknown.has(p)) ? void 0 : closure.filter((p) => changed.changed.has(p));
     const told = touched?.length === 0 && !sure ? void 0 : touched;
-    return { ...entry2, ...told === void 0 ? {} : { changesInClosure: told }, ...loaded };
+    return { ...entry3, ...told === void 0 ? {} : { changesInClosure: told }, ...loaded };
   });
 }
 function dependenciesInstalled(store, worktreeId) {
@@ -3035,11 +3175,20 @@ function withFlaky(store, worktreeId, entries) {
   const keys = new Map(
     store.testFileKeys.list(worktreeId).map((r) => [testFileId(r.testFile), r.key])
   );
-  return entries.map((entry2) => {
-    if (entry2.kind === "fail-retired") return entry2;
-    const note = notes.get(checkIdentity(entry2.check));
-    const key = keys.get(testFileId(testFileOf(entry2.check)));
-    return note === void 0 || note.key !== key ? entry2 : { ...entry2, flaky: note };
+  const rows = /* @__PURE__ */ new Map();
+  const runOf = (check, key) => {
+    if (!rows.has(key)) rows.set(key, store.results.byKey(key));
+    const identity = checkIdentity(check);
+    return rows.get(key)?.find((r) => checkIdentity(r.check) === identity)?.provenance.runId;
+  };
+  return entries.map((entry3) => {
+    if (entry3.kind === "fail-retired") return entry3;
+    const note = notes.get(checkIdentity(entry3.check));
+    const key = keys.get(testFileId(testFileOf(entry3.check)));
+    if (note === void 0 || note.key !== key) return entry3;
+    const runId = entry3.kind === "fail-to-pass" && key !== null ? runOf(entry3.check, key) : void 0;
+    const retry = runId !== void 0 && key !== null ? passedRetry(store, testFileOf(entry3.check), key, runId) : void 0;
+    return { ...entry3, flaky: note, ...retry === void 0 ? {} : { retry } };
   });
 }
 function withDependencies(store, worktreeId, header, failing) {
@@ -3134,7 +3283,7 @@ function planDelta(input) {
       observedAt: input.revision
     });
   }
-  const sorted = entries.map((entry2, i) => ({ entry: entry2, i })).sort((a, b) => rank(a.entry) - rank(b.entry) || a.i - b.i).map(({ entry: entry2 }) => entry2);
+  const sorted = entries.map((entry3, i) => ({ entry: entry3, i })).sort((a, b) => rank(a.entry) - rank(b.entry) || a.i - b.i).map(({ entry: entry3 }) => entry3);
   return { entries: sorted, writes, removals: [...told.values()].map((v) => v.check) };
 }
 
@@ -3153,9 +3302,9 @@ function readRekeyed(store, worktreeId) {
     return entries;
   }
   if (!isRecord(value)) return entries;
-  for (const [id, entry2] of Object.entries(value)) {
-    if (!Array.isArray(entry2) || !isRevision(entry2[1])) continue;
-    entries.set(id, { open: isRevision(entry2[0]) ? entry2[0] : null, last: entry2[1] });
+  for (const [id, entry3] of Object.entries(value)) {
+    if (!Array.isArray(entry3) || !isRevision(entry3[1])) continue;
+    entries.set(id, { open: isRevision(entry3[0]) ? entry3[0] : null, last: entry3[1] });
   }
   return entries;
 }
@@ -3171,8 +3320,8 @@ function write(store, worktreeId, entries) {
 function pruneRekeyed(store, worktreeId, upTo) {
   const entries = readRekeyed(store, worktreeId);
   const before = entries.size;
-  for (const [id, entry2] of entries) {
-    if (entry2.open === null && entry2.last <= upTo) entries.delete(id);
+  for (const [id, entry3] of entries) {
+    if (entry3.open === null && entry3.last <= upTo) entries.delete(id);
   }
   if (entries.size !== before) write(store, worktreeId, entries);
 }
@@ -3232,9 +3381,9 @@ function editNotes(store, consumer, states, delivering) {
   );
   const rekeyed = [];
   let owed = false;
-  for (const [id, entry2] of readRekeyed(store, consumer.worktreeId)) {
+  for (const [id, entry3] of readRekeyed(store, consumer.worktreeId)) {
     const row = rows.get(id);
-    if (row === void 0 || row.key === null || entry2.last <= state.since) continue;
+    if (row === void 0 || row.key === null || entry3.last <= state.since) continue;
     rekeyed.push(row);
     owed ||= row.pending !== null;
   }
@@ -3553,7 +3702,8 @@ function snapshot(store, worktreeId, root, now) {
     notes,
     daemonNotes: readDaemonNotes(store, worktreeId),
     ...openCheckpoint(store, worktreeId, daemon),
-    ...vitestExcluded(worktree?.root ?? root)
+    ...vitestExcluded(worktree?.root ?? root),
+    ...pendingRetriesOf(store, keys)
   };
 }
 function vitestExcluded(root) {
@@ -3790,11 +3940,11 @@ function atKey(state, file, keys) {
   const recorded = state.keys?.[file];
   return recorded === void 0 || keys.get(file) === recorded;
 }
-function waitedFor(state, entry2, keys) {
+function waitedFor(state, entry3, keys) {
   if (state.turn !== "idle") return false;
-  const file = testFileKeyOf(entry2.check);
+  const file = testFileKeyOf(entry3.check);
   if (state.testFiles.includes(file)) return atKey(state, file, keys);
-  return state.newTestFiles && entry2.kind !== "fail-retired" && entry2.from === null && (state.revision === void 0 || entry2.observedAt <= state.revision);
+  return state.newTestFiles && entry3.kind !== "fail-retired" && entry3.from === null && (state.revision === void 0 || entry3.observedAt <= state.revision);
 }
 function trimmed(state, states, keys) {
   if (state.turn !== "idle" || state.testFiles.length === 0) return null;
@@ -3909,7 +4059,7 @@ function createDelivery(store, options) {
       const keys = store.testFileKeys.list(consumer.worktreeId);
       const current = currentKeys(keys);
       return {
-        only: (entry2) => waitedFor(turn, entry2, current),
+        only: (entry3) => waitedFor(turn, entry3, current),
         trim: trimmed(turn, states, keys)
       };
     };
@@ -4001,7 +4151,11 @@ function createDelivery(store, options) {
       const told = startingSince === void 0 ? null : { startingSince };
       const read3 = readLiveHeader(store, consumer.worktreeId, at2, states);
       const live = told === null ? read3 : withTold(read3, told, at2);
-      const knownFailures = states.flatMap((s) => toKnownFailure(s, live.revision) ?? []);
+      const knownFailures = withRecorded(
+        store,
+        consumer.worktreeId,
+        states.flatMap((s) => toKnownFailure(s, live.revision) ?? [])
+      );
       const header = withDependencies(store, consumer.worktreeId, live, knownFailures.length > 0);
       const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
       tellLiveness(store, consumer, starting ? told : header.daemon?.state ?? null);
@@ -4181,7 +4335,8 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
       [
         f.summary === "" ? null : cap(f.summary, SUMMARY_MAX_CHARS),
         f.location === null ? null : at(f.location),
-        f.validity === "current" ? null : `${f.validity}, observed at revision ${f.observedAt}`
+        f.validity === "current" ? null : `${f.validity}, observed at revision ${f.observedAt}`,
+        f.recorded === void 0 ? null : capitalize(recordedText(f.recorded, registration2.consumer.worktreeId))
       ],
       [{ check: f.check, shown: "fail" }]
     )
@@ -4414,7 +4569,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.186";
+  if (true) return "0.1.187";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4624,6 +4779,7 @@ function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
     `Wait only when you need a result before your next step, for example before saying the task is done: ${naming === "none" ? "`status --wait 60000` on the CLI SQUEAL messages name" : `\`${command} status --wait 60000\``}.`,
     ...coverage.slow === null ? [] : slowSentences(command, naming),
     "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
+    retrySentence(command, naming),
     REVISION,
     covers2,
     "Squeal does not cover typecheck, build or any other test suite: run those yourself."
@@ -4637,6 +4793,10 @@ function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
     }
   }
   return text;
+}
+function retrySentence(command, naming) {
+  const cli = naming === "every" && command === SQUEAL_COMMAND ? `\`${command} retry` : "the CLI's `retry";
+  return `For a failure from load or a stopped service: ${cli} <file> --reason load|environment\`, never past a real one.`;
 }
 function runnerNames(coverage) {
   const nodeTest = coverage.nodeTest.length > 0;
