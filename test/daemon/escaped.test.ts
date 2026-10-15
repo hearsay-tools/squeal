@@ -27,9 +27,10 @@ import { isAlive } from "./strays.js";
 
 /**
  * A test that leaves a detached sleeper and an orphan in the daemon's group,
- * the orphan deaf to SIGTERM, and waits for a child of its own.
+ * the orphan deaf to SIGTERM, and waits for a child of its own. Beside their
+ * pids it writes its own, their parent's, to `spawnerFile`.
  */
-function escapingTest(pidFile: string): string {
+function escapingTest(pidFile: string, spawnerFile: string): string {
   return `import { spawn } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { expect, it } from "vitest";
@@ -46,6 +47,7 @@ it("leaves two sleepers behind", async () => {
   process.kill(detached.pid, 0);
   process.kill(plain.pid, 0);
   writeFileSync(${JSON.stringify(pidFile)}, JSON.stringify([detached.pid, plain.pid]));
+  writeFileSync(${JSON.stringify(spawnerFile)}, String(process.pid));
 });
 `;
 }
@@ -119,12 +121,15 @@ describe.runIf(process.platform === "linux")(
     }
 
     it("stops a test's detached sleeper and its orphan when the tier ends, not its own child", async () => {
-      const pidFile = join(pidDir(), "pids.json");
-      const repo = suite.fixture({ "test/escape.test.ts": escapingTest(pidFile) });
+      const dir = pidDir();
+      const pidFile = join(dir, "pids.json");
+      const spawnerFile = join(dir, "spawner");
+      const repo = suite.fixture({ "test/escape.test.ts": escapingTest(pidFile, spawnerFile) });
       await start(repo);
       const result = await resultOf(repo, undefined, "test/escape.test.ts");
       expect(result.outcome).toBe("pass");
       const [detached, plain] = pids(pidFile);
+      const spawner = Number(readFileSync(spawnerFile, "utf8"));
       await waitFor(
         () => [detached, plain].every((pid) => pid !== undefined && !isAlive(pid)),
         10_000,
@@ -136,9 +141,12 @@ describe.runIf(process.platform === "linux")(
       expect(record?.stopped?.what).toBe("a test left running after its tier");
       expect(record?.stopped?.commands).toHaveLength(2);
       // Task 001-212: each with its parent, its age and the signal that ended it.
+      // The parent is the test's fork until it exits, then the reaper, named.
+      // The fork may be read exiting, its children not yet moved: its pid with
+      // no name, a parent the note rightly leaves unnamed (task 001-395).
       const entry = (pid: number | undefined, ended: string) =>
         new RegExp(
-          `${pid} \\S+ -e .+? \\(parent \\d+ [^,]+, \\d+\\.\\d s old, ${ended}, run [\\w-]+\\)`,
+          `${pid} \\S+ -e .+? \\(parent (?:${spawner}|\\d+ [^,]+), \\d+\\.\\d s old, ${ended}, run [\\w-]+\\)`,
         );
       expect(note).toMatch(entry(detached, "SIGTERM"));
       expect(note).toMatch(entry(plain, "SIGKILL after 1 s"));
