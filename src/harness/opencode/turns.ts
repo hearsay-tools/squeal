@@ -272,8 +272,9 @@ export function turns(client: OcClient, ask: Ask): Turns {
       turn.arrivals = arrivals(id);
       const epoch = turn.epoch;
       if (turn.aborted || turn.continued) {
-        // A continued turn's own news waits for the next prompt, the wake included (defect 5).
-        const ending = turn.aborted ? { consumer } : { consumer, continued: true as const };
+        // A continued turn's own news waits for the next prompt, the wake included (defect 5),
+        // and an abort of the continuation does not re-arm it (review 008-32).
+        const ending = turn.continued ? { consumer, continued: true as const } : { consumer };
         turn.aborted = false;
         await ask("endTurn", ending, deadline);
       } else {
