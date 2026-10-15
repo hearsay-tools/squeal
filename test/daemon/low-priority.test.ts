@@ -1,5 +1,6 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { getPriority } from "node:os";
+import { createInterface } from "node:readline";
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { EscapedChildren } from "../../src/core/daemon/escaped.js";
@@ -42,6 +43,20 @@ async function shortFork(lane: string): Promise<{ own: number; child: number }> 
   return JSON.parse(await output(fork)) as { own: number; child: number };
 }
 
+/**
+ * A daemon's stand-in that leads its own group: on each line, an env, it runs
+ * a shell with it that leaves a sleeper behind and exits, and prints the
+ * sleeper's pid (review 001-401 S1).
+ */
+const LEADER = `const { spawnSync } = require("node:child_process");
+require("node:readline").createInterface({ input: process.stdin }).on("line", (line) => {
+  const env = { ...process.env, ...JSON.parse(line) };
+  const shell = spawnSync("/bin/sh", ["-c", "sleep 30 >/dev/null 2>&1 & echo $!"], { env, encoding: "utf8" });
+  console.log(shell.stdout.trim());
+});
+console.log("ready");
+`;
+
 function output(child: ChildProcess): Promise<string> {
   let out = "";
   child.stdout?.on("data", (chunk: Buffer) => {
@@ -58,5 +73,43 @@ describe.runIf(process.platform === "linux")("lowerWhile: forks at nice 10 (001-
   it("leaves a fork of another lane at the daemon's priority", async () => {
     const own = getPriority();
     expect(await shortFork("slow:vitest")).toEqual({ own, child: own });
+  });
+
+  it("lowers a carrier its parent left in the daemon's group before a look found it (001-401 S1)", async () => {
+    const leader = spawn(process.execPath, ["-e", LEADER], {
+      detached: true,
+      stdio: ["pipe", "pipe", "ignore"],
+    });
+    onTestFinished(() => {
+      try {
+        if (leader.pid !== undefined) process.kill(-leader.pid, "SIGKILL");
+      } catch {
+        // gone
+      }
+    });
+    const lines = createInterface({ input: leader.stdout as NodeJS.ReadableStream })[
+      Symbol.asyncIterator
+    ]();
+    expect((await lines.next()).value).toBe("ready");
+    const children = new EscapedChildren(undefined, leader.pid);
+    // the group's members at the start are never the daemon's: let that scan finish first
+    await sleep(500);
+    const settled = new AbortController();
+    const lowering = lowerWhile(children, "fast", children.mark(), settled.signal);
+    onTestFinished(async () => {
+      settled.abort();
+      await lowering;
+    });
+    const sleeper = async (): Promise<number> => {
+      leader.stdin?.write(`${JSON.stringify(children.envFor("fast"))}\n`);
+      const pid = Number((await lines.next()).value);
+      for (let waited = 0; waited < 3_000 && getPriority(pid) < TEST_NICE; waited += 50)
+        await sleep(50);
+      return getPriority(pid);
+    };
+    // the first, then one after the scan's least interval, found by the exit of its shell
+    expect(await sleeper()).toBe(TEST_NICE);
+    await sleep(1_100);
+    expect(await sleeper()).toBe(TEST_NICE);
   });
 });

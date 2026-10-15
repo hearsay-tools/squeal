@@ -17,14 +17,17 @@ const EVERY_MS = 100;
 /**
  * Every lane's run at `nice` 10 (001 D11 Capacity, Priority, task 001-378),
  * and a slow lane's also, on Linux, at `ionice -c 3` where permitted (spec
- * 004 D2). Every `EVERY_MS` until `signal` aborts, the daemon's own children
- * carrying the mark of the run's lane (`EscapedChildren.carriers`), a fork
- * pool's workers and a thread worker's children, are lowered once, each with
- * what it has started so far; what a lowered process starts later inherits
- * its priority (task 001-393). A thread pool's workers are threads of the
- * daemon and carry no mark of their own: they keep the daemon's priority. A
- * process starts at normal priority and runs so until the next look, about
- * `EVERY_MS`. Never rejects.
+ * 004 D2). Every `EVERY_MS` after the last look ended, until `signal`
+ * aborts, the daemon's own children carrying the mark of the run's lane
+ * (`EscapedChildren.carriers`), a fork pool's workers and a thread worker's
+ * children, are lowered once, each with what it has started so far; what a
+ * lowered process starts later inherits its priority (task 001-393). So are
+ * the carriers in the daemon's group whose parent exited before a look,
+ * found at most once a second after a child of the daemon exits (review
+ * 001-401 S1). A thread pool's workers are threads of the daemon and carry no
+ * mark of their own: they keep the daemon's priority. A process starts at
+ * normal priority and runs so until the next look: `EVERY_MS` plus the look's
+ * own time, no deadline. Never rejects.
  */
 export async function lowerWhile(
   children: Pick<EscapedChildren, "carriers">,
