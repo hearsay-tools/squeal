@@ -257,6 +257,37 @@ describe("wait", () => {
     expect(text).toContain("PASS -> FAIL");
   });
 
+  /** Registered, then continued by a stop that reported a regression. */
+  async function continued(): Promise<SquealRepo> {
+    const r = await registered();
+    r.apply(r.fail());
+    expect((await stop({ kind: "stop", ...about(r) }, deps())).report).toContain("PASS -> FAIL");
+    return r;
+  }
+  const endContinued = (r: SquealRepo) =>
+    endTurn({ kind: "endTurn", ...about(r), continued: true }, deps());
+
+  it("after a continuation, leaves a file current at its idle for the next prompt (lessons defect 5)", async () => {
+    const r = await continued();
+    // The continuation's edit and its re-run land before the continued turn's idle.
+    r.queue("k2");
+    r.apply(r.pass());
+    expect(await endContinued(r)).toEqual({ ended: true });
+    expect(readTurn(r.store, r.consumer()).turn).toBe("idle");
+    const short = deps({ pollIntervalMs: 10, waiterTimeoutMs: 500 });
+    expect(await wait({ kind: "wait", ...about(r) }, short)).toEqual({ text: null });
+    expect((await prompt({ kind: "prompt", ...about(r) }, deps())).text).toContain("FAIL -> PASS");
+  });
+
+  it("after a continuation, still wakes for a file pending at its idle", async () => {
+    const r = await continued();
+    r.queue("k2");
+    expect(await endContinued(r)).toEqual({ ended: true });
+    setTimeout(() => r.apply(r.pass()), 150);
+    const { text } = await wait({ kind: "wait", ...about(r) }, waitDeps());
+    expect(text).toContain("FAIL -> PASS");
+  });
+
   it("is null soon after OpenCode's process is gone", async () => {
     const r = await idle();
     const gone = spawnSync(process.execPath, ["-e", "0"]).pid;

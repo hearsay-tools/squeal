@@ -170,7 +170,7 @@ describe("tool.execute.after", () => {
 
 describe("a root's session.idle", () => {
   it("continues once with news; the continuation's own idle ends the turn, silent", async () => {
-    const { client, hooks, kinds } = await started({ stop: { report: REPORT } });
+    const { bridge, client, hooks, kinds } = await started({ stop: { report: REPORT } });
     await say(hooks, ROOT_ID);
     await hook(hooks, "event")(idle(ROOT_ID));
     expect(client.prompted).toEqual([{ id: ROOT_ID, text: REPORT }]);
@@ -179,6 +179,8 @@ describe("a root's session.idle", () => {
     await hook(hooks, "event")(idle(ROOT_ID));
     expect(client.prompted).toHaveLength(1);
     expect(kinds().filter((k) => k !== "wait")).toEqual(["register", "stop", "prompt", "endTurn"]);
+    // Its own news waits for the next prompt, the wake included (lessons, defect 5).
+    expect(bridge.requests().find((q) => q.kind === "endTurn")).toMatchObject({ continued: true });
     // A user's message clears it: the next idle asks Stop again.
     await say(hooks, ROOT_ID, "next");
     await hook(hooks, "event")(idle(ROOT_ID));
@@ -187,12 +189,13 @@ describe("a root's session.idle", () => {
   });
 
   it("is no continuation after an abort: it ends the turn", async () => {
-    const { client, hooks, kinds } = await started({ stop: { report: REPORT } });
+    const { bridge, client, hooks, kinds } = await started({ stop: { report: REPORT } });
     await say(hooks, ROOT_ID);
     await hook(hooks, "event")(aborted(ROOT_ID));
     await hook(hooks, "event")(idle(ROOT_ID));
     expect(client.prompted).toEqual([]);
     await expect.poll(kinds).toEqual(["register", "endTurn", "wait"]);
+    expect(bridge.requests().find((q) => q.kind === "endTurn")).not.toHaveProperty("continued");
   });
 
   it("arms the idle wait after a silent stop, and wakes the agent with its delta", async () => {
