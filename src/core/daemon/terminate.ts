@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
 import type { DaemonNote } from "../types/index.js";
@@ -20,7 +20,7 @@ export interface ProcessEntry {
 
 /** What `terminate` reads and signals; `PROC` on Linux, a table of its own in tests. */
 export interface ProcessTable {
-  /** The process now at `pid`, or `null` when none is. */
+  /** The process now at `pid`, or `null` when none is or its exit has begun (`statOf`). */
   stat(pid: number): ProcessEntry | null;
   commandLine(pid: number): Promise<string>;
   signal(pid: number, name: NodeJS.Signals): void;
@@ -137,7 +137,27 @@ function ageText(seconds: number): string {
   return `${Math.floor(whole / 3_600)} h ${Math.floor((whole % 3_600) / 60)} min`;
 }
 
+/**
+ * The process at `pid`, or `null` when none is or its exit has begun: a
+ * zombie, or a leader the kernel is tearing down (`PF_EXITING`), which runs
+ * no code of its own again and whose children are the reaper's once its last
+ * thread is gone (task 001-400).
+ */
 export function statOf(pid: number): ProcessEntry | null {
+  const life = lifeOf(pid);
+  return life === null || life.dying ? null : entryOf(life);
+}
+
+/** A process as `/proc/<pid>/stat` has it, the dying included; `zombie`, its leader exited. */
+export interface Life extends ProcessEntry {
+  readonly dying: boolean;
+  readonly zombie: boolean;
+}
+
+/** `PF_EXITING` in the stat line's flags: the thread is in the kernel's exit. */
+const PF_EXITING = 0x4;
+
+export function lifeOf(pid: number): Life | null {
   let text: string;
   try {
     text = readFileSync(`/proc/${pid}/stat`, "latin1");
@@ -146,8 +166,54 @@ export function statOf(pid: number): ProcessEntry | null {
   }
   // The command name is in parentheses and may hold either; the fields follow the last one.
   const fields = text.slice(text.lastIndexOf(")") + 2).split(" ");
-  if (fields[0] === "Z" || fields[0] === "X") return null;
-  return { pid, ppid: Number(fields[1]), pgrp: Number(fields[2]), start: Number(fields[19]) };
+  const zombie = fields[0] === "Z" || fields[0] === "X";
+  const dying = zombie || (Number(fields[6]) & PF_EXITING) !== 0;
+  const entry = {
+    pid,
+    ppid: Number(fields[1]),
+    pgrp: Number(fields[2]),
+    start: Number(fields[19]),
+  };
+  return { ...entry, dying, zombie };
+}
+
+/**
+ * Whether no thread of `entry` is left: its pid is free or reused, or it is
+ * a zombie with its leader alone. A leader exits first and shows `Z` while
+ * its other threads die, and its children still name it as their parent
+ * until the last of them is gone (task 001-395).
+ */
+export function exited(entry: ProcessEntry): boolean {
+  const life = lifeOf(entry.pid);
+  if (life?.start !== entry.start) return true;
+  if (!life.zombie) return false;
+  try {
+    return readdirSync(`/proc/${entry.pid}/task`).length <= 1;
+  } catch {
+    return true;
+  }
+}
+
+/** The children of every thread of `pid`, the dying included; `[]` when it is gone. */
+export function childrenOf(pid: number): number[] {
+  let tasks: string[];
+  try {
+    tasks = readdirSync(`/proc/${pid}/task`);
+  } catch {
+    return [];
+  }
+  return tasks.flatMap((task) => {
+    try {
+      const text = readFileSync(`/proc/${pid}/task/${task}/children`, "latin1").trim();
+      return text === "" ? [] : text.split(" ").map(Number);
+    } catch {
+      return [];
+    }
+  });
+}
+
+function entryOf({ pid, ppid, pgrp, start }: ProcessEntry): ProcessEntry {
+  return { pid, ppid, pgrp, start };
 }
 
 async function commandLine(pid: number): Promise<string> {
