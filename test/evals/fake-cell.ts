@@ -98,6 +98,8 @@ squeal)
   squeal --version >> "$FAKE_LOG/bare" 2>&1 ;;
 args)
   printf '%s\\n' "$@" > "$FAKE_LOG/args" ;;
+start)
+  node scripts/rates-service.mjs > /dev/null 2>&1 ;;
 hang)
   trap '' TERM
   (trap '' TERM; echo $$ >> "$FAKE_LOG/harness"; while :; do sleep 1; done) &

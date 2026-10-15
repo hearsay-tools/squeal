@@ -96,10 +96,17 @@ export const a11Open: Step[] = [
 ];
 
 /** Scenario `name`'s declared measures over `steps`, graded as a run grades them. */
-export function measuresOf(name: string, steps: Step[], harness: Harness, truthPass: boolean) {
+export function measuresOf(
+  name: string,
+  steps: Step[],
+  harness: Harness,
+  truthPass: boolean,
+  serviceStarts: string | null = null,
+) {
   const scenario = scenarioOf(name);
   if (!scenario) throw new Error(`no ${name}`);
-  const grade = graded(steps, { truthPass, status: truthPass ? "pass" : "fail", harness });
+  const status = truthPass ? "pass" : "fail";
+  const grade = graded(steps, { truthPass, status, harness, serviceStarts });
   return pilotRecord({ ...grade }, { scenario }).measures;
 }
 /** Each declared measure of `name` met, but those in `misses`. */

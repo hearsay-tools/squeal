@@ -59,6 +59,8 @@ const grade = {
     statusEnd: read("status-end.json") || null,
     plugin,
     diff: read("diff.patch"),
+    // 006-67: the session's service starts as the service recorded them, when the cell kept them.
+    serviceStarts: existsSync(join(OUT, "service-starts.txt")) ? read("service-starts.txt") : null,
   }),
 };
 writeFileSync(join(OUT, "grade.json"), JSON.stringify(grade, null, 2));

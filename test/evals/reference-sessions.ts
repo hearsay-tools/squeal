@@ -17,7 +17,8 @@ import { settled } from "./status-snapshot.js";
 /** One move: an edit, a shell command with its output and exit, a Squeal message, the claim. */
 export type Step =
   | { edit: string }
-  | { cmd: string; out?: string; exit?: number }
+  /** Claude Code alone: `background` is the Bash tool's `run_in_background`, `refused` a denial. */
+  | { cmd: string; out?: string; exit?: number; background?: boolean; refused?: boolean }
   | { squeal: string }
   | { say: string };
 
@@ -71,10 +72,15 @@ interface Ending {
   truthPass: boolean;
   status: keyof typeof STATUS;
   harness?: Harness | undefined;
+  /** The rates service's record of the session's starts (`out/service-starts.txt`, 006-67). */
+  serviceStarts?: string | null | undefined;
 }
 
 /** The mechanical grade (`out/grade.json`'s) of `steps`, ending with `status` and ground truth. */
-export function graded(steps: readonly Step[], { truthPass, status, harness = "codex" }: Ending) {
+export function graded(
+  steps: readonly Step[],
+  { truthPass, status, harness = "codex", serviceStarts = null }: Ending,
+) {
   return gradeCell({
     timeline: harness === "codex" ? codexSession(steps) : claudeSession(steps),
     truth: {
@@ -85,6 +91,7 @@ export function graded(steps: readonly Step[], { truthPass, status, harness = "c
       },
     },
     statusEnd: STATUS[status],
+    serviceStarts,
   });
 }
 
@@ -163,6 +170,7 @@ function codexSession(steps: readonly Step[]) {
 /** The same moves as Claude Code's `stream-json`: Squeal's texts arrive as hook output. */
 function claudeSession(steps: readonly Step[]) {
   const events: Event[] = [];
+  const denials: { tool_use_id: string }[] = [];
   let final = "";
   steps.forEach((s, i) => {
     const t = (i + 1) * 1000;
@@ -194,7 +202,9 @@ function claudeSession(steps: readonly Step[]) {
     if ("cmd" in s) {
       const exit = s.exit ?? 0;
       const out = exit === 0 ? (s.out ?? "") : `Exit code ${exit}\n${s.out ?? ""}`;
-      tool("Bash", { command: s.cmd }, out, exit !== 0);
+      const input = s.background ? { command: s.cmd, run_in_background: true } : { command: s.cmd };
+      tool("Bash", input, out, exit !== 0 || !!s.refused);
+      if (s.refused) denials.push({ tool_use_id: `u${i}` });
     }
     if ("squeal" in s)
       events.push({
@@ -213,7 +223,12 @@ function claudeSession(steps: readonly Step[]) {
       });
     }
   });
-  events.push({ t: (steps.length + 1) * 1000, type: "result", result: final });
+  events.push({
+    t: (steps.length + 1) * 1000,
+    type: "result",
+    result: final,
+    permission_denials: denials,
+  });
   return claudeTimeline(events);
 }
 
