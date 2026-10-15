@@ -680,3 +680,46 @@ export interface WhyNoMatch {
 }
 
 export type WhyResult = WhyReport | WhyNoMatch | StatusUnavailable;
+
+/**
+ * One stored failing result, as `squeal failures` lists it (task 001-409).
+ * Flat, without the full error stacks: `squeal why` prints those.
+ */
+export interface FailureEntry {
+  readonly check: CheckId;
+  readonly worktreeId: WorktreeId;
+  /** Root of the producing worktree; `null` when it is gone from the store. */
+  readonly worktreeRoot: AbsolutePath | null;
+  readonly revision: RevisionNumber;
+  /** `HEAD` when it ran; `null` before the first commit. */
+  readonly commit: string | null;
+  readonly dirty: boolean;
+  readonly recordedAt: EpochMs;
+  readonly durationMs: number;
+  readonly fingerprint: string | null;
+  readonly summary: string | null;
+  readonly runId: string;
+}
+
+/**
+ * Recent failures from the shared store, newest first, read with no daemon
+ * (task 001-409, spec 001 D8): this worktree's, or every worktree's.
+ */
+export interface FailuresReport {
+  readonly schemaVersion: PayloadSchemaVersion;
+  readonly available: true;
+  /** The worktree the command ran in. */
+  readonly worktreeId: WorktreeId;
+  readonly worktreeRoot: AbsolutePath;
+  /** `--all-worktrees`: failures of every worktree, not only this one. */
+  readonly allWorktrees: boolean;
+  /** `--since`: the earliest record time listed; `null` for any time. */
+  readonly since: EpochMs | null;
+  /** At most `limit` entries, newest first. */
+  readonly failures: readonly FailureEntry[];
+  /** Failures matching in all; more than `failures.length` when capped. */
+  readonly total: number;
+  readonly limit: number;
+}
+
+export type FailuresResult = FailuresReport | StatusUnavailable;
