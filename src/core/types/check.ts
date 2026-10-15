@@ -91,6 +91,12 @@ export interface CheckError {
    * errors and in failure texts stored before 001-361.
    */
   readonly phase?: "load" | "setup";
+  /**
+   * Set when the error carries a signature of Squeal's recorder (spec 001 D11
+   * Fidelity, task 001-390): what it points at, which the summary names.
+   * Absent otherwise and in failure texts stored before 001-390.
+   */
+  readonly recorder?: string;
 }
 
 /** One link of `CheckError.causes`: its first line, capped, and its code, whole. */
