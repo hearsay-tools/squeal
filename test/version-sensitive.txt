@@ -106,6 +106,7 @@ test/integration/slow-spawn
 test/integration/capacity-project
 test/daemon/composite-runner
 test/daemon/died-startup
+test/daemon/repeated-notes
 # A real `node --test` through the shipped plugin.
 test/e2e/node-test
 test/e2e/slow-node-test
