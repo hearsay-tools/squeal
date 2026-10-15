@@ -321,6 +321,31 @@ export interface KnownFailure {
   readonly summary: string;
   readonly fingerprint: DiagnosticFingerprint;
   readonly location: SourceLocation | null;
+  /**
+   * Where its stored result was recorded, the load then, and the retry asked
+   * at its key (spec 001 D6, 001-368): the facts a session that meets the
+   * failure at registration is given. Absent when no stored result stands
+   * for it at the current key.
+   */
+  readonly recorded?: RecordedFacts;
+}
+
+/** `KnownFailure.recorded`. */
+export interface RecordedFacts {
+  readonly worktreeId: WorktreeId;
+  readonly worktreeRoot: AbsolutePath | null;
+  /** The recording worktree's revision. */
+  readonly revision: RevisionNumber;
+  /** The host's load per CPU when its run started; `null` when not kept. */
+  readonly loadPerCpu: number | null;
+  /** The newest retry asked at the key; absent when none was. */
+  readonly retry?: RetryFact;
+}
+
+/** A retry asked at a key, and how it ended (spec 001 D6, 001-368). */
+export interface RetryFact {
+  readonly reason: "load" | "environment";
+  readonly outcome: "pending" | "passed" | "failed" | "unknown" | "cancelled";
 }
 
 /** Inherited current results grouped by source. */

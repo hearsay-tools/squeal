@@ -1,4 +1,5 @@
 import { isInstalledLockfile, testFileId } from "../keys/index.js";
+import { passedRetry } from "../retry/index.js";
 import { readFailureKeys, readSlowArtifacts } from "../slow/state.js";
 import {
   checkIdentity,
@@ -199,7 +200,13 @@ function withFlaky(
     if (entry.kind === "fail-retired") return entry;
     const note = notes.get(checkIdentity(entry.check));
     const key = keys.get(testFileId(testFileOf(entry.check)));
-    return note === undefined || note.key !== key ? entry : { ...entry, flaky: note };
+    if (note === undefined || note.key !== key) return entry;
+    // Task 001-368: a pass the agent's retry produced names the reason it gave.
+    const retry =
+      entry.kind === "fail-to-pass" && key !== null
+        ? passedRetry(store, testFileOf(entry.check), key)
+        : undefined;
+    return { ...entry, flaky: note, ...(retry === undefined ? {} : { retry }) };
   });
 }
 

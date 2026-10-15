@@ -1,4 +1,5 @@
 import { setTimeout as sleep } from "node:timers/promises";
+import { withRecorded } from "../retry/index.js";
 import { forgetStopWait } from "../slow/stop-wait.js";
 import { baselineFindings, toKnownFailure } from "../state/index.js";
 import { type ChangeMarker, changeMarker } from "../store/index.js";
@@ -272,7 +273,11 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         const told = startingSince === undefined ? null : { startingSince };
         const read = readLiveHeader(store, consumer.worktreeId, at, states);
         const live = told === null ? read : withTold(read, told, at);
-        const knownFailures = states.flatMap((s) => toKnownFailure(s, live.revision) ?? []);
+        const knownFailures = withRecorded(
+          store,
+          consumer.worktreeId,
+          states.flatMap((s) => toKnownFailure(s, live.revision) ?? []),
+        );
         const header = withDependencies(store, consumer.worktreeId, live, knownFailures.length > 0);
         const starting =
           header.daemon?.state === "down" && header.daemon.startingSince !== undefined;

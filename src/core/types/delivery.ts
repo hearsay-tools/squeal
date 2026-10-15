@@ -17,7 +17,13 @@ import type {
   TransitionKind,
   Validity,
 } from "./state.js";
-import type { DaemonLiveness, KnownFailure, StatusHeader, StatusResult } from "./status.js";
+import type {
+  DaemonLiveness,
+  KnownFailure,
+  RetryFact,
+  StatusHeader,
+  StatusResult,
+} from "./status.js";
 
 /** Agent id of a session's main agent. */
 export const MAIN_AGENT = "main";
@@ -105,6 +111,11 @@ export interface TransitionEntry {
    * (spec 001 D6 as amended, task 001-170). Absent otherwise.
    */
   readonly flaky?: FlakyNote;
+  /**
+   * With `flaky` on a `fail-to-pass`: the agent's retry whose run passed at
+   * the key (spec 001 D6, 001-368), so the pass names the reason it gave.
+   */
+  readonly retry?: RetryFact;
   /**
    * For a failure: the paths of its test file's closure (`TestFileRecord`)
    * changed in this worktree since the consumer registered, the revisions
