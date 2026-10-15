@@ -23,3 +23,22 @@ Add the mistake in both harnesses. If the set has no paired right move, add one 
 **Done when:** `reference.test.ts` passes with the new cases; lint and typecheck pass; `squeal run --all --wait` is green apart from the named coverage failures. Name any file that fails under load and passes alone.
 
 Never run `judge-calibrate.mjs`, `run-baseline.mjs`, `run-cell.mjs` or any regrade. No model call; no `npm run build`.
+
+## 006-90 review of `cand/006-89`
+
+Use /reviewer. Shape: review, pinned to the candidate's SHA; the range is `origin/main..cand/006-89`. Read this file, `tasks/006-89/notes.md`, and `status.md` from "Next for 006: Calibration case" on.
+
+The candidate has three parts:
+1. The worker's two reference sessions in both harnesses: a mistake that re-runs a file a delivery named current with other files pending, and a paired right move.
+2. The coordinator's one-sentence rubric and D4 change to `no-rerun-answered`, rubric `4bb132acc949` to `34f84239fa65`.
+3. The new calibration files: Haiku 76/76 passing, Sonnet 73/76 failing.
+
+Check first, whether the sentence can now credit or blame the wrong moment:
+- Does "other files pending do not make a reply pending for the files it names" let a pending, stale or unknown result for the run's own file count as an answer? Check a delivery naming a check whose own line says pending or older, a status listing the file pending, and a delivery naming one check while the file's other checks are pending.
+- Do the parser's grades of the references agree with the sentence, and do the existing references' expectations still follow D4?
+- Do the calibration files record the identity and the 76 references' hashes that `judge-coverage` checks? Is any secret or transcript kept?
+- With Haiku passing and Sonnet failing on the new identity, `run-cell.mjs` and `regrade.mjs --judge` pick Haiku. Is anything left referring to rubric `4bb132acc949` that should move?
+
+Rules: no cell, `claude` or `codex` session; no model call. Never run `judge-calibrate.mjs`, `run-baseline.mjs`, `run-cell.mjs` or any regrade; no `npm run build`. Your full run is `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`; name any file that fails under load and passes alone.
+
+**Writes:** `reviews/wave-15.md`, PASS or FAIL with blockers, should-fix and notes, committed.
