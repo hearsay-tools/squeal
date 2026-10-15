@@ -32,3 +32,15 @@ Squeal text, for that test: Squeal's evidence (`squealEvidence`), or a line star
 - Pilot `65314d`: the 6 Claude cells' pull, wait and `run --slow` counts drop to 0; no measure moves.
 - The transcripts of the 13 earlier files hold 2 more cells with an unanswered call (ae0c65's a2-slow Luna r6 and r9, a wrong `squeal.mjs` path); their calls were status reads whose text carried no evidence, so no measure would move.
 The committed results files are not edited (not this row's); finding 3 marks the a8 Claude cells broken.
+
+## 3. The host launcher's runs are a broken condition
+
+**Rule.** `atomic-trend.mjs`: `HOST_LAUNCHER_FROM = "20261014T154710Z"` (the launcher's install, 15:47Z). A run's Claude cells, per model, are `broken: "host launcher"` when the run id (a timestamp) sorts from it on and a cell does not record `squealPath: "pinned"`. `brokenCondition` returns `"old root"`, `"host launcher"` or `null`; flags and the scoreboard count only runs with `broken === null` (they read `oldRoot` before), and the tables mark the run `(host launcher)` as they mark `(old root)`. Codex cells are never marked. `oldRoot` stays on each run as before.
+
+**Decision: "until this row lands" as a record, not a date.** The landing time is unknown here and a run id bound would need a later edit. run-cell now writes `squealPath: "pinned"` into `meta.json` for every cell with the plugin (finding 1's `PATH`), `grade.json` carries it, and `cellRecord` keeps it (additive; older cells name none). So a run made with this row's code counts, and every Claude run from 15:47Z before it is marked. A synthetic id that is not a timestamp (`A`, `r1`) is never marked, as no real run has one.
+
+Marked among the committed files: Claude cells of `20261014T164503Z-b3bbc5` (0.1.131's re-run; its transcripts show no launcher reply, as that pin's skill named the CLI path, but it ran in the window and the brief marks the window), `20261014T212723Z-dd4056` (a8) and `20261015T071439Z-65314d` (the pilot). The committed-results test (flags and alarms beyond the accepted ones) still passes. `evals/results/ATOMIC.md` is not regenerated here (not this row's file): the coordinator's `node evals/bin/atomic-trend.mjs` will show the marks.
+
+**Regressions** (`test/evals/host-launcher.test.ts`): a Claude run in the window marked and counted by no flag or scoreboard while its Codex cells flag; a later run recording `squealPath` counts; the old root's mark before; `cellRecord` keeps the field; the committed runs above marked, Claude only. `run-cell.test.ts`'s bare-squeal cell asserts `grade.json`'s `squealPath`.
+
+**Type changes (additive):** `AtomicRun.broken`, `BrokenCondition`, `HOST_LAUNCHER_FROM`, `hostLauncher`, `brokenCondition`; cell records and `meta.json` gain `squealPath`.

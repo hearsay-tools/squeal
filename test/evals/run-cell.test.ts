@@ -164,6 +164,10 @@ describe("run-cell.mjs with fake harnesses", { timeout: 30_000 }, () => {
     expect(r.code, r.output).toBe(0);
     // The fake Squeal in the pin answers; the host's launcher, first on its PATH, does not.
     expect(readFileSync(join(f.log, "bare"), "utf8")).toBe("Known failures: 0\n");
+    // Recorded, so the atomic trend counts the cell (finding 3).
+    const [cell] = cellDirs(f);
+    if (!cell) throw new Error("no cell");
+    expect(json(join(cell, "out/grade.json")).squealPath).toBe("pinned");
   });
 
   it("runs fresh by default and skips a graded cell only on --resume (S1)", async () => {
