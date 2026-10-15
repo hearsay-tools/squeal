@@ -273,9 +273,17 @@ export class E2E {
     writeFileSync(at, `${comment} edit ${this.#edits++}\n${body}`);
   }
 
-  /** Runs a hook the way the plugin's harness does, fed the recorded input with `cwd` set to `root`. */
-  async hook(name: HookName, root: string, overrides: object = {}): Promise<Hooked> {
-    const run = await this.kind.run(this.plugin, name, root, overrides, this.#env);
+  /**
+   * Runs a hook the way the plugin's harness does, fed the recorded input with `cwd` set to
+   * `root`; `env` is added to the fixture's for this hook and a daemon it spawns.
+   */
+  async hook(
+    name: HookName,
+    root: string,
+    overrides: object = {},
+    env: Readonly<Record<string, string>> = {},
+  ): Promise<Hooked> {
+    const run = await this.kind.run(this.plugin, name, root, overrides, { ...this.#env, ...env });
     const json = run.stdout === "" ? null : (JSON.parse(run.stdout) as HookJson);
     const out = json?.hookSpecificOutput;
     const text = out?.additionalContext ?? out?.permissionDecisionReason ?? json?.reason ?? null;

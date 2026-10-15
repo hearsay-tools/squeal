@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
 import type { EnsureDaemonResult } from "../../src/core/types/index.js";
-import { lockHolders } from "../e2e/restart-evidence.js";
+import { lockHolders, stoppedInGap } from "../e2e/restart-evidence.js";
 import { daemonSuite, delay, type FixtureRepo, ping, readNotes, SLOW, waitFor } from "./helpers.js";
 import { stepDownKit } from "./step-down-helpers.js";
 
@@ -12,9 +12,9 @@ import { stepDownKit } from "./step-down-helpers.js";
  * its socket before it lets go of its lock (D10), and a late hook of an
  * older plugin spawns its daemon in that gap. Since task 001-340 a daemon
  * that loses a lock no daemon serves waits for it, so it could take the lock
- * ahead of the newer successor, which then exited as a loser. SIGSTOP at the
- * socket's unlink holds the gap open, as long as the late spawn takes to
- * decide. Both older daemons run this repository's build at older versions.
+ * ahead of the newer successor, which then exited as a loser. The old daemon
+ * stops itself in the gap (`SQUEAL_TEST_STOP_GAP`, task 001-355) and holds
+ * it open as long as the late spawn takes to decide. Both older daemons run this repository's build at older versions.
  *
  * A late spawn of the stopping daemon's own version still waits and may win
  * the gap, D10's accepted case (task 001-345, the coordinator's call): it is
@@ -24,13 +24,6 @@ import { stepDownKit } from "./step-down-helpers.js";
 
 const suite = daemonSuite();
 const { HOOKS, buildAt, start, sockets, hookDeps, hook, exitWithin } = stepDownKit(suite);
-
-/** Spins until `path` is gone, with no event-loop turn between the unlink and the return. */
-function spinUntilGone(path: string, ms: number): boolean {
-  const deadline = Date.now() + ms;
-  while (existsSync(path)) if (Date.now() > deadline) return false;
-  return true;
-}
 
 /**
  * Spins until process `pid` holds `repo`'s lock database open, a retry that
@@ -51,18 +44,21 @@ function spinUntilAtLock(pid: number, repo: FixtureRepo, ms: number): boolean {
   return false;
 }
 
+/** The 0.1.1 daemon, which stops itself in its stop gap (task 001-355). */
+const STOP_GAP = { SQUEAL_TEST_STOP_GAP: "1" } as const;
+
 /**
- * Steps down the 0.1.1 daemon serving `repo` for this source's hooks and
- * freezes it between its socket's unlink and its lock release; its pid.
+ * Steps down the 0.1.1 daemon serving `repo` for this source's hooks, which
+ * stops itself between its socket's unlink and its lock release; its pid.
  */
 async function stepDownIntoGap(repo: FixtureRepo): Promise<number> {
   const first = await waitFor(() => ping(repo.socketPath, 500), 60_000, "0.1.1 serving");
   const answer = await requestDaemon(repo.socketPath, { type: "step-down", version: HOOKS }, 5_000);
   expect(answer).toMatchObject({ ok: true, type: "step-down", steppingDown: true });
-  const gone = spinUntilGone(repo.socketPath, 60_000);
-  if (gone) process.kill(first.pid, "SIGSTOP");
+  const stopped = await stoppedInGap(first.pid, 60_000);
   try {
-    expect(gone, "the socket went away").toBe(true);
+    expect(stopped, "the daemon stopped in its stop gap").toBe(true);
+    expect(existsSync(repo.socketPath), "the socket went away").toBe(false);
     expect(lockHolders(repo.root), "the stopping daemon holds its lock").toMatch(
       new RegExp(`WRITE\\s+${first.pid}\\s`),
     );
@@ -79,7 +75,7 @@ describe.runIf(process.platform === "linux")(
   () => {
     it("exits as a loser with no note, and the successor serves", async () => {
       const repo = suite.fixture();
-      const old = start(buildAt("0.1.1"), repo);
+      const old = start(buildAt("0.1.1"), repo, [], STOP_GAP);
       const frozen = await stepDownIntoGap(repo);
       // The requesting hook's successor, then the late hook's spawn.
       const successor = start(suite.cli, repo, ["--await-lock", "120000"]);
@@ -109,7 +105,7 @@ describe.runIf(process.platform === "linux")(
 
     it("a late spawn of the stopping daemon's version may win, the successor exits silently, and the next newer boundary steps it down", async () => {
       const repo = suite.fixture();
-      const old = start(buildAt("0.1.1"), repo);
+      const old = start(buildAt("0.1.1"), repo, [], STOP_GAP);
       const frozen = await stepDownIntoGap(repo);
       const successor = start(suite.cli, repo, ["--await-lock", "120000"]);
       const pid = successor.child.pid ?? 0;

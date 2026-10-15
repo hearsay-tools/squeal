@@ -75,10 +75,16 @@ export function stepDownKit(suite: DaemonSuite) {
     },
     /** The Claude Code plugin's `dist` as released at `commit`: its hook bundles and CLI. */
     releasedDist,
-    start(cli: string, repo: FixtureRepo, args: readonly string[] = []): SpawnedProcess {
+    /** `env` is added to the fixture's, for this daemon alone. */
+    start(
+      cli: string,
+      repo: FixtureRepo,
+      args: readonly string[] = [],
+      env: Readonly<Record<string, string>> = {},
+    ): SpawnedProcess {
       const process = spawnCli(cli, ["daemon", repo.root, ...args], {
         cwd: repo.root,
-        env: repo.env,
+        env: { ...repo.env, ...env },
       });
       spawned.push(process);
       return process;

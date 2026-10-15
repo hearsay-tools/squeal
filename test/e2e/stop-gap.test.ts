@@ -4,13 +4,14 @@ import { describe, expect, it } from "vitest";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { e2eSuite, MATH, PLUGINS } from "./harness.js";
-import { daemonProcesses, lockHolders } from "./restart-evidence.js";
+import { daemonProcesses, lockHolders, stoppedInGap } from "./restart-evidence.js";
 
 /*
  * Task 001-340, from 001-337's reproduction: the daemon's shutdown unlinks
  * its socket before it releases its lock (D10's order), and on a loaded host
- * it can stall between the two for seconds (an ext4 journal wait). SIGSTOP
- * at the socket's unlink models that stall. `squeal stop` must not say
+ * it can stall between the two for seconds (an ext4 journal wait). The
+ * daemon stopping itself there (`SQUEAL_TEST_STOP_GAP`, task 001-355)
+ * models that stall. `squeal stop` must not say
  * stopped while the lock is held, and the daemon a SessionStart spawns in
  * that gap must take the lock once it is free instead of exiting silently.
  */
@@ -19,19 +20,12 @@ const fixture = e2eSuite();
 /** How long the stopped daemon stays frozen after the SessionStart, so its replacement reaches the lock. */
 const FROZEN_MS = 5_000;
 
-/** Spins until `path` is gone, with no event-loop turn between the unlink and the return. */
-function spinUntilGone(path: string, ms: number): boolean {
-  const deadline = Date.now() + ms;
-  while (existsSync(path)) if (Date.now() > deadline) return false;
-  return true;
-}
-
 describe.runIf(process.platform === "linux").each(PLUGINS)(
   "a daemon stalled between its socket and its lock, $name",
   (plugin) => {
     it("stop waits for its lock, and the replacement a SessionStart spawns serves", async (ctx) => {
       const e = fixture(ctx, plugin, { tmpfs: true });
-      await e.hook("session-start", e.main);
+      await e.hook("session-start", e.main, {}, { SQUEAL_TEST_STOP_GAP: "1" });
       const first = await e.daemonReady(e.main);
       await e.settle(e.main, "a passing baseline", (s) => s.counts.current > 0);
       const socket = socketPathFor(worktreeIdFor(e.main), { XDG_RUNTIME_DIR: e.runtime });
@@ -40,10 +34,10 @@ describe.runIf(process.platform === "linux").each(PLUGINS)(
       const stop = e.cli(e.main, ["stop"]).finally(() => {
         stopped = true;
       });
-      const gone = spinUntilGone(socket, 60_000);
-      if (gone) process.kill(first.pid, "SIGSTOP");
+      const stalled = await stoppedInGap(first.pid, 60_000);
       try {
-        expect(gone, "the socket went away").toBe(true);
+        expect(stalled, "the daemon stopped in its stop gap").toBe(true);
+        expect(existsSync(socket), "the socket went away").toBe(false);
         expect(lockHolders(e.main), "the stalled daemon holds its lock").toMatch(
           new RegExp(`WRITE\\s+${first.pid}\\s`),
         );
