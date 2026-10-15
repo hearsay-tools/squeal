@@ -23,6 +23,8 @@ export type Execution = "executed" | "refused" | "indeterminate";
 export type Action = (
   | {
       kind: "squeal";
+      /** The CLI as the command names it: `squeal`, a path, or `npx squeal` (review 006-63 B2). */
+      bin: string;
       sub: string;
       wait: boolean;
       all: boolean;
@@ -169,6 +171,8 @@ export interface Grade {
   transcript: string[];
   timeline: {
     runs: Run[];
+    /** Each Squeal command Squeal answered (row 006-62, review 006-63 B2). */
+    pulls: { n: number; sub: string; wait: boolean; all: boolean; slow: boolean }[];
     edits: { t: number; path: string }[];
     failedEdits: { t: number; path: string }[];
     refused: { t: number; what: string }[];
