@@ -87,6 +87,12 @@ export interface OpenCodeRunOptions {
    * provider's live array, title requests included (their `model` is not `PLANNED_MODEL`).
    */
   afterReply?: (live: OpenCodeLive) => Promise<void>;
+  /**
+   * Under `run`, `opencode run --continue` in that earlier run's directory and project, so it
+   * resumes the session the earlier run left; no `setup`, `files` or `install`, and a fresh
+   * provider. The earlier run's `cleanup` removes both.
+   */
+  continue?: OpenCodeRun;
   timeoutMs?: number;
 }
 
@@ -146,22 +152,27 @@ export async function runOpenCode(options: OpenCodeRunOptions): Promise<OpenCode
     throw new Error(`runOpenCode isolates ${overridden.join(", ")}; a caller cannot override them`);
   const binary = opencodeBinary();
   if (!binary) throw new Error(opencodeUnavailable());
-  const dir = mkdtempSync(join(runBase(), "squeal-opencode-"));
+  const earlier = options.continue;
+  if (earlier !== undefined && options.mode !== "run") throw new Error("only run continues");
+  const dir = earlier?.dir ?? mkdtempSync(join(runBase(), "squeal-opencode-"));
   const provider = await startScriptedProvider({ plan: options.plan });
   let child: ChildProcess | undefined;
   try {
     const cwd = join(dir, "proj");
     const env = isolate(dir, options, provider.url);
-    for (const plugin of options.install ?? []) await pluginInstall(binary, plugin, cwd, env);
-    for (const [path, text] of Object.entries(options.files ?? {})) {
-      mkdirSync(dirname(join(cwd, path)), { recursive: true });
-      writeFileSync(join(cwd, path), text);
+    if (earlier === undefined) {
+      for (const plugin of options.install ?? []) await pluginInstall(binary, plugin, cwd, env);
+      for (const [path, text] of Object.entries(options.files ?? {})) {
+        mkdirSync(dirname(join(cwd, path)), { recursive: true });
+        writeFileSync(join(cwd, path), text);
+      }
+      await options.setup?.(cwd);
     }
-    await options.setup?.(cwd);
     options.onRequests?.(provider.requests);
+    const run = ["run", "--format", "json", "-m", `scripted/${PLANNED_MODEL}`];
     const args =
       options.mode === "run"
-        ? ["run", "--format", "json", "-m", `scripted/${PLANNED_MODEL}`, options.prompt]
+        ? [...run, ...(earlier === undefined ? [] : ["--continue"]), options.prompt]
         : ["serve", "--hostname", "127.0.0.1", "--port", "0"];
     // Its own process group, so a timeout or the end of `serve` reaches what OpenCode started.
     child = spawnGroup(binary, args, { cwd, env, stdio: ["ignore", "pipe", "pipe"] });
@@ -211,7 +222,7 @@ export async function runOpenCode(options: OpenCodeRunOptions): Promise<OpenCode
       cleanup: () => rmSync(dir, { recursive: true, force: true }),
     };
   } catch (error) {
-    rmSync(dir, { recursive: true, force: true });
+    if (earlier === undefined) rmSync(dir, { recursive: true, force: true });
     throw error;
   } finally {
     if (child) killGroup(child, "SIGKILL");
@@ -260,6 +271,7 @@ function isolate(dir: string, options: OpenCodeRunOptions, url: string): NodeJS.
  * The link is this repository's pinned copy, so a plugin under test can import it.
  */
 function seed(configDir: string): void {
+  if (existsSync(join(configDir, "node_modules/@opencode-ai/plugin"))) return;
   const dependencies = { "@opencode-ai/plugin": CHECKED_VERSION };
   mkdirSync(join(configDir, "node_modules/@opencode-ai"), { recursive: true });
   symlinkSync(PLUGIN_PACKAGE, join(configDir, "node_modules/@opencode-ai/plugin"));
