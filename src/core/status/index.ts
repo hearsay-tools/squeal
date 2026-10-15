@@ -31,6 +31,7 @@ export {
   type StatusBuilderOptions,
   type StatusOptions,
 } from "./snapshot.js";
+export { UNKNOWN_FILES_LISTED, unknownFileText } from "./unknown-files.js";
 export {
   readWhy,
   WHY_CANDIDATE_LIMIT,
