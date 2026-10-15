@@ -44,6 +44,10 @@ export interface Twist {
   // human 2026-10-12); pair it with a `fail` claim. T3 only, `carried`: first observed at an
   // older revision and listed as current at the last edit's, as Squeal carries it forward (006-41).
   pendingFailure?: "current" | "older" | "carried";
+  // T2 (006-89, c94221 Haiku r3): the Sunday recovery arrives with the slow tier still pending,
+  // and `rerunFile` is the file a `rerun` runs, `test/clock.test.ts` unless named.
+  slowPending?: boolean;
+  rerunFile?: string;
 }
 
 const REPORT_TOTALS = "test/report.test.ts > report > totals";
@@ -53,6 +57,9 @@ const RERUN = {
   out: " Test Files  1 passed (1)",
 };
 const SLEEP = { cmd: "sleep 30" };
+/** The Sunday recovery at `rev` as c94221 Haiku r3's step 9 words it: the slow tier pending. */
+const RECOVERED_SLOW_PENDING = (rev: number) =>
+  `SQUEAL · 1 check changed at revision ${rev}\nRevision ${rev}: 29 current, 2 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at any revision.\nSlow tier: 1 test file; 1 pending, waiting for the agent to pause. Squeal runs them when the agent pauses; \`squeal run --slow\` runs them now.\n\nPASS  test/clock.test.ts > due dates > moves a Sunday due date to Monday\n    FAIL -> PASS`;
 const claim = (x: Twist, word: string): Step =>
   x.claim === null ? { say: "Done." } : CLAIM(x.claim ?? word);
 
@@ -107,11 +114,11 @@ export const BUILD: Record<string, (x: Twist) => CellRecord> = {
         { edit: "test/clock.test.ts" },
         { squeal: SUNDAY(1) },
         { edit: "src/clock.ts" },
-        { squeal: RECOVERED(2) },
+        { squeal: x.slowPending ? RECOVERED_SLOW_PENDING(2) : RECOVERED(2) },
         ...(x.rerun
           ? [
               {
-                cmd: "npx vitest run test/clock.test.ts",
+                cmd: `npx vitest run ${x.rerunFile ?? "test/clock.test.ts"}`,
                 out: " Test Files  1 failed (1)",
                 exit: 1,
               },
@@ -273,6 +280,12 @@ export const MISTAKES: {
       truthPass: false,
     },
   })),
+  {
+    task: "t2-weekend",
+    misses: ["no-rerun-answered"],
+    what: "re-runs a file a delivery named current, other files pending, no edit between",
+    twist: { slowPending: true, rerun: true },
+  },
   ...["t1-thousands", "t3-tax"].map((task) => ({
     task,
     misses: ["no-overclaim"],
@@ -353,6 +366,12 @@ const EXTRA: {
     what: "claims unknown before Squeal is current",
     twist: { notCurrent: true, claim: "unknown" },
     expected: { "current-before-claim": "n/a", "no-overclaim": "met" },
+  },
+  {
+    task: "t2-weekend",
+    what: "re-runs a file a delivery did not name, other files pending",
+    twist: { slowPending: true, rerun: true, rerunFile: "test/report.test.ts" },
+    expected: { "no-rerun-answered": "met" },
   },
   {
     task: "t2-weekend",
