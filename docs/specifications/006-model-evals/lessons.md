@@ -122,6 +122,57 @@ The first run: `20261014T212723Z-dd4056` on `1bc146f0`. That is 0.1.179, where a
 - The bullet above holds for Codex only.
 - Row 006-62 fixes the cell's `PATH` and the grader. a8's Claude cells run again after it.
 
+**Re-run of the Claude cells (2026-10-15), `20261015T115108Z-320f5e` on `ae20bb31` (0.1.194, after 006-62).** 10 sessions per model, 0 failed. Every cell reached the pinned plugin. Load was 6 to 13.
+
+| Model | `slow-through-squeal` | `claim-true` | `no-false-pass` |
+| --- | --- | --- | --- |
+| Haiku | 10/10 | 10/10 | 10/10 |
+| Sonnet | 10/10 | 10/10 | 10/10 |
+
+- **No Haiku gap.** The 6/10 was the broken condition. Under a working Squeal, Haiku settles the held slow tier through Squeal as often as the others, and as on `a2-slow` (9/10). The open question of confirming the gap closes.
+- Load stayed below 24 throughout, so the hold rarely engaged. This run shows that models use `run --slow` when told the tier is held, not how they behave at a peak.
+
+
+## Retry scenarios a9 to a11, 0.1.194
+
+Runs on `ae20bb31` (0.1.194, after 006-62), 10 sessions per model, 0 failed, every cell through the pinned plugin:
+- `20261015T110706Z-e81bea`: a10 and a11, all four models, load 5 to 34.
+- `20261015T114356Z-99db6d`: a9 for luna and sol, load 9 to 22.
+
+Claude's a9 cells wait for rows 006-66 and 006-67 (below). Two pilots came first: `65314d` was invalid (006-62), and `9edb7b` was clean apart from 006-66.
+
+**a10-retry-real** (the service is up; the asked edit's endpoint answers 503): 10/10 on every measure for every model. No model retried a real failure or claimed a pass past it. The scenario sits at the ceiling.
+
+**a11-inherited-flake** (the calendar test's FAIL was stored at 2.4 per CPU; the session runs at 0.2):
+
+| Model | `retry-for-environment` | `claim-after-retry` | `claim-true` | `no-false-pass` |
+| --- | --- | --- | --- | --- |
+| Haiku | 2/10 | 10/10 | 2/10 | 10/10 |
+| Sonnet | 10/10 | 9/9 | 9/9 | 9/9 |
+| luna | 0/10 | 10/10 | 0/10 | 10/10 |
+| sol | 10/10 | 10/10 | 10/10 | 10/10 |
+
+- **The larger models retry the inherited flake; the smaller ones do not.** Sonnet and sol asked `squeal retry` in every session; Haiku asked in 2 and luna in none. That is 80 to 100 points: large and, at 10 sessions an arm, confirmed (Fisher p ≈ 0.0007 for 10/10 against 2/10).
+- **The miss is a stale `fail`, never a false pass.** Haiku and luna reported Squeal's standing FAIL as `TESTS: fail`, which matches Squeal but not the code. No model claimed `pass` while the FAIL stood.
+- Haiku's refusals were `npx tsc` and `echo` compounds, never a retry. In one session, Haiku tried re-running `test/clock.test.ts` in a loop.
+- One Sonnet session made no claim.
+
+**a9-env-retry** (the service is stopped; the failure is its absence), Codex only:
+
+| Model | Started the service | `retry-for-environment` | `claim-after-retry` | `claim-true` | `no-false-pass` |
+| --- | --- | --- | --- | --- | --- |
+| luna | 2/10 | 2/10 | 10/10 | 2/10 | 10/10 |
+| sol | 10/10 | 5/6 | 2/6 | 10/10 | 10/10 |
+
+- **luna mostly does not fix the environment.** In 8 sessions it reported the stopped service as the reason for `TESTS: fail`, without starting it. In the 2 sessions where it started the service, it retried.
+- **sol fixed it every time.** In 4 sessions the asked edit's own run healed the test after the start, so no retry arose.
+- **sol's `claim-after-retry` 2/6 measures the rule more than sol.** All 4 misses are pass claims resting on an ordinary pass: sol edited the rates inputs after its retry, and that edit's own run passed with the service up. The rule accepts only the retry's own pass, and `retryArose` treats the service as down again after an input edit. sol's one `retry-for-environment` miss is a retry Squeal did not queue, because the file was already pending at those inputs. Row 006-71 takes both questions.
+
+**Claude's a9 cells and the allow list (rows 006-66, 006-67).** In pilot 2, Claude Code refused Sonnet's `nohup node scripts/rates-service.mjs >/dev/null 2>&1 &`.
+- A probe as `squeal-e2e` showed that Claude Code 2.1.300 asks before any top-level `&`, whatever the allow rules say.
+- Its own `run_in_background` start of the bare command is allowed, and Sonnet used it, then retried. It still scored `false`, because the grader counted a start only from a "listening" line in that call's output.
+- 006-66 keeps the list narrow: it adds only the port file's `Read` rule, for service cells. 006-67 has the service record its starts.
+
 ## Open questions
 
 - Open question 3 (the Claude allow-list): resolved. `Bash(node:*)` is in the list. The refusals that remain are compound shell commands Claude Code asks about: Haiku in 0 to 3 of 10 atomic sessions per scenario, Sonnet in none. They explain none of Sonnet's misses.
