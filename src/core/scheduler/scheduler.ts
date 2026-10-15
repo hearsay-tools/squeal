@@ -1,5 +1,6 @@
 import { createFsHasher, readObjectFormat } from "../hash/index.js";
 import { appendNote } from "../notes.js";
+import { hostLoad } from "../retry/index.js";
 import { statCandidates } from "../revision/index.js";
 import { describeFailure } from "../state/index.js";
 import { plural } from "../text.js";
@@ -38,6 +39,7 @@ import { prepareObserved } from "./observed.js";
 import type { SchedulerOptions } from "./options.js";
 import { priorityOf } from "./queue.js";
 import { RERUN_CAP } from "./rerun.js";
+import { takeRetries } from "./retries.js";
 import { retryRunner } from "./revision.js";
 import { RunnerWork } from "./runner-work.js";
 import { forgetSlowRuns, queueSlowSuite, type SlowRun, SlowTier } from "./slow-tier.js";
@@ -160,6 +162,7 @@ class TierScheduler implements Scheduler {
         now: options.now ?? (() => Date.now()),
         note: (message) => this.#note(message),
         rerunCap: options.rerunCap ?? RERUN_CAP,
+        hostLoad: options.hostLoad ?? hostLoad,
         ...(options.runnerPartMs === undefined ? {} : { runnerPartMs: options.runnerPartMs }),
         ...(options.incarnation === undefined ? {} : { incarnation: options.incarnation }),
         ...(options.predecessor === undefined ? {} : { predecessor: options.predecessor }),
@@ -175,6 +178,8 @@ class TierScheduler implements Scheduler {
       this.#awaitingInstall = missing !== null;
       if (missing !== null) startWaiting(context, ledger, missing);
       else await this.#baseline(context, ledger);
+      // A retry an earlier daemon or another worktree's session asked for (001-368).
+      if (missing === null && takeRetries(context, ledger)) ledger.commit();
       this.#context = context;
     });
     this.#pump();
@@ -207,6 +212,8 @@ class TierScheduler implements Scheduler {
       }
       // Another worktree's heal may have left a file held here (review wave 13i, B1).
       if (ledger.confirmHeld()) ledger.commit();
+      // Each pass looks again for a load retry's load, and another worktree's requests (001-368).
+      if (batch.trigger === "interval" && takeRetries(context, ledger)) ledger.commit();
       const { applied, touched } = await reconcileBatch(context, ledger, batch);
       // Every reconciliation pass looks too: a workspace's `node_modules` is not watched (D5).
       const install = applied?.revision.changes.some((change) => touchesInstall(change.path));
@@ -315,6 +322,16 @@ class TierScheduler implements Scheduler {
     });
     this.#pump();
     return request;
+  }
+
+  /** `squeal retry` (001-368): queues the requests in the store that may run now. */
+  async requestRetries(): Promise<void> {
+    if (this.#closed || this.#reinstalled || this.#awaitingInstall || !this.#context) return;
+    await this.#lock.run(() => {
+      const { context, ledger } = this.#started();
+      if (takeRetries(context, ledger)) ledger.commit();
+    });
+    this.#pump();
   }
 
   nudge(): void {

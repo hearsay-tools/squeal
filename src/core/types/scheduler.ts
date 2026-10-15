@@ -238,6 +238,12 @@ export interface Scheduler {
    */
   requestSlowSuite(): Promise<SlowSuiteRequest>;
   /**
+   * `squeal retry` (spec 001 D6, 001-368): claims and queues the pending
+   * retry requests at this worktree's keys that may run now. A `load`
+   * request whose load is too high waits for a later reconciliation pass.
+   */
+  requestRetries(): Promise<void>;
+  /**
    * A hook's nudge (task 001-281): a silent Stop ended a turn, so slow files
    * waiting for their consumers to go idle are planned now instead of at the
    * slow tier's recheck. Starts nothing a trigger does not allow.

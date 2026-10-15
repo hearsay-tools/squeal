@@ -234,6 +234,8 @@ export interface HarnessOptions {
   readonly runnerPartBesideRun?: boolean;
   /** `SchedulerOptions.rerunCap` (task 001-171). */
   readonly rerunCap?: number;
+  /** `SchedulerOptions.hostLoad` (001-368). */
+  readonly hostLoad?: SchedulerOptions["hostLoad"];
   /** `SchedulerOptions.runnerPartMs` (task 001-228). */
   readonly runnerPartMs?: number;
   /** `SchedulerOptions.now`: the clock the store's re-key moves are stamped with (task 001-258). */
@@ -340,6 +342,7 @@ export async function openHarness(
     ...(options.slow === undefined ? {} : { slow: options.slow }),
     ...(options.capacity === undefined ? {} : { capacity: options.capacity }),
     ...(options.rerunCap === undefined ? {} : { rerunCap: options.rerunCap }),
+    ...(options.hostLoad === undefined ? {} : { hostLoad: options.hostLoad }),
     ...(options.runnerPartMs === undefined ? {} : { runnerPartMs: options.runnerPartMs }),
     ...(options.now === undefined ? {} : { now: options.now }),
     incarnation: options.incarnation ?? HARNESS_INCARNATION,

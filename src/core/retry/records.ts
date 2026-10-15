@@ -146,11 +146,11 @@ export function cancelRetries(
   worktreeId: WorktreeId,
   at: EpochMs,
 ): RetryRecord[] {
-  return endWhere(
-    store,
-    (r) => r.end === null && retriesAt([r], testFile, key).length > 0,
-    { outcome: "cancelled", at, worktreeId },
-  );
+  return endWhere(store, (r) => r.end === null && retriesAt([r], testFile, key).length > 0, {
+    outcome: "cancelled",
+    at,
+    worktreeId,
+  });
 }
 
 /**

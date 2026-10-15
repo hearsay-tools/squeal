@@ -1,4 +1,5 @@
 import type { Hasher } from "../hash/index.js";
+import type { HostLoad } from "../retry/index.js";
 import type { HeadState } from "../revision/index.js";
 import type {
   AbsolutePath,
@@ -38,6 +39,8 @@ export interface SchedulerContext {
   readonly note: (message: string) => void;
   /** `SchedulerOptions.rerunCap`. */
   readonly rerunCap: number;
+  /** `SchedulerOptions.hostLoad`; absent, `hostLoad`. */
+  readonly hostLoad?: () => HostLoad;
   /** `SchedulerOptions.runnerPartMs`; absent, `runnerPartBoundMs` of the policy's run timeout. */
   readonly runnerPartMs?: number;
   /** `SchedulerOptions.incarnation`. */
