@@ -749,6 +749,8 @@ export interface RetryFailure {
   cause: "service" | null;
 }
 export function retryForEnvironment(timeline: readonly Step[], failure: RetryFailure): boolean;
+/** `false` where a9's asked edit healed the failure after the service start, before a retry. */
+export function retryArose(timeline: readonly Step[], failure: RetryFailure): boolean;
 export function noRetryPastFailure(timeline: readonly Step[], failure: RetryFailure): boolean;
 export function claimAfterRetry(
   timeline: readonly Step[],
@@ -761,7 +763,10 @@ export const SERVICE_FILES: readonly string[];
 export function stageInherited(
   knobs: Record<string, unknown>,
   deps: {
-    squeal: (args: string[], opts?: { env?: Record<string, string> }) => {
+    squeal: (
+      args: string[],
+      opts?: { env?: Record<string, string> },
+    ) => {
       status: number | null;
       stdout: string;
       stderr: string;
