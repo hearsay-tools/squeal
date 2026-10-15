@@ -2,12 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readdirSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
-import {
-  isSlowLane,
-  type RunnerAdapter,
-  type RunOptions,
-  type TestFileRef,
-} from "../types/index.js";
+import type { RunnerAdapter, RunOptions, TestFileRef } from "../types/index.js";
 import { lowerWhile } from "./low-priority.js";
 import {
   describe,
@@ -123,7 +118,7 @@ export class EscapedChildren {
 
   /**
    * The carriers of `lane`'s mark started since `since`, for `lowerWhile`
-   * (spec 004 D2), among the daemon's descendants and its group's orphans
+   * (001 D11 Capacity, spec 004 D2), among the daemon's descendants and its group's orphans
    * only: an environ read per process started since, on a busy host, would
    * cost hundreds of reads a second. A process that left both, detached and
    * reparented outside the group, keeps its priority; the stop after the run
@@ -267,7 +262,8 @@ export type RunSweeper = Pick<EscapedChildren, "mark" | "afterRun" | "envFor" | 
  * lane's mark says is whose, the bare mark and the group's orphans, is
  * stopped when the last overlapping run settles, looking back to the mark of
  * the first, and named with every overlapping run (review wave-13r B1). A
- * slow lane's processes run at low priority (`lowerWhile`, spec 004 D2).
+ * run's processes run at `nice` 10, a slow lane's at idle I/O too
+ * (`lowerWhile`; 001 D11 Capacity, spec 004 D2).
  */
 export function afterEachRun(
   runner: RunnerAdapter,
@@ -306,7 +302,7 @@ export function afterEachRun(
       if (!overlapped.includes(options.runId)) overlapped.push(options.runId);
       inFlight += 1;
       const settled = new AbortController();
-      const lowering = isSlowLane(at) ? lowerWhile(children, at, since, settled.signal) : null;
+      const lowering = lowerWhile(children, at, since, settled.signal);
       try {
         const childEnv = { ...options.childEnv, ...children.envFor(at) };
         return await runner.run(testFiles, { ...options, lane: at, childEnv });

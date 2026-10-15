@@ -16,8 +16,8 @@ import { isAlive } from "./strays.js";
  * Spec 001 D12 with D5 as amended (task 001-140): runs of two lanes overlap,
  * and the stop after a run must not hit the other run's workers. Each run's
  * processes carry the mark of its lane, `<daemon>:<lane>` (task 004-18), so
- * a run's stop reaches its own lane only, at once; and a slow lane's
- * processes run at low priority (spec 004 D2).
+ * a run's stop reaches its own lane only, at once; and every lane's
+ * processes run at `nice` 10 (001 D11 Capacity, task 001-378; spec 004 D2).
  */
 
 const SLEEPER = ["-e", "setTimeout(() => {}, 600000)"];
@@ -211,7 +211,7 @@ describe.runIf(process.platform === "linux")(
       ]);
     });
 
-    it("runs a slow lane's processes at nice 10, and a fast run's stop leaves them running", async () => {
+    it("runs every lane's processes at nice 10, and a fast run's stop leaves the slow one's running", async () => {
       const children = new EscapedChildren();
       let release = () => {};
       const held = new Promise<void>((resolve) => {
@@ -228,7 +228,8 @@ describe.runIf(process.platform === "linux")(
             // A fast tier that leaves a process behind and settles while the slow file runs.
             fast = carrier(runOptions, true);
             await expect.poll(() => getPriority(pidOf(worker)), { timeout: 10_000 }).toBe(10);
-            expect(getPriority(pidOf(fast))).toBe(getPriority());
+            // 001 D11 Capacity (task 001-378): not only the slow lane's.
+            await expect.poll(() => getPriority(pidOf(fast)), { timeout: 10_000 }).toBe(10);
           }
           return completed(testFiles);
         }),
