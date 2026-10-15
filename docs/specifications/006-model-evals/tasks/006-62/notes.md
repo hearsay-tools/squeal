@@ -74,3 +74,12 @@ Probed and rejected: `run --all --wait` at 2.40 waits for the slow file, which t
 **Regressions** (`test/evals/service-start.test.ts`, red before on three of four): the start the failure names is a command `Bash(node:*)` allows and the grader reads as a service start, while the pilot's prefixed form is not allowed; no file the scenario adds reads an environment variable; for both harnesses, a9's and a10's knobs leave the cell's environment with no `LEDGERLINE_*` variable. `retry-knobs.test.ts` now starts the service and runs the rates test in one temp `HOME` with two different `TMPDIR`s, as a shell and Squeal's daemon do: down fails, up passes, a10's edit fails. The fake Squeal reports the port file under `HOME`. The reference sessions' texts follow the new path (`retry-texts.ts`'s `DOWN`, two synthetic commands); no measure reads them.
 
 **First run must confirm:** a Claude cell's `node scripts/rates-service.mjs` runs without a prompt.
+
+## For the coordinator
+
+Commits on `cez/9fa91ac1`: `07d43527` (1), `a38a8d3c` (2), `45368b32` (3), `c9c71092` (4), `31d7e49c` (5). Every changed file is inside the brief's ownership (`evals/lib/`, `evals/bin/run-cell.mjs`, `evals/atomic/`, `test/evals/`) or this notes file; `calendar-cache.ts` needed no change.
+
+- **Not done here, by ownership:** `evals/results/ATOMIC.md` is not regenerated (finding 3's marks show once `node evals/bin/atomic-trend.mjs` runs), and the committed results files are not edited (finding 2's corrected a8 measures appear only in a fresh grade; finding 3 marks those cells anyway).
+- **Grading drift to expect:** none in the 14 committed atomic files under `regradeAtomic` (stored pilot records). A fresh grade from events moves only a8's Claude `slow-through-squeal` (16 cells) and pull counts.
+- **The first run must confirm:** Claude Code keeps the cell's `PATH` order (1); the named wait holds on a loaded host and the session's registration reads load 2.40 (4); `node scripts/rates-service.mjs` runs without a prompt in a Claude cell (5).
+- **Open metric question (not this row's):** a refused `squeal run --slow --wait` (usage error, Squeal's own answer) still counts toward `slow-through-squeal`.
