@@ -1,4 +1,4 @@
-import { recordedText, waitsText } from "../retry/index.js";
+import { RECORDED_UNKNOWN_TEXT, recordedText, waitsText } from "../retry/index.js";
 import {
   formatCheck,
   fullSuiteText,
@@ -53,7 +53,9 @@ export function formatStatus(
         f.validity,
       ].join(", ")}`,
       ...(f.recorded === undefined
-        ? []
+        ? f.recordedUnknown === true
+          ? [`        ${RECORDED_UNKNOWN_TEXT}`]
+          : []
         : [`        ${recordedText(f.recorded, result.worktreeId, now)}`]),
     ]),
     ...retryLines(result),

@@ -1,4 +1,4 @@
-import { recordedText, retryText } from "../retry/index.js";
+import { RECORDED_UNKNOWN_TEXT, recordedText, retryText } from "../retry/index.js";
 import { awaitingInstallSentence } from "../scheduler/awaiting-install.js";
 import {
   flakyText,
@@ -455,7 +455,9 @@ export function formatRegistration(
         f.location === null ? null : at(f.location),
         f.validity === "current" ? null : `${f.validity}, observed at revision ${f.observedAt}`,
         f.recorded === undefined
-          ? null
+          ? f.recordedUnknown === true
+            ? capitalize(RECORDED_UNKNOWN_TEXT)
+            : null
           : capitalize(recordedText(f.recorded, registration.consumer.worktreeId, now)),
       ],
       [{ check: f.check, shown: "fail" }],
