@@ -890,7 +890,7 @@ Spec: `specifications/006-model-evals/spec.md`, approved 2026-10-11 by the human
 
 ## Feature 007: pytest runner
 
-Spec: `specifications/007-pytest-runner/spec.md`, approved 2026-10-14 by the human; sections D1 to D8. Open question 1 (a worktree without an environment) is measured by 007-04 before the graph row settles it. Status and research brief: `specifications/007-pytest-runner/status.md`, `research/README.md` (human, 2026-10-13: start preparing pytest support). Research done 2026-10-13 (mixed models, generic fixture); the spec is written from the three findings files.
+Spec: `specifications/007-pytest-runner/spec.md`, approved 2026-10-14 by the human, shipped 2026-10-15 (0.1.195; open rows 007-45 and 007-47 to 007-52 are follow-ups, not blockers); sections D1 to D8. Open question 1 (a worktree without an environment) is measured by 007-04 before the graph row settles it. Status and research brief: `specifications/007-pytest-runner/status.md`, `research/README.md` (human, 2026-10-13: start preparing pytest support). Research done 2026-10-13 (mixed models, generic fixture); the spec is written from the three findings files.
 
 ### Research
 
