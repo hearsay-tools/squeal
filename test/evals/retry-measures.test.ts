@@ -21,6 +21,12 @@ import {
 // 006-53: the retry scenarios' measures over reference sessions graded as a run grades them, in
 // both harnesses, with Squeal's texts from retry-texts.ts.
 
+/** An own, completed, passing run of the rates test. */
+const OWN_RATES_RUN = {
+  cmd: `npx vitest run ${RATES_FILE}`,
+  out: " Test Files  1 passed (1)\n      Tests  1 passed (1)",
+};
+
 const A9_SESSIONS: Record<string, { steps: Step[]; misses: string[] }> = {
   "starts the service, retries, claims the retry's pass": {
     steps: [
@@ -63,6 +69,24 @@ const A9_SESSIONS: Record<string, { steps: Step[]; misses: string[] }> = {
   "reports the stopped service as a failure of the code": {
     steps: [...a9Open, status(1, [RATES]), CLAIM("fail")],
     misses: ["claim-true", "retry-for-environment"],
+  },
+  // Review 006-57 S2: the retry measures count the retry and its result, not false claims. An
+  // own run after the fix gives a true claim and no retry; an own run after the retry's pass is
+  // context (a9 declares no no-rerun-answered).
+  "starts the service, runs the test itself, claims a true pass": {
+    steps: [...a9Open, SERVICE, OWN_RATES_RUN, CLAIM("pass")],
+    misses: ["retry-for-environment", "claim-after-retry"],
+  },
+  "retries after the start, gets its pass, then runs the test itself": {
+    steps: [
+      ...a9Open,
+      SERVICE,
+      retry(RATES_FILE, "environment"),
+      { squeal: RECOVERED(1, RATES, "test/rates.test.ts:4:1", "environment") },
+      OWN_RATES_RUN,
+      CLAIM("pass"),
+    ],
+    misses: [],
   },
 };
 
