@@ -4,7 +4,7 @@ Verdict: **PASS 20647e10**. **0 proven blockers**, 1 proven should-fix note, no 
 
 ## Verification output
 
-The starting HEAD matched the candidate and the tree was clean. All commands below ran at that HEAD. Installation, static checks, build, the targeted suites and external probes ran on the clean candidate before this report was written. The late Squeal failure below was produced at clean revision 0, then inspected after this report created docs-only revision 1. The brief's explicit host policy overrides the reviewer skill's usual independent full run: Squeal supplies the checkpoint; the coordinator owns the concurrent independent gate. No independent full suite was started here.
+The starting HEAD matched the candidate and the tree was clean. All commands below ran at that HEAD. Installation, static checks, build, the targeted suites and external probes ran on the clean candidate before this report was written. The late Squeal failure below was produced at clean revision 0, then inspected after this report created docs-only revision 1. Final full-suite checkpoint verification returned to a clean checkout of the exact candidate at revision 3; the worker branch was then restored for the report-only follow-up. The brief's explicit host policy overrides the reviewer skill's usual independent full run: Squeal supplies the checkpoint; the coordinator owns the concurrent independent gate. No independent full suite was started here.
 
 ```text
 $ git rev-parse HEAD
@@ -74,7 +74,7 @@ Notes:
 exit 3
 ```
 
-**Unverified: full-suite completion and a full-suite pass.** The first checkpoint progressed through 400 of 586 files; an intermediate status had 200 unknown files and 186 still running. The bounded follow-up has 200 already current and 386 pending, with zero known failures. The daemon is alive and continues the requested work. The revision remains 0 with no recorded revision provenance; this is not evidence of a clean-revision full-suite pass. No independent full suite was run, per the brief. No cause is assigned to the missing verdict, and this verification limit is not a product finding against the range. The coordinator still needs its passing landing gate; the targeted pass is not a full-suite substitute.
+**Initial verification limit, superseded by the final checkpoint below.** The first checkpoint progressed through 400 of 586 files; an intermediate status had 200 unknown files and 186 still running. The bounded follow-up has 200 already current and 386 pending, with zero known failures. The daemon is alive and continues the requested work. The revision remains 0 with no recorded revision provenance; this is not evidence of a clean-revision full-suite pass. No independent full suite was run, per the brief. No cause is assigned to the missing verdict, and this verification limit is not a product finding against the range. At that point the coordinator still needed its passing landing gate; the targeted pass was not a full-suite substitute. The final checkpoint below closes this review's full-suite verification.
 
 
 ### Late full-run failure
@@ -101,7 +101,38 @@ Full-suite checkpoint: none completed at any revision
 Checkpoint in progress: 185 of 386 test files done
 ```
 
-The shortened `squeal` labels use the same absolute CLI command as above. The inspection's revision 1 changes only this review document; it does not relabel the recorded failure as clean-revision-1 evidence. The watcher test and watcher implementation have no changes in the candidate range. **Plausible:** host contention contributed to the timeout. **Unverified:** whether the current failure recovers under identical inputs. Old history also contains a flaky recovery, but that is a different run and key; it does not prove recovery here. This is a known verification failure outside the review's code range, not a proven new adapter break. The coordinator must resolve or explicitly account for it before claiming a passing landing gate. The earlier zero-failure snapshot is superseded by this later result.
+The shortened `squeal` labels use the same absolute CLI command as above. The inspection's revision 1 changes only this review document; it does not relabel the recorded failure as clean-revision-1 evidence. The watcher test and watcher implementation have no changes in the candidate range. **Plausible:** host contention contributed to the timeout. **Proven on follow-up:** Squeal delivered `FAIL -> PASS` for this failure and explicitly labelled it `Flaky: FAIL -> PASS under the same inputs`. This is the current run's recovery, not the older historical recovery mentioned by `why`. This is a known verification failure outside the review's code range, not a proven new adapter break. The final checkpoint below includes the recovery and zero known failures. The intermediate one-failure snapshot is retained to make the loaded timeout visible; it is superseded by the final result.
+
+### Final full-suite checkpoint
+
+**Proven:** the watched work finished, all 586 test files became current, and the watcher timeout recovered under the same inputs. The completed revision-2 checkpoint was first read on the report-only descendant. I then detached at the exact candidate `20647e1005368879e3c811406e44effadbc4b1be`, confirmed a clean tree, and obtained the following revision-3 checkpoint. It reused all 586 current files and started no new test run. The full-suite verdict is therefore the brief's required Squeal verdict on the clean candidate, not an independent full-run claim.
+
+```text
+$ git rev-parse HEAD
+20647e1005368879e3c811406e44effadbc4b1be
+$ git status --short
+(no output)
+$ node --disable-warning=ExperimentalWarning /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.168/dist/cli/squeal.mjs run --all --wait 60000
+Checkpoint 77602fb3-c0ce-47b2-91c8-3e76be89ed95 completed at revision 3: no known failures; 586 test files, 586 already current, 0 run now
+Checkpoint 77602fb3-c0ce-47b2-91c8-3e76be89ed95 started at revision 3: 0 test files to run, 586 already current
+
+Revision: 3
+Known failures: 0
+Affected checks: 5439 passed (4853 tests, 586 test files loaded), 0 running, 0 queued, 10 skipped (10 tests)
+Full-suite checkpoint: completed at revision 3
+
+Worktree: /home/agent/projects/squeal/.ai/cezar/worktrees/68edb989-c07e-4f04-8400-5e8cec1128d0 (HEAD 20647e1, clean at revision 3)
+Daemon: running, last heartbeat 2 s ago
+Inherited from other worktrees: 37 current results (36 tests, 1 test file loaded)
+  37 (36 tests, 1 test file loaded) from /home/agent/projects/squeal/.ai/cezar/worktrees/4dda82ed-d43b-4fa4-9246-d474cf5f9d89 at 20647e1
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-14T23:48:16.501Z, revision 0: no dependencies are installed in this worktree; Squeal lists and runs no tests until an install
+exit 0
+```
+
+Squeal's 37 inherited current results comprise 36 tests and one loaded file from the coordinator's worktree at the same candidate. The remaining results were run here. Ten tests are marked skipped; no pending, stale or unknown files remain. The old no-dependencies note is historical and does not override the current completed verdict. Restoring the worker branch and committing this amended report changes only the review document.
 
 A supplemental latency run printed the measurements suppressed in the default passing-test output:
 
