@@ -256,3 +256,4 @@ See `spec.md`, section Open questions.
   - The edit acknowledgement is not said in a message that delivers its result with nothing pending (001-396).
   - The OpenCode and Pi package tests declare their inputs (001-399).
   - The daemon suite's hooks are bounded at 180 s (001-385).
+- 2026-10-15, review 001-401 repair, 0.1.189: D11 Fidelity and Priority amended. The recorder's form is chosen at every spawn, from Node's own options, a shell's `-c` words and a Worker's `execArgv`; when unsure it is a `--require`. Only a recorder the run used gets the signature note. A lane's marked processes left in the group are lowered too. The 100 ms is a polling interval.
