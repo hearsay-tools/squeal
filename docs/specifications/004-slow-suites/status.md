@@ -115,3 +115,4 @@ See `spec.md`, section Open questions.
 - ADR: `../../decisions/0004-codex-and-node-test-next.md`
 - Specs 001 (D5 scheduler, D11 policy), 002 (Stop and harness checkpoints), 003 (node:test projects).
 - 2026-10-15, 001-378, 0.1.185 (review 001-394 B2): D2 amended. A slow tier holds no more files than its run starts at once. The runner reports that width: for Vitest, the project's own `maxWorkers` within one task group. The files past it stay queued.
+- 2026-10-15, 004-61 (review 001-417 N1): D2 amended. `--fast` and `--slow` select lanes, both flags are both lanes; a `--fast` request is a one-lane checkpoint, never a full suite; `run --all --slow` is the `run --slow` request.
