@@ -31,7 +31,11 @@ export interface ObserveOptions {
    * `main`'s process, so the settings in the env name no test file.
    */
   readonly viaVitest?: boolean;
-  /** Run `main` without the recorder: only `stdout` is meaningful. */
+  /**
+   * Run `main` without the recorder: only `stdout` is meaningful. Its settings
+   * name an output nothing writes, so a Squeal observing this test leaves
+   * `main` alone too, as it does a test's own Squeal.
+   */
   readonly off?: boolean;
   /** The `NODE_OPTIONS` the recorder joins, a project's own (task 001-390). */
   readonly inherited?: string;
@@ -65,7 +69,7 @@ export function observe(
     env: {
       PATH: process.env.PATH ?? "",
       ...(options.off
-        ? {}
+        ? { SQUEAL_OBSERVE: JSON.stringify({ out: join(root, ".off") }) }
         : {
             NODE_OPTIONS: env.NODE_OPTIONS ?? "",
             SQUEAL_OBSERVE: JSON.stringify(
