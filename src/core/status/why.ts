@@ -26,6 +26,7 @@ import {
   type WhyResult,
   type WorktreeId,
 } from "../types/index.js";
+import { durationsOf } from "./durations.js";
 import { type StatusContext, type StatusStoreOptions, withStatusStore } from "./open.js";
 import { runLogOf, shownResult } from "./run-log.js";
 
@@ -91,12 +92,16 @@ function resolve(store: Store, worktreeId: string, query: string): CheckId | Why
   }
   const [only] = matches;
   if (matches.length === 1 && only !== undefined) return only.check;
+  const candidates = matches.slice(0, WHY_CANDIDATE_LIMIT).map((n) => n.check);
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
     found: false,
     query,
-    candidates: matches.slice(0, WHY_CANDIDATE_LIMIT).map((n) => n.check),
+    candidates,
+    candidateDurations: candidates.map((c) =>
+      durationsOf(store.results.listForCheck(c, Number.MAX_SAFE_INTEGER)),
+    ),
   };
 }
 
@@ -156,6 +161,7 @@ function report(
     knownState,
     history: store.transitions.history(worktreeId, check),
     results,
+    durations: durationsOf(all),
     runLog: shown === null ? null : runLogOf(shown, logDirOf(shown), check, runsDir, includeLogs),
     ...(heldFailure === undefined ? {} : { heldFailure }),
     ...(flaky === undefined ? {} : { flaky }),
