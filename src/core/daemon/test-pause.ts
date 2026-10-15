@@ -1,15 +1,25 @@
-/** Where a daemon run with `SQUEAL_TEST_PAUSE` stops itself (task 001-355). */
+import { channel } from "node:diagnostics_channel";
+
+/** Where a daemon tells a test it may pause it (task 001-355). */
 export type TestPause = "stop-gap" | "lock-wait";
 
+/** The channel a test's preload subscribes to (`test/daemon/pause-preload.mjs`). */
+const TEST_PAUSE_CHANNEL = "squeal:test-pause";
+
+const pauses = channel(TEST_PAUSE_CHANNEL);
+
 /**
- * Test-only (task 001-355): with `SQUEAL_TEST_PAUSE=<point>` a daemon stops
- * itself with SIGSTOP at that point, and a test resumes it with SIGCONT.
- * `stop-gap` is between a shutdown's socket unlink and its lock release
- * (D10's order), so the lock is still held; `lock-wait` is a successor's lock
- * wait after its first failed retry and the check after it. A SIGSTOP the
- * test sends once it sees the unlink, or the lock file open, races the
- * daemon's next step (review wave-13bj S1); this one cannot.
+ * Test-only (task 001-355): publishes `point` to `TEST_PAUSE_CHANNEL`; with
+ * no subscriber it does nothing, so the shipped CLI never stops itself
+ * (review 001-423, N1). A test's preload, loaded with `node --import`,
+ * subscribes and stops the daemon with SIGSTOP there, synchronously, and the
+ * test resumes it with SIGCONT. `stop-gap` is between a shutdown's socket
+ * unlink and its lock release (D10's order), so the lock is still held;
+ * `lock-wait` is a successor's lock wait after its first failed retry and the
+ * check after it. A SIGSTOP the test sends once it sees the unlink, or the
+ * lock file open, races the daemon's next step (review wave-13bj S1); this
+ * one cannot.
  */
-export function pauseAt(point: TestPause, env: NodeJS.ProcessEnv = process.env): void {
-  if (env.SQUEAL_TEST_PAUSE === point) process.kill(process.pid, "SIGSTOP");
+export function pauseAt(point: TestPause): void {
+  if (pauses.hasSubscribers) pauses.publish(point);
 }

@@ -4,13 +4,19 @@ import { describe, expect, it } from "vitest";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { e2eSuite, MATH, PLUGINS } from "./harness.js";
-import { daemonProcesses, lockHolders, resume, stoppedItself } from "./restart-evidence.js";
+import {
+  daemonProcesses,
+  lockHolders,
+  resume,
+  stoppedItself,
+  testPause,
+} from "./restart-evidence.js";
 
 /*
  * Task 001-340, from 001-337's reproduction: the daemon's shutdown unlinks
  * its socket before it releases its lock (D10's order), and on a loaded host
  * it can stall between the two for seconds (an ext4 journal wait). The
- * daemon stopping itself there (`SQUEAL_TEST_PAUSE=stop-gap`, task 001-355)
+ * daemon stopping itself there (`testPause("stop-gap")`, task 001-355)
  * models that stall. `squeal stop` must not say
  * stopped while the lock is held, and the daemon a SessionStart spawns in
  * that gap must take the lock once it is free instead of exiting silently.
@@ -25,7 +31,7 @@ describe.runIf(process.platform === "linux").each(PLUGINS)(
   (plugin) => {
     it("stop waits for its lock, and the replacement a SessionStart spawns serves", async (ctx) => {
       const e = fixture(ctx, plugin, { tmpfs: true });
-      await e.hook("session-start", e.main, {}, { SQUEAL_TEST_PAUSE: "stop-gap" });
+      await e.hook("session-start", e.main, {}, testPause("stop-gap"));
       const first = await e.daemonReady(e.main);
       await e.settle(e.main, "a passing baseline", (s) => s.counts.current > 0);
       const socket = socketPathFor(worktreeIdFor(e.main), { XDG_RUNTIME_DIR: e.runtime });
