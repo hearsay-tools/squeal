@@ -1,4 +1,4 @@
-import { readPolicy } from "../daemon/policy.js";
+import { loadPolicy } from "../daemon/policy.js";
 import { isInstalledLockfile, testFileId } from "../keys/index.js";
 import { passedRetry } from "../retry/index.js";
 import { readFailureKeys, readSlowArtifacts } from "../slow/state.js";
@@ -241,12 +241,22 @@ export function withDependencies(
 
 /**
  * Whether a check in `failing` belongs to a Node runner (Vitest or node:test):
- * one whose project is not a pytest project of the worktree's policy. Project
- * names are unique across runners (`createCompositeRunner`).
+ * one whose project is not a pytest project of the worktree's policy and whose
+ * test file is not a Python file. Project names are unique across runners
+ * (`createCompositeRunner`). Review wave-5.5 B1: the defaults a policy falls
+ * back to name no pytest project, so ownership is established only from a
+ * policy that loaded without problems, or from no policy file at all; with
+ * problems, or with no worktree row, it is unknown and the sentence is not
+ * said. A Python test file is never a Node runner's, so a pytest failure stored
+ * before its project left the policy does not become one; the file only ever
+ * withholds the sentence.
  */
 function nodeFailing(store: Store, worktreeId: WorktreeId, failing: readonly CheckId[]): boolean {
   if (failing.length === 0) return false;
   const root = store.worktrees.get(worktreeId)?.root;
-  const pytest = new Set(root === undefined ? [] : readPolicy(root).pytest.map((p) => p.name));
-  return failing.some((check) => !pytest.has(check.project));
+  if (root === undefined) return false;
+  const { policy, problems } = loadPolicy(root);
+  if (problems.length > 0) return false;
+  const pytest = new Set(policy.pytest.map((p) => p.name));
+  return failing.some((check) => !pytest.has(check.project) && !check.testPath.endsWith(".py"));
 }
