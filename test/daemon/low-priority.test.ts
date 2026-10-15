@@ -57,6 +57,33 @@ require("node:readline").createInterface({ input: process.stdin }).on("line", (l
 console.log("ready");
 `;
 
+/** `LEADER` in its own group, `daemon` the `EscapedChildren` standing in for it, `sleeper(lane)` its sleeper's pid. */
+async function leaderGroup() {
+  const leader = spawn(process.execPath, ["-e", LEADER], {
+    detached: true,
+    stdio: ["pipe", "pipe", "ignore"],
+  });
+  onTestFinished(() => {
+    try {
+      if (leader.pid !== undefined) process.kill(-leader.pid, "SIGKILL");
+    } catch {
+      // gone
+    }
+  });
+  const lines = createInterface({ input: leader.stdout as NodeJS.ReadableStream })[
+    Symbol.asyncIterator
+  ]();
+  expect((await lines.next()).value).toBe("ready");
+  const daemon = new EscapedChildren(undefined, leader.pid);
+  // the group's members at the start are never the daemon's: let that scan finish first
+  await sleep(500);
+  const sleeper = async (lane: string): Promise<number> => {
+    leader.stdin?.write(`${JSON.stringify(daemon.envFor(lane))}\n`);
+    return Number((await lines.next()).value);
+  };
+  return { daemon, sleeper };
+}
+
 function output(child: ChildProcess): Promise<string> {
   let out = "";
   child.stdout?.on("data", (chunk: Buffer) => {
@@ -76,40 +103,34 @@ describe.runIf(process.platform === "linux")("lowerWhile: forks at nice 10 (001-
   });
 
   it("lowers a carrier its parent left in the daemon's group before a look found it (001-401 S1)", async () => {
-    const leader = spawn(process.execPath, ["-e", LEADER], {
-      detached: true,
-      stdio: ["pipe", "pipe", "ignore"],
-    });
-    onTestFinished(() => {
-      try {
-        if (leader.pid !== undefined) process.kill(-leader.pid, "SIGKILL");
-      } catch {
-        // gone
-      }
-    });
-    const lines = createInterface({ input: leader.stdout as NodeJS.ReadableStream })[
-      Symbol.asyncIterator
-    ]();
-    expect((await lines.next()).value).toBe("ready");
-    const children = new EscapedChildren(undefined, leader.pid);
-    // the group's members at the start are never the daemon's: let that scan finish first
-    await sleep(500);
+    const { daemon, sleeper } = await leaderGroup();
     const settled = new AbortController();
-    const lowering = lowerWhile(children, "fast", children.mark(), settled.signal);
+    const lowering = lowerWhile(daemon, "fast", daemon.mark(), settled.signal);
     onTestFinished(async () => {
       settled.abort();
       await lowering;
     });
-    const sleeper = async (): Promise<number> => {
-      leader.stdin?.write(`${JSON.stringify(children.envFor("fast"))}\n`);
-      const pid = Number((await lines.next()).value);
+    const lowered = async (): Promise<number> => {
+      const pid = await sleeper("fast");
       for (let waited = 0; waited < 3_000 && getPriority(pid) < TEST_NICE; waited += 50)
         await sleep(50);
       return getPriority(pid);
     };
     // the first, then one after the scan's least interval, found by the exit of its shell
-    expect(await sleeper()).toBe(TEST_NICE);
+    expect(await lowered()).toBe(TEST_NICE);
     await sleep(1_100);
-    expect(await sleeper()).toBe(TEST_NICE);
+    expect(await lowered()).toBe(TEST_NICE);
+  });
+
+  it("keeps another lane's orphan for that lane's look when one lane's look scans (wave-13bt S1)", async () => {
+    const { daemon, sleeper } = await leaderGroup();
+    const since = daemon.mark();
+    expect(await daemon.carriers("fast", since)).toEqual([]);
+    // the one exit: the slow lane's shell, its sleeper left in the group at the daemon's nice
+    const pid = await sleeper("slow:vitest");
+    await sleep(1_100);
+    expect(await daemon.carriers("fast", since)).toEqual([]);
+    const slow = await daemon.carriers("slow:vitest", since);
+    expect(slow.map((entry) => entry.pid)).toEqual([pid]);
   });
 });

@@ -68,6 +68,8 @@ export class EscapedChildren {
   /** The daemon's `reapedFaults` at the last scan for orphans, and when it ran (`carriers`). */
   #reaped = -1;
   #orphansAt = 0;
+  /** What the last scan for orphans found, every lane's, by `key`, with its mark (`carriers`). */
+  #orphanMarks = new Map<string, { entry: ProcessEntry; mark: string | null | undefined }>();
 
   constructor(token: string = randomUUID(), self: number = process.pid) {
     this.env = { [CHILD_VARIABLE]: token };
@@ -168,23 +170,44 @@ export class EscapedChildren {
    * look found it leaves its children there. Scanned from `/proc` only when
    * a child of the daemon was reaped since the last scan, which its children's
    * page faults, added to the daemon's `cminflt`, tell, and at most once in
-   * `ORPHANS_EVERY_MS`. None when the daemon leads no group.
+   * `ORPHANS_EVERY_MS`, whatever lane looks. A scan keeps what it found of
+   * every lane, so a lane's look between scans still gets its own (review
+   * wave-13bt S1). None when the daemon leads no group.
    */
   async #orphans(lane: string, since: number): Promise<ProcessEntry[]> {
     const reaped = reapedFaults(this.#self);
-    if (reaped === this.#reaped || Date.now() - this.#orphansAt < ORPHANS_EVERY_MS) return [];
-    this.#reaped = reaped;
-    this.#orphansAt = Date.now();
+    if (reaped !== this.#reaped && Date.now() - this.#orphansAt >= ORPHANS_EVERY_MS) {
+      this.#reaped = reaped;
+      this.#orphansAt = Date.now();
+      await this.#scanOrphans();
+    }
+    const found: ProcessEntry[] = [];
+    for (const { entry, mark } of this.#orphanMarks.values())
+      if (mark === lane && entry.start >= since && statOf(entry.pid)?.start === entry.start)
+        found.push(entry);
+    return found;
+  }
+
+  /** The group's members that are no children of the daemon, each lane's, into `#orphanMarks`. */
+  async #scanOrphans(): Promise<void> {
     const strangers = await this.#strangers.catch(() => null);
-    if (strangers === null) return [];
+    if (strangers === null) return;
     const entries = await snapshot();
     const foreign = lineOf(strangers, entries);
     const members = entries.filter(
-      (e) => e.pgrp === this.#self && e.pid !== this.#self && e.ppid !== this.#self,
+      (e) =>
+        e.pgrp === this.#self &&
+        e.pid !== this.#self &&
+        e.ppid !== this.#self &&
+        !foreign.has(e.pid),
     );
-    const found = members.filter((e) => e.start >= since && !foreign.has(e.pid));
-    const marks = await Promise.all(found.map(({ pid }) => this.#markOf(pid)));
-    return found.filter((_, i) => marks[i] === lane);
+    const marks = await Promise.all(
+      members.map(async (entry) => {
+        const known = this.#orphanMarks.get(key(entry));
+        return known === undefined ? await this.#markOf(entry.pid) : known.mark;
+      }),
+    );
+    this.#orphanMarks = new Map(members.map((entry, i) => [key(entry), { entry, mark: marks[i] }]));
   }
 
   /** `scope` `null` is the exit. */
