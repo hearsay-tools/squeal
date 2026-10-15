@@ -33,7 +33,8 @@ const failingSeen = (s, file) =>
  * no `squeal run` and no own test run between the start and that pass: the asked edit's own run
  * healed it, so no retry was needed. A forced or own run after the start still scores.
  *
- * Tracked through to the claim (re-review 006-59 R2): a later FAIL of `file` re-opens the
+ * Tracked through to the claim (re-review 006-59 R2): a later FAIL of `file`, Squeal's or an own
+ * run's (006-75), re-opens the
  * situation, and a later unforced heal, after a start following it and before a queued retry,
  * settles it again. An edit to `inputs` voids a heal, whose pass was at the old inputs, but the
  * service stays up and a request stays made (006-71): the edit's own run with the service up
@@ -54,7 +55,7 @@ export function retryArose(tl, { file, cause = null, inputs = [] }) {
     else if (started(s)) [up, forced] = [true, false];
     else if (forcedRun(s) || (s.k === "squeal" && s.sub === "run")) forced = true;
     else if (s.k === "edit" && inputs.includes(s.path)) healed = false;
-    if (mine.some((c) => c.to === "fail")) [healed, asked, up] = [false, false, false];
+    if (failingSeen(s, file)) [healed, asked, up] = [false, false, false];
     else if (mine.some((c) => c.to === "pass" && c.retried !== undefined)) asked = !healed || asked;
     else if (mine.some((c) => c.to === "pass") && up && !forced && !asked && !healed) healed = true;
   }
@@ -102,6 +103,10 @@ export function noRetryPastFailure(tl, { file, inputs = [] }) {
  * and the retry's own pass never comes (sol's a9 r6 to r8). So a delivered pass of it, or a read
  * as in (b) from `squeal status` or `squeal run --slow`, counts while no FAIL of it was seen
  * since the start and no run since the start could have run it (`ranFile`).
+ *
+ * A FAIL of `file` seen after any credited pass, Squeal's or an own run's (`failingSeen`),
+ * revokes it (review 006-74, 006-75) and closes (c): a later ordinary pass counts again only after
+ * a new start and a new queued retry.
  */
 export function claimAfterRetry(tl, claim, { file, inputs = [], cause = null }) {
   if (claim === null || claim === undefined) return null;
@@ -116,6 +121,7 @@ export function claimAfterRetry(tl, claim, { file, inputs = [], cause = null }) 
     if (cause === "service" && started(s)) up = true;
     if (cause === "service" && up && queued(s, file)) fixed = true;
     if (ranFile(s, file)) fixed = false;
+    if (failingSeen(s, file)) [passed, up, fixed] = [false, false, false];
     if (queued(s, file)) open = true;
     else if (s.k === "retry" && s.cancel && s.paths.includes(file)) open = false;
     else if (forcedRun(s)) open = false;
@@ -125,8 +131,9 @@ export function claimAfterRetry(tl, claim, { file, inputs = [], cause = null }) 
     } else if (s.k === "squeal") {
       const mine = (s.checks ?? []).filter((c) => c.file === file);
       const read = (s.sub === "status" || s.sub === "run") && statusPass(s, file, seen, atEdit);
-      if (fixed && (mine.some((c) => c.to === "pass") || read)) passed = true;
-      if (mine.some((c) => c.to === "fail")) [passed, up, fixed] = [false, false, false];
+      // A FAIL of it revoked any pass above; (b)'s window stays as it was.
+      if (mine.some((c) => c.to === "fail")) passed = false;
+      else if (fixed && (mine.some((c) => c.to === "pass") || read)) passed = true;
       else if (mine.some((c) => c.to === "pass" && c.retried !== undefined)) passed = true;
       else if (s.sub === "run" || mine.some((c) => c.to === "pass")) open = false;
       else if (open && s.sub === "status" && statusPass(s, file, seen, atEdit)) passed = true;
