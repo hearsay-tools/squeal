@@ -277,8 +277,9 @@ function countsOf(t) {
     stale = count(/(\d+) stale/, affected);
     unknown = count(/(\d+) unknown/, affected);
   } else return null;
-  // Both classes in a full header and a status; a news header names only the non-zero ones.
-  const files = /Test files without checks: ([^.]*)\./.exec(t)?.[1];
+  // Both classes in a full header and a status; a news header names only the non-zero ones. A
+  // header ends the sentence with a period, a status with its line (review 001-423, B2).
+  const files = /Test files without checks: ([^.\n]*)/.exec(t)?.[1];
   if (files !== undefined) {
     pending += count(/(\d+) pending/, files);
     unknown += count(/(\d+) unknown/, files);
