@@ -54,9 +54,9 @@ A newer push cancels a superseded run on `cand/*` and on pull requests. Main run
 
 The full suite runs on Node 22. It is the engines floor (`>=22.13`), it had the only real one-version defect (npm 10.9.9 crashing on an e2e install, `ci-test-time.md` 3), and it has the larger flake share. Node 24 runs only the version-sensitive test files.
 
-Those files are listed in one committed file that the workflow reads. The first list is from `ci-test-time.md` 3, 47 files and 144 s of file time:
+Those files are listed in `test/version-sensitive.txt`, which the workflow reads (44 files at 010-10). The list started from `ci-test-time.md` 3, 47 files and 144 s of file time:
 
-- `test/runners/node-test/**`;
+- `test/runners/node-test/**` and every other test that runs a real `node --test` (integration, the slow tier, e2e);
 - `test/e2e/shipped-plugin`, `plugin-copy` and `pi-update`;
 - `test/harness/opencode/bridge*`;
 - `test/keys/environment`;
@@ -68,7 +68,7 @@ A guard test fails when a `*.test.ts` file reads either of those and is not in t
 
 The Node 22 suite runs as three jobs, `vitest run --shard=<i>/3`. A simulation calibrated on the logged file times gives 7.2 minutes of Test wall time, and about 25 job-minutes per run together with the Node 24 job (`ci-test-time.md` 4). Each shard passes or fails on its own. There is no merge job, because the process reads a failure by test name from the failing job's log.
 
-Lint and typecheck run once per run. Build and the bundle drift check run once per Node version.
+Lint and typecheck run once per run, in the Node 24 job. Build and the bundle drift check run once per Node version: in Node 22 shard 1 and in the Node 24 job.
 
 A run's peak goes from 2 jobs to 4, plus the 6-second `version` job on main. Each lasts about 8 minutes instead of 20, so the pool time a run occupies falls from about 40 to about 25 job-minutes.
 

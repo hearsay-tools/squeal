@@ -1124,13 +1124,13 @@ Spec: `specifications/010-ci-cost/spec.md`. Sections D1 to D6. Approved as a fir
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 010-01 research: pull-request flow, branch protection, release-only suites | running | `research/README.md`, topic `ci-pr-flow`: the human's two questions of 2026-10-15, read-only on GitHub. | `research/ci-pr-flow.md` committed; a step-two proposal for the human. |
+| 010-01 research: pull-request flow, branch protection, release-only suites | done (`research/ci-pr-flow.md`: a no-bypass ruleset against deletion and force pushes; no required pull requests or merge queue while docs land about 8 times an hour; keep e2e, pytest and fixtures per landing, 6 real defects in 8 days, 3 unseen by the host gate; a nightly Node 24 full run; later, required checks without pull requests after a scratch-repository probe; the human decides) | `research/README.md`, topic `ci-pr-flow`: the human's two questions of 2026-10-15, read-only on GitHub. | `research/ci-pr-flow.md` committed; a step-two proposal for the human. |
 
 ### Wave 1: the workflow
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 010-10 triggers, docs skip, cancellation, one full Node in three shards | running | D1 to D5 in `.github/workflows/ci.yml`; the version-sensitive list and its guard test (D4); D6's two lines in the coordinator skill (both mirrors). No bundle change, no version raise. Brief `tasks/wave-1.md`. | Guard test green; the candidate's own CI shows three Node 22 shards and the Node 24 job, all green; Testing's push checks and the edge probe recorded in `status.md`. |
+| 010-10 triggers, docs skip, cancellation, one full Node in three shards | running (worker 633f2df3 done, 3 commits integrated; lint, typecheck, guard test green; coordinator gate running; then `cand/010-10`) | D1 to D5 in `.github/workflows/ci.yml`; the version-sensitive list and its guard test (D4); D6's two lines in the coordinator skill (both mirrors). No bundle change, no version raise. Brief `tasks/wave-1.md`. | Guard test green; the candidate's own CI shows three Node 22 shards and the Node 24 job, all green; Testing's push checks and the edge probe recorded in `status.md`. |
 | 010-11 review of 010-10 | planned | `/reviewer` pinned to the candidate SHA: each D against the workflow, whether any filter or group drops a run the process reads (`research/ci-run-triggers.md` 4), the list's coverage of version-dependent code. | `reviews/wave-1.md` committed. |
 
 ### Wave 2: proof
