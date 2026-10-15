@@ -10,10 +10,7 @@ import { join } from "node:path";
  * 001's dogfooding allow-list for Claude Code subjects, with `Bash(node:*)` for the fixture's
  * scripts: 005-06's `Bash(node --test:*)` refused `node scripts/changelog.mjs` (open question 3).
  * `Skill` lets a subject load the plugin's skill, which `-p` refuses without a rule, as the Agent
- * SDK allows it (001-280's research; 2026-10-12). `Read(~/.ledgerline-rates.port)` lets a9's
- * `cat ~/.ledgerline-rates.port` past Claude Code's read check outside the working directory
- * (006-66). No rule admits a background `&`: Claude Code 2.1.300 asks for it whatever the rules
- * say. Run conditions name this list (D6).
+ * SDK allows it (001-280's research; 2026-10-12). Run conditions name this list (D6).
  */
 export const CLAUDE_ALLOWED_TOOLS = [
   "Bash(git:*)",
@@ -27,7 +24,6 @@ export const CLAUDE_ALLOWED_TOOLS = [
   "Bash(squeal:*)",
   "Bash(sleep:*)",
   "Read",
-  "Read(~/.ledgerline-rates.port)",
   "Edit",
   "Write",
   "Glob",
@@ -37,6 +33,7 @@ export const CLAUDE_ALLOWED_TOOLS = [
 
 /**
  * `[command, args]` for one session; `pluginDir` is the Claude Code plugin, or `null` for none.
+ * `tools` are the cell's own rules after `CLAUDE_ALLOWED_TOOLS`, from its knobs (`knobTools`).
  * A second turn (006-33) resumes the first's session: `resume` is its id, Claude Code's
  * `sessionId` that turn 1 named, or the thread Codex's turn 1 started. Codex's `exec resume`
  * takes no `-s`, so it names the sandbox through its config.
@@ -49,6 +46,7 @@ export function sessionCommand({
   pluginDir,
   sessionId = null,
   resume = null,
+  tools = [],
 }) {
   if (harness === "codex") {
     const pinned = ["-m", model, "-c", `model_reasoning_effort="${effort}"`];
@@ -78,6 +76,7 @@ export function sessionCommand({
       ...(pluginDir ? ["--plugin-dir", pluginDir] : []),
       "--allowedTools",
       ...CLAUDE_ALLOWED_TOOLS,
+      ...tools,
     ],
   ];
 }

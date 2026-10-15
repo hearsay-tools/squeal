@@ -304,6 +304,8 @@ export function sessionCommand(input: {
   sessionId?: string | null;
   /** A later turn resumes this session: Claude Code's session id or Codex's thread. */
   resume?: string | null;
+  /** Claude Code rules after `CLAUDE_ALLOWED_TOOLS`, from the cell's knobs (006-66). */
+  tools?: readonly string[];
 }): [string, string[]];
 
 export interface Patch {
@@ -767,6 +769,7 @@ export function claimAfterRetry(
 ): boolean | null;
 /** The knobs' fixture files (evals/atomic/retry/), at their paths in the fixture. */
 export const SERVICE_FILES: readonly string[];
+export function knobTools(knobs: Record<string, unknown>): string[];
 /**
  * a11's `inherited` staging; throws unless the FAIL stands at the knob's load (006-57 S1). The
  * load drops only after a wait on the file returned, and the daemon is kept (006-62).

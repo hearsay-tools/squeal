@@ -7,9 +7,11 @@ import {
   CLAUDE_ALLOWED_TOOLS,
   cellEnv,
   classifyShell,
+  knobTools,
   retryEnv,
   SERVICE_FILES,
   scenarioOf,
+  sessionCommand,
 } from "../../evals/lib/index.mjs";
 
 // 006-62, finding 5: in the pilot's a9 Claude cells, Sonnet started the rates service as
@@ -35,10 +37,22 @@ const source = (f: string) => readFileSync(join(ATOMIC, "retry", f), "utf8");
 // 006-66: pilot 2 (`20261015T104301Z-9edb7b`) refused Sonnet's `nohup node scripts/rates-service.mjs
 // >/dev/null 2>&1 &` and Haiku's `cat ~/.ledgerline-rates.port; echo`. Probed as squeal-e2e on
 // Claude Code 2.1.300 (tasks/006-66/notes.md): the read needs a Read rule for the port file, and
-// `echo` passes as read-only. No rule, prefix or exact, admits a background `&`, so the list holds
-// none for it, and nothing wider.
+// `echo` passes as read-only. No rule admits a background `&`. The Read rule is the `service`
+// knob's alone, so the recorded list, and the long baseline's fingerprint, stay as they were.
 describe("Claude's allow-list", () => {
-  it("is pinned, with the port file's Read rule and no shell or wildcard rule", () => {
+  const PORT = "Read(~/.ledgerline-rates.port)";
+  const rules = (args: string[]) => args.slice(args.indexOf("--allowedTools") + 1);
+  const command = (tools: string[]) =>
+    sessionCommand({
+      harness: "claude",
+      prompt: "p",
+      model: "claude-haiku-5-5",
+      effort: "medium",
+      pluginDir: null,
+      tools,
+    })[1];
+
+  it("is pinned, with no shell or wildcard rule", () => {
     expect(CLAUDE_ALLOWED_TOOLS).toEqual([
       "Bash(git:*)",
       "Bash(grep:*)",
@@ -51,13 +65,25 @@ describe("Claude's allow-list", () => {
       "Bash(squeal:*)",
       "Bash(sleep:*)",
       "Read",
-      "Read(~/.ledgerline-rates.port)",
       "Edit",
       "Write",
       "Glob",
       "Grep",
       "Skill",
     ]);
+  });
+
+  it("gains the port file's Read rule in a cell with the service knob, and only there", () => {
+    for (const name of ["a9-env-retry", "a10-retry-real"]) {
+      const knobs = scenarioOf(name)?.knobs ?? {};
+      expect(knobTools(knobs), name).toEqual([PORT]);
+      expect(rules(command(knobTools(knobs))), name).toEqual([...CLAUDE_ALLOWED_TOOLS, PORT]);
+    }
+    for (const name of ["a1-break", "a11-inherited-flake"]) {
+      const knobs = scenarioOf(name)?.knobs ?? {};
+      expect(knobTools(knobs), name).toEqual([]);
+      expect(rules(command(knobTools(knobs))), name).toEqual([...CLAUDE_ALLOWED_TOOLS]);
+    }
   });
 });
 

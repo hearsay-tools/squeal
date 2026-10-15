@@ -105,7 +105,7 @@ export {
   retryArose,
   retryForEnvironment,
 } from "./retry-evidence.mjs";
-export { retryEnv, SERVICE_FILES, stageInherited } from "./retry-knobs.mjs";
+export { knobTools, retryEnv, SERVICE_FILES, stageInherited } from "./retry-knobs.mjs";
 export { RUBRIC, rubricOf, SYSTEM } from "./rubric.mjs";
 export {
   cellEnv,
