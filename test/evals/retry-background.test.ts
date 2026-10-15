@@ -18,8 +18,9 @@ import {
 // Sonnet's two `&` starts were refused; it then started the service with the Bash tool's
 // `run_in_background`, whose output is Claude Code's, not the service's, and retried. It scored
 // `retry-for-environment` false. Codex has no background tool; its start redirected is the same.
-// 006-69 (review 006-68 B1): each line carries its time and goes to the latest executed start at
-// or before it, not to the next start in order; `node --check` and the like start nothing.
+// 006-72 (re-review 006-70 B1): with a record, the record alone says when the service came up:
+// each `listening` line is a service step at its own time, paired with no command, and a start
+// command adds no step. `node --check` and the like start nothing (006-69).
 
 type Harness = "claude" | "codex";
 const RETRY = retry(RATES_FILE, "environment");
@@ -105,59 +106,132 @@ describe("a start whose reply is not in its output", () => {
       const start = quiet(harness);
       const steps = [...a10Open, start, RETRY, CLAIM("fail")];
       const lines = record(later(steps, start, RUNNING));
-      expect(services(steps, harness, lines)).toEqual([false]);
+      expect(services(steps, harness, lines)).toEqual([]);
       expect(measuresOf("a10-retry-real", steps, harness, false, lines)).toEqual(
         expected("a10-retry-real", ["no-retry-past-failure"]),
       );
     });
 
-    it(`${harness}, a10: a conditional start the timeline cannot establish lends no line to a later start (review 006-68 B1)`, () => {
-      // The service stopped with its port file, then the conditional's start listened: the call's
-      // structure cannot say it ran, so it is no action. The later start found it running.
-      const conditional: Step = {
-        cmd: "rm -f ~/.ledgerline-rates.port; sleep 1; test -f .rates.env || node scripts/rates-service.mjs > /dev/null",
+    // Review 006-68 B1's three probes (round 1).
+    it(`${harness}, a9: a syntax check, a retry, then a start: the retry followed no start`, () => {
+      const check: Step = { cmd: "node --check scripts/rates-service.mjs", out: "" };
+      const start = quiet(harness);
+      const steps = [...a9Open, check, RETRY, start, wait(2), CLAIM("pass")];
+      const lines = record(later(steps, start, SERVICE_UP));
+      expect(services(steps, harness, lines)).toEqual([true]);
+      expect(measuresOf("a9-env-retry", steps, harness, true, lines)["retry-for-environment"]).toBe(
+        false,
+      );
+      // Checked, started, then retried: credited.
+      const first = [...a9Open, check, start, RETRY, wait(2), CLAIM("pass")];
+      const ok = record(later(first, start, SERVICE_UP));
+      expect(measuresOf("a9-env-retry", first, harness, true, ok)["retry-for-environment"]).toBe(
+        true,
+      );
+    });
+
+    it(`${harness}, a10: a failed redirection, a retry, then a start: the retry is past the failure`, () => {
+      const failed: Step = {
+        cmd: "node scripts/rates-service.mjs > logs/rates.log 2>&1 &",
         out: "",
       };
       const start = quiet(harness);
-      const steps = [...a10Open, conditional, start, RETRY, CLAIM("fail")];
-      const lines = record(during(steps, conditional, SERVICE_UP), later(steps, start, RUNNING));
-      expect(services(steps, harness, lines)).toEqual([false]);
+      const steps = [...a10Open, failed, RETRY, start, CLAIM("fail")];
+      const lines = record(later(steps, start, SERVICE_UP));
+      expect(services(steps, harness, lines)).toEqual([true]);
       expect(measuresOf("a10-retry-real", steps, harness, false, lines)).toEqual(
         expected("a10-retry-real", ["no-retry-past-failure"]),
       );
     });
 
-    it(`${harness}, a9: a syntax check is no start, and the real start after it keeps its line`, () => {
-      const check: Step = { cmd: "node --check scripts/rates-service.mjs", out: "" };
+    it(`${harness}, a10: a restart before the failure, a no-op start after it: no change after the failure`, () => {
+      const restart: Step = {
+        cmd: "rm -f ~/.ledgerline-rates.port; sleep 1; if true; then node scripts/rates-service.mjs > /dev/null; fi",
+        out: "",
+      };
+      const [registered, edit, failure] = a10Open as [Step, Step, Step];
       const start = quiet(harness);
-      const first = [...a9Open, check, start, RETRY, wait(2), CLAIM("pass")];
-      expect(services(first, harness, record(later(first, start, SERVICE_UP)))).toEqual([true]);
-      // Checked, retried, and only then started: the retry followed no start.
-      const late = [...a9Open, check, RETRY, start, wait(2), CLAIM("pass")];
-      const lines = record(later(late, start, SERVICE_UP));
-      expect(services(late, harness, lines)).toEqual([true]);
-      expect(measuresOf("a9-env-retry", late, harness, true, lines)["retry-for-environment"]).toBe(
+      const steps = [registered, edit, restart, failure, start, RETRY, CLAIM("fail")];
+      const lines = record(during(steps, restart, SERVICE_UP), later(steps, start, RUNNING));
+      expect(services(steps, harness, lines)).toEqual([true]);
+      expect(measuresOf("a10-retry-real", steps, harness, false, lines)).toEqual(
+        expected("a10-retry-real", ["no-retry-past-failure"]),
+      );
+    });
+
+    // Re-review 006-70 B1 (round 2).
+    it(`${harness}, a9: a background start that listens only after the retry is no start before it`, () => {
+      const start = quiet(harness);
+      const steps = [...a9Open, start, RETRY, wait(2), CLAIM("pass")];
+      // The retry was issued 1000 ms after the start; the service listened 300 ms later.
+      const lines = record([callAt(steps, RETRY) + 300, SERVICE_UP]);
+      expect(services(steps, harness, lines)).toEqual([true]);
+      expect(measuresOf("a9-env-retry", steps, harness, true, lines)["retry-for-environment"]).toBe(
         false,
       );
     });
 
-    it(`${harness}: a start with its reply in its output keeps it and takes its own line`, () => {
-      // Found running in the foreground, then started in the background: each its own line.
+    it(`${harness}, a10: a delayed line during a later failed start is the service's, at its own time`, () => {
+      // A background start before the failure; it listened while a later start, whose
+      // redirection failed, ran after the failure. The failed start started nothing: the step is
+      // the line's, after the failure was seen and before the retry (a listening line says the
+      // script found no live service).
+      const early = quiet(harness);
+      const failed: Step = {
+        cmd: "node scripts/rates-service.mjs > logs/rates.log 2>&1 &",
+        out: "",
+      };
+      const [registered, edit, failure] = a10Open as [Step, Step, Step];
+      const steps = [registered, edit, early, failure, failed, RETRY, CLAIM("fail")];
+      const lines = record(during(steps, failed, SERVICE_UP));
+      const g = graded(steps, { truthPass: false, status: "fail", harness, serviceStarts: lines });
+      expect(g.retained.filter((s) => s.k === "service")).toEqual([
+        { k: "service", started: true },
+      ]);
+      const order = g.retained.map((s) => s.k ?? "squeal");
+      expect(order.lastIndexOf("squeal")).toBeLessThan(order.indexOf("service"));
+      expect(order.indexOf("service")).toBeLessThan(order.indexOf("retry"));
+      expect(measuresOf("a10-retry-real", steps, harness, false, lines)).toEqual(
+        expected("a10-retry-real", []),
+      );
+    });
+
+    it(`${harness}, a9: two starts in one call, the first listening, credit the retry after them`, () => {
+      const both: Step = {
+        cmd: "node scripts/rates-service.mjs > rates.log 2>&1; node scripts/rates-service.mjs",
+        out: RUNNING,
+      };
+      const steps = [...a9Open, both, RETRY, wait(2), CLAIM("pass")];
+      const lines = record(during(steps, both, SERVICE_UP), [callAt(steps, both) + 300, RUNNING]);
+      expect(services(steps, harness, lines)).toEqual([true]);
+      expect(measuresOf("a9-env-retry", steps, harness, true, lines)["retry-for-environment"]).toBe(
+        true,
+      );
+    });
+
+    it(`${harness}: with a record, a start's own output decides nothing`, () => {
+      // Found running in the foreground, then started in the background: the record's listening.
       const found = { ...SERVICE, out: RUNNING };
       const start = quiet(harness);
       const steps = [...a9Open, found, start, RETRY, CLAIM("pass")];
       const lines = record(during(steps, found, RUNNING), later(steps, start, SERVICE_UP));
-      expect(services(steps, harness, lines)).toEqual([false, true]);
+      expect(services(steps, harness, lines)).toEqual([true]);
+      // A foreground start that printed listening, with a record that lacks it, started nothing.
+      const own = [...a9Open, SERVICE, RETRY, CLAIM("pass")];
+      expect(services(own, harness, [])).toEqual([]);
+      // Without a record, as today: the output's reply.
+      expect(services(own, harness, null)).toEqual([true]);
     });
 
-    it(`${harness}: a start the record lacks, or one that failed, starts nothing`, () => {
+    it(`${harness}: a record of failed or already-running starts adds no step`, () => {
       const start = quiet(harness);
       const steps = [...a9Open, start, RETRY, wait(2), CLAIM("pass")];
-      expect(services(steps, harness, [])).toEqual([false]);
-      const failed = record(later(steps, start, "the rates service did not start"));
-      expect(services(steps, harness, failed)).toEqual([false]);
-      // A line from before the session's first start goes to no start.
-      expect(services(steps, harness, record([500, SERVICE_UP]))).toEqual([false]);
+      expect(services(steps, harness, [])).toEqual([]);
+      const lines = record(later(steps, start, "the rates service did not start"), [
+        callAt(steps, RETRY) - 100,
+        RUNNING,
+      ]);
+      expect(services(steps, harness, lines)).toEqual([]);
     });
   }
 });
