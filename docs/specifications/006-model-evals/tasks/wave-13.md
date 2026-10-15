@@ -142,3 +142,19 @@ Check first, each with a probe where it can be one:
 Rules: no cell, `claude` or `codex` session; never run `run-baseline.mjs`, `run-cell.mjs`, `judge-calibrate.mjs`, `regrade.mjs` or `atomic-regrade.mjs`; no `npm run build`. Your full run is `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`; name any file that fails under load and passes alone.
 
 **Writes:** `reviews/wave-13.6.md`, PASS or FAIL with blockers, should-fix and notes, committed.
+
+## 006-70 narrow re-review of `cand/006-66` after repair 006-69
+
+Use /reviewer. Shape: review, narrow, pinned to the candidate's SHA; the repair is `ba564098..cand/006-66`. Read `reviews/wave-13.6.md` and the worker's `tasks/006-67/notes.md` ("006-69").
+
+Check B1 against its three probes on the repaired SHA, in both harnesses:
+- `node --check`, then a retry, then a real start;
+- a start whose redirection fails, then a retry, then a start;
+- an `if true; then node scripts/rates-service.mjs; fi` restart, then a quiet already-running start, then a retry.
+
+Then check near variants of the new time pairing:
+- a background start whose line lands after the next call begins (the worker's named residual);
+- two starts in one call;
+- a line older than every start.
+
+Rules as 006-68's. **Writes:** a re-review section in `reviews/wave-13.6.md`, PASS or FAIL, committed.
