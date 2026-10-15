@@ -173,3 +173,122 @@ These host claims hold. The break is Squeal's cancellation ownership across thos
 - Keep one disposal deadline of 3 seconds, the reserved end-consumer time, no-reply storage acknowledgement, and no continuation for aborted or superseded turns. Do not solve cancellation by dropping ordinary `run` news.
 - Keep 008-24's proxy/coverage cases and signal cleanup tests, and 008-26's cause/reload wording. They need no repair from this review.
 - S1 is diagnostic follow-up, not a reason to weaken the stored-once e2e assertion. The coordinator still owns its independent full run and branch CI. This file reports no independent full-suite result.
+<<<<<<< HEAD
+=======
+
+## Round 2: repair 008-28
+
+Verdict: **PASS 2695a2ef**. **0 proven blockers**, no new should-fix or nit findings. **B1 holds and is closed at this candidate**: newer input and an abort cancel the old disposal report, including input handled by OpenCode's recreated plugin instance. Exact candidate: `2695a2efb556b9f7524602b3308380eff2bac031`, `cand/0.1.186`. Range: `ceea98c2..2695a2ef`, the three 008-28 commits and the rebuilt OpenCode plugin. Reviewed 2026-10-15. This is a narrow re-review of B1 against the 008-28 brief and this file on `origin/main`; the first-round findings above are preserved. **S1 remains outside this round and open for its separate row.**
+
+### Verification output
+
+All candidate checks ran at the exact SHA with a clean tracked tree. `npm run build` left every committed bundle unchanged. No product or test file was edited. The probes were external files under `/tmp/008-27-round2-7354/`; only this report was subsequently added. No independent full suite or Squeal full checkpoint was requested for this round.
+
+```text
+$ git rev-parse HEAD
+2695a2efb556b9f7524602b3308380eff2bac031
+$ git status --short
+(no output)
+$ npm ci
+added 196 packages, and audited 197 packages in 7s
+found 0 vulnerabilities
+exit 0
+$ npm run lint
+> squeal@0.1.186 lint
+> biome check .
+Checked 1231 files in 451ms. No fixes applied.
+exit 0
+$ npm run typecheck
+> squeal@0.1.186 typecheck
+> tsc --noEmit
+exit 0
+$ npm run build
+> squeal@0.1.186 build
+> tsc -p tsconfig.build.json && npm run build:plugin
+> squeal@0.1.186 build:plugin
+> tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts
+exit 0
+$ git status --short
+(no output)
+
+$ npx vitest run test/harness/opencode-dispose.test.ts test/harness/opencode/overtaken.test.ts test/harness/opencode/run-end.test.ts test/harness/opencode/idle.test.ts test/harness/opencode/turn.test.ts --maxWorkers=1 --no-color
+FAIL test/harness/opencode-dispose.test.ts > serve: an abort of the new turn, then the old Stop's answer, stores nothing
+AssertionError: expected false to be true
+at test/harness/opencode-dispose.test.ts:193:72
+(waiting for the gated Stop's "answered" marker)
+Test Files  1 failed | 4 passed (5)
+     Tests  1 failed | 39 passed (40)
+  Duration  61.10s
+exit 1
+
+$ npx vitest run test/harness/opencode-dispose.test.ts --testNamePattern 'an abort' --maxWorkers=1 --no-color
+Test Files  1 passed (1)
+     Tests  1 passed | 1 skipped (2)
+  Duration  5.00s
+exit 0
+
+$ npx vitest run --config /tmp/008-27-round2-7354/vitest.config.mts --no-color
+Test Files  2 passed (2)
+     Tests  6 passed (6)
+  Duration  12.45s
+exit 0
+
+$ npx vitest run --config /tmp/008-27-round2-7354/vitest.config.mts /tmp/008-27-round2-7354/b1.test.ts --no-color
+Test Files  1 passed (1)
+     Tests  2 passed (2)
+  Duration  7.92s
+exit 0
+
+$ npx vitest run test/e2e/opencode.test.ts --testNamePattern 'news at the end' --maxWorkers=1 --no-color
+Test Files  1 passed (1)
+     Tests  2 passed | 6 skipped (8)
+  Duration  21.44s
+exit 0
+```
+
+The filtered e2e command runs both the stored-once `run --continue` test and the ordinary `serve` continuation test. Skips above are test-name filtering. The targeted command did fail; the later pass does not erase it. **Proven observation:** the committed abort test missed its Stop-answer barrier before reaching its stored-report assertion. **Unverified cause:** that attempt did not record the bridge's expiry or abort timing; no claim that load caused it. It is not evidence of stale storage and does not reopen B1. The independent probes below reached both required causal barriers and tested storage. No S1 diagnostic change is included in this verdict.
+
+### B1 replay against the built candidate
+
+**Proven by real OpenCode 1.18.35, through `squealOpenCode` and therefore `runOpenCode` only.** I independently instrumented the original B1 barrier procedure, using a temporary copy of the **committed** `plugins/opencode/dist` rather than a replacement turns implementation. The temporary Stop bridge answers once behind a file barrier; every other bridge is the candidate's. A wrapper delegates the plugin hooks, records message reads and any attempted no-reply store, and timestamps disposal. For new input it calls the real `chat.message` before releasing Stop, so the arrival is observed synchronously before the report can answer. For abort it waits for the second planned request, the successful abort request and the listeners' `MessageAbortedError`, then releases Stop. Both cases assert that the stored user messages contain the new input and contain no old report; no no-reply store was attempted.
+
+The final instrumented run also waits for the wrapper's actual disposal-return marker before inspecting it. A preliminary timing-only attempt sampled that marker too early and failed in the external reporter with `TypeError`; this was probe instrumentation, not a candidate assertion. The corrected run above passed both cases.
+
+Milliseconds from Stop's start in that final run:
+
+| Event | New input | Abort |
+| --- | ---: | ---: |
+| disposal entered | 48 | 40 |
+| new input reached the real message hook | 144 | 134 |
+| abort reached the listeners | not needed | 944 |
+| gated old Stop answered | 148 | 978 |
+| candidate read session messages | 460 | 992 |
+| message read returned | 480 | 997 |
+| disposal returned | 525 | 1043 |
+| old report stored | no | no |
+
+Actual disposal durations: **477 ms** and **1,003 ms**, inside D3/D4's 3 seconds. Both cancellation cases pass without relying on deadline silence. This closes the two first-round B1 reproductions.
+
+**Proven by source and the hook tests:** `hooks.ts:148` counts an abort before checking `disposed`; `hooks.ts:184` excludes synthetic stored reports before counting ordinary messages, and `:186` counts those messages before any await or disposed guard. The global map therefore sees the input routed to a recreated instance while the old instance is disposing. `turns.ts:272` snapshots that session's count at idle. In the stopping path, `:195` checks the session's newest message and compares the count after the read. A failed, empty, rejected or expired read is silence. The direct hook tests cover recreated-instance input, recreated-instance abort, a newer stored user message, failed reads, stalled reads and an assistant reply to the original user message.
+
+### Arrivals, deadlines and the normal run path
+
+**Proven by four additional external public-hook probes:**
+
+- A second root session receives a new message and an abort while the first session is disposing. The first still stores its one report. The map is keyed by session ID, not directory, plugin instance or root consumer shared with a child.
+- A fresh instance receives Squeal's synthetic stored report during the old instance's pending disposal. The arrivals count stays unchanged and the legitimate store still happens. This exercises the early `storedBySqueal` return, not an assumption about synthetic text.
+- A live turn continues once through `promptAsync`; its own next message then ends silently. A subsequent ordinary user turn still stores at disposal despite the accumulated arrival count. No history read occurs on the live continuation path; one occurs for the later disposal store. Absolute count growth does not cancel a later turn because idle records a fresh snapshot.
+- A history read delayed by 1,900 ms followed by a store that never acknowledges uses the remaining disposal budget, aborts the store signal and returns within the test's 3,300 ms scheduling allowance. It does not grant the store a new full timeout. The committed stalled-read test independently verifies read-signal cancellation and silence inside the disposal bound.
+
+**Proven by source:** `turns.ts:160` bounds the new read by the existing stopping deadline; `:213` recomputes time remaining after that read for storage. `hooks.ts:291` keeps the existing 500 ms reserve for consumer cleanup inside the single 3-second disposal deadline. Read and store have abort signals. The new reads occur only on the stopping path. The live path remains `promptAsync`; storage remains `prompt({ noReply: true })`. The matching OpenCode source's `Session.messages` delegates `limit: 1` to `MessageV2.page`, which selects newest-first and reverses the returned page. Thus this reads the newest message, not the beginning of history; an assistant message whose `parentID` is the original user ID is accepted.
+
+**Proven by the shipped-copy e2e:** normal `run` still exits, makes no extra model request, stores one report without a registration header, and `run --continue` reads it exactly once in the same session. Normal `serve` still continues once and then remains silent. Rebuilding all bundles produced no drift; the committed plugin contains the new arrivals and message-read checks.
+
+No legitimate-store cancellation was reproduced in the requested two-session, continuation or synthetic-report cases. This is bounded evidence for those cases, not a claim about arbitrary third-party plugins impersonating Squeal.
+
+### Inputs for landing and the next row
+
+- B1 needs no further repair at `2695a2ef`. The coordinator retains the landing gate and branch-CI responsibility; this report is not a full-suite verdict.
+- Preserve the initial targeted abort-test failure in verification history. It did not prove a product break; the focused rerun and both independent causal replays passed.
+- S1 is unchanged and belongs to its separate row. This round neither implements nor accepts its diagnostics.
+>>>>>>> da806e7a (docs(008-27): pass B1 repair re-review at 2695a2ef)
