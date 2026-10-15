@@ -25,8 +25,8 @@ import { describeFailure } from "./fingerprint.js";
  * or after that time from the row then at the key, and a row replaced later
  * is recorded later. A same-key replacement by a later run, at any commit or
  * revision, names none. An own state is re-derived from each of its own runs.
- * `why` shows this row, and a known failure's age and load are its (review
- * 001-417 B3).
+ * `why` shows this row. A known failure's age and load are read through the
+ * producer the state sink names instead (`producingResult`, review 001-417 B3).
  */
 export function shownResult(
   worktreeId: WorktreeId,
@@ -73,7 +73,7 @@ export function observedSince(
 }
 
 /** A result's fingerprint as its known state took it (`stateFromResult`): described when not stored. */
-function fingerprintOf(result: ResultRecord): string | null {
+export function fingerprintOf(result: ResultRecord): string | null {
   if (result.outcome !== "fail") return null;
   return result.fingerprint ?? describeFailure(result.errors, result.location).fingerprint;
 }
