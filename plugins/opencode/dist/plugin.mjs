@@ -312,8 +312,9 @@ function turns(client, ask) {
       turn.arrivals = arrivals(id);
       const epoch = turn.epoch;
       if (turn.aborted || turn.continued) {
+        const ending = turn.aborted ? { consumer } : { consumer, continued: true };
         turn.aborted = false;
-        await ask("endTurn", { consumer }, deadline);
+        await ask("endTurn", ending, deadline);
       } else {
         const report = (await ask("stop", { consumer }, deadline))?.report ?? null;
         if (report !== null && await say(id, turn, report, deadline, epoch)) return;
