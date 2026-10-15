@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   awaitingInstallNote,
   awaitingInstallSentence,
-} from "../../src/core/delivery/awaiting-install.js";
+} from "../../src/core/scheduler/awaiting-install.js";
 import { installCommand } from "../../src/core/scheduler/install-command.js";
 
 /*
