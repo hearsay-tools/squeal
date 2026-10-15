@@ -4,6 +4,7 @@ import { formatStatus, formatWhy, readStatus, readWhy } from "../core/status/ind
 import type { EpochMs } from "../core/types/index.js";
 import { codexStatusLine } from "./codex/status.js";
 import { daemonCommand } from "./daemon.js";
+import { failuresCommand } from "./failures.js";
 import { init } from "./init.js";
 import { opencodeStatusLine } from "./opencode/status.js";
 import { piStatusLine } from "./pi/status.js";
@@ -36,6 +37,11 @@ Usage:
                                 History and provenance of one check, and the run log
                                 holding its console output; --include-logs also prints
                                 that log's lines from the check's test file
+  squeal failures [--all-worktrees] [--since <duration>] [--json]
+                                Stored failing results of this worktree, or every
+                                worktree's, newest first: check, worktree, revision,
+                                commit, time, duration, fingerprint; --since 2h
+                                lists only the last two hours
   squeal init                   Set up this repository: squeal.config.json and the
                                 plugin entries in .claude/settings.json
   squeal init --harness codex [--print-launcher-config | --trust [--yes]]
@@ -97,7 +103,7 @@ export interface CliIo {
  * Commands that answer from the store at once; the daemon commands and
  * `status --wait` are asynchronous.
  */
-type StoreCommand = "why";
+type StoreCommand = "why" | "failures";
 
 /** Runs the CLI and returns the exit code. */
 export function main(argv: readonly [StoreCommand, ...string[]], io: CliIo): number;
@@ -114,6 +120,7 @@ export function main(argv: readonly string[], io: CliIo): number | Promise<numbe
   }
   if (first === "status") return status(rest, io);
   if (first === "why") return why(rest, io);
+  if (first === "failures") return failuresCommand(rest, io);
   if (first === "init") return init(rest, io);
   if (first === "setup") return setupCommand(rest, io);
   if (first === "warmup") return warmupCommand(rest, io);
