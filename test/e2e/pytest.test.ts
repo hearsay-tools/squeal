@@ -133,7 +133,12 @@ async function withEvidence(
             };
       console.error(`${root}: ${JSON.stringify({ status, runs: e.runs(root) })}`);
     }
-    console.error(`store: ${JSON.stringify(storeEvidence(e.main))}`);
+    // Review 001-417: evidence never replaces the failure it describes.
+    try {
+      console.error(`store: ${JSON.stringify(storeEvidence(e.main))}`);
+    } catch (evidence) {
+      console.error(`store: no evidence: ${String(evidence)}`);
+    }
     throw error;
   }
 }
@@ -154,6 +159,11 @@ function storeEvidence(main: string): object {
     if (!existsSync(dir)) continue;
     for (const project of readdirSync(dir)) {
       const at = join(dir, project);
+      // A run in flight made its log directory at its start and writes `run.json` at its end.
+      if (!existsSync(join(at, "run.json"))) {
+        runs.push({ run, project, inFlight: true });
+        continue;
+      }
       const json = JSON.parse(readFileSync(join(at, "run.json"), "utf8")) as {
         batches: unknown;
         report: Record<string, unknown> & { results?: unknown[] };
