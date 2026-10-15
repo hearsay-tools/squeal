@@ -55,6 +55,8 @@ export function cellRecord(g) {
     effort: g.effort,
     effortReported: g.effortReported ?? null,
     rep: g.rep,
+    // 006-62: the cell's bare `squeal` was the pinned plugin's; cells before it name none.
+    ...(g.squealPath ? { squealPath: g.squealPath } : {}),
     reachedModel: g.reachedModel ?? true,
     wallS: g.wallS,
     loadStart: g.load?.start ?? null,
