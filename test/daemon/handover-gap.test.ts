@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import type { EnsureDaemonResult } from "../../src/core/types/index.js";
-import { lockHolders, stoppedItself } from "../e2e/restart-evidence.js";
+import { lockHolders, resume, stoppedItself } from "../e2e/restart-evidence.js";
 import { daemonSuite, delay, type FixtureRepo, ping, readNotes, SLOW, waitFor } from "./helpers.js";
 import { stepDownKit } from "./step-down-helpers.js";
 
@@ -45,7 +45,7 @@ async function stepDownIntoGap(repo: FixtureRepo): Promise<number> {
       new RegExp(`WRITE\\s+${first.pid}\\s`),
     );
   } catch (error) {
-    process.kill(first.pid, "SIGCONT");
+    resume(first.pid);
     throw error;
   }
   return first.pid;
@@ -67,7 +67,7 @@ describe.runIf(process.platform === "linux")(
         expect(await exitWithin(late, 30_000, repo)).toEqual({ code: 0, signal: null });
         expect(late.stderr()).toMatch(/another daemon serves/);
       } finally {
-        process.kill(frozen, "SIGCONT");
+        resume(frozen);
       }
 
       expect(await exitWithin(old, 30_000, repo)).toEqual({ code: 0, signal: null });
@@ -98,7 +98,7 @@ describe.runIf(process.platform === "linux")(
           true,
         );
       } finally {
-        process.kill(frozen, "SIGCONT");
+        resume(frozen);
       }
       const late = start(buildAt("0.1.1"), repo);
       try {
@@ -113,7 +113,7 @@ describe.runIf(process.platform === "linux")(
         );
         expect(won).toMatchObject({ pid: late.child.pid, squealVersion: "0.1.1" });
       } finally {
-        process.kill(pid, "SIGCONT");
+        resume(pid);
       }
       expect(await exitWithin(successor, 30_000, repo)).toEqual({ code: 0, signal: null });
       expect(successor.stderr()).toMatch(/another daemon serves/);
