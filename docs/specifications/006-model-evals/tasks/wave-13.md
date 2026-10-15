@@ -61,3 +61,20 @@ The service, the preload and the staging reach only these scenarios, through kno
 **Done when:** reference sessions show each measure met and missed in both harnesses; the other scenarios' fixtures are unchanged (a test); `npm run lint`, `npm run typecheck` and the gate are green.
 
 The coordinator pushes the integrated candidate to `cand/006-53`. A `/reviewer` review must pass on that SHA, with branch CI green, before it lands (the human, 2026-10-15; `docs/process.md` step 6).
+
+## 006-57 review of `cand/006-53` (006-53 and 006-56)
+
+Use /reviewer. Shape: review, pinned to the candidate's SHA; the range is `7d46aecd..cand/006-53`. Read this file's 006-53 section, 001 D6, and `docs/specifications/001-core-loop/tasks/001-368/notes.md` ("Texts the agent sees, verbatim", "Review 001-398"), and the worker's `tasks/006-53/notes.md`.
+
+Check first, each with a probe where it can be one:
+- **The metric design** (the human's rule: score the right behaviour per situation, never pooled raw behaviours). Does each measure miss only its situation's wrong move? Look in particular at:
+  - `claim-after-retry` beside `retry-for-environment` in a9 when a session runs the test itself after starting the service;
+  - a10's "environment change", meaning a start that says it listens;
+  - a11 not scoring `no-retry-past-failure`;
+  - the parser's reading of 001-368's texts, S2's narrower "Retry asked" included.
+- **Isolation.** The service, the `pinLoad` preload and the staging reach only a9 to a11. The service leaves no process or port behind a cell. The preload cannot break a harness or a Squeal process. 006-56's runtime directory and socket fallback are sound, and the scratch scan and removal cover `run/`.
+- **What no test can show.** Name what the coordinator's first run must confirm, beyond the worker's list.
+
+Rules: no cell, `claude` or `codex` session; never run `run-baseline.mjs`, `run-cell.mjs`, `judge-calibrate.mjs`, `regrade.mjs` or `atomic-regrade.mjs`; no `npm run build`. Your full run is `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`; name any file that fails under load and passes alone.
+
+**Writes:** `reviews/wave-13.md`, PASS or FAIL with blockers, should-fix and notes, committed.
