@@ -81,7 +81,8 @@ export interface TestFileRepo {
 
 /** Per-worktree current keys and pending work. See `TestFileKeyRecord`. */
 export interface TestFileKeyRepo {
-  list(worktreeId: WorktreeId): readonly TestFileKeyRecord[];
+  /** With `files`, only their rows (task 001-414). */
+  list(worktreeId: WorktreeId, files?: readonly TestFileRef[]): readonly TestFileKeyRecord[];
   /** Rows of every worktree whose key is `key` (task 001-170: a pass heals each of them). */
   withKey(key: CheckKey): readonly TestFileKeyRecord[];
   upsertMany(records: readonly TestFileKeyRecord[]): void;
@@ -195,7 +196,10 @@ export interface CheckpointRepo {
  * `TestFileKeyRecord` for why.
  */
 export interface KnownStateRepo {
-  list(worktreeId: WorktreeId): readonly KnownState[];
+  /** With `files`, only their checks' states (task 001-414). */
+  list(worktreeId: WorktreeId, files?: readonly TestFileRef[]): readonly KnownState[];
+  /** The worktree's states with no entry in `consumer`'s view: what it was never told. */
+  untold(consumer: Consumer): readonly KnownState[];
   get(worktreeId: WorktreeId, check: CheckId): KnownState | null;
   upsertMany(states: readonly KnownState[]): void;
   /**
@@ -225,7 +229,8 @@ export interface ConsumerRepo {
 
 /** Spec 001 D8: "`consumers` and `consumer_views`". */
 export interface ViewRepo {
-  list(consumer: Consumer): readonly ViewEntry[];
+  /** With `files`, only their checks' entries (task 001-414). */
+  list(consumer: Consumer, files?: readonly TestFileRef[]): readonly ViewEntry[];
   /** Replaces the given checks' entries. Run in the same transaction as the delta read. */
   writeMany(consumer: Consumer, entries: readonly ViewEntry[]): void;
   /** Retires checks from this consumer's view; see `KnownStateRepo.removeMany`. */
