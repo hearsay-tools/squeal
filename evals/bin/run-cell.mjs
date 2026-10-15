@@ -68,7 +68,13 @@ import {
   runId,
 } from "../lib/prepare.mjs";
 import { cellRecord } from "../lib/results.mjs";
-import { addService, retryEnv, serviceForTruth, stageInherited } from "../lib/retry-knobs.mjs";
+import {
+  addService,
+  retryEnv,
+  serviceForTruth,
+  stageInherited,
+  storeLoads,
+} from "../lib/retry-knobs.mjs";
 import { evalsRoot, refuseInsideRepo } from "../lib/root.mjs";
 import {
   cellEnv,
@@ -210,7 +216,14 @@ async function lifecycle() {
 
   // The daemon: warm unless --cold, then the task's knobs.
   if (plugin && !cold && knobs.inherited) {
-    const w = await stageInherited(knobs, { squeal, stop: stopDaemon, setLoad, log });
+    const recordedLoads = storeLoads(join(WORK, ".git/squeal/store.sqlite"));
+    const w = await stageInherited(knobs, {
+      squeal,
+      stop: stopDaemon,
+      setLoad,
+      log,
+      recordedLoads,
+    });
     writeFileSync(join(OUT, "warmup.txt"), w);
     log(`warm-up: ${(w.match(/^Known failures: .*$/m) ?? ["?"])[0]}`);
   } else if (plugin && !cold) {
