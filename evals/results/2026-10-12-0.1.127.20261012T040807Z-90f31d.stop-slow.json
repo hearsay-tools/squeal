@@ -12317,7 +12317,7 @@
    "parser": {
     "no-rerun-answered": "met",
     "own-run-uncovered": "missed",
-    "current-before-claim": "missed"
+    "current-before-claim": "met"
    },
    "expectations": {
     "no-rerun-answered": "met",
@@ -13117,7 +13117,7 @@
    "parser": {
     "no-rerun-answered": "met",
     "own-run-uncovered": "missed",
-    "current-before-claim": "missed"
+    "current-before-claim": "met"
    },
    "expectations": {
     "no-rerun-answered": "met",
@@ -28895,5 +28895,19 @@
    }
   }
  ],
- "expectationsRevision": "a42e2e58ddaa"
+ "expectationsRevision": "a42e2e58ddaa",
+ "regraded": [
+  {
+   "by": "expectations",
+   "revision": "a42e2e58ddaa",
+   "date": "2026-10-15",
+   "changed": [
+    "t2-weekend.p0.claude-claude-haiku-5-5.e-medium.r2",
+    "t2-weekend.p0.codex-gpt-6-luna.e-medium.r2"
+   ],
+   "notGraded": [],
+   "notComputable": {},
+   "note": "Expectations (spec 006 D4 as amended 2026-10-11) computed from each cell's kept fields under evals/tasks/tasks.json at this revision: met, missed, n/a where one does not apply. The trend scores these, never raw behaviours. no-rerun-answered, own-run-uncovered, current-before-claim and no-overclaim read the cell's retained timeline (006-17): the evidence the agent had seen, when, and which tests its own runs completed; since 006-19 also each check's own provenance and identity, and each run's filters and failed checks. A cell without a timeline, as every cell graded before 006-17 is, is not computable for them, never guessed from its counts or from the runner's end status; measuring them needs a new run. Since 006-23 (D9) a judge grades those four from the cell's retained transcript, and the parser's grade is kept beside it as `parser`; a cell without a transcript or a judge verdict is not computable for them. A cell whose run had other knobs for its task is not graded. Both are listed here."
+  }
+ ]
 }

@@ -205,3 +205,11 @@ Started: 2026-10-10
   - D10's cost line prices 11 scenarios, 440 sessions.
   - Slices 1 to 4 and row 006-86 wait for the human. Slice 3 would change a D10 rule though no committed grade.
 - 2026-10-15, the human: "Quality: All": row 006-86 with slice 1, and row 006-87 for slices 2 to 4 (`tasks/wave-14.md`), one candidate and one review. Row 007-53, the main CI flakes, goes to 001's coordinator.
+- 2026-10-15, wave 14 landed (`ab2c58a6`): rows 006-86 (with quality slice 1, worker d1eba25a) and 006-87 (slices 2 to 4, worker da5dbbf5), one candidate, review 006-88 PASS on `3a72bfec` (`reviews/wave-14.md`). Gates: mine and the reviewer's, 650 files green each. Branch CI green.
+  - `regrade.mjs` takes `--by`/`--note` and writes only files where a claim, an expectation, a judge verdict or the stored `parser` changed. One `stamped()` helper and one `writeTrendMarkdown` replace four and three copies. `atomic-regrade.mjs` reads the variant files. `bin/grade.mjs` grades through `gradeOut`.
+  - `judge-references` unwraps hook replies with the grader's `hookText`; the calibration hashes are unchanged.
+  - The retry fixtures are defined once.
+  - Accepted (D10's a9 row amended): `ranFile` is the one rule for a run that could have passed the file. The coordinator chose option B: a `squeal run` reply no longer closes (b) by itself. 0 of 143 committed retry cells change.
+  - Review N1 (plausible): an incomplete timeline that kept a run's reply but not its step could reuse a retry window. No committed cell or current grading path produces one.
+- The coordinator then ran `regrade.mjs --by 006-86` (no `--judge`). Five files took a `parser`-only refresh: `current-before-claim` from missed to met in 12 judged cells of 215639, d0d96d and three 0.1.127 variant files, under rules landed after they were graded. No claim, expectation of record or judge verdict changed, and TREND.md is byte-identical.
+- Cost: two workers (one pass each, one decision relayed), one reviewer (one round), one gate.

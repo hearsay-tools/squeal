@@ -6444,7 +6444,7 @@
    "parser": {
     "no-rerun-answered": "met",
     "own-run-uncovered": "missed",
-    "current-before-claim": "missed"
+    "current-before-claim": "met"
    },
    "expectations": {
     "no-rerun-answered": "met",
@@ -10826,7 +10826,7 @@
    "parser": {
     "no-rerun-answered": "met",
     "own-run-uncovered": "met",
-    "current-before-claim": "missed"
+    "current-before-claim": "met"
    },
    "expectations": {
     "no-rerun-answered": "met",
@@ -14073,9 +14073,11 @@
   {
    "by": "expectations",
    "revision": "a42e2e58ddaa",
-   "date": "2026-10-11",
+   "date": "2026-10-15",
    "changed": [
-    "t2-weekend.p0.claude-claude-haiku-5-5.e-medium.r1"
+    "t2-weekend.p0.claude-claude-haiku-5-5.e-medium.r1",
+    "t2-weekend.p0.codex-gpt-6-luna.e-medium.r2",
+    "t2-weekend.p0.claude-claude-haiku-5-5.e-medium.r3"
    ],
    "notGraded": [],
    "notComputable": {},
