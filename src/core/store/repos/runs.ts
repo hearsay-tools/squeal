@@ -116,13 +116,13 @@ export function createCheckpointRepo(conn: Connection): CheckpointRepo {
   };
 }
 
-/** One-lane checkpoints the lane map keeps: older ones are long past a full one. */
-const LANES_KEPT = 32;
-
 /**
  * Task 004-61: the lane of each one-lane checkpoint of a worktree, a JSON
  * map in `meta`, so the `checkpoints` table and an older reader of it are
  * unchanged. An older reader counts a one-lane checkpoint as a full one.
+ * A lane stays while its checkpoint does (`prune` bounds both): a lane
+ * dropped by a count cap would make its checkpoint read as full (review
+ * 001-417 B1).
  */
 function readLanes(conn: Connection, worktreeId: WorktreeId): Record<string, CheckpointLane> {
   const row = conn.get(
@@ -149,7 +149,16 @@ function writeLane(
   id: string,
   lane: CheckpointLane,
 ): void {
-  const kept = Object.entries(readLanes(conn, worktreeId)).slice(1 - LANES_KEPT);
+  const lanes = readLanes(conn, worktreeId);
+  const live = new Set(
+    conn
+      .all(
+        "SELECT id FROM checkpoints WHERE id IN (SELECT value FROM json_each(?))",
+        JSON.stringify(Object.keys(lanes)),
+      )
+      .map((row) => str(row, "id")),
+  );
+  const kept = Object.entries(lanes).filter(([id]) => live.has(id));
   conn.run(
     "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
     worktreeMetaKey("checkpointLanes", worktreeId),
