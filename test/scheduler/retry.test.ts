@@ -1,104 +1,22 @@
-import { randomUUID } from "node:crypto";
-import { readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
-import {
-  askRetry,
-  cancelRetries,
-  type HostLoad,
-  type RetryReason,
-  readRetries,
-  readRunLoads,
-} from "../../src/core/retry/index.js";
+import { describe, expect, it } from "vitest";
+import { cancelRetries, readRetries, readRunLoads } from "../../src/core/retry/index.js";
 import { checkIdentity, readFlakyNotes } from "../../src/core/state/index.js";
-import type { CheckId, Store } from "../../src/core/types/index.js";
-import { git } from "../hash/git-repo.js";
+import { addWorktree, openHarness, openRepoStore, SLOW } from "./helpers.js";
 import {
-  addWorktree,
-  createRepo,
-  type Harness,
-  type HarnessOptions,
-  openHarness,
-  openRepoStore,
-  SLOW,
-} from "./helpers.js";
+  ask,
+  FLAKY,
+  failing,
+  flakyRepo,
+  flips,
+  loadKnob,
+  options,
+  pass,
+  REF,
+} from "./retry-fixture.js";
 
-/*
- * Spec 001 D6 as amended (001-348, scope 001-368): the agent asks Squeal to
- * retry a failure caused outside its keyed inputs. `test/flaky.test.ts`
- * fails while a marker outside the worktree exists, which no key covers, as
- * a server nobody started or a timeout under load does.
- */
-
-const FLAKY = "test/flaky.test.ts";
-const flips: CheckId = { kind: "test", project: "", testPath: FLAKY, fullName: "flips" };
-const REF = { project: "", path: FLAKY };
-
-const markers: string[] = [];
-afterEach(() => {
-  for (const marker of markers.splice(0)) rmSync(marker, { force: true });
-});
-
-function flakyRepo() {
-  const repo = createRepo();
-  const marker = join(tmpdir(), `squeal-001-368-${randomUUID()}`);
-  markers.push(marker);
-  writeFileSync(
-    join(repo.main, FLAKY),
-    [
-      'import { existsSync } from "node:fs";',
-      'import { expect, it } from "vitest";',
-      "",
-      `it("flips", () => expect(existsSync(${JSON.stringify(marker)})).toBe(false));`,
-      "",
-    ].join("\n"),
-  );
-  git(repo.main, ["add", FLAKY]);
-  git(repo.main, ["commit", "-qm", "flaky"]);
-  writeFileSync(marker, "");
-  return { ...repo, marker };
-}
-
-/** A host load the test sets; 16 on 8 CPUs until it says otherwise. */
-function loadKnob() {
-  let load: HostLoad = { oneMinute: 16, cpus: 8 };
-  return {
-    read: () => load,
-    set: (oneMinute: number) => {
-      load = { oneMinute, cpus: 8 };
-    },
-  };
-}
-
-/** No 001-171 re-run: the failure stands after its first run, as one caused outside the code. */
-const options = (load: ReturnType<typeof loadKnob>): HarnessOptions => ({
-  rerunCap: 0,
-  hostLoad: load.read,
-});
-
-async function failing(h: Harness) {
-  await h.scheduler.start();
-  await h.scheduler.idle();
-  expect(h.sink.stateOf(flips)).toMatchObject({ outcome: "fail", validity: "current" });
-  return h.keyOf(FLAKY) as string;
-}
-
-function ask(store: Store, h: Harness, session: string, reason: RetryReason) {
-  return askRetry(store, {
-    testFile: REF,
-    key: h.keyOf(FLAKY) as string,
-    session,
-    reason,
-    at: Date.now(),
-    worktreeId: h.worktreeId,
-  });
-}
-
-async function pass(h: Harness) {
-  await h.scheduler.handleBatch({ trigger: "interval", paths: [] });
-  await h.scheduler.idle();
-}
+/* Spec 001 D6 as amended (001-368): the scheduler's side of `squeal retry`. */
 
 describe("squeal retry", SLOW, () => {
   it("runs an environment retry at once; its pass is FAIL -> PASS with the flaky note and ends the request", async () => {
