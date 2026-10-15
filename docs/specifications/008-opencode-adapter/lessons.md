@@ -206,3 +206,115 @@ Kept in `/home/squeal-e2e`: `dogfood-008/`, which holds everything below it:
 - `scripts/`.
 
 Also kept: the npm prefix `.npm-global` and `.npm`, and the earlier probe directories (`008-plugins`, `008-sessions`, `opencode-isolation`, `opencode-wave0`). Left for their owners and untouched: `dogfood-009`, `runs`, `pee`, `.codex`, `.nvme-check-*`, and the dotdirs `.cache`, `.config` and `.local`, which hold earlier probes' OpenCode files.
+
+## 008-30: defect 1 re-checked on 0.1.186
+
+Task 008-30, 2026-10-15. The same sandbox, OpenCode 1.18.35, remeda and Cezar copy as above, with Squeal 0.1.186 (main `b4067d55`, whose product tree is `f555ac44`'s), gpt-6-luna only. Records: `dogfood/logs/030-*`, `install-0.1.186.txt`, `prep-0.1.186.txt`, `stats.txt`. Times are UTC.
+
+### Verdict
+
+Defect 1 is fixed. In both `opencode run` sessions, news known before idle was stored in the session as one synthetic Squeal user message during `dispose`, before `run` exited, with no model request. The next `opencode run --continue` read it once, and luna named it as Squeal's. Goal 4 holds under `run`.
+
+The Cezar-shaped `serve` session got two continuations in a row: defect 5. The first carried the `PASS -> FAIL`. Luna re-edited during that continued turn. The second followed its idle 0.39 s later and carried the edit's `FAIL -> PASS`. Goal 4 says never twice in a row.
+
+| Question | Holds? | Evidence |
+| --- | --- | --- |
+| Under `run`, news known before idle is stored as one Squeal message that `run --continue` reads (goal 4, D5) | Yes, 2 of 2 | 030-s3, 030-s3b below |
+| Under `run`, a turn with no news stores nothing | Yes, 2 of 2 | Each `--continue` run ended with no news, and nothing was stored after its answer |
+| A Cezar-shaped `serve` session gets exactly one continuation | No: two in a row | 030-s4 below; defect 5 |
+
+### Setup
+
+| Item | Value |
+| --- | --- |
+| Install | `sh make-archive.sh b4067d55` wrote `squeal--v0.1.186.tar.gz`, a `git archive`, and `install-0.1.186.sh`. Then `install.sh` (the full install, not `--opencode`) ran as `squeal-e2e` with `SQUEAL_SOURCE=file://…/src`, at load 8.1. It unpacked 0.1.186, ran `ln -sfn 0.1.186 …/current` and removed 0.1.184. It kept 0.1.190 as the previous version and did not run `opencode plugin` again, since OpenCode's config already listed `current`. It reported the launcher as 0.1.190's, the newest package. The 0.1.190 stand-in was then removed by hand, along with its line in the install record (`install-0.1.186.txt`). Otherwise the launcher, which runs the newest package, would have run 0.1.184's code. After that, `squeal --version` printed 0.1.186 and `current` pointed at 0.1.186. |
+| Store | Before any session: 5 known failures from s5's `capitalize`, whose revert no daemon had seen. `squeal start` and `squeal run --all --wait` brought it to revision 43, 0 known failures, and `squeal stop` stopped the daemon (`prep-0.1.186.txt`). Between sessions, the edit was reverted with `git checkout` and settled with `squeal start`, `status --wait` and `stop`. |
+| Model, proxy | `cliproxy/gpt-6-luna` through `dogfood/proxy.mjs`. Only the proxy held the key, by name. |
+| Load | Each session started after `gate.sh` opened: 5.25, 6.85 and 5.42. The highest seen was 8.32. |
+
+### Sessions
+
+| Id | Mode | Load (start → end) | Prompt | What happened |
+| --- | --- | --- | --- | --- |
+| 030-s3 | `run --print-logs`, then `run --continue --print-logs` | 5.25 → 5.08; 5.58 → 5.46 | s3's `chunk` prompt; then s3's "Is there anything I should know since my last message? …" | Run 1: the report was stored at `dispose`. Run 2 read it once. |
+| 030-s3b | as 030-s3, 15 s later | 7.18 → 8.32; 7.63 → 7.58 | the same | the same |
+| 030-s4 | `serve` (Cezar's runner, persistent), scenario `serve-luna-wake.json` (s4's) | 5.42 → 7.70 | s4's `purry` prompt ("Only edit src/purry.ts. Do not run, wait for or check anything; reply DONE"); then "list each message you received and say who sent it" | Two continuations in a row (defect 5). Then quiet until the next prompt, and quiet for 90 s after the last turn. |
+
+### Under `run`: stored, and read once
+
+030-s3, run 1:
+
+| Time | What |
+| --- | --- |
+| 03:32:05.815 | `PASS -> FAIL` of both `chunk.test.ts > edge-cases` checks, at revision 44 (`squeal why`). The result was reused: it had been seen by the run at revision 30, 008-20's s3, with the same file content. So the news was known as the edit landed. |
+| 03:32:05.844 | The assistant's "DONE" message started (request 7, 1,232 ms). |
+| 03:32:07.158 | OpenCode logged `exiting loop`. |
+| 03:32:07.168 | OpenCode logged `disposing instance`. |
+| 03:32:07.612 | Stored: a user message whose only part is a synthetic text, `SQUEAL · 2 checks changed (2 tests) at revision 44`, with both `PASS -> FAIL` entries (`opencode export`). |
+| 03:32:07.851 | `run` exited 0, 12.9 s after it started. |
+
+The store came 444 ms after `dispose` began, inside its 3 s. The proxy saw no request between request 7 and the next run's: the stored message cost no model turn. 030-s3b gave the same order: `PASS -> FAIL` at 03:33:46.498, `exiting loop` at 47.860, `disposing instance` at 47.871, stored at 48.364 (493 ms), exit at 48.611.
+
+Run 2, `--continue`, request 8, carried four parts in this order:
+
+- the earlier "DONE";
+- the stored report, once;
+- the user's question;
+- the fresh consumer's registration header. It said `Known failures: 2` and listed both checks without `PASS -> FAIL`. A new process is a first registration (D3), so the header lists the known state.
+
+Luna answered:
+
+- 030-s3: "Since your last message, I received one message from **SQUEAL**. It reported that the existing tests expecting `chunk` to throw for size `0` and negative sizes now fail, which matches the behavior change you requested."
+- 030-s3b: "Yes. After your last message, I received one message from **SQUEAL** reporting that the `chunk` change caused two existing tests to fail …"
+
+Each `--continue` run ended with no news, and the export shows nothing stored after its answer. So the run with news stored one message, and the run without news stored none.
+
+The transition reached the model once. The header restated the same two failures as state. Luna counted the two texts as one message, so this is not a second delivery. It is what a resumed process's registration header does.
+
+### Under `serve`: two continuations in a row
+
+030-s4 (`030-s4-serve.timeline.md`, `030-s4-serve.cezar-events.txt`). Times are when each request started.
+
+| Time | What |
+| --- | --- |
+| 03:34:54.574 | `PASS -> FAIL` of `purry.test.ts > wrong number of arguments`, at revision 48. |
+| 03:34:55.818 | Turn 1 ended: "DONE", then Cezar's `TURN-END`. |
+| 03:34:56.065 | Request 7, continuation 1: a user message `SQUEAL · 1 check changed (1 test) at revision 48` with the `PASS -> FAIL`. |
+| (request 7's answer) | Luna re-edited `purry.ts` (`-  Expected ${fn.length} or … received ${args.length}` / `+  Wrong number of arguments: …`). That is within "only edit src/purry.ts", but it acted on the report. In 008-20's s4, luna left the test failing. |
+| 03:35:00.952 | Request 8 (1,270 ms), whose answer was "DONE". |
+| 03:35:01.119 | `FAIL -> PASS` of the same check, at revision 49, during request 8 and so before the continued turn's idle (about 03:35:02.22, Cezar's "DONE" text event at 03:35:02.228). |
+| 03:35:02.613 | Request 9, continuation 2, 0.39 s after that idle: a user message `SQUEAL · 1 check changed (1 test) at revision 49` with the `FAIL -> PASS` and "1624 pending". Luna answered "DONE". |
+
+Then no request came until the driver's second prompt at 03:36:25.819, 83 s later, and none in the 90 s after its turn-end. Cezar's runner shows the two continued turns as text events with no `TURN-END`, as Observation 4 above says.
+
+Asked who sent each message, luna listed them as "4. **Developer:** Reported Squeal's result for revision 47. 5. **You:** Shared Squeal's failing result for revision 48 … 6. **You:** Shared Squeal's passing result for revision 49." It named the content as Squeal's and the sender as the user; in 008-20's s4, luna had said "sent by the SQUEAL system". On "did anyone ask you to change anything?" it named only the user's request. One try each: a weaker attribution than 008-20's, not a measured change.
+
+## Defects (008-30)
+
+5. **Under `serve`, a continued turn that makes news before its own idle is continued again.** Plugin, D3's idle and D5. Severity: it costs one model request and one turn the user did not start, each time a continued turn's own edit flips a check. It is also exactly the loop goal 4 rules out. A continuation that makes the model edit can make more news, and Claude Code's `stop_hook_active` ends that chain after one.
+
+   Seen once, in 030-s4 above. The second message went out 0.39 s after the continued turn's idle. Its one entry belongs to `purry.test.ts`, which was already current 1.1 s before that idle. That fits neither D3's rule nor D5's:
+   - D3: a continued turn's idle ends the turn silent.
+   - D5 and 001-85: the wake waits only for entries of the test files pending when the turn ended.
+
+   Which path sent it is not proven from outside. The code (`src/harness/opencode/turns.ts`) gives two candidates:
+   - (a) The waiter armed at the continued turn's idle delivered an entry of a file that was not pending at that idle. For instance, the store's turn state was left from the first idle's Stop, since a continuation through `promptAsync` reaches `chat.message` as Squeal's own and `message()` returns before anything starts a new turn there.
+   - (b) `continued` was cleared, so the idle ran the Stop path again.
+
+   `--print-logs` is not available under Cezar's runner, so the next row should reproduce it with the scripted provider.
+
+   Proposed row: **008-31 a continued turn is not continued again**. Reproduce it in the real-OpenCode e2e with the scripted provider under `serve`:
+   1. turn 1 edits and makes a regression known before idle;
+   2. continuation 1's scripted answer makes an edit that flips the check back before its idle;
+   3. assert no further Squeal message in the session, and that the `FAIL -> PASS` reaches the model at the next user prompt.
+
+   Then fix whichever path (a) or (b) sends it. A hook test pins it: a continued turn's idle with a ready delta of a file current at that idle ends silent, and its waiter does not fire for that file.
+
+### Cleanup (008-30)
+
+At the end, at 03:41:37 UTC, load 10.1, `ps -u squeal-e2e` was empty:
+
+- no OpenCode, no proxy, no Squeal daemon or waiter, and no tmux server;
+- the daemon stopped by itself 3 s after each session's last consumer ended (`status --notes`).
+
+The remeda clone is clean at `8e6e78f`. Squeal's store there is at revision 50 with 0 known failures. The sandbox now holds only 0.1.186: `xdg/data/squeal/opencode/0.1.186` and `current` pointing at it. The 0.1.184 and 0.1.190 archives stay in `src/`.

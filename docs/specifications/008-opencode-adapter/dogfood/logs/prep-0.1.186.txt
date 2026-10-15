@@ -1,0 +1,65 @@
+05:31:29
+ 05:31:29 up 18:20,  6 users,  load average: 4.91, 6.06, 10.94
+$ squeal status
+Revision: 42
+Known failures: 5 (5 tests)
+  FAIL  packages/remeda/src/capitalize.test.ts > data-first > on mixed case
+        expected 'Hello world' to be 'HeLlO WoRlD' // Object.is equality
+        at packages/remeda/src/capitalize.test.ts:19:39, observed at revision 38, current
+  FAIL  packages/remeda/src/capitalize.test.ts > data-first > on upper case
+        expected 'Hello world' to be 'HELLO WORLD' // Object.is equality
+        at packages/remeda/src/capitalize.test.ts:15:39, observed at revision 38, current
+  FAIL  packages/remeda/src/capitalize.test.ts > data-last > on mixed case
+        expected 'Hello world' to be 'HeLlO WoRlD' // Object.is equality
+        at packages/remeda/src/capitalize.test.ts:37:47, observed at revision 38, current
+  FAIL  packages/remeda/src/capitalize.test.ts > data-last > on upper case
+        expected 'Hello world' to be 'HELLO WORLD' // Object.is equality
+        at packages/remeda/src/capitalize.test.ts:33:47, observed at revision 38, current
+  FAIL  packages/remeda/src/capitalize.test.ts > unicode > maintains diacritics in rest of word
+        expected 'Café naïve' to be 'CAFÉ NAÏVE' // Object.is equality
+        at packages/remeda/src/capitalize.test.ts:44:38, observed at revision 38, current
+Affected checks: 2406 passed (2231 tests, 175 test files loaded), 0 running, 0 queued, 2 skipped (2 tests)
+Full-suite checkpoint: none completed since revision 41 (the counts are for revision 42; `squeal run --all` requests one)
+
+Worktree: /home/squeal-e2e/dogfood-008/remeda (HEAD 8e6e78f, dirty state not known: no daemon is validating)
+Daemon: no daemon running since 2026-10-15T02:03:25.833Z
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-15T01:08:47.100Z, revision 2: daemon stopped: no session registered for 3 s after its last one ended
+  2026-10-15T01:34:34.883Z, revision 28: daemon stopped: no session registered for 3 s after its last one ended
+  2026-10-15T01:35:41.046Z, revision 30: daemon stopped: no session registered for 3 s after its last one ended
+  2026-10-15T01:37:12.883Z, revision 30: daemon stopped: no session registered for 3 s after its last one ended
+$ squeal run --all --wait 300000
+No verdict: no daemon running for /home/squeal-e2e/dogfood-008/remeda; start one with squeal start
+ 05:31:29 up 18:20,  6 users,  load average: 4.91, 6.06, 10.94
+$ squeal start
+Squeal daemon spawned for /home/squeal-e2e/dogfood-008/remeda
+
+Revision: 42
+Known failures: 5 (5 tests)
+  FAIL  packages/remeda/src/capitalize.test.ts > data-first > on mixed case
+        expected 'Hello world' to be 'HeLlO WoRlD' // Object.is equality
+        at packages/remeda/src/capitalize.test.ts:19:39, observed at revision 38, current
+  FAIL  packages/remeda/src/capitalize.test.ts > data-first > on upper case
+        expected 'Hello world' to be 'HELLO WORLD' // Object.is equality
+        at packages/remeda/src/capitalize.test.ts:15:39, observed at revision 38, current
+  FAIL  packages/remeda/src/capitalize.test.ts > data-last > on mixed case
+        expected 'Hello world' to be 'HeLlO WoRlD' // Object.is equality
+$ squeal run --all --wait 300000
+Checkpoint 64bf6a1f-41d6-44b4-890c-5ae46c6efaa7 completed at revision 43: no known failures; 175 test files, 175 already current, 0 run now
+Checkpoint 64bf6a1f-41d6-44b4-890c-5ae46c6efaa7 started at revision 43: 0 test files to run, 175 already current
+
+Revision: 43
+Known failures: 0
+Affected checks: 2411 passed (2236 tests, 175 test files loaded), 0 running, 0 queued, 2 skipped (2 tests)
+Full-suite checkpoint: completed at revision 43
+
+Worktree: /home/squeal-e2e/dogfood-008/remeda (HEAD 8e6e78f, clean at revision 43)
+Daemon: running, last heartbeat 2 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+$ squeal stop
+Squeal daemon stopped for /home/squeal-e2e/dogfood-008/remeda
+ 05:31:44 up 18:20,  6 users,  load average: 5.38, 6.11, 10.87

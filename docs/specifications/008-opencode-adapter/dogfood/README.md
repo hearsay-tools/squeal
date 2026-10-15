@@ -29,6 +29,7 @@ What `../lessons.md` was observed with. Everything ran as `squeal-e2e` under `/h
 | `as-user.sh` | Runs a command as the dogfood user: clean environment, `HOME`, `TMPDIR` and `XDG_*` inside `dogfood-008`, a `PATH` whose only harness is `opencode`, `OPENCODE_DISABLE_AUTOUPDATE=1`, `OPENCODE_DISABLE_MODELS_FETCH=1`. `-C <dir>` sets the cwd. |
 | `setup.sh`, `opencode.json` | The sandbox, OpenCode's global config (provider `cliproxy` at the proxy, `@ai-sdk/openai-compatible`, the three models), the remeda clone and `npm ci`. |
 | `make-archives.sh` | The release archives `install.sh` reads through `SQUEAL_SOURCE`: 0.1.184 (`git archive` of `4c6d1176`) and 0.1.190 (the same tree relabelled: a later version with no code change). |
+| `make-archive.sh` | 008-30: one release archive and its `install.sh` from a revision (`sh make-archive.sh b4067d55`, 0.1.186). |
 | `copy-cezar.sh` | Copies the installed Cezar into `cezar-source/`. |
 | `proxy.mjs`, `proxy.sh`, `proxy-start.sh`, `proxy-stop.sh` | The model endpoint on 127.0.0.1:47320: forwards to cliproxy adding the key, appends each request body and the streamed answer to `logs/<session>.requests.jsonl`. |
 | `cezar-drive.mjs`, `serve.sh`, `scenarios/*.json` | The Cezar-shaped `opencode serve` session: Cezar's `OpencodeServerRunner` in persistent mode, prompts sent `gapMs` after each turn-end, then held open until quiet for `idleMs`, so a wake shows as events after the last turn-end. |
@@ -41,7 +42,7 @@ What `../lessons.md` was observed with. Everything ran as `squeal-e2e` under `/h
 
 ## Logs
 
-`logs/<session>.timeline.md` per session (from the proxy, so it is what reached the model), `logs/<session>.cezar-events.txt` for the `serve` sessions (Cezar's events with time and load), `logs/<session>.run.txt` for `opencode run` (wall time and load), `s3b-run-luna.run.err` (OpenCode's log for defect 1), `logs/stats.txt`, the install, setup, warm-up and update transcripts, `s5-tui.screens.txt` (TUI captures with time and load), `s5-ps-*.txt` (processes around the update and the restart) and `tree-*.txt` (goal 8). Raw request logs and OpenCode's database stay in `dogfood-008`.
+008-30 added `030-*` (the 0.1.186 re-check of defect 1: two `run` then `run --continue` pairs and one `serve` session, all gpt-6-luna), `install-0.1.186.txt` and `prep-0.1.186.txt`; `stats.txt` covers both tasks. `logs/<session>.timeline.md` per session (from the proxy, so it is what reached the model), `logs/<session>.cezar-events.txt` for the `serve` sessions (Cezar's events with time and load), `logs/<session>.run.txt` for `opencode run` (wall time and load), `s3b-run-luna.run.err` (OpenCode's log for defect 1), `logs/stats.txt`, the install, setup, warm-up and update transcripts, `s5-tui.screens.txt` (TUI captures with time and load), `s5-ps-*.txt` (processes around the update and the restart) and `tree-*.txt` (goal 8). Raw request logs and OpenCode's database stay in `dogfood-008`.
 
 ## Repeat
 
