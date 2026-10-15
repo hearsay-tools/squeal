@@ -66,3 +66,18 @@ Use /worker. Outcome: `lessons.md` gains a dated section showing whether, with 0
 - Steps: update the dogfood install to 0.1.186 with `install.sh` from a `git archive` of main; repeat s3 (twice, as s3 and s3b did); repeat one Cezar-shaped `serve` session with news at the end of a turn.
 - Owns: `docs/specifications/008-opencode-adapter/lessons.md` (append only) and `dogfood/**`. Fixes nothing.
 - Done when: the section answers both questions with evidence, a new defect is written with a proposed row, and nothing of the run is left running.
+
+## 008-31 a continued turn is not continued again
+
+Use /worker. Outcome: under `serve`, a turn Squeal continued ends silently at its idle, even when its own edit flips a check before that idle. The news reaches the model at the next user prompt (goal 4, D3, D5; `lessons.md` defect 5).
+
+- Read: `../lessons.md` defect 5 and session 030-s4, which name two candidate paths in `src/harness/opencode/turns.ts`: (a) the waiter armed at the continued turn's idle delivers an entry of a file not pending at that idle; (b) `continued` is cleared, so the idle runs Stop again. Also `../reviews/wave-3.md` (what 008-25 and 008-28 changed in `turns.ts`), and whether 0.1.184 had this.
+- Shape: repair.
+- Seam: first reproduce it in a real-OpenCode test through `runOpenCode` under `serve` with the scripted provider. Put it in `test/harness/opencode-*.test.ts`, not `test/e2e/` (008-29 owns that).
+  1. Turn 1 edits and makes a regression known before idle.
+  2. Continuation 1's scripted answer makes an edit that flips the check back before its idle.
+  3. Assert no further Squeal message in the session, and that the `FAIL -> PASS` reaches the model with the next user prompt.
+
+  Then the hook test that pins the path, then the fix.
+- Owns: `src/harness/opencode/**`, `test/harness/opencode/**`, `test/harness/opencode-*.test.ts` except `opencode-dispose.test.ts` (008-29). No dist, version or key format.
+- Done when: the reproduction fails at main and passes after; the dispose regressions and the `run` storage tests still pass; lint, typecheck and `squeal run --all --wait` green.
