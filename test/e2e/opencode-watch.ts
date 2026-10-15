@@ -25,6 +25,8 @@ interface Consumer {
 /** The consumers one poll saw, when they changed. */
 export interface Seen {
   readonly at: number;
+  /** The poll before, which still saw the rows before these: the change came after it. */
+  readonly after: number;
   readonly rows: readonly Consumer[];
 }
 
@@ -115,7 +117,8 @@ export async function watchRun(
   let polled = Date.now();
   try {
     while (!world.done()) {
-      watched.gap = Math.max(watched.gap, Date.now() - polled);
+      const previous = polled;
+      watched.gap = Math.max(watched.gap, Date.now() - previous);
       polled = Date.now();
       try {
         db ??= new DatabaseSync(database, { readOnly: true });
@@ -125,7 +128,7 @@ export async function watchRun(
       const rows = db === undefined ? null : consumerRows(db);
       const last = watched.consumers.at(-1)?.rows;
       if (rows !== null && JSON.stringify(last) !== JSON.stringify(rows))
-        watched.consumers.push({ at: Date.now(), rows });
+        watched.consumers.push({ at: Date.now(), after: previous, rows });
       for (const entry of readdirSync("/proc")) {
         const pid = Number(entry);
         if (!Number.isInteger(pid)) continue;
