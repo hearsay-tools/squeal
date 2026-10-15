@@ -97,7 +97,8 @@ interface Built {
  * keys `runnerVersion` "unavailable", runs nothing and notes why once, so
  * its checks are `unknown` and nothing is stored (D2). A changed state or
  * hash recreates the project, which re-keys it; so does a changed pytest
- * config, which also rebuilds the graph with its settings. A run whose
+ * config, which also rebuilds the graph with its settings; an edit to the
+ * config lists the test files again (task 007-42). A run whose
  * environment moved before or during it stores nothing and the environment
  * is admitted again at the next call (D2's sync state).
  */
@@ -215,7 +216,11 @@ export async function createPytestAdapter(
     return { moved, rebuild };
   };
   const invalidate = async (paths: readonly InvalidatedPath[], { moved, rebuild }: Moved) => {
-    if (paths.some((p) => p.kind !== "change") || built === null) {
+    // Task 007-42: an edit to the pytest config can change `norecursedirs` or `python_files`.
+    const config = settings.config === null ? null : toRelative(root, settings.config.path);
+    const relist =
+      built === null || rebuild || paths.some((p) => p.kind !== "change" || p.path === config);
+    if (relist) {
       const listed = isDirectory(cwd) ? listTestFiles(root, project, note) : [];
       if (!sameList(listed, files)) {
         files = listed;
