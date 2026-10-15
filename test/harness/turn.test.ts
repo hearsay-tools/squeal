@@ -107,7 +107,14 @@ describe("the idle waiter and the turn state (task 001-85)", () => {
     r.queue("k2");
     expect(await hook("stop", r)).toEqual(SILENT);
 
-    const waiter = await waiterAround(r, () => (r.apply(r.fail()), r.confirm()), 5_000);
+    const waiter = await waiterAround(
+      r,
+      () => {
+        r.apply(r.fail());
+        r.confirm();
+      },
+      5_000,
+    );
 
     expect(waiter.exitCode).toBe(2);
     expect(waiter.stderr).toContain("PASS -> FAIL");
