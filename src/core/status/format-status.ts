@@ -1,3 +1,4 @@
+import { waitsText } from "../retry/index.js";
 import { formatCheck, fullSuiteText, runnerPartText, slowTierText } from "../state/index.js";
 import { excludedProjectsText, plural } from "../text.js";
 import type {
@@ -45,6 +46,7 @@ export function formatStatus(
         f.validity,
       ].join(", ")}`,
     ]),
+    ...retryLines(result),
     `Affected checks: ${affected(result)}`,
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
     ...checkpointLine(result, now, command),
@@ -68,6 +70,26 @@ export function formatStatus(
     ...notes(result, command, options.allNotes === true),
   ];
   return `${lines.join("\n")}\n`;
+}
+
+/**
+ * Spec 001 D6 (001-368): each pending retry and what it waits for, with the
+ * load now. Its FAIL is still among the known failures above.
+ */
+function retryLines(s: StatusSnapshot): string[] {
+  const pending = s.pendingRetries;
+  if (pending === undefined) return [];
+  const load = { oneMinute: pending.loadAverage, cpus: pending.cpus };
+  return [
+    `Pending retries: ${pending.retries.length}`,
+    ...pending.retries.map((r) => {
+      const where =
+        r.claimedBy === null || r.claimedBy === s.worktreeId
+          ? ""
+          : ", queued by another worktree's daemon";
+      return `  ${r.testFile.path} (${r.reason}): ${waitsText(r.reason, load)}${where}`;
+    }),
+  ];
 }
 
 /** Spec 004 D8: the slow-tier line, as delivered headers print it, when slow files are declared. */

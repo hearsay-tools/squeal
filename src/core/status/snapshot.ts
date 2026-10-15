@@ -3,6 +3,7 @@ import { vitestDetected } from "../daemon/runner.js";
 import { worktreeIdFor } from "../fs/index.js";
 import { CLOSURE_METHOD, testFileId } from "../keys/index.js";
 import { readDaemonNotes } from "../notes.js";
+import { pendingRetriesOf } from "../retry/index.js";
 import { readHeader, testFileKeyOf, toKnownFailure } from "../state/index.js";
 import { META_STORE_RECOVERED, readTransaction } from "../store/index.js";
 import {
@@ -129,6 +130,7 @@ function snapshot(
     daemonNotes: readDaemonNotes(store, worktreeId),
     ...openCheckpoint(store, worktreeId, daemon),
     ...vitestExcluded(worktree?.root ?? root),
+    ...pendingRetriesOf(store, keys),
   };
 }
 

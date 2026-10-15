@@ -8,6 +8,7 @@ export {
   readRunLoads,
   recordRunLoad,
 } from "./load.js";
+export { pendingRetriesOf } from "./pending.js";
 export {
   askRetry,
   cancelRetries,
