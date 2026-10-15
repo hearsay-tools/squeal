@@ -31,22 +31,26 @@ it("loads a module beneath a package.json that is not JSON", () => {
 `,
 };
 
-describe("vitest adapter: no recorder note on a project's own failure (review 001-401)", SLOW, () => {
-  it.each([true, false])("observing %s", async (observe) => {
-    const fx = await openFixture("observed", FILES, (root) =>
-      createVitestAdapter({ root, observe: () => observe }),
-    );
-    const report = await fx.adapter.run([ref("test/project.test.ts", "forks")], fx.runOptions());
-    expect(
-      report.results.map((r) => [
-        r.outcome,
-        r.errors[0]?.message.match(/MODULE_NOT_FOUND|Invalid package config/)?.[0],
-        r.errors[0]?.recorder,
-        describeFailure(r.errors, null).summary.includes("Squeal's recorder"),
-      ]),
-    ).toEqual([
-      ["fail", "MODULE_NOT_FOUND", undefined, false],
-      ["fail", "Invalid package config", undefined, false],
-    ]);
-  });
-});
+describe(
+  "vitest adapter: no recorder note on a project's own failure (review 001-401)",
+  SLOW,
+  () => {
+    it.each([true, false])("observing %s", async (observe) => {
+      const fx = await openFixture("observed", FILES, (root) =>
+        createVitestAdapter({ root, observe: () => observe }),
+      );
+      const report = await fx.adapter.run([ref("test/project.test.ts", "forks")], fx.runOptions());
+      expect(
+        report.results.map((r) => [
+          r.outcome,
+          r.errors[0]?.message.match(/MODULE_NOT_FOUND|Invalid package config/)?.[0],
+          r.errors[0]?.recorder,
+          describeFailure(r.errors, null).summary.includes("Squeal's recorder"),
+        ]),
+      ).toEqual([
+        ["fail", "MODULE_NOT_FOUND", undefined, false],
+        ["fail", "Invalid package config", undefined, false],
+      ]);
+    });
+  },
+);
