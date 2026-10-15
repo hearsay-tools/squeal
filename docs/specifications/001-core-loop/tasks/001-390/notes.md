@@ -78,3 +78,14 @@ Replace "The recorder is delivered as `--import` of a `file:` URL, `--require` k
 
 - `withoutInjected` matches the leading recorder option by path, after decoding a `file:` URL. A configured project env and the daemon's env can take different forms in one instance: the daemon's has no `--require`, so it gets `--import`, while a project `--require` gets `--require`.
 - A nested Squeal (Squeal's own adapter tests under a Squeal daemon) used to load the *outer* recorder's code in inner workers once the inner one was `--import`: the outer `--require` ran first and took the `globalThis.__squealObserve` guard. `ownNodeOptions` in `observeEnv` closes that. Keep it if the delivery changes again.
+
+## Calm start-up
+
+**[exp]** Same script, 100 runs per mode, interleaved, at 07:49 with a 1-minute load of 4.2 to 7.2 on 24 CPUs, the recorder as of `d1e77f74`:
+
+| Node | none p50 / p90 | `--require` p50 / p90 | `--import` p50 / p90 |
+| --- | --- | --- | --- |
+| 22.23.3 | 22.3 / 24.2 ms | 34.0 / 36.9 ms | 43.8 / 47.0 ms |
+| 24.21.0 | 22.8 / 25.9 ms | 31.2 / 35.6 ms | 32.1 / 37.3 ms |
+
+The recorder's own cost, over none, is about 12 ms on 22.23.3 as `--require` and 21 ms as `--import`, so `--import` adds about 10 ms per spawned Node there. On 24.21.0, `--import` costs about 1 ms more than `--require`. That is per spawned child, which is small beside the 0.97 / 1.50 ratios of `tasks/001-132/notes.md`. A test that spawns hundreds of Node children on 22 pays about 1 s per hundred.
