@@ -95,3 +95,46 @@ Pinned, and already right on the candidate:
 sol's r6 to r8 stay `true` and r2 stays `null` (`retry-situation.test.ts`, unchanged).
 
 **Committed cells (in memory only).** All 1,179 cells were checked under base `78f140dd`, the 006-71 candidate `ab205437`, and this commit. Against the base, the same four sol a9 cells change as in the table above. Against the 006-71 candidate, none differ.
+
+## 006-78: repair round 3, after re-review 006-76
+
+Commit `0c8dbeac`. Residual B1 in `reviews/wave-13.7.md`: rule (c)'s `else if (fixed && ...)` credited an ordinary pass. In doing so it skipped the branch that closes rule (b)'s window (`open`) on an ordinary recovery.
+
+Sequence:
+1. start;
+2. queued retry;
+3. an edit to `src/rates.ts` only, outside `failure.inputs`;
+4. an ordinary pass;
+5. another source edit;
+6. a Squeal FAIL;
+7. a clean `squeal status`;
+8. a pass claim.
+
+The FAIL revoked the pass and closed (c), but `open` stayed armed, so (b) credited the old retry through the clean status. A test edit at step 3 hid this, because an edit to the inputs closes `open` before the pass. That is why 006-75's pins stayed green.
+
+**Fix.** In `claimAfterRetry`'s Squeal branch:
+- **A FAIL of the file:** revokes the pass, as 006-75 made it.
+- **A pass carrying the retry's note:** credits, as before.
+- **Anything else:** (c) may credit an ordinary pass or a settled read. Then, whether or not (c) credited it, an ordinary pass of the file or a `squeal run` closes `open`, as before 006-71; only otherwise can (b)'s status read credit.
+
+So only a new start and a new queued retry after a later FAIL can credit again. Every case covered before 006-71 keeps the branch order it had then. No parser, fixture or interface change.
+
+**Regressions** (`test/evals/retry-revoke.test.ts`, both harnesses):
+- **The reviewer's source-only sequence with the clean-status tail:** `claim-after-retry` was `true` before the fix and is now `false`. Ground truth passes, so `claim-true`, `no-false-pass` and `retry-for-environment` stay met.
+- **Two rows of "Required probes that now fit" that had no test**, added as pins (green before and after):
+  - own-run FAIL, then a clean status with no new start or retry: `false`;
+  - the earned pass, then an own run naming an unrelated file failing: `true`.
+
+The other rows were already pinned and keep their results:
+- the original B1 sequence: `false`;
+- its Squeal-FAIL variant: `false`;
+- own-run FAIL, then a new retry without a new start: `false`;
+- own-run FAIL, then a new start and a new retry: `true`;
+- a heal, then an own-run FAIL: both measures `false`;
+- a11's noted pass, then an own-run FAIL: `false`.
+
+r2 and r6 to r8 keep their results (`retry-situation.test.ts`, unchanged).
+
+**Committed cells (in memory only).** All 1,179 cells were compared:
+- against the original base `78f140dd` and the reviewer's base `431c1d3f`: only sol's `99db6d` a9 r2, r6, r7 and r8 differ, as in the table above;
+- against 006-75's `73bb06a1`: none differ.
