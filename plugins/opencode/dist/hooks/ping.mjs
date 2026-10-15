@@ -631,6 +631,7 @@ function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
     `Wait only when you need a result before your next step, for example before saying the task is done: ${naming === "none" ? "`status --wait 60000` on the CLI SQUEAL messages name" : `\`${command} status --wait 60000\``}.`,
     ...coverage.slow === null ? [] : slowSentences(command, naming),
     "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
+    retrySentence(command, naming),
     REVISION,
     covers,
     "Squeal does not cover typecheck, build or any other test suite: run those yourself."
@@ -644,6 +645,10 @@ function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
     }
   }
   return text;
+}
+function retrySentence(command, naming) {
+  const cli = naming === "every" && command === SQUEAL_COMMAND ? `\`${command} retry` : "the CLI's `retry";
+  return `For a failure from load or a stopped service: ${cli} <file> --reason load|environment\`, never past a real one.`;
 }
 function runnerNames(coverage) {
   const nodeTest = coverage.nodeTest.length > 0;
