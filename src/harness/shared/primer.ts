@@ -67,6 +67,7 @@ export function primer(command: string = SQUEAL_COMMAND, coverage: Coverage = VI
       }.`,
       ...(coverage.slow === null ? [] : slowSentences(command, naming)),
       "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
+      retrySentence(command, naming),
       REVISION,
       covers,
       "Squeal does not cover typecheck, build or any other test suite: run those yourself.",
@@ -81,6 +82,18 @@ export function primer(command: string = SQUEAL_COMMAND, coverage: Coverage = VI
     }
   }
   return text;
+}
+
+/**
+ * Spec 001 D6 as amended (001-348, 001-368): when to ask for a retry, and the
+ * one use it never has. Squeal cannot tell a failure caused outside the code
+ * from a real one, so the agent asks, once per file at its inputs.
+ */
+function retrySentence(command: string, naming: Naming): string {
+  // A Codex CLI is a long path: named in full only where it is `squeal`, so the primer keeps its naming.
+  const cli =
+    naming === "every" && command === SQUEAL_COMMAND ? `\`${command} retry` : "the CLI's `retry";
+  return `For a failure from load or a stopped service: ${cli} <file> --reason load|environment\`, never past a real one.`;
 }
 
 /** The runners the daemon builds: Vitest when detected or when nothing else is configured (spec 003 D7). */
