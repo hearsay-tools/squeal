@@ -44,6 +44,7 @@ export function squealEvidence(text, from, failures = 0) {
     known: listed ? Number(listed[1]) : null,
     checks: checksOf(t),
     ...(selected.length > 0 ? { selected } : {}),
+    ...(/^Pending retries: \d+/m.test(t) ? { pendingRetries: pendingRetriesOf(t) } : {}),
   };
   const before = typeof failures === "number" ? { named: [], unnamed: failures } : failures;
   return settled(step, failingAfter(before, step));
@@ -132,6 +133,14 @@ function selectedOf(t) {
     .replace(/ and \d+ more$/, "")
     .split(", ")
     .filter((f) => f !== "");
+}
+
+/**
+ * The test files a status lists under `Pending retries:` (spec 001 D7 as amended for 001-368;
+ * row 006-53), as `  test/a.test.ts (environment): runs at once`.
+ */
+function pendingRetriesOf(t) {
+  return [...t.matchAll(/^\s+(\S+) \((?:load|environment)\): /gm)].map((m) => m[1]);
 }
 
 /** Pending, stale and unknown counts in a delivered header or a status, or `null` for none. */
