@@ -37,8 +37,12 @@ export function addHeldFile(store: Store, worktreeId: WorktreeId, file: HeldFile
   store.meta.set(heldFilesMetaKey(worktreeId), JSON.stringify([...held, file]));
 }
 
-/** Reads and clears the worktree's held files, in one transaction. */
+/**
+ * Reads and clears the worktree's held files, in one transaction. With none
+ * held it takes no write lock: every pass of an idle daemon asks (task 001-412).
+ */
 export function takeHeldFiles(store: Store, worktreeId: WorktreeId): HeldFile[] {
+  if (readHeldFiles(store, worktreeId).length === 0) return [];
   return store.transaction(() => {
     const held = readHeldFiles(store, worktreeId);
     if (held.length > 0) store.meta.set(heldFilesMetaKey(worktreeId), "[]");

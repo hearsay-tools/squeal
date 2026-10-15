@@ -48,6 +48,11 @@ export async function reconcileBatch(
   const head = diff.changes.length > 0 ? await context.head() : null;
   // The ignored inputs key slow results, not transforms: no touch of the runner (004-44).
   const touched = touchedUnchanged(diff, keys.cache).filter((path) => !ignored.has(path));
+  // Nothing to write takes no write lock: an idle daemon's pass every 30 s (task 001-412).
+  if (diff.changes.length === 0 && diff.updates.length === 0) {
+    if (batch.trigger !== "watch") await recordHeadMove(context, ledger);
+    return { applied: null, touched };
+  }
   const applied = store.transaction(() => {
     const revision = commitBatch(diff, keys.cache, {
       worktreeId,
