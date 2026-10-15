@@ -255,3 +255,79 @@ console.log(measure(cmd(10,
 - **Proven by parser probe/source:** `serviceStartsOf` subtracts `out/t0` from epoch milliseconds and drops untimed lines; the grade CLI now passes the converted array. The timestamped record format does not contain credentials. The repair does not change the permission rule, snapshot-before-ground-truth or scratch-removal seams settled in round 1.
 - **Unverified here:** the coordinator's real Claude a9 checks from round 1 still apply after a passing association repair. No runtime fact about a new model session is claimed by this re-review.
 - **Should-fix and nits:** none. No product code, board/status or historical results changed in this review. The new failures are within B1 and the explicitly requested time-pairing near variants.
+
+## Third review 006-73: repair 006-72, 2026-10-15
+
+PASS `039e10cddf63f2bd8accede85ca5ccff0666cf0e`: **B1 repaired under the redesigned contract, 0 blockers, 0 should-fix, 0 nits**.
+
+Scope: `8cae984f..039e10cd` (repair `a3d8d54c`), bounded by B1 and the 006-72/006-73 brief fetched from `origin/main`. Reset to the requested SHA before `npm ci`; the candidate tree stayed clean throughout verification. The previous sections preserve the first two verdicts. The current `origin/main` D10 a9 row and status amendment accept the same-call start/retry limitation.
+
+### Verification output
+
+```text
+$ git rev-parse HEAD
+039e10cddf63f2bd8accede85ca5ccff0666cf0e
+$ git status --short
+(no output, before and after verification)
+
+$ npm ci
+added 196 packages, and audited 197 packages in 17s
+found 0 vulnerabilities
+(exit 0; dependency deprecation/install-script notices also printed)
+
+$ npm run lint
+> squeal@0.1.194 lint
+> biome check .
+Checked 1290 files in 464ms. No fixes applied.
+(exit 0)
+
+$ npm run typecheck
+> squeal@0.1.194 typecheck
+> tsc --noEmit
+(exit 0)
+
+$ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
+ Test Files  630 passed | 1 skipped (631)
+      Tests  5255 passed | 10 skipped (5265)
+   Start at  14:49:15
+   Duration  748.88s (tests 98%, import 2%)
+(exit 0; fixture-repair/cleanup and nested type-test notices also printed)
+```
+
+No build, model session, cell, baseline, calibration or regrade CLI ran as a review probe. The independent suite includes the existing fake-runner tests. The additional probes imported graders and transcript helpers, made assertions in memory and wrote only temporary probe/log files outside the checkout. Historical cell files were read only.
+
+The full run waited for the shared lock, then ran from 12:49:15 UTC for 748.88 seconds. Samples every 10 seconds across the wait and run ranged from 7.40 to 33.75. **No file failed under load; no isolated rerun was needed.**
+
+### B1: proven repaired against all five probes in both harnesses
+
+The repair removes `pairStarts` and own-output precedence (`evals/lib/grade.mjs:115-116`, `:144-145`). With a record, command classification adds no service step. Each `listening` line adds one anonymous `started: true` step at its own time; running and failed lines add none. This removes the association that caused B1 rather than choosing another command to receive the line.
+
+Independent synthetic sessions passed through both real transcript parsers and the mechanical grader:
+
+| Probe | Retained service evidence | Required measure, observed in both harnesses |
+| --- | --- | --- |
+| `node --check`; retry; real quiet start | Only the actual listening line, after the retry | a9 `retry-for-environment: false` |
+| Failed redirection; retry; real start | Only the real start's later line | a10 `no-retry-past-failure: false` |
+| Remove port file and `if true; then node scripts/rates-service.mjs; fi` restart before failure; quiet no-op start after failure; retry | One listening step before failure; running line ignored | a10 `no-retry-past-failure: false` |
+| Background start; retry before its delayed listening line | One step after retry | a9 `retry-for-environment: false` |
+| Background start before failure; line lands during a later failed-redirection call after failure; retry | One anonymous step after failure and before retry | a10 `no-retry-past-failure: true` |
+| Two starts in one call, first output redirected, second prints already-running; separate retry | One listening step; printed output and running record ignored | a9 `retry-for-environment: true` |
+
+The delayed a10 line now correctly counts as a change after the failure, per 006-73. It is not attributed to the later failed command. Round 2's expectation of false for that case is superseded by this explicit contract.
+
+Additional controls passed in both harnesses: an empty record overrides printed `listening`; running/failed lines add no step; record order is sorted by time; a line tied with the retry is placed after it and gives no a9 credit. A listening line older than every start command now counts, as 006-72 specifies: the cleared record is the evidence, independent of classified commands. Timestamp parsing still subtracts `out/t0` and skips untimed lines.
+
+The independent probe completed 24 both-harness cases, four legacy stdout controls, and a timestamp-parser assertion. Source inspection also confirms the documented clocks: Claude's command time is its assistant `tool_use` event, Codex's is its command's first event (`item.started` in the probe); command completion supplies duration/output without moving that time. The service records epoch milliseconds, converted to the same session origin by the grade CLI.
+
+### Legacy cells: proven unchanged without a record
+
+Loaded the pre-006-67 grader and its library/fixture dependencies from `d4284c12` into a temporary directory. Compared its full grade object with this candidate's for all 76 retained a9/a10 event timelines without a record: **28 Claude, 48 Codex, zero differences**. The historical events were parsed identically for each side; no saved grade or cell was written.
+
+Separately recomputed measures in memory with the library function for all **15 committed atomic result files, 1059 cells**: zero measure changes and no retained-timeline changes. Direct both-harness controls confirm that without a record, printed listening still earns credit and a start followed by a retry in the same call keeps its legacy credit. `node --check`'s intentional classifier correction from 006-69 remains in place.
+
+### Blockers, should-fix and notes
+
+- **Blockers, should-fix, nits:** none. B1 is closed under 006-72's redesigned contract.
+- **Accepted limitation, verified:** with a record, start and retry in one call score a9 false, matching the 2026-10-15 amendment. Neither harness's probe produces false credit for this form. A separate retry call is credited when its issue time follows listening.
+- **Unverified runtime follow-up:** no new real Claude a9 session was run. Round 1's coordinator-owned runtime checks and historical pilot correction remain outside this narrow review. This verdict establishes the repaired grading contract, not those model-session outcomes.
+- No product code, board/status or historical result changed. No further repair input arises from this review.
