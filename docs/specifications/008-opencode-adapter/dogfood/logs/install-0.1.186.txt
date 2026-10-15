@@ -1,0 +1,29 @@
+05:30:38
+ 05:30:38 up 18:19,  6 users,  load average: 8.12, 6.72, 11.41
+$ mkdir -p /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode
+$ curl -fsSL -o /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/.unpack.zqmx6e/source.tar.gz file:///home/squeal-e2e/dogfood-008/src/squeal--v0.1.186.tar.gz
+$ tar -xzf /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/.unpack.zqmx6e/source.tar.gz -C /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/.unpack.zqmx6e/source --strip-components=1
+$ mv /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/.unpack.zqmx6e/source/plugins/opencode /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/0.1.186
+$ ln -sfn 0.1.186 /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/current
+$ rm -rf /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/0.1.184
+OpenCode sessions already open keep the Squeal they loaded until they restart. Restart them before the next update: it removes the version they loaded unless its daemon is running
+/home/squeal-e2e/dogfood-008/home/.local/bin/squeal is the launcher of squeal@hearsay 0.1.190
+Next, in each repository: squeal setup
+exit 0
+(008-30: run under sh -x by mistake; the trace, which held the in_use process list, is cut to the script's own lines)
+
+008-30, 05:31:10: removed the 0.1.190 stand-in (0.1.184's tree relabelled, 008-20), which the launcher would run as the newest package:
+$ rm -rf /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/0.1.190
+$ sed -i '\,opencode /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/0.1.190$,d' /home/squeal-e2e/dogfood-008/xdg/state/squeal/installed
+$ cat xdg/state/squeal/installed
+opencode
+launcher /home/squeal-e2e/dogfood-008/home/.local/bin/squeal
+opencode /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/0.1.186
+$ squeal --version
+0.1.186
+$ readlink current
+0.1.186
+$ grep plugin xdg/config/opencode/opencode.json
+  "plugin": [
+    "file:/home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/current"
+  ]
