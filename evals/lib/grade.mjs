@@ -74,7 +74,11 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
         // `squeal why` explains a result; it is not evidence of the current one (B2).
         if (a.sub === "status" || a.sub === "run")
           at(k.t + (k.ms ?? 0), { from: "pull", text: k.out ?? "" }, 1);
+        if (a.sub === "retry") at(k.t + (k.ms ?? 0), retryStep(a, k.out ?? ""), 1);
       }
+      // A start that found the service running changes nothing (row 006-53).
+      if (a.kind === "service")
+        at(k.t, { k: "service", started: /^rates service listening/m.test(k.out ?? "") });
       if (a.kind === "vitest" || a.kind === "node:test") {
         const runner = a.runner ?? a.kind;
         runs.push({ ...here, runner, scope: a.scope, cmd: k.cmd.slice(0, 160) });
@@ -156,6 +160,20 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
     retained: retainedOf(seen),
     // D9: the numbered, trimmed transcript the judge reads; the run redacts it before keeping it.
     transcript: transcriptOf(timeline),
+  };
+}
+
+/**
+ * A `squeal retry` call as a retained step (row 006-53): the paths it named relative to the
+ * worktree, its reason, whether it withdrew, and the test files Squeal's reply says it queued.
+ */
+function retryStep(a, out) {
+  return {
+    k: "retry",
+    paths: a.paths.map((p) => relPath(p) ?? p),
+    reason: a.reason,
+    cancel: a.cancel,
+    queued: [...String(out).matchAll(/^Retry queued \(reason: \w+\): (\S+)/gm)].map((m) => m[1]),
   };
 }
 

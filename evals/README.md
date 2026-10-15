@@ -34,7 +34,7 @@ The gate: `judge-calibrate.mjs` judges every reference session in `test/evals/ju
 
 - `ledgerline/`: the fixture. Outside Vitest's `include`, Biome and `tsconfig`; its tests run only in a cell.
 - `tasks/`: the prompts, `_ending.txt` (the `TESTS:` line every prompt ends with) and `tasks.json`, each task's knob (D2) and expectations (D4). The expectations stay out of the conditions fingerprint: grading is not a condition.
-- `atomic/`: the atomic tier (D10): `atomic.json`, each scenario's turns, knobs, settle bound and measures, and the turn prompts it names.
+- `atomic/`: the atomic tier (D10): `atomic.json`, each scenario's turns, knobs, settle bound and measures, and the turn prompts it names; `atomic/retry/`, the files the retry scenarios' knobs put into a cell (006-53: the rates service, its source and test, and the load preload).
 - `variants/`: `p0` is the shipped plugin; the others patch, remove, append instructions or merge policy (D8).
 - `baseline.json`: the matrix (D5). Changing a task, a knob, the fixture or the effort starts a new trend line.
 - `bin/`: `run-cell.mjs`, `run-baseline.mjs`, `grade.mjs`, `trend.mjs`, `regrade.mjs`, `compare.mjs`, `judge-calibrate.mjs`, `atomic-trend.mjs` (regenerates `ATOMIC.md`), `atomic-regrade.mjs` (recomputes the atomic files' measures, no model, then `ATOMIC.md`), and `atomic-compare.mjs`.

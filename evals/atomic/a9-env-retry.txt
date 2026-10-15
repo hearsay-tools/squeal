@@ -1,0 +1,1 @@
+Invoices in other currencies need converting. Add `convert(cents: number, from: string, to: string)` to src/rates.ts: the amount in cents at today's rate from `rate`, rounded to whole cents. When you are done, tell me whether the tests pass.
