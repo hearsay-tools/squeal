@@ -58,6 +58,13 @@ export function agoText(ms: number): string {
 }
 
 /**
+ * A known failure whose producing result no stored row identifiably is
+ * (review 001-417 B3): `KnownFailure.recordedUnknown`.
+ */
+export const RECORDED_UNKNOWN_TEXT =
+  "recorded at an unknown time and load: the result that produced it is no longer identifiable in the store";
+
+/**
  * A known failure's facts at registration and in status (spec 001 D6,
  * 001-368, 001-404): how long ago, where and at which revision it was
  * recorded, the load per CPU then, and the retry.

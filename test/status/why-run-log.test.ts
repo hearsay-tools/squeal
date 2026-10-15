@@ -47,7 +47,12 @@ describe("squeal why: the run log", () => {
     const { store, b, runDir, writeLog } = seeded();
     writeLog("run-b1", ["squeal vitest run run-b1"]);
     store.knownStates.upsertMany([
-      state(b.id, LOGIN, { outcome: "fail", observedAt: 1, commit: "abc123" }),
+      state(b.id, LOGIN, {
+        outcome: "fail",
+        observedAt: 1,
+        commit: "abc123",
+        fingerprint: "AssertionError: expected 1 to be 2 @ src/a.test.ts:3:5",
+      }),
     ]);
 
     const why = reportOf(readWhy(b.root, NAME));
@@ -124,7 +129,12 @@ describe("squeal why: the run log", () => {
     });
     store.results.putMany([own]);
     store.knownStates.upsertMany([
-      state(b.id, LOGIN, { outcome: "fail", observedAt: 4, commit: "abc123" }),
+      state(b.id, LOGIN, {
+        outcome: "fail",
+        observedAt: 4,
+        commit: "abc123",
+        fingerprint: "AssertionError: expected 1 to be 2 @ src/a.test.ts:3:5",
+      }),
     ]);
     const gone = reportOf(readWhy(b.root, NAME));
     expect(gone.runLog).toMatchObject({
