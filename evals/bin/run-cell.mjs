@@ -223,7 +223,6 @@ async function lifecycle() {
     const recordedLoads = storeLoads(join(WORK, ".git/squeal/store.sqlite"));
     const w = await stageInherited(knobs, {
       squeal,
-      stop: stopDaemon,
       setLoad,
       log,
       recordedLoads,
