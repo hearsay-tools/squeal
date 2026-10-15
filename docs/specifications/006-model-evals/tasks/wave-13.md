@@ -321,3 +321,18 @@ Contract:
 - lint, typecheck and `squeal run --all --wait` pass. Name any file that fails under load and passes alone.
 
 Never write `evals/results/`: the coordinator runs the tool after landing. Only the dry run may read the kept cells. Never run `run-baseline.mjs`, `run-cell.mjs` or `judge-calibrate.mjs`. No model call; no `npm run build`.
+
+## 006-84 review of `cand/006-82`
+
+Use /reviewer. Shape: review, pinned to the candidate's SHA; the range is `origin/main..cand/006-82`. Read this file's 006-82 section, `tasks/006-82/notes.md`, `tasks/006-77/notes.md` "What changes where" and `reviews/wave-13.8.md` "Historical comparison".
+
+Check first, whether a rewritten result can say something the session did not do:
+- **Faithful rebuild.** `regradedCell` refreshes mechanical fields, `parser` and expectations from `out/`, and keeps the transcript, judge verdicts, cost, tokens, identity, and an atomic cell's committed turns and settle. Is each kept field one that `out/` cannot improve, and each refreshed one graded exactly as `grade.mjs` and `run-cell.mjs` grade it? What does a long cell without a judge verdict get?
+- **The note.** `changed` names grade changes and `evidence` names the rest. Can a grade change land in `evidence`, or a file with no change be written? Does a missing `out/` leave the cell as committed?
+- **dd4056.** Claude a8 `slow-through-squeal` goes to 0/10 for both models, because the broken host launcher's replies earn no credit under 006-62. Does any cell lose credit for a Squeal call that was answered?
+- **006-80.** Is every caller of `regradeAtomic`'s new required stamp updated, and is ATOMIC.md regenerated only next to a written file?
+- The dry run against `/tmp/squeal-evals-1001/cells` matches the notes: 006-77's 14 cells, plus dd4056.
+
+Rules: no cell, `claude` or `codex` session; no model call. You may run `node evals/bin/regrade-cells.mjs --dry-run` in your candidate tree, and `git status` must stay clean. Never run it without `--dry-run`. Never run `run-baseline.mjs`, `run-cell.mjs`, `judge-calibrate.mjs`, `regrade.mjs` or `atomic-regrade.mjs`. No `npm run build`. Your full run is `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`; name any file that fails under load and passes alone.
+
+**Writes:** `reviews/wave-13.9.md`, PASS or FAIL with blockers, should-fix and notes, committed.
