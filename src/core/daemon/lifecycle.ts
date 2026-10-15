@@ -1,10 +1,9 @@
 import { existsSync } from "node:fs";
-import { dropGoneHarnesses, expireConsumers, lastDeparture } from "../delivery/index.js";
+import { dropGoneHarnesses, expireConsumers, lastDeparture, markRest } from "../delivery/index.js";
 import { storePaths } from "../store/index.js";
 import {
   type AbsolutePath,
   type DaemonExitReason,
-  daemonRestMetaKey,
   type EpochMs,
   nodeTestObservedMetaKey,
   nodeTestObservedPreloadsMetaKey,
@@ -158,7 +157,7 @@ export interface TimerContext {
  * wait and no request for `daemon.unusedExitMinutes` stops, reason `idle`,
  * with one note; a registered consumer is no use, so a session that idles
  * for hours, or a subagent whose SubagentStop never ran, keeps no daemon.
- * It marks the rest first (`daemonRestMetaKey`), so its consumers hear
+ * It marks the rest first (`markRest`), so its consumers hear
  * nothing of it, and the next hook boundary starts it again. A drain keeps
  * its own bound.
  *
@@ -228,7 +227,7 @@ export function startTimers(context: TimerContext): () => void {
     // With none registered, the departure grace or the idle period decides.
     const registered = store.consumers.list(worktreeId).length;
     if (registered === 0) return;
-    store.meta.set(daemonRestMetaKey(worktreeId), String(at));
+    markRest(store, worktreeId, at);
     context.shutdown("idle", unusedText(unusedMs, registered));
   };
   /** Counts the worktree's consumers; true when there is none. */

@@ -3,7 +3,7 @@ import { requestDaemon } from "../../core/daemon/client.js";
 import { ensureDaemon } from "../../core/daemon/ensure.js";
 import { isNewerVersion, squealVersion } from "../../core/daemon/version.js";
 import { otherSessionVersions } from "../../core/delivery/consumer-version.js";
-import { daemonLiveness } from "../../core/delivery/liveness.js";
+import { daemonLiveness, spawnedAfterRest } from "../../core/delivery/liveness.js";
 import type { DaemonRecord, EnsureDaemonResult, EpochMs } from "../../core/types/index.js";
 import type { HookContext, HookLocation } from "./context.js";
 import type { HookDeps } from "./hook.js";
@@ -31,7 +31,8 @@ export const SUCCESSOR_LOCK_WAIT_MS = 120_000;
 /**
  * `ensureDaemon` with the hook's CLI (review wave 3, B1) and the socket
  * budget. With `context`, a daemon older than the hook is first asked to step
- * down, and when it accepts, the hook spawns its successor from its own CLI.
+ * down, and when it accepts, the hook spawns its successor from its own CLI;
+ * a spawn after a rest starts the rest's start timeout (`spawnedAfterRest`).
  */
 export async function ensure(
   location: HookLocation,
@@ -45,11 +46,17 @@ export async function ensure(
   if (context !== undefined && (await stepDown(context, deps, record ?? null))) {
     return successor(location, deps);
   }
-  return (deps.ensureDaemon ?? ensureDaemon)(location.root, {
+  const at = (deps.now ?? Date.now)();
+  const ensured = await (deps.ensureDaemon ?? ensureDaemon)(location.root, {
     socketTimeoutMs: SOCKET_TIMEOUT_MS,
     ...(deps.cli === undefined ? {} : { cli: deps.cli }),
     ...(record === undefined ? {} : { record }),
   });
+  // Task 001-415: a rest is quiet only until the daemon spawned after it is due.
+  if (ensured === "spawned" && context !== undefined) {
+    spawnedAfterRest(context.store, context.consumer.worktreeId, at);
+  }
+  return ensured;
 }
 
 /**
