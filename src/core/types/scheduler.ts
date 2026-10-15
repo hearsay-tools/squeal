@@ -1,4 +1,4 @@
-import type { EpochMs, RelativePath, RevisionNumber, WorktreeId } from "./common.js";
+import type { CommitSha, EpochMs, RelativePath, RevisionNumber, WorktreeId } from "./common.js";
 import type { TestFileRef } from "./keys.js";
 import { worktreeMetaKey } from "./store.js";
 import type { CheckpointKind, CheckpointRecord } from "./store-records.js";
@@ -100,6 +100,37 @@ export function refinedMetaKey(worktreeId: WorktreeId): string {
  */
 export function awaitingInstallMetaKey(worktreeId: WorktreeId): string {
   return worktreeMetaKey("awaitingInstall", worktreeId);
+}
+
+/**
+ * `meta` key of the `HEAD` a reconciliation pass found moved with no file
+ * change (a commit, a partial one among them), a JSON `HeadMove` (task
+ * 001-406). A revision records `HEAD` only when files change, so this is how
+ * headers and status learn of a commit before the next edit.
+ */
+export function headMoveMetaKey(worktreeId: WorktreeId): string {
+  return worktreeMetaKey("headMove", worktreeId);
+}
+
+/** The `headMoveMetaKey` value: `HEAD` and the dirty flag, seen at `revision`. */
+export interface HeadMove {
+  readonly head: CommitSha;
+  readonly dirty: boolean;
+  readonly revision: RevisionNumber;
+}
+
+/** A stored `HeadMove`, or `null` when `raw` is none. */
+export function parseHeadMove(raw: string | null): HeadMove | null {
+  if (raw === null) return null;
+  try {
+    const value = JSON.parse(raw) as Record<string, unknown>;
+    const { head, dirty, revision } = value;
+    if (head !== null && typeof head !== "string") return null;
+    if (typeof dirty !== "boolean" || !Number.isInteger(revision)) return null;
+    return { head, dirty, revision: revision as RevisionNumber };
+  } catch {
+    return null;
+  }
 }
 
 /** The `awaitingInstallMetaKey` value of a wait for `workspaces` (none named: `"true"`). */

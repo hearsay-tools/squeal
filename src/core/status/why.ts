@@ -7,6 +7,7 @@ import {
   heldFailure,
   parseCheck,
   readFlakyNotes,
+  readRevisionCommit,
   testFileOf,
 } from "../state/index.js";
 import { storePaths } from "../store/index.js";
@@ -147,7 +148,9 @@ function report(
   const shown = shownResult(worktreeId, knownState, key, all, heldFailure, since);
   const runsDir = storePaths(commonDir).runsDir;
   const flaky = readFlakyNotes(store).get(checkIdentity(check));
-  const revision = store.revisions.latest(worktreeId)?.number ?? null;
+  const latest = store.revisions.latest(worktreeId);
+  const revision = latest?.number ?? null;
+  const commit = readRevisionCommit(store, worktreeId, latest);
   const changed = changedSince(store, worktreeId, knownState?.observedAt ?? null, revision);
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -156,6 +159,7 @@ function report(
     worktreeId,
     worktreeRoot: worktreeRoots[worktreeId] ?? root,
     revision,
+    ...(commit === undefined ? {} : { commit }),
     check,
     worktreeRoots,
     knownState,

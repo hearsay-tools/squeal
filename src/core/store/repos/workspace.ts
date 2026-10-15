@@ -40,6 +40,15 @@ export function createRevisionRepo(conn: Connection): RevisionRepo {
       );
       return row === null ? null : toRevision(row);
     },
+    lastAtOtherHead: (worktreeId, head) => {
+      const row = conn.get(
+        `SELECT number FROM revisions WHERE worktree_id = ? AND head IS NOT ?
+         ORDER BY number DESC LIMIT 1`,
+        worktreeId,
+        head,
+      );
+      return row === null ? null : num(row, "number");
+    },
     get: (worktreeId, number) => {
       const row = conn.get(
         "SELECT * FROM revisions WHERE worktree_id = ? AND number = ?",

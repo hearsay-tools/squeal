@@ -3,6 +3,7 @@ import { ancestorListings } from "../keys/index.js";
 import { type BatchDiff, commitBatch, diffBatch, statCandidates } from "../revision/index.js";
 import type { CandidateBatch, RelativePath, Revision } from "../types/index.js";
 import type { SchedulerContext } from "./context.js";
+import { recordHeadMove } from "./head-move.js";
 import type { Ledger } from "./ledger.js";
 import { type ContentRekey, rekeyContent } from "./revision.js";
 import { touchedUnchanged } from "./stability.js";
@@ -25,7 +26,8 @@ import { touchedUnchanged } from "./stability.js";
  *
  * `touched` is what no revision names (task 001-159): the paths written
  * since they were hashed whose bytes ended as they were, a revert and its
- * restore in one batch among them.
+ * restore in one batch among them. A pass that made no revision records a
+ * move of `HEAD` (task 001-406).
  */
 export async function reconcileBatch(
   context: SchedulerContext,
@@ -70,6 +72,7 @@ export async function reconcileBatch(
     ledger.commit();
     return { revision, content };
   });
+  if (applied === null && batch.trigger !== "watch") await recordHeadMove(context, ledger);
   return { applied, touched };
 }
 
