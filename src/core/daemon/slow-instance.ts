@@ -54,6 +54,8 @@ export function withSlowInstance(
     enumerate: (testFile) => fast.enumerate(testFile),
     testFiles: () => fast.testFiles(),
     omittedTestFiles: () => fast.omittedTestFiles?.() ?? 0,
+    // The slow instance may not exist yet; the fast one has the same configs (review 001-394 B2).
+    slowWidth: (testFiles) => fast.slowWidth?.(testFiles) ?? testFiles.length,
     environment: () => fast.environment(),
     ...(lane === undefined ? {} : { lane }),
     async run(testFiles, options) {
