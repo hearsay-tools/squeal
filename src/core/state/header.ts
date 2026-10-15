@@ -2,9 +2,9 @@ import { testFileId } from "../keys/index.js";
 import {
   awaitingInstallMetaKey,
   type CheckKey,
-  installCommandMetaKey,
   type CheckpointRecord,
   type FullSuiteState,
+  installCommandMetaKey,
   type KnownFailure,
   type KnownState,
   parseAwaitingInstall,
