@@ -255,7 +255,7 @@ describe.skipIf(unavailable !== undefined)(
       expect(textOf(report[0])).toContain(ADDS);
     });
 
-    it.fails("run: news at the end of the turn is stored in the session, and run --continue reads it once", {
+    it("run: news at the end of the turn is stored in the session, and run --continue reads it once", {
       timeout: 300_000,
     }, async (ctx) => {
       const e2e = fixture(ctx, { started: true });
@@ -299,6 +299,8 @@ describe.skipIf(unavailable !== undefined)(
       expect(stored).toHaveLength(1);
       expect(textOf(stored[0])).toMatch(/^SQUEAL · /);
       expect(textOf(stored[0])).toContain(ADDS);
+      // Only the report: the plugin instance OpenCode re-creates to store it adds no header.
+      expect(textOf(stored[0])).not.toContain("registered at revision");
       expect(textOf(since.at(-1))).toContain("what is new?");
     });
 

@@ -13,6 +13,8 @@ import type { OcAnswers, OcConsumer, OcKind, OcRequest } from "./protocol.js";
 export const PROMPT_DEADLINE_MS = 2_000;
 /** D5: the waiter's own bound (`IDLE_WAIT_MS`, 59 minutes) and a minute; it exits first. */
 export const WAIT_DEADLINE_MS = 3_600_000;
+/** How every Squeal report opens. */
+const REPORT_OPENING = "SQUEAL · ";
 
 /** The request of kind `K`, without what every request carries. */
 export type About<K extends OcKind> = Omit<
@@ -78,8 +80,12 @@ export interface Turns {
   idle(consumer: OcConsumer, deadline: Deadline): Promise<void>;
   /** `session.deleted`: the session's wait ends and its state goes. */
   forget(id: string): void;
-  /** `dispose`: every wait ends, and none is armed again. */
-  stop(): void;
+  /**
+   * `dispose`: every wait ends, and none is armed again. An idle whose Stop is
+   * still in flight stores its news in the session instead, within `deadline`
+   * (goal 4 under `opencode run`).
+   */
+  stop(deadline: Deadline): void;
 }
 
 const textOf = (part: unknown): string | null => {
@@ -87,9 +93,23 @@ const textOf = (part: unknown): string | null => {
   return p?.type === "text" && typeof p.text === "string" ? p.text : null;
 };
 
+/**
+ * Whether `parts` are a report Squeal stored at `dispose`: synthetic texts
+ * only, each a report. Storing it re-creates OpenCode's plugin state, whose
+ * new Squeal instance sees the message (`turns`' `stop`) and must leave it be.
+ */
+export const storedBySqueal = (parts: readonly unknown[]): boolean =>
+  parts.length > 0 &&
+  parts.every(
+    (part) =>
+      (part as { synthetic?: unknown } | null)?.synthetic === true &&
+      textOf(part)?.startsWith(REPORT_OPENING) === true,
+  );
+
 export function turns(client: OcClient, ask: Ask): Turns {
   const all = new Map<string, Turn>();
-  let stopped = false;
+  /** `dispose`'s deadline, once it came: what an idle in flight has to store its news. */
+  let stopped: Deadline | null = null;
 
   const turnOf = (id: string): Turn => {
     let turn = all.get(id);
@@ -108,9 +128,12 @@ export function turns(client: OcClient, ask: Ask): Turns {
     return turn;
   };
 
-  /** Whether `turn` is still the live root `id`, at `epoch`. */
+  /** Whether `turn` is still the root `id`, at `epoch`. */
+  const live = (id: string, turn: Turn, epoch: number) =>
+    all.get(id) === turn && turn.epoch === epoch;
+  /** Whether `turn` is still the live root `id`, at `epoch`, and the instance is not stopping. */
   const current = (id: string, turn: Turn, epoch: number) =>
-    !stopped && all.get(id) === turn && turn.epoch === epoch;
+    stopped === null && live(id, turn, epoch);
 
   const cancelWait = (turn: Turn) => {
     turn.waiter?.abort();
@@ -124,7 +147,10 @@ export function turns(client: OcClient, ask: Ask): Turns {
    * it starts no late continuation (review 008-16 B1); with none left, or
    * the turn stale (B2), it is not sent. A text not taken is held for the
    * next message or tool result, and stays Squeal's own in case OpenCode
-   * took it after all.
+   * took it after all. Once the instance is stopping, the text is stored
+   * instead, with `noReply` and within `dispose`'s deadline: `opencode run`
+   * exits after `dispose`, so no turn could run, and the session's next
+   * resume reads it (D5).
    */
   const say = async (
     id: string,
@@ -133,19 +159,26 @@ export function turns(client: OcClient, ask: Ask): Turns {
     deadline: Deadline,
     epoch: number,
   ): Promise<boolean> => {
-    const left = deadline();
-    if (left <= 0 || !current(id, turn, epoch)) {
+    const stop = stopped;
+    const left = (stop ?? deadline)();
+    if (left <= 0 || !live(id, turn, epoch)) {
       turn.held.push(text);
       return false;
     }
     turn.continued = true;
     turn.own = text;
     const cancel = new AbortController();
-    const parts = [{ type: "text" as const, text }];
-    const result = await within(
-      client.session.promptAsync({ path: { id }, body: { parts }, signal: cancel.signal }),
-      left,
-    );
+    const path = { id };
+    const signal = cancel.signal;
+    const sent =
+      stop === null
+        ? client.session.promptAsync({ path, body: { parts: [{ type: "text", text }] }, signal })
+        : client.session.prompt({
+            path,
+            body: { parts: [{ type: "text", text, synthetic: true }], noReply: true },
+            signal,
+          });
+    const result = await within(sent, left);
     if (result !== null && result.error === undefined) return true;
     cancel.abort();
     turn.held.push(text);
@@ -163,7 +196,7 @@ export function turns(client: OcClient, ask: Ask): Turns {
       .then(async (answer) => {
         if (turn.waiter !== waiter) return;
         turn.waiter = null;
-        if (answer?.text == null || stopped) return;
+        if (answer?.text == null || stopped !== null) return;
         const deadline = deadlineIn(PROMPT_DEADLINE_MS);
         await say(consumer.sessionId, turn, answer.text, deadline, turn.epoch);
       })
@@ -219,8 +252,8 @@ export function turns(client: OcClient, ask: Ask): Turns {
       if (turn !== undefined) cancelWait(turn);
       all.delete(id);
     },
-    stop() {
-      stopped = true;
+    stop(deadline) {
+      stopped = deadline;
       for (const turn of all.values()) cancelWait(turn);
     },
   };

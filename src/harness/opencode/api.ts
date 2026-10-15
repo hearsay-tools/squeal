@@ -36,6 +36,15 @@ export interface OcClient {
       /** Aborts the request (the SDK's options take `RequestInit`'s). */
       signal?: AbortSignal;
     }): Promise<OcResult<unknown>>;
+    /**
+     * `POST /session/{id}/message`. With `noReply` it stores the user message and returns once
+     * stored, starting no turn (`session/prompt.ts:1069` at 1.18.35): D5's continuation at `dispose`.
+     */
+    prompt(options: {
+      path: { id: string };
+      body: { parts: OcTextPartInput[]; noReply: true };
+      signal?: AbortSignal;
+    }): Promise<OcResult<unknown>>;
   };
   readonly app: {
     log(options: {
