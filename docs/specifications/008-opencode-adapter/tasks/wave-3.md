@@ -100,3 +100,11 @@ Use /worker, on `cand/0.1.188` at d3978509. The coordinator has already made the
 - B2: in `test/harness/opencode-dispose.test.ts`, `stopGone()` retries only when the held Stop died at or after its idle deadline. Uncertain causes fail with their observations, or are labelled unresolved without a retry. Add small timeline tests in `test/e2e/` (pure, with no OpenCode) for an early report loss, a genuine expiry, and missing timing evidence.
 - Owns: `test/harness/opencode-*.test.ts`, `test/harness/opencode/**`, `test/e2e/opencode*`. No `src`, dist or version.
 - Done when: each new test discriminates as stated; lint, typecheck and `npx vitest run test/harness/opencode/ test/harness/opencode-*.test.ts test/e2e/opencode*.test.ts` green.
+
+## 008-35 re-review of `cand/0.1.192`'s shared files
+
+Use /reviewer, pinned to `cand/0.1.192` (63289a86). Outcome: `reviews/wave-3b.md` gains a Round 4 with a verdict on that SHA, for the files it shares with main's code since review 008-32 passed (process step 6).
+
+- Context: 0.1.192 is `cand/0.1.188` (round 3 PASS at 854d66ae) cherry-picked onto main at 0.1.190 (007's 007-37 to 007-43, 006's 006-53 and 006-56), with no build commit carried, then one build commit. Main's commits and the candidate share no source or test file; only the eight version places and 31 bundles under `plugins/*/dist`.
+- Questions: is the version 0.1.192 in all eight places (`package.json`, `plugins/{claude-code,pi,opencode}/package.json`, both plugin manifests, `install.sh` `SQUEAL_VERSION`, `package-lock.json` root and `packages[""]`), and does `npm run check:version -- origin/main` pass? Does a clean `npm ci` and `npm run build` leave no tracked drift? Do the cherry-picked commits match round 3's `74f093ba..854d66ae` and earlier range by content (`git range-diff`)? Does `npx vitest run test/keys/key-format.test.ts` pass with format 10 unchanged?
+- Writes only `docs/specifications/008-opencode-adapter/reviews/wave-3b.md`. No full suite: the coordinator's gate runs under the host lock.
