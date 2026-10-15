@@ -1,7 +1,7 @@
 // 006-53: Squeal's retry texts for the retry scenarios' reference sessions, worded as
 // docs/specifications/001-core-loop/tasks/001-368/notes.md gives them verbatim ("Texts the agent
 // sees"), with the scenarios' files and loads, and each scenario's opening moves.
-import { pilotRecord, scenarioOf } from "../../evals/lib/index.mjs";
+import { pilotRecord, type ServiceStart, scenarioOf } from "../../evals/lib/index.mjs";
 import { graded, type Harness, REGISTERED, STATUS_TEXT, type Step } from "./reference-sessions.js";
 
 export const RATES = "test/rates.test.ts > converts euros to dollars at today's rate";
@@ -101,7 +101,7 @@ export function measuresOf(
   steps: Step[],
   harness: Harness,
   truthPass: boolean,
-  serviceStarts: string | null = null,
+  serviceStarts: readonly ServiceStart[] | null = null,
 ) {
   const scenario = scenarioOf(name);
   if (!scenario) throw new Error(`no ${name}`);
