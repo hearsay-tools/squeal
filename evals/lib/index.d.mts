@@ -757,6 +757,21 @@ export function claimAfterRetry(
 ): boolean | null;
 /** The knobs' fixture files (evals/atomic/retry/), at their paths in the fixture. */
 export const SERVICE_FILES: readonly string[];
+/** a11's `inherited` staging; throws unless the FAIL stands at the knob's load (006-57 S1). */
+export function stageInherited(
+  knobs: Record<string, unknown>,
+  deps: {
+    squeal: (args: string[], opts?: { env?: Record<string, string> }) => {
+      status: number | null;
+      stdout: string;
+      stderr: string;
+    };
+    stop: (why: string) => Promise<void>;
+    setLoad: ((perCpu: number) => void) | null;
+    log: (s: string) => void;
+    recordedLoads: (file: string) => Promise<number[]>;
+  },
+): Promise<string>;
 export function retryEnv(
   knobs: Record<string, unknown>,
   cell: string,
