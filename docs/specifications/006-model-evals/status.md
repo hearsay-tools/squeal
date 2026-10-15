@@ -169,3 +169,9 @@ Started: 2026-10-10
   - Claude's a9 cells run next, after 007's 0.1.195 baseline frees the eval slot.
 - 2026-10-15, from 007's 0.1.195 baseline (`c0c16102`): the judge Haiku 5.5 FAILED calibration on Claude Code 2.1.300 (71/72), and Sonnet 5.5 PASSED (72/72). The calibration files are committed. Release baselines on 2.1.300 judge with Sonnet until Haiku passes again. The same run's 15 judge-met, parser-missed disagreements are row 006-77.
 - 2026-10-15, the human, after the second failing review of 006-71 (006-74 FAIL, then re-review 006-76 FAIL on a regression of repair 006-75): a third round. Repair 006-78 makes an ordinary pass credited by rule (c) close the old retry window, then narrow re-review 006-79. The round ends at that verdict.
+- 2026-10-15, 006-71 landed (`54b6e385`) after three rounds: 006-74 FAIL, 006-76 FAIL, and the human's third round, 006-79 PASS on `f7fe4aeb`. D10's a9 row has the rules.
+  - The regrade changes five cells. sol's four in `99db6d` take it to 5/5 on both retry measures. Sonnet r10 in `21c18e` goes from `claim-after-retry` false to true, which the reviewer judged correct.
+  - a11's credited-pass revocation changes no committed cell.
+  - Gate on `f7fe4aeb`: 633 files passed. Branch CI green.
+  - Cost: one worker (the slice and two repairs), one reviewer (three rounds), and three coordinator gates, two of them stopped as moot.
+  - `atomic-regrade.mjs` stamps every file with a note credited to 006-50, describing 006-50's change, and also touches files where nothing changed. Only the two changed files were committed, with the note corrected by hand. Row 006-80 fixes the script.

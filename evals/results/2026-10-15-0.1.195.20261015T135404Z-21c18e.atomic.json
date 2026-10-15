@@ -3792,7 +3792,7 @@
      "claim-true": true,
      "no-false-pass": true,
      "retry-for-environment": true,
-     "claim-after-retry": false
+     "claim-after-retry": true
     }
    },
    "usageTotal": {
@@ -3816,5 +3816,15 @@
   }
  },
  "settleS": 180,
- "repetitions": 10
+ "repetitions": 10,
+ "regraded": [
+  {
+   "by": "006-71",
+   "date": "2026-10-15",
+   "changed": [
+    "a9-env-retry.p0.claude-claude-sonnet-5-5.e-medium.r10"
+   ],
+   "note": "Measures recomputed (spec 006 D10) under rows 006-71, 006-75 and 006-78 (landed 54b6e385): in a9, a pass claim after a queued retry rests on an ordinary pass of the file at later inputs with the service up (claim-after-retry true), a retry Squeal did not queue because the file had no known failure is not a retry (both retry measures null, the edit's own run healed it), and any later FAIL of the file, from Squeal or an own run, revokes a credited pass and closes the retry window (a11 as well)."
+  }
+ ]
 }
