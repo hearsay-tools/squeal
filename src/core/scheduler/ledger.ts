@@ -25,7 +25,7 @@ import {
 } from "./files.js";
 import { takeHeldFiles } from "./held.js";
 import { type Priority, priorityOf, RunQueue } from "./queue.js";
-import { adoptsAtFirstCommit, recordMoves } from "./rekeyed-moves.js";
+import { adoptsAtFirstCommit, movesWouldChange, recordMoves } from "./rekeyed-moves.js";
 import { recordRekeyed } from "./rekeyed-record.js";
 import { endRerun } from "./rerun.js";
 import { dropRetry, lapseRetry } from "./retries.js";
@@ -469,6 +469,15 @@ export class Ledger {
     this.#unknownFiles = [];
     this.#retired = [];
 
+    const quiet =
+      this.#adopted &&
+      options.refined === undefined &&
+      [rows, removed, rekeyed, applied, unknown, unknownFiles, retired, setups].every(
+        (list) => list.length === 0,
+      );
+    const writer = { writer: this.context.incarnation ?? null };
+    // An idle daemon's pump commits each pass: nothing to write takes no write lock (task 001-412).
+    if (quiet && !movesWouldChange(store, worktreeId, revision, this.context.now(), writer)) return;
     store.transaction(() => {
       // Before this ledger's first row: what earlier writers left pending (review waves 13ac, 13ad B1).
       const adopts =
@@ -480,7 +489,7 @@ export class Ledger {
       recordRekeyed(store, worktreeId, rekeyed, removedIds);
       // Before this commit's refined revision: refinement caught up only by an earlier commit.
       recordMoves(store, worktreeId, rekeyed, removedIds, revision, this.context.now(), {
-        writer: this.context.incarnation ?? null,
+        ...writer,
         ...(before === undefined ? {} : { before }),
       });
       for (const { results, checkpointId } of mergeApplied(applied)) {
