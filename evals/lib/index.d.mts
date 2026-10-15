@@ -763,7 +763,10 @@ export function claimAfterRetry(
 ): boolean | null;
 /** The knobs' fixture files (evals/atomic/retry/), at their paths in the fixture. */
 export const SERVICE_FILES: readonly string[];
-/** a11's `inherited` staging; throws unless the FAIL stands at the knob's load (006-57 S1). */
+/**
+ * a11's `inherited` staging; throws unless the FAIL stands at the knob's load (006-57 S1). The
+ * load drops only after a wait on the file returned, and the daemon is kept (006-62).
+ */
 export function stageInherited(
   knobs: Record<string, unknown>,
   deps: {
@@ -775,7 +778,8 @@ export function stageInherited(
       stdout: string;
       stderr: string;
     };
-    stop: (why: string) => Promise<void>;
+    /** Not called since 006-62: the warm-up's daemon is kept, with the calendar's cache. */
+    stop?: (why: string) => Promise<void>;
     setLoad: ((perCpu: number) => void) | null;
     log: (s: string) => void;
     recordedLoads: (file: string) => Promise<number[]>;
