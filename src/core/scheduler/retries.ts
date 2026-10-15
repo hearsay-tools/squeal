@@ -39,6 +39,13 @@ export function loadOf(context: SchedulerContext) {
 export function takeRetries(context: SchedulerContext, ledger: Ledger): boolean {
   const { store, worktreeId } = context;
   const pending = readRetries(store).filter((r) => r.end === null);
+  // An earlier daemon's claim on a file no longer at its key here, gone or re-keyed while no daemon ran, goes back (S1).
+  for (const request of pending) {
+    if (request.claim?.worktreeId !== worktreeId) continue;
+    const file = ledger.file(request.testFile);
+    if (file?.key === request.key) continue;
+    releaseRetries(store, request.testFile, worktreeId, file?.key ?? null);
+  }
   let changed = false;
   for (const file of ledger.files.values()) {
     if (file.retryKey === null || file.runningKey !== null) continue;
@@ -101,6 +108,16 @@ export function lapseRetry(context: SchedulerContext, file: FileState, key: Chec
   file.retryKey = null;
   releaseRetries(context.store, file.ref, context.worktreeId);
   return true;
+}
+
+/**
+ * In `Ledger.removeFile`: the file is gone here, so its claim goes back and
+ * another daemon at the key may run the request (review 001-398, S1).
+ */
+export function dropRetry(context: SchedulerContext, file: FileState): void {
+  if (file.retryKey === null) return;
+  file.retryKey = null;
+  releaseRetries(context.store, file.ref, context.worktreeId);
 }
 
 /** The load per CPU a tier starts under, for `recordFailedLoad`. */

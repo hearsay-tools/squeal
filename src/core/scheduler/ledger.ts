@@ -28,7 +28,7 @@ import { type Priority, priorityOf, RunQueue } from "./queue.js";
 import { adoptsAtFirstCommit, recordMoves } from "./rekeyed-moves.js";
 import { recordRekeyed } from "./rekeyed-record.js";
 import { endRerun } from "./rerun.js";
-import { lapseRetry } from "./retries.js";
+import { dropRetry, lapseRetry } from "./retries.js";
 import { SetupFailures } from "./setup.js";
 import { slowView } from "./slow.js";
 
@@ -145,6 +145,7 @@ export class Ledger {
     this.context.keys.removeTestFile(file.ref);
     this.queue.remove(file.ref);
     this.files.delete(file.id);
+    dropRetry(this.context, file);
     this.#retired.push(...file.checks);
     this.#removed.push(file.ref);
     // Nothing is left to run for it.
