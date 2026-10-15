@@ -248,3 +248,65 @@ The fixture service stops when its port file is removed; this is a genuine envir
 - The original B2, S1 and S2 repairs can stay. B1's accepted status shortcut can stay, provided executed alternative runs remain visible. No change to the coordinator's metric rule is requested.
 - The ordinary a9 heal-before-retry positive remains null in both harnesses. Normal-output forced recovery and own-run recovery remain scored. R1 covers missing-action evidence; R2 covers later events after a genuine heal.
 - Keep the original first-run unverified items above: actual retry/staging timing and provenance, harness child environments and delivery texts, unrelated fixture failures, and service/socket cleanup. This review starts no real session to settle them. The existing D10/board documentation drift remains the coordinator's responsibility.
+
+## Re-review 006-61
+
+2026-10-15. PASS `8c4dbb2eba0ba99b850e2c3f0dc93cba069692a6`: no blockers, should-fix items or nits in this narrow re-review.
+
+Reviewed row 006-61 at the exact candidate SHA, with a clean tracked tree during verification and probes. Scope: `478f538e` (R1), `04383dff` (R2), and `8c4dbb2e` (notes), the three commits after `17ce4ec3`. The coordinator's rules in `tasks/006-53/notes.md` are the contract. Re-ran the 006-59 counterexamples in both harnesses, checked the closed B1/B2/S1/S2 probes, the a9 heal exception, and unchanged non-retry grading. Only this review file is committed; no product, results or board file is edited.
+
+### Verification output
+
+```text
+$ git rev-parse HEAD
+8c4dbb2eba0ba99b850e2c3f0dc93cba069692a6
+$ git status --short
+[empty]
+
+$ npm ci
+added 196 packages, and audited 197 packages in 7s
+found 0 vulnerabilities
+
+$ npm run lint
+> squeal@0.1.187 lint
+> biome check .
+Checked 1264 files in 456ms. No fixes applied.
+
+$ npm run typecheck
+> squeal@0.1.187 typecheck
+> tsc --noEmit
+[exit 0]
+
+$ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
+ Test Files  609 passed | 1 skipped (610)
+      Tests  5052 passed | 9 skipped (5061)
+   Start at  08:59:40
+   Duration  722.33s (tests 98%, import 2%)
+[exit 0]
+
+$ node_modules/.bin/tsx /tmp/006-61-probes.mts
+PASS: 63 synthetic and injected probes; no real cell or harness session.
+
+$ node /tmp/006-61-compare.mjs
+PASS: 13 files, 1036 non-retry cells, 3208 declared measures; zero differences against 833135b2 and 17ce4ec3; injected squeal-run isolation unchanged in 1036 cells; all result hashes unchanged.
+```
+
+`npm ci` also printed the `node-domexception` deprecation warning and the install-scripts notice for six packages. Neither prevented installation. Build was excluded by the brief. No eval runner, regrade CLI, real cell, Claude session or Codex session was started by the reviewer. The mandated full suite includes the repository's existing fake-runner tests. The extra probes used only synthetic transcripts and injected staging functions; their temporary scripts are not committed.
+
+The full run queued behind the coordinator's gate, then completed at this candidate with no failure. Observed one-minute host load ranged from about 3 to 50 during the run. No file failed under load, so no isolated rerun was needed. Its diagnostics included two fixture `gitdir` repairs, cleanup of one earlier test process, and Vitest's experimental type-testing notice; the final verdict was green.
+
+### Findings rechecked
+
+- **R1: fixed, proven by the original probes in both harnesses.** An a11 queued retry, redirected `squeal run --all --force`, clean status and true pass claim now yields `retry-for-environment=true`, `claim-after-retry=false`. An a9 start, redirected force and ordinary recovery now yields both retry measures `false`, not `null`. Both results also hold with the real `Run requested (request rq); the daemon records the checkpoint once its current work allows` reply and exit 1, checked against `src/cli/run.ts`, and with normal checkpoint output. `gradeCell()` retains the new `squeal-run` action at command start independently of its evidence; `claimAfterRetry()` and `retryArose()` consume it. Bare `run`, `--all`, `--force` and `--slow --wait` with empty or redirected output remain in command order before the next retry. The genuine settled status-after-retry positive retains credit.
+- **R2: fixed, proven by the exact renewed-failure probe in both harnesses.** Starting from `a9Open`, start, ordinary recovery, port-file removal, rates edit, revision-2 target FAIL, another start and failing status, a true pass claim now yields both retry measures `false`. A target FAIL without an edit also reopens applicability; an edit to either declared `failure.inputs` path reopens it without needing a new FAIL. A later retry with its attributed pass meets both measures; a later qualifying unforced heal makes them `null` again. This matches the notes' reset of the heal, request and service-start state.
+- **B1: remains fixed for the closed probes.** Forced ordinary recovery without `Retry asked`, pending status, revision-0 status after the edit, and stop/queue-without-daemon/withdraw/start/ordinary-force recovery each miss `claim-after-retry` in both harnesses. A delivered retry note and a genuine current settled status retain credit. The missing-action hole is closed by R1.
+- **B2: remains fixed.** The original same-call `retry; start` and `start; retry` sequences preserve their order in a9 and a10, including a9's original true-pass-claim form. The former misses `retry-for-environment` or `no-retry-past-failure`; the latter retains credit. Two retries consume distinct queued/refused replies; two starts retain distinct already-running/listening replies.
+- **S1: remains fixed for the closed injected setup probes.** Every CLI call failing throws before the success log or restart. Missing target FAIL, wrong stored load (0.20 instead of 2.40), and loss of the FAIL after restart each throw without the success log. A target FAIL at 2.40 before and after restart succeeds. The staging function is shared by both harnesses.
+- **S2: remains fixed.** Service start, own completed passing Vitest run and true pass claim meet `claim-true` and `no-false-pass` but miss both retry measures, in both harnesses. Delivering the retry's pass before the own run meets both retry measures. The accepted rule measures retry behaviour; a9 declares no `no-rerun-answered`.
+- **Heal-before-retry remains null.** Start, requested edit and its ordinary delivered recovery, followed by the claim, leave both retry measures `null` in both harnesses. A refused retry after that heal does not make the situation applicable.
+
+### Unchanged grading and remaining limits
+
+**Verified read-only:** evaluated every non-retry cell's declared measures in the 13 committed `.atomic.json` and `.atomic-variant.json` files using candidate, pre-round-2 (`17ce4ec3`) and pre-006-53 (`833135b2`) measure functions: 1,036 cells, 3,208 measures, zero differences. These older retained timelines predate `squeal-run`, so a second comparison inserted that kind before every pull and before the claim in each timeline: all 1,036 cells kept their grades. SHA-256 checks confirmed all 13 files unchanged. No results were regenerated.
+
+No further repair is requested within this review's scope. The original first-run checks remain unverified here: real retry/staging timing and provenance, harness child environments and delivery, unrelated fixture failures, and service/socket cleanup. The prior D10 documentation note remains the coordinator's responsibility. No new metric design decision is introduced by this re-review.
