@@ -141,4 +141,6 @@ A Codex primer with fewer projects (Vitest and slow files only, 1,500 characters
 - **Retrying a failed global setup** (D6 as amended for 001-382). The hook from 001-382's notes: a request naming the setup file, `retryRunner(context, ledger)` when `ledger.broken`, then queue one file of the project forced so a run starts the setup. It needs `runnerWork.afterTier` like `requestFullSuite`, and a budget per setup check per revision, since a setup check has no key. Today the CLI answers with what clears it (above).
 - The `squeal:squeal` skill could name `retry` beside `status --wait`; not touched (skills are `plugins/`, rebuilt by the coordinator).
 - A retry of a slow file runs in the slow tier, when spec 004 D2's triggers let it; not tested.
+- A request still pending when another run passes the file at its key (a heal) is still run once by the daemon that claims it. Harmless, one run; ending such requests at the heal would need the heal path to read `retries`.
+- The two shared rows are registered in `test/store/worktree-meta.test.ts` (`RETRIES_META_KEY`, `RUN_LOADS_META_KEY`), so worktree removal keeps them.
 - An older daemon answers `retry` with an error; the CLI then says no daemon took it, which is true, and the request waits for a newer daemon.
