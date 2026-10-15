@@ -165,6 +165,7 @@ describe("readStatus", () => {
       worktreeId: b.id,
       worktreeRoot: b.root,
       revision: 2,
+      commit: { head: COMMIT, sinceHead: 0, dirty: true },
       head: COMMIT,
       dirty: true,
       dirtyObservedAt: 2,
@@ -250,7 +251,7 @@ describe("readStatus", () => {
       .replaceAll(repo.main, "<main>");
 
     expect(text).toMatchInlineSnapshot(`
-      "Revision: 2
+      "Revision: 2 · abc1234d + 0, dirty
       Known failures: 2 (1 test, 1 test file that did not load)
         FAIL  src/auth.test.ts > auth > expired token
               expected 401, received 500
@@ -318,7 +319,7 @@ describe("readStatus", () => {
     const lines = formatStatus(readStatus(repo.main, { now: () => NOW }), NOW).split("\n");
 
     expect(lines.slice(0, 4)).toEqual([
-      "Revision: 187",
+      "Revision: 187 · abc1234d + 0",
       "Known failures: 0",
       "Affected checks: 47 passed (46 tests, 1 test file loaded), 3 running (2 tests, 1 test file loaded), 12 queued (11 tests, 1 test file loaded)",
       "Full-suite checkpoint: none completed since revision 170 (the counts are for revision 187; `squeal run --all` requests one)",
