@@ -45,6 +45,11 @@ export interface SquealRepo {
    * run, under `key`.
    */
   queue(key: string): void;
+  /**
+   * The re-run of `FILE` the daemon queues at its key after a new failure
+   * (001-171): its row is pending again, its checks stay current.
+   */
+  confirm(): void;
   pass(c?: typeof ADDS): ResultRecord;
   fail(c?: typeof ADDS, message?: string): ResultRecord;
   policy(policy: PolicyFile): void;
@@ -132,6 +137,9 @@ export function squealRepo(repo: FakeRepo = fakeRepo()): SquealRepo {
       open ??= revision;
       rekeyed(revision);
       sink.refresh(worktreeId, revision, { checkpointId: null });
+    },
+    confirm() {
+      keyRow("queued");
     },
     pass: (c = ADDS) => result(c, "pass", options()),
     fail: (c = ADDS, message = "expected 3 to be 4") =>

@@ -62,6 +62,17 @@ describe("PostToolUse (goal 2)", () => {
     r.apply(r.pass());
     expect((await hook(r, "post-tool-use", "post-tool-use")).stdout).toContain("FAIL -> PASS");
   });
+
+  it("carries the edit's result without saying results arrive later (task 001-396)", async () => {
+    const r = await inTurn();
+    r.queue("k2");
+    r.apply(r.fail(), r.pass(SUBTRACTS));
+    r.confirm();
+    const { stdout } = await hook(r, "post-tool-use", "post-tool-use");
+    expect(stdout).toContain("PASS -> FAIL");
+    expect(stdout).toContain(" 0 pending,");
+    expect(stdout).not.toContain("Squeal saw your edit");
+  });
 });
 
 describe("PreToolUse deny (goal 3)", () => {
