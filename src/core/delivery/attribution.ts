@@ -14,6 +14,7 @@ import type {
   Consumer,
   DeltaEntry,
   KnownState,
+  ResultRecord,
   RevisionNumber,
   StatusHeader,
   Store,
@@ -196,15 +197,24 @@ function withFlaky(
   const keys = new Map(
     store.testFileKeys.list(worktreeId).map((r) => [testFileId(r.testFile), r.key]),
   );
+  const rows = new Map<CheckKey, readonly ResultRecord[]>();
+  // The run whose stored result stands for `check` at `key`: the one that recovered it.
+  const runOf = (check: CheckId, key: CheckKey) => {
+    if (!rows.has(key)) rows.set(key, store.results.byKey(key));
+    const identity = checkIdentity(check);
+    return rows.get(key)?.find((r) => checkIdentity(r.check) === identity)?.provenance.runId;
+  };
   return entries.map((entry) => {
     if (entry.kind === "fail-retired") return entry;
     const note = notes.get(checkIdentity(entry.check));
     const key = keys.get(testFileId(testFileOf(entry.check)));
     if (note === undefined || note.key !== key) return entry;
-    // Task 001-368: a pass the agent's retry produced names the reason it gave.
+    // Task 001-368: a pass the agent's retry produced names the reason it gave; only that pass (001-398, S2).
+    const runId =
+      entry.kind === "fail-to-pass" && key !== null ? runOf(entry.check, key) : undefined;
     const retry =
-      entry.kind === "fail-to-pass" && key !== null
-        ? passedRetry(store, testFileOf(entry.check), key)
+      runId !== undefined && key !== null
+        ? passedRetry(store, testFileOf(entry.check), key, runId)
         : undefined;
     return { ...entry, flaky: note, ...(retry === undefined ? {} : { retry }) };
   });
