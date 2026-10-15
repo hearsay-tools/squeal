@@ -141,7 +141,9 @@ export function timeline(input: TimelineInput): Timeline {
     .flatMap((m) => (m.role === "assistant" && m.completed !== undefined ? [m.completed] : []))
     .filter((at) => at <= ran)
     .at(-1);
-  const idle = logged ?? replied ?? 0;
+  // With neither, no deadline can be timed: the reading is unresolved (review 008-32).
+  const timed = logged ?? replied;
+  const idle = timed ?? 0;
   const since = (at: number) => `${at - idle >= 0 ? "+" : ""}${at - idle}`;
 
   const marks: Mark[] = [
@@ -187,16 +189,15 @@ export function timeline(input: TimelineInput): Timeline {
   // `run` disposes about 10 ms after idle (008-25) when OpenCode's log lost the line.
   const disposeDeadline = (disposing ?? idle) + DISPOSE_DEADLINE_MS;
   const storeDeadline = disposeDeadline - DISPOSE_END_MS;
-  const reading = readingOf(input, {
-    idle,
-    idleDeadline,
-    storeDeadline,
-    disposeDeadline,
-    messages,
-    since,
-  });
+  const reading =
+    timed === undefined
+      ? {
+          text: "unresolved: neither OpenCode's log nor the session's messages say when the run went idle, so no deadline can be timed",
+          missedDeadline: false,
+        }
+      : readingOf(input, { idle, idleDeadline, storeDeadline, disposeDeadline, messages, since });
   const text = [
-    `timeline, ms since the first run's idle (${logged === undefined ? "its last reply's completion; OpenCode's log lost the line" : "OpenCode's log"}):`,
+    `timeline, ms since the first run's idle (${logged !== undefined ? "OpenCode's log" : replied !== undefined ? "its last reply's completion; OpenCode's log lost the line" : "not known: since the epoch"}):`,
     ...marks.map((m) => `  ${since(m.at)} ${m.what}`),
     `  idle's deadline (stop.waitMs ${input.stopWaitMs} + ${IDLE_MARGIN_MS}): ${since(idleDeadline)}`,
     `  dispose's deadline: ${disposing === undefined ? "not in OpenCode's log" : since(disposing + DISPOSE_DEADLINE_MS)}, the store's ${since(storeDeadline)}`,
