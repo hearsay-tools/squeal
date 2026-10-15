@@ -2,6 +2,7 @@ import { testFileId } from "../keys/index.js";
 import {
   awaitingInstallMetaKey,
   type CheckKey,
+  installCommandMetaKey,
   type KnownFailure,
   type KnownState,
   parseAwaitingInstall,
@@ -103,8 +104,15 @@ export function readHeader(
       : { slowTier: readSlowTier(store, worktreeId, revision, states, keys, view) }),
     ...(awaiting ? { awaitingInstall: true } : {}),
     ...(missing !== null && missing.length > 0 ? { missingInstalls: missing } : {}),
+    ...(awaiting ? installCommandField(store, worktreeId) : {}),
     ...(optimizerOff === undefined ? {} : { optimizerOff }),
   };
+}
+
+/** The stored install command (task 001-410); nothing when a daemon from before it waits. */
+function installCommandField(store: Store, worktreeId: WorktreeId): { installCommand?: string } {
+  const command = store.meta.get(installCommandMetaKey(worktreeId));
+  return command === null || command === "" ? {} : { installCommand: command };
 }
 
 /** `null` when absent or not a number: a store no daemon of this version refined. */

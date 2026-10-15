@@ -1,6 +1,7 @@
 import type { Stats } from "node:fs";
 import { stat } from "node:fs/promises";
 import { basename, join } from "node:path";
+import { awaitingInstallNote } from "../delivery/awaiting-install.js";
 import { isMissing } from "../fs/index.js";
 import { findInstalledLockfile, isInstalledLockfile } from "../keys/index.js";
 import {
@@ -8,10 +9,12 @@ import {
   awaitingInstallMetaKey,
   awaitingInstallValue,
   type CandidateBatch,
+  installCommandMetaKey,
   type RelativePath,
 } from "../types/index.js";
 import { reconcileBatch } from "./batch.js";
 import type { SchedulerContext } from "./context.js";
+import { installCommand } from "./install-command.js";
 import type { Ledger } from "./ledger.js";
 import { persistedNoteTexts } from "./notes.js";
 import {
@@ -23,8 +26,6 @@ import {
 
 /** The reason every test file is `unknown` while the daemon waits for an install. */
 export const AWAITING_INSTALL_REASON = "no dependencies are installed in this worktree";
-
-const AWAITING_INSTALL_NOTE = `${AWAITING_INSTALL_REASON}; Squeal lists and runs no tests until an install`;
 
 /** Why a daemon exits when the install goes under it (task 001-113). */
 export const REINSTALL_NOTE =
@@ -38,6 +39,8 @@ export interface MissingInstall {
    * any workspace (review wave 11, N2).
    */
   readonly workspaces: readonly RelativePath[];
+  /** The command that installs them, from the root's lockfile (`installCommand`, task 001-410). */
+  readonly command: string;
 }
 
 /**
@@ -70,7 +73,10 @@ export async function missingInstall(root: AbsolutePath): Promise<MissingInstall
   const missing: RelativePath[] = [];
   for (const dir of declaring) if (!(await installedIn(join(root, dir)))) missing.push(dir);
   if (declaring.length > 0 && missing.length === 0) return null;
-  return { workspaces: missing.length === declaring.length ? [] : missing };
+  return {
+    workspaces: missing.length === declaring.length ? [] : missing,
+    command: await installCommand(root, manifest),
+  };
 }
 
 /**
@@ -138,8 +144,8 @@ async function statOrNull(path: AbsolutePath): Promise<Stats | null> {
  * exits instead (task 001-113), so no runner is open during a wait. The test
  * files an earlier daemon listed become `unknown` with
  * `AWAITING_INSTALL_REASON`; nothing is listed, keyed or queued, and the
- * open checkpoint is abandoned. One note, unless an earlier start persisted
- * it. The header says so from the meta key.
+ * open checkpoint is abandoned. One note, the header's sentence, unless an
+ * earlier start persisted it. The header says so from the meta keys.
  */
 export function startWaiting(
   context: SchedulerContext,
@@ -156,12 +162,11 @@ export function startWaiting(
     AWAITING_INSTALL_REASON,
   );
   store.transaction(() => {
-    store.meta.set(awaitingInstallMetaKey(worktreeId), awaitingInstallValue(missing.workspaces));
+    recordWait(store, worktreeId, missing);
     ledger.commit({ refined: ledger.revision.number });
   });
-  if (!persistedNoteTexts(store, worktreeId).has(AWAITING_INSTALL_NOTE)) {
-    context.note(AWAITING_INSTALL_NOTE);
-  }
+  const note = awaitingInstallNote(missing.workspaces, missing.command);
+  if (!persistedNoteTexts(store, worktreeId).has(note)) context.note(note);
 }
 
 /**
@@ -185,12 +190,21 @@ export async function reconcileWaiting(
   }
   const missing = await missingInstall(context.root);
   if (missing !== null) {
-    const { store, worktreeId } = context;
-    store.meta.set(awaitingInstallMetaKey(worktreeId), awaitingInstallValue(missing.workspaces));
+    recordWait(context.store, context.worktreeId, missing);
     return true;
   }
   ledger.files.clear();
   return false;
+}
+
+/** The wait in the store: what it waits for, and the command a header names. */
+function recordWait(
+  store: SchedulerContext["store"],
+  worktreeId: SchedulerContext["worktreeId"],
+  missing: MissingInstall,
+): void {
+  store.meta.set(awaitingInstallMetaKey(worktreeId), awaitingInstallValue(missing.workspaces));
+  store.meta.set(installCommandMetaKey(worktreeId), missing.command);
 }
 
 /**
