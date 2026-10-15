@@ -336,3 +336,20 @@ Check first, whether a rewritten result can say something the session did not do
 Rules: no cell, `claude` or `codex` session; no model call. You may run `node evals/bin/regrade-cells.mjs --dry-run` in your candidate tree, and `git status` must stay clean. Never run it without `--dry-run`. Never run `run-baseline.mjs`, `run-cell.mjs`, `judge-calibrate.mjs`, `regrade.mjs` or `atomic-regrade.mjs`. No `npm run build`. Your full run is `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`; name any file that fails under load and passes alone.
 
 **Writes:** `reviews/wave-13.9.md`, PASS or FAIL with blockers, should-fix and notes, committed.
+
+## 006-85 quality pass over the stretch since 006-51
+
+Use /quality. Shape: survey. Outcome: a list of what to remove or unify in what spec 006 landed since `0049bc03` (006-50 and 006-51 done) up to `origin/main`. That is 52 commits, and 5,340 lines across `evals/lib`, `evals/bin`, `evals/atomic` and `test/evals`.
+
+Read `quality/2026-10.md` (the last scan, its form), spec D4, D9 and D10, and `status.md` from 2026-10-13 on.
+
+Leads, not conclusions:
+- `retry-evidence.mjs`, grown over 006-53, 006-71, 006-75 and 006-78;
+- 006-84's N1: `regrade-cells.mjs`'s reader of `out/` duplicates `grade.mjs`'s;
+- `regrade.mjs`, `atomic-regrade.mjs` and `regrade-cells.mjs`, three regrade paths;
+- the reference sessions feed Claude's hook text plain, while `header-forms.test.ts` wraps it (006-77 notes);
+- `retry-knobs.mjs` and the a9 to a11 scenario plumbing.
+
+**Writes:** `quality/2026-10-15.md`, committed, in the last scan's form: drop candidates, rows and slices, each with its evidence and the tests that pin it. Edit no code and not the board.
+
+Never run `run-baseline.mjs`, `run-cell.mjs`, `judge-calibrate.mjs`, `regrade.mjs`, `atomic-regrade.mjs` or `regrade-cells.mjs`. No model call; no `npm run build`. No full-suite run is needed for a survey.
