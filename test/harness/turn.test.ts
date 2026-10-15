@@ -102,6 +102,19 @@ describe("the idle waiter and the turn state (task 001-85)", () => {
     expect(await hook("user-prompt-submit", r)).toEqual(SILENT);
   });
 
+  it("(2b) the wake that carries the edit's result does not say results arrive later (task 001-396)", async () => {
+    const r = await inTurn();
+    r.queue("k2");
+    expect(await hook("stop", r)).toEqual(SILENT);
+
+    const waiter = await waiterAround(r, () => (r.apply(r.fail()), r.confirm()), 5_000);
+
+    expect(waiter.exitCode).toBe(2);
+    expect(waiter.stderr).toContain("PASS -> FAIL");
+    expect(waiter.stderr).toContain(" 0 pending,");
+    expect(waiter.stderr).not.toContain("Squeal saw your edit");
+  });
+
   it("(3) idle: a check not pending at Stop never wakes; the next prompt carries it", async () => {
     const r = await inTurn();
     r.queue("k2");

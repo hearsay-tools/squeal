@@ -257,6 +257,15 @@ describe("wait", () => {
     expect(text).toContain("PASS -> FAIL");
   });
 
+  it("wakes with the edit's result without saying results arrive later (task 001-396)", async () => {
+    const r = await idle();
+    setTimeout(() => (r.apply(r.fail()), r.confirm()), 150);
+    const { text } = await wait({ kind: "wait", ...about(r) }, waitDeps());
+    expect(text).toContain("PASS -> FAIL");
+    expect(text).toContain(" 0 pending,");
+    expect(text).not.toContain("Squeal saw your edit");
+  });
+
   it("is null soon after OpenCode's process is gone", async () => {
     const r = await idle();
     const gone = spawnSync(process.execPath, ["-e", "0"]).pid;
