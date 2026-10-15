@@ -6,10 +6,10 @@ import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
 import { runCodexHook } from "../../src/harness/codex/index.js";
 import { bridgeDeps, register } from "../../src/harness/opencode/bridge.js";
 import { after, before } from "../../src/harness/opencode/bridge-turn.js";
-import { sessionRootFiles } from "../../src/harness/shared/session-root.js";
+import { rootKey, sessionRootFiles } from "../../src/harness/shared/session-root.js";
 import { tempDir } from "../store/helpers.js";
 import { codexInput, codexRecorded } from "./codex/helpers.js";
-import { recorded, SESSION, SUBTRACTS, squealRepo } from "./helpers.js";
+import { recorded, SESSION, SUBAGENT, SUBTRACTS, squealRepo } from "./helpers.js";
 
 /*
  * Task 001-405 (cezar session 74366d0f's feedback, item 2; the human's
@@ -33,10 +33,10 @@ function started() {
       return "alive";
     },
   };
-  const consumerIn = (worktreeId: string) => ({
+  const consumerIn = (worktreeId: string, agentId: string = MAIN_AGENT) => ({
     worktreeId,
     sessionId: SESSION,
-    agentId: MAIN_AGENT,
+    agentId,
   });
   return { r, other, runtime, ensured, deps, consumerIn };
 }
@@ -114,6 +114,83 @@ describe("Claude Code hooks stay on the session's root (task 001-405)", () => {
     expect(roots.get(SESSION)?.root).toBe(other.root);
     rmSync(join(runtime, "squeal-sessions"), { recursive: true });
     expect(roots.get(SESSION)).toBeNull();
+  });
+});
+
+/*
+ * Task 001-415 (wave 14 W2b, the human's choice of 2026-10-15): a subagent
+ * keeps the root its SubagentStart's own `cwd` resolves, so one isolated in
+ * a worktree of its own (`.claude/worktrees/agent-<agent id>`) validates
+ * there, and its SubagentStop ends its registration there.
+ */
+describe("a subagent keeps the root its SubagentStart resolved (task 001-415)", () => {
+  const subagent = { agent_id: SUBAGENT };
+
+  it("an isolated subagent's tool calls validate in its own worktree, and its stop leaves it no consumer there", async () => {
+    const { r, other, runtime, ensured, deps, consumerIn } = started();
+    const roots = sessionRootFiles({ XDG_RUNTIME_DIR: runtime });
+    await runHook("session-start", recorded("session-start", r.root), deps);
+    await runHook("session-start", recorded("subagent-start", other.root), deps);
+    expect(ensured).toEqual([r.root, other.root]);
+    expect(r.store.consumers.get(consumerIn(other.id, SUBAGENT))).not.toBeNull();
+    expect(roots.get(rootKey({ session_id: SESSION, ...subagent }))?.root).toBe(other.root);
+
+    // Its tool calls stay in its worktree, even from a `cd` into the parent's.
+    const batch = await runHook(
+      "post-tool-batch",
+      recorded("subagent-post-tool-batch", r.root, subagent),
+      deps,
+    );
+    expect(batch.exitCode).toBe(0);
+    expect(ensured.slice(2).every((root) => root === other.root)).toBe(true);
+    expect(r.store.consumers.get(consumerIn(r.worktreeId, SUBAGENT))).toBeNull();
+    // The parent stays on its own root.
+    expect(roots.get(SESSION)?.root).toBe(r.root);
+    await runHook("post-tool-batch", recorded("post-tool-batch", other.root), deps);
+    expect(r.store.consumers.get(consumerIn(other.id))).toBeNull();
+
+    await runHook("stop", recorded("subagent-stop", r.root), deps);
+    expect(r.store.consumers.get(consumerIn(other.id, SUBAGENT))).toBeNull();
+    expect(r.store.consumers.list(other.id)).toEqual([]);
+    expect(roots.get(rootKey({ session_id: SESSION, ...subagent }))).toBeNull();
+    expect(r.store.consumers.get(consumerIn(r.worktreeId))).not.toBeNull();
+  });
+
+  it("a subagent in its parent's worktree registers there, as before", async () => {
+    const { r, ensured, deps, consumerIn } = started();
+    await runHook("session-start", recorded("session-start", r.root), deps);
+    await runHook("session-start", recorded("subagent-start", r.root), deps);
+    await runHook("post-tool-batch", recorded("subagent-post-tool-batch", r.root), deps);
+    expect(ensured.every((root) => root === r.root)).toBe(true);
+    expect(r.store.consumers.get(consumerIn(r.worktreeId, SUBAGENT))).not.toBeNull();
+  });
+
+  it("a subagent whose start kept nothing uses the session's root", async () => {
+    const { r, other, ensured, deps, consumerIn } = started();
+    await runHook("session-start", recorded("session-start", r.root), deps);
+    await runHook("post-tool-batch", recorded("subagent-post-tool-batch", other.root), deps);
+    expect(ensured.every((root) => root === r.root)).toBe(true);
+    expect(r.store.consumers.get(consumerIn(other.id, SUBAGENT))).toBeNull();
+  });
+
+  it("a Codex subagent thread keeps its own root from SubagentStart to SubagentStop", async () => {
+    const { r, other, runtime, ensured, deps } = started();
+    const roots = sessionRootFiles({ XDG_RUNTIME_DIR: runtime });
+    const start = codexInput("exec", "subagent-start", other.root);
+    const key = rootKey({ session_id: String(start.session_id), agent_id: String(start.agent_id) });
+    await runCodexHook("session-start", codexRecorded("exec", "session-start", r.root), deps);
+    await runCodexHook("subagent-start", codexRecorded("exec", "subagent-start", other.root), deps);
+    expect(roots.get(key)?.root).toBe(other.root);
+    await runCodexHook(
+      "post-tool-use",
+      codexRecorded("exec", "subagent-post-tool-use", r.root),
+      deps,
+    );
+    expect(ensured.filter((root) => root !== r.root).every((root) => root === other.root)).toBe(
+      true,
+    );
+    await runCodexHook("subagent-stop", codexRecorded("exec", "subagent-stop", r.root), deps);
+    expect(roots.get(key)).toBeNull();
   });
 });
 
