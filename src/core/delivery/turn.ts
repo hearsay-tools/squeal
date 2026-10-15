@@ -16,6 +16,7 @@ import {
   type WorktreeId,
   worktreeMetaKey,
 } from "../types/index.js";
+import { isLeaving, markLeaving } from "./leaving.js";
 import { readSlot, writeSlot } from "./slots.js";
 
 /*
@@ -79,14 +80,17 @@ export function startTurn(store: Store, consumer: Consumer): void {
  * Puts a registered consumer left idle in a turn (task 001-93): a tool call
  * means the agent works, whatever the last Stop said, because another Stop
  * hook can continue a turn Squeal's silent Stop ended (lessons, defect 14
- * after wave 10). Reads first, so a consumer already in a turn takes no write
- * lock.
+ * after wave 10). In the same transaction it clears the consumer's leaving
+ * mark, idle or not, since a subagent that calls a tool goes on (review
+ * 001-423, B1). Reads first, so a consumer already in a turn and not marked
+ * takes no write lock.
  */
 export function resumeTurn(store: Store, consumer: Consumer): void {
-  if (readTurn(store, consumer).turn !== "idle") return;
+  if (readTurn(store, consumer).turn !== "idle" && !isLeaving(store, consumer)) return;
   store.transaction(() => {
     if (store.consumers.get(consumer) === null) return;
     if (readTurn(store, consumer).turn === "idle") startTurn(store, consumer);
+    markLeaving(store, consumer, null);
   });
 }
 
