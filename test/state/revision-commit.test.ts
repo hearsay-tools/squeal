@@ -154,4 +154,53 @@ describe("a quiet reconciliation pass records HEAD's move (task 001-406)", () =>
     await recordHeadMove(context(true), ledger(before));
     expect(heads).toBe(1);
   });
+
+  it("HEAD moved away and back to the revision's commit keeps the newer dirty flag (review 001-417 B4)", async () => {
+    const a = sha();
+    writeFile(root, "a.txt", "a2\n");
+    git(root, ["commit", "-q", "-am", "b"]);
+    const b = sha();
+    git(root, ["reset", "-q", "--hard", a]);
+    store.revisions.append({
+      worktreeId: WT,
+      createdAt: 1,
+      head: a,
+      dirty: false,
+      trigger: "watch",
+      changes: [{ path: "a.txt", oldHash: "h0", newHash: "h1" }],
+    });
+    const at = (): Ledger =>
+      ({ revision: { number: 1, head: a, dirty: false } }) as unknown as Ledger;
+    const real = (): SchedulerContext =>
+      ({
+        store,
+        worktreeId: WT,
+        root,
+        head: async () => ({
+          head: sha(),
+          dirty: git(root, ["status", "--porcelain"]).trim() !== "",
+        }),
+      }) as unknown as SchedulerContext;
+
+    git(root, ["reset", "-q", "--mixed", b]);
+    await recordHeadMove(real(), at());
+    expect(recorded()).toEqual({ head: b, dirty: true, revision: 1 });
+    git(root, ["reset", "-q", "--soft", a]);
+    await recordHeadMove(real(), at());
+
+    expect(git(root, ["status", "--porcelain"]).trim()).toBe("MM a.txt");
+    expect(recorded()).toEqual({ head: a, dirty: true, revision: 1 });
+    expect(readHeader(store, WT).commit).toEqual({ head: a, sinceHead: 0, dirty: true });
+    expect(line()).toMatch(new RegExp(`^Revision 1 · ${a.slice(0, 8)} \\+ 0, dirty: `));
+
+    store.revisions.append({
+      worktreeId: WT,
+      createdAt: 2,
+      head: a,
+      dirty: false,
+      trigger: "watch",
+      changes: [{ path: "a.txt", oldHash: "h1", newHash: "h2" }],
+    });
+    expect(readHeader(store, WT).commit).toEqual({ head: a, sinceHead: 1, dirty: false });
+  });
 });
