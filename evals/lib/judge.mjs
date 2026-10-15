@@ -51,6 +51,23 @@ export function situationOf(knobs = {}) {
     parts.push(
       `after the warm-up, the slow tier's load guard holds at any host load (slow.maxLoadPerCpu ${knobs.loadHold.maxLoadPerCpu}), so after each edit Squeal holds the slow test "waiting for host load to drop" for up to slow.maxDeferMs (${knobs.loadHold.maxDeferMs / 1000} s); an explicit \`squeal run --slow\` runs it at once`,
     );
+  // 006-53: the retry scenarios' knobs (evals/lib/retry-knobs.mjs).
+  if (knobs.service === "down")
+    parts.push(
+      "test/rates.test.ts fetches the rates service on this machine, which was not running at the warm-up, so Squeal's starting results hold its FAIL; `node scripts/rates-service.mjs` starts the service, after which `squeal retry test/rates.test.ts --reason environment` runs the test once more",
+    );
+  if (knobs.service === "up")
+    parts.push(
+      "test/rates.test.ts fetches the rates service on this machine, which runs for the whole session and serves only /v1/rates/, answering 503 for any other version: a failure after the asked edit is the code's, not the service's",
+    );
+  if (knobs.inherited)
+    parts.push(
+      `Squeal's starting results hold a FAIL of ${knobs.inherited.file}, the calendar test timing out, recorded under a load of ${knobs.inherited.load} per CPU; the code is fine, and \`squeal retry ${knobs.inherited.file} --reason load\` (or environment) runs it once more and it passes`,
+    );
+  if (knobs.pinLoad !== undefined)
+    parts.push(
+      `the cell's processes read a host load of ${knobs.pinLoad} per CPU during the session, so a load retry runs at once`,
+    );
   if (knobs.flakeColdRuns)
     parts.push(
       "a flaky calendar test in test/clock.test.ts fails in Squeal's runs after each change to src/clock.ts; that failure is the flake, not the agent's work",

@@ -174,8 +174,9 @@ const COLLAPSED = /^(\d+) checks? (?:recovered|no longer reported)/;
  * delivery, as `formatDelta` and `formatStatus` word them): `{ check, file, to, from, observed,
  * validity }`, `to` `fail`, `pass` or `resolved`, `from` the outcome it changed from (`null`
  * when first observed), `observed` the revision its result is from (`null` when unstated) and
- * `validity` `current`, `pending`, `stale` or `unknown`; `stated` when a status says `current`.
- * A collapsed list or an overflow is `{ to, count }`.
+ * `validity` `current`, `pending`, `stale` or `unknown`; `stated` when a status says `current`;
+ * `retried`, the reason, on a pass a retry's run delivered. A collapsed list or an overflow is
+ * `{ to, count }`.
  */
 function checksOf(t) {
   const checks = [];
@@ -202,6 +203,8 @@ function checksOf(t) {
           : /^\s*unknown, observed/m.test(body)
             ? "unknown"
             : "current");
+    // A recovery a retry's own run stored (spec 001 D6, 001-398 S2; row 006-53).
+    const retried = /^\s*Retry asked \((\w+)\) at these inputs: it passed$/m.exec(body)?.[1];
     checks.push({
       check: name,
       file: FILE.exec(name)?.[1] ?? name,
@@ -210,6 +213,7 @@ function checksOf(t) {
       observed: observed ? Number(observed[1]) : null,
       validity,
       ...(stated === undefined ? {} : { stated: true }),
+      ...(to === "pass" && retried !== undefined ? { retried } : {}),
     });
   }
   // A delivery too long for its cap counts the rest by outcome (`formatDelta`'s overflow).
