@@ -1,6 +1,6 @@
 import { locate } from "../shared/context.js";
 import type { HookDeps } from "../shared/hook.js";
-import { sessionLocation } from "../shared/session-root.js";
+import { forgetRoot, sessionLocation } from "../shared/session-root.js";
 import type { Handler } from "./hook.js";
 import { parseHookInput } from "./input.js";
 
@@ -21,7 +21,8 @@ const PROJECT_DIR_FALLBACK: ReadonlySet<string> = new Set(["session-end"]);
 
 /**
  * Runs one hook on its stdin text, at the session's root (`sessionLocation`,
- * task 001-405); SessionEnd then forgets it. Spec 001 D9: every hook "exits 0 with no
+ * task 001-405); SessionEnd then forgets it, and a SubagentStop that does
+ * not block forgets its subagent's (task 001-415). Spec 001 D9: every hook "exits 0 with no
  * output on any internal error". Malformed input, a cwd outside any git
  * worktree, a missing or unreadable store and every thrown error end silent.
  * `SQUEAL_HOOK_DEBUG=1` reports the swallowed error on stderr, which Claude
@@ -39,8 +40,11 @@ export async function runHandler(
     const location =
       sessionLocation(input, name === "session-start", deps.sessionRoots) ?? projectDir(name, deps);
     if (location === null) return SILENT;
-    if (name === "session-end") deps.sessionRoots?.delete(input.session_id);
+    if (name === "session-end") forgetRoot(input, deps.sessionRoots);
     const outcome = await handler(input, location, deps);
+    if (input.hook_event_name === "SubagentStop" && !blocks(outcome?.output)) {
+      forgetRoot(input, deps.sessionRoots);
+    }
     if (outcome === null) return SILENT;
     return {
       stdout: outcome.output === undefined ? "" : JSON.stringify(outcome.output),
@@ -53,6 +57,11 @@ export async function runHandler(
     }
     return SILENT;
   }
+}
+
+/** A block keeps the subagent going, and its next hooks still need its root. */
+function blocks(output: object | undefined): boolean {
+  return output !== undefined && "decision" in output && output.decision === "block";
 }
 
 function projectDir(name: string, deps: HookDeps) {
