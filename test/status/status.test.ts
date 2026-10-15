@@ -197,6 +197,8 @@ describe("readStatus", () => {
           summary: "expected 401, received 500",
           fingerprint: "AssertionError: expected 401, received 500 @ src/auth.ts:12:5",
           location: { path: "src/auth.ts", line: 12, column: 5 },
+          // Review 001-417 B3: no stored result produced it.
+          recordedUnknown: true,
         },
         {
           check: fileCheck("src/broken.test.ts"),
@@ -206,6 +208,8 @@ describe("readStatus", () => {
           summary: "Cannot find module './gone'",
           fingerprint: "Error: Cannot find module './gone'",
           location: null,
+          // Review 001-417 B3: no stored result produced it.
+          recordedUnknown: true,
         },
       ],
       inherited: {
@@ -256,9 +260,11 @@ describe("readStatus", () => {
         FAIL  src/auth.test.ts > auth > expired token
               expected 401, received 500
               at src/auth.ts:12:5, observed at revision 2, current
+              recorded at an unknown time and load: the result that produced it is no longer identifiable in the store
         FAIL  src/broken.test.ts (file-level)
               Cannot find module './gone'
               observed at revision 2, current
+              recorded at an unknown time and load: the result that produced it is no longer identifiable in the store
       Affected checks: 4 passed (3 tests, 1 test file loaded), 1 running (1 test), 1 queued (1 test), 1 skipped (1 test), 1 stale (1 test), 1 unknown (1 test)
       Full-suite checkpoint: none completed since revision 1 (the counts are for revision 2; \`squeal run --all\` requests one)
 

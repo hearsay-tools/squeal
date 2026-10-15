@@ -5,9 +5,11 @@ import {
   failureKeysOnce,
   formatCheck,
   heldFailure,
+  observedSince,
   parseCheck,
   readFlakyNotes,
   readRevisionCommit,
+  shownResult,
   testFileOf,
 } from "../state/index.js";
 import { storePaths } from "../store/index.js";
@@ -15,7 +17,6 @@ import {
   type AbsolutePath,
   type CheckId,
   type CheckKey,
-  type EpochMs,
   PAYLOAD_SCHEMA_VERSION,
   type ResultRecord,
   type RevisionNumber,
@@ -29,7 +30,7 @@ import {
 } from "../types/index.js";
 import { durationsOf } from "./durations.js";
 import { type StatusContext, type StatusStoreOptions, withStatusStore } from "./open.js";
-import { runLogOf, shownResult } from "./run-log.js";
+import { runLogOf } from "./run-log.js";
 
 /** Most results `squeal why` lists for one check. */
 export const WHY_RESULT_LIMIT = 20;
@@ -202,22 +203,6 @@ function changedSince(
       revisionCount: numbers.length,
     }));
   return { revision: observedAt, paths, total: byPath.size };
-}
-
-/**
- * The earliest time a state observed at `revision` could have been applied
- * (review wave-13j B4): the revision's creation, or for revision 0, the
- * bootstrap before any change, the worktree's first registration. `null`
- * when neither is stored.
- */
-function observedSince(
-  store: Store,
-  worktreeId: WorktreeId,
-  revision: RevisionNumber | null,
-): EpochMs | null {
-  if (revision === null) return null;
-  if (revision === 0) return store.worktrees.get(worktreeId)?.registeredAt ?? null;
-  return store.revisions.get(worktreeId, revision)?.createdAt ?? null;
 }
 
 /** This worktree's current key for the check's test file; `null` when it has none. */

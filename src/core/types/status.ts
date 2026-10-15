@@ -356,6 +356,12 @@ export interface KnownFailure {
    * for it at the current key.
    */
   readonly recorded?: RecordedFacts;
+  /**
+   * No stored result is identifiably the one that produced it (replaced,
+   * pruned, or several fit): its age and load are unknown (review 001-417
+   * B3). Absent when `recorded` is given, and for a setup failure.
+   */
+  readonly recordedUnknown?: true;
 }
 
 /** `KnownFailure.recorded`. */

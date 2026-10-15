@@ -1,11 +1,12 @@
 import { testFileId } from "../keys/index.js";
-import { checkIdentity, testFileOf } from "../state/index.js";
+import { shownResult, testFileOf, toKnownFailure } from "../state/index.js";
 import type {
   CheckKey,
   KnownFailure,
+  KnownState,
   RecordedFacts,
-  ResultRecord,
   RetryFact,
+  RevisionNumber,
   Store,
   TestFileRef,
   WorktreeId,
@@ -45,30 +46,41 @@ export function passedRetry(
   );
 }
 
-/** `failures` with `recorded`, read from the rows that stand for them at the worktree's keys. */
+/**
+ * The known failures of `states` with `recorded`, from the result that
+ * produced each (`shownResult`, as `why` shows it): its age, load and the
+ * retry asked at its key. A row at the file's current key that did not
+ * produce the failure, a cached pass or a same-key replacement, gives none
+ * of its facts; with no identifiable producer the failure says its age and
+ * load are unknown (review 001-417 B3).
+ */
 export function withRecorded(
   store: Store,
   worktreeId: WorktreeId,
-  failures: readonly KnownFailure[],
+  states: readonly KnownState[],
+  revision: RevisionNumber,
 ): KnownFailure[] {
-  if (failures.length === 0) return [];
+  const failing = states.flatMap((state) => {
+    const failure = toKnownFailure(state, revision);
+    return failure === null ? [] : [{ state, failure }];
+  });
+  if (failing.length === 0) return [];
   const keys = new Map(
     store.testFileKeys.list(worktreeId).map((k) => [testFileId(k.testFile), k.key]),
   );
-  const rows = new Map<CheckKey, readonly ResultRecord[]>();
   const retries = readRetries(store);
   const loads = readRunLoads(store);
-  return failures.map((failure) => {
+  return failing.map(({ state, failure }) => {
     if (failure.check.kind === "setup") return failure;
     const testFile = testFileOf(failure.check);
-    const key = keys.get(testFileId(testFile));
-    if (key === undefined || key === null) return failure;
-    if (!rows.has(key)) rows.set(key, store.results.byKey(key));
-    const identity = checkIdentity(failure.check);
-    const row = rows.get(key)?.find((r) => checkIdentity(r.check) === identity);
-    if (row === undefined) return failure;
+    const key = keys.get(testFileId(testFile)) ?? null;
+    const results = store.results.listForCheck(failure.check, Number.MAX_SAFE_INTEGER);
+    // The producer's identity, without `why`'s proof that it predates the state: an
+    // inherited failure applied after its source's revision began keeps its facts.
+    const row = shownResult(worktreeId, state, key, results, undefined, Number.POSITIVE_INFINITY);
+    if (row === null) return { ...failure, recordedUnknown: true };
     const { provenance } = row;
-    const retry = retryFactOf(retriesAt(retries, testFile, key));
+    const retry = retryFactOf(retriesAt(retries, testFile, row.key));
     const recorded: RecordedFacts = {
       worktreeId: provenance.worktreeId,
       worktreeRoot: store.worktrees.get(provenance.worktreeId)?.root ?? null,

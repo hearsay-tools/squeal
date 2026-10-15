@@ -4,7 +4,7 @@ import { worktreeIdFor } from "../fs/index.js";
 import { CLOSURE_METHOD, testFileId } from "../keys/index.js";
 import { readDaemonNotes } from "../notes.js";
 import { pendingRetriesOf, withRecorded } from "../retry/index.js";
-import { readHeader, testFileKeyOf, toKnownFailure } from "../state/index.js";
+import { readHeader, testFileKeyOf } from "../state/index.js";
 import { META_STORE_RECOVERED, readTransaction } from "../store/index.js";
 import {
   type AbsolutePath,
@@ -123,11 +123,7 @@ function snapshot(
     dirtyObservedAt: observed?.number ?? null,
     daemon,
     // Task 001-404: each failure says how old its run is and the load it ran under.
-    knownFailures: withRecorded(
-      store,
-      worktreeId,
-      states.flatMap((s) => toKnownFailure(s, header.revision) ?? []),
-    ),
+    knownFailures: withRecorded(store, worktreeId, states, header.revision),
     inherited: inheritedSources(store, states),
     breakdown: breakdown(states, keys),
     closureMethod: CLOSURE_METHOD,
