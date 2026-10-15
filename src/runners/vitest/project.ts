@@ -1,7 +1,7 @@
 import { basename, dirname, join } from "node:path";
 import type { TestProject, Vitest } from "vitest/node";
 import type { AbsolutePath, TestFileRef } from "../../core/types/index.js";
-import { type ImportClosure, importClosure } from "./graph.js";
+import { type ImportClosure, importClosure, missingCandidates } from "./graph.js";
 
 /** The config file of a project and of the root, plus their `configFileDependencies`. */
 export function configFiles(vitest: Vitest): Set<AbsolutePath> {
@@ -24,6 +24,12 @@ export interface ProjectInputs {
   readonly configFiles: ReadonlySet<AbsolutePath>;
   readonly setup: ImportClosure;
   readonly globalSetup: ImportClosure;
+  /**
+   * Task 001-424: every resolution candidate of the missing targets of both
+   * setup closures. A setup file's failed import fails every test file and
+   * lies in no test file's closure, so only these re-key them on an add.
+   */
+  readonly missing: ReadonlySet<AbsolutePath>;
 }
 
 export async function projectInputs(vitest: Vitest, project: TestProject): Promise<ProjectInputs> {
@@ -31,7 +37,12 @@ export async function projectInputs(vitest: Vitest, project: TestProject): Promi
     importClosure(project, project.config.setupFiles),
     importClosure(project, globalSetupFiles(project)),
   ]);
-  return { configFiles: configFiles(vitest), setup, globalSetup };
+  const extensions = resolveExtensions(project);
+  const missing = new Set([
+    ...missingCandidates(setup, extensions),
+    ...missingCandidates(globalSetup, extensions),
+  ]);
+  return { configFiles: configFiles(vitest), setup, globalSetup, missing };
 }
 
 /** True when a change to `path` affects every test file of the project. */
@@ -39,9 +50,8 @@ export function isProjectInput(inputs: ProjectInputs, path: AbsolutePath): boole
   return (
     inputs.configFiles.has(path) ||
     inputs.setup.files.has(path) ||
-    inputs.setup.missing.has(path) ||
     inputs.globalSetup.files.has(path) ||
-    inputs.globalSetup.missing.has(path)
+    inputs.missing.has(path)
   );
 }
 
@@ -54,7 +64,8 @@ export async function recreateTriggers(vitest: Vitest): Promise<Set<AbsolutePath
   const triggers = configFiles(vitest);
   for (const project of vitest.projects) {
     const closure = await importClosure(project, globalSetupFiles(project));
-    for (const file of [...closure.files, ...closure.missing]) triggers.add(file);
+    const missing = missingCandidates(closure, resolveExtensions(project));
+    for (const file of [...closure.files, ...missing]) triggers.add(file);
   }
   return triggers;
 }
