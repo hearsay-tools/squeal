@@ -5884,6 +5884,7 @@ function createRecoveringRunner(options) {
     enumerate: (testFile) => around(async () => (await adapter()).enumerate(testFile)),
     testFiles: () => around(async () => (await adapter()).testFiles()),
     omittedTestFiles: () => inner?.omittedTestFiles?.() ?? 0,
+    slowWidth: (testFiles) => inner?.slowWidth?.(testFiles) ?? testFiles.length,
     environment: () => around(async () => (await adapter()).environment()),
     run: (testFiles, runOptions) => around(async () => (await adapter()).run(testFiles, runOptions)),
     close: () => around(async () => {
@@ -6340,6 +6341,51 @@ var init_slow2 = __esm({
     init_inherit();
     init_slot();
     init_stop_wait();
+  }
+});
+
+// src/core/daemon/low-priority.ts
+import { execFile } from "node:child_process";
+import { getPriority, setPriority } from "node:os";
+import { setTimeout as sleep2 } from "node:timers/promises";
+async function lowerWhile(children, lane, since, signal2) {
+  if (process.platform !== "linux") return;
+  const lowered = /* @__PURE__ */ new Set();
+  try {
+    for (let wait = FIRST_MS; ; wait = EVERY_MS) {
+      await sleep2(wait, void 0, { signal: signal2 });
+      const found2 = await children.carriers(lane, since);
+      const fresh = found2.filter((entry3) => !lowered.has(`${entry3.pid}:${entry3.start}`));
+      for (const entry3 of fresh) lowered.add(`${entry3.pid}:${entry3.start}`);
+      if (fresh.length > 0)
+        lower(
+          fresh.map((entry3) => entry3.pid),
+          isSlowLane(lane)
+        );
+    }
+  } catch {
+  }
+}
+function lowerProcess(pid) {
+  try {
+    if (getPriority(pid) < TEST_NICE) setPriority(pid, TEST_NICE);
+  } catch {
+  }
+}
+function lower(pids, idle2) {
+  for (const pid of pids) lowerProcess(pid);
+  if (!idle2) return;
+  execFile("ionice", ["-c", "3", "-p", ...pids.map(String)], () => {
+  }).unref();
+}
+var TEST_NICE, FIRST_MS, EVERY_MS;
+var init_low_priority = __esm({
+  "src/core/daemon/low-priority.ts"() {
+    "use strict";
+    init_types();
+    TEST_NICE = 10;
+    FIRST_MS = 250;
+    EVERY_MS = 1e3;
   }
 });
 
@@ -11535,7 +11581,9 @@ var init_slow_tier = __esm({
       /**
        * Under the lock, after the guard and the slot: the tier, of `refs` in
        * order, as many as `slot` has permits while the machine is still idle,
-       * else one; the permits it does not use go. Nothing when an edit's fast
+       * else one, and only as many as one run starts at once
+       * (`RunnerAdapter.slowWidth`, review 001-394 B2): the rest stay queued for
+       * a later tier. The permits it does not use go. Nothing when an edit's fast
        * work arrived meanwhile. A file is passed over when it left the queue or
        * class, its trigger is gone (a consumer entered a turn during the wait;
        * the file stays queued and the pass keeps its budget), or the store now
@@ -11564,6 +11612,8 @@ var init_slow_tier = __esm({
           if (tierFile !== null) picked.push(tierFile);
         }
         if (picked.length === 0) return ledger.claims.waiting ? "claimed" : null;
+        const atOnce = context.runner.slowWidth?.(picked.map(({ file }) => file.ref));
+        if (atOnce !== void 0) picked.splice(Math.max(1, atOnce));
         const perFile = context.policy.slow.maxWorkers;
         const taken2 = context.capacity?.take(picked.length * perFile) ?? null;
         if (taken2 === WAIT_FOR_CAPACITY && !this.#requested) {
@@ -16223,6 +16273,7 @@ function canonicalConfig(project, paths, injected = {}) {
     env,
     disableColors: _colors,
     isAgent: _agent,
+    maxWorkers: _workers,
     ...config
   } = project.serializedConfig;
   const { seed: _seed, ...stableSequence } = sequence;
@@ -17681,6 +17732,65 @@ var init_version = __esm({
   }
 });
 
+// src/runners/vitest/width.ts
+function tierWidth(want, ceiling) {
+  if (want === void 0 || ceiling === 1) return ceiling;
+  const width = Math.max(2, Math.floor(want));
+  return ceiling === void 0 ? width : Math.min(width, ceiling);
+}
+var Widths;
+var init_width = __esm({
+  "src/runners/vitest/width.ts"() {
+    "use strict";
+    Widths = class {
+      #root;
+      #projects;
+      /** By project name: its own ceiling, else the root's, and its group. */
+      #byName;
+      constructor(vitest) {
+        this.#root = vitest.config.maxWorkers;
+        this.#projects = new Map(vitest.projects.map((p) => [p, p.config.maxWorkers]));
+        this.#byName = new Map(
+          vitest.projects.map((p) => {
+            const own = p.config.maxWorkers;
+            const order = p.config.sequence.groupOrder;
+            const group = p.config.isolate && order === 0 && own === 1 ? "sequential" : order;
+            return [p.name, { ceiling: own ?? this.#root, group }];
+          })
+        );
+      }
+      /**
+       * How many of `testFiles`, in order, one slow run starts at once (spec 004
+       * D2, review 001-394 B2): the first file's group's, up to its width. The
+       * slow instance's width and a slow grant are each at least one worker per
+       * file, so the width is `tierWidth` of the files under the ceiling. An
+       * unknown project's run fails on its own: all of them.
+       */
+      atOnce(testFiles) {
+        const first = testFiles[0] === void 0 ? void 0 : this.#byName.get(testFiles[0].project);
+        if (first === void 0) return testFiles.length;
+        const width = tierWidth(testFiles.length, first.ceiling) ?? testFiles.length;
+        let count = 0;
+        for (const { project } of testFiles) {
+          if (count >= width || this.#byName.get(project)?.group !== first.group) break;
+          count++;
+        }
+        return Math.max(1, count);
+      }
+      /** Sizes `vitest`'s next run for `want` workers. */
+      apply(vitest, want) {
+        vitest.config.maxWorkers = tierWidth(want, this.#root);
+        for (const project of vitest.projects) {
+          const own = this.#projects.get(project);
+          if (project.config !== vitest.config && own !== void 0) {
+            project.config.maxWorkers = tierWidth(want, own);
+          }
+        }
+      }
+    };
+  }
+});
+
 // src/runners/vitest/adapter.ts
 async function testSpecifications(vitest) {
   return supported(await vitest.globTestSpecifications());
@@ -17717,6 +17827,7 @@ var init_adapter = __esm({
     init_stale();
     init_startup();
     init_version();
+    init_width();
     VitestAdapter = class {
       /**
        * `vitest` is the project's own `vitest/node` (`loadVitest`). Only types
@@ -17725,9 +17836,9 @@ var init_adapter = __esm({
        * `observe` is policy `observe.runtimeInputs`, read before each call
        * (task 001-132); absent, nothing is observed. `childEnv` goes into every
        * worker's env beside the recorder's and, like it, stays out of the
-       * environment hash (D12, task 001-142). `maxWorkers` overrides the
-       * config's (spec 004 D2: the slow tier's instance); not keyed, since the
-       * slow instance's environment is never asked for. `optimizer` hears, at
+       * environment hash (D12, task 001-142). `maxWorkers` is the width of a
+       * run without a grant (spec 004 D2: the slow tier's instance), under the
+       * project's own as a grant is (D11, task 001-378). `optimizer` hears, at
        * each start, the projects whose config turns the dependency optimizer on,
        * none included (task 001-181). `exclude` is policy
        * `vitest.excludeProjects`, read at each start (task 001-349).
@@ -17770,6 +17881,8 @@ var init_adapter = __esm({
        * 001-168).
        */
       #touched = [];
+      /** The current instance's projects' own `maxWorkers`, each run sized under them (task 001-378). */
+      #widths = null;
       /** Installed lockfiles the current instance started with. */
       #lockfiles = /* @__PURE__ */ new Set();
       /** The next start imports `vitest/node` again: the installed dependencies changed. */
@@ -17817,7 +17930,6 @@ var init_adapter = __esm({
           // so it reaches every project.
           fsModuleCache: false,
           ...Object.keys(env).length === 0 ? {} : { env },
-          ...this.#maxWorkers === void 0 ? {} : { maxWorkers: this.#maxWorkers },
           ...project === void 0 ? {} : { project }
         });
         sources.attach(vitest);
@@ -17829,6 +17941,7 @@ var init_adapter = __esm({
           await vitest.standalone();
           this.#observer.configure(vitest);
           this.#tempDirs = instanceTempDirs(vitest);
+          this.#widths = new Widths(vitest);
           this.#lockfiles = await this.#installedLockfiles(vitest);
           this.#configFiles = configFiles(vitest);
           this.#config = config;
@@ -17990,6 +18103,15 @@ var init_adapter = __esm({
       omittedTestFiles() {
         return this.#omitted;
       }
+      /**
+       * Spec 004 D2 (review 001-394 B2): the files a slow run starts at once,
+       * under each project's own `maxWorkers` (001 D11 Runner ceiling). The
+       * slow instance has the same configs, so this instance's are read. None
+       * started yet: all of them.
+       */
+      slowWidth(testFiles) {
+        return this.#widths?.atOnce(testFiles) ?? testFiles.length;
+      }
       environment() {
         return this.#part(async (vitest) => {
           const context = {
@@ -18022,6 +18144,7 @@ var init_adapter = __esm({
             writeRunLog(options, collector, empty2);
             return empty2;
           }
+          this.#widths?.apply(vitest, options.workers ?? this.#maxWorkers);
           const exitCode = process.exitCode;
           const unsure = this.#unsure;
           const loadedSince = Date.now();
@@ -34939,6 +35062,7 @@ function startGroup(options) {
   });
   closeSync(out2);
   closeSync(err2);
+  if (child.pid !== void 0) lowerProcess(child.pid);
   let done = false;
   const kill = (signal2) => {
     if (child.pid === void 0) return;
@@ -34964,6 +35088,7 @@ function startGroup(options) {
 var init_process = __esm({
   "src/runners/node-test/run/process.ts"() {
     "use strict";
+    init_low_priority();
   }
 });
 
@@ -44202,6 +44327,14 @@ function createCompositeRunner(adapters) {
     },
     omittedTestFiles: () => adapters.reduce((sum, adapter) => sum + (adapter.omittedTestFiles?.() ?? 0), 0),
     environment,
+    // The parts run one after another: a slow tier starts only the first file's owner's (004 D2).
+    slowWidth(testFiles) {
+      const owner2 = testFiles[0] === void 0 ? void 0 : owners.get(testFiles[0].project);
+      if (owner2 === void 0) return testFiles.length;
+      const end = testFiles.findIndex((f) => owners.get(f.project) !== owner2);
+      const own2 = end === -1 ? testFiles : testFiles.slice(0, end);
+      return owner2.slowWidth?.(own2) ?? own2.length;
+    },
     async run(testFiles, options) {
       const groups = /* @__PURE__ */ new Map();
       for (const testFile of testFiles) {
@@ -44325,6 +44458,8 @@ function withSlowInstance(fast, createSlow) {
     enumerate: (testFile) => fast.enumerate(testFile),
     testFiles: () => fast.testFiles(),
     omittedTestFiles: () => fast.omittedTestFiles?.() ?? 0,
+    // The slow instance may not exist yet; the fast one has the same configs (review 001-394 B2).
+    slowWidth: (testFiles) => fast.slowWidth?.(testFiles) ?? testFiles.length,
     environment: () => fast.environment(),
     ...lane === void 0 ? {} : { lane },
     async run(testFiles, options) {
@@ -44366,7 +44501,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.184";
+  if (true) return "0.1.185";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -46524,43 +46659,11 @@ async function inThread(identity, events) {
 }
 
 // src/core/daemon/escaped.ts
-init_types();
+init_low_priority();
 import { randomUUID as randomUUID2 } from "node:crypto";
 import { readdirSync as readdirSync7 } from "node:fs";
 import { readFile as readFile3 } from "node:fs/promises";
 import { setTimeout as sleep4 } from "node:timers/promises";
-
-// src/core/daemon/low-priority.ts
-import { execFile } from "node:child_process";
-import { getPriority, setPriority } from "node:os";
-import { setTimeout as sleep2 } from "node:timers/promises";
-var SLOW_NICE = 10;
-var FIRST_MS = 250;
-var EVERY_MS = 1e3;
-async function lowerWhile(children, lane, since, signal2) {
-  if (process.platform !== "linux") return;
-  const lowered = /* @__PURE__ */ new Set();
-  try {
-    for (let wait = FIRST_MS; ; wait = EVERY_MS) {
-      await sleep2(wait, void 0, { signal: signal2 });
-      const found2 = await children.carriers(lane, since);
-      const fresh = found2.filter((entry3) => !lowered.has(`${entry3.pid}:${entry3.start}`));
-      for (const entry3 of fresh) lowered.add(`${entry3.pid}:${entry3.start}`);
-      if (fresh.length > 0) lower(fresh.map((entry3) => entry3.pid));
-    }
-  } catch {
-  }
-}
-function lower(pids) {
-  for (const pid of pids) {
-    try {
-      if (getPriority(pid) < SLOW_NICE) setPriority(pid, SLOW_NICE);
-    } catch {
-    }
-  }
-  execFile("ionice", ["-c", "3", "-p", ...pids.map(String)], () => {
-  }).unref();
-}
 
 // src/core/daemon/terminate.ts
 import { readFileSync as readFileSync12 } from "node:fs";
@@ -46728,7 +46831,7 @@ var EscapedChildren = class {
   }
   /**
    * The carriers of `lane`'s mark started since `since`, for `lowerWhile`
-   * (spec 004 D2), among the daemon's descendants and its group's orphans
+   * (001 D11 Capacity, spec 004 D2), among the daemon's descendants and its group's orphans
    * only: an environ read per process started since, on a busy host, would
    * cost hundreds of reads a second. A process that left both, detached and
    * reparented outside the group, keeps its priority; the stop after the run
@@ -46847,6 +46950,7 @@ function afterEachRun(runner, children, note) {
     enumerate: (testFile) => runner.enumerate(testFile),
     testFiles: () => runner.testFiles(),
     omittedTestFiles: () => runner.omittedTestFiles?.() ?? 0,
+    slowWidth: (testFiles) => runner.slowWidth?.(testFiles) ?? testFiles.length,
     environment: () => runner.environment(),
     ...lane === void 0 ? {} : { lane },
     ...releaseLane === void 0 ? {} : { releaseLane },
@@ -46860,7 +46964,7 @@ function afterEachRun(runner, children, note) {
       if (!overlapped.includes(options.runId)) overlapped.push(options.runId);
       inFlight += 1;
       const settled = new AbortController();
-      const lowering = isSlowLane(at2) ? lowerWhile(children, at2, since, settled.signal) : null;
+      const lowering = lowerWhile(children, at2, since, settled.signal);
       try {
         const childEnv2 = { ...options.childEnv, ...children.envFor(at2) };
         return await runner.run(testFiles, { ...options, lane: at2, childEnv: childEnv2 });
