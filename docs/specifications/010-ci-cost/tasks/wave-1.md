@@ -87,3 +87,17 @@ Leads, not conclusions: Vitest orders a shard's files by size without a cache, s
 Owns: `test/harness/opencode-dispose.test.ts` and its helpers, and `.github/workflows/ci.yml` if the cause is the layout. A cause in `src/` is a stop-and-report, not a fix: product changes need their own row.
 
 Done when: the cause is named with evidence; the fix makes the file pass in a local `--shard=2/3` run on Node 22 and alone; lint, typecheck and `squeal run --all --wait` pasted. Final message: the cause, the fix, and whether the barrier or its deadline changed meaning.
+
+## 010-17 review of 010-16
+
+Use /reviewer. Shape: review, narrow.
+
+Outcome: `docs/specifications/010-ci-cost/reviews/wave-1.6.md`, a verdict on `cand/010-10` at a2d4214b.
+
+Range: `git diff 98fdca2e..a2d4214b -- .github test` (two files; the rest is docs). Read the 010-16 brief above, `status.md` (2026-10-15, 010-16 cause) and D5 as amended.
+
+Check: does the Node 22 exclude leave the file out of every shard and run it exactly once, alone, on shard 3, reporting even when that shard's tests fail and never when the run is cancelled; does any other Node 22 step or the nightly change; is the header edit in `test/version-sensitive.txt` true. Read candidate run 38792643283 by job and step (`gh run view`, read-only): is it green, did "Test the dispose race alone" run only on shard 3, and what did it take.
+
+Verification: lint, typecheck, the guard test. No full suite: the range touches no test code.
+
+Done when the findings file is committed alone and your final message gives the verdict.
