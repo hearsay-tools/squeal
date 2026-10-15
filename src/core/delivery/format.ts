@@ -31,6 +31,7 @@ import type {
   TransitionEntry,
   ValidityCounts,
 } from "../types/index.js";
+import { awaitingInstallSentence } from "./awaiting-install.js";
 import { type Collapsed, checkName, collapse } from "./collapse.js";
 import {
   change,
@@ -102,24 +103,14 @@ function at(location: SourceLocation): string {
 const NOT_LISTED_SENTENCE =
   "The daemon has not listed this worktree's test files yet; these counts are not complete.";
 
-/** Workspaces the wait sentence names before the rest is counted (task 001-107). */
-const MISSING_INSTALLS_SHOWN = 3;
-
 /**
- * Spec 001 D5 as amended (tasks 001-100, 001-107): the daemon waits for an
- * install, and names the workspaces still missing theirs when others have
- * one (review wave 11, N2). `null` when not waiting, and when no daemon is
- * live: a daemon killed while waiting left the flag (N5).
+ * The install wait's sentence (`awaitingInstallSentence`). `null` when not
+ * waiting, and when no daemon is live: a daemon killed while waiting left
+ * the flag (review wave 11, N5).
  */
-function awaitingInstallSentence(header: StatusHeader): string | null {
+function awaitingInstallText(header: StatusHeader): string | null {
   if (header.awaitingInstall !== true || header.daemon?.state === "down") return null;
-  const missing = header.missingInstalls ?? [];
-  const more = missing.length - MISSING_INSTALLS_SHOWN;
-  const where =
-    missing.length === 0
-      ? "in this worktree"
-      : `at this worktree's root or in ${missing.slice(0, MISSING_INSTALLS_SHOWN).join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
-  return `No dependencies are installed ${where}; Squeal lists and runs no tests until an install.`;
+  return awaitingInstallSentence(header.missingInstalls ?? [], header.installCommand);
 }
 
 /** Paths a header names before the rest is counted (task 001-85). */
@@ -149,7 +140,7 @@ function headerLine(header: StatusHeader, command: string): string {
     header.runnerPartPending === true
       ? ` ${capitalize(runnerPartText(revision))} is pending; test files it adds are not counted yet.`
       : "";
-  const awaiting = awaitingInstallSentence(header);
+  const awaiting = awaitingInstallText(header);
   return (
     `Revision ${revision}${changedText(header.changedPaths)}: ${countsText(counts, fileLevel)}.${inherited}${withoutChecks}${listed}${runnerPart} ` +
     `Full-suite checkpoint: ${fullSuiteText(header, command)}.` +

@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { awaitingInstallNote } from "../../src/core/delivery/awaiting-install.js";
 import { formatRegistration } from "../../src/core/delivery/index.js";
 import { readDaemonNotes } from "../../src/core/notes.js";
 import {
@@ -100,9 +101,12 @@ describe("awaitsInstall (D5 as amended, task 001-100)", () => {
     workspace("c", { name: "c" }, false);
     workspace("skip", { dependencies: { acorn: "^8" } }, false);
     // Nothing installed anywhere: the wait names no workspace.
-    expect(await missingInstall(dir)).toEqual({ workspaces: [] });
+    expect(await missingInstall(dir)).toEqual({ workspaces: [], command: "npm install" });
     workspace("a", { dependencies: { acorn: "^8" } }, true);
-    expect(await missingInstall(dir)).toEqual({ workspaces: ["packages/b"] });
+    expect(await missingInstall(dir)).toEqual({
+      workspaces: ["packages/b"],
+      command: "npm install",
+    });
     workspace("b", { devDependencies: { vitest: "^4" } }, true);
     expect(await missingInstall(dir)).toBeNull();
   });
@@ -162,28 +166,33 @@ describe("scheduler: a worktree without installed dependencies (defect 18)", SLO
     expect(calls).toEqual([]);
     expect(h.runner.runs).toEqual([]);
     expect(h.header()).toMatchObject({ awaitingInstall: true, runnerPartPending: false });
+    expect(h.header().installCommand).toBe("npm install");
     const notes = readDaemonNotes(store, h.worktreeId).map((n) => n.text);
-    expect(notes.filter((t) => t.startsWith(AWAITING_INSTALL_REASON))).toHaveLength(1);
+    // Task 001-410: the note is the header's sentence, as a note reads.
+    expect(notes.filter((t) => t.startsWith(AWAITING_INSTALL_REASON))).toEqual([
+      awaitingInstallNote([], "npm install"),
+    ]);
 
     markDaemonLive(store, h.worktreeId, h.root);
     const { delivery, consumer } = await h.consumer();
     const registration = await delivery.register(consumer);
     expect(registration.knownFailures).toEqual([]);
     expect(formatRegistration(registration)).toContain(
-      "No dependencies are installed in this worktree; Squeal lists and runs no tests until an install.",
+      "No dependencies are installed in this worktree, so Squeal runs none of its tests and inherits none of their results. " +
+        "Run `npm install` to install them: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest.",
     );
     // N2: a wait for some workspaces names a few, then counts the rest.
     const probe = await h.consumer("probe");
     const key = awaitingInstallMetaKey(h.worktreeId);
     store.meta.set(key, awaitingInstallValue(["pkg/a", "pkg/b", "pkg/c", "pkg/d", "pkg/e"]));
     expect(formatRegistration(await probe.delivery.register(probe.consumer))).toContain(
-      "No dependencies are installed at this worktree's root or in pkg/a, pkg/b, pkg/c and 2 more;",
+      "No dependencies are installed at this worktree's root or in pkg/a, pkg/b, pkg/c and 2 more, so",
     );
     store.meta.set(key, "true");
     // N5: with no daemon live the flag a killed daemon left says nothing.
     store.worktrees.setDaemon(h.worktreeId, null);
     expect(formatRegistration(await probe.delivery.register(probe.consumer))).not.toContain(
-      "Squeal lists and runs no tests",
+      "No dependencies are installed",
     );
     markDaemonLive(store, h.worktreeId, h.root);
 
