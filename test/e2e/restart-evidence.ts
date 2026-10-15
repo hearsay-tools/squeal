@@ -50,6 +50,26 @@ export function lockHolders(root: string): string {
   }
 }
 
+/**
+ * Waits until process `pid` is stopped (`T` in `/proc/<pid>/stat`): a daemon
+ * run with `SQUEAL_TEST_STOP_GAP=1` stops itself between its socket's unlink
+ * and its lock release (task 001-355). False past `ms`, or once it is gone.
+ */
+export async function stoppedInGap(pid: number, ms: number): Promise<boolean> {
+  const deadline = Date.now() + ms;
+  while (Date.now() <= deadline) {
+    let stat: string;
+    try {
+      stat = readFileSync(`/proc/${pid}/stat`, "utf8");
+    } catch {
+      return false;
+    }
+    if (stat.slice(stat.lastIndexOf(")") + 2).startsWith("T")) return true;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  return false;
+}
+
 /** What the restart did before the wait: the stop, the third SessionStart, and the daemons after each. */
 export interface Restart {
   readonly stop: BundleRun & { readonly at: string };
