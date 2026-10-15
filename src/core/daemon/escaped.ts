@@ -5,8 +5,11 @@ import { setTimeout as sleep } from "node:timers/promises";
 import type { RunnerAdapter, RunOptions, TestFileRef } from "../types/index.js";
 import { lowerWhile } from "./low-priority.js";
 import {
+  childrenOf,
   describe,
+  exited,
   GRACE_MS,
+  lifeOf,
   type ProcessEntry,
   type StopNote,
   type Stopped,
@@ -58,6 +61,8 @@ export class EscapedChildren {
   readonly #born: number;
   /** The group's other members at the start, by `key`; `null` when the daemon leads no group. */
   readonly #strangers: Promise<ReadonlySet<string> | null>;
+  /** The marks of the daemon's children by `key`, each read once (`carriers`). */
+  readonly #childMarks = new Map<string, string | null | undefined>();
 
   constructor(token: string = randomUUID(), self: number = process.pid) {
     this.env = { [CHILD_VARIABLE]: token };
@@ -117,39 +122,50 @@ export class EscapedChildren {
   }
 
   /**
-   * The carriers of `lane`'s mark started since `since`, for `lowerWhile`
-   * (001 D11 Capacity, spec 004 D2), among the daemon's descendants and its group's orphans
-   * only: an environ read per process started since, on a busy host, would
-   * cost hundreds of reads a second. A process that left both, detached and
-   * reparented outside the group, keeps its priority; the stop after the run
-   * still finds it.
+   * The daemon's own children, every thread's, that carry `lane`'s mark and
+   * started since `since`, for `lowerWhile` (001 D11 Priority, task 001-393):
+   * a Vitest fork worker, or a thread worker's child, from its start. Read
+   * from `/proc/<daemon>/task/<tid>/children`, a few small reads where a scan of
+   * `/proc` reads every process, so it can run every 100 ms.
    */
   async carriers(lane: string, since: number): Promise<ProcessEntry[]> {
     if (process.platform !== "linux") return [];
-    const all = await snapshot();
-    const strangers = await this.#strangers.catch(() => null);
-    const descendants = descendantsOf([this.#self], all);
-    const foreign = strangers === null ? new Set<number>() : lineOf(strangers, all);
-    const near = (entry: ProcessEntry) =>
-      descendants.has(entry.pid) ||
-      (strangers !== null && entry.pgrp === this.#self && !foreign.has(entry.pid));
-    const entries = all.filter((e) => e.pid !== this.#self && e.start >= since && near(e));
-    const marks = await Promise.all(entries.map(({ pid }) => this.#markOf(pid)));
+    const all = childrenOf(this.#self).flatMap((pid) => statOf(pid) ?? []);
+    const now = new Set(all.map(key));
+    for (const known of this.#childMarks.keys())
+      if (!now.has(known)) this.#childMarks.delete(known);
+    // Read again until it is 100 ms old: until its exec, a child shows the daemon's environ.
+    const execed = uptimeTicks() - TICKS_PER_SECOND / 10;
+    const entries = all.filter(({ start }) => start >= since);
+    const marks = await Promise.all(
+      entries.map(async (entry) => {
+        if (this.#childMarks.has(key(entry))) return this.#childMarks.get(key(entry));
+        const mark = await this.#markOf(entry.pid);
+        if (entry.start < execed) this.#childMarks.set(key(entry), mark);
+        return mark;
+      }),
+    );
     return entries.filter((_, i) => marks[i] === lane);
   }
 
   /** `scope` `null` is the exit. */
   async #stop(scope: Scope | null): Promise<{ found: Found; stopped: Stopped }[]> {
     if (process.platform !== "linux") return [];
-    let entries = await snapshot();
-    if (await this.#workersGone(entries, scope)) entries = await snapshot();
+    const left = await this.#workersGone(scope);
     const stopped: { found: Found; stopped: Stopped }[] = [];
     // By identity, pid and start time, through every round (review 001-149 S2).
     const seen = new Set<string>();
-    // A round's kills orphan the children of what it killed, which the next finds in the group.
+    // A round's kills orphan the children of what it killed, which the next finds in the group
+    // once they are gone, every thread of theirs (task 001-400).
     for (let round = 0; round < ROUNDS; round++) {
-      if (round > 0) entries = await snapshot();
+      const entries = await snapshot();
       const found = (await this.#find(entries, scope)).filter(({ entry }) => !seen.has(key(entry)));
+      // The first round also stops what the wait left: it carried the mark when the wait began.
+      const known = new Set(found.map(({ entry }) => key(entry)));
+      if (round === 0)
+        found.push(
+          ...left.filter((entry) => !known.has(key(entry))).map((entry) => ({ entry, own: true })),
+        );
       if (found.length === 0) break;
       for (const { entry } of found) seen.add(key(entry));
       // A round's pids are distinct, so its stopped are found by pid.
@@ -158,31 +174,33 @@ export class EscapedChildren {
         const of = byPid.get(one.pid);
         if (of !== undefined) stopped.push({ found: of, stopped: one });
       }
+      await gone(found.map(({ entry }) => entry));
     }
     return stopped;
   }
 
   /**
    * Vitest resolves a run before its workers exit, and they carry the mark:
-   * the daemon's own children of the run's lane get up to the grace to go
-   * first. One still there, such as a thread worker's child, is stopped with
-   * the rest. Whether there were any to wait for.
+   * the daemon's own children of the run's lane get up to the grace to be
+   * gone, every thread of theirs, so their children are the reaper's when the
+   * scan runs (tasks 001-395, 001-400). A child already exiting reads no
+   * mark and is waited for whatever its lane. Those still there at the grace:
+   * one still running, such as a thread worker's child, is stopped with the
+   * rest; one still exiting is no link to the daemon (`statOf`), so its
+   * children are taken as orphans, named with its pid alone.
    */
-  async #workersGone(entries: readonly ProcessEntry[], scope: Scope | null): Promise<boolean> {
+  async #workersGone(scope: Scope | null): Promise<ProcessEntry[]> {
     const since = scope?.since ?? this.#born;
-    const children = entries.filter(({ ppid, start }) => ppid === this.#self && start >= since);
+    const children = childrenOf(this.#self).flatMap((pid) => {
+      const life = lifeOf(pid);
+      return life !== null && life.start >= since ? [life] : [];
+    });
     const marks = await Promise.all(children.map(({ pid }) => this.#markOf(pid)));
-    const carrying = marks.map((mark) =>
-      scope === null ? mark !== undefined : mark === scope.lane,
+    const waited = children.filter(
+      (child, i) =>
+        child.dying || (scope === null ? marks[i] !== undefined : marks[i] === scope.lane),
     );
-    let alive = children.filter((_, i) => carrying[i]);
-    if (alive.length === 0) return false;
-    const deadline = Date.now() + GRACE_MS;
-    while (alive.length > 0 && Date.now() < deadline) {
-      await sleep(25);
-      alive = survivors(alive);
-    }
-    return true;
+    return gone(waited);
   }
 
   async #find(entries: readonly ProcessEntry[], scope: Scope | null): Promise<Found[]> {
@@ -374,7 +392,16 @@ function descendantsOf(roots: readonly number[], entries: readonly ProcessEntry[
   return found;
 }
 
-/** The ones still running as the same process: same pid, same start time. */
-function survivors(entries: readonly ProcessEntry[]): ProcessEntry[] {
-  return entries.filter((entry) => statOf(entry.pid)?.start === entry.start);
+/**
+ * Waits up to the grace for each of `entries` to be gone, every thread of
+ * it (`exited`), and resolves with those still there.
+ */
+async function gone(entries: readonly ProcessEntry[]): Promise<ProcessEntry[]> {
+  let left = entries.filter((entry) => !exited(entry));
+  const deadline = Date.now() + GRACE_MS;
+  while (left.length > 0 && Date.now() < deadline) {
+    await sleep(25);
+    left = left.filter((entry) => !exited(entry));
+  }
+  return left;
 }
