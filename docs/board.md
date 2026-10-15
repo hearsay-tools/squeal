@@ -1145,7 +1145,7 @@ Spec: `specifications/010-ci-cost/spec.md`. Sections D1 to D6. Approved as a fir
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 010-20 three-day measurement | planned (from 2026-10-18 21:30 UTC, three days after 1f7f8a02) | `/researcher`, read-only on GitHub: G5 and the Testing measures against `research/ci-run-triggers.md` 1 and 5; shard walls; every `cand/*` push had a run; no cancelled main run. | `lessons.md` committed; open questions 1 and 2 carry numbers for the human. |
+| 010-20 three-day measurement | planned (from 2026-10-18 19:32 UTC, three days after 1f7f8a02 landed; its numbers decide step two) | `/researcher`, read-only on GitHub: G5 and the Testing measures against `research/ci-run-triggers.md` 1 and 5; shard walls; every `cand/*` push had a run; no cancelled main run. | `lessons.md` committed; open questions 1 and 2 carry numbers for the human; a recommendation on step two (D8 to D11) from G5. |
 
 ## Later
 
