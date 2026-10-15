@@ -85,6 +85,23 @@ describe("claimRetries", () => {
     expect(readRetries(store)[0]?.claim).toEqual({ worktreeId: OTHER, at: 8 });
   });
 
+  it("gives a request joining a live claimant's key to that claimant, until it dies (review 001-398, B1)", () => {
+    const store = freshStore();
+    const live = new Set([WT, OTHER]);
+    const isLive = (id: string) => live.has(id);
+    askRetry(store, ask("s1"));
+    expect(claimRetries(store, FILE, "k1", WT, 5, isLive)).toBe(true);
+    askRetry(store, ask("s2"));
+    expect(claimRetries(store, FILE, "k1", OTHER, 6, isLive)).toBe(false);
+    expect(readRetries(store).map((r) => r.claim)).toEqual([
+      { worktreeId: WT, at: 5 },
+      { worktreeId: WT, at: 5 },
+    ]);
+    live.delete(WT);
+    expect(claimRetries(store, FILE, "k1", OTHER, 7, isLive)).toBe(true);
+    expect(readRetries(store).map((r) => r.claim?.worktreeId)).toEqual([OTHER, OTHER]);
+  });
+
   it("frees a claim its worktree gives back, and never takes an ended request", () => {
     const store = freshStore();
     askRetry(store, ask("s1"));

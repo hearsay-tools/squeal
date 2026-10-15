@@ -154,11 +154,14 @@ export function cancelRetries(
 }
 
 /**
- * Takes the pending requests for `testFile` at `key` for `worktreeId`'s
- * daemon: those no daemon claimed, this worktree's own (its earlier daemon
- * exited) and those whose claimant `live` says has no live daemon. Returns
- * whether any pending request is now this worktree's, in one transaction,
- * so two daemons at the key never both take it.
+ * Decides, in one transaction, which daemon runs the pending requests for
+ * `testFile` at `key`: one owner for the file and key, so two daemons there
+ * never both queue it (review 001-398, B1). While another worktree's live
+ * daemon (`live`) holds a claim there, every pending request at the key is
+ * that daemon's, a session joining since included: its one run ends them.
+ * Otherwise they are all `worktreeId`'s: those no daemon claimed, this
+ * worktree's own (its earlier daemon exited) and a dead claimant's. Returns
+ * whether they are now this worktree's to run.
  */
 export function claimRetries(
   store: Store,
@@ -170,20 +173,21 @@ export function claimRetries(
 ): boolean {
   return store.transaction(() => {
     const records = readRetries(store);
-    const ids = new Set(
-      retriesAt(records, testFile, key)
-        .filter((r) => r.end === null)
-        .filter(
-          (r) => r.claim === null || r.claim.worktreeId === worktreeId || !live(r.claim.worktreeId),
-        )
-        .map((r) => r.id),
-    );
-    if (ids.size === 0) return false;
-    writeRetries(
-      store,
-      records.map((r) => (ids.has(r.id) ? { ...r, claim: { worktreeId, at } } : r)),
-    );
-    return true;
+    const pending = new Set(retriesAt(records, testFile, key).filter((r) => r.end === null));
+    if (pending.size === 0) return false;
+    const owner = [...pending]
+      .map((r) => r.claim)
+      .find((c) => c !== null && c.worktreeId !== worktreeId && live(c.worktreeId));
+    const claim = owner ?? { worktreeId, at };
+    const moves = (r: RetryRecord) =>
+      pending.has(r) && (owner === undefined || r.claim?.worktreeId !== claim.worktreeId);
+    if (records.some(moves)) {
+      writeRetries(
+        store,
+        records.map((r) => (moves(r) ? { ...r, claim } : r)),
+      );
+    }
+    return owner === undefined;
   });
 }
 
