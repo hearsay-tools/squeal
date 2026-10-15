@@ -2,9 +2,9 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { awaitingInstallNote } from "../../src/core/delivery/awaiting-install.js";
 import { formatRegistration } from "../../src/core/delivery/index.js";
 import { readDaemonNotes } from "../../src/core/notes.js";
+import { awaitingInstallNote } from "../../src/core/scheduler/awaiting-install.js";
 import {
   AWAITING_INSTALL_REASON,
   awaitsInstall,
