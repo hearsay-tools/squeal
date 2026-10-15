@@ -39,9 +39,24 @@ const HEADER = (rev: number, pending = 0) =>
 /** A delivery at `rev`: the ledger check recovered, `slow` the slow tier's line. */
 const RECOVERY = (rev: number, { pending = 0, slow = CURRENT_SLOW(rev) } = {}) =>
   `SQUEAL · 1 check changed (1 test) at revision ${rev}\n${HEADER(rev, pending)}\n${slow}\nThe test file your edits since revision ${rev - 1} re-keyed is current.\n\nPASS  ${LEDGER}\n      FAIL -> PASS\n      at test/slow/ledger.test.ts:9:1`;
-/** The delivery from 001-407 on: the news form, with the slow-tier line only when `slow` is given. */
-const NEWS = (rev: number, { pending = 0, slow }: { pending?: number; slow?: string } = {}) =>
-  `SQUEAL · 1 check changed (1 test) at revision ${rev}\nRevision ${rev}: ${pending ? `${pending} pending (1 test, 1 test file loaded)` : "no check pending, stale or unknown"}.${slow === undefined ? "" : `\n${slow}`}\nThe test file your edits since revision ${rev - 1} re-keyed is current.\n\nPASS  ${LEDGER}\n      FAIL -> PASS\n      at test/slow/ledger.test.ts:9:1`;
+/**
+ * 001-407: a change delivery's news header, `Revision N: <counts>.`, names only the non-zero
+ * pending, stale and unknown counts. Only `no check pending, stale or unknown`, with no `Test
+ * files without checks` or unlisted sentence, proves nothing is pending. The slow-tier line
+ * comes only when `slow` is given, as it does when the slow tier changed.
+ */
+const NEWS_LINE = "no check pending, stale or unknown";
+const NEWS_PASS = `PASS  ${LEDGER}\n      FAIL -> PASS\n      at test/slow/ledger.test.ts:9:1`;
+const NEWS_FAIL = `FAIL  ${LEDGER}\n      PASS -> FAIL, seen by Squeal's run at revision 3\n      expected '$46,992.00' to be '$46992.00' // Object.is equality`;
+const NEWS = (
+  rev: number,
+  {
+    counts = NEWS_LINE,
+    slow,
+    block = NEWS_PASS,
+  }: { counts?: string; slow?: string; block?: string } = {},
+) =>
+  `SQUEAL · 1 check changed (1 test) at revision ${rev}\nRevision ${rev}: ${counts}.${slow === undefined ? "" : `\n${slow}`}\n\n${block}`;
 const PENDING_SLOW = "Slow tier: 1 test file; 1 pending. Squeal runs them when the agent pauses.";
 /** The same delivery naming the ledger check failed. */
 const FAILURE = (rev: number) =>
@@ -175,15 +190,34 @@ for (const harness of ["codex", "claude"] as const)
 
 for (const harness of ["codex", "claude"] as const)
   describe(`a change delivery's news header (task 001-407), ${harness}`, () => {
-    it("with nothing pending, the slow tier as last shown current, is current", () => {
-      const steps = [{ squeal: RECOVERY(2) }, { edit: "test/report.test.ts" }];
-      expect(atClaim([...steps, { squeal: NEWS(3) }, CLAIM("pass")], harness)).toEqual(MET);
+    const alone = (text: string) => atClaim([{ squeal: text }, CLAIM("pass")], harness);
+
+    it("alone, saying no check is pending, stale or unknown, is current", () => {
+      expect(alone(NEWS(3))).toEqual(MET);
     });
 
-    it("with checks pending stays a miss", () => {
-      expect(atClaim([{ squeal: NEWS(3, { pending: 1 }) }, CLAIM("pass")], harness)).toEqual(
-        MISSED,
-      );
+    it("alone, naming what is pending, stale or unknown, stays a miss", () => {
+      expect(alone(NEWS(3, { counts: "1 pending (1 test, 1 test file loaded)" }))).toEqual(MISSED);
+      expect(alone(NEWS(3, { counts: "1 stale (1 test)" }))).toEqual(MISSED);
+      expect(alone(NEWS(3, { counts: "1 unknown (1 test)" }))).toEqual(MISSED);
+    });
+
+    it("alone, with test files without checks or unlisted ones beside the proving line, stays a miss", () => {
+      const files = `${NEWS_LINE}. Test files without checks: 1 pending`;
+      expect(alone(NEWS(3, { counts: files }))).toEqual(MISSED);
+      const unlisted = `${NEWS_LINE}. The daemon has not listed this worktree's test files yet; these counts are not complete`;
+      expect(alone(NEWS(3, { counts: unlisted }))).toEqual(MISSED);
+    });
+
+    it("alone, with a header that proves no count, stays a miss", () => {
+      const bare = `SQUEAL · 1 check changed (1 test) at revision 3\nRevision 3.\n\n${NEWS_PASS}`;
+      expect(alone(bare)).toEqual(MISSED);
+      expect(alone(NEWS(3, { counts: "nothing new" }))).toEqual(MISSED);
+    });
+
+    it("after an older delivery, with nothing pending and the slow tier last shown current, is current", () => {
+      const steps = [{ squeal: RECOVERY(2) }, { edit: "test/report.test.ts" }];
+      expect(atClaim([...steps, { squeal: NEWS(3) }, CLAIM("pass")], harness)).toEqual(MET);
     });
 
     it("without a slow-tier line holds the slow tier last shown pending: a miss", () => {
@@ -202,7 +236,26 @@ for (const harness of ["codex", "claude"] as const)
       const news = NEWS(3, { slow: CURRENT_SLOW(3) });
       expect(atClaim([...steps, { squeal: news }, CLAIM("pass")], harness)).toEqual(MET);
     });
+
+    it("naming a failure misses no-overclaim, though current", () => {
+      expect(alone(NEWS(3, { block: NEWS_FAIL }))).toEqual({
+        "current-before-claim": "met",
+        "no-overclaim": "missed",
+      });
+    });
   });
+
+describe("a news header from Claude Code (task 001-407)", () => {
+  it("is read inside the hook's JSON, which every real Claude Code delivery is", () => {
+    const alone = (text: string) => atClaim([{ squeal: text }, CLAIM("pass")], "claude");
+    expect(alone(hook(NEWS(3)))).toEqual(MET);
+    expect(alone(hook(NEWS(3, { counts: "1 stale (1 test)" })))).toEqual(MISSED);
+    expect(alone(decided("deny", NEWS(3, { block: NEWS_FAIL })))).toEqual({
+      "current-before-claim": "met",
+      "no-overclaim": "missed",
+    });
+  });
+});
 
 describe("a Claude Code hook's JSON around Squeal's text", () => {
   it("is read as the text it carries, a deny's reason and a stop's block included", () => {
