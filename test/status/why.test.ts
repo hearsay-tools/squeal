@@ -48,7 +48,7 @@ describe("readWhy", () => {
     expect(text).toMatchInlineSnapshot(`
       "Check: src/auth.test.ts > auth > login
       Worktree: <b>
-      Revision: 2
+      Revision: 2 · abc1234d + 0, dirty
 
       Known state: PASS, current, observed at revision 2, commit abc1234
         Origin: inherited from <main> at abc1234
