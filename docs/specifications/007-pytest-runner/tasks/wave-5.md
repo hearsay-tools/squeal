@@ -105,3 +105,17 @@ Owns: `reviews/wave-5.75.md` only, which you commit. Your locked full run (`floc
 Done when: B1 has a verdict backed by your probe, and the verdict names `adc26b1d`.
 
 Use /reviewer.
+
+## Third narrow re-review of cand/0.1.195 at 3ed0dae4 (wave 5.875)
+
+The human approved one more round (option (a)), 2026-10-15. Use /reviewer.
+
+- **Outcome:** a PASS or FAIL verdict on `3ed0dae477ff908debdf31d7ef33c6a1349b2bc6` for the wave-5.75 blocker only, written to `docs/specifications/007-pytest-runner/reviews/wave-5.875.md` and committed (that file only).
+- **Read:** `reviews/wave-5.5.md` and `reviews/wave-5.75.md` (B1), spec 007 D2, and `status.md` from 2026-10-15.
+- **Scope:** repair `8527f236`. `nodeFailing` in `src/core/delivery/attribution.ts` now counts a failing check as a Node runner's only when its project is no pytest project of a cleanly loaded policy (or of no policy file) and its test file is JavaScript or TypeScript (`/\.[cm]?[jt]sx?$/`). The rest is the reviewed 007-40/007-44 rebased onto main, whose new commits touch only `evals/` and `test/evals/`. Key 10 is unchanged (`793e7117…`).
+- **Done when:**
+  - The wave-5.75 doctest residual (a text doctest after the policy is missing, is a directory, or drops the project) no longer gets the sentence in either caller, the delta and the registration.
+  - A Vitest or node:test failure still gets it with no Node install, both with no policy file and with a clean policy.
+  - `test/delivery/dependencies-runner.test.ts` proves both.
+  - `npm ci`, lint, typecheck, and `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`; that locked run is the landing gate. Name any file that fails under load but passes alone.
+  - No `npm run build`. New findings outside B1 are reported as should-fix, not blockers, unless proven breaks.
