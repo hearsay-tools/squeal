@@ -13,3 +13,19 @@ Owns: `src/runners/pytest/adapter.ts` (the listing seam only), `adapter-files.ts
 Done when: one live adapter goes through allow, disallow and re-allow of `tests/build/test_a.py` by editing `pytest.ini` as a `change`, and lists, drops and lists the file again, with no reopen between edits. The regression fails on main and passes after. A no-environment project still lists from the config. Full-suite verdict: `squeal run --all --wait`; expect bundle and key-format drift.
 
 Use /worker.
+
+## Review of cand/0.1.191 (007-42)
+
+Outcome: a PASS or FAIL verdict on `cand/0.1.191` at `41979b98`, which is main 0.1.190 plus 007-42 (`382d253e` picked), a key re-pin and the build. The verdict decides whether it may land.
+
+Shape: review. Scope:
+- 007-42's change to `invalidate` in `src/runners/pytest/adapter.ts`, against `reviews/wave-4.md` S1 and this file's 007-42 brief. Re-run the S1 probe (allow, disallow, re-allow on one live adapter).
+- Check that a relist on every config change neither drops a file's results needlessly nor re-keys it.
+- Check that a config moving to another file (a `pytest.ini` created over `pyproject.toml`) still relists.
+- The worker reports that the listing reads `norecursedirs` and `python_files` but not `testpaths`. Say whether that leaves a gap D5 cares about.
+
+Owns: `reviews/wave-5.md` only, which you commit. Your locked full run (`flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`) is also the landing gate, so name every failing test and say whether it fails alone.
+
+Done when: every finding has a file and line, a failure scenario and a severity, and the verdict names `41979b98`.
+
+Use /reviewer.
