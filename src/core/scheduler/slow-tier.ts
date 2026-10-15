@@ -381,7 +381,7 @@ export class SlowTier {
     const atOnce = context.runner.slowWidth?.(picked.map(({ file }) => file.ref));
     if (atOnce !== undefined) picked.splice(Math.max(1, atOnce));
     const perFile = context.policy.slow.maxWorkers;
-    const taken = context.capacity?.take(picked.length * perFile) ?? null;
+    const taken = context.capacity?.take(picked.length * perFile, "slow") ?? null;
     if (taken === WAIT_FOR_CAPACITY && !this.#requested) {
       ledger.commit();
       return WAIT_FOR_CAPACITY;

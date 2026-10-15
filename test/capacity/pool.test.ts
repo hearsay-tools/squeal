@@ -6,6 +6,7 @@ import {
   createPermitPool,
   type PermitPool,
   type PoolCapacity,
+  type PoolLane,
   type PoolLease,
 } from "../../src/core/capacity/index.js";
 import { readMarks } from "../../src/core/capacity/marks.js";
@@ -47,8 +48,8 @@ function daemon(worktreeId: string, capacity: PoolCapacity = { hostSlots: 8 }): 
 }
 
 /** A backlog tier of `files` files, as `selectTier` and `startTier` take its lease. */
-function tier(pool: PermitPool, files: number): PoolLease | null {
-  const lease = pool.acquire(files);
+function tier(pool: PermitPool, files: number, lane?: PoolLane): PoolLease | null {
+  const lease = pool.acquire(files, lane);
   lease?.shrinkTo(files);
   return lease;
 }
@@ -146,6 +147,43 @@ describe("the per-user permit pool", () => {
       expect(tier(pools[older], 200)?.grant).toBe(3);
 
       for (const pool of [a, pools.b, pools.c]) pool.close();
+    }
+  });
+
+  // Task 004-61: when permits are short, fast files are granted first.
+  test("a fast lane's waiter is served before an older slow lane's, whichever reaches its boundary first", () => {
+    for (const first of ["slow", "fast"] as const) {
+      const a = daemon(`a-${first}`);
+      const slow = daemon(`slow-${first}`);
+      const fast = daemon(`fast-${first}`);
+      const holder = tier(a, 200);
+      expect(holder?.grant).toBe(8);
+      // Both wait on their free worker, the slow lane's since earlier.
+      clock += 1_000;
+      const slowTier = tier(slow, 200, "slow");
+      clock += 1_000;
+      const fastTier = tier(fast, 200);
+      expect([slowTier?.grant, fastTier?.grant]).toEqual([1, 1]);
+      expect(readMarks(dir, "reader", clock).find((m) => m.id === `slow-${first}`)?.slow).toBe(
+        true,
+      );
+
+      // The holder gives back two permits, then has no more backlog work.
+      holder?.shrinkTo(6);
+      if (first === "slow") {
+        // The older slow waiter's boundary comes first, yet it leaves both permits to the fast one.
+        slowTier?.release();
+        clock += 1_000;
+        expect(tier(slow, 200, "slow")?.grant).toBe(1);
+        fastTier?.release();
+        clock += 1_000;
+        expect(tier(fast, 200)?.grant).toBe(3);
+      } else {
+        fastTier?.release();
+        clock += 1_000;
+        expect(tier(fast, 200)?.grant).toBe(3);
+      }
+      for (const pool of [a, slow, fast]) pool.close();
     }
   });
 

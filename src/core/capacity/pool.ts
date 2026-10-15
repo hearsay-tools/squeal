@@ -41,14 +41,17 @@ export interface PoolLease {
   release(): void;
 }
 
+/** Whose tier asks (task 004-61): a fast lane's waiters are served before a slow lane's. */
+export type PoolLane = "fast" | "slow";
+
 export interface PermitPool {
   /**
-   * The grant for a tier that wants `want` workers, or `null` when it may
-   * not start yet: the daemon's free worker is another lane's tier's and no
-   * permit is free. Never blocks; that other tier's end is the next chance.
-   * When it throws it holds nothing it took.
+   * The grant for a tier of `lane` that wants `want` workers, or `null` when
+   * it may not start yet: the daemon's free worker is another lane's tier's
+   * and no permit is free. Never blocks; that other tier's end is the next
+   * chance. When it throws it holds nothing it took.
    */
-  acquire(want: number): PoolLease | null;
+  acquire(want: number, lane?: PoolLane): PoolLease | null;
   /** Releases every lease and clears the mark. */
   close(): void;
 }
@@ -108,6 +111,8 @@ class LockFilePool implements PermitPool {
   readonly #now: () => number;
   readonly #leases = new Set<Lease>();
   #since: number | null = null;
+  /** Every acquisition waiting since `#since` was a slow lane's. */
+  #slowWaiting = false;
   #idleSince: number | null = null;
   #timer: NodeJS.Timeout | null = null;
   #mark: PoolMark | null = null;
@@ -119,7 +124,7 @@ class LockFilePool implements PermitPool {
     this.#now = options.now ?? Date.now;
   }
 
-  acquire(want: number): PoolLease | null {
+  acquire(want: number, lane: PoolLane = "fast"): PoolLease | null {
     if (this.#closed) return null;
     const { dir, owner, project } = this.#options;
     preparePrivateDir(dir, this.#options.uid ?? currentUid(), "capacity pool directory");
@@ -132,10 +137,12 @@ class LockFilePool implements PermitPool {
     const others = readMarks(dir, owner.worktreeId, now);
     const inUse = this.#inUse();
     const demand = this.#demand() + wanted;
+    const slow = lane === "slow";
     const me = {
       id: owner.worktreeId,
       want: demand,
       since: this.#since,
+      ...(slow ? { slow } : {}),
       ...(project === undefined ? {} : { project }),
     };
     const shares = fairShares(this.#hostSlots, [me, ...others]);
@@ -150,14 +157,24 @@ class LockFilePool implements PermitPool {
     }
     if (free) target = Math.max(1, target);
     const rank = this.#since ?? now;
+    // Task 004-61: a fast lane's tier leaves free only what older fast waiters lack, a slow
+    // lane's also what every fast waiter lacks, so a short pool serves fast files first.
+    const ahead = (o: PoolMark): boolean => {
+      if (o.since === null) return false;
+      // A slow waiter is ahead of a younger slow tier only; a fast one of any slow tier too.
+      if (o.slow === true) return slow && o.since < rank;
+      return slow || o.since < rank;
+    };
     const reserve = others
-      .filter((o) => o.since !== null && o.since < rank)
+      .filter(ahead)
       .reduce((sum, o) => sum + Math.max(0, (shares.get(o.id) ?? 1) - o.grant), 0);
     const permits = this.#take(Math.max(0, target - (free ? 1 : 0)), reserve);
     const grant = permits.length + (free ? 1 : 0);
     const since = this.#since;
+    const slowWaiting = this.#slowWaiting;
     const mark = this.#mark;
     this.#since = grant >= Math.max(entitled, free ? 1 : 0) ? null : (since ?? now);
+    this.#slowWaiting = this.#since !== null && slow && (since === null || slowWaiting);
     const lease: Lease = { permits, free, want: wanted };
     if (grant > 0) this.#leases.add(lease);
     try {
@@ -167,6 +184,7 @@ class LockFilePool implements PermitPool {
       this.#leases.delete(lease);
       for (const db of permits.splice(0)) db.close();
       this.#since = since;
+      this.#slowWaiting = slowWaiting;
       this.#mark = mark;
       throw error;
     }
@@ -259,6 +277,7 @@ class LockFilePool implements PermitPool {
       want: Math.max(1, want),
       grant,
       since: this.#since,
+      ...(this.#since !== null && this.#slowWaiting ? { slow: true } : {}),
       ...(project === undefined ? {} : { project }),
     };
     writeMark(dir, this.#mark);
