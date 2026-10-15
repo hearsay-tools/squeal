@@ -57,3 +57,19 @@ First: `git reset --hard cez/c24adf20` (a local branch; your three commits are o
 Owns the same files as 010-10. No `docs/` edits, no push.
 
 Done when: `npx vitest list --filesOnly $(grep -Ev '^[[:space:]]*(#|$)' test/version-sensitive.txt)` holds every file the review names, minus `plugin-copy`; the guard fails when you remove one of them (say so, then restore); lint, typecheck and `squeal run --all --wait` pasted; your final message gives the new list count and the guard's rule.
+
+## 010-15 re-review of 010-14
+
+Use /reviewer. Shape: review, second round, narrow.
+
+Outcome: `docs/specifications/010-ci-cost/reviews/wave-1.5.md`, a verdict on `cand/010-10` at 877c1afe.
+
+Read: `reviews/wave-1.md` (B1, S1, N1), the 010-14 brief above, `status.md` (the triage of 2026-10-15).
+
+Range: `git diff bf0a41fb..877c1afe -- .github .claude test`; everything else in it is docs.
+
+Check only: is B1 closed (the actual `vitest list --filesOnly` over the list holds every real node:test caller; the guard fails on an omission; the header's exemptions and its named blind spots are honest); is S1 closed; does the Node 24 job install what its subset needs. Read the candidate's CI run 38781124001 by job (`gh run view`, read-only), including whether the wider Node 24 job passed and its time.
+
+Verification: lint, typecheck, the guard test and `npx vitest list` in your tree. Run the full suite under the lock only if the range touches more than the list, the guard, the workflow and the skill line.
+
+Done when: the findings file is committed alone, findings labelled proven, plausible or unverified, and your final message gives the verdict.
