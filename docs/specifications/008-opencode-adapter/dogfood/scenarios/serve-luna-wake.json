@@ -1,0 +1,10 @@
+{
+  "model": "cliproxy/gpt-6-luna",
+  "cwd": "/home/squeal-e2e/dogfood-008/remeda",
+  "prompts": [
+    "Local experiment in this checkout, not a PR. In packages/remeda, change `purry` (src/purry.ts) so that a call with the wrong number of arguments throws a RangeError whose message names the expected and the received argument counts, instead of the error it throws now. Only edit src/purry.ts. Do not run, wait for or check anything; reply DONE as soon as the edit is made.",
+    "Since my first message, list each message you received and say who sent it. Did anyone ask you to change anything?"
+  ],
+  "gapMs": 90000,
+  "idleMs": 90000
+}
