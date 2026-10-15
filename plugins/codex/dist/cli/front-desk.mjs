@@ -49,10 +49,14 @@ function parseRequest(line) {
       if (request.observeIgnored !== void 0 && typeof request.observeIgnored !== "boolean") {
         return '"observeIgnored" must be true or false';
       }
+      if (request.lane !== void 0 && request.lane !== "fast" && request.lane !== "slow") {
+        return '"lane" must be "fast" or "slow"';
+      }
       return {
         type: "run-all",
         force: request.force === true,
-        ...request.observeIgnored === true ? { observeIgnored: true } : {}
+        ...request.observeIgnored === true ? { observeIgnored: true } : {},
+        ...request.lane === void 0 ? {} : { lane: request.lane }
       };
     case "step-down":
       if (typeof request.version !== "string") return '"version" must be a string';
@@ -159,7 +163,8 @@ function createHandlers(context) {
         remember(requests, requestId, state);
         const full = {
           force: request.force === true,
-          observeIgnored: request.observeIgnored === true
+          observeIgnored: request.observeIgnored === true,
+          ...request.lane === void 0 ? {} : { lane: request.lane }
         };
         context.requestFullSuite(full).then(
           (checkpoint) => {
@@ -201,6 +206,7 @@ function createHandlers(context) {
       case "sync": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         if (context.requestSync === void 0) return errorResponse("this daemon cannot sync");
+        context.onActivity();
         const requestId = randomUUID();
         const state = { revision: null, error: null };
         remember(syncRequests, requestId, state);
