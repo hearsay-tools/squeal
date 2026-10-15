@@ -158,3 +158,34 @@ Then check near variants of the new time pairing:
 - a line older than every start.
 
 Rules as 006-68's. **Writes:** a re-review section in `reviews/wave-13.6.md`, PASS or FAIL, committed.
+
+## 006-72 repair of 006-70 (round 3): the service's own start time, paired with no command
+
+Use /worker. Shape: repair, the third and last round (the human, 2026-10-15). Read `reviews/wave-13.6.md` (both sections) and `tasks/006-67/notes.md`.
+
+Outcome: when a cell kept a start record, the record alone says when the service came up. The grader stops pairing record lines with commands.
+
+Contract:
+- Each `listening` line becomes a timeline step `{ k: "service", started: true }` at the line's own time (from `out/t0`), attributed to no call. `already running` and failed lines add no step.
+- With a record, a classified start command adds no service step and its output decides nothing.
+- Order the record's time against each command's issue time. Say in notes which time each harness's timeline carries.
+- Without a record (every committed cell), grading is as today.
+- Remove `pairStarts` and the own-output precedence. Keep 006-69's `node --check` classifier.
+
+Starting seam: `evals/lib/grade.mjs` (`at`, `pairStarts`, the service branch), `evals/bin/grade.mjs`.
+
+**Owns:** as 006-67's.
+
+**Done when:**
+- regressions in both harnesses, failing before:
+  - round 1's three probes;
+  - round 2's delayed line, both after a retry (a9 false) and during a later failed start;
+  - the two starts in one call (a9 true after the retry);
+  - pilot 2's Sonnet sequence true;
+- the 15 committed atomic files grade identically;
+- lint, typecheck and `squeal run --all --wait` pass.
+
+## 006-73 narrow re-review of `cand/006-66` after 006-72
+
+Use /reviewer. Shape: review, narrow, pinned. Check 006-72's contract against B1's five probes in both harnesses, and that cells without a record grade as before. A listening line after a failure sight is a change after it: the script prints `listening` only when it found no live service. Rules as 006-68's. **Writes:** a third section in `reviews/wave-13.6.md`, PASS or FAIL, committed.
+

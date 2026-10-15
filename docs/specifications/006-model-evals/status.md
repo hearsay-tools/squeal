@@ -160,3 +160,4 @@ Started: 2026-10-10
   - Pilot 2 found row 006-66. The human chose narrow allowances. The probe showed Claude Code asks before any top-level `&` whatever the rules say, which found 006-67 (the grader missed a background start).
   - sol's a9 misses found row 006-71 (measure design).
   - Claude's a9 cells wait for 006-66 and 006-67.
+- 2026-10-15, the human, after the second failing review of 006-67 (006-68 FAIL, then re-review 006-70 FAIL, both on B1, pairing the service's start record with commands): a third round, redesigned. With a record, the service's own `listening` time is the start, attributed to no command. Repair 006-72, then narrow re-review 006-73. The round ends at that verdict. 006-66's Read rule drew no finding in either review and lands with it.
