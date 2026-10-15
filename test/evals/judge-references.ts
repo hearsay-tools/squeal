@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import type { CellRecord } from "../../evals/lib/index.mjs";
+import { type CellRecord, hookText } from "../../evals/lib/index.mjs";
 import {
   CLAIM,
   FLAKE,
@@ -413,11 +413,10 @@ const RETAINED: { file: string; id: string; what: string; misses: string[] }[] =
 
 /** A Claude Code hook's JSON output, as Codex delivers it: the SQUEAL text alone. */
 const unwrapped = (step: string) =>
-  step.replace(/^(Squeal message:\n)(\{.*\})$/s, (whole, head: string, json: string) => {
-    const h = JSON.parse(json).hookSpecificOutput ?? {};
-    const text = h.additionalContext ?? h.permissionDecisionReason;
-    return typeof text === "string" ? `${head}${text}` : whole;
-  });
+  step.replace(
+    /^(Squeal message:\n)(\{.*\})$/s,
+    (_whole, head: string, json: string) => `${head}${hookText(json)}`,
+  );
 
 /**
  * A retained cell as a reference in `harness`: as kept for Claude Code, the session it came from;

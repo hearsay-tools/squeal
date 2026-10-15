@@ -90,7 +90,7 @@ const HOOK_KEYS = [
  * refused and its reason is the tool's result) or a block; an allow's or a defer's reason goes to
  * the debug log, so a reply carrying no other text reads as none (review 006-81 B1).
  */
-function hookText(t) {
+export function hookText(t) {
   if (!t.trimStart().startsWith("{")) return t;
   let reply;
   try {

@@ -143,6 +143,7 @@ export {
   sessionCommand,
 } from "./session.mjs";
 export { simpleCommands } from "./shell.mjs";
+export { hookText } from "./squeal-text.mjs";
 export { fisherLower, fisherTwoSided, lnChoose, wilson } from "./stats.mjs";
 export {
   claudeTimeline,
