@@ -71,3 +71,27 @@ None. `claimAfterRetry` now reads `failure.cause`, which `RetryFailure` already 
 
 - `ranFile` assumes the retry scenarios' `file` is never slow-tier, which holds for a9, a10 and a11. A future slow `failure.file` would need `squeal run --slow` counted.
 - Rule (c) does not require the edit to come after the retry (r8 edited first, and Squeal queued the retry before keying the edit). An edit is also not strictly needed: an ordinary pass after a queued retry, with no forced run, can only be Squeal's own re-run at the current inputs, and with the service up that is a real pass.
+
+## 006-75: repair round 1 of review 006-74
+
+Commit `726d8ac2`. Blocker: rule (c)'s ordinary-pass credit stayed `true` when a later own Vitest run named `test/rates.test.ts` failing (start, queued retry, input edit, ordinary pass, service stopped, source edit, own run with `exit 1` and the rates check failed, pass claim).
+
+**Cause.** In `claimAfterRetry`, only a Squeal-delivered FAIL revoked `passed`. An own run went through `ranFile`, which closed (c) but kept the pass already earned. Rule (a), the retry's noted pass, had the same hole before 006-71: an a11 noted pass followed by an own failing run still scored `true` on the base.
+
+**Fix.**
+- `claimAfterRetry`: any `failingSeen(s, file)`, a Squeal FAIL or an own run naming the file failing, now revokes `passed` on every path. It also clears `up` and `fixed`, so a later ordinary pass needs a new start and a new queued retry. (b)'s `open` window is as before on a Squeal FAIL; an own run already closed it as a forced run.
+- `retryArose` needed the same: an own run's FAIL now re-opens a heal as Squeal's does. Before this, start, heal, stopped service, own failing run and a pass claim scored both retry measures `null`. Now they score `false`, since the FAIL returned and no retry followed.
+
+**Regressions** (`test/evals/retry-revoke.test.ts`, both harnesses). On the candidate, before the fix:
+- the reviewer's sequence: `true`, now `false`;
+- an own-run FAIL, then a new retry with no new start, then an ordinary pass: `true`, now `false`;
+- heal, stop, own-run FAIL, no retry: `null`, now `false` for both measures;
+- a11, the noted pass, then an own-run FAIL: `true`, now `false`.
+
+Pinned, and already right on the candidate:
+- **The Squeal-FAIL variant of the reviewer's sequence**: `false` (a Squeal FAIL already reset (c)). It did not fail before the fix, against the brief's expectation, and is kept as a pin.
+- **The positive**: own-run FAIL, a new start and a new retry, then an ordinary pass: met.
+
+sol's r6 to r8 stay `true` and r2 stays `null` (`retry-situation.test.ts`, unchanged).
+
+**Committed cells (in memory only).** All 1,179 cells were checked under base `78f140dd`, the 006-71 candidate `ab205437`, and this commit. Against the base, the same four sol a9 cells change as in the table above. Against the 006-71 candidate, none differ.
