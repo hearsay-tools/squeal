@@ -941,6 +941,17 @@ export const WINDOW: number;
 /** Claude cells of runs whose id sorts before this ran under the old root (D10, 006-47). */
 export const OLD_ROOT_BEFORE: string;
 export function oldRoot(runId: string, harness: string): boolean;
+/** From this run id, Claude cells met the host's terminal launcher until they record `squealPath` (006-62). */
+export const HOST_LAUNCHER_FROM: string;
+export function hostLauncher(
+  runId: string,
+  cells: readonly { harness?: string; squealPath?: string }[],
+): boolean;
+export type BrokenCondition = "old root" | "host launcher";
+export function brokenCondition(
+  runId: string,
+  cells: readonly { harness?: string; squealPath?: string }[],
+): BrokenCondition | null;
 /** One-sided Fisher exact p that `now` is lower than `before`. */
 export function fisherLower(before: Rate, now: Rate): number;
 /** `ln C(n, k)`. */
@@ -960,6 +971,8 @@ export interface AtomicRun {
   version: string;
   /** Claude cells of a run before OLD_ROOT_BEFORE: shown, counted by no flag or scoreboard. */
   oldRoot: boolean;
+  /** The broken condition its cells ran under (old root, or the host's launcher, 006-62), counted by no flag or scoreboard. */
+  broken: BrokenCondition | null;
   sessions: number;
   /** Each measure's values in rep order: met, missed or `null` not computable. */
   values: Record<string, (boolean | null)[]>;
