@@ -11,6 +11,7 @@ import {
 import { type OpenCodeRun, opencodeUnavailable, textOf } from "../helpers/opencode.js";
 import { fixtureInstall, type Install } from "./install.js";
 import { OpenCodeE2E, type OpenCodeE2EOptions } from "./opencode-fixture.js";
+import { timeline, watchConsumers } from "./opencode-timeline.js";
 import { MATH, SLOW } from "./sources.js";
 import { daemonPids, until } from "./support.js";
 
@@ -34,6 +35,11 @@ const FAIL = "PASS -> FAIL, seen by Squeal";
 const ADDS = "FAIL  test/math.test.ts > math > adds";
 /** How long silence must hold after the last expected request. */
 const QUIET_MS = 4_000;
+/**
+ * Stop's longest wait, so the idle's deadline is 2 s, not 500 ms (D4): the tests that settle the
+ * regression before the turn ends test its delivery, not the deadline (review 008-27 S1).
+ */
+const STOP_WAIT_MS = 1_500;
 
 let install: Install = { ok: false, reason: "the install did not run" };
 beforeAll(async () => {
@@ -215,7 +221,7 @@ describe.skipIf(unavailable !== undefined)(
     it("serve: news at the end of a turn continues it once, then silence", {
       timeout: 240_000,
     }, async (ctx) => {
-      const e2e = fixture(ctx);
+      const e2e = fixture(ctx, { stopWaitMs: STOP_WAIT_MS });
       const run = await e2e.run(
         {
           mode: "serve",
@@ -258,9 +264,11 @@ describe.skipIf(unavailable !== undefined)(
     it("run: news at the end of the turn is stored in the session, and run --continue reads it once", {
       timeout: 300_000,
     }, async (ctx) => {
-      const e2e = fixture(ctx, { started: true });
+      const e2e = fixture(ctx, { started: true, stopWaitMs: STOP_WAIT_MS });
       // Goal 4 and D5 under `run`: the regression is known before the turn's last reply returns,
       // so it is undelivered when the turn ends and `run` disposes the instance.
+      let consumers: ReturnType<typeof watchConsumers> = Promise.resolve([]);
+      const exits: Record<string, number> = {};
       const first = await e2e.run(
         {
           mode: "run",
@@ -275,10 +283,13 @@ describe.skipIf(unavailable !== undefined)(
             e2e.edit("math", MATH("-"));
             await e2e.settled("fail");
           } finally {
+            // From the last reply to the exit: Stop's delivery, then `dispose`'s end.
+            consumers = watchConsumers(e2e.store.database, world);
             e2e.release(1);
           }
         },
       );
+      exits.run = Date.now();
       expectClean(first, "run");
       // No model request after the last reply: `run` ends at idle.
       expect(first.requests).toHaveLength(2);
@@ -289,14 +300,24 @@ describe.skipIf(unavailable !== undefined)(
         ),
       ).toBe(0);
       const next = await e2e.continue({ plan: [{ text: "noted" }], prompt: "what is new?" });
+      exits["run --continue"] = Date.now();
+      // Where a missed report went (review 008-27 S1): the stores, logs and exits, timed.
+      const marked = timeline({
+        first,
+        session: first.sessionID ?? "",
+        database: e2e.store.database,
+        stopWaitMs: STOP_WAIT_MS,
+        consumers: await consumers,
+        exits,
+      });
       expectClean(next, "run");
-      expect(next.sessionID).toBe(first.sessionID);
+      expect(next.sessionID, marked).toBe(first.sessionID);
       const [resumed, more] = next.requests;
-      expect(more).toBeUndefined();
+      expect(more, marked).toBeUndefined();
       // The stored continuation, a user message between the last reply and the new prompt.
       const since = added(resumed, first.requests[1]).filter((m) => m.role === "user");
       const stored = since.filter((m) => textOf(m).includes(FAIL));
-      expect(stored).toHaveLength(1);
+      expect(stored, marked).toHaveLength(1);
       expect(textOf(stored[0])).toMatch(/^SQUEAL · /);
       expect(textOf(stored[0])).toContain(ADDS);
       // Only the report: the plugin instance OpenCode re-creates to store it adds no header.
