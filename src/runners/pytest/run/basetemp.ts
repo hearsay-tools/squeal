@@ -28,25 +28,36 @@ export function runBasetemp(cacheDir: AbsolutePath): RunBasetemp {
   };
 }
 
-/** A character of one path component in failure text, and what ends one. */
-const NAME = "[^/\\s'\"`):,]";
+/** What ends one path component in failure text. */
 const END = "[/\\s'\"`):,]";
 
 /**
  * Failure text with a batch's basetemp written as Squeal writes it every
  * run: the basetemp itself as `<basetemp>`, and the counter pytest appends
- * to a numbered directory just below it, a test's `tmp_path` or a factory's
- * `mktemp`, as `<n>` (`test_reads0` is `test_reads<n>`). Task 007-41: no
- * other part of a path is replaced, so two failures naming two different
- * files keep two fingerprints.
+ * to the test's own `tmp_path` folder as `<n>` (`test_reads0` is
+ * `test_reads<n>`). `name` is the test's node name; without one, as for a
+ * collection error, only the basetemp is replaced. Tasks 007-41, 007-43: no
+ * other part of a path is replaced, so `data1` and `data2` keep two
+ * fingerprints, and a pytest that named the folder otherwise would match
+ * nothing.
  */
-export function scrubBasetemp(text: string, basetemp: AbsolutePath): string {
-  const numbered = `/(${NAME}*?)\\d+(?=${END}|$)`;
-  return text.replace(
-    new RegExp(`${escapeRegExp(basetemp)}(?:${numbered})?(?![\\w.-])`, "g"),
-    (_, prefix: string | undefined) =>
-      prefix === undefined ? "<basetemp>" : `<basetemp>/${prefix}<n>`,
+export function scrubBasetemp(text: string, basetemp: AbsolutePath, name?: string): string {
+  const folder = name === undefined ? null : tmpPathFolder(name);
+  const own = folder === null ? "" : `(?:/${escapeRegExp(folder)}\\d+(?=${END}|$))?`;
+  return text.replace(new RegExp(`${escapeRegExp(basetemp)}${own}(?![\\w.-])`, "g"), (match) =>
+    match === basetemp ? "<basetemp>" : `<basetemp>/${folder}<n>`,
   );
+}
+
+/**
+ * pytest's `_mk_tmp`: `re.sub(r"[\W]", "_", request.node.name)[:30]`, then
+ * `mktemp(name, numbered=True)`. Python's `\W` is Unicode-aware: anything but
+ * a letter, a number or `_`, and the cut counts code points.
+ */
+function tmpPathFolder(name: string): string {
+  return Array.from(name.replace(/[^\p{L}\p{N}_]/gu, "_"))
+    .slice(0, 30)
+    .join("");
 }
 
 function escapeRegExp(text: string): string {
