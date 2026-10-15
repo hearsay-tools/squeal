@@ -189,3 +189,122 @@ None separate from B1 and B2. The focused barrier failure above remains in the v
 - Repair B2 in the test-only ownership of 008-29. Retry only with proven deadline evidence; preserve all unexpected failures and their observations.
 - Keep one idle deadline, the existing 3-second disposal deadline and reserve, root/child identity, disposal's supersession checks and ordinary `run --continue` storage. This review does not reopen wave 3's settled storage design.
 - Re-review the exact repaired candidate and rebuilt bundles. The coordinator retains its independent host-lock gate and branch-CI responsibility. This report claims no independent full-suite verdict.
+
+## Round 2: repair re-review at 74f093ba
+
+Verdict: **FAIL 74f093ba**. **B1 closed; B2 remains a proven blocker.** No new blocker, should-fix or nit. Reviewed 2026-10-15 at exact candidate `74f093babc6cf20c9535e7fa180b911adbdd8e78`, range `5f425783..74f093ba`, against the first round above and the 008-33 brief fetched from `origin/main`. Scope: the coordinator's `4ec92772` abort repair and hook test, `f4f1c3c5` deadline slack removal, `d3978509` bundle, and 008-33's three test commits (`d7e0a0ad`, `73affe97`, `74f093ba`).
+
+### Verification output
+
+The candidate was clean for the build, checks and external probes. Real OpenCode ran only through `squealOpenCode` and the e2e fixture, which use `runOpenCode`; the scripted provider, homes, configuration and databases were isolated. External probes lived outside the repository and imported this worktree, replacing no production logic. The original abort probe built the plugin through the candidate's build function; `npm run build` left the committed bundles unchanged. The review file was added after the checks. No independent full suite or Squeal full-suite checkpoint was requested in this narrow round.
+
+```text
+$ git rev-parse HEAD
+74f093babc6cf20c9535e7fa180b911adbdd8e78
+$ git status --short
+(no output)
+$ npm ci
+added 196 packages, and audited 197 packages in 7s
+found 0 vulnerabilities
+exit 0
+$ npm run lint
+> squeal@0.1.188 lint
+> biome check .
+Checked 1253 files in 760ms. No fixes applied.
+exit 0
+$ npm run typecheck
+> squeal@0.1.188 typecheck
+> tsc --noEmit
+exit 0
+$ npm run build
+> squeal@0.1.188 build
+> tsc -p tsconfig.build.json && npm run build:plugin
+> squeal@0.1.188 build:plugin
+> tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts
+exit 0
+$ git status --short
+(no output)
+
+$ npx vitest run test/harness/opencode/ test/harness/opencode-*.test.ts test/e2e/opencode*.test.ts --maxWorkers=2 --no-color
+FAIL test/harness/opencode-dispose.test.ts > serve: an abort of the new turn, then the old Stop's answer, stores nothing
+Error: before the new turn's request, the plugin killed the held Stop at +2025, at or after its idle deadline (+2000)
+marks, ms since the first idle: idle +0, stop +67 (pid 1367768), dispose +223, input +1584, kill +2025 (pid 1367768); the held Stop's deadline: +2000
+attempt 1 of 3: plugin killed the held Stop at +2369
+marks: idle +0, stop +94 (pid 1349175), dispose +176, input +762, kill +2369 (pid 1349175)
+attempt 2 of 3: plugin killed the held Stop at +2083
+marks: idle +0, stop +99 (pid 1358222), dispose +266, input +1406, kill +2083 (pid 1358222), disposed +2507
+Test Files  1 failed | 24 passed (25)
+     Tests  1 failed | 180 passed (181)
+  Duration  203.85s
+exit 1
+
+$ npx vitest run --config /tmp/008-32-round2-probes/vitest.config.mts /tmp/008-32-round2-probes/aborted.test.ts /tmp/008-32-round2-probes/timeline.test.ts --no-color
+Test Files  2 passed (2)
+     Tests  2 passed (2)
+  Duration  14.08s
+exit 0
+
+$ npx vitest run --config /tmp/008-32-round2-probes/vitest.config.mts /tmp/008-32-round2-probes/abort-next-prompt.test.ts --reporter=verbose --silent=false --no-color
+abort hook completed before releasing reply
+after abort planned requests: 2
+next real prompt received recovery, planned requests: 3
+Test Files  1 passed (1)
+     Tests  1 passed (1)
+  Duration  18.92s
+exit 0
+
+$ npx vitest run --config /tmp/008-32-round2-probes/vitest.config.mts /tmp/008-32-round2-probes/missing-dispose.test.ts --no-color
+FAIL missing dispose timing cannot prove expiry of its storage deadline
+AssertionError: expected true to be false
+Test Files  1 failed (1)
+     Tests  1 failed (1)
+  Duration  471ms
+exit 1
+```
+
+The last failure is the discriminating B2 probe below, separate from the candidate's own tests. It is not a product-delivery reproduction. The focused suite's dispose failure exhausted three attempts before the new request's causal barrier; each now names an observed matching plugin kill after +2000. It supplies no evidence of stale storage, and is not an additional blocker. All other candidate tests, including the new real abort regression, six held-Stop classifier cases, seven pure timeline cases and eight shipped-copy e2e cases, passed with no skips. Sampled load was 28.69 to 50.77 on this 24-CPU host; timing alone is not assigned a cause.
+
+### B1: closed
+
+**Proven by source and experiment.** `src/harness/opencode/turns.ts:277` now selects `continued: true` whenever the turn was continued, including when it was also aborted. Ordinary aborts still take plain `endTurn`. The hook regression pins both flags together.
+
+I replayed the original independent, barrier-ordered abort probe against this candidate's built plugin: hold the first continuation's reply, make the recovery current, abort through OpenCode's API, wait for the real plugin event hook to finish handling `MessageAbortedError`, then release the reply. After four seconds there were exactly two planned requests, rather than the original three. A second replay added a real user prompt after the silent interval: exactly one further request arrived, with that prompt and `FAIL -> PASS`. B1's cancellation and retained-news requirements hold in both probes. The new candidate regression also passed with that same next-prompt delivery.
+
+### B2: still open, missing dispose timing authorizes retries
+
+**Proven.** `test/e2e/opencode-timeline.ts:188` to `:198` substitutes `idle` when the dispose timestamp is missing. The three dispose-based retry paths (`:270`, `:279`, `:289`) then treat that estimated deadline as proven. The new missing-timing guard rejects only a missing *idle*, not a missing *dispose*. `test/e2e/opencode.test.ts:340` uses the resulting `missedDeadline` to skip the stored-once assertion and retry. This remains the first round's B2 requirement: uncertain timing must not make a missing report retryable.
+
+Removing 250 ms of slack fixes the original +2300 case; my original early-loss probe now passes. It does not repair the substituted deadline. The comment that dispose happens about 10 ms after idle is an observation, not a bound on this run. The plugin's storage budget actually begins in `hooks.ts`'s `dispose`, with 2,500 ms left after its 500 ms reserve.
+
+The external pure probe presents exactly the same bridge and process observations twice, with a single difference: one input has a dispose log at +100 and the other has lost that log. No OpenCode is launched by this probe.
+
+| Observation, ms after the reply/idle reference | Both inputs |
+| --- | ---: |
+| Stop starts / last alive | +10 / +200 |
+| Stop delivery | +100 |
+| Dispose end bridge starts / last alive | +2500 / +2550 |
+| OpenCode last alive / run exit | +2590 / +2600 |
+| Stored report | none |
+
+```text
+With dispose observed at +100:
+  dispose's deadline: +3100, the store's +2600
+  reading: ... before the store's deadline (+2600) with nothing stored ...
+  missedDeadline: false
+
+With that single observation absent:
+  dispose's deadline: not in OpenCode's log, the store's +2500
+  reading: ... the idle held dispose until the store's deadline (+2500) ...
+           D4's silence at a missed deadline
+  missedDeadline: true
+```
+
+Losing evidence converts the same early loss into permission to retry. The complete observation set establishes that +2500 is 100 ms before the storage deadline. The incomplete set cannot establish otherwise. This proves a retry-classification bug, not that a real passing e2e took this route or that production lost a report. The new tests at `opencode-timeline.test.ts:120` and `:134` instead require `true` with no dispose evidence, so their green result preserves this gap. The consumer-removal and still-live-host branches use the same substituted deadline.
+
+**Repair sized for one test-only row:** do not authorize a dispose-based retry without evidence sufficient to bound that run's actual dispose/store deadline. Missing dispose timing must remain unresolved and non-retryable; it need not disable an independently proven Stop deadline expiry. Add the paired input above, with and without the dispose observation, to the pure tests. Make genuine-expiry fixtures establish their own deadline rather than infer it from idle, and cover the consumer-removal and live-host alternatives too. Keep the attempt limit, diagnostics and stored-once assertion.
+
+### What fits and next input
+
+- **Proven by source:** the held-Stop classifier now requires an observed plugin SIGKILL of the matching live process group at or after idle +2000, with no own-exit mark. Early kill, own exit, mismatched or absent kill, missing idle and answered Stop are non-retryable. `reached()` throws `Missed` only for that positive classification, and `ordered()` catches only `Missed`. PID disappearance or a late poll alone no longer enables a retry.
+- **Proven by experiment:** all six pure held-Stop cases and its new real deadline-kill test passed. The original B1 abort and B2 early-loss probes are repaired; the extra B1 replay preserves delivery at the next real prompt.
+- No product repair is requested for B1. B2 remains in the timeline's test-only ownership. This narrow round does not reopen the reviewed continuation, pending-file wake, child or disposal-supersession design. Per process step 6, a second FAIL goes to the human through the coordinator.
