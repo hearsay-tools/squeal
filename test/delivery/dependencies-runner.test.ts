@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -123,6 +123,46 @@ describe("a Vitest failure in a worktree with no Node install", () => {
     await delivery.register(C1, { atStart: true });
     apply(result(py, "fail"));
     expect(formatDelta((await delivery.onToolBoundary(C1)) as Delta)).not.toContain(SENTENCE);
+    apply(result(node, "fail"));
+    expect(formatDelta((await delivery.onToolBoundary(C1)) as Delta)).toContain(SENTENCE);
+  });
+});
+
+/*
+ * Review wave-5.5 B1: a pytest check is known by its Python test file too, so
+ * an unreadable or deleted policy, which reads as no pytest projects, does
+ * not turn a stored pytest failure into a Node one.
+ */
+describe("a pytest failure when the policy cannot name its project", () => {
+  it.each([
+    ["malformed", () => writeFileSync(join(root, "squeal.config.json"), "{ not json")],
+    ["missing", () => rmSync(join(root, "squeal.config.json"))],
+    [
+      "unreadable",
+      () => {
+        rmSync(join(root, "squeal.config.json"));
+        mkdirSync(join(root, "squeal.config.json"));
+      },
+    ],
+    ["no longer declaring it", () => writeFileSync(join(root, "squeal.config.json"), "{}")],
+  ])("is never told it with a %s policy", async (_, breakPolicy) => {
+    apply(result(py, "pass"));
+    await delivery.register(C1, { atStart: true });
+    breakPolicy();
+    apply(result(py, "fail"));
+    expect(formatDelta((await delivery.onToolBoundary(C1)) as Delta)).not.toContain(SENTENCE);
+    const again = { ...C1, sessionId: "s2" };
+    expect(formatRegistration(await delivery.register(again, { atStart: true }))).not.toContain(
+      SENTENCE,
+    );
+  });
+});
+
+describe("a Vitest failure in a worktree with no policy file and no Node install", () => {
+  it("is still told it: no policy names no pytest project, and the file is not Python", async () => {
+    rmSync(join(root, "squeal.config.json"));
+    apply(result(node, "pass"));
+    await delivery.register(C1, { atStart: true });
     apply(result(node, "fail"));
     expect(formatDelta((await delivery.onToolBoundary(C1)) as Delta)).toContain(SENTENCE);
   });
