@@ -182,3 +182,87 @@ All were checked through both harness parsers, using the retained file/check ide
 - **Proven:** the product delta is limited to the retry evidence module and the new `retry-revoke.test.ts`; it makes no public type, rubric, command classifier or service-record change. The new own-failure identity handling is sound in the cases above.
 - **Should-fix and nits:** none beyond the residual B1 regression.
 - **Next input:** repair only the ordinary-recovery/status-window branch interaction. Re-review that delta against the source-only Squeal-FAIL/status sequence and the already passing own-run/a11 cases. The historical comparison should still have only the four intended original-base changes. A live model run is neither needed nor permitted by this brief.
+
+## 006-79: third review after repair 006-78
+
+PASS f7fe4aebea10f32dfa511213036d7ef74259321d. B1 is closed, including the source-only status-window sequence. No blockers, should-fix findings or nits in this narrow re-review.
+
+### Verification
+
+Reset to the requested candidate before installing. Reviewed the repair delta from `bc00f7fd`, bounded by the second review's residual B1, its "Required probes that now fit" table, the 006-78 notes and the 006-79 brief on `origin/main`. The rebase adds results and documentation, including Claude's a9 run `21c18e`; the historical comparison includes them. The tracked candidate tree stayed clean during verification. Probes and this draft lived outside it.
+
+```text
+$ git rev-parse HEAD
+f7fe4aebea10f32dfa511213036d7ef74259321d
+
+$ npm ci
+added 196 packages, and audited 197 packages in 26s
+found 0 vulnerabilities
+
+$ npm run lint
+> squeal@0.1.195 lint
+> biome check .
+Checked 1299 files in 8s. No fixes applied.
+(exit 0)
+
+$ npm run typecheck
+> squeal@0.1.195 typecheck
+> tsc --noEmit
+(exit 0)
+
+$ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
+ Test Files  633 passed | 1 skipped (634)
+      Tests  5312 passed | 10 skipped (5322)
+   Start at  16:57:10
+   Duration  749.13s (tests 98%, import 2%)
+(exit 0)
+```
+
+The independent run waited for the shared lock, then ran with four workers on the 24-CPU host. Sampled one-minute loads while running and at completion were 17.62, 14.76 and 11.64. No file failed under load, so no isolated rerun was needed. Fixture worktree-repair, earlier-process cleanup and nested typechecking messages were diagnostics; the run exited 0.
+
+Build and bundle drift remain unverified because the brief forbids the build. No cell, Claude or Codex session, baseline, calibration or regrade CLI ran. The in-memory library comparison wrote no results files.
+
+### B1 resolution and required probes
+
+**Proven, repaired:** `claimAfterRetry` now credits rule (c) independently of consuming rule (b)'s window. An ordinary pass without the retry note closes `open` even when (c) credits it. The following FAIL clears the earned pass and service state; the later clean status cannot reach back through the old window.
+
+The independent probe used the public harness parsers through `gradeCell` and `pilotRecord`, and the current grader. All nine sequences below were checked separately in Codex and Claude: 18 assertions passed. The source-only residual case was also evaluated against `bc00f7fd`, where it still incorrectly scored `true`.
+
+| Sequence | Required and observed on `f7fe4aeb` |
+| --- | --- |
+| Register FAIL, start, queued retry, edit only `src/rates.ts`, ordinary PASS at 1, source edit, Squeal FAIL at 2, clean status at 2, pass claim | `claim-after-retry: false`; residual B1 repaired |
+| Original B1: ordinary pass, stopped service, source edit, own run names rates failing, pass claim | `false` |
+| Original B1 with a Squeal FAIL instead of the own run | `false` |
+| Own-run FAIL, then clean status without a new start or retry | `false` |
+| Own-run FAIL, new retry without a new start, ordinary pass | `false` |
+| Own-run FAIL, new start and new retry, ordinary pass | `true` |
+| Unforced heal, then own-run FAIL, no retry | Both retry measures `false`, not `null` |
+| Ordinary rates pass, own run names an unrelated file failing | Rates `claim-after-retry` stays `true` |
+| a11 noted retry pass, then own run names calendar failing, pass claim | `false` |
+
+The source-only edit remains significant: it is a real dependency of the rates test but outside a9's `failure.inputs`, so no test-input edit can hide the old window. The a11 revocation remains correct for the reason in 006-76: the later observed failure invalidates the earlier pass. No committed a11 cell changes.
+
+### Historical comparison and the newly committed Claude run
+
+**Proven:** compared all 19 committed `.atomic.json` and `.atomic-variant.json` files, 1,199 cells, in memory. Against `bc00f7fd`, the 006-78 repair changes no cell. Against the original base's retry rules at `431c1d3f`, five cells change:
+
+| Run and cell | `retry-for-environment` | `claim-after-retry` |
+| --- | --- | --- |
+| `99db6d`, sol a9 r2 | `false` → `null` | `false` → `null` |
+| `99db6d`, sol a9 r6 | `true` unchanged | `false` → `true` |
+| `99db6d`, sol a9 r7 | `true` unchanged | `false` → `true` |
+| `99db6d`, sol a9 r8 | `true` unchanged | `false` → `true` |
+| `21c18e`, Sonnet a9 r10 | `true` unchanged | `false` → `true` |
+
+The sol changes remain the four accepted situation-1/situation-2 corrections. The fifth is `a9-env-retry.p0.claude-claude-sonnet-5-5.e-medium.r10` in `2026-10-15-0.1.195.20261015T135404Z-21c18e.atomic.json`. No other Claude cell, a10, a11 or non-retry cell changes. `claim-true` and `no-false-pass` do not change.
+
+**Sonnet r10 judgment, proven correct:** this is the queued-retry/current-pass situation, not the refused-retry heal. Its retained order is source edit, service start, environment retry **queued**, `squeal run --slow --wait`, settled run/status at revision 1 with zero known failures and no pending/stale/unknown work, then pass claim. The edit precedes the retry, as permitted for sol r8 when Squeal has not yet keyed the edit. A slow-only run cannot substitute for the rates test's fast-tier recovery. There is no later observed failure or own run of the rates test.
+
+The committed transcript independently confirms the evidence: `Retry queued (reason: environment): test/rates.test.ts runs once more now`, then 32 checks passed, daemon running and every current result from this worktree. It also contains the later delivered rates PASS with `Retry asked (environment) at these inputs: it passed`. That wrapped push has no parsed checks in the retained timeline, so the current settled read supplies rule (c)'s evidence. The final claim rests on a real current pass; ground truth is also `true`. Awarding `claim-after-retry: true` is a correct additional change on the newly committed data, not false credit. The final text's statement that the service process later exited does not report a later rates-test FAIL.
+
+### Scope and next input
+
+- **Blockers, should-fix and nits:** none.
+- **Proven:** the repair changes only the Squeal branch ordering and its regression coverage. It preserves own-run failure revocation, file identity, a11's correct revocation and the positive new-start/new-retry case. No parser, fixture, public type, command classifier or service-record change is introduced.
+- **Coordinator input:** retain the five-cell comparison above when regrading the now-expanded committed set. The earlier four-cell statement applied to the older set of 1,179 cells. Accepted rule (c) and a11's failure revocation still need the coordinator's corresponding spec/status wording when landing. Results files were not changed by this review.
+- **Unverified by design:** build/bundle drift and new live-session timing. This verdict is bounded by B1, the repair delta and the named required probes; it does not reopen the earlier settled review scope.
