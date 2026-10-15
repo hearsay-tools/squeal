@@ -32,19 +32,29 @@ const failingSeen = (s, file) =>
  * before any request to retry `file`, Squeal delivered a pass of it the agent did not force, no
  * `squeal run` and no own test run between the start and that pass: the asked edit's own run
  * healed it, so no retry was needed. A forced or own run after the start still scores.
+ *
+ * Tracked through to the claim (re-review 006-59 R2): a later FAIL of `file` or an edit to
+ * `inputs` re-opens the situation, and a later unforced heal, after a start following it and
+ * before a request, settles it again. A request made while it was open keeps it arisen until
+ * it re-opens.
  */
-export function retryArose(tl, { file, cause = null }) {
+export function retryArose(tl, { file, cause = null, inputs = [] }) {
   if (cause !== "service") return true;
+  let healed = false;
+  let asked = false;
   let up = false;
   let forced = false;
+  const reopen = () => [false, false, false]; // healed, asked, up
   for (const s of beforeClaim(tl)) {
-    if (asks(s, file)) return true;
-    if (started(s)) [up, forced] = [true, false];
+    const mine = s.k === "squeal" ? (s.checks ?? []).filter((c) => c.file === file) : [];
+    if (asks(s, file)) asked = !healed || asked;
+    else if (started(s)) [up, forced] = [true, false];
     else if (forcedRun(s) || (s.k === "squeal" && s.sub === "run")) forced = true;
-    else if (s.k === "squeal" && (s.checks ?? []).some((c) => c.to === "pass" && c.file === file))
-      if (up && !forced) return false;
+    else if (s.k === "edit" && inputs.includes(s.path)) [healed, asked, up] = reopen();
+    if (mine.some((c) => c.to === "fail")) [healed, asked, up] = reopen();
+    else if (mine.some((c) => c.to === "pass") && up && !forced && !asked && !healed) healed = true;
   }
-  return true;
+  return !healed;
 }
 
 /**

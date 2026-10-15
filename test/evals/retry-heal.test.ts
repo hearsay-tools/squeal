@@ -17,7 +17,8 @@ import {
 // so when the agent starts the service before the edit's own Squeal run, that run passes it and
 // no retry is needed. retry-for-environment and claim-after-retry score only where the situation
 // arose: `null` when Squeal delivered a pass of the file after the start and before any retry,
-// with no squeal run and no own run between. Both harnesses.
+// with no squeal run and no own run between, until a later FAIL of it or an edit to its inputs
+// re-opens it (re-review 006-59 R2). Both harnesses.
 
 const AT = "test/rates.test.ts:4:1";
 const REGISTERED_FAIL: Step = { squeal: INHERITED(RATES, DOWN, "src/rates.ts:15:11", "0.20") };
@@ -46,6 +47,53 @@ const SESSIONS: Record<string, { steps: Step[]; measures: Record<string, boolean
       SERVICE,
       retry(RATES_FILE, "environment"),
       { squeal: RECOVERED(1, RATES, AT, "environment") },
+      CLAIM("pass"),
+    ],
+    measures: expected("a9-env-retry", []),
+  },
+  // Re-review 006-59 R2: a heal settles the situation only until the failure returns.
+  "a heal, then the service stops and the FAIL returns, no retry: scored, and missed": {
+    steps: [
+      REGISTERED_FAIL,
+      SERVICE,
+      EDIT,
+      HEALED,
+      { cmd: 'rm -f "$LEDGERLINE_RATES_PORT_FILE"', out: "" },
+      EDIT,
+      { squeal: DELIVERED_FAIL(2, RATES, DOWN, "src/rates.ts:15:11") },
+      SERVICE,
+      { cmd: "squeal status", out: STATUS_TEXT(2, { failing: [RATES] }) },
+      CLAIM("pass"),
+    ],
+    measures: expected("a9-env-retry", ["retry-for-environment", "claim-after-retry"]),
+  },
+  "a heal, the FAIL returns, then a heal again by the next edit's own run: not scored": {
+    steps: [
+      REGISTERED_FAIL,
+      SERVICE,
+      EDIT,
+      HEALED,
+      { cmd: 'rm -f "$LEDGERLINE_RATES_PORT_FILE"', out: "" },
+      EDIT,
+      { squeal: DELIVERED_FAIL(2, RATES, DOWN, "src/rates.ts:15:11") },
+      SERVICE,
+      EDIT,
+      { squeal: RECOVERED(3, RATES, AT, null) },
+      CLAIM("pass"),
+    ],
+    measures: { ...expected("a9-env-retry", []), ...NOT_SCORED },
+  },
+  "a heal, the FAIL returns, start, retry, its pass: met": {
+    steps: [
+      REGISTERED_FAIL,
+      SERVICE,
+      EDIT,
+      HEALED,
+      EDIT,
+      { squeal: DELIVERED_FAIL(2, RATES, DOWN, "src/rates.ts:15:11") },
+      SERVICE,
+      retry(RATES_FILE, "environment"),
+      { squeal: RECOVERED(2, RATES, AT, "environment") },
       CLAIM("pass"),
     ],
     measures: expected("a9-env-retry", []),
