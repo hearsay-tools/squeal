@@ -172,4 +172,19 @@ describe("squeal retry", () => {
       "Not retried: src/x.ts is not a test file Squeal has keyed in this worktree.\n",
     );
   });
+
+  it("names what clears a failed global setup instead (001-382)", async () => {
+    const { root, store } = await worktree();
+    const id = store.worktrees.list()[0]?.id as string;
+    store.knownStates.upsertMany([
+      state(
+        id,
+        { kind: "setup", project: "e2e", testPath: "e2e/setup.ts" as never },
+        { outcome: "fail", observedAt: 3 },
+      ),
+    ]);
+    expect((await retry(["e2e/setup.ts", "--reason", "environment"], root)).stdout).toBe(
+      "Not retried: e2e/setup.ts is a global setup, which has no inputs to retry at; its FAIL clears when a run of its project starts, as the next edit or squeal run --all does.\n",
+    );
+  });
 });
