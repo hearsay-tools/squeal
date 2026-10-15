@@ -73,6 +73,15 @@ const FLAKE = "test/clock.test.ts > due dates > loads the holiday calendar withi
 /** A Claude Code hook's reply, Squeal's text inside, as Claude Code keeps it as the output. */
 const hook = (text: string, key = "additionalContext") =>
   JSON.stringify({ hookSpecificOutput: { hookEventName: "PostToolBatch", [key]: text } });
+/** A PreToolUse reply: `decision` with Squeal's text as its reason. */
+const decided = (decision: string, text: string) =>
+  JSON.stringify({
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: decision,
+      permissionDecisionReason: text,
+    },
+  });
 
 /**
  * A T1 cell: registered at 0, then `steps`; three edits make revisions 1 to 3. In Claude Code
@@ -88,7 +97,11 @@ const cell = (steps: Step[], harness: Harness) =>
       { edit: "src/csv.ts" },
       { edit: "test/slow/ledger.test.ts" },
       ...steps,
-    ].map((s) => ("squeal" in s && harness === "claude" ? { squeal: hook(s.squeal) } : s)),
+    ].map((s) =>
+      "squeal" in s && harness === "claude" && !s.squeal.startsWith("{")
+        ? { squeal: hook(s.squeal) }
+        : s,
+    ),
     { truthPass: true, status: "pass", harness },
   );
 const atClaim = (steps: Step[], harness: Harness) => {
@@ -161,10 +174,32 @@ describe("a Claude Code hook's JSON around Squeal's text", () => {
     const plain = squealEvidence(FAILURE(3), "push");
     expect(plain).toMatchObject({ revision: 3, pending: 0, slow: true, verdict: "fail" });
     expect(squealEvidence(hook(FAILURE(3)), "push")).toEqual(plain);
-    expect(squealEvidence(hook(FAILURE(3), "permissionDecisionReason"), "push")).toEqual(plain);
+    expect(squealEvidence(decided("deny", FAILURE(3)), "push")).toEqual(plain);
+    // A cell is a `-p` run: Claude Code refuses an ask and the model reads its reason.
+    expect(squealEvidence(decided("ask", FAILURE(3)), "push")).toEqual(plain);
     expect(
       squealEvidence(JSON.stringify({ decision: "block", reason: FAILURE(3) }), "push"),
     ).toEqual(plain);
+  });
+
+  // Review 006-81 B1: Claude Code writes these reasons to its debug log only, so none is
+  // evidence, and the escaped JSON is not read as text either.
+  it("reads no reason the model was not shown: an allow's, a defer's, a stop's without a block", () => {
+    expect(squealEvidence(decided("allow", RECOVERY(3)), "push")).toBeNull();
+    expect(squealEvidence(decided("defer", RECOVERY(3)), "push")).toBeNull();
+    expect(squealEvidence(JSON.stringify({ reason: RECOVERY(3) }), "push")).toBeNull();
+    expect(
+      squealEvidence(JSON.stringify({ decision: "approve", reason: RECOVERY(3) }), "push"),
+    ).toBeNull();
+  });
+
+  it("a clear status in an allow's reason earns neither at-claim expectation, a deny's does", () => {
+    expect(atClaim([{ squeal: decided("allow", RECOVERY(3)) }, CLAIM("pass")], "claude")).toEqual(
+      MISSED,
+    );
+    expect(atClaim([{ squeal: decided("deny", RECOVERY(3)) }, CLAIM("pass")], "claude")).toEqual(
+      MET,
+    );
   });
 
   it("leaves a text that is not a hook's JSON as it is", () => {
