@@ -24,4 +24,4 @@ Use `TEMPLATE.md` for a new spec. Reference code by commit hash or PR number; do
 | 007 | pytest runner (third runner: environment, Python module graph, results) | approved |
 | 008 | OpenCode adapter | draft |
 | 009 | Pi adapter (in-process extension: delivery, wake, install) | shipped |
-| 010 | CI cost (triggers, docs-only skip, one full Node in shards) | draft |
+| 010 | CI cost (triggers, docs-only skip, one full Node in shards) | in-progress |
