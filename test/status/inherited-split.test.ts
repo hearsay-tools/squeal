@@ -37,7 +37,7 @@ describe("inherited counts and delivery titles (spec 005 D1, review wave 3 B1)",
 
     expect(header).toMatchObject({ inheritedCount: 2, inheritedFileLevelCount: 1 });
     expect(headerLines(header, "squeal")[0]).toContain(
-      "Revision 1: 2 current (1 test, 1 test file loaded), 0 pending, 0 stale, 0 unknown. " +
+      "Revision 1 · abcdef12 + 1: 2 current (1 test, 1 test file loaded), 0 pending, 0 stale, 0 unknown. " +
         "Inherited: 2 of 2 current (1 test, 1 test file loaded).",
     );
     const status = formatStatus(readStatus(b.root, { now: () => NOW }), NOW).split("\n");
