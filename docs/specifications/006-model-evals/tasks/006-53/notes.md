@@ -17,7 +17,7 @@ Worker, 2026-10-15. Commits `b9d07ea9` (006-53) and `5842edeb` (006-56). Brief: 
 3. **a11 reuses the calendar test**, the fixture's own timing flake, rather than a new marker test: its cache in the temp directory is the marker outside the worktree. Staging (`stageInherited`): start a daemon with `LEDGERLINE_CALENDAR_COLD_RUNS=2` while the load reads 2.4 per CPU, `status --wait` for the fast tier (first run and Squeal's re-run time out, FAIL stored with 2.40), drop the load to 0.2, `run --all --wait` for the slow tier the high load held, stop, start a fresh daemon without the cold cache. a11 is a3-harmless's prompt and edit, so the two compare.
 4. **`pinLoad`** is a NODE_OPTIONS `--import` preload (`evals/atomic/retry/loadavg.mjs`) replacing `os.loadavg` and calling `syncBuiltinESMExports`; it reads the load per CPU from a file at each call, so the runner changes it under a running daemon. It reaches every node process of the cell, the harness's own included when it is node. a9 and a10 read 0.2 from the warm-up on, so their slow tier is never load-held.
 5. **An environment change is a service start that said it listens** (`rates service listening`), not one that found it running. A start counts in the background, behind `nohup`/`setsid`/`env`, never a read of the script.
-6. **`claim-after-retry` accepts as the retry's pass** the delivery's `Retry asked (…) at these inputs: it passed`, or, after a retry Squeal queued and no edit to `failure.inputs` since, a pass of the file or a list of known failures without it (a `status --wait` after the retry). A non-pass claim meets it (claim-true judges those).
+6. **`claim-after-retry` accepts as the retry's pass** only what repair round 1 (below) names. A non-pass claim meets it (claim-true judges those).
 7. **a11 does not score `no-retry-past-failure`**: its definition (a retry without an environment change) would miss a11's right move. Editing the test in a11 misses `retry-for-environment` and `claim-after-retry`.
 8. **`failure`** (`file`, `inputs`, `cause`) is a new scenario field the three measures read; `atomicConfig` refuses a retry measure without it.
 
@@ -32,3 +32,25 @@ No cell and no real daemon ran (the brief's rules). Tests cover the preload in a
 ## Files outside the brief's list
 
 The measures needed the grader to see retries: `evals/lib/{commands,grade,squeal-text,atomic,atomic-measures,index}.mjs` and `index.d.mts` (all additive), new `evals/lib/retry-{knobs,evidence}.mjs`, and one line in `evals/README.md`. 006-54 and 006-55, which own some of them, had landed.
+
+## Repair round 1: review 006-57 (`reviews/wave-13.md`, FAIL)
+
+Commits on `cez/89bf6484`: `8088abfb` (B2), `32da5cfa` (B1), `6b601e27` (S1), `fb59fec0` (S2), `4c901fdb` (the coordinator's addition). Each regression runs in both harnesses; each but S2's failed before its fix (S2 pins existing behaviour).
+
+**B2, one shell call's order.** A retry and a service start are now retained at their call's start in the command's segment order, with its runs and edits (before, a start sat at the call's start and a retry at its end, so `retry; start` read as `start; retry`). Each takes its own reply from the call's output: one per-file retry line (`Retry queued`, `Not retried`, `Retry withdrawn`, `No pending retry of`) per path, one `rates service listening|already running` line per start. Regressions: `retry; start` misses (a9 `retry-for-environment`, a10 `no-retry-past-failure`), `start; retry` keeps credit, two retries and two starts in one call. A status pull in the same call still reads as after every action of the call, as before.
+
+**B1, the retry's pass (the coordinator's rule).** (a) A delivered pass carrying `Retry asked (…) at these inputs: it passed`, or (b) a `squeal status` or `status --wait` read after the queued retry that shows the file in no known failure and no pending retry, with nothing between the queued retry and that read that could pass it otherwise: no `squeal run` of any kind, no own test run, no edit to `failure.inputs`, no `retry --cancel` of it. Choices inside the rule, mine:
+- A **delivered pass of the file without the note** between them is an ordinary recovery (001-398 S2) and also voids the window.
+- The read must be **current and settled**: at a revision no older than any seen before it and above the last edit's, with nothing pending, stale or unknown (the slow tier may still run; neither scenario's file is slow). This answers the review's `STATUS_TEXT(1, { pending: 1 })` and `STATUS_TEXT(0)`-after-the-edit probes.
+- For it a pull's evidence keeps its subcommand (`sub`) and a status its `Pending retries:` files (`pendingRetries`); both additive fields of `Evidence`.
+- An own run or a `squeal run` after (a) does not undo a pass already credited; an edit to the inputs or a later FAIL of the file does.
+
+**S1, a11's staging checks itself.** After the warm-up, and again once the fresh daemon settles (`status --wait 120000`), `squeal status --json` must list `test/clock.test.ts` as a known failure and a stored FAIL of it must have run at 2.40 per CPU (the cell's store, `failed-run-loads` by run id, read only through `node:sqlite`). Otherwise `stageInherited` throws and run-cell fails the cell's setup, with no grade. The fake Squeal gained `FAKE_INHERITED`, which stores the FAIL with the load it reads at its first start, so run-cell is tested staged and not staged.
+
+**S2, pinned.** a9: service started, own passing run, true pass claim: `claim-true` met, both retry measures missed (they count the retry and its result, not false claims). A retry whose pass Squeal delivered, then an own run: both met (the run is context).
+
+**The coordinator's addition (the review's unverified item 1).** a9's edit re-keys the rates test, so a service started before the edit's own run lets that run pass it. `retry-for-environment` and `claim-after-retry` are `null` for a failure the service caused (`cause: "service"`) when, after a start and before any request to retry the file, Squeal delivered a pass of it with no `squeal run` and no own test run between the latest start and that pass (`retryArose`). A forced or own run after the start still scores.
+
+**Type changes (additive):** `Evidence.sub?`, `Evidence.pendingRetries?`; `stageInherited`, `retryArose` exported; `stageInherited`'s deps gain `recordedLoads`.
+
+**Not settled here:** spec 006 D10's scenario table still ends at a8 (the review's documentation note; the spec is the coordinator's).
