@@ -270,6 +270,18 @@ function readingOf(input: TimelineInput, r: Reading): Timeline {
     return missed(
       `OpenCode, still running at ${since(host.alive)}, past dispose's deadline (${since(r.disposeDeadline)}), still had the consumer: dispose never ended it, its idle held it to the deadline. The overtaken check's read or the store did not finish in time, D4's silence at a missed deadline`,
     );
+  // An end bridge quicker than the watcher's gap: the rows it removed while OpenCode ran bound it.
+  const removed = consumers.find((s, i) => i > 0 && s.rows.length === 0);
+  if (end === undefined && removed !== undefined && host !== null && host.alive >= removed.at) {
+    const window = `dispose ended the consumer between ${since(removed.after)} and ${since(removed.at)}, while OpenCode ran`;
+    return removed.after >= r.storeDeadline - HELD_MS
+      ? missed(
+          `${window}: the idle held dispose until the store's deadline (${since(r.storeDeadline)}). The overtaken check's read or the store did not finish in time, D4's silence at a missed deadline`,
+        )
+      : other(
+          `${window}, before the store's deadline (${since(r.storeDeadline)}), with nothing stored: the plugin dropped the report, its answer late or the turn judged overtaken`,
+        );
+  }
   if (end === undefined)
     return other("unresolved: the watcher missed the end bridge, or never saw OpenCode end");
   if (end.started >= r.storeDeadline - HELD_MS)
