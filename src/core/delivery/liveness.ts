@@ -162,8 +162,9 @@ export function withTold(header: StatusHeader, told: ToldLiveness, at: EpochMs):
 /**
  * The daemon's liveness when it differs from what `consumer` was told, else
  * `null`. A daemon still starting is no news, nor is its first heartbeat,
- * nor one that rests after it stopped unused (task 001-415), which the next
- * hook boundary starts again.
+ * nor one that rests after it stopped unused (`restState`, task 001-415).
+ * A rest whose restart is overdue is forgotten here, so this and every later
+ * boundary report the daemon down as before. Call inside a transaction.
  */
 export function livenessChange(
   store: Store,
@@ -173,17 +174,71 @@ export function livenessChange(
   const told = toldLiveness(store, consumer);
   const worktree = store.worktrees.get(consumer.worktreeId);
   const live = asTold(worktreeLiveness(worktree, at), told, at);
-  if (live.state === "down" && (live.startingSince !== undefined || rests(store, worktree))) {
-    return null;
+  if (live.state === "down") {
+    if (live.startingSince !== undefined) return null;
+    const rest = restState(store, worktree, at);
+    if (rest === "quiet") return null;
+    if (rest === "overdue") store.meta.delete(daemonRestMetaKey(consumer.worktreeId));
   }
   return live.state === (typeof told === "object" ? "alive" : told) ? null : live;
 }
 
-/** The worktree's daemon stopped unused, cleared its record, and none heartbeat since. */
-function rests(store: Store, worktree: WorktreeRecord | null): boolean {
-  if (worktree === null || worktree.daemon !== null) return false;
-  const rested = Number(store.meta.get(daemonRestMetaKey(worktree.id)) ?? Number.NaN);
-  return rested >= (worktree.lastHeartbeatAt ?? Number.POSITIVE_INFINITY);
+/*
+ * D10 as amended (task 001-415, the coordinator's bound of 2026-10-15): a
+ * daemon that stopped unused records its rest, `{ at }`; the first hook that
+ * spawns a daemon after it adds `spawnedAt`. The rest is quiet until a daemon
+ * heartbeats after `at`, or until the spawned one is overdue: no heartbeat
+ * within `DAEMON_START_GRACE_MS` of `spawnedAt`, the start timeout a
+ * registration's "starting" has.
+ */
+
+interface Rest {
+  readonly at: EpochMs;
+  readonly spawnedAt?: EpochMs;
+}
+
+/** The daemon's unused stop at `at`, before it clears its record. */
+export function markRest(store: Store, worktreeId: WorktreeId, at: EpochMs): void {
+  store.meta.set(daemonRestMetaKey(worktreeId), JSON.stringify({ at } satisfies Rest));
+}
+
+/** A hook spawned a daemon at `at`: the first spawn after a rest starts its start timeout. */
+export function spawnedAfterRest(store: Store, worktreeId: WorktreeId, at: EpochMs): void {
+  const rest = readRest(store, worktreeId);
+  if (rest === null || rest.spawnedAt !== undefined) return;
+  store.meta.set(daemonRestMetaKey(worktreeId), JSON.stringify({ ...rest, spawnedAt: at }));
+}
+
+/**
+ * `quiet` while the worktree's daemon rests and any daemon spawned after it
+ * is not overdue; `overdue` once it is; `null` with no rest: no mark, a
+ * record, or a heartbeat after it.
+ */
+export function restState(
+  store: Store,
+  worktree: WorktreeRecord | null,
+  at: EpochMs,
+): "quiet" | "overdue" | null {
+  if (worktree === null || worktree.daemon !== null) return null;
+  const rest = readRest(store, worktree.id);
+  if (rest === null || rest.at < (worktree.lastHeartbeatAt ?? Number.POSITIVE_INFINITY)) {
+    return null;
+  }
+  if (rest.spawnedAt === undefined || at - rest.spawnedAt <= DAEMON_START_GRACE_MS) return "quiet";
+  return "overdue";
+}
+
+function readRest(store: Store, worktreeId: WorktreeId): Rest | null {
+  const text = store.meta.get(daemonRestMetaKey(worktreeId));
+  if (text === null) return null;
+  try {
+    const rest: unknown = JSON.parse(text);
+    if (!isRecord(rest) || typeof rest.at !== "number") return null;
+    const spawnedAt = typeof rest.spawnedAt === "number" ? { spawnedAt: rest.spawnedAt } : {};
+    return { at: rest.at as EpochMs, ...spawnedAt };
+  } catch {
+    return null;
+  }
 }
 
 /*

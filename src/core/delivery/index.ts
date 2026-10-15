@@ -31,7 +31,9 @@ export {
   DAEMON_START_GRACE_MS,
   daemonLiveness,
   livenessMetaKey,
+  markRest,
   readLiveHeader,
+  spawnedAfterRest,
   toldRevision,
   worktreeLiveness,
 } from "./liveness.js";

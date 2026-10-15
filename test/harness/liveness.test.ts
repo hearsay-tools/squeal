@@ -2,6 +2,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { EnsureDaemonOptions } from "../../src/core/daemon/ensure.js";
+import { DAEMON_START_GRACE_MS, markRest } from "../../src/core/delivery/index.js";
 import { daemonRestMetaKey } from "../../src/core/types/index.js";
 import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
 import { mayEdit } from "../../src/harness/shared/index.js";
@@ -82,25 +83,53 @@ describe("liveness in delivered text", () => {
     expect(second.stdout).toBe("");
   });
 
-  it("says nothing of a daemon that rests after its unused stop (task 001-415)", async () => {
-    const r = await registered();
-    r.daemon("alive");
-    const lastHeartbeat = r.store.worktrees.get(r.worktreeId)?.daemon?.heartbeatAt ?? 0;
-    r.store.worktrees.setDaemon(r.worktreeId, null);
-    const rest = (at: number) => r.store.meta.set(daemonRestMetaKey(r.worktreeId), String(at));
-    const { deps } = recording("spawned");
+  describe("a daemon that rests after its unused stop (task 001-415)", () => {
+    /** A registered consumer whose daemon stopped unused at its last heartbeat; `later(ms)` moves the clock. */
+    async function rested() {
+      const r = await registered();
+      r.daemon("alive");
+      const at = r.store.worktrees.get(r.worktreeId)?.daemon?.heartbeatAt ?? 0;
+      r.store.worktrees.setDaemon(r.worktreeId, null);
+      markRest(r.store, r.worktreeId, at);
+      let clock = at + 60 * 60_000;
+      const { calls, deps } = recording("spawned");
+      const later = (ms: number): HookDeps => {
+        clock += ms;
+        return { ...deps, now: () => clock };
+      };
+      return { r, at, calls, later };
+    }
+    const batch = (r: SquealRepo, d: HookDeps) =>
+      runHook("post-tool-batch", recorded("post-tool-batch", r.root), d);
 
-    rest(lastHeartbeat);
-    expect(
-      await runHook("user-prompt-submit", recorded("user-prompt-submit", r.root), deps),
-    ).toEqual(expect.objectContaining({ stdout: "" }));
-    expect(
-      (await runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps)).stdout,
-    ).toBe("");
-    // A mark from before the last heartbeat is another daemon's rest: this one stopped.
-    rest(lastHeartbeat - 1);
-    const told = await runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps);
-    expect(context(told)).toMatch(/^SQUEAL · no daemon is validating at revision 1\n/);
+    it("is no news at the next prompt or at the boundary that starts it again", async () => {
+      const { r, calls, later } = await rested();
+      const prompt = await runHook(
+        "user-prompt-submit",
+        recorded("user-prompt-submit", r.root),
+        later(0),
+      );
+      expect(prompt.stdout).toBe("");
+      expect((await batch(r, later(0))).stdout).toBe("");
+      expect((await batch(r, later(DAEMON_START_GRACE_MS))).stdout).toBe("");
+      expect(calls.length).toBeGreaterThan(0);
+    });
+
+    it("is reported, one boundary later, when the daemon spawned after it is overdue", async () => {
+      const { r, later } = await rested();
+      expect((await batch(r, later(0))).stdout).toBe("");
+      const late = await batch(r, later(DAEMON_START_GRACE_MS + 1));
+      expect(context(late)).toMatch(/^SQUEAL · no daemon is validating at revision 1\n/);
+      expect(r.store.meta.get(daemonRestMetaKey(r.worktreeId))).toBeNull();
+      expect((await batch(r, later(1))).stdout).toBe("");
+    });
+
+    it("is another daemon's when a heartbeat came after it", async () => {
+      const { r, at, later } = await rested();
+      markRest(r.store, r.worktreeId, at - 1);
+      const told = await batch(r, later(0));
+      expect(context(told)).toMatch(/^SQUEAL · no daemon is validating at revision 1\n/);
+    });
   });
 
   it("is in a registration made while no daemon runs", async () => {
