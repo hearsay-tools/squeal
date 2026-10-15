@@ -2,7 +2,7 @@
 // the a9 and a10 cells' fixture gains, the host load their processes read, and a11's failure
 // recorded under load. Each reaches only a scenario whose knobs name it; every other fixture
 // stays as `buildFixture` made it.
-import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { ATOMIC } from "./atomic.mjs";
@@ -12,6 +12,10 @@ export const SERVICE_FILES = ["src/rates.ts", "test/rates.test.ts", "scripts/rat
 const RETRY = join(ATOMIC, "retry");
 /** The only test file `inherited` stages: the calendar test, slow while its cache is cold. */
 const CALENDAR = "test/clock.test.ts";
+/** Where each start of the service appends what it said, in the cell's `HOME` (row 006-67). */
+const STARTS = ".ledgerline-rates.starts";
+/** The session's starts, as `out/` keeps them for the grader. */
+export const STARTS_FILE = "service-starts.txt";
 
 /**
  * Sets `env` for knobs `knobs` of the cell at `cell`: `pinLoad` preloads `retry/loadavg.mjs`
@@ -52,9 +56,10 @@ export function knobTools(knobs) {
  * The `service` knob, before the warm-up: the rates service's source, test and script committed
  * into the fixture at `work` (`git` runs git there), and for `"up"` the service started with
  * `node` (`sh`'s), so the warm-up's run of its test passes; `"down"` leaves it stopped, so that
- * run stores the test's FAIL.
+ * run stores the test's FAIL. The warm-up's start is not the session's, so its line in the
+ * service's record of starts (`home`'s) goes.
  */
-export function addService(knobs, { work, git, sh, log }) {
+export function addService(knobs, { work, home, git, sh, log }) {
   if (!knobs.service) return;
   for (const f of SERVICE_FILES) {
     mkdirSync(join(work, f, ".."), { recursive: true });
@@ -63,6 +68,7 @@ export function addService(knobs, { work, git, sh, log }) {
   git(["add", "--", ...SERVICE_FILES]);
   git(["commit", "-q", "-m", "Exchange rates from the rates service", "--", ...SERVICE_FILES]);
   if (knobs.service === "up") startService(sh);
+  rmSync(join(home, STARTS), { force: true });
   log(`service: rates, ${knobs.service}`);
 }
 
@@ -72,9 +78,16 @@ export function startService(sh) {
   return r.stdout.trim();
 }
 
-/** Before ground truth: the service up, whatever the session left, so truth judges the code. */
-export function serviceForTruth(knobs, { work, sh, log }) {
-  if (!knobs.service || !existsSync(join(work, "scripts/rates-service.mjs"))) return;
+/**
+ * Before ground truth: the session's starts, from the service's record in `home`, kept in `out`
+ * as `STARTS_FILE` (a start in the background or redirected has no reply in its output, row
+ * 006-67), then the service up, whatever the session left, so truth judges the code.
+ */
+export function serviceForTruth(knobs, { work, home, out, sh, log }) {
+  if (!knobs.service) return;
+  const starts = join(home, STARTS);
+  writeFileSync(join(out, STARTS_FILE), existsSync(starts) ? readFileSync(starts, "utf8") : "");
+  if (!existsSync(join(work, "scripts/rates-service.mjs"))) return;
   log(`service for ground truth: ${startService(sh)}`);
 }
 

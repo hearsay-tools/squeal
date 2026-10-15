@@ -188,6 +188,8 @@ export function gradeCell(input: {
   /** Whether the cell had the plugin; without it Squeal's state does not apply. */
   plugin?: boolean;
   diff?: string;
+  /** The rates service's record of the session's starts, a line each (006-67), or `null`. */
+  serviceStarts?: string | null;
 }): Grade;
 export function groundTruthOf(input: {
   vitest: unknown;
