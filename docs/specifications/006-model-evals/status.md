@@ -152,3 +152,11 @@ Started: 2026-10-10
   - Claude cells from `20261014T154710Z` are marked with the "(host launcher)" condition until a cell records `squealPath: "pinned"`. a11 drops its staged load only after a wait that names `test/clock.test.ts`, and keeps the warm-up daemon.
   - Main gained 0.1.191, 0.1.192 and 0.1.194 after the PASS. None shared a file with the candidate, so no re-review, but each got a fresh gate. All were green: the last ran 629 files on `b5c92c80`.
   - Landing note: an earlier gate on `fd8d37f4` failed `test/e2e/pi.test.ts` ("Pi did not finish in 30000ms") at load 100 to 240. It passes alone 5 of 5 and passed the later gates. Branch CI on `21d5b9ce` failed `test/e2e/stop-gap.test.ts` on Node 22 (row 001-408, same signature) and went green on re-run.
+- 2026-10-15, the retry scenarios ran at 10 per model on `ae20bb31` (0.1.194), with 120 sessions and 0 failed: a10 and a11 on all four models, a9 on Codex, and a8 on Claude again (`lessons.md`).
+  - a10 is at the ceiling.
+  - In a11, Sonnet and sol always retry, Haiku retries in 2 of 10 and luna never. Every miss is a stale `fail` claim, never a false pass.
+  - In a9, luna starts the service in 2 of 10.
+  - a8's Claude re-run is 10/10 for both models, so Haiku's earlier 6/10 was the broken condition.
+  - Pilot 2 found row 006-66. The human chose narrow allowances. The probe showed Claude Code asks before any top-level `&` whatever the rules say, which found 006-67 (the grader missed a background start).
+  - sol's a9 misses found row 006-71 (measure design).
+  - Claude's a9 cells wait for 006-66 and 006-67.
