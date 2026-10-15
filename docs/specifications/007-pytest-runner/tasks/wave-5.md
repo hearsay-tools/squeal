@@ -87,3 +87,21 @@ Owns: `reviews/wave-5.5.md` only, which you commit. Your locked full run (`flock
 Done when: every finding has a file and line, a failure scenario and a severity, and the verdict names `fa444c86`.
 
 Use /reviewer.
+
+## Re-review of cand/0.1.195 (the B1 repair)
+
+Outcome: a PASS or FAIL verdict on `cand/0.1.195` at `adc26b1d`, which is `fa444c86` with the coordinator's B1 repair `998f0dfc`, followed by the same re-pin and the rebuild. The verdict decides whether it may land.
+
+Shape: narrow re-review, against `reviews/wave-5.5.md` B1. Scope:
+- `nodeFailing` in `src/core/delivery/attribution.ts`. Runner ownership now comes only from a policy that loaded without problems, or from no policy file at all; with problems, or with no worktree row, the sentence is not said.
+- A Python test file is never counted as Node's. The file is used only to withhold the sentence, never to claim a check is Node's. The reviewer's instruction "do not guess runner ownership solely from a filename extension" is answered that way; judge whether it holds.
+- The case the file covers alone: a pytest failure stored before its project left a valid or missing policy.
+- Known residual: a pytest failure in a non-`.py` file (a doctest glob) after the policy was deleted or stopped declaring its project still gets the sentence. Say whether that residual is acceptable.
+- Re-run your probe for valid, malformed, missing and unreadable policies, with a Node control, on both callers.
+Not in scope: 007-44 and the rest of 007-40, which passed.
+
+Owns: `reviews/wave-5.75.md` only, which you commit. Your locked full run (`flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`) is the landing gate, so name every failing test and say whether it fails alone.
+
+Done when: B1 has a verdict backed by your probe, and the verdict names `adc26b1d`.
+
+Use /reviewer.
