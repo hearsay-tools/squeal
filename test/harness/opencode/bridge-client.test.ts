@@ -150,6 +150,8 @@ describe("callBridge", () => {
 
   it("starts the bridge without Node's proxy setup, and hands NODE_USE_ENV_PROXY to what it spawns (008-21)", async () => {
     vi.stubEnv("NODE_USE_ENV_PROXY", "1");
+    // Node sets the proxy up only when a proxy URL is set too, as on a host behind one; CI has none.
+    vi.stubEnv("HTTPS_PROXY", "http://proxy.invalid:3128");
     // What the bridge sees, whether Node set up the proxy at its start, and what a child sees.
     const probe = bridge(`
       import { execFileSync } from "node:child_process";
