@@ -1,4 +1,5 @@
 import type { OcClient } from "./api.js";
+import { arrivals } from "./arrivals.js";
 import type { CallOptions } from "./bridge-client.js";
 import { type Deadline, deadlineIn, within } from "./deadline.js";
 import type { OcAnswers, OcConsumer, OcKind, OcRequest } from "./protocol.js";
@@ -44,6 +45,10 @@ interface Turn {
   aborted: boolean;
   /** The text Squeal last sent, so its `chat.message` is known as Squeal's own. */
   own: string | null;
+  /** The id of the root's last message this instance saw, which a stored report must follow. */
+  last: string | null;
+  /** `arrivals` at the last idle, which a stored report must find unchanged. */
+  arrivals: number;
   /**
    * Counts the root's messages and aborts. An idle decision taken at another
    * count is stale: only the turn that went idle, still live and not
@@ -63,9 +68,9 @@ export interface Turns {
   /**
    * A root's `chat.message`: the idle wait ends, and an idle decision still
    * pending is stale; a message that is not the one Squeal sent clears the
-   * continuation flag and starts a turn with no abort.
+   * continuation flag and starts a turn with no abort. `messageId` is its id.
    */
-  message(id: string, parts: readonly unknown[]): void;
+  message(id: string, messageId: string, parts: readonly unknown[]): void;
   /** A root's `session.error` with `MessageAbortedError`; an idle decision still pending is stale. */
   aborted(id: string): void;
   /** The reports held for the root `id`, once, or `null`. */
@@ -119,6 +124,8 @@ export function turns(client: OcClient, ask: Ask): Turns {
         continued: false,
         aborted: false,
         own: null,
+        last: null,
+        arrivals: 0,
         epoch: 0,
         held: [],
         waiter: null,
@@ -135,6 +142,27 @@ export function turns(client: OcClient, ask: Ask): Turns {
   const current = (id: string, turn: Turn, epoch: number) =>
     stopped === null && live(id, turn, epoch);
 
+  /**
+   * Whether OpenCode says the newest message of session `id` is `last` or
+   * a reply to it, within `deadline`; a failed read is `false`. Once
+   * `dispose` began, OpenCode routes new input to the instance it re-creates
+   * and so does an abort's event, which this instance's epoch never sees
+   * (review 008-27 B1).
+   */
+  const latest = async (id: string, last: string | null, deadline: Deadline) => {
+    if (last === null) return false;
+    const cancel = new AbortController();
+    const read = client.session.messages({
+      path: { id },
+      query: { limit: 1 },
+      signal: cancel.signal,
+    });
+    const result = await within(read, deadline());
+    if (result === null) cancel.abort();
+    const info = result?.data?.at(-1)?.info;
+    return info?.id === last || (info?.role === "assistant" && info.parentID === last);
+  };
+
   const cancelWait = (turn: Turn) => {
     turn.waiter?.abort();
     turn.waiter = null;
@@ -150,7 +178,9 @@ export function turns(client: OcClient, ask: Ask): Turns {
    * took it after all. Once the instance is stopping, the text is stored
    * instead, with `noReply` and within `dispose`'s deadline: `opencode run`
    * exits after `dispose`, so no turn could run, and the session's next
-   * resume reads it (D5).
+   * resume reads it (D5); but only while the turn's message is still the
+   * session's last (`latest`), and no message or abort reached any instance
+   * since its idle (`arrivals`).
    */
   const say = async (
     id: string,
@@ -160,8 +190,10 @@ export function turns(client: OcClient, ask: Ask): Turns {
     epoch: number,
   ): Promise<boolean> => {
     const stop = stopped;
-    const left = (stop ?? deadline)();
-    if (left <= 0 || !live(id, turn, epoch)) {
+    const left = stop ?? deadline;
+    const overtaken = async (stop: Deadline) =>
+      !(await latest(id, turn.last, stop)) || arrivals(id) !== turn.arrivals;
+    if (left() <= 0 || !live(id, turn, epoch) || (stop && (await overtaken(stop)))) {
       turn.held.push(text);
       return false;
     }
@@ -178,7 +210,7 @@ export function turns(client: OcClient, ask: Ask): Turns {
             body: { parts: [{ type: "text", text, synthetic: true }], noReply: true },
             signal,
           });
-    const result = await within(sent, left);
+    const result = await within(sent, left());
     if (result !== null && result.error === undefined) return true;
     cancel.abort();
     turn.held.push(text);
@@ -204,9 +236,10 @@ export function turns(client: OcClient, ask: Ask): Turns {
   };
 
   return {
-    message(id, parts) {
+    message(id, messageId, parts) {
       const turn = turnOf(id);
       turn.open = true;
+      turn.last = messageId;
       turn.epoch++;
       cancelWait(turn);
       const own = turn.own;
@@ -236,6 +269,7 @@ export function turns(client: OcClient, ask: Ask): Turns {
       const turn = turnOf(id);
       if (!turn.open) return;
       turn.open = false;
+      turn.arrivals = arrivals(id);
       const epoch = turn.epoch;
       if (turn.aborted || turn.continued) {
         turn.aborted = false;
