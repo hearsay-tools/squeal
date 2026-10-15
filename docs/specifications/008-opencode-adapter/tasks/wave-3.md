@@ -108,3 +108,9 @@ Use /reviewer, pinned to `cand/0.1.192` (63289a86). Outcome: `reviews/wave-3b.md
 - Context: 0.1.192 is `cand/0.1.188` (round 3 PASS at 854d66ae) cherry-picked onto main at 0.1.190 (007's 007-37 to 007-43, 006's 006-53 and 006-56), with no build commit carried, then one build commit. Main's commits and the candidate share no source or test file; only the eight version places and 31 bundles under `plugins/*/dist`.
 - Questions: is the version 0.1.192 in all eight places (`package.json`, `plugins/{claude-code,pi,opencode}/package.json`, both plugin manifests, `install.sh` `SQUEAL_VERSION`, `package-lock.json` root and `packages[""]`), and does `npm run check:version -- origin/main` pass? Does a clean `npm ci` and `npm run build` leave no tracked drift? Do the cherry-picked commits match round 3's `74f093ba..854d66ae` and earlier range by content (`git range-diff`)? Does `npx vitest run test/keys/key-format.test.ts` pass with format 10 unchanged?
 - Writes only `docs/specifications/008-opencode-adapter/reviews/wave-3b.md`. No full suite: the coordinator's gate runs under the host lock.
+
+## 008-36 re-review of `cand/0.1.192` rebased onto 0.1.191
+
+Use /reviewer, pinned to `cand/0.1.192` at 9ffd66f4. Outcome: `reviews/wave-3b.md` gains a Round 5 with a verdict on that SHA. 007's 0.1.191 (007-42: `src/runners/pytest/adapter.ts`, its test, key format 10 re-pinned) landed after 008-35 passed 63289a86, so the candidate was rebuilt on it (process step 6).
+- Same questions as 008-35, against main at 0.1.191: the 14 non-build commits identical to 63289a86's by `git range-diff`; no shared source or test file; version 0.1.192 in all eight places and `check:version` passes; a clean `npm ci` and build leave no drift; the key-format test passes with 007's pin.
+- Writes only `docs/specifications/008-opencode-adapter/reviews/wave-3b.md`. No full suite.
