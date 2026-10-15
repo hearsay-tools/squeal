@@ -49,7 +49,15 @@ jobs:
       - name: Pythons for the pytest fixtures
         run: uv python install 3.10 3.13
       - name: Test
-        run: npx vitest run --shard=${{ matrix.shard }}/3
+        id: test
+        run: npx vitest run --shard=${{ matrix.shard }}/3 --exclude test/harness/opencode-dispose.test.ts
+      # 010-16: this file's race must fit OpenCode's rebuild of a disposed instance inside the
+      # plugin's 2,000 ms idle deadline, which a shard sharing 4 vCPUs with
+      # `scheduler/backlog-tiers` misses on every attempt. It runs alone, after its shard's files,
+      # and reads as its own step even when they failed.
+      - name: Test the dispose race alone
+        if: ${{ !cancelled() && matrix.shard == 3 && steps.test.outcome != 'skipped' }}
+        run: npx vitest run test/harness/opencode-dispose.test.ts
       - name: Build
         if: matrix.shard == 1
         run: npm run build
