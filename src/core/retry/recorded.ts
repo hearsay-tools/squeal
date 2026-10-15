@@ -27,14 +27,21 @@ export function retryFactOf(records: readonly RetryRecord[]): RetryFact | undefi
   return { reason: newest.reason, outcome: newest.end?.outcome ?? "pending" };
 }
 
-/** The newest retry asked for `testFile` at `key` whose run passed; `undefined` when none. */
+/**
+ * The retry asked for `testFile` at `key` that run `runId` passed, the run
+ * whose result recovered the check; `undefined` when that run was no retry's
+ * (review 001-398, S2: an earlier retry's pass is not this recovery's).
+ */
 export function passedRetry(
   store: Store,
   testFile: TestFileRef,
   key: CheckKey,
+  runId: string,
 ): RetryFact | undefined {
   return retryFactOf(
-    retriesAt(readRetries(store), testFile, key).filter((r) => r.end?.outcome === "passed"),
+    retriesAt(readRetries(store), testFile, key).filter(
+      (r) => r.end?.outcome === "passed" && r.end.runId === runId,
+    ),
   );
 }
 
