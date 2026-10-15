@@ -36,7 +36,8 @@ export function retainedOf(seen) {
     if (step.k !== undefined) steps.push(step);
     else {
       const e = squealEvidence(step.text, step.from);
-      if (e !== null) steps.push(e);
+      // A pull keeps its subcommand: a status read is not a run (review 006-57 B1).
+      if (e !== null) steps.push(step.sub === undefined ? e : { ...e, sub: step.sub });
     }
   }
   return replayed(steps);
