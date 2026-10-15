@@ -2,6 +2,8 @@
 // ~/.claude or ~/.codex, and the host's model provider is read at run time, never written into
 // this public repository.
 import {
+  chmodSync,
+  copyFileSync,
   cpSync,
   existsSync,
   lstatSync,
@@ -45,6 +47,29 @@ export function cellEnv(parent, cell, provider = []) {
     GIT_COMMITTER_NAME: "ledgerline",
     GIT_COMMITTER_EMAIL: "dev@ledgerline.invalid",
   });
+}
+
+/**
+ * The directory whose `squeal` a bare `squeal` in a cell runs (row 006-62): the pinned plugin's.
+ * A cell inherits the host's `PATH`, whose `~/.local/bin/squeal` (spec 005 D3's launcher) reads
+ * the plugin registry from the cell's empty `HOME`; Claude Code's `--plugin-dir` registers
+ * nothing there, so it answered `no squeal@hearsay plugin is installed`. Claude Code: the
+ * plugin's own `bin/` (spec 001 D9). Codex puts no plugin `bin/` on the `PATH`, so its `squeal`
+ * is the pinned plugin's launcher where `install.sh` copies it, `<cell>/home/.local/bin`, which
+ * finds the plugin in the cell's `CODEX_HOME`. Put first on the `PATH` with `pathFirst`.
+ */
+export function squealBin(harness, cell, pin) {
+  if (harness !== "codex") return join(pin, "plugins/claude-code/bin");
+  const dir = join(cell, "home/.local/bin");
+  mkdirSync(dir, { recursive: true });
+  copyFileSync(join(pin, "plugins/codex/bin/squeal-launcher"), join(dir, "squeal"));
+  chmodSync(join(dir, "squeal"), 0o755);
+  return dir;
+}
+
+/** `path` with `dir` first, and not again later. */
+export function pathFirst(path, dir) {
+  return [dir, ...(path ?? "").split(":").filter((p) => p && p !== dir)].join(":");
 }
 
 /**
