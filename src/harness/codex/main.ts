@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { sessionRootFiles } from "../shared/session-root.js";
 import { codexCommand } from "./command.js";
 import type { CodexHandler } from "./hook.js";
 import { runCodexHandler } from "./run.js";
@@ -19,6 +20,7 @@ export async function runMain(name: string, handler: CodexHandler): Promise<void
   const cli = fileURLToPath(new URL("./cli/squeal.mjs", import.meta.url));
   const result = await runCodexHandler(name, handler, stdin, {
     env: process.env,
+    sessionRoots: sessionRootFiles(process.env),
     cli,
     command: codexCommand(process.env, cli),
   });
