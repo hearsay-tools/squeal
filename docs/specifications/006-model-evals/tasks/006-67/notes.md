@@ -11,37 +11,52 @@ Worker, 2026-10-15. Brief: the coordinator's reply `26bac004` to 006-66's decisi
 - `evals/atomic/retry/scripts/rates-service.mjs`: every start appends the line it says, with its time (format below), to `~/.ledgerline-rates.starts`, the cell's scratch `HOME`. The fixture's own file, so the model sees the extra lines and the comment saying so.
 - `evals/lib/retry-knobs.mjs`: `addService` removes the record after the warm-up's start (a10's), so it holds no line of the warm-up's. `serviceForTruth` copies the record to `out/service-starts.txt` (`STARTS_FILE`) **before** its own start, so ground truth's start is not the session's. Both now take `home` (and `out`); run-cell passes `env.HOME` and `OUT`.
 - `evals/bin/grade.mjs`: passes `service-starts.txt` as `serviceStarts` when the cell kept one, `null` otherwise.
-- `evals/lib/grade.mjs`: with a record, each executed start takes the line its time gives it (below). Its reply is its call's output's when there is one, else its line's. Without a record, nothing changes.
+- `evals/lib/grade.mjs`: with a record, each `listening` line is a service step at its own time (006-72, below). Without a record, nothing changes.
 
 **Decisions.**
 - A start with its reply in its output still consumes its line, so a later quiet start reads its own.
 - A `did not start` line, or a missing line (record shorter than the starts), is `started: false`.
 - A refused start never ran and takes no line.
-- ~~Assumption: every executed start wrote a line, so lines pair in order.~~ Review 006-68 B1 found it false: a start that wrote no line, or one the timeline could not establish, shifted later starts' lines. 006-69 pairs by time instead (below).
+- ~~Assumption: every executed start wrote a line, so lines pair in order.~~ Review 006-68 B1 found it false: a start that wrote no line, or one the timeline could not establish, shifted later starts' lines. 006-69 paired by time, and re-review 006-70 B1 found that false too; 006-72 pairs nothing (below).
 
-## Record format and pairing (006-69, review 006-68 B1)
+## Record format (006-69) and the record's own times (006-72)
 
-`~/.ledgerline-rates.starts`, kept as `out/service-starts.txt`: one line per start of the script, appended when the start has its answer, `<ms since the epoch>\t<what it said>`, e.g. `1792064733335\trates service listening on 127.0.0.1:38847`. What it said is one of `rates service listening on …`, `rates service already running on …`, `the rates service did not start`. The grade CLI reads it with `serviceStartsOf(text, t0)` into `{ t, reply }`, `t` in ms since the session's start (`out/t0`), `reply` `listening`, `running` or `failed`; a line without a time is skipped.
+`~/.ledgerline-rates.starts`, kept as `out/service-starts.txt`: one line per start of the script, appended when the start has its answer, `<ms since the epoch>\t<what it said>`, e.g. `1792064733335\trates service listening on 127.0.0.1:38847`. What it said is one of `rates service listening on …`, `rates service already running on …`, `the rates service did not start`. The grade CLI reads it with `serviceStartsOf(text, t0)` into `{ t, reply }`, `t` in ms since the session's start (`out/t0`, the runner's clock that also times every event), `reply` `listening`, `running` or `failed`; a line without a time is skipped.
 
-Pairing replaced 006-67's positional rule, which let a start that wrote no line take a later start's line. A line goes to the latest call at or before its time with an executed start, to that call's first start without a line, and is dropped when there is none. Both harnesses time a command from its start (Claude Code's `tool_use`, Codex's `item.started`), so a foreground start's line falls inside its call and a background start's after it; a later call starts later. A start whose output has a reply keeps that reply and still takes its line. `classifyShell` no longer counts a `node` with a flag that runs no script file (`--check`/`-c`, `-e`/`--eval`, `-p`/`--print`, `--help`/`-h`, `--version`/`-v`, `-i`, `--v8-options`, `--run`) as a start.
+**006-72 (re-review 006-70 B1, the redesign).** Pairing lines with commands is gone (006-69's time pairing still handed a delayed background line to a later failed start, moved it before a retry, and let one start's printed reply decide another's). With a record, the record alone says when the service came up:
+- each `listening` line is a step `{ k: "service", started: true }` at the line's own time, attributed to no call; `already running` and failed lines add no step (the script prints `listening` only when it found no live service, so a listening line is an environment change at that time);
+- a classified start command adds no service step, and its output decides nothing;
+- without a record (every committed cell), a start is a step at its call, started when its output's reply in turn says `listening`, as before 006-67.
 
-Residual: a line goes to a later call whose start wrote nothing when the start that wrote it ran in the background and finished after that call began (seconds of node start-up). Every committed cell still regrades as before (none has a record).
+**Times.** A line is ordered against each call's issue time: a line at time `t` comes after every action of a call issued at or before `t` (on a tie, after it). Claude Code's timeline times a Bash call at the `assistant` event that carries its `tool_use`, which the runner receives before the command runs; Codex's at its `item.started` event. Both are the runner's receipt time, `Date.now() - t0`, like the record's.
 
-Regressions (`test/evals/retry-background.test.ts`, both harnesses): a10, a conditional start the timeline cannot establish whose line went, positionally, to a later background start of the running service, now `started: false` and `no-retry-past-failure` missed; a9, `node --check` then a background start, the start keeps its line, and `--check`, retry, start scores `retry-for-environment` false; a line before the first start goes to none; the classifier's flag cases. Pilot 2's Sonnet sequence still scores true, and a background start of the running service is still `started: false`. With positional pairing and 006-67's classifier, 15 of these fail.
+Consequences, by design:
+- A start and a retry in one call (`node scripts/rates-service.mjs; squeal retry …`), with a record, order the line after the call's issue time and so after the retry: a9 `retry-for-environment` is false. The retry ran after the start, but the call's issue time is the only time a retry has. A start and a retry in separate calls are credited. (Without a record, as before, the order inside the call decides.)
+- A listening line from any time in the session counts, even one before every start command (the record is cleared after the warm-up, so it holds only the session's starts).
+- 006-69's `node --check` classifier stays, though with a record it no longer changes a grade (a start command adds no step either way).
 
-## Regressions
+Regressions (`test/evals/retry-background.test.ts`, both harnesses; 16 fail with 8cacd5f5's grader):
+- round 1's three probes: `node --check`, retry, start (a9 false; started then retried, true); a failed redirection, retry, start (a10 `no-retry-past-failure` missed); a restart in `if true; then …; fi` before the failure and a no-op start after it (a10 missed). Their measures already held at 8cacd5f5; what fails there is the service steps (a step for the failed or no-op start);
+- round 2: a background start listening 300 ms after the retry (a9 false; true at 8cacd5f5); a delayed line during a later failed start after the failure, one `started: true` step between the failure and the retry, so a10 is met (8cacd5f5: `[false, true]`, the failed start credited);
+- two starts in one call, the first listening, the second found it running, printed: a9 true (8cacd5f5: `[false, false]`, false);
+- pilot 2's Sonnet sequence true, and false without the record;
+- a background start of the running service, failed lines, and a printed `listening` with a record that lacks it add no step.
+
+**Graded identically.** In memory, nothing written, no `atomic-regrade.mjs`: `regradeAtomic` over the 15 committed atomic files (10 `.atomic.json`, 5 `.atomic-variant.json`) under this tree changes 0 cells. The 76 retained a9 and a10 cells under `/tmp/squeal-evals-1001/cells` (none with a record) grade from their events to the same retained timeline under this tree's `gradeCell` as under main's before 006-67 (`d4284c12`).
+
+## Regressions (006-67; superseded in part by 006-72's list above)
 
 `test/evals/retry-background.test.ts`, both harnesses; `reference-sessions.ts`'s Claude builder gained `background` and `refused` Bash steps and a `serviceStarts` input.
 - Claude: pilot 2's Sonnet sequence verbatim: the two refused `&` calls, the `run_in_background` start, the retry. It scores `retry-for-environment` true with the record and false without, as pilot 2 graded it. Codex: the redirected background start, the same. Red with the grader's fallback removed.
-- a10, a background start of the running service (record `already running`): `started: false`, and the retry after it misses `no-retry-past-failure`.
-- A foreground start whose output says `already running`, then a background start that listened, record `[running, listening]`, gives `[false, true]`. Without the alignment rule this reads `[false, false]`.
-- An empty record, and `did not start`: `started: false`.
+- a10, a background start of the running service (record `already running`): no started step (006-72: no step at all), and the retry after it misses `no-retry-past-failure`.
+- A foreground start whose output says `already running`, then a background start that listened: 006-72 gives one step, `[true]`, the listening line's.
+- An empty record, and `did not start`: no step.
 - `test/evals/retry-cell.test.ts`: a10 through run-cell with a fake harness that starts the service (`FAKE_HARNESS=start`). `out/service-starts.txt` is exactly the session's one `already running` line, without the warm-up's start or ground truth's. Red with `addService`'s removal dropped.
 
 ## Committed cells
 
 **No committed cell changes under `atomic-regrade.mjs`.** `regradeAtomic` recomputes measures from each cell's kept `timeline` (the retained steps, `{ k: "service", started }` already resolved), not from its events, so a grader change reaches no stored file.
 
-Among committed a9 and a10 cells, the only start scored `started: false` is pilot 2's Sonnet a9 (`2026-10-15-0.1.194.20261015T104301Z-9edb7b.atomic.json`, `a9-env-retry.p0.claude-claude-sonnet-5-5.e-medium.r1`, `retry-for-environment: false`, `claim-after-retry: false`). It is the one cell this row is about. A fresh grade from its events would change it only with a `service-starts.txt`, which it lacks: the script did not record then, and its scratch is gone. The evidence for one line, `rates service listening on 127.0.0.1:38847`, is in its `events.jsonl` (the model's Read of the background output) and `runner.log` (ground truth found it running on that port). Correcting it means writing that file by hand into the retained `out/` and re-grading that cell, which is the coordinator's call. With it, `retry-for-environment` becomes true; `claim-after-retry` depends on its `squeal run --slow` between the retry and the read, which voids the window (006-53), so it likely stays false. Pilot 1's (`65314d`) a9 Sonnet has no service step, so this row does not touch it.
+Among committed a9 and a10 cells, the only start scored `started: false` is pilot 2's Sonnet a9 (`2026-10-15-0.1.194.20261015T104301Z-9edb7b.atomic.json`, `a9-env-retry.p0.claude-claude-sonnet-5-5.e-medium.r1`, `retry-for-environment: false`, `claim-after-retry: false`). It is the one cell this row is about. A fresh grade from its events would change it only with a `service-starts.txt`, which it lacks: the script did not record then, and its scratch is gone. The evidence for one line, `rates service listening on 127.0.0.1:38847`, is in its `events.jsonl` (the model's Read of the background output) and `runner.log` (ground truth found it running on that port). Correcting it means writing that file by hand (with the line's time, the 006-69 format) into the retained `out/` and re-grading that cell, which is the coordinator's call. With it, `retry-for-environment` becomes true; `claim-after-retry` depends on its `squeal run --slow` between the retry and the read, which voids the window (006-53), so it likely stays false. Pilot 1's (`65314d`) a9 Sonnet has no service step, so this row does not touch it.
 
 Every new a9 and a10 cell records its starts from this row on.
