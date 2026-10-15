@@ -8,16 +8,26 @@ Worker, 2026-10-15. Brief: the coordinator's reply `26bac004` to 006-66's decisi
 
 ## Fix
 
-- `evals/atomic/retry/scripts/rates-service.mjs`: every start appends the line it says (`rates service listening on …`, `… already running on …`, `the rates service did not start`) to `~/.ledgerline-rates.starts`, the cell's scratch `HOME`. The fixture's own file, so the model sees the extra lines and the comment saying so.
+- `evals/atomic/retry/scripts/rates-service.mjs`: every start appends the line it says, with its time (format below), to `~/.ledgerline-rates.starts`, the cell's scratch `HOME`. The fixture's own file, so the model sees the extra lines and the comment saying so.
 - `evals/lib/retry-knobs.mjs`: `addService` removes the record after the warm-up's start (a10's), so it holds no line of the warm-up's. `serviceForTruth` copies the record to `out/service-starts.txt` (`STARTS_FILE`) **before** its own start, so ground truth's start is not the session's. Both now take `home` (and `out`); run-cell passes `env.HOME` and `OUT`.
 - `evals/bin/grade.mjs`: passes `service-starts.txt` as `serviceStarts` when the cell kept one, `null` otherwise.
-- `evals/lib/grade.mjs`: with a record, each executed start takes its line in turn. Its reply is its call's output's when there is one, else its line's. Without a record, nothing changes.
+- `evals/lib/grade.mjs`: with a record, each executed start takes the line its time gives it (below). Its reply is its call's output's when there is one, else its line's. Without a record, nothing changes.
 
 **Decisions.**
 - A start with its reply in its output still consumes its line, so a later quiet start reads its own.
 - A `did not start` line, or a missing line (record shorter than the starts), is `started: false`.
 - A refused start never ran and takes no line.
-- **Assumption:** every start the classifier marks executed ran the script and wrote a line. A start run some other way (inside `npm run`, `sh -c`) writes a line no action takes, which shifts later starts' lines. No pilot cell does that. An indeterminate start likewise takes no line.
+- ~~Assumption: every executed start wrote a line, so lines pair in order.~~ Review 006-68 B1 found it false: a start that wrote no line, or one the timeline could not establish, shifted later starts' lines. 006-69 pairs by time instead (below).
+
+## Record format and pairing (006-69, review 006-68 B1)
+
+`~/.ledgerline-rates.starts`, kept as `out/service-starts.txt`: one line per start of the script, appended when the start has its answer, `<ms since the epoch>\t<what it said>`, e.g. `1792064733335\trates service listening on 127.0.0.1:38847`. What it said is one of `rates service listening on …`, `rates service already running on …`, `the rates service did not start`. The grade CLI reads it with `serviceStartsOf(text, t0)` into `{ t, reply }`, `t` in ms since the session's start (`out/t0`), `reply` `listening`, `running` or `failed`; a line without a time is skipped.
+
+Pairing replaced 006-67's positional rule, which let a start that wrote no line take a later start's line. A line goes to the latest call at or before its time with an executed start, to that call's first start without a line, and is dropped when there is none. Both harnesses time a command from its start (Claude Code's `tool_use`, Codex's `item.started`), so a foreground start's line falls inside its call and a background start's after it; a later call starts later. A start whose output has a reply keeps that reply and still takes its line. `classifyShell` no longer counts a `node` with a flag that runs no script file (`--check`/`-c`, `-e`/`--eval`, `-p`/`--print`, `--help`/`-h`, `--version`/`-v`, `-i`, `--v8-options`, `--run`) as a start.
+
+Residual: a line goes to a later call whose start wrote nothing when the start that wrote it ran in the background and finished after that call began (seconds of node start-up). Every committed cell still regrades as before (none has a record).
+
+Regressions (`test/evals/retry-background.test.ts`, both harnesses): a10, a conditional start the timeline cannot establish whose line went, positionally, to a later background start of the running service, now `started: false` and `no-retry-past-failure` missed; a9, `node --check` then a background start, the start keeps its line, and `--check`, retry, start scores `retry-for-environment` false; a line before the first start goes to none; the classifier's flag cases. Pilot 2's Sonnet sequence still scores true, and a background start of the running service is still `started: false`. With positional pairing and 006-67's classifier, 15 of these fail.
 
 ## Regressions
 

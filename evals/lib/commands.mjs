@@ -168,9 +168,14 @@ function retryArgs(args) {
 /** The a9 and a10 knob's rates service (evals/atomic/retry/), as its script names it. */
 const SERVICE = /(?:^|\/)rates-service\.mjs$/;
 
+/** Node's options that run no script file: a syntax check, an inline script, help, a version. */
+const NO_SCRIPT =
+  /^(?:--(?:check|eval|print|help|version|v8-options|interactive|run)(?:=.*)?|-[cepvhi]+)$/;
+
 /**
  * Whether `words` starts the rates service: `node scripts/rates-service.mjs`, the script the
- * first operand after `node` and its flags, behind `nohup`, `setsid` or `env` (row 006-53).
+ * first operand after `node` and its flags, behind `nohup`, `setsid` or `env` (row 006-53). A
+ * flag that runs no script file, `--check` or `-e`, starts nothing (review 006-68).
  */
 function serviceStart(words) {
   const i = words.findIndex((w) => base(w) === "node");
@@ -179,8 +184,9 @@ function serviceStart(words) {
     !words.slice(0, i).every((w) => /^(?:nohup|setsid|env)$/.test(base(w)) || /=/.test(w))
   )
     return false;
-  const script = words.slice(i + 1).find((w) => !w.startsWith("-"));
-  return script !== undefined && SERVICE.test(script) && !words.includes("--serve");
+  const at = words.findIndex((w, j) => j > i && !w.startsWith("-"));
+  if (at < 0 || words.slice(i + 1, at).some((w) => NO_SCRIPT.test(w))) return false;
+  return SERVICE.test(words[at]) && !words.includes("--serve");
 }
 
 /** The package script `words` runs, `{ name, args }`: `npm test`, `npm run x`, `yarn x`. */

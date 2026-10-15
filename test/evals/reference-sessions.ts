@@ -5,6 +5,7 @@ import {
   codexTimeline,
   type Event,
   gradeCell,
+  type ServiceStart,
 } from "../../evals/lib/index.mjs";
 import type { StatusSnapshot } from "../../src/core/types/index.js";
 import { settled } from "./status-snapshot.js";
@@ -72,8 +73,8 @@ interface Ending {
   truthPass: boolean;
   status: keyof typeof STATUS;
   harness?: Harness | undefined;
-  /** The rates service's record of the session's starts (`out/service-starts.txt`, 006-67). */
-  serviceStarts?: string | null | undefined;
+  /** The rates service's record of the session's starts (`serviceStartsOf`, 006-67). */
+  serviceStarts?: readonly ServiceStart[] | null | undefined;
 }
 
 /** The mechanical grade (`out/grade.json`'s) of `steps`, ending with `status` and ground truth. */
