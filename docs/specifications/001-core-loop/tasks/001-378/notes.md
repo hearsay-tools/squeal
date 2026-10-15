@@ -83,3 +83,43 @@ Runner ceiling, replacing its last two sentences:
 Priority, replacing it:
 
 > Every test process Squeal starts runs at `nice` 10, and what it spawns inherits it. A node:test or pytest process is lowered as it is spawned. A Vitest fork worker is found by its lane's mark and lowered within a second of its start, so a fork shorter than that may finish at the daemon's priority. A thread-pool worker is a thread of the daemon and keeps its priority. A slow lane's processes also run at `ionice -c 3` where permitted (004 D2).
+
+## Review 001-394 B2
+
+Worker notes, 2026-10-15. Spec 004 D2 (a slow tier of several files starts them all at once, so none starts after an edit or a close) against 001 D11 Runner ceiling.
+
+### The defect
+
+`SlowTier.#select` picked up to `slot.permits` files and the pool grant. Since this row, the Vitest adapter runs each tier under the project's own `maxWorkers`. With `slow.maxParallel` 4 and a project at 2, a tier of 4 started 2 files, and Vitest's pool started the other 2 only as those ended: after an edit, or after the scheduler closed. Seen red: the new scheduler test's first slow run held 4 files, and on close 4 files had started, not 2.
+
+### What changed
+
+- **`RunnerAdapter.slowWidth?(testFiles)`** (`src/core/types/runner.ts`, additive and optional). It returns how many of `testFiles`, in order, one slow run starts at once, at least 1. It is synchronous, since `#select` runs under the scheduler's lock. Absent means all of them.
+- **Vitest** (`width.ts`, `Widths.atOnce`; `adapter.ts`, `slowWidth`).
+  - The width is the first file's project's ceiling (its own `maxWorkers`, else the root's): `tierWidth(files, ceiling)`. A slow run's width is at least one worker per file, either the slow instance's `max(slow.maxWorkers, slow.maxParallel)` or a grant of `slow.maxWorkers` per file. So only the ceiling binds. A project that set 1 gives 1, and a project with no value gives every file.
+  - The count also stops at the first file of another task group. Vitest's `groupSpecs` runs a run's groups one after another: by `sequence.groupOrder`, plus a last group for an isolated project of order 0 that set 1. A tier that spans two groups would start the second group's files late too.
+  - Within a group Vitest requires one `maxWorkers`, so the first file's width holds for the group.
+  - The fast instance answers. The slow instance has the same configs, and it exists only once a slow run asked for it.
+- **Wrappers.** `withSlowInstance` forwards to the fast adapter, and the recovering runner and `afterEachRun` forward to their inner runner. The composite asks only the first file's adapter, about the prefix of the files it owns, because its parts run one after another.
+- **`#select`** truncates `picked` to the reported width right after the pick loop. That comes before the pool take, so the lease is `files × slow.maxWorkers` of what runs. It also comes before `startTier`, the claims and the activity. `#pick` has no side effect on a file it returns, so the deferred files stay queued. The slot shrinks to the files that started, as before.
+
+### Tests
+
+- `test/scheduler/slow-width.test.ts` uses the real scheduler over the real Vitest adapter. The `basic` fixture's config is set to `maxWorkers: 2`, with `slow.maxParallel` 4, four slow files and a pool of 8. A run wrapper dispatches each slow run as Vitest's pool does: its first 2 files start, and the rest start only once the first run is released.
+  - Edit. With the first 2 files held, the tier holds 2 files, 2 permits (another owner takes the other 2) and a grant of 4. An edit to `src/math.ts` is batched, and then the run is released. The other 2 files start only in a second slow run, after the edit's fast tier.
+  - Close. With the first 2 files held, `close()` is called and then the run is released. Only 2 files ever start, in one slow run.
+  - Both were red before the fix. The edit test failed on the first run's 4 files, and the close test saw 4 starts.
+- `test/runners/vitest/width.test.ts` checks the width the real adapter reports.
+  - The width is 2 for a project at 2 and 1 for a project at 1. A project without `maxWorkers`, or one at 6, gives all 4 files.
+  - On the slow tier's instance (`maxWorkers: 4`), a run of exactly the reported files takes one worker per file.
+  - With root 3 and project `b` at 2 in `groupOrder` 1, `a`'s files give 3 and `b`'s give 2. A run that mixes `a` and `b` stops at the group boundary, giving 1.
+- `test/daemon/slow-width.test.ts` checks the forwarding.
+  - The slow-instance wrapper answers from the fast adapter without creating a slow instance, and `afterEachRun` passes the answer on.
+  - The composite stops at another adapter's file. An adapter with no `slowWidth` starts all of its own files.
+
+### Decisions the review did not settle
+
+1. **Group boundaries count, not only the per-project width.** A tier of projects in different `groupOrder`s would otherwise start one group's files after the other group's ended, which is the same defect.
+2. **The fast instance answers for the slow one.** Both read the same configs, and asking the slow adapter would create its instance at selection time, under the lock.
+3. **`slowWidth` takes the files, not a project.** The answer depends on the order and on group membership, and only the runner knows the groups.
+4. **The slow tier still yields the first file even when the width is 0 or less** (`max(1, …)`), so a misreporting runner cannot stall the slow queue.
