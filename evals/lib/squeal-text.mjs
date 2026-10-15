@@ -20,17 +20,49 @@ const FOREIGN =
 const SQUEALS =
   /^(?:Revision:? \d|Known failures: \d|Run requested|Checkpoint |Retry (?:queued|withdrawn|asked)|Not retried|No pending retry|No verdict: |No daemon running|No slow files|Not validated|Check: |SQUEAL ·|Slow tier|Returned |squeal(?: [a-z-]+)?: |\s*"knownFailures": )/m;
 
+const base = (bin) => bin.replace(/^.*\//, "");
+
 /**
- * How many of a call's `n` Squeal commands Squeal never answered, from the call's output and
- * exit (row 006-62): all of them for a non-zero exit with no Squeal text, else one per foreign
- * reply. Such a command is no pull, wait or slow run through Squeal.
+ * The binaries of `bins` that could have printed foreign reply `reply`: the launcher's and the
+ * shell's name the program run (`squeal`, a launcher's path, `squeal.mjs`), Node's the file.
  */
-export function unanswered(out, exit, n) {
+function printedBy(reply, bins) {
+  const module = /Cannot find module '([^']*)'/.exec(reply)?.[1];
+  if (module !== undefined)
+    return bins.filter((b) => b === module || module.endsWith(`/${b.replace(/^\.\//, "")}`));
+  const name =
+    /no squeal@hearsay/.test(reply) || /\bsqueal: /.test(reply) ? "squeal" : "squeal.mjs";
+  return bins.filter((b) => base(b) === name && !b.startsWith("npx "));
+}
+
+/**
+ * Whether Squeal answered each of a call's executed Squeal commands, named by the CLI each ran
+ * (`bins`, the actions' `bin`), from the call's output and exit: `true`, `false`, or `null` when
+ * the output cannot say (review 006-63 B2). None was answered when the call exited non-zero with
+ * no Squeal text. Otherwise each foreign reply is the command's whose CLI could print it: the
+ * launcher's and the shell's a bare `squeal` or a launcher's path, Node's the `squeal.mjs` it
+ * names. One CLI answers each of its commands in a call alike, so a CLI with as many foreign
+ * replies as commands answered none, one with none answered all, and one with fewer, or a reply
+ * more than one CLI could print, cannot say.
+ */
+export function answered(out, exit, bins) {
   const text = String(out ?? "");
   const own = text.replace(FOREIGN, "");
   const squeals = SQUEALS.test(own) || squealEvidence(own, "pull") !== null;
-  if (Number.isInteger(exit) && exit !== 0 && !squeals) return n;
-  return Math.min(n, text.match(FOREIGN)?.length ?? 0);
+  if (Number.isInteger(exit) && exit !== 0 && !squeals) return bins.map(() => false);
+  const distinct = [...new Set(bins)];
+  const foreign = new Map();
+  const unsure = new Set();
+  for (const [reply] of text.matchAll(FOREIGN)) {
+    const by = printedBy(reply, distinct);
+    if (by.length === 1) foreign.set(by[0], (foreign.get(by[0]) ?? 0) + 1);
+    else for (const b of by.length === 0 ? distinct : by) unsure.add(b);
+  }
+  return bins.map((b) => {
+    const f = foreign.get(b) ?? 0;
+    const n = bins.filter((x) => x === b).length;
+    return unsure.has(b) ? null : f === 0 ? true : f >= n ? false : null;
+  });
 }
 
 const count = (re, text) => {

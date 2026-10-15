@@ -55,7 +55,7 @@ const HELP = new Set(["--help", "-h", "--version", "-v"]);
 
 /**
  * Every action in shell text `text`, in the order it runs, one entry per simple command that
- * matters: `{ kind: "squeal", sub, wait, all, slow }` (and `paths`, `reason`, `cancel` for
+ * matters: `{ kind: "squeal", bin, sub, wait, all, slow }` (and `paths`, `reason`, `cancel` for
  * `retry`), a test action, `{ kind: "sleep", seconds }`, `{ kind: "service" }` for a start of the
  * retry scenarios' rates service and `{ kind: "write", path }`. A chain yields one action per command in it.
  *
@@ -122,6 +122,9 @@ function classify(words, depth = 0) {
     return [
       {
         kind: "squeal",
+        // The CLI as the command names it (review 006-63 B2): `squeal`, a launcher's or a
+        // `squeal.mjs` path, or `npx squeal`.
+        bin: prog === "npx" ? "npx squeal" : words[sq],
         sub,
         wait: rest.includes("--wait") || rest.some((w) => w.startsWith("--wait=")),
         all: rest.includes("--all"),
