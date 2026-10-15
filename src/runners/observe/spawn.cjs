@@ -1,7 +1,9 @@
 // The recorder's children and threads (`recorder.cjs`; spec 001 D4; tasks
 // 001-132, 001-135). At every spawn, sync or async, and every Worker, the
 // recorder and its settings ride in whatever env the caller passed (`env: {}`
-// too), so grandchildren are recorded. A call Node would reject, or whose env
+// too), so grandchildren are recorded. The recorder goes in as `--import` of its
+// `file:` URL, or as `--require` beside a `--require` the env already holds, as
+// `recorderOption` in `runtime.ts` decides (spec 001 D11 Fidelity, task 001-390). A call Node would reject, or whose env
 // the recorder cannot extend as Node reads it, passes through untouched, so
 // Node's own validation runs (review wave 12d, B6). A thread's test file also
 // rides in its environment data, which a `SHARE_ENV` Worker gets though it
@@ -12,9 +14,19 @@ const childProcess = require("node:child_process");
 const path = require("node:path");
 const workerThreads = require("node:worker_threads");
 const { statSync } = require("node:fs");
+const { pathToFileURL } = require("node:url");
 
 /** The environment-data key carrying the test file into a thread. */
 const FILE_KEY = "squeal.observe.file";
+
+/** A value as `NODE_OPTIONS` reads it (`quoteNodeOption`). */
+const quote = (value) => `"${value.replace(/["\\]/g, "\\$&")}"`;
+/**
+ * A `--require` or `-r` token, quoted or not, with its value after a space or `=`
+ * (`holdsRequire`). A match it should not make keeps the recorder a `--require`,
+ * which records as much.
+ */
+const REQUIRE = /(?:^|[\s"])(?:--require|-r)(?:[\s="]|$)/;
 
 const isOptions = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 const ownEnv = (options) =>
@@ -68,6 +80,7 @@ function foreign(value, out) {
 
 function wrapChildren(api) {
   const { variable, self, settings } = api;
+  const url = pathToFileURL(self).href;
   /**
    * `env` plus the recorder: what Node reads of it, its prototype's keys too
    * for a spawn, its own keys only for a Worker.
@@ -78,8 +91,9 @@ function wrapChildren(api) {
     // Another Squeal's settings (a test starting its own Squeal): that subtree is its.
     if (foreign(out[variable], settings.out)) return out;
     const options = typeof out.NODE_OPTIONS === "string" ? out.NODE_OPTIONS : "";
-    if (!options.includes(self)) {
-      out.NODE_OPTIONS = `--require ${JSON.stringify(self)}${options === "" ? "" : ` ${options}`}`;
+    if (!options.includes(self) && !options.includes(url)) {
+      const option = REQUIRE.test(options) ? `--require ${quote(self)}` : `--import ${quote(url)}`;
+      out.NODE_OPTIONS = `${option}${options === "" ? "" : ` ${options}`}`;
     }
     const file = api.current();
     out[variable] = JSON.stringify({ ...settings, ...(typeof file === "string" ? { file } : {}) });
@@ -148,7 +162,7 @@ function wrapChildren(api) {
     childProcess[name] = wrapped;
   }
 
-  // Worker threads load `--require` from their env's NODE_OPTIONS; the env carries the test
+  // Worker threads load the recorder from their env's NODE_OPTIONS; the env carries the test
   // file, and so does the environment data, which a SHARE_ENV thread's env cannot.
   const Worker = workerThreads.Worker;
   workerThreads.Worker = class Worker_ extends Worker {

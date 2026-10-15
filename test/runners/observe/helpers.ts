@@ -33,6 +33,8 @@ export interface ObserveOptions {
   readonly viaVitest?: boolean;
   /** Run `main` without the recorder: only `stdout` is meaningful. */
   readonly off?: boolean;
+  /** The `NODE_OPTIONS` the recorder joins, a project's own (task 001-390). */
+  readonly inherited?: string;
 }
 
 /** A worktree holding `files`, and a run of `main` under the recorder attributed to `test.ts`. */
@@ -54,7 +56,7 @@ export function observe(
   const out = join(root, ".observe");
   mkdirSync(out);
   if (recorder === null) throw new Error("recorder.cjs not found");
-  const env = observeEnv(recorder, { out, root, skip: [] }, undefined);
+  const env = observeEnv(recorder, { out, root, skip: [] }, options.inherited);
   const settings = JSON.parse(env.SQUEAL_OBSERVE ?? "{}");
   const test = join(root, "test.ts");
   const stdout = execFileSync(process.execPath, [join(root, main)], {
