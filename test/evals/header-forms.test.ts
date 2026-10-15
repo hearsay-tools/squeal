@@ -39,6 +39,10 @@ const HEADER = (rev: number, pending = 0) =>
 /** A delivery at `rev`: the ledger check recovered, `slow` the slow tier's line. */
 const RECOVERY = (rev: number, { pending = 0, slow = CURRENT_SLOW(rev) } = {}) =>
   `SQUEAL · 1 check changed (1 test) at revision ${rev}\n${HEADER(rev, pending)}\n${slow}\nThe test file your edits since revision ${rev - 1} re-keyed is current.\n\nPASS  ${LEDGER}\n      FAIL -> PASS\n      at test/slow/ledger.test.ts:9:1`;
+/** The delivery from 001-407 on: the news form, with the slow-tier line only when `slow` is given. */
+const NEWS = (rev: number, { pending = 0, slow }: { pending?: number; slow?: string } = {}) =>
+  `SQUEAL · 1 check changed (1 test) at revision ${rev}\nRevision ${rev}: ${pending ? `${pending} pending (1 test, 1 test file loaded)` : "no check pending, stale or unknown"}.${slow === undefined ? "" : `\n${slow}`}\nThe test file your edits since revision ${rev - 1} re-keyed is current.\n\nPASS  ${LEDGER}\n      FAIL -> PASS\n      at test/slow/ledger.test.ts:9:1`;
+const PENDING_SLOW = "Slow tier: 1 test file; 1 pending. Squeal runs them when the agent pauses.";
 /** The same delivery naming the ledger check failed. */
 const FAILURE = (rev: number) =>
   `SQUEAL · 1 check changed (1 test) at revision ${rev}\n${HEADER(rev)}\n${CURRENT_SLOW(rev)}\n\nFAIL  ${LEDGER}\n      PASS -> FAIL, slow tier, Squeal's run saw it at revision ${rev}, against src/** as of revision ${rev}\n      expected '$46,992.00' to be '$46992.00' // Object.is equality`;
@@ -166,6 +170,37 @@ for (const harness of ["codex", "claude"] as const)
     it("a cut status whose counts are for an older revision stays a miss", () => {
       const steps = [tailed(3, [], 3), { edit: "test/report.test.ts" }, tailed(3, [], 3)];
       expect(atClaim([...steps, CLAIM("pass")], harness)).toEqual(MISSED);
+    });
+  });
+
+for (const harness of ["codex", "claude"] as const)
+  describe(`a change delivery's news header (task 001-407), ${harness}`, () => {
+    it("with nothing pending, the slow tier as last shown current, is current", () => {
+      const steps = [{ squeal: RECOVERY(2) }, { edit: "test/report.test.ts" }];
+      expect(atClaim([...steps, { squeal: NEWS(3) }, CLAIM("pass")], harness)).toEqual(MET);
+    });
+
+    it("with checks pending stays a miss", () => {
+      expect(atClaim([{ squeal: NEWS(3, { pending: 1 }) }, CLAIM("pass")], harness)).toEqual(
+        MISSED,
+      );
+    });
+
+    it("without a slow-tier line holds the slow tier last shown pending: a miss", () => {
+      const steps = [
+        { squeal: RECOVERY(2, { slow: PENDING_SLOW }) },
+        { edit: "test/report.test.ts" },
+      ];
+      expect(atClaim([...steps, { squeal: NEWS(3) }, CLAIM("pass")], harness)).toEqual(MISSED);
+    });
+
+    it("with a changed slow-tier line reads that line", () => {
+      const steps = [
+        { squeal: RECOVERY(2, { slow: PENDING_SLOW }) },
+        { edit: "test/report.test.ts" },
+      ];
+      const news = NEWS(3, { slow: CURRENT_SLOW(3) });
+      expect(atClaim([...steps, { squeal: news }, CLAIM("pass")], harness)).toEqual(MET);
     });
   });
 

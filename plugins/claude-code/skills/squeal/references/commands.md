@@ -69,7 +69,7 @@ It prints at most 200 of them and says how many there were. A log Squeal has pru
 
 ## squeal run --all
 
-Queues every test file that has no result for the current files (`--force` queues all of them). Completion shows in headers and `squeal status` as `Full-suite checkpoint: completed at revision <current>`. Policy `stop.requireFullSuite` can require one before you stop.
+Queues every test file that has no result for the current files (`--force` queues all of them). Completion shows in the full header (at registration and Stop) and `squeal status` as `Full-suite checkpoint: completed at revision <current>`. Policy `stop.requireFullSuite` can require one before you stop.
 
 `--wait [<ms>]` waits until the checkpoint ends, or at most `<ms>`, and gives its verdict as its first line, then the start line and status. Exit 0: it completed with every test file current, no known failures, and the worktree still at its revision (`Checkpoint <id> completed at revision 9: no known failures; 290 test files, 284 already current, 6 run now`). Exit 1: it completed with known failures, tests and test files that did not load counted apart. Exit 3: Squeal has no verdict (`Checkpoint <id> has no verdict: ...` or `No verdict: ...`): no daemon, the checkpoint abandoned, the deadline passed with files pending (the checkpoint goes on in the daemon), a test file without a current result, or an edit recorded a newer revision. On 3, wait again, or run the test command yourself.
 

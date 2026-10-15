@@ -24,6 +24,7 @@ import {
 import { tellLiveness, tellRevision } from "./liveness.js";
 import { park } from "./registered.js";
 import { slot } from "./slots.js";
+import { tellSlowTier } from "./slow-told.js";
 import { writeTurn } from "./turn.js";
 import { recordUncoveredTold, uncoveredTold } from "./uncovered.js";
 
@@ -170,6 +171,7 @@ export function lastDeparture(store: Store, worktreeId: WorktreeId): EpochMs | n
 function forget(store: Store, consumer: Consumer): void {
   tellLiveness(store, consumer, null);
   tellRevision(store, consumer, null);
+  tellSlowTier(store, consumer, undefined);
   writeTurn(store, consumer, null);
   recordHarness(store, consumer, null);
   recordVersion(store, consumer, null);

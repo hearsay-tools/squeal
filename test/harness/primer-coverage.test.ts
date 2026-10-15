@@ -187,7 +187,7 @@ describe("the slow sentence by harness (spec 004 D8, D9)", () => {
     (command) => {
       const text = primer(command, slow);
       expect(text).toContain(
-        `Slow test files run when you pause between turns; before you say the task is done, run \`${command} run --slow --wait 60000\` unless the header's \`Slow tier:\` line says every slow file is current: it runs the rest and waits for them.`,
+        `Slow test files run when you pause between turns; before you say the task is done, run \`${command} run --slow --wait 60000\` unless the latest \`Slow tier:\` line states every slow file is current: it runs the rest and waits for them.`,
       );
       expect(text.indexOf("run --slow --wait")).toBeGreaterThan(text.indexOf("status --wait"));
       expect(text).not.toContain("Stop");

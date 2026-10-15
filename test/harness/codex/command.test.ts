@@ -84,16 +84,17 @@ describe("Codex hook texts name the command they are given", () => {
     const r = squealRepo();
     r.apply(r.pass(), r.pass(SUBTRACTS));
     r.policy({ stop: { requireFullSuite: true } });
-    await text(r, "session-start", "session-start");
+    expect(await text(r, "session-start", "session-start")).toContain(checkpoint);
     const why = (name: string) => `Full output: ${command} why "src/math.test.ts > math > ${name}"`;
     r.apply(r.fail(), r.pass(SUBTRACTS));
     const delivered = await text(r, "post-tool-use", "post-tool-use");
     expect(delivered.split("\n").at(-1)).toBe(why("adds"));
-    expect(delivered).toContain(checkpoint);
+    // Task 001-407: a change delivery leaves the checkpoint to the full header.
+    expect(delivered).not.toContain("Full-suite checkpoint");
     r.apply(r.fail(), r.fail(SUBTRACTS));
     const denied = await text(r, "pre-tool-use", "pre-tool-use-apply-patch");
     expect(denied).toContain(`\n${why("subtracts")}\n`);
-    expect(denied).toContain(checkpoint);
+    expect(denied).not.toContain("Full-suite checkpoint");
     const stop = await text(r, "stop", "stop");
     expect(stop).toContain(`\`${command} run --all\` starts one.`);
     expect(stop).toContain(`SQUEAL · status at revision`);
