@@ -287,7 +287,12 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
           consumer.worktreeId,
           states.flatMap((s) => toKnownFailure(s, live.revision) ?? []),
         );
-        const header = withDependencies(store, consumer.worktreeId, live, knownFailures.length > 0);
+        const header = withDependencies(
+          store,
+          consumer.worktreeId,
+          live,
+          knownFailures.map((f) => f.check),
+        );
         const starting =
           header.daemon?.state === "down" && header.daemon.startingSince !== undefined;
         tellLiveness(store, consumer, starting ? told : (header.daemon?.state ?? null));
