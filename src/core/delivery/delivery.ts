@@ -25,6 +25,7 @@ import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from
 import { carriesEditResult, editNotes, startEdits } from "./edits.js";
 import { drop } from "./expiry.js";
 import { recordHarness } from "./harness-process.js";
+import { markLeaving } from "./leaving.js";
 import {
   livenessChange,
   readLiveHeader,
@@ -187,6 +188,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       if (store.consumers.get(consumer) === null) return null;
       if (!atLatest(consumer, atRevision)) return null;
       if (heardFrom && readTurn(store, consumer).turn === "idle") startTurn(store, consumer);
+      // Task 001-416: a consumer heard from after its SubagentStop marked it leaving goes on.
+      if (heardFrom && !stop) markLeaving(store, consumer, null);
       const at = now();
       const states = store.knownStates.list(consumer.worktreeId);
       const selection = select(states);
