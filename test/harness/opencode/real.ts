@@ -51,6 +51,8 @@ export interface SquealRun {
 
 export interface SquealRunOptions {
   readonly dist: string;
+  /** The plugin file for the run's `plugins/`; `pluginShim(dist)` when not given. */
+  readonly plugin?: string;
   readonly mode: "run" | "serve";
   readonly plan: ScriptedStep[];
   readonly prompt: string;
@@ -74,7 +76,7 @@ export async function squealOpenCode(options: SquealRunOptions): Promise<SquealR
       mode: options.mode,
       plan: options.plan,
       prompt: options.prompt,
-      plugins: [pluginShim(options.dist)],
+      plugins: [options.plugin ?? pluginShim(options.dist)],
       env,
       ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
       setup: async (cwd) => {
