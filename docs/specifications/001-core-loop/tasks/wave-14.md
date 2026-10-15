@@ -87,3 +87,22 @@ Seams:
 - `headerLine` in `src/core/delivery/format.ts`, plus `status` and `why`.
 
 Done when the tests in both board rows pass.
+
+## W2b: 001-405 for subagents, and 001-415's idle stop (the human, 2026-10-15)
+
+Use /worker. Shape: repair plus slice. Baseline is W2's work (`refs/keep/w14-w2`, d54d553f); commit on top of it. Read the 001-405 and 001-415 board rows, spec 001's D9 and D10, `src/harness/shared/session-root.ts`, and W2's notes in `tasks/001-405/notes.md`.
+
+Outcome:
+- **A subagent's root:** at SubagentStart it comes from the subagent's own `cwd`, and that subagent's hooks keep it. A subagent in its parent's worktree is unchanged. A main agent's later `cd` is still ignored.
+- **A subagent's registration:** it ends at SubagentStop, so its worktree's daemon stops after the existing idle grace once nothing else is registered there. First check what Claude Code's SubagentStart and SubagentStop hook inputs carry (an agent id, its `cwd`), and write that in notes. If they don't identify the subagent, say so and rely on the idle stop below.
+- **Idle stop (D10):** a daemon with no edit, no tier running, no wait and no request for a set time stops, even while consumers stay registered. A hook starts it again on the next call. Pick the default (a lead: 30 minutes), and say whether user config can change it. Write the rule into D10, with a status.md line.
+
+Seams:
+- `src/harness/shared/session-root.ts`, `src/harness/claude-code/run.ts` and its subagent hooks.
+- The daemon's lifecycle and idle-grace code under `src/core/daemon/`.
+
+Done when tests pass for:
+- An isolated subagent's tool call validates in its own worktree.
+- That subagent's end lets its daemon stop.
+- An idle daemon with a consumer still registered stops at the bound and restarts on the next hook.
+- W2's existing session-root tests.
