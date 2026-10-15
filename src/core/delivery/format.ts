@@ -438,12 +438,14 @@ function livenessTitle(liveness: DaemonLiveness | undefined, revision: number): 
 /**
  * Renders a registration: header and every known failure, which are never
  * delivered again. `max` below the cap leaves room for text the hook adds;
- * `command` is how the text names the CLI (`SQUEAL_COMMAND`).
+ * `command` is how the text names the CLI (`SQUEAL_COMMAND`); `now` dates
+ * each failure's recorded run (001-404).
  */
 export function formatRegistration(
   registration: Registration,
   max: number = MESSAGE_CAP_CHARS,
   command: string = SQUEAL_COMMAND,
+  now: number = Date.now(),
 ): string {
   const { header, knownFailures } = registration;
   const head = [
@@ -462,7 +464,7 @@ export function formatRegistration(
         f.validity === "current" ? null : `${f.validity}, observed at revision ${f.observedAt}`,
         f.recorded === undefined
           ? null
-          : capitalize(recordedText(f.recorded, registration.consumer.worktreeId)),
+          : capitalize(recordedText(f.recorded, registration.consumer.worktreeId, now)),
       ],
       [{ check: f.check, shown: "fail" }],
     ),

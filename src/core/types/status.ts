@@ -336,6 +336,8 @@ export interface RecordedFacts {
   readonly worktreeRoot: AbsolutePath | null;
   /** The recording worktree's revision. */
   readonly revision: RevisionNumber;
+  /** When its run stored the result (001-404); absent from facts read before it was kept. */
+  readonly recordedAt?: EpochMs;
   /** The host's load per CPU when its run started; `null` when not kept. */
   readonly loadPerCpu: number | null;
   /** The newest retry asked at the key; absent when none was. */

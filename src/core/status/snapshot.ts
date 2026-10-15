@@ -3,7 +3,7 @@ import { vitestDetected } from "../daemon/runner.js";
 import { worktreeIdFor } from "../fs/index.js";
 import { CLOSURE_METHOD, testFileId } from "../keys/index.js";
 import { readDaemonNotes } from "../notes.js";
-import { pendingRetriesOf } from "../retry/index.js";
+import { pendingRetriesOf, withRecorded } from "../retry/index.js";
 import { readHeader, testFileKeyOf, toKnownFailure } from "../state/index.js";
 import { META_STORE_RECOVERED, readTransaction } from "../store/index.js";
 import {
@@ -121,7 +121,12 @@ function snapshot(
     dirty: observed?.dirty ?? null,
     dirtyObservedAt: observed?.number ?? null,
     daemon,
-    knownFailures: states.flatMap((s) => toKnownFailure(s, header.revision) ?? []),
+    // Task 001-404: each failure says how old its run is and the load it ran under.
+    knownFailures: withRecorded(
+      store,
+      worktreeId,
+      states.flatMap((s) => toKnownFailure(s, header.revision) ?? []),
+    ),
     inherited: inheritedSources(store, states),
     breakdown: breakdown(states, keys),
     closureMethod: CLOSURE_METHOD,
