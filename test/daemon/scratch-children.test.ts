@@ -1,14 +1,13 @@
 import { existsSync } from "node:fs";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { daemonScratch } from "../../src/core/daemon/scratch.js";
 import { git } from "../hash/git-repo.js";
 import {
-  type BuiltCli,
-  buildCli,
   SLOW,
   type SpawnedProcess,
   spawnCli,
   stopProcess,
+  suiteCli,
   waitFor,
   waitReady,
 } from "./helpers.js";
@@ -34,10 +33,11 @@ import {
 
 const processes: SpawnedProcess[] = [];
 const cleanups: (() => void)[] = [];
+// Each stop may wait up to 60 s for a daemon's shutdown (task 001-385).
 afterEach(async () => {
   for (const process of processes.splice(0)) await stopProcess(process);
   for (const cleanup of cleanups.splice(0).reverse()) cleanup();
-});
+}, SLOW.timeout);
 
 /** The scheduler fixture's config plus a plugin that calls esbuild, as Vite 6 and 7 do. */
 const ESBUILD_CONFIG = `import { transform } from "esbuild";
@@ -64,15 +64,11 @@ describe.runIf(process.platform === "linux")(
   "squeal daemon: a child a runner call started (spec 001 D10)",
   SLOW,
   () => {
-    let built: BuiltCli;
-    beforeAll(() => {
-      built = buildCli();
-    });
-    afterAll(() => built.cleanup());
+    const built = suiteCli();
 
     it("holds the root until the daemon exits, and git worktree remove still succeeds", async () => {
       const repo = linkedFixture(cleanups, { "vitest.config.ts": ESBUILD_CONFIG });
-      const spawned = spawnCli(built.cli, ["daemon", repo.root], { cwd: "/", env: repo.env });
+      const spawned = spawnCli(built().cli, ["daemon", repo.root], { cwd: "/", env: repo.env });
       processes.push(spawned);
       await waitReady(repo, spawned);
       const pid = spawned.child.pid ?? 0;
