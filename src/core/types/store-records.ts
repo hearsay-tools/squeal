@@ -228,6 +228,16 @@ export interface HarnessProcess {
 /** Spec 001 D10: consumer expiry. */
 export const CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1000;
 
+/** Every synchronous hook in hooks.json has `timeout: 2`; Claude Code kills it after this. */
+export const HOOK_TIMEOUT_MS = 2_000;
+
+/**
+ * Task 001-416: a SubagentStop marks its consumer leaving before it waits,
+ * and finishes within the hook timeout or is killed. A mark older than five
+ * hook timeouts outlived its hook, so the daemon drops the consumer.
+ */
+export const LEAVING_GRACE_MS = 5 * HOOK_TIMEOUT_MS;
+
 /**
  * Expiry of a consumer whose idle waiter is gone: its waiter lock file exists
  * and no waiter holds it (lessons, defects 8 and 10; task 001-47). Claude

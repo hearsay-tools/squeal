@@ -13,6 +13,7 @@ export { type DeltaPlan, type PlanInput, planDelta } from "./delta.js";
 export {
   departedMetaKey,
   dropGoneHarnesses,
+  dropLeft,
   type ExpiryOptions,
   expireConsumers,
   lastDeparture,
@@ -27,6 +28,7 @@ export {
 } from "./format.js";
 export { harnessOf, type ProcStat, pidNamespace, readProcStat } from "./harness-process.js";
 export { type HeaderForm, headerLines } from "./header.js";
+export { leavingMarks, markLeaving } from "./leaving.js";
 export {
   DAEMON_START_GRACE_MS,
   daemonLiveness,
