@@ -263,7 +263,7 @@ var SHAPE = {
     maxParallel: positiveInteger
   },
   delivery: { uncoveredEdits: boolean2 },
-  daemon: { idleExitMinutes: aboveZero },
+  daemon: { idleExitMinutes: aboveZero, unusedExitMinutes: aboveZero },
   store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
 };
 function isNumber(value) {
