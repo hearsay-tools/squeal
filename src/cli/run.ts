@@ -21,6 +21,7 @@ import { statusCommand } from "./status-command.js";
 import {
   type FileVerdict,
   failuresText,
+  gapText,
   noVerdictText,
   readVerdict,
   verdictCode,
@@ -123,9 +124,12 @@ export async function runCommand(
   }
   const outcome = await ended(root, socketPath, checkpoint, deadline);
   const [line, code] = verdictLine(root, checkpoint, outcome, joined);
-  io.stdout(`Checkpoint ${checkpoint.id} ${line}\n${started}\n`);
   const now = io.now ?? Date.now;
-  io.stdout(formatStatus(readStatus(root, { now }), now(), statusCommand(io.env ?? process.env)));
+  const status = readStatus(root, { now });
+  // Task 001-403: an abandoned or incomplete checkpoint names the file it lacks and why.
+  const gap = outcome.kind === "abandoned" || code === 3 ? gapText(status) : "";
+  io.stdout(`Checkpoint ${checkpoint.id} ${line}${gap}\n${started}\n`);
+  io.stdout(formatStatus(status, now(), statusCommand(io.env ?? process.env)));
   return code;
 }
 
@@ -154,7 +158,7 @@ function verdictLine(
   switch (outcome.kind) {
     case "abandoned":
       return none(
-        "it was abandoned before every test file had a result (a newer request replaced it, a tier crashed or timed out, or the daemon stopped)",
+        "it was abandoned before every test file had a result (a newer request replaced it, a test file's inputs never held still, a tier crashed or timed out, or the daemon stopped)",
       );
     case "stopped":
       return none(`the daemon stopped before it ended${owedText(root, checkpoint)}`);

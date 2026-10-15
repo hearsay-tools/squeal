@@ -1,10 +1,11 @@
 import { testFileId } from "../core/keys/index.js";
 import { readHeader, testFileKeyOf } from "../core/state/index.js";
-import { type CheckCounts, checkPartsText } from "../core/status/index.js";
+import { type CheckCounts, checkPartsText, unknownFileText } from "../core/status/index.js";
 import { plural } from "../core/text.js";
 import type {
   KnownState,
   RevisionNumber,
+  StatusResult,
   Store,
   TestFileRef,
   Validity,
@@ -128,4 +129,17 @@ export function failuresText(failures: CheckCounts): string {
 
 function failureCount(failures: CheckCounts): number {
   return failures.tests + failures.testFiles + (failures.setups ?? 0);
+}
+
+/**
+ * Task 001-403: after a verdict line that has none, the test file without a
+ * result and why, or the first of several, which status then lists; empty
+ * when status names none.
+ */
+export function gapText(status: StatusResult): string {
+  const listed = status.available ? status.unknownTestFiles : undefined;
+  const [first] = listed?.files ?? [];
+  if (listed === undefined || first === undefined) return "";
+  if (listed.total === 1) return `. Without a result: ${unknownFileText(first)}`;
+  return `. Without a result: ${listed.total} test files, listed below; the first: ${unknownFileText(first)}`;
 }

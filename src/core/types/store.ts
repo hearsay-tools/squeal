@@ -255,6 +255,7 @@ export const WORKTREE_META_ROWS = {
   testCommandDenied: { prefix: "test-command-denied:", owner: "delivery/test-command-denied" },
   ignoredReads: { prefix: "ignored-reads:", owner: "scheduler/ignored-reads" },
   omittedTestFiles: { prefix: "omitted-test-files:", owner: "scheduler/omitted-test-files" },
+  unknownFiles: { prefix: "unknown-files:", owner: "scheduler/unknown-files" },
 } as const;
 
 export type WorktreeMetaRow = keyof typeof WORKTREE_META_ROWS;
