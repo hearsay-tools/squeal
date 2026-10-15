@@ -61,6 +61,20 @@ const codex = async (name: "session-start" | "post-tool-use", root: string) =>
 const observedKey = (main: string) =>
   (metaValue(main, pytestObservedMetaKey("small")) ?? {}) as Record<string, string[]>;
 
+/** The keys `root` stored results of its own under, per test file and revision. */
+function ownResults(main: string, root: string): Record<string, unknown>[] {
+  const db = new DatabaseSync(join(main, ".git/squeal/store.sqlite"), { readOnly: true });
+  try {
+    return db
+      .prepare(
+        "SELECT c.test_path AS path, r.key, r.revision, COUNT(*) AS results FROM results r JOIN checks c ON c.id = r.check_id WHERE r.worktree_id = ? GROUP BY c.test_path, r.key, r.revision",
+      )
+      .all(worktreeIdFor(root)) as Record<string, unknown>[];
+  } finally {
+    db.close();
+  }
+}
+
 /**
  * Why `root`'s checks are not all current (task 007-28): per test file, its
  * key, who stored the results under it and each check's state there; the
@@ -88,13 +102,13 @@ function whyNotCurrent(main: string, root: string): string {
         ).map((r) => `${r.full_name || "(file)"}: ${r.validity} ${r.origin_kind ?? ""}`),
       }),
     );
-    // The keys this worktree stored its own results under: a run's, against `files`' current ones.
-    const own = all(
-      "SELECT c.test_path AS path, r.key, r.revision, COUNT(*) AS results FROM results r JOIN checks c ON c.id = r.check_id WHERE r.worktree_id = ? GROUP BY c.test_path, r.key, r.revision",
-      id,
-    );
     return JSON.stringify(
-      { files, own, runs: runs(main, root), notes: status(root).daemonNotes },
+      {
+        files,
+        own: ownResults(main, root),
+        runs: runs(main, root),
+        notes: status(root).daemonNotes,
+      },
       null,
       1,
     );
@@ -189,8 +203,7 @@ describe("a repository with a Vitest suite and a pytest project (spec 007)", () 
         true,
       );
 
-      // Synced, it inherits every result of the commit: zero runs.
-      from = runs(main, wt2).length;
+      // Synced, it inherits every result of the commit: none of its own.
       uvSync(ctx, wt2);
       const second = await settle(
         wt2,
@@ -199,12 +212,10 @@ describe("a repository with a Vitest suite and a pytest project (spec 007)", () 
       );
       expect(second.inherited.count, whyNotCurrent(main, wt2)).toBe(CHECKS);
       expect(second.knownFailures).toEqual([]);
-      // Tiers keyed while the sync ran end before starting pytest (D2); none completed.
-      expect(runs(main, wt2).slice(from), whyNotCurrent(main, wt2)).toEqual(
-        runs(main, wt2)
-          .slice(from)
-          .filter((r) => r.end === "crashed"),
-      );
+      // Task 001-421: a tier keyed while the sync ran stores nothing (D2's sync state). One
+      // admitted near the sync's end may start pytest and complete, as on CI once, but nothing
+      // of it is kept: every check above is inherited, and no result is the worktree's own.
+      expect(ownResults(main, wt2), whyNotCurrent(main, wt2)).toEqual([]);
     },
   );
 });
