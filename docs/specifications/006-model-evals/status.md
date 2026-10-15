@@ -141,3 +141,8 @@ Started: 2026-10-10
   - The load these scenarios' processes read is pinned low by a preload (`pinLoad`), since a `load` retry runs only below the CPU count and the host is loaded.
   - 006-56: each cell's `XDG_RUNTIME_DIR` is `<cell>/run`, so its daemon's slow slot and capacity pool are its own (since 0.1.182 they would be the host's); the socket path does not fit under a cell and falls back to `/tmp/squeal-<uid>`, named by the cell's worktree.
   - The first real run must confirm the reviews' list: retry and staging timing, both harnesses' texts and child environments, unrelated fixture failures, and service and socket cleanup.
+- 2026-10-15, the a9 to a11 pilot (run `20261015T071439Z-65314d`, 0.1.187, 12 sessions, 1 failed setup) found that every Claude cell since 2026-10-14 15:47Z reached the host's `~/.local/bin/squeal` launcher (005 D3), not its pinned plugin. The launcher looks in the cell's empty `HOME` and fails.
+  - The grader credited those failed calls, so the a8-load-hold run's Claude cells are invalid; lessons.md is corrected. Codex cells call the CLI by its absolute path and stand.
+  - a11's retry failed again in sol's cell (`Test timed out in 250ms`), and luna's staging stored the FAIL at 0.20 per CPU. S1's check caught that one.
+  - Claude permission prompts kept Sonnet from starting a9's service.
+  - No full run. Row 006-62 repairs all of it. The pilot's file is committed; ATOMIC.md is not regenerated until 006-62 marks the broken condition.
