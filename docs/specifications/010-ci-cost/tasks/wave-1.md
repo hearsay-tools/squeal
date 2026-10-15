@@ -39,3 +39,21 @@ Check:
 Verification: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` in your tree, plus lint and typecheck.
 
 Done when: the findings file is committed alone, every finding labelled proven, plausible or unverified, and your final message gives the verdict.
+
+## 010-14 repair of review 010-11
+
+Use /worker. Shape: repair. Resume of 633f2df3.
+
+Outcome: the Node 24 job runs every test that executes a real `node --test`, and the guard fails when one is left out.
+
+Read: `reviews/wave-1.md` (B1, S1, N1), spec D4 and D6 as amended.
+
+First: `git reset --hard cez/c24adf20` (a local branch; your three commits are on it as cherry-picks, rebased onto current main with the review file). Audit on that tree: main gained test files since your baseline.
+
+- B1: add the 14 files the review names and any other real runner caller your audit finds (adapter imports direct or through `test/scheduler/preload-worktrees.ts`, `test/scheduler/helpers.ts`, `test/keys/key-sources.ts`; daemons started on a node:test project; direct `--test` spawns). Extend the guard so that leaving such a file out fails it; name in the list's header any caller the guard cannot see. Add uv and the two Pythons to the `node24` job (`idle-pass` runs pytest too) and fix the comment there.
+- S1: D6's confirm line in `.claude/skills/coordinator/SKILL.md` uses `gh run list --workflow ci.yml --commit <pushed-sha>`.
+- N1: drop `test/e2e/plugin-copy` from the list (accepted; the coordinator amends D4).
+
+Owns the same files as 010-10. No `docs/` edits, no push.
+
+Done when: `npx vitest list --filesOnly $(grep -Ev '^[[:space:]]*(#|$)' test/version-sensitive.txt)` holds every file the review names, minus `plugin-copy`; the guard fails when you remove one of them (say so, then restore); lint, typecheck and `squeal run --all --wait` pasted; your final message gives the new list count and the guard's rule.

@@ -57,7 +57,7 @@ The full suite runs on Node 22. It is the engines floor (`>=22.13`), it had the 
 Those files are listed in `test/version-sensitive.txt`, which the workflow reads (44 files at 010-10). The list started from `ci-test-time.md` 3, 47 files and 144 s of file time:
 
 - `test/runners/node-test/**` and every other test that runs a real `node --test` (integration, the slow tier, e2e);
-- `test/e2e/shipped-plugin`, `plugin-copy` and `pi-update`;
+- `test/e2e/shipped-plugin` and `pi-update` (`plugin-copy` left the list after review 010-11 N1: it reads no version);
 - `test/harness/opencode/bridge*`;
 - `test/keys/environment`;
 - any other test file that reads `process.version` or `process.versions`.
@@ -76,7 +76,7 @@ A run's peak goes from 2 jobs to 4, plus the 6-second `version` job on main. Eac
 
 The coordinator skill, section 6, gains two rules:
 
-- After pushing `cand/<version>`, confirm a run exists with `gh run list --branch cand/<version> --limit 1`. If there is none, start one with `gh workflow run ci.yml --ref cand/<version>`.
+- After pushing `cand/<version>`, confirm a run of that commit exists with `gh run list --workflow ci.yml --commit <sha>` (review 010-11 S1). If there is none, start one with `gh workflow run ci.yml --ref cand/<version>`.
 - "Main's last landing" in `gh run list --branch main` now lists code landings only, because docs pushes leave no row.
 
 Branches outside D1 get CI only through `workflow_dispatch`. `docs/process.md` is the human's: the line "docs-only pushes start no CI run" in step 5 is proposed to them, not written.
