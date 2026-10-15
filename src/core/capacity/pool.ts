@@ -157,8 +157,8 @@ class LockFilePool implements PermitPool {
     }
     if (free) target = Math.max(1, target);
     const rank = this.#since ?? now;
-    // Task 004-61: a fast lane's tier leaves free only what older fast waiters lack, a slow
-    // lane's also what every fast waiter lacks, so a short pool serves fast files first.
+    // Task 004-61: a contended pool serves fast lanes first. A fast lane's tier leaves free only
+    // what older fast waiters lack, a slow lane's also what every fast waiter lacks.
     const ahead = (o: PoolMark): boolean => {
       if (o.since === null) return false;
       // A slow waiter is ahead of a younger slow tier only; a fast one of any slow tier too.

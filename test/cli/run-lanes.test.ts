@@ -154,16 +154,19 @@ describe("run lane flags (task 004-61)", () => {
     );
   });
 
-  it("--fast --slow is --all, and --all --slow is run --slow", async () => {
+  it("--fast --slow and --all --fast --slow are --all, and --all --slow is run --slow", async () => {
     const w = worktree();
     w.file(FAST, "pending");
     await daemonFor(w.socket, w.checkpoint());
     expect((await run(["run", "--fast", "--slow"], w.root)).code).toBe(0);
+    expect((await run(["run", "--all", "--fast", "--slow"], w.root)).code).toBe(0);
     expect((await run(["run", "--all"], w.root)).code).toBe(0);
     expect((await run(["run", "--all", "--slow"], w.root)).stdout).toMatch(
       /^Slow tier requested at revision 3: 1 slow file queued/,
     );
+    // Both flags are both lanes: the same full-suite request as plain `--all`.
     expect(sent()).toEqual([
+      { type: "run-all", force: false },
       { type: "run-all", force: false },
       { type: "run-all", force: false },
       { type: "run-slow" },
