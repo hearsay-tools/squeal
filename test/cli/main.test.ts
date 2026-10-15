@@ -64,12 +64,14 @@ describe("squeal status", () => {
 
     expect(code).toBe(0);
     expect(stderr).toBe("");
-    expect(stdout.split("\n").slice(0, 7)).toEqual([
+    expect(stdout.split("\n").slice(0, 8)).toEqual([
       "Revision: 3",
       "Known failures: 1 (1 test)",
       "  FAIL  src/a.test.ts > adds",
       "        expected 3, received 4",
       "        observed at revision 3, current",
+      // Review 001-417 B3: no stored result produced it.
+      "        recorded at an unknown time and load: the result that produced it is no longer identifiable in the store",
       "Affected checks: none counted; the daemon has not listed this worktree's test files yet",
       "Full-suite checkpoint: none completed at any revision (the counts are for revision 3; `squeal run --all` requests one)",
     ]);
