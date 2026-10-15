@@ -4079,7 +4079,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.191";
+  if (true) return "0.1.192";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4287,6 +4287,11 @@ async function runEntry(module, kind, handler) {
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 
 // src/harness/opencode/bridge-turn.ts
+var endContinued = ({ store, consumer }) => store.transaction(() => {
+  if (store.consumers.get(consumer) === null) return true;
+  endTurn(store, consumer, store.knownStates.list(consumer.worktreeId), []);
+  return true;
+});
 var endTurn2 = async (request, deps) => {
   const location2 = locate(request.worktree);
   if (location2 === null) return { ended: false };
@@ -4294,7 +4299,7 @@ var endTurn2 = async (request, deps) => {
     consumerInput(request.consumer),
     location2,
     deps,
-    (context) => context.delivery.endTurn(context.consumer)
+    async (context) => request.continued === true ? endContinued(context) : context.delivery.endTurn(context.consumer)
   );
   return { ended: ended ?? false };
 };
