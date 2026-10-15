@@ -1,5 +1,6 @@
 import { delimiter, resolve } from "node:path";
 import type { OcClient, OcHooks } from "./api.js";
+import { arrived } from "./arrivals.js";
 import { callBridge } from "./bridge-client.js";
 import { type Deadline, deadlineIn, within } from "./deadline.js";
 import { partAfter } from "./parts.js";
@@ -141,8 +142,11 @@ export function squealHooks(host: HookHost): OcHooks {
   return {
     async event({ event }) {
       try {
-        if (disposed) return;
         const { info, sessionID, error } = event.properties;
+        const abort = error?.name === "MessageAbortedError";
+        // Whichever instance it reaches, before anything awaits (review 008-27 B1).
+        if (event.type === "session.error" && sessionID !== undefined && abort) arrived(sessionID);
+        if (disposed) return;
         if (event.type === "session.created" && info !== undefined) {
           map.saw(info);
         } else if (event.type === "session.deleted" && info !== undefined) {
@@ -163,7 +167,7 @@ export function squealHooks(host: HookHost): OcHooks {
             : { sessions: [], consumers: [consumer] };
           await ask("end", request, deadline);
         } else if (event.type === "session.error" && sessionID !== undefined) {
-          if (error?.name === "MessageAbortedError") turn.aborted(sessionID);
+          if (abort) turn.aborted(sessionID);
         } else if (event.type === "session.idle" && sessionID !== undefined) {
           const ending = idle(sessionID);
           idling.add(ending);
@@ -177,12 +181,16 @@ export function squealHooks(host: HookHost): OcHooks {
     async "chat.message"(input, output) {
       try {
         // The report the instance before this one stored at its `dispose` (`turns`) is not a prompt.
-        if (disposed || storedBySqueal(output.parts)) return;
+        if (storedBySqueal(output.parts)) return;
+        // Whichever instance it reaches, before anything awaits (review 008-27 B1).
+        arrived(input.sessionID);
+        if (disposed) return;
         const deadline = deadlineIn(EVENT_DEADLINE_MS);
         const consumer = await identify(input.sessionID, deadline);
         if (consumer === null) return;
         // D5: a message, the user's or Squeal's own, ends the idle wait.
-        if (consumer.agentId === undefined) turn.message(consumer.sessionId, output.parts);
+        if (consumer.agentId === undefined)
+          turn.message(consumer.sessionId, output.message.id, output.parts);
         const key = keyOf(consumer);
         let text: string | null;
         if (registered.has(key)) {

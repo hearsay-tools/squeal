@@ -12,6 +12,13 @@ export interface OcSessionInfo {
   readonly parentID?: string;
 }
 
+/** `Message` (SDK): the fields Squeal reads; an assistant message's `parentID` is the user message it answers. */
+export interface OcMessageInfo {
+  readonly id: string;
+  readonly role: "user" | "assistant";
+  readonly parentID?: string;
+}
+
 /** The SDK's request result shape (`RequestResult`, "fields"): it does not throw on an HTTP error. */
 export interface OcResult<T> {
   readonly data?: T;
@@ -45,6 +52,12 @@ export interface OcClient {
       body: { parts: OcTextPartInput[]; noReply: true };
       signal?: AbortSignal;
     }): Promise<OcResult<unknown>>;
+    /** `GET /session/{id}/message`: the newest `limit` messages, oldest first. */
+    messages(options: {
+      path: { id: string };
+      query: { limit: number };
+      signal?: AbortSignal;
+    }): Promise<OcResult<{ info: OcMessageInfo }[]>>;
   };
   readonly app: {
     log(options: {

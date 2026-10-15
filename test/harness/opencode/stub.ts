@@ -1,6 +1,11 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { OcClient, OcHooks, OcSessionInfo } from "../../../src/harness/opencode/api.js";
+import type {
+  OcClient,
+  OcHooks,
+  OcMessageInfo,
+  OcSessionInfo,
+} from "../../../src/harness/opencode/api.js";
 import { type SquealPluginOptions, squealPlugin } from "../../../src/harness/opencode/plugin.js";
 import type { OcKind, OcRequest } from "../../../src/harness/opencode/protocol.js";
 import { tempDir } from "../../store/helpers.js";
@@ -25,6 +30,8 @@ export interface StubClient extends OcClient {
   readonly prompted: { id: string; text: string }[];
   /** Each `prompt` with `noReply`: the session and its text, stored without a turn. */
   readonly stored: { id: string; text: string }[];
+  /** The session's messages as `messages` reads them, oldest first: `chatOutput`'s by default. */
+  readonly history: OcMessageInfo[];
 }
 
 /** A client that knows `sessions`; `get` of any other id is an HTTP 404, as the SDK returns it. */
@@ -33,12 +40,17 @@ export function stubClient(sessions: readonly OcSessionInfo[] = []): StubClient 
   const lookups: string[] = [];
   const prompted: { id: string; text: string }[] = [];
   const stored: { id: string; text: string }[] = [];
+  const history: OcMessageInfo[] = [{ id: MESSAGE_ID, role: "user" }];
   return {
     logged,
     lookups,
     prompted,
     stored,
+    history,
     session: {
+      messages: async ({ query }) => ({
+        data: history.slice(-query.limit).map((info) => ({ info })),
+      }),
       prompt: async ({ path, body }) => {
         stored.push({ id: path.id, text: body.parts.map((part) => part.text).join("") });
         return { data: undefined };
