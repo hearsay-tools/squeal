@@ -1,9 +1,10 @@
 // The recorder's children and threads (`recorder.cjs`; spec 001 D4; tasks
 // 001-132, 001-135). At every spawn, sync or async, and every Worker, the
 // recorder and its settings ride in whatever env the caller passed (`env: {}`
-// too), so grandchildren are recorded. The recorder goes in as `--import` of its
-// `file:` URL, or as `--require` beside a `--require` the env already holds, as
-// `recorderOption` in `runtime.ts` decides (spec 001 D11 Fidelity, task 001-390). A call Node would reject, or whose env
+// too), so grandchildren are recorded: as `--import` of its `file:` URL, or as
+// `--require` beside a `--require` the env or the child's arguments hold, as
+// `recorderOption` in `runtime.ts` decides (spec 001 D11 Fidelity, task
+// 001-390). A call Node would reject, or whose env
 // the recorder cannot extend as Node reads it, passes through untouched, so
 // Node's own validation runs (review wave 12d, B6). A thread's test file also
 // rides in its environment data, which a `SHARE_ENV` Worker gets though it
