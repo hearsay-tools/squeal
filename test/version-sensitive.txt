@@ -7,9 +7,18 @@
 # match, case-insensitive, not a glob). Lines starting with `#` and blank
 # lines are skipped.
 #
-# `test/version-sensitive.test.ts` fails when a test file reads the Node
-# version without an entry here, when an entry matches no test file, or when
-# a helper below or a file that imports it is missing from this header.
+# `test/version-sensitive.test.ts` fails when an entry matches no test file,
+# and when no entry selects:
+# - a test file that reads the Node version;
+# - a test file that names a node:test project or the node:test adapter, or
+#   passes `--test` (`nodeTest`, `NodeTestProject`, `createNodeTestAdapter`,
+#   `"--test"`), unless the exemptions below name it;
+# - a test file importing, directly or through other helpers, a helper under
+#   `test/` that holds a node:test project or passes `--test` itself
+#   (`test/scheduler/preload-worktrees.ts`, `test/scheduler/warm-up-repo.ts`,
+#   `test/runners/node-test/graph-observed.ts`), unless exempted.
+# It also fails when a helper below or a file that imports it is missing from
+# this header, or when an exemption names a file the rule does not flag.
 #
 # Helpers that read the Node version, and the files that import them. They
 # run on Node 22 only unless an entry below holds them:
@@ -28,6 +37,50 @@
 #   test/harness/pi-fixture.test.ts, test/harness/pi/real-pi.ts,
 #   test/integration/pi-events.test.ts, test/integration/pi-silence.test.ts,
 #   test/integration/pi-wake.test.ts.
+#
+# Exempt: they name node:test but check nothing node:test does on this Node.
+# They read or write policy, setup, primer, report or eval-record text, or
+# drive timers; run-cell reads only `node --test`'s exit code. Node 22 only.
+#   test/cli/codex.test.ts
+#   test/cli/init-node-test.test.ts
+#   test/cli/run-slow-held.test.ts
+#   test/cli/setup/block.test.ts
+#   test/cli/setup/gates-allow-list.test.ts
+#   test/cli/setup/gates.test.ts
+#   test/cli/setup/init-flags.test.ts
+#   test/cli/setup/plan.test.ts
+#   test/cli/setup/pytest.test.ts
+#   test/daemon/observed-timer.test.ts
+#   test/daemon/policy.test.ts
+#   test/evals/claim-grades.test.ts
+#   test/evals/grade.test.ts
+#   test/evals/malformed.test.ts
+#   test/evals/regrade-cells.test.ts
+#   test/evals/regrade.test.ts
+#   test/evals/run-cell.test.ts
+#   test/evals/truth.test.ts
+#   test/harness/codex/output.test.ts
+#   test/harness/opencode/turn.test.ts
+#   test/harness/primer-coverage.test.ts
+#   test/harness/primer-listing.test.ts
+#   test/harness/shared/primer-pytest.test.ts
+#   test/harness/shared/skill-pytest.test.ts
+#   test/harness/shared/test-command-pytest.test.ts
+#   test/harness/skill.test.ts
+#   test/harness/stop-slow.test.ts
+#   test/harness/test-command.test.ts
+#   test/policy/node-test.test.ts
+#   test/policy/slow.test.ts
+#   test/slow/classify.test.ts
+#   test/slow/inherit.test.ts
+#   test/types.test.ts
+#
+# Run a real `node --test` the rule cannot see, since the call is outside
+# `test/`: `groundTruth` in `evals/lib/session.mjs`, reached directly by
+# test/evals/teardown.test.ts (listed below: it reads node:test's summary)
+# and through `evals/bin/run-cell.mjs` by test/evals/run-cell.test.ts and the
+# importers of test/evals/fake-cell.ts. Those read only the exit code, so
+# they run on Node 22 only.
 
 # The node:test adapter: test identity comes from `parentId` on Node 24 and
 # `nesting` on 22 (`src/runners/node-test/identity.ts`), and the runner
@@ -35,8 +88,25 @@
 test/runners/node-test/
 # A real `node --test` through the daemon, so the same identity path.
 test/integration/node-test
-# A real `node --test` under the scheduler's slow tier.
+# A real `node --test` through the scheduler: the slow tier, preloads,
+# observed and environment growth, capacity, lanes, scratch inputs, the idle
+# pass (beside pytest) and warm-up.
 test/scheduler/slow-node-test
+test/scheduler/preload-heal
+test/scheduler/preload-refresh
+test/scheduler/observed-growth
+test/scheduler/environment-growth
+test/scheduler/capacity-pool
+test/scheduler/scratch-inputs
+test/scheduler/lanes
+test/scheduler/idle-pass
+test/scheduler/warm-up
+# A daemon started on a node:test project: its results, its slow tier and
+# capacity mark, and the version probe of each project's Node at startup.
+test/integration/slow-spawn
+test/integration/capacity-project
+test/daemon/composite-runner
+test/daemon/died-startup
 # A real `node --test` through the shipped plugin.
 test/e2e/node-test
 test/e2e/slow-node-test
@@ -44,15 +114,17 @@ test/e2e/slow-node-test
 # Installs its fixture with the bundled npm: npm 10.9.9 on Node 22.23 crashed
 # there while Node 24 passed (`ci-test-time.md` 3).
 test/e2e/shipped-plugin
-# Named by spec 010 D4 from `ci-test-time.md` 3; it reads no Node version
-# that this list's author found.
-test/e2e/plugin-copy
 # A real Pi session, which needs Node 22.19 or later (`test/helpers/pi.ts`).
 test/e2e/pi-update
 
 # The OpenCode bridge: the proxy assertion differs from Node 24.5, and the
 # OpenCode host has a minimum Node (`src/harness/opencode/host.ts`).
 test/harness/opencode/bridge
+
+# `node --test --test-reporter=tap`, its TAP failures parsed per scenario.
+test/evals/atomic-scenarios
+# `node --test` in the eval ground truth, its summary read.
+test/evals/teardown
 
 # The environment key records the Node version (`src/core/keys/environment.ts`).
 test/keys/environment

@@ -4,9 +4,10 @@ import { describe, expect, it } from "vitest";
 
 /*
  * Spec 010 D4: Node 24 runs only the test files `test/version-sensitive.txt`
- * lists, so a file that reads the Node version must be listed, every entry
- * must still select a file, and the header names the helpers that read the
- * version and the files that import them.
+ * lists, so a file that reads the Node version or runs a real `node --test`
+ * must be listed, every entry must still select a file, and the header names
+ * the helpers that read the version, the files that import them, and the
+ * node:test files exempted with a reason. Review 010-11 B1.
  */
 const ROOT = join(import.meta.dirname, "..");
 const LIST = readFileSync(join(ROOT, "test/version-sensitive.txt"), "utf8");
@@ -16,9 +17,26 @@ const HEADER = LIST.split("\n")
 const ENTRIES = LIST.split("\n")
   .map((line) => line.trim())
   .filter((line) => line !== "" && !line.startsWith("#"));
+/** The header's exemptions: the indented paths after `# Exempt:` up to the next bare `#`. */
+const EXEMPT = (/^# Exempt:[^\n]*\n((?:#[^\n]*\n)*?)#\n/m.exec(`${HEADER}\n`)?.[1] ?? "")
+  .split("\n")
+  .map((line) => /^#\s+(test\/\S+\.test\.ts)$/.exec(line)?.[1])
+  .filter((path): path is string => path !== undefined);
 
-// Built from parts so this file does not read as one that uses it.
+// Built from parts so this file does not read as one that uses them.
 const READS_VERSION = new RegExp(["process", "\\.versions?\\b"].join(""));
+const QUOTED_TEST = ["[\"']--", "test[\"']"].join("");
+/** A test file's own sign of node:test: a project, the adapter, or a `--test` argument. */
+const NAMES_NODE_TEST = new RegExp(
+  [
+    ["\\bnode", "Test\\b"].join(""),
+    ["NodeTest", "Project"].join(""),
+    ["createNodeTest", "Adapter"].join(""),
+    QUOTED_TEST,
+  ].join("|"),
+);
+/** A helper's sign of running node:test itself: a project it holds, or a `--test` argument. */
+const RUNS_NODE_TEST = new RegExp([["NodeTest", "Project\\s*="].join(""), QUOTED_TEST].join("|"));
 const IMPORT_FROM = /from\s+["'](\.[^"']+)["']/g;
 
 /** Repository-relative `.ts` files under `test/`, outside the fixtures Vitest excludes. */
@@ -38,14 +56,14 @@ function selected(path: string): boolean {
   return ENTRIES.some((entry) => matches(entry, path));
 }
 
-function readsVersion(path: string): boolean {
-  return READS_VERSION.test(readFileSync(join(ROOT, path), "utf8"));
-}
+const FILES = sources();
+const TEXT = new Map(FILES.map((path) => [path, readFileSync(join(ROOT, path), "utf8")]));
+const text = (path: string): string => TEXT.get(path) ?? "";
+const readsVersion = (path: string): boolean => READS_VERSION.test(text(path));
 
 /** The repository-relative files `path` imports by a relative specifier. */
 function imports(path: string): string[] {
-  const text = readFileSync(join(ROOT, path), "utf8");
-  return [...text.matchAll(IMPORT_FROM)].map((match) =>
+  return [...text(path).matchAll(IMPORT_FROM)].map((match) =>
     normalize(join(dirname(path), match[1] ?? ""))
       .split(sep)
       .join("/")
@@ -53,13 +71,45 @@ function imports(path: string): string[] {
   );
 }
 
-const FILES = sources();
 const TESTS = FILES.filter((path) => path.endsWith(".test.ts"));
 const HELPERS = FILES.filter((path) => !path.endsWith(".test.ts") && readsVersion(path));
+
+/** Helpers that run node:test themselves, and the helpers importing one, to a fixed point. */
+function runnerHelpers(): Set<string> {
+  const helpers = FILES.filter((path) => !path.endsWith(".test.ts"));
+  const found = new Set(helpers.filter((path) => RUNS_NODE_TEST.test(text(path))));
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const path of helpers)
+      if (!found.has(path) && imports(path).some((to) => found.has(to))) {
+        found.add(path);
+        grew = true;
+      }
+  }
+  return found;
+}
+
+const RUNNER_HELPERS = runnerHelpers();
+/** Test files the rule takes for node:test callers: by their own text or a runner helper. */
+const NODE_TEST_CALLERS = TESTS.filter(
+  (path) => NAMES_NODE_TEST.test(text(path)) || imports(path).some((to) => RUNNER_HELPERS.has(to)),
+);
 
 describe("the version-sensitive list (spec 010 D4)", () => {
   it("selects every test file that reads the Node version", () => {
     expect(TESTS.filter((path) => readsVersion(path) && !selected(path))).toEqual([]);
+  });
+
+  it("selects every test file that runs node:test, unless the header exempts it", () => {
+    expect(RUNNER_HELPERS.size).toBeGreaterThan(0);
+    const missing = NODE_TEST_CALLERS.filter((path) => !selected(path) && !EXEMPT.includes(path));
+    expect(missing).toEqual([]);
+  });
+
+  it("exempts only files the rule flags and no entry selects", () => {
+    expect(EXEMPT.length).toBeGreaterThan(0);
+    const stale = EXEMPT.filter((path) => !NODE_TEST_CALLERS.includes(path) || selected(path));
+    expect(stale).toEqual([]);
   });
 
   it("has no entry that selects no test file", () => {
