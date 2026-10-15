@@ -20,7 +20,7 @@ import type {
   Transition,
   Validity,
 } from "./state.js";
-import type { CheckpointKind, ResultRecord } from "./store-records.js";
+import type { CheckpointKind, CheckpointLane, ResultRecord } from "./store-records.js";
 
 /** Tally of checks by validity class at the current revision (D5). */
 export type ValidityCounts = Readonly<Record<Validity, number>>;
@@ -36,6 +36,11 @@ export type ValidityCounts = Readonly<Record<Validity, number>>;
 export interface FullSuiteState {
   readonly atCurrentRevision: boolean;
   readonly lastCompletedRevision: RevisionNumber | null;
+  /**
+   * A one-lane checkpoint that completed after the last full one (task
+   * 004-61): headers name the lane, never a full suite.
+   */
+  readonly lane?: { readonly lane: CheckpointLane; readonly revision: RevisionNumber };
 }
 
 /**

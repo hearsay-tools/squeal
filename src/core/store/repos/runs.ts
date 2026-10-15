@@ -1,9 +1,12 @@
-import type {
-  CheckpointRecord,
-  CheckpointRepo,
-  RunRecord,
-  RunRepo,
-  TestFileRef,
+import {
+  type CheckpointLane,
+  type CheckpointRecord,
+  type CheckpointRepo,
+  type RunRecord,
+  type RunRepo,
+  type TestFileRef,
+  type WorktreeId,
+  worktreeMetaKey,
 } from "../../types/index.js";
 import { json, num, numOrNull, oneOf, oneOfOrNull, str, strOrNull } from "../codec.js";
 import type { Connection, Row } from "../connection.js";
@@ -62,6 +65,13 @@ function toRun(row: Row): RunRecord {
 }
 
 export function createCheckpointRepo(conn: Connection): CheckpointRepo {
+  const lanes = (worktreeId: WorktreeId): Record<string, CheckpointLane> =>
+    readLanes(conn, worktreeId);
+  const withLane = (row: Row): CheckpointRecord => {
+    const record = toCheckpoint(row);
+    const lane = lanes(record.worktreeId)[record.id];
+    return lane === undefined ? record : { ...record, lane };
+  };
   return {
     start: (record) => {
       conn.run(
@@ -74,6 +84,7 @@ export function createCheckpointRepo(conn: Connection): CheckpointRepo {
         JSON.stringify(record.testFiles),
         record.startedAt,
       );
+      if (record.lane !== undefined) writeLane(conn, record.worktreeId, record.id, record.lane);
       return { ...record, completedAt: null, end: null };
     },
     finish: (id, end, at) => {
@@ -81,7 +92,7 @@ export function createCheckpointRepo(conn: Connection): CheckpointRepo {
     },
     get: (id) => {
       const row = conn.get("SELECT * FROM checkpoints WHERE id = ?", id);
-      return row === null ? null : toCheckpoint(row);
+      return row === null ? null : withLane(row);
     },
     lastCompleted: (worktreeId) => {
       const row = conn.get(
@@ -89,9 +100,61 @@ export function createCheckpointRepo(conn: Connection): CheckpointRepo {
          ORDER BY completed_at DESC, rowid DESC LIMIT 1`,
         worktreeId,
       );
+      return row === null ? null : withLane(row);
+    },
+    lastCompletedFull: (worktreeId) => {
+      const oneLane = Object.keys(lanes(worktreeId));
+      const row = conn.get(
+        `SELECT * FROM checkpoints WHERE worktree_id = ? AND end_state = 'completed'
+           AND id NOT IN (SELECT value FROM json_each(?))
+         ORDER BY completed_at DESC, rowid DESC LIMIT 1`,
+        worktreeId,
+        JSON.stringify(oneLane),
+      );
       return row === null ? null : toCheckpoint(row);
     },
   };
+}
+
+/** One-lane checkpoints the lane map keeps: older ones are long past a full one. */
+const LANES_KEPT = 32;
+
+/**
+ * Task 004-61: the lane of each one-lane checkpoint of a worktree, a JSON
+ * map in `meta`, so the `checkpoints` table and an older reader of it are
+ * unchanged. An older reader counts a one-lane checkpoint as a full one.
+ */
+function readLanes(conn: Connection, worktreeId: WorktreeId): Record<string, CheckpointLane> {
+  const row = conn.get(
+    "SELECT value FROM meta WHERE key = ?",
+    worktreeMetaKey("checkpointLanes", worktreeId),
+  );
+  if (row === null) return {};
+  try {
+    const parsed: unknown = JSON.parse(str(row, "value"));
+    if (typeof parsed !== "object" || parsed === null) return {};
+    const lanes: Record<string, CheckpointLane> = {};
+    for (const [id, lane] of Object.entries(parsed)) {
+      if (lane === "fast" || lane === "slow") lanes[id] = lane;
+    }
+    return lanes;
+  } catch {
+    return {};
+  }
+}
+
+function writeLane(
+  conn: Connection,
+  worktreeId: WorktreeId,
+  id: string,
+  lane: CheckpointLane,
+): void {
+  const kept = Object.entries(readLanes(conn, worktreeId)).slice(1 - LANES_KEPT);
+  conn.run(
+    "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+    worktreeMetaKey("checkpointLanes", worktreeId),
+    JSON.stringify(Object.fromEntries([...kept, [id, lane]])),
+  );
 }
 
 function toCheckpoint(row: Row): CheckpointRecord {

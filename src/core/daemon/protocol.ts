@@ -34,10 +34,14 @@ export function parseRequest(line: string): DaemonRequest | string {
       if (request.observeIgnored !== undefined && typeof request.observeIgnored !== "boolean") {
         return '"observeIgnored" must be true or false';
       }
+      if (request.lane !== undefined && request.lane !== "fast" && request.lane !== "slow") {
+        return '"lane" must be "fast" or "slow"';
+      }
       return {
         type: "run-all",
         force: request.force === true,
         ...(request.observeIgnored === true ? { observeIgnored: true } : {}),
+        ...(request.lane === undefined ? {} : { lane: request.lane }),
       };
     case "step-down":
       if (typeof request.version !== "string") return '"version" must be a string';

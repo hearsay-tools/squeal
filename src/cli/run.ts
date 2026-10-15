@@ -16,6 +16,7 @@ import {
 } from "../core/types/index.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
+import { LANE_FLAGS, laneFiles, laneText, runLanes } from "./run-lanes.js";
 import { runSlowCommand } from "./run-slow.js";
 import { statusCommand } from "./status-command.js";
 import {
@@ -29,7 +30,7 @@ import {
 import { takeWait } from "./wait-arg.js";
 
 const USAGE =
-  "usage: squeal run --all [--force] [--wait [<ms>]]\n       squeal run --slow [--wait <ms>]\n";
+  "usage: squeal run --all|--fast [--force] [--wait [<ms>]]\n       squeal run --slow [--wait <ms>]\n";
 /** Without `--wait`, how long to wait for the scheduler to record the checkpoint. */
 const RECORD_WAIT_MS = 10_000;
 const POLL_MS = 100;
@@ -66,17 +67,21 @@ export async function runCommand(
   internal: RunInternal = {},
 ): Promise<number> {
   const flags = new Set(args);
-  if (flags.has("--slow") && !flags.has("--all")) return runSlowCommand(args, io, USAGE);
+  const lanes = runLanes(flags);
+  if (lanes === "slow") return runSlowCommand(args, io, USAGE);
+  const lane = lanes === "fast" ? lanes : null;
   const wait = takeAllWait(args);
   const unknown =
-    typeof wait === "string" ? [] : wait.rest.filter((a) => !["--all", "--force"].includes(a));
-  if (typeof wait === "string" || !flags.has("--all") || unknown.length > 0) {
+    typeof wait === "string"
+      ? []
+      : wait.rest.filter((a) => a !== "--force" && !LANE_FLAGS.includes(a));
+  if (typeof wait === "string" || lanes === null || unknown.length > 0) {
     const problem =
       typeof wait === "string"
         ? wait
         : unknown.length > 0
           ? `unknown argument "${unknown[0]}"`
-          : "--all or --slow is required";
+          : "--all, --fast or --slow is required";
     io.stderr(`squeal run: ${problem}\n${USAGE}`);
     return 2;
   }
@@ -96,6 +101,7 @@ export async function runCommand(
     type: "run-all",
     force: flags.has("--force"),
     ...(internal.observeIgnored === true ? { observeIgnored: true } : {}),
+    ...(lane === null ? {} : { lane }),
   });
   if (response === null) {
     return noVerdict(`no daemon running for ${root}; start one with squeal start`);
@@ -117,7 +123,8 @@ export async function runCommand(
   }
   const { checkpoint } = state;
   const joined = joinedCheckpoint(root, checkpoint, state.owner);
-  const started = `Checkpoint ${checkpoint.id} started at revision ${checkpoint.revision}: ${filesText(root, checkpoint)}${joinedText(joined)}\n`;
+  const named = `Checkpoint ${checkpoint.id}${laneText(checkpoint, lane)}`;
+  const started = `${named} started at revision ${checkpoint.revision}: ${filesText(root, checkpoint)}${joinedText(joined)}\n`;
   if (deadline === null) {
     io.stdout(started);
     return 0;
@@ -128,7 +135,7 @@ export async function runCommand(
   const status = readStatus(root, { now });
   // Task 001-403: an abandoned or incomplete checkpoint names the file it lacks and why.
   const gap = outcome.kind === "abandoned" || code === 3 ? gapText(status) : "";
-  io.stdout(`Checkpoint ${checkpoint.id} ${line}${gap}\n${started}\n`);
+  io.stdout(`${named} ${line}${gap}\n${started}\n`);
   io.stdout(formatStatus(status, now(), statusCommand(io.env ?? process.env)));
   return code;
 }
@@ -224,10 +231,10 @@ function filesText(root: AbsolutePath, checkpoint: CheckpointRecord): string {
   const toRun = plural(checkpoint.testFiles.length, "test file");
   const current = inStore(root, (store) => {
     const requested = new Set(checkpoint.testFiles.map(testFileId));
-    const rest = store.testFileKeys
-      .list(checkpoint.worktreeId)
-      .map((row) => row.testFile)
-      .filter((file) => !requested.has(testFileId(file)));
+    const listed =
+      laneFiles(store, checkpoint) ??
+      store.testFileKeys.list(checkpoint.worktreeId).map((row) => row.testFile);
+    const rest = listed.filter((file) => !requested.has(testFileId(file)));
     return readVerdict(store, checkpoint.worktreeId, rest).byClass.current;
   });
   return `${toRun} to run${current === null ? "" : `, ${current} already current`}`;
@@ -328,7 +335,7 @@ async function ended(
       const revision = store.revisions.latest(checkpoint.worktreeId)?.number ?? 0;
       if (revision > checkpoint.revision) return { kind: "moved", revision };
       if (end === "abandoned") return { kind: "abandoned" };
-      const verdict = readVerdict(store, checkpoint.worktreeId);
+      const verdict = readVerdict(store, checkpoint.worktreeId, laneFiles(store, checkpoint));
       const settled = verdict.byClass.pending === 0 && !verdict.unlisted;
       return end === "completed" && settled ? { kind: "ended", verdict } : verdict;
     });

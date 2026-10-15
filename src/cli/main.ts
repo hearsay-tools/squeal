@@ -62,10 +62,15 @@ Usage:
                                 a verdict; suggestions it finds, applied by squeal setup
   squeal start [root]           Start this worktree's daemon if none runs, print status
   squeal run --all [--force] [--wait]
-                                Request a full-suite checkpoint from the daemon
+                                Request a full-suite checkpoint from the daemon; both
+                                lanes, fast files first
+  squeal run --fast [--force] [--wait]
+                                A checkpoint of the fast lane only, which is not a
+                                full-suite checkpoint
   squeal run --slow [--wait <ms>]
-                                Run the slow tier once no fast work is pending; with
-                                --wait, then wait as status --wait does
+                                Run the slow lane once no fast work is pending; with
+                                --wait, then wait as status --wait does. --fast --slow
+                                is --all
   squeal retry <test file>... --reason load|environment
                                 Re-run each file's failure once, caused outside the
                                 code: load waits until the one-minute load average is
