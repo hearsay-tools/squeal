@@ -1,4 +1,5 @@
 import { recordedText, retryText } from "../retry/index.js";
+import { awaitingInstallSentence } from "../scheduler/awaiting-install.js";
 import {
   flakyText,
   fullSuiteText,
@@ -31,7 +32,6 @@ import type {
   TransitionEntry,
   ValidityCounts,
 } from "../types/index.js";
-import { awaitingInstallSentence } from "./awaiting-install.js";
 import { type Collapsed, checkName, collapse } from "./collapse.js";
 import {
   change,
