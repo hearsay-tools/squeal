@@ -141,3 +141,79 @@ The exact changes agree with `tasks/006-77/notes.md`:
 Repair B1 in the text reader and its synthetic regressions, then narrowly re-review the deny/allow/block delivery boundary and the 14-cell comparison. Keep the count and cut-revision fixes. Keep the five a9 outcomes and Haiku's scope-specific rerun finding.
 
 Refreshing committed results from raw cells is a separate coordinator decision. Timeline-only regrading cannot recover the previously discarded Claude checks and counts. The 15 old disagreements remain in those committed results until raw grading is deliberately refreshed; the judge remains the grade of record and Haiku r3 should then be listed for calibration. No live eval is needed to verify this parser repair.
+
+## 006-83: narrow re-review after the B1 repair
+
+PASS `98e4b67dbcbe6cf46646606bd55b182ea0236eb7`. B1 is resolved. No blocking or should-fix finding in the repair. N1 remains a plausible note.
+
+### Verification
+
+The report branch starts at `origin/main` `5c6dafc3ae2b67262c394214223c4072e59a68d4`. Main gained no product code after the base of 006-81. This review covers only repair commit `98e4b67d`, in detached worktree `/tmp/squeal-review-006-83`; it does not re-open the earlier review's settled count, revision or metric findings.
+
+```text
+$ git rev-parse HEAD
+98e4b67dbcbe6cf46646606bd55b182ea0236eb7
+
+$ npm ci
+added 196 packages, and audited 197 packages in 7s
+found 0 vulnerabilities
+
+$ npm run lint
+> squeal@0.1.195 lint
+> biome check .
+Checked 1294 files in 577ms. No fixes applied.
+
+$ npm run typecheck
+> squeal@0.1.195 typecheck
+> tsc --noEmit
+[exit 0]
+
+$ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
+ Test Files  634 passed | 1 skipped (635)
+      Tests  5336 passed | 8 skipped (5344)
+   Start at  18:10:28
+   Duration  672.55s (tests 98%, import 2%)
+[exit 0]
+```
+
+The pinned candidate stayed clean after all checks (`git status --porcelain=v1` was empty). The independent full run queued behind the shared host lock for about 19 minutes, then completed in 672.55 seconds. Active-run one-minute load samples ranged from 4.11 to 11.85 on 24 CPUs. No file failed under load; no isolated rerun was needed.
+
+Build unverified, omitted by the brief. No model, cell, Claude or Codex session, or forbidden executable grading/regrading/baseline script was run. Source-only probes import the library functions; results files are untouched.
+
+### B1 re-check (proven resolved)
+
+Re-ran the reproduction printed in B1, replacing only its hook JSON for each near variant. All eight cases go through `claudeTimeline`, `gradeCell`, `currentBeforeClaim` and `claimedOnEvidence` at the pinned repair.
+
+| Hook output | 006-81 candidate | Repaired candidate |
+| --- | --- | --- |
+| `PreToolUse`, `permissionDecision: "allow"`, status in reason | true / true | false / false |
+| Same, `permissionDecision: "defer"` | true / true | false / false |
+| Root `reason`, no decision | true / true | false / false |
+| Root `decision: "approve"`, status in reason | true / true | false / false |
+| `PreToolUse`, `permissionDecision: "deny"` | true / true | true / true |
+| `PreToolUse`, `permissionDecision: "ask"` | true / true | true / true |
+| Root `decision: "block"` | true / true | true / true |
+| `PostToolBatch`, status in `additionalContext` | true / true | true / true |
+
+The deny regression now uses an actual PreToolUse deny schema. The reason on `ask` is intentionally retained: the eval uses a headless `-p` cell, where Claude Code refuses the ask and sends its reason as the tool result, as the field table cited in B1 states. Eight additional source-only checks preserve a named failure and pending slow tier through each delivered form. A real `additionalContext` remains clear when the same allow reply has a pending status only in its ignored reason. The new `HOOK_KEYS` guard matters: a hook-shaped JSON object carrying no delivered text becomes an empty text, so the raw JSON's embedded revision and counts cannot re-enter the parser.
+
+### Historical comparison (proven unchanged)
+
+Repeated 006-81's whole in-memory comparison with the repaired candidate's libraries. The complete comparison object, including every changed cell ID and every before/after verdict, equals the earlier review's object:
+
+```text
+Retained results: 13 long files / 740 cells; 19 atomic files / 1199 cells
+Parser or atomic measure differences between original base and repair: 0
+Kept raw events: 251 cells across 8 runs
+Base raw grades differing from committed parser/atomic measures: 0
+Raw cells changed by the repaired parser: exactly the same 14
+Repair changes beyond 006-81's 14-cell result: 0
+```
+
+Across those 251 raw event files, the only decision-bearing hook replies are 12 `deny` replies; there are no ask, allow, defer or root decisions. Thus retaining asks for headless cells changes no kept session.
+
+This preserves the eight cells resolving the 15 at-claim disagreements, Haiku r3's scope-specific rerun miss, the four Sonnet retry-pass credits and Haiku r4's two null retry measures. Their interpretation remains as reviewed above. No judge verdict, transcript, results file or cache was rewritten.
+
+### Notes and next input
+
+N1 stays a note. The repair restricts which JSON fields are read; it does not authenticate an unrelated hook's quoted example inside actual additional context. The eval's plugin-hook isolation still bounds that case. No further repair is needed for B1. The coordinator may integrate the reviewed candidate after its own gate, then separately decide whether to refresh results from the kept raw transcripts.
