@@ -198,6 +198,18 @@ describe("a root's session.idle", () => {
     expect(bridge.requests().find((q) => q.kind === "endTurn")).not.toHaveProperty("continued");
   });
 
+  it("ends an aborted continuation as continued: its own news waits for the next prompt (review 008-32)", async () => {
+    const { bridge, client, hooks } = await started({ stop: { report: REPORT } });
+    await say(hooks, ROOT_ID);
+    await hook(hooks, "event")(idle(ROOT_ID));
+    expect(client.prompted).toEqual([{ id: ROOT_ID, text: REPORT }]);
+    await say(hooks, ROOT_ID, REPORT);
+    await hook(hooks, "event")(aborted(ROOT_ID));
+    await hook(hooks, "event")(idle(ROOT_ID));
+    expect(client.prompted).toHaveLength(1);
+    expect(bridge.requests().find((q) => q.kind === "endTurn")).toMatchObject({ continued: true });
+  });
+
   it("arms the idle wait after a silent stop, and wakes the agent with its delta", async () => {
     const { client, hooks, kinds } = await started({ wait: { text: REPORT } });
     await say(hooks, ROOT_ID);
