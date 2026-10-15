@@ -17,7 +17,8 @@ import {
  * another `HEAD`, whose successor brought this one (a checkout's files) and
  * counts as `+ 0`; with every revision at one `HEAD`, all of them. The dirty
  * flag is the one recorded with what `HEAD` came from. `undefined` while
- * nothing is recorded.
+ * nothing is recorded, and before a first commit, which there is nothing to
+ * count from.
  */
 export function readRevisionCommit(
   store: Store,
@@ -27,9 +28,9 @@ export function readRevisionCommit(
   const moved = parseHeadMove(store.meta.get(headMoveMetaKey(worktreeId)));
   const number = latest?.number ?? 0;
   if (moved !== null && moved.revision >= number && moved.head !== latest?.head) {
-    return { head: moved.head, sinceHead: 0, dirty: moved.dirty };
+    return moved.head === null ? undefined : { head: moved.head, sinceHead: 0, dirty: moved.dirty };
   }
-  if (latest === null) return undefined;
+  if (latest === null || latest.head === null) return undefined;
   const other = store.revisions.lastAtOtherHead(worktreeId, latest.head);
   const since: RevisionNumber =
     moved !== null && moved.head === latest.head && moved.revision >= (other ?? 0)
@@ -40,10 +41,7 @@ export function readRevisionCommit(
   return { head: latest.head, sinceHead: Math.max(0, number - since), dirty: latest.dirty };
 }
 
-/**
- * `79 · 1bc146f0 + 3, dirty`: the revision, then its commit (task 001-406).
- * The number alone before a first commit, which there is nothing to count from.
- */
+/** `79 · 1bc146f0 + 3, dirty`: the revision, then its commit (task 001-406); the number alone without one. */
 export function revisionText(revision: RevisionNumber, commit: RevisionCommit | undefined): string {
   if (commit === undefined || commit.head === null) return String(revision);
   const dirty = commit.dirty ? ", dirty" : "";

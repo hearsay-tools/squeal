@@ -63,6 +63,8 @@ const SEAMS = [
   "src/core/keys/index.ts -> src/core/keys/key-format.ts",
   // When another worktree's claim goes stale decides who runs a file, not what it records (001-205).
   "src/core/scheduler/claims.ts -> src/core/status/snapshot.ts",
+  // Whether HEAD moved decides when a commit is recorded for headers to show, not what a key holds (001-406).
+  "src/core/scheduler/head-move.ts -> src/core/status/git-head.ts",
   // Whether a retry's claimant is alive decides who runs it, not what it records (001-368).
   "src/core/scheduler/retries.ts -> src/core/delivery/liveness.ts",
   // Whether a consumer is in a turn decides when the slow tier runs, not what it records.
