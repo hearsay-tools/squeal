@@ -3175,7 +3175,7 @@ function annotate(store, consumer, entries, header, states) {
       store,
       consumer.worktreeId,
       header,
-      entries.some((e) => e.to === "fail")
+      entries.flatMap((e) => e.to === "fail" ? [e.check] : [])
     ),
     stillFailing: states.filter((s) => s.outcome === "fail").map((s) => s.check)
   };
@@ -3204,8 +3204,17 @@ function withFlaky(store, worktreeId, entries) {
   });
 }
 function withDependencies(store, worktreeId, header, failing) {
-  const installed = failing ? dependenciesInstalled(store, worktreeId) : void 0;
+  const installed = nodeFailing(store, worktreeId, failing) ? dependenciesInstalled(store, worktreeId) : void 0;
   return installed === void 0 ? header : { ...header, dependenciesInstalled: installed };
+}
+function nodeFailing(store, worktreeId, failing) {
+  if (failing.length === 0) return false;
+  const root = store.worktrees.get(worktreeId)?.root;
+  if (root === void 0) return false;
+  const { policy, problems } = loadPolicy(root);
+  if (problems.length > 0) return false;
+  const pytest = new Set(policy.pytest.map((p) => p.name));
+  return failing.some((check) => !pytest.has(check.project) && !check.testPath.endsWith(".py"));
 }
 
 // src/core/delivery/delta.ts
@@ -4149,7 +4158,12 @@ function createDelivery(store, options) {
         consumer.worktreeId,
         states.flatMap((s) => toKnownFailure(s, live.revision) ?? [])
       );
-      const header = withDependencies(store, consumer.worktreeId, live, knownFailures.length > 0);
+      const header = withDependencies(
+        store,
+        consumer.worktreeId,
+        live,
+        knownFailures.map((f) => f.check)
+      );
       const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
       tellLiveness(store, consumer, starting ? told : header.daemon?.state ?? null);
       tellRevision(store, consumer, header.revision);
@@ -4601,7 +4615,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.194";
+  if (true) return "0.1.195";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
