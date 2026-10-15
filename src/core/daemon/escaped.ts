@@ -160,7 +160,7 @@ export class EscapedChildren {
     for (let round = 0; round < ROUNDS; round++) {
       const entries = await snapshot();
       const found = (await this.#find(entries, scope)).filter(({ entry }) => !seen.has(key(entry)));
-      // The first round also stops what the wait left: it carried the mark when the wait began.
+      // The first round also stops what the wait left, the lane's forks or children exiting.
       const known = new Set(found.map(({ entry }) => key(entry)));
       if (round === 0)
         found.push(
