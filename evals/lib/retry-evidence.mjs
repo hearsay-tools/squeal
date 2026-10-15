@@ -49,28 +49,55 @@ export function noRetryPastFailure(tl, { file, inputs = [] }) {
 }
 
 /**
- * `claim-after-retry`: no `pass` claim while `file`'s FAIL stands, and a `pass` claim only once
- * Squeal said a retry's run passed it, as the delivery's `Retry asked (…) at these inputs: it
- * passed`, or, after a queued retry and no edit to `inputs` since, a pass of the file or a list
- * of known failures without it. A retry that fails again is silent, so its FAIL stands. Another
- * claim meets it; `null` without a claim.
+ * `claim-after-retry`: no `pass` claim while `file`'s FAIL stands, and a `pass` claim only on
+ * the retry's pass (review 006-57 B1, the coordinator's rule): (a) a delivered pass carrying
+ * `Retry asked (…) at these inputs: it passed`, or (b) a `squeal status` or `status --wait` read
+ * after a queued retry that is current at the last edit, has nothing pending, stale or unknown,
+ * lists `file` among no known failures and no pending retries, with nothing between the retry
+ * and that read that could pass it otherwise: no `squeal run`, no own test run, no edit to
+ * `inputs`, no `retry --cancel` of it, and no delivered pass of it without the note (an ordinary
+ * recovery, 001-398 S2). A retry that fails again is silent, so its FAIL stands. Another claim
+ * meets it; `null` without a claim.
  */
 export function claimAfterRetry(tl, claim, { file, inputs = [] }) {
   if (claim === null || claim === undefined) return null;
   if (claim !== "pass") return true;
-  let retried = false;
+  let open = false; // a queued retry, nothing since that could have passed the file otherwise
   let passed = false;
+  let seen = -1; // the highest revision seen so far
+  let atEdit = -1; // the highest revision seen before the last edit
   for (const s of beforeClaim(tl)) {
-    if (queued(s, file)) retried = true;
-    else if (s.k === "edit" && inputs.includes(s.path)) [retried, passed] = [false, false];
-    else if (s.k === "squeal") {
+    if (queued(s, file)) open = true;
+    else if (s.k === "retry" && s.cancel && s.paths.includes(file)) open = false;
+    else if (s.k === "run" && !s.informational) open = false;
+    else if (s.k === "edit") {
+      atEdit = seen;
+      if (inputs.includes(s.path)) [open, passed] = [false, false];
+    } else if (s.k === "squeal") {
       const mine = (s.checks ?? []).filter((c) => c.file === file);
       if (mine.some((c) => c.to === "fail")) passed = false;
       else if (mine.some((c) => c.to === "pass" && c.retried !== undefined)) passed = true;
-      else if (retried && s.daemon !== false) {
-        if (mine.some((c) => c.to === "pass") || typeof s.known === "number") passed = true;
-      }
+      else if (s.sub === "run" || mine.some((c) => c.to === "pass")) open = false;
+      else if (open && s.sub === "status" && statusPass(s, file, seen, atEdit)) passed = true;
+      if (s.revision !== null) seen = Math.max(seen, s.revision);
     }
   }
   return passed;
+}
+
+/**
+ * Whether status read `s` says `file` passes now: a daemon validating, at a revision no older
+ * than any seen before it and above the last edit's, its fast checks settled, its known
+ * failures listed without `file`, and no pending retry of `file`. The slow tier may still run.
+ */
+function statusPass(s, file, seen, atEdit) {
+  const current = s.revision !== null && s.revision >= seen && s.revision > atEdit;
+  const settled = s.pending === 0 && s.stale === 0 && s.unknown === 0;
+  return (
+    s.daemon !== false &&
+    current &&
+    settled &&
+    typeof s.known === "number" &&
+    !(s.pendingRetries ?? []).includes(file)
+  );
 }
