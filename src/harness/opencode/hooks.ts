@@ -5,7 +5,7 @@ import { type Deadline, deadlineIn, within } from "./deadline.js";
 import { partAfter } from "./parts.js";
 import type { OcConsumer, OcKind } from "./protocol.js";
 import { keyOf, sessions } from "./sessions.js";
-import { type Ask, turns } from "./turns.js";
+import { type Ask, storedBySqueal, turns } from "./turns.js";
 
 /** Spec 008 D4: the deadline of `chat.message`, `tool.execute.before`, `tool.execute.after` and an event's call. */
 export const EVENT_DEADLINE_MS = 2_000;
@@ -17,6 +17,8 @@ export const IDLE_MARGIN_MS = 500;
 export const IDLE_DEADLINE_MS = STOP_WAIT_CAP_MS + IDLE_MARGIN_MS;
 /** D4: the deadline of `dispose`. */
 export const DISPOSE_DEADLINE_MS = 3_000;
+/** What `dispose` keeps for ending its consumers after an idle in flight stored its news. */
+export const DISPOSE_END_MS = 500;
 /** 001 D9: a root session's consumer is its main agent. */
 export const MAIN_AGENT = "main";
 /** D3: the primer's cap in the system prompt (002 D3). */
@@ -52,6 +54,8 @@ export function squealHooks(host: HookHost): OcHooks {
   /** Consumers this instance registered, by `keyOf`, and registrations in flight. */
   const registered = new Map<string, OcConsumer>();
   const registering = new Map<string, Promise<string | null>>();
+  /** Root idles in flight, which `dispose` lets finish (goal 4 under `opencode run`). */
+  const idling = new Set<Promise<void>>();
   let primer: string | null = null;
   /** `stop.waitMs`, from the last registration or prompt; `null` until one answers. */
   let stopWaitMs: number | null = null;
@@ -122,7 +126,8 @@ export function squealHooks(host: HookHost): OcHooks {
     // D4: `stop.waitMs` plus 500 ms, the lookup, Stop and `promptAsync` within it (review 008-16 B1).
     const wait = Math.max(0, Math.min(stopWaitMs ?? STOP_WAIT_CAP_MS, STOP_WAIT_CAP_MS));
     const deadline = deadlineIn(wait + IDLE_MARGIN_MS);
-    const consumer = await identify(id, deadline);
+    // Not `identify`: a `dispose` that began meanwhile waits for this idle, which registers nothing.
+    const consumer = await map.consumerOf(id, deadline);
     if (consumer === null) return;
     if (consumer.agentId !== undefined) {
       // A child's idle is 002's SubagentStop: its consumer ends; a resumed child registers again.
@@ -160,7 +165,9 @@ export function squealHooks(host: HookHost): OcHooks {
         } else if (event.type === "session.error" && sessionID !== undefined) {
           if (error?.name === "MessageAbortedError") turn.aborted(sessionID);
         } else if (event.type === "session.idle" && sessionID !== undefined) {
-          await idle(sessionID);
+          const ending = idle(sessionID);
+          idling.add(ending);
+          await ending.finally(() => idling.delete(ending));
         }
       } catch {
         // D4: silence.
@@ -169,7 +176,8 @@ export function squealHooks(host: HookHost): OcHooks {
 
     async "chat.message"(input, output) {
       try {
-        if (disposed) return;
+        // The report the instance before this one stored at its `dispose` (`turns`) is not a prompt.
+        if (disposed || storedBySqueal(output.parts)) return;
         const deadline = deadlineIn(EVENT_DEADLINE_MS);
         const consumer = await identify(input.sessionID, deadline);
         if (consumer === null) return;
@@ -269,10 +277,12 @@ export function squealHooks(host: HookHost): OcHooks {
       try {
         if (disposed) return;
         disposed = true;
-        turn.stop();
         const deadline = deadlineIn(DISPOSE_DEADLINE_MS);
-        // S1: a registration in flight lands first. Its own deadline (2 s) ends within this one.
-        await within(Promise.all(registering.values()), deadline());
+        // An idle in flight stores its news (`turns`): OpenCode awaits `dispose`, and `opencode
+        // run` disposes about 10 ms after the turn's idle (008-25).
+        turn.stop(() => deadline() - DISPOSE_END_MS);
+        // S1: a registration in flight lands first, and so does an idle in flight.
+        await within(Promise.all([...registering.values(), ...idling]), deadline());
         const consumers = [...registered.values()];
         registered.clear();
         if (consumers.length === 0) return;

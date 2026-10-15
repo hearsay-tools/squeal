@@ -23,6 +23,8 @@ export interface StubClient extends OcClient {
   readonly lookups: string[];
   /** Each `promptAsync`: the session and its text. */
   readonly prompted: { id: string; text: string }[];
+  /** Each `prompt` with `noReply`: the session and its text, stored without a turn. */
+  readonly stored: { id: string; text: string }[];
 }
 
 /** A client that knows `sessions`; `get` of any other id is an HTTP 404, as the SDK returns it. */
@@ -30,11 +32,17 @@ export function stubClient(sessions: readonly OcSessionInfo[] = []): StubClient 
   const logged: string[] = [];
   const lookups: string[] = [];
   const prompted: { id: string; text: string }[] = [];
+  const stored: { id: string; text: string }[] = [];
   return {
     logged,
     lookups,
     prompted,
+    stored,
     session: {
+      prompt: async ({ path, body }) => {
+        stored.push({ id: path.id, text: body.parts.map((part) => part.text).join("") });
+        return { data: undefined };
+      },
       promptAsync: async ({ path, body }) => {
         prompted.push({ id: path.id, text: body.parts.map((part) => part.text).join("") });
         return { data: undefined };
