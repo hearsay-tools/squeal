@@ -114,7 +114,7 @@ export interface NodeTestRunnersOptions {
   readonly childEnv?: Readonly<Record<string, string>>;
   /** Policy `runner.tierSize`, read per run. */
   readonly tierSize: () => number;
-  readonly note: (text: string) => void;
+  readonly note: (text: string, topic?: string) => void;
 }
 
 /**

@@ -97,8 +97,9 @@ describe("a parallel slow tier records each file's own artifact (review wave 4, 
     // The harness registers no worktree row; the line finds the policy through it.
     const worktree = { root: h.root, commonDir: repo.commonDir, isMain: true, daemon: null };
     store.worktrees.upsert({ id: h.worktreeId, registeredAt: 1, ...worktree });
+    // Several are counted; `status --notes` names them (001-413).
     expect(slowTierText(h.header(), "squeal")).toContain(
-      "2 current against src/gen/**, src/strings.ts as of revision",
+      "2 current against 2 declared artifacts as of revision",
     );
   });
 });

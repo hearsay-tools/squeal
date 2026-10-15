@@ -69,6 +69,17 @@ function pendingText(pending: number, activity: SlowTierActivity | null, late: b
 }
 
 /**
+ * The declared artifacts by name when one, else by count: cezar declares 25
+ * globs, and the line names them in `status --json` and `--notes` (001-413).
+ */
+function artifactText(artifact: readonly string[]): string {
+  const [only] = artifact;
+  return artifact.length === 1 && only !== undefined
+    ? only
+    : `${artifact.length} declared artifacts`;
+}
+
+/**
  * What the current slow files ran against: the artifact their runs were
  * declared to test, or "unknown" for those whose record is missing (review
  * wave 2, B2), never the declaration on disk today.
@@ -83,7 +94,7 @@ function currentText(tier: SlowTierState): string {
   const against =
     tier.artifact.length === 0
       ? `current at ${at}, against no declared artifact`
-      : `current against ${tier.artifact.join(", ")} as of ${at}`;
+      : `current against ${artifactText(tier.artifact)} as of ${at}`;
   return unknown === 0 ? against : `${against} (declared artifact unknown for ${unknown})`;
 }
 
