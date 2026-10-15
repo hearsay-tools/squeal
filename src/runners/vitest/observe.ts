@@ -8,6 +8,7 @@ import {
   observeEnv,
   observeRecorder,
   RECORDER_VERSION,
+  recorderOption,
   takeRecorded,
 } from "../observe/index.js";
 import type { WorktreePaths } from "./paths.js";
@@ -16,8 +17,9 @@ import type { WorktreePaths } from "./paths.js";
  * The recorder in one Vitest instance's workers (spec 001 D4; task 001-132;
  * research observed-runtime-inputs F1). Delivered through `createVitest`'s
  * `env` option, which Vitest spreads into every worker of every project, in
- * both pools: `--require <recorder>` ahead of the daemon's own
- * `NODE_OPTIONS`, and the settings. A project whose config sets
+ * both pools: the recorder ahead of the daemon's own `NODE_OPTIONS`, as
+ * `--import` of its `file:` URL or beside a `--require` as one
+ * (`recorderOption`, task 001-390), and the settings. A project whose config sets
  * `env.NODE_OPTIONS` overrides that, so the recorder goes ahead of its value.
  * Each instance writes into its own directory under the daemon's temp
  * directory, read and emptied after each run.
@@ -77,7 +79,7 @@ export class VitestObserver {
       const env = project.config.env as Record<string, unknown> | undefined;
       const options = env?.NODE_OPTIONS;
       if (env === undefined || typeof options !== "string" || options.includes(recorder)) continue;
-      env.NODE_OPTIONS = `--require ${JSON.stringify(recorder)} ${options}`;
+      env.NODE_OPTIONS = `${recorderOption(recorder, options)} ${options}`;
     }
   }
 

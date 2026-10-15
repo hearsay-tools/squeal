@@ -6,4 +6,5 @@ export {
   observeEnv,
   observeRecorder,
   RECORDER_VERSION,
+  recorderOption,
 } from "./runtime.js";

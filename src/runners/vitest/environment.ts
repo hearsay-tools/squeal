@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import type { TestProject } from "vitest/node";
 import { compare } from "../../core/fs/index.js";
 import type { RelativePath, RunnerEnvironment } from "../../core/types/index.js";
@@ -49,8 +50,8 @@ export function projectEnvironment(
  * `globalSetup`, which runs in the main process and is not serialized.
  * `sequence.seed` is dropped: Vitest draws it from the clock on every start.
  * Keys sorted, absolute paths relativized to the worktree root. The env the
- * recorder added (`injected`) is left out, and so is its `--require` ahead of
- * a project's own `NODE_OPTIONS` (task 001-132). So are `disableColors`
+ * recorder added (`injected`) is left out, and so is its `--import` or
+ * `--require` ahead of a project's own `NODE_OPTIONS` (tasks 001-132, 001-390). So are `disableColors`
  * (Vitest 5) and `isAgent` (Vitest 4): std-env's agent detection, which
  * workers read only to turn colours off; keyed, they made the launching
  * harness re-key every check (task 001-260). What `CI` sets stays keyed:
@@ -90,16 +91,36 @@ function withoutInjected(
   injected: Readonly<Record<string, string>>,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
-  const require = injected.NODE_OPTIONS?.match(/^--require "[^"]*"/)?.[0];
+  const recorder = recorderOf(injected.NODE_OPTIONS);
   for (const [key, value] of Object.entries(env)) {
     if (injected[key] !== undefined && value === injected[key]) continue;
-    if (key === "NODE_OPTIONS" && require !== undefined && typeof value === "string") {
-      out[key] = value.startsWith(`${require} `) ? value.slice(require.length + 1) : value;
+    const option = key === "NODE_OPTIONS" && typeof value === "string" ? leading(value) : null;
+    if (option !== null && recorder !== null && recorderOf(option.token) === recorder) {
+      out[key] = option.rest;
     } else {
       out[key] = value;
     }
   }
   return out;
+}
+
+/** The leading `--import "…"` or `--require "…"` of a `NODE_OPTIONS`, and what follows it. */
+function leading(options: string): { readonly token: string; readonly rest: string } | null {
+  const token = options.match(/^--(?:import|require) "[^"]*"/)?.[0];
+  return token === undefined || options[token.length] !== " "
+    ? null
+    : { token, rest: options.slice(token.length + 1) };
+}
+
+/** The recorder file a leading `--import` or `--require` names, a `file:` URL as its path. */
+function recorderOf(options: string | undefined): string | null {
+  const value = options?.match(/^--(?:import|require) "([^"]*)"/)?.[1];
+  if (value === undefined) return null;
+  try {
+    return value.startsWith("file:") ? fileURLToPath(value) : value;
+  } catch {
+    return null;
+  }
 }
 
 function canonicalize(value: unknown, paths: WorktreePaths): unknown {
