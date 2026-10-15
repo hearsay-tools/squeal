@@ -148,33 +148,44 @@ describe("callBridge", () => {
     ).toBeNull();
   });
 
-  it("starts the bridge without Node's proxy setup, and hands NODE_USE_ENV_PROXY to what it spawns (008-21)", async () => {
-    vi.stubEnv("NODE_USE_ENV_PROXY", "1");
-    // Node sets the proxy up only when a proxy URL is set too, as on a host behind one; CI has none.
-    vi.stubEnv("HTTPS_PROXY", "http://proxy.invalid:3128");
-    // What the bridge sees, whether Node set up the proxy at its start, and what a child sees.
-    const probe = bridge(`
-      import { execFileSync } from "node:child_process";
-      const proxyAtStart = process.moduleLoadList.includes("NativeModule _http_agent");
-      const child = execFileSync(process.execPath, ["-p", "process.env.NODE_USE_ENV_PROXY"], { encoding: "utf8" }).trim();
-      const carried = Object.keys(process.env).filter((name) => name.startsWith("SQUEAL_CARRIED"));
-      process.stdout.write(JSON.stringify({ answer: { switch: process.env.NODE_USE_ENV_PROXY, proxyAtStart, child, carried } }));
-    `);
-    expect(await callBridge(probe, {}, tempDir("squeal-oc-cwd-"), 10_000)).toEqual({
-      switch: "1",
-      proxyAtStart: false,
-      child: "1",
-      carried: [],
-    });
-    // The control: the same entry run as before 008-21 does set the proxy up, on a Node that has it.
-    const plain = JSON.parse(
-      execFileSync(process.execPath, [probe.entry], { encoding: "utf8" }),
-    ) as {
-      answer: { proxyAtStart: boolean };
-    };
-    const [major = 0, minor = 0] = process.versions.node.split(".").map(Number);
-    if (major > 24 || (major === 24 && minor >= 5)) expect(plain.answer.proxyAtStart).toBe(true);
-  });
+  it.each([
+    { name: "absent", value: undefined },
+    { name: "empty", value: "" },
+    { name: '"1"', value: "1" },
+  ])(
+    "starts the bridge without Node's proxy setup, and hands NODE_USE_ENV_PROXY $name to what it spawns as it was (008-21, review 008-23 S1)",
+    async ({ value }) => {
+      vi.stubEnv("NODE_USE_ENV_PROXY", value);
+      // Node sets the proxy up only when a proxy URL is set too, as on a host behind one; CI has none.
+      vi.stubEnv("HTTPS_PROXY", "http://proxy.invalid:3128");
+      // What the bridge sees, whether Node set up the proxy at its start, and what a child sees:
+      // the switch's value, or null where it is absent.
+      const probe = bridge(`
+        import { execFileSync } from "node:child_process";
+        const seen = 'JSON.stringify("NODE_USE_ENV_PROXY" in process.env ? process.env.NODE_USE_ENV_PROXY : null)';
+        const proxyAtStart = process.moduleLoadList.includes("NativeModule _http_agent");
+        const child = JSON.parse(execFileSync(process.execPath, ["-p", seen], { encoding: "utf8" }));
+        const own = "NODE_USE_ENV_PROXY" in process.env ? process.env.NODE_USE_ENV_PROXY : null;
+        const carried = Object.keys(process.env).filter((name) => name.startsWith("SQUEAL_CARRIED"));
+        process.stdout.write(JSON.stringify({ answer: { switch: own, proxyAtStart, child, carried } }));
+      `);
+      expect(await callBridge(probe, {}, tempDir("squeal-oc-cwd-"), 10_000)).toEqual({
+        switch: value ?? null,
+        proxyAtStart: false,
+        child: value ?? null,
+        carried: [],
+      });
+      if (value !== "1") return;
+      // The control: the same entry run as before 008-21 does set the proxy up, on a Node that has it.
+      const plain = JSON.parse(
+        execFileSync(process.execPath, [probe.entry], { encoding: "utf8" }),
+      ) as {
+        answer: { proxyAtStart: boolean };
+      };
+      const [major = 0, minor = 0] = process.versions.node.split(".").map(Number);
+      if (major > 24 || (major === 24 && minor >= 5)) expect(plain.answer.proxyAtStart).toBe(true);
+    },
+  );
 
   it("leaves an environment without NODE_USE_ENV_PROXY as it is", () => {
     const env = { PATH: "/usr/bin", HTTPS_PROXY: "http://proxy.invalid:3128" };
