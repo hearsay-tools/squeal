@@ -298,3 +298,26 @@ Check:
 - N1 stays a note: the cell setup isolates plugin hooks.
 
 Rules as 006-81's. **Writes:** a "006-83" section in `reviews/wave-13.8.md`, PASS or FAIL, committed.
+
+## 006-82 grade kept raw cells again, with 006-80
+
+Use /worker. Shape: slice. Outcome: a mechanical command grades a run's kept cells again from their raw `out/` with the current parser and rewrites a results file only where a cell changed. `atomic-regrade.mjs` stops stamping files where nothing changed (006-80).
+
+Read board rows 006-80 and 006-82, spec D4 "Who grades what", D9 and D10, `tasks/006-77/notes.md` "What changes where", and `reviews/wave-13.8.md` "Historical comparison". That section is the reviewer's in-memory method: `claudeTimeline`/`codexTimeline`, `gradeCell`, `cellRecord`, then `parserOf` or `measuresOf`.
+
+Starting seam: `evals/bin/atomic-regrade.mjs` and `regrade.mjs` with their library functions. Choose a `--from-cells <root>` mode or a new `evals/bin` script, and say which in notes.
+
+Contract:
+- No model call. A long cell keeps its committed judge verdicts; only `parser` and mechanical fields change.
+- Only a file with a changed cell is written. Its `regraded` note takes the row and the note from the command line; no hardcoded `006-50`.
+- A cell whose `out/` is missing stays as committed, and is counted.
+- A dry run prints what would change and writes nothing.
+
+**Owns:** `evals/bin/atomic-regrade.mjs`, `evals/bin/regrade.mjs`, a new `evals/bin` script if chosen, regrade helpers in `evals/lib/`, `test/evals/`, `tasks/006-82/notes.md`. Leave `squeal-text.mjs`, `evidence.mjs`, `retry-evidence.mjs`, `judge.mjs` and `rubric.mjs` alone.
+
+**Done when:**
+- tests show that only changed cells are rewritten, with the given note; unchanged files are untouched; judge verdicts are kept; a missing `out/` is left as it was;
+- notes give the dry run's output against `/tmp/squeal-evals-1001/cells` (expected: 006-77's 14 cells);
+- lint, typecheck and `squeal run --all --wait` pass. Name any file that fails under load and passes alone.
+
+Never write `evals/results/`: the coordinator runs the tool after landing. Only the dry run may read the kept cells. Never run `run-baseline.mjs`, `run-cell.mjs` or `judge-calibrate.mjs`. No model call; no `npm run build`.
