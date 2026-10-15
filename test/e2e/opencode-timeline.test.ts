@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
@@ -12,19 +12,28 @@ import type { Bridge, Seen, Watched } from "./opencode-watch.js";
  * timeline proves the report missed one of D4's deadlines. Small fixture
  * databases, no OpenCode: the first reply completes at idle and no report is
  * stored. Times are ms after that idle; at `stop.waitMs` 1,500 the idle's
- * deadline is +2000, and with no dispose in OpenCode's log the store's is
- * +2500.
+ * deadline is +2000, and with OpenCode's log disposing at +0 the store's is
+ * +2500. A log that lost its dispose line bounds no deadline of dispose's
+ * (round 2).
  */
 
 const IDLE = Date.parse("2026-10-15T07:00:00.000Z");
 const SESSION = "ses_1";
 const at = (ms: number) => IDLE + ms;
 
-/** A run directory whose OpenCode database holds the session's `edit` and its reply, completed at `replied`. */
-function opencodeRun(replied: number | null): OpenCodeRun {
+/**
+ * A run directory whose OpenCode database holds the session's `edit` and its
+ * reply, completed at `replied`, and whose log disposed at `disposed`.
+ */
+function opencodeRun(replied: number | null, disposed: number | null): OpenCodeRun {
   const dir = tempDir("squeal-oc-timeline-");
   const data = join(dir, "xdg/data/opencode");
-  mkdirSync(data, { recursive: true });
+  mkdirSync(join(data, "log"), { recursive: true });
+  if (disposed !== null) {
+    const stamp = new Date(disposed).toISOString();
+    const line = `timestamp=${stamp} service=default message="disposing instance" run=r1\n`;
+    writeFileSync(join(data, "log/run.log"), line);
+  }
   const db = new DatabaseSync(join(data, "opencode.db"));
   db.exec("CREATE TABLE message (id TEXT, session_id TEXT, time_created INTEGER, data TEXT)");
   db.exec("CREATE TABLE part (id TEXT, message_id TEXT, time_created INTEGER, data TEXT)");
@@ -73,13 +82,17 @@ const removed = (after: number, seen: number): Seen => ({
   rows: [],
 });
 
-/** The watched run, the first run exited at `exited`, its reply completed at `replied`. */
+/** The watched run, the first run exited at `exited`, its reply completed at `replied`, disposed at `disposed`. */
 function input(
   watched: Partial<Watched>,
-  { exited = 2_400, replied = at(0) }: { exited?: number; replied?: number | null } = {},
+  {
+    exited = 2_400,
+    replied = at(0),
+    disposed = at(0),
+  }: { exited?: number; replied?: number | null; disposed?: number | null } = {},
 ): TimelineInput {
   return {
-    first: opencodeRun(replied),
+    first: opencodeRun(replied, disposed),
     session: SESSION,
     database: store(),
     stopWaitMs: 1_500,
@@ -165,5 +178,50 @@ describe("the e2e timeline's deadline proof (review 008-32 B2)", () => {
     );
     expect(t.missedDeadline, t.text).toBe(false);
     expect(t.text).toContain("unresolved");
+  });
+
+  it("is no miss with the dispose line, and unresolved without it, for the same run (round 2)", () => {
+    // Review 008-32 round 2's pair: one observation set, the dispose line at +100 or lost.
+    const watched = {
+      bridges: [bridge("stop", 10, 200), bridge("end", 2_500, 2_550)],
+      host: { pid: 1, alive: at(2_590), rows: 0 },
+    };
+    const seen = timeline(input(watched, { exited: 2_600, disposed: at(100) }));
+    expect(seen.missedDeadline, seen.text).toBe(false);
+    expect(seen.text).toContain("before the store's deadline (+2600) with nothing stored");
+    const lost = timeline(input(watched, { exited: 2_600, disposed: null }));
+    expect(lost.missedDeadline, lost.text).toBe(false);
+    expect(lost.text).toContain("unresolved: OpenCode's log lost its dispose line");
+  });
+
+  it("is unresolved, no miss, without the dispose line for the consumer-removal and live-host paths", () => {
+    const late = timeline(
+      input(
+        {
+          consumers: [delivered, removed(2_500, 2_520)],
+          host: { pid: 1, alive: at(2_590), rows: 0 },
+        },
+        { exited: 2_600, disposed: null },
+      ),
+    );
+    expect(late.missedDeadline, late.text).toBe(false);
+    expect(late.text).toContain("unresolved: OpenCode's log lost its dispose line");
+    const live = timeline(
+      input({ host: { pid: 1, alive: at(3_500), rows: 1 } }, { exited: 3_600, disposed: null }),
+    );
+    expect(live.missedDeadline, live.text).toBe(false);
+    expect(live.text).toContain("unresolved: OpenCode's log lost its dispose line");
+  });
+
+  it("is a miss when Stop's bridge outlived the idle's deadline, with or without the dispose line", () => {
+    const t = timeline(input({ bridges: [bridge("stop", 10, 2_000)] }, { disposed: null }));
+    expect(t.missedDeadline, t.text).toBe(true);
+    expect(t.text).toContain("Stop's bridge outlived the idle's deadline (+2000)");
+  });
+
+  it("is a miss when OpenCode outlived dispose's deadline still holding the consumer", () => {
+    const t = timeline(input({ host: { pid: 1, alive: at(3_100), rows: 1 } }, { exited: 3_200 }));
+    expect(t.missedDeadline, t.text).toBe(true);
+    expect(t.text).toContain("past dispose's deadline (+3000)");
   });
 });
