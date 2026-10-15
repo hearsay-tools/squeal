@@ -12,20 +12,19 @@ import {
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, join } from "node:path";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { ensureDaemon } from "../../src/core/daemon/ensure.js";
 import { daemonScratch, prepareScratch, removeScratch } from "../../src/core/daemon/scratch.js";
 import { storePaths } from "../../src/core/store/index.js";
 import { git } from "../hash/git-repo.js";
 import {
-  type BuiltCli,
-  buildCli,
   LOADED,
   ping,
   SLOW,
   type SpawnedProcess,
   spawnCli,
   stopProcess,
+  suiteCli,
   waitFor,
   waitReady,
 } from "./helpers.js";
@@ -50,10 +49,11 @@ import {
 
 const processes: SpawnedProcess[] = [];
 const cleanups: (() => void)[] = [];
+// Each stop may wait up to 60 s for a daemon's shutdown (task 001-385).
 afterEach(async () => {
   for (const process of processes.splice(0)) await stopProcess(process);
   for (const cleanup of cleanups.splice(0).reverse()) cleanup();
-});
+}, SLOW.timeout);
 
 /** Passes only when the test's working directory is the worktree root, as under `vitest run`. */
 const CWD_TEST = `import { existsSync } from "node:fs";
@@ -69,16 +69,12 @@ describe.runIf(process.platform === "linux")(
   "squeal daemon: nothing held inside the root or the spawner's temp dir (spec 001 D10)",
   SLOW,
   () => {
-    let built: BuiltCli;
-    beforeAll(() => {
-      built = buildCli();
-    });
-    afterAll(() => built.cleanup());
+    const built = suiteCli();
 
     it("started from inside the root, it runs the root's tests with a temp dir outside every repository, holds nothing there, and exits when the worktree is removed", async () => {
       const repo = linkedFixture(cleanups, FILES);
       const callerTmp = callerTempDir(cleanups);
-      const spawned = spawnCli(built.cli, ["daemon", repo.root], {
+      const spawned = spawnCli(built().cli, ["daemon", repo.root], {
         cwd: repo.root,
         env: { ...repo.env, TMPDIR: callerTmp, TMP: callerTmp, TEMP: callerTmp },
       });
@@ -132,7 +128,7 @@ describe.runIf(process.platform === "linux")(
       }
 
       const started = Date.now();
-      const spawned = spawnCli(built.cli, ["daemon", repo.root], { cwd: "/", env: repo.env });
+      const spawned = spawnCli(built().cli, ["daemon", repo.root], { cwd: "/", env: repo.env });
       processes.push(spawned);
       await waitFor(() => ping(repo.socketPath, 100), 30_000, "a ping answer");
       const answeredMs = Date.now() - started;
@@ -148,7 +144,7 @@ describe.runIf(process.platform === "linux")(
         "the leftover removed",
       );
 
-      const stop = spawnCli(built.cli, ["stop"], { cwd: repo.root, env: repo.env });
+      const stop = spawnCli(built().cli, ["stop"], { cwd: repo.root, env: repo.env });
       expect(await stop.exited).toEqual({ code: 0, signal: null });
       expect(await spawned.exited).toEqual({ code: 0, signal: null });
       expect(existsSync(tempDir)).toBe(false);

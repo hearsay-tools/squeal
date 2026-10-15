@@ -1,14 +1,13 @@
 import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
-  type BuiltCli,
-  buildCli,
   readNotes,
   SLOW,
   type SpawnedProcess,
   spawnCli,
   stopProcess,
+  suiteCli,
   waitReady,
 } from "./helpers.js";
 import { callerTempDir, exitWithin, linkedFixture, resultOf, TMP_TEST } from "./scratch-helpers.js";
@@ -23,20 +22,17 @@ import { callerTempDir, exitWithin, linkedFixture, resultOf, TMP_TEST } from "./
 
 const processes: SpawnedProcess[] = [];
 const cleanups: (() => void)[] = [];
+// Each stop may wait up to 60 s for a daemon's shutdown (task 001-385).
 afterEach(async () => {
   for (const process of processes.splice(0)) await stopProcess(process);
   for (const cleanup of cleanups.splice(0).reverse()) cleanup();
-});
+}, SLOW.timeout);
 
 describe.runIf(process.platform === "linux")(
   "squeal daemon: /tmp/squeal-<uid> refused (spec 001 D10)",
   SLOW,
   () => {
-    let built: BuiltCli;
-    beforeAll(() => {
-      built = buildCli();
-    });
-    afterAll(() => built.cleanup());
+    const built = suiteCli();
 
     it("serves with a private temp directory of its own, notes why, and removes it on exit", async () => {
       const repo = linkedFixture(cleanups, { "test/tmp.test.ts": TMP_TEST });
@@ -50,7 +46,7 @@ describe.runIf(process.platform === "linux")(
       });
       const preload = join(callerTempDir(cleanups), "uid.mjs");
       writeFileSync(preload, `process.getuid = () => ${uid};\n`);
-      const spawned = spawnCli(built.cli, ["daemon", repo.root], {
+      const spawned = spawnCli(built().cli, ["daemon", repo.root], {
         cwd: "/",
         env: { ...repo.env, NODE_OPTIONS: `--import=${preload}` },
       });

@@ -328,16 +328,30 @@ export interface DaemonSuite {
   cleanup(fn: () => void): void;
 }
 
-/** Builds the CLI once per file; after each test, stops its daemons and then runs its cleanups. */
-export function daemonSuite(options: BuildOptions = {}): DaemonSuite {
+/**
+ * Builds the CLI in `beforeAll` and removes it in `afterAll`, the file's one
+ * build. Both hooks get `SLOW.timeout`: `tsc` over `src` and the removal of
+ * its output each outlasted the 10 s hook default under a loaded full suite,
+ * which fails the file (001-360, task 001-385). `build` is for tests of this.
+ */
+export function suiteCli(options: BuildOptions = {}, build = buildCli): () => BuiltCli {
   let built: BuiltCli | null = null;
+  beforeAll(() => {
+    built = build(options);
+  }, SLOW.timeout);
+  afterAll(() => built?.cleanup(), SLOW.timeout);
+  return () => {
+    if (built === null) throw new Error("suiteCli: the CLI is built in beforeAll");
+    return built;
+  };
+}
+
+/** Builds the CLI once per file; after each test, stops its daemons and then runs its cleanups. */
+export function daemonSuite(options: BuildOptions = {}, build = buildCli): DaemonSuite {
+  const built = suiteCli(options, build);
   const processes: SpawnedProcess[] = [];
   const roots: string[] = [];
   const cleanups: (() => void)[] = [];
-  beforeAll(() => {
-    built = buildCli(options);
-  });
-  afterAll(() => built?.cleanup());
   // Each stop waits for a daemon's shutdown, SIGKILL only after 60 s: past the
   // 10 s hook default under a loaded full suite (task 001-320).
   afterEach(async () => {
@@ -346,10 +360,7 @@ export function daemonSuite(options: BuildOptions = {}): DaemonSuite {
     for (const root of roots.splice(0)) await stopStrays(root);
     for (const cleanup of cleanups.splice(0).reverse()) cleanup();
   }, SLOW.timeout);
-  const cli = (): string => {
-    if (built === null) throw new Error("daemonSuite: the CLI is built in beforeAll");
-    return built.cli;
-  };
+  const cli = (): string => built().cli;
   return {
     get cli() {
       return cli();
