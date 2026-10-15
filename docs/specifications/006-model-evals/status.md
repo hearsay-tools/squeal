@@ -146,3 +146,9 @@ Started: 2026-10-10
   - a11's retry failed again in sol's cell (`Test timed out in 250ms`), and luna's staging stored the FAIL at 0.20 per CPU. S1's check caught that one.
   - Claude permission prompts kept Sonnet from starting a9's service.
   - No full run. Row 006-62 repairs all of it. The pilot's file is committed; ATOMIC.md is not regenerated until 006-62 marks the broken condition.
+- 2026-10-15, 006-62 and its repair 006-64 landed (`ae20bb31`) after review 006-63 FAIL (B1 to B3) and narrow re-review 006-65 PASS on `fd8d37f4`.
+  - Cells put the pinned plugin's `bin` first on `PATH`. Codex cells get a copy of the pinned launcher in the cell `HOME`, and every XDG base directory is the cell's own.
+  - The grader credits a Squeal command only when Squeal answered it: replies are matched per command within a call. Squeal's own non-zero replies (usage, no match, status unavailable) count as Squeal's.
+  - Claude cells from `20261014T154710Z` are marked with the "(host launcher)" condition until a cell records `squealPath: "pinned"`. a11 drops its staged load only after a wait that names `test/clock.test.ts`, and keeps the warm-up daemon.
+  - Main gained 0.1.191, 0.1.192 and 0.1.194 after the PASS. None shared a file with the candidate, so no re-review, but each got a fresh gate. All were green: the last ran 629 files on `b5c92c80`.
+  - Landing note: an earlier gate on `fd8d37f4` failed `test/e2e/pi.test.ts` ("Pi did not finish in 30000ms") at load 100 to 240. It passes alone 5 of 5 and passed the later gates. Branch CI on `21d5b9ce` failed `test/e2e/stop-gap.test.ts` on Node 22 (row 001-408, same signature) and went green on re-run.
