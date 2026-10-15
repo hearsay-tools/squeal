@@ -48,11 +48,18 @@ describe("simpleCommands", () => {
 describe("classifyShell", () => {
   it("names each Squeal call with its flags, however the CLI is spelled", () => {
     expect(shapes('node "/pin/plugins/codex/dist/cli/squeal.mjs" status --wait 60000')).toEqual([
-      { kind: "squeal", sub: "status", wait: true, all: false, slow: false },
+      {
+        kind: "squeal",
+        bin: "/pin/plugins/codex/dist/cli/squeal.mjs",
+        sub: "status",
+        wait: true,
+        all: false,
+        slow: false,
+      },
     ]);
     expect(shapes("squeal run --slow && squeal status --wait 90000")).toEqual([
-      { kind: "squeal", sub: "run", wait: false, all: false, slow: true },
-      { kind: "squeal", sub: "status", wait: true, all: false, slow: false },
+      { kind: "squeal", bin: "squeal", sub: "run", wait: false, all: false, slow: true },
+      { kind: "squeal", bin: "squeal", sub: "status", wait: true, all: false, slow: false },
     ]);
   });
 
