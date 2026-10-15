@@ -8,6 +8,7 @@
 //   { k: "squeal", from: "push" | "pull", revision, pending, stale, unknown, slow, daemon,
 //     known, checks, failures, verdict, files, failing }
 //   { k: "sleep", s }
+//   { k: "squeal-run", all, slow }, an executed `squeal run` whatever it printed (006-59 R1)
 //   { k: "claim" }, where the final message was; its word is the cell's `claim`
 // A squeal step's `checks` are the checks it named, each with its own provenance (review wave
 // 2.6, B2 and S2): `{ check, file, to, from, observed, validity }`, or `{ to, count }` for a
