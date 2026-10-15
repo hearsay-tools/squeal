@@ -15,12 +15,14 @@ const CALENDAR = "test/clock.test.ts";
 
 /**
  * Sets `env` for knobs `knobs` of the cell at `cell`: `pinLoad` preloads `retry/loadavg.mjs`
- * through NODE_OPTIONS, reading the load per CPU from `<cell>/tmp/load/per-cpu`; `service` names
- * its port file `<cell>/tmp/rates.port`. Both go with the cell's scratch. Returns `setLoad(perCpu)`, which changes the load the cell's
- * processes read from their next call on, or `null` without `pinLoad`.
+ * through NODE_OPTIONS, reading the load per CPU from `<cell>/tmp/load/per-cpu`. It goes with the
+ * cell's scratch. Returns `setLoad(perCpu)`, which changes the load the cell's processes read
+ * from their next call on, or `null` without `pinLoad`. The `service` knob needs no variable: the
+ * service's port file is `~/.ledgerline-rates.port`, the cell's scratch `HOME`, which the session,
+ * the daemon and its test processes share (their `TMPDIR`s differ), so the start an agent types
+ * is a bare `node scripts/rates-service.mjs`, which Claude Code allows (row 006-62).
  */
 export function retryEnv(knobs, cell, env) {
-  if (knobs.service) env.LEDGERLINE_RATES_PORT_FILE = join(cell, "tmp", "rates.port");
   if (knobs.pinLoad === undefined) return null;
   const dir = join(cell, "tmp", "load");
   mkdirSync(dir, { recursive: true });

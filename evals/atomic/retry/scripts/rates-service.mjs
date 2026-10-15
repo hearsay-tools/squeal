@@ -1,10 +1,10 @@
 // The rates service: today's exchange rates over HTTP on 127.0.0.1, at a port the system picks,
-// written to LEDGERLINE_RATES_PORT_FILE. `node scripts/rates-service.mjs` starts it in the
+// written to ~/.ledgerline-rates.port. `node scripts/rates-service.mjs` starts it in the
 // background and returns once it listens; it stops when its port file is removed.
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
-import { tmpdir } from "node:os";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -19,7 +19,7 @@ const portIn = (file) => {
 };
 
 if (process.argv[2] === "--serve") serve(process.argv[3]);
-else await start(process.env.LEDGERLINE_RATES_PORT_FILE ?? join(tmpdir(), "ledgerline-rates.port"));
+else await start(join(homedir(), ".ledgerline-rates.port"));
 
 async function start(file) {
   const port = portIn(file);

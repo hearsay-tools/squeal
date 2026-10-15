@@ -48,7 +48,7 @@ if (cmd !== "daemon") {
   const retry = {
     load: e.EVAL_LOAD_PER_CPU_FILE ? +(loadavg()[0] / availableParallelism()).toFixed(2) : null,
     cold: e.LEDGERLINE_CALENDAR_COLD_RUNS ?? null,
-    rates: e.LEDGERLINE_RATES_PORT_FILE ? existsSync(e.LEDGERLINE_RATES_PORT_FILE) : null,
+    rates: existsSync(join(root, "scripts/rates-service.mjs")) ? existsSync(join(e.HOME, ".ledgerline-rates.port")) : null,
     preload: /loadavg\\.mjs/.test(e.NODE_OPTIONS ?? ""),
   };
   appendFileSync(join(process.env.FAKE_LOG, "squeal"), JSON.stringify({ args: [cmd, ...rest], slow, retry }) + "\\n");
