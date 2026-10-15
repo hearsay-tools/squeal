@@ -1,0 +1,24 @@
+2026-10-15T09:24:17Z
+load 27.45
+$ SQUEAL_SOURCE=file:///home/squeal-e2e/dogfood-008/src sh /home/squeal-e2e/dogfood-008/src/install-0.1.192.sh
+$ mkdir -p /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode
+$ curl -fsSL -o /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/.unpack.pU4y8g/source.tar.gz file:///home/squeal-e2e/dogfood-008/src/squeal--v0.1.192.tar.gz
+$ tar -xzf /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/.unpack.pU4y8g/source.tar.gz -C /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/.unpack.pU4y8g/source --strip-components=1
+$ mv /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/.unpack.pU4y8g/source/plugins/opencode /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/0.1.192
+$ ln -sfn 0.1.192 /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/current
+OpenCode sessions already open keep the Squeal they loaded until they restart. Restart them before the next update: it removes the version they loaded unless its daemon is running
+/home/squeal-e2e/dogfood-008/home/.local/bin/squeal is the launcher of squeal@hearsay 0.1.192
+Next, in each repository: squeal setup
+exit 0
+$ cat xdg/state/squeal/installed
+opencode
+launcher /home/squeal-e2e/dogfood-008/home/.local/bin/squeal
+opencode /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/0.1.186
+opencode /home/squeal-e2e/dogfood-008/xdg/data/squeal/opencode/0.1.192
+$ ls xdg/data/squeal/opencode; readlink current
+0.1.186
+0.1.192
+current
+0.1.192
+$ squeal --version
+0.1.192

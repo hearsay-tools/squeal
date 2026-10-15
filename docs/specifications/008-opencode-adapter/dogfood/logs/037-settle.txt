@@ -1,0 +1,110 @@
+2026-10-15T09:31:05Z load 25.52
+$ git status --short
+ M packages/remeda/src/purry.ts
+$ git checkout -- .
+$ squeal --version
+0.1.192
+$ squeal start
+Squeal daemon spawned for /home/squeal-e2e/dogfood-008/remeda
+
+$ squeal run --all --wait 300000
+Checkpoint c6dc93f7-42b9-473b-853e-3a7252a63307 completed at revision 52: no known failures; 175 test files, 175 already current, 0 run now
+Checkpoint c6dc93f7-42b9-473b-853e-3a7252a63307 started at revision 52: 0 test files to run, 175 already current
+
+Revision: 52
+Known failures: 0
+Affected checks: 2411 passed (2236 tests, 175 test files loaded), 0 running, 0 queued, 2 skipped (2 tests)
+Full-suite checkpoint: completed at revision 52
+
+$ squeal stop
+Squeal daemon stopped for /home/squeal-e2e/dogfood-008/remeda
+$ git status --short
+2026-10-15T09:31:12Z load 25.88
+2026-10-15T09:35:02Z load 21.97
+$ git status --short
+ M packages/remeda/src/purry.ts
+$ git checkout -- .
+$ squeal --version
+0.1.192
+$ squeal start
+Squeal daemon spawned for /home/squeal-e2e/dogfood-008/remeda
+
+$ squeal run --all --wait 300000
+Checkpoint 28b0aacf-81b1-4583-a407-f4f89fad96a7 completed at revision 54: no known failures; 175 test files, 175 already current, 0 run now
+Checkpoint 28b0aacf-81b1-4583-a407-f4f89fad96a7 started at revision 54: 0 test files to run, 175 already current
+
+Revision: 54
+Known failures: 0
+Affected checks: 2411 passed (2236 tests, 175 test files loaded), 0 running, 0 queued, 2 skipped (2 tests)
+Full-suite checkpoint: completed at revision 54
+
+$ squeal stop
+Squeal daemon stopped for /home/squeal-e2e/dogfood-008/remeda
+$ git status --short
+2026-10-15T09:35:08Z load 21.25
+2026-10-15T09:39:07Z load 18.15
+$ git status --short
+ M packages/remeda/src/purry.ts
+$ git checkout -- .
+$ squeal --version
+0.1.192
+$ squeal start
+Squeal daemon spawned for /home/squeal-e2e/dogfood-008/remeda
+
+$ squeal run --all --wait 300000
+Checkpoint a6ec85b2-2183-4552-9edd-61a22407f8e6 completed at revision 57: no known failures; 175 test files, 175 already current, 0 run now
+Checkpoint a6ec85b2-2183-4552-9edd-61a22407f8e6 started at revision 57: 0 test files to run, 175 already current
+
+Revision: 57
+Known failures: 0
+Affected checks: 2411 passed (2236 tests, 175 test files loaded), 0 running, 0 queued, 2 skipped (2 tests)
+Full-suite checkpoint: completed at revision 57
+
+$ squeal stop
+Squeal daemon stopped for /home/squeal-e2e/dogfood-008/remeda
+$ git status --short
+2026-10-15T09:39:11Z load 18.15
+2026-10-15T09:43:01Z load 26.93
+$ git status --short
+ M packages/remeda/src/purry.ts
+$ git checkout -- .
+$ squeal --version
+0.1.192
+$ squeal start
+Squeal daemon spawned for /home/squeal-e2e/dogfood-008/remeda
+
+$ squeal run --all --wait 300000
+Checkpoint 0b661b3b-0c31-4c5e-988f-fa263ffcf420 completed at revision 60: no known failures; 175 test files, 175 already current, 0 run now
+Checkpoint 0b661b3b-0c31-4c5e-988f-fa263ffcf420 started at revision 60: 0 test files to run, 175 already current
+
+Revision: 60
+Known failures: 0
+Affected checks: 2411 passed (2236 tests, 175 test files loaded), 0 running, 0 queued, 2 skipped (2 tests)
+Full-suite checkpoint: completed at revision 60
+
+$ squeal stop
+Squeal daemon stopped for /home/squeal-e2e/dogfood-008/remeda
+$ git status --short
+2026-10-15T09:43:13Z load 30.85
+2026-10-15T09:49:14Z load 24.90
+$ git status --short
+ M packages/remeda/src/chunk.ts
+$ git checkout -- .
+$ squeal --version
+0.1.192
+$ squeal start
+Squeal daemon spawned for /home/squeal-e2e/dogfood-008/remeda
+
+$ squeal run --all --wait 300000
+Checkpoint 42cfba5b-25bc-40e6-8e8c-ca90387ee8e3 completed at revision 62: no known failures; 175 test files, 175 already current, 0 run now
+Checkpoint 42cfba5b-25bc-40e6-8e8c-ca90387ee8e3 started at revision 62: 0 test files to run, 175 already current
+
+Revision: 62
+Known failures: 0
+Affected checks: 2411 passed (2236 tests, 175 test files loaded), 0 running, 0 queued, 2 skipped (2 tests)
+Full-suite checkpoint: completed at revision 62
+
+$ squeal stop
+Squeal daemon stopped for /home/squeal-e2e/dogfood-008/remeda
+$ git status --short
+2026-10-15T09:49:17Z load 23.55

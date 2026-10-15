@@ -1,0 +1,10 @@
+{
+  "model": "cliproxy/gpt-6-luna",
+  "cwd": "/home/squeal-e2e/dogfood-008/remeda",
+  "prompts": [
+    "Local experiment in this checkout, not a PR. In packages/remeda, change `purry` (src/purry.ts) so that a call with the wrong number of arguments throws a RangeError whose message is exactly `Expected ${fn.length} or ${fn.length - 1} arguments, received ${args.length}` (a template literal), instead of the error it throws now. Only edit src/purry.ts. Do not run, wait for or check anything; reply DONE as soon as the edit is made. If Squeal later reports that an existing test fails because of this change, change the message so that test passes while it still names both counts, again only in src/purry.ts and without running, waiting for or checking anything, and reply DONE.",
+    "Since my first message, list each message you received and say who sent it. What is the current state of the tests, as far as you know?"
+  ],
+  "gapMs": 90000,
+  "idleMs": 90000
+}

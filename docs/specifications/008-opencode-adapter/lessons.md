@@ -318,3 +318,100 @@ At the end, at 03:41:37 UTC, load 10.1, `ps -u squeal-e2e` was empty:
 - the daemon stopped by itself 3 s after each session's last consumer ended (`status --notes`).
 
 The remeda clone is clean at `8e6e78f`. Squeal's store there is at revision 50 with 0 known failures. The sandbox now holds only 0.1.186: `xdg/data/squeal/opencode/0.1.186` and `current` pointing at it. The 0.1.184 and 0.1.190 archives stay in `src/`.
+
+## 008-37: defect 5 re-checked on 0.1.192
+
+Task 008-37, 2026-10-15. The same sandbox, OpenCode 1.18.35, remeda and Cezar copy as 008-30, with Squeal 0.1.192 (main `a0afa0d8`, whose product tree is `163882d7`'s: 008-31's and 008-33's continued-turn fix), gpt-6-luna only. Records: `dogfood/logs/037-*`, `install-0.1.192.txt`, `prep-0.1.192.txt`, `stats.txt`. Times are UTC.
+
+### Verdict
+
+Defect 5 is fixed with a real model. In the two `serve` sessions that reached its shape, turn 1's `PASS -> FAIL` was continued once, luna's edit in that continued turn flipped the check back before the continued turn's idle, and no second continuation followed: no model request at all for 84 and 85 s, until the next user prompt. That prompt carried the `FAIL -> PASS`, once, and luna reported the test as passing. Goal 4 holds under `serve`: one continuation with news, never twice in a row.
+
+Under `opencode run` the news is still stored once at `dispose` and read once by `run --continue` (defect 1 stays fixed).
+
+030-s4's own scenario no longer reaches the shape with luna: in both exact repeats luna wrote a message that kept "Wrong number of arguments", so the test never failed and nothing was continued, which is goal 4's "none without news". The shape was reached with a scenario that pins the failing message and asks for the repair on Squeal's report (`serve-luna-recheck.json`, Setup).
+
+| Question | Holds? | Evidence |
+| --- | --- | --- |
+| A continued turn whose own edit flips a check before its idle gets no second continuation (defect 5, goal 4) | Yes, 2 of 2 | 037-s4c, 037-s4d below |
+| The `FAIL -> PASS` reaches the model with the next prompt | Yes, 2 of 2, once each | the next prompt's request in 037-s4c and 037-s4d |
+| A turn with no news is not continued (goal 4) | Yes, 2 of 2 | 037-s4a, 037-s4b |
+| Under `run`, news known before idle is stored once, and `run --continue` reads it once (defect 1, D5) | Yes, 1 of 1 | 037-s3 below |
+| The primer in every request | Yes, 31 of 31 | `stats.txt` |
+
+No new defect.
+
+### Setup
+
+| Item | Value |
+| --- | --- |
+| Install | `sh make-archive.sh a0afa0d8` wrote `squeal--v0.1.192.tar.gz`, a `git archive` of main, and `install-0.1.192.sh`. Then `sh install-version.sh 0.1.192` ran that `install.sh` (the full install) as `squeal-e2e` through `as-user.sh` with `SQUEAL_SOURCE=file://…/src`, at load 27.45 (the install is not a session; the gate holds sessions only). It unpacked 0.1.192, repointed `current` and kept 0.1.186 as the previous version; the launcher is 0.1.192's and `squeal --version` printed 0.1.192. The plugin CLI named in every request's primer is `…/opencode/0.1.192/dist/cli/squeal.mjs`. |
+| Store | `sh settle.sh` before each session: `git checkout -- .` in remeda, `squeal start`, `squeal run --all --wait`, `squeal stop`. Before the first session: revision 50, 0 known failures (`prep-0.1.192.txt`); after each, 0 known failures (`037-settle.txt`). |
+| Scenarios | `serve-luna-wake.json`, 030-s4's unchanged (037-s4a, 037-s4b). `serve-luna-recheck.json` (037-s4c, 037-s4d): the same `purry` task, but the message is pinned to `` `Expected ${fn.length} or ${fn.length - 1} arguments, received ${args.length}` ``, which the existing test rejects, and "If Squeal later reports that an existing test fails because of this change, change the message so that test passes while it still names both counts, again only in src/purry.ts and without running, waiting for or checking anything, and reply DONE". The second prompt asks who sent each message and what the tests' state is. This makes the continued turn's own edit, which 030-s4 got by chance, the user's instruction; the plugin path it drives is the same. |
+| Model, proxy | `cliproxy/gpt-6-luna` through `dogfood/proxy.mjs`. Only the proxy held the key, by name. |
+| Load | Each session started after `gate.sh` opened, between 18.15 and 23.93. Other work on the host pushed the load to 29.9 during sessions (below). |
+
+### Sessions
+
+| Id | Mode | Load (gate → end; highest) | Prompt | What happened |
+| --- | --- | --- | --- | --- |
+| 037-s4a | `serve` (Cezar's runner, persistent), `serve-luna-wake.json` | 22.18 → 18.65; 27.5 | 030-s4's | Luna kept "Wrong number of arguments" in the new message; the test passed (revision 51). No continuation, no wake. |
+| 037-s4b | as 037-s4a | 23.22 → 20.80; 29.9 | the same | The same edit, byte for byte (`037-s4b-serve.diff.txt`). No continuation, no wake. |
+| 037-s4c | `serve`, `serve-luna-recheck.json` | 21.25 → 24.18; 25.6 | the pinned message, repair on report | One continuation with `PASS -> FAIL`; luna's re-edit flipped it back before the continued idle; no second continuation; `FAIL -> PASS` with the next prompt. |
+| 037-s4d | as 037-s4c | 18.15 → 21.92; 28.4 | the same | The same as 037-s4c. |
+| 037-s3 | `run --print-logs`, then `run --continue --print-logs` | 19.26 → 20.88; 23.93 → 26.87 | 030-s3's `chunk` prompt; then 030-s3's "Is there anything I should know since my last message? …" | Run 1: the report was stored at `dispose`. Run 2 read it once and stored nothing. |
+
+### Under `serve`: one continuation, then the next prompt
+
+037-s4c (`037-s4c-serve.timeline.md`, `037-s4c-serve.cezar-events.txt`). Times are when each request started (the proxy log).
+
+| Time | What |
+| --- | --- |
+| 09:35:26.071 | `PASS -> FAIL` of `purry.test.ts > wrong number of arguments`, at revision 55 (`squeal why`). The result was reused from revision 34's run, so it was known as the edit landed. |
+| 09:35:28.385 | Turn 1 ended: "DONE", then Cezar's `TURN-END`. |
+| 09:35:28.995 | Request 5, continuation 1: `SQUEAL · 1 check changed (1 test) at revision 55` with the `PASS -> FAIL`. |
+| (request 5's answer) | Luna re-edited `purry.ts` to `` `Wrong number of arguments (expected ${fn.length} or ${fn.length - 1}, received ${args.length})` ``. |
+| 09:35:32.559 | Request 6 (1,762 ms), whose answer was "DONE". |
+| 09:35:32.785 | `FAIL -> PASS` of the same check, at revision 56, during request 6 and so about 1.5 s before the continued turn's idle (Cezar's "DONE" text at 09:35:34.327). This is the moment that sent 030-s4's continuation 2. |
+| — | No request for 84 s. |
+| 09:36:58.578 | Request 7, the driver's second prompt (sent 09:36:58.385). After the user's text, its header: `SQUEAL · 1 check changed (1 test) at revision 56`, `0 pending`, then `PASS  packages/remeda/src/purry.test.ts > wrong number of arguments` / `FAIL -> PASS`. |
+| after 09:37:03.455 | The last turn-end; no request in the 90 s the driver held the server open. |
+
+037-s4d gave the same order: `PASS -> FAIL` at 09:39:24.810 (revision 58), turn 1's end at 09:39:26.392, continuation 1 at 09:39:26.662, luna's re-edit, `FAIL -> PASS` at 09:39:30.219 (revision 59), the continued turn's "DONE" at 09:39:31.859, then no request until the second prompt at 09:40:56.831 (85 s), which carried the `FAIL -> PASS` once; 90 s quiet after the last turn. Here the `FAIL -> PASS` was known 147 ms before request 7, the request that answered the re-edit's tool result, and was not appended to that result: it became known after the `apply_patch` call ended, so it is the turn's news, and a continued turn leaves its news for the next prompt (008-31).
+
+In each, what reached the model held three Squeal texts and no more (`stats.txt`): the first prompt's registration header, continuation 1, and the second prompt's header. Asked about the tests' state, luna answered from the header:
+
+- 037-s4c: "4. **Squeal:** Reported that `purry.test.ts > wrong number of arguments` now passes. As far as I know, that test is passing."
+- 037-s4d: "6. **Squeal:** Reported the previously failing test now passes. **Test status as reported:** `packages/remeda/src/purry.test.ts > wrong number of arguments` passed at revision 59."
+
+Attribution: in 037-s4c luna named both Squeal texts as Squeal's. In 037-s4d it listed continuation 1 twice, as "2. **Squeal:** Reported that the test … failed" and "3. **You:** Shared that Squeal failure report", the same blur as 030-s4. One try each; it is open question 4's weaker luna reading, not a new defect.
+
+### Under `serve`: no news, no continuation
+
+037-s4a and 037-s4b: luna's edit was `` `Wrong number of arguments: expected ${fn.length} or ${fn.length - 1}, received ${args.length}` `` both times, which 030-s4's continued turn had also arrived at. `purry.test.ts` passed (`squeal why`: no transition after revision 49), turn 1 ended with no request after it, and the second prompt's header said only `SQUEAL · revision 51` (`53`) with "all 125 test files it re-keyed are current". Luna named each header as Squeal's (037-s4a: "2. **SQUEAL:** Reported revision 50's test status … 4. **SQUEAL:** Reported revision 51's test status").
+
+### Under `run`: stored, and read once
+
+037-s3, run 1 (`037-s3-run.run.err`, `opencode export` of `ses_ec10afd18ffeD1NLRsde9BhBxB`):
+
+| Time | What |
+| --- | --- |
+| 09:47:01.107 | `PASS -> FAIL` of both `chunk.test.ts > edge-cases` checks, at revision 61, reused from revision 30. |
+| 09:47:01.535 | Request 7 (1,287 ms), answered "DONE". |
+| 09:47:03.056 | OpenCode logged `exiting loop`. |
+| 09:47:03.095 | OpenCode logged `disposing instance`. |
+| 09:47:04.186 | Stored: a user message whose only part is a synthetic text, `SQUEAL · 2 checks changed (2 tests) at revision 61`. |
+| 09:47:04.760 | `run` exited 0, 20.1 s after it started. |
+
+The store came 1,091 ms after `dispose` began, inside its 3 s; 008-30's took 444 and 493 ms at load 5 to 8, this one ran at load 20.9. The proxy saw no request between request 7 and run 2's request 8.
+
+Run 2, `--continue`, request 8 at 09:47:41.175, carried the earlier "DONE", the stored report once, the user's question, and the fresh consumer's registration header (`Known failures: 2`, the state, without `PASS -> FAIL`), as in 008-30. Luna: "Yes. After your previous message, I received one message from the SQUEAL system. It reported that the two existing `chunk` tests expecting size `0` and negative sizes to throw now fail, which is consistent with the requested behavior change." Run 2 made no news; OpenCode logged `disposing instance` at 09:47:43.836 and the export shows nothing after its answer.
+
+### Observations (008-37)
+
+1. **030-s4 reproduced defect 5 by chance.** Its prompt asks for a message naming the counts and leaves the wording free; luna's first wording in 030-s4 failed the test, its two wordings here did not. A real-model check of a continued turn's own news needs the user to ask for the failing edit and its repair, as `serve-luna-recheck.json` does; the scripted-provider e2e (008-31) remains the deterministic proof.
+2. **The `dispose` store's margin narrows with load.** 444 and 493 ms at load 5 to 8 (008-30), 1,091 ms at load 21 (037-s3), against a 3 s deadline. One sample; not a defect, but the next `run` check on a loaded host should record it again.
+
+### Cleanup (008-37)
+
+At the end, at 09:49:28 UTC, load 22.6, `ps -u squeal-e2e` was empty: no OpenCode, no proxy, no Squeal daemon or waiter, no tmux server. The remeda clone is clean at `8e6e78f`; Squeal's store there is at revision 62 with 0 known failures. The sandbox holds 0.1.192 (`current`) and 0.1.186 (kept by `install.sh` as the previous version); the 0.1.192 archive and its `install.sh` are in `src/`.

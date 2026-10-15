@@ -1,6 +1,11 @@
 030-s3-run: 6 requests, primer in 6; SQUEAL as user text 3, after a tool result 0, as a denied edit 0
 030-s3b-run: 6 requests, primer in 6; SQUEAL as user text 3, after a tool result 0, as a denied edit 0
 030-s4-serve: 9 requests, primer in 9; SQUEAL as user text 3, after a tool result 0, as a denied edit 0
+037-s3-run: 6 requests, primer in 6; SQUEAL as user text 3, after a tool result 0, as a denied edit 0
+037-s4a-serve: 6 requests, primer in 6; SQUEAL as user text 2, after a tool result 0, as a denied edit 0
+037-s4b-serve: 6 requests, primer in 6; SQUEAL as user text 2, after a tool result 0, as a denied edit 0
+037-s4c-serve: 6 requests, primer in 6; SQUEAL as user text 3, after a tool result 0, as a denied edit 0
+037-s4d-serve: 7 requests, primer in 7; SQUEAL as user text 3, after a tool result 0, as a denied edit 0
   request 3 has no primer
   request 4 has no primer
 s0-nostore: 2 requests, primer in 0; SQUEAL as user text 0, after a tool result 0, as a denied edit 0
