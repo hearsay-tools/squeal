@@ -284,3 +284,17 @@ Check first, whether a reading can now credit the wrong moment (the human's rule
 Rules: no cell, `claude` or `codex` session; no model call; never run `run-baseline.mjs`, `run-cell.mjs`, `grade.mjs`, `judge-calibrate.mjs`, `regrade.mjs` or `atomic-regrade.mjs`; no `npm run build`. Your full run is `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`; name any file that fails under load and passes alone.
 
 **Writes:** `reviews/wave-13.8.md`, PASS or FAIL with blockers, should-fix and notes, committed.
+
+## 006-83 narrow re-review of `cand/006-77` after the B1 repair
+
+Use /reviewer, the same reviewer as 006-81. Shape: review, pinned to the candidate's new SHA; the range is the repair commit alone on top of what 006-81 reviewed. Read `reviews/wave-13.8.md` B1 and N1.
+
+The coordinator's repair: `hookText` reads `additionalContext`, a `permissionDecisionReason` on `deny` or `ask` (a cell is a `-p` run, where Claude Code refuses an ask and the model reads its reason in the tool result, per the docs' PreToolUse field table), and a top-level `reason` only with `decision: "block"`. A JSON reply carrying any of Claude Code's hook output keys but no such text reads as no evidence, not as raw text. Other JSON is read as before.
+
+Check:
+- B1's reproduction is false/false again, and so are the same cases with `defer`, a root `reason` without a block, and `decision: "approve"`;
+- real deny, ask, block and `additionalContext` still read;
+- the 14-cell comparison is unchanged: the kept cells carry only `deny` decisions;
+- N1 stays a note: the cell setup isolates plugin hooks.
+
+Rules as 006-81's. **Writes:** a "006-83" section in `reviews/wave-13.8.md`, PASS or FAIL, committed.
