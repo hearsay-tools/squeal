@@ -1,5 +1,5 @@
 import type { HookDeps } from "../shared/hook.js";
-import { sessionLocation } from "../shared/session-root.js";
+import { forgetRoot, sessionLocation } from "../shared/session-root.js";
 import type { CodexHandler } from "./hook.js";
 import { isUnservedThread, parseCodexInput } from "./input.js";
 
@@ -16,7 +16,8 @@ const SILENT: CodexHookResult = { stdout: "", stderr: "" };
  * with no output on any internal error." The root is the one the thread's
  * SessionStart resolved from its stdin `cwd`, the thread's working
  * directory in every mode (`research/wave-0-checks.md` 2; task 001-405,
- * `sessionLocation`);
+ * `sessionLocation`), and a subagent's the one its SubagentStart resolved
+ * until its SubagentStop (task 001-415);
  * no Codex hook reads a `CLAUDE_*` variable, which Codex passes through from
  * whatever launched it (D4). Malformed input, a cwd outside any git worktree,
  * a missing or unreadable store and every thrown error end silent, and so
@@ -34,9 +35,10 @@ export async function runCodexHandler(
   try {
     const input = parseCodexInput(stdin);
     if (input === null || isUnservedThread(input)) return SILENT;
-    const location = sessionLocation(input, name === "session-start", deps.sessionRoots);
+    const start = name === "session-start" || name === "subagent-start";
+    const location = sessionLocation(input, start, deps.sessionRoots);
     if (location === null) return SILENT;
-    if (name === "session-end") deps.sessionRoots?.delete(input.session_id);
+    if (name === "session-end" || name === "subagent-stop") forgetRoot(input, deps.sessionRoots);
     const output = await handler(input, location, deps);
     return output === null ? SILENT : { stdout: JSON.stringify(output), stderr: "" };
   } catch (error) {
