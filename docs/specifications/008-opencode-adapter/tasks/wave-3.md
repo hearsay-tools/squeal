@@ -81,3 +81,13 @@ Use /worker. Outcome: under `serve`, a turn Squeal continued ends silently at it
   Then the hook test that pins the path, then the fix.
 - Owns: `src/harness/opencode/**`, `test/harness/opencode/**`, `test/harness/opencode-*.test.ts` except `opencode-dispose.test.ts` (008-29). No dist, version or key format.
 - Done when: the reproduction fails at main and passes after; the dispose regressions and the `run` storage tests still pass; lint, typecheck and `squeal run --all --wait` green.
+
+## 008-32 review of `cand/0.1.188`
+
+Use /reviewer. Outcome: `reviews/wave-3b.md` committed with a verdict on the exact candidate SHA the spawn names. Every finding is labelled proven, plausible or unverified. This is the candidate's landing gate.
+
+- Range: the spawn names it: main at 0.1.187, then 008-31 (2 commits), 008-29 (6 commits, tests only), then the 0.1.188 build. Spec: goal 4, D3 to D5; `lessons.md` defect 5 and session 030-s4; `reviews/wave-3.md` (what 008-25 and 008-28 built).
+- Questions:
+  - 008-31: does a continued turn's idle now end silent in every path? That includes a continuation the user aborts, a wake's turn, and a child session. Does `endContinued` drop anything `delivery.endTurn` did that the plugin relies on (liveness, `atRevision`, the handoff)? Does news held back this way always reach the next prompt or tool result, and never get lost? Did 0.1.184 have defect 5, or did wave 3 bring it in?
+  - 008-29: does a retry ever hide a failure that is not a proven D4 deadline miss? Is the timeline's reading of a cause honest? Do the watcher and its `/proc` reads stay off the real `HOME` and leave no process?
+- Writes only `docs/specifications/008-opencode-adapter/reviews/wave-3b.md`. Runs real OpenCode only through `runOpenCode`. Squeal does not key the OpenCode bundle tests to `src/harness/opencode` yet (001-399): run `npx vitest run test/harness/opencode/ test/harness/opencode-*.test.ts` yourself. Take the full-suite verdict from `squeal run --all --wait`, with no independent full run (the coordinator's gate holds the host lock).
