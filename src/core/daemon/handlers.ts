@@ -159,6 +159,7 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
         const full = {
           force: request.force === true,
           observeIgnored: request.observeIgnored === true,
+          ...(request.lane === undefined ? {} : { lane: request.lane }),
         };
         context.requestFullSuite(full).then(
           (checkpoint) => {

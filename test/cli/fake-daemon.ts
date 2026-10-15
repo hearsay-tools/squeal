@@ -9,6 +9,9 @@ export type Answer = Record<string, unknown>;
 
 const servers: Server[] = [];
 
+/** Every request the stand-ins got since the last `closeFakeDaemons`, as parsed. */
+export const received: Answer[] = [];
+
 /**
  * A stand-in daemon. `answers` maps a request type to its answers in order;
  * the last one repeats. `onRequest` runs before each answer is sent.
@@ -24,6 +27,7 @@ export function fakeDaemon(
     const server = createServer((socket) => {
       socket.once("data", (data) => {
         const request = JSON.parse(data.toString()) as { type: string };
+        received.push(request);
         seen.push(request.type);
         onRequest(request.type);
         const queue = answers[request.type] ?? [{ ok: true, type: request.type }];
@@ -39,4 +43,5 @@ export function fakeDaemon(
 /** Closes every stand-in; call after each test. */
 export function closeFakeDaemons(): void {
   for (const s of servers.splice(0)) s.close();
+  received.length = 0;
 }
