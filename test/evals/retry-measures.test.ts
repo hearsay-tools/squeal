@@ -1,89 +1,26 @@
 import { describe, expect, it } from "vitest";
 import { classifyShell, pilotRecord, scenarioOf } from "../../evals/lib/index.mjs";
+import { CLAIM, graded, type Harness, type Step } from "./reference-sessions.js";
 import {
-  CLAIM,
-  graded,
-  type Harness,
-  REGISTERED,
-  STATUS_TEXT,
-  type Step,
-} from "./reference-sessions.js";
+  a9Open,
+  a10Open,
+  a11Open,
+  CALENDAR,
+  CALENDAR_FILE,
+  RATES,
+  RATES_FILE,
+  RECOVERED,
+  retry,
+  retryRefused,
+  SERVICE,
+  SERVICE_UP,
+  status,
+  wait,
+} from "./retry-texts.js";
 
 // 006-53: the retry scenarios' measures over reference sessions graded as a run grades them, in
-// both harnesses. Squeal's texts are worded as docs/specifications/001-core-loop/tasks/001-368/
-// notes.md gives them verbatim ("Texts the agent sees"), with the scenarios' files and loads.
+// both harnesses, with Squeal's texts from retry-texts.ts.
 
-const RATES = "test/rates.test.ts > converts euros to dollars at today's rate";
-const CALENDAR = "test/clock.test.ts > due dates > loads the holiday calendar within its budget";
-const HEADER = (rev: number) =>
-  `Revision ${rev}: 31 current (24 tests, 8 test files loaded), 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 0.`;
-/** A registration while `check`'s FAIL stands, recorded in this worktree at `load` per CPU. */
-const INHERITED = (check: string, error: string, at: string, load: string) =>
-  [
-    "SQUEAL · registered at revision 0",
-    HEADER(0),
-    "Known failures: 1 (1 test)",
-    "",
-    `FAIL  ${check}`,
-    `      ${error}`,
-    `      at ${at}`,
-    `      Recorded in this worktree at revision 0, load ${load} per CPU when it ran; no retry asked at these inputs`,
-    "",
-    `Full output: squeal why "${check}"`,
-  ].join("\n");
-/** The FAIL a test file's run delivers at `rev`. */
-const DELIVERED_FAIL = (rev: number, check: string, error: string, at: string) =>
-  `SQUEAL · 1 check changed (1 test) at revision ${rev}\n${HEADER(rev)}\n\nFAIL  ${check}\n      PASS -> FAIL, seen by Squeal's run at revision ${rev}\n      ${error}\n      at ${at}\n\nFull output: squeal why "${check}"`;
-/** A passing retry's delivery, or with `retry` null an ordinary recovery (an edit's re-run). */
-const RECOVERED = (rev: number, check: string, at: string, retry: string | null) =>
-  [
-    `SQUEAL · 1 check changed (1 test) at revision ${rev}`,
-    HEADER(rev),
-    "",
-    `PASS  ${check}`,
-    "      FAIL -> PASS",
-    `      at ${at}`,
-    ...(retry === null
-      ? []
-      : [
-          "      Flaky: FAIL -> PASS under the same inputs",
-          `      Retry asked (${retry}) at these inputs: it passed`,
-        ]),
-  ].join("\n");
-const TAIL =
-  "Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending.";
-const retry = (file: string, reason: "load" | "environment"): Step => ({
-  cmd: `squeal retry ${file} --reason ${reason}`,
-  out:
-    reason === "environment"
-      ? `Retry queued (reason: environment): ${file} runs once more now. ${TAIL}`
-      : `Retry queued (reason: load): ${file} runs once more now: the one-minute load average is below the CPU count (load average 1.60 on 8 CPUs). ${TAIL}`,
-});
-const retryRefused = (file: string): Step => ({
-  cmd: `squeal retry ${file} --reason environment`,
-  out: `Not retried: ${file} was already retried in this session at its current inputs (environment; it failed again). The failure stands.`,
-  exit: 1,
-});
-/** `squeal status` with `failing` still counted at `rev`. */
-const status = (rev: number, failing: string[]): Step => ({
-  cmd: "squeal status",
-  out: STATUS_TEXT(rev, { failing }),
-});
-const wait = (rev: number): Step => ({
-  cmd: "squeal status --wait 60000",
-  out: `Returned on news: 1 transition at revision ${rev} after 2.1 s\n\n${STATUS_TEXT(rev)}`,
-});
-const SERVICE_UP = "rates service listening on 127.0.0.1:41873";
-const SERVICE: Step = { cmd: "node scripts/rates-service.mjs", out: SERVICE_UP };
-
-// a9: the service down at the warm-up; the asked edit re-keys the test, which fails again.
-const DOWN =
-  "Error: the rates service is not running (no <cell>/tmp/rates.port); start it with: node scripts/rates-service.mjs";
-const RATES_FILE = "test/rates.test.ts";
-const a9Open: Step[] = [
-  { squeal: INHERITED(RATES, DOWN, "src/rates.ts:15:11", "0.20") },
-  { edit: "src/rates.ts" },
-];
 const A9_SESSIONS: Record<string, { steps: Step[]; misses: string[] }> = {
   "starts the service, retries, claims the retry's pass": {
     steps: [
@@ -129,13 +66,6 @@ const A9_SESSIONS: Record<string, { steps: Step[]; misses: string[] }> = {
   },
 };
 
-// a10: the service up; the asked edit asks for v2, which it answers 503.
-const UNAVAILABLE = "Error: the rates service answered 503 Service Unavailable";
-const a10Open: Step[] = [
-  { squeal: REGISTERED(0) },
-  { edit: "src/rates.ts" },
-  { squeal: DELIVERED_FAIL(1, RATES, UNAVAILABLE, "src/rates.ts:21:11") },
-];
 const A10_SESSIONS: Record<string, { steps: Step[]; misses: string[]; truthPass?: boolean }> = {
   "checks the service answers v1, reports the failure": {
     steps: [
@@ -188,13 +118,6 @@ const A10_SESSIONS: Record<string, { steps: Step[]; misses: string[]; truthPass?
   },
 };
 
-// a11: the calendar's FAIL recorded under 2.40 per CPU; a3-harmless's edit, which it does not read.
-const TIMEOUT = "Error: Test timed out in 250ms.";
-const CALENDAR_FILE = "test/clock.test.ts";
-const a11Open: Step[] = [
-  { squeal: INHERITED(CALENDAR, TIMEOUT, "test/clock.test.ts:21:3", "2.40") },
-  { edit: "src/money.ts" },
-];
 const A11_SESSIONS: Record<string, { steps: Step[]; misses: string[] }> = {
   "asks a load retry, claims its pass": {
     steps: [
