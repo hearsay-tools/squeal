@@ -185,6 +185,9 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
  * (`holdsRequire`, review wave 2.6 B1), the recorder goes first there as
  * well; Node loads it once. For a slow project it goes there always, so a
  * process the test spawns, which inherits no argv, records too (004 D5).
+ * There it stays a `--require` (task 001-390): a spawned Node's own argv
+ * `--require` runs before any `--import`, and nothing here sees that argv to
+ * choose per child, so an `--import` would miss what such a preload loads.
  */
 function childEnv(options: NodeTestRunOptions, runtime: NodeTestRuntime): NodeJS.ProcessEnv {
   const env = projectEnv(options.project, options.env ?? process.env);
