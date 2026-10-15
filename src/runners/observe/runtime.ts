@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import type { AbsolutePath } from "../../core/types/index.js";
+import { holdsRequire, quoteNodeOption } from "../node-test/run/node-options.js";
 
 /**
  * Bumped when the recorder sees more or other paths, so a pass stored while
@@ -39,18 +40,34 @@ export function observeRecorder(module: URL = new URL(import.meta.url)): Absolut
 }
 
 /**
- * The env that loads the recorder into a process: `--require <recorder>`
- * first in `NODE_OPTIONS`, ahead of what `inherited` held, and the settings.
+ * How `NODE_OPTIONS` loads the recorder (spec 001 D11 Fidelity, task
+ * 001-390): `--import` of its `file:` URL, since every `--require` preload
+ * makes Node parse the nearest `package.json` above the cwd first, and one
+ * that is not JSON then stops a child Node that would start without Squeal
+ * (research injected-environment F1). Beside a project's own `--require`, a
+ * `--require`: Node runs every one before any `--import`, so the recorder
+ * still sees what that preload reads, and plain Node parses the file then
+ * too. `spawn.cjs` applies the same rule at each spawn.
+ */
+export function recorderOption(recorder: AbsolutePath, inherited: string | undefined): string {
+  return inherited !== undefined && holdsRequire(inherited)
+    ? `--require ${quoteNodeOption(recorder)}`
+    : `--import ${quoteNodeOption(pathToFileURL(recorder).href)}`;
+}
+
+/**
+ * The env that loads the recorder into a process: `recorderOption` first in
+ * `NODE_OPTIONS`, ahead of what `inherited` held, and the settings.
  */
 export function observeEnv(
   recorder: AbsolutePath,
   settings: ObserveSettings,
   inherited: string | undefined,
 ): Record<string, string> {
-  const require = `--require ${JSON.stringify(recorder)}`;
   const options = inherited?.trim() ?? "";
+  const option = recorderOption(recorder, options);
   return {
-    NODE_OPTIONS: options === "" ? require : `${require} ${options}`,
+    NODE_OPTIONS: options === "" ? option : `${option} ${options}`,
     [OBSERVE_VARIABLE]: JSON.stringify(settings),
   };
 }
