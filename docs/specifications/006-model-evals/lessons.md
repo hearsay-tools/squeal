@@ -114,6 +114,14 @@ The first run: `20261014T212723Z-dd4056` on `1bc146f0`. That is 0.1.179, where a
   - That is 30 points below its `a2-slow` without the hold on 0.1.168, 9/10. The gap is unconfirmed: p = 0.30 at 10 sessions an arm, across runs. Confirming a 60% against 90% gap takes about 30 sessions an arm (p ≈ 0.015).
 - **Every session that met the measure ran `squeal run --slow`.** So agents do act on the line's "runs them now", which 004-59 made true.
 
+**Correction (2026-10-15): the Claude half of this run is invalid.** In 18 of the 20 Claude cells, `squeal` answered `no squeal@hearsay plugin is installed`.
+- The cells inherited the host's `PATH`. The host's `~/.local/bin/squeal` launcher, installed 2026-10-14 at 15:47Z, read the cell's empty `HOME` and never reached the pinned plugin.
+- The grader still counted those failed `squeal run --slow` calls. So Sonnet's 10/10 and Haiku's 6/10 measure commands typed, not the slow tier settled through Squeal.
+- The Sonnet sessions then ran Vitest themselves.
+- Only luna's and sol's 10/10 stand, along with every session's claim.
+- The bullet above holds for Codex only.
+- Row 006-62 fixes the cell's `PATH` and the grader. a8's Claude cells run again after it.
+
 ## Open questions
 
 - Open question 3 (the Claude allow-list): resolved. `Bash(node:*)` is in the list. The refusals that remain are compound shell commands Claude Code asks about: Haiku in 0 to 3 of 10 atomic sessions per scenario, Sonnet in none. They explain none of Sonnet's misses.

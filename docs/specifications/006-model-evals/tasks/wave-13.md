@@ -78,3 +78,27 @@ Check first, each with a probe where it can be one:
 Rules: no cell, `claude` or `codex` session; never run `run-baseline.mjs`, `run-cell.mjs`, `judge-calibrate.mjs`, `regrade.mjs` or `atomic-regrade.mjs`; no `npm run build`. Your full run is `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`; name any file that fails under load and passes alone.
 
 **Writes:** `reviews/wave-13.md`, PASS or FAIL with blockers, should-fix and notes, committed.
+
+## 006-62 the pilot's findings: Claude cells reach a Squeal that is not theirs, and a11's retry fails
+
+Use /worker. Shape: repair. Pilot run `20261015T071439Z-65314d` (`evals/results/…65314d.atomic.json`, cells under `/tmp/squeal-evals-1001/cells/353bb068aa65/20261015T071439Z-65314d/*/out`) and the a8 run `20261014T212723Z-dd4056`. Read `reviews/wave-13.md`'s first-run checks and `tasks/006-53/notes.md`.
+
+1. **Blocker, every Claude cell:** a cell inherits the host's `PATH`, whose `/home/agent/.local/bin/squeal` (005 D3's launcher, installed 2026-10-14 15:47Z) comes before the plugin's `bin/squeal`. It reads the plugin registry from the cell's empty `HOME` and answers `squeal: no squeal@hearsay plugin is installed …`. In the a8 run, 18 of 20 Claude cells got that answer. Make a bare `squeal` in a cell resolve to the pinned plugin's CLI: put its `bin` first in `cellEnv`, or drop the parent's `~/.local/bin`. Never touch the host's file. A test must pin the resolution (001 D11 "Inherited environment" is the same lesson).
+2. **Blocker, grader:** a Squeal command whose output is not Squeal's (the launcher error, or exit 1 with no Squeal header) counted as a Squeal action. `slow-through-squeal` credited the failed `squeal run --slow` in all 10 Sonnet a8 cells. Credit only commands Squeal answered, wherever pulls are counted (`squealRunSlow`, waits, currency). R1's `squeal-run` step stays: a failed attempt still voids a retry's window. The launcher's text becomes a reference session in both harnesses.
+3. **Mark the broken condition:** in `atomic-trend.mjs`, Claude cells of runs from `20261014T154710Z` until this row lands are a condition of their own, as the old root's are: marked, and counted by no flag or scoreboard. Codex cells stay in.
+4. **a11's retry fails in a real cell:**
+   - sol asked `squeal retry test/clock.test.ts --reason load` at revision 1. The retry's run timed out again (`Test timed out in 250ms`), although ground truth then passed.
+   - Separately, luna's staging stored the FAIL from a run at 0.20 per CPU, and S1's check failed the cell.
+   - Find both causes from `evals/ledgerline/test/support/calendar-cache.ts`'s cold counter and `stageInherited`'s order. Make the FAIL stored at 2.40 and the retry pass at the same inputs. Reproduce in a temporary fixture with `HOME` and `TMPDIR` inside it, never in a cell.
+5. **Should-fix, a9 in Claude cells:** the prefixed start `LEDGERLINE_RATES_PORT_FILE=… node scripts/rates-service.mjs` and `echo $LEDGERLINE_RATES_PORT_FILE` needed approval, so Sonnet never started the service. Make the service's start reachable without a prompt, either in the cell's allow-list or by the service needing no variable on the command line. A test pins it.
+
+Rules: code, tests and synthetic sessions only. Never run `run-baseline.mjs`, `run-cell.mjs`, `judge-calibrate.mjs`, `regrade.mjs` or `atomic-regrade.mjs`. No `claude` or `codex` session, no `npm run build`. Your verdict is `squeal run --all --wait`.
+
+**Owns:** `evals/lib/`, `evals/bin/run-cell.mjs`, `evals/atomic/`, `evals/ledgerline/test/support/calendar-cache.ts`, and `test/evals/`.
+
+**Done when:**
+- each finding has a regression in both harnesses that fails before its fix;
+- the 13 earlier committed atomic files grade identically except the measures finding 2 corrects, and the commit says which;
+- lint, typecheck and the gate pass.
+
+The coordinator integrates on `cand/006-62` for a `/reviewer`, then re-runs the pilot.
