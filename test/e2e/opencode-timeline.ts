@@ -158,6 +158,14 @@ export function timeline(input: TimelineInput): Timeline {
       { at: b.started, what: `bridge ${b.kind} (pid ${b.pid}) started` },
       { at: b.alive, what: `bridge ${b.kind} (pid ${b.pid}) last seen alive` },
     ]),
+    ...(input.watched.host === null
+      ? []
+      : [
+          {
+            at: input.watched.host.alive,
+            what: `OpenCode (pid ${input.watched.host.pid}) last seen alive, ${input.watched.host.rows} consumer rows`,
+          },
+        ]),
     ...input.watched.consumers.map((s) => ({
       at: s.at,
       what: `consumers polled: ${
@@ -177,8 +185,16 @@ export function timeline(input: TimelineInput): Timeline {
   const idleDeadline = idle + input.stopWaitMs + IDLE_MARGIN_MS;
   const disposing = opencode.find((m) => m.what.startsWith("disposing instance"))?.at;
   // `run` disposes about 10 ms after idle (008-25) when OpenCode's log lost the line.
-  const storeDeadline = (disposing ?? idle) + DISPOSE_DEADLINE_MS - DISPOSE_END_MS;
-  const reading = readingOf(input, { idle, idleDeadline, storeDeadline, messages, since });
+  const disposeDeadline = (disposing ?? idle) + DISPOSE_DEADLINE_MS;
+  const storeDeadline = disposeDeadline - DISPOSE_END_MS;
+  const reading = readingOf(input, {
+    idle,
+    idleDeadline,
+    storeDeadline,
+    disposeDeadline,
+    messages,
+    since,
+  });
   const text = [
     `timeline, ms since the first run's idle (${logged === undefined ? "its last reply's completion; OpenCode's log lost the line" : "OpenCode's log"}):`,
     ...marks.map((m) => `  ${since(m.at)} ${m.what}`),
@@ -194,6 +210,7 @@ interface Reading {
   readonly idle: number;
   readonly idleDeadline: number;
   readonly storeDeadline: number;
+  readonly disposeDeadline: number;
   readonly messages: readonly Message[];
   readonly since: (at: number) => string;
 }
@@ -208,7 +225,7 @@ interface Reading {
  */
 function readingOf(input: TimelineInput, r: Reading): Timeline {
   const { since } = r;
-  const { consumers, bridges } = input.watched;
+  const { consumers, bridges, host, gap } = input.watched;
   const ran = input.exits.run ?? Number.POSITIVE_INFINITY;
   const after = r.messages.filter(
     (m) => m.role === "user" && m.created > r.idle && m.created <= ran,
@@ -235,7 +252,7 @@ function readingOf(input: TimelineInput, r: Reading): Timeline {
       ? "its bridge was not seen"
       : `its bridge ran from ${since(stop.started)}, last seen alive ${since(stop.alive)}`,
     end === undefined
-      ? "no end bridge was seen"
+      ? `no end bridge was seen (the watcher's longest gap: ${gap} ms)`
       : `dispose's end bridge started ${since(end.started)}`,
     store,
   ].join("; ");
@@ -247,7 +264,14 @@ function readingOf(input: TimelineInput, r: Reading): Timeline {
     );
   if (delivered === undefined)
     return other("Stop had nothing to deliver, or never reached the daemon");
-  if (end === undefined) return other("unresolved: the watcher missed the end bridge");
+  // A consumer still there once `dispose`'s deadline passed was never ended: the idle outlasted
+  // the whole deadline, and `ask` had no time left for the end.
+  if (end === undefined && host !== null && host.rows > 0 && host.alive >= r.disposeDeadline)
+    return missed(
+      `OpenCode, still running at ${since(host.alive)}, past dispose's deadline (${since(r.disposeDeadline)}), still had the consumer: dispose never ended it, its idle held it to the deadline. The overtaken check's read or the store did not finish in time, D4's silence at a missed deadline`,
+    );
+  if (end === undefined)
+    return other("unresolved: the watcher missed the end bridge, or never saw OpenCode end");
   if (end.started >= r.storeDeadline - HELD_MS)
     return missed(
       `the idle held dispose until the store's deadline (${since(r.storeDeadline)}): the overtaken check's read or the store did not finish in time, D4's silence at a missed deadline`,
