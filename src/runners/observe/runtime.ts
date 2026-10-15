@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import type { AbsolutePath } from "../../core/types/index.js";
+import { ownNodeOptions } from "../node-test/recorders.js";
 import { holdsRequire, quoteNodeOption } from "../node-test/run/node-options.js";
 
 /**
@@ -57,14 +58,17 @@ export function recorderOption(recorder: AbsolutePath, inherited: string | undef
 
 /**
  * The env that loads the recorder into a process: `recorderOption` first in
- * `NODE_OPTIONS`, ahead of what `inherited` held, and the settings.
+ * `NODE_OPTIONS`, ahead of what `inherited` held. Another Squeal's recorder
+ * there, under a Squeal that runs these tests, is left out: it is no project
+ * preload, and these settings would be its own, so it recorded nothing of its
+ * own run.
  */
 export function observeEnv(
   recorder: AbsolutePath,
   settings: ObserveSettings,
   inherited: string | undefined,
 ): Record<string, string> {
-  const options = inherited?.trim() ?? "";
+  const options = (inherited === undefined ? undefined : ownNodeOptions(inherited))?.trim() ?? "";
   const option = recorderOption(recorder, options);
   return {
     NODE_OPTIONS: options === "" ? option : `${option} ${options}`,
