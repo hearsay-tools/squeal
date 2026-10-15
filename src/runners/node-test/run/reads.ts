@@ -8,19 +8,21 @@ import {
   observedInputs,
   observeRecorder,
   readsOfEvery,
+  recorderOption,
   takeRecorded,
 } from "../../observe/index.js";
-import { quoteNodeOption } from "./node-options.js";
 
 /**
  * A warm-up's reads (task 001-307): 001-132's recorder in every process of
  * the run, so what each file read reaches `RunReport.reads`, ignored paths
- * too. It goes first in `NODE_OPTIONS`, which Node runs before argv's
- * `--require`, so it loads before this runner's module recorder registers
- * its hooks: its own modules and its absolute `--require` are no edge of the
- * graph, and a closure, a preload phase or a key is as without it. The
- * recorder carries itself into every child, ahead of what the child's
- * `NODE_OPTIONS` held, the module recorder included. Only module loads key
+ * too. It goes first in `NODE_OPTIONS` as `recorderOption` writes it (task
+ * 001-390): an `--import`, which Node runs after argv's `--require` of this
+ * runner's module recorder, or beside a project `--require` a `--require`,
+ * which Node runs before it. Either way its own modules load by an absolute
+ * path or `file:` URL from no module, which `observedClosure` roots in the
+ * preloads, and lie outside the worktree, so a closure or a key is as
+ * without it. The recorder carries itself into every child, ahead of what
+ * the child's `NODE_OPTIONS` held, the module recorder included. Only module loads key
  * a node:test file; these reads key nothing.
  */
 export class NodeTestReads {
@@ -41,15 +43,15 @@ export class NodeTestReads {
 
   /** The env of `absolute`'s process: the recorder first, its settings naming the file. */
   env(env: NodeJS.ProcessEnv, absolute: AbsolutePath): NodeJS.ProcessEnv {
-    const require = `--require ${quoteNodeOption(this.recorder)}`;
     const options = env.NODE_OPTIONS?.trim() ?? "";
+    const option = recorderOption(this.recorder, options);
     // The temp directory is skipped when it lies inside the worktree, never when the worktree lies in it.
     const temp = tmpdir();
     const skip = `${this.root}${sep}`.startsWith(`${temp}${sep}`) ? [] : [temp];
     const settings = { out: this.out, root: this.root, skip, file: absolute };
     return {
       ...env,
-      NODE_OPTIONS: options === "" ? require : `${require} ${options}`,
+      NODE_OPTIONS: options === "" ? option : `${option} ${options}`,
       [OBSERVE_VARIABLE]: JSON.stringify(settings),
     };
   }

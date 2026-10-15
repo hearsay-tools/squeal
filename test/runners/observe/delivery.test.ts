@@ -80,4 +80,34 @@ describe("observe recorder delivery (task 001-390)", { timeout: 60_000 }, () => 
     expect(JSON.parse(seen.stdout)).toEqual(["p", "undefined"]);
     expect(seen.paths).toEqual(expect.arrayContaining(["pre.cjs", "pre.txt", "child.cjs"]));
   });
+
+  it("stays a --require for a child with its own argv --require or a Worker's execArgv one", () => {
+    const seen = observe({
+      "main.mjs": [
+        'import { spawnSync, execSync } from "node:child_process";',
+        'import { Worker } from "node:worker_threads";',
+        "const options = { env: {}, encoding: 'utf8' };",
+        "const a = spawnSync(process.execPath, ['--require', './pre-a.cjs', 'child.cjs'], options);",
+        "const b = spawnSync(process.execPath, ['--require=./pre-b.cjs', 'child.cjs'], options);",
+        "const c = execSync(JSON.stringify(process.execPath) + ' -r ./pre-c.cjs child.cjs', options);",
+        "const w = new Worker('./thread.cjs', { env: {}, execArgv: ['--require', './pre-w.cjs'] });",
+        "await new Promise((r) => w.once('exit', r));",
+        "process.stdout.write(JSON.stringify([a.stdout, b.stdout, c]));",
+      ].join("\n"),
+      ...Object.fromEntries(
+        ["a", "b", "c", "w"].map((n) => [
+          `pre-${n}.cjs`,
+          `globalThis.pre = require("node:fs").readFileSync(__dirname + "/pre-${n}.txt", "utf8");\n`,
+        ]),
+      ),
+      ...Object.fromEntries(["a", "b", "c", "w"].map((n) => [`pre-${n}.txt`, n])),
+      "child.cjs": "process.stdout.write(String(globalThis.pre));\n",
+      "thread.cjs": "",
+    });
+    expect(JSON.parse(seen.stdout)).toEqual(["a", "b", "c"]);
+    // a preload's reads before the recorder's own --import would go unseen
+    expect(seen.paths).toEqual(
+      expect.arrayContaining(["pre-a.txt", "pre-b.txt", "pre-c.txt", "pre-w.txt"]),
+    );
+  });
 });
