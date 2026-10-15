@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
 import type { RunnerAdapter, RunOptions, TestFileRef } from "../types/index.js";
@@ -33,6 +33,8 @@ export const CHILD_VARIABLE = "SQUEAL_DAEMON_CHILD";
 const ROUNDS = 3;
 /** `/proc/<pid>/stat` files read per event-loop turn. */
 const CHUNK = 64;
+/** The least time between two scans for a run's orphans (`carriers`). */
+const ORPHANS_EVERY_MS = 1_000;
 /**
  * Finds and stops the processes a daemon's tests left behind (spec 001 D12).
  * Two kinds are a test's: a process carrying the daemon's mark, which only
@@ -63,6 +65,9 @@ export class EscapedChildren {
   readonly #strangers: Promise<ReadonlySet<string> | null>;
   /** The marks of the daemon's children by `key`, each read once (`carriers`). */
   readonly #childMarks = new Map<string, string | null | undefined>();
+  /** The daemon's `reapedFaults` at the last scan for orphans, and when it ran (`carriers`). */
+  #reaped = -1;
+  #orphansAt = 0;
 
   constructor(token: string = randomUUID(), self: number = process.pid) {
     this.env = { [CHILD_VARIABLE]: token };
@@ -126,10 +131,19 @@ export class EscapedChildren {
    * started since `since`, for `lowerWhile` (001 D11 Priority, task 001-393):
    * a Vitest fork worker, or a thread worker's child, from its start. Read
    * from `/proc/<daemon>/task/<tid>/children`, a few small reads where a scan of
-   * `/proc` reads every process, so it can run every 100 ms.
+   * `/proc` reads every process, so it can run every 100 ms. Also, after a
+   * child of the daemon exited, the lane's carriers in its group that its
+   * children left behind (`#orphans`, review 001-401 S1).
    */
   async carriers(lane: string, since: number): Promise<ProcessEntry[]> {
     if (process.platform !== "linux") return [];
+    const children = await this.#children(lane, since);
+    const known = new Set(children.map(key));
+    const orphans = await this.#orphans(lane, since);
+    return [...children, ...orphans.filter((entry) => !known.has(key(entry)))];
+  }
+
+  async #children(lane: string, since: number): Promise<ProcessEntry[]> {
     const all = childrenOf(this.#self).flatMap((pid) => statOf(pid) ?? []);
     const now = new Set(all.map(key));
     for (const known of this.#childMarks.keys())
@@ -146,6 +160,31 @@ export class EscapedChildren {
       }),
     );
     return entries.filter((_, i) => marks[i] === lane);
+  }
+
+  /**
+   * The members of the daemon's group carrying `lane`'s mark, started since
+   * `since`, that are no children of the daemon: a child that exited before a
+   * look found it leaves its children there. Scanned from `/proc` only when
+   * a child of the daemon was reaped since the last scan, which its children's
+   * page faults, added to the daemon's `cminflt`, tell, and at most once in
+   * `ORPHANS_EVERY_MS`. None when the daemon leads no group.
+   */
+  async #orphans(lane: string, since: number): Promise<ProcessEntry[]> {
+    const reaped = reapedFaults(this.#self);
+    if (reaped === this.#reaped || Date.now() - this.#orphansAt < ORPHANS_EVERY_MS) return [];
+    this.#reaped = reaped;
+    this.#orphansAt = Date.now();
+    const strangers = await this.#strangers.catch(() => null);
+    if (strangers === null) return [];
+    const entries = await snapshot();
+    const foreign = lineOf(strangers, entries);
+    const members = entries.filter(
+      (e) => e.pgrp === this.#self && e.pid !== this.#self && e.ppid !== this.#self,
+    );
+    const found = members.filter((e) => e.start >= since && !foreign.has(e.pid));
+    const marks = await Promise.all(found.map(({ pid }) => this.#markOf(pid)));
+    return found.filter((_, i) => marks[i] === lane);
   }
 
   /** `scope` `null` is the exit. */
@@ -357,6 +396,19 @@ async function snapshot(): Promise<ProcessEntry[]> {
     }
   }
   return entries;
+}
+
+/**
+ * `cminflt` of `/proc/<pid>/stat`: the page faults of its children it has
+ * reaped, which grows with every child that exits; -1 when unreadable.
+ */
+function reapedFaults(pid: number): number {
+  try {
+    const stat = readFileSync(`/proc/${pid}/stat`, "latin1");
+    return Number(stat.slice(stat.lastIndexOf(")") + 2).split(" ")[8] ?? -1);
+  } catch {
+    return -1;
+  }
 }
 
 /** A process's identity across pid reuse. */
