@@ -368,6 +368,8 @@ export type Step =
   | { k: "sleep"; s: number }
   /** A `squeal retry` call (row 006-53): the test files Squeal's reply says it queued. */
   | { k: "retry"; paths: string[]; reason: string | null; cancel: boolean; queued: string[] }
+  /** An executed `squeal run`, whatever it printed (re-review 006-59 R1). */
+  | { k: "squeal-run"; all: boolean; slow: boolean }
   /** A start of the rates service (row 006-53); `started` when it said it listens. */
   | { k: "service"; started: boolean }
   | { k: "claim" };
