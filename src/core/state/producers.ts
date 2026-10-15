@@ -1,4 +1,11 @@
-import type { EpochMs, KnownState, ResultRecord, Store, WorktreeId } from "../types/index.js";
+import type {
+  CheckKey,
+  EpochMs,
+  KnownState,
+  ResultRecord,
+  Store,
+  WorktreeId,
+} from "../types/index.js";
 import { worktreeMetaKey } from "../types/index.js";
 import { checkIdentity } from "./derive.js";
 import { fingerprintOf } from "./shown-result.js";
@@ -11,6 +18,13 @@ import { fingerprintOf } from "./shown-result.js";
  * failure from the same source at the same commit, is another run. Kept in
  * `meta`, so the store schema and older readers are unchanged; a state an
  * older Squeal wrote names no producer, and its age and load read as unknown.
+ *
+ * An older Squeal rewriting a state leaves the reference a newer one wrote
+ * (review 001-417 round 3, N2): the same outcome, fingerprint and commit can
+ * then come from another origin or key. So the named row must also be the
+ * state's origin, at the revision an own state was observed, and at the key
+ * the sink recorded for the failure (`recordFailureKeys`), which every
+ * Squeal that writes states keeps (task 001-420).
  */
 
 /** The result a failing known state was last derived from. */
@@ -81,25 +95,34 @@ export function recordFailureProducers(
 }
 
 /**
- * The stored result that produced `state`, among the check's `results`:
- * the row of the run `producer` names, still giving the state's outcome,
- * fingerprint and commit. `null` when no producer is named, or its row was
- * replaced or pruned.
+ * The stored result that produced `state` in `worktreeId`, among the
+ * check's `results`: the row of the run `producer` names, still giving the
+ * state's outcome, fingerprint and commit, from its origin (an own state's
+ * at the revision it was observed at) and at `failureKey`, the key the
+ * sink recorded for the failure. `null` when no producer or key is named,
+ * or the row was replaced, pruned or describes another state.
  */
 export function producingResult(
+  worktreeId: WorktreeId,
   state: KnownState,
   producer: FailureProducer | undefined,
+  failureKey: CheckKey | undefined,
   results: readonly ResultRecord[],
 ): ResultRecord | null {
-  if (producer === undefined) return null;
+  const origin = state.origin;
+  if (producer === undefined || failureKey === undefined || origin === null) return null;
   return (
     results.find(
       (r) =>
         r.provenance.runId === producer.runId &&
         r.provenance.recordedAt === producer.recordedAt &&
+        r.key === failureKey &&
         r.outcome === state.outcome &&
         fingerprintOf(r) === state.fingerprint &&
-        r.provenance.commit === state.commit,
+        r.provenance.commit === state.commit &&
+        (origin.kind === "inherited"
+          ? r.provenance.worktreeId === origin.worktreeId
+          : r.provenance.worktreeId === worktreeId && r.provenance.revision === state.observedAt),
     ) ?? null
   );
 }

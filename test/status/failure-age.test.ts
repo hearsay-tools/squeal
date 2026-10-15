@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { recordRunLoad } from "../../src/core/retry/index.js";
-import { createStateSink, recordFailureProducers } from "../../src/core/state/index.js";
+import { recordFailureKeys } from "../../src/core/slow/state.js";
+import {
+  checkIdentity,
+  createStateSink,
+  failureProducersMetaKey,
+  recordFailureProducers,
+} from "../../src/core/state/index.js";
 import { formatStatus, readStatus } from "../../src/core/status/index.js";
 import { result } from "../store/helpers.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "./helpers.js";
@@ -42,6 +48,7 @@ function seeded(recordedAt: number) {
     recordedAt,
   });
   store.results.putMany([produced]);
+  recordFailureKeys(store, repo.mainId, new Map([[checkIdentity(AUTH), "k1"]]));
   recordFailureProducers(store, repo.mainId, [produced]);
   store.knownStates.upsertMany([
     state(repo.mainId, AUTH, {
@@ -184,6 +191,7 @@ describe("status: a failure's age comes from the result that produced it (review
         fingerprint: "AssertionError: expected 1 to be 2 @ src/a.test.ts:3:5",
       }),
     ]);
+    recordFailureKeys(store, b.id, new Map([[checkIdentity(AUTH), "k1"]]));
     recordFailureProducers(store, b.id, [produced]);
     const status = readStatus(b.root, { now: () => NOW });
     if (!status.available) throw new Error("status unavailable");
@@ -249,5 +257,140 @@ describe("status: an identical same-key replacement is not the producer (review 
     expect(text).toContain("recorded at an unknown time and load");
     expect(text).not.toContain("9.90");
     expect(text).not.toContain("just now");
+  });
+});
+
+/*
+ * Review 001-417 round 3, N2 (task 001-420): an older daemon, whose sink
+ * predates `failure-producers`, rewrites the state and leaves the reference
+ * a producer-aware sink wrote. Simulated by the current sink with that row
+ * restored: the older sink records failure keys but never the producer.
+ */
+describe("status: a producer reference left by an older writer (001-420)", () => {
+  function inheritedThenOlderWriter() {
+    const { repo, store, produced } = seeded(NOW - 5 * 3_600_000);
+    recordRunLoad(store, "run-1", 9.9);
+    const b = repo.addWorktree("b");
+    store.worktrees.upsert({
+      id: b.id,
+      root: b.root,
+      commonDir: repo.commonDir,
+      isMain: false,
+      registeredAt: 1,
+      daemon: null,
+    });
+    appendRevisions(store, b.id, 2, { head: null, dirty: true, createdAt: 1 });
+    const keyAt = (key: string, revision: number) =>
+      store.testFileKeys.upsertMany([
+        {
+          worktreeId: b.id,
+          testFile: { project: "", path: "src/auth.test.ts" },
+          key,
+          revision,
+          pending: null,
+        },
+      ]);
+    keyAt("k1", 1);
+    const sink = createStateSink(store);
+    const confirmed = result(AUTH, "k1", { outcome: "fail", worktreeId: b.id, runId: "run-b" });
+    store.results.putMany([confirmed]);
+    sink.applyResults(b.id, 1, [confirmed], { checkpointId: null });
+    store.results.putMany([produced]);
+    sink.refresh(b.id, 1, { checkpointId: null });
+    expect(store.knownStates.get(b.id, AUTH)?.origin?.kind).toBe("inherited");
+    const reference = store.meta.get(failureProducersMetaKey(b.id));
+    expect(reference).not.toBeNull();
+    const olderSink = {
+      applyResults: (...args: Parameters<typeof sink.applyResults>) => {
+        sink.applyResults(...args);
+        store.meta.set(failureProducersMetaKey(b.id), reference ?? "");
+      },
+      refresh: (...args: Parameters<typeof sink.refresh>) => {
+        sink.refresh(...args);
+        store.meta.set(failureProducersMetaKey(b.id), reference ?? "");
+      },
+    };
+    return { repo, store, produced, b, keyAt, olderSink };
+  }
+
+  /** The receiver's own failure at `k2`, revision 2: what lets it inherit at that key. */
+  const ownAtK2 = (b: { id: string }) => {
+    const ran = result(AUTH, "k2", {
+      outcome: "fail",
+      worktreeId: b.id,
+      runId: "older-own-new-key",
+      recordedAt: NOW - 2_000,
+    });
+    return { ...ran, provenance: { ...ran.provenance, revision: 2 } };
+  };
+
+  const failureIn = (root: string) => {
+    const status = readStatus(root, { now: () => NOW });
+    if (!status.available) throw new Error("status unavailable");
+    return { failure: status.knownFailures[0], text: formatStatus(status, NOW) };
+  };
+
+  it("an own failure at a new key does not take the inherited source's facts", () => {
+    const { store, b, keyAt, olderSink } = inheritedThenOlderWriter();
+    keyAt("k2", 2);
+    const own = ownAtK2(b);
+    store.results.putMany([own]);
+    olderSink.applyResults(b.id, 2, [own], { checkpointId: null });
+    expect(store.knownStates.get(b.id, AUTH)).toMatchObject({
+      origin: { kind: "own" },
+      observedAt: 2,
+      commit: "abc123",
+    });
+
+    const { failure, text } = failureIn(b.root);
+    expect(failure?.recorded).toBeUndefined();
+    expect(failure?.recordedUnknown).toBe(true);
+    expect(text).not.toContain("9.90");
+  });
+
+  it("the same source's later failure at a new key does not keep the old run's facts", () => {
+    const { repo, store, produced, b, keyAt, olderSink } = inheritedThenOlderWriter();
+    keyAt("k2", 2);
+    const own = ownAtK2(b);
+    store.results.putMany([own]);
+    olderSink.applyResults(b.id, 2, [own], { checkpointId: null });
+    const later = result(AUTH, "k2", {
+      outcome: "fail",
+      worktreeId: repo.mainId,
+      runId: "run-later",
+      recordedAt: NOW - 1_000,
+    });
+    store.results.putMany([later]);
+    olderSink.refresh(b.id, 2, { checkpointId: null });
+    expect(store.knownStates.get(b.id, AUTH)?.origin).toMatchObject({
+      kind: "inherited",
+      worktreeId: repo.mainId,
+    });
+    expect(store.results.listForCheck(AUTH, 10)).toContainEqual(produced);
+
+    const { failure } = failureIn(b.root);
+    expect(failure?.recorded).toBeUndefined();
+    expect(failure?.recordedUnknown).toBe(true);
+  });
+
+  it("a producer-aware refresh at the new key names the new run", () => {
+    const { repo, store, b, keyAt, olderSink } = inheritedThenOlderWriter();
+    keyAt("k2", 2);
+    const own = ownAtK2(b);
+    store.results.putMany([own]);
+    olderSink.applyResults(b.id, 2, [own], { checkpointId: null });
+    store.results.putMany([
+      result(AUTH, "k2", {
+        outcome: "fail",
+        worktreeId: repo.mainId,
+        runId: "run-later",
+        recordedAt: NOW - 1_000,
+      }),
+    ]);
+    createStateSink(store).refresh(b.id, 2, { checkpointId: null });
+    expect(failureIn(b.root).failure?.recorded).toMatchObject({
+      worktreeId: repo.mainId,
+      recordedAt: NOW - 1_000,
+    });
   });
 });
