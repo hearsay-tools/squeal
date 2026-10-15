@@ -27,7 +27,8 @@ import {
  */
 export class NodeTestReads {
   private constructor(
-    private readonly recorder: AbsolutePath,
+    /** The recorder file every process of the warm-up loads. */
+    readonly recorder: AbsolutePath,
     private readonly out: AbsolutePath,
     private readonly root: AbsolutePath,
   ) {}
