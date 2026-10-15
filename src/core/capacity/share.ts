@@ -6,6 +6,11 @@ export interface Demand {
   readonly want: number;
   /** Since when it has had less than its share; `null` while it has its share. */
   readonly since: number | null;
+  /**
+   * It waits for slow-lane tiers only (task 004-61): every fast-lane waiter
+   * is served before it. Absent, a fast lane's, as an older daemon's mark reads.
+   */
+  readonly slow?: boolean;
   /** Its project, when the user caps the project's daemons together (`capacity.projects`). */
   readonly project?: { readonly id: string; readonly slots: number };
 }
@@ -49,8 +54,14 @@ export function fairShares(hostSlots: number, demands: readonly Demand[]): Map<s
   return shares;
 }
 
-/** The longest waiter first; a daemon that has its share after every waiter; then by id. */
+/**
+ * Fast-lane waiters before slow-lane ones (task 004-61), the longest waiter
+ * first; a daemon that has its share after every waiter; then by id.
+ */
 function bySeniority(a: Demand, b: Demand): number {
+  const waits = (d: Demand) => d.since !== null;
+  const slowFirst = Number(waits(a) && a.slow === true) - Number(waits(b) && b.slow === true);
+  if (waits(a) && waits(b) && slowFirst !== 0) return slowFirst;
   const since = (a.since ?? Number.POSITIVE_INFINITY) - (b.since ?? Number.POSITIVE_INFINITY);
   if (since !== 0 && !Number.isNaN(since)) return since;
   return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;

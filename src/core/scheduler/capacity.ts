@@ -1,4 +1,9 @@
-import { createPermitPool, type PermitPool, type PoolLease } from "../capacity/index.js";
+import {
+  createPermitPool,
+  type PermitPool,
+  type PoolLane,
+  type PoolLease,
+} from "../capacity/index.js";
 import type { WorktreeId } from "../types/index.js";
 import type { CapacityOptions } from "./options.js";
 
@@ -32,9 +37,9 @@ export class TierCapacity {
   }
 
   /** The grant for a tier of `want` files; `null` when the pool failed and the tier runs ungranted. */
-  take(want: number): PoolLease | typeof WAIT_FOR_CAPACITY | null {
+  take(want: number, lane: PoolLane = "fast"): PoolLease | typeof WAIT_FOR_CAPACITY | null {
     try {
-      const lease = this.#pool.acquire(want);
+      const lease = this.#pool.acquire(want, lane);
       this.#failed = null;
       return lease ?? WAIT_FOR_CAPACITY;
     } catch (error) {
