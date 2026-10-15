@@ -273,18 +273,14 @@ describe("the baseline, untouched by the atomic scenarios", () => {
         { prompt: read(`tasks/${t}.txt`) + read("tasks/_ending.txt"), knobs: knobs[t] ?? {} },
       ]),
     );
-    const fingerprint = (claude: readonly string[]) =>
-      conditionsOf({
-        fixture: "b192f479e3a40f6f621c9be4982b06ac7a74055b",
-        tasks,
-        variant: baseline.variant,
-        effort: baseline.effort,
-        tools: { claude },
-      }).fingerprint;
-    // The fingerprint of the last runs on the fixture, the variant runs of 0.1.127, whose list
-    // lacked 006-66's port-file Read rule; the rule starts a new trend line.
-    const port = "Read(~/.ledgerline-rates.port)";
-    expect(fingerprint(CLAUDE_ALLOWED_TOOLS.filter((t) => t !== port))).toBe("586284d42fcc");
-    expect(fingerprint(CLAUDE_ALLOWED_TOOLS)).toBe("94149a6c1c14");
+    const conditions = conditionsOf({
+      fixture: "b192f479e3a40f6f621c9be4982b06ac7a74055b",
+      tasks,
+      variant: baseline.variant,
+      effort: baseline.effort,
+      tools: { claude: CLAUDE_ALLOWED_TOOLS },
+    });
+    // The fingerprint of the last runs on the fixture, the variant runs of 0.1.127.
+    expect(conditions.fingerprint).toBe("586284d42fcc");
   });
 });
