@@ -308,3 +308,88 @@ Losing evidence converts the same early loss into permission to retry. The compl
 - **Proven by source:** the held-Stop classifier now requires an observed plugin SIGKILL of the matching live process group at or after idle +2000, with no own-exit mark. Early kill, own exit, mismatched or absent kill, missing idle and answered Stop are non-retryable. `reached()` throws `Missed` only for that positive classification, and `ordered()` catches only `Missed`. PID disappearance or a late poll alone no longer enables a retry.
 - **Proven by experiment:** all six pure held-Stop cases and its new real deadline-kill test passed. The original B1 abort and B2 early-loss probes are repaired; the extra B1 replay preserves delivery at the next real prompt.
 - No product repair is requested for B1. B2 remains in the timeline's test-only ownership. This narrow round does not reopen the reviewed continuation, pending-file wake, child or disposal-supersession design. Per process step 6, a second FAIL goes to the human through the coordinator.
+
+## Round 3: B2-only re-review at 854d66ae
+
+Verdict: **PASS 854d66ae**. **B2 closed; 0 blockers, 0 should-fix findings, 0 nits.** Reviewed 2026-10-15 at exact candidate `854d66aed2a0c368e3c4bbf365242eb7f92ed231`, range `74f093ba..854d66ae`: one test-only commit, `test/e2e/opencode-timeline.ts` and `test/e2e/opencode-timeline.test.ts`. This human-authorized round checks only Round 2's "B2: still open", read after `git fetch origin` from `origin/main` (`efc02ad3`). B1 and the other settled product behavior stay outside this round.
+
+### Verification output
+
+The candidate was clean for all checks and probes below, and remained clean after the build and targeted tests. The original round-2 missing-dispose probe was copied outside the repository with only its worktree import repointed to this exact candidate. Its observations and assertions were unchanged. No product or test file was edited. Real OpenCode ran only through `squealOpenCode` and its `runOpenCode` fixture. No full suite or Squeal checkpoint was requested, per the brief. This is a narrow review, not a full-suite certification.
+
+```text
+$ git rev-parse HEAD
+854d66aed2a0c368e3c4bbf365242eb7f92ed231
+$ git status --short
+(no output)
+$ npm ci
+added 196 packages, and audited 197 packages in 13s
+found 0 vulnerabilities
+exit 0
+$ npm run lint
+> squeal@0.1.188 lint
+> biome check .
+Checked 1253 files in 1033ms. No fixes applied.
+exit 0
+$ npm run typecheck
+> squeal@0.1.188 typecheck
+> tsc --noEmit
+exit 0
+$ npm run build
+> squeal@0.1.188 build
+> tsc -p tsconfig.build.json && npm run build:plugin
+> squeal@0.1.188 build:plugin
+> tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts
+exit 0
+$ git status --short
+(no output)
+
+$ npx vitest run test/e2e/opencode-timeline.test.ts --maxWorkers=1 --no-color
+Test Files  1 passed (1)
+     Tests  11 passed (11)
+  Duration  1.38s
+exit 0
+
+$ npx vitest run --config /tmp/008-32-round3-probes/vitest.config.mts /tmp/008-32-round3-probes/missing-dispose.test.ts --no-color
+Test Files  1 passed (1)
+     Tests  1 passed (1)
+  Duration  352ms
+exit 0
+
+$ npx vitest run test/harness/opencode-dispose.test.ts test/harness/opencode-wake.test.ts --testNamePattern 'abort of the new turn|news at idle continues' --maxWorkers=1 --no-color
+FAIL test/harness/opencode-dispose.test.ts > serve: an abort of the new turn, then the old Stop's answer, stores nothing
+Error: before the new turn's request, the plugin killed the held Stop at +2251, at or after its idle deadline (+2000)
+marks, ms since the first idle: idle +0, stop +79 (pid 1605686), dispose +232, kill +2251 (pid 1605686); the held Stop's deadline: +2000
+attempt 1 of 3: plugin killed the held Stop at +2453
+marks: idle +0, stop +46 (pid 1574355), dispose +93, input +1013, kill +2453 (pid 1574355)
+attempt 2 of 3: plugin killed the held Stop at +3018
+marks: idle +0, stop +155 (pid 1589132), dispose +355, kill +3018 (pid 1589132)
+Test Files  1 failed | 1 passed (2)
+     Tests  1 failed | 1 passed | 4 skipped (6)
+  Duration  82.25s
+exit 1
+
+$ git status --short
+(no output)
+```
+
+The four skips are the explicit name filter. The one passing real test was `opencode-wake`'s `serve: news at idle continues the turn once, then silence`. Sampled load was 38.32 before verification, 52.91 during the targeted run, 72.27 near the dispose failure and 78.29 after the command, on this 24-CPU host.
+
+### B2: closed
+
+**Proven by source and experiment.** `test/e2e/opencode-timeline.ts:188` to `:192` makes both dispose deadlines `null` without OpenCode's dispose line. The guard at `:272` to `:276` returns `missedDeadline: false` with an explicit unresolved reading before all three dispose-based paths: a live host holding its consumer (`:279`), consumer removal (`:285`), and an observed end bridge (`:298`). None can authorize a retry from missing dispose timing. The earlier no-delivery outcome is also non-retryable. There is no remaining idle substitution for dispose's deadline.
+
+Stop's separate proof stays independent: `:266` checks its last observed life against the idle deadline before that guard. The missing-idle guard still prevents any deadline classification when neither log nor completed reply times the idle. The two Stop-expiry tests (`opencode-timeline.test.ts:160` and `:216`) exercise observed and missing dispose timing; both retain `missedDeadline: true` for Stop alive at idle +2000.
+
+The original missing-dispose probe now passes. For the same observed Stop (+10 to +200), end bridge (+2500 to +2550), host (+2590) and exit (+2600), a dispose line at +100 yields the known +2600 store deadline and no retry. Removing that line yields unknown dispose/store deadlines, an unresolved reading and no retry. Losing evidence no longer creates retry permission.
+
+The new pure pair at `opencode-timeline.test.ts:183` pins those exact observations with and without the dispose line, including both diagnostic readings. `:197` covers missing dispose timing for consumer removal and the still-live host. Genuine-expiry fixtures now write their own dispose log line at +0; their positive cases establish their deadline instead of inferring it from idle. The live-host positive case at `:222` also passes. The consumer's bounded attempt count and stored-once assertion in `opencode.test.ts` are unchanged.
+
+### The two reported real-OpenCode failures
+
+- **Proven deadline miss, no evidence of a further defect:** the coordinator's dispose-abort failure names the matching plugin kill at +2021, after idle +2000, before the new-request barrier. This review's replay exhausted three attempts with the same positive kill classification at +2453, +3018 and +2251. It never reached the causal order needed to test old-report storage after an abort. These are failed verification attempts, not stale-storage reproductions. Neither the supplied failure nor this replay looks like more than a missed deadline.
+- **Unverified cause, no demonstrated further defect:** the coordinator's wake miss (one planned request instead of two, once in three alone) is compatible with the shared idle budget expiring. `hooks.ts:129` to `:139` puts consumer lookup, Stop and continuation inside one deadline; `turns.ts:193` to `:215` can withhold or abort the continuation when it expires. But a request count and host load do not prove which boundary missed or rule out another cause. The replay here passed, including the four-second silence assertion. I see no positive evidence of more than a deadline miss, but do not certify the coordinator's wake failure as a proven deadline miss. It remains a load-sensitive verification note, outside this test-only B2 repair.
+
+### What fits and next input
+
+B2's requested repair and paired regression are complete. No further repair is requested in this scope. Keep both the missing-dispose guard and the independent Stop proof when changing these diagnostics. The coordinator retains the landing decision and any broader verification; this verdict does not turn the named real-test failure into a passing run.
