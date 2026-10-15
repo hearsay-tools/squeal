@@ -9,6 +9,7 @@ export {
   recordRunLoad,
 } from "./load.js";
 export { pendingRetriesOf } from "./pending.js";
+export { passedRetry, retryFactOf, withRecorded } from "./recorded.js";
 export {
   askRetry,
   cancelRetries,
@@ -28,4 +29,4 @@ export {
   releaseRetries,
   retriesAt,
 } from "./records.js";
-export { loadText, outcomeText, retryFact, waitsText } from "./text.js";
+export { loadText, outcomeText, recordedText, retryText, waitsText } from "./text.js";

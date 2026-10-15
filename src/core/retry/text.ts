@@ -1,5 +1,6 @@
+import type { RecordedFacts, RetryFact, WorktreeId } from "../types/index.js";
 import type { HostLoad } from "./load.js";
-import type { RetryOutcome, RetryReason, RetryRecord } from "./records.js";
+import type { RetryOutcome, RetryReason } from "./records.js";
 
 /*
  * The words `squeal retry`, status and delivery use for a retry (001-368),
@@ -35,8 +36,28 @@ export function outcomeText(outcome: RetryOutcome): string {
   }
 }
 
-/** "retry asked (load): it passed", or "pending" while it waits. */
-export function retryFact(record: RetryRecord): string {
-  const asked = `retry asked (${record.reason})`;
-  return record.end === null ? `${asked}, pending` : `${asked}: ${outcomeText(record.end.outcome)}`;
+/** "retry asked (load) at these inputs: it passed", or "…, pending" while it waits. */
+export function retryText(fact: RetryFact): string {
+  const asked = `retry asked (${fact.reason}) at these inputs`;
+  return fact.outcome === "pending"
+    ? `${asked}, pending`
+    : `${asked}: ${outcomeText(fact.outcome)}`;
+}
+
+/**
+ * A known failure's facts at registration (spec 001 D6, 001-368): where and
+ * at which revision it was recorded, the load per CPU then, and the retry.
+ */
+export function recordedText(facts: RecordedFacts, here: WorktreeId): string {
+  const where =
+    facts.worktreeId === here
+      ? "this worktree"
+      : (facts.worktreeRoot ?? `worktree ${facts.worktreeId}`);
+  const load =
+    facts.loadPerCpu === null
+      ? "load per CPU then not recorded"
+      : `load ${facts.loadPerCpu.toFixed(2)} per CPU when it ran`;
+  const retry =
+    facts.retry === undefined ? "no retry asked at these inputs" : retryText(facts.retry);
+  return `recorded in ${where} at revision ${facts.revision}, ${load}; ${retry}`;
 }

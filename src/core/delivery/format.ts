@@ -1,3 +1,4 @@
+import { recordedText, retryText } from "../retry/index.js";
 import {
   flakyText,
   fullSuiteText,
@@ -243,6 +244,7 @@ function entryBlock(entry: TransitionEntry, revision: number): Block {
         ? [slow ? null : touchesLine(entry), loadLine(entry)]
         : [recoveryProvenance(entry, revision)]),
       entry.flaky === undefined ? null : capitalize(flakyText(entry.flaky)),
+      entry.retry === undefined ? null : capitalize(retryText(entry.retry)),
     ],
     [{ check: entry.check, shown: entry.to }],
   );
@@ -458,6 +460,9 @@ export function formatRegistration(
         f.summary === "" ? null : cap(f.summary, SUMMARY_MAX_CHARS),
         f.location === null ? null : at(f.location),
         f.validity === "current" ? null : `${f.validity}, observed at revision ${f.observedAt}`,
+        f.recorded === undefined
+          ? null
+          : capitalize(recordedText(f.recorded, registration.consumer.worktreeId)),
       ],
       [{ check: f.check, shown: "fail" }],
     ),
