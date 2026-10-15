@@ -1,3 +1,5 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { opencodeCliCommand } from "../../src/cli/opencode/status.js";
@@ -36,6 +38,8 @@ const ROOT = "ses_root";
 const SHELL = { OPENCODE: "1", OPENCODE_PID: "4242", OPENCODE_SESSION_ID: ROOT };
 const UNREGISTERED =
   /^OpenCode: no Squeal consumer is registered for this session in this worktree \(OPENCODE_SESSION_ID ses_root\)\. .* install it with (.*), then start OpenCode again\.$/m;
+const NOT_SET_UP =
+  /^OpenCode: this repository is not set up for Squeal \(no squeal\.config\.json and no Squeal store\), so the Squeal OpenCode plugin stays off in it\. Run squeal setup, then start OpenCode again\.$/m;
 const NEVER_RAN =
   /^OpenCode: this shell runs under OpenCode \(OPENCODE=1\) without OPENCODE_SESSION_ID, so the Squeal OpenCode plugin did not run in this session\. Install it with (.*), then start OpenCode again\.$/m;
 
@@ -49,20 +53,46 @@ describe("squeal status in an OpenCode shell (spec 008 D7)", () => {
     expect(stdout).not.toMatch(NEVER_RAN);
   });
 
-  it("adds it when no store exists either", () => {
-    const { stdout } = run(["status"], fakeRepo().main, SHELL);
+  it("adds it when a squeal.config.json is there but no store yet", () => {
+    const repo = fakeRepo();
+    writeFileSync(join(repo.main, "squeal.config.json"), "{}\n");
+    const { stdout } = run(["status"], repo.main, SHELL);
     expect(stdout).toMatch(/^Status unavailable/);
     expect(stdout).toMatch(UNREGISTERED);
+    expect(stdout).not.toMatch(NOT_SET_UP);
   });
 
-  it("says the plugin never ran when OPENCODE=1 comes without OPENCODE_SESSION_ID", () => {
+  it("says the plugin never ran when OPENCODE=1 comes without OPENCODE_SESSION_ID in a set-up repository", () => {
     const repo = storeRepo([[ROOT, "main"]]);
     for (const env of [{ OPENCODE: "1" }, { OPENCODE: "1", OPENCODE_SESSION_ID: "" }]) {
       const { stdout } = run(["status"], repo.main, env);
       expect(NEVER_RAN.exec(stdout)?.[1]).toBe(INSTALL_SH_COMMAND);
       expect(stdout).not.toMatch(UNREGISTERED);
+      expect(stdout).not.toMatch(NOT_SET_UP);
     }
-    expect(run(["status"], fakeRepo().main, { OPENCODE: "1" }).stdout).toMatch(NEVER_RAN);
+    // Set up by its config alone, from a subdirectory of the worktree.
+    const configured = fakeRepo();
+    writeFileSync(join(configured.main, "squeal.config.json"), "{}\n");
+    mkdirSync(join(configured.main, "src"));
+    expect(run(["status"], join(configured.main, "src"), { OPENCODE: "1" }).stdout).toMatch(
+      NEVER_RAN,
+    );
+  });
+
+  it("names setup, not the install, when the repository is not set up (lessons defect 2)", () => {
+    // Neither a config nor a store: the plugin's fast path keeps it off (D4).
+    for (const env of [{ OPENCODE: "1" }, SHELL]) {
+      const { stdout } = run(["status"], fakeRepo().main, env);
+      expect(stdout).toMatch(/^Status unavailable/);
+      expect(stdout).toMatch(NOT_SET_UP);
+      expect(stdout).not.toMatch(NEVER_RAN);
+      expect(stdout).not.toMatch(UNREGISTERED);
+      expect(stdout).not.toContain(INSTALL_SH_COMMAND);
+    }
+    // A linked worktree of a set-up repository is set up: the store is in the common dir.
+    const repo = storeRepo([]);
+    const linked = repo.addWorktree("linked");
+    expect(run(["status"], linked.root, { OPENCODE: "1" }).stdout).toMatch(NEVER_RAN);
   });
 
   it("stays silent when any agent of the session is registered, outside OpenCode, and in --json", () => {
