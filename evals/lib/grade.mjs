@@ -17,8 +17,20 @@ const FORBIDDEN = /^test\/contract\//;
  * Only executed actions count (review wave 1, B2): a refused one is an attempt, an indeterminate
  * one is listed and never counted. Every action has a place `n` in the session's order, so an
  * edit and a run in one call keep theirs.
+ *
+ * `serviceStarts` is the rates service's own record of the session's starts (`out/
+ * service-starts.txt`, row 006-67), one line per start in order, or `null` when the cell kept none.
+ * Every executed start takes its line in turn; its reply is the one in its call's output when
+ * there is one, and its line's when the output has none (a start in the background or redirected).
  */
-export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = true, diff = "" }) {
+export function gradeCell({
+  timeline,
+  truth = null,
+  statusEnd = null,
+  plugin = true,
+  diff = "",
+  serviceStarts = null,
+}) {
   const items = timeline.items;
   const edits = [];
   const failedEdits = [];
@@ -27,6 +39,7 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
   const sleeps = [];
   const refused = [];
   const indeterminate = [];
+  const logged = serviceStarts === null ? [] : startLines(serviceStarts);
   let skillLoads = items.filter((k) => k.kind === "skill").length;
   let n = 0;
   // The retained timeline (D4 "Retained evidence"), each step at the time the agent saw it: a
@@ -97,8 +110,10 @@ export function gradeCell({ timeline, truth = null, statusEnd = null, plugin = t
         if (a.sub === "run") at(k.t, { k: "squeal-run", all: a.all, slow: a.slow });
       }
       // A start that found the service running changes nothing (row 006-53).
-      if (a.kind === "service")
-        at(k.t, { k: "service", started: replies.service.shift() === "listening" });
+      if (a.kind === "service") {
+        const own = logged.shift();
+        at(k.t, { k: "service", started: (replies.service.shift() ?? own) === "listening" });
+      }
       if (a.kind === "vitest" || a.kind === "node:test") {
         const runner = a.runner ?? a.kind;
         runs.push({ ...here, runner, scope: a.scope, cmd: k.cmd.slice(0, 160) });
@@ -221,6 +236,13 @@ const serviceReplies = (out) =>
   [...String(out ?? "").matchAll(/^rates service (listening|already running)/gm)].map((m) =>
     m[1] === "listening" ? "listening" : "running",
   );
+
+/** The service's record of starts, a reply per line: `listening`, `running`, or `failed`. */
+const startLines = (text) =>
+  String(text)
+    .split("\n")
+    .filter(Boolean)
+    .map((l) => serviceReplies(l)[0] ?? "failed");
 
 /** A path relative to the cell's worktree, or `null` for one outside it (`/tmp/...`). */
 function relPath(p) {

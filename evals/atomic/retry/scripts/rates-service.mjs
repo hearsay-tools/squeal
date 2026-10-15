@@ -1,8 +1,9 @@
 // The rates service: today's exchange rates over HTTP on 127.0.0.1, at a port the system picks,
 // written to ~/.ledgerline-rates.port. `node scripts/rates-service.mjs` starts it in the
-// background and returns once it listens; it stops when its port file is removed.
+// background and returns once it listens; it stops when its port file is removed. Each start
+// also appends what it said to ~/.ledgerline-rates.starts.
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -18,6 +19,11 @@ const portIn = (file) => {
   }
 };
 
+const say = (line, to = console.log) => {
+  to(line);
+  appendFileSync(join(homedir(), ".ledgerline-rates.starts"), `${line}\n`);
+};
+
 if (process.argv[2] === "--serve") serve(process.argv[3]);
 else await start(join(homedir(), ".ledgerline-rates.port"));
 
@@ -30,7 +36,7 @@ async function start(file) {
       () => false,
     ))
   ) {
-    console.log(`rates service already running on 127.0.0.1:${port}`);
+    say(`rates service already running on 127.0.0.1:${port}`);
     return;
   }
   rmSync(file, { force: true });
@@ -41,10 +47,10 @@ async function start(file) {
   child.unref();
   for (let i = 0; i < 200 && !existsSync(file); i++) await sleep(25);
   if (!existsSync(file)) {
-    console.error("the rates service did not start");
+    say("the rates service did not start", console.error);
     process.exit(1);
   }
-  console.log(`rates service listening on 127.0.0.1:${portIn(file)}`);
+  say(`rates service listening on 127.0.0.1:${portIn(file)}`);
 }
 
 function serve(file) {

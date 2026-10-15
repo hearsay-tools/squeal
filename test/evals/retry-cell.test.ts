@@ -158,6 +158,22 @@ describe("the service knob's Read rule through run-cell (006-66)", { timeout: 60
   });
 });
 
+describe("the session's service starts through run-cell (006-67)", { timeout: 60_000 }, () => {
+  it("a10: the session's start alone is kept, not the warm-up's or ground truth's", async () => {
+    const f = fakeRoot();
+    roots.push(f);
+    const r = await runCell(f, ["a10-retry-real", "p0", "claude", "claude-haiku-5-5", "1"], {
+      FAKE_HARNESS: "start",
+    });
+    expect(r.code, r.output).toBe(0);
+    const [cell] = cellDirs(f);
+    if (!cell) throw new Error("no cell");
+    expect(readFileSync(join(cell, "out/service-starts.txt"), "utf8")).toMatch(
+      /^rates service already running on 127\.0\.0\.1:\d+\n$/,
+    );
+  });
+});
+
 describe("the retry knobs in a judge's words", () => {
   it("say what each scenario's session meets", () => {
     expect(situationOf(scenarioOf("a9-env-retry")?.knobs)).toBe(
