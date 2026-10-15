@@ -62,7 +62,7 @@ export function formatStatus(
     `Affected checks: ${affected(result)}`,
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
     ...checkpointLine(result, now, command),
-    ...slowLine(result, command),
+    ...slowLine(result, command, options.allNotes === true),
     ...excludedLine(result),
     "",
     worktreeLine(result),
@@ -106,9 +106,14 @@ function retryLines(s: StatusSnapshot): string[] {
 }
 
 /** Spec 004 D8: the slow-tier line, as delivered headers print it, when slow files are declared. */
-function slowLine(s: StatusSnapshot, command: string): string[] {
+/** With `all` (`status --notes`), the declared artifacts the line counts, each by name (001-413). */
+function slowLine(s: StatusSnapshot, command: string, all: boolean): string[] {
   const text = slowTierText(s, command);
-  return text === null ? [] : [text];
+  if (text === null) return [];
+  const artifact = s.slowTier?.artifact ?? [];
+  return all && artifact.length > 1
+    ? [text, `  Declared artifacts: ${artifact.join(", ")}`]
+    : [text];
 }
 
 /** Task 001-349: the Vitest projects Squeal never runs, named so the agent runs them itself. */
@@ -155,16 +160,30 @@ function checkpointLine(s: StatusSnapshot, now: EpochMs, command: string): strin
  * Status's own notes, then the daemon's with time and revision. Unless
  * `all`, two or more notes of stopped processes of one kind fold into one
  * line counting them by command (task 001-222); 001-212's detail of each
- * stays behind `status --notes`.
+ * stays behind `status --notes`. So do a daemon's exit notes of one text,
+ * one per start of an idle worktree's daemon: the latest is listed with how
+ * many there were (task 001-413).
  */
 function notes(s: StatusSnapshot, command: string, all: boolean): string[] {
+  const exits = new Map<string, DaemonNote[]>();
+  for (const note of all ? [] : s.daemonNotes) {
+    if (note.exitOf !== undefined) exits.set(note.text, [...(exits.get(note.text) ?? []), note]);
+  }
   const stamped = (n: DaemonNote) => {
     const at = new Date(n.at).toISOString();
-    return n.revision === null ? `${at}: ${n.text}` : `${at}, revision ${n.revision}: ${n.text}`;
+    const text =
+      n.revision === null ? `${at}: ${n.text}` : `${at}, revision ${n.revision}: ${n.text}`;
+    const same = n.exitOf === undefined ? [] : (exits.get(n.text) ?? []);
+    const [first] = same;
+    if (same.length < 2 || first === undefined) return text;
+    const since = new Date(first.at).toISOString();
+    return `${text} (${same.length} notes since ${since}; \`${command} status --notes\` lists each)`;
   };
   const groups = new Map<string, DaemonNote[]>();
   const kept: DaemonNote[] = [];
   for (const note of s.daemonNotes) {
+    const exit = note.exitOf === undefined ? undefined : exits.get(note.text);
+    if (exit !== undefined && exit[exit.length - 1] !== note) continue;
     const what = all ? undefined : note.stopped?.what;
     if (what === undefined) kept.push(note);
     else groups.set(what, [...(groups.get(what) ?? []), note]);

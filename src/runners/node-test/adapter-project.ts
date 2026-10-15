@@ -31,8 +31,8 @@ export interface ProjectContext {
   /** `node-test project "<name>"`. */
   readonly label: string;
   readonly options: NodeTestAdapterOptions;
-  /** Notes prefixed with the project. */
-  readonly note: (text: string) => void;
+  /** Notes prefixed with the project; a `topic`'s latest note replaces its earlier ones (007-39). */
+  readonly note: (text: string, topic?: string) => void;
 }
 
 /** How many incomplete closures one note names before it only counts (review wave 2, N4). */
@@ -61,10 +61,10 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
   const observed = new Observed(graph, options.observed, note);
 
   const noted = new Set<string>();
-  const once = (text: string) => {
+  const once = (text: string, topic?: string) => {
     if (noted.has(text)) return;
     noted.add(text);
-    note(text);
+    note(text, topic);
   };
   const notes = () => {
     for (const text of graph.notes()) once(text.replace(/^node-test: /, ""));
@@ -77,8 +77,10 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
         .slice(0, NAMED_INCOMPLETE)
         .map(([file, reasons]) => `${file} (${reasons.join("; ")})`);
       const more = incomplete.length > NAMED_INCOMPLETE ? ", ..." : "";
+      // Task 001-413: one per project, however many daemons started and wrote it.
       once(
         `${incomplete.length} test file(s) with an incomplete static closure, keyed by what their runs load: ${named.join(", ")}${more}`,
+        `node-test-closure:${project.name}`,
       );
     }
   };
