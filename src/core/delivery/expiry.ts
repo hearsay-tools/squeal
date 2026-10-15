@@ -5,6 +5,7 @@ import {
   type ConsumerRecord,
   type EpochMs,
   type HarnessProcess,
+  LEAVING_GRACE_MS,
   type Store,
   WAITERLESS_EXPIRY_MS,
   type WorktreeId,
@@ -21,6 +22,7 @@ import {
   recordHarness,
   sameHarness,
 } from "./harness-process.js";
+import { leavingMarks, markLeaving } from "./leaving.js";
 import { tellLiveness, tellRevision } from "./liveness.js";
 import { park } from "./registered.js";
 import { slot } from "./slots.js";
@@ -135,6 +137,38 @@ export function dropGoneHarnesses(
 }
 
 /**
+ * Task 001-416: drops each consumer of `worktreeId` whose SubagentStop
+ * marked it leaving more than `LEAVING_GRACE_MS` ago, so its hook was killed
+ * before it unregistered. Stamps the departure as that SubagentStop would
+ * have, so the daemon's departure and idle rules then apply. The mark is
+ * read again in the removing transaction, so a boundary that cleared it in
+ * between keeps the consumer. Returns the consumers dropped.
+ */
+export function dropLeft(
+  store: Store,
+  worktreeId: WorktreeId,
+  now: EpochMs,
+  options: { readonly locksDir: AbsolutePath },
+): readonly Consumer[] {
+  const cutoff = now - LEAVING_GRACE_MS;
+  const left = (consumer: Consumer) =>
+    (leavingMarks(store, worktreeId).get(slot(consumer)) ?? now) < cutoff;
+  const dropped: Consumer[] = [];
+  for (const { consumer } of store.consumers.list(worktreeId)) {
+    if (!left(consumer)) continue;
+    const removed = store.transaction(() => {
+      if (store.consumers.get(consumer) === null || !left(consumer)) return false;
+      drop(store, consumer, now);
+      return true;
+    });
+    if (!removed) continue;
+    removeWaiterLock(options.locksDir, consumer);
+    dropped.push(consumer);
+  }
+  return dropped;
+}
+
+/**
  * Unregisters `consumer` the way `HarnessDelivery.unregister` does, and
  * stamps the worktree's last departure. Call inside a transaction.
  */
@@ -165,8 +199,8 @@ export function lastDeparture(store: Store, worktreeId: WorktreeId): EpochMs | n
 
 /**
  * Drops what an unregistered consumer was told, the paths no test reads
- * among it, its turn state, its harness process, its version and its edit
- * state, beside its view.
+ * among it, its turn state, its harness process, its version, its edit
+ * state and its leaving mark, beside its view.
  */
 function forget(store: Store, consumer: Consumer): void {
   tellLiveness(store, consumer, null);
@@ -177,6 +211,7 @@ function forget(store: Store, consumer: Consumer): void {
   recordVersion(store, consumer, null);
   forgetEdits(store, consumer);
   recordUncoveredTold(store, consumer, []);
+  markLeaving(store, consumer, null);
 }
 
 /** `ConsumerRepo.idleSince` for one record. */
