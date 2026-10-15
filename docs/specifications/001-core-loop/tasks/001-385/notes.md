@@ -16,4 +16,4 @@ Since 001-360 a suite-level hook error fails its whole file. `daemonSuite` (`tes
 
 ## Left at the default
 
-The other top-level `afterEach` hooks in `test/daemon/` (`desk-guard`, `nudge`, `run-all-owner`, `run-all-warm-up`, `run-slow`, `server-handover`, `socket`, `sync`) only remove directories and close in-process servers or desks; none waits on a child process. `symlinked-source.test.ts`'s `afterAll` removes two plugin bundle directories, like the `afterAll` here; it was not seen failing and is left as it is. Hooks outside `test/daemon/` were not surveyed.
+The other top-level `afterEach` hooks in `test/daemon/` (`desk-guard`, `nudge`, `run-all-owner`, `run-all-warm-up`, `run-slow`, `server-handover`, `socket`, `sync`) only remove directories and close in-process servers or desks; none waits on a child process. `symlinked-source.test.ts`'s `afterAll` removes two plugin bundle directories, the same shape as the build's removal; it was not seen failing, and gets its `beforeAll`'s 120 s bound anyway. Hooks outside `test/daemon/` were not surveyed.
