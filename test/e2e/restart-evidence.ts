@@ -1,8 +1,10 @@
 import { execFile } from "node:child_process";
 import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
+import type { TestPause } from "../../src/core/daemon/test-pause.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { lockFileFor } from "../../src/core/store/index.js";
 import type { BundleRun } from "../harness/bundle-helpers.js";
@@ -50,9 +52,20 @@ export function lockHolders(root: string): string {
   }
 }
 
+const PRELOAD = pathToFileURL(join(import.meta.dirname, "../daemon/pause-preload.mjs")).href;
+
+/**
+ * The environment of a daemon that stops itself at `point` (task 001-355):
+ * the test preload, which alone stops it, and the point it names (review
+ * 001-423, N1).
+ */
+export function testPause(point: TestPause): Readonly<Record<string, string>> {
+  return { SQUEAL_TEST_PAUSE: point, NODE_OPTIONS: `--import=${PRELOAD}` };
+}
+
 /**
  * Waits until process `pid` is stopped (`T` in `/proc/<pid>/stat`): a daemon
- * run with `SQUEAL_TEST_PAUSE=<point>` stops itself there (task 001-355).
+ * run with `testPause(point)` stops itself there (task 001-355).
  * False past `ms`, or once it is gone.
  */
 export async function stoppedItself(pid: number, ms: number): Promise<boolean> {
