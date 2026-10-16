@@ -249,9 +249,9 @@ Every step is a docs-only commit, reviewed as docs land today, none of it a prod
 - **Q3 Home of the runtime-input recorder** (`src/runners/observe/*`, D4 "Observed runtime inputs", D11 Fidelity, rows 001-431, 001-402). Decided 2026-10-16: (a). (a) Core (recommended: three runners deliver it and its form rule is runner-neutral); (b) Vitest, with 003 and 007 citing it.
 - **Q4 Node-ecosystem logic in Core** (install detection, hidden-lockfile trust, the installed-dependency segment scheme). (a) Core, marked "Node ecosystem; pytest has its own" (recommended for this migration, no code moves); (b) a later `node-ecosystem` section or spec when a third Node runner appears.
 - **Q5 Owner of the end-to-end proofs** driven through Claude Code hook JSON (`shipped-plugin`, `transitions`, `worktrees`, the e2e harness, rows 001-341 and the `/tmp` leftovers item). (a) Claude Code owns the files, Core owns the goals they assert, each Core landing still runs them (recommended); (b) Core owns them as test infrastructure.
-- **Q6 The misfiled rows** 001-365, 001-402, 001-425 (node:test code). Move them to 003's board section with their numbers kept (recommended), or keep them under Core.
+- **Q6 The misfiled rows** Decided 2026-10-17: move to 003.  001-365, 001-402, 001-425 (node:test code). Move them to 003's board section with their numbers kept (recommended), or keep them under Core.
 - **Q7 Timing.** Decided 2026-10-16: after 001-434 settles and 0.1.203 lands or is abandoned. Start the docs-only migration after 001-434 settles and 0.1.203 lands or is abandoned (recommended), or start the spec folders now and split the board later.
-- **Q8 The colliding triage rows** (six branches numbered 001-434, one 001-433, one 004-64). Land them as `proposed` rows with fresh numbers (recommended), or ask each triage session to renumber and push.
+- **Q8 The colliding triage rows** Decided 2026-10-17: fresh numbers at landing.  (six branches numbered 001-434, one 001-433, one 004-64). Land them as `proposed` rows with fresh numbers (recommended), or ask each triage session to renumber and push.
 
 Approval of this proposal, with answers to Q1 to Q8, authorizes the docs-only steps of section 6 and nothing else.
 
@@ -264,7 +264,31 @@ Approval of this proposal, with answers to Q1 to Q8, authorizes the docs-only st
 - Q3: the runtime-input recorder (`src/runners/observe/**`, D4 "Observed runtime inputs", D11 Fidelity) is Core's. Row 001-431 is a Core row; 001-402 stays 003's and follows Core's pattern.
 - Q7: the docs-only migration of section 6 starts only after 001-434 settles and 0.1.203 lands or is abandoned.
 
-Still open: Q4 (Node-ecosystem logic in Core), Q5 (owner of the hook-driven end-to-end proofs), Q6 (moving 001-365, 001-402 and 001-425 to 003), Q8 (fresh numbers for the colliding triage rows). The recommended answers stand as proposals until the human confirms them. These four decisions authorize none of section 6's steps; the migration needs its own go once 0.1.203 has settled.
+2026-10-17, the human:
+
+- Q6: accepted. 001-365, 001-402 and 001-425 move to spec 003's board section with their numbers kept.
+- Q8: accepted. The colliding triage rows land as `gh-<N>` rows under `## Triage` and get numbers only on approval.
+- Migration: starts as soon as Q4 and Q5 are answered, as section 6 in full. Until then nothing moves.
+
+Still open: Q4 and Q5. The human asked for the rationale; section 11 gives it with the corrected facts.
+
+## 11. Rationale for Q4 and Q5
+
+### Q4: where the Node-ecosystem logic lives
+
+Facts. Three rules are Node-specific: install detection (D5: a root `package.json` that declares dependencies with nothing installed stops every runner call), the hidden-lockfile trust rule (D3: `node_modules/.package-lock.json` stands for the install only while npm would trust it), and the installed-dependency segments of a key (D3 scheme B). Their code is all under `src/core`: `src/core/scheduler/install.ts` (223 lines), `install-stamp.ts` (123), `src/core/keys/hidden-lockfile.ts`, `src/core/keys/packages.ts`, `src/core/keys/environment.ts` (283). The Vitest adapter contributes only which packages a test file reaches through Vite's resolution (`src/runners/vitest/packages.ts`, 242 lines) and reports them through `RunnerClosure.packages`; node:test reports its own set through the same field (003-22). pytest uses none of this and has its own environment rules in spec 007. The key-format guard counts all five core files as key-meaning code.
+
+Why Core, option (a). The split is docs-only, so a section's owner should be whoever edits its code: these files are core files, and two runners consume them through one contract. Giving them to the Vitest spec would make spec 003 depend on the Vitest spec for the meaning of its keys. A spec of their own, option (b), would own paragraphs rather than files, since the rules are interleaved with the runner-neutral key code in the same modules, and nobody lands work against it. The honest cost of (a) is that a spec called runner-neutral holds npm rules. The proposal pays it by labelling the section "Node ecosystem", citing 007's equivalent so the reader sees it is per ecosystem, and noting that it can be lifted into its own spec later with no code move. Option (b) becomes right when a second ecosystem rule set exists or a third Node runner arrives.
+
+### Q5: who owns the end-to-end proofs
+
+Facts, corrected from section 2.2. Nine e2e files drive the shipped Claude Code bundles with recorded hook JSON against a real daemon: `lifecycle`, `policy`, `shipped-plugin`, `stop-gap`, `torn-status`, `transitions`, `worktrees`, and also 003's `node-test.test.ts` and 007's `pytest.test.ts`. Their helpers (`harness.ts`, `agree.ts`, `support.ts`, `sources.ts`, `install.ts`, `plugins.ts`) are shared with the Pi, OpenCode, pytest and node:test suites, so they are harness-neutral infrastructure. `plugin-copy.test.ts` tests the plugin tree's copy and is packaging. Core goals 1 to 4 are proven only through Claude Code's hooks today; no harness-neutral proof of a transition delivery exists.
+
+Options.
+- (a) Claude Code owns the hook-driven files; Core owns the goals they assert. Whoever changes a hook's input, output or event must update them, and that is Claude Code work. Core landings still run them, as every landing runs the whole suite.
+- (b) Core owns them as test infrastructure. Core then owns files that encode Claude Code's hook JSON and plugin layout, and a hook change needs Core's acknowledgement to edit a Core-owned file.
+- (c) Split by what the file encodes: the shared helpers to Core, each hook-driven scenario file to the spec whose behaviour it proves (001's seven to Claude Code, `node-test.test.ts` to 003, `pytest.test.ts` to 007), and one new Core row to add a harness-neutral proof of goals 1 to 4 (through a fake `HarnessDelivery` consumer or the CLI), so Core's goals stop depending on one harness. Recommended now that the helper facts are known: it is (a) with the infrastructure named, plus the gap made visible.
+
 
 ## 10. Changes on main since this proposal was written
 
