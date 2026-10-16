@@ -2,7 +2,7 @@
 
 Current and planned tasks. The coordinator keeps this file; workers do not edit it. One task is one worker, one branch, one result. A wave runs its tasks in parallel and ends with a review whose findings shape the next wave.
 
-Status values: `planned`, `running`, `review`, `done`, `dropped`; `proposed` for a triage or research row that awaits the human's decision and authorizes nothing (`docs/process.md`, Issue triage).
+Status values: `planned`, `running`, `review`, `done`, `dropped`; for Triage rows also `proposed` (awaits the human's decision, authorizes nothing) and `approved (the human, date)` (the owning coordinator numbers, moves and briefs it; `docs/process.md`, Issue triage).
 
 ## Standing models
 
