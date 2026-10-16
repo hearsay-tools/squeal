@@ -27,7 +27,10 @@ for (const requireSlowSuite of [false, true]) {
     vitest: true,
     vitestConfig: "vitest.config.ts",
     nodeTest: [],
-    slow: slowPolicyView(policy) === null ? null : { files: 91 },
+    slow:
+      slowPolicyView(policy) === null
+        ? null
+        : { files: 91, requireSlowSuite: policy.stop.requireSlowSuite },
   };
   const wait = stopSlowWaitMs(policy);
   // The issue's moment: 91 slow files, 89 pending, 2 not run (shape only).
