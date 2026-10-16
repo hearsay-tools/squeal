@@ -214,7 +214,15 @@ class TierScheduler implements Scheduler {
    * behind the running tier, let a revision lag the workspace by a whole
    * tier.
    */
-  async handleBatch(batch: CandidateBatch): Promise<void> {
+  handleBatch(batch: CandidateBatch): Promise<void> {
+    return this.#handleBatch(batch, this.options.busySliceMs);
+  }
+
+  /**
+   * `handleBatch`, the pass's writes waiting at most `sliceMs` on a busy
+   * store (task 001-422): only the change feed's batches, which it retries.
+   */
+  async #handleBatch(batch: CandidateBatch, sliceMs: number | undefined): Promise<void> {
     if (this.#closed || this.#reinstalled) return;
     await this.#lock.run(async () => {
       if (this.#reinstalled) return;
@@ -224,10 +232,8 @@ class TierScheduler implements Scheduler {
         if (!this.#awaitingInstall) await this.#baseline(context, ledger);
         return;
       }
-      // Task 001-422: the pass's writes wait a slice of a busy store; the change feed retries it.
-      const slice = this.options.busySliceMs;
       const pass = () => this.#pass(context, ledger, batch);
-      await (slice === undefined ? pass() : withBusySlice(slice, pass));
+      await (sliceMs === undefined ? pass() : withBusySlice(sliceMs, pass));
     });
     if (this.#reinstalled) this.#tellReinstall();
     else this.#pump();
@@ -318,7 +324,10 @@ class TierScheduler implements Scheduler {
     };
     // An install the next reconciliation pass would find ends the wait first; still waiting,
     // nothing can be listed or keyed and the checkpoint is abandoned at once (review wave 11, B1).
-    if (this.#awaitingInstall) await this.handleBatch({ trigger: "interval", paths: [] });
+    // A request's pass: its writes keep the store's wait (task 001-422).
+    if (this.#awaitingInstall) {
+      await this.#handleBatch({ trigger: "interval", paths: [] }, undefined);
+    }
     this.#slow.preempt();
     const record =
       (await this.#lock.run(() => {
@@ -807,7 +816,8 @@ class TierScheduler implements Scheduler {
   async #reconcilePaths(paths: readonly RelativePath[]): Promise<void> {
     const { context } = this.#started();
     const candidates = await statCandidates(paths, context.hasher);
-    await this.handleBatch({ trigger: "watch", paths: candidates });
+    // No slice: nothing retries this pass, so its writes wait as the tier's record did.
+    await this.#handleBatch({ trigger: "watch", paths: candidates }, undefined);
   }
 
   #isIdle(): boolean {

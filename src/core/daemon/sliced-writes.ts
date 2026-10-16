@@ -12,14 +12,18 @@ export type Step = readonly [string, () => void];
 /**
  * Task 001-422: the timers' writes, each waiting at most `BUSY_SLICE_MS` for
  * a busy store, so none holds the event loop longer. A step that gives up
- * stops its group; the rest of the group runs again after `busyBackoffMs`,
- * and a tick of the group while that retry is pending is the retry's, so
- * retries are coalesced and never stacked. Any other failure is logged, and
+ * stops its group, and the rest of the group is pending. One timer retries
+ * the pending groups after `busyBackoffMs`, in order, until one gives up
+ * again, so their slices never stack in one tick; a tick of a pending group
+ * is its retry's, so retries are coalesced. Any other failure is logged, and
  * the group goes on, as before.
  */
 export class SlicedWrites {
-  readonly #retries = new Map<string, NodeJS.Timeout>();
-  readonly #attempts = new Map<string, number>();
+  readonly #pending = new Map<string, readonly Step[]>();
+  /** Groups that gave up in this episode: each is told to `busyWaits` once it ran. */
+  readonly #waited = new Set<string>();
+  #timer: NodeJS.Timeout | null = null;
+  #attempt = 0;
   #stopped = false;
 
   constructor(
@@ -29,9 +33,30 @@ export class SlicedWrites {
     },
   ) {}
 
-  /** Runs `steps`, the writes of group `what`, unless its retry is pending. */
+  /**
+   * Runs `steps`, the writes of group `what`, unless its retry is pending.
+   * While another group's is, the store is busy: it waits for the same retry.
+   */
   run(what: string, steps: readonly Step[]): void {
-    if (this.#stopped || this.#retries.has(what)) return;
+    if (this.#stopped || this.#pending.has(what)) return;
+    if (this.#pending.size === 0) {
+      this.#run(what, steps);
+      return;
+    }
+    this.context.busyWaits?.waiting(what, what);
+    this.#waited.add(what);
+    this.#pending.set(what, steps);
+  }
+
+  stop(): void {
+    this.#stopped = true;
+    if (this.#timer !== null) clearTimeout(this.#timer);
+    this.#timer = null;
+    this.#pending.clear();
+  }
+
+  /** Runs the group; false when a step gave up on a busy store and the rest is pending. */
+  #run(what: string, steps: readonly Step[]): boolean {
     const waits = this.context.busyWaits;
     for (const [index, [step, fn]] of steps.entries()) {
       try {
@@ -43,27 +68,35 @@ export class SlicedWrites {
           continue;
         }
         waits.waiting(what, what);
-        this.#retry(what, steps.slice(index));
-        return;
+        this.#waited.add(what);
+        this.#pending.set(what, steps.slice(index));
+        this.#arm();
+        return false;
       }
     }
-    if (this.#attempts.delete(what)) waits?.ran(what);
+    if (this.#waited.delete(what)) waits?.ran(what);
+    return true;
   }
 
-  stop(): void {
-    this.#stopped = true;
-    for (const timer of this.#retries.values()) clearTimeout(timer);
-    this.#retries.clear();
+  #arm(): void {
+    if (this.#timer !== null) return;
+    this.#timer = setTimeout(
+      () => {
+        this.#timer = null;
+        this.#retry();
+      },
+      busyBackoffMs(this.#attempt++),
+    );
+    this.#timer.unref();
   }
 
-  #retry(what: string, steps: readonly Step[]): void {
-    const attempt = this.#attempts.get(what) ?? 0;
-    this.#attempts.set(what, attempt + 1);
-    const timer = setTimeout(() => {
-      this.#retries.delete(what);
-      this.run(what, steps);
-    }, busyBackoffMs(attempt));
-    timer.unref();
-    this.#retries.set(what, timer);
+  #retry(): void {
+    for (const [what, steps] of [...this.#pending]) {
+      if (this.#stopped) return;
+      this.#pending.delete(what);
+      // Still busy: the groups after it wait for the next retry, not for another slice now.
+      if (!this.#run(what, steps)) return;
+    }
+    this.#attempt = 0;
   }
 }
