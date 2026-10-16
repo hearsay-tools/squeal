@@ -131,6 +131,9 @@ export interface ResultRepo {
    * Every hit advances the results' last-used time to `usedAt`, never back.
    * Spec 001 D8: "with a last-used time advanced on every lookup hit"; the
    * size cap evicts by it. A `null` key (an unkeyed test file) has no results.
+   * `usedAt` 0 is a read, not a hit: it writes nothing, so it runs in a read
+   * transaction beside a writer (011-01, issue 7: the no-row UPDATE upgraded
+   * `why`'s read and failed at once).
    */
   byKey(key: CheckKey | null, usedAt?: EpochMs): readonly ResultRecord[];
   /**

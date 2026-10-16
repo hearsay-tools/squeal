@@ -23,6 +23,7 @@ export {
 export { formatStatus, formatUnavailable } from "./format-status.js";
 export { formatWhy } from "./format-why.js";
 export {
+  CLI_READ_RETRY_MS,
   STATUS_BUSY_TIMEOUT_MS,
   type StatusContext,
   type StatusStoreOptions,
