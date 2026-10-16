@@ -247,7 +247,7 @@ Every step is a docs-only commit, reviewed as docs land today, none of it a prod
 - **Q1 Shape of the split.** Decided 2026-10-16: (a). (a) Three new specs with 001's text lifted verbatim and a crosswalk, 001 frozen as history (recommended: every existing D-number reference in 106 reviews, 86 notes and specs 002 to 010 keeps resolving); (b) 001 itself becomes the Core spec by trimming, with two new specs for Claude Code and Vitest (fewer files, but the trim edits a shipped spec's text and the archive and the live spec are one file).
 - **Q2 Home of the shared hook code and its rules** (`src/harness/shared/*`, the H rows in section 4, rows 001-342 and 001-358). Decided 2026-10-16: (a). (a) Core, as the harness-neutral "hook contract" section (recommended: four harnesses already depend on it and 002 D5 only moved the files); (b) the Claude Code spec, as the first implementer, with other harness specs citing it; (c) a fourth, thin spec of its own.
 - **Q3 Home of the runtime-input recorder** (`src/runners/observe/*`, D4 "Observed runtime inputs", D11 Fidelity, rows 001-431, 001-402). Decided 2026-10-16: (a). (a) Core (recommended: three runners deliver it and its form rule is runner-neutral); (b) Vitest, with 003 and 007 citing it.
-- **Q4 Node-ecosystem logic in Core** (install detection, hidden-lockfile trust, the installed-dependency segment scheme). (a) Core, marked "Node ecosystem; pytest has its own" (recommended for this migration, no code moves); (b) a later `node-ecosystem` section or spec when a third Node runner appears.
+- **Q4 Node-ecosystem logic in Core** Decided 2026-10-17: (a), a Core section labelled Node ecosystem. (install detection, hidden-lockfile trust, the installed-dependency segment scheme). (a) Core, marked "Node ecosystem; pytest has its own" (recommended for this migration, no code moves); (b) a later `node-ecosystem` section or spec when a third Node runner appears.
 - **Q5 Owner of the end-to-end proofs** driven through Claude Code hook JSON (`shipped-plugin`, `transitions`, `worktrees`, the e2e harness, rows 001-341 and the `/tmp` leftovers item). (a) Claude Code owns the files, Core owns the goals they assert, each Core landing still runs them (recommended); (b) Core owns them as test infrastructure.
 - **Q6 The misfiled rows** Decided 2026-10-17: move to 003.  001-365, 001-402, 001-425 (node:test code). Move them to 003's board section with their numbers kept (recommended), or keep them under Core.
 - **Q7 Timing.** Decided 2026-10-16: after 001-434 settles and 0.1.203 lands or is abandoned. Start the docs-only migration after 001-434 settles and 0.1.203 lands or is abandoned (recommended), or start the spec folders now and split the board later.
@@ -270,7 +270,9 @@ Approval of this proposal, with answers to Q1 to Q8, authorizes the docs-only st
 - Q8: accepted. The colliding triage rows land as `gh-<N>` rows under `## Triage` and get numbers only on approval.
 - Migration: starts as soon as Q4 and Q5 are answered, as section 6 in full. Until then nothing moves.
 
-Still open: Q4 and Q5. The human asked for the rationale; section 11 gives it with the corrected facts.
+2026-10-17, the human: Q4 accepted, option (a). Q5 asked back: why Claude Code, and what about the other harnesses? Section 11.3 answers with the corrected facts.
+
+Still open: Q5, re-asked with the corrected options in 11.3.
 
 ## 11. Rationale for Q4 and Q5
 
@@ -295,4 +297,17 @@ Options.
 - 2026-10-17: 0.1.203 landed (`bbad39dd`); 001-422 and 001-434 are done, review `reviews/wave-17.md` round 2 PASS. Q7's precondition is met: the docs-only migration of section 6 may start once the human gives its go. Row 001-346 no longer waits on 001-422.
 - 2026-10-17: two new 001 rows, both Core by section 2.1: 001-435 (survey of issue #1's criteria 2 and 3: a scheduler that stops on an unexpected error restarts or ends the daemon; D10 and D8; endpoint a survey file and a decision for the human) and 001-436 (`squeal stop` returned 0 while the daemon's process was still exiting, main CI on `bbad39dd`; D10; endpoint the cause named and a test or product fix). Neither is dispatched. Section 5.3's row for issue #1 now reads: criterion 1 done in 0.1.203, criteria 2 and 3 are 001-435.
 - 2026-10-17: this proposal and the triage convention in `docs/process.md` landed on main as docs (`8d1361c7`).
+
+### 11.3 Q5, corrected
+
+Facts. The hook-driven e2e files are not Claude Code's. `test/e2e/plugins.ts` declares `PluginName = "claude-code" | "codex"` and each scenario runs once per plugin: Claude Code's bundles with the recorded JSON under `test/harness/recorded/`, Codex's with the fixtures under `test/fixtures/codex-hooks/`. Spec 002's Testing section says it: "transitions, lifecycle, policy and worktrees parametrized over the two plugins". They were written against Claude Code first (row 001-40) and 002 widened them. Pi (009) and OpenCode (008) keep separate suites (`pi.test.ts`, `opencode.test.ts` and their fixtures) because neither is a hook-JSON harness: Pi is an in-process extension, OpenCode a plugin bridge. 003 and 007 drive their runner e2e through the same plugin table.
+
+So these files prove the hook contract, which Q2 put in Core, across every harness that implements it through hooks. Their owner follows from Q2.
+
+Options, corrected.
+- (a) Core owns the hook-contract e2e: the scenario files, the shared helpers and the plugin table. Each harness spec owns its row in that table and its fixtures (Claude Code: the recorded JSON; Codex: `test/fixtures/codex-hooks`), and adds its row when it implements the contract. 008 and 009 keep their own suites; 003 and 007 keep `node-test.test.ts` and `pytest.test.ts`. No new row is needed; a harness-neutral proof through a fake consumer stays optional. Recommended.
+- (b) Each harness spec owns a copy of the scenarios for its plugin. Duplicates the seven files per harness, which is what 008 and 009 were already forced into for non-hook harnesses.
+- (c) The Claude Code spec owns them as the first implementer, as section 2.2 first said. Wrong on the facts above: half of every run is Codex's.
+
+Corrections this makes to the proposal once decided: section 2.2's Owns loses the e2e files and keeps the recorded JSON; section 2.1's Owns gains `test/e2e/*` except `pi*`, `opencode*`, `node-test`, `pytest`, `slow-*`; the Testing row "end to end, two worktrees" and rows 001-341 and the `/tmp` leftovers item read Core; section 3 item 9 reads "Core goals are proven through the hook contract on two plugins, never through a harness-neutral consumer".
 
