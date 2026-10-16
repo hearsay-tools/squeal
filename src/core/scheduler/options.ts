@@ -2,6 +2,7 @@ import type { PoolCapacity } from "../capacity/index.js";
 import type { Hasher } from "../hash/index.js";
 import type { HostLoad } from "../retry/index.js";
 import type { HeadState } from "../revision/index.js";
+import type { BusyWaits } from "../store/index.js";
 import type {
   AbsolutePath,
   EpochMs,
@@ -81,6 +82,17 @@ export interface SchedulerOptions {
    * persisting notes. Errors storing a revision reject `handleBatch`.
    */
   readonly onError?: (error: Error) => void;
+  /**
+   * Task 001-422: the busy wait of each write of a `handleBatch` pass, below
+   * the store's own (`BUSY_SLICE_MS` in the daemon). Absent: the store's.
+   */
+  readonly busySliceMs?: number;
+  /**
+   * Task 001-422: where the pump reports a write that gave up on a busy
+   * store, and its resume. With it, such an error is no stall and no note:
+   * the pump resumes after `busyBackoffMs`.
+   */
+  readonly busyWaits?: BusyWaits;
   /**
    * The install went under the running scheduler (a reinstall, task
    * 001-113): it stores nothing more. Persist `note` and close; the next
