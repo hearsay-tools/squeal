@@ -1658,6 +1658,7 @@ function recordedText(facts, here, now) {
 }
 
 // src/core/store/connection.ts
+import { AsyncLocalStorage } from "node:async_hooks";
 var Connection = class {
   #statements = /* @__PURE__ */ new Map();
   #depth = 0;
@@ -1668,7 +1669,9 @@ var Connection = class {
   }
   /** Runs a statement; returns the number of rows it changed. */
   run(sql, ...params) {
-    return Number(this.#statement(sql).run(...params).changes);
+    const statement = this.#statement(sql);
+    const changes = () => statement.run(...params).changes;
+    return Number(this.#depth > 0 ? changes() : this.#withinSlice(changes));
   }
   get(sql, ...params) {
     return this.#statement(sql).get(...params) ?? null;
@@ -1684,7 +1687,8 @@ var Connection = class {
    */
   transaction(fn) {
     const savepoint = this.#depth > 0 ? `squeal_${this.#depth}` : null;
-    this.db.exec(savepoint === null ? "BEGIN IMMEDIATE" : `SAVEPOINT ${savepoint}`);
+    if (savepoint === null) this.#withinSlice(() => this.db.exec("BEGIN IMMEDIATE"));
+    else this.db.exec(`SAVEPOINT ${savepoint}`);
     this.#depth++;
     try {
       const result = fn();
@@ -1726,6 +1730,24 @@ var Connection = class {
     this.#statements.clear();
     this.db.close();
   }
+  /**
+   * Runs `fn`, one statement that takes the write lock, with the busy slice
+   * of the caller's async context as its busy timeout when that is shorter,
+   * and restores the connection's own before returning (task 001-422). One
+   * synchronous call: no other statement runs while the slice is set.
+   */
+  #withinSlice(fn) {
+    const slice = slices.getStore();
+    if (slice === void 0 || !slice.live) return fn();
+    const own = Number(Object.values(this.#statement("PRAGMA busy_timeout").get() ?? {})[0]);
+    if (!(slice.ms < own)) return fn();
+    this.db.exec(`PRAGMA busy_timeout = ${slice.ms}`);
+    try {
+      return fn();
+    } finally {
+      this.db.exec(`PRAGMA busy_timeout = ${own}`);
+    }
+  }
   #statement(sql) {
     let statement = this.#statements.get(sql);
     if (statement === void 0) {
@@ -1735,6 +1757,7 @@ var Connection = class {
     return statement;
   }
 };
+var slices = new AsyncLocalStorage();
 function rollback(db) {
   try {
     db.exec("ROLLBACK");
@@ -5315,7 +5338,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.202";
+  if (true) return "0.1.203";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

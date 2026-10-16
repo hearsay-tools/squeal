@@ -4385,7 +4385,97 @@ var init_retry = __esm({
   }
 });
 
+// src/core/store/busy.ts
+function busyBackoffMs(attempt) {
+  return BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length - 1)] ?? 0;
+}
+function busyNote(waitedMs, waited) {
+  const seconds3 = Number((waitedMs / 1e3).toFixed(1));
+  return `the store was busy for ${seconds3} s (another connection held its write lock); ran once it was free: ${waited.join(", ")}`;
+}
+var BUSY_SLICE_MS, BACKOFF_MS, BusyWaits;
+var init_busy = __esm({
+  "src/core/store/busy.ts"() {
+    "use strict";
+    BUSY_SLICE_MS = 250;
+    BACKOFF_MS = [0, 100, 250];
+    BusyWaits = class {
+      #waiting = /* @__PURE__ */ new Set();
+      /** What waited in this episode, as the note lists it, in order. */
+      #waited = [];
+      /** What each waiter named, so an abandoned one takes its names back. */
+      #named = /* @__PURE__ */ new Map();
+      #since = null;
+      #options;
+      // No parameter properties: the store's sources load under Node's type stripping too.
+      constructor(options) {
+        this.#options = options;
+      }
+      /** `key`'s write gave up on a busy store; `what`, when given, waits for its retry. */
+      waiting(key2, what) {
+        this.#since ??= this.#options.now();
+        this.#waiting.add(key2);
+        if (what === void 0) return;
+        this.#add(what);
+        this.#named.set(key2, [...this.#named.get(key2) ?? [], what]);
+      }
+      /**
+       * `key`'s retry ran, or no longer waits; `what` names what it stored, as
+       * the note lists it. The episode's note follows its last waiter.
+       */
+      ran(key2, what) {
+        if (!this.#waiting.delete(key2)) return;
+        this.#named.delete(key2);
+        if (what !== void 0) this.#add(what);
+        this.#end();
+      }
+      /**
+       * `key` no longer waits and what it named never ran: another error took
+       * its write over (review 001-432, B1). Its names leave the note; an
+       * episode left with nothing that ran gives none.
+       */
+      abandoned(key2) {
+        if (!this.#waiting.delete(key2)) return;
+        const named = new Set(this.#named.get(key2) ?? []);
+        this.#named.delete(key2);
+        const kept2 = [...this.#named.values()].flat();
+        const waited = this.#waited.filter((what) => !named.has(what) || kept2.includes(what));
+        this.#waited.splice(0, this.#waited.length, ...waited);
+        this.#end();
+      }
+      /** The episode's note, once its last waiter is done and something ran. */
+      #end() {
+        if (this.#waiting.size > 0 || this.#since === null) return;
+        const waitedMs = this.#options.now() - this.#since;
+        const waited = this.#waited.splice(0);
+        this.#since = null;
+        if (waited.length > 0) this.#options.note(busyNote(waitedMs, waited));
+      }
+      #add(what) {
+        if (!this.#waited.includes(what)) this.#waited.push(what);
+      }
+    };
+  }
+});
+
 // src/core/store/connection.ts
+import { AsyncLocalStorage } from "node:async_hooks";
+async function withBusySlice(ms2, fn) {
+  const slice = { ms: ms2, live: true };
+  try {
+    return await slices.run(slice, fn);
+  } finally {
+    slice.live = false;
+  }
+}
+function withBusySliceSync(ms2, fn) {
+  const slice = { ms: ms2, live: true };
+  try {
+    return slices.run(slice, fn);
+  } finally {
+    slice.live = false;
+  }
+}
 function rollback(db) {
   try {
     db.exec("ROLLBACK");
@@ -4397,7 +4487,7 @@ function isBusy(error) {
   const code = error?.errcode;
   return typeof code === "number" && [5, 6].includes(code & 255);
 }
-var Connection;
+var Connection, slices;
 var init_connection = __esm({
   "src/core/store/connection.ts"() {
     "use strict";
@@ -4411,7 +4501,9 @@ var init_connection = __esm({
       }
       /** Runs a statement; returns the number of rows it changed. */
       run(sql, ...params) {
-        return Number(this.#statement(sql).run(...params).changes);
+        const statement = this.#statement(sql);
+        const changes = () => statement.run(...params).changes;
+        return Number(this.#depth > 0 ? changes() : this.#withinSlice(changes));
       }
       get(sql, ...params) {
         return this.#statement(sql).get(...params) ?? null;
@@ -4427,7 +4519,8 @@ var init_connection = __esm({
        */
       transaction(fn) {
         const savepoint = this.#depth > 0 ? `squeal_${this.#depth}` : null;
-        this.db.exec(savepoint === null ? "BEGIN IMMEDIATE" : `SAVEPOINT ${savepoint}`);
+        if (savepoint === null) this.#withinSlice(() => this.db.exec("BEGIN IMMEDIATE"));
+        else this.db.exec(`SAVEPOINT ${savepoint}`);
         this.#depth++;
         try {
           const result = fn();
@@ -4469,6 +4562,24 @@ var init_connection = __esm({
         this.#statements.clear();
         this.db.close();
       }
+      /**
+       * Runs `fn`, one statement that takes the write lock, with the busy slice
+       * of the caller's async context as its busy timeout when that is shorter,
+       * and restores the connection's own before returning (task 001-422). One
+       * synchronous call: no other statement runs while the slice is set.
+       */
+      #withinSlice(fn) {
+        const slice = slices.getStore();
+        if (slice === void 0 || !slice.live) return fn();
+        const own = Number(Object.values(this.#statement("PRAGMA busy_timeout").get() ?? {})[0]);
+        if (!(slice.ms < own)) return fn();
+        this.db.exec(`PRAGMA busy_timeout = ${slice.ms}`);
+        try {
+          return fn();
+        } finally {
+          this.db.exec(`PRAGMA busy_timeout = ${own}`);
+        }
+      }
       #statement(sql) {
         let statement = this.#statements.get(sql);
         if (statement === void 0) {
@@ -4478,6 +4589,7 @@ var init_connection = __esm({
         return statement;
       }
     };
+    slices = new AsyncLocalStorage();
   }
 });
 
@@ -6175,9 +6287,13 @@ var init_open = __esm({
 // src/core/store/index.ts
 var store_exports = {};
 __export(store_exports, {
+  BUSY_SLICE_MS: () => BUSY_SLICE_MS,
+  BusyWaits: () => BusyWaits,
   DEFAULT_BUSY_TIMEOUT_MS: () => DEFAULT_BUSY_TIMEOUT_MS,
   META_STORE_RECOVERED: () => META_STORE_RECOVERED,
   SCHEMA_VERSION: () => SCHEMA_VERSION,
+  busyBackoffMs: () => busyBackoffMs,
+  busyNote: () => busyNote,
   changeMarker: () => changeMarker,
   isBusy: () => isBusy,
   isStoreOpenFailure: () => isStoreOpenFailure,
@@ -6185,11 +6301,14 @@ __export(store_exports, {
   openStore: () => openStore,
   readTransaction: () => readTransaction,
   setBusyTimeout: () => setBusyTimeout,
-  storePaths: () => storePaths
+  storePaths: () => storePaths,
+  withBusySlice: () => withBusySlice,
+  withBusySliceSync: () => withBusySliceSync
 });
 var init_store3 = __esm({
   "src/core/store/index.ts"() {
     "use strict";
+    init_busy();
     init_connection();
     init_open();
     init_paths3();
@@ -11388,6 +11507,71 @@ var init_bootstrap = __esm({
   }
 });
 
+// src/core/scheduler/busy-resume.ts
+var PUMP, BusyResume;
+var init_busy_resume = __esm({
+  "src/core/scheduler/busy-resume.ts"() {
+    "use strict";
+    init_store3();
+    PUMP = "scheduler";
+    BusyResume = class {
+      #timer = null;
+      #attempts = 0;
+      #waiting = false;
+      #waits;
+      #resume;
+      constructor(waits, resume) {
+        this.#waits = waits;
+        this.#resume = resume;
+      }
+      /** A resume is scheduled: the scheduler is not idle. */
+      get pending() {
+        return this.#timer !== null;
+      }
+      /** A write gave up and none of the pump's has landed since. */
+      get waiting() {
+        return this.#waiting;
+      }
+      /** A write gave up; `what` waits for the pump to resume. */
+      gaveUp(what) {
+        this.#waiting = true;
+        this.#waits.waiting(PUMP, what);
+        if (this.#timer !== null) return;
+        this.#timer = setTimeout(
+          () => {
+            this.#timer = null;
+            this.#resume();
+          },
+          busyBackoffMs(this.#attempts++)
+        );
+      }
+      /** A write of the pump landed: the wait, if any, is over. */
+      landed() {
+        if (!this.#waiting) return;
+        this.#waiting = false;
+        this.#attempts = 0;
+        this.#waits.ran(PUMP);
+      }
+      /**
+       * Another error stopped the pump (review 001-432, B1): the resume
+       * scheduled is dropped, and what waited never ran, so the episode's note
+       * does not name it. A later `gaveUp` starts a wait again.
+       */
+      abandon() {
+        this.close();
+        if (!this.#waiting) return;
+        this.#waiting = false;
+        this.#attempts = 0;
+        this.#waits.abandoned(PUMP);
+      }
+      close() {
+        if (this.#timer !== null) clearTimeout(this.#timer);
+        this.#timer = null;
+      }
+    };
+  }
+});
+
 // src/core/scheduler/install-stamp.ts
 import { createHash as createHash15 } from "node:crypto";
 import { lstat as lstat5, readdir as readdir5 } from "node:fs/promises";
@@ -13140,11 +13324,13 @@ var init_scheduler2 = __esm({
     init_retry();
     init_revision();
     init_state3();
+    init_store3();
     init_text();
     init_types();
     init_backlog();
     init_batch();
     init_bootstrap();
+    init_busy_resume();
     init_capacity2();
     init_checkpoint_requests();
     init_claims();
@@ -13170,6 +13356,9 @@ var init_scheduler2 = __esm({
       constructor(options) {
         this.options = options;
         this.#install = new InstallStamps(options.root);
+        this.#busy = options.busyWaits === void 0 ? null : new BusyResume(options.busyWaits, () => {
+          if (this.#stalled && !this.#failed) this.#pump();
+        });
         this.#capacity = options.capacity === void 0 ? null : new TierCapacity(options.capacity, options.worktreeId, (message2) => this.#note(message2));
         this.#slow = new SlowTier(
           {
@@ -13217,6 +13406,8 @@ var init_scheduler2 = __esm({
       #stop = new AbortController();
       /** The pump stopped on an error; idle until the next batch or request. */
       #stalled = false;
+      /** The stall's error was not a busy store's: no busy resume restarts the pump (review 001-432, B1). */
+      #failed = false;
       /** No runner call until an install (`awaitsInstall`, task 001-100). */
       #awaitingInstall = false;
       /** Paths no runner saw change: edits the baseline queues recent (review wave 11, S2; `scan`). */
@@ -13227,6 +13418,8 @@ var init_scheduler2 = __esm({
       #install;
       /** The per-user pool's side of this scheduler (spec 001 D11 Capacity); `null` without one. */
       #capacity;
+      /** The pump's resume after a busy store (task 001-422); `null` without `busyWaits`. */
+      #busy;
       async start() {
         await this.#lock.run(async () => {
           if (this.#context) throw new Error("squeal scheduler: started twice");
@@ -13296,7 +13489,14 @@ var init_scheduler2 = __esm({
        * behind the running tier, let a revision lag the workspace by a whole
        * tier.
        */
-      async handleBatch(batch) {
+      handleBatch(batch) {
+        return this.#handleBatch(batch, this.options.busySliceMs);
+      }
+      /**
+       * `handleBatch`, the pass's writes waiting at most `sliceMs` on a busy
+       * store (task 001-422): only the change feed's batches, which it retries.
+       */
+      async #handleBatch(batch, sliceMs) {
         if (this.#closed || this.#reinstalled) return;
         await this.#lock.run(async () => {
           if (this.#reinstalled) return;
@@ -13306,29 +13506,34 @@ var init_scheduler2 = __esm({
             if (!this.#awaitingInstall) await this.#baseline(context, ledger);
             return;
           }
-          if (ledger.confirmHeld()) ledger.commit();
-          if (batch.trigger === "interval" && takeRetries(context, ledger)) ledger.commit();
-          const { applied, touched } = await reconcileBatch(context, ledger, batch);
-          const install = applied?.revision.changes.some((change2) => touchesInstall(change2.path));
-          if (install || batch.trigger === "interval") {
-            const { missing: missing2 } = await this.#install.check();
-            if (missing2 !== null) return this.#reinstall(ledger);
-          }
-          if (applied === null) {
-            if (touched.length > 0) this.#runnerWork.queueTouched(touched);
-            else if (batch.trigger === "interval") this.#runnerWork.queueRecheck();
-            return;
-          }
-          this.#slow.preempt();
-          for (const { tier } of this.#inFlight.values()) {
-            if (tier.cancel && cancelsBacklog(context, ledger, applied.revision, tier)) {
-              tier.cancel.abort();
-            }
-          }
-          this.#runnerWork.queueRefine(applied.revision, applied.content, touched);
+          const pass = () => this.#pass(context, ledger, batch);
+          await (sliceMs === void 0 ? pass() : withBusySlice(sliceMs, pass));
         });
         if (this.#reinstalled) this.#tellReinstall();
         else this.#pump();
+      }
+      /** `handleBatch` once the scheduler takes edits: the revision, then its runner work. */
+      async #pass(context, ledger, batch) {
+        if (ledger.confirmHeld()) ledger.commit();
+        if (batch.trigger === "interval" && takeRetries(context, ledger)) ledger.commit();
+        const { applied, touched } = await reconcileBatch(context, ledger, batch);
+        const install = applied?.revision.changes.some((change2) => touchesInstall(change2.path));
+        if (install || batch.trigger === "interval") {
+          const { missing: missing2 } = await this.#install.check();
+          if (missing2 !== null) return this.#reinstall(ledger);
+        }
+        if (applied === null) {
+          if (touched.length > 0) this.#runnerWork.queueTouched(touched);
+          else if (batch.trigger === "interval") this.#runnerWork.queueRecheck();
+          return;
+        }
+        this.#slow.preempt();
+        for (const { tier } of this.#inFlight.values()) {
+          if (tier.cancel && cancelsBacklog(context, ledger, applied.revision, tier)) {
+            tier.cancel.abort();
+          }
+        }
+        this.#runnerWork.queueRefine(applied.revision, applied.content, touched);
       }
       /** The baseline, at start or at the install that ends a wait; the wait ends in the store with it. */
       async #baseline(context, ledger) {
@@ -13379,7 +13584,9 @@ var init_scheduler2 = __esm({
           if (warmUp2) this.#warmUp.start(this.#started().context, ledger, record2);
           return record2;
         };
-        if (this.#awaitingInstall) await this.handleBatch({ trigger: "interval", paths: [] });
+        if (this.#awaitingInstall) {
+          await this.#handleBatch({ trigger: "interval", paths: [] }, void 0);
+        }
         this.#slow.preempt();
         const record = await this.#lock.run(() => {
           const { ledger } = this.#started();
@@ -13473,6 +13680,7 @@ var init_scheduler2 = __esm({
       async #close() {
         this.#closed = true;
         this.#slow.close();
+        this.#busy?.close();
         this.#notify();
         await this.#pumping;
         this.#capacity?.close();
@@ -13521,6 +13729,7 @@ var init_scheduler2 = __esm({
           return;
         }
         this.#stalled = false;
+        this.#failed = false;
         this.#asked = false;
         this.#pumping = (async () => {
           try {
@@ -13554,6 +13763,7 @@ var init_scheduler2 = __esm({
                 if (this.#runnerWork.size > 0) return "runner-work";
                 return selectTier(context, ledger, new Set(this.#inFlight.keys()));
               });
+              this.#busy?.landed();
               if (next === "runner-work") continue;
               if (next !== null) {
                 this.#fly(next, install.stamp, null);
@@ -13583,7 +13793,8 @@ var init_scheduler2 = __esm({
             this.#pumping = null;
             if (this.#reinstalled) this.#tellReinstall();
             const again = !this.#stalled || this.#asked;
-            if (!this.#closed && again && this.#hasWork()) this.#pump();
+            const work = this.#hasWork() || this.#busy?.waiting === true;
+            if (!this.#closed && again && work) this.#pump();
             else if (this.#isIdle()) for (const resolve22 of this.#idle.splice(0)) resolve22();
           }
         })();
@@ -13643,12 +13854,13 @@ var init_scheduler2 = __esm({
               });
             });
             recorded2 = true;
+            this.#busy?.landed();
             for (const note of withheld) this.#note(note);
             slow?.slot.release();
             if (moved2.length > 0) await this.#reconcilePaths(moved2);
             if (slow !== null) await this.#releaseIfDrained(tier.lane);
           } catch (error) {
-            this.#stall(error);
+            this.#stall(error, `${plural(tier.files.length, "file")} of a tier queued again`);
             if (!recorded2) await this.#requeue(tier, slow !== null);
           } finally {
             slow?.slot.release();
@@ -13714,10 +13926,23 @@ var init_scheduler2 = __esm({
         this.#wake = null;
         wake?.();
       }
-      /** A tier's error: the pump stops with a note until the next batch or request. */
-      #stall(error) {
+      /**
+       * A tier's error: the pump stops with a note until the next batch or
+       * request. A busy store's, with `busyWaits`, stops it until `#busy`
+       * resumes it, with no note: `waiting` is what its episode's note names.
+       * Any other error wins: a resume armed before it, or by a lane's busy
+       * record after it, starts nothing until a batch or request does.
+       */
+      #stall(error, waiting = "the next tier") {
         this.#stalled = true;
         this.#asked = false;
+        if (this.#busy !== null && isBusy(error)) {
+          if (!this.#failed) this.#busy.gaveUp(waiting);
+          this.#notify();
+          return;
+        }
+        this.#failed = true;
+        this.#busy?.abandon();
         this.#note(`scheduler stopped running tiers: ${String(error)}`);
         this.options.onError?.(error instanceof Error ? error : new Error(String(error)));
         this.#notify();
@@ -13782,17 +14007,20 @@ var init_scheduler2 = __esm({
             ledger.commit();
             if (slow) this.#slow.ended();
           } catch (error) {
-            this.#note(`could not record the re-queued tier: ${String(error)}`);
+            if (this.#busy === null || !isBusy(error)) {
+              this.#note(`could not record the re-queued tier: ${String(error)}`);
+            }
           }
         });
       }
       async #reconcilePaths(paths) {
         const { context } = this.#started();
         const candidates = await statCandidates(paths, context.hasher);
-        await this.handleBatch({ trigger: "watch", paths: candidates });
+        await this.#handleBatch({ trigger: "watch", paths: candidates }, void 0);
       }
       #isIdle() {
         if (this.#closed) return true;
+        if (this.#busy?.pending === true) return false;
         return this.#pumping === null && (this.#stalled || !this.#hasWork());
       }
       #started() {
@@ -16014,6 +16242,66 @@ var init_atomic_save = __esm({
   }
 });
 
+// src/core/watcher/batch-retry.ts
+function toError(error) {
+  return error instanceof Error ? error : new Error(String(error));
+}
+var BatchRetries;
+var init_batch_retry = __esm({
+  "src/core/watcher/batch-retry.ts"() {
+    "use strict";
+    BatchRetries = class {
+      #wake = null;
+      #closed = false;
+      #retry;
+      #onError;
+      constructor(retry, onError) {
+        this.#retry = retry;
+        this.#onError = onError;
+      }
+      /** `error` of a batch task: reported, or retried with `pass` while `retry` accepts it. */
+      async failed(error, pass) {
+        const retry = this.#retry;
+        if (pass === void 0 || retry === void 0 || !retry.accepts(error)) {
+          this.#onError(error);
+          return;
+        }
+        for (let attempt = 0; ; attempt++) {
+          await this.#pause(retry.delayMs(attempt));
+          if (this.#closed) return;
+          try {
+            await pass();
+            retry.ran();
+            return;
+          } catch (again) {
+            const failure2 = toError(again);
+            if (retry.accepts(failure2)) continue;
+            retry.ran();
+            this.#onError(failure2);
+            return;
+          }
+        }
+      }
+      close() {
+        this.#closed = true;
+        this.#wake?.();
+      }
+      /** Waits `ms`, or until `close`. */
+      #pause(ms2) {
+        if (ms2 <= 0 || this.#closed) return Promise.resolve();
+        return new Promise((resolve22) => {
+          const timer = setTimeout(() => this.#wake?.(), ms2);
+          this.#wake = () => {
+            clearTimeout(timer);
+            this.#wake = null;
+            resolve22();
+          };
+        });
+      }
+    };
+  }
+});
+
 // src/core/watcher/debounce.ts
 var Debouncer;
 var init_debounce = __esm({
@@ -16338,6 +16626,7 @@ var init_change_feed = __esm({
     init_types();
     init_atomic_save();
     init_backend();
+    init_batch_retry();
     init_candidates();
     init_debounce();
     init_exclusions();
@@ -16350,6 +16639,7 @@ var init_change_feed = __esm({
     Feed = class {
       constructor(options) {
         this.options = options;
+        this.retries = new BatchRetries(options.retry, options.onError);
         this.root = options.root;
         this.unlisted = new UnlistedDirs(this.root);
         this.backend = options.backend ?? createWatcherBackend(process.platform);
@@ -16388,6 +16678,7 @@ var init_change_feed = __esm({
       unlisted;
       idleTimer = null;
       closed = false;
+      retries;
       async start() {
         this.root = await realpath7(this.root);
         this.unlisted = new UnlistedDirs(this.root);
@@ -16409,10 +16700,13 @@ var init_change_feed = __esm({
         }
         const pending = { trigger, done: Promise.resolve() };
         this.pending = pending;
-        pending.done = this.enqueue(() => {
-          this.pending = null;
-          return this.reconcileNow(pending.trigger);
-        });
+        pending.done = this.enqueue(
+          () => {
+            this.pending = null;
+            return this.reconcileNow(pending.trigger);
+          },
+          () => pending.trigger
+        );
         return pending.done;
       }
       setExtraFiles(paths) {
@@ -16426,6 +16720,7 @@ var init_change_feed = __esm({
         this.debouncer.cancel();
         this.tempHold.close();
         if (this.idleTimer) clearTimeout(this.idleTimer);
+        this.retries.close();
         await this.sub?.close();
         await this.queue;
         await this.linked?.close();
@@ -16454,21 +16749,24 @@ var init_change_feed = __esm({
         void this.reconcile("dropped-events");
       }
       onDebounced(paths) {
-        void this.enqueue(async () => {
-          const specChanged = paths.some((p) => SPEC_INPUTS.has(basename10(p)));
-          if (specChanged) this.unlisted.clear();
-          let widened = specChanged ? await this.rebuildSpec() : false;
-          const hinted = await candidatesFromHints(this.context(), paths);
-          const ignoredDirs2 = hinted.ignoredDirs.filter((dir2) => !this.unlisted.holds(dir2));
-          if (ignoredDirs2.length > 0 && !specChanged) {
-            const before = this.spec;
-            widened = await this.rebuildSpec();
-            if (this.spec === before) await this.unlisted.record(ignoredDirs2);
-          }
-          const kept2 = this.tempHold.filter(hinted.paths, this.trackedPaths);
-          if (kept2.length > 0) await this.emit({ trigger: "watch", paths: kept2 });
-          if (widened || await this.relinked(hinted)) await this.reconcileNow("watch");
-        });
+        void this.enqueue(
+          async () => {
+            const specChanged = paths.some((p) => SPEC_INPUTS.has(basename10(p)));
+            if (specChanged) this.unlisted.clear();
+            let widened = specChanged ? await this.rebuildSpec() : false;
+            const hinted = await candidatesFromHints(this.context(), paths);
+            const ignoredDirs2 = hinted.ignoredDirs.filter((dir2) => !this.unlisted.holds(dir2));
+            if (ignoredDirs2.length > 0 && !specChanged) {
+              const before = this.spec;
+              widened = await this.rebuildSpec();
+              if (this.spec === before) await this.unlisted.record(ignoredDirs2);
+            }
+            const kept2 = this.tempHold.filter(hinted.paths, this.trackedPaths);
+            if (kept2.length > 0) await this.emit({ trigger: "watch", paths: kept2 });
+            if (widened || await this.relinked(hinted)) await this.reconcileNow("watch");
+          },
+          () => "watch"
+        );
       }
       async reconcileNow(trigger) {
         const status2 = await gitStatus(this.root);
@@ -16519,14 +16817,18 @@ var init_change_feed = __esm({
         if (this.closed) return;
         await this.options.onBatch(batch);
       }
-      /** Runs tasks one at a time. A failed task is reported and does not stop the queue. */
-      enqueue(task) {
+      /**
+       * Runs tasks one at a time. A failed task is reported and does not stop the
+       * queue; one that delivers batches names the trigger it retries as (`retry`).
+       */
+      enqueue(task, retryAs) {
         const run4 = this.queue.then(async () => {
           if (this.closed) return;
           try {
             await task();
           } catch (error) {
-            this.options.onError(error instanceof Error ? error : new Error(String(error)));
+            const pass = retryAs && (() => this.reconcileNow(retryAs()));
+            await this.retries.failed(toError(error), pass);
           } finally {
             this.armIdle();
           }
@@ -16596,7 +16898,7 @@ function createDaemonLoop(options) {
     ...rest,
     head: () => readHead(options.root),
     onExtraFiles: (paths) => {
-      feed?.setExtraFiles(paths).catch((error) => options.onError(toError(error)));
+      feed?.setExtraFiles(paths).catch((error) => options.onError(toError2(error)));
     }
   });
   return {
@@ -16608,6 +16910,7 @@ function createDaemonLoop(options) {
         root: options.root,
         onBatch: (batch) => scheduler.handleBatch(batch),
         onError: options.onError,
+        ...options.busyWaits === void 0 ? {} : { retry: passRetry(scheduler, options.busyWaits) },
         ...onDropped === void 0 ? {} : { onDropped },
         ...backend === void 0 ? {} : { backend },
         ...timings === void 0 ? {} : { timings },
@@ -16630,16 +16933,37 @@ function createDaemonLoop(options) {
     }
   };
 }
-function toError(error) {
+function passRetry(scheduler, waits) {
+  let before = null;
+  return {
+    accepts: (error) => {
+      if (!isBusy(error)) return false;
+      before ??= scheduler.status().revision;
+      waits.waiting(PASS);
+      return true;
+    },
+    delayMs: busyBackoffMs,
+    ran: () => {
+      const revision = scheduler.status().revision;
+      const stored = before !== null && revision !== before;
+      before = null;
+      waits.ran(PASS, stored ? `revision ${revision}` : "a reconciliation pass");
+    }
+  };
+}
+function toError2(error) {
   return error instanceof Error ? error : new Error(String(error));
 }
+var PASS;
 var init_daemon_loop = __esm({
   "src/core/daemon-loop/index.ts"() {
     "use strict";
     init_scheduler3();
+    init_store3();
     init_watcher2();
     init_head();
     init_head();
+    PASS = "pass";
   }
 });
 
@@ -46042,7 +46366,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.202";
+  if (true) return "0.1.203";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -49201,6 +49525,84 @@ init_liveness();
 // src/core/daemon/lifecycle.ts
 init_store3();
 init_types();
+
+// src/core/daemon/sliced-writes.ts
+init_store3();
+var SlicedWrites = class {
+  #pending = /* @__PURE__ */ new Map();
+  /** Groups that gave up in this episode: each is told to `busyWaits` once it ran. */
+  #waited = /* @__PURE__ */ new Set();
+  #timer = null;
+  #attempt = 0;
+  #stopped = false;
+  #context;
+  constructor(context) {
+    this.#context = context;
+  }
+  /**
+   * Runs `steps`, the writes of group `what`, unless its retry is pending.
+   * While another group's is, the store is busy: it waits for the same retry.
+   */
+  run(what, steps) {
+    if (this.#stopped || this.#pending.has(what)) return;
+    if (this.#pending.size === 0) {
+      this.#run(what, steps);
+      return;
+    }
+    this.#context.busyWaits?.waiting(what, what);
+    this.#waited.add(what);
+    this.#pending.set(what, steps);
+  }
+  stop() {
+    this.#stopped = true;
+    if (this.#timer !== null) clearTimeout(this.#timer);
+    this.#timer = null;
+    this.#pending.clear();
+  }
+  /** Runs the group; false when a step gave up on a busy store and the rest is pending. */
+  #run(what, steps) {
+    const waits = this.#context.busyWaits;
+    for (const [step, fn] of steps) {
+      try {
+        if (waits === void 0) fn();
+        else withBusySliceSync(BUSY_SLICE_MS, fn);
+      } catch (error) {
+        if (waits === void 0 || !isBusy(error)) {
+          this.#context.log(`${step} failed: ${String(error)}`);
+          continue;
+        }
+        waits.waiting(what, what);
+        this.#waited.add(what);
+        this.#pending.set(what, steps);
+        this.#arm();
+        return false;
+      }
+    }
+    if (this.#waited.delete(what)) waits?.ran(what);
+    return true;
+  }
+  #arm() {
+    if (this.#timer !== null) return;
+    this.#timer = setTimeout(
+      () => {
+        this.#timer = null;
+        this.#retry();
+      },
+      busyBackoffMs(this.#attempt++)
+    );
+    this.#timer.unref();
+  }
+  #retry() {
+    for (const [what, steps] of [...this.#pending]) {
+      if (this.#stopped) return;
+      this.#pending.delete(what);
+      if (!this.#run(what, steps)) return;
+    }
+    this.#attempt = 0;
+  }
+};
+
+// src/core/daemon/lifecycle.ts
 function startTimers(context) {
   const { store, worktreeId, now, timings } = context;
   const idleMs = context.policy.daemon.idleExitMinutes * 6e4;
@@ -49220,6 +49622,7 @@ function startTimers(context) {
       context.log(`${what} failed: ${String(error)}`);
     }
   };
+  const retries = new SlicedWrites(context);
   const check = () => {
     if (!existsSync11(context.root)) {
       context.shutdown("root-removed", `daemon stopped: worktree root ${context.root} was deleted`);
@@ -49235,7 +49638,9 @@ function startTimers(context) {
     const at2 = now();
     if (at2 - lastExpire >= expireMs) {
       lastExpire = at2;
-      attempt("consumer expiry", () => expireConsumers(store, at2, { locksDir }));
+      retries.run("consumer expiry", [
+        ["consumer expiry", () => expireConsumers(store, now(), { locksDir })]
+      ]);
     }
     attempt("idle check", () => {
       if (presence.lastPresentAt !== null || !countPresence(at2)) return;
@@ -49298,11 +49703,11 @@ function startTimers(context) {
       );
     }
   });
-  const heartbeat = () => {
-    attempt("heartbeat", () => store.worktrees.heartbeat(worktreeId, now()));
-    attempt("harness check", () => dropGoneHarnesses(store, worktreeId, now(), { locksDir }));
-    attempt("leaving check", () => dropLeft(store, worktreeId, now(), { locksDir }));
-  };
+  const heartbeat = () => retries.run("the heartbeat", [
+    ["heartbeat", () => store.worktrees.heartbeat(worktreeId, now())],
+    ["harness check", () => dropGoneHarnesses(store, worktreeId, now(), { locksDir })],
+    ["leaving check", () => dropLeft(store, worktreeId, now(), { locksDir })]
+  ]);
   const observedKeys = context.policy.nodeTest.flatMap(({ name: name2 }) => [
     nodeTestObservedMetaKey(name2),
     nodeTestObservedPreloadsMetaKey(name2)
@@ -49319,13 +49724,16 @@ function startTimers(context) {
     const read4 = readObserved();
     if (read4 !== seen.snapshot && context.observedChanged?.() === true) seen.snapshot = read4;
   });
-  const prune5 = () => attempt("prune", () => {
-    store.prune({
-      now: now(),
-      retentionDays: context.policy.store.retentionDays,
-      maxSizeMb: context.policy.store.maxSizeMb
-    });
-  });
+  const prune5 = () => retries.run("pruning", [
+    [
+      "prune",
+      () => store.prune({
+        now: now(),
+        retentionDays: context.policy.store.retentionDays,
+        maxSizeMb: context.policy.store.maxSizeMb
+      })
+    ]
+  ]);
   const timers = [
     setInterval(heartbeat, context.heartbeatMs),
     setInterval(check, checkMs),
@@ -49338,6 +49746,7 @@ function startTimers(context) {
   return () => {
     for (const timer of timers) clearInterval(timer);
     clearTimeout(first);
+    retries.stop();
   };
 }
 var SLOW_FILES = "slow files";
@@ -49996,6 +50405,7 @@ async function startDaemon(options) {
   }
   return daemon.start(desk);
 }
+var BUSY_TOPIC = "daemon:store-busy";
 var Daemon = class {
   constructor(opened, options) {
     this.opened = opened;
@@ -50008,6 +50418,10 @@ var Daemon = class {
     this.#lastActive = this.#startedAt;
     this.#lastUsed = this.#startedAt;
     this.#presence = { since: this.#startedAt, lastPresentAt: null };
+    this.#busyWaits = new BusyWaits({
+      now: this.#now,
+      note: (text2) => this.#note(text2, void 0, void 0, BUSY_TOPIC)
+    });
     this.#repositoryRoot = repositoryRootOf(opened.root, opened.commonDir);
     this.#capacity = capacityReader({
       repositoryRoot: this.#repositoryRoot,
@@ -50060,6 +50474,8 @@ var Daemon = class {
   #presence;
   /** Task 003-42: a timer restart starts from the snapshot its predecessor took. */
   #observedSeen = {};
+  /** What waits for a busy store, the pass's, the pump's and the timers' writes (task 001-422). */
+  #busyWaits;
   #exit = null;
   /** `#register` committed: only then has its shutdown a mark to write (task 001-276). */
   #registered = false;
@@ -50142,6 +50558,7 @@ var Daemon = class {
       owedWork: () => this.#loop !== null && this.#phase !== "stopping" ? this.#loop.scheduler.owedWork() : null,
       note: (text2) => this.#note(text2),
       log: this.#log,
+      busyWaits: this.#busyWaits,
       shutdown: (reason2, text2) => void this.#shutdown(reason2, 0, text2)
     });
   }
@@ -50326,7 +50743,10 @@ var Daemon = class {
         runsDir: storePaths2(commonDir).runsDir,
         describeFailure: describeFailure2,
         now: this.#now,
-        onError: (error) => this.#note(`daemon error: ${error.message}`),
+        // Task 001-422: a busy store's error was retried or noted by its subject; no bare note.
+        onError: (error) => isBusy(error) ? this.#log(`daemon error: ${error.message}`) : this.#note(`daemon error: ${error.message}`),
+        busySliceMs: BUSY_SLICE_MS,
+        busyWaits: this.#busyWaits,
         // Task 001-113: a fresh daemon waits for the install with no runner open.
         onReinstall: (note) => void this.#shutdown("reinstalled", 0, note),
         onDropped: (reason2) => this.#note(`watcher dropped events (${reason2}); a full reconciliation follows`),

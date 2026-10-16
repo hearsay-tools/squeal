@@ -320,6 +320,10 @@ function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+// src/core/store/connection.ts
+import { AsyncLocalStorage } from "node:async_hooks";
+var slices = new AsyncLocalStorage();
+
 // src/core/store/open.ts
 import { DatabaseSync } from "node:sqlite";
 
