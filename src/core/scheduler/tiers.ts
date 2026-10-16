@@ -291,15 +291,20 @@ function startable(ledger: Ledger, p: TierFile): TierFile[] {
 }
 
 /**
- * Runs a tier; with `observeIgnored`, for a warm-up (task 001-307). Never
- * rejects: a runner that throws is a crash (D12).
+ * Runs a tier; with `observeIgnored`, for a warm-up (task 001-307). `stop`,
+ * a `squeal stop`, cancels it whatever its kind, as an edit cancels a
+ * backlog tier (D10, task 001-367). Never rejects: a runner that throws is a
+ * crash (D12).
  */
 export async function executeTier(
   context: SchedulerContext,
   tier: Tier,
   observeIgnored = false,
+  stop?: AbortSignal,
 ): Promise<RunReport> {
   const started = context.now();
+  const signals = [tier.cancel?.signal, stop].filter((signal) => signal !== undefined);
+  const signal = signals.length > 1 ? AbortSignal.any(signals) : signals[0];
   try {
     return await context.runner.run(
       tier.files.map((f) => f.file.ref),
@@ -307,7 +312,7 @@ export async function executeTier(
         runId: tier.runId,
         logDir: tier.logDir,
         timeoutMs: context.policy.runner.timeoutMs,
-        ...(tier.cancel === null ? {} : { signal: tier.cancel.signal }),
+        ...(signal === undefined ? {} : { signal }),
         lane: tier.lane,
         ...(observeIgnored ? { observeIgnored } : {}),
         ...(tier.lease === undefined ? {} : { workers: tier.lease.grant }),
@@ -323,6 +328,12 @@ export async function executeTier(
       failure: error instanceof Error ? error.message : String(error),
     };
   }
+}
+
+/** The ids of the tier's files `report` does not complete. */
+export function unfinishedFiles(tier: Tier, report: RunReport): string[] {
+  const completed = new Set(report.completedFiles.map(testFileId));
+  return tier.files.map(({ file }) => file.id).filter((id) => !completed.has(id));
 }
 
 /** The tier is no longer in flight: recorded, or put back after an error. Once per tier. */

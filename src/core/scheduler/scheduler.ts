@@ -11,6 +11,7 @@ import {
   isSlowLane,
   type RelativePath,
   type Scheduler,
+  type SchedulerCloseOptions,
   type SchedulerStatus,
   type SlowSuiteRequest,
 } from "../types/index.js";
@@ -52,6 +53,7 @@ import {
   recordTier,
   selectTier,
   type Tier,
+  unfinishedFiles,
   unstableInputs,
 } from "./tiers.js";
 import { WarmUp } from "./warm-up.js";
@@ -95,6 +97,9 @@ class TierScheduler implements Scheduler {
   /** The pump was asked for while it ran: once stopped on an error, it starts again. */
   #asked = false;
   #closed = false;
+  #closing: Promise<void> | null = null;
+  /** Aborted by a `squeal stop`'s close: every tier in flight is cancelled (D10, task 001-367). */
+  readonly #stop = new AbortController();
   /** The pump stopped on an error; idle until the next batch or request. */
   #stalled = false;
   /** No runner call until an install (`awaitsInstall`, task 001-100). */
@@ -398,8 +403,14 @@ class TierScheduler implements Scheduler {
     return this.#context?.keys.extraFiles() ?? [];
   }
 
-  async close(): Promise<void> {
-    if (this.#closed) return;
+  close(options: SchedulerCloseOptions = {}): Promise<void> {
+    // Task 001-367: a stop cancels the tiers in flight, under a close already begun too.
+    if (options.cancel === true) this.#stop.abort();
+    this.#closing ??= this.#close();
+    return this.#closing;
+  }
+
+  async #close(): Promise<void> {
     this.#closed = true;
     this.#slow.close();
     this.#notify();
@@ -480,7 +491,7 @@ class TierScheduler implements Scheduler {
             continue;
           }
           const next = await this.#lock.run(() => {
-            if (this.#awaitingInstall || this.#reinstalled) return null;
+            if (this.#closed || this.#awaitingInstall || this.#reinstalled) return null;
             const { context, ledger } = this.#started();
             if (install.missing !== null) {
               this.#reinstall(ledger);
@@ -536,7 +547,12 @@ class TierScheduler implements Scheduler {
       let recorded = false;
       const withheld: string[] = [];
       try {
-        const ran = await executeTier(context, tier, this.#warmUp.observes(tier));
+        const ran = await executeTier(
+          context,
+          tier,
+          this.#warmUp.observes(tier),
+          this.#stop.signal,
+        );
         const ignored = await this.#warmUp.read(context, tier, ran);
         // The completion barrier (task 001-168): a touch since selection withholds the run.
         const inputs = await unstableInputs(context, tier);
@@ -565,11 +581,14 @@ class TierScheduler implements Scheduler {
             withheld.push(...notes.filter((note) => note !== null));
           }
           // Only the first withholds are queued again; the exhausted files, forced or not, record
-          // the withheld report and are `unknown` in the same commit (review 007-33, B1).
+          // the withheld report and are `unknown` in the same commit (review 007-33, B1). What a
+          // stop's cancel cut short stays queued for the next daemon (D10, task 001-367).
+          const unfinished = this.#stop.signal.aborted ? unfinishedFiles(tier, ran) : [];
+          const again = [...(withhold?.again.map(({ file }) => file.id) ?? []), ...unfinished];
           const requeue =
-            installMoved || withhold === null
+            installMoved || (withhold === null && unfinished.length === 0)
               ? installMoved
-              : new Set(withhold.again.map(({ file }) => file.id));
+              : new Set(again);
           // Spec 004 D8: a slow run's artifact and activity go with its results (review wave 2, B1, B2).
           return context.store.transaction(() => {
             this.#warmUp.record(context, ignored);

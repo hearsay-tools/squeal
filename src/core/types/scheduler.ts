@@ -341,6 +341,15 @@ export interface Scheduler {
    * installed lockfile (D2). For `ChangeFeed.setExtraFiles`.
    */
   extraFiles(): readonly RelativePath[];
-  /** Waits for the tier in flight, starts no other, abandons an open checkpoint. */
-  close(): Promise<void>;
+  /**
+   * Waits for the tiers in flight, starts no other, abandons an open
+   * checkpoint. With `cancel`, also during a close already begun, the tiers
+   * in flight are cancelled first (`squeal stop`, D10, task 001-367).
+   */
+  close(options?: SchedulerCloseOptions): Promise<void>;
+}
+
+export interface SchedulerCloseOptions {
+  /** Cancel every tier in flight, as a timeout stops one; what it cut short stays queued. */
+  readonly cancel?: boolean;
 }

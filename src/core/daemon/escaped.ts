@@ -129,6 +129,16 @@ export class EscapedChildren {
   }
 
   /**
+   * A stop's cancel past its grace (D10, task 001-367): every carrier of the
+   * mark, any lane's, while the runners are still open. The group's unmarked
+   * members, such as esbuild's service, wait for the exit.
+   */
+  async stopMarked(): Promise<StopNote | null> {
+    const stopped = (await this.#stop("marked")).map(({ stopped }) => stopped);
+    return describe(stopped, "a test still running when squeal stop cancelled its tier");
+  }
+
+  /**
    * The daemon's own children, every thread's, that carry `lane`'s mark and
    * started since `since`, for `lowerWhile` (001 D11 Priority, task 001-393):
    * a Vitest fork worker, or a thread worker's child, from its start. Read
@@ -210,8 +220,8 @@ export class EscapedChildren {
     this.#orphanMarks = new Map(members.map((entry, i) => [key(entry), { entry, mark: marks[i] }]));
   }
 
-  /** `scope` `null` is the exit. */
-  async #stop(scope: Scope | null): Promise<{ found: Found; stopped: Stopped }[]> {
+  /** `scope` `null` is the exit; `"marked"`, a stop's cancel (`stopMarked`). */
+  async #stop(scope: Sweep): Promise<{ found: Found; stopped: Stopped }[]> {
     if (process.platform !== "linux") return [];
     const left = await this.#workersGone(scope);
     const stopped: { found: Found; stopped: Stopped }[] = [];
@@ -251,8 +261,9 @@ export class EscapedChildren {
    * rest; one still exiting is no link to the daemon (`statOf`), so its
    * children are taken as orphans, named with its pid alone.
    */
-  async #workersGone(scope: Scope | null): Promise<ProcessEntry[]> {
-    const since = scope?.since ?? this.#born;
+  async #workersGone(scope: Sweep): Promise<ProcessEntry[]> {
+    const lane = typeof scope === "object" ? scope : null;
+    const since = lane?.since ?? this.#born;
     const children = childrenOf(this.#self).flatMap((pid) => {
       const life = lifeOf(pid);
       return life !== null && life.start >= since ? [life] : [];
@@ -260,16 +271,23 @@ export class EscapedChildren {
     const marks = await Promise.all(children.map(({ pid }) => this.#markOf(pid)));
     const waited = children.filter(
       (child, i) =>
-        child.dying || (scope === null ? marks[i] !== undefined : marks[i] === scope.lane),
+        child.dying || (lane === null ? marks[i] !== undefined : marks[i] === lane.lane),
     );
     return gone(waited);
   }
 
-  async #find(entries: readonly ProcessEntry[], scope: Scope | null): Promise<Found[]> {
+  async #find(entries: readonly ProcessEntry[], sweep: Sweep): Promise<Found[]> {
+    const others = entries.filter(({ pid }) => pid !== this.#self);
+    if (sweep === "marked") {
+      const marks = await Promise.all(
+        others.map(({ pid, start }) => (start >= this.#born ? this.#markOf(pid) : undefined)),
+      );
+      return others.flatMap((entry, i) => (marks[i] === undefined ? [] : [{ entry, own: false }]));
+    }
+    const scope = sweep;
     const strangers = await this.#strangers.catch(() => null);
     const descendants = descendantsOf([this.#self], entries);
     const foreign = strangers === null ? new Set<number>() : lineOf(strangers, entries);
-    const others = entries.filter(({ pid }) => pid !== this.#self);
     // The earliest start any rule below reaches back to.
     const since = scope === null ? this.#born : Math.min(scope.since, scope.alone ?? scope.since);
     const marks = await Promise.all(
@@ -317,6 +335,9 @@ interface Scope {
   readonly since: number;
   readonly alone: number | null;
 }
+
+/** What a stop reaches: after a run, every carrier at a stop's cancel, or `null`, the exit. */
+type Sweep = Scope | "marked" | null;
 
 /** A process a stop reaches; `own`, by the mark of the run's lane. */
 interface Found {

@@ -1,5 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { recordedDaemon } from "../core/daemon/ensure.js";
+import { type DaemonMarks, type Leftover, leftovers, marksOf } from "../core/daemon/leftovers.js";
 import { acquireDaemonLock } from "../core/daemon/lock.js";
 import { lstatOrNull, resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
 import { lockFileFor } from "../core/store/index.js";
@@ -7,18 +8,33 @@ import type { AbsolutePath } from "../core/types/index.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 
-/** Shutdown waits for the tier in flight (D10); the CLI waits this long before saying so. */
-const STOP_WAIT_MS = 60_000;
 /**
- * Task 001-340: after its socket goes, the daemon releases its lock, a few
- * milliseconds that an I/O stall on a loaded host stretched past 8 s (task
- * 001-337). The CLI waits this long for it, the wait a daemon spawned
- * meanwhile gives the lock (`VACANT_LOCK_WAIT_MS`).
+ * How long `squeal stop` waits (D10, tasks 001-340, 001-367): for the
+ * daemon's socket to go, a stop cancelling its tiers within seconds; then for
+ * its lock, which after the socket goes it releases within milliseconds that
+ * an I/O stall on a loaded host stretched past 8 s (task 001-337), the wait a
+ * daemon spawned meanwhile gives the lock (`VACANT_LOCK_WAIT_MS`); then for
+ * the processes it started, which its exit stopped before the lock went.
  */
-const LOCK_WAIT_MS = 30_000;
+export interface StopBounds {
+  readonly socketMs: number;
+  readonly lockMs: number;
+  readonly leftoversMs: number;
+}
 
-/** `squeal stop [root]`: asks the worktree's daemon to shut down and waits for it to go. */
-export async function stopCommand(args: readonly string[], io: CliIo): Promise<number> {
+export const STOP_BOUNDS: StopBounds = { socketMs: 60_000, lockMs: 30_000, leftoversMs: 10_000 };
+
+/**
+ * `squeal stop [root]`: asks the worktree's daemon to shut down and waits for
+ * it and every process it started to go, the step before deleting a worktree.
+ * Exits 0 once they are gone or no daemon ran, 1 past a bound, saying what is
+ * left.
+ */
+export async function stopCommand(
+  args: readonly string[],
+  io: CliIo,
+  bounds: StopBounds = STOP_BOUNDS,
+): Promise<number> {
   if (args.length > 1 || args[0]?.startsWith("-")) {
     io.stderr("usage: squeal stop [root]\n");
     return 2;
@@ -28,6 +44,8 @@ export async function stopCommand(args: readonly string[], io: CliIo): Promise<n
   const socketPath = await daemonSocket(root);
   const ping = await askDaemon(socketPath, { type: "ping" }).catch(() => null);
   const daemon = ping?.ok === true && ping.type === "ping" ? ping : null;
+  // Read while it runs: its record's token is its children's mark, its group may be theirs.
+  const marks = daemon === null ? null : marksOf(daemon.pid, tokenOf(root, daemon));
   const response = await askDaemon(socketPath, { type: "stop" });
   if (response === null) {
     io.stdout(`No daemon running for ${root}\n`);
@@ -37,30 +55,65 @@ export async function stopCommand(args: readonly string[], io: CliIo): Promise<n
     io.stderr(`squeal: the daemon refused to stop: ${response.error}\n`);
     return 1;
   }
-  const deadline = Date.now() + STOP_WAIT_MS;
+  const deadline = Date.now() + bounds.socketMs;
   while ((await askDaemon(socketPath, { type: "ping" }).catch(() => "busy")) !== null) {
     if (Date.now() > deadline) {
-      io.stdout(`Stop requested; the daemon for ${root} is finishing the tier in flight\n`);
-      return 0;
+      const which = daemon === null ? "" : ` (pid ${daemon.pid})`;
+      io.stdout(
+        `Stop requested; the daemon for ${root}${which} still serves after ${seconds(bounds.socketMs)}\n`,
+      );
+      return 1;
     }
     await sleep(50);
   }
-  const lock = await lockFreed(root, daemon, LOCK_WAIT_MS);
-  const after = `${LOCK_WAIT_MS / 1_000} s`;
+  const lock = await lockFreed(root, daemon, bounds.lockMs);
+  const after = seconds(bounds.lockMs);
   if (lock.state === "held") {
     io.stdout(
       `Stop requested; the daemon for ${root} closed its socket but still holds its lock after ${after}\n`,
     );
-    return 0;
+    return 1;
   }
   if (lock.state === "unchecked") {
     io.stdout(
       `Stop requested; the daemon for ${root} closed its socket, and whether it still holds its lock could not be checked after ${after}: ${lock.error}\n`,
     );
-    return 0;
+    return 1;
+  }
+  const left = marks === null ? [] : await leftoversGone(marks, bounds.leftoversMs);
+  if (left.length > 0) {
+    const named = left.map(({ pid, args }) => `pid ${pid} ${args}`.trim()).join("; ");
+    const what =
+      left.length === 1
+        ? "a process it started still runs"
+        : `${left.length} processes it started still run`;
+    io.stdout(
+      `Stop requested; the daemon for ${root} stopped, but ${what} after ${seconds(bounds.leftoversMs)}: ${named}\n`,
+    );
+    return 1;
   }
   io.stdout(`Squeal daemon stopped for ${root}\n`);
   return 0;
+}
+
+/** The token the store records for the daemon of `ping`, `null` for another start or none. */
+function tokenOf(root: AbsolutePath, ping: { readonly startedAt: number }): string | null {
+  const record = recordedDaemon(root);
+  return record?.startedAt === ping.startedAt ? (record.token ?? null) : null;
+}
+
+/** Waits up to `ms` for the processes of `marks` to be gone; those still there. */
+async function leftoversGone(marks: DaemonMarks, ms: number): Promise<Leftover[]> {
+  const deadline = Date.now() + ms;
+  for (;;) {
+    const left = await leftovers(marks);
+    if (left.length === 0 || Date.now() > deadline) return left;
+    await sleep(100);
+  }
+}
+
+function seconds(ms: number): string {
+  return `${ms / 1_000} s`;
 }
 
 /** How the stopping daemon's lock looked when `lockFreed` answered. */

@@ -1,5 +1,5 @@
 import { createScheduler, type SchedulerOptions } from "../scheduler/index.js";
-import type { Scheduler, WatcherBackend } from "../types/index.js";
+import type { Scheduler, SchedulerCloseOptions, WatcherBackend } from "../types/index.js";
 import { type ChangeFeed, createChangeFeed, type WatcherTimings } from "../watcher/index.js";
 import { readHead } from "./head.js";
 
@@ -25,8 +25,13 @@ export interface DaemonLoop {
    * stored (`status --wait`, lessons defect 30). Before `start`, resolves at once.
    */
   reconcile(): Promise<void>;
-  /** Stops the change feed, then the scheduler after its tier in flight. Leaves the runner open. */
-  close(): Promise<void>;
+  /**
+   * Stops the change feed, then the scheduler after its tiers in flight.
+   * Leaves the runner open. With `cancel` (`squeal stop`), the scheduler
+   * cancels those tiers at once, under a close already begun too (D10, task
+   * 001-367). Once begun, every call returns the same close.
+   */
+  close(options?: SchedulerCloseOptions): Promise<void>;
 }
 
 /**
@@ -46,6 +51,7 @@ export interface DaemonLoop {
 export function createDaemonLoop(options: DaemonLoopOptions): DaemonLoop {
   const { onDropped, backend, timings, ...rest } = options;
   let feed: ChangeFeed | null = null;
+  let closing: Promise<void> | null = null;
   const scheduler = createScheduler({
     ...rest,
     head: () => readHead(options.root),
@@ -59,6 +65,8 @@ export function createDaemonLoop(options: DaemonLoopOptions): DaemonLoop {
     scheduler,
     async start() {
       await scheduler.start();
+      // A stop during the start (task 001-367): no feed is left for the close to miss.
+      if (closing !== null) return;
       feed = createChangeFeed({
         root: options.root,
         onBatch: (batch) => scheduler.handleBatch(batch),
@@ -74,9 +82,14 @@ export function createDaemonLoop(options: DaemonLoopOptions): DaemonLoop {
     async reconcile() {
       await feed?.reconcile("interval");
     },
-    async close() {
-      await feed?.close();
-      await scheduler.close();
+    close(options = {}) {
+      // The scheduler's close is one promise: this one's sync part cancels, the one below waits.
+      if (options.cancel === true) scheduler.close(options).catch(() => {});
+      closing ??= (async () => {
+        await feed?.close();
+        await scheduler.close();
+      })();
+      return closing;
     },
   };
 }

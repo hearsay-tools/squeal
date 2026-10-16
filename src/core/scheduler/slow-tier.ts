@@ -365,6 +365,8 @@ export class SlowTier {
     | "claimed"
     | typeof WAIT_FOR_CAPACITY
     | null {
+    // A close since the guard or the slot: a daemon that accepted a stop starts no tier (001-367).
+    if (this.host.closed()) return null;
     const { context, ledger } = this.host.started();
     if (this.#fastFirst()) return null;
     const width = this.host.fastIdle() ? slot.permits : 1;

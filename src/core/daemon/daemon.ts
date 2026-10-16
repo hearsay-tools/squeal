@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { setTimeout as sleep } from "node:timers/promises";
 import type { PoolCapacity } from "../capacity/index.js";
 import type { DaemonLoop } from "../daemon-loop/index.js";
 import { linkedWorktreeDir } from "../fs/index.js";
@@ -57,6 +58,13 @@ import { capacityReader, repositoryRootOf } from "./user-config.js";
 import { squealVersion } from "./version.js";
 
 export type { DaemonTimings } from "./lifecycle.js";
+
+/**
+ * After a stop's cancel, how long the tiers in flight get to end before the
+ * processes of runners that cannot cancel are stopped: Vitest's own cancel
+ * forces its workers after 1 s (task 001-367).
+ */
+const CANCEL_GRACE_MS = 2_000;
 
 export interface DaemonOptions {
   /** The worktree root; resolved with realpath. */
@@ -156,8 +164,16 @@ class Daemon {
   /** The Vitest part of `#runner`, which `run --all` asks to retry its creation. */
   #vitest: RecoveringRunner | null = null;
   #loop: DaemonLoop | null = null;
-  /** What its tests leave running, stopped after each tier and at exit (D12). */
-  readonly #children = new EscapedChildren();
+  /**
+   * What its tests leave running, stopped after each tier and at exit (D12).
+   * Their mark is the registration's token, which `squeal stop` reads to
+   * wait for them (task 001-367).
+   */
+  readonly #children = new EscapedChildren(this.#token);
+  /** A `squeal stop` was accepted: no tier starts, and those in flight are cancelled (D10). */
+  #stopRequested = false;
+  /** The cancel of the tiers in flight a stop began (`#cancelTiers`). */
+  #cancelling: Promise<void> = Promise.resolve();
   #starting: Promise<void> = Promise.resolve();
   #stopTimers: () => void = () => {};
   #lastActive: EpochMs;
@@ -471,7 +487,7 @@ class Daemon {
         ...nodeTestRunners.map((r) => r.open()),
         ...pytestRunners.map((r) => r.open()),
       ]);
-      if (this.#phase === "stopping") return;
+      if (this.#phase === "stopping" || this.#stopRequested) return;
       const loop = createDaemonLoop({
         root,
         worktreeId,
@@ -536,11 +552,13 @@ class Daemon {
         },
         onNudge: () => this.#loop?.scheduler.nudge(),
         requestRetries: () => this.#requestRetries(),
-        // After the answer is written.
-        onStop: () =>
+        // The tiers stop now, under a shutdown already begun too; the shutdown after the answer.
+        onStop: () => {
+          this.#cancelTiers();
           setImmediate(
             () => void this.#shutdown("stop-requested", 0, "daemon stopped: squeal stop"),
-          ),
+          );
+        },
         onStepDown: (version) =>
           setImmediate(
             () => void this.#shutdown("superseded", 0, stepDownNote(this.#version, version)),
@@ -630,8 +648,33 @@ class Daemon {
   }
 
   /**
+   * D10 as amended (task 001-367): a `squeal stop` cancels the tiers in
+   * flight in every lane, as a timeout stops one, and no other starts. A
+   * runner that cannot cancel (node:test, pytest) has its processes, every
+   * carrier of this daemon's mark, stopped after `CANCEL_GRACE_MS` (D12), so
+   * its run ends; what did not complete stays queued for the next daemon.
+   */
+  #cancelTiers(): void {
+    if (this.#stopRequested) return;
+    this.#stopRequested = true;
+    const loop = this.#loop;
+    if (loop === null) return;
+    const closed = loop.close({ cancel: true }).then(
+      () => true,
+      () => true,
+    );
+    this.#cancelling = (async () => {
+      const grace = sleep(CANCEL_GRACE_MS, false, { ref: false });
+      if (await Promise.race([closed, grace])) return;
+      const stop = await this.#children.stopMarked().catch(() => null);
+      if (stop !== null) this.#note(stop.text, stop.stopped);
+    })();
+  }
+
+  /**
    * Spec 001 D10 and the review's shutdown order: `loop.close()` (waits for
-   * the tier in flight, abandons the open checkpoint), `runner.close()`, what
+   * the tier in flight, abandons the open checkpoint; cancels it after a
+   * stop, `#cancelTiers`), `runner.close()`, what
    * the tests left running (D12), the
    * temp directory once its leftovers are gone, `setDaemon(null)`,
    * `store.close()`. Then the socket, which closing unlinks, and last the
@@ -646,7 +689,10 @@ class Daemon {
       this.#note(text, undefined, this.#incarnation());
       await this.#starting.catch(() => {});
       const { store, worktreeId, lock } = this.opened;
-      await this.#step("loop.close", () => this.#loop?.close());
+      await this.#step("loop.close", async () => {
+        await this.#loop?.close(this.#stopRequested ? { cancel: true } : {});
+        await this.#cancelling;
+      });
       await this.#step("runner.close", () => this.#runner?.close());
       await this.#step("escaped children", async () => {
         const stop = await this.#children.atExit();
