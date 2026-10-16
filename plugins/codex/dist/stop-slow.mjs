@@ -5136,7 +5136,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.200";
+  if (true) return "0.1.202";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -5258,7 +5258,7 @@ function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
   const sentences = (covers2, naming) => [
     `${PRIMER_OPENING}${listed(names, "and")} tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run ${listed(names, "or")} to learn whether your edits broke something.`,
     `Wait only when you need a result before your next step, for example before saying the task is done: ${naming === "none" ? "`status --wait 60000` on the CLI SQUEAL messages name" : `\`${command} status --wait 60000\``}.`,
-    ...coverage.slow === null ? [] : slowSentences(command, naming),
+    ...coverage.slow === null ? [] : slowSentences(command, naming, coverage.slow.requireSlowSuite === true),
     "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
     retrySentence(command, naming),
     REVISION,
@@ -5329,10 +5329,10 @@ function named(noun, entries, shown) {
   const last = tail.pop();
   return `${nouns} ${tail.length === 0 ? last : `${tail.join(", ")} and ${last}`}`;
 }
-function slowSentences(command, naming) {
+function slowSentences(command, naming, required) {
   const run = naming === "every" ? `\`${command} run --slow --wait 60000\`` : "the CLI's `run --slow --wait 60000`";
   return [
-    `Slow test files run when you pause between turns; before you say the task is done, run ${run} unless the latest \`Slow tier:\` line states every slow file is current: it runs the rest and waits for them.`,
+    required ? `Slow test files run when you pause between turns; this repository requires them before you finish: before you say the task is done, run ${run} unless the latest \`Slow tier:\` line states every slow file is current, and Stop waits for them.` : `Slow test files run when you pause between turns; this repository does not require them before you finish: say slow tests pass only when the latest \`Slow tier:\` line states every slow file is current, else say how many are not; ${run} runs them now.`,
     command === SQUEAL_COMMAND ? "A slow failure wakes you when you are idle in an interactive session; otherwise it arrives with your next prompt or tool call." : "A slow failure arrives with your next prompt or tool call."
   ];
 }
