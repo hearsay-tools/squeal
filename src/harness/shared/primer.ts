@@ -173,7 +173,8 @@ function named(noun: string, entries: readonly string[], shown: number): string 
  * requires of them, and how a slow failure arrives, by harness. D8 as
  * amended 2026-10-16 (task 004-62, issue #5): with `stop.requireSlowSuite`
  * on, task 001-283's step before a claim, read off the `Slow tier:` line,
- * and Stop's wait (001-285); off, the slow tier is not required before the
+ * and that Stop waits or holds once, as that line says (001-285; Pi and
+ * OpenCode have no waiting entry, so their Stop holds; review wave-7 B1); off, the slow tier is not required before the
  * agent finishes, and a claim that slow tests pass needs that line current.
  * Each within 280 characters under `squeal`, which the longest Claude Code
  * primer of the coverage matrix keeps with every project named.
@@ -185,7 +186,7 @@ function slowSentences(command: string, naming: Naming, required: boolean): stri
       : "the CLI's `run --slow --wait 60000`";
   return [
     required
-      ? `Slow test files run when you pause between turns; this repository requires them before you finish: before you say the task is done, run ${run} unless the latest \`Slow tier:\` line states every slow file is current, and Stop waits for them.`
+      ? `Slow test files run when you pause between turns; this repository requires them before you finish: before you say the task is done, run ${run} unless the latest \`Slow tier:\` line states every slow file is current; Stop waits for them or holds you once.`
       : `Slow test files run when you pause between turns; this repository does not require them before you finish: say slow tests pass only when the latest \`Slow tier:\` line states every slow file is current, else say how many are not; ${run} runs them now.`,
     command === SQUEAL_COMMAND
       ? "A slow failure wakes you when you are idle in an interactive session; otherwise it arrives with your next prompt or tool call."
