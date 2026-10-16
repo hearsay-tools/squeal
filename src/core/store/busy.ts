@@ -28,6 +28,8 @@ export class BusyWaits {
   readonly #waiting = new Set<string>();
   /** What waited in this episode, as the note lists it, in order. */
   readonly #waited: string[] = [];
+  /** What each waiter named, so an abandoned one takes its names back. */
+  readonly #named = new Map<string, string[]>();
   #since: EpochMs | null = null;
 
   readonly #options: { readonly now: () => EpochMs; readonly note: (text: string) => void };
@@ -41,7 +43,9 @@ export class BusyWaits {
   waiting(key: string, what?: string): void {
     this.#since ??= this.#options.now();
     this.#waiting.add(key);
-    if (what !== undefined) this.#add(what);
+    if (what === undefined) return;
+    this.#add(what);
+    this.#named.set(key, [...(this.#named.get(key) ?? []), what]);
   }
 
   /**
@@ -50,12 +54,33 @@ export class BusyWaits {
    */
   ran(key: string, what?: string): void {
     if (!this.#waiting.delete(key)) return;
+    this.#named.delete(key);
     if (what !== undefined) this.#add(what);
+    this.#end();
+  }
+
+  /**
+   * `key` no longer waits and what it named never ran: another error took
+   * its write over (review 001-432, B1). Its names leave the note; an
+   * episode left with nothing that ran gives none.
+   */
+  abandoned(key: string): void {
+    if (!this.#waiting.delete(key)) return;
+    const named = new Set(this.#named.get(key) ?? []);
+    this.#named.delete(key);
+    const kept = [...this.#named.values()].flat();
+    const waited = this.#waited.filter((what) => !named.has(what) || kept.includes(what));
+    this.#waited.splice(0, this.#waited.length, ...waited);
+    this.#end();
+  }
+
+  /** The episode's note, once its last waiter is done and something ran. */
+  #end(): void {
     if (this.#waiting.size > 0 || this.#since === null) return;
     const waitedMs = this.#options.now() - this.#since;
     const waited = this.#waited.splice(0);
     this.#since = null;
-    this.#options.note(busyNote(waitedMs, waited));
+    if (waited.length > 0) this.#options.note(busyNote(waitedMs, waited));
   }
 
   #add(what: string): void {
