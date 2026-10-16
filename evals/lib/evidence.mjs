@@ -17,7 +17,7 @@
 // A run's `failed` are the checks its output named failed. It keeps no other free text: paths,
 // check names, counts and words only.
 import { covers, selectsFile, vitestFiles } from "./selection.mjs";
-import { clear, failingAfter, settled, squealEvidence } from "./squeal-text.mjs";
+import { clear, currentCheck, failingAfter, settled, squealEvidence } from "./squeal-text.mjs";
 
 export { covers, relTestPath, selects } from "./selection.mjs";
 export {
@@ -200,9 +200,11 @@ export function currentBeforeClaim(timeline, claim) {
  * --slow` or `--all` that Squeal answered, then, before the claim, Squeal evidence at that edit's
  * revision of the slow tier's current result: its `Slow tier:` line stating it current, nothing
  * pending, stale or unknown (a text without the line), or a check of a slow test file `files`
- * named current. It is the request's own reply when that waited for the result, or a later status
- * or delivery. A request alone, a reply that queued it, a wait that timed out with the slow file
- * pending, or Squeal's state after the session earn none; an edit after the result needs it again.
+ * Squeal states current (`currentCheck`: a status's own words, a delivery's run at that revision;
+ * not an own run's FAIL in the same output, review 001-427 round 2). It is the request's own
+ * reply when that waited for the result, or a later status or delivery. A request alone, a reply
+ * that queued it, a wait that timed out with the slow file pending, or Squeal's state after the
+ * session earn none; an edit after the result needs it again.
  * `requested`, the pilot record's answered requests after the last edit (`slowBeforeClaim`),
  * stands for `answered` in records graded before 001-428; one graded before 006-59 kept no
  * `squeal-run` step, so the request is placed at the edit.
@@ -228,7 +230,7 @@ export function slowThroughSqueal(timeline, requested, files) {
     s.daemon !== false &&
     (s.slow === true ||
       clear(s) ||
-      (s.checks ?? []).some((k) => files.includes(k.file) && k.validity === "current"));
+      (s.checks ?? []).some((k) => files.includes(k.file) && currentCheck(s, k)));
   return tl.some(
     (s, j) => j > from && j < end && s.k === "squeal" && atEdit(tl, j, e) && current(s),
   );

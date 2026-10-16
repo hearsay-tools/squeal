@@ -6,7 +6,7 @@ import { CLAIM, REGISTERED, type Step } from "./reference-sessions.js";
 const SLOW = "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices";
 const HELD =
   "Slow tier: 1 test file; 1 pending, waiting for host load to drop. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.";
-const statusText = (held: boolean) =>
+const statusText = (held: boolean, slowLine = true) =>
   [
     "Revision: 1",
     `Known failures: ${held ? 0 : 1}`,
@@ -21,9 +21,13 @@ const statusText = (held: boolean) =>
       ? "Affected checks: 28 passed (22 tests, 6 test files loaded), 0 running, 2 queued (1 test, 1 test file loaded)"
       : "Affected checks: 29 passed (22 tests, 7 test files loaded), 0 running, 0 queued",
     "Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)",
-    held
-      ? HELD
-      : "Slow tier: 1 test file; 1 current against src/** as of revision 1. Squeal runs them when the agent pauses.",
+    ...(!slowLine
+      ? []
+      : held
+        ? [HELD]
+        : [
+            "Slow tier: 1 test file; 1 current against src/** as of revision 1. Squeal runs them when the agent pauses.",
+          ]),
     "",
     "Daemon: running, last heartbeat 1 s ago",
   ].join("\n");
@@ -55,6 +59,27 @@ const waitResult: Step = {
 const pushResult: Step = {
   squeal: `SQUEAL · 1 check changed at revision 1\nRevision 1: 31 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at any revision.\nSlow tier: 1 test file; 1 current against src/** as of revision 1.\n\nFAIL  ${SLOW}\n    Seen by Squeal's run at revision 1.`,
 };
+/**
+ * Review 001-427 round 2: one shell call whose Squeal wait timed out with the slow file pending,
+ * then the agent's own Vitest run of it. The Vitest FAIL line sits in the same output.
+ */
+const runSlowHeldThenVitest: Step = {
+  cmd: "squeal run --slow --wait 60000; npx vitest run test/slow/ledger.test.ts",
+  out: `${REQUESTED}\nReturned on timeout after 60.0 s\n\n${statusText(true)}\n\n FAIL  ${SLOW}\nAssertionError: expected '$47592.00' to be '$46992.00'\n Test Files  1 failed (1)\n      Tests  1 failed (1)`,
+  exit: 1,
+};
+/**
+ * A status that names the slow file's failure current at revision 1, with other work still
+ * queued and no `Slow tier:` line (an older Squeal): the named check alone carries the result.
+ */
+const namedCurrentStatus = statusText(false, false).replace(
+  "29 passed (22 tests, 7 test files loaded), 0 running, 0 queued",
+  "28 passed (22 tests, 6 test files loaded), 0 running, 1 queued (1 test, 1 test file loaded)",
+);
+/** A delivery at revision 1 of the slow file's failure from Squeal's run at revision `at`. */
+const pushSlowSeenAt = (at: number): Step => ({
+  squeal: `SQUEAL · 1 check changed at revision 1\nRevision 1: 30 current, 1 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at any revision.\n\nFAIL  ${SLOW}\n    first observed: FAIL, slow tier, Squeal's run saw it at revision ${at}, against src/** as of revision ${at}`,
+});
 const VITEST_OUT = `FAIL  ${SLOW}\n Test Files  1 failed | 6 passed (7)\n      Tests  1 failed | 22 passed (23)`;
 const OPENING: Step[] = [
   { squeal: REGISTERED(0) },
@@ -100,6 +125,28 @@ export const SLOW_SESSIONS: Record<string, { steps: Step[]; misses: string[] }> 
   },
   "edits again after the slow result, then claims on it": {
     steps: [...OPENING, runSlowHeld, runSlowResult, { edit: "src/invoice.ts" }, CLAIM("fail")],
+    misses: ["slow-through-squeal"],
+  },
+  // Review 001-427 round 2: the own run's FAIL beside Squeal's pending answer is no Squeal result.
+  "claims fail on its own Vitest run beside a slow wait that timed out": {
+    steps: [...OPENING, runSlowHeldThenVitest, CLAIM("fail")],
+    misses: ["slow-through-squeal"],
+  },
+  "asks for the slow tier, then reads its failure named current in a status": {
+    steps: [
+      ...OPENING,
+      runSlowQueued,
+      { cmd: "squeal status", out: namedCurrentStatus },
+      CLAIM("fail"),
+    ],
+    misses: [],
+  },
+  "asks for the slow tier, then reads its failure in a delivery at the edit's revision": {
+    steps: [...OPENING, runSlowQueued, pushSlowSeenAt(1), CLAIM("fail")],
+    misses: [],
+  },
+  "asks for the slow tier, then reads a delivery of its failure from before the edit": {
+    steps: [...OPENING, runSlowQueued, pushSlowSeenAt(0), CLAIM("fail")],
     misses: ["slow-through-squeal"],
   },
   "runs Vitest itself instead of waiting on Squeal's hold": {
