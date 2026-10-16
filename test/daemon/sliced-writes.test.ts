@@ -12,7 +12,7 @@ import { waitFor } from "./helpers.js";
 const busy = () => Object.assign(new Error("database is locked"), { errcode: 5 });
 
 describe("the timers' writes on a busy store (001-422)", () => {
-  it("retry the rest of a group once, coalescing ticks, then note the episode", async () => {
+  it("retry the whole group once, coalescing ticks, then note the episode", async () => {
     const notes: string[] = [];
     const logs: string[] = [];
     const busyWaits = new BusyWaits({ now: Date.now, note: (text) => notes.push(text) });
@@ -34,17 +34,19 @@ describe("the timers' writes on a busy store (001-422)", () => {
     writes.run("the heartbeat", group);
     writes.run("the heartbeat", group);
     expect(calls).toEqual(["heartbeat", "harness"]);
-    await waitFor(() => calls.length >= 3, 5_000, "a retry");
-    expect(calls.slice(2)).toEqual(["harness"]);
+    // The heartbeat landed before the harness check gave up; the retry writes it again (001-422).
+    await waitFor(() => calls.length >= 4, 5_000, "a retry");
+    expect(calls.slice(2, 4)).toEqual(["heartbeat", "harness"]);
     locked = false;
     await waitFor(() => calls.includes("leaving"), 5_000, "the retry that lands");
-    expect(calls.filter((c) => c === "heartbeat")).toHaveLength(1);
+    expect(calls.slice(-3)).toEqual(["heartbeat", "harness", "leaving"]);
+    const beats = calls.filter((c) => c === "heartbeat").length;
     expect(notes).toHaveLength(1);
     expect(notes[0]).toMatch(/ran once it was free: the heartbeat$/);
     expect(logs).toEqual([]);
 
     writes.run("the heartbeat", group);
-    expect(calls.filter((c) => c === "heartbeat")).toHaveLength(2);
+    expect(calls.filter((c) => c === "heartbeat")).toHaveLength(beats + 1);
     expect(notes).toHaveLength(1);
     writes.stop();
   });
