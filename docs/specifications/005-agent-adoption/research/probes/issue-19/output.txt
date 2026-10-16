@@ -1,0 +1,33 @@
+$ uptime; nproc
+24.73 19.90 15.40 28/4255 2578917
+24
+$ squeal --version
+0.1.199
+$ docs/specifications/005-agent-adoption/research/probes/issue-19/extract.sh $PWD
+== 0.1.199 claude primer (dist/session-start.mjs)
+`Slow test files run when you pause between turns; before you say the task is done, run ${run} unless the latest \`Slow tier:\` line states every slow file is current: it runs the rest and waits for them.`,
+== 0.1.199 claude skill step 4
+4. **Before you say the task is done, make the evidence current.** Where `squeal.config.json` marks slow test files, the header's second line starts `Slow tier:`; while the last one says any slow file is not current, run `squeal run --slow --wait 60000`: it runs them and waits for their results as well as your edits'. Then claim only what the latest header or `squeal status` shows. Done when no check of your edits is pending, the `Slow tier:` line says every slow file is current, and every claim about tests matches a line of `squeal status`. When a check stays pending after you waited again, say it is pending: `Known failures: 0` with checks pending means "no known failures yet".
+== 0.1.199 codex primer (dist/session-start.mjs)
+`Slow test files run when you pause between turns; before you say the task is done, run ${run} unless the latest \`Slow tier:\` line states every slow file is current: it runs the rest and waits for them.`,
+== 0.1.199 codex skill step 4
+4. **Before you say the task is done, make the evidence current.** Where `squeal.config.json` marks slow test files, the header's second line starts `Slow tier:`; while the last one says any slow file is not current, run `squeal run --slow --wait 60000`: it runs them and waits for their results as well as your edits'. Then claim only what the latest header or `squeal status` shows. Done when no check of your edits is pending, the `Slow tier:` line says every slow file is current, and every claim about tests matches a line of `squeal status`. When a check stays pending after you waited again, say it is pending: `Known failures: 0` with checks pending means "no known failures yet".
+== 0.1.203 source src/harness/shared/primer.ts slowSentences
+Slow test files run when you pause between turns; this repository requires them before you finish: before you say the task is done, run ${run} unless the latest \`Slow tier:\` line states every slow file is current; Stop waits for them or holds you once.`
+Slow test files run when you pause between turns; this repository does not require them before you finish: say slow tests pass only when the latest \`Slow tier:\` line states every slow file is current, else say how many are not; ${run} runs them now.`,
+== 0.1.203 committed bundle plugins/claude-code/dist/session-start.mjs
+      1 this repository does not require them before you finish
+      1 this repository requires them before you finish
+== 0.1.203 skill step 4
+4. **Before you say the task is done, make the evidence current.** Where `squeal.config.json` marks slow test files, the header's second line starts `Slow tier:`. If the last one says `Stop waits`, they are required: while one is not current, run `squeal run --slow --wait 60000`. Without `Stop waits`, say how many are not current. Claim slow tests pass only once it says every slow file is current. Done when no check of your edits is pending, the slow tier is current or counted, and every claim about tests matches a line of `squeal status`. When a check stays pending after you waited again, say it is pending: `Known failures: 0` with checks pending means "no known failures yet".
+== read-only / no-edit exemption words in 0.1.203 primer source and skill
+/home/agent/projects/squeal/.ai/cezar/worktrees/c27e8c17-2119-44f3-b5f6-285b0fcf6cd3/src/harness/shared/primer.ts:13: * sentence saying what is not covered is always whole (task 001-234; review
+/home/agent/projects/squeal/.ai/cezar/worktrees/c27e8c17-2119-44f3-b5f6-285b0fcf6cd3/src/harness/shared/primer.ts:39: * agents ran node:test themselves; review wave 13aa, B1: a node:test-only
+/home/agent/projects/squeal/.ai/cezar/worktrees/c27e8c17-2119-44f3-b5f6-285b0fcf6cd3/src/harness/shared/primer.ts:177: * OpenCode have no waiting entry, so their Stop holds; review wave-7 B1); off, the slow tier is not required before the
+== cezarion squeal.config.json stop at cf82973
+  "stop": {
+    "blockOnKnownFailures": false,
+    "requireFullSuite": false,
+    "requireSlowSuite": false,
+    "waitMs": 0
+  },
