@@ -45,6 +45,8 @@ export interface PytestRunOptions {
   readonly childEnv?: Readonly<Record<string, string>>;
   /** The directory holding `squeal_pytest.py`; default located from this module. */
   readonly runtimeDir?: AbsolutePath;
+  /** A `squeal stop`'s cancel (`RunOptions.signal`): the running processes are stopped, no other starts, and only completed files report. */
+  readonly signal?: AbortSignal;
 }
 
 /** A tier's report, each completed file's observed closure, and the run's notes. */
@@ -134,27 +136,42 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
   const python = environment.discovery.python;
   const running = new Set<{ kill(signal: NodeJS.Signals): void }>();
   let expired = false;
+  let cancelled = false;
   const timers: NodeJS.Timeout[] = [];
+  const stopAll = () => {
+    for (const group of running) group.kill("SIGTERM");
+    timers.push(
+      setTimeout(() => {
+        for (const group of running) group.kill("SIGKILL");
+      }, KILL_GRACE_MS),
+    );
+  };
   if (options.timeoutMs !== null) {
     timers.push(
       setTimeout(() => {
         expired = true;
-        for (const group of running) group.kill("SIGTERM");
-        timers.push(
-          setTimeout(() => {
-            for (const group of running) group.kill("SIGKILL");
-          }, KILL_GRACE_MS),
-        );
+        stopAll();
       }, options.timeoutMs),
     );
   }
+  // A `squeal stop` (001 D10, task 001-367): what runs is stopped, nothing more starts.
+  const onAbort = () => {
+    cancelled = true;
+    stopAll();
+  };
+  if (options.signal?.aborted === true) cancelled = true;
+  else options.signal?.addEventListener("abort", onAbort, { once: true });
   const queue = [...batches];
   const bytecode = runBytecode(cacheDir, options.root, [
     ...keptDirs(environment.discovery.env, environment.discovery.python),
     runtimeDir,
   ]);
   const worker = async () => {
-    for (let batch = queue.shift(); batch !== undefined && !expired; batch = queue.shift()) {
+    for (
+      let batch = queue.shift();
+      batch !== undefined && !expired && !cancelled;
+      batch = queue.shift()
+    ) {
       const events = join(options.logDir, `events-${batch.index}.jsonl`);
       const group = startGroup({
         command: python,
@@ -177,6 +194,7 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
     await Promise.all(Array.from({ length: width }, worker));
   } finally {
     for (const timer of timers) clearTimeout(timer);
+    options.signal?.removeEventListener("abort", onAbort);
     bytecode.remove();
     basetemp.remove();
   }
@@ -203,12 +221,14 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
       `pytest project "${project.name}": these test ids hold a memory address, so they change every run: ${addresses.join(", ")}.`,
     );
   }
-  const { end, failure } = ending(batches, new Set(done.map((f) => f.testFile)), expired, {
-    total: options.files.length,
-    timeoutMs: options.timeoutMs,
-    python,
-    logDir: options.logDir,
-  });
+  const { end, failure } = cancelled
+    ? { end: "completed" as const, failure: null }
+    : ending(batches, new Set(done.map((f) => f.testFile)), expired, {
+        total: options.files.length,
+        timeoutMs: options.timeoutMs,
+        python,
+        logDir: options.logDir,
+      });
   // Only for a tier every file of which completed: a skip before a file that ended the
   // process says nothing of the tests that did not report (review 007-21 S1).
   const whole =

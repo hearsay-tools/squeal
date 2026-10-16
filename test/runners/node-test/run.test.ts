@@ -142,6 +142,48 @@ describe("runNodeTest", () => {
     expect(report).toMatchObject({ end: "timed-out", completedFiles: [], results: [] });
   });
 
+  // Task 001-367, review 001-429 B2: a `squeal stop` stops the running file and starts no queued one.
+  it("stops the running file on a stop's signal and starts none of the queue", SLOW, async () => {
+    const tier = files(edge, "test/busy-loop.test.ts", "test/pass.test.ts");
+    const logDir = join(logs, randomUUID());
+    const stop = new AbortController();
+    const running = run({
+      project: edge,
+      files: tier,
+      concurrency: 1,
+      logDir,
+      signal: stop.signal,
+    });
+    for (let waited = 0; !existsSync(join(logDir, "stdout-0.log")); waited += 50) {
+      if (waited > 20_000) throw new Error("the busy loop never started");
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    const stopped = performance.now();
+    stop.abort();
+    const { report } = await running;
+    expect(performance.now() - stopped).toBeLessThan(2_000 + 5_000);
+    expect(report).toMatchObject({ end: "completed", failure: null, completedFiles: [] });
+    expect(existsSync(join(logDir, "stdout-1.log"))).toBe(false);
+  });
+
+  it("starts nothing under a stop's signal already aborted", async () => {
+    const logDir = join(logs, randomUUID());
+    const tier = files(edge, "test/pass.test.ts");
+    const { report } = await run({
+      project: edge,
+      files: tier,
+      logDir,
+      signal: AbortSignal.abort(),
+    });
+    expect(report).toMatchObject({
+      end: "completed",
+      failure: null,
+      completedFiles: [],
+      results: [],
+    });
+    expect(existsSync(join(logDir, "stdout-0.log"))).toBe(false);
+  });
+
   it("is crashed when a process dies before any wrapper completed", SLOW, async () => {
     mkdirSync(scratch, { recursive: true });
     const dies = join(scratch, "node-that-dies");
