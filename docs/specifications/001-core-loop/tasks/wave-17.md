@@ -35,3 +35,18 @@ Read W1 above, issue #1, spec 001 D8, D10 and D12, and `tasks/001-422/notes.md`.
 - each test fails on `8737cdc0`.
 
 Write `reviews/wave-17.md`; commit it.
+
+## W3: 001-434, re-review of cand/0.1.203 after the B1 repair
+
+Use /reviewer. Shape: review, narrow. Pinned to the `cand/0.1.203` SHA named in the spawn. Round 2 of `reviews/wave-17.md`: B1 only, plus the rebase.
+
+The candidate is 001-422's four commits, the coordinator's B1 repair (`fix(001-432): a busy resume runs only for the stall it was armed for`) and the build (0.1.203 above main's 0.1.202, key format 11 re-pinned in place). Round 1 covered the rest at `f9c29e11`.
+
+Check that:
+- the round-1 probe passes, and both orderings in `test/scheduler/busy-record.test.ts` fail without the repair;
+- a busy resume restarts only a pump a busy store stopped, and a later busy episode still resumes;
+- another error abandons the busy wait, so the episode's note never claims that the pump's write ran;
+- two lanes, one busy and one landing, still resume the pump;
+- the version, key pin and bundles match a build of the tree.
+
+Write round 2 into `reviews/wave-17.md`; commit it.
