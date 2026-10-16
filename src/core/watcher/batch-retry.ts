@@ -16,16 +16,19 @@ export class BatchRetries {
   #wake: (() => void) | null = null;
   #closed = false;
 
-  constructor(
-    private readonly retry: BatchRetry | undefined,
-    private readonly onError: (error: Error) => void,
-  ) {}
+  readonly #retry: BatchRetry | undefined;
+  readonly #onError: (error: Error) => void;
+
+  constructor(retry: BatchRetry | undefined, onError: (error: Error) => void) {
+    this.#retry = retry;
+    this.#onError = onError;
+  }
 
   /** `error` of a batch task: reported, or retried with `pass` while `retry` accepts it. */
   async failed(error: Error, pass?: () => Promise<void>): Promise<void> {
-    const retry = this.retry;
+    const retry = this.#retry;
     if (pass === undefined || retry === undefined || !retry.accepts(error)) {
-      this.onError(error);
+      this.#onError(error);
       return;
     }
     for (let attempt = 0; ; attempt++) {
@@ -39,7 +42,7 @@ export class BatchRetries {
         const failure = toError(again);
         if (retry.accepts(failure)) continue;
         retry.ran();
-        this.onError(failure);
+        this.#onError(failure);
         return;
       }
     }

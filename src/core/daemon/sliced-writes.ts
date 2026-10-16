@@ -6,6 +6,12 @@ import {
   withBusySliceSync,
 } from "../store/index.js";
 
+/** Where a timer's failure is logged, and what waits for a busy store; without it, no slice. */
+interface SlicedContext {
+  readonly log: (line: string) => void;
+  readonly busyWaits?: BusyWaits | undefined;
+}
+
 /** One step of a timer's writes: the name its failure is logged under, and the write. */
 export type Step = readonly [string, () => void];
 
@@ -26,12 +32,11 @@ export class SlicedWrites {
   #attempt = 0;
   #stopped = false;
 
-  constructor(
-    private readonly context: {
-      readonly log: (line: string) => void;
-      readonly busyWaits?: BusyWaits | undefined;
-    },
-  ) {}
+  readonly #context: SlicedContext;
+
+  constructor(context: SlicedContext) {
+    this.#context = context;
+  }
 
   /**
    * Runs `steps`, the writes of group `what`, unless its retry is pending.
@@ -43,7 +48,7 @@ export class SlicedWrites {
       this.#run(what, steps);
       return;
     }
-    this.context.busyWaits?.waiting(what, what);
+    this.#context.busyWaits?.waiting(what, what);
     this.#waited.add(what);
     this.#pending.set(what, steps);
   }
@@ -57,14 +62,14 @@ export class SlicedWrites {
 
   /** Runs the group; false when a step gave up on a busy store and the rest is pending. */
   #run(what: string, steps: readonly Step[]): boolean {
-    const waits = this.context.busyWaits;
+    const waits = this.#context.busyWaits;
     for (const [index, [step, fn]] of steps.entries()) {
       try {
         if (waits === undefined) fn();
         else withBusySliceSync(BUSY_SLICE_MS, fn);
       } catch (error) {
         if (waits === undefined || !isBusy(error)) {
-          this.context.log(`${step} failed: ${String(error)}`);
+          this.#context.log(`${step} failed: ${String(error)}`);
           continue;
         }
         waits.waiting(what, what);
