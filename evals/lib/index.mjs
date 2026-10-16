@@ -76,6 +76,7 @@ export {
   redStep,
   replayed,
   selects,
+  slowThroughSqueal,
   squealEvidence,
 } from "./evidence.mjs";
 export { gradeCell, groundTruthOf, serviceStartsOf, squealState } from "./grade.mjs";

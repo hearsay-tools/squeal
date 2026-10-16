@@ -1,10 +1,13 @@
 import {
+  atomicConfig,
   type CellRecord,
   cellRecord,
   claudeTimeline,
   codexTimeline,
   type Event,
   gradeCell,
+  type Json,
+  regradeAtomic,
   type ServiceStart,
 } from "../../evals/lib/index.mjs";
 import type { StatusSnapshot } from "../../src/core/types/index.js";
@@ -333,3 +336,25 @@ export const REGISTERED = (rev: number, stale = 0) =>
 /** The registration with no daemon validating (T4's knob). */
 export const REGISTERED_NO_DAEMON = (rev: number) =>
   `SQUEAL · registered at revision ${rev}\n${COUNTS(rev, 0)} No daemon is running; results are as of revision ${rev}.\nKnown failures: 0`;
+
+/**
+ * The measures a regrade (evals/bin/atomic-regrade.mjs's `regradeAtomic`) computes for a `task`
+ * cell that kept pilot record `record` and retained timeline `timeline`, as a committed
+ * `.atomic.json` keeps them; also as a record graded before 001-428 kept it (no `squeal-run`
+ * `answered`) and one graded before 006-59 (no `squeal-run` step).
+ */
+export function regradedForms(task: string, record: object, timeline: unknown) {
+  const kept = timeline as Record<string, unknown>[];
+  const forms: [string, Record<string, unknown>[]][] = [
+    ["kept", kept],
+    ["before 001-428", kept.map(({ answered: _, ...s }) => s)],
+    ["before 006-59", kept.filter((s) => s.k !== "squeal-run")],
+  ];
+  return forms.map(([form, tl]) => {
+    const cell = { id: "c", task, atomic: { ...record, measures: {} }, timeline: tl };
+    const data = JSON.parse(JSON.stringify({ cells: [cell], scenarios: {} })) as Json;
+    const r = regradeAtomic(data, atomicConfig(), "2026-10-16", { by: "001-428", note: "test" });
+    const cells = (r.data as { cells: { atomic: { measures: unknown } }[] }).cells;
+    return [form, cells[0]?.atomic.measures] as const;
+  });
+}

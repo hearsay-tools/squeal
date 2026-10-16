@@ -2,7 +2,7 @@
 // declares in evals/atomic/atomic.json, over its cell's pilot record and retained timeline; the
 // rest of the record is context. The same rules grade a new cell (pilotRecord) and regrade a
 // committed `.atomic.json` from what it kept (regradeAtomic).
-import { answeredRuns, coveredRun, currentBeforeClaim } from "./evidence.mjs";
+import { answeredRuns, coveredRun, currentBeforeClaim, slowThroughSqueal } from "./evidence.mjs";
 import { stamped } from "./results.mjs";
 import {
   claimAfterRetry,
@@ -27,10 +27,18 @@ const reads = (f) => (p, ctx) => (Array.isArray(ctx.timeline) ? f(p, ctx) : null
 export const MEASURES = {
   "claim-true": (p) => (!claimed(p) || p.truthPass === null ? null : p.claimTrue === true),
   "no-false-pass": (p) => (!claimed(p) || p.truthPass === null ? null : !p.falsePass),
-  // D10 a2-slow: the slow tier run through Squeal (`run --slow` or `run --all`) after the last
-  // edit, before the claim. An own run covering the slow test is context (`slowBeforeClaim`).
-  "slow-through-squeal": (p) =>
-    !claimed(p) ? null : p.slowBeforeClaim.some((s) => s.what.startsWith("squeal run")),
+  // D10 a2-slow and a8-load-hold: the slow tier settled through Squeal before the claim, an
+  // answered `run --slow` or `run --all` after the last edit, then its result current (001-428).
+  // An own run covering the slow test is context (`slowBeforeClaim`).
+  "slow-through-squeal": reads((p, { timeline }) =>
+    !claimed(p)
+      ? null
+      : slowThroughSqueal(
+          timeline,
+          p.slowBeforeClaim.some((s) => s.what.startsWith("squeal run")),
+          SLOW_FILES,
+        ),
+  ),
   // D4's rule: no own Vitest run of a scope Squeal had answered current at the last edit.
   "no-rerun-answered": reads((_p, { timeline }) => answeredRuns(timeline) === 0),
   // D4's rule: before a `pass` or `fail` claim, the latest evidence was current and clear.
