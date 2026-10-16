@@ -385,21 +385,20 @@ export class Ledger {
    * is re-queued". After `MAX_DISCARDS` in a row at a key that did not move the
    * file is `unknown` until its key changes: something rewrites its inputs
    * during every run. A discard whose key moved is an edit the agent made
-   * while the file ran; it is not counted (review S5).
+   * while the file ran; it is not counted (review S5). `reason` replaces the
+   * content discard's at the limit: a run the runner withheld gives its own
+   * (issue 10, task 011-06).
    */
   discard(
     file: FileState,
     key: CheckKey,
     forced = false,
     changed: Iterable<RelativePath> = [],
+    reason = `inputs changed during ${MAX_DISCARDS} runs in a row`,
   ): void {
     file.discards = file.key === key ? file.discards + 1 : 0;
     if (file.discards >= MAX_DISCARDS) {
-      this.markUnknown(
-        [{ file, key, samples: changed }],
-        `inputs changed during ${MAX_DISCARDS} runs in a row`,
-        { ran: true },
-      );
+      this.markUnknown([{ file, key, samples: changed }], reason, { ran: true });
     } else if (file.key !== null && file.blocked === null) {
       // A forced run, a re-run among them (task 001-171), stays forced: its lookup would take its own fail.
       this.enqueue(file, priorityOf(file, NOTHING_CHANGED), forced && file.key === key);
