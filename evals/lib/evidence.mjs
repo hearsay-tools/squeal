@@ -8,7 +8,8 @@
 //   { k: "squeal", from: "push" | "pull", revision, pending, stale, unknown, slow, news?, daemon,
 //     known, checks, failures, verdict, files, failing }
 //   { k: "sleep", s }
-//   { k: "squeal-run", all, slow }, an executed `squeal run` whatever it printed (006-59 R1)
+//   { k: "squeal-run", all, slow, answered }, an executed `squeal run` whatever it printed
+//     (006-59 R1), and whether Squeal answered it (001-428; older records keep no `answered`)
 //   { k: "claim" }, where the final message was; its word is the cell's `claim`
 // A squeal step's `checks` are the checks it named, each with its own provenance (review wave
 // 2.6, B2 and S2): `{ check, file, to, from, observed, validity }`, or `{ to, count }` for a
@@ -192,6 +193,45 @@ export function currentBeforeClaim(timeline, claim) {
   if (!a.current) return false;
   const seen = tl[a.j];
   return clear(seen) || (claim === "fail" && seen.daemon !== false && seen.failing.length > 0);
+}
+
+/**
+ * D10's a2-slow and a8-load-hold (row 001-428): after the last edit, an explicit `squeal run
+ * --slow` or `--all` that Squeal answered, then, before the claim, Squeal evidence at that edit's
+ * revision of the slow tier's current result: its `Slow tier:` line stating it current, nothing
+ * pending, stale or unknown (a text without the line), or a check of a slow test file `files`
+ * named current. It is the request's own reply when that waited for the result, or a later status
+ * or delivery. A request alone, a reply that queued it, a wait that timed out with the slow file
+ * pending, or Squeal's state after the session earn none; an edit after the result needs it again.
+ * `requested`, the pilot record's answered requests after the last edit (`slowBeforeClaim`),
+ * stands for `answered` in records graded before 001-428; one graded before 006-59 kept no
+ * `squeal-run` step, so the request is placed at the edit.
+ */
+export function slowThroughSqueal(timeline, requested, files) {
+  const tl = replayed(timeline);
+  const c = tl.findLastIndex((s) => s.k === "claim");
+  const end = c < 0 ? tl.length : c;
+  const e = lastEditBefore(tl, end);
+  const kept = tl.some((s) => s.k === "squeal-run");
+  const from = kept
+    ? tl.findIndex(
+        (s, i) =>
+          i > e &&
+          i < end &&
+          s.k === "squeal-run" &&
+          (s.all || s.slow) &&
+          (s.answered ?? requested),
+      )
+    : e;
+  if (kept ? from < 0 : !requested) return false;
+  const current = (s) =>
+    s.daemon !== false &&
+    (s.slow === true ||
+      clear(s) ||
+      (s.checks ?? []).some((k) => files.includes(k.file) && k.validity === "current"));
+  return tl.some(
+    (s, j) => j > from && j < end && s.k === "squeal" && atEdit(tl, j, e) && current(s),
+  );
 }
 
 /**

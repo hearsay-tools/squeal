@@ -35,6 +35,7 @@ const claim = (t: number, text: string): Event[] => [
   { t, type: "assistant", message: { content: [{ type: "text", text }] } },
   { t: t + 1, type: "result", result: text, total_cost_usd: 0.01 },
 ];
+const SLOW_CURRENT = "Slow tier: 1 test file; 1 current against src/** as of revision 1.";
 const VITEST_OUT = " Test Files  1 failed | 6 passed (7)\n      Tests  1 failed | 22 passed (23)";
 const MONEY_FAILS =
   "Revision 2: 23 current, 0 pending, 0 stale, 0 unknown.\nKnown failures: 1\n\nFAIL  test/money.test.ts > formats a negative amount";
@@ -55,7 +56,8 @@ describe("the pilot record", () => {
     const g = graded([
       ...bash(10, "squeal run --slow --wait", "Known failures: 0"), // before the edit: not counted
       ...edit(100, "src/invoice.ts"),
-      ...bash(200, "squeal run --slow --wait", "Known failures: 1"),
+      // 001-428: its reply states the slow tier's result current at the edit.
+      ...bash(200, "squeal run --slow --wait", `Revision: 1\nKnown failures: 1\n${SLOW_CURRENT}`),
       ...bash(300, "npx vitest run test/money.test.ts", VITEST_OUT), // not the slow file
       ...bash(400, "npx vitest run", VITEST_OUT), // the full suite covers it
       ...claim(500, "The slow ledger test fails.\nTESTS: fail, evidence: the slow test"),

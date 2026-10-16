@@ -175,7 +175,7 @@ describe("a run that could have passed the file is the one rule for a heal and (
         harness,
       });
       expect(g.retained.filter((s) => s.k === "squeal-run")).toEqual([
-        { k: "squeal-run", all: true, slow: false },
+        { k: "squeal-run", all: true, slow: false, answered: true },
       ]);
     });
 });

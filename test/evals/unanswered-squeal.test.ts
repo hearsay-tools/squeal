@@ -25,6 +25,8 @@ const LAUNCHER_4 =
 
 const SLOW = "test/slow/ledger.test.ts > the year's ledger reconciles with the invoices";
 const VITEST_OUT = `FAIL  ${SLOW}\n Test Files  1 failed | 6 passed (7)\n      Tests  1 failed | 22 passed (23)`;
+/** 001-428: the slow tier's result current, which the slow run's credit needs. */
+const SLOW_CURRENT = "Slow tier: 1 test file; 1 current against src/** as of revision 1.";
 const OWN_RUN: Step = { cmd: "npx vitest run", out: VITEST_OUT, exit: 1 };
 const OPENING: Step[] = [{ squeal: REGISTERED(0) }, { edit: "src/invoice.ts" }];
 
@@ -69,14 +71,16 @@ describe("a Squeal command Squeal never answered", () => {
         expect(g.squealRunSlow).toBe(0);
         expect(g.waitsAfterLastEdit).toBe(0);
         expect(measures["slow-through-squeal"]).toBe(false);
-        // R1: an executed run stays an action of the timeline.
-        expect(g.retained.filter((s) => s.k === "squeal-run")).toHaveLength(1);
+        // R1: an executed run stays an action of the timeline, kept as one Squeal never answered.
+        expect(g.retained.filter((s) => s.k === "squeal-run")).toEqual([
+          { k: "squeal-run", all: false, slow: true, answered: false },
+        ]);
       });
 
     it(`${harness}: one answered call beside an unanswered one counts once`, () => {
       const answered: Step = {
         cmd: "node /tmp/cell/pin/dist/cli/squeal.mjs run --slow --wait 60000",
-        out: "Slow tier requested at revision 1: 1 slow file queued; they run once no fast work is pending.\nReturned on news: 1 transition at revision 1 after 3.0 s\n\nRevision: 1\nKnown failures: 1\n",
+        out: `Slow tier requested at revision 1: 1 slow file queued; they run once no fast work is pending.\nReturned on news: 1 transition at revision 1 after 3.0 s\n\nRevision: 1\nKnown failures: 1\n${SLOW_CURRENT}\n`,
         exit: 1,
       };
       const { g, measures } = a8(
@@ -102,7 +106,7 @@ describe("a Squeal command Squeal never answered", () => {
 // status is the pull and the unanswered slow run is none; when two CLIs could have printed the
 // reply, neither command gets a pull, a wait or the slow run by its position.
 const PIN = "node /tmp/pin/dist/cli/squeal.mjs";
-const STATUS = `Returned on quiet: nothing pending at revision 1 after 4.0 s\n\n${STATUS_TEXT(1, { failing: [SLOW] })}\n`;
+const STATUS = `Returned on quiet: nothing pending at revision 1 after 4.0 s\n\n${STATUS_TEXT(1, { failing: [SLOW] })}\n${SLOW_CURRENT}\n`;
 const SLOW_RUN = "run --slow --wait 60000";
 
 describe("one call's Squeal commands, each with its own reply", () => {

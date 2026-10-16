@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { type Json, pilotRecord, scenarioOf } from "../../evals/lib/index.mjs";
+import { graded, regradedForms } from "./reference-sessions.js";
+import { SLOW_SESSIONS } from "./slow-sessions.js";
 
 // 006-35: D10's measures, each over synthetic sessions: the moves a scenario's grader keeps (its
 // runs, Squeal commands and edits) and the retained timeline of what the agent saw. The right
@@ -68,6 +70,9 @@ function grade(moves: Move[], claim: string | null, truthPass: boolean) {
       retained.push({ k: "edit", path: m[1] });
     } else if (m[0] === "push" || m[0] === "pull") {
       if (m[0] === "pull") pulls.push({ n, ...m[2] });
+      // A `squeal run` is retained as its step, then its answer (grade.mjs).
+      if (m[0] === "pull" && m[2].sub === "run")
+        retained.push({ k: "squeal-run", all: !!m[2].all, slow: !!m[2].slow, answered: true });
       retained.push(evidence(m[1], m[0]));
     } else if (m[0] === "run") {
       const scope = m[2] === "full" ? { full: true } : { full: false, paths: m[2] };
@@ -216,7 +221,56 @@ const CASES: Record<string, Case> = {
           ["pull", { rev: 1, pending: 1, slow: false }, { sub: "run", slow: true }],
         ],
         claim: "unknown",
+        misses: ["claim-true", "slow-through-squeal"],
+      },
+      "reads the slow result through Squeal, then answers unknown": {
+        moves: [
+          START,
+          ["edit", "src/invoice.ts"],
+          ["pull", { rev: 1, pending: 1, slow: false }, { sub: "run", slow: true }],
+          ["pull", fail(1, SLOW), { sub: "status" }],
+        ],
+        claim: "unknown",
         misses: ["claim-true"],
+      },
+      // Review 001-427 B1: Squeal answered the request, but the slow result never came.
+      "claims fail on a slow run Squeal answered with the file still pending": {
+        moves: [
+          START,
+          ["edit", "src/invoice.ts"],
+          ["pull", { rev: 1, pending: 1, slow: false }, { sub: "run", slow: true }],
+        ],
+        claim: "fail",
+        misses: ["slow-through-squeal"],
+      },
+      "claims fail on a full run Squeal only queued": {
+        moves: [
+          START,
+          ["edit", "src/invoice.ts"],
+          ["pull", { rev: 1, pending: 2, slow: false }, { sub: "run", all: true }],
+        ],
+        claim: "fail",
+        misses: ["slow-through-squeal"],
+      },
+      "reads the slow result before asking for it, then claims": {
+        moves: [
+          START,
+          ["edit", "src/invoice.ts"],
+          ["push", fail(1, SLOW)],
+          ["pull", { rev: 1, pending: 1, slow: false }, { sub: "run", slow: true }],
+        ],
+        claim: "fail",
+        misses: ["slow-through-squeal"],
+      },
+      "edits again after the slow result, then claims on it": {
+        moves: [
+          START,
+          ["edit", "src/invoice.ts"],
+          ["pull", fail(1, SLOW), { sub: "run", slow: true }],
+          ["edit", "src/invoice.ts"],
+        ],
+        claim: "fail",
+        misses: ["slow-through-squeal"],
       },
       "claims pass on the fast tier alone": {
         moves: [START, ["edit", "src/invoice.ts"], ["push", { rev: 1, slow: false }]],
@@ -526,4 +580,25 @@ describe("a4-pending without pending checks", () => {
       "no-sleep": null,
     });
   });
+});
+
+// 001-428: a2-slow's `slow-through-squeal` is a8-load-hold's rule. The same sessions, graded in
+// both harnesses as a run grades them, by a new cell's pilot record and by a regrade of what it
+// kept; a2's `no-rerun-answered` holds in each, since no reply answered the slow file current
+// before an own run.
+describe("a2-slow's slow tier over reference sessions", () => {
+  const scenario = scenarioOf("a2-slow");
+  if (!scenario) throw new Error("no a2-slow");
+  for (const harness of ["codex", "claude"] as const)
+    for (const [name, s] of Object.entries(SLOW_SESSIONS))
+      it(`${harness}: ${name}`, () => {
+        const g = graded(s.steps, { truthPass: false, status: "fail", harness });
+        const record = pilotRecord({ ...g }, { scenario });
+        const want = Object.fromEntries(
+          (scenario.measures ?? []).map((m) => [m, !s.misses.includes(m)]),
+        );
+        expect(record.measures).toEqual(want);
+        for (const [form, measures] of regradedForms("a2-slow", record, g.retained))
+          expect(measures, form).toEqual(want);
+      });
 });

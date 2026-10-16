@@ -108,8 +108,10 @@ export function gradeCell({
         // In the call's order with its other actions, as a run or an edit (review 006-57 B2).
         if (a.sub === "retry") at(k.t, retryStep(a, replies.retry));
         // An executed run is an action whatever it printed: redirected, empty, or a request not
-        // yet recorded leaves no evidence, yet a run was asked for (re-review 006-59 R1).
-        if (a.sub === "run") at(k.t, { k: "squeal-run", all: a.all, slow: a.slow });
+        // yet recorded leaves no evidence, yet a run was asked for (re-review 006-59 R1). It keeps
+        // whether Squeal answered it, which the slow tier's measure needs (001-428).
+        if (a.sub === "run")
+          at(k.t, { k: "squeal-run", all: a.all, slow: a.slow, answered: reply === true });
       }
       // A start that found the service running changes nothing (row 006-53).
       if (a.kind === "service" && serviceStarts === null)
