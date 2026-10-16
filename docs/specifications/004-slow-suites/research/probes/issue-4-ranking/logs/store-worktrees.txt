@@ -1,0 +1,4 @@
+worktree rows: 26
+registered on 2026-10-15: 15
+distinct worktrees with revisions: 26
+all revisions ever naming markdown.tsx: 1

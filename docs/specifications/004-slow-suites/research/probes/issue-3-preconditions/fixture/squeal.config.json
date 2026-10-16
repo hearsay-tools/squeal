@@ -1,0 +1,9 @@
+{
+  "baseline": { "onStart": "lookup-only" },
+  "inputs": { "test/e2e/*.test.mjs": ["dist/**"] },
+  "nodeTest": [
+    { "name": "test:unit", "include": ["test/unit/*.test.mjs"] },
+    { "name": "test:package", "include": ["test/e2e/*.test.mjs"], "slow": true }
+  ],
+  "slow": { "maxLoadPerCpu": 1000, "maxParallel": 1, "maxWorkers": 1 }
+}
