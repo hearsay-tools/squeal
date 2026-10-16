@@ -45,11 +45,11 @@ type Naming = "every" | "first" | "none";
  * out what is left to run (005's pilot: every false "pass" came from an
  * uncovered node:test suite).
  *
- * With slow files declared (spec 004 D8, D9) it names the step before a
- * claim, `run --slow --wait`, with the header line that says it is done, and
- * when a slow failure arrives. Codex names the CLI by its path, never
- * `squeal`, and has no idle wake (002): there a slow failure arrives with the
- * next prompt or tool call. Task 001-283 (`research/primer-skill-writing.md`):
+ * With slow files declared (spec 004 D8, D9) it says what the policy
+ * requires of them before the agent finishes, with the header line that
+ * says they are current and `run --slow --wait`, and when a slow failure
+ * arrives. Codex names the CLI by its path, never `squeal`, and has no idle
+ * wake (002): there a slow failure arrives with the next prompt or tool call. Task 001-283 (`research/primer-skill-writing.md`):
  * the arrival of results is said once, and the slow step sits beside the
  * wait it extends. Spec 005 D6: that sentence says passing results are
  * silent and a message means a check changed (an agent with only the primer
@@ -65,7 +65,9 @@ export function primer(command: string = SQUEAL_COMMAND, coverage: Coverage = VI
           ? "`status --wait 60000` on the CLI SQUEAL messages name"
           : `\`${command} status --wait 60000\``
       }.`,
-      ...(coverage.slow === null ? [] : slowSentences(command, naming)),
+      ...(coverage.slow === null
+        ? []
+        : slowSentences(command, naming, coverage.slow.requireSlowSuite === true)),
       "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
       retrySentence(command, naming),
       REVISION,
@@ -167,17 +169,24 @@ function named(noun: string, entries: readonly string[], shown: number): string 
 }
 
 /**
- * Spec 004 D8, D9: when slow files run, the step before a claim with its
- * completion criterion read off the `Slow tier:` line (task 001-283; it
- * holds for them since 001-282), and how a slow failure arrives, by harness.
+ * Spec 004 D8, D9: when slow files run, what this repository's "done"
+ * requires of them, and how a slow failure arrives, by harness. D8 as
+ * amended 2026-10-16 (task 004-62, issue #5): with `stop.requireSlowSuite`
+ * on, task 001-283's step before a claim, read off the `Slow tier:` line,
+ * and Stop's wait (001-285); off, the slow tier is not required before the
+ * agent finishes, and a claim that slow tests pass needs that line current.
+ * Each within 280 characters under `squeal`, which the longest Claude Code
+ * primer of the coverage matrix keeps with every project named.
  */
-function slowSentences(command: string, naming: Naming): string[] {
+function slowSentences(command: string, naming: Naming, required: boolean): string[] {
   const run =
     naming === "every"
       ? `\`${command} run --slow --wait 60000\``
       : "the CLI's `run --slow --wait 60000`";
   return [
-    `Slow test files run when you pause between turns; before you say the task is done, run ${run} unless the latest \`Slow tier:\` line states every slow file is current: it runs the rest and waits for them.`,
+    required
+      ? `Slow test files run when you pause between turns; this repository requires them before you finish: before you say the task is done, run ${run} unless the latest \`Slow tier:\` line states every slow file is current, and Stop waits for them.`
+      : `Slow test files run when you pause between turns; this repository does not require them before you finish: say slow tests pass only when the latest \`Slow tier:\` line states every slow file is current, else say how many are not; ${run} runs them now.`,
     command === SQUEAL_COMMAND
       ? "A slow failure wakes you when you are idle in an interactive session; otherwise it arrives with your next prompt or tool call."
       : "A slow failure arrives with your next prompt or tool call.",
