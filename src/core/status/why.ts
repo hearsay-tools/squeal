@@ -114,6 +114,7 @@ function resolve(store: Store, worktreeId: string, query: string): CheckId | Why
  */
 function held(store: Store, worktreeId: string): CheckId[] {
   const failureKeys = failureKeysOnce(store, worktreeId);
+  // `usedAt` 0: a read, so `why` takes no write lock beside a daemon's writes (011-01, issue 7).
   return store.testFileKeys.list(worktreeId).flatMap(({ key }) =>
     store.results
       .byKey(key, 0)

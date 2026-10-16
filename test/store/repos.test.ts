@@ -1,4 +1,6 @@
+import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
+import { readTransaction, storePaths } from "../../src/core/store/index.js";
 import { connectionOf } from "../../src/core/store/store.js";
 import type {
   CheckRecord,
@@ -291,6 +293,27 @@ describe("results", () => {
     expect(store.results.listForCheck(check, 2).map((r) => r.key)).toEqual(["new", "mid"]);
     expect(store.results.listForCheck(testCheck("none"), 10)).toEqual([]);
     expect(lastUsed()).toEqual(before);
+  });
+
+  it("reads a key with `usedAt` 0 without a write, in a read transaction beside a writer (011-01)", () => {
+    const commonDir = fakeCommonDir();
+    const store = open(commonDir);
+    store.results.putMany([result(testCheck("one"), "k", { recordedAt: 1 })]);
+    const changes = () => connectionOf(store).get("SELECT total_changes() AS n")?.n;
+    const before = changes();
+    const writer = new DatabaseSync(storePaths(commonDir).database);
+    writer.exec("BEGIN IMMEDIATE; INSERT INTO meta (key, value) VALUES ('writer', 'held')");
+    try {
+      // Issue 7: the no-row UPDATE upgraded the read and failed at once with "database is locked".
+      expect(readTransaction(store, () => store.results.byKey("k", 0))).toHaveLength(1);
+      expect(changes()).toBe(before);
+      // A hit still writes: after a read, its upgrade skips the busy handler.
+      const hit = () => [store.results.checksForKey("k"), store.results.byKey("k", 5)];
+      expect(() => readTransaction(store, hit)).toThrow(/locked/);
+    } finally {
+      writer.exec("ROLLBACK");
+      writer.close();
+    }
   });
 
   it("lists the checks stored under a key, without other keys' checks", () => {
