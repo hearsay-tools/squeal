@@ -1,9 +1,12 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { slowTierText } from "../../src/core/state/slow-text.js";
 import { countedText } from "../../src/core/status/checks.js";
+import type { SlowTierState, StatusHeader } from "../../src/core/types/index.js";
 import { PLUGIN_DIR } from "../../src/harness/claude-code/build.js";
 import { CODEX_PLUGIN_DIR, CODEX_SKILL } from "../../src/harness/codex/build.js";
+import { PI_PLUGIN_DIR, PI_SKILL } from "../../src/harness/pi/build.js";
 import { PRIMER } from "../../src/harness/shared/primer.js";
 
 /*
@@ -16,6 +19,22 @@ const SKILL = join(PLUGIN_DIR, "skills/squeal");
 const body = readFileSync(join(SKILL, "SKILL.md"), "utf8");
 const references = readdirSync(join(SKILL, "references")).sort();
 const read = (name: string) => readFileSync(join(SKILL, "references", name), "utf8");
+
+/** A header whose slow tier has `pending` of 3 files pending, the rest current; `stopWaitMs` with the policy on. */
+function slowHeader(pending: number, stopWaitMs?: number): StatusHeader {
+  const slowTier: SlowTierState = {
+    testFiles: 3,
+    current: 3 - pending,
+    pending,
+    notRun: 0,
+    currentAt: pending === 3 ? null : 2,
+    artifact: [],
+    sourcesChangedSince: false,
+    activity: null,
+    ...(stopWaitMs === undefined ? {} : { stopWaitMs }),
+  };
+  return { revision: 2, slowTier } as unknown as StatusHeader;
+}
 
 function description(): string {
   const match = /^---\n(?:.*\n)*?description: (.*)\n(?:.*\n)*?---\n/.exec(body);
@@ -72,16 +91,57 @@ describe("the squeal skill", () => {
    * Task 001-283 (`research/slow-claims.md` §2): a model following step 3 to
    * the letter claimed while the slow tier ran. The claim step names
    * `run --slow --wait`, and its completion criterion is read off the header.
+   * Spec 004 D8 as amended 2026-10-16 (task 004-62, issue #5): the skill is
+   * one text in every repository, so it reads the policy off the end of the
+   * `Slow tier:` line (`stopText`): Stop's wait means the slow tier is
+   * required before done; any other ending means it is not, and a claim
+   * that slow tests pass still needs the line current.
    */
-  it("makes the slow tier current before a claim, with a checkable criterion", () => {
+  it("reads the slow-suite policy off the `Slow tier:` line, with a checkable criterion", () => {
     const step = body.slice(body.indexOf("4. **"), body.indexOf("5. **"));
     expect(step).toContain("Before you say the task is done");
-    expect(step).toContain("`squeal run --slow --wait 60000`");
     expect(step).toContain(
-      "Done when no check of your edits is pending, the `Slow tier:` line says every slow file is current",
+      "If the last one says `Stop waits`, the repository requires them: while one is not current, run `squeal run --slow --wait 60000`; otherwise say how many are not current.",
+    );
+    expect(step).toContain("Claim slow tests pass only once it says every slow file is current.");
+    expect(step).toContain(
+      "Done when no check of your edits is pending, the slow tier is current or counted,",
     );
     expect(body).not.toMatch(/never during Stop's wait/);
     for (const text of [body, ...references.map(read)]) expect(text).not.toContain("Stop's wait");
+  });
+
+  /* Both endings, with slow files not current and with every one current. */
+  it.each([0, 3])(
+    "names the policy's endings as the `Slow tier:` line prints them, %i pending",
+    (pending) => {
+      const [before, after] = "Stop waits up to … for them or holds the agent once".split("…") as [
+        string,
+        string,
+      ];
+      const on = slowTierText(slowHeader(pending, 120_000), "squeal") ?? "";
+      expect(on).toContain(`${before}2 min${after}`);
+      expect(slowTierText(slowHeader(pending), "squeal")).not.toContain("Stop");
+    },
+  );
+
+  it("says in `commands.md` that `run --slow` before done is the policy's, read off the line", () => {
+    const section = read("commands.md").split("## squeal run --slow")[1] ?? "";
+    expect(section).toContain(
+      "ask when you need their result now, for example before saying slow tests pass.",
+    );
+    expect(section).toContain(
+      "Whether it is needed before saying the task is done is the repository's policy, read off the end of the `Slow tier:` line (the skill's step 4): `Stop waits up to … for them or holds the agent once` means it is; any other ending means it is not, and a claim that slow tests pass still needs the line to say every slow file is current.",
+    );
+    expect(section).not.toContain("It is the skill's step 4 before saying the task is done.");
+  });
+
+  it("says the same step 4 and `commands.md` in the Codex and Pi copies", () => {
+    const step = (text: string) => text.slice(text.indexOf("4. **"), text.indexOf("5. **"));
+    for (const dir of [join(CODEX_PLUGIN_DIR, CODEX_SKILL), join(PI_PLUGIN_DIR, PI_SKILL)]) {
+      expect(step(readFileSync(join(dir, "SKILL.md"), "utf8"))).toBe(step(body));
+      expect(readFileSync(join(dir, "references/commands.md"), "utf8")).toBe(read("commands.md"));
+    }
   });
 
   it("names the squeal why line a FAIL report ends with", () => {
