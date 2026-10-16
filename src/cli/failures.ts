@@ -1,4 +1,4 @@
-import { formatFailures, readFailures } from "../core/status/index.js";
+import { CLI_READ_RETRY_MS, formatFailures, readFailures } from "../core/status/index.js";
 import type { EpochMs } from "../core/types/index.js";
 import type { CliIo } from "./main.js";
 
@@ -37,7 +37,11 @@ export function failuresCommand(args: readonly string[], io: CliIo): number {
     return usage(`--since takes a duration such as 90s, 30m, 2h or 1d, not "${sinceText}"`, io);
   }
   const since: EpochMs | null = window === null ? null : now() - window;
-  const report = readFailures(io.cwd ?? process.cwd(), { allWorktrees, since });
+  const report = readFailures(io.cwd ?? process.cwd(), {
+    allWorktrees,
+    since,
+    busyRetryMs: CLI_READ_RETRY_MS,
+  });
   io.stdout(json ? `${JSON.stringify(report, null, 2)}\n` : formatFailures(report));
   return report.available ? 0 : 1;
 }
