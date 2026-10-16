@@ -1005,23 +1005,23 @@ var init_package_scans = __esm({
       scanned = 0;
       scanMs = 0;
       /** Whether the package at `dir` ships no file Node could load. */
-      typesOnly(identity, dir2) {
-        let known2 = this.#typesOnly.get(identity);
+      typesOnly(identity2, dir2) {
+        let known2 = this.#typesOnly.get(identity2);
         if (known2 === void 0) {
           known2 = !hasRuntimeFile(dir2);
-          this.#typesOnly.set(identity, known2);
+          this.#typesOnly.set(identity2, known2);
         }
         return known2;
       }
       /** Whether the code of the package at `dir` references an opaque builtin. */
-      opaque(identity, dir2) {
-        let known2 = this.#opaque.get(identity);
+      opaque(identity2, dir2) {
+        let known2 = this.#opaque.get(identity2);
         if (known2 === void 0) {
           const start2 = performance.now();
           known2 = referencesOpaque(dir2);
           this.scanMs += performance.now() - start2;
           this.scanned += 1;
-          this.#opaque.set(identity, known2);
+          this.#opaque.set(identity2, known2);
         }
         return known2;
       }
@@ -1100,9 +1100,9 @@ var init_packages = __esm({
           } else starts.add(location2);
         }
         for (const location2 of starts) {
-          for (const identity of this.#closure(location2)) found2.add(identity);
+          for (const identity2 of this.#closure(location2)) found2.add(identity2);
         }
-        const sorted2 = [...found2].filter((identity) => !exclude?.has(identity));
+        const sorted2 = [...found2].filter((identity2) => !exclude?.has(identity2));
         return sorted2.sort(compare);
       }
       /**
@@ -1113,9 +1113,9 @@ var init_packages = __esm({
        * not hold. Scanned once per identity.
        */
       opaque(identities) {
-        return identities.some((identity) => {
-          const location2 = this.#locations.get(identity);
-          return location2 !== void 0 && this.scans.opaque(this.#scanId(identity), join6(this.dir, location2));
+        return identities.some((identity2) => {
+          const location2 = this.#locations.get(identity2);
+          return location2 !== void 0 && this.scans.opaque(this.#scanId(identity2), join6(this.dir, location2));
         });
       }
       /** A worktree-relative directory relative to the install, or `null` when outside it. */
@@ -1152,13 +1152,13 @@ var init_packages = __esm({
             identities.push(`workspace:${location2}`);
             continue;
           }
-          const identity = identityOf(location2, entry4);
-          if (this.scans.typesOnly(this.#scanId(identity), join6(this.dir, location2))) {
+          const identity2 = identityOf(location2, entry4);
+          if (this.scans.typesOnly(this.#scanId(identity2), join6(this.dir, location2))) {
             identities.push(`${location2}@types-only`);
             continue;
           }
-          identities.push(identity);
-          this.#locations.set(identity, location2);
+          identities.push(identity2);
+          this.#locations.set(identity2, location2);
           for (const field of EDGES) {
             const names3 = entry4[field];
             if (!isRecord(names3)) continue;
@@ -1173,8 +1173,8 @@ var init_packages = __esm({
         return identities;
       }
       /** An identity is unique within one install; the install's directory makes it unique across. */
-      #scanId(identity) {
-        return `${this.dir}\0${identity}`;
+      #scanId(identity2) {
+        return `${this.dir}\0${identity2}`;
       }
     };
   }
@@ -1189,7 +1189,7 @@ function dependencyKeys(installed, environment) {
   }
   const shared = graph.identities(environment.imports);
   const runner = new Set(graph.identities(environment.runner ?? []));
-  if (graph.opaque(shared.filter((identity) => !runner.has(identity)))) {
+  if (graph.opaque(shared.filter((identity2) => !runner.has(identity2)))) {
     return { environment: fingerprint, of: () => "" };
   }
   const excluded = new Set(shared);
@@ -10951,6 +10951,7 @@ async function executeTier(context, tier, observeIgnored = false, stop2) {
         logDir: tier.logDir,
         timeoutMs: context.policy.runner.timeoutMs,
         ...signal2 === void 0 ? {} : { signal: signal2 },
+        ...stop2 === void 0 ? {} : { stop: stop2 },
         lane: tier.lane,
         ...observeIgnored ? { observeIgnored } : {},
         ...tier.lease === void 0 ? {} : { workers: tier.lease.grant }
@@ -36728,23 +36729,33 @@ async function runNodeTest(options) {
   const node = options.project.node ?? "node";
   const running = /* @__PURE__ */ new Set();
   let expired = false;
+  let cancelled = false;
   const timers = [];
+  const stopAll = () => {
+    for (const group of running) group.kill("SIGTERM");
+    timers.push(
+      setTimeout(() => {
+        for (const group of running) group.kill("SIGKILL");
+      }, KILL_GRACE_MS)
+    );
+  };
   if (options.timeoutMs !== null) {
     timers.push(
       setTimeout(() => {
         expired = true;
-        for (const group of running) group.kill("SIGTERM");
-        timers.push(
-          setTimeout(() => {
-            for (const group of running) group.kill("SIGKILL");
-          }, KILL_GRACE_MS)
-        );
+        stopAll();
       }, options.timeoutMs)
     );
   }
+  const onAbort = () => {
+    cancelled = true;
+    stopAll();
+  };
+  if (options.signal?.aborted === true) cancelled = true;
+  else options.signal?.addEventListener("abort", onAbort, { once: true });
   const queue = [...runs];
   const worker = async () => {
-    for (let run4 = queue.shift(); run4 !== void 0 && !expired; run4 = queue.shift()) {
+    for (let run4 = queue.shift(); run4 !== void 0 && !expired && !cancelled; run4 = queue.shift()) {
       const group = startGroup({
         command: node,
         args: run4.args,
@@ -36768,8 +36779,9 @@ async function runNodeTest(options) {
   const width = Math.max(1, Math.min(options.concurrency ?? runs.length, runs.length));
   await Promise.all(Array.from({ length: width }, worker));
   for (const timer of timers) clearTimeout(timer);
+  options.signal?.removeEventListener("abort", onAbort);
   const completed = runs.filter((r) => r.stream?.completed === true);
-  const { end, failure: failure2 } = ending(runs, completed.length, expired, options.timeoutMs, node);
+  const { end, failure: failure2 } = cancelled ? { end: "completed", failure: null } : ending(runs, completed.length, expired, options.timeoutMs, node);
   const built = {
     end,
     durationMs: Math.round(performance.now() - started2),
@@ -36976,7 +36988,8 @@ async function openProject(context) {
         // slot's permits, and a file queued here would start after an edit or a close.
         ...options.concurrency === void 0 || slowLane(runOptions.lane) ? {} : { concurrency: options.concurrency() },
         ...env === void 0 ? {} : { env },
-        ...runOptions.observeIgnored === true ? { observeIgnored: true } : {}
+        ...runOptions.observeIgnored === true ? { observeIgnored: true } : {},
+        ...runOptions.stop === void 0 ? {} : { signal: runOptions.stop }
       });
       const report2 = reads === void 0 ? ran : { ...ran, reads };
       const preloaded = observed.record(seen, new Set(files2));
@@ -44266,27 +44279,37 @@ async function runPytest(options) {
   const python = environment.discovery.python;
   const running = /* @__PURE__ */ new Set();
   let expired = false;
+  let cancelled = false;
   const timers = [];
+  const stopAll = () => {
+    for (const group of running) group.kill("SIGTERM");
+    timers.push(
+      setTimeout(() => {
+        for (const group of running) group.kill("SIGKILL");
+      }, KILL_GRACE_MS2)
+    );
+  };
   if (options.timeoutMs !== null) {
     timers.push(
       setTimeout(() => {
         expired = true;
-        for (const group of running) group.kill("SIGTERM");
-        timers.push(
-          setTimeout(() => {
-            for (const group of running) group.kill("SIGKILL");
-          }, KILL_GRACE_MS2)
-        );
+        stopAll();
       }, options.timeoutMs)
     );
   }
+  const onAbort = () => {
+    cancelled = true;
+    stopAll();
+  };
+  if (options.signal?.aborted === true) cancelled = true;
+  else options.signal?.addEventListener("abort", onAbort, { once: true });
   const queue = [...batches];
   const bytecode = runBytecode(cacheDir, options.root, [
     ...keptDirs(environment.discovery.env, environment.discovery.python),
     runtimeDir2
   ]);
   const worker = async () => {
-    for (let batch = queue.shift(); batch !== void 0 && !expired; batch = queue.shift()) {
+    for (let batch = queue.shift(); batch !== void 0 && !expired && !cancelled; batch = queue.shift()) {
       const events = join78(options.logDir, `events-${batch.index}.jsonl`);
       const group = startGroup({
         command: python,
@@ -44309,6 +44332,7 @@ async function runPytest(options) {
     await Promise.all(Array.from({ length: width }, worker));
   } finally {
     for (const timer of timers) clearTimeout(timer);
+    options.signal?.removeEventListener("abort", onAbort);
     bytecode.remove();
     basetemp.remove();
   }
@@ -44333,7 +44357,7 @@ async function runPytest(options) {
       `pytest project "${project.name}": these test ids hold a memory address, so they change every run: ${addresses.join(", ")}.`
     );
   }
-  const { end, failure: failure2 } = ending2(batches, new Set(done.map((f) => f.testFile)), expired, {
+  const { end, failure: failure2 } = cancelled ? { end: "completed", failure: null } : ending2(batches, new Set(done.map((f) => f.testFile)), expired, {
     total: options.files.length,
     timeoutMs: options.timeoutMs,
     python,
@@ -44451,7 +44475,8 @@ async function runProject(context, testFiles, runOptions) {
     ...options.batchSize === void 0 ? {} : { batchSize: options.batchSize() },
     ...slow ? { alone: () => true } : {},
     ...options.cacheDir === void 0 ? {} : { cacheDir: options.cacheDir },
-    childEnv: childEnvOf2(options, runOptions.childEnv)
+    childEnv: childEnvOf2(options, runOptions.childEnv),
+    ...runOptions.stop === void 0 ? {} : { signal: runOptions.stop }
   });
   const after = syncNote(project, environment.fingerprint, currentFingerprint(environment));
   if (after !== null) return { kind: "moved", report: unavailable3(after) };
@@ -45860,7 +45885,7 @@ function createCompositeRunner(adapters) {
       const parts2 = [];
       for (const adapter of adapters) {
         const files2 = groups.get(adapter);
-        if (files2 === void 0) continue;
+        if (files2 === void 0 || options.stop?.aborted === true) continue;
         parts2.push({ adapter, report: await runPart(adapter, files2, options) });
       }
       return merge2(parts2);
@@ -46221,8 +46246,8 @@ function foldedText(what, list2, command) {
   const total = [...counts.values()].reduce((sum, n) => sum + n, 0);
   const byCommand = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([line, n]) => `${n} \xD7 ${line}`);
   const since = new Date(Math.min(...list2.map((note) => note.at))).toISOString();
-  const processes = total === 1 ? "1 process" : `${total} processes`;
-  return `stopped ${processes} ${what}, in ${plural(list2.length, "note")} since ${since}: ${byCommand.join("; ")} (\`${command} status --notes\` lists each)`;
+  const processes2 = total === 1 ? "1 process" : `${total} processes`;
+  return `stopped ${processes2} ${what}, in ${plural(list2.length, "note")} since ${since}: ${byCommand.join("; ")} (\`${command} status --notes\` lists each)`;
 }
 function formatUnavailable(result) {
   return `${result.message.charAt(0).toUpperCase()}${result.message.slice(1)}
@@ -47334,9 +47359,9 @@ function hookHash(event2, matcher3, handler) {
   if (limit !== void 0 && limit !== DEFAULT_CONTEXT_LIMIT) {
     normalized.additionalContextLimit = limit;
   }
-  const identity = { event_name: eventLabel(event2), hooks: [normalized] };
-  if (matcher3 !== void 0 && !NO_MATCHER.has(event2)) identity.matcher = matcher3;
-  const digest = createHash9("sha256").update(JSON.stringify(canonical(identity))).digest("hex");
+  const identity2 = { event_name: eventLabel(event2), hooks: [normalized] };
+  if (matcher3 !== void 0 && !NO_MATCHER.has(event2)) identity2.matcher = matcher3;
+  const digest = createHash9("sha256").update(JSON.stringify(canonical(identity2))).digest("hex");
   return `sha256:${digest}`;
 }
 function hookHashes(file, keySource) {
@@ -48134,7 +48159,7 @@ function answer(socket, response) {
 function prepareFrontDesk(worker = null) {
   const script = worker?.script ?? frontDeskScript(new URL(import.meta.url));
   if (script === null) {
-    return { open: (identity, events) => inThread(identity, guarded(events)), discard: () => {
+    return { open: (identity2, events) => inThread(identity2, guarded(events)), discard: () => {
     } };
   }
   const execArgv = worker?.execArgv;
@@ -48147,11 +48172,11 @@ function started(worker) {
   worker.on("error", onError);
   worker.on("exit", onExit);
   return {
-    open: (identity, events) => {
+    open: (identity2, events) => {
       worker.off("error", onError);
       worker.off("exit", onExit);
       if (early[0] !== void 0) return Promise.reject(early[0]);
-      return inWorker(worker, identity, guarded(events));
+      return inWorker(worker, identity2, guarded(events));
     },
     discard: () => void worker.terminate()
   };
@@ -48200,7 +48225,7 @@ function guarded(events) {
     onError: caught
   };
 }
-async function inWorker(worker, identity, events) {
+async function inWorker(worker, identity2, events) {
   const post = (message2) => worker.postMessage(message2);
   let listening = false;
   let closing = false;
@@ -48276,7 +48301,7 @@ async function inWorker(worker, identity, events) {
     };
     worker.on("error", died);
     worker.on("exit", (code) => died(new Error(`socket worker exited with code ${code}`)));
-    post({ type: "bind", identity });
+    post({ type: "bind", identity: identity2 });
   });
   try {
     await listen;
@@ -48298,16 +48323,16 @@ async function inWorker(worker, identity, events) {
     }
   };
 }
-async function inThread(identity, events) {
+async function inThread(identity2, events) {
   let phase = "starting";
   const server = await createDaemonServer(
-    identity.socketPath,
+    identity2.socketPath,
     createHandlers({
-      worktreeId: identity.worktreeId,
-      root: identity.root,
-      squealVersion: identity.squealVersion,
-      startedAt: identity.startedAt,
-      token: identity.token,
+      worktreeId: identity2.worktreeId,
+      root: identity2.root,
+      squealVersion: identity2.squealVersion,
+      startedAt: identity2.startedAt,
+      token: identity2.token,
       phase: () => phase,
       requestFullSuite: events.requestFullSuite,
       requestSlowSuite: events.requestSlowSuite,
@@ -54229,22 +54254,53 @@ import { setTimeout as sleep14 } from "node:timers/promises";
 import { readdirSync as readdirSync21, readFileSync as readFileSync37 } from "node:fs";
 init_terminate();
 function marksOf(pid, token) {
-  return { pid, token, group: statOf(pid)?.pgrp === pid ? pid : null };
+  const group = statOf(pid)?.pgrp === pid ? pid : null;
+  if (group === null || process.platform !== "linux")
+    return { pid, token, group, foreign: /* @__PURE__ */ new Set() };
+  const entries3 = processes();
+  const byPid = new Map(entries3.map((entry4) => [entry4.pid, entry4]));
+  const descends = (entry4) => {
+    for (let at2 = entry4, hops = 0; at2 !== void 0 && hops < 64; hops++) {
+      if (at2.ppid === pid) return true;
+      at2 = byPid.get(at2.ppid);
+    }
+    return false;
+  };
+  const foreign = entries3.filter(
+    (entry4) => entry4.pgrp === group && entry4.pid !== pid && !descends(entry4)
+  );
+  return { pid, token, group, foreign: new Set(foreign.map(identity)) };
+}
+function processes() {
+  return readdirSync21("/proc").flatMap((name2) => {
+    const entry4 = /^\d+$/.test(name2) ? statOf(Number(name2)) : null;
+    return entry4 === null ? [] : [entry4];
+  });
+}
+function identity({ pid, start: start2 }) {
+  return `${pid}:${start2}`;
 }
 async function leftovers(marks, self = process.pid) {
   if (process.platform !== "linux") return [];
   const needle = marks.token === null ? null : `\0${CHILD_VARIABLE}=${marks.token}`;
-  const found2 = [];
-  for (const name2 of readdirSync21("/proc")) {
-    if (!/^\d+$/.test(name2)) continue;
-    const pid = Number(name2);
-    if (pid === self || pid === marks.pid) continue;
-    const entry4 = statOf(pid);
-    if (entry4 === null) continue;
-    if (marks.group !== null && entry4.pgrp === marks.group || carries(pid, needle))
-      found2.push(pid);
+  const entries3 = processes();
+  const byPid = new Map(entries3.map((entry4) => [entry4.pid, entry4]));
+  const found2 = entries3.filter(
+    (entry4) => entry4.pid !== self && entry4.pid !== marks.pid && (marks.group !== null && entry4.pgrp === marks.group || carries(entry4.pid, needle)) && !ofForeign(entry4, marks.foreign, byPid)
+  );
+  const named = await Promise.all(
+    found2.map(async (entry4) => ({ entry: entry4, args: await commandLine(entry4.pid) }))
+  );
+  return named.flatMap(
+    ({ entry: entry4, args: args2 }) => statOf(entry4.pid)?.start === entry4.start ? [{ pid: entry4.pid, args: args2 }] : []
+  );
+}
+function ofForeign(entry4, foreign, byPid) {
+  for (let at2 = entry4, hops = 0; at2 !== void 0 && hops < 64; hops++) {
+    if (foreign.has(identity(at2))) return true;
+    at2 = byPid.get(at2.ppid);
   }
-  return Promise.all(found2.map(async (pid) => ({ pid, args: await commandLine(pid) })));
+  return false;
 }
 function carries(pid, needle) {
   if (needle === null) return false;
