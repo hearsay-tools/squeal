@@ -11,6 +11,7 @@ import {
   type FullSuiteRequest,
   isSlowLane,
   type RelativePath,
+  type Revision,
   type Scheduler,
   type SchedulerCloseOptions,
   type SchedulerStatus,
@@ -80,6 +81,7 @@ class TierScheduler implements Scheduler {
     closed: () => this.#closed,
     pump: () => this.#pump(),
     backgroundError: (subject, error) => this.#backgroundError(subject, error),
+    applied: () => this.#cancelBacklogs(null),
   });
   readonly #slow: SlowTier;
   #context: SchedulerContext | null = null;
@@ -267,12 +269,19 @@ class TierScheduler implements Scheduler {
     }
     this.#slow.preempt();
     // The runner part waits for the runner: a backlog tier yields to an edit (task 001-124).
-    for (const { tier } of this.#inFlight.values()) {
-      if (tier.cancel && cancelsBacklog(context, ledger, applied.revision, tier)) {
-        tier.cancel.abort();
-      }
-    }
+    this.#cancelBacklogs(applied.revision);
     this.#runnerWork.queueRefine(applied.revision, applied.content, touched);
+  }
+
+  /**
+   * Cancels each backlog tier in flight that `revision`, or with `null` the
+   * runner part just applied, gives way to (`cancelsBacklog`, task 001-364).
+   */
+  #cancelBacklogs(revision: Revision | null): void {
+    const { context, ledger } = this.#started();
+    for (const { tier } of this.#inFlight.values()) {
+      if (tier.cancel && cancelsBacklog(context, ledger, revision, tier)) tier.cancel.abort();
+    }
   }
 
   /** The baseline, at start or at the install that ends a wait; the wait ends in the store with it. */

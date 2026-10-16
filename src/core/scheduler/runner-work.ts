@@ -48,6 +48,8 @@ export interface RunnerWorkHost {
   pump(): void;
   /** An error of work no caller awaits: a note for status, and `onError`. */
   backgroundError(subject: string, error: unknown): void;
+  /** A runner part was applied and committed, under the lock: what it queued may cancel a backlog tier. */
+  applied(): void;
 }
 
 /** The runner work of one scheduler, applied by its pump beside the tiers in flight (task 001-140). */
@@ -206,6 +208,7 @@ export class RunnerWork {
         );
         for (const ref of stale) this.#carried.set(testFileId(ref), ref);
         ledger.commit(refined === null ? {} : { refined });
+        this.host.applied();
       });
     } catch (error) {
       if (refined === null) {
