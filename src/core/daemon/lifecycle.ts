@@ -6,7 +6,7 @@ import {
   lastDeparture,
   markRest,
 } from "../delivery/index.js";
-import { storePaths } from "../store/index.js";
+import { type BusyWaits, storePaths } from "../store/index.js";
 import {
   type AbsolutePath,
   type DaemonExitReason,
@@ -17,6 +17,7 @@ import {
   type Store,
   type WorktreeId,
 } from "../types/index.js";
+import { SlicedWrites } from "./sliced-writes.js";
 
 /** How often the daemon does its periodic work. Every field has a default. */
 export interface DaemonTimings {
@@ -127,6 +128,12 @@ export interface TimerContext {
   readonly owedWork?: () => string | null;
   readonly note: (text: string) => void;
   readonly log: (line: string) => void;
+  /**
+   * Task 001-422: the heartbeat's, expiry's and prune's writes wait
+   * `BUSY_SLICE_MS` for a busy store and are retried soon; what waited goes
+   * here. Absent: they wait the store's busy timeout, a failure only logged.
+   */
+  readonly busyWaits?: BusyWaits;
   readonly shutdown: (reason: DaemonExitReason, text: string) => void;
 }
 
@@ -190,6 +197,7 @@ export function startTimers(context: TimerContext): () => void {
       context.log(`${what} failed: ${String(error)}`);
     }
   };
+  const retries = new SlicedWrites(context);
 
   const check = () => {
     if (!existsSync(context.root)) {
@@ -206,7 +214,9 @@ export function startTimers(context: TimerContext): () => void {
     const at = now();
     if (at - lastExpire >= expireMs) {
       lastExpire = at;
-      attempt("consumer expiry", () => expireConsumers(store, at, { locksDir }));
+      retries.run("consumer expiry", [
+        ["consumer expiry", () => expireConsumers(store, now(), { locksDir })],
+      ]);
     }
     attempt("idle check", () => {
       if (presence.lastPresentAt !== null || !countPresence(at)) return;
@@ -276,11 +286,12 @@ export function startTimers(context: TimerContext): () => void {
         );
       }
     });
-  const heartbeat = () => {
-    attempt("heartbeat", () => store.worktrees.heartbeat(worktreeId, now()));
-    attempt("harness check", () => dropGoneHarnesses(store, worktreeId, now(), { locksDir }));
-    attempt("leaving check", () => dropLeft(store, worktreeId, now(), { locksDir }));
-  };
+  const heartbeat = () =>
+    retries.run("the heartbeat", [
+      ["heartbeat", () => store.worktrees.heartbeat(worktreeId, now())],
+      ["harness check", () => dropGoneHarnesses(store, worktreeId, now(), { locksDir })],
+      ["leaving check", () => dropLeft(store, worktreeId, now(), { locksDir })],
+    ]);
   const observedKeys = context.policy.nodeTest.flatMap(({ name }) => [
     nodeTestObservedMetaKey(name),
     nodeTestObservedPreloadsMetaKey(name),
@@ -299,13 +310,17 @@ export function startTimers(context: TimerContext): () => void {
       if (read !== seen.snapshot && context.observedChanged?.() === true) seen.snapshot = read;
     });
   const prune = () =>
-    attempt("prune", () => {
-      store.prune({
-        now: now(),
-        retentionDays: context.policy.store.retentionDays,
-        maxSizeMb: context.policy.store.maxSizeMb,
-      });
-    });
+    retries.run("pruning", [
+      [
+        "prune",
+        () =>
+          store.prune({
+            now: now(),
+            retentionDays: context.policy.store.retentionDays,
+            maxSizeMb: context.policy.store.maxSizeMb,
+          }),
+      ],
+    ]);
 
   const timers = [
     setInterval(heartbeat, context.heartbeatMs),
@@ -322,6 +337,7 @@ export function startTimers(context: TimerContext): () => void {
   return () => {
     for (const timer of timers) clearInterval(timer);
     clearTimeout(first);
+    retries.stop();
   };
 }
 
