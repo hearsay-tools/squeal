@@ -1,0 +1,129 @@
+variant: negated
+cli: /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs
+squeal.config.json: { "inputs": { "a.test.mjs": ["!docs/**"] } }
+
+$ squeal --version
+0.1.199
+[exit 0]
+
+$ squeal status
+Status unavailable, no Squeal store at /tmp/squeal-issue21-5xJh7o/repo/.git/squeal/store.sqlite
+[exit 1]
+
+$ squeal status --json
+{
+  "schemaVersion": 1,
+  "available": false,
+  "reason": "no-store",
+  "message": "status unavailable, no Squeal store at /tmp/squeal-issue21-5xJh7o/repo/.git/squeal/store.sqlite"
+}
+[exit 1]
+
+$ squeal setup --check
+Squeal setup plan for /tmp/squeal-issue21-5xJh7o/repo
+
+Harnesses:
+  claude-code: on the PATH, plugin not installed
+    install: claude plugin marketplace add hearsay-tools/marketplace
+    install: claude plugin install squeal@hearsay
+  codex: on the PATH, plugin not installed
+    install: codex plugin marketplace add hearsay-tools/marketplace
+    install: codex plugin add squeal@hearsay
+
+Runners: none found
+Config: squeal.config.json exists, tracked by git
+  problem: "inputs" has a glob Squeal cannot use: squeal: negated input glob is not supported: !docs/**
+
+Instruction files:
+  AGENTS.md: read by claude-code and codex; does not exist
+
+Gate lines:
+  none
+
+Slow groups:
+  none found
+
+Codex trust: not checked; squeal init --harness codex --trust checks it
+Warm-up: runs all 1 test files, 1 without a current result (estimated: no daemon has listed them)
+
+Outdated:
+  squeal.config.json: "inputs" has a glob Squeal cannot use: squeal: negated input glob is not supported: !docs/**
+[exit 1]
+
+$ squeal setup --plan --json
+{
+  "schemaVersion": 1,
+  "root": "/tmp/squeal-issue21-5xJh7o/repo",
+  "harnesses": [
+    {
+      "id": "claude-code",
+      "onPath": true,
+      "plugin": null,
+      "installCommands": [
+        "claude plugin marketplace add hearsay-tools/marketplace",
+        "claude plugin install squeal@hearsay"
+      ]
+    },
+    {
+      "id": "codex",
+      "onPath": true,
+      "plugin": null,
+      "installCommands": [
+        "codex plugin marketplace add hearsay-tools/marketplace",
+        "codex plugin add squeal@hearsay"
+      ]
+    }
+  ],
+  "runners": {
+    "vitest": false,
+    "nodeTest": [],
+    "pytest": []
+  },
+  "config": {
+    "path": "squeal.config.json",
+    "exists": true,
+    "tracked": true,
+    "elsewhere": null,
+    "problems": [
+      "\"inputs\" has a glob Squeal cannot use: squeal: negated input glob is not supported: !docs/**"
+    ],
+    "missingKeys": []
+  },
+  "instructions": [
+    {
+      "path": "AGENTS.md",
+      "aliases": [],
+      "harnesses": [
+        "claude-code",
+        "codex"
+      ],
+      "exists": false,
+      "tracked": false,
+      "block": {
+        "state": "absent"
+      }
+    }
+  ],
+  "squealMentions": [],
+  "gates": [],
+  "mentions": [],
+  "slow": {
+    "groups": [],
+    "unresolvedScripts": []
+  },
+  "codexTrust": {
+    "state": "not-checked",
+    "command": "squeal init --harness codex --trust"
+  },
+  "warmup": {
+    "source": "default",
+    "testFiles": 1,
+    "withoutCurrentResult": 1
+  },
+  "outdated": [
+    "squeal.config.json: \"inputs\" has a glob Squeal cannot use: squeal: negated input glob is not supported: !docs/**"
+  ]
+}
+[exit 0]
+
+store after: ls: cannot access '.git/squeal': No such file or directory
