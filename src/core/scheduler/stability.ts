@@ -87,7 +87,7 @@ export function withheldForTouch(report: RunReport, touched: readonly RelativePa
       `${one ? "was" : "were"} written while this run was in flight and ended as ${one ? "it was" : "they were"}`,
     "task 001-168",
   );
-  const { fileDurations, observed, ...rest } = report;
+  const { fileDurations, observed, withheld, ...rest } = report;
   return {
     ...rest,
     completedFiles: [],

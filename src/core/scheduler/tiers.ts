@@ -362,6 +362,12 @@ export function unstableInputs(context: SchedulerContext, tier: Tier): Promise<M
  *   the cancel keep their results, review N6). A fast tier of several files
  *   that timed out queues its incomplete files again in tiers of half as
  *   many instead (`timeoutCap`, task 001-179); alone, a file is `unknown`.
+ * - Completed and withheld by the runner (`RunReport.withheld`: bytes the
+ *   run may have executed moved or were touched during it): discarded and
+ *   re-queued as a content discard is, counted toward `MAX_DISCARDS`, at
+ *   which it is `unknown` with the runner's reason (issue 10, task 011-06).
+ *   No revision may follow a touch, so `unknown` before the limit would
+ *   leave an edited file without a result until its key moved.
  * - Not completed in a backlog tier an edit cancelled, a run that otherwise
  *   ended `completed`: queued again, uncounted (task 001-124).
  * - Any input changed on disk since selection, or in a revision during the
@@ -403,6 +409,7 @@ export function recordTier(
   const duringRun = tier.changes;
   endTier(context, ledger, tier);
   const completed = new Set(report.completedFiles.map(testFileId));
+  const withheld = new Set((report.withheld ?? []).map(testFileId));
   const cancelled = tier.cancel?.signal.aborted === true && report.end === "completed";
   const files = tier.files.map((f) => f.file);
   const splitCap = timeoutCap(report, tier.lane, files, completed);
@@ -433,6 +440,10 @@ export function recordTier(
       ledger.setRunning(file, null);
       if (ledger.files.get(file.id) !== file) continue;
       const queued = typeof requeue === "boolean" ? requeue : requeue.has(file.id);
+      if (!queued && withheld.has(file.id)) {
+        ledger.discard(file, key, forced, [], report.failure ?? `run ${report.end}`);
+        continue;
+      }
       if (queued || (cancelled && !completed.has(file.id))) {
         if (file.key !== null && file.blocked === null) {
           ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), forced);
