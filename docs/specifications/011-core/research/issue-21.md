@@ -46,7 +46,7 @@ Nothing is outdated.
 [exit 0]
 ```
 
-The brace variant, `docs/**/*.{md,txt}`, the form cezarion#1099's agent wrote, has no problem on 0.1.199: its output equals the valid control's (`diff` shows only the paths). So the issue's cezarion edit was valid; only the negated glob is a problem.
+The brace variant, `docs/**/*.{md,txt}`, the form cezarion#1099's agent wrote, has no problem on 0.1.199: its output equals the valid control's (`diff` shows only the paths). This verifies brace syntax for the probe's pattern, not the exact cezarion edit; the negated probe is a problem.
 
 **Q1, why.** `withStatusStore` (0.1.199 `dist/cli/squeal.mjs` around line 6493) opens the store with `create: false` and returns `unavailable("no-store", …)` before anything reads `squeal.config.json`. Read in source code.
 
