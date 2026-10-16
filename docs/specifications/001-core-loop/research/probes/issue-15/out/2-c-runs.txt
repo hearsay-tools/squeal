@@ -1,0 +1,422 @@
+Named test files at revision 0: 1 known failure: 1 test; 1 test file, each with a current result, after 1.0 s
+Selected: test/cursor.test.ts
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 0, current
+
+Revision: 0
+Known failures: 1 (1 test)
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 1.01 per CPU when it ran; no retry asked at these inputs
+Affected checks: 1 passed (1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+
+Worktree: /tmp/squeal-issue15-q2SkA6/wt-c (HEAD f607fcc, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+Named test files at revision 1: 1 known failure: 1 test; 1 test file, each with a current result, after 0.5 s
+Selected: test/cursor.test.ts
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 1, current
+
+Revision: 1 · f607fcc9 + 1, dirty
+Known failures: 1 (1 test)
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 1, current
+        recorded just now in this worktree at revision 1, load 1.01 per CPU when it ran; no retry asked at these inputs
+Affected checks: 1 passed (1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+
+Worktree: /tmp/squeal-issue15-q2SkA6/wt-c (HEAD f607fcc, dirty at revision 1)
+Daemon: running, last heartbeat 2 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Named test files at revision 2: 1 known failure: 1 test; 1 test file, each with a current result, after 0.5 s
+Selected: test/cursor.test.ts
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 2, current
+
+Revision: 2 · f607fcc9 + 2, dirty
+Known failures: 1 (1 test)
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 2, current
+        recorded just now in this worktree at revision 2, load 1.01 per CPU when it ran; no retry asked at these inputs
+Affected checks: 1 passed (1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 2; `squeal run --all` requests one)
+
+Worktree: /tmp/squeal-issue15-q2SkA6/wt-c (HEAD f607fcc, dirty at revision 2)
+Daemon: running, last heartbeat 2 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Named test files at revision 3: 1 known failure: 1 test; 1 test file, each with a current result, after 0.5 s
+Selected: test/cursor.test.ts
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 3, current
+
+Revision: 3 · f607fcc9 + 3, dirty
+Known failures: 1 (1 test)
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 3, current
+        recorded just now in this worktree at revision 3, load 1.01 per CPU when it ran; no retry asked at these inputs
+Affected checks: 1 passed (1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 3; `squeal run --all` requests one)
+
+Worktree: /tmp/squeal-issue15-q2SkA6/wt-c (HEAD f607fcc, dirty at revision 3)
+Daemon: running, last heartbeat 3 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Named test files at revision 4: 1 known failure: 1 test; 1 test file, each with a current result, after 0.5 s
+Selected: test/cursor.test.ts
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 4, current
+
+Revision: 4 · f607fcc9 + 4, dirty
+Known failures: 1 (1 test)
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 4, current
+        recorded just now in this worktree at revision 4, load 1.11 per CPU when it ran; no retry asked at these inputs
+Affected checks: 1 passed (1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 4; `squeal run --all` requests one)
+
+Worktree: /tmp/squeal-issue15-q2SkA6/wt-c (HEAD f607fcc, dirty at revision 4)
+Daemon: running, last heartbeat 4 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Named test files at revision 5: 1 known failure: 1 test; 1 test file, each with a current result, after 0.5 s
+Selected: test/cursor.test.ts
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 5, current
+
+Revision: 5 · f607fcc9 + 5, dirty
+Known failures: 1 (1 test)
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 5, current
+        recorded just now in this worktree at revision 5, load 1.11 per CPU when it ran; no retry asked at these inputs
+Affected checks: 1 passed (1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 5; `squeal run --all` requests one)
+
+Worktree: /tmp/squeal-issue15-q2SkA6/wt-c (HEAD f607fcc, dirty at revision 5)
+Daemon: running, last heartbeat 4 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Named test files at revision 6: 1 known failure: 1 test; 1 test file, each with a current result, after 0.5 s
+Selected: test/cursor.test.ts
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 6, current
+
+Revision: 6 · f607fcc9 + 6, dirty
+Known failures: 1 (1 test)
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 6, current
+        recorded just now in this worktree at revision 6, load 1.11 per CPU when it ran; no retry asked at these inputs
+Affected checks: 1 passed (1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 6; `squeal run --all` requests one)
+
+Worktree: /tmp/squeal-issue15-q2SkA6/wt-c (HEAD f607fcc, dirty at revision 6)
+Daemon: running, last heartbeat 5 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Named test files at revision 7: 1 known failure: 1 test; 1 test file, each with a current result, after 0.5 s
+Selected: test/cursor.test.ts
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 7, current
+
+Revision: 7 · f607fcc9 + 7, dirty
+Known failures: 1 (1 test)
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 7, current
+        recorded just now in this worktree at revision 7, load 1.11 per CPU when it ran; no retry asked at these inputs
+Affected checks: 1 passed (1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 7; `squeal run --all` requests one)
+
+Worktree: /tmp/squeal-issue15-q2SkA6/wt-c (HEAD f607fcc, dirty at revision 7)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Named test files at revision 8: 1 known failure: 1 test; 1 test file, each with a current result, after 0.5 s
+Selected: test/cursor.test.ts
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 8, current
+
+Revision: 8 · f607fcc9 + 8, dirty
+Known failures: 1 (1 test)
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 8, current
+        recorded just now in this worktree at revision 8, load 1.11 per CPU when it ran; no retry asked at these inputs
+Affected checks: 1 passed (1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 8; `squeal run --all` requests one)
+
+Worktree: /tmp/squeal-issue15-q2SkA6/wt-c (HEAD f607fcc, dirty at revision 8)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Named test files at revision 9: 1 known failure: 1 test; 1 test file, each with a current result, after 0.5 s
+Selected: test/cursor.test.ts
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 9, current
+
+Revision: 9 · f607fcc9 + 9, dirty
+Known failures: 1 (1 test)
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 9, current
+        recorded just now in this worktree at revision 9, load 1.11 per CPU when it ran; no retry asked at these inputs
+Affected checks: 1 passed (1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 9; `squeal run --all` requests one)
+
+Worktree: /tmp/squeal-issue15-q2SkA6/wt-c (HEAD f607fcc, dirty at revision 9)
+Daemon: running, last heartbeat 2 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Named test files at revision 10: 1 known failure: 1 test; 1 test file, each with a current result, after 0.5 s
+Selected: test/cursor.test.ts
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 10, current
+
+Revision: 10 · f607fcc9 + 10, dirty
+Known failures: 1 (1 test)
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 10, current
+        recorded just now in this worktree at revision 10, load 1.11 per CPU when it ran; no retry asked at these inputs
+Affected checks: 1 passed (1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 10; `squeal run --all` requests one)
+
+Worktree: /tmp/squeal-issue15-q2SkA6/wt-c (HEAD f607fcc, dirty at revision 10)
+Daemon: running, last heartbeat 3 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Named test files at revision 11: 1 known failure: 1 test; 1 test file, each with a current result, after 0.5 s
+Selected: test/cursor.test.ts
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 11, current
+
+Revision: 11 · f607fcc9 + 11, dirty
+Known failures: 1 (1 test)
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 11, current
+        recorded just now in this worktree at revision 11, load 1.11 per CPU when it ran; no retry asked at these inputs
+Affected checks: 1 passed (1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 11; `squeal run --all` requests one)
+
+Worktree: /tmp/squeal-issue15-q2SkA6/wt-c (HEAD f607fcc, dirty at revision 11)
+Daemon: running, last heartbeat 3 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Named test files at revision 12: 1 known failure: 1 test; 1 test file, each with a current result, after 0.5 s
+Selected: test/cursor.test.ts
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 12, current
+
+Revision: 12 · f607fcc9 + 12, dirty
+Known failures: 1 (1 test)
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 12, current
+        recorded just now in this worktree at revision 12, load 1.06 per CPU when it ran; no retry asked at these inputs
+Affected checks: 1 passed (1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 12; `squeal run --all` requests one)
+
+Worktree: /tmp/squeal-issue15-q2SkA6/wt-c (HEAD f607fcc, dirty at revision 12)
+Daemon: running, last heartbeat 4 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Named test files at revision 13: 1 known failure: 1 test; 1 test file, each with a current result, after 0.5 s
+Selected: test/cursor.test.ts
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 13, current
+
+Revision: 13 · f607fcc9 + 13, dirty
+Known failures: 1 (1 test)
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 13, current
+        recorded just now in this worktree at revision 13, load 1.06 per CPU when it ran; no retry asked at these inputs
+Affected checks: 1 passed (1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 13; `squeal run --all` requests one)
+
+Worktree: /tmp/squeal-issue15-q2SkA6/wt-c (HEAD f607fcc, dirty at revision 13)
+Daemon: running, last heartbeat 4 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Named test files at revision 14: 1 known failure: 1 test; 1 test file, each with a current result, after 0.5 s
+Selected: test/cursor.test.ts
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 14, current
+
+Revision: 14 · f607fcc9 + 14, dirty
+Known failures: 1 (1 test)
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 14, current
+        recorded just now in this worktree at revision 14, load 1.06 per CPU when it ran; no retry asked at these inputs
+Affected checks: 1 passed (1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 14; `squeal run --all` requests one)
+
+Worktree: /tmp/squeal-issue15-q2SkA6/wt-c (HEAD f607fcc, dirty at revision 14)
+Daemon: running, last heartbeat 0 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Named test files at revision 15: 1 known failure: 1 test; 1 test file, each with a current result, after 0.5 s
+Selected: test/cursor.test.ts
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 15, current
+
+Revision: 15 · f607fcc9 + 15, dirty
+Known failures: 1 (1 test)
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 15, current
+        recorded just now in this worktree at revision 15, load 1.06 per CPU when it ran; no retry asked at these inputs
+Affected checks: 1 passed (1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 15; `squeal run --all` requests one)
+
+Worktree: /tmp/squeal-issue15-q2SkA6/wt-c (HEAD f607fcc, dirty at revision 15)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Named test files at revision 16: 1 known failure: 1 test; 1 test file, each with a current result, after 0.5 s
+Selected: test/cursor.test.ts
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 16, current
+
+Revision: 16 · f607fcc9 + 16, dirty
+Known failures: 1 (1 test)
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 16, current
+        recorded just now in this worktree at revision 16, load 1.06 per CPU when it ran; no retry asked at these inputs
+Affected checks: 1 passed (1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 16; `squeal run --all` requests one)
+
+Worktree: /tmp/squeal-issue15-q2SkA6/wt-c (HEAD f607fcc, dirty at revision 16)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Named test files at revision 17: 1 known failure: 1 test; 1 test file, each with a current result, after 0.5 s
+Selected: test/cursor.test.ts
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 17, current
+
+Revision: 17 · f607fcc9 + 17, dirty
+Known failures: 1 (1 test)
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 17, current
+        recorded just now in this worktree at revision 17, load 1.06 per CPU when it ran; no retry asked at these inputs
+Affected checks: 1 passed (1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 17; `squeal run --all` requests one)
+
+Worktree: /tmp/squeal-issue15-q2SkA6/wt-c (HEAD f607fcc, dirty at revision 17)
+Daemon: running, last heartbeat 2 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Named test files at revision 18: 1 known failure: 1 test; 1 test file, each with a current result, after 0.5 s
+Selected: test/cursor.test.ts
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 18, current
+
+Revision: 18 · f607fcc9 + 18, dirty
+Known failures: 1 (1 test)
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 18, current
+        recorded just now in this worktree at revision 18, load 1.06 per CPU when it ran; no retry asked at these inputs
+Affected checks: 1 passed (1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 18; `squeal run --all` requests one)
+
+Worktree: /tmp/squeal-issue15-q2SkA6/wt-c (HEAD f607fcc, dirty at revision 18)
+Daemon: running, last heartbeat 3 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Named test files at revision 19: 1 known failure: 1 test; 1 test file, each with a current result, after 0.5 s
+Selected: test/cursor.test.ts
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 19, current
+
+Revision: 19 · f607fcc9 + 19, dirty
+Known failures: 1 (1 test)
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 19, current
+        recorded just now in this worktree at revision 19, load 1.06 per CPU when it ran; no retry asked at these inputs
+Affected checks: 1 passed (1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 19; `squeal run --all` requests one)
+
+Worktree: /tmp/squeal-issue15-q2SkA6/wt-c (HEAD f607fcc, dirty at revision 19)
+Daemon: running, last heartbeat 3 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Named test files at revision 20: 1 known failure: 1 test; 1 test file, each with a current result, after 0.5 s
+Selected: test/cursor.test.ts
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 20, current
+
+Revision: 20 · f607fcc9 + 20, dirty
+Known failures: 1 (1 test)
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 20, current
+        recorded just now in this worktree at revision 20, load 1.02 per CPU when it ran; no retry asked at these inputs
+Affected checks: 1 passed (1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 20; `squeal run --all` requests one)
+
+Worktree: /tmp/squeal-issue15-q2SkA6/wt-c (HEAD f607fcc, dirty at revision 20)
+Daemon: running, last heartbeat 4 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1

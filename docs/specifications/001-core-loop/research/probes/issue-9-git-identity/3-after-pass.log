@@ -1,0 +1,44 @@
+$ git rev-parse HEAD
+f512f5c35db7b209f102d8eac24cb9d20a01efa9
+[exit 0]
+$ git status --porcelain
+[exit 0]
+$ squeal status
+Revision: 1 · f512f5c3 + 0
+Known failures: 0
+Affected checks: 3 passed (2 tests, 1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+
+Worktree: /tmp/issue9-fixture (HEAD ae73b66, dirty at revision 1)
+Daemon: running, last heartbeat 4 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+[exit 0]
+$ squeal status --json | jq "{revision,commit,head,dirty,dirtyObservedAt,daemon:.daemon.state}"
+{
+  "revision": 1,
+  "commit": {
+    "head": "f512f5c35db7b209f102d8eac24cb9d20a01efa9",
+    "sinceHead": 0,
+    "dirty": false
+  },
+  "head": "ae73b662e4e719d9fcf00d81d7c802700052eb44",
+  "dirty": true,
+  "dirtyObservedAt": 1,
+  "daemon": "alive"
+}
+$ squeal status --wait 60000
+Returned on quiet: nothing the edits since revision 1 re-keyed is pending (0 test files) at revision 1 after 0.5 s
+
+Revision: 1 · f512f5c3 + 0
+Known failures: 0
+Affected checks: 3 passed (2 tests, 1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+
+Worktree: /tmp/issue9-fixture (HEAD ae73b66, dirty at revision 1)
+Daemon: running, last heartbeat 0 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+[exit 0]

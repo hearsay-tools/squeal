@@ -1,0 +1,36 @@
+fixture at /home/agent/projects/squeal/.ai/cezar/t/7688c6fd/nw1 (c8ad555)
+squeal 0.1.199
+Squeal daemon spawned for /home/agent/projects/squeal/.ai/cezar/t/7688c6fd/nw1
+--- 1. every file current first (three 15 s browser files, one at a time)
+Checkpoint b09a4f72-fa64-49f7-a0a0-596109cd6ebe completed at revision 0: no known failures; 4 test files, 0 already current, 4 run now
+--- 2. edit the unit test file only
+--- 3. squeal status --json --wait 30000 src/unit.test.ts
+exit 3 after 30196 ms; stderr: Named test files have no verdict: the deadline passed after 30.0 s: 2 test files still pending at revision 1
+Selected: e2e/b1.e2e.ts, e2e/b2.e2e.ts, e2e/b3.e2e.ts, src/unit.test.ts
+{"outcome":"timeout","waitedMs":30004,"code":3,"selected":["e2e/b1.e2e.ts","e2e/b2.e2e.ts","e2e/b3.e2e.ts","src/unit.test.ts"],"verdict":{"revision":1,"testFiles":4,"byClass":{"current":2,"pending":2,"stale":0,"unknown":0},"unlisted":false,"failures":{"tests":0,"testFiles":0}},"runnerPartPending":false,"slowTier":{"pending":2,"activity":{"kind":"running","path":"e2e/b3.e2e.ts","since":1792186057243,"lastDurationMs":15058.045479}}}
+--- 4. runs since the edit (ms after the edit)
+{"revision":1,"test_files":"[{\"project\":\"\",\"path\":\"src/unit.test.ts\"}]","started":159,"ended":393,"end_state":"completed"}
+{"revision":1,"test_files":"[{\"project\":\"\",\"path\":\"e2e/b2.e2e.ts\"}]","started":412,"ended":15725,"end_state":"completed"}
+{"revision":1,"test_files":"[{\"project\":\"\",\"path\":\"e2e/b3.e2e.ts\"}]","started":15734,"ended":null,"end_state":null}
+--- 5. squeal status --wait 120000 src/unit.test.ts (text)
+exit 0 after 16077 ms (edit + 46396 ms)
+Named test files at revision 3: no known failures; 4 test files, each with a current result, after 15.9 s
+Selected: e2e/b1.e2e.ts, e2e/b2.e2e.ts, e2e/b3.e2e.ts, src/unit.test.ts
+
+Revision: 3 · c8ad555b + 3, dirty
+Known failures: 0
+Affected checks: 9 passed (5 tests, 4 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 3; `squeal run --all` requests one)
+Slow tier: 3 test files; 3 current against src/** as of revisions 1 to 3. Squeal runs them when the agent pauses.
+
+Worktree: /home/agent/projects/squeal/.ai/cezar/t/7688c6fd/nw1 (HEAD c8ad555, dirty at revision 3)
+Daemon: running, last heartbeat 3 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+--- 6. runs since the edit, again
+{"revision":1,"test_files":"[{\"project\":\"\",\"path\":\"src/unit.test.ts\"}]","started":159,"ended":393,"end_state":"completed"}
+{"revision":1,"test_files":"[{\"project\":\"\",\"path\":\"e2e/b2.e2e.ts\"}]","started":412,"ended":15725,"end_state":"completed"}
+{"revision":1,"test_files":"[{\"project\":\"\",\"path\":\"e2e/b3.e2e.ts\"}]","started":15734,"ended":31006,"end_state":"completed"}
+{"revision":3,"test_files":"[{\"project\":\"\",\"path\":\"e2e/b1.e2e.ts\"}]","started":31014,"ended":46250,"end_state":"completed"}
+--- 7. control: the selection for the browser file's own source, src/a.ts
+{"outcome":"settled","selected":["e2e/b1.e2e.ts","e2e/b2.e2e.ts","e2e/b3.e2e.ts","src/unit.test.ts"]}
+Squeal daemon stopped for /home/agent/projects/squeal/.ai/cezar/t/7688c6fd/nw1

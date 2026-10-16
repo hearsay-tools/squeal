@@ -1,0 +1,46 @@
+fixture at /home/agent/projects/squeal/.ai/cezar/t/7688c6fd/dft (c712a53)
+squeal 0.1.199, lane fast, variant touch
+Squeal daemon spawned for /home/agent/projects/squeal/.ai/cezar/t/7688c6fd/dft
+--- 1. every file current (1 s files)
+Checkpoint eef0f63a-82ed-4f8d-867c-8d8c1e945f88 completed at revision 0: no known failures; 5 test files, 0 already current, 5 run now
+--- 2. long/long.test.ts now takes 60 s; its edit queues it
+long run open: 1
+--- 3. rewrote src/a.ts with identical bytes
+--- 4. edited src/unit.test.ts and created src/new.test.ts at +3009 ms; polling
++  3232 ms rev 2 refined 1 runnerPartPending true checks queued 8 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2977]
++  5402 ms rev 2 refined 1 runnerPartPending true checks queued 8 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2977]
++  7574 ms rev 2 refined 1 runnerPartPending true checks queued 8 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2977]
++  9738 ms rev 2 refined 1 runnerPartPending true checks queued 8 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2977]
++ 11898 ms rev 2 refined 1 runnerPartPending true checks queued 8 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2977]
++ 14068 ms rev 2 refined 1 runnerPartPending true checks queued 8 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2977]
++ 16238 ms rev 2 refined 1 runnerPartPending true checks queued 8 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2977]
++ 18468 ms rev 2 refined 1 runnerPartPending true checks queued 8 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2977]
++ 20624 ms rev 2 refined 1 runnerPartPending true checks queued 8 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2977]
++ 22778 ms rev 2 refined 1 runnerPartPending true checks queued 8 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2977]
++ 24935 ms rev 2 refined 1 runnerPartPending true checks queued 8 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2977]
++ 27112 ms rev 2 refined 1 runnerPartPending true checks queued 8 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2977]
++ 29278 ms rev 2 refined 1 runnerPartPending true checks queued 8 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2977]
++ 31436 ms rev 2 refined 1 runnerPartPending true checks queued 8 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2977]
++ 33589 ms rev 2 refined 1 runnerPartPending true checks queued 8 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2977]
++ 35741 ms rev 2 refined 1 runnerPartPending true checks queued 8 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2977]
++ 37913 ms rev 2 refined 1 runnerPartPending true checks queued 8 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2977]
++ 40091 ms rev 2 refined 1 runnerPartPending true checks queued 8 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2977]
++ 42279 ms rev 2 refined 1 runnerPartPending true checks queued 8 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2977]
++ 44509 ms rev 2 refined 1 runnerPartPending true checks queued 8 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2977]
++ 46659 ms rev 2 refined 1 runnerPartPending true checks queued 8 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2977]
++ 48824 ms rev 2 refined 1 runnerPartPending true checks queued 8 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2977]
++ 50979 ms rev 2 refined 1 runnerPartPending true checks queued 8 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2977]
++ 53153 ms rev 2 refined 1 runnerPartPending true checks queued 8 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2977]
++ 55345 ms rev 2 refined 1 runnerPartPending true checks queued 8 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2977]
++ 57524 ms rev 2 refined 2 runnerPartPending false checks queued 6 running 2 filesWithoutChecks {"pending":1,"unknown":0} slowActivity null src/new.test.ts: keyed 1 pending running openRuns [src/unit.test.ts+src/new.test.ts@57432]
++ 59746 ms rev 2 refined 2 runnerPartPending false checks queued 2 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity {"kind":"running","path":"e2e/b1.e2e.ts","since":1792186186596,"lastDurationMs":1028.4150809999999} src/new.test.ts: keyed 1 pending null openRuns [e2e/b1.e2e.ts@58978]
+--- 5. runs since step 3 (ms after it)
+{"revision":0,"test_files":"[{\"project\":\"\",\"path\":\"long/long.test.ts\"},{\"project\":\"\",\"path\":\"src/unit.test.ts\"}]","started":-8185,"ended":-6972,"end_state":"completed"}
+{"revision":0,"test_files":"[{\"project\":\"\",\"path\":\"e2e/b1.e2e.ts\"}]","started":-6961,"ended":-5743,"end_state":"completed"}
+{"revision":0,"test_files":"[{\"project\":\"\",\"path\":\"e2e/b2.e2e.ts\"}]","started":-5734,"ended":-4539,"end_state":"completed"}
+{"revision":0,"test_files":"[{\"project\":\"\",\"path\":\"e2e/b3.e2e.ts\"}]","started":-4531,"ended":-3330,"end_state":"completed"}
+{"revision":1,"test_files":"[{\"project\":\"\",\"path\":\"long/long.test.ts\"}]","started":-2977,"ended":57320,"end_state":"completed"}
+{"revision":2,"test_files":"[{\"project\":\"\",\"path\":\"src/unit.test.ts\"},{\"project\":\"\",\"path\":\"src/new.test.ts\"}]","started":57432,"ended":57673,"end_state":"completed"}
+{"revision":2,"test_files":"[{\"project\":\"\",\"path\":\"e2e/b3.e2e.ts\"}]","started":57684,"ended":58968,"end_state":"completed"}
+{"revision":2,"test_files":"[{\"project\":\"\",\"path\":\"e2e/b1.e2e.ts\"}]","started":58978,"ended":null,"end_state":null}
+Squeal daemon stopped for /home/agent/projects/squeal/.ai/cezar/t/7688c6fd/dft

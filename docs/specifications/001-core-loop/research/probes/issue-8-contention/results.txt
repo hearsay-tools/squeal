@@ -1,0 +1,78 @@
+# Throwaway: output of the runs cited in ../../issue-8-contention.md, 2026-10-16,
+# Node v24.21.0, node:sqlite SQLite 3.53.4, 24 CPUs, load average 21.7 to 32.9.
+# baseline = a5789453 plugins/claude-code/dist/cli/squeal.mjs (0.1.200, sha256 a51e35096fabcb55...)
+# 0.1.199  = ~/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs (sha256 6869478e38d3233f...)
+
+## E1  ./matrix.sh /tmp/i8/repo 3000 baseline=... 0.1.199=...   (22:42:54, load 28.16)
+baseline   none       why (held)             exit=0   189 ms  Check: src/auth.test.ts > auth > login
+baseline   none       status --json (held)   exit=0   180 ms  {
+baseline   immediate  why (held)             exit=0   154 ms  Check: src/auth.test.ts > auth > login
+baseline   immediate  why (after release)    exit=0   143 ms  Check: src/auth.test.ts > auth > login
+baseline   immediate  status --json (held)   exit=0   119 ms  {
+baseline   immediate  status --json (after)  exit=0   167 ms  {
+baseline   exclusive  why (held)             exit=0   189 ms  Check: src/auth.test.ts > auth > login
+baseline   exclusive  why (after release)    exit=0   173 ms  Check: src/auth.test.ts > auth > login
+baseline   exclusive  status --json (held)   exit=0   146 ms  {
+baseline   exclusive  status --json (after)  exit=0   199 ms  {
+baseline   lockmode   why (held)             exit=1  1165 ms  Status unavailable, store busy for more than 1000 ms
+baseline   lockmode   why (after release)    exit=0   156 ms  Check: src/auth.test.ts > auth > login
+baseline   lockmode   status --json (held)   exit=1  1136 ms  {
+baseline   lockmode   status --json (after)  exit=0   136 ms  {
+0.1.199    none       why (held)             exit=0   148 ms  Check: src/auth.test.ts > auth > login
+0.1.199    none       status --json (held)   exit=0   148 ms  {
+0.1.199    immediate  why (held)             exit=0   152 ms  Check: src/auth.test.ts > auth > login
+0.1.199    immediate  why (after release)    exit=0   206 ms  Check: src/auth.test.ts > auth > login
+0.1.199    immediate  status --json (held)   exit=0   194 ms  {
+0.1.199    immediate  status --json (after)  exit=0   123 ms  {
+0.1.199    exclusive  why (held)             exit=0   109 ms  Check: src/auth.test.ts > auth > login
+0.1.199    exclusive  why (after release)    exit=0   125 ms  Check: src/auth.test.ts > auth > login
+0.1.199    exclusive  status --json (held)   exit=0   124 ms  {
+0.1.199    exclusive  status --json (after)  exit=0   134 ms  {
+0.1.199    lockmode   why (held)             exit=1  1131 ms  Status unavailable, store busy for more than 1000 ms
+0.1.199    lockmode   why (after release)    exit=0   119 ms  Check: src/auth.test.ts > auth > login
+0.1.199    lockmode   status --json (held)   exit=1  1120 ms  {
+0.1.199    lockmode   status --json (after)  exit=0   127 ms  {
+
+## E1b  0.1.199 `status --json` 0.4 s into a 2.5 s lockmode hold, then `why --json`, then `status`
+{ "schemaVersion": 1, "available": false, "reason": "timeout",
+  "message": "status unavailable, store busy for more than 1000 ms" }      exit 1
+why --json (started ~1.6 s into the hold, lock freed at 2.5 s): "available": true, "found": true   exit 0
+status after release: "Revision: 1" / "Known failures: 1 (1 test)"                               exit 0
+
+## E2  ./variants.sh /tmp/i8/repo 8000 <cli>   (BEGIN IMMEDIATE held 8 s; both CLIs alike)
+baseline: why 'auth > login' 164 ms, why login 159, why --include-logs 171, why nothing-matches exit=1 118 (no match),
+          why --json 129, status 165, status --json 156, status --notes 178, failures 167; all exit 0 but the no-match
+0.1.199:  119, 117, 110, 114 (exit 1, no match), 111, 140, 121, 122, 125
+
+## E3  ./lastclose.sh <fresh repo> <mb> 0.1.199, no other connection open
+200 MB, 64 overwritten rows:  last close took 168 ms; 16/16 why exit 0, slowest 360 ms        (22:46:27, load 24.33)
+300 MB distinct rows (403 MB WAL): last close took 737 ms; 16/16 why exit 0; overlapping ones 290-758 ms  (load 25.54)
+700 MB distinct rows (941 MB WAL), close starts 20:47:29.632Z, took 1941 ms               (22:46:54, load 21.68)
+why #09 start=22:47:29.361 exit=0   144 ms  Check: src/auth.test.ts > auth > login
+why #10 start=22:47:29.514 exit=1  1178 ms  Status unavailable, store busy for more than 1000 ms
+why #11 start=22:47:29.668 exit=1  1145 ms  Status unavailable, store busy for more than 1000 ms
+why #12 start=22:47:29.824 exit=1  1169 ms  Status unavailable, store busy for more than 1000 ms
+why #13 start=22:47:29.977 exit=1  1185 ms  Status unavailable, store busy for more than 1000 ms
+why #14 start=22:47:30.129 exit=1  1161 ms  Status unavailable, store busy for more than 1000 ms
+why #15 start=22:47:30.281 exit=1  1173 ms  Status unavailable, store busy for more than 1000 ms
+why #16 start=22:47:30.438 exit=0  1170 ms  Check: src/auth.test.ts > auth > login
+
+## E4  same 700 MB run with keeper.mjs holding an idle connection   (22:47:44, load 25.68)
+last close took 3 ms; 16/16 why exit 0, slowest 194 ms; WAL left at 941337632 bytes
+
+## E5  ./churn.sh /tmp/i8/churn 40 0.1.199   (22:48:44, load 22.64)
+why: 40 ok, 0 failed, slowest 314 ms; wal 68643352 bytes
+reader: 4040 integrity_check passes, 0 errors; writers: 24-34 transactions each (200-800 ms holds), 0 errors
+
+## Live store, observed without opening it (ls and /proc/*/fd only), 22:39-22:41
+/home/agent/projects/cezar/.git/squeal: store.sqlite 265064448, -wal 90582352, -shm 196608 bytes
+8 processes hold it open, all `squeal.mjs daemon` 0.1.199 (4 from the Claude Code cache, 4 from Codex's)
+
+## E6  ./crash.sh /tmp/i8/crash 700 6 0.1.199   (22:51:49, load 19.39)
+writer SIGKILLed at 20:52:22.032Z with wal 941337632 bytes, shm 1835008 bytes, no other connection
+6 `why` opened at once: 5 exit 0 in 699-732 ms; 1 exit 0 in 2379 ms (likely the last closer, checkpointing
+the recovered WAL); 0 failed. Recovery of this WAL fit inside the 1000 ms busy timeout on this host.
+
+## E7  ./churn.sh /tmp/i8/churn 30 0.1.199 burst   (22:52:58, load 15.56)
+30 `why` started at once beside 4 writers, the integrity_check reader and the keeper:
+30 exit 0, slowest 371 ms; writers 25-34 transactions, reader 5523 passes, 0 errors; wal 42135272 bytes

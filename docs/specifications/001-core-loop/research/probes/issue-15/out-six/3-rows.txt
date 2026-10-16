@@ -1,0 +1,14 @@
+6 rows in results for the test check (one per key)
+83b91eb9bf97 wt-c run=b98f9754 at=1792183731976
+be02b2be132e wt-c run=abacb5cc at=1792183732623
+efb1c7253d5b wt-c run=cd92c771 at=1792183733239
+86a38ec32e33 wt-c run=c6979e6c at=1792183733764
+43e981d82181 wt-c run=bd6d2c94 at=1792183734552
+3ac8e05d33b1 wt-b run=28a4663a at=1792183736684
+meta failure-producers:3f25407f5798340d: {"test\u0000\u0000test/cursor.test.ts\u0000installed runners resolve both bundled mocks":{"runId":"3249059a-04a4-4215-b68e-b5b0d1692fc6","recordedAt":1792183730243}}
+meta failure-producers:a837e4bbad2588e9: {"test\u0000\u0000test/cursor.test.ts\u0000installed runners resolve both bundled mocks":{"runId":"bd6d2c94-d053-4126-8770-8992b5c67914","recordedAt":1792183734552}}
+meta failure-producers:6ba3b26e71d2f531: {"test\u0000\u0000test/cursor.test.ts\u0000installed runners resolve both bundled mocks":{"runId":"28a4663a-a01b-4c72-b1b9-f70a99b66b1d","recordedAt":1792183736684}}
+run with no stored test result: a93a19a5-fde7-46a8-ac18-87d209f65441 worktree=wt-a logDir=/tmp/squeal-issue15-T1QojB/wt-a/.git/squeal/runs/a93a19a5-fde7-46a8-ac18-87d209f65441
+run with no stored test result: 3249059a-04a4-4215-b68e-b5b0d1692fc6 worktree=wt-a logDir=/tmp/squeal-issue15-T1QojB/wt-a/.git/squeal/runs/3249059a-04a4-4215-b68e-b5b0d1692fc6
+run with no stored test result: aa0e3bb5-9a4c-4474-aa87-819ff6ce31e6 worktree=wt-c logDir=/tmp/squeal-issue15-T1QojB/wt-a/.git/squeal/runs/aa0e3bb5-9a4c-4474-aa87-819ff6ce31e6
+failure_texts rows carrying /tmp/squeal-1001/tmp/aa8a5cb5a96868a4/cez-cursor-package-baT9jo: 1

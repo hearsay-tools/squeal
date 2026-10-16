@@ -1,0 +1,12 @@
+2026-10-16T20:41:07Z
+ 22:41:07 up 2 days, 11:29,  8 users,  load average: 34.69, 20.14, 20.72
+commit: a8ceaa805c2736d81910d2f1be97b8e7f8c32e43  version: 0.1.200
+ISSUE6 {"case":"exact-test-overlap","named":[".github/scripts/upstream-ledger.test.cjs"],"expected":[".github/scripts/upstream-ledger.test.cjs"],"actual":[".github/scripts/upstream-ledger.test.cjs",".github/scripts/upstream-targets.test.cjs"],"matchesD2":false}
+ISSUE6 {"case":"source-overlap","named":[".github/scripts/lib.cjs"],"expected":[".github/scripts/upstream-ledger.test.cjs",".github/scripts/upstream-targets.test.cjs"],"actual":[".github/scripts/upstream-ledger.test.cjs",".github/scripts/upstream-targets.test.cjs"],"matchesD2":true}
+ISSUE6 {"case":"exact-unit-under-e2e-inputs","named":["packages/web/src/test/card-2-contrast.test.ts"],"expected":["packages/web/src/test/card-2-contrast.test.ts"],"actual":["packages/web/e2e/create-project.e2e.ts","packages/web/src/test/card-2-contrast.test.ts"],"matchesD2":false}
+ISSUE6 {"case":"source-under-e2e-inputs","named":["packages/web/src/card.ts"],"expected":["packages/web/src/test/card-2-contrast.test.ts","packages/web/e2e/create-project.e2e.ts"],"actual":["packages/web/e2e/create-project.e2e.ts","packages/web/src/test/card-2-contrast.test.ts"],"matchesD2":true}
+ISSUE6 {"case":"exact-test-no-overlap","named":[".github/scripts/upstream-ledger.test.cjs"],"expected":[".github/scripts/upstream-ledger.test.cjs"],"actual":[".github/scripts/upstream-ledger.test.cjs"],"matchesD2":true}
+ISSUE6 {"case":"source-no-overlap","named":[".github/scripts/lib.cjs"],"expected":[".github/scripts/upstream-ledger.test.cjs",".github/scripts/upstream-targets.test.cjs"],"actual":[".github/scripts/upstream-ledger.test.cjs",".github/scripts/upstream-targets.test.cjs"],"matchesD2":true}
+ISSUE6 {"case":"exact-test-imported","named":[".github/scripts/upstream-ledger.test.cjs"],"expected":[".github/scripts/upstream-ledger.test.cjs"],"actual":[".github/scripts/upstream-ledger.test.cjs",".github/scripts/upstream-targets.test.cjs"],"matchesD2":false}
+ Test Files  1 passed (1)
+      Tests  5 passed (5)

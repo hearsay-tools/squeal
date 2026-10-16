@@ -1,0 +1,56 @@
+Verification on 2026-10-16, base 80bad645b2263aea878499f1336c28d9eef0c6c9 (0.1.200).
+Only research files changed. No product/test/bundle changes.
+
+$ npm run lint
+
+> squeal@0.1.200 lint
+> biome check .
+
+Checked 1351 files in 567ms. No fixes applied.
+Exit: 0
+
+$ npm run typecheck
+
+> squeal@0.1.200 typecheck
+> tsc --noEmit
+
+Exit: 0
+
+$ npm run build
+
+> squeal@0.1.200 build
+> tsc -p tsconfig.build.json && npm run build:plugin
+
+
+> squeal@0.1.200 build:plugin
+> tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts
+
+Exit: 0
+
+$ node --check docs/specifications/001-core-loop/research/probes/issue-14/probe.mjs
+(no output)
+Exit: 0
+
+Both saved probe invocations: exit 0. See their complete NDJSON logs.
+
+$ node --disable-warning=ExperimentalWarning /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs run --all --wait 600000
+Checkpoint 7ff9c817-79ff-4bca-82cb-2057b16fe508 completed at revision 48: 2 known failures: 2 tests; 667 test files, 667 already current, 0 run now
+Checkpoint 7ff9c817-79ff-4bca-82cb-2057b16fe508 started at revision 48: 0 test files to run, 667 already current
+
+Revision: 48 · 80bad645 + 48, dirty
+Known failures: 2 (2 tests)
+  FAIL  test/runners/node-test/run-reads-fidelity.test.ts > a node:test warm-up's recorder a test cannot tell is there (task 001-390) > names the recorder in a failure with its signature while it is in NODE_OPTIONS
+        expected [ [ 'fail', undefined ] ] to deeply equal [ [ 'pass', undefined ] ]; diff (- Expected, + Received): - "pass", | + "fail",
+        at test/runners/node-test/run-reads-fidelity.test.ts:116:30, observed at revision 5, current
+        recorded at an unknown time and load: the result that produced it is no longer identifiable in the store
+  FAIL  test/runners/vitest/observe-fidelity.test.ts > vitest adapter: a recorder a test cannot tell is there (task 001-390) > names the recorder in a failure with its signature, and only under it
+        expected [ [ 'fail', undefined, false ], …(1) ] to deeply equal [ [ 'pass', undefined, false ], …(1) ]; diff (- Expected, + Received): - "pass", | + "fail",
+        at test/runners/vitest/observe-fidelity.test.ts:119:37, observed at revision 5, current
+        recorded at an unknown time and load: the result that produced it is no longer identifiable in the store
+Affected checks: 6339 passed (5672 tests, 667 test files loaded), 0 running, 0 queued, 10 skipped (10 tests)
+Full-suite checkpoint: completed at revision 48
+
+[Remaining worktree, inheritance and note details omitted.]
+Exit: 1
+
+No independent Vitest run: the daemon is validating and this is research, not a reviewer or landing gate. No retry requested by this worker. No causal diagnosis of those two baseline failures is made.

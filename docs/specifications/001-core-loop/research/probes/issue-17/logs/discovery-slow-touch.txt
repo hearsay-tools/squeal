@@ -1,0 +1,20 @@
+fixture at /home/agent/projects/squeal/.ai/cezar/t/7688c6fd/dst (84fed03)
+squeal 0.1.199, lane slow, variant touch
+Squeal daemon spawned for /home/agent/projects/squeal/.ai/cezar/t/7688c6fd/dst
+--- 1. every file current (1 s files)
+Checkpoint 0e08255c-c731-4576-9b2c-28c1d7793311 completed at revision 0: no known failures; 5 test files, 0 already current, 5 run now
+--- 2. browser files now take 60 s; run --slow starts them
+Slow tier requested at revision 1: 3 slow files queued; they run once no fast work is pending.
+long run open: 1
+--- 3. rewrote src/a.ts with identical bytes
+--- 4. edited src/unit.test.ts and created src/new.test.ts at +3010 ms; polling
++  3243 ms rev 2 refined 2 runnerPartPending false checks queued 6 running 2 filesWithoutChecks {"pending":1,"unknown":0} slowActivity null src/new.test.ts: keyed 1 pending running openRuns [e2e/b3.e2e.ts@-5238, src/unit.test.ts+src/new.test.ts@3213]
++  5496 ms rev 2 refined 2 runnerPartPending false checks queued 6 running 0 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: keyed 1 pending null openRuns [e2e/b3.e2e.ts@-5238]
+--- 5. runs since step 3 (ms after it)
+{"revision":0,"test_files":"[{\"project\":\"\",\"path\":\"long/long.test.ts\"},{\"project\":\"\",\"path\":\"src/unit.test.ts\"}]","started":-10491,"ended":-9198,"end_state":"completed"}
+{"revision":0,"test_files":"[{\"project\":\"\",\"path\":\"e2e/b1.e2e.ts\"}]","started":-9180,"ended":-7851,"end_state":"completed"}
+{"revision":0,"test_files":"[{\"project\":\"\",\"path\":\"e2e/b2.e2e.ts\"}]","started":-7843,"ended":-6625,"end_state":"completed"}
+{"revision":0,"test_files":"[{\"project\":\"\",\"path\":\"e2e/b3.e2e.ts\"}]","started":-6615,"ended":-5421,"end_state":"completed"}
+{"revision":1,"test_files":"[{\"project\":\"\",\"path\":\"e2e/b3.e2e.ts\"}]","started":-5238,"ended":null,"end_state":null}
+{"revision":2,"test_files":"[{\"project\":\"\",\"path\":\"src/unit.test.ts\"},{\"project\":\"\",\"path\":\"src/new.test.ts\"}]","started":3213,"ended":3428,"end_state":"completed"}
+Squeal daemon stopped for /home/agent/projects/squeal/.ai/cezar/t/7688c6fd/dst

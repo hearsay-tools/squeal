@@ -1,0 +1,13 @@
+# 2026-10-16T23:26:17+02:00 read-only observation, host slow slot
+$ fuser /run/user/1001/squeal/slow.lock -> pid 2981344:    2056 /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs daemon /home/agent/projects/cezar/.ai/cezar/worktrees/9b9a72a6-011
+$ (cd <that cezar worktree>; squeal status) | head -6
+Revision: 27 · c5627171 + 0
+Known failures: 0
+Affected checks: 11538 passed (11063 tests, 475 test files loaded), 3 running (2 tests, 1 test file loaded), 797 queued (717 tests, 80 test files loaded), 2 skipped (2 tests)
+Full-suite checkpoint: none completed at any revision (the counts are for revision 27; `squeal run --all` requests one)
+Slow tier: 91 test files; 91 pending, running packages/web/e2e/issue-linked-tasks.e2e.ts since 23:25 (last run 6 s). Squeal runs them when the agent pauses; `squeal run --slow` runs them now.
+
+$ (cd nw1 fixture; squeal status) slow line and note
+Checkpoint in progress: `run --all` requested at revision 0, started 3 min ago: 1 of 4 test files done (`squeal run --all --wait` waits for it)
+Slow tier: 3 test files; 3 pending, waiting for the slow slot another worktree's slow tier holds. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.
+  2026-10-16T21:25:17.677Z, revision 0: the slow slot /run/user/1001/squeal/slow.lock has been held by another daemon of this user for over a minute; this worktree's slow files wait for it (spec 004 D2)

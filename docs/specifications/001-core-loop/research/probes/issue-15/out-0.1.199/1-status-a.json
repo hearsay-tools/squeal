@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "available": true,
+  "worktreeId": "0186cde48f094d14",
+  "worktreeRoot": "/tmp/squeal-issue15-oyOgEM/wt-a",
+  "revision": 0,
+  "counts": {
+    "current": 2,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "fileLevelCounts": {
+    "current": 1,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesWithoutChecks": {
+    "pending": 0,
+    "unknown": 0
+  },
+  "fullSuite": {
+    "atCurrentRevision": true,
+    "lastCompletedRevision": 0
+  },
+  "testFilesListed": true,
+  "inheritedCount": 0,
+  "inheritedFileLevelCount": 0,
+  "refinedRevision": 0,
+  "runnerPartPending": false,
+  "head": "7cd69c0a748469649ba80540bcdc7562d22df0f4",
+  "dirty": null,
+  "dirtyObservedAt": null,
+  "daemon": {
+    "state": "alive",
+    "lastHeartbeatAt": 1792183694377
+  },
+  "knownFailures": [
+    {
+      "check": {
+        "kind": "test",
+        "project": "",
+        "testPath": "test/cursor.test.ts",
+        "fullName": "installed runners resolve both bundled mocks"
+      },
+      "outcome": "fail",
+      "validity": "current",
+      "observedAt": 0,
+      "summary": "expected '. /tmp/…' to be 'present' // Object.is equality",
+      "fingerprint": "AssertionError: expected '. <tmp>' to be 'present' // Object.is equality @ test/cursor.test.ts:9:37",
+      "location": {
+        "path": "test/cursor.test.ts",
+        "line": 9,
+        "column": 37
+      },
+      "recorded": {
+        "worktreeId": "0186cde48f094d14",
+        "worktreeRoot": "/tmp/squeal-issue15-oyOgEM/wt-a",
+        "revision": 0,
+        "recordedAt": 1792183695330,
+        "loadPerCpu": 1.06375
+      }
+    }
+  ],
+  "inherited": {
+    "count": 0,
+    "sources": []
+  },
+  "breakdown": {
+    "currentByOutcome": {
+      "pass": 1,
+      "fail": 1,
+      "skip": 0,
+      "unknown": 0
+    },
+    "pendingByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "fileLevelByOutcome": {
+      "pass": 1,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "fileLevelByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "testFiles": 1,
+    "testFilesWithoutChecks": 0,
+    "testFilesWithoutChecksRunning": 0
+  },
+  "closureMethod": "static imports plus declared inputs",
+  "storeSchemaVersion": 1,
+  "notes": [
+    "no revision recorded for this worktree yet"
+  ],
+  "daemonNotes": []
+}

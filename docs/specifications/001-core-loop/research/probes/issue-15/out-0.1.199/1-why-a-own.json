@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "available": true,
+  "found": true,
+  "worktreeId": "0186cde48f094d14",
+  "worktreeRoot": "/tmp/squeal-issue15-oyOgEM/wt-a",
+  "revision": null,
+  "check": {
+    "kind": "test",
+    "project": "",
+    "testPath": "test/cursor.test.ts",
+    "fullName": "installed runners resolve both bundled mocks"
+  },
+  "worktreeRoots": {
+    "0186cde48f094d14": "/tmp/squeal-issue15-oyOgEM/wt-a"
+  },
+  "knownState": {
+    "worktreeId": "0186cde48f094d14",
+    "check": {
+      "kind": "test",
+      "project": "",
+      "testPath": "test/cursor.test.ts",
+      "fullName": "installed runners resolve both bundled mocks"
+    },
+    "outcome": "fail",
+    "validity": "current",
+    "pendingPhase": null,
+    "observedAt": 0,
+    "commit": "7cd69c0a748469649ba80540bcdc7562d22df0f4",
+    "origin": {
+      "kind": "own"
+    },
+    "durationMs": 6.218367999999998,
+    "location": {
+      "path": "test/cursor.test.ts",
+      "line": 9,
+      "column": 37
+    },
+    "summary": "expected '. /tmp/…' to be 'present' // Object.is equality",
+    "fingerprint": "AssertionError: expected '. <tmp>' to be 'present' // Object.is equality @ test/cursor.test.ts:9:37"
+  },
+  "history": [
+    {
+      "worktreeId": "0186cde48f094d14",
+      "check": {
+        "kind": "test",
+        "project": "",
+        "testPath": "test/cursor.test.ts",
+        "fullName": "installed runners resolve both bundled mocks"
+      },
+      "kind": "first-seen-fail",
+      "from": null,
+      "to": "fail",
+      "fromFingerprint": null,
+      "toFingerprint": "AssertionError: expected '. <tmp>' to be 'present' // Object.is equality @ test/cursor.test.ts:9:37",
+      "revision": 0,
+      "at": 1792183695124
+    }
+  ],
+  "results": [
+    {
+      "result": {
+        "check": {
+          "kind": "test",
+          "project": "",
+          "testPath": "test/cursor.test.ts",
+          "fullName": "installed runners resolve both bundled mocks"
+        },
+        "key": "b031cd3e35995ab561a5d65a9faf607753ab44adecc34e035e10b71c0c2d752d",
+        "outcome": "fail",
+        "durationMs": 6.218367999999998,
+        "location": {
+          "path": "test/cursor.test.ts",
+          "line": 6,
+          "column": 1
+        },
+        "fingerprint": "AssertionError: expected '. <tmp>' to be 'present' // Object.is equality @ test/cursor.test.ts:9:37",
+        "summary": "expected '. /tmp/…' to be 'present' // Object.is equality",
+        "errors": [
+          {
+            "name": "AssertionError",
+            "message": "expected '. /tmp/…' to be 'present' // Object.is equality",
+            "stack": "AssertionError: expected '. /tmp/…' to be 'present' // Object.is equality\n    at test/cursor.test.ts:9:37\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:1628:35\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:2783:26\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3321:20\n    at new Promise (<anonymous>)\n    at runWithCancel (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3316:10)\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3301:20\n    at new Promise (<anonymous>)\n    at runWithTimeout (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3259:10)\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3882:64",
+            "location": {
+              "path": "test/cursor.test.ts",
+              "line": 9,
+              "column": 37
+            },
+            "diff": "Expected: \"present\"\nReceived: \". /tmp/squeal-1001/tmp/b8ce5b9698479278/cez-cursor-package-fqnTVN\""
+          }
+        ],
+        "provenance": {
+          "worktreeId": "0186cde48f094d14",
+          "revision": 0,
+          "commit": "7cd69c0a748469649ba80540bcdc7562d22df0f4",
+          "dirty": false,
+          "runId": "04993ed9-6a19-4cba-bf2a-f5241fe7e27e",
+          "recordedAt": 1792183695330
+        }
+      },
+      "worktreeRoot": "/tmp/squeal-issue15-oyOgEM/wt-a",
+      "logDir": "/tmp/squeal-issue15-oyOgEM/wt-a/.git/squeal/runs/04993ed9-6a19-4cba-bf2a-f5241fe7e27e"
+    }
+  ],
+  "durations": {
+    "results": 1,
+    "pass": 0,
+    "fail": 1,
+    "skip": 0,
+    "minMs": 6.218367999999998,
+    "medianMs": 6.218367999999998,
+    "p95Ms": 6.218367999999998,
+    "maxMs": 6.218367999999998
+  },
+  "runLog": {
+    "runId": "04993ed9-6a19-4cba-bf2a-f5241fe7e27e",
+    "worktreeId": "0186cde48f094d14",
+    "path": "/tmp/squeal-issue15-oyOgEM/wt-a/.git/squeal/runs/04993ed9-6a19-4cba-bf2a-f5241fe7e27e/vitest.log",
+    "state": "present",
+    "console": null
+  }
+}

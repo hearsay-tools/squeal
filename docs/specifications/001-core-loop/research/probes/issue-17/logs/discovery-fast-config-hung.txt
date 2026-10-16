@@ -1,0 +1,32 @@
+fixture at /home/agent/projects/squeal/.ai/cezar/t/7688c6fd/dhc (4658b2d)
+squeal 0.1.199, lane fast, variant config, LONG_MS 600000, runner.timeoutMs 30000
+Squeal daemon spawned for /home/agent/projects/squeal/.ai/cezar/t/7688c6fd/dhc
+--- 1. every file current (1 s files)
+Checkpoint e2cf3d3f-9726-45a8-a11b-861a33cb5e5e completed at revision 0: no known failures; 5 test files, 0 already current, 5 run now
+--- 2. long/long.test.ts now takes 600000 ms; its edit queues it
+long run open: 1
+--- 3. appended a comment to vitest.config.ts
+--- 4. edited src/unit.test.ts and created src/new.test.ts at +3005 ms; polling
++  3219 ms rev 3 refined 1 runnerPartPending true checks queued 10 running 0 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2983]
++  5394 ms rev 3 refined 1 runnerPartPending true checks queued 10 running 0 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2983]
++  7576 ms rev 3 refined 1 runnerPartPending true checks queued 10 running 0 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2983]
++  9777 ms rev 3 refined 1 runnerPartPending true checks queued 10 running 0 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2983]
++ 11923 ms rev 3 refined 1 runnerPartPending true checks queued 10 running 0 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2983]
++ 14097 ms rev 3 refined 1 runnerPartPending true checks queued 10 running 0 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2983]
++ 16267 ms rev 3 refined 1 runnerPartPending true checks queued 10 running 0 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2983]
++ 18436 ms rev 3 refined 1 runnerPartPending true checks queued 10 running 0 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2983]
++ 20597 ms rev 3 refined 1 runnerPartPending true checks queued 10 running 0 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2983]
++ 22765 ms rev 3 refined 1 runnerPartPending true checks queued 10 running 0 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2983]
++ 24932 ms rev 3 refined 1 runnerPartPending true checks queued 10 running 0 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2983]
++ 27111 ms rev 3 refined 1 runnerPartPending true checks queued 10 running 0 filesWithoutChecks {"pending":0,"unknown":0} slowActivity null src/new.test.ts: not listed openRuns [long/long.test.ts@-2983]
++ 29285 ms rev 3 refined 3 runnerPartPending false checks queued 6 running 2 filesWithoutChecks {"pending":0,"unknown":0} slowActivity {"kind":"waiting","for":"fast"} src/new.test.ts: keyed 1 pending null openRuns [long/long.test.ts@27406]
+--- 5. runs since step 3 (ms after it)
+{"revision":0,"test_files":"[{\"project\":\"\",\"path\":\"long/long.test.ts\"},{\"project\":\"\",\"path\":\"src/unit.test.ts\"}]","started":-8193,"ended":-6999,"end_state":"completed"}
+{"revision":0,"test_files":"[{\"project\":\"\",\"path\":\"e2e/b1.e2e.ts\"}]","started":-6990,"ended":-5757,"end_state":"completed"}
+{"revision":0,"test_files":"[{\"project\":\"\",\"path\":\"e2e/b2.e2e.ts\"}]","started":-5747,"ended":-4527,"end_state":"completed"}
+{"revision":0,"test_files":"[{\"project\":\"\",\"path\":\"e2e/b3.e2e.ts\"}]","started":-4518,"ended":-3307,"end_state":"completed"}
+{"revision":1,"test_files":"[{\"project\":\"\",\"path\":\"long/long.test.ts\"}]","started":-2983,"ended":27120,"end_state":"timed-out"}
+{"revision":3,"test_files":"[{\"project\":\"\",\"path\":\"src/unit.test.ts\"},{\"project\":\"\",\"path\":\"src/new.test.ts\"}]","started":27208,"ended":27401,"end_state":"completed"}
+{"revision":3,"test_files":"[{\"project\":\"\",\"path\":\"long/long.test.ts\"}]","started":27406,"ended":null,"end_state":null}
+--- 6. notes
+Squeal daemon stopped for /home/agent/projects/squeal/.ai/cezar/t/7688c6fd/dhc

@@ -1,0 +1,30 @@
+2026-10-16T20:42:01Z
+== overlapping inputs
+inputs: { "inputs": { "scripts/*.test.ts": ["scripts/**"] } }
+squeal: 0.1.199  fixture: /tmp/squeal-issue6-cli-Oieo/fixture
+ 22:42:01 up 2 days, 11:30,  8 users,  load average: 36.25, 22.92, 21.64
+Checkpoint 90b9a13a-2074-4ef5-88bf-41fb35f73e54 completed at revision 0: no known failures; 2 test files, 0 already current, 2 run by the baseline checkpoint a81229a1-d30e-4b2c-8bf8-40b8c8e242f7 it joined
+$ squeal status --json --wait 60000 scripts/ledger.test.ts
+{"outcome":"settled","code":0,"testFiles":["scripts/ledger.test.ts","scripts/targets.test.ts"],"unmatched":[]}
+$ squeal status --json --wait 60000 scripts/lib.ts
+{"outcome":"settled","code":0,"testFiles":["scripts/ledger.test.ts","scripts/targets.test.ts"],"unmatched":[]}
+(edited scripts/ledger.test.ts)
+$ squeal status --json --wait 60000 scripts/ledger.test.ts
+{"outcome":"settled","code":0,"testFiles":["scripts/ledger.test.ts","scripts/targets.test.ts"],"unmatched":[]}
+first line: Named test files at revision 1: no known failures; 2 test files, each with a current result, after 0.5 s
+stopped; scratch left at /tmp/squeal-issue6-cli-Oieo
+
+== control
+inputs: { "inputs": { "scripts/*.test.ts": ["scripts/lib.ts"] } }
+squeal: 0.1.199  fixture: /tmp/squeal-issue6-cli-9ztt/fixture
+ 22:42:04 up 2 days, 11:30,  8 users,  load average: 34.47, 22.77, 21.60
+Checkpoint 6c377113-7094-46a3-9a8e-5c8f7594591a completed at revision 0: no known failures; 2 test files, 0 already current, 2 run by the baseline checkpoint ec94c48a-a348-4722-b093-f5d50126c6e2 it joined
+$ squeal status --json --wait 60000 scripts/ledger.test.ts
+{"outcome":"settled","code":0,"testFiles":["scripts/ledger.test.ts"],"unmatched":[]}
+$ squeal status --json --wait 60000 scripts/lib.ts
+{"outcome":"settled","code":0,"testFiles":["scripts/ledger.test.ts","scripts/targets.test.ts"],"unmatched":[]}
+(edited scripts/ledger.test.ts)
+$ squeal status --json --wait 60000 scripts/ledger.test.ts
+{"outcome":"settled","code":0,"testFiles":["scripts/ledger.test.ts"],"unmatched":[]}
+first line: Named test files at revision 1: no known failures; 1 test file, each with a current result, after 0.5 s
+stopped; scratch left at /tmp/squeal-issue6-cli-9ztt

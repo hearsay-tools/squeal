@@ -1,0 +1,25 @@
+== 1-why-a-own.json
+knownState: fail current observedAt=0 origin={"kind":"own"}
+results: 1 (1 keys); own: 1; by worktree: wt-a
+own key 3ac8e05d33b1344753dbd388bfeb56b71da25428e971e5f332f51d2d0e9f2037; first listed key 3ac8e05d33b1344753dbd388bfeb56b71da25428e971e5f332f51d2d0e9f2037
+errors carry A's marker /tmp/squeal-1001/tmp/aa8a5cb5a96868a4/cez-cursor-package-baT9jo: true
+fingerprints: AssertionError: expected '. <tmp>' to be 'present' // Object.is equality @ test/cursor.test.ts:9:37
+durations: {"results":1,"pass":0,"fail":1,"skip":0,"minMs":8.47702000000001,"medianMs":8.47702000000001,"p95Ms":8.47702000000001,"maxMs":8.47702000000001}
+runLog: present run=3249059a-04a4-4215-b68e-b5b0d1692fc6 worktree=3f25407f5798340d
+== 2-why-a-after-foreign-keys.json
+knownState: fail current observedAt=0 origin={"kind":"own"}
+results: 6 (6 keys); own: 1; by worktree: wt-c,wt-c,wt-c,wt-c,wt-c,wt-a
+own key 3ac8e05d33b1344753dbd388bfeb56b71da25428e971e5f332f51d2d0e9f2037; first listed key 43e981d82181888e553624ce99d631a3f9599776ddc9cc0d6a0d496d6536e340
+errors carry A's marker /tmp/squeal-1001/tmp/aa8a5cb5a96868a4/cez-cursor-package-baT9jo: true
+fingerprints: AssertionError: expected '. <tmp>' to be 'present' // Object.is equality @ test/cursor.test.ts:9:37
+durations: {"results":6,"pass":0,"fail":6,"skip":0,"minMs":6.426489000000004,"medianMs":9.398303999999996,"p95Ms":37.59468799999999,"maxMs":37.59468799999999}
+runLog: present run=3249059a-04a4-4215-b68e-b5b0d1692fc6 worktree=3f25407f5798340d
+== 3-why-a-after-same-key.json
+knownState: fail current observedAt=0 origin={"kind":"own"}
+results: 6 (6 keys); own: 0; by worktree: wt-b,wt-c,wt-c,wt-c,wt-c,wt-c
+own key -; first listed key 3ac8e05d33b1344753dbd388bfeb56b71da25428e971e5f332f51d2d0e9f2037
+errors carry A's marker /tmp/squeal-1001/tmp/aa8a5cb5a96868a4/cez-cursor-package-baT9jo: false
+fingerprints: AssertionError: expected '. <tmp>' to be 'present' // Object.is equality @ test/cursor.test.ts:9:37
+durations: {"results":6,"pass":0,"fail":6,"skip":0,"minMs":6.426489000000004,"medianMs":9.781275999999991,"p95Ms":37.59468799999999,"maxMs":37.59468799999999}
+runLog: null
+A's first run log /tmp/squeal-issue15-T1QojB/wt-a/.git/squeal/runs/3249059a-04a4-4215-b68e-b5b0d1692fc6/vitest.log on disk at the end: true

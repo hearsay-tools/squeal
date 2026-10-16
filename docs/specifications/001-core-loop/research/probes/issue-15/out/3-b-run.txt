@@ -1,0 +1,19 @@
+Checkpoint 65893272-b7dd-448b-a013-01846f848a8a completed at revision 0: 1 known failure: 1 test; 1 test file, 0 already current, 1 run by the baseline checkpoint 40ec1b7e-c730-4fac-8d68-852d167d5b1b it joined
+Checkpoint 65893272-b7dd-448b-a013-01846f848a8a started at revision 0: 1 test file to run, 0 already current, joining the baseline checkpoint 40ec1b7e-c730-4fac-8d68-852d167d5b1b already running them (0 of 1 test files done); it ends when that one ends
+
+Revision: 0
+Known failures: 1 (1 test)
+  FAIL  test/cursor.test.ts > installed runners resolve both bundled mocks
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        at test/cursor.test.ts:9:37, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 1.02 per CPU when it ran; no retry asked at these inputs
+Affected checks: 1 passed (1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+
+Worktree: /tmp/squeal-issue15-q2SkA6/wt-b (HEAD f607fcc, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet

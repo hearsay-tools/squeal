@@ -1,0 +1,25 @@
+== 1-why-a-own.json
+knownState: fail current observedAt=0 origin={"kind":"own"}
+results: 1 (1 keys); own: 1; by worktree: wt-a
+own key b031cd3e35995ab561a5d65a9faf607753ab44adecc34e035e10b71c0c2d752d; first listed key b031cd3e35995ab561a5d65a9faf607753ab44adecc34e035e10b71c0c2d752d
+errors carry A's marker /tmp/squeal-1001/tmp/b8ce5b9698479278/cez-cursor-package-fqnTVN: true
+fingerprints: AssertionError: expected '. <tmp>' to be 'present' // Object.is equality @ test/cursor.test.ts:9:37
+durations: {"results":1,"pass":0,"fail":1,"skip":0,"minMs":6.218367999999998,"medianMs":6.218367999999998,"p95Ms":6.218367999999998,"maxMs":6.218367999999998}
+runLog: present run=04993ed9-6a19-4cba-bf2a-f5241fe7e27e worktree=0186cde48f094d14
+== 2-why-a-after-foreign-keys.json
+knownState: fail current observedAt=0 origin={"kind":"own"}
+results: 20 (20 keys); own: 0; by worktree: wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c
+own key -; first listed key 0a0797e3fea9c2d61c687dd93361f75cd72efd18a4b8d2b843396dd7ab293ae4
+errors carry A's marker /tmp/squeal-1001/tmp/b8ce5b9698479278/cez-cursor-package-fqnTVN: false
+fingerprints: AssertionError: expected '. <tmp>' to be 'present' // Object.is equality @ test/cursor.test.ts:9:37
+durations: {"results":22,"pass":0,"fail":22,"skip":0,"minMs":4.782272999999989,"medianMs":5.9295529999999985,"p95Ms":8.829953999999987,"maxMs":8.840874999999983}
+runLog: present run=04993ed9-6a19-4cba-bf2a-f5241fe7e27e worktree=0186cde48f094d14
+== 3-why-a-after-same-key.json
+knownState: fail current observedAt=0 origin={"kind":"own"}
+results: 20 (20 keys); own: 0; by worktree: wt-b,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c,wt-c
+own key -; first listed key b031cd3e35995ab561a5d65a9faf607753ab44adecc34e035e10b71c0c2d752d
+errors carry A's marker /tmp/squeal-1001/tmp/b8ce5b9698479278/cez-cursor-package-fqnTVN: false
+fingerprints: AssertionError: expected '. <tmp>' to be 'present' // Object.is equality @ test/cursor.test.ts:9:37
+durations: {"results":22,"pass":0,"fail":22,"skip":0,"minMs":4.782272999999989,"medianMs":5.837389000000002,"p95Ms":8.829953999999987,"maxMs":8.840874999999983}
+runLog: null
+A's first run log /tmp/squeal-issue15-oyOgEM/wt-a/.git/squeal/runs/04993ed9-6a19-4cba-bf2a-f5241fe7e27e/vitest.log on disk at the end: true

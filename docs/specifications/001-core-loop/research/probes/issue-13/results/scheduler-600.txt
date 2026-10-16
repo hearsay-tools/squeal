@@ -1,0 +1,49 @@
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/f76da1d7-fe5e-4893-b56b-d6f851bdd372
+
+stdout | docs/specifications/001-core-loop/research/probes/issue-13/scheduler.probe.ts > issue 13, scheduler reproduction > 600 rewritten artifacts no test reads
+runs after the edit: test/other.test.ts+test/holds.test.ts
+markUnknown reasons: 21019 chars
+first reason starts: vitest adapter: dist/agent-config/module-0.d.ts, dist/agent-config/module-1.d.ts, dist/agent-config/module-10.d.ts, dist/agent-config/module-100.d.ts, dist/agen
+first reason ends: ule-98.d.ts, dist/agent-config/module-99.d.ts was written during this run and ended as it was; the run may have executed bytes no check key names (task 001-159)
+notes naming the touch: 0
+header: {"current":0,"pending":0,"stale":0,"unknown":4}
+--- delivered (795 chars) ---
+SQUEAL · 4 checks changed (2 tests, 2 test files loaded) at revision 1
+Revision 1 · 36a2bb5c + 1, dirty: 4 unknown (2 tests, 2 test files loaded). No daemon is running; results are as of revision 1.
+Squeal saw your edit; of the 2 test files it re-keyed, 0 current and 2 with no result (unknown); passing results stay silent.
+
+UNKNOWN  4 checks (2 tests, 2 test files loaded) in 2 test files
+      PASS -> UNKNOWN (2 tests, 2 test files loaded)
+      vitest adapter: dist/agent-config/module-0.d.ts, dist/agent-config/module-1.d.ts, dist/agent-config/module-10.d.ts, dist/agent-config/module-100.d.ts, dist/agent-config/module-101.d.ts, dist/agent-config/module-102.d.ts, dist/agent-config/module-103.d.ts, dist/agent-config/module-104.d.ts, dist/a...
+      test/holds.test.ts, test/other.test.ts
+--- end ---
+status: 42973 chars; reason line 21052 chars
+status head:
+Revision: 1 · 36a2bb5c + 1, dirty
+Known failures: 0
+Affected checks: 0 passed, 0 running, 0 queued, 4 unknown (2 tests, 2 test files loaded)
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+
+Worktree: /home/agent/projects/squeal/.ai/cezar/worktrees/f76da1d7-fe5e-4893-b56b-d6f851bdd372/test/fixtures/vitest/.tmp/stamps-5bfc9246-7ee0-4c19-a7a7-15193d0d8f2b/5dd1fc89-2a06-4b90-90a5-b9aa32b29b9
+Daemon: no daemon running
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Test files without a result: 2 (nothing current at their inputs, none queued)
+  test/holds.test.ts: no result: vitest adapter: dist/agent-config/module-0.d.ts, dist/agent-config/module-1.d.ts, dist/agent-config/module-10.d.ts, dist/agent-config/module-100.d.ts, dist/agent-confi
+  test/other.test.ts: no result: vitest adapter: dist/agent-config/module-0.d.ts, dist/agent-config/module-1.d.ts, dist/agent-config/module-10.d.ts, dist/agent-config/module-100.d.ts, dist/agent-confi
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+explanation delivered: false; whole reason delivered: false
+
+ ✓ docs/specifications/001-core-loop/research/probes/issue-13/scheduler.probe.ts > issue 13, scheduler reproduction > 600 rewritten artifacts no test reads 1834ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  22:45:01
+   Duration  5.41s (transform 56%, tests 38%, import 6%)
+
+  Transform  transforming modules took 2.81s · 56% of tracked time, re-done on every run
+             persist transforms across runs with fsModuleCache: true
+             learn more: https://vitest.dev/guide/improving-performance#caching-between-reruns
+

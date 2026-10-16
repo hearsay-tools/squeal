@@ -1,0 +1,9 @@
+/tmp/squeal-issue15-T1QojB/wt-a/.git/squeal/runs/28a4663a-a01b-4c72-b1b9-f70a99b66b1d/vitest.log
+/tmp/squeal-issue15-T1QojB/wt-a/.git/squeal/runs/3249059a-04a4-4215-b68e-b5b0d1692fc6/vitest.log
+/tmp/squeal-issue15-T1QojB/wt-a/.git/squeal/runs/a93a19a5-fde7-46a8-ac18-87d209f65441/vitest.log
+/tmp/squeal-issue15-T1QojB/wt-a/.git/squeal/runs/aa0e3bb5-9a4c-4474-aa87-819ff6ce31e6/vitest.log
+/tmp/squeal-issue15-T1QojB/wt-a/.git/squeal/runs/abacb5cc-30a9-4497-aeb8-a4f55907c753/vitest.log
+/tmp/squeal-issue15-T1QojB/wt-a/.git/squeal/runs/b98f9754-ecf1-4c3f-9e22-bea60b78867d/vitest.log
+/tmp/squeal-issue15-T1QojB/wt-a/.git/squeal/runs/bd6d2c94-d053-4126-8770-8992b5c67914/vitest.log
+/tmp/squeal-issue15-T1QojB/wt-a/.git/squeal/runs/c6979e6c-e872-47d7-b372-982f0f1e5d89/vitest.log
+/tmp/squeal-issue15-T1QojB/wt-a/.git/squeal/runs/cd92c771-67a6-4326-bc0e-f2eff1854705/vitest.log

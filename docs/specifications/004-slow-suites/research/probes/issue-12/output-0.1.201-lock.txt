@@ -1,0 +1,92 @@
+== squeal 0.1.201 at 20:47:51; fixture /tmp/issue12-fXCK0C
+== status in full once
+Revision: 0
+Known failures: 0
+Affected checks: 0 passed, 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+
+Worktree: /tmp/issue12-fXCK0C/repo (HEAD 226a759, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+== A. negative control: nothing held, 14 s
+20:47:51 pid 2834331 alive=y | Daemon: running, last heartbeat 2 s ago
+20:47:53 pid 2834331 alive=y | Daemon: running, last heartbeat 3 s ago
+20:47:54 pid 2834331 alive=y | Daemon: running, last heartbeat 4 s ago
+20:47:55 pid 2834331 alive=y | Daemon: running, last heartbeat 0 s ago
+20:47:56 pid 2834331 alive=y | Daemon: running, last heartbeat 2 s ago
+20:47:58 pid 2834331 alive=y | Daemon: running, last heartbeat 3 s ago
+20:47:59 pid 2834331 alive=y | Daemon: running, last heartbeat 4 s ago
+20:48:00 pid 2834331 alive=y | Daemon: running, last heartbeat 0 s ago
+20:48:01 pid 2834331 alive=y | Daemon: running, last heartbeat 1 s ago
+20:48:02 pid 2834331 alive=y | Daemon: running, last heartbeat 2 s ago
+20:48:03 pid 2834331 alive=y | Daemon: running, last heartbeat 4 s ago
+20:48:05 pid 2834331 alive=y | Daemon: running, last heartbeat 5 s ago
+20:48:06 pid 2834331 alive=y | Daemon: running, last heartbeat 1 s ago
+20:48:07 pid 2834331 alive=y | Daemon: running, last heartbeat 2 s ago
+== B. store write lock held 20 s by another process (BEGIN IMMEDIATE)
+20:48:08 holder: write lock taken for 20000 ms
+20:48:08 pid 2834331 alive=y | Daemon: running, last heartbeat 3 s ago
+20:48:09 pid 2834331 alive=y | Daemon: running, last heartbeat 4 s ago
+20:48:10 pid 2834331 alive=y | Daemon: running, last heartbeat 6 s ago
+20:48:11 pid 2834331 alive=y | Daemon: running, last heartbeat 7 s ago
+20:48:13 pid 2834331 alive=y | Daemon: running, last heartbeat 8 s ago
+20:48:14 pid 2834331 alive=y | Daemon: running, last heartbeat 9 s ago
+20:48:15 pid 2834331 alive=y | Worktree: /tmp/issue12-fXCK0C/repo (HEAD 226a759, dirty state not known: no daemon is validating)
+20:48:16 pid 2834331 alive=y | Worktree: /tmp/issue12-fXCK0C/repo (HEAD 226a759, dirty state not known: no daemon is validating)
+20:48:17 pid 2834331 alive=y | Worktree: /tmp/issue12-fXCK0C/repo (HEAD 226a759, dirty state not known: no daemon is validating)
+20:48:18 pid 2834331 alive=y | Worktree: /tmp/issue12-fXCK0C/repo (HEAD 226a759, dirty state not known: no daemon is validating)
+20:48:20 pid 2834331 alive=y | Worktree: /tmp/issue12-fXCK0C/repo (HEAD 226a759, dirty state not known: no daemon is validating)
+20:48:21 pid 2834331 alive=y | Worktree: /tmp/issue12-fXCK0C/repo (HEAD 226a759, dirty state not known: no daemon is validating)
+20:48:22 pid 2834331 alive=y | Worktree: /tmp/issue12-fXCK0C/repo (HEAD 226a759, dirty state not known: no daemon is validating)
+20:48:23 pid 2834331 alive=y | Worktree: /tmp/issue12-fXCK0C/repo (HEAD 226a759, dirty state not known: no daemon is validating)
+20:48:24 pid 2834331 alive=y | Worktree: /tmp/issue12-fXCK0C/repo (HEAD 226a759, dirty state not known: no daemon is validating)
+20:48:25 pid 2834331 alive=y | Worktree: /tmp/issue12-fXCK0C/repo (HEAD 226a759, dirty state not known: no daemon is validating)
+20:48:26 pid 2834331 alive=y | Worktree: /tmp/issue12-fXCK0C/repo (HEAD 226a759, dirty state not known: no daemon is validating)
+20:48:27 pid 2834331 alive=y | Worktree: /tmp/issue12-fXCK0C/repo (HEAD 226a759, dirty state not known: no daemon is validating)
+20:48:28 holder: released
+20:48:29 pid 2834331 alive=y | Daemon: running, last heartbeat 1 s ago
+20:48:30 pid 2834331 alive=y | Daemon: running, last heartbeat 2 s ago
+20:48:31 pid 2834331 alive=y | Daemon: running, last heartbeat 1 s ago
+20:48:32 pid 2834331 alive=y | Daemon: running, last heartbeat 2 s ago
+20:48:33 pid 2834331 alive=y | Daemon: running, last heartbeat 3 s ago
+20:48:34 pid 2834331 alive=y | Daemon: running, last heartbeat 4 s ago
+== B'. after release, 8 s
+20:48:35 pid 2834331 alive=y | Daemon: running, last heartbeat 1 s ago
+20:48:37 pid 2834331 alive=y | Daemon: running, last heartbeat 2 s ago
+20:48:38 pid 2834331 alive=y | Daemon: running, last heartbeat 3 s ago
+20:48:39 pid 2834331 alive=y | Daemon: running, last heartbeat 4 s ago
+20:48:40 pid 2834331 alive=y | Daemon: running, last heartbeat 0 s ago
+20:48:41 pid 2834331 alive=y | Daemon: running, last heartbeat 1 s ago
+20:48:42 pid 2834331 alive=y | Daemon: running, last heartbeat 3 s ago
+20:48:44 pid 2834331 alive=y | Daemon: running, last heartbeat 4 s ago
+== C. daemon process stopped (SIGSTOP) 14 s: an event-loop stall
+20:48:45 pid 2834331 alive=y | Daemon: running, last heartbeat 5 s ago
+20:48:46 pid 2834331 alive=y | Daemon: running, last heartbeat 6 s ago
+20:48:47 pid 2834331 alive=y | Daemon: running, last heartbeat 7 s ago
+20:48:48 pid 2834331 alive=y | Daemon: running, last heartbeat 9 s ago
+20:48:50 pid 2834331 alive=y | Daemon: running, last heartbeat 10 s ago
+20:48:51 pid 2834331 alive=y | Worktree: /tmp/issue12-fXCK0C/repo (HEAD 226a759, dirty state not known: no daemon is validating)
+20:48:52 pid 2834331 alive=y | Worktree: /tmp/issue12-fXCK0C/repo (HEAD 226a759, dirty state not known: no daemon is validating)
+20:48:53 pid 2834331 alive=y | Worktree: /tmp/issue12-fXCK0C/repo (HEAD 226a759, dirty state not known: no daemon is validating)
+20:48:54 pid 2834331 alive=y | Worktree: /tmp/issue12-fXCK0C/repo (HEAD 226a759, dirty state not known: no daemon is validating)
+20:48:56 pid 2834331 alive=y | Worktree: /tmp/issue12-fXCK0C/repo (HEAD 226a759, dirty state not known: no daemon is validating)
+20:48:57 pid 2834331 alive=y | Worktree: /tmp/issue12-fXCK0C/repo (HEAD 226a759, dirty state not known: no daemon is validating)
+20:48:58 pid 2834331 alive=y | Worktree: /tmp/issue12-fXCK0C/repo (HEAD 226a759, dirty state not known: no daemon is validating)
+20:48:59 pid 2834331 alive=y | Worktree: /tmp/issue12-fXCK0C/repo (HEAD 226a759, dirty state not known: no daemon is validating)
+20:49:01 pid 2834331 alive=y | Worktree: /tmp/issue12-fXCK0C/repo (HEAD 226a759, dirty state not known: no daemon is validating)
+== C'. after SIGCONT, 8 s
+20:49:02 pid 2834331 alive=y | Daemon: running, last heartbeat 0 s ago
+20:49:03 pid 2834331 alive=y | Daemon: running, last heartbeat 1 s ago
+20:49:04 pid 2834331 alive=y | Daemon: running, last heartbeat 3 s ago
+20:49:05 pid 2834331 alive=y | Daemon: running, last heartbeat 4 s ago
+20:49:06 pid 2834331 alive=y | Daemon: running, last heartbeat 5 s ago
+20:49:08 pid 2834331 alive=y | Daemon: running, last heartbeat 1 s ago
+20:49:09 pid 2834331 alive=y | Daemon: running, last heartbeat 2 s ago
+20:49:10 pid 2834331 alive=y | Daemon: running, last heartbeat 3 s ago
+== daemon stderr (its log; a hook-spawned daemon's is /dev/null)
+squeal daemon: vitest could not start: vitest/node does not resolve from /tmp/issue12-fXCK0C/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest; every check of this worktree is unknown until the config loads
+squeal daemon: serving /tmp/issue12-fXCK0C/repo on /tmp/issue12-fXCK0C/run/squeal-75375628287c3043.sock
+squeal daemon: the store was busy for 17.9 s (another connection held its write lock); ran once it was free: the heartbeat, a reconciliation pass
+== same daemon process throughout: yes, pid 2834331 still running
+== cleanup
+removed /tmp/issue12-fXCK0C
