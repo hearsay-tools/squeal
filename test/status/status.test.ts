@@ -541,12 +541,11 @@ describe("readStatus", () => {
       const started = Date.now();
       const result = readStatus(repo.main, { now: () => NOW, busyTimeoutMs: 50 });
 
-      expect(result).toEqual({
-        schemaVersion: 1,
-        available: false,
-        reason: "timeout",
-        message: "status unavailable, store busy for more than 50 ms",
-      });
+      expect(result).toMatchObject({ schemaVersion: 1, available: false, reason: "timeout" });
+      // 011-01: the time it really waited, not the budget it might have.
+      expect(result.available ? "" : result.message).toMatch(
+        /^status unavailable, store busy, waited \d+ ms; `squeal status --wait <ms>`/,
+      );
       expect(Date.now() - started).toBeLessThan(1_000);
     } finally {
       locker.exec("ROLLBACK");

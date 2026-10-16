@@ -1,6 +1,12 @@
 import { fileURLToPath } from "node:url";
 import { squealVersion } from "../core/daemon/version.js";
-import { formatStatus, formatWhy, readStatus, readWhy } from "../core/status/index.js";
+import {
+  CLI_READ_RETRY_MS,
+  formatStatus,
+  formatWhy,
+  readStatus,
+  readWhy,
+} from "../core/status/index.js";
 import type { EpochMs } from "../core/types/index.js";
 import { codexStatusLine } from "./codex/status.js";
 import { daemonCommand } from "./daemon.js";
@@ -161,7 +167,7 @@ function status(args: readonly string[], io: CliIo): number | Promise<number> {
   }
   const now = io.now ?? Date.now;
   const cwd = io.cwd ?? process.cwd();
-  const result = readStatus(cwd, { now });
+  const result = readStatus(cwd, { now, busyRetryMs: CLI_READ_RETRY_MS });
   const env = io.env ?? process.env;
   const harness = parsed.json
     ? null
@@ -186,7 +192,10 @@ function why(args: readonly string[], io: CliIo): number {
   if (name === undefined || parsed.positional.length > 1) {
     return usage("why", "expected one check name", io);
   }
-  const result = readWhy(io.cwd ?? process.cwd(), name, { includeLogs });
+  const result = readWhy(io.cwd ?? process.cwd(), name, {
+    includeLogs,
+    busyRetryMs: CLI_READ_RETRY_MS,
+  });
   io.stdout(parsed.json ? json(result) : formatWhy(result));
   return result.available && result.found ? 0 : 1;
 }

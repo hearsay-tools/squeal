@@ -28,12 +28,14 @@ const SELECT_RESULTS = `
 export function createResultRepo(conn: Connection): ResultRepo {
   return {
     byKey: (key, usedAt = Date.now()) => {
-      conn.run(
-        "UPDATE results SET last_used_at = ? WHERE key = ? AND last_used_at < ?",
-        usedAt,
-        key,
-        usedAt,
-      );
+      if (usedAt > 0) {
+        conn.run(
+          "UPDATE results SET last_used_at = ? WHERE key = ? AND last_used_at < ?",
+          usedAt,
+          key,
+          usedAt,
+        );
+      }
       return conn
         .all(
           `${SELECT_RESULTS} WHERE r.key = ? ORDER BY c.project, c.test_path, c.kind, c.full_name`,

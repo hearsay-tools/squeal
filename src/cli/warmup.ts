@@ -275,8 +275,11 @@ export function progressText(done: number, total: number, waitingForLoad: number
     : `${line}; ${plural(waitingForLoad, "slow test file")} waiting for host load to drop`;
 }
 
-/** 004 D1: fast test files whose last run took longer than `SLOW_CANDIDATE_MS`, slowest first. */
-function slowCandidates(root: AbsolutePath, id: WorktreeId): SlowCandidate[] {
+/**
+ * 004 D1: fast test files whose last run took longer than `SLOW_CANDIDATE_MS`, slowest first.
+ * Read-only, so a daemon's writes never empty it (011-01).
+ */
+export function slowCandidates(root: AbsolutePath, id: WorktreeId): SlowCandidate[] {
   const { policy } = loadPolicy(root);
   const isSlow = slowFiles(policy, policy.nodeTest);
   const found = withStatusStore(root, {}, ({ store }) => durations(store, id));
@@ -290,7 +293,7 @@ function slowCandidates(root: AbsolutePath, id: WorktreeId): SlowCandidate[] {
 function durations(store: Store, id: WorktreeId) {
   return store.testFileKeys.list(id).flatMap((row) => {
     if (row.key === null) return [];
-    // `usedAt` 0: reading a duration is not a lookup hit (spec 001 D8).
+    // `usedAt` 0: reading a duration is not a lookup hit (spec 001 D8) and takes no write lock.
     const durationMs = durationOf(store.results.byKey(row.key, 0));
     return durationMs === null ? [] : [{ ref: row.testFile, durationMs }];
   });
