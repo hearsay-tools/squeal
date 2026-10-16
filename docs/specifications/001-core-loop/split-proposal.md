@@ -23,7 +23,7 @@ Three labels are used throughout. **Fact**: what the repository shows today, wit
 
 **Responsibility.** Harness-neutral and runner-neutral: worktrees, repository and store (D1, D8), watcher and revisions (D2), content keys and closures (D3's generic parts), scheduling and validity (D5), known states, transitions, consumer views and message shapes (D6), status, why, failures and the wait (D7), daemon lifecycle (D10), policy loader and the policy catalogue (D11), error handling and process reaping (D12), capacity, and both adapter contracts (`RunnerAdapter`, `HarnessDelivery`, the hook contract of section 2.4).
 
-**Owns.** `src/core/**`, `src/cli/**` except the harness subcommands, `src/runners/observe/**` (the shared recorder; see Decision Q3), `test/{capacity,cli,daemon,delivery,fs,hash,integration,keys,policy,retry,revision,scheduler,slow,state,status,store,watcher}`, the store schema, `squeal.config.json` keys not owned by another spec.
+**Owns.** `src/core/**`, `src/cli/**` except the harness subcommands, `src/harness/shared/**` as the hook contract (decided Q2), `src/runners/observe/**` (the shared recorder; decided Q3), `test/{capacity,cli,daemon,delivery,fs,hash,integration,keys,policy,retry,revision,scheduler,slow,state,status,store,watcher}`, the store schema, `squeal.config.json` keys not owned by another spec.
 
 **Excludes.** Any hook event name, plugin manifest or packaging; anything that reads Vite's module graph or `createVitest`; wording that 005 owns; the slow tier's rules (004); node:test (003) and pytest (007) adapters; evals (006); CI (010).
 
@@ -33,7 +33,7 @@ Three labels are used throughout. **Fact**: what the repository shows today, wit
 
 **Owns.** `src/harness/claude-code/**`, `plugins/claude-code/**`, `src/cli/init.ts`'s Claude Code path, `test/harness/*` files that drive Claude Code hook JSON, `test/plugins`, the e2e suites driven through recorded Claude Code hooks (`test/e2e/shipped-plugin.test.ts`, `transitions.test.ts`, `worktrees.test.ts`, `plugin-copy.test.ts`, `policy.test.ts`; see Decision Q5).
 
-**Excludes.** The content of a delta, header or primer fact (Core); the wording (005); `src/harness/shared/**` unless Decision Q2 assigns it; Codex, Pi and OpenCode (002, 009, 008); the test-command deny's rule (005 D8).
+**Excludes.** The content of a delta, header or primer fact (Core); the wording (005); `src/harness/shared/**` (Core's hook contract, decided Q2); Codex, Pi and OpenCode (002, 009, 008); the test-command deny's rule (005 D8).
 
 ### 2.3 Vitest integration
 
@@ -41,7 +41,7 @@ Three labels are used throughout. **Fact**: what the repository shows today, wit
 
 **Owns.** `src/runners/vitest/**`, `test/runners/vitest/**`, `test/fixtures/*` that are Vitest projects, the D11 keys `vitest.*`.
 
-**Excludes.** What a key is made of and how it is compared (Core D3); when a tier runs and what happens to its results (Core D5); the recorder's own code and its `--import`/`--require` rule (Core, Decision Q3); the install-detection rule (Core, Decision Q4); node:test's and pytest's use of the same contracts.
+**Excludes.** What a key is made of and how it is compared (Core D3); when a tier runs and what happens to its results (Core D5); the recorder's own code and its `--import`/`--require` rule (Core, decided Q3); the install-detection rule (Core, Decision Q4); node:test's and pytest's use of the same contracts.
 
 ### 2.4 Shared contracts
 
@@ -52,9 +52,9 @@ Three labels are used throughout. **Fact**: what the repository shows today, wit
 | Check identity `(project, relative test path, fullName)`, duplicate-name suffix, error capping (200 chars, 3 causes) | D4 last paragraph, `src/core/state/check-name.ts` | every runner | D4, D6 |
 | Adapter version re-keys one runner; `KEY_FORMAT_VERSION` re-keys all; the guard in `test/keys/key-sources.ts` exempts `src/cli`, `src/core/status`, `src/core/delivery`, `src/harness` (presentation) and guards the rest (meaning) | D3, D4 | all | D3, D4 |
 | Runner selection: which adapters the daemon builds (`vitestDetected`, `nodeTest` projects, pytest) | `src/core/daemon/runner.ts`, `daemon.ts` | Core | primer facts, status | 003 D7; 001 D9 primer paragraph |
-| Shared recorder: `src/runners/observe/*`, `SQUEAL_OBSERVE`, the `--import`/`--require` choice, `RunReport.observed` and `reads` | D4 "Observed runtime inputs", D11 Fidelity | Core (proposed) | Vitest workers, node:test, pytest warm-up | D4, D11 |
+| Shared recorder: `src/runners/observe/*`, `SQUEAL_OBSERVE`, the `--import`/`--require` choice, `RunReport.observed` and `reads` | D4 "Observed runtime inputs", D11 Fidelity | Core (decided Q3) | Vitest workers, node:test, pytest warm-up | D4, D11 |
 | `HarnessDelivery`: `register`, `unregister`, `onToolBoundary`, `peek`, `waitForDelta`, `startTurn`, `endTurn`, `status` | `src/core/types/delivery.ts` | Core | every harness | D9 names three operations |
-| Hook contract (the behaviour of `src/harness/shared/*`): registration and primer facts, delta at a boundary, deny-once on a seen regression, Stop speaks only with news and records pending files, turn state, liveness told once, "starting" rule, uncovered-edit line, consumer version and step-down ask, harness process record, leaving mark, per-session root | D9 prose, D6, D10 | shared code (owner open, Decision Q2) | Claude Code, Codex, Pi, OpenCode | D9 as if Claude-only; 002 D5 |
+| Hook contract (the behaviour of `src/harness/shared/*`): registration and primer facts, delta at a boundary, deny-once on a seen regression, Stop speaks only with news and records pending files, turn state, liveness told once, "starting" rule, uncovered-edit line, consumer version and step-down ask, harness process record, leaving mark, per-session root | D9 prose, D6, D10 | Core (decided Q2) | Claude Code, Codex, Pi, OpenCode | D9 as if Claude-only; 002 D5 |
 | Store rows hooks write without a daemon: `meta` turn state, told liveness, `leaving:<worktree>`, `uncovered-told:<worktree>`, `slow-tier-told:`, consumer version, harness process | D6, D9, D10 | Core schema | hooks | scattered |
 | Socket protocol: ping, `step-down`, `stop`, `sync`, nudge, 100 ms hook timeout | D1, D7, D10 | Core daemon | hooks, CLI | D9, D10 |
 | Policy keys read by hooks: `interrupt.onRegression`, `stop.*`, `delivery.uncoveredEdits`, `testCommand.denyWhenCurrent` | D11, 005 D8 | Core loader | hooks | D11 |
@@ -78,7 +78,7 @@ Recorded here, not to be fixed by this proposal. Each is a seam a migration must
 
 ## 4. Mapping of 001 sections to their homes
 
-Legend for the home column: **C** Core, **CC** Claude Code, **V** Vitest, **H** hook contract (shared code, Decision Q2), **S** superseded or stale text (kept in 001 as history, never deleted). A split section names its parts.
+Legend for the home column: **C** Core, **CC** Claude Code, **V** Vitest, **H** hook contract (shared code; Core since Decision Q2), **S** superseded or stale text (kept in 001 as history, never deleted). A split section names its parts.
 
 | 001 section | Home | Split and notes | Duplicates, contradictions, uncertain ownership |
 |---|---|---|---|
@@ -103,7 +103,7 @@ Legend for the home column: **C** Core, **CC** Claude Code, **V** Vitest, **H** 
 | D3 installed dependencies (hidden lockfile trust, package folders, scheme B segments, fallback cases 1 to 5, opaque packages, measurements) | C with V parts | The trust rule, the segment scheme, the fallback cases and the opaque scan: C (Node-ecosystem, shared with node:test). Which packages a test file reaches through Vite's resolution, bare specifiers, `require` scan, docblock environment: V. | Uncertain: Node-specific logic in a runner-neutral spec (Decision Q4). |
 | D3 `package.json` re-resolution rules (001-72, 001-79, 001-81) | C trigger, V meaning | "Adding or deleting a file re-resolves closures of importers from that directory": C. What a manifest edit stales in Vite's graph: V (also in D4). | Stated in both D3 and D4. |
 | D4 Vitest runner adapter: instance, invalidate rules 1 to 4, manifest staleness, `affected`, `closure`, `enumerate`, `run`, reporter hooks, `fsModuleCache`, stamps of bytes Vite read, touched files, the optimizer off, measurements | V | | D4 names five adapter operations; the interface has fifteen members. The spec understates the contract. |
-| D4 observed runtime inputs (recorder) | C (proposed) + V | The recorder, its reach, attribution, batching, what it leaves out, `observeIgnored`: C. Delivery through `createVitest`'s `env`: V. node:test's adoption is 003's. | Uncertain ownership (Decision Q3). "Spec 003 decision 3 is reversed" is a cross-spec amendment by prose. |
+| D4 observed runtime inputs (recorder) | C (decided Q3) + V | The recorder, its reach, attribution, batching, what it leaves out, `observeIgnored`: C. Delivery through `createVitest`'s `env`: V. node:test's adoption is 003's. | Decided Q3: Core. "Spec 003 decision 3 is reversed" is a cross-spec amendment by prose. |
 | D4 check identity, duplicate suffix, error capping, per-run floor | C contract, V values | | None. |
 | D5 scheduler: validity, steps 1 to 5, ordering, tiers, backlog, cancel, timeout split, sharing, lanes, bounds, install wait, stability check, observed growth, checkpoints | C | | V paragraphs inside D5: "What the Vitest adapter's calls exclude (`gate.ts`)"; the runner-failure examples (ENOENT under the instance temp dir, Vite module runner error, instance recreated on a lockfile change, "a new Vitest version needs a daemon restart"); the failed-start detection. The install wait is C with the Node caveat of Q4. Measurements over Vitest runs are history, kept. |
 | D6 known state, setup check, transitions, inherited fail confirmation, re-run once, retry, consumer view, header forms, caps, factual wording | C | | The setup check is a C state kind with a V producer. "Closure method: static imports plus declared inputs" is admitted stale by D3 itself. The uncovered-edit trust rule here pairs with the line in D9. |
@@ -157,9 +157,9 @@ Row numbers never change. A row that moves keeps `001-NNN` and gains a home. New
 | 001-434 re-review of cand/0.1.203 | running | C (process row) | none | round 2 of `reviews/wave-17.md` | verdict committed | No: running. |
 | 001-338 status-wait timing helper | planned | C (tests) | none | three test files, `wait-clock.ts`; test-only | every site builds arguments before the clock | Yes. |
 | 001-341 tmpfs e2e fixture on `noexec` | planned | C (e2e infrastructure; Q5) | none | `test/e2e/harness.ts`; test-only | `noexec` host runs or falls back, shown by a probe | Yes. |
-| 001-342 Stop wait held to 1.5 s wall | planned | H | Q2 | `test/harness/stop-slow-wait.test.ts`; product only if at fault | cause named; bound on meaning not wall time | Yes, under the H owner. |
+| 001-342 Stop wait held to 1.5 s wall | planned | C (hook contract) | none | `test/harness/stop-slow-wait.test.ts`; product only if at fault | cause named; bound on meaning not wall time | Yes. |
 | 001-346 optimizer note fails under a long writer | planned | C | 001-422 landed (same seam) | `daemon.ts #optimizerOff`, `busy-store.test.ts` | note written after the lock frees or the test's premise fixed | After 001-422. |
-| 001-358 starting-daemon heartbeat test under load | planned | H | Q2 | `test/harness/starting-daemon.test.ts` | cause named; 20 runs green beside load | Yes. |
+| 001-358 starting-daemon heartbeat test under load | planned | C (hook contract) | none | `test/harness/starting-daemon.test.ts` | cause named; 20 runs green beside load | Yes. |
 | 001-359 timeout-reason comments | planned | C | none | two comments | lint, typecheck, build green | Yes; a coordinator inline edit. |
 | 001-364 backlog tier cancelled by an edit no file reads | planned | C | none | D5 cancel rule, scheduler | tests: outside-closure edit cancels nothing; finished results kept | Yes. |
 | 001-365 `bareNote` names node:test files with declared inputs | planned | **003**, not any of the three | none | `src/runners/node-test/adapter-project.ts` | two tests | Misfiled under 001; move to 003's section. |
@@ -171,8 +171,8 @@ Row numbers never change. A row that moves keeps `001-NNN` and gains a home. New
 | 001-383 withheld run decides before a timeout split | planned | C | none | `withheldForTouch`, `requeueSplit` | regression red then green | Yes. |
 | 001-391 daemon drops inherited session variables | planned | C, crosses every harness and `CLAUDE.md` | ask the human for the `CLAUDE.md` edit | daemon env at start, loader keys `env.remove`, `env.keep` | I2 fixture; hash tests | Yes, with the ask. |
 | 001-397 `squeal retry` of a failed global setup | planned | C with a V trigger | none | retry plumbing, `retryRunner`, one forced file | setup retried once per revision; second refused | Yes. |
-| 001-402 node:test module recorder's spawn patch | planned | **003** | Q3 for the pattern | `src/runners/node-test/runtime/recorder.cjs` | two tests pass together | Misfiled under 001; move to 003's section. |
-| 001-431 recorder-fidelity tests fail under Squeal's daemon | planned | C (recorder) with V and 003 tests | Q3 | `observe-fidelity.test.ts`, `run-reads-fidelity.test.ts`, the outer recorder's reach | both pass under `squeal run --all --wait` and plain Vitest | Yes. |
+| 001-402 node:test module recorder's spawn patch | planned | **003** | the Core recorder's pattern (Q3) | `src/runners/node-test/runtime/recorder.cjs` | two tests pass together | Misfiled under 001; move to 003's section. |
+| 001-431 recorder-fidelity tests fail under Squeal's daemon | planned | C (recorder) with V and 003 tests | none | `observe-fidelity.test.ts`, `run-reads-fidelity.test.ts`, the outer recorder's reach | both pass under `squeal run --all --wait` and plain Vitest | Yes. |
 | 001-425 `graph-cost.test.ts` ratio under CI load | planned | **003** | none | `test/runners/node-test/graph-cost.test.ts` | assertion without a wall-clock ratio | Misfiled under 001; move to 003's section. |
 | 001-433 `scratch.test.ts` socket budget on a GitHub runner | planned | C (tests) | none | `test/daemon/scratch.test.ts` | assertion proves the ordering, not 2 s | Yes. |
 | 001-284 one-shot session detection | dropped | history | | | | No change. |
@@ -244,13 +244,24 @@ Every step is a docs-only commit, reviewed as docs land today, none of it a prod
 
 ## 8. Decisions needed from the human
 
-- **Q1 Shape of the split.** (a) Three new specs with 001's text lifted verbatim and a crosswalk, 001 frozen as history (recommended: every existing D-number reference in 106 reviews, 86 notes and specs 002 to 010 keeps resolving); (b) 001 itself becomes the Core spec by trimming, with two new specs for Claude Code and Vitest (fewer files, but the trim edits a shipped spec's text and the archive and the live spec are one file).
-- **Q2 Home of the shared hook code and its rules** (`src/harness/shared/*`, the H rows in section 4, rows 001-342 and 001-358). (a) Core, as the harness-neutral "hook contract" section (recommended: four harnesses already depend on it and 002 D5 only moved the files); (b) the Claude Code spec, as the first implementer, with other harness specs citing it; (c) a fourth, thin spec of its own.
-- **Q3 Home of the runtime-input recorder** (`src/runners/observe/*`, D4 "Observed runtime inputs", D11 Fidelity, rows 001-431, 001-402). (a) Core (recommended: three runners deliver it and its form rule is runner-neutral); (b) Vitest, with 003 and 007 citing it.
+- **Q1 Shape of the split.** Decided 2026-10-16: (a). (a) Three new specs with 001's text lifted verbatim and a crosswalk, 001 frozen as history (recommended: every existing D-number reference in 106 reviews, 86 notes and specs 002 to 010 keeps resolving); (b) 001 itself becomes the Core spec by trimming, with two new specs for Claude Code and Vitest (fewer files, but the trim edits a shipped spec's text and the archive and the live spec are one file).
+- **Q2 Home of the shared hook code and its rules** (`src/harness/shared/*`, the H rows in section 4, rows 001-342 and 001-358). Decided 2026-10-16: (a). (a) Core, as the harness-neutral "hook contract" section (recommended: four harnesses already depend on it and 002 D5 only moved the files); (b) the Claude Code spec, as the first implementer, with other harness specs citing it; (c) a fourth, thin spec of its own.
+- **Q3 Home of the runtime-input recorder** (`src/runners/observe/*`, D4 "Observed runtime inputs", D11 Fidelity, rows 001-431, 001-402). Decided 2026-10-16: (a). (a) Core (recommended: three runners deliver it and its form rule is runner-neutral); (b) Vitest, with 003 and 007 citing it.
 - **Q4 Node-ecosystem logic in Core** (install detection, hidden-lockfile trust, the installed-dependency segment scheme). (a) Core, marked "Node ecosystem; pytest has its own" (recommended for this migration, no code moves); (b) a later `node-ecosystem` section or spec when a third Node runner appears.
 - **Q5 Owner of the end-to-end proofs** driven through Claude Code hook JSON (`shipped-plugin`, `transitions`, `worktrees`, the e2e harness, rows 001-341 and the `/tmp` leftovers item). (a) Claude Code owns the files, Core owns the goals they assert, each Core landing still runs them (recommended); (b) Core owns them as test infrastructure.
 - **Q6 The misfiled rows** 001-365, 001-402, 001-425 (node:test code). Move them to 003's board section with their numbers kept (recommended), or keep them under Core.
-- **Q7 Timing.** Start the docs-only migration after 001-434 settles and 0.1.203 lands or is abandoned (recommended), or start the spec folders now and split the board later.
+- **Q7 Timing.** Decided 2026-10-16: after 001-434 settles and 0.1.203 lands or is abandoned. Start the docs-only migration after 001-434 settles and 0.1.203 lands or is abandoned (recommended), or start the spec folders now and split the board later.
 - **Q8 The colliding triage rows** (six branches numbered 001-434, one 001-433, one 004-64). Land them as `proposed` rows with fresh numbers (recommended), or ask each triage session to renumber and push.
 
 Approval of this proposal, with answers to Q1 to Q8, authorizes the docs-only steps of section 6 and nothing else.
+
+## 9. Decisions recorded
+
+2026-10-16, the human, on this proposal's section 8:
+
+- Q1: three new specs (011, 012, 013) with 001's text lifted verbatim and a crosswalk; 001 frozen as history.
+- Q2: `src/harness/shared/**` and the behaviour it implements are Core's, as a "hook contract" section of the Core spec. Rows 001-342 and 001-358 are Core rows.
+- Q3: the runtime-input recorder (`src/runners/observe/**`, D4 "Observed runtime inputs", D11 Fidelity) is Core's. Row 001-431 is a Core row; 001-402 stays 003's and follows Core's pattern.
+- Q7: the docs-only migration of section 6 starts only after 001-434 settles and 0.1.203 lands or is abandoned.
+
+Still open: Q4 (Node-ecosystem logic in Core), Q5 (owner of the hook-driven end-to-end proofs), Q6 (moving 001-365, 001-402 and 001-425 to 003), Q8 (fresh numbers for the colliding triage rows). The recommended answers stand as proposals until the human confirms them. These four decisions authorize none of section 6's steps; the migration needs its own go once 0.1.203 has settled.
