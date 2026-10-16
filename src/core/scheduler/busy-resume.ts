@@ -53,6 +53,19 @@ export class BusyResume {
     this.#waits.ran(PUMP);
   }
 
+  /**
+   * Another error stopped the pump (review 001-432, B1): the resume
+   * scheduled is dropped, and what waited never ran, so the episode's note
+   * does not name it. A later `gaveUp` starts a wait again.
+   */
+  abandon(): void {
+    this.close();
+    if (!this.#waiting) return;
+    this.#waiting = false;
+    this.#attempts = 0;
+    this.#waits.abandoned(PUMP);
+  }
+
   close(): void {
     if (this.#timer !== null) clearTimeout(this.#timer);
     this.#timer = null;
