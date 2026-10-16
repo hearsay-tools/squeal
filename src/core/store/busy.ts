@@ -30,16 +30,16 @@ export class BusyWaits {
   readonly #waited: string[] = [];
   #since: EpochMs | null = null;
 
-  constructor(
-    private readonly options: {
-      readonly now: () => EpochMs;
-      readonly note: (text: string) => void;
-    },
-  ) {}
+  readonly #options: { readonly now: () => EpochMs; readonly note: (text: string) => void };
+
+  // No parameter properties: the store's sources load under Node's type stripping too.
+  constructor(options: { readonly now: () => EpochMs; readonly note: (text: string) => void }) {
+    this.#options = options;
+  }
 
   /** `key`'s write gave up on a busy store; `what`, when given, waits for its retry. */
   waiting(key: string, what?: string): void {
-    this.#since ??= this.options.now();
+    this.#since ??= this.#options.now();
     this.#waiting.add(key);
     if (what !== undefined) this.#add(what);
   }
@@ -52,10 +52,10 @@ export class BusyWaits {
     if (!this.#waiting.delete(key)) return;
     if (what !== undefined) this.#add(what);
     if (this.#waiting.size > 0 || this.#since === null) return;
-    const waitedMs = this.options.now() - this.#since;
+    const waitedMs = this.#options.now() - this.#since;
     const waited = this.#waited.splice(0);
     this.#since = null;
-    this.options.note(busyNote(waitedMs, waited));
+    this.#options.note(busyNote(waitedMs, waited));
   }
 
   #add(what: string): void {
