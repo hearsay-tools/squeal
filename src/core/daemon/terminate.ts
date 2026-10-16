@@ -216,7 +216,8 @@ function entryOf({ pid, ppid, pgrp, start }: ProcessEntry): ProcessEntry {
   return { pid, ppid, pgrp, start };
 }
 
-async function commandLine(pid: number): Promise<string> {
+/** `pid`'s command line, cut to what a note names; `""` when it cannot be read. */
+export async function commandLine(pid: number): Promise<string> {
   try {
     const text = (await readFile(`/proc/${pid}/cmdline`, "utf8")).replaceAll("\0", " ").trim();
     return text.length > COMMAND_CHARS ? `${text.slice(0, COMMAND_CHARS - 3)}...` : text;
