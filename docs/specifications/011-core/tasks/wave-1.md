@@ -1,6 +1,6 @@
 # 011 wave 1: the first Triage rows
 
-Approved by the human on 2026-10-17 (`docs/triage/2026-10-17-digest.md`, groups A and B). Dispatch waits for the host: one-minute load below the CPU count, at most 3 workers across the repository (`docs/process.md`, Test runs on a shared host). Standing models from the board. Rows 011-01 and 011-02 are disjoint and run in parallel; 011-03 is the coordinator's docs work.
+Approved by the human on 2026-10-17 (`docs/triage/2026-10-17-digest.md`, groups A and B). Dispatch waits for the host: one-minute load below the CPU count, at most 3 workers across the repository (`docs/process.md`, Test runs on a shared host). Standing models from the board. Rows 011-01, 011-02, 011-04, 011-05 and 011-06 are on disjoint seams (`why.ts` and `repo.ts`; the reason formatters; `why`'s producer attribution; status's Git identity; the scheduler's discard path) and may run in parallel within the host's limit of 3; 011-04 touches `why.ts` too and runs after 011-01 lands. 011-03 is the coordinator's docs work.
 
 ## 011-01: `why`, `status` and `failures` read beside a store writer
 
@@ -13,3 +13,15 @@ Use /worker. Shape: slice, display only. Outcome: a reason that lists many paths
 ## 011-03: design, an explicitly awaited test file is promoted
 
 Coordinator, docs only. Outcome: a C-section the human can accept, answering the four questions in the board row from `issue-14-named-wait.md` and `issue-17.md`. Stop: the human's dated acceptance in `status.md`; code rows are written then, never before.
+
+## 011-04: `why` says whose errors it shows after a foreign same-key run
+
+Use /worker. Shape: slice. Outcome: an agent reading `why` after another worktree replaced its shared result knows whose errors it sees and where the log is. Read 011 C6, C7 and `../../001-core-loop/research/issue-15.md` with its probe (`EDITS=5 OUT_DIR=... research/probes/issue-15/run.sh`). Seam: `src/core/status/why.ts`, where the results for a check key are assembled; first edit: attribute each shown result to its producing worktree and run, and resolve the log pointer from the producer's run id and `runs.log_dir`. Then the JSON: a reason string where `runLog` was `null`. Owns: `src/core/status/why.ts` after 011-01 has landed, its formatter, `test/status` why tests, a two-worktree fixture test. Leave alone: the store schema and `failure-producers` (the option the human did not take), delivery text. Done when: the row's regression passes with and without the history cap reached, suite green, version raised. Stop: no retention change.
+
+## 011-05: one Git identity in status
+
+Use /worker. Shape: repair. Outcome: status never shows two Git identities. Read 011 C2, C6 and `../../001-core-loop/research/issue-9-git-identity.md` (its three decisions, first options taken by the human). Seam: the status snapshot's Worktree line and JSON `head`/`dirty` (`src/core/status/snapshot.ts` and the formatter); first edit: read them through the header's reader (`readRevisionCommit`). Then the window message (compare `readGitHead(root)` with the recorded HEAD) and the no-daemon not-known rule. Owns: `src/core/status/*` identity fields and text, `test/status` tests, the commit-without-edit regression. Leave alone: the watcher, result keys. Done when: the regression passes at once and after a pass, with and without a daemon; suite green; version raised.
+
+## 011-06: a run dropped by an unrelated rewrite is re-queued (with 001-364)
+
+Use /worker. Shape: repair. Outcome: an edited file never stays `unknown` and unqueued because an unrelated rewrite withheld its run. Read 011 C4 (D4, D5), `../../001-core-loop/research/issue-10.md` with `research/probes/issue-10/`, and 001-364's board row. Seam: the scheduler's withheld-run path where `moved.ts` and `stability.ts` reasons drop files; first edit: re-queue the dropped files as a content discard is re-queued, counted toward `MAX_DISCARDS`. Then 001-364: a backlog tier an unrelated edit cancelled keeps or re-queues its files the same way. `drive-touch.sh` becomes a scheduler test. Owns: `src/core/scheduler/*` discard and re-queue paths, `test/scheduler` tests. Leave alone: the reason texts (011-02's), the Vitest adapter's drop decision, named-wait output (011-03's). Done when: both regressions pass, `MAX_DISCARDS` still ends the loop with a reason, suite green, version raised.
