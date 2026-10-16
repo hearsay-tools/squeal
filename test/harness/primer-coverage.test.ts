@@ -225,7 +225,7 @@ describe("the slow sentence by harness (spec 004 D8, D9)", () => {
           ? `\`${command} run --slow --wait 60000\``
           : "the CLI's `run --slow --wait 60000`";
       expect(text).toContain(
-        `Slow test files run when you pause between turns; this repository requires them before you finish: before you say the task is done, run ${run} unless the latest \`Slow tier:\` line states every slow file is current, and Stop waits for them.`,
+        `Slow test files run when you pause between turns; this repository requires them before you finish: before you say the task is done, run ${run} unless the latest \`Slow tier:\` line states every slow file is current; Stop waits for them or holds you once.`,
       );
       expect(text.indexOf("run --slow --wait")).toBeGreaterThan(text.indexOf("status --wait"));
       expect(text).not.toContain("does not require");
