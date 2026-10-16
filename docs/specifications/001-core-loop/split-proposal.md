@@ -265,3 +265,10 @@ Approval of this proposal, with answers to Q1 to Q8, authorizes the docs-only st
 - Q7: the docs-only migration of section 6 starts only after 001-434 settles and 0.1.203 lands or is abandoned.
 
 Still open: Q4 (Node-ecosystem logic in Core), Q5 (owner of the hook-driven end-to-end proofs), Q6 (moving 001-365, 001-402 and 001-425 to 003), Q8 (fresh numbers for the colliding triage rows). The recommended answers stand as proposals until the human confirms them. These four decisions authorize none of section 6's steps; the migration needs its own go once 0.1.203 has settled.
+
+## 10. Changes on main since this proposal was written
+
+- 2026-10-17: 0.1.203 landed (`bbad39dd`); 001-422 and 001-434 are done, review `reviews/wave-17.md` round 2 PASS. Q7's precondition is met: the docs-only migration of section 6 may start once the human gives its go. Row 001-346 no longer waits on 001-422.
+- 2026-10-17: two new 001 rows, both Core by section 2.1: 001-435 (survey of issue #1's criteria 2 and 3: a scheduler that stops on an unexpected error restarts or ends the daemon; D10 and D8; endpoint a survey file and a decision for the human) and 001-436 (`squeal stop` returned 0 while the daemon's process was still exiting, main CI on `bbad39dd`; D10; endpoint the cause named and a test or product fix). Neither is dispatched. Section 5.3's row for issue #1 now reads: criterion 1 done in 0.1.203, criteria 2 and 3 are 001-435.
+- 2026-10-17: this proposal and the triage convention in `docs/process.md` landed on main as docs (`8d1361c7`).
+
