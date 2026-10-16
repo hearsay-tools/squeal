@@ -220,3 +220,110 @@ None.
 Repair B1 in `BusyResume` and its scheduler caller. Preserve the separation between successful completion and abandoning a wait because another error took over; an abandoned wait must not claim that its write ran. Re-run the scheduler busy-record test, the new ordering regression, and the required candidate checks. Re-review the repair delta against B1.
 
 The pump and tier records still use their 5 s wait, as W1 explicitly requires, so the 250 ms event-loop bound applies to feed passes and sliced timer writes. Runner-work retry, identifying the lock holder, and the remaining two issue criteria stay outside this wave. No claim is made that every daemon write is now bounded to 250 ms.
+
+
+## Round 2: 001-434, B1 repair and rebase
+
+Verdict: **PASS**. Round-1 B1 closed. No blockers, should-fix items or nits in this narrow re-review.
+
+Candidate: `cand/0.1.203`, pinned to `7483a2e126734ae8b7ee3b5291d95a3623aa1cfe`. Brief: W3 of `tasks/wave-17.md` read from main commit `4d9b6929`. The reviewed delta is repair `e9cb1445` and build `7483a2e1`, plus the rebase onto main 0.1.202. Round 1 remains the review of the rest of 001-422.
+
+### Verification
+
+Primary checks ran at the pinned SHA with no tracked changes. `npm run build` left the tree clean. Probes and the without-repair comparison ran in a disposable export outside the worktree, using this tree's installed dependencies. Only this review is committed.
+
+`git rev-parse HEAD`:
+
+```text
+7483a2e126734ae8b7ee3b5291d95a3623aa1cfe
+```
+
+`npm ci`, exit 0:
+
+```text
+added 196 packages, and audited 197 packages in 13s
+
+32 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+```
+
+npm also reported deprecated `node-domexception@1.0.0` and six install scripts not covered by `allowScripts`; no install policy changed.
+
+`npm run lint`, exit 0:
+
+```text
+> squeal@0.1.203 lint
+> biome check .
+
+Checked 1367 files in 664ms. No fixes applied.
+```
+
+`npm run typecheck`, exit 0:
+
+```text
+> squeal@0.1.203 typecheck
+> tsc --noEmit
+```
+
+`npm run build`, exit 0:
+
+```text
+> squeal@0.1.203 build
+> tsc -p tsconfig.build.json && npm run build:plugin
+
+> squeal@0.1.203 build:plugin
+> tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts
+```
+
+Independent full run, on Node 24.21.0, under the host turn:
+
+```sh
+flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
+```
+
+Exit 0. Verbatim output:
+
+```text
+RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/4e9bca50-4880-4bdc-8a46-87156b29f622
+
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/4e9bca50-4880-4bdc-8a46-87156b29f622/test/fixtures/scheduler/.tmp/0cd241b5-642c-46e8-bb3f-6e6eab9e319c/main/.git/worktrees/staged/gitdir
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/4e9bca50-4880-4bdc-8a46-87156b29f622/test/fixtures/scheduler/.tmp/3785e713-5ed1-405e-bb7a-85a1d3193860/main/.git/worktrees/staged/gitdir
+squeal tests: killing 1 process(es) an earlier run left: 4051033
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+
+ Test Files  672 passed | 1 skipped (673)
+      Tests  5708 passed | 10 skipped (5718)
+   Start at  23:10:23
+   Duration  886.03s (tests 97%, import 2%, transform 1%)
+
+    Isolate  673 workers spawned · ~151ms startup each (spawn + environment, per file)
+             at least ~25.26s faster with isolate: false — reuses workers across files instead of one per file
+```
+
+Sampled host load ranged from 13.43 to 37.64; the earlier start-of-run sample was 35.47. No file failed in the loaded run, so no alone rerun was needed. The raw output includes fixture Git-repair diagnostics, Vitest notices, and cleanup of one process an earlier run left.
+
+Squeal's separate revision-0 baseline reported exactly the known row 001-431 daemon-only failures: `test/runners/vitest/observe-fidelity.test.ts:119` and `test/runners/node-test/run-reads-fidelity.test.ts:116`. Both files passed in this independent run.
+
+### B1 and W3 evidence
+
+- **Proven: original B1 probe passes.** Re-ran round 1's verbatim `review-busy-stall.test.ts` against the candidate, alongside `test/scheduler/busy-record.test.ts` and `test/store/busy-slice.test.ts`, with `--maxWorkers=1`: exit 0, 3 files and 10 tests passed, 17.95 s. Delivering the obsolete callback after the later non-busy stall leaves the run count at 2.
+- **Proven: both repair regressions discriminate behaviorally.** In the same export, replaced only `src/core/scheduler/busy-resume.ts`, `src/core/scheduler/scheduler.ts` and `src/core/store/busy.ts` with their pre-repair contents from `ce2612dc`, retaining the candidate's tests. `npx vitest run test/scheduler/busy-record.test.ts -t 'starts nothing' --maxWorkers=1` exits 1: both selected tests fail, one test skipped, 8.18 s. The first has 4 runs instead of 2 at line 170; the second has 3 instead of 1 at line 212. These are assertion failures after real scheduler runs, not absent exports or load failures.
+- **Proven: the wake only restarts a busy-stalled pump.** The callback at `src/core/scheduler/scheduler.ts:129` requires `#stalled && !#failed`. A non-busy error sets `#failed`, clears the outstanding timer through `abandon()`, and a subsequent busy error from another lane cannot re-arm it. A new pump clears `#failed`, so later busy episodes remain eligible. The first regression covers a successful selection ending the earlier wait before the later non-busy record error; the second covers a non-busy selection error taking over an unresolved wait.
+- **Proven: abandoning the wait makes no false success note.** `BusyResume.abandon()` calls `BusyWaits.abandoned`, which removes that waiter's names rather than saying it ran. The second scheduler ordering produces no busy-episode note, including after its next batch succeeds. The store regression also leaves only the heartbeat in a mixed episode's note, and an entirely abandoned episode emits none.
+- **Proven: a landing lane does not suppress a busy lane's wake, and a later busy episode resumes.** A separate real-harness probe creates Vitest and node:test lanes, holds both after one edit, makes the Vitest tier's record give up busy, and holds its resume callback. It lets node:test record successfully before delivering the callback. The queued Vitest tier then runs again without another batch. A fresh later edit fails its record busy once and resumes from its own callback too. Both episodes produce a note, with no scheduler errors. This deliberately covers `landed()` ending the wait while the pump remains busy-stalled: gating the callback on `BusyResume.waiting` instead would lose this wake. Command: `npx vitest run test/scheduler/review-lanes.test.ts test/keys/key-format.test.ts --maxWorkers=1`, exit 0, 2 files and 30 tests passed, 9.22 s.
+- **Proven: the rebase preserves the reviewed product patch.** The `src/` and `test/` patch of `4bde168e..f9c29e11` is byte-identical to `bfbf4bf5..ce2612dc` after excluding `src/core/keys/key-format.ts`. The incoming main delta is 004-62's primer/coverage wording and its tests; the B1 repair shares no source with it. Version 0.1.203 matches root/install/plugin metadata, the key-format guard passes with format 11, and all four plugin builds leave no drift. No local release tag carries format 11; the in-place re-pin follows W3's explicit unreleased-format exception.
+
+### Blockers, should-fix and nits
+
+None. B1 is closed. No other round-1 conclusion is reopened by the repair or rebase.
+
+### What fits and next-wave inputs
+
+The repair preserves the original busy-only resume, its capped backoff, and later busy episodes. A non-busy error still requires a later batch or request, while another lane's successful record cannot strand a busy-stalled pump. Keep both ordering regressions and the abandonment note regression. The two known daemon-only recorder-fidelity failures remain row 001-431, outside this repair; the gate here is the independent run above. Naming the lock holder and the other issue #1 criteria remain outside this wave.
