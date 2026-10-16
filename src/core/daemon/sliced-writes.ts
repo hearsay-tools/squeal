@@ -18,10 +18,12 @@ export type Step = readonly [string, () => void];
 /**
  * Task 001-422: the timers' writes, each waiting at most `BUSY_SLICE_MS` for
  * a busy store, so none holds the event loop longer. A step that gives up
- * stops its group, and the rest of the group is pending. One timer retries
+ * stops its group, and the whole group is pending: a tick it skips is the
+ * retry's, so the retry writes the heartbeat a step after it gave up has
+ * missed too. One timer retries
  * the pending groups after `busyBackoffMs`, in order, until one gives up
- * again, so their slices never stack in one tick; a tick of a pending group
- * is its retry's, so retries are coalesced. Any other failure is logged, and
+ * again, so their slices never stack in one tick, and retries are
+ * coalesced. Any other failure is logged, and
  * the group goes on, as before.
  */
 export class SlicedWrites {
@@ -63,7 +65,7 @@ export class SlicedWrites {
   /** Runs the group; false when a step gave up on a busy store and the rest is pending. */
   #run(what: string, steps: readonly Step[]): boolean {
     const waits = this.#context.busyWaits;
-    for (const [index, [step, fn]] of steps.entries()) {
+    for (const [step, fn] of steps) {
       try {
         if (waits === undefined) fn();
         else withBusySliceSync(BUSY_SLICE_MS, fn);
@@ -74,7 +76,7 @@ export class SlicedWrites {
         }
         waits.waiting(what, what);
         this.#waited.add(what);
-        this.#pending.set(what, steps.slice(index));
+        this.#pending.set(what, steps);
         this.#arm();
         return false;
       }
