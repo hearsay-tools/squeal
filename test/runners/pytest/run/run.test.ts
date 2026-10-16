@@ -166,6 +166,47 @@ describe.each(PYTHONS)("runPytest under Python %s (spec 007 D6)", (version) => {
     },
   );
 
+  // Task 001-367, review 001-429 B2: a `squeal stop` stops the running batch and starts no queued one.
+  it(
+    "stops the running batch on a stop's signal and starts none of the queue",
+    SLOW,
+    async (ctx) => {
+      const pidFile = join(scratch, "stop-hang.pid");
+      const project = { ...PROJECT, env: { FIXTURE_HANG_PID_FILE: pidFile } };
+      const stop = new AbortController();
+      const logDir = join(scratch, `logs-stop-${runs}`);
+      const running = run(ctx, refs("outcomes/test_hang.py", "outcomes/test_pass.py"), {
+        project,
+        batchSize: 1,
+        concurrency: 1,
+        logDir: logDir as AbsolutePath,
+        signal: stop.signal,
+      });
+      await until("the hung test's child", 30_000, () => existsSync(pidFile));
+      const stopped = performance.now();
+      stop.abort();
+      const { report } = await running;
+      expect(performance.now() - stopped).toBeLessThan(2_000 + 5_000);
+      expect(report).toMatchObject({ end: "completed", failure: null, completedFiles: [] });
+      expect(existsSync(join(logDir, "stdout-1.log"))).toBe(false);
+      const child = Number(readFileSync(pidFile, "utf8"));
+      await until("the hung test's child to die", 5_000, () => !alive(child));
+    },
+  );
+
+  it("starts nothing under a stop's signal already aborted", SLOW, async (ctx) => {
+    const { report, logDir } = await run(ctx, refs("outcomes/test_pass.py"), {
+      signal: AbortSignal.abort(),
+    });
+    expect(report).toMatchObject({
+      end: "completed",
+      failure: null,
+      completedFiles: [],
+      results: [],
+    });
+    expect(existsSync(join(logDir, "stdout-0.log"))).toBe(false);
+  });
+
   it("runs batches of the policy size, a slow file alone", SLOW, async (ctx) => {
     const files = refs("outcomes/test_pass.py", "outcomes/test_fail.py", "outcomes/test_phases.py");
     const { report, logDir } = await run(ctx, files, {

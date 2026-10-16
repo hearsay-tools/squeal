@@ -209,9 +209,16 @@ export interface RunOptions {
    * Aborted when the scheduler cancels a backlog tier for an edit (D5 as
    * amended, task 001-124). The run stops as on a timeout: files whose module
    * ended before the cancel are completed, and the report's end is the run's
-   * own. An adapter that cannot cancel runs to the end.
+   * own. An adapter that cannot cancel runs to the end. A `squeal stop`
+   * aborts it too, for every tier (D10, task 001-367).
    */
   readonly signal?: AbortSignal;
+  /**
+   * Aborted by a `squeal stop` alone (D10, task 001-367), for an adapter that
+   * keeps running to the end under an edit's cancel (`signal`): it stops its
+   * processes, starts no other and reports the files that completed.
+   */
+  readonly stop?: AbortSignal;
   /**
    * The tier's lane (`RunnerAdapter.lane`, or `SLOW_LANE_PREFIX` and it for a
    * slow file, spec 004 D2): the runner instance that runs it. Absent: the

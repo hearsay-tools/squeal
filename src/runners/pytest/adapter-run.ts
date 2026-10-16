@@ -72,6 +72,7 @@ export async function runProject(
     ...(slow ? { alone: () => true } : {}),
     ...(options.cacheDir === undefined ? {} : { cacheDir: options.cacheDir }),
     childEnv: childEnvOf(options, runOptions.childEnv),
+    ...(runOptions.stop === undefined ? {} : { signal: runOptions.stop }),
   });
   const after = syncNote(project, environment.fingerprint, currentFingerprint(environment));
   if (after !== null) return { kind: "moved", report: unavailable(after) };

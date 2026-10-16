@@ -167,6 +167,7 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
           : { concurrency: options.concurrency() }),
         ...(env === undefined ? {} : { env }),
         ...(runOptions.observeIgnored === true ? { observeIgnored: true } : {}),
+        ...(runOptions.stop === undefined ? {} : { signal: runOptions.stop }),
       });
       const report = reads === undefined ? ran : { ...ran, reads };
       const preloaded = observed.record(seen, new Set(files));

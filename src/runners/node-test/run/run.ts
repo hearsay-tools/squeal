@@ -42,6 +42,8 @@ export interface NodeTestRunOptions {
   readonly runtime?: NodeTestRuntime;
   /** A warm-up's run (task 001-307): report what each file read (`reads.ts`). */
   readonly observeIgnored?: boolean;
+  /** A `squeal stop`'s cancel (`RunOptions.signal`): the running processes are stopped, no other starts, and only completed files report. */
+  readonly signal?: AbortSignal;
 }
 
 /** A tier's report and, for each completed file, what its process loaded. */
@@ -112,24 +114,39 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
   const node = options.project.node ?? "node";
   const running = new Set<{ kill(signal: NodeJS.Signals): void }>();
   let expired = false;
+  let cancelled = false;
   const timers: NodeJS.Timeout[] = [];
+  const stopAll = () => {
+    for (const group of running) group.kill("SIGTERM");
+    timers.push(
+      setTimeout(() => {
+        for (const group of running) group.kill("SIGKILL");
+      }, KILL_GRACE_MS),
+    );
+  };
   if (options.timeoutMs !== null) {
     timers.push(
       setTimeout(() => {
         expired = true;
-        for (const group of running) group.kill("SIGTERM");
-        timers.push(
-          setTimeout(() => {
-            for (const group of running) group.kill("SIGKILL");
-          }, KILL_GRACE_MS),
-        );
+        stopAll();
       }, options.timeoutMs),
     );
   }
+  // A `squeal stop` (001 D10, task 001-367): what runs is stopped, nothing more starts.
+  const onAbort = () => {
+    cancelled = true;
+    stopAll();
+  };
+  if (options.signal?.aborted === true) cancelled = true;
+  else options.signal?.addEventListener("abort", onAbort, { once: true });
 
   const queue = [...runs];
   const worker = async () => {
-    for (let run = queue.shift(); run !== undefined && !expired; run = queue.shift()) {
+    for (
+      let run = queue.shift();
+      run !== undefined && !expired && !cancelled;
+      run = queue.shift()
+    ) {
       const group = startGroup({
         command: node,
         args: run.args,
@@ -153,9 +170,12 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
   const width = Math.max(1, Math.min(options.concurrency ?? runs.length, runs.length));
   await Promise.all(Array.from({ length: width }, worker));
   for (const timer of timers) clearTimeout(timer);
+  options.signal?.removeEventListener("abort", onAbort);
 
   const completed = runs.filter((r) => r.stream?.completed === true);
-  const { end, failure } = ending(runs, completed.length, expired, options.timeoutMs, node);
+  const { end, failure } = cancelled
+    ? { end: "completed" as const, failure: null }
+    : ending(runs, completed.length, expired, options.timeoutMs, node);
   const built: RunReport = {
     end,
     durationMs: Math.round(performance.now() - started),

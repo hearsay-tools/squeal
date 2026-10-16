@@ -121,7 +121,8 @@ export function createCompositeRunner(adapters: readonly RunnerAdapter[]): Runne
       const parts: Part[] = [];
       for (const adapter of adapters) {
         const files = groups.get(adapter);
-        if (files === undefined) continue;
+        // A `squeal stop` starts no further part: its files stay queued (D10, task 001-367).
+        if (files === undefined || options.stop?.aborted === true) continue;
         parts.push({ adapter, report: await runPart(adapter, files, options) });
       }
       return merge(parts);

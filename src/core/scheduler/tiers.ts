@@ -313,6 +313,7 @@ export async function executeTier(
         logDir: tier.logDir,
         timeoutMs: context.policy.runner.timeoutMs,
         ...(signal === undefined ? {} : { signal }),
+        ...(stop === undefined ? {} : { stop }),
         lane: tier.lane,
         ...(observeIgnored ? { observeIgnored } : {}),
         ...(tier.lease === undefined ? {} : { workers: tier.lease.grant }),
