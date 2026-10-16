@@ -103,9 +103,12 @@ function dropFiles(report: RunReport, dropped: readonly TestFileRef[], reason: s
   const gone = new Set(dropped.map(refKey));
   const kept = (ref: TestFileRef) => !gone.has(refKey(ref));
   const { fileDurations, observed, reads } = report;
+  // Task 011-06: the completed files among them are withheld, and the scheduler queues them again.
+  const withheld = [...(report.withheld ?? []), ...report.completedFiles.filter((f) => !kept(f))];
   return {
     ...report,
     completedFiles: report.completedFiles.filter(kept),
+    ...(withheld.length > 0 ? { withheld } : {}),
     results: report.results.filter((r) =>
       kept({ project: r.check.project, path: r.check.testPath }),
     ),
