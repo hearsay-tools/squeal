@@ -9,14 +9,14 @@ export const BUSY_SLICE_MS = 250;
 
 /**
  * The delay before retry `attempt` (0 first) of a write that gave up on a
- * busy store: at once, then backing off to 500 ms, so a lock freed during a
+ * busy store: at once, then backing off to 250 ms, so a lock freed during a
  * delay is taken well within a second of it.
  */
 export function busyBackoffMs(attempt: number): number {
   return BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length - 1)] ?? 0;
 }
 
-const BACKOFF_MS = [0, 100, 250, 500] as const;
+const BACKOFF_MS = [0, 100, 250] as const;
 
 /**
  * What waits for a busy store, as one episode: from the first write that
