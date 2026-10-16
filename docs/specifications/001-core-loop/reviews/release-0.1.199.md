@@ -165,3 +165,131 @@ Outside `docs/` and generated `plugins/*/dist/**`, every added/removed line in t
 Dispatch one eval-tooling repair row for B1. Ownership is the slow-measure implementation (or a small evidence helper), its declarations/types if needed, and paired reference tests. Use the existing retained transcript and parsed Squeal answers in event order; do not infer pre-claim completion from final runner status. Require the slow/all request after the relevant edit, completion before the claim, and current evidence surviving subsequent edits. Keep the foreign/unanswered-call boundary already repaired by 006-64.
 
 No product-code, installer, scheduler, board, version or generated-bundle change is requested by this review. The synthetic repair proof needs no real eval, model budget or live cell access. A narrow re-review can verify B1 and inspect its delta; the other five gaps and the named-wait scope need not be prosecuted again unless that delta reopens them. Regrading any affected retained results and interpreting the ongoing release evals belong to a separately authorized coordinator step after the fix.
+
+## Round 2
+
+FAIL `1ce735f2c1311ced36cd1fdc1513b26b33650320`: **1 proven blocker (B1 remains open), 0 should-fix findings, 0 nits**.
+
+### Verification
+
+Independent re-review on 2026-10-16, Linux, Node 24.21.0, Vitest 5.0.3. HEAD matched the requested candidate. The tracked tree was clean before verification, after the build, after the tests and after the outside-tree probes. The requested `test/evals/` run replaces the skill's full-suite run because release evals share this host. No product, board, version or generated-bundle file was edited.
+
+```text
+$ git rev-parse HEAD
+1ce735f2c1311ced36cd1fdc1513b26b33650320
+
+$ npm ci
+added 196 packages, and audited 197 packages in 8s
+found 0 vulnerabilities
+Exit 0. Warnings: deprecated node-domexception; six packages' install scripts
+not yet covered by allowScripts. No lockfile change.
+
+$ npm run lint
+> biome check .
+Checked 1347 files in 367ms. No fixes applied.
+Exit 0
+
+$ npm run typecheck
+> tsc --noEmit
+Exit 0
+
+$ npm run build
+> tsc -p tsconfig.build.json && npm run build:plugin
+> tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts
+Exit 0
+
+$ git status --short
+(empty, including all four plugin dist trees)
+
+$ flock /run/user/$(id -u)/squeal-full-run.lock env -u CODEX_SESSION_ID \
+    GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 \
+    npx vitest run --maxWorkers=2 test/evals/
+ RUN  v5.0.3
+ Test Files  67 passed (67)
+      Tests  1233 passed (1233)
+   Start at  08:45:12
+   Duration  59.14s (tests 91%, import 6%, transform 3%)
+Exit 0
+
+$ git status --short
+(empty)
+```
+
+The commands used scratch HOME, CODEX_HOME, TMPDIR, XDG config/data/state/cache directories and npm cache under `/tmp/squeal-review-001-428.6ihKEJ`. The independent run was required by this brief, rather than a Squeal checkpoint. The suite's fake-runner tests ran in their isolated fixtures; no live eval session or model was started. No live release-cell transcript was inspected. The only directly executed `evals/bin` tool was the authorized `atomic-regrade.mjs`, with every input explicitly pointing to a results copy outside the repository.
+
+Additional outside-tree probes used the production transcript parsers, `gradeCell`, `pilotRecord` and `regradeAtomic` through the reference-session helpers. Four combinations (both harnesses, a2 and a8) reproduce the blocker below; all three retained-record forms agree. Ten paired controls (five per harness) also pass. These probes did not edit the candidate or start a model.
+
+### Bounds
+
+Read Round 1 first, then spec 006 D4/D10, its status amendments, the repair notes and the complete delta from `0f8cb129` through `1ce735f2`: implementation `903bf68f`, regrade `1f1dbb57` and notes `1ce735f2`. The regrade commit is the candidate's counterpart of the notes' `a70397d8`. The other release gaps settled by Round 1 were not reopened.
+
+### Blocker
+
+#### B1 remains open, proven: the named-check fallback credits an own Vitest failure while Squeal still reports the slow file pending
+
+**In-range location:** `evals/lib/evidence.mjs:231`, the new branch checking only `files.includes(k.file) && k.validity === "current"`. Its callers are `atomic-measures.mjs:33` and the pilot/regrade paths. **Boundary:** `grade.mjs:105` supplies the whole compound call's output as the Squeal pull's text. The pre-existing text parser can also parse the agent's own Vitest `FAIL` line into `checks`; without explicit provenance it defaults to `validity: "current"`. The new branch treats that as proof of a current Squeal result. The existing `currentCheck(s, k)` contract deliberately rejects a pulled check without an explicit current statement (`stated: true`); the new branch bypasses it.
+
+Spec 006 D10 requires **“the slow tier settled through Squeal before the claim.”** Round 1 B1's repair criterion explicitly excludes a timeout still naming the file pending and an own Vitest result as substitutes.
+
+**Concrete reproduction, both Codex and Claude:** use `graded`, `REGISTERED` and `CLAIM` from `test/evals/reference-sessions.ts`, with `truthPass: false, status: "fail"`:
+
+1. Registration at revision 0; edit `src/invoice.ts`.
+2. One executed shell call:
+
+   ```sh
+   squeal run --slow --wait 60000; npx vitest run test/slow/ledger.test.ts
+   ```
+
+3. Its combined output, exit 1:
+
+   ```text
+   Slow tier requested at revision 1: 1 slow file queued; they run once no fast work is pending.
+   Returned on timeout after 60.0 s
+
+   Revision: 1
+   Known failures: 0
+   Affected checks: 28 passed (22 tests, 6 test files loaded), 0 running, 2 queued (1 test, 1 test file loaded)
+   Slow tier: 1 test file; 1 pending, waiting for host load to drop.
+
+   Daemon: running
+
+    FAIL  test/slow/ledger.test.ts > the year's ledger reconciles with the invoices
+   AssertionError: expected '$47592.00' to be '$46992.00'
+    Test Files  1 failed (1)
+         Tests  1 failed (1)
+   ```
+
+4. `CLAIM("fail")`, with no later Squeal result. Pass the grade to `pilotRecord` for a2 or a8, then to `regradedForms` for each retained-record shape.
+
+The retained request correctly has `answered: true`. The retained pull has revision 1, `pending: 2`, `slow: false`, and a parsed slow check with `observed: null`, `validity: "current"`, **no `stated` property**. Its derived `files` and `failing` arrays are both empty, because the existing current-check predicate correctly finds no current Squeal check. Nevertheless, the new slow-measure predicate returns true.
+
+| Harness | Scenario | Pilot `slow-through-squeal` | Regrade: kept / no answered / no squeal-run | Required |
+|---|---|---|---|---|
+| Codex | a2-slow | true | true / true / true | false |
+| Codex | a8-load-hold | true | true / true / true | false |
+| Claude | a2-slow | true | true / true / true | false |
+| Claude | a8-load-hold | true | true / true / true | false |
+
+All other declared measures also pass in these four cases. Thus B1 can still conceal failure to settle the slow tier, even after the repair. This is a proven new branch error, not a request to re-prosecute the parser generally or a claim that a particular retained release cell used this exact shell sequence.
+
+**One-worker fix:** make the named-check alternative require the existing provenance-aware `currentCheck(s, k)` contract (or equivalent explicit Squeal provenance), not validity alone. Preserve legitimate current named slow results while unrelated work remains pending. Add the compound-call reproduction and its genuine-current paired control for both harnesses, both scenarios, pilot grading and all retained forms. Include a pushed older-revision check control so this alternative also honors push provenance. Re-run the copy-only regrade before proposing any further committed score changes. No product/version/bundle change or model run is needed.
+
+### Should-fix and nits
+
+None. Older records without `squeal-run` steps cannot prove request-before-result order: the fallback places the answered request at the last edit. Records without `answered` use the pilot's answered-request summary. These are documented evidence limits, not an additional proven blocker. The current representation does retain per-request `answered` and request order.
+
+### What fits
+
+- The original timeout-only, queue-only `run --all`, unknown hedge and post-result edit cases now miss slow credit. A completed wait, later status or later delivery earns it. Both scenarios and harnesses exercise these through pilot and retained-record regrading.
+- The request is after the last edit, explicit slow/all and answered. A modern `answered: false` request cannot borrow another call's answer. Existing foreign/unanswered tests still pass. The three amended fixture replies now actually state a current slow tier; the retry fixture only adds the retained answered field.
+- The no-line fallback calls `clear`, which rejects pending/stale/unknown counts, a known pending slow tier and no-daemon evidence. Paired probes confirm that zero outstanding work without a Slow tier line earns credit and a pending answer without that line does not. This conclusion depends on the retained counts accurately including outstanding work, as the notes state.
+- Paired probes confirm an explicitly current named slow failure with other work pending earns credit, while the same check explicitly pending or stale does not. B1 above is the missing provenance case, rather than a reason to discard all named evidence.
+- An independent structural comparison covered all **19 atomic/variant files, 1,199 cells** against `0f8cb129`. Exactly **21 a2-slow cells** change, solely `slow-through-squeal: true` to `false`: **3f2edd 5/280; ae0c65 7/80; 86541e 8/60; 746295 1/280**. Their IDs match the repair notes' complete list. Each changed cell's retained Squeal evidence after the edit lacks current slow settlement: revision-bearing answers keep `slow: false`; counted answers remain pending; no named slow result supplies the missing completion. Own runs and unknown claims do not settle Squeal. All other cell fields are identical; top-level differences are the regrade audit entries. The other 15 files and all a8 cells stay unchanged.
+- Recomputing every candidate atomic record yields no further change. The authorized CLI on explicit outside-tree copies prints **19 × `unchanged, not written`**, exits 0 and generates no new ATOMIC.md. This establishes idempotence under the candidate rule, not correctness of the residual B1 branch.
+- ATOMIC.md's **Flags and alarms** section is byte-identical to the base. Its eight changed rows are only a2 slow-score counts: four scoreboard rows and four release-table rows. Haiku moves 28/30 yes to 25/30 no; Sonnet 20/20 to 19/20 stays yes; luna 24/30 to 23/30 stays no; sol 30/30 to 29/30 stays yes. The release tables reflect Haiku 0.1.131 9/10 to 6/10, Sonnet 0.1.131 10/10 to 9/10, luna 0.1.168 10/10 to 9/10 and sol 0.1.131 10/10 to 9/10.
+
+### Inputs for the next wave
+
+B1 remains a one-row eval-tooling repair at the named-check boundary, with both-harness reference regressions and copy-only regrade verification. Keep answered request → current Squeal evidence → claim order, the last-edit boundary and legitimate status/push completion. Preserve both older-record fallbacks as explicit limits unless the coordinator chooses a stricter treatment of insufficient historical evidence. Do not attribute an own runner's check to Squeal merely because the same output also contains a Squeal status.
+
+This is the second FAIL. Per `docs/process.md` step 6, the coordinator takes the remaining blocker to the human rather than automatically starting another repair round. The other five original release gaps remain settled by Round 1.
