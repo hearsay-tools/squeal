@@ -21,3 +21,16 @@ Done when:
 - A real-daemon test stops a daemon mid-batch, with a test that sleeps and spawns a child. Stop returns within a few seconds, and afterwards no process has its cwd or an open fd under the root (`/proc/*/cwd`, `/proc/*/fd`).
 - A test shows that a stop during the departure drain starts no slow file.
 - A test shows that a daemon left alive past the bound makes stop exit 1 and name it.
+
+## W2: 001-429, review of cand/0.1.200
+
+Use /reviewer. Shape: review. Pinned to the `cand/0.1.200` SHA named in the spawn. The range is `e0ff15a3..<sha>`: W1's two commits, the bundles, version 0.1.200 and key format 11 (10 shipped in 0.1.199).
+
+Read the W1 section above, issue #2, spec 001 D10 as amended on 2026-10-16 and D12. Check that:
+- only `squeal stop` cancels, and the superseded, sessions-gone, reinstall and signal exits still let the tier finish;
+- a cancelled tier records the files it completed and requeues the rest, never recording them as failed or unknown;
+- nothing starts a tier after a stop is accepted, including the slow drain, the start path and the pump;
+- the leftover scan cannot name a process the daemon did not start (another daemon's group, a reused pid);
+- `squeal remove`, which also sends `stop`, still behaves as D10 says.
+
+Run the full suite under the lock (`flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`), lint and typecheck. Done when `reviews/wave-16.md` is committed with a verdict.
