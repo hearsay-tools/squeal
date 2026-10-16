@@ -249,11 +249,13 @@ describe("ATOMIC.md from the committed atomic results", () => {
   /**
    * The human (2026-10-13): luna on a5-uncovered is the known offender, accepted
    * at 001-292's landed 3 of 10 (run e23b55) and to be improved over time; a
-   * later run must not do worse. 3f2edd is 0.1.131's run before the fix.
+   * later run must not do worse. 3f2edd is 0.1.131's run before the fix. The human
+   * (2026-10-16) accepted 0.1.199's release run (07d7ab) at 4 of 10, a 10-point gap
+   * at p = 0.5, the same uncovered-edit gap as before (005-64); the ceiling is now 4.
    */
   const LUNA_A5 = "a5-uncovered.p0.codex-gpt-6-luna.";
   const LUNA_A5_FROM = "20261013T112437Z-e23b55";
-  const LUNA_A5_CEILING = 0.3;
+  const LUNA_A5_CEILING = 0.4;
   /**
    * The human (2026-10-14): haiku on a5-uncovered is accepted the same way, at the
    * 4 of 10 of 0.1.168's release run (746295); a later run must not do worse. That
