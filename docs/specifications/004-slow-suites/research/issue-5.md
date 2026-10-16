@@ -86,7 +86,7 @@ With the policy off, the primer turns the slow tier into a completion requiremen
 
 ## Recommendation for Squeal
 
-Surface the decision to the human before anyone writes a row. The code is a one-seam change. What needs deciding is what "done" requires with the policy off, and 001-283's done-when, which the human approved, says the opposite of the D9 opt-in. The options:
+Surface the decision to the human before implementation. The coordinator recorded held row 004-62 as requested; it does not authorize a repair. The code is a one-seam change. What needs deciding is what "done" requires with the policy off, and 001-283's done-when, which the human approved, says the opposite of the D9 opt-in. The options:
 
 1. **Policy-conditional, as the issue asks.** With the setting off, the primer and step 4 say how to read the `Slow tier:` line and report it: don't claim slow tests pass unless it says current, and `run --slow --wait` gets that result. With it on, keep today's step. Cost: 006 re-pins `current-before-claim` and `slow-through-squeal` by policy, and the default-policy arm's "right behaviour" changes. Under the memory rule on per-situation expectations, that rule change belongs to the 006 coordinator.
 2. **Keep it unconditional and amend 004 D8 and D9 to say so.** The claim discipline stays as 001-283 measured it. Issue 5 closes as intended, and repositories like cezarion live with a skill that conflicts with their `AGENTS.md`.

@@ -3,6 +3,10 @@
 Stage: shipped (2026-10-09, 0.1.85, released in hub 0.1.86, after the confirmation dogfood 004-53 the human asked for: slow files declared by policy run outside the agent's fast loop, drain before a daemon exits, catch up up to `slow.maxParallel` wide when idle, key their declared artifacts, and the loop of `lessons.md` defect 10 stays closed in real use. Every review of the spec's waves passed. Open, not blocking: 004-52, 004-54 and 004-55 (should-fix), open question 3 (macOS, unrun), D4 held by the human)
 Started: 2026-10-08
 
+## Pending human decision: issue 5
+
+2026-10-16: agent-reported `friction` [issue #5](https://github.com/hearsay-tools/squeal/issues/5) triaged as board row **004-62**, held for the human to decide next steps. [Findings](research/issue-5.md) and [reproduction path](research/probes/issue-5/README.md) show the completion primer is identical with `stop.requireSlowSuite` off and on; the installed skill also makes the slow step unconditional, whereas Stop and status follow policy. This is aligned with the vision's request for project-defined completion policy; no open duplicate was found. Earlier 001-283 introduced the instruction, so reconcile that intent with D7 to D9 and 006's claim metrics before implementation. Surface policy-conditional versus claim-scoped guidance and the option to retain the existing step to the human. The reporter's exact 91/89-file runtime incident was not reproduced. No behavior amendment, implementation, eval spend or release is approved by this triage.
+
 ## Decisions so far
 
 - The human named e2e tests as one of three blockers on 2026-10-07 (ADR 0004). Spec 004 is how Squeal validates suites too slow to run on every revision: end-to-end, integration and package suites such as this repository's `test/e2e` (Vitest, about a minute) and cezarion's `test:package` (node:test, `test/e2e/*.test.ts`).
