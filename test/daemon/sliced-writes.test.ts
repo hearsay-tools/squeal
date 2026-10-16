@@ -49,6 +49,31 @@ describe("the timers' writes on a busy store (001-422)", () => {
     writes.stop();
   });
 
+  it("runs another group behind a pending retry, not beside it", async () => {
+    const notes: string[] = [];
+    const busyWaits = new BusyWaits({ now: Date.now, note: (text) => notes.push(text) });
+    const writes = new SlicedWrites({ log: () => {}, busyWaits });
+    const calls: string[] = [];
+    let locked = true;
+    writes.run("the heartbeat", [
+      [
+        "heartbeat",
+        () => {
+          calls.push("heartbeat");
+          if (locked) throw busy();
+        },
+      ],
+    ]);
+    writes.run("consumer expiry", [["consumer expiry", () => calls.push("expiry")]]);
+    expect(calls).toEqual(["heartbeat"]);
+    locked = false;
+    await waitFor(() => calls.includes("expiry"), 5_000, "the shared retry");
+    expect(calls).toEqual(["heartbeat", "heartbeat", "expiry"]);
+    expect(notes).toHaveLength(1);
+    expect(notes[0]).toMatch(/ran once it was free: the heartbeat, consumer expiry$/);
+    writes.stop();
+  });
+
   it("logs any other failure and goes on with the group", () => {
     const logs: string[] = [];
     const busyWaits = new BusyWaits({ now: Date.now, note: () => {} });
