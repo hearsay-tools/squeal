@@ -1,0 +1,21 @@
+# Research for spec 011
+
+Links only. The findings behind this spec were written for 001 and stay in `../../001-core-loop/research/`; a new topic gets a brief here and its findings file beside it.
+
+- [result-fingerprinting-prior-art](../../001-core-loop/research/result-fingerprinting-prior-art.md)
+- [watcher-daemon-and-shared-store](../../001-core-loop/research/watcher-daemon-and-shared-store.md)
+- [pull-advances-push](../../001-core-loop/research/pull-advances-push.md)
+- [per-package-keys](../../001-core-loop/research/per-package-keys.md)
+- [harness-process-liveness](../../001-core-loop/research/harness-process-liveness.md)
+- [process-group-tests-under-squeal](../../001-core-loop/research/process-group-tests-under-squeal.md)
+- [observed-runtime-inputs](../../001-core-loop/research/observed-runtime-inputs.md)
+- [shared-runs](../../001-core-loop/research/shared-runs.md)
+- [wait-from-store](../../001-core-loop/research/wait-from-store.md)
+- [nested-worktree-watch](../../001-core-loop/research/nested-worktree-watch.md)
+- [injected-environment](../../001-core-loop/research/injected-environment.md)
+- [host-capacity](../../001-core-loop/research/host-capacity.md)
+- [environment-failures](../../001-core-loop/research/environment-failures.md)
+- [daemon-sigkill](../../001-core-loop/research/daemon-sigkill.md)
+- [daemon-under-harnesses](../../001-core-loop/research/daemon-under-harnesses.md)
+- [fresh-worktree-reuse](../../001-core-loop/research/fresh-worktree-reuse.md)
+- [slow-claims](../../001-core-loop/research/slow-claims.md)
