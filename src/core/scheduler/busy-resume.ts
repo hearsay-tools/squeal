@@ -13,10 +13,13 @@ export class BusyResume {
   #attempts = 0;
   #waiting = false;
 
-  constructor(
-    private readonly waits: BusyWaits,
-    private readonly resume: () => void,
-  ) {}
+  readonly #waits: BusyWaits;
+  readonly #resume: () => void;
+
+  constructor(waits: BusyWaits, resume: () => void) {
+    this.#waits = waits;
+    this.#resume = resume;
+  }
 
   /** A resume is scheduled: the scheduler is not idle. */
   get pending(): boolean {
@@ -31,12 +34,12 @@ export class BusyResume {
   /** A write gave up; `what` waits for the pump to resume. */
   gaveUp(what: string): void {
     this.#waiting = true;
-    this.waits.waiting(PUMP, what);
+    this.#waits.waiting(PUMP, what);
     if (this.#timer !== null) return;
     this.#timer = setTimeout(
       () => {
         this.#timer = null;
-        this.resume();
+        this.#resume();
       },
       busyBackoffMs(this.#attempts++),
     );
@@ -47,7 +50,7 @@ export class BusyResume {
     if (!this.#waiting) return;
     this.#waiting = false;
     this.#attempts = 0;
-    this.waits.ran(PUMP);
+    this.#waits.ran(PUMP);
   }
 
   close(): void {
