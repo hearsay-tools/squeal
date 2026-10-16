@@ -357,6 +357,15 @@ export interface RunReport {
    * `completedFiles`. Absent: only the completed files' projects started.
    */
   readonly startedProjects?: readonly ProjectName[];
+  /**
+   * Test files that ran to completion and whose results the runner withheld,
+   * not listed in `completedFiles`: bytes the run may have executed moved or
+   * were rewritten during it (Vitest, tasks 001-146 and 001-159). `failure`
+   * names the paths. The core queues them again as a discarded run, counted
+   * toward its limit, instead of leaving them `unknown` at a key no revision
+   * moves (issue 10, task 011-06). Absent: none withheld.
+   */
+  readonly withheld?: readonly TestFileRef[];
 }
 
 /** A run that failed to start (`RunReport.startupFailure`). */

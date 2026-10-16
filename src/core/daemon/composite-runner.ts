@@ -186,6 +186,7 @@ function merge(parts: readonly Part[]): RunReport {
   const read = reports.some((report) => report.reads !== undefined);
   const environment = reports.flatMap((report) => report.environmentObserved ?? []);
   const skipped = reports.flatMap((report) => report.skippedFiles ?? []);
+  const withheld = reports.flatMap((report) => report.withheld ?? []);
   // Task 001-382: one adapter runs Vitest, so at most one part failed to start.
   const startup = reports.find((report) => report.startupFailure !== undefined)?.startupFailure;
   const started = [...new Set(reports.flatMap((report) => report.startedProjects ?? []))];
@@ -201,6 +202,7 @@ function merge(parts: readonly Part[]): RunReport {
     ...(read ? { reads: reports.flatMap((report) => report.reads ?? []) } : {}),
     ...(environment.length > 0 ? { environmentObserved: environment } : {}),
     ...(skipped.length > 0 ? { skippedFiles: skipped } : {}),
+    ...(withheld.length > 0 ? { withheld } : {}),
     ...(startup === undefined ? {} : { startupFailure: startup }),
     ...(started.length === 0 ? {} : { startedProjects: started.sort(compare) }),
   };

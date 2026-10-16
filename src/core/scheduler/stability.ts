@@ -81,7 +81,7 @@ export function touchedUnchanged(
 export function withheldForTouch(report: RunReport, touched: readonly RelativePath[]): RunReport {
   if (touched.length === 0) return report;
   const reason = `squeal: ${touched.join(", ")} was written while this run was in flight and ended as it was; the run may have executed bytes no check key names (task 001-168)`;
-  const { fileDurations, observed, ...rest } = report;
+  const { fileDurations, observed, withheld, ...rest } = report;
   return {
     ...rest,
     completedFiles: [],
