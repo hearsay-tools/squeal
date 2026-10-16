@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { appendFileSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -7,7 +7,8 @@ import { describe, expect, it } from "vitest";
 import { testFileId } from "../../src/core/keys/index.js";
 import { CANCELLED } from "../../src/runners/vitest/run.js";
 import { waitFor } from "../watcher/helpers.js";
-import { createRepo, openHarness, openRepoStore } from "./helpers.js";
+import { suite } from "./backlog-suite.js";
+import { openHarness, openRepoStore } from "./helpers.js";
 
 /*
  * Lessons, defect 25: a re-queued suite ran in 559 tiers of exactly 4, 4.6 h
@@ -15,37 +16,10 @@ import { createRepo, openHarness, openRepoStore } from "./helpers.js";
  * amended (task 001-124): while the queue holds backlog work only, a tier
  * takes up to `runner.backlogTierSize` files, and an edit cancels it.
  */
-const pad = (n: number) => String(n).padStart(3, "0");
 const vitestBin = join(
   dirname(createRequire(import.meta.url).resolve("vitest/package.json")),
   "vitest.mjs",
 );
-
-/** `count` test files, each importing its own module and waiting `sleepMs`; `mark` gets a line per test. */
-function suite(count: number, sleepMs: number, mark?: string) {
-  const repo = createRepo("barrel-only");
-  const at = (path: string) => join(repo.main, path);
-  rmSync(at("test/aa-slow.test.ts"));
-  rmSync(at("test/zz-fast.test.ts"));
-  for (let i = 0; i < count; i++) {
-    writeFileSync(at(`src/m${pad(i)}.ts`), `export const value = ${i};\n`);
-    writeFileSync(
-      at(`test/f${pad(i)}.test.ts`),
-      [
-        `import { appendFileSync } from "node:fs";`,
-        `import { expect, it } from "vitest";`,
-        `import { value } from "../src/m${pad(i)}.ts";`,
-        `it("holds", async () => {`,
-        `  await new Promise((resolve) => setTimeout(resolve, ${sleepMs}));`,
-        `  expect(value).toBe(${i});`,
-        mark === undefined ? "" : `  appendFileSync(${JSON.stringify(mark)}, "${i}\\n");`,
-        `});`,
-        "",
-      ].join("\n"),
-    );
-  }
-  return repo;
-}
 
 describe("scheduler: backlog work runs in machine-wide tiers (D5, defect 25)", () => {
   it("runs a 200-file backlog in at most a few tiers, within 2x a direct vitest run", {

@@ -16,22 +16,26 @@ export const BACKLOG_TIER_BUDGET_MS = 300_000;
 /**
  * Whether `revision` cancels a backlog tier in flight (D5 step 5 as
  * amended, task 001-124): its content re-key queued an edit's work in the
- * tier's lane (task 001-140), it adds or deletes a path, whose importers only
- * the runner part finds, or it changes an input of the tier, whose results
- * the stability check would discard. An edit no test file reaches lets the
- * tier finish.
+ * tier's lane (task 001-140), or it changes an input of the tier, whose
+ * results the stability check would discard. An add or a delete cancels
+ * through its runner part, which finds what it reaches (`queuesEdit`, task
+ * 001-364: a build's hashed outputs that no test file reads cancelled a
+ * 200-file tier). An edit no test file reaches lets the tier finish.
  */
 export function cancelsBacklog(
   context: SchedulerContext,
   ledger: Ledger,
-  revision: Revision,
+  revision: Revision | null,
   tier: Tier,
 ): boolean {
-  if (ledger.queue.hasRecent((ref) => laneOf(context, ref) === tier.lane)) return true;
+  if (queuesEdit(context, ledger, tier)) return true;
   const inputs = new Set(tier.files.flatMap((f) => f.inputs));
-  return revision.changes.some(
-    (change) => change.oldHash === null || change.newHash === null || inputs.has(change.path),
-  );
+  return revision?.changes.some((change) => inputs.has(change.path)) ?? false;
+}
+
+/** An edit's work is queued in the lane of `tier`, a backlog tier selected while none was. */
+function queuesEdit(context: SchedulerContext, ledger: Ledger, tier: Tier): boolean {
+  return ledger.queue.hasRecent((ref) => laneOf(context, ref) === tier.lane);
 }
 
 /** `BACKLOG_TIER_BUDGET_MS`, or half of `runner.timeoutMs` when that is less. */
