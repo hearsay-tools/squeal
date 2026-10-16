@@ -231,3 +231,148 @@ None.
 ## Inputs for the repair and re-review
 
 Repair B1 at the ownership boundary, preserving the daemon's initial stranger exclusions and process identities rather than treating a process-group number as ownership. Repair B2 at each runner's cancellation boundary, before it dequeues more work; keep the scheduler's completion/requeue distinction. Preserve ordinary shutdown's finish-and-store behavior and the stop-only escalation. Re-review these repairs and the regenerated bundles at a new pinned candidate, including the shared-group case, a backlog wider than concurrency in both runners, and completed-versus-unfinished state. S1 can share B1's process-identity tests. No source was changed in this review.
+
+## Round 2: 001-430
+
+Verdict: **PASS**. No proven blockers, one plausible should-fix remaining from S1, no nits. This verdict supersedes Round 1 for the candidate below; it does not assert that unrelated suite failures are repaired.
+
+Candidate: `cand/0.1.200`, pinned to `b43375cc292e3eb3181b243c929bf89c7d4ccb28`. Bounded re-review of Round 1 B1, B2 and S1. Inspected repair `56744c0c`, regenerated bundles/key-format-11 pin `30ec91a2`, and the new tests. The Round 1 file is present through `d4b4576e`. No product source, test or configuration was edited.
+
+### Round 2 verification
+
+`git rev-parse HEAD`:
+
+```text
+b43375cc292e3eb3181b243c929bf89c7d4ccb28
+```
+
+All checks and probes ran at this pinned candidate with a clean tracked tree. The build produced no tracked drift. This Round 2 draft stayed outside the repository until verification finished; the final commit changes this findings file alone.
+
+`npm ci` exited 0. Verbatim output:
+
+```text
+npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+
+added 196 packages, and audited 197 packages in 7s
+
+32 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+npm warn install-scripts 6 packages have install scripts not yet covered by allowScripts:
+npm warn install-scripts   @google/genai@2.21.0 (preinstall: echo 'preinstall: no-op')
+npm warn install-scripts   @parcel/watcher@2.6.0 (install: node scripts/build-from-source.js)
+npm warn install-scripts   esbuild@0.28.2 (postinstall: node install.js)
+npm warn install-scripts   msgpackr-extract@3.0.4 (install: node-gyp-build-optional-packages)
+npm warn install-scripts   opencode-ai@1.18.35 (postinstall: node ./postinstall.mjs)
+npm warn install-scripts   protobufjs@7.6.6 (postinstall: node scripts/postinstall)
+npm warn install-scripts
+npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+```
+
+`npm run lint` exited 0. Verbatim output:
+
+```text
+> squeal@0.1.200 lint
+> biome check .
+
+Checked 1351 files in 773ms. No fixes applied.
+```
+
+`npm run typecheck` exited 0. Verbatim output:
+
+```text
+> squeal@0.1.200 typecheck
+> tsc --noEmit
+```
+
+`npm run build` exited 0. Verbatim output:
+
+```text
+> squeal@0.1.200 build
+> tsc -p tsconfig.build.json && npm run build:plugin
+
+
+> squeal@0.1.200 build:plugin
+> tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts
+```
+
+Independent reviewer full run, on the pinned clean candidate:
+
+```sh
+flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
+```
+
+Exit 0. Verbatim output:
+
+```text
+RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/424615bd-319a-4e50-8e5e-35af9710fd58
+
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/424615bd-319a-4e50-8e5e-35af9710fd58/test/fixtures/scheduler/.tmp/6994aee0-db3a-4e87-a720-ce709175a22e/main/.git/worktrees/staged/gitdir
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/424615bd-319a-4e50-8e5e-35af9710fd58/test/fixtures/scheduler/.tmp/94d1d3bf-9dc5-412c-bc4b-9151a4173f01/main/.git/worktrees/staged/gitdir
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+squeal tests: killing 1 process(es) an earlier run left: 2594926
+
+ Test Files  666 passed | 1 skipped (667)
+      Tests  5676 passed | 8 skipped (5684)
+   Start at  18:43:18
+   Duration  719.91s (tests 98%, import 2%)
+
+    Isolate  667 workers spawned · ~111ms startup each (spawn + environment, per file)
+             at least ~18.35s faster with isolate: false — reuses workers across files instead of one per file
+```
+
+Both Round 1 full-run failures **did not recur**: `test/harness/opencode-dispose.test.ts:172` and `test/cli/status-wait-edit.test.ts:40` passed in this run. The new leftovers file, both runners' stop cases and the key-format guard also passed. The earlier background-only recorder-fidelity failures did not occur in this independent run. This is one complete independent run; it does not prove those timing-sensitive cases can never fail under another load. Sampled host one-minute load during this run was 13.30.
+
+### Round 2 closure evidence
+
+**B1: closed for the proven failure.** `src/core/daemon/leftovers.ts:32` records non-descendants already in the group as pid/start identities; `src/core/daemon/leftovers.ts:85` excludes them and their current descendants. `test/daemon/leftovers.test.ts:78` exercises a stranger and a child it starts after marks are read, while retaining the leader's own child. Repeated the original fork/setpgid real-daemon probe with the committed Codex bundle. Stop succeeds promptly and leaves the unrelated sibling alive:
+
+```json
+{"mode": "group", "daemonPid": 2287454, "siblingPid": 2287460, "stopCode": 0, "elapsedSeconds": 0.31, "stdout": "Squeal daemon stopped for /home/agent/projects/squeal/.ai/cezar/t/424615bd/sq-review-group-p61slpr_\n", "stderr": "", "siblingStillAlive": true}
+```
+
+The probe terminated and reaped its own sibling after this observation.
+
+**B2: closed.** `src/core/scheduler/tiers.ts:316` forwards the stop-only signal separately from the existing edit-cancel signal. `src/runners/node-test/adapter-project.ts:170` and `src/runners/pytest/adapter-run.ts:75` pass that stop signal into their low-level runners. The cancellation flags prevent further dequeueing, terminate running groups with the existing grace, and report `end: "completed", failure: null` with only completed files. `src/core/daemon/composite-runner.ts:125` prevents later parts from starting after stop. An edit still does not cancel node:test or pytest (D5).
+
+Read the live cancellation and pre-aborted cases in `test/runners/node-test/run.test.ts:146` and `test/runners/pytest/run/run.test.ts:171`. Repeated the original eight-held-files backlog probe. No release file was created; stop returned without another file starting:
+
+```json
+{"mode": "node", "beforeStop": "0 2287771\n", "afterStop": "0 2287771\n", "stopStillRunning": false, "stopCode": 0, "elapsedSeconds": 0.25, "stdout": "Squeal daemon stopped for /home/agent/projects/squeal/.ai/cezar/t/424615bd/sq-review-node-you_nset\n", "stderr": "", "releaseExists": false}
+```
+
+A direct node:test boundary probe completed a fast file, then stopped a held file with a third file queued. It retained only the completed fast file and its passing result, with no queued file started. A composite probe stopped in its first part and retained that part's completed file; the corresponding edit-cancel probe ran both parts. Assertions passed (exit 0):
+
+```json
+{"probe":"completed-before-stop","end":"completed","failure":null,"completed":[{"project":"unit","path":"test/fast.mjs"}],"outcomes":["pass"],"lastStarted":false}
+{"probe":"composite-stop","calls":["a"],"completed":[{"project":"a","path":"test/a.mjs"}]}
+{"probe":"composite-edit-cancel","calls":["a","b"],"completed":[{"project":"a","path":"test/a.mjs"},{"project":"b","path":"test/b.mjs"}]}
+```
+
+**S1: the asynchronous name-read window is closed; group reuse remains plausible.** `src/core/daemon/leftovers.ts:87` retains each scanned entry and `src/core/daemon/leftovers.ts:92` drops it if its start time changes before the command-line read finishes. Thus the specific scan-to-name pid reuse scenario no longer returns the replacement's command. No forced kernel pid-reuse experiment was performed; this conclusion comes from source inspection, without a new race regression test. The narrower residual below is nonblocking.
+
+### Round 2 blockers
+
+None. Both previously proven failure scenarios passed against the repaired candidate.
+
+### Round 2 should-fix
+
+**R2-S1. Numeric group ownership can outlive the original group: plausible.** `src/core/daemon/leftovers.ts:33`, `src/core/daemon/leftovers.ts:84`.
+
+This is the daemon/group-identity portion of the original S1. Marks retain the numeric group, without an identity or continuity check tying a later scan to the original group. Failure scenario: the original daemon and group disappear after marks are captured; before the first leftover scan (or between scans that did not observe the empty interval), the daemon pid is reused and an unrelated process creates a group with that number. The new group's members satisfy the group-number test, are not in the old foreign set, and keep the same start time during their own command-line reads. Stop can wait on and name them as the old daemon's children. The repaired final start-time check rules out reuse *during* a name read, but not reuse before a fresh scan. This was not reproduced and is not blocking.
+
+Worker-sized follow-up: make the group fallback establish continuity with identities from the original group across scans, retiring it when that continuity cannot be established while retaining token matching; add a controlled process-table regression for original-group disappearance and number reuse. Do not simply disable all group scans when the daemon exits: its genuine orphans still need to be found.
+
+### Round 2 nits
+
+None.
+
+### Round 2 what fits and next-wave inputs
+
+The repair closes both proven stop failures without extending node:test/pytest cancellation to edit supersession. Completed versus unfinished files preserve the scheduler boundary already reviewed in Round 1, and a composite stop starts no later adapter part. Version 0.1.200, key format 11 and the rebuilt bundles remain consistent; the build has no tracked drift. The normal-shutdown and remove conclusions in Round 1 remain applicable; the repair changes neither request routing nor remove's lock checks. No further blocking repair is requested for this slice. Keep the stop-only versus edit signal distinction in any runner follow-up; the group-continuity note is optional work for the coordinator to schedule.
