@@ -1,0 +1,46 @@
+revisions touching markdown.tsx: 1
+  b7555ac0d0f19f40 84 2026-10-15T21:43:31.791Z watch
+
+worktree b7555ac0d0f19f40 /home/agent/projects/cezar web e2e runs: 42
+  2026-10-15T19:51:00.610Z r81 completed inbox.e2e.ts
+  2026-10-15T20:09:17.233Z r81 completed tools-menu.e2e.ts
+  2026-10-15T20:09:31.207Z r81 completed command-palette.e2e.ts
+  2026-10-15T20:09:47.683Z r81 completed skills-update.e2e.ts
+  2026-10-15T20:10:12.445Z r81 completed settings-resources.e2e.ts
+  2026-10-15T20:10:50.840Z r81 completed settings-agents.e2e.ts
+  2026-10-15T20:12:20.182Z r81 completed sidebar-ellipsis-click.e2e.ts
+  2026-10-15T20:12:52.022Z r81 completed settings-bookmarklets.e2e.ts
+  2026-10-15T21:18:49.289Z r83 completed empty-states.e2e.ts
+  2026-10-15T21:19:18.195Z r83 completed settings-agent-config.e2e.ts
+  2026-10-15T21:20:08.574Z r83 completed project-order.e2e.ts
+  2026-10-15T21:20:44.230Z r83 completed settings-appearance.e2e.ts
+  2026-10-15T21:20:50.940Z r83 completed commit-list.e2e.ts
+  2026-10-15T21:21:19.509Z r83 completed settings-skills.e2e.ts
+  2026-10-15T21:21:51.712Z r83 completed skill-search-ranking.e2e.ts
+  2026-10-15T21:22:27.051Z r83 completed settings-sidebar.e2e.ts
+  2026-10-15T21:22:52.753Z r83 completed chat-code-fence.e2e.ts
+  2026-10-15T21:23:03.983Z r83 completed issue-linked-tasks.e2e.ts
+  2026-10-15T21:23:40.546Z r83 completed assistant-line-breaks.e2e.ts
+  2026-10-15T21:24:02.256Z r83 completed settings-monitoring.e2e.ts
+  2026-10-15T21:24:38.073Z r83 completed assistant-reply-copy.e2e.ts
+  2026-10-15T21:25:15.518Z r83 completed worktree-setup.e2e.ts
+  2026-10-15T21:25:25.457Z r83 completed automations.e2e.ts
+  2026-10-15T21:25:55.847Z r83 completed composer-defaults.e2e.ts
+  2026-10-15T21:26:45.808Z r83 completed repo-git-diff.e2e.ts
+  2026-10-15T21:26:56.881Z r83 completed variants-compare.e2e.ts
+  2026-10-15T21:27:10.331Z r83 completed review-gate.e2e.ts
+  2026-10-15T21:27:27.345Z r83 completed page-headings.e2e.ts
+  2026-10-15T21:28:11.336Z r83 completed artifact-project-links.e2e.ts
+  2026-10-15T21:28:52.540Z r83 completed live-preview.e2e.ts
+  2026-10-15T21:30:19.399Z r83 completed new-task.e2e.ts
+  2026-10-15T21:31:00.420Z r83 completed repo-git.e2e.ts
+  2026-10-15T21:33:00.067Z r83 completed composer.e2e.ts
+  2026-10-15T21:33:13.193Z r83 completed github-core.e2e.ts
+  2026-10-15T21:33:24.802Z r83 completed task-changes.e2e.ts
+  2026-10-15T21:33:36.023Z r83 completed sidebar-project-header.e2e.ts
+  2026-10-15T21:33:46.904Z r83 completed run-header-ci-wait.e2e.ts
+  2026-10-15T21:33:55.946Z r83 completed sidebar-limits.e2e.ts
+  2026-10-15T21:34:07.040Z r83 completed github-states.e2e.ts
+  2026-10-15T21:34:30.962Z r83 completed mobile-projects.e2e.ts
+  2026-10-15T21:34:44.386Z r83 completed task-handoff.e2e.ts
+  2026-10-15T21:35:26.291Z r83 completed ios-sweep.e2e.ts

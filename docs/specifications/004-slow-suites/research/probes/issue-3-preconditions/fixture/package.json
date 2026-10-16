@@ -1,0 +1,11 @@
+{
+  "name": "issue3-pkg",
+  "private": true,
+  "type": "module",
+  "bin": { "issue3": "dist/cli.mjs" },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test:unit": "node --test 'test/unit/*.test.mjs'",
+    "test:package": "node --test 'test/e2e/*.test.mjs'"
+  }
+}

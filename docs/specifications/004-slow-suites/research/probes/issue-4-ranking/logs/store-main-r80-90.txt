@@ -1,0 +1,15 @@
+r80 2026-10-15T19:40:11.224Z 956577f7a watch 24363 [{"path":".ai/browsers/agent-browser.md","oldHash":"124f07d302bea62aa1b466bbb82664207e1cdeda","newHash":"0131f2dd15f577074960d6827d10a1f9bde57513"},{"path":".ai/qa/2026-10-15-search-focus.md","oldHash
+r81 2026-10-15T19:40:14.207Z 956577f7a watch 2927 [{"path":"packages/cezar/src/core/codex-approvals.test.ts","oldHash":null,"newHash":"80ddbe305749a7ae73463c3840d779d23ab3ec6d"},{"path":"packages/cezar/src/core/codex-approvals.ts","oldHash":null,"new
+r82 2026-10-15T20:22:15.460Z 00ff0f16d watch 2004 [{"path":".ai/upstream/LEDGER.md","oldHash":"53916c9386b913cb38df2b42f7446270642eb6ef","newHash":"4130955ddb936f161940ae8097baeafe6f7ec625"},{"path":".ai/upstream/ledger.yaml","oldHash":"f8b34e07e4080
+r83 2026-10-15T20:54:39.610Z 27253cabb interval 1084 [{"path":".ai/agentic.config.json","oldHash":"3a780fceb5b0d9ecf3970b355a03527b8c9c72ba","newHash":"426b7e9b44805e3beec85c730939154722805e18"},{"path":".github/scripts/ci.workflow.test.cjs","oldHash":"
+r84 2026-10-15T21:43:31.791Z 83817eea3 watch 4057 [{"path":".ai/specs/2026-07-14-cockpit-ui-redesign.md","oldHash":"c0eb21715ecf0dec1fc2df8f025198a5e8496ff8","newHash":"5e4dc828e5501bae24a61cc2738bb019095dd694"},{"path":".ai/upstream/LEDGER.md","oldH
+r85 2026-10-15T22:35:03.219Z 8b1f7567d watch 707 [{"path":"packages/cezar/src/delegation/workspace.ts","oldHash":"45e2736a9e5f236dcb12019a2c791e477a3da5c0","newHash":"a682c3b868b7d91162056b4636a71cd8c7946a91"},{"path":"packages/cezar/src/git-index-c
+r86 2026-10-15T22:53:09.674Z a805cb41f watch 311 [{"path":".ai/scripts/build-e2e.sh","oldHash":"7d1179a5dfe8b2a0149234774cc6c10d411c4f57","newHash":"e2a21eee109520e4347bfff980be31f550aadbbb"},{"path":"packages/cezar/test/unit/test-env-launcher.test.
+r87 2026-10-15T23:48:38.896Z 4bca9bbd4 watch 162 [{"path":"packages/cezar/src/autosave-timeout.test.ts","oldHash":"905475c9df573516ef61c0646ca05ad384bfc595","newHash":"c597a4e85a8ad85b22421932422f2660fee8f802"}]
+r88 2026-10-16T00:10:57.421Z 6436fc534 watch 179 [{"path":"packages/cezar/src/workflows/worker-parent-attention.test.ts","oldHash":"61c84e11ae9a6ba997ab53714b0ae65afadf5e32","newHash":"272a73ec757a8ea747db491a792b7290e361a151"}]
+r89 2026-10-16T00:14:58.705Z 82f97570c watch 178 [{"path":"packages/cezar/src/delegation/process-scope.testkit.test.ts","oldHash":"da5099533d5e3b4e8896dc5fd66b638433230c33","newHash":"d7ec01c1032c8543ebd6ea5fff35244e48554a0e"}]
+r90 2026-10-16T11:03:03.242Z 82f97570c watch 140 [{"path":".claude/settings.json","oldHash":"09f191d34c52ffbf53a383f831fc21e45aba7af4","newHash":"3b8ca184c0c99189b672d71e81537eff4c17f626"}]
+web e2e runs at r>=84: 1
+  2026-10-16T10:22:25.609Z r89 completed markdown-preview.e2e.ts
+window worktree 729119b9b25c6779 /home/agent/projects/cezar/.claude/worktrees/gate-902 revisions 2 1 - 2
+window worktree b7555ac0d0f19f40 /home/agent/projects/cezar revisions 5 80 - 84

@@ -1,0 +1,9 @@
+commit-list.e2e.ts own=1 with-helpers=1
+diff-scroll.e2e.ts own=4 with-helpers=4
+git-sidebar.e2e.ts own=1 with-helpers=1
+markdown-preview.e2e.ts own=4 with-helpers=4
+repo-git-diff.e2e.ts own=0 with-helpers=3
+repo-git.e2e.ts own=0 with-helpers=3
+review-gate.e2e.ts own=3 with-helpers=3
+task-changes.e2e.ts own=1 with-helpers=1
+variants-compare.e2e.ts own=3 with-helpers=3
