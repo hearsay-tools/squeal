@@ -30,9 +30,11 @@ export interface Coverage {
   readonly pytest?: readonly { readonly name: string; readonly include: readonly string[] }[];
   /**
    * `null` without slow files declared (spec 004 D1); otherwise how many test
-   * files the daemon last listed are slow, `null` while it has listed none.
+   * files the daemon last listed are slow, `null` while it has listed none,
+   * and the policy's `stop.requireSlowSuite`, absent meaning its default,
+   * off (D8 as amended 2026-10-16, task 004-62: what "done" requires here).
    */
-  readonly slow: { readonly files: number | null } | null;
+  readonly slow: { readonly files: number | null; readonly requireSlowSuite?: boolean } | null;
   /**
    * Policy `vitest.excludeProjects` while Vitest is built: projects Squeal
    * never runs (001 D11, task 001-349). Absent or empty: none.
@@ -74,6 +76,7 @@ export function coverageOf(context: HookContext): Coverage {
         : {
             files:
               keys.length === 0 ? null : listed.filter((row) => view.isSlow(row.testFile)).length,
+            requireSlowSuite: policy.stop.requireSlowSuite,
           },
   };
 }
