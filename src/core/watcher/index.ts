@@ -1,4 +1,5 @@
 export { createWatcherBackend } from "./backend.js";
+export type { BatchRetry } from "./batch-retry.js";
 export {
   type ChangeFeed,
   type ChangeFeedOptions,

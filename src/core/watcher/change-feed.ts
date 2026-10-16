@@ -14,6 +14,7 @@ import {
 } from "../types/index.js";
 import { ATOMIC_SAVE_HOLD_MS, TempHold } from "./atomic-save.js";
 import { createWatcherBackend } from "./backend.js";
+import { BatchRetries, type BatchRetry, toError } from "./batch-retry.js";
 import {
   type CandidateContext,
   candidatesForReconcile,
@@ -42,6 +43,8 @@ export interface ChangeFeedOptions {
   readonly onDropped?: (reason: string) => void;
   /** Defaults to the backend for `process.platform`. */
   readonly backend?: WatcherBackend;
+  /** A batch that failed on a busy store is a pass to retry, not an error (task 001-422). */
+  readonly retry?: BatchRetry;
   /** Paths re-stat'ed on every reconciliation pass: the stat cache. */
   readonly trackedPaths?: () => Iterable<RelativePath>;
   /** Ignored files watched anyway because a closure references them. */
@@ -112,8 +115,10 @@ class Feed implements ChangeFeed {
   private unlisted: UnlistedDirs;
   private idleTimer: NodeJS.Timeout | null = null;
   private closed = false;
+  private readonly retries: BatchRetries;
 
   constructor(private readonly options: ChangeFeedOptions) {
+    this.retries = new BatchRetries(options.retry, options.onError);
     this.root = options.root;
     this.unlisted = new UnlistedDirs(this.root);
     this.backend = options.backend ?? createWatcherBackend(process.platform);
@@ -155,10 +160,13 @@ class Feed implements ChangeFeed {
     }
     const pending = { trigger, done: Promise.resolve() };
     this.pending = pending;
-    pending.done = this.enqueue(() => {
-      this.pending = null;
-      return this.reconcileNow(pending.trigger);
-    });
+    pending.done = this.enqueue(
+      () => {
+        this.pending = null;
+        return this.reconcileNow(pending.trigger);
+      },
+      () => pending.trigger,
+    );
     return pending.done;
   }
 
@@ -174,6 +182,7 @@ class Feed implements ChangeFeed {
     this.debouncer.cancel();
     this.tempHold.close();
     if (this.idleTimer) clearTimeout(this.idleTimer);
+    this.retries.close();
     await this.sub?.close();
     await this.queue;
     await this.linked?.close();
@@ -206,23 +215,26 @@ class Feed implements ChangeFeed {
   }
 
   private onDebounced(paths: AbsolutePath[]): void {
-    void this.enqueue(async () => {
-      const specChanged = paths.some((p) => SPEC_INPUTS.has(basename(p)));
-      if (specChanged) this.unlisted.clear();
-      let widened = specChanged ? await this.rebuildSpec() : false;
-      const hinted = await candidatesFromHints(this.context(), paths);
-      const ignoredDirs = hinted.ignoredDirs.filter((dir) => !this.unlisted.holds(dir));
-      if (ignoredDirs.length > 0 && !specChanged) {
-        const before = this.spec;
-        widened = await this.rebuildSpec();
-        if (this.spec === before) await this.unlisted.record(ignoredDirs);
-      }
-      const kept = this.tempHold.filter(hinted.paths, this.trackedPaths);
-      if (kept.length > 0) await this.emit({ trigger: "watch", paths: kept });
-      // Paths that were excluded until now were never watched; git status finds them. So does
-      // the walk of a linked directory, which appeared, went or moved with a link of this batch.
-      if (widened || (await this.relinked(hinted))) await this.reconcileNow("watch");
-    });
+    void this.enqueue(
+      async () => {
+        const specChanged = paths.some((p) => SPEC_INPUTS.has(basename(p)));
+        if (specChanged) this.unlisted.clear();
+        let widened = specChanged ? await this.rebuildSpec() : false;
+        const hinted = await candidatesFromHints(this.context(), paths);
+        const ignoredDirs = hinted.ignoredDirs.filter((dir) => !this.unlisted.holds(dir));
+        if (ignoredDirs.length > 0 && !specChanged) {
+          const before = this.spec;
+          widened = await this.rebuildSpec();
+          if (this.spec === before) await this.unlisted.record(ignoredDirs);
+        }
+        const kept = this.tempHold.filter(hinted.paths, this.trackedPaths);
+        if (kept.length > 0) await this.emit({ trigger: "watch", paths: kept });
+        // Paths that were excluded until now were never watched; git status finds them. So does
+        // the walk of a linked directory, which appeared, went or moved with a link of this batch.
+        if (widened || (await this.relinked(hinted))) await this.reconcileNow("watch");
+      },
+      () => "watch",
+    );
   }
 
   private async reconcileNow(trigger: RevisionTrigger): Promise<void> {
@@ -280,14 +292,18 @@ class Feed implements ChangeFeed {
     await this.options.onBatch(batch);
   }
 
-  /** Runs tasks one at a time. A failed task is reported and does not stop the queue. */
-  private enqueue(task: () => Promise<void>): Promise<void> {
+  /**
+   * Runs tasks one at a time. A failed task is reported and does not stop the
+   * queue; one that delivers batches names the trigger it retries as (`retry`).
+   */
+  private enqueue(task: () => Promise<void>, retryAs?: () => RevisionTrigger): Promise<void> {
     const run = this.queue.then(async () => {
       if (this.closed) return;
       try {
         await task();
       } catch (error) {
-        this.options.onError(error instanceof Error ? error : new Error(String(error)));
+        const pass = retryAs && (() => this.reconcileNow(retryAs()));
+        await this.retries.failed(toError(error), pass);
       } finally {
         this.armIdle();
       }

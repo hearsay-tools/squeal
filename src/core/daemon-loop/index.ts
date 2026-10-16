@@ -1,12 +1,22 @@
 import { createScheduler, type SchedulerOptions } from "../scheduler/index.js";
+import { type BusyWaits, busyBackoffMs, isBusy } from "../store/index.js";
 import type { Scheduler, SchedulerCloseOptions, WatcherBackend } from "../types/index.js";
-import { type ChangeFeed, createChangeFeed, type WatcherTimings } from "../watcher/index.js";
+import {
+  type BatchRetry,
+  type ChangeFeed,
+  createChangeFeed,
+  type WatcherTimings,
+} from "../watcher/index.js";
 import { readHead } from "./head.js";
 
 export { readHead } from "./head.js";
 
 export interface DaemonLoopOptions extends Omit<SchedulerOptions, "head" | "onExtraFiles"> {
-  /** Errors of the change feed and of background scheduler work. */
+  /**
+   * Errors of the change feed and of background scheduler work. With
+   * `busyWaits`, a pass that failed on a busy store is retried instead
+   * (task 001-422), and its episode's note goes to `busyWaits`.
+   */
   readonly onError: (error: Error) => void;
   /** The backend reported lost events; a full reconciliation follows (D12). */
   readonly onDropped?: (reason: string) => void;
@@ -71,6 +81,9 @@ export function createDaemonLoop(options: DaemonLoopOptions): DaemonLoop {
         root: options.root,
         onBatch: (batch) => scheduler.handleBatch(batch),
         onError: options.onError,
+        ...(options.busyWaits === undefined
+          ? {}
+          : { retry: passRetry(scheduler, options.busyWaits) }),
         ...(onDropped === undefined ? {} : { onDropped }),
         ...(backend === undefined ? {} : { backend }),
         ...(timings === undefined ? {} : { timings }),
@@ -90,6 +103,33 @@ export function createDaemonLoop(options: DaemonLoopOptions): DaemonLoop {
         await scheduler.close();
       })();
       return closing;
+    },
+  };
+}
+
+/** The pass's key in `BusyWaits`. */
+const PASS = "pass";
+
+/**
+ * Task 001-422: a batch that failed on a busy store is retried as a pass at
+ * once, then with `busyBackoffMs`. What it stored once it landed, a revision
+ * or none, is what the episode's note names.
+ */
+function passRetry(scheduler: Scheduler, waits: BusyWaits): BatchRetry {
+  let before: number | null = null;
+  return {
+    accepts: (error) => {
+      if (!isBusy(error)) return false;
+      before ??= scheduler.status().revision;
+      waits.waiting(PASS);
+      return true;
+    },
+    delayMs: busyBackoffMs,
+    ran: () => {
+      const revision = scheduler.status().revision;
+      const stored = before !== null && revision !== before;
+      before = null;
+      waits.ran(PASS, stored ? `revision ${revision}` : "a reconciliation pass");
     },
   };
 }
