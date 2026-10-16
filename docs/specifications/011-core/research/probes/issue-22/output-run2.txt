@@ -1,0 +1,111 @@
+fixture /tmp/squeal-issue22-0i56AI
+plugin /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.199
+load 19.42 18.85 23.03 37/3413 336340 nproc 24
++0.1s hook session-start exit=0 stdout=""
++3.3s $ squeal status -> exit=0
+    Revision: 0
+    Known failures: 0
+    Affected checks: 0 passed, 0 running, 0 queued
+    Full-suite checkpoint: completed at revision 0
+    
+    Worktree: /tmp/squeal-issue22-0i56AI/repo (HEAD 5907279, dirty state not known: no revision recorded yet)
+    Daemon: running, last heartbeat 3 s ago
+    Inherited from other worktrees: none (every current result here was run in this worktree)
+    Closure method: static imports plus declared inputs
+    Store schema: 1
+    Notes:
+      no revision recorded for this worktree yet
++3.3s daemon processes for fixture: 1
+    336452 /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs daemon /tmp/squeal-issue22-0i56AI/repo
++3.4s hook stop exit=0 stdout=""
++3.7s $ squeal stop -> exit=0
+    Squeal daemon stopped for /tmp/squeal-issue22-0i56AI/repo
++18.7s daemon processes for fixture: 0
++18.9s $ squeal status -> exit=0
+    Revision: 0
+    Known failures: 0
+    Affected checks: 0 passed, 0 running, 0 queued
+    Full-suite checkpoint: completed at revision 0
+    
+    Worktree: /tmp/squeal-issue22-0i56AI/repo (HEAD 5907279, dirty state not known: no daemon is validating)
+    Daemon: no daemon running since 2026-10-16T23:46:22.475Z
+    Inherited from other worktrees: none (every current result here was run in this worktree)
+    Closure method: static imports plus declared inputs
+    Store schema: 1
+    Notes:
+      no revision recorded for this worktree yet
+--- PostToolBatch after squeal stop
++19.0s $ squeal stop -> exit=0
+    No daemon running for /tmp/squeal-issue22-0i56AI/repo
++19.1s daemon processes for fixture: 0
++19.2s hook post-tool-batch exit=0 stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolBatch\",\"additionalContext\":\"SQUEAL · no daemon is validating at revision 0\\nRevision 0: no check pending, stale or unknown. No daemon has validated since 2026-10-16T23:46:22.475Z; results are as of revision 0.\"}}"
++22.3s daemon processes for fixture: 1
+    350422 /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs daemon /tmp/squeal-issue22-0i56AI/repo
++22.7s $ squeal stop -> exit=0
+    Squeal daemon stopped for /tmp/squeal-issue22-0i56AI/repo
++22.8s daemon processes for fixture: 0
+--- cycle 1
++22.9s hook stop exit=0 stdout=""
++26.0s daemon processes for fixture: 1
+    352863 /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs daemon /tmp/squeal-issue22-0i56AI/repo
++26.1s $ squeal status -> exit=0
+    Revision: 0
+    Known failures: 0
+    Affected checks: 0 passed, 0 running, 0 queued
+    Full-suite checkpoint: completed at revision 0
+    
+    Worktree: /tmp/squeal-issue22-0i56AI/repo (HEAD 5907279, dirty state not known: no revision recorded yet)
+    Daemon: running, last heartbeat 3 s ago
+    Inherited from other worktrees: none (every current result here was run in this worktree)
+    Closure method: static imports plus declared inputs
+    Store schema: 1
+    Notes:
+      no revision recorded for this worktree yet
++26.5s $ squeal stop -> exit=0
+    Squeal daemon stopped for /tmp/squeal-issue22-0i56AI/repo
++26.6s daemon processes for fixture: 0
+--- cycle 2
++26.7s hook stop exit=0 stdout=""
++29.7s daemon processes for fixture: 1
+    355614 /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs daemon /tmp/squeal-issue22-0i56AI/repo
++29.9s $ squeal status -> exit=0
+    Revision: 0
+    Known failures: 0
+    Affected checks: 0 passed, 0 running, 0 queued
+    Full-suite checkpoint: completed at revision 0
+    
+    Worktree: /tmp/squeal-issue22-0i56AI/repo (HEAD 5907279, dirty state not known: no revision recorded yet)
+    Daemon: running, last heartbeat 3 s ago
+    Inherited from other worktrees: none (every current result here was run in this worktree)
+    Closure method: static imports plus declared inputs
+    Store schema: 1
+    Notes:
+      no revision recorded for this worktree yet
++30.1s $ squeal stop -> exit=0
+    Squeal daemon stopped for /tmp/squeal-issue22-0i56AI/repo
++30.1s daemon processes for fixture: 0
+--- cycle 3
++30.3s hook stop exit=0 stdout=""
++33.3s daemon processes for fixture: 1
+    358436 /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs daemon /tmp/squeal-issue22-0i56AI/repo
++33.5s $ squeal status -> exit=0
+    Revision: 0
+    Known failures: 0
+    Affected checks: 0 passed, 0 running, 0 queued
+    Full-suite checkpoint: completed at revision 0
+    
+    Worktree: /tmp/squeal-issue22-0i56AI/repo (HEAD 5907279, dirty state not known: no revision recorded yet)
+    Daemon: running, last heartbeat 3 s ago
+    Inherited from other worktrees: none (every current result here was run in this worktree)
+    Closure method: static imports plus declared inputs
+    Store schema: 1
+    Notes:
+      no revision recorded for this worktree yet
++33.7s $ squeal stop -> exit=0
+    Squeal daemon stopped for /tmp/squeal-issue22-0i56AI/repo
++33.7s daemon processes for fixture: 0
++33.8s hook session-end exit=0 stdout=""
++34.1s $ squeal stop -> exit=0
+    No daemon running for /tmp/squeal-issue22-0i56AI/repo
++34.7s daemon processes for fixture: 0
++34.7s removed /tmp/squeal-issue22-0i56AI; load 20.52 19.16 22.97 27/3449 361689

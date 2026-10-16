@@ -1,0 +1,138 @@
+fixture /tmp/squeal-issue22-5ljgtP
+plugin /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.199
+load 20.91 18.78 23.25 15/3690 284216 nproc 24
++0.1s hook session-start exit=0 stdout=""
++3.3s $ squeal status -> exit=0
+    Revision: 0
+    Known failures: 0
+    Affected checks: 0 passed, 0 running, 0 queued
+    Full-suite checkpoint: completed at revision 0
+    
+    Worktree: /tmp/squeal-issue22-5ljgtP/repo (HEAD 2c6c6f1, dirty state not known: no revision recorded yet)
+    Daemon: running, last heartbeat 3 s ago
+    Inherited from other worktrees: none (every current result here was run in this worktree)
+    Closure method: static imports plus declared inputs
+    Store schema: 1
+    Notes:
+      no revision recorded for this worktree yet
+      2026-10-16T23:45:25.401Z: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest; every check of this worktree is unknown until the config loads
+      2026-10-16T23:45:25.458Z, revision 0: runner environment failed: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest
+      2026-10-16T23:45:25.459Z, revision 0: runner testFiles failed: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest
++3.3s daemon processes for fixture: 1
+    284267 /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs daemon /tmp/squeal-issue22-5ljgtP/repo
++3.4s hook stop exit=0 stdout=""
++3.7s $ squeal stop -> exit=0
+    Squeal daemon stopped for /tmp/squeal-issue22-5ljgtP/repo
++18.8s daemon processes for fixture: 0
++18.9s $ squeal status -> exit=0
+    Revision: 0
+    Known failures: 0
+    Affected checks: 0 passed, 0 running, 0 queued
+    Full-suite checkpoint: completed at revision 0
+    
+    Worktree: /tmp/squeal-issue22-5ljgtP/repo (HEAD 2c6c6f1, dirty state not known: no daemon is validating)
+    Daemon: no daemon running since 2026-10-16T23:45:25.369Z
+    Inherited from other worktrees: none (every current result here was run in this worktree)
+    Closure method: static imports plus declared inputs
+    Store schema: 1
+    Notes:
+      no revision recorded for this worktree yet
+      2026-10-16T23:45:25.401Z: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest; every check of this worktree is unknown until the config loads
+      2026-10-16T23:45:25.458Z, revision 0: runner environment failed: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest
+      2026-10-16T23:45:25.459Z, revision 0: runner testFiles failed: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest
+      2026-10-16T23:45:28.657Z, revision 0: daemon stopped: squeal stop
+--- cycle 1
++19.0s hook stop exit=0 stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"additionalContext\":\"SQUEAL · no daemon is validating at revision 0\\nRevision 0: 0 current, 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 0. No daemon has validated since 2026-10-16T23:45:25.369Z; results are as of revision 0.\\nKnown failures: 0\"}}"
++22.1s daemon processes for fixture: 1
+    301363 /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs daemon /tmp/squeal-issue22-5ljgtP/repo
++22.2s $ squeal status -> exit=0
+    Revision: 0
+    Known failures: 0
+    Affected checks: 0 passed, 0 running, 0 queued
+    Full-suite checkpoint: completed at revision 0
+    
+    Worktree: /tmp/squeal-issue22-5ljgtP/repo (HEAD 2c6c6f1, dirty state not known: no revision recorded yet)
+    Daemon: running, last heartbeat 3 s ago
+    Inherited from other worktrees: none (every current result here was run in this worktree)
+    Closure method: static imports plus declared inputs
+    Store schema: 1
+    Notes:
+      no revision recorded for this worktree yet
+      2026-10-16T23:45:25.401Z: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest; every check of this worktree is unknown until the config loads
+      2026-10-16T23:45:25.458Z, revision 0: runner environment failed: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest
+      2026-10-16T23:45:25.459Z, revision 0: runner testFiles failed: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest
+      2026-10-16T23:45:28.657Z, revision 0: daemon stopped: squeal stop
+      2026-10-16T23:45:44.283Z: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest; every check of this worktree is unknown until the config loads
+      2026-10-16T23:45:44.312Z, revision 0: runner environment failed: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest
+      2026-10-16T23:45:44.313Z, revision 0: runner testFiles failed: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest
++22.4s $ squeal stop -> exit=0
+    Squeal daemon stopped for /tmp/squeal-issue22-5ljgtP/repo
++22.4s daemon processes for fixture: 0
+--- cycle 2
++22.5s hook stop exit=0 stdout=""
++25.6s daemon processes for fixture: 1
+    304512 /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs daemon /tmp/squeal-issue22-5ljgtP/repo
++25.7s $ squeal status -> exit=0
+    Revision: 0
+    Known failures: 0
+    Affected checks: 0 passed, 0 running, 0 queued
+    Full-suite checkpoint: completed at revision 0
+    
+    Worktree: /tmp/squeal-issue22-5ljgtP/repo (HEAD 2c6c6f1, dirty state not known: no revision recorded yet)
+    Daemon: running, last heartbeat 3 s ago
+    Inherited from other worktrees: none (every current result here was run in this worktree)
+    Closure method: static imports plus declared inputs
+    Store schema: 1
+    Notes:
+      no revision recorded for this worktree yet
+      2026-10-16T23:45:25.401Z: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest; every check of this worktree is unknown until the config loads
+      2026-10-16T23:45:25.458Z, revision 0: runner environment failed: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest
+      2026-10-16T23:45:25.459Z, revision 0: runner testFiles failed: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest
+      2026-10-16T23:45:44.283Z: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest; every check of this worktree is unknown until the config loads
+      2026-10-16T23:45:44.312Z, revision 0: runner environment failed: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest
+      2026-10-16T23:45:44.313Z, revision 0: runner testFiles failed: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest
+      2026-10-16T23:45:47.388Z, revision 0: daemon stopped: squeal stop (2 notes since 2026-10-16T23:45:28.657Z; `squeal status --notes` lists each)
+      2026-10-16T23:45:47.821Z: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest; every check of this worktree is unknown until the config loads
+      2026-10-16T23:45:47.863Z, revision 0: runner environment failed: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest
+      2026-10-16T23:45:47.863Z, revision 0: runner testFiles failed: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest
++25.9s $ squeal stop -> exit=0
+    Squeal daemon stopped for /tmp/squeal-issue22-5ljgtP/repo
++26.0s daemon processes for fixture: 0
+--- cycle 3
++26.1s hook stop exit=0 stdout=""
++29.2s daemon processes for fixture: 1
+    307773 /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs daemon /tmp/squeal-issue22-5ljgtP/repo
++29.4s $ squeal status -> exit=0
+    Revision: 0
+    Known failures: 0
+    Affected checks: 0 passed, 0 running, 0 queued
+    Full-suite checkpoint: completed at revision 0
+    
+    Worktree: /tmp/squeal-issue22-5ljgtP/repo (HEAD 2c6c6f1, dirty state not known: no revision recorded yet)
+    Daemon: running, last heartbeat 3 s ago
+    Inherited from other worktrees: none (every current result here was run in this worktree)
+    Closure method: static imports plus declared inputs
+    Store schema: 1
+    Notes:
+      no revision recorded for this worktree yet
+      2026-10-16T23:45:25.401Z: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest; every check of this worktree is unknown until the config loads
+      2026-10-16T23:45:25.458Z, revision 0: runner environment failed: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest
+      2026-10-16T23:45:25.459Z, revision 0: runner testFiles failed: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest
+      2026-10-16T23:45:44.283Z: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest; every check of this worktree is unknown until the config loads
+      2026-10-16T23:45:44.312Z, revision 0: runner environment failed: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest
+      2026-10-16T23:45:44.313Z, revision 0: runner testFiles failed: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest
+      2026-10-16T23:45:47.821Z: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest; every check of this worktree is unknown until the config loads
+      2026-10-16T23:45:47.863Z, revision 0: runner environment failed: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest
+      2026-10-16T23:45:47.863Z, revision 0: runner testFiles failed: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest
+      2026-10-16T23:45:50.905Z, revision 0: daemon stopped: squeal stop (3 notes since 2026-10-16T23:45:28.657Z; `squeal status --notes` lists each)
+      2026-10-16T23:45:51.464Z: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest; every check of this worktree is unknown until the config loads
+      2026-10-16T23:45:51.507Z, revision 0: runner environment failed: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest
+      2026-10-16T23:45:51.507Z, revision 0: runner testFiles failed: vitest could not start: vitest/node does not resolve from /tmp/squeal-issue22-5ljgtP/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest
++29.7s $ squeal stop -> exit=0
+    Squeal daemon stopped for /tmp/squeal-issue22-5ljgtP/repo
++29.8s daemon processes for fixture: 0
++29.9s hook session-end exit=0 stdout=""
++30.0s $ squeal stop -> exit=0
+    No daemon running for /tmp/squeal-issue22-5ljgtP/repo
++30.6s daemon processes for fixture: 0
++30.6s removed /tmp/squeal-issue22-5ljgtP; load 21.63 19.19 23.25 23/3689 312826
