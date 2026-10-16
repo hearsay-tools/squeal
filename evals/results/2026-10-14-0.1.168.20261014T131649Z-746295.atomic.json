@@ -1280,7 +1280,7 @@
     "measures": {
      "claim-true": false,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": false,
      "no-rerun-answered": true
     }
    },
@@ -51133,5 +51133,15 @@
   }
  },
  "settleS": 180,
- "repetitions": 10
+ "repetitions": 10,
+ "regraded": [
+  {
+   "by": "001-428",
+   "date": "2026-10-16",
+   "changed": [
+    "a2-slow.p0.codex-gpt-6-luna.e-medium.r1"
+   ],
+   "note": "slow-through-squeal requires the current slow result before the claim (review 001-427 B1)"
+  }
+ ]
 }

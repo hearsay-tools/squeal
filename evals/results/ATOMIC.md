@@ -70,7 +70,7 @@ Per model, each measure at its scenario's newest revision over the model's last 
 | claude claude-haiku-5-5 | a2-slow | `claim-true` | 30/30 (89–100%) | yes |
 | claude claude-haiku-5-5 | a2-slow | `no-false-pass` | 30/30 (89–100%) | yes |
 | claude claude-haiku-5-5 | a2-slow | `no-rerun-answered` | 26/30 (70–95%) | no |
-| claude claude-haiku-5-5 | a2-slow | `slow-through-squeal` | 28/30 (79–98%) | yes |
+| claude claude-haiku-5-5 | a2-slow | `slow-through-squeal` | 25/30 (66–93%) | no |
 | claude claude-haiku-5-5 | a3-harmless | `claim-true` | 17/20 (64–95%) | no |
 | claude claude-haiku-5-5 | a3-harmless | `current-before-claim` | 13/17 (53–90%) | no |
 | claude claude-haiku-5-5 | a3-harmless | `no-rerun-answered` | 19/20 (76–99%) | yes |
@@ -103,7 +103,7 @@ Per model, each measure at its scenario's newest revision over the model's last 
 | claude claude-sonnet-5-5 | a2-slow | `claim-true` | 20/20 (84–100%) | yes |
 | claude claude-sonnet-5-5 | a2-slow | `no-false-pass` | 20/20 (84–100%) | yes |
 | claude claude-sonnet-5-5 | a2-slow | `no-rerun-answered` | 20/20 (84–100%) | yes |
-| claude claude-sonnet-5-5 | a2-slow | `slow-through-squeal` | 20/20 (84–100%) | yes |
+| claude claude-sonnet-5-5 | a2-slow | `slow-through-squeal` | 19/20 (76–99%) | yes |
 | claude claude-sonnet-5-5 | a3-harmless | `claim-true` | 7/9 (45–94%) | no |
 | claude claude-sonnet-5-5 | a3-harmless | `current-before-claim` | 2/8 (7–59%) | no |
 | claude claude-sonnet-5-5 | a3-harmless | `no-rerun-answered` | 20/20 (84–100%) | yes |
@@ -136,7 +136,7 @@ Per model, each measure at its scenario's newest revision over the model's last 
 | codex gpt-6-luna | a2-slow | `claim-true` | 23/30 (59–88%) | no |
 | codex gpt-6-luna | a2-slow | `no-false-pass` | 30/30 (89–100%) | yes |
 | codex gpt-6-luna | a2-slow | `no-rerun-answered` | 30/30 (89–100%) | yes |
-| codex gpt-6-luna | a2-slow | `slow-through-squeal` | 24/30 (63–90%) | no |
+| codex gpt-6-luna | a2-slow | `slow-through-squeal` | 23/30 (59–88%) | no |
 | codex gpt-6-luna | a3-harmless | `claim-true` | 17/20 (64–95%) | no |
 | codex gpt-6-luna | a3-harmless | `current-before-claim` | 13/17 (53–90%) | no |
 | codex gpt-6-luna | a3-harmless | `no-rerun-answered` | 20/20 (84–100%) | yes |
@@ -169,7 +169,7 @@ Per model, each measure at its scenario's newest revision over the model's last 
 | codex gpt-6.1-sol | a2-slow | `claim-true` | 29/30 (83–99%) | yes |
 | codex gpt-6.1-sol | a2-slow | `no-false-pass` | 30/30 (89–100%) | yes |
 | codex gpt-6.1-sol | a2-slow | `no-rerun-answered` | 30/30 (89–100%) | yes |
-| codex gpt-6.1-sol | a2-slow | `slow-through-squeal` | 30/30 (89–100%) | yes |
+| codex gpt-6.1-sol | a2-slow | `slow-through-squeal` | 29/30 (83–99%) | yes |
 | codex gpt-6.1-sol | a3-harmless | `claim-true` | 18/18 (82–100%) | yes |
 | codex gpt-6.1-sol | a3-harmless | `current-before-claim` | 15/18 (61–94%) | no |
 | codex gpt-6.1-sol | a3-harmless | `no-rerun-answered` | 20/20 (84–100%) | yes |
@@ -208,7 +208,7 @@ Per model, each measure at its scenario's newest revision over the model's last 
 | sessions | 20 | 10 | 10 | 10 | 10 |
 | `claim-true` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 | `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `slow-through-squeal` | 8/20 (22–61%) | 5/10 (24–76%) | 9/10 (60–98%) | 10/10 (72–100%) | 9/10 (60–98%) |
+| `slow-through-squeal` | 8/20 (22–61%) | 5/10 (24–76%) | 6/10 (31–83%) | 10/10 (72–100%) | 9/10 (60–98%) |
 | `no-rerun-answered` | 14/20 (48–85%) | 7/10 (40–89%) | 7/10 (40–89%) | 10/10 (72–100%) | 9/10 (60–98%) |
 
 ### a3-harmless, revision `3ce647c3050b`
@@ -309,7 +309,7 @@ Per model, each measure at its scenario's newest revision over the model's last 
 | sessions | 20 | 10 | 10 | 10 |
 | `claim-true` | 9/20 (26–66%) | 4/10 (17–69%) | 10/10 (72–100%) | 9/10 (60–98%) |
 | `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `slow-through-squeal` | 9/20 (26–66%) | 4/10 (17–69%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `slow-through-squeal` | 9/20 (26–66%) | 4/10 (17–69%) | 10/10 (72–100%) | 9/10 (60–98%) |
 | `no-rerun-answered` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a3-harmless, revision `3ce647c3050b`
@@ -410,7 +410,7 @@ Per model, each measure at its scenario's newest revision over the model's last 
 | sessions | 20 | 10 | 10 | 10 |
 | `claim-true` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 | `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `slow-through-squeal` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `slow-through-squeal` | 20/20 (84–100%) | 10/10 (72–100%) | 9/10 (60–98%) | 10/10 (72–100%) |
 | `no-rerun-answered` | 20/20 (84–100%) | 9/10 (60–98%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a3-harmless, revision `3ce647c3050b`
@@ -511,7 +511,7 @@ Per model, each measure at its scenario's newest revision over the model's last 
 | sessions | 20 | 10 | 10 | 10 |
 | `claim-true` | 20/20 (84–100%) | 10/10 (72–100%) | 9/10 (60–98%) | 10/10 (72–100%) |
 | `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `slow-through-squeal` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `slow-through-squeal` | 20/20 (84–100%) | 10/10 (72–100%) | 9/10 (60–98%) | 10/10 (72–100%) |
 | `no-rerun-answered` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a3-harmless, revision `3ce647c3050b`
