@@ -1,0 +1,28 @@
+22 rows in results for the test check (one per key)
+3ac8e05d33b1 wt-a run=298a30e4 at=1792183588236
+83b91eb9bf97 wt-c run=defc5648 at=1792183589871
+be02b2be132e wt-c run=a0c36062 at=1792183590445
+efb1c7253d5b wt-c run=e7057318 at=1792183591124
+86a38ec32e33 wt-c run=e836800e at=1792183591686
+43e981d82181 wt-c run=abc555a0 at=1792183592451
+93e7740a824c wt-c run=bf1729b4 at=1792183593038
+1ac357dcd1b9 wt-c run=bd3680ff at=1792183593639
+4afdca0c2c7a wt-c run=28ab993c at=1792183594362
+546ec21c65e5 wt-c run=3869c4f2 at=1792183594937
+4020651709c0 wt-c run=a269a600 at=1792183595527
+4b49eb78a9f1 wt-c run=72cd77a2 at=1792183596221
+07966643b291 wt-c run=81aeda91 at=1792183596859
+b8a40585dc92 wt-c run=9a494c07 at=1792183597456
+8579da8fa6d1 wt-c run=6ef37991 at=1792183598051
+70e5582a0540 wt-c run=c06ec260 at=1792183598640
+cc22d9db5196 wt-c run=e74ed948 at=1792183599267
+08e9fe32875d wt-c run=e60bff5f at=1792183599850
+0d63f233822d wt-c run=81556964 at=1792183600585
+dc294cd31115 wt-c run=72181006 at=1792183601240
+aed56c93f315 wt-c run=8f2d8a9c at=1792183601801
+e83b248f313f wt-c run=84cc25aa at=1792183602549
+meta failure-producers:2923ff16c17729ca: {"test\u0000\u0000test/cursor.test.ts\u0000installed runners resolve both bundled mocks":{"runId":"298a30e4-e09f-4d3b-aeb7-e60acb1f2c4b","recordedAt":1792183588236}}
+meta failure-producers:db5b81d865c0653e: {"test\u0000\u0000test/cursor.test.ts\u0000installed runners resolve both bundled mocks":{"runId":"84cc25aa-de3a-4378-830d-f2acd6a4ac4d","recordedAt":1792183602549}}
+run with no stored test result: 33894221-155a-4e6e-8934-2d911cf1c956 worktree=wt-a logDir=/tmp/squeal-issue15-q2SkA6/wt-a/.git/squeal/runs/33894221-155a-4e6e-8934-2d911cf1c956
+run with no stored test result: 988a490e-6fd0-4c2f-b1ab-8a8122928142 worktree=wt-c logDir=/tmp/squeal-issue15-q2SkA6/wt-a/.git/squeal/runs/988a490e-6fd0-4c2f-b1ab-8a8122928142
+failure_texts rows carrying /tmp/squeal-1001/tmp/746383e063d8ce36/cez-cursor-package-q0I1jZ: 1

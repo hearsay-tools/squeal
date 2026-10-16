@@ -1,0 +1,118 @@
+Check: test/cursor.test.ts > installed runners resolve both bundled mocks
+Worktree: /tmp/squeal-issue15-T1QojB/wt-a
+Revision: none recorded
+
+Known state: FAIL, current, observed at revision 0, commit 4b29224
+  Summary: expected '. /tmp/…' to be 'present' // Object.is equality
+  Location: test/cursor.test.ts:9:37
+  Fingerprint: AssertionError: expected '. <tmp>' to be 'present' // Object.is equality @ test/cursor.test.ts:9:37
+
+History (1 transition, oldest first):
+  revision 0  2026-10-16T20:48:49.951Z  first seen FAIL
+
+Durations (6 results, 0 pass / 6 fail): min 6 ms, median 10 ms, p95 38 ms, max 38 ms
+Results (6, newest first):
+  FAIL  2026-10-16T20:48:56.684Z  /tmp/squeal-issue15-T1QojB/wt-b, revision 0, commit 4b29224, clean
+        run 28a4663a-a01b-4c72-b1b9-f70a99b66b1d, 10 ms, key 3ac8e05d33b1
+        log: /tmp/squeal-issue15-T1QojB/wt-a/.git/squeal/runs/28a4663a-a01b-4c72-b1b9-f70a99b66b1d
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        AssertionError: expected '. /tmp/…' to be 'present' // Object.is equality
+            at test/cursor.test.ts:9:37
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:1628:35
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:2783:26
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3321:20
+            at new Promise (<anonymous>)
+            at runWithCancel (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3316:10)
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3301:20
+            at new Promise (<anonymous>)
+            at runWithTimeout (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3259:10)
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3882:64
+        Expected: "present"
+        Received: ". /tmp/squeal-1001/tmp/593c5ef58d8c360e/cez-cursor-package-j834eE"
+  FAIL  2026-10-16T20:48:54.552Z  /tmp/squeal-issue15-T1QojB/wt-c, revision 4, commit 4b29224, dirty
+        run bd6d2c94-d053-4126-8770-8992b5c67914, 9 ms, key 43e981d82181
+        log: /tmp/squeal-issue15-T1QojB/wt-a/.git/squeal/runs/bd6d2c94-d053-4126-8770-8992b5c67914
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        AssertionError: expected '. /tmp/…' to be 'present' // Object.is equality
+            at test/cursor.test.ts:9:37
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:1628:35
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:2783:26
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3321:20
+            at new Promise (<anonymous>)
+            at runWithCancel (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3316:10)
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3301:20
+            at new Promise (<anonymous>)
+            at runWithTimeout (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3259:10)
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3882:64
+        Expected: "present"
+        Received: ". /tmp/squeal-1001/tmp/eed9743cd7fd49a0/cez-cursor-package-94XqhS"
+  FAIL  2026-10-16T20:48:53.764Z  /tmp/squeal-issue15-T1QojB/wt-c, revision 3, commit 4b29224, dirty
+        run c6979e6c-e872-47d7-b372-982f0f1e5d89, 6 ms, key 86a38ec32e33
+        log: /tmp/squeal-issue15-T1QojB/wt-a/.git/squeal/runs/c6979e6c-e872-47d7-b372-982f0f1e5d89
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        AssertionError: expected '. /tmp/…' to be 'present' // Object.is equality
+            at test/cursor.test.ts:9:37
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:1628:35
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:2783:26
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3321:20
+            at new Promise (<anonymous>)
+            at runWithCancel (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3316:10)
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3301:20
+            at new Promise (<anonymous>)
+            at runWithTimeout (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3259:10)
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3882:64
+        Expected: "present"
+        Received: ". /tmp/squeal-1001/tmp/eed9743cd7fd49a0/cez-cursor-package-owV0aw"
+  FAIL  2026-10-16T20:48:53.239Z  /tmp/squeal-issue15-T1QojB/wt-c, revision 2, commit 4b29224, dirty
+        run cd92c771-67a6-4326-bc0e-f2eff1854705, 10 ms, key efb1c7253d5b
+        log: /tmp/squeal-issue15-T1QojB/wt-a/.git/squeal/runs/cd92c771-67a6-4326-bc0e-f2eff1854705
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        AssertionError: expected '. /tmp/…' to be 'present' // Object.is equality
+            at test/cursor.test.ts:9:37
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:1628:35
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:2783:26
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3321:20
+            at new Promise (<anonymous>)
+            at runWithCancel (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3316:10)
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3301:20
+            at new Promise (<anonymous>)
+            at runWithTimeout (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3259:10)
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3882:64
+        Expected: "present"
+        Received: ". /tmp/squeal-1001/tmp/eed9743cd7fd49a0/cez-cursor-package-Y6HWMQ"
+  FAIL  2026-10-16T20:48:52.623Z  /tmp/squeal-issue15-T1QojB/wt-c, revision 1, commit 4b29224, dirty
+        run abacb5cc-30a9-4497-aeb8-a4f55907c753, 38 ms, key be02b2be132e
+        log: /tmp/squeal-issue15-T1QojB/wt-a/.git/squeal/runs/abacb5cc-30a9-4497-aeb8-a4f55907c753
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        AssertionError: expected '. /tmp/…' to be 'present' // Object.is equality
+            at test/cursor.test.ts:9:37
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:1628:35
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:2783:26
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3321:20
+            at new Promise (<anonymous>)
+            at runWithCancel (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3316:10)
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3301:20
+            at new Promise (<anonymous>)
+            at runWithTimeout (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3259:10)
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3882:64
+        Expected: "present"
+        Received: ". /tmp/squeal-1001/tmp/eed9743cd7fd49a0/cez-cursor-package-2PNBkn"
+  FAIL  2026-10-16T20:48:51.976Z  /tmp/squeal-issue15-T1QojB/wt-c, revision 0, commit 4b29224, dirty
+        run b98f9754-ecf1-4c3f-9e22-bea60b78867d, 10 ms, key 83b91eb9bf97
+        log: /tmp/squeal-issue15-T1QojB/wt-a/.git/squeal/runs/b98f9754-ecf1-4c3f-9e22-bea60b78867d
+        expected '. /tmp/…' to be 'present' // Object.is equality
+        AssertionError: expected '. /tmp/…' to be 'present' // Object.is equality
+            at test/cursor.test.ts:9:37
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:1628:35
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:2783:26
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3321:20
+            at new Promise (<anonymous>)
+            at runWithCancel (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3316:10)
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3301:20
+            at new Promise (<anonymous>)
+            at runWithTimeout (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3259:10)
+            at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3882:64
+        Expected: "present"
+        Received: ". /tmp/squeal-1001/tmp/eed9743cd7fd49a0/cez-cursor-package-a1XjYm"
+
+Run log: unknown, no stored result is identifiably the one behind the known state (replaced, pruned, or several fit)

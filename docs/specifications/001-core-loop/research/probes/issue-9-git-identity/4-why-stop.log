@@ -1,0 +1,14 @@
+$ sh -c squeal why double | head -3
+Check: test/sum.test.js > double
+Worktree: /tmp/issue9-fixture
+Revision: 1 · f512f5c3 + 0
+[exit 0]
+$ squeal stop
+Squeal daemon stopped for /tmp/issue9-fixture
+[exit 0]
+$ sh -c squeal status | grep -E "^(Revision|Worktree|Daemon):"
+Revision: 1 · f512f5c3 + 0
+Worktree: /tmp/issue9-fixture (HEAD ae73b66, dirty state not known: no daemon is validating)
+Daemon: no daemon running since 2026-10-16T20:41:39.763Z
+[exit 0]
+{"commit":{"head":"f512f5c35db7b209f102d8eac24cb9d20a01efa9","sinceHead":0,"dirty":false},"head":"ae73b662e4e719d9fcf00d81d7c802700052eb44","dirty":null,"dirtyObservedAt":null,"daemon":"down"}

@@ -1,0 +1,77 @@
+20:47:53 slots: 1 permit(s) held for 75000 ms
+== squeal 0.1.201, vitest 5.0.5, fixture /tmp/issue12s-Fm4Ac6, daemon pid 2837327
+== 20:47:56 baseline: Slow tier: 3 test files; 3 pending, waiting for the slow slot another worktree's slow tier holds. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.|Daemon: running, last heartbeat 2 s ago|Test files without checks: 3 pending, 0 unknown|
+== 20:47:59 slow requested, slot held elsewhere: Slow tier: 3 test files; 3 pending, waiting for the slow slot another worktree's slow tier holds. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.|Daemon: running, last heartbeat 5 s ago|Test files without checks: 3 pending, 0 unknown|
+== 20:48:01 store write lock held 16 s
+20:48:01 holder: write lock taken for 16000 ms
+20:48:01 daemons [2837327 ] | Slow tier: 3 test files; 3 pending, waiting for the slow slot another worktree's slow tier holds. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.|Daemon: running, last heartbeat 2 s ago|Test files without checks: 3 pending, 0 unknown|
+20:48:02 daemons [2837327 ] | Slow tier: 3 test files; 3 pending, waiting for the slow slot another worktree's slow tier holds. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.|Daemon: running, last heartbeat 3 s ago|Test files without checks: 3 pending, 0 unknown|
+20:48:03 daemons [2837327 ] | Slow tier: 3 test files; 3 pending, waiting for the slow slot another worktree's slow tier holds. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.|Daemon: running, last heartbeat 5 s ago|Test files without checks: 3 pending, 0 unknown|
+20:48:05 daemons [2837327 ] | Slow tier: 3 test files; 3 pending, waiting for the slow slot another worktree's slow tier holds. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.|Daemon: running, last heartbeat 6 s ago|Test files without checks: 3 pending, 0 unknown|
+20:48:06 daemons [2837327 ] | Slow tier: 3 test files; 3 pending, waiting for the slow slot another worktree's slow tier holds. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.|Daemon: running, last heartbeat 7 s ago|Test files without checks: 3 pending, 0 unknown|
+20:48:07 daemons [2837327 ] | Slow tier: 3 test files; 3 pending, waiting for the slow slot another worktree's slow tier holds. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.|Daemon: running, last heartbeat 8 s ago|Test files without checks: 3 pending, 0 unknown|
+20:48:08 daemons [2837327 ] | Slow tier: 3 test files; 3 pending, waiting for the slow slot another worktree's slow tier holds. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.|Daemon: running, last heartbeat 9 s ago|Test files without checks: 3 pending, 0 unknown|
+20:48:09 daemons [2837327 ] | Slow tier: 3 test files; 3 pending, last reported waiting for the slow slot another worktree's slow tier holds. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.|Worktree: /tmp/issue12s-Fm4Ac6/repo (HEAD ff70c01, dirty state not known: no daemon is validating)|Daemon: no daemon running since 2026-10-16T20:47:59.519Z|Test files without checks: 3 pending, 0 unknown|
+20:48:11 daemons [2837327 ] | Slow tier: 3 test files; 3 pending, last reported waiting for the slow slot another worktree's slow tier holds. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.|Worktree: /tmp/issue12s-Fm4Ac6/repo (HEAD ff70c01, dirty state not known: no daemon is validating)|Daemon: no daemon running since 2026-10-16T20:47:59.519Z|Test files without checks: 3 pending, 0 unknown|
+20:48:12 daemons [2837327 ] | Slow tier: 3 test files; 3 pending, last reported waiting for the slow slot another worktree's slow tier holds. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.|Worktree: /tmp/issue12s-Fm4Ac6/repo (HEAD ff70c01, dirty state not known: no daemon is validating)|Daemon: no daemon running since 2026-10-16T20:47:59.519Z|Test files without checks: 3 pending, 0 unknown|
+20:48:13 daemons [2837327 ] | Slow tier: 3 test files; 3 pending, last reported waiting for the slow slot another worktree's slow tier holds. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.|Worktree: /tmp/issue12s-Fm4Ac6/repo (HEAD ff70c01, dirty state not known: no daemon is validating)|Daemon: no daemon running since 2026-10-16T20:47:59.519Z|Test files without checks: 3 pending, 0 unknown|
+20:48:14 daemons [2837327 ] | Slow tier: 3 test files; 3 pending, last reported waiting for the slow slot another worktree's slow tier holds. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.|Worktree: /tmp/issue12s-Fm4Ac6/repo (HEAD ff70c01, dirty state not known: no daemon is validating)|Daemon: no daemon running since 2026-10-16T20:47:59.519Z|Test files without checks: 3 pending, 0 unknown|
+20:48:15 daemons [2837327 ] | Slow tier: 3 test files; 3 pending, last reported waiting for the slow slot another worktree's slow tier holds. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.|Worktree: /tmp/issue12s-Fm4Ac6/repo (HEAD ff70c01, dirty state not known: no daemon is validating)|Daemon: no daemon running since 2026-10-16T20:47:59.519Z|Test files without checks: 3 pending, 0 unknown|
+20:48:16 squeal start during the lapse:
+    Squeal daemon alive for /tmp/issue12s-Fm4Ac6/repo
+    
+    Revision: 0
+20:48:17 holder: released
+20:48:18 daemons after start [2837327 ]
+20:48:19 daemons [2837327 ] | Slow tier: 3 test files; 3 pending, waiting for the slow slot another worktree's slow tier holds. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.|Daemon: running, last heartbeat 2 s ago|Test files without checks: 3 pending, 0 unknown|
+20:48:20 daemons [2837327 ] | Slow tier: 3 test files; 3 pending, waiting for the slow slot another worktree's slow tier holds. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.|Daemon: running, last heartbeat 3 s ago|Test files without checks: 3 pending, 0 unknown|
+20:48:21 daemons [2837327 ] | Slow tier: 3 test files; 3 pending, waiting for the slow slot another worktree's slow tier holds. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.|Daemon: running, last heartbeat 1 s ago|Test files without checks: 3 pending, 0 unknown|
+== 20:48:22 after release: daemons [2837327 ] | Slow tier: 3 test files; 3 pending, waiting for the slow slot another worktree's slow tier holds. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.|Daemon: running, last heartbeat 2 s ago|Test files without checks: 3 pending, 0 unknown|
+== named wait (status --wait 60000 test/slow/a.test.js):
+    Named test files have no verdict: no daemon has validated since 2026-10-16T20:47:59.519Z; results are as of revision 0; `squeal start` starts one
+    Selected: test/slow/a.test.js
+    
+    Revision: 0
+    Known failures: 0
+    Affected checks: 2 passed (1 test, 1 test file loaded), 0 running, 0 queued
+    Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+    Slow tier: 3 test files; 3 pending, last reported waiting for the slow slot another worktree's slow tier holds. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.
+    
+    Worktree: /tmp/issue12s-Fm4Ac6/repo (HEAD ff70c01, dirty state not known: no daemon is validating)
+    Daemon: no daemon running since 2026-10-16T20:47:59.519Z
+    Inherited from other worktrees: none (every current result here was run in this worktree)
+    Test files without checks: 3 pending, 0 unknown
+    Closure method: static imports plus declared inputs
+    Store schema: 1
+    Notes:
+      no revision recorded for this worktree yet
+      2026-10-16T20:47:55.275Z, revision 0: slow files with no declared artifact: test/slow/a.test.js, test/slow/b.test.js, test/slow/c.test.js. Their key holds no build output, so a change to the code they test does not re-run them and another worktree's result never stands for them; declare what they test in squeal.config.json "inputs" (spec 004 D5, D6)
+    exit 3
+== slot released at 75 s; waiting for the requested slow run
+20:49:08 slots: released
+== run --slow --wait 60000:
+    Slow tier requested at revision 0: 3 slow files queued; they run once no fast work is pending.
+    Returned without a daemon: no daemon has validated since 2026-10-16T20:47:59.519Z; results are as of revision 0
+    
+    Revision: 0
+    Known failures: 0
+    Affected checks: 2 passed (1 test, 1 test file loaded), 0 running, 0 queued
+    Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+    Slow tier: 3 test files; 3 pending, last reported waiting for the slow slot another worktree's slow tier holds. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.
+    
+    Worktree: /tmp/issue12s-Fm4Ac6/repo (HEAD ff70c01, dirty state not known: no daemon is validating)
+    Daemon: no daemon running since 2026-10-16T20:47:59.519Z
+    Inherited from other worktrees: none (every current result here was run in this worktree)
+    Test files without checks: 3 pending, 0 unknown
+    Closure method: static imports plus declared inputs
+    Store schema: 1
+    Notes:
+      no revision recorded for this worktree yet
+      2026-10-16T20:47:55.275Z, revision 0: slow files with no declared artifact: test/slow/a.test.js, test/slow/b.test.js, test/slow/c.test.js. Their key holds no build output, so a change to the code they test does not re-run them and another worktree's result never stands for them; declare what they test in squeal.config.json "inputs" (spec 004 D5, D6)
+    exit 0
+== 20:49:18 final: daemons [2837327 ] | Affected checks: 8 passed (4 tests, 4 test files loaded), 0 running, 0 queued|Slow tier: 3 test files; 3 current at revision 0, against no declared artifact. Squeal runs them when the agent pauses.|Daemon: running, last heartbeat 3 s ago|
+== daemon stderr:
+    squeal daemon: serving /tmp/issue12s-Fm4Ac6/repo on /tmp/issue12s-Fm4Ac6/run/squeal-8eaccc2b54246cfb.sock
+    squeal daemon: the store was busy for 12.9 s (another connection held its write lock); ran once it was free: the heartbeat, the next tier
+== cleanup
+removed /tmp/issue12s-Fm4Ac6

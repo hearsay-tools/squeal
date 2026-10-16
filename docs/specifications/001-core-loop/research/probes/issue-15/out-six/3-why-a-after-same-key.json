@@ -1,0 +1,333 @@
+{
+  "schemaVersion": 1,
+  "available": true,
+  "found": true,
+  "worktreeId": "3f25407f5798340d",
+  "worktreeRoot": "/tmp/squeal-issue15-T1QojB/wt-a",
+  "revision": null,
+  "check": {
+    "kind": "test",
+    "project": "",
+    "testPath": "test/cursor.test.ts",
+    "fullName": "installed runners resolve both bundled mocks"
+  },
+  "worktreeRoots": {
+    "3f25407f5798340d": "/tmp/squeal-issue15-T1QojB/wt-a",
+    "6ba3b26e71d2f531": "/tmp/squeal-issue15-T1QojB/wt-b",
+    "a837e4bbad2588e9": "/tmp/squeal-issue15-T1QojB/wt-c"
+  },
+  "knownState": {
+    "worktreeId": "3f25407f5798340d",
+    "check": {
+      "kind": "test",
+      "project": "",
+      "testPath": "test/cursor.test.ts",
+      "fullName": "installed runners resolve both bundled mocks"
+    },
+    "outcome": "fail",
+    "validity": "current",
+    "pendingPhase": null,
+    "observedAt": 0,
+    "commit": "4b29224a0b75fe249f968b270d88c5983f227cb6",
+    "origin": {
+      "kind": "own"
+    },
+    "durationMs": 8.47702000000001,
+    "location": {
+      "path": "test/cursor.test.ts",
+      "line": 9,
+      "column": 37
+    },
+    "summary": "expected '. /tmp/…' to be 'present' // Object.is equality",
+    "fingerprint": "AssertionError: expected '. <tmp>' to be 'present' // Object.is equality @ test/cursor.test.ts:9:37"
+  },
+  "history": [
+    {
+      "worktreeId": "3f25407f5798340d",
+      "check": {
+        "kind": "test",
+        "project": "",
+        "testPath": "test/cursor.test.ts",
+        "fullName": "installed runners resolve both bundled mocks"
+      },
+      "kind": "first-seen-fail",
+      "from": null,
+      "to": "fail",
+      "fromFingerprint": null,
+      "toFingerprint": "AssertionError: expected '. <tmp>' to be 'present' // Object.is equality @ test/cursor.test.ts:9:37",
+      "revision": 0,
+      "at": 1792183729951
+    }
+  ],
+  "results": [
+    {
+      "result": {
+        "check": {
+          "kind": "test",
+          "project": "",
+          "testPath": "test/cursor.test.ts",
+          "fullName": "installed runners resolve both bundled mocks"
+        },
+        "key": "3ac8e05d33b1344753dbd388bfeb56b71da25428e971e5f332f51d2d0e9f2037",
+        "outcome": "fail",
+        "durationMs": 10.084235000000007,
+        "location": {
+          "path": "test/cursor.test.ts",
+          "line": 6,
+          "column": 1
+        },
+        "fingerprint": "AssertionError: expected '. <tmp>' to be 'present' // Object.is equality @ test/cursor.test.ts:9:37",
+        "summary": "expected '. /tmp/…' to be 'present' // Object.is equality",
+        "errors": [
+          {
+            "name": "AssertionError",
+            "message": "expected '. /tmp/…' to be 'present' // Object.is equality",
+            "stack": "AssertionError: expected '. /tmp/…' to be 'present' // Object.is equality\n    at test/cursor.test.ts:9:37\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:1628:35\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:2783:26\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3321:20\n    at new Promise (<anonymous>)\n    at runWithCancel (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3316:10)\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3301:20\n    at new Promise (<anonymous>)\n    at runWithTimeout (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3259:10)\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3882:64",
+            "location": {
+              "path": "test/cursor.test.ts",
+              "line": 9,
+              "column": 37
+            },
+            "diff": "Expected: \"present\"\nReceived: \". /tmp/squeal-1001/tmp/593c5ef58d8c360e/cez-cursor-package-j834eE\""
+          }
+        ],
+        "provenance": {
+          "worktreeId": "6ba3b26e71d2f531",
+          "revision": 0,
+          "commit": "4b29224a0b75fe249f968b270d88c5983f227cb6",
+          "dirty": false,
+          "runId": "28a4663a-a01b-4c72-b1b9-f70a99b66b1d",
+          "recordedAt": 1792183736684
+        }
+      },
+      "worktreeRoot": "/tmp/squeal-issue15-T1QojB/wt-b",
+      "logDir": "/tmp/squeal-issue15-T1QojB/wt-a/.git/squeal/runs/28a4663a-a01b-4c72-b1b9-f70a99b66b1d"
+    },
+    {
+      "result": {
+        "check": {
+          "kind": "test",
+          "project": "",
+          "testPath": "test/cursor.test.ts",
+          "fullName": "installed runners resolve both bundled mocks"
+        },
+        "key": "43e981d82181888e553624ce99d631a3f9599776ddc9cc0d6a0d496d6536e340",
+        "outcome": "fail",
+        "durationMs": 9.398303999999996,
+        "location": {
+          "path": "test/cursor.test.ts",
+          "line": 6,
+          "column": 1
+        },
+        "fingerprint": "AssertionError: expected '. <tmp>' to be 'present' // Object.is equality @ test/cursor.test.ts:9:37",
+        "summary": "expected '. /tmp/…' to be 'present' // Object.is equality",
+        "errors": [
+          {
+            "name": "AssertionError",
+            "message": "expected '. /tmp/…' to be 'present' // Object.is equality",
+            "stack": "AssertionError: expected '. /tmp/…' to be 'present' // Object.is equality\n    at test/cursor.test.ts:9:37\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:1628:35\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:2783:26\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3321:20\n    at new Promise (<anonymous>)\n    at runWithCancel (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3316:10)\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3301:20\n    at new Promise (<anonymous>)\n    at runWithTimeout (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3259:10)\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3882:64",
+            "location": {
+              "path": "test/cursor.test.ts",
+              "line": 9,
+              "column": 37
+            },
+            "diff": "Expected: \"present\"\nReceived: \". /tmp/squeal-1001/tmp/eed9743cd7fd49a0/cez-cursor-package-94XqhS\""
+          }
+        ],
+        "provenance": {
+          "worktreeId": "a837e4bbad2588e9",
+          "revision": 4,
+          "commit": "4b29224a0b75fe249f968b270d88c5983f227cb6",
+          "dirty": true,
+          "runId": "bd6d2c94-d053-4126-8770-8992b5c67914",
+          "recordedAt": 1792183734552
+        }
+      },
+      "worktreeRoot": "/tmp/squeal-issue15-T1QojB/wt-c",
+      "logDir": "/tmp/squeal-issue15-T1QojB/wt-a/.git/squeal/runs/bd6d2c94-d053-4126-8770-8992b5c67914"
+    },
+    {
+      "result": {
+        "check": {
+          "kind": "test",
+          "project": "",
+          "testPath": "test/cursor.test.ts",
+          "fullName": "installed runners resolve both bundled mocks"
+        },
+        "key": "86a38ec32e337e53ef402588184f49d13e60a1d56d0d59e3d4bef4321919a51d",
+        "outcome": "fail",
+        "durationMs": 6.426489000000004,
+        "location": {
+          "path": "test/cursor.test.ts",
+          "line": 6,
+          "column": 1
+        },
+        "fingerprint": "AssertionError: expected '. <tmp>' to be 'present' // Object.is equality @ test/cursor.test.ts:9:37",
+        "summary": "expected '. /tmp/…' to be 'present' // Object.is equality",
+        "errors": [
+          {
+            "name": "AssertionError",
+            "message": "expected '. /tmp/…' to be 'present' // Object.is equality",
+            "stack": "AssertionError: expected '. /tmp/…' to be 'present' // Object.is equality\n    at test/cursor.test.ts:9:37\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:1628:35\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:2783:26\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3321:20\n    at new Promise (<anonymous>)\n    at runWithCancel (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3316:10)\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3301:20\n    at new Promise (<anonymous>)\n    at runWithTimeout (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3259:10)\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3882:64",
+            "location": {
+              "path": "test/cursor.test.ts",
+              "line": 9,
+              "column": 37
+            },
+            "diff": "Expected: \"present\"\nReceived: \". /tmp/squeal-1001/tmp/eed9743cd7fd49a0/cez-cursor-package-owV0aw\""
+          }
+        ],
+        "provenance": {
+          "worktreeId": "a837e4bbad2588e9",
+          "revision": 3,
+          "commit": "4b29224a0b75fe249f968b270d88c5983f227cb6",
+          "dirty": true,
+          "runId": "c6979e6c-e872-47d7-b372-982f0f1e5d89",
+          "recordedAt": 1792183733764
+        }
+      },
+      "worktreeRoot": "/tmp/squeal-issue15-T1QojB/wt-c",
+      "logDir": "/tmp/squeal-issue15-T1QojB/wt-a/.git/squeal/runs/c6979e6c-e872-47d7-b372-982f0f1e5d89"
+    },
+    {
+      "result": {
+        "check": {
+          "kind": "test",
+          "project": "",
+          "testPath": "test/cursor.test.ts",
+          "fullName": "installed runners resolve both bundled mocks"
+        },
+        "key": "efb1c7253d5b282af8122137141690db988ffeb4d2ef374cd23b7301e5c35359",
+        "outcome": "fail",
+        "durationMs": 9.781275999999991,
+        "location": {
+          "path": "test/cursor.test.ts",
+          "line": 6,
+          "column": 1
+        },
+        "fingerprint": "AssertionError: expected '. <tmp>' to be 'present' // Object.is equality @ test/cursor.test.ts:9:37",
+        "summary": "expected '. /tmp/…' to be 'present' // Object.is equality",
+        "errors": [
+          {
+            "name": "AssertionError",
+            "message": "expected '. /tmp/…' to be 'present' // Object.is equality",
+            "stack": "AssertionError: expected '. /tmp/…' to be 'present' // Object.is equality\n    at test/cursor.test.ts:9:37\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:1628:35\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:2783:26\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3321:20\n    at new Promise (<anonymous>)\n    at runWithCancel (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3316:10)\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3301:20\n    at new Promise (<anonymous>)\n    at runWithTimeout (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3259:10)\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3882:64",
+            "location": {
+              "path": "test/cursor.test.ts",
+              "line": 9,
+              "column": 37
+            },
+            "diff": "Expected: \"present\"\nReceived: \". /tmp/squeal-1001/tmp/eed9743cd7fd49a0/cez-cursor-package-Y6HWMQ\""
+          }
+        ],
+        "provenance": {
+          "worktreeId": "a837e4bbad2588e9",
+          "revision": 2,
+          "commit": "4b29224a0b75fe249f968b270d88c5983f227cb6",
+          "dirty": true,
+          "runId": "cd92c771-67a6-4326-bc0e-f2eff1854705",
+          "recordedAt": 1792183733239
+        }
+      },
+      "worktreeRoot": "/tmp/squeal-issue15-T1QojB/wt-c",
+      "logDir": "/tmp/squeal-issue15-T1QojB/wt-a/.git/squeal/runs/cd92c771-67a6-4326-bc0e-f2eff1854705"
+    },
+    {
+      "result": {
+        "check": {
+          "kind": "test",
+          "project": "",
+          "testPath": "test/cursor.test.ts",
+          "fullName": "installed runners resolve both bundled mocks"
+        },
+        "key": "be02b2be132e18bffb094dae9152f43411d6597d17cd1baccf7e7a56d37020ec",
+        "outcome": "fail",
+        "durationMs": 37.59468799999999,
+        "location": {
+          "path": "test/cursor.test.ts",
+          "line": 6,
+          "column": 1
+        },
+        "fingerprint": "AssertionError: expected '. <tmp>' to be 'present' // Object.is equality @ test/cursor.test.ts:9:37",
+        "summary": "expected '. /tmp/…' to be 'present' // Object.is equality",
+        "errors": [
+          {
+            "name": "AssertionError",
+            "message": "expected '. /tmp/…' to be 'present' // Object.is equality",
+            "stack": "AssertionError: expected '. /tmp/…' to be 'present' // Object.is equality\n    at test/cursor.test.ts:9:37\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:1628:35\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:2783:26\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3321:20\n    at new Promise (<anonymous>)\n    at runWithCancel (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3316:10)\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3301:20\n    at new Promise (<anonymous>)\n    at runWithTimeout (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3259:10)\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3882:64",
+            "location": {
+              "path": "test/cursor.test.ts",
+              "line": 9,
+              "column": 37
+            },
+            "diff": "Expected: \"present\"\nReceived: \". /tmp/squeal-1001/tmp/eed9743cd7fd49a0/cez-cursor-package-2PNBkn\""
+          }
+        ],
+        "provenance": {
+          "worktreeId": "a837e4bbad2588e9",
+          "revision": 1,
+          "commit": "4b29224a0b75fe249f968b270d88c5983f227cb6",
+          "dirty": true,
+          "runId": "abacb5cc-30a9-4497-aeb8-a4f55907c753",
+          "recordedAt": 1792183732623
+        }
+      },
+      "worktreeRoot": "/tmp/squeal-issue15-T1QojB/wt-c",
+      "logDir": "/tmp/squeal-issue15-T1QojB/wt-a/.git/squeal/runs/abacb5cc-30a9-4497-aeb8-a4f55907c753"
+    },
+    {
+      "result": {
+        "check": {
+          "kind": "test",
+          "project": "",
+          "testPath": "test/cursor.test.ts",
+          "fullName": "installed runners resolve both bundled mocks"
+        },
+        "key": "83b91eb9bf97fc23de406f7916f9ed619b28afcf68c6eb611229ab14526b4ba6",
+        "outcome": "fail",
+        "durationMs": 10.382316000000003,
+        "location": {
+          "path": "test/cursor.test.ts",
+          "line": 6,
+          "column": 1
+        },
+        "fingerprint": "AssertionError: expected '. <tmp>' to be 'present' // Object.is equality @ test/cursor.test.ts:9:37",
+        "summary": "expected '. /tmp/…' to be 'present' // Object.is equality",
+        "errors": [
+          {
+            "name": "AssertionError",
+            "message": "expected '. /tmp/…' to be 'present' // Object.is equality",
+            "stack": "AssertionError: expected '. /tmp/…' to be 'present' // Object.is equality\n    at test/cursor.test.ts:9:37\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:1628:35\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:2783:26\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3321:20\n    at new Promise (<anonymous>)\n    at runWithCancel (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3316:10)\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3301:20\n    at new Promise (<anonymous>)\n    at runWithTimeout (node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3259:10)\n    at node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3882:64",
+            "location": {
+              "path": "test/cursor.test.ts",
+              "line": 9,
+              "column": 37
+            },
+            "diff": "Expected: \"present\"\nReceived: \". /tmp/squeal-1001/tmp/eed9743cd7fd49a0/cez-cursor-package-a1XjYm\""
+          }
+        ],
+        "provenance": {
+          "worktreeId": "a837e4bbad2588e9",
+          "revision": 0,
+          "commit": "4b29224a0b75fe249f968b270d88c5983f227cb6",
+          "dirty": true,
+          "runId": "b98f9754-ecf1-4c3f-9e22-bea60b78867d",
+          "recordedAt": 1792183731976
+        }
+      },
+      "worktreeRoot": "/tmp/squeal-issue15-T1QojB/wt-c",
+      "logDir": "/tmp/squeal-issue15-T1QojB/wt-a/.git/squeal/runs/b98f9754-ecf1-4c3f-9e22-bea60b78867d"
+    }
+  ],
+  "durations": {
+    "results": 6,
+    "pass": 0,
+    "fail": 6,
+    "skip": 0,
+    "minMs": 6.426489000000004,
+    "medianMs": 9.781275999999991,
+    "p95Ms": 37.59468799999999,
+    "maxMs": 37.59468799999999
+  },
+  "runLog": null
+}

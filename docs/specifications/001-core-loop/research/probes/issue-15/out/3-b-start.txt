@@ -1,0 +1,14 @@
+Squeal daemon spawned for /tmp/squeal-issue15-q2SkA6/wt-b
+
+Revision: 0
+Known failures: 0
+Affected checks: none counted; the daemon has not listed this worktree's test files yet
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+
+Worktree: /tmp/squeal-issue15-q2SkA6/wt-b (HEAD f607fcc, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 0 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet

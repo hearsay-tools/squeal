@@ -1,0 +1,17 @@
+# Excerpt from the session transcript (this log file was reused by step 1, so these lines were copied back from it)
+$ git commit -qm "fixture: clean start"            [exit 0]
+$ git rev-parse HEAD
+ae73b662e4e719d9fcf00d81d7c802700052eb44
+$ git status --porcelain                           (empty)
+$ squeal --version
+0.1.199
+$ squeal start
+Squeal daemon spawned for /tmp/issue9-fixture
+Revision: 0
+Worktree: /tmp/issue9-fixture (HEAD ae73b66, dirty state not known: no revision recorded yet)
+$ squeal run --all --wait
+Checkpoint 7deaaeab-… completed at revision 0: no known failures; 1 test file, 0 already current, 1 run by the baseline checkpoint 00aeca41-… it joined
+Revision: 0
+Affected checks: 2 passed (1 test, 1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+Worktree: /tmp/issue9-fixture (HEAD ae73b66, dirty state not known: no revision recorded yet)

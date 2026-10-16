@@ -1,0 +1,206 @@
+squeal 0.1.200, node v24.21.0, sqlite 3.53.4, load average: 24.72, 24.32, 22.54
+=== immediate 300, partial name
+mode=immediate hold=300ms why_start=1792183574773 why_end=1792183574919 elapsed=146ms exit=1
+held immediate 1792183574665
+released immediate 1792183574966
+--- stdout (first 3 lines)
+Status unavailable, store busy for more than 1000 ms
+--- stderr
+--- after release: exit=0 20 result line(s);   Location: test/fork.test.mjs:3:1
+=== immediate 600, partial name
+mode=immediate hold=600ms why_start=1792183575306 why_end=1792183575449 elapsed=143ms exit=1
+held immediate 1792183575202
+released immediate 1792183575803
+--- stdout (first 3 lines)
+Status unavailable, store busy for more than 1000 ms
+--- stderr
+--- after release: exit=0 20 result line(s);   Location: test/fork.test.mjs:3:1
+=== immediate 3000, partial name
+mode=immediate hold=3000ms why_start=1792183576155 why_end=1792183576293 elapsed=138ms exit=1
+held immediate 1792183576049
+released immediate 1792183579053
+--- stdout (first 3 lines)
+Status unavailable, store busy for more than 1000 ms
+--- stderr
+--- after release: exit=0 20 result line(s);   Location: test/fork.test.mjs:3:1
+=== exclusive 3000, partial name
+mode=exclusive hold=3000ms why_start=1792183579436 why_end=1792183579572 elapsed=136ms exit=1
+held exclusive 1792183579326
+released exclusive 1792183582330
+--- stdout (first 3 lines)
+Status unavailable, store busy for more than 1000 ms
+--- stderr
+--- after release: exit=0 20 result line(s);   Location: test/fork.test.mjs:3:1
+=== read 3000, partial name
+mode=read hold=3000ms why_start=1792183582639 why_end=1792183582768 elapsed=129ms exit=0
+held read 1792183582521
+released read 1792183585525
+--- stdout (first 3 lines)
+Check: [test] test/fork.test.mjs > parseApplyCheck counts distinct fork-deleted
+Worktree: <scratch>/repo
+Revision: 121 · c0717dc1 + 121
+--- stderr
+--- after release: exit=0 20 result line(s);   Location: test/fork.test.mjs:3:1
+=== exclusive-locking 600, partial name
+mode=exclusive-locking hold=600ms why_start=1792183585856 why_end=1792183586418 elapsed=562ms exit=0
+held exclusive-locking 1792183585740
+released exclusive-locking 1792183586340
+--- stdout (first 3 lines)
+Check: [test] test/fork.test.mjs > parseApplyCheck counts distinct fork-deleted
+Worktree: <scratch>/repo
+Revision: 121 · c0717dc1 + 121
+--- stderr
+--- after release: exit=0 20 result line(s);   Location: test/fork.test.mjs:3:1
+=== exclusive-locking 3000, partial name
+mode=exclusive-locking hold=3000ms why_start=1792183586812 why_end=1792183587956 elapsed=1144ms exit=1
+held exclusive-locking 1792183586706
+released exclusive-locking 1792183589710
+--- stdout (first 3 lines)
+Status unavailable, store busy for more than 1000 ms
+--- stderr
+--- after release: exit=0 20 result line(s);   Location: test/fork.test.mjs:3:1
+=== immediate 3000, exact name
+mode=immediate hold=3000ms why_start=1792183590015 why_end=1792183590186 elapsed=171ms exit=0
+held immediate 1792183589892
+released immediate 1792183592895
+--- stdout (first 3 lines)
+Check: [test] test/fork.test.mjs > parseApplyCheck counts distinct fork-deleted
+Worktree: <scratch>/repo
+Revision: 121 · c0717dc1 + 121
+--- stderr
+--- after release: exit=0 20 result line(s);   Location: test/fork.test.mjs:3:1
+=== immediate 3000, unmatched name
+mode=immediate hold=3000ms why_start=1792183593328 why_end=1792183593469 elapsed=141ms exit=1
+held immediate 1792183593208
+released immediate 1792183596212
+--- stdout (first 3 lines)
+Status unavailable, store busy for more than 1000 ms
+--- stderr
+--- after release: exit=1 0 result line(s); 
+=== open path replayed under immediate 3000
+held immediate 1792183596452
+ok   PRAGMA busy_timeout = 1000 0 ms 
+ok   PRAGMA user_version 0 ms {"user_version":1}
+ok   PRAGMA page_count 1 ms {"page_count":832}
+ok   PRAGMA journal_mode = WAL 0 ms {"journal_mode":"wal"}
+ok   PRAGMA journal_mode 0 ms {"journal_mode":"wal"}
+ok   PRAGMA synchronous = NORMAL 0 ms 
+ok   BEGIN; SELECT count(*) FROM sqlite_master; COMMIT 0 ms {"n":39}
+released immediate 1792183599456
+=== no-row UPDATE under immediate 5000
+held immediate 1792183599524
+ok   SELECT inside BEGIN 1 ms
+FAIL no-row UPDATE, autocommit after 1003 ms: errcode=5 database is locked
+FAIL no-row UPDATE inside BEGIN after a SELECT after 0 ms: errcode=5 database is locked
+FAIL no-row UPDATE as the first statement inside BEGIN after 1012 ms: errcode=5 database is locked
+released immediate 1792183604530
+=== status and failures under immediate 3000
+held immediate 1792183604608
+status exit 0 Revision: 121 · c0717dc1 + 121
+No stored failures in this worktree.
+failures exit 0
+released immediate 1792183607612
+
+##### installed 0.1.199
+squeal 0.1.199, node v24.21.0, sqlite 3.53.4, load average: 23.13, 24.05, 22.52
+=== immediate 300, partial name
+mode=immediate hold=300ms why_start=1792183608076 why_end=1792183608201 elapsed=125ms exit=1
+held immediate 1792183607961
+released immediate 1792183608262
+--- stdout (first 3 lines)
+Status unavailable, store busy for more than 1000 ms
+--- stderr
+--- after release: exit=0 20 result line(s);   Location: test/fork.test.mjs:3:1
+=== immediate 600, partial name
+mode=immediate hold=600ms why_start=1792183608563 why_end=1792183608672 elapsed=109ms exit=1
+held immediate 1792183608443
+released immediate 1792183609045
+--- stdout (first 3 lines)
+Status unavailable, store busy for more than 1000 ms
+--- stderr
+--- after release: exit=0 20 result line(s);   Location: test/fork.test.mjs:3:1
+=== immediate 3000, partial name
+mode=immediate hold=3000ms why_start=1792183609405 why_end=1792183609551 elapsed=146ms exit=1
+held immediate 1792183609300
+released immediate 1792183612304
+--- stdout (first 3 lines)
+Status unavailable, store busy for more than 1000 ms
+--- stderr
+--- after release: exit=0 20 result line(s);   Location: test/fork.test.mjs:3:1
+=== exclusive 3000, partial name
+mode=exclusive hold=3000ms why_start=1792183612594 why_end=1792183612698 elapsed=104ms exit=1
+held exclusive 1792183612490
+released exclusive 1792183615494
+--- stdout (first 3 lines)
+Status unavailable, store busy for more than 1000 ms
+--- stderr
+--- after release: exit=0 20 result line(s);   Location: test/fork.test.mjs:3:1
+=== read 3000, partial name
+mode=read hold=3000ms why_start=1792183615809 why_end=1792183615954 elapsed=145ms exit=0
+held read 1792183615687
+released read 1792183618691
+--- stdout (first 3 lines)
+Check: [test] test/fork.test.mjs > parseApplyCheck counts distinct fork-deleted
+Worktree: <scratch>/repo
+Revision: 121 · c0717dc1 + 121
+--- stderr
+--- after release: exit=0 20 result line(s);   Location: test/fork.test.mjs:3:1
+=== exclusive-locking 600, partial name
+mode=exclusive-locking hold=600ms why_start=1792183619056 why_end=1792183619619 elapsed=563ms exit=0
+held exclusive-locking 1792183618951
+released exclusive-locking 1792183619551
+--- stdout (first 3 lines)
+Check: [test] test/fork.test.mjs > parseApplyCheck counts distinct fork-deleted
+Worktree: <scratch>/repo
+Revision: 121 · c0717dc1 + 121
+--- stderr
+--- after release: exit=0 20 result line(s);   Location: test/fork.test.mjs:3:1
+=== exclusive-locking 3000, partial name
+mode=exclusive-locking hold=3000ms why_start=1792183619915 why_end=1792183621030 elapsed=1115ms exit=1
+held exclusive-locking 1792183619794
+released exclusive-locking 1792183622798
+--- stdout (first 3 lines)
+Status unavailable, store busy for more than 1000 ms
+--- stderr
+--- after release: exit=0 20 result line(s);   Location: test/fork.test.mjs:3:1
+=== immediate 3000, exact name
+mode=immediate hold=3000ms why_start=1792183623154 why_end=1792183623306 elapsed=152ms exit=0
+held immediate 1792183623036
+released immediate 1792183626040
+--- stdout (first 3 lines)
+Check: [test] test/fork.test.mjs > parseApplyCheck counts distinct fork-deleted
+Worktree: <scratch>/repo
+Revision: 121 · c0717dc1 + 121
+--- stderr
+--- after release: exit=0 20 result line(s);   Location: test/fork.test.mjs:3:1
+=== immediate 3000, unmatched name
+mode=immediate hold=3000ms why_start=1792183626404 why_end=1792183626554 elapsed=150ms exit=1
+held immediate 1792183626283
+released immediate 1792183629287
+--- stdout (first 3 lines)
+Status unavailable, store busy for more than 1000 ms
+--- stderr
+--- after release: exit=1 0 result line(s); 
+=== open path replayed under immediate 3000
+held immediate 1792183629479
+ok   PRAGMA busy_timeout = 1000 0 ms 
+ok   PRAGMA user_version 0 ms {"user_version":1}
+ok   PRAGMA page_count 1 ms {"page_count":832}
+ok   PRAGMA journal_mode = WAL 0 ms {"journal_mode":"wal"}
+ok   PRAGMA journal_mode 0 ms {"journal_mode":"wal"}
+ok   PRAGMA synchronous = NORMAL 0 ms 
+ok   BEGIN; SELECT count(*) FROM sqlite_master; COMMIT 0 ms {"n":39}
+released immediate 1792183632483
+=== no-row UPDATE under immediate 5000
+held immediate 1792183632566
+ok   SELECT inside BEGIN 0 ms
+FAIL no-row UPDATE, autocommit after 1003 ms: errcode=5 database is locked
+FAIL no-row UPDATE inside BEGIN after a SELECT after 1 ms: errcode=5 database is locked
+FAIL no-row UPDATE as the first statement inside BEGIN after 1005 ms: errcode=5 database is locked
+released immediate 1792183637572
+=== status and failures under immediate 3000
+held immediate 1792183637652
+status exit 0 Revision: 121 · c0717dc1 + 121
+No stored failures in this worktree.
+failures exit 0
+released immediate 1792183640659

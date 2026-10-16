@@ -1,0 +1,123 @@
+# edited src/sum.js and test/sum.test.js
+$ squeal status --wait 60000
+Returned on quiet: nothing the edits since revision 1 re-keyed is pending (1 test file) at revision 1 after 0.5 s
+
+Revision: 1 · ae73b662 + 1, dirty
+Known failures: 0
+Affected checks: 3 passed (2 tests, 1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+
+Worktree: /tmp/issue9-fixture (HEAD ae73b66, dirty at revision 1)
+Daemon: running, last heartbeat 2 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+[exit 0]
+$ git status --porcelain
+ M src/sum.js
+ M test/sum.test.js
+[exit 0]
+$ git add -A
+[exit 0]
+$ git commit -qm edit: double
+[exit 0]
+$ date +%T.%N
+22:40:01.510809305
+[exit 0]
+$ git rev-parse HEAD
+f512f5c35db7b209f102d8eac24cb9d20a01efa9
+[exit 0]
+$ git status --porcelain
+[exit 0]
+$ squeal status
+Revision: 1 · ae73b662 + 1, dirty
+Known failures: 0
+Affected checks: 3 passed (2 tests, 1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+
+Worktree: /tmp/issue9-fixture (HEAD ae73b66, dirty at revision 1)
+Daemon: running, last heartbeat 2 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+[exit 0]
+$ squeal status --json
+{
+  "schemaVersion": 1,
+  "available": true,
+  "worktreeId": "00a4499182d00b59",
+  "worktreeRoot": "/tmp/issue9-fixture",
+  "revision": 1,
+  "commit": {
+    "head": "ae73b662e4e719d9fcf00d81d7c802700052eb44",
+    "sinceHead": 1,
+    "dirty": true
+  },
+  "counts": {
+    "current": 3,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "fileLevelCounts": {
+    "current": 1,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesWithoutChecks": {
+    "pending": 0,
+    "unknown": 0
+  },
+  "fullSuite": {
+    "atCurrentRevision": false,
+    "lastCompletedRevision": 0
+  },
+  "testFilesListed": true,
+  "inheritedCount": 0,
+  "inheritedFileLevelCount": 0,
+  "refinedRevision": 1,
+  "runnerPartPending": false,
+  "head": "ae73b662e4e719d9fcf00d81d7c802700052eb44",
+  "dirty": true,
+  "dirtyObservedAt": 1,
+  "daemon": {
+    "state": "alive",
+    "lastHeartbeatAt": 1792183199755
+  },
+  "knownFailures": [],
+  "inherited": {
+    "count": 0,
+    "sources": []
+  },
+  "breakdown": {
+    "currentByOutcome": {
+      "pass": 3,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "pendingByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "fileLevelByOutcome": {
+      "pass": 1,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "fileLevelByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "testFiles": 1,
+    "testFilesWithoutChecks": 0,
+    "testFilesWithoutChecksRunning": 0
+  },
+  "closureMethod": "static imports plus declared inputs",
+  "storeSchemaVersion": 1,
+  "notes": [],
+  "daemonNotes": []
+}
+[exit 0]
