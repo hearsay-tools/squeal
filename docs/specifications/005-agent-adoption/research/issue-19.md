@@ -39,7 +39,7 @@ The issue's first two acceptance criteria are therefore met on main for policy-o
 
 ## Recommendation for Squeal
 
-- Record issue 19's reported case (policy off, 0.1.199) as fixed by 004-62 in 0.1.202, reproduced on 0.1.199 by text, not by a live session. Reporters on 0.1.199 should upgrade. Memory notes that host plugins are pinned to 0.1.199.
+- Record issue 19's reported case (policy off, 0.1.199) as fixed by 004-62 in 0.1.202, reproduced on 0.1.199 by text, not by a live session. Reporters on 0.1.199 should upgrade. The inspected installed plugin paths are version 0.1.199.
 - The remaining question goes to the human through the coordinator: should a session with no edits since its registration (or one whose task forbids tests) be exempt when `stop.requireSlowSuite` is on? That touches 004 D7, D8 and D9 (Stop's wait) and 005 D6 (the primer's 1,500-character cap). No row is proposed here. The coordinator owns the board.
 - Whatever is decided, the regression coverage the issue asks for is a primer or skill text test for a no-edit session under each policy value, plus a Stop test with zero consumer edits under the policy on.
 
@@ -56,3 +56,7 @@ The issue's first two acceptance criteria are therefore met on main for policy-o
 - `cat /proc/loadavg; nproc`, `squeal --version` (0.1.199).
 - `docs/specifications/005-agent-adoption/research/probes/issue-19/extract.sh "$PWD"`. Its output is in `probes/issue-19/output.txt`. It greps the installed `~/.claude/plugins/cache/hearsay/squeal/0.1.199` and `~/.codex/plugins/cache/hearsay/squeal/0.1.199` (`dist/session-start.mjs`, `skills/squeal/SKILL.md`), this checkout's `src/harness/shared/primer.ts`, `plugins/claude-code/dist/session-start.mjs` and `plugins/claude-code/skills/squeal/SKILL.md`, and `git show cf82973252a2ff702b4f5d18df7bd238cbcb9131:squeal.config.json` in `~/projects/cezar` (hearsay-tools/cezarion).
 - Specs: `docs/vision.md`; 005 `spec.md` D4, D6; 004 `spec.md` D7, D8, D9 and `status.md` (2026-10-16, 004-62); `docs/board.md` row 004-62; [issue #5](https://github.com/hearsay-tools/squeal/issues/5) (closed).
+
+## Duplicate check (coordinator)
+
+`git show origin/main:docs/board.md` searched for `#19`, `gh-19`, read-only, primer, completion rule, and the named primer/skill surfaces. The reported policy-off wording overlaps completed 004-62 / closed #5; that repair is already on main. No row covers the remaining policy-on read-only exemption. `gh issue list --repo hearsay-tools/squeal --state open --limit 100 --json number,title,labels` found no open duplicate; #18 is triaged but concerns naming path-scoped waits, not exemption from slow completion. Issue #19 was not yet triaged. No product file paths were named in its body.
