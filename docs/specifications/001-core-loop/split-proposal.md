@@ -23,7 +23,7 @@ Three labels are used throughout. **Fact**: what the repository shows today, wit
 
 **Responsibility.** Harness-neutral and runner-neutral: worktrees, repository and store (D1, D8), watcher and revisions (D2), content keys and closures (D3's generic parts), scheduling and validity (D5), known states, transitions, consumer views and message shapes (D6), status, why, failures and the wait (D7), daemon lifecycle (D10), policy loader and the policy catalogue (D11), error handling and process reaping (D12), capacity, and both adapter contracts (`RunnerAdapter`, `HarnessDelivery`, the hook contract of section 2.4).
 
-**Owns.** `src/core/**`, `src/cli/**` except the harness subcommands, `src/harness/shared/**` as the hook contract (decided Q2), `src/runners/observe/**` (the shared recorder; decided Q3), `test/{capacity,cli,daemon,delivery,fs,hash,integration,keys,policy,retry,revision,scheduler,slow,state,status,store,watcher}`, the store schema, `squeal.config.json` keys not owned by another spec.
+**Owns.** `src/core/**`, `src/cli/**` except the harness subcommands, `src/harness/shared/**` as the hook contract (decided Q2), `src/runners/observe/**` (the shared recorder; decided Q3), `test/{capacity,cli,daemon,delivery,fs,hash,integration,keys,policy,retry,revision,scheduler,slow,state,status,store,watcher}`, `test/e2e/*` except `pi*`, `opencode*`, `node-test`, `pytest` and `slow-*` (the hook-contract proof, with `test/e2e/plugins.ts`; decided Q5), the store schema, `squeal.config.json` keys not owned by another spec.
 
 **Excludes.** Any hook event name, plugin manifest or packaging; anything that reads Vite's module graph or `createVitest`; wording that 005 owns; the slow tier's rules (004); node:test (003) and pytest (007) adapters; evals (006); CI (010).
 
@@ -31,7 +31,7 @@ Three labels are used throughout. **Fact**: what the repository shows today, wit
 
 **Responsibility.** Claude Code's events mapped onto the hook contract: `hooks/hooks.json`, the eight entries, their 2 s budget and the 80 ms and 10 ms p95 targets, the `asyncRewake` idle waiter and its `-p` guard, forked-agent detection, `CLAUDE_CODE_SESSION_ATTENDED`, `CLAUDE_PROJECT_DIR`, the per-session root under `<runtime dir>/squeal-sessions/`, SubagentStart's isolated `cwd`, the plugin's skills and `bin/`, marketplace install through `squeal init`, the committed `dist/` and its drift check, interactive consumer liveness through the waiter lock.
 
-**Owns.** `src/harness/claude-code/**`, `plugins/claude-code/**`, `src/cli/init.ts`'s Claude Code path, `test/harness/*` files that drive Claude Code hook JSON, `test/plugins`, the e2e suites driven through recorded Claude Code hooks (`test/e2e/shipped-plugin.test.ts`, `transitions.test.ts`, `worktrees.test.ts`, `plugin-copy.test.ts`, `policy.test.ts`; see Decision Q5).
+**Owns.** `src/harness/claude-code/**`, `plugins/claude-code/**`, `src/cli/init.ts`'s Claude Code path, `test/harness/*` files that drive Claude Code hook JSON, `test/plugins`, the recorded hook JSON under `test/harness/recorded/` and Claude Code's row in `test/e2e/plugins.ts` (decided Q5: the e2e scenario files are Core's).
 
 **Excludes.** The content of a delta, header or primer fact (Core); the wording (005); `src/harness/shared/**` (Core's hook contract, decided Q2); Codex, Pi and OpenCode (002, 009, 008); the test-command deny's rule (005 D8).
 
@@ -72,7 +72,7 @@ Recorded here, not to be fixed by this proposal. Each is a seam a migration must
 6. The recorder lives under `src/runners/observe/` but is delivered by Vitest, node:test and pytest's warm-up, and its form rule (D11 Fidelity) is runner-neutral.
 7. `src/cli` mixes owners: `init.ts` defaults to the Claude Code marketplace and takes `--harness codex`; `status-command.ts` imports `harness/codex/command`; `node-test-seed.ts` and `pytest-seed.ts` belong to 003 and 007; `setup/*`, `update.ts`, `warmup.ts` belong to 005.
 8. Scheduler rules carry Vitest evidence in their text: D5's measurements, the gate paragraph (`src/runners/vitest/gate.ts`), the global-setup failed-start detection ("Vitest marks a project's `globalSetup` done before it runs it").
-9. The e2e proofs of Core goals are driven through Claude Code hook JSON (`test/e2e/shipped-plugin.test.ts`, `transitions.test.ts`, `worktrees.test.ts`), so a Core change is proven through the Claude Code subsystem.
+9. Core goals are proven through the hook contract on two plugins (`test/e2e/plugins.ts`: Claude Code and Codex), never through a harness-neutral consumer.
 10. Primer and skill texts have three owners: 001 the facts, 005 the wording, each harness its copy under `plugins/*/skills/squeal`.
 11. Policy catalogue: D11 lists 001's keys only. `nodeTest`, `slow`, `pytest`, `testCommand` live in 003, 004, 007 and 005. No single document lists every key with its owner.
 
@@ -116,7 +116,7 @@ Legend for the home column: **C** Core, **CC** Claude Code, **V** Vitest, **H** 
 | Testing: core pure functions; store | C | | None. |
 | Testing: runner adapter on fixture projects | V | | None. |
 | Testing: hook scripts, recorded JSON, p95 budget | CC | | None. |
-| Testing: end to end, two worktrees | CC files, C goals | | Uncertain ownership (Decision Q5). |
+| Testing: end to end, two worktrees | C (decided Q5) | | Runs once per hook plugin; each harness spec owns its row in `test/e2e/plugins.ts` and its fixtures. |
 | Testing: manual dogfood | CC + C | | None. |
 | Open question 1 (inherited passes current or stale) | C | Still open; dogfooding evidence attached. | None. |
 | Open questions 2, 5, 9 | C | Decided or measured. | None. |
@@ -156,7 +156,7 @@ Row numbers never change. A row that moves keeps `001-NNN` and gains a home. New
 | 001-422 busy store costs an edit its pass and blocks heartbeats | review (cand/0.1.203) | C | 001-434 PASS | `change-feed.ts`, `daemon-loop`, `lifecycle.ts`, `scheduler.ts #stall`, `connection.ts`; issue #1 criterion 1 only | 0.1.203 on main, D8/D12 amendment, issue #1 comment | No: in flight under session 942c4112. |
 | 001-434 re-review of cand/0.1.203 | running | C (process row) | none | round 2 of `reviews/wave-17.md` | verdict committed | No: running. |
 | 001-338 status-wait timing helper | planned | C (tests) | none | three test files, `wait-clock.ts`; test-only | every site builds arguments before the clock | Yes. |
-| 001-341 tmpfs e2e fixture on `noexec` | planned | C (e2e infrastructure; Q5) | none | `test/e2e/harness.ts`; test-only | `noexec` host runs or falls back, shown by a probe | Yes. |
+| 001-341 tmpfs e2e fixture on `noexec` | planned | C (hook-contract proof; decided Q5) | none | `test/e2e/harness.ts`; test-only | `noexec` host runs or falls back, shown by a probe | Yes. |
 | 001-342 Stop wait held to 1.5 s wall | planned | C (hook contract) | none | `test/harness/stop-slow-wait.test.ts`; product only if at fault | cause named; bound on meaning not wall time | Yes. |
 | 001-346 optimizer note fails under a long writer | planned | C | 001-422 landed (same seam) | `daemon.ts #optimizerOff`, `busy-store.test.ts` | note written after the lock frees or the test's premise fixed | After 001-422. |
 | 001-358 starting-daemon heartbeat test under load | planned | C (hook contract) | none | `test/harness/starting-daemon.test.ts` | cause named; 20 runs green beside load | Yes. |
@@ -184,7 +184,7 @@ Row numbers never change. A row that moves keeps `001-NNN` and gains a home. New
 |---|---|---|
 | SubagentStop report restarts the subagent (005 research, 2.1.295) | CC | Probe first. |
 | `store.prune` leaves per-worktree `meta` rows | C | A registry of per-worktree prefixes exists since 001-254 (`WORKTREE_META_ROWS`); verify what is still missing. |
-| e2e leaves `/tmp/squeal-e2e-*` behind | C (e2e infrastructure; Q5) | |
+| e2e leaves `/tmp/squeal-e2e-*` behind | C (hook-contract proof; decided Q5) | |
 | Load-sensitive tests list (`reconcile-pass`, `lifecycle`, `stop`, `observed-growth`, `unused-stop` on Node 24) | C, H for `stop.test.ts` | |
 | `squeal init` with a harness choice and 002/003 keys | CC + 005 | Already noted as a 005 candidate. |
 | Inherited-pass re-verification | C | Open question 1. |
@@ -248,7 +248,7 @@ Every step is a docs-only commit, reviewed as docs land today, none of it a prod
 - **Q2 Home of the shared hook code and its rules** (`src/harness/shared/*`, the H rows in section 4, rows 001-342 and 001-358). Decided 2026-10-16: (a). (a) Core, as the harness-neutral "hook contract" section (recommended: four harnesses already depend on it and 002 D5 only moved the files); (b) the Claude Code spec, as the first implementer, with other harness specs citing it; (c) a fourth, thin spec of its own.
 - **Q3 Home of the runtime-input recorder** (`src/runners/observe/*`, D4 "Observed runtime inputs", D11 Fidelity, rows 001-431, 001-402). Decided 2026-10-16: (a). (a) Core (recommended: three runners deliver it and its form rule is runner-neutral); (b) Vitest, with 003 and 007 citing it.
 - **Q4 Node-ecosystem logic in Core** Decided 2026-10-17: (a), a Core section labelled Node ecosystem. (install detection, hidden-lockfile trust, the installed-dependency segment scheme). (a) Core, marked "Node ecosystem; pytest has its own" (recommended for this migration, no code moves); (b) a later `node-ecosystem` section or spec when a third Node runner appears.
-- **Q5 Owner of the end-to-end proofs** driven through Claude Code hook JSON (`shipped-plugin`, `transitions`, `worktrees`, the e2e harness, rows 001-341 and the `/tmp` leftovers item). (a) Claude Code owns the files, Core owns the goals they assert, each Core landing still runs them (recommended); (b) Core owns them as test infrastructure.
+- **Q5 Owner of the end-to-end proofs** Decided 2026-10-17: (a) of section 11.3, Core as the hook contract's proof. The options below were written on wrong facts (the suites run per plugin, not Claude Code only); 11.3 corrects them. Originally: driven through Claude Code hook JSON (`shipped-plugin`, `transitions`, `worktrees`, the e2e harness, rows 001-341 and the `/tmp` leftovers item). (a) Claude Code owns the files, Core owns the goals they assert, each Core landing still runs them (recommended); (b) Core owns them as test infrastructure.
 - **Q6 The misfiled rows** Decided 2026-10-17: move to 003.  001-365, 001-402, 001-425 (node:test code). Move them to 003's board section with their numbers kept (recommended), or keep them under Core.
 - **Q7 Timing.** Decided 2026-10-16: after 001-434 settles and 0.1.203 lands or is abandoned. Start the docs-only migration after 001-434 settles and 0.1.203 lands or is abandoned (recommended), or start the spec folders now and split the board later.
 - **Q8 The colliding triage rows** Decided 2026-10-17: fresh numbers at landing.  (six branches numbered 001-434, one 001-433, one 004-64). Land them as `proposed` rows with fresh numbers (recommended), or ask each triage session to renumber and push.
@@ -272,7 +272,15 @@ Approval of this proposal, with answers to Q1 to Q8, authorizes the docs-only st
 
 2026-10-17, the human: Q4 accepted, option (a). Q5 asked back: why Claude Code, and what about the other harnesses? Section 11.3 answers with the corrected facts.
 
-Still open: Q5, re-asked with the corrected options in 11.3.
+2026-10-17, the human: Q5 decided, option (a) of section 11.3. Core owns the hook-contract e2e (the scenario files, the shared helpers, the plugin table) as the hook contract's proof; each harness spec owns its row in that table and its fixtures. The corrections 11.3 lists are applied in sections 2.1, 2.2, 3, 4, 5.1 and 5.2.
+
+No decision is open. The migration of section 6 started on 2026-10-17; section 12 records what it did.
+
+## 10. Changes on main since this proposal was written
+
+- 2026-10-17: 0.1.203 landed (`bbad39dd`); 001-422 and 001-434 are done, review `reviews/wave-17.md` round 2 PASS. Q7's precondition is met: the docs-only migration of section 6 may start once the human gives its go. Row 001-346 no longer waits on 001-422.
+- 2026-10-17: two new 001 rows, both Core by section 2.1: 001-435 (survey of issue #1's criteria 2 and 3: a scheduler that stops on an unexpected error restarts or ends the daemon; D10 and D8; endpoint a survey file and a decision for the human) and 001-436 (`squeal stop` returned 0 while the daemon's process was still exiting, main CI on `bbad39dd`; D10; endpoint the cause named and a test or product fix). Neither is dispatched. Section 5.3's row for issue #1 now reads: criterion 1 done in 0.1.203, criteria 2 and 3 are 001-435.
+- 2026-10-17: this proposal and the triage convention in `docs/process.md` landed on main as docs (`8d1361c7`).
 
 ## 11. Rationale for Q4 and Q5
 
@@ -291,12 +299,6 @@ Options.
 - (b) Core owns them as test infrastructure. Core then owns files that encode Claude Code's hook JSON and plugin layout, and a hook change needs Core's acknowledgement to edit a Core-owned file.
 - (c) Split by what the file encodes: the shared helpers to Core, each hook-driven scenario file to the spec whose behaviour it proves (001's seven to Claude Code, `node-test.test.ts` to 003, `pytest.test.ts` to 007), and one new Core row to add a harness-neutral proof of goals 1 to 4 (through a fake `HarnessDelivery` consumer or the CLI), so Core's goals stop depending on one harness. Recommended now that the helper facts are known: it is (a) with the infrastructure named, plus the gap made visible.
 
-
-## 10. Changes on main since this proposal was written
-
-- 2026-10-17: 0.1.203 landed (`bbad39dd`); 001-422 and 001-434 are done, review `reviews/wave-17.md` round 2 PASS. Q7's precondition is met: the docs-only migration of section 6 may start once the human gives its go. Row 001-346 no longer waits on 001-422.
-- 2026-10-17: two new 001 rows, both Core by section 2.1: 001-435 (survey of issue #1's criteria 2 and 3: a scheduler that stops on an unexpected error restarts or ends the daemon; D10 and D8; endpoint a survey file and a decision for the human) and 001-436 (`squeal stop` returned 0 while the daemon's process was still exiting, main CI on `bbad39dd`; D10; endpoint the cause named and a test or product fix). Neither is dispatched. Section 5.3's row for issue #1 now reads: criterion 1 done in 0.1.203, criteria 2 and 3 are 001-435.
-- 2026-10-17: this proposal and the triage convention in `docs/process.md` landed on main as docs (`8d1361c7`).
 
 ### 11.3 Q5, corrected
 

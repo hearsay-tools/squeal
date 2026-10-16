@@ -1,6 +1,6 @@
 # 001 Core validation loop
 
-Stage: draft for review. Evidence: the four documents under `research/`. Decisions that span specs: ADR 0001, 0002, 0003.
+Frozen 2026-10-17 as history (split proposal `split-proposal.md`, the human's decisions Q1 to Q8). New work lives in `../011-core/`, `../012-claude-code-adapter/` and `../013-vitest-runner/`; each has a crosswalk from the sections below, and amendments after this date go to the subsystem spec the crosswalk names. No text below is deleted or changed after this line was written. Evidence: the documents under `research/`. Decisions that span specs: ADR 0001, 0002, 0003.
 
 ## Problem
 

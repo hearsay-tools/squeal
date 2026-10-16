@@ -2,6 +2,7 @@
 
 Stage: shipped (2026-10-06: the dogfooding re-run in `lessons.md`, section "Re-run after waves 4.5 and 4.6", found goals 1 to 7 holding with Claude Code and no new blocker; open, not blocking: macOS verification before any public release)
 Started: 2026-10-02
+Frozen: 2026-10-17 as history (`split-proposal.md`; sections 9 and 12). Amendments after this date go to `../011-core/status.md`, `../012-claude-code-adapter/status.md` or `../013-vitest-runner/status.md`, whichever the crosswalk in that spec names for the 001 section concerned. The log below ends with 0.1.203.
 
 ## Decisions so far
 
