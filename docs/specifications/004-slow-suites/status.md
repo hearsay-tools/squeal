@@ -3,10 +3,6 @@
 Stage: shipped (2026-10-09, 0.1.85, released in hub 0.1.86, after the confirmation dogfood 004-53 the human asked for: slow files declared by policy run outside the agent's fast loop, drain before a daemon exits, catch up up to `slow.maxParallel` wide when idle, key their declared artifacts, and the loop of `lessons.md` defect 10 stays closed in real use. Every review of the spec's waves passed. Open, not blocking: 004-52, 004-54 and 004-55 (should-fix), open question 3 (macOS, unrun), D4 held by the human)
 Started: 2026-10-08
 
-## Pending human decision: issue 5
-
-2026-10-16: agent-reported `friction` [issue #5](https://github.com/hearsay-tools/squeal/issues/5) triaged as board row **004-62**, held for the human to decide next steps. [Findings](research/issue-5.md) and [reproduction path](research/probes/issue-5/README.md) show the completion primer is identical with `stop.requireSlowSuite` off and on; the installed skill also makes the slow step unconditional, whereas Stop and status follow policy. This is aligned with the vision's request for project-defined completion policy; no open duplicate was found. Earlier 001-283 introduced the instruction, so reconcile that intent with D7 to D9 and 006's claim metrics before implementation. Surface policy-conditional versus claim-scoped guidance and the option to retain the existing step to the human. The reporter's exact 91/89-file runtime incident was not reproduced. No behavior amendment, implementation, eval spend or release is approved by this triage.
-
 ## Decisions so far
 
 - The human named e2e tests as one of three blockers on 2026-10-07 (ADR 0004). Spec 004 is how Squeal validates suites too slow to run on every revision: end-to-end, integration and package suites such as this repository's `test/e2e` (Vitest, about a minute) and cezarion's `test:package` (node:test, `test/e2e/*.test.ts`).
@@ -104,6 +100,9 @@ Started: 2026-10-08
 - 2026-10-14, 004-59 done, 0.1.179 (`tasks/004-59/notes.md`): an open `run --slow` request skips the load guard and cuts a guard wait short; one file at a time above `slow.maxLoadPerCpu`, up to `slow.maxParallel` below; the idle trigger and `run --all` keep the guard.
 - 2026-10-14, 004-60 (the human): D2 amended. The slow tier waits for its own daemon's fast backlog to drain (baseline, checkpoint, `run --all`); `run --slow` overrides; slow files count against 001 D11's per-user pool (001-386).
 - 2026-10-15, 004-60 done, 0.1.182 (`tasks/004-60/notes.md`): the slow tier waits for its own daemon's fast backlog unless `run --slow` asked; slow tiers take their workers from 001 D11's pool (001-386).
+- 2026-10-15, 001-378, 0.1.185 (review 001-394 B2): D2 amended. A slow tier holds no more files than its run starts at once. The runner reports that width: for Vitest, the project's own `maxWorkers` within one task group. The files past it stay queued.
+- 2026-10-15, 004-61 (review 001-417 N1): D2 amended. `--fast` and `--slow` select lanes, both flags are both lanes; a `--fast` request is a one-lane checkpoint, never a full suite; `run --all --slow` is the `run --slow` request.
+- 2026-10-16, 004-62 (the human, issue #5, `research/issue-5.md`): D8 amended. The primer states this repository's `stop.requireSlowSuite`, because the guidance every agent receives must say what the repository's "done" requires. Off: the slow tier is not required before the agent finishes; a claim that slow tests pass needs the `Slow tier:` line to say every slow file is current, and otherwise the agent says how many are not; `squeal run --slow --wait` runs them. On: run `squeal run --slow --wait` before saying the task is done unless every slow file is current, and Stop waits (D9). The skill, one text in every repository, reads the policy off the `Slow tier:` line's ending, which already differs by policy. This replaces 001-283's before-done step, which told every repository what only the policy-on branch requires and went past D8 without an amendment. Its claim rule stays under both values, so 006's `slow-through-squeal` and `current-before-claim`, which score only a claim, keep their expectations; whether fewer agents claim on `a2-slow` is read at the next release's atomic tier. Declined: claim-scoped guidance (the triage's option 3), because one text cannot be true under both values, and keeping the unconditional step (option 2).
 
 ## Research
 
@@ -118,5 +117,3 @@ See `spec.md`, section Open questions.
 - Vision: `../../vision.md`
 - ADR: `../../decisions/0004-codex-and-node-test-next.md`
 - Specs 001 (D5 scheduler, D11 policy), 002 (Stop and harness checkpoints), 003 (node:test projects).
-- 2026-10-15, 001-378, 0.1.185 (review 001-394 B2): D2 amended. A slow tier holds no more files than its run starts at once. The runner reports that width: for Vitest, the project's own `maxWorkers` within one task group. The files past it stay queued.
-- 2026-10-15, 004-61 (review 001-417 N1): D2 amended. `--fast` and `--slow` select lanes, both flags are both lanes; a `--fast` request is a one-lane checkpoint, never a full suite; `run --all --slow` is the `run --slow` request.
