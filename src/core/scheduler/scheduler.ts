@@ -3,6 +3,7 @@ import { appendNote } from "../notes.js";
 import { hostLoad } from "../retry/index.js";
 import { statCandidates } from "../revision/index.js";
 import { describeFailure } from "../state/index.js";
+import { isBusy, withBusySlice } from "../store/index.js";
 import { plural } from "../text.js";
 import {
   type CandidateBatch,
@@ -18,6 +19,7 @@ import {
 import { cancelsBacklog } from "./backlog.js";
 import { reconcileBatch } from "./batch.js";
 import { baseline, scan } from "./bootstrap.js";
+import { BusyResume } from "./busy-resume.js";
 import { TierCapacity } from "./capacity.js";
 import { abandonFullSuite, queueFullSuite } from "./checkpoint-requests.js";
 import { claimWake } from "./claims.js";
@@ -112,9 +114,15 @@ class TierScheduler implements Scheduler {
   readonly #install: InstallStamps;
   /** The per-user pool's side of this scheduler (spec 001 D11 Capacity); `null` without one. */
   readonly #capacity: TierCapacity | null;
+  /** The pump's resume after a busy store (task 001-422); `null` without `busyWaits`. */
+  readonly #busy: BusyResume | null;
 
   constructor(private readonly options: SchedulerOptions) {
     this.#install = new InstallStamps(options.root);
+    this.#busy =
+      options.busyWaits === undefined
+        ? null
+        : new BusyResume(options.busyWaits, () => this.#pump());
     this.#capacity =
       options.capacity === undefined
         ? null
@@ -216,36 +224,44 @@ class TierScheduler implements Scheduler {
         if (!this.#awaitingInstall) await this.#baseline(context, ledger);
         return;
       }
-      // Another worktree's heal may have left a file held here (review wave 13i, B1).
-      if (ledger.confirmHeld()) ledger.commit();
-      // Each pass looks again for a load retry's load, and another worktree's requests (001-368).
-      if (batch.trigger === "interval" && takeRetries(context, ledger)) ledger.commit();
-      const { applied, touched } = await reconcileBatch(context, ledger, batch);
-      // Every reconciliation pass looks too: a workspace's `node_modules` is not watched (D5).
-      const install = applied?.revision.changes.some((change) => touchesInstall(change.path));
-      if (install || batch.trigger === "interval") {
-        const { missing } = await this.#install.check();
-        // The revision stays unrefined, so the next daemon's `scan` reads its paths as edits.
-        if (missing !== null) return this.#reinstall(ledger);
-      }
-      // Task 001-159: the runner hears of a touched-unchanged file before the next tier.
-      if (applied === null) {
-        if (touched.length > 0) this.#runnerWork.queueTouched(touched);
-        // Task 007-26: a quiet pass rechecks what no watched file shows (a pytest installed set).
-        else if (batch.trigger === "interval") this.#runnerWork.queueRecheck();
-        return;
-      }
-      this.#slow.preempt();
-      // The runner part waits for the runner: a backlog tier yields to an edit (task 001-124).
-      for (const { tier } of this.#inFlight.values()) {
-        if (tier.cancel && cancelsBacklog(context, ledger, applied.revision, tier)) {
-          tier.cancel.abort();
-        }
-      }
-      this.#runnerWork.queueRefine(applied.revision, applied.content, touched);
+      // Task 001-422: the pass's writes wait a slice of a busy store; the change feed retries it.
+      const slice = this.options.busySliceMs;
+      const pass = () => this.#pass(context, ledger, batch);
+      await (slice === undefined ? pass() : withBusySlice(slice, pass));
     });
     if (this.#reinstalled) this.#tellReinstall();
     else this.#pump();
+  }
+
+  /** `handleBatch` once the scheduler takes edits: the revision, then its runner work. */
+  async #pass(context: SchedulerContext, ledger: Ledger, batch: CandidateBatch): Promise<void> {
+    // Another worktree's heal may have left a file held here (review wave 13i, B1).
+    if (ledger.confirmHeld()) ledger.commit();
+    // Each pass looks again for a load retry's load, and another worktree's requests (001-368).
+    if (batch.trigger === "interval" && takeRetries(context, ledger)) ledger.commit();
+    const { applied, touched } = await reconcileBatch(context, ledger, batch);
+    // Every reconciliation pass looks too: a workspace's `node_modules` is not watched (D5).
+    const install = applied?.revision.changes.some((change) => touchesInstall(change.path));
+    if (install || batch.trigger === "interval") {
+      const { missing } = await this.#install.check();
+      // The revision stays unrefined, so the next daemon's `scan` reads its paths as edits.
+      if (missing !== null) return this.#reinstall(ledger);
+    }
+    // Task 001-159: the runner hears of a touched-unchanged file before the next tier.
+    if (applied === null) {
+      if (touched.length > 0) this.#runnerWork.queueTouched(touched);
+      // Task 007-26: a quiet pass rechecks what no watched file shows (a pytest installed set).
+      else if (batch.trigger === "interval") this.#runnerWork.queueRecheck();
+      return;
+    }
+    this.#slow.preempt();
+    // The runner part waits for the runner: a backlog tier yields to an edit (task 001-124).
+    for (const { tier } of this.#inFlight.values()) {
+      if (tier.cancel && cancelsBacklog(context, ledger, applied.revision, tier)) {
+        tier.cancel.abort();
+      }
+    }
+    this.#runnerWork.queueRefine(applied.revision, applied.content, touched);
   }
 
   /** The baseline, at start or at the install that ends a wait; the wait ends in the store with it. */
@@ -413,6 +429,7 @@ class TierScheduler implements Scheduler {
   async #close(): Promise<void> {
     this.#closed = true;
     this.#slow.close();
+    this.#busy?.close();
     this.#notify();
     await this.#pumping;
     this.#capacity?.close();
@@ -500,6 +517,7 @@ class TierScheduler implements Scheduler {
             if (this.#runnerWork.size > 0) return "runner-work" as const;
             return selectTier(context, ledger, new Set(this.#inFlight.keys()));
           });
+          this.#busy?.landed();
           if (next === "runner-work") continue;
           if (next !== null) {
             this.#fly(next, install.stamp, null);
@@ -530,7 +548,9 @@ class TierScheduler implements Scheduler {
         this.#pumping = null;
         if (this.#reinstalled) this.#tellReinstall();
         const again = !this.#stalled || this.#asked;
-        if (!this.#closed && again && this.#hasWork()) this.#pump();
+        // A resume after a busy store runs once with nothing queued too: its writes end the wait.
+        const work = this.#hasWork() || this.#busy?.waiting === true;
+        if (!this.#closed && again && work) this.#pump();
         else if (this.#isIdle()) for (const resolve of this.#idle.splice(0)) resolve();
       }
     })();
@@ -608,13 +628,14 @@ class TierScheduler implements Scheduler {
           });
         });
         recorded = true;
+        this.#busy?.landed();
         for (const note of withheld) this.#note(note);
         slow?.slot.release();
         // The watcher may not have reported these yet; reconciling twice is harmless.
         if (moved.length > 0) await this.#reconcilePaths(moved);
         if (slow !== null) await this.#releaseIfDrained(tier.lane);
       } catch (error) {
-        this.#stall(error);
+        this.#stall(error, `${plural(tier.files.length, "file")} of a tier queued again`);
         if (!recorded) await this.#requeue(tier, slow !== null);
       } finally {
         slow?.slot.release();
@@ -691,11 +712,20 @@ class TierScheduler implements Scheduler {
     wake?.();
   }
 
-  /** A tier's error: the pump stops with a note until the next batch or request. */
-  #stall(error: unknown): void {
+  /**
+   * A tier's error: the pump stops with a note until the next batch or
+   * request. A busy store's, with `busyWaits`, stops it until `#busy`
+   * resumes it, with no note: `waiting` is what its episode's note names.
+   */
+  #stall(error: unknown, waiting = "the next tier"): void {
     this.#stalled = true;
     // Only a batch or request after the error starts the pump again.
     this.#asked = false;
+    if (this.#busy !== null && isBusy(error)) {
+      this.#busy.gaveUp(waiting);
+      this.#notify();
+      return;
+    }
     this.#note(`scheduler stopped running tiers: ${String(error)}`);
     this.options.onError?.(error instanceof Error ? error : new Error(String(error)));
     this.#notify();
@@ -766,7 +796,10 @@ class TierScheduler implements Scheduler {
         ledger.commit();
         if (slow) this.#slow.ended();
       } catch (error) {
-        this.#note(`could not record the re-queued tier: ${String(error)}`);
+        // On a busy store the ledger still owes the queue: the resumed pump's commit writes it.
+        if (this.#busy === null || !isBusy(error)) {
+          this.#note(`could not record the re-queued tier: ${String(error)}`);
+        }
       }
     });
   }
@@ -779,6 +812,7 @@ class TierScheduler implements Scheduler {
 
   #isIdle(): boolean {
     if (this.#closed) return true;
+    if (this.#busy?.pending === true) return false;
     return this.#pumping === null && (this.#stalled || !this.#hasWork());
   }
 

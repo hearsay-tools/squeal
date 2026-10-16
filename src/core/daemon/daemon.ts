@@ -6,7 +6,7 @@ import { linkedWorktreeDir } from "../fs/index.js";
 import { readDaemonNotes } from "../notes.js";
 import { slowSlotDir } from "../slow/index.js";
 import { recordOptimizerOff } from "../state/optimizer-note.js";
-import { setBusyTimeout } from "../store/index.js";
+import { BUSY_SLICE_MS, BusyWaits, isBusy, setBusyTimeout } from "../store/index.js";
 import type {
   AbsolutePath,
   Capacity,
@@ -140,6 +140,9 @@ export async function startDaemon(options: DaemonOptions): Promise<RunningDaemon
   return daemon.start(desk);
 }
 
+/** The topic of the busy store's episode notes (task 001-422). */
+const BUSY_TOPIC = "daemon:store-busy";
+
 class Daemon {
   readonly #log: (line: string) => void;
   readonly #now: () => EpochMs;
@@ -182,6 +185,8 @@ class Daemon {
   readonly #presence: Presence;
   /** Task 003-42: a timer restart starts from the snapshot its predecessor took. */
   readonly #observedSeen: ObservedSeen = {};
+  /** What waits for a busy store, the pass's, the pump's and the timers' writes (task 001-422). */
+  readonly #busyWaits: BusyWaits;
   #exit: Promise<DaemonExit> | null = null;
   /** `#register` committed: only then has its shutdown a mark to write (task 001-276). */
   #registered = false;
@@ -201,6 +206,11 @@ class Daemon {
     this.#lastActive = this.#startedAt;
     this.#lastUsed = this.#startedAt;
     this.#presence = { since: this.#startedAt, lastPresentAt: null };
+    // One note per episode, under one topic: status lists the latest (task 001-422).
+    this.#busyWaits = new BusyWaits({
+      now: this.#now,
+      note: (text) => this.#note(text, undefined, undefined, BUSY_TOPIC),
+    });
     this.#repositoryRoot = repositoryRootOf(opened.root, opened.commonDir);
     this.#capacity = capacityReader({
       repositoryRoot: this.#repositoryRoot,
@@ -292,6 +302,7 @@ class Daemon {
         this.#loop !== null && this.#phase !== "stopping" ? this.#loop.scheduler.owedWork() : null,
       note: (text) => this.#note(text),
       log: this.#log,
+      busyWaits: this.#busyWaits,
       shutdown: (reason, text) => void this.#shutdown(reason, 0, text),
     });
   }
@@ -504,7 +515,13 @@ class Daemon {
         runsDir: storePaths(commonDir).runsDir,
         describeFailure,
         now: this.#now,
-        onError: (error) => this.#note(`daemon error: ${error.message}`),
+        // Task 001-422: a busy store's error was retried or noted by its subject; no bare note.
+        onError: (error) =>
+          isBusy(error)
+            ? this.#log(`daemon error: ${error.message}`)
+            : this.#note(`daemon error: ${error.message}`),
+        busySliceMs: BUSY_SLICE_MS,
+        busyWaits: this.#busyWaits,
         // Task 001-113: a fresh daemon waits for the install with no runner open.
         onReinstall: (note) => void this.#shutdown("reinstalled", 0, note),
         onDropped: (reason) =>

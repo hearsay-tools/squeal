@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import type { DatabaseSync, SQLInputValue, StatementSync } from "node:sqlite";
 
 export type Row = Record<string, unknown>;
@@ -21,7 +22,10 @@ export class Connection {
 
   /** Runs a statement; returns the number of rows it changed. */
   run(sql: string, ...params: Params): number {
-    return Number(this.#statement(sql).run(...params).changes);
+    const statement = this.#statement(sql);
+    // Outside a transaction a write takes the lock itself: a busy slice bounds its wait.
+    const changes = () => statement.run(...params).changes;
+    return Number(this.#depth > 0 ? changes() : this.#withinSlice(changes));
   }
 
   get(sql: string, ...params: Params): Row | null {
@@ -40,7 +44,8 @@ export class Connection {
    */
   transaction<T>(fn: () => T): T {
     const savepoint = this.#depth > 0 ? `squeal_${this.#depth}` : null;
-    this.db.exec(savepoint === null ? "BEGIN IMMEDIATE" : `SAVEPOINT ${savepoint}`);
+    if (savepoint === null) this.#withinSlice(() => this.db.exec("BEGIN IMMEDIATE"));
+    else this.db.exec(`SAVEPOINT ${savepoint}`);
     this.#depth++;
     try {
       const result = fn();
@@ -85,6 +90,25 @@ export class Connection {
     this.db.close();
   }
 
+  /**
+   * Runs `fn`, one statement that takes the write lock, with the busy slice
+   * of the caller's async context as its busy timeout when that is shorter,
+   * and restores the connection's own before returning (task 001-422). One
+   * synchronous call: no other statement runs while the slice is set.
+   */
+  #withinSlice<T>(fn: () => T): T {
+    const slice = slices.getStore();
+    if (slice === undefined || !slice.live) return fn();
+    const own = Number(Object.values(this.#statement("PRAGMA busy_timeout").get() ?? {})[0]);
+    if (!(slice.ms < own)) return fn();
+    this.db.exec(`PRAGMA busy_timeout = ${slice.ms}`);
+    try {
+      return fn();
+    } finally {
+      this.db.exec(`PRAGMA busy_timeout = ${own}`);
+    }
+  }
+
   #statement(sql: string): StatementSync {
     let statement = this.#statements.get(sql);
     if (statement === undefined) {
@@ -92,6 +116,40 @@ export class Connection {
       this.#statements.set(sql, statement);
     }
     return statement;
+  }
+}
+
+/** A busy slice of one async context; `live` until the work it was given settles. */
+interface Slice {
+  readonly ms: number;
+  live: boolean;
+}
+
+const slices = new AsyncLocalStorage<Slice>();
+
+/**
+ * Runs `fn` with every write that takes the store's lock in it, its awaited
+ * continuations included, waiting at most `ms` for a busy lock instead of
+ * the connection's busy timeout (task 001-422: a pass on a busy store gives
+ * up in a slice and is retried, so the event loop is never held for long).
+ * Work `fn` starts and leaves running is past the slice once `fn` settles.
+ */
+export async function withBusySlice<T>(ms: number, fn: () => Promise<T>): Promise<T> {
+  const slice: Slice = { ms, live: true };
+  try {
+    return await slices.run(slice, fn);
+  } finally {
+    slice.live = false;
+  }
+}
+
+/** `withBusySlice` for synchronous work: the slice ends when `fn` returns. */
+export function withBusySliceSync<T>(ms: number, fn: () => T): T {
+  const slice: Slice = { ms, live: true };
+  try {
+    return slices.run(slice, fn);
+  } finally {
+    slice.live = false;
   }
 }
 
