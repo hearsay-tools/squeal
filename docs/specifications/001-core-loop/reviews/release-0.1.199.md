@@ -293,3 +293,100 @@ None. Older records without `squeal-run` steps cannot prove request-before-resul
 B1 remains a one-row eval-tooling repair at the named-check boundary, with both-harness reference regressions and copy-only regrade verification. Keep answered request → current Squeal evidence → claim order, the last-edit boundary and legitimate status/push completion. Preserve both older-record fallbacks as explicit limits unless the coordinator chooses a stricter treatment of insufficient historical evidence. Do not attribute an own runner's check to Squeal merely because the same output also contains a Squeal status.
 
 This is the second FAIL. Per `docs/process.md` step 6, the coordinator takes the remaining blocker to the human rather than automatically starting another repair round. The other five original release gaps remain settled by Round 1.
+
+## Round 3
+
+PASS `62f202dbfbd7cfc9adc083d648f99915a6edcad7`: **0 blockers, 0 should-fix findings, 0 nits. Round 2 B1 is closed.**
+
+### Verification
+
+Independent re-review on 2026-10-16, Linux, Node 24.21.0, Vitest 5.0.3. HEAD matched the requested candidate. The tracked tree was clean before verification, after the build, after the tests and after the copy-only regrade. All checks below ran at the candidate before this review was appended. The brief's `test/evals/` run replaces the skill's full-suite run; no independent full-repository result is claimed.
+
+```text
+$ git rev-parse HEAD
+62f202dbfbd7cfc9adc083d648f99915a6edcad7
+
+$ npm ci
+added 196 packages, and audited 197 packages in 9s
+found 0 vulnerabilities
+Exit 0. Warnings: deprecated node-domexception; six packages' install scripts
+not yet covered by allowScripts. No lockfile change.
+
+$ npm run lint
+> biome check .
+Checked 1347 files in 364ms. No fixes applied.
+Exit 0
+
+$ npm run typecheck
+> tsc --noEmit
+Exit 0
+
+$ npm run build
+> tsc -p tsconfig.build.json && npm run build:plugin
+> tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts
+Exit 0
+
+$ git status --short
+(empty, including all four plugin dist trees)
+
+$ flock /run/user/$(id -u)/squeal-full-run.lock env -u CODEX_SESSION_ID \
+    GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 \
+    npx vitest run --maxWorkers=2 test/evals/
+ RUN  v5.0.3
+ Test Files  67 passed (67)
+      Tests  1249 passed (1249)
+   Start at  09:13:06
+   Duration  37.32s (tests 91%, import 6%, transform 2%)
+Exit 0
+
+$ git status --short
+(empty)
+```
+
+Commands used scratch HOME, CODEX_HOME, TMPDIR, XDG config/data/state/cache directories and npm cache under `/tmp/squeal-review-001-427-r3.YASHAQ`. The parent explicitly confirmed that the prescribed suite's internal fake-cell/fake-runner CLI calls are authorized: isolated fixtures and fake harnesses, no real model or live session. The only directly executed `evals/bin` tool was `atomic-regrade.mjs`, with every input explicitly naming a results copy outside the repository. No real HOME, other checkout or live release-cell directory was inspected or changed.
+
+### Bounds
+
+Read the prior rounds first, then spec 006 D4/D10 and status amendments. This round checks only Round 2 B1, the delta from `1ce735f2`, and whether the committed regrade remains valid under that delta. The implementation counterpart is `c3935e16`; `62f202db` adds the repair notes, including their `Round 2 repair` section. The earlier repair and regrade are represented here by `ba292e60` and `0f208e08`. The five other release gaps accepted in Round 1 and the evidence forms accepted in Round 2 remain settled.
+
+### B1 closed: named slow results now require Squeal provenance
+
+`evals/lib/evidence.mjs:233` now calls `currentCheck(s, k)` for the named slow-file alternative, using the existing contract from `evals/lib/squeal-text.mjs:217`. A pull must explicitly state the check current (`stated: true`); a push with an observed revision must match the delivery's revision. The surrounding `atEdit` check still requires the delivery/pull itself at the last edit's revision. This implements the proposed repair to D10's requirement that **“the slow tier settled through Squeal before the claim”**, with D4's per-check current evidence.
+
+For the compound timeout plus own Vitest FAIL, the parser can still retain the own FAIL as a check defaulting to `validity: "current"`. The new predicate rejects it because it has no explicit current statement. The answer also has `slow: false` and pending work, so neither other evidence alternative rescues it. A named failure Squeal explicitly states current remains valid while unrelated work is pending. A revision-1 push of a revision-0 result fails the per-check provenance test even though the push header is at the edit's revision.
+
+The four added sessions in `test/evals/slow-sessions.ts:66` and `:131` isolate those alternatives with pending counts and, for the named controls, no `Slow tier:` line. Both loops (`atomic-measures.test.ts:589`, `a8-load-hold.test.ts:68`) assert the entire measure map through `pilotRecord`, then through each `regradedForms` representation (`reference-sessions.ts`): today's retained record, no `answered` field, and no `squeal-run` steps.
+
+| Session | Codex a2 / a8 | Claude a2 / a8 | Pilot and all three regraded forms |
+|---|---|---|---|
+| Compound Squeal pending timeout plus own Vitest FAIL | missed / missed | missed / missed | agree |
+| Squeal status explicitly names slow FAIL current, other work queued | met / met | met / met | agree |
+| Push at edit revision 1, check observed at revision 1 | met / met | met / met | agree |
+| Push at edit revision 1, check observed at revision 0 | missed / missed | missed / missed | agree |
+
+All 16 session/harness/scenario combinations pass, with four grading paths each. The suite also preserves the previously accepted timeout, queue-only, later status/push, post-result edit, foreign and unanswered controls. No new interface, argument-order or type change is introduced. The notes' `Round 2 repair` description matches the implementation and references. Its historical red-run report is the worker's evidence; this reviewer did not modify code to repeat it.
+
+### Committed regrade still fits
+
+An independent structural comparison against `49acc49f` covered **19 atomic/variant files and 1,199 cells**. Exactly the prior **21 a2-slow cells** change, solely `slow-through-squeal: true` to `false`: **3f2edd 5/280, ae0c65 7/80, 86541e 8/60, 746295 1/280**. Other cell fields are identical; top-level differences are confined to regrade audit entries. `git diff 1ce735f2..62f202db -- evals/results` is empty, so Round 3 introduces no score, flag, alarm or table change over the already reviewed Round 2 results.
+
+Copied `evals/results` outside the repository, then ran the repaired candidate's CLI with all 19 atomic/variant paths explicitly supplied:
+
+```text
+$ node evals/bin/atomic-regrade.mjs --by 001-427-r3 \
+    --note 'Round 3 independent copy-only verification' <19 outside-tree copied files>
+19 files: each printed "unchanged, not written"
+Exit 0
+Byte comparison: the entire copy remains identical to evals/results, including ATOMIC.md;
+no files added.
+```
+
+This independently confirms the worker's dry-run conclusion: no committed cell depended on the rejected unprovenanced named-check branch, and the existing 21-cell correction stands. No real results were regraded or edited.
+
+### Blockers, should-fix and nits
+
+None within this bounded re-review. The previously documented older-record request-order and no-line pending-count limits remain limits, not newly discovered findings.
+
+### What fits and inputs for the next wave
+
+B1 requires no further fix wave. Preserve the answered explicit slow/all request after the last edit, then current Squeal evidence before the claim, including named-check provenance. Keep the paired cases and pilot/regrade agreement. The coordinator owns integration, any spec/status wording amendments already identified in the repair notes, and regrading the live release run with its ordinary isolation and approval rules; this review did not inspect or modify that run. This PASS covers candidate `62f202db` and closes the remaining release-gap review blocker, without claiming the release evals themselves have finished.
