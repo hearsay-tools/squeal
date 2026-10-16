@@ -213,7 +213,7 @@ The three "Proposed rows" at the end of `lessons.md` (defects 30, 31, 32) are do
 | #3, #4, #16 slow tier and prerequisites | none | | 004 | |
 | #11 `--help` on subcommands | none | | C CLI | |
 
-Recommendation: these rows land as `proposed` rows (section 7) under their homes with fresh numbers at landing time and the issue number in the title. Their research files keep their paths.
+Recommendation: these rows land as `gh-<N>` rows under the board's `## Triage` section (the convention adopted on 2026-10-16, `docs/process.md`, Issue triage), with no spec number until a coordinator approves and moves each into its home. Their research files keep their paths.
 
 ## 6. Minimal migration sequence
 
@@ -229,7 +229,7 @@ Every step is a docs-only commit, reviewed as docs land today, none of it a prod
 
 **Reference documentation against change tickets.** After the split, each `spec.md` is the normative description of current behaviour and changes only through an accepted amendment (a dated line in its `status.md` plus the section edit). Board rows are bounded change tickets: each cites the spec sections it changes, its boundary and its stopping condition, and ends with the amendment. Research, reviews and task notes are evidence attached to rows and never normative. 001's folder is the archive: reviews, task notes, research and lessons stay there, reachable by the row numbers they carry.
 
-**Numbering.** Existing `001-NNN` ids are permanent. New rows take `011-NN`, `012-NN`, `013-NN`. A number is allocated only from the board on main, by the coordinator who lands the row. A triage or research session that proposes a row writes it as `proposed-<issue or topic>` until landing (section 7, rule 6), which ends the collisions of section 1.
+**Numbering.** Existing `001-NNN` ids are permanent. New rows take `011-NN`, `012-NN`, `013-NN`. A number is allocated only from the board on main, by the coordinator who lands the row. A triage session writes its row as `gh-<issue>` under `## Triage` and a research session as `proposed-<topic>`, neither with a number, until a coordinator lands it with one (section 7, rule 6; adopted for triage on 2026-10-16, `docs/process.md`, Issue triage), which ends the collisions of section 1.
 
 ## 7. Proposed operating rules
 
@@ -238,7 +238,7 @@ Every step is a docs-only commit, reviewed as docs land today, none of it a prod
 3. **Expansion needs the human.** A proposal to widen an approved outcome (a new file owner, a new spec section, a new runner or harness surface, a behaviour the done-when did not name) becomes a new `proposed` row with the finding attached. The running row finishes within its original boundary or stops and says what it left.
 4. **Every assignment states its stopping condition.** A brief has an endpoint sentence beside its done-when: the test that passes, the file that is written, or the question that is answered, and the state the row takes when the endpoint is reached (`review`, or `done` for docs). A row without one is not dispatched.
 5. **Review before landing.** Unchanged from `docs/process.md` steps 5 and 6: every product landing is reviewed on its candidate SHA; docs land directly; a second failing review ends the loop and goes to the human.
-6. **Numbers come from main.** A row number is allocated only by the coordinator landing it, from the board on main. Sessions that cannot land (triage, research) write `proposed-<ref>` and leave the number blank.
+6. **Numbers come from main.** A row number is allocated only by the coordinator landing it, from the board on main. Triage sessions write `gh-<issue>` under `## Triage` and research sessions `proposed-<topic>`, both without a number (in force for triage since 2026-10-16, `docs/process.md`, Issue triage).
 7. **Holds are stated, not inferred.** A hold the human sets is written on the board (section, date, scope) and lifted the same way. No coordinator infers an exception; a question about a hold's scope is a question to the human.
 8. **One owner per section.** Each spec section names one owning subsystem. A row that must edit another subsystem's section carries that coordinator's acknowledgement in its brief, as 001-373 does today.
 
