@@ -72,7 +72,7 @@ describe("the primer states the slow-suite policy, in every harness (004-62)", (
         "this repository requires them before you finish: before you say the task is done, run ",
       );
       expect(text).toContain(
-        "run --slow --wait 60000` unless the latest `Slow tier:` line states every slow file is current, and Stop waits for them.",
+        "run --slow --wait 60000` unless the latest `Slow tier:` line states every slow file is current; Stop waits for them or holds you once.",
       );
       expect(text).not.toContain("does not require");
       expect(text.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);

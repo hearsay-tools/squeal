@@ -101,7 +101,7 @@ describe("the squeal skill", () => {
     const step = body.slice(body.indexOf("4. **"), body.indexOf("5. **"));
     expect(step).toContain("Before you say the task is done");
     expect(step).toContain(
-      "If the last one says `Stop waits`, the repository requires them: while one is not current, run `squeal run --slow --wait 60000`; otherwise say how many are not current.",
+      "If the last one says `Stop waits`, they are required: while one is not current, run `squeal run --slow --wait 60000`. Without `Stop waits`, say how many are not current.",
     );
     expect(step).toContain("Claim slow tests pass only once it says every slow file is current.");
     expect(step).toContain(
