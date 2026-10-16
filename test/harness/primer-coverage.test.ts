@@ -34,6 +34,11 @@ interface Case extends RepoCase {
    * retry sentence (001-368) the full path in every one passes the cap.
    */
   readonly codexFirstOnly?: boolean;
+  /**
+   * Under Codex, the list when it folds: task 004-62's policy sentence passes
+   * the cap a Codex path left one character of, so the projects are counted.
+   */
+  readonly codexCovers?: string;
 }
 
 const SCRIPTS = { name: "scripts", argv: [], env: {}, include: ["scripts/*.test.mjs"] };
@@ -75,6 +80,8 @@ const MATRIX: Record<string, Case> = {
       "Squeal covers Vitest (vitest.config.ts), with 2 slow test files at the daemon's last listing.",
     runners: "Vitest",
     slow: true,
+    // Task 004-62: the policy's sentence passes the cap with the Codex path named twice.
+    codexFirstOnly: true,
   },
   // Listed Vitest projects are not named: a key row does not say which runner listed it (B2).
   "all three, with Vitest projects": {
@@ -91,6 +98,8 @@ const MATRIX: Record<string, Case> = {
     runners: "Vitest and node:test",
     slow: true,
     codexFirstOnly: true,
+    codexCovers:
+      "Squeal covers Vitest (vitest.config.ts) and node:test (2 projects), with 2 slow test files at the daemon's last listing.",
   },
 };
 
@@ -108,7 +117,8 @@ describe("SessionStart's primer lists exactly what the policy and the runner cov
     expect(text).toContain(`do not run ${c.runners.replace(" and ", " or ")} to learn`);
     expect(text.includes("Vitest")).toBe(c.runners.includes("Vitest"));
     // The list, then what is left, as the primer's last two sentences.
-    expect(text.endsWith(` ${c.covers} ${NOT_COVERED}`)).toBe(true);
+    const covers = harness === "codex" ? (c.codexCovers ?? c.covers) : c.covers;
+    expect(text.endsWith(` ${covers} ${NOT_COVERED}`)).toBe(true);
     expect(text.match(/Squeal covers /g)).toHaveLength(1);
     const slowStep =
       harness === "codex" && c.codexFirstOnly === true
@@ -170,6 +180,7 @@ describe("a long coverage list (001-234)", () => {
 
 describe("the slow sentence by harness (spec 004 D8, D9)", () => {
   const slow = { vitest: true, vitestConfig: null, nodeTest: [], slow: { files: 3 } };
+  const required = { ...slow, slow: { files: 3, requireSlowSuite: true } };
 
   it("is absent without slow files, under both harnesses", () => {
     for (const command of ["squeal", CODEX]) expect(primer(command)).not.toMatch(/slow/i);
@@ -177,20 +188,47 @@ describe("the slow sentence by harness (spec 004 D8, D9)", () => {
   });
 
   /*
-   * Task 001-283 (`research/primer-skill-writing.md` F1): the step before a
-   * claim, with a completion criterion the agent reads off the header, and
-   * the command that holds for slow files since 001-282. No "never during
-   * Stop's wait": with `stop.requireSlowSuite` on, Stop waits (001-285).
+   * D8 as amended 2026-10-16 (task 004-62, issue #5): with
+   * `stop.requireSlowSuite` off, or absent, the slow tier is not required
+   * before the agent finishes; a claim that slow tests pass needs the
+   * `Slow tier:` line current, and `run --slow --wait` gets that result.
    */
   it.each(["squeal", CODEX])(
-    "names `run --slow --wait` as the step before a claim, under %s",
+    "with the policy off, names no step before done, under %s",
     (command) => {
-      const text = primer(command, slow);
+      for (const coverage of [slow, { ...slow, slow: { files: 3, requireSlowSuite: false } }]) {
+        const text = primer(command, coverage);
+        const run =
+          command === "squeal"
+            ? `\`${command} run --slow --wait 60000\``
+            : "the CLI's `run --slow --wait 60000`";
+        expect(text).toContain(
+          `Slow test files run when you pause between turns; this repository does not require them before you finish: say slow tests pass only when the latest \`Slow tier:\` line states every slow file is current, else say how many are not; ${run} runs them now.`,
+        );
+        expect(text).not.toContain("before you say the task is done");
+        expect(text).not.toContain("Stop");
+      }
+    },
+  );
+
+  /*
+   * Task 001-283 (`research/primer-skill-writing.md` F1), now the policy-on
+   * branch: the step before a claim, with a completion criterion the agent
+   * reads off the header, and that Stop waits for the slow tier (001-285).
+   */
+  it.each(["squeal", CODEX])(
+    "with the policy on, names `run --slow --wait` as the step before done and Stop's wait, under %s",
+    (command) => {
+      const text = primer(command, required);
+      const run =
+        command === "squeal"
+          ? `\`${command} run --slow --wait 60000\``
+          : "the CLI's `run --slow --wait 60000`";
       expect(text).toContain(
-        `Slow test files run when you pause between turns; before you say the task is done, run \`${command} run --slow --wait 60000\` unless the latest \`Slow tier:\` line states every slow file is current: it runs the rest and waits for them.`,
+        `Slow test files run when you pause between turns; this repository requires them before you finish: before you say the task is done, run ${run} unless the latest \`Slow tier:\` line states every slow file is current, and Stop waits for them.`,
       );
       expect(text.indexOf("run --slow --wait")).toBeGreaterThan(text.indexOf("status --wait"));
-      expect(text).not.toContain("Stop");
+      expect(text).not.toContain("does not require");
     },
   );
 
@@ -206,12 +244,16 @@ describe("the slow sentence by harness (spec 004 D8, D9)", () => {
     expect(text).not.toContain("wakes you");
   });
 
-  it("names the CLI by the primer's fallback when the path is long", () => {
-    const command = `node "/${"x".repeat(700)}/dist/cli/squeal.mjs"`;
-    const text = primer(command, slow);
-    expect(text.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
-    expect(text).toContain("run the CLI's `run --slow --wait 60000` unless");
-  });
+  it.each([slow, required])(
+    "names the CLI by the primer's fallback when the path is long",
+    (coverage) => {
+      const command = `node "/${"x".repeat(700)}/dist/cli/squeal.mjs"`;
+      const text = primer(command, coverage);
+      expect(text.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
+      expect(text).toContain("the CLI's `run --slow --wait 60000`");
+      expect(text.includes("before you say the task is done")).toBe(coverage === required);
+    },
+  );
 });
 
 /*
@@ -222,8 +264,9 @@ describe("the slow sentence by harness (spec 004 D8, D9)", () => {
  */
 describe("the primer's D6 sentences (005-15)", () => {
   const slow = { vitest: true, vitestConfig: null, nodeTest: [], slow: { files: 3 } };
+  const required = { ...slow, slow: { files: 3, requireSlowSuite: true } };
   const cases = ["squeal", CODEX].flatMap((command) =>
-    [VITEST_ONLY, slow].map((coverage) => [command, coverage] as const),
+    [VITEST_ONLY, slow, required].map((coverage) => [command, coverage] as const),
   );
 
   it.each(cases)(
