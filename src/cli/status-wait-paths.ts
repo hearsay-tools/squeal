@@ -44,8 +44,10 @@ export interface NamedSelection {
  * the newest any worktree wrote; it is this worktree's when this worktree
  * wrote it, or when the writer's current key for the file is this
  * worktree's, since a key covers every closure path and its content (as
- * delivery's `closureFor` reads it, task 001-94). Paths resolve against
- * `cwd`; one outside `root` selects nothing.
+ * delivery's `closureFor` reads it, task 001-94). A listed test file's path
+ * never reaches the closure lookup, so another test file whose closure holds
+ * it through declared inputs or an import is not selected (task 005-67,
+ * issue 6). Paths resolve against `cwd`; one outside `root` selects nothing.
  */
 export function selectNamedFiles(
   store: Store,
@@ -60,10 +62,13 @@ export function selectNamedFiles(
   const unmatched: string[] = [];
   for (const path of paths) {
     const rel = worktreePath(root, cwd, path);
+    const own = rows.filter((row) => row.testFile.path === rel);
     const hits =
       rel === null
         ? []
-        : rows.filter((row) => row.testFile.path === rel || closures.get(row)?.has(rel) === true);
+        : own.length > 0
+          ? own
+          : rows.filter((row) => closures.get(row)?.has(rel) === true);
     if (hits.length === 0) unmatched.push(rel ?? path);
     for (const row of hits) selected.set(testFileId(row.testFile), row.testFile);
   }
