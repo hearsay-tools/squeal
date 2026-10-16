@@ -21,7 +21,7 @@ Wave 17 W1. hearsay-tools/squeal#1, its first criterion. Before this, a pass tha
   - A resume with nothing queued still runs one pass of the loop, so its writes end the wait.
   - A non-busy stall is unchanged: one note, and it waits for the next batch or request.
 - **The timers (`lifecycle.ts`, `daemon/sliced-writes.ts`).** Four write groups go through `SlicedWrites` with the slice: the heartbeat group (heartbeat, harness check, leaving check), consumer expiry, and prune. Each step waits at most 250 ms.
-  - A step that gives up leaves the rest of its group pending.
+  - A step that gives up leaves its whole group pending, so the heartbeat is written again even when a later step of its group is the one that gave up. Retrying only the rest lost it: in the full suite the heartbeat landed 4.5 s after the lock freed, at the next 5 s tick, because skipped ticks are the retry's.
   - One timer retries every pending group in order, stopping at the first that gives up again, so the timers never stack two slices in one tick.
   - A tick of a pending group is skipped: its retry covers it. A group that ticks while another is pending joins the same retry instead of trying a slice of its own.
   - Any other failure is logged, and the group goes on, as before.
@@ -54,7 +54,11 @@ Wave 17 W1. hearsay-tools/squeal#1, its first criterion. Before this, a pass tha
   - it never lengthens a shorter wait;
   - the episode note.
 - `test/watcher/batch-retry.test.ts`: retry at once, then each delay, until a pass lands; any other error reported; a close during a delay ends the retry.
-- `test/daemon/sliced-writes.test.ts`: the rest of a group retried, coalesced ticks, a second group behind the same retry, one note, other failures logged, `stop`.
+- `test/daemon/sliced-writes.test.ts`: the whole group retried, its heartbeat included, coalesced ticks, a second group behind the same retry, one note, other failures logged, `stop`.
+
+## Constraint for the next worker
+
+- No TypeScript parameter properties in `src/core/store` (and none in the new classes): `test/capacity/crash.test.ts` and other child processes load the sources under Node's type stripping, which rejects them. `BusyWaits` had one and broke that import (fixed in `7fe754bd`).
 
 ## What remains
 
