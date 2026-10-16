@@ -160,4 +160,24 @@ describe("a busy episode's note (001-422)", () => {
     expect(notes).toHaveLength(2);
     expect(notes[1]).toMatch(/busy for 0.3 s .*: 2 files of a tier queued again$/);
   });
+
+  it("leaves out a waiter that another error took over (review 001-432, B1)", () => {
+    let at = 1_000;
+    const notes: string[] = [];
+    const waits = new BusyWaits({ now: () => at, note: (text) => notes.push(text) });
+    waits.waiting("scheduler", "1 file of a tier queued again");
+    waits.waiting("the heartbeat", "the heartbeat");
+    at += 2_000;
+    waits.abandoned("scheduler");
+    expect(notes).toEqual([]);
+    waits.ran("the heartbeat");
+    expect(notes).toEqual([
+      "the store was busy for 2 s (another connection held its write lock); " +
+        "ran once it was free: the heartbeat",
+    ]);
+    waits.waiting("scheduler", "the next tier");
+    waits.abandoned("scheduler");
+    waits.abandoned("scheduler");
+    expect(notes).toHaveLength(1);
+  });
 });

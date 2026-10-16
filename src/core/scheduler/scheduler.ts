@@ -104,6 +104,8 @@ class TierScheduler implements Scheduler {
   readonly #stop = new AbortController();
   /** The pump stopped on an error; idle until the next batch or request. */
   #stalled = false;
+  /** The stall's error was not a busy store's: no busy resume restarts the pump (review 001-432, B1). */
+  #failed = false;
   /** No runner call until an install (`awaitsInstall`, task 001-100). */
   #awaitingInstall = false;
   /** Paths no runner saw change: edits the baseline queues recent (review wave 11, S2; `scan`). */
@@ -122,7 +124,10 @@ class TierScheduler implements Scheduler {
     this.#busy =
       options.busyWaits === undefined
         ? null
-        : new BusyResume(options.busyWaits, () => this.#pump());
+        : new BusyResume(options.busyWaits, () => {
+            // Only a pump a busy store stopped: one a batch restarted, or another error stopped, is not this wait's.
+            if (this.#stalled && !this.#failed) this.#pump();
+          });
     this.#capacity =
       options.capacity === undefined
         ? null
@@ -491,6 +496,7 @@ class TierScheduler implements Scheduler {
       return;
     }
     this.#stalled = false;
+    this.#failed = false;
     this.#asked = false;
     this.#pumping = (async () => {
       try {
@@ -725,16 +731,22 @@ class TierScheduler implements Scheduler {
    * A tier's error: the pump stops with a note until the next batch or
    * request. A busy store's, with `busyWaits`, stops it until `#busy`
    * resumes it, with no note: `waiting` is what its episode's note names.
+   * Any other error wins: a resume armed before it, or by a lane's busy
+   * record after it, starts nothing until a batch or request does.
    */
   #stall(error: unknown, waiting = "the next tier"): void {
     this.#stalled = true;
     // Only a batch or request after the error starts the pump again.
     this.#asked = false;
     if (this.#busy !== null && isBusy(error)) {
-      this.#busy.gaveUp(waiting);
+      // After another error the next batch or request resumes the pump, not a busy wait.
+      if (!this.#failed) this.#busy.gaveUp(waiting);
       this.#notify();
       return;
     }
+    // A resume a busy write armed before this error would run tiers no batch asked for.
+    this.#failed = true;
+    this.#busy?.abandon();
     this.#note(`scheduler stopped running tiers: ${String(error)}`);
     this.options.onError?.(error instanceof Error ? error : new Error(String(error)));
     this.#notify();
