@@ -176,3 +176,152 @@ None.
 ## Inputs for the repair wave
 
 Keep the accepted D7/D8 contract and the setup-listing exclusion. Repair the four blockers without changing fast-tier scheduling or result-key semantics. The critical order is: check an eligible slow tier, validate the async outcome against the live revision/rule under the lock, then publish a per-file honest skip or run. Recheck changed declarations per ref. The CLI's skipped-lane verdict must include the current fast lane even when no fast file needs queueing. Add the prior-result and concurrent-revision cases to the scheduler tests and verify all shared surfaces consume the resulting skip consistently. Process-tree cleanup is a separate, bounded follow-up unless the coordinator folds S1 into that repair.
+
+
+## Re-review
+
+FAIL 1fb4855d5d46b6d6912503465979dd5484f04ce5
+
+One unresolved proven blocker, B1. B2, B3, B4 and S1 are closed. No new should-fix items or nits. Reviewed detached at the pinned `cand/0.1.214` on 2026-10-17, against `origin/main` at `d39572deb7a16723d8da46004174870850eb79cf` (0.1.213). This round covers the prior findings and repair 1's fix scopes, including the explicitly requested residual-header judgment and restart behavior. It does not reopen the setup-listing exclusion or the rest of the original review.
+
+### Verification
+
+Product verification ran on the clean pinned tree. No product file changed. Probe sources, evidence and HOME/XDG directories were under `/tmp/c93-review-probes*`; probe git identity was supplied explicitly. Scheduler fixture copies used the existing git-ignored fixture scratch directory. No probe touched the real HOME. `npm run build` was not run, as directed. The independent full run below is the required reviewer gate, not a Squeal checkpoint.
+
+```text
+npm ci
+added 196 packages, and audited 197 packages in 9s
+found 0 vulnerabilities
+(exit 0)
+
+npm run lint
+Checked 1424 files in 489ms. No fixes applied.
+(exit 0)
+
+npm run typecheck
+tsc --noEmit
+(exit 0)
+
+npm run check:version -- origin/main
+version bump: 0.1.213 -> 0.1.214, ok
+(exit 0)
+```
+
+The install also printed deprecation and install-script approval notices.
+
+Touched tests and the complete `test/slow` directory:
+
+```sh
+npx vitest run --maxWorkers=2 test/slow test/status/slow-tier.test.ts \
+  test/cli/run-all-skipped.test.ts test/cli/run-slow-skipped.test.ts \
+  test/delivery/slow-told.test.ts test/harness/stop-slow-skipped.test.ts \
+  test/policy/slow.test.ts
+```
+
+```text
+Test Files  17 passed (17)
+     Tests  145 passed (145)
+Start at  22:15:02
+Duration  14.21s
+(exit 0)
+```
+
+Independent full run:
+
+```sh
+flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
+```
+
+```text
+Test Files  714 passed | 1 skipped (715)
+     Tests  6054 passed | 10 skipped (6064)
+Start at  22:12:05
+Duration  917.30s
+(exit 0)
+```
+
+The run printed two fixture gitdir-repair diagnostics, cleanup of one process left by an earlier run, and Vitest's experimental type-testing notices. The OpenCode deadline case passed in this independent run. Observed host load ranged from about 15 to 46 on 24 CPUs during verification.
+
+CI run [39065621229](https://github.com/hearsay-tools/squeal/actions/runs/39065621229) completed successfully on the exact pinned SHA: all three Node 22 shards and the Node 24 lint/typecheck/version-sensitive job passed. The Node 24 job also passed build and bundle-drift verification. The nightly full-suite and PR-only version jobs were skipped.
+
+Independent probes, using the real scheduler/adapters and production consumers, with scratch HOME/XDG and one worker:
+
+```sh
+npx vitest run --config /tmp/c93-review-probes/vitest.config.mts \
+  --maxWorkers=1 /tmp/c93-review-probes/review.test.ts
+```
+
+```text
+Test Files  1 passed (1)
+     Tests  11 passed (11)
+Start at  22:18:36
+Duration  22.29s
+(exit 0)
+```
+
+Those probes verify the repaired behavior and explicitly record the residual current states; they do not assert that D8 is fully met. Two further probes assert D8 itself, using the same scheduler fixture and default baseline on restart:
+
+```sh
+npx vitest run --config /tmp/c93-review-probes/vitest.config.mts \
+  --maxWorkers=1 /tmp/c93-review-probes/residual.test.ts
+```
+
+```text
+D8 residual: skipped files must not remain current in main header
+AssertionError: expected 5 to be 3
+
+D8 residual: restart must not publish a completed full suite over persisted skips
+AssertionError: expected true to be false
+
+Test Files  1 failed (1)
+     Tests  2 failed (2)
+Duration  4.39s
+(exit 1)
+```
+
+These are behavioral failures on the pinned candidate, not import/setup failures. The fixtures, runners and stores closed during teardown; no probe remains in the committed tree.
+
+The background Squeal baseline separately reported the known `test/harness/opencode-dispose.test.ts` deadline case: kill at +2030 ms against its +2000 ms idle deadline (row 008-38). Its same-input rerun also missed the deadline (+2168 ms). Background Squeal additionally reported the unchanged negative controls at `test/runners/node-test/run-reads-fidelity.test.ts:116` and `test/runners/vitest/observe-fidelity.test.ts:119`, both already named in the first review. These are separate from the independent gate and add no proven finding against the repair.
+
+### B1 remains blocking: the same skipped files still read current, and restart can certify a full suite [proven]
+
+**Where:** `src/core/scheduler/slow-skip.ts:99` through `:105`, `src/core/state/slow.ts:109` through `:113`, `src/core/state/header.ts:75` through `:82`, and `src/core/scheduler/bootstrap.ts:139` through `:177`. The key-only check classifier remains at `src/core/state/derive.ts:54` through `:55`; `shown-result.ts` preserves the corresponding result lookup.
+
+The repair correctly makes the slow-tier line and its skip-specific readers say not run. It does not make the stored known states historical. `#skip` dequeues and publishes a separate meta row; the special classifier in `slow.ts` consults it, while the main header still counts the unchanged `current` known states. This is the residual named by the worker, now reproduced independently.
+
+**Reproduction:** in the basic real-scheduler fixture, mark strings and upper slow with an `exists: ["ready"]` precondition. Create `ready` and let the baseline run. Remove `ready`, apply a revision for an unrelated file, then request a forced full checkpoint and wait for idle. Repeat with upper failing before the skip. Neither slow key changes, and both forced checkpoints end abandoned without rerunning the two slow files.
+
+**Observed in both cases:** four slow check states, two file checks and two tests, still have `validity: "current"`. In the failing case one of those tests still has `outcome: "fail", validity: "current"`. The production header prints:
+
+```text
+Revision 1: 11 current (6 tests, 5 test files loaded), 0 pending, 0 stale, 0 unknown.
+Slow tier: 2 test files; 2 not run at revision 1, skipped: ready matches no file (slow.precondition.exists).
+```
+
+Commit decoration and the trailing command guidance are omitted above. A direct contract assertion expecting only the three fast file checks to count current fails: `expected 5 to be 3`. This is not merely a disagreement between test-level and file-level units: the main header explicitly counts the skipped files' own file checks as current.
+
+**Restart consequence:** after that forced skip, close the scheduler, runner and SQLite store; reopen the store and create/start a new scheduler with the same policy and missing `ready`. The meta row survives, is adopted, and the slow-tier line still says both files are skipped. But bootstrap's lookup finds their old matching results, creates an empty baseline checkpoint, and completes it. The production header now says:
+
+```text
+Revision 2: 11 current (6 tests, 5 test files loaded), 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 2.
+Slow tier: 2 test files; 2 not run at revision 2, skipped: ready matches no file (slow.precondition.exists).
+```
+
+The assertion `fullSuite.atCurrentRevision === false` fails with `expected true to be false`. This reproduces with default baseline policy as well as `lookup-only`. It is the same unresolved B1 boundary, now exposed by the persisted-skip restart path explicitly assigned to this round.
+
+**Judgment:** blocking under unchanged D8: “a skip never reads as a pass, a failure or a current file,” and a checkpoint with a skipped slow lane “is not a full suite.” The last status amendment expressly keeps D8 as written. The repair brief's ownership exclusion for `derive.ts` and `shown-result.ts` constrained the worker; it did not waive that contract. A correct slow-tier line does not make the contradictory main header or completed checkpoint honest.
+
+**Remaining repair scope:** make the per-file skip constrain the shared effective state and header/status/failure readers, while keeping the result as history and preserving result-key semantics. Carry the same constraint through bootstrap/checkpoint completion so lookup hits cannot certify skipped files. Keep the repaired slow-tier/Stop behavior and forced requeue on retry. Add assertions over main-header file counts, prior failing state validity and full-suite status across close/reopen, followed by a met checkpoint that restores current state and completes normally.
+
+### Findings closed and behavior retained
+
+- **B1's slow-specific portion [proven fixed]:** forced skip after prior pass and prior fail gives `current: 0, pending: 0, notRun: 2`, the reason, exit 3 for the slow wait, and an abandoned checkpoint. Creating `ready` with no revision and requesting a normal full checkpoint runs both files and clears the skip; the checkpoint completes. The candidate also covers the revision-triggered and explicit `run --slow` lifts. Stop's skipped-tier cases and both harnesses pass, including a stored prior pass.
+- **B2 [proven fixed]:** a command latches its initial missing-ready result. A revision or replacement policy applied before releasing it causes that old outcome to be dropped. The two slow files run under the live rule; neither retains the old skip. The newer requested checkpoint completes.
+- **B3 [proven fixed]:** a real scheduler has an already-current fast failure outside a non-forced checkpoint's requested files. Only strings and upper are requested. `skippedLaneVerdict` includes the fast failure and returns 1; the identical clean control returns 3 and says no known failures. Fast/slow-only lane boundaries remain covered by the touched tests.
+- **B4 [proven fixed]:** with real Vitest and node:test adapters, changing only node:test from the global unmet rule to its own met rule runs it exactly once while the two Vitest files remain skipped. Removing an unmet node:test override under a met global rule runs it once and leaves all three files current.
+- **S1 [proven fixed]:** a node wrapper spawns an interval-running child and records its PID. Timeout and abort-on-close both stop the child from executing, checked through `/proc` with the production liveness helper. The candidate test also covers cleanup when the command itself exits successfully.
+- **Skip persistence [proven, with the B1 checkpoint limitation above]:** `slow-skips:<worktree>` contains both refs and the original rule/reason, survives closing/reopening the SQLite store, is adopted by a fresh scheduler, stays through an unrelated revision, and is deleted after a relevant revision makes the condition met and both files run. It does not depend on the old activity row. The prefix is registered in `WORKTREE_META_ROWS`.
+
+### Inputs for the coordinator
+
+B1 remains the only blocker. The async-check, fast-lane verdict, per-ref policy requeue and process-group repairs need no redesign from this review. Keep the existing D7/D8 behavior and row 004-68's exclusion. This is the second review verdict; the process's disposition of a second FAIL belongs to the coordinator and the human.
