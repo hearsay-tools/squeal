@@ -11,6 +11,7 @@ import {
 } from "../../core/slow/index.js";
 import {
   checkIdentity,
+  sameFingerprint,
   slowFilesNotCurrent,
   testFileOf,
   toKnownFailure,
@@ -179,7 +180,7 @@ function untold(
   const told = new Map(views().map((v) => [checkIdentity(v.check), v]));
   return failed.filter((f) => {
     const view = told.get(checkIdentity(f.check));
-    return view?.outcome !== "fail" || (view.fingerprint ?? "") !== f.fingerprint;
+    return view?.outcome !== "fail" || !sameFingerprint(view.fingerprint, f.fingerprint);
   });
 }
 
