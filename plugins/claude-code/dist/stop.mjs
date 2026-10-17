@@ -690,7 +690,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.212";
+  if (true) return "0.1.213";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -776,24 +776,51 @@ var VOLATILE = [
   [/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g, "<time>"],
   [/\b\d+(?:\.\d+)?\s?ms\b/g, "<n>ms"],
   [/\b0x[0-9a-f]+\b/gi, "0x<addr>"],
+  // An IPv4 address, `localhost`, a bracketed IPv6 address or a URL's host; never `path:line:col`.
+  [
+    /(?<![\w.-])((?:\d{1,3}\.){3}\d{1,3}|localhost|\[[0-9a-f:.]+\]|(?<=:\/\/)[\w.-]+):\d{1,5}\b(?!:\d)/gi,
+    "$1:<port>"
+  ],
+  [/\b(port\s+)\d{1,5}\b/gi, "$1<port>"],
   // A cache path names a tool's scratch space; its segments are hashes and run ids.
   [/(?:[^\s'"`(]*\/)?node_modules\/\.cache\/[^\s'"`):,]*/g, "<cache>"],
-  ...tempPrefixes().map((prefix) => [
-    new RegExp(`(?<![\\w.-])${escapeRegExp(prefix)}/[^\\s/'"\`):,]+`, "g"),
-    "<tmp>"
-  ]),
+  [() => tempRoots().pattern, maskTemp],
   [/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "<uuid>"],
   // At least one letter, so a long decimal value in an assertion is kept.
   [/\b(?=[0-9a-f]*[a-f])[0-9a-f]{16,}\b/gi, "<hex>"]
 ];
-function tempPrefixes() {
+var SQUEAL_SCRATCH = /^squeal-\d+\/tmp\/[^/]+(?=\/)/;
+var MASKED_SQUEAL_SCRATCH = /^<tmp>\/tmp\/(?:<hex>|\d{16})(?=\/)/;
+function maskTemp(path) {
+  const root = deepestRoot(path);
+  if (root === null) return path;
+  const [, ...tail] = path.slice(root.length + 1).split("/");
+  return ["<tmp>", ...tail].join("/");
+}
+function deepestRoot(path) {
+  if (path.startsWith("<tmp>/")) return MASKED_SQUEAL_SCRATCH.exec(path)?.[0] ?? null;
+  const held = tempRoots().roots.filter((r) => path.startsWith(`${r}/`)).map((r) => {
+    const scratch = SQUEAL_SCRATCH.exec(path.slice(r.length + 1));
+    return scratch === null ? r : `${r}/${scratch[0]}`;
+  });
+  return held.reduce((a, b) => a === null || b.length > a.length ? b : a, null);
+}
+var cachedRoots = null;
+function tempRoots() {
   const dir = tmpdir().replace(/\/+$/, "");
+  if (cachedRoots?.dir === dir) return cachedRoots;
   let real = dir;
   try {
     real = realpathSync2(dir);
   } catch {
   }
-  return [.../* @__PURE__ */ new Set([dir, real, "/tmp"])].filter((p) => p !== "").sort((a, b) => b.length - a.length);
+  const roots = [.../* @__PURE__ */ new Set([dir, real, "/tmp"])].filter((p) => p !== "").sort((a, b) => b.length - a.length);
+  const pattern = new RegExp(
+    `(?<![\\w.-])(?:<tmp>|${roots.map(escapeRegExp).join("|")})(?:/[^\\s/'"\`):,]+)+`,
+    "g"
+  );
+  cachedRoots = { dir, roots, pattern };
+  return cachedRoots;
 }
 function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -803,10 +830,10 @@ function firstLine(text) {
   return (line ?? "").trim().replace(/\s+/g, " ");
 }
 function normalize(line) {
-  return VOLATILE.reduce(
-    (text, [pattern, replacement2]) => text.replace(pattern, replacement2),
-    line
-  );
+  return VOLATILE.reduce((text, [rule, replacement2]) => {
+    const pattern = typeof rule === "function" ? rule() : rule;
+    return typeof replacement2 === "string" ? text.replace(pattern, replacement2) : text.replace(pattern, replacement2);
+  }, line);
 }
 function where(location2) {
   return location2 === null ? "?" : `${location2.path}:${location2.line}:${location2.column}`;
@@ -832,6 +859,17 @@ function describeFailure(errors, fallback) {
       recorder
     )
   };
+}
+function renormalizeFingerprint(fingerprint) {
+  const at2 = fingerprint.lastIndexOf(" @ ");
+  if (at2 < 0) return fingerprint;
+  let text = fingerprint.slice(0, at2);
+  for (let next = normalize(text); next !== text; next = normalize(text)) text = next;
+  return `${text}${fingerprint.slice(at2)}`;
+}
+function sameFingerprint(a, b) {
+  if (a === b) return true;
+  return a !== null && b !== null && renormalizeFingerprint(a) === renormalizeFingerprint(b);
 }
 function withRecorder(summary, recorder) {
   if (recorder === void 0) return summary;
@@ -890,13 +928,17 @@ function baselineMetaKey(worktreeId) {
 function entry(check, fingerprint) {
   return `${checkIdentity(check)}\0${fingerprint ?? ""}`;
 }
+function current(e) {
+  const at2 = e.lastIndexOf("\0");
+  return `${e.slice(0, at2 + 1)}${renormalizeFingerprint(e.slice(at2 + 1))}`;
+}
 function read(store, worktreeId) {
   const raw = store.meta.get(baselineMetaKey(worktreeId));
   return raw === null ? null : JSON.parse(raw);
 }
 function baselineFindings(store, worktreeId) {
-  const entries = new Set(read(store, worktreeId)?.entries);
-  return (check, fingerprint) => entries.has(entry(check, fingerprint));
+  const entries = new Set(read(store, worktreeId)?.entries.map(current));
+  return (check, fingerprint) => entries.has(current(entry(check, fingerprint)));
 }
 
 // src/core/state/check-name.ts
@@ -952,10 +994,10 @@ function readRevisionCommit(store, worktreeId, latest = store.revisions.latest(w
     return moved.head === null ? void 0 : { head: moved.head, sinceHead: 0, dirty: moved.dirty };
   }
   if (latest === null || latest.head === null) return void 0;
-  const current = moved !== null && moved.revision >= number;
+  const current2 = moved !== null && moved.revision >= number;
   const other = store.revisions.lastAtOtherHead(worktreeId, latest.head);
   const since = moved !== null && moved.head === latest.head && moved.revision >= (other ?? 0) ? moved.revision : other === null ? 0 : other + 1;
-  const dirty = current ? moved.dirty : latest.dirty;
+  const dirty = current2 ? moved.dirty : latest.dirty;
   return { head: latest.head, sinceHead: Math.max(0, number - since), dirty };
 }
 function revisionText(revision, commit) {
@@ -1452,7 +1494,7 @@ function producingResult(worktreeId, state, producer, failureKey, results) {
   const origin = state.origin;
   if (producer === void 0 || failureKey === void 0 || origin === null) return null;
   return results.find(
-    (r) => r.provenance.runId === producer.runId && r.provenance.recordedAt === producer.recordedAt && r.key === failureKey && r.outcome === state.outcome && fingerprintOf(r) === state.fingerprint && r.provenance.commit === state.commit && (origin.kind === "inherited" ? r.provenance.worktreeId === origin.worktreeId : r.provenance.worktreeId === worktreeId && r.provenance.revision === state.observedAt)
+    (r) => r.provenance.runId === producer.runId && r.provenance.recordedAt === producer.recordedAt && r.key === failureKey && r.outcome === state.outcome && sameFingerprint(fingerprintOf(r), state.fingerprint) && r.provenance.commit === state.commit && (origin.kind === "inherited" ? r.provenance.worktreeId === origin.worktreeId : r.provenance.worktreeId === worktreeId && r.provenance.revision === state.observedAt)
   ) ?? null;
 }
 
@@ -1462,7 +1504,8 @@ function transitionKind(from, to) {
   switch (to.outcome) {
     case "fail":
       if (before === "pass") return "pass-to-fail";
-      if (before === "fail") return from?.fingerprint === to.fingerprint ? null : "fail-changed";
+      if (before === "fail")
+        return sameFingerprint(from?.fingerprint ?? null, to.fingerprint) ? null : "fail-changed";
       return "first-seen-fail";
     case "pass":
       return before === "fail" ? "fail-to-pass" : null;
@@ -1689,11 +1732,11 @@ function isRecord2(value) {
 
 // src/core/retry/pending.ts
 function pendingRetriesOf(store, keys, load = hostLoad) {
-  const current = new Map(keys.map((k) => [testFileId(k.testFile), k.key]));
+  const current2 = new Map(keys.map((k) => [testFileId(k.testFile), k.key]));
   const byFile2 = /* @__PURE__ */ new Map();
   for (const r of readRetries(store)) {
     const id = testFileId(r.testFile);
-    if (r.end !== null || current.get(id) !== r.key) continue;
+    if (r.end !== null || current2.get(id) !== r.key) continue;
     byFile2.set(id, [...byFile2.get(id) ?? [], r]);
   }
   if (byFile2.size === 0) return {};
@@ -3558,15 +3601,15 @@ function back(parked, revision, scanned) {
 }
 function park(store, consumer, at2, { said, uncovered } = { said: false, uncovered: [] }) {
   const key = registeredMetaKey(consumer.worktreeId);
-  const current = registration(store, consumer);
+  const current2 = registration(store, consumer);
   if (readSlot(store, key, consumer) !== void 0) writeSlot(store, key, consumer, null);
-  if (current === null) return;
+  if (current2 === null) return;
   const leftAt = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
   const told = {
     ...said ? { said: true } : {},
     ...uncovered.length > 0 ? { uncovered } : {}
   };
-  writeParked(store, consumer, at2, { ...current, leftAt, leftTime: at2, ...told });
+  writeParked(store, consumer, at2, { ...current2, leftAt, leftTime: at2, ...told });
 }
 function unpark(store, consumer, at2) {
   const value = readAll(store, parkedMetaKey(consumer.worktreeId))[slot(consumer)];
@@ -3724,7 +3767,7 @@ function nodeFailing(store, worktreeId, failing) {
 // src/core/delivery/delta.ts
 function beforeFailing(history, state) {
   const last = history.at(-1);
-  if (state.outcome !== "fail" || last?.to !== "fail" || last.toFingerprint !== state.fingerprint) {
+  if (state.outcome !== "fail" || last?.to !== "fail" || !sameFingerprint(last.toFingerprint, state.fingerprint)) {
     return null;
   }
   const at2 = history.findLastIndex((t) => t.kind !== "fail-changed");
@@ -4768,9 +4811,9 @@ function endTurn(store, consumer, states, undelivered, handoffAt = null) {
   for (const k of keys) if (k.key !== null && k.pending !== null) files2.add(testFileId(k.testFile));
   for (const e of undelivered) files2.add(testFileKeyOf(e.check));
   const header = readHeader(store, consumer.worktreeId, states, keys);
-  const current = currentKeys(keys);
+  const current2 = currentKeys(keys);
   const testFiles = [...files2].sort();
-  const owed = Object.fromEntries(testFiles.map((f) => [f, current.get(f) ?? null]));
+  const owed = Object.fromEntries(testFiles.map((f) => [f, current2.get(f) ?? null]));
   const newTestFiles = header.runnerPartPending === true;
   const { revision } = header;
   writeTurn(store, consumer, {
@@ -4813,11 +4856,11 @@ function waitedFor(state, entry3, keys) {
 }
 function trimmed(state, states, keys) {
   if (state.turn !== "idle" || state.testFiles.length === 0) return null;
-  const current = currentKeys(keys);
+  const current2 = currentKeys(keys);
   const pending = /* @__PURE__ */ new Set();
   for (const s of states) if (s.validity === "pending") pending.add(testFileKeyOf(s.check));
   for (const k of keys) if (k.pending !== null) pending.add(testFileId(k.testFile));
-  const owed = state.testFiles.filter((f) => pending.has(f) && atKey(state, f, current));
+  const owed = state.testFiles.filter((f) => pending.has(f) && atKey(state, f, current2));
   if (owed.length === state.testFiles.length) return null;
   const { keys: recorded, ...rest } = state;
   const kept = Object.entries(recorded ?? {}).filter(([f]) => owed.includes(f));
@@ -4925,9 +4968,9 @@ function createDelivery(store, options) {
       const turn = readTurn(store, consumer);
       if (turn.turn !== "idle") return "silent";
       keys ??= store.testFileKeys.list(consumer.worktreeId);
-      const current = currentKeys(keys);
+      const current2 = currentKeys(keys);
       return {
-        only: (entry3) => waitedFor(turn, entry3, current),
+        only: (entry3) => waitedFor(turn, entry3, current2),
         trim: trimmed(turn, states, keys)
       };
     };
@@ -5800,10 +5843,10 @@ function list(names) {
   const more = names.length - shown.length;
   return more > 0 ? `${shown.join(", ")} and ${more} more` : shown.join(", ");
 }
-function knownFailuresReason(revision, current, earlier2 = []) {
-  const verb = current.length === 1 ? "exists" : "exist";
+function knownFailuresReason(revision, current2, earlier2 = []) {
+  const verb = current2.length === 1 ? "exists" : "exist";
   const sentences = [
-    `Squeal policy stop.blockOnKnownFailures is on and ${plural(current.length, "known failure")} ${verb} at revision ${revision}: ${list(current.map((f) => formatCheck(f.check)))}.`
+    `Squeal policy stop.blockOnKnownFailures is on and ${plural(current2.length, "known failure")} ${verb} at revision ${revision}: ${list(current2.map((f) => formatCheck(f.check)))}.`
   ];
   const named = (fs) => list(fs.map((f) => `${formatCheck(f.check)} (failed at revision ${f.observedAt})`));
   const pending = earlier2.filter((f) => f.validity === "pending");
@@ -5915,11 +5958,11 @@ function decide(context, policy, isSlow, now, {
     const keys = store.testFileKeys.list(consumer.worktreeId);
     const header = readLiveHeader(store, consumer.worktreeId, now, states, null, keys);
     const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
-    const current = failures.filter((f) => f.validity === "current");
+    const current2 = failures.filter((f) => f.validity === "current");
     const reasons = [];
     if (stopHookActive) return { header, failures, reasons };
-    if (policy.blockOnKnownFailures && current.length > 0) {
-      reasons.push(knownFailuresReason(header.revision, current, earlier(failures)));
+    if (policy.blockOnKnownFailures && current2.length > 0) {
+      reasons.push(knownFailuresReason(header.revision, current2, earlier(failures)));
     }
     if (policy.requireFullSuite && !header.fullSuite.atCurrentRevision) {
       reasons.push(fullSuiteReason(header, command));
