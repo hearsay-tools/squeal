@@ -2,6 +2,7 @@
 
 import type { Intake } from "./apply-issue-intake.cjs";
 import type { Candidate } from "./issue-intake-candidates.cjs";
+import type { Transport } from "./jev-intake-client.cjs";
 
 export interface ChoiceQuestion {
   type: "choice";
@@ -36,14 +37,6 @@ export interface IssueText {
   title?: string | null;
   body?: string | null;
 }
-type Fetch = (url: string, init: RequestInit) => Promise<unknown>;
-interface Transport {
-  fetchImpl?: Fetch;
-  sleep?: (ms: number) => Promise<void>;
-  maxAttempts?: number;
-  timeoutMs?: number;
-}
-
 export function buildRequest(input: {
   issue: IssueText;
   candidates: Candidate[];
@@ -66,9 +59,6 @@ export function mapAnswers(input: {
   recheck?: { request: JevRequest; response: unknown } | null;
   thresholds?: Thresholds;
 }): Intake;
-export function callJev(
-  input: { request: JevRequest; apiKey: string | undefined } & Transport,
-): Promise<JevResponse>;
 export function triage(
   input: {
     issue: IssueText;
@@ -88,4 +78,3 @@ export const AREA_CRITERIA: Readonly<Record<string, string>>;
 export const TYPE_CRITERIA: Readonly<Record<string, string>>;
 export const THRESHOLDS: Readonly<Thresholds>;
 export const DEFAULT_MODEL: string;
-export const ENDPOINT: string;
