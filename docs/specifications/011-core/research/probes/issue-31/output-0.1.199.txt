@@ -1,0 +1,61 @@
+
+== A: edited file has a known short duration (20 s)
+ 1. direct       20000 ms  packages/cezar/src/workflows/worker-wait-durability.test.ts
+ 2. direct      540000 ms  packages/cezar/test/harness-parity.test.ts
+ 3. transitive  480000 ms  packages/cezar/test/monitoring-turn.test.ts
+  tier 1: worker-wait-durability.test.ts  (~20s)  <- edited test
+  edited test starts after ~0s of earlier tiers (serial lane, last-known durations)
+
+== B: edited file has no stored duration (new file, or no result in the store)
+ 1. direct      540000 ms  packages/cezar/test/harness-parity.test.ts
+ 2. direct     unknown ms  packages/cezar/src/workflows/worker-wait-durability.test.ts
+ 3. transitive  480000 ms  packages/cezar/test/monitoring-turn.test.ts
+  tier 1: harness-parity.test.ts, monitoring-turn.test.ts  (~540s)
+  tier 2: worker-wait-durability.test.ts  (~0s)  <- edited test
+  edited test starts after ~540s of earlier tiers (serial lane, last-known durations)
+
+== C: edited file is itself long (600 s, longer than harness-parity)
+ 1. direct      540000 ms  packages/cezar/test/harness-parity.test.ts
+ 2. direct      600000 ms  packages/cezar/src/workflows/worker-wait-durability.test.ts
+ 3. transitive  480000 ms  packages/cezar/test/monitoring-turn.test.ts
+  tier 1: harness-parity.test.ts, worker-wait-durability.test.ts, monitoring-turn.test.ts  (~600s)  <- edited test
+  edited test starts after ~0s of earlier tiers (serial lane, last-known durations)
+
+== D: A, plus 12 other direct importers of run.ts, 2-46 s
+ 1. direct        2000 ms  packages/cezar/src/runner/r0.test.ts
+ 2. direct        6000 ms  packages/cezar/src/runner/r1.test.ts
+ 3. direct       10000 ms  packages/cezar/src/runner/r2.test.ts
+ 4. direct       14000 ms  packages/cezar/src/runner/r3.test.ts
+ 5. direct       18000 ms  packages/cezar/src/runner/r4.test.ts
+ 6. direct       20000 ms  packages/cezar/src/workflows/worker-wait-durability.test.ts
+ 7. direct       22000 ms  packages/cezar/src/runner/r5.test.ts
+ 8. direct       26000 ms  packages/cezar/src/runner/r6.test.ts
+ 9. direct       30000 ms  packages/cezar/src/runner/r7.test.ts
+10. direct       34000 ms  packages/cezar/src/runner/r8.test.ts
+11. direct       38000 ms  packages/cezar/src/runner/r9.test.ts
+12. direct       42000 ms  packages/cezar/src/runner/r10.test.ts
+13. direct       46000 ms  packages/cezar/src/runner/r11.test.ts
+14. direct      540000 ms  packages/cezar/test/harness-parity.test.ts
+15. transitive  480000 ms  packages/cezar/test/monitoring-turn.test.ts
+  tier 1: r0.test.ts, r1.test.ts  (~6s)
+  tier 2: r2.test.ts, r3.test.ts, r4.test.ts, worker-wait-durability.test.ts  (~20s)  <- edited test
+  edited test starts after ~6s of earlier tiers (serial lane, last-known durations)
+
+== E: B, while harness-parity's tier is already running
+ 1. direct     unknown ms  packages/cezar/src/workflows/worker-wait-durability.test.ts
+ 2. transitive  480000 ms  packages/cezar/test/monitoring-turn.test.ts
+  tier 1: worker-wait-durability.test.ts  (~0s)  <- edited test
+  edited test starts after ~0s of earlier tiers (serial lane, last-known durations)
+
+== F: E, but monitoring-turn also imports run.ts directly (the issue's timeline)
+ 1. direct      480000 ms  packages/cezar/test/monitoring-turn.test.ts
+ 2. direct     unknown ms  packages/cezar/src/workflows/worker-wait-durability.test.ts
+  tier 1: monitoring-turn.test.ts  (~480s)
+  tier 2: worker-wait-durability.test.ts  (~0s)  <- edited test
+  edited test starts after ~480s of earlier tiers (serial lane, last-known durations)
+
+== G: F, but the edited file has a known 20 s duration
+ 1. direct       20000 ms  packages/cezar/src/workflows/worker-wait-durability.test.ts
+ 2. direct      480000 ms  packages/cezar/test/monitoring-turn.test.ts
+  tier 1: worker-wait-durability.test.ts  (~20s)  <- edited test
+  edited test starts after ~0s of earlier tiers (serial lane, last-known durations)
