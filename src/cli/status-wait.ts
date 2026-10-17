@@ -7,7 +7,7 @@ import {
   movesSeq,
   movesTrusted,
 } from "../core/scheduler/rekeyed-moves.js";
-import { isPending } from "../core/state/index.js";
+import { isPending, skippedReason } from "../core/state/index.js";
 import {
   buildSnapshot,
   formatStatus,
@@ -411,10 +411,12 @@ export function waitConsumer(env: Readonly<Record<string, string | undefined>>):
  * Task 004-66 (issue 12): `run --slow --wait`'s code once its wait ended, 3
  * when the slow files its request queued have no verdict, since no daemon
  * will run them or the deadline passed first, as a named wait's (spec 005
- * D1); else 0.
+ * D1), or its slow tier was skipped (004-65); else 0.
  */
 export function slowWaitCode(wait: Extract<StatusWait, { result: StatusSnapshot }>): 0 | 3 {
   if (wait.outcome === "no-daemon") return 3;
+  // A skipped slow tier has no verdict, never a pass (004 D8 as amended 2026-10-17, task 004-65).
+  if (skippedReason(wait.result.slowTier) !== null) return 3;
   return wait.outcome === "timeout" && (wait.slow?.pending.length ?? 0) > 0 ? 3 : 0;
 }
 
