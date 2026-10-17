@@ -24,6 +24,7 @@ import {
 import { describeFailure } from "./fingerprint.js";
 import { failureKeysOnce, heldFailure } from "./inherited.js";
 import { recordFailureProducers } from "./producers.js";
+import { readSlowSkips, skippedSlowIds } from "./slow-skipped.js";
 import { transitionKind } from "./transitions.js";
 
 export interface StateSinkOptions {
@@ -42,12 +43,15 @@ function failureKeys(results: Iterable<ResultRecord>): ReadonlyMap<string, Check
  * The store-backed `StateSink` (spec 001 D6). Every method runs in one store
  * transaction: known states, transitions and baseline findings are written
  * together or not at all, with the key each failing state's result was
- * stored under (spec 004 D8, review wave 2.5 B1).
+ * stored under (spec 004 D8, review wave 2.5 B1). A skipped slow file's
+ * checks are classified as the store's skips stand in the same transaction
+ * (review wave-8.1 B1), so the skips are written before the commit they
+ * should govern.
  */
 export function createStateSink(store: Store, options: StateSinkOptions = {}): StateSink {
   const now = options.now ?? Date.now;
 
-  /** Previous states, keys by test file, and a writer that records transitions. */
+  /** Previous states, keys by test file, skipped slow files, and a writer that records transitions. */
   function begin(worktreeId: WorktreeId) {
     const previous = new Map(
       store.knownStates.list(worktreeId).map((s) => [checkIdentity(s.check), s]),
@@ -59,6 +63,9 @@ export function createStateSink(store: Store, options: StateSinkOptions = {}): S
       keys.get(testFileKeyOf(state.check));
     const prior = (state: Pick<KnownState, "check">) =>
       previous.get(checkIdentity(state.check)) ?? null;
+    const skippedIds = skippedSlowIds(readSlowSkips(store, worktreeId));
+    const skipped = (state: Pick<KnownState, "check">) =>
+      skippedIds.has(testFileKeyOf(state.check));
 
     const commit = (
       revision: RevisionNumber,
@@ -92,15 +99,15 @@ export function createStateSink(store: Store, options: StateSinkOptions = {}): S
       return recorded;
     };
 
-    return { previous, keys, keyOf, prior, commit };
+    return { previous, keys, keyOf, prior, skipped, commit };
   }
 
   return {
     applyResults: (worktreeId, revision, results, provenance) =>
       store.transaction(() => {
-        const { keyOf, prior, commit } = begin(worktreeId);
+        const { keyOf, prior, skipped, commit } = begin(worktreeId);
         const next = results.map((r) =>
-          stateFromResult(worktreeId, revision, r, keyOf(r), prior(r)),
+          stateFromResult(worktreeId, revision, r, keyOf(r), prior(r), skipped(r)),
         );
         recordFailureKeys(store, worktreeId, failureKeys(results));
         recordFailureProducers(store, worktreeId, results);
@@ -119,7 +126,7 @@ export function createStateSink(store: Store, options: StateSinkOptions = {}): S
 
     refresh: (worktreeId, revision, provenance, testFiles) =>
       store.transaction(() => {
-        const { previous, keys, keyOf, prior, commit } = begin(worktreeId);
+        const { previous, keys, keyOf, prior, skipped, commit } = begin(worktreeId);
         const only = testFiles === undefined ? null : new Set(testFiles.map(testFileId));
         const included = (file: string) => only === null || only.has(file);
         const at = now();
@@ -135,7 +142,7 @@ export function createStateSink(store: Store, options: StateSinkOptions = {}): S
             hits.push(r);
             next.set(
               checkIdentity(r.check),
-              stateFromResult(worktreeId, revision, r, key, prior(r)),
+              stateFromResult(worktreeId, revision, r, key, prior(r), skipped(r)),
             );
           }
         }
