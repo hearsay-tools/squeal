@@ -166,3 +166,127 @@ The new C5 sentence promises to rewrite "every stored fingerprint"; the status a
 Repair B1/B2 together in the fingerprint rules and tests, with an explicit decision about how a later segment is recognized as scratch. Preserve host identity, meaningful named tails, source locations and non-temp paths. B3 needs a writer-aware migration contract, with a deterministic old-write/replacement regression in addition to the first-start test. S1 should be covered when changing that migration boundary. Document N1's already accepted exception.
 
 Keep `rewriteFingerprints` before state derivation and keep its rows/marker atomic. Any rules repair must advance `FINGERPRINT_RULES` as its contract requires; re-check the guarded-source pin, version and committed bundles in the coordinator's integration tree. Re-review the repaired candidate and its new regression cases before landing.
+
+## Re-review
+
+FAIL 7b96b921642699855458007ec4d2bbd5cd043ff7 — two proven blockers in B3's repair scope; no new should-fix or nits.
+
+One bounded re-review on 2026-10-17, detached at the requested SHA after fetching `cand/0.1.212`. The force-pushed branch's earlier candidates were not used. The range from `origin/main` is the requested 13 commits. Read the prior B1/B2/B3/S1/N1 findings, repair contract in `tasks/wave-1.md`, Repair 1 notes, amended C5 and the last status amendment. No product changes are proposed or committed by this review.
+
+### Verification output
+
+The following checks ran on the pinned candidate with a clean tree. Node `v24.21.0`. `origin/main` for the version check was `f74ccc4a1d68f210114c325593af8ff4cb6a6ec0`.
+
+```text
+npm ci — exit 0
+added 196 packages, and audited 197 packages in 6s
+found 0 vulnerabilities
+
+npm run lint — exit 0
+Checked 1408 files in 458ms. No fixes applied.
+
+npm run typecheck — exit 0
+> tsc --noEmit
+
+npm run check:version -- origin/main — exit 0
+version bump: 0.1.211 -> 0.1.212, ok
+
+npx vitest run test/state test/delivery test/store test/integration/fingerprint-two-worktrees.test.ts test/keys/key-format.test.ts --maxWorkers=4
+Test Files  50 passed (50)
+     Tests  526 passed (526)
+  Duration  10.87s
+exit 0
+```
+
+The selection includes all three changed test files, the callers' state/delivery/store suites and the guarded-source pin. This is an independent run required by this review, not a Squeal checkpoint. `npm run build` was omitted as instructed. An independent full run was not taken this round; the coordinator's 701-file, 5,983-pass, 9-skip run remains coordinator evidence. CI `39052181753` has the exact pinned SHA but was still `in_progress` when checked, so it is not recorded as a pass.
+
+Copied the candidate's `fingerprint-volatile.test.ts` and `fingerprint-upgrade.test.ts` into an archive of **09956c8f**, with the installed dependencies linked. With a throwaway HOME and `TMPDIR=/tmp`:
+
+```text
+node <candidate>/node_modules/vitest/vitest.mjs run test/state/fingerprint-volatile.test.ts test/state/fingerprint-upgrade.test.ts --maxWorkers=4
+Test Files  2 failed (2)
+     Tests  12 failed | 12 passed (24)
+  Duration  786ms
+exit 1
+```
+
+Ten failures are behavioral assertions: B1 names collapse, B2 lowercase allocations differ, another scratch root is not recognized, stored/fresh states produce `fail-changed`, S1's stored name disagrees and the baseline label is lost. Two failures are `sameFingerprint is not a function`. Thus the notes' twelve-failure statement is accurate, with that distinction; this is not twelve behavioral regressions.
+
+Throwaway source-import/public-store/public-hook probes passed their five investigative cases (1.34 s). Those cases assert the repaired exact pairs and ordinary B3 behavior and record the counterexamples below, rather than asserting that the counterexamples should pass. Probes imported the actual pre-011-14 fingerprint/transition source from `origin/main`; old forms were not guessed by hand except for the hook's consumer-view fixture. Probes and baseline runs used an explicit throwaway HOME throughout. The temporary test was removed, and the 50-file verification above was repeated on the clean candidate afterward.
+
+Squeal's separate background baseline reported the same recorder-fidelity failures at `test/runners/node-test/run-reads-fidelity.test.ts:116` and `test/runners/vitest/observe-fidelity.test.ts:119` that the first review recorded. `why` was read for both; its history includes these failures on earlier commits/worktrees. Their source files are unchanged by this row. These reports are not substituted for the independent run and do not establish a new blocker against this repair.
+
+### Previously reported cases
+
+- **B1 closed for its exact pairs:** `release-v12345` versus `release-v23456` and `my-MODULE` versus `my-PLUGIN` now remain distinct. Deeper names survive the fresh-path rule.
+- **B2 closed for its exact pairs:** `cez-installed-workers-abcdef` versus `-ghijkl`, and `-byytfc` versus `-QI9brD`, below Squeal's root now compare equally. A changed file tail stays distinct. The original issue probe was also run with `node --import tsx docs/specifications/011-core/research/probes/issue-28/fingerprint-probe.mjs`: A/B/C/F remain equal, D/E distinct, exit 0.
+- **B3's original port sequence closed:** an old-form state/view, identical raw failure under current rules, an old writer after that, then replacement gives no current-code transition or delta. A probe also used the actual old `transitionKind` to confirm the accepted residual: an old comparison against the current form returns `fail-changed`. The rewrite module, registration call, marker and rules counter are removed. No store-wide rewriting remains.
+- **S1 closed under the amended contract:** `Error: port 12345` as an error name compares equally before/after renormalization, with the location kept. Normalization intentionally includes the name as the repair contract now requires.
+- **N1 closed:** baseline lookup normalizes both its stored entries and the queried fingerprint; the old-form entry retains its label. C5 no longer promises rewriting or needs the old baseline exception.
+- C5 and the last status amendment correctly distinguish current-code comparisons from the accepted older-daemon residual. The failures below arise in current code and are not that accepted residual.
+
+### Blockers remaining in the B3 repair scope
+
+#### R1 — Proven: the old-forms rule does not consistently equate Squeal's own old and fresh paths
+
+`src/core/state/fingerprint.ts:46`, `:56`, `:69`, `:74`, `:190`.
+
+The ordinary issue layout works, but two supported shapes do not. Each experiment used **the identical raw message, error name, location and allocation** before and after; only the fingerprint rules differed. Seeding an isolated public store/sink and told consumer with the actual pre-011-14 fingerprint, then applying the current result, produced both `transition ["fail-changed"]` and `delta ["fail-changed"]` for each shape.
+
+First, the scratch key can be all decimal digits. `daemonScratch` takes the first 16 hex characters of SHA-256 and does not require a letter. The old global hex rule deliberately keeps decimal runs, so this genuine old form never contains the `<hex>` token required by `MASKED_SQUEAL_SCRATCH`:
+
+```text
+raw:   open /tmp/squeal-1001/tmp/1234567890123456/work-abcdef/packages/cli.js
+old:   Error: open <tmp>/tmp/1234567890123456/work-abcdef/packages/cli.js @ test/a.test.ts:42:7
+fresh: Error: open <tmp>/packages/cli.js @ test/a.test.ts:42:7
+sameFingerprint(old, fresh): false
+```
+
+This is possible under the real key generator, not an invalid key spelling. For example SHA-256 of repository id `00000000000000000000000000000911`, NUL, and root `/repo/demo` starts `8368996719379271` (found by 2,322 cheap hash attempts).
+
+Second, a retained tail beginning `tmp/<hex>/<name>/...` is mistaken for another old scratch prefix. The rule is not idempotent, and applying it once to each side leaves the sides one normalization apart:
+
+```text
+raw: open /tmp/squeal-1001/tmp/6db45f9b91a3d272/work-abcdef/tmp/abcdef1234567890/named/a.js
+old:   Error: open <tmp>/tmp/<hex>/work-abcdef/tmp/<hex>/named/a.js @ test/a.test.ts:42:7
+fresh: Error: open <tmp>/tmp/<hex>/named/a.js @ test/a.test.ts:42:7
+
+renormalize(old):   Error: open <tmp>/tmp/<hex>/named/a.js @ test/a.test.ts:42:7
+renormalize(fresh): Error: open <tmp>/a.js @ test/a.test.ts:42:7
+sameFingerprint(old, fresh): false
+```
+
+The notes honestly name the simple collision for `/tmp/<not squeal-N>/tmp/<16 hex>/<x>/...`: its `<x>` is discarded at comparison. That is not the whole cost. The second example is **inside Squeal's layout**, with a tail the new contract permits, and creates changed-failure noise rather than only collapsing two tails. The claim that every normalization rule maps its output to itself is false for this shape.
+
+This is a continuation of B3's old/current compatibility requirement, exposed by the repair's new old-forms boundary; it is not a request to widen the fresh masking policy. **Fix scope:** cover every supported scratch-key spelling at the compatibility boundary, make comparison normalization stable for repeated old-shaped prefixes, and keep old/fresh forms of these identical failures equivalent. Add public sink/delta regressions for both examples. State the actual information loss of any ambiguous-prefix policy in the notes/contract, including collisions in a retained Squeal tail; preserve B1/B2's exact controls. One fingerprint-compatibility repair row can own this.
+
+#### R2 — Proven: a stored consumer fingerprint is still compared raw in the waiting Stop hook
+
+`src/harness/shared/stop-slow.ts:182`:
+
+```ts
+return view?.outcome !== "fail" || (view.fingerprint ?? "") !== f.fingerprint;
+```
+
+This reads `consumer_views.fingerprint` against the current known failure. The repair inventory covered core state/delivery and baseline findings, but missed this harness consumer. It violates repair item 2's **every comparison of a stored fingerprint** and C5's compare-under-current-rules contract.
+
+Public-hook probe, independently for Claude Code and Codex, using `stop-slow-helpers`' real isolated fixture:
+
+1. Enable `requireSlowSuite`, register the main consumer, make the fixture's edit and settle a slow failure with message `listen 127.0.0.1:35321`.
+2. Give the consumer its already-told old-form view, `AssertionError: listen 127.0.0.1:35321 @ src/a.ts:3:5`. The current state has `:<port>`; `sameFingerprint` equates them.
+3. Run the ordinary Stop entry and then the waiting entry. The ordinary entry is silent; the waiting entry returns `decision: "block"` with `1 check fails: test/e2e/slow.test.ts > ledger > posts`.
+4. Start the next turn through `startTurn(store, consumer)` without re-registering/reseeding its view, and repeat the two Stops: the same block returns again in both harnesses, with no failure change.
+
+The current delta correctly sees no notable difference and retains the old view as what was told (`planDelta`, lines 136-139), so this raw comparison can hold the agent on every subsequent Stop. This is current code, not an older daemon. The comparison itself predates this row, but removing rewriting and explicitly retaining stored old forms makes adapting this consumer part of B3's repair; it is not an unrelated audit finding.
+
+**Fix scope:** use the shared normalized fingerprint comparison in `untold`, with both harnesses regressed for an old-form view and current-form state. Check a second turn without registration, and retain the existing genuinely changed-failure block control. No change to slow scheduling or policy is needed.
+
+### Should-fix and nits
+
+None newly filed. The shortcomings in the old-forms cost statement are part of R1's required compatibility decision, not a separate documentation nit.
+
+### What fits / input to the coordinator
+
+The move from global rewriting to comparison is sound for the checked ordinary forms and removes the original migration-marker race. `derive.ts`, `shown-result.ts`, `producers.ts`, `transitions.ts` and `delivery/delta.ts` use `sameFingerprint`; baseline lookup uses equivalent normalized set keys. The only remaining diagnostic comparison found by the repository-wide search is R2; raw equality in pytest adapter environment fingerprints concerns dependency/environment keys, not diagnostic fingerprints. Null checks and the equality fast path inside `sameFingerprint` are not omitted diagnostic comparisons.
+
+The exact original B1/B2/S1/N1 cases need not be re-prosecuted. B3 is not fully closed until R1 and R2 are resolved or their changed contract is accepted through the coordinator's process. This is the requested one re-review round; the coordinator owns the next decision under the second-FAIL rule.
