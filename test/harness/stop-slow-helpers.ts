@@ -81,6 +81,12 @@ export async function repo(
   return r;
 }
 
+/** An edit after the latest registration: a revision with the slow file queued at it (004-67). */
+export function edit(r: SquealRepo): void {
+  r.apply();
+  slowKey(r, "queued");
+}
+
 /** The registered main agent of the session's turn: the only consumer, as `startTurn` leaves it. */
 export function mainConsumer(r: SquealRepo): Consumer {
   const [record, ...more] = r.store.consumers.list(r.worktreeId);

@@ -13,7 +13,7 @@ import type { HookDeps } from "../../../src/harness/shared/hook.js";
 import { PRIMER_OPENING } from "../../../src/harness/shared/primer.js";
 import { outsideGit } from "../bundle-helpers.js";
 import { FILE, SESSION, type SquealRepo, squealRepo } from "../helpers.js";
-import { SLOW_FILE, slowKey } from "../stop-slow-helpers.js";
+import { edit, SLOW_FILE, slowKey } from "../stop-slow-helpers.js";
 
 /*
  * The worker's side of spec 009 D3 for one run on the shared code: the
@@ -139,14 +139,26 @@ describe("a run's settle", () => {
       slow: { ...DEFAULT_POLICY.slow, include: [SLOW_FILE.path, FILE.path] },
       stop: { requireSlowSuite: true },
     });
-    slowKey(r, "queued");
     await startRun(about(r), deps());
+    edit(r);
     for (const harness of ["claude-code", "codex"] as const) {
       recordStopWait(r.store, r.consumer(), harness, squealVersion());
     }
     expect((await settle(about(r), deps())).report).toMatch(
       /stop.requireSlowSuite is on and 1 slow test file is not current/,
     );
+  });
+
+  it("ends a run that changed nothing without the slow block: no revision since it registered (004-67)", async () => {
+    const r = await registered();
+    r.policy({
+      slow: { ...DEFAULT_POLICY.slow, include: [SLOW_FILE.path, FILE.path] },
+      stop: { requireSlowSuite: true },
+    });
+    slowKey(r, "queued");
+    await startRun(about(r), deps());
+    expect(await settle(about(r), deps())).toEqual({ report: null });
+    expect(readTurn(r.store, r.consumer()).turn).toBe("idle");
   });
 
   it("is silent outside a git worktree", async () => {

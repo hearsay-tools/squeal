@@ -13,18 +13,20 @@ import { type StopWaitHarness, slowFiles, stopWaitRuns } from "../../core/slow/i
 import { isFastPending, slowFilesNotCurrent, toKnownFailure } from "../../core/state/index.js";
 import { STATUS_BUSY_TIMEOUT_MS } from "../../core/status/index.js";
 import { readTransaction, storePaths } from "../../core/store/index.js";
-import type {
-  EpochMs,
-  KnownFailure,
-  Policy,
-  RevisionNumber,
-  StatusHeader,
-  TestFileRef,
+import {
+  type EpochMs,
+  type KnownFailure,
+  MAIN_AGENT,
+  type Policy,
+  type RevisionNumber,
+  type StatusHeader,
+  type TestFileRef,
 } from "../../core/types/index.js";
 import { removeWaiterLock } from "../../core/waiter-lock/index.js";
 import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
 import { ensureIfStale, SOCKET_TIMEOUT_MS, startingAfter } from "./ensure.js";
 import { HOOK_TIMEOUT_MS, type HookDeps, isRegistered, withContext } from "./hook.js";
+import { unchangedSinceRegistration } from "./no-edit.js";
 import {
   fullSuiteReason,
   knownFailuresLine,
@@ -71,7 +73,9 @@ export type StopOutcome = { readonly block: string } | { readonly news: string }
  * amended 2026-10-12) once its harness's waiting entry is known to run for
  * this session at this version (`stopWaitRuns`, task 001-297); until then
  * this one blocks on them as before, so an untrusted or missing waiting hook
- * still holds, whatever another session in the worktree runs.
+ * still holds, whatever another session in the worktree runs. Neither holds
+ * a main agent whose worktree had no revision since it registered
+ * (`unchangedSinceRegistration`, task 004-67); a SubagentStop still blocks.
  *
  * Stop context is not passive: Claude Code continues the turn so the model
  * can read it (2.1.288 counts it toward its consecutive-block cap). So Stop
@@ -223,7 +227,10 @@ function decide(
     if (policy.requireFullSuite && !header.fullSuite.atCurrentRevision) {
       reasons.push(fullSuiteReason(header, command));
     }
-    if (policy.requireSlowSuite && !slowElsewhere) {
+    // Task 004-67: a main agent whose worktree has no revision since it registered is not held.
+    const unchanged =
+      consumer.agentId === MAIN_AGENT && unchangedSinceRegistration(store, consumer);
+    if (policy.requireSlowSuite && !slowElsewhere && !unchanged) {
       const open = slowFilesNotCurrent(states, keys, isSlow);
       if (open.length > 0) reasons.push(slowSuiteReason(header.revision, open, command));
     }
