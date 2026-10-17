@@ -66,7 +66,7 @@ export function reasonText(reason: PendingReason, command: string): string {
     case "slow":
       return `slow, run when the agent pauses or on \`${command} run --slow\``;
     case "unlisted":
-      return `revision ${reason.revision} not listed yet, because the runner part waits for the run in flight, at most ${Math.ceil(reason.leftMs / 1_000)} s more`;
+      return `revision ${reason.revision} not listed yet, because the runner part waits for the run in flight, each of its calls bounded at ${Math.ceil(reason.callBoundMs / 1_000)} s`;
   }
 }
 

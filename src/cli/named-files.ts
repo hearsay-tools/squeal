@@ -40,7 +40,7 @@ export type PendingReason =
   | { readonly kind: "queued"; readonly lane: string; readonly behind: EpochMs | null }
   | { readonly kind: "claim"; readonly worktree: string; readonly until: EpochMs | null }
   | { readonly kind: "slow" }
-  | { readonly kind: "unlisted"; readonly revision: number; readonly leftMs: number };
+  | { readonly kind: "unlisted"; readonly revision: number; readonly callBoundMs: number };
 
 export interface NamedFile {
   readonly testFile: TestFileRef;
@@ -141,8 +141,8 @@ function queuedReason(
 
 /**
  * While the runner part of the revision is pending no tier starts (C4): the
- * revision and how long its call may still take, at most one call's
- * `runnerPartBoundMs`; `null` when it is listed.
+ * revision and the bound on each of its runner calls, `runnerPartBoundMs`;
+ * `null` when it is listed.
  */
 function unlistedReason(
   header: ReturnType<typeof readHeader>,
@@ -150,10 +150,11 @@ function unlistedReason(
 ): PendingReason | null {
   const refined = header.refinedRevision;
   if (header.runnerPartPending !== true || refined === null || refined === undefined) return null;
-  // C4's bound is per runner call, and the store keeps no call's start, so the
-  // revision's age says nothing of it: the whole bound is what may be left (review wave-1.11 B3).
-  const leftMs = runnerPartBoundMs(policy.runner.timeoutMs);
-  return { kind: "unlisted", revision: header.revision, leftMs };
+  // C4's bound is per runner call (an invalidate, then an affected call, each its own),
+  // and the store keeps no call's start: the bound is said per call, never as a
+  // countdown from the revision's age (review wave-1.11 B3).
+  const callBoundMs = runnerPartBoundMs(policy.runner.timeoutMs);
+  return { kind: "unlisted", revision: header.revision, callBoundMs };
 }
 
 function runOf(runs: readonly RunRecord[], ref: TestFileRef): RunRecord | undefined {

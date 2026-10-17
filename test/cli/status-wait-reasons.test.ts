@@ -241,7 +241,7 @@ describe("a named wait names what holds each pending selected file (011-12)", ()
 
     // 600 s run timeout + 6 s grace + 60 s margin, per call: the revision's 10 s age is no call's.
     const reason =
-      "revision 5 not listed yet, because the runner part waits for the run in flight, at most 666 s more";
+      "revision 5 not listed yet, because the runner part waits for the run in flight, each of its calls bounded at 666 s";
     expect(text).toContain(`Pending (1): ${A}: ${reason}\n`);
     expect(text).toContain(
       `the runner has not listed the test files of revision 5 yet: 1 ${reason}. Worktree:`,
