@@ -290,3 +290,92 @@ None newly filed. The shortcomings in the old-forms cost statement are part of R
 The move from global rewriting to comparison is sound for the checked ordinary forms and removes the original migration-marker race. `derive.ts`, `shown-result.ts`, `producers.ts`, `transitions.ts` and `delivery/delta.ts` use `sameFingerprint`; baseline lookup uses equivalent normalized set keys. The only remaining diagnostic comparison found by the repository-wide search is R2; raw equality in pytest adapter environment fingerprints concerns dependency/environment keys, not diagnostic fingerprints. Null checks and the equality fast path inside `sameFingerprint` are not omitted diagnostic comparisons.
 
 The exact original B1/B2/S1/N1 cases need not be re-prosecuted. B3 is not fully closed until R1 and R2 are resolved or their changed contract is accepted through the coordinator's process. This is the requested one re-review round; the coordinator owns the next decision under the second-FAIL rule.
+
+## Third round
+
+PASS 5f060c6915c7933ad7d7f76bdc2e4607e8addb5c; zero blockers, should-fix items or nits in the authorized scope.
+
+The human's final, narrow third round, 2026-10-17. Fetched `cand/0.1.213` and checked out detached at exactly the pinned SHA. Scope is R1/R2 above and the repair's blast radius: `660d5738`, the Repair 2 cost statement, the last status amendment and their callers. B1/B2/S1/N1 and the ordinary B3 sequence remain closed; this delta does not reopen them. Product tree remained clean. This review changes only this file.
+
+### Verification output
+
+Node `v24.21.0`; installed from the pinned lockfile. `origin/main` was `82d8266113f4a998b8dca38e89678028f7d6b74f`.
+
+```text
+npm ci — exit 0
+added 196 packages, and audited 197 packages in 10s
+found 0 vulnerabilities
+
+npm run lint — exit 0
+Checked 1409 files in 529ms. No fixes applied.
+
+npm run typecheck — exit 0
+> tsc --noEmit
+
+npm run check:version -- origin/main — exit 0
+version bump: 0.1.212 -> 0.1.213, ok
+```
+
+```text
+node node_modules/vitest/vitest.mjs run test/state test/delivery test/store test/harness test/integration/fingerprint-two-worktrees.test.ts test/keys/key-format.test.ts --maxWorkers=4
+Test Files  1 failed | 155 passed (156)
+     Tests  1 failed | 1821 passed | 1 skipped (1823)
+  Duration  163.87s
+exit 1
+```
+
+The broader selection's sole failure was the unchanged OpenCode dispose test, `test/harness/opencode-dispose.test.ts:170`, "serve: an abort of the new turn, then the old Stop's answer, stores nothing". Its three attempts missed the new-turn barrier before the held Stop's 2-second idle deadline; the final kill was at +2009 ms, deadline +2000. The preceding attempts ended at +2265 and +2031 ms. The board's Later entry and the test's own comments already identify this loaded-host barrier miss. Load immediately after the run was `61.95 46.26 34.15` on 24 CPUs. This file and the OpenCode implementation are unchanged by 011-14 and by `660d5738`; the fixture's held Stop is a stand-in, not the changed shared waiting Stop. This does not prove an R1/R2 regression, and is not a blocker in the authorized scope. It is retained here as a failed independent check, not reported as an all-green run.
+
+```text
+node node_modules/vitest/vitest.mjs run test/state test/delivery test/store test/harness/stop-slow*.test.ts test/integration/fingerprint-two-worktrees.test.ts test/keys/key-format.test.ts --maxWorkers=4
+Test Files  57 passed (57)
+     Tests  654 passed (654)
+  Duration  35.27s
+exit 0
+```
+
+The selection includes every changed surviving test file in 011-14, the state/delivery/store callers, the waiting Stop suites and the guarded-source pin. It is this reviewer's independent run, required by the brief, not a Squeal checkpoint. `npm run build` was omitted as instructed. The optional independent full run was not taken; the coordinator's pre-docs-rebase 705-file, 6002-pass, 10-skip gate remains coordinator evidence, not this reviewer's result. CI `39064422789` has the exact pinned SHA and was still in progress when checked; no CI pass is claimed.
+
+Copied the candidate's two changed test files into an archive of `7b96b921`, linked the installed dependencies and ran only the four added cases:
+
+```text
+node node_modules/vitest/vitest.mjs run test/state/fingerprint-volatile.test.ts test/harness/stop-slow-untold.test.ts -t "sameFingerprint across the rules before 011-14|a told slow failure whose view holds the older rules' form" --maxWorkers=4
+Test Files  2 failed (2)
+     Tests  4 failed | 56 skipped (60)
+  Duration  2.67s
+exit 1
+```
+
+Both R1 equality assertions return false on the previous code. Both harness cases return a waiting `decision: "block"` where silence is expected. All four are behavioral failures, with no missing exports or load failures. They pass on the pinned candidate in the touched run above.
+
+A separate throwaway test imported the actual pre-011-14 `describeFailure` from the `origin/main` archive, plus the candidate's public store/sink/delta and hook entry points:
+
+```text
+node node_modules/vitest/vitest.mjs run test/third-round-review.test.ts --maxWorkers=4
+Test Files  1 passed (1)
+     Tests  5 passed (5)
+  Duration  13.86s
+exit 0
+```
+
+The probe and baseline archives lived outside the product checkout. Every probe, baseline run and touched-suite process had an explicit throwaway `HOME` and `TMPDIR=/tmp`; no probe accessed the real home or its store. The generated deep-prefix probe initially exceeded Vitest's 5-second default; with an explicit 60-second bound it completed and all assertions passed. This is a convergence/precision probe, not a hook latency benchmark. No throwaway source is committed.
+
+### R1 closed: supported old forms converge, and the extra loss is bounded by the stated cost
+
+**Proven by source and experiment.** For each exact R1 raw path, the probe computed its old fingerprint using the actual old source, seeded that result and an already-told view in an isolated SQLite store, then applied the current result. Both the all-digit key and the repeated `tmp/<hex>` tail now produce no sink transition and no delivery delta. An old-form write after the current write and another current write remain quiet. Changing the final filename produces `fail-changed` through both interfaces.
+
+`MASKED_SQUEAL_SCRATCH` now recognizes `<hex>` and exactly 16 decimal digits, with a following slash. Fixed-point normalization ends both sides at the same form. The global masks consume volatile text into stable markers; they do not regenerate the matched volatile text. Further old-shaped temp-prefix reductions remove a prefix and its next allocation segment. They strictly reduce that finite path, so the loop cannot cycle. The location suffix is outside the loop.
+
+The generated probe covers 0, 1, 2, 8, 32 and 128 repeated old-shaped prefixes, each with a hex key and a 16-digit key. Its normalized output is stable on a second application. Changed final filenames, deeper package names, assertion text, source paths and source lines all remain distinct. Controls with 15-digit and 17-digit decimal keys, a short key and `<uuid>` also remain distinct. Apart from the already accepted volatile masks, the added reductions discard only allocations after `tmp/<16 hex or digits>/`, including repeated occurrences in a retained tail. The probe confirms the documented collision for differing allocation names at that boundary. Repair 2 states that cost, and the last status amendment describes convergence and the decimal-key case. No broader information loss was found in this repair.
+
+### R2 closed: the waiting Stop reads the told fingerprint under the current rules
+
+**Proven by source and public-hook experiment.** `stop-slow.ts:183` now uses `sameFingerprint`. Independently for Claude Code and Codex, the probe lands the port failure, writes its old-form told view and invokes the ordinary and waiting Stop entries. Both are silent. The old view is still stored, so success is not caused by rewriting it. Starting the next turn directly, without registration or reseeding, leaves both entries silent again. A genuinely changed message then blocks through the waiting entry and names the changed failure.
+
+The added regression covers both harnesses and both turns. The existing changed-failure controls also remain in the touched run. No scheduling or policy changes are needed.
+
+### Comparison inventory and next input
+
+Repository-wide source search and inspection found no remaining raw equality between stored diagnostic fingerprints. State derivation, shown results, producers, transition classification, delivery history and the waiting Stop use `sameFingerprint`; baseline membership normalizes the stored and queried keys. The raw equality fast path inside `sameFingerprint` and null checks are intentional. Pytest environment-fingerprint comparisons concern dependency/environment identity, not diagnostics.
+
+No further repair is requested for R1/R2. The coordinator can use this PASS for the pinned candidate, subject to its separate landing/CI checks. The already accepted older-daemon residual remains as recorded in C5 and Repair 1.
