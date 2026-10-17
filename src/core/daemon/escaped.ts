@@ -145,10 +145,13 @@ export class EscapedChildren {
    * from `/proc/<daemon>/task/<tid>/children`, a few small reads where a scan of
    * `/proc` reads every process, so it can run every 100 ms. Also, after a
    * child of the daemon exited, the lane's carriers in its group that its
-   * children left behind (`#orphans`, review 001-401 S1).
+   * children left behind (`#orphans`, review 001-401 S1), or, when `lost`, a
+   * descendant `lowerWhile` walked that is gone (review wave-18 B1).
    */
-  async carriers(lane: string, since: number): Promise<ProcessEntry[]> {
+  async carriers(lane: string, since: number, lost = false): Promise<ProcessEntry[]> {
     if (process.platform !== "linux") return [];
+    // Not equal to any count read: the next scan the least interval allows runs.
+    if (lost) this.#reaped = Number.NaN;
     const children = await this.#children(lane, since);
     const known = new Set(children.map(key));
     const orphans = await this.#orphans(lane, since);
@@ -179,7 +182,8 @@ export class EscapedChildren {
    * `since`, that are no children of the daemon: a child that exited before a
    * look found it leaves its children there. Scanned from `/proc` only when
    * a child of the daemon was reaped since the last scan, which its children's
-   * page faults, added to the daemon's `cminflt`, tell, and at most once in
+   * page faults, added to the daemon's `cminflt`, tell, or a lowered process
+   * was lost (`carriers`), and at most once in
    * `ORPHANS_EVERY_MS`, whatever lane looks. A scan keeps what it found of
    * every lane, so a lane's look between scans still gets its own (review
    * wave-13bt S1). None when the daemon leads no group.
