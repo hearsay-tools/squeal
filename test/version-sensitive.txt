@@ -91,8 +91,9 @@ test/runners/node-test/
 test/integration/node-test
 # A real `node --test` through the scheduler: the slow tier, preloads,
 # observed and environment growth, capacity, lanes, scratch inputs, the idle
-# pass (beside pytest) and warm-up.
+# pass (beside pytest), warm-up and a node:test project's precondition.
 test/scheduler/slow-node-test
+test/slow/precondition-node-test
 test/scheduler/preload-heal
 test/scheduler/preload-refresh
 test/scheduler/observed-growth
