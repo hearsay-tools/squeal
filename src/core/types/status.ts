@@ -108,7 +108,13 @@ export type SlowTierActivity =
       /** The longest last known run time of its files, before this run; `null` when none ran. */
       readonly lastDurationMs: number | null;
     }
-  | { readonly kind: "waiting"; readonly for: SlowTierWait };
+  | { readonly kind: "waiting"; readonly for: SlowTierWait }
+  /**
+   * Spec 004 D8 as amended 2026-10-17 (task 004-65): the tier's precondition
+   * was unmet when it was about to take the slot; its files are not run at
+   * this revision, for this one reason.
+   */
+  | { readonly kind: "skipped"; readonly reason: string; readonly since: EpochMs };
 
 /**
  * Spec 004 D8: the slow-tier line of headers and status, for a policy that

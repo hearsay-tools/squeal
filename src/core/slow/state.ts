@@ -55,6 +55,9 @@ function toActivity(value: unknown): SlowTierActivity | null {
   if (v.kind === "waiting" && WAITS.has(v.for)) {
     return { kind: "waiting", for: v.for as Extract<SlowTierActivity, { kind: "waiting" }>["for"] };
   }
+  if (v.kind === "skipped" && typeof v.reason === "string" && typeof v.since === "number") {
+    return { kind: "skipped", reason: v.reason, since: v.since };
+  }
   if (v.kind === "running" && typeof v.path === "string" && typeof v.since === "number") {
     const last = typeof v.lastDurationMs === "number" ? v.lastDurationMs : null;
     const paths: unknown[] = Array.isArray(v.paths) ? v.paths : [];

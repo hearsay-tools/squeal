@@ -41,6 +41,7 @@ import type { Mutex } from "./mutex.js";
 import { listPaths, persistedNoteTexts } from "./notes.js";
 import type { SlowTierOptions } from "./options.js";
 import { slowView } from "./slow.js";
+import { SlowSkips } from "./slow-skip.js";
 import { laneOf, startTier, type Tier, type TierFile } from "./tiers.js";
 
 /** Spec 004 D2, D3: the longest a pending slow file waits before the scheduler looks again. */
@@ -132,11 +133,17 @@ export class SlowTier {
   #noted: Set<string> | null = null;
   /** What this tier last published, as stored, so `close` clears only its own. */
   #published: string | null = null;
+  /** The preconditions' skips (D7, D8 as amended 2026-10-17, task 004-65). */
+  readonly #skips: SlowSkips;
+  /** Aborts a precondition command still running at close. */
+  readonly #closing = new AbortController();
 
   constructor(
     private readonly host: SlowHost,
     private readonly options: SlowTierOptions = {},
-  ) {}
+  ) {
+    this.#skips = new SlowSkips(host.lock, () => host.started());
+  }
 
   /**
    * `run --slow`: the pending slow files run behind fast work, whatever the
@@ -166,6 +173,7 @@ export class SlowTier {
   }
 
   close(): void {
+    this.#closing.abort();
     if (this.#timer !== null) clearTimeout(this.#timer);
     this.#timer = null;
     this.preempt();
@@ -186,6 +194,10 @@ export class SlowTier {
       this.#unmark(dir, context.worktreeId);
       return null;
     }
+    if (preemptions !== this.#preemptions) return "again";
+    // D7, D8 as amended 2026-10-17: an unmet precondition skips the tier before the guard waits.
+    const gate = await this.#skips.gate(refs, this.#closing.signal);
+    if (gate !== "run") return gate === "skipped" ? "again" : null;
     if (preemptions !== this.#preemptions) return "again";
     const guard = this.#requested ? this.#skipGuard(context) : await this.#waitForCapacity(context);
     if (guard === "preempted" || preemptions !== this.#preemptions) return "again";
@@ -258,7 +270,7 @@ export class SlowTier {
     if (queued.length === 0) {
       this.#requested = false;
       this.#budgetMs = null;
-      this.#publish(null);
+      this.#publish(this.#skips.activity());
       return [];
     }
     if (this.#fastFirst()) {
@@ -502,10 +514,19 @@ export class SlowTier {
   ended(): void {
     const { context, ledger } = this.host.started();
     const queued = ledger.orderedSlow();
-    if (queued.length === 0) this.#publish(null);
+    if (queued.length === 0) this.#publish(this.#skips.activity());
     else if (this.#fastFirst()) this.#publish({ kind: "waiting", for: "fast" });
     else if (queued.some(this.#trigger(context, ledger))) this.#publish(null);
     else this.#publish({ kind: "waiting", for: "idle" });
+  }
+
+  /**
+   * Under the lock, as a revision changing `paths` is applied: the files a
+   * precondition skipped that it makes eligible again are queued (D8 as
+   * amended 2026-10-17, `SlowSkips.revised`).
+   */
+  revised(paths: ReadonlySet<RelativePath>): void {
+    this.#skips.revised(paths);
   }
 
   /** At close: clears the activity unless another daemon published since (a handover), and the waiter's mark. */
@@ -557,7 +578,8 @@ export class SlowTier {
     const testFiles = new Set(files.map((file) => file.ref.path));
     const byProject = new Map<string, RelativePath[]>();
     for (const { ref } of files) {
-      if (!view.isSlow(ref)) continue;
+      // A skip replaces the note for the files it covers (D8 as amended 2026-10-17).
+      if (!view.isSlow(ref) || this.#skips.unmet(context, ref)) continue;
       const declared = context.keys.declaredFor(ref.path);
       const subject = { path: ref.path, slow: true };
       if (inheritsAcrossWorktrees(subject, declared, testFiles, view.globs)) continue;
