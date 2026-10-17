@@ -7632,20 +7632,32 @@ var init_terminate = __esm({
 import { execFile } from "node:child_process";
 import { getPriority, setPriority } from "node:os";
 import { setTimeout as sleep3 } from "node:timers/promises";
-async function lowerWhile(children, lane, since, signal2) {
+async function lowerWhile(children, lane, since, signal2, walk2 = below) {
   if (process.platform !== "linux") return;
-  const lowered = /* @__PURE__ */ new Set();
+  const lowered = /* @__PURE__ */ new Map();
   try {
     for (; ; ) {
       await sleep3(EVERY_MS, void 0, { signal: signal2 });
       const found2 = await children.carriers(lane, since);
-      const fresh = found2.filter((entry4) => !lowered.has(`${entry4.pid}:${entry4.start}`));
-      for (const entry4 of fresh) lowered.add(`${entry4.pid}:${entry4.start}`);
-      if (fresh.length > 0)
-        lower(
-          fresh.flatMap(({ pid }) => [pid, ...below(pid)]),
-          isSlowLane(lane)
-        );
+      const at2 = Date.now();
+      const pids = [];
+      for (const { pid, start: start2 } of found2)
+        if (!lowered.has(`${pid}:${start2}`)) {
+          lowered.set(`${pid}:${start2}`, { pid, start: start2, since: at2, walked: 0, seen: /* @__PURE__ */ new Set() });
+          pids.push(pid);
+        }
+      for (const [id2, carrier] of lowered) {
+        if (at2 - carrier.since >= WALK_MS && at2 - carrier.walked < WALK_MS) continue;
+        if (statOf(carrier.pid)?.start !== carrier.start) {
+          lowered.delete(id2);
+          continue;
+        }
+        carrier.walked = at2;
+        const current2 = walk2(carrier.pid);
+        pids.push(...current2.filter((descendant) => !carrier.seen.has(descendant)));
+        carrier.seen = new Set(current2);
+      }
+      if (pids.length > 0) lower(pids, isSlowLane(lane));
     }
   } catch {
   }
@@ -7670,7 +7682,7 @@ function lower(pids, idle2) {
   execFile("ionice", ["-c", "3", "-p", ...pids.map(String)], () => {
   }).unref();
 }
-var TEST_NICE, EVERY_MS;
+var TEST_NICE, EVERY_MS, WALK_MS;
 var init_low_priority = __esm({
   "src/core/daemon/low-priority.ts"() {
     "use strict";
@@ -7678,6 +7690,7 @@ var init_low_priority = __esm({
     init_terminate();
     TEST_NICE = 10;
     EVERY_MS = 100;
+    WALK_MS = 1e3;
   }
 });
 
@@ -46802,7 +46815,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.210";
+  if (true) return "0.1.211";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
