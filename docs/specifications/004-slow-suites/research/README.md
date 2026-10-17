@@ -25,3 +25,7 @@ How does a daemon run a suite that takes minutes, beside an agent and other work
 5. Inheritance: when is a slow result from another worktree sound to inherit, given that slow suites read inputs outside their keys (installed plugins, `HEAD`, spawned binaries, network)? Propose a rule, for example inheriting only with a full closure plus declared inputs, or never.
 
 Recommendation: the runtime model (scheduling class, guard, interruption rule, isolation requirements, inheritance rule), each with measured evidence.
+
+## Briefs added after the spec shipped
+
+- [issue-4-signals-brief](issue-4-signals-brief.md) (2026-10-17; gh-4, the human: research then design): which signal ranks the slow files an edit likely affects. Findings go to `issue-4-signals.md`.

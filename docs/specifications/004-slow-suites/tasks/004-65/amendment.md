@@ -1,5 +1,7 @@
 # 004-65 step 1: the D7 and D8 amendment, for the human's review
 
+**Accepted by the human on 2026-10-17 as drafted** (exit 3 for a skipped tier; argv command preconditions with a timeout; `nodeTest[].precondition` per slow project). In `spec.md` D7 and D8; step 2 is dispatchable.
+
 Board row 004-65 (gh-3, issue #3; issue #16 the same defect). Digest group E, approved by the human 2026-10-17: a precondition, a skip, no build. Sources: `../../research/issue-3-preconditions.md` and its probe. Drafted by the coordinator, 2026-10-17. Nothing here is in `spec.md` until the human accepts it; on acceptance the text below replaces the marked sentences, a dated line goes into `status.md`, and step 2 is dispatched.
 
 ## Why
