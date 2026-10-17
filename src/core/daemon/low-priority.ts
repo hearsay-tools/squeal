@@ -124,20 +124,24 @@ export function lowerProcess(pid: number): void {
 /**
  * Each still the process it names at `nice` 10, then, when `idle`, `ionice
  * -c 3` for all at once. `ionice` stops at the first pid it cannot set, one
- * gone by then or not ours, so a failed batch is retried one pid at a time
- * (review wave-18, pre-existing limitations).
+ * gone by then or not ours, so a failed batch is retried one pid at a time,
+ * each only while it is still the process it named: a pid freed during the
+ * batch may name another's by then (review wave-18, pre-existing
+ * limitations; review wave-1.13 B1).
  */
 function lower(processes: readonly Identity[], idle: boolean): void {
-  const pids = processes
-    .filter(({ pid, start }) => statOf(pid)?.start === start)
-    .map(({ pid }) => pid);
-  for (const pid of pids) lowerProcess(pid);
-  if (!idle || pids.length === 0) return;
-  idleIo(pids, (error) => {
-    // Missing: `nice` alone.
-    if (error === null || error.code === "ENOENT" || pids.length === 1) return;
-    for (const pid of pids) idleIo([pid], () => {});
-  });
+  const same = ({ pid, start }: Identity) => statOf(pid)?.start === start;
+  const live = processes.filter(same);
+  for (const { pid } of live) lowerProcess(pid);
+  if (!idle || live.length === 0) return;
+  idleIo(
+    live.map(({ pid }) => pid),
+    (error) => {
+      // Missing: `nice` alone.
+      if (error === null || error.code === "ENOENT" || live.length === 1) return;
+      for (const process of live) if (same(process)) idleIo([process.pid], () => {});
+    },
+  );
 }
 
 /** `ionice -c 3` for `pids`, then `done` with how it ended. */
