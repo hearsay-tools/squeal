@@ -12,7 +12,8 @@ import { type E2E, e2eSuite, MATH, OTHER_SESSION, PLUGINS, until } from "./harne
 const fixture = e2eSuite();
 /** Longer than a spawned daemon takes to answer on a calm host (about 300 ms). */
 const NO_DAEMON_MS = 3_000;
-const STOPPED = "The daemon is stopped by request (`squeal stop`)";
+/** Codex names the CLI by its path, so the command is left out. */
+const STOPPED = "The daemon is stopped by request (`";
 
 async function registered(e: E2E): Promise<number> {
   await e.hook("session-start", e.main);
@@ -45,7 +46,7 @@ describe.each(PLUGINS)("an explicit squeal stop, $name", (plugin) => {
     await sleep(NO_DAEMON_MS);
     expect(await e.ping(e.main)).toBeNull();
     const status = await e.cli(e.main, ["status"]);
-    expect(status.stdout).toContain("Daemon: stopped by request (`squeal stop`)");
+    expect(status.stdout).toContain("Daemon: stopped by request (`");
 
     e.write(e.main, "math", MATH("+"));
     await e.hook("post-tool-batch", e.main);
