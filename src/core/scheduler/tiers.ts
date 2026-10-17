@@ -4,7 +4,6 @@ import type { PoolLease } from "../capacity/index.js";
 import type { StatCache } from "../hash/index.js";
 import { listedDirectory, testFileId } from "../keys/index.js";
 import type { CheckKey, Provenance, RelativePath, RunReport, TestFileRef } from "../types/index.js";
-import { SLOW_LANE_PREFIX } from "../types/index.js";
 import { backlogBudget } from "./backlog.js";
 import { WAIT_FOR_CAPACITY } from "./capacity.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
@@ -25,7 +24,7 @@ import { endRetry, recordFailedLoad, tierLoad } from "./retries.js";
 import { storeClosures } from "./revision.js";
 import { failStartup } from "./setup.js";
 import { joinSpan, type TierSpan } from "./sharing.js";
-import { slowView } from "./slow.js";
+import { laneFor } from "./slow.js";
 import { changedSince, type Moved, snapshotInputs } from "./stability.js";
 import { storeResults } from "./store-results.js";
 import { requeueSplit, timedOutReason, timeoutCap } from "./timeout-split.js";
@@ -77,8 +76,7 @@ export interface Tier {
  * beside it (spec 004 D2, task 004-18).
  */
 export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
-  const lane = context.runner.lane?.(ref) ?? "";
-  return slowView(context.policy).isSlow(ref) ? SLOW_LANE_PREFIX + lane : lane;
+  return laneFor(context.policy, ref, context.runner.lane?.(ref) ?? "");
 }
 
 /**

@@ -1,5 +1,5 @@
 import { slowFiles, slowGlobs } from "../slow/index.js";
-import type { Policy, TestFileRef } from "../types/index.js";
+import { type Policy, SLOW_LANE_PREFIX, type TestFileRef } from "../types/index.js";
 
 /** Spec 004 D1 under one policy: which test files are slow, and the globs that say so (D6). */
 export interface SlowView {
@@ -20,4 +20,14 @@ export function slowView(policy: Policy): SlowView {
     views.set(policy, view);
   }
   return view;
+}
+
+/**
+ * The lane of `ref` given its runner's lane (`RunnerAdapter.lane`, `""` for a
+ * runner that names none): a slow file's is its runner's behind
+ * `SLOW_LANE_PREFIX` (spec 004 D2, task 004-18). Pure, so status names the
+ * lane the scheduler picks (task 011-12).
+ */
+export function laneFor(policy: Policy, ref: TestFileRef, runnerLane: string): string {
+  return slowView(policy).isSlow(ref) ? SLOW_LANE_PREFIX + runnerLane : runnerLane;
 }
