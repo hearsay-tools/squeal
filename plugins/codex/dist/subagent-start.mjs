@@ -3998,6 +3998,18 @@ function read2(path) {
   }
 }
 
+// src/core/status/identity.ts
+function statusIdentity(root, latest, commit, daemon) {
+  const live = readGitHead(root);
+  if (latest === null) return { head: live, dirty: null, dirtyObservedAt: null };
+  const recorded = commit?.head ?? latest.head;
+  if (live !== null && live !== recorded) {
+    return { head: live, dirty: null, dirtyObservedAt: null, headMovedSince: latest.number };
+  }
+  if (daemon.state !== "alive") return { head: recorded, dirty: null, dirtyObservedAt: null };
+  return { head: recorded, dirty: commit?.dirty ?? latest.dirty, dirtyObservedAt: latest.number };
+}
+
 // src/core/status/open.ts
 var STATUS_BUSY_TIMEOUT_MS = 1e3;
 function unavailable(reason, detail) {
@@ -4099,16 +4111,13 @@ function snapshot(store, worktreeId, root, now) {
     worktree,
     liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null)
   );
-  const observed = daemon.state === "alive" ? revision : null;
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
     worktreeId,
     worktreeRoot: worktree?.root ?? root,
     ...header,
-    head: revision === null ? readGitHead(root) : revision.head,
-    dirty: observed?.dirty ?? null,
-    dirtyObservedAt: observed?.number ?? null,
+    ...statusIdentity(root, revision, header.commit, daemon),
     daemon,
     // Task 001-404: each failure says how old its run is and the load it ran under.
     knownFailures: withRecorded(store, worktreeId, states, header.revision),
@@ -4508,10 +4517,11 @@ function forget(store, consumer) {
 }
 
 // src/core/delivery/own-edit.ts
-var MOVED_ONLY = /^(?:[\w-]+: )?vitest adapter: (.+) changed on disk after this run loaded it; the run may have executed bytes no check key names \(task 001-146\)$/;
+var MOVED_ONLY = /^(?:[\w-]+: )?vitest adapter: the run may have executed bytes no check key names, since (?:(.+) changed on disk after this run loaded (?:it|them) \(task 001-146\)|\d+ files changed on disk after this run loaded them \(task 001-146\): .+; every path: (.+))$/;
 function movedPaths(reason) {
   const match = MOVED_ONLY.exec(reason);
-  return match?.[1] === void 0 ? null : match[1].split(", ");
+  const named2 = match?.[1] ?? match?.[2];
+  return named2 === void 0 ? null : named2.split(", ");
 }
 function ownEditUnknown(store, consumer, revision) {
   let changed;
@@ -5144,7 +5154,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.204";
+  if (true) return "0.1.205";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
