@@ -45,5 +45,5 @@ Status counts the checks of a file whose run is open as running, even after a re
 
 ## Code rows on acceptance (011-NN numbers allocated from the board on main then)
 
-- **011-07 promotion.** The `promote` request, its daemon handler and the rank in `src/core/scheduler/queue.ts`. The issue-14 probe becomes a scheduler test, with the claim, slow-file and fairness cases. Version raise, review.
-- **011-08 what holds a named file.** The per-file reasons on the named line and the open-run running count (gh-17 findings 2 and 3), in `src/cli/status-wait-lines.ts` and the status counts. Independent of 011-07 apart from the "promoted" word.
+- **011-NN promotion.** The `promote` request, its daemon handler and the rank in `src/core/scheduler/queue.ts`. The issue-14 probe becomes a scheduler test, with the claim, slow-file and fairness cases. Version raise, review.
+- **011-NN what holds a named file.** The per-file reasons on the named line and the open-run running count (gh-17 findings 2 and 3), in `src/cli/status-wait-lines.ts` and the status counts. Independent of the promotion row apart from the "promoted" word.
