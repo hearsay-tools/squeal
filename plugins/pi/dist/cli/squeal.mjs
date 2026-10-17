@@ -7687,14 +7687,18 @@ function lowerProcess(pid) {
   }
 }
 function lower(processes2, idle2) {
-  const pids = processes2.filter(({ pid, start: start2 }) => statOf(pid)?.start === start2).map(({ pid }) => pid);
-  for (const pid of pids) lowerProcess(pid);
-  if (!idle2 || pids.length === 0) return;
-  idleIo(pids, (error) => {
-    if (error === null || error.code === "ENOENT" || pids.length === 1) return;
-    for (const pid of pids) idleIo([pid], () => {
-    });
-  });
+  const same = ({ pid, start: start2 }) => statOf(pid)?.start === start2;
+  const live = processes2.filter(same);
+  for (const { pid } of live) lowerProcess(pid);
+  if (!idle2 || live.length === 0) return;
+  idleIo(
+    live.map(({ pid }) => pid),
+    (error) => {
+      if (error === null || error.code === "ENOENT" || live.length === 1) return;
+      for (const process2 of live) if (same(process2)) idleIo([process2.pid], () => {
+      });
+    }
+  );
 }
 function idleIo(pids, done) {
   execFile("ionice", ["-c", "3", "-p", ...pids.map(String)], done).unref();
