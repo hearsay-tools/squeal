@@ -18,6 +18,7 @@ import {
   type InheritedSource,
   type KnownState,
   PAYLOAD_SCHEMA_VERSION,
+  type RunRecord,
   parseCheckpointProgress,
   type StatusBuilder,
   type StatusResult,
@@ -30,6 +31,7 @@ import { configProblemsOf, withConfigProblems } from "./config-problems.js";
 import { withDeath } from "./died.js";
 import { statusIdentity } from "./identity.js";
 import { type StatusStoreOptions, unavailable, withStatusStore } from "./open.js";
+import { openRuns } from "./open-runs.js";
 import { unknownTestFilesOf } from "./unknown-files.js";
 
 export interface StatusOptions extends StatusStoreOptions {
@@ -132,7 +134,7 @@ function snapshot(
     // Task 001-404: each failure says how old its run is and the load it ran under.
     knownFailures: withRecorded(store, worktreeId, states, header.revision),
     inherited: inheritedSources(store, states),
-    breakdown: breakdown(states, keys),
+    breakdown: breakdown(states, keys, openFiles(openRuns(store, worktree, daemon))),
     closureMethod: CLOSURE_METHOD,
     storeSchemaVersion: store.schemaVersion,
     notes,
@@ -234,14 +236,22 @@ function inheritedSources(
   return { count, sources };
 }
 
+/** The `testFileId`s the open runs hold. */
+function openFiles(runs: readonly RunRecord[]): ReadonlySet<string> {
+  return new Set(runs.flatMap((run) => run.testFiles.map(testFileId)));
+}
+
 /**
  * Known states are authoritative for check counts and pending phase. A
  * pending check without a phase takes its test file's phase from
- * `test_file_keys`, else counts as queued.
+ * `test_file_keys`, else counts as queued. A pending check of a file an open
+ * run holds counts as running, though a re-key queued it under its new key
+ * (011 C15, gh-17 finding 3), and so does such a file without checks.
  */
 function breakdown(
   states: readonly KnownState[],
   keys: readonly TestFileKeyRecord[],
+  running: ReadonlySet<string>,
 ): CheckBreakdown {
   const filePhase = new Map(keys.map((k) => [testFileId(k.testFile), k.pending]));
   const currentByOutcome = { pass: 0, fail: 0, skip: 0, unknown: 0 };
@@ -259,7 +269,9 @@ function breakdown(
       if (fileLevel) fileLevelByOutcome[s.outcome]++;
     }
     if (s.validity === "pending") {
-      const phase = s.pendingPhase ?? filePhase.get(file) ?? "queued";
+      const phase = running.has(file)
+        ? "running"
+        : (s.pendingPhase ?? filePhase.get(file) ?? "queued");
       pendingByPhase[phase]++;
       if (fileLevel) fileLevelByPhase[phase]++;
     }
@@ -272,7 +284,10 @@ function breakdown(
     fileLevelByPhase,
     testFiles: keys.length,
     testFilesWithoutChecks: without.length,
-    testFilesWithoutChecksRunning: without.filter((k) => k.pending === "running").length,
+    testFilesWithoutChecksRunning: without.filter(
+      (k) =>
+        k.pending === "running" || (k.pending !== null && running.has(testFileId(k.testFile))),
+    ).length,
   };
 }
 
