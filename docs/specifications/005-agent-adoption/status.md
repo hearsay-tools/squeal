@@ -136,6 +136,7 @@ Brief: `research/README.md`. Topics `adoption-baseline`, `instruction-surfaces`,
 - 2026-10-14, decided by the human: buy a third round on gate rewording. 005-58 repairs R1 and R2, with its worker on codex `gpt-6-astra` for that row only. 005-59 re-reviews it, and that review is the last.
 - 2026-10-14, decided by the human: the release waits for 007-21 to pass, 007's re-review after repair 007-20. 007-16 failed at `a67407f8`. It proved the `policy-node-test.ts` refactor preserves behaviour, but found three blockers in the dormant pytest code that ships in the bundle. Known-broken code ships only once it is reviewed, even when dormant.
 - 2026-10-17, 005-68 (the human, triage digest group A, issue #18, `research/issue-18-primer.md`): D6 amended. The primer and the skill name the path-scoped wait and when each wait applies; the sentence is added only where it fits the cap without folding text the primer already had (the coordinator's rule for the worker); the setup block is unchanged. 005-67, the same day: D2 holds as written, a listed test-file path selects only itself (issue #6).
+- 2026-10-17, 004-67 (004's row, issue #19): the primer's policy-on slow sentence and skill step 4 say slow files are required once the agent changes a file; `references/policy.md` names the exemption for a session that changed nothing (004 D9).
 
 ## Dogfooding
 
