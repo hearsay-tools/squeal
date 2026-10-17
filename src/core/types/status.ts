@@ -749,6 +749,8 @@ export interface WhyReplacement {
   readonly worktreeId: WorktreeId;
   readonly recordedAt: EpochMs;
   readonly key: CheckKey;
+  /** `runs/<run-id>/` of that run, the log of the errors stored at the key; `null` when its run record was pruned. */
+  readonly logDir: AbsolutePath | null;
 }
 
 /** A check's test file's console lines from one run log, capped. */
