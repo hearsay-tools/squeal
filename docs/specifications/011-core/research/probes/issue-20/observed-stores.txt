@@ -1,0 +1,38 @@
+
+== /home/agent/projects/cezar/.git/squeal/store.sqlite
+runs 3494 (2026-10-14T19:55:38.694Z .. 2026-10-17T08:15:59.066Z); results rows 220797, fail 432; failure texts 310; naming /tmp/squeal- 6
+- [-] node:internal/modules/package_json_reader:197
+    test scripts/test-changed.test.mjs fail run 8731868e at 2026-10-14T19:58:52.128Z wt b7555ac0
+- [-] Command failed: /home/agent/.nvm/versions/node/v24.21.0/bin/node /tmp/squeal-1001/tmp/8d05ae0ca40a33f4/cez-cursor-package-XXgDoe/consumer/cursor-smoke.mjs
+    test packages/cezar/test/e2e/cursor-print.test.ts fail run 333f0071 at 2026-10-15T02:21:49.187Z wt 66a59a96
+- [-] Cannot find module '/tmp/squeal-1001/tmp/8d05ae0ca40a33f4/cez-installed-workers-wo2Ug8/installation's directory/node_modules/@wjarka/cezarion/dist/runs/store.js' imported from packages/cezar/test/e2e/delegation.test.ts
+    test packages/cezar/test/e2e/delegation.test.ts fail run 3adfac1b at 2026-10-15T02:21:52.739Z wt 66a59a96
+- [-] Command failed: /home/agent/.nvm/versions/node/v24.21.0/bin/node /tmp/squeal-1001/tmp/9555eb9fec13d6f7/cez-cursor-package-2RsEwt/consumer/cursor-smoke.mjs
+    test packages/cezar/test/e2e/cursor-print.test.ts fail run 7f12ea25 at 2026-10-16T20:05:51.573Z wt dd8b258d
+- [-] Cannot find module '/tmp/squeal-1001/tmp/e433b9a0ea38e5c9/cez-installed-workers-mzIfhY/installation's directory/node_modules/@wjarka/cezarion/dist/runs/store.js' imported from packages/cezar/test/e2e/delegation.test.ts
+    test packages/cezar/test/e2e/delegation.test.ts fail run b65ccd59 at 2026-10-16T23:42:41.056Z wt 7337318a
+- [-] Cannot find module '/tmp/squeal-1001/tmp/68148c3087e48114/cez-installed-workers-jzfwcE/installation's directory/node_modules/@wjarka/cezarion/dist/runs/store.js' imported from packages/cezar/test/e2e/delegation.test.ts
+    test packages/cezar/test/e2e/delegation.test.ts fail run eee69ba8 at 2026-10-16T23:45:15.877Z wt 7f713867
+transitions 6876 (since 2026-10-14T19:58:52.166Z); naming a temp path or ENOTEMPTY/EBUSY/EEXIST: 13
+  2026-10-15T00:43:46.682Z [ENOENT] test packages/cezar/src/core/workflow-no-progress-parity.test.ts pass-to-fail: Error: pid file <tmp>/cez-owned-input-opencode-imc5ud/.ai/cezar/worktrees/<uuid>/watchdog.pid holds no complete pid: "<ENOENT>" @ packages/cezar/src/pid-file.te
+  2026-10-15T00:53:24.144Z [-] test packages/cezar/src/core/workflow-autonomous-parity.test.ts pass-to-fail: Error: Fixture still owns work: <tmp>/cez-parity-run-cursor-n3AOy4; autoNameRun @ packages/cezar/src/workflows/fixture-cleanup.testkit.ts:73:39
+  2026-10-15T01:02:37.001Z [ENOENT] test packages/cezar/src/core/workflow-no-progress-parity.test.ts pass-to-fail: Error: pid file <tmp>/cez-owned-input-opencode-fCIE0c/.ai/cezar/worktrees/<uuid>/watchdog.pid holds no complete pid: "<ENOENT>" @ packages/cezar/src/pid-file.te
+  2026-10-15T01:02:37.001Z [ENOENT] test packages/cezar/src/core/workflow-no-progress-parity.test.ts fail-changed: Error: pid file <tmp>/cez-owned-input-opencode-afbzEQ/.ai/cezar/worktrees/<uuid>/watchdog.pid holds no complete pid: "<ENOENT>" @ packages/cezar/src/pid-file.te
+  2026-10-15T01:11:21.268Z [-] file packages/web/e2e/task-github-items.e2e.ts first-seen-fail: Error: cezar e2e: awaiting listener announcement; cezar e2e: awaiting listener announcement; child={"pid":1380140,"spawnfile":"/home/agent/.nvm/versions/node/v2
+  2026-10-15T01:11:47.172Z [-] file packages/web/e2e/task-handoff.e2e.ts first-seen-fail: Error: cezar e2e: awaiting listener announcement; cezar e2e: awaiting listener announcement; child={"pid":1391607,"spawnfile":"/home/agent/.nvm/versions/node/v2
+  2026-10-15T01:12:12.836Z [-] file packages/web/e2e/task-pr-collection.e2e.ts first-seen-fail: Error: cezar e2e: awaiting listener announcement; cezar e2e: awaiting listener announcement; child={"pid":1404460,"spawnfile":"/home/agent/.nvm/versions/node/v2
+  2026-10-15T02:21:49.322Z [-] test packages/cezar/test/e2e/cursor-print.test.ts first-seen-fail: Error: Command failed: /home/agent/.nvm/versions/node/v24.21.0/bin/node <tmp>/tmp/<hex>/cez-cursor-package-XXgDoe/consumer/cursor-smoke.mjs @ packages/cezar/tes
+  2026-10-15T02:21:52.832Z [-] test packages/cezar/test/e2e/delegation.test.ts first-seen-fail: Error: Cannot find module '<tmp>/tmp/<hex>/cez-installed-workers-wo2Ug8/installation's directory/node_modules/@wjarka/cezarion/dist/runs/store.js' imported from
+  2026-10-16T23:42:33.523Z [-] test packages/cezar/test/e2e/delegation.test.ts first-seen-fail: Error: Cannot find module '<tmp>/tmp/<hex>/cez-installed-workers-QI9brD/installation's directory/node_modules/@wjarka/cezarion/dist/runs/store.js' imported from
+  2026-10-16T23:42:41.112Z [-] test packages/cezar/test/e2e/delegation.test.ts first-seen-fail: Error: Cannot find module '<tmp>/tmp/<hex>/cez-installed-workers-mzIfhY/installation's directory/node_modules/@wjarka/cezarion/dist/runs/store.js' imported from
+  2026-10-16T23:45:15.916Z [-] test packages/cezar/test/e2e/delegation.test.ts first-seen-fail: Error: Cannot find module '<tmp>/tmp/<hex>/cez-installed-workers-jzfwcE/installation's directory/node_modules/@wjarka/cezarion/dist/runs/store.js' imported from
+  2026-10-17T07:42:59.849Z [-] test packages/cezar/test/e2e/delegation.test.ts fail-changed: Error: Cannot find module '<tmp>/tmp/<hex>/cez-installed-workers-jzfwcE/installation's directory/node_modules/@wjarka/cezarion/dist/runs/store.js' imported from
+
+== /home/agent/projects/squeal/.git/squeal/store.sqlite
+runs 1303 (2026-10-08T21:36:31.934Z .. 2026-10-17T08:16:18.859Z); results rows 77476, fail 35; failure texts 23; naming /tmp/squeal- 1
+- [-] expected [ …(2) ] to deeply equal [ StringMatching{…}, …(2) ]; diff (- Expected, + Received): - "Config problem: squeal.config.json: \"inputs\" has a glob Squeal cannot use: squeal: negated input glob is not supported: !
+    test test/cli/status-config-problem.test.ts fail run 1d2599d4 at 2026-10-17T08:11:20.935Z wt 488c5b0c
+transitions 17334 (since 2026-10-07T19:48:23.471Z); naming a temp path or ENOTEMPTY/EBUSY/EEXIST: 3
+  2026-10-08T21:13:32.509Z [-] test test/e2e/lifecycle.test.ts pass-to-fail: Error: Command failed: cp -a <tmp>/vitest-5.0.3-node24-linux-x64/node_modules <tmp>/repo/node_modules @ test/e2e/harness.ts:170:5
+  2026-10-13T16:58:27.776Z [-] test test/e2e/lifecycle.test.ts pass-to-fail: Error: timed out after <n>ms waiting for a ready daemon in <tmp>/repo @ test/e2e/support.ts:43:13
+  2026-10-13T18:45:58.835Z [-] test test/cli/remove.test.ts pass-to-fail: AssertionError: <tmp> exists already: expected true to be false // Object.is equality @ test/cli/remove.test.ts:208:78
