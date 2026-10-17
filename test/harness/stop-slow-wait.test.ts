@@ -8,6 +8,7 @@ import { recorded, type SquealRepo } from "./helpers.js";
 import {
   decision,
   deps,
+  edit,
   HARNESSES,
   landSlow,
   mainConsumer,
@@ -114,10 +115,11 @@ describe.each(HARNESSES)("Stop waits for its slow tier, $name (004 D9 as amended
     const marked = mainConsumer(r);
     const other = { session_id: OTHER_SESSION, transcript_path: `/t/${OTHER_SESSION}.jsonl` };
     await harness.startTurn(r, other);
+    edit(r);
     const quick = decision(await harness.stop(r, other));
     expect(quick.decision).toBe("block");
     expect(quick.reason).toMatch(
-      /^Squeal policy stop.requireSlowSuite is on and 1 slow test file is not current at revision 1: test\/e2e\/slow.test.ts\./,
+      /^Squeal policy stop.requireSlowSuite is on and 1 slow test file is not current at revision 2: test\/e2e\/slow.test.ts\./,
     );
     expect(decision(await harness.stop(r))).toEqual({});
     const sessions = r.store.consumers.list(r.worktreeId).map((c) => c.consumer);
@@ -131,6 +133,7 @@ describe.each(HARNESSES)("Stop waits for its slow tier, $name (004 D9 as amended
     r.store.consumers.unregister(mainConsumer(r));
     await nextMs();
     await harness.startTurn(r, { source: "resume" });
+    edit(r);
     expect(decision(await harness.stop(r)).decision).toBe("block");
     markStopWait(r, harness.name);
     expect(decision(await harness.stop(r))).toEqual({});
@@ -165,6 +168,7 @@ describe.each(HARNESSES)("Stop waits for its slow tier, $name (004 D9 as amended
     r.store.consumers.unregister(mainConsumer(r));
     await harness.startTurn(r, { source: "resume" }, atDeps);
     expect(r.store.consumers.get(mainConsumer(r))?.registeredAt).toBe(AT);
+    edit(r);
     expect(decision(await harness.stop(r)).decision).toBe("block");
     markStopWait(r, harness.name);
     expect(decision(await harness.stop(r))).toEqual({});
