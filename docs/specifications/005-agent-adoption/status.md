@@ -25,7 +25,6 @@ Brief: `research/README.md`. Topics `adoption-baseline`, `instruction-surfaces`,
 
 - 2026-10-09, the human: write the spec and reword this repository's gate in parallel; setup is a skill shipped with the plugin that interviews the user and runs `squeal init` for them, not a command the user types (spec D3).
 
-
 ## Amendments after approval
 
 - 2026-10-09, decided by the human at approval: the skill is named `setup` (`/squeal:setup`, D3); goal 6's targets as proposed (agent-run Vitest outside a gate at most half of 9.0 per editing session, workers' full-suite Vitest near zero); no wave starts until the human says so.
@@ -136,6 +135,7 @@ Brief: `research/README.md`. Topics `adoption-baseline`, `instruction-surfaces`,
 - 2026-10-14, the release long baseline for 0.1.168 (run `5062b3`, 16 sessions, `1b67e32d`) raised no alarms: no false pass, no forbidden edit. False fails were 3 of 16, the same count as 0.1.131's `af5be4`, all on t2-weekend (Haiku, Luna, Sol). Each claim matches Squeal: it reported the cold `clock.test.ts` calendar timeout as a known failure. Haiku's `no-rerun-answered` was 1 of 3 against 3 of 3, at n=3: context, not a flag. The release evals for 0.1.168 are done.
 - 2026-10-14, decided by the human: buy a third round on gate rewording. 005-58 repairs R1 and R2, with its worker on codex `gpt-6-astra` for that row only. 005-59 re-reviews it, and that review is the last.
 - 2026-10-14, decided by the human: the release waits for 007-21 to pass, 007's re-review after repair 007-20. 007-16 failed at `a67407f8`. It proved the `policy-node-test.ts` refactor preserves behaviour, but found three blockers in the dormant pytest code that ships in the bundle. Known-broken code ships only once it is reviewed, even when dormant.
+- 2026-10-17, 005-68 (the human, triage digest group A, issue #18, `research/issue-18-primer.md`): D6 amended. The primer and the skill name the path-scoped wait and when each wait applies; the sentence is added only where it fits the cap without folding text the primer already had (the coordinator's rule for the worker); the setup block is unchanged. 005-67, the same day: D2 holds as written, a listed test-file path selects only itself (issue #6).
 
 ## Dogfooding
 
