@@ -325,3 +325,161 @@ The assertion `fullSuite.atCurrentRevision === false` fails with `expected true 
 ### Inputs for the coordinator
 
 B1 remains the only blocker. The async-check, fast-lane verdict, per-ref policy requeue and process-group repairs need no redesign from this review. Keep the existing D7/D8 behavior and row 004-68's exclusion. This is the second review verdict; the process's disposition of a second FAIL belongs to the coordinator and the human.
+
+## Third round
+
+FAIL fc0b4ef8c0a06f3263a1abef70767d609980d1ea
+
+One proven B1 blocker remains at the publication boundary. No additional should-fix items or nits. The settled-state and restart defects from the re-review are fixed. This human-authorized third round covers B1 alone, the repair-2 delta and its callers. B2-B4, S1, row 004-68 and the other original findings stay closed or excluded. Reviewed across 2026-10-17/18 at the exact pinned candidate, against the supplied main commit `82f57951` (0.1.213).
+
+### Verification
+
+Product verification ran on the clean `fc0b4ef8` tree. No product file was edited. `npm run build` was not run, as directed. Probe sources, fixture repositories, HOME and XDG config/cache/data directories lived under `/tmp/004-65-third-probes`; git author and committer identity was explicit. Probes used a separate SQLite connection and, for the blocking observation, the candidate's committed Claude Code CLI in a separate process. No probe used the real HOME.
+
+```text
+npm ci
+added 196 packages, and audited 197 packages in 7s
+found 0 vulnerabilities
+(exit 0)
+
+npm run lint
+Checked 1443 files in 449ms. No fixes applied.
+(exit 0)
+
+npm run typecheck
+tsc --noEmit
+(exit 0)
+
+npm run check:version -- origin/main
+version bump: 0.1.213 -> 0.1.214, ok
+(exit 0)
+
+npm run check:version -- 82f57951
+version bump: 0.1.213 -> 0.1.214, ok
+(exit 0)
+```
+
+Installation also printed the existing deprecation and install-script approval notices. The local `origin/main` ref had advanced to `9e31be27` when inspected during the gate; the second version check explicitly covers the supplied comparison commit. This does not change the pinned candidate or the review scope.
+
+Touched tests and their slow-tier integration callers:
+
+```sh
+npx vitest run --maxWorkers=2 test/slow test/state/sink-slow-skip.test.ts \
+  test/status/slow-tier.test.ts test/cli/run-all-skipped.test.ts \
+  test/cli/run-slow-skipped.test.ts test/delivery/slow-told.test.ts \
+  test/harness/stop-slow-skipped.test.ts test/policy/slow.test.ts
+```
+
+```text
+Test Files  18 passed (18)
+     Tests  149 passed (149)
+Start at  23:52:03
+Duration  14.46s
+(exit 0)
+```
+
+Independent full run, under the shared-host full-run lock:
+
+```sh
+flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
+```
+
+```text
+Test Files  721 passed | 1 skipped (722)
+     Tests  6115 passed | 10 skipped (6125)
+Start at  23:52:03
+Duration  877.21s
+(exit 0)
+```
+
+The run printed two fixture gitdir-repair diagnostics, cleanup of one process left by an earlier run, and Vitest experimental type-testing notices. Host load observed during verification ranged from about 10 to 53 on 24 CPUs.
+
+Background Squeal separately reported the unchanged negative controls in `test/runners/node-test/run-reads-fidelity.test.ts:116` and `test/runners/vitest/observe-fidelity.test.ts:119`, both already recorded in the first and second reviews. Those background results do not establish a repair regression and add no B1 finding. They are separate from the independent gate above.
+
+The isolated settled-state matrix used the real scheduler, Vitest adapter and production status, why, failure-history and delivery readers. Four cases cover prior pass/fail results crossed with default/lookup-only bootstrap. Each actually closes the first scheduler, adapter and SQLite connection before reopening, retries normal and forced full checkpoints while unmet, and then requests a met full checkpoint without another revision.
+
+```sh
+npx vitest run --config /tmp/004-65-third-probes/vitest.config.mts \
+  --maxWorkers=1 /tmp/004-65-third-probes/review.test.ts
+```
+
+```text
+Test Files  1 passed (1)
+     Tests  4 passed (4)
+Start at  23:55:35
+Duration  8.52s
+(exit 0)
+```
+
+The boundary probe is separate from that passing matrix. It asserts that a reader cannot count the skipped checks current after the actual skip-meta write, before the subsequent ledger commit:
+
+```sh
+npx vitest run --config /tmp/004-65-third-probes/vitest.config.mts \
+  --maxWorkers=1 /tmp/004-65-third-probes/atomic.test.ts
+```
+
+```text
+prior fail=false: AssertionError: expected 5 to be 3
+prior fail=true:  AssertionError: expected 5 to be 3
+Test Files  1 failed (1)
+     Tests  2 failed (2)
+Start at  23:58:26
+Duration  7.85s
+(exit 1)
+```
+
+Both failures are behavioral assertions against the pinned candidate. The shipped CLI returned valid status JSON and exited 0. The fixture's eventual forced checkpoints correctly ended abandoned; teardown closed the schedulers, adapters and stores.
+
+### B1 remains blocking: publishing the skip exposes current checks before their refresh [proven]
+
+**Where:** `src/core/scheduler/slow-skip.ts:91`, especially `:103` through `:106`; `src/core/state/slow-skipped.ts:33`; `src/core/store/store.ts:93`; `src/core/scheduler/ledger.ts:481` through `:526`.
+
+The new ordering makes the sink consult the right skip after `ledger.commit()`, but the skip publication and that commit are separate SQLite transactions. `#skip` dequeues the files in memory, calls `checkpoints.failed`, writes `slow-skips:<worktree>` through `#publish()`, and only then calls `ledger.commit()`. The meta write is already committed when the sink has not yet reclassified the stored known states or persisted the dequeued key rows. The scheduler mutex does not exclude independent status or hook readers.
+
+**Reproduction:** run the basic scheduler fixture with strings and upper slow and `exists: ["ready"]`. Create `ready` and let the baseline finish. Remove it, apply an unrelated revision so the previously met precondition is not cached, and request a forced full checkpoint. Wrap the store's public `meta.set` only to pause immediately after the real write of `slowSkipsMetaKey(worktreeId)`. While the writer is paused, spawn the candidate's committed `plugins/claude-code/dist/cli/squeal.mjs status --json` with cwd the fixture and scratch HOME/XDG. The wrapper neither changes the written data nor advances another scheduler step. It deterministically takes the reader turn that another process can take between those two commits:
+
+```ts
+const set = h.store.meta.set.bind(h.store.meta);
+h.store.meta.set = (key, value) => {
+  set(key, value); // actual committed write, unchanged
+  if (key !== slowSkipsMetaKey(h.worktreeId)) return;
+  const child = spawnSync(process.execPath, [candidateCli, "status", "--json"], {
+    cwd: h.root, env: process.env, encoding: "utf8",
+  });
+  expect(child.status).toBe(0);
+  observed = JSON.parse(child.stdout);
+};
+await h.scheduler.requestFullSuite({ force: true });
+await h.scheduler.idle();
+// A transaction may still expose the old unskipped snapshot here.
+if (observed.slowTier.current === 0) {
+  expect(observed.fileLevelCounts.current).toBe(3); // receives 5
+}
+```
+
+**Observed, prior pass and prior fail:** the committed skip lists strings and upper with `ready matches no file (slow.precondition.exists)`, but the CLI reports:
+
+```json
+{
+  "counts": { "current": 11, "pending": 0, "stale": 0, "unknown": 0 },
+  "fileLevelCounts": { "current": 5, "pending": 0, "stale": 0, "unknown": 0 },
+  "slowTier": { "testFiles": 2, "current": 0, "pending": 2, "notRun": 0 }
+}
+```
+
+The prior-failure variant also reports upper's known failure with `validity: "current"`. The slow tier reads pending because its key rows still carry the forced queue; under the repair's own classifier these checks should therefore read pending, never current. After the next commit they do correctly become stale and only the three fast file checks count current. This is an externally readable committed database state, demonstrated by a separate shipped CLI process, not an inferred race or a missing-module probe failure. The same known-state rows feed the main header, failure readers and deliveries.
+
+**Judgment:** B1's D8 requirement remains broken: “a skip never reads as a pass, a failure or a current file.” The repaired steady state does not make the intermediate committed snapshot honest. This is the same skip-to-shared-state boundary assigned to this round, not a reopening of the other findings.
+
+**Repair sized for one worker:** publish the skip and persist its dequeued key rows plus sink reclassification in one enclosing store transaction. Keep publication before refresh inside that transaction, with the result rows untouched. Include any checkpoint writes that expose the same state in the atomic change. Add a regression using an independent SQLite/CLI reader at the publication boundary: before commit it sees the previous unskipped state, after commit it sees the skip with only three fast file checks current and the prior slow failure non-current. A reader must never see the skip paired with the old current states. No precondition, Stop, fingerprint or result-key redesign is needed.
+
+### What is fixed, and the two worker open points
+
+- **Settled effective states [proven fixed]:** main header and status count three current file checks after a skip, not five. All four stored slow checks are stale, including a prior failure. `why` labels them stale and retains their historical results; the failure-history command retains original revision/run provenance without claiming current validity. New registrations and an actual failure delta carry stale validity too. The normal and forced retries remain abandoned while unmet.
+- **Restart certification [proven fixed]:** after actual adapter/store close and reopen, both default and lookup-only baseline policies leave `fullSuite.atCurrentRevision` false, two slow files not run, no current slow checks and no new slow execution. A met explicit checkpoint then runs both files, clears the persisted skip, restores all five current file checks and completes as a full suite, under both policies and with either prior outcome.
+- **Persisted skip not queued at start [not required by D8, no additional blocker]:** restart is not one of D8's declared recheck triggers. The skip remains visible and the new baseline cannot certify it. A relevant revision or explicit slow/full request still checks it again. Queuing it at every start would add a trigger; it is not needed to close the assigned false-current/full-suite defect.
+- **Scheduler `files.ts` classifier still says current [no separate proven break]:** it remains a predicate over in-memory key/results, not the effective stored validity the public readers expose. Normal full requests call `SlowTier.recheck()` before filtering by that classifier; recheck forces skipped key hits into the queue. Slow requests likewise recheck first, and bootstrap now explicitly includes skipped hits and fails their baseline membership. The tested normal/forced/restart paths do not complete over a persisted skip through this classifier. Keep those safeguards; changing this predicate alone would require updating the forcing logic that currently uses it. This does not excuse the independently proven publication window above.
+
+### Inputs for the coordinator
+
+One B1 blocker remains, confined to atomic publication of the skip and the derived state it governs. Retain repair 2's classifier, bootstrap handling and the closed findings. The third-round disposition belongs to the coordinator and human; this reviewer changed no product code.
