@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { describeFailure, renormalizeFingerprint } from "../../src/core/state/fingerprint.js";
+import {
+  describeFailure,
+  renormalizeFingerprint,
+  sameFingerprint,
+} from "../../src/core/state/fingerprint.js";
 import type { CheckError, SourceLocation } from "../../src/core/types/index.js";
 
 /*
@@ -10,8 +14,8 @@ import type { CheckError, SourceLocation } from "../../src/core/types/index.js";
 
 const at: SourceLocation = { path: "test/serve-port.test.ts", line: 42, column: 7 };
 
-function fp(message: string, location: SourceLocation = at): string {
-  const error: CheckError = { name: "AssertionError", message, stack: null, location, diff: null };
+function fp(message: string, location: SourceLocation = at, name = "AssertionError"): string {
+  const error: CheckError = { name, message, stack: null, location, diff: null };
   return describeFailure([error], null).fingerprint;
 }
 
@@ -110,6 +114,34 @@ describe("fingerprint of a temp path", () => {
       fp("cannot open /repo/tmp/x-XyZ789/a.js"),
     );
   });
+
+  // Review wave 1.12, B1: a segment below the allocation is a name, whatever its spelling.
+  it("keeps a named segment with digits or capitals below the allocation", () => {
+    expect(fp("open /tmp/run/release-v12345/a.js")).not.toBe(
+      fp("open /tmp/run/release-v23456/a.js"),
+    );
+    expect(fp("open /tmp/run/my-MODULE/a.js")).not.toBe(fp("open /tmp/run/my-PLUGIN/a.js"));
+    expect(fp("open /tmp/run/release-v12345/a.js")).toContain("<tmp>/release-v12345/a.js");
+  });
+
+  // Review wave 1.12, B2: the allocation below Squeal's root reads `<tmp>` whatever its case.
+  it("is the same for any suffix of the allocation below Squeal's scratch root", () => {
+    const open = (suffix: string, file = "cli.js") =>
+      `open /tmp/squeal-1001/tmp/6db45f9b91a3d272/cez-installed-workers-${suffix}/packages/${file}`;
+    expect(fp(open("abcdef"))).toBe(fp(open("ghijkl")));
+    expect(fp(open("byytfc"))).toBe(fp(open("QI9brD")));
+    expect(fp(open("abcdef"))).toContain("open <tmp>/packages/cli.js");
+    expect(fp(open("abcdef"))).not.toBe(fp(open("ghijkl", "main.js")));
+  });
+
+  it("finds Squeal's scratch root of another worktree's key below any temp root", () => {
+    process.env.TMPDIR = "/scratch/t";
+    const open = (root: string, alloc: string) => `open ${root}/squeal-501/tmp/${alloc}/x/a.js`;
+    expect(fp(open("/scratch/t", "k1"))).toBe(fp(open("/scratch/t", "k2")));
+    expect(fp(open("/scratch/t", "k1"))).toContain("open <tmp>/a.js");
+    // The scratch root itself, nothing below it: the allocation is `squeal-501`.
+    expect(fp("open /tmp/squeal-501/tmp/k1")).toContain("open <tmp>/tmp/k1");
+  });
 });
 
 describe("renormalizeFingerprint", () => {
@@ -134,6 +166,7 @@ describe("renormalizeFingerprint", () => {
     for (const f of [
       fp(PORT(35321)),
       fp(SQUEAL_TMP("6db45f9b91a3d272", "QI9brD")),
+      fp("open /tmp/run/release-v12345/a.js"),
       fp("timed out after 5012ms at 2026-10-17T07:40:01.123Z"),
       fp("expected 0x7ffe to be 9e4f2a1b3c5d6e7f80"),
     ]) {
@@ -145,3 +178,33 @@ describe("renormalizeFingerprint", () => {
     );
   });
 });
+
+describe("sameFingerprint", () => {
+  it("compares a stored fingerprint with a fresh one under the current rules", () => {
+    expect(sameFingerprint(stored(34963), fp(PORT(35321)))).toBe(true);
+    expect(sameFingerprint(stored(34963), fp("expected 1 to be 3"))).toBe(false);
+    expect(sameFingerprint(null, null)).toBe(true);
+    expect(sameFingerprint(null, fp(PORT(35321)))).toBe(false);
+  });
+
+  // Review wave 1.12, S1: the name may hold the delimiter the message follows.
+  it("reads the name with the message, wherever the first ': ' falls", () => {
+    const where = { path: "test/a.test.ts", line: 1, column: 1 };
+    const fresh = fp("boom", where, "Error: port 12345");
+    expect(fresh).toBe("Error: port 12345: boom @ test/a.test.ts:1:1");
+    expect(renormalizeFingerprint(fresh)).toBe("Error: port <port>: boom @ test/a.test.ts:1:1");
+    expect(sameFingerprint(renormalizeFingerprint(fresh), fresh)).toBe(true);
+    expect(
+      sameFingerprint(
+        fp("boom", where, "listen 127.0.0.1:4000: refused"),
+        fp("boom", where, "listen 127.0.0.1:4001: refused"),
+      ),
+    ).toBe(true);
+    expect(sameFingerprint(fresh, fp("bang", where, "Error: port 12345"))).toBe(false);
+  });
+});
+
+/** The pre-011-14 fingerprint of `PORT(port)`: the message as it was. */
+function stored(port: number): string {
+  return `AssertionError: ${PORT(port)} @ test/serve-port.test.ts:42:7`;
+}
