@@ -181,3 +181,76 @@ it("does not retry an identity whose pid now names a stranger", async () => {
   expect(singles).not.toContain(202);
 });
 ```
+
+## Re-review
+
+PASS 6902104ff49479a3797ab779f6e187f548670547
+
+B1 is closed. Zero blockers, should-fix findings or nits in the repair scope. 011-13 remains passed and was not re-prosecuted.
+
+### Verification
+
+Reviewed detached HEAD `6902104ff49479a3797ab779f6e187f548670547`, fetched from `cand/0.1.212`. The rebased repair range is `e9d71373` (first review), `faf4ab04` (repair and regression), `1bdd1235` (key re-pin), `6902104f` (bundles). The red baseline is `00232cc2`, the rebased first-reviewed code; its `low-priority.ts` is byte-identical to `04edaa09`'s. Fetched `origin/main` was `4ffd501b`. Node v24.21.0, Linux. Product, tests, keys and bundles stayed unchanged throughout verification; only this review file is committed. No `npm run build`, as instructed.
+
+```text
+npm ci
+added 196 packages, and audited 197 packages in 16s
+found 0 vulnerabilities
+exit 0
+
+npm run lint
+Checked 1408 files in 1152ms. No fixes applied.
+exit 0
+
+npm run typecheck
+> tsc --noEmit
+exit 0
+
+npm run check:version -- origin/main
+version bump: 0.1.211 -> 0.1.212, ok
+exit 0
+
+npx vitest run test/keys/key-format.test.ts --maxWorkers=1
+Test Files  1 passed (1)
+     Tests  29 passed (29)
+Duration  2.22s
+exit 0
+
+npx vitest run test/daemon --maxWorkers=4
+Test Files  68 passed (68)
+     Tests  288 passed (288)
+Duration  181.96s
+exit 0
+```
+
+The daemon and key checks above are this review's independent Vitest runs, explicitly requested or discriminating for the repair, rather than Squeal's background results. No second independent full suite was run. The coordinator supplied its exact-SHA full-run evidence (702 files, 5,973 passed, 10 skipped, exit 0); that is attributed evidence, not claimed as this reviewer's run.
+
+CI run `39063256164` targets the exact pinned SHA. At 2026-10-17 19:41 UTC, its Node 24 lint/typecheck/version-sensitive job, including build and bundle-drift steps, has completed successfully. All three Node 22 test shards are still running. The conditional nightly and bundle-version jobs are skipped. No final CI verdict is claimed; the coordinator must retain that landing gate.
+
+### B1 closure and boundaries
+
+- **Proven:** `src/core/daemon/low-priority.ts:133-142` retains the selected identities in `live`. The error callback calls `same(process)` inside the loop immediately before each `idleIo([process.pid], ...)`; it does not pre-filter the whole retry list. Each attempted retry therefore re-reads that pid's start, including after an earlier retry has been submitted.
+- **Proven by red/green:** ran the first review's preserved B1 probe and the new `test/daemon/low-priority-retry.test.ts` against an archived, unmodified `00232cc2` source tree and the actual pinned candidate sources. Only import paths changed. Both tests fail the old code and pass the repair. All probe processes used temporary HOME, XDG_CONFIG_HOME and XDG_RUNTIME_DIR. No priority commands or real process identity changes were executed by these probes.
+
+  ```text
+  00232cc2: Test Files 2 failed (2); Tests 2 failed (2); exit 1
+  Original B1 probe: singles [101,202,303], readsDuringRetry []
+  New regression: expected [101,303], received [101,202,303,404]
+
+  6902104f: Test Files 2 passed (2); Tests 2 passed (2); exit 0
+  ```
+
+- **Proven, non-vacuous regression:** the new test calls production `lowerWhile`, holds the initial multi-pid batch's callback, replaces 202's start, removes 404, and releases a failed callback. It requires exactly `[101,303]`, so a later matching live identity must still be retried. Its only substitutions are `node:os`'s priority calls, `node:child_process.execFile`, and `terminate.js`'s `statOf`; other exports are the real modules. The public `walk` seam supplies known descendants. It does not mock `lowerWhile`, the callback, identity selection or retry logic. The observed failure on the old implementation confirms that the regression exercises B1.
+- **Proven by an additional independent probe:** 202 is replaced and 303 gone before the callback; submitting retry 101 then replaces 404 during that same callback. A later live 505 is still submitted. The exact trace proves the per-pid read is adjacent to its retry, rather than a single filter at callback entry:
+
+  ```text
+  calls: [[101,202,303,404,505],[101],[505]]
+  retryEvents: [stat:101,io:101,stat:202,stat:303,stat:404,stat:505,io:505]
+  Test Files 1 passed (1); Tests 6 passed (6); exit 0
+  ```
+
+  The other cases in that probe confirm no fan-out after success or ENOENT, no singleton retry, one bounded fan-out even when every individual retry fails, and no retries when all identities changed.
+- **Unchanged by inspection and boundary probes:** first lowering still checks starts and lowers nice priority before one slow-lane batch. Batch arguments remain `ionice -c 3 -p <pids>`. Success, ENOENT and singleton guards are unchanged; individual failures cannot recurse. The entire `lowerWhile` loop, 100 ms polling interval, first-second/every-second walk cadence, `below`, lane attribution and shared orphan discovery are untouched by the repair. All 68 daemon test files pass, including the real-process slow-lane descendant receiving idle I/O past the failing pid, walk-cadence and shared-orphan-scan regressions.
+- **Proven:** all four committed CLI bundles contain the same repaired retry and are byte-identical to one another. Their only delta is the compiled `lower` change. The key-format guard's 29 tests pass with `KEY_FORMAT_VERSION` 11 re-pinned in place. The D11 sentence and amendment line accurately describe the repair.
+
+No further repair input. The remaining interval between the final identity read and the external command is the same unavoidable check-to-command interval identified in the first review, not another asynchronous retry without a check. No claim about real kernel pid-reuse frequency is made.
