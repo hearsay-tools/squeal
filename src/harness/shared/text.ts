@@ -128,6 +128,27 @@ export function slowSuiteReason(
 }
 
 /**
+ * Spec 004 D8 as amended 2026-10-17 (task 004-65): the block of
+ * `stop.requireSlowSuite` when the slow tier's precondition skipped `files`,
+ * naming `skipped`, its reason: nothing runs them until it holds, so Stop
+ * does not wait for them.
+ */
+export function slowSkippedReason(
+  revision: number,
+  files: readonly TestFileRef[],
+  skipped: string,
+  command: string = SQUEAL_COMMAND,
+): string {
+  const verb = files.length === 1 ? "is" : "are";
+  return (
+    `Squeal policy stop.requireSlowSuite is on and ${plural(files.length, "slow test file")} ` +
+    `${verb} not current at revision ${revision}: ${list(files.map((f) => f.path))}. ` +
+    `The slow tier was skipped: ${skipped}. Squeal runs them once the precondition holds; ` +
+    `\`${command} run --slow --wait\` checks it again.`
+  );
+}
+
+/**
  * Spec 004 D9 as amended 2026-10-12: the block of a Stop that waited
  * `waitedMs` for its slow files and found `files` still not current, or
  * with `refining` the runner part of `revision` still pending (task 001-295).
