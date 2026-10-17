@@ -1,6 +1,6 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach } from "vitest";
 import { POLICY_FILE } from "../../src/core/daemon/policy.js";
 import { readSlowSkips, slowTierText } from "../../src/core/state/index.js";
@@ -61,6 +61,7 @@ export async function open(precondition: SlowPrecondition, options: OpenOptions 
   const repo = createRepo();
   const store = openRepoStore(repo.commonDir);
   for (const [path, content] of Object.entries(options.files ?? {})) {
+    mkdirSync(dirname(join(repo.main, path)), { recursive: true });
     writeFileSync(join(repo.main, path), content);
   }
   const slotDir = scratch("squeal-004-65-slot-");
