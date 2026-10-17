@@ -544,7 +544,7 @@ describe("readStatus", () => {
       expect(result).toMatchObject({ schemaVersion: 1, available: false, reason: "timeout" });
       // 011-01: the time it really waited, not the budget it might have.
       expect(result.available ? "" : result.message).toMatch(
-        /^status unavailable, store busy, waited \d+ ms; `squeal status --wait <ms>`/,
+        /^status unavailable, store busy, waited \d+ ms: another process holds the store's lock; run the command again once it is released$/,
       );
       expect(Date.now() - started).toBeLessThan(1_000);
     } finally {

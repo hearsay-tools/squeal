@@ -105,7 +105,7 @@ describe("CLI reads beside a store writer (011 C6, C7, C13)", () => {
     },
   );
 
-  it("says how long it waited and names `squeal status --wait` when the lock outlasts the bound", async () => {
+  it("says how long it waited and promises no wait that would end at the same lock, when the lock outlasts the bound", async () => {
     const { b, database } = seeded();
     const holder = await holdLock(database, "exclusive-locking", 5_000);
     try {
@@ -118,7 +118,9 @@ describe("CLI reads beside a store writer (011 C6, C7, C13)", () => {
       const ms = Number(/store busy, waited (\d+) ms/.exec(why.message)?.[1]);
       expect(ms).toBeGreaterThanOrEqual(400);
       expect(ms).toBeLessThanOrEqual(waited);
-      expect(why.message).toContain("squeal status --wait");
+      // `status --wait` ends at its first unavailable read (review 011-core wave-1), so naming it would promise a wait.
+      expect(why.message).toContain("run the command again once it is released");
+      expect(why.message).not.toContain("status --wait");
     } finally {
       holder.child.kill();
       await holder.released;
