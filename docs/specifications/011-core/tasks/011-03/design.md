@@ -1,5 +1,7 @@
 # 011-03: named demand, a draft C-section for the human's review
 
+**Accepted by the human on 2026-10-17 as drafted** (question 1: above failing files; question 2: source paths not promoted), with the Diagnostics section below. In `spec.md` as C15; code rows 011-11 and 011-12.
+
 Board row 011-03 (gh-14, gh-17; issues #14, #17). Digest group A, decided by the human 2026-10-17: promotion allowed, design first. It revises 005-11's "a named-file wait does not move the file forward in the queue, not for now" (the human, 2026-10-13). Sources: `../../../001-core-loop/research/issue-14-named-wait.md`, `issue-17.md` and their probes. Drafted by the coordinator, 2026-10-17. Nothing here is in `spec.md` until the human accepts it. On acceptance the section goes in as C15, C4 step 4 gains the cross-reference sentence at the end, 005 D2's "reads only" clause points to C15, `status.md` gets a dated line, and the code rows at the end go on the board.
 
 Assumes 005-67 (running): a listed test-file path selects only itself.
