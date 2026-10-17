@@ -1,4 +1,5 @@
 import type { DiagnosticFingerprint, KnownOutcome, TransitionKind } from "../types/index.js";
+import { sameFingerprint } from "./fingerprint.js";
 
 /** What one side of a comparison says about a check: a known state or a view entry. */
 export interface Observation {
@@ -22,7 +23,8 @@ export function transitionKind(from: Observation | null, to: Observation): Trans
   switch (to.outcome) {
     case "fail":
       if (before === "pass") return "pass-to-fail";
-      if (before === "fail") return from?.fingerprint === to.fingerprint ? null : "fail-changed";
+      if (before === "fail")
+        return sameFingerprint(from?.fingerprint ?? null, to.fingerprint) ? null : "fail-changed";
       return "first-seen-fail";
     case "pass":
       return before === "fail" ? "fail-to-pass" : null;
