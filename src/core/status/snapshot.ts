@@ -18,8 +18,8 @@ import {
   type InheritedSource,
   type KnownState,
   PAYLOAD_SCHEMA_VERSION,
-  type RunRecord,
   parseCheckpointProgress,
+  type RunRecord,
   type StatusBuilder,
   type StatusResult,
   type StatusSnapshot,
@@ -285,8 +285,7 @@ function breakdown(
     testFiles: keys.length,
     testFilesWithoutChecks: without.length,
     testFilesWithoutChecksRunning: without.filter(
-      (k) =>
-        k.pending === "running" || (k.pending !== null && running.has(testFileId(k.testFile))),
+      (k) => k.pending === "running" || (k.pending !== null && running.has(testFileId(k.testFile))),
     ).length,
   };
 }
