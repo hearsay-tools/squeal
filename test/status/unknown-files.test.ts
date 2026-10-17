@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { recordUnknownFiles } from "../../src/core/scheduler/unknown-files.js";
-import { formatStatus, readStatus, UNKNOWN_FILES_LISTED } from "../../src/core/status/index.js";
+import { SUMMARY_MAX_CHARS } from "../../src/core/state/index.js";
+import {
+  formatStatus,
+  formatWhy,
+  readStatus,
+  readWhy,
+  UNKNOWN_FILES_LISTED,
+} from "../../src/core/status/index.js";
 import type { CheckKey, PendingPhase, RevisionNumber } from "../../src/core/types/index.js";
+import { withoutTouched } from "../../src/runners/vitest/moved.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "./helpers.js";
 
 /*
@@ -50,7 +58,15 @@ function seeded() {
       ),
     );
   const status = () => readStatus(repo.main, { now: () => NOW });
-  return { store, id, row, marked, status, text: () => formatStatus(status(), NOW) };
+  return {
+    root: repo.main,
+    store,
+    id,
+    row,
+    marked,
+    status,
+    text: () => formatStatus(status(), NOW),
+  };
 }
 
 describe("status: test files without a result, named (001-403)", () => {
@@ -119,6 +135,43 @@ describe("status: test files without a result, named (001-403)", () => {
 
     expect(status.available && status.unknownTestFiles?.files).toHaveLength(UNKNOWN_FILES_LISTED);
     expect(w.text()).toContain("  and 3 more test files\n");
+  });
+
+  it("cuts a long reason as a delivery does; --json and why keep every path (task 011-02)", () => {
+    const w = seeded();
+    const paths = Array.from({ length: 600 }, (_, i) => `dist/agent-config/module-${i}.d.ts`);
+    const file = ref("test/touched.test.ts");
+    const report = {
+      end: "completed",
+      durationMs: 1,
+      completedFiles: [file],
+      results: [],
+      fileErrors: [],
+      failure: null,
+    } as const;
+    const reason = `vitest: ${withoutTouched(report, [file], paths).failure}`;
+    w.row("test/touched.test.ts", "k1");
+    w.store.knownStates.upsertMany([
+      state(w.id, check("test/touched.test.ts", "works"), {
+        outcome: "unknown",
+        validity: "unknown",
+        summary: reason,
+      }),
+    ]);
+
+    const status = w.status();
+    const line = w
+      .text()
+      .split("\n")
+      .find((l) => l.startsWith("  test/touched.test.ts: "));
+
+    expect(status.available && status.unknownTestFiles?.files[0]?.reason).toBe(reason);
+    expect(line).toBe(
+      `  test/touched.test.ts: no result: ${reason.slice(0, SUMMARY_MAX_CHARS - 3)}...`,
+    );
+    expect(line).toContain("since 600 files were written during this run");
+    const why = formatWhy(readWhy(w.root, "test/touched.test.ts > works"));
+    expect(why).toContain(`every path: ${paths.join(", ")}`);
   });
 
   it("says nothing when every file has a result", () => {

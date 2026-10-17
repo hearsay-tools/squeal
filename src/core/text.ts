@@ -8,6 +8,35 @@ export function cap(text: string, max: number): string {
   return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
 }
 
+/** The most paths a note or a reason names before "N more" (tasks 007-30, 011-02). */
+export const PATHS_NAMED = 5;
+
+/** Paths for a note, at most `max` of them. Styleguide: "Errors carry context (check id, revision, path)." */
+export function listPaths(paths: readonly string[], max = PATHS_NAMED): string {
+  const shown = paths.slice(0, max).join(", ");
+  return paths.length > max ? `${shown} and ${paths.length - max} more` : shown;
+}
+
+/**
+ * Task 011-02: a reason naming `paths`, explanation first: `lead`, then the
+ * paths as the subject of `verb` (singular when `one`), then `task`. Past
+ * `PATHS_NAMED` the subject is their count, and a sample with "N more"
+ * follows, then every path: delivery and status cut the reason at their
+ * caps, while `why` and `status --json` keep it whole.
+ */
+export function pathsReason(
+  lead: string,
+  paths: readonly string[],
+  verb: (one: boolean) => string,
+  task: string,
+): string {
+  if (paths.length <= PATHS_NAMED) {
+    return `${lead}${paths.join(", ")} ${verb(paths.length === 1)} (${task})`;
+  }
+  const all = paths.join(", ");
+  return `${lead}${plural(paths.length, "file")} ${verb(false)} (${task}): ${listPaths(paths)}; every path: ${all}`;
+}
+
 /**
  * Policy `vitest.excludeProjects` as status and the primer name it (task
  * 001-370, review wave-13bl S2): a plain name as the project it is, a

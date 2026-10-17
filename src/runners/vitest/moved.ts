@@ -1,4 +1,5 @@
 import type { Vitest } from "vitest/node";
+import { pathsReason } from "../../core/text.js";
 import type { AbsolutePath, RelativePath, RunReport, TestFileRef } from "../../core/types/index.js";
 import type { WorktreePaths } from "./paths.js";
 import { refKey } from "./results.js";
@@ -7,6 +8,9 @@ import { refKey } from "./results.js";
  * Task 001-146: what a run's report keeps once `SourceStamps` found bytes
  * the run read moved since it read them.
  */
+
+/** What a dropped run's reason says first (task 011-02): the paths come after it. */
+const UNKEYED = "vitest adapter: the run may have executed bytes no check key names";
 
 /**
  * The run's test files that may have executed `stale`, files the run read
@@ -64,8 +68,13 @@ export function withoutFiles(
   stale: readonly AbsolutePath[],
   paths: WorktreePaths,
 ): RunReport {
-  const moved = stale.map((file) => paths.toRelative(file) ?? file).join(", ");
-  const reason = `vitest adapter: ${moved} changed on disk after this run loaded it; the run may have executed bytes no check key names (task 001-146)`;
+  const moved = stale.map((file) => paths.toRelative(file) ?? file);
+  const reason = pathsReason(
+    `${UNKEYED}, since `,
+    moved,
+    (one) => `changed on disk after this run loaded ${one ? "it" : "them"}`,
+    "task 001-146",
+  );
   return dropFiles(report, dropped, reason);
 }
 
@@ -79,7 +88,13 @@ export function withoutTouched(
   testFiles: readonly TestFileRef[],
   touched: readonly RelativePath[],
 ): RunReport {
-  const reason = `vitest adapter: ${touched.join(", ")} was written during this run and ended as it was; the run may have executed bytes no check key names (task 001-159)`;
+  const reason = pathsReason(
+    `${UNKEYED}, since `,
+    touched,
+    (one) =>
+      `${one ? "was" : "were"} written during this run and ended as ${one ? "it was" : "they were"}`,
+    "task 001-159",
+  );
   return dropFiles(report, testFiles, reason);
 }
 
