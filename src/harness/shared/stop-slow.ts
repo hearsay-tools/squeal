@@ -12,6 +12,7 @@ import {
 import {
   checkIdentity,
   sameFingerprint,
+  skippedReason,
   slowFilesNotCurrent,
   testFileOf,
   toKnownFailure,
@@ -28,7 +29,7 @@ import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
 import { HOOK_TIMEOUT_MS, type HookDeps, isRegistered, withContext } from "./hook.js";
 import { unchangedSinceRegistration } from "./no-edit.js";
 import { newsText } from "./stop.js";
-import { slowFailuresReason, slowWaitReason, statusText } from "./text.js";
+import { slowFailuresReason, slowSkippedReason, slowWaitReason, statusText } from "./text.js";
 
 /**
  * The waiting Stop entry's `timeout` in both plugins' hooks.json, seconds:
@@ -88,7 +89,10 @@ export const STOP_SLOW_POLL_MS = 250;
  * be a snapshot the daemon has moved past, and the decision holds only for
  * the live revision. Not complete before the bound: it polls again, within
  * the same bound. Not complete at the bound: a block naming the files and
- * a pending runner part. Complete: a block naming each slow check that is
+ * a pending runner part. A tier its precondition skipped (004 D8 as amended
+ * 2026-10-17, task 004-65) is over at once: nothing will run it, so the block
+ * names the skip's reason without waiting out the bound. Complete: a block
+ * naming each slow check that is
  * a current failure this session was not told (`untold`), at whatever
  * revision or key it ran; with none, `null`, and the turn ends as today.
  * Task 001-305 (the human, after review waves 13am, 13an and 13ap): it
@@ -247,7 +251,8 @@ async function waitForSlow(
     downSince = last.header.daemon?.state === "down" ? (downSince ?? now) : null;
     const down = downSince !== null && now - downSince >= STOP_SLOW_DOWN_MS;
     const left = started + bound - now;
-    const over = left <= 0 || down;
+    // 004 D8 as amended 2026-10-17: nothing runs a skipped tier, so Stop does not wait it out.
+    const over = left <= 0 || down || skippedReason(last.header.slowTier) !== null;
     if (complete(last) || over) {
       const waitedMs = Math.min(bound, Math.round(now - started));
       const decided = decide(context, isSlow, clock(), { over, waitedMs, command: deps.command });
@@ -286,9 +291,12 @@ function decide(
     if (!done && !over) return "again";
     startTurn(store, consumer);
     const { header, failures } = live;
+    const skipped = skippedReason(header.slowTier);
     const reason = done
       ? slowFailuresReason(header.revision, failed)
-      : slowWaitReason(header.revision, live.open, waitedMs, command, header.runnerPartPending);
+      : skipped !== null
+        ? slowSkippedReason(header.revision, live.open, skipped, command)
+        : slowWaitReason(header.revision, live.open, waitedMs, command, header.runnerPartPending);
     return { header, failures, reason };
   });
 }
