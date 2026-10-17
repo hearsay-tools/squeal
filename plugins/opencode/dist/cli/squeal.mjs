@@ -6627,7 +6627,7 @@ function withStatusStore(cwd, options, fn) {
     if (waited >= retryMs) {
       return unavailable(
         "timeout",
-        `store busy, waited ${waited} ms; \`squeal status --wait <ms>\` keeps reading until it answers`
+        `store busy, waited ${waited} ms: another process holds the store's lock; run the command again once it is released`
       );
     }
     Atomics.wait(SLEEP, 0, 0, Math.min(BUSY_RETRY_PAUSE_MS, retryMs - waited));
