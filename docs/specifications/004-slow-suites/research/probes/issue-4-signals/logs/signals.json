@@ -1,0 +1,724 @@
+[
+ {
+  "edit": "E1 markdown.tsx (#1076)",
+  "rev": "979d96c91^",
+  "path": "packages/web/src/routes/task-thread/markdown.tsx",
+  "why": "failed in CI run 38795107753 after this edit",
+  "specs": 76,
+  "wanted": [
+   "artifact-project-links.e2e.ts"
+  ],
+  "today": {
+   "wantedAt": [
+    64
+   ],
+   "oneHopImporters": [],
+   "secondsBeforeFirstWanted": 738.647,
+   "first5": [
+    "inbox.e2e.ts",
+    "tools-menu.e2e.ts",
+    "command-palette.e2e.ts",
+    "skills-update.e2e.ts",
+    "sidebar-ellipsis-click.e2e.ts"
+   ]
+  },
+  "aStoredClosure": {
+   "specsWhoseStoredClosureHoldsPath": 76,
+   "specsWithStoredClosure": 76,
+   "wantedAt": [
+    64
+   ]
+  },
+  "aImportClosure": {
+   "specsWithEvidence": 0,
+   "wantedAt": [
+    64
+   ],
+   "first5": [
+    "inbox.e2e.ts",
+    "tools-menu.e2e.ts",
+    "command-palette.e2e.ts",
+    "skills-update.e2e.ts",
+    "sidebar-ellipsis-click.e2e.ts"
+   ],
+   "ms": 264.1
+  },
+  "bTokens": {
+   "b1": {
+    "tokens": 0,
+    "matchedTokens": [],
+    "droppedAsCommon": [],
+    "specsWithEvidence": 0,
+    "wantedAt": [
+     64
+    ],
+    "wantedScore": [
+     0
+    ],
+    "first5": [
+     "inbox.e2e.ts",
+     "tools-menu.e2e.ts",
+     "command-palette.e2e.ts",
+     "skills-update.e2e.ts",
+     "sidebar-ellipsis-click.e2e.ts"
+    ]
+   },
+   "b2": {
+    "tokens": 4,
+    "matchedTokens": [
+     "link-safety-dialog",
+     "link-safety-url"
+    ],
+    "droppedAsCommon": [
+     "link"
+    ],
+    "specsWithEvidence": 1,
+    "wantedAt": [
+     1
+    ],
+    "wantedScore": [
+     2
+    ],
+    "first5": [
+     "artifact-project-links.e2e.ts",
+     "inbox.e2e.ts",
+     "tools-menu.e2e.ts",
+     "command-palette.e2e.ts",
+     "skills-update.e2e.ts"
+    ]
+   },
+   "ms": 162
+  },
+  "cHint": {
+   "specsWithEvidence": 6,
+   "wantedAt": [
+    5
+   ],
+   "first5": [
+    "chat-code-fence.e2e.ts",
+    "assistant-line-breaks.e2e.ts",
+    "composer.e2e.ts",
+    "task-files.e2e.ts",
+    "artifact-project-links.e2e.ts"
+   ]
+  },
+  "todayMs": 1071.6
+ },
+ {
+  "edit": "E2 thread-scroll.ts (a source a spec imports; synthetic)",
+  "rev": "d88c8c1d3",
+  "path": "packages/web/src/routes/task-thread/thread-scroll.ts",
+  "why": "progressive-history imports it; thread-scroll is the spec named for it",
+  "specs": 77,
+  "wanted": [
+   "progressive-history.e2e.ts",
+   "thread-scroll.e2e.ts"
+  ],
+  "today": {
+   "wantedAt": [
+    1,
+    70
+   ],
+   "oneHopImporters": [
+    "progressive-history.e2e.ts"
+   ],
+   "secondsBeforeFirstWanted": 0,
+   "first5": [
+    "progressive-history.e2e.ts",
+    "inbox.e2e.ts",
+    "tools-menu.e2e.ts",
+    "command-palette.e2e.ts",
+    "skills-update.e2e.ts"
+   ]
+  },
+  "aStoredClosure": {
+   "specsWhoseStoredClosureHoldsPath": 77,
+   "specsWithStoredClosure": 77,
+   "wantedAt": [
+    1,
+    70
+   ]
+  },
+  "aImportClosure": {
+   "specsWithEvidence": 1,
+   "wantedAt": [
+    1,
+    70
+   ],
+   "first5": [
+    "progressive-history.e2e.ts",
+    "inbox.e2e.ts",
+    "tools-menu.e2e.ts",
+    "command-palette.e2e.ts",
+    "skills-update.e2e.ts"
+   ],
+   "ms": 292.8
+  },
+  "bTokens": {
+   "b1": {
+    "tokens": 0,
+    "matchedTokens": [],
+    "droppedAsCommon": [],
+    "specsWithEvidence": 0,
+    "wantedAt": [
+     1,
+     70
+    ],
+    "wantedScore": [
+     0,
+     0
+    ],
+    "first5": [
+     "progressive-history.e2e.ts",
+     "inbox.e2e.ts",
+     "tools-menu.e2e.ts",
+     "command-palette.e2e.ts",
+     "skills-update.e2e.ts"
+    ]
+   },
+   "b2": {
+    "tokens": 0,
+    "matchedTokens": [],
+    "droppedAsCommon": [],
+    "specsWithEvidence": 0,
+    "wantedAt": [
+     1,
+     70
+    ],
+    "wantedScore": [
+     0,
+     0
+    ],
+    "first5": [
+     "progressive-history.e2e.ts",
+     "inbox.e2e.ts",
+     "tools-menu.e2e.ts",
+     "command-palette.e2e.ts",
+     "skills-update.e2e.ts"
+    ]
+   },
+   "ms": 70.2
+  },
+  "cHint": {
+   "specsWithEvidence": 0,
+   "wantedAt": [
+    1,
+    70
+   ],
+   "first5": [
+    "progressive-history.e2e.ts",
+    "inbox.e2e.ts",
+    "tools-menu.e2e.ts",
+    "command-palette.e2e.ts",
+    "skills-update.e2e.ts"
+   ]
+  },
+  "todayMs": 921.1
+ },
+ {
+  "edit": "E3 github-fixture.ts (shared helper, #1044)",
+  "rev": "c04150895^",
+  "path": "packages/web/e2e/github-fixture.ts",
+  "why": "the edit changed clickGitHubTab; its callers exercise it",
+  "specs": 75,
+  "wanted": [
+   "github-core.e2e.ts",
+   "github-layout.e2e.ts"
+  ],
+  "today": {
+   "wantedAt": [
+    2,
+    7
+   ],
+   "oneHopImporters": [
+    "git-sidebar.e2e.ts",
+    "github-core.e2e.ts",
+    "github-layout.e2e.ts",
+    "github-pr-review.e2e.ts",
+    "github-sidebar.e2e.ts",
+    "github-states.e2e.ts",
+    "issue-linked-tasks.e2e.ts"
+   ],
+   "secondsBeforeFirstWanted": 5.794,
+   "first5": [
+    "issue-linked-tasks.e2e.ts",
+    "github-core.e2e.ts",
+    "git-sidebar.e2e.ts",
+    "github-states.e2e.ts",
+    "github-pr-review.e2e.ts"
+   ]
+  },
+  "aStoredClosure": {
+   "specsWhoseStoredClosureHoldsPath": 75,
+   "specsWithStoredClosure": 75,
+   "wantedAt": [
+    2,
+    7
+   ]
+  },
+  "aImportClosure": {
+   "specsWithEvidence": 7,
+   "wantedAt": [
+    2,
+    7
+   ],
+   "first5": [
+    "issue-linked-tasks.e2e.ts",
+    "github-core.e2e.ts",
+    "git-sidebar.e2e.ts",
+    "github-states.e2e.ts",
+    "github-pr-review.e2e.ts"
+   ],
+   "ms": 235.2
+  },
+  "bTokens": {
+   "b1": {
+    "tokens": 0,
+    "matchedTokens": [],
+    "droppedAsCommon": [],
+    "specsWithEvidence": 0,
+    "wantedAt": [
+     2,
+     7
+    ],
+    "wantedScore": [
+     0,
+     0
+    ],
+    "first5": [
+     "issue-linked-tasks.e2e.ts",
+     "github-core.e2e.ts",
+     "git-sidebar.e2e.ts",
+     "github-states.e2e.ts",
+     "github-pr-review.e2e.ts"
+    ]
+   },
+   "b2": {
+    "tokens": 2,
+    "matchedTokens": [
+     "gh-tabs"
+    ],
+    "droppedAsCommon": [
+     "github"
+    ],
+    "specsWithEvidence": 7,
+    "wantedAt": [
+     2,
+     7
+    ],
+    "wantedScore": [
+     1,
+     1
+    ],
+    "first5": [
+     "issue-linked-tasks.e2e.ts",
+     "github-core.e2e.ts",
+     "git-sidebar.e2e.ts",
+     "github-states.e2e.ts",
+     "github-pr-review.e2e.ts"
+    ]
+   },
+   "ms": 88.7
+  },
+  "cHint": {
+   "specsWithEvidence": 0,
+   "wantedAt": [
+    2,
+    7
+   ],
+   "first5": [
+    "issue-linked-tasks.e2e.ts",
+    "github-core.e2e.ts",
+    "git-sidebar.e2e.ts",
+    "github-states.e2e.ts",
+    "github-pr-review.e2e.ts"
+   ]
+  },
+  "todayMs": 943.9
+ },
+ {
+  "edit": "E4 build-e2e.sh (config, #1097)",
+  "rev": "a805cb41f^",
+  "path": ".ai/scripts/build-e2e.sh",
+  "why": "the build of every spec's bundle: no spec is more relevant than another",
+  "specs": 77,
+  "wanted": [],
+  "today": {
+   "wantedAt": [],
+   "oneHopImporters": [],
+   "secondsBeforeFirstWanted": null,
+   "first5": [
+    "inbox.e2e.ts",
+    "tools-menu.e2e.ts",
+    "command-palette.e2e.ts",
+    "skills-update.e2e.ts",
+    "sidebar-ellipsis-click.e2e.ts"
+   ]
+  },
+  "aStoredClosure": {
+   "specsWhoseStoredClosureHoldsPath": 77,
+   "specsWithStoredClosure": 77,
+   "wantedAt": []
+  },
+  "aImportClosure": {
+   "specsWithEvidence": 0,
+   "wantedAt": [],
+   "first5": [
+    "inbox.e2e.ts",
+    "tools-menu.e2e.ts",
+    "command-palette.e2e.ts",
+    "skills-update.e2e.ts",
+    "sidebar-ellipsis-click.e2e.ts"
+   ],
+   "ms": 244.5
+  },
+  "bTokens": {
+   "b1": {
+    "tokens": 0,
+    "matchedTokens": [],
+    "droppedAsCommon": [],
+    "specsWithEvidence": 0,
+    "wantedAt": [],
+    "wantedScore": [],
+    "first5": [
+     "inbox.e2e.ts",
+     "tools-menu.e2e.ts",
+     "command-palette.e2e.ts",
+     "skills-update.e2e.ts",
+     "sidebar-ellipsis-click.e2e.ts"
+    ]
+   },
+   "b2": {
+    "tokens": 0,
+    "matchedTokens": [],
+    "droppedAsCommon": [],
+    "specsWithEvidence": 0,
+    "wantedAt": [],
+    "wantedScore": [],
+    "first5": [
+     "inbox.e2e.ts",
+     "tools-menu.e2e.ts",
+     "command-palette.e2e.ts",
+     "skills-update.e2e.ts",
+     "sidebar-ellipsis-click.e2e.ts"
+    ]
+   },
+   "ms": 116.2
+  },
+  "cHint": {
+   "specsWithEvidence": 0,
+   "wantedAt": [],
+   "first5": [
+    "inbox.e2e.ts",
+    "tools-menu.e2e.ts",
+    "command-palette.e2e.ts",
+    "skills-update.e2e.ts",
+    "sidebar-ellipsis-click.e2e.ts"
+   ]
+  },
+  "todayMs": 796.7
+ },
+ {
+  "edit": "E5 accessibility.css (#966)",
+  "rev": "7077c7a7a^",
+  "path": "packages/web/src/styles/accessibility.css",
+  "why": "the specs the author extended in the same commit",
+  "specs": 73,
+  "wanted": [
+   "good-css.e2e.ts",
+   "task-thread.e2e.ts"
+  ],
+  "today": {
+   "wantedAt": [
+    53,
+    69
+   ],
+   "oneHopImporters": [],
+   "secondsBeforeFirstWanted": 457.641,
+   "first5": [
+    "inbox.e2e.ts",
+    "tools-menu.e2e.ts",
+    "command-palette.e2e.ts",
+    "skills-update.e2e.ts",
+    "sidebar-ellipsis-click.e2e.ts"
+   ]
+  },
+  "aStoredClosure": {
+   "specsWhoseStoredClosureHoldsPath": 73,
+   "specsWithStoredClosure": 73,
+   "wantedAt": [
+    53,
+    69
+   ]
+  },
+  "aImportClosure": {
+   "specsWithEvidence": 0,
+   "wantedAt": [
+    53,
+    69
+   ],
+   "first5": [
+    "inbox.e2e.ts",
+    "tools-menu.e2e.ts",
+    "command-palette.e2e.ts",
+    "skills-update.e2e.ts",
+    "sidebar-ellipsis-click.e2e.ts"
+   ],
+   "ms": 253.9
+  },
+  "bTokens": {
+   "b1": {
+    "tokens": 2,
+    "matchedTokens": [
+     "code-editor",
+     "composer-editor"
+    ],
+    "droppedAsCommon": [],
+    "specsWithEvidence": 2,
+    "wantedAt": [
+     1,
+     2
+    ],
+    "wantedScore": [
+     1,
+     1
+    ],
+    "first5": [
+     "good-css.e2e.ts",
+     "task-thread.e2e.ts",
+     "inbox.e2e.ts",
+     "tools-menu.e2e.ts",
+     "command-palette.e2e.ts"
+    ]
+   },
+   "b2": {
+    "tokens": 16,
+    "matchedTokens": [
+     "code-editor",
+     "composer-editor",
+     "settings-nav-mobile",
+     "switch-thumb",
+     "run-tabs",
+     "checked",
+     "wb-step-heading",
+     "wb-step-grip",
+     "wb-step-actions",
+     "dialog-body"
+    ],
+    "droppedAsCommon": [
+     "button"
+    ],
+    "specsWithEvidence": 14,
+    "wantedAt": [
+     3,
+     4
+    ],
+    "wantedScore": [
+     3,
+     2
+    ],
+    "first5": [
+     "touch-targets.e2e.ts",
+     "workflows.e2e.ts",
+     "good-css.e2e.ts",
+     "task-thread.e2e.ts",
+     "settings-sidebar.e2e.ts"
+    ]
+   },
+   "ms": 131.6
+  },
+  "cHint": {
+   "specsWithEvidence": 0,
+   "wantedAt": [
+    53,
+    69
+   ],
+   "first5": [
+    "inbox.e2e.ts",
+    "tools-menu.e2e.ts",
+    "command-palette.e2e.ts",
+    "skills-update.e2e.ts",
+    "sidebar-ellipsis-click.e2e.ts"
+   ]
+  },
+  "todayMs": 1117.1
+ },
+ {
+  "edit": "E6 diff.tsx (the issue comment's second case; synthetic)",
+  "rev": "d88c8c1d3",
+  "path": "packages/web/src/components/diff/diff.tsx",
+  "why": "the issue comment's eight specs that select data-slot=\"diff-…\" hooks",
+  "specs": 77,
+  "wanted": [
+   "commit-list.e2e.ts",
+   "diff-scroll.e2e.ts",
+   "git-sidebar.e2e.ts",
+   "markdown-preview.e2e.ts",
+   "repo-git-diff.e2e.ts",
+   "review-gate.e2e.ts",
+   "task-changes.e2e.ts",
+   "variants-compare.e2e.ts"
+  ],
+  "today": {
+   "wantedAt": [
+    11,
+    24,
+    48,
+    31,
+    25,
+    30,
+    38,
+    27
+   ],
+   "oneHopImporters": [],
+   "secondsBeforeFirstWanted": 29.898,
+   "first5": [
+    "inbox.e2e.ts",
+    "tools-menu.e2e.ts",
+    "command-palette.e2e.ts",
+    "skills-update.e2e.ts",
+    "sidebar-ellipsis-click.e2e.ts"
+   ]
+  },
+  "aStoredClosure": {
+   "specsWhoseStoredClosureHoldsPath": 77,
+   "specsWithStoredClosure": 77,
+   "wantedAt": [
+    11,
+    24,
+    48,
+    31,
+    25,
+    30,
+    38,
+    27
+   ]
+  },
+  "aImportClosure": {
+   "specsWithEvidence": 0,
+   "wantedAt": [
+    11,
+    24,
+    48,
+    31,
+    25,
+    30,
+    38,
+    27
+   ],
+   "first5": [
+    "inbox.e2e.ts",
+    "tools-menu.e2e.ts",
+    "command-palette.e2e.ts",
+    "skills-update.e2e.ts",
+    "sidebar-ellipsis-click.e2e.ts"
+   ],
+   "ms": 8.7
+  },
+  "bTokens": {
+   "b1": {
+    "tokens": 0,
+    "matchedTokens": [],
+    "droppedAsCommon": [],
+    "specsWithEvidence": 0,
+    "wantedAt": [
+     11,
+     24,
+     48,
+     31,
+     25,
+     30,
+     38,
+     27
+    ],
+    "wantedScore": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "first5": [
+     "inbox.e2e.ts",
+     "tools-menu.e2e.ts",
+     "command-palette.e2e.ts",
+     "skills-update.e2e.ts",
+     "sidebar-ellipsis-click.e2e.ts"
+    ]
+   },
+   "b2": {
+    "tokens": 24,
+    "matchedTokens": [
+     "diff-file",
+     "diff",
+     "diff-totals",
+     "diff-file-path",
+     "diff-files",
+     "diff-file-header",
+     "diff-file-preview-toggle",
+     "diff-file-body",
+     "diff-line",
+     "tabular-nums"
+    ],
+    "droppedAsCommon": [
+     "true",
+     "main",
+     "false"
+    ],
+    "specsWithEvidence": 11,
+    "wantedAt": [
+     7,
+     1,
+     10,
+     5,
+     2,
+     4,
+     8,
+     3
+    ],
+    "wantedScore": [
+     2,
+     5,
+     1,
+     4,
+     4,
+     4,
+     2,
+     4
+    ],
+    "first5": [
+     "diff-scroll.e2e.ts",
+     "repo-git-diff.e2e.ts",
+     "variants-compare.e2e.ts",
+     "review-gate.e2e.ts",
+     "markdown-preview.e2e.ts"
+    ]
+   },
+   "ms": 136.6
+  },
+  "cHint": {
+   "specsWithEvidence": 8,
+   "wantedAt": [
+    1,
+    2,
+    8,
+    6,
+    3,
+    5,
+    7,
+    4
+   ],
+   "first5": [
+    "commit-list.e2e.ts",
+    "diff-scroll.e2e.ts",
+    "repo-git-diff.e2e.ts",
+    "variants-compare.e2e.ts",
+    "review-gate.e2e.ts"
+   ]
+  },
+  "todayMs": 13.7
+ }
+]
