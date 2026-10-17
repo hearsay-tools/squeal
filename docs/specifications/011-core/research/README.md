@@ -19,3 +19,7 @@ Links only. The findings behind this spec were written for 001 and stay in `../.
 - [daemon-under-harnesses](../../001-core-loop/research/daemon-under-harnesses.md)
 - [fresh-worktree-reuse](../../001-core-loop/research/fresh-worktree-reuse.md)
 - [slow-claims](../../001-core-loop/research/slow-claims.md)
+
+## Briefs for new topics
+
+- [issue-20-brief](issue-20-brief.md): setup failures under Squeal's own tmp root (gh-20; the human, 2026-10-17: reproduce first). Findings go to `issue-20-reproduction.md`.
