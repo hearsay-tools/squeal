@@ -1,0 +1,20 @@
+{"at":"2026-10-17T11:11:41.549Z","node":"v24.21.0","load1":16.96,"cpuCount":24}
+{"label":"installed-0.1.199","file":"/home/agent/.codex/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs","sha256":"6869478e38d3233f30c3e95f3dcdadafcfc2d1520a1579606bad6c3b6f5ae31f"}
+{"case":"exact-unit","named":["packages/cezar/src/workflows/ci-wait-refusal.test.ts"],"selectedCount":84,"browserCount":83,"selectedServer":["packages/cezar/src/workflows/ci-wait-refusal.test.ts"],"unmatched":[]}
+{"case":"exact-second","named":["packages/cezar/src/workflows/destruction-results.test.ts"],"selectedCount":84,"browserCount":83,"selectedServer":["packages/cezar/src/workflows/destruction-results.test.ts"],"unmatched":[]}
+{"case":"source","named":["packages/cezar/src/workflows/ci-wait-refusal.ts"],"selectedCount":84,"browserCount":83,"selectedServer":["packages/cezar/src/workflows/ci-wait-refusal.test.ts"],"unmatched":[]}
+{"case":"mixed","named":["packages/cezar/src/workflows/ci-wait-refusal.test.ts","packages/cezar/src/workflows/ci-wait-refusal.ts"],"selectedCount":84,"browserCount":83,"selectedServer":["packages/cezar/src/workflows/ci-wait-refusal.test.ts"],"unmatched":[]}
+{"case":"unmatched","named":["missing.ts"],"selectedCount":0,"browserCount":0,"selectedServer":[],"unmatched":["missing.ts"]}
+{"label":"checkout-source-0.1.208","file":"src/cli/status-wait-paths.ts","sha256":"dd8c1466357ad9eba3cb9fac59c0fc6af52a3e0701aac698044b5b53c40edf9c"}
+{"case":"exact-unit","named":["packages/cezar/src/workflows/ci-wait-refusal.test.ts"],"selectedCount":1,"browserCount":0,"selectedServer":["packages/cezar/src/workflows/ci-wait-refusal.test.ts"],"unmatched":[]}
+{"case":"exact-second","named":["packages/cezar/src/workflows/destruction-results.test.ts"],"selectedCount":1,"browserCount":0,"selectedServer":["packages/cezar/src/workflows/destruction-results.test.ts"],"unmatched":[]}
+{"case":"source","named":["packages/cezar/src/workflows/ci-wait-refusal.ts"],"selectedCount":84,"browserCount":83,"selectedServer":["packages/cezar/src/workflows/ci-wait-refusal.test.ts"],"unmatched":[]}
+{"case":"mixed","named":["packages/cezar/src/workflows/ci-wait-refusal.test.ts","packages/cezar/src/workflows/ci-wait-refusal.ts"],"selectedCount":84,"browserCount":83,"selectedServer":["packages/cezar/src/workflows/ci-wait-refusal.test.ts"],"unmatched":[]}
+{"case":"unmatched","named":["missing.ts"],"selectedCount":0,"browserCount":0,"selectedServer":[],"unmatched":["missing.ts"]}
+{"label":"checkout-bundle-0.1.208","file":"plugins/claude-code/dist/cli/squeal.mjs","sha256":"c69dd28f0bef727c6372120203faf05692d9d372bc5506eaf9df5401be8234e2"}
+{"case":"exact-unit","named":["packages/cezar/src/workflows/ci-wait-refusal.test.ts"],"selectedCount":1,"browserCount":0,"selectedServer":["packages/cezar/src/workflows/ci-wait-refusal.test.ts"],"unmatched":[]}
+{"case":"exact-second","named":["packages/cezar/src/workflows/destruction-results.test.ts"],"selectedCount":1,"browserCount":0,"selectedServer":["packages/cezar/src/workflows/destruction-results.test.ts"],"unmatched":[]}
+{"case":"source","named":["packages/cezar/src/workflows/ci-wait-refusal.ts"],"selectedCount":84,"browserCount":83,"selectedServer":["packages/cezar/src/workflows/ci-wait-refusal.test.ts"],"unmatched":[]}
+{"case":"mixed","named":["packages/cezar/src/workflows/ci-wait-refusal.test.ts","packages/cezar/src/workflows/ci-wait-refusal.ts"],"selectedCount":84,"browserCount":83,"selectedServer":["packages/cezar/src/workflows/ci-wait-refusal.test.ts"],"unmatched":[]}
+{"case":"unmatched","named":["missing.ts"],"selectedCount":0,"browserCount":0,"selectedServer":[],"unmatched":["missing.ts"]}
+PASS: 15 selector cases; installed expands exact tests, checkout source and bundle do not. No daemon started.
