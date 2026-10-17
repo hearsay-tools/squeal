@@ -53,7 +53,7 @@ async function rig(policy: Partial<Policy> = {}): Promise<Rig> {
     ].join("\n"),
   );
   git(repo.main, "add", "-A");
-  git(repo.main, "commit", "-qm", "held");
+  git(repo.main, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "held");
   const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
     tierSize: 1,
     runnerPartBesideRun: true,
