@@ -692,7 +692,7 @@ Spec: `specifications/010-ci-cost/spec.md`. Sections D1 to D6. Approved as a fir
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 010-30 issue intake in CI, with a replay | approved (the human, 2026-10-17) | D12: port cezarion's Jev intake (workflow, candidates with recently closed issues, applicator, Jev call, replay, their tests), the area list, `needs-triage` on every issue left open, closing behind `ISSUE_INTAKE_CLOSE_DUPLICATES`. Brief `tasks/wave-3.md`. | Tests green in the suite; the replay's offline run committed; its live run over the 32 issues once `TYPESAFE_API_KEY` is available, in `research/issue-intake-replay.md`. |
+| 010-30 issue intake in CI, with a replay | running (approved by the human 2026-10-17; worker 55817384) | D12: port cezarion's Jev intake (workflow, candidates with recently closed issues, applicator, Jev call, replay, their tests), the area list, `needs-triage` on every issue left open, closing behind `ISSUE_INTAKE_CLOSE_DUPLICATES`. Brief `tasks/wave-3.md`. | Tests green in the suite; the replay's offline run committed; its live run over the 32 issues once `TYPESAFE_API_KEY` is available, in `research/issue-intake-replay.md`. |
 | 010-31 review of 010-30 | planned | `/reviewer` pinned to the candidate: the applicator as the only writer, prompt-injection reach, the closed-candidate rule, the `always()` fallback, the replay's truth. | `reviews/wave-3.md` committed. |
 
 ## Feature 011: core
