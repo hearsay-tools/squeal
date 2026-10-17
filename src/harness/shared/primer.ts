@@ -204,6 +204,10 @@ function named(noun: string, entries: readonly string[], shown: number): string 
  * and that Stop waits or holds once, as that line says (001-285; Pi and
  * OpenCode have no waiting entry, so their Stop holds; review wave-7 B1); off, the slow tier is not required before the
  * agent finishes, and a claim that slow tests pass needs that line current.
+ * Task 004-67 (issue 19): on, the requirement starts once the agent changes
+ * a file, since Stop holds no main agent whose worktree had no revision
+ * since it registered; no longer than the sentence it replaced, so no
+ * primer folds more.
  * Each within 280 characters under `squeal`, which the longest Claude Code
  * primer of the coverage matrix keeps with every project named.
  */
@@ -214,7 +218,7 @@ function slowSentences(command: string, naming: Naming, required: boolean): stri
       : "the CLI's `run --slow --wait 60000`";
   return [
     required
-      ? `Slow test files run when you pause between turns; this repository requires them before you finish: before you say the task is done, run ${run} unless the latest \`Slow tier:\` line states every slow file is current; Stop waits for them or holds you once.`
+      ? `Slow test files run when you pause between turns; this repository requires them once you change a file: before you say the task is done, run ${run} unless the latest \`Slow tier:\` line says every slow file is current; Stop waits or holds you once.`
       : `Slow test files run when you pause between turns; this repository does not require them before you finish: say slow tests pass only when the latest \`Slow tier:\` line states every slow file is current, else say how many are not; ${run} runs them now.`,
     command === SQUEAL_COMMAND
       ? "A slow failure wakes you when you are idle in an interactive session; otherwise it arrives with your next prompt or tool call."

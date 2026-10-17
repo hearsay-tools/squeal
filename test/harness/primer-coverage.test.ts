@@ -214,7 +214,8 @@ describe("the slow sentence by harness (spec 004 D8, D9)", () => {
   /*
    * Task 001-283 (`research/primer-skill-writing.md` F1), now the policy-on
    * branch: the step before a claim, with a completion criterion the agent
-   * reads off the header, and that Stop waits for the slow tier (001-285).
+   * reads off the header, and that Stop waits for the slow tier (001-285),
+   * once the agent changes a file (004-67).
    */
   it.each(["squeal", CODEX])(
     "with the policy on, names `run --slow --wait` as the step before done and Stop's wait, under %s",
@@ -225,7 +226,7 @@ describe("the slow sentence by harness (spec 004 D8, D9)", () => {
           ? `\`${command} run --slow --wait 60000\``
           : "the CLI's `run --slow --wait 60000`";
       expect(text).toContain(
-        `Slow test files run when you pause between turns; this repository requires them before you finish: before you say the task is done, run ${run} unless the latest \`Slow tier:\` line states every slow file is current; Stop waits for them or holds you once.`,
+        `Slow test files run when you pause between turns; this repository requires them once you change a file: before you say the task is done, run ${run} unless the latest \`Slow tier:\` line says every slow file is current; Stop waits or holds you once.`,
       );
       expect(text.indexOf("run --slow --wait")).toBeGreaterThan(text.indexOf("status --wait"));
       expect(text).not.toContain("does not require");
