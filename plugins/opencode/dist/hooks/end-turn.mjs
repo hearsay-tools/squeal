@@ -3741,15 +3741,15 @@ function vitestDetected(root) {
 function stoppedMetaKey(worktreeId) {
   return worktreeMetaKey("daemonStopped", worktreeId);
 }
-function heldStop(store, worktree, live) {
-  if (worktree == null || live.state === "alive") return null;
-  const mark = readMark(store, worktree.id);
+function heldStop(store, worktreeId, worktree, live) {
+  if (live.state === "alive") return null;
+  const mark = readMark(store, worktreeId);
   if (mark === null) return null;
-  const heartbeat = worktree.daemon?.heartbeatAt ?? worktree.lastHeartbeatAt;
+  const heartbeat = worktree?.daemon?.heartbeatAt ?? worktree?.lastHeartbeatAt;
   return heartbeat !== void 0 && heartbeat > mark.at ? null : mark;
 }
-function asStopped(store, worktree, live) {
-  if (live.state !== "down" || heldStop(store, worktree, live) === null) return live;
+function asStopped(store, worktreeId, worktree, live) {
+  if (live.state !== "down" || heldStop(store, worktreeId, worktree, live) === null) return live;
   return { ...live, stopped: true };
 }
 function readMark(store, worktreeId) {
@@ -3917,6 +3917,7 @@ function snapshot(store, worktreeId, root, now) {
     worktree,
     asStopped(
       store,
+      worktreeId,
       worktree,
       liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null)
     )
@@ -4066,7 +4067,12 @@ function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
     daemon: withDeath(
       store,
       worktree,
-      asRested(store, worktree, asStopped(store, worktree, worktreeLiveness(worktree, now)), now)
+      asRested(
+        store,
+        worktree,
+        asStopped(store, worktreeId, worktree, worktreeLiveness(worktree, now)),
+        now
+      )
     ),
     changedPaths: [...changes.keys()],
     ...installed === void 0 ? {} : { installedLockfile: installed.path }
@@ -4113,7 +4119,12 @@ function withTold(header, told, at) {
 function livenessChange(store, consumer, at) {
   const told = toldLiveness(store, consumer);
   const worktree = store.worktrees.get(consumer.worktreeId);
-  const live = asStopped(store, worktree, asTold(worktreeLiveness(worktree, at), told, at));
+  const live = asStopped(
+    store,
+    consumer.worktreeId,
+    worktree,
+    asTold(worktreeLiveness(worktree, at), told, at)
+  );
   if (live.state === "down" && live.stopped !== true) {
     if (live.startingSince !== void 0) return null;
     const rest = restState(store, worktree, at);

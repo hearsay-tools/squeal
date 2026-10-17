@@ -3999,26 +3999,33 @@ var TREE_PRINT_TIMEOUT_MS = 1e3;
 function stoppedMetaKey(worktreeId) {
   return worktreeMetaKey("daemonStopped", worktreeId);
 }
+function markStopped(store, worktreeId, at2, tree) {
+  store.meta.set(stoppedMetaKey(worktreeId), JSON.stringify({ at: at2, tree }));
+}
 function clearStopped(store, worktreeId) {
   store.meta.delete(stoppedMetaKey(worktreeId));
 }
-function heldStop(store, worktree, live) {
-  if (worktree == null || live.state === "alive") return null;
-  const mark = readMark(store, worktree.id);
+function heldStop(store, worktreeId, worktree, live) {
+  if (live.state === "alive") return null;
+  const mark = readMark(store, worktreeId);
   if (mark === null) return null;
-  const heartbeat = worktree.daemon?.heartbeatAt ?? worktree.lastHeartbeatAt;
+  const heartbeat = worktree?.daemon?.heartbeatAt ?? worktree?.lastHeartbeatAt;
   return heartbeat !== void 0 && heartbeat > mark.at ? null : mark;
 }
-function asStopped(store, worktree, live) {
-  if (live.state !== "down" || heldStop(store, worktree, live) === null) return live;
+function asStopped(store, worktreeId, worktree, live) {
+  if (live.state !== "down" || heldStop(store, worktreeId, worktree, live) === null) return live;
   return { ...live, stopped: true };
 }
-async function stopHolds(store, worktree, live) {
-  const mark = heldStop(store, worktree, live);
-  if (mark === null || worktree == null) return false;
-  const tree = await treePrint(worktree.root, TREE_PRINT_TIMEOUT_MS);
+async function stopHolds(store, at2, worktree, live) {
+  const mark = heldStop(store, at2.id, worktree, live);
+  if (mark === null) return false;
+  const tree = await treePrint(at2.root, TREE_PRINT_TIMEOUT_MS);
   if (tree === null || tree === mark.tree) return true;
-  clearStopped(store, worktree.id);
+  if (mark.tree === null) {
+    markStopped(store, at2.id, mark.at, tree);
+    return true;
+  }
+  clearStopped(store, at2.id);
   return false;
 }
 async function treePrint(root, timeoutMs) {
@@ -4217,6 +4224,7 @@ function snapshot(store, worktreeId, root, now) {
     worktree,
     asStopped(
       store,
+      worktreeId,
       worktree,
       liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null)
     )
@@ -4366,7 +4374,12 @@ function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
     daemon: withDeath(
       store,
       worktree,
-      asRested(store, worktree, asStopped(store, worktree, worktreeLiveness(worktree, now)), now)
+      asRested(
+        store,
+        worktree,
+        asStopped(store, worktreeId, worktree, worktreeLiveness(worktree, now)),
+        now
+      )
     ),
     changedPaths: [...changes.keys()],
     ...installed === void 0 ? {} : { installedLockfile: installed.path }
@@ -4413,7 +4426,12 @@ function withTold(header, told, at2) {
 function livenessChange(store, consumer, at2) {
   const told = toldLiveness(store, consumer);
   const worktree = store.worktrees.get(consumer.worktreeId);
-  const live = asStopped(store, worktree, asTold(worktreeLiveness(worktree, at2), told, at2));
+  const live = asStopped(
+    store,
+    consumer.worktreeId,
+    worktree,
+    asTold(worktreeLiveness(worktree, at2), told, at2)
+  );
   if (live.state === "down" && live.stopped !== true) {
     if (live.startingSince !== void 0) return null;
     const rest = restState(store, worktree, at2);
@@ -5333,7 +5351,8 @@ async function ensure(location2, deps, context) {
   const record = context === void 0 ? void 0 : worktree?.daemon ?? null;
   if (context !== void 0) {
     const live = worktreeLiveness(worktree ?? null, (deps.now ?? Date.now)());
-    if (await stopHolds(context.store, worktree, live)) return "stopped";
+    const at3 = { id: context.consumer.worktreeId, root: location2.root };
+    if (await stopHolds(context.store, at3, worktree, live)) return "stopped";
   }
   if (context !== void 0 && await stepDown(context, deps, record ?? null)) {
     return successor(location2, deps);
