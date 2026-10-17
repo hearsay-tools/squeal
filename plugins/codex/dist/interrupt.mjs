@@ -3837,6 +3837,8 @@ function claimantOf(store, worktreeId, ref, key, now) {
   const id = testFileId(ref);
   for (const worktree of store.worktrees.list()) {
     if (worktree.id === worktreeId || worktree.daemon === null) continue;
+    const { heartbeatAt, heartbeatIntervalMs } = worktree.daemon;
+    if (heartbeatAt < now - HEARTBEAT_GRACE_INTERVALS * heartbeatIntervalMs) continue;
     const row = store.testFileKeys.list(worktree.id, [ref])[0];
     if (row?.key !== key || row.pending !== "running") continue;
     const runs = store.runs.inFlight(worktree.id, worktree.daemon.startedAt);

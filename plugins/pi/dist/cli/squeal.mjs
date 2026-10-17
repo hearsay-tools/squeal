@@ -7161,6 +7161,8 @@ function claimantOf(store, worktreeId, ref2, key2, now) {
   const id2 = testFileId(ref2);
   for (const worktree of store.worktrees.list()) {
     if (worktree.id === worktreeId || worktree.daemon === null) continue;
+    const { heartbeatAt, heartbeatIntervalMs } = worktree.daemon;
+    if (heartbeatAt < now - HEARTBEAT_GRACE_INTERVALS * heartbeatIntervalMs) continue;
     const row = store.testFileKeys.list(worktree.id, [ref2])[0];
     if (row?.key !== key2 || row.pending !== "running") continue;
     const runs = store.runs.inFlight(worktree.id, worktree.daemon.startedAt);
@@ -53673,7 +53675,7 @@ function reasonText(reason2, command) {
     case "slow":
       return `slow, run when the agent pauses or on \`${command} run --slow\``;
     case "unlisted":
-      return `revision ${reason2.revision} not listed yet, because the runner part waits for the run in flight, at most ${Math.ceil(reason2.leftMs / 1e3)} s more`;
+      return `revision ${reason2.revision} not listed yet, because the runner part waits for the run in flight, each of its calls bounded at ${Math.ceil(reason2.callBoundMs / 1e3)} s`;
   }
 }
 function reasonGroups(files2, command) {
@@ -53944,7 +53946,7 @@ function readNamedFiles(store, worktreeId, root, files2, daemon, now) {
   const policy = readPolicy(root);
   const runs = openRunsOf(store, worktreeId, daemon);
   const header = readHeader(store, worktreeId, states, keys);
-  const unlisted = unlistedReason(store, worktreeId, header, policy, now);
+  const unlisted = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
   return files2.map((ref2) => {
     const row = rows.get(testFileId(ref2));
@@ -53970,7 +53972,8 @@ function queuedReason(store, worktreeId, ref2, key2, lane, runs, policy, now) {
   const claimant = key2 === null ? null : claimantOf(store, worktreeId, ref2, key2, now);
   if (claimant !== null) {
     const bound = claimBoundMs(policy.runner.timeoutMs);
-    const until = claimant.run === null ? null : claimant.run.startedAt + bound;
+    const waiter = now + bound;
+    const until = claimant.run === null || policy.runner.timeoutMs === null ? waiter : Math.min(waiter, claimant.run.startedAt + bound);
     return { kind: "claim", worktree: claimant.worktree.root, until };
   }
   const tier = runs.find(
@@ -53980,12 +53983,11 @@ function queuedReason(store, worktreeId, ref2, key2, lane, runs, policy, now) {
   if (slowView(policy).isSlow(ref2)) return { kind: "slow" };
   return { kind: "queued", lane, behind: null };
 }
-function unlistedReason(store, worktreeId, header, policy, now) {
+function unlistedReason(header, policy) {
   const refined = header.refinedRevision;
   if (header.runnerPartPending !== true || refined === null || refined === void 0) return null;
-  const from = store.revisions.get(worktreeId, refined + 1)?.createdAt ?? now;
-  const leftMs = Math.max(0, from + runnerPartBoundMs(policy.runner.timeoutMs) - now);
-  return { kind: "unlisted", revision: header.revision, leftMs };
+  const callBoundMs = runnerPartBoundMs(policy.runner.timeoutMs);
+  return { kind: "unlisted", revision: header.revision, callBoundMs };
 }
 function runOf(runs, ref2) {
   const id2 = testFileId(ref2);
