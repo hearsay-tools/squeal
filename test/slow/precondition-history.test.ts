@@ -124,7 +124,7 @@ const slowStates = (h: Harness) =>
 
 /** Of the fixture's five test files, the three fast ones' file checks alone read current. */
 function expectSkippedNotCurrent(h: Harness) {
-  expect(h.header().fileLevelCounts.current).toBe(3);
+  expect(h.header().fileLevelCounts?.current).toBe(3);
   const states = slowStates(h);
   expect(states.length).toBeGreaterThan(0);
   for (const state of states) expect(state.validity).toBe("stale");
@@ -136,7 +136,7 @@ describe(
   () => {
     it("counts no check of a skipped file current, a prior failure kept as stale history", async () => {
       const h = await ranThenUnready(FAILING_UPPER);
-      expect(h.header().fileLevelCounts.current).toBe(5);
+      expect(h.header().fileLevelCounts?.current).toBe(5);
       await forcedSkip(h);
       expectSkippedNotCurrent(h);
       const failing = slowStates(h).filter((s) => s.outcome === "fail");
@@ -158,7 +158,7 @@ describe(
       await h.scheduler.idle();
       expect(h.store.checkpoints.get(next.id)?.end).toBe("completed");
       expect(h.header().fullSuite.atCurrentRevision).toBe(true);
-      expect(h.header().fileLevelCounts.current).toBe(5);
+      expect(h.header().fileLevelCounts?.current).toBe(5);
       for (const state of slowStates(h)) expect(state.validity).toBe("current");
       expect(skipReason(h)).toBeNull();
     });
