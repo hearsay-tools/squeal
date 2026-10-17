@@ -48,4 +48,11 @@ describe("the skill's waits (005-68)", () => {
     );
     expect(commands).not.toContain("A test file's path selects that test file, and");
   });
+
+  /* Task 004-66, at the coordinator's request: `run --slow --wait` without a verdict exits 3. */
+  it("gives `run --slow --wait`'s exit 3 in `commands.md`", () => {
+    expect(read(claude, "references/commands.md")).toContain(
+      "With `--wait`, exit 3 means it has no verdict: the wait returned without a daemon, or timed out with a slow file it queued still pending; say so, or wait again.",
+    );
+  });
 });
