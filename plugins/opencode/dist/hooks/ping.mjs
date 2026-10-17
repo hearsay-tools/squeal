@@ -272,10 +272,6 @@ function isNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-// src/core/state/fingerprint.ts
-import { realpathSync } from "node:fs";
-import { tmpdir } from "node:os";
-
 // src/core/text.ts
 function excludedProjectsText(entries) {
   const quoted = (list, join) => {
@@ -290,34 +286,6 @@ function excludedProjectsText(entries) {
     ...patterns.length === 0 ? [] : [`projects matching ${quoted(patterns, "or")}`]
   ];
   return { text: parts.join(" and "), plural: patterns.length > 0 || names.length > 1 };
-}
-
-// src/core/state/fingerprint.ts
-var VOLATILE = [
-  [/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g, "<time>"],
-  [/\b\d+(?:\.\d+)?\s?ms\b/g, "<n>ms"],
-  [/\b0x[0-9a-f]+\b/gi, "0x<addr>"],
-  // A cache path names a tool's scratch space; its segments are hashes and run ids.
-  [/(?:[^\s'"`(]*\/)?node_modules\/\.cache\/[^\s'"`):,]*/g, "<cache>"],
-  ...tempPrefixes().map((prefix) => [
-    new RegExp(`(?<![\\w.-])${escapeRegExp(prefix)}/[^\\s/'"\`):,]+`, "g"),
-    "<tmp>"
-  ]),
-  [/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "<uuid>"],
-  // At least one letter, so a long decimal value in an assertion is kept.
-  [/\b(?=[0-9a-f]*[a-f])[0-9a-f]{16,}\b/gi, "<hex>"]
-];
-function tempPrefixes() {
-  const dir = tmpdir().replace(/\/+$/, "");
-  let real = dir;
-  try {
-    real = realpathSync(dir);
-  } catch {
-  }
-  return [.../* @__PURE__ */ new Set([dir, real, "/tmp"])].filter((p) => p !== "").sort((a, b) => b.length - a.length);
-}
-function escapeRegExp(text) {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 // src/core/store/connection.ts

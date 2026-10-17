@@ -1493,12 +1493,12 @@ var init_environment = __esm({
 
 // src/core/watcher/paths.ts
 function* selfAndAncestors(path) {
-  let current2 = path;
+  let current3 = path;
   while (true) {
-    yield current2;
-    const slash = current2.lastIndexOf("/");
+    yield current3;
+    const slash = current3.lastIndexOf("/");
     if (slash < 0) return;
-    current2 = current2.slice(0, slash);
+    current3 = current3.slice(0, slash);
   }
 }
 function isGitMetadata(path) {
@@ -2397,14 +2397,35 @@ var init_text = __esm({
 import { realpathSync as realpathSync2 } from "node:fs";
 import { tmpdir as tmpdir2 } from "node:os";
 import { stripVTControlCharacters } from "node:util";
-function tempPrefixes() {
+function maskTemp(path) {
+  const root = deepestRoot(path);
+  if (root === null) return path;
+  const [, ...tail] = path.slice(root.length + 1).split("/");
+  return ["<tmp>", ...tail].join("/");
+}
+function deepestRoot(path) {
+  if (path.startsWith("<tmp>/")) return MASKED_SQUEAL_SCRATCH.exec(path)?.[0] ?? null;
+  const held2 = tempRoots().roots.filter((r) => path.startsWith(`${r}/`)).map((r) => {
+    const scratch = SQUEAL_SCRATCH.exec(path.slice(r.length + 1));
+    return scratch === null ? r : `${r}/${scratch[0]}`;
+  });
+  return held2.reduce((a, b) => a === null || b.length > a.length ? b : a, null);
+}
+function tempRoots() {
   const dir2 = tmpdir2().replace(/\/+$/, "");
+  if (cachedRoots?.dir === dir2) return cachedRoots;
   let real2 = dir2;
   try {
     real2 = realpathSync2(dir2);
   } catch {
   }
-  return [.../* @__PURE__ */ new Set([dir2, real2, "/tmp"])].filter((p) => p !== "").sort((a, b) => b.length - a.length);
+  const roots = [.../* @__PURE__ */ new Set([dir2, real2, "/tmp"])].filter((p) => p !== "").sort((a, b) => b.length - a.length);
+  const pattern2 = new RegExp(
+    `(?<![\\w.-])(?:<tmp>|${roots.map(escapeRegExp).join("|")})(?:/[^\\s/'"\`):,]+)+`,
+    "g"
+  );
+  cachedRoots = { dir: dir2, roots, pattern: pattern2 };
+  return cachedRoots;
 }
 function escapeRegExp(text2) {
   return text2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -2414,10 +2435,10 @@ function firstLine(text2) {
   return (line ?? "").trim().replace(/\s+/g, " ");
 }
 function normalize(line) {
-  return VOLATILE.reduce(
-    (text2, [pattern2, replacement2]) => text2.replace(pattern2, replacement2),
-    line
-  );
+  return VOLATILE.reduce((text2, [rule, replacement2]) => {
+    const pattern2 = typeof rule === "function" ? rule() : rule;
+    return typeof replacement2 === "string" ? text2.replace(pattern2, replacement2) : text2.replace(pattern2, replacement2);
+  }, line);
 }
 function where(location2) {
   return location2 === null ? "?" : `${location2.path}:${location2.line}:${location2.column}`;
@@ -2443,6 +2464,17 @@ function describeFailure(errors, fallback) {
       recorder
     )
   };
+}
+function renormalizeFingerprint(fingerprint) {
+  const at2 = fingerprint.lastIndexOf(" @ ");
+  if (at2 < 0) return fingerprint;
+  let text2 = fingerprint.slice(0, at2);
+  for (let next = normalize(text2); next !== text2; next = normalize(text2)) text2 = next;
+  return `${text2}${fingerprint.slice(at2)}`;
+}
+function sameFingerprint(a, b) {
+  if (a === b) return true;
+  return a !== null && b !== null && renormalizeFingerprint(a) === renormalizeFingerprint(b);
 }
 function withRecorder(summary, recorder) {
   if (recorder === void 0) return summary;
@@ -2479,7 +2511,7 @@ function withDiff(summary, diff) {
   const shownDiff = cap(diff, room - Math.min(summary.length, LINE_MIN_CHARS));
   return `${cap(summary, room - shownDiff.length)}${separator}${shownDiff}`;
 }
-var SUMMARY_MAX_CHARS, VOLATILE, LINE_MIN_CHARS, DIFF_LINES;
+var SUMMARY_MAX_CHARS, VOLATILE, SQUEAL_SCRATCH, MASKED_SQUEAL_SCRATCH, cachedRoots, LINE_MIN_CHARS, DIFF_LINES;
 var init_fingerprint = __esm({
   "src/core/state/fingerprint.ts"() {
     "use strict";
@@ -2489,16 +2521,22 @@ var init_fingerprint = __esm({
       [/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g, "<time>"],
       [/\b\d+(?:\.\d+)?\s?ms\b/g, "<n>ms"],
       [/\b0x[0-9a-f]+\b/gi, "0x<addr>"],
+      // An IPv4 address, `localhost`, a bracketed IPv6 address or a URL's host; never `path:line:col`.
+      [
+        /(?<![\w.-])((?:\d{1,3}\.){3}\d{1,3}|localhost|\[[0-9a-f:.]+\]|(?<=:\/\/)[\w.-]+):\d{1,5}\b(?!:\d)/gi,
+        "$1:<port>"
+      ],
+      [/\b(port\s+)\d{1,5}\b/gi, "$1<port>"],
       // A cache path names a tool's scratch space; its segments are hashes and run ids.
       [/(?:[^\s'"`(]*\/)?node_modules\/\.cache\/[^\s'"`):,]*/g, "<cache>"],
-      ...tempPrefixes().map((prefix) => [
-        new RegExp(`(?<![\\w.-])${escapeRegExp(prefix)}/[^\\s/'"\`):,]+`, "g"),
-        "<tmp>"
-      ]),
+      [() => tempRoots().pattern, maskTemp],
       [/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "<uuid>"],
       // At least one letter, so a long decimal value in an assertion is kept.
       [/\b(?=[0-9a-f]*[a-f])[0-9a-f]{16,}\b/gi, "<hex>"]
     ];
+    SQUEAL_SCRATCH = /^squeal-\d+\/tmp\/[^/]+(?=\/)/;
+    MASKED_SQUEAL_SCRATCH = /^<tmp>\/tmp\/(?:<hex>|\d{16})(?=\/)/;
+    cachedRoots = null;
     LINE_MIN_CHARS = 120;
     DIFF_LINES = 8;
   }
@@ -2536,7 +2574,7 @@ function stateFromResult(worktreeId, revision, result, key2, previous) {
   const described = failed2 && (result.fingerprint === null || result.summary === null);
   const fallback = described ? describeFailure(result.errors, result.location) : null;
   const fingerprint = failed2 ? result.fingerprint ?? fallback?.fingerprint ?? null : null;
-  const unchanged2 = previous !== null && previous.outcome === result.outcome && previous.fingerprint === fingerprint && previous.commit === result.provenance.commit && sameOrigin(previous.origin, origin);
+  const unchanged2 = previous !== null && previous.outcome === result.outcome && sameFingerprint(previous.fingerprint, fingerprint) && previous.commit === result.provenance.commit && sameOrigin(previous.origin, origin);
   const observedAt = origin.kind === "own" ? result.provenance.revision : unchanged2 && previous.observedAt !== null ? previous.observedAt : revision;
   return {
     worktreeId,
@@ -2571,7 +2609,7 @@ function sameLocation(a, b) {
   return a.path === b.path && a.line === b.line && a.column === b.column;
 }
 function sameState(a, b) {
-  return a.worktreeId === b.worktreeId && checkIdentity(a.check) === checkIdentity(b.check) && a.outcome === b.outcome && a.validity === b.validity && a.pendingPhase === b.pendingPhase && a.observedAt === b.observedAt && a.commit === b.commit && (a.origin === null || b.origin === null ? a.origin === b.origin : sameOrigin(a.origin, b.origin)) && a.durationMs === b.durationMs && sameLocation(a.location, b.location) && a.summary === b.summary && a.fingerprint === b.fingerprint;
+  return a.worktreeId === b.worktreeId && checkIdentity(a.check) === checkIdentity(b.check) && a.outcome === b.outcome && a.validity === b.validity && a.pendingPhase === b.pendingPhase && a.observedAt === b.observedAt && a.commit === b.commit && (a.origin === null || b.origin === null ? a.origin === b.origin : sameOrigin(a.origin, b.origin)) && a.durationMs === b.durationMs && sameLocation(a.location, b.location) && a.summary === b.summary && sameFingerprint(a.fingerprint, b.fingerprint);
 }
 var init_derive = __esm({
   "src/core/state/derive.ts"() {
@@ -2588,6 +2626,10 @@ function baselineMetaKey(worktreeId) {
 function entry(check, fingerprint) {
   return `${checkIdentity(check)}\0${fingerprint ?? ""}`;
 }
+function current(e) {
+  const at2 = e.lastIndexOf("\0");
+  return `${e.slice(0, at2 + 1)}${renormalizeFingerprint(e.slice(at2 + 1))}`;
+}
 function read(store, worktreeId) {
   const raw = store.meta.get(baselineMetaKey(worktreeId));
   return raw === null ? null : JSON.parse(raw);
@@ -2595,10 +2637,10 @@ function read(store, worktreeId) {
 function recordBaselineFindings(store, worktreeId, checkpointId, transitions) {
   if (transitions.length === 0) return;
   const baseline2 = checkpointId !== null && store.checkpoints.get(checkpointId)?.kind === "baseline";
-  const current2 = read(store, worktreeId);
-  if (!baseline2 && current2 === null) return;
-  const fresh = baseline2 && current2?.checkpointId !== checkpointId;
-  const entries3 = new Set(fresh ? [] : current2?.entries);
+  const current3 = read(store, worktreeId);
+  if (!baseline2 && current3 === null) return;
+  const fresh = baseline2 && current3?.checkpointId !== checkpointId;
+  const entries3 = new Set(fresh ? [] : current3?.entries);
   const touched = new Set(transitions.map((t) => checkIdentity(t.check)));
   for (const e of entries3) if (touched.has(e.slice(0, e.lastIndexOf("\0")))) entries3.delete(e);
   if (baseline2) {
@@ -2606,19 +2648,20 @@ function recordBaselineFindings(store, worktreeId, checkpointId, transitions) {
       if (t.kind === "first-seen-fail") entries3.add(entry(t.check, t.toFingerprint));
     }
   }
-  const id2 = baseline2 ? checkpointId : current2?.checkpointId ?? "";
+  const id2 = baseline2 ? checkpointId : current3?.checkpointId ?? "";
   const next = { checkpointId: id2, entries: [...entries3] };
   store.meta.set(baselineMetaKey(worktreeId), JSON.stringify(next));
 }
 function baselineFindings(store, worktreeId) {
-  const entries3 = new Set(read(store, worktreeId)?.entries);
-  return (check, fingerprint) => entries3.has(entry(check, fingerprint));
+  const entries3 = new Set(read(store, worktreeId)?.entries.map(current));
+  return (check, fingerprint) => entries3.has(current(entry(check, fingerprint)));
 }
 var init_baseline = __esm({
   "src/core/state/baseline.ts"() {
     "use strict";
     init_types();
     init_derive();
+    init_fingerprint();
   }
 });
 
@@ -2758,10 +2801,10 @@ function readRevisionCommit(store, worktreeId, latest = store.revisions.latest(w
     return moved2.head === null ? void 0 : { head: moved2.head, sinceHead: 0, dirty: moved2.dirty };
   }
   if (latest === null || latest.head === null) return void 0;
-  const current2 = moved2 !== null && moved2.revision >= number;
+  const current3 = moved2 !== null && moved2.revision >= number;
   const other = store.revisions.lastAtOtherHead(worktreeId, latest.head);
   const since = moved2 !== null && moved2.head === latest.head && moved2.revision >= (other ?? 0) ? moved2.revision : other === null ? 0 : other + 1;
-  const dirty = current2 ? moved2.dirty : latest.dirty;
+  const dirty = current3 ? moved2.dirty : latest.dirty;
   return { head: latest.head, sinceHead: Math.max(0, number - since), dirty };
 }
 function revisionText(revision, commit) {
@@ -3723,7 +3766,7 @@ function shownResult(worktreeId, knownState2, key2, results2, held2, observedSin
   if (knownState2 === null) return held2 ?? null;
   const origin = knownState2.origin;
   if (origin === null) return null;
-  const names3 = (r) => r.outcome === knownState2.outcome && fingerprintOf(r) === knownState2.fingerprint && r.provenance.commit === knownState2.commit && (origin.kind === "inherited" ? r.provenance.worktreeId === origin.worktreeId && observedSince2 !== null && r.provenance.recordedAt <= observedSince2 : r.provenance.worktreeId === worktreeId && r.provenance.revision === knownState2.observedAt);
+  const names3 = (r) => r.outcome === knownState2.outcome && sameFingerprint(fingerprintOf(r), knownState2.fingerprint) && r.provenance.commit === knownState2.commit && (origin.kind === "inherited" ? r.provenance.worktreeId === origin.worktreeId && observedSince2 !== null && r.provenance.recordedAt <= observedSince2 : r.provenance.worktreeId === worktreeId && r.provenance.revision === knownState2.observedAt);
   if (knownState2.validity === "current" && key2 !== null) {
     const atKey = results2.find((r) => r.key === key2);
     return atKey !== void 0 && names3(atKey) ? atKey : null;
@@ -3793,7 +3836,7 @@ function producingResult(worktreeId, state, producer2, failureKey, results2) {
   const origin = state.origin;
   if (producer2 === void 0 || failureKey === void 0 || origin === null) return null;
   return results2.find(
-    (r) => r.provenance.runId === producer2.runId && r.provenance.recordedAt === producer2.recordedAt && r.key === failureKey && r.outcome === state.outcome && fingerprintOf(r) === state.fingerprint && r.provenance.commit === state.commit && (origin.kind === "inherited" ? r.provenance.worktreeId === origin.worktreeId : r.provenance.worktreeId === worktreeId && r.provenance.revision === state.observedAt)
+    (r) => r.provenance.runId === producer2.runId && r.provenance.recordedAt === producer2.recordedAt && r.key === failureKey && r.outcome === state.outcome && sameFingerprint(fingerprintOf(r), state.fingerprint) && r.provenance.commit === state.commit && (origin.kind === "inherited" ? r.provenance.worktreeId === origin.worktreeId : r.provenance.worktreeId === worktreeId && r.provenance.revision === state.observedAt)
   ) ?? null;
 }
 var FAILURE_PRODUCERS_KEPT;
@@ -3802,6 +3845,7 @@ var init_producers = __esm({
     "use strict";
     init_types();
     init_derive();
+    init_fingerprint();
     init_shown_result();
     FAILURE_PRODUCERS_KEPT = 1024;
   }
@@ -3813,7 +3857,8 @@ function transitionKind(from, to) {
   switch (to.outcome) {
     case "fail":
       if (before === "pass") return "pass-to-fail";
-      if (before === "fail") return from?.fingerprint === to.fingerprint ? null : "fail-changed";
+      if (before === "fail")
+        return sameFingerprint(from?.fingerprint ?? null, to.fingerprint) ? null : "fail-changed";
       return "first-seen-fail";
     case "pass":
       return before === "fail" ? "fail-to-pass" : null;
@@ -3826,6 +3871,7 @@ function transitionKind(from, to) {
 var init_transitions = __esm({
   "src/core/state/transitions.ts"() {
     "use strict";
+    init_fingerprint();
   }
 });
 
@@ -4085,6 +4131,7 @@ __export(state_exports, {
   recordFlips: () => recordFlips,
   revisionText: () => revisionText,
   runnerPartText: () => runnerPartText,
+  sameFingerprint: () => sameFingerprint,
   shownResult: () => shownResult,
   slowFilesNotCurrent: () => slowFilesNotCurrent,
   slowPolicyView: () => slowPolicyView,
@@ -4274,11 +4321,11 @@ var init_records = __esm({
 
 // src/core/retry/pending.ts
 function pendingRetriesOf(store, keys, load = hostLoad) {
-  const current2 = new Map(keys.map((k) => [testFileId(k.testFile), k.key]));
+  const current3 = new Map(keys.map((k) => [testFileId(k.testFile), k.key]));
   const byFile = /* @__PURE__ */ new Map();
   for (const r of readRetries(store)) {
     const id2 = testFileId(r.testFile);
-    if (r.end !== null || current2.get(id2) !== r.key) continue;
+    if (r.end !== null || current3.get(id2) !== r.key) continue;
     byFile.set(id2, [...byFile.get(id2) ?? [], r]);
   }
   if (byFile.size === 0) return {};
@@ -7283,11 +7330,11 @@ async function waitForCapacity(wait) {
   const perCpu2 = () => loadPerCpu(wait);
   const start2 = now();
   for (; ; ) {
-    const current2 = perCpu2();
+    const current3 = perCpu2();
     const waitedMs = now() - start2;
-    if (current2 <= wait.maxLoadPerCpu) return { waitedMs, ranUnderLoad: null };
+    if (current3 <= wait.maxLoadPerCpu) return { waitedMs, ranUnderLoad: null };
     const left = wait.maxDeferMs - waitedMs;
-    if (left <= 0) return { waitedMs, ranUnderLoad: current2 };
+    if (left <= 0) return { waitedMs, ranUnderLoad: current3 };
     await sleep15(Math.min(recheckMs, left));
   }
 }
@@ -7657,14 +7704,14 @@ async function lowerWhile(children, lane, since, signal2, walk2 = below) {
           continue;
         }
         carrier.walked = at2;
-        const current2 = /* @__PURE__ */ new Set();
+        const current3 = /* @__PURE__ */ new Set();
         for (const descendant of walk2(carrier.pid)) {
           const id3 = `${descendant.pid}:${descendant.start}`;
-          current2.add(id3);
+          current3.add(id3);
           if (!carrier.seen.has(id3)) fresh.push(descendant);
         }
-        for (const id3 of carrier.seen) if (!current2.has(id3)) lost = true;
-        carrier.seen = current2;
+        for (const id3 of carrier.seen) if (!current3.has(id3)) lost = true;
+        carrier.seen = current3;
       }
       if (fresh.length > 0) lower(fresh, isSlowLane(lane));
     }
@@ -12165,12 +12212,12 @@ var init_exclusions = __esm({
       excludes(path) {
         if (this.extra.has(path)) return false;
         const { root } = this.spec;
-        let current2 = path;
-        while (current2.length > root.length) {
-          if (this.excluded.has(current2)) return true;
-          const parent2 = dirname13(current2);
-          if (parent2 === current2) break;
-          current2 = parent2;
+        let current3 = path;
+        while (current3.length > root.length) {
+          if (this.excluded.has(current3)) return true;
+          const parent2 = dirname13(current3);
+          if (parent2 === current3) break;
+          current3 = parent2;
         }
         return false;
       }
@@ -13264,8 +13311,8 @@ function tierKeys(tier, ledger) {
   return [...new Set(tier.files.flatMap((tierFile) => fileKeys(tierFile, ledger)))];
 }
 function fileKeys({ file, key: key2 }, ledger) {
-  const current2 = ledger.files.get(file.id)?.key ?? null;
-  return current2 === null || current2 === key2 ? [key2] : [key2, current2];
+  const current3 = ledger.files.get(file.id)?.key ?? null;
+  return current3 === null || current3 === key2 ? [key2] : [key2, current3];
 }
 function forgetSlowRuns(context, ledger, tier) {
   forgetSlowArtifacts(context.store, context.worktreeId, tierKeys(tier, ledger));
@@ -13757,10 +13804,10 @@ var init_warm_up = __esm({
       }
       /** Outside the lock: the tier's ignored reads, or `null` when it is no warm-up's or git failed. */
       async read(context, tier, report2) {
-        const current2 = this.#current;
-        if (current2 === null || tier.checkpointId !== current2) return null;
+        const current3 = this.#current;
+        if (current3 === null || tier.checkpointId !== current3) return null;
         const asked = new Set(
-          tier.files.filter((f) => f.checkpointId === current2).map((f) => testFileId(f.file.ref))
+          tier.files.filter((f) => f.checkpointId === current3).map((f) => testFileId(f.file.ref))
         );
         const seen = [];
         for (const read4 of report2.reads ?? []) {
@@ -13785,7 +13832,7 @@ var init_warm_up = __esm({
             paths.filter((path) => ignored.has(listedDirectory(path) ?? path))
           );
         }
-        return { record: current2, files: files2 };
+        return { record: current3, files: files2 };
       }
       /** In the tier's store transaction. */
       record(context, reads) {
@@ -15460,7 +15507,7 @@ var init_handler = __esm({
         if (!throttler)
           return;
         const previous = this.fsw._getWatchedDir(wh.path);
-        const current2 = /* @__PURE__ */ new Set();
+        const current3 = /* @__PURE__ */ new Set();
         let stream = this.fsw._readdirp(directory, {
           fileFilter: (entry4) => wh.filterPath(entry4),
           directoryFilter: (entry4) => wh.filterDir(entry4)
@@ -15474,7 +15521,7 @@ var init_handler = __esm({
           }
           const item = entry4.path;
           let path = sp.join(directory, item);
-          current2.add(item);
+          current3.add(item);
           if (entry4.stats.isSymbolicLink() && await this._handleSymlink(entry4, directory, path, item)) {
             return;
           }
@@ -15499,7 +15546,7 @@ var init_handler = __esm({
             const wasThrottled = throttler ? throttler.clear() : false;
             resolve23(void 0);
             previous.getChildren().filter((item) => {
-              return item !== directory && !current2.has(item);
+              return item !== directory && !current3.has(item);
             }).forEach((item) => {
               this.fsw._remove(directory, item);
             });
@@ -16405,13 +16452,13 @@ var init_chokidar_backend = __esm({
     chokidarBackend = {
       name: "chokidar",
       async watch(spec, listener) {
-        let current2 = spec;
+        let current3 = spec;
         let filter = new Filter(spec);
         let watcher = await open4(spec, filter, listener);
         let closed = false;
         return {
           async update(next) {
-            const before = current2;
+            const before = current3;
             const nowExcluded = next.excluded.filter((p) => !before.excluded.includes(p));
             if (nowExcluded.length > 0) {
               const nextFilter = new Filter(next);
@@ -16423,11 +16470,11 @@ var init_chokidar_backend = __esm({
               const old = watcher;
               watcher = fresh;
               filter = nextFilter;
-              current2 = next;
+              current3 = next;
               await old.close();
               return;
             }
-            current2 = next;
+            current3 = next;
             filter.set(next);
             const noLongerExcluded = before.excluded.filter((p) => !next.excluded.includes(p));
             const newExtra = next.extraFiles.filter((p) => !before.extraFiles.includes(p));
@@ -17299,14 +17346,14 @@ var init_change_feed = __esm({
       }
       /** Rebuilds the spec and updates the watch. True when some path is no longer excluded. */
       async rebuildSpec(status2) {
-        const current2 = this.spec;
-        if (!current2 || !this.sub) return false;
+        const current3 = this.spec;
+        if (!current3 || !this.sub) return false;
         const next = await buildWatchSpec(this.root, this.extraFiles, status2);
-        if (sameWatchSpec(current2, next)) return false;
+        if (sameWatchSpec(current3, next)) return false;
         await this.sub.update(next);
         this.spec = next;
         this.unlisted.clear();
-        return current2.excluded.some((p) => !next.excluded.includes(p));
+        return current3.excluded.some((p) => !next.excluded.includes(p));
       }
       context() {
         const spec = this.spec ?? { root: this.root, excluded: [], extraFiles: [] };
@@ -18112,9 +18159,9 @@ async function affectedTestFiles(vitest, specs, changed) {
   const imported = /* @__PURE__ */ new Set();
   const direct = /* @__PURE__ */ new Set();
   const add = (spec, through) => {
-    const current2 = known2.get(specKey(spec));
-    if (!current2) return;
-    affected2.set(specKey(spec), current2);
+    const current3 = known2.get(specKey(spec));
+    if (!current3) return;
+    affected2.set(specKey(spec), current3);
     if (through === "graph") imported.add(specKey(spec));
     if (through === "snapshot") direct.add(specKey(spec));
   };
@@ -18286,7 +18333,7 @@ var init_results2 = __esm({
 
 // src/runners/vitest/reporter.ts
 import { appendFileSync } from "node:fs";
-function createSquealReporter(current2) {
+function createSquealReporter(current3) {
   let vitest = null;
   const moduleOf = (taskId) => {
     const entity = taskId === void 0 ? void 0 : vitest?.state.getReportedEntityById(taskId);
@@ -18297,11 +18344,11 @@ function createSquealReporter(current2) {
     onInit: (instance2) => {
       vitest = instance2;
     },
-    onTestCaseResult: (testCase) => current2()?.testCase(testCase),
-    onTestModuleQueued: (module2) => current2()?.moduleQueued(module2),
-    onTestModuleEnd: (module2) => current2()?.moduleEnd(module2),
-    onTestRunEnd: (_modules, unhandledErrors, reason2) => current2()?.runEnd(unhandledErrors, reason2),
-    onUserConsoleLog: (log) => current2()?.console(log.type, log.content, moduleOf(log.taskId))
+    onTestCaseResult: (testCase) => current3()?.testCase(testCase),
+    onTestModuleQueued: (module2) => current3()?.moduleQueued(module2),
+    onTestModuleEnd: (module2) => current3()?.moduleEnd(module2),
+    onTestRunEnd: (_modules, unhandledErrors, reason2) => current3()?.runEnd(unhandledErrors, reason2),
+    onUserConsoleLog: (log) => current3()?.console(log.type, log.content, moduleOf(log.taskId))
   };
 }
 function suiteErrors(module2) {
@@ -20292,7 +20339,7 @@ var init_adapter = __esm({
           this.#reload = false;
         }
         const generation = ++this.#generation;
-        const current2 = () => generation === this.#generation ? this.#collector : null;
+        const current3 = () => generation === this.#generation ? this.#collector : null;
         const env = { ...this.#childEnv, ...this.#observer.start().env };
         const heard = this.#touched.length;
         const sources = new SourceStamps(this.paths);
@@ -20302,7 +20349,7 @@ var init_adapter = __esm({
         const vitest = await this.#node.createVitest("test", {
           root: this.paths.root,
           watch: false,
-          reporters: [createSquealReporter(current2)],
+          reporters: [createSquealReporter(current3)],
           update: "none",
           includeTaskLocation: true,
           // Task 001-157: a transform `fsModuleCache` serves skips the plugin
@@ -24638,7 +24685,7 @@ var init_acorn = __esm({
       }
       return i3 + 2;
     };
-    RegExpValidationState.prototype.current = function current(forceU) {
+    RegExpValidationState.prototype.current = function current2(forceU) {
       if (forceU === void 0) forceU = false;
       return this.at(this.pos, forceU);
     };
@@ -24663,8 +24710,8 @@ var init_acorn = __esm({
       var pos = this.pos;
       for (var i3 = 0, list2 = chs; i3 < list2.length; i3 += 1) {
         var ch = list2[i3];
-        var current2 = this.at(pos, forceU);
-        if (current2 === -1 || current2 !== ch) {
+        var current3 = this.at(pos, forceU);
+        if (current3 === -1 || current3 !== ch) {
           return false;
         }
         pos = this.nextIndex(pos, forceU);
@@ -29609,17 +29656,17 @@ var require_DescriptionFileUtils = __commonJS({
     function getField(content, field) {
       if (!content) return void 0;
       if (Array.isArray(field)) {
-        let current2 = content;
+        let current3 = content;
         for (let j = 0; j < field.length; j++) {
-          if (current2 === null || typeof current2 !== "object") {
-            current2 = null;
+          if (current3 === null || typeof current3 !== "object") {
+            current3 = null;
             break;
           }
-          current2 = /** @type {JsonValue} */
+          current3 = /** @type {JsonValue} */
           /** @type {JsonObject} */
-          current2[field[j]];
+          current3[field[j]];
         }
-        return current2;
+        return current3;
       }
       return content[field];
     }
@@ -33043,30 +33090,30 @@ ${this.header()}${this.contentWithInterceptors({
           return onDone();
         };
         let code = "";
-        let current2 = onDone;
+        let current3 = onDone;
         let unrollCounter = 0;
         for (let j = tapsLength - 1; j >= 0; j--) {
           const i3 = j;
-          const unroll = current2 !== onDone && (taps[i3].type !== "sync" || unrollCounter++ > 20);
+          const unroll = current3 !== onDone && (taps[i3].type !== "sync" || unrollCounter++ > 20);
           if (unroll) {
             unrollCounter = 0;
             code += `function _next${i3}() {
 `;
-            code += current2();
+            code += current3();
             code += "}\n";
-            current2 = () => `${somethingReturns ? "return " : ""}_next${i3}();
+            current3 = () => `${somethingReturns ? "return " : ""}_next${i3}();
 `;
           }
-          const done = current2;
+          const done = current3;
           const content = this.callTap(i3, {
             onError: (error) => onError(i3, error, done, doneBreak),
             onResult: onResult && ((result) => onResult(i3, result, done, doneBreak)),
             onDone: !onResult && done,
             rethrowIfPossible: rethrowIfPossible && (firstAsync < 0 || i3 < firstAsync)
           });
-          current2 = () => content;
+          current3 = () => content;
         }
-        code += current2();
+        code += current3();
         return code;
       }
       callTapsLooping({ onError, onDone, rethrowIfPossible }) {
@@ -39285,13 +39332,13 @@ function pytestPlugins(site) {
 }
 function section(text2, wanted) {
   const entries3 = [];
-  let current2 = null;
+  let current3 = null;
   for (const raw of text2.split(/\r?\n/)) {
     const line = raw.trim();
     if (line === "" || line.startsWith("#") || line.startsWith(";")) continue;
     const header = /^\[(.+)\]$/.exec(line);
-    if (header !== null) current2 = header[1]?.trim() ?? null;
-    else if (current2 === wanted) {
+    if (header !== null) current3 = header[1]?.trim() ?? null;
+    else if (current3 === wanted) {
       const at2 = line.indexOf("=");
       if (at2 > 0) entries3.push([line.slice(0, at2).trim(), line.slice(at2 + 1).trim()]);
     }
@@ -46888,7 +46935,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.212";
+  if (true) return "0.1.213";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -47442,10 +47489,10 @@ function report({ store, root, commonDir }, check, includeLogs) {
     ...changed === void 0 ? {} : { changedSince: changed }
   };
 }
-function changedSince(store, worktreeId, observedAt, current2) {
-  if (observedAt === null || current2 === null || observedAt >= current2) return void 0;
+function changedSince(store, worktreeId, observedAt, current3) {
+  if (observedAt === null || current3 === null || observedAt >= current3) return void 0;
   const byPath = /* @__PURE__ */ new Map();
-  for (const revision of store.revisions.range(worktreeId, observedAt, current2)) {
+  for (const revision of store.revisions.range(worktreeId, observedAt, current3)) {
     for (const { path } of revision.changes) {
       const numbers = byPath.get(path) ?? [];
       if (numbers.at(-1) !== revision.number) numbers.push(revision.number);
@@ -48158,8 +48205,8 @@ function listTestFiles(root, tracked) {
     const id2 = worktreeIdFor(root);
     const rows = store.testFileKeys.list(id2);
     if (rows.length === 0) return null;
-    const current2 = readVerdict(store, id2).byClass.current;
-    return { paths: [...new Set(rows.map((row) => row.testFile.path))].sort(), current: current2 };
+    const current3 = readVerdict(store, id2).byClass.current;
+    return { paths: [...new Set(rows.map((row) => row.testFile.path))].sort(), current: current3 };
   });
   if (listed2 !== null && "paths" in listed2) {
     return { source: "store", paths: listed2.paths, current: listed2.current };
@@ -49766,15 +49813,15 @@ function registration(store, consumer) {
 }
 function park(store, consumer, at2, { said, uncovered } = { said: false, uncovered: [] }) {
   const key2 = registeredMetaKey(consumer.worktreeId);
-  const current2 = registration(store, consumer);
+  const current3 = registration(store, consumer);
   if (readSlot(store, key2, consumer) !== void 0) writeSlot(store, key2, consumer, null);
-  if (current2 === null) return;
+  if (current3 === null) return;
   const leftAt = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
   const told = {
     ...said ? { said: true } : {},
     ...uncovered.length > 0 ? { uncovered } : {}
   };
-  writeParked(store, consumer, at2, { ...current2, leftAt, leftTime: at2, ...told });
+  writeParked(store, consumer, at2, { ...current3, leftAt, leftTime: at2, ...told });
 }
 function writeParked(store, consumer, at2, value) {
   const key2 = parkedMetaKey(consumer.worktreeId);
@@ -49793,7 +49840,7 @@ function writeParked(store, consumer, at2, value) {
 init_state3();
 function beforeFailing(history2, state) {
   const last = history2.at(-1);
-  if (state.outcome !== "fail" || last?.to !== "fail" || last.toFingerprint !== state.fingerprint) {
+  if (state.outcome !== "fail" || last?.to !== "fail" || !sameFingerprint(last.toFingerprint, state.fingerprint)) {
     return null;
   }
   const at2 = history2.findLastIndex((t) => t.kind !== "fail-changed");
@@ -50109,8 +50156,8 @@ function dropGoneHarnesses(store, worktreeId, now, options) {
     verdicts.set(id2, gone3);
     if (!gone3) continue;
     const removed = store.transaction(() => {
-      const current2 = store.consumers.get(consumer) === null ? null : harnessOf(store, consumer);
-      if (current2 === null || !sameHarness(current2, harness)) return false;
+      const current3 = store.consumers.get(consumer) === null ? null : harnessOf(store, consumer);
+      if (current3 === null || !sameHarness(current3, harness)) return false;
       drop(store, consumer, now);
       return true;
     });
@@ -53627,7 +53674,7 @@ function statusCommand(env, cli = fileURLToPath13(import.meta.url)) {
 import { setTimeout as sleep8 } from "node:timers/promises";
 var UNSUPPORTED = { state: "unsupported" };
 function syncDaemon(root, pollMs) {
-  let current2 = { state: "pending" };
+  let current3 = { state: "pending" };
   let stopped = false;
   const isStopped = () => stopped;
   void (async () => {
@@ -53637,14 +53684,14 @@ function syncDaemon(root, pollMs) {
     }
   })().then(
     (outcome2) => {
-      current2 = outcome2;
+      current3 = outcome2;
     },
     () => {
-      current2 = UNSUPPORTED;
+      current3 = UNSUPPORTED;
     }
   );
   return {
-    current: () => current2,
+    current: () => current3,
     stop: () => {
       stopped = true;
     }
@@ -54250,8 +54297,8 @@ async function waitForNamed(cwd, paths, options) {
         const settled = final || elapsed() >= options.settleMs;
         watch2 ??= watchDaemon(id2, { downMs: options.downMs });
         const daemon = watch2.judge(store.worktrees.get(id2)?.daemon ?? null, options.now());
-        const current2 = sync.current();
-        const ready = daemon.state === "alive" && (current2.state === "synced" ? verdict.revision >= current2.revision && !verdict.unlisted : current2.state === "unsupported" && settled);
+        const current3 = sync.current();
+        const ready = daemon.state === "alive" && (current3.state === "synced" ? verdict.revision >= current3.revision && !verdict.unlisted : current3.state === "unsupported" && settled);
         const outcome2 = settled && daemon.state === "down" ? "no-daemon" : ready && selection.unmatched.length > 0 ? "unmatched" : ready && verdict.byClass.pending === 0 && !verdict.unlisted ? "settled" : final ? "timeout" : null;
         if (outcome2 === null) {
           if (ready && !promoted) {
@@ -54280,7 +54327,7 @@ async function waitForNamed(cwd, paths, options) {
           verdict,
           files: files2,
           result,
-          sync: current2,
+          sync: current3,
           ...daemon.state === "down" ? { down: daemon.reason } : {},
           ...lapse === null ? {} : { lapse }
         };
@@ -54400,23 +54447,23 @@ async function waitForStatus(cwd, options) {
         syncing.heard ??= lastHeard(store, id2, header.revision, session2, agent);
         const heard = syncing.heard;
         syncing.sync ??= startSync(root, pollMs);
-        const current2 = syncing.sync.current();
-        if (current2.state === "synced" && !syncing.fallback) {
+        const current3 = syncing.sync.current();
+        if (current3.state === "synced" && !syncing.fallback) {
           const seq = movesSeq(store, id2);
           if (syncing.window === void 0 || seq !== syncing.windowSeq) {
             const answer2 = answerMoves(
               store,
               id2,
-              current2.revision,
+              current3.revision,
               syncing.sinceSeq ?? 0,
-              current2.incarnation
+              current3.incarnation
             );
             if (answer2.state === "answered") {
-              syncing.window = editWindow(store, id2, heard, current2.revision, answer2.rekeyed);
+              syncing.window = editWindow(store, id2, heard, current3.revision, answer2.rekeyed);
               syncing.windowSeq = seq;
             }
             syncing.fallback = answer2.state === "incomplete";
-          } else if (!movesTrusted(store, id2, syncing.sinceSeq ?? 0, current2.incarnation)) {
+          } else if (!movesTrusted(store, id2, syncing.sinceSeq ?? 0, current3.incarnation)) {
             syncing.fallback = true;
           }
           if (syncing.fallback) syncing.window = void 0;
@@ -54445,12 +54492,12 @@ async function waitForStatus(cwd, options) {
             pending,
             otherTransitions: split2.other - slowNews
           };
-        } else if (current2.state === "pending" || current2.state === "synced" && !syncing.fallback) {
+        } else if (current3.state === "pending" || current3.state === "synced" && !syncing.fallback) {
           transitions = 0;
           quiet = false;
         } else {
           transitions = news.length;
-          quiet = isSynced(current2, header.revision, settled) && !isPending(header);
+          quiet = isSynced(current3, header.revision, settled) && !isPending(header);
         }
         quiet &&= slowLeft.length === 0 && daemon.state === "alive";
         const outcome2 = transitions > 0 ? "news" : settled && daemon.state === "down" ? "no-daemon" : quiet ? "quiet" : final ? "timeout" : null;
@@ -54482,9 +54529,9 @@ async function waitForStatus(cwd, options) {
     syncing.sync?.stop();
   }
 }
-function isSynced(current2, revision, settled) {
-  if (current2.state === "synced") return revision >= current2.revision;
-  return current2.state === "unsupported" && settled;
+function isSynced(current3, revision, settled) {
+  if (current3.state === "synced") return revision >= current3.revision;
+  return current3.state === "unsupported" && settled;
 }
 function toStartView(state) {
   return { check: state.check, outcome: state.outcome, fingerprint: state.fingerprint, toldAt: 0 };
@@ -54939,13 +54986,13 @@ async function recorded(socketPath, first, deadline) {
 }
 function filesText2(root, checkpoint) {
   const toRun2 = plural(checkpoint.testFiles.length, "test file");
-  const current2 = inStore(root, (store) => {
+  const current3 = inStore(root, (store) => {
     const requested = new Set(checkpoint.testFiles.map(testFileId));
     const listed2 = laneFiles(store, checkpoint) ?? store.testFileKeys.list(checkpoint.worktreeId).map((row) => row.testFile);
     const rest = listed2.filter((file) => !requested.has(testFileId(file)));
     return readVerdict(store, checkpoint.worktreeId, rest).byClass.current;
   });
-  return `${toRun2} to run${current2 === null ? "" : `, ${current2} already current`}`;
+  return `${toRun2} to run${current3 === null ? "" : `, ${current3} already current`}`;
 }
 function owedText(root, checkpoint) {
   const owed = inStore(root, (store) => openCheckpoint2(store, checkpoint)?.owed?.ids ?? []);
@@ -56189,18 +56236,18 @@ function launcherFormat(path) {
 }
 function recopyLauncher(env, io) {
   const target = join99(env.SQUEAL_BIN_DIR ?? join99(env.HOME ?? "", ".local", "bin"), "squeal");
-  const current2 = launcherFormat(target);
-  if (current2 === null) return;
+  const current3 = launcherFormat(target);
+  if (current3 === null) return;
   let newest = null;
   for (const dir2 of pluginDirs(env)) {
     const path = join99(dir2, "bin", "squeal-launcher");
     const format = launcherFormat(path);
-    if (format !== null && format > (newest?.format ?? current2)) newest = { path, format };
+    if (format !== null && format > (newest?.format ?? current3)) newest = { path, format };
   }
   if (newest === null) return;
   copyFileSync(newest.path, target);
   chmodSync3(target, 493);
-  io.stdout(`Copied the launcher (format ${current2}, now ${newest.format}) to ${target}
+  io.stdout(`Copied the launcher (format ${current3}, now ${newest.format}) to ${target}
 `);
 }
 function pluginDirs(env) {
