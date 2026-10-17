@@ -138,6 +138,7 @@ Brief: `research/README.md`. Topics `adoption-baseline`, `instruction-surfaces`,
 - 2026-10-17, 005-68 (the human, triage digest group A, issue #18, `research/issue-18-primer.md`): D6 amended. The primer and the skill name the path-scoped wait and when each wait applies; the sentence is added only where it fits the cap without folding text the primer already had (the coordinator's rule for the worker); the setup block is unchanged. 005-67, the same day: D2 holds as written, a listed test-file path selects only itself (issue #6).
 - 2026-10-17, 004-67 (004's row, issue #19): the primer's policy-on slow sentence and skill step 4 say slow files are required once the agent changes a file; `references/policy.md` names the exemption for a session that changed nothing (004 D9).
 - 2026-10-17, 0.1.207's review (`../004-slow-suites/reviews/wave-8.md`, a should-fix, decided by the coordinator): D6's no-folding rule governs only the addition of the path-wait sentence. Any other length change follows the primer's fold priority, where project globs fold before naming. So 2 of the review's 1,000 cells (Codex at `/opt/squeal`, Vitest with pytest, 7 required slow files) trade a project glob for the CLI path. No code change.
+- 2026-10-17, 011-10 (issue #26, 0.1.208): D2 amended. A named wait prints the snapshot, the selected files and their failures, and its verdict line last, so a `tail` keeps it. The skill copies say a wait's verdict is its last line. `run --all --wait` (D1) keeps its verdict first.
 
 ## Dogfooding
 
