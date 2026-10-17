@@ -85,7 +85,10 @@ export function asStopped(
 /**
  * Whether a boundary must leave the worktree without a daemon: the mark holds
  * and the tree prints as it did at the stop, or git could not print it. A
- * tree that prints otherwise clears the mark.
+ * tree that prints otherwise clears the mark. A mark whose stop could not
+ * print the tree takes the first print a boundary gets as its own and holds,
+ * so git coming back is not an edit (review wave-1.10 B2); an edit before
+ * that print is missed.
  */
 export async function stopHolds(
   store: Store,
@@ -97,6 +100,10 @@ export async function stopHolds(
   if (mark === null) return false;
   const tree = await treePrint(at.root, TREE_PRINT_TIMEOUT_MS);
   if (tree === null || tree === mark.tree) return true;
+  if (mark.tree === null) {
+    markStopped(store, at.id, mark.at, tree);
+    return true;
+  }
   clearStopped(store, at.id);
   return false;
 }
