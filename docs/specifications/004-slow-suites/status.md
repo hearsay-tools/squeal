@@ -107,6 +107,7 @@ Started: 2026-10-08
 
 - 2026-10-17, 004-66 (the human, triage digest group E, issue #12): D9 amended. A requested wait asks the daemon's socket before it says no daemon runs; a live socket keeps the wait going through a stale heartbeat, a dead one ends it after 10 s from the lapse, a cleared record at once; `run --slow --wait` exits 3 when it has no verdict. Socket only: the daemon record carries no pid. Applies to every requested wait, not only slow ones (the worker's default, accepted by the coordinator: the false "no daemon" misleads the same way there).
 - 2026-10-17, 004-67 (the human, triage digest round 3, issue #19, `../005-agent-adoption/research/issue-19.md`): D8 and D9 amended. Under `stop.requireSlowSuite`, a main agent with no revision since its registration, under the same daemon, is not held for slow files, by either Stop entry; SubagentStop still blocks; the primer's policy-on sentence says the requirement applies once the agent changes a file. Limit: an edit inside the watcher's debounce reads as none.
+- 2026-10-17, 011-10 (issue #26, 0.1.208): D9's lapse clause is on the wait's verdict line, which `run --slow --wait` now prints last, after status.
 
 ## Research
 
