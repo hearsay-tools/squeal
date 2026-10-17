@@ -134,6 +134,83 @@ describe("a named wait names what holds each pending selected file (011-12)", ()
     );
   });
 
+  /** Worktree `name`, its daemon heartbeating at `heartbeatAt`, running C's key with an open run. */
+  function claimant(
+    repo: ReturnType<typeof repoWith>["repo"],
+    store: Store,
+    name: string,
+    heartbeatAt: number,
+    runStartedAt = STARTED,
+  ) {
+    const other = repo.addWorktree(name);
+    store.worktrees.upsert({
+      id: other.id,
+      root: other.root,
+      commonDir: repo.commonDir,
+      isMain: false,
+      registeredAt: 2,
+      daemon: {
+        socketPath: `/tmp/${name}.sock`,
+        startedAt: NOW - 3_600_000,
+        heartbeatAt,
+        heartbeatIntervalMs: 5_000,
+        squealVersion: "0.0.0-test",
+      },
+    });
+    const own = store.testFileKeys.list(repo.mainId, [ref(C)])[0]?.key as CheckKey;
+    store.testFileKeys.upsertMany([
+      {
+        worktreeId: other.id,
+        testFile: ref(C),
+        key: own,
+        revision: 1 as never,
+        pending: "running",
+      },
+    ]);
+    store.runs.start({
+      id: `run-${name}`,
+      worktreeId: other.id,
+      revision: 4 as RevisionNumber,
+      testFiles: [ref(C)],
+      checkpointId: null,
+      logDir: `/tmp/run-${name}`,
+      startedAt: runStartedAt,
+    });
+    return other;
+  }
+
+  it("bounds an unbounded claim from now, never at a time already past (review wave-1.11 B1)", async () => {
+    const { repo, store } = repoWith([C]);
+    writeFileSync(
+      join(repo.main, "squeal.config.json"),
+      JSON.stringify({ runner: { timeoutMs: null } }),
+    );
+    // A claimant running for 20 minutes, past its start plus the 600 s unbounded wait.
+    const other = claimant(repo, store, "other", NOW - 1_000, NOW - 1_200_000);
+
+    const { text } = await timedOut(repo.main, [C]);
+
+    expect(text).toContain(
+      `${C}: waiting for ${other.root}'s run of its key, at most until ${clock(NOW + 600_000)}`,
+    );
+  });
+
+  it("names the live claimant, never an older worktree whose daemon stopped heartbeating (review wave-1.11 B2)", async () => {
+    const { repo, store } = repoWith([C]);
+    const a = claimant(repo, store, "claim-a", NOW - 1_000);
+    const b = claimant(repo, store, "claim-b", NOW - 1_000);
+    // Whichever sorts first in the store is the dead one.
+    const [dead, live] = a.id < b.id ? [a, b] : [b, a];
+    const row = store.worktrees.get(dead.id);
+    if (row?.daemon == null) throw new Error("no daemon");
+    store.worktrees.upsert({ ...row, daemon: { ...row.daemon, heartbeatAt: NOW - 600_000 } });
+
+    const { text } = await timedOut(repo.main, [C]);
+
+    expect(text).toContain(`${C}: waiting for ${live.root}'s run of its key`);
+    expect(text).not.toContain(`${dead.root}'s run`);
+  });
+
   it("slow, run when the agent pauses or on run --slow", async () => {
     const { repo } = repoWith([SLOW_FILE]);
     writeFileSync(
@@ -148,7 +225,7 @@ describe("a named wait names what holds each pending selected file (011-12)", ()
     );
   });
 
-  it("revision not listed yet, with the runner part's time left", async () => {
+  it("revision not listed yet, with the runner part's per-call bound (review wave-1.11 B3)", async () => {
     const { repo, store } = repoWith([A]);
     store.revisions.append({
       worktreeId: repo.mainId,
@@ -162,9 +239,9 @@ describe("a named wait names what holds each pending selected file (011-12)", ()
 
     const { text } = await timedOut(repo.main, [A]);
 
-    // 600 s run timeout + 6 s grace + 60 s margin, 10 s of it gone.
+    // 600 s run timeout + 6 s grace + 60 s margin, per call: the revision's 10 s age is no call's.
     const reason =
-      "revision 5 not listed yet, because the runner part waits for the run in flight, at most 656 s more";
+      "revision 5 not listed yet, because the runner part waits for the run in flight, at most 666 s more";
     expect(text).toContain(`Pending (1): ${A}: ${reason}\n`);
     expect(text).toContain(
       `the runner has not listed the test files of revision 5 yet: 1 ${reason}. Worktree:`,

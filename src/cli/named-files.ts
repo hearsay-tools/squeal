@@ -73,7 +73,7 @@ export function readNamedFiles(
   const policy = readPolicy(root);
   const runs = openRunsOf(store, worktreeId, daemon);
   const header = readHeader(store, worktreeId, states, keys);
-  const unlisted = unlistedReason(store, worktreeId, header, policy, now);
+  const unlisted = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
   return files.map((ref): NamedFile => {
     const row = rows.get(testFileId(ref));
@@ -120,8 +120,15 @@ function queuedReason(
 ): PendingReason {
   const claimant = key === null ? null : claimantOf(store, worktreeId, ref, key, now);
   if (claimant !== null) {
+    // The waiter's bound runs from when its daemon first saw the claim, which only that
+    // daemon knows, and is no later than now; a bounded claimant's run also ends by its
+    // start plus the bound. The earlier is a true "at most" (review wave-1.11 B1).
     const bound = claimBoundMs(policy.runner.timeoutMs);
-    const until = claimant.run === null ? null : claimant.run.startedAt + bound;
+    const waiter = now + bound;
+    const until =
+      claimant.run === null || policy.runner.timeoutMs === null
+        ? waiter
+        : Math.min(waiter, claimant.run.startedAt + bound);
     return { kind: "claim", worktree: claimant.worktree.root, until };
   }
   const tier = runs.find((run) =>
@@ -134,20 +141,18 @@ function queuedReason(
 
 /**
  * While the runner part of the revision is pending no tier starts (C4): the
- * revision and how long its call may still take, `runnerPartBoundMs` from
- * the first revision past the refined one; `null` when it is listed.
+ * revision and how long its call may still take, at most one call's
+ * `runnerPartBoundMs`; `null` when it is listed.
  */
 function unlistedReason(
-  store: Store,
-  worktreeId: WorktreeId,
   header: ReturnType<typeof readHeader>,
   policy: Policy,
-  now: EpochMs,
 ): PendingReason | null {
   const refined = header.refinedRevision;
   if (header.runnerPartPending !== true || refined === null || refined === undefined) return null;
-  const from = store.revisions.get(worktreeId, refined + 1)?.createdAt ?? now;
-  const leftMs = Math.max(0, from + runnerPartBoundMs(policy.runner.timeoutMs) - now);
+  // C4's bound is per runner call, and the store keeps no call's start, so the
+  // revision's age says nothing of it: the whole bound is what may be left (review wave-1.11 B3).
+  const leftMs = runnerPartBoundMs(policy.runner.timeoutMs);
   return { kind: "unlisted", revision: header.revision, leftMs };
 }
 
