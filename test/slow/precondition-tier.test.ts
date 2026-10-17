@@ -145,4 +145,15 @@ describe("a slow tier's precondition (spec 004 D7, D8 as amended 2026-10-17)", S
     expect(await h.scheduler.requestSlowSuite()).toMatchObject({ queued: 2 });
     await waitFor(() => slowRuns(h).length === 2, 60_000);
   });
+
+  it("ends a run --all checkpoint abandoned, its slow lane skipped and its fast lane run", async () => {
+    const h = await open({ exists: ["dist/index.js"] });
+    const before = h.runsOf("test/math.test.ts").length;
+    const checkpoint = await h.scheduler.requestFullSuite({ force: true });
+    await h.scheduler.idle();
+    expect(h.runsOf("test/math.test.ts").length).toBe(before + 1);
+    expect(slowRuns(h)).toEqual([]);
+    expect(h.store.checkpoints.get(checkpoint.id)?.end).toBe("abandoned");
+    expect(readSlowActivity(h.store, h.worktreeId)).toMatchObject({ reason: MISSING });
+  });
 });
