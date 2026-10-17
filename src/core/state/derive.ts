@@ -12,7 +12,7 @@ import type {
   Validity,
   WorktreeId,
 } from "../types/index.js";
-import { describeFailure } from "./fingerprint.js";
+import { describeFailure, sameFingerprint } from "./fingerprint.js";
 
 /**
  * Map key of a check, the one check key helper. Test files use `testFileId`
@@ -93,7 +93,7 @@ export function stateFromResult(
   const unchanged =
     previous !== null &&
     previous.outcome === result.outcome &&
-    previous.fingerprint === fingerprint &&
+    sameFingerprint(previous.fingerprint, fingerprint) &&
     previous.commit === result.provenance.commit &&
     sameOrigin(previous.origin, origin);
   const observedAt =
@@ -164,6 +164,6 @@ export function sameState(a: KnownState, b: KnownState): boolean {
     a.durationMs === b.durationMs &&
     sameLocation(a.location, b.location) &&
     a.summary === b.summary &&
-    a.fingerprint === b.fingerprint
+    sameFingerprint(a.fingerprint, b.fingerprint)
   );
 }

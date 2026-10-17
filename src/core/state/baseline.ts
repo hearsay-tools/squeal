@@ -7,6 +7,7 @@ import {
   worktreeMetaKey,
 } from "../types/index.js";
 import { checkIdentity } from "./derive.js";
+import { renormalizeFingerprint } from "./fingerprint.js";
 
 /*
  * Spec 001 D6: "Failures first observed by the baseline run after
@@ -17,7 +18,8 @@ import { checkIdentity } from "./derive.js";
  * baseline checkpoint in `meta`, and delivery labels a `first-seen-fail`
  * delta entry whose check and fingerprint are in that set. A later
  * transition of the check drops it from the set; a new baseline checkpoint
- * starts a new set.
+ * starts a new set. The set keeps fingerprints as their writer's rules made
+ * them; a lookup reads both sides under the current rules (task 011-14).
  */
 
 function baselineMetaKey(worktreeId: WorktreeId): string {
@@ -31,6 +33,12 @@ interface Findings {
 
 function entry(check: CheckId, fingerprint: DiagnosticFingerprint | null): string {
   return `${checkIdentity(check)}\0${fingerprint ?? ""}`;
+}
+
+/** `entry` with its fingerprint under the current rules, as `sameFingerprint` compares them. */
+function current(e: string): string {
+  const at = e.lastIndexOf("\0");
+  return `${e.slice(0, at + 1)}${renormalizeFingerprint(e.slice(at + 1))}`;
 }
 
 function read(store: Store, worktreeId: WorktreeId): Findings | null {
@@ -70,6 +78,6 @@ export function baselineFindings(
   store: Store,
   worktreeId: WorktreeId,
 ): (check: CheckId, fingerprint: DiagnosticFingerprint | null) => boolean {
-  const entries = new Set(read(store, worktreeId)?.entries);
-  return (check, fingerprint) => entries.has(entry(check, fingerprint));
+  const entries = new Set(read(store, worktreeId)?.entries.map(current));
+  return (check, fingerprint) => entries.has(current(entry(check, fingerprint)));
 }

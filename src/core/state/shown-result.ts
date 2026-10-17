@@ -7,7 +7,7 @@ import type {
   Store,
   WorktreeId,
 } from "../types/index.js";
-import { describeFailure } from "./fingerprint.js";
+import { describeFailure, sameFingerprint } from "./fingerprint.js";
 
 /**
  * The stored result the known state shows, from all of the check's
@@ -41,7 +41,7 @@ export function shownResult(
   if (origin === null) return null;
   const names = (r: ResultRecord) =>
     r.outcome === knownState.outcome &&
-    fingerprintOf(r) === knownState.fingerprint &&
+    sameFingerprint(fingerprintOf(r), knownState.fingerprint) &&
     r.provenance.commit === knownState.commit &&
     (origin.kind === "inherited"
       ? r.provenance.worktreeId === origin.worktreeId &&
