@@ -587,6 +587,9 @@ import { channel } from "node:diagnostics_channel";
 var TEST_PAUSE_CHANNEL = "squeal:test-pause";
 var pauses = channel(TEST_PAUSE_CHANNEL);
 
+// src/core/status/open.ts
+var SLEEP = new Int32Array(new SharedArrayBuffer(4));
+
 // src/core/delivery/format.ts
 var SQUEAL_COMMAND = "squeal";
 function shellWord(text) {

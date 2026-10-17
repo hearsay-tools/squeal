@@ -2352,12 +2352,14 @@ var SELECT_RESULTS = `
 function createResultRepo(conn) {
   return {
     byKey: (key, usedAt = Date.now()) => {
-      conn.run(
-        "UPDATE results SET last_used_at = ? WHERE key = ? AND last_used_at < ?",
-        usedAt,
-        key,
-        usedAt
-      );
+      if (usedAt > 0) {
+        conn.run(
+          "UPDATE results SET last_used_at = ? WHERE key = ? AND last_used_at < ?",
+          usedAt,
+          key,
+          usedAt
+        );
+      }
       return conn.all(
         `${SELECT_RESULTS} WHERE r.key = ? ORDER BY c.project, c.test_path, c.kind, c.full_name`,
         key
@@ -4012,6 +4014,7 @@ function unavailable(reason, detail) {
     message: `status unavailable, ${detail}`
   };
 }
+var SLEEP = new Int32Array(new SharedArrayBuffer(4));
 
 // src/core/scheduler/unknown-files.ts
 function unknownFilesMetaKey(worktreeId) {
@@ -5371,7 +5374,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.203";
+  if (true) return "0.1.204";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
