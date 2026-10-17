@@ -19,6 +19,7 @@ const { execFileSync } = require("node:child_process");
 const { buildCandidates } = require("./issue-intake-candidates.cjs");
 const { planIntakeMutations } = require("./apply-issue-intake.cjs");
 const { callJev } = require("./jev-intake-client.cjs");
+const { render, score } = require("./jev-intake-replay-report.cjs");
 const {
   buildRequest,
   buildRecheckRequest,
@@ -30,9 +31,10 @@ const {
 } = require("./jev-issue-intake.cjs");
 
 // The board's duplicate verdicts, 2026-10-17: gh-30 is #6's work (row gh-30,
-// done row 005-67); gh-29 is #5's (row gh-29, "no new implementation").
-const DUPLICATES = Object.freeze({ 30: 6, 29: 5 });
-const ROUTED = /((?:gh-\d+(?:,\s*|\s+and\s+)?)+)\s+to\s+(\d{3})-\d+/g;
+// done row 005-67); gh-29 is #5's (row gh-29, "no new implementation"); #16
+// is #3's (row 004-65, "issue #16 is the same defect").
+const DUPLICATES = Object.freeze({ 30: 6, 29: 5, 16: 3 });
+const ROUTED = /((?:gh-\d+(?:,\s*|\s+and\s+)?)+)\s+to\s+((\d{3})-\d+)/g;
 
 // Spec number to area, read from the area descriptions so the list has one
 // owner (jev-issue-intake.cjs).
@@ -48,19 +50,30 @@ function specAreas(criteria = AREA_CRITERIA) {
   return areas;
 }
 
-// Issue number to the set of areas the board routed it to.
-function boardTruth(board, areas = specAreas()) {
-  const truth = new Map();
-  for (const [, issues, spec] of board.matchAll(ROUTED)) {
-    const area = areas.get(spec);
-    if (!area) continue;
+function addTo(map, key, value) {
+  const set = map.get(key) ?? new Set();
+  set.add(value);
+  map.set(key, set);
+}
+
+// Issue number to the areas and to the rows the board routed it to.
+function boardTruth(board, specToArea = specAreas()) {
+  const areas = new Map();
+  const rows = new Map();
+  for (const [, issues, row, spec] of board.matchAll(ROUTED)) {
     for (const [, number] of issues.matchAll(/gh-(\d+)/g)) {
-      const set = truth.get(Number(number)) ?? new Set();
-      set.add(area);
-      truth.set(Number(number), set);
+      addTo(rows, Number(number), row);
+      if (specToArea.has(spec)) addTo(areas, Number(number), specToArea.get(spec));
     }
   }
-  return truth;
+  return { areas, rows };
+}
+
+// A pick of an issue the human merged into the same row without calling it
+// a duplicate: neither right nor wrong, a question for the human.
+function sameRow(truth, a, b) {
+  const rows = truth.rows.get(b);
+  return [...(truth.rows.get(a) ?? [])].some((row) => rows?.has(row));
 }
 
 // The candidates `target` would have had when it was opened: open issues and
@@ -122,89 +135,24 @@ function evaluate({ corpus, answers, truth, thresholds = THRESHOLDS }) {
         }
       : null;
     const intake = mapAnswers({ request, response: cached, recheck, thresholds });
+    const outcome = outcomeOf(intake, target, candidates);
+    const expected = expectedOutcome(target, candidates);
     rows.push({
       number: target.number,
       title: target.title,
       area: intake.labels.find((label) => label.startsWith("area-")) ?? null,
       type: intake.labels.find((label) => !label.startsWith("area-")) ?? null,
-      truthAreas: truth.has(target.number) ? [...truth.get(target.number)] : null,
-      outcome: outcomeOf(intake, target, candidates),
-      expected: expectedOutcome(target, candidates),
+      truthAreas: truth.areas.has(target.number) ? [...truth.areas.get(target.number)] : null,
+      outcome,
+      expected,
+      evidence: intake.comment,
+      merged:
+        outcome !== "none" &&
+        outcome !== expected &&
+        sameRow(truth, target.number, intake.duplicate_of),
     });
   }
   return rows.sort((a, b) => a.number - b.number);
-}
-
-function score(rows) {
-  const routed = rows.filter((row) => row.truthAreas);
-  const areaRight = routed.filter((row) => row.truthAreas.includes(row.area));
-  const areaNone = routed.filter((row) => row.area === null);
-  const closes = rows.filter((row) => row.outcome.startsWith("close"));
-  const comments = rows.filter((row) => row.outcome.startsWith("comment"));
-  return {
-    issues: rows.length,
-    routed: routed.length,
-    areaRight: areaRight.length,
-    areaWrong: routed.length - areaRight.length - areaNone.length,
-    areaNone: areaNone.length,
-    closes: closes.map((row) => `#${row.number} ${row.outcome}`),
-    wrongAreas: routed
-      .filter((row) => row.area !== null && !row.truthAreas.includes(row.area))
-      .map((row) => `#${row.number} ${row.area} (board ${row.truthAreas.join(", ")})`),
-    rightCloses: closes.filter((row) => row.outcome === row.expected).length,
-    wrongCloses: closes.filter((row) => row.outcome !== row.expected).map((row) => row.number),
-    rightComments: comments.filter((row) => row.outcome === row.expected).length,
-    wrongComments: comments.filter((row) => row.outcome !== row.expected).map((row) => row.number),
-    missed: rows
-      .filter((row) => row.expected !== "none" && row.outcome !== row.expected)
-      .map((row) => row.number),
-  };
-}
-
-function render({ corpus, rows, model, command }) {
-  const head = `# Issue-intake replay
-
-Generated by \`node .github/scripts/jev-intake-replay.cjs report\` (row 010-30, spec 010 D12). Corpus fetched ${corpus.fetchedAt} from ${corpus.repo}: ${corpus.issues.length} issues.
-
-Truth is the board, not a model: the area of each issue routed by a \`gh-N to NNN-MM\` line, mapped through D12's area list, and the duplicate verdicts gh-30 of #6 and gh-29 of #5. Every other issue is a non-duplicate. Type labels have no human truth and are listed, not scored. Outcomes are the applicator's with \`ISSUE_INTAKE_CLOSE_DUPLICATES\` on: \`close #N\` for a duplicate of an open candidate, \`comment #N\` for one of a closed candidate. Thresholds: ${Object.entries(
-    THRESHOLDS,
-  )
-    .map(([key, value]) => `\`${key}\` ${value}`)
-    .join(", ")}.
-`;
-  if (rows.length === 0) {
-    return `${head}
-## Result
-
-Pending: no Jev answers are recorded, since \`TYPESAFE_API_KEY\` was not available. Run:
-
-\`\`\`sh
-${command}
-\`\`\`
-`;
-  }
-  const s = score(rows);
-  const list = (numbers) => (numbers.length ? numbers.map((n) => `#${n}`).join(", ") : "none");
-  const items = (lines) => (lines.length ? lines.join("; ") : "none");
-  const table = rows.map(
-    (row) =>
-      `| #${row.number} | ${row.truthAreas ? row.truthAreas.join(", ") : "–"} | ${row.area ?? "none"} | ${row.type ?? "none"} | ${row.expected} | ${row.outcome} |`,
-  );
-  return `${head}Model: ${model}.
-
-## Result
-
-- Areas: ${s.areaRight} of ${s.routed} routed issues right, ${s.areaWrong} wrong, ${s.areaNone} without an area.
-- Wrong areas against the board: ${items(s.wrongAreas)}.
-- Every close it would make: ${items(s.closes)}.
-- Closes: ${s.rightCloses} right; wrong closes: ${list(s.wrongCloses)}.
-- "Possibly the same" comments: ${s.rightComments} right; wrong: ${list(s.wrongComments)}.
-- Board duplicates Jev missed: ${list(s.missed)}.
-
-| Issue | Board area | Jev area | Jev type | Board outcome | Jev outcome |
-| --- | --- | --- | --- | --- | --- |
-${table.join("\n")}
-`;
 }
 
 function readJson(file, fallback) {
@@ -302,8 +250,6 @@ module.exports = {
   specAreas,
   candidatesAt,
   evaluate,
-  score,
-  render,
   COMMAND,
   DUPLICATES,
 };

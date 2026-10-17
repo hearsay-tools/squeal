@@ -7,10 +7,9 @@ import {
   DUPLICATES,
   evaluate,
   type RecordedAnswer,
-  render,
-  score,
   specAreas,
 } from "../../.github/scripts/jev-intake-replay.cjs";
+import { render, score } from "../../.github/scripts/jev-intake-replay-report.cjs";
 import type { JevAnswer } from "../../.github/scripts/jev-issue-intake.cjs";
 
 // Lines in the board's own formats, including ones that must not count.
@@ -32,6 +31,7 @@ const corpus: Corpus = {
     issue(5, "2026-10-16T18:27:00Z", "2026-10-16T21:06:00Z"),
     issue(6, "2026-10-16T19:15:00Z"),
     issue(7, "2026-10-16T19:16:00Z"),
+    issue(8, "2026-10-16T19:17:00Z"),
     issue(29, "2026-10-17T10:56:00Z"),
     issue(30, "2026-10-17T10:59:00Z"),
     issue(31, "2026-10-17T11:24:00Z"),
@@ -57,8 +57,9 @@ function recorded(
 }
 
 // Recorded Jev answers in the API's shape: a right close (#30), a right
-// "possibly the same" comment (#29), a wrong close (#31), a wrong area (#7),
-// and a recheck below the shortlist threshold that must not count (#6).
+// "possibly the same" comment (#29), a wrong close (#31), a close of an issue
+// the board merged into the same row (#8 of #7), a wrong area (#7), and a
+// recheck below the shortlist threshold that must not count (#6).
 const answers: Record<number, RecordedAnswer> = {
   5: recorded(["area-core", 0.3], choice("none", 0.99)),
   6: recorded(["area-adoption", 0.8], choice("none", 0.6, { "#5": 0.3 }), {
@@ -66,6 +67,10 @@ const answers: Record<number, RecordedAnswer> = {
     answers: { duplicate: choice("#5", 0.99), "same_work:#5": noul(0.99) },
   }),
   7: recorded(["area-runner", 0.7], choice("none", 0.9)),
+  8: recorded(["area-core", 0.7], choice("#7", 0.7), {
+    numbers: [7],
+    answers: { duplicate: choice("#7", 0.9), "same_work:#7": noul(0.8) },
+  }),
   29: recorded(["area-adoption", 0.6], choice("#5", 0.8, { "#6": 0.1 }), {
     numbers: [5, 6],
     answers: {
@@ -110,7 +115,7 @@ describe("the replay's truth", () => {
 
   it("reads the board's gh-N to NNN-MM lines, lists included, and nothing else", () => {
     const truth = boardTruth(board);
-    const flat = Object.fromEntries([...truth].map(([number, set]) => [number, [...set]]));
+    const flat = Object.fromEntries([...truth.areas].map(([number, set]) => [number, [...set]]));
     expect(flat).toEqual({
       3: ["area-slow-suites"],
       6: ["area-adoption"],
@@ -123,15 +128,23 @@ describe("the replay's truth", () => {
     });
   });
 
-  it("records the board's two duplicate verdicts and no other", () => {
-    expect(DUPLICATES).toEqual({ 30: 6, 29: 5 });
+  it("keeps the rows each issue was routed to, so a same-row merge is known", () => {
+    const { rows } = boardTruth(board);
+    expect([...(rows.get(7) ?? [])]).toEqual(["011-01"]);
+    expect([...(rows.get(8) ?? [])]).toEqual(["011-01"]);
+    expect([...(rows.get(40) ?? [])]).toEqual(["001-500"]);
+  });
+
+  it("records the board's three duplicate verdicts and no other", () => {
+    expect(DUPLICATES).toEqual({ 30: 6, 29: 5, 16: 3 });
   });
 
   it("rebuilds each issue's candidates as of its opening, closed ones flagged", () => {
-    const at29 = candidatesAt(corpus, corpus.issues[3] ?? issue(0, ""));
+    const at29 = candidatesAt(corpus, corpus.issues.find((i) => i.number === 29) ?? issue(0, ""));
     expect(at29.map(({ number, open }) => [number, open])).toEqual([
       [6, true],
       [7, true],
+      [8, true],
       [5, false],
     ]);
   });
@@ -148,6 +161,7 @@ describe("the replay's scoring, offline on recorded answers", () => {
       5: ["none", "none"],
       6: ["none", "none"],
       7: ["none", "none"],
+      8: ["none", "close #7"],
       29: ["comment #5", "comment #5"],
       30: ["close #6", "close #6"],
       31: ["none", "close #7"],
@@ -156,17 +170,22 @@ describe("the replay's scoring, offline on recorded answers", () => {
 
   it("counts areas against the board and every close and comment against its verdicts", () => {
     expect(score(rows)).toEqual({
-      issues: 6,
-      routed: 3,
-      areaRight: 2,
+      issues: 7,
+      routed: 4,
+      areaRight: 3,
       areaWrong: 1,
       areaNone: 0,
-      closes: ["#30 close #6", "#31 close #7"],
+      closes: [
+        "#8 close #7 (Jev probability 0.90, same work 0.80)",
+        "#30 close #6 (Jev probability 0.90, same work 0.60)",
+        "#31 close #7 (Jev probability 0.95, same work 0.90)",
+      ],
       wrongAreas: ["#7 area-runner (board area-core)"],
       rightCloses: 1,
       wrongCloses: [31],
       rightComments: 1,
       wrongComments: [],
+      merged: ["#8 close #7"],
       missed: [],
     });
   });
@@ -180,7 +199,10 @@ describe("the replay's scoring, offline on recorded answers", () => {
 
   it("writes every close and every wrong area into the report", () => {
     const text = render({ corpus, rows, model: "jev-1.13.0", command: COMMAND("/tmp/x") });
-    expect(text).toMatch(/Every close it would make: #30 close #6; #31 close #7\./);
+    expect(text).toMatch(
+      /Every close it would make: #8 close #7 \(Jev probability 0\.90, same work 0\.80\); #30 close #6 \(.*\); #31 close #7 \(.*\)\./,
+    );
+    expect(text).toMatch(/left out of the counts above: #8 close #7\./);
     expect(text).toMatch(/Wrong areas against the board: #7 area-runner \(board area-core\)\./);
     expect(text).toMatch(/wrong closes: #31\./);
     expect(text).toMatch(/\| #31 \| area-core \| area-core \| bug \| none \| close #7 \|/);
