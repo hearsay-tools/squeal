@@ -72,9 +72,25 @@ function parseRequest(line) {
     case "sync-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "sync-status", requestId: request.requestId };
+    case "promote": {
+      const { testFiles, withinMs } = request;
+      if (!Array.isArray(testFiles) || !testFiles.every(isTestFileRef)) {
+        return '"testFiles" must be a list of { project, path } strings';
+      }
+      if (typeof withinMs !== "number" || !Number.isFinite(withinMs) || withinMs < 0) {
+        return '"withinMs" must be a number of milliseconds';
+      }
+      const refs = testFiles.map(({ project, path }) => ({ project, path }));
+      return { type: "promote", testFiles: refs, withinMs };
+    }
     default:
       return `unknown request type ${JSON.stringify(request.type)}`;
   }
+}
+function isTestFileRef(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const { project, path } = value;
+  return typeof project === "string" && typeof path === "string";
 }
 function errorResponse(error) {
   return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: false, error };
@@ -227,6 +243,13 @@ function createHandlers(context) {
         if (state === void 0) return errorResponse(`unknown request id ${request.requestId}`);
         return sync(request.requestId, state);
       }
+      case "promote":
+        if (context.requestPromotion === void 0)
+          return errorResponse("this daemon cannot promote");
+        context.onActivity();
+        context.requestPromotion(request.testFiles, request.withinMs).catch(() => {
+        });
+        return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "promote" };
       case "stop":
         context.onStop();
         return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "stop" };
@@ -379,6 +402,7 @@ function bind(identity) {
     onActivity: () => post({ type: "activity" }),
     onNudge: () => post({ type: "nudge" }),
     requestRetries: async () => post({ type: "retry" }),
+    requestPromotion: async (testFiles, withinMs) => post({ type: "promote", testFiles, withinMs }),
     onStop: () => post({ type: "stop" }),
     onStepDown: (version) => post({ type: "step-down", version })
   });

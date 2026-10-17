@@ -4098,12 +4098,17 @@ async function stopHolds(store, at2, worktree, live) {
   if (mark === null) return false;
   const tree = await treePrint(at2.root, TREE_PRINT_TIMEOUT_MS);
   if (tree === null || tree === mark.tree) return true;
-  if (mark.tree === null) {
-    markStopped(store, at2.id, mark.at, tree);
-    return true;
-  }
-  clearStopped(store, at2.id);
-  return false;
+  return store.transaction(() => {
+    const now = readMark(store, at2.id);
+    if (now === null) return false;
+    if (now.at !== mark.at || now.tree !== mark.tree) return true;
+    if (mark.tree === null) {
+      markStopped(store, at2.id, mark.at, tree);
+      return true;
+    }
+    clearStopped(store, at2.id);
+    return false;
+  });
 }
 async function treePrint(root, timeoutMs) {
   const options = timeoutMs === void 0 ? {} : { timeoutMs };
@@ -4212,6 +4217,28 @@ function unavailable(reason, detail) {
 }
 var SLEEP = new Int32Array(new SharedArrayBuffer(4));
 
+// src/core/status/open-runs.ts
+function openRuns(store, worktree, daemon) {
+  const record = worktree?.daemon ?? null;
+  if (worktree === null || record === null || daemon.state !== "alive") return [];
+  return store.runs.inFlight(worktree.id, record.startedAt);
+}
+function claimantOf(store, worktreeId, ref, key, now) {
+  if (!store.testFileKeys.claimed(worktreeId, key, { now, graceIntervals: HEARTBEAT_GRACE_INTERVALS })) {
+    return null;
+  }
+  const id = testFileId(ref);
+  for (const worktree of store.worktrees.list()) {
+    if (worktree.id === worktreeId || worktree.daemon === null) continue;
+    const row = store.testFileKeys.list(worktree.id, [ref])[0];
+    if (row?.key !== key || row.pending !== "running") continue;
+    const runs = store.runs.inFlight(worktree.id, worktree.daemon.startedAt);
+    const run = runs.find((r) => r.testFiles.some((f) => testFileId(f) === id)) ?? null;
+    return { worktree, run };
+  }
+  return null;
+}
+
 // src/core/scheduler/unknown-files.ts
 function unknownFilesMetaKey(worktreeId) {
   return worktreeMetaKey("unknownFiles", worktreeId);
@@ -4236,12 +4263,8 @@ function isEntry(value) {
 
 // src/core/status/unknown-files.ts
 var UNKNOWN_FILES_LISTED = 20;
-function unknownTestFilesOf(store, worktreeId, states, keys) {
-  const checks = /* @__PURE__ */ new Map();
-  for (const state of states) {
-    const id = testFileKeyOf(state.check);
-    checks.set(id, [...checks.get(id) ?? [], state]);
-  }
+function unknownTestFilesOf(store, worktreeId, states, keys, root, now = Date.now()) {
+  const checks = checksByFile(states);
   const unknown = keys.filter((row) => {
     const own = checks.get(testFileId(row.testFile)) ?? [];
     if (row.key !== null && row.pending !== null || own.some((s) => s.validity === "pending")) {
@@ -4250,18 +4273,50 @@ function unknownTestFilesOf(store, worktreeId, states, keys) {
     return row.key === null || own.length === 0 || own.some((s) => s.validity === "unknown");
   });
   if (unknown.length === 0) return {};
-  const recorded = readUnknownFiles(store, worktreeId);
-  const files2 = unknown.sort((a, b) => testFileId(a.testFile).localeCompare(testFileId(b.testFile))).slice(0, UNKNOWN_FILES_LISTED).map((row) => {
-    const id = testFileId(row.testFile);
-    const entry3 = recorded.get(id);
-    if (entry3 !== void 0 && entry3.key === row.key) {
-      const { ran, reason, samples } = entry3;
-      return { testFile: row.testFile, ran, reason, samples };
-    }
-    const summary = checks.get(id)?.find((s) => s.validity === "unknown")?.summary ?? null;
-    return { testFile: row.testFile, ran: false, reason: summary, samples: [] };
-  });
+  const reasons = unknownReasons(store, worktreeId, states, root, now);
+  const files2 = unknown.sort((a, b) => testFileId(a.testFile).localeCompare(testFileId(b.testFile))).slice(0, UNKNOWN_FILES_LISTED).map((row) => reasons.of(row, checks.get(testFileId(row.testFile)) ?? []));
   return { unknownTestFiles: { total: unknown.length, files: files2 } };
+}
+function checksByFile(states) {
+  const checks = /* @__PURE__ */ new Map();
+  for (const state of states) {
+    const id = testFileKeyOf(state.check);
+    checks.set(id, [...checks.get(id) ?? [], state]);
+  }
+  return checks;
+}
+function unknownReasons(store, worktreeId, states, root, now) {
+  const recorded = readUnknownFiles(store, worktreeId);
+  const setups = new Set(
+    states.filter((s) => s.check.kind === "setup" && s.outcome === "fail").map((s) => s.check.project)
+  );
+  let lookupOnly;
+  const isLookupOnly = () => {
+    lookupOnly ??= root !== void 0 && readPolicy(root).baseline.onStart === "lookup-only";
+    return lookupOnly;
+  };
+  const reason = (row, own) => {
+    const summary = own.find((s) => s.validity === "unknown")?.summary ?? null;
+    if (summary !== null) return summary;
+    if (row.key === null) {
+      return "no key: its project's environment or closure is not known (a runner call failed), or a closure path is untracked";
+    }
+    if (setups.has(row.testFile.project)) return "its project's global setup failed";
+    const claimant = claimantOf(store, worktreeId, row.testFile, row.key, now);
+    if (claimant !== null) return `${claimant.worktree.root}'s daemon is running its key`;
+    if (own.length > 0) return null;
+    return isLookupOnly() ? "never run at this key: the baseline is lookup-only, so nothing queued it" : "never run at this key, and nothing queued it";
+  };
+  return {
+    of(row, own) {
+      const entry3 = recorded.get(testFileId(row.testFile));
+      if (entry3 !== void 0 && entry3.key === row.key) {
+        const { ran, reason: reason2, samples } = entry3;
+        return { testFile: row.testFile, ran, reason: reason2, samples };
+      }
+      return { testFile: row.testFile, ran: false, reason: reason(row, own), samples: [] };
+    }
+  };
 }
 
 // src/core/status/snapshot.ts
@@ -4306,6 +4361,7 @@ function snapshot(store, worktreeId, root, now) {
       liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null)
     )
   );
+  const runs = openRuns(store, worktree, daemon);
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
@@ -4317,7 +4373,7 @@ function snapshot(store, worktreeId, root, now) {
     // Task 001-404: each failure says how old its run is and the load it ran under.
     knownFailures: withRecorded(store, worktreeId, states, header.revision),
     inherited: inheritedSources(store, states),
-    breakdown: breakdown(states, keys),
+    breakdown: breakdown(states, keys, openFiles(runs)),
     closureMethod: CLOSURE_METHOD,
     storeSchemaVersion: store.schemaVersion,
     notes,
@@ -4326,7 +4382,8 @@ function snapshot(store, worktreeId, root, now) {
     ...vitestExcluded(worktree?.root ?? root),
     ...configProblemsOf(worktree?.root ?? root),
     ...pendingRetriesOf(store, keys),
-    ...unknownTestFilesOf(store, worktreeId, states, keys)
+    ...unknownTestFilesOf(store, worktreeId, states, keys, worktree?.root ?? root, now),
+    ...daemon.state === "alive" ? { runsOpen: runs.length } : {}
   };
 }
 function vitestExcluded(root) {
@@ -4382,7 +4439,10 @@ function inheritedSources(store, states) {
   }));
   return { count, sources };
 }
-function breakdown(states, keys) {
+function openFiles(runs) {
+  return new Set(runs.flatMap((run) => run.testFiles.map(testFileId)));
+}
+function breakdown(states, keys, running) {
   const filePhase = new Map(keys.map((k) => [testFileId(k.testFile), k.pending]));
   const currentByOutcome = { pass: 0, fail: 0, skip: 0, unknown: 0 };
   const pendingByPhase = { queued: 0, running: 0 };
@@ -4399,7 +4459,7 @@ function breakdown(states, keys) {
       if (fileLevel) fileLevelByOutcome[s.outcome]++;
     }
     if (s.validity === "pending") {
-      const phase = s.pendingPhase ?? filePhase.get(file) ?? "queued";
+      const phase = running.has(file) ? "running" : s.pendingPhase ?? filePhase.get(file) ?? "queued";
       pendingByPhase[phase]++;
       if (fileLevel) fileLevelByPhase[phase]++;
     }
@@ -4412,7 +4472,9 @@ function breakdown(states, keys) {
     fileLevelByPhase,
     testFiles: keys.length,
     testFilesWithoutChecks: without.length,
-    testFilesWithoutChecksRunning: without.filter((k) => k.pending === "running").length
+    testFilesWithoutChecksRunning: without.filter(
+      (k) => k.pending === "running" || k.pending !== null && running.has(testFileId(k.testFile))
+    ).length
   };
 }
 function recoveryNote(raw) {
@@ -5524,7 +5586,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.209";
+  if (true) return "0.1.210";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
