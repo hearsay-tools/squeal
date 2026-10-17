@@ -9,6 +9,7 @@ import type {
   StatusUnavailable,
 } from "../types/index.js";
 import { countedText, failureCountText, partsSuffix } from "./checks.js";
+import { configProblemsLine } from "./config-problems.js";
 import { DEATH_CAUSE, deathText } from "./died.js";
 import { shortCommit, statusRevisionText, worktreeLine } from "./identity.js";
 import { unknownFilesLines } from "./unknown-files.js";
@@ -34,7 +35,7 @@ export function formatStatus(
   command = "squeal",
   options: StatusFormatOptions = {},
 ): string {
-  if (!result.available) return formatUnavailable(result);
+  if (!result.available) return formatUnavailable(result, command);
   const lines = [
     `Revision: ${statusRevisionText(result)}`,
     `Known failures: ${failureCountText(result.knownFailures.map((f) => f.check))}`,
@@ -59,6 +60,7 @@ export function formatStatus(
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
     ...checkpointLine(result, now, command),
     ...slowLine(result, command, options.allNotes === true),
+    ...configProblemsLine(result, command),
     ...excludedLine(result),
     "",
     worktreeLine(result),
@@ -212,8 +214,12 @@ function foldedText(what: string, list: readonly DaemonNote[], command: string):
   );
 }
 
-export function formatUnavailable(result: StatusUnavailable): string {
-  return `${result.message.charAt(0).toUpperCase()}${result.message.slice(1)}\n`;
+export function formatUnavailable(result: StatusUnavailable, command = "squeal"): string {
+  const lines = [
+    `${result.message.charAt(0).toUpperCase()}${result.message.slice(1)}`,
+    ...configProblemsLine(result, command),
+  ];
+  return `${lines.join("\n")}\n`;
 }
 
 /**

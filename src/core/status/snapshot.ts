@@ -25,6 +25,7 @@ import {
   type TestFileKeyRecord,
   type WorktreeId,
 } from "../types/index.js";
+import { configProblemsOf, withConfigProblems } from "./config-problems.js";
 import { withDeath } from "./died.js";
 import { statusIdentity } from "./identity.js";
 import { type StatusStoreOptions, unavailable, withStatusStore } from "./open.js";
@@ -47,7 +48,10 @@ export const HEARTBEAT_GRACE_INTERVALS = 2;
  */
 export function readStatus(cwd: AbsolutePath, options: StatusOptions = {}): StatusResult {
   const now = options.now ?? Date.now;
-  return withStatusStore(cwd, options, ({ store, root }) => buildSnapshot(store, root, now()));
+  const result = withStatusStore(cwd, options, ({ store, root }) =>
+    buildSnapshot(store, root, now()),
+  );
+  return withConfigProblems(result, cwd);
 }
 
 export interface StatusBuilderOptions {
@@ -128,6 +132,7 @@ function snapshot(
     daemonNotes: readDaemonNotes(store, worktreeId),
     ...openCheckpoint(store, worktreeId, daemon),
     ...vitestExcluded(worktree?.root ?? root),
+    ...configProblemsOf(worktree?.root ?? root),
     ...pendingRetriesOf(store, keys),
     ...unknownTestFilesOf(store, worktreeId, states, keys),
   };
