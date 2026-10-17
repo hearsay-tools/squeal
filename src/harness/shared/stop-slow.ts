@@ -158,7 +158,7 @@ function read(
       header,
       failures,
       current: failures.filter((f) => f.validity === "current"),
-      open: slowFilesNotCurrent(states, keys, isSlow),
+      open: slowFilesNotCurrent(store, consumer.worktreeId, states, keys, isSlow),
       idle: readTurn(store, consumer).turn === "idle",
     };
   });

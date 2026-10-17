@@ -4,8 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createDelivery, formatDelta } from "../../src/core/delivery/index.js";
 import { slowToldMetaKey } from "../../src/core/delivery/slow-told.js";
-import { publishSlowActivity } from "../../src/core/slow/state.js";
-import { createStateSink } from "../../src/core/state/index.js";
+import { createStateSink, publishSlowSkips } from "../../src/core/state/index.js";
 import type {
   Consumer,
   Delta,
@@ -128,7 +127,10 @@ describe("the slow-tier line in a change delivery (task 001-407)", () => {
     flipUnit();
     await boundary();
     const reason = "dist/index.js matches no file (slow.precondition.exists)";
-    publishSlowActivity(store, WT, { kind: "skipped", reason, since: 1 });
+    const precondition = { exists: ["dist/index.js"] };
+    publishSlowSkips(store, WT, [
+      { precondition, source: "slow.precondition", reason, since: 1, testFiles: [SLOW] },
+    ]);
     flipUnit();
     const skipped = await boundary();
     expect(skipped.slowTierChanged).toBe(true);

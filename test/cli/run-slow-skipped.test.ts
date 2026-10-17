@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { DaemonSync } from "../../src/cli/status-sync.js";
 import { slowWaitCode, waitForStatus } from "../../src/cli/status-wait.js";
 import { type EndedWait, waitLine } from "../../src/cli/status-wait-lines.js";
-import { publishSlowActivity } from "../../src/core/slow/state.js";
+import { publishSlowSkips } from "../../src/core/state/index.js";
 import { check, state } from "../status/helpers.js";
 import {
   answering,
@@ -50,7 +50,15 @@ describe("run --slow --wait on a skipped slow tier (004 D8 as amended 2026-10-17
       store.knownStates.upsertMany([
         state(repo.mainId, holds, { validity: "stale", observedAt: 3 }),
       ]);
-      publishSlowActivity(store, repo.mainId, { kind: "skipped", reason: REASON, since: NOW });
+      publishSlowSkips(store, repo.mainId, [
+        {
+          precondition: { exists: ["dist/index.js"] },
+          source: "slow.precondition",
+          reason: REASON,
+          since: NOW,
+          testFiles: [{ project: "", path: SLOW_FILE }],
+        },
+      ]);
     });
 
     const wait = await waitForStatus(repo.main, { ...options(sync, 5_000), holdSlow: true });

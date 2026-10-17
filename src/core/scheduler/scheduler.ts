@@ -334,6 +334,8 @@ class TierScheduler implements Scheduler {
     const queue = (ledger: Ledger) => {
       const { policy } = this.#started().context;
       const only = lane === undefined ? undefined : { lane, isSlow: slowView(policy).isSlow };
+      // 004 D8 as amended 2026-10-17: a skipped slow file is requested as one not current.
+      if (lane !== "fast") this.#slow.recheck();
       const record = queueFullSuite(ledger, force, warmUp, only);
       if (warmUp) this.#warmUp.start(this.#started().context, ledger, record);
       return record;

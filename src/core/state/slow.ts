@@ -22,6 +22,7 @@ import {
   worktreeMetaKey,
 } from "../types/index.js";
 import { testFileOf } from "./derive.js";
+import { readSlowSkips, skippedSlowIds } from "./slow-skipped.js";
 import { artifactSources, sourcesChanged } from "./slow-sources.js";
 
 /*
@@ -74,12 +75,14 @@ type SlowClass = "current" | "pending" | "notRun";
 /**
  * Each listed slow test file by class: `pending` when a check is pending or
  * the file is queued or running without checks, `current` when every check
- * is current, `notRun` otherwise.
+ * is current and no precondition skipped it (`skipped`, by `testFileId`; 004
+ * D8 as amended 2026-10-17, review wave-8.1 B1), `notRun` otherwise.
  */
 export function classifySlowFiles(
   states: readonly KnownState[],
   keys: readonly TestFileKeyRecord[],
   isSlow: (testFile: TestFileRef) => boolean,
+  skipped: ReadonlySet<string> = new Set(),
 ): Map<string, { readonly ref: TestFileRef; readonly class: SlowClass }> {
   const checks = new Map<string, KnownState[]>();
   for (const state of states) {
@@ -103,7 +106,12 @@ export function classifySlowFiles(
           : own.every((s) => s.validity === "current")
             ? "current"
             : "notRun";
-    files.set(id, { ref: row.testFile, class: cls });
+    // A skipped file's stored result is history: it is queued again or not run (review wave-8.1 B1).
+    const held = cls === "current" && skipped.has(id);
+    files.set(id, {
+      ref: row.testFile,
+      class: held ? (row.pending === null ? "notRun" : "pending") : cls,
+    });
   }
   return files;
 }
@@ -124,7 +132,8 @@ export function readSlowTier(
   keys: readonly TestFileKeyRecord[],
   view: SlowPolicyView,
 ): SlowTierState {
-  const files = classifySlowFiles(states, keys, view.isSlow);
+  const skips = readSlowSkips(store, worktreeId);
+  const files = classifySlowFiles(states, keys, view.isSlow, skippedSlowIds(skips));
   const counts = { current: 0, pending: 0, notRun: 0 };
   for (const { class: cls } of files.values()) counts[cls]++;
   let currentAt: RevisionNumber | null = null;
@@ -174,8 +183,23 @@ export function readSlowTier(
         isSource,
       ),
     activity: liveActivity(store, worktreeId, keys, view.isSlow),
+    ...skippedField(skips, files),
     ...(view.stopWaitMs === null ? {} : { stopWaitMs: view.stopWaitMs }),
   };
+}
+
+/**
+ * The reasons of the skips that hold a file not run (D8 as amended
+ * 2026-10-17), in one; none when every file they list is queued again or gone.
+ */
+function skippedField(
+  skips: ReturnType<typeof readSlowSkips>,
+  files: ReturnType<typeof classifySlowFiles>,
+): { readonly skipped?: string } {
+  const reasons = skips
+    .filter((skip) => skip.testFiles.some((ref) => files.get(testFileId(ref))?.class === "notRun"))
+    .map((skip) => skip.reason);
+  return reasons.length === 0 ? {} : { skipped: reasons.join("; ") };
 }
 
 /** The declared artifact of a slow run of `key` in `worktreeId`, reading each worktree's record once. */
@@ -199,9 +223,8 @@ function recordedArtifacts(store: Store) {
  * defect 12). A wait for the agent to pause, once no registered consumer is
  * in a turn, is a wait for the fast files pending, or for nothing (lessons
  * defect 11): the daemon publishes again only when it next looks at its slow
- * files, which fast tiers can put off for minutes. A skip (D8 as amended
- * 2026-10-17) is true until a slow file is queued again. `null` when nothing
- * is true of it.
+ * files, which fast tiers can put off for minutes. `null` when nothing is
+ * true of it.
  */
 function liveActivity(
   store: Store,
@@ -216,10 +239,6 @@ function liveActivity(
     return fast ? { kind: "waiting", for: "fast" } : null;
   }
   if (activity === null) return null;
-  // A skip stands until a slow file is queued again, when the precondition is checked again (004-65).
-  if (activity.kind === "skipped") {
-    return keys.some((row) => row.pending !== null && isSlow(row.testFile)) ? null : activity;
-  }
   const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
   if (daemon !== null && activity.since < daemon.startedAt) return null;
   const running = new Set(
@@ -249,13 +268,19 @@ function consumerInTurn(store: Store, worktreeId: WorktreeId): boolean {
   });
 }
 
-/** The listed slow test files not current: pending or not run (`stop.requireSlowSuite`, D7). */
+/**
+ * The listed slow test files not current: pending or not run, a skipped one
+ * included (`stop.requireSlowSuite`, D7; D8 as amended 2026-10-17).
+ */
 export function slowFilesNotCurrent(
+  store: Store,
+  worktreeId: WorktreeId,
   states: readonly KnownState[],
   keys: readonly TestFileKeyRecord[],
   isSlow: (testFile: TestFileRef) => boolean,
 ): readonly TestFileRef[] {
-  return [...classifySlowFiles(states, keys, isSlow).values()]
+  const skipped = skippedSlowIds(readSlowSkips(store, worktreeId));
+  return [...classifySlowFiles(states, keys, isSlow, skipped).values()]
     .filter((file) => file.class !== "current")
     .map((file) => file.ref);
 }
