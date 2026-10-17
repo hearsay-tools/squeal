@@ -97,6 +97,27 @@ function sleeper(): number {
   return child.pid;
 }
 
+/**
+ * A fork, lowered as lane `fast`'s carrier from the first look, whose child
+ * `late` is listed by its walk only once `listed()` holds: a clone not yet made.
+ */
+function lateChild(listed: () => boolean) {
+  const fork = sleeper();
+  const late = sleeper();
+  const entry = statOf(fork);
+  if (entry === null) throw new Error("no fork");
+  const settled = new AbortController();
+  const running = lowerWhile({ carriers: async () => [entry] }, "fast", 0, settled.signal, () =>
+    listed() ? [late] : [],
+  );
+  const stop = async () => {
+    settled.abort();
+    await running;
+  };
+  onTestFinished(stop);
+  return { fork, late, lowering: { stop } };
+}
+
 function output(child: ChildProcess): Promise<string> {
   let out = "";
   child.stdout?.on("data", (chunk: Buffer) => {
@@ -110,28 +131,37 @@ describe.runIf(process.platform === "linux")("lowerWhile: forks at nice 10 (001-
     expect(await shortFork("fast")).toEqual({ own: TEST_NICE, child: TEST_NICE });
   });
 
-  it("lowers a child still being forked when its fork was lowered (001-437)", async () => {
+  it("lowers a child still being forked when its fork was lowered (001-437)", {
+    timeout: 15_000,
+  }, async () => {
     // A clone copies its parent's nice as it starts, and is listed among the
-    // parent's children only once it is made: walks for 1.5 s miss it, at nice 0.
-    const fork = sleeper();
-    const late = sleeper();
-    const entry = statOf(fork);
-    if (entry === null) throw new Error("no fork");
-    const carriers = async () => [entry];
+    // parent's children only once it is made: 15 walks, over 5 s, miss it, at nice 0.
     let walks = 0;
-    const walk = () => (walks++ < 15 ? [] : [late]);
-    const settled = new AbortController();
-    const lowering = lowerWhile({ carriers }, "fast", 0, settled.signal, walk);
-    onTestFinished(async () => {
-      settled.abort();
-      await lowering;
-    });
-    for (let waited = 0; waited < 4_000 && getPriority(late) < TEST_NICE; waited += 50)
+    const { fork, late, lowering } = lateChild(() => walks++ >= 15);
+    for (let waited = 0; waited < 12_000 && getPriority(late) < TEST_NICE; waited += 50)
       await sleep(50);
     expect({ fork: getPriority(fork), late: getPriority(late) }).toEqual({
       fork: TEST_NICE,
       late: TEST_NICE,
     });
+    await lowering.stop();
+  });
+
+  it("walks a lowered fork once a second after its first, and lowers a late child so (001-437)", async () => {
+    const started = Date.now();
+    const walked: number[] = [];
+    const { late, lowering } = lateChild(() => {
+      walked.push(Date.now() - started);
+      return Date.now() - started >= 1_500;
+    });
+    for (let waited = 0; waited < 4_000 && getPriority(late) < TEST_NICE; waited += 50)
+      await sleep(50);
+    const lowered = Date.now() - started;
+    await lowering.stop();
+    expect(getPriority(late)).toBe(TEST_NICE);
+    // listed from 1.5 s on, found by the next once-a-second walk
+    expect(lowered).toBeLessThan(1_500 + 1_500);
+    expect(walked.filter((at) => at >= 1_250 && at < 2_250).length).toBeLessThanOrEqual(2);
   });
 
   it("leaves a fork of another lane at the daemon's priority", async () => {
