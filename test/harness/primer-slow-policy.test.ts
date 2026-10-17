@@ -11,7 +11,9 @@ import { primerOf, repoFor, sessionStart } from "./primer-helpers.js";
  * states this repository's `stop.requireSlowSuite`, since that is what the
  * agent's "done" requires. Off, no step before done: the slow tier is not
  * required, and a claim that slow tests pass needs the `Slow tier:` line
- * current. On, 001-283's step before done and Stop's wait. Read from
+ * current. On, 001-283's step before done and Stop's wait, once the agent
+ * changes a file: Stop holds no main agent whose worktree had no revision
+ * since it registered (task 004-67, issue 19). Read from
  * `squeal.config.json` through each harness's own entry, as each names the
  * CLI: `squeal`, the Codex path, Pi's and OpenCode's Node and path.
  */
@@ -69,13 +71,36 @@ describe("the primer states the slow-suite policy, in every harness (004-62)", (
     async (harness) => {
       const text = await primerUnder(harness, true);
       expect(text).toContain(
-        "this repository requires them before you finish: before you say the task is done, run ",
+        "this repository requires them once you change a file: before you say the task is done, run ",
       );
       expect(text).toContain(
-        "run --slow --wait 60000` unless the latest `Slow tier:` line states every slow file is current; Stop waits for them or holds you once.",
+        "run --slow --wait 60000` unless the latest `Slow tier:` line says every slow file is current; Stop waits or holds you once.",
       );
       expect(text).not.toContain("does not require");
       expect(text.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
+    },
+  );
+
+  /*
+   * Task 004-67: the exemption replaced 0.1.206's on-sentence at no greater
+   * length, so the primer, at its cap, folds no project, path wait or
+   * naming it kept before.
+   */
+  it.each(Object.keys(PRIMERS))(
+    "on: the sentence is no longer than 0.1.206's, under %s",
+    async (harness) => {
+      const text = await primerUnder(harness, true);
+      const start = text.indexOf("Slow test files run");
+      const end = text.indexOf("holds you once.", start) + "holds you once.".length;
+      const sentence = text.slice(start, end);
+      const run = sentence.slice(
+        sentence.indexOf(", run ") + ", run ".length,
+        sentence.indexOf(" unless "),
+      );
+      expect(sentence.length).toBeLessThanOrEqual(
+        `Slow test files run when you pause between turns; this repository requires them before you finish: before you say the task is done, run ${run} unless the latest \`Slow tier:\` line states every slow file is current; Stop waits for them or holds you once.`
+          .length,
+      );
     },
   );
 });
