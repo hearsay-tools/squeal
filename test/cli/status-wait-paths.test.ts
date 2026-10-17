@@ -266,7 +266,7 @@ describe("squeal status --wait <ms> <path>...", () => {
     expect(json.code).toBe(1);
     const payload = JSON.parse(json.stdout);
     expect(payload.wait).toMatchObject({ outcome: "settled", code: 1, unmatched: [] });
-    expect(payload.wait.testFiles).toEqual([ref(A)]);
+    expect(payload.wait.testFiles).toEqual([{ ...ref(A), state: "current", verdict: "fail" }]);
     expect(json.stderr).toMatch(
       new RegExp(`^Selected: ${A}\\nNamed test files at revision 4: 1 known failure[^\\n]*\\n$`),
     );
