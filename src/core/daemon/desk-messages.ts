@@ -4,6 +4,7 @@ import type {
   FullSuiteCheckpoint,
   FullSuiteRequest,
   SyncAnswer,
+  TestFileRef,
   WorktreeId,
 } from "../types/index.js";
 import type { SlowSuiteRequested } from "./run-slow.js";
@@ -53,6 +54,11 @@ export type FromDesk =
   | { readonly type: "run-all"; readonly id: string; readonly request: FullSuiteRequest }
   | { readonly type: "run-slow"; readonly id: string }
   | { readonly type: "sync"; readonly id: string }
+  | {
+      readonly type: "promote";
+      readonly testFiles: readonly TestFileRef[];
+      readonly withinMs: number;
+    }
   | { readonly type: "stop" }
   | { readonly type: "step-down"; readonly version: string }
   | { readonly type: "closed" };

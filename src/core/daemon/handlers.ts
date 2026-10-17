@@ -13,6 +13,7 @@ import {
   type RunSlowResponse,
   type SyncAnswer,
   type SyncResponse,
+  type TestFileRef,
   type WorktreeId,
 } from "../types/index.js";
 import { errorResponse } from "./protocol.js";
@@ -57,6 +58,15 @@ export interface HandlerContext {
    * requests wait in the store for a daemon that takes them.
    */
   readonly requestRetries?: () => Promise<void>;
+  /**
+   * A named wait's promotion (spec 011 C15), like `requestRetries`, never
+   * awaited. Absent: this daemon answers that it cannot promote, and the
+   * wait reads only.
+   */
+  readonly requestPromotion?: (
+    testFiles: readonly TestFileRef[],
+    withinMs: number,
+  ) => Promise<void>;
   /** A nudge or a request: the daemon is in use. */
   readonly onActivity: () => void;
   /**
@@ -222,6 +232,12 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
         if (state === undefined) return errorResponse(`unknown request id ${request.requestId}`);
         return sync(request.requestId, state);
       }
+      case "promote":
+        if (context.requestPromotion === undefined)
+          return errorResponse("this daemon cannot promote");
+        context.onActivity();
+        context.requestPromotion(request.testFiles, request.withinMs).catch(() => {});
+        return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "promote" };
       case "stop":
         context.onStop();
         return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "stop" };

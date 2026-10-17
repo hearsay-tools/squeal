@@ -20,6 +20,7 @@ import type {
   RunnerAdapter,
   StoppedProcesses,
   SyncAnswer,
+  TestFileRef,
   WorktreeId,
 } from "../types/index.js";
 import {
@@ -569,6 +570,7 @@ class Daemon {
         },
         onNudge: () => this.#loop?.scheduler.nudge(),
         requestRetries: () => this.#requestRetries(),
+        requestPromotion: (testFiles, withinMs) => this.#requestPromotion(testFiles, withinMs),
         // The tiers stop now, under a shutdown already begun too; the shutdown after the answer.
         onStop: () => {
           this.#cancelTiers();
@@ -608,6 +610,13 @@ class Daemon {
     await this.#starting;
     if (this.#loop === null || this.#phase === "stopping") return;
     await this.#loop.scheduler.requestRetries();
+  }
+
+  /** Spec 011 C15: a named wait promotes its test files for `withinMs`. */
+  async #requestPromotion(testFiles: readonly TestFileRef[], withinMs: number): Promise<void> {
+    await this.#starting;
+    if (this.#loop === null || this.#phase === "stopping") return;
+    await this.#loop.scheduler.promote(testFiles, withinMs);
   }
 
   async #requestSlowSuite(): Promise<SlowSuiteRequested> {
