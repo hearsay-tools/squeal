@@ -46,36 +46,39 @@ const VOLATILE: readonly Rule[] = [
   [/\b(?=[0-9a-f]*[a-f])[0-9a-f]{16,}\b/gi, "<hex>"],
 ];
 
-/*
- * A segment a temp directory's maker draws at random: a `mkdtemp` suffix (six
- * letters and digits, not all lower case, so `-module` is a name), a UUID, a
- * hex run as `<hex>` masks it, or one of those masks already applied.
- */
-const RANDOM_SEGMENT = [
-  /-(?![a-z]{6}$)[A-Za-z0-9]{6}$/,
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-  /^(?=[0-9a-f]*[a-f])[0-9a-f]{16,}$/i,
-  /^<(?:hex|uuid)>$/,
-];
+/** Squeal's scratch layout below a temp root (`src/core/daemon/scratch.ts`), any worktree's key. */
+const SQUEAL_SCRATCH = /^squeal-\d+\/tmp\/[^/]+(?=\/)/;
 
 /**
- * `<tmp>` and the path's tail after its last random segment below a temp
- * root, or the path unchanged when no root holds it. Below a root the first
- * segment always counts as random (spec 001 D6), so `/tmp/squeal-<uid>/tmp/<key>/x-AbC123/a.js`
- * and the same file below that daemon's own temp directory both read
- * `<tmp>/a.js`. A path already masked to `<tmp>` keeps its first segment:
- * a fingerprint the previous rules stored normalizes to what these give.
+ * A path the rules before task 011-14 masked: their `<tmp>` was a root and
+ * its first segment, so `<tmp>/tmp/<hex>` is Squeal's scratch root.
+ */
+const MASKED_SQUEAL_SCRATCH = /^<tmp>\/tmp\/<hex>(?=\/)/;
+
+/**
+ * The path with the one segment directly below its deepest temp root, the
+ * allocation, read as `<tmp>` whatever its spelling; the segments after it
+ * are kept. A root is one of `tempRoots()` or Squeal's scratch layout below
+ * one, so `/tmp/squeal-<uid>/tmp/<key>/x-AbC123/a.js` and the same file
+ * below that daemon's own temp directory both read `<tmp>/a.js` (task 011-14,
+ * review wave 1.12, B1 and B2). A path already masked to `<tmp>` is kept.
  */
 function maskTemp(path: string): string {
-  const masked = path.startsWith("<tmp>/");
-  const root = masked ? "<tmp>" : tempRoots().roots.find((r) => path.startsWith(`${r}/`));
-  if (root === undefined) return path;
-  const segments = path.slice(root.length + 1).split("/");
-  let last = masked ? -1 : 0;
-  segments.forEach((s, i) => {
-    if (RANDOM_SEGMENT.some((r) => r.test(s))) last = i;
-  });
-  return ["<tmp>", ...segments.slice(last + 1)].join("/");
+  const root = deepestRoot(path);
+  if (root === null) return path;
+  const [, ...tail] = path.slice(root.length + 1).split("/");
+  return ["<tmp>", ...tail].join("/");
+}
+
+function deepestRoot(path: string): string | null {
+  if (path.startsWith("<tmp>/")) return MASKED_SQUEAL_SCRATCH.exec(path)?.[0] ?? null;
+  const held = tempRoots()
+    .roots.filter((r) => path.startsWith(`${r}/`))
+    .map((r) => {
+      const scratch = SQUEAL_SCRATCH.exec(path.slice(r.length + 1));
+      return scratch === null ? r : `${r}/${scratch[0]}`;
+    });
+  return held.reduce<string | null>((a, b) => (a === null || b.length > a.length ? b : a), null);
 }
 
 interface TempRoots {
@@ -176,22 +179,32 @@ export function describeFailure(
 }
 
 /**
- * The version of the rules above. A store whose fingerprints an older one
- * wrote has them normalized again once (`refingerprint`, task 011-14).
- */
-export const FINGERPRINT_RULES = 2;
-
-/**
- * A stored fingerprint under the current rules: its message part normalized
- * again, its name and location kept. Every rule maps its own output to
- * itself, and a path an older rule masked to `<tmp>` loses what the current
- * rule masks, so a stored fingerprint reads as the same failure's fresh one.
+ * A stored fingerprint under the current rules: its name and message part
+ * normalized again, its location kept. Every rule maps its own output to
+ * itself, and a path the rules before task 011-14 masked to
+ * `<tmp>/tmp/<hex>/<allocation>` loses its allocation, so a stored
+ * fingerprint reads as the same failure's fresh one does.
+ * The name is normalized with the message, since either may hold `": "`
+ * (review wave 1.12, S1).
  */
 export function renormalizeFingerprint(fingerprint: DiagnosticFingerprint): DiagnosticFingerprint {
-  const name = fingerprint.indexOf(": ");
   const at = fingerprint.lastIndexOf(" @ ");
-  if (name < 0 || at < name) return fingerprint;
-  return `${fingerprint.slice(0, name + 2)}${normalize(fingerprint.slice(name + 2, at))}${fingerprint.slice(at)}`;
+  if (at < 0) return fingerprint;
+  return `${normalize(fingerprint.slice(0, at))}${fingerprint.slice(at)}`;
+}
+
+/**
+ * Whether two fingerprints name the same failure: both read under the
+ * current rules. Stored fingerprints stay as the rules of their writer made
+ * them, and a daemon of any version may write them, so every comparison of a
+ * stored fingerprint goes through this (task 011-14, review wave 1.12, B3).
+ */
+export function sameFingerprint(
+  a: DiagnosticFingerprint | null,
+  b: DiagnosticFingerprint | null,
+): boolean {
+  if (a === b) return true;
+  return a !== null && b !== null && renormalizeFingerprint(a) === renormalizeFingerprint(b);
 }
 
 /**
