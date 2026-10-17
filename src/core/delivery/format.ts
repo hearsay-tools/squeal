@@ -172,8 +172,12 @@ function retiredBlocks(entries: readonly RetiredEntry[], delta: Delta): Block[] 
   return entries.map(retiredBlock);
 }
 
-/** Spec 001 D12: a crashed tier yields "one factual line", so unknowns group by reason. */
-function unknownBlocks(entries: readonly TransitionEntry[]): Block[] {
+/**
+ * Spec 001 D12: a crashed tier yields "one factual line", so unknowns group
+ * by reason. The reason is cut at `SUMMARY_MAX_CHARS`, so the block names
+ * where it is whole, as a FAIL names its output (task 011-02).
+ */
+function unknownBlocks(entries: readonly TransitionEntry[], command: string): Block[] {
   const byReason = new Map<string, TransitionEntry[]>();
   for (const e of entries) {
     const reason = e.summary ?? "no trusted result";
@@ -181,6 +185,7 @@ function unknownBlocks(entries: readonly TransitionEntry[]): Block[] {
   }
   return [...byReason].map(([reason, group]) => {
     const files = [...new Set(group.map((e) => e.check.testPath))];
+    const first = group[0]?.check;
     const from = (outcome: KnownOutcome) =>
       group.filter((e) => e.from === outcome).map((e) => e.check);
     const counts = (["pass", "fail"] as const)
@@ -190,7 +195,12 @@ function unknownBlocks(entries: readonly TransitionEntry[]): Block[] {
     const more = files.length > 5 ? ` and ${plural(files.length - 5, "more file")}` : "";
     return block(
       `UNKNOWN  ${checksText(group.map((e) => e.check))} in ${plural(files.length, "test file")}`,
-      [counts.join(", "), cap(reason, SUMMARY_MAX_CHARS), `${listed}${more}`],
+      [
+        counts.join(", "),
+        cap(reason, SUMMARY_MAX_CHARS),
+        `${listed}${more}`,
+        first === undefined ? null : `Full reason: ${command} why ${shellWord(checkName(first))}`,
+      ],
       group.map((e) => ({ check: e.check, shown: "unknown" })),
     );
   });
@@ -248,7 +258,10 @@ export function formatDelta(
         : `SQUEAL · ${plural(entries.length, "check")} changed (${partsText(checksOf(entries))}) at revision ${header.revision}`;
   const blocks = [
     ...changed.filter((e) => e.to === "fail").map((e) => entryBlock(e, header.revision)),
-    ...unknownBlocks(changed.filter((e) => e.to === "unknown")),
+    ...unknownBlocks(
+      changed.filter((e) => e.to === "unknown"),
+      command,
+    ),
     ...recoveryBlocks(
       changed.filter((e) => e.to === "pass"),
       delta,
