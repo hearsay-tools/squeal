@@ -1,9 +1,9 @@
-import { execFile } from "node:child_process";
+import { type ExecFileException, execFile } from "node:child_process";
 import { getPriority, setPriority } from "node:os";
 import { setTimeout as sleep } from "node:timers/promises";
 import { isSlowLane } from "../types/index.js";
 import type { EscapedChildren } from "./escaped.js";
-import { childrenOf, statOf } from "./terminate.js";
+import { childrenOf, type ProcessEntry, statOf } from "./terminate.js";
 
 /**
  * Every test process Squeal starts runs with `nice` 10 (001 D11 Capacity,
@@ -37,7 +37,10 @@ const WALK_MS = 1_000;
  * found at most once a second after a child of the daemon exits (review
  * 001-401 S1), or a lowered carrier or a descendant a walk listed is gone:
  * a child it was forking when its own walk ran is in the group now, no
- * longer below the carrier (review wave-18 B1). A thread pool's workers are threads of the daemon and carry no
+ * longer below the carrier (review wave-18 B1). A descendant is known by its
+ * pid and start, so a pid reused between two walks reads new, and a process
+ * is lowered only while its pid and start still match (review wave-18 S1).
+ * A thread pool's workers are threads of the daemon and carry no
  * mark of their own: they keep the daemon's priority. A process starts at
  * normal priority and runs so until the next look: `EVERY_MS` plus the look's
  * own time, no deadline. `walk` lists a process's descendants, `below` but in
@@ -48,14 +51,14 @@ export async function lowerWhile(
   lane: string,
   since: number,
   signal: AbortSignal,
-  walk: (pid: number) => number[] = below,
+  walk: (pid: number) => Identity[] = below,
 ): Promise<void> {
   if (process.platform !== "linux") return;
   // Each lowered carrier while it lives, by pid and start: when it was lowered and last
   // walked, and its descendants at that walk.
   const lowered = new Map<
     string,
-    { pid: number; start: number; since: number; walked: number; seen: Set<number> }
+    { pid: number; start: number; since: number; walked: number; seen: Set<string> }
   >();
   // A descendant a walk listed is gone: what it started may be in the daemon's group now.
   let lost = false;
@@ -65,11 +68,11 @@ export async function lowerWhile(
       const found = await children.carriers(lane, since, lost);
       lost = false;
       const at = Date.now();
-      const pids: number[] = [];
+      const fresh: Identity[] = [];
       for (const { pid, start } of found)
         if (!lowered.has(`${pid}:${start}`)) {
           lowered.set(`${pid}:${start}`, { pid, start, since: at, walked: 0, seen: new Set() });
-          pids.push(pid);
+          fresh.push({ pid, start });
         }
       for (const [id, carrier] of lowered) {
         if (at - carrier.since >= WALK_MS && at - carrier.walked < WALK_MS) continue;
@@ -79,23 +82,31 @@ export async function lowerWhile(
           continue;
         }
         carrier.walked = at;
-        const current = new Set(walk(carrier.pid));
-        for (const descendant of current) if (!carrier.seen.has(descendant)) pids.push(descendant);
-        for (const descendant of carrier.seen) if (!current.has(descendant)) lost = true;
+        const current = new Set<string>();
+        for (const descendant of walk(carrier.pid)) {
+          const id = `${descendant.pid}:${descendant.start}`;
+          current.add(id);
+          if (!carrier.seen.has(id)) fresh.push(descendant);
+        }
+        for (const id of carrier.seen) if (!current.has(id)) lost = true;
         carrier.seen = current;
       }
-      if (pids.length > 0) lower(pids, isSlowLane(lane));
+      if (fresh.length > 0) lower(fresh, isSlowLane(lane));
     }
   } catch {
     // Aborted: the run settled.
   }
 }
 
-/** Every descendant `pid` has now. */
-function below(pid: number): number[] {
-  const found: number[] = [];
+/** A process by its pid and its start, as `statOf` reads them. */
+export type Identity = Pick<ProcessEntry, "pid" | "start">;
+
+/** Every descendant `pid` has now, but one already exiting. */
+function below(pid: number): Identity[] {
+  const found: Identity[] = [];
   for (let queue = childrenOf(pid), next = queue.pop(); next !== undefined; next = queue.pop()) {
-    found.push(next);
+    const entry = statOf(next);
+    if (entry !== null) found.push({ pid: next, start: entry.start });
     queue.push(...childrenOf(next));
   }
   return found;
@@ -110,11 +121,26 @@ export function lowerProcess(pid: number): void {
   }
 }
 
-/** Each at `nice` 10, then, when `idle`, `ionice -c 3` for all at once. */
-function lower(pids: readonly number[], idle: boolean): void {
+/**
+ * Each still the process it names at `nice` 10, then, when `idle`, `ionice
+ * -c 3` for all at once. `ionice` stops at the first pid it cannot set, one
+ * gone by then or not ours, so a failed batch is retried one pid at a time
+ * (review wave-18, pre-existing limitations).
+ */
+function lower(processes: readonly Identity[], idle: boolean): void {
+  const pids = processes
+    .filter(({ pid, start }) => statOf(pid)?.start === start)
+    .map(({ pid }) => pid);
   for (const pid of pids) lowerProcess(pid);
-  if (!idle) return;
-  execFile("ionice", ["-c", "3", "-p", ...pids.map(String)], () => {
-    // Missing, or not permitted: `nice` alone.
-  }).unref();
+  if (!idle || pids.length === 0) return;
+  idleIo(pids, (error) => {
+    // Missing: `nice` alone.
+    if (error === null || error.code === "ENOENT" || pids.length === 1) return;
+    for (const pid of pids) idleIo([pid], () => {});
+  });
+}
+
+/** `ionice -c 3` for `pids`, then `done` with how it ended. */
+function idleIo(pids: readonly number[], done: (error: ExecFileException | null) => void): void {
+  execFile("ionice", ["-c", "3", "-p", ...pids.map(String)], done).unref();
 }

@@ -1,10 +1,11 @@
-import { type ChildProcess, spawn } from "node:child_process";
+import { type ChildProcess, execFileSync, spawn, spawnSync } from "node:child_process";
+import { existsSync, statSync } from "node:fs";
 import { getPriority } from "node:os";
 import { createInterface } from "node:readline";
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { EscapedChildren } from "../../src/core/daemon/escaped.js";
-import { lowerWhile, TEST_NICE } from "../../src/core/daemon/low-priority.js";
+import { type Identity, lowerWhile, TEST_NICE } from "../../src/core/daemon/low-priority.js";
 import { childrenOf, statOf } from "../../src/core/daemon/terminate.js";
 
 /*
@@ -108,6 +109,13 @@ function descendants(pid: number): number[] {
   return childrenOf(pid).flatMap((child) => [child, ...descendants(child)]);
 }
 
+/** `pid` by its pid and start, as the daemon's walk lists it. */
+function identity(pid: number): Identity {
+  const entry = statOf(pid);
+  if (entry === null) throw new Error(`no process ${pid}`);
+  return { pid, start: entry.start };
+}
+
 /** A process that sleeps until the test ends: its pid stands in for a fork's, or a fork's child's. */
 function sleeper(): number {
   const child = spawn(process.execPath, ["-e", "setTimeout(() => {}, 30_000)"], {
@@ -120,25 +128,42 @@ function sleeper(): number {
   return child.pid;
 }
 
-/**
- * A fork, lowered as lane `fast`'s carrier from the first look, whose child
- * `late` is listed by its walk only once `listed()` holds: a clone not yet made.
- */
-function lateChild(listed: () => boolean) {
+/** A fork, lowered as `lane`'s carrier from the first look, its descendants as `walk` lists them. */
+function lowered(walk: () => Identity[], lane = "fast") {
   const fork = sleeper();
-  const late = sleeper();
   const entry = statOf(fork);
   if (entry === null) throw new Error("no fork");
   const settled = new AbortController();
-  const running = lowerWhile({ carriers: async () => [entry] }, "fast", 0, settled.signal, () =>
-    listed() ? [late] : [],
-  );
+  const running = lowerWhile({ carriers: async () => [entry] }, lane, 0, settled.signal, walk);
   const stop = async () => {
     settled.abort();
     await running;
   };
   onTestFinished(stop);
-  return { fork, late, lowering: { stop } };
+  return { fork, lowering: { stop } };
+}
+
+/** A lowered fork whose child `late` is listed by its walk only once `listed()` holds: a clone not yet made. */
+function lateChild(listed: () => boolean) {
+  const late = sleeper();
+  return { late, ...lowered(() => (listed() ? [identity(late)] : [])) };
+}
+
+/** `ionice` is here and pid 1 is another user's: setting it fails, as for a pid gone. */
+const ioniceSetsOthers =
+  process.platform === "linux" &&
+  spawnSync("ionice", ["-p", String(process.pid)]).status === 0 &&
+  statSync("/proc/1").uid !== process.getuid?.();
+
+/** Resolves once `pid`, a sleeper of this test, is gone and reaped. */
+async function stopped(pid: number): Promise<void> {
+  process.kill(pid, "SIGKILL");
+  for (let waited = 0; waited < 3_000 && existsSync(`/proc/${pid}`); waited += 20) await sleep(20);
+}
+
+/** `pid`'s I/O scheduling class, as `ionice` names it. */
+function ioClass(pid: number): string {
+  return execFileSync("ionice", ["-p", String(pid)], { encoding: "utf8" }).trim();
 }
 
 function output(child: ChildProcess): Promise<string> {
@@ -186,6 +211,38 @@ describe.runIf(process.platform === "linux")("lowerWhile: forks at nice 10 (001-
     expect(lowered).toBeLessThan(1_500 + 1_500);
     expect(walked.filter((at) => at >= 1_250 && at < 2_250).length).toBeLessThanOrEqual(2);
   });
+
+  it("lowers a descendant at a pid an earlier walk listed for another process (wave-18 S1)", async () => {
+    // The seam stands in for the kernel's reuse: the first walk lists the
+    // pid's earlier process, gone before it is lowered; the next, this one.
+    const reused = sleeper();
+    const now = identity(reused);
+    let walks = 0;
+    lowered(() => [walks++ === 0 ? { pid: reused, start: now.start - 1 } : now]);
+    for (let waited = 0; waited < 3_000 && getPriority(reused) < TEST_NICE; waited += 50)
+      await sleep(50);
+    expect(getPriority(reused)).toBe(TEST_NICE);
+  });
+
+  it.runIf(ioniceSetsOthers)(
+    "gives a slow lane's live descendant idle I/O past a gone pid and one not ours (wave-18)",
+    async () => {
+      // `ionice` stops at the first pid it cannot set: one gone before the
+      // batch, or one alive but not ours (pid 1, another user's), as one gone
+      // as the batch runs fails it.
+      const gone = sleeper();
+      const was = identity(gone);
+      await stopped(gone);
+      const live = identity(sleeper());
+      lowered(() => [was, identity(1), live], "slow:vitest");
+      for (let waited = 0; waited < 3_000 && ioClass(live.pid) !== "idle"; waited += 50)
+        await sleep(50);
+      expect({ nice: getPriority(live.pid), io: ioClass(live.pid) }).toEqual({
+        nice: TEST_NICE,
+        io: "idle",
+      });
+    },
+  );
 
   it("leaves a fork of another lane at the daemon's priority", async () => {
     const own = getPriority();
@@ -244,9 +301,9 @@ describe.runIf(process.platform === "linux")("lowerWhile: forks at nice 10 (001-
     let walks = 0;
     // the first walk lists the middle child alone, its sleeper not yet made; it exits after
     const lowering = lowerWhile(daemon, "fast", since, settled.signal, (pid) => {
-      if (++walks > 1) return descendants(pid);
+      if (++walks > 1) return descendants(pid).map(identity);
       setTimeout(() => process.kill(middle, "SIGKILL"), 10);
-      return [middle];
+      return [identity(middle)];
     });
     onTestFinished(async () => {
       settled.abort();
