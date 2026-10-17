@@ -51,9 +51,10 @@ const SQUEAL_SCRATCH = /^squeal-\d+\/tmp\/[^/]+(?=\/)/;
 
 /**
  * A path the rules before task 011-14 masked: their `<tmp>` was a root and
- * its first segment, so `<tmp>/tmp/<hex>` is Squeal's scratch root.
+ * its first segment, so `<tmp>/tmp/<key>` is Squeal's scratch root, its key
+ * `<hex>` or, all decimal digits, kept (review wave 1.12, re-review R1).
  */
-const MASKED_SQUEAL_SCRATCH = /^<tmp>\/tmp\/<hex>(?=\/)/;
+const MASKED_SQUEAL_SCRATCH = /^<tmp>\/tmp\/(?:<hex>|\d{16})(?=\/)/;
 
 /**
  * The path with the one segment directly below its deepest temp root, the
@@ -180,17 +181,21 @@ export function describeFailure(
 
 /**
  * A stored fingerprint under the current rules: its name and message part
- * normalized again, its location kept. Every rule maps its own output to
- * itself, and a path the rules before task 011-14 masked to
- * `<tmp>/tmp/<hex>/<allocation>` loses its allocation, so a stored
- * fingerprint reads as the same failure's fresh one does.
+ * normalized again until it no longer changes, its location kept. A path the
+ * rules before task 011-14 masked to `<tmp>/tmp/<key>/<allocation>` loses
+ * its allocation, so a stored fingerprint reads as the same failure's fresh
+ * one does. A kept tail can itself read as that old prefix, so one pass is
+ * not enough: each further pass only shortens the text, and the old and the
+ * fresh form end at the same one (review wave 1.12, re-review R1).
  * The name is normalized with the message, since either may hold `": "`
  * (review wave 1.12, S1).
  */
 export function renormalizeFingerprint(fingerprint: DiagnosticFingerprint): DiagnosticFingerprint {
   const at = fingerprint.lastIndexOf(" @ ");
   if (at < 0) return fingerprint;
-  return `${normalize(fingerprint.slice(0, at))}${fingerprint.slice(at)}`;
+  let text = fingerprint.slice(0, at);
+  for (let next = normalize(text); next !== text; next = normalize(text)) text = next;
+  return `${text}${fingerprint.slice(at)}`;
 }
 
 /**
