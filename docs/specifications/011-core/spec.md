@@ -320,7 +320,7 @@ A named wait (`squeal status --wait <ms> <path>...`, 005 D2) tells the daemon wh
 
 **Rank.** A promoted file counts as work an edit caused (C4 step 4, first group) and goes before every other class in that group, failing files included. Among promoted files, the earlier request goes first, then C4's order. It still obeys every rule that keeps tiers honest. It joins a tier only when the lane is free. A tier that is not the backlog's shares only with files of comparable duration (001-184), so a promoted file leads its own tier. It counts toward the four first-group tiers after which the backlog gets its turn, so a stream of named waits cannot starve the backlog. A running tier, whether an edit's or the backlog's, is never cancelled or split for promotion: that question belongs to 001-381.
 
-**Lifetime.** Promotion lasts until the wait's deadline or until the selected keys settle, whichever comes first. The request carries the deadline, so a killed CLI leaves promotion in place for at most its own `<ms>`, and no cancel message or lease is needed. Promotion lives in the daemon's memory, and a successor daemon does not inherit it.
+**Lifetime.** Promotion lasts until the wait's deadline or until none of the selected files is queued or running, whichever comes first. A file waiting for another worktree's claim of its key stays queued here, so promotion holds through the claim; emptying the queue (an install) drops it. The request carries the deadline as the time left of the wait, which the daemon adds to its own clock (task 011-11), so a killed CLI leaves promotion in place for at most its own `<ms>`, and no cancel message or lease is needed. Promotion lives in the daemon's memory, and a successor daemon does not inherit it.
 
 **Constraints that still bind.**
 - *A claim* (C7): a file whose key another live worktree is running keeps waiting for that run, which will store the result this wait needs. Promotion does not start a duplicate run.
@@ -329,14 +329,14 @@ A named wait (`squeal status --wait <ms> <path>...`, 005 D2) tells the daemon wh
 
 **What the wait says while a constraint holds a file.** For every selected file that is still pending, the named line gives one reason with its bound when one is known:
 - running since HH:MM:SS in its lane;
-- queued, promoted, behind the `<lane>` tier running since HH:MM:SS;
+- queued, promoted, behind the `<lane>` tier running since HH:MM:SS (`queued` until the daemon publishes its promotions where the CLI reads; task 011-12);
 - waiting for `<worktree>`'s run of its key, at most until that claim's bound;
 - slow, run when the agent pauses or on `squeal run --slow`;
 - revision N not listed yet, because the runner part waits for the run in flight, at most N s (gh-17 finding 2, the `runner.timeoutMs` + 66 s bound of C4).
 
 Status counts the checks of a file whose run is open as running, even after a re-key queued it under its new key (gh-17 finding 3: `queued 10, running 0` with the run open).
 
-**Older daemons.** The CLI sends the promotion as a new request (`promote` with the selected test files and the deadline). A daemon that does not know the request answers unknown, and the wait reads only, as before. Nothing breaks, and the order is simply the old one.
+**Older daemons.** The CLI sends the promotion as a new request (`promote` with the test files selected by their own paths and the time left). It sends it once, beside the first read whose selection is decided (the daemon's sync pass stored and the revision listed), and only while the wait is still open (task 011-11). A promoted fast file that is queued counts as an edit's work for the slow tier too, so the slow tier waits for it as for an edit's work. A daemon that does not know the request answers unknown, and the wait reads only, as before. Nothing breaks, and the order is simply the old one.
 
 **Measured by** a scheduler test from `issue-14`'s probe: with A running, then B and Z queued, a named wait on Z makes Z start before B, and B still runs. Also: a source-path wait reorders nothing, a claimed key waits for its claimant, and the fairness turn still comes after four first-group tiers.
 
