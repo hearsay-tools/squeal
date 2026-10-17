@@ -2401,7 +2401,7 @@ function firstLine(text2) {
 }
 function normalize(line) {
   return VOLATILE.reduce(
-    (text2, [pattern2, replacement]) => text2.replace(pattern2, replacement),
+    (text2, [pattern2, replacement2]) => text2.replace(pattern2, replacement2),
     line
   );
 }
@@ -4395,6 +4395,33 @@ var init_retry = __esm({
     init_recorded();
     init_records();
     init_text2();
+  }
+});
+
+// src/core/status/config-problems.ts
+function configProblemsOf(root) {
+  const { problems } = loadPolicy(root);
+  return problems.length === 0 ? {} : { configProblems: problems };
+}
+function withConfigProblems(result, cwd) {
+  if (result.available) return result;
+  const root = findWorktreeRoot(cwd);
+  return root === null ? result : { ...result, ...configProblemsOf(root) };
+}
+function configProblemsLine(result, command) {
+  const problems = result.configProblems ?? [];
+  if (problems.length === 0) return [];
+  const label2 = problems.length === 1 ? "Config problem" : "Config problems";
+  return [
+    `${label2}: ${POLICY_FILE}: ${describeProblems(problems)} (\`${command} setup --check\` names each)`
+  ];
+}
+var init_config_problems = __esm({
+  "src/core/status/config-problems.ts"() {
+    "use strict";
+    init_config_file();
+    init_policy2();
+    init_fs();
   }
 });
 
@@ -6906,7 +6933,12 @@ var init_runner2 = __esm({
 // src/core/status/snapshot.ts
 function readStatus(cwd, options = {}) {
   const now = options.now ?? Date.now;
-  return withStatusStore(cwd, options, ({ store, root }) => buildSnapshot(store, root, now()));
+  const result = withStatusStore(
+    cwd,
+    options,
+    ({ store, root }) => buildSnapshot(store, root, now())
+  );
+  return withConfigProblems(result, cwd);
 }
 function buildSnapshot(store, root, now) {
   return readTransaction(store, () => snapshot(store, worktreeIdFor(root), root, now));
@@ -6947,6 +6979,7 @@ function snapshot(store, worktreeId, root, now) {
     daemonNotes: readDaemonNotes(store, worktreeId),
     ...openCheckpoint(store, worktreeId, daemon),
     ...vitestExcluded(worktree?.root ?? root),
+    ...configProblemsOf(worktree?.root ?? root),
     ...pendingRetriesOf(store, keys),
     ...unknownTestFilesOf(store, worktreeId, states, keys)
   };
@@ -7061,6 +7094,7 @@ var init_snapshot = __esm({
     init_state3();
     init_store3();
     init_types();
+    init_config_problems();
     init_died();
     init_identity();
     init_open2();
@@ -41062,8 +41096,8 @@ async function Module2(moduleArg = {}) {
       var overGrownHeapSize = oldSize * (1 + 0.2 / cutDown);
       overGrownHeapSize = Math.min(overGrownHeapSize, requestedSize + 100663296);
       var newSize = Math.min(maxHeapSize, alignMemory(Math.max(requestedSize, overGrownHeapSize), 65536));
-      var replacement = growMemory(newSize);
-      if (replacement) {
+      var replacement2 = growMemory(newSize);
+      if (replacement2) {
         return true;
       }
     }
@@ -46472,7 +46506,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.205";
+  if (true) return "0.1.206";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -46553,12 +46587,13 @@ init_types();
 init_retry();
 init_state3();
 init_text();
+init_config_problems();
 init_died();
 init_identity();
 init_unknown_files2();
 init_identity();
 function formatStatus(result, now, command = "squeal", options = {}) {
-  if (!result.available) return formatUnavailable(result);
+  if (!result.available) return formatUnavailable(result, command);
   const lines = [
     `Revision: ${statusRevisionText(result)}`,
     `Known failures: ${failureCountText(result.knownFailures.map((f) => f.check))}`,
@@ -46577,6 +46612,7 @@ function formatStatus(result, now, command = "squeal", options = {}) {
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
     ...checkpointLine(result, now, command),
     ...slowLine(result, command, options.allNotes === true),
+    ...configProblemsLine(result, command),
     ...excludedLine(result),
     "",
     worktreeLine(result),
@@ -46681,8 +46717,12 @@ function foldedText(what, list2, command) {
   const processes2 = total === 1 ? "1 process" : `${total} processes`;
   return `stopped ${processes2} ${what}, in ${plural(list2.length, "note")} since ${since}: ${byCommand.join("; ")} (\`${command} status --notes\` lists each)`;
 }
-function formatUnavailable(result) {
-  return `${result.message.charAt(0).toUpperCase()}${result.message.slice(1)}
+function formatUnavailable(result, command = "squeal") {
+  const lines = [
+    `${result.message.charAt(0).toUpperCase()}${result.message.slice(1)}`,
+    ...configProblemsLine(result, command)
+  ];
+  return `${lines.join("\n")}
 `;
 }
 function affected(s) {
@@ -46776,8 +46816,8 @@ init_run_log();
 import { existsSync as existsSync5, readFileSync as readFileSync7 } from "node:fs";
 import { join as join15 } from "node:path";
 var WHY_LOG_LINE_LIMIT = 200;
-function runLogOf(result, logDir, check, runsDir, includeLogs) {
-  const { runId, worktreeId } = result.provenance;
+function runLogOf(run4, logDir, check, runsDir, includeLogs) {
+  const { runId, worktreeId } = run4;
   const dir2 = logDir ?? join15(runsDir, runId);
   const nodeTest = nodeTestLogs(dir2, check);
   if (nodeTest !== null) {
@@ -46846,6 +46886,39 @@ function capped2(lines) {
     total: lines.length,
     limit: WHY_LOG_LINE_LIMIT
   };
+}
+
+// src/core/status/why-log.ts
+init_state2();
+init_state3();
+function replacement(store, knownState2, key2, all, shown) {
+  if (shown !== null || knownState2?.validity !== "current" || key2 === null) return void 0;
+  const atKey = all.find((r) => r.key === key2);
+  if (atKey === void 0) return void 0;
+  const { runId, worktreeId, recordedAt } = atKey.provenance;
+  return { runId, worktreeId, recordedAt, key: key2, logDir: store.runs.get(runId)?.logDir ?? null };
+}
+function unshownLog(store, worktreeId, knownState2, key2, replaced, logOf) {
+  const gap = (runLogUnavailable) => ({ runLog: null, runLogUnavailable });
+  if (knownState2 === null) return gap("no-state");
+  const origin = knownState2.origin;
+  if (origin === null) return gap("no-origin");
+  const id2 = checkIdentity(knownState2.check);
+  const producer2 = knownState2.outcome === "fail" ? readFailureProducers(store, worktreeId).get(id2) : void 0;
+  if (producer2 !== void 0 && producer2.runId !== replaced?.runId) {
+    const failureKey = readFailureKeys(store, worktreeId).get(id2);
+    const named = failureKey !== void 0 && (knownState2.validity !== "current" || failureKey === key2);
+    const run4 = store.runs.get(producer2.runId);
+    const source = origin.kind === "inherited" ? origin.worktreeId : worktreeId;
+    if (named && run4 === null) return gap("producer-pruned");
+    if (named && run4 !== null && run4.worktreeId === source) {
+      const log = logOf({ runId: run4.id, worktreeId: run4.worktreeId }, run4.logDir);
+      return { runLog: { ...log, fromProducer: true } };
+    }
+  }
+  if (replaced !== void 0) return gap("replaced");
+  if (knownState2.validity === "current" && key2 !== null) return gap("not-stored");
+  return gap("unidentified");
 }
 
 // src/core/status/why.ts
@@ -46918,6 +46991,7 @@ function report({ store, root, commonDir }, check, includeLogs) {
   const heldFailure2 = heldFor(store, worktreeId, key2, all);
   const since = observedSince(store, worktreeId, knownState2?.observedAt ?? null);
   const shown = shownResult(worktreeId, knownState2, key2, all, heldFailure2, since);
+  const replacedAtKey = replacement(store, knownState2, key2, all, shown);
   const runsDir = storePaths(commonDir).runsDir;
   const flaky = readFlakyNotes(store).get(checkIdentity(check));
   const latest = store.revisions.latest(worktreeId);
@@ -46938,7 +47012,15 @@ function report({ store, root, commonDir }, check, includeLogs) {
     history: store.transitions.history(worktreeId, check),
     results: results2,
     durations: durationsOf(all),
-    runLog: shown === null ? null : runLogOf(shown, logDirOf(shown), check, runsDir, includeLogs),
+    ...shown === null ? unshownLog(
+      store,
+      worktreeId,
+      knownState2,
+      key2,
+      replacedAtKey,
+      (run4, logDir) => runLogOf(run4, logDir, check, runsDir, includeLogs)
+    ) : { runLog: runLogOf(shown.provenance, logDirOf(shown), check, runsDir, includeLogs) },
+    ...replacedAtKey === void 0 ? {} : { replacedAtKey },
     ...heldFailure2 === void 0 ? {} : { heldFailure: heldFailure2 },
     ...flaky === void 0 ? {} : { flaky },
     ...changed === void 0 ? {} : { changedSince: changed }
@@ -47074,6 +47156,7 @@ function knownState(why2, s) {
   return [
     ...stateLines(why2, s),
     ...changedLine(why2.changedSince),
+    ...replacedLine(why2),
     ...heldLine(why2),
     ...flakyLine(why2)
   ];
@@ -47087,6 +47170,15 @@ function changedLine(since) {
   });
   const capped3 = since.total > since.paths.length ? ` (first ${since.paths.length} of ${since.total} paths)` : "";
   return [`  Changed since revision ${since.revision}${capped3}: ${paths.join(", ")}`];
+}
+function replacedLine(why2) {
+  const replaced = why2.replacedAtKey;
+  if (replaced === void 0) return [];
+  const where2 = worktreeName(why2, replaced.worktreeId);
+  return [
+    `  Result at key ${replaced.key.slice(0, 12)}: replaced by run ${replaced.runId} in ${where2} at ${new Date(replaced.recordedAt).toISOString()}; the result and errors stored there are that run's, not those behind this state`,
+    `    Its log: ${replaced.logDir ?? "run record pruned"}`
+  ];
 }
 function heldLine(why2) {
   const held2 = why2.heldFailure;
@@ -47151,7 +47243,7 @@ function resultLines(why2, { result, worktreeRoot: worktreeRoot2, logDir }) {
   const where2 = p.worktreeId === why2.worktreeId ? `${worktreeRoot2 ?? why2.worktreeRoot} (this worktree)` : worktreeRoot2 ?? `removed worktree ${p.worktreeId}`;
   const lines = [
     `  ${upper(result.outcome).padEnd(4)}  ${new Date(p.recordedAt).toISOString()}  ${where2}, revision ${p.revision}, commit ${shortCommit(p.commit)}, ${p.dirty ? "dirty" : "clean"}`,
-    `${INDENT}run ${p.runId}, ${Math.round(result.durationMs)} ms, key ${result.key.slice(0, 12)}`,
+    `${INDENT}run ${p.runId}, ${Math.round(result.durationMs)} ms, key ${result.key.slice(0, 12)}${replacedHere(why2, result) ? ", replaced the result behind this worktree's known state" : ""}`,
     `${INDENT}log: ${logDir ?? "run record pruned"}`
   ];
   if (result.summary !== null) lines.push(`${INDENT}${result.summary}`);
@@ -47169,11 +47261,7 @@ function resultLines(why2, { result, worktreeRoot: worktreeRoot2, logDir }) {
 }
 function runLog(why2) {
   const log = why2.runLog;
-  if (log === null) {
-    return [
-      "Run log: unknown, no stored result is identifiably the one behind the known state (replaced, pruned, or several fit)"
-    ];
-  }
+  if (log === null) return [`Run log: unknown, ${gapText(why2.runLogUnavailable)}`];
   const where2 = producer(why2, log);
   const file = testFileLabel(why2.check.project, why2.check.testPath);
   if (log.state === "pruned") {
@@ -47186,7 +47274,10 @@ function runLog(why2) {
       ...log.console === null ? [] : [`  No console of ${file} was captured in this run.`]
     ];
   }
-  const lines = log.state === "node-test" ? [
+  const lines = log.fromProducer ? [
+    `Run log: ${log.path}`,
+    `  Run ${log.runId} in ${where2} produced the known state; its stored result was replaced or pruned, so the log holds its output and the results above do not. ${log.state === "node-test" ? `Under node:test ${file} has its own logs: stdout above, stderr ${log.stderrPath ?? "not recorded"}.` : "The log covers that whole run, every test file in it, not only this check."}`
+  ] : log.state === "node-test" ? [
     `Run log: ${log.path}`,
     `  Run ${log.runId} in ${where2} produced the result shown. Under node:test ${file} has its own logs: stdout above, stderr ${log.stderrPath ?? "not recorded"}.`
   ] : [
@@ -47209,6 +47300,32 @@ function runLog(why2) {
     `Console of ${file} in ${source} (${shown}):`,
     ...kept2.map((l) => `  ${l}`)
   ];
+}
+function gapText(gap) {
+  switch (gap) {
+    case "no-state":
+      return "this worktree has no known state of the check and holds no failure of it";
+    case "no-origin":
+      return "the known state names no origin";
+    case "replaced":
+      return "a later run replaced the result behind the known state at its key and no producing run is recorded";
+    case "producer-pruned":
+      return "the run that produced the known state has no run record left (pruned)";
+    case "not-stored":
+      return "no result is stored at this worktree's key (pruned)";
+    case "unidentified":
+      return "no stored result, or several, fit the known state";
+    default:
+      return "no stored result is identifiably the one behind the known state (replaced, pruned, or several fit)";
+  }
+}
+function replacedHere(why2, result) {
+  const replaced = why2.replacedAtKey;
+  return replaced?.key === result.key && replaced.runId === result.provenance.runId;
+}
+function worktreeName(why2, worktreeId) {
+  if (worktreeId === why2.worktreeId) return `${why2.worktreeRoot} (this worktree)`;
+  return why2.worktreeRoots[worktreeId] ?? `removed worktree ${worktreeId}`;
 }
 function producer(why2, log) {
   const root = why2.worktreeRoots[log.worktreeId];
@@ -47538,7 +47655,7 @@ function failuresText(failures) {
 function failureCount(failures) {
   return failures.tests + failures.testFiles + (failures.setups ?? 0);
 }
-function gapText(status2) {
+function gapText2(status2) {
   const listed2 = status2.available ? status2.unknownTestFiles : void 0;
   const [first] = listed2?.files ?? [];
   if (listed2 === void 0 || first === void 0) return "";
@@ -48652,14 +48769,14 @@ function guarded(events) {
 }
 async function inWorker(worker, identity2, events) {
   const post = (message2) => worker.postMessage(message2);
-  let listening = false;
+  let listening2 = false;
   let closing = false;
   let closed = null;
   const listen = new Promise((resolve22, reject) => {
     worker.on("message", (message2) => {
       switch (message2.type) {
         case "listening":
-          listening = true;
+          listening2 = true;
           resolve22();
           return;
         case "failed":
@@ -48720,7 +48837,7 @@ async function inWorker(worker, identity2, events) {
       }
     });
     const died = (error) => {
-      if (!listening) reject(error);
+      if (!listening2) reject(error);
       else if (!closing) events.onFailure(error);
       closed?.();
     };
@@ -53148,7 +53265,8 @@ init_state3();
 init_text();
 function waitLine(wait, command = "squeal") {
   const line = ownLine(wait, command);
-  return wait.slow === void 0 || wait.outcome === "no-daemon" ? line : `${line}${slowText(wait.slow)}`;
+  const slow = wait.slow === void 0 || wait.outcome === "no-daemon" ? "" : slowText(wait.slow);
+  return `${line}${slow}${lapseText(wait.lapse)}`;
 }
 function ownLine(wait, command) {
   const { outcome: outcome2, transitions, edit, result: snapshot3 } = wait;
@@ -53164,7 +53282,7 @@ function ownLine(wait, command) {
     case "news":
       return `Returned on news: ${plural(transitions, "transition")} since the wait started, ${at2} ${after}`;
     case "no-daemon":
-      return `Returned without a daemon: ${noDaemonText(snapshot3.daemon)}; results are as of revision ${snapshot3.revision}`;
+      return `Returned without a daemon: ${noDaemonText(snapshot3.daemon, wait.down)}; results are as of revision ${snapshot3.revision}`;
     case "timeout":
       return `Returned on timeout ${after}: ${pendingText2(snapshot3)} ${at2}`;
   }
@@ -53224,7 +53342,7 @@ function namedLine(wait, command = "squeal") {
       return `No verdict: ${selection.unmatched.map((p) => `no test file's closure holds ${p}`).join("; ")}`;
     case "no-daemon":
       line = none2(
-        `${noDaemonText(wait.result.daemon)}; results are as of revision ${verdict.revision}; \`${command} start\` starts one`
+        `${noDaemonText(wait.result.daemon, wait.down)}; results are as of revision ${verdict.revision}; \`${command} start\` starts one`
       );
       break;
     case "timeout":
@@ -53240,7 +53358,7 @@ function namedLine(wait, command = "squeal") {
   const files2 = selection.files.map((f) => f.path);
   const shown = files2.slice(0, NAMED_FILES_SHOWN).join(", ");
   const more = files2.length > NAMED_FILES_SHOWN ? ` and ${files2.length - NAMED_FILES_SHOWN} more` : "";
-  return `${line}
+  return `${line}${lapseText(wait.lapse)}
 Selected: ${shown}${more}`;
 }
 function namedFailures(wait) {
@@ -53264,9 +53382,18 @@ function unsyncedText(sync, revision) {
   }
   return null;
 }
-function noDaemonText(daemon) {
+function noDaemonText(daemon, down) {
   if (daemon.state === "alive" || daemon.since === null) return "no daemon is running";
-  return `no daemon has validated since ${new Date(daemon.since).toISOString()}`;
+  const since = `no daemon has validated since ${new Date(daemon.since).toISOString()}`;
+  if (down === "silent") {
+    return `${since}: its heartbeat stopped and nothing listens on its socket`;
+  }
+  return down === "stopped" ? `${since}: the daemon stopped` : since;
+}
+function lapseText(lapse) {
+  if (lapse === void 0) return "";
+  const age2 = Math.round(lapse.staleMs / 1e3);
+  return `; the daemon's heartbeat went ${age2} s stale while its socket showed it alive (a busy store or a stalled daemon), so the wait went on`;
 }
 function anyPending(snapshot3) {
   const { counts, testFilesWithoutChecks, runnerPartPending } = snapshot3;
@@ -53283,11 +53410,68 @@ function pendingText2(snapshot3) {
 }
 
 // src/cli/status-wait-paths.ts
+init_fs();
+init_keys();
 import { realpathSync as realpathSync20 } from "node:fs";
 import { isAbsolute as isAbsolute16, relative as relative21, resolve as resolve19, sep as sep25 } from "node:path";
 import { setTimeout as sleep9 } from "node:timers/promises";
-init_fs();
-init_keys();
+
+// src/cli/wait-liveness.ts
+init_paths4();
+var WAIT_DOWN_MS = 1e4;
+function watchDaemon(worktreeId, options = {}) {
+  const downMs = options.downMs ?? WAIT_DOWN_MS;
+  const computed = socketPathFor(worktreeId, options.env);
+  let socket = null;
+  let asking = false;
+  let deadSince = null;
+  let staleMs = null;
+  const ask = (record) => {
+    if (asking) return;
+    asking = true;
+    void listening([.../* @__PURE__ */ new Set([record.socketPath, computed])]).then((found2) => {
+      socket = found2 ? "listening" : "absent";
+      asking = false;
+    });
+  };
+  return {
+    judge(record, at2) {
+      if (record === null) return { state: "down", reason: "stopped" };
+      if (daemonLiveness(record, at2).state === "alive") {
+        socket = null;
+        deadSince = null;
+        return { state: "alive" };
+      }
+      const seen = socket;
+      ask(record);
+      if (seen !== "absent") {
+        deadSince = null;
+        if (seen === "listening") staleMs = Math.max(staleMs ?? 0, at2 - record.heartbeatAt);
+        return { state: "lapsed" };
+      }
+      const now = performance.now();
+      deadSince ??= now;
+      const graceEnd = record.heartbeatAt + record.heartbeatIntervalMs * HEARTBEAT_GRACE_INTERVALS;
+      const deadMs = Math.max(now - deadSince, at2 - graceEnd);
+      return deadMs >= downMs ? { state: "down", reason: "silent" } : { state: "lapsed" };
+    },
+    lapse: () => staleMs === null ? null : { staleMs }
+  };
+}
+async function listening(paths) {
+  const answers = await Promise.all(
+    paths.map(
+      (path) => askDaemon(path, { type: "ping" }).then(
+        (answer2) => answer2 !== null,
+        // A socket that accepts and does not answer in time: a daemon whose event loop is stalled.
+        () => true
+      )
+    )
+  );
+  return answers.includes(true);
+}
+
+// src/cli/status-wait-paths.ts
 function selectNamedFiles(store, worktreeId, root, cwd, paths) {
   const rows = store.testFileKeys.list(worktreeId);
   const closures = validClosures(store, worktreeId, rows);
@@ -53342,6 +53526,7 @@ async function waitForNamed(cwd, paths, options) {
   const started2 = performance.now();
   const elapsed = () => performance.now() - started2;
   let sync;
+  let watch2;
   let first = true;
   try {
     for (; ; ) {
@@ -53354,13 +53539,23 @@ async function waitForNamed(cwd, paths, options) {
         const selection = selectNamedFiles(store, id2, root, cwd, paths);
         const verdict = readVerdict(store, id2, selection.files);
         const settled = final || elapsed() >= options.settleMs;
-        const daemon = worktreeLiveness(store.worktrees.get(id2), options.now());
+        watch2 ??= watchDaemon(id2, { downMs: options.downMs });
+        const daemon = watch2.judge(store.worktrees.get(id2)?.daemon ?? null, options.now());
         const current2 = sync.current();
-        const ready = current2.state === "synced" ? verdict.revision >= current2.revision && !verdict.unlisted : current2.state === "unsupported" && settled;
-        const outcome2 = settled && daemon.state !== "alive" ? "no-daemon" : ready && selection.unmatched.length > 0 ? "unmatched" : ready && verdict.byClass.pending === 0 && !verdict.unlisted ? "settled" : final ? "timeout" : null;
+        const ready = daemon.state === "alive" && (current2.state === "synced" ? verdict.revision >= current2.revision && !verdict.unlisted : current2.state === "unsupported" && settled);
+        const outcome2 = settled && daemon.state === "down" ? "no-daemon" : ready && selection.unmatched.length > 0 ? "unmatched" : ready && verdict.byClass.pending === 0 && !verdict.unlisted ? "settled" : final ? "timeout" : null;
         if (outcome2 === null) return null;
         const result = buildSnapshot(store, root, options.now());
-        return { outcome: outcome2, selection, verdict, result, sync: current2 };
+        const lapse = watch2.lapse();
+        return {
+          outcome: outcome2,
+          selection,
+          verdict,
+          result,
+          sync: current2,
+          ...daemon.state === "down" ? { down: daemon.reason } : {},
+          ...lapse === null ? {} : { lapse }
+        };
       });
       if (read4 !== null && "available" in read4) {
         if (first || final) return { outcome: "unavailable", waitedMs: elapsed(), result: read4 };
@@ -53460,6 +53655,7 @@ async function waitForStatus(cwd, options) {
   const started2 = performance.now();
   const elapsed = () => performance.now() - started2;
   let start2 = null;
+  let watch2;
   const syncing = {};
   try {
     for (; ; ) {
@@ -53505,7 +53701,8 @@ async function waitForStatus(cwd, options) {
         const held2 = syncing.slow;
         const slowLeft = held2 === void 0 ? [] : heldSlowLeft(held2, states, keys);
         const settled = final || elapsed() >= settleMs;
-        const daemon = worktreeLiveness(store.worktrees.get(id2), now());
+        watch2 ??= watchDaemon(id2, { downMs: options.downMs });
+        const daemon = watch2.judge(store.worktrees.get(id2)?.daemon ?? null, now());
         let transitions;
         let quiet;
         let edit;
@@ -53529,12 +53726,21 @@ async function waitForStatus(cwd, options) {
           transitions = news.length;
           quiet = isSynced(current2, header.revision, settled) && !isPending(header);
         }
-        quiet &&= slowLeft.length === 0;
-        const outcome2 = transitions > 0 ? "news" : settled && daemon.state !== "alive" ? "no-daemon" : quiet ? "quiet" : final ? "timeout" : null;
+        quiet &&= slowLeft.length === 0 && daemon.state === "alive";
+        const outcome2 = transitions > 0 ? "news" : settled && daemon.state === "down" ? "no-daemon" : quiet ? "quiet" : final ? "timeout" : null;
         if (outcome2 === null) return null;
         const result = buildSnapshot(store, root, now());
         const slow = held2 === void 0 ? {} : { slow: { held: held2.size, pending: slowLeft, transitions: slowNews } };
-        return { outcome: outcome2, transitions, ...edit === void 0 ? {} : { edit }, ...slow, result };
+        const lapse = watch2.lapse();
+        return {
+          outcome: outcome2,
+          transitions,
+          ...edit === void 0 ? {} : { edit },
+          ...slow,
+          ...daemon.state === "down" ? { down: daemon.reason } : {},
+          ...lapse === null ? {} : { lapse },
+          result
+        };
       });
       if (read4 !== null && "available" in read4) {
         if (start2 === null || final) {
@@ -53574,6 +53780,10 @@ function waitConsumer(env) {
   if (opencode === void 0 || opencode === "") return { session: null, agent: null };
   const agent = env.OPENCODE_AGENT_ID;
   return { session: opencode, agent: agent === void 0 || agent === "" ? null : agent };
+}
+function slowWaitCode(wait) {
+  if (wait.outcome === "no-daemon") return 3;
+  return wait.outcome === "timeout" && (wait.slow?.pending.length ?? 0) > 0 ? 3 : 0;
 }
 async function statusWaitCommand(timeoutMs, json3, io, holdSlow = false, paths = []) {
   const now = io.now ?? Date.now;
@@ -53617,7 +53827,7 @@ async function statusWaitCommand(timeoutMs, json3, io, holdSlow = false, paths =
     io.stdout(`${line}
 ${formatStatus(result, now(), statusCommand(env))}`);
   }
-  return 0;
+  return holdSlow ? slowWaitCode(wait) : 0;
 }
 
 // src/cli/retry.ts
@@ -53938,7 +54148,7 @@ ${USAGE4}`);
   const [line, code] = verdictLine(root, checkpoint, outcome2, joined);
   const now = io.now ?? Date.now;
   const status2 = readStatus(root, { now });
-  const gap = outcome2.kind === "abandoned" || code === 3 ? gapText(status2) : "";
+  const gap = outcome2.kind === "abandoned" || code === 3 ? gapText2(status2) : "";
   io.stdout(`${named} ${line}${gap}
 ${started2}
 `);
