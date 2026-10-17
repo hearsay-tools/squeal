@@ -199,8 +199,9 @@ function recordedArtifacts(store: Store) {
  * defect 12). A wait for the agent to pause, once no registered consumer is
  * in a turn, is a wait for the fast files pending, or for nothing (lessons
  * defect 11): the daemon publishes again only when it next looks at its slow
- * files, which fast tiers can put off for minutes. `null` when nothing is
- * true of it.
+ * files, which fast tiers can put off for minutes. A skip (D8 as amended
+ * 2026-10-17) is true until a slow file is queued again. `null` when nothing
+ * is true of it.
  */
 function liveActivity(
   store: Store,
@@ -215,6 +216,10 @@ function liveActivity(
     return fast ? { kind: "waiting", for: "fast" } : null;
   }
   if (activity === null) return null;
+  // A skip stands until a slow file is queued again, when the precondition is checked again (004-65).
+  if (activity.kind === "skipped") {
+    return keys.some((row) => row.pending !== null && isSlow(row.testFile)) ? null : activity;
+  }
   const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
   if (daemon !== null && activity.since < daemon.startedAt) return null;
   const running = new Set(
