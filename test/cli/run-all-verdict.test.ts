@@ -239,7 +239,7 @@ describe("run --all --wait: the checkpoint's verdict (spec 005 D1)", () => {
     later(50, () => finish(w.store));
     const result = await run(["run", "--all", "--wait"], w.root);
     expect(result.first).toBe(
-      "Checkpoint c1 has no verdict: 1 test file without a current result at revision 3 (1 unknown). Without a result: test/b.test.ts: no result: no reason was kept",
+      "Checkpoint c1 has no verdict: 1 test file without a current result at revision 3 (1 unknown). Without a result: test/b.test.ts: no result: no key: its project's environment or closure is not known (a runner call failed), or a closure path is untracked",
     );
     expect(result.code).toBe(3);
   });

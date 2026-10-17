@@ -1,10 +1,15 @@
+import { testFileId } from "../keys/index.js";
 import type {
+  CheckKey,
   DaemonLiveness,
+  EpochMs,
   RunRecord,
   Store,
+  TestFileRef,
   WorktreeId,
   WorktreeRecord,
 } from "../types/index.js";
+import { HEARTBEAT_GRACE_INTERVALS } from "./snapshot.js";
 
 /**
  * The runs the worktree's live daemon has open, oldest first: those with no
@@ -28,4 +33,33 @@ export function openRunsOf(
   daemon: DaemonLiveness,
 ): readonly RunRecord[] {
   return openRuns(store, store.worktrees.get(worktreeId), daemon);
+}
+
+/**
+ * The other worktree whose live daemon runs `key` now (C7's claim:
+ * `TestFileKeyRepo.claimed`), with the run that holds `ref` when it has one
+ * open; `null` when none does (task 011-12).
+ */
+export function claimantOf(
+  store: Store,
+  worktreeId: WorktreeId,
+  ref: TestFileRef,
+  key: CheckKey,
+  now: EpochMs,
+): { readonly worktree: WorktreeRecord; readonly run: RunRecord | null } | null {
+  if (
+    !store.testFileKeys.claimed(worktreeId, key, { now, graceIntervals: HEARTBEAT_GRACE_INTERVALS })
+  ) {
+    return null;
+  }
+  const id = testFileId(ref);
+  for (const worktree of store.worktrees.list()) {
+    if (worktree.id === worktreeId || worktree.daemon === null) continue;
+    const row = store.testFileKeys.list(worktree.id, [ref])[0];
+    if (row?.key !== key || row.pending !== "running") continue;
+    const runs = store.runs.inFlight(worktree.id, worktree.daemon.startedAt);
+    const run = runs.find((r) => r.testFiles.some((f) => testFileId(f) === id)) ?? null;
+    return { worktree, run };
+  }
+  return null;
 }

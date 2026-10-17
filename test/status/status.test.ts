@@ -175,10 +175,16 @@ describe("readStatus", () => {
       testFilesWithoutChecks: { pending: 1, unknown: 1 },
       unknownTestFiles: {
         total: 2,
-        files: ["src/never.test.ts", "src/util.test.ts"].map((path) => ({
+        // Task 011-12 (issue 24): a key with no result says so; an unknown check that kept no reason says that.
+        files: (
+          [
+            ["src/never.test.ts", "never run at this key, and nothing queued it"],
+            ["src/util.test.ts", null],
+          ] as const
+        ).map(([path, reason]) => ({
           testFile: { project: "", path },
           ran: false,
-          reason: null,
+          reason,
           samples: [],
         })),
       },
@@ -274,7 +280,7 @@ describe("readStatus", () => {
         2 (2 tests) from <main> at abc1234
       Test files without checks: 1 pending, 1 unknown
       Test files without a result: 2 (nothing current at their inputs, none queued)
-        src/never.test.ts: no result: no reason was kept
+        src/never.test.ts: no result: never run at this key, and nothing queued it
         src/util.test.ts: no result: no reason was kept
       Closure method: static imports plus declared inputs
       Store schema: 1

@@ -143,7 +143,7 @@ function snapshot(
     ...vitestExcluded(worktree?.root ?? root),
     ...configProblemsOf(worktree?.root ?? root),
     ...pendingRetriesOf(store, keys),
-    ...unknownTestFilesOf(store, worktreeId, states, keys),
+    ...unknownTestFilesOf(store, worktreeId, states, keys, worktree?.root ?? root, now),
   };
 }
 

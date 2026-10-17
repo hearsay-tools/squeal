@@ -1,8 +1,11 @@
+import { readPolicy } from "../daemon/policy.js";
 import { testFileId } from "../keys/index.js";
 import { readUnknownFiles } from "../scheduler/unknown-files.js";
 import { SUMMARY_MAX_CHARS, testFileKeyOf } from "../state/index.js";
 import { cap, plural } from "../text.js";
 import type {
+  AbsolutePath,
+  EpochMs,
   KnownState,
   StatusSnapshot,
   Store,
@@ -11,6 +14,7 @@ import type {
   UnknownTestFiles,
   WorktreeId,
 } from "../types/index.js";
+import { claimantOf } from "./open-runs.js";
 
 /*
  * Task 001-403: the test files with no result at their current key and none
@@ -27,12 +31,10 @@ export function unknownTestFilesOf(
   worktreeId: WorktreeId,
   states: readonly KnownState[],
   keys: readonly TestFileKeyRecord[],
+  root?: AbsolutePath,
+  now: EpochMs = Date.now(),
 ): { unknownTestFiles?: UnknownTestFiles } {
-  const checks = new Map<string, KnownState[]>();
-  for (const state of states) {
-    const id = testFileKeyOf(state.check);
-    checks.set(id, [...(checks.get(id) ?? []), state]);
-  }
+  const checks = checksByFile(states);
   const unknown = keys.filter((row) => {
     const own = checks.get(testFileId(row.testFile)) ?? [];
     if ((row.key !== null && row.pending !== null) || own.some((s) => s.validity === "pending")) {
@@ -41,21 +43,80 @@ export function unknownTestFilesOf(
     return row.key === null || own.length === 0 || own.some((s) => s.validity === "unknown");
   });
   if (unknown.length === 0) return {};
-  const recorded = readUnknownFiles(store, worktreeId);
+  const reasons = unknownReasons(store, worktreeId, states, root, now);
   const files = unknown
     .sort((a, b) => testFileId(a.testFile).localeCompare(testFileId(b.testFile)))
     .slice(0, UNKNOWN_FILES_LISTED)
-    .map((row): UnknownTestFile => {
-      const id = testFileId(row.testFile);
-      const entry = recorded.get(id);
+    .map((row) => reasons.of(row, checks.get(testFileId(row.testFile)) ?? []));
+  return { unknownTestFiles: { total: unknown.length, files } };
+}
+
+/** Each test file's known states, by `testFileId`. */
+export function checksByFile(states: readonly KnownState[]): Map<string, KnownState[]> {
+  const checks = new Map<string, KnownState[]>();
+  for (const state of states) {
+    const id = testFileKeyOf(state.check);
+    checks.set(id, [...(checks.get(id) ?? []), state]);
+  }
+  return checks;
+}
+
+/** Why a file is `unknown`, for one worktree's read (`unknownReasons`). */
+export interface UnknownReasons {
+  of(row: TestFileKeyRecord, own: readonly KnownState[]): UnknownTestFile;
+}
+
+/**
+ * Why each `unknown` file has no result, from what the store keeps (011 C15,
+ * issue 24): the reason recorded at its key (001-403), an unknown check's
+ * reason, a key that could not be computed, its project's failed global
+ * setup, another worktree's run of its key, or a key that never had a
+ * result, nothing queued for it (and why, under a lookup-only baseline).
+ * `reason` is `null`, "no reason was kept", only when an unknown check kept
+ * none and no record names one; the record keeps 256 files.
+ */
+export function unknownReasons(
+  store: Store,
+  worktreeId: WorktreeId,
+  states: readonly KnownState[],
+  root: AbsolutePath | undefined,
+  now: EpochMs,
+): UnknownReasons {
+  const recorded = readUnknownFiles(store, worktreeId);
+  const setups = new Set(
+    states
+      .filter((s) => s.check.kind === "setup" && s.outcome === "fail")
+      .map((s) => s.check.project),
+  );
+  let lookupOnly: boolean | undefined;
+  const isLookupOnly = () => {
+    lookupOnly ??= root !== undefined && readPolicy(root).baseline.onStart === "lookup-only";
+    return lookupOnly;
+  };
+  const reason = (row: TestFileKeyRecord, own: readonly KnownState[]): string | null => {
+    const summary = own.find((s) => s.validity === "unknown")?.summary ?? null;
+    if (summary !== null) return summary;
+    if (row.key === null) {
+      return "no key: its project's environment or closure is not known (a runner call failed), or a closure path is untracked";
+    }
+    if (setups.has(row.testFile.project)) return "its project's global setup failed";
+    const claimant = claimantOf(store, worktreeId, row.testFile, row.key, now);
+    if (claimant !== null) return `${claimant.worktree.root}'s daemon is running its key`;
+    if (own.length > 0) return null;
+    return isLookupOnly()
+      ? "never run at this key: the baseline is lookup-only, so nothing queued it"
+      : "never run at this key, and nothing queued it";
+  };
+  return {
+    of(row, own) {
+      const entry = recorded.get(testFileId(row.testFile));
       if (entry !== undefined && entry.key === row.key) {
         const { ran, reason, samples } = entry;
         return { testFile: row.testFile, ran, reason, samples };
       }
-      const summary = checks.get(id)?.find((s) => s.validity === "unknown")?.summary ?? null;
-      return { testFile: row.testFile, ran: false, reason: summary, samples: [] };
-    });
-  return { unknownTestFiles: { total: unknown.length, files } };
+      return { testFile: row.testFile, ran: false, reason: reason(row, own), samples: [] };
+    },
+  };
 }
 
 /** Status's lines naming each unknown test file and why; none when there are none. */

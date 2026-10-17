@@ -1,3 +1,5 @@
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { recordUnknownFiles } from "../../src/core/scheduler/unknown-files.js";
 import { SUMMARY_MAX_CHARS } from "../../src/core/state/index.js";
@@ -121,10 +123,18 @@ describe("status: test files without a result, named (001-403)", () => {
 
     const status = w.status();
 
+    // Task 011-12 (issue 24): the store still says why, the key never had a result.
     expect(status.available && status.unknownTestFiles?.files).toEqual([
-      { testFile: ref("test/a.test.ts"), ran: false, reason: null, samples: [] },
+      {
+        testFile: ref("test/a.test.ts"),
+        ran: false,
+        reason: "never run at this key, and nothing queued it",
+        samples: [],
+      },
     ]);
-    expect(w.text()).toContain("  test/a.test.ts: no result: no reason was kept\n");
+    expect(w.text()).toContain(
+      "  test/a.test.ts: no result: never run at this key, and nothing queued it\n",
+    );
   });
 
   it(`lists the first ${UNKNOWN_FILES_LISTED} and counts the rest`, () => {
@@ -181,5 +191,93 @@ describe("status: test files without a result, named (001-403)", () => {
 
     expect(w.status()).not.toHaveProperty("unknownTestFiles");
     expect(w.text()).not.toContain("without a result");
+  });
+});
+
+describe("status: why a file without a result has none, from what the store keeps (011-12, issue 24)", () => {
+  it("names an unkeyed file, a failed setup, another worktree's run and a key never run; 'no reason was kept' only when true", () => {
+    const w = seeded();
+    w.row("test/unkeyed.test.ts", null);
+    w.store.knownStates.upsertMany([
+      state(w.id, { kind: "setup", project: "web", testPath: "vitest.setup.ts" } as never, {
+        outcome: "fail",
+      }),
+    ]);
+    w.store.testFileKeys.upsertMany([
+      {
+        worktreeId: w.id,
+        testFile: { project: "web", path: "test/setup.test.ts" as never },
+        key: "k-s" as CheckKey,
+        revision: 3,
+        pending: null,
+      },
+    ]);
+    w.row("test/claimed.test.ts", "k-c");
+    const other = { id: "other-wt", root: "/repo/other" };
+    w.store.worktrees.upsert({
+      id: other.id,
+      root: other.root,
+      commonDir: "/repo/.git",
+      isMain: false,
+      registeredAt: 2,
+      daemon: {
+        socketPath: "/run/other.sock",
+        startedAt: NOW - 10_000,
+        heartbeatAt: NOW - 1_000,
+        heartbeatIntervalMs: 5_000,
+        squealVersion: "0.0.0",
+      },
+    });
+    w.store.testFileKeys.upsertMany([
+      {
+        worktreeId: other.id,
+        testFile: ref("test/claimed.test.ts"),
+        key: "k-c" as CheckKey,
+        revision: 1,
+        pending: "running",
+      },
+    ]);
+    w.row("test/never.test.ts", "k-n");
+    w.row("test/kept-none.test.ts", "k-k");
+    w.store.knownStates.upsertMany([
+      state(w.id, check("test/kept-none.test.ts", "x"), {
+        outcome: "unknown",
+        validity: "unknown",
+      }),
+    ]);
+
+    const status = w.status();
+    const files = (status.available && status.unknownTestFiles?.files) || [];
+    const reasons = Object.fromEntries(files.map((f) => [f.testFile.path, f.reason]));
+
+    expect(reasons).toEqual({
+      "test/unkeyed.test.ts":
+        "no key: its project's environment or closure is not known (a runner call failed), or a closure path is untracked",
+      "test/setup.test.ts": "its project's global setup failed",
+      "test/claimed.test.ts": "/repo/other's daemon is running its key",
+      "test/never.test.ts": "never run at this key, and nothing queued it",
+      "test/kept-none.test.ts": null,
+    });
+    expect(w.text()).toContain("  test/kept-none.test.ts: no result: no reason was kept\n");
+  });
+
+  it("says a lookup-only baseline queued nothing, for a many-file worktree, and keeps a recorded reason", () => {
+    const w = seeded();
+    writeFileSync(
+      join(w.root, "squeal.config.json"),
+      JSON.stringify({ baseline: { onStart: "lookup-only" } }),
+    );
+    for (let i = 0; i < 410; i++) w.row(`test/f${1000 + i}.test.ts`, `k${i}`);
+    w.marked("test/f1000.test.ts", "k0", false);
+
+    const status = w.status();
+    const text = w.text();
+
+    expect(status.available && status.unknownTestFiles?.total).toBe(410);
+    expect(text).toContain("  test/f1000.test.ts: no result: run crashed\n");
+    expect(text).toContain(
+      "  test/f1001.test.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it\n",
+    );
+    expect(text).not.toContain("no reason was kept");
   });
 });
