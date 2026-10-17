@@ -15,6 +15,13 @@ export const TEST_NICE = 10;
 const EVERY_MS = 100;
 
 /**
+ * How long a lowered carrier is walked again after its last new descendant:
+ * a child it was forking when lowered is listed only once made, under load
+ * a few hundred ms later (task 001-437).
+ */
+const WALK_MS = 1_000;
+
+/**
  * Every lane's run at `nice` 10 (001 D11 Capacity, Priority, task 001-378),
  * and a slow lane's also, on Linux, at `ionice -c 3` where permitted (spec
  * 004 D2). Every `EVERY_MS` after the last look ended, until `signal`
@@ -24,7 +31,8 @@ const EVERY_MS = 100;
  * lowered process starts later inherits its priority (task 001-393). A child
  * it was still forking then kept the priority it had and is listed only once
  * made, so each carrier's descendants are walked again on every look until
- * one finds none new, and what is new is lowered (task 001-437). So are
+ * `WALK_MS` after the last new one, and what is new is lowered (task
+ * 001-437). So are
  * the carriers in the daemon's group whose parent exited before a look,
  * found at most once a second after a child of the daemon exits (review
  * 001-401 S1). A thread pool's workers are threads of the daemon and carry no
@@ -42,8 +50,8 @@ export async function lowerWhile(
 ): Promise<void> {
   if (process.platform !== "linux") return;
   const lowered = new Set<string>();
-  // Each carrier the last look lowered something under, with what it has lowered so far.
-  let walking = new Map<number, Set<number>>();
+  // Each carrier walked again: its descendants at the last walk, and until when.
+  let walking = new Map<number, { seen: Set<number>; until: number }>();
   try {
     for (;;) {
       await sleep(EVERY_MS, undefined, { signal });
@@ -51,17 +59,19 @@ export async function lowerWhile(
       const fresh = found.filter((entry) => !lowered.has(`${entry.pid}:${entry.start}`));
       for (const entry of fresh) lowered.add(`${entry.pid}:${entry.start}`);
       const pids: number[] = [];
-      const next = new Map<number, Set<number>>();
-      for (const [pid, seen] of walking) {
-        const added = walk(pid).filter((descendant) => !seen.has(descendant));
-        if (added.length === 0) continue;
+      const next = new Map<number, { seen: Set<number>; until: number }>();
+      const at = Date.now();
+      for (const [pid, walked] of walking) {
+        const current = walk(pid);
+        const added = current.filter((descendant) => !walked.seen.has(descendant));
         pids.push(...added);
-        next.set(pid, new Set([...seen, ...added]));
+        if (added.length > 0) next.set(pid, { seen: new Set(current), until: at + WALK_MS });
+        else if (at < walked.until) next.set(pid, { seen: new Set(current), until: walked.until });
       }
       for (const { pid } of fresh) {
-        const all = [pid, ...walk(pid)];
-        pids.push(...all);
-        next.set(pid, new Set(all));
+        const current = walk(pid);
+        pids.push(pid, ...current);
+        next.set(pid, { seen: new Set(current), until: at + WALK_MS });
       }
       walking = next;
       if (pids.length > 0) lower(pids, isSlowLane(lane));
