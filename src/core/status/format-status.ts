@@ -1,14 +1,7 @@
 import { RECORDED_UNKNOWN_TEXT, recordedText, waitsText } from "../retry/index.js";
-import {
-  formatCheck,
-  fullSuiteText,
-  revisionText,
-  runnerPartText,
-  slowTierText,
-} from "../state/index.js";
+import { formatCheck, fullSuiteText, runnerPartText, slowTierText } from "../state/index.js";
 import { excludedProjectsText, plural } from "../text.js";
 import type {
-  CommitSha,
   DaemonNote,
   EpochMs,
   StatusResult,
@@ -17,7 +10,10 @@ import type {
 } from "../types/index.js";
 import { countedText, failureCountText, partsSuffix } from "./checks.js";
 import { DEATH_CAUSE, deathText } from "./died.js";
+import { shortCommit, statusRevisionText, worktreeLine } from "./identity.js";
 import { unknownFilesLines } from "./unknown-files.js";
+
+export { shortCommit } from "./identity.js";
 
 export interface StatusFormatOptions {
   /** `squeal status --notes`: every note in full, none grouped (task 001-222). */
@@ -40,7 +36,7 @@ export function formatStatus(
 ): string {
   if (!result.available) return formatUnavailable(result);
   const lines = [
-    `Revision: ${revisionText(result.revision, result.commit)}`,
+    `Revision: ${statusRevisionText(result)}`,
     `Known failures: ${failureCountText(result.knownFailures.map((f) => f.check))}`,
     ...result.knownFailures.flatMap((f) => [
       `  FAIL  ${formatCheck(f.check)}`,
@@ -272,17 +268,6 @@ function freshText(s: StatusSnapshot): string {
     : `; ${plural(files, "test file")} without checks yet: ${running} running, ${files - running} queued`;
 }
 
-/** Spec 001 D7 as amended: the dirty flag is labelled with its revision, not known without a daemon. */
-function worktreeLine(s: StatusSnapshot): string {
-  const dirty =
-    s.dirty !== null
-      ? `${s.dirty ? "dirty" : "clean"} at revision ${s.dirtyObservedAt ?? s.revision}`
-      : s.daemon.state === "alive"
-        ? "dirty state not known: no revision recorded yet"
-        : "dirty state not known: no daemon is validating";
-  return `Worktree: ${s.worktreeRoot} (HEAD ${shortCommit(s.head)}, ${dirty})`;
-}
-
 function daemonLine(s: StatusSnapshot, now: EpochMs): string {
   if (s.daemon.state === "alive") {
     return `Daemon: running, last heartbeat ${age(now - s.daemon.lastHeartbeatAt)} ago`;
@@ -294,10 +279,6 @@ function daemonLine(s: StatusSnapshot, now: EpochMs): string {
   // Task 001-263: a daemon that died without its stop note is named, with what it was running.
   if (s.daemon.died === undefined) return down;
   return `${down}; it ${deathText(s.daemon.died)}. ${DEATH_CAUSE}`;
-}
-
-export function shortCommit(commit: CommitSha): string {
-  return commit === null ? "no commit" : commit.slice(0, 7);
 }
 
 function age(ms: number): string {
