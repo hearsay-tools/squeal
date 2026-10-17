@@ -122,13 +122,14 @@ describe("squeal run --slow --wait holds for the slow files it queued (001-282)"
     );
   });
 
-  it("returns on timeout naming the slow files still pending", async () => {
+  it("returns on timeout naming the slow files still pending, exit 3", async () => {
     const { repo, store, seen } = await slowQueued([SLOW_FILE, SECOND]);
     const finished = onceWaiting(seen, 100, () => finish(store, repo.mainId, SECOND));
 
     const result = await run(["run", "--slow", "--wait", "1500"], repo.main);
 
-    expect(result.code).toBe(0);
+    // Task 004-66: a queued slow file without its result is no verdict.
+    expect(result.code).toBe(3);
     expect(finished()).toBe(true);
     expect(result.stdout).toMatch(
       /\nReturned on timeout after \d+\.\d s: [^\n]*; 1 of the 2 slow files run --slow queued pending: test\/slow\.test\.ts\n/,

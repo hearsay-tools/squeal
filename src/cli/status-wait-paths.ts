@@ -1,7 +1,6 @@
 import { realpathSync } from "node:fs";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
-import { worktreeLiveness } from "../core/delivery/index.js";
 import { worktreeIdFor } from "../core/fs/index.js";
 import { testFileId } from "../core/keys/index.js";
 import {
@@ -27,6 +26,12 @@ import { statusCommand } from "./status-command.js";
 import type { DaemonSync, SyncState } from "./status-sync.js";
 import { namedFailures, namedLine } from "./status-wait-lines.js";
 import { type FileVerdict, readVerdict, verdictCode } from "./verdict.js";
+import {
+  type DaemonWatch,
+  type DownReason,
+  type HeartbeatLapse,
+  watchDaemon,
+} from "./wait-liveness.js";
 
 /**
  * The test files named paths select (spec 005 D2), in the worktree's listing
@@ -138,6 +143,10 @@ export type NamedWait =
       readonly result: StatusSnapshot;
       /** Where the daemon's pass stood at the last read: a `timeout` before it reached the store's revision says so. */
       readonly sync: SyncState;
+      /** With `no-daemon`: why (task 004-66). */
+      readonly down?: DownReason;
+      /** A heartbeat lapse the wait went on through, the daemon alive (task 004-66). */
+      readonly lapse?: HeartbeatLapse;
     }
   | {
       readonly outcome: "unavailable";
@@ -161,6 +170,8 @@ export interface NamedWaitOptions {
   readonly settleMs: number;
   readonly now: () => EpochMs;
   readonly sync: (root: AbsolutePath, pollMs: number) => DaemonSync;
+  /** Default `WAIT_DOWN_MS`: how long a stale record's dead socket may stay so (task 004-66). */
+  readonly downMs?: number;
 }
 
 /**
@@ -175,6 +186,8 @@ export interface NamedWaitOptions {
  * its verdict. It is read again
  * at every poll, since an edit can change a closure. A store that cannot be
  * read at the first read or the last ends the wait; one in between is skipped.
+ * A stale heartbeat ends it only once `watchDaemon` finds no daemon: a cleared
+ * record, or a socket dead for `downMs` (task 004-66, issue 12).
  */
 export async function waitForNamed(
   cwd: AbsolutePath,
@@ -184,6 +197,7 @@ export async function waitForNamed(
   const started = performance.now();
   const elapsed = () => performance.now() - started;
   let sync: DaemonSync | undefined;
+  let watch: DaemonWatch | undefined;
   let first = true;
   try {
     for (;;) {
@@ -198,14 +212,17 @@ export async function waitForNamed(
         const selection = selectNamedFiles(store, id, root, cwd, paths);
         const verdict = readVerdict(store, id, selection.files);
         const settled = final || elapsed() >= options.settleMs;
-        const daemon = worktreeLiveness(store.worktrees.get(id), options.now());
+        watch ??= watchDaemon(id, { downMs: options.downMs });
+        const daemon = watch.judge(store.worktrees.get(id)?.daemon ?? null, options.now());
         const current = sync.current();
+        // A lapsed heartbeat gives no verdict yet: the daemon may be mid-run (004-66).
         const ready =
-          current.state === "synced"
+          daemon.state === "alive" &&
+          (current.state === "synced"
             ? verdict.revision >= current.revision && !verdict.unlisted
-            : current.state === "unsupported" && settled;
+            : current.state === "unsupported" && settled);
         const outcome: NamedWaitOutcome | null =
-          settled && daemon.state !== "alive"
+          settled && daemon.state === "down"
             ? "no-daemon"
             : ready && selection.unmatched.length > 0
               ? "unmatched"
@@ -216,7 +233,16 @@ export async function waitForNamed(
                   : null;
         if (outcome === null) return null;
         const result = buildSnapshot(store, root, options.now());
-        return { outcome, selection, verdict, result, sync: current };
+        const lapse = watch.lapse();
+        return {
+          outcome,
+          selection,
+          verdict,
+          result,
+          sync: current,
+          ...(daemon.state === "down" ? { down: daemon.reason } : {}),
+          ...(lapse === null ? {} : { lapse }),
+        };
       });
       if (read !== null && "available" in read) {
         if (first || final) return { outcome: "unavailable", waitedMs: elapsed(), result: read };
