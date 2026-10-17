@@ -120,8 +120,11 @@ function matchesAny(root: AbsolutePath, glob: string): boolean {
 }
 
 /**
- * Runs `argv` without a shell in `root` at the slow tier's `nice` (D2);
- * `null` on exit 0, else what happened, as the reason's verb phrase.
+ * Runs `argv` without a shell in `root` at the slow tier's `nice` (D2), in
+ * its own process group, which is killed whole at the timeout, at the
+ * daemon's close and once the command exits, so nothing it spawned outlives
+ * the check (review wave-8.1 S1); `null` on exit 0, else what happened, as
+ * the reason's verb phrase.
  */
 function runCommand(
   root: AbsolutePath,
@@ -139,21 +142,35 @@ function runCommand(
       signal?.removeEventListener("abort", abort);
       resolve(outcome);
     };
-    const child = spawn(program, args, { cwd: root, stdio: "ignore", shell: false });
+    const child = spawn(program, args, {
+      cwd: root,
+      stdio: "ignore",
+      shell: false,
+      detached: true,
+    });
     if (child.pid !== undefined) lowerProcess(child.pid);
+    const killGroup = () => {
+      if (child.pid === undefined) return;
+      try {
+        process.kill(-child.pid, "SIGKILL");
+      } catch {
+        // The group is already gone.
+      }
+    };
     const timer = setTimeout(() => {
-      child.kill("SIGKILL");
+      killGroup();
       end(`did not exit within ${timeoutMs} ms`);
     }, timeoutMs);
     timer.unref();
     const abort = () => {
-      child.kill("SIGKILL");
+      killGroup();
       end("was stopped as the daemon closed");
     };
     if (signal?.aborted) abort();
     else signal?.addEventListener("abort", abort, { once: true });
     child.on("error", (error) => end(`could not start: ${error.message}`));
     child.on("exit", (code, killed) => {
+      killGroup();
       if (code === 0) end(null);
       else end(code === null ? `was killed by ${killed}` : `exited ${code}`);
     });
