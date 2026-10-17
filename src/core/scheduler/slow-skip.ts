@@ -100,25 +100,30 @@ export class SlowSkips {
       ledger.checkpoints.failed(ref);
       refs.set(testFileId(ref), ref);
     }
-    ledger.commit();
+    // Published first: the commit's refresh reads the skips, so its checks leave current.
     skips.set(rule.source, { rule, reason, refs, since: context.now() });
     this.#publish();
+    ledger.commit();
   }
 
   /**
    * Under the lock, `source` met: its skip ends. A skipped file not queued
    * takes what its key has, a result stored before the skip included, or is
-   * queued as any miss.
+   * queued as any miss; its checks are classified again without the skip.
    */
   #lift(source: string): void {
     const skip = this.#adopted().get(source);
     if (skip === undefined) return;
     this.#adopted().delete(source);
+    this.#publish();
     const { ledger } = this.started();
     const idle = [...skip.refs.values()].filter((ref) => ledger.file(ref)?.phase === null);
+    for (const ref of idle) {
+      const file = ledger.file(ref);
+      if (file !== undefined) ledger.touch(file);
+    }
     ledger.settle(idle, new Set());
     ledger.commit();
-    this.#publish();
   }
 
   /**
@@ -171,7 +176,9 @@ export class SlowSkips {
 
   /**
    * Queues `refs` as any miss; one whose key has a stored result goes in
-   * forced, so it runs rather than reading as current unchecked.
+   * forced, so it runs rather than reading as current unchecked. Published
+   * after the commit: its refresh still reads them skipped, so a queued
+   * file's checks read pending, not current, until it runs.
    */
   #requeue(refs: readonly TestFileRef[], changed: ReadonlySet<RelativePath>): boolean {
     if (refs.length === 0) return false;
