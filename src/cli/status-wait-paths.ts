@@ -22,9 +22,11 @@ import type {
   WorktreeId,
 } from "../core/types/index.js";
 import type { CliIo } from "./main.js";
+import { fileEntry, type NamedFileEntry } from "./named-file-lines.js";
+import { type NamedFile, readNamedFiles } from "./named-files.js";
 import { statusCommand } from "./status-command.js";
 import type { DaemonSync, SyncState } from "./status-sync.js";
-import { namedLine, namedText, selectedLine } from "./status-wait-lines.js";
+import { namedClassLines, namedLine, namedText, selectedLine } from "./status-wait-lines.js";
 import { ownPathFiles, type PromoteNamed, promoteNamed } from "./status-wait-promote.js";
 import { type FileVerdict, readVerdict, verdictCode } from "./verdict.js";
 import {
@@ -141,6 +143,8 @@ export type NamedWait =
       readonly waitedMs: number;
       readonly selection: NamedSelection;
       readonly verdict: FileVerdict;
+      /** Each selected file's class, verdict and what holds it (task 011-12), in `selection` order. */
+      readonly files: readonly NamedFile[];
       readonly result: StatusSnapshot;
       /** Where the daemon's pass stood at the last read: a `timeout` before it reached the store's revision says so. */
       readonly sync: SyncState;
@@ -160,7 +164,7 @@ export interface NamedWaitPayload {
   readonly outcome: NamedWaitOutcome;
   readonly waitedMs: number;
   readonly code: 0 | 1 | 3;
-  readonly testFiles: readonly TestFileRef[];
+  readonly testFiles: readonly NamedFileEntry[];
   readonly unmatched: readonly string[];
   readonly verdict: FileVerdict;
 }
@@ -249,11 +253,20 @@ export async function waitForNamed(
           return null;
         }
         const result = buildSnapshot(store, root, options.now());
+        const files = readNamedFiles(
+          store,
+          id,
+          root,
+          selection.files,
+          result.daemon,
+          options.now(),
+        );
         const lapse = watch.lapse();
         return {
           outcome,
           selection,
           verdict,
+          files,
           result,
           sync: current,
           ...(daemon.state === "down" ? { down: daemon.reason } : {}),
@@ -308,13 +321,14 @@ export async function namedWaitCommand(
       outcome: wait.outcome,
       waitedMs: Math.round(wait.waitedMs),
       code,
-      testFiles: wait.selection.files,
+      testFiles: wait.files.map((f) => fileEntry(f, command)),
       unmatched: wait.selection.unmatched,
       verdict: wait.verdict,
     };
     io.stdout(`${JSON.stringify({ ...wait.result, wait: payload }, null, 2)}\n`);
     const selected = selectedLine(wait);
-    io.stderr(`${selected === null ? "" : `${selected}\n`}${namedLine(wait, command)}\n`);
+    const lines = [...(selected === null ? [] : [selected]), ...namedClassLines(wait, command)];
+    io.stderr(`${lines.map((line) => `${line}\n`).join("")}${namedLine(wait, command)}\n`);
   } else {
     io.stdout(namedText(wait, options.now(), command));
   }

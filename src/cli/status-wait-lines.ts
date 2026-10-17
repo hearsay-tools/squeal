@@ -1,8 +1,8 @@
-import { testFileId } from "../core/keys/index.js";
-import { runnerPartText, testFileKeyOf } from "../core/state/index.js";
-import { countedText, failureCountText, formatCheck, formatStatus } from "../core/status/index.js";
+import { runnerPartText } from "../core/state/index.js";
+import { countedText, failureCountText, formatStatus } from "../core/status/index.js";
 import { plural } from "../core/text.js";
 import type { DaemonLiveness, EpochMs, StatusSnapshot } from "../core/types/index.js";
+import { classLines, namedFailures, reasonGroups } from "./named-file-lines.js";
 import type { SyncState } from "./status-sync.js";
 import type { StatusWait, StatusWaitEdit, StatusWaitSlow } from "./status-wait.js";
 import type { NamedWait } from "./status-wait-paths.js";
@@ -157,11 +157,15 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
         `${noDaemonText(wait.result.daemon, wait.down)}; results are as of revision ${verdict.revision}; \`${command} start\` starts one`,
       );
       break;
-    case "timeout":
+    case "timeout": {
+      const groups = reasonGroups(wait.files, command);
+      const why = noVerdictText(verdict);
+      const held = why === null ? "no result yet" : groups === "" ? why : `${why}: ${groups}`;
       line = none(
-        `the deadline passed ${after}: ${unsyncedText(wait.sync, verdict.revision) ?? noVerdictText(verdict) ?? "no result yet"}`,
+        `the deadline passed ${after}: ${unsyncedText(wait.sync, verdict.revision) ?? held}`,
       );
       break;
+    }
     case "settled": {
       const why = verdictCode(verdict) === 3 ? noVerdictText(verdict) : null;
       line =
@@ -191,28 +195,22 @@ export function namedText(wait: EndedNamed, now: EpochMs, command = "squeal"): s
   const selected = selectedLine(wait);
   const lines = [
     ...(selected === null ? [] : [selected]),
-    ...namedFailures(wait),
+    ...namedFailures(wait.selection.files, wait.result.knownFailures),
+    ...namedClassLines(wait, command),
     namedLine(wait, command),
   ];
   return `${formatStatus(wait.result, now, command)}\n${lines.join("\n")}\n`;
 }
 
-/** The selected files' known failures, each as status lists it (spec 005 D2: "in full"). */
-export function namedFailures(wait: EndedNamed): string[] {
-  const ids = new Set(wait.selection.files.map(testFileId));
-  return wait.result.knownFailures
-    .filter((f) => ids.has(testFileKeyOf(f.check)))
-    .flatMap((f) => [
-      `  FAIL  ${formatCheck(f.check)}`,
-      ...(f.summary === "" ? [] : [`        ${f.summary}`]),
-      `        ${[
-        ...(f.location === null
-          ? []
-          : [`at ${f.location.path}:${f.location.line}:${f.location.column}`]),
-        `observed at revision ${f.observedAt}`,
-        f.validity,
-      ].join(", ")}`,
-    ]);
+/**
+ * Task 011-12 (011 C15, issue 23): with no clean verdict, a line per class of
+ * the selected files, each pending one with what holds it and each current
+ * or stale one with its verdict; none once every file is current.
+ */
+export function namedClassLines(wait: EndedNamed, command = "squeal"): string[] {
+  if (wait.outcome === "unmatched") return [];
+  if (wait.outcome === "settled" && verdictCode(wait.verdict) !== 3) return [];
+  return classLines(wait.files, command);
 }
 
 /**

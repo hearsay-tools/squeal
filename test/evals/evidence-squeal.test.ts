@@ -138,6 +138,55 @@ const named = (s: StatusSnapshot) =>
         unlisted: false,
         failures: { tests: s.knownFailures.length, testFiles: 0 },
       },
+      files: [{ testFile: { project: "", path: "test/money.test.ts" }, state: "current" }],
+      sync: { state: "synced", revision: 3 },
+      result: s,
+    } as unknown as EndedNamed,
+    2_000 as never,
+  );
+/**
+ * Row 011-12 (011 C15): a named wait that timed out lists the selected files by class before
+ * its verdict, each pending one with what holds it and each current one with its verdict.
+ */
+const timedOut = (s: StatusSnapshot) =>
+  namedText(
+    {
+      outcome: down(s) ? "no-daemon" : "timeout",
+      waitedMs: 1_000,
+      selection: {
+        files: ["a", "b", "c", "d"].map((n) => ({ project: "", path: `test/${n}.test.ts` })),
+        unmatched: [],
+      },
+      verdict: {
+        revision: 3,
+        testFiles: 4,
+        byClass: { current: 1, pending: 2, stale: 0, unknown: 1 },
+        unlisted: false,
+        failures: { tests: s.knownFailures.length, testFiles: 0 },
+      },
+      files: [
+        { testFile: { project: "", path: "test/a.test.ts" }, state: "current", verdict: "pass" },
+        {
+          testFile: { project: "", path: "test/b.test.ts" },
+          state: "pending",
+          pending: { kind: "running", lane: "vitest", since: 1_000 },
+        },
+        {
+          testFile: { project: "", path: "test/c.test.ts" },
+          state: "pending",
+          pending: { kind: "queued", lane: "vitest", behind: 1_000 },
+        },
+        {
+          testFile: { project: "", path: "test/d.test.ts" },
+          state: "unknown",
+          unknown: {
+            testFile: { project: "", path: "test/d.test.ts" },
+            ran: false,
+            reason: "never run at this key, and nothing queued it",
+            samples: [],
+          },
+        },
+      ],
       sync: { state: "synced", revision: 3 },
       result: s,
     } as unknown as EndedNamed,
@@ -174,25 +223,29 @@ describe("squealEvidence", () => {
         });
 
   // Row 011-10 (issue 26): a wait prints its verdict last, after the snapshot; its text says of
-  // the worktree what the status it prints says.
+  // the worktree what the status it prints says, as text and in a hook's JSON (review wave-1.9
+  // S1). Row 011-12: so does a named wait that lists the selected files by class.
   for (const [name, s] of variants)
     for (const [form, format] of [
       ["status --wait", wait],
       ["status --wait <ms> <path>", named],
+      ["timed-out status --wait <ms> <path>", timedOut],
     ] as const)
-      it(`reads a ${name} ${form} as the status it prints`, () => {
-        const text = format(s);
-        expect(text.startsWith(status(s))).toBe(true);
-        expect(worktree(squealEvidence(text, "pull"))).toEqual(
-          worktree(squealEvidence(status(s), "pull")),
-        );
-      });
+      for (const [wrapped, wrap] of wrappings)
+        it(`reads a ${name} ${form} as the status it prints, ${wrapped}`, () => {
+          const text = format(s);
+          expect(text.startsWith(status(s))).toBe(true);
+          expect(worktree(squealEvidence(wrap(text), "pull"))).toEqual(
+            worktree(squealEvidence(wrap(status(s)), "pull")),
+          );
+        });
 
-  it("credits the selected file of a named wait whose verdict prints last", () => {
-    const e = squealEvidence(named({ ...settled, knownFailures: [failure] }), "pull");
-    expect(e).toMatchObject({ files: ["test/money.test.ts"], failing: ["test/money.test.ts"] });
-    expect(e?.verdict).toBe("fail");
-  });
+  for (const [wrapped, wrap] of wrappings)
+    it(`credits the selected file of a named wait whose verdict prints last, ${wrapped}`, () => {
+      const e = squealEvidence(wrap(named({ ...settled, knownFailures: [failure] })), "pull");
+      expect(e).toMatchObject({ files: ["test/money.test.ts"], failing: ["test/money.test.ts"] });
+      expect(e?.verdict).toBe("fail");
+    });
 
   it("is not current before the daemon listed the test files", () => {
     const e = squealEvidence(header({ ...settled, testFilesListed: false }), "push");

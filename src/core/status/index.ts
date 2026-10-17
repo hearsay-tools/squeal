@@ -29,6 +29,7 @@ export {
   type StatusStoreOptions,
   withStatusStore,
 } from "./open.js";
+export { claimantOf, openRuns, openRunsOf } from "./open-runs.js";
 export { WHY_LOG_LINE_LIMIT } from "./run-log.js";
 export {
   buildSnapshot,
@@ -38,7 +39,13 @@ export {
   type StatusBuilderOptions,
   type StatusOptions,
 } from "./snapshot.js";
-export { UNKNOWN_FILES_LISTED, unknownFileText } from "./unknown-files.js";
+export {
+  checksByFile,
+  UNKNOWN_FILES_LISTED,
+  type UnknownReasons,
+  unknownFileText,
+  unknownReasons,
+} from "./unknown-files.js";
 export {
   readWhy,
   WHY_CANDIDATE_LIMIT,

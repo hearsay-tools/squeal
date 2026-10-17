@@ -7,13 +7,32 @@ import type {
   RevisionNumber,
   StatusResult,
   Store,
+  TestFileKeyRecord,
   TestFileRef,
   Validity,
   WorktreeId,
 } from "../core/types/index.js";
 
 /** A test file as the verdict counts it: `current` only when every check it has is. */
-type FileClass = Exclude<Validity, "current"> | "current";
+export type FileClass = Exclude<Validity, "current"> | "current";
+
+/**
+ * `row`'s class from its checks `own` (`readVerdict`): `pending` while
+ * queued or running or any check is, else `unknown` while unkeyed, without
+ * checks or with an unknown check, else `stale` with a stale check, else
+ * `current`. A file the worktree does not list (`row` undefined) is `unknown`.
+ */
+export function fileClassOf(
+  row: TestFileKeyRecord | undefined,
+  own: readonly KnownState[],
+): FileClass {
+  const has = (validity: Validity) => own.some((s) => s.validity === validity);
+  const queued = row !== undefined && row.key !== null && row.pending !== null;
+  const unkeyed = row === undefined || row.key === null;
+  if (queued || has("pending")) return "pending";
+  if (unkeyed || own.length === 0 || has("unknown")) return "unknown";
+  return has("stale") ? "stale" : "current";
+}
 
 /**
  * What the store says of a set of test files at the worktree's current
@@ -31,10 +50,7 @@ export interface FileVerdict {
 
 /**
  * Reads the verdict on `files`, or on every test file the worktree lists when
- * `null`. A named file the worktree does not list counts as `unknown`. A
- * file is `pending` while queued or running or any check is, else `unknown`
- * while unkeyed, without checks or with an unknown check, else `stale` with
- * a stale check, else `current`.
+ * `null`, each file classed by `fileClassOf`.
  */
 export function readVerdict(
   store: Store,
@@ -54,20 +70,8 @@ export function readVerdict(
   const byClass: Record<FileClass, number> = { current: 0, pending: 0, stale: 0, unknown: 0 };
   const failures = { tests: 0, testFiles: 0 };
   for (const id of ids) {
-    const row = rows.get(id);
     const own = checks.get(id) ?? [];
-    const has = (validity: Validity) => own.some((s) => s.validity === validity);
-    const queued = row !== undefined && row.key !== null && row.pending !== null;
-    const unkeyed = row === undefined || row.key === null;
-    byClass[
-      queued || has("pending")
-        ? "pending"
-        : unkeyed || own.length === 0 || has("unknown")
-          ? "unknown"
-          : has("stale")
-            ? "stale"
-            : "current"
-    ]++;
+    byClass[fileClassOf(rows.get(id), own)]++;
     for (const state of own) {
       if (state.outcome === "fail") failures[state.check.kind === "test" ? "tests" : "testFiles"]++;
     }
