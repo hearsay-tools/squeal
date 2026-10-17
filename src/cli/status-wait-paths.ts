@@ -25,6 +25,7 @@ import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
 import type { DaemonSync, SyncState } from "./status-sync.js";
 import { namedLine, namedText, selectedLine } from "./status-wait-lines.js";
+import { ownPathFiles, type PromoteNamed, promoteNamed } from "./status-wait-promote.js";
 import { type FileVerdict, readVerdict, verdictCode } from "./verdict.js";
 import {
   type DaemonWatch,
@@ -172,16 +173,19 @@ export interface NamedWaitOptions {
   readonly sync: (root: AbsolutePath, pollMs: number) => DaemonSync;
   /** Default `WAIT_DOWN_MS`: how long a stale record's dead socket may stay so (task 004-66). */
   readonly downMs?: number;
+  /** Default `promoteNamed`; tests replace it (spec 011 C15). */
+  readonly promote?: PromoteNamed;
 }
 
 /**
  * Spec 005 D2: waits until every test file `paths` select has a result for
- * its current key at the current revision, or the deadline. No daemon
- * request and no priority. The selection is decided at a revision that holds
- * every edit made before the wait and whose test files the runner listed (the
- * daemon's `sync` pass, lessons defect 30), so a test file written just
- * before the wait is found; a daemon that cannot sync falls back to the
- * settle time. A deadline before that revision is a timeout, never the old
+ * its current key at the current revision, or the deadline. Once its
+ * selection is decided, it asks the daemon to promote the test files named
+ * by their own paths (spec 011 C15), nothing more. The selection is decided
+ * at a revision that holds every edit made before the wait and whose test
+ * files the runner listed (the daemon's `sync` pass, lessons defect 30), so
+ * a test file written just before the wait is found; a daemon that cannot
+ * sync falls back to the settle time. A deadline before that revision is a timeout, never the old
  * results' verdict (review wave-1, B1); a read ready at the deadline gives
  * its verdict. It is read again
  * at every poll, since an edit can change a closure. A store that cannot be
@@ -199,6 +203,7 @@ export async function waitForNamed(
   let sync: DaemonSync | undefined;
   let watch: DaemonWatch | undefined;
   let first = true;
+  let promoted = false;
   try {
     for (;;) {
       const final = elapsed() >= options.timeoutMs;
@@ -231,7 +236,18 @@ export async function waitForNamed(
                 : final
                   ? "timeout"
                   : null;
-        if (outcome === null) return null;
+        if (outcome === null) {
+          // Spec 011 C15: once, at the first read whose selection is decided, beside it.
+          if (ready && !promoted) {
+            promoted = true;
+            const own = ownPathFiles(
+              selection.files,
+              paths.map((p) => worktreePath(root, cwd, p)),
+            );
+            (options.promote ?? promoteNamed)(root, own, options.timeoutMs - elapsed());
+          }
+          return null;
+        }
         const result = buildSnapshot(store, root, options.now());
         const lapse = watch.lapse();
         return {
