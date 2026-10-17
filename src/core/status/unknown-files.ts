@@ -1,7 +1,7 @@
 import { testFileId } from "../keys/index.js";
 import { readUnknownFiles } from "../scheduler/unknown-files.js";
-import { testFileKeyOf } from "../state/index.js";
-import { plural } from "../text.js";
+import { SUMMARY_MAX_CHARS, testFileKeyOf } from "../state/index.js";
+import { cap, plural } from "../text.js";
 import type {
   KnownState,
   StatusSnapshot,
@@ -73,13 +73,14 @@ export function unknownFilesLines(s: StatusSnapshot): string[] {
 /**
  * "src/a.test.ts: ran, nothing recorded: 3 runs in a row read paths no
  * earlier run had read (paths: x, y)", or "…: no result: timed out
- * after 600 s". The project, when there is one, leads the path.
+ * after 600 s". The project, when there is one, leads the path. The reason
+ * is cut as a delivery cuts it; `status --json` keeps it whole (task 011-02).
  */
 export function unknownFileText(f: UnknownTestFile): string {
   const { project, path } = f.testFile;
   const name = project === "" ? path : `${project}: ${path}`;
   const what = f.ran ? "ran, nothing recorded" : "no result";
-  const why = f.reason ?? "no reason was kept";
+  const why = f.reason === null ? "no reason was kept" : cap(f.reason, SUMMARY_MAX_CHARS);
   const samples = f.samples.length === 0 ? "" : ` (paths: ${f.samples.join(", ")})`;
   return `${name}: ${what}: ${why}${samples}`;
 }

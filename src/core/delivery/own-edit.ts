@@ -16,12 +16,16 @@ import { changedAfter, registration } from "./registered.js";
  * beside it is another cause.
  */
 const MOVED_ONLY =
-  /^(?:[\w-]+: )?vitest adapter: (.+) changed on disk after this run loaded it; the run may have executed bytes no check key names \(task 001-146\)$/;
+  /^(?:[\w-]+: )?vitest adapter: the run may have executed bytes no check key names, since (?:(.+) changed on disk after this run loaded (?:it|them) \(task 001-146\)|\d+ files changed on disk after this run loaded them \(task 001-146\): .+; every path: (.+))$/;
 
-/** The paths the reason names, or `null` when it is not only the 001-146 line. */
+/**
+ * The paths the reason names, or `null` when it is not only the 001-146
+ * line. Past five it names them all after the sample (task 011-02).
+ */
 export function movedPaths(reason: string): readonly string[] | null {
   const match = MOVED_ONLY.exec(reason);
-  return match?.[1] === undefined ? null : match[1].split(", ");
+  const named = match?.[1] ?? match?.[2];
+  return named === undefined ? null : named.split(", ");
 }
 
 /**
