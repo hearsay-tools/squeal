@@ -3,7 +3,12 @@ import { requestDaemon } from "../../core/daemon/client.js";
 import { ensureDaemon } from "../../core/daemon/ensure.js";
 import { isNewerVersion, squealVersion } from "../../core/daemon/version.js";
 import { otherSessionVersions } from "../../core/delivery/consumer-version.js";
-import { daemonLiveness, spawnedAfterRest } from "../../core/delivery/liveness.js";
+import {
+  daemonLiveness,
+  spawnedAfterRest,
+  worktreeLiveness,
+} from "../../core/delivery/liveness.js";
+import { stopHolds } from "../../core/delivery/stopped.js";
 import type { DaemonRecord, EnsureDaemonResult, EpochMs } from "../../core/types/index.js";
 import type { HookContext, HookLocation } from "./context.js";
 import type { HookDeps } from "./hook.js";
@@ -29,20 +34,30 @@ const SETTLE_POLL_MS = 25;
 export const SUCCESSOR_LOCK_WAIT_MS = 120_000;
 
 /**
+ * What a hook's ensure did: `ensureDaemon`'s answer, or `stopped` when it
+ * started nothing because `squeal stop` stopped the daemon and neither an
+ * edit nor a start came since (task 011-08).
+ */
+export type HookEnsureResult = EnsureDaemonResult | "stopped";
+
+/**
  * `ensureDaemon` with the hook's CLI (review wave 3, B1) and the socket
- * budget. With `context`, a daemon older than the hook is first asked to step
- * down, and when it accepts, the hook spawns its successor from its own CLI;
- * a spawn after a rest starts the rest's start timeout (`spawnedAfterRest`).
+ * budget. With `context`, a held stopped mark starts nothing (`stopHolds`,
+ * task 011-08); a daemon older than the hook is first asked to step down,
+ * and when it accepts, the hook spawns its successor from its own CLI; a
+ * spawn after a rest starts the rest's start timeout (`spawnedAfterRest`).
  */
 export async function ensure(
   location: HookLocation,
   deps: HookDeps,
   context?: HookContext,
-): Promise<EnsureDaemonResult> {
-  const record =
-    context === undefined
-      ? undefined
-      : (context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null);
+): Promise<HookEnsureResult> {
+  const worktree = context?.store.worktrees.get(context.consumer.worktreeId);
+  const record = context === undefined ? undefined : (worktree?.daemon ?? null);
+  if (context !== undefined) {
+    const live = worktreeLiveness(worktree ?? null, (deps.now ?? Date.now)());
+    if (await stopHolds(context.store, worktree, live)) return "stopped";
+  }
   if (context !== undefined && (await stepDown(context, deps, record ?? null))) {
     return successor(location, deps);
   }
@@ -65,12 +80,12 @@ export async function ensure(
  * daemon lives; the socket only when it does not. `fresh` when the heartbeat
  * is; `unavailable` when no daemon validates and none was started: a daemon
  * that holds the lock and does not answer (SIGSTOPped, lessons defect 22), or
- * no CLI to spawn.
+ * no CLI to spawn; `stopped` while `squeal stop` holds (task 011-08).
  */
 export async function ensureIfStale(
   context: HookContext,
   deps: HookDeps,
-): Promise<EnsureDaemonResult | "fresh"> {
+): Promise<HookEnsureResult | "fresh"> {
   const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
   if (daemonLiveness(record, (deps.now ?? Date.now)()).state !== "alive") {
     return ensure(context, deps, context);
@@ -189,7 +204,7 @@ export async function ensureToRegister(
 
 /** `RegisterOptions.startingSince` of a registration after a hook's `ensure` at `at` returned `ensured`. */
 export function startingAfter(
-  ensured: EnsureDaemonResult | "fresh",
+  ensured: HookEnsureResult | "fresh",
   at: EpochMs,
 ): { readonly startingSince?: EpochMs } {
   return ensured === "spawned" ? { startingSince: at } : {};

@@ -4,13 +4,15 @@ import { formatStatus, readStatus } from "../core/status/index.js";
 import { worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
+import { clearStoppedMark } from "./stopped-mark.js";
 
 /** A spawned daemon binds its socket in about 100 ms; a loaded machine gets more. */
 const SPAWN_WAIT_MS = 10_000;
 
 /**
- * `squeal start [root]`: makes sure a daemon serves the worktree, then
- * prints its status. Exit code 0 once a daemon answers, 1 otherwise.
+ * `squeal start [root]`: clears the mark `squeal stop` left (task 011-08),
+ * makes sure a daemon serves the worktree, then prints its status. Exit code
+ * 0 once a daemon answers, 1 otherwise.
  */
 export async function startCommand(args: readonly string[], io: CliIo): Promise<number> {
   if (args.length > 1 || args[0]?.startsWith("-")) {
@@ -19,6 +21,8 @@ export async function startCommand(args: readonly string[], io: CliIo): Promise<
   }
   const root = worktreeRoot(args[0], io);
   if (root === null) return 1;
+  const cleared = clearStoppedMark(root);
+  if (cleared !== null) io.stderr(`squeal: could not clear the stop mark: ${cleared}\n`);
   // This CLI's own script is the daemon to spawn (review wave 3, B1); `SQUEAL_CLI` overrides it.
   const cli = process.argv[1];
   const result = await ensureDaemon(root, cli === undefined ? {} : { cli });
