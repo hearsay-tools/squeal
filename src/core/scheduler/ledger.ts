@@ -24,6 +24,7 @@ import {
   noteKeyedAt,
 } from "./files.js";
 import { takeHeldFiles } from "./held.js";
+import { publishPromotions } from "./promotions.js";
 import { type Priority, priorityOf, RunQueue } from "./queue.js";
 import { adoptsAtFirstCommit, movesWouldChange, recordMoves } from "./rekeyed-moves.js";
 import { recordRekeyed } from "./rekeyed-record.js";
@@ -123,6 +124,7 @@ export class Ledger {
     this.queue.setPromotionClock(
       context.now,
       (ref) => (this.file(ref)?.runningKey ?? null) !== null,
+      (live) => publishPromotions(context.store, context.worktreeId, live, context.now()),
     );
   }
 
