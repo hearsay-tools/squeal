@@ -28,7 +28,8 @@ import { until } from "../e2e/support.js";
  * the two writes into one batch with no change, so no revision names the
  * file. A test file added next imports the module: its stored result must be
  * what a fresh `vitest run` gives, and the reverting run's own result is not
- * stored as current.
+ * stored. The adapter withholds it, and the file is queued again (issue 10,
+ * task 011-06): the run once more, unarmed, passes on the bytes on disk.
  */
 
 const REPO = resolve(import.meta.dirname, "../..");
@@ -59,7 +60,11 @@ afterAll(async () => {
 const NEW = 'export const which = "new";\n';
 const OLD = 'export const which = "old";\n';
 
-/** Armed by `ARM`: reverts the module, loads it, restores it, and writes what it loaded to `LOADED`. */
+/**
+ * Armed by `ARM`: reverts the module, loads it, restores it, writes what it
+ * loaded to `LOADED` and fails on it, so its result is told from a later
+ * unarmed run's pass.
+ */
 const reverting = (attempt: number) =>
   [
     'import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";',
@@ -75,7 +80,7 @@ const reverting = (attempt: number) =>
     "  const { which } = await import(/* @vite-ignore */ target);",
     "  writeFileSync(file, restored);",
     `  writeFileSync(${JSON.stringify(LOADED)}, which);`,
-    '  expect(typeof which).toBe("string");',
+    '  expect(which).toBe("new");',
     "});",
     "",
   ].join("\n");
@@ -160,6 +165,15 @@ const stateOf = (root: string, testPath: string) =>
     testPath,
   ).map((r) => `${r.validity} ${r.outcome}`);
 
+/** Outcomes the checks of one test file moved to after revision `after`. */
+const movedTo = (root: string, testPath: string, after: number) =>
+  query<{ outcome: string }>(
+    root,
+    "SELECT t.to_outcome AS outcome FROM transitions t JOIN checks c ON c.id = t.check_id WHERE t.worktree_id = ? AND c.test_path = ? AND t.revision > ?",
+    testPath,
+    after,
+  ).map((r) => r.outcome);
+
 /** How many revisions after `after` named `path`. */
 const revisions = (root: string, path: string, after: number) =>
   query<{ changes: string }>(
@@ -181,10 +195,12 @@ describe("a sub-second revert-and-restore of an imported module (001-146)", () =
 
     // Plant a transform of the reverted bytes, until the watcher folds the revert and the restore.
     let planted = false;
+    let armedAt = -1;
     for (let attempt = 1; attempt <= ATTEMPTS && !planted; attempt++) {
       rmSync(LOADED, { force: true });
       writeFileSync(ARM, "");
       const at = status(root).revision;
+      armedAt = at;
       writeFileSync(join(root, "test/reverting.test.ts"), reverting(attempt));
       await settle(root, at);
       const loaded = existsSync(LOADED) ? readFileSync(LOADED, "utf8") : null;
@@ -201,8 +217,10 @@ describe("a sub-second revert-and-restore of an imported module (001-146)", () =
       "a run loaded the reverted bytes, one revision named the test file, none the module",
     ).toBe(true);
     expect(readFileSync(join(root, "src/mod.ts"), "utf8")).toBe(NEW);
-    // The reverting run executed bytes no key names: not stored as current.
-    expect(stateOf(root, "test/reverting.test.ts")).not.toContain("current pass");
+    // The reverting run executed bytes no key names: its fail never reached the store. Task
+    // 011-06 replaces "not current": the file ran once more and holds that run's pass.
+    expect(movedTo(root, "test/reverting.test.ts", armedAt)).not.toContain("fail");
+    expect(stateOf(root, "test/reverting.test.ts")).toEqual(["current pass", "current pass"]);
 
     const at = status(root).revision;
     writeFileSync(join(root, "test/reads.test.ts"), READS);
