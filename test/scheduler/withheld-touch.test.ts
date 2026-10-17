@@ -2,7 +2,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } fr
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { MAX_DISCARDS } from "../../src/core/scheduler/ledger.js";
-import type { TestCheckId } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY, type Policy, type TestCheckId } from "../../src/core/types/index.js";
 import { git, waitFor } from "../watcher/helpers.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
@@ -28,7 +28,7 @@ interface Rig {
   runs(): number;
 }
 
-async function rig(): Promise<Rig> {
+async function rig(policy: Partial<Policy> = {}): Promise<Rig> {
   const repo = createRepo();
   const started = join(repo.dir, "started");
   const released = join(repo.dir, "released");
@@ -57,6 +57,7 @@ async function rig(): Promise<Rig> {
   const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
     tierSize: 1,
     runnerPartBesideRun: true,
+    policy,
   });
   let heard: (() => void) | null = null;
   const invalidate = h.runner.invalidate;
@@ -135,5 +136,18 @@ describe("a run the runner withheld for a touch no key names (issue 10, task 011
     await r.h.batch("src/strings.ts");
     await r.h.scheduler.idle();
     expect(r.runs() - before).toBe(MAX_DISCARDS);
+  });
+
+  it("leaves a lookup-only startup unchanged: only the edited file runs, once more", async () => {
+    const r = await rig({ baseline: { ...DEFAULT_POLICY.baseline, onStart: "lookup-only" } });
+    expect(r.h.runner.runs).toEqual([]);
+    await r.edit();
+    await r.touchDuring(1);
+    await r.h.scheduler.idle();
+
+    expect(r.runs()).toBe(2);
+    expect(r.h.runner.runs.flatMap((run) => run.files.map((f) => f.path))).toEqual([HELD, HELD]);
+    expect(r.h.sink.stateOf(holds)).toMatchObject({ outcome: "pass", validity: "current" });
+    expect(r.h.header()).toMatchObject({ counts: { pending: 0 } });
   });
 });
