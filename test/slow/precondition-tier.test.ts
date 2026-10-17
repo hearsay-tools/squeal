@@ -5,10 +5,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import { POLICY_FILE } from "../../src/core/daemon/policy.js";
 import { readSlowActivity } from "../../src/core/slow/state.js";
 import { slowTierText, testFileOf } from "../../src/core/state/index.js";
-import { DEFAULT_POLICY, type SlowPrecondition } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY, type Policy, type SlowPrecondition } from "../../src/core/types/index.js";
 import {
   createRepo,
   type Harness,
+  type HarnessOptions,
   openHarness,
   openRepoStore,
   SLOW,
@@ -34,7 +35,11 @@ afterEach(() => {
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
-async function open(precondition: SlowPrecondition, setup?: (h: Harness) => void) {
+async function open(
+  precondition: SlowPrecondition,
+  setup?: (h: Harness) => void,
+  reloadPolicy?: HarnessOptions["reloadPolicy"],
+) {
   const repo = createRepo();
   const store = openRepoStore(repo.commonDir);
   const slotDir = mkdtempSync(join(tmpdir(), "squeal-004-65-slot-"));
@@ -46,6 +51,7 @@ async function open(precondition: SlowPrecondition, setup?: (h: Harness) => void
     tierSize: 4,
     policy: { slow },
     slow: { slotDir, recheckMs: 50, load: () => [0], cpus: () => 1 },
+    ...(reloadPolicy === undefined ? {} : { reloadPolicy }),
   });
   setup?.(h);
   // The harness registers no worktree row; the slow-tier line finds the policy through it.
@@ -155,5 +161,18 @@ describe("a slow tier's precondition (spec 004 D7, D8 as amended 2026-10-17)", S
     expect(slowRuns(h)).toEqual([]);
     expect(h.store.checkpoints.get(checkpoint.id)?.end).toBe("abandoned");
     expect(readSlowActivity(h.store, h.worktreeId)).toMatchObject({ reason: MISSING });
+  });
+
+  it("checks again at the revision whose policy changes the precondition", async () => {
+    let policy: Policy | null = null;
+    const h = await open({ exists: ["dist/index.js"] }, undefined, () => policy);
+    expect(slowRuns(h)).toEqual([]);
+    // A path the old globs do not select: only the changed declaration makes the files eligible.
+    const precondition = { exists: ["src/strings.ts"] };
+    const slow = { ...DEFAULT_POLICY.slow, include: SLOW_FILES, maxParallel: 1, precondition };
+    policy = { ...DEFAULT_POLICY, slow };
+    h.write("squeal.config.json", JSON.stringify({ slow }));
+    await h.batch("squeal.config.json");
+    await waitFor(() => slowRuns(h).length === 2, 60_000);
   });
 });
