@@ -4025,6 +4025,18 @@ function read2(path) {
   }
 }
 
+// src/core/status/identity.ts
+function statusIdentity(root, latest, commit, daemon) {
+  const live = readGitHead(root);
+  if (latest === null) return { head: live, dirty: null, dirtyObservedAt: null };
+  const recorded = commit?.head ?? latest.head;
+  if (live !== null && live !== recorded) {
+    return { head: live, dirty: null, dirtyObservedAt: null, headMovedSince: latest.number };
+  }
+  if (daemon.state !== "alive") return { head: recorded, dirty: null, dirtyObservedAt: null };
+  return { head: recorded, dirty: commit?.dirty ?? latest.dirty, dirtyObservedAt: latest.number };
+}
+
 // src/core/status/open.ts
 var STATUS_BUSY_TIMEOUT_MS = 1e3;
 function unavailable(reason, detail) {
@@ -4126,16 +4138,13 @@ function snapshot(store, worktreeId, root, now) {
     worktree,
     liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null)
   );
-  const observed = daemon.state === "alive" ? revision : null;
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
     worktreeId,
     worktreeRoot: worktree?.root ?? root,
     ...header,
-    head: revision === null ? readGitHead(root) : revision.head,
-    dirty: observed?.dirty ?? null,
-    dirtyObservedAt: observed?.number ?? null,
+    ...statusIdentity(root, revision, header.commit, daemon),
     daemon,
     // Task 001-404: each failure says how old its run is and the load it ran under.
     knownFailures: withRecorded(store, worktreeId, states, header.revision),
@@ -4530,10 +4539,11 @@ function forget(store, consumer) {
 }
 
 // src/core/delivery/own-edit.ts
-var MOVED_ONLY = /^(?:[\w-]+: )?vitest adapter: (.+) changed on disk after this run loaded it; the run may have executed bytes no check key names \(task 001-146\)$/;
+var MOVED_ONLY = /^(?:[\w-]+: )?vitest adapter: the run may have executed bytes no check key names, since (?:(.+) changed on disk after this run loaded (?:it|them) \(task 001-146\)|\d+ files changed on disk after this run loaded them \(task 001-146\): .+; every path: (.+))$/;
 function movedPaths(reason) {
   const match = MOVED_ONLY.exec(reason);
-  return match?.[1] === void 0 ? null : match[1].split(", ");
+  const named2 = match?.[1] ?? match?.[2];
+  return named2 === void 0 ? null : named2.split(", ");
 }
 function ownEditUnknown(store, consumer, revision) {
   let changed;
@@ -4982,7 +4992,7 @@ function retiredBlocks(entries, delta) {
   if (collapsed !== null) return [collapsedBlock(collapsed, "resolved", checks)];
   return entries.map(retiredBlock);
 }
-function unknownBlocks(entries) {
+function unknownBlocks(entries, command) {
   const byReason = /* @__PURE__ */ new Map();
   for (const e of entries) {
     const reason = e.summary ?? "no trusted result";
@@ -4990,13 +5000,19 @@ function unknownBlocks(entries) {
   }
   return [...byReason].map(([reason, group]) => {
     const files2 = [...new Set(group.map((e) => e.check.testPath))];
+    const first = group[0]?.check;
     const from = (outcome) => group.filter((e) => e.from === outcome).map((e) => e.check);
     const counts = ["pass", "fail"].filter((o) => from(o).length > 0).map((o) => `${upper2(o)} -> UNKNOWN (${partsText(from(o))})`);
     const listed2 = files2.slice(0, 5).join(", ");
     const more = files2.length > 5 ? ` and ${plural(files2.length - 5, "more file")}` : "";
     return block(
       `UNKNOWN  ${checksText(group.map((e) => e.check))} in ${plural(files2.length, "test file")}`,
-      [counts.join(", "), cap(reason, SUMMARY_MAX_CHARS), `${listed2}${more}`],
+      [
+        counts.join(", "),
+        cap(reason, SUMMARY_MAX_CHARS),
+        `${listed2}${more}`,
+        first === void 0 ? null : `Full reason: ${command} why ${shellWord(checkName(first))}`
+      ],
       group.map((e) => ({ check: e.check, shown: "unknown" }))
     );
   });
@@ -5029,7 +5045,10 @@ function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS, f
   const title = entries.length === 0 ? delta.liveness === void 0 ? `SQUEAL \xB7 revision ${header.revision}` : livenessTitle(delta.liveness, header.revision) : delta.label === "baseline" ? `SQUEAL \xB7 Squeal's baseline run found ${checksText(checksOf(entries), "failing check", "that did not load")} at revision ${header.revision}` : `SQUEAL \xB7 ${plural(entries.length, "check")} changed (${partsText(checksOf(entries))}) at revision ${header.revision}`;
   const blocks = [
     ...changed.filter((e) => e.to === "fail").map((e) => entryBlock(e, header.revision)),
-    ...unknownBlocks(changed.filter((e) => e.to === "unknown")),
+    ...unknownBlocks(
+      changed.filter((e) => e.to === "unknown"),
+      command
+    ),
     ...recoveryBlocks(
       changed.filter((e) => e.to === "pass"),
       delta
@@ -5133,7 +5152,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.204";
+  if (true) return "0.1.205";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

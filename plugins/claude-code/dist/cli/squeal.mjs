@@ -2346,6 +2346,17 @@ function plural(count, word) {
 function cap(text2, max) {
   return text2.length <= max ? text2 : `${text2.slice(0, max - 3)}...`;
 }
+function listPaths(paths, max = PATHS_NAMED) {
+  const shown = paths.slice(0, max).join(", ");
+  return paths.length > max ? `${shown} and ${paths.length - max} more` : shown;
+}
+function pathsReason(lead, paths, verb, task) {
+  if (paths.length <= PATHS_NAMED) {
+    return `${lead}${paths.join(", ")} ${verb(paths.length === 1)} (${task})`;
+  }
+  const all = paths.join(", ");
+  return `${lead}${plural(paths.length, "file")} ${verb(false)} (${task}): ${listPaths(paths)}; every path: ${all}`;
+}
 function excludedProjectsText(entries3) {
   const quoted2 = (list2, join99) => {
     const all = list2.map((entry4) => JSON.stringify(entry4));
@@ -2360,9 +2371,11 @@ function excludedProjectsText(entries3) {
   ];
   return { text: parts2.join(" and "), plural: patterns.length > 0 || names3.length > 1 };
 }
+var PATHS_NAMED;
 var init_text = __esm({
   "src/core/text.ts"() {
     "use strict";
+    PATHS_NAMED = 5;
   }
 });
 
@@ -6498,6 +6511,90 @@ var init_died = __esm({
   }
 });
 
+// src/core/status/git-head.ts
+import { readFileSync as readFileSync6 } from "node:fs";
+import { join as join14 } from "node:path";
+function readGitHead(root) {
+  const gitDir = gitDirOf(root);
+  const commonDir = resolveCommonDir(root);
+  if (gitDir === null || commonDir === null) return null;
+  let value = read2(join14(gitDir, "HEAD"));
+  for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
+    if (SHA.test(value)) return value;
+    const ref2 = /^ref:\s*(\S+)$/.exec(value)?.[1];
+    if (ref2 === void 0) return null;
+    value = read2(join14(gitDir, ref2)) ?? read2(join14(commonDir, ref2)) ?? packed(commonDir, ref2);
+  }
+  return null;
+}
+function packed(commonDir, ref2) {
+  for (const line of (read2(join14(commonDir, "packed-refs")) ?? "").split("\n")) {
+    const [sha, name2] = line.split(" ");
+    if (name2 === ref2 && sha !== void 0 && SHA.test(sha)) return sha;
+  }
+  return null;
+}
+function read2(path) {
+  try {
+    return readFileSync6(path, "utf8").trim();
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+}
+var SHA, MAX_REF_DEPTH;
+var init_git_head = __esm({
+  "src/core/status/git-head.ts"() {
+    "use strict";
+    init_fs();
+    SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
+    MAX_REF_DEPTH = 5;
+  }
+});
+
+// src/core/status/identity.ts
+function statusIdentity(root, latest, commit, daemon) {
+  const live = readGitHead(root);
+  if (latest === null) return { head: live, dirty: null, dirtyObservedAt: null };
+  const recorded2 = commit?.head ?? latest.head;
+  if (live !== null && live !== recorded2) {
+    return { head: live, dirty: null, dirtyObservedAt: null, headMovedSince: latest.number };
+  }
+  if (daemon.state !== "alive") return { head: recorded2, dirty: null, dirtyObservedAt: null };
+  return { head: recorded2, dirty: commit?.dirty ?? latest.dirty, dirtyObservedAt: latest.number };
+}
+function statusRevisionText(s) {
+  const moved2 = s.headMovedSince !== void 0;
+  if (s.commit === void 0 && !moved2) return revisionText(s.revision, void 0);
+  const sinceHead = moved2 ? 0 : s.commit?.sinceHead ?? 0;
+  const text2 = revisionText(s.revision, { head: s.head, sinceHead, dirty: s.dirty === true });
+  return s.dirty === null && s.head !== null ? `${text2}, dirty not known` : text2;
+}
+function worktreeLine(s) {
+  return `Worktree: ${s.worktreeRoot} (HEAD ${shortCommit(s.head)}, ${dirtyText(s)})`;
+}
+function dirtyText(s) {
+  if (s.dirty !== null) {
+    return `${s.dirty ? "dirty" : "clean"} at revision ${s.dirtyObservedAt ?? s.revision}`;
+  }
+  const alive = s.daemon.state === "alive";
+  if (s.headMovedSince !== void 0) {
+    const reason2 = alive ? " until the next pass" : ": no daemon is validating";
+    return `moved since revision ${s.headMovedSince}; dirty state not known${reason2}`;
+  }
+  return alive ? "dirty state not known: no revision recorded yet" : "dirty state not known: no daemon is validating";
+}
+function shortCommit(commit) {
+  return commit === null ? "no commit" : commit.slice(0, 7);
+}
+var init_identity = __esm({
+  "src/core/status/identity.ts"() {
+    "use strict";
+    init_state3();
+    init_git_head();
+  }
+});
+
 // src/core/scheduler/unknown-files.ts
 function unknownFilesMetaKey(worktreeId) {
   return worktreeMetaKey("unknownFiles", worktreeId);
@@ -6586,7 +6683,7 @@ function unknownFileText(f) {
   const { project, path } = f.testFile;
   const name2 = project === "" ? path : `${project}: ${path}`;
   const what = f.ran ? "ran, nothing recorded" : "no result";
-  const why2 = f.reason ?? "no reason was kept";
+  const why2 = f.reason === null ? "no reason was kept" : cap(f.reason, SUMMARY_MAX_CHARS);
   const samples = f.samples.length === 0 ? "" : ` (paths: ${f.samples.join(", ")})`;
   return `${name2}: ${what}: ${why2}${samples}`;
 }
@@ -6686,8 +6783,8 @@ __export(runner_exports, {
   createRecoveringRunner: () => createRecoveringRunner,
   vitestDetected: () => vitestDetected
 });
-import { readdirSync as readdirSync3, readFileSync as readFileSync7 } from "node:fs";
-import { join as join15 } from "node:path";
+import { readdirSync as readdirSync3, readFileSync as readFileSync8 } from "node:fs";
+import { join as join16 } from "node:path";
 import { stripVTControlCharacters as stripVTControlCharacters3 } from "node:util";
 function createRecoveringRunner(options) {
   let inner = null;
@@ -6787,7 +6884,7 @@ function vitestDetected(root) {
   if (names3.some((name2) => VITEST_CONFIG.test(name2))) return true;
   let manifest;
   try {
-    manifest = JSON.parse(readFileSync7(join15(root, "package.json"), "utf8"));
+    manifest = JSON.parse(readFileSync8(join16(root, "package.json"), "utf8"));
   } catch {
     return false;
   }
@@ -6803,47 +6900,6 @@ var init_runner2 = __esm({
     "use strict";
     init_fs();
     VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
-  }
-});
-
-// src/core/status/git-head.ts
-import { readFileSync as readFileSync8 } from "node:fs";
-import { join as join16 } from "node:path";
-function readGitHead(root) {
-  const gitDir = gitDirOf(root);
-  const commonDir = resolveCommonDir(root);
-  if (gitDir === null || commonDir === null) return null;
-  let value = read3(join16(gitDir, "HEAD"));
-  for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
-    if (SHA.test(value)) return value;
-    const ref2 = /^ref:\s*(\S+)$/.exec(value)?.[1];
-    if (ref2 === void 0) return null;
-    value = read3(join16(gitDir, ref2)) ?? read3(join16(commonDir, ref2)) ?? packed(commonDir, ref2);
-  }
-  return null;
-}
-function packed(commonDir, ref2) {
-  for (const line of (read3(join16(commonDir, "packed-refs")) ?? "").split("\n")) {
-    const [sha, name2] = line.split(" ");
-    if (name2 === ref2 && sha !== void 0 && SHA.test(sha)) return sha;
-  }
-  return null;
-}
-function read3(path) {
-  try {
-    return readFileSync8(path, "utf8").trim();
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
-}
-var SHA, MAX_REF_DEPTH;
-var init_git_head = __esm({
-  "src/core/status/git-head.ts"() {
-    "use strict";
-    init_fs();
-    SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
-    MAX_REF_DEPTH = 5;
   }
 });
 
@@ -6873,16 +6929,13 @@ function snapshot(store, worktreeId, root, now) {
     worktree,
     liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null)
   );
-  const observed = daemon.state === "alive" ? revision : null;
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
     worktreeId,
     worktreeRoot: worktree?.root ?? root,
     ...header,
-    head: revision === null ? readGitHead(root) : revision.head,
-    dirty: observed?.dirty ?? null,
-    dirtyObservedAt: observed?.number ?? null,
+    ...statusIdentity(root, revision, header.commit, daemon),
     daemon,
     // Task 001-404: each failure says how old its run is and the load it ran under.
     knownFailures: withRecorded(store, worktreeId, states, header.revision),
@@ -7009,7 +7062,7 @@ var init_snapshot = __esm({
     init_store3();
     init_types();
     init_died();
-    init_git_head();
+    init_identity();
     init_open2();
     init_unknown_files2();
     HEARTBEAT_GRACE_INTERVALS = 2;
@@ -8122,10 +8175,6 @@ var init_failures = __esm({
 });
 
 // src/core/scheduler/notes.ts
-function listPaths(paths, max = 5) {
-  const shown = paths.slice(0, max).join(", ");
-  return paths.length > max ? `${shown} and ${paths.length - max} more` : shown;
-}
 function unmatchedInputNotes(unmatched, testFiles) {
   return [
     ...(testFiles === 0 ? [] : unmatched.testGlobs).map(
@@ -8142,6 +8191,7 @@ var init_notes2 = __esm({
     "use strict";
     init_policy2();
     init_notes();
+    init_text();
   }
 });
 
@@ -8461,8 +8511,13 @@ function touchedUnchanged(diff, cache2) {
 }
 function withheldForTouch(report2, touched) {
   if (touched.length === 0) return report2;
-  const reason2 = `squeal: ${touched.join(", ")} was written while this run was in flight and ended as it was; the run may have executed bytes no check key names (task 001-168)`;
-  const { fileDurations, observed, ...rest } = report2;
+  const reason2 = pathsReason(
+    "squeal: the run may have executed bytes no check key names, since ",
+    touched,
+    (one) => `${one ? "was" : "were"} written while this run was in flight and ended as ${one ? "it was" : "they were"}`,
+    "task 001-168"
+  );
+  const { fileDurations, observed, withheld, ...rest } = report2;
   return {
     ...rest,
     completedFiles: [],
@@ -8484,7 +8539,7 @@ var init_stability = __esm({
     "use strict";
     init_hash();
     init_revision();
-    init_notes2();
+    init_text();
     Withholds = class {
       #keys = /* @__PURE__ */ new Map();
       /** Records the withhold of `files`, each first or exhausted at its key. */
@@ -10452,16 +10507,14 @@ var init_ledger = __esm({
        * is re-queued". After `MAX_DISCARDS` in a row at a key that did not move the
        * file is `unknown` until its key changes: something rewrites its inputs
        * during every run. A discard whose key moved is an edit the agent made
-       * while the file ran; it is not counted (review S5).
+       * while the file ran; it is not counted (review S5). `reason` replaces the
+       * content discard's at the limit: a run the runner withheld gives its own
+       * (issue 10, task 011-06).
        */
-      discard(file, key2, forced = false, changed = []) {
+      discard(file, key2, forced = false, changed = [], reason2 = `inputs changed during ${MAX_DISCARDS} runs in a row`) {
         file.discards = file.key === key2 ? file.discards + 1 : 0;
         if (file.discards >= MAX_DISCARDS) {
-          this.markUnknown(
-            [{ file, key: key2, samples: changed }],
-            `inputs changed during ${MAX_DISCARDS} runs in a row`,
-            { ran: true }
-          );
+          this.markUnknown([{ file, key: key2, samples: changed }], reason2, { ran: true });
         } else if (file.key !== null && file.blocked === null) {
           this.enqueue(file, priorityOf(file, NOTHING_CHANGED), forced && file.key === key2);
         }
@@ -11127,6 +11180,7 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, requeue = fal
   const duringRun = tier.changes;
   endTier(context, ledger, tier);
   const completed = new Set(report2.completedFiles.map(testFileId));
+  const withheld = new Set((report2.withheld ?? []).map(testFileId));
   const cancelled = tier.cancel?.signal.aborted === true && report2.end === "completed";
   const files2 = tier.files.map((f) => f.file);
   const splitCap = timeoutCap(report2, tier.lane, files2, completed);
@@ -11155,6 +11209,10 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, requeue = fal
       ledger.setRunning(file, null);
       if (ledger.files.get(file.id) !== file) continue;
       const queued = typeof requeue === "boolean" ? requeue : requeue.has(file.id);
+      if (!queued && withheld.has(file.id)) {
+        ledger.discard(file, key2, forced, [], report2.failure ?? `run ${report2.end}`);
+        continue;
+      }
       if (queued || cancelled && !completed.has(file.id)) {
         if (file.key !== null && file.blocked === null) {
           ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), forced);
@@ -11273,11 +11331,12 @@ var init_tiers = __esm({
 
 // src/core/scheduler/backlog.ts
 function cancelsBacklog(context, ledger, revision, tier) {
-  if (ledger.queue.hasRecent((ref2) => laneOf(context, ref2) === tier.lane)) return true;
+  if (queuesEdit(context, ledger, tier)) return true;
   const inputs2 = new Set(tier.files.flatMap((f) => f.inputs));
-  return revision.changes.some(
-    (change2) => change2.oldHash === null || change2.newHash === null || inputs2.has(change2.path)
-  );
+  return revision?.changes.some((change2) => inputs2.has(change2.path)) ?? false;
+}
+function queuesEdit(context, ledger, tier) {
+  return ledger.queue.hasRecent((ref2) => laneOf(context, ref2) === tier.lane);
 }
 function backlogBudget(timeoutMs) {
   return timeoutMs === null ? BACKLOG_TIER_BUDGET_MS : Math.min(BACKLOG_TIER_BUDGET_MS, timeoutMs / 2);
@@ -12729,6 +12788,7 @@ var init_runner_work = __esm({
             );
             for (const ref2 of stale) this.#carried.set(testFileId(ref2), ref2);
             ledger.commit(refined === null ? {} : { refined });
+            this.host.applied();
           });
         } catch (error) {
           if (refined === null) {
@@ -13403,7 +13463,8 @@ var init_scheduler2 = __esm({
         started: () => this.#started(),
         closed: () => this.#closed,
         pump: () => this.#pump(),
-        backgroundError: (subject, error) => this.#backgroundError(subject, error)
+        backgroundError: (subject, error) => this.#backgroundError(subject, error),
+        applied: () => this.#cancelBacklogs(null)
       });
       #slow;
       #context = null;
@@ -13550,12 +13611,18 @@ var init_scheduler2 = __esm({
           return;
         }
         this.#slow.preempt();
-        for (const { tier } of this.#inFlight.values()) {
-          if (tier.cancel && cancelsBacklog(context, ledger, applied.revision, tier)) {
-            tier.cancel.abort();
-          }
-        }
+        this.#cancelBacklogs(applied.revision);
         this.#runnerWork.queueRefine(applied.revision, applied.content, touched);
+      }
+      /**
+       * Cancels each backlog tier in flight that `revision`, or with `null` the
+       * runner part just applied, gives way to (`cancelsBacklog`, task 001-364).
+       */
+      #cancelBacklogs(revision) {
+        const { context, ledger } = this.#started();
+        for (const { tier } of this.#inFlight.values()) {
+          if (tier.cancel && cancelsBacklog(context, ledger, revision, tier)) tier.cancel.abort();
+        }
       }
       /** The baseline, at start or at the install that ends a wait; the wait ends in the store with it. */
       async #baseline(context, ledger) {
@@ -18370,12 +18437,22 @@ function reaches(vitest, file, ref2, paths) {
   return false;
 }
 function withoutFiles(report2, dropped, stale, paths) {
-  const moved2 = stale.map((file) => paths.toRelative(file) ?? file).join(", ");
-  const reason2 = `vitest adapter: ${moved2} changed on disk after this run loaded it; the run may have executed bytes no check key names (task 001-146)`;
+  const moved2 = stale.map((file) => paths.toRelative(file) ?? file);
+  const reason2 = pathsReason(
+    `${UNKEYED}, since `,
+    moved2,
+    (one) => `changed on disk after this run loaded ${one ? "it" : "them"}`,
+    "task 001-146"
+  );
   return dropFiles(report2, dropped, reason2);
 }
 function withoutTouched(report2, testFiles, touched) {
-  const reason2 = `vitest adapter: ${touched.join(", ")} was written during this run and ended as it was; the run may have executed bytes no check key names (task 001-159)`;
+  const reason2 = pathsReason(
+    `${UNKEYED}, since `,
+    touched,
+    (one) => `${one ? "was" : "were"} written during this run and ended as ${one ? "it was" : "they were"}`,
+    "task 001-159"
+  );
   return dropFiles(report2, testFiles, reason2);
 }
 function dropFiles(report2, dropped, reason2) {
@@ -18383,9 +18460,11 @@ function dropFiles(report2, dropped, reason2) {
   const gone3 = new Set(dropped.map(refKey));
   const kept2 = (ref2) => !gone3.has(refKey(ref2));
   const { fileDurations, observed, reads } = report2;
+  const withheld = [...report2.withheld ?? [], ...report2.completedFiles.filter((f) => !kept2(f))];
   return {
     ...report2,
     completedFiles: report2.completedFiles.filter(kept2),
+    ...withheld.length > 0 ? { withheld } : {},
     results: report2.results.filter(
       (r) => kept2({ project: r.check.project, path: r.check.testPath })
     ),
@@ -18397,10 +18476,13 @@ ${reason2}`,
     ...reads ? { reads: reads.filter((o) => kept2(o.testFile)) } : {}
   };
 }
+var UNKEYED;
 var init_moved = __esm({
   "src/runners/vitest/moved.ts"() {
     "use strict";
+    init_text();
     init_results2();
+    UNKEYED = "vitest adapter: the run may have executed bytes no check key names";
   }
 });
 
@@ -26201,7 +26283,7 @@ function parentsByNesting(tests) {
   return parents;
 }
 var NAME_SEPARATOR;
-var init_identity = __esm({
+var init_identity2 = __esm({
   "src/runners/node-test/identity.ts"() {
     "use strict";
     NAME_SEPARATOR = " > ";
@@ -26367,7 +26449,7 @@ var init_enumerate = __esm({
   "src/runners/node-test/enumerate.ts"() {
     "use strict";
     init_acorn();
-    init_identity();
+    init_identity2();
     KINDS4 = /* @__PURE__ */ new Map([
       ["test", "test"],
       ["it", "test"],
@@ -37035,7 +37117,7 @@ function fileErrors(stream, reported, wrapper, paths) {
 var init_report = __esm({
   "src/runners/node-test/run/report.ts"() {
     "use strict";
-    init_identity();
+    init_identity2();
     init_errors2();
   }
 });
@@ -46276,6 +46358,7 @@ function merge2(parts2) {
   const read4 = reports.some((report2) => report2.reads !== void 0);
   const environment = reports.flatMap((report2) => report2.environmentObserved ?? []);
   const skipped2 = reports.flatMap((report2) => report2.skippedFiles ?? []);
+  const withheld = reports.flatMap((report2) => report2.withheld ?? []);
   const startup = reports.find((report2) => report2.startupFailure !== void 0)?.startupFailure;
   const started2 = [...new Set(reports.flatMap((report2) => report2.startedProjects ?? []))];
   return {
@@ -46290,6 +46373,7 @@ function merge2(parts2) {
     ...read4 ? { reads: reports.flatMap((report2) => report2.reads ?? []) } : {},
     ...environment.length > 0 ? { environmentObserved: environment } : {},
     ...skipped2.length > 0 ? { skippedFiles: skipped2 } : {},
+    ...withheld.length > 0 ? { withheld } : {},
     ...startup === void 0 ? {} : { startupFailure: startup },
     ...started2.length === 0 ? {} : { startedProjects: started2.sort(compare) }
   };
@@ -46388,7 +46472,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.204";
+  if (true) return "0.1.205";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -46470,11 +46554,13 @@ init_retry();
 init_state3();
 init_text();
 init_died();
+init_identity();
 init_unknown_files2();
+init_identity();
 function formatStatus(result, now, command = "squeal", options = {}) {
   if (!result.available) return formatUnavailable(result);
   const lines = [
-    `Revision: ${revisionText(result.revision, result.commit)}`,
+    `Revision: ${statusRevisionText(result)}`,
     `Known failures: ${failureCountText(result.knownFailures.map((f) => f.check))}`,
     ...result.knownFailures.flatMap((f) => [
       `  FAIL  ${formatCheck(f.check)}`,
@@ -46628,10 +46714,6 @@ function freshText(s) {
   const running = Math.min(files2, s.breakdown.testFilesWithoutChecksRunning ?? 0);
   return running === 0 ? "" : `; ${plural(files2, "test file")} without checks yet: ${running} running, ${files2 - running} queued`;
 }
-function worktreeLine(s) {
-  const dirty = s.dirty !== null ? `${s.dirty ? "dirty" : "clean"} at revision ${s.dirtyObservedAt ?? s.revision}` : s.daemon.state === "alive" ? "dirty state not known: no revision recorded yet" : "dirty state not known: no daemon is validating";
-  return `Worktree: ${s.worktreeRoot} (HEAD ${shortCommit(s.head)}, ${dirty})`;
-}
 function daemonLine(s, now) {
   if (s.daemon.state === "alive") {
     return `Daemon: running, last heartbeat ${age(now - s.daemon.lastHeartbeatAt)} ago`;
@@ -46639,9 +46721,6 @@ function daemonLine(s, now) {
   const down = s.daemon.since === null ? "Daemon: no daemon running" : `Daemon: no daemon running since ${new Date(s.daemon.since).toISOString()}`;
   if (s.daemon.died === void 0) return down;
   return `${down}; it ${deathText(s.daemon.died)}. ${DEATH_CAUSE}`;
-}
-function shortCommit(commit) {
-  return commit === null ? "no commit" : commit.slice(0, 7);
 }
 function age(ms2) {
   const seconds3 = Math.max(0, Math.round(ms2 / 1e3));
@@ -46694,12 +46773,12 @@ init_open2();
 
 // src/core/status/run-log.ts
 init_run_log();
-import { existsSync as existsSync5, readFileSync as readFileSync6 } from "node:fs";
-import { join as join14 } from "node:path";
+import { existsSync as existsSync5, readFileSync as readFileSync7 } from "node:fs";
+import { join as join15 } from "node:path";
 var WHY_LOG_LINE_LIMIT = 200;
 function runLogOf(result, logDir, check, runsDir, includeLogs) {
   const { runId, worktreeId } = result.provenance;
-  const dir2 = logDir ?? join14(runsDir, runId);
+  const dir2 = logDir ?? join15(runsDir, runId);
   const nodeTest = nodeTestLogs(dir2, check);
   if (nodeTest !== null) {
     const base = { runId, worktreeId, path: nodeTest.stdout, stderrPath: nodeTest.stderr };
@@ -46707,8 +46786,8 @@ function runLogOf(result, logDir, check, runsDir, includeLogs) {
       return { ...base, state: "pruned", console: null };
     }
     if (!includeLogs) return { ...base, state: "node-test", console: null };
-    const stdout = read2(nodeTest.stdout);
-    const stderr = read2(nodeTest.stderr);
+    const stdout = read3(nodeTest.stdout);
+    const stderr = read3(nodeTest.stderr);
     const label2 = testFileLabel(check.project, check.testPath);
     const lines = [
       ...linesOf(stdout).map((line) => `${consolePrefix("stdout", label2)}${line}`),
@@ -46716,9 +46795,9 @@ function runLogOf(result, logDir, check, runsDir, includeLogs) {
     ];
     return { ...base, state: "node-test", console: capped2(lines) };
   }
-  const path = join14(dir2, VITEST_LOG);
+  const path = join15(dir2, VITEST_LOG);
   const state = existsSync5(path) ? "present" : existsSync5(dir2) ? "not-vitest" : "pruned";
-  const text2 = includeLogs && state === "present" ? read2(path) : null;
+  const text2 = includeLogs && state === "present" ? read3(path) : null;
   if (includeLogs && state === "present" && text2 === null) {
     return { runId, worktreeId, path, state: "pruned", console: null };
   }
@@ -46726,8 +46805,8 @@ function runLogOf(result, logDir, check, runsDir, includeLogs) {
   return { runId, worktreeId, path, state, console: text2 === null ? none2 : consoleOf(text2, check) };
 }
 function nodeTestLogs(dir2, check) {
-  const project = join14(dir2, "node-test", encodeURIComponent(check.project));
-  const text2 = read2(join14(project, "run.json"));
+  const project = join15(dir2, "node-test", encodeURIComponent(check.project));
+  const text2 = read3(join15(project, "run.json"));
   if (text2 === null) return null;
   let files2;
   try {
@@ -46741,13 +46820,13 @@ function nodeTestLogs(dir2, check) {
   );
   if (index < 0) return null;
   return {
-    stdout: join14(project, `stdout-${index}.log`),
-    stderr: join14(project, `stderr-${index}.log`)
+    stdout: join15(project, `stdout-${index}.log`),
+    stderr: join15(project, `stderr-${index}.log`)
   };
 }
-function read2(path) {
+function read3(path) {
   try {
-    return readFileSync6(path, "utf8");
+    return readFileSync7(path, "utf8");
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -55189,6 +55268,9 @@ Usage:
                                 trust as thread/start config for a launcher; --trust
                                 then shows the hooks Codex has not trusted and, on
                                 your yes (--yes: without asking), has Codex trust them
+  squeal init [--block <file|none>] [--gate <id>=<reword|keep>]...
+              [--slow <glob>]... [--input <test glob>=<input glob|none>]...
+                                Set the harness up, then apply these setup choices
   squeal setup --plan [--json]  What setting this repository up would change: harnesses,
                                 runners, instruction files and their Squeal block, gate
                                 lines, slow groups and their inputs, the warm-up's size
@@ -55224,13 +55306,32 @@ Usage:
                                 also deletes squeal.config.json
   squeal update                 Update the plugin in every harness that has it, to one
                                 version, and the launcher install.sh put on the PATH
-  squeal daemon <root>          Run the daemon in the foreground (hooks start it)
+  squeal daemon <root> [--await-lock <ms>]
+                                Run the daemon in the foreground (hooks start it); a
+                                step-down's successor waits up to <ms> for the lock
   squeal --version              Print the version
   squeal --help                 Print this help
+  squeal <command> --help       Print that command's part of this help
 
 A check is named as in status output: "path > describe > test", or any
 unique part of that name. Status reads the store directly; no daemon needed.
 `;
+var COMMANDS = {
+  status,
+  why,
+  failures: failuresCommand,
+  init: init3,
+  setup: setupCommand,
+  warmup: warmupCommand,
+  daemon: daemonCommand,
+  start: startCommand,
+  run: runCommand,
+  retry: retryCommand,
+  stop: stopCommand,
+  remove: removeCommand,
+  update: updateCommand
+};
+var MORE_USAGE = { setup: SETUP_USAGE };
 function main(argv, io) {
   const [first, ...rest] = argv;
   if (first === "--version" || first === "-v") {
@@ -55242,23 +55343,32 @@ function main(argv, io) {
     io.stdout(HELP);
     return 0;
   }
-  if (first === "status") return status(rest, io);
-  if (first === "why") return why(rest, io);
-  if (first === "failures") return failuresCommand(rest, io);
-  if (first === "init") return init3(rest, io);
-  if (first === "setup") return setupCommand(rest, io);
-  if (first === "warmup") return warmupCommand(rest, io);
-  if (first === "daemon") return daemonCommand(rest, io);
-  if (first === "start") return startCommand(rest, io);
-  if (first === "run") return runCommand(rest, io);
-  if (first === "retry") return retryCommand(rest, io);
-  if (first === "stop") return stopCommand(rest, io);
-  if (first === "remove") return removeCommand(rest, io);
-  if (first === "update") return updateCommand(rest, io);
-  io.stderr(`squeal: unknown command "${first}"
+  const command = Object.hasOwn(COMMANDS, first) ? COMMANDS[first] : void 0;
+  if (command === void 0) {
+    io.stderr(`squeal: unknown command "${first}"
 
 ${HELP}`);
-  return 2;
+    return 2;
+  }
+  if (rest.includes("--help") || rest.includes("-h")) {
+    io.stdout(commandHelp(first));
+    return 0;
+  }
+  return command(rest, io);
+}
+function commandHelp(command) {
+  const lines = [];
+  let inEntry = false;
+  for (const line of HELP.split("\n")) {
+    if (line.startsWith("  squeal ")) inEntry = new RegExp(`^  squeal ${command}\\b`).test(line);
+    else if (!line.startsWith("   ")) inEntry = false;
+    if (inEntry) lines.push(line);
+  }
+  const more = MORE_USAGE[command];
+  return `Usage:
+${lines.join("\n")}
+${more === void 0 ? "" : `
+${more}`}`;
 }
 function status(args2, io) {
   const wait = takeWait(args2);
