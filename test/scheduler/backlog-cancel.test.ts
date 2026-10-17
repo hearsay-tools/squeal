@@ -13,9 +13,9 @@ import { type Harness, openHarness, openRepoStore } from "./helpers.js";
  * a backlog tier in flight. A revision cancels a backlog tier when it
  * changes an input of the tier or queues an edit's work in its lane; an add
  * or a delete cancels only once its runner part found that it reaches a
- * test file. What the cancelled tier completed keeps its results
- * (`backlog-tiers.test.ts`); what a touch withheld runs again
- * (`withheld-touch.test.ts`).
+ * test file. What the cancelled tier completed keeps its results, as for
+ * an edit's cancel (`backlog-tiers.test.ts`); what a touch withheld runs
+ * again (`withheld-touch.test.ts`).
  */
 
 /** A 30-file backlog tier in flight, `during` run once its first test ended. */
@@ -85,5 +85,14 @@ describe("a backlog tier and a revision no file of it reads (task 001-364)", () 
     // Every file of the suite ends with a result: the cancelled ones ran again.
     const ran = new Set(tiers.flatMap((t) => t.report.completedFiles.map((f) => f.path)));
     expect(ran.size).toBe(31);
+    // What the cancelled tier completed keeps its results: none of it runs again.
+    const kept = cancelled?.report.completedFiles.map((f) => f.path) ?? [];
+    expect(kept.length).toBeGreaterThan(0);
+    const later = new Set(tiers.slice(1).flatMap((t) => t.files.map((f) => f.path)));
+    expect(kept.filter((path) => later.has(path))).toEqual([]);
+    for (const testPath of kept) {
+      const check = { kind: "test", project: "", testPath, fullName: "holds" } as const;
+      expect(h.sink.stateOf(check)).toMatchObject({ outcome: "pass", validity: "current" });
+    }
   });
 });
