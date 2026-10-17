@@ -2,6 +2,7 @@ import {
   type DaemonErrorResponse,
   type DaemonRequest,
   PAYLOAD_SCHEMA_VERSION,
+  type TestFileRef,
 } from "../types/index.js";
 
 /** A request line is small; anything longer is not a Squeal client. */
@@ -55,9 +56,26 @@ export function parseRequest(line: string): DaemonRequest | string {
     case "sync-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "sync-status", requestId: request.requestId };
+    case "promote": {
+      const { testFiles, withinMs } = request;
+      if (!Array.isArray(testFiles) || !testFiles.every(isTestFileRef)) {
+        return '"testFiles" must be a list of { project, path } strings';
+      }
+      if (typeof withinMs !== "number" || !Number.isFinite(withinMs) || withinMs < 0) {
+        return '"withinMs" must be a number of milliseconds';
+      }
+      const refs = testFiles.map(({ project, path }) => ({ project, path }));
+      return { type: "promote", testFiles: refs, withinMs };
+    }
     default:
       return `unknown request type ${JSON.stringify(request.type)}`;
   }
+}
+
+function isTestFileRef(value: unknown): value is TestFileRef {
+  if (typeof value !== "object" || value === null) return false;
+  const { project, path } = value as Record<string, unknown>;
+  return typeof project === "string" && typeof path === "string";
 }
 
 export function errorResponse(error: string): DaemonErrorResponse {

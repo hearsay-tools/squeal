@@ -5,6 +5,7 @@ import type {
   RevisionNumber,
   WorktreeId,
 } from "./common.js";
+import type { TestFileRef } from "./keys.js";
 import { worktreeMetaKey } from "./store.js";
 import type { CheckpointLane, CheckpointRecord, DaemonRecord } from "./store-records.js";
 
@@ -102,6 +103,19 @@ export interface SyncStatusRequest {
   readonly requestId: string;
 }
 
+/**
+ * Spec 011 C15: a named wait (`status --wait <ms> <path>...`) promotes the
+ * test files its paths select by themselves, for `withinMs`, what is left
+ * of the wait, on the daemon's own clock. Answered at once; the scheduler
+ * reorders its queue when it takes the request. A daemon from before this
+ * request answers "unknown request type", and the wait reads only.
+ */
+export interface PromoteRequest {
+  readonly type: "promote";
+  readonly testFiles: readonly TestFileRef[];
+  readonly withinMs: number;
+}
+
 /** `squeal stop`: answered, then the daemon shuts down (D10 shutdown order). */
 export interface StopRequest {
   readonly type: "stop";
@@ -131,6 +145,7 @@ export type DaemonRequest =
   | RunSlowStatusRequest
   | SyncRequest
   | SyncStatusRequest
+  | PromoteRequest
   | StopRequest
   | StepDownRequest;
 
@@ -271,6 +286,12 @@ export interface SyncAnswer {
   readonly revision: RevisionNumber;
 }
 
+export interface PromoteResponse {
+  readonly schemaVersion: PayloadSchemaVersion;
+  readonly ok: true;
+  readonly type: "promote";
+}
+
 export interface StopResponse {
   readonly schemaVersion: PayloadSchemaVersion;
   readonly ok: true;
@@ -301,6 +322,7 @@ export type DaemonResponse =
   | RunAllResponse
   | RunSlowResponse
   | SyncResponse
+  | PromoteResponse
   | StopResponse
   | StepDownResponse
   | DaemonErrorResponse;

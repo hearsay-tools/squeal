@@ -6,6 +6,7 @@ import type {
   FullSuiteCheckpoint,
   FullSuiteRequest,
   SyncAnswer,
+  TestFileRef,
 } from "../types/index.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
 import { createHandlers } from "./handlers.js";
@@ -26,6 +27,11 @@ export interface DeskEvents {
   readonly onNudge?: () => void;
   /** `squeal retry` stored or withdrew a request (001-368); absent: it waits in the store. */
   readonly requestRetries?: () => Promise<void>;
+  /** A named wait's promotion (spec 011 C15); absent: the daemon answers it cannot promote. */
+  readonly requestPromotion?: (
+    testFiles: readonly TestFileRef[],
+    withinMs: number,
+  ) => Promise<void>;
   readonly requestFullSuite: (request: FullSuiteRequest) => Promise<FullSuiteCheckpoint>;
   readonly requestSlowSuite: () => Promise<SlowSuiteRequested>;
   /** A `status --wait` reconciliation pass (lessons, defect 30). */
@@ -139,11 +145,12 @@ export function guarded(events: DeskEvents): DeskEvents {
         return Promise.reject(error);
       }
     };
-  const { onNudge, requestRetries } = events;
+  const { onNudge, requestRetries, requestPromotion } = events;
   return {
     onActivity: safe(events.onActivity),
     ...(onNudge === undefined ? {} : { onNudge: safe(onNudge) }),
     ...(requestRetries === undefined ? {} : { requestRetries: asked(requestRetries) }),
+    ...(requestPromotion === undefined ? {} : { requestPromotion: asked(requestPromotion) }),
     requestFullSuite: asked(events.requestFullSuite),
     requestSlowSuite: asked(events.requestSlowSuite),
     requestSync: asked(events.requestSync),
@@ -181,6 +188,9 @@ async function inWorker(
           return;
         case "retry":
           events.requestRetries?.().catch(() => {});
+          return;
+        case "promote":
+          events.requestPromotion?.(message.testFiles, message.withinMs).catch(() => {});
           return;
         case "run-all":
           events.requestFullSuite(message.request).then(
@@ -277,6 +287,9 @@ async function inThread(identity: DeskIdentity, events: DeskEvents): Promise<Fro
       onActivity: events.onActivity,
       ...(events.onNudge === undefined ? {} : { onNudge: events.onNudge }),
       ...(events.requestRetries === undefined ? {} : { requestRetries: events.requestRetries }),
+      ...(events.requestPromotion === undefined
+        ? {}
+        : { requestPromotion: events.requestPromotion }),
       onStop: events.onStop,
       onStepDown: events.onStepDown,
     }),
