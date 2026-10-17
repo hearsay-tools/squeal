@@ -1,0 +1,151 @@
+load before: 10.17 17.12 14.70 2/1792 3831332
+{
+ "edited": "packages/web/src/routes/task-thread/markdown.tsx",
+ "specs": 77,
+ "specSideBytes": 6774162,
+ "evidence": [
+  [
+   "artifact-project-links.e2e.ts",
+   2
+  ]
+ ],
+ "tokensCold": {
+  "medianMs": 40.06,
+  "p90Ms": 52.71
+ },
+ "tokensWarm": {
+  "medianMs": 6.78,
+  "p90Ms": 7.15
+ },
+ "closureLookup": {
+  "medianMs": 0.01,
+  "p90Ms": 0.03
+ }
+}
+{
+ "edited": "packages/web/src/components/diff/diff.tsx",
+ "specs": 77,
+ "specSideBytes": 6774162,
+ "evidence": [
+  [
+   "commit-list.e2e.ts",
+   2
+  ],
+  [
+   "diff-scroll.e2e.ts",
+   5
+  ],
+  [
+   "git-sidebar.e2e.ts",
+   1
+  ],
+  [
+   "good-css.e2e.ts",
+   1
+  ],
+  [
+   "markdown-preview.e2e.ts",
+   4
+  ],
+  [
+   "quick-list.e2e.ts",
+   2
+  ],
+  [
+   "repo-git-diff.e2e.ts",
+   4
+  ],
+  [
+   "repo-git.e2e.ts",
+   4
+  ],
+  [
+   "review-gate.e2e.ts",
+   4
+  ],
+  [
+   "task-changes.e2e.ts",
+   2
+  ],
+  [
+   "variants-compare.e2e.ts",
+   4
+  ]
+ ],
+ "tokensCold": {
+  "medianMs": 65.9,
+  "p90Ms": 84.88
+ },
+ "tokensWarm": {
+  "medianMs": 32.91,
+  "p90Ms": 35.05
+ },
+ "closureLookup": {
+  "medianMs": 0.01,
+  "p90Ms": 0.03
+ }
+}
+{
+ "edited": "packages/web/src/styles/accessibility.css",
+ "specs": 77,
+ "specSideBytes": 6774162,
+ "evidence": [
+  [
+   "good-css.e2e.ts",
+   4
+  ],
+  [
+   "mobile-tab-bar.e2e.ts",
+   1
+  ],
+  [
+   "search-focus.e2e.ts",
+   2
+  ],
+  [
+   "settings-sidebar.e2e.ts",
+   1
+  ],
+  [
+   "task-changes.e2e.ts",
+   1
+  ],
+  [
+   "task-files.e2e.ts",
+   1
+  ],
+  [
+   "task-github-items.e2e.ts",
+   1
+  ],
+  [
+   "task-pr-collection.e2e.ts",
+   1
+  ],
+  [
+   "task-thread.e2e.ts",
+   2
+  ],
+  [
+   "touch-targets.e2e.ts",
+   4
+  ],
+  [
+   "workflows.e2e.ts",
+   3
+  ]
+ ],
+ "tokensCold": {
+  "medianMs": 69.66,
+  "p90Ms": 88.66
+ },
+ "tokensWarm": {
+  "medianMs": 35.01,
+  "p90Ms": 39.29
+ },
+ "closureLookup": {
+  "medianMs": 0.02,
+  "p90Ms": 0.05
+ }
+}
+nproc 24, node v24.21.0, cezarion 82f97570c, load after: 9.26 16.58 14.56 7/1858 3836203
