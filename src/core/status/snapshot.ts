@@ -26,7 +26,7 @@ import {
   type WorktreeId,
 } from "../types/index.js";
 import { withDeath } from "./died.js";
-import { readGitHead } from "./git-head.js";
+import { statusIdentity } from "./identity.js";
 import { type StatusStoreOptions, unavailable, withStatusStore } from "./open.js";
 import { unknownTestFilesOf } from "./unknown-files.js";
 
@@ -109,8 +109,6 @@ function snapshot(
     worktree,
     liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null),
   );
-  // Nothing observes the files without a daemon, so the last revision's flag may be old news (D7).
-  const observed = daemon.state === "alive" ? revision : null;
 
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -118,9 +116,7 @@ function snapshot(
     worktreeId,
     worktreeRoot: worktree?.root ?? root,
     ...header,
-    head: revision === null ? readGitHead(root) : revision.head,
-    dirty: observed?.dirty ?? null,
-    dirtyObservedAt: observed?.number ?? null,
+    ...statusIdentity(root, revision, header.commit, daemon),
     daemon,
     // Task 001-404: each failure says how old its run is and the load it ran under.
     knownFailures: withRecorded(store, worktreeId, states, header.revision),

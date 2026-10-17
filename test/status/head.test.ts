@@ -59,7 +59,7 @@ describe("HEAD and dirty without a recorded revision", () => {
     expect(snapshotOf(readStatus(repo.main, { now: () => NOW })).head).toBe(SHA);
   });
 
-  it("takes HEAD and dirty from the revision once one is recorded", () => {
+  it("names the git dir's HEAD, moved since the revision, when it is not the recorded one (task 011-05)", () => {
     const repo = fakeRepo();
     const store = seedStore(repo);
     write(join(repo.commonDir, "refs", "heads", "main"), `${OTHER_SHA}\n`);
@@ -79,6 +79,18 @@ describe("HEAD and dirty without a recorded revision", () => {
       },
     });
 
+    const status = snapshotOf(readStatus(repo.main, { now: () => NOW }));
+    expect(status).toMatchObject({
+      head: OTHER_SHA,
+      dirty: null,
+      dirtyObservedAt: null,
+      headMovedSince: 1,
+    });
+    expect(formatStatus(status, NOW)).toContain(
+      `\nWorktree: ${repo.main} (HEAD 0123456, moved since revision 1; dirty state not known until the next pass)\n`,
+    );
+
+    write(join(repo.commonDir, "refs", "heads", "main"), `${SHA}\n`);
     expect(snapshotOf(readStatus(repo.main, { now: () => NOW }))).toMatchObject({
       head: SHA,
       dirty: true,

@@ -446,21 +446,36 @@ export interface StatusSnapshot extends StatusHeader {
   readonly available: true;
   readonly worktreeId: WorktreeId;
   readonly worktreeRoot: AbsolutePath;
-  /** From the latest revision; read from the git dir while none is recorded. */
+  /**
+   * The worktree's `HEAD` now, the one the text names (task 011-05): the
+   * header's `commit.head`, which a reconciliation pass moves after a commit;
+   * the git dir's while that differs (`headMovedSince`) or no revision is
+   * recorded.
+   */
   readonly head: CommitSha;
   /**
-   * From the latest revision; `null` while none is recorded (dirtiness needs
-   * git, and status never spawns it) and while no daemon is validating, since
-   * nothing observes the files then. Spec 001 D7 as amended: "The dirty flag
-   * is the one observed at the last revision and is labelled with that
-   * revision; when no daemon is validating it is reported as not known."
+   * The header's dirty flag (`commit.dirty`, else the latest revision's);
+   * `null` while no revision is recorded (dirtiness needs git, and status
+   * never spawns it), while no daemon is validating, since nothing observes
+   * the files then, and while `HEAD` moved after the last observation. Spec
+   * 001 D7 as amended: "The dirty flag is the one observed at the last
+   * revision and is labelled with that revision; when no daemon is
+   * validating it is reported as not known." `commit.dirty` stays as the
+   * daemon recorded it, as deliveries print it.
    */
   readonly dirty: boolean | null;
   /**
-   * The revision `dirty` was observed at; `null` when `dirty` is. Optional
-   * for payloads from before the field.
+   * The revision `dirty` was observed at, a pass's `HEAD` move after it
+   * included; `null` when `dirty` is. Optional for payloads from before the
+   * field.
    */
   readonly dirtyObservedAt?: RevisionNumber | null;
+  /**
+   * Task 011-05: the latest revision, when the git dir's `HEAD` is not the
+   * one recorded (a commit or a checkout no pass has seen yet); `head` is the
+   * git dir's then and `dirty` not known. Absent otherwise.
+   */
+  readonly headMovedSince?: RevisionNumber;
   readonly daemon: DaemonLiveness;
   /** Failures first: the list is the reason status exists. */
   readonly knownFailures: readonly KnownFailure[];

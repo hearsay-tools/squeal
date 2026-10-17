@@ -295,7 +295,14 @@ describe("readStatus", () => {
       commonDir: repo.commonDir,
       isMain: true,
       registeredAt: 1,
-      daemon: null,
+      // "3 running": a daemon validates; without one the dirty flag is not known (task 011-05).
+      daemon: {
+        socketPath: "/run/squeal.sock",
+        startedAt: 1,
+        heartbeatAt: NOW - 1_000,
+        heartbeatIntervalMs: 5_000,
+        squealVersion: "0.0.0",
+      },
     });
     appendRevisions(store, repo.mainId, 187, { head: COMMIT, dirty: false });
     // Spec 005 D1: each test file has its file-level check, counted apart from its tests.
