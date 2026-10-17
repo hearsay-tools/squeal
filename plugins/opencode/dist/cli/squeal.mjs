@@ -6955,15 +6955,15 @@ function markStopped(store, worktreeId, at2, tree) {
 function clearStopped(store, worktreeId) {
   store.meta.delete(stoppedMetaKey(worktreeId));
 }
-function heldStop(store, worktree, live) {
-  if (worktree == null || live.state === "alive") return null;
-  const mark = readMark(store, worktree.id);
+function heldStop(store, worktreeId, worktree, live) {
+  if (live.state === "alive") return null;
+  const mark = readMark(store, worktreeId);
   if (mark === null) return null;
-  const heartbeat = worktree.daemon?.heartbeatAt ?? worktree.lastHeartbeatAt;
+  const heartbeat = worktree?.daemon?.heartbeatAt ?? worktree?.lastHeartbeatAt;
   return heartbeat !== void 0 && heartbeat > mark.at ? null : mark;
 }
-function asStopped(store, worktree, live) {
-  if (live.state !== "down" || heldStop(store, worktree, live) === null) return live;
+function asStopped(store, worktreeId, worktree, live) {
+  if (live.state !== "down" || heldStop(store, worktreeId, worktree, live) === null) return live;
   return { ...live, stopped: true };
 }
 async function treePrint(root, timeoutMs) {
@@ -7047,6 +7047,7 @@ function snapshot(store, worktreeId, root, now) {
     worktree,
     asStopped(
       store,
+      worktreeId,
       worktree,
       liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null)
     )
