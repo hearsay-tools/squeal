@@ -115,6 +115,7 @@ function snapshot(
     worktree,
     asStopped(
       store,
+      worktreeId,
       worktree,
       liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null),
     ),

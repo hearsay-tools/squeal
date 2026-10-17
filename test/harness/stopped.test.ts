@@ -100,6 +100,29 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
     expect(again.stdout).toBe("");
   });
 
+  it("holds in a linked worktree that has no row in the shared store yet (review wave-1.10 B1)", async () => {
+    const repo = gitRepo();
+    const r = squealRepo(repo);
+    r.apply(r.pass());
+    const linked = repo.addWorktree("linked");
+    expect(r.store.worktrees.get(linked.id)).toBeNull();
+    expect(
+      leaveStoppedMark(
+        linked.root as AbsolutePath,
+        Date.now() + 1,
+        await stopTree(linked.root as AbsolutePath),
+      ),
+    ).toBeNull();
+    const { calls, deps } = recording();
+
+    const start = await runHook("session-start", recorded("session-start", linked.root), deps);
+    const batch = await hook(r, "post-tool-batch", deps, linked.root);
+
+    expect(calls).toEqual([]);
+    expect(text(start)).toContain(STOPPED);
+    expect(batch.stdout === "" || text(batch).includes(STOPPED)).toBe(true);
+  });
+
   it("starts none at a registration either, whose header names the stop", async () => {
     const r = await stopped();
     const { calls, deps } = recording();

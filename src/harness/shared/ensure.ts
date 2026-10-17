@@ -56,7 +56,8 @@ export async function ensure(
   const record = context === undefined ? undefined : (worktree?.daemon ?? null);
   if (context !== undefined) {
     const live = worktreeLiveness(worktree ?? null, (deps.now ?? Date.now)());
-    if (await stopHolds(context.store, worktree, live)) return "stopped";
+    const at = { id: context.consumer.worktreeId, root: location.root };
+    if (await stopHolds(context.store, at, worktree, live)) return "stopped";
   }
   if (context !== undefined && (await stepDown(context, deps, record ?? null))) {
     return successor(location, deps);
