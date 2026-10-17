@@ -53971,9 +53971,7 @@ function runnerLaneOf(policy, project) {
 function queuedReason(store, worktreeId, ref2, key2, lane, runs, policy, now) {
   const claimant = key2 === null ? null : claimantOf(store, worktreeId, ref2, key2, now);
   if (claimant !== null) {
-    const bound = claimBoundMs(policy.runner.timeoutMs);
-    const waiter = now + bound;
-    const until = claimant.run === null || policy.runner.timeoutMs === null ? waiter : Math.min(waiter, claimant.run.startedAt + bound);
+    const until = now + claimBoundMs(policy.runner.timeoutMs);
     return { kind: "claim", worktree: claimant.worktree.root, until };
   }
   const tier = runs.find(
