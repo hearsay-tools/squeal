@@ -6621,7 +6621,9 @@ function withStatusStore(cwd, options, fn) {
   const retryMs = options.busyRetryMs ?? 0;
   const started2 = Date.now();
   for (; ; ) {
-    const read4 = readOnce(root, commonDir, busyTimeoutMs, fn);
+    const left = retryMs - (Date.now() - started2);
+    const attemptMs = retryMs > 0 ? Math.max(1, Math.min(busyTimeoutMs, left)) : busyTimeoutMs;
+    const read4 = readOnce(root, commonDir, attemptMs, fn);
     if (read4 !== BUSY) return read4;
     const waited = Date.now() - started2;
     if (waited >= retryMs) {
