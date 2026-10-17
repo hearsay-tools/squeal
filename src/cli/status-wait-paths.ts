@@ -24,7 +24,7 @@ import type {
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
 import type { DaemonSync, SyncState } from "./status-sync.js";
-import { namedFailures, namedLine } from "./status-wait-lines.js";
+import { namedFailures, namedLine, selectedLine } from "./status-wait-lines.js";
 import { type FileVerdict, readVerdict, verdictCode } from "./verdict.js";
 import {
   type DaemonWatch,
@@ -264,9 +264,10 @@ export function namedCode(wait: Extract<NamedWait, { result: StatusSnapshot }>):
 }
 
 /**
- * `squeal status [--json] --wait <ms> <path>...` (spec 005 D2). The first
- * line is the verdict on the selected files, then their failures in full,
- * then the snapshot; with `--json` the line goes to stderr and stdout is the
+ * `squeal status [--json] --wait <ms> <path>...` (spec 005 D2). The
+ * snapshot, then the line naming the selected files and their failures in
+ * full, then last the verdict on them (issue 26); with `--json` the naming
+ * and verdict lines go to stderr and stdout is the
  * snapshot plus a `wait` field (`NamedWaitPayload`). Exits as D1 for the
  * selected files only: 0, 1 with known failures among them, 3 without a
  * verdict, an unreadable store included.
@@ -286,7 +287,8 @@ export async function namedWaitCommand(
   }
   const code = namedCode(wait);
   const command = statusCommand(env);
-  const line = `${namedLine(wait, command)}\n`;
+  const selected = selectedLine(wait);
+  const verdict = `${namedLine(wait, command)}\n`;
   if (json) {
     const payload: NamedWaitPayload = {
       outcome: wait.outcome,
@@ -297,11 +299,11 @@ export async function namedWaitCommand(
       verdict: wait.verdict,
     };
     io.stdout(`${JSON.stringify({ ...wait.result, wait: payload }, null, 2)}\n`);
-    io.stderr(line);
+    io.stderr(`${selected === null ? "" : `${selected}\n`}${verdict}`);
   } else {
-    const failures = namedFailures(wait);
-    const block = failures.length === 0 ? "" : `${failures.join("\n")}\n`;
-    io.stdout(`${line}${block}\n${formatStatus(wait.result, options.now(), command)}`);
+    const lines = [...(selected === null ? [] : [selected]), ...namedFailures(wait)];
+    const block = lines.length === 0 ? "" : `${lines.join("\n")}\n`;
+    io.stdout(`${formatStatus(wait.result, options.now(), command)}\n${block}${verdict}`);
   }
   return code;
 }

@@ -50,6 +50,9 @@ async function run(argv: string[], cwd: string, env?: CliIo["env"]) {
   return { code, stdout, stderr, elapsed: performance.now() - started };
 }
 
+/** Issue 26: the wait's verdict is its output's last line, so a `tail` keeps it. */
+const last = (text: string) => text.trimEnd().split("\n").at(-1) ?? "";
+
 const LIVE: DaemonRecord = {
   socketPath: "/tmp/squeal-test.sock",
   startedAt: NOW - 60_000,
@@ -101,10 +104,11 @@ describe("squeal status --wait <ms>", WAITS, () => {
 
     expect(code).toBe(0);
     expect(stderr).toBe("");
-    const [first, blank, ...rest] = stdout.split("\n");
-    expect(first).toMatch(/^Returned on quiet: nothing pending at revision 3 after \d+\.\d s$/);
-    expect(blank).toBe("");
-    expect(rest.join("\n")).toContain("Revision: 3\nKnown failures: 0\n");
+    const [status, verdict] = stdout.split(/\n\n(?=Returned )/);
+    expect(status).toMatch(/^Revision: 3\nKnown failures: 0\n/);
+    expect(verdict).toMatch(
+      /^Returned on quiet: nothing pending at revision 3 after \d+\.\d s\. Worktree: known failures 0; checks 0 running, 0 queued; the daemon has not listed[^\n]*\n$/,
+    );
     expect(elapsed).toBeGreaterThanOrEqual(400);
     expect(elapsed).toBeLessThan(2_000);
   });
@@ -127,8 +131,8 @@ describe("squeal status --wait <ms>", WAITS, () => {
     const { code, stdout, elapsed } = await run(["status", "--wait", "5000"], repo.main);
 
     expect(code).toBe(0);
-    expect(stdout.split("\n")[0]).toMatch(
-      /^Returned on news: 1 transition since the wait started, at revision 3 after \d+\.\d s$/,
+    expect(last(stdout)).toMatch(
+      /^Returned on news: 1 transition since the wait started, at revision 3 after \d+\.\d s\. Worktree: known failures 1 \(1 test\); checks 1 running \(1 test\), 0 queued; the daemon has not listed this worktree's test files yet, so these counts are not complete$/,
     );
     expect(stdout).toContain("  FAIL  src/a.test.ts > adds\n");
     expect(elapsed).toBeLessThan(2_000);
@@ -140,8 +144,8 @@ describe("squeal status --wait <ms>", WAITS, () => {
     const { code, stdout, elapsed } = await run(["status", "--wait", "600"], repo.main);
 
     expect(code).toBe(0);
-    expect(stdout.split("\n")[0]).toMatch(
-      /^Returned on timeout after \d+\.\d s: 2 checks \(2 tests\) pending at revision 3$/,
+    expect(last(stdout)).toMatch(
+      /^Returned on timeout after \d+\.\d s: 2 checks \(2 tests\) pending at revision 3\. Worktree: known failures 0; checks 2 running \(2 tests\), 0 queued; the daemon has not listed[^\n]*$/,
     );
     expect(elapsed).toBeGreaterThanOrEqual(590);
     expect(elapsed).toBeLessThan(1_500);
@@ -152,7 +156,7 @@ describe("squeal status --wait <ms>", WAITS, () => {
 
     const { stdout, elapsed } = await run(["status", "--wait", "5000"], repo.main);
 
-    expect(stdout.split("\n")[0]).toMatch(/^Returned on quiet/);
+    expect(last(stdout)).toMatch(/^Returned on quiet/);
     // No daemon listens at the recorded socket: the fallback for one from before `sync`.
     expect(elapsed).toBeGreaterThanOrEqual(700);
   });
@@ -167,7 +171,7 @@ describe("squeal status --wait <ms>", WAITS, () => {
     expect(snapshot).toEqual(readStatus(repo.main, { now: () => NOW }));
     expect(wait).toEqual({ outcome: "timeout", waitedMs: expect.any(Number), transitions: 0 });
     expect(stderr).toMatch(
-      /^Returned on timeout after \d+\.\d s: 1 check \(1 test\) pending at revision 3\n$/,
+      /^Returned on timeout after \d+\.\d s: 1 check \(1 test\) pending at revision 3\. Worktree: known failures 0; checks 1 running \(1 test\), 0 queued; the daemon has not listed[^\n]*\n$/,
     );
   });
 
@@ -178,8 +182,8 @@ describe("squeal status --wait <ms>", WAITS, () => {
     const { code, stdout } = await run(["status", "--wait", "1000"], repo.main);
 
     expect(code).toBe(0);
-    expect(stdout.split("\n")[0]).toMatch(
-      /^Returned on timeout after \d+\.\d s: 0 checks and the runner part of revision 3 pending at revision 3$/,
+    expect(last(stdout)).toMatch(
+      /^Returned on timeout after \d+\.\d s: 0 checks and the runner part of revision 3 pending at revision 3\. Worktree: /,
     );
   });
 
@@ -190,7 +194,7 @@ describe("squeal status --wait <ms>", WAITS, () => {
 
     const { stdout, elapsed } = await run(["status", "--wait", "5000"], repo.main);
 
-    expect(stdout.split("\n")[0]).toMatch(/^Returned on quiet: nothing pending at revision 3/);
+    expect(last(stdout)).toMatch(/^Returned on quiet: nothing pending at revision 3/);
     expect(elapsed).toBeGreaterThanOrEqual(900);
     expect(elapsed).toBeLessThan(2_500);
   });
@@ -242,9 +246,11 @@ describe("squeal status --wait without a daemon (review wave 4.5, S2)", WAITS, (
 
     expect(code).toBe(0);
     expect(stderr).toBe("");
-    expect(stdout.split("\n")[0]).toBe(
+    expect(last(stdout)).toBe(
       "Returned without a daemon: no daemon has validated since 2026-10-06T11:59:00.000Z: " +
-        "its heartbeat stopped and nothing listens on its socket; results are as of revision 3",
+        "its heartbeat stopped and nothing listens on its socket; results are as of revision 3. " +
+        "Worktree: known failures 0; checks 0 running, 0 queued; the daemon has not listed this " +
+        "worktree's test files yet, so these counts are not complete",
     );
     expect(stdout).toContain("Daemon: no daemon running since 2026-10-06T11:59:00.000Z\n");
     // A daemon a hook just spawned gets the settle time to record its heartbeat.
@@ -258,8 +264,10 @@ describe("squeal status --wait without a daemon (review wave 4.5, S2)", WAITS, (
     const { code, stdout, elapsed } = await run(["status", "--wait", "5000"], repo.main);
 
     expect(code).toBe(0);
-    expect(stdout.split("\n")[0]).toBe(
-      "Returned without a daemon: no daemon is running; results are as of revision 3",
+    expect(last(stdout)).toBe(
+      "Returned without a daemon: no daemon is running; results are as of revision 3. " +
+        "Worktree: known failures 0; checks 1 running (1 test), 0 queued; the daemon has not listed " +
+        "this worktree's test files yet, so these counts are not complete",
     );
     expect(elapsed).toBeLessThan(2_000);
   });
@@ -284,7 +292,7 @@ describe("squeal status --wait without a daemon (review wave 4.5, S2)", WAITS, (
 
     const { stdout } = await run(["status", "--wait", "5000"], repo.main);
 
-    expect(stdout.split("\n")[0]).toMatch(/^Returned on quiet: nothing pending at revision 3/);
+    expect(last(stdout)).toMatch(/^Returned on quiet: nothing pending at revision 3/);
   });
 });
 
@@ -398,8 +406,8 @@ describe("squeal status --wait names a checkpoint still running (task 001-217)",
     // Review wave 13u, S2: outside a Codex shell whatever runs this test.
     const { stdout } = await run(["status", "--wait", "5000"], repo.main, {});
 
-    expect(stdout.split("\n")[0]).toMatch(
-      /^Returned on quiet: nothing pending at revision 3 after \d+\.\d s; a `run --all` checkpoint is still running \(40 of 200 test files done\), which this wait does not hold for: `squeal run --all --wait` waits for it$/,
+    expect(last(stdout)).toMatch(
+      /^Returned on quiet: nothing pending at revision 3 after \d+\.\d s; a `run --all` checkpoint is still running \(40 of 200 test files done\), which this wait does not hold for: `squeal run --all --wait` waits for it\. Worktree: /,
     );
   });
 
@@ -411,7 +419,7 @@ describe("squeal status --wait names a checkpoint still running (task 001-217)",
 
     const command = statusCommand(env);
     expect(command).not.toBe("squeal");
-    expect(stdout.split("\n")[0]).toContain(
+    expect(last(stdout)).toContain(
       `which this wait does not hold for: \`${command} run --all --wait\` waits for it`,
     );
   });

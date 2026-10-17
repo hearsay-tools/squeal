@@ -44,7 +44,7 @@ describe("status --wait holds for the edit's own test files (lessons, defect 32)
       edit: { since: 4, testFiles: 1, pending: 0, otherTransitions: 0 },
     });
     expect(waitLine(wait as EndedWait)).toMatch(
-      /^Returned on quiet: nothing the edits since revision 4 re-keyed is pending \(1 test file\) at revision 4 after \d+\.\d s; 2 checks \(2 tests\) pending in all$/,
+      /^Returned on quiet: nothing the edits since revision 4 re-keyed is pending \(1 test file\) at revision 4 after \d+\.\d s; 2 checks \(2 tests\) pending in all\. Worktree: known failures 0; checks 0 running, 2 queued \(2 tests\)$/,
     );
   });
 
@@ -59,7 +59,7 @@ describe("status --wait holds for the edit's own test files (lessons, defect 32)
     expect(wait.outcome).toBe("quiet");
     expect(endedBy).toBeGreaterThanOrEqual(finished.at);
     expect(wait).toMatchObject({ edit: { otherTransitions: 1 } });
-    expect(waitLine(wait as EndedWait)).toMatch(/; 1 transition of other checks$/);
+    expect(waitLine(wait as EndedWait)).toMatch(/; 1 transition of other checks\. Worktree: /);
   });
 
   it("ends on news of the edit's own checks", async () => {
@@ -105,7 +105,7 @@ describe("status --wait holds for the edit's own test files (lessons, defect 32)
     expect(wait.outcome).toBe("timeout");
     expect(wait).toMatchObject({ edit: { testFiles: 3, pending: 2 } });
     expect(waitLine(wait as EndedWait)).toMatch(
-      /^Returned on timeout after 0\.\d s: 2 of the 3 test files the edits since revision 4 re-keyed pending at revision 4; 2 checks \(2 tests\) pending in all$/,
+      /^Returned on timeout after 0\.\d s: 2 of the 3 test files the edits since revision 4 re-keyed pending at revision 4; 2 checks \(2 tests\) pending in all\. Worktree: /,
     );
   });
 

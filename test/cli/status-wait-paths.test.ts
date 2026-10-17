@@ -237,16 +237,17 @@ describe("waitForNamed", () => {
 });
 
 describe("squeal status --wait <ms> <path>...", () => {
-  it("gives the selected files' verdict first and exits 0", async () => {
+  it("gives the selected files' verdict last, after the snapshot, and exits 0 (issue 26)", async () => {
     const { repo } = repoWith([B], [A]);
     const result = await run(["status", "--wait", "3000", A], repo.main);
     expect(result.code).toBe(0);
-    const [first, second] = result.stdout.split("\n");
-    expect(first).toMatch(
-      /^Named test files at revision 4: no known failures; 1 test file, each with a current result, after \d+\.\d s$/,
+    expect(result.stdout).toMatch(/^Revision: 4\n/);
+    const [selected, verdict, end] = result.stdout.split("\n").slice(-3);
+    expect(selected).toBe(`Selected: ${A}`);
+    expect(verdict).toMatch(
+      /^Named test files at revision 4: no known failures; 1 test file, each with a current result, after \d+\.\d s\. Worktree: known failures 0; checks 0 running, 1 queued \(1 test\)$/,
     );
-    expect(second).toBe(`Selected: ${A}`);
-    expect(result.stdout).toContain("Revision: 4");
+    expect(end).toBe("");
   });
 
   it("lists a selected failure in full and exits 1; --json carries the verdict", async () => {
@@ -254,24 +255,31 @@ describe("squeal status --wait <ms> <path>...", () => {
     fail(store, repo.mainId, ADDS);
     const human = await run(["status", "--wait", "3000", A], repo.main);
     expect(human.code).toBe(1);
-    expect(human.stdout.split("\n")[0]).toContain("1 known failure: 1 test;");
-    expect(human.stdout.split("\n")[2]).toBe(`  FAIL  ${A} > adds`);
+    const lines = human.stdout.trimEnd().split("\n");
+    const tail = lines.slice(lines.lastIndexOf(`Selected: ${A}`));
+    expect(tail[1]).toBe(`  FAIL  ${A} > adds`);
+    expect(tail.at(-1)).toMatch(
+      /^Named test files at revision 4: 1 known failure: 1 test; [^\n]*\. Worktree: known failures 1 \(1 test\); /,
+    );
 
     const json = await run(["status", "--json", "--wait", "3000", A], repo.main);
     expect(json.code).toBe(1);
     const payload = JSON.parse(json.stdout);
     expect(payload.wait).toMatchObject({ outcome: "settled", code: 1, unmatched: [] });
     expect(payload.wait.testFiles).toEqual([ref(A)]);
-    expect(json.stderr).toMatch(/^Named test files at revision 4: 1 known failure/);
+    expect(json.stderr).toMatch(
+      new RegExp(`^Selected: ${A}\\nNamed test files at revision 4: 1 known failure[^\\n]*\\n$`),
+    );
   });
 
   it("exits 3 with D2's text for a path that selects nothing", async () => {
     const { repo } = repoWith([], [A]);
     const result = await run(["status", "--wait", "3000", "src/none.ts"], repo.main);
     expect(result.code).toBe(3);
-    expect(result.stdout.split("\n")[0]).toBe(
-      "No verdict: no test file's closure holds src/none.ts",
+    expect(result.stdout.trimEnd().split("\n").at(-1)).toMatch(
+      /^No verdict: no test file's closure holds src\/none\.ts\. Worktree: /,
     );
+    expect(result.stdout).not.toContain("Selected:");
   });
 
   it("refuses paths without --wait", async () => {

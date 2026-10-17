@@ -421,7 +421,7 @@ export function slowWaitCode(wait: Extract<StatusWait, { result: StatusSnapshot 
 /**
  * `squeal status [--json] --wait <ms>`. Exit code 0 on quiet, news, no daemon
  * or timeout, but `slowWaitCode`'s with `holdSlow`; 1 when status is unavailable. The line saying why the wait
- * ended comes first in the human rendering and goes to stderr with `--json`,
+ * ended comes last in the human rendering, after the snapshot (issue 26), and goes to stderr with `--json`,
  * where stdout is the snapshot payload plus a `wait` field
  * (`StatusWaitPayload`) with the same outcome. `holdSlow` is
  * `run --slow --wait`'s (`StatusWaitOptions`). With `paths`, the wait is
@@ -469,7 +469,7 @@ export async function statusWaitCommand(
     io.stdout(`${JSON.stringify({ ...result, wait: payload }, null, 2)}\n`);
     io.stderr(line);
   } else {
-    io.stdout(`${line}\n${formatStatus(result, now(), statusCommand(env))}`);
+    io.stdout(`${formatStatus(result, now(), statusCommand(env))}\n${line}`);
   }
   return holdSlow ? slowWaitCode(wait) : 0;
 }
