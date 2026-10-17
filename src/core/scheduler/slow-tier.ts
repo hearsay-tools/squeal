@@ -152,7 +152,17 @@ export class SlowTier {
    */
   request(): void {
     this.#requested = true;
+    this.recheck();
     this.preempt();
+  }
+
+  /**
+   * Under the lock, `run --slow` or `run --all`: the files a precondition
+   * skipped are queued again, so it is checked again (D8 as amended
+   * 2026-10-17, `SlowSkips.recheck`).
+   */
+  recheck(): void {
+    this.#skips.recheck();
   }
 
   /**
@@ -197,7 +207,7 @@ export class SlowTier {
     if (preemptions !== this.#preemptions) return "again";
     // D7, D8 as amended 2026-10-17: an unmet precondition skips the tier before the guard waits.
     const gate = await this.#skips.gate(refs, this.#closing.signal);
-    if (gate !== "run") return gate === "skipped" ? "again" : null;
+    if (gate !== "run") return gate === "closed" ? null : "again";
     if (preemptions !== this.#preemptions) return "again";
     const guard = this.#requested ? this.#skipGuard(context) : await this.#waitForCapacity(context);
     if (guard === "preempted" || preemptions !== this.#preemptions) return "again";
@@ -270,7 +280,7 @@ export class SlowTier {
     if (queued.length === 0) {
       this.#requested = false;
       this.#budgetMs = null;
-      this.#publish(this.#skips.activity());
+      this.#publish(null);
       return [];
     }
     if (this.#fastFirst()) {
@@ -514,7 +524,7 @@ export class SlowTier {
   ended(): void {
     const { context, ledger } = this.host.started();
     const queued = ledger.orderedSlow();
-    if (queued.length === 0) this.#publish(this.#skips.activity());
+    if (queued.length === 0) this.#publish(null);
     else if (this.#fastFirst()) this.#publish({ kind: "waiting", for: "fast" });
     else if (queued.some(this.#trigger(context, ledger))) this.#publish(null);
     else this.#publish({ kind: "waiting", for: "idle" });

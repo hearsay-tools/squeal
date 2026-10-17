@@ -10,6 +10,7 @@ import type {
   WorktreeId,
 } from "./common.js";
 import type { CheckKey, ClosureMethod, TestFileRef } from "./keys.js";
+import type { SlowPrecondition } from "./policy.js";
 import type { DaemonNote } from "./scheduler.js";
 import type {
   DiagnosticFingerprint,
@@ -108,13 +109,22 @@ export type SlowTierActivity =
       /** The longest last known run time of its files, before this run; `null` when none ran. */
       readonly lastDurationMs: number | null;
     }
-  | { readonly kind: "waiting"; readonly for: SlowTierWait }
-  /**
-   * Spec 004 D8 as amended 2026-10-17 (task 004-65): the tier's precondition
-   * was unmet when it was about to take the slot; its files are not run at
-   * this revision, for this one reason.
-   */
-  | { readonly kind: "skipped"; readonly reason: string; readonly since: EpochMs };
+  | { readonly kind: "waiting"; readonly for: SlowTierWait };
+
+/**
+ * Spec 004 D8 as amended 2026-10-17 (task 004-65, review wave-8.1 B1): the
+ * slow files one unmet precondition skipped, as the daemon keeps them in the
+ * store. Each is not run at this revision, whatever result its key has
+ * stored, until it runs or the precondition is met at a later checkpoint.
+ */
+export interface SlowSkipRecord {
+  readonly precondition: SlowPrecondition;
+  /** The key that declared it: `slow.precondition`, or `nodeTest "<name>" precondition`. */
+  readonly source: string;
+  readonly reason: string;
+  readonly since: EpochMs;
+  readonly testFiles: readonly TestFileRef[];
+}
 
 /**
  * Spec 004 D8: the slow-tier line of headers and status, for a policy that
@@ -160,6 +170,12 @@ export interface SlowTierState {
   readonly sourcesChangedSince: boolean;
   /** What the daemon last published; `null` when it published nothing. */
   readonly activity: SlowTierActivity | null;
+  /**
+   * Why the slow files not run were skipped (004 D8 as amended 2026-10-17):
+   * the reasons of the unmet preconditions that hold some of them, in one.
+   * Absent when none does.
+   */
+  readonly skipped?: string;
   /**
    * With `stop.requireSlowSuite` on, how long a main agent's Stop waits for
    * slow files (004 D9 as amended 2026-10-12, task 001-285). Absent when off.
