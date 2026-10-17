@@ -314,6 +314,7 @@ var init_store = __esm({
       failureProducers: { prefix: "failure-producers:", owner: "state/producers" },
       reruns: { prefix: "reruns:", owner: "scheduler/rerun-memory" },
       heldFiles: { prefix: "held-files:", owner: "scheduler/held" },
+      promotions: { prefix: "promotions:", owner: "scheduler/promotions" },
       rekeyed: { prefix: "rekeyed.", owner: "scheduler/rekeyed-record" },
       rekeyedMoves: { prefix: "rekeyed-moves.", owner: "scheduler/rekeyed-moves" },
       optimizerOff: { prefix: "optimizer-off.", owner: "state/optimizer-note" },
@@ -7642,11 +7643,11 @@ async function lowerWhile(children, lane, since, signal2, walk2 = below) {
       const found2 = await children.carriers(lane, since, lost);
       lost = false;
       const at2 = Date.now();
-      const pids = [];
+      const fresh = [];
       for (const { pid, start: start2 } of found2)
         if (!lowered.has(`${pid}:${start2}`)) {
           lowered.set(`${pid}:${start2}`, { pid, start: start2, since: at2, walked: 0, seen: /* @__PURE__ */ new Set() });
-          pids.push(pid);
+          fresh.push({ pid, start: start2 });
         }
       for (const [id2, carrier] of lowered) {
         if (at2 - carrier.since >= WALK_MS && at2 - carrier.walked < WALK_MS) continue;
@@ -7656,12 +7657,16 @@ async function lowerWhile(children, lane, since, signal2, walk2 = below) {
           continue;
         }
         carrier.walked = at2;
-        const current2 = new Set(walk2(carrier.pid));
-        for (const descendant of current2) if (!carrier.seen.has(descendant)) pids.push(descendant);
-        for (const descendant of carrier.seen) if (!current2.has(descendant)) lost = true;
+        const current2 = /* @__PURE__ */ new Set();
+        for (const descendant of walk2(carrier.pid)) {
+          const id3 = `${descendant.pid}:${descendant.start}`;
+          current2.add(id3);
+          if (!carrier.seen.has(id3)) fresh.push(descendant);
+        }
+        for (const id3 of carrier.seen) if (!current2.has(id3)) lost = true;
         carrier.seen = current2;
       }
-      if (pids.length > 0) lower(pids, isSlowLane(lane));
+      if (fresh.length > 0) lower(fresh, isSlowLane(lane));
     }
   } catch {
   }
@@ -7669,7 +7674,8 @@ async function lowerWhile(children, lane, since, signal2, walk2 = below) {
 function below(pid) {
   const found2 = [];
   for (let queue = childrenOf(pid), next = queue.pop(); next !== void 0; next = queue.pop()) {
-    found2.push(next);
+    const entry4 = statOf(next);
+    if (entry4 !== null) found2.push({ pid: next, start: entry4.start });
     queue.push(...childrenOf(next));
   }
   return found2;
@@ -7680,11 +7686,18 @@ function lowerProcess(pid) {
   } catch {
   }
 }
-function lower(pids, idle2) {
+function lower(processes2, idle2) {
+  const pids = processes2.filter(({ pid, start: start2 }) => statOf(pid)?.start === start2).map(({ pid }) => pid);
   for (const pid of pids) lowerProcess(pid);
-  if (!idle2) return;
-  execFile("ionice", ["-c", "3", "-p", ...pids.map(String)], () => {
-  }).unref();
+  if (!idle2 || pids.length === 0) return;
+  idleIo(pids, (error) => {
+    if (error === null || error.code === "ENOENT" || pids.length === 1) return;
+    for (const pid of pids) idleIo([pid], () => {
+    });
+  });
+}
+function idleIo(pids, done) {
+  execFile("ionice", ["-c", "3", "-p", ...pids.map(String)], done).unref();
 }
 var TEST_NICE, EVERY_MS, WALK_MS;
 var init_low_priority = __esm({
@@ -9833,31 +9846,65 @@ var init_held = __esm({
 });
 
 // src/core/scheduler/promotions.ts
+function promotionsMetaKey(worktreeId) {
+  return worktreeMetaKey("promotions", worktreeId);
+}
+function publishPromotions(store, worktreeId, live, at2) {
+  const key2 = promotionsMetaKey(worktreeId);
+  if (live.length === 0) store.meta.delete(key2);
+  else store.meta.set(key2, JSON.stringify({ at: at2, promotions: live }));
+}
+function promotedIds(store, worktreeId, daemonStartedAt, now) {
+  const raw = store.meta.get(promotionsMetaKey(worktreeId));
+  if (raw === null) return /* @__PURE__ */ new Set();
+  try {
+    const { at: at2, promotions } = JSON.parse(raw);
+    if (typeof at2 !== "number" || at2 < daemonStartedAt || !Array.isArray(promotions)) {
+      return /* @__PURE__ */ new Set();
+    }
+    const live = promotions.filter(
+      (p) => typeof p === "object" && p !== null && typeof p.until === "number" && p.until > now && Array.isArray(p.files)
+    );
+    return new Set(live.flatMap((p) => p.files.filter((f) => typeof f === "string")));
+  } catch {
+    return /* @__PURE__ */ new Set();
+  }
+}
 var NOT_RUNNING, Promotions;
 var init_promotions = __esm({
   "src/core/scheduler/promotions.ts"() {
     "use strict";
     init_keys();
+    init_types();
     NOT_RUNNING = () => false;
     Promotions = class {
       #promotions = [];
       #seq = 0;
       #now = Date.now;
       #isRunning = NOT_RUNNING;
-      /** The clock deadlines are on, and whether a test file's run is in flight. */
-      setClock(now, isRunning) {
+      #publish = null;
+      /**
+       * The clock deadlines are on, whether a test file's run is in flight, and
+       * where each change of the live promotions is told (`publishPromotions`).
+       */
+      setClock(now, isRunning, publish) {
         this.#now = now;
         this.#isRunning = isRunning;
+        this.#publish = publish ?? null;
       }
       now() {
         return this.#now();
       }
       /** A wait's promotion of `refs` until `until`; none when no file of it is open. */
       add(refs2, until, queued) {
-        this.settle(queued);
+        let changed = this.#settle(queued);
         const files2 = new Map(refs2.map((ref2) => [testFileId(ref2), ref2]));
         const promotion = { files: files2, until, seq: this.#seq++ };
-        if (this.#open(promotion, queued)) this.#promotions.push(promotion);
+        if (this.#open(promotion, queued)) {
+          this.#promotions.push(promotion);
+          changed = true;
+        }
+        if (changed) this.#told();
       }
       /** The request order of the earliest live promotion of `id`; `null` when none holds it. */
       rankOf(id2) {
@@ -9867,12 +9914,25 @@ var init_promotions = __esm({
       }
       /** Drops the promotions past their deadline or whose files all settled. */
       settle(queued) {
-        if (this.#promotions.length === 0) return;
-        const now = this.#now();
-        this.#promotions = this.#promotions.filter((p) => p.until > now && this.#open(p, queued));
+        if (this.#settle(queued)) this.#told();
       }
       clear() {
+        if (this.#promotions.length === 0) return;
         this.#promotions = [];
+        this.#told();
+      }
+      /** `settle` without the telling; whether any promotion was dropped. */
+      #settle(queued) {
+        if (this.#promotions.length === 0) return false;
+        const now = this.#now();
+        const before = this.#promotions.length;
+        this.#promotions = this.#promotions.filter((p) => p.until > now && this.#open(p, queued));
+        return this.#promotions.length !== before;
+      }
+      #told() {
+        this.#publish?.(
+          this.#promotions.map((p) => ({ files: [...p.files.keys()], until: p.until }))
+        );
       }
       #open(promotion, queued) {
         for (const [id2, ref2] of promotion.files) {
@@ -9941,9 +10001,12 @@ var init_queue = __esm({
       isSlow(ref2) {
         return this.#isSlow(ref2);
       }
-      /** The clock promotions' deadlines are on, and whether a test file's run is in flight (C15). */
-      setPromotionClock(now, isRunning) {
-        this.#promotions.setClock(now, isRunning);
+      /**
+       * The clock promotions' deadlines are on, whether a test file's run is in
+       * flight, and where their changes are published (C15, task 011-13).
+       */
+      setPromotionClock(now, isRunning, publish) {
+        this.#promotions.setClock(now, isRunning, publish);
       }
       /**
        * Spec 011 C15: a named wait promotes the test files it selected by their
@@ -10559,6 +10622,7 @@ var init_ledger = __esm({
     init_context();
     init_files();
     init_held();
+    init_promotions();
     init_queue();
     init_rekeyed_moves();
     init_rekeyed_record();
@@ -10576,7 +10640,8 @@ var init_ledger = __esm({
         this.queue.setSlow((ref2) => slowView(context.policy).isSlow(ref2));
         this.queue.setPromotionClock(
           context.now,
-          (ref2) => (this.file(ref2)?.runningKey ?? null) !== null
+          (ref2) => (this.file(ref2)?.runningKey ?? null) !== null,
+          (live) => publishPromotions(context.store, context.worktreeId, live, context.now())
         );
       }
       context;
@@ -46819,7 +46884,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.211";
+  if (true) return "0.1.212";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -53688,8 +53753,12 @@ function reasonText(reason2, command) {
   switch (reason2.kind) {
     case "running":
       return `running${reason2.since === null ? "" : ` since ${clock(reason2.since)}`} in the ${laneText(reason2.lane)} lane`;
-    case "queued":
-      return reason2.behind === null ? "queued" : `queued behind the ${laneText(reason2.lane)} tier running since ${clock(reason2.behind)}`;
+    case "queued": {
+      const promoted = reason2.promoted === true;
+      if (reason2.behind === null) return promoted ? "queued, promoted" : "queued";
+      const tier = `behind the ${laneText(reason2.lane)} tier running since ${clock(reason2.behind)}`;
+      return promoted ? `queued, promoted, ${tier}` : `queued ${tier}`;
+    }
     case "claim":
       return `waiting for ${reason2.worktree}'s run of its key${reason2.until === null ? "" : `, at most until ${clock(reason2.until)}`}`;
     case "slow":
@@ -53698,6 +53767,7 @@ function reasonText(reason2, command) {
       return `revision ${reason2.revision} not listed yet, because the runner part waits for the run in flight, each of its calls bounded at ${Math.ceil(reason2.callBoundMs / 1e3)} s`;
   }
 }
+var REASON_GROUPS_SHOWN = 5;
 function reasonGroups(files2, command) {
   const groups = /* @__PURE__ */ new Map();
   for (const { pending } of files2) {
@@ -53709,14 +53779,20 @@ function reasonGroups(files2, command) {
       reason: group === void 0 ? pending : widest(group.reason, pending)
     });
   }
-  return [...groups.values()].map(({ n, reason: reason2 }) => `${n} ${reasonText(reason2, command)}`).join(", ");
+  const all = [...groups.values()];
+  const shown = all.slice(0, REASON_GROUPS_SHOWN).map(({ n, reason: reason2 }) => `${n} ${reasonText(reason2, command)}`);
+  const rest = all.slice(REASON_GROUPS_SHOWN);
+  if (rest.length === 0) return shown.join(", ");
+  const more = rest.reduce((sum, { n }) => sum + n, 0);
+  const others = rest.length === 1 ? "1 other reason" : `${rest.length} other reasons`;
+  return [...shown, `and ${more} more for ${others}`].join(", ");
 }
 function groupId(reason2) {
   switch (reason2.kind) {
     case "running":
       return `running ${reason2.lane}`;
     case "queued":
-      return `queued ${reason2.lane} ${reason2.behind === null}`;
+      return `queued ${reason2.lane} ${reason2.behind === null} ${reason2.promoted === true}`;
     case "claim":
       return `claim ${reason2.worktree}`;
     default:
@@ -53955,6 +54031,7 @@ import { setTimeout as sleep9 } from "node:timers/promises";
 init_policy2();
 init_keys();
 init_claims();
+init_promotions();
 init_runner_work_bound();
 init_slow3();
 init_state3();
@@ -53965,6 +54042,7 @@ function readNamedFiles(store, worktreeId, root, files2, daemon, now) {
   const checks = checksByFile(states);
   const policy = readPolicy(root);
   const runs = openRunsOf(store, worktreeId, daemon);
+  const promoted = promotedOf(store, worktreeId, daemon, now);
   const header = readHeader(store, worktreeId, states, keys);
   const unlisted = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
@@ -53980,8 +54058,16 @@ function readNamedFiles(store, worktreeId, root, files2, daemon, now) {
     const running = row?.pending === "running" || own.some((s) => s.pendingPhase === "running");
     const lane = laneFor(policy, ref2, runnerLaneOf(policy, ref2.project));
     const pending = running ? { kind: "running", lane, since: runOf(runs, ref2)?.startedAt ?? null } : unlisted ?? queuedReason(store, worktreeId, ref2, row?.key ?? null, lane, runs, policy, now);
+    if (pending.kind === "queued" && promoted.has(testFileId(ref2))) {
+      return { testFile: ref2, state, pending: { ...pending, promoted: true } };
+    }
     return { testFile: ref2, state, pending };
   });
+}
+function promotedOf(store, worktreeId, daemon, now) {
+  const record = store.worktrees.get(worktreeId)?.daemon ?? null;
+  if (record === null || daemon.state !== "alive") return /* @__PURE__ */ new Set();
+  return promotedIds(store, worktreeId, record.startedAt, now);
 }
 function runnerLaneOf(policy, project) {
   if (policy.nodeTest.some((p) => p.name === project)) return "node-test";
