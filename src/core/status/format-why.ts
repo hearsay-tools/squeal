@@ -11,6 +11,7 @@ import type {
   WhyResult,
   WhyResultEntry,
   WhyRunLog,
+  WhyRunLogGap,
 } from "../types/index.js";
 import { durationsText } from "./durations.js";
 import { formatUnavailable, shortCommit } from "./format-status.js";
@@ -51,6 +52,7 @@ function knownState(why: WhyReport, s: KnownState | null): string[] {
   return [
     ...stateLines(why, s),
     ...changedLine(why.changedSince),
+    ...replacedLine(why),
     ...heldLine(why),
     ...flakyLine(why),
   ];
@@ -72,6 +74,19 @@ function changedLine(since: WhyChangedSince | undefined): string[] {
       ? ` (first ${since.paths.length} of ${since.total} paths)`
       : "";
   return [`  Changed since revision ${since.revision}${capped}: ${paths.join(", ")}`];
+}
+
+/**
+ * Issue 15 (011-04): a later run replaced the result behind the state at its
+ * key, so the errors stored there are that run's, said with its worktree.
+ */
+function replacedLine(why: WhyReport): string[] {
+  const replaced = why.replacedAtKey;
+  if (replaced === undefined) return [];
+  const where = worktreeName(why, replaced.worktreeId);
+  return [
+    `  Result at key ${replaced.key.slice(0, 12)}: replaced by run ${replaced.runId} in ${where} at ${new Date(replaced.recordedAt).toISOString()}; the result and errors stored there are that run's, not those behind this state`,
+  ];
 }
 
 /** Task 001-170: another worktree's fail this worktree has not confirmed yet. */
@@ -152,7 +167,7 @@ function resultLines(why: WhyReport, { result, worktreeRoot, logDir }: WhyResult
       : (worktreeRoot ?? `removed worktree ${p.worktreeId}`);
   const lines = [
     `  ${upper(result.outcome).padEnd(4)}  ${new Date(p.recordedAt).toISOString()}  ${where}, revision ${p.revision}, commit ${shortCommit(p.commit)}, ${p.dirty ? "dirty" : "clean"}`,
-    `${INDENT}run ${p.runId}, ${Math.round(result.durationMs)} ms, key ${result.key.slice(0, 12)}`,
+    `${INDENT}run ${p.runId}, ${Math.round(result.durationMs)} ms, key ${result.key.slice(0, 12)}${replacedHere(why, result) ? ", replaced the result behind this worktree's known state" : ""}`,
     `${INDENT}log: ${logDir ?? "run record pruned"}`,
   ];
   if (result.summary !== null) lines.push(`${INDENT}${result.summary}`);
@@ -179,11 +194,7 @@ function resultLines(why: WhyReport, { result, worktreeRoot, logDir }: WhyResult
  */
 function runLog(why: WhyReport): string[] {
   const log = why.runLog;
-  if (log === null) {
-    return [
-      "Run log: unknown, no stored result is identifiably the one behind the known state (replaced, pruned, or several fit)",
-    ];
-  }
+  if (log === null) return [`Run log: unknown, ${gapText(why.runLogUnavailable)}`];
   const where = producer(why, log);
   const file = testFileLabel(why.check.project, why.check.testPath);
   if (log.state === "pruned") {
@@ -196,8 +207,12 @@ function runLog(why: WhyReport): string[] {
       ...(log.console === null ? [] : [`  No console of ${file} was captured in this run.`]),
     ];
   }
-  const lines =
-    log.state === "node-test"
+  const lines = log.fromProducer
+    ? [
+        `Run log: ${log.path}`,
+        `  Run ${log.runId} in ${where} produced the known state; its stored result was replaced or pruned, so the log holds its output and the results above do not. ${log.state === "node-test" ? `Under node:test ${file} has its own logs: stdout above, stderr ${log.stderrPath ?? "not recorded"}.` : "The log covers that whole run, every test file in it, not only this check."}`,
+      ]
+    : log.state === "node-test"
       ? [
           `Run log: ${log.path}`,
           `  Run ${log.runId} in ${where} produced the result shown. Under node:test ${file} has its own logs: stdout above, stderr ${log.stderrPath ?? "not recorded"}.`,
@@ -222,6 +237,36 @@ function runLog(why: WhyReport): string[] {
     `Console of ${file} in ${source} (${shown}):`,
     ...kept.map((l) => `  ${l}`),
   ];
+}
+
+/** Issue 15 (011-04): why no run log is named. A report without the reason predates it. */
+function gapText(gap: WhyRunLogGap | undefined): string {
+  switch (gap) {
+    case "no-state":
+      return "this worktree has no known state of the check and holds no failure of it";
+    case "no-origin":
+      return "the known state names no origin";
+    case "replaced":
+      return "a later run replaced the result behind the known state at its key and no producing run is recorded";
+    case "producer-pruned":
+      return "the run that produced the known state has no run record left (pruned)";
+    case "not-stored":
+      return "no result is stored at this worktree's key (pruned)";
+    case "unidentified":
+      return "no stored result, or several, fit the known state";
+    default:
+      return "no stored result is identifiably the one behind the known state (replaced, pruned, or several fit)";
+  }
+}
+
+function replacedHere(why: WhyReport, result: WhyResultEntry["result"]): boolean {
+  const replaced = why.replacedAtKey;
+  return replaced?.key === result.key && replaced.runId === result.provenance.runId;
+}
+
+function worktreeName(why: WhyReport, worktreeId: string): string {
+  if (worktreeId === why.worktreeId) return `${why.worktreeRoot} (this worktree)`;
+  return why.worktreeRoots[worktreeId] ?? `removed worktree ${worktreeId}`;
 }
 
 function producer(why: WhyReport, log: WhyRunLog): string {

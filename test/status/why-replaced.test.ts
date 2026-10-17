@@ -90,8 +90,18 @@ describe("squeal why after a same-key replacement", SLOW, () => {
 
     expect(why.knownState).toMatchObject({ outcome: "pass", validity: "current" });
     expect(why.runLog).toBeNull();
+    expect(why.runLogUnavailable).toBe("replaced");
+    expect(why.replacedAtKey).toMatchObject({
+      runId: replaced?.provenance.runId,
+      worktreeId: a.worktreeId,
+    });
     const text = formatWhy(why);
-    expect(text).toContain("Run log: unknown, no stored result is identifiably");
+    expect(text).toContain(
+      `Result at key ${a.keyOf(PLAIN).slice(0, 12)}: replaced by run ${replaced?.provenance.runId} in `,
+    );
+    expect(text).toContain(
+      "Run log: unknown, a later run replaced the result behind the known state",
+    );
     expect(text).not.toContain("SECOND OUTPUT");
   });
 });
@@ -126,7 +136,7 @@ describe("squeal why: an inherited state's producer predates it", () => {
       ]);
     };
     const producer = () => reportOf(readWhy(b.root, NAME)).runLog?.runId ?? null;
-    return { replace, producer, b };
+    return { replace, producer, b, repo };
   }
 
   it("names the row recorded before the state was observed", () => {
@@ -143,10 +153,18 @@ describe("squeal why: an inherited state's producer predates it", () => {
   });
 
   it("names none once a later run replaced the row at the same commit and another revision", () => {
-    const { replace, producer, b } = seeded();
+    const { replace, producer, b, repo } = seeded();
     replace("run-a3", 4, at(14));
     const why = reportOf(readWhy(b.root, NAME));
     expect(producer()).toBeNull();
-    expect(formatWhy(why)).toContain("Run log: unknown, no stored result is identifiably");
+    expect(why.replacedAtKey).toEqual({
+      runId: "run-a3",
+      worktreeId: repo.mainId,
+      recordedAt: at(14),
+      key: "k1",
+    });
+    expect(formatWhy(why)).toContain(
+      "Run log: unknown, a later run replaced the result behind the known state at its key and no producing run is recorded",
+    );
   });
 });

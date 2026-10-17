@@ -1,5 +1,6 @@
 import { worktreeIdFor } from "../fs/index.js";
 import { testFileId } from "../keys/index.js";
+import { readFailureKeys } from "../slow/state.js";
 import {
   checkIdentity,
   failureKeysOnce,
@@ -7,6 +8,7 @@ import {
   heldFailure,
   observedSince,
   parseCheck,
+  readFailureProducers,
   readFlakyNotes,
   readRevisionCommit,
   shownResult,
@@ -17,6 +19,7 @@ import {
   type AbsolutePath,
   type CheckId,
   type CheckKey,
+  type KnownState,
   PAYLOAD_SCHEMA_VERSION,
   type ResultRecord,
   type RevisionNumber,
@@ -24,8 +27,11 @@ import {
   type WhyChangedPath,
   type WhyChangedSince,
   type WhyNoMatch,
+  type WhyReplacement,
   type WhyReport,
   type WhyResult,
+  type WhyRunLog,
+  type WhyRunLogGap,
   type WorktreeId,
 } from "../types/index.js";
 import { durationsOf } from "./durations.js";
@@ -148,6 +154,7 @@ function report(
   const heldFailure = heldFor(store, worktreeId, key, all);
   const since = observedSince(store, worktreeId, knownState?.observedAt ?? null);
   const shown = shownResult(worktreeId, knownState, key, all, heldFailure, since);
+  const replacedAtKey = replacement(knownState, key, all, shown);
   const runsDir = storePaths(commonDir).runsDir;
   const flaky = readFlakyNotes(store).get(checkIdentity(check));
   const latest = store.revisions.latest(worktreeId);
@@ -168,11 +175,75 @@ function report(
     history: store.transitions.history(worktreeId, check),
     results,
     durations: durationsOf(all),
-    runLog: shown === null ? null : runLogOf(shown, logDirOf(shown), check, runsDir, includeLogs),
+    ...(shown === null
+      ? unshownLog(store, worktreeId, knownState, key, all, replacedAtKey, (run, logDir) =>
+          runLogOf(run, logDir, check, runsDir, includeLogs),
+        )
+      : { runLog: runLogOf(shown.provenance, logDirOf(shown), check, runsDir, includeLogs) }),
+    ...(replacedAtKey === undefined ? {} : { replacedAtKey }),
     ...(heldFailure === undefined ? {} : { heldFailure }),
     ...(flaky === undefined ? {} : { flaky }),
     ...(changed === undefined ? {} : { changedSince: changed }),
   };
+}
+
+/**
+ * Issue 15 (011-04): the row at the current key when the known state is
+ * current and that row is not the result behind it. One row per check and
+ * key (spec 011 C7), so a later run there, another worktree's included,
+ * replaced it; its errors are that run's.
+ */
+function replacement(
+  knownState: KnownState | null,
+  key: CheckKey | null,
+  all: readonly ResultRecord[],
+  shown: ResultRecord | null,
+): WhyReplacement | undefined {
+  if (shown !== null || knownState?.validity !== "current" || key === null) return undefined;
+  const atKey = all.find((r) => r.key === key);
+  if (atKey === undefined) return undefined;
+  const { runId, worktreeId, recordedAt } = atKey.provenance;
+  return { runId, worktreeId, recordedAt, key };
+}
+
+/**
+ * Issue 15 (011-04): the run log when no stored result is the one behind
+ * the known state. A failing state's producer, as the state sink recorded
+ * it (`readFailureProducers`), still names its run: its log is read through
+ * the run record's `log_dir`, when that run is the state's origin's and not
+ * the run whose row now sits at the key. Otherwise why there is none.
+ */
+function unshownLog(
+  store: Store,
+  worktreeId: WorktreeId,
+  knownState: KnownState | null,
+  key: CheckKey | null,
+  all: readonly ResultRecord[],
+  replaced: WhyReplacement | undefined,
+  logOf: (run: { runId: string; worktreeId: WorktreeId }, logDir: AbsolutePath) => WhyRunLog,
+): { runLog: WhyRunLog } | { runLog: null; runLogUnavailable: WhyRunLogGap } {
+  const gap = (runLogUnavailable: WhyRunLogGap) => ({ runLog: null, runLogUnavailable });
+  if (knownState === null) return gap("no-state");
+  const origin = knownState.origin;
+  if (origin === null) return gap("no-origin");
+  const id = checkIdentity(knownState.check);
+  const producer =
+    knownState.outcome === "fail" ? readFailureProducers(store, worktreeId).get(id) : undefined;
+  if (producer !== undefined && producer.runId !== replaced?.runId) {
+    const failureKey = readFailureKeys(store, worktreeId).get(id);
+    const run = store.runs.get(producer.runId);
+    const source = origin.kind === "inherited" ? origin.worktreeId : worktreeId;
+    const atKey = knownState.validity !== "current" || failureKey === key;
+    if (run === null) {
+      if (failureKey !== undefined && atKey) return gap("producer-pruned");
+    } else if (failureKey !== undefined && atKey && run.worktreeId === source) {
+      const log = logOf({ runId: run.id, worktreeId: run.worktreeId }, run.logDir);
+      return { runLog: { ...log, fromProducer: true } };
+    }
+  }
+  if (replaced !== undefined) return gap("replaced");
+  if (knownState.validity === "current" && key !== null) return gap("not-stored");
+  return gap("unidentified");
 }
 
 /**
