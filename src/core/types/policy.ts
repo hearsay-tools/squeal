@@ -152,6 +152,24 @@ export interface SlowPolicy {
    * and the slot's permits per user (D2 as amended 2026-10-09). Default `4`.
    */
   readonly maxParallel: number;
+  /**
+   * What the slow tier needs on disk before it runs (D7 as amended
+   * 2026-10-17, task 004-65). Absent: none, the tier runs as before.
+   */
+  readonly precondition?: SlowPrecondition;
+}
+
+/**
+ * Spec 004 D7 as amended 2026-10-17 (task 004-65): checked when a slow tier
+ * is about to take the slot. At least one of `exists` and `command`.
+ */
+export interface SlowPrecondition {
+  /** Worktree-relative paths or globs, each of which must match at least one file. */
+  readonly exists?: readonly string[];
+  /** An argv run without a shell in the worktree root; met on exit 0. */
+  readonly command?: readonly string[];
+  /** How long `command` may run before it counts as unmet. Default `10000`. */
+  readonly timeoutMs?: number;
 }
 
 /**
@@ -175,6 +193,8 @@ export interface NodeTestProject {
   readonly exclude?: readonly string[];
   /** Spec 004 D1: every file `include` lists is a slow file. Absent means `false`. */
   readonly slow?: boolean;
+  /** Spec 004 D7 as amended 2026-10-17: replaces `slow.precondition` for this project's files. */
+  readonly precondition?: SlowPrecondition;
 }
 
 /**
