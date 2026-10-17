@@ -3,7 +3,7 @@ import { getPriority, setPriority } from "node:os";
 import { setTimeout as sleep } from "node:timers/promises";
 import { isSlowLane } from "../types/index.js";
 import type { EscapedChildren } from "./escaped.js";
-import { childrenOf } from "./terminate.js";
+import { childrenOf, statOf } from "./terminate.js";
 
 /**
  * Every test process Squeal starts runs with `nice` 10 (001 D11 Capacity,
@@ -15,13 +15,6 @@ export const TEST_NICE = 10;
 const EVERY_MS = 100;
 
 /**
- * How long a lowered carrier is walked again after its last new descendant:
- * a child it was forking when lowered is listed only once made, under load
- * a few hundred ms later (task 001-437).
- */
-const WALK_MS = 1_000;
-
-/**
  * Every lane's run at `nice` 10 (001 D11 Capacity, Priority, task 001-378),
  * and a slow lane's also, on Linux, at `ionice -c 3` where permitted (spec
  * 004 D2). Every `EVERY_MS` after the last look ended, until `signal`
@@ -30,9 +23,8 @@ const WALK_MS = 1_000;
  * children, are lowered once, each with what it has started so far; what a
  * lowered process starts later inherits its priority (task 001-393). A child
  * it was still forking then kept the priority it had and is listed only once
- * made, so each carrier's descendants are walked again on every look until
- * `WALK_MS` after the last new one, and what is new is lowered (task
- * 001-437). So are
+ * made, so every lowered carrier's descendants are walked again on every
+ * look while it lives, and what is new is lowered (task 001-437). So are
  * the carriers in the daemon's group whose parent exited before a look,
  * found at most once a second after a child of the daemon exits (review
  * 001-401 S1). A thread pool's workers are threads of the daemon and carry no
@@ -49,31 +41,25 @@ export async function lowerWhile(
   walk: (pid: number) => number[] = below,
 ): Promise<void> {
   if (process.platform !== "linux") return;
-  const lowered = new Set<string>();
-  // Each carrier walked again: its descendants at the last walk, and until when.
-  let walking = new Map<number, { seen: Set<number>; until: number }>();
+  // Each lowered carrier while it lives, by pid and start, with its descendants at the last walk.
+  const lowered = new Map<string, { pid: number; start: number; seen: Set<number> }>();
   try {
     for (;;) {
       await sleep(EVERY_MS, undefined, { signal });
       const found = await children.carriers(lane, since);
-      const fresh = found.filter((entry) => !lowered.has(`${entry.pid}:${entry.start}`));
-      for (const entry of fresh) lowered.add(`${entry.pid}:${entry.start}`);
+      for (const [id, { pid, start }] of lowered)
+        if (statOf(pid)?.start !== start) lowered.delete(id);
       const pids: number[] = [];
-      const next = new Map<number, { seen: Set<number>; until: number }>();
-      const at = Date.now();
-      for (const [pid, walked] of walking) {
-        const current = walk(pid);
-        const added = current.filter((descendant) => !walked.seen.has(descendant));
-        pids.push(...added);
-        if (added.length > 0) next.set(pid, { seen: new Set(current), until: at + WALK_MS });
-        else if (at < walked.until) next.set(pid, { seen: new Set(current), until: walked.until });
+      for (const { pid, start } of found)
+        if (!lowered.has(`${pid}:${start}`)) {
+          lowered.set(`${pid}:${start}`, { pid, start, seen: new Set() });
+          pids.push(pid);
+        }
+      for (const carrier of lowered.values()) {
+        const current = walk(carrier.pid);
+        pids.push(...current.filter((descendant) => !carrier.seen.has(descendant)));
+        carrier.seen = new Set(current);
       }
-      for (const { pid } of fresh) {
-        const current = walk(pid);
-        pids.push(pid, ...current);
-        next.set(pid, { seen: new Set(current), until: at + WALK_MS });
-      }
-      walking = next;
       if (pids.length > 0) lower(pids, isSlowLane(lane));
     }
   } catch {
