@@ -2554,9 +2554,10 @@ function testFileKeyOf(check) {
 function testFileOf(check) {
   return { project: check.project, path: check.testPath };
 }
-function classify(outcome2, resultKey, key2) {
+function classify(outcome2, resultKey, key2, skipped2 = false) {
   if (key2 !== void 0 && resultKey !== null && resultKey === key2.key) {
-    return { validity: "current", pendingPhase: null };
+    if (!skipped2) return { validity: "current", pendingPhase: null };
+    return key2.pending ? { validity: "pending", pendingPhase: key2.pending } : { validity: "stale", pendingPhase: null };
   }
   if (key2?.pending) return { validity: "pending", pendingPhase: key2.pending };
   return { validity: outcome2 === "unknown" ? "unknown" : "stale", pendingPhase: null };
@@ -2569,7 +2570,7 @@ function sameOrigin(a, b) {
   if (a === null || a.kind !== b.kind) return false;
   return a.kind === "own" || b.kind === "inherited" && a.worktreeId === b.worktreeId && a.commit === b.commit;
 }
-function stateFromResult(worktreeId, revision, result, key2, previous) {
+function stateFromResult(worktreeId, revision, result, key2, previous, skipped2 = false) {
   const origin = originOf(worktreeId, result);
   const failed2 = result.outcome === "fail";
   const described = failed2 && (result.fingerprint === null || result.summary === null);
@@ -2581,7 +2582,7 @@ function stateFromResult(worktreeId, revision, result, key2, previous) {
     worktreeId,
     check: result.check,
     outcome: result.outcome,
-    ...classify(result.outcome, result.key, key2),
+    ...classify(result.outcome, result.key, key2, skipped2),
     observedAt,
     commit: result.provenance.commit,
     origin,
@@ -3996,6 +3997,8 @@ function createStateSink(store, options = {}) {
     );
     const keyOf = (state) => keys.get(testFileKeyOf(state.check));
     const prior = (state) => previous.get(checkIdentity(state.check)) ?? null;
+    const skippedIds = skippedSlowIds(readSlowSkips(store, worktreeId));
+    const skipped2 = (state) => skippedIds.has(testFileKeyOf(state.check));
     const commit = (revision, next, checkpointId) => {
       const at2 = now();
       const changed = [];
@@ -4023,13 +4026,13 @@ function createStateSink(store, options = {}) {
       recordBaselineFindings(store, worktreeId, checkpointId, recorded2);
       return recorded2;
     };
-    return { previous, keys, keyOf, prior, commit };
+    return { previous, keys, keyOf, prior, skipped: skipped2, commit };
   }
   return {
     applyResults: (worktreeId, revision, results2, provenance) => store.transaction(() => {
-      const { keyOf, prior, commit } = begin(worktreeId);
+      const { keyOf, prior, skipped: skipped2, commit } = begin(worktreeId);
       const next = results2.map(
-        (r) => stateFromResult(worktreeId, revision, r, keyOf(r), prior(r))
+        (r) => stateFromResult(worktreeId, revision, r, keyOf(r), prior(r), skipped2(r))
       );
       recordFailureKeys(store, worktreeId, failureKeys(results2));
       recordFailureProducers(store, worktreeId, results2);
@@ -4042,7 +4045,7 @@ function createStateSink(store, options = {}) {
       return commit(revision, next, null);
     }),
     refresh: (worktreeId, revision, provenance, testFiles) => store.transaction(() => {
-      const { previous, keys, keyOf, prior, commit } = begin(worktreeId);
+      const { previous, keys, keyOf, prior, skipped: skipped2, commit } = begin(worktreeId);
       const only = testFiles === void 0 ? null : new Set(testFiles.map(testFileId));
       const included = (file) => only === null || only.has(file);
       const at2 = now();
@@ -4057,7 +4060,7 @@ function createStateSink(store, options = {}) {
           hits.push(r);
           next.set(
             checkIdentity(r.check),
-            stateFromResult(worktreeId, revision, r, key2, prior(r))
+            stateFromResult(worktreeId, revision, r, key2, prior(r), skipped2(r))
           );
         }
       }
@@ -4110,6 +4113,7 @@ var init_sink = __esm({
     init_fingerprint();
     init_inherited();
     init_producers();
+    init_slow_skipped();
     init_transitions();
   }
 });
@@ -12195,11 +12199,12 @@ async function baseline(context, ledger, changed = NOTHING_CHANGED) {
     file.durationMs = durationOf(results2);
   }
   const unkeyed = [...ledger.files.values()].filter((file) => file.key === null);
+  const skipped2 = skippedHits(context, ledger, [...misses, ...unkeyed]);
   ledger.checkpoints.start(
     checkpointId,
     "baseline",
     ledger.revision.number,
-    [...misses, ...unkeyed].map((file) => file.ref)
+    [...misses, ...unkeyed, ...skipped2].map((file) => file.ref)
   );
   if (policy.baseline.onStart === "lookup-only") {
     ledger.checkpoints.finish("abandoned");
@@ -12210,7 +12215,7 @@ async function baseline(context, ledger, changed = NOTHING_CHANGED) {
     }
   }
   restoreReruns(context, ledger, policy.baseline.onStart !== "lookup-only");
-  for (const file of unkeyed) ledger.checkpoints.failed(file.ref);
+  for (const file of [...unkeyed, ...skipped2]) ledger.checkpoints.failed(file.ref);
   resumeOwed(ledger);
   if (failures.size > 0) block(ledger, failures);
   ledger.commit({ refined: ledger.revision.number });
@@ -12219,6 +12224,11 @@ async function baseline(context, ledger, changed = NOTHING_CHANGED) {
   for (const text2 of unmatchedInputNotes(keys.unmatchedInputs(testFiles), testFiles.length)) {
     if (!persisted.has(text2)) context.note(text2);
   }
+}
+function skippedHits(context, ledger, others) {
+  const ids = skippedSlowIds(readSlowSkips(context.store, context.worktreeId));
+  const elsewhere = new Set(others.map((file) => file.id));
+  return [...ledger.files.values()].filter((file) => ids.has(file.id) && !elsewhere.has(file.id));
 }
 function newestResults(store, ref2) {
   let newest = null;
@@ -12259,6 +12269,7 @@ var init_bootstrap = __esm({
   "src/core/scheduler/bootstrap.ts"() {
     "use strict";
     init_keys();
+    init_state3();
     init_types();
     init_checkpoint_requests();
     init_context();
@@ -13604,24 +13615,28 @@ var init_slow_skip = __esm({
           ledger.checkpoints.failed(ref2);
           refs2.set(testFileId(ref2), ref2);
         }
-        ledger.commit();
         skips.set(rule.source, { rule, reason: reason2, refs: refs2, since: context.now() });
         this.#publish();
+        ledger.commit();
       }
       /**
        * Under the lock, `source` met: its skip ends. A skipped file not queued
        * takes what its key has, a result stored before the skip included, or is
-       * queued as any miss.
+       * queued as any miss; its checks are classified again without the skip.
        */
       #lift(source) {
         const skip = this.#adopted().get(source);
         if (skip === void 0) return;
         this.#adopted().delete(source);
+        this.#publish();
         const { ledger } = this.started();
         const idle2 = [...skip.refs.values()].filter((ref2) => ledger.file(ref2)?.phase === null);
+        for (const ref2 of idle2) {
+          const file = ledger.file(ref2);
+          if (file !== void 0) ledger.touch(file);
+        }
         ledger.settle(idle2, /* @__PURE__ */ new Set());
         ledger.commit();
-        this.#publish();
       }
       /**
        * Whether `ref` is one a precondition covers that has not been met: D5's
@@ -13670,7 +13685,9 @@ var init_slow_skip = __esm({
       }
       /**
        * Queues `refs` as any miss; one whose key has a stored result goes in
-       * forced, so it runs rather than reading as current unchecked.
+       * forced, so it runs rather than reading as current unchecked. Published
+       * after the commit: its refresh still reads them skipped, so a queued
+       * file's checks read pending, not current, until it runs.
        */
       #requeue(refs2, changed) {
         if (refs2.length === 0) return false;
