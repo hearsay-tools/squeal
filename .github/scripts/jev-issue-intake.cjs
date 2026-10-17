@@ -13,8 +13,8 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { validateIntake } = require("./apply-issue-intake.cjs");
+const { callJev, truncate } = require("./jev-intake-client.cjs");
 
-const ENDPOINT = "https://api.typesafe.ai/v1/systemone";
 // Pinned: the thresholds below were tuned against this version, and
 // jev-latest moves when a new release ships.
 const DEFAULT_MODEL = "jev-1.13.0";
@@ -72,14 +72,8 @@ const RECHECK_BODY_LIMIT = 8_000;
 // Jev allows 32k tokens for the state plus the longest question, which is the
 // duplicate Choice. Estimate tokens as chars / 3 to stay well under it.
 const DUPLICATE_BUDGET_CHARS = 28_000 * 3;
-const RETRY_STATUSES = new Set([429, 500, 502, 503, 504, 529]);
 const SAME_WORK =
   "the same root cause or the same goal, so that finishing one finishes the other, not only the same topic";
-
-function truncate(text, limit) {
-  const value = String(text ?? "");
-  return value.length <= limit ? value : `${value.slice(0, limit)}…`;
-}
 
 // Issue template headings (`## Context / Why`) and HTML comments open almost
 // every body; dropping them leaves the excerpt for what tells issues apart.
@@ -255,48 +249,6 @@ function mapAnswers({ request, response, recheck = null, thresholds = THRESHOLDS
   };
 }
 
-function retryDelayMs(response, attempt) {
-  const header = response?.headers?.get?.("retry-after");
-  const seconds = header === null || header === undefined || header === "" ? NaN : Number(header);
-  if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds, 30) * 1000;
-  return 1000 * 2 ** (attempt - 1);
-}
-
-async function callJev({
-  request,
-  apiKey,
-  fetchImpl = fetch,
-  sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-  maxAttempts = 4,
-  timeoutMs = 30_000,
-}) {
-  if (typeof apiKey !== "string" || apiKey.length === 0)
-    throw new Error("TYPESAFE_API_KEY is not set.");
-  for (let attempt = 1; ; attempt += 1) {
-    let response;
-    try {
-      response = await fetchImpl(ENDPOINT, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify(request),
-        signal: AbortSignal.timeout(timeoutMs),
-      });
-    } catch (error) {
-      if (attempt >= maxAttempts)
-        throw new Error(`Jev request failed after ${attempt} attempts: ${error.message}`);
-      await sleep(retryDelayMs(null, attempt));
-      continue;
-    }
-    if (response.ok) return response.json();
-    if (RETRY_STATUSES.has(response.status) && attempt < maxAttempts) {
-      await sleep(retryDelayMs(response, attempt));
-      continue;
-    }
-    const detail = truncate(await response.text().catch(() => ""), 500);
-    throw new Error(`Jev request failed with HTTP ${response.status}: ${detail}`);
-  }
-}
-
 function summarizeAnswers(prefix, request, response) {
   return Object.entries(response.answers)
     .filter(([key]) => request.questions[key])
@@ -367,7 +319,6 @@ module.exports = {
   buildRecheckRequest,
   shortlist,
   triage,
-  callJev,
   mapAnswers,
   excerptOf,
   main,
@@ -375,5 +326,4 @@ module.exports = {
   TYPE_CRITERIA,
   THRESHOLDS,
   DEFAULT_MODEL,
-  ENDPOINT,
 };
