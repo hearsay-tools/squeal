@@ -5211,12 +5211,14 @@ import { createHash as createHash8 } from "node:crypto";
 function createResultRepo(conn) {
   return {
     byKey: (key2, usedAt = Date.now()) => {
-      conn.run(
-        "UPDATE results SET last_used_at = ? WHERE key = ? AND last_used_at < ?",
-        usedAt,
-        key2,
-        usedAt
-      );
+      if (usedAt > 0) {
+        conn.run(
+          "UPDATE results SET last_used_at = ? WHERE key = ? AND last_used_at < ?",
+          usedAt,
+          key2,
+          usedAt
+        );
+      }
       return conn.all(
         `${SELECT_RESULTS} WHERE r.key = ? ORDER BY c.project, c.test_path, c.kind, c.full_name`,
         key2
@@ -6616,6 +6618,22 @@ function withStatusStore(cwd, options, fn) {
     return unavailable("no-store", `${cwd} is not inside a git worktree`);
   }
   const busyTimeoutMs = options.busyTimeoutMs ?? STATUS_BUSY_TIMEOUT_MS;
+  const retryMs = options.busyRetryMs ?? 0;
+  const started2 = Date.now();
+  for (; ; ) {
+    const read4 = readOnce(root, commonDir, busyTimeoutMs, fn);
+    if (read4 !== BUSY) return read4;
+    const waited = Date.now() - started2;
+    if (waited >= retryMs) {
+      return unavailable(
+        "timeout",
+        `store busy, waited ${waited} ms; \`squeal status --wait <ms>\` keeps reading until it answers`
+      );
+    }
+    Atomics.wait(SLEEP, 0, 0, Math.min(BUSY_RETRY_PAUSE_MS, retryMs - waited));
+  }
+}
+function readOnce(root, commonDir, busyTimeoutMs, fn) {
   let store;
   try {
     const opened = openStore(commonDir, { create: false, busyTimeoutMs });
@@ -6639,15 +6657,13 @@ function withStatusStore(cwd, options, fn) {
     const context = { store, root, commonDir };
     return readTransaction(store, () => fn(context));
   } catch (error) {
-    if (isBusy(error)) {
-      return unavailable("timeout", `store busy for more than ${busyTimeoutMs} ms`);
-    }
+    if (isBusy(error)) return BUSY;
     return unavailable("store-unreadable", `store unreadable: ${String(error)}`);
   } finally {
     store?.close();
   }
 }
-var STATUS_BUSY_TIMEOUT_MS;
+var STATUS_BUSY_TIMEOUT_MS, CLI_READ_RETRY_MS, BUSY_RETRY_PAUSE_MS, BUSY, SLEEP;
 var init_open2 = __esm({
   "src/core/status/open.ts"() {
     "use strict";
@@ -6655,6 +6671,10 @@ var init_open2 = __esm({
     init_store3();
     init_types();
     STATUS_BUSY_TIMEOUT_MS = 1e3;
+    CLI_READ_RETRY_MS = 5e3;
+    BUSY_RETRY_PAUSE_MS = 50;
+    BUSY = /* @__PURE__ */ Symbol("busy");
+    SLEEP = new Int32Array(new SharedArrayBuffer(4));
   }
 });
 
@@ -46366,7 +46386,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.203";
+  if (true) return "0.1.204";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -51060,7 +51080,11 @@ function failuresCommand(args2, io) {
     return usage(`--since takes a duration such as 90s, 30m, 2h or 1d, not "${sinceText}"`, io);
   }
   const since = window2 === null ? null : now() - window2;
-  const report2 = readFailures(io.cwd ?? process.cwd(), { allWorktrees, since });
+  const report2 = readFailures(io.cwd ?? process.cwd(), {
+    allWorktrees,
+    since,
+    busyRetryMs: CLI_READ_RETRY_MS
+  });
   io.stdout(json3 ? `${JSON.stringify(report2, null, 2)}
 ` : formatFailures(report2));
   return report2.available ? 0 : 1;
@@ -53190,7 +53214,8 @@ function selectNamedFiles(store, worktreeId, root, cwd, paths) {
   const unmatched = [];
   for (const path of paths) {
     const rel2 = worktreePath(root, cwd, path);
-    const hits = rel2 === null ? [] : rows.filter((row) => row.testFile.path === rel2 || closures.get(row)?.has(rel2) === true);
+    const own = rows.filter((row) => row.testFile.path === rel2);
+    const hits = rel2 === null ? [] : own.length > 0 ? own : rows.filter((row) => closures.get(row)?.has(rel2) === true);
     if (hits.length === 0) unmatched.push(rel2 ?? path);
     for (const row of hits) selected.set(testFileId(row.testFile), row.testFile);
   }
@@ -55247,7 +55272,7 @@ function status(args2, io) {
   }
   const now = io.now ?? Date.now;
   const cwd = io.cwd ?? process.cwd();
-  const result = readStatus(cwd, { now });
+  const result = readStatus(cwd, { now, busyRetryMs: CLI_READ_RETRY_MS });
   const env = io.env ?? process.env;
   const harness = parsed.json ? null : codexStatusLine(cwd, env) ?? piStatusLine(cwd, env, fileURLToPath14(import.meta.url)) ?? opencodeStatusLine(cwd, env);
   const human = () => `${formatStatus(result, now(), statusCommand(env), { allNotes })}${harness ?? ""}`;
@@ -55266,7 +55291,10 @@ function why(args2, io) {
   if (name2 === void 0 || parsed.positional.length > 1) {
     return usage2("why", "expected one check name", io);
   }
-  const result = readWhy(io.cwd ?? process.cwd(), name2, { includeLogs });
+  const result = readWhy(io.cwd ?? process.cwd(), name2, {
+    includeLogs,
+    busyRetryMs: CLI_READ_RETRY_MS
+  });
   io.stdout(parsed.json ? json2(result) : formatWhy(result));
   return result.available && result.found ? 0 : 1;
 }
