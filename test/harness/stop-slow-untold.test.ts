@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { startTurn } from "../../src/core/delivery/turn.js";
 import { refinedMetaKey } from "../../src/core/types/index.js";
 import type { SquealRepo } from "./helpers.js";
 import {
@@ -6,6 +7,7 @@ import {
   HARNESSES,
   type Harness,
   landSlow,
+  mainConsumer,
   queueSlowAgain,
   repo,
   SLOW_FILE,
@@ -190,6 +192,26 @@ describe.each(HARNESSES)(
       const out = await stopThenWait(harness, r, () => moveAndLand(r, "fail"));
       expect(out).toEqual({ quick: {}, waiting: {} });
       expect(turnOf(r)).toBe("idle");
+    });
+
+    // Task 011-14, review wave 1.12 re-review R2: the view an older daemon's rules wrote is read under the current ones.
+    it("a told slow failure whose view holds the older rules' form does not block, this turn or the next", async () => {
+      const r = await repo(harness, { requireSlowSuite: true, slowWaitMs: 400 });
+      landSlow(r, "fail", "slow1", "listen 127.0.0.1:35321");
+      await harness.startTurn(r);
+      const consumer = mainConsumer(r);
+      const views = r.store.views.list(consumer);
+      const old = views.map((v) => ({
+        ...v,
+        fingerprint: v.fingerprint?.replace("<port>", "35321") ?? null,
+      }));
+      r.store.transaction(() => r.store.views.writeMany(consumer, old));
+      expect(r.store.views.list(consumer).some((v) => v.fingerprint?.includes(":35321"))).toBe(
+        true,
+      );
+      expect(await stopThenWait(harness, r)).toEqual({ quick: {}, waiting: {} });
+      startTurn(r.store, consumer);
+      expect(await stopThenWait(harness, r)).toEqual({ quick: {}, waiting: {} });
     });
 
     it("a told slow failure that now fails differently blocks", async () => {
