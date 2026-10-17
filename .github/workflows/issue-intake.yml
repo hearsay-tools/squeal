@@ -1,0 +1,144 @@
+name: Issue Intake
+
+# Spec 010 D12, ported from hearsay-tools/cezarion at 10cec2e9 (its Jev path).
+# Jev reads the new issue and code-built duplicate candidates with no tools and
+# no write access; the applicator alone holds issues: write, checks every
+# mutation, and its last step marks every issue left open with needs-triage,
+# the cockpit's triage trigger.
+
+on:
+  issues:
+    types: [opened]
+
+permissions: {}
+
+jobs:
+  jev-intake:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+
+    steps:
+      # A billable provider call: untrusted bots must not trigger it.
+      - name: Reject untrusted bot actors
+        env:
+          ACTOR: ${{ github.actor }}
+        run: |
+          if [[ "$ACTOR" == *'[bot]' && "$ACTOR" != 'claude[bot]' ]]; then
+            echo "Unsupported bot actor: $ACTOR. Only claude[bot] may trigger Jev intake." >&2
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      # Duplicate candidates are built in code: open issues and issues closed
+      # in the last 30 days, never the new issue or an issue it was split out of.
+      - name: Fetch issue context
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+        run: |
+          set -o pipefail
+          mkdir -p .issue-intake-context intake-output
+          since="$(date -u -d '30 days ago' +%Y-%m-%dT%H:%M:%SZ)"
+          gh issue view "$ISSUE" --json number,title,body > .issue-intake-context/issue.json
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/issues?state=open&per_page=100" \
+            --jq '.[] | select(.pull_request == null) | {number,title,body,labels,updated_at}' \
+            | jq -s '.' > "$RUNNER_TEMP/open-issues.raw.json"
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/issues?state=closed&since=${since}&per_page=100" \
+            --jq '.[] | select(.pull_request == null) | {number,title,body,labels,updated_at,closed_at}' \
+            | jq -s '.' > "$RUNNER_TEMP/closed-issues.raw.json"
+          node .github/scripts/issue-intake-candidates.cjs .issue-intake-context/issue.json \
+            "$RUNNER_TEMP/open-issues.raw.json" "$RUNNER_TEMP/closed-issues.raw.json" \
+            > .issue-intake-context/candidates.json
+
+      # Jev has no tools and answers only with the options offered, so the
+      # untrusted issue body can at worst pick a wrong label or candidate.
+      - name: Run Jev issue triage
+        env:
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          ISSUE_INTAKE_JEV_MODEL: ${{ vars.ISSUE_INTAKE_JEV_MODEL }}
+        run: node .github/scripts/jev-issue-intake.cjs .issue-intake-context intake-output/intake.json
+
+      - name: Upload Jev intake output
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: intake-output
+          path: intake-output/intake.json
+          if-no-files-found: error
+
+  apply-intake:
+    needs: jev-intake
+    # Runs when Jev fails too, so its last step can still mark the issue.
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Checkout trusted applicator
+        if: ${{ needs.jev-intake.result == 'success' }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download intake output
+        if: ${{ needs.jev-intake.result == 'success' }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: intake-output
+          path: intake-output
+
+      - name: Apply intake mutations
+        if: ${{ needs.jev-intake.result == 'success' }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INTAKE_OUTPUT: intake-output/intake.json
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          CLOSE_DUPLICATES: ${{ vars.ISSUE_INTAKE_CLOSE_DUPLICATES }}
+        with:
+          script: |
+            const fs = require('node:fs');
+            const { loadIntake, planIntakeMutations } = require('./.github/scripts/apply-issue-intake.cjs');
+            const { buildCandidates, closedSince } = require('./.github/scripts/issue-intake-candidates.cjs');
+            const issueNumber = Number(process.env.ISSUE_NUMBER);
+            const intake = loadIntake(fs.readFileSync(process.env.INTAKE_OUTPUT, 'utf8'));
+            const repo = { owner: context.repo.owner, repo: context.repo.repo };
+            const labels = await github.paginate(github.rest.issues.listLabelsForRepo, { ...repo, per_page: 100 });
+            const knownLabels = new Set(labels.map((label) => label.name));
+            // Rebuild the candidate set, uncapped, so a duplicate pick outside
+            // it labels the issue instead of closing it, and a pick of a
+            // closed issue only comments.
+            const { data: issue } = await github.rest.issues.get({ ...repo, issue_number: issueNumber });
+            const openIssues = await github.paginate(github.rest.issues.listForRepo, { ...repo, state: 'open', per_page: 100 });
+            const now = new Date();
+            const closedIssues = await github.paginate(github.rest.issues.listForRepo, { ...repo, state: 'closed', since: closedSince(now), per_page: 100 });
+            const candidates = buildCandidates({ issue, openIssues, closedIssues, repo: `${repo.owner}/${repo.repo}`, now, max: Infinity });
+            const candidateOpen = new Map(candidates.map((candidate) => [candidate.number, candidate.open]));
+            const closeDuplicates = process.env.CLOSE_DUPLICATES === 'true';
+            const mutations = planIntakeMutations({ intake, issueNumber, knownLabels, candidateOpen, closeDuplicates, warn: core.warning });
+            for (const args of mutations) {
+              await exec.exec('gh', [...args, '--repo', process.env.GITHUB_REPOSITORY]);
+            }
+
+      # The cockpit's triage starts on this label. Every issue intake did not
+      # close gets it, including when Jev or the applicator failed.
+      - name: Mark the issue for triage unless intake closed it
+        if: ${{ always() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+        run: |
+          state="$(gh issue view "$ISSUE" --repo "$GITHUB_REPOSITORY" --json state --jq .state)"
+          if [ "$state" = 'OPEN' ]; then
+            gh issue edit "$ISSUE" --repo "$GITHUB_REPOSITORY" --add-label needs-triage
+          else
+            echo "#$ISSUE is $state; not marking it for triage."
+          fi
