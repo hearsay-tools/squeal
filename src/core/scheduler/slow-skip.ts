@@ -105,15 +105,16 @@ export class SlowSkips {
    * Under the lock, as a revision changing `paths` is applied: the skipped
    * files it makes eligible again are queued, as any miss is, so the slow
    * tier checks their precondition when it is next about to take the slot.
-   * A skip whose rule the policy no longer declares goes with it. Returns
-   * whether any was queued.
+   * A skip whose rule the policy no longer declares as it was goes with it.
+   * Returns whether any was queued.
    */
   revised(paths: ReadonlySet<RelativePath>): boolean {
     const { context, ledger } = this.started();
     const eligible: TestFileRef[] = [];
     for (const [source, skip] of this.#skips) {
+      const same = JSON.stringify(skip.rule);
       const declared = [...skip.refs.values()].some(
-        (ref) => preconditionFor(context.policy, ref)?.source === source,
+        (ref) => JSON.stringify(preconditionFor(context.policy, ref)) === same,
       );
       if (declared && !touchesPrecondition(skip.rule, paths)) continue;
       this.#skips.delete(source);
