@@ -17,7 +17,6 @@ import { piStatusLine } from "./pi/status.js";
 import { removeCommand } from "./remove.js";
 import { retryCommand } from "./retry.js";
 import { runCommand } from "./run.js";
-import { SETUP_FLAGS_USAGE } from "./setup/apply.js";
 import { SETUP_USAGE, setupCommand } from "./setup/command.js";
 import { startCommand } from "./start.js";
 import { statusCommand } from "./status-command.js";
@@ -57,6 +56,9 @@ Usage:
                                 trust as thread/start config for a launcher; --trust
                                 then shows the hooks Codex has not trusted and, on
                                 your yes (--yes: without asking), has Codex trust them
+  squeal init [--block <file|none>] [--gate <id>=<reword|keep>]...
+              [--slow <glob>]... [--input <test glob>=<input glob|none>]...
+                                Set the harness up, then apply these setup choices
   squeal setup --plan [--json]  What setting this repository up would change: harnesses,
                                 runners, instruction files and their Squeal block, gate
                                 lines, slow groups and their inputs, the warm-up's size
@@ -140,10 +142,7 @@ const COMMANDS: Readonly<Record<string, Command>> = {
 };
 
 /** Usage beyond the command's lines in `HELP`: the setup choices `HELP` only names. */
-const MORE_USAGE: Readonly<Record<string, string>> = {
-  init: SETUP_FLAGS_USAGE,
-  setup: SETUP_USAGE,
-};
+const MORE_USAGE: Readonly<Record<string, string>> = { setup: SETUP_USAGE };
 
 /** Runs the CLI and returns the exit code. */
 export function main(argv: readonly [StoreCommand, ...string[]], io: CliIo): number;
