@@ -1,0 +1,94 @@
+import { spawn } from "node:child_process";
+import { readdirSync, readFileSync } from "node:fs";
+import { setTimeout as sleep } from "node:timers/promises";
+import { it } from "vitest";
+import { EscapedChildren } from "../../src/core/daemon/escaped.js";
+import { lowerWhile } from "../../src/core/daemon/low-priority.js";
+import { statOf } from "../../src/core/daemon/terminate.js";
+
+// BENCH 001-437, not committed as a test: the cost of walking every lowered carrier on every look.
+// A carrier as the test's short fork: a Node process with one Node child, both alive for `ms`.
+const CARRIER = (ms: number) => `const { spawn } = require("node:child_process");
+spawn(process.execPath, ["-e", "setTimeout(() => {}, ${ms})"], { stdio: "ignore" });
+setTimeout(() => {}, ${ms});`;
+
+type Look = { walks: number; reads: number; wallMs: number; cpuMs: number; statMs: number; carriersMs: number };
+
+async function bench(count: number, ms: number): Promise<Look[]> {
+  const children = new EscapedChildren();
+  const since = children.mark();
+  const forks = Array.from({ length: count }, () =>
+    spawn(process.execPath, ["-e", CARRIER(ms)], { env: { ...process.env, ...children.envFor("fast") }, stdio: "ignore" }),
+  );
+  const looks: Look[] = [];
+  let look: Look = { walks: 0, reads: 0, wallMs: 0, cpuMs: 0, statMs: 0, carriersMs: 0 };
+  const counting = {
+    async carriers(lane: string, at: number) {
+      if (look.walks > 0) looks.push(look);
+      look = { walks: 0, reads: 0, wallMs: 0, cpuMs: 0, statMs: 0, carriersMs: 0 };
+      const t = performance.now();
+      const found = await children.carriers(lane, at);
+      look.carriersMs = performance.now() - t;
+      // the liveness check lowerWhile makes, one stat read per lowered carrier, timed apart
+      const s = performance.now();
+      for (const { pid } of found) statOf(pid);
+      look.statMs = performance.now() - s;
+      look.reads += found.length;
+      return found;
+    },
+  };
+  // `below` and `childrenOf` as committed, with counters
+  const walk = (pid: number): number[] => {
+    const wall = performance.now();
+    const cpu = process.threadCpuUsage();
+    const childrenOf = (p: number): number[] => {
+      let tasks: string[];
+      look.reads++;
+      try { tasks = readdirSync(`/proc/${p}/task`); } catch { return []; }
+      return tasks.flatMap((task) => {
+        look.reads++;
+        try {
+          const text = readFileSync(`/proc/${p}/task/${task}/children`, "latin1").trim();
+          return text === "" ? [] : text.split(" ").map(Number);
+        } catch { return []; }
+      });
+    };
+    const found: number[] = [];
+    for (let queue = childrenOf(pid), next = queue.pop(); next !== undefined; next = queue.pop()) {
+      found.push(next);
+      queue.push(...childrenOf(next));
+    }
+    const used = process.threadCpuUsage(cpu);
+    look.walks++;
+    look.wallMs += performance.now() - wall;
+    look.cpuMs += (used.user + used.system) / 1000;
+    return found;
+  };
+  const settled = new AbortController();
+  const lowering = lowerWhile(counting, "fast", since, settled.signal, walk);
+  await sleep(ms - 500);
+  settled.abort();
+  await lowering;
+  for (const fork of forks) fork.kill("SIGKILL");
+  return looks;
+}
+
+function report(name: string, looks: Look[]) {
+  const steady = looks.slice(5);
+  const q = (key: keyof Look, f: number) => {
+    const v = steady.map((l) => l[key]).sort((a, b) => a - b);
+    return v[Math.min(v.length - 1, Math.floor(v.length * f))].toFixed(3);
+  };
+  const sum = (key: keyof Look) => steady.reduce((t, l) => t + l[key], 0);
+  process.stderr.write(
+    `BENCH437 ${name}: looks=${looks.length} steady=${steady.length} walks/look=${q("walks", 0.5)} reads/look=${q("reads", 0.5)} ` +
+      `walk wall ms/look p50=${q("wallMs", 0.5)} p95=${q("wallMs", 0.95)} walk cpu ms/look p50=${q("cpuMs", 0.5)} p95=${q("cpuMs", 0.95)} ` +
+      `stat ms/look p50=${q("statMs", 0.5)} carriers() ms/look p50=${q("carriersMs", 0.5)} ` +
+      `walk cpu total=${sum("cpuMs").toFixed(1)} ms over ${steady.length} looks\n`,
+  );
+}
+
+it("bench", async () => {
+  if (process.env.BENCH !== "60") report("12 carriers, 10 s", await bench(12, 10_000));
+  if (process.env.BENCH !== "12") report("1 carrier, 60 s", await bench(1, 60_000));
+}, 120_000);
