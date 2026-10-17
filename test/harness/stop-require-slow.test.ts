@@ -54,15 +54,20 @@ const HARNESSES: readonly Harness[] = [
   },
 ];
 
-/** `math > adds` passes; `include` marks slow files; the agent is in a turn. */
-async function repo(harness: Harness, include: readonly string[], require: boolean) {
+/**
+ * `include` marks slow files; the agent is in a turn; revision 1, its edit
+ * after it registered, passes `math > adds`. `edited` false: revision 1
+ * came before the registration, so the session changed nothing (004-67).
+ */
+async function repo(harness: Harness, include: readonly string[], require: boolean, edited = true) {
   const r = squealRepo();
-  r.apply(r.pass());
+  if (!edited) r.apply(r.pass());
   r.policy({
     slow: { ...DEFAULT_POLICY.slow, include },
     stop: { waitMs: WAIT_MS, requireSlowSuite: require },
   });
   await harness.startTurn(r);
+  if (edited) r.apply(r.pass());
   return r;
 }
 
@@ -92,6 +97,19 @@ describe.each(HARNESSES)("stop.requireSlowSuite, $name (spec 004 D7)", (harness)
       );
     },
   );
+
+  /*
+   * Task 004-67: before the waiting entry is known to run, as for a Codex
+   * user who has not trusted it yet, a session that changed nothing is not
+   * held either.
+   */
+  it("on, no waiting entry known to run here: a session with no revision since it registered ends the turn", async () => {
+    const r = await repo(harness, [SLOW_FILE.path], true, false);
+    slowKey(r, "queued");
+    expect(decision((await harness.stop(r)).stdout)).toEqual({});
+    const [record] = r.store.consumers.list(r.worktreeId);
+    expect(record && readTurn(r.store, record.consumer).turn).toBe("idle");
+  });
 
   it("on, the waiting entry known to run here: ends the turn at once with the slow file pending, for it", async () => {
     const r = await repo(harness, [SLOW_FILE.path], true);
@@ -145,6 +163,15 @@ describe("stop.requireSlowSuite at a SubagentStop, claude-code (spec 004 D7)", (
       );
     },
   );
+
+  it("blocks a subagent that changed nothing too: 004-67 exempts only the main agent", async () => {
+    const [harness] = HARNESSES;
+    if (harness === undefined) throw new Error("no harness");
+    const r = await repo(harness, [SLOW_FILE.path], true, false);
+    slowKey(r, "queued");
+    await runHook("session-start", recorded("subagent-start", r.root), deps);
+    expect(decision((await subagentStop(r)).stdout).decision).toBe("block");
+  });
 
   it("never blocks again while an earlier block keeps the agent going (stop_hook_active)", async () => {
     const r = await subagent("queued");
