@@ -118,7 +118,7 @@ describe("squeal run --slow (spec 004 D2, explicit trigger)", () => {
     const result = await run(["run", "--slow", "--wait", "800"], r.root);
     expect(result.code).toBe(0);
     expect(result.stdout).toMatch(
-      /^Slow tier requested at revision 5: 1 slow file queued; [^\n]*\nReturned [^\n]*\n\nRevision/,
+      /^Slow tier requested at revision 5: 1 slow file queued; [^\n]*\nRevision[\s\S]*\n\nReturned [^\n]*\n$/,
     );
   });
 

@@ -118,7 +118,7 @@ describe("squeal run --slow --wait holds for the slow files it queued (001-282)"
     expect(result.code).toBe(0);
     expect(finished()).toBe(true);
     expect(result.stdout).toMatch(
-      /^Slow tier requested at revision 4: 1 slow file queued; [^\n]*\nReturned on quiet: [^\n]*; the 1 slow file run --slow queued has its result\n\nRevision/,
+      /^Slow tier requested at revision 4: 1 slow file queued; [^\n]*\nRevision[\s\S]*\n\nReturned on quiet: [^\n]*; the 1 slow file run --slow queued has its result\. Worktree: [^\n]*\n$/,
     );
   });
 
@@ -132,7 +132,7 @@ describe("squeal run --slow --wait holds for the slow files it queued (001-282)"
     expect(result.code).toBe(3);
     expect(finished()).toBe(true);
     expect(result.stdout).toMatch(
-      /\nReturned on timeout after \d+\.\d s: [^\n]*; 1 of the 2 slow files run --slow queued pending: test\/slow\.test\.ts\n/,
+      /\nReturned on timeout after \d+\.\d s: [^\n]*; 1 of the 2 slow files run --slow queued pending: test\/slow\.test\.ts\. Worktree: [^\n]*\n$/,
     );
   });
 
@@ -148,7 +148,7 @@ describe("squeal run --slow --wait holds for the slow files it queued (001-282)"
 
     // The news is the slow files', not the empty edit window's (review wave-13ak, S1).
     expect(result.stdout).toMatch(
-      /\nReturned on news: 1 transition in the 2 slow files run --slow queued, at revision 4 after \d+\.\d s; 1 check \(1 test\) pending in all; 1 of the 2 slow files run --slow queued pending: test\/slow-two\.test\.ts\n/,
+      /\nReturned on news: 1 transition in the 2 slow files run --slow queued, at revision 4 after \d+\.\d s; 1 check \(1 test\) pending in all; 1 of the 2 slow files run --slow queued pending: test\/slow-two\.test\.ts\. Worktree: [^\n]*\n$/,
     );
   });
 
@@ -172,7 +172,7 @@ describe("squeal status --wait does not hold for slow files, and says so (001-28
 
     expect(result.ms).toBeLessThan(10_000);
     expect(result.stdout).toMatch(
-      /^Returned on quiet: [^\n]*; 1 slow file is not current, which this wait does not hold for: `squeal run --slow --wait 60000` runs and waits for it\n/,
+      /\n\nReturned on quiet: [^\n]*; 1 slow file is not current, which this wait does not hold for: `squeal run --slow --wait 60000` runs and waits for it\. Worktree: [^\n]*\n$/,
     );
   });
 });
