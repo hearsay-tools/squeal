@@ -25,6 +25,7 @@ import type {
 } from "../../core/types/index.js";
 import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
 import { HOOK_TIMEOUT_MS, type HookDeps, isRegistered, withContext } from "./hook.js";
+import { unchangedSinceRegistration } from "./no-edit.js";
 import { newsText } from "./stop.js";
 import { slowFailuresReason, slowWaitReason, statusText } from "./text.js";
 
@@ -74,6 +75,11 @@ export const STOP_SLOW_POLL_MS = 250;
  * The 2 s entry's silent end already nudged the daemon (`nudgeSlow`), so the
  * idle slow tier has started.
  *
+ * A worktree with no revision since the consumer registered
+ * (`unchangedSinceRegistration`, task 004-67, issue 19) is a session that
+ * changed nothing: it is not held for its slow files, and this entry returns
+ * `null` once the handoff came, without waiting.
+ *
  * Then it polls until the slow tier looks complete (no slow file pending
  * and the runner part of the revision applied), the bound passes, or the
  * daemon has been down for `STOP_SLOW_DOWN_MS`, and decides from a read in
@@ -112,6 +118,8 @@ export async function stopSlow(
     const version = deps.squealVersion ?? squealVersion();
     recordStopWait(context.store, context.consumer, input.harness, version);
     if (!(await handedOver(context, deps, poll))) return null;
+    const { store, consumer } = context;
+    if (readTransaction(store, () => unchangedSinceRegistration(store, consumer))) return null;
     const block = await waitForSlow(context, isSlow, deps, bound, poll);
     if (block === null) return null;
     const { header, failures, reason } = block;
