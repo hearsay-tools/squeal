@@ -14,6 +14,59 @@ function isMissing(error) {
   return code === "ENOENT" || code === "ENOTDIR" || code === "EISDIR";
 }
 
+// src/core/fs/git.ts
+import { spawn } from "node:child_process";
+var REPOSITORY_VARIABLES = [
+  "GIT_DIR",
+  "GIT_WORK_TREE",
+  "GIT_INDEX_FILE",
+  "GIT_COMMON_DIR",
+  "GIT_OBJECT_DIRECTORY"
+];
+function runGit(cwd, args, options = {}) {
+  const okCodes = options.okCodes ?? [0];
+  const env = { ...process.env, GIT_OPTIONAL_LOCKS: "0" };
+  for (const name of REPOSITORY_VARIABLES) delete env[name];
+  return new Promise((resolve3, reject) => {
+    const child = spawn("git", args, { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
+    const stdout = [];
+    const stderr = [];
+    const timer = options.timeoutMs === void 0 ? void 0 : setTimeout(() => {
+      child.kill();
+      child.stdout.destroy();
+      child.stderr.destroy();
+      reject(
+        new Error(
+          `squeal: git ${args.join(" ")} timed out after ${options.timeoutMs} ms in ${cwd}`
+        )
+      );
+    }, options.timeoutMs);
+    child.stdout.on("data", (chunk) => stdout.push(chunk));
+    child.stderr.on("data", (chunk) => stderr.push(chunk));
+    child.on("error", (error) => {
+      clearTimeout(timer);
+      reject(new Error(`squeal: git ${args.join(" ")} failed in ${cwd}: ${error.message}`));
+    });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      if (code !== null && okCodes.includes(code)) {
+        resolve3(Buffer.concat(stdout).toString("utf8"));
+        return;
+      }
+      const message = Buffer.concat(stderr).toString("utf8").trim();
+      reject(new Error(`squeal: git ${args.join(" ")} exited ${code} in ${cwd}: ${message}`));
+    });
+    child.stdin.on("error", () => {
+    });
+    child.stdin.end(options.input ?? "");
+  });
+}
+function splitNul(output) {
+  const fields = output.split("\0");
+  if (fields.at(-1) === "") fields.pop();
+  return fields;
+}
+
 // src/core/fs/git-layout.ts
 import { createHash } from "node:crypto";
 import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
@@ -98,6 +151,7 @@ var WORKTREE_META_ROWS = {
   daemonToken: { prefix: "daemon-token:", owner: "store/repos/worktrees" },
   daemonExit: { prefix: "daemon-exit:", owner: "types/daemon" },
   daemonRest: { prefix: "daemon-rest:", owner: "types/daemon" },
+  daemonStopped: { prefix: "daemon-stopped:", owner: "delivery/stopped" },
   slowTier: { prefix: "slow-tier:", owner: "slow/state" },
   slowArtifacts: { prefix: "slow-artifacts:", owner: "slow/state" },
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
@@ -626,10 +680,10 @@ function cap(text, max) {
   return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
 }
 function excludedProjectsText(entries) {
-  const quoted = (list, join12) => {
+  const quoted = (list, join13) => {
     const all = list.map((entry3) => JSON.stringify(entry3));
     const last = all.pop();
-    return all.length === 0 ? last : `${all.join(", ")} ${join12} ${last}`;
+    return all.length === 0 ? last : `${all.join(", ")} ${join13} ${last}`;
   };
   const names = entries.filter((entry3) => !entry3.includes("*"));
   const patterns = entries.filter((entry3) => entry3.includes("*"));
@@ -3974,6 +4028,78 @@ function vitestDetected(root) {
   });
 }
 
+// src/core/delivery/stopped.ts
+import { createHash as createHash3 } from "node:crypto";
+import { join as join7 } from "node:path";
+var TREE_PRINT_TIMEOUT_MS = 1e3;
+function stoppedMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonStopped", worktreeId);
+}
+function clearStopped(store, worktreeId) {
+  store.meta.delete(stoppedMetaKey(worktreeId));
+}
+function heldStop(store, worktree, live) {
+  if (worktree == null || live.state === "alive") return null;
+  const mark = readMark(store, worktree.id);
+  if (mark === null) return null;
+  const heartbeat = worktree.daemon?.heartbeatAt ?? worktree.lastHeartbeatAt;
+  return heartbeat !== void 0 && heartbeat > mark.at ? null : mark;
+}
+function asStopped(store, worktree, live) {
+  if (live.state !== "down" || heldStop(store, worktree, live) === null) return live;
+  return { ...live, stopped: true };
+}
+async function stopHolds(store, worktree, live) {
+  const mark = heldStop(store, worktree, live);
+  if (mark === null || worktree == null) return false;
+  const tree = await treePrint(worktree.root, TREE_PRINT_TIMEOUT_MS);
+  if (tree === null || tree === mark.tree) return true;
+  clearStopped(store, worktree.id);
+  return false;
+}
+async function treePrint(root, timeoutMs) {
+  const options = timeoutMs === void 0 ? {} : { timeoutMs };
+  try {
+    const [head, status] = await Promise.all([
+      runGit(root, ["rev-parse", "--verify", "--quiet", "HEAD"], { ...options, okCodes: [0, 1] }),
+      runGit(
+        root,
+        ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=all"],
+        options
+      )
+    ]);
+    const hash = createHash3("sha1").update(head.trim()).update("\0").update(status);
+    for (const path of listedPaths(status)) {
+      const stat = lstatOrNull(join7(root, path));
+      hash.update(stat === null ? "-\0" : `${stat.size} ${stat.mtimeMs} ${stat.ino}\0`);
+    }
+    return hash.digest("hex");
+  } catch {
+    return null;
+  }
+}
+function listedPaths(status) {
+  const fields = splitNul(status);
+  const paths = [];
+  for (let i = 0; i < fields.length; i++) {
+    const field = fields[i] ?? "";
+    paths.push(field.slice(3));
+    if (field[0] === "R" || field[0] === "C") i++;
+  }
+  return paths;
+}
+function readMark(store, worktreeId) {
+  const text = store.meta.get(stoppedMetaKey(worktreeId));
+  if (text === null) return null;
+  try {
+    const mark = JSON.parse(text);
+    if (!isRecord(mark) || typeof mark.at !== "number") return null;
+    return { at: mark.at, tree: typeof mark.tree === "string" ? mark.tree : null };
+  } catch {
+    return null;
+  }
+}
+
 // src/core/status/config-problems.ts
 function configProblemsOf(root) {
   const { problems } = loadPolicy(root);
@@ -3982,24 +4108,24 @@ function configProblemsOf(root) {
 
 // src/core/status/git-head.ts
 import { readFileSync as readFileSync5 } from "node:fs";
-import { join as join7 } from "node:path";
+import { join as join8 } from "node:path";
 var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 var MAX_REF_DEPTH = 5;
 function readGitHead(root) {
   const gitDir = gitDirOf(root);
   const commonDir = resolveCommonDir(root);
   if (gitDir === null || commonDir === null) return null;
-  let value = read2(join7(gitDir, "HEAD"));
+  let value = read2(join8(gitDir, "HEAD"));
   for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
     if (SHA.test(value)) return value;
     const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
     if (ref === void 0) return null;
-    value = read2(join7(gitDir, ref)) ?? read2(join7(commonDir, ref)) ?? packed(commonDir, ref);
+    value = read2(join8(gitDir, ref)) ?? read2(join8(commonDir, ref)) ?? packed(commonDir, ref);
   }
   return null;
 }
 function packed(commonDir, ref) {
-  for (const line of (read2(join7(commonDir, "packed-refs")) ?? "").split("\n")) {
+  for (const line of (read2(join8(commonDir, "packed-refs")) ?? "").split("\n")) {
     const [sha, name] = line.split(" ");
     if (name === ref && sha !== void 0 && SHA.test(sha)) return sha;
   }
@@ -4125,7 +4251,11 @@ function snapshot(store, worktreeId, root, now) {
   const daemon = withDeath(
     store,
     worktree,
-    liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null)
+    asStopped(
+      store,
+      worktree,
+      liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null)
+    )
   );
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -4272,7 +4402,7 @@ function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
     daemon: withDeath(
       store,
       worktree,
-      asRested(store, worktree, worktreeLiveness(worktree, now), now)
+      asRested(store, worktree, asStopped(store, worktree, worktreeLiveness(worktree, now)), now)
     ),
     changedPaths: [...changes.keys()],
     ...installed === void 0 ? {} : { installedLockfile: installed.path }
@@ -4280,6 +4410,7 @@ function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
 }
 function asRested(store, worktree, live, at2) {
   if (live.state !== "down" || live.startingSince !== void 0 || worktree === null) return live;
+  if (live.stopped === true) return live;
   if (restState(store, worktree, at2) !== "quiet") return live;
   const spawnedAt = readRest(store, worktree.id)?.spawnedAt;
   return spawnedAt === void 0 ? { ...live, resting: true } : { ...live, startingSince: spawnedAt };
@@ -4318,8 +4449,8 @@ function withTold(header, told, at2) {
 function livenessChange(store, consumer, at2) {
   const told = toldLiveness(store, consumer);
   const worktree = store.worktrees.get(consumer.worktreeId);
-  const live = asTold(worktreeLiveness(worktree, at2), told, at2);
-  if (live.state === "down") {
+  const live = asStopped(store, worktree, asTold(worktreeLiveness(worktree, at2), told, at2));
+  if (live.state === "down" && live.stopped !== true) {
     if (live.startingSince !== void 0) return null;
     const rest = restState(store, worktree, at2);
     if (rest === "quiet") return null;
@@ -4909,19 +5040,19 @@ function incompleteText(header) {
   const runnerPart = header.runnerPartPending === true ? ` ${capitalize(runnerPartText(header.revision))} is pending; test files it adds are not counted yet.` : "";
   return `${listed2}${runnerPart}`;
 }
-function daemonText(header) {
+function daemonText(header, command) {
   const awaiting = awaitingInstallText(header);
-  return livenessSentence(header.daemon, header.revision) + (awaiting === null ? installSentences(header) : ` ${awaiting}`);
+  return livenessSentence(header.daemon, header.revision, command) + (awaiting === null ? installSentences(header) : ` ${awaiting}`);
 }
 function fullLine(header, command) {
   const { revision, counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files2 } = header;
   const inheritedCount = header.inheritedCount ?? 0;
   const inherited = inheritedCount === 0 ? "" : ` Inherited: ${inheritedCount} of ${counts.current} current${partsSuffix(inheritedCount, header.inheritedFileLevelCount)}.`;
   const withoutChecks = files2.pending + files2.unknown === 0 ? "" : ` Test files without checks: ${files2.pending} pending, ${files2.unknown} unknown.`;
-  return `Revision ${revisionText(revision, header.commit)}${changedText(header.changedPaths)}: ${countsText(counts, fileLevel)}.${inherited}${withoutChecks}${incompleteText(header)} Full-suite checkpoint: ${fullSuiteText(header, command)}.${daemonText(header)}`;
+  return `Revision ${revisionText(revision, header.commit)}${changedText(header.changedPaths)}: ${countsText(counts, fileLevel)}.${inherited}${withoutChecks}${incompleteText(header)} Full-suite checkpoint: ${fullSuiteText(header, command)}.${daemonText(header, command)}`;
 }
 var ACTIONABLE = ["pending", "stale", "unknown"];
-function newsLine(header) {
+function newsLine(header, command) {
   const { counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files2 } = header;
   const actionable = ACTIONABLE.filter((v) => counts[v] > 0).map(
     (v) => countedText(counts[v], v, fileLevel?.[v])
@@ -4929,18 +5060,23 @@ function newsLine(header) {
   const checks = actionable.length === 0 ? "no check pending, stale or unknown" : actionable.join(", ");
   const without = ["pending", "unknown"].filter((v) => files2[v] > 0).map((v) => `${files2[v]} ${v}`);
   const withoutChecks = without.length === 0 ? "" : ` Test files without checks: ${without.join(", ")}.`;
-  return `Revision ${revisionText(header.revision, header.commit)}: ${checks}.${withoutChecks}${incompleteText(header)}${daemonText(header)}`;
+  return `Revision ${revisionText(header.revision, header.commit)}: ${checks}.${withoutChecks}${incompleteText(header)}${daemonText(header, command)}`;
 }
 function countsText(counts, fileLevel) {
   return ["current", ...ACTIONABLE].map((validity) => countedText(counts[validity], validity, fileLevel?.[validity])).join(", ");
 }
 function headerLines(header, command, form = "full", slowChanged = false) {
-  const line = form === "full" ? fullLine(header, command) : newsLine(header);
+  const line = form === "full" ? fullLine(header, command) : newsLine(header, command);
   const slow = form === "full" || slowChanged ? slowTierText(header, command) : null;
   return slow === null ? [line] : [line, slow];
 }
-function livenessSentence(daemon, revision) {
+function stoppedText(command) {
+  return `The daemon is stopped by request (\`${command} stop\`); a hook starts one at the next edit, or run \`${command} start\``;
+}
+function livenessSentence(daemon, revision, command) {
   if (daemon === void 0 || daemon.state === "alive") return "";
+  if (daemon.stopped === true)
+    return ` ${stoppedText(command)}; results are as of revision ${revision}.`;
   const died = daemon.died === void 0 ? "" : ` The last daemon ${deathText(daemon.died)}. ${DEATH_CAUSE}`;
   if (daemon.startingSince !== void 0) {
     return ` A daemon is starting; results are as of revision ${revision}.${died}`;
@@ -5131,6 +5267,9 @@ function editLines({ sawEdit, editsSettled }) {
 }
 var checksOf = (entries) => entries.map((e) => e.check);
 function livenessTitle(liveness2, revision) {
+  if (liveness2?.state === "down" && liveness2.stopped === true) {
+    return `SQUEAL \xB7 the daemon is stopped by request at revision ${revision}`;
+  }
   return liveness2?.state === "alive" ? `SQUEAL \xB7 a daemon is validating again at revision ${revision}` : `SQUEAL \xB7 no daemon is validating at revision ${revision}`;
 }
 function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQUEAL_COMMAND, now = Date.now()) {
@@ -5205,7 +5344,7 @@ function openContext(input, location2, options = {}) {
 
 // src/harness/shared/coverage.ts
 import { existsSync as existsSync5 } from "node:fs";
-import { join as join8, posix as posix4 } from "node:path";
+import { join as join9, posix as posix4 } from "node:path";
 var VITEST_ONLY = {
   vitest: true,
   vitestConfig: null,
@@ -5247,7 +5386,7 @@ function fromRoot({
 function vitestConfig(root) {
   for (const name of CONFIG_NAMES) {
     for (const extension of CONFIG_EXTENSIONS) {
-      if (existsSync5(join8(root, `${name}${extension}`))) return `${name}${extension}`;
+      if (existsSync5(join9(root, `${name}${extension}`))) return `${name}${extension}`;
     }
   }
   return null;
@@ -5300,22 +5439,22 @@ function failure(code, message) {
 }
 
 // src/core/daemon/ensure.ts
-import { spawn } from "node:child_process";
+import { spawn as spawn2 } from "node:child_process";
 import { existsSync as existsSync6, mkdirSync as mkdirSync3 } from "node:fs";
 
 // src/core/daemon/paths.ts
-import { dirname as dirname3, isAbsolute as isAbsolute4, join as join9 } from "node:path";
+import { dirname as dirname3, isAbsolute as isAbsolute4, join as join10 } from "node:path";
 function runtimeDir(env = process.env) {
   return xdgRuntimeDir(env) ?? userTmpDir();
 }
 var MAX_SOCKET_PATH_BYTES = 103;
 function socketPathFor(worktreeId, env = process.env) {
   const name = `squeal-${worktreeId}.sock`;
-  const path = join9(runtimeDir(env), name);
-  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join9(userTmpDir(), name);
+  const path = join10(runtimeDir(env), name);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join10(userTmpDir(), name);
 }
 function userTmpDir(uid = currentUid()) {
-  return join9("/tmp", `squeal-${uid}`);
+  return join10("/tmp", `squeal-${uid}`);
 }
 function xdgRuntimeDir(env) {
   const xdg = env.XDG_RUNTIME_DIR;
@@ -5388,7 +5527,7 @@ async function ensureDaemon(root, options = {}) {
     if (commonDir === null) return "unavailable";
     const cwd = storePaths(commonDir).dir;
     mkdirSync3(cwd, { recursive: true });
-    const child = spawn(process.execPath, [cli, "daemon", root, ...lockWait], {
+    const child = spawn2(process.execPath, [cli, "daemon", root, ...lockWait], {
       cwd,
       detached: true,
       stdio: "ignore"
@@ -5409,18 +5548,18 @@ function daemonCliEntry(cli, env = process.env) {
 
 // src/core/daemon/version.ts
 import { readFileSync as readFileSync6 } from "node:fs";
-import { dirname as dirname4, join as join10 } from "node:path";
+import { dirname as dirname4, join as join11 } from "node:path";
 import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.208";
+  if (true) return "0.1.209";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
   let dir = dirname4(fileURLToPath(module));
   for (; ; ) {
-    const version = readVersion(join10(dir, "package.json"));
+    const version = readVersion(join11(dir, "package.json"));
     if (version !== null) return version;
     const parent = dirname4(dir);
     if (parent === dir) return null;
@@ -5455,7 +5594,12 @@ function versionParts(version) {
 var SOCKET_TIMEOUT_MS = 100;
 var SUCCESSOR_LOCK_WAIT_MS = 12e4;
 async function ensure(location2, deps, context) {
-  const record = context === void 0 ? void 0 : context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
+  const worktree = context?.store.worktrees.get(context.consumer.worktreeId);
+  const record = context === void 0 ? void 0 : worktree?.daemon ?? null;
+  if (context !== void 0) {
+    const live = worktreeLiveness(worktree ?? null, (deps.now ?? Date.now)());
+    if (await stopHolds(context.store, worktree, live)) return "stopped";
+  }
   if (context !== void 0 && await stepDown(context, deps, record ?? null)) {
     return successor(location2, deps);
   }
@@ -5719,7 +5863,7 @@ async function runEntry(module, kind, handler) {
 
 // src/harness/shared/uncovered-edit.ts
 import { existsSync as existsSync7 } from "node:fs";
-import { join as join11 } from "node:path";
+import { join as join12 } from "node:path";
 var SHOWN = 3;
 var UNCOVERED_LINE_CAP_CHARS = 1e3;
 var PREFIX = "SQUEAL \xB7 ";
@@ -5729,7 +5873,7 @@ function uncoveredEditLine(context) {
   const paths = tellUncovered(
     context.store,
     context.consumer,
-    (path) => existsSync7(join11(context.root, path))
+    (path) => existsSync7(join12(context.root, path))
   );
   return paths.length === 0 ? null : fitUncovered(paths);
 }

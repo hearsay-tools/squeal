@@ -98,6 +98,7 @@ var WORKTREE_META_ROWS = {
   daemonToken: { prefix: "daemon-token:", owner: "store/repos/worktrees" },
   daemonExit: { prefix: "daemon-exit:", owner: "types/daemon" },
   daemonRest: { prefix: "daemon-rest:", owner: "types/daemon" },
+  daemonStopped: { prefix: "daemon-stopped:", owner: "delivery/stopped" },
   slowTier: { prefix: "slow-tier:", owner: "slow/state" },
   slowArtifacts: { prefix: "slow-artifacts:", owner: "slow/state" },
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
@@ -3736,6 +3737,33 @@ function vitestDetected(root) {
   });
 }
 
+// src/core/delivery/stopped.ts
+function stoppedMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonStopped", worktreeId);
+}
+function heldStop(store, worktree, live) {
+  if (worktree == null || live.state === "alive") return null;
+  const mark = readMark(store, worktree.id);
+  if (mark === null) return null;
+  const heartbeat = worktree.daemon?.heartbeatAt ?? worktree.lastHeartbeatAt;
+  return heartbeat !== void 0 && heartbeat > mark.at ? null : mark;
+}
+function asStopped(store, worktree, live) {
+  if (live.state !== "down" || heldStop(store, worktree, live) === null) return live;
+  return { ...live, stopped: true };
+}
+function readMark(store, worktreeId) {
+  const text = store.meta.get(stoppedMetaKey(worktreeId));
+  if (text === null) return null;
+  try {
+    const mark = JSON.parse(text);
+    if (!isRecord(mark) || typeof mark.at !== "number") return null;
+    return { at: mark.at, tree: typeof mark.tree === "string" ? mark.tree : null };
+  } catch {
+    return null;
+  }
+}
+
 // src/core/status/config-problems.ts
 function configProblemsOf(root) {
   const { problems } = loadPolicy(root);
@@ -3887,7 +3915,11 @@ function snapshot(store, worktreeId, root, now) {
   const daemon = withDeath(
     store,
     worktree,
-    liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null)
+    asStopped(
+      store,
+      worktree,
+      liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null)
+    )
   );
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -4034,7 +4066,7 @@ function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
     daemon: withDeath(
       store,
       worktree,
-      asRested(store, worktree, worktreeLiveness(worktree, now), now)
+      asRested(store, worktree, asStopped(store, worktree, worktreeLiveness(worktree, now)), now)
     ),
     changedPaths: [...changes.keys()],
     ...installed === void 0 ? {} : { installedLockfile: installed.path }
@@ -4042,6 +4074,7 @@ function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
 }
 function asRested(store, worktree, live, at) {
   if (live.state !== "down" || live.startingSince !== void 0 || worktree === null) return live;
+  if (live.stopped === true) return live;
   if (restState(store, worktree, at) !== "quiet") return live;
   const spawnedAt = readRest(store, worktree.id)?.spawnedAt;
   return spawnedAt === void 0 ? { ...live, resting: true } : { ...live, startingSince: spawnedAt };
@@ -4080,8 +4113,8 @@ function withTold(header, told, at) {
 function livenessChange(store, consumer, at) {
   const told = toldLiveness(store, consumer);
   const worktree = store.worktrees.get(consumer.worktreeId);
-  const live = asTold(worktreeLiveness(worktree, at), told, at);
-  if (live.state === "down") {
+  const live = asStopped(store, worktree, asTold(worktreeLiveness(worktree, at), told, at));
+  if (live.state === "down" && live.stopped !== true) {
     if (live.startingSince !== void 0) return null;
     const rest = restState(store, worktree, at);
     if (rest === "quiet") return null;
@@ -4588,7 +4621,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.208";
+  if (true) return "0.1.209";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
