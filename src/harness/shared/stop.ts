@@ -10,7 +10,12 @@ import {
   readLiveHeader,
 } from "../../core/delivery/index.js";
 import { type StopWaitHarness, slowFiles, stopWaitRuns } from "../../core/slow/index.js";
-import { isFastPending, slowFilesNotCurrent, toKnownFailure } from "../../core/state/index.js";
+import {
+  isFastPending,
+  skippedReason,
+  slowFilesNotCurrent,
+  toKnownFailure,
+} from "../../core/state/index.js";
 import { STATUS_BUSY_TIMEOUT_MS } from "../../core/status/index.js";
 import { readTransaction, storePaths } from "../../core/store/index.js";
 import {
@@ -31,6 +36,7 @@ import {
   fullSuiteReason,
   knownFailuresLine,
   knownFailuresReason,
+  slowSkippedReason,
   slowSuiteReason,
   statusText,
 } from "./text.js";
@@ -232,7 +238,15 @@ function decide(
       consumer.agentId === MAIN_AGENT && unchangedSinceRegistration(store, consumer);
     if (policy.requireSlowSuite && !slowElsewhere && !unchanged) {
       const open = slowFilesNotCurrent(states, keys, isSlow);
-      if (open.length > 0) reasons.push(slowSuiteReason(header.revision, open, command));
+      // 004 D8 as amended 2026-10-17: a skipped tier is named with its reason.
+      const skipped = skippedReason(header.slowTier);
+      if (open.length > 0) {
+        reasons.push(
+          skipped === null
+            ? slowSuiteReason(header.revision, open, command)
+            : slowSkippedReason(header.revision, open, skipped, command),
+        );
+      }
     }
     return { header, failures, reasons };
   });
