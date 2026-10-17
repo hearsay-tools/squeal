@@ -333,6 +333,26 @@ describe("the slow-tier line (spec 004 D8)", () => {
     );
   });
 
+  it("names a skip's reason in place of not run, and claims no run for it (004 D8 as amended 2026-10-17)", () => {
+    const s = seed();
+    states(s.store, s.repo, [{ validity: "stale", observedAt: 1 }], [SLOW_A]);
+    const reason = "dist/index.js matches no file (slow.precondition.exists)";
+    publishSlowActivity(s.store, s.repo.mainId, { kind: "skipped", reason, since: NOW });
+    expect(slowLine(status(s))).toBe(
+      `Slow tier: 2 test files; 2 not run at revision 2, skipped: ${reason}. Squeal runs them once the precondition holds; the next revision or \`squeal run --slow\` checks it again.`,
+    );
+    const on = seed({ ...SLOW_POLICY, stop: { requireSlowSuite: true } });
+    publishSlowActivity(on.store, on.repo.mainId, { kind: "skipped", reason, since: NOW });
+    expect(slowLine(status(on))).toContain(
+      "Squeal runs them once the precondition holds, and Stop holds the agent once naming it;",
+    );
+    // A slow file queued again: the precondition is checked again, the skip is old news.
+    const queued = seed();
+    publishSlowActivity(queued.store, queued.repo.mainId, { kind: "skipped", reason, since: NOW });
+    keys(queued.store, queued.repo, { [SLOW_A]: "queued" });
+    expect(slowLine(status(queued))).not.toContain("skipped");
+  });
+
   it("says Stop waits up to its bound with stop.requireSlowSuite on (004 D8 and D9 as amended 2026-10-12)", () => {
     const on = { ...SLOW_POLICY, stop: { requireSlowSuite: true, slowWaitMs: 90_000 } };
     const s = seed(on);

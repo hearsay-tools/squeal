@@ -49,7 +49,7 @@ function filesText(paths: readonly string[]): string {
  * counts, an idle tier's several by name or number (004-35).
  */
 function pendingText(pending: number, activity: SlowTierActivity | null, late: boolean): string {
-  if (activity === null) return `${pending} pending`;
+  if (activity === null || activity.kind === "skipped") return `${pending} pending`;
   const reported = late ? "last reported " : "";
   if (activity.kind === "waiting") {
     return `${pending} pending, ${reported}waiting for ${WAITING_FOR[activity.for]}`;
@@ -117,12 +117,30 @@ export function slowTierText(header: StatusHeader, command: string): string | nu
   if (tier.pending > 0) {
     parts.push(pendingText(tier.pending, tier.activity, header.daemon?.state === "down"));
   }
-  if (tier.notRun > 0) parts.push(`${tier.notRun} not run at revision ${header.revision}`);
-  const runs = tier.current < tier.testFiles ? `; \`${command} run --slow\` runs them now` : "";
+  const skip = skippedReason(tier);
+  if (tier.notRun > 0) {
+    const skipped = skip === null ? "" : `, skipped: ${skip}`;
+    parts.push(`${tier.notRun} not run at revision ${header.revision}${skipped}`);
+  }
+  const runs =
+    tier.current >= tier.testFiles
+      ? ""
+      : skip === null
+        ? `; \`${command} run --slow\` runs them now`
+        : `; the next revision or \`${command} run --slow\` checks it again`;
   return (
     `Slow tier: ${plural(tier.testFiles, "test file")}; ${parts.join("; ")}. ` +
     `${capitalized(stopText(tier))}${runs}.`
   );
+}
+
+/**
+ * Spec 004 D8 as amended 2026-10-17 (task 004-65): why the slow files not run
+ * were skipped, the precondition the daemon found unmet; `null` when none was.
+ */
+export function skippedReason(tier: SlowTierState | undefined): string | null {
+  const activity = tier?.activity ?? null;
+  return activity?.kind === "skipped" && (tier?.notRun ?? 0) > 0 ? activity.reason : null;
 }
 
 /**
@@ -133,9 +151,15 @@ export function slowTierText(header: StatusHeader, command: string): string | nu
  * run for it: `run --slow` is what runs it (review wave-13ax B1, task
  * 001-323). With `stop.requireSlowSuite` on Stop waits up to its bound, or,
  * before the harness's waiting entry ran in the worktree, holds the agent
- * once (004 D9 as amended 2026-10-12).
+ * once (004 D9 as amended 2026-10-12). A skipped tier runs once its
+ * precondition holds; Stop does not wait for it (D8 as amended 2026-10-17).
  */
 function stopText(tier: SlowTierState): string {
+  if (skippedReason(tier) !== null) {
+    return tier.stopWaitMs === undefined
+      ? "Squeal runs them once the precondition holds"
+      : "Squeal runs them once the precondition holds, and Stop holds the agent once naming it";
+  }
   if (tier.stopWaitMs !== undefined) {
     return `Stop waits up to ${durationText(tier.stopWaitMs)} for them or holds the agent once`;
   }

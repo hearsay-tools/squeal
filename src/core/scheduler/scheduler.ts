@@ -269,6 +269,7 @@ class TierScheduler implements Scheduler {
       return;
     }
     this.#slow.preempt();
+    this.#slow.revised(new Set(applied.revision.changes.map((change) => change.path)));
     // The runner part waits for the runner: a backlog tier yields to an edit (task 001-124).
     this.#cancelBacklogs(applied.revision);
     this.#runnerWork.queueRefine(applied.revision, applied.content, touched);
