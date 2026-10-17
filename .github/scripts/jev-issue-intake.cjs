@@ -207,8 +207,7 @@ function answersOf(response) {
 
 function readChoice(answers, key, question) {
   const answer = answers[key];
-  if (!answer || answer.type !== "choice")
-    throw new Error(`Jev answer ${key} is missing or not a choice.`);
+  if (answer?.type !== "choice") throw new Error(`Jev answer ${key} is missing or not a choice.`);
   if (!Object.hasOwn(question.criteria, answer.choice))
     throw new Error(`Jev answer ${key} picked an option that was not offered.`);
   return {
@@ -219,8 +218,7 @@ function readChoice(answers, key, question) {
 
 function readNoul(answers, key) {
   const answer = answers[key];
-  if (!answer || answer.type !== "noul")
-    throw new Error(`Jev answer ${key} is missing or not a noul.`);
+  if (answer?.type !== "noul") throw new Error(`Jev answer ${key} is missing or not a noul.`);
   return probability(answer.noul, `Jev answer ${key}`);
 }
 
