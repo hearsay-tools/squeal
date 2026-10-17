@@ -8,7 +8,15 @@ import { skippedReason } from "../../src/core/state/index.js";
 import type { Harness } from "../scheduler/helpers.js";
 import { SLOW } from "../scheduler/helpers.js";
 import { waitFor } from "../watcher/helpers.js";
-import { line, open, SLOW_FILES, skipReason, slowRuns, UPPER } from "./precondition-helpers.js";
+import {
+  line,
+  open,
+  reopen,
+  SLOW_FILES,
+  skipReason,
+  slowRuns,
+  UPPER,
+} from "./precondition-helpers.js";
 
 /*
  * Review wave-8.1 B1 (spec 004 D8 as amended 2026-10-17): a forced checkpoint
@@ -109,3 +117,50 @@ describe("a forced skip over stored results (review wave-8.1 B1)", SLOW, () => {
     expect(h.header().slowTier).toMatchObject({ current: 2, notRun: 0 });
   });
 });
+
+/** The known states of the slow files' checks, file and test. */
+const slowStates = (h: Harness) =>
+  h.store.knownStates.list(h.worktreeId).filter((s) => SLOW_FILES.includes(s.check.testPath));
+
+/** Of the fixture's five test files, the three fast ones' file checks alone read current. */
+function expectSkippedNotCurrent(h: Harness) {
+  expect(h.header().fileLevelCounts.current).toBe(3);
+  const states = slowStates(h);
+  expect(states.length).toBeGreaterThan(0);
+  for (const state of states) expect(state.validity).toBe("stale");
+}
+
+describe(
+  "a skipped file's stored checks in the main header and checkpoints (review wave-8.1 B1 re-review)",
+  SLOW,
+  () => {
+    it("counts no check of a skipped file current, a prior failure kept as stale history", async () => {
+      const h = await ranThenUnready(FAILING_UPPER);
+      expect(h.header().fileLevelCounts.current).toBe(5);
+      await forcedSkip(h);
+      expectSkippedNotCurrent(h);
+      const failing = slowStates(h).filter((s) => s.outcome === "fail");
+      expect(failing.map((s) => s.check.testPath)).toContain(UPPER);
+    });
+
+    it("completes no checkpoint over a persisted skip after a restart, then a met one restores current", async () => {
+      const first = await ranThenUnready();
+      await forcedSkip(first);
+      const h = await reopen(first, { exists: ["ready"] });
+      expect(h.header().fullSuite.atCurrentRevision).toBe(false);
+      expect(h.header().slowTier).toMatchObject({ current: 0, notRun: 2, skipped: READY });
+      expectSkippedNotCurrent(h);
+      expect(slowRuns(h)).toHaveLength(0);
+
+      h.write("ready", "");
+      const next = await h.scheduler.requestFullSuite();
+      await waitFor(() => slowRuns(h).length === 2, 60_000);
+      await h.scheduler.idle();
+      expect(h.store.checkpoints.get(next.id)?.end).toBe("completed");
+      expect(h.header().fullSuite.atCurrentRevision).toBe(true);
+      expect(h.header().fileLevelCounts.current).toBe(5);
+      for (const state of slowStates(h)) expect(state.validity).toBe("current");
+      expect(skipReason(h)).toBeNull();
+    });
+  },
+);
