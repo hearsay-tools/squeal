@@ -2,6 +2,7 @@ import { isAbsolute, posix } from "node:path";
 import { isRecord } from "../fs/index.js";
 import { globToRegExp } from "../keys/glob.js";
 import type { NodeTestProject } from "../types/index.js";
+import { slowPrecondition } from "./policy-precondition.js";
 
 /** `null` when every glob compiles, else the problem with the first that does not. */
 export function compiles(globs: readonly string[]): { readonly problem: string } | null {
@@ -50,6 +51,7 @@ const FIELDS: Readonly<Record<keyof NodeTestProject, Field>> = {
   include: globs,
   exclude: globs,
   slow: boolean,
+  precondition: slowPrecondition,
 };
 const REQUIRED: ReadonlySet<string> = new Set(["name", "include"]);
 
