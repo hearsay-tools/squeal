@@ -5,6 +5,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { EscapedChildren } from "../../src/core/daemon/escaped.js";
 import { lowerWhile, TEST_NICE } from "../../src/core/daemon/low-priority.js";
+import { statOf } from "../../src/core/daemon/terminate.js";
 
 /*
  * 001 D11 Priority (task 001-393): a Vitest fork worker, a child of the
@@ -111,19 +112,21 @@ describe.runIf(process.platform === "linux")("lowerWhile: forks at nice 10 (001-
 
   it("lowers a child still being forked when its fork was lowered (001-437)", async () => {
     // A clone copies its parent's nice as it starts, and is listed among the
-    // parent's children only once it is made: under load, walks 300 ms apart miss it, at nice 0.
+    // parent's children only once it is made: walks for 1.5 s miss it, at nice 0.
     const fork = sleeper();
     const late = sleeper();
-    const carriers = async () => [{ pid: fork, ppid: process.pid, pgrp: 0, start: 1 }];
+    const entry = statOf(fork);
+    if (entry === null) throw new Error("no fork");
+    const carriers = async () => [entry];
     let walks = 0;
-    const walk = () => (walks++ < 3 ? [] : [late]);
+    const walk = () => (walks++ < 15 ? [] : [late]);
     const settled = new AbortController();
     const lowering = lowerWhile({ carriers }, "fast", 0, settled.signal, walk);
     onTestFinished(async () => {
       settled.abort();
       await lowering;
     });
-    for (let waited = 0; waited < 3_000 && getPriority(late) < TEST_NICE; waited += 50)
+    for (let waited = 0; waited < 4_000 && getPriority(late) < TEST_NICE; waited += 50)
       await sleep(50);
     expect({ fork: getPriority(fork), late: getPriority(late) }).toEqual({
       fork: TEST_NICE,
