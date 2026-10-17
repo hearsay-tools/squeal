@@ -31,6 +31,12 @@ export interface ReplayRow {
   truthAreas: string[] | null;
   outcome: string;
   expected: string;
+  evidence: string | null;
+  merged: boolean;
+}
+export interface BoardTruth {
+  areas: Map<number, Set<string>>;
+  rows: Map<number, Set<string>>;
 }
 export interface ReplayScore {
   issues: number;
@@ -44,24 +50,18 @@ export interface ReplayScore {
   wrongCloses: number[];
   rightComments: number;
   wrongComments: number[];
+  merged: string[];
   missed: number[];
 }
 
 export function specAreas(criteria?: Record<string, string>): Map<string, string>;
-export function boardTruth(board: string, areas?: Map<string, string>): Map<number, Set<string>>;
+export function boardTruth(board: string, specToArea?: Map<string, string>): BoardTruth;
 export function candidatesAt(corpus: Corpus, target: CorpusIssue): Candidate[];
 export function evaluate(input: {
   corpus: Corpus;
   answers: Record<number, RecordedAnswer>;
-  truth: Map<number, Set<string>>;
+  truth: BoardTruth;
   thresholds?: Thresholds;
 }): ReplayRow[];
-export function score(rows: ReplayRow[]): ReplayScore;
-export function render(input: {
-  corpus: Corpus;
-  rows: ReplayRow[];
-  model: string;
-  command: string;
-}): string;
 export function COMMAND(dir: string): string;
 export const DUPLICATES: Readonly<Record<number, number>>;
