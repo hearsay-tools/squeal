@@ -73,6 +73,7 @@
 #   test/policy/slow.test.ts
 #   test/slow/classify.test.ts
 #   test/slow/inherit.test.ts
+#   test/slow/precondition.test.ts
 #   test/types.test.ts
 #
 # Run a real `node --test` the rule cannot see, since the call is outside
