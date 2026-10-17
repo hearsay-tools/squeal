@@ -105,6 +105,22 @@ describe("CLI reads beside a store writer (011 C6, C7, C13)", () => {
     },
   );
 
+  it("keeps its retry bound when one attempt's busy timeout is longer (review 011-core wave-1 S1)", async () => {
+    const { b, database } = seeded();
+    const holder = await holdLock(database, "exclusive-locking", 5_000);
+    try {
+      const started = Date.now();
+      const why = readWhy(b.root, PARTIAL, { busyTimeoutMs: 3_000, busyRetryMs: 300 });
+      const waited = Date.now() - started;
+      expect(why).toMatchObject({ available: false, reason: "timeout" });
+      // Without the cap the first attempt alone holds for its 3 s busy timeout.
+      expect(waited).toBeLessThan(2_000);
+    } finally {
+      holder.child.kill();
+      await holder.released;
+    }
+  });
+
   it("says how long it waited and promises no wait that would end at the same lock, when the lock outlasts the bound", async () => {
     const { b, database } = seeded();
     const holder = await holdLock(database, "exclusive-locking", 5_000);

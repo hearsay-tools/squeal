@@ -78,7 +78,10 @@ export function withStatusStore<T>(
   const retryMs = options.busyRetryMs ?? 0;
   const started = Date.now();
   for (;;) {
-    const read = readOnce(root, commonDir, busyTimeoutMs, fn);
+    // An attempt's busy timeout never outlasts what is left of `busyRetryMs`, so the bound holds.
+    const left = retryMs - (Date.now() - started);
+    const attemptMs = retryMs > 0 ? Math.max(1, Math.min(busyTimeoutMs, left)) : busyTimeoutMs;
+    const read = readOnce(root, commonDir, attemptMs, fn);
     if (read !== BUSY) return read;
     const waited = Date.now() - started;
     if (waited >= retryMs) {
