@@ -1,8 +1,15 @@
+import { realpathSync } from "node:fs";
+import { resolve } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { recordedDaemon } from "../core/daemon/ensure.js";
 import { type DaemonMarks, type Leftover, leftovers, marksOf } from "../core/daemon/leftovers.js";
 import { acquireDaemonLock } from "../core/daemon/lock.js";
-import { lstatOrNull, resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
+import {
+  findWorktreeRoot,
+  lstatOrNull,
+  resolveCommonDir,
+  worktreeIdFor,
+} from "../core/fs/index.js";
 import { lockFileFor } from "../core/store/index.js";
 import type { AbsolutePath } from "../core/types/index.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
@@ -28,7 +35,9 @@ export const STOP_BOUNDS: StopBounds = { socketMs: 60_000, lockMs: 30_000, lefto
  * `squeal stop [root]`: asks the worktree's daemon to shut down and waits for
  * it and every process it started to go, the step before deleting a worktree.
  * Exits 0 once they are gone or no daemon ran, 1 past a bound, saying what is
- * left.
+ * left. An explicit root is that worktree's only (task 011-09, #25): a path
+ * that is missing or not a worktree's top level stops nothing and exits 1,
+ * never the checkout around it.
  */
 export async function stopCommand(
   args: readonly string[],
@@ -39,7 +48,7 @@ export async function stopCommand(
     io.stderr("usage: squeal stop [root]\n");
     return 2;
   }
-  const root = worktreeRoot(args[0], io);
+  const root = args[0] === undefined ? worktreeRoot(undefined, io) : explicitRoot(args[0], io);
   if (root === null) return 1;
   const socketPath = await daemonSocket(root);
   const ping = await askDaemon(socketPath, { type: "ping" }).catch(() => null);
@@ -94,6 +103,31 @@ export async function stopCommand(
   }
   io.stdout(`Squeal daemon stopped for ${root}\n`);
   return 0;
+}
+
+/**
+ * The worktree whose top level `path` names (relative to the CLI's cwd), or
+ * `null` after printing why there is none: a removed worker's path must not
+ * resolve to the enclosing checkout and stop its daemon.
+ */
+function explicitRoot(path: string, io: CliIo): AbsolutePath | null {
+  const named = resolve(io.cwd ?? process.cwd(), path);
+  if (lstatOrNull(named) === null) {
+    io.stderr(`squeal: ${named} does not exist; nothing stopped\n`);
+    return null;
+  }
+  const root = findWorktreeRoot(named);
+  if (root === null) {
+    io.stderr(`squeal: ${named} is not inside a git worktree\n`);
+    return null;
+  }
+  if (root !== realpathSync(named)) {
+    io.stderr(
+      `squeal: ${named} is not a worktree root (it lies inside ${root}); nothing stopped\n`,
+    );
+    return null;
+  }
+  return root;
 }
 
 /** The token the store records for the daemon of `ping`, `null` for another start or none. */
