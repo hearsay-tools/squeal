@@ -84,6 +84,18 @@ async function leaderGroup() {
   return { daemon, sleeper };
 }
 
+/** A process that sleeps until the test ends: its pid stands in for a fork's, or a fork's child's. */
+function sleeper(): number {
+  const child = spawn(process.execPath, ["-e", "setTimeout(() => {}, 30_000)"], {
+    stdio: "ignore",
+  });
+  onTestFinished(() => {
+    child.kill("SIGKILL");
+  });
+  if (child.pid === undefined) throw new Error("no sleeper");
+  return child.pid;
+}
+
 function output(child: ChildProcess): Promise<string> {
   let out = "";
   child.stdout?.on("data", (chunk: Buffer) => {
@@ -95,6 +107,28 @@ function output(child: ChildProcess): Promise<string> {
 describe.runIf(process.platform === "linux")("lowerWhile: forks at nice 10 (001-393)", () => {
   it("lowers a fork shorter than 1 s, and its child", async () => {
     expect(await shortFork("fast")).toEqual({ own: TEST_NICE, child: TEST_NICE });
+  });
+
+  it("lowers a child still being forked when its fork was lowered (001-437)", async () => {
+    // A clone copies its parent's nice as it starts, and is listed among the
+    // parent's children only once it is made: the first walk misses it, at nice 0.
+    const fork = sleeper();
+    const late = sleeper();
+    const carriers = async () => [{ pid: fork, ppid: process.pid, pgrp: 0, start: 1 }];
+    let walks = 0;
+    const walk = () => (walks++ === 0 ? [] : [late]);
+    const settled = new AbortController();
+    const lowering = lowerWhile({ carriers }, "fast", 0, settled.signal, walk);
+    onTestFinished(async () => {
+      settled.abort();
+      await lowering;
+    });
+    for (let waited = 0; waited < 3_000 && getPriority(late) < TEST_NICE; waited += 50)
+      await sleep(50);
+    expect({ fork: getPriority(fork), late: getPriority(late) }).toEqual({
+      fork: TEST_NICE,
+      late: TEST_NICE,
+    });
   });
 
   it("leaves a fork of another lane at the daemon's priority", async () => {
