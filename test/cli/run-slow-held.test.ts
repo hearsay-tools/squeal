@@ -77,7 +77,7 @@ describe("a held slow file stays held whatever the policy says later (review wav
     expect(wait.outcome).toBe("timeout");
     expect(wait).toMatchObject({ slow: { held: 1, pending: [SLOW_FILE] } });
     expect(waitLine(wait as EndedWait)).toMatch(
-      /; 1 of the 1 slow file run --slow queued pending: test\/slow\.test\.ts$/,
+      /; 1 of the 1 slow file run --slow queued pending: test\/slow\.test\.ts\. Worktree: /,
     );
   });
 
@@ -127,7 +127,7 @@ describe("slow news is the held files', not the edit window's (review wave-13ak,
 
     expect(wait).toMatchObject({ outcome: "news", transitions: 1, slow: { transitions: 1 } });
     expect(waitLine(wait as EndedWait)).toMatch(
-      /^Returned on news: 1 transition in the 1 slow file run --slow queued, at revision 4 after \d+\.\d s; the 1 slow file run --slow queued has its result$/,
+      /^Returned on news: 1 transition in the 1 slow file run --slow queued, at revision 4 after \d+\.\d s; the 1 slow file run --slow queued has its result\. Worktree: /,
     );
   });
 
@@ -150,7 +150,7 @@ describe("slow news is the held files', not the edit window's (review wave-13ak,
       slow: { transitions: 1 },
     });
     expect(waitLine(wait as EndedWait)).toMatch(
-      /^Returned on news: 1 transition in the 1 test file the edits since revision 4 re-keyed and 1 in the 1 slow file run --slow queued, at revision 4 after \d+\.\d s; the 1 slow file run --slow queued has its result$/,
+      /^Returned on news: 1 transition in the 1 test file the edits since revision 4 re-keyed and 1 in the 1 slow file run --slow queued, at revision 4 after \d+\.\d s; the 1 slow file run --slow queued has its result\. Worktree: /,
     );
   });
 });

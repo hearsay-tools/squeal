@@ -121,6 +121,8 @@ async function run(argv: string[], cwd: string) {
 
 const LAPSE =
   "the daemon's heartbeat went 20 s stale while its socket showed it alive (a busy store or a stalled daemon), so the wait went on";
+/** Issue 26: the wait's verdict is its output's last line. */
+const last = (text: string) => text.trimEnd().split("\n").at(-1) ?? "";
 
 const unsupported = (): DaemonSync => ({
   current: () => ({ state: "unsupported" }),
@@ -167,9 +169,11 @@ describe("a requested slow wait through a stale heartbeat (004-66)", { timeout: 
 
     expect(finished()).toBe(true);
     expect(result.code).toBe(0);
-    const line = result.stdout.split("\n")[1];
+    const line = last(result.stdout);
     expect(line).toMatch(/^Returned on quiet: /);
-    expect(line).toContain(`the 1 slow file run --slow queued has its result; ${LAPSE}`);
+    expect(line).toContain(
+      `the 1 slow file run --slow queued has its result; ${LAPSE}. Worktree: `,
+    );
     // Recovery with no competing run: one request, nothing restarted.
     expect(seen.filter((type) => type === "run-slow")).toHaveLength(1);
     expect(seen).not.toContain("stop");
@@ -185,8 +189,10 @@ describe("a requested slow wait through a stale heartbeat (004-66)", { timeout: 
 
     expect(finished()).toBe(true);
     expect(result.code).toBe(0);
-    expect(result.stdout.split("\n")[0]).toMatch(
-      new RegExp(`^Named test files at revision 4: [^\\n]*; ${LAPSE.replace(/[()]/g, "\\$&")}$`),
+    expect(last(result.stdout)).toMatch(
+      new RegExp(
+        `^Named test files at revision 4: [^\\n]*; ${LAPSE.replace(/[()]/g, "\\$&")}\\. Worktree: `,
+      ),
     );
   });
 
@@ -223,8 +229,8 @@ describe("a requested slow wait whose daemon stopped (004-66)", { timeout: 30_00
     const result = await run(["run", "--slow", "--wait", "20000"], repo.main);
 
     expect(result.code).toBe(3);
-    expect(result.stdout.split("\n")[1]).toBe(
-      `Returned without a daemon: no daemon has validated since ${new Date(NOW - 1_000).toISOString()}: the daemon stopped; results are as of revision 4`,
+    expect(last(result.stdout)).toMatch(
+      `Returned without a daemon: no daemon has validated since ${new Date(NOW - 1_000).toISOString()}: the daemon stopped; results are as of revision 4. Worktree: `,
     );
   });
 
