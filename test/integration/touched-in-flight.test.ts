@@ -1,7 +1,8 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
+import { MAX_DISCARDS } from "../../src/core/scheduler/ledger.js";
 import { type Harness, openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
 import {
   BASE,
@@ -12,7 +13,6 @@ import {
   withheldByBarrier,
   withSlowLanes,
 } from "./stamps-repo.js";
-import { touchHeard } from "./touched-repo.js";
 
 /*
  * Task 001-159: a touch heard while a run is in flight. When something else
@@ -20,27 +20,32 @@ import { touchHeard } from "./touched-repo.js";
  * none of its files is stored. When the completion barrier withholds it
  * too, no revision follows, so the files run once more with a note naming
  * the file (task 007-30). A file the run writes itself on every run counts
- * too (review wave-13e B1, task 001-168): its files are unknown with a
- * reason that names the file, as task 001-146 does for a file that moved
- * during a run. An unknown file has no stored state.
+ * too (review wave-13e B1, task 001-168): each withheld run is queued
+ * again, counted toward `MAX_DISCARDS` (issue 10, task 011-06), and at the
+ * limit its files are unknown with a reason that names the file, as task
+ * 001-146 does for a file that moved during a run. An unknown file has no
+ * stored state.
  *
- * `test/holds.test.ts` writes `flags/started` (git-ignored) and waits for
- * `flags/heard`; with `SELF` it first rewrites `fixtures/data.txt` with the
- * bytes it holds, as a fixture writer does on every run.
+ * `test/holds.test.ts` appends to `flags/started` (git-ignored) and waits
+ * until `flags/heard` is as long; with `self` it first rewrites
+ * `fixtures/data.txt` with the bytes it holds, as a fixture writer does on
+ * every run.
  */
 
 const holds = (self: boolean) =>
   [
-    'import { existsSync, readFileSync, writeFileSync } from "node:fs";',
+    'import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";',
     'import { setTimeout as sleep } from "node:timers/promises";',
     'import { expect, it } from "vitest";',
     'import { which } from "../src/mod.ts";',
     "",
     'const at = (path: string) => new URL("../" + path, import.meta.url);',
+    'const length = (path: string) => (existsSync(at(path)) ? readFileSync(at(path), "utf8").length : 0);',
     'it("passes on the bytes on disk", async () => {',
     self ? '  writeFileSync(at("fixtures/data.txt"), readFileSync(at("fixtures/data.txt")));' : "",
-    '  writeFileSync(at("flags/started"), "");',
-    '  for (let i = 0; i < 600 && !existsSync(at("flags/heard")); i++) await sleep(50);',
+    '  appendFileSync(at("flags/started"), "x");',
+    '  const run = length("flags/started");',
+    '  for (let i = 0; i < 600 && length("flags/heard") < run; i++) await sleep(50);',
     '  expect(which).toBe("old");',
     "});",
     "",
@@ -56,20 +61,34 @@ const files = (self: boolean): Readonly<Record<string, string>> => ({
 });
 
 /**
- * Starts the scheduler. Once the run started, `path` is rewritten with its
- * own bytes (unless the run did it), the batch is handed over, and the run
- * ends once the runner heard the touch.
+ * Starts the scheduler. Once each of the next `times` runs started, `path`
+ * is rewritten with its own bytes (unless the run did it), the batch is
+ * handed over, and the run ends once the runner heard the touch. Later runs
+ * go through.
  */
-async function touchDuringRun(h: Harness, path: string, rewrite: boolean): Promise<void> {
-  const heard = touchHeard(h);
+async function touchDuringRun(h: Harness, path: string, rewrite: boolean, times = 1) {
+  let heard: (() => void) | null = null;
+  const invalidate = h.runner.invalidate;
+  h.runner.invalidate = (paths) => {
+    if (paths.some((p) => p.kind === "touch")) heard?.();
+    return invalidate(paths);
+  };
+  const flag = (name: string) => join(h.root, "flags", name);
+  const length = (name: string) =>
+    existsSync(flag(name)) ? readFileSync(flag(name), "utf8").length : 0;
   await h.scheduler.start();
-  const started = join(h.root, "flags/started");
-  for (let i = 0; i < 1200 && !existsSync(started); i++) await sleep(25);
-  expect(existsSync(started)).toBe(true);
-  if (rewrite) h.write(path, readFileSync(join(h.root, path), "utf8"));
-  await h.batch(path);
-  await heard;
-  writeFileSync(join(h.root, "flags/heard"), "");
+  for (let run = 1; run <= times; run++) {
+    for (let i = 0; i < 1200 && length("started") < run; i++) await sleep(25);
+    expect(length("started")).toBe(run);
+    const touch = new Promise<void>((resolve) => {
+      heard = resolve;
+    });
+    if (rewrite) h.write(path, readFileSync(join(h.root, path), "utf8"));
+    await h.batch(path);
+    await touch;
+    appendFileSync(flag("heard"), "x");
+  }
+  appendFileSync(flag("heard"), "x".repeat(1_000));
   await h.scheduler.idle();
 }
 
@@ -136,8 +155,9 @@ describe("a test file that rewrites a worktree file with its own bytes on every 
   // Review wave-13e B1: writing the bytes proves nothing about what a cache served the run, so
   // its own touch withholds it like any other (task 001-168). The skill's reports reference
   // names the remedy: write outside the worktree or under an ignored path, or declare the file.
+  // Task 011-06: each withheld run is queued again, so its touch is heard during every run.
   it.each([true, false])(
-    "is unknown with a reason naming the file when its touch is heard during its run (observe %s)",
+    "is unknown with a reason naming the file when its touch is heard during each run (observe %s)",
     SLOW,
     async (observe) => {
       const repo = createRepo(files(true));
@@ -146,7 +166,8 @@ describe("a test file that rewrites a worktree file with its own bytes on every 
         runnerPartBesideRun: true,
         observe,
       });
-      await touchDuringRun(h, "fixtures/data.txt", false);
+      await touchDuringRun(h, "fixtures/data.txt", false, MAX_DISCARDS);
+      expect(h.runsOf("test/holds.test.ts")).toHaveLength(MAX_DISCARDS);
       expect(stored(h)).toEqual([]);
       expect(reasons(h, "test/holds.test.ts")).toEqual([
         expect.stringMatching(reason("fixtures/data.txt")),
