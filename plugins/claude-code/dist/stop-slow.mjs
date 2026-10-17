@@ -588,7 +588,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.205";
+  if (true) return "0.1.206";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -689,7 +689,7 @@ function firstLine(text) {
 }
 function normalize(line) {
   return VOLATILE.reduce(
-    (text, [pattern, replacement]) => text.replace(pattern, replacement),
+    (text, [pattern, replacement2]) => text.replace(pattern, replacement2),
     line
   );
 }
@@ -3999,6 +3999,12 @@ function vitestDetected(root) {
   });
 }
 
+// src/core/status/config-problems.ts
+function configProblemsOf(root) {
+  const { problems } = loadPolicy(root);
+  return problems.length === 0 ? {} : { configProblems: problems };
+}
+
 // src/core/status/git-head.ts
 import { readFileSync as readFileSync6 } from "node:fs";
 import { join as join8 } from "node:path";
@@ -4164,6 +4170,7 @@ function snapshot(store, worktreeId, root, now) {
     daemonNotes: readDaemonNotes(store, worktreeId),
     ...openCheckpoint(store, worktreeId, daemon),
     ...vitestExcluded(worktree?.root ?? root),
+    ...configProblemsOf(worktree?.root ?? root),
     ...pendingRetriesOf(store, keys),
     ...unknownTestFilesOf(store, worktreeId, states, keys)
   };
