@@ -7635,10 +7635,12 @@ import { setTimeout as sleep3 } from "node:timers/promises";
 async function lowerWhile(children, lane, since, signal2, walk2 = below) {
   if (process.platform !== "linux") return;
   const lowered = /* @__PURE__ */ new Map();
+  let lost = false;
   try {
     for (; ; ) {
       await sleep3(EVERY_MS, void 0, { signal: signal2 });
-      const found2 = await children.carriers(lane, since);
+      const found2 = await children.carriers(lane, since, lost);
+      lost = false;
       const at2 = Date.now();
       const pids = [];
       for (const { pid, start: start2 } of found2)
@@ -7650,12 +7652,14 @@ async function lowerWhile(children, lane, since, signal2, walk2 = below) {
         if (at2 - carrier.since >= WALK_MS && at2 - carrier.walked < WALK_MS) continue;
         if (statOf(carrier.pid)?.start !== carrier.start) {
           lowered.delete(id2);
+          lost = true;
           continue;
         }
         carrier.walked = at2;
-        const current2 = walk2(carrier.pid);
-        pids.push(...current2.filter((descendant) => !carrier.seen.has(descendant)));
-        carrier.seen = new Set(current2);
+        const current2 = new Set(walk2(carrier.pid));
+        for (const descendant of current2) if (!carrier.seen.has(descendant)) pids.push(descendant);
+        for (const descendant of carrier.seen) if (!current2.has(descendant)) lost = true;
+        carrier.seen = current2;
       }
       if (pids.length > 0) lower(pids, isSlowLane(lane));
     }
@@ -49361,10 +49365,12 @@ var EscapedChildren = class {
    * from `/proc/<daemon>/task/<tid>/children`, a few small reads where a scan of
    * `/proc` reads every process, so it can run every 100 ms. Also, after a
    * child of the daemon exited, the lane's carriers in its group that its
-   * children left behind (`#orphans`, review 001-401 S1).
+   * children left behind (`#orphans`, review 001-401 S1), or, when `lost`, a
+   * descendant `lowerWhile` walked that is gone (review wave-18 B1).
    */
-  async carriers(lane, since) {
+  async carriers(lane, since, lost = false) {
     if (process.platform !== "linux") return [];
+    if (lost) this.#reaped = Number.NaN;
     const children = await this.#children(lane, since);
     const known2 = new Set(children.map(key));
     const orphans = await this.#orphans(lane, since);
@@ -49392,7 +49398,8 @@ var EscapedChildren = class {
    * `since`, that are no children of the daemon: a child that exited before a
    * look found it leaves its children there. Scanned from `/proc` only when
    * a child of the daemon was reaped since the last scan, which its children's
-   * page faults, added to the daemon's `cminflt`, tell, and at most once in
+   * page faults, added to the daemon's `cminflt`, tell, or a lowered process
+   * was lost (`carriers`), and at most once in
    * `ORPHANS_EVERY_MS`, whatever lane looks. A scan keeps what it found of
    * every lane, so a lane's look between scans still gets its own (review
    * wave-13bt S1). None when the daemon leads no group.
