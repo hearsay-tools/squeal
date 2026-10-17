@@ -107,7 +107,8 @@ describe("the SessionStart primer", () => {
     const next = PRIMER.indexOf("next tool call");
     expect(next).toBeGreaterThan(-1);
     expect(next).toBeLessThan(PRIMER.indexOf("squeal status --wait"));
-    expect(PRIMER.length).toBeLessThan(1_000);
+    // Task 005-68: the path wait and `run --all --wait` take it past 1,000.
+    expect(PRIMER.length).toBeLessThan(1_100);
   });
 });
 

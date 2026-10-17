@@ -157,7 +157,7 @@ describe("bundled Codex hooks name a CLI the agent's shell runs", () => {
     const start = await context("session-start", "session-start");
     expect(start.endsWith(`\n\n${primer(command)}`)).toBe(true);
     expect(start).not.toMatch(/`squeal /);
-    const wait = /`([^`]+) status --wait 60000`/.exec(start)?.[1];
+    const wait = /`([^`]+) status --wait 60000 <path>\.\.\.`/.exec(start)?.[1];
     expect(wait).toBe(command);
     const status = shell(`${wait} status`);
     expect(status.stderr).toBe("");
