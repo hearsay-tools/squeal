@@ -3,7 +3,13 @@
 export { baselineFindings } from "./baseline.js";
 export { formatCheck, parseCheck } from "./check-name.js";
 export { checkIdentity, classify, testFileKeyOf, testFileOf } from "./derive.js";
-export { causeText, describeFailure, SUMMARY_MAX_CHARS, withCode } from "./fingerprint.js";
+export {
+  causeText,
+  describeFailure,
+  SUMMARY_MAX_CHARS,
+  sameFingerprint,
+  withCode,
+} from "./fingerprint.js";
 export { FLAKY_KEPT, FLAKY_META_KEY, flakyText, readFlakyNotes, recordFlips } from "./flaky.js";
 export {
   fullSuiteText,

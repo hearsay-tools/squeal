@@ -8,6 +8,7 @@ import type {
 } from "../types/index.js";
 import { worktreeMetaKey } from "../types/index.js";
 import { checkIdentity } from "./derive.js";
+import { sameFingerprint } from "./fingerprint.js";
 import { fingerprintOf } from "./shown-result.js";
 
 /*
@@ -118,7 +119,7 @@ export function producingResult(
         r.provenance.recordedAt === producer.recordedAt &&
         r.key === failureKey &&
         r.outcome === state.outcome &&
-        fingerprintOf(r) === state.fingerprint &&
+        sameFingerprint(fingerprintOf(r), state.fingerprint) &&
         r.provenance.commit === state.commit &&
         (origin.kind === "inherited"
           ? r.provenance.worktreeId === origin.worktreeId

@@ -1,4 +1,9 @@
-import { checkIdentity, type Observation, transitionKind } from "../state/index.js";
+import {
+  checkIdentity,
+  type Observation,
+  sameFingerprint,
+  transitionKind,
+} from "../state/index.js";
 import type {
   AbsolutePath,
   CheckId,
@@ -63,7 +68,11 @@ export function beforeFailing(
   state: Pick<KnownState, "outcome" | "fingerprint">,
 ): Observation | null {
   const last = history.at(-1);
-  if (state.outcome !== "fail" || last?.to !== "fail" || last.toFingerprint !== state.fingerprint) {
+  if (
+    state.outcome !== "fail" ||
+    last?.to !== "fail" ||
+    !sameFingerprint(last.toFingerprint, state.fingerprint)
+  ) {
     return null;
   }
   const at = history.findLastIndex((t) => t.kind !== "fail-changed");
