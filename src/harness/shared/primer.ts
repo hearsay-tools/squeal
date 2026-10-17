@@ -57,14 +57,10 @@ type Naming = "every" | "first" | "none";
  */
 export function primer(command: string = SQUEAL_COMMAND, coverage: Coverage = VITEST_ONLY): string {
   const names = runnerNames(coverage);
-  const sentences = (covers: string, naming: Naming) =>
+  const sentences = (covers: string, naming: Naming, paths: boolean) =>
     [
       `${PRIMER_OPENING}${listed(names, "and")} tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run ${listed(names, "or")} to learn whether your edits broke something.`,
-      `Wait only when you need a result before your next step, for example before saying the task is done: ${
-        naming === "none"
-          ? "`status --wait 60000` on the CLI SQUEAL messages name"
-          : `\`${command} status --wait 60000\``
-      }.`,
+      waitSentence(command, naming, paths),
       ...(coverage.slow === null
         ? []
         : slowSentences(command, naming, coverage.slow.requireSlowSuite === true)),
@@ -74,16 +70,48 @@ export function primer(command: string = SQUEAL_COMMAND, coverage: Coverage = VI
       covers,
       "Squeal does not cover typecheck, build or any other test suite: run those yourself.",
     ].join(" ");
-  // Fold the node:test and pytest projects first, then name the CLI less, until the primer fits.
+  // Fold the node:test and pytest projects first, then name the CLI less, until the primer fits;
+  // the path wait joins only where it fits without folding more (task 005-68).
   let text = "";
   const most = Math.max(coverage.nodeTest.length, coverage.pytest?.length ?? 0);
   for (const naming of ["every", "first", "none"] as const) {
     for (let node = most; node >= 0; node--) {
-      text = sentences(coversSentence(coverage, node), naming);
-      if (text.length <= PRIMER_CAP_CHARS) return text;
+      text = sentences(coversSentence(coverage, node), naming, false);
+      if (text.length > PRIMER_CAP_CHARS) continue;
+      const paths = sentences(coversSentence(coverage, node), naming, true);
+      return paths.length <= PRIMER_CAP_CHARS ? paths : text;
     }
   }
   return text;
+}
+
+/**
+ * Spec 005 D6 as amended by the human (2026-10-17, task 005-68, issue 18):
+ * which wait applies when. A path wait for the files just changed, with its
+ * verdict line; the pathless wait and `run --all --wait` before saying the
+ * task is done. An agent that knew only the pathless wait reported waiting
+ * on most of a suite other work had re-keyed. What a path selects (005-67) is the
+ * skill's: the primer is at its cap. Where it does not fit, `paths` off
+ * gives the sentence it replaced, so no primer says less than before it,
+ * projects and the CLI's naming included (the 005 coordinator, 2026-10-17).
+ */
+function waitSentence(command: string, naming: Naming, paths: boolean): string {
+  if (!paths) {
+    const wait =
+      naming === "none"
+        ? "`status --wait 60000` on the CLI SQUEAL messages name"
+        : `\`${command} status --wait 60000\``;
+    return `Wait only when you need a result before your next step, for example before saying the task is done: ${wait}.`;
+  }
+  // A Codex CLI is a long path: named in full once, as the path wait; unnamed, said once, up front.
+  const full = naming === "every" && command === SQUEAL_COMMAND;
+  const cli = (sub: string, first: boolean) =>
+    naming !== "none" && (first || full)
+      ? `\`${command} ${sub}\``
+      : naming === "none"
+        ? `\`${sub}\``
+        : `the CLI's \`${sub}\``;
+  return `Wait only when you need a result before your next step${naming === "none" ? ", on the CLI SQUEAL messages name" : ""}: ${cli("status --wait 60000 <path>...", true)} for the verdict on files you just changed; before you finish, ${cli("status --wait 60000", false)} or a checkpoint, ${cli("run --all --wait", false)}.`;
 }
 
 /**
