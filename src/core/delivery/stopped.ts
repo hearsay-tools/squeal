@@ -54,27 +54,31 @@ export function clearStopped(store: Store, worktreeId: WorktreeId): void {
 /**
  * The worktree's stopped mark while it holds by the store alone: set, no
  * daemon heartbeat since, and no daemon recorded alive. The tree is not
- * compared here; `stopHolds` does that at a boundary.
+ * compared here; `stopHolds` does that at a boundary. A worktree with no row
+ * yet (a linked worktree beside a shared store) keeps its mark too: the mark
+ * is keyed by the worktree's id, never by its row (review wave-1.10 B1).
  */
 export function heldStop(
   store: Store,
+  worktreeId: WorktreeId,
   worktree: WorktreeRecord | null | undefined,
   live: DaemonLiveness,
 ): StoppedMark | null {
-  if (worktree == null || live.state === "alive") return null;
-  const mark = readMark(store, worktree.id);
+  if (live.state === "alive") return null;
+  const mark = readMark(store, worktreeId);
   if (mark === null) return null;
-  const heartbeat = worktree.daemon?.heartbeatAt ?? worktree.lastHeartbeatAt;
+  const heartbeat = worktree?.daemon?.heartbeatAt ?? worktree?.lastHeartbeatAt;
   return heartbeat !== undefined && heartbeat > mark.at ? null : mark;
 }
 
 /** `live` with `stopped` set while the worktree's stopped mark holds (`heldStop`). */
 export function asStopped(
   store: Store,
+  worktreeId: WorktreeId,
   worktree: WorktreeRecord | null | undefined,
   live: DaemonLiveness,
 ): DaemonLiveness {
-  if (live.state !== "down" || heldStop(store, worktree, live) === null) return live;
+  if (live.state !== "down" || heldStop(store, worktreeId, worktree, live) === null) return live;
   return { ...live, stopped: true };
 }
 
@@ -85,14 +89,15 @@ export function asStopped(
  */
 export async function stopHolds(
   store: Store,
+  at: { readonly id: WorktreeId; readonly root: AbsolutePath },
   worktree: WorktreeRecord | null | undefined,
   live: DaemonLiveness,
 ): Promise<boolean> {
-  const mark = heldStop(store, worktree, live);
-  if (mark === null || worktree == null) return false;
-  const tree = await treePrint(worktree.root, TREE_PRINT_TIMEOUT_MS);
+  const mark = heldStop(store, at.id, worktree, live);
+  if (mark === null) return false;
+  const tree = await treePrint(at.root, TREE_PRINT_TIMEOUT_MS);
   if (tree === null || tree === mark.tree) return true;
-  clearStopped(store, worktree.id);
+  clearStopped(store, at.id);
   return false;
 }
 

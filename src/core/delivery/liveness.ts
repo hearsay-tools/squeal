@@ -75,7 +75,12 @@ export function readLiveHeader(
     daemon: withDeath(
       store,
       worktree,
-      asRested(store, worktree, asStopped(store, worktree, worktreeLiveness(worktree, now)), now),
+      asRested(
+        store,
+        worktree,
+        asStopped(store, worktreeId, worktree, worktreeLiveness(worktree, now)),
+        now,
+      ),
     ),
     changedPaths: [...changes.keys()],
     ...(installed === undefined ? {} : { installedLockfile: installed.path }),
@@ -202,7 +207,12 @@ export function livenessChange(
 ): DaemonLiveness | null {
   const told = toldLiveness(store, consumer);
   const worktree = store.worktrees.get(consumer.worktreeId);
-  const live = asStopped(store, worktree, asTold(worktreeLiveness(worktree, at), told, at));
+  const live = asStopped(
+    store,
+    consumer.worktreeId,
+    worktree,
+    asTold(worktreeLiveness(worktree, at), told, at),
+  );
   if (live.state === "down" && live.stopped !== true) {
     if (live.startingSince !== undefined) return null;
     const rest = restState(store, worktree, at);
