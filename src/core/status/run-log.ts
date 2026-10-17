@@ -1,25 +1,25 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { consolePrefix, parseConsoleLine, testFileLabel, VITEST_LOG } from "../run-log.js";
-import type { AbsolutePath, CheckId, ResultRecord, WhyConsole, WhyRunLog } from "../types/index.js";
+import type { AbsolutePath, CheckId, WhyConsole, WhyRunLog, WorktreeId } from "../types/index.js";
 
 /** Most console lines `squeal why --include-logs` prints. */
 export const WHY_LOG_LINE_LIMIT = 200;
 
 /**
- * The run log of `result`'s run, its directory `logDir`, or under `runsDir`
- * when the run record was pruned. A node:test file's run keeps its own
+ * The run log of `run`, a result's producing run, its directory `logDir`, or
+ * under `runsDir` when the run record was pruned. A node:test file's run keeps its own
  * stdout and stderr logs (task 001-188); otherwise the run's `vitest.log`.
  * With `includeLogs`, the console lines of `check`'s test file.
  */
 export function runLogOf(
-  result: ResultRecord,
+  run: { readonly runId: string; readonly worktreeId: WorktreeId },
   logDir: AbsolutePath | null,
   check: CheckId,
   runsDir: AbsolutePath,
   includeLogs: boolean,
 ): WhyRunLog {
-  const { runId, worktreeId } = result.provenance;
+  const { runId, worktreeId } = run;
   const dir = logDir ?? join(runsDir, runId);
   const nodeTest = nodeTestLogs(dir, check);
   if (nodeTest !== null) {

@@ -171,8 +171,9 @@ describe("squeal why: the run log", () => {
     const why = reportOf(readWhy(c.root, NAME));
 
     expect(why.runLog).toBeNull();
+    expect(why.runLogUnavailable).toBe("unidentified");
     expect(formatWhy(why)).toContain(
-      "Run log: unknown, no stored result is identifiably the one behind the known state",
+      "Run log: unknown, no stored result, or several, fit the known state",
     );
   });
 });

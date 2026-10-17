@@ -104,7 +104,10 @@ describe("squeal why: the producing run", () => {
     ]);
     const stale = reportOf(readWhy(b.root, NAME));
     expect(stale.runLog).toBeNull();
-    expect(formatWhy(stale)).toContain("Run log: unknown, no stored result is identifiably");
+    expect(stale.runLogUnavailable).toBe("unidentified");
+    expect(formatWhy(stale)).toContain(
+      "Run log: unknown, no stored result, or several, fit the known state",
+    );
   });
 
   it("names a stale own result by its revision, and none once the row was replaced", () => {
@@ -125,7 +128,10 @@ describe("squeal why: the producing run", () => {
       stored(LOGIN, "k0", { worktreeId: b.id, runId: "run-k0b", revision: 3, minute: 3 }),
     ]);
     store.knownStates.upsertMany([state(b.id, LOGIN, { observedAt: 1, commit: COMMIT })]);
-    expect(reportOf(readWhy(b.root, NAME)).runLog).toBeNull();
+    const replaced = reportOf(readWhy(b.root, NAME));
+    expect(replaced.runLog).toBeNull();
+    expect(replaced.runLogUnavailable).toBe("replaced");
+    expect(replaced.replacedAtKey).toMatchObject({ runId: "run-k0b", worktreeId: b.id, key: "k0" });
   });
 });
 
