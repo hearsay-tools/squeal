@@ -1,13 +1,9 @@
 import { POLICY_FILE } from "../daemon/policy.js";
 import type { UnmatchedInputs } from "../keys/index.js";
 import { readDaemonNotes } from "../notes.js";
-import type { RelativePath, Store, WorktreeId } from "../types/index.js";
+import type { Store, WorktreeId } from "../types/index.js";
 
-/** Paths for a note, at most `max` of them. Styleguide: "Errors carry context (check id, revision, path)." */
-export function listPaths(paths: readonly RelativePath[], max = 5): string {
-  const shown = paths.slice(0, max).join(", ");
-  return paths.length > max ? `${shown} and ${paths.length - max} more` : shown;
-}
+export { listPaths } from "../text.js";
 
 /**
  * One note per policy `inputs` entry that selects nothing, in the shape of

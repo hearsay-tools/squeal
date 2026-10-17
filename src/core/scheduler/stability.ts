@@ -1,7 +1,7 @@
 import { type Hasher, StatCache, sameStat } from "../hash/index.js";
 import { type BatchDiff, diffCandidates, statCandidates } from "../revision/index.js";
+import { listPaths, pathsReason } from "../text.js";
 import type { CheckKey, RelativePath, RunReport, TestFileRef } from "../types/index.js";
-import { listPaths } from "./notes.js";
 
 /**
  * A copy of the stat cache entries of `paths`: the inputs a tier's keys were
@@ -80,7 +80,13 @@ export function touchedUnchanged(
  */
 export function withheldForTouch(report: RunReport, touched: readonly RelativePath[]): RunReport {
   if (touched.length === 0) return report;
-  const reason = `squeal: ${touched.join(", ")} was written while this run was in flight and ended as it was; the run may have executed bytes no check key names (task 001-168)`;
+  const reason = pathsReason(
+    "squeal: the run may have executed bytes no check key names, since ",
+    touched,
+    (one) =>
+      `${one ? "was" : "were"} written while this run was in flight and ended as ${one ? "it was" : "they were"}`,
+    "task 001-168",
+  );
   const { fileDurations, observed, ...rest } = report;
   return {
     ...rest,

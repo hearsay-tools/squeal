@@ -26,9 +26,27 @@ const C1: Consumer = { worktreeId: WT, sessionId: "s1", agentId: "main" };
 const A = check("a");
 const NONE = { checkpointId: null };
 
+/** A completed run of `FILE` the adapter's drops start from. */
+const REPORT = {
+  end: "completed",
+  durationMs: 1,
+  completedFiles: [FILE],
+  results: [],
+  fileErrors: [],
+  failure: null,
+} as const;
+const PATHS = new WorktreePaths("/repo");
+
 /** The reason the Vitest adapter gives a file 001-146 dropped, as the composite runner prefixes it. */
-const moved = (paths: string) =>
-  `vitest: vitest adapter: ${paths} changed on disk after this run loaded it; the run may have executed bytes no check key names (task 001-146)`;
+const moved = (...files: string[]) =>
+  `vitest: ${
+    withoutFiles(
+      REPORT,
+      [FILE],
+      files.map((f) => `/repo/${f}`),
+      PATHS,
+    ).failure
+  }`;
 
 let store: Store;
 let sink: StateSink;
@@ -111,7 +129,7 @@ describe("a PASS -> UNKNOWN from the consumer's own edit landing mid-run (task 0
 
   it("is delivered when a moved file is not among the consumer's changes", async () => {
     await passThenOwnEdit();
-    sink.markUnknown(WT, revision, [FILE], moved("src/a.ts, src/b.ts"));
+    sink.markUnknown(WT, revision, [FILE], moved("src/a.ts", "src/b.ts"));
     expect(await kinds()).toEqual(["to-unknown"]);
   });
 
@@ -134,8 +152,7 @@ describe("a PASS -> UNKNOWN from the consumer's own edit landing mid-run (task 0
 
   it("is delivered for a file written during the run that ended as it was (task 001-159)", async () => {
     await passThenOwnEdit();
-    const touched =
-      "vitest: vitest adapter: src/a.ts was written during this run and ended as it was; the run may have executed bytes no check key names (task 001-159)";
+    const touched = `vitest: ${withoutTouched(REPORT, [FILE], ["src/a.ts"]).failure}`;
     sink.markUnknown(WT, revision, [FILE], touched);
     expect(await kinds()).toEqual(["to-unknown"]);
   });
@@ -151,26 +168,24 @@ describe("a PASS -> UNKNOWN from the consumer's own edit landing mid-run (task 0
 });
 
 describe("movedPaths", () => {
-  const report = {
-    end: "completed",
-    durationMs: 1,
-    completedFiles: [FILE],
-    results: [],
-    fileErrors: [],
-    failure: null,
-  } as const;
-  const paths = new WorktreePaths("/repo");
-
   it("reads the files the Vitest adapter's 001-146 reason names", () => {
-    const { failure } = withoutFiles(report, [FILE], ["/repo/src/a.ts", "/repo/src/b.ts"], paths);
+    const { failure } = withoutFiles(REPORT, [FILE], ["/repo/src/a.ts", "/repo/src/b.ts"], PATHS);
     expect(movedPaths(failure ?? "")).toEqual(["src/a.ts", "src/b.ts"]);
     expect(movedPaths(`vitest: ${failure}`)).toEqual(["src/a.ts", "src/b.ts"]);
   });
 
+  it("reads every file past the reason's sample of five (task 011-02)", () => {
+    const files = Array.from({ length: 12 }, (_, i) => `src/m${i}.ts`);
+    const stale = files.map((f) => `/repo/${f}`);
+    const { failure } = withoutFiles(REPORT, [FILE], stale, PATHS);
+    expect(failure).toContain("and 7 more");
+    expect(movedPaths(`vitest: ${failure}`)).toEqual(files);
+  });
+
   it("reads nothing from the 001-159 reason or a reason with another line", () => {
-    const touched = withoutTouched(report, [FILE], ["src/a.ts"]).failure ?? "";
+    const touched = withoutTouched(REPORT, [FILE], ["src/a.ts"]).failure ?? "";
     expect(movedPaths(touched)).toBeNull();
-    const both = withoutFiles({ ...report, failure: "boom" }, [FILE], ["/repo/src/a.ts"], paths);
+    const both = withoutFiles({ ...REPORT, failure: "boom" }, [FILE], ["/repo/src/a.ts"], PATHS);
     expect(movedPaths(both.failure ?? "")).toBeNull();
   });
 });
