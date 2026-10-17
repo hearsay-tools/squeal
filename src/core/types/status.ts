@@ -514,6 +514,11 @@ export interface StatusSnapshot extends StatusHeader {
    * Absent when there are none.
    */
   readonly unknownTestFiles?: UnknownTestFiles;
+  /**
+   * Row 011-07: what the policy loader reports for `squeal.config.json`, as
+   * `setup --check` names it (011 C6, C10). Absent for a valid or missing config.
+   */
+  readonly configProblems?: readonly string[];
 }
 
 /** `StatusSnapshot.unknownTestFiles`: the first `files`, path order, of `total`. */
@@ -565,6 +570,8 @@ export interface StatusUnavailable {
   /** `not-registered`: the store has no `worktrees` row for the id a `StatusBuilder` was asked about. */
   readonly reason: "no-store" | "store-newer" | "store-unreadable" | "timeout" | "not-registered";
   readonly message: string;
+  /** Row 011-07: as `StatusSnapshot.configProblems`, for `squeal status` in a worktree. */
+  readonly configProblems?: readonly string[];
 }
 
 export type StatusResult = StatusSnapshot | StatusUnavailable;
