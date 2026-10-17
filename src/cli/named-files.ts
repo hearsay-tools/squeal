@@ -1,6 +1,7 @@
 import { readPolicy } from "../core/daemon/policy.js";
 import { testFileId } from "../core/keys/index.js";
 import { claimBoundMs } from "../core/scheduler/claims.js";
+import { promotedIds } from "../core/scheduler/promotions.js";
 import { runnerPartBoundMs } from "../core/scheduler/runner-work-bound.js";
 import { laneFor, slowView } from "../core/scheduler/slow.js";
 import { readHeader } from "../core/state/index.js";
@@ -33,11 +34,17 @@ export type NamedVerdict = "pass" | "fail" | "skip";
  * What holds a pending selected file (011 C15): its own run in its lane; the
  * tier running in its lane; another worktree's run of its key (C7); the slow
  * tier's turn (004 D2); the revision's runner part (C4); or nothing known,
- * `queued`. 011-11's promotion is not read here: the word is `queued`.
+ * `queued`. A queued one is `promoted` while a named wait's promotion
+ * the live daemon published holds it (011-11, 011-13).
  */
 export type PendingReason =
   | { readonly kind: "running"; readonly lane: string; readonly since: EpochMs | null }
-  | { readonly kind: "queued"; readonly lane: string; readonly behind: EpochMs | null }
+  | {
+      readonly kind: "queued";
+      readonly lane: string;
+      readonly behind: EpochMs | null;
+      readonly promoted?: boolean;
+    }
   | { readonly kind: "claim"; readonly worktree: string; readonly until: EpochMs | null }
   | { readonly kind: "slow" }
   | { readonly kind: "unlisted"; readonly revision: number; readonly callBoundMs: number };
@@ -72,6 +79,7 @@ export function readNamedFiles(
   const checks = checksByFile(states);
   const policy = readPolicy(root);
   const runs = openRunsOf(store, worktreeId, daemon);
+  const promoted = promotedOf(store, worktreeId, daemon, now);
   const header = readHeader(store, worktreeId, states, keys);
   const unlisted = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
@@ -92,8 +100,23 @@ export function readNamedFiles(
       ? { kind: "running", lane, since: runOf(runs, ref)?.startedAt ?? null }
       : (unlisted ??
         queuedReason(store, worktreeId, ref, row?.key ?? null, lane, runs, policy, now));
+    if (pending.kind === "queued" && promoted.has(testFileId(ref))) {
+      return { testFile: ref, state, pending: { ...pending, promoted: true } };
+    }
     return { testFile: ref, state, pending };
   });
+}
+
+/** What the live daemon published as promoted now (`promotedIds`); nothing without one. */
+function promotedOf(
+  store: Store,
+  worktreeId: WorktreeId,
+  daemon: DaemonLiveness,
+  now: EpochMs,
+): ReadonlySet<string> {
+  const record = store.worktrees.get(worktreeId)?.daemon ?? null;
+  if (record === null || daemon.state !== "alive") return new Set();
+  return promotedIds(store, worktreeId, record.startedAt, now);
 }
 
 /**

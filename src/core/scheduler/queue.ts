@@ -2,7 +2,7 @@ import { compare } from "../fs/index.js";
 import { testFileId } from "../keys/index.js";
 import type { RelativePath, TestFileRef } from "../types/index.js";
 import type { FileState } from "./files.js";
-import { Promotions } from "./promotions.js";
+import { Promotions, type PublishedPromotion } from "./promotions.js";
 
 /**
  * Run order of queued test files, most urgent first.
@@ -96,9 +96,16 @@ export class RunQueue {
     return this.#isSlow(ref);
   }
 
-  /** The clock promotions' deadlines are on, and whether a test file's run is in flight (C15). */
-  setPromotionClock(now: () => number, isRunning: (ref: TestFileRef) => boolean): void {
-    this.#promotions.setClock(now, isRunning);
+  /**
+   * The clock promotions' deadlines are on, whether a test file's run is in
+   * flight, and where their changes are published (C15, task 011-13).
+   */
+  setPromotionClock(
+    now: () => number,
+    isRunning: (ref: TestFileRef) => boolean,
+    publish?: (live: readonly PublishedPromotion[]) => void,
+  ): void {
+    this.#promotions.setClock(now, isRunning, publish);
   }
 
   /**
