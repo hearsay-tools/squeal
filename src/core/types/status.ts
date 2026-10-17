@@ -520,6 +520,12 @@ export interface StatusSnapshot extends StatusHeader {
    */
   readonly unknownTestFiles?: UnknownTestFiles;
   /**
+   * Task 011-12 (011 C15): how many runs the worktree's live daemon has open,
+   * so status tells work it has not scheduled from work behind a run. Absent
+   * while no daemon is validating.
+   */
+  readonly runsOpen?: number;
+  /**
    * Row 011-07: what the policy loader reports for `squeal.config.json`, as
    * `setup --check` names it (011 C6, C10). Absent for a valid or missing config.
    */

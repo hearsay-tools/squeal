@@ -173,6 +173,7 @@ describe("readStatus", () => {
       counts: { current: 7, pending: 2, stale: 1, unknown: 1 },
       fileLevelCounts: { current: 2, pending: 0, stale: 0, unknown: 0 },
       testFilesWithoutChecks: { pending: 1, unknown: 1 },
+      runsOpen: 0,
       unknownTestFiles: {
         total: 2,
         // Task 011-12 (issue 24): a key with no result says so; an unknown check that kept no reason says that.
