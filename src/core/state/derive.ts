@@ -47,7 +47,7 @@ interface Classified {
  * headers read what it wrote.
  *
  * Spec 004 D8 (review wave-8.1 B1): a check of a slow file an unmet
- * precondition skipped (`skipped`, from `slow-skips:<worktree>`) is never
+ * precondition skipped (`skipped`, from `readSlowSkips`) is never
  * current: its result stays as history, and the check reads `pending` while
  * its file is queued again, otherwise `stale`.
  */
