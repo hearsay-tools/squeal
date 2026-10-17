@@ -317,7 +317,7 @@ describe("callJev", () => {
     expect(calls).toHaveLength(3);
     expect(calls[0]?.url).toBe(ENDPOINT);
     expect(calls[0]?.init.method).toBe("POST");
-    expect((calls[0]?.init.headers as Record<string, string>).Authorization).toBe(
+    expect((calls[0]?.init.headers as Record<string, string> | undefined)?.Authorization).toBe(
       "Bearer test-key",
     );
     expect(JSON.parse(String(calls[0]?.init.body))).toEqual(request);
