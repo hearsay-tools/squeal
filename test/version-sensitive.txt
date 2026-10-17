@@ -62,6 +62,7 @@
 #   test/harness/opencode/turn.test.ts
 #   test/harness/primer-coverage.test.ts
 #   test/harness/primer-listing.test.ts
+#   test/harness/primer-wait.test.ts
 #   test/harness/shared/primer-pytest.test.ts
 #   test/harness/shared/skill-pytest.test.ts
 #   test/harness/shared/test-command-pytest.test.ts
