@@ -57,10 +57,12 @@ export function reasonText(reason: PendingReason, command: string): string {
   switch (reason.kind) {
     case "running":
       return `running${reason.since === null ? "" : ` since ${clock(reason.since)}`} in the ${laneText(reason.lane)} lane`;
-    case "queued":
-      return reason.behind === null
-        ? "queued"
-        : `queued behind the ${laneText(reason.lane)} tier running since ${clock(reason.behind)}`;
+    case "queued": {
+      const promoted = reason.promoted === true;
+      if (reason.behind === null) return promoted ? "queued, promoted" : "queued";
+      const tier = `behind the ${laneText(reason.lane)} tier running since ${clock(reason.behind)}`;
+      return promoted ? `queued, promoted, ${tier}` : `queued ${tier}`;
+    }
     case "claim":
       return `waiting for ${reason.worktree}'s run of its key${reason.until === null ? "" : `, at most until ${clock(reason.until)}`}`;
     case "slow":
@@ -70,11 +72,17 @@ export function reasonText(reason: PendingReason, command: string): string {
   }
 }
 
+/** How many reason groups the verdict line names before the rest's count (task 011-13). */
+export const REASON_GROUPS_SHOWN = 5;
+
 /**
  * The pending files counted by reason, for the verdict line: `1 running in
  * the vitest lane since 12:00:03, 2 queued behind the vitest tier running
  * since 12:00:03`. A group gives one clock time, its earliest start or its
- * latest bound, so the line stays bounded however many files are selected.
+ * latest bound, and the line names `REASON_GROUPS_SHOWN` groups, then counts
+ * the files of the rest, so it stays bounded however many files are selected
+ * and however many worktrees hold them (review wave-1.11 S1). The class
+ * lines and `wait.testFiles` still give every file's own reason.
  */
 export function reasonGroups(files: readonly NamedFile[], command: string): string {
   const groups = new Map<string, { n: number; reason: PendingReason }>();
@@ -87,9 +95,15 @@ export function reasonGroups(files: readonly NamedFile[], command: string): stri
       reason: group === undefined ? pending : widest(group.reason, pending),
     });
   }
-  return [...groups.values()]
-    .map(({ n, reason }) => `${n} ${reasonText(reason, command)}`)
-    .join(", ");
+  const all = [...groups.values()];
+  const shown = all
+    .slice(0, REASON_GROUPS_SHOWN)
+    .map(({ n, reason }) => `${n} ${reasonText(reason, command)}`);
+  const rest = all.slice(REASON_GROUPS_SHOWN);
+  if (rest.length === 0) return shown.join(", ");
+  const more = rest.reduce((sum, { n }) => sum + n, 0);
+  const others = rest.length === 1 ? "1 other reason" : `${rest.length} other reasons`;
+  return [...shown, `and ${more} more for ${others}`].join(", ");
 }
 
 function groupId(reason: PendingReason): string {
@@ -97,7 +111,7 @@ function groupId(reason: PendingReason): string {
     case "running":
       return `running ${reason.lane}`;
     case "queued":
-      return `queued ${reason.lane} ${reason.behind === null}`;
+      return `queued ${reason.lane} ${reason.behind === null} ${reason.promoted === true}`;
     case "claim":
       return `claim ${reason.worktree}`;
     default:

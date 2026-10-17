@@ -1,5 +1,11 @@
 import { testFileId } from "../keys/index.js";
-import type { TestFileRef } from "../types/index.js";
+import {
+  type EpochMs,
+  type Store,
+  type TestFileRef,
+  type WorktreeId,
+  worktreeMetaKey,
+} from "../types/index.js";
 
 /**
  * One named wait's promotion (spec 011 C15): the test files it selected by
@@ -14,6 +20,12 @@ interface Promotion {
 
 const NOT_RUNNING = (): boolean => false;
 
+/** A live promotion as `meta` holds it for status (task 011-13): its files by `testFileId`. */
+export interface PublishedPromotion {
+  readonly files: readonly string[];
+  readonly until: EpochMs;
+}
+
 /**
  * The named waits' promotions of a `RunQueue` (spec 011 C15). Each lasts
  * until its deadline or until none of its files is queued or running (its
@@ -27,11 +39,20 @@ export class Promotions {
   #seq = 0;
   #now: () => number = Date.now;
   #isRunning: (ref: TestFileRef) => boolean = NOT_RUNNING;
+  #publish: ((live: readonly PublishedPromotion[]) => void) | null = null;
 
-  /** The clock deadlines are on, and whether a test file's run is in flight. */
-  setClock(now: () => number, isRunning: (ref: TestFileRef) => boolean): void {
+  /**
+   * The clock deadlines are on, whether a test file's run is in flight, and
+   * where each change of the live promotions is told (`publishPromotions`).
+   */
+  setClock(
+    now: () => number,
+    isRunning: (ref: TestFileRef) => boolean,
+    publish?: (live: readonly PublishedPromotion[]) => void,
+  ): void {
     this.#now = now;
     this.#isRunning = isRunning;
+    this.#publish = publish ?? null;
   }
 
   now(): number {
@@ -40,10 +61,14 @@ export class Promotions {
 
   /** A wait's promotion of `refs` until `until`; none when no file of it is open. */
   add(refs: readonly TestFileRef[], until: number, queued: (id: string) => boolean): void {
-    this.settle(queued);
+    let changed = this.#settle(queued);
     const files = new Map(refs.map((ref) => [testFileId(ref), ref]));
     const promotion = { files, until, seq: this.#seq++ };
-    if (this.#open(promotion, queued)) this.#promotions.push(promotion);
+    if (this.#open(promotion, queued)) {
+      this.#promotions.push(promotion);
+      changed = true;
+    }
+    if (changed) this.#told();
   }
 
   /** The request order of the earliest live promotion of `id`; `null` when none holds it. */
@@ -55,13 +80,28 @@ export class Promotions {
 
   /** Drops the promotions past their deadline or whose files all settled. */
   settle(queued: (id: string) => boolean): void {
-    if (this.#promotions.length === 0) return;
-    const now = this.#now();
-    this.#promotions = this.#promotions.filter((p) => p.until > now && this.#open(p, queued));
+    if (this.#settle(queued)) this.#told();
   }
 
   clear(): void {
+    if (this.#promotions.length === 0) return;
     this.#promotions = [];
+    this.#told();
+  }
+
+  /** `settle` without the telling; whether any promotion was dropped. */
+  #settle(queued: (id: string) => boolean): boolean {
+    if (this.#promotions.length === 0) return false;
+    const now = this.#now();
+    const before = this.#promotions.length;
+    this.#promotions = this.#promotions.filter((p) => p.until > now && this.#open(p, queued));
+    return this.#promotions.length !== before;
+  }
+
+  #told(): void {
+    this.#publish?.(
+      this.#promotions.map((p) => ({ files: [...p.files.keys()], until: p.until as EpochMs })),
+    );
   }
 
   #open(promotion: Promotion, queued: (id: string) => boolean): boolean {
@@ -69,5 +109,64 @@ export class Promotions {
       if (queued(id) || this.#isRunning(ref)) return true;
     }
     return false;
+  }
+}
+
+/*
+ * Task 011-13 (011 C15, "queued, promoted, behind ..."): promotion lives in
+ * the daemon's memory, so the daemon publishes its live promotions in one
+ * `meta` row per worktree, rewritten on each change and dropped when none is
+ * left, for the named wait's reasons to read in their own transaction. The
+ * row carries when it was written: one older than the live daemon is a
+ * predecessor's, whose promotions its successor did not inherit. A deadline
+ * is on the daemon's clock, the host's, as every time in the store is.
+ */
+
+/** `meta` key of `worktreeId`'s live promotions: `{ at, promotions }`. */
+export function promotionsMetaKey(worktreeId: WorktreeId): string {
+  return worktreeMetaKey("promotions", worktreeId);
+}
+
+/** Writes `worktreeId`'s live promotions as of `at`; none drops the row. */
+export function publishPromotions(
+  store: Store,
+  worktreeId: WorktreeId,
+  live: readonly PublishedPromotion[],
+  at: EpochMs,
+): void {
+  const key = promotionsMetaKey(worktreeId);
+  if (live.length === 0) store.meta.delete(key);
+  else store.meta.set(key, JSON.stringify({ at, promotions: live }));
+}
+
+/**
+ * The `testFileId`s a promotion of the daemon started at `daemonStartedAt`
+ * holds at `now`; empty with no row, as from a daemon older than 011-13, or
+ * with a predecessor's.
+ */
+export function promotedIds(
+  store: Store,
+  worktreeId: WorktreeId,
+  daemonStartedAt: EpochMs,
+  now: EpochMs,
+): ReadonlySet<string> {
+  const raw = store.meta.get(promotionsMetaKey(worktreeId));
+  if (raw === null) return new Set();
+  try {
+    const { at, promotions } = JSON.parse(raw) as { at?: unknown; promotions?: unknown };
+    if (typeof at !== "number" || at < daemonStartedAt || !Array.isArray(promotions)) {
+      return new Set();
+    }
+    const live = promotions.filter(
+      (p): p is PublishedPromotion =>
+        typeof p === "object" &&
+        p !== null &&
+        typeof p.until === "number" &&
+        p.until > now &&
+        Array.isArray(p.files),
+    );
+    return new Set(live.flatMap((p) => p.files.filter((f) => typeof f === "string")));
+  } catch {
+    return new Set();
   }
 }
