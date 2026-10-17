@@ -1,3 +1,4 @@
+import { skippedReason } from "../state/index.js";
 import {
   type Consumer,
   type SlowTierState,
@@ -14,7 +15,8 @@ import { readSlot, writeSlot } from "./slots.js";
  * state is what the slow files' results are: their counts, the revisions and
  * artifact the current ones ran against, and whether sources changed since.
  * What the daemon is doing about the pending ones (`activity`) and the Stop
- * policy are not: a file starting to run is no result.
+ * policy are not: a file starting to run is no result. A skip is (task
+ * 004-65): its precondition's reason is told once, when the tier is skipped.
  */
 
 /** `meta` key of the slow-tier state each consumer of a worktree was last shown. */
@@ -35,6 +37,8 @@ export function slowTierState(tier: SlowTierState | undefined): string | null {
     tier.artifact,
     tier.artifactUnknown ?? 0,
     tier.sourcesChangedSince,
+    // A skip is a state (004 D8 as amended 2026-10-17): its reason is told once, as it changes.
+    ...(skippedReason(tier) === null ? [] : [skippedReason(tier)]),
   ]);
 }
 
