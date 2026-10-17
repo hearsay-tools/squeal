@@ -692,8 +692,8 @@ Spec: `specifications/010-ci-cost/spec.md`. Sections D1 to D6. Approved as a fir
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 010-30 issue intake in CI, with a replay | running (approved by the human 2026-10-17; worker 55817384) | D12: port cezarion's Jev intake (workflow, candidates with recently closed issues, applicator, Jev call, replay, their tests), the area list, `needs-triage` on every issue left open, closing behind `ISSUE_INTAKE_CLOSE_DUPLICATES`. Brief `tasks/wave-3.md`. | Tests green in the suite; the replay's offline run committed; its live run over the 32 issues once `TYPESAFE_API_KEY` is available, in `research/issue-intake-replay.md`. |
-| 010-31 review of 010-30 | planned | `/reviewer` pinned to the candidate: the applicator as the only writer, prompt-injection reach, the closed-candidate rule, the `always()` fallback, the replay's truth. | `reviews/wave-3.md` committed. |
+| 010-30 issue intake in CI, with a replay | review (worker 55817384 done; candidate `cand/010-30` at c42b725f, gate 711 files green; live replay in `research/issue-intake-replay.md`: 2 right closes, #8 of #7 a same-row merge for the human, 15 of 19 areas right) | D12: port cezarion's Jev intake (workflow, candidates with recently closed issues, applicator, Jev call, replay, their tests), the area list, `needs-triage` on every issue left open, closing behind `ISSUE_INTAKE_CLOSE_DUPLICATES`. Brief `tasks/wave-3.md`. | Tests green in the suite; the replay's offline run committed; its live run over the 32 issues once `TYPESAFE_API_KEY` is available, in `research/issue-intake-replay.md`. |
+| 010-31 review of 010-30 | running (reviewer 68718d37, codex gpt-6.1-sol, pinned to c42b725f) | `/reviewer` pinned to the candidate: the applicator as the only writer, prompt-injection reach, the closed-candidate rule, the `always()` fallback, the replay's truth. | `reviews/wave-3.md` committed. |
 
 ## Feature 011: core
 
