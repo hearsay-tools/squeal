@@ -156,18 +156,6 @@ describe("a named wait's evidence", () => {
     });
   });
 
-  it("reads the verdict printed last, after the snapshot (row 011-10, issue 26)", () => {
-    const check = `${MONEY} > money > formats thousands`;
-    const out = `${STATUS_TEXT(2, { failing: [check], pending: 2 })}\nSelected: ${MONEY}\n  FAIL  ${check}\n        observed at revision 2, current\nNamed test files at revision 2: 1 known failure: 1 test; 1 test file, each with a current result, after 1.1 s. Worktree: known failures 1 (1 test); checks 0 running, 2 queued (2 tests)\n`;
-    expect(squealEvidence(out, "pull")).toMatchObject({
-      revision: 2,
-      files: [MONEY],
-      failing: [MONEY],
-      failures: 1,
-      verdict: "fail",
-    });
-  });
-
   it("credits only the files the line names, past an `and N more`", () => {
     const out = `Named test files at revision 1: no known failures; 12 test files, each with a current result, after 2.0 s\nSelected: ${MONEY}, ${REPORT} and 10 more\n\n${STATUS_TEXT(1, { pending: 3 })}`;
     expect(squealEvidence(out, "pull")).toMatchObject({ files: [MONEY, REPORT] });

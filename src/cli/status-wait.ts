@@ -37,7 +37,7 @@ import {
   splitNews,
   windowRefined,
 } from "./status-wait-edit.js";
-import { waitLine } from "./status-wait-lines.js";
+import { waitLine, waitText } from "./status-wait-lines.js";
 import { namedWaitCommand } from "./status-wait-paths.js";
 import { type HeldSlow, heldSlowLeft, heldSlowNews, pendingSlow } from "./status-wait-slow.js";
 import {
@@ -469,7 +469,7 @@ export async function statusWaitCommand(
     io.stdout(`${JSON.stringify({ ...result, wait: payload }, null, 2)}\n`);
     io.stderr(line);
   } else {
-    io.stdout(`${formatStatus(result, now(), statusCommand(env))}\n${line}`);
+    io.stdout(waitText(wait, now(), statusCommand(env)));
   }
   return holdSlow ? slowWaitCode(wait) : 0;
 }

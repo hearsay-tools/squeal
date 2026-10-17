@@ -1,8 +1,8 @@
 import { testFileId } from "../core/keys/index.js";
 import { runnerPartText, testFileKeyOf } from "../core/state/index.js";
-import { countedText, failureCountText, formatCheck } from "../core/status/index.js";
+import { countedText, failureCountText, formatCheck, formatStatus } from "../core/status/index.js";
 import { plural } from "../core/text.js";
-import type { DaemonLiveness, StatusSnapshot } from "../core/types/index.js";
+import type { DaemonLiveness, EpochMs, StatusSnapshot } from "../core/types/index.js";
 import type { SyncState } from "./status-sync.js";
 import type { StatusWait, StatusWaitEdit, StatusWaitSlow } from "./status-wait.js";
 import type { NamedWait } from "./status-wait-paths.js";
@@ -21,6 +21,11 @@ export function waitLine(wait: EndedWait, command = "squeal"): string {
   const line = ownLine(wait, command);
   const slow = wait.slow === undefined || wait.outcome === "no-daemon" ? "" : slowText(wait.slow);
   return `${line}${slow}${lapseText(wait.lapse)}${worktreeText(wait.result)}`;
+}
+
+/** `status --wait`'s human text: the snapshot, then last its verdict (issue 26). */
+export function waitText(wait: EndedWait, now: EpochMs, command = "squeal"): string {
+  return `${formatStatus(wait.result, now, command)}\n${waitLine(wait, command)}\n`;
 }
 
 function ownLine(wait: EndedWait, command: string): string {
@@ -127,7 +132,7 @@ function slowTierText(snapshot: StatusSnapshot, command: string): string {
 }
 
 /** A named-files wait that ended with a snapshot. */
-type EndedNamed = Extract<NamedWait, { result: StatusSnapshot }>;
+export type EndedNamed = Extract<NamedWait, { result: StatusSnapshot }>;
 
 /** How many selected test files the line names before "and N more". */
 const NAMED_FILES_SHOWN = 10;
@@ -176,6 +181,20 @@ export function selectedLine(wait: EndedNamed): string | null {
   const more =
     files.length > NAMED_FILES_SHOWN ? ` and ${files.length - NAMED_FILES_SHOWN} more` : "";
   return `Selected: ${shown}${more}`;
+}
+
+/**
+ * `status --wait <ms> <path>...`'s human text: the snapshot, the selected
+ * files and their failures in full, then last their verdict (issue 26).
+ */
+export function namedText(wait: EndedNamed, now: EpochMs, command = "squeal"): string {
+  const selected = selectedLine(wait);
+  const lines = [
+    ...(selected === null ? [] : [selected]),
+    ...namedFailures(wait),
+    namedLine(wait, command),
+  ];
+  return `${formatStatus(wait.result, now, command)}\n${lines.join("\n")}\n`;
 }
 
 /** The selected files' known failures, each as status lists it (spec 005 D2: "in full"). */
