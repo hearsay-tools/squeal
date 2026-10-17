@@ -63,8 +63,9 @@ export const HARNESSES: readonly Harness[] = [
 ];
 
 /**
- * `math > adds` passes, the slow file is queued at revision 1, the agent is
- * in a turn; `marked`: the harness's waiting entry ran for this session before.
+ * The agent is in a turn and revision 1, after its registration, is its
+ * edit (task 004-67: a session with no revision since then is not held):
+ * `math > adds` passes and the slow file is queued; `marked`: the harness's waiting entry ran for this session before.
  */
 export async function repo(
   harness: Harness,
@@ -72,10 +73,10 @@ export async function repo(
   marked = true,
 ): Promise<SquealRepo> {
   const r = squealRepo();
-  r.apply(r.pass());
   r.policy({ slow: { ...DEFAULT_POLICY.slow, include: [SLOW_FILE.path, FILE.path] }, stop });
-  slowKey(r, "queued");
   await harness.startTurn(r);
+  r.apply(r.pass());
+  slowKey(r, "queued");
   if (marked) markStopWait(r, harness.name);
   return r;
 }
