@@ -588,7 +588,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.206";
+  if (true) return "0.1.207";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -5285,6 +5285,13 @@ function isRegistered(context) {
   return context.store.consumers.get(context.consumer) !== null;
 }
 
+// src/harness/shared/no-edit.ts
+function unchangedSinceRegistration(store, consumer) {
+  const r = registration(store, consumer);
+  if (r === null || !seesEveryChange(store, consumer.worktreeId, r)) return false;
+  return (store.revisions.latest(consumer.worktreeId)?.number ?? 0) === r.since;
+}
+
 // src/harness/shared/text.ts
 var LISTED_FAILURES = 10;
 var NAMED_FAILURES = 5;
@@ -5360,6 +5367,8 @@ async function stopSlow(input, location2, deps) {
     const version = deps.squealVersion ?? squealVersion();
     recordStopWait(context.store, context.consumer, input.harness, version);
     if (!await handedOver(context, deps, poll)) return null;
+    const { store, consumer } = context;
+    if (readTransaction(store, () => unchangedSinceRegistration(store, consumer))) return null;
     const block2 = await waitForSlow(context, isSlow, deps, bound, poll);
     if (block2 === null) return null;
     const { header, failures, reason } = block2;
