@@ -1,4 +1,5 @@
-import { existsSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
@@ -20,6 +21,8 @@ import {
  * models that stall. `squeal stop` must not say
  * stopped while the lock is held, and the daemon a SessionStart spawns in
  * that gap must take the lock once it is free instead of exiting silently.
+ * Since task 011-08 a SessionStart after `squeal stop` starts nothing until
+ * the next edit, so the agent edits in the gap first.
  */
 
 const fixture = e2eSuite();
@@ -47,6 +50,9 @@ describe.runIf(process.platform === "linux").each(PLUGINS)(
         expect(lockHolders(e.main), "the stalled daemon holds its lock").toMatch(
           new RegExp(`WRITE\\s+${first.pid}\\s`),
         );
+        // Task 011-08: the stop's mark holds the tree from before the daemon went, so an edit
+        // while it shuts down clears it and the SessionStart spawns.
+        writeFileSync(join(e.main, "edited-in-the-gap.txt"), "edit\n");
         const start = await e.hook("session-start", e.main, { session_id: "third-session" });
         expect(start.code).toBe(0);
         expect(start.text).toContain("A daemon is starting");

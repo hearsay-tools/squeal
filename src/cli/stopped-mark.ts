@@ -9,15 +9,24 @@ const MARK_BUSY_TIMEOUT_MS = 2_000;
 /** How long `squeal stop` gives git to print the tree it leaves. */
 const STOP_TREE_TIMEOUT_MS = 10_000;
 
+/** The tree as git prints it when `squeal stop` is asked, before the daemon goes. */
+export function stopTree(root: AbsolutePath): Promise<string | null> {
+  return treePrint(root, STOP_TREE_TIMEOUT_MS);
+}
+
 /**
- * Task 011-08: `squeal stop` leaves the worktree's stopped mark, with its
- * tree as git prints it now, so no hook boundary starts a daemon until the
- * next edit or `squeal start`. Nothing without a store: no daemon ran there,
- * and a hook without one starts nothing at a boundary. The error when the
- * mark could not be written, else `null`.
+ * Task 011-08: `squeal stop` leaves the worktree's stopped mark, with `tree`
+ * printed when the stop was asked (`stopTree`), so no hook boundary starts a
+ * daemon until the next edit or `squeal start`; an edit made while the daemon
+ * shut down clears it. Nothing without a store: no daemon ran there, and a
+ * hook without one starts nothing at a boundary. The error when the mark
+ * could not be written, else `null`.
  */
-export async function leaveStoppedMark(root: AbsolutePath, at: number): Promise<string | null> {
-  const tree = await treePrint(root, STOP_TREE_TIMEOUT_MS);
+export function leaveStoppedMark(
+  root: AbsolutePath,
+  at: number,
+  tree: string | null,
+): string | null {
   return withStore(root, (store, id) => markStopped(store, id, at, tree));
 }
 

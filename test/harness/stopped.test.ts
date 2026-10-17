@@ -1,7 +1,7 @@
 import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { clearStoppedMark, leaveStoppedMark } from "../../src/cli/stopped-mark.js";
+import { clearStoppedMark, leaveStoppedMark, stopTree } from "../../src/cli/stopped-mark.js";
 import type { EnsureDaemonOptions } from "../../src/core/daemon/ensure.js";
 import { stoppedMetaKey } from "../../src/core/delivery/stopped.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
@@ -70,7 +70,13 @@ async function stopped(): Promise<SquealRepo> {
   r.apply(r.pass());
   await runHook("session-start", recorded("session-start", r.root), recording().deps);
   r.store.worktrees.setDaemon(r.worktreeId, null);
-  expect(await leaveStoppedMark(r.root as AbsolutePath, Date.now() + 1)).toBeNull();
+  expect(
+    leaveStoppedMark(
+      r.root as AbsolutePath,
+      Date.now() + 1,
+      await stopTree(r.root as AbsolutePath),
+    ),
+  ).toBeNull();
   return r;
 }
 
@@ -125,7 +131,11 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
     const r = squealRepo(gitRepo());
     writeFileSync(join(r.root, "a.txt"), "first\n");
     r.store.worktrees.setDaemon(r.worktreeId, null);
-    await leaveStoppedMark(r.root as AbsolutePath, Date.now() + 1);
+    leaveStoppedMark(
+      r.root as AbsolutePath,
+      Date.now() + 1,
+      await stopTree(r.root as AbsolutePath),
+    );
     const { calls, deps } = recording();
     await hook(r, "post-tool-batch", deps);
     expect(calls).toEqual([]);
@@ -150,7 +160,7 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
   it("is void once a daemon heartbeats after it", async () => {
     const r = await stopped();
     const now = Date.now();
-    await leaveStoppedMark(r.root as AbsolutePath, now - 60_000);
+    leaveStoppedMark(r.root as AbsolutePath, now - 60_000, await stopTree(r.root as AbsolutePath));
     r.daemon("stale", now - 30_000);
     const { calls, deps } = recording();
 

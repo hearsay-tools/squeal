@@ -14,7 +14,7 @@ import { lockFileFor } from "../core/store/index.js";
 import type { AbsolutePath } from "../core/types/index.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
-import { leaveStoppedMark } from "./stopped-mark.js";
+import { leaveStoppedMark, stopTree } from "./stopped-mark.js";
 
 /**
  * How long `squeal stop` waits (D10, tasks 001-340, 001-367): for the
@@ -57,9 +57,10 @@ export async function stopCommand(
   const daemon = ping?.ok === true && ping.type === "ping" ? ping : null;
   // Read while it runs: its record's token is its children's mark, its group may be theirs.
   const marks = daemon === null ? null : marksOf(daemon.pid, tokenOf(root, daemon));
+  const tree = await stopTree(root);
   const response = await askDaemon(socketPath, { type: "stop" });
   if (response === null) {
-    await stoppedMark(root, io);
+    stoppedMark(root, tree, io);
     io.stdout(`No daemon running for ${root}\n`);
     return 0;
   }
@@ -78,7 +79,7 @@ export async function stopCommand(
     }
     await sleep(50);
   }
-  await stoppedMark(root, io);
+  stoppedMark(root, tree, io);
   const lock = await lockFreed(root, daemon, bounds.lockMs);
   const after = seconds(bounds.lockMs);
   if (lock.state === "held") {
@@ -110,8 +111,8 @@ export async function stopCommand(
 }
 
 /** `leaveStoppedMark`, saying on stderr when it could not be written. */
-async function stoppedMark(root: AbsolutePath, io: CliIo): Promise<void> {
-  const error = await leaveStoppedMark(root, (io.now ?? Date.now)());
+function stoppedMark(root: AbsolutePath, tree: string | null, io: CliIo): void {
+  const error = leaveStoppedMark(root, (io.now ?? Date.now)(), tree);
   if (error !== null) {
     io.stderr(`squeal: could not record the stop, so a hook may start a daemon again: ${error}\n`);
   }
