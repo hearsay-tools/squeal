@@ -327,9 +327,9 @@ A named wait (`squeal status --wait <ms> <path>...`, 005 D2) tells the daemon wh
 - *A slow file* (004 D2): it leads its own tier's order when the tier runs. Promotion does not make the slow tier eligible while a consumer is in a turn; `squeal run --slow` does.
 - *An unlisted revision* (C4, the runner part): no tier starts until the revision is listed, promoted or not.
 
-**What the wait says while a constraint holds a file.** For every selected file that is still pending, the named line gives one reason with its bound when one is known:
+**What the wait says while a constraint holds a file.** For every selected file that is still pending, the named line gives one reason with its bound when one is known; the verdict line names at most five reason groups and summarizes the rest by count, while the class lines and `--json` keep every file's own (review wave-1.11 S1, task 011-13):
 - running since HH:MM:SS in its lane;
-- queued, promoted, behind the `<lane>` tier running since HH:MM:SS (`queued` until the daemon publishes its promotions where the CLI reads; task 011-12);
+- queued, promoted, behind the `<lane>` tier running since HH:MM:SS (`queued, promoted` with no tier running in its lane): the daemon publishes its live promotions in one `promotions:<worktree>` meta row, rewritten on each change and dropped when none is left, and the CLI says promoted only while that daemon lives, the row is no older than its start and the deadline has not passed; an older daemon writes none, so its files read `queued` (task 011-13);
 - waiting for `<worktree>`'s run of its key, at most until now plus C7's bound, since the waiter's bound runs from when its daemon first saw the claim, which only that daemon knows, and the claimant's own policy bounds its run; only a claimant whose daemon heartbeats is named (review wave-1.11 B1, B2);
 - slow, run when the agent pauses or on `squeal run --slow`;
 - revision N not listed yet, because the runner part waits for the run in flight, each of its calls bounded at N s (gh-17 finding 2, the `runner.timeoutMs` + 66 s bound of C4; the store keeps no call's start, so no countdown: review wave-1.11 B3).
