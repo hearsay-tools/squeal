@@ -54452,8 +54452,10 @@ init_fs();
 init_store3();
 var MARK_BUSY_TIMEOUT_MS = 2e3;
 var STOP_TREE_TIMEOUT_MS = 1e4;
-async function leaveStoppedMark(root, at2) {
-  const tree = await treePrint(root, STOP_TREE_TIMEOUT_MS);
+function stopTree(root) {
+  return treePrint(root, STOP_TREE_TIMEOUT_MS);
+}
+function leaveStoppedMark(root, at2, tree) {
   return withStore(root, (store, id2) => markStopped(store, id2, at2, tree));
 }
 function clearStoppedMark(root) {
@@ -55227,9 +55229,10 @@ async function stopCommand(args2, io, bounds = STOP_BOUNDS) {
   const ping2 = await askDaemon(socketPath, { type: "ping" }).catch(() => null);
   const daemon = ping2?.ok === true && ping2.type === "ping" ? ping2 : null;
   const marks = daemon === null ? null : marksOf(daemon.pid, tokenOf(root, daemon));
+  const tree = await stopTree(root);
   const response = await askDaemon(socketPath, { type: "stop" });
   if (response === null) {
-    await stoppedMark(root, io);
+    stoppedMark(root, tree, io);
     io.stdout(`No daemon running for ${root}
 `);
     return 0;
@@ -55251,7 +55254,7 @@ async function stopCommand(args2, io, bounds = STOP_BOUNDS) {
     }
     await sleep14(50);
   }
-  await stoppedMark(root, io);
+  stoppedMark(root, tree, io);
   const lock2 = await lockFreed(root, daemon, bounds.lockMs);
   const after = seconds2(bounds.lockMs);
   if (lock2.state === "held") {
@@ -55282,8 +55285,8 @@ async function stopCommand(args2, io, bounds = STOP_BOUNDS) {
 `);
   return 0;
 }
-async function stoppedMark(root, io) {
-  const error = await leaveStoppedMark(root, (io.now ?? Date.now)());
+function stoppedMark(root, tree, io) {
+  const error = leaveStoppedMark(root, (io.now ?? Date.now)(), tree);
   if (error !== null) {
     io.stderr(`squeal: could not record the stop, so a hook may start a daemon again: ${error}
 `);
