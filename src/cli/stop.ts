@@ -14,6 +14,7 @@ import { lockFileFor } from "../core/store/index.js";
 import type { AbsolutePath } from "../core/types/index.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
+import { leaveStoppedMark } from "./stopped-mark.js";
 
 /**
  * How long `squeal stop` waits (D10, tasks 001-340, 001-367): for the
@@ -35,7 +36,8 @@ export const STOP_BOUNDS: StopBounds = { socketMs: 60_000, lockMs: 30_000, lefto
  * `squeal stop [root]`: asks the worktree's daemon to shut down and waits for
  * it and every process it started to go, the step before deleting a worktree.
  * Exits 0 once they are gone or no daemon ran, 1 past a bound, saying what is
- * left. An explicit root is that worktree's only (task 011-09, #25): a path
+ * left. Once no daemon serves, it leaves the stopped mark (task 011-08), so
+ * no hook starts one before the next edit or `squeal start`. An explicit root is that worktree's only (task 011-09, #25): a path
  * that is missing or not a worktree's top level stops nothing and exits 1,
  * never the checkout around it.
  */
@@ -57,6 +59,7 @@ export async function stopCommand(
   const marks = daemon === null ? null : marksOf(daemon.pid, tokenOf(root, daemon));
   const response = await askDaemon(socketPath, { type: "stop" });
   if (response === null) {
+    await stoppedMark(root, io);
     io.stdout(`No daemon running for ${root}\n`);
     return 0;
   }
@@ -75,6 +78,7 @@ export async function stopCommand(
     }
     await sleep(50);
   }
+  await stoppedMark(root, io);
   const lock = await lockFreed(root, daemon, bounds.lockMs);
   const after = seconds(bounds.lockMs);
   if (lock.state === "held") {
@@ -103,6 +107,14 @@ export async function stopCommand(
   }
   io.stdout(`Squeal daemon stopped for ${root}\n`);
   return 0;
+}
+
+/** `leaveStoppedMark`, saying on stderr when it could not be written. */
+async function stoppedMark(root: AbsolutePath, io: CliIo): Promise<void> {
+  const error = await leaveStoppedMark(root, (io.now ?? Date.now)());
+  if (error !== null) {
+    io.stderr(`squeal: could not record the stop, so a hook may start a daemon again: ${error}\n`);
+  }
 }
 
 /**

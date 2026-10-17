@@ -64,7 +64,7 @@ export function formatStatus(
     ...excludedLine(result),
     "",
     worktreeLine(result),
-    daemonLine(result, now),
+    daemonLine(result, now, command),
     inheritedLine(result),
     ...result.inherited.sources.map(
       (s) =>
@@ -274,9 +274,13 @@ function freshText(s: StatusSnapshot): string {
     : `; ${plural(files, "test file")} without checks yet: ${running} running, ${files - running} queued`;
 }
 
-function daemonLine(s: StatusSnapshot, now: EpochMs): string {
+function daemonLine(s: StatusSnapshot, now: EpochMs, command: string): string {
   if (s.daemon.state === "alive") {
     return `Daemon: running, last heartbeat ${age(now - s.daemon.lastHeartbeatAt)} ago`;
+  }
+  // Task 011-08: `squeal stop` holds until the next edit or `squeal start`.
+  if (s.daemon.stopped === true) {
+    return `Daemon: stopped by request (\`${command} stop\`); a hook starts one at the next edit, or run \`${command} start\``;
   }
   const down =
     s.daemon.since === null

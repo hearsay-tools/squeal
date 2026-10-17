@@ -327,6 +327,11 @@ export type DaemonLiveness =
        */
       readonly resting?: true;
       /**
+       * Task 011-08: `squeal stop` stopped it and no edit or start came
+       * since, so no hook starts one (`heldStop`).
+       */
+      readonly stopped?: true;
+      /**
        * Task 001-263: the recorded daemon stopped heartbeating and never shut
        * down (no stop note, its record not cleared), as a SIGKILL or a test's
        * `kill(0, ...)` leaves it. Absent when it stopped, or no record names it.

@@ -1,5 +1,6 @@
 import { readPolicy } from "../daemon/policy.js";
 import { vitestDetected } from "../daemon/runner.js";
+import { asStopped } from "../delivery/stopped.js";
 import { worktreeIdFor } from "../fs/index.js";
 import { CLOSURE_METHOD, testFileId } from "../keys/index.js";
 import { readDaemonNotes } from "../notes.js";
@@ -108,10 +109,15 @@ function snapshot(
   const recovered = recoveryNote(store.meta.get(META_STORE_RECOVERED));
   if (recovered !== null) notes.push(recovered);
 
+  // Task 011-08: a held `squeal stop` is said as such.
   const daemon = withDeath(
     store,
     worktree,
-    liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null),
+    asStopped(
+      store,
+      worktree,
+      liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null),
+    ),
   );
 
   return {

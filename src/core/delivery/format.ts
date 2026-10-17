@@ -336,6 +336,10 @@ const checksOf = (entries: readonly DeltaEntry[]) => entries.map((e) => e.check)
 
 /** The title of a delta that carries only a change of daemon liveness. */
 function livenessTitle(liveness: DaemonLiveness | undefined, revision: number): string {
+  // Task 011-08: the header after it says what restarts it.
+  if (liveness?.state === "down" && liveness.stopped === true) {
+    return `SQUEAL · the daemon is stopped by request at revision ${revision}`;
+  }
   return liveness?.state === "alive"
     ? `SQUEAL · a daemon is validating again at revision ${revision}`
     : `SQUEAL · no daemon is validating at revision ${revision}`;

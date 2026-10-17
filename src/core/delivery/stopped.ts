@@ -1,0 +1,149 @@
+import { createHash } from "node:crypto";
+import { join } from "node:path";
+import { isRecord, lstatOrNull, runGit, splitNul } from "../fs/index.js";
+import type {
+  AbsolutePath,
+  DaemonLiveness,
+  EpochMs,
+  Store,
+  WorktreeId,
+  WorktreeRecord,
+} from "../types/index.js";
+import { worktreeMetaKey } from "../types/index.js";
+
+/*
+ * Task 011-08 (gh-22, spec 011 C8 and C9): `squeal stop` leaves a stopped
+ * mark for its worktree, `{ at, tree }`, and no hook boundary ensures a
+ * daemon while it holds. With no daemon there is no revision, so the mark
+ * keeps a print of the tree as git sees it (`treePrint`) and a boundary that
+ * finds another print clears it: the agent edited. A heartbeat after `at`
+ * voids it too, so a daemon `squeal start` or anything else started ends it,
+ * as a rest ends (`restState`). Edits to gitignored files leave the print as
+ * it was, so they do not clear the mark.
+ */
+
+/** How long a boundary's tree print may take git; past it the stop is honoured. */
+export const TREE_PRINT_TIMEOUT_MS = 1_000;
+
+interface StoppedMark {
+  readonly at: EpochMs;
+  /** `treePrint` when the stop was asked; `null` when git could not tell. */
+  readonly tree: string | null;
+}
+
+/** `meta` key of the worktree's stopped mark. */
+export function stoppedMetaKey(worktreeId: WorktreeId): string {
+  return worktreeMetaKey("daemonStopped", worktreeId);
+}
+
+/** `squeal stop` at `at` for the worktree, its tree printed as `tree`. */
+export function markStopped(
+  store: Store,
+  worktreeId: WorktreeId,
+  at: EpochMs,
+  tree: string | null,
+): void {
+  store.meta.set(stoppedMetaKey(worktreeId), JSON.stringify({ at, tree } satisfies StoppedMark));
+}
+
+/** Forgets the worktree's stopped mark: an edit, or `squeal start`. */
+export function clearStopped(store: Store, worktreeId: WorktreeId): void {
+  store.meta.delete(stoppedMetaKey(worktreeId));
+}
+
+/**
+ * The worktree's stopped mark while it holds by the store alone: set, no
+ * daemon heartbeat since, and no daemon recorded alive. The tree is not
+ * compared here; `stopHolds` does that at a boundary.
+ */
+export function heldStop(
+  store: Store,
+  worktree: WorktreeRecord | null | undefined,
+  live: DaemonLiveness,
+): StoppedMark | null {
+  if (worktree == null || live.state === "alive") return null;
+  const mark = readMark(store, worktree.id);
+  if (mark === null) return null;
+  const heartbeat = worktree.daemon?.heartbeatAt ?? worktree.lastHeartbeatAt;
+  return heartbeat !== undefined && heartbeat > mark.at ? null : mark;
+}
+
+/** `live` with `stopped` set while the worktree's stopped mark holds (`heldStop`). */
+export function asStopped(
+  store: Store,
+  worktree: WorktreeRecord | null | undefined,
+  live: DaemonLiveness,
+): DaemonLiveness {
+  if (live.state !== "down" || heldStop(store, worktree, live) === null) return live;
+  return { ...live, stopped: true };
+}
+
+/**
+ * Whether a boundary must leave the worktree without a daemon: the mark holds
+ * and the tree prints as it did at the stop, or git could not print it. A
+ * tree that prints otherwise clears the mark.
+ */
+export async function stopHolds(
+  store: Store,
+  worktree: WorktreeRecord | null | undefined,
+  live: DaemonLiveness,
+): Promise<boolean> {
+  const mark = heldStop(store, worktree, live);
+  if (mark === null || worktree == null) return false;
+  const tree = await treePrint(worktree.root, TREE_PRINT_TIMEOUT_MS);
+  if (tree === null || tree === mark.tree) return true;
+  clearStopped(store, worktree.id);
+  return false;
+}
+
+/**
+ * A hash of what git sees of the worktree at `root`: `HEAD`, its status with
+ * every untracked file, and the size, mtime and inode of each path the
+ * status lists, so a second edit of a file already modified prints anew.
+ * `null` when git fails or takes longer than `timeoutMs`.
+ */
+export async function treePrint(root: AbsolutePath, timeoutMs?: number): Promise<string | null> {
+  const options = timeoutMs === undefined ? {} : { timeoutMs };
+  try {
+    const [head, status] = await Promise.all([
+      runGit(root, ["rev-parse", "--verify", "--quiet", "HEAD"], { ...options, okCodes: [0, 1] }),
+      runGit(
+        root,
+        ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=all"],
+        options,
+      ),
+    ]);
+    const hash = createHash("sha1").update(head.trim()).update("\0").update(status);
+    for (const path of listedPaths(status)) {
+      const stat = lstatOrNull(join(root, path));
+      hash.update(stat === null ? "-\0" : `${stat.size} ${stat.mtimeMs} ${stat.ino}\0`);
+    }
+    return hash.digest("hex");
+  } catch {
+    return null;
+  }
+}
+
+/** The paths of `git status --porcelain=v1 -z`; a rename's source field is skipped. */
+function listedPaths(status: string): string[] {
+  const fields = splitNul(status);
+  const paths: string[] = [];
+  for (let i = 0; i < fields.length; i++) {
+    const field = fields[i] ?? "";
+    paths.push(field.slice(3));
+    if (field[0] === "R" || field[0] === "C") i++;
+  }
+  return paths;
+}
+
+function readMark(store: Store, worktreeId: WorktreeId): StoppedMark | null {
+  const text = store.meta.get(stoppedMetaKey(worktreeId));
+  if (text === null) return null;
+  try {
+    const mark: unknown = JSON.parse(text);
+    if (!isRecord(mark) || typeof mark.at !== "number") return null;
+    return { at: mark.at as EpochMs, tree: typeof mark.tree === "string" ? mark.tree : null };
+  } catch {
+    return null;
+  }
+}

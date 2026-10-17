@@ -54,10 +54,10 @@ function incompleteText(header: StatusHeader): string {
 }
 
 /** What both forms end with: daemon liveness, then the install wait or the install sentences. */
-function daemonText(header: StatusHeader): string {
+function daemonText(header: StatusHeader, command: string): string {
   const awaiting = awaitingInstallText(header);
   return (
-    livenessSentence(header.daemon, header.revision) +
+    livenessSentence(header.daemon, header.revision, command) +
     (awaiting === null ? installSentences(header) : ` ${awaiting}`)
   );
 }
@@ -75,7 +75,7 @@ function fullLine(header: StatusHeader, command: string): string {
       : ` Test files without checks: ${files.pending} pending, ${files.unknown} unknown.`;
   return (
     `Revision ${revisionText(revision, header.commit)}${changedText(header.changedPaths)}: ${countsText(counts, fileLevel)}.${inherited}${withoutChecks}${incompleteText(header)} ` +
-    `Full-suite checkpoint: ${fullSuiteText(header, command)}.${daemonText(header)}`
+    `Full-suite checkpoint: ${fullSuiteText(header, command)}.${daemonText(header, command)}`
   );
 }
 
@@ -87,7 +87,7 @@ const ACTIONABLE = ["pending", "stale", "unknown"] as const;
  * the inherited sentence and the checkpoint sentence, and counts only what
  * is not zero: `Revision 12: 3 pending (2 tests, 1 test file loaded).`
  */
-function newsLine(header: StatusHeader): string {
+function newsLine(header: StatusHeader, command: string): string {
   const { counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files } = header;
   const actionable = ACTIONABLE.filter((v) => counts[v] > 0).map((v) =>
     countedText(counts[v], v, fileLevel?.[v]),
@@ -99,7 +99,7 @@ function newsLine(header: StatusHeader): string {
     .map((v) => `${files[v]} ${v}`);
   const withoutChecks =
     without.length === 0 ? "" : ` Test files without checks: ${without.join(", ")}.`;
-  return `Revision ${revisionText(header.revision, header.commit)}: ${checks}.${withoutChecks}${incompleteText(header)}${daemonText(header)}`;
+  return `Revision ${revisionText(header.revision, header.commit)}: ${checks}.${withoutChecks}${incompleteText(header)}${daemonText(header, command)}`;
 }
 
 /**
@@ -125,9 +125,14 @@ export function headerLines(
   form: HeaderForm = "full",
   slowChanged = false,
 ): string[] {
-  const line = form === "full" ? fullLine(header, command) : newsLine(header);
+  const line = form === "full" ? fullLine(header, command) : newsLine(header, command);
   const slow = form === "full" || slowChanged ? slowTierText(header, command) : null;
   return slow === null ? [line] : [line, slow];
+}
+
+/** Task 011-08: why no daemon validates after `squeal stop`, and what starts one. */
+function stoppedText(command: string): string {
+  return `The daemon is stopped by request (\`${command} stop\`); a hook starts one at the next edit, or run \`${command} start\``;
 }
 
 /**
@@ -135,8 +140,15 @@ export function headerLines(
  * deltas from the store; status says the daemon is down and since when." A
  * validating daemon adds nothing.
  */
-function livenessSentence(daemon: DaemonLiveness | undefined, revision: number): string {
+function livenessSentence(
+  daemon: DaemonLiveness | undefined,
+  revision: number,
+  command: string,
+): string {
   if (daemon === undefined || daemon.state === "alive") return "";
+  // Task 011-08: `squeal stop` holds until the next edit or `squeal start`.
+  if (daemon.stopped === true)
+    return ` ${stoppedText(command)}; results are as of revision ${revision}.`;
   // Task 001-263: the daemon that died without its stop note, and what it was running.
   const died =
     daemon.died === undefined ? "" : ` The last daemon ${deathText(daemon.died)}. ${DEATH_CAUSE}`;

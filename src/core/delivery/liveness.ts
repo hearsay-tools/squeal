@@ -21,6 +21,7 @@ import {
   worktreeMetaKey,
 } from "../types/index.js";
 import { readSlot, writeSlot } from "./slots.js";
+import { asStopped } from "./stopped.js";
 
 /**
  * Daemon liveness from the heartbeat the daemon records in `worktrees`,
@@ -74,7 +75,7 @@ export function readLiveHeader(
     daemon: withDeath(
       store,
       worktree,
-      asRested(store, worktree, worktreeLiveness(worktree, now), now),
+      asRested(store, worktree, asStopped(store, worktree, worktreeLiveness(worktree, now)), now),
     ),
     changedPaths: [...changes.keys()],
     ...(installed === undefined ? {} : { installedLockfile: installed.path }),
@@ -95,6 +96,8 @@ function asRested(
   at: EpochMs,
 ): DaemonLiveness {
   if (live.state !== "down" || live.startingSince !== undefined || worktree === null) return live;
+  // Task 011-08: a stop asked for is said as such, never as a rest.
+  if (live.stopped === true) return live;
   if (restState(store, worktree, at) !== "quiet") return live;
   const spawnedAt = readRest(store, worktree.id)?.spawnedAt;
   return spawnedAt === undefined
@@ -199,8 +202,8 @@ export function livenessChange(
 ): DaemonLiveness | null {
   const told = toldLiveness(store, consumer);
   const worktree = store.worktrees.get(consumer.worktreeId);
-  const live = asTold(worktreeLiveness(worktree, at), told, at);
-  if (live.state === "down") {
+  const live = asStopped(store, worktree, asTold(worktreeLiveness(worktree, at), told, at));
+  if (live.state === "down" && live.stopped !== true) {
     if (live.startingSince !== undefined) return null;
     const rest = restState(store, worktree, at);
     if (rest === "quiet") return null;
