@@ -1,0 +1,105 @@
+import { spawn } from "node:child_process";
+import { readdirSync, readFileSync } from "node:fs";
+import { setTimeout as sleep } from "node:timers/promises";
+import { it } from "vitest";
+import { EscapedChildren } from "../../src/core/daemon/escaped.js";
+import { type Identity, lowerWhile } from "../../src/core/daemon/low-priority.js";
+import { statOf } from "../../src/core/daemon/terminate.js";
+
+// BENCH 001-438 (from 001-437's), not committed as a test: the cost of walking lowered carriers, per look.
+// `withStat`: the 001-438 walk, one `statOf` per descendant; without, 001-437's.
+// Every look is recorded, walked or not; the liveness `stat` lowerWhile reads before a walk is timed in the walk.
+// A carrier as the test's short fork: a Node process with one Node child, both alive for `ms`.
+const CARRIER = (ms: number) => `const { spawn } = require("node:child_process");
+spawn(process.execPath, ["-e", "setTimeout(() => {}, ${ms})"], { stdio: "ignore" });
+setTimeout(() => {}, ${ms});`;
+
+type Look = { at: number; walks: number; reads: number; wallMs: number; cpuMs: number; carriersMs: number };
+
+async function bench(count: number, ms: number, withStat: boolean): Promise<Look[]> {
+  const children = new EscapedChildren();
+  const since = children.mark();
+  const forks = Array.from({ length: count }, () =>
+    spawn(process.execPath, ["-e", CARRIER(ms)], { env: { ...process.env, ...children.envFor("fast") }, stdio: "ignore" }),
+  );
+  const looks: Look[] = [];
+  const began = performance.now();
+  let look: Look | null = null;
+  const counting = {
+    async carriers(lane: string, at: number) {
+      if (look !== null) looks.push(look);
+      look = { at: performance.now() - began, walks: 0, reads: 0, wallMs: 0, cpuMs: 0, carriersMs: 0 };
+      const t = performance.now();
+      const found = await children.carriers(lane, at);
+      look.carriersMs = performance.now() - t;
+      return found;
+    },
+  };
+  // `below` and `childrenOf` as committed, with counters
+  const walk = (pid: number): Identity[] => {
+    if (look === null) throw new Error("a walk before a look");
+    const wall = performance.now();
+    const cpu = process.threadCpuUsage();
+    // as lowerWhile's liveness read just before
+    statOf(pid);
+    look.reads++;
+    const childrenOf = (p: number): number[] => {
+      let tasks: string[];
+      if (look !== null) look.reads++;
+      try { tasks = readdirSync(`/proc/${p}/task`); } catch { return []; }
+      return tasks.flatMap((task) => {
+        if (look !== null) look.reads++;
+        try {
+          const text = readFileSync(`/proc/${p}/task/${task}/children`, "latin1").trim();
+          return text === "" ? [] : text.split(" ").map(Number);
+        } catch { return []; }
+      });
+    };
+    const found: Identity[] = [];
+    for (let queue = childrenOf(pid), next = queue.pop(); next !== undefined; next = queue.pop()) {
+      if (withStat) {
+        look.reads++;
+        const entry = statOf(next);
+        if (entry !== null) found.push({ pid: next, start: entry.start });
+      } else found.push({ pid: next, start: 0 });
+      queue.push(...childrenOf(next));
+    }
+    const used = process.threadCpuUsage(cpu);
+    look.walks++;
+    look.wallMs += performance.now() - wall;
+    look.cpuMs += (used.user + used.system) / 1000;
+    return found;
+  };
+  const settled = new AbortController();
+  const lowering = lowerWhile(counting, "fast", since, settled.signal, walk);
+  await sleep(ms - 500);
+  settled.abort();
+  await lowering;
+  for (const fork of forks) fork.kill("SIGKILL");
+  return looks;
+}
+
+function report(name: string, looks: Look[]) {
+  const line = (part: string, chosen: Look[]) => {
+    const mean = (key: keyof Look) => chosen.reduce((t, l) => t + l[key], 0) / chosen.length;
+    const p95 = (key: keyof Look) =>
+      chosen.map((l) => l[key]).sort((a, b) => a - b)[Math.floor(chosen.length * 0.95)] ?? 0;
+    const cpu = chosen.reduce((t, l) => t + l.cpuMs, 0);
+    const span = ((chosen.at(-1)?.at ?? 0) - (chosen[0]?.at ?? 0)) / 1000;
+    process.stderr.write(
+      `BENCH438 ${name}, ${part}: looks=${chosen.length} walks/look=${mean("walks").toFixed(2)} reads/look=${mean("reads").toFixed(1)} ` +
+        `walk wall ms/look mean=${mean("wallMs").toFixed(3)} p95=${p95("wallMs").toFixed(3)} walk cpu ms/look mean=${mean("cpuMs").toFixed(3)} ` +
+        `carriers() ms/look mean=${mean("carriersMs").toFixed(3)} walk cpu=${cpu.toFixed(1)} ms over ${span.toFixed(1)} s = ${(cpu / span).toFixed(2)} ms/s\n`,
+    );
+  };
+  line("first second", looks.filter((l) => l.at < 1_100));
+  line("after", looks.filter((l) => l.at >= 1_100));
+}
+
+it("bench", async () => {
+  for (const round of [1, 2]) {
+    report(`round ${round}, 12 carriers, 10 s, 001-437 walk`, await bench(12, 10_000, false));
+    report(`round ${round}, 12 carriers, 10 s, 001-438 walk`, await bench(12, 10_000, true));
+  }
+  report("1 carrier, 60 s, 001-438 walk", await bench(1, 60_000, true));
+}, 200_000);
