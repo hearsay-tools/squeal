@@ -237,7 +237,7 @@ function decide(
     const unchanged =
       consumer.agentId === MAIN_AGENT && unchangedSinceRegistration(store, consumer);
     if (policy.requireSlowSuite && !slowElsewhere && !unchanged) {
-      const open = slowFilesNotCurrent(states, keys, isSlow);
+      const open = slowFilesNotCurrent(store, consumer.worktreeId, states, keys, isSlow);
       // 004 D8 as amended 2026-10-17: a skipped tier is named with its reason.
       const skipped = skippedReason(header.slowTier);
       if (open.length > 0) {

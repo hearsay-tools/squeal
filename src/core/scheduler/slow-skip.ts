@@ -5,15 +5,19 @@ import {
   preconditionFor,
   touchesPrecondition,
 } from "../slow/index.js";
-import type { RelativePath, SlowTierActivity, TestFileRef } from "../types/index.js";
+import { publishSlowSkips, readSlowSkips } from "../state/index.js";
+import type { RelativePath, TestFileRef } from "../types/index.js";
 import type { SchedulerContext } from "./context.js";
+import { classify } from "./files.js";
 import type { Ledger } from "./ledger.js";
 import type { Mutex } from "./mutex.js";
+import { priorityOf } from "./queue.js";
 
 /** The files one unmet precondition skipped, and why. */
 interface Skip {
   readonly rule: PreconditionRule;
   readonly reason: string;
+  readonly since: number;
   readonly refs: ReadonlyMap<string, TestFileRef>;
 }
 
@@ -23,14 +27,17 @@ interface Skip {
  * precondition first (`gate`); unmet, every queued slow file it covers
  * leaves the queue with no result stored, "not run at this revision", and
  * its checkpoint cannot complete, so a skip never reads as a pass, a failure
- * or a full suite. The skip is the tier's published activity (`activity`)
- * until a revision makes the files eligible again (`revised`): every
- * revision for a command, one touching a path an `exists` glob selects
- * otherwise; `run --slow` and `run --all` queue them as any file not current.
- * A met precondition is not checked again at the same revision.
+ * or a full suite. The skips are kept in the store (`publishSlowSkips`),
+ * where every reader counts a skipped file as not run whatever result its
+ * key stored (review wave-8.1 B1), and adopted from it by the next daemon.
+ * A skipped file is queued again, to be checked, by a revision that makes
+ * it eligible (`revised`), `run --slow` or `run --all` (`recheck`): one with
+ * a stored result at its key forced, so it becomes current only through a
+ * run or a met check. A met precondition is not checked again at the same
+ * revision.
  */
 export class SlowSkips {
-  readonly #skips = new Map<string, Skip & { readonly since: number }>();
+  #skips: Map<string, Skip> | null = null;
   /** By rule source: the revision and rule a check was last met at. */
   readonly #met = new Map<string, string>();
 
@@ -42,35 +49,49 @@ export class SlowSkips {
   /**
    * Whether `refs`, a tier's candidates of one runner and so of one
    * precondition, may run: `"run"` with none declared or a met one,
-   * `"skipped"` once every queued file it covers left the queue, `"closed"`
-   * when `signal` aborted the check.
+   * `"skipped"` once every queued file it covers left the queue, `"again"`
+   * when a revision or a policy edit superseded the check while it ran
+   * (review wave-8.1 B2), `"closed"` when `signal` aborted it.
    */
   async gate(
     refs: readonly TestFileRef[],
     signal: AbortSignal,
-  ): Promise<"run" | "skipped" | "closed"> {
-    const { context, ledger } = this.started();
-    const first = refs[0];
-    const rule = first === undefined ? null : preconditionFor(context.policy, first);
-    if (rule === null) return "run";
-    const at = metKey(rule, ledger.revision.number);
-    if (this.#met.get(rule.source) === at) return "run";
-    const reason = await checkPrecondition(context.root, rule, { signal });
+  ): Promise<"run" | "skipped" | "again" | "closed"> {
+    const [first] = refs;
+    if (first === undefined) return "run";
+    const due = await this.lock.run(() => {
+      const { context, ledger } = this.started();
+      const rule = preconditionFor(context.policy, first);
+      if (rule === null) return null;
+      const at = metKey(rule, ledger.revision.number);
+      return this.#met.get(rule.source) === at ? null : { rule, at, root: context.root };
+    });
+    if (due === null) return "run";
+    const reason = await checkPrecondition(due.root, due.rule, { signal });
     if (signal.aborted) return "closed";
-    if (reason === null) {
-      this.#met.set(rule.source, at);
-      this.#skips.delete(rule.source);
-      return "run";
-    }
-    this.#met.delete(rule.source);
-    await this.lock.run(() => this.#skip(rule, reason));
-    return "skipped";
+    return this.lock.run(() => {
+      const { context, ledger } = this.started();
+      const rule = preconditionFor(context.policy, first);
+      // Checked at another revision or rule than the live one: dropped, so the pump checks again.
+      if (rule?.source !== due.rule.source || metKey(rule, ledger.revision.number) !== due.at) {
+        return "again";
+      }
+      if (reason === null) {
+        this.#met.set(rule.source, due.at);
+        this.#lift(rule.source);
+        return "run";
+      }
+      this.#met.delete(rule.source);
+      this.#skip(rule, reason);
+      return "skipped";
+    });
   }
 
   /** Under the lock: every queued slow file `rule` covers leaves the queue, unrun. */
   #skip(rule: PreconditionRule, reason: string): void {
     const { context, ledger } = this.started();
-    const refs = new Map(this.#skips.get(rule.source)?.refs);
+    const skips = this.#adopted();
+    const refs = new Map(skips.get(rule.source)?.refs);
     for (const ref of ledger.orderedSlow()) {
       if (preconditionFor(context.policy, ref)?.source !== rule.source) continue;
       const file = ledger.file(ref);
@@ -80,7 +101,24 @@ export class SlowSkips {
       refs.set(testFileId(ref), ref);
     }
     ledger.commit();
-    this.#skips.set(rule.source, { rule, reason, refs, since: context.now() });
+    skips.set(rule.source, { rule, reason, refs, since: context.now() });
+    this.#publish();
+  }
+
+  /**
+   * Under the lock, `source` met: its skip ends. A skipped file not queued
+   * takes what its key has, a result stored before the skip included, or is
+   * queued as any miss.
+   */
+  #lift(source: string): void {
+    const skip = this.#adopted().get(source);
+    if (skip === undefined) return;
+    this.#adopted().delete(source);
+    const { ledger } = this.started();
+    const idle = [...skip.refs.values()].filter((ref) => ledger.file(ref)?.phase === null);
+    ledger.settle(idle, new Set());
+    ledger.commit();
+    this.#publish();
   }
 
   /**
@@ -92,38 +130,91 @@ export class SlowSkips {
     return rule !== null && !this.#met.has(rule.source);
   }
 
-  /** The skip as the slow tier publishes it, every reason in one; `null` with none. */
-  activity(): SlowTierActivity | null {
-    const skips = [...this.#skips.values()];
-    const [first] = skips;
-    if (first === undefined) return null;
-    const reason = skips.map((skip) => skip.reason).join("; ");
-    return { kind: "skipped", reason, since: first.since };
-  }
-
   /**
    * Under the lock, as a revision changing `paths` is applied: the skipped
-   * files it makes eligible again are queued, as any miss is, so the slow
-   * tier checks their precondition when it is next about to take the slot.
-   * A skip whose rule the policy no longer declares as it was goes with it.
+   * files it makes eligible again are queued, so the slow tier checks their
+   * precondition when it is next about to take the slot. A file is eligible
+   * when the revision may change what its skip's rule reads, or when the
+   * policy no longer declares that rule for it, decided per file so an
+   * unchanged sibling keeps no other file skipped (review wave-8.1 B4).
    * Returns whether any was queued.
    */
   revised(paths: ReadonlySet<RelativePath>): boolean {
-    const { context, ledger } = this.started();
+    const { context } = this.started();
+    const skips = this.#adopted();
     const eligible: TestFileRef[] = [];
-    for (const [source, skip] of this.#skips) {
+    for (const [source, skip] of skips) {
+      const touched = touchesPrecondition(skip.rule, paths);
       const same = JSON.stringify(skip.rule);
-      const declared = [...skip.refs.values()].some(
-        (ref) => JSON.stringify(preconditionFor(context.policy, ref)) === same,
-      );
-      if (declared && !touchesPrecondition(skip.rule, paths)) continue;
-      this.#skips.delete(source);
-      eligible.push(...skip.refs.values());
+      const kept = new Map<string, TestFileRef>();
+      for (const [id, ref] of skip.refs) {
+        const declared = JSON.stringify(preconditionFor(context.policy, ref)) === same;
+        if (declared && !touched) kept.set(id, ref);
+        else eligible.push(ref);
+      }
+      if (kept.size === 0) skips.delete(source);
+      else if (kept.size < skip.refs.size) skips.set(source, { ...skip, refs: kept });
     }
-    if (eligible.length === 0) return false;
-    ledger.settle(eligible, paths);
+    return this.#requeue(eligible, paths);
+  }
+
+  /**
+   * Under the lock, `run --slow` or `run --all`: every skipped file is queued
+   * again, so the tier checks its precondition. Returns whether any was.
+   */
+  recheck(): boolean {
+    const skips = this.#adopted();
+    const refs = [...skips.values()].flatMap((skip) => [...skip.refs.values()]);
+    skips.clear();
+    return this.#requeue(refs, new Set());
+  }
+
+  /**
+   * Queues `refs` as any miss; one whose key has a stored result goes in
+   * forced, so it runs rather than reading as current unchecked.
+   */
+  #requeue(refs: readonly TestFileRef[], changed: ReadonlySet<RelativePath>): boolean {
+    if (refs.length === 0) return false;
+    const { ledger } = this.started();
+    ledger.settle(refs, changed);
+    for (const ref of refs) {
+      const file = ledger.file(ref);
+      if (file === undefined || classify(file) !== "current") continue;
+      ledger.enqueue(file, priorityOf(file, changed), true);
+    }
     ledger.commit();
+    this.#publish();
     return true;
+  }
+
+  /** The skips, the store's at first use: a skip outlives the daemon that found it. */
+  #adopted(): Map<string, Skip> {
+    if (this.#skips !== null) return this.#skips;
+    const { context } = this.started();
+    this.#skips = new Map(
+      readSlowSkips(context.store, context.worktreeId).map((record) => [
+        record.source,
+        {
+          rule: { precondition: record.precondition, source: record.source },
+          reason: record.reason,
+          since: record.since,
+          refs: new Map(record.testFiles.map((ref) => [testFileId(ref), ref])),
+        },
+      ]),
+    );
+    return this.#skips;
+  }
+
+  #publish(): void {
+    const { context } = this.started();
+    const records = [...this.#adopted().values()].map(({ rule, reason, since, refs }) => ({
+      precondition: rule.precondition,
+      source: rule.source,
+      reason,
+      since,
+      testFiles: [...refs.values()],
+    }));
+    publishSlowSkips(context.store, context.worktreeId, records);
   }
 }
 

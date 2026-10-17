@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { publishSlowActivity } from "../../src/core/slow/state.js";
+import { publishSlowSkips } from "../../src/core/state/index.js";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 import { runHook } from "../../src/harness/claude-code/index.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
@@ -7,6 +7,7 @@ import {
   decision,
   deps,
   HARNESSES,
+  landSlow,
   repo,
   SLOW_FILE,
   slowKey,
@@ -29,7 +30,14 @@ const SKIPPED =
 /** The slow tier found its precondition unmet: the file left the queue with no result. */
 function skip(r: SquealRepo): void {
   slowKey(r, null);
-  publishSlowActivity(r.store, r.worktreeId, { kind: "skipped", reason: REASON, since: 1 });
+  skipRecord(r);
+}
+
+function skipRecord(r: SquealRepo): void {
+  const precondition = { exists: ["dist/index.js"] };
+  publishSlowSkips(r.store, r.worktreeId, [
+    { precondition, source: "slow.precondition", reason: REASON, since: 1, testFiles: [SLOW_FILE] },
+  ]);
 }
 
 describe.each(HARNESSES)(
@@ -48,6 +56,16 @@ describe.each(HARNESSES)(
       // Once: the Stop the block led to ends the turn.
       const again = await harness.stopSlow(r, { stop_hook_active: true });
       expect(decision(again)).toEqual({});
+    });
+
+    it("holds for a skipped file whose key has a result from before the skip (review wave-8.1 B1)", async () => {
+      const r = await repo(harness, { requireSlowSuite: true, slowWaitMs: SLOW_WAIT_MS });
+      landSlow(r, "pass");
+      skipRecord(r);
+      const out = await stopBoth(harness, r);
+      expect(out.waiting.decision).toBe("block");
+      expect(out.waiting.reason).toMatch(SKIPPED);
+      expect(out.ms).toBeLessThan(SLOW_WAIT_MS / 2);
     });
   },
 );
