@@ -5,8 +5,15 @@ import type { DaemonLoop } from "../daemon-loop/index.js";
 import { linkedWorktreeDir } from "../fs/index.js";
 import { readDaemonNotes } from "../notes.js";
 import { slowSlotDir } from "../slow/index.js";
+import { FINGERPRINT_RULES, renormalizeFingerprint } from "../state/fingerprint.js";
 import { recordOptimizerOff } from "../state/optimizer-note.js";
-import { BUSY_SLICE_MS, BusyWaits, isBusy, setBusyTimeout } from "../store/index.js";
+import {
+  BUSY_SLICE_MS,
+  BusyWaits,
+  isBusy,
+  rewriteFingerprints,
+  setBusyTimeout,
+} from "../store/index.js";
 import type {
   AbsolutePath,
   Capacity,
@@ -358,6 +365,8 @@ class Daemon {
       // Before this registration replaces it: whose rows this daemon's ledger finds (001-268).
       this.#predecessor = predecessorIncarnation(existing !== null, store.worktrees.lastDaemon(id));
       store.testFileKeys.releaseRunning(id);
+      // Task 011-14: before any state is derived, stored fingerprints follow the current rules.
+      rewriteFingerprints(store, FINGERPRINT_RULES, renormalizeFingerprint);
       if (this.#exit === null) store.meta.delete(daemonExitMetaKey(id));
       else store.meta.set(daemonExitMetaKey(id), this.#incarnation());
       store.worktrees.upsert({
