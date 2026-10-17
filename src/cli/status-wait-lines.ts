@@ -7,6 +7,7 @@ import type { SyncState } from "./status-sync.js";
 import type { StatusWait, StatusWaitEdit, StatusWaitSlow } from "./status-wait.js";
 import type { NamedWait } from "./status-wait-paths.js";
 import { failuresText, noVerdictText, verdictCode } from "./verdict.js";
+import type { DownReason, HeartbeatLapse } from "./wait-liveness.js";
 
 /** A wait that ended with a snapshot. */
 export type EndedWait = Extract<StatusWait, { result: StatusSnapshot }>;
@@ -17,9 +18,8 @@ export type EndedWait = Extract<StatusWait, { result: StatusSnapshot }>;
  */
 export function waitLine(wait: EndedWait, command = "squeal"): string {
   const line = ownLine(wait, command);
-  return wait.slow === undefined || wait.outcome === "no-daemon"
-    ? line
-    : `${line}${slowText(wait.slow)}`;
+  const slow = wait.slow === undefined || wait.outcome === "no-daemon" ? "" : slowText(wait.slow);
+  return `${line}${slow}${lapseText(wait.lapse)}`;
 }
 
 function ownLine(wait: EndedWait, command: string): string {
@@ -39,7 +39,7 @@ function ownLine(wait: EndedWait, command: string): string {
     case "news":
       return `Returned on news: ${plural(transitions, "transition")} since the wait started, ${at} ${after}`;
     case "no-daemon":
-      return `Returned without a daemon: ${noDaemonText(snapshot.daemon)}; results are as of revision ${snapshot.revision}`;
+      return `Returned without a daemon: ${noDaemonText(snapshot.daemon, wait.down)}; results are as of revision ${snapshot.revision}`;
     case "timeout":
       return `Returned on timeout ${after}: ${pendingText(snapshot)} ${at}`;
   }
@@ -146,7 +146,7 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
       return `No verdict: ${selection.unmatched.map((p) => `no test file's closure holds ${p}`).join("; ")}`;
     case "no-daemon":
       line = none(
-        `${noDaemonText(wait.result.daemon)}; results are as of revision ${verdict.revision}; \`${command} start\` starts one`,
+        `${noDaemonText(wait.result.daemon, wait.down)}; results are as of revision ${verdict.revision}; \`${command} start\` starts one`,
       );
       break;
     case "timeout":
@@ -166,7 +166,7 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
   const shown = files.slice(0, NAMED_FILES_SHOWN).join(", ");
   const more =
     files.length > NAMED_FILES_SHOWN ? ` and ${files.length - NAMED_FILES_SHOWN} more` : "";
-  return `${line}\nSelected: ${shown}${more}`;
+  return `${line}${lapseText(wait.lapse)}\nSelected: ${shown}${more}`;
 }
 
 /** The selected files' known failures, each as status lists it (spec 005 D2: "in full"). */
@@ -201,10 +201,29 @@ function unsyncedText(sync: SyncState, revision: number): string | null {
   return null;
 }
 
-/** As delivered headers word it (spec 001 D10: "no daemon running since <time>"). */
-function noDaemonText(daemon: DaemonLiveness): string {
+/**
+ * As delivered headers word it (spec 001 D10: "no daemon running since
+ * <time>"), then why the wait found none (task 004-66): a stopped daemon
+ * cleared its record; a silent one's heartbeat stopped and nothing listened
+ * on its socket for `WAIT_DOWN_MS` past the heartbeat's grace.
+ */
+function noDaemonText(daemon: DaemonLiveness, down: DownReason | undefined): string {
   if (daemon.state === "alive" || daemon.since === null) return "no daemon is running";
-  return `no daemon has validated since ${new Date(daemon.since).toISOString()}`;
+  const since = `no daemon has validated since ${new Date(daemon.since).toISOString()}`;
+  if (down === "silent") {
+    return `${since}: its heartbeat stopped and nothing listens on its socket`;
+  }
+  return down === "stopped" ? `${since}: the daemon stopped` : since;
+}
+
+/**
+ * Task 004-66 (issue 12): a wait that went on through a stale heartbeat
+ * says so, since status read meanwhile said no daemon is validating.
+ */
+function lapseText(lapse: HeartbeatLapse | undefined): string {
+  if (lapse === undefined) return "";
+  const age = Math.round(lapse.staleMs / 1_000);
+  return `; the daemon's heartbeat went ${age} s stale while its socket showed it alive (a busy store or a stalled daemon), so the wait went on`;
 }
 
 function anyPending(snapshot: StatusSnapshot): boolean {
