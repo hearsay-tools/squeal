@@ -24,7 +24,7 @@ import type {
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
 import type { DaemonSync, SyncState } from "./status-sync.js";
-import { namedFailures, namedLine, selectedLine } from "./status-wait-lines.js";
+import { namedLine, namedText, selectedLine } from "./status-wait-lines.js";
 import { type FileVerdict, readVerdict, verdictCode } from "./verdict.js";
 import {
   type DaemonWatch,
@@ -287,8 +287,6 @@ export async function namedWaitCommand(
   }
   const code = namedCode(wait);
   const command = statusCommand(env);
-  const selected = selectedLine(wait);
-  const verdict = `${namedLine(wait, command)}\n`;
   if (json) {
     const payload: NamedWaitPayload = {
       outcome: wait.outcome,
@@ -299,11 +297,10 @@ export async function namedWaitCommand(
       verdict: wait.verdict,
     };
     io.stdout(`${JSON.stringify({ ...wait.result, wait: payload }, null, 2)}\n`);
-    io.stderr(`${selected === null ? "" : `${selected}\n`}${verdict}`);
+    const selected = selectedLine(wait);
+    io.stderr(`${selected === null ? "" : `${selected}\n`}${namedLine(wait, command)}\n`);
   } else {
-    const lines = [...(selected === null ? [] : [selected]), ...namedFailures(wait)];
-    const block = lines.length === 0 ? "" : `${lines.join("\n")}\n`;
-    io.stdout(`${formatStatus(wait.result, options.now(), command)}\n${block}${verdict}`);
+    io.stdout(namedText(wait, options.now(), command));
   }
   return code;
 }

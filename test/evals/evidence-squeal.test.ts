@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { squealEvidence } from "../../evals/lib/index.mjs";
+import {
+  type EndedNamed,
+  type EndedWait,
+  namedText,
+  waitText,
+} from "../../src/cli/status-wait-lines.js";
 import { formatDelta, formatRegistration } from "../../src/core/delivery/format.js";
 import { formatStatus } from "../../src/core/status/index.js";
 import type { StatusSnapshot } from "../../src/core/types/index.js";
@@ -106,6 +112,43 @@ const wrappings = [
   ["in a Claude Code hook's JSON", hook],
 ] as const;
 
+const down = (s: StatusSnapshot) => s.daemon?.state === "down";
+/** `status --wait`'s text as the command prints it: the snapshot, then last its verdict (011-10). */
+const wait = (s: StatusSnapshot) =>
+  waitText(
+    {
+      outcome: down(s) ? "no-daemon" : "quiet",
+      waitedMs: 1_000,
+      transitions: 0,
+      result: s,
+    } as EndedWait,
+    2_000 as never,
+  );
+/** `status --wait <ms> <path>`'s text on the money test file, settled, its verdict last (011-10). */
+const named = (s: StatusSnapshot) =>
+  namedText(
+    {
+      outcome: down(s) ? "no-daemon" : "settled",
+      waitedMs: 1_000,
+      selection: { files: [{ project: "", path: "test/money.test.ts" }], unmatched: [] },
+      verdict: {
+        revision: 3,
+        testFiles: 1,
+        byClass: { current: 1, pending: 0, stale: 0, unknown: 0 },
+        unlisted: false,
+        failures: { tests: s.knownFailures.length, testFiles: 0 },
+      },
+      sync: { state: "synced", revision: 3 },
+      result: s,
+    } as unknown as EndedNamed,
+    2_000 as never,
+  );
+/** What a text says of the worktree, apart from the files it credits. */
+const worktree = (e: ReturnType<typeof squealEvidence>) => {
+  const { revision, pending, stale, unknown, slow, daemon, known, failures, verdict } = e ?? {};
+  return { revision, pending, stale, unknown, slow, daemon, known, failures, verdict };
+};
+
 describe("squealEvidence", () => {
   for (const [name, s, want] of variants)
     for (const [form, format, from] of formatters)
@@ -129,6 +172,27 @@ describe("squealEvidence", () => {
             if (typeof base?.[count] === "number")
               expect(e?.[count], count).toBeGreaterThanOrEqual(base[count]);
         });
+
+  // Row 011-10 (issue 26): a wait prints its verdict last, after the snapshot; its text says of
+  // the worktree what the status it prints says.
+  for (const [name, s] of variants)
+    for (const [form, format] of [
+      ["status --wait", wait],
+      ["status --wait <ms> <path>", named],
+    ] as const)
+      it(`reads a ${name} ${form} as the status it prints`, () => {
+        const text = format(s);
+        expect(text.startsWith(status(s))).toBe(true);
+        expect(worktree(squealEvidence(text, "pull"))).toEqual(
+          worktree(squealEvidence(status(s), "pull")),
+        );
+      });
+
+  it("credits the selected file of a named wait whose verdict prints last", () => {
+    const e = squealEvidence(named({ ...settled, knownFailures: [failure] }), "pull");
+    expect(e).toMatchObject({ files: ["test/money.test.ts"], failing: ["test/money.test.ts"] });
+    expect(e?.verdict).toBe("fail");
+  });
 
   it("is not current before the daemon listed the test files", () => {
     const e = squealEvidence(header({ ...settled, testFilesListed: false }), "push");
