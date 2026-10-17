@@ -13,3 +13,4 @@ Started: 2026-10-17, forked from `../001-core-loop/spec.md` at `cdd72a91` by the
 Every accepted deviation is a dated line here and an edit to the section of `spec.md` it changes (`docs/process.md`, step 6).
 
 - 2026-10-17: forked from 001 at `cdd72a91`. 001's text lifted verbatim (tagged paragraphs); the notes and the sections 001 did not have are new and change no rule.
+- 2026-10-17, 011-06: V5 amended. The adapter reports a touched run's completed files as `RunReport.withheld`; the scheduler re-queues them (011 C4) instead of recording them `unknown`, and a file that rewrites its own bytes every run ends `unknown` at the discard limit.
