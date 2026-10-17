@@ -17,7 +17,8 @@ const POLL_MS = 100;
  * queued; with `--wait`, then waits as `status --wait` does, and also for
  * the slow files it queued to have their results (task 001-282), and prints
  * its answer. Exit code 0 when requested, 1 when no daemon runs, the daemon has
- * no slow tier or the request failed, 2 on a usage error.
+ * no slow tier or the request failed, 2 on a usage error, 3 when the wait
+ * ended before the queued slow files had results (`slowWaitCode`, task 004-66).
  */
 export async function runSlowCommand(
   args: readonly string[],

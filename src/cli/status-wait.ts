@@ -1,5 +1,5 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import { planDelta, readHeader, worktreeLiveness } from "../core/delivery/index.js";
+import { planDelta, readHeader } from "../core/delivery/index.js";
 import { worktreeIdFor } from "../core/fs/index.js";
 import {
   answerMoves,
@@ -40,6 +40,12 @@ import {
 import { waitLine } from "./status-wait-lines.js";
 import { namedWaitCommand } from "./status-wait-paths.js";
 import { type HeldSlow, heldSlowLeft, heldSlowNews, pendingSlow } from "./status-wait-slow.js";
+import {
+  type DaemonWatch,
+  type DownReason,
+  type HeartbeatLapse,
+  watchDaemon,
+} from "./wait-liveness.js";
 
 /** How often `status --wait` reads the store. */
 export const STATUS_WAIT_POLL_MS = 250;
@@ -79,6 +85,8 @@ export interface StatusWaitOptions {
    * hold a wait (spec 004 D9, as Stop).
    */
   readonly holdSlow?: boolean;
+  /** Default `WAIT_DOWN_MS`: how long a stale record's dead socket may stay so (task 004-66). */
+  readonly downMs?: number;
 }
 
 /**
@@ -139,6 +147,10 @@ export type StatusWait =
       readonly transitions: number;
       readonly edit?: StatusWaitEdit;
       readonly slow?: StatusWaitSlow;
+      /** With `no-daemon`: why (task 004-66). */
+      readonly down?: DownReason;
+      /** A heartbeat lapse the wait went on through, the daemon alive (task 004-66). */
+      readonly lapse?: HeartbeatLapse;
       readonly result: StatusSnapshot;
     }
   | {
@@ -187,6 +199,10 @@ export type StatusWait =
  *
  * With `holdSlow` (task 001-282), quiet also needs every slow file pending
  * at the first read to have its result, and their transitions are news.
+ *
+ * Task 004-66 (issue 12): a stale heartbeat is no daemon only once
+ * `watchDaemon` finds none, a cleared record or a socket dead for `downMs`;
+ * a daemon whose heartbeat lapsed keeps the wait going, and the line says so.
  */
 export async function waitForStatus(
   cwd: AbsolutePath,
@@ -201,6 +217,7 @@ export async function waitForStatus(
   const started = performance.now();
   const elapsed = () => performance.now() - started;
   let start: readonly ViewEntry[] | null = null;
+  let watch: DaemonWatch | undefined;
   // Started at the first read, which finds the root; a box, since the read is a callback.
   const syncing: {
     sync?: DaemonSync;
@@ -266,7 +283,8 @@ export async function waitForStatus(
         const held = syncing.slow;
         const slowLeft = held === undefined ? [] : heldSlowLeft(held, states, keys);
         const settled = final || elapsed() >= settleMs;
-        const daemon = worktreeLiveness(store.worktrees.get(id), now());
+        watch ??= watchDaemon(id, { downMs: options.downMs });
+        const daemon = watch.judge(store.worktrees.get(id)?.daemon ?? null, now());
         // Never quiet before the pass, not even at the deadline: that would be defect 30 again.
         let transitions: number;
         let quiet: boolean;
@@ -297,11 +315,12 @@ export async function waitForStatus(
           transitions = news.length;
           quiet = isSynced(current, header.revision, settled) && !isPending(header);
         }
-        quiet &&= slowLeft.length === 0;
+        // A lapsed heartbeat decides nothing: the daemon may be mid-run (review wave 4.5, S2; 004-66).
+        quiet &&= slowLeft.length === 0 && daemon.state === "alive";
         const outcome: StatusWaitOutcome | null =
           transitions > 0
             ? "news"
-            : settled && daemon.state !== "alive"
+            : settled && daemon.state === "down"
               ? "no-daemon"
               : quiet
                 ? "quiet"
@@ -314,7 +333,16 @@ export async function waitForStatus(
           held === undefined
             ? {}
             : { slow: { held: held.size, pending: slowLeft, transitions: slowNews } };
-        return { outcome, transitions, ...(edit === undefined ? {} : { edit }), ...slow, result };
+        const lapse = watch.lapse();
+        return {
+          outcome,
+          transitions,
+          ...(edit === undefined ? {} : { edit }),
+          ...slow,
+          ...(daemon.state === "down" ? { down: daemon.reason } : {}),
+          ...(lapse === null ? {} : { lapse }),
+          result,
+        };
       });
       if (read !== null && "available" in read) {
         if (start === null || final) {
@@ -380,8 +408,19 @@ export function waitConsumer(env: Readonly<Record<string, string | undefined>>):
 }
 
 /**
+ * Task 004-66 (issue 12): `run --slow --wait`'s code once its wait ended, 3
+ * when the slow files its request queued have no verdict, since no daemon
+ * will run them or the deadline passed first, as a named wait's (spec 005
+ * D1); else 0.
+ */
+export function slowWaitCode(wait: Extract<StatusWait, { result: StatusSnapshot }>): 0 | 3 {
+  if (wait.outcome === "no-daemon") return 3;
+  return wait.outcome === "timeout" && (wait.slow?.pending.length ?? 0) > 0 ? 3 : 0;
+}
+
+/**
  * `squeal status [--json] --wait <ms>`. Exit code 0 on quiet, news, no daemon
- * or timeout; 1 when status is unavailable. The line saying why the wait
+ * or timeout, but `slowWaitCode`'s with `holdSlow`; 1 when status is unavailable. The line saying why the wait
  * ended comes first in the human rendering and goes to stderr with `--json`,
  * where stdout is the snapshot payload plus a `wait` field
  * (`StatusWaitPayload`) with the same outcome. `holdSlow` is
@@ -432,5 +471,5 @@ export async function statusWaitCommand(
   } else {
     io.stdout(`${line}\n${formatStatus(result, now(), statusCommand(env))}`);
   }
-  return 0;
+  return holdSlow ? slowWaitCode(wait) : 0;
 }
