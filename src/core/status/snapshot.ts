@@ -122,6 +122,7 @@ function snapshot(
       liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null),
     ),
   );
+  const runs = openRuns(store, worktree, daemon);
 
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -134,7 +135,7 @@ function snapshot(
     // Task 001-404: each failure says how old its run is and the load it ran under.
     knownFailures: withRecorded(store, worktreeId, states, header.revision),
     inherited: inheritedSources(store, states),
-    breakdown: breakdown(states, keys, openFiles(openRuns(store, worktree, daemon))),
+    breakdown: breakdown(states, keys, openFiles(runs)),
     closureMethod: CLOSURE_METHOD,
     storeSchemaVersion: store.schemaVersion,
     notes,
@@ -144,6 +145,7 @@ function snapshot(
     ...configProblemsOf(worktree?.root ?? root),
     ...pendingRetriesOf(store, keys),
     ...unknownTestFilesOf(store, worktreeId, states, keys, worktree?.root ?? root, now),
+    ...(daemon.state === "alive" ? { runsOpen: runs.length } : {}),
   };
 }
 

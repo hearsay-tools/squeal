@@ -13,6 +13,7 @@ import { configProblemsLine } from "./config-problems.js";
 import { DEATH_CAUSE, deathText } from "./died.js";
 import { shortCommit, statusRevisionText, worktreeLine } from "./identity.js";
 import { unknownFilesLines } from "./unknown-files.js";
+import { workLine } from "./work-line.js";
 
 export { shortCommit } from "./identity.js";
 
@@ -57,6 +58,7 @@ export function formatStatus(
     ]),
     ...retryLines(result),
     `Affected checks: ${affected(result)}`,
+    ...workLine(result, command),
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
     ...checkpointLine(result, now, command),
     ...slowLine(result, command, options.allNotes === true),
