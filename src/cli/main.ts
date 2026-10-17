@@ -17,7 +17,8 @@ import { piStatusLine } from "./pi/status.js";
 import { removeCommand } from "./remove.js";
 import { retryCommand } from "./retry.js";
 import { runCommand } from "./run.js";
-import { setupCommand } from "./setup/command.js";
+import { SETUP_FLAGS_USAGE } from "./setup/apply.js";
+import { SETUP_USAGE, setupCommand } from "./setup/command.js";
 import { startCommand } from "./start.js";
 import { statusCommand } from "./status-command.js";
 import { statusWaitCommand } from "./status-wait.js";
@@ -91,9 +92,12 @@ Usage:
                                 also deletes squeal.config.json
   squeal update                 Update the plugin in every harness that has it, to one
                                 version, and the launcher install.sh put on the PATH
-  squeal daemon <root>          Run the daemon in the foreground (hooks start it)
+  squeal daemon <root> [--await-lock <ms>]
+                                Run the daemon in the foreground (hooks start it); a
+                                step-down's successor waits up to <ms> for the lock
   squeal --version              Print the version
   squeal --help                 Print this help
+  squeal <command> --help       Print that command's part of this help
 
 A check is named as in status output: "path > describe > test", or any
 unique part of that name. Status reads the store directly; no daemon needed.
@@ -116,6 +120,31 @@ export interface CliIo {
  */
 type StoreCommand = "why" | "failures";
 
+type Command = (args: readonly string[], io: CliIo) => number | Promise<number>;
+
+/** Every command `main` dispatches, by name. */
+const COMMANDS: Readonly<Record<string, Command>> = {
+  status,
+  why,
+  failures: failuresCommand,
+  init,
+  setup: setupCommand,
+  warmup: warmupCommand,
+  daemon: daemonCommand,
+  start: startCommand,
+  run: runCommand,
+  retry: retryCommand,
+  stop: stopCommand,
+  remove: removeCommand,
+  update: updateCommand,
+};
+
+/** Usage beyond the command's lines in `HELP`: the setup choices `HELP` only names. */
+const MORE_USAGE: Readonly<Record<string, string>> = {
+  init: SETUP_FLAGS_USAGE,
+  setup: SETUP_USAGE,
+};
+
 /** Runs the CLI and returns the exit code. */
 export function main(argv: readonly [StoreCommand, ...string[]], io: CliIo): number;
 export function main(argv: readonly string[], io: CliIo): number | Promise<number>;
@@ -129,21 +158,30 @@ export function main(argv: readonly string[], io: CliIo): number | Promise<numbe
     io.stdout(HELP);
     return 0;
   }
-  if (first === "status") return status(rest, io);
-  if (first === "why") return why(rest, io);
-  if (first === "failures") return failuresCommand(rest, io);
-  if (first === "init") return init(rest, io);
-  if (first === "setup") return setupCommand(rest, io);
-  if (first === "warmup") return warmupCommand(rest, io);
-  if (first === "daemon") return daemonCommand(rest, io);
-  if (first === "start") return startCommand(rest, io);
-  if (first === "run") return runCommand(rest, io);
-  if (first === "retry") return retryCommand(rest, io);
-  if (first === "stop") return stopCommand(rest, io);
-  if (first === "remove") return removeCommand(rest, io);
-  if (first === "update") return updateCommand(rest, io);
-  io.stderr(`squeal: unknown command "${first}"\n\n${HELP}`);
-  return 2;
+  const command = Object.hasOwn(COMMANDS, first) ? COMMANDS[first] : undefined;
+  if (command === undefined) {
+    io.stderr(`squeal: unknown command "${first}"\n\n${HELP}`);
+    return 2;
+  }
+  // Issue 11: `--help` anywhere after the command is its help, before its parser runs.
+  if (rest.includes("--help") || rest.includes("-h")) {
+    io.stdout(commandHelp(first));
+    return 0;
+  }
+  return command(rest, io);
+}
+
+/** The command's entries of `HELP`, each usage line with its description lines. */
+function commandHelp(command: string): string {
+  const lines: string[] = [];
+  let inEntry = false;
+  for (const line of HELP.split("\n")) {
+    if (line.startsWith("  squeal ")) inEntry = new RegExp(`^  squeal ${command}\\b`).test(line);
+    else if (!line.startsWith("   ")) inEntry = false;
+    if (inEntry) lines.push(line);
+  }
+  const more = MORE_USAGE[command];
+  return `Usage:\n${lines.join("\n")}\n${more === undefined ? "" : `\n${more}`}`;
 }
 
 /**
