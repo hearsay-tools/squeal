@@ -9,6 +9,7 @@ import {
   type NodeTestProject,
   type Policy,
   type SlowPrecondition,
+  type Store,
 } from "../../src/core/types/index.js";
 import {
   createRepo,
@@ -64,6 +65,32 @@ export async function open(precondition: SlowPrecondition, options: OpenOptions 
     mkdirSync(dirname(join(repo.main, path)), { recursive: true });
     writeFileSync(join(repo.main, path), content);
   }
+  return start(repo.main, repo.commonDir, store, precondition, options);
+}
+
+/**
+ * A daemon restart over `h`'s worktree: `h`'s scheduler closed, the store
+ * opened again, a new scheduler with the same policy started on it.
+ */
+export async function reopen(
+  h: Harness,
+  precondition: SlowPrecondition,
+  options: OpenOptions = {},
+) {
+  await h.scheduler.close();
+  const commonDir = h.store.worktrees.get(h.worktreeId)?.commonDir;
+  if (commonDir === undefined) throw new Error("the harness registered no worktree");
+  return start(h.root, commonDir, openRepoStore(commonDir), precondition, options);
+}
+
+async function start(
+  root: string,
+  commonDir: string,
+  store: Store,
+  precondition: SlowPrecondition,
+  options: OpenOptions,
+) {
+  const repo = { main: root, commonDir };
   const slotDir = scratch("squeal-004-65-slot-");
   const slow = slowPolicy(precondition);
   const nodeTest = options.nodeTest ?? [];
