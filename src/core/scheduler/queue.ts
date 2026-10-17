@@ -2,6 +2,7 @@ import { compare } from "../fs/index.js";
 import { testFileId } from "../keys/index.js";
 import type { RelativePath, TestFileRef } from "../types/index.js";
 import type { FileState } from "./files.js";
+import { Promotions } from "./promotions.js";
 
 /**
  * Run order of queued test files, most urgent first.
@@ -70,6 +71,8 @@ export class RunQueue {
   /** Tiers in a row that took recent entries only while others waited. */
   #recentTiers = 0;
   #isSlow: (ref: TestFileRef) => boolean = NOTHING_SLOW;
+  readonly #promotions = new Promotions();
+  readonly #queued = (id: string) => this.#entries.has(id);
 
   /** Every entry, fast and slow. */
   get size(): number {
@@ -93,6 +96,34 @@ export class RunQueue {
     return this.#isSlow(ref);
   }
 
+  /** The clock promotions' deadlines are on, and whether a test file's run is in flight (C15). */
+  setPromotionClock(now: () => number, isRunning: (ref: TestFileRef) => boolean): void {
+    this.#promotions.setClock(now, isRunning);
+  }
+
+  /**
+   * Spec 011 C15: a named wait promotes the test files it selected by their
+   * own paths until `until`, or until none of them is queued or running
+   * (their keys settled), whichever comes first. A promoted queued file is
+   * work of the first group and leads it, the earlier request first; one
+   * queued again while the promotion lasts (an edit during the wait) is
+   * promoted too. Nothing is cancelled and nothing joins a running tier.
+   */
+  promote(refs: readonly TestFileRef[], until: number): void {
+    this.#promotions.add(refs, until, this.#queued);
+  }
+
+  /** Whether `ref`'s entry is queued and promoted now (C15). */
+  isPromoted(ref: TestFileRef): boolean {
+    const id = testFileId(ref);
+    return this.#entries.has(id) && this.#promotions.rankOf(id) !== null;
+  }
+
+  /** `isRecent` or `isPromoted`: work of C4 step 4's first group (C15). */
+  isFirstGroup(ref: TestFileRef): boolean {
+    return this.isRecent(ref) || this.isPromoted(ref);
+  }
+
   has(ref: TestFileRef): boolean {
     return this.#entries.has(testFileId(ref));
   }
@@ -103,6 +134,7 @@ export class RunQueue {
    * entry stays recent until it leaves the queue.
    */
   add(ref: TestFileRef, priority: Priority, forced = false, recent = false): void {
+    this.#promotions.settle(this.#queued);
     const id = testFileId(ref);
     const entry = this.#entries.get(id);
     if (entry) {
@@ -114,9 +146,11 @@ export class RunQueue {
     this.#entries.set(id, { ref, priority, seq: this.#seq++, forced, recent });
   }
 
+  /** Empties the queue; promotions go with it. */
   clear(): void {
     this.#entries.clear();
     this.#recentTiers = 0;
+    this.#promotions.clear();
   }
 
   remove(ref: TestFileRef): boolean {
@@ -140,14 +174,26 @@ export class RunQueue {
     return this.#fast().some((entry) => entry.recent && where(entry.ref));
   }
 
+  /**
+   * `hasRecent`, promoted entries included (C15): the tier is an edit's.
+   * Not what cancels a backlog tier, which promotion never does.
+   */
+  hasFirstGroup(where: (ref: TestFileRef) => boolean = () => true): boolean {
+    return this.#fast().some((entry) => this.#firstGroup(entry) && where(entry.ref));
+  }
+
   /** Some fast entry `where` holds is queued (task 001-140: one of a free lane). */
   hasFast(where: (ref: TestFileRef) => boolean): boolean {
     return this.#fast().some((entry) => where(entry.ref));
   }
 
-  /** A tier was selected; `tookBacklog` when it took an entry that is not recent. */
+  /**
+   * A tier was selected; `tookBacklog` when it took an entry of the second
+   * group. A promoted entry counts as the first group's (C15), so named
+   * waits cannot starve the backlog.
+   */
   tierSelected(tookBacklog: boolean): void {
-    const waiting = this.#fast().some((entry) => !entry.recent);
+    const waiting = this.#fast().some((entry) => !this.#firstGroup(entry));
     this.#recentTiers = tookBacklog || !waiting ? 0 : this.#recentTiers + 1;
   }
 
@@ -160,32 +206,60 @@ export class RunQueue {
    * duration first, so a slow integration file never delays the edited
    * module's own unit test." After `RECENT_TIERS_PER_BACKLOG_TIER` tiers of
    * recent entries only (`tierSelected`), the backlog comes first once.
-   * Fast entries only.
+   * A promoted entry (C15) is of the first group and leads it, failing
+   * files included. Fast entries only.
    */
   ordered(durationOf: DurationOf = () => null): TestFileRef[] {
     const first = this.#recentTiers >= RECENT_TIERS_PER_BACKLOG_TIER ? -1 : 1;
-    return sorted(this.#fast(), durationOf, first);
+    return sorted(this.#fast(), durationOf, first, this.#ranks());
   }
 
   /**
    * The slow entries in the order the slow tier runs them, one at a time
-   * (spec 004 D2): `ordered`'s, where recent work comes first too.
+   * (spec 004 D2): `ordered`'s, where recent work comes first too and a
+   * promoted file leads (C15), which does not make the slow tier eligible.
    */
   orderedSlow(durationOf: DurationOf = () => null): TestFileRef[] {
     return sorted(
       [...this.#entries.values()].filter((entry) => this.#isSlow(entry.ref)),
       durationOf,
       1,
+      this.#ranks(),
     );
   }
 
   #fast(): Entry[] {
     return [...this.#entries.values()].filter((entry) => !this.#isSlow(entry.ref));
   }
+
+  #firstGroup(entry: Entry): boolean {
+    return entry.recent || this.#promotions.rankOf(testFileId(entry.ref)) !== null;
+  }
+
+  /** Each promoted entry's request order, for `sorted`. */
+  #ranks(): ReadonlyMap<Entry, number> {
+    const ranks = new Map<Entry, number>();
+    for (const [id, entry] of this.#entries) {
+      const rank = this.#promotions.rankOf(id);
+      if (rank !== null) ranks.set(entry, rank);
+    }
+    return ranks;
+  }
 }
 
-/** `RunQueue.ordered`'s sort; `first` is 1 for recent entries first, -1 for the backlog first. */
-function sorted(entries: readonly Entry[], durationOf: DurationOf, first: 1 | -1): TestFileRef[] {
+/**
+ * `RunQueue.ordered`'s sort; `first` is 1 for recent entries first, -1 for
+ * the backlog first. `promoted` holds each promoted entry's request order:
+ * of the first group, ahead of its other classes (C15).
+ */
+function sorted(
+  entries: readonly Entry[],
+  durationOf: DurationOf,
+  first: 1 | -1,
+  promoted: ReadonlyMap<Entry, number>,
+): TestFileRef[] {
+  const rank = (entry: Entry) => promoted.get(entry) ?? Number.POSITIVE_INFINITY;
+  const group = (entry: Entry) => Number(entry.recent || promoted.has(entry));
   const durations = new Map<Entry, number>();
   for (const entry of entries) {
     durations.set(entry, durationOf(entry.ref) ?? Number.POSITIVE_INFINITY);
@@ -194,7 +268,8 @@ function sorted(entries: readonly Entry[], durationOf: DurationOf, first: 1 | -1
   return [...entries]
     .sort(
       (a, b) =>
-        first * (Number(b.recent) - Number(a.recent)) ||
+        first * (group(b) - group(a)) ||
+        byDuration(rank(a), rank(b)) ||
         a.priority - b.priority ||
         byDuration(duration(a), duration(b)) ||
         a.seq - b.seq ||
@@ -204,7 +279,7 @@ function sorted(entries: readonly Entry[], durationOf: DurationOf, first: 1 | -1
     .map((entry) => entry.ref);
 }
 
-/** Ascending; two unknown (infinite) durations are equal. */
+/** Ascending; two unknown (infinite) durations, or two unpromoted ranks, are equal. */
 function byDuration(a: number, b: number): number {
   return a === b ? 0 : a < b ? -1 : 1;
 }

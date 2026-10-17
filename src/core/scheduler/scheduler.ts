@@ -16,6 +16,7 @@ import {
   type SchedulerCloseOptions,
   type SchedulerStatus,
   type SlowSuiteRequest,
+  type TestFileRef,
 } from "../types/index.js";
 import { cancelsBacklog } from "./backlog.js";
 import { reconcileBatch } from "./batch.js";
@@ -379,6 +380,20 @@ class TierScheduler implements Scheduler {
     await this.#lock.run(() => {
       const { context, ledger } = this.#started();
       if (takeRetries(context, ledger)) ledger.commit();
+    });
+    this.#pump();
+  }
+
+  /**
+   * Spec 011 C15: a named wait promotes `testFiles` for `withinMs` on this
+   * daemon's clock. Only the order of queued files changes; the pump takes
+   * a promoted file at the next tier boundary of a free lane.
+   */
+  async promote(testFiles: readonly TestFileRef[], withinMs: number): Promise<void> {
+    if (this.#closed || !this.#context) return;
+    await this.#lock.run(() => {
+      const { context, ledger } = this.#started();
+      ledger.queue.promote(testFiles, context.now() + withinMs);
     });
     this.#pump();
   }
@@ -778,7 +793,7 @@ class TierScheduler implements Scheduler {
    */
   #editPending(): boolean {
     const work = this.#runnerWork;
-    if (work.size > 0 || work.refining || this.#ledger?.queue.hasRecent()) return true;
+    if (work.size > 0 || work.refining || this.#ledger?.queue.hasFirstGroup()) return true;
     return [...this.#inFlight.values()].some(
       ({ tier }) => tier.cancel === null && !isSlowLane(tier.lane),
     );

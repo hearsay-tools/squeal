@@ -120,6 +120,10 @@ export class Ledger {
     this.claims = new Claims(context);
     // Read at every query: a reload replaces `context.policy`.
     this.queue.setSlow((ref) => slowView(context.policy).isSlow(ref));
+    this.queue.setPromotionClock(
+      context.now,
+      (ref) => (this.file(ref)?.runningKey ?? null) !== null,
+    );
   }
 
   file(ref: TestFileRef): FileState | undefined {

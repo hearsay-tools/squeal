@@ -91,12 +91,12 @@ export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
  * skip the lookup. Returns `null` when no fast file is left to run: slow
  * files are never in these tiers (spec 004 D2, `selectSlowTier`).
  *
- * While no queued file is recent, the tier is the backlog's: up to
- * `runner.backlogTierSize` files and `backlogBudget` of last-known file time,
- * cancelled by the next edit (D5 step 5 as amended, task 001-124; lessons,
- * defect 25: 559 tiers of 4 took 4.6 h where one `npm test` took 514 s). The
- * budget bounds the selection, not the run: unknown durations count 0 and
- * the first file is always taken.
+ * While no queued file is recent or promoted (spec 011 C15), the tier is
+ * the backlog's: up to `runner.backlogTierSize` files and `backlogBudget` of
+ * last-known file time, cancelled by the next edit (D5 step 5 as amended,
+ * task 001-124; lessons, defect 25: 559 tiers of 4 took 4.6 h where one
+ * `npm test` took 514 s). The budget bounds the selection, not the run:
+ * unknown durations count 0 and the first file is always taken.
  *
  * A tier holds the files of one lane, the lane of the first file it takes;
  * files of a lane in `busy`, which has a tier in flight, stay queued and
@@ -133,7 +133,7 @@ export function selectTier(
   const { keys, policy } = context;
   const picked: TierFile[] = [];
   ledger.claims.begin();
-  const backlog = !ledger.queue.hasRecent((ref) => !busy.has(laneOf(context, ref)));
+  const backlog = !ledger.queue.hasFirstGroup((ref) => !busy.has(laneOf(context, ref)));
   let size = backlog ? ledger.claims.backlogSize(ledger.queue.fastSize) : policy.runner.tierSize;
   const budget = backlog ? backlogBudget(policy.runner.timeoutMs) : Number.POSITIVE_INFINITY;
   let known = 0;
@@ -172,7 +172,7 @@ export function selectTier(
     }
     known += file.durationMs ?? 0;
     if (picked.length > 0 && known > budget) break;
-    tookBacklog ||= !recent;
+    tookBacklog ||= !recent && !ledger.queue.isPromoted(ref);
     lane = at;
     size = cap;
     const checkpointId = ledger.checkpoints.idFor(ref);
