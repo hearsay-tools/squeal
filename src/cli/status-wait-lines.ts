@@ -141,7 +141,8 @@ const NAMED_FILES_SHOWN = 10;
  * Spec 005 D2: the verdict on the selected test files as D1 words a
  * checkpoint's, printed last (issue 26) after the line naming them
  * (`selectedLine`), then the worktree's known failures and outstanding work.
- * A path that selects nothing says D2's text.
+ * A timeout counts the pending files by what holds them (011 C15,
+ * `reasonGroups`). A path that selects nothing says D2's text.
  */
 export function namedLine(wait: EndedNamed, command = "squeal"): string {
   const { verdict, selection } = wait;
