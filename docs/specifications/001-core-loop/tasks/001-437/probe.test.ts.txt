@@ -1,0 +1,47 @@
+import { spawn } from "node:child_process";
+import { appendFileSync } from "node:fs";
+import { setTimeout as sleep } from "node:timers/promises";
+import { expect, it } from "vitest";
+import { EscapedChildren } from "../../src/core/daemon/escaped.js";
+import { lowerWhile } from "../../src/core/daemon/low-priority.js";
+
+// PROBE 001-437, not committed: many short forks at once, each with a child it starts at once
+const SHORT_FORK = `const { spawn } = require("node:child_process");
+const { getPriority } = require("node:os");
+const before = performance.timeOrigin + performance.now();
+const child = spawn(process.execPath, ["-e", "setTimeout(() => console.log(require('node:os').getPriority()), 400)"], { stdio: ["ignore", "pipe", "ignore"] });
+const after = performance.timeOrigin + performance.now();
+let out = "";
+child.stdout.on("data", (chunk) => { out += chunk; });
+child.on("exit", () => console.log(JSON.stringify({ own: getPriority(), child: Number(out.trim()), before, after })));
+`;
+
+async function one(): Promise<{ own: number; child: number; pid?: number }> {
+  const children = new EscapedChildren();
+  const settled = new AbortController();
+  const lowering = lowerWhile(children, "fast", children.mark(), settled.signal);
+  await sleep(450 + Math.random() * 100);
+  const fork = spawn(process.execPath, ["-e", SHORT_FORK], {
+    env: { ...process.env, ...children.envFor("fast") },
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  let out = "";
+  fork.stdout.on("data", (c: Buffer) => { out += c.toString(); });
+  await new Promise((done) => fork.on("exit", done));
+  settled.abort();
+  await lowering;
+  return { ...(JSON.parse(out) as { own: number; child: number }), pid: fork.pid };
+}
+
+it("probe", async () => {
+  const results: { own: number; child: number; pid?: number }[] = [];
+  for (let round = 0; round < Number(process.env.ROUNDS ?? 10); round++)
+    {
+      const got = await Promise.all(Array.from({ length: 12 }, one));
+      results.push(...got);
+      appendFileSync(`/tmp/probe437.forks.${process.pid}`, got.map((r) => `${JSON.stringify(r)}\n`).join(""));
+    }
+  const bad = results.filter((r) => r.own !== 10 || r.child !== 10);
+  process.stderr.write(`PROBE437 total=${results.length} bad=${JSON.stringify(bad)}\n`);
+  expect(bad).toEqual([]);
+}, 600_000);
