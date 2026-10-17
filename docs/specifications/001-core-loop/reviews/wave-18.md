@@ -240,3 +240,137 @@ try{
  for(const pid of [late,middle,root.pid!])try{process.kill(pid,'SIGKILL')}catch{}
 }
 ```
+
+## Re-review
+
+Verdict: **PASS d1123963cba578d9cf48bb739f77b379565c4867**. B1 is resolved. No new blockers, should-fix findings or nits in this round. S1 and the pre-existing `ionice` batch-abort limitation remain carried to the coordinator's later 001 row; this re-review does not reopen them.
+
+Scope: `8a19bbeb..d1123963`, against B1 and its done-when only. Fetched `cand/0.1.211`, checked out the requested SHA detached, and confirmed the tracked tree stayed clean through verification. The final commit appends only this section. No product file was edited. The optional independent full suite was not rerun, and `npm run build` was omitted as instructed. The first round's independent full-suite result belongs to `8a19bbeb`, not this repaired candidate.
+
+### Verification output
+
+`git rev-parse HEAD`, exit 0:
+
+```text
+d1123963cba578d9cf48bb739f77b379565c4867
+```
+
+`npm ci`, exit 0:
+
+```text
+npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+
+added 196 packages, and audited 197 packages in 7s
+
+32 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+npm warn install-scripts 6 packages have install scripts not yet covered by allowScripts:
+npm warn install-scripts   @google/genai@2.21.0 (preinstall: echo 'preinstall: no-op')
+npm warn install-scripts   @parcel/watcher@2.6.0 (install: node scripts/build-from-source.js)
+npm warn install-scripts   esbuild@0.28.2 (postinstall: node install.js)
+npm warn install-scripts   msgpackr-extract@3.0.4 (install: node-gyp-build-optional-packages)
+npm warn install-scripts   opencode-ai@1.18.35 (postinstall: node ./postinstall.mjs)
+npm warn install-scripts   protobufjs@7.6.6 (postinstall: node scripts/postinstall)
+npm warn install-scripts
+npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+```
+
+`npm run lint`, exit 0:
+
+```text
+> squeal@0.1.211 lint
+> biome check .
+
+Checked 1402 files in 416ms. No fixes applied.
+```
+
+`npm run typecheck`, exit 0:
+
+```text
+> squeal@0.1.211 typecheck
+> tsc --noEmit
+```
+
+`npm run check:version -- origin/main`, exit 0:
+
+```text
+> squeal@0.1.211 check:version
+> node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-version-bump.ts origin/main
+
+version bump: 0.1.210 -> 0.1.211, ok
+```
+
+Original B1 asserting reproducer, unchanged from the first review, exit 0:
+
+```sh
+setsid node --import ./node_modules/tsx/dist/loader.mjs /tmp/review211-nested.mts
+```
+
+```text
+{"walks":23,"rootNice":10,"middleAlive":false,"lateNice":10,"lateParent":1049,"carriers":[3887341,3887359]}
+```
+
+Three focused rounds under controlled CPU contention, all exit 0. Each round ran these seven files with four workers and affinity to CPUs 0 through 3, beside one nice-0 CPU hog pinned to CPU 0 and another to CPU 1. The hogs were stopped in the driver's `finally` block. This confines the contention to the test turn and does not depend on the host's one-minute load reading.
+
+```sh
+taskset -c 0-3 node ./node_modules/vitest/vitest.mjs run --maxWorkers=4   test/daemon/low-priority.test.ts test/daemon/slow-lane.test.ts   test/daemon/escaped.test.ts test/daemon/escaped-overlap.test.ts   test/daemon/escaped-identity.test.ts test/scheduler/slow-lane.test.ts   test/keys/key-format.test.ts
+```
+
+```text
+Round 1:
+ Test Files  7 passed (7)
+      Tests  59 passed (59)
+   Duration  17.46s (tests 95%, transform 4%, import 1%)
+
+Round 2:
+ Test Files  7 passed (7)
+      Tests  59 passed (59)
+   Duration  17.44s (tests 94%, transform 5%, import 1%)
+
+Round 3:
+ Test Files  7 passed (7)
+      Tests  59 passed (59)
+   Duration  18.22s (tests 95%, transform 4%, import 1%)
+```
+
+The coordinator separately reports its full gate at `d8d9aa97`: 5,956 passed and one failure in unchanged `test/harness/opencode-dispose.test.ts`, followed by three isolated passes. That is reported coordinator evidence, not an independent result from this round; the full-suite timeout was not independently re-tested here.
+
+### B1 and its done-when
+
+**Proven:** `low-priority.ts:65,76-85` passes a loss on the next look after a lowered carrier disappears or a previously listed descendant leaves the walk. `escaped.ts:151-157` retains that request as a non-matching reaped count (`NaN`) until the existing `#orphans` cap allows a scan. The original failure no longer relies on a direct daemon-child exit. The optional third argument leaves existing two-argument callers compatible.
+
+**Proven, non-vacuous regression:** the new `wave-18 B1` case was run against disposable copies of both pre-repair modules from `8a19bbeb`, and against this candidate. Only import paths changed in those copies. At nice 0 the old version failed `expected +0 to be 10`; the candidate passed. Neither the live candidate nor its tests were reverted.
+
+```text
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 1 passed | 12 skipped (14)
+   Duration  5.99s (tests 97%, transform 3%, import 1%)
+```
+
+**Proven, live-root recovery and lane isolation:** extended copies of the original probe explicitly asserted that the late child initially had nice 0. Each also created a real marked orphan of the other lane in the same group and asserted that it stayed at nice 0. Both root workers stayed alive, their middle process exited, and the target late child recovered:
+
+| Target lane | Initial child nice | Recovered after | Root nice | Late child nice | Other lane nice | Late child's I/O |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| `fast` | 0 | 937 ms | 10 | 10 | 0 | `none: prio 0` |
+| `slow:vitest` | 0 | 931 ms | 10 | 10 | 0 | `idle` |
+
+The probes counted global `/proc` listings through a temporary wrapper of Node's built-in `readdirSync`, installed before importing the modules; the wrapper never altered the returned entries. After the initial scans, the fast run made 32 looks, observed one loss and scanned once. The slow run made 32 looks, observed one loss and scanned twice; its `ionice` children can also change the direct-child exit count. This is bounded orphan recovery, not a scan on each look. Every fixture process was cleaned up.
+
+**Proven, shared scan cap and measured cost:** a separate real group-leader probe called `carriers` 25 times at 100 ms intervals, alternating `fast` and `slow:vitest` and forcing `lost: true` on every call. It counted only two global scans, 1,021 ms apart. Timing the two calls which actually scanned, on this host with 465 processes, gave:
+
+```text
+forcedScans: 2
+scan gap: 1021.02 ms
+scan-bearing call 1: 15.14 ms wall, 14.04 ms main-thread CPU
+scan-bearing call 2: 11.65 ms wall, 11.62 ms main-thread CPU
+```
+
+These timings include that call's ordinary carrier reads; asynchronous filesystem work is not part of the main-thread CPU reading. They support the amendment's approximate single-scan cost, not a universal timing bound. The one-second shared cap remains in `escaped.ts:193`; setting `lost` neither resets its timestamp nor bypasses it. Stable walks do not repeatedly force scans. A run losing descendants often can now pay this scan cost at the existing cap, which is the explicit repair tradeoff.
+
+**Proven:** D11 and the final status amendment describe this loss-triggered, capped scan. The checked-in CLI diff carries the same argument and sentinel in all four bundles. `KEY_FORMAT_VERSION` stays 11 and its new pin is `4a82c63d3072972f4294cab7025fc23c0905ea0eb253cc1d18ba24fc5fc86873`; the guarded-source tests passed in all three focused rounds. Bundle rebuild reproducibility remains unverified because this round did not run a build.
+
+### Remaining inputs
+
+No B1 repair work remains. Carry S1's PID-only descendant identity and the pre-existing `ionice` batch-abort behavior to the separately planned row. Preserve the shared scan cap and lane filtering there. The first round's other settled observations are unchanged by this bounded re-review.
