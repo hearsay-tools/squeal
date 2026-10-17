@@ -5,7 +5,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { EscapedChildren } from "../../src/core/daemon/escaped.js";
 import { lowerWhile, TEST_NICE } from "../../src/core/daemon/low-priority.js";
-import { statOf } from "../../src/core/daemon/terminate.js";
+import { childrenOf, statOf } from "../../src/core/daemon/terminate.js";
 
 /*
  * 001 D11 Priority (task 001-393): a Vitest fork worker, a child of the
@@ -83,6 +83,29 @@ async function leaderGroup() {
     return Number((await lines.next()).value);
   };
   return { daemon, sleeper };
+}
+
+/**
+ * A daemon's stand-in that leads its own group: on its one line, an env, it
+ * starts a carrier with it whose child starts a sleeper, and the child
+ * prints `{ middle, late }`, its own pid and the sleeper's (review wave-18 B1).
+ */
+const NESTING_LEADER = `const { spawn } = require("node:child_process");
+const middle = \`const { spawn } = require("node:child_process");
+const late = spawn(process.execPath, ["-e", "setTimeout(() => {}, 30000)"], { stdio: "ignore" });
+console.log(JSON.stringify({ middle: process.pid, late: late.pid }));
+setTimeout(() => {}, 30000);\`;
+const root = \`require("node:child_process").spawn(process.execPath, ["-e", \${JSON.stringify(middle)}], { stdio: ["ignore", "inherit", "ignore"] });
+setTimeout(() => {}, 30000);\`;
+require("node:readline").createInterface({ input: process.stdin }).once("line", (line) => {
+  spawn(process.execPath, ["-e", root], { env: { ...process.env, ...JSON.parse(line) }, stdio: ["ignore", "inherit", "ignore"] });
+});
+console.log("ready");
+`;
+
+/** Every descendant `pid` has now, as the daemon's walk lists them. */
+function descendants(pid: number): number[] {
+  return childrenOf(pid).flatMap((child) => [child, ...descendants(child)]);
 }
 
 /** A process that sleeps until the test ends: its pid stands in for a fork's, or a fork's child's. */
@@ -187,6 +210,51 @@ describe.runIf(process.platform === "linux")("lowerWhile: forks at nice 10 (001-
     expect(await lowered()).toBe(TEST_NICE);
     await sleep(1_100);
     expect(await lowered()).toBe(TEST_NICE);
+  });
+
+  it("lowers a late child its lowered parent left in the group while the carrier lives (wave-18 B1)", {
+    timeout: 15_000,
+  }, async () => {
+    const leader = spawn(process.execPath, ["-e", NESTING_LEADER], {
+      detached: true,
+      stdio: ["pipe", "pipe", "ignore"],
+    });
+    onTestFinished(() => {
+      try {
+        if (leader.pid !== undefined) process.kill(-leader.pid, "SIGKILL");
+      } catch {
+        // gone
+      }
+    });
+    const lines = createInterface({ input: leader.stdout as NodeJS.ReadableStream })[
+      Symbol.asyncIterator
+    ]();
+    expect((await lines.next()).value).toBe("ready");
+    const daemon = new EscapedChildren(undefined, leader.pid);
+    await sleep(500);
+    const since = daemon.mark();
+    // the first scan for orphans, before the carrier: no child of the daemon exits after it
+    expect(await daemon.carriers("fast", since)).toEqual([]);
+    leader.stdin?.write(`${JSON.stringify(daemon.envFor("fast"))}\n`);
+    const { middle, late } = JSON.parse(String((await lines.next()).value)) as {
+      middle: number;
+      late: number;
+    };
+    const settled = new AbortController();
+    let walks = 0;
+    // the first walk lists the middle child alone, its sleeper not yet made; it exits after
+    const lowering = lowerWhile(daemon, "fast", since, settled.signal, (pid) => {
+      if (++walks > 1) return descendants(pid);
+      setTimeout(() => process.kill(middle, "SIGKILL"), 10);
+      return [middle];
+    });
+    onTestFinished(async () => {
+      settled.abort();
+      await lowering;
+    });
+    for (let waited = 0; waited < 5_000 && getPriority(late) < TEST_NICE; waited += 50)
+      await sleep(50);
+    expect(getPriority(late)).toBe(TEST_NICE);
   });
 
   it("keeps another lane's orphan for that lane's look when one lane's look scans (wave-13bt S1)", async () => {

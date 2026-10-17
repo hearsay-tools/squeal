@@ -35,7 +35,9 @@ const WALK_MS = 1_000;
  * and what is new is lowered (task 001-437). So are
  * the carriers in the daemon's group whose parent exited before a look,
  * found at most once a second after a child of the daemon exits (review
- * 001-401 S1). A thread pool's workers are threads of the daemon and carry no
+ * 001-401 S1), or a lowered carrier or a descendant a walk listed is gone:
+ * a child it was forking when its own walk ran is in the group now, no
+ * longer below the carrier (review wave-18 B1). A thread pool's workers are threads of the daemon and carry no
  * mark of their own: they keep the daemon's priority. A process starts at
  * normal priority and runs so until the next look: `EVERY_MS` plus the look's
  * own time, no deadline. `walk` lists a process's descendants, `below` but in
@@ -55,10 +57,13 @@ export async function lowerWhile(
     string,
     { pid: number; start: number; since: number; walked: number; seen: Set<number> }
   >();
+  // A descendant a walk listed is gone: what it started may be in the daemon's group now.
+  let lost = false;
   try {
     for (;;) {
       await sleep(EVERY_MS, undefined, { signal });
-      const found = await children.carriers(lane, since);
+      const found = await children.carriers(lane, since, lost);
+      lost = false;
       const at = Date.now();
       const pids: number[] = [];
       for (const { pid, start } of found)
@@ -70,12 +75,14 @@ export async function lowerWhile(
         if (at - carrier.since >= WALK_MS && at - carrier.walked < WALK_MS) continue;
         if (statOf(carrier.pid)?.start !== carrier.start) {
           lowered.delete(id);
+          lost = true;
           continue;
         }
         carrier.walked = at;
-        const current = walk(carrier.pid);
-        pids.push(...current.filter((descendant) => !carrier.seen.has(descendant)));
-        carrier.seen = new Set(current);
+        const current = new Set(walk(carrier.pid));
+        for (const descendant of current) if (!carrier.seen.has(descendant)) pids.push(descendant);
+        for (const descendant of carrier.seen) if (!current.has(descendant)) lost = true;
+        carrier.seen = current;
       }
       if (pids.length > 0) lower(pids, isSlowLane(lane));
     }
