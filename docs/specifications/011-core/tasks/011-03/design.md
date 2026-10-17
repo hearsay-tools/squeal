@@ -47,3 +47,12 @@ Status counts the checks of a file whose run is open as running, even after a re
 
 - **011-NN promotion.** The `promote` request, its daemon handler and the rank in `src/core/scheduler/queue.ts`. The issue-14 probe becomes a scheduler test, with the claim, slow-file and fairness cases. Version raise, review.
 - **011-NN what holds a named file.** The per-file reasons on the named line and the open-run running count (gh-17 findings 2 and 3), in `src/cli/status-wait-lines.ts` and the status counts. Independent of the promotion row apart from the "promoted" word.
+
+## Diagnostics (added 2026-10-17 by the split/triage coordinator: gh-23 and gh-24 folded in by the human)
+
+The human folded two triage rows into this design on 2026-10-17, so one accepted C15 also settles what a wait and status say about each file. Add to the section above, as its last paragraph, and to the second code row ("what holds a named file"):
+
+- **Per-file states in the named wait (gh-23, issue #23).** A named wait that times out lists the selected paths still pending, by class; its text names the selected failures and the known pass or fail outcomes without a `why` call; every `wait.testFiles` entry in the JSON carries `current`, `pending`, `stale` or `unknown` and a verdict when one is known. Counts alone are not enough once more than a few files are selected (the report had eleven).
+- **Retained reasons and discovery told from idle (gh-24, issue #24).** A file shown `unknown` keeps the reason it became so where one is known (a withheld run, a failed setup, a key that never ran, a claim another worktree holds), and status says `no reason was kept` only when that is the truth of the store, never as the default for files the daemon has not yet listed; status distinguishes initial discovery (the daemon is still listing or keying files) from idle work that is queued but not scheduled, and names the command that advances each. The reported case: a read-only review session saw 410 files `unknown` with `no result: no reason was kept` beside inherited passes and 93 slow files waiting on another worktree, and could not tell whether anything would happen.
+
+Neither adds a question for the human beyond the two above; both are text and JSON of the named line and status, in the same code row as gh-17's findings 2 and 3. Evidence: `../../research/issue-23.md`, `issue-24.md` (both unreproduced under load; the acceptance tests are their reported cases).
