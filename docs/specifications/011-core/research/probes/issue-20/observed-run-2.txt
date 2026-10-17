@@ -1,0 +1,360 @@
+load 12.29 on 24 CPUs
+scratch /tmp/i20-r0pZjV; squeal 0.1.199
+Squeal daemon spawned for /tmp/i20-r0pZjV/repo
+
+Revision: 0
+=== round 1: run --all --force --wait (repo)
+Checkpoint f4c4ed23-5ddc-4662-a04a-d920789e529f completed at revision 0: 3 known failures: 3 test files that did not load; 3 test files, 0 already current, 3 run now
+Checkpoint f4c4ed23-5ddc-4662-a04a-d920789e529f started at revision 0: 3 test files to run, 0 already current
+
+Revision: 0
+Known failures: 3 (3 test files that did not load)
+  FAIL  test/race.test.ts (file-level)
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-qqKZom '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-qqKZom'
+        at test/race.test.ts:37:3, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.60 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/setup-race.test.ts (file-level)
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-ZVHT9X/w0 '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-ZVHT9X/w0'
+        at test/setup-race.test.ts:28:3, observed at revision 0, current
+=== round 2: run --all --force --wait (repo)
+Checkpoint f8c92154-f23b-4e12-8c2d-33fd2d318f8f completed at revision 0: 3 known failures: 3 test files that did not load; 3 test files, 0 already current, 3 run now
+Checkpoint f8c92154-f23b-4e12-8c2d-33fd2d318f8f started at revision 0: 3 test files to run, 0 already current
+
+Revision: 0
+Known failures: 3 (3 test files that did not load)
+  FAIL  test/race.test.ts (file-level)
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-ePkcn7 '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-ePkcn7'
+        at test/race.test.ts:37:3, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.60 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/setup-race.test.ts (file-level)
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-bKBN9a/w0 '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-bKBN9a/w0'
+        at test/setup-race.test.ts:28:3, observed at revision 0, current
+=== round 3: run --all --force --wait (repo)
+Checkpoint b8ca13f9-abdc-4c8b-b5ba-fe8b9ad481a2 completed at revision 0: 3 known failures: 3 test files that did not load; 3 test files, 0 already current, 3 run now
+Checkpoint b8ca13f9-abdc-4c8b-b5ba-fe8b9ad481a2 started at revision 0: 3 test files to run, 0 already current
+
+Revision: 0
+Known failures: 3 (3 test files that did not load)
+  FAIL  test/race.test.ts (file-level)
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-DHaZHD '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-DHaZHD'
+        at test/race.test.ts:37:3, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.60 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/setup-race.test.ts (file-level)
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-ZSlktX/w0 '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-ZSlktX/w0'
+        at test/setup-race.test.ts:28:3, observed at revision 0, current
+=== round 4: run --all --force --wait (repo)
+Checkpoint b5609aad-f36d-4269-8f9d-96abefd23b66 completed at revision 0: 3 known failures: 3 test files that did not load; 3 test files, 0 already current, 3 run now
+Checkpoint b5609aad-f36d-4269-8f9d-96abefd23b66 started at revision 0: 3 test files to run, 0 already current
+
+Revision: 0
+Known failures: 3 (3 test files that did not load)
+  FAIL  test/race.test.ts (file-level)
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-AVczti '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-AVczti'
+        at test/race.test.ts:37:3, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.60 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/setup-race.test.ts (file-level)
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-oQPiI3/w0 '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-oQPiI3/w0'
+        at test/setup-race.test.ts:28:3, observed at revision 0, current
+=== round 5: run --all --force --wait (repo)
+Checkpoint bb45afe5-0357-478a-b0c0-241ba3ef67ff completed at revision 0: 2 known failures: 2 test files that did not load; 3 test files, 0 already current, 3 run now
+Checkpoint bb45afe5-0357-478a-b0c0-241ba3ef67ff started at revision 0: 3 test files to run, 0 already current
+
+Revision: 0
+Known failures: 2 (2 test files that did not load)
+  FAIL  test/setup-race.test.ts (file-level)
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-lSOZZE/w0 '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-lSOZZE/w0'
+        at test/setup-race.test.ts:28:3, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.60 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/stuck.test.ts (file-level)
+        setup failed: ENOTEMPTY: directory not empty, rmdir '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-stuck-kWRqSN'
+        at test/stuck.test.ts:16:3, observed at revision 0, current
+=== round 6: run --all --force --wait (repo)
+Checkpoint c8fb2969-ffac-4ba3-a1ca-6cc0bf33394f completed at revision 0: 3 known failures: 3 test files that did not load; 3 test files, 0 already current, 3 run now
+Checkpoint c8fb2969-ffac-4ba3-a1ca-6cc0bf33394f started at revision 0: 3 test files to run, 0 already current
+
+Revision: 0
+Known failures: 3 (3 test files that did not load)
+  FAIL  test/race.test.ts (file-level)
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-qRuo65 '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-qRuo65'
+        at test/race.test.ts:37:3, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.60 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/setup-race.test.ts (file-level)
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-7ynCdU/w0 '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-7ynCdU/w0'
+        at test/setup-race.test.ts:28:3, observed at revision 0, current
+=== round 7: run --all --force --wait (repo)
+Checkpoint 7da913d6-028d-4d95-a670-dc9afb268e1a completed at revision 0: 3 known failures: 3 test files that did not load; 3 test files, 0 already current, 3 run now
+Checkpoint 7da913d6-028d-4d95-a670-dc9afb268e1a started at revision 0: 3 test files to run, 0 already current
+
+Revision: 0
+Known failures: 3 (3 test files that did not load)
+  FAIL  test/race.test.ts (file-level)
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-qST8m8 '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-qST8m8'
+        at test/race.test.ts:37:3, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.60 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/setup-race.test.ts (file-level)
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-awfAqD/w0 '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-awfAqD/w0'
+        at test/setup-race.test.ts:28:3, observed at revision 0, current
+=== round 8: run --all --force --wait (repo)
+Checkpoint 49dcb040-4d5e-4376-9849-524cd5387119 completed at revision 0: 3 known failures: 3 test files that did not load; 3 test files, 0 already current, 3 run now
+Checkpoint 49dcb040-4d5e-4376-9849-524cd5387119 started at revision 0: 3 test files to run, 0 already current
+
+Revision: 0
+Known failures: 3 (3 test files that did not load)
+  FAIL  test/race.test.ts (file-level)
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-PNqSAh '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-PNqSAh'
+        at test/race.test.ts:37:3, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.60 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/setup-race.test.ts (file-level)
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-s5bJGD/w0 '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-s5bJGD/w0'
+        at test/setup-race.test.ts:28:3, observed at revision 0, current
+=== round 9: run --all --force --wait (repo)
+Checkpoint febcc36d-1546-48db-a325-12a7b37e84e4 completed at revision 0: 3 known failures: 3 test files that did not load; 3 test files, 0 already current, 3 run now
+Checkpoint febcc36d-1546-48db-a325-12a7b37e84e4 started at revision 0: 3 test files to run, 0 already current
+
+Revision: 0
+Known failures: 3 (3 test files that did not load)
+  FAIL  test/race.test.ts (file-level)
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-PXBW5t '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-PXBW5t'
+        at test/race.test.ts:37:3, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.60 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/setup-race.test.ts (file-level)
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-yr5wqp/w0 '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-yr5wqp/w0'
+        at test/setup-race.test.ts:28:3, observed at revision 0, current
+=== round 10: run --all --force --wait (repo)
+Checkpoint 05c23e26-600a-4be0-af29-19bf595b2a0e completed at revision 0: 3 known failures: 3 test files that did not load; 3 test files, 0 already current, 3 run now
+Checkpoint 05c23e26-600a-4be0-af29-19bf595b2a0e started at revision 0: 3 test files to run, 0 already current
+
+Revision: 0
+Known failures: 3 (3 test files that did not load)
+  FAIL  test/race.test.ts (file-level)
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-Dz8NTy '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-Dz8NTy'
+        at test/race.test.ts:37:3, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.60 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/setup-race.test.ts (file-level)
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-gB3EQx/w0 '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-gB3EQx/w0'
+        at test/setup-race.test.ts:28:3, observed at revision 0, current
+=== round 11: run --all --force --wait (repo)
+Checkpoint bdff1fa7-54b1-4b1b-a4d7-948f45a08be2 completed at revision 0: 3 known failures: 3 test files that did not load; 3 test files, 0 already current, 3 run now
+Checkpoint bdff1fa7-54b1-4b1b-a4d7-948f45a08be2 started at revision 0: 3 test files to run, 0 already current
+
+Revision: 0
+Known failures: 3 (3 test files that did not load)
+  FAIL  test/race.test.ts (file-level)
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-ilMLvv '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-ilMLvv'
+        at test/race.test.ts:37:3, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.58 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/setup-race.test.ts (file-level)
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-EKqSXw/w0 '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-EKqSXw/w0'
+        at test/setup-race.test.ts:28:3, observed at revision 0, current
+=== round 12: run --all --force --wait (repo)
+Checkpoint cdca1a18-0c60-4931-a5f5-f43e3168cc0b completed at revision 0: 3 known failures: 3 test files that did not load; 3 test files, 0 already current, 3 run now
+Checkpoint cdca1a18-0c60-4931-a5f5-f43e3168cc0b started at revision 0: 3 test files to run, 0 already current
+
+Revision: 0
+Known failures: 3 (3 test files that did not load)
+  FAIL  test/race.test.ts (file-level)
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-kbZgO1 '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-kbZgO1'
+        at test/race.test.ts:37:3, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.58 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/setup-race.test.ts (file-level)
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-dOn2uL/w0 '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-dOn2uL/w0'
+        at test/setup-race.test.ts:28:3, observed at revision 0, current
+=== tally over 12 rounds: rounds in which each file was a known failure
+test/race.test.ts: 11 of 12
+test/stuck.test.ts: 12 of 12
+test/setup-race.test.ts: 12 of 12
+=== runs per test file in the store (an automatic rerun would show as extra runs)
+{
+  'test/stuck.test.ts': 13,
+  'test/race.test.ts': 12,
+  'test/setup-race.test.ts': 12
+}
+=== status
+Revision: 0
+Known failures: 3 (3 test files that did not load)
+  FAIL  test/race.test.ts (file-level)
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-kbZgO1 '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-kbZgO1'
+        at test/race.test.ts:37:3, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.58 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/setup-race.test.ts (file-level)
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-dOn2uL/w0 '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-dOn2uL/w0'
+        at test/setup-race.test.ts:28:3, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.58 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/stuck.test.ts (file-level)
+        setup failed: ENOTEMPTY: directory not empty, rmdir '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-stuck-FkTqLg'
+        at test/stuck.test.ts:16:3, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.58 per CPU when it ran; no retry asked at these inputs
+Affected checks: 2 passed (2 tests), 0 running, 0 queued, 1 skipped (1 test)
+Full-suite checkpoint: completed at revision 0
+Slow tier: 2 test files; 2 current at revision 0, against no declared artifact. Squeal runs them when the agent pauses.
+
+Worktree: /tmp/i20-r0pZjV/repo (HEAD 136b053, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 3 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+  2026-10-17T08:13:04.413Z, revision 0: slow files with no declared artifact: test/race.test.ts, test/setup-race.test.ts. Their key holds no build output, so a change to the code they test does not re-run them and another worktree's result never stands for them; declare what they test in squeal.config.json "inputs" (spec 004 D5, D6)
+=== failures
+Failures in this worktree (3 failures, newest first):
+  FAIL  2026-10-17T08:13:16.628Z  test/setup-race.test.ts (file-level)
+        /tmp/i20-r0pZjV/repo (this worktree), revision 0, commit 136b053, clean, 255 ms, run b8d4fdd4-4f00-4d41-8639-eb5061ee5de8
+        Error: ENOTEMPTY, Directory not empty: <tmp>/tmp/<hex>/i20-setup-dOn2uL/w0 '<tmp>/tmp/<hex>/i20-setup-dOn2uL/w0' @ test/setup-race.test.ts:28:3
+  FAIL  2026-10-17T08:13:16.628Z  test/race.test.ts (file-level)
+        /tmp/i20-r0pZjV/repo (this worktree), revision 0, commit 136b053, clean, 130 ms, run b8d4fdd4-4f00-4d41-8639-eb5061ee5de8
+        Error: ENOTEMPTY, Directory not empty: <tmp>/tmp/<hex>/i20-race-kbZgO1 '<tmp>/tmp/<hex>/i20-race-kbZgO1' @ test/race.test.ts:37:3
+  FAIL  2026-10-17T08:13:16.128Z  test/stuck.test.ts (file-level)
+        /tmp/i20-r0pZjV/repo (this worktree), revision 0, commit 136b053, clean, 21 ms, run 7217165e-d955-48ef-915a-c0e89f24303e
+        Error: ENOTEMPTY: directory not empty, rmdir '<tmp>/tmp/<hex>/i20-stuck-FkTqLg' @ test/stuck.test.ts:16:3
+
+squeal why "<check>" prints a failure's full output.
+=== why test/race.test.ts
+Check: test/race.test.ts (file-level)
+Worktree: /tmp/i20-r0pZjV/repo
+Revision: none recorded
+
+Known state: FAIL, current, observed at revision 0, commit 136b053
+  Summary: setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-kbZgO1 '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-kbZgO1'
+  Location: test/race.test.ts:37:3
+  Fingerprint: Error: ENOTEMPTY, Directory not empty: <tmp>/tmp/<hex>/i20-race-kbZgO1 '<tmp>/tmp/<hex>/i20-race-kbZgO1' @ test/race.test.ts:37:3
+  Flaky: PASS -> FAIL under the same inputs (key 4c8d7af9fb60, 2026-10-17T08:13:10.699Z)
+
+History (12 transitions, oldest first):
+  revision 0  2026-10-17T08:13:05.688Z  first seen FAIL
+  revision 0  2026-10-17T08:13:06.712Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:07.660Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:08.654Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:09.641Z  FAIL -> PASS
+  revision 0  2026-10-17T08:13:10.700Z  PASS -> FAIL
+  revision 0  2026-10-17T08:13:11.652Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:12.630Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:13.621Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:14.561Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:15.577Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:16.629Z  FAIL -> FAIL, failure changed
+
+Durations (1 result, 0 pass / 1 fail): 130 ms
+Results (1, newest first):
+  FAIL  2026-10-17T08:13:16.628Z  /tmp/i20-r0pZjV/repo (this worktree), revision 0, commit 136b053, clean
+        run b8d4fdd4-4f00-4d41-8639-eb5061ee5de8, 130 ms, key 4c8d7af9fb60
+        log: /tmp/i20-r0pZjV/repo/.git/squeal/runs/b8d4fdd4-4f00-4d41-8639-eb5061ee5de8
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-kbZgO1 '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-kbZgO1'
+        Error: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-kbZgO1 '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-kbZgO1'
+            at rmSync (node:fs:1282:18)
+            at rmSync (/tmp/i20-r0pZjV/plugin/dist/observe/fs.cjs:83:27)
+            at test/race.test.ts:37:3
+            at wrapper (node_modules/@vitest/runner/dist/chunk-artifact.js:888:28)
+            at node_modules/@vitest/runner/dist/chunk-artifact.js:294:11
+            at node_modules/@vitest/runner/dist/chunk-artifact.js:901:10
+            at node_modules/@vitest/runner/dist/chunk-artifact.js:2305:20
+            at new Promise (<anonymous>)
+            at runWithTimeout (node_modules/@vitest/runner/dist/chunk-artifact.js:2272:10)
+=== why test/stuck.test.ts
+Check: test/stuck.test.ts (file-level)
+Worktree: /tmp/i20-r0pZjV/repo
+Revision: none recorded
+
+Known state: FAIL, current, observed at revision 0, commit 136b053
+  Summary: setup failed: ENOTEMPTY: directory not empty, rmdir '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-stuck-FkTqLg'
+  Location: test/stuck.test.ts:16:3
+  Fingerprint: Error: ENOTEMPTY: directory not empty, rmdir '<tmp>/tmp/<hex>/i20-stuck-FkTqLg' @ test/stuck.test.ts:16:3
+
+History (13 transitions, oldest first):
+  revision 0  2026-10-17T08:13:04.752Z  first seen FAIL
+  revision 0  2026-10-17T08:13:05.070Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:06.194Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:07.165Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:08.175Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:09.153Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:10.209Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:11.151Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:12.149Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:13.135Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:14.107Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:15.086Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:16.129Z  FAIL -> FAIL, failure changed
+
+Durations (1 result, 0 pass / 1 fail): 21 ms
+Results (1, newest first):
+  FAIL  2026-10-17T08:13:16.128Z  /tmp/i20-r0pZjV/repo (this worktree), revision 0, commit 136b053, clean
+        run 7217165e-d955-48ef-915a-c0e89f24303e, 21 ms, key e02eb60ff7e9
+        log: /tmp/i20-r0pZjV/repo/.git/squeal/runs/7217165e-d955-48ef-915a-c0e89f24303e
+        setup failed: ENOTEMPTY: directory not empty, rmdir '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-stuck-FkTqLg'
+        Error: ENOTEMPTY: directory not empty, rmdir '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-stuck-FkTqLg'
+            at rmdirSync (node:fs:1236:11)
+            at rmdirSync (/tmp/i20-r0pZjV/plugin/dist/observe/fs.cjs:83:27)
+            at test/stuck.test.ts:16:3
+            at wrapper (node_modules/@vitest/runner/dist/chunk-artifact.js:888:28)
+            at node_modules/@vitest/runner/dist/chunk-artifact.js:294:11
+            at node_modules/@vitest/runner/dist/chunk-artifact.js:901:10
+            at node_modules/@vitest/runner/dist/chunk-artifact.js:2305:20
+            at new Promise (<anonymous>)
+            at runWithTimeout (node_modules/@vitest/runner/dist/chunk-artifact.js:2272:10)
+=== why test/setup-race.test.ts
+Check: test/setup-race.test.ts (file-level)
+Worktree: /tmp/i20-r0pZjV/repo
+Revision: none recorded
+
+Known state: FAIL, current, observed at revision 0, commit 136b053
+  Summary: setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-dOn2uL/w0 '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-dOn2uL/w0'
+  Location: test/setup-race.test.ts:28:3
+  Fingerprint: Error: ENOTEMPTY, Directory not empty: <tmp>/tmp/<hex>/i20-setup-dOn2uL/w0 '<tmp>/tmp/<hex>/i20-setup-dOn2uL/w0' @ test/setup-race.test.ts:28:3
+
+History (12 transitions, oldest first):
+  revision 0  2026-10-17T08:13:05.688Z  first seen FAIL
+  revision 0  2026-10-17T08:13:06.712Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:07.660Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:08.654Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:09.641Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:10.700Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:11.652Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:12.630Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:13.621Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:14.561Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:15.577Z  FAIL -> FAIL, failure changed
+  revision 0  2026-10-17T08:13:16.629Z  FAIL -> FAIL, failure changed
+
+Durations (1 result, 0 pass / 1 fail): 255 ms
+Results (1, newest first):
+  FAIL  2026-10-17T08:13:16.628Z  /tmp/i20-r0pZjV/repo (this worktree), revision 0, commit 136b053, clean
+        run b8d4fdd4-4f00-4d41-8639-eb5061ee5de8, 255 ms, key a7d3bcd2baf5
+        log: /tmp/i20-r0pZjV/repo/.git/squeal/runs/b8d4fdd4-4f00-4d41-8639-eb5061ee5de8
+        setup failed: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-dOn2uL/w0 '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-dOn2uL/w0'
+        Error: ENOTEMPTY, Directory not empty: /tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-dOn2uL/w0 '/tmp/squeal-1001/tmp/6b19a030e7734232/i20-setup-dOn2uL/w0'
+            at rmSync (node:fs:1282:18)
+            at rmSync (/tmp/i20-r0pZjV/plugin/dist/observe/fs.cjs:83:27)
+            at test/setup-race.test.ts:28:3
+
+Run log: /tmp/i20-r0pZjV/repo/.git/squeal/runs/b8d4fdd4-4f00-4d41-8639-eb5061ee5de8/vitest.log
+  Run b8d4fdd4-4f00-4d41-8639-eb5061ee5de8 in /tmp/i20-r0pZjV/repo (this worktree) produced the result shown. The log covers that whole run, every test file in it, not only this check.
+  --include-logs prints the console lines of test/setup-race.test.ts from it.
+=== second worktree
+Squeal daemon spawned for /tmp/i20-r0pZjV/wt2
+
+Revision: 0
+Checkpoint c623ecca-590a-4eae-bd8c-6110a3b41db8 completed at revision 0: 3 known failures: 3 test files that did not load; 3 test files, 0 already current, 3 run by the baseline checkpoint 262d2c86-ea0b-448b-a603-8666c7e6c097 it joined
+Checkpoint c623ecca-590a-4eae-bd8c-6110a3b41db8 started at revision 0: 3 test files to run, 0 already current, joining the baseline checkpoint 262d2c86-ea0b-448b-a603-8666c7e6c097 already running them (0 of 3 test files done); it ends when that one ends
+
+Revision: 0
+Known failures: 3 (3 test files that did not load)
+  FAIL  test/race.test.ts (file-level)
+=== where each run's temp directory was (both worktrees)
+I20 tmpdir=/tmp/squeal-1001/tmp/6b19a030e7734232 dir=/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-AVczti pid=1891958
+I20 tmpdir=/tmp/squeal-1001/tmp/6b19a030e7734232 dir=/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-DHaZHD pid=1891312
+I20 tmpdir=/tmp/squeal-1001/tmp/6b19a030e7734232 dir=/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-Dz8NTy pid=1894765
+I20 tmpdir=/tmp/squeal-1001/tmp/6b19a030e7734232 dir=/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-OQqJam pid=1892277
+I20 tmpdir=/tmp/squeal-1001/tmp/6b19a030e7734232 dir=/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-PNqSAh pid=1894109
+I20 tmpdir=/tmp/squeal-1001/tmp/6b19a030e7734232 dir=/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-PXBW5t pid=1894486
+I20 tmpdir=/tmp/squeal-1001/tmp/6b19a030e7734232 dir=/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-ePkcn7 pid=1890746
+I20 tmpdir=/tmp/squeal-1001/tmp/6b19a030e7734232 dir=/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-ilMLvv pid=1894993
+I20 tmpdir=/tmp/squeal-1001/tmp/6b19a030e7734232 dir=/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-kbZgO1 pid=1895532
+I20 tmpdir=/tmp/squeal-1001/tmp/6b19a030e7734232 dir=/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-qRuo65 pid=1892927
+I20 tmpdir=/tmp/squeal-1001/tmp/6b19a030e7734232 dir=/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-qST8m8 pid=1893439
+I20 tmpdir=/tmp/squeal-1001/tmp/6b19a030e7734232 dir=/tmp/squeal-1001/tmp/6b19a030e7734232/i20-race-qqKZom pid=1890089
+I20 tmpdir=/tmp/squeal-1001/tmp/b508d3da0e0af124 dir=/tmp/squeal-1001/tmp/b508d3da0e0af124/i20-race-f96RpN pid=1896937
+=== stop
+Squeal daemon stopped for /tmp/i20-r0pZjV/repo
+Squeal daemon stopped for /tmp/i20-r0pZjV/wt2
+no scratch daemon left
+scratch kept at /tmp/i20-r0pZjV (store: /tmp/i20-r0pZjV/repo/.git/squeal/store.sqlite)
