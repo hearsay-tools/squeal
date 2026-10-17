@@ -49,7 +49,7 @@ function filesText(paths: readonly string[]): string {
  * counts, an idle tier's several by name or number (004-35).
  */
 function pendingText(pending: number, activity: SlowTierActivity | null, late: boolean): string {
-  if (activity === null || activity.kind === "skipped") return `${pending} pending`;
+  if (activity === null) return `${pending} pending`;
   const reported = late ? "last reported " : "";
   if (activity.kind === "waiting") {
     return `${pending} pending, ${reported}waiting for ${WAITING_FOR[activity.for]}`;
@@ -139,8 +139,7 @@ export function slowTierText(header: StatusHeader, command: string): string | nu
  * were skipped, the precondition the daemon found unmet; `null` when none was.
  */
 export function skippedReason(tier: SlowTierState | undefined): string | null {
-  const activity = tier?.activity ?? null;
-  return activity?.kind === "skipped" && (tier?.notRun ?? 0) > 0 ? activity.reason : null;
+  return tier?.skipped ?? null;
 }
 
 /**

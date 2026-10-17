@@ -39,5 +39,11 @@ export {
   slowPolicyView,
   worktreeSlowView,
 } from "./slow.js";
+export {
+  publishSlowSkips,
+  readSlowSkips,
+  skippedSlowIds,
+  slowSkipsMetaKey,
+} from "./slow-skipped.js";
 export { clockText, durationText, skippedReason, slowTierText } from "./slow-text.js";
 export { type Observation, transitionKind } from "./transitions.js";
