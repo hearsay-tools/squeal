@@ -188,8 +188,8 @@ describe("the squeal skill", () => {
   /*
    * Spec 005 D6 (005-15): the deeper layer for agents that load the skill.
    * A new failure's own re-run (001-171) answers whether it is flaky, so the
-   * agent does not re-run it; the path form of the wait (D2) is for a test
-   * file the agent's edits did not re-key; `squeal why`'s changed-since line
+   * agent does not re-run it; the path form of the wait (D2) is in
+   * `skill-wait.test.ts` since 005-68; `squeal why`'s changed-since line
    * (001-225) is explained; a revision is defined once, in the primer, so the
    * header glossary points at it rather than defining it again.
    */
@@ -217,12 +217,6 @@ describe("the squeal skill", () => {
 
   it("stays within its budget", () => {
     expect(body.length).toBeLessThan(5_000);
-  });
-
-  it("names the path form of the wait for a test file the edits did not re-key", () => {
-    expect(read("commands.md")).toContain(
-      "such as a test file your edits did not re-key, which the wait above does not hold for, name them: `squeal status --wait 60000 <path>...`",
-    );
   });
 
   it("explains `squeal why`'s changed-since line, and defines a revision only in the primer", () => {
