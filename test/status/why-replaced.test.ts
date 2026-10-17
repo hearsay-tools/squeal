@@ -97,7 +97,7 @@ describe("squeal why after a same-key replacement", SLOW, () => {
     });
     const text = formatWhy(why);
     expect(text).toContain(
-      `Result at key ${a.keyOf(PLAIN).slice(0, 12)}: replaced by run ${replaced?.provenance.runId} in `,
+      `Result at key ${a.keyOf(PLAIN)?.slice(0, 12)}: replaced by run ${replaced?.provenance.runId} in `,
     );
     expect(text).toContain(
       "Run log: unknown, a later run replaced the result behind the known state",
@@ -162,7 +162,9 @@ describe("squeal why: an inherited state's producer predates it", () => {
       worktreeId: repo.mainId,
       recordedAt: at(14),
       key: "k1",
+      logDir: null,
     });
+    expect(formatWhy(why)).toContain("    Its log: run record pruned\n");
     expect(formatWhy(why)).toContain(
       "Run log: unknown, a later run replaced the result behind the known state at its key and no producing run is recorded",
     );
