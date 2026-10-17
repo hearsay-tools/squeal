@@ -635,7 +635,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.206";
+  if (true) return "0.1.207";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -5540,6 +5540,13 @@ function isRegistered(context) {
   return context.store.consumers.get(context.consumer) !== null;
 }
 
+// src/harness/shared/no-edit.ts
+function unchangedSinceRegistration(store, consumer) {
+  const r = registration(store, consumer);
+  if (r === null || !seesEveryChange(store, consumer.worktreeId, r)) return false;
+  return (store.revisions.latest(consumer.worktreeId)?.number ?? 0) === r.since;
+}
+
 // src/harness/shared/text.ts
 var LISTED_FAILURES = 10;
 var NAMED_FAILURES = 5;
@@ -5689,7 +5696,8 @@ function decide(context, policy, isSlow, now, {
     if (policy.requireFullSuite && !header.fullSuite.atCurrentRevision) {
       reasons.push(fullSuiteReason(header, command));
     }
-    if (policy.requireSlowSuite && !slowElsewhere) {
+    const unchanged = consumer.agentId === MAIN_AGENT && unchangedSinceRegistration(store, consumer);
+    if (policy.requireSlowSuite && !slowElsewhere && !unchanged) {
       const open = slowFilesNotCurrent(states, keys, isSlow);
       if (open.length > 0) reasons.push(slowSuiteReason(header.revision, open, command));
     }

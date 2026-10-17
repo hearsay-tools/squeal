@@ -46506,7 +46506,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.206";
+  if (true) return "0.1.207";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -53426,11 +53426,12 @@ function watchDaemon(worktreeId, options = {}) {
   let asking = false;
   let deadSince = null;
   let staleMs = null;
-  const ask = (record) => {
+  const ask = (record, asked) => {
     if (asking) return;
     asking = true;
     void listening([.../* @__PURE__ */ new Set([record.socketPath, computed])]).then((found2) => {
       socket = found2 ? "listening" : "absent";
+      if (found2) staleMs = Math.max(staleMs ?? 0, asked);
       asking = false;
     });
   };
@@ -53443,7 +53444,7 @@ function watchDaemon(worktreeId, options = {}) {
         return { state: "alive" };
       }
       const seen = socket;
-      ask(record);
+      ask(record, at2 - record.heartbeatAt);
       if (seen !== "absent") {
         deadSince = null;
         if (seen === "listening") staleMs = Math.max(staleMs ?? 0, at2 - record.heartbeatAt);
