@@ -688,6 +688,13 @@ Spec: `specifications/010-ci-cost/spec.md`. Sections D1 to D6. Approved as a fir
 |---|---|---|---|
 | 010-20 three-day measurement | planned (from 2026-10-18 19:32 UTC, three days after 1f7f8a02 landed; its numbers decide step two) | `/researcher`, read-only on GitHub: G5 and the Testing measures against `research/ci-run-triggers.md` 1 and 5; shard walls; every `cand/*` push had a run; no cancelled main run. | `lessons.md` committed; open questions 1 and 2 carry numbers for the human; a recommendation on step two (D8 to D11) from G5. |
 
+### Wave 3: issue intake
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 010-30 issue intake in CI, with a replay | approved (the human, 2026-10-17) | D12: port cezarion's Jev intake (workflow, candidates with recently closed issues, applicator, Jev call, replay, their tests), the area list, `needs-triage` on every issue left open, closing behind `ISSUE_INTAKE_CLOSE_DUPLICATES`. Brief `tasks/wave-3.md`. | Tests green in the suite; the replay's offline run committed; its live run over the 32 issues once `TYPESAFE_API_KEY` is available, in `research/issue-intake-replay.md`. |
+| 010-31 review of 010-30 | planned | `/reviewer` pinned to the candidate: the applicator as the only writer, prompt-injection reach, the closed-candidate rule, the `always()` fallback, the replay's truth. | `reviews/wave-3.md` committed. |
+
 ## Feature 011: core
 
 Spec: `specifications/011-core/spec.md`. Sections referenced as C1 to C14; a 001 D-number resolves through the crosswalk at its end. The rows below kept their 001 numbers at the split (2026-10-17); new rows take `011-NN`, allocated from the board on main by the coordinator who lands them. A row is a bounded change ticket, never an authorization: it is dispatched only when the human has approved it (split proposal, section 7).

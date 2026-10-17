@@ -85,6 +85,19 @@ Branches outside D1 get CI only through `workflow_dispatch`. `docs/process.md` i
 
 The human, 2026-10-15. A `schedule` trigger runs main's head once a night (03:23 UTC) as one job: the whole suite on Node 24, which D4 runs only in part. The candidate and landing jobs do not run on a schedule, and neither does `version`. About 20 job-minutes a day. The run lists under `main` in `gh run list`, so the coordinator reads it with the landings (D6); a red nightly blocks the next landing until its cause is named.
 
+### D12. Issue intake
+
+The human, 2026-10-17. A new issue gets a cheap CI check before any triage session: duplicates close in CI, labels come from CI, and the cockpit's `/coordinator` triage starts only on what is left. Before this, every issue started a full session on the reviewers' model, two of the last four of which ended as duplicates (gh-29 of #5, gh-30 of #6).
+
+- **Port.** `.github/workflows/issue-intake.yml` on `issues: opened`, ported from hearsay-tools/cezarion's Jev path at 10cec2e9: the code-built candidate list, the tool-less Jev call, and the trusted applicator that alone holds `issues: write` and checks every mutation against the label set and the candidate set. No Claude or Codex path and no provider switch. The untrusted bot-actor rejection stays.
+- **Candidates.** Open issues, as in cezarion, plus issues closed in the last 30 days. A duplicate of an open candidate closes the issue (`--reason duplicate`, a one-line comment naming the original, the `duplicate` label); a duplicate of a closed one only comments "possibly the same as #N" and leaves the issue open.
+- **Labels.** At most one type (`bug`, `enhancement`, `documentation`) and at most one area, from a code-owned list whose descriptions name the owning spec: `area-core` (011), `area-slow-suites` (004), `area-adoption` (005), `area-harness` (002, 008, 009, 012), `area-runner` (003, 007, 013), `area-evals` (006), `area-ci` (010).
+- **Trigger.** Every issue intake does not close gets `needs-triage`, including when the Jev step fails: a last step under `if: always()` adds it. The cockpit's triage automation moves from `issue.opened` to `issue.labeled` with `needs-triage`, and the triage session swaps `needs-triage` for `triaged`. Adding the label by hand re-triages an issue.
+- **Closing is off until the replay.** A repository variable, `ISSUE_INTAKE_CLOSE_DUPLICATES`, unset by default: a duplicate pick then comments and labels instead of closing. The human turns it on after reading the replay.
+- **Replay.** A replay over this repository's issues scores Jev against the human's decisions, not against another model: the area of each issue the board routed to a spec (`gh-N to NNN-MM`), and the duplicate verdicts the board records (gh-30 of open #6; gh-29 of #5, closed). Every other issue is a non-duplicate. 32 issues with two duplicates can show a wrong close or a wrong area; they cannot tune a threshold, so cezarion's thresholds stand and the replay is rerun as duplicates accumulate.
+
+Landing order: the workflow and the labels first, the automation's trigger second, so no issue goes untriaged between them; `docs/process.md`'s Issue triage gains a line on what CI does. Needs the `TYPESAFE_API_KEY` secret.
+
 ## Step two (proposed, not approved)
 
 From `research/ci-pr-flow.md` and `research/required-checks-probe.md` (010-13, verified on throwaway branches). The human decides after 010-20's measurement (2026-10-15).
