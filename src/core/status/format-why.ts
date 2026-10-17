@@ -86,6 +86,7 @@ function replacedLine(why: WhyReport): string[] {
   const where = worktreeName(why, replaced.worktreeId);
   return [
     `  Result at key ${replaced.key.slice(0, 12)}: replaced by run ${replaced.runId} in ${where} at ${new Date(replaced.recordedAt).toISOString()}; the result and errors stored there are that run's, not those behind this state`,
+    `    Its log: ${replaced.logDir ?? "run record pruned"}`,
   ];
 }
 
