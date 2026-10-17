@@ -27,7 +27,9 @@ import {
  * with observation on as with it off. The barrier's withhold runs the
  * files once more, on the bytes on disk (task 007-30). The stylesheet is in
  * no closure, so only the runner's touch, not the scheduler's barrier, can
- * withhold it.
+ * withhold it; that withhold queues the file again too, counted toward
+ * `MAX_DISCARDS` (issue 10, task 011-06), and the run once more, released,
+ * no longer rewrites it.
  */
 
 const ref = (path: string) => ({ project: "", path });
@@ -91,14 +93,28 @@ describe("a run that rewrites a stylesheet no closure names (review wave-13e B1)
     expect(await freshOutcomes(repo.main, [CSS_TEST])).toEqual([["", "test/css.test.ts", "fail"]]);
   });
 
-  it.each([true, false])("stores none of the run (observe %s)", SLOW, async (observe) => {
-    const h = await open(CSS_HELD, observe, DEFAULT_POLICY.inputs);
-    await touchWhileHeld(
-      h,
-      (adapter) => warmOn(h, adapter, [CSS_TEST], "src/base.css", NEW_CSS, OLD_CSS),
-      "src/base.css",
-    );
-    expect(stored(h)).toEqual([]);
-    expect(reasons(h, "test/css.test.ts")).toEqual([written("src/base.css")]);
-  });
+  // Task 011-06 replaces "stores nothing, unknown with the reason": the runner's withhold
+  // queues the file again, and what is stored is the run once more's, the control's fail
+  // (a new failure is then run again to confirm it, task 001-171).
+  it.each([true, false])(
+    "stores none of the run, then the bytes on disk (observe %s)",
+    SLOW,
+    async (observe) => {
+      const h = await open(CSS_HELD, observe, DEFAULT_POLICY.inputs);
+      const runs = scheduledRuns(h);
+      await touchWhileHeld(
+        h,
+        (adapter) => warmOn(h, adapter, [CSS_TEST], "src/base.css", NEW_CSS, OLD_CSS),
+        "src/base.css",
+      );
+      const ids = new Set(runs.map((run) => run.runId));
+      const ran = h.runsOf(CSS_TEST.path).filter((run) => ids.has(run.options.runId));
+      expect(ran.length).toBeGreaterThanOrEqual(2);
+      expect(ran[0]?.report.failure).toEqual(written("src/base.css"));
+      expect(ran[0]?.report.completedFiles).toEqual([]);
+      for (const run of ran.slice(1)) expect(run.report.completedFiles).toEqual([CSS_TEST]);
+      expect(stored(h)).toEqual([["", "test/css.test.ts", "current", "fail"]]);
+      expect(reasons(h, "test/css.test.ts")).toEqual([]);
+    },
+  );
 });
