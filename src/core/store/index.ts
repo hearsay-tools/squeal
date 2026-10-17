@@ -2,6 +2,7 @@
 
 export { BUSY_SLICE_MS, BusyWaits, busyBackoffMs, busyNote } from "./busy.js";
 export { isBusy, withBusySlice, withBusySliceSync } from "./connection.js";
+export { META_FINGERPRINT_RULES, rewriteFingerprints } from "./fingerprints.js";
 export {
   DEFAULT_BUSY_TIMEOUT_MS,
   isStoreOpenFailure,

@@ -34,7 +34,9 @@ describe("fingerprint of an ephemeral port", () => {
   });
 
   it("masks a port after localhost, a bracketed IPv6 address and a URL's host", () => {
-    expect(fp("connect ECONNREFUSED localhost:8080")).toBe(fp("connect ECONNREFUSED localhost:8081"));
+    expect(fp("connect ECONNREFUSED localhost:8080")).toBe(
+      fp("connect ECONNREFUSED localhost:8081"),
+    );
     expect(fp("connect ECONNREFUSED [::1]:40001")).toBe(fp("connect ECONNREFUSED [::1]:40002"));
     expect(fp("fetch http://example.test:51234/health failed")).toBe(
       fp("fetch http://example.test:51999/health failed"),
@@ -44,13 +46,19 @@ describe("fingerprint of an ephemeral port", () => {
 
   it("keeps a source line and column, four-digit lines included", () => {
     expect(fp("thrown at src/server.ts:1234:5")).not.toBe(fp("thrown at src/server.ts:1235:5"));
-    expect(fp("thrown at /repo/src/server.ts:1234")).not.toBe(fp("thrown at /repo/src/server.ts:1235"));
+    expect(fp("thrown at /repo/src/server.ts:1234")).not.toBe(
+      fp("thrown at /repo/src/server.ts:1235"),
+    );
     expect(fp("thrown at server.ts:1234:5")).not.toBe(fp("thrown at server.ts:1235:5"));
-    expect(fp("same message", { ...at, line: 1234 })).not.toBe(fp("same message", { ...at, line: 1235 }));
+    expect(fp("same message", { ...at, line: 1234 })).not.toBe(
+      fp("same message", { ...at, line: 1235 }),
+    );
   });
 
   it("keeps a host, and numbers that follow neither a host nor the word port", () => {
-    expect(fp("connect ECONNREFUSED 127.0.0.1:3000")).not.toBe(fp("connect ECONNREFUSED 10.0.0.1:3000"));
+    expect(fp("connect ECONNREFUSED 127.0.0.1:3000")).not.toBe(
+      fp("connect ECONNREFUSED 10.0.0.1:3000"),
+    );
     expect(fp("expected 35321 to be 34963")).not.toBe(fp("expected 35321 to be 34964"));
     expect(fp("expected 'a:35321' to be 'b'")).not.toBe(fp("expected 'a:34963' to be 'b'"));
     expect(fp("expected 1 to be 2 // Object.is equality")).not.toBe(
@@ -82,12 +90,25 @@ describe("fingerprint of a temp path", () => {
     expect(fp(message("/scratch/two/a"))).toBe(fp(message("/scratch/two/b")));
   });
 
+  it("keeps two failures in different files under one random temp directory apart", () => {
+    const run = "/tmp/vitest-AbC123/repo";
+    expect(fp(`ENOENT: open '${run}/src/a.json'`)).not.toBe(fp(`ENOENT: open '${run}/src/b.json'`));
+    expect(fp(`ENOENT: open '${run}/src/a.json'`)).toContain("'<tmp>/repo/src/a.json'");
+    expect(
+      fp("cannot read /tmp/squeal-1001/tmp/6db45f9b91a3d272/w-QI9brD/pkg/a/index.js"),
+    ).not.toBe(fp("cannot read /tmp/squeal-1001/tmp/6db45f9b91a3d272/w-QI9brD/pkg/b/index.js"));
+  });
+
   it("keeps a changed tail, a named segment and a path outside any root", () => {
     expect(fp(SQUEAL_TMP("6db45f9b91a3d272", "QI9brD"))).not.toBe(
       fp(SQUEAL_TMP("6db45f9b91a3d272", "QI9brD", "main.js")),
     );
-    expect(fp("cannot open /tmp/run/my-module/a.js")).not.toBe(fp("cannot open /tmp/run/my-plugin/a.js"));
-    expect(fp("cannot open /repo/tmp/x-AbC123/a.js")).not.toBe(fp("cannot open /repo/tmp/x-XyZ789/a.js"));
+    expect(fp("cannot open /tmp/run/my-module/a.js")).not.toBe(
+      fp("cannot open /tmp/run/my-plugin/a.js"),
+    );
+    expect(fp("cannot open /repo/tmp/x-AbC123/a.js")).not.toBe(
+      fp("cannot open /repo/tmp/x-XyZ789/a.js"),
+    );
   });
 });
 
@@ -101,8 +122,12 @@ describe("renormalizeFingerprint", () => {
 
   it("gives a fingerprint the previous rules stored the same failure's fresh one", () => {
     expect(renormalizeFingerprint(stored[0] ?? "")).toBe(fp(PORT(35321)));
-    expect(renormalizeFingerprint(stored[1] ?? "")).toBe(fp(SQUEAL_TMP("6db45f9b91a3d272", "QI9brD")));
-    expect(renormalizeFingerprint(stored[2] ?? "")).toBe(fp(SQUEAL_TMP("6db45f9b91a3d272", "QI9brD")));
+    expect(renormalizeFingerprint(stored[1] ?? "")).toBe(
+      fp(SQUEAL_TMP("6db45f9b91a3d272", "QI9brD")),
+    );
+    expect(renormalizeFingerprint(stored[2] ?? "")).toBe(
+      fp(SQUEAL_TMP("6db45f9b91a3d272", "QI9brD")),
+    );
   });
 
   it("leaves a current fingerprint, its location and one without a message alone", () => {
