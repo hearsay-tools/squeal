@@ -38,7 +38,8 @@ async function command(root: string, opts: NamedWaitOptions) {
   let stdout = "";
   const io: CliIo = { stdout: (t) => (stdout += t), stderr: () => {}, cwd: root, env: {} };
   const code = await namedWaitCommand([A], false, io, opts);
-  return { code, first: stdout.split("\n")[0] };
+  // Issue 26: the verdict is the last line.
+  return { code, last: stdout.trimEnd().split("\n").at(-1) ?? "" };
 }
 
 /** A at revision 4 with a current pass, then edited on disk, not yet reconciled. */
@@ -77,8 +78,8 @@ describe("a named wait's deadline before its sync reached the current revision",
       options(() => PENDING, 30),
     );
     expect(result.code).toBe(3);
-    expect(result.first).toMatch(
-      /^Named test files have no verdict: the deadline passed after \d+\.\d s: the daemon has not stored its pass over the edits made before the wait; results are as of revision 4$/,
+    expect(result.last).toMatch(
+      /^Named test files have no verdict: the deadline passed after \d+\.\d s: the daemon has not stored its pass over the edits made before the wait; results are as of revision 4\. Worktree: /,
     );
   });
 
@@ -89,8 +90,8 @@ describe("a named wait's deadline before its sync reached the current revision",
       options(() => synced(5), 30),
     );
     expect(result.code).toBe(3);
-    expect(result.first).toMatch(
-      /^Named test files have no verdict: the deadline passed after \d+\.\d s: the daemon's pass is at revision 5 and results are as of revision 4$/,
+    expect(result.last).toMatch(
+      /^Named test files have no verdict: the deadline passed after \d+\.\d s: the daemon's pass is at revision 5 and results are as of revision 4\. Worktree: /,
     );
   });
 
@@ -149,7 +150,7 @@ describe("a named wait ready only at its final read", () => {
     const late = () => (performance.now() >= deadline ? synced(4) : PENDING);
     const passed = await command(pass.repo.main, options(late, 60));
     expect(passed.code).toBe(0);
-    expect(passed.first).toMatch(/^Named test files at revision 4: no known failures; 1 test file/);
+    expect(passed.last).toMatch(/^Named test files at revision 4: no known failures; 1 test file/);
 
     const failing = repoWith([], [A]);
     fail(failing.store, failing.repo.mainId, ADDS);

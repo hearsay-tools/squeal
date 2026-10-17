@@ -1,6 +1,6 @@
 import { testFileId } from "../core/keys/index.js";
 import { runnerPartText, testFileKeyOf } from "../core/state/index.js";
-import { countedText, formatCheck } from "../core/status/index.js";
+import { countedText, failureCountText, formatCheck } from "../core/status/index.js";
 import { plural } from "../core/text.js";
 import type { DaemonLiveness, StatusSnapshot } from "../core/types/index.js";
 import type { SyncState } from "./status-sync.js";
@@ -13,13 +13,14 @@ import type { DownReason, HeartbeatLapse } from "./wait-liveness.js";
 export type EndedWait = Extract<StatusWait, { result: StatusSnapshot }>;
 
 /**
- * The first line of `status --wait`: why it returned. With the edit's files
- * (`StatusWaitEdit`), what it held for and what else is pending.
+ * The last line of `status --wait`, its verdict (issue 26): why it returned,
+ * then the worktree's known failures and outstanding work. With the edit's
+ * files (`StatusWaitEdit`), what it held for and what else is pending.
  */
 export function waitLine(wait: EndedWait, command = "squeal"): string {
   const line = ownLine(wait, command);
   const slow = wait.slow === undefined || wait.outcome === "no-daemon" ? "" : slowText(wait.slow);
-  return `${line}${slow}${lapseText(wait.lapse)}`;
+  return `${line}${slow}${lapseText(wait.lapse)}${worktreeText(wait.result)}`;
 }
 
 function ownLine(wait: EndedWait, command: string): string {
@@ -132,9 +133,10 @@ type EndedNamed = Extract<NamedWait, { result: StatusSnapshot }>;
 const NAMED_FILES_SHOWN = 10;
 
 /**
- * Spec 005 D2: the first line of `status --wait <ms> <path>...` is the
- * verdict on the selected test files as D1 words a checkpoint's, then the
- * line naming them. A path that selects nothing says D2's text.
+ * Spec 005 D2: the verdict on the selected test files as D1 words a
+ * checkpoint's, printed last (issue 26) after the line naming them
+ * (`selectedLine`), then the worktree's known failures and outstanding work.
+ * A path that selects nothing says D2's text.
  */
 export function namedLine(wait: EndedNamed, command = "squeal"): string {
   const { verdict, selection } = wait;
@@ -143,7 +145,8 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
   let line: string;
   switch (wait.outcome) {
     case "unmatched":
-      return `No verdict: ${selection.unmatched.map((p) => `no test file's closure holds ${p}`).join("; ")}`;
+      line = `No verdict: ${selection.unmatched.map((p) => `no test file's closure holds ${p}`).join("; ")}`;
+      break;
     case "no-daemon":
       line = none(
         `${noDaemonText(wait.result.daemon, wait.down)}; results are as of revision ${verdict.revision}; \`${command} start\` starts one`,
@@ -162,11 +165,17 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
           : none(why);
     }
   }
-  const files = selection.files.map((f) => f.path);
+  return `${line}${lapseText(wait.lapse)}${worktreeText(wait.result)}`;
+}
+
+/** The test files a named wait selected, or `null` when its paths selected none. */
+export function selectedLine(wait: EndedNamed): string | null {
+  if (wait.outcome === "unmatched") return null;
+  const files = wait.selection.files.map((f) => f.path);
   const shown = files.slice(0, NAMED_FILES_SHOWN).join(", ");
   const more =
     files.length > NAMED_FILES_SHOWN ? ` and ${files.length - NAMED_FILES_SHOWN} more` : "";
-  return `${line}${lapseText(wait.lapse)}\nSelected: ${shown}${more}`;
+  return `Selected: ${shown}${more}`;
 }
 
 /** The selected files' known failures, each as status lists it (spec 005 D2: "in full"). */
@@ -224,6 +233,27 @@ function lapseText(lapse: HeartbeatLapse | undefined): string {
   if (lapse === undefined) return "";
   const age = Math.round(lapse.staleMs / 1_000);
   return `; the daemon's heartbeat went ${age} s stale while its socket showed it alive (a busy store or a stalled daemon), so the wait went on`;
+}
+
+/**
+ * Issue 26: a wait's verdict line ends with the worktree's known failures and
+ * its checks running and queued, as status counts them, so a `tail` keeps them.
+ */
+function worktreeText(snapshot: StatusSnapshot): string {
+  const failures = `. Worktree: known failures ${failureCountText(snapshot.knownFailures.map((f) => f.check))}`;
+  const unlisted =
+    snapshot.testFilesListed === false
+      ? "; the daemon has not listed this worktree's test files yet, so these counts are not complete"
+      : "";
+  const { pendingByPhase, fileLevelByPhase, testFilesWithoutChecksRunning } = snapshot.breakdown;
+  const checks = `${countedText(pendingByPhase.running, "running", fileLevelByPhase?.running)}, ${countedText(pendingByPhase.queued, "queued", fileLevelByPhase?.queued)}`;
+  const files = snapshot.testFilesWithoutChecks.pending;
+  const running = Math.min(files, testFilesWithoutChecksRunning ?? 0);
+  const without =
+    files === 0
+      ? ""
+      : `; ${plural(files, "test file")} without checks: ${running} running, ${files - running} queued`;
+  return `${failures}; checks ${checks}${without}${unlisted}`;
 }
 
 function anyPending(snapshot: StatusSnapshot): boolean {
