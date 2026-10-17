@@ -100,12 +100,19 @@ export async function stopHolds(
   if (mark === null) return false;
   const tree = await treePrint(at.root, TREE_PRINT_TIMEOUT_MS);
   if (tree === null || tree === mark.tree) return true;
-  if (mark.tree === null) {
-    markStopped(store, at.id, mark.at, tree);
-    return true;
-  }
-  clearStopped(store, at.id);
-  return false;
+  // Re-read after git answered: a `squeal start` that cleared the mark, or a
+  // new stop that replaced it, meanwhile wins (review wave-1.10 R2).
+  return store.transaction(() => {
+    const now = readMark(store, at.id);
+    if (now === null) return false;
+    if (now.at !== mark.at || now.tree !== mark.tree) return true;
+    if (mark.tree === null) {
+      markStopped(store, at.id, mark.at, tree);
+      return true;
+    }
+    clearStopped(store, at.id);
+    return false;
+  });
 }
 
 /**

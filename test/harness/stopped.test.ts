@@ -3,9 +3,10 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { clearStoppedMark, leaveStoppedMark, stopTree } from "../../src/cli/stopped-mark.js";
 import type { EnsureDaemonOptions } from "../../src/core/daemon/ensure.js";
-import { stoppedMetaKey } from "../../src/core/delivery/stopped.js";
+import { worktreeLiveness } from "../../src/core/delivery/liveness.js";
+import { stopHolds, stoppedMetaKey } from "../../src/core/delivery/stopped.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
-import type { AbsolutePath } from "../../src/core/types/index.js";
+import type { AbsolutePath, EpochMs } from "../../src/core/types/index.js";
 import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
 import { git, tempDir } from "../hash/git-repo.js";
 import type { FakeRepo } from "../status/helpers.js";
@@ -167,6 +168,28 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
     writeFileSync(join(r.root, "a.txt"), "edited\n");
     await hook(r, "post-tool-batch", deps);
     expect(calls).toEqual([expect.objectContaining({ root: r.root })]);
+  });
+
+  it("lets a `squeal start` that cleared the mark while git printed the tree win (review wave-1.10 R2)", async () => {
+    const r = squealRepo(gitRepo());
+    r.apply(r.pass());
+    await runHook("session-start", recorded("session-start", r.root), recording().deps);
+    r.store.worktrees.setDaemon(r.worktreeId, null);
+    expect(leaveStoppedMark(r.root as AbsolutePath, Date.now() + 1, null)).toBeNull();
+    const worktree = r.store.worktrees.get(r.worktreeId);
+    const live = worktreeLiveness(worktree, Date.now() as EpochMs);
+
+    // stopHolds awaits git; the start's clear lands in between.
+    const holds = stopHolds(
+      r.store,
+      { id: r.worktreeId, root: r.root as AbsolutePath },
+      worktree,
+      live,
+    );
+    expect(clearStoppedMark(r.root as AbsolutePath)).toBeNull();
+
+    expect(await holds).toBe(false);
+    expect(r.store.meta.get(stoppedMetaKey(r.worktreeId))).toBeNull();
   });
 
   it("starts one after a second edit of a file the stop found modified", async () => {
