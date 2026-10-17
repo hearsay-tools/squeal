@@ -293,6 +293,13 @@ export interface Scheduler {
    */
   requestRetries(): Promise<void>;
   /**
+   * Spec 011 C15: a named wait promotes `testFiles`, queued in this
+   * worktree, to the head of the first group for `withinMs` on this
+   * daemon's clock or until their keys settle. Changes only the order of
+   * queued files; nothing running is cancelled.
+   */
+  promote(testFiles: readonly TestFileRef[], withinMs: number): Promise<void>;
+  /**
    * A hook's nudge (task 001-281): a silent Stop ended a turn, so slow files
    * waiting for their consumers to go idle are planned now instead of at the
    * slow tier's recheck. Starts nothing a trigger does not allow.
