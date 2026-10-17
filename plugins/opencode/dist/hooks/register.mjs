@@ -674,7 +674,7 @@ function firstLine(text) {
 }
 function normalize(line) {
   return VOLATILE.reduce(
-    (text, [pattern, replacement]) => text.replace(pattern, replacement),
+    (text, [pattern, replacement2]) => text.replace(pattern, replacement2),
     line
   );
 }
@@ -3938,6 +3938,12 @@ function vitestDetected(root) {
   });
 }
 
+// src/core/status/config-problems.ts
+function configProblemsOf(root) {
+  const { problems } = loadPolicy(root);
+  return problems.length === 0 ? {} : { configProblems: problems };
+}
+
 // src/core/status/git-head.ts
 import { readFileSync as readFileSync5 } from "node:fs";
 import { join as join7 } from "node:path";
@@ -4103,6 +4109,7 @@ function snapshot(store, worktreeId, root, now) {
     daemonNotes: readDaemonNotes(store, worktreeId),
     ...openCheckpoint(store, worktreeId, daemon),
     ...vitestExcluded(worktree?.root ?? root),
+    ...configProblemsOf(worktree?.root ?? root),
     ...pendingRetriesOf(store, keys),
     ...unknownTestFilesOf(store, worktreeId, states, keys)
   };
@@ -5143,7 +5150,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.205";
+  if (true) return "0.1.206";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -5310,9 +5317,9 @@ var PRIMER_OPENING = "Squeal runs this repository's ";
 var REVISION = "A revision is Squeal's number for each saved change to this worktree's files; every result names the revision it ran at, and a header names the files its revision changed.";
 function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
   const names = runnerNames(coverage);
-  const sentences = (covers2, naming) => [
+  const sentences = (covers2, naming, paths) => [
     `${PRIMER_OPENING}${listed(names, "and")} tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run ${listed(names, "or")} to learn whether your edits broke something.`,
-    `Wait only when you need a result before your next step, for example before saying the task is done: ${naming === "none" ? "`status --wait 60000` on the CLI SQUEAL messages name" : `\`${command} status --wait 60000\``}.`,
+    waitSentence(command, naming, paths),
     ...coverage.slow === null ? [] : slowSentences(command, naming, coverage.slow.requireSlowSuite === true),
     "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
     retrySentence(command, naming),
@@ -5324,11 +5331,22 @@ function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
   const most = Math.max(coverage.nodeTest.length, coverage.pytest?.length ?? 0);
   for (const naming of ["every", "first", "none"]) {
     for (let node = most; node >= 0; node--) {
-      text = sentences(coversSentence(coverage, node), naming);
-      if (text.length <= PRIMER_CAP_CHARS) return text;
+      text = sentences(coversSentence(coverage, node), naming, false);
+      if (text.length > PRIMER_CAP_CHARS) continue;
+      const paths = sentences(coversSentence(coverage, node), naming, true);
+      return paths.length <= PRIMER_CAP_CHARS ? paths : text;
     }
   }
   return text;
+}
+function waitSentence(command, naming, paths) {
+  if (!paths) {
+    const wait = naming === "none" ? "`status --wait 60000` on the CLI SQUEAL messages name" : `\`${command} status --wait 60000\``;
+    return `Wait only when you need a result before your next step, for example before saying the task is done: ${wait}.`;
+  }
+  const full = naming === "every" && command === SQUEAL_COMMAND;
+  const cli = (sub, first) => naming !== "none" && (first || full) ? `\`${command} ${sub}\`` : naming === "none" ? `\`${sub}\`` : `the CLI's \`${sub}\``;
+  return `Wait only when you need a result before your next step${naming === "none" ? ", on the CLI SQUEAL messages name" : ""}: ${cli("status --wait 60000 <path>...", true)} for the verdict on files you just changed; before you finish, ${cli("status --wait 60000", false)} or a checkpoint, ${cli("run --all --wait", false)}.`;
 }
 function retrySentence(command, naming) {
   const cli = naming === "every" && command === SQUEAL_COMMAND ? `\`${command} retry` : "the CLI's `retry";
