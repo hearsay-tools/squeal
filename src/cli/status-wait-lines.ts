@@ -1,4 +1,4 @@
-import { runnerPartText } from "../core/state/index.js";
+import { runnerPartText, skippedReason } from "../core/state/index.js";
 import { countedText, failureCountText, formatStatus } from "../core/status/index.js";
 import { plural } from "../core/text.js";
 import type { DaemonLiveness, EpochMs, StatusSnapshot } from "../core/types/index.js";
@@ -20,7 +20,18 @@ export type EndedWait = Extract<StatusWait, { result: StatusSnapshot }>;
 export function waitLine(wait: EndedWait, command = "squeal"): string {
   const line = ownLine(wait, command);
   const slow = wait.slow === undefined || wait.outcome === "no-daemon" ? "" : slowText(wait.slow);
-  return `${line}${slow}${lapseText(wait.lapse)}${worktreeText(wait.result)}`;
+  return `${line}${slow}${skipText(wait)}${lapseText(wait.lapse)}${worktreeText(wait.result)}`;
+}
+
+/**
+ * Spec 004 D8 as amended 2026-10-17 (task 004-65): `run --slow --wait` gives
+ * no verdict for a skipped slow tier, and says why (`slowWaitCode` exits 3).
+ */
+function skipText(wait: EndedWait): string {
+  const reason = wait.slow === undefined ? null : skippedReason(wait.result.slowTier);
+  return reason === null
+    ? ""
+    : `; the slow tier has no verdict: it was skipped, ${reason}, and runs once the precondition holds`;
 }
 
 /** `status --wait`'s human text: the snapshot, then last its verdict (issue 26). */
