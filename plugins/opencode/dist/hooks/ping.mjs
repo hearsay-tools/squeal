@@ -94,6 +94,39 @@ function splitTopLevel(body) {
   return parts;
 }
 
+// src/core/daemon/policy-precondition.ts
+var PRECONDITION_KEYS = /* @__PURE__ */ new Set(["exists", "command", "timeoutMs"]);
+function slowPrecondition(value) {
+  const expected = 'an object with "exists" (an array of paths or globs) or "command" (an argv array), and optionally "timeoutMs"';
+  if (!isRecord(value)) return expected;
+  const unknown = Object.keys(value).find((key) => !PRECONDITION_KEYS.has(key));
+  if (unknown !== void 0) return { problem: `has an unknown key "${unknown}"` };
+  const { exists, command, timeoutMs } = value;
+  if (exists === void 0 && command === void 0) return expected;
+  if (exists !== void 0) {
+    if (!nonEmptyStrings(exists)) {
+      return { problem: '"exists" must be a non-empty array of strings' };
+    }
+    for (const glob of exists) {
+      try {
+        globToRegExp(glob);
+      } catch (error) {
+        return { problem: `"exists" has a glob Squeal cannot use: ${error.message}` };
+      }
+    }
+  }
+  if (command !== void 0 && !nonEmptyStrings(command)) {
+    return { problem: '"command" must be a non-empty array of strings, the program first' };
+  }
+  if (timeoutMs !== void 0 && !(Number.isInteger(timeoutMs) && timeoutMs > 0)) {
+    return { problem: '"timeoutMs" must be a positive integer' };
+  }
+  return null;
+}
+function nonEmptyStrings(value) {
+  return Array.isArray(value) && value.length > 0 && value.every((s) => typeof s === "string" && s.length > 0);
+}
+
 // src/core/daemon/policy-node-test.ts
 function compiles(globs2) {
   for (const glob of globs2) {
@@ -123,7 +156,8 @@ var FIELDS = {
   env: variables,
   include: globs,
   exclude: globs,
-  slow: boolean
+  slow: boolean,
+  precondition: slowPrecondition
 };
 var REQUIRED = /* @__PURE__ */ new Set(["name", "include"]);
 function nodeTestProjects(value, path) {
@@ -262,7 +296,8 @@ var SHAPE = {
     maxWorkers: positiveInteger,
     maxLoadPerCpu: aboveZero,
     maxDeferMs: atLeastZero,
-    maxParallel: positiveInteger
+    maxParallel: positiveInteger,
+    precondition: slowPrecondition
   },
   delivery: { uncoveredEdits: boolean2 },
   daemon: { idleExitMinutes: aboveZero, unusedExitMinutes: aboveZero },

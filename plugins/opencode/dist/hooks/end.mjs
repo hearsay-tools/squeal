@@ -101,6 +101,7 @@ var WORKTREE_META_ROWS = {
   daemonStopped: { prefix: "daemon-stopped:", owner: "delivery/stopped" },
   slowTier: { prefix: "slow-tier:", owner: "slow/state" },
   slowArtifacts: { prefix: "slow-artifacts:", owner: "slow/state" },
+  slowSkips: { prefix: "slow-skips:", owner: "state/slow-skipped" },
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
   failureProducers: { prefix: "failure-producers:", owner: "state/producers" },
   reruns: { prefix: "reruns:", owner: "scheduler/rerun-memory" },
@@ -398,6 +399,39 @@ function splitTopLevel(body) {
   return parts;
 }
 
+// src/core/daemon/policy-precondition.ts
+var PRECONDITION_KEYS = /* @__PURE__ */ new Set(["exists", "command", "timeoutMs"]);
+function slowPrecondition(value) {
+  const expected = 'an object with "exists" (an array of paths or globs) or "command" (an argv array), and optionally "timeoutMs"';
+  if (!isRecord(value)) return expected;
+  const unknown = Object.keys(value).find((key) => !PRECONDITION_KEYS.has(key));
+  if (unknown !== void 0) return { problem: `has an unknown key "${unknown}"` };
+  const { exists, command, timeoutMs } = value;
+  if (exists === void 0 && command === void 0) return expected;
+  if (exists !== void 0) {
+    if (!nonEmptyStrings(exists)) {
+      return { problem: '"exists" must be a non-empty array of strings' };
+    }
+    for (const glob of exists) {
+      try {
+        globToRegExp(glob);
+      } catch (error) {
+        return { problem: `"exists" has a glob Squeal cannot use: ${error.message}` };
+      }
+    }
+  }
+  if (command !== void 0 && !nonEmptyStrings(command)) {
+    return { problem: '"command" must be a non-empty array of strings, the program first' };
+  }
+  if (timeoutMs !== void 0 && !(Number.isInteger(timeoutMs) && timeoutMs > 0)) {
+    return { problem: '"timeoutMs" must be a positive integer' };
+  }
+  return null;
+}
+function nonEmptyStrings(value) {
+  return Array.isArray(value) && value.length > 0 && value.every((s) => typeof s === "string" && s.length > 0);
+}
+
 // src/core/daemon/policy-node-test.ts
 function compiles(globs2) {
   for (const glob of globs2) {
@@ -427,7 +461,8 @@ var FIELDS = {
   env: variables,
   include: globs,
   exclude: globs,
-  slow: boolean
+  slow: boolean,
+  precondition: slowPrecondition
 };
 var REQUIRED = /* @__PURE__ */ new Set(["name", "include"]);
 function nodeTestProjects(value, path) {
@@ -567,7 +602,8 @@ var SHAPE = {
     maxWorkers: positiveInteger,
     maxLoadPerCpu: aboveZero,
     maxDeferMs: atLeastZero,
-    maxParallel: positiveInteger
+    maxParallel: positiveInteger,
+    precondition: slowPrecondition
   },
   delivery: { uncoveredEdits: boolean2 },
   daemon: { idleExitMinutes: aboveZero, unusedExitMinutes: aboveZero },
@@ -1009,6 +1045,36 @@ function forgetStopWait(store, consumer) {
   writeSlot(store, stopWaitMetaKey(consumer.worktreeId), consumer, null);
 }
 
+// src/core/state/slow-skipped.ts
+function slowSkipsMetaKey(worktreeId) {
+  return worktreeMetaKey("slowSkips", worktreeId);
+}
+function readSlowSkips(store, worktreeId) {
+  const raw = store.meta.get(slowSkipsMetaKey(worktreeId));
+  if (raw === null) return [];
+  try {
+    const value = JSON.parse(raw);
+    return Array.isArray(value) ? value.flatMap(toSkip) : [];
+  } catch {
+    return [];
+  }
+}
+function skippedSlowIds(skips) {
+  return new Set(skips.flatMap((skip) => skip.testFiles.map(testFileId)));
+}
+function toSkip(value) {
+  if (!isRecord(value) || !isRecord(value.precondition)) return [];
+  const { source, reason, since, testFiles } = value;
+  if (typeof source !== "string" || typeof reason !== "string" || typeof since !== "number") {
+    return [];
+  }
+  if (!Array.isArray(testFiles) || !testFiles.every(isRef)) return [];
+  return [{ precondition: value.precondition, source, reason, since, testFiles }];
+}
+function isRef(value) {
+  return isRecord(value) && typeof value.project === "string" && typeof value.path === "string";
+}
+
 // src/core/state/slow-sources.ts
 function sourcesChanged(store, worktreeId, since, revision, artifact, isSource) {
   if (since >= revision) return false;
@@ -1067,7 +1133,7 @@ function worktreeSlowView(store, worktreeId) {
   const root = store.worktrees.get(worktreeId)?.root;
   return root === void 0 ? null : slowPolicyView(readPolicy(root));
 }
-function classifySlowFiles(states, keys, isSlow) {
+function classifySlowFiles(states, keys, isSlow, skipped = /* @__PURE__ */ new Set()) {
   const checks = /* @__PURE__ */ new Map();
   for (const state of states) {
     const ref = testFileOf(state.check);
@@ -1081,12 +1147,17 @@ function classifySlowFiles(states, keys, isSlow) {
     const id = testFileId(row.testFile);
     const own = checks.get(id) ?? [];
     const cls = own.length === 0 ? row.key !== null && row.pending !== null ? "pending" : "notRun" : own.some((s) => s.validity === "pending") ? "pending" : own.every((s) => s.validity === "current") ? "current" : "notRun";
-    files.set(id, { ref: row.testFile, class: cls });
+    const held = cls === "current" && skipped.has(id);
+    files.set(id, {
+      ref: row.testFile,
+      class: held ? row.pending === null ? "notRun" : "pending" : cls
+    });
   }
   return files;
 }
 function readSlowTier(store, worktreeId, revision, states, keys, view) {
-  const files = classifySlowFiles(states, keys, view.isSlow);
+  const skips = readSlowSkips(store, worktreeId);
+  const files = classifySlowFiles(states, keys, view.isSlow, skippedSlowIds(skips));
   const counts = { current: 0, pending: 0, notRun: 0 };
   for (const { class: cls } of files.values()) counts[cls]++;
   let currentAt = null;
@@ -1133,8 +1204,13 @@ function readSlowTier(store, worktreeId, revision, states, keys, view) {
       isSource
     ),
     activity: liveActivity(store, worktreeId, keys, view.isSlow),
+    ...skippedField(skips, files),
     ...view.stopWaitMs === null ? {} : { stopWaitMs: view.stopWaitMs }
   };
+}
+function skippedField(skips, files) {
+  const reasons = skips.filter((skip) => skip.testFiles.some((ref) => files.get(testFileId(ref))?.class === "notRun")).map((skip) => skip.reason);
+  return reasons.length === 0 ? {} : { skipped: reasons.join("; ") };
 }
 function recordedArtifacts(store) {
   const records = /* @__PURE__ */ new Map();
@@ -1339,6 +1415,11 @@ function transitionKind(from, to) {
     case "skip":
       return null;
   }
+}
+
+// src/core/state/slow-text.ts
+function skippedReason(tier) {
+  return tier?.skipped ?? null;
 }
 
 // src/core/delivery/consumer-version.ts
@@ -4313,7 +4394,9 @@ function slowTierState(tier) {
     tier.currentUpTo ?? null,
     tier.artifact,
     tier.artifactUnknown ?? 0,
-    tier.sourcesChangedSince
+    tier.sourcesChangedSince,
+    // A skip is a state (004 D8 as amended 2026-10-17): its reason is told once, as it changes.
+    ...skippedReason(tier) === null ? [] : [skippedReason(tier)]
   ]);
 }
 function slowTierChanged(store, consumer, tier) {
@@ -4765,7 +4848,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.213";
+  if (true) return "0.1.214";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
