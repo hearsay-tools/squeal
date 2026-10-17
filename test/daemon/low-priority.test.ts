@@ -111,12 +111,12 @@ describe.runIf(process.platform === "linux")("lowerWhile: forks at nice 10 (001-
 
   it("lowers a child still being forked when its fork was lowered (001-437)", async () => {
     // A clone copies its parent's nice as it starts, and is listed among the
-    // parent's children only once it is made: the first walk misses it, at nice 0.
+    // parent's children only once it is made: under load, walks 300 ms apart miss it, at nice 0.
     const fork = sleeper();
     const late = sleeper();
     const carriers = async () => [{ pid: fork, ppid: process.pid, pgrp: 0, start: 1 }];
     let walks = 0;
-    const walk = () => (walks++ === 0 ? [] : [late]);
+    const walk = () => (walks++ < 3 ? [] : [late]);
     const settled = new AbortController();
     const lowering = lowerWhile({ carriers }, "fast", 0, settled.signal, walk);
     onTestFinished(async () => {
