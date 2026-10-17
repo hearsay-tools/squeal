@@ -9,7 +9,7 @@ import type {
   SourceLocation,
   WorktreeId,
 } from "./common.js";
-import type { ClosureMethod, TestFileRef } from "./keys.js";
+import type { CheckKey, ClosureMethod, TestFileRef } from "./keys.js";
 import type { DaemonNote } from "./scheduler.js";
 import type {
   DiagnosticFingerprint,
@@ -622,6 +622,16 @@ export interface WhyReport {
    * several that fit (review wave-13i B4). Task 001-173.
    */
   readonly runLog: WhyRunLog | null;
+  /** Why `runLog` is `null`; absent when it is not (issue 15, 011-04). */
+  readonly runLogUnavailable?: WhyRunLogGap;
+  /**
+   * The stored result at this worktree's current key for the check's test
+   * file when it is not the one behind the known state: a later run, often
+   * another worktree's with the same key, replaced it (spec 011 C7, one row
+   * per check and key). Its errors are that run's, not those of the run
+   * behind the state (issue 15, 011-04). Absent otherwise.
+   */
+  readonly replacedAtKey?: WhyReplacement;
   /**
    * Another worktree's `fail` of the check under this worktree's current key
    * that this worktree has not confirmed: held, no known state or delivery
@@ -708,6 +718,37 @@ export interface WhyRunLog {
    * or when `pruned`.
    */
   readonly console: WhyConsole | null;
+  /**
+   * `true` when the run comes from the state sink's producer record because
+   * its stored result was replaced or pruned: the log has the run's output
+   * while `results` no longer holds its errors (issue 15, 011-04).
+   */
+  readonly fromProducer?: true;
+}
+
+/**
+ * Why `squeal why` names no run log (issue 15, 011-04). `no-state`: no known
+ * state and no held failure. `no-origin`: the state names no origin (an
+ * older Squeal wrote it). `replaced`: the row at the current key is a later
+ * run's and no producer of the state is stored. `producer-pruned`: the run
+ * the state sink named as its producer has no run record left. `not-stored`:
+ * no row at the current key. `unidentified`: no stored row, or several, fit
+ * a state that is not current.
+ */
+export type WhyRunLogGap =
+  | "no-state"
+  | "no-origin"
+  | "replaced"
+  | "producer-pruned"
+  | "not-stored"
+  | "unidentified";
+
+/** The run whose result replaced the one behind a known state at its key (issue 15, 011-04). */
+export interface WhyReplacement {
+  readonly runId: string;
+  readonly worktreeId: WorktreeId;
+  readonly recordedAt: EpochMs;
+  readonly key: CheckKey;
 }
 
 /** A check's test file's console lines from one run log, capped. */
