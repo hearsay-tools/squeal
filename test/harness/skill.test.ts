@@ -101,7 +101,7 @@ describe("the squeal skill", () => {
     const step = body.slice(body.indexOf("4. **"), body.indexOf("5. **"));
     expect(step).toContain("Before you say the task is done");
     expect(step).toContain(
-      "If the last one says `Stop waits`, they are required: while one is not current, run `squeal run --slow --wait 60000`. Without `Stop waits`, say how many are not current.",
+      "If the last one says `Stop waits`, they are required once you edit: while one is not current, run `squeal run --slow --wait 60000`. Without `Stop waits`, say how many are not current.",
     );
     expect(step).toContain("Claim slow tests pass only once it says every slow file is current.");
     expect(step).toContain(
@@ -131,16 +131,31 @@ describe("the squeal skill", () => {
       "ask when you need their result now, for example before saying slow tests pass.",
     );
     expect(section).toContain(
-      "Whether it is needed before saying the task is done is the repository's policy, read off the end of the `Slow tier:` line (the skill's step 4): `Stop waits up to … for them or holds the agent once` means it is; any other ending means it is not, and a claim that slow tests pass still needs the line to say every slow file is current.",
+      "Whether it is needed before saying the task is done is the repository's policy, read off the end of the `Slow tier:` line (the skill's step 4): `Stop waits up to … for them or holds the agent once` means it is, once you change a file; any other ending means it is not, and a claim that slow tests pass still needs the line to say every slow file is current.",
     );
     expect(section).not.toContain("It is the skill's step 4 before saying the task is done.");
   });
 
-  it("says the same step 4 and `commands.md` in the Codex and Pi copies", () => {
+  /*
+   * Task 004-67 (issue 19): with the policy on, Stop holds no main agent
+   * whose worktree had no revision since it registered; the policy row says
+   * so beside the subagent's and the untrusted hook's hold.
+   */
+  it("says in `policy.md` that a session that changed no file is not held for slow files", () => {
+    const row = read("policy.md")
+      .split("\n")
+      .find((l) => l.startsWith("| `stop.requireSlowSuite`"));
+    expect(row).toContain(
+      "A main agent whose worktree had no revision since its session registered is not held for slow files: a session that changed no file finishes without them.",
+    );
+  });
+
+  it("says the same step 4, `commands.md` and `policy.md` in the Codex and Pi copies", () => {
     const step = (text: string) => text.slice(text.indexOf("4. **"), text.indexOf("5. **"));
     for (const dir of [join(CODEX_PLUGIN_DIR, CODEX_SKILL), join(PI_PLUGIN_DIR, PI_SKILL)]) {
       expect(step(readFileSync(join(dir, "SKILL.md"), "utf8"))).toBe(step(body));
       expect(readFileSync(join(dir, "references/commands.md"), "utf8")).toBe(read("commands.md"));
+      expect(readFileSync(join(dir, "references/policy.md"), "utf8")).toBe(read("policy.md"));
     }
   });
 
