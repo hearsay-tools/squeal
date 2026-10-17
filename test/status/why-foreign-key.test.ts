@@ -30,7 +30,7 @@ describe("squeal why after another worktree's run replaced the result at its key
         'import { expect, test } from "vitest";',
         "",
         `test(${JSON.stringify(NAME)}, () => {`,
-        "  console.log(`ran in ${import.meta.dirname}`);",
+        '  console.log("ran in " + import.meta.dirname);',
         '  expect(import.meta.dirname).toBe("present");',
         "});",
         "",
@@ -44,7 +44,7 @@ describe("squeal why after another worktree's run replaced the result at its key
     const a = await openHarness(repo.main, store, repo.commonDir);
     await a.scheduler.start();
     await a.scheduler.idle();
-    const key = a.keyOf(CURSOR);
+    const key = a.keyOf(CURSOR) ?? expect.unreachable("A keyed no cursor test");
     const own = store.results.byKey(key, 0).find((r) => r.check.kind === "test");
     expect(own?.outcome).toBe("fail");
     const ownRun = own?.provenance.runId;
@@ -81,6 +81,7 @@ describe("squeal why after another worktree's run replaced the result at its key
         worktreeId: b.worktreeId,
         recordedAt: foreign?.provenance.recordedAt,
         key,
+        logDir: store.runs.get(foreignRun ?? "")?.logDir,
       });
       expect(why.runLog).toMatchObject({
         runId: ownRun,
@@ -97,6 +98,7 @@ describe("squeal why after another worktree's run replaced the result at its key
       expect(text).toContain(
         `Result at key ${key.slice(0, 12)}: replaced by run ${foreignRun} in ${b.root} at `,
       );
+      expect(text).toContain(`    Its log: ${store.runs.get(foreignRun ?? "")?.logDir}\n`);
       expect(text).toContain(`Run ${ownRun} in ${a.root} (this worktree) produced the known state`);
     };
 
