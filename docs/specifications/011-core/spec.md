@@ -330,7 +330,7 @@ A named wait (`squeal status --wait <ms> <path>...`, 005 D2) tells the daemon wh
 **What the wait says while a constraint holds a file.** For every selected file that is still pending, the named line gives one reason with its bound when one is known:
 - running since HH:MM:SS in its lane;
 - queued, promoted, behind the `<lane>` tier running since HH:MM:SS (`queued` until the daemon publishes its promotions where the CLI reads; task 011-12);
-- waiting for `<worktree>`'s run of its key, at most until that claim's bound: the earlier of now plus C7's bound, since the waiter's bound runs from when its daemon first saw the claim, and, for a bounded run, the claimant's run start plus it; only a claimant whose daemon heartbeats is named (review wave-1.11 B1, B2);
+- waiting for `<worktree>`'s run of its key, at most until now plus C7's bound, since the waiter's bound runs from when its daemon first saw the claim, which only that daemon knows, and the claimant's own policy bounds its run; only a claimant whose daemon heartbeats is named (review wave-1.11 B1, B2);
 - slow, run when the agent pauses or on `squeal run --slow`;
 - revision N not listed yet, because the runner part waits for the run in flight, each of its calls bounded at N s (gh-17 finding 2, the `runner.timeoutMs` + 66 s bound of C4; the store keeps no call's start, so no countdown: review wave-1.11 B3).
 
