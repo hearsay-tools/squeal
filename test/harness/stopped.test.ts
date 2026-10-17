@@ -150,6 +150,25 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
     expect(r.store.meta.get(stoppedMetaKey(r.worktreeId))).toBeNull();
   });
 
+  it("holds when git could not print the tree at the stop, and an edit after the next print clears it (review wave-1.10 B2)", async () => {
+    const r = squealRepo(gitRepo());
+    r.apply(r.pass());
+    await runHook("session-start", recorded("session-start", r.root), recording().deps);
+    r.store.worktrees.setDaemon(r.worktreeId, null);
+    expect(leaveStoppedMark(r.root as AbsolutePath, Date.now() + 1, null)).toBeNull();
+    const { calls, deps } = recording();
+
+    // Git answers again: its first print is the mark's own, not an edit.
+    await hook(r, "post-tool-batch", deps);
+    await hook(r, "post-tool-batch", deps);
+    expect(calls).toEqual([]);
+    expect(r.store.meta.get(stoppedMetaKey(r.worktreeId))).toContain('"tree":"');
+
+    writeFileSync(join(r.root, "a.txt"), "edited\n");
+    await hook(r, "post-tool-batch", deps);
+    expect(calls).toEqual([expect.objectContaining({ root: r.root })]);
+  });
+
   it("starts one after a second edit of a file the stop found modified", async () => {
     const r = squealRepo(gitRepo());
     writeFileSync(join(r.root, "a.txt"), "first\n");
