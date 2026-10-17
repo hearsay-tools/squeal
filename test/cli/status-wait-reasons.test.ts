@@ -128,9 +128,10 @@ describe("a named wait names what holds each pending selected file (011-12)", ()
 
     const { text } = await timedOut(repo.main, [C]);
 
-    // Default runner.timeoutMs 600 s plus C7's 6 s grace, from the claimant's run start.
+    // Default runner.timeoutMs 600 s plus C7's 6 s grace, from now: the waiter's first
+    // sighting is no later, and the claimant's own policy bounds its run (review wave-1.11 B1).
     expect(text).toContain(
-      `${C}: waiting for ${other.root}'s run of its key, at most until ${clock(STARTED + 606_000)}`,
+      `${C}: waiting for ${other.root}'s run of its key, at most until ${clock(NOW + 606_000)}`,
     );
   });
 

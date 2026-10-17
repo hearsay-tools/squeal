@@ -121,14 +121,10 @@ function queuedReason(
   const claimant = key === null ? null : claimantOf(store, worktreeId, ref, key, now);
   if (claimant !== null) {
     // The waiter's bound runs from when its daemon first saw the claim, which only that
-    // daemon knows, and is no later than now; a bounded claimant's run also ends by its
-    // start plus the bound. The earlier is a true "at most" (review wave-1.11 B1).
-    const bound = claimBoundMs(policy.runner.timeoutMs);
-    const waiter = now + bound;
-    const until =
-      claimant.run === null || policy.runner.timeoutMs === null
-        ? waiter
-        : Math.min(waiter, claimant.run.startedAt + bound);
+    // daemon knows and is no later than now, so now plus the bound is a true "at most".
+    // The claimant's run start says nothing: its own policy, not this one, bounds its run
+    // (review wave-1.11 B1, re-review).
+    const until = now + claimBoundMs(policy.runner.timeoutMs);
     return { kind: "claim", worktree: claimant.worktree.root, until };
   }
   const tier = runs.find((run) =>
