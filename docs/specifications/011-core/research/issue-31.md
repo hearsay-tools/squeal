@@ -59,13 +59,19 @@ cezarion suite was run.
 
 Commands (from the worktree root):
 
-    uptime; nproc
-    node --import ./docs/specifications/011-core/research/probes/issue-31/register.mjs \
-      docs/specifications/011-core/research/probes/issue-31/order.mjs > .../output-current.txt
-    T=$(mktemp -d); mkdir -p $T/src/core/scheduler
-    for f in queue sharing; do git show squeal--v0.1.199:src/core/scheduler/$f.ts > $T/src/core/scheduler/$f.ts; done
-    node --import ./…/register.mjs …/order.mjs $T/src > …/output-0.1.199.txt
-    diff …/output-current.txt …/output-0.1.199.txt   # identical
+```sh
+uptime
+nproc
+probe=docs/specifications/011-core/research/probes/issue-31
+node --import "./$probe/register.mjs" "$probe/order.mjs" > "$probe/output-current.txt"
+probe_tmp=$(mktemp -d)
+mkdir -p "$probe_tmp/src/core/scheduler"
+for f in queue sharing; do
+  git show "squeal--v0.1.199:src/core/scheduler/$f.ts" > "$probe_tmp/src/core/scheduler/$f.ts"
+done
+node --import "./$probe/register.mjs" "$probe/order.mjs" "$probe_tmp/src" > "$probe/output-0.1.199.txt"
+diff "$probe/output-current.txt" "$probe/output-0.1.199.txt" # identical
+```
 
 Key output (`output-current.txt`):
 
