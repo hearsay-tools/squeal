@@ -204,6 +204,37 @@ describe("sameFingerprint", () => {
   });
 });
 
+describe("sameFingerprint across the rules before 011-14", () => {
+  const where = { path: "test/a.test.ts", line: 42, column: 7 };
+  const fresh = (path: string) => fp(`open ${path}`, where, "Error");
+
+  // Review wave 1.12, re-review R1: what those rules stored for the same raw path.
+  it("reads an all-digit scratch key, which those rules kept, as Squeal's root", () => {
+    const old =
+      "Error: open <tmp>/tmp/1234567890123456/work-abcdef/packages/cli.js @ test/a.test.ts:42:7";
+    const now = fresh("/tmp/squeal-1001/tmp/1234567890123456/work-abcdef/packages/cli.js");
+    expect(now).toBe("Error: open <tmp>/packages/cli.js @ test/a.test.ts:42:7");
+    expect(sameFingerprint(old, now)).toBe(true);
+    expect(
+      sameFingerprint(
+        old,
+        fresh("/tmp/squeal-1001/tmp/1234567890123456/work-abcdef/packages/other.js"),
+      ),
+    ).toBe(false);
+  });
+
+  it("ends a kept tail that reads as that root at the same form, old or fresh", () => {
+    const old =
+      "Error: open <tmp>/tmp/<hex>/work-abcdef/tmp/<hex>/named/a.js @ test/a.test.ts:42:7";
+    const now = fresh(
+      "/tmp/squeal-1001/tmp/6db45f9b91a3d272/work-abcdef/tmp/abcdef1234567890/named/a.js",
+    );
+    expect(sameFingerprint(old, now)).toBe(true);
+    expect(renormalizeFingerprint(renormalizeFingerprint(now))).toBe(renormalizeFingerprint(now));
+    expect(renormalizeFingerprint(renormalizeFingerprint(old))).toBe(renormalizeFingerprint(old));
+  });
+});
+
 /** The pre-011-14 fingerprint of `PORT(port)`: the message as it was. */
 function stored(port: number): string {
   return `AssertionError: ${PORT(port)} @ test/serve-port.test.ts:42:7`;
