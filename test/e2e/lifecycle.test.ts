@@ -16,7 +16,8 @@ import { daemonProcesses, withRestartEvidence } from "./restart-evidence.js";
  * Spec 001 goal 6, D10 and D11, end to end, and review wave 3 S2 and S3: a
  * SIGKILLed daemon is replaced by the next SessionStart; a consumer told at a
  * tool boundary while no daemon validates hears it once, and once more when
- * one does again; a bad `squeal.config.json` is one note and a running daemon.
+ * one does again; a bad `squeal.config.json` is one note and a running daemon,
+ * across a stop and a start.
  * Spec 002: each for both plugins.
  */
 
@@ -160,6 +161,9 @@ describe.each(PLUGINS)("a bad squeal.config.json, $name", (plugin) => {
     const third = await e.hook("session-start", e.main, { session_id: "third-session" });
     const sessionStart = { ...third, at: new Date().toISOString() };
     const afterSessionStart = daemonProcesses(e);
+    // Task 011-08: a session's start honours the stop; `squeal start` restarts.
+    expect(third.text).toContain("The daemon is stopped by request");
+    expect((await e.cli(e.main, ["start"])).code).toBe(0);
     await withRestartEvidence(
       e,
       { stop: stopped, afterStop, sessionStart, afterSessionStart },
