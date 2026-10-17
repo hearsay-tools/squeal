@@ -6,8 +6,9 @@ import { type CliIo, main } from "../../src/cli/main.js";
 import type { DaemonSync } from "../../src/cli/status-sync.js";
 import { waitForStatus } from "../../src/cli/status-wait.js";
 import { waitForNamed } from "../../src/cli/status-wait-paths.js";
+import { watchDaemon } from "../../src/cli/wait-liveness.js";
 import { socketPathFor } from "../../src/core/daemon/index.js";
-import type { DaemonRecord, Store } from "../../src/core/types/index.js";
+import type { DaemonRecord, EpochMs, Store, WorktreeId } from "../../src/core/types/index.js";
 import { closeFakeDaemons, fakeDaemon } from "./fake-daemon.js";
 import { finish, INCARNATION, NOW, repoWith, SLOW_FILE } from "./status-wait-fixture.js";
 
@@ -125,6 +126,33 @@ const unsupported = (): DaemonSync => ({
   current: () => ({ state: "unsupported" }),
   stop: () => {},
 });
+
+describe("watchDaemon (004-66)", () => {
+  it("keeps the lapse a socket check found when the heartbeat recovers before the next read (review wave-1.8 S1)", async () => {
+    const id = "lapse-recovers" as WorktreeId;
+    const socketPath = socketPathFor(id);
+    await fakeDaemon(socketPath, {});
+    const watch = watchDaemon(id);
+    const record: DaemonRecord = {
+      socketPath,
+      startedAt: (NOW - 60_000) as EpochMs,
+      heartbeatAt: STALE_AT as EpochMs,
+      heartbeatIntervalMs: 5_000,
+      squealVersion: "0.0.0-test",
+      token: "t",
+    };
+    expect(watch.judge(record, NOW as EpochMs)).toEqual({ state: "lapsed" });
+    await until(() => watch.lapse() !== null);
+    expect(watch.judge({ ...record, heartbeatAt: NOW as EpochMs }, NOW as EpochMs)).toEqual({
+      state: "alive",
+    });
+    expect(watch.lapse()).toEqual({ staleMs: 20_000 });
+  });
+});
+
+async function until(ready: () => boolean): Promise<void> {
+  for (let i = 0; i < 200 && !ready(); i++) await new Promise((r) => setTimeout(r, 10));
+}
 
 describe("a requested slow wait through a stale heartbeat (004-66)", { timeout: 30_000 }, () => {
   it("goes on while the daemon answers on its socket, finishes, and says the heartbeat lapsed", async () => {

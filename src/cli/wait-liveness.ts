@@ -69,11 +69,13 @@ export function watchDaemon(worktreeId: WorktreeId, options: DaemonWatchOptions 
   let asking = false;
   let deadSince: number | null = null;
   let staleMs: number | null = null;
-  const ask = (record: DaemonRecord) => {
+  const ask = (record: DaemonRecord, asked: number) => {
     if (asking) return;
     asking = true;
     void listening([...new Set([record.socketPath, computed])]).then((found) => {
       socket = found ? "listening" : "absent";
+      // The lapse the check began on counts, even when the heartbeat is fresh by the next read.
+      if (found) staleMs = Math.max(staleMs ?? 0, asked);
       asking = false;
     });
   };
@@ -86,7 +88,7 @@ export function watchDaemon(worktreeId: WorktreeId, options: DaemonWatchOptions 
         return { state: "alive" };
       }
       const seen: SocketState | null = socket;
-      ask(record);
+      ask(record, at - record.heartbeatAt);
       if (seen !== "absent") {
         deadSince = null;
         if (seen === "listening") staleMs = Math.max(staleMs ?? 0, at - record.heartbeatAt);
