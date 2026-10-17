@@ -83,9 +83,17 @@ export class Claims {
   }
 
   #boundMs(): number {
-    const { timeoutMs } = this.context.policy.runner;
-    return timeoutMs === null ? CLAIM_UNBOUNDED_MS : timeoutMs + CLAIM_GRACE_MS;
+    return claimBoundMs(this.context.policy.runner.timeoutMs);
   }
+}
+
+/**
+ * How long a waiter waits on one claim: `runner.timeoutMs` plus
+ * `CLAIM_GRACE_MS`, or `CLAIM_UNBOUNDED_MS` with no run timeout. Status
+ * names the bound a named file waits to (task 011-12).
+ */
+export function claimBoundMs(timeoutMs: number | null): number {
+  return timeoutMs === null ? CLAIM_UNBOUNDED_MS : timeoutMs + CLAIM_GRACE_MS;
 }
 
 /**
