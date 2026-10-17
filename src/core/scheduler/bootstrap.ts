@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { testFileId } from "../keys/index.js";
+import { readSlowSkips, skippedSlowIds } from "../state/index.js";
 import {
   type CheckId,
   type RelativePath,
@@ -167,11 +168,12 @@ export async function baseline(
     file.durationMs = durationOf(results);
   }
   const unkeyed = [...ledger.files.values()].filter((file) => file.key === null);
+  const skipped = skippedHits(context, ledger, [...misses, ...unkeyed]);
   ledger.checkpoints.start(
     checkpointId,
     "baseline",
     ledger.revision.number,
-    [...misses, ...unkeyed].map((file) => file.ref),
+    [...misses, ...unkeyed, ...skipped].map((file) => file.ref),
   );
   if (policy.baseline.onStart === "lookup-only") {
     ledger.checkpoints.finish("abandoned");
@@ -182,7 +184,7 @@ export async function baseline(
     }
   }
   restoreReruns(context, ledger, policy.baseline.onStart !== "lookup-only");
-  for (const file of unkeyed) ledger.checkpoints.failed(file.ref);
+  for (const file of [...unkeyed, ...skipped]) ledger.checkpoints.failed(file.ref);
   resumeOwed(ledger);
   if (failures.size > 0) block(ledger, failures);
   ledger.commit({ refined: ledger.revision.number });
@@ -191,6 +193,22 @@ export async function baseline(
   for (const text of unmatchedInputNotes(keys.unmatchedInputs(testFiles), testFiles.length)) {
     if (!persisted.has(text)) context.note(text);
   }
+}
+
+/**
+ * Spec 004 D8 (review wave-8.1 B1): the skipped slow files the store keeps
+ * that the lookup found, outside `others`. A hit is no run: each stays in
+ * the baseline, unrun, so the baseline cannot complete over a skip; the
+ * skip's own re-checks queue it (`SlowSkips`).
+ */
+function skippedHits(
+  context: SchedulerContext,
+  ledger: Ledger,
+  others: readonly FileState[],
+): FileState[] {
+  const ids = skippedSlowIds(readSlowSkips(context.store, context.worktreeId));
+  const elsewhere = new Set(others.map((file) => file.id));
+  return [...ledger.files.values()].filter((file) => ids.has(file.id) && !elsewhere.has(file.id));
 }
 
 /**
