@@ -68,4 +68,13 @@ describe("runGit", () => {
       `squeal: git config --get squeal.unset exited 1 in ${root}`,
     );
   });
+
+  // Task 011-08: a hook's tree check gives git a bound.
+  it("kills git past timeoutMs and rejects", async () => {
+    const started = performance.now();
+    await expect(
+      runGit(root, ["-c", "alias.nap=!sleep 5", "nap"], { timeoutMs: 100 }),
+    ).rejects.toThrow("squeal: git -c alias.nap=!sleep 5 nap timed out after 100 ms");
+    expect(performance.now() - started).toBeLessThan(2_000);
+  });
 });

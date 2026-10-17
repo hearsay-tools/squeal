@@ -18,6 +18,11 @@ export interface RunGitOptions {
   readonly input?: string;
   /** Exit codes that resolve with stdout. Default `[0]`. */
   readonly okCodes?: readonly number[];
+  /**
+   * Kills git after this long and rejects at once, its pipes released, so a
+   * child git started cannot hold the caller (task 011-08). Default: none.
+   */
+  readonly timeoutMs?: number;
 }
 
 /**
@@ -38,12 +43,27 @@ export function runGit(
     const child = spawn("git", args, { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
     const stdout: Buffer[] = [];
     const stderr: Buffer[] = [];
+    const timer =
+      options.timeoutMs === undefined
+        ? undefined
+        : setTimeout(() => {
+            child.kill();
+            child.stdout.destroy();
+            child.stderr.destroy();
+            reject(
+              new Error(
+                `squeal: git ${args.join(" ")} timed out after ${options.timeoutMs} ms in ${cwd}`,
+              ),
+            );
+          }, options.timeoutMs);
     child.stdout.on("data", (chunk: Buffer) => stdout.push(chunk));
     child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
     child.on("error", (error) => {
+      clearTimeout(timer);
       reject(new Error(`squeal: git ${args.join(" ")} failed in ${cwd}: ${error.message}`));
     });
     child.on("close", (code) => {
+      clearTimeout(timer);
       if (code !== null && okCodes.includes(code)) {
         resolve(Buffer.concat(stdout).toString("utf8"));
         return;
