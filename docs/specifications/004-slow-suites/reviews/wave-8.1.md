@@ -663,3 +663,178 @@ This induces a real SQLite error only when the sink writes the skip's stale stat
 ### Inputs for the coordinator
 
 Keep the single database transaction and its internal publication/refresh order. The repair needs transaction-aware in-memory state or explicit recovery, with both failure-before-BEGIN and failure-after-checkpoint-ending covered. No precondition, status wording, result-key or classifier redesign is required. This review changes no product code and does not reopen the other findings.
+
+## Fifth round
+
+PASS d026213ef3944a6c624286c2db6de7a4e9420d4f
+
+No blocking findings. One proven nonblocking queue-restoration limitation, one proven pre-existing restart defect for a separate row, no nits. R1 and R2 of the Fourth round are closed through the public scheduler. Successful skip, lift and requeue remain atomic to independent readers. This verdict covers the human-authorized Repair 4 delta only: `c007af01`, its regressions and helper changes, the notes, key re-pin and rebuilt bundles. B2-B4, the original S1, settled-state/restart fixes and 004-68 are not reopened.
+
+Reviewed on 2026-10-18 at the exact candidate pin, against local `origin/main` at `2e71fe3c865404f9801d955064fa1d890efc2e7e` (0.1.213). The repair changes `SlowSkips.#atomically`, `Ledger.hold` and `Checkpoints.hold`; no product code was edited during review.
+
+### Verification
+
+All product checks and probes ran on the clean pinned tree. `npm run build` was not run, as directed. Probe code, fixture repositories, copied control sources and HOME/XDG directories were under `/tmp/004-65-fifth-probes`. Git author and committer identity was supplied explicitly. Temporary slow-slot directories were also under `/tmp`. Fixture dependency resolution used a symlink to this candidate's installed `node_modules`. No probe used the real HOME.
+
+```text
+npm ci
+added 196 packages, and audited 197 packages in 6s
+found 0 vulnerabilities
+(exit 0)
+
+npm run lint
+Checked 1444 files in 539ms. No fixes applied.
+(exit 0)
+
+npm run typecheck
+tsc --noEmit
+(exit 0)
+
+npm run check:version -- origin/main
+version bump: 0.1.213 -> 0.1.214, ok
+(exit 0)
+```
+
+Installation also printed the existing deprecation and install-script approval notices.
+
+Touched tests and callers:
+
+```sh
+npx vitest run --maxWorkers=2 test/slow test/state/sink-slow-skip.test.ts \
+  test/status/slow-tier.test.ts test/cli/run-all-skipped.test.ts \
+  test/cli/run-slow-skipped.test.ts test/delivery/slow-told.test.ts \
+  test/harness/stop-slow-skipped.test.ts test/policy/slow.test.ts
+```
+
+```text
+Test Files  19 passed (19)
+     Tests  155 passed (155)
+Start at  12:02:54
+Duration  32.66s
+(exit 0)
+```
+
+Independent full run under the shared-host lock, not a Squeal checkpoint:
+
+```sh
+flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
+```
+
+```text
+Test Files  722 passed | 1 skipped (723)
+     Tests  6121 passed | 10 skipped (6131)
+Start at  12:02:42
+Duration  796.75s
+(exit 0)
+```
+
+The full run also printed two fixture gitdir-repair diagnostics, cleanup of a process left by an earlier run, and Vitest experimental type-testing notices. Sampled host load ranged from about 7 to 22 on 24 CPUs.
+
+Background Squeal separately reported the unchanged recorder negative controls at `test/runners/node-test/run-reads-fidelity.test.ts:116` and `test/runners/vitest/observe-fidelity.test.ts:119`, also recorded in the Fourth round. They do not establish a Repair 4 regression; the independent gate above is the review's test verdict.
+
+The Fourth round's own probes were copied under `/tmp`, repointed at this pin and rerun without changing their assertions:
+
+```text
+npx vitest run --config /tmp/004-65-fifth-probes/vitest.config.mts \
+  --maxWorkers=1 /tmp/004-65-fifth-probes/boundaries.test.ts \
+  -t 'commit boundaries|public scheduler'
+Test Files  1 passed (1)
+     Tests  4 passed | 2 skipped (6)
+Duration  14.97s
+(exit 0)
+```
+
+Two cases cover the public R1/R2 reproductions; two cover the independent-reader and shipped-CLI skip/lift/requeue matrix with prior passing and failing results. A second connection takes each snapshot in one `readTransaction`; the candidate's committed Claude Code CLI reads `status --json` in a separate process. At meta writes/deletes and before/after nested savepoint returns, both readers retain the old snapshot until outer commit. After commit, skip, abandoned checkpoint, key phases and stale checks change together; lift restores current together, and requeue removes the skip beside queued keys and pending checks. There is no new publication window.
+
+Additional probes:
+
+```text
+npx vitest run --config /tmp/004-65-fifth-probes/vitest.config.mts \
+  --maxWorkers=1 /tmp/004-65-fifth-probes/extra.test.ts
+Test Files  1 passed (1)
+     Tests  7 passed (7)
+Duration  8.07s
+(exit 0)
+
+# Public named-promotion characterization added afterwards:
+npx vitest run --config /tmp/004-65-fifth-probes/vitest.config.mts \
+  --maxWorkers=1 /tmp/004-65-fifth-probes/extra.test.ts -t 'public scheduler keeps'
+Test Files  1 passed (1)
+     Tests  1 passed | 7 skipped (8)
+Duration  4.16s
+(exit 0)
+```
+
+The seven cases cover same-revision failed-lift retry, queue restoration, the setup buffer, rollback followed only by shutdown/restart, shutdown without rollback, requeue rollback after the ledger's nested commit, and joined checkpoint lanes. Characterization assertions explicitly expect the limitations described below; a green characterization does not make those behaviors correct.
+
+**Pre-repair controls:** copy the candidate's source tree under `/tmp` and restore only `slow-skip.ts`, `ledger.ts` and `checkpoints.ts` from `c007af01^`. Other source, dependencies, fixture setup and fault conditions stay the same.
+
+```text
+# The identical Fourth-round public-scheduler assertions on pre-repair sources:
+npx vitest run --config /tmp/004-65-fifth-probes/vitest.config.mts \
+  --maxWorkers=1 /tmp/004-65-fifth-probes/control-boundaries.test.ts -t 'public scheduler'
+Test Files  1 failed (1)
+     Tests  2 failed | 4 skipped (6)
+Duration  4.21s
+(exit 1, expected)
+
+# The setup buffer and no-rollback restart characterization on those sources:
+npx vitest run --config /tmp/004-65-fifth-probes/vitest.config.mts \
+  --maxWorkers=1 /tmp/004-65-fifth-probes/control-extra.test.ts -t 'owed setup|without rollback'
+Test Files  1 passed (1)
+     Tests  2 passed | 3 skipped (5)
+Duration  4.81s
+(exit 0)
+```
+
+The pre-repair R2 assertion finds the original checkpoint still null after retry and shutdown; R1 finds `completed` instead of `abandoned`. The controls confirm both repairs and distinguish the restart/setup residuals from a new regression.
+
+### R1 closed: a failed requeue retains retry state [proven]
+
+The original real-second-writer probe holds `BEGIN IMMEDIATE` on another connection, lowers the scheduler connection's busy timeout to 25 ms, and calls `requestFullSuite()`. That request rejects with `database is locked`. After the other writer releases the lock, the ordinary non-forced retry requests both slow files, ends abandoned and leaves the skip persisted:
+
+```json
+{"checkpoint":"abandoned","requested":["test/strings.test.ts","test/upper.test.ts"],"persistedSkips":1,"fullSuite":{"atCurrentRevision":false,"lastCompletedRevision":0},"slowTier":{"current":0,"pending":0,"notRun":2}}
+```
+
+The candidate's `revised` regression also passes in the touched run. An additional real-SQLite probe aborts the skip-meta deletion during requeue, after the ledger's nested commit. The reader sees exactly the old skipped snapshot; the ledger has no spurious queued entries. Dropping the trigger and retrying queues both files and removes the skip. Thus the restore handles both failed BEGIN and rollback after work, rather than only moving `skips.clear()` inside the callback.
+
+### R2 closed: a rolled-back end retains its checkpoint owner [proven]
+
+The original temporary `known_states` trigger aborts the sink's stale write after checkpoint ending. After rollback, the original checkpoint remains open in the store, no skip is committed and both slow files are queued. Drop the trigger and call the public `requestFullSuite()` again: both the original and joined retry end abandoned, one skip is persisted and `fullSuite.atCurrentRevision` remains false. Closing leaves the original abandoned. The old-source control leaves it null instead.
+
+A direct-ledger probe also starts an explicit checkpoint with a joined slow-lane request, aborts after the sink's real refresh, verifies the reader's snapshot is unchanged, then retries. Both records end abandoned. This exercises the copied `joined`, `lanes`, remaining and strict state, including the publication cache.
+
+With shutdown instead of retry, the repaired tracker owes the original request; the successor resumes and abandons it, with the skip persisted. The successor's independent baseline exposes the separate defect below. That does not mean R2's checkpoint is forgotten again.
+
+### Restore edge cases
+
+**Failed lift and met caching [proven, closed].** With an idle persisted skip and a now-met rule, throw after the lift's actual sink refresh. The reader retains the complete skipped snapshot. Retry `gate()` at the same revision with the same rule: it performs the lift, removes the skip and restores current checks. `#met` is set only after `#lift` returns (`slow-skip.ts:79-82`), so the failed lift does not cache a met outcome and bypass its retry. The worker's next-revision regression also passes.
+
+**Queue fidelity [proven, nonblocking should-fix].** `Ledger.hold` restores presence, forced and recent, not exact priority, insertion sequence or promotions (`ledger.ts:538-567`). A rolled-back skip with two recent forced files restores both as queued, but a directly affected upper file with duration 1000 ms loses its priority over the transitive strings file with duration 1 ms. Observed order changes from `[upper, strings]` to `[strings, upper]`.
+
+In the same probe, a live promotion of both files disappears before its deadline: the first restore `queue.add` calls `Promotions.settle` while all covered entries are still absent. It drops the promotion before re-adding them. A public-scheduler version confirms this: start a forced slow checkpoint, pause its command precondition, promote both queued files, let the command fail with the sink-error trigger installed, then await idle. The promotion row is gone while `slowPending()` is true and the checkpoint is still open. Work is preserved; ordering is approximate. These are disclosed limits of restoring the formerly lost queue, not a new false result or checkpoint certification. They do not block this R1/R2 slice. A small follow-up can give `RunQueue` an exact snapshot/restore hook, including priority/sequence and promotions, without calling `add` on a half-restored queue.
+
+**Setup outcomes [proven omission; new public regression unverified].** `Ledger.commit` drains `SetupFailures.take()` and `hold` does not restore it. A direct-ledger probe with an artificially owed setup failure confirms that rollback leaves neither the outcome owed nor a stored setup check. The identical control does the same before Repair 4. Normal setup fail/pass mutations occur in `tiers.ts:535-536`, followed by `ledger.commit()` at `:544` under the same scheduler lock, before a slow gate can enter; the skip/lift/requeue operations do not produce setup outcomes. I found no new public-scheduler path that makes this omission a Repair 4 regression. General failed-commit recovery remains outside this repair. The key index is likewise not mutated by the three operations, so leaving it outside this snapshot does not introduce a mismatch.
+
+### Restart residual: separate bootstrap row [proven, nonblocking here]
+
+**Where:** `bootstrap.ts:170-188` and `checkpoint-requests.ts:122` (`resumeOwed`). The baseline starts and can complete before the owed strict request is resumed. Without a persisted skip, lookup hits can make that baseline empty even though the predecessor still owed a forced precondition check.
+
+Both the reported R2-shutdown sequence and a no-rollback sequence reproduce at revision 1:
+
+1. Complete an initial baseline with the rule met, leaving stored results for both slow files.
+2. Remove `ready` and deliver that path in a revision. Use a command precondition that succeeds while ready exists; otherwise it signals entry and waits. Start a forced slow checkpoint and close the scheduler while the command is waiting, before any skip is published. This uses normal public methods, no failed transaction.
+3. The close aborts the command and owes the still-open checkpoint. On the next daemon, let the command exit 1. Await idle.
+
+**Observed on this candidate and on the three-file pre-repair control:**
+
+```json
+{"owedCheckpointEnd":"abandoned","newSlowRuns":0,"fullSuite":{"atCurrentRevision":true,"lastCompletedRevision":1},"slowTier":{"current":0,"pending":0,"notRun":2,"skipped":"<command> exited 1 (slow.precondition.command)"}}
+```
+
+No slow file runs on the successor. Its baseline completes from old lookup hits before `resumeOwed` forces the slow files; the resumed request is then correctly abandoned when its rule fails. The completed baseline remains the header's latest full suite. This is a real honesty defect, not an acceptable state or a flaky probe. It already exists without Repair 4 and without any rollback, and bootstrap was explicitly left outside this worker repair. Under the human's bounded fifth-round scope it belongs to a separate row, not a blocker of this slice and not a reopening of the persisted-skip restart fix. A row should make baseline certification account for owed strict slow work before completing, with the public no-rollback reproduction above as its regression, plus a met-rule control. No classifier or settled-skip redesign is needed to dispatch that row.
+
+### Inputs for the coordinator
+
+The R1/R2 repair can land under this bounded verdict. Retain the single store transaction and the restore-on-throw mechanism. Track the bootstrap residual separately; do not mistake the passing rollback regression's checkpoint assertions for proof that the successor's baseline is honest. Queue snapshot fidelity is a small nonblocking follow-up. There are no remaining blockers from the Fourth round, and this review changes only this findings file.
