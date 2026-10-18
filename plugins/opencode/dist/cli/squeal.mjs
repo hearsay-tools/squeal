@@ -54654,9 +54654,15 @@ function slowText(slow) {
 }
 function slowTierText2(snapshot3, command) {
   const tier = snapshot3.slowTier;
-  const open5 = tier === void 0 ? 0 : tier.pending + tier.notRun;
+  if (tier === void 0) return "";
+  const open5 = tier.pending + tier.notRun;
   if (open5 === 0) return "";
-  return `; ${plural(open5, "slow file")} ${open5 === 1 ? "is" : "are"} not current, which this wait does not hold for: \`${command} run --slow --wait 60000\` runs and waits for ${open5 === 1 ? "it" : "them"}`;
+  const files2 = `${plural(open5, "slow file")} ${open5 === 1 ? "is" : "are"} not current`;
+  const them = open5 === 1 ? "it" : "them";
+  if (tier.stopWaitMs === void 0) {
+    return `; ${files2}; this repository does not require ${them} before you finish (\`${command} run --slow\` runs ${them})`;
+  }
+  return `; ${files2}, which this wait does not hold for: \`${command} run --slow --wait 60000\` runs and waits for ${them}`;
 }
 var NAMED_FILES_SHOWN = 10;
 function namedLine(wait, command = "squeal") {
