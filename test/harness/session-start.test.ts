@@ -90,7 +90,10 @@ describe("the SessionStart primer", () => {
     );
     r.apply(...failures);
     const text = context(await runHook("session-start", recorded("session-start", r.root), deps()));
-    expect(text).toContain("Known failures: 40");
+    // Task 011-15: the 40 are stale after the edit, so none is counted as current.
+    expect(text).toContain(
+      "Known failures: 0\nEarlier failures: 0 pending rerun, 40 stale (not counted until a rerun fails)",
+    );
     expect(text).toContain("Not shown: ");
     expect(text.length).toBeLessThanOrEqual(MESSAGE_CAP_CHARS);
     expect(text.endsWith(`\n\n${PRIMER}`)).toBe(true);
