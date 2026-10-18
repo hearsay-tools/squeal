@@ -1,4 +1,5 @@
 {
+  "slow": { "include": ["test/e2e/*.test.ts"] },
   "inputs": {
     "test/harness/plugin.test.ts": [
       "plugins/claude-code/**",
@@ -9,6 +10,8 @@
     "test/e2e/*.test.ts": [
       "plugins/claude-code/**",
       "plugins/codex/**",
+      "plugins/opencode/**",
+      "plugins/pi/**",
       "test/fixtures/e2e/**",
       "test/fixtures/codex-hooks/**",
       "test/harness/recorded/**"
