@@ -1,3 +1,4 @@
+import { recordRerunFirstFailures } from "../state/index.js";
 import type { CheckKey, ResultRecord } from "../types/index.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { checkId, type FileState } from "./files.js";
@@ -110,10 +111,18 @@ export function queueReruns(
   return due;
 }
 
-/** Remembers the re-runs `queueReruns` queued, pending, in `meta` (S1). */
+/**
+ * Remembers the re-runs `queueReruns` queued, pending, in `meta` (S1), and
+ * the first error of each one after all its tests passed, which its re-run
+ * replaces whether it passes or fails again (gh-20; review wave-2b B2).
+ */
 export function rememberReruns(context: SchedulerContext, queued: readonly NewFailure[]): void {
   const entries = queued.map(({ file, key }) => ({ testFile: file.ref, key, pending: true }));
   writeReruns(context.store, context.worktreeId, entries);
+  for (const { file, key, afterTestsPassed } of queued) {
+    if (afterTestsPassed === true)
+      recordRerunFirstFailures(context.store, file.ref, key, context.now());
+  }
 }
 
 /**
