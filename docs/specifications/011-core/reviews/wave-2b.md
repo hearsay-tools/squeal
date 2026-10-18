@@ -153,3 +153,106 @@ None.
 ## Inputs for the coordinator
 
 Repair B1 and B2 before landing 0.1.217. The repair can keep the accepted worktree meta row, but a consumer must identify a snapshot of its own registration's keys rather than only a revision. Preserve old registrations' snapshots while new registrations at that revision can name a newer one. S1 can be repaired at the same seam or tracked separately. Keep B2's first-error record separate from whether the outcome flips; its failing rerun must retain both errors without claiming flakiness. Re-review snapshot identity, retention/resume behavior, delivery outcome and first-error visibility for both rerun outcomes, plus any changed contracts or bundles. The 004-70 queue-fidelity closure need not be reopened unless a repair changes it.
+
+## Re-review, 2026-10-18
+
+PASS bf198fb314434cb2184f23c792e28dcc0e41313a
+
+No remaining blockers, should-fix findings or nits in this bounded re-review. The independent full suite has one existing validation limitation, recorded below; it is not green. B1, B2 and S1 are closed. Reviewed the repair delta since the first FAIL, in particular a9bbe375/52d74672, 12865de3/0197539f, ffc763c2 and bf198fb3, against `tasks/wave-2b.5.md` and C5. HEAD matched the pinned candidate and the tree stayed clean throughout verification. Local `origin/main` was e816d18909eb4a6d04f691259f7898667d2bb45f. No product code or existing test was edited.
+
+### Verification
+
+```text
+npm ci
+added 196 packages, and audited 197 packages in 6s
+found 0 vulnerabilities
+(exit 0)
+
+npm run lint
+Checked 1464 files in 445ms. No fixes applied.
+(exit 0)
+
+npm run typecheck
+tsc --noEmit
+(exit 0)
+
+npm run check:version -- origin/main
+version bump: 0.1.216 -> 0.1.217, ok
+(exit 0)
+```
+
+Installation printed the existing node-domexception deprecation and npm install-script notices. `npm run build` was not run, as directed. Instead, an external script imported the four plugins' actual build options and called esbuild with `write: false`, comparing every output byte with its committed bundle. It also compared the copied Node, observer and pytest runtimes and WASM assets with their build inputs:
+
+```text
+npx tsx /tmp/0217-rereview-probes/check-bundles.mts
+All 74 generated bundles and copied runtime assets match committed files across four plugins (esbuild write:false).
+(exit 0)
+```
+
+Touched repair tests plus baseline, attribution, why, restart and key-pin contracts:
+
+```sh
+git diff --name-only af9d0b58..HEAD -- test | tr '\n' '\0' | \
+  xargs -0 npx vitest run --maxWorkers=2 test/keys/key-format.test.ts \
+  test/delivery/before-edits.test.ts test/delivery/attribution.test.ts \
+  test/status/why-before-edits.test.ts test/scheduler/rerun.test.ts \
+  test/scheduler/rerun-restart.test.ts
+```
+
+```text
+Test Files  10 passed (10)
+     Tests  92 passed (92)
+Start at  20:44:46
+Duration  12.54s
+(exit 0)
+```
+
+The original external reviewer probes were pointed at this worktree and updated only for the new slot argument and the corrected B1 delivery contract. The B1 assertion now checks the later consumer's failed baseline and failure-before-edits wording, while the first consumer still reads its passing baseline. B2 runs the same real-Vitest differing-errors scenario, now also rejecting a flaky label. The 36-case formatter/parser matrix is retained:
+
+```text
+npx vitest run --config /tmp/0217-rereview-probes/vitest.config.mjs --maxWorkers=1
+Test Files  2 passed (2)
+     Tests  3 passed (3)
+Duration  7.11s
+(exit 0)
+```
+
+Two further compatibility probes check a genuine legacy by-revision row with a composite test-file id and an otherwise available PASS, and a resumed parked consumer whose original snapshot is missing. Both must read `none`, rather than use the keys at return:
+
+```text
+npx vitest run --config /tmp/0217-rereview-probes/vitest.config.mjs --maxWorkers=1 -t 'genuine legacy|missing snapshot'
+Test Files  1 passed | 1 skipped (2)
+     Tests  2 passed | 3 skipped (5)
+Duration  5.96s
+(exit 0; skips are the other external probes excluded by the name filter)
+```
+
+Independent full suite, under the host's full-run lock:
+
+```sh
+flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
+```
+
+```text
+Test Files  1 failed | 736 passed | 1 skipped (738)
+     Tests  1 failed | 6196 passed | 10 skipped (6207)
+Start at  20:44:08
+Duration  922.59s
+(exit 1)
+```
+
+**Verification limitation [proven observation; load explanation plausible]:** `test/harness/opencode-dispose.test.ts`, “serve: an abort of the new turn, then the old Stop's answer, stores nothing”, failed at `test/harness/opencode/held-stop.ts:210`. Its three built-in attempts missed the held Stop's 2,000 ms idle deadline at +2,011, +2,285 and +2,015 ms, before the new turn's request. The board's existing Later item already records the OpenCode idle deadline's roughly 0.9 s rebuild margin failing under CPU load. Sampled load during this review ranged from about 9 to 50 on 24 CPUs; it was about 50 near this file's failure. OpenCode source and these tests have no repair delta. This is outside the prior blockers and does not reopen them or 004-70. No second full run or manual retry was made. The coordinator's reported 6,199 passed / 8 skipped gate was not reproduced: this run has one failure and two additional skips. The output also includes two fixture gitdir-repair diagnostics, cleanup of one earlier-run process and Vitest experimental type-testing notices.
+
+Background Squeal 0.1.199 separately reported two failures at revision 0: `test/daemon/busy-edit.test.ts:127` (edit stored 4,030 ms after the hold versus the 1,000 ms bound) and `test/daemon/step-down.test.ts:150` (two `alive` callbacks versus one). Both `why` reports were read; both subsequently recovered on Squeal's automatic rerun. Squeal also reported the unchanged OpenCode dispose deadline case. Neither daemon test changed in the repair delta; no manual retry or product change was made from those reports. The same background recorder negative controls as in the first review also failed (`test/runners/node-test/run-reads-fidelity.test.ts:116`, `test/runners/vitest/observe-fidelity.test.ts:119`, expected pass without the recorder, got fail); those reports were read without retry. They are not the independent suite result.
+
+### Closed findings and contracts
+
+- **B1 [proven closed]:** `recordRegisteredKeys(store, wt, slot, { resumed, kept })` captures a fresh consumer's current keys and deduplicates by sorted snapshot content. `beforeEditsFor(store, wt, slot, since)` reads that slot's snapshot; `since` supplies the unknown baseline's commit. Both production call sites pass the same `slot(consumer)`. A same-revision rekey no longer overwrites or reuses the earlier consumer's obsolete snapshot. The public-delivery regression and original probe show different correct baseline outcomes for the two consumers.
+- **S1 [proven closed]:** pruning retains live registration slots and parked slots only within `CONSUMER_EXPIRY_MS`. The committed tests cover expiry followed by a fresh session, a different session before expiry, resume with the original snapshot and resume after expiry taking fresh keys. A resumed consumer with no recoverable original snapshot reads `none`. The old by-revision 0.1.217 row is deliberately unreadable as a new snapshot; neither reader nor resume guesses a baseline from current keys. Identical snapshots still share one map.
+- **B2 [proven closed]:** `rememberReruns` records a qualifying queued rerun's first failure before another run can replace it. The write remains within the tier's existing transaction. The shared `rerun-first-failures` row keeps the newest 1,024 checks, each with its key, original run, producer worktree, summary and time. `why` exposes it only at the current key and resolves its original log, explicitly saying when the run record was pruned. FAIL -> FAIL does not write a flaky note. Real-Vitest tests cover transient pass, identical persistent error, different persistent error, and a real failing test. The first error is said once when the current summary or flaky note already contains it. The unchanged rerun-memory path retains the once-per-key and restart behavior.
+- **Key pin and bundles [proven]:** KEY_FORMAT_VERSION remains the candidate's unreleased 12; its new guarded-source hash passes the key-format guard. All four plugins' generated assets match the candidate sources without writing to the checkout.
+- **004-70 remains closed:** no repair changed the ledger, queue, promotions or their restoration tests. The first review's queue-fidelity judgment stands. The prior accepted count wording and other settled behavior are not reopened.
+
+### Inputs for the coordinator
+
+No further repair is required by this re-review. The candidate's original accepted deviations still apply. The per-slot snapshot contract in `tasks/011-18r/notes.md` supersedes the first implementation's revision-only sharing; future callers must pass the consumer slot and preserve an unknown baseline when its original snapshot is absent.
