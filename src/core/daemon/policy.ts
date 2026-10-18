@@ -79,7 +79,7 @@ const SHAPE: Shape = {
   },
   nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
   pytest: (v) => pytestProjects(v, "pytest"),
-  vitest: { excludeProjects: strings },
+  vitest: { excludeProjects: strings, exclude: (v) => strings(v) ?? compiles(v as string[]) },
   slow: {
     include: slowInclude,
     maxWorkers: positiveInteger,

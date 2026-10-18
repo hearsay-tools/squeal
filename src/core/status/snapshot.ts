@@ -154,13 +154,21 @@ function snapshot(
 
 /**
  * Task 001-349: the Vitest projects the policy at `root` excludes, by the
- * daemon's rule for building Vitest (spec 003 D7), as the primer names them.
+ * daemon's rule for building Vitest (spec 003 D7), as the primer names them;
+ * task 004-81: its `vitest.exclude` globs alike.
  */
-function vitestExcluded(root: AbsolutePath): { vitestExcluded?: readonly string[] } {
+function vitestExcluded(root: AbsolutePath): {
+  vitestExcluded?: readonly string[];
+  vitestExcludedFiles?: readonly string[];
+} {
   const policy = readPolicy(root);
-  const names = policy.vitest.excludeProjects;
-  if (names.length === 0) return {};
-  return policy.nodeTest.length === 0 || vitestDetected(root) ? { vitestExcluded: names } : {};
+  const { excludeProjects: names, exclude: globs } = policy.vitest;
+  if (names.length + globs.length === 0) return {};
+  if (policy.nodeTest.length > 0 && !vitestDetected(root)) return {};
+  return {
+    ...(names.length === 0 ? {} : { vitestExcluded: names }),
+    ...(globs.length === 0 ? {} : { vitestExcludedFiles: globs }),
+  };
 }
 
 /**

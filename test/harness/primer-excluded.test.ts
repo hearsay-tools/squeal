@@ -38,4 +38,17 @@ describe("the primer names the excluded Vitest projects (001-349)", () => {
     expect(text).toContain(`Squeal covers Vitest (vitest.config.ts). ${NOT_COVERED}`);
     expect(text).not.toContain("excluded");
   });
+
+  it.each(HARNESSES)(
+    "the vitest.exclude globs in what is not covered, under %s (004-81)",
+    async (harness) => {
+      const r = repoFor({
+        policy: { vitest: { exclude: ["test/e2e/**", "bench/**"] } },
+        files: [],
+      });
+      expect(primerOf(await sessionStart(r, harness)).primer).toContain(
+        `Squeal covers Vitest (vitest.config.ts). Squeal does not cover typecheck, build, the Vitest test files matching "test/e2e/**" or "bench/**", which squeal.config.json excludes, or any other test suite: run those yourself.`,
+      );
+    },
+  );
 });

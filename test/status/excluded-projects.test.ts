@@ -39,4 +39,17 @@ describe("status names the excluded Vitest projects (001-349)", () => {
     expect(snapshot.vitestExcluded).toBeUndefined();
     expect(text).not.toContain("Not run:");
   });
+
+  it("names the vitest.exclude globs on a line of their own (004-81)", () => {
+    const { snapshot, text } = statusOf({ vitest: { exclude: ["test/e2e/**"] } });
+    expect(snapshot.vitestExcludedFiles).toEqual(["test/e2e/**"]);
+    expect(snapshot.vitestExcluded).toBeUndefined();
+    expect(text.split("\n")).toContain(
+      'Not run: Vitest test files matching "test/e2e/**", excluded by squeal.config.json',
+    );
+    const many = ["a/**", "b/**", "c/**", "d/**", "e/**"];
+    expect(formatStatus({ ...snapshot, vitestExcludedFiles: many }, NOW).split("\n")).toContain(
+      'Not run: Vitest test files matching "a/**", "b/**", "c/**" and 2 more globs, excluded by squeal.config.json',
+    );
+  });
 });

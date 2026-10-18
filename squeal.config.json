@@ -1,20 +1,11 @@
 {
-  "slow": { "include": ["test/e2e/*.test.ts"] },
+  "vitest": { "exclude": ["test/e2e/**"] },
   "inputs": {
     "test/harness/plugin.test.ts": [
       "plugins/claude-code/**",
       "src/**/*.ts",
       ".claude-plugin/**",
       "package.json"
-    ],
-    "test/e2e/*.test.ts": [
-      "plugins/claude-code/**",
-      "plugins/codex/**",
-      "plugins/opencode/**",
-      "plugins/pi/**",
-      "test/fixtures/e2e/**",
-      "test/fixtures/codex-hooks/**",
-      "test/harness/recorded/**"
     ],
     "test/policy/repository-inputs.test.ts": ["squeal.config.json", "**/.gitignore"],
     "test/runners/vitest/**/*.test.ts": ["test/fixtures/vitest/**"],

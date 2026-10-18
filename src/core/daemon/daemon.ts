@@ -431,6 +431,7 @@ class Daemon {
           optimizer: (projects) => this.#optimizerOff(projects),
           observe: () => this.#policy.observe.runtimeInputs,
           excludeProjects: () => this.#policy.vitest.excludeProjects,
+          exclude: () => this.#policy.vitest.exclude,
           childEnv: this.#children.envFor(lane),
           ...(maxWorkers === undefined ? {} : { maxWorkers }),
         });

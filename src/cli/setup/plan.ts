@@ -38,6 +38,11 @@ export interface SetupPlan {
   /** The test command where it is no gate: other files, negated or naming Squeal (D5, 005-47). */
   readonly mentions: readonly Mention[];
   readonly slow: SlowFacts;
+  /**
+   * Policy `vitest.exclude` (004 D7 as amended 2026-10-18, task 004-81):
+   * Vitest test-file globs Squeal does not cover. Absent from older plans.
+   */
+  readonly excluded?: { readonly vitest: readonly string[] };
   /** Declared slow-tier precondition commands (004 D7): facts, never outdated. */
   readonly preconditions: readonly PreconditionCommand[];
   readonly codexTrust: CodexTrust;
@@ -228,6 +233,7 @@ export async function readPlan(
     gates,
     mentions,
     slow,
+    excluded: { vitest: policy.vitest.exclude },
     preconditions: preconditionCommands(policy),
     codexTrust: await codexTrust(root, harnesses, options),
     warmup: {

@@ -550,6 +550,11 @@ export interface StatusSnapshot extends StatusHeader {
    */
   readonly vitestExcluded?: readonly string[];
   /**
+   * Policy `vitest.exclude` while Vitest is built: test-file globs Squeal
+   * never lists, runs or counts (004 D7, task 004-81). Absent when none.
+   */
+  readonly vitestExcludedFiles?: readonly string[];
+  /**
    * The agent's retries pending at this worktree's current keys (spec 001
    * D6, 001-368), oldest first, with the host's load now when one waits for
    * it. Absent when none is pending.

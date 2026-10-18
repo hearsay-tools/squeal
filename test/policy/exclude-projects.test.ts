@@ -25,7 +25,7 @@ function load(file: unknown) {
 
 describe("policy vitest.excludeProjects (001 D11, task 001-349)", () => {
   it("excludes nothing by default", () => {
-    expect(DEFAULT_POLICY.vitest).toEqual({ excludeProjects: [] });
+    expect(DEFAULT_POLICY.vitest).toEqual({ excludeProjects: [], exclude: [] });
     expect(load({}).policy.vitest.excludeProjects).toEqual([]);
   });
 
@@ -45,8 +45,8 @@ describe("policy vitest.excludeProjects (001 D11, task 001-349)", () => {
   });
 
   it("reports an unknown key under vitest", () => {
-    expect(load({ vitest: { exclude: ["e2e"] } }).problems).toEqual([
-      `unknown key "vitest.exclude"`,
+    expect(load({ vitest: { excludeProject: ["e2e"] } }).problems).toEqual([
+      `unknown key "vitest.excludeProject"`,
     ]);
   });
 });
