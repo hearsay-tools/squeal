@@ -12173,14 +12173,17 @@ function queueFullSuite(ledger, force, fresh = false, only) {
   ledger.commit();
   return { ...record, owner: joins ? attributed : record.id };
 }
-function resumeOwed(ledger) {
+function owedStrict(ledger, owed) {
+  if (owed === null) return [];
+  const strictIds = new Set(owed.owed.strict.map((ref2) => ledger.file(ref2)?.id));
+  return owed.owed.remaining.flatMap((ref2) => ledger.file(ref2) ?? []).filter((file) => strictIds.has(file.id) && file.key !== null);
+}
+function resumeOwed(ledger, taken2) {
   const { checkpoints } = ledger;
-  const taken2 = checkpoints.takeOwed();
   if (taken2 === null) return;
   const listed2 = taken2.owed.remaining.flatMap((ref2) => ledger.file(ref2) ?? []);
-  const strictIds = new Set(taken2.owed.strict.map((ref2) => ledger.file(ref2)?.id));
-  const strict = listed2.filter((file) => strictIds.has(file.id) && file.key !== null);
-  const loose = listed2.filter((file) => !strictIds.has(file.id) || file.key === null);
+  const strict = owedStrict(ledger, taken2);
+  const loose = listed2.filter((file) => !strict.includes(file));
   const unrunnable = loose.filter((file) => file.key === null || file.blocked !== null);
   const baseline2 = checkpoints.active;
   const others = baseline2 === null ? loose.filter((file) => !unrunnable.includes(file) && classify2(file) !== "current") : [];
@@ -12283,11 +12286,13 @@ async function baseline(context, ledger, changed = NOTHING_CHANGED) {
   }
   const unkeyed = [...ledger.files.values()].filter((file) => file.key === null);
   const skipped2 = skippedHits(context, ledger, [...misses, ...unkeyed]);
+  const owed = ledger.checkpoints.takeOwed();
+  const forced = outside(owedStrict(ledger, owed), [...misses, ...unkeyed, ...skipped2]);
   ledger.checkpoints.start(
     checkpointId,
     "baseline",
     ledger.revision.number,
-    [...misses, ...unkeyed, ...skipped2].map((file) => file.ref)
+    [...misses, ...unkeyed, ...skipped2, ...forced].map((file) => file.ref)
   );
   if (policy.baseline.onStart === "lookup-only") {
     ledger.checkpoints.finish("abandoned");
@@ -12299,7 +12304,7 @@ async function baseline(context, ledger, changed = NOTHING_CHANGED) {
   }
   restoreReruns(context, ledger, policy.baseline.onStart !== "lookup-only");
   for (const file of [...unkeyed, ...skipped2]) ledger.checkpoints.failed(file.ref);
-  resumeOwed(ledger);
+  resumeOwed(ledger, owed);
   if (failures.size > 0) block(ledger, failures);
   ledger.commit({ refined: ledger.revision.number });
   const persisted = persistedNoteTexts(store, worktreeId);
@@ -12310,8 +12315,14 @@ async function baseline(context, ledger, changed = NOTHING_CHANGED) {
 }
 function skippedHits(context, ledger, others) {
   const ids = skippedSlowIds(readSlowSkips(context.store, context.worktreeId));
+  return outside(
+    [...ledger.files.values()].filter((file) => ids.has(file.id)),
+    others
+  );
+}
+function outside(files2, others) {
   const elsewhere = new Set(others.map((file) => file.id));
-  return [...ledger.files.values()].filter((file) => ids.has(file.id) && !elsewhere.has(file.id));
+  return files2.filter((file) => !elsewhere.has(file.id));
 }
 function newestResults(store, ref2) {
   let newest = null;
@@ -28131,9 +28142,9 @@ var init_modules = __esm({
 });
 
 // src/runners/node-test/graph/preload-notes.ts
-function preloadNotes({ table, roots, outside, rules, rel: rel2 }) {
+function preloadNotes({ table, roots, outside: outside2, rules, rel: rel2 }) {
   const chain = rules === "tsx" ? "tsx's" : "Node's own";
-  const notes2 = outside.map(
+  const notes2 = outside2.map(
     (loader) => `node-test: unrecognized loader ${JSON.stringify(loader)} in argv or NODE_OPTIONS; resolving with ${chain} rules`
   );
   for (const root of roots) {
@@ -40702,10 +40713,10 @@ var init_adapter_observed2 = __esm({
     "use strict";
     init_fs();
     Observed2 = class {
-      constructor(graph, store, outside, note) {
+      constructor(graph, store, outside2, note) {
         this.graph = graph;
         this.store = store;
-        this.outside = outside;
+        this.outside = outside2;
         this.note = note;
         this.refresh();
         this.grown.clear();
@@ -46968,7 +46979,7 @@ async function createPytestAdapter(project, options) {
           pythonpath: settings.pythonpath,
           configFile: settings.config?.path ?? null
         });
-        built = { graph, observed: new Observed2(graph, options.observed, outside, note) };
+        built = { graph, observed: new Observed2(graph, options.observed, outside2, note) };
         failure2 = null;
         notes2();
         return true;
@@ -46980,7 +46991,7 @@ async function createPytestAdapter(project, options) {
     built = null;
     return false;
   };
-  const outside = (path) => {
+  const outside2 = (path) => {
     const env = toRelative(root, dir2);
     return env !== null && (path === env || path.startsWith(`${env}/`));
   };
@@ -47058,7 +47069,7 @@ async function createPytestAdapter(project, options) {
       built.observed.refresh();
       const { paths } = built.graph.closure(testFile.path);
       const extra = built.observed.of(testFile.path) ?? [];
-      const inside = [.../* @__PURE__ */ new Set([...paths, ...extra])].filter((p) => !outside(p));
+      const inside = [.../* @__PURE__ */ new Set([...paths, ...extra])].filter((p) => !outside2(p));
       return {
         testFile,
         paths: inside.sort(compare),
@@ -47085,7 +47096,7 @@ async function createPytestAdapter(project, options) {
           pluginPaths: [
             ...pluginPaths(built, environment, settings),
             ...built?.observed.sessionPaths() ?? []
-          ].filter((p) => !outside(p))
+          ].filter((p) => !outside2(p))
         })
       ];
     },
@@ -47514,7 +47525,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.214";
+  if (true) return "0.1.215";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -53107,6 +53118,26 @@ function globMatcher(globs2) {
   return (path) => patterns.some((pattern2) => pattern2.test(path));
 }
 
+// src/cli/setup/preconditions.ts
+init_policy_precondition();
+function preconditionCommands(policy) {
+  const declared = [
+    ["slow.precondition", policy.slow.precondition],
+    ...policy.nodeTest.map(
+      (p) => [`nodeTest ${JSON.stringify(p.name)} precondition`, p.precondition]
+    )
+  ];
+  return declared.flatMap(
+    ([source, precondition]) => precondition?.command === void 0 ? [] : [
+      {
+        source,
+        command: precondition.command,
+        timeoutMs: precondition.timeoutMs ?? PRECONDITION_TIMEOUT_MS
+      }
+    ]
+  );
+}
+
 // src/cli/setup/pytest.ts
 init_policy2();
 init_fs();
@@ -53367,6 +53398,7 @@ async function readPlan(root, options) {
     gates,
     mentions,
     slow,
+    preconditions: preconditionCommands(policy),
     codexTrust: await codexTrust(root, harnesses, options),
     warmup: {
       source: testFiles.source,
@@ -54851,8 +54883,8 @@ function worktreePath(root, cwd, path) {
   for (const base of [cwd, realOrNull(cwd)]) {
     if (base === null) continue;
     const rel2 = relative21(root, resolve19(base, path));
-    const outside = rel2 === ".." || rel2.startsWith(`..${sep25}`) || isAbsolute16(rel2);
-    if (rel2 !== "" && !outside) return rel2.split(sep25).join("/");
+    const outside2 = rel2 === ".." || rel2.startsWith(`..${sep25}`) || isAbsolute16(rel2);
+    if (rel2 !== "" && !outside2) return rel2.split(sep25).join("/");
   }
   return null;
 }
@@ -55944,6 +55976,7 @@ function durations(store, id2) {
 }
 
 // src/cli/setup/format.ts
+init_precondition();
 function formatPlan(plan) {
   const lines = [`Squeal setup plan for ${plan.root}`, "", "Harnesses:"];
   for (const h of plan.harnesses) {
@@ -56011,6 +56044,12 @@ function formatPlan(plan) {
   }
   for (const script of plan.slow.unresolvedScripts) {
     lines.push(`  not resolved statically: ${script}`);
+  }
+  if (plan.preconditions.length > 0) {
+    lines.push("", "Precondition commands (run before the slow tier):");
+    for (const p of plan.preconditions) {
+      lines.push(`  ${p.source}.command: ${argvText(p.command)}, timeout ${p.timeoutMs} ms`);
+    }
   }
   lines.push(
     "",
