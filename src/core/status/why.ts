@@ -8,6 +8,7 @@ import {
   observedSince,
   parseCheck,
   readFlakyNotes,
+  readRerunFirstFailures,
   readRevisionCommit,
   shownResult,
   testFileOf,
@@ -172,6 +173,12 @@ function report(
   const replacedAtKey = replacement(store, knownState, key, all, shown);
   const runsDir = storePaths(commonDir).runsDir;
   const flaky = readFlakyNotes(store).get(checkIdentity(check));
+  // B2 (review wave-2b): a re-run's first error, only while it is of the current key.
+  const first = readRerunFirstFailures(store).get(checkIdentity(check));
+  const rerunFirstFailure =
+    first !== undefined && first.key === key
+      ? { ...first, logDir: store.runs.get(first.runId)?.logDir ?? null }
+      : undefined;
   const latest = store.revisions.latest(worktreeId);
   const revision = latest?.number ?? null;
   const commit = readRevisionCommit(store, worktreeId, latest);
@@ -199,6 +206,7 @@ function report(
     ...(replacedAtKey === undefined ? {} : { replacedAtKey }),
     ...(heldFailure === undefined ? {} : { heldFailure }),
     ...(flaky === undefined ? {} : { flaky }),
+    ...(rerunFirstFailure === undefined ? {} : { rerunFirstFailure }),
     ...(changed === undefined ? {} : { changedSince: changed }),
     ...(closure === undefined ? {} : { changesInClosure: closure }),
   };

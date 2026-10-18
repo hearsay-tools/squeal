@@ -104,6 +104,25 @@ export interface FlakyNote {
 }
 
 /**
+ * The first error of a check whose new failure was re-run once because it
+ * came after all its file's tests passed: what the key held when the re-run
+ * was queued, so `squeal why` keeps it whether the re-run passes or fails
+ * again, apart from any flaky note (spec 011 C5 as amended 2026-10-18, gh-20;
+ * review wave-2b B2). The newest per check is kept in `meta`.
+ */
+export interface RerunFirstFailure {
+  /** The key the failure was stored and re-run at. */
+  readonly key: CheckKey;
+  /** The run that stored the failure. */
+  readonly runId: string;
+  readonly worktreeId: WorktreeId;
+  /** The failure's summary. */
+  readonly failure: string;
+  /** When its re-run was queued. */
+  readonly at: EpochMs;
+}
+
+/**
  * Notable kinds of state change.
  *
  * Spec 001 D6: "first-seen fail, `pass -> fail`, `fail -> pass`, `fail ->

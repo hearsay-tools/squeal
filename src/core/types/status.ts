@@ -18,6 +18,7 @@ import type {
   KnownOutcome,
   KnownState,
   PendingPhase,
+  RerunFirstFailure,
   Transition,
   Validity,
 } from "./state.js";
@@ -703,6 +704,13 @@ export interface WhyReport {
   /** The check's flaky note: its stored outcome flipped under one key (task 001-170). Absent when none. */
   readonly flaky?: FlakyNote;
   /**
+   * The first error of the check's one re-run after all its tests passed,
+   * at this worktree's current key, with that run's log; kept whether the
+   * re-run passed or failed again (spec 011 C5 as amended, gh-20; review
+   * wave-2b B2). Absent when none is kept at the key.
+   */
+  readonly rerunFirstFailure?: WhyRerunFirstFailure;
+  /**
    * The paths changed after the revision the known state was observed at,
    * when that revision is older than the current one (task 001-225, 005 D6).
    * Absent for a known state at the current revision, or with none.
@@ -818,6 +826,12 @@ export interface WhyReplacement {
   readonly recordedAt: EpochMs;
   readonly key: CheckKey;
   /** `runs/<run-id>/` of that run, the log of the errors stored at the key; `null` when its run record was pruned. */
+  readonly logDir: AbsolutePath | null;
+}
+
+/** `WhyReport.rerunFirstFailure`: the record with its run's log. */
+export interface WhyRerunFirstFailure extends RerunFirstFailure {
+  /** `runs/<run-id>/` of the run that stored it; `null` when its run record was pruned. */
   readonly logDir: AbsolutePath | null;
 }
 

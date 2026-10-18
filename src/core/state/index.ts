@@ -29,6 +29,12 @@ export {
   readFailureProducers,
   recordFailureProducers,
 } from "./producers.js";
+export {
+  RERUN_FIRST_KEPT,
+  RERUN_FIRST_META_KEY,
+  readRerunFirstFailures,
+  recordRerunFirstFailures,
+} from "./rerun-first.js";
 export { readRevisionCommit, revisionText } from "./revision-commit.js";
 export { observedSince, shownResult } from "./shown-result.js";
 export { createStateSink, type StateSinkOptions } from "./sink.js";
