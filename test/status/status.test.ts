@@ -219,6 +219,7 @@ describe("readStatus", () => {
           recordedUnknown: true,
         },
       ],
+      knownFailureCounts: { current: 2, pending: 0, stale: 0 },
       inherited: {
         count: 2,
         sources: [

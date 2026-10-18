@@ -1,8 +1,19 @@
 import { checkName, headerLines, SQUEAL_COMMAND } from "../../core/delivery/index.js";
 import { runnerPartText } from "../../core/state/index.js";
-import { formatCheck } from "../../core/status/index.js";
+import {
+  earlierFailuresLines,
+  formatCheck,
+  knownFailureCounts,
+  splitByValidity,
+} from "../../core/status/index.js";
 import { plural } from "../../core/text.js";
-import type { CheckId, KnownFailure, StatusHeader, TestFileRef } from "../../core/types/index.js";
+import type {
+  CheckId,
+  KnownFailure,
+  StatusHeader,
+  TestFileRef,
+  Validity,
+} from "../../core/types/index.js";
 
 /*
  * Hook-specific wording. Spec 001 D6: "Wording is factual, never imperative:
@@ -27,21 +38,27 @@ export function statusText(
   return [
     `SQUEAL · status at revision ${header.revision}`,
     ...headerLines(header, command),
-    knownFailuresLine(
-      failures.map((f) => f.check),
-      command,
-    ),
+    knownFailuresLine(failures, command),
   ].join("\n");
 }
 
 /**
  * Task 001-222: the count, then the failures by name, or the first
- * `NAMED_FAILURES` and where the rest are listed.
+ * `NAMED_FAILURES` and where the rest are listed. Spec 011 C6 as amended
+ * (gh-34): only current failures are counted and named; earlier ones pending
+ * a rerun or stale get status's line after it.
  */
 export function knownFailuresLine(
-  failures: readonly CheckId[],
+  failures: readonly { readonly check: CheckId; readonly validity: Validity }[],
   command: string = SQUEAL_COMMAND,
 ): string {
+  const current = splitByValidity(failures).current.map((f) => f.check);
+  return [countLine(current, command), ...earlierFailuresLines(knownFailureCounts(failures))].join(
+    "\n",
+  );
+}
+
+function countLine(failures: readonly CheckId[], command: string): string {
   if (failures.length === 0) return "Known failures: 0";
   const named = failures.slice(0, NAMED_FAILURES).map(checkName).join(", ");
   const more = failures.length - NAMED_FAILURES;
