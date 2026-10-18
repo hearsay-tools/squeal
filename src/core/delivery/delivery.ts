@@ -19,7 +19,7 @@ import {
   type TurnState,
   type ViewEntry,
 } from "../types/index.js";
-import { annotate, withDependencies } from "./attribution.js";
+import { annotate, withClosureChanges, withDependencies } from "./attribution.js";
 import { recordVersion } from "./consumer-version.js";
 import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from "./delta.js";
 import { carriesEditResult, editNotes, startEdits } from "./edits.js";
@@ -333,7 +333,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
           schemaVersion: PAYLOAD_SCHEMA_VERSION,
           consumer,
           header,
-          knownFailures,
+          // 011-18: a resumed session's failures name the closure paths changed since it started.
+          knownFailures: withClosureChanges(store, consumer, knownFailures, header.revision),
         };
       }),
 
