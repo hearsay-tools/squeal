@@ -99,6 +99,21 @@ function currentText(tier: SlowTierState): string {
 }
 
 /**
+ * Task 004-76 (`research/slow-tier-role.md` 5): with sources changed since
+ * the declared artifact the current files ran against, that the change is
+ * untested, never how to build (004-71's rule: no message names a build
+ * command). Without a known artifact there is nothing the changes are not in.
+ */
+function untestedText(tier: SlowTierState): string {
+  const unknown = tier.artifactUnknown ?? 0;
+  if (tier.artifact.length === 0 || unknown >= tier.current) {
+    return "these files have not tested the source changes since";
+  }
+  const it = tier.artifact.length === 1 ? "it" : "them";
+  return `the source changes since are not in ${it}, so these files have not tested them`;
+}
+
+/**
  * The slow-tier line, or `null` when the header has no slow tier. The
  * daemon's activity is the one the JSON carries, kept when no daemon is
  * validating (lessons defect 8c). It ends with what Squeal or Stop does
@@ -110,9 +125,8 @@ export function slowTierText(header: StatusHeader, command: string): string | nu
   if (tier.testFiles === 0) return `Slow tier: no slow test files listed yet; ${stopText(tier)}.`;
   const parts: string[] = [];
   if (tier.current > 0) {
-    parts.push(
-      `${tier.current} ${currentText(tier)}${tier.sourcesChangedSince ? ", sources changed since" : ""}`,
-    );
+    const untested = tier.sourcesChangedSince ? `; ${untestedText(tier)}` : "";
+    parts.push(`${tier.current} ${currentText(tier)}${untested}`);
   }
   if (tier.pending > 0) {
     parts.push(pendingText(tier.pending, tier.activity, header.daemon?.state === "down"));
