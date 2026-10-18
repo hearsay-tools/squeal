@@ -1,0 +1,3 @@
+dist/open-url.d.ts
+dist/open-url.js
+dist/open-url.js.map

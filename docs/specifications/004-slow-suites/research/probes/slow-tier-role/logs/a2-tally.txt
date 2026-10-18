@@ -1,0 +1,116 @@
+claude-claude-haiku-5-5 rev=1 slowCurrent=yes runSlowMentions=2 buildCmds=0
+claude-claude-haiku-5-5 rev=3 slowCurrent=no runSlowMentions=2 buildCmds=0
+claude-claude-haiku-5-5 rev=3 slowCurrent=no runSlowMentions=2 buildCmds=0
+claude-claude-haiku-5-5 rev=1 slowCurrent=yes runSlowMentions=6 buildCmds=0
+claude-claude-haiku-5-5 rev=1 slowCurrent=yes runSlowMentions=5 buildCmds=0
+claude-claude-sonnet-5-5 rev=1 slowCurrent=yes runSlowMentions=2 buildCmds=0
+claude-claude-sonnet-5-5 rev=1 slowCurrent=yes runSlowMentions=2 buildCmds=0
+claude-claude-sonnet-5-5 rev=1 slowCurrent=yes runSlowMentions=9 buildCmds=0
+claude-claude-sonnet-5-5 rev=1 slowCurrent=yes runSlowMentions=9 buildCmds=0
+codex-gpt-6-luna rev=1 slowCurrent=yes runSlowMentions=4 buildCmds=0
+codex-gpt-6-luna rev=1 slowCurrent=no runSlowMentions=1 buildCmds=0
+codex-gpt-6-luna rev=1 slowCurrent=no runSlowMentions=2 buildCmds=0
+codex-gpt-6-luna rev=1 slowCurrent=no runSlowMentions=1 buildCmds=0
+codex-gpt-6-luna rev=1 slowCurrent=no runSlowMentions=2 buildCmds=0
+codex-gpt-6.1-sol rev=1 slowCurrent=yes runSlowMentions=4 buildCmds=0
+codex-gpt-6.1-sol rev=1 slowCurrent=yes runSlowMentions=4 buildCmds=0
+codex-gpt-6.1-sol rev=1 slowCurrent=yes runSlowMentions=4 buildCmds=0
+codex-gpt-6.1-sol rev=1 slowCurrent=yes runSlowMentions=4 buildCmds=0
+claude-claude-haiku-5-5 rev=1 slowCurrent=yes runSlowMentions=3 buildCmds=0
+claude-claude-haiku-5-5 rev=3 slowCurrent=no runSlowMentions=4 buildCmds=0
+claude-claude-haiku-5-5 rev=1 slowCurrent=yes runSlowMentions=6 buildCmds=0
+claude-claude-haiku-5-5 rev=2 slowCurrent=yes runSlowMentions=6 buildCmds=0
+claude-claude-haiku-5-5 rev=3 slowCurrent=yes runSlowMentions=4 buildCmds=0
+claude-claude-haiku-5-5 rev=1 slowCurrent=yes runSlowMentions=4 buildCmds=0
+claude-claude-haiku-5-5 rev=1 slowCurrent=yes runSlowMentions=3 buildCmds=0
+claude-claude-haiku-5-5 rev=1 slowCurrent=yes runSlowMentions=5 buildCmds=0
+claude-claude-haiku-5-5 rev=1 slowCurrent=yes runSlowMentions=4 buildCmds=0
+claude-claude-haiku-5-5 rev=1 slowCurrent=yes runSlowMentions=3 buildCmds=0
+claude-claude-sonnet-5-5 rev=1 slowCurrent=yes runSlowMentions=7 buildCmds=0
+claude-claude-sonnet-5-5 rev=1 slowCurrent=yes runSlowMentions=7 buildCmds=0
+claude-claude-sonnet-5-5 rev=1 slowCurrent=yes runSlowMentions=7 buildCmds=0
+claude-claude-sonnet-5-5 rev=1 slowCurrent=yes runSlowMentions=5 buildCmds=0
+claude-claude-sonnet-5-5 rev=1 slowCurrent=yes runSlowMentions=7 buildCmds=0
+claude-claude-sonnet-5-5 rev=1 slowCurrent=yes runSlowMentions=7 buildCmds=0
+claude-claude-sonnet-5-5 rev=1 slowCurrent=yes runSlowMentions=5 buildCmds=0
+claude-claude-sonnet-5-5 rev=1 slowCurrent=yes runSlowMentions=5 buildCmds=0
+claude-claude-sonnet-5-5 rev=1 slowCurrent=yes runSlowMentions=7 buildCmds=0
+claude-claude-sonnet-5-5 rev=1 slowCurrent=yes runSlowMentions=7 buildCmds=0
+codex-gpt-6-luna rev=1 slowCurrent=yes runSlowMentions=6 buildCmds=0
+codex-gpt-6-luna rev=1 slowCurrent=yes runSlowMentions=4 buildCmds=0
+codex-gpt-6-luna rev=1 slowCurrent=yes runSlowMentions=3 buildCmds=0
+codex-gpt-6-luna rev=1 slowCurrent=yes runSlowMentions=2 buildCmds=0
+codex-gpt-6-luna rev=1 slowCurrent=yes runSlowMentions=2 buildCmds=0
+codex-gpt-6-luna rev=1 slowCurrent=yes runSlowMentions=4 buildCmds=0
+codex-gpt-6-luna rev=1 slowCurrent=yes runSlowMentions=3 buildCmds=0
+codex-gpt-6-luna rev=1 slowCurrent=yes runSlowMentions=4 buildCmds=0
+codex-gpt-6-luna rev=1 slowCurrent=yes runSlowMentions=4 buildCmds=0
+codex-gpt-6-luna rev=1 slowCurrent=yes runSlowMentions=3 buildCmds=0
+codex-gpt-6.1-sol rev=1 slowCurrent=yes runSlowMentions=4 buildCmds=0
+codex-gpt-6.1-sol rev=1 slowCurrent=yes runSlowMentions=4 buildCmds=0
+codex-gpt-6.1-sol rev=1 slowCurrent=yes runSlowMentions=3 buildCmds=0
+codex-gpt-6.1-sol rev=1 slowCurrent=yes runSlowMentions=4 buildCmds=0
+codex-gpt-6.1-sol rev=1 slowCurrent=yes runSlowMentions=4 buildCmds=0
+codex-gpt-6.1-sol rev=1 slowCurrent=yes runSlowMentions=3 buildCmds=0
+codex-gpt-6.1-sol rev=1 slowCurrent=yes runSlowMentions=4 buildCmds=0
+codex-gpt-6.1-sol rev=1 slowCurrent=yes runSlowMentions=3 buildCmds=0
+codex-gpt-6.1-sol rev=1 slowCurrent=yes runSlowMentions=3 buildCmds=0
+codex-gpt-6.1-sol rev=1 slowCurrent=yes runSlowMentions=3 buildCmds=0
+asked claude-claude-haiku-5-5 runSlowCommands=0
+asked claude-claude-haiku-5-5 runSlowCommands=0
+asked claude-claude-haiku-5-5 runSlowCommands=0
+asked claude-claude-haiku-5-5 runSlowCommands=1
+asked claude-claude-haiku-5-5 runSlowCommands=1
+asked claude-claude-sonnet-5-5 runSlowCommands=0
+asked claude-claude-sonnet-5-5 runSlowCommands=0
+asked claude-claude-sonnet-5-5 runSlowCommands=1
+asked claude-claude-sonnet-5-5 runSlowCommands=1
+asked codex-gpt-6-luna runSlowCommands=1
+asked codex-gpt-6-luna runSlowCommands=0
+asked codex-gpt-6-luna runSlowCommands=0
+asked codex-gpt-6-luna runSlowCommands=0
+asked codex-gpt-6-luna runSlowCommands=0
+asked codex-gpt-6.1-sol runSlowCommands=1
+asked codex-gpt-6.1-sol runSlowCommands=1
+asked codex-gpt-6.1-sol runSlowCommands=1
+asked codex-gpt-6.1-sol runSlowCommands=1
+asked claude-claude-haiku-5-5 runSlowCommands=1
+asked claude-claude-haiku-5-5 runSlowCommands=1
+asked claude-claude-haiku-5-5 runSlowCommands=2
+asked claude-claude-haiku-5-5 runSlowCommands=1
+asked claude-claude-haiku-5-5 runSlowCommands=1
+asked claude-claude-haiku-5-5 runSlowCommands=1
+asked claude-claude-haiku-5-5 runSlowCommands=1
+asked claude-claude-haiku-5-5 runSlowCommands=1
+asked claude-claude-haiku-5-5 runSlowCommands=1
+asked claude-claude-haiku-5-5 runSlowCommands=1
+asked claude-claude-sonnet-5-5 runSlowCommands=1
+asked claude-claude-sonnet-5-5 runSlowCommands=1
+asked claude-claude-sonnet-5-5 runSlowCommands=1
+asked claude-claude-sonnet-5-5 runSlowCommands=1
+asked claude-claude-sonnet-5-5 runSlowCommands=1
+asked claude-claude-sonnet-5-5 runSlowCommands=1
+asked claude-claude-sonnet-5-5 runSlowCommands=1
+asked claude-claude-sonnet-5-5 runSlowCommands=1
+asked claude-claude-sonnet-5-5 runSlowCommands=1
+asked claude-claude-sonnet-5-5 runSlowCommands=1
+asked codex-gpt-6-luna runSlowCommands=2
+asked codex-gpt-6-luna runSlowCommands=1
+asked codex-gpt-6-luna runSlowCommands=1
+asked codex-gpt-6-luna runSlowCommands=1
+asked codex-gpt-6-luna runSlowCommands=1
+asked codex-gpt-6-luna runSlowCommands=1
+asked codex-gpt-6-luna runSlowCommands=1
+asked codex-gpt-6-luna runSlowCommands=1
+asked codex-gpt-6-luna runSlowCommands=1
+asked codex-gpt-6-luna runSlowCommands=1
+asked codex-gpt-6.1-sol runSlowCommands=1
+asked codex-gpt-6.1-sol runSlowCommands=1
+asked codex-gpt-6.1-sol runSlowCommands=1
+asked codex-gpt-6.1-sol runSlowCommands=1
+asked codex-gpt-6.1-sol runSlowCommands=1
+asked codex-gpt-6.1-sol runSlowCommands=1
+asked codex-gpt-6.1-sol runSlowCommands=1
+asked codex-gpt-6.1-sol runSlowCommands=1
+asked codex-gpt-6.1-sol runSlowCommands=1
+asked codex-gpt-6.1-sol runSlowCommands=1

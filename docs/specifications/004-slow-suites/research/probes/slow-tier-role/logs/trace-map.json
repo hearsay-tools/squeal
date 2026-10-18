@@ -1,0 +1,367 @@
+{
+ "lifecycle": {
+  "copies": [
+   "claude-code",
+   "codex"
+  ],
+  "opened": [
+   "plugins/claude-code/dist/cli/front-desk.mjs",
+   "plugins/claude-code/dist/cli/squeal.mjs",
+   "plugins/claude-code/dist/observe/fs.cjs",
+   "plugins/claude-code/dist/observe/preloads.cjs",
+   "plugins/claude-code/dist/observe/recorder.cjs",
+   "plugins/claude-code/dist/observe/spawn.cjs",
+   "plugins/claude-code/dist/post-tool-batch.mjs",
+   "plugins/claude-code/dist/pre-tool-use.mjs",
+   "plugins/claude-code/dist/session-end.mjs",
+   "plugins/claude-code/dist/session-start.mjs",
+   "plugins/claude-code/dist/stop.mjs",
+   "plugins/claude-code/package.json",
+   "plugins/codex/dist/cli/front-desk.mjs",
+   "plugins/codex/dist/cli/squeal.mjs",
+   "plugins/codex/dist/observe/fs.cjs",
+   "plugins/codex/dist/observe/preloads.cjs",
+   "plugins/codex/dist/observe/recorder.cjs",
+   "plugins/codex/dist/observe/spawn.cjs",
+   "plugins/codex/dist/post-tool-use.mjs",
+   "plugins/codex/dist/pre-tool-use.mjs",
+   "plugins/codex/dist/session-end.mjs",
+   "plugins/codex/dist/session-start.mjs",
+   "plugins/codex/dist/stop.mjs",
+   "plugins/codex/hooks/hooks.json"
+  ]
+ },
+ "node-test": {
+  "copies": [
+   "claude-code",
+   "codex"
+  ],
+  "opened": [
+   "plugins/claude-code/dist/cli/front-desk.mjs",
+   "plugins/claude-code/dist/cli/squeal.mjs",
+   "plugins/claude-code/dist/node-test/recorder.cjs",
+   "plugins/claude-code/dist/node-test/reporter.mjs",
+   "plugins/claude-code/dist/observe/fs.cjs",
+   "plugins/claude-code/dist/observe/preloads.cjs",
+   "plugins/claude-code/dist/observe/recorder.cjs",
+   "plugins/claude-code/dist/observe/spawn.cjs",
+   "plugins/claude-code/dist/post-tool-batch.mjs",
+   "plugins/claude-code/dist/session-end.mjs",
+   "plugins/claude-code/dist/session-start.mjs",
+   "plugins/claude-code/package.json",
+   "plugins/codex/dist/cli/front-desk.mjs",
+   "plugins/codex/dist/cli/squeal.mjs",
+   "plugins/codex/dist/node-test/recorder.cjs",
+   "plugins/codex/dist/node-test/reporter.mjs",
+   "plugins/codex/dist/observe/fs.cjs",
+   "plugins/codex/dist/observe/preloads.cjs",
+   "plugins/codex/dist/observe/recorder.cjs",
+   "plugins/codex/dist/observe/spawn.cjs",
+   "plugins/codex/dist/post-tool-use.mjs",
+   "plugins/codex/dist/session-end.mjs",
+   "plugins/codex/dist/session-start.mjs",
+   "plugins/codex/hooks/hooks.json"
+  ]
+ },
+ "opencode-timeline": {
+  "copies": [],
+  "opened": []
+ },
+ "opencode": {
+  "copies": [
+   "opencode"
+  ],
+  "opened": [
+   "plugins/opencode/bin/squeal",
+   "plugins/opencode/dist/cli/front-desk.mjs",
+   "plugins/opencode/dist/cli/squeal.mjs",
+   "plugins/opencode/dist/hooks/after.mjs",
+   "plugins/opencode/dist/hooks/before.mjs",
+   "plugins/opencode/dist/hooks/end-turn.mjs",
+   "plugins/opencode/dist/hooks/end.mjs",
+   "plugins/opencode/dist/hooks/register.mjs",
+   "plugins/opencode/dist/hooks/stop.mjs",
+   "plugins/opencode/dist/hooks/wait.mjs",
+   "plugins/opencode/dist/observe/fs.cjs",
+   "plugins/opencode/dist/observe/preloads.cjs",
+   "plugins/opencode/dist/observe/recorder.cjs",
+   "plugins/opencode/dist/observe/spawn.cjs",
+   "plugins/opencode/dist/plugin.mjs",
+   "plugins/opencode/package.json"
+  ]
+ },
+ "pi-update": {
+  "copies": [
+   "pi"
+  ],
+  "opened": [
+   "plugins/pi/bin/squeal-launcher",
+   "plugins/pi/dist/extension.mjs",
+   "plugins/pi/dist/worker.mjs",
+   "plugins/pi/package.json"
+  ]
+ },
+ "pi": {
+  "copies": [
+   "pi"
+  ],
+  "opened": [
+   "plugins/pi/dist/cli/front-desk.mjs",
+   "plugins/pi/dist/cli/squeal.mjs",
+   "plugins/pi/dist/extension.mjs",
+   "plugins/pi/dist/observe/fs.cjs",
+   "plugins/pi/dist/observe/preloads.cjs",
+   "plugins/pi/dist/observe/recorder.cjs",
+   "plugins/pi/dist/observe/spawn.cjs",
+   "plugins/pi/dist/worker.mjs",
+   "plugins/pi/package.json"
+  ]
+ },
+ "plugin-copy": {
+  "copies": [],
+  "opened": []
+ },
+ "policy": {
+  "copies": [
+   "claude-code",
+   "codex"
+  ],
+  "opened": [
+   "plugins/claude-code/dist/cli/front-desk.mjs",
+   "plugins/claude-code/dist/cli/squeal.mjs",
+   "plugins/claude-code/dist/observe/fs.cjs",
+   "plugins/claude-code/dist/observe/preloads.cjs",
+   "plugins/claude-code/dist/observe/recorder.cjs",
+   "plugins/claude-code/dist/observe/spawn.cjs",
+   "plugins/claude-code/dist/post-tool-batch.mjs",
+   "plugins/claude-code/dist/pre-tool-use.mjs",
+   "plugins/claude-code/dist/session-end.mjs",
+   "plugins/claude-code/dist/session-start.mjs",
+   "plugins/claude-code/dist/stop.mjs",
+   "plugins/claude-code/package.json",
+   "plugins/codex/dist/cli/front-desk.mjs",
+   "plugins/codex/dist/cli/squeal.mjs",
+   "plugins/codex/dist/observe/fs.cjs",
+   "plugins/codex/dist/observe/preloads.cjs",
+   "plugins/codex/dist/observe/recorder.cjs",
+   "plugins/codex/dist/observe/spawn.cjs",
+   "plugins/codex/dist/post-tool-use.mjs",
+   "plugins/codex/dist/pre-tool-use.mjs",
+   "plugins/codex/dist/session-end.mjs",
+   "plugins/codex/dist/session-start.mjs",
+   "plugins/codex/dist/stop.mjs",
+   "plugins/codex/hooks/hooks.json"
+  ]
+ },
+ "pytest": {
+  "copies": [],
+  "opened": []
+ },
+ "shipped-plugin": {
+  "copies": [
+   "claude-code",
+   "codex"
+  ],
+  "opened": [
+   "plugins/claude-code/bin/squeal",
+   "plugins/claude-code/dist/cli/front-desk.mjs",
+   "plugins/claude-code/dist/cli/squeal.mjs",
+   "plugins/claude-code/dist/observe/fs.cjs",
+   "plugins/claude-code/dist/observe/preloads.cjs",
+   "plugins/claude-code/dist/observe/recorder.cjs",
+   "plugins/claude-code/dist/observe/spawn.cjs",
+   "plugins/claude-code/dist/post-tool-batch.mjs",
+   "plugins/claude-code/dist/session-end.mjs",
+   "plugins/claude-code/dist/session-start.mjs",
+   "plugins/claude-code/package.json",
+   "plugins/codex/dist/cli/front-desk.mjs",
+   "plugins/codex/dist/cli/squeal.mjs",
+   "plugins/codex/dist/observe/fs.cjs",
+   "plugins/codex/dist/observe/preloads.cjs",
+   "plugins/codex/dist/observe/recorder.cjs",
+   "plugins/codex/dist/observe/spawn.cjs",
+   "plugins/codex/dist/post-tool-use.mjs",
+   "plugins/codex/dist/session-end.mjs",
+   "plugins/codex/dist/session-start.mjs",
+   "plugins/codex/hooks/hooks.json"
+  ]
+ },
+ "slow-node-test": {
+  "copies": [
+   "claude-code",
+   "codex"
+  ],
+  "opened": [
+   "plugins/claude-code/dist/cli/front-desk.mjs",
+   "plugins/claude-code/dist/cli/squeal.mjs",
+   "plugins/claude-code/dist/node-test/recorder.cjs",
+   "plugins/claude-code/dist/node-test/reporter.mjs",
+   "plugins/claude-code/dist/observe/fs.cjs",
+   "plugins/claude-code/dist/observe/preloads.cjs",
+   "plugins/claude-code/dist/observe/recorder.cjs",
+   "plugins/claude-code/dist/observe/spawn.cjs",
+   "plugins/claude-code/dist/post-tool-batch.mjs",
+   "plugins/claude-code/dist/session-end.mjs",
+   "plugins/claude-code/dist/session-start.mjs",
+   "plugins/claude-code/dist/stop.mjs",
+   "plugins/claude-code/package.json",
+   "plugins/codex/dist/cli/front-desk.mjs",
+   "plugins/codex/dist/cli/squeal.mjs",
+   "plugins/codex/dist/node-test/recorder.cjs",
+   "plugins/codex/dist/node-test/reporter.mjs",
+   "plugins/codex/dist/observe/fs.cjs",
+   "plugins/codex/dist/observe/preloads.cjs",
+   "plugins/codex/dist/observe/recorder.cjs",
+   "plugins/codex/dist/observe/spawn.cjs",
+   "plugins/codex/dist/post-tool-use.mjs",
+   "plugins/codex/dist/session-end.mjs",
+   "plugins/codex/dist/session-start.mjs",
+   "plugins/codex/dist/stop.mjs",
+   "plugins/codex/hooks/hooks.json"
+  ]
+ },
+ "slow-vitest": {
+  "copies": [
+   "claude-code",
+   "codex"
+  ],
+  "opened": [
+   "plugins/claude-code/dist/cli/front-desk.mjs",
+   "plugins/claude-code/dist/cli/squeal.mjs",
+   "plugins/claude-code/dist/observe/fs.cjs",
+   "plugins/claude-code/dist/observe/preloads.cjs",
+   "plugins/claude-code/dist/observe/recorder.cjs",
+   "plugins/claude-code/dist/observe/spawn.cjs",
+   "plugins/claude-code/dist/post-tool-batch.mjs",
+   "plugins/claude-code/dist/session-end.mjs",
+   "plugins/claude-code/dist/session-start.mjs",
+   "plugins/claude-code/dist/stop.mjs",
+   "plugins/claude-code/package.json",
+   "plugins/codex/dist/cli/front-desk.mjs",
+   "plugins/codex/dist/cli/squeal.mjs",
+   "plugins/codex/dist/observe/fs.cjs",
+   "plugins/codex/dist/observe/preloads.cjs",
+   "plugins/codex/dist/observe/recorder.cjs",
+   "plugins/codex/dist/observe/spawn.cjs",
+   "plugins/codex/dist/post-tool-use.mjs",
+   "plugins/codex/dist/session-end.mjs",
+   "plugins/codex/dist/session-start.mjs",
+   "plugins/codex/dist/stop.mjs",
+   "plugins/codex/hooks/hooks.json"
+  ]
+ },
+ "stop-gap": {
+  "copies": [
+   "claude-code",
+   "codex"
+  ],
+  "opened": [
+   "plugins/claude-code/dist/cli/front-desk.mjs",
+   "plugins/claude-code/dist/cli/squeal.mjs",
+   "plugins/claude-code/dist/observe/fs.cjs",
+   "plugins/claude-code/dist/observe/preloads.cjs",
+   "plugins/claude-code/dist/observe/recorder.cjs",
+   "plugins/claude-code/dist/observe/spawn.cjs",
+   "plugins/claude-code/dist/session-start.mjs",
+   "plugins/claude-code/package.json",
+   "plugins/codex/dist/cli/front-desk.mjs",
+   "plugins/codex/dist/cli/squeal.mjs",
+   "plugins/codex/dist/observe/fs.cjs",
+   "plugins/codex/dist/observe/preloads.cjs",
+   "plugins/codex/dist/observe/recorder.cjs",
+   "plugins/codex/dist/observe/spawn.cjs",
+   "plugins/codex/dist/session-start.mjs",
+   "plugins/codex/hooks/hooks.json"
+  ]
+ },
+ "stopped": {
+  "copies": [
+   "claude-code",
+   "codex"
+  ],
+  "opened": [
+   "plugins/claude-code/dist/cli/front-desk.mjs",
+   "plugins/claude-code/dist/cli/squeal.mjs",
+   "plugins/claude-code/dist/observe/fs.cjs",
+   "plugins/claude-code/dist/observe/preloads.cjs",
+   "plugins/claude-code/dist/observe/recorder.cjs",
+   "plugins/claude-code/dist/observe/spawn.cjs",
+   "plugins/claude-code/dist/post-tool-batch.mjs",
+   "plugins/claude-code/dist/session-end.mjs",
+   "plugins/claude-code/dist/session-start.mjs",
+   "plugins/claude-code/dist/stop.mjs",
+   "plugins/claude-code/package.json",
+   "plugins/codex/dist/cli/front-desk.mjs",
+   "plugins/codex/dist/cli/squeal.mjs",
+   "plugins/codex/dist/observe/fs.cjs",
+   "plugins/codex/dist/observe/preloads.cjs",
+   "plugins/codex/dist/observe/recorder.cjs",
+   "plugins/codex/dist/observe/spawn.cjs",
+   "plugins/codex/dist/post-tool-use.mjs",
+   "plugins/codex/dist/session-end.mjs",
+   "plugins/codex/dist/session-start.mjs",
+   "plugins/codex/dist/stop.mjs",
+   "plugins/codex/hooks/hooks.json"
+  ]
+ },
+ "torn-status": {
+  "copies": [],
+  "opened": []
+ },
+ "transitions": {
+  "copies": [
+   "claude-code",
+   "codex"
+  ],
+  "opened": [
+   "plugins/claude-code/dist/cli/front-desk.mjs",
+   "plugins/claude-code/dist/cli/squeal.mjs",
+   "plugins/claude-code/dist/observe/fs.cjs",
+   "plugins/claude-code/dist/observe/preloads.cjs",
+   "plugins/claude-code/dist/observe/recorder.cjs",
+   "plugins/claude-code/dist/observe/spawn.cjs",
+   "plugins/claude-code/dist/post-tool-batch.mjs",
+   "plugins/claude-code/dist/session-end.mjs",
+   "plugins/claude-code/dist/session-start.mjs",
+   "plugins/claude-code/package.json",
+   "plugins/codex/dist/cli/front-desk.mjs",
+   "plugins/codex/dist/cli/squeal.mjs",
+   "plugins/codex/dist/observe/fs.cjs",
+   "plugins/codex/dist/observe/preloads.cjs",
+   "plugins/codex/dist/observe/recorder.cjs",
+   "plugins/codex/dist/observe/spawn.cjs",
+   "plugins/codex/dist/post-tool-use.mjs",
+   "plugins/codex/dist/session-end.mjs",
+   "plugins/codex/dist/session-start.mjs",
+   "plugins/codex/hooks/hooks.json"
+  ]
+ },
+ "worktrees": {
+  "copies": [
+   "claude-code",
+   "codex"
+  ],
+  "opened": [
+   "plugins/claude-code/dist/cli/front-desk.mjs",
+   "plugins/claude-code/dist/cli/squeal.mjs",
+   "plugins/claude-code/dist/observe/fs.cjs",
+   "plugins/claude-code/dist/observe/preloads.cjs",
+   "plugins/claude-code/dist/observe/recorder.cjs",
+   "plugins/claude-code/dist/observe/spawn.cjs",
+   "plugins/claude-code/dist/post-tool-batch.mjs",
+   "plugins/claude-code/dist/session-end.mjs",
+   "plugins/claude-code/dist/session-start.mjs",
+   "plugins/claude-code/package.json",
+   "plugins/codex/dist/cli/front-desk.mjs",
+   "plugins/codex/dist/cli/squeal.mjs",
+   "plugins/codex/dist/observe/fs.cjs",
+   "plugins/codex/dist/observe/preloads.cjs",
+   "plugins/codex/dist/observe/recorder.cjs",
+   "plugins/codex/dist/observe/spawn.cjs",
+   "plugins/codex/dist/post-tool-use.mjs",
+   "plugins/codex/dist/session-end.mjs",
+   "plugins/codex/dist/session-start.mjs",
+   "plugins/codex/hooks/hooks.json"
+  ]
+ }
+}
