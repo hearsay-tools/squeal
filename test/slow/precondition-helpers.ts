@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { afterEach } from "vitest";
+import { afterEach, expect } from "vitest";
 import { POLICY_FILE } from "../../src/core/daemon/policy.js";
 import { readSlowSkips, slowTierText } from "../../src/core/state/index.js";
 import {
@@ -51,6 +51,8 @@ export interface OpenOptions {
   readonly files?: Readonly<Record<string, string>>;
   /** Waits for the baseline to end; `false` returns once the scheduler started. */
   readonly idle?: boolean;
+  /** The scheduler's errors are expected (`HarnessOptions.allowErrors`). */
+  readonly allowErrors?: boolean;
 }
 
 /** The policy `slow` with `precondition`, the fixture's two slow files at one at a time. */
@@ -102,6 +104,7 @@ async function start(
     slow: { slotDir, recheckMs: 50, load: () => [0], cpus: () => 1 },
     ...(nodeTest.length === 0 ? {} : { nodeTest }),
     ...(options.reloadPolicy === undefined ? {} : { reloadPolicy: options.reloadPolicy }),
+    ...(options.allowErrors === undefined ? {} : { allowErrors: options.allowErrors }),
   });
   options.setup?.(h);
   // The harness registers no worktree row; the slow-tier line finds the policy through it.
@@ -126,3 +129,39 @@ export const skipReason = (h: Harness) => {
   const skips = readSlowSkips(h.store, h.worktreeId);
   return skips.length === 0 ? null : skips.map((skip) => skip.reason).join("; ");
 };
+
+export const READY = "ready matches no file (slow.precondition.exists)";
+export const FAILING_UPPER = [
+  'import { expect, it } from "vitest";',
+  'it("fails", () => expect(1).toBe(2));',
+  "",
+].join("\n");
+
+/** Ready, run to idle (both slow files have results), then a revision removing `ready` and editing a fast source. */
+export async function ranThenUnready(upper?: string, options: OpenOptions = {}) {
+  const h = await open(
+    { exists: ["ready"] },
+    {
+      ...options,
+      setup: (h) => {
+        h.write("ready", "");
+        if (upper !== undefined) h.write(UPPER, upper);
+      },
+    },
+  );
+  expect(slowRuns(h)).toHaveLength(2);
+  rmSync(join(h.root, "ready"));
+  h.write("src/math.ts", "export const add = (a: number, b: number) => a + b; // edited\n");
+  await h.batch("src/math.ts", "ready");
+  await h.scheduler.idle();
+  return h;
+}
+
+/** A forced `run --all` over the unmet precondition: its checkpoint ends abandoned. */
+export async function forcedSkip(h: Harness) {
+  const checkpoint = await h.scheduler.requestFullSuite({ force: true });
+  await h.scheduler.idle();
+  const record = h.store.checkpoints.get(checkpoint.id);
+  expect(record?.end).toBe("abandoned");
+  return record;
+}
