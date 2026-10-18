@@ -27,6 +27,7 @@ import type {
 } from "../types/index.js";
 import { closureFor } from "./closure.js";
 import { changedAfter, registration, seesEveryChange } from "./registered.js";
+import { slot } from "./slots.js";
 
 /*
  * Task 001-91, lessons defect 16: whether the agent's changes reach a failure
@@ -121,7 +122,8 @@ export function attribute(
   const slow = worktreeSlowView(store, consumer.worktreeId);
   const failureKeys = readFailureKeys(store, consumer.worktreeId);
   const artifactOf = recordedArtifacts(store);
-  const before = from === null ? null : beforeEditsFor(store, consumer.worktreeId, from.since);
+  const before =
+    from === null ? null : beforeEditsFor(store, consumer.worktreeId, slot(consumer), from.since);
   return entries.map((entry) => {
     if (entry.kind === "fail-retired" || entry.to !== "fail") return entry;
     const load = loadOf(store, consumer.worktreeId, entry);
