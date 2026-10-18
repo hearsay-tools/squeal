@@ -127,18 +127,20 @@ export function tellRegistered(
   const next = parked === null ? fresh(revision, scanned) : back(parked, revision, scanned);
   writeSlot(store, registeredMetaKey(consumer.worktreeId), consumer, stored(next));
   // 011-18: the keys a first-seen failure's baseline is looked up at.
-  recordRegisteredKeys(store, consumer.worktreeId, next.since, registeredSinces(store, consumer));
+  recordRegisteredKeys(store, consumer.worktreeId, slot(consumer), {
+    resumed: parked !== null,
+    kept: registeredSlots(store, consumer.worktreeId, at),
+  });
   return parked === null ? null : { said: parked.said === true, uncovered: parked.uncovered ?? [] };
 }
 
-/** The revisions every registration and parked registration of `consumer`'s worktree starts after. */
-function registeredSinces(store: Store, consumer: Consumer): ReadonlySet<RevisionNumber> {
-  const { worktreeId } = consumer;
-  const values = [
-    ...Object.values(readAll(store, registeredMetaKey(worktreeId))),
-    ...Object.values(readAll(store, parkedMetaKey(worktreeId))),
-  ];
-  return new Set(values.flatMap((v) => toRegistration(v)?.since ?? []));
+/** The slots of the worktree's registrations and of its parked ones not expired `at` (S1). */
+function registeredSlots(store: Store, worktreeId: WorktreeId, at: EpochMs): ReadonlySet<string> {
+  const slots = new Set(Object.keys(readAll(store, registeredMetaKey(worktreeId))));
+  for (const [k, v] of Object.entries(readAll(store, parkedMetaKey(worktreeId)))) {
+    if (isRecord(v) && isNumber(v.leftTime) && v.leftTime >= at - CONSUMER_EXPIRY_MS) slots.add(k);
+  }
+  return slots;
 }
 
 function fresh(since: RevisionNumber, scanned: EpochMs | null): Registration {
