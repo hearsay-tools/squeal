@@ -908,39 +908,59 @@ function baselineFindings(store, worktreeId) {
 function registeredKeysMetaKey(worktreeId) {
   return worktreeMetaKey("registeredKeys", worktreeId);
 }
+var EMPTY = { snapshots: [], slots: {} };
+function toKeys(value) {
+  const keys = {};
+  if (!isRecord(value)) return keys;
+  for (const [file, key] of Object.entries(value)) if (typeof key === "string") keys[file] = key;
+  return keys;
+}
 function read2(store, worktreeId) {
   const raw = store.meta.get(registeredKeysMetaKey(worktreeId));
-  if (raw === null) return {};
+  if (raw === null) return EMPTY;
   try {
     const value = JSON.parse(raw);
-    if (!isRecord(value)) return {};
-    const out = {};
-    for (const [revision, keys] of Object.entries(value)) {
-      if (!isRecord(keys)) continue;
-      const byFile2 = {};
-      for (const [file, key] of Object.entries(keys))
-        if (typeof key === "string") byFile2[file] = key;
-      out[revision] = byFile2;
+    if (!isRecord(value) || !Array.isArray(value.snapshots) || !isRecord(value.slots)) return EMPTY;
+    const snapshots = value.snapshots.map(toKeys);
+    const slots = {};
+    for (const [slot2, at2] of Object.entries(value.slots)) {
+      if (typeof at2 === "number" && snapshots[at2] !== void 0) slots[slot2] = at2;
     }
-    return out;
+    return { snapshots, slots };
   } catch {
-    return {};
+    return EMPTY;
   }
 }
-function recordRegisteredKeys(store, worktreeId, revision, kept) {
+var identity = (keys) => JSON.stringify(Object.entries(keys).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0));
+function recordRegisteredKeys(store, worktreeId, slot2, { resumed, kept }) {
   const recorded = read2(store, worktreeId);
-  const next = {};
-  for (const [at2, keys] of Object.entries(recorded)) if (kept.has(Number(at2))) next[at2] = keys;
-  if (next[revision] === void 0) {
+  const named2 = /* @__PURE__ */ new Map();
+  for (const [at2, index] of Object.entries(recorded.slots)) {
+    const keys = recorded.snapshots[index];
+    if (keys !== void 0 && kept.has(at2) && (resumed || at2 !== slot2)) named2.set(at2, keys);
+  }
+  if (!resumed) {
     const keys = {};
     for (const row of store.testFileKeys.list(worktreeId)) {
       if (row.key !== null) keys[testFileId(row.testFile)] = row.key;
     }
-    next[revision] = keys;
+    named2.set(slot2, keys);
   }
-  store.meta.set(registeredKeysMetaKey(worktreeId), JSON.stringify(next));
+  const snapshots = [];
+  const indexOf = /* @__PURE__ */ new Map();
+  const slots = {};
+  for (const [at2, keys] of named2) {
+    const id = identity(keys);
+    let index = indexOf.get(id);
+    if (index === void 0) {
+      index = snapshots.push(keys) - 1;
+      indexOf.set(id, index);
+    }
+    slots[at2] = index;
+  }
+  store.meta.set(registeredKeysMetaKey(worktreeId), JSON.stringify({ snapshots, slots }));
 }
-function beforeEditsFor(store, worktreeId, since) {
+function beforeEditsFor(store, worktreeId, slot2, since) {
   let keys;
   const results = /* @__PURE__ */ new Map();
   let none;
@@ -967,7 +987,11 @@ function beforeEditsFor(store, worktreeId, since) {
     return byCheck;
   };
   return (check) => {
-    keys ??= read2(store, worktreeId)[since] ?? {};
+    if (keys === void 0) {
+      const recorded = read2(store, worktreeId);
+      const index = recorded.slots[slot2];
+      keys = (index === void 0 ? void 0 : recorded.snapshots[index]) ?? {};
+    }
     const key = keys[testFileId(testFileOf(check))];
     return (key === void 0 ? void 0 : atKey2(key).get(checkIdentity(check))) ?? noneAt();
   };
@@ -3688,16 +3712,18 @@ function tellRegistered(store, consumer, revision, { at: at2, scanned }) {
   const parked = unpark(store, consumer, at2);
   const next = parked === null ? fresh(revision, scanned) : back(parked, revision, scanned);
   writeSlot(store, registeredMetaKey(consumer.worktreeId), consumer, stored(next));
-  recordRegisteredKeys(store, consumer.worktreeId, next.since, registeredSinces(store, consumer));
+  recordRegisteredKeys(store, consumer.worktreeId, slot(consumer), {
+    resumed: parked !== null,
+    kept: registeredSlots(store, consumer.worktreeId, at2)
+  });
   return parked === null ? null : { said: parked.said === true, uncovered: parked.uncovered ?? [] };
 }
-function registeredSinces(store, consumer) {
-  const { worktreeId } = consumer;
-  const values = [
-    ...Object.values(readAll(store, registeredMetaKey(worktreeId))),
-    ...Object.values(readAll(store, parkedMetaKey(worktreeId)))
-  ];
-  return new Set(values.flatMap((v) => toRegistration(v)?.since ?? []));
+function registeredSlots(store, worktreeId, at2) {
+  const slots = new Set(Object.keys(readAll(store, registeredMetaKey(worktreeId))));
+  for (const [k, v] of Object.entries(readAll(store, parkedMetaKey(worktreeId)))) {
+    if (isRecord(v) && isNumber2(v.leftTime) && v.leftTime >= at2 - CONSUMER_EXPIRY_MS) slots.add(k);
+  }
+  return slots;
 }
 function fresh(since, scanned) {
   return scanned === null ? { since, gaps: [] } : { since, gaps: [], scanned };
@@ -3801,7 +3827,7 @@ function attribute(store, consumer, entries, revision) {
   const slow = worktreeSlowView(store, consumer.worktreeId);
   const failureKeys = readFailureKeys(store, consumer.worktreeId);
   const artifactOf = recordedArtifacts2(store);
-  const before = from === null ? null : beforeEditsFor(store, consumer.worktreeId, from.since);
+  const before = from === null ? null : beforeEditsFor(store, consumer.worktreeId, slot(consumer), from.since);
   return entries.map((entry3) => {
     if (entry3.kind === "fail-retired" || entry3.to !== "fail") return entry3;
     const load = loadOf(store, consumer.worktreeId, entry3);
@@ -3869,8 +3895,8 @@ function withFlaky(store, worktreeId, entries) {
   const rows = /* @__PURE__ */ new Map();
   const runOf = (check, key) => {
     if (!rows.has(key)) rows.set(key, store.results.byKey(key));
-    const identity = checkIdentity(check);
-    return rows.get(key)?.find((r) => checkIdentity(r.check) === identity)?.provenance.runId;
+    const identity2 = checkIdentity(check);
+    return rows.get(key)?.find((r) => checkIdentity(r.check) === identity2)?.provenance.runId;
   };
   return entries.map((entry3) => {
     if (entry3.kind === "fail-retired") return entry3;
