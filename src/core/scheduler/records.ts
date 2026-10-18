@@ -88,8 +88,9 @@ export function recordsForFile(input: FileRecordsInput): ResultRecord[] {
 
   // Task 001-361: the runner marks no error as a hook's, but a hook runs only
   // once the file loaded, and then its tests report (as skipped when a
-  // `beforeAll` threw). A file-level error with no test reported is a load error.
-  const phase: CheckError["phase"] = ran.size > 0 ? "setup" : "load";
+  // `beforeAll` threw). A file-level error with no test reported is a load error;
+  // one stored after they reported is an error after its tests ran (task 011-19).
+  const phase: CheckError["phase"] = ran.size > 0 ? "after-tests" : "load";
   const errors = report.fileErrors
     .filter((e) => e.testFile.project === ref.project && e.testFile.path === ref.path)
     .flatMap((e) => e.errors.map((error): CheckError => ({ ...error, phase })));

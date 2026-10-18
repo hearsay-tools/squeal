@@ -143,6 +143,19 @@ function where(location: SourceLocation | null): string {
 }
 
 /**
+ * The summary's opening words by `CheckError.phase`: a project's global setup
+ * failed (task 001-382); a file-level error came after the file's tests
+ * reported, never worded `setup failed` or `did not load` (spec 011 C5 as
+ * amended 2026-10-18, gh-20, task 011-19). A file-level `setup` stored before
+ * 011-19 is re-described nowhere, so it keeps its words.
+ */
+const PHASE_PREFIX: Readonly<Record<NonNullable<CheckError["phase"]>, string>> = {
+  load: "",
+  "after-tests": "error after its tests ran: ",
+  setup: "setup failed: ",
+};
+
+/**
  * Fingerprint and concise summary of a failed check.
  *
  * Spec 001 D6: "a **diagnostic fingerprint** (normalized first error line plus
@@ -165,7 +178,7 @@ export function describeFailure(
   const location = first.location ?? fallback;
   const more = errors.length - 1;
   const text = withCauses(
-    `${first.phase === "setup" ? "setup failed: " : ""}${withCode(line === "" ? first.name : line, first.code)}`,
+    `${PHASE_PREFIX[first.phase ?? "load"]}${withCode(line === "" ? first.name : line, first.code)}`,
     first.causes ?? [],
   );
   const summary = more > 0 ? `${text} (${more} more error${more === 1 ? "" : "s"})` : text;

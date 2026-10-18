@@ -165,7 +165,7 @@ describe("recordsForFile", () => {
     ]);
   });
 
-  it("words a file-level error after the file's tests reported as setup failed (task 001-361)", () => {
+  it("words a file-level error after the file's tests reported as one after its tests ran (task 011-19)", () => {
     const hookError: CheckError = { ...importError, message: "fetch failed" };
     const records = recordsForFile({
       ref: file,
@@ -181,8 +181,8 @@ describe("recordsForFile", () => {
       describe: describeFailure,
     });
     const fileLevel = records.find((r) => r.check.kind === "file");
-    expect(fileLevel?.errors).toEqual([{ ...hookError, phase: "setup" }]);
-    expect(fileLevel?.summary).toBe("setup failed: fetch failed");
+    expect(fileLevel?.errors).toEqual([{ ...hookError, phase: "after-tests" }]);
+    expect(fileLevel?.summary).toBe("error after its tests ran: fetch failed");
   });
 
   it("records a pass for the file-level check of a file that loaded with no tests (S1)", () => {

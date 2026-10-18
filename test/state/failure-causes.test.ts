@@ -80,10 +80,15 @@ describe("a stored error keeps its code and cause (task 001-361)", () => {
     ).toBe("Cannot find module './gone.js' (ERR_MODULE_NOT_FOUND)");
   });
 
-  it("words a setup error as setup failed, and a load error as it is", () => {
-    const hook = error("fetch failed", { causes: [refused], phase: "setup" });
-    expect(describeFailure([hook], null).summary).toBe(
+  it("words a global setup error as setup failed, one after a file's tests as such, a load error as it is", () => {
+    const setup = error("fetch failed", { causes: [refused], phase: "setup" });
+    expect(describeFailure([setup], null).summary).toBe(
       "setup failed: fetch failed; cause: connect ECONNREFUSED 127.0.0.1:3000",
+    );
+    // Task 011-19 (gh-20): never `setup failed` once the file's tests reported.
+    const teardown = error("ENOTEMPTY, Directory not empty", { phase: "after-tests" });
+    expect(describeFailure([teardown], null).summary).toBe(
+      "error after its tests ran: ENOTEMPTY, Directory not empty",
     );
     expect(describeFailure([error("boom", { phase: "load" })], null).summary).toBe("boom");
   });
