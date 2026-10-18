@@ -51,13 +51,11 @@ const slowPending: StatusSnapshot = {
     pending: 1,
     notRun: 0,
     currentAt: null,
-    artifact: [],
-    sourcesChangedSince: false,
     activity: null,
   },
 };
-/** Row 004-76: current against an artifact, the sources changed since or not. */
-const slowCurrent = (sourcesChangedSince: boolean): StatusSnapshot => ({
+/** The slow tier current at revision 2 (004-81: no artifact or source change is named). */
+const slowCurrent = (): StatusSnapshot => ({
   ...settled,
   slowTier: {
     testFiles: 1,
@@ -65,8 +63,6 @@ const slowCurrent = (sourcesChangedSince: boolean): StatusSnapshot => ({
     pending: 0,
     notRun: 0,
     currentAt: 2,
-    artifact: ["plugins/**"],
-    sourcesChangedSince,
     activity: null,
   },
 });
@@ -104,8 +100,7 @@ const variants: [string, StatusSnapshot, object][] = [
   ["1 unknown test file without checks", withoutChecks(0, 1), { verdict: "unknown" }],
   ["1 pending and 1 unknown test file without checks", withoutChecks(1, 1), { verdict: "unknown" }],
   ["slow tier pending", slowPending, { slow: false, verdict: "unknown" }],
-  ["slow tier current", slowCurrent(false), { slow: true, verdict: "pass" }],
-  ["slow tier older than its sources", slowCurrent(true), { slow: false }],
+  ["slow tier current", slowCurrent(), { slow: true, verdict: "pass" }],
 ];
 
 /** The pending, stale and unknown counts a snapshot holds, test files without checks included. */

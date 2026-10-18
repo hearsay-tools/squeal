@@ -39,15 +39,12 @@ export async function reconcileBatch(
 }> {
   const { keys, hasher, store, worktreeId } = context;
   let diff = await diffBatch(batch, keys.cache, hasher);
-  const ignored = new Set<RelativePath>();
   if (batch.trigger !== "watch") {
-    for (const path of await keys.ignoredCandidates()) ignored.add(path);
     const moved = diff.changes.length === 0 ? await keys.lockfileCandidates() : [];
-    diff = await diffBeside(context, diff, batch, [...moved, ...ignored]);
+    diff = await diffBeside(context, diff, batch, moved);
   }
   const head = diff.changes.length > 0 ? await context.head() : null;
-  // The ignored inputs key slow results, not transforms: no touch of the runner (004-44).
-  const touched = touchedUnchanged(diff, keys.cache).filter((path) => !ignored.has(path));
+  const touched = touchedUnchanged(diff, keys.cache);
   // Nothing to write takes no write lock: an idle daemon's pass every 30 s (task 001-412).
   if (diff.changes.length === 0 && diff.updates.length === 0) {
     if (batch.trigger !== "watch") await recordHeadMove(context, ledger);

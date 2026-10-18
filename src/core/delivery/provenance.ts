@@ -92,30 +92,6 @@ export function seenLine(entry: TransitionEntry, revision: number): string {
   return `${text}${joined}${parts.filter((p) => p !== null).join(", ")}`;
 }
 
-/**
- * Spec 004 D8: a slow failure's provenance, in place of `seenLine` and the
- * attribution line: the slow tier's run at a revision and the artifact that
- * run was declared to test, since a slow file tests a build output its
- * closure does not reach; "unknown" when its declaration was not recorded.
- */
-export function slowSeenLine(entry: TransitionEntry, revision: number): string {
-  const artifact = entry.slowArtifact;
-  const from = inheritedFrom(entry);
-  const { text, joined } = changeBefore(entry);
-  const parts = [
-    from === null
-      ? `slow tier, Squeal's run saw it at revision ${entry.observedAt}`
-      : `slow tier, Squeal's run in ${from} saw it, inherited at revision ${entry.observedAt}`,
-    artifact === null
-      ? "declared artifact unknown"
-      : artifact === undefined || artifact.length === 0
-        ? "against no declared artifact"
-        : `against ${artifact.join(", ")} as of revision ${entry.observedAt}`,
-    validityText(entry, revision),
-  ];
-  return `${text}${joined}${parts.filter((p) => p !== null).join(", ")}`;
-}
-
 /** Provenance of a recovery that is not own and current; `null` when it is. */
 export function recoveryProvenance(entry: TransitionEntry, revision: number): string | null {
   const parts: string[] = [];

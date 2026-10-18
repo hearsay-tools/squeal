@@ -6,7 +6,7 @@ import {
   headerLines,
   MESSAGE_CAP_CHARS,
 } from "../../src/core/delivery/index.js";
-import { publishSlowActivity, recordSlowArtifacts } from "../../src/core/slow/state.js";
+import { publishSlowActivity } from "../../src/core/slow/state.js";
 import { clockText, readHeader } from "../../src/core/state/index.js";
 import { readStatus } from "../../src/core/status/index.js";
 import type {
@@ -21,15 +21,12 @@ import {
   inTurn,
   keys,
   NOW,
-  ran,
-  revise,
   SLOW_A,
   SLOW_B,
   SLOW_C,
   SLOW_D,
   SLOW_POLICY,
   seed,
-  skip,
   slowLine,
   states,
   status,
@@ -37,10 +34,10 @@ import {
 
 /*
  * Spec 004 D8: headers and `squeal status` carry one slow-tier line when the
- * repository declares slow files, in each of its states: current against the
- * artifact at a revision (sources changed since or not), running since a
- * time with the last run's duration, pending with the daemon's reason, and
- * not run at this revision.
+ * repository declares slow files, in each of its states: current at a
+ * revision, running since a time with the last run's duration, pending with
+ * the daemon's reason, and not run at this revision. No artifact or source
+ * change is named (004 D8 as amended 2026-10-18, task 004-81).
  */
 
 /** The stored closure of `testFile` names `paths`, as its last keying found it. */
@@ -63,129 +60,40 @@ describe("the slow-tier line (spec 004 D8)", () => {
     expect(slowLine(status(s))).toBeUndefined();
   });
 
-  it("says current against the artifact at a revision, and that sources changed since", () => {
+  it("says current at a revision, and names no artifact or source change since", () => {
     const s = seed(SLOW_POLICY, { revisions: 3 });
     closes(s.store, FAST, [FAST, "src/a.ts"]);
     states(s.store, s.repo, [{ observedAt: 2 }, { observedAt: 2 }, {}], [SLOW_A, SLOW_B, FAST]);
-    ran(s.store, s.repo, [SLOW_A, SLOW_B]);
     const header = readHeader(s.store, s.repo.mainId);
-    expect(header.slowTier).toMatchObject({
+    expect(header.slowTier).toEqual({
       testFiles: 2,
       current: 2,
       pending: 0,
       notRun: 0,
       currentAt: 2,
-      artifact: ["plugins/**"],
-      sourcesChangedSince: true,
+      activity: null,
     });
     expect(header.slowPending).toEqual({ testFiles: 0, checks: 0, testFilesWithoutChecks: 0 });
     expect(slowLine(status(s))).toBe(
-      "Slow tier: 2 test files; 2 current against plugins/** as of revision 2; the source changes since are not in it, so these files have not tested them. Squeal runs them when the agent pauses.",
-    );
-  });
-
-  it("does not say sources changed when only the artifact changed since", () => {
-    const s = seed(SLOW_POLICY, { revisions: 3, changes: ["plugins/claude-code/dist/a.js"] });
-    states(s.store, s.repo, [{ observedAt: 2 }, { observedAt: 2 }], [SLOW_A, SLOW_B]);
-    ran(s.store, s.repo, [SLOW_A, SLOW_B]);
-    expect(slowLine(status(s))).toBe(
-      "Slow tier: 2 test files; 2 current against plugins/** as of revision 2. Squeal runs them when the agent pauses.",
-    );
-  });
-
-  it("does not say sources changed when only test files changed since (lessons defect 8a)", () => {
-    const s = seed(SLOW_POLICY, { revisions: 2, changes: ["plugins/a.js"] });
-    revise(s.store, s.repo, [SLOW_A, FAST, "test/e2e/fixtures/app.json"]);
-    closes(s.store, SLOW_A, [SLOW_A, FAST, "test/e2e/fixtures/app.json"]);
-    states(s.store, s.repo, [{ observedAt: 2 }, { observedAt: 2 }], [SLOW_A, SLOW_B]);
-    ran(s.store, s.repo, [SLOW_A, SLOW_B]);
-    expect(readHeader(s.store, s.repo.mainId).slowTier?.sourcesChangedSince).toBe(false);
-    expect(slowLine(status(s))).toBe(
-      "Slow tier: 2 test files; 2 current against plugins/** as of revision 2. Squeal runs them when the agent pauses.",
+      "Slow tier: 2 test files; 2 current at revision 2. Squeal runs them when the agent pauses.",
     );
   });
 
   it("names every revision the current results ran at (lessons defect 8b)", () => {
     const s = seed(SLOW_POLICY, { revisions: 2, changes: ["plugins/a.js"] });
     states(s.store, s.repo, [{ observedAt: 1 }, { observedAt: 2 }], [SLOW_A, SLOW_B]);
-    ran(s.store, s.repo, [SLOW_A, SLOW_B]);
     expect(readHeader(s.store, s.repo.mainId).slowTier).toMatchObject({
       currentAt: 1,
       currentUpTo: 2,
     });
     expect(slowLine(status(s))).toBe(
-      "Slow tier: 2 test files; 2 current against plugins/** as of revisions 1 to 2. Squeal runs them when the agent pauses.",
-    );
-  });
-
-  it("says no sources changed for inherited results in a fresh worktree (lessons defect 8d)", () => {
-    // Its first listing makes no revision: the start walk seeds the files beneath linked directories (001-166).
-    const s = seed(SLOW_POLICY, { revisions: 0 });
-    const inherited = { kind: "inherited", worktreeId: "other", commit: "c0" } as const;
-    states(
-      s.store,
-      s.repo,
-      [
-        { observedAt: 0, origin: inherited },
-        { observedAt: 0, origin: inherited },
-      ],
-      [SLOW_A, SLOW_B],
-    );
-    recordSlowArtifacts(
-      s.store,
-      "other",
-      new Map([SLOW_A, SLOW_B].map((p) => [`key-${p}`, ["plugins/**"]])),
-    );
-    expect(slowLine(status(s))).toBe(
-      "Slow tier: 2 test files; 2 current against plugins/** as of revision 0. Squeal runs them when the agent pauses.",
-    );
-  });
-
-  it.each([
-    ["an agent's add in a watch batch", "watch"],
-    ["an add made while no daemon ran", "start"],
-    ["an add only interval reconciliation found", "interval"],
-  ] as const)(
-    "counts %s at a worktree's first revision as sources changed (review wave 4 B4, wave 4.5 B2)",
-    (_, trigger) => {
-      const s = seed(SLOW_POLICY, { revisions: 0 });
-      states(s.store, s.repo, [{ observedAt: 0 }, { observedAt: 0 }], [SLOW_A, SLOW_B]);
-      ran(s.store, s.repo, [SLOW_A, SLOW_B]);
-      revise(s.store, s.repo, ["src/new.ts"], { added: true, trigger });
-      // Its importer's edit keyed it into a closure (lessons defect 18).
-      closes(s.store, FAST, [FAST, "src/a.ts", "src/new.ts"]);
-      expect(readHeader(s.store, s.repo.mainId).slowTier).toMatchObject({
-        currentAt: 0,
-        sourcesChangedSince: true,
-      });
-      expect(slowLine(status(s))).toBe(
-        "Slow tier: 2 test files; 2 current against plugins/** as of revision 0; the source changes since are not in it, so these files have not tested them. Squeal runs them when the agent pauses.",
-      );
-    },
-  );
-
-  it("counts adds in a later interval pass", () => {
-    const s = seed(SLOW_POLICY, { revisions: 1, changes: ["plugins/a.js"] });
-    states(s.store, s.repo, [{ observedAt: 1 }, { observedAt: 1 }], [SLOW_A, SLOW_B]);
-    ran(s.store, s.repo, [SLOW_A, SLOW_B]);
-    revise(s.store, s.repo, ["src/new.ts"], { added: true, trigger: "interval" });
-    closes(s.store, FAST, [FAST, "src/a.ts", "src/new.ts"]);
-    expect(readHeader(s.store, s.repo.mainId).slowTier?.sourcesChangedSince).toBe(true);
-  });
-
-  it("says when no artifact is declared", () => {
-    const s = seed({ slow: SLOW_POLICY.slow }, { revisions: 2 });
-    states(s.store, s.repo, [{ observedAt: 2 }, { observedAt: 2 }], [SLOW_A, SLOW_B]);
-    ran(s.store, s.repo, [SLOW_A, SLOW_B], []);
-    expect(slowLine(status(s))).toBe(
-      "Slow tier: 2 test files; 2 current at revision 2, against no declared artifact. Squeal runs them when the agent pauses.",
+      "Slow tier: 2 test files; 2 current at revisions 1 to 2. Squeal runs them when the agent pauses.",
     );
   });
 
   it("says running since HH:MM with the last run's duration", () => {
     const s = seed();
     states(s.store, s.repo, [{ observedAt: 2 }], [SLOW_B]);
-    ran(s.store, s.repo, [SLOW_B]);
     keys(s.store, s.repo, { [SLOW_A]: "running" });
     const since = NOW - 30_000;
     publishSlowActivity(s.store, s.repo.mainId, {
@@ -195,7 +103,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
       lastDurationMs: 72_000,
     });
     expect(slowLine(status(s))).toBe(
-      `Slow tier: 2 test files; 1 current against plugins/** as of revision 2; running ${SLOW_A} since ${clockText(since)} (last run 1 min 12 s). Squeal runs them when the agent pauses; \`squeal run --slow\` runs them now.`,
+      `Slow tier: 2 test files; 1 current at revision 2; running ${SLOW_A} since ${clockText(since)} (last run 1 min 12 s). Squeal runs them when the agent pauses; \`squeal run --slow\` runs them now.`,
     );
   });
 
@@ -234,7 +142,6 @@ describe("the slow-tier line (spec 004 D8)", () => {
   it("names only the files still running, and counts the queued ones as pending (004-35)", () => {
     const s = seed();
     states(s.store, s.repo, [{ observedAt: 2 }], [SLOW_A]);
-    ran(s.store, s.repo, [SLOW_A]);
     keys(s.store, s.repo, { [SLOW_B]: "running", [SLOW_C]: "running", [SLOW_D]: "queued" });
     const since = NOW - 30_000;
     publishSlowActivity(s.store, s.repo.mainId, {
@@ -252,7 +159,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
       lastDurationMs: 12_000,
     });
     expect(slowLine(status(s))).toBe(
-      `Slow tier: 4 test files; 1 current against plugins/** as of revision 2; 3 pending, running 2 slow files since ${clockText(since)}: ${SLOW_B} and ${SLOW_C} (longest last run 12 s). Squeal runs them when the agent pauses; \`squeal run --slow\` runs them now.`,
+      `Slow tier: 4 test files; 1 current at revision 2; 3 pending, running 2 slow files since ${clockText(since)}: ${SLOW_B} and ${SLOW_C} (longest last run 12 s). Squeal runs them when the agent pauses; \`squeal run --slow\` runs them now.`,
     );
   });
 
@@ -275,7 +182,6 @@ describe("the slow-tier line (spec 004 D8)", () => {
   it("never says a file runs that is not running: its run ended since (review wave 2, B1)", () => {
     const s = seed();
     states(s.store, s.repo, [{ observedAt: 2 }], [SLOW_A]);
-    ran(s.store, s.repo, [SLOW_A]);
     keys(s.store, s.repo, { [SLOW_B]: "queued" });
     publishSlowActivity(s.store, s.repo.mainId, {
       kind: "running",
@@ -285,7 +191,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
     });
     expect(readHeader(s.store, s.repo.mainId).slowTier?.activity).toBeNull();
     expect(slowLine(status(s))).toBe(
-      "Slow tier: 2 test files; 1 current against plugins/** as of revision 2; 1 pending. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.",
+      "Slow tier: 2 test files; 1 current at revision 2; 1 pending. Squeal runs them when the agent pauses; `squeal run --slow` runs them now.",
     );
   });
 
@@ -331,49 +237,6 @@ describe("the slow-tier line (spec 004 D8)", () => {
     states(s.store, s.repo, [{ validity: "stale", observedAt: 1 }], [SLOW_A]);
     expect(slowLine(status(s))).toBe(
       "Slow tier: 2 test files; 2 not run at revision 2. Squeal has not queued them; `squeal run --slow` runs them now.",
-    );
-  });
-
-  it("names a skip's reason in place of not run, and claims no run for it (004 D8 as amended 2026-10-17)", () => {
-    const s = seed();
-    states(s.store, s.repo, [{ validity: "stale", observedAt: 1 }], [SLOW_A]);
-    const reason = "dist/index.js matches no file (slow.precondition.exists)";
-    skip(s.store, s.repo.mainId, reason, [SLOW_A, SLOW_B]);
-    expect(slowLine(status(s))).toBe(
-      `Slow tier: 2 test files; 2 not run at revision 2, skipped: ${reason}. Squeal runs them once the precondition holds; the next revision or \`squeal run --slow\` checks it again.`,
-    );
-    const on = seed({ ...SLOW_POLICY, stop: { requireSlowSuite: true } });
-    skip(on.store, on.repo.mainId, reason, [SLOW_A, SLOW_B]);
-    expect(slowLine(status(on))).toContain(
-      "Squeal runs them once the precondition holds, and Stop holds the agent once naming it;",
-    );
-    // Every skipped file queued again: the precondition is checked again, the skip is old news.
-    const queued = seed();
-    skip(queued.store, queued.repo.mainId, reason, [SLOW_A, SLOW_B]);
-    keys(queued.store, queued.repo, { [SLOW_A]: "queued", [SLOW_B]: "queued" });
-    expect(slowLine(status(queued))).not.toContain("skipped");
-  });
-
-  it("counts a skipped file as not run though its key has a current result (review wave-8.1 B1)", () => {
-    const s = seed();
-    states(s.store, s.repo, [{ observedAt: 1 }, { observedAt: 1 }], [SLOW_A, SLOW_B]);
-    expect(readHeader(s.store, s.repo.mainId).slowTier).toMatchObject({ current: 2, notRun: 0 });
-    const reason = "dist/index.js matches no file (slow.precondition.exists)";
-    skip(s.store, s.repo.mainId, reason, [SLOW_A]);
-    const tier = readHeader(s.store, s.repo.mainId).slowTier;
-    expect(tier).toMatchObject({ current: 1, pending: 0, notRun: 1, skipped: reason });
-    // One skipped file queued again, the other still held: the skip stands for the other.
-    keys(s.store, s.repo, { [SLOW_A]: "queued" });
-    expect(readHeader(s.store, s.repo.mainId).slowTier).toMatchObject({ pending: 1, current: 1 });
-    skip(s.store, s.repo.mainId, reason, [SLOW_A, SLOW_B]);
-    expect(readHeader(s.store, s.repo.mainId).slowTier).toMatchObject({
-      pending: 1,
-      notRun: 1,
-      skipped: reason,
-    });
-    keys(s.store, s.repo, { [SLOW_A]: null });
-    expect(slowLine(status(s))).toBe(
-      `Slow tier: 2 test files; 2 not run at revision 2, skipped: ${reason}. Squeal runs them once the precondition holds; the next revision or \`squeal run --slow\` checks it again.`,
     );
   });
 

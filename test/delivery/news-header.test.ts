@@ -24,12 +24,10 @@ const slowTier: SlowTierState = {
   pending: 0,
   notRun: 0,
   currentAt: 180,
-  artifact: ["dist/**"],
-  sourcesChangedSince: false,
   activity: null,
 };
 const SLOW_LINE =
-  "Slow tier: 2 test files; 2 current against dist/** as of revision 180. Squeal runs them when the agent pauses.";
+  "Slow tier: 2 test files; 2 current at revision 180. Squeal runs them when the agent pauses.";
 
 const header: StatusHeader = {
   revision: 184,

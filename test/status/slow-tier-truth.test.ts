@@ -7,14 +7,12 @@ import {
   inTurn,
   keys,
   NOW,
-  ran,
   type Seeded,
   SLOW_A,
   SLOW_B,
   SLOW_POLICY,
   seed,
   slowLine,
-  states,
   status,
 } from "./slow-tier-seed.js";
 
@@ -28,7 +26,7 @@ import {
 const RUN_SLOW = "Squeal runs them when the agent pauses; `squeal run --slow` runs them now.";
 
 /** Appends one revision changing `path` from `from` to `to` (`null`: absent). */
-function change(s: Seeded, path: string, from: FileHash | null, to: FileHash | null): void {
+function _change(s: Seeded, path: string, from: FileHash | null, to: FileHash | null): void {
   s.store.revisions.append({
     worktreeId: s.repo.mainId,
     createdAt: 9,
@@ -40,7 +38,7 @@ function change(s: Seeded, path: string, from: FileHash | null, to: FileHash | n
 }
 
 /** The stored closure of `testFile` names `paths`, as its last keying found it. */
-function closes(store: Store, testFile: string, paths: string[]): void {
+function _closes(store: Store, testFile: string, paths: string[]): void {
   const ref = { project: "", path: testFile };
   const closure = {
     testFile: ref,
@@ -116,143 +114,5 @@ describe("the slow-tier line after a daemon restart (lessons defect 12)", () => 
     expect(slowLine(status(s))).toContain(
       `; 2 pending, last reported running ${SLOW_A} since ${clockText(before)} (no earlier run).`,
     );
-  });
-});
-
-describe("sources changed since, by content (lessons defect 15)", () => {
-  /** Both slow files current at revision 2 against `plugins/**`. */
-  function current(): Seeded {
-    const s = seed(SLOW_POLICY, { revisions: 2, changes: ["plugins/a.js"] });
-    states(s.store, s.repo, [{ observedAt: 2 }, { observedAt: 2 }], [SLOW_A, SLOW_B]);
-    ran(s.store, s.repo, [SLOW_A, SLOW_B]);
-    closes(s.store, FAST, [FAST, "src/paths.ts"]);
-    return s;
-  }
-  const clean = `Slow tier: 2 test files; 2 current against plugins/** as of revision 2. Squeal runs them when the agent pauses.`;
-
-  it("says no source changed after a revert to the tested bytes", () => {
-    const s = current();
-    change(s, "src/paths.ts", "h-tested", "h-edited");
-    change(s, "src/paths.ts", "h-edited", "h-tested");
-    expect(readHeader(s.store, s.repo.mainId).slowTier?.sourcesChangedSince).toBe(false);
-    expect(slowLine(status(s))).toBe(clean);
-  });
-
-  it("says no source changed for a file made and removed since", () => {
-    const s = current();
-    change(s, "test/fixtures/node-test/.tmp/x/a.js", null, "h1");
-    change(s, "test/fixtures/node-test/.tmp/x/a.js", "h1", null);
-    expect(slowLine(status(s))).toBe(clean);
-  });
-
-  it("never takes squeal.config.json for a source of the artifact", () => {
-    const s = current();
-    change(s, "squeal.config.json", "h-config", "h-config-2");
-    expect(slowLine(status(s))).toBe(clean);
-  });
-
-  it("says sources changed when an edit ends on other bytes than the tested ones", () => {
-    const s = current();
-    change(s, "src/paths.ts", "h-tested", "h-edited");
-    change(s, "src/paths.ts", "h-edited", "h-edited-again");
-    expect(slowLine(status(s))).toBe(
-      `Slow tier: 2 test files; 2 current against plugins/** as of revision 2; the source changes since are not in it, so these files have not tested them. Squeal runs them when the agent pauses.`,
-    );
-  });
-});
-
-describe("which changed paths are sources (lessons defect 18)", () => {
-  const FIXTURE = "test/fixtures/node-test/README.md";
-  // This repository's shape: fast tests declare their fixtures, the e2e its build output.
-  const policy = {
-    ...SLOW_POLICY,
-    inputs: { ...SLOW_POLICY.inputs, "src/**/*.test.ts": ["test/fixtures/**"] },
-  };
-
-  /** Both slow files current at revision 2 against `plugins/**`; the e2e reads only it. */
-  function current(): Seeded {
-    const s = seed(policy, { revisions: 2, changes: ["plugins/a.js"] });
-    states(s.store, s.repo, [{ observedAt: 2 }, { observedAt: 2 }], [SLOW_A, SLOW_B]);
-    ran(s.store, s.repo, [SLOW_A, SLOW_B]);
-    closes(s.store, FAST, [FAST, "src/a.ts", FIXTURE]);
-    closes(s.store, SLOW_A, [SLOW_A, "test/e2e/helpers.ts", "src/harness.ts", "plugins/a.js"]);
-    closes(s.store, SLOW_B, [SLOW_B, "plugins/a.js"]);
-    return s;
-  }
-  const clean = `Slow tier: 2 test files; 2 current against plugins/** as of revision 2. Squeal runs them when the agent pauses.`;
-
-  it.each([
-    ["a fast test's declared fixture", FIXTURE],
-    ["a fixture no closure names yet", "test/fixtures/vitest/dogfood3.md"],
-    ["a doc", "docs/board.md"],
-  ])("leaves the clause off for %s", (_, path) => {
-    const s = current();
-    change(s, path, "h-tested", "h-edited");
-    expect(readHeader(s.store, s.repo.mainId).slowTier?.sourcesChangedSince).toBe(false);
-    expect(slowLine(status(s))).toBe(clean);
-  });
-
-  it.each([
-    ["only a fast test's closure names, as for an e2e that reads only the build", "src/a.ts"],
-    ["a slow file's closure names", "src/harness.ts"],
-  ])("says sources changed for a path %s", (_, path) => {
-    const s = current();
-    change(s, path, "h-tested", "h-edited");
-    expect(slowLine(status(s))).toBe(
-      `Slow tier: 2 test files; 2 current against plugins/** as of revision 2; the source changes since are not in it, so these files have not tested them. Squeal runs them when the agent pauses.`,
-    );
-  });
-
-  it("leaves the clause off when a closure's source reverted and only a fixture still differs", () => {
-    const s = current();
-    change(s, "src/a.ts", "h-tested", "h-edited");
-    change(s, FIXTURE, "h-tested", "h-edited");
-    change(s, "src/a.ts", "h-edited", "h-tested");
-    expect(slowLine(status(s))).toBe(clean);
-  });
-});
-
-describe("a broad fast declaration keeps the sources other files load (review wave 6, S1)", () => {
-  const PLUGIN = "test/harness/plugin.test.ts";
-  const FIXTURE = "test/fixtures/node-test/README.md";
-  // This repository's shape: a fast test declares `src/**/*.ts` beside its fixtures.
-  const policy = {
-    ...SLOW_POLICY,
-    inputs: { ...SLOW_POLICY.inputs, [PLUGIN]: ["src/**/*.ts", "test/fixtures/**"] },
-  };
-
-  /** Both slow files current at revision 2; the stored closures merge imports and declared inputs. */
-  function current(): Seeded {
-    const s = seed(policy, { revisions: 2, changes: ["plugins/a.js"] });
-    states(s.store, s.repo, [{ observedAt: 2 }, { observedAt: 2 }], [SLOW_A, SLOW_B]);
-    ran(s.store, s.repo, [SLOW_A, SLOW_B]);
-    keys(s.store, s.repo, { [PLUGIN]: null });
-    closes(s.store, FAST, [FAST, "src/a.ts"]);
-    closes(s.store, PLUGIN, [PLUGIN, "src/a.ts", "src/entry.ts", "src/harness.ts", FIXTURE]);
-    closes(s.store, SLOW_A, [SLOW_A, "src/harness.ts", "plugins/a.js"]);
-    closes(s.store, SLOW_B, [SLOW_B, "plugins/a.js"]);
-    return s;
-  }
-  const clean = `Slow tier: 2 test files; 2 current against plugins/** as of revision 2. Squeal runs them when the agent pauses.`;
-
-  it.each([
-    ["a fast test imports and another declares", "src/a.ts"],
-    ["a slow file imports and a fast test declares", "src/harness.ts"],
-  ])("says sources changed for a path %s", (_, path) => {
-    const s = current();
-    change(s, path, "h-tested", "h-edited");
-    expect(slowLine(status(s))).toBe(
-      `Slow tier: 2 test files; 2 current against plugins/** as of revision 2; the source changes since are not in it, so these files have not tested them. Squeal runs them when the agent pauses.`,
-    );
-  });
-
-  it.each([
-    ["a fixture only the declaring test names", FIXTURE],
-    // No closure tells a declared path from an import: only declaring files name it (004-57).
-    ["a source only the declaring test names", "src/entry.ts"],
-  ])("leaves the clause off for %s", (_, path) => {
-    const s = current();
-    change(s, path, "h-tested", "h-edited");
-    expect(slowLine(status(s))).toBe(clean);
   });
 });

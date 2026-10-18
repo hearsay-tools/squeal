@@ -1,3 +1,4 @@
+import { posix } from "node:path";
 import { createInputMatcher } from "../keys/glob.js";
 import type { NodeTestProject, Policy, ProjectName, TestFileRef } from "../types/index.js";
 
@@ -18,4 +19,19 @@ export function slowFiles(
     projects.filter((project) => project.slow === true).map((project) => project.name),
   );
   return (testFile) => slowProjects.has(testFile.project) || matches(testFile.path);
+}
+
+/**
+ * Every glob that marks slow files, worktree-relative: `slow.include`, then
+ * the `include` globs of each node:test project in `projects` marked slow,
+ * joined to its `cwd`.
+ */
+export function slowGlobs(policy: Policy, projects: readonly NodeTestProject[]): string[] {
+  const globs = [...policy.slow.include];
+  for (const project of projects) {
+    if (project.slow !== true) continue;
+    const cwd = project.cwd ?? ".";
+    for (const glob of project.include) globs.push(posix.join(cwd, glob));
+  }
+  return globs;
 }

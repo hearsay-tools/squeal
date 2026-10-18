@@ -37,8 +37,6 @@ const tier = (t: Partial<Tier>): Tier => ({
   pending: 1,
   notRun: 0,
   currentAt: null,
-  artifact: ["src/**"],
-  sourcesChangedSince: false,
   activity: { kind: "waiting", for: "idle" },
   ...t,
 });
@@ -83,26 +81,9 @@ describe("the parser keeps the count a real `Slow tier:` line states not current
     ["one slow file pending", tier({}), 1],
     ["one slow file current", tier({ current: 1, pending: 0, currentAt: 3, activity: null }), 0],
     [
-      "one current, sources changed since",
-      tier({ current: 1, pending: 0, currentAt: 2, sourcesChangedSince: true, activity: null }),
-      1,
-    ],
-    [
       "three files: one current, one pending, one not run",
       tier({ testFiles: 3, current: 1, pending: 1, notRun: 1, currentAt: 2 }),
       2,
-    ],
-    [
-      "three files, the current one's sources changed since",
-      tier({
-        testFiles: 3,
-        current: 1,
-        pending: 1,
-        notRun: 1,
-        currentAt: 2,
-        sourcesChangedSince: true,
-      }),
-      3,
     ],
     ["no slow files listed yet", tier({ testFiles: 0, pending: 0, activity: null }), 0],
   ];
@@ -122,6 +103,25 @@ describe("the parser keeps the count a real `Slow tier:` line states not current
           expect(text).toMatch(/^Slow tier: /m);
           expect(squealEvidence(wrap(text), from)?.slowNotCurrent).toBe(want);
         });
+
+  // Lines before 0.1.220 (task 004-81) stay readable: a current part whose sources changed
+  // since, in 0.1.217's and 0.1.218's words, counts as not current; a skipped one as not run.
+  it.each([
+    [
+      "1 test file; 1 current at revision 0, sources changed since. Squeal runs them when the agent pauses.",
+      1,
+    ],
+    [
+      "3 test files; 1 current against plugins/** as of revision 2; the source changes since are not in it, so these files have not tested them; 1 pending; 1 not run at revision 3. Squeal runs them when the agent pauses.",
+      3,
+    ],
+    [
+      "2 test files; 2 not run at revision 2, skipped: dist/index.js matches no file (slow.precondition.exists). Squeal runs them once the precondition holds.",
+      2,
+    ],
+  ])("reads an older line: %s", (line, want) => {
+    expect(squealEvidence(`Revision 3\nSlow tier: ${line}`, "pull")?.slowNotCurrent).toBe(want);
+  });
 
   it("keeps no count for a text without the line", () => {
     const { slowTier: _, slowPending: __, ...none } = held(3);

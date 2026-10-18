@@ -128,7 +128,8 @@ export function squealEvidence(text, from, failures = 0) {
   const slow =
     tier === undefined
       ? null
-      : // "sources changed since" before 0.1.218, "have not tested" from it (row 004-76).
+      : // "sources changed since" before 0.1.218, "have not tested" in 0.1.218 and 0.1.219 (row
+        // 004-76); from 0.1.220 a current part names neither (row 004-81).
         !/no slow test files listed|sources changed since|have not tested|pending|queued|running|not run/.test(
           tier,
         );
@@ -162,8 +163,9 @@ export function squealEvidence(text, from, failures = 0) {
 export function slowNotCurrentOf(tier) {
   const files = Number(/^(\d+) test files?;/.exec(tier)?.[1] ?? 0);
   const part = tier.split("; ").find((p) => /^\d+ current\b/.test(p));
-  // From 0.1.218 the clause follows its own "; ": "...; the source changes since are not in it,
-  // so these files have not tested them" (row 004-76); before, ", sources changed since".
+  // In 0.1.218 and 0.1.219 the clause follows its own "; ": "...; the source changes since are
+  // not in it, so these files have not tested them" (row 004-76); before, ", sources changed
+  // since"; from 0.1.220, neither (row 004-81).
   const stale = /sources changed since/.test(part ?? "") || /have not tested/.test(tier);
   const current = part === undefined || stale ? 0 : parseInt(part, 10);
   return Math.max(0, files - current);

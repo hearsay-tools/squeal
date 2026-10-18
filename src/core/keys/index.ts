@@ -25,13 +25,6 @@ export {
   isInstalledLockfile,
 } from "./environment.js";
 export { createInputMatcher, globToRegExp } from "./glob.js";
-export {
-  artifactGlobs,
-  ignoredInputs,
-  isInstalledPath,
-  literalPrefix,
-  reachesBelow,
-} from "./ignored-inputs.js";
 export { KEY_FORMAT_VERSION, KEY_SOURCES_HASHES } from "./key-format.js";
 export { type ClosureUpdate, type KeyChange, KeyIndex } from "./key-index.js";
 export {

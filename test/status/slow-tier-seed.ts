@@ -1,8 +1,6 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { startTurn } from "../../src/core/delivery/turn.js";
-import { recordSlowArtifacts } from "../../src/core/slow/state.js";
-import { publishSlowSkips } from "../../src/core/state/index.js";
 import { formatStatus, readStatus } from "../../src/core/status/index.js";
 import type { Consumer, KnownState, RevisionTrigger, Store } from "../../src/core/types/index.js";
 import { check, type FakeRepo, fakeRepo, seedStore, state } from "./helpers.js";
@@ -117,16 +115,6 @@ export function states(
   );
 }
 
-/** The slow runs of `paths` at their keys were declared to test `globs` (`recordSlowArtifacts`). */
-export function ran(
-  store: Store,
-  repo: FakeRepo,
-  paths: string[],
-  globs: string[] = ["plugins/**"],
-) {
-  recordSlowArtifacts(store, repo.mainId, new Map(paths.map((path) => [`key-${path}`, globs])));
-}
-
 export function status({ repo, store }: Seeded): string {
   store.close();
   return formatStatus(readStatus(repo.main, { now: () => NOW }), NOW);
@@ -144,20 +132,4 @@ export function inTurn({ repo, store }: Seeded, sessionId = "s-busy"): Consumer 
     startTurn(store, consumer);
   });
   return consumer;
-}
-
-/**
- * The daemon found `reason`'s precondition unmet and skipped `paths` (004 D8
- * as amended 2026-10-17): its record in the store, as `SlowSkips` keeps it.
- */
-export function skip(store: Store, worktreeId: string, reason: string, paths: readonly string[]) {
-  publishSlowSkips(store, worktreeId, [
-    {
-      precondition: { exists: ["dist/index.js"] },
-      source: "slow.precondition",
-      reason,
-      since: NOW,
-      testFiles: paths.map((path) => ({ project: "", path })),
-    },
-  ]);
 }

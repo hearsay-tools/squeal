@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { slowFiles } from "../../src/core/slow/classify.js";
+import { slowFiles, slowGlobs } from "../../src/core/slow/classify.js";
 import { DEFAULT_POLICY, type NodeTestProject, type Policy } from "../../src/core/types/index.js";
 
 /*
@@ -50,5 +50,28 @@ describe("slowFiles (spec 004 D1)", () => {
   it("is false for every file under the defaults", () => {
     const isSlow = slowFiles(DEFAULT_POLICY, DEFAULT_POLICY.nodeTest);
     expect(isSlow({ project: "default", path: "test/e2e/a.test.ts" })).toBe(false);
+  });
+});
+
+describe("slowGlobs (spec 004 D1)", () => {
+  it("lists slow.include and the include globs of slow node:test projects under their cwd", () => {
+    const pkg: NodeTestProject = {
+      name: "test:package",
+      cwd: "packages/cezar",
+      argv: [],
+      env: {},
+      include: ["test/e2e/*.test.ts", "./more/*.test.ts"],
+      slow: true,
+    };
+    const unit: NodeTestProject = { name: "unit", argv: [], env: {}, include: ["test/*.test.ts"] };
+    const policy: Policy = {
+      ...DEFAULT_POLICY,
+      slow: { ...DEFAULT_POLICY.slow, include: ["test/e2e/**/*.test.ts"] },
+    };
+    expect(slowGlobs(policy, [pkg, unit])).toEqual([
+      "test/e2e/**/*.test.ts",
+      "packages/cezar/test/e2e/*.test.ts",
+      "packages/cezar/more/*.test.ts",
+    ]);
   });
 });

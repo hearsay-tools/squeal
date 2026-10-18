@@ -3,12 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createDelivery, formatDelta } from "../../src/core/delivery/index.js";
-import {
-  failureKeysMetaKey,
-  readFailureKeys,
-  recordFailureKeys,
-  recordSlowArtifacts,
-} from "../../src/core/slow/state.js";
+import { readFailureKeys, recordFailureKeys } from "../../src/core/slow/state.js";
 import { checkIdentity, createStateSink } from "../../src/core/state/index.js";
 import type {
   Consumer,
@@ -22,13 +17,11 @@ import { check, freshStore, OTHER, result, setKey, WT } from "../state/helpers.j
 import { fixedStatus, liveDaemon } from "./fakes.js";
 
 /*
- * Spec 004 D8, review wave 2.5 B1: a slow failure names the artifact of the
- * run whose result its state holds, found by the key the state sink recorded
- * with that state (`failureKeysMetaKey`), never by a commit or fingerprint.
- * Worktree wt-b runs the slow file twice at one commit, under `k1` declared
- * `dist-a/**` and later under `k2` declared `dist-b/**`, with one failure
- * text; wt-a inherited the first. It stays the first after the second is
- * stored, and after an edit queues the file again.
+ * Spec 004 D8, review wave 2.5 B1: the state sink records the key each
+ * failing state's result was stored under (`failureKeysMetaKey`). Task
+ * 004-81 (004 D8 as amended 2026-10-18): an inherited slow failure reads as
+ * any file's, with no slow-tier provenance and no artifact. Worktree wt-b
+ * runs the slow file at one commit; wt-a inherits its failure.
  */
 
 const SLOW: TestFileRef = { project: "", path: "test/e2e/a.test.ts" };
@@ -76,9 +69,8 @@ function revision(): number {
   return at;
 }
 
-/** wt-b's failing slow run under `key`, declared to test `glob`, with the same failure text. */
-function sourceRun(key: string, glob: string, sourceRevision: number): ResultRecord {
-  recordSlowArtifacts(store, OTHER, new Map([[key, [glob]]]));
+/** wt-b's failing slow run under `key`, with the same failure text. */
+function sourceRun(key: string, sourceRevision: number): ResultRecord {
   const r = result(A, "fail", { key, revision: sourceRevision, worktreeId: OTHER, commit: COMMIT });
   const stored = { ...r, provenance: { ...r.provenance, recordedAt: 1_000 * sourceRevision } };
   store.results.putMany([stored]);
@@ -98,7 +90,7 @@ function inherit(key: string): void {
 }
 
 /** An edit queues the slow file under `key`: wt-a's failure is pending. */
-function queue(key: string): void {
+function _queue(key: string): void {
   const next = revision();
   setKey(store, key, { file: SLOW, pending: "queued" });
   sink.refresh(WT, next, { checkpointId: null });
@@ -112,56 +104,26 @@ async function provenanceLine(): Promise<string | undefined> {
     .find((line) => line.includes("slow tier") || line.includes("seen by"));
 }
 
-const FROM = "slow tier, Squeal's run in worktree wt-b at commit abcdef012345 saw it, inherited";
 /** Registered before the file had a key: no baseline (011-18). */
 const SEEN = "first observed: FAIL; no baseline result, may predate your edits;";
 
-describe("an inherited slow failure names its own run's artifact (B1)", () => {
+describe("an inherited slow failure reads as any file's (004-81)", () => {
   beforeEach(async () => {
     await delivery.register(C1, { atStart: true });
   });
 
-  it("keeps the inherited run's artifact after a later run at the same commit", async () => {
-    sourceRun("k1", "dist-a/**", 1);
+  it("names the worktree it was seen in, and no slow tier or artifact", async () => {
+    sourceRun("k1", 1);
     inherit("k1");
-    sourceRun("k2", "dist-b/**", 2);
     expect(await provenanceLine()).toBe(
-      `      ${SEEN} ${FROM} at revision 1, against dist-a/** as of revision 1`,
-    );
-  });
-
-  it("names the later run's artifact when that is the one inherited (control)", async () => {
-    sourceRun("k1", "dist-a/**", 1);
-    sourceRun("k2", "dist-b/**", 2);
-    inherit("k2");
-    expect(await provenanceLine()).toBe(
-      `      ${SEEN} ${FROM} at revision 1, against dist-b/** as of revision 1`,
-    );
-  });
-
-  it("keeps it while an edit has the file pending under a new key", async () => {
-    sourceRun("k1", "dist-a/**", 1);
-    inherit("k1");
-    sourceRun("k2", "dist-b/**", 2);
-    queue("k3");
-    expect(await provenanceLine()).toBe(
-      `      ${SEEN} ${FROM} at revision 1, against dist-a/** as of revision 1, revision 2 pending`,
-    );
-  });
-
-  it("says the artifact is unknown for a state recorded before the keys were", async () => {
-    sourceRun("k1", "dist-a/**", 1);
-    inherit("k1");
-    store.meta.set(failureKeysMetaKey(WT), "{}");
-    expect(await provenanceLine()).toBe(
-      `      ${SEEN} ${FROM} at revision 1, declared artifact unknown`,
+      `      ${SEEN} seen by Squeal's run in worktree wt-b at commit abcdef012345, inherited at revision 1`,
     );
   });
 });
 
 describe("the failure keys (spec 004 D8)", () => {
   it("records a failing state's key and forgets it once the check passes", () => {
-    sourceRun("k1", "dist-a/**", 1);
+    sourceRun("k1", 1);
     inherit("k1");
     expect([...readFailureKeys(store, WT)]).toEqual([[checkIdentity(A), "k1"]]);
     const next = revision();

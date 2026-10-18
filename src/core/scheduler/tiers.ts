@@ -154,7 +154,7 @@ export function selectTier(
     const recent = ledger.queue.isRecent(ref);
     let waits = false;
     if (!forced) {
-      const { hits, mayWait } = ledger.probe(file, key);
+      const { hits, mayWait } = ledger.probe(key);
       if (hits.length > 0) {
         ledger.applyResults(file, key, hits, ledger.checkpoints.idFor(ref));
         continue;
@@ -279,7 +279,7 @@ export function startTier(
  */
 function startable(ledger: Ledger, p: TierFile): TierFile[] {
   if (p.forced) return [p];
-  const { hits, mayWait } = ledger.probe(p.file, p.key);
+  const { hits, mayWait } = ledger.probe(p.key);
   if (hits.length > 0) {
     ledger.applyResults(p.file, p.key, hits, p.checkpointId);
     return [];

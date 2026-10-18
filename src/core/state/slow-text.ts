@@ -68,49 +68,11 @@ function pendingText(pending: number, activity: SlowTierActivity | null, late: b
   return pending === paths.length ? running : `${pending} pending, ${running}`;
 }
 
-/**
- * The declared artifacts by name when one, else by count: cezar declares 25
- * globs, and the line names them in `status --json` and `--notes` (001-413).
- */
-function artifactText(artifact: readonly string[]): string {
-  const [only] = artifact;
-  return artifact.length === 1 && only !== undefined
-    ? only
-    : `${artifact.length} declared artifacts`;
-}
-
-/**
- * What the current slow files ran against: the artifact their runs were
- * declared to test, or "unknown" for those whose record is missing (review
- * wave 2, B2), never the declaration on disk today.
- */
+/** When the current slow files ran: a revision, or the range their runs spread over. */
 function currentText(tier: SlowTierState): string {
-  const unknown = tier.artifactUnknown ?? 0;
-  const at =
-    tier.currentUpTo === undefined
-      ? `revision ${tier.currentAt}`
-      : `revisions ${tier.currentAt} to ${tier.currentUpTo}`;
-  if (unknown >= tier.current) return `current at ${at}, declared artifact unknown`;
-  const against =
-    tier.artifact.length === 0
-      ? `current at ${at}, against no declared artifact`
-      : `current against ${artifactText(tier.artifact)} as of ${at}`;
-  return unknown === 0 ? against : `${against} (declared artifact unknown for ${unknown})`;
-}
-
-/**
- * Task 004-76 (`research/slow-tier-role.md` 5): with sources changed since
- * the declared artifact the current files ran against, that the change is
- * untested, never how to build (004-71's rule: no message names a build
- * command). Without a known artifact there is nothing the changes are not in.
- */
-function untestedText(tier: SlowTierState): string {
-  const unknown = tier.artifactUnknown ?? 0;
-  if (tier.artifact.length === 0 || unknown >= tier.current) {
-    return "these files have not tested the source changes since";
-  }
-  const it = tier.artifact.length === 1 ? "it" : "them";
-  return `the source changes since are not in ${it}, so these files have not tested them`;
+  return tier.currentUpTo === undefined
+    ? `current at revision ${tier.currentAt}`
+    : `current at revisions ${tier.currentAt} to ${tier.currentUpTo}`;
 }
 
 /**
@@ -124,36 +86,16 @@ export function slowTierText(header: StatusHeader, command: string): string | nu
   if (tier === undefined) return null;
   if (tier.testFiles === 0) return `Slow tier: no slow test files listed yet; ${stopText(tier)}.`;
   const parts: string[] = [];
-  if (tier.current > 0) {
-    const untested = tier.sourcesChangedSince ? `; ${untestedText(tier)}` : "";
-    parts.push(`${tier.current} ${currentText(tier)}${untested}`);
-  }
+  if (tier.current > 0) parts.push(`${tier.current} ${currentText(tier)}`);
   if (tier.pending > 0) {
     parts.push(pendingText(tier.pending, tier.activity, header.daemon?.state === "down"));
   }
-  const skip = skippedReason(tier);
-  if (tier.notRun > 0) {
-    const skipped = skip === null ? "" : `, skipped: ${skip}`;
-    parts.push(`${tier.notRun} not run at revision ${header.revision}${skipped}`);
-  }
-  const runs =
-    tier.current >= tier.testFiles
-      ? ""
-      : skip === null
-        ? `; \`${command} run --slow\` runs them now`
-        : `; the next revision or \`${command} run --slow\` checks it again`;
+  if (tier.notRun > 0) parts.push(`${tier.notRun} not run at revision ${header.revision}`);
+  const runs = tier.current >= tier.testFiles ? "" : `; \`${command} run --slow\` runs them now`;
   return (
     `Slow tier: ${plural(tier.testFiles, "test file")}; ${parts.join("; ")}. ` +
     `${capitalized(stopText(tier))}${runs}.`
   );
-}
-
-/**
- * Spec 004 D8 as amended 2026-10-17 (task 004-65): why the slow files not run
- * were skipped, the precondition the daemon found unmet; `null` when none was.
- */
-export function skippedReason(tier: SlowTierState | undefined): string | null {
-  return tier?.skipped ?? null;
 }
 
 /**
@@ -164,15 +106,9 @@ export function skippedReason(tier: SlowTierState | undefined): string | null {
  * run for it: `run --slow` is what runs it (review wave-13ax B1, task
  * 001-323). With `stop.requireSlowSuite` on Stop waits up to its bound, or,
  * before the harness's waiting entry ran in the worktree, holds the agent
- * once (004 D9 as amended 2026-10-12). A skipped tier runs once its
- * precondition holds; Stop does not wait for it (D8 as amended 2026-10-17).
+ * once (004 D9 as amended 2026-10-12).
  */
 function stopText(tier: SlowTierState): string {
-  if (skippedReason(tier) !== null) {
-    return tier.stopWaitMs === undefined
-      ? "Squeal runs them once the precondition holds"
-      : "Squeal runs them once the precondition holds, and Stop holds the agent once naming it";
-  }
   if (tier.stopWaitMs !== undefined) {
     return `Stop waits up to ${durationText(tier.stopWaitMs)} for them or holds the agent once`;
   }

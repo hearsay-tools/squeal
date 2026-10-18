@@ -17,7 +17,6 @@ import {
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { LANE_FLAGS, laneFiles, laneText, runLanes } from "./run-lanes.js";
-import { skippedLaneVerdict } from "./run-skipped.js";
 import { runSlowCommand } from "./run-slow.js";
 import { statusCommand } from "./status-command.js";
 import {
@@ -164,14 +163,10 @@ function verdictLine(
 ): [string, 0 | 1 | 3] {
   const none = (why: string): [string, 3] => [`has no verdict: ${why}`, 3];
   switch (outcome.kind) {
-    case "abandoned": {
-      // 004 D8 as amended 2026-10-17: a skipped slow lane is named, beside the fast lane's result.
-      const skipped = inStore(root, (store) => skippedLaneVerdict(store, checkpoint));
-      if (skipped !== null && skipped !== undefined) return skipped;
+    case "abandoned":
       return none(
         "it was abandoned before every test file had a result (a newer request replaced it, a test file's inputs never held still, a tier crashed or timed out, or the daemon stopped)",
       );
-    }
     case "stopped":
       return none(`the daemon stopped before it ended${owedText(root, checkpoint)}`);
     case "moved":

@@ -108,7 +108,7 @@ export function claimOf(ledger: Ledger, ref: TestFileRef): "waits" | "settled" |
   const key = file?.key ?? null;
   if (!file || key === null || file.blocked !== null) return "free";
   if (ledger.queue.isForced(ref) || ledger.queue.isRecent(ref)) return "free";
-  const { hits, mayWait } = ledger.probe(file, key);
+  const { hits, mayWait } = ledger.probe(key);
   if (hits.length > 0) {
     ledger.applyResults(file, key, hits, ledger.checkpoints.idFor(ref));
     ledger.commit();

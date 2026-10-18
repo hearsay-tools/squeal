@@ -28,8 +28,6 @@ function slowHeader(pending: number, stopWaitMs?: number): StatusHeader {
     pending,
     notRun: 0,
     currentAt: pending === 3 ? null : 2,
-    artifact: [],
-    sourcesChangedSince: false,
     activity: null,
     ...(stopWaitMs === undefined ? {} : { stopWaitMs }),
   };

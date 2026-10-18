@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { appendFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -101,6 +101,8 @@ describe("two schedulers share slow.maxParallel permits (spec 004 D2)", SLOW, ()
     const store = openRepoStore(repo.commonDir);
     const shared = slotDir();
     const slow = [STRINGS, UPPER];
+    // Edited there, so neither inherits the other's slow results (004 D6).
+    for (const file of slow) appendFileSync(join(other, file), "// other worktree\n");
     const extra = { slow: { slotDir: shared, recheckMs: 50, load: () => [0], cpus: () => 1 } };
     const a = await openHarness(repo.main, store, repo.commonDir, options(slow, 2, extra));
     const b = await openHarness(other, store, repo.commonDir, options(slow, 2, extra));

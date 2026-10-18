@@ -107,9 +107,7 @@ export function readHeader(
     refinedRevision,
     runnerPartPending: refinedRevision !== null && refinedRevision < revision,
     ...(slow === undefined ? {} : { slowPending: countSlowPending(states, keys, slow) }),
-    ...(view === null
-      ? {}
-      : { slowTier: readSlowTier(store, worktreeId, revision, states, keys, view) }),
+    ...(view === null ? {} : { slowTier: readSlowTier(store, worktreeId, states, keys, view) }),
     ...(awaiting ? { awaitingInstall: true } : {}),
     ...(missing !== null && missing.length > 0 ? { missingInstalls: missing } : {}),
     ...(awaiting ? installCommandField(store, worktreeId) : {}),

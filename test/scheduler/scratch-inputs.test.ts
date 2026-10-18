@@ -23,10 +23,11 @@ import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./he
 
 /*
  * Lessons defect 10 (task 004-47): a test that writes scratch files into a
- * gitignored directory its declared inputs cover settles. Gitignored files
- * enter keys only as a slow file's declared artifact (spec 004 D5), never
- * under a directory a slow glob covers (D6), so no run feeds its own inputs:
- * its result is stored, and no revision follows within two interval passes.
+ * gitignored directory its declared inputs cover settles. A gitignored file
+ * enters no key from a declaration, a slow file's build output included
+ * (spec 004 D5 as amended 2026-10-18, task 004-81), so no run feeds its own
+ * inputs: its result is stored, and no revision follows within two interval
+ * passes.
  * A store a daemon from 0.1.60 to 0.1.73 wrote, which hashed such scratch
  * as a declared input, settles as a fresh one does (004-50,
  * reviews/wave-5.5.md B1).
@@ -46,7 +47,7 @@ function scratch(prefix: string): string {
   return dir;
 }
 
-/** A slow file whose artifact is a gitignored `dist/`, beside the test's own declarations. */
+/** A slow file declaring a gitignored `dist/`, beside the test's own declarations. */
 function policy(inputs: Record<string, string[]>, extra: Partial<Policy> = {}): Partial<Policy> {
   return {
     slow: { ...DEFAULT_POLICY.slow, include: [STRINGS] },
@@ -120,8 +121,8 @@ describe("a test writing scratch files under its declared inputs (lessons defect
     expect(h.runsOf(MATH)).toHaveLength(1);
     expect(h.keyOf(MATH)).toBe(key);
     expect(h.scheduler.extraFiles().filter((p) => p.startsWith("scratch/"))).toEqual([]);
-    // The slow file's artifact is still keyed by its gitignored build.
-    expect(h.scheduler.extraFiles()).toContain("dist/index.js");
+    // The slow file's gitignored build is no input either (004-81).
+    expect(h.scheduler.extraFiles()).not.toContain("dist/index.js");
     const states = h.sink.states().filter((s) => JSON.stringify(s.check).includes(MATH));
     expect(states.length).toBeGreaterThan(0);
     for (const state of states) expect(state.validity).toBe("current");
@@ -186,7 +187,7 @@ describe("a test writing scratch files under its declared inputs (lessons defect
     for (const state of states) expect(state.validity).toBe("current");
   });
 
-  it("lists no ignored file under a directory a slow glob covers, even in a slow file's declared inputs (D6)", async () => {
+  it("lists no ignored file a slow file declares, its build or scratch under a slow glob (004-81)", async () => {
     const r = repo("test/.tmp/", {});
     mkdirSync(join(r.main, "test/.tmp"));
     writeFileSync(join(r.main, "test/.tmp/out.txt"), "scratch\n");
@@ -202,7 +203,7 @@ describe("a test writing scratch files under its declared inputs (lessons defect
     await expect.poll(() => h.runsOf(STRINGS).length, { timeout: 60_000 }).toBe(1);
     await h.scheduler.idle();
     await twoIntervals(h);
-    expect(h.scheduler.extraFiles()).toContain("dist/index.js");
+    expect(h.scheduler.extraFiles()).not.toContain("dist/index.js");
     expect(h.scheduler.extraFiles()).not.toContain("test/.tmp/out.txt");
     expect(h.runsOf(STRINGS)).toHaveLength(1);
   });
@@ -243,7 +244,7 @@ describe("a test writing scratch files under its declared inputs (lessons defect
       expect(h.scheduler.status().revision).toBe(revision);
       expect(h.runsOf(MATH)).toHaveLength(1);
       expect(h.scheduler.extraFiles()).not.toContain(SCRATCH);
-      expect(h.scheduler.extraFiles()).toContain("dist/index.js");
+      expect(h.scheduler.extraFiles()).not.toContain("dist/index.js");
       expect([...h.scheduler.trackedPaths()]).not.toContain(SCRATCH);
       const states = h.sink.states().filter((s) => JSON.stringify(s.check).includes(MATH));
       expect(states.length).toBeGreaterThan(0);
@@ -325,7 +326,7 @@ describe("a predecessor's saved closure (reviews/wave-5.6.md S1)", SLOW, () => {
     expect(h.scheduler.status().revision).toBe(revision);
     expect(h.runsOf(MATH)).toHaveLength(runs);
     expect(h.scheduler.extraFiles()).not.toContain(SCRATCH);
-    expect(h.scheduler.extraFiles()).toContain("dist/index.js");
+    expect(h.scheduler.extraFiles()).not.toContain("dist/index.js");
     expect([...h.scheduler.trackedPaths()]).not.toContain(SCRATCH);
     expect(store.fileHashes.list(worktreeIdFor(r.main)).map((row) => row.path)).not.toContain(
       SCRATCH,

@@ -107,7 +107,7 @@ export type Owed = ReturnType<Ledger["checkpoints"]["takeOwed"]>;
  * The files of `owed` still listed and keyed that only its own forced runs
  * count for. The baseline requests them too (task 004-69): a lookup hit is
  * no forced run, so the baseline cannot complete, and certify a full suite,
- * before a forced slow file's precondition resolves (spec 004 D8).
+ * before a forced slow file has run.
  */
 export function owedStrict(ledger: Ledger, owed: Owed): FileState[] {
   if (owed === null) return [];
