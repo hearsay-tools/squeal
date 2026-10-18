@@ -80,7 +80,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
     });
     expect(header.slowPending).toEqual({ testFiles: 0, checks: 0, testFilesWithoutChecks: 0 });
     expect(slowLine(status(s))).toBe(
-      "Slow tier: 2 test files; 2 current against plugins/** as of revision 2, sources changed since. Squeal runs them when the agent pauses.",
+      "Slow tier: 2 test files; 2 current against plugins/** as of revision 2; the source changes since are not in it, so these files have not tested them. Squeal runs them when the agent pauses.",
     );
   });
 
@@ -159,7 +159,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
         sourcesChangedSince: true,
       });
       expect(slowLine(status(s))).toBe(
-        "Slow tier: 2 test files; 2 current against plugins/** as of revision 0, sources changed since. Squeal runs them when the agent pauses.",
+        "Slow tier: 2 test files; 2 current against plugins/** as of revision 0; the source changes since are not in it, so these files have not tested them. Squeal runs them when the agent pauses.",
       );
     },
   );

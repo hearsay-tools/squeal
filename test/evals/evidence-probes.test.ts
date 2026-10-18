@@ -234,5 +234,10 @@ for (const harness of ["codex", "claude"] as const)
         const slow = `${RESULT(1)}\nSlow tier: 1 test file; 1 current at revision 0, sources changed since. Squeal runs them when the agent pauses.`;
         expect(t1([{ squeal: slow }])?.["current-before-claim"]).toBe("missed");
       });
+
+      it("misses on a slow tier whose artifact the source changes since are not in (004-76)", () => {
+        const slow = `${RESULT(1)}\nSlow tier: 1 test file; 1 current against plugins/** as of revision 0; the source changes since are not in it, so these files have not tested them. Squeal runs them when the agent pauses.`;
+        expect(t1([{ squeal: slow }])?.["current-before-claim"]).toBe("missed");
+      });
     });
   });
