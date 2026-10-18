@@ -156,6 +156,29 @@ export class RunQueue {
     this.#entries.set(id, { ref, priority, seq: this.#seq++, forced, recent });
   }
 
+  /**
+   * What a store transaction that changes `refs`' entries would lose if it
+   * rolled back (task 004-70): their entries as they are now, absent ones
+   * included, with priority and place, and the live promotions. The returned
+   * function puts them back as they were, settling nothing on the way.
+   */
+  hold(refs: Iterable<TestFileRef>): () => void {
+    const entries = new Map<string, Entry | null>();
+    for (const ref of refs) {
+      const id = testFileId(ref);
+      const entry = this.#entries.get(id);
+      entries.set(id, entry === undefined ? null : { ...entry });
+    }
+    const promotions = this.#promotions.hold();
+    return () => {
+      for (const [id, entry] of entries) {
+        if (entry === null) this.#entries.delete(id);
+        else this.#entries.set(id, { ...entry });
+      }
+      promotions();
+    };
+  }
+
   /** Empties the queue; promotions go with it. */
   clear(): void {
     this.#entries.clear();

@@ -40,9 +40,6 @@ interface Applied {
   readonly checkpointId: string | null;
 }
 
-/** A file's queue entry as `Ledger.hold` keeps it; `null` when not queued. */
-type QueueEntry = { readonly forced: boolean; readonly recent: boolean } | null;
-
 /** After this many consecutive discarded tiers at an unmoved key a file is `unknown` instead of re-queued. */
 export const MAX_DISCARDS = 3;
 
@@ -532,20 +529,18 @@ export class Ledger {
    * back after `commit` drained it (review wave-8.1, fourth round): their
    * file states and queue entries, the writes owed and the open checkpoint,
    * as now. The returned function puts them back, so the ledger holds what
-   * the store holds and its next commit writes them. An entry put back takes
-   * its file's priority as no change queued it, keeping forced and recent.
+   * the store holds and its next commit writes them. Their entries come back
+   * exactly, priority, place and promotions included (`RunQueue.hold`, task
+   * 004-70).
    */
   hold(refs: Iterable<TestFileRef>): () => void {
-    const files = new Map<string, { file: FileState; was: FileState; entry: QueueEntry }>();
+    const files = new Map<string, { file: FileState; was: FileState }>();
     for (const ref of refs) {
       const file = this.file(ref);
       if (file === undefined || files.has(file.id)) continue;
-      files.set(file.id, {
-        file,
-        was: { ...file, checks: [...file.checks] },
-        entry: this.#entry(ref),
-      });
+      files.set(file.id, { file, was: { ...file, checks: [...file.checks] } });
     }
+    const queue = this.queue.hold([...files.values()].map(({ file }) => file.ref));
     const dirty = [...this.#dirty];
     const removed = [...this.#removed];
     const owed = {
@@ -558,15 +553,8 @@ export class Ledger {
     const adopted = this.#adopted;
     const checkpoints = this.checkpoints.hold();
     return () => {
-      for (const { file, was, entry } of files.values()) {
-        Object.assign(file, was);
-        const now = this.#entry(file.ref);
-        if (now?.forced === entry?.forced && now?.recent === entry?.recent) continue;
-        this.queue.remove(file.ref);
-        if (entry !== null) {
-          this.queue.add(file.ref, priorityOf(file, NOTHING_CHANGED), entry.forced, entry.recent);
-        }
-      }
+      for (const { file, was } of files.values()) Object.assign(file, was);
+      queue();
       this.#dirty.clear();
       for (const id of dirty) this.#dirty.add(id);
       this.#removed.splice(0, this.#removed.length, ...removed);
@@ -579,11 +567,6 @@ export class Ledger {
       this.#adopted = adopted;
       checkpoints();
     };
-  }
-
-  #entry(ref: TestFileRef): QueueEntry {
-    if (!this.queue.has(ref)) return null;
-    return { forced: this.queue.isForced(ref), recent: this.queue.isRecent(ref) };
   }
 
   #byCheckpoint(rows: readonly TestFileKeyRecord[]): Map<string | null, TestFileRef[]> {
