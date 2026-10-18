@@ -113,4 +113,33 @@ describe("scheduler: run order after an edit behind a barrel (D5 step 4)", SLOW,
       ["test/aa-slow.test.ts"],
     ]);
   });
+
+  /*
+   * Issue 31 (011 C4 as amended, task 011-17): a test file the revision added
+   * runs before a long direct importer of the same edit, though its duration
+   * is unknown and the importer's is 5 s.
+   */
+  it("runs a test file the revision added before a long direct importer", async () => {
+    const repo = createRepo("barrel");
+    const store = openRepoStore(repo.commonDir);
+    const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 1 });
+    await h.scheduler.start();
+    await h.scheduler.idle();
+    const baseline = h.runner.runs.length;
+
+    h.write(
+      "src/index.ts",
+      'export { add } from "./math.ts";\nexport { upper } from "./strings.ts";\nexport const one = 1;\n',
+    );
+    h.write(
+      "test/added.test.ts",
+      'import { expect, it } from "vitest";\nimport { one } from "../src/index.ts";\n\nit("is one", () => {\n  expect(one).toBe(1);\n});\n',
+    );
+    await h.batch("src/index.ts", "test/added.test.ts");
+    await h.scheduler.idle();
+    expect(h.runner.runs.slice(baseline).map((run) => run.files.map((f) => f.path))).toEqual([
+      ["test/added.test.ts"],
+      ["test/barrel.test.ts"],
+    ]);
+  });
 });

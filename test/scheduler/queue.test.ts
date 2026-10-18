@@ -147,11 +147,12 @@ describe("priorityOf (D5 step 4)", () => {
     expect(priorityOf(file, changed)).toBe(Priority.failing);
   });
 
-  it("puts a test file that itself changed before transitively affected ones", () => {
-    const direct = newFileState(ref("test/b.test.ts"));
+  it("puts a test file that itself changed before direct importers and transitively affected ones (gh-31)", () => {
+    const edited = newFileState(ref("test/b.test.ts"));
     const affected = newFileState(ref("test/a.test.ts"));
     affected.resultKey = "k-old";
-    expect(priorityOf(direct, changed)).toBe(Priority.direct);
+    expect(priorityOf(edited, changed)).toBe(Priority.edited);
+    expect(priorityOf(edited, changed, new Set([edited.id]))).toBe(Priority.edited);
     expect(priorityOf(affected, changed)).toBe(Priority.transitive);
   });
 
@@ -174,8 +175,8 @@ describe("priorityOf (D5 step 4)", () => {
     expect(priorityOf(newFileState(ref("test/a.test.ts")), changed)).toBe(Priority.neverRun);
   });
 
-  it("names the classes of spec 001 D5 step 4, most urgent first", () => {
-    expect(Priority).toEqual({ failing: 0, direct: 1, transitive: 2, neverRun: 3 });
+  it("names the classes of spec 001 D5 step 4 and 011 C4's edited rank, most urgent first", () => {
+    expect(Priority).toEqual({ failing: 0, edited: 1, direct: 2, transitive: 3, neverRun: 4 });
   });
 });
 
