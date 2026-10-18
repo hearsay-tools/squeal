@@ -1,6 +1,7 @@
 import { realpathSync } from "node:fs";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
+import { daemonLiveness } from "../core/delivery/index.js";
 import { worktreeIdFor } from "../core/fs/index.js";
 import { testFileId } from "../core/keys/index.js";
 import {
@@ -23,7 +24,7 @@ import type {
 } from "../core/types/index.js";
 import type { CliIo } from "./main.js";
 import { fileEntry, type NamedFileEntry } from "./named-file-lines.js";
-import { type NamedFile, readNamedFiles } from "./named-files.js";
+import { type NamedFile, pauseOnlyIds, readNamedFiles } from "./named-files.js";
 import { statusCommand } from "./status-command.js";
 import type { DaemonSync, SyncState } from "./status-sync.js";
 import { namedClassLines, namedLine, namedText, selectedLine } from "./status-wait-lines.js";
@@ -134,14 +135,24 @@ function realOrNull(path: string): string | null {
   }
 }
 
-/** Spec 005 D2's path form: `settled`, no selected file pending; `unmatched`, a path selects nothing. */
-export type NamedWaitOutcome = "settled" | "unmatched" | "no-daemon" | "timeout";
+/**
+ * Spec 005 D2's path form: `settled`, no selected file it holds for pending;
+ * `unmatched`, a path selects nothing; `slow`, every selected file runs only
+ * on a pause (task 004-78), so there is nothing to hold for.
+ */
+export type NamedWaitOutcome = "settled" | "unmatched" | "slow" | "no-daemon" | "timeout";
 
 export type NamedWait =
   | {
       readonly outcome: NamedWaitOutcome;
       readonly waitedMs: number;
       readonly selection: NamedSelection;
+      /**
+       * The selected slow files that run only on a pause, which the wait
+       * does not hold for (task 004-78), in `selection` order; none when absent.
+       */
+      readonly leftForPause?: readonly TestFileRef[];
+      /** The verdict on the selected files but `leftForPause`. */
       readonly verdict: FileVerdict;
       /** Each selected file's class, verdict and what holds it (task 011-12), in `selection` order. */
       readonly files: readonly NamedFile[];
@@ -166,6 +177,8 @@ export interface NamedWaitPayload {
   readonly code: 0 | 1 | 3;
   readonly testFiles: readonly NamedFileEntry[];
   readonly unmatched: readonly string[];
+  /** The selected slow files it did not hold for, waiting for a pause or `run --slow` (task 004-78). */
+  readonly leftForPause: readonly TestFileRef[];
   readonly verdict: FileVerdict;
 }
 
@@ -196,6 +209,12 @@ export interface NamedWaitOptions {
  * read at the first read or the last ends the wait; one in between is skipped.
  * A stale heartbeat ends it only once `watchDaemon` finds no daemon: a cleared
  * record, or a socket dead for `downMs` (task 004-66, issue 12).
+ *
+ * Task 004-78 (research `atomic-flags-0215.md` 4): a selected slow file that
+ * runs only on a pause (`pauseOnlyIds`) is left out of what the wait holds
+ * for, decided at each ready read for the files not yet left out and kept
+ * for the rest of the wait, so a wait over fast and slow files gives the
+ * fast verdict at once and one over slow files alone returns `slow`.
  */
 export async function waitForNamed(
   cwd: AbsolutePath,
@@ -208,6 +227,7 @@ export async function waitForNamed(
   let watch: DaemonWatch | undefined;
   let first = true;
   let promoted = false;
+  const paused = new Set<string>();
   try {
     for (;;) {
       const final = elapsed() >= options.timeoutMs;
@@ -219,27 +239,40 @@ export async function waitForNamed(
         const id = worktreeIdFor(root);
         sync ??= options.sync(root, options.pollMs);
         const selection = selectNamedFiles(store, id, root, cwd, paths);
-        const verdict = readVerdict(store, id, selection.files);
+        const all = readVerdict(store, id, selection.files);
         const settled = final || elapsed() >= options.settleMs;
         watch ??= watchDaemon(id, { downMs: options.downMs });
-        const daemon = watch.judge(store.worktrees.get(id)?.daemon ?? null, options.now());
+        const record = store.worktrees.get(id)?.daemon ?? null;
+        const daemon = watch.judge(record, options.now());
         const current = sync.current();
         // A lapsed heartbeat gives no verdict yet: the daemon may be mid-run (004-66).
         const ready =
           daemon.state === "alive" &&
           (current.state === "synced"
-            ? verdict.revision >= current.revision && !verdict.unlisted
+            ? all.revision >= current.revision && !all.unlisted
             : current.state === "unsupported" && settled);
+        if (ready) {
+          const open = selection.files.filter((f) => !paused.has(testFileId(f)));
+          const liveness = daemonLiveness(record, options.now());
+          for (const pid of pauseOnlyIds(store, id, root, open, liveness, options.now())) {
+            paused.add(pid);
+          }
+        }
+        const leftForPause = selection.files.filter((f) => paused.has(testFileId(f)));
+        const held = selection.files.filter((f) => !paused.has(testFileId(f)));
+        const verdict = leftForPause.length === 0 ? all : readVerdict(store, id, held);
         const outcome: NamedWaitOutcome | null =
           settled && daemon.state === "down"
             ? "no-daemon"
             : ready && selection.unmatched.length > 0
               ? "unmatched"
-              : ready && verdict.byClass.pending === 0 && !verdict.unlisted
-                ? "settled"
-                : final
-                  ? "timeout"
-                  : null;
+              : ready && held.length === 0
+                ? "slow"
+                : ready && verdict.byClass.pending === 0 && !verdict.unlisted
+                  ? "settled"
+                  : final
+                    ? "timeout"
+                    : null;
         if (outcome === null) {
           // Spec 011 C15: once, at the first read whose selection is decided, beside it.
           if (ready && !promoted) {
@@ -265,6 +298,7 @@ export async function waitForNamed(
         return {
           outcome,
           selection,
+          leftForPause,
           verdict,
           files,
           result,
@@ -323,6 +357,7 @@ export async function namedWaitCommand(
       code,
       testFiles: wait.files.map((f) => fileEntry(f, command)),
       unmatched: wait.selection.unmatched,
+      leftForPause: wait.leftForPause ?? [],
       verdict: wait.verdict,
     };
     io.stdout(`${JSON.stringify({ ...wait.result, wait: payload }, null, 2)}\n`);

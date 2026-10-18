@@ -1,3 +1,4 @@
+import { testFileId } from "../core/keys/index.js";
 import { runnerPartText, skippedReason } from "../core/state/index.js";
 import {
   countedText,
@@ -6,7 +7,7 @@ import {
   splitByValidity,
 } from "../core/status/index.js";
 import { plural } from "../core/text.js";
-import type { DaemonLiveness, EpochMs, StatusSnapshot } from "../core/types/index.js";
+import type { DaemonLiveness, EpochMs, StatusSnapshot, TestFileRef } from "../core/types/index.js";
 import { classLines, namedFailures, reasonGroups } from "./named-file-lines.js";
 import type { SyncState } from "./status-sync.js";
 import type { StatusWait, StatusWaitEdit, StatusWaitSlow } from "./status-wait.js";
@@ -171,7 +172,9 @@ const NAMED_FILES_SHOWN = 10;
  * checkpoint's, printed last (issue 26) after the line naming them
  * (`selectedLine`), then the worktree's known failures and outstanding work.
  * A timeout counts the pending files by what holds them (011 C15,
- * `reasonGroups`). A path that selects nothing says D2's text.
+ * `reasonGroups`). A path that selects nothing says D2's text. The slow
+ * files left for a pause are named after the verdict, or are the reason for
+ * none when they are all it selected (task 004-78, `pauseText`).
  */
 export function namedLine(wait: EndedNamed, command = "squeal"): string {
   const { verdict, selection } = wait;
@@ -187,8 +190,13 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
         `${noDaemonText(wait.result.daemon, wait.down)}; results are as of revision ${verdict.revision}; \`${command} start\` starts one`,
       );
       break;
+    case "slow":
+      line = none(`every selected test file is slow: ${pauseText(wait, command)}`);
+      break;
     case "timeout": {
-      const groups = reasonGroups(wait.files, command);
+      const paused = new Set((wait.leftForPause ?? []).map(testFileId));
+      const holding = wait.files.filter((f) => !paused.has(testFileId(f.testFile)));
+      const groups = reasonGroups(holding, command);
       const why = noVerdictText(verdict);
       const held = why === null ? "no result yet" : groups === "" ? why : `${why}: ${groups}`;
       line = none(
@@ -204,7 +212,38 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
           : none(why);
     }
   }
-  return `${line}${lapseText(wait.lapse)}${worktreeText(wait.result)}`;
+  const pause =
+    (wait.leftForPause ?? []).length > 0 &&
+    (wait.outcome === "settled" || wait.outcome === "timeout")
+      ? `; ${pauseText(wait, command)}`
+      : "";
+  return `${line}${pause}${lapseText(wait.lapse)}${worktreeText(wait.result)}`;
+}
+
+/**
+ * Task 004-78 (research `atomic-flags-0215.md` 4, item 1): the selected slow
+ * files a named wait left for a pause, by path, and what this repository's
+ * `stop.requireSlowSuite` asks of them, read as the quiet line reads it
+ * (`slowTierText`, 004-71): off, not required before the agent finishes; on,
+ * `run --slow --wait` runs and waits for them.
+ */
+function pauseText(wait: EndedNamed, command: string): string {
+  const files = wait.leftForPause ?? [];
+  const n = files.length;
+  const shown = files.slice(0, NAMED_FILES_SHOWN).map(refText).join(", ");
+  const more = n > NAMED_FILES_SHOWN ? ` and ${n - NAMED_FILES_SHOWN} more` : "";
+  const them = n === 1 ? "it" : "them";
+  const what =
+    `${plural(n, "slow test file")} ${n === 1 ? "waits" : "wait"} for a pause or ` +
+    `\`${command} run --slow\`, which this wait does not hold for: ${shown}${more}`;
+  return wait.result.slowTier?.stopWaitMs === undefined
+    ? `${what}; this repository does not require ${them} before you finish`
+    : `${what}; this repository requires ${them} before you finish: \`${command} run --slow --wait 60000\` runs and waits for ${them}`;
+}
+
+/** As status names a file: the project, when there is one, leads the path. */
+function refText({ project, path }: TestFileRef): string {
+  return project === "" ? path : `${project}: ${path}`;
 }
 
 /** The test files a named wait selected, or `null` when its paths selected none. */
