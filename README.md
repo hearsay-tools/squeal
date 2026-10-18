@@ -43,19 +43,18 @@ Installing the plugin from inside a harness instead: [plugins/claude-code/README
 
 Each worktree has a daemon of its own, which runs that worktree's tests in the background. Before deleting a worktree, run `squeal stop <worktree>`: it cancels the tests in flight, stops the daemon and every process it started, and returns once none of them is left, so nothing of Squeal's holds the directory. It exits 0 then, and 1 when something still runs past its bound, naming what. `git worktree remove` succeeds without it; a tool that refuses to remove a directory a live process holds needs it first.
 
-## Slow tests that need a build
+## Slow tests
 
-Slow test files (`slow.include` in `squeal.config.json`, or `"slow": true` on a `nodeTest` project) run in a tier of their own, after the fast ones. When they test a build output, say what they need with `slow.precondition`, so a missing build is never reported as test failures:
+Slow test files (`slow.include` in `squeal.config.json`, or `"slow": true` on a `nodeTest` or `pytest` project) run in a tier of their own, after the fast ones: when the agent pauses, or on `squeal run --slow`. They are keyed, run and inherited by another worktree as any test file is. The `Slow tier:` line in `squeal status` says how many there are and which are current, pending, running or not run.
+
+## Tests Squeal does not cover
+
+Squeal covers no test of a build output it does not produce, such as an end-to-end suite that spawns a bundle your build writes: it cannot know when that output is current. Leave those tests out, and run them yourself or in CI:
 
 ```json
 {
-  "slow": {
-    "include": ["test/e2e/**/*.test.ts"],
-    "precondition": { "exists": ["dist/index.js"], "command": ["node", "scripts/check-dist.mjs"], "timeoutMs": 10000 }
-  }
+  "vitest": { "exclude": ["test/e2e/**"] }
 }
 ```
 
-`exists` lists paths or globs, each of which must match at least one file in the worktree. `command` is optional: an argv run without a shell in the worktree root, at the slow tier's low priority, met when it exits 0 within `timeoutMs` (default 10000). Squeal checks the precondition when the slow tier is about to run, `exists` first, and never builds anything to meet it. A command is code Squeal runs beside your tests, so declare only one you would run yourself; `squeal setup --plan` and `squeal setup --check` list each declared command with its argv and timeout. A `nodeTest` project marked slow may carry its own `precondition`, which replaces `slow.precondition` for that project's files.
-
-When it is unmet, the slow tier is skipped: its files are not run at this revision and no result is stored, so a skip never reads as a pass or a failure. The `Slow tier:` line says `skipped:` and why, such as `dist/index.js matches no file (slow.precondition.exists)`, and a delivery says it once. The next revision checks it again (for `exists`, only one touching a path its globs select), as does `squeal run --slow`. `squeal run --slow --wait` on a skipped tier prints the reason and exits 3; `squeal run --all --wait` with a skipped slow lane is not a full suite and exits 1 on known failures in the fast lane, otherwise 3. With `stop.requireSlowSuite` on, Stop does not wait for a skipped tier: it holds the agent once naming the reason.
+`vitest.exclude` lists globs, relative to the worktree root, of Vitest test files Squeal never lists, runs, keys or counts. `squeal status`, `squeal setup --check` and the session's first message name them as not covered. For a node:test or pytest project, its entry's own `exclude` does the same.
