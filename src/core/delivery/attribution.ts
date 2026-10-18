@@ -15,7 +15,9 @@ import type {
   CheckKey,
   Consumer,
   DeltaEntry,
+  KnownFailure,
   KnownState,
+  RelativePath,
   ResultRecord,
   RevisionNumber,
   StatusHeader,
@@ -115,16 +117,13 @@ export function attribute(
 ): readonly DeltaEntry[] {
   if (!entries.some((e) => e.to === "fail")) return entries;
   const from = registration(store, consumer);
-  const changed = from === null ? null : changedAfter(store, consumer.worktreeId, from, revision);
-  const sure = from !== null && seesEveryChange(store, consumer.worktreeId, from);
-  const closureOf = closureFor(store, consumer.worktreeId);
+  const changesOf = closureChanges(store, consumer, revision);
   const slow = worktreeSlowView(store, consumer.worktreeId);
   const failureKeys = readFailureKeys(store, consumer.worktreeId);
   const artifactOf = recordedArtifacts(store);
   const before = from === null ? null : beforeEditsFor(store, consumer.worktreeId, from.since);
   return entries.map((entry) => {
     if (entry.kind === "fail-retired" || entry.to !== "fail") return entry;
-    const { project, testPath } = entry.check;
     const load = loadOf(store, consumer.worktreeId, entry);
     const firstSeen = entry.kind === "first-seen-fail" && entry.from === null && before !== null;
     const facts = {
@@ -133,13 +132,52 @@ export function attribute(
     };
     const slowArtifact = slowRunArtifact(consumer.worktreeId, slow, failureKeys, artifactOf, entry);
     if (slowArtifact !== undefined) return { ...entry, slowArtifact, ...facts };
+    const told = changesOf(entry.check);
+    return { ...entry, ...(told === undefined ? {} : { changesInClosure: told }), ...facts };
+  });
+}
+
+/**
+ * A reader of the closure paths of a check's test file changed since
+ * `consumer` registered, up to `revision` (`TransitionEntry.changesInClosure`);
+ * `undefined` when not known. Empty only when every change is known to be
+ * seen (`seesEveryChange`).
+ */
+export function closureChanges(store: Store, consumer: Consumer, revision: RevisionNumber) {
+  const from = registration(store, consumer);
+  const changed = from === null ? null : changedAfter(store, consumer.worktreeId, from, revision);
+  const sure = from !== null && seesEveryChange(store, consumer.worktreeId, from);
+  const closureOf = closureFor(store, consumer.worktreeId);
+  return ({ project, testPath }: CheckId): readonly RelativePath[] | undefined => {
     const closure = changed === null ? undefined : closureOf({ project, path: testPath });
     const touched =
       changed === null || closure === undefined || closure.some((p) => changed.unknown.has(p))
         ? undefined
         : closure.filter((p) => changed.changed.has(p));
-    const told = touched?.length === 0 && !sure ? undefined : touched;
-    return { ...entry, ...(told === undefined ? {} : { changesInClosure: told }), ...facts };
+    return touched?.length === 0 && !sure ? undefined : touched;
+  };
+}
+
+/**
+ * 011 C5 as amended (gh-32): a registration's known failures with the
+ * closure paths changed since the session first registered, when there are
+ * any: a session that resumes or compacts keeps its registration revision.
+ * A slow file's are left out, as `attribute` leaves them.
+ */
+export function withClosureChanges(
+  store: Store,
+  consumer: Consumer,
+  failures: readonly KnownFailure[],
+  revision: RevisionNumber,
+): readonly KnownFailure[] {
+  if (failures.length === 0) return failures;
+  const changesOf = closureChanges(store, consumer, revision);
+  const slow = worktreeSlowView(store, consumer.worktreeId);
+  return failures.map((f) => {
+    const { project, testPath } = f.check;
+    if (slow?.isSlow({ project, path: testPath }) === true) return f;
+    const paths = changesOf(f.check);
+    return paths === undefined || paths.length === 0 ? f : { ...f, changesInClosure: paths };
   });
 }
 

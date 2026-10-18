@@ -27,6 +27,7 @@ import { type Collapsed, checkName, collapse } from "./collapse.js";
 import { type HeaderForm, headerLines } from "./header.js";
 import {
   change,
+  closureLine,
   loadLine,
   recoveryProvenance,
   seenLine,
@@ -387,6 +388,7 @@ export function formatRegistration(
             ? capitalize(RECORDED_UNKNOWN_TEXT)
             : null
           : capitalize(recordedText(f.recorded, registration.consumer.worktreeId, now)),
+        closureLine(f.changesInClosure),
       ],
       [{ check: f.check, shown: "fail" }],
     ),
