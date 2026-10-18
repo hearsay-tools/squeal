@@ -240,7 +240,9 @@ function noResultText(
     return "stale: its last result is at other inputs";
   }
   const why = unknownReasons(store, worktreeId, states, root, Date.now()).of(row, own).reason;
-  return `unknown: ${cap(why ?? "no reason was kept", SUMMARY_MAX_CHARS)}`;
+  // Its first line: a stack the reason carries stays in status (011-02).
+  const line = why?.split("\n")[0]?.trim() || "no reason was kept";
+  return `unknown: ${cap(line, SUMMARY_MAX_CHARS)}`;
 }
 
 /**
