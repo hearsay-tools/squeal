@@ -36,9 +36,16 @@ afterEach(() => {
 const SECOND = "test/slow-two.test.ts";
 
 /** A worktree at revision 4 whose `slow` files are queued, and a daemon that took `run --slow`. */
-async function slowQueued(slow: readonly string[], fast: readonly string[] = []) {
+async function slowQueued(
+  slow: readonly string[],
+  fast: readonly string[] = [],
+  stop: Record<string, unknown> = {},
+) {
   const { repo, store } = repoWith([...slow, ...fast]);
-  writeFileSync(join(repo.main, "squeal.config.json"), JSON.stringify({ slow: { include: slow } }));
+  writeFileSync(
+    join(repo.main, "squeal.config.json"),
+    JSON.stringify({ slow: { include: slow }, stop }),
+  );
   const seen = await fakeDaemon(socketPathFor(repo.mainId), {
     "run-slow": [
       {
@@ -165,14 +172,46 @@ describe("squeal run --slow --wait holds for the slow files it queued (001-282)"
 describe("squeal status --wait does not hold for slow files, and says so (001-282)", {
   timeout: 30_000,
 }, () => {
-  it("returns quiet at once while a slow file is pending, naming the command that waits", async () => {
+  // Spec 004 D8 as amended 2026-10-18 (gh-35, task 004-71): the clause follows the policy.
+  it("returns quiet at once while a slow file is pending; off, it is not required", async () => {
     const { repo } = await slowQueued([SLOW_FILE]);
 
     const result = await run(["status", "--wait", "20000"], repo.main);
 
     expect(result.ms).toBeLessThan(10_000);
     expect(result.stdout).toMatch(
+      /\n\nReturned on quiet: [^\n]*; 1 slow file is not current; this repository does not require it before you finish \(`squeal run --slow` runs it\)\. Worktree: [^\n]*\n$/,
+    );
+  });
+
+  it("with `stop.requireSlowSuite` on, names the command that runs and waits", async () => {
+    const { repo } = await slowQueued([SLOW_FILE], [], { requireSlowSuite: true });
+
+    const result = await run(["status", "--wait", "20000"], repo.main);
+
+    expect(result.stdout).toMatch(
       /\n\nReturned on quiet: [^\n]*; 1 slow file is not current, which this wait does not hold for: `squeal run --slow --wait 60000` runs and waits for it\. Worktree: [^\n]*\n$/,
     );
+  });
+
+  it("with --json, the line on stderr follows the policy the snapshot carries", async () => {
+    for (const requireSlowSuite of [false, true]) {
+      const { repo } = await slowQueued([SLOW_FILE], [], { requireSlowSuite });
+
+      const result = await run(["status", "--json", "--wait", "20000"], repo.main);
+
+      const snapshot = JSON.parse(result.stdout);
+      expect(snapshot.wait).toMatchObject({ outcome: "quiet" });
+      expect(snapshot.slowTier.pending).toBe(1);
+      expect(snapshot.slowTier.stopWaitMs !== undefined).toBe(requireSlowSuite);
+      expect(result.stderr).toMatch(/^Returned on quiet: /);
+      expect(result.stderr.includes("this repository does not require it before you finish")).toBe(
+        !requireSlowSuite,
+      );
+      expect(result.stderr.includes("`squeal run --slow --wait 60000` runs and waits for it")).toBe(
+        requireSlowSuite,
+      );
+      closeFakeDaemons();
+    }
   });
 });

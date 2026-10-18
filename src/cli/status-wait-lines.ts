@@ -135,15 +135,28 @@ function slowText(slow: StatusWaitSlow): string {
 
 /**
  * Task 001-282: a quiet `status --wait` says the slow files it did not wait
- * for, those not current (spec 004 D9), and the command that does.
+ * for, those not current (spec 004 D9), and the command that does. Spec 004
+ * D8 as amended 2026-10-18 (gh-35, task 004-71): it follows
+ * `stop.requireSlowSuite`, read as the `Slow tier:` line reads it (a
+ * `stopWaitMs` only when on); off, the files are not required before the
+ * agent finishes.
  */
 function slowTierText(snapshot: StatusSnapshot, command: string): string {
   const tier = snapshot.slowTier;
-  const open = tier === undefined ? 0 : tier.pending + tier.notRun;
+  if (tier === undefined) return "";
+  const open = tier.pending + tier.notRun;
   if (open === 0) return "";
+  const files = `${plural(open, "slow file")} ${open === 1 ? "is" : "are"} not current`;
+  const them = open === 1 ? "it" : "them";
+  if (tier.stopWaitMs === undefined) {
+    return (
+      `; ${files}; this repository does not require ${them} before you finish ` +
+      `(\`${command} run --slow\` runs ${them})`
+    );
+  }
   return (
-    `; ${plural(open, "slow file")} ${open === 1 ? "is" : "are"} not current, ` +
-    `which this wait does not hold for: \`${command} run --slow --wait 60000\` runs and waits for ${open === 1 ? "it" : "them"}`
+    `; ${files}, which this wait does not hold for: ` +
+    `\`${command} run --slow --wait 60000\` runs and waits for ${them}`
   );
 }
 
