@@ -131,6 +131,7 @@ var WORKTREE_META_ROWS = {
   consumerVersion: { prefix: "consumer-version:", owner: "delivery/consumer-version" },
   registered: { prefix: "revision-registered:", owner: "delivery/registered" },
   registeredLeft: { prefix: "revision-registered-left:", owner: "delivery/registered" },
+  registeredKeys: { prefix: "registered-keys:", owner: "state/before-edits" },
   livenessTold: { prefix: "liveness-told:", owner: "delivery/liveness" },
   revisionTold: { prefix: "revision-told:", owner: "delivery/liveness" },
   uncoveredTold: { prefix: "uncovered-told:", owner: "delivery/uncovered" },
@@ -795,6 +796,11 @@ function normalize(line) {
 function where(location2) {
   return location2 === null ? "?" : `${location2.path}:${location2.line}:${location2.column}`;
 }
+var PHASE_PREFIX = {
+  load: "",
+  "after-tests": "error after its tests ran: ",
+  setup: "setup failed: "
+};
 function describeFailure(errors, fallback) {
   const first = errors[0];
   if (first === void 0) {
@@ -804,7 +810,7 @@ function describeFailure(errors, fallback) {
   const location2 = first.location ?? fallback;
   const more = errors.length - 1;
   const text = withCauses(
-    `${first.phase === "setup" ? "setup failed: " : ""}${withCode(line === "" ? first.name : line, first.code)}`,
+    `${PHASE_PREFIX[first.phase ?? "load"]}${withCode(line === "" ? first.name : line, first.code)}`,
     first.causes ?? []
   );
   const summary = more > 0 ? `${text} (${more} more error${more === 1 ? "" : "s"})` : text;
@@ -898,6 +904,75 @@ function baselineFindings(store, worktreeId) {
   return (check, fingerprint) => entries.has(current(entry(check, fingerprint)));
 }
 
+// src/core/state/before-edits.ts
+function registeredKeysMetaKey(worktreeId) {
+  return worktreeMetaKey("registeredKeys", worktreeId);
+}
+function read2(store, worktreeId) {
+  const raw = store.meta.get(registeredKeysMetaKey(worktreeId));
+  if (raw === null) return {};
+  try {
+    const value = JSON.parse(raw);
+    if (!isRecord(value)) return {};
+    const out = {};
+    for (const [revision, keys] of Object.entries(value)) {
+      if (!isRecord(keys)) continue;
+      const byFile2 = {};
+      for (const [file, key] of Object.entries(keys))
+        if (typeof key === "string") byFile2[file] = key;
+      out[revision] = byFile2;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+function recordRegisteredKeys(store, worktreeId, revision, kept) {
+  const recorded = read2(store, worktreeId);
+  const next = {};
+  for (const [at2, keys] of Object.entries(recorded)) if (kept.has(Number(at2))) next[at2] = keys;
+  if (next[revision] === void 0) {
+    const keys = {};
+    for (const row of store.testFileKeys.list(worktreeId)) {
+      if (row.key !== null) keys[testFileId(row.testFile)] = row.key;
+    }
+    next[revision] = keys;
+  }
+  store.meta.set(registeredKeysMetaKey(worktreeId), JSON.stringify(next));
+}
+function beforeEditsFor(store, worktreeId, since) {
+  let keys;
+  const results = /* @__PURE__ */ new Map();
+  let none;
+  const noneAt = () => {
+    none ??= { outcome: "none", commit: store.revisions.get(worktreeId, since)?.head ?? null };
+    return none;
+  };
+  const atKey2 = (key) => {
+    let byCheck = results.get(key);
+    if (byCheck === void 0) {
+      byCheck = /* @__PURE__ */ new Map();
+      for (const r of store.results.byKey(key)) {
+        const { worktreeId: from, commit } = r.provenance;
+        const before = r.outcome === "pass" ? { outcome: "pass" } : r.outcome === "fail" ? {
+          outcome: "fail",
+          worktreeId: from,
+          worktreeRoot: store.worktrees.get(from)?.root ?? null,
+          commit
+        } : null;
+        if (before !== null) byCheck.set(checkIdentity(r.check), before);
+      }
+      results.set(key, byCheck);
+    }
+    return byCheck;
+  };
+  return (check) => {
+    keys ??= read2(store, worktreeId)[since] ?? {};
+    const key = keys[testFileId(testFileOf(check))];
+    return (key === void 0 ? void 0 : atKey2(key).get(checkIdentity(check))) ?? noneAt();
+  };
+}
+
 // src/core/state/check-name.ts
 var FILE_LEVEL = " (file-level)";
 var GLOBAL_SETUP = "(global setup)";
@@ -928,7 +1003,7 @@ var OUTCOMES = /* @__PURE__ */ new Set(["pass", "fail"]);
 function isNote(value) {
   if (typeof value !== "object" || value === null) return false;
   const v = value;
-  return typeof v.key === "string" && OUTCOMES.has(v.from) && OUTCOMES.has(v.to) && typeof v.fromWorktreeId === "string" && typeof v.toWorktreeId === "string" && typeof v.at === "number";
+  return typeof v.key === "string" && OUTCOMES.has(v.from) && OUTCOMES.has(v.to) && typeof v.fromWorktreeId === "string" && typeof v.toWorktreeId === "string" && typeof v.at === "number" && (v.failure === void 0 || typeof v.failure === "string");
 }
 function flakyText(note) {
   return `flaky: ${note.from.toUpperCase()} -> ${note.to.toUpperCase()} under the same inputs`;
@@ -3597,7 +3672,16 @@ function tellRegistered(store, consumer, revision, { at: at2, scanned }) {
   const parked = unpark(store, consumer, at2);
   const next = parked === null ? fresh(revision, scanned) : back(parked, revision, scanned);
   writeSlot(store, registeredMetaKey(consumer.worktreeId), consumer, stored(next));
+  recordRegisteredKeys(store, consumer.worktreeId, next.since, registeredSinces(store, consumer));
   return parked === null ? null : { said: parked.said === true, uncovered: parked.uncovered ?? [] };
+}
+function registeredSinces(store, consumer) {
+  const { worktreeId } = consumer;
+  const values = [
+    ...Object.values(readAll(store, registeredMetaKey(worktreeId))),
+    ...Object.values(readAll(store, parkedMetaKey(worktreeId)))
+  ];
+  return new Set(values.flatMap((v) => toRegistration(v)?.since ?? []));
 }
 function fresh(since, scanned) {
   return scanned === null ? { since, gaps: [] } : { since, gaps: [], scanned };
@@ -3697,23 +3781,45 @@ function recordedArtifacts2(store) {
 function attribute(store, consumer, entries, revision) {
   if (!entries.some((e) => e.to === "fail")) return entries;
   const from = registration(store, consumer);
-  const changed = from === null ? null : changedAfter(store, consumer.worktreeId, from, revision);
-  const sure = from !== null && seesEveryChange(store, consumer.worktreeId, from);
-  const closureOf = closureFor(store, consumer.worktreeId);
+  const changesOf = closureChanges(store, consumer, revision);
   const slow = worktreeSlowView(store, consumer.worktreeId);
   const failureKeys = readFailureKeys(store, consumer.worktreeId);
   const artifactOf = recordedArtifacts2(store);
+  const before = from === null ? null : beforeEditsFor(store, consumer.worktreeId, from.since);
   return entries.map((entry3) => {
     if (entry3.kind === "fail-retired" || entry3.to !== "fail") return entry3;
-    const { project, testPath } = entry3.check;
     const load = loadOf(store, consumer.worktreeId, entry3);
-    const loaded = load === void 0 ? {} : { loadAverage: load };
+    const firstSeen = entry3.kind === "first-seen-fail" && entry3.from === null && before !== null;
+    const facts = {
+      ...load === void 0 ? {} : { loadAverage: load },
+      ...firstSeen ? { beforeEdits: before(entry3.check) } : {}
+    };
     const slowArtifact = slowRunArtifact(consumer.worktreeId, slow, failureKeys, artifactOf, entry3);
-    if (slowArtifact !== void 0) return { ...entry3, slowArtifact, ...loaded };
+    if (slowArtifact !== void 0) return { ...entry3, slowArtifact, ...facts };
+    const told = changesOf(entry3.check);
+    return { ...entry3, ...told === void 0 ? {} : { changesInClosure: told }, ...facts };
+  });
+}
+function closureChanges(store, consumer, revision) {
+  const from = registration(store, consumer);
+  const changed = from === null ? null : changedAfter(store, consumer.worktreeId, from, revision);
+  const sure = from !== null && seesEveryChange(store, consumer.worktreeId, from);
+  const closureOf = closureFor(store, consumer.worktreeId);
+  return ({ project, testPath }) => {
     const closure = changed === null ? void 0 : closureOf({ project, path: testPath });
     const touched = changed === null || closure === void 0 || closure.some((p) => changed.unknown.has(p)) ? void 0 : closure.filter((p) => changed.changed.has(p));
-    const told = touched?.length === 0 && !sure ? void 0 : touched;
-    return { ...entry3, ...told === void 0 ? {} : { changesInClosure: told }, ...loaded };
+    return touched?.length === 0 && !sure ? void 0 : touched;
+  };
+}
+function withClosureChanges(store, consumer, failures, revision) {
+  if (failures.length === 0) return failures;
+  const changesOf = closureChanges(store, consumer, revision);
+  const slow = worktreeSlowView(store, consumer.worktreeId);
+  return failures.map((f) => {
+    const { project, testPath } = f.check;
+    if (slow?.isSlow({ project, path: testPath }) === true) return f;
+    const paths = changesOf(f.check);
+    return paths === void 0 || paths.length === 0 ? f : { ...f, changesInClosure: paths };
   });
 }
 function dependenciesInstalled(store, worktreeId) {
@@ -4272,23 +4378,23 @@ function readGitHead(root) {
   const gitDir = gitDirOf(root);
   const commonDir = resolveCommonDir(root);
   if (gitDir === null || commonDir === null) return null;
-  let value = read2(join8(gitDir, "HEAD"));
+  let value = read3(join8(gitDir, "HEAD"));
   for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
     if (SHA.test(value)) return value;
     const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
     if (ref === void 0) return null;
-    value = read2(join8(gitDir, ref)) ?? read2(join8(commonDir, ref)) ?? packed(commonDir, ref);
+    value = read3(join8(gitDir, ref)) ?? read3(join8(commonDir, ref)) ?? packed(commonDir, ref);
   }
   return null;
 }
 function packed(commonDir, ref) {
-  for (const line of (read2(join8(commonDir, "packed-refs")) ?? "").split("\n")) {
+  for (const line of (read3(join8(commonDir, "packed-refs")) ?? "").split("\n")) {
     const [sha, name] = line.split(" ");
     if (name === ref && sha !== void 0 && SHA.test(sha)) return sha;
   }
   return null;
 }
-function read2(path) {
+function read3(path) {
   try {
     return readFileSync5(path, "utf8").trim();
   } catch (error) {
@@ -4993,8 +5099,8 @@ function createDelivery(store, options) {
       }
       if (idle) startTurn(store, consumer);
       const told = toldRevision(store, consumer);
-      const read3 = readLiveHeader(store, consumer.worktreeId, at2, states, told);
-      const live = withTold(read3, toldLiveness(store, consumer), at2);
+      const read4 = readLiveHeader(store, consumer.worktreeId, at2, states, told);
+      const live = withTold(read4, toldLiveness(store, consumer), at2);
       tellRevision(store, consumer, live.revision);
       const { entries, header, stillFailing } = annotate(
         store,
@@ -5056,8 +5162,8 @@ function createDelivery(store, options) {
         states.map((s) => toView2(s, at2))
       );
       const told = startingSince === void 0 ? null : { startingSince };
-      const read3 = readLiveHeader(store, consumer.worktreeId, at2, states);
-      const live = told === null ? read3 : withTold(read3, told, at2);
+      const read4 = readLiveHeader(store, consumer.worktreeId, at2, states);
+      const live = told === null ? read4 : withTold(read4, told, at2);
       const knownFailures = withRecorded(store, consumer.worktreeId, states, live.revision);
       const header = withDependencies(
         store,
@@ -5086,7 +5192,8 @@ function createDelivery(store, options) {
         schemaVersion: PAYLOAD_SCHEMA_VERSION,
         consumer,
         header,
-        knownFailures
+        // 011-18: a resumed session's failures name the closure paths changed since it started.
+        knownFailures: withClosureChanges(store, consumer, knownFailures, header.revision)
       };
     }),
     unregister: async (consumer) => {
@@ -5152,17 +5259,36 @@ var TOUCHED_SHOWN = 3;
 function change(entry3) {
   switch (entry3.kind) {
     case "first-seen-fail":
-      return entry3.from === null ? "first observed: FAIL" : `${upper(entry3.from)} -> FAIL`;
+      if (entry3.from !== null) return `${upper(entry3.from)} -> FAIL`;
+      return entry3.beforeEdits?.outcome === "pass" ? "PASS -> FAIL" : "first observed: FAIL";
     case "fail-changed":
       return "FAIL -> FAIL, failure changed";
     default:
       return `${entry3.from === null ? "NONE" : upper(entry3.from)} -> ${upper(entry3.to)}`;
   }
 }
+var commitText = (commit) => commit === null ? "no commit" : `commit ${commit.slice(0, 12)}`;
 function inheritedFrom(entry3) {
   if (entry3.origin.kind !== "inherited") return null;
-  const commit = entry3.origin.commit === null ? "no commit" : `commit ${entry3.origin.commit.slice(0, 12)}`;
-  return `${entry3.originRoot ?? `worktree ${entry3.origin.worktreeId}`} at ${commit}`;
+  return `${entry3.originRoot ?? `worktree ${entry3.origin.worktreeId}`} at ${commitText(entry3.origin.commit)}`;
+}
+function beforeEditsText(before) {
+  switch (before?.outcome) {
+    case "none": {
+      const settle2 = before.commit === null ? "" : `; to settle it, run it in a checkout of ${before.commit.slice(0, 12)}: its result is shared with this worktree`;
+      return `no baseline result, may predate your edits${settle2}`;
+    }
+    case "fail": {
+      const where2 = before.worktreeRoot ?? `worktree ${before.worktreeId}`;
+      return `it also failed before your edits (${where2} at ${commitText(before.commit)})`;
+    }
+    default:
+      return null;
+  }
+}
+function changeBefore(entry3) {
+  const before = entry3.kind === "first-seen-fail" ? beforeEditsText(entry3.beforeEdits) : null;
+  return before === null ? { text: change(entry3), joined: ", " } : { text: `${change(entry3)}; ${before}`, joined: "; " };
 }
 function validityText(entry3, revision) {
   if (entry3.validity === "pending") return `revision ${revision} pending`;
@@ -5171,23 +5297,23 @@ function validityText(entry3, revision) {
 function seenLine(entry3, revision) {
   const from = inheritedFrom(entry3);
   const baseline = entry3.baseline === true;
+  const { text, joined } = changeBefore(entry3);
   const parts = [
-    change(entry3),
     from === null ? `seen by Squeal's ${baseline ? "baseline " : ""}run at revision ${entry3.observedAt}` : `seen by Squeal's run in ${from}, inherited ${baseline ? "by the baseline " : ""}at revision ${entry3.observedAt}`,
     validityText(entry3, revision)
   ];
-  return parts.filter((p) => p !== null).join(", ");
+  return `${text}${joined}${parts.filter((p) => p !== null).join(", ")}`;
 }
 function slowSeenLine(entry3, revision) {
   const artifact = entry3.slowArtifact;
   const from = inheritedFrom(entry3);
+  const { text, joined } = changeBefore(entry3);
   const parts = [
-    change(entry3),
     from === null ? `slow tier, Squeal's run saw it at revision ${entry3.observedAt}` : `slow tier, Squeal's run in ${from} saw it, inherited at revision ${entry3.observedAt}`,
     artifact === null ? "declared artifact unknown" : artifact === void 0 || artifact.length === 0 ? "against no declared artifact" : `against ${artifact.join(", ")} as of revision ${entry3.observedAt}`,
     validityText(entry3, revision)
   ];
-  return parts.filter((p) => p !== null).join(", ");
+  return `${text}${joined}${parts.filter((p) => p !== null).join(", ")}`;
 }
 function recoveryProvenance(entry3, revision) {
   const parts = [];
@@ -5201,12 +5327,14 @@ function recoveryProvenance(entry3, revision) {
 }
 var CHANGED_HERE = "files changed here since this session started";
 function touchesLine(entry3) {
-  const paths = entry3.changesInClosure;
+  return closureLine(entry3.changesInClosure);
+}
+function closureLine(paths) {
   if (paths === void 0) return null;
   if (paths.length === 0) return `none of the ${CHANGED_HERE} are in its imports`;
   const more = paths.length - TOUCHED_SHOWN;
   const shown = paths.slice(0, TOUCHED_SHOWN).join(", ");
-  return `touches ${CHANGED_HERE}: ${shown}${more > 0 ? ` and ${more} more` : ""}`;
+  return `its closure reads ${CHANGED_HERE}: ${shown}${more > 0 ? ` and ${more} more` : ""}`;
 }
 function loadLine(entry3) {
   return entry3.loadAverage === void 0 ? null : `load average ${entry3.loadAverage.toFixed(2)} when it ran`;
@@ -5484,7 +5612,8 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
         f.summary === "" ? null : cap(f.summary, SUMMARY_MAX_CHARS),
         f.location === null ? null : at(f.location),
         f.validity === "current" ? null : `${f.validity}, observed at revision ${f.observedAt}`,
-        f.recorded === void 0 ? f.recordedUnknown === true ? capitalize2(RECORDED_UNKNOWN_TEXT) : null : capitalize2(recordedText(f.recorded, registration2.consumer.worktreeId, now))
+        f.recorded === void 0 ? f.recordedUnknown === true ? capitalize2(RECORDED_UNKNOWN_TEXT) : null : capitalize2(recordedText(f.recorded, registration2.consumer.worktreeId, now)),
+        closureLine(f.changesInClosure)
       ],
       [{ check: f.check, shown: "fail" }]
     )
@@ -5742,7 +5871,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.216";
+  if (true) return "0.1.217";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -5911,13 +6040,13 @@ var SKIPPED = /* @__PURE__ */ new Set([
 ]);
 var MAX_HOPS = 4;
 function findHarnessProcess(lookup = {}) {
-  const read3 = lookup.read ?? readProcStat;
+  const read4 = lookup.read ?? readProcStat;
   const namespace = (lookup.namespace ?? pidNamespace)();
   if (namespace === null) return null;
   let pid = lookup.ppid ?? process.ppid;
   try {
     for (let hop = 0; hop < MAX_HOPS && pid > 1; hop++) {
-      const stat = read3(pid);
+      const stat = read4(pid);
       if (stat === null || stat.state === "Z" || stat.comm === "systemd") return null;
       if (!SKIPPED.has(stat.comm)) {
         return { pid, startTime: stat.startTime, pidNamespace: namespace };
