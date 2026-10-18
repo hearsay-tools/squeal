@@ -1,4 +1,5 @@
 import { basename, dirname } from "node:path";
+import { closureLine } from "../delivery/provenance.js";
 import { testFileLabel } from "../run-log.js";
 import { causeText, flakyText, formatCheck, revisionText } from "../state/index.js";
 import { plural } from "../text.js";
@@ -69,6 +70,7 @@ function knownState(why: WhyReport, s: KnownState | null): string[] {
   return [
     ...stateLines(why, s),
     ...changedLine(why.changedSince),
+    ...closureLines(why),
     ...replacedLine(why),
     ...heldLine(why),
     ...flakyLine(why),
@@ -91,6 +93,12 @@ function changedLine(since: WhyChangedSince | undefined): string[] {
       ? ` (first ${since.paths.length} of ${since.total} paths)`
       : "";
   return [`  Changed since revision ${since.revision}${capped}: ${paths.join(", ")}`];
+}
+
+/** 011 C5 as amended (gh-32): whether the failure's closure reads the session's changes, a fact. */
+function closureLines(why: WhyReport): string[] {
+  const line = closureLine(why.changesInClosure);
+  return line === null ? [] : [`  ${line.charAt(0).toUpperCase()}${line.slice(1)}`];
 }
 
 /**

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createDelivery, formatDelta } from "../../src/core/delivery/index.js";
+import { createDelivery, formatDelta, formatRegistration } from "../../src/core/delivery/index.js";
 import { createStateSink, describeFailure } from "../../src/core/state/index.js";
 import type {
   Consumer,
@@ -166,5 +166,24 @@ describe("a broad scan test whose diagnostics name other files (011-18, gh-32)",
       "its closure reads files changed here since this session started: src/x.ts",
     );
     expect(text).not.toContain("touches files changed here");
+  });
+});
+
+describe("the closure line on registration (011-18)", () => {
+  it("names the closure paths a resumed session changed beside its known failures", async () => {
+    await failAfterEdit();
+    const resumed = await delivery.register(C1, { atStart: true });
+    expect(resumed.knownFailures[0]?.changesInClosure).toEqual(["src/x.ts"]);
+    expect(formatRegistration(resumed)).toContain(
+      "      its closure reads files changed here since this session started: src/x.ts",
+    );
+  });
+
+  it("says nothing of it to a session registering fresh", async () => {
+    await failAfterEdit();
+    const fresh = await delivery.register({ ...C1, sessionId: "s2" }, { atStart: true });
+    expect(fresh.knownFailures).toHaveLength(1);
+    expect(fresh.knownFailures[0]?.changesInClosure).toBeUndefined();
+    expect(formatRegistration(fresh)).not.toContain("its closure reads");
   });
 });

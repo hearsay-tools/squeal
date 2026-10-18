@@ -407,6 +407,12 @@ export interface KnownFailure {
    * B3). Absent when `recorded` is given, and for a setup failure.
    */
   readonly recordedUnknown?: true;
+  /**
+   * A registration's: the closure paths of its test file changed since the
+   * session first registered (011 C5 as amended, gh-32, task 011-18). Absent
+   * when none is, or when that is not known.
+   */
+  readonly changesInClosure?: readonly RelativePath[];
 }
 
 /** `KnownFailure.recorded`. */
@@ -702,6 +708,13 @@ export interface WhyReport {
    * Absent for a known state at the current revision, or with none.
    */
   readonly changedSince?: WhyChangedSince;
+  /**
+   * For a failing check: the closure paths of its test file changed since
+   * the shell's harness session registered, as its deliveries name them
+   * (011 C5 as amended, gh-32, task 011-18). Absent when the shell names no
+   * registered session or the changes are not known.
+   */
+  readonly changesInClosure?: readonly RelativePath[];
   /**
    * Durations over every stored result of the check, not only the listed
    * ones (task 001-411). `null` when no pass or fail is stored.

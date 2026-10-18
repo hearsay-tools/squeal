@@ -31,6 +31,7 @@ import {
 import { durationsOf } from "./durations.js";
 import { type StatusContext, type StatusStoreOptions, withStatusStore } from "./open.js";
 import { runLogOf } from "./run-log.js";
+import { type WhySession, whyClosureChanges } from "./why-closure.js";
 import { replacement, unshownLog } from "./why-log.js";
 
 /** Most results `squeal why` lists for one check. */
@@ -45,6 +46,8 @@ export const WHY_CHANGED_LIMIT = 20;
 export interface WhyOptions extends StatusStoreOptions {
   /** Also read the check's test file's console lines from its run log (`--include-logs`). */
   readonly includeLogs?: boolean;
+  /** The harness session the shell runs in, for the closure line (011-18); none when absent. */
+  readonly session?: WhySession;
 }
 
 /**
@@ -64,7 +67,8 @@ export function readWhy(cwd: AbsolutePath, query: string, options: WhyOptions = 
     const exact = parseCheck(query);
     const check = exact !== null && known(context.store, worktreeId, exact) ? exact : null;
     const match = check ?? resolve(context.store, worktreeId, query.trim());
-    return "found" in match ? match : report(context, match, includeLogs);
+    const session = options.session ?? { session: null, agent: null };
+    return "found" in match ? match : report(context, match, includeLogs, session);
   });
 }
 
@@ -147,6 +151,7 @@ function report(
   { store, root, commonDir }: StatusContext,
   check: CheckId,
   includeLogs: boolean,
+  session: WhySession,
 ): WhyReport {
   const worktreeId = worktreeIdFor(root);
   const worktreeRoots = Object.fromEntries(store.worktrees.list().map((w) => [w.id, w.root]));
@@ -171,6 +176,7 @@ function report(
   const revision = latest?.number ?? null;
   const commit = readRevisionCommit(store, worktreeId, latest);
   const changed = changedSince(store, worktreeId, knownState?.observedAt ?? null, revision);
+  const closure = whyClosureChanges(store, worktreeId, check, knownState, revision, session);
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
@@ -194,6 +200,7 @@ function report(
     ...(heldFailure === undefined ? {} : { heldFailure }),
     ...(flaky === undefined ? {} : { flaky }),
     ...(changed === undefined ? {} : { changedSince: changed }),
+    ...(closure === undefined ? {} : { changesInClosure: closure }),
   };
 }
 

@@ -20,7 +20,7 @@ import { runCommand } from "./run.js";
 import { SETUP_USAGE, setupCommand } from "./setup/command.js";
 import { startCommand } from "./start.js";
 import { statusCommand } from "./status-command.js";
-import { statusWaitCommand } from "./status-wait.js";
+import { statusWaitCommand, waitConsumer } from "./status-wait.js";
 import { stopCommand } from "./stop.js";
 import { updateCommand } from "./update.js";
 import { takeWait } from "./wait-arg.js";
@@ -232,9 +232,17 @@ function why(args: readonly string[], io: CliIo): number {
   const result = readWhy(io.cwd ?? process.cwd(), name, {
     includeLogs,
     busyRetryMs: CLI_READ_RETRY_MS,
+    session: whySession(io.env ?? process.env),
   });
   io.stdout(parsed.json ? json(result) : formatWhy(result));
   return result.available && result.found ? 0 : 1;
+}
+
+/** The harness session `why` runs in (011-18): `waitConsumer`'s, or Pi's (`PI_SESSION_ID`), as `retry` reads it. */
+function whySession(env: Readonly<Record<string, string | undefined>>) {
+  const shell = waitConsumer(env);
+  const pi = env.PI_SESSION_ID === "" ? undefined : env.PI_SESSION_ID;
+  return shell.session !== null || pi === undefined ? shell : { session: pi, agent: null };
 }
 
 function parseArgs(command: string, args: readonly string[], io: CliIo) {
