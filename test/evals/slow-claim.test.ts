@@ -210,6 +210,11 @@ const SESSIONS: Record<string, { steps: (h: Harness) => Step[]; met: boolean | n
     steps: (h) => [...opening(h), wait(held(1)), say("28 passed, 2 slow files pending.")],
     met: false,
   },
+  // Review wave-11 B1: "the slow test" inside an unnumbered plural is no count.
+  "names the slow test files without a number": {
+    steps: (h) => [...opening(h), wait(held(1)), say("the slow test files are still pending")],
+    met: false,
+  },
   "states no count": {
     steps: (h) => [...opening(h), wait(held(1)), say("28 passed, 2 queued.")],
     met: false,
@@ -314,5 +319,23 @@ for (const harness of ["codex", "claude"] as const)
           claimLine: g.claimLine as string,
         }),
       ).toMatchObject({ "claim-true": null, "slow-through-squeal": null });
+    });
+
+    it("policy off: on a timeline kept before the count, an unnumbered plural stays a miss (review wave-11 B1)", () => {
+      const s = SESSIONS["names the slow test files without a number"];
+      const g = graded(s?.steps(harness) ?? [], { truthPass: false, status: "fail", harness });
+      const old = (g.retained as Seen[]).map((x) => {
+        const { slowNotCurrent: _, ...rest } = x as Seen & { slowNotCurrent?: number };
+        return rest as Seen;
+      });
+      const record = { claim: "unknown", truthPass: false, claimTrue: "hedged" } as PilotRecord;
+      expect(
+        measuresOf(record, {
+          timeline: old,
+          scenario: a2,
+          slowRequired: false,
+          claimLine: g.claimLine as string,
+        }),
+      ).toMatchObject({ "claim-true": false, "slow-through-squeal": null });
     });
   });
