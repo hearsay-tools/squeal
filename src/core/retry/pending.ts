@@ -36,10 +36,9 @@ function entry(records: readonly RetryRecord[]): PendingRetry {
   const testFile: TestFileRef = first.testFile;
   return {
     testFile,
-    // A run asked for a file with no result starts at once too (011 C5, gh-36).
-    reason: records.some((r) => r.reason === "environment" || r.noResult === true)
-      ? "environment"
-      : "load",
+    reason: records.some((r) => r.reason === "environment") ? "environment" : "load",
+    // A run asked for a file with no result starts at once whatever its reason (011 C5, gh-36).
+    ...(records.some((r) => r.noResult === true) ? { noResult: true as const } : {}),
     askedAt: first.askedAt,
     claimedBy: records.find((r) => r.claim !== null)?.claim?.worktreeId ?? null,
     requests: records.length,
