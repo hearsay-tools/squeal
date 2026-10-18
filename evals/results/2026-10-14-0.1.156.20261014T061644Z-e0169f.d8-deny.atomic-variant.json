@@ -510,7 +510,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -707,7 +707,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -745,5 +745,16 @@
   }
  },
  "settleS": 180,
- "repetitions": 1
+ "repetitions": 1,
+ "regraded": [
+  {
+   "by": "006-91",
+   "date": "2026-10-18",
+   "changed": [
+    "a2-slow.p0.codex-gpt-6-luna.e-medium.r1",
+    "a2-slow.d8-deny.codex-gpt-6-luna.e-medium.r1"
+   ],
+   "note": "D10 as amended 2026-10-18: under stop.requireSlowSuite off, an unknown claim stating the slow files not current is met and slow-through-squeal is not computed"
+  }
+ ]
 }
