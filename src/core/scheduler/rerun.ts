@@ -37,12 +37,30 @@ export function holdsNewFailure(
   );
 }
 
+/**
+ * Spec 011 C5 as amended 2026-10-18 (gh-20, task 011-19): whether a run's
+ * `records` of one file fail at file level only, after every one of its
+ * tests reported `pass`: an error of its teardown, such as an `afterAll`
+ * racing processes the file started. A test that failed or was skipped (a
+ * throwing `beforeAll` skips them) is not that, nor is a file with no test.
+ */
+export function failsAfterTestsPassed(records: readonly ResultRecord[]): boolean {
+  const tests = records.filter((r) => r.check.kind === "test");
+  return (
+    tests.length > 0 &&
+    tests.every((r) => r.outcome === "pass") &&
+    records.some((r) => r.check.kind === "file" && r.outcome === "fail")
+  );
+}
+
 /** A file whose run in a tier stored a new failure (`holdsNewFailure`) at `key`. */
 export interface NewFailure {
   readonly file: FileState;
   readonly key: CheckKey;
   /** The tier ran it forced: `run --all --force`, or a re-run itself. */
   readonly forced: boolean;
+  /** The failure is file-level after all its tests passed (`failsAfterTestsPassed`). */
+  readonly afterTestsPassed?: boolean;
 }
 
 /**
@@ -56,7 +74,9 @@ export const RERUN_CAP = 8;
  * Queues the re-run of a tier's new failures, called once the tier's results
  * are applied. A failure is not re-run when its run was forced, its key was
  * already re-run, or its file is slow (a limit: a slow run can cost minutes
- * to an hour; the slow tier runs it again when spec 004 D2's triggers say).
+ * to an hour; the slow tier runs it again when spec 004 D2's triggers say),
+ * unless that slow file's failure came after all its tests passed (gh-20,
+ * task 011-19): no path, Squeal's temp root included, decides it.
  * When more than `rerunCap` are left, none is re-run and one note says how
  * many failed anew and that a mass break is not re-run. Returns the
  * failures queued, for `writeReruns` (review wave 13i, S1).
@@ -67,7 +87,10 @@ export function queueReruns(
   failures: readonly NewFailure[],
 ): NewFailure[] {
   const due = failures.filter(
-    ({ file, key, forced }) => !forced && file.rerunKey !== key && !ledger.queue.isSlow(file.ref),
+    ({ file, key, forced, afterTestsPassed }) =>
+      !forced &&
+      file.rerunKey !== key &&
+      (afterTestsPassed === true || !ledger.queue.isSlow(file.ref)),
   );
   if (due.length === 0) return [];
   if (due.length > context.rerunCap) {
@@ -111,7 +134,8 @@ export function endRerun(context: SchedulerContext, file: FileState): void {
  * new failure was re-run at, and a re-run a daemon queued and never ran is
  * queued forced again while the file is still at that key. Under a
  * lookup-only baseline (`queue` false) it stays pending for a later daemon.
- * A file no longer listed is forgotten.
+ * A slow file's pending re-run is queued too: only a failure after all its
+ * tests passed queues one (task 011-19). A file no longer listed is forgotten.
  */
 export function restoreReruns(context: SchedulerContext, ledger: Ledger, queue: boolean): void {
   const { store, worktreeId } = context;
@@ -121,7 +145,7 @@ export function restoreReruns(context: SchedulerContext, ledger: Ledger, queue: 
     if (!file) continue;
     file.rerunKey = memory.key;
     if (!memory.pending) continue;
-    if (file.key !== memory.key || ledger.queue.isSlow(file.ref)) {
+    if (file.key !== memory.key) {
       ended.push({ ...memory, pending: false });
     } else if (queue) {
       file.rerunPending = true;

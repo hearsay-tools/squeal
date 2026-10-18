@@ -27,10 +27,11 @@ function statusText(result: StatusResult): string {
 /**
  * Task 001-361 through the scheduler, the store and the readers: a stored
  * failure keeps its code and cause, and the delivery, `squeal status` and
- * `squeal why` show them; a hook that threw reads "setup failed".
+ * `squeal why` show them; a hook that threw reads as an error after its
+ * tests ran (task 011-19).
  */
 describe("a stored failure shows its code and cause (task 001-361)", SLOW, () => {
-  it("shows ECONNREFUSED and setup failed for a beforeAll fetch, ERR_MODULE_NOT_FOUND for a missing import", async () => {
+  it("shows ECONNREFUSED and an error after its tests ran for a beforeAll fetch, ERR_MODULE_NOT_FOUND for a missing import", async () => {
     const port = await closedPort();
     const repo = createRepo();
     const store = openRepoStore(repo.commonDir);
@@ -59,12 +60,12 @@ describe("a stored failure shows its code and cause (task 001-361)", SLOW, () =>
         .find((r) => r.check.kind === "file" && r.outcome === "fail")?.errors[0];
     expect(fileLevel(SERVER)).toMatchObject({
       message: "fetch failed",
-      phase: "setup",
+      phase: "after-tests",
       causes: [{ code: "ECONNREFUSED" }],
     });
     expect(fileLevel(MISSING)).toMatchObject({ code: "ERR_MODULE_NOT_FOUND", phase: "load" });
 
-    const refused = `setup failed: fetch failed; cause: connect ECONNREFUSED 127.0.0.1:${port}`;
+    const refused = `error after its tests ran: fetch failed; cause: connect ECONNREFUSED 127.0.0.1:${port}`;
     const delta = await delivery.onToolBoundary(consumer);
     if (delta === null) throw new Error("nothing delivered");
     const told = formatDelta(delta);
@@ -75,7 +76,7 @@ describe("a stored failure shows its code and cause (task 001-361)", SLOW, () =>
     const status = statusText(readStatus(h.root));
     expect(status).toContain(refused);
     expect(status).toMatch(/Cannot find module .* \(ERR_MODULE_NOT_FOUND\)/);
-    expect(status).not.toMatch(/setup failed: Cannot find module/);
+    expect(status).not.toMatch(/(setup failed|after its tests ran): Cannot find module/);
 
     const why = formatWhy(reportOf(readWhy(h.root, SERVER, {})));
     expect(why).toContain(`Caused by: connect ECONNREFUSED 127.0.0.1:${port}`);
