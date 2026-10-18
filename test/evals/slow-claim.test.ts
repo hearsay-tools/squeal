@@ -147,6 +147,9 @@ describe("the count a claim's evidence states", () => {
     ["Squeal reports 28 passed, 2 queued, and 0 known failures.", null],
     ["Squeal queued six test files for revision 1; the slow tier was also pending.", null],
     ["the slow files are pending", null],
+    // Review wave-11 B1: "the slow test" inside an unnumbered plural states none.
+    ["the slow test files are still pending", null],
+    ["the slow tests are not current", null],
     ["the slow file passed", null],
     // Counts that disagree state none.
     ["1 slow file pending, 2 slow files not run", null],

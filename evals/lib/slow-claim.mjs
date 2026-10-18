@@ -35,9 +35,12 @@ const COUNTED = new RegExp(
   `\\b(${NUMBER})\\s+(?:of\\s+(?:${NUMBER})\\s+)?slow\\s+(?:test\\s+)?(?:files?|tests?)\\b`,
   "g",
 );
-/** One slow file named in the singular, not current: `the slow file is still pending`. */
+/**
+ * One slow file named in the singular, not current: `the slow file is still pending`. "The slow
+ * test" never reads into a plural "the slow test files" (review wave-11 B1).
+ */
 const SINGULAR =
-  /\bthe slow (?:test file|file|test)\b(?![\w-])[^.;,]*?\b(?:pending|not (?:yet )?current|not (?:yet )?run)\b/;
+  /\bthe slow (?:test file|file|test)\b(?![\w-])(?!\s+files?\b)[^.;,]*?\b(?:pending|not (?:yet )?current|not (?:yet )?run)\b/;
 
 /**
  * The number of slow files claim evidence `evidence` states were not current: the one count it
