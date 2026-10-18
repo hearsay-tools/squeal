@@ -13,7 +13,7 @@ import { check, freshStore, OTHER, result, WT } from "./helpers.js";
  * under one key carries a flaky note, kept in `meta` for every worktree.
  */
 describe("recordFlips", () => {
-  it("notes a fail replaced by a pass and a pass replaced by a fail, under the same key only", () => {
+  it("notes a fail replaced by a pass with its error, and a pass replaced by a fail, under the same key only", () => {
     const store = freshStore();
     const [a, b, c, d] = [check("a"), check("b"), check("c"), check("d")];
     const prior = [
@@ -31,7 +31,16 @@ describe("recordFlips", () => {
     ];
     const notes = recordFlips(store, prior, next, 7);
     expect(notes).toEqual([
-      { key: "k1", from: "fail", to: "pass", fromWorktreeId: OTHER, toWorktreeId: WT, at: 7 },
+      // The replaced fail's summary stays, so `why` keeps the first error (task 011-19).
+      {
+        key: "k1",
+        from: "fail",
+        to: "pass",
+        fromWorktreeId: OTHER,
+        toWorktreeId: WT,
+        at: 7,
+        failure: "expected 1 to be 2",
+      },
       { key: "k1", from: "pass", to: "fail", fromWorktreeId: OTHER, toWorktreeId: WT, at: 7 },
     ]);
     expect([...readFlakyNotes(store).keys()]).toEqual([checkIdentity(a), checkIdentity(b)]);

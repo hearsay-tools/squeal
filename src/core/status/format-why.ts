@@ -116,12 +116,13 @@ function heldLine(why: WhyReport): string[] {
   return [`  Inherited FAIL from ${source} at ${shortCommit(commit)}, being confirmed`];
 }
 
-/** Task 001-170: the check's stored outcome flipped under one key. */
+/** Task 001-170: the check's stored outcome flipped under one key; a replaced fail's error (011-19). */
 function flakyLine(why: WhyReport): string[] {
   const note = why.flaky;
   if (note === undefined) return [];
   return [
     `  ${capitalize(flakyText(note))} (key ${note.key.slice(0, 12)}, ${new Date(note.at).toISOString()})`,
+    ...(note.failure === undefined ? [] : [`    the FAIL it replaced: ${note.failure}`]),
   ];
 }
 

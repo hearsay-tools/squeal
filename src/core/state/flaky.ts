@@ -55,6 +55,9 @@ export function recordFlips(
         fromWorktreeId: replaced.provenance.worktreeId,
         toWorktreeId: r.provenance.worktreeId,
         at,
+        ...(replaced.outcome === "fail" && replaced.summary !== null
+          ? { failure: replaced.summary }
+          : {}),
       },
     ]);
   }
@@ -84,7 +87,8 @@ function isNote(value: unknown): value is FlakyNote {
     OUTCOMES.has(v.to) &&
     typeof v.fromWorktreeId === "string" &&
     typeof v.toWorktreeId === "string" &&
-    typeof v.at === "number"
+    typeof v.at === "number" &&
+    (v.failure === undefined || typeof v.failure === "string")
   );
 }
 
