@@ -1,6 +1,7 @@
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
 import {
+  askNoResultRun,
   askRetry,
   cancelRetries,
   type HostLoad,
@@ -14,8 +15,17 @@ import {
   readRetries,
   retriesAt,
 } from "../core/retry/index.js";
+import { SUMMARY_MAX_CHARS } from "../core/state/index.js";
+import { unknownReasons } from "../core/status/index.js";
 import { isStoreOpenFailure, openStore } from "../core/store/index.js";
-import type { AbsolutePath, Store, TestFileKeyRecord, WorktreeId } from "../core/types/index.js";
+import { cap } from "../core/text.js";
+import type {
+  AbsolutePath,
+  KnownState,
+  Store,
+  TestFileKeyRecord,
+  WorktreeId,
+} from "../core/types/index.js";
 import { askDaemon, CLI_SOCKET_TIMEOUT_MS, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { waitConsumer } from "./status-wait.js";
@@ -86,7 +96,7 @@ export async function retryCommand(
           ? refuse(notKeyed(store, worktreeId, rel, shown))
           : parsed.kind === "cancel"
             ? cancelLine(store, row, worktreeId, shown)
-            : askLine(store, row, worktreeId, shown, parsed.reason, session(io), load);
+            : askLine(store, row, { root, worktreeId, shown }, parsed.reason, session(io), load);
       if (!answer.ok) refused++;
       lines.push(answer.text);
     }
@@ -136,26 +146,55 @@ function session(io: CliIo): string {
   return waitConsumer(env).session ?? pi ?? "";
 }
 
+/** The worktree a request is asked in, and the file as the reply shows it. */
+interface Where {
+  readonly root: AbsolutePath;
+  readonly worktreeId: WorktreeId;
+  readonly shown: string;
+}
+
 function askLine(
   store: Store,
   row: TestFileKeyRecord,
-  worktreeId: WorktreeId,
-  shown: string,
+  { root, worktreeId, shown }: Where,
   reason: RetryReason,
   asker: string,
   load: HostLoad,
 ): Answer {
   const key = row.key as string;
-  const failing = store.knownStates
-    .list(worktreeId)
-    .some(
-      (s) =>
-        s.outcome === "fail" &&
-        s.check.kind !== "setup" &&
-        s.check.project === row.testFile.project &&
-        s.check.testPath === row.testFile.path,
-    );
-  if (!failing) return refuse(`Not retried: ${shown} has no known failure in this worktree.`);
+  const states = store.knownStates.list(worktreeId);
+  const own = states.filter(
+    (s) =>
+      s.check.kind !== "setup" &&
+      s.check.project === row.testFile.project &&
+      s.check.testPath === row.testFile.path,
+  );
+  if (!own.some((s) => s.outcome === "fail")) {
+    const ask = { testFile: row.testFile, key, session: asker, reason, at: Date.now(), worktreeId };
+    const pending = row.pending !== null || own.some((s) => s.validity === "pending");
+    if (pending)
+      return {
+        ok: true,
+        text: `${shown} has a run queued or running at its inputs already, so nothing more is queued. ${waitText(shown)}`,
+      };
+    if (own.length > 0 && own.every((s) => s.validity === "current")) {
+      return refuse(`Not retried: ${shown} has no known failure in this worktree.`);
+    }
+    const answer = askNoResultRun(store, ask);
+    if (answer.kind === "joined") {
+      return {
+        ok: true,
+        text: `${shown} has a run asked at its inputs already, pending, so nothing more is queued. ${waitText(shown)}`,
+      };
+    }
+    const state = noResultText(store, row, own, { root, worktreeId, shown }, states);
+    return {
+      ok: true,
+      text:
+        `Run queued: ${shown} has no result at its inputs (${state}). It runs once now at its normal priority, whatever the reason; ` +
+        `that is its one run at these inputs, and it spends no retry of this session. ${waitText(shown)}`,
+    };
+  }
   const others = pendingOf(store, row).filter((r) => r.session !== asker);
   const answer = askRetry(store, {
     testFile: row.testFile,
@@ -179,6 +218,29 @@ function askLine(
       `Retry queued (reason: ${reason}): ${shown} ${when}.${joins} ` +
       "Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending.",
   };
+}
+
+/** The named wait that waits for `shown`'s run and moves it ahead in the queue (011 C15). */
+function waitText(shown: string): string {
+  return `squeal status --wait 60000 ${shown} waits for its result and moves it ahead in the queue.`;
+}
+
+/**
+ * The state of a file with no result at its key (011 C5, gh-36): `stale`, its
+ * last result at other inputs, or `unknown` with why, as status words it.
+ */
+function noResultText(
+  store: Store,
+  row: TestFileKeyRecord,
+  own: readonly KnownState[],
+  { root, worktreeId }: Where,
+  states: readonly KnownState[],
+): string {
+  if (own.length > 0 && own.every((s) => s.validity !== "unknown")) {
+    return "stale: its last result is at other inputs";
+  }
+  const why = unknownReasons(store, worktreeId, states, root, Date.now()).of(row, own).reason;
+  return `unknown: ${cap(why ?? "no reason was kept", SUMMARY_MAX_CHARS)}`;
 }
 
 /**
