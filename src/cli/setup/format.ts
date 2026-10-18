@@ -1,3 +1,4 @@
+import { argvText } from "../../core/slow/precondition.js";
 import type { CodexTrust, SetupPlan } from "./plan.js";
 
 /** The plan for a human: one section per D3 step 2 fact, then what is outdated. */
@@ -87,6 +88,13 @@ export function formatPlan(plan: SetupPlan): string {
   }
   for (const script of plan.slow.unresolvedScripts) {
     lines.push(`  not resolved statically: ${script}`);
+  }
+  // 004 D7: code Squeal runs beside the runner; none declared, no section.
+  if (plan.preconditions.length > 0) {
+    lines.push("", "Precondition commands (run before the slow tier):");
+    for (const p of plan.preconditions) {
+      lines.push(`  ${p.source}.command: ${argvText(p.command)}, timeout ${p.timeoutMs} ms`);
+    }
   }
 
   lines.push(
