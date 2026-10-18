@@ -483,3 +483,183 @@ The prior-failure variant also reports upper's known failure with `validity: "cu
 ### Inputs for the coordinator
 
 One B1 blocker remains, confined to atomic publication of the skip and the derived state it governs. Retain repair 2's classifier, bootstrap handling and the closed findings. The third-round disposition belongs to the coordinator and human; this reviewer changed no product code.
+
+
+## Fourth round
+
+FAIL cc4d94017ced4841c9b108349b36f5ae3c3ccb33
+
+Two proven regressions in transaction-error handling block this candidate. No additional should-fix items or nits. Successful skip, lift and requeue publication is atomic and closes the third-round visibility window. The added transaction boundaries, however, lose retry state on a busy requeue and roll back a checkpoint end after its in-memory tracker has discarded it. This human-authorized fourth round covers only repair 3 and what its transaction now encloses. B2-B4, S1, 004-68 and the other original findings remain closed or excluded. Settled-state behavior is revisited below only where the added transaction causes a regression.
+
+Reviewed on 2026-10-18 at the exact pinned candidate, against local `origin/main` at `b1a97cbd06455b9ed95b01b3fbc0584b4624cbb1` (0.1.213). The supplied 1a28cb64-equivalent repair is `5eeb453446b5bcb8f19932823b99f8e3b143af2a` here. The other source delta from the third-round pin is the key-source hash re-pin.
+
+### Verification
+
+The pinned product tree remained clean throughout verification. No product file was edited, and `npm run build` was not run, as directed. Probe code, fixture repositories, copied control sources and HOME/XDG directories lived under `/tmp/004-65-fourth-probes`; probe git author/committer identity was explicit. Fixture dependency resolution used a symlink to the candidate's installed `node_modules`. No probe read or wrote the real HOME.
+
+```text
+npm ci
+added 196 packages, and audited 197 packages in 7s
+found 0 vulnerabilities
+(exit 0)
+
+npm run lint
+Checked 1443 files in 555ms. No fixes applied.
+(exit 0)
+
+npm run typecheck
+tsc --noEmit
+(exit 0)
+
+npm run check:version -- origin/main
+version bump: 0.1.213 -> 0.1.214, ok
+(exit 0)
+```
+
+Installation also printed the existing deprecation and install-script approval notices.
+
+Touched tests and their slow-tier callers:
+
+```sh
+npx vitest run --maxWorkers=2 test/slow test/state/sink-slow-skip.test.ts \
+  test/status/slow-tier.test.ts test/cli/run-all-skipped.test.ts \
+  test/cli/run-slow-skipped.test.ts test/delivery/slow-told.test.ts \
+  test/harness/stop-slow-skipped.test.ts test/policy/slow.test.ts
+```
+
+```text
+Test Files  18 passed (18)
+     Tests  150 passed (150)
+Start at  09:19:26
+Duration  14.82s
+(exit 0)
+```
+
+Independent full run under the shared-host lock, not a Squeal checkpoint:
+
+```sh
+flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
+```
+
+```text
+Test Files  721 passed | 1 skipped (722)
+     Tests  6117 passed | 9 skipped (6126)
+Start at  09:19:26
+Duration  848.68s
+(exit 0)
+```
+
+The full run printed two fixture gitdir-repair diagnostics, cleanup of one process left by an earlier run, and Vitest experimental type-testing notices. Observed host load ranged from about 8 to 34 on 24 CPUs.
+
+Independent probes use the real scheduler, adapter, ledger, state sink and store. The successful-publication matrix also drives `SlowSkips` directly over the real ledger captured from an idle scheduler, with both prior pass and prior fail results. A second SQLite connection reads each snapshot in one `readTransaction`; the committed Claude Code CLI runs `status --json` in a separate process at skip-meta writes/deletes and after each operation. Observations before/after nested transaction returns include checkpoint ending, key rows, known states and headers.
+
+```sh
+# HOME and XDG config/cache/data point below /tmp/004-65-fourth-probes;
+# GIT_AUTHOR_* and GIT_COMMITTER_* are supplied explicitly.
+npx vitest run --config /tmp/004-65-fourth-probes/vitest.config.mts \
+  --maxWorkers=1 /tmp/004-65-fourth-probes/boundaries.test.ts \
+  -t 'commit boundaries|public scheduler'
+```
+
+```text
+public scheduler: a rolled-back skip must still end its requested checkpoint
+AssertionError: expected null to be 'abandoned'
+
+public scheduler: a busy requeue cannot certify a skipped full suite on retry
+AssertionError: expected 'completed' to be 'abandoned'
+
+Test Files  1 failed (1)
+     Tests  2 failed | 2 passed | 2 skipped (6)
+Start at  09:24:14
+Duration  7.02s
+(exit 1)
+```
+
+Background Squeal separately reported the unchanged negative controls at `test/runners/node-test/run-reads-fidelity.test.ts:116` and `test/runners/vitest/observe-fidelity.test.ts:119`, already recorded in the earlier rounds. Those background results do not establish a repair-3 regression and are separate from the independent gate.
+
+Both failures are behavioral assertions on the pinned product, with successful fixture setup and teardown. An earlier direct-ledger probe independently reproduced the forgotten checkpoint after a sink throws following its actual refresh; that extra test is deselected in the run above.
+
+**Pre-repair controls:** copy the candidate's `src` under `/tmp`, restore only `src/core/scheduler/slow-skip.ts` from `fc0b4ef8`, and point identical public-scheduler probes at that copy. All other sources, dependencies, fixture setup and fault conditions stay the same. This isolates the added transaction boundary, rather than attributing an existing error-handling problem to the repair.
+
+```sh
+npx vitest run --config /tmp/004-65-fourth-probes/vitest.config.mts \
+  --maxWorkers=1 /tmp/004-65-fourth-probes/control-boundaries.test.ts \
+  -t 'public scheduler'
+```
+
+```text
+Test Files  1 passed (1)
+     Tests  2 passed | 4 skipped (6)
+Start at  09:23:36
+Duration  3.68s
+(exit 0)
+```
+
+### R1. A busy requeue loses the skip in memory and the next full request certifies skipped files [proven, blocking]
+
+**Where:** `src/core/scheduler/slow-skip.ts:175` through `:179`, with the newly added outer transaction at `:191`; consumed by `src/core/scheduler/scheduler.ts:338` and `src/core/scheduler/checkpoint-requests.ts:67`.
+
+`recheck()` clears the adopted skip map before `#requeue()` enters its new `BEGIN IMMEDIATE`. If a second writer holds the database, that BEGIN can throw before `settle` or `enqueue` runs. The persisted skip survives, but the in-memory skip map is empty and no slow file was queued. On the next normal full request, `recheck()` finds no skip, and the scheduler's key/result classifier still calls those idle files current. The request therefore completes with no files, certifying a full suite over the persisted skip. This is a new path around the safeguard the third round found sufficient; the classifier itself has not changed.
+
+**Reproduction through public scheduler methods:**
+
+1. Run the basic fixture with strings and upper slow and `exists: ["ready"]`; both get stored results. Remove `ready`, apply an unrelated revision, then request a forced full suite and await idle. It ends abandoned with two slow files skipped.
+2. Open a second connection to the same database and hold `BEGIN IMMEDIATE`. Set the scheduler connection's `PRAGMA busy_timeout=25` to shorten the probe; a writer held past the normal timeout has the same outcome. `await scheduler.requestFullSuite()` rejects with the real SQLite `database is locked` error. Release the other writer with `ROLLBACK`.
+3. Retry `await scheduler.requestFullSuite()` without forcing and await idle. Read status through the independent connection.
+
+**Observed:**
+
+```json
+{
+  "checkpoint": "completed",
+  "requested": [],
+  "persistedSkips": 1,
+  "fullSuite": { "atCurrentRevision": true, "lastCompletedRevision": 1 },
+  "slowTier": {
+    "testFiles": 2, "current": 0, "pending": 0, "notRun": 2,
+    "skipped": "ready matches no file (slow.precondition.exists)"
+  }
+}
+```
+
+No fault was injected into the scheduler or ledger here: the second connection holds a real write lock. With only the pre-repair `slow-skip.ts` restored, retry requests strings and upper, ends abandoned and leaves `fullSuite.atCurrentRevision: false`. Before repair 3, files were enqueued before the ledger tried to acquire its transaction, so this failure did not lose the queue as well as the skip map.
+
+**Contract:** D8 says a skipped slow lane is not a full suite. This candidate reintroduces false certification specifically through the added transaction's failed BEGIN; it is within the requested nesting/rollback review.
+
+**Repair sized for one worker:** make removal from the adopted skip map and the requeue transition recover together on failure, including failure to begin the transaction. Preserve the persisted skip and the ability to retry if the transaction does not commit. Merely moving `skips.clear()` inside the callback handles a failed BEGIN but still needs restoration for a later rollback. Add the real-second-writer regression above; include the shared `revised` path when preserving its partitioned map.
+
+### R2. Rolling back the enclosed checkpoint end forgets the still-open checkpoint [proven, blocking]
+
+**Where:** `src/core/scheduler/slow-skip.ts:96` through `:109`, especially `ledger.checkpoints.failed(ref)` at `:102`, together with `src/core/scheduler/checkpoints.ts:251` through `:259` and `src/core/scheduler/ledger.ts:445` through `:518`.
+
+The outer transaction now includes `checkpoints.failed()` and its final `finish("abandoned")`. The tracker clears `#active` before writing the end; the ledger also drains its dirty buffers before its nested transaction. If the nested sink fails, SQLite rolls back the checkpoint end and its progress writes along with the skip and key refresh. Those in-memory mutations do not roll back. The tracker no longer owns the still-open stored checkpoint, so retrying the operation and closing the scheduler both leave its `end` null.
+
+**Reproduction through the public scheduler:** prepare the prior-results fixture as in R1, without any skip yet. Install a temporary trigger on the writer connection, then request a forced full checkpoint:
+
+```sql
+CREATE TEMP TRIGGER review_sink_error
+BEFORE INSERT ON known_states
+WHEN NEW.validity = 'stale'
+BEGIN
+  SELECT RAISE(ABORT, 'review injected SQLite sink error');
+END;
+```
+
+This induces a real SQLite error only when the sink writes the skip's stale state, after the checkpoint-ending code has run. The pump reports that error and becomes idle. Drop the trigger, request another full checkpoint, await idle, then close the scheduler.
+
+**Observed:** immediately after rollback, the original checkpoint has `end: null`, no skip is committed, and the database's two slow key rows remain queued. The next request ends abandoned and commits the skip, but the original checkpoint still has `end: null`. It remains null after scheduler close. The extra direct-ledger probe confirms `ledger.checkpoints.active === null` despite that open database record. The same fault with only the pre-repair `slow-skip.ts` restored leaves the original checkpoint abandoned before retry and after shutdown, so this is a regression in the newly enclosed checkpoint ending.
+
+**Contract:** D8 says a skipped checkpoint is abandoned rather than completed; the checkpoint contract also ends failed tiers abandoned. SQLite rollback alone is insufficient when the tracker has forgotten the operation's still-open record. A caller awaiting that original request never receives its checkpoint end.
+
+**Repair sized for one worker:** retain or restore the ledger/checkpoint/skip state needed to retry a rolled-back operation, or invalidate and reconstruct it from the committed store before permitting further work. Keep the skip, checkpoint end, keys and sink writes in the same database transaction. Add the temporary-SQLite-error regression and verify both retry and shutdown settle the original checkpoint; do not fix this by committing the checkpoint early again.
+
+### What fits
+
+- **Successful skip publication is atomic [proven]:** at the skip-meta write and every nested transaction return, the independent reader sees the old unskipped snapshot. After the outer commit it sees the skip, the abandoned checkpoint, dequeued key rows and stale slow checks together. Only three fast file checks remain current. Both prior-pass and prior-fail cases pass; the shipped CLI agrees.
+- **Successful lift is atomic [proven]:** lifting a met skip with idle files exercises `touch`, `settle` and sink refresh. Independent reads during deletion and nested commits retain the old skip and stale states. After outer commit the skip is absent and all five file checks are current; the lifted slow checks are current. No wrongly stale lifted snapshot was observed.
+- **Successful requeue is atomic [proven]:** independent reads through the ledger savepoint and skip deletion retain the old skipped snapshot. After outer commit the skip is absent, the slow key rows are queued and all four stored slow check states are pending. No skipped current check was observed.
+- The committed "commit together" regression passes in the touched-test run. Savepoint release itself does not expose uncommitted writer state. The proven regressions are error recovery around that nesting, not SQLite's savepoint visibility.
+
+### Inputs for the coordinator
+
+Keep the single database transaction and its internal publication/refresh order. The repair needs transaction-aware in-memory state or explicit recovery, with both failure-before-BEGIN and failure-after-checkpoint-ending covered. No precondition, status wording, result-key or classifier redesign is required. This review changes no product code and does not reopen the other findings.
