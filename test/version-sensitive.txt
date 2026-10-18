@@ -49,6 +49,7 @@
 #   test/cli/setup/gates.test.ts
 #   test/cli/setup/init-flags.test.ts
 #   test/cli/setup/plan.test.ts
+#   test/cli/setup/preconditions.test.ts
 #   test/cli/setup/pytest.test.ts
 #   test/daemon/observed-timer.test.ts
 #   test/daemon/policy.test.ts
