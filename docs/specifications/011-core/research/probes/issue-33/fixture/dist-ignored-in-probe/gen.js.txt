@@ -1,0 +1,2 @@
+export const g = 1
+// rebuilt 1792306901362216646

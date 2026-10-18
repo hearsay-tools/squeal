@@ -1,0 +1,4 @@
+export declare const one: number
+// rebuilt
+// rebuilt 1792306757352564785
+// rebuilt 1792306822714160382

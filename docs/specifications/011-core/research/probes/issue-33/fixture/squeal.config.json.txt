@@ -1,0 +1,53 @@
+{
+  "interrupt": {
+    "onRegression": true
+  },
+  "stop": {
+    "blockOnKnownFailures": false,
+    "requireFullSuite": false,
+    "waitMs": 0,
+    "requireSlowSuite": false,
+    "slowWaitMs": 120000
+  },
+  "testCommand": {
+    "denyWhenCurrent": false
+  },
+  "baseline": {
+    "onStart": "lookup-then-run-missing"
+  },
+  "inputs": [],
+  "observe": {
+    "runtimeInputs": true
+  },
+  "env": {
+    "allowlist": []
+  },
+  "runner": {
+    "tierSize": 4,
+    "backlogTierSize": 200,
+    "timeoutMs": 600000
+  },
+  "nodeTest": [],
+  "pytest": [],
+  "vitest": {
+    "excludeProjects": []
+  },
+  "slow": {
+    "include": [],
+    "maxWorkers": 2,
+    "maxLoadPerCpu": 1,
+    "maxDeferMs": 600000,
+    "maxParallel": 4
+  },
+  "delivery": {
+    "uncoveredEdits": true
+  },
+  "daemon": {
+    "idleExitMinutes": 60,
+    "unusedExitMinutes": 30
+  },
+  "store": {
+    "retentionDays": 7,
+    "maxSizeMb": null
+  }
+}
