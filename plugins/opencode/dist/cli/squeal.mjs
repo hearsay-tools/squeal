@@ -9831,6 +9831,18 @@ var init_capacity2 = __esm({
 });
 
 // src/core/scheduler/checkpoints.ts
+function copyActive(active) {
+  const lanes = [...active.lanes].map(
+    ([id2, lane]) => [id2, { ...lane, remaining: new Set(lane.remaining) }]
+  );
+  return {
+    ...active,
+    joined: [...active.joined],
+    lanes: new Map(lanes),
+    remaining: new Map(active.remaining),
+    strict: new Set(active.strict)
+  };
+}
 function explicit(active) {
   return [active.record, ...active.joined].some((record) => record.kind === "run-all");
 }
@@ -10038,6 +10050,20 @@ var init_checkpoints = __esm({
         const strict = [...active.remaining].filter(([id2]) => active.strict.has(id2)).map(([, r]) => r);
         const debt = { ids: owed.map((r) => r.id), remaining, strict };
         this.#write({ ...progress(active), owed: debt });
+      }
+      /**
+       * The open checkpoint as now, for a store transaction that may roll back
+       * what it does to it (review wave-8.1, fourth round): the returned
+       * function puts it back, so the tracker owns again the record the store
+       * still holds open.
+       */
+      hold() {
+        const active = this.#active === null ? null : copyActive(this.#active);
+        const published = this.#published;
+        return () => {
+          this.#active = active === null ? null : copyActive(active);
+          this.#published = published;
+        };
       }
       #insert(id2, kind, revision, testFiles, lane) {
         return this.store.checkpoints.start({
@@ -11309,6 +11335,63 @@ var init_ledger = __esm({
           }
         });
         this.#adopted = true;
+      }
+      /**
+       * What a store transaction enclosing work on `refs` would lose if it rolled
+       * back after `commit` drained it (review wave-8.1, fourth round): their
+       * file states and queue entries, the writes owed and the open checkpoint,
+       * as now. The returned function puts them back, so the ledger holds what
+       * the store holds and its next commit writes them. An entry put back takes
+       * its file's priority as no change queued it, keeping forced and recent.
+       */
+      hold(refs2) {
+        const files2 = /* @__PURE__ */ new Map();
+        for (const ref2 of refs2) {
+          const file = this.file(ref2);
+          if (file === void 0 || files2.has(file.id)) continue;
+          files2.set(file.id, {
+            file,
+            was: { ...file, checks: [...file.checks] },
+            entry: this.#entry(ref2)
+          });
+        }
+        const dirty = [...this.#dirty];
+        const removed = [...this.#removed];
+        const owed = {
+          applied: [...this.#applied],
+          unknown: [...this.#unknown],
+          unknownFiles: [...this.#unknownFiles],
+          retired: [...this.#retired]
+        };
+        const rekeyed = [...this.#rekeyed];
+        const adopted = this.#adopted;
+        const checkpoints = this.checkpoints.hold();
+        return () => {
+          for (const { file, was, entry: entry4 } of files2.values()) {
+            Object.assign(file, was);
+            const now = this.#entry(file.ref);
+            if (now?.forced === entry4?.forced && now?.recent === entry4?.recent) continue;
+            this.queue.remove(file.ref);
+            if (entry4 !== null) {
+              this.queue.add(file.ref, priorityOf(file, NOTHING_CHANGED), entry4.forced, entry4.recent);
+            }
+          }
+          this.#dirty.clear();
+          for (const id2 of dirty) this.#dirty.add(id2);
+          this.#removed.splice(0, this.#removed.length, ...removed);
+          this.#applied = owed.applied;
+          this.#unknown = owed.unknown;
+          this.#unknownFiles = owed.unknownFiles;
+          this.#retired = owed.retired;
+          this.#rekeyed.clear();
+          for (const [id2, moved2] of rekeyed) this.#rekeyed.set(id2, moved2);
+          this.#adopted = adopted;
+          checkpoints();
+        };
+      }
+      #entry(ref2) {
+        if (!this.queue.has(ref2)) return null;
+        return { forced: this.queue.isForced(ref2), recent: this.queue.isRecent(ref2) };
       }
       #byCheckpoint(rows) {
         const groups = /* @__PURE__ */ new Map();
@@ -13593,8 +13676,8 @@ var init_slow_skip = __esm({
             return "again";
           }
           if (reason2 === null) {
-            this.#met.set(rule.source, due.at);
             this.#lift(rule.source);
+            this.#met.set(rule.source, due.at);
             return "run";
           }
           this.#met.delete(rule.source);
@@ -13605,11 +13688,11 @@ var init_slow_skip = __esm({
       /** Under the lock: every queued slow file `rule` covers leaves the queue, unrun. */
       #skip(rule, reason2) {
         const { context, ledger } = this.started();
-        const skips = this.#adopted();
-        const refs2 = new Map(skips.get(rule.source)?.refs);
-        context.store.transaction(() => {
-          for (const ref2 of ledger.orderedSlow()) {
-            if (preconditionFor(context.policy, ref2)?.source !== rule.source) continue;
+        const covered = ledger.orderedSlow().filter((ref2) => preconditionFor(context.policy, ref2)?.source === rule.source);
+        this.#atomically(covered, () => {
+          const skips = this.#adopted();
+          const refs2 = new Map(skips.get(rule.source)?.refs);
+          for (const ref2 of covered) {
             const file = ledger.file(ref2);
             if (file === void 0) continue;
             ledger.dequeue(file);
@@ -13629,9 +13712,9 @@ var init_slow_skip = __esm({
       #lift(source) {
         const skip = this.#adopted().get(source);
         if (skip === void 0) return;
-        this.#adopted().delete(source);
-        const { context, ledger } = this.started();
-        context.store.transaction(() => {
+        const { ledger } = this.started();
+        this.#atomically(skip.refs.values(), () => {
+          this.#adopted().delete(source);
           this.#publish();
           const idle2 = [...skip.refs.values()].filter((ref2) => ledger.file(ref2)?.phase === null);
           for (const ref2 of idle2) {
@@ -13661,9 +13744,9 @@ var init_slow_skip = __esm({
        */
       revised(paths) {
         const { context } = this.started();
-        const skips = this.#adopted();
+        const next = /* @__PURE__ */ new Map();
         const eligible = [];
-        for (const [source, skip] of skips) {
+        for (const [source, skip] of this.#adopted()) {
           const touched = touchesPrecondition(skip.rule, paths);
           const same = JSON.stringify(skip.rule);
           const kept2 = /* @__PURE__ */ new Map();
@@ -13672,31 +13755,34 @@ var init_slow_skip = __esm({
             if (declared && !touched) kept2.set(id2, ref2);
             else eligible.push(ref2);
           }
-          if (kept2.size === 0) skips.delete(source);
-          else if (kept2.size < skip.refs.size) skips.set(source, { ...skip, refs: kept2 });
+          if (kept2.size === skip.refs.size) next.set(source, skip);
+          else if (kept2.size > 0) next.set(source, { ...skip, refs: kept2 });
         }
-        return this.#requeue(eligible, paths);
+        return this.#requeue(eligible, paths, next);
       }
       /**
        * Under the lock, `run --slow` or `run --all`: every skipped file is queued
        * again, so the tier checks its precondition. Returns whether any was.
        */
       recheck() {
-        const skips = this.#adopted();
-        const refs2 = [...skips.values()].flatMap((skip) => [...skip.refs.values()]);
-        skips.clear();
-        return this.#requeue(refs2, /* @__PURE__ */ new Set());
+        const refs2 = [...this.#adopted().values()].flatMap((skip) => [...skip.refs.values()]);
+        return this.#requeue(refs2, /* @__PURE__ */ new Set(), /* @__PURE__ */ new Map());
       }
       /**
-       * Queues `refs` as any miss; one whose key has a stored result goes in
-       * forced, so it runs rather than reading as current unchecked. Published
-       * after the commit: its refresh still reads them skipped, so a queued
-       * file's checks read pending, not current, until it runs.
+       * Queues `refs` as any miss, `next` the skips left; one whose key has a
+       * stored result goes in forced, so it runs rather than reading as current
+       * unchecked. Published after the commit: its refresh still reads them
+       * skipped, so a queued file's checks read pending, not current, until it
+       * runs.
        */
-      #requeue(refs2, changed) {
-        if (refs2.length === 0) return false;
-        const { context, ledger } = this.started();
-        context.store.transaction(() => {
+      #requeue(refs2, changed, next) {
+        if (refs2.length === 0) {
+          this.#skips = next;
+          return false;
+        }
+        const { ledger } = this.started();
+        this.#atomically(refs2, () => {
+          this.#skips = next;
           ledger.settle(refs2, changed);
           for (const ref2 of refs2) {
             const file = ledger.file(ref2);
@@ -13707,6 +13793,26 @@ var init_slow_skip = __esm({
           this.#publish();
         });
         return true;
+      }
+      /**
+       * Runs `fn`, which changes the skips and the ledger's work on `refs`, in
+       * one store transaction. When it does not commit, busy at BEGIN or rolled
+       * back after the ledger's commit drained it, the skips and the ledger are
+       * put back as the store still has them (review wave-8.1, fourth round), so
+       * a retry or a shutdown settles from there: a skip kept, its checkpoint
+       * still open.
+       */
+      #atomically(refs2, fn) {
+        const { context, ledger } = this.started();
+        const skips = new Map(this.#adopted());
+        const restore2 = ledger.hold(refs2);
+        try {
+          context.store.transaction(fn);
+        } catch (error) {
+          this.#skips = skips;
+          restore2();
+          throw error;
+        }
       }
       /** The skips, the store's at first use: a skip outlives the daemon that found it. */
       #adopted() {
