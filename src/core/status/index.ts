@@ -12,7 +12,11 @@ export {
   checkPartsText,
   countChecks,
   countedText,
+  earlierFailuresLines,
+  type FailuresByValidity,
   failureCountText,
+  knownFailureCounts,
+  splitByValidity,
 } from "./checks.js";
 export {
   FAILURES_LIMIT,

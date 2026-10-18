@@ -27,6 +27,17 @@ import type { CheckpointKind, CheckpointLane, ResultRecord } from "./store-recor
 export type ValidityCounts = Readonly<Record<Validity, number>>;
 
 /**
+ * Spec 011 C6 as amended 2026-10-18 (gh-34, task 011-15): known failures by
+ * validity. Only `current` ones are counted in `Known failures`; `pending`
+ * are queued or running for a rerun, `stale` have no run queued.
+ */
+export interface KnownFailureCounts {
+  readonly current: number;
+  readonly pending: number;
+  readonly stale: number;
+}
+
+/**
  * Whether a full-suite checkpoint completed.
  *
  * Spec 001 D7: "whether a full-suite checkpoint completed for this revision
@@ -506,6 +517,8 @@ export interface StatusSnapshot extends StatusHeader {
   readonly daemon: DaemonLiveness;
   /** Failures first: the list is the reason status exists. */
   readonly knownFailures: readonly KnownFailure[];
+  /** Task 011-15: `knownFailures` counted by validity; absent in payloads from before the field. */
+  readonly knownFailureCounts?: KnownFailureCounts;
   readonly inherited: {
     readonly count: number;
     readonly sources: readonly InheritedSource[];

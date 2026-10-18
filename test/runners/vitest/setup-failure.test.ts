@@ -115,9 +115,7 @@ describe("a global setup that throws once", SLOW, () => {
     });
     expect(stored).toEqual([]);
     expect(failureCountText(failing(h).map((s) => s.check))).toBe("1 (1 global setup)");
-    expect(knownFailuresLine(failing(h).map((s) => s.check))).toBe(
-      "Known failures: 1 (setup.ts (global setup))",
-    );
+    expect(knownFailuresLine(failing(h))).toBe("Known failures: 1 (setup.ts (global setup))");
     // One line delivered, naming the setup error with its code and cause; `squeal why` finds it.
     const delta = await delivery.onToolBoundary(consumer);
     const text = delta === null ? "" : formatDelta(delta);
