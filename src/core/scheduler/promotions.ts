@@ -83,6 +83,17 @@ export class Promotions {
     if (this.#settle(queued)) this.#told();
   }
 
+  /** The live promotions as now; the returned function puts them back as they were (`RunQueue.hold`). */
+  hold(): () => void {
+    const held = [...this.#promotions];
+    return () => {
+      const same =
+        held.length === this.#promotions.length && held.every((p, i) => p === this.#promotions[i]);
+      this.#promotions = [...held];
+      if (!same) this.#told();
+    };
+  }
+
   clear(): void {
     if (this.#promotions.length === 0) return;
     this.#promotions = [];
