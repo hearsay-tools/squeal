@@ -107,6 +107,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": false,
      "known": 1,
      "checks": [
@@ -140,6 +141,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": 1,
      "checks": [
@@ -171,6 +173,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": null,
      "checks": [],
@@ -182,7 +185,8 @@
     {
      "k": "squeal-run",
      "all": false,
-     "slow": true
+     "slow": true,
+     "answered": true
     },
     {
      "k": "squeal",
@@ -192,6 +196,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": true,
      "known": 1,
      "checks": [
@@ -309,6 +314,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": false,
      "known": 1,
      "checks": [
@@ -350,6 +356,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": null,
      "checks": [
@@ -381,7 +388,8 @@
     {
      "k": "squeal-run",
      "all": false,
-     "slow": true
+     "slow": true,
+     "answered": true
     },
     {
      "k": "run",
@@ -405,6 +413,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": true,
      "known": 0,
      "checks": [],
@@ -514,6 +523,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": false,
      "known": 1,
      "checks": [
@@ -547,6 +557,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": null,
      "checks": [],
@@ -563,6 +574,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": 1,
      "checks": [
@@ -589,7 +601,8 @@
     {
      "k": "squeal-run",
      "all": false,
-     "slow": true
+     "slow": true,
+     "answered": true
     },
     {
      "k": "squeal",
@@ -599,6 +612,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": true,
      "known": 1,
      "checks": [
@@ -717,6 +731,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": false,
      "known": 1,
      "checks": [
@@ -758,6 +773,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": null,
      "checks": [],
@@ -783,6 +799,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": null,
      "checks": [
@@ -819,7 +836,8 @@
     {
      "k": "squeal-run",
      "all": false,
-     "slow": true
+     "slow": true,
+     "answered": true
     },
     {
      "k": "squeal",
@@ -829,6 +847,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": true,
      "known": 0,
      "checks": [],
@@ -938,6 +957,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": false,
      "known": 1,
      "checks": [
@@ -971,6 +991,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": null,
      "checks": [],
@@ -987,6 +1008,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": 1,
      "checks": [
@@ -1013,7 +1035,8 @@
     {
      "k": "squeal-run",
      "all": false,
-     "slow": true
+     "slow": true,
+     "answered": true
     },
     {
      "k": "squeal",
@@ -1023,6 +1046,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": true,
      "known": 1,
      "checks": [
@@ -1141,6 +1165,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": false,
      "known": 1,
      "checks": [
@@ -1182,6 +1207,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": null,
      "checks": [
@@ -1213,7 +1239,8 @@
     {
      "k": "squeal-run",
      "all": false,
-     "slow": true
+     "slow": true,
+     "answered": true
     },
     {
      "k": "run",
@@ -1237,6 +1264,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": true,
      "known": 0,
      "checks": [],
@@ -1345,6 +1373,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": false,
      "known": 1,
      "checks": [
@@ -1378,6 +1407,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": 1,
      "checks": [
@@ -1409,6 +1439,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": null,
      "checks": [],
@@ -1420,7 +1451,8 @@
     {
      "k": "squeal-run",
      "all": false,
-     "slow": true
+     "slow": true,
+     "answered": true
     },
     {
      "k": "squeal",
@@ -1430,6 +1462,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": true,
      "known": 1,
      "checks": [
@@ -1548,6 +1581,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": false,
      "known": 1,
      "checks": [
@@ -1585,6 +1619,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": null,
      "checks": [],
@@ -1607,7 +1642,8 @@
     {
      "k": "squeal-run",
      "all": false,
-     "slow": true
+     "slow": true,
+     "answered": true
     },
     {
      "k": "squeal",
@@ -1617,6 +1653,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": null,
      "checks": [
@@ -1645,6 +1682,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": true,
      "known": 0,
      "checks": [],
@@ -1767,6 +1805,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": false,
      "known": 1,
      "checks": [
@@ -1804,6 +1843,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": null,
      "checks": [],
@@ -1815,7 +1855,8 @@
     {
      "k": "squeal-run",
      "all": false,
-     "slow": true
+     "slow": true,
+     "answered": true
     },
     {
      "k": "squeal",
@@ -1825,6 +1866,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": true,
      "known": 1,
      "checks": [
@@ -1871,6 +1913,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": true,
      "known": 0,
      "checks": [],
@@ -1888,6 +1931,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": true,
      "known": null,
      "checks": [
@@ -2005,6 +2049,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": false,
      "known": 1,
      "checks": [
@@ -2042,6 +2087,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": null,
      "checks": [],
@@ -2078,7 +2124,8 @@
     {
      "k": "squeal-run",
      "all": false,
-     "slow": true
+     "slow": true,
+     "answered": true
     },
     {
      "k": "squeal",
@@ -2088,6 +2135,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": null,
      "checks": [
@@ -2116,6 +2164,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": true,
      "known": 0,
      "checks": [],
@@ -2226,6 +2275,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": false,
      "known": 1,
      "checks": [
@@ -2259,6 +2309,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": 1,
      "checks": [
@@ -2290,6 +2341,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": null,
      "checks": [],
@@ -2301,7 +2353,8 @@
     {
      "k": "squeal-run",
      "all": false,
-     "slow": true
+     "slow": true,
+     "answered": true
     },
     {
      "k": "squeal",
@@ -2311,6 +2364,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": true,
      "known": 1,
      "checks": [
@@ -2428,6 +2482,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": false,
      "known": 1,
      "checks": [
@@ -2480,6 +2535,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": null,
      "checks": [
@@ -2502,7 +2558,8 @@
     {
      "k": "squeal-run",
      "all": false,
-     "slow": true
+     "slow": true,
+     "answered": true
     },
     {
      "k": "run",
@@ -2526,6 +2583,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": true,
      "known": 0,
      "checks": [],
@@ -2635,6 +2693,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": false,
      "known": 1,
      "checks": [
@@ -2668,6 +2727,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": false,
      "known": 1,
      "checks": [
@@ -2699,6 +2759,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": null,
      "checks": [],
@@ -2725,7 +2786,8 @@
     {
      "k": "squeal-run",
      "all": false,
-     "slow": true
+     "slow": true,
+     "answered": true
     },
     {
      "k": "squeal",
@@ -2735,6 +2797,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": true,
      "known": 0,
      "checks": [],
@@ -2752,6 +2815,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": true,
      "known": null,
      "checks": [
@@ -2868,6 +2932,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": false,
      "known": 1,
      "checks": [
@@ -2920,6 +2985,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": null,
      "checks": [
@@ -2961,6 +3027,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": 0,
      "checks": [],
@@ -2973,7 +3040,8 @@
     {
      "k": "squeal-run",
      "all": false,
-     "slow": true
+     "slow": true,
+     "answered": true
     },
     {
      "k": "squeal",
@@ -2983,6 +3051,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": true,
      "known": 0,
      "checks": [],
@@ -3093,6 +3162,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": false,
      "known": 1,
      "checks": [
@@ -3126,6 +3196,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": 1,
      "checks": [
@@ -3157,6 +3228,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": null,
      "checks": [],
@@ -3168,7 +3240,8 @@
     {
      "k": "squeal-run",
      "all": false,
-     "slow": true
+     "slow": true,
+     "answered": true
     },
     {
      "k": "squeal",
@@ -3178,6 +3251,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": true,
      "known": 1,
      "checks": [
@@ -3295,6 +3369,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": false,
      "known": 1,
      "checks": [
@@ -3347,6 +3422,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": null,
      "checks": [
@@ -3373,7 +3449,8 @@
     {
      "k": "squeal-run",
      "all": false,
-     "slow": true
+     "slow": true,
+     "answered": true
     },
     {
      "k": "run",
@@ -3397,6 +3474,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": true,
      "known": 0,
      "checks": [],
@@ -3414,6 +3492,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": true,
      "known": 0,
      "checks": [],
@@ -3523,6 +3602,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": false,
      "known": 1,
      "checks": [
@@ -3556,6 +3636,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": 1,
      "checks": [
@@ -3587,6 +3668,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": null,
      "checks": [],
@@ -3598,7 +3680,8 @@
     {
      "k": "squeal-run",
      "all": false,
-     "slow": true
+     "slow": true,
+     "answered": true
     },
     {
      "k": "squeal",
@@ -3608,6 +3691,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": true,
      "known": 1,
      "checks": [
@@ -3726,6 +3810,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": false,
      "known": 1,
      "checks": [
@@ -3763,6 +3848,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": null,
      "checks": [
@@ -3794,7 +3880,8 @@
     {
      "k": "squeal-run",
      "all": false,
-     "slow": true
+     "slow": true,
+     "answered": true
     },
     {
      "k": "squeal",
@@ -3804,6 +3891,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": true,
      "known": 0,
      "checks": [],
@@ -3925,6 +4013,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": false,
      "known": 1,
      "checks": [
@@ -3958,6 +4047,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": 1,
      "checks": [
@@ -3989,6 +4079,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": null,
      "checks": [],
@@ -4000,7 +4091,8 @@
     {
      "k": "squeal-run",
      "all": false,
-     "slow": true
+     "slow": true,
+     "answered": true
     },
     {
      "k": "squeal",
@@ -4010,6 +4102,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": true,
      "known": 1,
      "checks": [
@@ -4127,6 +4220,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": false,
      "known": 1,
      "checks": [
@@ -4164,6 +4258,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": false,
+     "slowNotCurrent": 1,
      "daemon": true,
      "known": null,
      "checks": [
@@ -4209,7 +4304,8 @@
     {
      "k": "squeal-run",
      "all": false,
-     "slow": true
+     "slow": true,
+     "answered": true
     },
     {
      "k": "squeal",
@@ -4219,6 +4315,7 @@
      "stale": 0,
      "unknown": 0,
      "slow": true,
+     "slowNotCurrent": 0,
      "daemon": true,
      "known": 0,
      "checks": [],
@@ -4336,6 +4433,34 @@
     "a9-env-retry.p0.codex-gpt-6.1-sol.e-medium.r10"
    ],
    "note": "Graded again from the run's kept raw cells (spec 006 D4, D10) under rows 006-77 and 006-82 (landed 39c28f7c and d589ac24): the parser now reads counts that name their parts, a Claude Code hook's JSON (only the reasons Claude is shown) and a status cut above its Revision line; under 006-62 a Squeal call Squeal did not answer earns no credit. 'changed' names cells whose grade changed, 'evidence' cells whose retained timeline alone changed. Judge verdicts, transcripts and costs are kept."
+  },
+  {
+   "by": "006-91",
+   "date": "2026-10-18",
+   "changed": [],
+   "evidence": [
+    "a9-env-retry.p0.codex-gpt-6-luna.e-medium.r1",
+    "a9-env-retry.p0.codex-gpt-6.1-sol.e-medium.r1",
+    "a9-env-retry.p0.codex-gpt-6-luna.e-medium.r2",
+    "a9-env-retry.p0.codex-gpt-6.1-sol.e-medium.r2",
+    "a9-env-retry.p0.codex-gpt-6-luna.e-medium.r3",
+    "a9-env-retry.p0.codex-gpt-6.1-sol.e-medium.r3",
+    "a9-env-retry.p0.codex-gpt-6-luna.e-medium.r4",
+    "a9-env-retry.p0.codex-gpt-6.1-sol.e-medium.r4",
+    "a9-env-retry.p0.codex-gpt-6-luna.e-medium.r5",
+    "a9-env-retry.p0.codex-gpt-6.1-sol.e-medium.r5",
+    "a9-env-retry.p0.codex-gpt-6-luna.e-medium.r6",
+    "a9-env-retry.p0.codex-gpt-6.1-sol.e-medium.r6",
+    "a9-env-retry.p0.codex-gpt-6-luna.e-medium.r7",
+    "a9-env-retry.p0.codex-gpt-6.1-sol.e-medium.r7",
+    "a9-env-retry.p0.codex-gpt-6-luna.e-medium.r8",
+    "a9-env-retry.p0.codex-gpt-6.1-sol.e-medium.r8",
+    "a9-env-retry.p0.codex-gpt-6-luna.e-medium.r9",
+    "a9-env-retry.p0.codex-gpt-6.1-sol.e-medium.r9",
+    "a9-env-retry.p0.codex-gpt-6-luna.e-medium.r10",
+    "a9-env-retry.p0.codex-gpt-6.1-sol.e-medium.r10"
+   ],
+   "note": "D10 as amended 2026-10-18: under stop.requireSlowSuite off, an unknown claim stating the slow files not current is met and slow-through-squeal is not computed"
   }
  ]
 }
