@@ -79,7 +79,9 @@ describe("a registration of a consumer still registered", () => {
     apply(edit(["README.md"]), result(A, "fail"));
     const { entry, text } = await failing();
     expect(entry.changesInClosure).toEqual(["src/x.ts"]);
-    expect(text).toContain("touches files changed here since this session started: src/x.ts");
+    expect(text).toContain(
+      "its closure reads files changed here since this session started: src/x.ts",
+    );
     expect(text).not.toContain("none of the files changed here");
   });
 });
@@ -161,7 +163,7 @@ describe("a start revision", () => {
     await delivery.register(C1, { atStart: true });
     apply(edit(["src/x.ts"]), result(A, "fail")); // the session's own edit, under the watcher
     expect((await failing()).text).toContain(
-      "touches files changed here since this session started: src/x.ts",
+      "its closure reads files changed here since this session started: src/x.ts",
     );
   });
 
@@ -181,7 +183,7 @@ describe("a start revision", () => {
     restart(2, ["src/other.ts"]);
     apply(edit(["src/x.ts"]), result(A, "fail"));
     expect((await failing()).text).toContain(
-      "touches files changed here since this session started: src/x.ts",
+      "its closure reads files changed here since this session started: src/x.ts",
     );
   });
 });
@@ -252,7 +254,7 @@ describe("none of the files changed here", () => {
     liveDaemon(store, WT, { startedAt: 2 });
     apply(edit(["src/x.ts"]), result(A, "fail"));
     expect((await failing()).text).toContain(
-      "touches files changed here since this session started: src/x.ts",
+      "its closure reads files changed here since this session started: src/x.ts",
     );
   });
 });
@@ -384,14 +386,14 @@ describe("whose closure a failure is read against (S2)", () => {
     sink.applyResults(OTHER, other, [failed], NONE);
     const delta = await delivery.onToolBoundary(C2);
     expect(formatDelta(delta as Delta)).toContain(
-      "touches files changed here since this session started: src/y.ts",
+      "its closure reads files changed here since this session started: src/y.ts",
     );
 
     // This worktree's daemon stores its own closure last; the other worktree's is gone.
     storedBy(WT, ["src/a.test.ts", "src/x.ts"]);
     apply(edit(["src/x.ts"]), result(A, "fail"));
     expect((await failing()).text).toContain(
-      "touches files changed here since this session started: src/x.ts",
+      "its closure reads files changed here since this session started: src/x.ts",
     );
   });
 });

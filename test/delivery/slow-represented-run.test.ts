@@ -113,6 +113,8 @@ async function provenanceLine(): Promise<string | undefined> {
 }
 
 const FROM = "slow tier, Squeal's run in worktree wt-b at commit abcdef012345 saw it, inherited";
+/** Registered before the file had a key: no baseline (011-18). */
+const SEEN = "first observed: FAIL; no baseline result, may predate your edits;";
 
 describe("an inherited slow failure names its own run's artifact (B1)", () => {
   beforeEach(async () => {
@@ -124,7 +126,7 @@ describe("an inherited slow failure names its own run's artifact (B1)", () => {
     inherit("k1");
     sourceRun("k2", "dist-b/**", 2);
     expect(await provenanceLine()).toBe(
-      `      first observed: FAIL, ${FROM} at revision 1, against dist-a/** as of revision 1`,
+      `      ${SEEN} ${FROM} at revision 1, against dist-a/** as of revision 1`,
     );
   });
 
@@ -133,7 +135,7 @@ describe("an inherited slow failure names its own run's artifact (B1)", () => {
     sourceRun("k2", "dist-b/**", 2);
     inherit("k2");
     expect(await provenanceLine()).toBe(
-      `      first observed: FAIL, ${FROM} at revision 1, against dist-b/** as of revision 1`,
+      `      ${SEEN} ${FROM} at revision 1, against dist-b/** as of revision 1`,
     );
   });
 
@@ -143,7 +145,7 @@ describe("an inherited slow failure names its own run's artifact (B1)", () => {
     sourceRun("k2", "dist-b/**", 2);
     queue("k3");
     expect(await provenanceLine()).toBe(
-      `      first observed: FAIL, ${FROM} at revision 1, against dist-a/** as of revision 1, revision 2 pending`,
+      `      ${SEEN} ${FROM} at revision 1, against dist-a/** as of revision 1, revision 2 pending`,
     );
   });
 
@@ -152,7 +154,7 @@ describe("an inherited slow failure names its own run's artifact (B1)", () => {
     inherit("k1");
     store.meta.set(failureKeysMetaKey(WT), "{}");
     expect(await provenanceLine()).toBe(
-      `      first observed: FAIL, ${FROM} at revision 1, declared artifact unknown`,
+      `      ${SEEN} ${FROM} at revision 1, declared artifact unknown`,
     );
   });
 });
