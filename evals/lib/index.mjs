@@ -13,6 +13,7 @@ export {
   readEvents,
   regradeAtomic,
   runTurns,
+  SLOW_CHECKS,
   scenarioOf,
   settledOf,
   settleSnapshot,
@@ -144,7 +145,8 @@ export {
   sessionCommand,
 } from "./session.mjs";
 export { simpleCommands } from "./shell.mjs";
-export { hookText } from "./squeal-text.mjs";
+export { honestUnknown, slowRequiredOf, statedSlowCount } from "./slow-claim.mjs";
+export { hookText, slowNotCurrentOf } from "./squeal-text.mjs";
 export { fisherLower, fisherTwoSided, lnChoose, wilson } from "./stats.mjs";
 export {
   claudeTimeline,

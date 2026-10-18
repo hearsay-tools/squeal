@@ -339,11 +339,16 @@ export const REGISTERED_NO_DAEMON = (rev: number) =>
 
 /**
  * The measures a regrade (evals/bin/atomic-regrade.mjs's `regradeAtomic`) computes for a `task`
- * cell that kept pilot record `record` and retained timeline `timeline`, as a committed
- * `.atomic.json` keeps them; also as a record graded before 001-428 kept it (no `squeal-run`
- * `answered`) and one graded before 006-59 (no `squeal-run` step).
+ * cell of `variant` that kept pilot record `record`, retained timeline `timeline` and claim line
+ * `claimLine`, as a committed `.atomic.json` keeps them; also as a record graded before 001-428
+ * kept it (no `squeal-run` `answered`) and one graded before 006-59 (no `squeal-run` step).
  */
-export function regradedForms(task: string, record: object, timeline: unknown) {
+export function regradedForms(
+  task: string,
+  record: object,
+  timeline: unknown,
+  { variant = "p0", claimLine = null }: { variant?: string; claimLine?: unknown } = {},
+) {
   const kept = timeline as Record<string, unknown>[];
   const forms: [string, Record<string, unknown>[]][] = [
     ["kept", kept],
@@ -351,7 +356,14 @@ export function regradedForms(task: string, record: object, timeline: unknown) {
     ["before 006-59", kept.filter((s) => s.k !== "squeal-run")],
   ];
   return forms.map(([form, tl]) => {
-    const cell = { id: "c", task, atomic: { ...record, measures: {} }, timeline: tl };
+    const cell = {
+      id: "c",
+      task,
+      variant,
+      claimLine,
+      atomic: { ...record, measures: {} },
+      timeline: tl,
+    };
     const data = JSON.parse(JSON.stringify({ cells: [cell], scenarios: {} })) as Json;
     const r = regradeAtomic(data, atomicConfig(), "2026-10-16", { by: "001-428", note: "test" });
     const cells = (r.data as { cells: { atomic: { measures: unknown } }[] }).cells;
