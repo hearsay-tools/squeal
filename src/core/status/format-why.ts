@@ -7,6 +7,7 @@ import type {
   KnownState,
   Transition,
   WhyChangedSince,
+  WhyNoMatch,
   WhyReport,
   WhyResult,
   WhyResultEntry,
@@ -22,7 +23,7 @@ const INDENT = "        ";
 export function formatWhy(why: WhyResult): string {
   if (!why.available) return formatUnavailable(why);
   if (!why.found) {
-    if (why.candidates.length === 0) return `No check matches "${why.query}" in this worktree.\n`;
+    if (why.candidates.length === 0) return noMatch(why);
     return `${[
       `"${why.query}" matches ${why.candidates.length} checks in this worktree:`,
       ...why.candidates.map((c, i) => {
@@ -46,6 +47,22 @@ export function formatWhy(why: WhyResult): string {
     ...runLog(why),
   ];
   return `${lines.join("\n")}\n`;
+}
+
+/**
+ * 011 C4 as amended (gh-31, task 011-17): Squeal cannot know an unrun test's
+ * name, so with queued files left it says the test may be in one of them and
+ * never that it does not exist.
+ */
+function noMatch(why: WhyNoMatch): string {
+  const none = `No check matches "${why.query}" in this worktree.`;
+  const queued = why.queuedWithoutResult ?? 0;
+  if (queued === 0) return `${none}\n`;
+  const files =
+    queued === 1
+      ? "1 test file is queued or running without a result at its current key"
+      : `${queued} test files are queued or running without a result at their current keys`;
+  return `${none} ${files}; a test that has not run yet has no name here, so it may be in ${queued === 1 ? "it" : "one of them"}.\n`;
 }
 
 function knownState(why: WhyReport, s: KnownState | null): string[] {

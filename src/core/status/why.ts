@@ -105,7 +105,22 @@ function resolve(store: Store, worktreeId: string, query: string): CheckId | Why
     candidateDurations: candidates.map((c) =>
       durationsOf(store.results.listForCheck(c, Number.MAX_SAFE_INTEGER)),
     ),
+    queuedWithoutResult: queuedWithoutResult(store, worktreeId),
   };
+}
+
+/**
+ * 011 C4 as amended (gh-31, task 011-17): how many test files of this
+ * worktree are queued or running with no result at their current key. A
+ * test that has never run has no check row, so it may be in one of them.
+ */
+function queuedWithoutResult(store: Store, worktreeId: string): number {
+  return store.testFileKeys
+    .list(worktreeId)
+    .filter(
+      ({ key, pending }) =>
+        key !== null && pending !== null && store.results.checksForKey(key).length === 0,
+    ).length;
 }
 
 /**
