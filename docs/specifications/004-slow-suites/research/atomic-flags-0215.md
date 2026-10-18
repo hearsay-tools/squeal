@@ -6,10 +6,10 @@ Researcher, 2026-10-18, against the brief `atomic-flags-0215-brief.md`. Cells re
 
 | # | Question | Answer | Tag |
 | --- | --- | --- | --- |
-| 1 | What the flagged sessions read and did | On 0.1.199 all 40 flagged sessions ran `run --slow --wait` (and Sonnet's a11 sessions then ran `retry --reason load`). On 0.1.215, 34 of 40 first ran the new path-scoped `status --wait 60000 <path>`, which selects the slow file and returns no verdict until its 60 s deadline, or never returns inside Codex's call. Only 4 of 30 Luna sessions then ran `run --slow`. The rest answered `unknown` (Luna) or took a `run --all --wait` checkpoint and claimed `fail` over the inherited flake (Sonnet) | verified from the cells |
+| 1 | What the flagged sessions read and did | On 0.1.199 all 40 flagged sessions ran `run --slow --wait` (and Sonnet's a11 sessions then ran `retry --reason load`). On 0.1.215, 34 of 40 ran the new path-scoped `status --wait 60000 <path>`, which selects the slow file and returns no verdict until its 60 s deadline, or never returns inside Codex's call. Only 3 of 30 Luna sessions ran `run --slow`. The rest answered `unknown` (Luna) or took a `run --all --wait` checkpoint and claimed `fail` over the inherited flake (Sonnet) | verified by experiment (the eval cells) |
 | 2 | Cause per flag | Product wording, in three lines that changed between the versions: the policy-off slow sentence (004-62, 0.1.202), the path-wait sentence (005-68, 0.1.206), and the Codex primer naming no CLI path at the eval cell's path length (both together). The grader and scenarios are unchanged. The model is the condition, not the cause: Sol and Haiku read the same text and held | read in source code, verified by experiment (primer probe) |
-| 3 | Does 0.1.216 change it | No, by its text: 004-71 changes only the pathless quiet line and 011-15 only the count of earlier failures. Neither touches the primer, the path wait or the checkpoint. Main's Codex primer renders byte-identical to the 0.1.215 cells' primer. Re-run: see section 3 | read in source code, verified by experiment |
-| 4 | Recommendation | Skip 0.1.215 and 0.1.216 for release. Open a fix row for the path wait over slow files and the Codex primer's naming, and a decision on the policy-off sentence | inferred |
+| 3 | Does 0.1.216 change it | No, by its text: 004-71 changes only the pathless quiet line and 011-15 only the count of earlier failures. Neither touches the primer, the path wait or the checkpoint. Main's Codex primer renders byte-identical to the 0.1.215 cells' primer. Re-run on 0.1.216 (80 cells): Luna's four flags hold, and a2's `slow-through-squeal` joins them. Sonnet's a11 is 5/10, below the flag line, with no text change to explain it | read in source code, verified by experiment |
+| 4 | Recommendation | Skip 0.1.215 and 0.1.216 to the next version. A fix row first: the path wait over slow files, and the Codex primer's CLI naming. A decision on 004-62's policy-off sentence is the human's | inferred |
 
 ## 1. What each flagged session read and did
 
@@ -70,6 +70,17 @@ The fourth line Luna read before an `unknown` claim is unchanged since 0.1.199: 
 
 Grader and scenario: unchanged between the runs. `evals/atomic/atomic.json` gives a2, a3 and a8 the same prompts, knobs and `breaks` as before (the revision `ATOMIC.md` compares within). On 0.1.215 the other models held where these two dropped: Haiku and Sonnet on a2, a3 and a8, Sol on all four (`claim-true` 9/10 or 10/10 each, Sonnet a3 4/4 where a claim line was given). The text is the same for them, so this is a regression in how two models read the new text, not a broken measure. One measure question stays open for the coordinator: whether `claim-true` should accept `unknown` with an exact count of pending slow files under policy off, which is what 004-62 asks agents to say.
 
+Per flag, whether it is a product wording defect worth a fix row (from the cells alone, before the re-run):
+
+| Flag | Causes (lines above) | Wording defect worth a fix row? |
+| --- | --- | --- |
+| Luna a2-slow `claim-true` | 1, 2 | Partly. Line 2 (the path wait holding for a slow file) is a defect: a wait the primer names first that cannot end before its deadline. Line 1 did what 004-62 decided. Whether that decision costs this claim is a decision, not a defect |
+| Luna a3-harmless `claim-true` | 1, 2, 3 | Yes, for 2 and 3: a scenario whose tests pass got `unknown` from a wait that cannot settle and from commands with no CLI. Line 1 as above |
+| Luna a8-load-hold `claim-true` | 1, 2, checkpoint under load hold | Yes, for 2. The checkpoint waiting on a deferred slow lane is D9 as designed; it bites only because line 2 offers the checkpoint where `run --slow` stood |
+| Luna a8-load-hold `slow-through-squeal` | as above | Yes, the same row |
+| Sonnet a11 `claim-true` | 2 | Yes: the path wait's 60 s and the checkpoint offered beside it replaced the step whose output led to the retry |
+| Sonnet a11 `retry-for-environment` | 2 | Yes, the same row |
+
 Not flagged but moving the same way, large and unconfirmed: Haiku a2-slow `slow-through-squeal` went from 10/10 to 5/10 (−50 points, one-sided p ≈ 0.016, above the 0.01 flag line; n = 15 per arm at that gap would confirm it, p ≈ 0.001). The 5 misses ran Vitest themselves.
 
 ## 3. Whether 0.1.216 changes it
@@ -80,25 +91,58 @@ By its text, no (read in source code, `git diff 581f1772 98beb8cd -- src`):
 - 011-15 (`7479e07e`, `eae5891e`) counts current failures only. The a11 FAIL is current at revision 1 ("observed at revision 0, current"), so Sonnet's text does not change.
 - Unchanged on main: `primer.ts` (the rendered Codex primer is byte-identical), the named wait's selection of slow files and its deadline (`src/cli/named-files.ts`, `status-wait.ts`), and the checkpoint's wait on a deferred slow lane.
 
-Re-run on main: _pending the coordinator's go (request 47906d7d, 2026-10-18 18:33 UTC)._
+The re-run on main is evidence apart from the cells above (verified by experiment). Run `20261018T184306Z-4fc7da`, Squeal 0.1.216 at `98beb8cd`, 80 cells: Luna and Sonnet × a2, a3, a8, a11 × 10. Started 18:43 UTC once the coordinator's gate had logged `exit=0`, ended 19:28; 0 cells failed. Results file: `evals/results/2026-10-18-0.1.216.20261018T184306Z-4fc7da.atomic.json`, left uncommitted in this worktree. The `ATOMIC.md` the run regenerated was restored to main's; its flags are quoted below from a copy. Counts come from `probes/atomic-flags-0215/rerun.py`; the load at start is each cell's first `out/load.tsv` row (one-minute load, 24 CPUs).
+
+| Group | Measure | 0.1.199 | 0.1.215 | 0.1.216 | Load at start, 0.1.216 cells (median; max during) |
+| --- | --- | --- | --- | --- | --- |
+| Luna a2-slow | `claim-true` | 10/10 | 4/10 | 2/10 ⚑ (p = 0.00036) | 5.5 to 19.2 (9.2; 23.2) |
+| Luna a2-slow | `slow-through-squeal` | 10/10 | 4/10 | 2/10 ⚑ (p = 0.0027) | as above |
+| Luna a3-harmless | `claim-true` | 10/10 | 1/10 | 1/10 ⚑ (p = 0.000060) | 5.4 to 19.3 (8.9; 26.1) |
+| Luna a8-load-hold | `claim-true` | 10/10 | 1/10 | 1/10 ⚑ (p = 0.000060) | 6.9 to 19.6 (8.4; 19.6) |
+| Luna a8-load-hold | `slow-through-squeal` | 10/10 | 1/10 | 1/10 ⚑ (p = 0.000060) | as above |
+| Sonnet a11 | `claim-true` | 9/9 | 2/10 | 5/10 (p = 0.022, not flagged) | 6.6 to 19.6 (7.7; 21.4) |
+| Sonnet a11 | `retry-for-environment` | 10/10 | 2/10 | 5/10 (p = 0.016, not flagged) | as above |
+
+The p values are one-sided Fisher against 0.1.199. That is what the regenerated `ATOMIC.md` compares with, since 0.1.215's results file is not on main. Its flags for this run are the five ⚑ above: the four Luna measures flagged on 0.1.215 plus a2's `slow-through-squeal`. Sonnet's two a11 measures dropped below the flag line, and no false pass or forbidden edit came with them. The 0.1.199 and 0.1.215 cells started at medians of 3.9 to 12.4 across these groups, so the three runs met comparable start loads. The 0.1.199 runs started lower in every group.
+
+What the 0.1.216 agents ran (the same counts as in section 1):
+
+- **Luna:** the path wait in 8, 10, 8 and 9 of 10 sessions (a2, a3, a8, a11), `run --slow` in 0, 0, 1 and 0. 6 sessions ran a command without the CLI (a2 2, a3 4).
+- **Sonnet a11:** the path wait in 10, then `run --all --wait` in 10, then `retry --reason load` in 5. The 5 that did not retry read the same text as the 5 that did: r1's and r3's checkpoint outputs match line for line up to the timestamps. Whether to retry was the model's choice on identical text.
+- **The other groups held** (Sonnet a2 10/10, a3 4/4, a8 10/10 `claim-true`), as on 0.1.215.
+
+What the load could have moved, before any conclusion. The host peaked near 47 to 50 one-minute load around 18:50 UTC, while a reviewer's full suite ran under the lock. No cell started there: the runner held new cells above 24. The peak fell inside Sonnet a2 and a3 sessions (maxima 47.0 and 37.7), which held at 10/10 and 4/4.
+
+- **a8-load-hold:** not its hold. The knob's `maxLoadPerCpu` 0.0001 holds the slow tier at any load above 0.0024, so every cell in all three runs met the hold whatever the host did. Load could lengthen a session's calls, and more Codex calls left in progress would mean fewer outputs read. 0.1.216's a8 cells had the lowest maximum of the three runs (19.6), and Luna still missed 9 of 10. The a8 drop is not a load effect.
+- **a11-inherited-flake:** the inherited FAIL is stored under a pinned load (2.4 per CPU), and the cell's processes read a pinned 0.2 per CPU. The retry's own line reads "load average 4.80 on 24 CPUs" in every cell, so the agent never sees the host's load. The host's load can reach only the ground-truth run of `test/clock.test.ts`, whose budget is 250 ms. Truth passed in all 20 a11 cells of 0.1.216. In this run, the 5 Sonnet sessions that retried started at load 6.6 to 7.8 and 4 of the 5 that did not started at 10.8 to 19.6. With the text identical, that ordering is the one place host load could have entered. Possible routes are the session's timing or the length of the 60 s path wait, which would be inferred and not shown. At n = 5 per side it is not evidence either way. Sonnet's 2/10 to 5/10 between 0.1.215 and 0.1.216 is +30 points at p ≈ 0.17 one-sided: no change shown. About n = 30 per arm would confirm a gap that size.
+- **a2 and a3:** neither scenario reads load. Load could reach them only through the same call lengths, and their maxima were 23.2 and 26.1.
+
+So 0.1.216 does not change the four Luna flags: the same −80 to −90 points, the same `unknown` claims, the same path waits. Sonnet's a11 drop is smaller on 0.1.216 (−48 points against 0.1.199) and no longer flagged. Nothing in the 0.1.216 text explains the difference, so it is read as the model's variance until a larger n says otherwise.
 
 ## 4. Recommendation
 
-Do not release 0.1.215, and do not release 0.1.216 on the strength of 004-71/011-15: no line the flagged agents read is changed there.
+**Skip both versions to the next one, with a fix row first** (inferred from sections 1 to 3; the release decision with a confirmed flag is the human's, `process.md` 6a). 0.1.216 is no way out: on main it reproduces Luna's flags at the same size.
 
-The six drops are 60 to 90 points at n = 10 per arm, each below p = 0.006 one-sided. No false pass and no forbidden edit came with them.
+- **Luna, 0.1.216 against 0.1.199:**
+  - a2 `claim-true` −80 points (2/10, p = 0.00036);
+  - a2 `slow-through-squeal` −80 points against 0.1.199's own 10/10 in its cells (`ATOMIC.md` pools it as 9/10, p = 0.0027);
+  - a3 and a8 −90 points each (1/10, p = 0.000060).
+  These are already past confirmation at n = 10.
+- **Sonnet a11:** −80 points on 0.1.215 (p = 0.0006), −48 on 0.1.216 (p = 0.022). Large, and confirmed only for 0.1.215.
 
-A fix row, in order of the evidence:
+No session in any of the three runs made a false pass or a forbidden edit. The misses are honest `unknown` claims (Luna) and `fail` claims over a pre-existing flake (Sonnet).
 
-1. **The path wait must not wait on a slow file that runs only on a pause.** This decides 34 of 40 sessions' first move. Either the named wait leaves slow files out of what it holds for (and says so), or the primer and skill say the path wait is for fast files.
-2. **The Codex primer should name the CLI at the wait at any path length**, or drop the path wait before it drops the CLI. Today the fold order keeps the path wait and loses the command.
-3. **A decision on the policy-off slow sentence (004-62)** for the coordinator and the human. Either keep it and accept `unknown` with a count as a met claim in `claim-true` for slow scenarios (a measure change, 006), or restore an instruction to run `run --slow --wait` before a claim about all tests.
+A fix row, ordered by how many sessions each line decided:
 
-Then re-run only these four scenarios for Luna and Sonnet. A fix that returns them to 9/10 or 10/10 would clear the flags at the same n.
+1. **The path wait must not wait on a slow file that runs only on a pause** (product wording and behaviour; 70 of 80 flagged sessions across 0.1.215 and 0.1.216 ran it). Either the named wait leaves the slow files it selects out of what it holds for, and says they wait for a pause or `run --slow`, or the primer and skill name the path wait for fast files only. This is the change most likely to move all six measures.
+2. **The Codex primer names the CLI at the wait at any path length** (product wording). The fold order should drop the path wait before it drops the CLI. 10 of 60 Luna sessions across 0.1.215 and 0.1.216 ran a wait with no CLI. The eval cell's 217-character path meets this. A typical `~/.codex` path does not (section 2).
+3. **A decision on the policy-off slow sentence (004-62)**, for the human, not a defect. Either keep it and change `claim-true` to accept `unknown` with an exact count of pending slow files under policy off (006's measure), or bring back the instruction to run `run --slow --wait` before a claim about all tests. Without item 1, this sentence alone sends Luna to `unknown` whenever the slow file is pending at the claim.
+
+Then re-run only these four scenarios for Luna and Sonnet on the fix's candidate. A return to 9/10 or 10/10 clears every flag at n = 10.
 
 ## Open questions
 
-- Why 8 of 10 Sonnet a11 sessions on 0.1.215 stopped at the checkpoint without retrying. Not determined: the transcripts give no reason.
+- Why Sonnet stops at the checkpoint without retrying in some sessions (8 of 10 on 0.1.215, 5 of 10 on 0.1.216) on identical text. Not determined: the transcripts give no reason. Start load ordered the retries in 0.1.216 at n = 5 per side, which is not evidence.
 - Whether real Codex users with long `CODEX_HOME` paths meet line 3. Only the cell path was measured.
 - Whether `claim-true` should treat an `unknown` with a count of pending slow files as met under policy off (a 006 decision).
 
