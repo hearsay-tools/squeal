@@ -47807,7 +47807,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.218";
+  if (true) return "0.1.219";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -54753,6 +54753,7 @@ function splitNews(window2, entries3) {
 }
 
 // src/cli/status-wait-lines.ts
+init_keys();
 init_state3();
 init_text();
 
@@ -54981,8 +54982,13 @@ function namedLine(wait, command = "squeal") {
         `${noDaemonText(wait.result.daemon, wait.down)}; results are as of revision ${verdict.revision}; \`${command} start\` starts one`
       );
       break;
+    case "slow":
+      line = none2(`every selected test file is slow: ${pauseText(wait, command)}`);
+      break;
     case "timeout": {
-      const groups = reasonGroups(wait.files, command);
+      const paused = new Set((wait.leftForPause ?? []).map(testFileId));
+      const holding = wait.files.filter((f) => !paused.has(testFileId(f.testFile)));
+      const groups = reasonGroups(holding, command);
       const why2 = noVerdictText(verdict);
       const held2 = why2 === null ? "no result yet" : groups === "" ? why2 : `${why2}: ${groups}`;
       line = none2(
@@ -54995,7 +55001,20 @@ function namedLine(wait, command = "squeal") {
       line = why2 === null ? `Named test files at revision ${verdict.revision}: ${failuresText(verdict.failures)}; ${plural(verdict.testFiles, "test file")}, each with a current result, ${after}` : none2(why2);
     }
   }
-  return `${line}${lapseText(wait.lapse)}${worktreeText(wait.result)}`;
+  const pause = (wait.leftForPause ?? []).length > 0 && (wait.outcome === "settled" || wait.outcome === "timeout") ? `; ${pauseText(wait, command)}` : "";
+  return `${line}${pause}${lapseText(wait.lapse)}${worktreeText(wait.result)}`;
+}
+function pauseText(wait, command) {
+  const files2 = wait.leftForPause ?? [];
+  const n = files2.length;
+  const shown = files2.slice(0, NAMED_FILES_SHOWN).map(refText).join(", ");
+  const more = n > NAMED_FILES_SHOWN ? ` and ${n - NAMED_FILES_SHOWN} more` : "";
+  const them = n === 1 ? "it" : "them";
+  const what = `${plural(n, "slow test file")} ${n === 1 ? "waits" : "wait"} for a pause or \`${command} run --slow\`, which this wait does not hold for: ${shown}${more}`;
+  return wait.result.slowTier?.stopWaitMs === void 0 ? `${what}; this repository does not require ${them} before you finish` : `${what}; this repository requires ${them} before you finish: \`${command} run --slow --wait 60000\` runs and waits for ${them}`;
+}
+function refText({ project, path }) {
+  return project === "" ? path : `${project}: ${path}`;
 }
 function selectedLine(wait) {
   if (wait.outcome === "unmatched") return null;
@@ -55069,11 +55088,11 @@ function pendingText2(snapshot3) {
 }
 
 // src/cli/status-wait-paths.ts
-init_fs();
-init_keys();
 import { realpathSync as realpathSync20 } from "node:fs";
 import { isAbsolute as isAbsolute16, relative as relative21, resolve as resolve19, sep as sep25 } from "node:path";
 import { setTimeout as sleep9 } from "node:timers/promises";
+init_fs();
+init_keys();
 
 // src/cli/named-files.ts
 init_policy2();
@@ -55111,6 +55130,28 @@ function readNamedFiles(store, worktreeId, root, files2, daemon, now) {
     }
     return { testFile: ref2, state, pending };
   });
+}
+function pauseOnlyIds(store, worktreeId, root, files2, daemon, now) {
+  const policy = readPolicy(root);
+  const slow = files2.filter((ref2) => slowView(policy).isSlow(ref2));
+  if (slow.length === 0) return /* @__PURE__ */ new Set();
+  const rows = new Map(
+    store.testFileKeys.list(worktreeId, slow).map((row) => [testFileId(row.testFile), row])
+  );
+  const checks = checksByFile(store.knownStates.list(worktreeId));
+  const runs = openRunsOf(store, worktreeId, daemon);
+  const ids = /* @__PURE__ */ new Set();
+  for (const ref2 of slow) {
+    const id2 = testFileId(ref2);
+    const row = rows.get(id2);
+    const own = checks.get(id2) ?? [];
+    if (fileClassOf(row, own) !== "pending") continue;
+    if (row?.pending === "running" || own.some((s) => s.pendingPhase === "running")) continue;
+    const lane = laneFor(policy, ref2, runnerLaneOf(policy, ref2.project));
+    const reason2 = queuedReason(store, worktreeId, ref2, row?.key ?? null, lane, runs, policy, now);
+    if (reason2.kind === "slow") ids.add(id2);
+  }
+  return ids;
 }
 function promotedOf(store, worktreeId, daemon, now) {
   const record = store.worktrees.get(worktreeId)?.daemon ?? null;
@@ -55281,6 +55322,7 @@ async function waitForNamed(cwd, paths, options) {
   let watch2;
   let first = true;
   let promoted = false;
+  const paused = /* @__PURE__ */ new Set();
   try {
     for (; ; ) {
       const final = elapsed() >= options.timeoutMs;
@@ -55290,13 +55332,24 @@ async function waitForNamed(cwd, paths, options) {
         const id2 = worktreeIdFor(root);
         sync ??= options.sync(root, options.pollMs);
         const selection = selectNamedFiles(store, id2, root, cwd, paths);
-        const verdict = readVerdict(store, id2, selection.files);
+        const all = readVerdict(store, id2, selection.files);
         const settled = final || elapsed() >= options.settleMs;
         watch2 ??= watchDaemon(id2, { downMs: options.downMs });
-        const daemon = watch2.judge(store.worktrees.get(id2)?.daemon ?? null, options.now());
+        const record = store.worktrees.get(id2)?.daemon ?? null;
+        const daemon = watch2.judge(record, options.now());
         const current3 = sync.current();
-        const ready = daemon.state === "alive" && (current3.state === "synced" ? verdict.revision >= current3.revision && !verdict.unlisted : current3.state === "unsupported" && settled);
-        const outcome2 = settled && daemon.state === "down" ? "no-daemon" : ready && selection.unmatched.length > 0 ? "unmatched" : ready && verdict.byClass.pending === 0 && !verdict.unlisted ? "settled" : final ? "timeout" : null;
+        const ready = daemon.state === "alive" && (current3.state === "synced" ? all.revision >= current3.revision && !all.unlisted : current3.state === "unsupported" && settled);
+        if (ready) {
+          const open5 = selection.files.filter((f) => !paused.has(testFileId(f)));
+          const liveness2 = daemonLiveness(record, options.now());
+          for (const pid of pauseOnlyIds(store, id2, root, open5, liveness2, options.now())) {
+            paused.add(pid);
+          }
+        }
+        const leftForPause = selection.files.filter((f) => paused.has(testFileId(f)));
+        const held2 = selection.files.filter((f) => !paused.has(testFileId(f)));
+        const verdict = leftForPause.length === 0 ? all : readVerdict(store, id2, held2);
+        const outcome2 = settled && daemon.state === "down" ? "no-daemon" : ready && selection.unmatched.length > 0 ? "unmatched" : ready && held2.length === 0 ? "slow" : ready && verdict.byClass.pending === 0 && !verdict.unlisted ? "settled" : final ? "timeout" : null;
         if (outcome2 === null) {
           if (ready && !promoted) {
             promoted = true;
@@ -55321,6 +55374,7 @@ async function waitForNamed(cwd, paths, options) {
         return {
           outcome: outcome2,
           selection,
+          leftForPause,
           verdict,
           files: files2,
           result,
@@ -55363,6 +55417,7 @@ async function namedWaitCommand(paths, json3, io, options) {
       code,
       testFiles: wait.files.map((f) => fileEntry(f, command)),
       unmatched: wait.selection.unmatched,
+      leftForPause: wait.leftForPause ?? [],
       verdict: wait.verdict
     };
     io.stdout(`${JSON.stringify({ ...wait.result, wait: payload }, null, 2)}
