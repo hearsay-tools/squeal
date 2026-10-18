@@ -1,0 +1,4026 @@
+{
+ "revisions": {
+  "agent-aa4e225f859cc33c5": {
+   "total": 20,
+   "none": 0,
+   "docsOnly": 0,
+   "package": 12,
+   "browser": 8
+  },
+  "agent-a06e3c59f05774c4a": {
+   "total": 12,
+   "none": 0,
+   "docsOnly": 0,
+   "package": 12
+  },
+  "17413271-a7d9-491e-b190-b16533f7e987": {
+   "total": 200,
+   "none": 17,
+   "docsOnly": 17,
+   "browser": 148,
+   "package": 41
+  },
+  "3e372257-42e7-4686-8977-305e1cc35bef": {
+   "total": 39,
+   "none": 1,
+   "docsOnly": 1,
+   "browser": 19,
+   "package": 23
+  },
+  "agent-ae36f47254b9d5b33": {
+   "total": 8,
+   "none": 6,
+   "docsOnly": 0,
+   "browser": 1,
+   "package": 1
+  },
+  "fe9bcbc6-6403-43c8-bf3b-81e3c58b01ff": {
+   "total": 29,
+   "none": 2,
+   "docsOnly": 2,
+   "browser": 16,
+   "package": 11
+  },
+  "agent-aa2a16753f6a94438": {
+   "total": 5,
+   "none": 0,
+   "docsOnly": 0,
+   "browser": 5
+  },
+  "469e1cd2-ac79-4619-a8ac-b48aa4b4fc31": {
+   "total": 25,
+   "none": 1,
+   "docsOnly": 1,
+   "browser": 11,
+   "package": 14
+  },
+  "agent-a53122e43ca4b5937": {
+   "total": 34,
+   "none": 0,
+   "docsOnly": 0,
+   "browser": 34,
+   "package": 9
+  },
+  "agent-a3232b6032035fd18": {
+   "total": 12,
+   "none": 0,
+   "docsOnly": 0,
+   "browser": 8,
+   "package": 4
+  },
+  "7679d523-846d-4d6b-94df-7877ce6cc4f2": {
+   "total": 3,
+   "none": 1,
+   "docsOnly": 1,
+   "package": 2
+  },
+  "gate-902": {
+   "total": 2,
+   "none": 0,
+   "docsOnly": 0,
+   "browser": 2
+  },
+  "cezar": {
+   "total": 90,
+   "none": 1,
+   "docsOnly": 0,
+   "browser": 72,
+   "package": 19
+  },
+  "4bbb2adf-011d-467e-886e-99270e93fb29": {
+   "total": 30,
+   "none": 7,
+   "docsOnly": 6,
+   "browser": 22,
+   "package": 8
+  },
+  "agent-a093b1364b09ce75f": {
+   "total": 8,
+   "none": 0,
+   "docsOnly": 0,
+   "browser": 8
+  },
+  "3eb81483-8d1f-4052-8f48-8d70e471c778": {
+   "total": 2,
+   "none": 1,
+   "docsOnly": 1,
+   "package": 1
+  },
+  "1160408d-fc4f-4373-a29e-2879d49a8c26": {
+   "total": 1,
+   "none": 1,
+   "docsOnly": 1
+  },
+  "tfs-1056": {
+   "total": 3,
+   "none": 0,
+   "docsOnly": 0,
+   "browser": 3
+  },
+  "agent-a16d2518c9e74f138": {
+   "total": 22,
+   "none": 0,
+   "docsOnly": 0,
+   "browser": 21,
+   "package": 1
+  },
+  "agent-ad8974545d7f2f950": {
+   "total": 7,
+   "none": 0,
+   "docsOnly": 0,
+   "package": 7
+  },
+  "agent-a057a91fc60935f6e": {
+   "total": 10,
+   "none": 0,
+   "docsOnly": 0,
+   "browser": 10
+  }
+ },
+ "runs": {
+  "browser": {
+   "results": 1531,
+   "minutes": 59.8,
+   "files": 82
+  },
+  "package": {
+   "results": 222,
+   "minutes": 1.2,
+   "files": 13
+  }
+ },
+ "inherited": {
+  "browser": {
+   "states": 717,
+   "minutes": 25.2
+  },
+  "package": {
+   "states": 16,
+   "minutes": 0.1
+  }
+ },
+ "reruns": {
+  "browser": {
+   "reruns": 559,
+   "changed": 9,
+   "examples": [
+    "cezar packages/web/e2e/project-rail.e2e.ts r28->r31 pass->pass",
+    "cezar packages/web/e2e/project-rail.e2e.ts r31->r78 pass->pass",
+    "cezar packages/web/e2e/quick-list.e2e.ts r0->r79 pass->pass",
+    "17413271-a7d9-491e-b190-b16533f7e987 packages/web/e2e/review-gate.e2e.ts r150->r190 pass->pass",
+    "cezar packages/web/e2e/smoke.e2e.ts r0->r28 pass->pass",
+    "cezar packages/web/e2e/smoke.e2e.ts r28->r31 pass->pass",
+    "cezar packages/web/e2e/tab-coordination.e2e.ts r0->r9 pass->pass",
+    "cezar packages/web/e2e/tab-coordination.e2e.ts r9->r79 pass->pass",
+    "cezar packages/web/e2e/task-handoff.e2e.ts r79->r83 pass->pass"
+   ]
+  },
+  "package": {
+   "reruns": 97,
+   "changed": 19,
+   "examples": [
+    "4bbb2adf-011d-467e-886e-99270e93fb29 packages/cezar/test/e2e/application-update.test.ts r24->r30 fail->pass",
+    "7679d523-846d-4d6b-94df-7877ce6cc4f2 packages/cezar/test/e2e/application-update.test.ts r1->r3 fail->pass",
+    "4bbb2adf-011d-467e-886e-99270e93fb29 packages/cezar/test/e2e/cockpit-ownership.test.ts r24->r30 pass->pass",
+    "7679d523-846d-4d6b-94df-7877ce6cc4f2 packages/cezar/test/e2e/cockpit-ownership.test.ts r1->r3 pass->pass",
+    "4bbb2adf-011d-467e-886e-99270e93fb29 packages/cezar/test/e2e/cursor-print.test.ts r24->r30 pass->pass",
+    "7679d523-846d-4d6b-94df-7877ce6cc4f2 packages/cezar/test/e2e/cursor-print.test.ts r1->r3 pass->pass",
+    "4bbb2adf-011d-467e-886e-99270e93fb29 packages/cezar/test/e2e/delegation.test.ts r24->r30 pass->pass",
+    "7679d523-846d-4d6b-94df-7877ce6cc4f2 packages/cezar/test/e2e/delegation.test.ts r1->r3 pass->pass",
+    "4bbb2adf-011d-467e-886e-99270e93fb29 packages/cezar/test/e2e/inline-contract.test.ts r24->r30 pass->pass",
+    "7679d523-846d-4d6b-94df-7877ce6cc4f2 packages/cezar/test/e2e/inline-contract.test.ts r1->r3 pass->pass",
+    "4bbb2adf-011d-467e-886e-99270e93fb29 packages/cezar/test/e2e/package-cli.test.ts r24->r30 pass->pass",
+    "7679d523-846d-4d6b-94df-7877ce6cc4f2 packages/cezar/test/e2e/package-cli.test.ts r1->r3 pass->pass",
+    "4bbb2adf-011d-467e-886e-99270e93fb29 packages/cezar/test/e2e/release-snapshot.test.ts r24->r30 pass->pass",
+    "7679d523-846d-4d6b-94df-7877ce6cc4f2 packages/cezar/test/e2e/release-snapshot.test.ts r1->r3 pass->pass",
+    "4bbb2adf-011d-467e-886e-99270e93fb29 packages/cezar/test/e2e/release.test.ts r24->r30 pass->pass",
+    "7679d523-846d-4d6b-94df-7877ce6cc4f2 packages/cezar/test/e2e/release.test.ts r1->r3 pass->pass",
+    "4bbb2adf-011d-467e-886e-99270e93fb29 packages/cezar/test/e2e/serve-port.test.ts r26->r30 pass->pass",
+    "agent-a06e3c59f05774c4a packages/cezar/test/e2e/task-cli.test.ts r12->r12 pass->pass",
+    "4bbb2adf-011d-467e-886e-99270e93fb29 packages/cezar/test/e2e/task-cli.test.ts r26->r30 pass->pass"
+   ]
+  }
+ },
+ "transitions": [
+  {
+   "group": "browser",
+   "at": "10-14T20:36",
+   "worktree": "cezar",
+   "kind": "first-seen-fail",
+   "revision": 0,
+   "file": "quick-list.e2e.ts",
+   "test": "a row under width contention, in a column the user can widen > drops t",
+   "previous": "none"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T20:54",
+   "worktree": "cezar",
+   "kind": "first-seen-fail",
+   "revision": 0,
+   "file": "tab-coordination.e2e.ts",
+   "test": "ten mixed tabs (separate visible windows: false) share worker transpor",
+   "previous": "none"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T20:54",
+   "worktree": "cezar",
+   "kind": "first-seen-fail",
+   "revision": 0,
+   "file": "tab-coordination.e2e.ts",
+   "test": "ten mixed tabs (separate visible windows: true) share worker transport",
+   "previous": "none"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T20:54",
+   "worktree": "cezar",
+   "kind": "first-seen-fail",
+   "revision": 0,
+   "file": "tab-coordination.e2e.ts",
+   "test": "remote Basic Auth keeps finite recovery authenticated without a worker",
+   "previous": "none"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T20:54",
+   "worktree": "cezar",
+   "kind": "first-seen-fail",
+   "revision": 0,
+   "file": "tab-coordination.e2e.ts",
+   "test": "a frozen document releases its demand and rehydrates after native resu",
+   "previous": "none"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T21:43",
+   "worktree": "cezar",
+   "kind": "fail-changed",
+   "revision": 9,
+   "file": "tab-coordination.e2e.ts",
+   "test": "ten mixed tabs (separate visible windows: false) share worker transpor",
+   "previous": "own r0 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T21:43",
+   "worktree": "cezar",
+   "kind": "fail-changed",
+   "revision": 9,
+   "file": "tab-coordination.e2e.ts",
+   "test": "ten mixed tabs (separate visible windows: true) share worker transport",
+   "previous": "own r0 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T21:43",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 9,
+   "file": "tab-coordination.e2e.ts",
+   "test": "remote Basic Auth keeps finite recovery authenticated without a worker",
+   "previous": "own r0 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T21:43",
+   "worktree": "cezar",
+   "kind": "fail-changed",
+   "revision": 9,
+   "file": "tab-coordination.e2e.ts",
+   "test": "a frozen document releases its demand and rehydrates after native resu",
+   "previous": "own r0 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T21:47",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 16,
+   "file": "tab-coordination.e2e.ts",
+   "test": "ten mixed tabs (separate visible windows: false) share worker transpor",
+   "previous": "own r9 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T21:47",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 16,
+   "file": "tab-coordination.e2e.ts",
+   "test": "ten mixed tabs (separate visible windows: true) share worker transport",
+   "previous": "own r9 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T21:47",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 16,
+   "file": "tab-coordination.e2e.ts",
+   "test": "a frozen document releases its demand and rehydrates after native resu",
+   "previous": "own r9 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T21:49",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 16,
+   "file": "quick-list.e2e.ts",
+   "test": "a row under width contention, in a column the user can widen > drops t",
+   "previous": "own r0 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:01",
+   "worktree": "cezar",
+   "kind": "pass-to-fail",
+   "revision": 16,
+   "file": "diff-scroll.e2e.ts",
+   "test": "diff virtualization on a generated 120-file changeset > keeps the per-",
+   "previous": "own r0 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:08",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 17,
+   "file": "diff-scroll.e2e.ts",
+   "test": "diff virtualization on a generated 120-file changeset > keeps the per-",
+   "previous": "own r0 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:08",
+   "worktree": "cezar",
+   "kind": "pass-to-fail",
+   "revision": 17,
+   "file": "quick-list.e2e.ts",
+   "test": "a row under width contention, in a column the user can widen > drops t",
+   "previous": "own r0 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:08",
+   "worktree": "cezar",
+   "kind": "pass-to-fail",
+   "revision": 17,
+   "file": "tab-coordination.e2e.ts",
+   "test": "a frozen document releases its demand and rehydrates after native resu",
+   "previous": "own r9 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:08",
+   "worktree": "cezar",
+   "kind": "pass-to-fail",
+   "revision": 17,
+   "file": "tab-coordination.e2e.ts",
+   "test": "remote Basic Auth keeps finite recovery authenticated without a worker",
+   "previous": "own r9 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:08",
+   "worktree": "cezar",
+   "kind": "pass-to-fail",
+   "revision": 17,
+   "file": "tab-coordination.e2e.ts",
+   "test": "ten mixed tabs (separate visible windows: false) share worker transpor",
+   "previous": "own r9 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:08",
+   "worktree": "cezar",
+   "kind": "pass-to-fail",
+   "revision": 17,
+   "file": "tab-coordination.e2e.ts",
+   "test": "ten mixed tabs (separate visible windows: true) share worker transport",
+   "previous": "own r9 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:08",
+   "worktree": "cezar",
+   "kind": "pass-to-fail",
+   "revision": 18,
+   "file": "diff-scroll.e2e.ts",
+   "test": "diff virtualization on a generated 120-file changeset > keeps the per-",
+   "previous": "own r0 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:08",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 18,
+   "file": "quick-list.e2e.ts",
+   "test": "a row under width contention, in a column the user can widen > drops t",
+   "previous": "own r0 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:08",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 18,
+   "file": "tab-coordination.e2e.ts",
+   "test": "a frozen document releases its demand and rehydrates after native resu",
+   "previous": "own r9 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:08",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 18,
+   "file": "tab-coordination.e2e.ts",
+   "test": "remote Basic Auth keeps finite recovery authenticated without a worker",
+   "previous": "own r9 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:08",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 18,
+   "file": "tab-coordination.e2e.ts",
+   "test": "ten mixed tabs (separate visible windows: false) share worker transpor",
+   "previous": "own r9 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:08",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 18,
+   "file": "tab-coordination.e2e.ts",
+   "test": "ten mixed tabs (separate visible windows: true) share worker transport",
+   "previous": "own r9 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:18",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 28,
+   "file": "diff-scroll.e2e.ts",
+   "test": "diff virtualization on a generated 120-file changeset > keeps the per-",
+   "previous": "own r0 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:27",
+   "worktree": "cezar",
+   "kind": "pass-to-fail",
+   "revision": 28,
+   "file": "smoke.e2e.ts",
+   "test": "cockpit app shell > makes main the only scroller — the document never ",
+   "previous": "own r0 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:27",
+   "worktree": "cezar",
+   "kind": "pass-to-fail",
+   "revision": 28,
+   "file": "smoke.e2e.ts",
+   "test": "mobile shell > hides the sidebar and shows the top bar at an iPhone vi",
+   "previous": "own r0 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:27",
+   "worktree": "cezar",
+   "kind": "pass-to-fail",
+   "revision": 28,
+   "file": "smoke.e2e.ts",
+   "test": "mobile shell > never overflows the viewport horizontally",
+   "previous": "own r0 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:27",
+   "worktree": "cezar",
+   "kind": "pass-to-fail",
+   "revision": 28,
+   "file": "smoke.e2e.ts",
+   "test": "mobile shell > nav drawer > opens over a backdrop, and covers the view",
+   "previous": "own r0 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:27",
+   "worktree": "cezar",
+   "kind": "pass-to-fail",
+   "revision": 28,
+   "file": "smoke.e2e.ts",
+   "test": "mobile shell > nav drawer > keeps the themed drawer wordmark readable ",
+   "previous": "own r0 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:27",
+   "worktree": "cezar",
+   "kind": "pass-to-fail",
+   "revision": 28,
+   "file": "smoke.e2e.ts",
+   "test": "mobile shell > nav drawer > does not overflow the viewport while open",
+   "previous": "own r0 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:30",
+   "worktree": "cezar",
+   "kind": "pass-to-fail",
+   "revision": 29,
+   "file": "diff-scroll.e2e.ts",
+   "test": "diff virtualization on a generated 120-file changeset > keeps the per-",
+   "previous": "own r28 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:30",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 29,
+   "file": "smoke.e2e.ts",
+   "test": "cockpit app shell > makes main the only scroller — the document never ",
+   "previous": "own r28 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:30",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 29,
+   "file": "smoke.e2e.ts",
+   "test": "mobile shell > hides the sidebar and shows the top bar at an iPhone vi",
+   "previous": "own r28 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:30",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 29,
+   "file": "smoke.e2e.ts",
+   "test": "mobile shell > nav drawer > does not overflow the viewport while open",
+   "previous": "own r28 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:30",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 29,
+   "file": "smoke.e2e.ts",
+   "test": "mobile shell > nav drawer > keeps the themed drawer wordmark readable ",
+   "previous": "own r28 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:30",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 29,
+   "file": "smoke.e2e.ts",
+   "test": "mobile shell > nav drawer > opens over a backdrop, and covers the view",
+   "previous": "own r28 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:30",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 29,
+   "file": "smoke.e2e.ts",
+   "test": "mobile shell > never overflows the viewport horizontally",
+   "previous": "own r28 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:33",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "diff-scroll.e2e.ts",
+   "test": "diff virtualization on a generated 120-file changeset > keeps the per-",
+   "previous": "own r28 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:41",
+   "worktree": "cezar",
+   "kind": "pass-to-fail",
+   "revision": 31,
+   "file": "project-rail.e2e.ts",
+   "test": "expandable project rail (#711) > keeps names and state words at 4.5:1 ",
+   "previous": "own r28 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T22:41",
+   "worktree": "cezar",
+   "kind": "pass-to-fail",
+   "revision": 31,
+   "file": "project-rail.e2e.ts",
+   "test": "expandable project rail (#711) > does not animate the width under redu",
+   "previous": "own r28 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T23:30",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 78,
+   "file": "project-rail.e2e.ts",
+   "test": "expandable project rail (#711) > keeps names and state words at 4.5:1 ",
+   "previous": "own r31 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T23:30",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 78,
+   "file": "project-rail.e2e.ts",
+   "test": "expandable project rail (#711) > does not animate the width under redu",
+   "previous": "own r31 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T23:46",
+   "worktree": "agent-aa2a16753f6a94438",
+   "kind": "pass-to-fail",
+   "revision": 5,
+   "file": "tab-coordination.e2e.ts",
+   "test": "ten mixed tabs (separate visible windows: false) share worker transpor",
+   "previous": "other worktree r9 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T23:46",
+   "worktree": "agent-aa2a16753f6a94438",
+   "kind": "pass-to-fail",
+   "revision": 5,
+   "file": "tab-coordination.e2e.ts",
+   "test": "ten mixed tabs (separate visible windows: true) share worker transport",
+   "previous": "other worktree r9 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T23:46",
+   "worktree": "agent-aa2a16753f6a94438",
+   "kind": "pass-to-fail",
+   "revision": 5,
+   "file": "tab-coordination.e2e.ts",
+   "test": "a frozen document releases its demand and rehydrates after native resu",
+   "previous": "other worktree r9 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T23:49",
+   "worktree": "agent-aa2a16753f6a94438",
+   "kind": "pass-to-fail",
+   "revision": 5,
+   "file": "quick-list.e2e.ts",
+   "test": "archive from the sidebar (#780) > folds sections with the keyboard, pe",
+   "previous": "other worktree r0 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-14T23:50",
+   "worktree": "cezar",
+   "kind": "pass-to-fail",
+   "revision": 79,
+   "file": "diff-scroll.e2e.ts",
+   "test": "diff virtualization on a generated 120-file changeset > keeps the per-",
+   "previous": "own r78 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T00:08",
+   "worktree": "agent-aa2a16753f6a94438",
+   "kind": "first-seen-fail",
+   "revision": 5,
+   "file": "selection-states.e2e.ts",
+   "test": "selection and control states (#171) > mobile-dark-comfortable: enabled",
+   "previous": "other worktree r0 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T00:08",
+   "worktree": "agent-aa2a16753f6a94438",
+   "kind": "first-seen-fail",
+   "revision": 5,
+   "file": "selection-states.e2e.ts",
+   "test": "selection and control states (#171) > mobile-light-comfortable: enable",
+   "previous": "other worktree r0 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T00:10",
+   "worktree": "agent-aa2a16753f6a94438",
+   "kind": "first-seen-fail",
+   "revision": 5,
+   "file": "task-handoff.e2e.ts",
+   "test": "Hand off to webhook > keeps the live glyph when an older stop-notifyin",
+   "previous": "none"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T00:16",
+   "worktree": "agent-aa2a16753f6a94438",
+   "kind": "first-seen-fail",
+   "revision": 5,
+   "file": "thread-scroll.e2e.ts",
+   "test": "phone viewports > holds the dock still while a live line arrives and t",
+   "previous": "none"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T00:16",
+   "worktree": "agent-aa2a16753f6a94438",
+   "kind": "first-seen-fail",
+   "revision": 5,
+   "file": "thread-scroll.e2e.ts",
+   "test": "thread virtualization on a 1,000-row transcript > restores the same re",
+   "previous": "none"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T00:16",
+   "worktree": "agent-aa2a16753f6a94438",
+   "kind": "first-seen-fail",
+   "revision": 5,
+   "file": "thread-scroll.e2e.ts",
+   "test": "tool cards remain below assistant messages after live appends > flat a",
+   "previous": "none"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T00:16",
+   "worktree": "agent-aa2a16753f6a94438",
+   "kind": "first-seen-fail",
+   "revision": 5,
+   "file": "thread-scroll.e2e.ts",
+   "test": "tool cards remain below assistant messages after live appends > flat a",
+   "previous": "none"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T00:16",
+   "worktree": "agent-aa2a16753f6a94438",
+   "kind": "first-seen-fail",
+   "revision": 5,
+   "file": "thread-scroll.e2e.ts",
+   "test": "tool cards remain below assistant messages after live appends > flat a",
+   "previous": "none"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T00:16",
+   "worktree": "agent-aa2a16753f6a94438",
+   "kind": "first-seen-fail",
+   "revision": 5,
+   "file": "thread-scroll.e2e.ts",
+   "test": "tool cards remain below assistant messages after live appends > virtua",
+   "previous": "none"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T00:16",
+   "worktree": "agent-aa2a16753f6a94438",
+   "kind": "first-seen-fail",
+   "revision": 5,
+   "file": "thread-scroll.e2e.ts",
+   "test": "tool cards remain below assistant messages after live appends > virtua",
+   "previous": "none"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T00:16",
+   "worktree": "agent-aa2a16753f6a94438",
+   "kind": "first-seen-fail",
+   "revision": 5,
+   "file": "thread-scroll.e2e.ts",
+   "test": "tool cards remain below assistant messages after live appends > virtua",
+   "previous": "none"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T01:11",
+   "worktree": "cezar",
+   "kind": "first-seen-fail",
+   "revision": 79,
+   "file": "task-github-items.e2e.ts",
+   "test": "",
+   "previous": "other worktree r5 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T01:11",
+   "worktree": "cezar",
+   "kind": "first-seen-fail",
+   "revision": 79,
+   "file": "task-handoff.e2e.ts",
+   "test": "",
+   "previous": "other worktree r5 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T01:12",
+   "worktree": "cezar",
+   "kind": "first-seen-fail",
+   "revision": 79,
+   "file": "task-pr-collection.e2e.ts",
+   "test": "",
+   "previous": "other worktree r5 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T01:56",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "pass-to-fail",
+   "revision": 34,
+   "file": "tab-coordination.e2e.ts",
+   "test": "ten mixed tabs (separate visible windows: false) share worker transpor",
+   "previous": "other worktree r5 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T01:56",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "pass-to-fail",
+   "revision": 34,
+   "file": "tab-coordination.e2e.ts",
+   "test": "ten mixed tabs (separate visible windows: true) share worker transport",
+   "previous": "other worktree r5 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T01:56",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "pass-to-fail",
+   "revision": 34,
+   "file": "tab-coordination.e2e.ts",
+   "test": "a frozen document releases its demand and rehydrates after native resu",
+   "previous": "other worktree r5 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T02:05",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "task-handoff.e2e.ts",
+   "test": "Hand off to webhook > keeps the live glyph when an older stop-notifyin",
+   "previous": "other worktree r5 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T02:09",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "thread-scroll.e2e.ts",
+   "test": "phone viewports > holds the dock still while a live line arrives and t",
+   "previous": "other worktree r5 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T02:09",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "thread-scroll.e2e.ts",
+   "test": "thread virtualization on a 1,000-row transcript > restores the same re",
+   "previous": "other worktree r5 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T02:09",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "thread-scroll.e2e.ts",
+   "test": "tool cards remain below assistant messages after live appends > flat a",
+   "previous": "other worktree r5 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T02:09",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "thread-scroll.e2e.ts",
+   "test": "tool cards remain below assistant messages after live appends > flat a",
+   "previous": "other worktree r5 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T02:09",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "thread-scroll.e2e.ts",
+   "test": "tool cards remain below assistant messages after live appends > flat a",
+   "previous": "other worktree r5 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T02:09",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "thread-scroll.e2e.ts",
+   "test": "tool cards remain below assistant messages after live appends > virtua",
+   "previous": "other worktree r5 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T02:09",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "thread-scroll.e2e.ts",
+   "test": "tool cards remain below assistant messages after live appends > virtua",
+   "previous": "other worktree r5 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T02:09",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "thread-scroll.e2e.ts",
+   "test": "tool cards remain below assistant messages after live appends > virtua",
+   "previous": "other worktree r5 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T03:53",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 79,
+   "file": "diff-scroll.e2e.ts",
+   "test": "diff virtualization on a generated 120-file changeset > keeps the per-",
+   "previous": "other worktree r34 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T03:53",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 79,
+   "file": "task-github-items.e2e.ts",
+   "test": "",
+   "previous": "other worktree r34 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T03:56",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 79,
+   "file": "task-handoff.e2e.ts",
+   "test": "",
+   "previous": "other worktree r34 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T03:57",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 79,
+   "file": "task-pr-collection.e2e.ts",
+   "test": "",
+   "previous": "other worktree r34 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T09:53",
+   "worktree": "agent-ae36f47254b9d5b33",
+   "kind": "first-seen-fail",
+   "revision": 8,
+   "file": "tab-coordination.e2e.ts",
+   "test": "ten mixed tabs (separate visible windows: false) share worker transpor",
+   "previous": "other worktree r79 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T09:53",
+   "worktree": "agent-ae36f47254b9d5b33",
+   "kind": "first-seen-fail",
+   "revision": 8,
+   "file": "tab-coordination.e2e.ts",
+   "test": "ten mixed tabs (separate visible windows: true) share worker transport",
+   "previous": "other worktree r79 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T09:53",
+   "worktree": "agent-ae36f47254b9d5b33",
+   "kind": "first-seen-fail",
+   "revision": 8,
+   "file": "tab-coordination.e2e.ts",
+   "test": "a frozen document releases its demand and rehydrates after native resu",
+   "previous": "other worktree r79 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T10:16",
+   "worktree": "tfs-1056",
+   "kind": "first-seen-fail",
+   "revision": 3,
+   "file": "tab-coordination.e2e.ts",
+   "test": "ten mixed tabs (separate visible windows: false) share worker transpor",
+   "previous": "other worktree r8 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T10:16",
+   "worktree": "tfs-1056",
+   "kind": "first-seen-fail",
+   "revision": 3,
+   "file": "tab-coordination.e2e.ts",
+   "test": "ten mixed tabs (separate visible windows: true) share worker transport",
+   "previous": "other worktree r8 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T10:18",
+   "worktree": "tfs-1056",
+   "kind": "first-seen-fail",
+   "revision": 3,
+   "file": "task-handoff.e2e.ts",
+   "test": "Hand off to webhook > keeps the live glyph when an older stop-notifyin",
+   "previous": "other worktree r79 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T10:22",
+   "worktree": "tfs-1056",
+   "kind": "first-seen-fail",
+   "revision": 3,
+   "file": "thread-scroll.e2e.ts",
+   "test": "thread virtualization on a 1,000-row transcript > restores the same re",
+   "previous": "other worktree r79 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T10:22",
+   "worktree": "tfs-1056",
+   "kind": "first-seen-fail",
+   "revision": 3,
+   "file": "thread-scroll.e2e.ts",
+   "test": "phone viewports > holds the dock still while a live line arrives and t",
+   "previous": "other worktree r79 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T10:22",
+   "worktree": "tfs-1056",
+   "kind": "first-seen-fail",
+   "revision": 3,
+   "file": "thread-scroll.e2e.ts",
+   "test": "tool cards remain below assistant messages after live appends > flat a",
+   "previous": "other worktree r79 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T10:22",
+   "worktree": "tfs-1056",
+   "kind": "first-seen-fail",
+   "revision": 3,
+   "file": "thread-scroll.e2e.ts",
+   "test": "tool cards remain below assistant messages after live appends > virtua",
+   "previous": "other worktree r79 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T10:22",
+   "worktree": "tfs-1056",
+   "kind": "first-seen-fail",
+   "revision": 3,
+   "file": "thread-scroll.e2e.ts",
+   "test": "tool cards remain below assistant messages after live appends > flat a",
+   "previous": "other worktree r79 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T10:22",
+   "worktree": "tfs-1056",
+   "kind": "first-seen-fail",
+   "revision": 3,
+   "file": "thread-scroll.e2e.ts",
+   "test": "tool cards remain below assistant messages after live appends > virtua",
+   "previous": "other worktree r79 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T10:22",
+   "worktree": "tfs-1056",
+   "kind": "first-seen-fail",
+   "revision": 3,
+   "file": "thread-scroll.e2e.ts",
+   "test": "tool cards remain below assistant messages after live appends > flat a",
+   "previous": "other worktree r79 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T10:22",
+   "worktree": "tfs-1056",
+   "kind": "first-seen-fail",
+   "revision": 3,
+   "file": "thread-scroll.e2e.ts",
+   "test": "tool cards remain below assistant messages after live appends > virtua",
+   "previous": "other worktree r79 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T12:19",
+   "worktree": "agent-a093b1364b09ce75f",
+   "kind": "pass-to-fail",
+   "revision": 8,
+   "file": "tab-coordination.e2e.ts",
+   "test": "ten mixed tabs (separate visible windows: false) share worker transpor",
+   "previous": "other worktree r3 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T12:19",
+   "worktree": "agent-a093b1364b09ce75f",
+   "kind": "pass-to-fail",
+   "revision": 8,
+   "file": "tab-coordination.e2e.ts",
+   "test": "ten mixed tabs (separate visible windows: true) share worker transport",
+   "previous": "other worktree r3 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T12:19",
+   "worktree": "agent-a093b1364b09ce75f",
+   "kind": "pass-to-fail",
+   "revision": 8,
+   "file": "tab-coordination.e2e.ts",
+   "test": "a frozen document releases its demand and rehydrates after native resu",
+   "previous": "other worktree r3 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T14:18",
+   "worktree": "agent-aa4e225f859cc33c5",
+   "kind": "pass-to-fail",
+   "revision": 20,
+   "file": "tab-coordination.e2e.ts",
+   "test": "ten mixed tabs (separate visible windows: false) share worker transpor",
+   "previous": "other worktree r22 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T14:18",
+   "worktree": "agent-aa4e225f859cc33c5",
+   "kind": "pass-to-fail",
+   "revision": 20,
+   "file": "tab-coordination.e2e.ts",
+   "test": "ten mixed tabs (separate visible windows: true) share worker transport",
+   "previous": "other worktree r22 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T14:18",
+   "worktree": "agent-aa4e225f859cc33c5",
+   "kind": "pass-to-fail",
+   "revision": 20,
+   "file": "tab-coordination.e2e.ts",
+   "test": "a frozen document releases its demand and rehydrates after native resu",
+   "previous": "other worktree r22 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-15T21:35",
+   "worktree": "cezar",
+   "kind": "pass-to-fail",
+   "revision": 83,
+   "file": "task-handoff.e2e.ts",
+   "test": "Hand off to webhook > keeps the live glyph when an older stop-notifyin",
+   "previous": "other worktree r22 pass"
+  },
+  {
+   "group": "browser",
+   "at": "10-16T10:22",
+   "worktree": "cezar",
+   "kind": "fail-to-pass",
+   "revision": 89,
+   "file": "task-handoff.e2e.ts",
+   "test": "Hand off to webhook > keeps the live glyph when an older stop-notifyin",
+   "previous": "own r83 fail"
+  },
+  {
+   "group": "browser",
+   "at": "10-16T10:24",
+   "worktree": "cezar",
+   "kind": "first-seen-fail",
+   "revision": 89,
+   "file": "markdown-preview.e2e.ts",
+   "test": "the Markdown preview in the Changes views > repo Changes: the patch ne",
+   "previous": "none"
+  },
+  {
+   "group": "browser",
+   "at": "10-16T10:24",
+   "worktree": "cezar",
+   "kind": "first-seen-fail",
+   "revision": 89,
+   "file": "markdown-preview.e2e.ts",
+   "test": "the Markdown preview in the Changes views > task Changes at 360px: the",
+   "previous": "none"
+  },
+  {
+   "group": "browser",
+   "at": "10-16T10:24",
+   "worktree": "cezar",
+   "kind": "first-seen-fail",
+   "revision": 89,
+   "file": "markdown-preview.e2e.ts",
+   "test": "the Markdown preview in the Changes views > task Changes, dark theme: ",
+   "previous": "none"
+  },
+  {
+   "group": "browser",
+   "at": "10-16T10:24",
+   "worktree": "cezar",
+   "kind": "first-seen-fail",
+   "revision": 89,
+   "file": "markdown-preview.e2e.ts",
+   "test": "the Markdown preview in the Changes views > task Changes, light theme:",
+   "previous": "none"
+  },
+  {
+   "group": "browser",
+   "at": "10-18T16:12",
+   "worktree": "17413271-a7d9-491e-b190-b16533f7e987",
+   "kind": "pass-to-fail",
+   "revision": 190,
+   "file": "review-gate.e2e.ts",
+   "test": "the review gate against a live parked run > ✓ Accept finishes the run ",
+   "previous": "own r150 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:21",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "application-update.test.ts",
+   "test": "",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:21",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "cockpit-ownership.test.ts",
+   "test": "cockpit ownership rejects live duplicates, recovers after death, and i",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:21",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "cursor-print.test.ts",
+   "test": "installed Cursor runners resolve both bundled mocks without a source t",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:21",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "delegation.test.ts",
+   "test": "built worker CLI runs without cez on PATH; headless provision stays lo",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:21",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "delegation.test.ts",
+   "test": "installed CLI completes owned-worker lifecycle with lost spawn reply a",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:21",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "inline-contract.test.ts",
+   "test": "the build repointed something — otherwise every assertion below is vac",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:21",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "inline-contract.test.ts",
+   "test": "the bundled contract ships declarations, not just JavaScript",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:21",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "inline-contract.test.ts",
+   "test": "a repointed declaration type-checks with skipLibCheck OFF",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:21",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "inline-contract.test.ts",
+   "test": "the published contract and workflow share the document vocabulary at r",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:21",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "package-cli.test.ts",
+   "test": "the release tarball installs and runs the dry-run CLI workflow",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:21",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "package-cli.test.ts",
+   "test": "the installed tarball warms cold histories through its emitted worker",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "release-snapshot.test.ts",
+   "test": "dry-run publish stamps every manifest, pins each sibling exact, and em",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "release-snapshot.test.ts",
+   "test": "OIDC without a token still forces a snapshot dry run",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "release-snapshot.test.ts",
+   "test": "a missing NPM token forces a dry run instead of failing the job",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "release-snapshot.test.ts",
+   "test": "the nightly channel stamps a dated version and publishes under the nig",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "release-snapshot.test.ts",
+   "test": "a nightly re-run stamps the attempt onto the version so it cannot coll",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "release-snapshot.test.ts",
+   "test": "the same schedule event without the channel request publishes nothing",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "release-snapshot.test.ts",
+   "test": "a non-publishable event exits 0 without touching the manifests",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "release-snapshot.test.ts",
+   "test": "pack-only produces snapshot archives without publishing or running lif",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "release.test.ts",
+   "test": "a patch bump stamps every manifest, keeps the caret ranges, and emits ",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "release.test.ts",
+   "test": "a private package is stamped but never published",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "release.test.ts",
+   "test": "the existing bump publishes the committed version verbatim",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "release.test.ts",
+   "test": "a missing NPM token forces a dry run instead of publishing",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "release.test.ts",
+   "test": "OIDC without a token does not force a dry run and does not pass --prov",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "release.test.ts",
+   "test": "a token publish from Actions still passes --provenance",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "release.test.ts",
+   "test": "a mid-set collision skips the already-published name and publishes the",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "release.test.ts",
+   "test": "an existing publication with different source is verified before final",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "release.test.ts",
+   "test": "an existing publication with missing source is verified before finaliz",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "release.test.ts",
+   "test": "an existing publication with matching source is verified before finali",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "serve-port.test.ts",
+   "test": "busy cockpit port from a different cwd refuses before recovery or star",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.1 (restart-exact=false)",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.1 (restart-exact=true)",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.2 (restart-exact=false)",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.2 (restart-exact=true)",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "serve-port.test.ts",
+   "test": "default occupied port refuses; explicit zero still requests an ephemer",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "serve-port.test.ts",
+   "test": "free default port starts on the requested bind host",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "serve-port.test.ts",
+   "test": "different cwd contenders acquire the exact port once before either can",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T02:22",
+   "worktree": "agent-a53122e43ca4b5937",
+   "kind": "first-seen-fail",
+   "revision": 34,
+   "file": "task-cli.test.ts",
+   "test": "built cez task drives a dry-run cockpit it discovers from the checkout",
+   "previous": "other worktree r12 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T11:25",
+   "worktree": "agent-a093b1364b09ce75f",
+   "kind": "first-seen-fail",
+   "revision": 8,
+   "file": "serve-port.test.ts",
+   "test": "busy cockpit port from a different cwd refuses before recovery or star",
+   "previous": "other worktree r79 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T11:25",
+   "worktree": "agent-a093b1364b09ce75f",
+   "kind": "first-seen-fail",
+   "revision": 8,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.1 (restart-exact=false)",
+   "previous": "other worktree r79 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T11:25",
+   "worktree": "agent-a093b1364b09ce75f",
+   "kind": "first-seen-fail",
+   "revision": 8,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.1 (restart-exact=true)",
+   "previous": "other worktree r79 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T11:25",
+   "worktree": "agent-a093b1364b09ce75f",
+   "kind": "first-seen-fail",
+   "revision": 8,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.2 (restart-exact=false)",
+   "previous": "other worktree r79 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T11:25",
+   "worktree": "agent-a093b1364b09ce75f",
+   "kind": "first-seen-fail",
+   "revision": 8,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.2 (restart-exact=true)",
+   "previous": "other worktree r79 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T11:25",
+   "worktree": "agent-a093b1364b09ce75f",
+   "kind": "first-seen-fail",
+   "revision": 8,
+   "file": "serve-port.test.ts",
+   "test": "default occupied port refuses; explicit zero still requests an ephemer",
+   "previous": "other worktree r79 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T11:25",
+   "worktree": "agent-a093b1364b09ce75f",
+   "kind": "first-seen-fail",
+   "revision": 8,
+   "file": "serve-port.test.ts",
+   "test": "free default port starts on the requested bind host",
+   "previous": "other worktree r79 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T11:25",
+   "worktree": "agent-a093b1364b09ce75f",
+   "kind": "first-seen-fail",
+   "revision": 8,
+   "file": "serve-port.test.ts",
+   "test": "different cwd contenders acquire the exact port once before either can",
+   "previous": "other worktree r79 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-15T19:59",
+   "worktree": "agent-a06e3c59f05774c4a",
+   "kind": "pass-to-fail",
+   "revision": 12,
+   "file": "task-cli.test.ts",
+   "test": "built cez task drives a dry-run cockpit it discovers from the checkout",
+   "previous": "other worktree r79 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-16T23:24",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 0,
+   "file": "cockpit-ownership.test.ts",
+   "test": "cockpit ownership rejects live duplicates, recovers after death, and i",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "serve-port.test.ts",
+   "test": "busy cockpit port from a different cwd refuses before recovery or star",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.1 (restart-exact=false)",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.1 (restart-exact=true)",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.2 (restart-exact=false)",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.2 (restart-exact=true)",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "serve-port.test.ts",
+   "test": "default occupied port refuses; explicit zero still requests an ephemer",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "serve-port.test.ts",
+   "test": "free default port starts on the requested bind host",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "serve-port.test.ts",
+   "test": "different cwd contenders acquire the exact port once before either can",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "package-cli.test.ts",
+   "test": "the release tarball installs and runs the dry-run CLI workflow",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "package-cli.test.ts",
+   "test": "the installed tarball warms cold histories through its emitted worker",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "application-update.test.ts",
+   "test": "",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "inline-contract.test.ts",
+   "test": "the build repointed something — otherwise every assertion below is vac",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "inline-contract.test.ts",
+   "test": "the bundled contract ships declarations, not just JavaScript",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "inline-contract.test.ts",
+   "test": "a repointed declaration type-checks with skipLibCheck OFF",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "inline-contract.test.ts",
+   "test": "the published contract and workflow share the document vocabulary at r",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "task-cli.test.ts",
+   "test": "built cez task drives a dry-run cockpit it discovers from the checkout",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "release-snapshot.test.ts",
+   "test": "dry-run publish stamps every manifest, pins each sibling exact, and em",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "release-snapshot.test.ts",
+   "test": "OIDC without a token still forces a snapshot dry run",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "release-snapshot.test.ts",
+   "test": "a missing NPM token forces a dry run instead of failing the job",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "release-snapshot.test.ts",
+   "test": "the nightly channel stamps a dated version and publishes under the nig",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "release-snapshot.test.ts",
+   "test": "a nightly re-run stamps the attempt onto the version so it cannot coll",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "release-snapshot.test.ts",
+   "test": "the same schedule event without the channel request publishes nothing",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "release-snapshot.test.ts",
+   "test": "a non-publishable event exits 0 without touching the manifests",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "release-snapshot.test.ts",
+   "test": "pack-only produces snapshot archives without publishing or running lif",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "release.test.ts",
+   "test": "a patch bump stamps every manifest, keeps the caret ranges, and emits ",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "release.test.ts",
+   "test": "a private package is stamped but never published",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "release.test.ts",
+   "test": "the existing bump publishes the committed version verbatim",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "release.test.ts",
+   "test": "a missing NPM token forces a dry run instead of publishing",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "release.test.ts",
+   "test": "OIDC without a token does not force a dry run and does not pass --prov",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "release.test.ts",
+   "test": "a token publish from Actions still passes --provenance",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "release.test.ts",
+   "test": "a mid-set collision skips the already-published name and publishes the",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "release.test.ts",
+   "test": "an existing publication with different source is verified before final",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "release.test.ts",
+   "test": "an existing publication with missing source is verified before finaliz",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "release.test.ts",
+   "test": "an existing publication with matching source is verified before finali",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "delegation.test.ts",
+   "test": "built worker CLI runs without cez on PATH; headless provision stays lo",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "delegation.test.ts",
+   "test": "installed CLI completes owned-worker lifecycle with lost spawn reply a",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:04",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "first-seen-fail",
+   "revision": 16,
+   "file": "cursor-print.test.ts",
+   "test": "installed Cursor runners resolve both bundled mocks without a source t",
+   "previous": "other worktree r89 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:36",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-changed",
+   "revision": 20,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.1 (restart-exact=false)",
+   "previous": "own r16 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:36",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-changed",
+   "revision": 20,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.1 (restart-exact=true)",
+   "previous": "own r16 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:36",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-changed",
+   "revision": 20,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.2 (restart-exact=false)",
+   "previous": "own r16 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:36",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-changed",
+   "revision": 20,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.2 (restart-exact=true)",
+   "previous": "own r16 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:36",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-changed",
+   "revision": 20,
+   "file": "cursor-print.test.ts",
+   "test": "installed Cursor runners resolve both bundled mocks without a source t",
+   "previous": "own r16 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-17T23:37",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-changed",
+   "revision": 20,
+   "file": "delegation.test.ts",
+   "test": "installed CLI completes owned-worker lifecycle with lost spawn reply a",
+   "previous": "own r16 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T02:40",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-changed",
+   "revision": 24,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.1 (restart-exact=false)",
+   "previous": "own r20 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T02:40",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-changed",
+   "revision": 24,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.1 (restart-exact=true)",
+   "previous": "own r20 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T02:40",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-changed",
+   "revision": 24,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.2 (restart-exact=false)",
+   "previous": "own r20 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T02:40",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-changed",
+   "revision": 24,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.2 (restart-exact=true)",
+   "previous": "own r20 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T02:40",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-changed",
+   "revision": 24,
+   "file": "delegation.test.ts",
+   "test": "installed CLI completes owned-worker lifecycle with lost spawn reply a",
+   "previous": "own r20 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T02:40",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-changed",
+   "revision": 24,
+   "file": "cursor-print.test.ts",
+   "test": "installed Cursor runners resolve both bundled mocks without a source t",
+   "previous": "own r20 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T04:21",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-changed",
+   "revision": 26,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.1 (restart-exact=false)",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T04:21",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-changed",
+   "revision": 26,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.1 (restart-exact=true)",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T04:21",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-changed",
+   "revision": 26,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.2 (restart-exact=false)",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T04:21",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-changed",
+   "revision": 26,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.2 (restart-exact=true)",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T04:21",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-changed",
+   "revision": 26,
+   "file": "delegation.test.ts",
+   "test": "installed CLI completes owned-worker lifecycle with lost spawn reply a",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:25",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "application-update.test.ts",
+   "test": "",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "inline-contract.test.ts",
+   "test": "the build repointed something — otherwise every assertion below is vac",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "inline-contract.test.ts",
+   "test": "the bundled contract ships declarations, not just JavaScript",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "inline-contract.test.ts",
+   "test": "a repointed declaration type-checks with skipLibCheck OFF",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "inline-contract.test.ts",
+   "test": "the published contract and workflow share the document vocabulary at r",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "cockpit-ownership.test.ts",
+   "test": "cockpit ownership rejects live duplicates, recovers after death, and i",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "release-snapshot.test.ts",
+   "test": "dry-run publish stamps every manifest, pins each sibling exact, and em",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "release-snapshot.test.ts",
+   "test": "OIDC without a token still forces a snapshot dry run",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "release-snapshot.test.ts",
+   "test": "a missing NPM token forces a dry run instead of failing the job",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "release-snapshot.test.ts",
+   "test": "the nightly channel stamps a dated version and publishes under the nig",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "release-snapshot.test.ts",
+   "test": "a nightly re-run stamps the attempt onto the version so it cannot coll",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "release-snapshot.test.ts",
+   "test": "the same schedule event without the channel request publishes nothing",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "release-snapshot.test.ts",
+   "test": "a non-publishable event exits 0 without touching the manifests",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "release-snapshot.test.ts",
+   "test": "pack-only produces snapshot archives without publishing or running lif",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "task-cli.test.ts",
+   "test": "built cez task drives a dry-run cockpit it discovers from the checkout",
+   "previous": "own r26 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "release.test.ts",
+   "test": "a patch bump stamps every manifest, keeps the caret ranges, and emits ",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "release.test.ts",
+   "test": "a private package is stamped but never published",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "release.test.ts",
+   "test": "the existing bump publishes the committed version verbatim",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "release.test.ts",
+   "test": "a missing NPM token forces a dry run instead of publishing",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "release.test.ts",
+   "test": "OIDC without a token does not force a dry run and does not pass --prov",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "release.test.ts",
+   "test": "a token publish from Actions still passes --provenance",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "release.test.ts",
+   "test": "a mid-set collision skips the already-published name and publishes the",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "release.test.ts",
+   "test": "an existing publication with different source is verified before final",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "release.test.ts",
+   "test": "an existing publication with missing source is verified before finaliz",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "release.test.ts",
+   "test": "an existing publication with matching source is verified before finali",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "serve-port.test.ts",
+   "test": "busy cockpit port from a different cwd refuses before recovery or star",
+   "previous": "own r26 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.1 (restart-exact=false)",
+   "previous": "own r26 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.1 (restart-exact=true)",
+   "previous": "own r26 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.2 (restart-exact=false)",
+   "previous": "own r26 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.2 (restart-exact=true)",
+   "previous": "own r26 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "serve-port.test.ts",
+   "test": "default occupied port refuses; explicit zero still requests an ephemer",
+   "previous": "own r26 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "serve-port.test.ts",
+   "test": "free default port starts on the requested bind host",
+   "previous": "own r26 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "serve-port.test.ts",
+   "test": "different cwd contenders acquire the exact port once before either can",
+   "previous": "own r26 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:26",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "cursor-print.test.ts",
+   "test": "installed Cursor runners resolve both bundled mocks without a source t",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:27",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "delegation.test.ts",
+   "test": "built worker CLI runs without cez on PATH; headless provision stays lo",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:27",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "delegation.test.ts",
+   "test": "installed CLI completes owned-worker lifecycle with lost spawn reply a",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:27",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-changed",
+   "revision": 30,
+   "file": "package-cli.test.ts",
+   "test": "the release tarball installs and runs the dry-run CLI workflow",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T06:27",
+   "worktree": "4bbb2adf-011d-467e-886e-99270e93fb29",
+   "kind": "fail-to-pass",
+   "revision": 30,
+   "file": "package-cli.test.ts",
+   "test": "the installed tarball warms cold histories through its emitted worker",
+   "previous": "own r24 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "application-update.test.ts",
+   "test": "",
+   "previous": "other worktree r35 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "cockpit-ownership.test.ts",
+   "test": "cockpit ownership rejects live duplicates, recovers after death, and i",
+   "previous": "other worktree r39 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "cursor-print.test.ts",
+   "test": "installed Cursor runners resolve both bundled mocks without a source t",
+   "previous": "other worktree r39 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "delegation.test.ts",
+   "test": "built worker CLI runs without cez on PATH; headless provision stays lo",
+   "previous": "other worktree r30 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "delegation.test.ts",
+   "test": "installed CLI completes owned-worker lifecycle with lost spawn reply a",
+   "previous": "other worktree r30 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "inline-contract.test.ts",
+   "test": "the build repointed something — otherwise every assertion below is vac",
+   "previous": "other worktree r35 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "inline-contract.test.ts",
+   "test": "the bundled contract ships declarations, not just JavaScript",
+   "previous": "other worktree r35 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "inline-contract.test.ts",
+   "test": "a repointed declaration type-checks with skipLibCheck OFF",
+   "previous": "other worktree r35 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "inline-contract.test.ts",
+   "test": "the published contract and workflow share the document vocabulary at r",
+   "previous": "other worktree r35 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "package-cli.test.ts",
+   "test": "the release tarball installs and runs the dry-run CLI workflow",
+   "previous": "other worktree r35 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "package-cli.test.ts",
+   "test": "the installed tarball warms cold histories through its emitted worker",
+   "previous": "other worktree r35 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release-snapshot.test.ts",
+   "test": "dry-run publish stamps every manifest, pins each sibling exact, and em",
+   "previous": "other worktree r39 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release-snapshot.test.ts",
+   "test": "OIDC without a token still forces a snapshot dry run",
+   "previous": "other worktree r39 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release-snapshot.test.ts",
+   "test": "a missing NPM token forces a dry run instead of failing the job",
+   "previous": "other worktree r39 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release-snapshot.test.ts",
+   "test": "the nightly channel stamps a dated version and publishes under the nig",
+   "previous": "other worktree r39 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release-snapshot.test.ts",
+   "test": "a nightly re-run stamps the attempt onto the version so it cannot coll",
+   "previous": "other worktree r39 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release-snapshot.test.ts",
+   "test": "the same schedule event without the channel request publishes nothing",
+   "previous": "other worktree r39 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release-snapshot.test.ts",
+   "test": "a non-publishable event exits 0 without touching the manifests",
+   "previous": "other worktree r39 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release-snapshot.test.ts",
+   "test": "pack-only produces snapshot archives without publishing or running lif",
+   "previous": "other worktree r39 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release.test.ts",
+   "test": "a patch bump stamps every manifest, keeps the caret ranges, and emits ",
+   "previous": "other worktree r39 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release.test.ts",
+   "test": "a private package is stamped but never published",
+   "previous": "other worktree r39 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release.test.ts",
+   "test": "the existing bump publishes the committed version verbatim",
+   "previous": "other worktree r39 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release.test.ts",
+   "test": "a missing NPM token forces a dry run instead of publishing",
+   "previous": "other worktree r39 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release.test.ts",
+   "test": "OIDC without a token does not force a dry run and does not pass --prov",
+   "previous": "other worktree r39 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release.test.ts",
+   "test": "a token publish from Actions still passes --provenance",
+   "previous": "other worktree r39 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release.test.ts",
+   "test": "a mid-set collision skips the already-published name and publishes the",
+   "previous": "other worktree r39 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release.test.ts",
+   "test": "an existing publication with different source is verified before final",
+   "previous": "other worktree r39 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release.test.ts",
+   "test": "an existing publication with missing source is verified before finaliz",
+   "previous": "other worktree r39 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release.test.ts",
+   "test": "an existing publication with matching source is verified before finali",
+   "previous": "other worktree r39 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "inline-contract.test.ts",
+   "test": "the build repointed something — otherwise every assertion below is vac",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "inline-contract.test.ts",
+   "test": "the bundled contract ships declarations, not just JavaScript",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "inline-contract.test.ts",
+   "test": "a repointed declaration type-checks with skipLibCheck OFF",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:30",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "inline-contract.test.ts",
+   "test": "the published contract and workflow share the document vocabulary at r",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:31",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "application-update.test.ts",
+   "test": "",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:31",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "cockpit-ownership.test.ts",
+   "test": "cockpit ownership rejects live duplicates, recovers after death, and i",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:31",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "release-snapshot.test.ts",
+   "test": "dry-run publish stamps every manifest, pins each sibling exact, and em",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:31",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "release-snapshot.test.ts",
+   "test": "OIDC without a token still forces a snapshot dry run",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:31",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "release-snapshot.test.ts",
+   "test": "a missing NPM token forces a dry run instead of failing the job",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:31",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "release-snapshot.test.ts",
+   "test": "the nightly channel stamps a dated version and publishes under the nig",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:31",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "release-snapshot.test.ts",
+   "test": "a nightly re-run stamps the attempt onto the version so it cannot coll",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:31",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "release-snapshot.test.ts",
+   "test": "the same schedule event without the channel request publishes nothing",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:31",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "release-snapshot.test.ts",
+   "test": "a non-publishable event exits 0 without touching the manifests",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:31",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "release-snapshot.test.ts",
+   "test": "pack-only produces snapshot archives without publishing or running lif",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:32",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "release.test.ts",
+   "test": "a patch bump stamps every manifest, keeps the caret ranges, and emits ",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:32",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "release.test.ts",
+   "test": "a private package is stamped but never published",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:32",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "release.test.ts",
+   "test": "the existing bump publishes the committed version verbatim",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:32",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "release.test.ts",
+   "test": "a missing NPM token forces a dry run instead of publishing",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:32",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "release.test.ts",
+   "test": "OIDC without a token does not force a dry run and does not pass --prov",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:32",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "release.test.ts",
+   "test": "a token publish from Actions still passes --provenance",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:32",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "release.test.ts",
+   "test": "a mid-set collision skips the already-published name and publishes the",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:32",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "release.test.ts",
+   "test": "an existing publication with different source is verified before final",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:32",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "release.test.ts",
+   "test": "an existing publication with missing source is verified before finaliz",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:32",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "release.test.ts",
+   "test": "an existing publication with matching source is verified before finali",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:32",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "delegation.test.ts",
+   "test": "built worker CLI runs without cez on PATH; headless provision stays lo",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:32",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "delegation.test.ts",
+   "test": "installed CLI completes owned-worker lifecycle with lost spawn reply a",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:32",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "cursor-print.test.ts",
+   "test": "installed Cursor runners resolve both bundled mocks without a source t",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:32",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "package-cli.test.ts",
+   "test": "the release tarball installs and runs the dry-run CLI workflow",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T08:32",
+   "worktree": "7679d523-846d-4d6b-94df-7877ce6cc4f2",
+   "kind": "fail-to-pass",
+   "revision": 3,
+   "file": "package-cli.test.ts",
+   "test": "the installed tarball warms cold histories through its emitted worker",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T13:27",
+   "worktree": "17413271-a7d9-491e-b190-b16533f7e987",
+   "kind": "first-seen-fail",
+   "revision": 144,
+   "file": "package-cli.test.ts",
+   "test": "the release tarball installs and runs the dry-run CLI workflow",
+   "previous": "other worktree r3 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "application-update.test.ts",
+   "test": "",
+   "previous": "other worktree r144 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "cockpit-ownership.test.ts",
+   "test": "cockpit ownership rejects live duplicates, recovers after death, and i",
+   "previous": "other worktree r150 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "cursor-print.test.ts",
+   "test": "installed Cursor runners resolve both bundled mocks without a source t",
+   "previous": "other worktree r190 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "delegation.test.ts",
+   "test": "built worker CLI runs without cez on PATH; headless provision stays lo",
+   "previous": "other worktree r150 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "delegation.test.ts",
+   "test": "installed CLI completes owned-worker lifecycle with lost spawn reply a",
+   "previous": "other worktree r150 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "inline-contract.test.ts",
+   "test": "the build repointed something — otherwise every assertion below is vac",
+   "previous": "other worktree r190 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "inline-contract.test.ts",
+   "test": "no emitted file names the contract package by any specifier",
+   "previous": "other worktree r190 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "inline-contract.test.ts",
+   "test": "the bundled contract ships declarations, not just JavaScript",
+   "previous": "other worktree r190 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "inline-contract.test.ts",
+   "test": "a repointed declaration type-checks with skipLibCheck OFF",
+   "previous": "other worktree r190 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "inline-contract.test.ts",
+   "test": "the published contract and workflow share the document vocabulary at r",
+   "previous": "other worktree r190 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "package-cli.test.ts",
+   "test": "the release tarball installs and runs the dry-run CLI workflow",
+   "previous": "other worktree r190 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "package-cli.test.ts",
+   "test": "the installed tarball warms cold histories through its emitted worker",
+   "previous": "other worktree r190 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release-snapshot.test.ts",
+   "test": "dry-run publish stamps every manifest, pins each sibling exact, and em",
+   "previous": "other worktree r150 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release-snapshot.test.ts",
+   "test": "OIDC without a token still forces a snapshot dry run",
+   "previous": "other worktree r150 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release-snapshot.test.ts",
+   "test": "a missing NPM token forces a dry run instead of failing the job",
+   "previous": "other worktree r150 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release-snapshot.test.ts",
+   "test": "the nightly channel stamps a dated version and publishes under the nig",
+   "previous": "other worktree r150 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release-snapshot.test.ts",
+   "test": "a nightly re-run stamps the attempt onto the version so it cannot coll",
+   "previous": "other worktree r150 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release-snapshot.test.ts",
+   "test": "the same schedule event without the channel request publishes nothing",
+   "previous": "other worktree r150 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release-snapshot.test.ts",
+   "test": "a non-publishable event exits 0 without touching the manifests",
+   "previous": "other worktree r150 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release-snapshot.test.ts",
+   "test": "pack-only produces snapshot archives without publishing or running lif",
+   "previous": "other worktree r150 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release.test.ts",
+   "test": "a patch bump stamps every manifest, keeps the caret ranges, and emits ",
+   "previous": "other worktree r190 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release.test.ts",
+   "test": "a private package is stamped but never published",
+   "previous": "other worktree r190 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release.test.ts",
+   "test": "the existing bump publishes the committed version verbatim",
+   "previous": "other worktree r190 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release.test.ts",
+   "test": "a missing NPM token forces a dry run instead of publishing",
+   "previous": "other worktree r190 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release.test.ts",
+   "test": "OIDC without a token does not force a dry run and does not pass --prov",
+   "previous": "other worktree r190 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release.test.ts",
+   "test": "a token publish from Actions still passes --provenance",
+   "previous": "other worktree r190 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release.test.ts",
+   "test": "a mid-set collision skips the already-published name and publishes the",
+   "previous": "other worktree r190 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release.test.ts",
+   "test": "an existing publication with different source is verified before final",
+   "previous": "other worktree r190 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release.test.ts",
+   "test": "an existing publication with missing source is verified before finaliz",
+   "previous": "other worktree r190 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:41",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "release.test.ts",
+   "test": "an existing publication with matching source is verified before finali",
+   "previous": "other worktree r190 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "serve-port.test.ts",
+   "test": "busy cockpit port from a different cwd refuses before recovery or star",
+   "previous": "other worktree r190 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.1 (restart-exact=false)",
+   "previous": "other worktree r190 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.1 (restart-exact=true)",
+   "previous": "other worktree r190 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.2 (restart-exact=false)",
+   "previous": "other worktree r190 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.2 (restart-exact=true)",
+   "previous": "other worktree r190 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "serve-port.test.ts",
+   "test": "default occupied port refuses; explicit zero still requests an ephemer",
+   "previous": "other worktree r190 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "serve-port.test.ts",
+   "test": "free default port starts on the requested bind host",
+   "previous": "other worktree r190 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "first-seen-fail",
+   "revision": 1,
+   "file": "serve-port.test.ts",
+   "test": "different cwd contenders acquire the exact port once before either can",
+   "previous": "other worktree r190 pass"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "cockpit-ownership.test.ts",
+   "test": "cockpit ownership rejects live duplicates, recovers after death, and i",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "delegation.test.ts",
+   "test": "built worker CLI runs without cez on PATH; headless provision stays lo",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "delegation.test.ts",
+   "test": "installed CLI completes owned-worker lifecycle with lost spawn reply a",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "inline-contract.test.ts",
+   "test": "a repointed declaration type-checks with skipLibCheck OFF",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "inline-contract.test.ts",
+   "test": "no emitted file names the contract package by any specifier",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "inline-contract.test.ts",
+   "test": "the build repointed something — otherwise every assertion below is vac",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "inline-contract.test.ts",
+   "test": "the bundled contract ships declarations, not just JavaScript",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "inline-contract.test.ts",
+   "test": "the published contract and workflow share the document vocabulary at r",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "release-snapshot.test.ts",
+   "test": "OIDC without a token still forces a snapshot dry run",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "release-snapshot.test.ts",
+   "test": "a missing NPM token forces a dry run instead of failing the job",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "release-snapshot.test.ts",
+   "test": "a nightly re-run stamps the attempt onto the version so it cannot coll",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "release-snapshot.test.ts",
+   "test": "a non-publishable event exits 0 without touching the manifests",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "release-snapshot.test.ts",
+   "test": "dry-run publish stamps every manifest, pins each sibling exact, and em",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "release-snapshot.test.ts",
+   "test": "pack-only produces snapshot archives without publishing or running lif",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "release-snapshot.test.ts",
+   "test": "the nightly channel stamps a dated version and publishes under the nig",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "release-snapshot.test.ts",
+   "test": "the same schedule event without the channel request publishes nothing",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "release.test.ts",
+   "test": "OIDC without a token does not force a dry run and does not pass --prov",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "release.test.ts",
+   "test": "a mid-set collision skips the already-published name and publishes the",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "release.test.ts",
+   "test": "a missing NPM token forces a dry run instead of publishing",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "release.test.ts",
+   "test": "a patch bump stamps every manifest, keeps the caret ranges, and emits ",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "release.test.ts",
+   "test": "a private package is stamped but never published",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "release.test.ts",
+   "test": "a token publish from Actions still passes --provenance",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "release.test.ts",
+   "test": "an existing publication with different source is verified before final",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "release.test.ts",
+   "test": "an existing publication with matching source is verified before finali",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "release.test.ts",
+   "test": "an existing publication with missing source is verified before finaliz",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "release.test.ts",
+   "test": "the existing bump publishes the committed version verbatim",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "serve-port.test.ts",
+   "test": "busy cockpit port from a different cwd refuses before recovery or star",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "serve-port.test.ts",
+   "test": "default occupied port refuses; explicit zero still requests an ephemer",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "serve-port.test.ts",
+   "test": "different cwd contenders acquire the exact port once before either can",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "serve-port.test.ts",
+   "test": "free default port starts on the requested bind host",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.1 (restart-exact=false)",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.1 (restart-exact=true)",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.2 (restart-exact=false)",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "serve-port.test.ts",
+   "test": "ordinary occupied port refuses on 127.0.0.2 (restart-exact=true)",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "cursor-print.test.ts",
+   "test": "installed Cursor runners resolve both bundled mocks without a source t",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "package-cli.test.ts",
+   "test": "the installed tarball warms cold histories through its emitted worker",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "package-cli.test.ts",
+   "test": "the release tarball installs and runs the dry-run CLI workflow",
+   "previous": "own r1 fail"
+  },
+  {
+   "group": "package",
+   "at": "10-18T16:42",
+   "worktree": "3eb81483-8d1f-4052-8f48-8d70e471c778",
+   "kind": "fail-to-pass",
+   "revision": 2,
+   "file": "application-update.test.ts",
+   "test": "",
+   "previous": "own r1 fail"
+  }
+ ]
+}

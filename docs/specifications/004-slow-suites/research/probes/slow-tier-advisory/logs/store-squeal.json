@@ -1,0 +1,572 @@
+{
+ "revisions": {
+  "9f0b02a3-3033-4492-a9bf-33750547c2eb": {
+   "total": 7,
+   "none": 7,
+   "docsOnly": 7
+  },
+  "02b686a8-e9b2-45c5-bc36-acdd94105a12": {
+   "total": 15,
+   "none": 15,
+   "docsOnly": 15
+  },
+  "a5b3f013-7fe0-46a9-bd54-d8d8d35ffb1e": {
+   "total": 3,
+   "none": 2,
+   "docsOnly": 2,
+   "e2e": 1
+  },
+  "834c16e6-8fe3-436d-9c7f-1c94b589cf2c": {
+   "total": 36,
+   "none": 32,
+   "docsOnly": 32,
+   "e2e": 4
+  },
+  "fc046369-7462-445a-8d87-4f958bcb4fda": {
+   "total": 1,
+   "none": 1,
+   "docsOnly": 1
+  },
+  "9e208305-5d1b-4387-b5fe-1792dab6cf94": {
+   "total": 25,
+   "none": 23,
+   "docsOnly": 25,
+   "e2e": 2
+  },
+  "95c01a17-e049-4c7d-9305-f20f3062598f": {
+   "total": 3,
+   "none": 3,
+   "docsOnly": 3
+  },
+  "203e4288-049b-416e-9b08-a1227975e1a3": {
+   "total": 3,
+   "none": 3,
+   "docsOnly": 2
+  },
+  "92a6869a-f506-472a-8285-84a9d03c79f5": {
+   "total": 3,
+   "none": 3,
+   "docsOnly": 3
+  },
+  "bc9dbb62-868c-48e6-ac9c-41d3564b0a22": {
+   "total": 4,
+   "none": 4,
+   "docsOnly": 4
+  },
+  "9e2c5309-5453-40f5-b4e3-8140b00f3029": {
+   "total": 5,
+   "none": 5,
+   "docsOnly": 5
+  },
+  "squeal": {
+   "total": 796,
+   "none": 595,
+   "docsOnly": 475,
+   "e2e": 201
+  },
+  "6a627ff7-1e76-48ed-807a-5011af80a132": {
+   "total": 218,
+   "none": 142,
+   "docsOnly": 109,
+   "e2e": 76
+  },
+  "bbf87529-7ee0-435f-81a0-9d9e4dfa13b4": {
+   "total": 1,
+   "none": 1,
+   "docsOnly": 1
+  },
+  "091ef3aa-c9c7-43a8-b9d1-9dcd8b58e21c": {
+   "total": 8,
+   "none": 7,
+   "docsOnly": 6,
+   "e2e": 1
+  },
+  "ed89dc25-cc01-4fdc-84b0-9eaf290b8433": {
+   "total": 1,
+   "none": 1,
+   "docsOnly": 1
+  },
+  "4c670899-aa9d-41d9-a611-4c2996e1cf44": {
+   "total": 575,
+   "none": 278,
+   "docsOnly": 217,
+   "e2e": 297
+  },
+  "933bdf47-87c3-4682-9be7-e1c84e828057": {
+   "total": 1,
+   "none": 0,
+   "docsOnly": 0,
+   "e2e": 1
+  }
+ },
+ "runs": {
+  "e2e": {
+   "results": 444,
+   "minutes": 9.1,
+   "files": 17
+  }
+ },
+ "inherited": {
+  "e2e": {
+   "states": 83,
+   "minutes": 1.1
+  }
+ },
+ "reruns": {
+  "e2e": {
+   "reruns": 359,
+   "changed": 7,
+   "examples": [
+    "6a627ff7-1e76-48ed-807a-5011af80a132 test/e2e/stop-gap.test.ts r85->r97 pass->pass",
+    "6a627ff7-1e76-48ed-807a-5011af80a132 test/e2e/stop-gap.test.ts r97->r98 pass->pass",
+    "6a627ff7-1e76-48ed-807a-5011af80a132 test/e2e/stop-gap.test.ts r98->r99 pass->pass",
+    "6a627ff7-1e76-48ed-807a-5011af80a132 test/e2e/stop-gap.test.ts r99->r102 pass->pass",
+    "6a627ff7-1e76-48ed-807a-5011af80a132 test/e2e/stop-gap.test.ts r102->r107 pass->pass",
+    "squeal test/e2e/worktrees.test.ts r461->r463 pass->pass",
+    "squeal test/e2e/worktrees.test.ts r463->r464 pass->pass"
+   ]
+  }
+ },
+ "transitions": [
+  {
+   "group": "e2e",
+   "at": "10-07T22:46",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "pass-to-fail",
+   "revision": 110,
+   "file": "transitions.test.ts",
+   "test": "transitions on PostToolBatch, claude-code > delivers one PASS -> FAIL ",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-07T22:46",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "fail-to-pass",
+   "revision": 112,
+   "file": "transitions.test.ts",
+   "test": "transitions on PostToolBatch, claude-code > delivers one PASS -> FAIL ",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-08T07:03",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "first-seen-fail",
+   "revision": 152,
+   "file": "shipped-plugin.test.ts",
+   "test": "the claude-code plugin as a marketplace install ships it > runs bin/sq",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-08T19:58",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "pass-to-fail",
+   "revision": 194,
+   "file": "node-test.test.ts",
+   "test": "node:test end to end, claude-code > seeds the projects from the script",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-08T19:58",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "pass-to-fail",
+   "revision": 194,
+   "file": "node-test.test.ts",
+   "test": "node:test end to end, codex > seeds the projects from the scripts and ",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-08T20:01",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "pass-to-fail",
+   "revision": 194,
+   "file": "worktrees.test.ts",
+   "test": "a second worktree, claude-code > bootstraps with zero runs and inherit",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-08T20:01",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "pass-to-fail",
+   "revision": 194,
+   "file": "worktrees.test.ts",
+   "test": "a second worktree, claude-code > names inherited results in the regist",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-08T20:08",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "fail-to-pass",
+   "revision": 200,
+   "file": "worktrees.test.ts",
+   "test": "a second worktree, claude-code > bootstraps with zero runs and inherit",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-08T20:08",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "fail-to-pass",
+   "revision": 200,
+   "file": "worktrees.test.ts",
+   "test": "a second worktree, claude-code > names inherited results in the regist",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-08T20:23",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "pass-to-fail",
+   "revision": 202,
+   "file": "worktrees.test.ts",
+   "test": "a second worktree, claude-code > bootstraps with zero runs and inherit",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-08T20:23",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "pass-to-fail",
+   "revision": 202,
+   "file": "worktrees.test.ts",
+   "test": "a second worktree, codex > bootstraps with zero runs and inherited pro",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-08T20:41",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "fail-to-pass",
+   "revision": 205,
+   "file": "worktrees.test.ts",
+   "test": "a second worktree, claude-code > bootstraps with zero runs and inherit",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-08T20:41",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "fail-to-pass",
+   "revision": 205,
+   "file": "worktrees.test.ts",
+   "test": "a second worktree, codex > bootstraps with zero runs and inherited pro",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-08T21:02",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "fail-to-pass",
+   "revision": 222,
+   "file": "node-test.test.ts",
+   "test": "node:test end to end, claude-code > seeds the projects from the script",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-08T21:02",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "fail-to-pass",
+   "revision": 222,
+   "file": "node-test.test.ts",
+   "test": "node:test end to end, codex > seeds the projects from the scripts and ",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-08T21:13",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "pass-to-fail",
+   "revision": 227,
+   "file": "lifecycle.test.ts",
+   "test": "a bad squeal.config.json, codex > yields one note and a running daemon",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-08T21:13",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "pass-to-fail",
+   "revision": 227,
+   "file": "worktrees.test.ts",
+   "test": "a second worktree, codex > bootstraps with zero runs and inherited pro",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-08T21:28",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "fail-to-pass",
+   "revision": 228,
+   "file": "lifecycle.test.ts",
+   "test": "a bad squeal.config.json, codex > yields one note and a running daemon",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-08T21:34",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "pass-to-fail",
+   "revision": 239,
+   "file": "worktrees.test.ts",
+   "test": "a second worktree, claude-code > runs only the affected files of an ed",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-08T21:34",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "pass-to-fail",
+   "revision": 239,
+   "file": "worktrees.test.ts",
+   "test": "a second worktree, codex > runs only the affected files of an edit the",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-08T22:05",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "fail-to-pass",
+   "revision": 243,
+   "file": "worktrees.test.ts",
+   "test": "a second worktree, claude-code > runs only the affected files of an ed",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-08T22:05",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "fail-to-pass",
+   "revision": 243,
+   "file": "worktrees.test.ts",
+   "test": "a second worktree, codex > bootstraps with zero runs and inherited pro",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-08T22:05",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "fail-to-pass",
+   "revision": 243,
+   "file": "worktrees.test.ts",
+   "test": "a second worktree, codex > runs only the affected files of an edit the",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-09T00:55",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "pass-to-fail",
+   "revision": 321,
+   "file": "worktrees.test.ts",
+   "test": "a second worktree, claude-code > bootstraps with zero runs and inherit",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-09T05:17",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "fail-to-pass",
+   "revision": 323,
+   "file": "worktrees.test.ts",
+   "test": "a second worktree, claude-code > bootstraps with zero runs and inherit",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-09T05:40",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "pass-to-fail",
+   "revision": 332,
+   "file": "worktrees.test.ts",
+   "test": "a second worktree, claude-code > bootstraps with zero runs and inherit",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-09T05:40",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "pass-to-fail",
+   "revision": 332,
+   "file": "worktrees.test.ts",
+   "test": "a second worktree, claude-code > runs only the affected files of an ed",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-09T05:40",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "pass-to-fail",
+   "revision": 332,
+   "file": "worktrees.test.ts",
+   "test": "a second worktree, codex > bootstraps with zero runs and inherited pro",
+   "previous": "none"
+  },
+  {
+   "group": "e2e",
+   "at": "10-09T05:50",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "fail-to-pass",
+   "revision": 347,
+   "file": "worktrees.test.ts",
+   "test": "a second worktree, claude-code > bootstraps with zero runs and inherit",
+   "previous": "other worktree r2 pass"
+  },
+  {
+   "group": "e2e",
+   "at": "10-09T05:50",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "fail-to-pass",
+   "revision": 347,
+   "file": "worktrees.test.ts",
+   "test": "a second worktree, claude-code > runs only the affected files of an ed",
+   "previous": "other worktree r2 pass"
+  },
+  {
+   "group": "e2e",
+   "at": "10-09T05:50",
+   "worktree": "4c670899-aa9d-41d9-a611-4c2996e1cf44",
+   "kind": "fail-to-pass",
+   "revision": 347,
+   "file": "worktrees.test.ts",
+   "test": "a second worktree, codex > bootstraps with zero runs and inherited pro",
+   "previous": "other worktree r2 pass"
+  },
+  {
+   "group": "e2e",
+   "at": "10-13T16:58",
+   "worktree": "squeal",
+   "kind": "pass-to-fail",
+   "revision": 458,
+   "file": "lifecycle.test.ts",
+   "test": "a bad squeal.config.json, codex > yields one note and a running daemon",
+   "previous": "own r455 pass"
+  },
+  {
+   "group": "e2e",
+   "at": "10-13T16:59",
+   "worktree": "squeal",
+   "kind": "fail-to-pass",
+   "revision": 458,
+   "file": "lifecycle.test.ts",
+   "test": "a bad squeal.config.json, codex > yields one note and a running daemon",
+   "previous": "own r455 pass"
+  },
+  {
+   "group": "e2e",
+   "at": "10-13T19:41",
+   "worktree": "squeal",
+   "kind": "pass-to-fail",
+   "revision": 463,
+   "file": "worktrees.test.ts",
+   "test": "a second worktree, claude-code > calls a break of an inherited pass PA",
+   "previous": "own r461 pass"
+  },
+  {
+   "group": "e2e",
+   "at": "10-13T19:47",
+   "worktree": "squeal",
+   "kind": "fail-to-pass",
+   "revision": 464,
+   "file": "worktrees.test.ts",
+   "test": "a second worktree, claude-code > calls a break of an inherited pass PA",
+   "previous": "own r463 fail"
+  },
+  {
+   "group": "e2e",
+   "at": "10-17T10:51",
+   "worktree": "6a627ff7-1e76-48ed-807a-5011af80a132",
+   "kind": "pass-to-fail",
+   "revision": 97,
+   "file": "stop-gap.test.ts",
+   "test": "a daemon stalled between its socket and its lock, claude-code > stop w",
+   "previous": "own r85 pass"
+  },
+  {
+   "group": "e2e",
+   "at": "10-17T10:51",
+   "worktree": "6a627ff7-1e76-48ed-807a-5011af80a132",
+   "kind": "pass-to-fail",
+   "revision": 97,
+   "file": "stop-gap.test.ts",
+   "test": "a daemon stalled between its socket and its lock, codex > stop waits f",
+   "previous": "own r85 pass"
+  },
+  {
+   "group": "e2e",
+   "at": "10-17T11:03",
+   "worktree": "6a627ff7-1e76-48ed-807a-5011af80a132",
+   "kind": "fail-to-pass",
+   "revision": 98,
+   "file": "stop-gap.test.ts",
+   "test": "a daemon stalled between its socket and its lock, claude-code > stop w",
+   "previous": "own r97 fail"
+  },
+  {
+   "group": "e2e",
+   "at": "10-17T11:03",
+   "worktree": "6a627ff7-1e76-48ed-807a-5011af80a132",
+   "kind": "fail-changed",
+   "revision": 98,
+   "file": "stop-gap.test.ts",
+   "test": "a daemon stalled between its socket and its lock, codex > stop waits f",
+   "previous": "own r97 fail"
+  },
+  {
+   "group": "e2e",
+   "at": "10-17T11:04",
+   "worktree": "6a627ff7-1e76-48ed-807a-5011af80a132",
+   "kind": "fail-to-pass",
+   "revision": 99,
+   "file": "stop-gap.test.ts",
+   "test": "a daemon stalled between its socket and its lock, codex > stop waits f",
+   "previous": "own r98 fail"
+  },
+  {
+   "group": "e2e",
+   "at": "10-17T11:06",
+   "worktree": "6a627ff7-1e76-48ed-807a-5011af80a132",
+   "kind": "pass-to-fail",
+   "revision": 101,
+   "file": "stop-gap.test.ts",
+   "test": "a daemon stalled between its socket and its lock, claude-code > stop w",
+   "previous": "own r99 pass"
+  },
+  {
+   "group": "e2e",
+   "at": "10-17T11:06",
+   "worktree": "6a627ff7-1e76-48ed-807a-5011af80a132",
+   "kind": "pass-to-fail",
+   "revision": 101,
+   "file": "stop-gap.test.ts",
+   "test": "a daemon stalled between its socket and its lock, codex > stop waits f",
+   "previous": "own r99 pass"
+  },
+  {
+   "group": "e2e",
+   "at": "10-17T11:06",
+   "worktree": "6a627ff7-1e76-48ed-807a-5011af80a132",
+   "kind": "fail-to-pass",
+   "revision": 107,
+   "file": "stop-gap.test.ts",
+   "test": "a daemon stalled between its socket and its lock, claude-code > stop w",
+   "previous": "own r102 fail"
+  },
+  {
+   "group": "e2e",
+   "at": "10-17T11:06",
+   "worktree": "6a627ff7-1e76-48ed-807a-5011af80a132",
+   "kind": "fail-to-pass",
+   "revision": 107,
+   "file": "stop-gap.test.ts",
+   "test": "a daemon stalled between its socket and its lock, codex > stop waits f",
+   "previous": "own r102 fail"
+  }
+ ]
+}
