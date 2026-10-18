@@ -4528,8 +4528,9 @@ function entry2(records) {
   const testFile = first.testFile;
   return {
     testFile,
-    // A run asked for a file with no result starts at once too (011 C5, gh-36).
-    reason: records.some((r) => r.reason === "environment" || r.noResult === true) ? "environment" : "load",
+    reason: records.some((r) => r.reason === "environment") ? "environment" : "load",
+    // A run asked for a file with no result starts at once whatever its reason (011 C5, gh-36).
+    ...records.some((r) => r.noResult === true) ? { noResult: true } : {},
     askedAt: first.askedAt,
     claimedBy: records.find((r) => r.claim !== null)?.claim?.worktreeId ?? null,
     requests: records.length
@@ -47739,7 +47740,8 @@ function retryLines(s) {
     `Pending retries: ${pending.retries.length}`,
     ...pending.retries.map((r) => {
       const where2 = r.claimedBy === null || r.claimedBy === s.worktreeId ? "" : ", queued by another worktree's daemon";
-      return `  ${r.testFile.path} (${r.reason}): ${waitsText(r.reason, load)}${where2}`;
+      const asked = r.noResult === true ? `${r.reason}, no result at its inputs` : r.reason;
+      return `  ${r.testFile.path} (${asked}): ${waitsText(r.noResult === true ? "environment" : r.reason, load)}${where2}`;
     })
   ];
 }
@@ -54734,7 +54736,8 @@ function lapseText(lapse) {
   return `; the daemon's heartbeat went ${age2} s stale while its socket showed it alive (a busy store or a stalled daemon), so the wait went on`;
 }
 function worktreeText(snapshot3) {
-  const failures = `. Worktree: known failures ${failureCountText(snapshot3.knownFailures.map((f) => f.check))}`;
+  const current3 = splitByValidity(snapshot3.knownFailures).current;
+  const failures = `. Worktree: known failures ${failureCountText(current3.map((f) => f.check))}`;
   const unlisted = snapshot3.testFilesListed === false ? "; the daemon has not listed this worktree's test files yet, so these counts are not complete" : "";
   const { pendingByPhase, fileLevelByPhase, testFilesWithoutChecksRunning } = snapshot3.breakdown;
   const checks = `${countedText(pendingByPhase.running, "running", fileLevelByPhase?.running)}, ${countedText(pendingByPhase.queued, "queued", fileLevelByPhase?.queued)}`;
@@ -55370,7 +55373,7 @@ function askLine(store, row, { root, worktreeId, shown }, reason2, asker, load) 
   const own = states.filter(
     (s) => s.check.kind !== "setup" && s.check.project === row.testFile.project && s.check.testPath === row.testFile.path
   );
-  if (!own.some((s) => s.outcome === "fail")) {
+  if (!own.some((s) => s.outcome === "fail" && s.validity === "current")) {
     const ask = { testFile: row.testFile, key: key2, session: asker, reason: reason2, at: Date.now(), worktreeId };
     const pending = row.pending !== null || own.some((s) => s.validity === "pending");
     if (pending)
