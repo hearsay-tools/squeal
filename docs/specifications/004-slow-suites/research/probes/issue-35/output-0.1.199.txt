@@ -1,0 +1,182 @@
+== squeal 0.1.199, node v24.21.0, load 16.70 on 24 CPUs
+== fresh checkout: dist/ exists? no
+
+$ squeal start
+Squeal daemon spawned for /tmp/issue35-0ez4sP/repo
+
+Revision: 0
+Known failures: 0
+Affected checks: none counted; the daemon has not listed this worktree's test files yet
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+Slow tier: no slow test files listed yet; Squeal runs them when the agent pauses.
+
+Worktree: /tmp/issue35-0ez4sP/repo (HEAD bb566c5, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 0 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+[exit 0]
+
+$ squeal status --wait 60000
+Returned on quiet: nothing the edits since revision 0 re-keyed is pending (0 test files) at revision 0 after 0.5 s; 3 slow files are not current, which this wait does not hold for: `squeal run --slow --wait 60000` runs and waits for them
+
+Revision: 0
+Known failures: 0
+Affected checks: 0 passed, 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+Slow tier: 3 test files; 3 not run at revision 0. Squeal has not queued them; `squeal run --slow` runs them now.
+
+Worktree: /tmp/issue35-0ez4sP/repo (HEAD bb566c5, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Test files without checks: 0 pending, 5 unknown
+Test files without a result: 5 (nothing current at their inputs, none queued)
+  test:package: test/e2e/bin.test.mjs: no result: no reason was kept
+  test:package: test/e2e/cli.test.mjs: no result: no reason was kept
+  test:package: test/e2e/import.test.mjs: no result: no reason was kept
+  test:unit: test/unit/docs.test.mjs: no result: no reason was kept
+  test:unit: test/unit/greet.test.mjs: no result: no reason was kept
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+  2026-10-18T09:07:11.842Z, revision 0: slow files of project test:package with no declared artifact: test/e2e/bin.test.mjs, test/e2e/cli.test.mjs, test/e2e/import.test.mjs. Their key holds no build output, so a change to the code they test does not re-run them and another worktree's result never stands for them; declare what they test in squeal.config.json "inputs" (spec 004 D5, D6)
+[exit 0]
+
+== edited AGENTS.md only:  M AGENTS.md 
+$ squeal status --wait 60000
+Returned on quiet: nothing the edits since revision 1 re-keyed is pending (1 test file) at revision 1 after 0.5 s; 3 slow files are not current, which this wait does not hold for: `squeal run --slow --wait 60000` runs and waits for them
+
+Revision: 1 · bb566c55 + 1, dirty
+Known failures: 0
+Affected checks: 2 passed (1 test, 1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 1; `squeal run --all` requests one)
+Slow tier: 3 test files; 3 not run at revision 1. Squeal has not queued them; `squeal run --slow` runs them now.
+
+Worktree: /tmp/issue35-0ez4sP/repo (HEAD bb566c5, dirty at revision 1)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Test files without checks: 0 pending, 4 unknown
+Test files without a result: 4 (nothing current at their inputs, none queued)
+  test:package: test/e2e/bin.test.mjs: no result: no reason was kept
+  test:package: test/e2e/cli.test.mjs: no result: no reason was kept
+  test:package: test/e2e/import.test.mjs: no result: no reason was kept
+  test:unit: test/unit/greet.test.mjs: no result: no reason was kept
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-18T09:07:11.842Z, revision 0: slow files of project test:package with no declared artifact: test/e2e/bin.test.mjs, test/e2e/cli.test.mjs, test/e2e/import.test.mjs. Their key holds no build output, so a change to the code they test does not re-run them and another worktree's result never stands for them; declare what they test in squeal.config.json "inputs" (spec 004 D5, D6)
+  2026-10-18T09:07:12.638Z, revision 1: node-test project "test:unit": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: test/unit/docs.test.mjs
+[exit 0]
+
+$ squeal run --slow --wait 60000
+Slow tier requested at revision 1: 3 slow files queued; they run once no fast work is pending.
+Returned on news: 4 transitions in the 3 slow files run --slow queued, at revision 1 after 0.5 s; the 3 slow files run --slow queued have their results
+
+Revision: 1 · bb566c55 + 1, dirty
+Known failures: 4 (3 tests, 1 test file that did not load)
+  FAIL  [test:package] test/e2e/bin.test.mjs > every declared bin exists
+        dist/cli.mjs is missing
+        at test/e2e/bin.test.mjs:8:53, observed at revision 1, current
+        recorded just now in this worktree at revision 1, load 0.69 per CPU when it ran; no retry asked at these inputs
+  FAIL  [test:package] test/e2e/cli.test.mjs > the CLI exits 0
+        Expected values to be strictly equal:
+        at test/e2e/cli.test.mjs:14:10, observed at revision 1, current
+        recorded just now in this worktree at revision 1, load 0.69 per CPU when it ran; no retry asked at these inputs
+  FAIL  [test:package] test/e2e/cli.test.mjs > the CLI greets the named user
+        The input did not match the regular expression /^hello, ada\n$/. Input:
+        at test/e2e/cli.test.mjs:10:10, observed at revision 1, current
+        recorded just now in this worktree at revision 1, load 0.69 per CPU when it ran; no retry asked at these inputs
+  FAIL  [test:package] test/e2e/import.test.mjs (file-level)
+        Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'dist/index.js' imported from test/e2e/import.test.mjs
+        observed at revision 1, current
+        recorded just now in this worktree at revision 1, load 0.69 per CPU when it ran; no retry asked at these inputs
+Affected checks: 4 passed (1 test, 3 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 1; `squeal run --all` requests one)
+Slow tier: 3 test files; 3 current against dist/** as of revision 1. Squeal runs them when the agent pauses.
+
+Worktree: /tmp/issue35-0ez4sP/repo (HEAD bb566c5, dirty at revision 1)
+Daemon: running, last heartbeat 2 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Test files without checks: 0 pending, 1 unknown
+Test files without a result: 1 (nothing current at their inputs, none queued)
+  test:unit: test/unit/greet.test.mjs: no result: no reason was kept
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-18T09:07:11.842Z, revision 0: slow files of project test:package with no declared artifact: test/e2e/bin.test.mjs, test/e2e/cli.test.mjs, test/e2e/import.test.mjs. Their key holds no build output, so a change to the code they test does not re-run them and another worktree's result never stands for them; declare what they test in squeal.config.json "inputs" (spec 004 D5, D6)
+  2026-10-18T09:07:12.638Z, revision 1: node-test project "test:unit": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: test/unit/docs.test.mjs
+  2026-10-18T09:07:13.202Z, revision 1: node-test project "test:package": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: test/e2e/bin.test.mjs
+  2026-10-18T09:07:13.454Z, revision 1: node-test project "test:package": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: test/e2e/cli.test.mjs
+  2026-10-18T09:07:13.597Z, revision 1: node-test project "test:package": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: test/e2e/import.test.mjs
+[exit 0]
+
+$ squeal run --slow --wait 60000
+No slow files to run at revision 1: none are declared in squeal.config.json or all are current.
+Returned on quiet: nothing the edits since revision 1 re-keyed is pending (0 test files) at revision 1 after 0.5 s
+
+Revision: 1 · bb566c55 + 1, dirty
+Known failures: 4 (3 tests, 1 test file that did not load)
+  FAIL  [test:package] test/e2e/bin.test.mjs > every declared bin exists
+        dist/cli.mjs is missing
+        at test/e2e/bin.test.mjs:8:53, observed at revision 1, current
+        recorded just now in this worktree at revision 1, load 0.69 per CPU when it ran; no retry asked at these inputs
+  FAIL  [test:package] test/e2e/cli.test.mjs > the CLI exits 0
+        Expected values to be strictly equal:
+        at test/e2e/cli.test.mjs:14:10, observed at revision 1, current
+        recorded just now in this worktree at revision 1, load 0.69 per CPU when it ran; no retry asked at these inputs
+  FAIL  [test:package] test/e2e/cli.test.mjs > the CLI greets the named user
+        The input did not match the regular expression /^hello, ada\n$/. Input:
+        at test/e2e/cli.test.mjs:10:10, observed at revision 1, current
+        recorded just now in this worktree at revision 1, load 0.69 per CPU when it ran; no retry asked at these inputs
+  FAIL  [test:package] test/e2e/import.test.mjs (file-level)
+        Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'dist/index.js' imported from test/e2e/import.test.mjs
+        observed at revision 1, current
+        recorded just now in this worktree at revision 1, load 0.69 per CPU when it ran; no retry asked at these inputs
+Affected checks: 4 passed (1 test, 3 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 1; `squeal run --all` requests one)
+Slow tier: 3 test files; 3 current against dist/** as of revision 1. Squeal runs them when the agent pauses.
+
+Worktree: /tmp/issue35-0ez4sP/repo (HEAD bb566c5, dirty at revision 1)
+Daemon: running, last heartbeat 3 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Test files without checks: 0 pending, 1 unknown
+Test files without a result: 1 (nothing current at their inputs, none queued)
+  test:unit: test/unit/greet.test.mjs: no result: no reason was kept
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-18T09:07:11.842Z, revision 0: slow files of project test:package with no declared artifact: test/e2e/bin.test.mjs, test/e2e/cli.test.mjs, test/e2e/import.test.mjs. Their key holds no build output, so a change to the code they test does not re-run them and another worktree's result never stands for them; declare what they test in squeal.config.json "inputs" (spec 004 D5, D6)
+  2026-10-18T09:07:12.638Z, revision 1: node-test project "test:unit": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: test/unit/docs.test.mjs
+  2026-10-18T09:07:13.202Z, revision 1: node-test project "test:package": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: test/e2e/bin.test.mjs
+  2026-10-18T09:07:13.454Z, revision 1: node-test project "test:package": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: test/e2e/cli.test.mjs
+  2026-10-18T09:07:13.597Z, revision 1: node-test project "test:package": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: test/e2e/import.test.mjs
+[exit 0]
+
+$ squeal failures
+Failures in this worktree (4 failures, newest first):
+  FAIL  2026-10-18T09:07:13.618Z  [test:package] test/e2e/import.test.mjs (file-level)
+        /tmp/issue35-0ez4sP/repo (this worktree), revision 1, commit bb566c5, dirty, 55 ms, run 44c3c47c-9b1e-46ec-9421-b4641aa2bc40
+        Error: Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'dist/index.js' imported from test/e2e/import.test.mjs @ ?
+  FAIL  2026-10-18T09:07:13.474Z  [test:package] test/e2e/cli.test.mjs > the CLI exits 0
+        /tmp/issue35-0ez4sP/repo (this worktree), revision 1, commit bb566c5, dirty, 34 ms, run a05c783d-ce9a-48f4-a3fe-8c05c45bc0ab
+        AssertionError: Expected values to be strictly equal: @ test/e2e/cli.test.mjs:14:10
+  FAIL  2026-10-18T09:07:13.474Z  [test:package] test/e2e/cli.test.mjs > the CLI greets the named user
+        /tmp/issue35-0ez4sP/repo (this worktree), revision 1, commit bb566c5, dirty, 40 ms, run a05c783d-ce9a-48f4-a3fe-8c05c45bc0ab
+        AssertionError: The input did not match the regular expression /^hello, ada\n$/. Input: @ test/e2e/cli.test.mjs:10:10
+  FAIL  2026-10-18T09:07:13.235Z  [test:package] test/e2e/bin.test.mjs > every declared bin exists
+        /tmp/issue35-0ez4sP/repo (this worktree), revision 1, commit bb566c5, dirty, 1 ms, run 09e3855f-6c36-4cfe-b319-29836bd7631f
+        AssertionError: dist/cli.mjs is missing @ test/e2e/bin.test.mjs:8:53
+
+squeal why "<check>" prints a failure's full output.
+[exit 0]
+
+$ squeal stop
+Squeal daemon stopped for /tmp/issue35-0ez4sP/repo
+[exit 0]
+
+== dist/ exists after the run? no
+== outputs in /tmp/issue35-0ez4sP/out
+== cleanup: rm -rf /tmp/issue35-0ez4sP

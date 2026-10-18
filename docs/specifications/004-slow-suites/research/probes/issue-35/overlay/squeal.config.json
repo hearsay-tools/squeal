@@ -1,0 +1,13 @@
+{
+  "stop": { "requireFullSuite": false, "requireSlowSuite": false, "waitMs": 0 },
+  "baseline": { "onStart": "lookup-only" },
+  "inputs": {
+    "test/e2e/*.test.mjs": ["dist/**"],
+    "test/unit/docs.test.mjs": ["AGENTS.md"]
+  },
+  "nodeTest": [
+    { "name": "test:unit", "include": ["test/unit/*.test.mjs"] },
+    { "name": "test:package", "include": ["test/e2e/*.test.mjs"], "slow": true }
+  ],
+  "slow": { "maxLoadPerCpu": 1000, "maxParallel": 1, "maxWorkers": 1 }
+}
