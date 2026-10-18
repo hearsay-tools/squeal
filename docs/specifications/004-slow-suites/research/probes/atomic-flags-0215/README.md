@@ -7,3 +7,4 @@ Throwaway, kept only as the record of how `../../atomic-flags-0215.md` counted. 
 - `sum.py <task> <model>`: per cell, truth, claim, Squeal's end verdict and measures.
 - `cmds.py`, `cmds2.py <task> <model> 0199|0215`: the Squeal and test commands each session ran, with exits.
 - `tr.py <cell> [from] [chars]`, `clock.py <cell> <chars>`: a cell's transcript, or the steps naming the clock test.
+- `rerun.py`: the three-way table of section 3 (0.1.199, 0.1.215, the 0.1.216 re-run), with each cell set's load at start from `out/load.tsv`.
