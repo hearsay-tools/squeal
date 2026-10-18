@@ -1,16 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
+  askNoResultRun,
   askRetry,
   cancelRetries,
   claimRetries,
   endRetries,
   loadAllows,
+  pendingRetriesOf,
   RETRIES_KEPT,
   RETRIES_META_KEY,
   readRetries,
   readRunLoads,
   recordRunLoad,
   releaseRetries,
+  retryFactOf,
 } from "../../src/core/retry/index.js";
 import { FILE, freshStore, OTHER, WT } from "../state/helpers.js";
 
@@ -54,6 +57,31 @@ describe("askRetry", () => {
     expect(askRetry(store, ask("s2")).kind).toBe("queued");
     endRetries(store, FILE, "k1", { outcome: "unknown", at: 4, worktreeId: WT });
     expect(askRetry(store, ask("s2")).kind).toBe("queued");
+  });
+
+  it("a run asked for a file with no result is one per pending run and spends no retry (011 C5, gh-36)", () => {
+    const store = freshStore();
+    expect(askNoResultRun(store, ask("s1")).kind).toBe("queued");
+    expect(askNoResultRun(store, ask("s2"))).toMatchObject({
+      kind: "joined",
+      record: { session: "s1", noResult: true, end: null },
+    });
+    expect(readRetries(store)).toHaveLength(1);
+    endRetries(store, FILE, "k1", { outcome: "failed", at: 2, worktreeId: WT });
+    // Its run stored a failure: the session's one retry of it is still to take.
+    expect(askRetry(store, ask("s1")).kind).toBe("queued");
+    expect(askRetry(store, ask("s1")).kind).toBe("spent");
+  });
+
+  it("a run asked for a file with no result runs at once in status and is no retry fact", () => {
+    const store = freshStore();
+    askNoResultRun(store, ask("s1"));
+    const keys = [{ worktreeId: WT, testFile: FILE, key: "k1", revision: 1, pending: null }];
+    const load = () => ({ oneMinute: 30, cpus: 8 });
+    expect(pendingRetriesOf(store, keys as never, load).pendingRetries?.retries).toMatchObject([
+      { testFile: FILE, reason: "environment", requests: 1 },
+    ]);
+    expect(retryFactOf(readRetries(store))).toBeUndefined();
   });
 
   it("keeps the newest requests only", () => {

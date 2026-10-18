@@ -27,9 +27,13 @@ import { type RetryRecord, readRetries, retriesAt } from "./records.js";
  * for at that key and how it ended."
  */
 
-/** The fact of the newest request in `records`; `undefined` when none. */
+/**
+ * The fact of the newest request in `records` for a failure; `undefined`
+ * when none. A run asked for a file with no result is no retry of a
+ * failure (011 C5, gh-36), so it is not one.
+ */
 export function retryFactOf(records: readonly RetryRecord[]): RetryFact | undefined {
-  const newest = records.at(-1);
+  const newest = records.filter((r) => r.noResult !== true).at(-1);
   if (newest === undefined) return undefined;
   return { reason: newest.reason, outcome: newest.end?.outcome ?? "pending" };
 }

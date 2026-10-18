@@ -61,6 +61,13 @@ export interface RetryRecord {
   readonly claim: RetryClaim | null;
   /** `null` while it is pending. */
   readonly end: RetryEnd | null;
+  /**
+   * Asked for a file with no result at its key, `unknown` or never run
+   * (011 C5, gh-36): it runs at once whatever its reason and never spends
+   * the session's retry, which bounds counted failures only. Absent on a
+   * counted failure's request.
+   */
+  readonly noResult?: true;
 }
 
 /** Every kept request, oldest first; empty when the row is absent or does not parse. */
@@ -95,6 +102,7 @@ export function retriesAt(
  * gave none, does not.
  */
 function spends(record: RetryRecord): boolean {
+  if (record.noResult === true) return false;
   return record.end === null || record.end.outcome === "passed" || record.end.outcome === "failed";
 }
 
@@ -124,20 +132,50 @@ export function askRetry(store: Store, ask: RetryAsk): RetryAnswer {
       .filter((r) => r.session === ask.session && spends(r))
       .at(-1);
     if (spent !== undefined) return { kind: "spent", record: spent };
-    const record: RetryRecord = {
-      id: randomUUID(),
-      testFile: ask.testFile,
-      key: ask.key,
-      session: ask.session,
-      reason: ask.reason,
-      askedAt: ask.at,
-      askedIn: ask.worktreeId,
-      claim: null,
-      end: null,
-    };
+    const record = newRecord(ask);
     writeRetries(store, [...records, record]);
     return { kind: "queued", record };
   });
+}
+
+/**
+ * What a request for a file with no result at its key got (011 C5, gh-36):
+ * `queued`, a new request whose one run starts at once; `joined`, a request
+ * at the key is pending already (`record`), so nothing more is queued.
+ */
+export type NoResultAnswer = {
+  readonly kind: "queued" | "joined";
+  readonly record: RetryRecord;
+};
+
+/**
+ * Stores a request to run a file that has no result at `ask.key` once,
+ * outside the session's one retry, unless one is pending there; one
+ * transaction.
+ */
+export function askNoResultRun(store: Store, ask: RetryAsk): NoResultAnswer {
+  return store.transaction(() => {
+    const records = readRetries(store);
+    const pending = retriesAt(records, ask.testFile, ask.key).find((r) => r.end === null);
+    if (pending !== undefined) return { kind: "joined", record: pending };
+    const record: RetryRecord = { ...newRecord(ask), noResult: true };
+    writeRetries(store, [...records, record]);
+    return { kind: "queued", record };
+  });
+}
+
+function newRecord(ask: RetryAsk): RetryRecord {
+  return {
+    id: randomUUID(),
+    testFile: ask.testFile,
+    key: ask.key,
+    session: ask.session,
+    reason: ask.reason,
+    askedAt: ask.at,
+    askedIn: ask.worktreeId,
+    claim: null,
+    end: null,
+  };
 }
 
 /**

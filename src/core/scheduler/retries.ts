@@ -21,7 +21,9 @@ import { priorityOf } from "./queue.js";
  * is a request in the shared store. A daemon whose file is at the request's
  * key claims it and queues one forced run: at once for `environment`, once
  * the one-minute load is below the CPU count for `load`, looked at in every
- * reconciliation pass until then, however long that takes. The run's result
+ * reconciliation pass until then, however long that takes; a request for a
+ * file with no result at its key at once whatever its reason (011 C5,
+ * gh-36). The run's result
  * replaces the row (D8) and ends every pending request at the key. A file
  * whose key moves gives its claim back; the request lapses for this worktree.
  */
@@ -59,7 +61,7 @@ export function takeRetries(context: SchedulerContext, ledger: Ledger): boolean 
     if (!file || file.key !== request.key || file.retryKey === request.key) continue;
     if (file.blocked !== null) continue;
     const entry = due.get(file.id) ?? { file, key: request.key, now: false };
-    entry.now ||= request.reason === "environment";
+    entry.now ||= request.reason === "environment" || request.noResult === true;
     due.set(file.id, entry);
   }
   if (due.size === 0) return changed;
