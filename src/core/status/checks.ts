@@ -1,5 +1,5 @@
 import { plural } from "../text.js";
-import type { CheckId } from "../types/index.js";
+import type { CheckId, KnownFailureCounts, Validity } from "../types/index.js";
 
 /** Checks counted apart (spec 005 D1; 001 D4: one file-level check per test file). */
 export interface CheckCounts {
@@ -69,4 +69,47 @@ export function checksText(checks: readonly CheckId[], noun = "check", fileLevel
 export function failureCountText(checks: readonly CheckId[]): string {
   if (checks.length === 0) return "0";
   return `${checks.length} (${checkPartsText(countChecks(checks), "that did not load")})`;
+}
+
+/** Failures split as C6 counts them; any validity but `current` and `pending` is stale. */
+export interface FailuresByValidity<T> {
+  readonly current: readonly T[];
+  readonly pending: readonly T[];
+  readonly stale: readonly T[];
+}
+
+/**
+ * Spec 011 C6 as amended 2026-10-18 (gh-34, task 011-15): known failures
+ * split by validity, shared by status, the registration header and Stop.
+ * Only `current` ones count in `Known failures`; a same-key re-run leaves a
+ * failure `current` until its run stores a result (C5).
+ */
+export function splitByValidity<T extends { readonly validity: Validity }>(
+  failures: readonly T[],
+): FailuresByValidity<T> {
+  return {
+    current: failures.filter((f) => f.validity === "current"),
+    pending: failures.filter((f) => f.validity === "pending"),
+    stale: failures.filter((f) => f.validity !== "current" && f.validity !== "pending"),
+  };
+}
+
+/** `status --json`'s `knownFailureCounts`. */
+export function knownFailureCounts(
+  failures: readonly { readonly validity: Validity }[],
+): KnownFailureCounts {
+  const { current, pending, stale } = splitByValidity(failures);
+  return { current: current.length, pending: pending.length, stale: stale.length };
+}
+
+/**
+ * The line after `Known failures: N`, only when an earlier failure waits
+ * for a rerun or is stale, so a zero count never reads as done while reruns
+ * are queued.
+ */
+export function earlierFailuresLines({ pending, stale }: KnownFailureCounts): string[] {
+  if (pending + stale === 0) return [];
+  return [
+    `Earlier failures: ${pending} pending rerun, ${stale} stale (not counted until a rerun fails)`,
+  ];
 }

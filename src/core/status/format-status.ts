@@ -8,7 +8,14 @@ import type {
   StatusSnapshot,
   StatusUnavailable,
 } from "../types/index.js";
-import { countedText, failureCountText, partsSuffix } from "./checks.js";
+import {
+  countedText,
+  earlierFailuresLines,
+  failureCountText,
+  knownFailureCounts,
+  partsSuffix,
+  splitByValidity,
+} from "./checks.js";
 import { configProblemsLine } from "./config-problems.js";
 import { DEATH_CAUSE, deathText } from "./died.js";
 import { shortCommit, statusRevisionText, worktreeLine } from "./identity.js";
@@ -39,7 +46,9 @@ export function formatStatus(
   if (!result.available) return formatUnavailable(result, command);
   const lines = [
     `Revision: ${statusRevisionText(result)}`,
-    `Known failures: ${failureCountText(result.knownFailures.map((f) => f.check))}`,
+    // Spec 011 C6 as amended (gh-34): only current failures are counted.
+    `Known failures: ${failureCountText(splitByValidity(result.knownFailures).current.map((f) => f.check))}`,
+    ...earlierFailuresLines(knownFailureCounts(result.knownFailures)),
     ...result.knownFailures.flatMap((f) => [
       `  FAIL  ${formatCheck(f.check)}`,
       ...(f.summary === "" ? [] : [`        ${f.summary}`]),
