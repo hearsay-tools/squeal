@@ -1,6 +1,4 @@
 import { execFileSync } from "node:child_process";
-import { rmSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { skippedLaneVerdict } from "../../src/cli/run-skipped.js";
 import { slowWaitCode } from "../../src/cli/status-wait.js";
@@ -13,8 +11,11 @@ import type { Harness } from "../scheduler/helpers.js";
 import { openRepoStore, SLOW } from "../scheduler/helpers.js";
 import { waitFor } from "../watcher/helpers.js";
 import {
+  FAILING_UPPER,
+  forcedSkip,
   line,
-  open,
+  READY,
+  ranThenUnready,
   reopen,
   SLOW_FILES,
   skipReason,
@@ -30,40 +31,6 @@ import {
  * stays as history and becomes current again only through a run at a later
  * checkpoint whose precondition is met.
  */
-
-const READY = "ready matches no file (slow.precondition.exists)";
-const FAILING_UPPER = [
-  'import { expect, it } from "vitest";',
-  'it("fails", () => expect(1).toBe(2));',
-  "",
-].join("\n");
-
-/** Ready, run to idle (both slow files have results), then a revision removing `ready` and editing a fast source. */
-async function ranThenUnready(upper?: string) {
-  const h = await open(
-    { exists: ["ready"] },
-    {
-      setup: (h) => {
-        h.write("ready", "");
-        if (upper !== undefined) h.write(UPPER, upper);
-      },
-    },
-  );
-  expect(slowRuns(h)).toHaveLength(2);
-  rmSync(join(h.root, "ready"));
-  h.write("src/math.ts", "export const add = (a: number, b: number) => a + b; // edited\n");
-  await h.batch("src/math.ts", "ready");
-  await h.scheduler.idle();
-  return h;
-}
-
-async function forcedSkip(h: Harness) {
-  const checkpoint = await h.scheduler.requestFullSuite({ force: true });
-  await h.scheduler.idle();
-  const record = h.store.checkpoints.get(checkpoint.id);
-  expect(record?.end).toBe("abandoned");
-  return record;
-}
 
 function expectSkippedEverywhere(h: Harness) {
   const tier = h.header().slowTier;

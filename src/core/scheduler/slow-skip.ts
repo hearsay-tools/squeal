@@ -77,8 +77,9 @@ export class SlowSkips {
         return "again";
       }
       if (reason === null) {
-        this.#met.set(rule.source, due.at);
         this.#lift(rule.source);
+        // Once the lift committed: one rolled back is checked again (review wave-8.1, fourth round).
+        this.#met.set(rule.source, due.at);
         return "run";
       }
       this.#met.delete(rule.source);
@@ -90,12 +91,14 @@ export class SlowSkips {
   /** Under the lock: every queued slow file `rule` covers leaves the queue, unrun. */
   #skip(rule: PreconditionRule, reason: string): void {
     const { context, ledger } = this.started();
-    const skips = this.#adopted();
-    const refs = new Map(skips.get(rule.source)?.refs);
+    const covered = ledger
+      .orderedSlow()
+      .filter((ref) => preconditionFor(context.policy, ref)?.source === rule.source);
     // One transaction: no reader sees the skip beside checks still current (review wave-8.1, third round).
-    context.store.transaction(() => {
-      for (const ref of ledger.orderedSlow()) {
-        if (preconditionFor(context.policy, ref)?.source !== rule.source) continue;
+    this.#atomically(covered, () => {
+      const skips = this.#adopted();
+      const refs = new Map(skips.get(rule.source)?.refs);
+      for (const ref of covered) {
         const file = ledger.file(ref);
         if (file === undefined) continue;
         ledger.dequeue(file);
@@ -117,9 +120,9 @@ export class SlowSkips {
   #lift(source: string): void {
     const skip = this.#adopted().get(source);
     if (skip === undefined) return;
-    this.#adopted().delete(source);
-    const { context, ledger } = this.started();
-    context.store.transaction(() => {
+    const { ledger } = this.started();
+    this.#atomically(skip.refs.values(), () => {
+      this.#adopted().delete(source);
       this.#publish();
       const idle = [...skip.refs.values()].filter((ref) => ledger.file(ref)?.phase === null);
       for (const ref of idle) {
@@ -151,9 +154,9 @@ export class SlowSkips {
    */
   revised(paths: ReadonlySet<RelativePath>): boolean {
     const { context } = this.started();
-    const skips = this.#adopted();
+    const next = new Map<string, Skip>();
     const eligible: TestFileRef[] = [];
-    for (const [source, skip] of skips) {
+    for (const [source, skip] of this.#adopted()) {
       const touched = touchesPrecondition(skip.rule, paths);
       const same = JSON.stringify(skip.rule);
       const kept = new Map<string, TestFileRef>();
@@ -162,10 +165,10 @@ export class SlowSkips {
         if (declared && !touched) kept.set(id, ref);
         else eligible.push(ref);
       }
-      if (kept.size === 0) skips.delete(source);
-      else if (kept.size < skip.refs.size) skips.set(source, { ...skip, refs: kept });
+      if (kept.size === skip.refs.size) next.set(source, skip);
+      else if (kept.size > 0) next.set(source, { ...skip, refs: kept });
     }
-    return this.#requeue(eligible, paths);
+    return this.#requeue(eligible, paths, next);
   }
 
   /**
@@ -173,22 +176,29 @@ export class SlowSkips {
    * again, so the tier checks its precondition. Returns whether any was.
    */
   recheck(): boolean {
-    const skips = this.#adopted();
-    const refs = [...skips.values()].flatMap((skip) => [...skip.refs.values()]);
-    skips.clear();
-    return this.#requeue(refs, new Set());
+    const refs = [...this.#adopted().values()].flatMap((skip) => [...skip.refs.values()]);
+    return this.#requeue(refs, new Set(), new Map());
   }
 
   /**
-   * Queues `refs` as any miss; one whose key has a stored result goes in
-   * forced, so it runs rather than reading as current unchecked. Published
-   * after the commit: its refresh still reads them skipped, so a queued
-   * file's checks read pending, not current, until it runs.
+   * Queues `refs` as any miss, `next` the skips left; one whose key has a
+   * stored result goes in forced, so it runs rather than reading as current
+   * unchecked. Published after the commit: its refresh still reads them
+   * skipped, so a queued file's checks read pending, not current, until it
+   * runs.
    */
-  #requeue(refs: readonly TestFileRef[], changed: ReadonlySet<RelativePath>): boolean {
-    if (refs.length === 0) return false;
-    const { context, ledger } = this.started();
-    context.store.transaction(() => {
+  #requeue(
+    refs: readonly TestFileRef[],
+    changed: ReadonlySet<RelativePath>,
+    next: Map<string, Skip>,
+  ): boolean {
+    if (refs.length === 0) {
+      this.#skips = next;
+      return false;
+    }
+    const { ledger } = this.started();
+    this.#atomically(refs, () => {
+      this.#skips = next;
       ledger.settle(refs, changed);
       for (const ref of refs) {
         const file = ledger.file(ref);
@@ -199,6 +209,27 @@ export class SlowSkips {
       this.#publish();
     });
     return true;
+  }
+
+  /**
+   * Runs `fn`, which changes the skips and the ledger's work on `refs`, in
+   * one store transaction. When it does not commit, busy at BEGIN or rolled
+   * back after the ledger's commit drained it, the skips and the ledger are
+   * put back as the store still has them (review wave-8.1, fourth round), so
+   * a retry or a shutdown settles from there: a skip kept, its checkpoint
+   * still open.
+   */
+  #atomically(refs: Iterable<TestFileRef>, fn: () => void): void {
+    const { context, ledger } = this.started();
+    const skips = new Map(this.#adopted());
+    const restore = ledger.hold(refs);
+    try {
+      context.store.transaction(fn);
+    } catch (error) {
+      this.#skips = skips;
+      restore();
+      throw error;
+    }
   }
 
   /** The skips, the store's at first use: a skip outlives the daemon that found it. */
