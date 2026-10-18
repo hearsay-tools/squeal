@@ -1,6 +1,7 @@
 import type { TestSpecification, Vitest } from "vitest/node";
 import { POLICY_FILE } from "../../core/daemon/policy.js";
 import { compare } from "../../core/fs/index.js";
+import { createInputMatcher } from "../../core/keys/glob.js";
 import { findInstalledLockfile } from "../../core/keys/index.js";
 import { optimizerOffNote } from "../../core/state/optimizer-note.js";
 import type {
@@ -105,8 +106,11 @@ export class VitestAdapter implements RunnerAdapter {
   readonly #childEnv: Readonly<Record<string, string>>;
   readonly #maxWorkers: number | undefined;
   readonly #exclude: () => readonly string[];
-  /** Policy `vitest.excludeProjects` as the current instance started with it (task 001-349). */
-  #excluded = "[]";
+  readonly #excludeFiles: () => readonly string[];
+  /** Policy `vitest.excludeProjects` and `vitest.exclude` as the current instance started with them (tasks 001-349, 004-81). */
+  #excluded = excludedStamp([], []);
+  /** Policy `vitest.exclude` as the current instance started with it (task 004-81). */
+  #excludedFile: (path: RelativePath) => boolean = () => false;
 
   /**
    * `vitest` is the project's own `vitest/node` (`loadVitest`). Only types
@@ -120,7 +124,9 @@ export class VitestAdapter implements RunnerAdapter {
    * project's own as a grant is (D11, task 001-378). `optimizer` hears, at
    * each start, the projects whose config turns the dependency optimizer on,
    * none included (task 001-181). `exclude` is policy
-   * `vitest.excludeProjects`, read at each start (task 001-349).
+   * `vitest.excludeProjects`, read at each start (task 001-349);
+   * `excludeFiles` is policy `vitest.exclude`, read at each start too (spec
+   * 004 D7, task 004-81).
    */
   constructor(
     readonly paths: WorktreePaths,
@@ -131,8 +137,10 @@ export class VitestAdapter implements RunnerAdapter {
     maxWorkers?: number,
     optimizer: (projects: readonly string[]) => void = () => {},
     exclude: () => readonly string[] = () => [],
+    excludeFiles: () => readonly string[] = () => [],
   ) {
     this.#exclude = exclude;
+    this.#excludeFiles = excludeFiles;
     this.#node = vitest;
     this.#optimizer = optimizer;
     this.#sources = new SourceStamps(paths);
@@ -157,6 +165,7 @@ export class VitestAdapter implements RunnerAdapter {
     const sources = new SourceStamps(this.paths);
     const config = await ConfigStamps.take(this.paths, this.#configFiles);
     const excluded = [...this.#exclude()];
+    const excludedFiles = [...this.#excludeFiles()];
     const { project, unknown } = await exclusion(this.#node, this.paths.root, excluded);
     const vitest = await this.#node.createVitest("test", {
       root: this.paths.root,
@@ -188,7 +197,8 @@ export class VitestAdapter implements RunnerAdapter {
       this.#config = config;
       this.#unsure = await config.unsure(this.#configFiles);
       this.#touched = this.#touched.slice(heard);
-      this.#excluded = JSON.stringify(excluded);
+      this.#excluded = excludedStamp(excluded, excludedFiles);
+      this.#excludedFile = createInputMatcher(excludedFiles);
       for (const problem of await unknown) {
         noteOnce(this.paths.root, `${POLICY_FILE}: ${problem}`, this.#note);
       }
@@ -292,8 +302,9 @@ export class VitestAdapter implements RunnerAdapter {
       // removal, the one found now an install into a worktree that had none.
       const lockfiles = new Set([...this.#lockfiles, ...(await this.#installedLockfiles(vitest))]);
       if (abs.some((p) => lockfiles.has(p.abs))) this.#reload = true;
-      // Task 001-349: a revision that moved `vitest.excludeProjects` reloaded the policy first.
-      const exclusion = JSON.stringify(this.#exclude()) !== this.#excluded;
+      // Tasks 001-349, 004-81: a revision that moved `vitest.excludeProjects`
+      // or `vitest.exclude` reloaded the policy first; the recreate relists.
+      const exclusion = excludedStamp(this.#exclude(), this.#excludeFiles()) !== this.#excluded;
       if (exclusion || abs.some((p) => triggers.has(p.abs) || lockfiles.has(p.abs))) {
         const before = vitest.projects.map((p) => p.name);
         // A run in flight uses the instance: the recreate waits for it, and the next run for the recreate.
@@ -321,7 +332,7 @@ export class VitestAdapter implements RunnerAdapter {
 
   affected(changedPaths: readonly RelativePath[]): Promise<AffectedTestFiles> {
     return this.#part(async (vitest) => {
-      const specs = await testSpecifications(vitest);
+      const specs = this.#covered(await testSpecifications(vitest));
       const changed = changedPaths.map((p) => this.paths.toAbsolute(p));
       const { direct, transitive } = await affectedTestFiles(vitest, specs, changed);
       return {
@@ -369,7 +380,9 @@ export class VitestAdapter implements RunnerAdapter {
       const specs = await vitest.globTestSpecifications();
       const listed = supported(specs);
       this.#omitted = specs.length - listed.length;
-      return listed.map((s) => this.#ref(s)).sort(compareRefs);
+      return this.#covered(listed)
+        .map((s) => this.#ref(s))
+        .sort(compareRefs);
     });
   }
 
@@ -511,6 +524,18 @@ export class VitestAdapter implements RunnerAdapter {
     });
   }
 
+  /**
+   * Spec 004 D7 (task 004-81): without the files policy `vitest.exclude`
+   * selects, from the worktree root, so none is listed, keyed, run or
+   * counted, nor counted as omitted.
+   */
+  #covered(specs: readonly TestSpecification[]): TestSpecification[] {
+    return specs.filter((spec) => {
+      const path = this.paths.toRelative(spec.moduleId);
+      return path === null || !this.#excludedFile(path);
+    });
+  }
+
   #ref(spec: TestSpecification): TestFileRef {
     const path = this.paths.toRelative(spec.moduleId);
     if (path === null) {
@@ -523,6 +548,10 @@ export class VitestAdapter implements RunnerAdapter {
 /** Test specifications of every project. Typecheck specs (`tsc`, no module graph) are not supported in v1. */
 async function testSpecifications(vitest: Vitest): Promise<TestSpecification[]> {
   return supported(await vitest.globTestSpecifications());
+}
+
+function excludedStamp(projects: readonly string[], files: readonly string[]): string {
+  return JSON.stringify([projects, files]);
 }
 
 function supported(specs: readonly TestSpecification[]): TestSpecification[] {

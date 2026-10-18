@@ -97,6 +97,13 @@ export function formatPlan(plan: SetupPlan): string {
     }
   }
 
+  // 004 D7 (task 004-81): suites Squeal does not cover; none excluded, no section.
+  const excluded = plan.excluded?.vitest ?? [];
+  if (excluded.length > 0) {
+    lines.push("", "Not covered, excluded by squeal.config.json:");
+    for (const glob of excluded) lines.push(`  Vitest test files matching ${JSON.stringify(glob)}`);
+  }
+
   lines.push(
     "",
     `Codex trust: ${trustText(plan.codexTrust)}`,

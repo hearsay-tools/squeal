@@ -44,6 +44,12 @@ export interface VitestAdapterOptions {
    * 001-349). A revision that moves it recreates the instance. Absent: none.
    */
   readonly excludeProjects?: () => readonly string[];
+  /**
+   * Policy `vitest.exclude`, read at each listing: test-file globs from the
+   * worktree root that Squeal never lists, runs, keys or counts (spec 004
+   * D7, task 004-81). Absent: none.
+   */
+  readonly exclude?: () => readonly string[];
 }
 
 /**
@@ -62,6 +68,7 @@ export async function createVitestAdapter(options: VitestAdapterOptions): Promis
     options.maxWorkers,
     options.optimizer,
     options.excludeProjects,
+    options.exclude,
   );
   await adapter.open();
   return adapter;

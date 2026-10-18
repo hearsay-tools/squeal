@@ -62,3 +62,20 @@ export function excludedProjectsText(entries: readonly string[]): {
   ];
   return { text: parts.join(" and "), plural: patterns.length > 0 || names.length > 1 };
 }
+
+/** The most `vitest.exclude` globs a line names before "and N more". */
+const EXCLUDED_GLOBS_NAMED = 3;
+
+/**
+ * Policy `vitest.exclude` as status, the primer and `setup --check` name it
+ * (spec 004 D7, D8 as amended 2026-10-18, task 004-81): `Vitest test files
+ * matching "a" or "b"`, the globs past three as "and N more".
+ */
+export function excludedFilesText(globs: readonly string[]): string {
+  const quoted = globs.slice(0, EXCLUDED_GLOBS_NAMED).map((glob) => JSON.stringify(glob));
+  const rest = globs.length - quoted.length;
+  if (rest > 0)
+    return `Vitest test files matching ${quoted.join(", ")} and ${plural(rest, "more glob")}`;
+  const last = quoted.pop() as string;
+  return `Vitest test files matching ${quoted.length === 0 ? last : `${quoted.join(", ")} or ${last}`}`;
+}

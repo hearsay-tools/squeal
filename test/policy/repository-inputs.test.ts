@@ -7,9 +7,9 @@ import { loadPolicy, POLICY_FILE } from "../../src/core/daemon/policy.js";
 import { readHead } from "../../src/core/daemon-loop/head.js";
 import { splitNul, toAbsolute, worktreeIdFor } from "../../src/core/fs/index.js";
 import { createFsHasher } from "../../src/core/hash/index.js";
+import { createInputMatcher } from "../../src/core/keys/glob.js";
 import { statCandidates } from "../../src/core/revision/index.js";
 import { WorktreeKeys } from "../../src/core/scheduler/keying.js";
-import { slowView } from "../../src/core/scheduler/slow.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
 import type { CheckKey, Revision, Store } from "../../src/core/types/index.js";
 import { candidatesFromHints } from "../../src/core/watcher/candidates.js";
@@ -32,8 +32,6 @@ import { git } from "../hash/git-repo.js";
  */
 
 const E2E = /^test\/e2e\/[^/]+\.test\.ts$/;
-const PLUGIN_TESTS = (tests: readonly string[]) =>
-  tests.filter((path) => path === "test/harness/plugin.test.ts" || E2E.test(path));
 
 let root: string;
 let store: Store;
@@ -91,7 +89,9 @@ beforeAll(async () => {
   });
   await keys.bootstrap(head);
   keys.index.setEnvironment("", "environment");
-  testFiles = listed.filter((path) => path.endsWith(".test.ts"));
+  // The Vitest adapter lists no file `vitest.exclude` selects (004 D7, task 004-81).
+  const excluded = createInputMatcher(policy.vitest.exclude);
+  testFiles = listed.filter((path) => path.endsWith(".test.ts") && !excluded(path));
   for (const path of testFiles) keys.setClosure({ testFile: { project: "", path }, paths: [] });
   await keys.trackUntracked();
 }, 60_000);
@@ -110,24 +110,20 @@ describe("policy: this repository's squeal.config.json", () => {
   });
 
   /*
-   * Task 004-76 (`research/slow-tier-role.md`, open question 1): the e2e
-   * tests run the committed bundles, so they are the slow tier, keyed on
-   * every plugin they open, OpenCode's and Pi's included (004 D1, D5).
+   * Task 004-81 (004 D7 as amended 2026-10-18): the e2e tests run the
+   * committed bundles, a build output Squeal does not produce, so Squeal
+   * covers none of them and declares no slow tier; CI runs them.
    */
-  it("declares the e2e tests, and only them, slow", () => {
+  it("excludes the e2e tests, lists every other test file, and declares nothing slow", () => {
     const { policy } = loadPolicy(REPO_ROOT);
-    const { isSlow, globs } = slowView(policy);
-    expect(globs).toEqual(["test/e2e/*.test.ts"]);
-    const slow = testFiles.filter((path) => isSlow({ project: "", path }));
-    expect(slow).toContain("test/e2e/opencode.test.ts");
-    expect(slow).toContain("test/e2e/pi.test.ts");
-    expect(slow).toEqual(testFiles.filter((path) => E2E.test(path)));
+    expect(policy.vitest.exclude).toEqual(["test/e2e/**"]);
+    expect(policy.slow.include).toEqual([]);
+    expect(testFiles.filter((path) => E2E.test(path))).toEqual([]);
+    expect(testFiles).toContain("test/harness/plugin.test.ts");
   });
 
-  it("re-keys exactly plugin.test.ts and the e2e tests when a bundle changes", async () => {
-    const plugin = PLUGIN_TESTS(testFiles);
-    expect(plugin).toContain("test/harness/plugin.test.ts");
-    expect(plugin).toContain("test/e2e/shipped-plugin.test.ts");
+  it("re-keys exactly plugin.test.ts when a bundle changes", async () => {
+    const plugin = ["test/harness/plugin.test.ts"];
     const before = allKeys();
 
     write("plugins/claude-code/dist/stop.mjs", "// rebuilt\n");
@@ -143,28 +139,24 @@ describe("policy: this repository's squeal.config.json", () => {
   /*
    * Task 001-399: the OpenCode and Pi tests build their bundles from
    * `src/harness/*` in an esbuild child process and read the committed
-   * package, neither of which tracing follows. The e2e tests open both
-   * packages too (task 004-76).
+   * package, neither of which tracing follows.
    */
   it.each([
     ["opencode", "plugins/opencode/dist/plugin.mjs"],
     ["pi", "plugins/pi/dist/extension.mjs"],
-  ])(
-    "re-keys exactly the %s harness and e2e tests when its package changes",
-    async (harness, bundle) => {
-      const harnessTests = testFiles.filter((path) => path.startsWith(`test/harness/${harness}/`));
-      const tests = testFiles.filter((path) => harnessTests.includes(path) || E2E.test(path));
-      expect(harnessTests).toContain(`test/harness/${harness}/package.test.ts`);
-      const before = allKeys();
+  ])("re-keys exactly the %s harness tests when its package changes", async (harness, bundle) => {
+    const harnessTests = testFiles.filter((path) => path.startsWith(`test/harness/${harness}/`));
+    const tests = harnessTests;
+    expect(harnessTests).toContain(`test/harness/${harness}/package.test.ts`);
+    const before = allKeys();
 
-      write(bundle, "// rebuilt\n");
-      const revision = await batch(bundle);
-      keys.index.rekey(revision?.changes.map((c) => c.path) ?? []);
+    write(bundle, "// rebuilt\n");
+    const revision = await batch(bundle);
+    keys.index.rekey(revision?.changes.map((c) => c.path) ?? []);
 
-      const after = allKeys();
-      expect(testFiles.filter((path) => after[path] !== before[path])).toEqual(tests);
-    },
-  );
+    const after = allKeys();
+    expect(testFiles.filter((path) => after[path] !== before[path])).toEqual(tests);
+  });
 
   it("re-keys the OpenCode and Pi package tests when a source they bundle changes", async () => {
     const before = allKeys();

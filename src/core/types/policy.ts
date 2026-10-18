@@ -95,6 +95,14 @@ export interface Policy {
      * rest apply. Default `[]`.
      */
     readonly excludeProjects: readonly string[];
+    /**
+     * Spec 004 D7 as amended 2026-10-18 (task 004-81): Vitest test-file
+     * globs, relative to the worktree root, that Squeal never lists, runs,
+     * keys or counts, as `nodeTest[].exclude` and `pytest[].exclude` do for
+     * their projects: a suite of a build output Squeal does not produce
+     * belongs to CI or the agent. Default `[]`.
+     */
+    readonly exclude: readonly string[];
   };
   /** Spec 004 D1, D7: the slow suites and how the slow tier runs them. */
   readonly slow: SlowPolicy;
@@ -259,7 +267,7 @@ export const DEFAULT_POLICY: Policy = {
   runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 600_000 },
   nodeTest: [],
   pytest: [],
-  vitest: { excludeProjects: [] },
+  vitest: { excludeProjects: [], exclude: [] },
   slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 600_000, maxParallel: 4 },
   delivery: { uncoveredEdits: true },
   daemon: { idleExitMinutes: 60, unusedExitMinutes: 30 },

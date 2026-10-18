@@ -3,7 +3,7 @@ import {
   MESSAGE_CAP_CHARS,
   SQUEAL_COMMAND,
 } from "../../core/delivery/index.js";
-import { excludedProjectsText } from "../../core/text.js";
+import { excludedFilesText, excludedProjectsText } from "../../core/text.js";
 import type { Registration } from "../../core/types/index.js";
 import { type Coverage, VITEST_ONLY } from "./coverage.js";
 
@@ -75,7 +75,7 @@ export function primer(command: string = SQUEAL_COMMAND, coverage: Coverage = VI
       retrySentence(command, naming),
       REVISION,
       covers,
-      "Squeal does not cover typecheck, build or any other test suite: run those yourself.",
+      notCovered(coverage),
     ].join(" ");
   // Fold the node:test and pytest projects first, then name the CLI less, until the primer fits;
   // the path wait joins only where it fits without folding more (task 005-68). Before the
@@ -202,6 +202,19 @@ function excluded(coverage: Coverage): string {
   if (entries.length === 0) return "";
   const { text, plural } = excludedProjectsText(entries);
   return `; its ${text} ${plural ? "are" : "is"} not run, excluded by squeal.config.json`;
+}
+
+/**
+ * Task 001-234: what Squeal does not cover, always whole; spec 004 D8 as
+ * amended 2026-10-18 (task 004-81): with the `vitest.exclude` globs named.
+ */
+function notCovered(coverage: Coverage): string {
+  const globs = coverage.vitestExcludedFiles ?? [];
+  const what =
+    globs.length === 0
+      ? "typecheck, build"
+      : `typecheck, build, the ${excludedFilesText(globs)}, which squeal.config.json excludes,`;
+  return `Squeal does not cover ${what} or any other test suite: run those yourself.`;
 }
 
 /** `entries` as "projects a, b and c", the first `shown` of them, the rest as "and N more". */

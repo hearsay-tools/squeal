@@ -40,6 +40,11 @@ export interface Coverage {
    * never runs (001 D11, task 001-349). Absent or empty: none.
    */
   readonly vitestExcluded?: readonly string[];
+  /**
+   * Policy `vitest.exclude` while Vitest is built: test-file globs Squeal
+   * never lists or runs (004 D7, task 004-81). Absent or empty: none.
+   */
+  readonly vitestExcludedFiles?: readonly string[];
 }
 
 /** A Vitest-only repository whose files are not listed yet: what `PRIMER` says. */
@@ -68,6 +73,7 @@ export function coverageOf(context: HookContext): Coverage {
     vitest,
     vitestConfig: vitest ? vitestConfig(context.root) : null,
     vitestExcluded: vitest ? policy.vitest.excludeProjects : [],
+    vitestExcludedFiles: vitest ? policy.vitest.exclude : [],
     nodeTest: policy.nodeTest.map(fromRoot),
     pytest: policy.pytest.map(fromRoot),
     slow:

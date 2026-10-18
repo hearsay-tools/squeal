@@ -1,6 +1,6 @@
 import { RECORDED_UNKNOWN_TEXT, recordedText, waitsText } from "../retry/index.js";
 import { formatCheck, fullSuiteText, runnerPartText, slowTierText } from "../state/index.js";
-import { excludedProjectsText, plural } from "../text.js";
+import { excludedFilesText, excludedProjectsText, plural } from "../text.js";
 import type {
   DaemonNote,
   EpochMs,
@@ -126,11 +126,21 @@ function slowLine(s: StatusSnapshot, command: string, all: boolean): string[] {
     : [text];
 }
 
-/** Task 001-349: the Vitest projects Squeal never runs, named so the agent runs them itself. */
+/**
+ * Task 001-349: the Vitest projects Squeal never runs, named so the agent
+ * runs them itself; task 004-81: the `vitest.exclude` globs, a line of their own.
+ */
 function excludedLine(s: StatusSnapshot): string[] {
   const entries = s.vitestExcluded ?? [];
-  if (entries.length === 0) return [];
-  return [`Not run: Vitest ${excludedProjectsText(entries).text}, excluded by squeal.config.json`];
+  const globs = s.vitestExcludedFiles ?? [];
+  return [
+    ...(entries.length === 0
+      ? []
+      : [`Not run: Vitest ${excludedProjectsText(entries).text}, excluded by squeal.config.json`]),
+    ...(globs.length === 0
+      ? []
+      : [`Not run: ${excludedFilesText(globs)}, excluded by squeal.config.json`]),
+  ];
 }
 
 /**
