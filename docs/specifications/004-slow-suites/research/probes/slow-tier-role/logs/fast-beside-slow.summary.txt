@@ -1,0 +1,6 @@
+L1 alone n=6 median=1686 p90=1781 max=1852 load 15.88-16.22
+L1 beside-slow n=6 median=1596 p90=1973 max=2950 load 14.15-14.59
+L2 alone n=12 median=26608 p90=28933 max=31435 load 7.41-16.07
+L2 beside-slow n=12 median=25192 p90=32183 max=41005 load 9.73-20.17
+L3 alone n=15 median=1650 p90=1706 max=1877 load 8.90-9.47
+L3 beside-slow n=15 median=1646 p90=1810 max=2001 load 9.21-10.72

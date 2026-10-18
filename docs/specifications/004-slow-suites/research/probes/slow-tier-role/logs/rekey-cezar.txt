@@ -1,0 +1,15 @@
+alias-bin-exports	0 dist .js	0 dist files
+application-update	239 dist .js	248 dist files
+cockpit-ownership	240 dist .js	477 dist files
+cursor-print	267 dist .js	854 dist files
+delegation	267 dist .js	854 dist files
+inline-contract	267 dist .js	701 dist files
+package-cli	267 dist .js	854 dist files
+release	2 dist .js	2 dist files
+release-snapshot	2 dist .js	2 dist files
+serve-port	240 dist .js	240 dist files
+stop-child	0 dist .js	0 dist files
+task-cli	244 dist .js	244 dist files
+tick-writer	0 dist .js	0 dist files
+cz-changed.leaf.txt: 8 of 13 specs opened a changed file: application-update, inline-contract, cockpit-ownership, delegation, task-cli, serve-port, cursor-print, package-cli
+cz-changed.paths.txt: 8 of 13 specs opened a changed file: application-update, inline-contract, cockpit-ownership, delegation, task-cli, serve-port, cursor-print, package-cli

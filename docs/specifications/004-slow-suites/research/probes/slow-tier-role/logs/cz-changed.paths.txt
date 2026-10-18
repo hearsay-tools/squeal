@@ -1,0 +1,5 @@
+dist/ci-wait/controller.d.ts
+dist/paths.d.ts
+dist/paths.js
+dist/paths.js.map
+dist/server/server.d.ts

@@ -1,0 +1,3 @@
+# a2-slow cells by eval run (read 2026-10-18 ~17:25 CEST; run bcdbec still in progress, one cell unfinished)
+20261016T061730Z-07d7ab  squeal 0.1.199 (primer: run --slow --wait before done, every repository)  cells 40  asked run --slow 40  slow current at end 39
+20261018T125937Z-bcdbec  squeal 0.1.215 (primer follows stop.requireSlowSuite, off here)         cells 20  asked run --slow 10  slow current at end 13 of 19 finished

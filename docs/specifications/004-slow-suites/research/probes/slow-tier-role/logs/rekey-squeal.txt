@@ -1,0 +1,5 @@
+specs 17 total traced s 1025
+core-text: changed 25/74 | today 17 specs 1025s | traced 13 specs 1006s | lifecycle,node-test,opencode,pi-update,pi,policy,shipped-plugin,slow-node-test,slow-vitest,stop-gap,stopped,transitions,worktrees
+codex-deny: changed 2/74 | today 17 specs 1025s | traced 5 specs 376s | lifecycle,policy,slow-node-test,slow-vitest,stopped
+pytest-cfg: changed 4/74 | today 17 specs 1025s | traced 12 specs 997s | lifecycle,node-test,opencode,pi,policy,shipped-plugin,slow-node-test,slow-vitest,stop-gap,stopped,transitions,worktrees
+comment: changed 0/74 | today 0 specs 0s | traced 0 specs 0s | 

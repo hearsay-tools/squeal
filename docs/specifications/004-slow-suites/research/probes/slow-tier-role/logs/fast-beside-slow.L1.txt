@@ -1,0 +1,12 @@
+L1 alone wall_ms=1686 vitest=982ms load=16.22
+L1 alone wall_ms=1852 vitest=1.10s load=16.22
+L1 alone wall_ms=1707 vitest=1.01s load=15.88
+L1 alone wall_ms=1601 vitest=936ms load=15.88
+L1 alone wall_ms=1781 vitest=1.04s load=15.88
+L1 alone wall_ms=1607 vitest=941ms load=15.97
+L1 beside-slow wall_ms=1436 vitest=822ms load=14.59
+L1 beside-slow wall_ms=1709 vitest=1.06s load=14.59
+L1 beside-slow wall_ms=2950 vitest=1.80s load=14.59
+L1 beside-slow wall_ms=1973 vitest=1.30s load=14.15
+L1 beside-slow wall_ms=1570 vitest=953ms load=14.15
+L1 beside-slow wall_ms=1596 vitest=915ms load=14.15

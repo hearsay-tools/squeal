@@ -1,0 +1,4 @@
+plugins/claude-code/dist/cli/squeal.mjs
+plugins/codex/dist/cli/squeal.mjs
+plugins/opencode/dist/cli/squeal.mjs
+plugins/pi/dist/cli/squeal.mjs
