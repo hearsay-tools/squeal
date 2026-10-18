@@ -1,12 +1,16 @@
+import { execFileSync } from "node:child_process";
 import { rmSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { skippedLaneVerdict } from "../../src/cli/run-skipped.js";
 import { slowWaitCode } from "../../src/cli/status-wait.js";
 import type { EndedWait } from "../../src/cli/status-wait-lines.js";
-import { skippedReason } from "../../src/core/state/index.js";
+import { readHeader } from "../../src/core/delivery/index.js";
+import { readSlowSkips, skippedReason, slowSkipsMetaKey } from "../../src/core/state/index.js";
+import { readTransaction } from "../../src/core/store/index.js";
+import type { StatusHeader, Store } from "../../src/core/types/index.js";
 import type { Harness } from "../scheduler/helpers.js";
-import { SLOW } from "../scheduler/helpers.js";
+import { openRepoStore, SLOW } from "../scheduler/helpers.js";
 import { waitFor } from "../watcher/helpers.js";
 import {
   line,
@@ -161,6 +165,56 @@ describe(
       expect(h.header().fileLevelCounts?.current).toBe(5);
       for (const state of slowStates(h)) expect(state.validity).toBe("current");
       expect(skipReason(h)).toBeNull();
+    });
+  },
+);
+
+/** What another connection reads of the worktree in one committed state: the skip and the header. */
+function readBeside(reader: Store, h: Harness): { skipped: number; header: StatusHeader } {
+  return readTransaction(reader, () => ({
+    skipped: readSlowSkips(reader, h.worktreeId).length,
+    header: readHeader(reader, h.worktreeId),
+  }));
+}
+
+describe(
+  "a skip and the checks it governs commit together (review wave-8.1, third round)",
+  SLOW,
+  () => {
+    it("never shows another connection the skip beside a skipped file's check still current", async () => {
+      const h = await ranThenUnready(FAILING_UPPER);
+      const commonDir = execFileSync(
+        "git",
+        ["rev-parse", "--path-format=absolute", "--git-common-dir"],
+        {
+          cwd: h.root,
+          encoding: "utf8",
+        },
+      ).trim();
+      const reader = openRepoStore(commonDir);
+      try {
+        const seen: { skipped: number; header: StatusHeader }[] = [];
+        const meta = h.store.meta;
+        const set = meta.set.bind(meta);
+        meta.set = (key, value) => {
+          set(key, value);
+          if (key === slowSkipsMetaKey(h.worktreeId)) seen.push(readBeside(reader, h));
+        };
+        await forcedSkip(h);
+        meta.set = set;
+        expect(seen.length).toBeGreaterThan(0);
+        // Inside the writer's transaction the other connection still reads the state before the skip.
+        for (const { skipped, header } of seen) {
+          expect(skipped).toBe(0);
+          expect(header.fileLevelCounts?.current).toBe(5);
+        }
+        const after = readBeside(reader, h);
+        expect(after.skipped).toBe(1);
+        expect(after.header.fileLevelCounts?.current).toBe(3);
+        expectSkippedNotCurrent(h);
+      } finally {
+        reader.close();
+      }
     });
   },
 );
