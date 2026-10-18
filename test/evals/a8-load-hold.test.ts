@@ -9,7 +9,8 @@ import { SLOW_SESSIONS } from "./slow-sessions.js";
 
 // 006-54: a8-load-hold. Its knob holds the slow tier for host load once the warm-up has run it,
 // and the scenario's measures over sessions graded as a run grades them, in both harnesses
-// (slow-sessions.ts), by a new cell's pilot record and by a regrade of what it kept (001-428).
+// (slow-sessions.ts), by a new cell's pilot record and by a regrade of what it kept (001-428),
+// under `stop.requireSlowSuite` on (policy off: slow-claim.test.ts, 006-91).
 
 const roots: FakeRoot[] = [];
 afterEach(() => {
@@ -75,14 +76,15 @@ describe("a8-load-hold's measures over reference sessions", () => {
     for (const [name, s] of Object.entries(SLOW_SESSIONS))
       it(`${harness}: ${name} ${s.misses.length ? `misses ${s.misses.join(", ")}` : "meets every measure"}`, () => {
         const g = grade(s.steps, harness);
-        const record = pilotRecord({ ...g }, { scenario });
+        const record = pilotRecord({ ...g }, { scenario, slowRequired: true });
         const want = {
           "claim-true": !s.misses.includes("claim-true"),
           "no-false-pass": !s.misses.includes("no-false-pass"),
           "slow-through-squeal": !s.misses.includes("slow-through-squeal"),
         };
         expect(record.measures).toEqual(want);
-        for (const [form, measures] of regradedForms("a8-load-hold", record, g.retained))
+        const on = { variant: "stop-slow" };
+        for (const [form, measures] of regradedForms("a8-load-hold", record, g.retained, on))
           expect(measures, form).toEqual(want);
       });
 });

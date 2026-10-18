@@ -62,7 +62,10 @@ describe("the pilot record", () => {
       ...bash(400, "npx vitest run", VITEST_OUT), // the full suite covers it
       ...claim(500, "The slow ledger test fails.\nTESTS: fail, evidence: the slow test"),
     ]);
-    const p = pilotRecord(g, { declared: scenarioOf("a2-slow")?.measures ?? [] });
+    const p = pilotRecord(g, {
+      declared: scenarioOf("a2-slow")?.measures ?? [],
+      slowRequired: true,
+    });
     expect(p.slowBeforeClaim.map((s) => s.what)).toEqual(["squeal run --slow", "vitest"]);
     expect(p).toMatchObject({ truthPass: false, claim: "fail", ownRuns: 2, turns: 1 });
     // The own full run covering the slow test is context; Squeal's slow tier ran too.
@@ -81,7 +84,10 @@ describe("the pilot record", () => {
       ...bash(200, "squeal status --wait", "Known failures: 0"),
       ...claim(300, "TESTS: pass, evidence: Squeal shows no failures"),
     ]);
-    const p = pilotRecord(g, { declared: scenarioOf("a2-slow")?.measures ?? [] });
+    const p = pilotRecord(g, {
+      declared: scenarioOf("a2-slow")?.measures ?? [],
+      slowRequired: true,
+    });
     expect(p.slowBeforeClaim).toEqual([]);
     expect(p.measures).toEqual({
       "claim-true": false,
