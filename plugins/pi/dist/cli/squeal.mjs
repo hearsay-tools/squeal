@@ -1021,23 +1021,23 @@ var init_package_scans = __esm({
       scanned = 0;
       scanMs = 0;
       /** Whether the package at `dir` ships no file Node could load. */
-      typesOnly(identity2, dir2) {
-        let known2 = this.#typesOnly.get(identity2);
+      typesOnly(identity3, dir2) {
+        let known2 = this.#typesOnly.get(identity3);
         if (known2 === void 0) {
           known2 = !hasRuntimeFile(dir2);
-          this.#typesOnly.set(identity2, known2);
+          this.#typesOnly.set(identity3, known2);
         }
         return known2;
       }
       /** Whether the code of the package at `dir` references an opaque builtin. */
-      opaque(identity2, dir2) {
-        let known2 = this.#opaque.get(identity2);
+      opaque(identity3, dir2) {
+        let known2 = this.#opaque.get(identity3);
         if (known2 === void 0) {
           const start2 = performance.now();
           known2 = referencesOpaque(dir2);
           this.scanMs += performance.now() - start2;
           this.scanned += 1;
-          this.#opaque.set(identity2, known2);
+          this.#opaque.set(identity3, known2);
         }
         return known2;
       }
@@ -1116,9 +1116,9 @@ var init_packages = __esm({
           } else starts.add(location2);
         }
         for (const location2 of starts) {
-          for (const identity2 of this.#closure(location2)) found2.add(identity2);
+          for (const identity3 of this.#closure(location2)) found2.add(identity3);
         }
-        const sorted2 = [...found2].filter((identity2) => !exclude?.has(identity2));
+        const sorted2 = [...found2].filter((identity3) => !exclude?.has(identity3));
         return sorted2.sort(compare);
       }
       /**
@@ -1129,9 +1129,9 @@ var init_packages = __esm({
        * not hold. Scanned once per identity.
        */
       opaque(identities) {
-        return identities.some((identity2) => {
-          const location2 = this.#locations.get(identity2);
-          return location2 !== void 0 && this.scans.opaque(this.#scanId(identity2), join6(this.dir, location2));
+        return identities.some((identity3) => {
+          const location2 = this.#locations.get(identity3);
+          return location2 !== void 0 && this.scans.opaque(this.#scanId(identity3), join6(this.dir, location2));
         });
       }
       /** A worktree-relative directory relative to the install, or `null` when outside it. */
@@ -1168,13 +1168,13 @@ var init_packages = __esm({
             identities.push(`workspace:${location2}`);
             continue;
           }
-          const identity2 = identityOf(location2, entry4);
-          if (this.scans.typesOnly(this.#scanId(identity2), join6(this.dir, location2))) {
+          const identity3 = identityOf(location2, entry4);
+          if (this.scans.typesOnly(this.#scanId(identity3), join6(this.dir, location2))) {
             identities.push(`${location2}@types-only`);
             continue;
           }
-          identities.push(identity2);
-          this.#locations.set(identity2, location2);
+          identities.push(identity3);
+          this.#locations.set(identity3, location2);
           for (const field of EDGES) {
             const names3 = entry4[field];
             if (!isRecord(names3)) continue;
@@ -1189,8 +1189,8 @@ var init_packages = __esm({
         return identities;
       }
       /** An identity is unique within one install; the install's directory makes it unique across. */
-      #scanId(identity2) {
-        return `${this.dir}\0${identity2}`;
+      #scanId(identity3) {
+        return `${this.dir}\0${identity3}`;
       }
     };
   }
@@ -1205,7 +1205,7 @@ function dependencyKeys(installed, environment) {
   }
   const shared = graph.identities(environment.imports);
   const runner = new Set(graph.identities(environment.runner ?? []));
-  if (graph.opaque(shared.filter((identity2) => !runner.has(identity2)))) {
+  if (graph.opaque(shared.filter((identity3) => !runner.has(identity3)))) {
     return { environment: fingerprint, of: () => "" };
   }
   const excluded = new Set(shared);
@@ -2677,39 +2677,57 @@ var init_baseline = __esm({
 function registeredKeysMetaKey(worktreeId) {
   return worktreeMetaKey("registeredKeys", worktreeId);
 }
+function toKeys(value) {
+  const keys = {};
+  if (!isRecord(value)) return keys;
+  for (const [file, key2] of Object.entries(value)) if (typeof key2 === "string") keys[file] = key2;
+  return keys;
+}
 function read2(store, worktreeId) {
   const raw = store.meta.get(registeredKeysMetaKey(worktreeId));
-  if (raw === null) return {};
+  if (raw === null) return EMPTY;
   try {
     const value = JSON.parse(raw);
-    if (!isRecord(value)) return {};
-    const out2 = {};
-    for (const [revision, keys] of Object.entries(value)) {
-      if (!isRecord(keys)) continue;
-      const byFile = {};
-      for (const [file, key2] of Object.entries(keys))
-        if (typeof key2 === "string") byFile[file] = key2;
-      out2[revision] = byFile;
+    if (!isRecord(value) || !Array.isArray(value.snapshots) || !isRecord(value.slots)) return EMPTY;
+    const snapshots = value.snapshots.map(toKeys);
+    const slots = {};
+    for (const [slot2, at2] of Object.entries(value.slots)) {
+      if (typeof at2 === "number" && snapshots[at2] !== void 0) slots[slot2] = at2;
     }
-    return out2;
+    return { snapshots, slots };
   } catch {
-    return {};
+    return EMPTY;
   }
 }
-function recordRegisteredKeys(store, worktreeId, revision, kept2) {
+function recordRegisteredKeys(store, worktreeId, slot2, { resumed, kept: kept2 }) {
   const recorded2 = read2(store, worktreeId);
-  const next = {};
-  for (const [at2, keys] of Object.entries(recorded2)) if (kept2.has(Number(at2))) next[at2] = keys;
-  if (next[revision] === void 0) {
+  const named = /* @__PURE__ */ new Map();
+  for (const [at2, index] of Object.entries(recorded2.slots)) {
+    const keys = recorded2.snapshots[index];
+    if (keys !== void 0 && kept2.has(at2) && (resumed || at2 !== slot2)) named.set(at2, keys);
+  }
+  if (!resumed) {
     const keys = {};
     for (const row of store.testFileKeys.list(worktreeId)) {
       if (row.key !== null) keys[testFileId(row.testFile)] = row.key;
     }
-    next[revision] = keys;
+    named.set(slot2, keys);
   }
-  store.meta.set(registeredKeysMetaKey(worktreeId), JSON.stringify(next));
+  const snapshots = [];
+  const indexOf = /* @__PURE__ */ new Map();
+  const slots = {};
+  for (const [at2, keys] of named) {
+    const id2 = identity(keys);
+    let index = indexOf.get(id2);
+    if (index === void 0) {
+      index = snapshots.push(keys) - 1;
+      indexOf.set(id2, index);
+    }
+    slots[at2] = index;
+  }
+  store.meta.set(registeredKeysMetaKey(worktreeId), JSON.stringify({ snapshots, slots }));
 }
-function beforeEditsFor(store, worktreeId, since) {
+function beforeEditsFor(store, worktreeId, slot2, since) {
   let keys;
   const results2 = /* @__PURE__ */ new Map();
   let none2;
@@ -2736,11 +2754,16 @@ function beforeEditsFor(store, worktreeId, since) {
     return byCheck;
   };
   return (check) => {
-    keys ??= read2(store, worktreeId)[since] ?? {};
+    if (keys === void 0) {
+      const recorded2 = read2(store, worktreeId);
+      const index = recorded2.slots[slot2];
+      keys = (index === void 0 ? void 0 : recorded2.snapshots[index]) ?? {};
+    }
     const key2 = keys[testFileId(testFileOf(check))];
     return (key2 === void 0 ? void 0 : atKey(key2).get(checkIdentity(check))) ?? noneAt();
   };
 }
+var EMPTY, identity;
 var init_before_edits = __esm({
   "src/core/state/before-edits.ts"() {
     "use strict";
@@ -2748,6 +2771,8 @@ var init_before_edits = __esm({
     init_keys();
     init_types();
     init_derive();
+    EMPTY = { snapshots: [], slots: {} };
+    identity = (keys) => JSON.stringify(Object.entries(keys).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0));
   }
 });
 
@@ -4041,6 +4066,55 @@ var init_producers = __esm({
   }
 });
 
+// src/core/state/rerun-first.ts
+function readRerunFirstFailures(store) {
+  const raw = store.meta.get(RERUN_FIRST_META_KEY);
+  if (raw === null) return /* @__PURE__ */ new Map();
+  try {
+    const value = JSON.parse(raw);
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return /* @__PURE__ */ new Map();
+    return new Map(
+      Object.entries(value).filter((e) => isRecord2(e[1]))
+    );
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+function recordRerunFirstFailures(store, testFile, key2, at2) {
+  const failed2 = store.results.byKey(key2, 0).filter(
+    (r) => r.outcome === "fail" && r.summary !== null && r.check.project === testFile.project && r.check.testPath === testFile.path
+  );
+  if (failed2.length === 0) return;
+  const kept2 = new Map(readRerunFirstFailures(store));
+  for (const r of failed2) {
+    const id2 = checkIdentity(r.check);
+    kept2.delete(id2);
+    kept2.set(id2, {
+      key: key2,
+      runId: r.provenance.runId,
+      worktreeId: r.provenance.worktreeId,
+      failure: r.summary,
+      at: at2
+    });
+  }
+  const newest = [...kept2].slice(-RERUN_FIRST_KEPT);
+  store.meta.set(RERUN_FIRST_META_KEY, JSON.stringify(Object.fromEntries(newest)));
+}
+function isRecord2(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value;
+  return typeof v.key === "string" && typeof v.runId === "string" && typeof v.worktreeId === "string" && typeof v.failure === "string" && typeof v.at === "number";
+}
+var RERUN_FIRST_META_KEY, RERUN_FIRST_KEPT;
+var init_rerun_first = __esm({
+  "src/core/state/rerun-first.ts"() {
+    "use strict";
+    init_derive();
+    RERUN_FIRST_META_KEY = "rerun-first-failures";
+    RERUN_FIRST_KEPT = 1024;
+  }
+});
+
 // src/core/state/transitions.ts
 function transitionKind(from, to) {
   const before = from?.outcome ?? null;
@@ -4304,6 +4378,8 @@ __export(state_exports, {
   FAILURE_PRODUCERS_KEPT: () => FAILURE_PRODUCERS_KEPT,
   FLAKY_KEPT: () => FLAKY_KEPT,
   FLAKY_META_KEY: () => FLAKY_META_KEY,
+  RERUN_FIRST_KEPT: () => RERUN_FIRST_KEPT,
+  RERUN_FIRST_META_KEY: () => RERUN_FIRST_META_KEY,
   SUMMARY_MAX_CHARS: () => SUMMARY_MAX_CHARS,
   baselineFindings: () => baselineFindings,
   beforeEditsFor: () => beforeEditsFor,
@@ -4330,12 +4406,14 @@ __export(state_exports, {
   readFailureProducers: () => readFailureProducers,
   readFlakyNotes: () => readFlakyNotes,
   readHeader: () => readHeader,
+  readRerunFirstFailures: () => readRerunFirstFailures,
   readRevisionCommit: () => readRevisionCommit,
   readSlowSkips: () => readSlowSkips,
   readSlowTier: () => readSlowTier,
   recordFailureProducers: () => recordFailureProducers,
   recordFlips: () => recordFlips,
   recordRegisteredKeys: () => recordRegisteredKeys,
+  recordRerunFirstFailures: () => recordRerunFirstFailures,
   registeredKeysMetaKey: () => registeredKeysMetaKey,
   revisionText: () => revisionText,
   runnerPartText: () => runnerPartText,
@@ -4366,6 +4444,7 @@ var init_state3 = __esm({
     init_header();
     init_inherited();
     init_producers();
+    init_rerun_first();
     init_revision_commit();
     init_shown_result();
     init_sink();
@@ -4480,7 +4559,7 @@ function readRetries(store) {
   if (raw === null) return [];
   try {
     const value = JSON.parse(raw);
-    return Array.isArray(value) ? value.filter(isRecord2) : [];
+    return Array.isArray(value) ? value.filter(isRecord3) : [];
   } catch {
     return [];
   }
@@ -4581,7 +4660,7 @@ function endWhere(store, match2, end) {
     return ended2;
   });
 }
-function isRecord2(value) {
+function isRecord3(value) {
   if (typeof value !== "object" || value === null) return false;
   const v = value;
   const ref2 = v.testFile;
@@ -10897,6 +10976,10 @@ function queueReruns(context, ledger, failures) {
 function rememberReruns(context, queued) {
   const entries3 = queued.map(({ file, key: key2 }) => ({ testFile: file.ref, key: key2, pending: true }));
   writeReruns(context.store, context.worktreeId, entries3);
+  for (const { file, key: key2, afterTestsPassed } of queued) {
+    if (afterTestsPassed === true)
+      recordRerunFirstFailures(context.store, file.ref, key2, context.now());
+  }
 }
 function endRerun(context, file) {
   if (!file.rerunPending || file.rerunKey === null) return;
@@ -10927,6 +11010,7 @@ var RERUN_CAP;
 var init_rerun = __esm({
   "src/core/scheduler/rerun.ts"() {
     "use strict";
+    init_state3();
     init_context();
     init_files();
     init_notes2();
@@ -45232,10 +45316,10 @@ function stringLiteral(node) {
   return text2;
 }
 function typeCheckingBodies(node) {
-  if (node.type !== "if_statement" && node.type !== "elif_clause") return EMPTY;
+  if (node.type !== "if_statement" && node.type !== "elif_clause") return EMPTY2;
   const condition = node.childForFieldName("condition")?.text ?? "";
   const body2 = node.childForFieldName("consequence");
-  return body2 && TYPE_CHECKING.test(condition.replace(/\s/g, "")) ? /* @__PURE__ */ new Set([body2.id]) : EMPTY;
+  return body2 && TYPE_CHECKING.test(condition.replace(/\s/g, "")) ? /* @__PURE__ */ new Set([body2.id]) : EMPTY2;
 }
 function pytestPlugins2(root) {
   const names3 = [];
@@ -45269,7 +45353,7 @@ function firstError(root) {
   }
   return root.startPosition.row + 1;
 }
-var parser, loading, TYPE_CHECKING, DOTTED, EMPTY;
+var parser, loading, TYPE_CHECKING, DOTTED, EMPTY2;
 var init_parse3 = __esm({
   "src/runners/pytest/graph/parse.ts"() {
     "use strict";
@@ -45279,7 +45363,7 @@ var init_parse3 = __esm({
     loading = null;
     TYPE_CHECKING = /^(?:[\w.]+\.)?TYPE_CHECKING$/;
     DOTTED = /^[\w.]+$/;
-    EMPTY = /* @__PURE__ */ new Set();
+    EMPTY2 = /* @__PURE__ */ new Set();
   }
 });
 
@@ -48204,6 +48288,7 @@ function changedAfter(store, worktreeId, r, revision) {
 }
 
 // src/core/delivery/attribution.ts
+init_slots();
 function closureChanges(store, consumer, revision) {
   const from = registration(store, consumer);
   const changed = from === null ? null : changedAfter(store, consumer.worktreeId, from, revision);
@@ -48337,6 +48422,8 @@ function report({ store, root, commonDir }, check, includeLogs, session2) {
   const replacedAtKey = replacement(store, knownState2, key2, all, shown);
   const runsDir = storePaths(commonDir).runsDir;
   const flaky = readFlakyNotes(store).get(checkIdentity(check));
+  const first = readRerunFirstFailures(store).get(checkIdentity(check));
+  const rerunFirstFailure = first !== void 0 && first.key === key2 ? { ...first, logDir: store.runs.get(first.runId)?.logDir ?? null } : void 0;
   const latest = store.revisions.latest(worktreeId);
   const revision = latest?.number ?? null;
   const commit = readRevisionCommit(store, worktreeId, latest);
@@ -48367,6 +48454,7 @@ function report({ store, root, commonDir }, check, includeLogs, session2) {
     ...replacedAtKey === void 0 ? {} : { replacedAtKey },
     ...heldFailure2 === void 0 ? {} : { heldFailure: heldFailure2 },
     ...flaky === void 0 ? {} : { flaky },
+    ...rerunFirstFailure === void 0 ? {} : { rerunFirstFailure },
     ...changed === void 0 ? {} : { changedSince: changed },
     ...closure === void 0 ? {} : { changesInClosure: closure }
   };
@@ -48525,7 +48613,8 @@ function knownState(why2, s) {
     ...closureLines(why2),
     ...replacedLine(why2),
     ...heldLine(why2),
-    ...flakyLine(why2)
+    ...flakyLine(why2),
+    ...rerunFirstLines(why2, s)
   ];
 }
 function changedLine(since) {
@@ -48564,6 +48653,15 @@ function flakyLine(why2) {
   return [
     `  ${capitalize(flakyText(note))} (key ${note.key.slice(0, 12)}, ${new Date(note.at).toISOString()})`,
     ...note.failure === void 0 ? [] : [`    the FAIL it replaced: ${note.failure}`]
+  ];
+}
+function rerunFirstLines(why2, s) {
+  const first = why2.rerunFirstFailure;
+  if (first === void 0) return [];
+  if (first.failure === s?.summary || first.failure === why2.flaky?.failure) return [];
+  return [
+    `  First error, before its re-run (run ${first.runId}, key ${first.key.slice(0, 12)}): ${first.failure}`,
+    `    Its log: ${first.logDir ?? "run record pruned"}`
   ];
 }
 function stateLines(why2, s) {
@@ -49278,9 +49376,9 @@ function hookHash(event2, matcher3, handler) {
   if (limit !== void 0 && limit !== DEFAULT_CONTEXT_LIMIT) {
     normalized.additionalContextLimit = limit;
   }
-  const identity2 = { event_name: eventLabel(event2), hooks: [normalized] };
-  if (matcher3 !== void 0 && !NO_MATCHER.has(event2)) identity2.matcher = matcher3;
-  const digest = createHash10("sha256").update(JSON.stringify(canonical(identity2))).digest("hex");
+  const identity3 = { event_name: eventLabel(event2), hooks: [normalized] };
+  if (matcher3 !== void 0 && !NO_MATCHER.has(event2)) identity3.matcher = matcher3;
+  const digest = createHash10("sha256").update(JSON.stringify(canonical(identity3))).digest("hex");
   return `sha256:${digest}`;
 }
 function hookHashes(file, keySource) {
@@ -50101,7 +50199,7 @@ function answer(socket, response) {
 function prepareFrontDesk(worker = null) {
   const script = worker?.script ?? frontDeskScript(new URL(import.meta.url));
   if (script === null) {
-    return { open: (identity2, events) => inThread(identity2, guarded(events)), discard: () => {
+    return { open: (identity3, events) => inThread(identity3, guarded(events)), discard: () => {
     } };
   }
   const execArgv = worker?.execArgv;
@@ -50114,11 +50212,11 @@ function started(worker) {
   worker.on("error", onError);
   worker.on("exit", onExit);
   return {
-    open: (identity2, events) => {
+    open: (identity3, events) => {
       worker.off("error", onError);
       worker.off("exit", onExit);
       if (early[0] !== void 0) return Promise.reject(early[0]);
-      return inWorker(worker, identity2, guarded(events));
+      return inWorker(worker, identity3, guarded(events));
     },
     discard: () => void worker.terminate()
   };
@@ -50168,7 +50266,7 @@ function guarded(events) {
     onError: caught
   };
 }
-async function inWorker(worker, identity2, events) {
+async function inWorker(worker, identity3, events) {
   const post = (message2) => worker.postMessage(message2);
   let listening2 = false;
   let closing = false;
@@ -50248,7 +50346,7 @@ async function inWorker(worker, identity2, events) {
     };
     worker.on("error", died);
     worker.on("exit", (code) => died(new Error(`socket worker exited with code ${code}`)));
-    post({ type: "bind", identity: identity2 });
+    post({ type: "bind", identity: identity3 });
   });
   try {
     await listen;
@@ -50270,16 +50368,16 @@ async function inWorker(worker, identity2, events) {
     }
   };
 }
-async function inThread(identity2, events) {
+async function inThread(identity3, events) {
   let phase = "starting";
   const server = await createDaemonServer(
-    identity2.socketPath,
+    identity3.socketPath,
     createHandlers({
-      worktreeId: identity2.worktreeId,
-      root: identity2.root,
-      squealVersion: identity2.squealVersion,
-      startedAt: identity2.startedAt,
-      token: identity2.token,
+      worktreeId: identity3.worktreeId,
+      root: identity3.root,
+      squealVersion: identity3.squealVersion,
+      startedAt: identity3.startedAt,
+      token: identity3.token,
       phase: () => phase,
       requestFullSuite: events.requestFullSuite,
       requestSlowSuite: events.requestSlowSuite,
@@ -56774,7 +56872,7 @@ function marksOf(pid, token) {
   const foreign = entries3.filter(
     (entry4) => entry4.pgrp === group && entry4.pid !== pid && !descends(entry4)
   );
-  return { pid, token, group, foreign: new Set(foreign.map(identity)) };
+  return { pid, token, group, foreign: new Set(foreign.map(identity2)) };
 }
 function processes() {
   return readdirSync22("/proc").flatMap((name2) => {
@@ -56782,7 +56880,7 @@ function processes() {
     return entry4 === null ? [] : [entry4];
   });
 }
-function identity({ pid, start: start2 }) {
+function identity2({ pid, start: start2 }) {
   return `${pid}:${start2}`;
 }
 async function leftovers(marks, self = process.pid) {
@@ -56802,7 +56900,7 @@ async function leftovers(marks, self = process.pid) {
 }
 function ofForeign(entry4, foreign, byPid) {
   for (let at2 = entry4, hops = 0; at2 !== void 0 && hops < 64; hops++) {
-    if (foreign.has(identity(at2))) return true;
+    if (foreign.has(identity2(at2))) return true;
     at2 = byPid.get(at2.ppid);
   }
   return false;
