@@ -386,7 +386,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -756,7 +756,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -1214,7 +1214,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -1568,7 +1568,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -1939,7 +1939,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -2308,7 +2308,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -2648,7 +2648,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -3018,7 +3018,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -3358,7 +3358,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -3748,7 +3748,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -3804,6 +3804,23 @@
     "a1-break.p0.claude-claude-haiku-5-5.e-medium.r10"
    ],
    "note": "Measures recomputed (spec 006 D10, 006-50) from each cell's kept pilot record and retained timeline under evals/atomic/atomic.json at this revision. a1-break scores D4's `no-rerun-answered` over the whole session, in place of the prototype's `no-rerun-answered-turn2`, which counted `squeal why` and pending or older evidence as an answer and scored only a turn sent once Squeal settled. The old record's `ownRunsAfterAnswered` fields stay in each cell and are read by nothing. `changed` names the cells whose measures changed."
+  },
+  {
+   "by": "006-91",
+   "date": "2026-10-18",
+   "changed": [
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r1",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r2",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r3",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r4",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r5",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r6",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r7",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r8",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r9",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r10"
+   ],
+   "note": "D10 as amended 2026-10-18: under stop.requireSlowSuite off, an unknown claim stating the slow files not current is met and slow-through-squeal is not computed"
   }
  ]
 }
