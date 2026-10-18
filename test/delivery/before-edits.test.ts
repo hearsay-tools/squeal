@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { squealEvidence } from "../../evals/lib/index.mjs";
 import { createDelivery, formatDelta, formatRegistration } from "../../src/core/delivery/index.js";
 import { createStateSink, describeFailure } from "../../src/core/state/index.js";
 import type {
@@ -186,4 +187,26 @@ describe("the closure line on registration (011-18)", () => {
     expect(fresh.knownFailures[0]?.changesInClosure).toBeUndefined();
     expect(formatRegistration(fresh)).not.toContain("its closure reads");
   });
+});
+
+describe("the evals parser on the baseline texts (011-18)", () => {
+  it.each([
+    ["none", undefined, null],
+    ["a fail", "fail", null],
+    ["a pass", "pass", "pass"],
+  ] as const)(
+    "reads a failure with %s before the edits at its revision, current",
+    async (_n, outcome, from) => {
+      if (outcome !== undefined) {
+        store.results.putMany([
+          result(A, outcome, { key: "k-base", worktreeId: OTHER, commit: BASE }),
+        ]);
+      }
+      const { text } = await failAfterEdit();
+      const step = squealEvidence(text, "push");
+      expect(step?.checks).toEqual([
+        expect.objectContaining({ to: "fail", from, observed: 2, validity: "current" }),
+      ]);
+    },
+  );
 });
