@@ -82,3 +82,25 @@ One host, one synthetic repo, three tests, one Vitest project, Vitest 4.1.10, on
 - `src/runners/vitest/moved.ts`, `src/runners/vitest/sources.ts:208-391`, `src/runners/vitest/adapter.ts:440-490`, `src/core/fs/worktree-paths.ts:24`; `git diff squeal--v0.1.199 HEAD -- src/runners/vitest/moved.ts`; commits `88ccff4c`, `aa260ef0`.
 - https://github.com/hearsay-tools/cezarion `main` `463a5bf01`: `package.json`, `packages/cezar/package.json` (`"build": "tsc"`), `packages/web/package.json` (`"pretypecheck": "npm run build -w @wjarka/cezarion"`), read with `gh api repos/hearsay-tools/cezarion/contents/<path>`.
 - Probe: `docs/specifications/011-core/research/probes/issue-33/` (`README.md`, `probe.sh`, `runlog.sh`, `fixture/`).
+
+## Coordinator verification (documentation landing)
+
+`npm ci` installed 196 packages; audit found 0 vulnerabilities. No product or bundle files changed.
+
+```text
+$ npm run lint
+Checked 1427 files in 415ms. No fixes applied.
+$ npm run typecheck
+> tsc --noEmit
+(exit 0)
+$ npm run build
+> tsc -p tsconfig.build.json && npm run build:plugin
+(exit 0; no tracked drift)
+$ node --disable-warning=ExperimentalWarning /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs run --all --wait
+Checkpoint cca30e19-af6a-4620-850f-0ab274e08458 completed at revision 5: 2 known failures: 2 tests; 712 test files, 710 already current, 2 run by the baseline checkpoint 9f433991-f313-47f2-bd03-5125c428ff83 it joined
+Known failures: 2 (2 tests)
+Affected checks: 6769 passed (6057 tests, 712 test files loaded), 0 running, 0 queued, 10 skipped (10 tests)
+(exit 1)
+```
+
+Failures: `test/runners/node-test/run-reads-fidelity.test.ts:116` and `test/runners/vitest/observe-fidelity.test.ts:119`, both recorder-signature cases expecting a pass without observation and receiving a fail. Cause not determined; no product fix or test retry was made by this coordinator. These results are separate from the issue-33 reproduction, which used an isolated fixture. Documentation-only scope preserved; no full-suite passing claim. `git diff origin/main --check` passes after removing one trailing space in the preserved probe script.
