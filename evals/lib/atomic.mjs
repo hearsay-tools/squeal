@@ -10,7 +10,13 @@ import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs
 import { join } from "node:path";
 import { MEASURES } from "./atomic-measures.mjs";
 
-export { MEASURES, measuresOf, pilotRecord, regradeAtomic } from "./atomic-measures.mjs";
+export {
+  MEASURES,
+  measuresOf,
+  pilotRecord,
+  regradeAtomic,
+  SLOW_CHECKS,
+} from "./atomic-measures.mjs";
 
 export const ATOMIC = join(import.meta.dirname, "../atomic");
 const ENDING = join(import.meta.dirname, "../tasks/_ending.txt");

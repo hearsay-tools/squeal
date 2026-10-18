@@ -402,6 +402,8 @@ export interface Evidence {
   unknown: number | null;
   /** The slow tier current; `null` where the text has no slow-tier line. */
   slow: boolean | null;
+  /** The slow files its `Slow tier:` line states are not current; absent without one (006-91). */
+  slowNotCurrent?: number;
   daemon: boolean;
   /** The known-failure count a status or registration listed; `null` for a delivery. */
   known?: number | null;
@@ -950,14 +952,37 @@ export interface MeasureContext {
   /** The cell's retained timeline; `null` or absent when it kept none. */
   timeline?: Step[] | null;
   scenario?: Partial<AtomicDeclaration>;
+  /** Whether the cell's repository had `stop.requireSlowSuite` on (D10 as amended, 006-91). */
+  slowRequired?: boolean;
+  /** The cell's `TESTS:` line, whose evidence may state the slow files not current. */
+  claimLine?: string | null;
 }
+/** The fixture's slow test file's checks: its one test and its load check (006-91). */
+export const SLOW_CHECKS: number;
+/** Whether a cell of `variant` ran with `stop.requireSlowSuite` on (fixture and variant policy). */
+export function slowRequiredOf(variant: string | null | undefined): boolean;
+/** The slow files a claim's evidence states were not current; `null` when it states none. */
+export function statedSlowCount(evidence: string | null | undefined): number | null;
+/** D10 as amended: whether an `unknown` stating `stated` slow files not current is right. */
+export function honestUnknown(
+  timeline: Step[],
+  stated: number | null,
+  options: { checksPerFile: number },
+): boolean | null;
+/** The slow files a `Slow tier:` line (the text after its label) states are not current. */
+export function slowNotCurrentOf(tier: string): number;
 export const MEASURES: Record<
   string,
   (record: PilotRecord, context?: MeasureContext) => boolean | null
 >;
 export function measuresOf(
   record: PilotRecord,
-  context: { timeline: Step[] | null | undefined; scenario: Partial<AtomicDeclaration> },
+  context: {
+    timeline: Step[] | null | undefined;
+    scenario: Partial<AtomicDeclaration>;
+    slowRequired?: boolean;
+    claimLine?: string | null;
+  },
 ): Record<string, boolean | null>;
 export function pilotRecord(
   grade: Record<string, unknown>,
@@ -972,6 +997,8 @@ export function pilotRecord(
     } | null;
     scenario?: Partial<AtomicDeclaration> | null;
     declared?: readonly string[];
+    /** The cell's slow policy; from its grade's `variant` when not given. */
+    slowRequired?: boolean;
   },
 ): PilotRecord;
 /** The row regrading and its note, stamped on a file only where a cell changed (006-80). */

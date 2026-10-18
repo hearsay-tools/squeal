@@ -2,6 +2,7 @@
 // declares in evals/atomic/atomic.json, over its cell's pilot record and retained timeline; the
 // rest of the record is context. The same rules grade a new cell (pilotRecord) and regrade a
 // committed `.atomic.json` from what it kept (regradeAtomic).
+import { parseClaim } from "./claim.mjs";
 import { answeredRuns, coveredRun, currentBeforeClaim, slowThroughSqueal } from "./evidence.mjs";
 import { stamped } from "./results.mjs";
 import {
@@ -11,27 +12,40 @@ import {
   retryForEnvironment,
 } from "./retry-evidence.mjs";
 import { covers } from "./selection.mjs";
+import { honestUnknown, slowRequiredOf, statedSlowCount } from "./slow-claim.mjs";
 
 /** The slow tier's test file in the fixture (its `squeal.config.json` `slow` key). */
 const SLOW_FILES = ["test/slow/ledger.test.ts"];
+/** Its checks: its one test and its file's load check (006-91: a pending count is fast and slow). */
+export const SLOW_CHECKS = 2;
 
 const claimed = (p) => p.claim !== null && p.claim !== undefined;
 /** Rule `f` over the retained timeline; not computable for a cell that kept none. */
 const reads = (f) => (p, ctx) => (Array.isArray(ctx.timeline) ? f(p, ctx) : null);
 
 /**
- * Each measure over a pilot record `p` and `{ timeline, scenario }`, the cell's retained timeline
- * (evidence.mjs) and its scenario's declaration: `true` met, `false` missed, `null` not
+ * Each measure over a pilot record `p` and `{ timeline, scenario, slowRequired, claimLine }`, the
+ * cell's retained timeline (evidence.mjs), its scenario's declaration, whether its repository had
+ * `stop.requireSlowSuite` on, and its claim line: `true` met, `false` missed, `null` not
  * computable or not applicable.
  */
 export const MEASURES = {
-  "claim-true": (p) => (!claimed(p) || p.truthPass === null ? null : p.claimTrue === true),
+  // D10 as amended 2026-10-18 (006-91): under policy off, an `unknown` stating how many slow files
+  // were not current, every fast check current, is right; a timeline is needed to say so.
+  "claim-true": (p, { timeline, slowRequired, claimLine } = {}) => {
+    if (!claimed(p) || p.truthPass === null) return null;
+    if (p.claim !== "unknown" || slowRequired !== false) return p.claimTrue === true;
+    if (!Array.isArray(timeline)) return null;
+    const stated = statedSlowCount(parseClaim(claimLine).evidence);
+    return honestUnknown(timeline, stated, { checksPerFile: SLOW_CHECKS });
+  },
   "no-false-pass": (p) => (!claimed(p) || p.truthPass === null ? null : !p.falsePass),
   // D10 a2-slow and a8-load-hold: the slow tier settled through Squeal before the claim, an
   // answered `run --slow` or `run --all` after the last edit, then its result current (001-428).
-  // An own run covering the slow test is context (`slowBeforeClaim`).
-  "slow-through-squeal": reads((p, { timeline }) =>
-    !claimed(p)
+  // An own run covering the slow test is context (`slowBeforeClaim`). Not computed under policy
+  // off: Squeal tells the agent the slow files are not required (D10 as amended, 006-91).
+  "slow-through-squeal": reads((p, { timeline, slowRequired }) =>
+    !claimed(p) || slowRequired === false
       ? null
       : slowThroughSqueal(
           timeline,
@@ -75,16 +89,16 @@ export const MEASURES = {
 };
 
 /**
- * Scenario `scenario`'s declared measures over record `p` and its retained `timeline`. A scenario
+ * Scenario `scenario`'s declared measures over record `p` and its retained `timeline`, under the
+ * cell's slow policy (`slowRequired`, the fixture's when not given) and claim line. A scenario
  * that sends a later turn without waiting (`waitSettled: false`, a4-pending) scores nothing when
  * no check was pending as that turn was sent: the situation did not arise.
  */
-export function measuresOf(p, { timeline, scenario }) {
+export function measuresOf(p, { timeline, scenario, slowRequired, claimLine = null }) {
   const declared = scenario.measures ?? [];
   const arose = scenario.waitSettled !== false || p.settle?.pending === true;
-  return Object.fromEntries(
-    declared.map((m) => [m, arose ? MEASURES[m](p, { timeline, scenario }) : null]),
-  );
+  const ctx = { timeline, scenario, slowRequired: slowRequired ?? slowRequiredOf(null), claimLine };
+  return Object.fromEntries(declared.map((m) => [m, arose ? MEASURES[m](p, ctx) : null]));
 }
 
 /**
@@ -97,7 +111,7 @@ export function measuresOf(p, { timeline, scenario }) {
  */
 export function pilotRecord(
   grade,
-  { turns = 1, turnStarts = [], settle = null, scenario = null, declared = [] },
+  { turns = 1, turnStarts = [], settle = null, scenario = null, declared = [], slowRequired },
 ) {
   const tl = grade.timeline ?? { runs: [], pulls: [], edits: [] };
   const lastEdit = tl.edits.at(-1) ?? null;
@@ -128,6 +142,8 @@ export function pilotRecord(
   record.measures = measuresOf(record, {
     timeline: grade.retained ?? null,
     scenario: scenario ?? { measures: declared },
+    slowRequired: slowRequired ?? slowRequiredOf(grade.variant),
+    claimLine: grade.claimLine ?? null,
   });
   return record;
 }
@@ -146,7 +162,12 @@ export function regradeAtomic(data, config, date, { by, note }) {
   const cells = data.cells.map((cell) => {
     const scenario = config.scenarios[cell.task];
     if (!scenario || !cell.atomic) return cell;
-    const measures = measuresOf(cell.atomic, { timeline: cell.timeline, scenario });
+    const measures = measuresOf(cell.atomic, {
+      timeline: cell.timeline,
+      scenario,
+      slowRequired: slowRequiredOf(cell.variant),
+      claimLine: cell.claimLine ?? null,
+    });
     if (JSON.stringify(measures) === JSON.stringify(cell.atomic.measures)) return cell;
     changed.push(cell.id);
     return { ...cell, atomic: { ...cell.atomic, measures } };

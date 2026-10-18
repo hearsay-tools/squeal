@@ -142,6 +142,7 @@ export function squealEvidence(text, from, failures = 0) {
     stale: counts?.stale ?? null,
     unknown: counts?.unknown ?? null,
     slow,
+    ...(tier === undefined ? {} : { slowNotCurrent: slowNotCurrentOf(tier) }),
     ...(counts?.news ? { news: true } : {}),
     daemon,
     known: listed ? Number(listed[1]) : null,
@@ -151,6 +152,18 @@ export function squealEvidence(text, from, failures = 0) {
   };
   const before = typeof failures === "number" ? { named: [], unnamed: failures } : failures;
   return settled(step, failingAfter(before, step));
+}
+
+/**
+ * How many slow files the `Slow tier:` line `tier` (the text after the label) states are not
+ * current: its files less those current, a current part whose sources changed since counting as
+ * not current (spec 004 D8's wording); 0 for a tier with no slow files listed (006-91).
+ */
+export function slowNotCurrentOf(tier) {
+  const files = Number(/^(\d+) test files?;/.exec(tier)?.[1] ?? 0);
+  const part = tier.split("; ").find((p) => /^\d+ current\b/.test(p));
+  const current = part === undefined || /sources changed since/.test(part) ? 0 : parseInt(part, 10);
+  return Math.max(0, files - current);
 }
 
 /** `step` with what it says: its current files, its known failures and its verdict. */
