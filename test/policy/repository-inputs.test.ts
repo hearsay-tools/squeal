@@ -124,14 +124,6 @@ describe("policy: this repository's squeal.config.json", () => {
     expect(slow).toEqual(testFiles.filter((path) => E2E.test(path)));
   });
 
-  it.each(["plugins/claude-code/**", "plugins/codex/**", "plugins/opencode/**", "plugins/pi/**"])(
-    "keys the e2e tests on %s",
-    (glob) => {
-      const { policy } = loadPolicy(REPO_ROOT);
-      expect(policy.inputs["test/e2e/*.test.ts"]).toContain(glob);
-    },
-  );
-
   it("re-keys exactly plugin.test.ts and the e2e tests when a bundle changes", async () => {
     const plugin = PLUGIN_TESTS(testFiles);
     expect(plugin).toContain("test/harness/plugin.test.ts");
@@ -151,7 +143,8 @@ describe("policy: this repository's squeal.config.json", () => {
   /*
    * Task 001-399: the OpenCode and Pi tests build their bundles from
    * `src/harness/*` in an esbuild child process and read the committed
-   * package, neither of which tracing follows.
+   * package, neither of which tracing follows. The e2e tests open both
+   * packages too (task 004-76).
    */
   it.each([
     ["opencode", "plugins/opencode/dist/plugin.mjs"],
