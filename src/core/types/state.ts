@@ -95,6 +95,12 @@ export interface FlakyNote {
   /** Worktree whose run stored the result that replaced it. */
   readonly toWorktreeId: WorktreeId;
   readonly at: EpochMs;
+  /**
+   * The replaced `fail`'s summary, so `squeal why` keeps the first error once
+   * a re-run passed (spec 011 C5 as amended 2026-10-18, gh-20, task 011-19).
+   * Absent for `pass -> fail` and in notes recorded before 011-19.
+   */
+  readonly failure?: string;
 }
 
 /**
