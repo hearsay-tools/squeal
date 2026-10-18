@@ -44,3 +44,8 @@ Worker, 2026-10-17, against D7 and D8 as amended and accepted by the human that 
 - **Scheduler-side validity** (`src/core/scheduler/files.ts` `classify(file)`) still reads a skipped file current. Every path that should run it forces it (`recheck`, `revised`), and nothing found so far completes a full checkpoint from that reading other than the bootstrap path above.
 - **Red check on 1fb4855d:** the two re-review regressions in `test/slow/precondition-history.test.ts` fail there with the reviewer's assertions (`expected 5 to be 3`, `expected true to be false`); `test/state/sink-slow-skip.test.ts` is the unit form.
 - KEY_FORMAT_VERSION 11 re-pinned in place again.
+
+## Repair 3 (third round `wave-8.1.md`, 2026-10-18, coordinator)
+
+- `SlowSkips.#skip`, `#lift` and `#requeue` each run inside one `store.transaction`; the ledger's own commit becomes a savepoint in it. The skip row, the dequeued key rows, any checkpoint it ends and the sink's reclassification commit together.
+- Regression (`test/slow/precondition-history.test.ts`, "commit together"): a second connection reads at the skip row's write, inside the writer's transaction, and sees the state before the skip; after the commit it sees the skip with three file checks current. Red on fc0b4ef8: the reader saw the skip at the write (`expected 1 to be +0`).
