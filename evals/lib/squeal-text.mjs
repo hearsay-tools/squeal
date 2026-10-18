@@ -157,12 +157,15 @@ export function squealEvidence(text, from, failures = 0) {
 /**
  * How many slow files the `Slow tier:` line `tier` (the text after the label) states are not
  * current: its files less those current, a current part whose sources changed since counting as
- * not current (spec 004 D8's wording); 0 for a tier with no slow files listed (006-91).
+ * not current (spec 004 D8's wording, in either version); 0 for a tier with no slow files listed (006-91).
  */
 export function slowNotCurrentOf(tier) {
   const files = Number(/^(\d+) test files?;/.exec(tier)?.[1] ?? 0);
   const part = tier.split("; ").find((p) => /^\d+ current\b/.test(p));
-  const current = part === undefined || /sources changed since/.test(part) ? 0 : parseInt(part, 10);
+  // From 0.1.218 the clause follows its own "; ": "...; the source changes since are not in it,
+  // so these files have not tested them" (row 004-76); before, ", sources changed since".
+  const stale = /sources changed since/.test(part ?? "") || /have not tested/.test(tier);
+  const current = part === undefined || stale ? 0 : parseInt(part, 10);
   return Math.max(0, files - current);
 }
 
