@@ -1418,6 +1418,19 @@ function skippedReason(tier) {
   return tier?.skipped ?? null;
 }
 
+// src/core/status/checks.ts
+function splitByValidity(failures) {
+  return {
+    current: failures.filter((f) => f.validity === "current"),
+    pending: failures.filter((f) => f.validity === "pending"),
+    stale: failures.filter((f) => f.validity !== "current" && f.validity !== "pending")
+  };
+}
+function knownFailureCounts(failures) {
+  const { current: current2, pending, stale } = splitByValidity(failures);
+  return { current: current2.length, pending: pending.length, stale: stale.length };
+}
+
 // src/core/delivery/consumer-version.ts
 function versionMetaKey(worktreeId) {
   return worktreeMetaKey("consumerVersion", worktreeId);
@@ -1495,7 +1508,8 @@ function entry2(records) {
   const testFile = first.testFile;
   return {
     testFile,
-    reason: records.some((r) => r.reason === "environment") ? "environment" : "load",
+    // A run asked for a file with no result starts at once too (011 C5, gh-36).
+    reason: records.some((r) => r.reason === "environment" || r.noResult === true) ? "environment" : "load",
     askedAt: first.askedAt,
     claimedBy: records.find((r) => r.claim !== null)?.claim?.worktreeId ?? null,
     requests: records.length
@@ -1504,7 +1518,7 @@ function entry2(records) {
 
 // src/core/retry/recorded.ts
 function retryFactOf(records) {
-  const newest = records.at(-1);
+  const newest = records.filter((r) => r.noResult !== true).at(-1);
   if (newest === void 0) return void 0;
   return { reason: newest.reason, outcome: newest.end?.outcome ?? "pending" };
 }
@@ -4096,6 +4110,7 @@ function snapshot(store, worktreeId, root, now) {
     )
   );
   const runs = openRuns(store, worktree, daemon);
+  const knownFailures = withRecorded(store, worktreeId, states, header.revision);
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
@@ -4104,8 +4119,8 @@ function snapshot(store, worktreeId, root, now) {
     ...header,
     ...statusIdentity(root, revision, header.commit, daemon),
     daemon,
-    // Task 001-404: each failure says how old its run is and the load it ran under.
-    knownFailures: withRecorded(store, worktreeId, states, header.revision),
+    knownFailures,
+    knownFailureCounts: knownFailureCounts(knownFailures),
     inherited: inheritedSources(store, states),
     breakdown: breakdown(states, keys, openFiles(runs)),
     closureMethod: CLOSURE_METHOD,
@@ -4820,7 +4835,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.215";
+  if (true) return "0.1.216";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

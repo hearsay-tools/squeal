@@ -1619,6 +1619,23 @@ function failureCountText(checks) {
   if (checks.length === 0) return "0";
   return `${checks.length} (${checkPartsText(countChecks(checks), "that did not load")})`;
 }
+function splitByValidity(failures) {
+  return {
+    current: failures.filter((f) => f.validity === "current"),
+    pending: failures.filter((f) => f.validity === "pending"),
+    stale: failures.filter((f) => f.validity !== "current" && f.validity !== "pending")
+  };
+}
+function knownFailureCounts(failures) {
+  const { current: current2, pending, stale } = splitByValidity(failures);
+  return { current: current2.length, pending: pending.length, stale: stale.length };
+}
+function earlierFailuresLines({ pending, stale }) {
+  if (pending + stale === 0) return [];
+  return [
+    `Earlier failures: ${pending} pending rerun, ${stale} stale (not counted until a rerun fails)`
+  ];
+}
 
 // src/core/delivery/collapse.ts
 function checkName(check) {
@@ -1709,7 +1726,8 @@ function entry2(records) {
   const testFile = first.testFile;
   return {
     testFile,
-    reason: records.some((r) => r.reason === "environment") ? "environment" : "load",
+    // A run asked for a file with no result starts at once too (011 C5, gh-36).
+    reason: records.some((r) => r.reason === "environment" || r.noResult === true) ? "environment" : "load",
     askedAt: first.askedAt,
     claimedBy: records.find((r) => r.claim !== null)?.claim?.worktreeId ?? null,
     requests: records.length
@@ -1718,7 +1736,7 @@ function entry2(records) {
 
 // src/core/retry/recorded.ts
 function retryFactOf(records) {
-  const newest = records.at(-1);
+  const newest = records.filter((r) => r.noResult !== true).at(-1);
   if (newest === void 0) return void 0;
   return { reason: newest.reason, outcome: newest.end?.outcome ?? "pending" };
 }
@@ -4447,6 +4465,7 @@ function snapshot(store, worktreeId, root, now) {
     )
   );
   const runs = openRuns(store, worktree, daemon);
+  const knownFailures = withRecorded(store, worktreeId, states, header.revision);
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
@@ -4455,8 +4474,8 @@ function snapshot(store, worktreeId, root, now) {
     ...header,
     ...statusIdentity(root, revision, header.commit, daemon),
     daemon,
-    // Task 001-404: each failure says how old its run is and the load it ran under.
-    knownFailures: withRecorded(store, worktreeId, states, header.revision),
+    knownFailures,
+    knownFailureCounts: knownFailureCounts(knownFailures),
     inherited: inheritedSources(store, states),
     breakdown: breakdown(states, keys, openFiles(runs)),
     closureMethod: CLOSURE_METHOD,
@@ -5248,7 +5267,9 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
     ...headerLines(header, command),
     // Spec 001 D4 (task 001-176): said once, at registration; status lists it among the notes.
     ...header.optimizerOff === void 0 ? [] : [header.optimizerOff],
-    `Known failures: ${failureCountText(knownFailures.map((f) => f.check))}`
+    // Spec 011 C6 as amended (gh-34): status's count and words.
+    `Known failures: ${failureCountText(splitByValidity(knownFailures).current.map((f) => f.check))}`,
+    ...earlierFailuresLines(knownFailureCounts(knownFailures))
   ].join("\n");
   const blocks2 = knownFailures.map(
     (f) => block(
@@ -5552,7 +5573,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.215";
+  if (true) return "0.1.216";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
