@@ -1,0 +1,112 @@
+== 0.1.199 at 7.93 load, 24 CPUs, root /tmp/issue36.K5wi/repo
+$ squeal start
+Squeal daemon spawned for /tmp/issue36.K5wi/repo
+
+Revision: 0
+Known failures: 0
+Affected checks: none counted; the daemon has not listed this worktree's test files yet
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+
+Worktree: /tmp/issue36.K5wi/repo (HEAD c006482, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 0 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+(exit 0)
+$ squeal run --all --wait
+Checkpoint 8cd5f70e-a7c2-476c-9ad7-114f9d12a86b completed at revision 0: no known failures; 2 test files, 0 already current, 2 run by the baseline checkpoint 5700bf67-33c9-4505-a021-14e220b5ecf1 it joined
+Checkpoint 8cd5f70e-a7c2-476c-9ad7-114f9d12a86b started at revision 0: 2 test files to run, 0 already current, joining the baseline checkpoint 5700bf67-33c9-4505-a021-14e220b5ecf1 already running them (0 of 2 test files done); it ends when that one ends
+
+Revision: 0
+Known failures: 0
+Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+
+Worktree: /tmp/issue36.K5wi/repo (HEAD c006482, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 3 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+  2026-10-18T09:08:34.935Z, revision 0: squeal: dist/lib.js was written while tests/a.test.ts, tests/ok.test.ts ran and ended as it was; the run is withheld and runs once more (tasks 001-168, 007-30)
+(run --all --wait exit 0)
+touches left: 0
+$ squeal status
+Revision: 0
+Known failures: 0
+Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+
+Worktree: /tmp/issue36.K5wi/repo (HEAD c006482, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 3 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+  2026-10-18T09:08:34.935Z, revision 0: squeal: dist/lib.js was written while tests/a.test.ts, tests/ok.test.ts ran and ended as it was; the run is withheld and runs once more (tasks 001-168, 007-30)
+(exit 0)
+$ squeal retry tests/a.test.ts --reason environment
+Not retried: tests/a.test.ts has no known failure in this worktree.
+(exit 1)
+$ squeal retry tests/a.test.ts --reason load
+Not retried: tests/a.test.ts has no known failure in this worktree.
+(exit 1)
+$ squeal status --wait 20000 tests/a.test.ts
+Named test files at revision 0: no known failures; 1 test file, each with a current result, after 0.5 s
+Selected: tests/a.test.ts
+
+Revision: 0
+Known failures: 0
+Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+
+Worktree: /tmp/issue36.K5wi/repo (HEAD c006482, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 3 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+  2026-10-18T09:08:34.935Z, revision 0: squeal: dist/lib.js was written while tests/a.test.ts, tests/ok.test.ts ran and ended as it was; the run is withheld and runs once more (tasks 001-168, 007-30)
+(exit 0)
+$ squeal run --all --wait
+Checkpoint 8944d633-064d-4100-a6b2-b56bdbbf7871 completed at revision 0: no known failures; 2 test files, 2 already current, 0 run now
+Checkpoint 8944d633-064d-4100-a6b2-b56bdbbf7871 started at revision 0: 0 test files to run, 2 already current
+
+Revision: 0
+Known failures: 0
+Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+
+Worktree: /tmp/issue36.K5wi/repo (HEAD c006482, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 4 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+  2026-10-18T09:08:34.935Z, revision 0: squeal: dist/lib.js was written while tests/a.test.ts, tests/ok.test.ts ran and ended as it was; the run is withheld and runs once more (tasks 001-168, 007-30)
+(run --all --wait exit 0)
+$ squeal status
+Revision: 0
+Known failures: 0
+Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+
+Worktree: /tmp/issue36.K5wi/repo (HEAD c006482, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 4 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+  2026-10-18T09:08:34.935Z, revision 0: squeal: dist/lib.js was written while tests/a.test.ts, tests/ok.test.ts ran and ended as it was; the run is withheld and runs once more (tasks 001-168, 007-30)
+(exit 0)
+$ squeal stop
+Squeal daemon stopped for /tmp/issue36.K5wi/repo
+(exit 0)
+== probe root /tmp/issue36.K5wi

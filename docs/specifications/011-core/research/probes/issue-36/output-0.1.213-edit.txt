@@ -1,0 +1,144 @@
+== 0.1.213 at 9.66 load, 24 CPUs, root /tmp/issue36.fUac/repo
+$ squeal start
+Squeal daemon spawned for /tmp/issue36.fUac/repo
+
+Revision: 0
+Known failures: 0
+Affected checks: none counted; the daemon has not listed this worktree's test files yet
+Discovery: the daemon is still listing this worktree's test files (`squeal status --wait 60000` waits for it)
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+
+Worktree: /tmp/issue36.fUac/repo (HEAD 12f0c4e, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 0 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+(exit 0)
+$ squeal run --all --wait
+Checkpoint 963d4a69-4411-4339-9e4a-6d47e69ed70a completed at revision 0: no known failures; 3 test files, 0 already current, 3 run by the baseline checkpoint f95da0dd-137c-4392-a6b2-cb5368cf2509 it joined
+Checkpoint 963d4a69-4411-4339-9e4a-6d47e69ed70a started at revision 0: 3 test files to run, 0 already current, joining the baseline checkpoint f95da0dd-137c-4392-a6b2-cb5368cf2509 already running them (0 of 3 test files done); it ends when that one ends
+
+Revision: 0
+Known failures: 0
+Affected checks: 6 passed (3 tests, 3 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+
+Worktree: /tmp/issue36.fUac/repo (HEAD 12f0c4e, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+(run --all --wait exit 0)
+$ echo // edit >> tests/a.test.ts
+$ squeal status --wait 60000
+Revision: 1 · 12f0c4ef + 1, dirty
+Known failures: 0
+Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 0 queued, 2 unknown (1 test, 1 test file loaded)
+Idle: nothing is running and no run is open; 1 test file without a result, none queued (`squeal run --all --wait` runs every test file without a result and waits)
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+
+Worktree: /tmp/issue36.fUac/repo (HEAD 12f0c4e, dirty at revision 1)
+Daemon: running, last heartbeat 5 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Test files without a result: 1 (nothing current at their inputs, none queued)
+  tests/a.test.ts: no result: vitest: vitest adapter: the run may have executed bytes no check key names, since dist/lib.js was written during this run and ended as it was (task 001-159)
+squeal: the run may have executed bytes no check key names, since dist/lib.js was written while this run was in flight and ended as it was (...
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-18T09:09:24.023Z, revision 1: squeal: dist/lib.js was written while tests/a.test.ts ran and ended as it was; the run is withheld and runs once more (tasks 001-168, 007-30)
+  2026-10-18T09:09:25.785Z, revision 1: squeal: dist/lib.js was written during 2 runs in a row of tests/a.test.ts and ended as it was; tests/a.test.ts stays unknown until an input changes, so write it outside the worktree or under an ignored path, or declare it (tasks 001-168, 007-30)
+
+Returned on news: 2 transitions in the 1 test file the edits since revision 1 re-keyed, at revision 1 after 1.8 s. Worktree: known failures 0; checks 0 running, 0 queued
+(exit 0)
+touches left: 3
+$ squeal status
+Revision: 1 · 12f0c4ef + 1, dirty
+Known failures: 0
+Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 0 queued, 2 unknown (1 test, 1 test file loaded)
+Idle: nothing is running and no run is open; 1 test file without a result, none queued (`squeal run --all --wait` runs every test file without a result and waits)
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+
+Worktree: /tmp/issue36.fUac/repo (HEAD 12f0c4e, dirty at revision 1)
+Daemon: running, last heartbeat 5 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Test files without a result: 1 (nothing current at their inputs, none queued)
+  tests/a.test.ts: no result: vitest: vitest adapter: the run may have executed bytes no check key names, since dist/lib.js was written during this run and ended as it was (task 001-159)
+squeal: the run may have executed bytes no check key names, since dist/lib.js was written while this run was in flight and ended as it was (...
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-18T09:09:24.023Z, revision 1: squeal: dist/lib.js was written while tests/a.test.ts ran and ended as it was; the run is withheld and runs once more (tasks 001-168, 007-30)
+  2026-10-18T09:09:25.785Z, revision 1: squeal: dist/lib.js was written during 2 runs in a row of tests/a.test.ts and ended as it was; tests/a.test.ts stays unknown until an input changes, so write it outside the worktree or under an ignored path, or declare it (tasks 001-168, 007-30)
+(exit 0)
+$ squeal retry tests/a.test.ts --reason environment
+Not retried: tests/a.test.ts has no known failure in this worktree.
+(exit 1)
+$ squeal retry tests/a.test.ts --reason load
+Not retried: tests/a.test.ts has no known failure in this worktree.
+(exit 1)
+$ squeal status --wait 20000 tests/a.test.ts
+Revision: 1 · 12f0c4ef + 1, dirty
+Known failures: 0
+Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 0 queued, 2 unknown (1 test, 1 test file loaded)
+Idle: nothing is running and no run is open; 1 test file without a result, none queued (`squeal run --all --wait` runs every test file without a result and waits)
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+
+Worktree: /tmp/issue36.fUac/repo (HEAD 12f0c4e, dirty at revision 1)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Test files without a result: 1 (nothing current at their inputs, none queued)
+  tests/a.test.ts: no result: vitest: vitest adapter: the run may have executed bytes no check key names, since dist/lib.js was written during this run and ended as it was (task 001-159)
+squeal: the run may have executed bytes no check key names, since dist/lib.js was written while this run was in flight and ended as it was (...
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-18T09:09:24.023Z, revision 1: squeal: dist/lib.js was written while tests/a.test.ts ran and ended as it was; the run is withheld and runs once more (tasks 001-168, 007-30)
+  2026-10-18T09:09:25.785Z, revision 1: squeal: dist/lib.js was written during 2 runs in a row of tests/a.test.ts and ended as it was; tests/a.test.ts stays unknown until an input changes, so write it outside the worktree or under an ignored path, or declare it (tasks 001-168, 007-30)
+
+Selected: tests/a.test.ts
+Unknown (1): tests/a.test.ts: no result: vitest: vitest adapter: the run may have executed bytes no check key names, since dist/lib.js was written during this run and ended as it was (task 001-159)
+squeal: the run may have executed bytes no check key names, since dist/lib.js was written while this run was in flight and ended as it was (...
+Named test files have no verdict: 1 test file without a current result at revision 1 (1 unknown). Worktree: known failures 0; checks 0 running, 0 queued
+(exit 3)
+$ squeal run --all --wait
+Checkpoint 8d1f0d7a-a8cf-48c9-94ef-9b12e3831bbe completed at revision 1: no known failures; 3 test files, 2 already current, 1 run now
+Checkpoint 8d1f0d7a-a8cf-48c9-94ef-9b12e3831bbe started at revision 1: 1 test file to run, 2 already current
+
+Revision: 1 · 12f0c4ef + 1, dirty
+Known failures: 0
+Affected checks: 6 passed (3 tests, 3 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 1
+
+Worktree: /tmp/issue36.fUac/repo (HEAD 12f0c4e, dirty at revision 1)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-18T09:09:24.023Z, revision 1: squeal: dist/lib.js was written while tests/a.test.ts ran and ended as it was; the run is withheld and runs once more (tasks 001-168, 007-30)
+  2026-10-18T09:09:25.785Z, revision 1: squeal: dist/lib.js was written during 2 runs in a row of tests/a.test.ts and ended as it was; tests/a.test.ts stays unknown until an input changes, so write it outside the worktree or under an ignored path, or declare it (tasks 001-168, 007-30)
+(run --all --wait exit 0)
+$ squeal status
+Revision: 1 · 12f0c4ef + 1, dirty
+Known failures: 0
+Affected checks: 6 passed (3 tests, 3 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 1
+
+Worktree: /tmp/issue36.fUac/repo (HEAD 12f0c4e, dirty at revision 1)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-18T09:09:24.023Z, revision 1: squeal: dist/lib.js was written while tests/a.test.ts ran and ended as it was; the run is withheld and runs once more (tasks 001-168, 007-30)
+  2026-10-18T09:09:25.785Z, revision 1: squeal: dist/lib.js was written during 2 runs in a row of tests/a.test.ts and ended as it was; tests/a.test.ts stays unknown until an input changes, so write it outside the worktree or under an ignored path, or declare it (tasks 001-168, 007-30)
+(exit 0)
+$ squeal stop
+Squeal daemon stopped for /tmp/issue36.fUac/repo
+(exit 0)
+== probe root /tmp/issue36.fUac
