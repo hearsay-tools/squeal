@@ -74,6 +74,7 @@ function knownState(why: WhyReport, s: KnownState | null): string[] {
     ...replacedLine(why),
     ...heldLine(why),
     ...flakyLine(why),
+    ...rerunFirstLines(why, s),
   ];
 }
 
@@ -131,6 +132,21 @@ function flakyLine(why: WhyReport): string[] {
   return [
     `  ${capitalize(flakyText(note))} (key ${note.key.slice(0, 12)}, ${new Date(note.at).toISOString()})`,
     ...(note.failure === undefined ? [] : [`    the FAIL it replaced: ${note.failure}`]),
+  ];
+}
+
+/**
+ * Gh-20 (review wave-2b B2): the first error of the check's one re-run, when
+ * neither the state nor the flaky note already says it: a re-run that failed
+ * differently replaced it at the key.
+ */
+function rerunFirstLines(why: WhyReport, s: KnownState | null): string[] {
+  const first = why.rerunFirstFailure;
+  if (first === undefined) return [];
+  if (first.failure === s?.summary || first.failure === why.flaky?.failure) return [];
+  return [
+    `  First error, before its re-run (run ${first.runId}, key ${first.key.slice(0, 12)}): ${first.failure}`,
+    `    Its log: ${first.logDir ?? "run record pruned"}`,
   ];
 }
 
