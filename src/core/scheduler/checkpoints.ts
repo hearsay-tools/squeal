@@ -284,6 +284,21 @@ export class Checkpoints {
     this.#write({ ...progress(active), owed: debt });
   }
 
+  /**
+   * The open checkpoint as now, for a store transaction that may roll back
+   * what it does to it (review wave-8.1, fourth round): the returned
+   * function puts it back, so the tracker owns again the record the store
+   * still holds open.
+   */
+  hold(): () => void {
+    const active = this.#active === null ? null : copyActive(this.#active);
+    const published = this.#published;
+    return () => {
+      this.#active = active === null ? null : copyActive(active);
+      this.#published = published;
+    };
+  }
+
   #insert(
     id: string,
     kind: CheckpointKind,
@@ -345,6 +360,19 @@ export class Checkpoints {
     this.#published = text;
     this.store.meta.set(checkpointMetaKey(this.worktreeId), text);
   }
+}
+
+function copyActive(active: Active): Active {
+  const lanes = [...active.lanes].map(
+    ([id, lane]) => [id, { ...lane, remaining: new Set(lane.remaining) }] as const,
+  );
+  return {
+    ...active,
+    joined: [...active.joined],
+    lanes: new Map(lanes),
+    remaining: new Map(active.remaining),
+    strict: new Set(active.strict),
+  };
 }
 
 function explicit(active: Active): boolean {
