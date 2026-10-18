@@ -70,7 +70,7 @@ export function formatStatus(
     ...workLine(result, command),
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
     ...checkpointLine(result, now, command),
-    ...slowLine(result, command, options.allNotes === true),
+    ...slowLine(result, command),
     ...configProblemsLine(result, command),
     ...excludedLine(result),
     "",
@@ -116,14 +116,9 @@ function retryLines(s: StatusSnapshot): string[] {
 }
 
 /** Spec 004 D8: the slow-tier line, as delivered headers print it, when slow files are declared. */
-/** With `all` (`status --notes`), the declared artifacts the line counts, each by name (001-413). */
-function slowLine(s: StatusSnapshot, command: string, all: boolean): string[] {
+function slowLine(s: StatusSnapshot, command: string): string[] {
   const text = slowTierText(s, command);
-  if (text === null) return [];
-  const artifact = s.slowTier?.artifact ?? [];
-  return all && artifact.length > 1
-    ? [text, `  Declared artifacts: ${artifact.join(", ")}`]
-    : [text];
+  return text === null ? [] : [text];
 }
 
 /**

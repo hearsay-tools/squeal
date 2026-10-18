@@ -1,15 +1,7 @@
 import { loadPolicy } from "../daemon/policy.js";
 import { isInstalledLockfile, testFileId } from "../keys/index.js";
 import { passedRetry } from "../retry/index.js";
-import { readFailureKeys, readSlowArtifacts } from "../slow/state.js";
-import {
-  beforeEditsFor,
-  checkIdentity,
-  readFlakyNotes,
-  type SlowPolicyView,
-  testFileOf,
-  worktreeSlowView,
-} from "../state/index.js";
+import { beforeEditsFor, checkIdentity, readFlakyNotes, testFileOf } from "../state/index.js";
 import type {
   CheckId,
   CheckKey,
@@ -59,56 +51,15 @@ function loadOf(store: Store, worktreeId: WorktreeId, entry: TransitionEntry): n
 }
 
 /**
- * Spec 004 D8, review wave 2 B2 and wave 2.5 B1: the declared artifact of the
- * slow run whose result `entry`'s state holds, as the worktree that ran it
- * recorded it with the result's key; `null` when the run is a slow file's by
- * today's policy but no declaration is known (a state or result from before
- * the records), `undefined` when the failure is no slow run's. The key is the
- * one the state sink recorded with the state (`failureKeys`), current,
- * pending or stale alike. A run recorded slow stays slow when the policy no
- * longer marks its file.
- */
-function slowRunArtifact(
-  worktreeId: WorktreeId,
-  slow: SlowPolicyView | null,
-  failureKeys: ReadonlyMap<string, CheckKey>,
-  artifactOf: (from: WorktreeId, key: CheckKey) => readonly string[] | undefined,
-  entry: TransitionEntry,
-): readonly string[] | null | undefined {
-  const { origin } = entry;
-  const from = origin.kind === "inherited" ? origin.worktreeId : worktreeId;
-  const key = failureKeys.get(checkIdentity(entry.check));
-  const recorded = key === undefined ? undefined : artifactOf(from, key);
-  if (recorded !== undefined) return recorded;
-  const { project, testPath } = entry.check;
-  return slow?.isSlow({ project, path: testPath }) === true ? null : undefined;
-}
-
-/** The declared artifact of a slow run of `key` in a worktree, reading each worktree's record once. */
-function recordedArtifacts(store: Store) {
-  const records = new Map<WorktreeId, ReadonlyMap<CheckKey, readonly string[]>>();
-  return (from: WorktreeId, key: CheckKey): readonly string[] | undefined => {
-    let byKey = records.get(from);
-    if (byKey === undefined) {
-      byKey = readSlowArtifacts(store, from);
-      records.set(from, byKey);
-    }
-    return byKey.get(key);
-  };
-}
-
-/**
  * Each failure with the closure paths changed since `consumer` registered
  * (`TransitionEntry.changesInClosure`) and a timeout's load. The closure is
  * this worktree's (`closureFor`); an inherited result is read against this
  * worktree's changes, the ones the agent made. A closure that holds a path a
  * `start` revision changed gets neither line: those changes may or may not
  * be the agent's (`changedAfter`, task 001-96). "None of the files changed here" also
- * needs `seesEveryChange`. A failure of a slow run (spec 004 D8) gets the
- * artifact that run was declared to test (`slowArtifact`, `slowRunArtifact`)
- * instead: its closure holds few sources, so the changes line would be true
- * and misleading. A failure first observed by this consumer gets its
- * baseline (`beforeEdits`, 011 C5 as amended, gh-32), slow or not.
+ * needs `seesEveryChange`. A slow file's failure reads as any file's (spec 004 D8
+ * as amended 2026-10-18, task 004-81). A failure first observed by this
+ * consumer gets its baseline (`beforeEdits`, 011 C5 as amended, gh-32).
  */
 export function attribute(
   store: Store,
@@ -119,9 +70,6 @@ export function attribute(
   if (!entries.some((e) => e.to === "fail")) return entries;
   const from = registration(store, consumer);
   const changesOf = closureChanges(store, consumer, revision);
-  const slow = worktreeSlowView(store, consumer.worktreeId);
-  const failureKeys = readFailureKeys(store, consumer.worktreeId);
-  const artifactOf = recordedArtifacts(store);
   const before =
     from === null ? null : beforeEditsFor(store, consumer.worktreeId, slot(consumer), from.since);
   return entries.map((entry) => {
@@ -132,8 +80,6 @@ export function attribute(
       ...(load === undefined ? {} : { loadAverage: load }),
       ...(firstSeen ? { beforeEdits: before(entry.check) } : {}),
     };
-    const slowArtifact = slowRunArtifact(consumer.worktreeId, slow, failureKeys, artifactOf, entry);
-    if (slowArtifact !== undefined) return { ...entry, slowArtifact, ...facts };
     const told = changesOf(entry.check);
     return { ...entry, ...(told === undefined ? {} : { changesInClosure: told }), ...facts };
   });
@@ -164,7 +110,8 @@ export function closureChanges(store: Store, consumer: Consumer, revision: Revis
  * 011 C5 as amended (gh-32): a registration's known failures with the
  * closure paths changed since the session first registered, when there are
  * any: a session that resumes or compacts keeps its registration revision.
- * A slow file's are left out, as `attribute` leaves them.
+ * A slow file's are kept too, as `attribute` keeps them (004 D8 as amended
+ * 2026-10-18, task 004-81).
  */
 export function withClosureChanges(
   store: Store,
@@ -174,10 +121,7 @@ export function withClosureChanges(
 ): readonly KnownFailure[] {
   if (failures.length === 0) return failures;
   const changesOf = closureChanges(store, consumer, revision);
-  const slow = worktreeSlowView(store, consumer.worktreeId);
   return failures.map((f) => {
-    const { project, testPath } = f.check;
-    if (slow?.isSlow({ project, path: testPath }) === true) return f;
     const paths = changesOf(f.check);
     return paths === undefined || paths.length === 0 ? f : { ...f, changesInClosure: paths };
   });

@@ -132,14 +132,6 @@ export interface TransitionEntry {
    */
   readonly loadAverage?: number;
   /**
-   * For a failure of a slow test file (spec 004 D8): the declared artifact
-   * globs its run was declared to test, recorded with the run's key; empty
-   * when none was declared, `null` when none is recorded (review wave 2, B2).
-   * Its provenance line replaces the attribution line (`changesInClosure` is
-   * then absent).
-   */
-  readonly slowArtifact?: readonly string[] | null;
-  /**
    * For a `first-seen-fail` with no earlier state told: its baseline, the
    * stored result at the key its test file had when the consumer registered,
    * from any worktree (011 C5 as amended, gh-32). Absent when the consumer's

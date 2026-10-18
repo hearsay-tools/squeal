@@ -48,7 +48,7 @@ import { takeRetries } from "./retries.js";
 import { retryRunner } from "./revision.js";
 import { RunnerWork } from "./runner-work.js";
 import { slowView } from "./slow.js";
-import { forgetSlowRuns, queueSlowSuite, type SlowRun, SlowTier } from "./slow-tier.js";
+import { queueSlowSuite, type SlowRun, SlowTier } from "./slow-tier.js";
 import { Withholds, withheldForTouch, withholdNote } from "./stability.js";
 import {
   endTier,
@@ -269,7 +269,6 @@ class TierScheduler implements Scheduler {
       return;
     }
     this.#slow.preempt();
-    this.#slow.revised(new Set(applied.revision.changes.map((change) => change.path)));
     // The runner part waits for the runner: a backlog tier yields to an edit (task 001-124).
     this.#cancelBacklogs(applied.revision);
     this.#runnerWork.queueRefine(applied.revision, applied.content, touched);
@@ -334,8 +333,6 @@ class TierScheduler implements Scheduler {
     const queue = (ledger: Ledger) => {
       const { policy } = this.#started().context;
       const only = lane === undefined ? undefined : { lane, isSlow: slowView(policy).isSlow };
-      // 004 D8 as amended 2026-10-17: a skipped slow file is requested as one not current.
-      if (lane !== "fast") this.#slow.recheck();
       const record = queueFullSuite(ledger, force, warmUp, only);
       if (warmUp) this.#warmUp.start(this.#started().context, ledger, record);
       return record;
@@ -651,7 +648,7 @@ class TierScheduler implements Scheduler {
             installMoved || (withhold === null && unfinished.length === 0)
               ? installMoved
               : new Set(again);
-          // Spec 004 D8: a slow run's artifact and activity go with its results (review wave 2, B1, B2).
+          // Spec 004 D8: a slow run's activity goes with its results (review wave 2, B1, B2).
           return context.store.transaction(() => {
             this.#warmUp.record(context, ignored);
             const result = recordTier(
@@ -663,8 +660,7 @@ class TierScheduler implements Scheduler {
               requeue,
               observed,
             );
-            if (slow === null) forgetSlowRuns(context, ledger, tier);
-            else this.#slow.recorded(slow, ledger);
+            if (slow !== null) this.#slow.ended();
             // The runner hears the touches too, so its next run reads the disk again.
             return [...new Set([...result, ...touched])];
           });

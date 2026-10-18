@@ -1,11 +1,9 @@
 import { setTimeout as delay } from "node:timers/promises";
 import type { PoolLease } from "../capacity/index.js";
-import { POLICY_FILE } from "../daemon/policy.js";
 import { readTurn } from "../delivery/turn.js";
 import {
   acquireSlowSlot,
   clearSlotWaiter,
-  inheritsAcrossWorktrees,
   loadPerCpu,
   markSlotWaiter,
   othersWaitingForSlot,
@@ -14,19 +12,12 @@ import {
   slowSlotDir,
   waitForCapacity,
 } from "../slow/index.js";
-import {
-  forgetSlowArtifacts,
-  publishSlowActivity,
-  readSlowActivity,
-  recordSlowArtifacts,
-} from "../slow/state.js";
-import { slowPolicyView } from "../state/index.js";
+import { publishSlowActivity, readSlowActivity } from "../slow/state.js";
 import {
   type AbsolutePath,
   type CheckKey,
   CONSUMER_EXPIRY_MS,
   type EpochMs,
-  type RelativePath,
   type SlowTierActivity,
   type Store,
   type TestFileRef,
@@ -38,10 +29,8 @@ import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { classify } from "./files.js";
 import type { Ledger } from "./ledger.js";
 import type { Mutex } from "./mutex.js";
-import { listPaths, persistedNoteTexts } from "./notes.js";
 import type { SlowTierOptions } from "./options.js";
 import { slowView } from "./slow.js";
-import { SlowSkips } from "./slow-skip.js";
 import { laneOf, startTier, type Tier, type TierFile } from "./tiers.js";
 
 /** Spec 004 D2, D3: the longest a pending slow file waits before the scheduler looks again. */
@@ -74,13 +63,11 @@ export interface SlowHost {
 
 /**
  * A slow tier, selected, with the slot permits it holds until it is recorded
- * (one per file) and, by test file id, the artifact globs each file was
- * declared to test when it was selected (D5; review wave 4, B1).
+ * (one per file).
  */
 export interface SlowRun {
   readonly tier: Tier;
   readonly slot: SlowSlot;
-  readonly artifacts: ReadonlyMap<string, readonly string[]>;
 }
 
 /**
@@ -129,21 +116,13 @@ export class SlowTier {
   #wait: AbortController | null = null;
   /** Counts `preempt` calls, so one between selection and the wait is not lost. */
   #preemptions = 0;
-  /** No-artifact notes written or found persisted (D5). */
-  #noted: Set<string> | null = null;
   /** What this tier last published, as stored, so `close` clears only its own. */
   #published: string | null = null;
-  /** The preconditions' skips (D7, D8 as amended 2026-10-17, task 004-65). */
-  readonly #skips: SlowSkips;
-  /** Aborts a precondition command still running at close. */
-  readonly #closing = new AbortController();
 
   constructor(
     private readonly host: SlowHost,
     private readonly options: SlowTierOptions = {},
-  ) {
-    this.#skips = new SlowSkips(host.lock, () => host.started());
-  }
+  ) {}
 
   /**
    * `run --slow`: the pending slow files run behind fast work, whatever the
@@ -152,17 +131,7 @@ export class SlowTier {
    */
   request(): void {
     this.#requested = true;
-    this.recheck();
     this.preempt();
-  }
-
-  /**
-   * Under the lock, `run --slow` or `run --all`: the files a precondition
-   * skipped are queued again, so it is checked again (D8 as amended
-   * 2026-10-17, `SlowSkips.recheck`).
-   */
-  recheck(): void {
-    this.#skips.recheck();
   }
 
   /**
@@ -183,7 +152,6 @@ export class SlowTier {
   }
 
   close(): void {
-    this.#closing.abort();
     if (this.#timer !== null) clearTimeout(this.#timer);
     this.#timer = null;
     this.preempt();
@@ -204,10 +172,6 @@ export class SlowTier {
       this.#unmark(dir, context.worktreeId);
       return null;
     }
-    if (preemptions !== this.#preemptions) return "again";
-    // D7, D8 as amended 2026-10-17: an unmet precondition skips the tier before the guard waits.
-    const gate = await this.#skips.gate(refs, this.#closing.signal);
-    if (gate !== "run") return gate === "closed" ? null : "again";
     if (preemptions !== this.#preemptions) return "again";
     const guard = this.#requested ? this.#skipGuard(context) : await this.#waitForCapacity(context);
     if (guard === "preempted" || preemptions !== this.#preemptions) return "again";
@@ -275,7 +239,6 @@ export class SlowTier {
    */
   #candidates(): TestFileRef[] {
     const { context, ledger } = this.host.started();
-    this.#noteMissingArtifacts(context, ledger);
     const queued = ledger.orderedSlow();
     if (queued.length === 0) {
       this.#requested = false;
@@ -369,7 +332,7 @@ export class SlowTier {
    * holds a result that may stand for it (`Ledger.lookup`), here or in the
    * start's transaction (`startTier`; then `null`, so the pump plans again).
    * `"claimed"` when no file runs because other worktrees run their keys
-   * (task 001-205). The permits, notes and artifacts follow the files the
+   * (task 001-205). The permits and notes follow the files the
    * tier starts.
    *
    * Before the start the tier takes its workers from the per-user pool, as
@@ -382,11 +345,7 @@ export class SlowTier {
     refs: readonly TestFileRef[],
     ranUnderLoad: number | null,
     slot: SlowSlot,
-  ):
-    | { tier: Tier; artifacts: ReadonlyMap<string, readonly string[]> }
-    | "claimed"
-    | typeof WAIT_FOR_CAPACITY
-    | null {
+  ): { tier: Tier } | "claimed" | typeof WAIT_FOR_CAPACITY | null {
     // A close since the guard or the slot: a daemon that accepted a stop starts no tier (001-367).
     if (this.host.closed()) return null;
     const { context, ledger } = this.host.started();
@@ -436,11 +395,7 @@ export class SlowTier {
           `waited slow.maxDeferMs for this slow pass (spec 004 D3)`,
       );
     }
-    const view = slowPolicyView(context.policy);
-    const artifacts = new Map(
-      tier.files.map(({ file }) => [file.id, view?.artifactFor(file.ref.path) ?? []] as const),
-    );
-    return { tier, artifacts };
+    return { tier };
   }
 
   /** `startTier` of `picked`, and the activity naming its files in the same transaction. */
@@ -485,7 +440,7 @@ export class SlowTier {
       ledger.commit();
       return null;
     }
-    const { hits, mayWait } = forced ? { hits: [], mayWait: false } : ledger.probe(file, key);
+    const { hits, mayWait } = forced ? { hits: [], mayWait: false } : ledger.probe(key);
     if (hits.length > 0) {
       ledger.applyResults(file, key, hits, checkpointId);
       ledger.commit();
@@ -495,23 +450,6 @@ export class SlowTier {
     if (waits && ledger.claims.holds(key)) return null;
     const inputs = context.keys.stabilityPaths(ref);
     return { file, key, inputs, checkpointId, forced, waits };
-  }
-
-  /**
-   * Under the lock, in the transaction that records `run` (D5, D8, review
-   * wave 2 B1 and B2): the keys each file ran under were declared to test
-   * that file's artifact (review wave 4, B1), and its activity goes with it
-   * (`ended`).
-   */
-  recorded(run: SlowRun, ledger: Ledger): void {
-    const { context } = this.host.started();
-    const runs = new Map<CheckKey, readonly string[]>();
-    for (const tierFile of run.tier.files) {
-      const artifact = run.artifacts.get(tierFile.file.id) ?? [];
-      for (const key of fileKeys(tierFile, ledger)) runs.set(key, artifact);
-    }
-    recordSlowArtifacts(context.store, context.worktreeId, runs);
-    this.ended();
   }
 
   /**
@@ -528,15 +466,6 @@ export class SlowTier {
     else if (this.#fastFirst()) this.#publish({ kind: "waiting", for: "fast" });
     else if (queued.some(this.#trigger(context, ledger))) this.#publish(null);
     else this.#publish({ kind: "waiting", for: "idle" });
-  }
-
-  /**
-   * Under the lock, as a revision changing `paths` is applied: the files a
-   * precondition skipped that it makes eligible again are queued (D8 as
-   * amended 2026-10-17, `SlowSkips.revised`).
-   */
-  revised(paths: ReadonlySet<RelativePath>): void {
-    this.#skips.revised(paths);
   }
 
   /** At close: clears the activity unless another daemon published since (a handover), and the waiter's mark. */
@@ -579,33 +508,6 @@ export class SlowTier {
   #recheckMs(): number {
     return Math.min(this.options.recheckMs ?? SLOW_RECHECK_MS, SLOW_RECHECK_MS);
   }
-
-  /** D5: one note per project naming its slow files whose declared inputs hold no artifact. */
-  #noteMissingArtifacts(context: SchedulerContext, ledger: Ledger): void {
-    const view = slowView(context.policy);
-    if (!view.declared) return;
-    const files = [...ledger.files.values()];
-    const testFiles = new Set(files.map((file) => file.ref.path));
-    const byProject = new Map<string, RelativePath[]>();
-    for (const { ref } of files) {
-      // A skip replaces the note for the files it covers (D8 as amended 2026-10-17).
-      if (!view.isSlow(ref) || this.#skips.unmet(context, ref)) continue;
-      const declared = context.keys.declaredFor(ref.path);
-      const subject = { path: ref.path, slow: true };
-      if (inheritsAcrossWorktrees(subject, declared, testFiles, view.globs)) continue;
-      const paths = byProject.get(ref.project) ?? [];
-      paths.push(ref.path);
-      byProject.set(ref.project, paths);
-    }
-    if (byProject.size === 0) return;
-    this.#noted ??= persistedNoteTexts(context.store, context.worktreeId);
-    for (const [project, paths] of [...byProject].sort(([a], [b]) => (a < b ? -1 : 1))) {
-      const text = noArtifactNote(project, paths.sort());
-      if (this.#noted.has(text)) continue;
-      this.#noted.add(text);
-      context.note(text);
-    }
-  }
 }
 
 /**
@@ -639,22 +541,6 @@ export function tierKeys(tier: Tier, ledger: Ledger): CheckKey[] {
 function fileKeys({ file, key }: TierFile, ledger: Ledger): CheckKey[] {
   const current = ledger.files.get(file.id)?.key ?? null;
   return current === null || current === key ? [key] : [key, current];
-}
-
-/** A fast run of `tier`: the records of its keys' slow runs go (D8, review wave 2 B2). */
-export function forgetSlowRuns(context: SchedulerContext, ledger: Ledger, tier: Tier): void {
-  forgetSlowArtifacts(context.store, context.worktreeId, tierKeys(tier, ledger));
-}
-
-/** The D5 note for `project`'s slow `paths`. */
-export function noArtifactNote(project: string, paths: readonly RelativePath[]): string {
-  const owner = project === "" ? "" : ` of project ${project}`;
-  return (
-    `slow files${owner} with no declared artifact: ${listPaths(paths)}. Their key holds no ` +
-    "build output, so a change to the code they test does not re-run them and another " +
-    `worktree's result never stands for them; declare what they test in ${POLICY_FILE} ` +
-    '"inputs" (spec 004 D5, D6)'
-  );
 }
 
 /**

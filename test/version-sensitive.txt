@@ -49,7 +49,6 @@
 #   test/cli/setup/gates.test.ts
 #   test/cli/setup/init-flags.test.ts
 #   test/cli/setup/plan.test.ts
-#   test/cli/setup/preconditions.test.ts
 #   test/cli/setup/pytest.test.ts
 #   test/daemon/observed-timer.test.ts
 #   test/daemon/policy.test.ts
@@ -73,8 +72,6 @@
 #   test/policy/node-test.test.ts
 #   test/policy/slow.test.ts
 #   test/slow/classify.test.ts
-#   test/slow/inherit.test.ts
-#   test/slow/precondition.test.ts
 #   test/types.test.ts
 #
 # Run a real `node --test` the rule cannot see, since the call is outside
@@ -92,9 +89,8 @@ test/runners/node-test/
 test/integration/node-test
 # A real `node --test` through the scheduler: the slow tier, preloads,
 # observed and environment growth, capacity, lanes, scratch inputs, the idle
-# pass (beside pytest), warm-up and a node:test project's precondition.
+# pass (beside pytest) and warm-up.
 test/scheduler/slow-node-test
-test/slow/precondition-node-test
 test/scheduler/preload-heal
 test/scheduler/preload-refresh
 test/scheduler/observed-growth

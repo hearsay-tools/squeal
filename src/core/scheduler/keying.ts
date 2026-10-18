@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import { runGit, sameList, splitNul } from "../fs/index.js";
 import { type Hasher, type ObjectFormat, StatCache, seedStatCache } from "../hash/index.js";
 import {
-  artifactGlobs,
   assembleClosure,
   coreEnvironmentInputs,
   createDeclaredInputs,
@@ -11,9 +10,7 @@ import {
   type DependencyKeys,
   environmentHash,
   gitEntryByKind,
-  ignoredInputs,
   inputGlobs,
-  isInstalledPath,
   type KeyChange,
   KeyIndex,
   Listings,
@@ -25,7 +22,6 @@ import {
   unmatchedInputs,
 } from "../keys/index.js";
 import { type HeadState, reconcile, statCandidates } from "../revision/index.js";
-import { inheritsAcrossWorktrees } from "../slow/index.js";
 import type {
   AbsolutePath,
   CandidateBatch,
@@ -46,7 +42,6 @@ import { checkIgnored } from "../watcher/git.js";
 import { linkedFiles } from "../watcher/linked-files.js";
 import { Lockfiles } from "./lockfiles.js";
 import { persistedNoteTexts } from "./notes.js";
-import { slowView } from "./slow.js";
 
 export interface KeyingOptions {
   readonly root: AbsolutePath;
@@ -88,7 +83,7 @@ export class WorktreeKeys {
   readonly #untracked = new Set<RelativePath>();
   /**
    * Gitignored paths bootstrap dropped from the cache: a predecessor hashed
-   * them as declared inputs that are no slow file's artifact (004-50). They
+   * them as declared inputs (004-50, 004-81). They
    * count as untracked, so a closure, an environment or a lockfile naming
    * one hashes it again and watches it.
    */
@@ -106,12 +101,6 @@ export class WorktreeKeys {
   /** Lockfile paths already checked against `.gitignore`. */
   readonly #ignoreChecked = new Set<RelativePath>();
   #declared: DeclaredInputs = createDeclaredInputs([], []);
-  /**
-   * True when the gitignored files policy `inputs` selects are to be listed
-   * again at the next `trackUntracked`: the policy changed, or a rebuild
-   * changed one and may have added others no watch reports (lessons defect 7).
-   */
-  #ignoredStale = false;
   /** What runs observed beyond static closures, shared per project (D3, task 001-132). */
   readonly #observed: ObservedSets;
   /** Entry names of listed directories, from the tracked files. */
@@ -156,11 +145,11 @@ export class WorktreeKeys {
    * feed walks (task 001-166).
    * Cached paths git ignores entered the cache because a closure or an
    * environment named them, so they are watched again as extra files. A
-   * daemon from 0.1.60 to 0.1.73 also hashed gitignored scratch under any
-   * declared input: those a slow file's artifact does not admit are dropped
-   * before reconciling, so they neither make a revision nor key a test
-   * (004-50, reviews/wave-5.5.md B1). A closure that still names one tracks
-   * it again.
+   * daemon before 0.1.220 also hashed gitignored files under declared
+   * inputs (a slow file's artifact, 004 D5 before task 004-81; scratch from
+   * 0.1.60 to 0.1.73): those are dropped before reconciling, so they neither
+   * make a revision nor key a test (004-50, reviews/wave-5.5.md B1). A
+   * closure that still names one tracks it again.
    */
   async bootstrap(head: () => Promise<HeadState>): Promise<Revision | null> {
     const listed = splitNul(
@@ -174,10 +163,9 @@ export class WorktreeKeys {
     );
     const known = new Set(listed);
     const unlisted = [...this.cache.paths()].filter((path) => !known.has(path));
-    const admits = this.#artifactRule([...this.#knownFiles(), ...listed])?.admits ?? (() => false);
     const scratch: RelativePath[] = [];
     for (const path of await checkIgnored(this.options.root, unlisted)) {
-      if (this.#isDeclared(path) && !admits(path)) scratch.push(path);
+      if (this.#isDeclared(path)) scratch.push(path);
       else this.#extra.add(path);
     }
     this.#drop(scratch);
@@ -191,7 +179,6 @@ export class WorktreeKeys {
     await this.#seed(
       [...listed, ...linked].filter((path) => this.cache.hashOf(path) === undefined),
     );
-    await this.#trackIgnoredInputs();
     this.#declared = createDeclaredInputs(this.#policy.inputs, this.#declarable());
     return revision;
   }
@@ -286,7 +273,6 @@ export class WorktreeKeys {
     if (!sameInputs(previous.inputs, policy.inputs)) {
       this.#isDeclared = createInputMatcher(inputGlobs(policy.inputs));
       this.#declared = createDeclaredInputs(policy.inputs, this.#declarable());
-      this.#ignoredStale = true;
       changes.push(
         ...[...this.#runnerClosures.values()].flatMap((runner) => this.setClosure(runner)),
       );
@@ -330,22 +316,6 @@ export class WorktreeKeys {
    */
   async lockfileCandidates(): Promise<RelativePath[]> {
     return this.#lockfiles.moved();
-  }
-
-  /**
-   * What every reconciliation pass reconciles too, whatever else it found:
-   * the gitignored files of slow files' declared artifacts (`#ignoredArtifacts`),
-   * not watched yet, a path already hashed included. A file a rebuild only
-   * added joins the key as an add (004-33, reviews/wave-4.6.md B1). Watches
-   * them from here on.
-   */
-  async ignoredCandidates(): Promise<RelativePath[]> {
-    const listed = await this.#ignoredArtifacts();
-    const unwatched = listed.filter((path) => !this.#extra.has(path));
-    if (unwatched.length === 0) return [];
-    for (const path of unwatched) this.#extra.add(path);
-    this.options.onExtraFiles(this.extraFiles());
-    return unwatched;
   }
 
   /**
@@ -427,9 +397,6 @@ export class WorktreeKeys {
    * declared input was added or deleted.
    */
   updateDeclaredInputs(changes: readonly FileChange[]): KeyChange[] | null {
-    if (changes.some((c) => this.#extra.has(c.path) && this.isDeclaredInput(c.path))) {
-      this.#ignoredStale = true;
-    }
     const structural = changes.some(
       (c) => (c.oldHash === null || c.newHash === null) && this.isDeclaredInput(c.path),
     );
@@ -440,34 +407,29 @@ export class WorktreeKeys {
 
   /**
    * Hashes the closure paths the stat cache did not track, then re-keys with
-   * them. Lists the gitignored declared inputs again first when they may
-   * have moved (`#ignoredStale`), and re-keys with any new ones.
+   * them.
    */
   async trackUntracked(): Promise<KeyChange[]> {
-    const declared = this.#ignoredStale ? await this.#relistIgnoredInputs() : [];
     const paths = [...this.#untracked];
     this.#untracked.clear();
     for (const path of paths) if (this.#dropped.has(path)) this.#revived.add(path);
     if (paths.length > 0) await this.track(paths);
     this.#release();
-    return paths.length === 0 ? declared : [...declared, ...this.index.rekey(paths)];
+    return paths.length === 0 ? [] : this.index.rekey(paths);
   }
 
   /**
    * Drops again the revived paths nothing names now: the closures that named
-   * them were saved ones, since replaced by the runner's (`#revived`). An
-   * artifact a slow file's declaration admits stays.
+   * them were saved ones, since replaced by the runner's (`#revived`).
    */
   #release(): void {
     if (this.#revived.size === 0) return;
-    const admits = this.#artifactRule()?.admits ?? (() => false);
     const named = new Set([...this.#environmentFiles, ...this.#lockfiles.paths()]);
     for (const runner of this.#runnerClosures.values()) {
       for (const path of this.#observed.of(runner.testFile)) named.add(path);
     }
     const unnamed = [...this.#revived].filter(
-      (path) =>
-        !named.has(path) && !admits(path) && this.index.reverse.referencing([path]).length === 0,
+      (path) => !named.has(path) && this.index.reverse.referencing([path]).length === 0,
     );
     if (unnamed.length === 0) return;
     for (const path of unnamed) {
@@ -478,71 +440,14 @@ export class WorktreeKeys {
     this.options.onExtraFiles(this.extraFiles());
   }
 
-  /** Lists and tracks the gitignored declared inputs; re-keys every closure when one is new. */
-  async #relistIgnoredInputs(): Promise<KeyChange[]> {
-    const before = this.#extra.size;
-    await this.#trackIgnoredInputs();
-    if (this.#extra.size === before) return [];
-    this.#declared = createDeclaredInputs(this.#policy.inputs, this.#declarable());
-    return [...this.#runnerClosures.values()].flatMap((runner) => this.setClosure(runner));
-  }
-
   /**
-   * Spec 004 D6, lessons defect 7: a declared input git ignores, such as a
-   * build output, is hashed and watched like a gitignored closure path, so
-   * it keys the test files that declare it.
-   */
-  async #trackIgnoredInputs(): Promise<void> {
-    this.#ignoredStale = false;
-    await this.track(await this.#ignoredArtifacts());
-  }
-
-  /**
-   * The gitignored files a slow file's declared artifact selects (spec 004
-   * D5): only entries of policy `inputs` whose test-file glob selects a slow
-   * file list them, and none is a test file or under a directory a slow
-   * glob covers (D6's rule). A test's own gitignored scratch files never key
-   * it, so no run feeds its own inputs (lessons defect 10).
-   */
-  async #ignoredArtifacts(): Promise<RelativePath[]> {
-    const rule = this.#artifactRule();
-    if (rule === null) return [];
-    return (await ignoredInputs(this.options.root, rule.globs)).filter(rule.admits);
-  }
-
-  /**
-   * Which gitignored paths may be declared inputs (`#ignoredArtifacts`): the
-   * globs naming a slow file's artifact, and a predicate admitting a path
-   * they select that is no test file and under no slow glob's directory.
-   * `null` when no gitignored path may. Slow files are found among `files`.
-   */
-  #artifactRule(
-    files: Iterable<RelativePath> = this.#knownFiles(),
-  ): { globs: string[]; admits: (path: RelativePath) => boolean } | null {
-    const view = slowView(this.#policy);
-    if (!view.declared) return null;
-    const isSlow = createInputMatcher(view.globs);
-    const globs = artifactGlobs(this.#policy.inputs, files, isSlow);
-    if (globs.length === 0) return null;
-    const selects = createInputMatcher(globs);
-    const testFiles = new Set([...this.#runnerClosures.values()].map((r) => r.testFile.path));
-    const admits = (path: RelativePath) =>
-      selects(path) &&
-      !isInstalledPath(path) &&
-      inheritsAcrossWorktrees({ path, slow: true }, [path], testFiles, view.globs);
-    return { globs, admits };
-  }
-
-  /**
-   * The files declared inputs are selected from: those git sees, and the
-   * gitignored ones a slow file's artifact admits. A gitignored file a
-   * closure or an environment named, or a predecessor's cache held, keys
-   * only the tests that name it (004-50).
+   * The files declared inputs are selected from: those git sees. A
+   * gitignored file a closure or an environment named keys only the tests
+   * that name it (004-50); none is a declared input, so no build output
+   * Squeal does not produce keys a test (004 D5 as amended 2026-10-18).
    */
   #declarable(): RelativePath[] {
-    const admits = this.#artifactRule()?.admits ?? (() => false);
-    const seen = [...this.cache.paths()].filter((path) => !this.#extra.has(path));
-    return [...seen, ...[...this.#extra].filter(admits)];
+    return [...this.cache.paths()].filter((path) => !this.#extra.has(path));
   }
 
   /** Drops `paths` from the cache and the store; they count as untracked until tracked again. */

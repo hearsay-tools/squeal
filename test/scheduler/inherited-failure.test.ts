@@ -36,18 +36,15 @@ afterEach(() => {
 });
 
 /**
- * The flaky file slow (spec 004 D2), with a declared artifact so another
- * worktree may inherit it (D6), one slow file at a time on an idle host.
+ * The flaky file slow (spec 004 D2), which another worktree inherits as any
+ * file (D6), one slow file at a time on an idle host.
  */
 function slowOptions(): HarnessOptions {
   const slotDir = mkdtempSync(join(tmpdir(), "squeal-001-170-slot-"));
   markers.push(slotDir);
   return {
     tierSize: 4,
-    policy: {
-      slow: { ...DEFAULT_POLICY.slow, include: [FLAKY], maxParallel: 1 },
-      inputs: { [FLAKY]: ["src/math.ts"] },
-    },
+    policy: { slow: { ...DEFAULT_POLICY.slow, include: [FLAKY], maxParallel: 1 } },
     slow: { slotDir, recheckMs: 50, load: () => [0], cpus: () => 1 },
   };
 }

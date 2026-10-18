@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { appendFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -29,8 +29,8 @@ import {
  * Spec 004 D2 to D6 with the scheduler over real Vitest runs: slow files form
  * their own tier class, run one at a time behind fast work and only on a
  * trigger, under the per-user slot and the load guard, are discarded when a
- * keyed input moved during their run, and are inherited only with a declared
- * artifact. With `slow.maxParallel` 1; `slow-parallel.test.ts` covers more. In the `basic` fixture `test/strings.test.ts` and
+ * keyed input moved during their run, and are inherited as any file's
+ * results are (D6 as amended 2026-10-18). With `slow.maxParallel` 1; `slow-parallel.test.ts` covers more. In the `basic` fixture `test/strings.test.ts` and
  * `test/upper.test.ts` import `src/strings.ts`; the others are fast.
  */
 
@@ -62,6 +62,14 @@ function options(extra: Partial<HarnessOptions> & { inputs?: PolicyInputs } = {}
     slow: { slotDir: slotDir(), recheckMs: 50, load: () => [0], cpus: () => 1 },
     ...rest,
   };
+}
+
+/**
+ * Edits each of `files` in the `other` worktree, so no slow file there shares
+ * a key with the main worktree's and inherits its result (004 D6).
+ */
+function diverge(other: string, files: readonly string[]): void {
+  for (const file of files) appendFileSync(join(other, file), "// other worktree\n");
 }
 
 const paths = (h: Harness) => h.runner.runs.map((run) => run.files.map((f) => f.path));
@@ -211,6 +219,7 @@ describe("the slow slot shared by two worktrees (spec 004 D2)", SLOW, () => {
   it("runs one slow file at a time across both schedulers", async () => {
     const repo = createRepo();
     const other = addWorktree(repo.main, repo.dir, "other");
+    diverge(other, SLOW_FILES);
     const store = openRepoStore(repo.commonDir);
     const shared = slotDir();
     const slow = { slotDir: shared, recheckMs: 50, load: () => [0], cpus: () => 1 };
@@ -248,6 +257,7 @@ describe("the slow slot shared by two worktrees (spec 004 D2)", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     const shared = slotDir();
     const policy = slowPolicy([...SLOW_FILES, "test/plain.test.ts"]);
+    diverge(other, policy.slow?.include ?? []);
     const slow = (load: () => number) => ({
       slotDir: shared,
       recheckMs: 50,
@@ -347,11 +357,11 @@ describe("a slow run whose keyed input changed (spec 004 D4)", SLOW, () => {
 });
 
 describe("inheriting a slow result (spec 004 D5, D6)", SLOW, () => {
-  async function secondWorktree(inputs: PolicyInputs) {
+  async function secondWorktree() {
     const repo = createRepo();
     const other = addWorktree(repo.main, repo.dir, "other");
     const store = openRepoStore(repo.commonDir);
-    const policy = slowPolicy([STRINGS], inputs);
+    const policy = slowPolicy([STRINGS]);
     const a = await openHarness(repo.main, store, repo.commonDir, options({ policy }));
     await a.scheduler.start();
     await a.scheduler.idle();
@@ -362,22 +372,9 @@ describe("inheriting a slow result (spec 004 D5, D6)", SLOW, () => {
     return { store, a, b };
   }
 
-  it("never inherits a slow file without a declared artifact, and says so once", async () => {
-    const { store, a, b } = await secondWorktree([]);
-    expect(b.runsOf(STRINGS)).toHaveLength(1);
-    // Fast files inherit as before.
-    expect(b.runsOf("test/math.test.ts")).toEqual([]);
-    const notes = readDaemonNotes(store, a.worktreeId).filter((n) =>
-      n.text.includes("no declared artifact"),
-    );
-    expect(notes.map((n) => n.text)).toEqual([expect.stringContaining(`artifact: ${STRINGS}.`)]);
-  });
-
-  it("inherits a slow file whose declared inputs hold an artifact", async () => {
-    const { store, a, b } = await secondWorktree({ [STRINGS]: ["src/math.ts"] });
+  it("inherits a slow file's result at a byte-identical key, as any file's", async () => {
+    const { b } = await secondWorktree();
     expect(b.runsOf(STRINGS)).toEqual([]);
-    expect(
-      readDaemonNotes(store, a.worktreeId).some((n) => n.text.includes("no declared artifact")),
-    ).toBe(false);
+    expect(b.runsOf("test/math.test.ts")).toEqual([]);
   });
 });

@@ -1,4 +1,3 @@
-import { skippedReason } from "../state/index.js";
 import {
   type Consumer,
   type SlowTierState,
@@ -12,11 +11,10 @@ import { readSlot, writeSlot } from "./slots.js";
  * Task 001-407, decided by the human: a change delivery carries the slow-tier
  * line only when the slow tier's state changed since the consumer was last
  * shown it, at registration, at Stop or in a delivery that carried it. The
- * state is what the slow files' results are: their counts, the revisions and
- * artifact the current ones ran against, and whether sources changed since.
- * What the daemon is doing about the pending ones (`activity`) and the Stop
- * policy are not: a file starting to run is no result. A skip is (task
- * 004-65): its precondition's reason is told once, when the tier is skipped.
+ * state is what the slow files' results are: their counts and the
+ * revisions the current ones ran at. What the daemon is doing about the
+ * pending ones (`activity`) and the Stop policy are not: a file starting to
+ * run is no result.
  */
 
 /** `meta` key of the slow-tier state each consumer of a worktree was last shown. */
@@ -34,11 +32,6 @@ export function slowTierState(tier: SlowTierState | undefined): string | null {
     tier.notRun,
     tier.currentAt,
     tier.currentUpTo ?? null,
-    tier.artifact,
-    tier.artifactUnknown ?? 0,
-    tier.sourcesChangedSince,
-    // A skip is a state (004 D8 as amended 2026-10-17): its reason is told once, as it changes.
-    ...(skippedReason(tier) === null ? [] : [skippedReason(tier)]),
   ]);
 }
 

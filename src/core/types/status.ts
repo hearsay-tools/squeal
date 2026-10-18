@@ -10,7 +10,6 @@ import type {
   WorktreeId,
 } from "./common.js";
 import type { CheckKey, ClosureMethod, TestFileRef } from "./keys.js";
-import type { SlowPrecondition } from "./policy.js";
 import type { DaemonNote } from "./scheduler.js";
 import type {
   DiagnosticFingerprint,
@@ -124,21 +123,6 @@ export type SlowTierActivity =
   | { readonly kind: "waiting"; readonly for: SlowTierWait };
 
 /**
- * Spec 004 D8 as amended 2026-10-17 (task 004-65, review wave-8.1 B1): the
- * slow files one unmet precondition skipped, as the daemon keeps them in the
- * store. Each is not run at this revision, whatever result its key has
- * stored, until it runs or the precondition is met at a later checkpoint.
- */
-export interface SlowSkipRecord {
-  readonly precondition: SlowPrecondition;
-  /** The key that declared it: `slow.precondition`, or `nodeTest "<name>" precondition`. */
-  readonly source: string;
-  readonly reason: string;
-  readonly since: EpochMs;
-  readonly testFiles: readonly TestFileRef[];
-}
-
-/**
  * Spec 004 D8: the slow-tier line of headers and status, for a policy that
  * declares slow files (D1). Each slow test file counts in one of `current`
  * (every check current), `pending` (`SlowPendingCounts.testFiles`) or
@@ -150,10 +134,7 @@ export interface SlowTierState {
   readonly current: number;
   readonly pending: number;
   readonly notRun: number;
-  /**
-   * The oldest revision a current slow result was observed at: every current
-   * slow result stands for the artifact as it was then. `null` with none current.
-   */
+  /** The oldest revision a current slow result was observed at. `null` with none current. */
   readonly currentAt: RevisionNumber | null;
   /**
    * The newest revision a current slow result was observed at, when it is not
@@ -161,33 +142,8 @@ export interface SlowTierState {
    * defect 8b). Absent otherwise.
    */
   readonly currentUpTo?: RevisionNumber;
-  /**
-   * The artifact globs the runs of the current slow results were declared to
-   * test (D5), sorted; empty when none is declared or recorded. Recorded
-   * with each run's key, never read from today's policy (review wave 2, B2).
-   */
-  readonly artifact: readonly string[];
-  /**
-   * Current slow files whose run's declared artifact is not recorded: a
-   * result stored before the records, or one whose record is gone. Absent
-   * when none is.
-   */
-  readonly artifactUnknown?: number;
-  /**
-   * A source changed in a revision after `currentAt` (not the artifact, a
-   * test file, a slow directory's fixture or a fresh worktree's first
-   * listing): the sources behind the artifact are newer than the build the
-   * results ran against (D5, D8). `false` with nothing current.
-   */
-  readonly sourcesChangedSince: boolean;
   /** What the daemon last published; `null` when it published nothing. */
   readonly activity: SlowTierActivity | null;
-  /**
-   * Why the slow files not run were skipped (004 D8 as amended 2026-10-17):
-   * the reasons of the unmet preconditions that hold some of them, in one.
-   * Absent when none does.
-   */
-  readonly skipped?: string;
   /**
    * With `stop.requireSlowSuite` on, how long a main agent's Stop waits for
    * slow files (004 D9 as amended 2026-10-12, task 001-285). Absent when off.

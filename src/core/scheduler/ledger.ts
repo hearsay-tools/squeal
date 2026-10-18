@@ -1,5 +1,4 @@
 import { testFileId } from "../keys/index.js";
-import { inheritsAcrossWorktrees } from "../slow/index.js";
 import { heldFailure } from "../state/index.js";
 import {
   type CheckId,
@@ -217,7 +216,7 @@ export class Ledger {
         this.#syncPhase(file);
         continue;
       }
-      const hits = this.lookup(file, key);
+      const hits = this.lookup(key);
       if (hits.length > 0) {
         const checkpointId = options.checkpointId ?? this.checkpoints.idFor(ref);
         this.applyResults(file, key, hits, checkpointId);
@@ -236,44 +235,32 @@ export class Ledger {
   }
 
   /**
-   * The stored results of `key` that may stand for `file`: every hit, unless
-   * one comes from another worktree and the file may not inherit (spec 004
-   * D6, `inherits`), or one is another worktree's fail this worktree has not
+   * The stored results of `key` that may stand for its file: every hit, unless
+   * one is another worktree's fail this worktree has not
    * confirmed (spec 001 D6 as amended, task 001-170, `heldFailure`), when
    * there is none: the file is a miss and runs here, and its local result
    * replaces the shared row. The store holds one result per check and key,
    * so a mixed set is never partly this worktree's own.
    */
-  lookup(file: FileState, key: CheckKey): readonly ResultRecord[] {
-    return this.probe(file, key).hits;
+  lookup(key: CheckKey): readonly ResultRecord[] {
+    return this.probe(key).hits;
   }
 
   /**
    * `lookup`, and whether a miss may wait on another worktree's claim of
-   * `key` (task 001-205): only when another worktree's result could stand
-   * for the file, so it may inherit (004 D6) and no stored fail was withheld
-   * (001-170).
+   * `key` (task 001-205): only when no result is stored, so none was
+   * withheld (001-170). A slow file inherits as any file (004 D6 as amended
+   * 2026-10-18, task 004-81).
    */
-  probe(file: FileState, key: CheckKey): { hits: readonly ResultRecord[]; mayWait: boolean } {
+  probe(key: CheckKey): { hits: readonly ResultRecord[]; mayWait: boolean } {
     const { store, worktreeId, now } = this.context;
     const hits = store.results.byKey(key, now());
-    if (hits.length === 0) return { hits, mayWait: this.inherits(file.ref) };
+    if (hits.length === 0) return { hits, mayWait: true };
     if (hits.every((hit) => hit.provenance.worktreeId === worktreeId)) {
       return { hits, mayWait: false };
     }
-    if (!this.inherits(file.ref)) return { hits: [], mayWait: false };
     const held = heldFailure(store, worktreeId, hits) !== undefined;
     return { hits: held ? [] : hits, mayWait: false };
-  }
-
-  /** Spec 004 D6: whether another worktree's result may stand for `ref`. */
-  inherits(ref: TestFileRef): boolean {
-    const view = slowView(this.context.policy);
-    const slow = view.isSlow(ref);
-    if (!slow) return true;
-    const testFiles = new Set([...this.files.values()].map((file) => file.ref.path));
-    const declared = this.context.keys.declaredFor(ref.path);
-    return inheritsAcrossWorktrees({ path: ref.path, slow }, declared, testFiles, view.globs);
   }
 
   /** `testFileId`s of the test files `changed` edited or added, or whose closure it touches. */

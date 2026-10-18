@@ -45,23 +45,14 @@ interface Classified {
  * queued or running." A current result stays current while a forced re-run
  * is pending. The one validity rule of a check: the sink, status and
  * headers read what it wrote.
- *
- * Spec 004 D8 (review wave-8.1 B1): a check of a slow file an unmet
- * precondition skipped (`skipped`, from `readSlowSkips`) is never
- * current: its result stays as history, and the check reads `pending` while
- * its file is queued again, otherwise `stale`.
  */
 export function classify(
   outcome: KnownState["outcome"],
   resultKey: string | null,
   key: TestFileKeyRecord | undefined,
-  skipped = false,
 ): Classified {
   if (key !== undefined && resultKey !== null && resultKey === key.key) {
-    if (!skipped) return { validity: "current", pendingPhase: null };
-    return key.pending
-      ? { validity: "pending", pendingPhase: key.pending }
-      : { validity: "stale", pendingPhase: null };
+    return { validity: "current", pendingPhase: null };
   }
   if (key?.pending) return { validity: "pending", pendingPhase: key.pending };
   return { validity: outcome === "unknown" ? "unknown" : "stale", pendingPhase: null };
@@ -86,7 +77,6 @@ function sameOrigin(a: ResultOrigin | null, b: ResultOrigin): boolean {
  * The known state a result gives a check. `observedAt` is the result's own
  * revision when this worktree produced it; an inherited result is observed
  * at the revision it was first applied at, kept while the same result stays.
- * `skipped`: its file is a skipped slow file (`classify`).
  */
 export function stateFromResult(
   worktreeId: WorktreeId,
@@ -94,7 +84,6 @@ export function stateFromResult(
   result: ResultRecord,
   key: TestFileKeyRecord | undefined,
   previous: KnownState | null,
-  skipped = false,
 ): KnownState {
   const origin = originOf(worktreeId, result);
   const failed = result.outcome === "fail";
@@ -117,7 +106,7 @@ export function stateFromResult(
     worktreeId,
     check: result.check,
     outcome: result.outcome,
-    ...classify(result.outcome, result.key, key, skipped),
+    ...classify(result.outcome, result.key, key),
     observedAt,
     commit: result.provenance.commit,
     origin,

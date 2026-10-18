@@ -282,8 +282,6 @@ export const WORKTREE_META_ROWS = {
   daemonRest: { prefix: "daemon-rest:", owner: "types/daemon" },
   daemonStopped: { prefix: "daemon-stopped:", owner: "delivery/stopped" },
   slowTier: { prefix: "slow-tier:", owner: "slow/state" },
-  slowArtifacts: { prefix: "slow-artifacts:", owner: "slow/state" },
-  slowSkips: { prefix: "slow-skips:", owner: "state/slow-skipped" },
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
   failureProducers: { prefix: "failure-producers:", owner: "state/producers" },
   reruns: { prefix: "reruns:", owner: "scheduler/rerun-memory" },

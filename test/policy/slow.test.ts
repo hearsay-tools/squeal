@@ -159,49 +159,18 @@ describe("policy nodeTest[].slow (spec 004 D1)", () => {
   });
 });
 
-describe("slow.precondition and nodeTest[].precondition (spec 004 D7 as amended 2026-10-17)", () => {
-  it("is absent by default, so the slow tier runs as before", () => {
-    expect(DEFAULT_POLICY.slow.precondition).toBeUndefined();
-  });
-
-  it("accepts exists globs, an argv command and timeoutMs", () => {
-    const precondition = {
-      exists: ["dist/index.js", "dist/**/*.js"],
-      command: ["node", "scripts/check-dist.mjs"],
-      timeoutMs: 5000,
-    };
-    const { policy, problems } = load({ slow: { include: ["e2e/**"], precondition } });
-    expect(problems).toEqual([]);
-    expect(policy.slow.precondition).toEqual(precondition);
-  });
-
-  it.each([
-    [[], "must be an object"],
-    [{}, "must be an object"],
-    [{ exists: [] }, '"exists" must be a non-empty array of strings'],
-    [{ exists: ["!dist"] }, '"exists" has a glob Squeal cannot use'],
-    [{ command: "npm run build" }, '"command" must be a non-empty array of strings'],
-    [{ command: ["node"], timeoutMs: 0 }, '"timeoutMs" must be a positive integer'],
-    [{ exists: ["dist"], build: true }, 'has an unknown key "build"'],
-  ])("reports %j as a problem and applies none", (precondition, problem) => {
-    const { policy, problems } = load({ slow: { include: ["e2e/**"], precondition } });
-    expect(policy.slow.precondition).toBeUndefined();
-    expect(policy.slow.include).toEqual(["e2e/**"]);
-    expect(problems).toEqual([expect.stringContaining(problem)]);
-    expect(problems[0]).toMatch(/^"slow\.precondition" /);
-  });
-
-  it("keeps a node:test project's own precondition, and skips a project whose one is invalid", () => {
+describe("slow.precondition and nodeTest[].precondition are gone (004 D7 as amended 2026-10-18)", () => {
+  it("reports either as an unknown key; the project carrying one is skipped, as for any unknown key", () => {
     const project = { name: "e2e", include: ["e2e/*.test.js"], slow: true };
     const { policy, problems } = load({
-      nodeTest: [
-        { ...project, precondition: { exists: ["dist/cli.js"] } },
-        { ...project, name: "bad", precondition: { command: [] } },
-      ],
+      slow: { include: ["e2e/**"], precondition: { exists: ["dist/index.js"] } },
+      nodeTest: [{ ...project, precondition: { exists: ["dist/cli.js"] } }],
     });
-    expect(policy.nodeTest.map((p) => [p.name, p.precondition])).toEqual([
-      ["e2e", { exists: ["dist/cli.js"] }],
+    expect(policy.slow.include).toEqual(["e2e/**"]);
+    expect(policy.nodeTest).toEqual([]);
+    expect([...problems].sort()).toEqual([
+      'unknown key "nodeTest[0].precondition"; project "e2e" is skipped',
+      'unknown key "slow.precondition"',
     ]);
-    expect(problems).toEqual([expect.stringMatching(/^"nodeTest\[1\]\.precondition" .*skipped$/)]);
   });
 });

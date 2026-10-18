@@ -31,7 +31,6 @@ import {
   loadLine,
   recoveryProvenance,
   seenLine,
-  slowSeenLine,
   touchesLine,
 } from "./provenance.js";
 
@@ -123,21 +122,18 @@ function block(head: string, lines: readonly (string | null)[], counted: Counted
 
 /**
  * Task 001-91: a failure says who saw it, whether the changes reach it, and a
- * timeout's load; a slow failure says what it ran against instead of the
- * changes (spec 004 D8).
+ * timeout's load; a slow failure reads as any file's (spec 004 D8 as amended
+ * 2026-10-18, task 004-81).
  */
 function entryBlock(entry: TransitionEntry, revision: number): Block {
   const failed = entry.to === "fail";
-  const slow = failed && entry.slowArtifact !== undefined;
   return block(
     `${upper(entry.to)}  ${checkName(entry.check)}`,
     [
-      slow ? slowSeenLine(entry, revision) : failed ? seenLine(entry, revision) : change(entry),
+      failed ? seenLine(entry, revision) : change(entry),
       entry.summary === null ? null : cap(entry.summary, SUMMARY_MAX_CHARS),
       entry.location === null ? null : at(entry.location),
-      ...(failed
-        ? [slow ? null : touchesLine(entry), loadLine(entry)]
-        : [recoveryProvenance(entry, revision)]),
+      ...(failed ? [touchesLine(entry), loadLine(entry)] : [recoveryProvenance(entry, revision)]),
       entry.flaky === undefined ? null : capitalize(flakyText(entry.flaky)),
       entry.retry === undefined ? null : capitalize(retryText(entry.retry)),
     ],

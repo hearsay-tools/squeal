@@ -16,7 +16,6 @@ import {
   type Shape,
 } from "./config-file.js";
 import { compiles, nodeTestProjects } from "./policy-node-test.js";
-import { slowPrecondition } from "./policy-precondition.js";
 import { pytestProjects } from "./policy-pytest.js";
 import { slowInclude } from "./policy-slow.js";
 
@@ -86,7 +85,6 @@ const SHAPE: Shape = {
     maxLoadPerCpu: aboveZero,
     maxDeferMs: atLeastZero,
     maxParallel: positiveInteger,
-    precondition: slowPrecondition,
   },
   delivery: { uncoveredEdits: boolean },
   daemon: { idleExitMinutes: aboveZero, unusedExitMinutes: aboveZero },

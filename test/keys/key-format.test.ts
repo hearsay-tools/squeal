@@ -118,7 +118,7 @@ describe("the guard", () => {
       'report.end === "completed";',
       'report.end !== "completed";',
     ],
-    ["the slow artifact rule", "src/core/slow/inherit.ts", "export", "export /* */"],
+    ["the slow-file classifier", "src/core/slow/classify.ts", "export", "export /* */"],
     ["the daemon's entry", "src/cli/daemon.ts", "ownsProcess: true", "ownsProcess: false"],
     ["the build", "src/harness/build.ts", 'target: "node22.13"', 'target: "node24"'],
     ["the bundler's options", "tsconfig.json", '"strict": true', '"strict": false'],
