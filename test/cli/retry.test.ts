@@ -173,6 +173,74 @@ describe("squeal retry", () => {
     );
   });
 
+  describe("a file with no result at its key (011 C5, gh-36)", () => {
+    const U = "test/u.test.ts";
+    const N = "test/n.test.ts";
+    /** `U` unknown after a withheld run, `N` never run; `pending` sets both rows' work. */
+    async function noResult(pending: "queued" | null = null) {
+      const w = await worktree();
+      const id = w.store.worktrees.list()[0]?.id as string;
+      w.store.testFileKeys.upsertMany(
+        [U, N].map((path) => ({
+          worktreeId: id,
+          testFile: ref(path),
+          key: `key-${path}` as CheckKey,
+          revision: 3 as RevisionNumber,
+          pending,
+        })),
+      );
+      w.store.knownStates.upsertMany([
+        state(id, check(U, "works"), {
+          outcome: "unknown",
+          validity: "unknown",
+          summary: "vitest adapter: dist/lib.js was written during this run",
+        }),
+      ]);
+      return w;
+    }
+
+    it("queues one run at once, whatever the reason, naming the state and the named wait", async () => {
+      const { root, store, seen } = await noResult();
+      const out = await retry([U, N, "--reason", "load"], root);
+      expect(out.code).toBe(0);
+      expect(out.stdout).toBe(
+        [
+          "Run queued: test/u.test.ts has no result at its inputs (unknown: vitest adapter: dist/lib.js was written during this run). It runs once now at its normal priority, whatever the reason; that is its one run at these inputs, and it spends no retry of this session. squeal status --wait 60000 test/u.test.ts waits for its result and moves it ahead in the queue.",
+          "Run queued: test/n.test.ts has no result at its inputs (unknown: never run at this key, and nothing queued it). It runs once now at its normal priority, whatever the reason; that is its one run at these inputs, and it spends no retry of this session. squeal status --wait 60000 test/n.test.ts waits for its result and moves it ahead in the queue.",
+          "",
+        ].join("\n"),
+      );
+      expect(seen).toContain("retry");
+      expect(readRetries(store)).toMatchObject([
+        { testFile: ref(U), key: `key-${U}`, reason: "load", noResult: true, end: null },
+        { testFile: ref(N), key: `key-${N}`, reason: "load", noResult: true, end: null },
+      ]);
+    });
+
+    it("queues nothing more while its run is asked", async () => {
+      const { root, store } = await noResult();
+      await retry([U, "--reason", "environment"], root);
+      const again = await retry([U, "--reason", "environment"], root, "s2");
+      expect(again).toMatchObject({
+        code: 0,
+        stdout:
+          "test/u.test.ts has a run asked at its inputs already, pending, so nothing more is queued. squeal status --wait 60000 test/u.test.ts waits for its result and moves it ahead in the queue.\n",
+      });
+      expect(readRetries(store)).toHaveLength(1);
+    });
+
+    it("queues nothing more while it is queued or running", async () => {
+      const queued = await noResult("queued");
+      const out = await retry([N, "--reason", "load"], queued.root);
+      expect(out).toMatchObject({
+        code: 0,
+        stdout:
+          "test/n.test.ts has a run queued or running at its inputs already, so nothing more is queued. squeal status --wait 60000 test/n.test.ts waits for its result and moves it ahead in the queue.\n",
+      });
+      expect(readRetries(queued.store)).toEqual([]);
+    });
+  });
+
   it("names what clears a failed global setup instead (001-382)", async () => {
     const { root, store } = await worktree();
     const id = store.worktrees.list()[0]?.id as string;
