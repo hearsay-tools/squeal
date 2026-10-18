@@ -7,14 +7,15 @@ import type { Source } from "./sources.js";
 /*
  * Spec 004 Testing, end to end: the scenarios both repository shapes run
  * (`slow-vitest.test.ts`, `slow-node-test.test.ts`), for both plugins. A
- * slow file tests a built CLI it spawns, so no import reaches the artifact
- * and only the declared input keys it (D5); the harness writes the artifact
- * with a counter comment, so a rebuild is new bytes. `slow.maxLoadPerCpu` is
+ * slow file tests a committed CLI it spawns, so no import reaches it and only
+ * the declared input keys it (001 D3); the harness writes the CLI with a
+ * counter comment, so a rewrite is new bytes. A slow file's failure reads
+ * and is inherited as any file's (004 D6, D8 as amended 2026-10-18). `slow.maxLoadPerCpu` is
  * high: on this shared host the load guard would defer the file past every
  * wait (004 `status.md`, wave 1).
  */
 
-/** The built CLI: `node <artifact> hi` prints "HI" and `end`. */
+/** The committed CLI: `node <cli> hi` prints "HI" and `end`. */
 export const CLI = (end: "!" | "?" = "!") =>
   `console.log(\`\${process.argv[2].toUpperCase()}${end}\`);\n`;
 
@@ -22,12 +23,10 @@ export const CLI = (end: "!" | "?" = "!") =>
 export const SLOW_TUNING = { maxLoadPerCpu: 1_000 };
 
 export interface Shape {
-  /** Fixture options: the overlay with the slow files, the artifact, the policy. */
+  /** Fixture options: the overlay with the slow files, the CLI, the policy. */
   readonly options: FixtureOptions;
-  /** Repository path of the built CLI the slow files spawn. */
-  readonly artifact: string;
-  /** The glob the slow files declare as their artifact, as the slow failure names it. */
-  readonly declared: string;
+  /** Repository path of the committed CLI the slow files spawn, a declared input of theirs. */
+  readonly cli: string;
   /** Repository paths of the slow test files. */
   readonly slowFiles: readonly string[];
   /** Every check of a passing baseline. */
@@ -88,26 +87,23 @@ const named = (text: string | null, outcome: "FAIL" | "PASS") =>
   blocks(text ?? "", outcome).filter((name) => name.endsWith(` > ${SLOW_CHECK}`));
 
 /**
- * Goals 1 to 4 in one worktree: in a turn, an edit and its rebuild report the
+ * Goals 1 to 4 in one worktree: in a turn, an edit and a CLI rewrite report the
  * fast failure while the slow files stay pending; a silent Stop runs them and
- * the next boundary delivers the slow failure with its artifact; in a turn
- * again, a rebuild alone makes them pending and `squeal run --slow` runs them.
+ * the next boundary delivers the slow failure as any file's; in a turn
+ * again, a CLI rewrite alone makes them pending and `squeal run --slow` runs them.
  */
 export async function fastFirstThenSlow(e: E2E, shape: Shape): Promise<void> {
   const base = await baseline(e, shape);
   for (const file of shape.slowFiles) expect(ranSince(e, e.main, 0)).toContain(file);
-  expect(base.slowTier).toMatchObject({
-    testFiles: shape.slowFiles.length,
-    artifact: [shape.declared],
-  });
+  expect(base.slowTier).toMatchObject({ testFiles: shape.slowFiles.length });
   const told = await e.hook("post-tool-batch", e.main);
   expect(told).toMatchObject({ code: 0, stderr: "" });
 
-  // In a turn: the edit and its rebuild. The fast file runs and reports; the slow files wait.
+  // In a turn: the edit and a CLI rewrite. The fast file runs and reports; the slow files wait.
   let from = e.runs(e.main).length;
   let before = (await e.status(e.main)).revision;
   e.write(e.main, shape.fast.source, shape.fast.broken);
-  e.writeAt(e.main, shape.artifact, CLI("?"));
+  e.writeAt(e.main, shape.cli, CLI("?"));
   const broken = await e.settleFast(
     e.main,
     "the fast failure, the slow files pending",
@@ -123,7 +119,7 @@ export async function fastFirstThenSlow(e: E2E, shape: Shape): Promise<void> {
   expect((await e.status(e.main)).slowTier?.pending).toBe(shape.slowFiles.length);
   expect(ranSince(e, e.main, from)).toEqual(new Set([shape.fast.testFile]));
 
-  // A silent Stop: the consumer is idle, the slow files run against the rebuilt CLI.
+  // A silent Stop: the consumer is idle, the slow files run against the rewritten CLI.
   from = e.runs(e.main).length;
   const stop = await e.hook("stop", e.main);
   expectSilentStop(stop);
@@ -133,17 +129,15 @@ export async function fastFirstThenSlow(e: E2E, shape: Shape): Promise<void> {
   expect(ranSince(e, e.main, from)).toEqual(new Set(shape.slowFiles));
   const slow = await e.hook("post-tool-batch", e.main);
   expect(named(slow.text, "FAIL")).toHaveLength(1);
-  expect(slow.text).toContain(
-    `slow tier, Squeal's run saw it at revision ${slowFailed.slowTier?.currentAt}, ` +
-      `against ${shape.declared} as of revision ${slowFailed.slowTier?.currentAt}`,
-  );
+  expect(slow.text).toContain(`seen by Squeal's run at revision ${slowFailed.slowTier?.currentAt}`);
+  expect(slow.text).not.toContain("against");
   expect(slowFailed.slowTier?.currentAt).toBeGreaterThanOrEqual(broken.revision);
 
-  // In a turn again: a rebuild alone re-keys the slow files, which wait; `run --slow` runs them.
+  // In a turn again: a CLI rewrite alone re-keys the slow files, which wait; `run --slow` runs them.
   from = e.runs(e.main).length;
   before = (await e.status(e.main)).revision;
-  e.writeAt(e.main, shape.artifact, CLI());
-  await e.settleFast(e.main, "the rebuild, the slow files pending", slowPending(shape), before);
+  e.writeAt(e.main, shape.cli, CLI());
+  await e.settleFast(e.main, "the rewrite, the slow files pending", slowPending(shape), before);
   expect(ranSince(e, e.main, from)).toEqual(new Set());
   const run = await e.cli(e.main, ["run", "--slow"]);
   expect(run.code, run.stderr).toBe(0);
@@ -159,11 +153,11 @@ export async function fastFirstThenSlow(e: E2E, shape: Shape): Promise<void> {
 }
 
 /**
- * Goal 5 and D6: a second worktree with the artifact equal inherits the slow
- * results and runs no slow file; a third, rebuilt before its daemon starts,
- * inherits the fast results only and runs its slow files itself.
+ * Goal 5 and D6: a second worktree with every input equal inherits the slow
+ * results and runs no slow file; a third, its CLI rewritten before its daemon
+ * starts, inherits the fast results only and runs its slow files itself.
  */
-export async function inheritsOnlyWithTheArtifactEqual(
+export async function inheritsOnlyWithTheInputsEqual(
   e: E2E,
   shape: Shape,
   sessions: readonly [string, string],
@@ -181,16 +175,16 @@ export async function inheritsOnlyWithTheArtifactEqual(
   expect(e.runs(equal)).toEqual([]);
   expect(second.inherited.count).toBe(main.counts.current);
 
-  const rebuilt = e.addWorktree("wt3");
-  e.writeAt(rebuilt, shape.artifact, CLI());
-  await e.hook("session-start", rebuilt, { session_id: sessions[1] });
-  await e.daemonReady(rebuilt);
+  const rewritten = e.addWorktree("wt3");
+  e.writeAt(rewritten, shape.cli, CLI());
+  await e.hook("session-start", rewritten, { session_id: sessions[1] });
+  await e.daemonReady(rewritten);
   const third = await e.settle(
-    rebuilt,
-    "the rebuilt worktree's baseline",
+    rewritten,
+    "the rewritten worktree's baseline",
     (s) => s.counts.current === shape.checks && failsOnly()(s) && slowCurrent(shape)(s),
   );
-  expect(ranSince(e, rebuilt, 0)).toEqual(new Set(shape.slowFiles));
+  expect(ranSince(e, rewritten, 0)).toEqual(new Set(shape.slowFiles));
   expect(third.inherited.count).toBeLessThan(main.counts.current);
 }
 

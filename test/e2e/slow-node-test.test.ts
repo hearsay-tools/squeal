@@ -3,15 +3,15 @@ import { DEMO, e2eSuite, OTHER_SESSION, PLUGINS } from "./harness.js";
 import {
   CLI,
   fastFirstThenSlow,
-  inheritsOnlyWithTheArtifactEqual,
+  inheritsOnlyWithTheInputsEqual,
   type Shape,
   SLOW_TUNING,
 } from "./slow-shape.js";
 
 /*
  * Spec 004 Testing, end to end, on cezarion's shape: a node:test e2e
- * project over a built package, `slow: true` and keyed by its `dist` (D1,
- * D5). The fixture is the node:test workspace of `node-test.test.ts`, whose
+ * project over a committed package, `slow: true` and keyed by its declared
+ * `dist` (D1, 001 D3). The fixture is the node:test workspace of `node-test.test.ts`, whose
  * `test:package` project gains `packages/demo/test/e2e/cli.test.ts`, which
  * spawns `packages/demo/dist/cli.mjs`; `squeal init` writes the projects and
  * the test marks `test:package` slow, as a user would after it.
@@ -34,8 +34,7 @@ const SHAPE: Shape = {
       inputs: { [`${PACKAGE}/*.test.ts`]: ["packages/demo/dist/**"] },
     }),
   },
-  artifact: "packages/demo/dist/cli.mjs",
-  declared: "packages/demo/dist/**",
+  cli: "packages/demo/dist/cli.mjs",
   slowFiles: [`${PACKAGE}/cli.test.ts`, `${PACKAGE}/package.test.ts`],
   /**
    * node:test `adds`, `sees the preload`, `title > slugs through the
@@ -57,9 +56,9 @@ describe.each(PLUGINS)("slow node:test e2e end to end, $name", (plugin) => {
     await fastFirstThenSlow(fixture(ctx, plugin, SHAPE.options), SHAPE);
   }, 400_000);
 
-  it("is inherited by a second worktree only with the artifact equal", async (ctx) => {
+  it("is inherited by a second worktree only with its inputs equal", async (ctx) => {
     const e = fixture(ctx, plugin, SHAPE.options);
-    await inheritsOnlyWithTheArtifactEqual(e, SHAPE, [OTHER_SESSION, THIRD_SESSION]);
+    await inheritsOnlyWithTheInputsEqual(e, SHAPE, [OTHER_SESSION, THIRD_SESSION]);
   }, 400_000);
 });
 

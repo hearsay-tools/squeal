@@ -3,15 +3,15 @@ import { e2eSuite, OTHER_SESSION, PLUGINS, STRINGS } from "./harness.js";
 import {
   CLI,
   fastFirstThenSlow,
-  inheritsOnlyWithTheArtifactEqual,
+  inheritsOnlyWithTheInputsEqual,
   type Shape,
   SLOW_TUNING,
 } from "./slow-shape.js";
 
 /*
  * Spec 004 Testing, end to end, on this repository's shape: a Vitest e2e
- * directory over a small built `dist`, declared slow by `slow.include` and
- * keyed by `dist/**` (D1, D5). The fixture adds `test/e2e/cli.test.ts`,
+ * directory over a small committed `dist`, declared slow by `slow.include`
+ * and keyed by its declared input `dist/**` (D1, 001 D3). The fixture adds `test/e2e/cli.test.ts`,
  * which spawns `dist/cli.mjs`, to `test/fixtures/e2e/project`.
  */
 
@@ -28,8 +28,7 @@ const SHAPE: Shape = {
       inputs: { "test/e2e/**/*.test.ts": ["dist/**"] },
     },
   },
-  artifact: "dist/cli.mjs",
-  declared: "dist/**",
+  cli: "dist/cli.mjs",
   slowFiles: [E2E_FILE],
   /** `math > adds`, `math > multiplies`, `shouts`, the CLI's check, and each of the 3 files' file-level check. */
   checks: 4 + 3,
@@ -46,9 +45,9 @@ describe.each(PLUGINS)("slow Vitest e2e end to end, $name", (plugin) => {
     await fastFirstThenSlow(fixture(ctx, plugin, SHAPE.options), SHAPE);
   }, 400_000);
 
-  it("is inherited by a second worktree only with the artifact equal", async (ctx) => {
+  it("is inherited by a second worktree only with its inputs equal", async (ctx) => {
     const e = fixture(ctx, plugin, SHAPE.options);
-    await inheritsOnlyWithTheArtifactEqual(e, SHAPE, [OTHER_SESSION, THIRD_SESSION]);
+    await inheritsOnlyWithTheInputsEqual(e, SHAPE, [OTHER_SESSION, THIRD_SESSION]);
   }, 400_000);
 });
 
