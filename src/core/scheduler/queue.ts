@@ -10,10 +10,12 @@ import { Promotions, type PublishedPromotion } from "./promotions.js";
  * Spec 001 D5 step 4: "checks whose last known state is `fail` (including
  * inherited failures), then test files that import a changed path directly
  * according to the runner's module graph, then transitively affected files,
- * then never-run files". `direct` is a test file that itself changed or that
- * the runner reported as a direct importer (`AffectedTestFiles.direct`).
+ * then never-run files". `edited` is a test file the revision itself added or
+ * edited, ahead of the other direct importers (011 C4 as amended for gh-31,
+ * task 011-17); `direct` is one the runner reported as a direct importer
+ * (`AffectedTestFiles.direct`).
  */
-export const Priority = { failing: 0, direct: 1, transitive: 2, neverRun: 3 } as const;
+export const Priority = { failing: 0, edited: 1, direct: 2, transitive: 3, neverRun: 4 } as const;
 export type Priority = (typeof Priority)[keyof typeof Priority];
 
 const NO_DIRECT_IMPORTERS: ReadonlySet<string> = new Set();
@@ -38,7 +40,8 @@ export function priorityOf(
   direct: ReadonlySet<string> = NO_DIRECT_IMPORTERS,
 ): Priority {
   if (file.failing) return Priority.failing;
-  if (changed.has(file.ref.path) || direct.has(file.id)) return Priority.direct;
+  if (changed.has(file.ref.path)) return Priority.edited;
+  if (direct.has(file.id)) return Priority.direct;
   return file.resultKey === null ? Priority.neverRun : Priority.transitive;
 }
 
@@ -206,7 +209,8 @@ export class RunQueue {
 
   /**
    * Recent entries first, then priority, then shortest last known duration
-   * with unknown ones last, then first queued, then project and path. Spec
+   * with unknown ones last (an `edited` entry's unknown one first, as
+   * `joinSpan` counts it 0: 011 C4 as amended, gh-31), then first queued, then project and path. Spec
    * 001 D5 step 4 as amended (task 001-100, defect 19): work an edit caused
    * runs ahead of the baseline, an environment change or `run --all`, "within
    * each group D5's order stands"; "within a class, shortest last known
@@ -269,7 +273,7 @@ function sorted(
   const group = (entry: Entry) => Number(entry.recent || promoted.has(entry));
   const durations = new Map<Entry, number>();
   for (const entry of entries) {
-    durations.set(entry, durationOf(entry.ref) ?? Number.POSITIVE_INFINITY);
+    durations.set(entry, durationOf(entry.ref) ?? unknownDuration(entry.priority));
   }
   const duration = (entry: Entry) => durations.get(entry) ?? Number.POSITIVE_INFINITY;
   return [...entries]
@@ -284,6 +288,15 @@ function sorted(
         compare(a.ref.path, b.ref.path),
     )
     .map((entry) => entry.ref);
+}
+
+/**
+ * Where an unknown duration sorts in its class: a test file the revision
+ * added or edited is taken as the shortest, never after known long ones
+ * (011 C4 as amended, gh-31); elsewhere after every known one.
+ */
+function unknownDuration(priority: Priority): number {
+  return priority === Priority.edited ? 0 : Number.POSITIVE_INFINITY;
 }
 
 /** Ascending; two unknown (infinite) durations, or two unpromoted ranks, are equal. */
