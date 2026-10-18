@@ -92,18 +92,21 @@ export class SlowSkips {
     const { context, ledger } = this.started();
     const skips = this.#adopted();
     const refs = new Map(skips.get(rule.source)?.refs);
-    for (const ref of ledger.orderedSlow()) {
-      if (preconditionFor(context.policy, ref)?.source !== rule.source) continue;
-      const file = ledger.file(ref);
-      if (file === undefined) continue;
-      ledger.dequeue(file);
-      ledger.checkpoints.failed(ref);
-      refs.set(testFileId(ref), ref);
-    }
-    // Published first: the commit's refresh reads the skips, so its checks leave current.
-    skips.set(rule.source, { rule, reason, refs, since: context.now() });
-    this.#publish();
-    ledger.commit();
+    // One transaction: no reader sees the skip beside checks still current (review wave-8.1, third round).
+    context.store.transaction(() => {
+      for (const ref of ledger.orderedSlow()) {
+        if (preconditionFor(context.policy, ref)?.source !== rule.source) continue;
+        const file = ledger.file(ref);
+        if (file === undefined) continue;
+        ledger.dequeue(file);
+        ledger.checkpoints.failed(ref);
+        refs.set(testFileId(ref), ref);
+      }
+      // Published first: the commit's refresh reads the skips, so its checks leave current.
+      skips.set(rule.source, { rule, reason, refs, since: context.now() });
+      this.#publish();
+      ledger.commit();
+    });
   }
 
   /**
@@ -115,15 +118,17 @@ export class SlowSkips {
     const skip = this.#adopted().get(source);
     if (skip === undefined) return;
     this.#adopted().delete(source);
-    this.#publish();
-    const { ledger } = this.started();
-    const idle = [...skip.refs.values()].filter((ref) => ledger.file(ref)?.phase === null);
-    for (const ref of idle) {
-      const file = ledger.file(ref);
-      if (file !== undefined) ledger.touch(file);
-    }
-    ledger.settle(idle, new Set());
-    ledger.commit();
+    const { context, ledger } = this.started();
+    context.store.transaction(() => {
+      this.#publish();
+      const idle = [...skip.refs.values()].filter((ref) => ledger.file(ref)?.phase === null);
+      for (const ref of idle) {
+        const file = ledger.file(ref);
+        if (file !== undefined) ledger.touch(file);
+      }
+      ledger.settle(idle, new Set());
+      ledger.commit();
+    });
   }
 
   /**
@@ -182,15 +187,17 @@ export class SlowSkips {
    */
   #requeue(refs: readonly TestFileRef[], changed: ReadonlySet<RelativePath>): boolean {
     if (refs.length === 0) return false;
-    const { ledger } = this.started();
-    ledger.settle(refs, changed);
-    for (const ref of refs) {
-      const file = ledger.file(ref);
-      if (file === undefined || classify(file) !== "current") continue;
-      ledger.enqueue(file, priorityOf(file, changed), true);
-    }
-    ledger.commit();
-    this.#publish();
+    const { context, ledger } = this.started();
+    context.store.transaction(() => {
+      ledger.settle(refs, changed);
+      for (const ref of refs) {
+        const file = ledger.file(ref);
+        if (file === undefined || classify(file) !== "current") continue;
+        ledger.enqueue(file, priorityOf(file, changed), true);
+      }
+      ledger.commit();
+      this.#publish();
+    });
     return true;
   }
 
