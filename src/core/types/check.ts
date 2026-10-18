@@ -87,10 +87,12 @@ export interface CheckError {
   /**
    * Where a file-level error happened (task 001-361): `load` when none of the
    * file's tests were collected (an import, a syntax error, a top-level
-   * throw), `setup` when they were and a hook threw. Absent on a test's own
-   * errors and in failure texts stored before 001-361.
+   * throw), `after-tests` when they were and reported (a hook threw, or the
+   * file's teardown; task 011-19), `setup` for a project's global setup.
+   * Absent on a test's own errors and in failure texts stored before
+   * 001-361; a file-level `setup` is one stored before 011-19.
    */
-  readonly phase?: "load" | "setup";
+  readonly phase?: "load" | "after-tests" | "setup";
   /**
    * Set when the error carries a signature of Squeal's recorder (spec 001 D11
    * Fidelity, task 001-390): what it points at, which the summary names.

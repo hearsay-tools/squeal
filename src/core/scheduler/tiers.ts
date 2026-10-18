@@ -15,6 +15,7 @@ import { priorityOf } from "./queue.js";
 import { recordsForFile } from "./records.js";
 import {
   endRerun,
+  failsAfterTestsPassed,
   holdsNewFailure,
   type NewFailure,
   queueReruns,
@@ -493,7 +494,12 @@ export function recordTier(
       // failure is judged here, before the sink applies them (review wave 13i, B3).
       if (growth !== undefined || file.key === key) {
         if (holdsNewFailure(context, prior, records)) {
-          failedAnew.push({ file, key: storeKey, forced });
+          failedAnew.push({
+            file,
+            key: storeKey,
+            forced,
+            afterTestsPassed: failsAfterTestsPassed(records),
+          });
         }
       }
       if (growth === undefined && file.key === key) {
