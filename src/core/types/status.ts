@@ -597,6 +597,8 @@ export interface PendingRetry {
   readonly testFile: TestFileRef;
   /** `environment` when any request at the key is: it runs at once. */
   readonly reason: "load" | "environment";
+  /** Asked for a file with no result at its key: it runs at once whatever its reason (011 C5). */
+  readonly noResult?: true;
   readonly askedAt: EpochMs;
   /** The worktree whose daemon queued its run; `null` while none has. */
   readonly claimedBy: WorktreeId | null;

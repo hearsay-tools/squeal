@@ -79,7 +79,8 @@ describe("askRetry", () => {
     const keys = [{ worktreeId: WT, testFile: FILE, key: "k1", revision: 1, pending: null }];
     const load = () => ({ oneMinute: 30, cpus: 8 });
     expect(pendingRetriesOf(store, keys as never, load).pendingRetries?.retries).toMatchObject([
-      { testFile: FILE, reason: "environment", requests: 1 },
+      // The reason stays the one asked (review 011 wave 2, S1); `noResult` says it runs at once.
+      { testFile: FILE, reason: ask("s1").reason, noResult: true, requests: 1 },
     ]);
     expect(retryFactOf(readRetries(store))).toBeUndefined();
   });

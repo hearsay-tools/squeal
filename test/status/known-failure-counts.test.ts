@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { type EndedWait, waitLine } from "../../src/cli/status-wait-lines.js";
 import { createDelivery, formatRegistration } from "../../src/core/delivery/index.js";
 import { createStateSink } from "../../src/core/state/index.js";
 import { formatStatus, readStatus } from "../../src/core/status/index.js";
@@ -107,6 +108,13 @@ describe("known failures by validity (task 011-15)", () => {
       2,
     );
     expect(lines.filter((line) => line.endsWith("observed at revision 1, stale"))).toHaveLength(1);
+  });
+
+  it("ends a wait's verdict line with the same current-only count (review 011 wave 2, S2)", () => {
+    const repo = fakeRepo();
+    seedMixed(seedStore(repo), repo);
+    const wait = { outcome: "no-daemon", result: snapshotOf(repo) } as unknown as EndedWait;
+    expect(waitLine(wait)).toContain(". Worktree: known failures 1 (1 test);");
   });
 
   it("gives the registration header the same count and words", async () => {
