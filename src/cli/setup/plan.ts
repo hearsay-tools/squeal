@@ -10,7 +10,6 @@ import { BLOCK_VERSION, instructionFiles } from "./block.js";
 import { slowCandidates } from "./candidates.js";
 import { scanGates, squealLine } from "./gates.js";
 import { type HarnessFact, readHarnesses } from "./harnesses.js";
-import { type PreconditionCommand, preconditionCommands } from "./preconditions.js";
 import { type PytestRunner, pytestRunners } from "./pytest.js";
 import { otherWorktrees, type RepoFacts, readJson, readRepoFacts } from "./repo.js";
 import { testFileUniverse, unselected } from "./test-globs.js";
@@ -43,8 +42,6 @@ export interface SetupPlan {
    * Vitest test-file globs Squeal does not cover. Absent from older plans.
    */
   readonly excluded?: { readonly vitest: readonly string[] };
-  /** Declared slow-tier precondition commands (004 D7): facts, never outdated. */
-  readonly preconditions: readonly PreconditionCommand[];
   readonly codexTrust: CodexTrust;
   readonly warmup: Warmup;
   /** One line per finding that makes `--check` exit 1. */
@@ -132,26 +129,6 @@ export interface SlowGroup {
   readonly declaredSlow: boolean;
   /** The `inputs` globs that apply to the group's files. */
   readonly declaredInputs: readonly string[];
-  /** Directories the group may test, each with its evidence, never ranked. */
-  readonly artifacts: readonly ArtifactCandidate[];
-  /** The candidate every other one lies under, the default answer; `null` for siblings. */
-  readonly broader: string | null;
-  /** Some declared input lies in or over a candidate. */
-  readonly inputsHoldArtifact: boolean;
-}
-
-export interface ArtifactCandidate {
-  readonly path: string;
-  readonly exists: boolean;
-  readonly ignored: boolean;
-  readonly evidence: readonly Evidence[];
-}
-
-export interface Evidence {
-  readonly rule: "bin" | "main" | "module" | "exports" | "files" | "build-script" | "named";
-  readonly detail: string;
-  /** D3 leads from 005-04: `files` lists sources beside artifacts. */
-  readonly weak: boolean;
 }
 
 /**
@@ -234,14 +211,13 @@ export async function readPlan(
     mentions,
     slow,
     excluded: { vitest: policy.vitest.exclude },
-    preconditions: preconditionCommands(policy),
     codexTrust: await codexTrust(root, harnesses, options),
     warmup: {
       source: testFiles.source,
       testFiles: testFiles.paths.length,
       withoutCurrentResult: testFiles.paths.length - (testFiles.current ?? 0),
     },
-    outdated: [...outdated(config, instructions, slow), ...unselected(policy, universe)],
+    outdated: [...outdated(config, instructions), ...unselected(policy, universe)],
   };
   return { plan, testFiles: universe };
 }
@@ -299,11 +275,7 @@ async function configElsewhere(root: AbsolutePath): Promise<string | null> {
   return null;
 }
 
-function outdated(
-  config: ConfigFact,
-  instructions: readonly InstructionFile[],
-  slow: SlowFacts,
-): string[] {
+function outdated(config: ConfigFact, instructions: readonly InstructionFile[]): string[] {
   const lines: string[] = [];
   // An unusable config is something to fix, like an outdated one (review 005-13 S1).
   for (const problem of config.problems) lines.push(`${POLICY_FILE}: ${problem}`);
@@ -323,13 +295,6 @@ function outdated(
     } else if (block.state === "unterminated") {
       lines.push(`${path}:${block.line}: a Squeal block begins with no end; fix it by hand`);
     }
-  }
-  // D3: 004 D5's warning reaches a human. A group with no candidate has nothing to name.
-  for (const group of slow.groups) {
-    if (!group.declaredSlow || group.inputsHoldArtifact || group.artifacts.length === 0) continue;
-    lines.push(
-      `${group.dir}: declared slow, but no declared input holds an artifact it may test (${group.artifacts.map((a) => a.path).join(", ")})`,
-    );
   }
   return lines;
 }

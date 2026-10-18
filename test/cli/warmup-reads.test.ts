@@ -47,7 +47,7 @@ describe("the warm-up's ignored reads of slow files", () => {
     expect(found.reads).toEqual([{ path: SLOW, paths, more: 10 }]);
     const text = ignoredReadText(found.reads[0] as (typeof found.reads)[0]);
     expect(text.split("\n")[0]).toBe(
-      `${SLOW} read 60 gitignored paths, unkeyed: a change to them re-runs nothing until declared; squeal setup --input ${SLOW}=<glob> declares one; declare build output, never a file the suite's own bootstrap rewrites (a descriptor, a log, a PID file), or every boot re-runs it`,
+      `${SLOW} read 60 gitignored paths, unkeyed: a change to them re-runs nothing, and no input declaration keys a gitignored path; a test of build output Squeal does not produce belongs in its runner's exclude (vitest.exclude, or its project's exclude), for you or CI to run`,
     );
     expect(text.split("\n").slice(1)).toEqual([...paths.map((p) => `    ${p}`), "    and 10 more"]);
     expect(ignoredReadNotes(found)).toEqual([]);

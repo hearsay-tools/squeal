@@ -5,13 +5,12 @@ import { type Machine, machine, ok } from "./machine.js";
 import { calm, shown } from "./state.js";
 
 /*
- * Spec 005 Testing, end to end, bullets 3 and 4, on fixtures shaped like this
- * repository and like cezarion: `squeal setup` proposes `plugins/**` for this
- * repository's `test/e2e` and `packages/cezar/dist/**` for cezarion's e2e,
- * each with its evidence; and `squeal setup --yes` with every choice writes
+ * Spec 005 Testing, end to end, bullet 4, on fixtures shaped like this
+ * repository and like cezarion: `squeal setup --yes` with every choice writes
  * what the plan says, its warm-up leaves every test file current, a first
  * session runs nothing more, and a second setup reports nothing outdated.
  * One machine with both harnesses installed by `install.sh` serves the file.
+ * Bullet 3, setup's artifact proposals, went with them (task 004-81).
  */
 
 let m: Machine;
@@ -27,79 +26,11 @@ interface Plan {
     readonly text: string;
     readonly proposed: string | null;
   }[];
-  readonly slow: {
-    readonly groups: readonly {
-      readonly dir: string;
-      readonly declaredInputs: readonly string[];
-      readonly inputsHoldArtifact: boolean;
-      readonly artifacts: readonly {
-        readonly path: string;
-        readonly evidence: readonly { readonly detail: string }[];
-      }[];
-    }[];
-  };
   readonly outdated: readonly string[];
 }
 
 const plan = async (fx: string): Promise<Plan> =>
   JSON.parse(ok(await m.squeal(["setup", "--plan", "--json"], fx), "setup --plan").stdout) as Plan;
-
-/** The input question for the group under `dir`, as `squeal setup` without a terminal prints it. */
-async function inputQuestion(fx: string, dir: string): Promise<string | null> {
-  const r = await m.squeal(["setup"], fx);
-  expect(r.status, shown(r)).toBe(1);
-  expect(r.stderr).toContain("nothing changed");
-  const start = r.stdout.indexOf(`${dir}/** may test these artifacts`);
-  if (start < 0) return null;
-  const end = r.stdout.indexOf("\n\n", start);
-  return r.stdout.slice(start, end < 0 ? undefined : end);
-}
-
-const evidenceOf = (p: Plan, dir: string, artifact: string) =>
-  p.slow.groups
-    .find((g) => g.dir === dir)
-    ?.artifacts.find((a) => a.path === artifact)
-    ?.evidence.map((e) => e.detail);
-
-describe("squeal setup proposes each shape's artifact with its evidence (bullet 3)", () => {
-  it("this repository as it is: the declared inputs already hold plugins, so nothing is asked", async () => {
-    const fx = await fixture(m, "squeal");
-    const p = await plan(fx);
-    const group = p.slow.groups.find((g) => g.dir === "test/e2e");
-    expect(group?.declaredInputs).toEqual(["plugins/claude-code/**", "plugins/codex/**"]);
-    expect(group?.inputsHoldArtifact).toBe(true);
-    expect(evidenceOf(p, "test/e2e", "plugins")).toContain('./package.json files "plugins"');
-    expect(await inputQuestion(fx, "test/e2e")).toBeNull();
-  });
-
-  it("this repository without inputs: plugins/** is the default, with its evidence", async () => {
-    const fx = await fixture(m, "squeal");
-    ok(
-      await m.sh("printf '{}\\n' > squeal.config.json && git commit -qam 'no inputs'", [], {
-        cwd: fx,
-      }),
-      "drop inputs",
-    );
-    const question = await inputQuestion(fx, "test/e2e");
-    expect(question).toContain('plugins: ./package.json files "plugins" (weak)');
-    expect(question).toMatch(/^ {2}1\. plugins\/\*\* \(default\)$/m);
-  });
-
-  it("cezarion: packages/cezar/dist/** is the default, with its evidence", async () => {
-    const fx = await fixture(m, "cezarion");
-    const p = await plan(fx);
-    expect(evidenceOf(p, "packages/cezar/test/e2e", "packages/cezar/dist")).toEqual(
-      expect.arrayContaining([
-        'packages/cezar/package.json bin "./dist/cli.js"',
-        'packages/cezar/package.json exports "./dist/index.js"',
-        "build script packages/cezar:build (tsc -p tsconfig.json) writes packages/cezar/dist",
-      ]),
-    );
-    const question = await inputQuestion(fx, "packages/cezar/test/e2e");
-    expect(question).toContain("packages/cezar/dist: packages/cezar/package.json bin");
-    expect(question).toMatch(/^ {2}1\. packages\/cezar\/dist\/\*\* \(default\)$/m);
-  });
-});
 
 /** Every choice of each shape, as flags: the plan's defaults, and the input the spec names. */
 const CHOICES: Readonly<

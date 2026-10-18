@@ -136,17 +136,17 @@ export async function warmUp(root: AbsolutePath, io: CliIo): Promise<WarmupResul
 }
 
 /**
- * D3: a slow file's ignored reads as a suggestion for its `inputs`, said to
- * be unkeyed so it never reads as coverage. Nothing declares them. Only
- * build output is an input: a file the suite's own bootstrap rewrites, as
- * cezar's `.ai/qa/test-env.json`, would re-key the file at each boot (005-41).
+ * D3: a slow file's ignored reads, said to be unkeyed so they never read as
+ * coverage. No declaration keys a gitignored path (004 D5 as amended
+ * 2026-10-18, task 004-81), so a test of build output Squeal does not
+ * produce is pointed at its runner's exclude instead of `--input`.
  */
 export function ignoredReadText(read: IgnoredRead): string {
   const bound = read.moreAtMost === true && read.more > 0;
   const count = bound ? read.paths.length : read.paths.length + read.more;
   const more = read.more > 0 ? [`and ${bound ? "up to " : ""}${read.more} more`] : [];
   const listed = [...read.paths, ...more];
-  return `${read.path} read ${bound ? "at least " : ""}${plural(count, "gitignored path")}, unkeyed: a change to ${count === 1 ? "it" : "them"} re-runs nothing until declared; squeal setup --input ${read.path}=<glob> declares one; declare build output, never a file the suite's own bootstrap rewrites (a descriptor, a log, a PID file), or every boot re-runs it${listed.map((p) => `\n    ${p}`).join("")}`;
+  return `${read.path} read ${bound ? "at least " : ""}${plural(count, "gitignored path")}, unkeyed: a change to ${count === 1 ? "it" : "them"} re-runs nothing, and no input declaration keys a gitignored path; a test of build output Squeal does not produce belongs in its runner's exclude (vitest.exclude, or its project's exclude), for you or CI to run${listed.map((p) => `\n    ${p}`).join("")}`;
 }
 
 /**

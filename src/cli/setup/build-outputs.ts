@@ -1,6 +1,5 @@
 import { join, posix } from "node:path";
 import { isRecord } from "../../core/fs/index.js";
-import type { ArtifactCandidate, Evidence } from "./plan.js";
 import {
   dirExists,
   existingIgnoredDirs,
@@ -14,21 +13,41 @@ import {
 } from "./repo.js";
 
 /*
- * Spec 005 D3, "Slow tests and their inputs", step 2: directories a slow
- * group may test, each with its evidence. Leads from 005-04: never ranked by
- * how much evidence a candidate has, `files` entries are weak evidence, and
- * a gitignored candidate that does not exist is "not built in this worktree".
+ * Build-output evidence: the directories a group of test files may test,
+ * each with its evidence. Setup proposed them as slow files' declared
+ * artifacts until task 004-81 (004 D5 as amended 2026-10-18) removed that
+ * proposal; kept for row 005-70, where the wizard proposes the runner's
+ * `exclude` for a build-output suite. Nothing calls them until then. Leads
+ * from 005-04: never ranked by how much evidence a candidate has, `files`
+ * entries are weak evidence, and a gitignored candidate that does not exist
+ * is "not built in this worktree".
  */
+
+/** A directory a group of test files may test, with its evidence. */
+export interface BuildOutputCandidate {
+  readonly path: string;
+  readonly exists: boolean;
+  readonly ignored: boolean;
+  readonly evidence: readonly Evidence[];
+}
+
+export interface Evidence {
+  readonly rule: "bin" | "main" | "module" | "exports" | "files" | "build-script" | "named";
+  readonly detail: string;
+  /** D3 leads from 005-04: `files` lists sources beside artifacts. */
+  readonly weak: boolean;
+}
 
 type Found = { readonly path: string } & Evidence;
 
 const FIELDS = ["bin", "main", "module", "exports", "files"] as const;
 
-export async function artifactCandidates(
+/** The build outputs the test `files` of directory `dir` may test, sorted by path. */
+export async function buildOutputCandidates(
   facts: RepoFacts,
   dir: string,
   files: readonly string[],
-): Promise<ArtifactCandidate[]> {
+): Promise<BuildOutputCandidate[]> {
   const manifest = nearestManifest(facts, dir);
   const found = [...fieldCandidates(manifest), ...buildCandidates(facts, manifest)];
   const named = await namedCandidates(facts, manifest, files, found);
@@ -192,20 +211,4 @@ function names(facts: RepoFacts, from: string, pkg: string, s: string, dir: stri
   return !facts.tracked.some(
     (file) => !file.startsWith(`${dir}/`) && (file === tail || file.endsWith(`/${tail}`)),
   );
-}
-
-/**
- * Whether input glob `glob` lies in or over directory `dir`, judged by its
- * directory part before the first wildcard: `plugins/claude-code/**` holds
- * `plugins`, `dist` holds `dist`, and `**` holds everything.
- */
-export function holdsArtifact(glob: string, dir: string): boolean {
-  const clean = glob.replace(/^\.\//, "");
-  const stem = clean.split(/[*?[{]/)[0] as string;
-  const base =
-    stem.length < clean.length
-      ? stem.slice(0, stem.lastIndexOf("/") + 1)
-      : `${stem.replace(/\/+$/, "")}/`;
-  if (base === "") return clean.startsWith("**");
-  return base.startsWith(`${dir}/`) || `${dir}/`.startsWith(base);
 }
