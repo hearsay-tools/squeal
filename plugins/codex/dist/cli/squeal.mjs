@@ -4320,15 +4320,22 @@ function currentText(tier) {
   const against = tier.artifact.length === 0 ? `current at ${at2}, against no declared artifact` : `current against ${artifactText(tier.artifact)} as of ${at2}`;
   return unknown === 0 ? against : `${against} (declared artifact unknown for ${unknown})`;
 }
+function untestedText(tier) {
+  const unknown = tier.artifactUnknown ?? 0;
+  if (tier.artifact.length === 0 || unknown >= tier.current) {
+    return "these files have not tested the source changes since";
+  }
+  const it = tier.artifact.length === 1 ? "it" : "them";
+  return `the source changes since are not in ${it}, so these files have not tested them`;
+}
 function slowTierText(header, command) {
   const tier = header.slowTier;
   if (tier === void 0) return null;
   if (tier.testFiles === 0) return `Slow tier: no slow test files listed yet; ${stopText(tier)}.`;
   const parts2 = [];
   if (tier.current > 0) {
-    parts2.push(
-      `${tier.current} ${currentText(tier)}${tier.sourcesChangedSince ? ", sources changed since" : ""}`
-    );
+    const untested = tier.sourcesChangedSince ? `; ${untestedText(tier)}` : "";
+    parts2.push(`${tier.current} ${currentText(tier)}${untested}`);
   }
   if (tier.pending > 0) {
     parts2.push(pendingText(tier.pending, tier.activity, header.daemon?.state === "down"));
@@ -47800,7 +47807,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.217";
+  if (true) return "0.1.218";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
