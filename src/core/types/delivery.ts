@@ -1,6 +1,7 @@
 import type { CheckId } from "./check.js";
 import type {
   AbsolutePath,
+  CommitSha,
   EpochMs,
   PayloadSchemaVersion,
   RelativePath,
@@ -138,7 +139,31 @@ export interface TransitionEntry {
    * then absent).
    */
   readonly slowArtifact?: readonly string[] | null;
+  /**
+   * For a `first-seen-fail` with no earlier state told: its baseline, the
+   * stored result at the key its test file had when the consumer registered,
+   * from any worktree (011 C5 as amended, gh-32). Absent when the consumer's
+   * registration is not known.
+   */
+  readonly beforeEdits?: BeforeEdits;
 }
+
+/**
+ * 011 C5 as amended (gh-32, task 011-18): what the shared store holds for a
+ * check at the key it had when the session registered, looked up and never
+ * run for this purpose. `none` names the registration revision's commit, the
+ * checkout that would settle it (`null` when none was recorded); `fail` names
+ * the worktree and commit of the run that stored the failure.
+ */
+export type BeforeEdits =
+  | { readonly outcome: "none"; readonly commit: CommitSha }
+  | {
+      readonly outcome: "fail";
+      readonly worktreeId: WorktreeId;
+      readonly worktreeRoot: AbsolutePath | null;
+      readonly commit: CommitSha;
+    }
+  | { readonly outcome: "pass" };
 
 /**
  * A check told to this consumer as failing that has no known state any more:
