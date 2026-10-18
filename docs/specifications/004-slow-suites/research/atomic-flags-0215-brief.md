@@ -1,0 +1,12 @@
+# Research brief: the six atomic flags of 0.1.215
+
+Use /researcher. Shape: research. Decided by the human on 2026-10-18 (row 004-77): diagnose the flags before 0.1.215 is released. Run `20261018T125937Z-bcdbec` (0.1.215, commit `581f1772`) flagged six measures against `20261016T061730Z-07d7ab` (0.1.199): codex gpt-6-luna a2-slow, a3-harmless, a8-load-hold `claim-true`, a8-load-hold `slow-through-squeal`; claude-sonnet-5-5 a11-inherited-flake `claim-true` and `retry-for-environment`. The results file is commit `2b589f95` (reverted from main, since the trend test fails on unaccepted flags); its `ATOMIC.md` lists the flags.
+
+Read first: `evals/README.md`, spec 006 (D10, the atomic tier), the scenario definitions of those four tasks under `evals/`, the commits between 0.1.199 and 0.1.215 that change what an agent reads (`git log e77eff42..581f1772 -- src/harness src/core/state src/cli`, in particular 004-68, 004-69 and the `stop.requireSlowSuite` wording), memory-free: the cells themselves.
+
+1. **What each flagged session read and did.** From the cells under `/tmp/squeal-evals-1001/cells/581f1772dc45/20261018T125937Z-bcdbec/` and the matching `07d7ab` cells (read-only: `out/events.jsonl`, `grade.json`, `prompt.txt`), the Squeal text each agent read last before its final claim, and what it did with it. Name the line that differs between the versions.
+2. **The cause per flag**, tagged; whether it is the product's wording, a grader or scenario artefact, or the model.
+3. **Whether 0.1.216 changes it.** 004-71 (the quiet `status --wait` line follows `stop.requireSlowSuite`) and 011-15 (`Known failures` counts current failures only) landed in 0.1.216. Read their texts against what the flagged agents read. Then, with the coordinator's go (ask with a request before running; eval runs take turns across coordinators), re-run only the flagged models and tasks on main: `node evals/bin/run-baseline.mjs --atomic --models <ids> --tasks a2-slow,a3-harmless,a8-load-hold,a11-inherited-flake`. Run nothing with `--help`: the script has no help flag and starts a run.
+4. **A recommendation** for 0.1.215: release, skip to the next version, or a fix row, with the numbers (points first, then p and the n that would confirm).
+
+Own only `research/atomic-flags-0215.md` and throwaway probes under `research/probes/atomic-flags-0215/`; a re-run's results file stays uncommitted and is named in the findings. Edit no board, spec, status, product or eval code. Budget: about two hours of wall time; stop and write what you have.
