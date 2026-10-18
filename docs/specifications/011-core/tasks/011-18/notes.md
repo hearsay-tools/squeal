@@ -1,0 +1,9 @@
+# 011-18 worker notes: where the baseline comes from
+
+Date: 2026-10-18. Worker residue, not a spec.
+
+- The store keeps only each test file's current key (`test_file_keys`), and the environment hash is never stored, so the key a file had when a session registered cannot be rebuilt once the agent's edit reaches its closure. `tellRegistered` (`src/core/delivery/registered.ts`) therefore records the worktree's keys at the registration revision in the worktree meta row `registered-keys:<wt>` (`src/core/state/before-edits.ts`, `recordRegisteredKeys`). Consumers registered at one revision share a record; a record no live or parked registration names is dropped at the next registration. A resumed (parked) registration keeps its first record.
+- `beforeEditsFor(store, worktree, since)` reads that record and `results.byKey(key)` (no `usedAt`, so it never advances last-used): a pass, a fail (with the storing worktree and commit), or `none` naming the registration revision's `head`. No key recorded counts as `none`. Nothing runs or queues.
+- `attribute` (`src/core/delivery/attribution.ts`) sets `TransitionEntry.beforeEdits` on a `first-seen-fail` with `from === null`, slow or not. `provenance.ts` renders it: `first observed: FAIL; <baseline>; seen by ...`, or `PASS -> FAIL, seen by ...` for a pass baseline.
+- When the closure is untouched since registration, the registration key is the current one, so a failure there reads `it also failed before your edits (<this worktree> at commit ...)`: its inputs are the pre-edit ones.
+- The closure line (`closureLine`) is shared by deliveries, a resumed registration's known failures (`withClosureChanges`, only non-empty lists) and `why` (`src/core/status/why-closure.ts`, which finds the consumer from the shell's session env as `status --wait` and `retry` do, preferring the main agent).
