@@ -159,7 +159,7 @@ describe("the warm-up's ignored reads on a real daemon", SLOW, () => {
     );
     expect(entry?.[1]).toEqual({ paths: ["build/out.txt"], more: 0 });
     expect(out).toContain(
-      "Suggestions; squeal warmup applies none:\n  test/build.test.ts read 1 gitignored path, unkeyed: a change to it re-runs nothing until declared; squeal setup --input test/build.test.ts=<glob> declares one; declare build output, never a file the suite's own bootstrap rewrites (a descriptor, a log, a PID file), or every boot re-runs it\n    build/out.txt\n",
+      "Suggestions; squeal warmup applies none:\n  test/build.test.ts read 1 gitignored path, unkeyed: a change to it re-runs nothing, and no input declaration keys a gitignored path; a test of build output Squeal does not produce belongs in its runner's exclude (vitest.exclude, or its project's exclude), for you or CI to run\n    build/out.txt\n",
     );
     expect(out).not.toContain("no ignored read recorded");
     // A fast file's reads are no slow suggestion.
@@ -232,14 +232,13 @@ describe("squeal setup --yes on a real daemon", SLOW, () => {
     );
     expect(out).toMatch(/^squeal warmup: runs (all|about) /m);
     expect(out).toContain("squeal warmup: every test file is current with no known failure.");
-    // Setup's defaults declare build/** as an input, so the warm-up observes the slow file
-    // (001-312: it never joins) and finds no ignored read outside its closure.
-    expect(out).toMatch(
-      /^squeal setup: test\/build\.test\.ts read no ignored path outside its declared inputs$/m,
-    );
+    // Setup declares no input (task 004-81): the warm-up observes the slow file (001-312: it
+    // never joins), and its gitignored read is unkeyed, pointed at the runner's exclude.
+    expect(out).toContain("test/build.test.ts read 1 gitignored path, unkeyed");
+    expect(out).toContain("belongs in its runner's exclude (vitest.exclude");
     expect(out).not.toContain("no ignored read recorded");
-    // No harness on the PATH: setup writes no instruction file, only the config's layout.
-    expect(out).toMatch(/squeal setup never commits:\n {2}squeal\.config\.json\n$/);
+    // No harness on the PATH and no input to declare: setup writes nothing.
+    expect(out).toMatch(/Changes:\n {2}none to tracked files\n\nNothing to commit\.\n$/);
     everyFileCurrent(repo);
   });
 });

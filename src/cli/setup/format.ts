@@ -1,4 +1,3 @@
-import { argvText } from "../../core/slow/precondition.js";
 import type { CodexTrust, SetupPlan } from "./plan.js";
 
 /** The plan for a human: one section per D3 step 2 fact, then what is outdated. */
@@ -80,23 +79,10 @@ export function formatPlan(plan: SetupPlan): string {
       `  ${group.dir} (${group.files.length} files): ${group.reasons.join("; ")}`,
       `    ${group.declaredSlow ? "declared slow" : `not declared slow; default ${group.defaultSlow ? "slow" : "not slow"}`}; inputs: ${group.declaredInputs.join(", ") || "none"}`,
     );
-    for (const a of group.artifacts) {
-      const state = a.exists ? "" : a.ignored ? ", not built in this worktree" : ", absent";
-      lines.push(`    artifact? ${a.path}${state}`);
-      for (const e of a.evidence) lines.push(`      ${e.detail}${e.weak ? " (weak)" : ""}`);
-    }
   }
   for (const script of plan.slow.unresolvedScripts) {
     lines.push(`  not resolved statically: ${script}`);
   }
-  // 004 D7: code Squeal runs beside the runner; none declared, no section.
-  if (plan.preconditions.length > 0) {
-    lines.push("", "Precondition commands (run before the slow tier):");
-    for (const p of plan.preconditions) {
-      lines.push(`  ${p.source}.command: ${argvText(p.command)}, timeout ${p.timeoutMs} ms`);
-    }
-  }
-
   // 004 D7 (task 004-81): suites Squeal does not cover; none excluded, no section.
   const excluded = plan.excluded?.vitest ?? [];
   if (excluded.length > 0) {

@@ -61,9 +61,14 @@ describe("the setup skill", () => {
   });
 
   // Row 005-41, from cezar: `.ai/qa/test-env.json` is rewritten on each boot, so never an input.
-  it("says an input is build output, never what the suite's bootstrap rewrites", () => {
+  // Task 004-81: no build output either, and no question asks for one.
+  it("says an input is never build output nor what the suite's bootstrap rewrites", () => {
+    expect(body).not.toContain("artifact");
     expect(body).toContain(
-      "An input is build output the group tests, never a file the suite's own bootstrap rewrites on each run (an environment descriptor, a log, a PID file): declared, every boot re-runs the group.",
+      "Setup asks no input question: Squeal covers no test of a build output, which `vitest.exclude` names instead.",
+    );
+    expect(body).toContain(
+      "never a file the suite's own bootstrap rewrites on each run (an environment descriptor, a log, a PID file): declared, every boot re-runs the group.",
     );
   });
 

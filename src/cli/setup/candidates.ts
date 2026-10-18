@@ -2,15 +2,14 @@ import { posix } from "node:path";
 import { globToRegExp } from "../../core/keys/glob.js";
 import type { Policy } from "../../core/types/index.js";
 import { parseTestScript } from "../node-test-seed.js";
-import { artifactCandidates, holdsArtifact } from "./artifacts.js";
 import type { Runners, SlowFacts, SlowGroup } from "./plan.js";
 import { type Manifest, type RepoFacts, scriptsOf } from "./repo.js";
 
 /*
  * Spec 005 D3, "Slow tests and their inputs", step 1: slow candidates from
- * static evidence, grouped by directory, each group with its artifact
- * candidates (step 2, `artifacts.ts`). Checked against hand declarations in
- * `research/wave-0-checks.md` 7.
+ * static evidence, grouped by directory. Checked against hand declarations in
+ * `research/wave-0-checks.md` 7. No artifact is proposed (004 D5 as amended
+ * 2026-10-18, task 004-81: Squeal covers no test of a build output).
  */
 
 /** The npm scripts whose test files are slow candidates (D3 step 1). */
@@ -64,10 +63,6 @@ export async function slowCandidates(
   for (const [dir, files] of byDir) {
     const why = [...new Set(files.flatMap((f) => [...(reasons.get(f) ?? [])]))];
     const declaredInputs = inputsFor(policy, files);
-    const artifacts = await artifactCandidates(facts, dir, files);
-    const broader = artifacts.find((a) =>
-      artifacts.every((b) => b.path === a.path || b.path.startsWith(`${a.path}/`)),
-    );
     groups.push({
       dir,
       files,
@@ -76,11 +71,6 @@ export async function slowCandidates(
       defaultSlow: why.some((r) => !r.startsWith(NODE_TEST)),
       declaredSlow: files.some(isDeclared),
       declaredInputs,
-      artifacts,
-      broader: broader?.path ?? null,
-      inputsHoldArtifact: artifacts.some((a) =>
-        declaredInputs.some((g) => holdsArtifact(g, a.path)),
-      ),
     });
   }
   return { groups, unresolvedScripts };
