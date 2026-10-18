@@ -6,7 +6,7 @@ import { result } from "../state/helpers.js";
 import { ADDS, FILE, recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
- * Task 001-94, review wave 10b B1: "touches files changed here" counts from the
+ * Task 001-94, review wave 10b B1: "its closure reads files changed here" counts from the
  * revision the session first registered at. SessionStart `resume` and
  * `compact` keep it, so an edit made before either still counts.
  */
@@ -69,7 +69,7 @@ describe("an edit before SessionStart resume or compact", () => {
     const text = context(
       await runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps()),
     );
-    expect(text).toContain("touches files changed here since this session started: src/math.ts");
+    expect(text).toContain("its closure reads files changed here since this session started: src/math.ts");
     expect(text).not.toContain("none of the files changed here");
   });
 });
@@ -154,7 +154,7 @@ describe("SessionStart after spawning a daemon", () => {
     r.apply(); // the agent edits src/math.ts
     failAfterReadme(r);
     const text = await postToolBatch(r);
-    expect(text).toContain("touches files changed here since this session started: src/math.ts");
+    expect(text).toContain("its closure reads files changed here since this session started: src/math.ts");
   });
 
   it("counts none of a restarted daemon's start revision as the agent's (case 2, wave 10c B1 probe)", async () => {

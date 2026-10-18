@@ -3,6 +3,7 @@ import { isInstalledLockfile, testFileId } from "../keys/index.js";
 import { passedRetry } from "../retry/index.js";
 import { readFailureKeys, readSlowArtifacts } from "../slow/state.js";
 import {
+  beforeEditsFor,
   checkIdentity,
   readFlakyNotes,
   type SlowPolicyView,
@@ -103,7 +104,8 @@ function recordedArtifacts(store: Store) {
  * needs `seesEveryChange`. A failure of a slow run (spec 004 D8) gets the
  * artifact that run was declared to test (`slowArtifact`, `slowRunArtifact`)
  * instead: its closure holds few sources, so the changes line would be true
- * and misleading.
+ * and misleading. A failure first observed by this consumer gets its
+ * baseline (`beforeEdits`, 011 C5 as amended, gh-32), slow or not.
  */
 export function attribute(
   store: Store,
@@ -119,20 +121,25 @@ export function attribute(
   const slow = worktreeSlowView(store, consumer.worktreeId);
   const failureKeys = readFailureKeys(store, consumer.worktreeId);
   const artifactOf = recordedArtifacts(store);
+  const before = from === null ? null : beforeEditsFor(store, consumer.worktreeId, from.since);
   return entries.map((entry) => {
     if (entry.kind === "fail-retired" || entry.to !== "fail") return entry;
     const { project, testPath } = entry.check;
     const load = loadOf(store, consumer.worktreeId, entry);
-    const loaded = load === undefined ? {} : { loadAverage: load };
+    const firstSeen = entry.kind === "first-seen-fail" && entry.from === null && before !== null;
+    const facts = {
+      ...(load === undefined ? {} : { loadAverage: load }),
+      ...(firstSeen ? { beforeEdits: before(entry.check) } : {}),
+    };
     const slowArtifact = slowRunArtifact(consumer.worktreeId, slow, failureKeys, artifactOf, entry);
-    if (slowArtifact !== undefined) return { ...entry, slowArtifact, ...loaded };
+    if (slowArtifact !== undefined) return { ...entry, slowArtifact, ...facts };
     const closure = changed === null ? undefined : closureOf({ project, path: testPath });
     const touched =
       changed === null || closure === undefined || closure.some((p) => changed.unknown.has(p))
         ? undefined
         : closure.filter((p) => changed.changed.has(p));
     const told = touched?.length === 0 && !sure ? undefined : touched;
-    return { ...entry, ...(told === undefined ? {} : { changesInClosure: told }), ...loaded };
+    return { ...entry, ...(told === undefined ? {} : { changesInClosure: told }), ...facts };
   });
 }
 

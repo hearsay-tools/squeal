@@ -263,6 +263,7 @@ export const WORKTREE_META_ROWS = {
   consumerVersion: { prefix: "consumer-version:", owner: "delivery/consumer-version" },
   registered: { prefix: "revision-registered:", owner: "delivery/registered" },
   registeredLeft: { prefix: "revision-registered-left:", owner: "delivery/registered" },
+  registeredKeys: { prefix: "registered-keys:", owner: "state/before-edits" },
   livenessTold: { prefix: "liveness-told:", owner: "delivery/liveness" },
   revisionTold: { prefix: "revision-told:", owner: "delivery/liveness" },
   uncoveredTold: { prefix: "uncovered-told:", owner: "delivery/uncovered" },
