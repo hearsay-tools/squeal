@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { observedMetaKey } from "../../src/core/keys/observed.js";
 import { RETRIES_META_KEY, RUN_LOADS_META_KEY } from "../../src/core/retry/index.js";
 import { FLAKY_META_KEY } from "../../src/core/state/flaky.js";
+import { RERUN_FIRST_META_KEY } from "../../src/core/state/rerun-first.js";
 import { META_STORE_RECOVERED } from "../../src/core/store/open.js";
 import {
   nodeTestObservedMetaKey,
@@ -37,6 +38,7 @@ const SHARED_KEY_FUNCTIONS = [
 const SHARED_KEY_CONSTANTS = [
   "FLAKY_META_KEY",
   "META_STORE_RECOVERED",
+  "RERUN_FIRST_META_KEY",
   "RETRIES_META_KEY",
   "RUN_LOADS_META_KEY",
 ];
@@ -62,6 +64,7 @@ describe("worktree removal and its meta rows (task 001-254, review wave 13u S1)"
     const shared = [
       FLAKY_META_KEY,
       META_STORE_RECOVERED,
+      RERUN_FIRST_META_KEY,
       RETRIES_META_KEY,
       RUN_LOADS_META_KEY,
       observedMetaKey("gone"),
