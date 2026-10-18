@@ -109,7 +109,8 @@ function retryLines(s: StatusSnapshot): string[] {
         r.claimedBy === null || r.claimedBy === s.worktreeId
           ? ""
           : ", queued by another worktree's daemon";
-      return `  ${r.testFile.path} (${r.reason}): ${waitsText(r.reason, load)}${where}`;
+      const asked = r.noResult === true ? `${r.reason}, no result at its inputs` : r.reason;
+      return `  ${r.testFile.path} (${asked}): ${waitsText(r.noResult === true ? "environment" : r.reason, load)}${where}`;
     }),
   ];
 }

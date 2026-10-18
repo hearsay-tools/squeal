@@ -1,0 +1,6 @@
+# 011-16 notes (written by the coordinator from the worker's summary and the review, 2026-10-18)
+
+- `squeal retry` classifies the file before the counted-failure path (`src/cli/retry.ts`): a current FAIL takes the C5 retry as before; a run queued or running queues nothing more and says so; a current pass is refused as before; no result at the current key (unknown, never run, or a FAIL that is only stale) queues one run at once, whatever `--reason`, and spends no retry of the session. The stale case was the review's B1 (`reviews/wave-2.md`), repaired by the coordinator.
+- The request store gains `RetryRecord.noResult?: true` (additive) and `askNoResultRun`, one request per key, `joined` when one is pending. Such requests count against no session's retry and are left out of the "retry asked" facts shown with a failure.
+- The daemon (`src/core/scheduler/retries.ts`) claims a `noResult` request and runs it at once, whatever the load; claim, end and lapse reuse the retry code.
+- Status keeps the reason asked and marks the request `noResult` (`PendingRetry.noResult?: true`, additive), worded `(<reason>, no result at its inputs): runs once more now`; it no longer rewrites the reason to `environment` (review S1).
