@@ -1,6 +1,14 @@
 import { RECORDED_UNKNOWN_TEXT, recordedText, retryText } from "../retry/index.js";
 import { flakyText, SUMMARY_MAX_CHARS } from "../state/index.js";
-import { checkPartsText, checksText, countChecks, failureCountText } from "../status/checks.js";
+import {
+  checkPartsText,
+  checksText,
+  countChecks,
+  earlierFailuresLines,
+  failureCountText,
+  knownFailureCounts,
+  splitByValidity,
+} from "../status/checks.js";
 import { cap, plural } from "../text.js";
 import type {
   CheckId,
@@ -363,7 +371,9 @@ export function formatRegistration(
     ...headerLines(header, command),
     // Spec 001 D4 (task 001-176): said once, at registration; status lists it among the notes.
     ...(header.optimizerOff === undefined ? [] : [header.optimizerOff]),
-    `Known failures: ${failureCountText(knownFailures.map((f) => f.check))}`,
+    // Spec 011 C6 as amended (gh-34): status's count and words.
+    `Known failures: ${failureCountText(splitByValidity(knownFailures).current.map((f) => f.check))}`,
+    ...earlierFailuresLines(knownFailureCounts(knownFailures)),
   ].join("\n");
   const blocks = knownFailures.map((f: KnownFailure) =>
     block(

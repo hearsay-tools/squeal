@@ -315,10 +315,7 @@ export async function newsText(
     ...(atRevision === undefined ? {} : { atRevision }),
   });
   if (delta === null) return null;
-  const failures = store.knownStates
-    .list(consumer.worktreeId)
-    .filter((s) => s.outcome === "fail")
-    .map((s) => s.check);
+  const failures = store.knownStates.list(consumer.worktreeId).filter((s) => s.outcome === "fail");
   // Task 001-407: Stop keeps the full header block.
   return `${formatDelta(delta, command, undefined, "full")}\n${knownFailuresLine(failures, command)}`;
 }

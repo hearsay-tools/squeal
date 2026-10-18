@@ -27,6 +27,7 @@ import {
   type TestFileKeyRecord,
   type WorktreeId,
 } from "../types/index.js";
+import { knownFailureCounts } from "./checks.js";
 import { configProblemsOf, withConfigProblems } from "./config-problems.js";
 import { withDeath } from "./died.js";
 import { statusIdentity } from "./identity.js";
@@ -123,6 +124,8 @@ function snapshot(
     ),
   );
   const runs = openRuns(store, worktree, daemon);
+  // Task 001-404: each failure says how old its run is and the load it ran under.
+  const knownFailures = withRecorded(store, worktreeId, states, header.revision);
 
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -132,8 +135,8 @@ function snapshot(
     ...header,
     ...statusIdentity(root, revision, header.commit, daemon),
     daemon,
-    // Task 001-404: each failure says how old its run is and the load it ran under.
-    knownFailures: withRecorded(store, worktreeId, states, header.revision),
+    knownFailures,
+    knownFailureCounts: knownFailureCounts(knownFailures),
     inherited: inheritedSources(store, states),
     breakdown: breakdown(states, keys, openFiles(runs)),
     closureMethod: CLOSURE_METHOD,
