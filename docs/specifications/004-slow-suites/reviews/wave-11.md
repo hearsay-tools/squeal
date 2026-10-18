@@ -156,3 +156,118 @@ None.
 ## Inputs for the next wave
 
 Repair B1 on the candidate and request a narrow re-review of the count grammar, the new reference sessions and any regraded measures. Keep S1 as a coordinator documentation correction. Preserve the named wait's split, its `leftForPause` payload and the formatter round trips; they need no rewrite. The requested candidate eval rerun remains the coordinator's release work and was not performed by this reviewer.
+
+## Re-review, 2026-10-18
+
+PASS 806590dfdc4a23c02d47db08a7492d11426bd1a7
+
+Narrow re-review of B1 and S1 against candidate 0.1.219. HEAD matched the requested SHA. The rebased repair delta after `2d46e5c6` contains the singular guard (`a3a8e448`), count and two-harness reference regressions (`a3a8e448`, `806590df`), and the tally correction (`f57ee77c`), plus the original review. No source, plugin bundle or committed result outside that boundary changed. Compared S1 with `origin/main` at `142e3183f30c8cc722d37f9846463d38dd9f1d11`; the changes on main since the first review's `349d0c3f` are documentation only. The tracked tree stayed clean through verification and the external probes. Only this review is committed.
+
+### Re-review verification
+
+Node 24.21.0, Vitest 5.0.3. No build, as directed. The independent full suite, run under the shared-host lock, supplies the gate.
+
+```text
+$ git rev-parse HEAD
+806590dfdc4a23c02d47db08a7492d11426bd1a7
+
+$ npm ci
+added 196 packages, and audited 197 packages in 7s
+32 packages are looking for funding
+found 0 vulnerabilities
+
+$ npm run lint
+> squeal@0.1.219 lint
+> biome check .
+Checked 1467 files in 573ms. No fixes applied.
+
+$ npm run typecheck
+> squeal@0.1.219 typecheck
+> tsc --noEmit
+(exit 0, no diagnostics)
+
+$ npm run check:version -- origin/main
+version bump: 0.1.218 -> 0.1.219, ok
+
+$ git diff --check origin/main..HEAD
+(no output, exit 0)
+```
+
+`npm ci` exited 0 and also printed the `node-domexception` deprecation and the same advisory about six packages' install scripts not covered by `allowScripts`.
+
+```text
+$ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
+RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/32f9bdf3-2992-420e-b7ee-5dd5b2aceaa6
+
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/32f9bdf3-2992-420e-b7ee-5dd5b2aceaa6/test/fixtures/scheduler/.tmp/36360d53-f4e4-44a7-bfc0-494748d33a96/main/.git/worktrees/staged/gitdir
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/32f9bdf3-2992-420e-b7ee-5dd5b2aceaa6/test/fixtures/scheduler/.tmp/56b427c1-d45a-4c97-80cc-5c5b7330457f/main/.git/worktrees/staged/gitdir
+squeal tests: killing 1 process(es) an earlier run left: 552266
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+
+ Test Files  740 passed | 1 skipped (741)
+      Tests  6361 passed | 9 skipped (6370)
+   Start at  23:00:28
+   Duration  789.80s (tests 97%, import 2%)
+
+    Isolate  741 workers spawned · ~124ms startup each (spawn + environment, per file)
+             at least ~22.77s faster with isolate: false — reuses workers across files instead of one per file
+(exit 0)
+```
+
+```text
+$ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4 \
+  test/cli/status-wait-paths-slow.test.ts test/evals/a8-load-hold.test.ts \
+  test/evals/atomic-measures.test.ts test/evals/atomic-pilot.test.ts \
+  test/evals/atomic-regrade.test.ts test/evals/slow-claim.test.ts \
+  test/evals/unanswered-squeal.test.ts test/harness/primer-wait.test.ts \
+  test/harness/skill-wait.test.ts
+RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/32f9bdf3-2992-420e-b7ee-5dd5b2aceaa6
+
+
+ Test Files  9 passed (9)
+      Tests  261 passed (261)
+   Start at  23:13:39
+   Duration  3.45s (transform 43%, tests 43%, import 14%, worker 1%)
+
+  Transform  transforming modules took 2.84s · 43% of tracked time, re-done on every run
+             persist transforms across runs with fsModuleCache: true
+             learn more: https://vitest.dev/guide/improving-performance#caching-between-reruns
+(exit 0)
+```
+
+Background Squeal (installed 0.1.199) separately reported the same baseline failures in `test/runners/node-test/run-reads-fidelity.test.ts:116` and `test/runners/vitest/observe-fidelity.test.ts:119` recorded in the original review above. No retry was requested. Those observations remain separate from the independent gate.
+
+The probes imported the pinned candidate's source without changing the checkout. The session probe used the real `formatStatus` and `formatDelta` outputs, `graded` and `pilotRecord` in both harnesses, and the retained-record regrade forms. Removing `slowNotCurrent` from each retained Squeal step supplied the old timeline.
+
+```text
+"the slow test files are still pending" -> null
+"the slow tests are not current" -> null
+"the slow file is still pending" -> 1
+"the slow test file is still pending" -> 1
+"the slow test has not run yet; it is not run at revision 1" -> 1
+
+codex: unnumbered plural claim-true=false; old timeline=false
+claude: unnumbered plural claim-true=false; old timeline=false
+codex and claude: all three singular forms claim-true=true; old timeline=null
+
+20 committed atomic/variant files, 1639 cells: in-memory regrade changes 0
+Structural equality retained for every whole results object
+S1 versus origin/main:
+  slow-through-squeal: 460 to null (380 true, 80 false)
+  arms: p0 425, old-slow-line 30, d8-deny 5
+  scenarios: a2-slow 360, a8-load-hold 100
+  claim-true: 16 Luna false to null
+  stop-slow: all 40 slow-through-squeal values unchanged
+```
+
+### Findings resolved
+
+- **B1, proven resolved.** `evals/lib/slow-claim.mjs` rejects a `file`/`files` continuation after a singular match. The shorter `test` alternative can no longer consume the plural remainder to reach `pending`. The original probe now returns `null`. The committed direct cases cover both unnumbered plurals; full reference sessions in Codex and Claude Code miss `claim-true` under policy off, also through retained-record regrades. Their old timelines remain misses, since absence of a stated count is rejected before the missing historical count can make the measure not computable. The three legitimate singular forms still state one and meet with current evidence; the old timeline remains not computable for those valid counted claims.
+- **S1, proven resolved.** The last amendment in `docs/specifications/006-model-evals/status.md` now says 460 slow-through-squeal nullings and names all three policy-off arms. An independent structural comparison against main reproduces its 425/30/5 split, the 380 true-to-null and 80 false-to-null total, and the 16 Luna claim-true nullings. A fresh in-memory `regradeAtomic` audit enumerated all 20 committed atomic and variant files via `git ls-files`, visited 1,639 cells, and changed no cell or results object. The repair commits change no committed result file.
+
+Zero blockers, zero new should-fix items and zero nits. The named wait, primer and formatter round trips remain settled by the original review; this delta does not reopen them. No additional release eval sessions were run.
