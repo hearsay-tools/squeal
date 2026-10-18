@@ -8,7 +8,7 @@ Host load: one-minute load 7.12 on 24 CPUs at the start (08:57), 3.0 to 6.3 duri
 
 ## Verdict
 
-**Not reproduced; the issue's premise is likely wrong in one part.** Rewriting a git-ignored `.d.ts` that no test loads, during a running check, invalidated nothing under 0.1.199 (verified by experiment). The UNKNOWN reason the issue quotes is emitted only for a file Vite's plugin container loaded (read in source code), and Vite does not load a `.d.ts` a test never imports. In cezarion `main`, `npm run typecheck` does not rebuild declarations only: `packages/web`'s `pretypecheck` runs `npm run build -w @wjarka/cezarion`, whose `build` is a plain `tsc`, which rewrites the server's `dist/*.js` as well as `dist/*.d.ts` (read in source code). So the file that moved was most likely a `dist/*.js` some test in the run loaded, and the breadth (147 checks in unrelated files) fits the adapter's rule that a moved file no test file's module graph reaches drops **every** file of the run (inferred). Which path moved is not determined: the reason text names it, and the issue does not quote it.
+**Not reproduced, because the bounded synthetic probes did not trigger the reported UNKNOWN invalidation.** Rewriting a git-ignored `.d.ts` that no test loads, during a running check, invalidated nothing under 0.1.199 (verified by experiment). The UNKNOWN reason the issue quotes is emitted only for a file Vite's plugin container loaded (read in source code), and Vite does not load a `.d.ts` a test never imports. In cezarion `main`, `npm run typecheck` does not rebuild declarations only: `packages/web`'s `pretypecheck` runs `npm run build -w @wjarka/cezarion`, whose `build` is a plain `tsc`, which rewrites the server's `dist/*.js` as well as `dist/*.d.ts` (read in source code). So the file that moved was most likely a `dist/*.js` some test in the run loaded, and the breadth (147 checks in unrelated files) fits the adapter's rule that a moved file no test file's module graph reaches drops **every** file of the run (inferred). Which path moved is not determined: the reason text names it, and the issue does not quote it.
 
 ## Questions answered
 
@@ -21,6 +21,26 @@ Host load: one-minute load 7.12 on 24 CPUs at the start (08:57), 3.0 to 6.3 duri
 | 5 | Does the UNKNOWN reason name the changed file? | Yes, in both versions. 0.1.199: `vitest adapter: <paths> changed on disk after this run loaded it; …`; HEAD (gh-13, `88ccff4c`): the reason first, then the paths. | read in source code |
 | 6 | Shared environment as a cause? | Not determined, because the probe's environment never moved and the real run's reason was not available. The reason quoted is the 001-146 stamp reason, not an environment-hash change. | inferred |
 | 7 | 0.1.199 against current source | `sources.ts` and `worktree-paths.ts` unchanged; `moved.ts` changed only in reason wording (`88ccff4c`, gh-13) and in `aa260ef0` (011-06 touch re-queue). Same invalidation logic. | read in source code |
+
+## Exact probe commands
+
+After the isolated fixture bootstrap documented in `probes/issue-33/README.md`, the reproduction commands were:
+
+```sh
+squeal --version
+uptime
+getconf _NPROCESSORS_ONLN
+squeal init
+squeal start
+squeal run --all --wait
+./probe.sh A dist/lib.d.ts
+./probe.sh B src/lib.ts
+./probe.sh C dist/gen.js
+./probe.sh D dist/dyn.js
+./probe.sh E src/gen/dyn.ts
+```
+
+`probe.sh` preserves the exact mid-run edits and status commands; `runlog.sh <revision>` reads the stored reports. The fixture and scripts preserve the probe setup, not the original cezarion incident.
 
 ## Findings
 
