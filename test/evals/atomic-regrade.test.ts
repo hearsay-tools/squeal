@@ -12,7 +12,14 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { atomicConfig, atomicMarkdown, type Json, regradeAtomic } from "../../evals/lib/index.mjs";
+import {
+  atomicConfig,
+  atomicMarkdown,
+  type Json,
+  measuresOf,
+  regradeAtomic,
+  type Step,
+} from "../../evals/lib/index.mjs";
 
 // 006-35: the committed atomic runs, regraded by evals/bin/atomic-regrade.mjs under D10's
 // measures from what each cell kept. a2-slow's `slow-through-squeal` matches the coordinator's
@@ -34,6 +41,7 @@ interface Cell {
   id: string;
   task: string;
   model: string;
+  timeline?: unknown;
   atomic: {
     measures: Record<string, boolean | null>;
     turns: number;
@@ -115,14 +123,27 @@ describe("the committed atomic runs, regraded", () => {
     expect(newly.sort()).toEqual(["20261012T070705Z-6eec71 true", "20261012T134945Z-3f2edd true"]);
   });
 
-  it("a2-slow through Squeal matches the coordinator's hand count", () => {
-    expect(met(read(PILOT), "a2-slow", "slow-through-squeal")).toEqual({
+  // 006-91: the fixture leaves `stop.requireSlowSuite` off, so D10 as amended computes no
+  // `slow-through-squeal` for these cells; graded as under policy on, the count stands.
+  it("a2-slow through Squeal matches the coordinator's hand count, under policy on", () => {
+    const scenario = config.scenarios["a2-slow"] ?? {};
+    const on = (data: Results): Results => ({
+      ...data,
+      cells: data.cells.map((c) => {
+        const ctx = { timeline: c.timeline as Step[], scenario, slowRequired: true };
+        return { ...c, atomic: { ...c.atomic, measures: measuresOf(c.atomic as never, ctx) } };
+      }),
+    });
+    for (const f of [PILOT, SECOND])
+      for (const c of read(f).cells.filter((c) => c.task === "a2-slow"))
+        expect(c.atomic.measures["slow-through-squeal"], c.id).toBeNull();
+    expect(met(on(read(PILOT)), "a2-slow", "slow-through-squeal")).toEqual({
       "claude-haiku-5-5": 8,
       "gpt-6-luna": 9,
       "claude-sonnet-5-5": 20,
       "gpt-6.1-sol": 20,
     });
-    expect(met(read(SECOND), "a2-slow", "slow-through-squeal")).toEqual({
+    expect(met(on(read(SECOND)), "a2-slow", "slow-through-squeal")).toEqual({
       "claude-haiku-5-5": 5,
       "gpt-6-luna": 4,
       "claude-sonnet-5-5": 10,
