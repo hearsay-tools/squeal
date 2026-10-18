@@ -1,0 +1,136 @@
+== 0.1.199 at 7.12 load, 24 CPUs, root /tmp/issue36.5h4F/repo
+$ squeal start
+Squeal daemon spawned for /tmp/issue36.5h4F/repo
+
+Revision: 0
+Known failures: 0
+Affected checks: none counted; the daemon has not listed this worktree's test files yet
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+
+Worktree: /tmp/issue36.5h4F/repo (HEAD 7a84f30, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 0 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+(exit 0)
+$ squeal run --all --wait
+Checkpoint 7ad238ff-140a-44f0-bd3c-90fe63d7e143 has no verdict: it was abandoned before every test file had a result (a newer request replaced it, a test file's inputs never held still, a tier crashed or timed out, or the daemon stopped). Without a result: 2 test files, listed below; the first: tests/a.test.ts: no result: vitest: vitest adapter: dist/lib.js was written during this run and ended as it was; the run may have executed bytes no check key names (task 001-159)
+squeal: dist/lib.js was written while this run was in flight and ended as it was; the run may have executed bytes no check key names (task 001-168)
+Checkpoint 7ad238ff-140a-44f0-bd3c-90fe63d7e143 started at revision 0: 2 test files to run, 0 already current, joining the baseline checkpoint 97df0613-cf49-4742-80d0-d87d4e94eacc already running them (0 of 2 test files done); it ends when that one ends
+
+Revision: 0
+Known failures: 0
+Affected checks: 0 passed, 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+
+Worktree: /tmp/issue36.5h4F/repo (HEAD 7a84f30, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 4 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Test files without checks: 0 pending, 2 unknown
+Test files without a result: 2 (nothing current at their inputs, none queued)
+  tests/a.test.ts: no result: vitest: vitest adapter: dist/lib.js was written during this run and ended as it was; the run may have executed bytes no check key names (task 001-159)
+squeal: dist/lib.js was written while this run was in flight and ended as it was; the run may have executed bytes no check key names (task 001-168)
+  tests/ok.test.ts: no result: vitest: vitest adapter: dist/lib.js was written during this run and ended as it was; the run may have executed bytes no check key names (task 001-159)
+squeal: dist/lib.js was written while this run was in flight and ended as it was; the run may have executed bytes no check key names (task 001-168)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+  2026-10-18T09:08:49.640Z, revision 0: squeal: dist/lib.js was written while tests/a.test.ts, tests/ok.test.ts ran and ended as it was; the run is withheld and runs once more (tasks 001-168, 007-30)
+  2026-10-18T09:08:51.389Z, revision 0: squeal: dist/lib.js was written during 2 runs in a row of tests/a.test.ts, tests/ok.test.ts and ended as it was; tests/a.test.ts, tests/ok.test.ts stays unknown until an input changes, so write it outside the worktree or under an ignored path, or declare it (tasks 001-168, 007-30)
+(run --all --wait exit 3)
+touches left: 3
+$ squeal status
+Revision: 0
+Known failures: 0
+Affected checks: 0 passed, 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+
+Worktree: /tmp/issue36.5h4F/repo (HEAD 7a84f30, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 4 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Test files without checks: 0 pending, 2 unknown
+Test files without a result: 2 (nothing current at their inputs, none queued)
+  tests/a.test.ts: no result: vitest: vitest adapter: dist/lib.js was written during this run and ended as it was; the run may have executed bytes no check key names (task 001-159)
+squeal: dist/lib.js was written while this run was in flight and ended as it was; the run may have executed bytes no check key names (task 001-168)
+  tests/ok.test.ts: no result: vitest: vitest adapter: dist/lib.js was written during this run and ended as it was; the run may have executed bytes no check key names (task 001-159)
+squeal: dist/lib.js was written while this run was in flight and ended as it was; the run may have executed bytes no check key names (task 001-168)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+  2026-10-18T09:08:49.640Z, revision 0: squeal: dist/lib.js was written while tests/a.test.ts, tests/ok.test.ts ran and ended as it was; the run is withheld and runs once more (tasks 001-168, 007-30)
+  2026-10-18T09:08:51.389Z, revision 0: squeal: dist/lib.js was written during 2 runs in a row of tests/a.test.ts, tests/ok.test.ts and ended as it was; tests/a.test.ts, tests/ok.test.ts stays unknown until an input changes, so write it outside the worktree or under an ignored path, or declare it (tasks 001-168, 007-30)
+(exit 0)
+$ squeal retry tests/a.test.ts --reason environment
+Not retried: tests/a.test.ts has no known failure in this worktree.
+(exit 1)
+$ squeal retry tests/a.test.ts --reason load
+Not retried: tests/a.test.ts has no known failure in this worktree.
+(exit 1)
+$ squeal status --wait 20000 tests/a.test.ts
+Named test files have no verdict: 1 test file without a current result at revision 0 (1 unknown)
+Selected: tests/a.test.ts
+
+Revision: 0
+Known failures: 0
+Affected checks: 0 passed, 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+
+Worktree: /tmp/issue36.5h4F/repo (HEAD 7a84f30, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 0 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Test files without checks: 0 pending, 2 unknown
+Test files without a result: 2 (nothing current at their inputs, none queued)
+  tests/a.test.ts: no result: vitest: vitest adapter: dist/lib.js was written during this run and ended as it was; the run may have executed bytes no check key names (task 001-159)
+squeal: dist/lib.js was written while this run was in flight and ended as it was; the run may have executed bytes no check key names (task 001-168)
+  tests/ok.test.ts: no result: vitest: vitest adapter: dist/lib.js was written during this run and ended as it was; the run may have executed bytes no check key names (task 001-159)
+squeal: dist/lib.js was written while this run was in flight and ended as it was; the run may have executed bytes no check key names (task 001-168)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+  2026-10-18T09:08:49.640Z, revision 0: squeal: dist/lib.js was written while tests/a.test.ts, tests/ok.test.ts ran and ended as it was; the run is withheld and runs once more (tasks 001-168, 007-30)
+  2026-10-18T09:08:51.389Z, revision 0: squeal: dist/lib.js was written during 2 runs in a row of tests/a.test.ts, tests/ok.test.ts and ended as it was; tests/a.test.ts, tests/ok.test.ts stays unknown until an input changes, so write it outside the worktree or under an ignored path, or declare it (tasks 001-168, 007-30)
+(exit 3)
+$ squeal run --all --wait
+Checkpoint 1a45ad8a-b2db-4e1d-9f43-8d5b0e1ebbbf completed at revision 0: no known failures; 2 test files, 0 already current, 2 run now
+Checkpoint 1a45ad8a-b2db-4e1d-9f43-8d5b0e1ebbbf started at revision 0: 2 test files to run, 0 already current
+
+Revision: 0
+Known failures: 0
+Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+
+Worktree: /tmp/issue36.5h4F/repo (HEAD 7a84f30, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+  2026-10-18T09:08:49.640Z, revision 0: squeal: dist/lib.js was written while tests/a.test.ts, tests/ok.test.ts ran and ended as it was; the run is withheld and runs once more (tasks 001-168, 007-30)
+  2026-10-18T09:08:51.389Z, revision 0: squeal: dist/lib.js was written during 2 runs in a row of tests/a.test.ts, tests/ok.test.ts and ended as it was; tests/a.test.ts, tests/ok.test.ts stays unknown until an input changes, so write it outside the worktree or under an ignored path, or declare it (tasks 001-168, 007-30)
+(run --all --wait exit 0)
+$ squeal status
+Revision: 0
+Known failures: 0
+Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+
+Worktree: /tmp/issue36.5h4F/repo (HEAD 7a84f30, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+  2026-10-18T09:08:49.640Z, revision 0: squeal: dist/lib.js was written while tests/a.test.ts, tests/ok.test.ts ran and ended as it was; the run is withheld and runs once more (tasks 001-168, 007-30)
+  2026-10-18T09:08:51.389Z, revision 0: squeal: dist/lib.js was written during 2 runs in a row of tests/a.test.ts, tests/ok.test.ts and ended as it was; tests/a.test.ts, tests/ok.test.ts stays unknown until an input changes, so write it outside the worktree or under an ignored path, or declare it (tasks 001-168, 007-30)
+(exit 0)
+$ squeal stop
+Squeal daemon stopped for /tmp/issue36.5h4F/repo
+(exit 0)
+== probe root /tmp/issue36.5h4F
