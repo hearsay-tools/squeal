@@ -117,7 +117,7 @@ describe("runNodeTest", () => {
 
   // Task 001-421: the case means the queued file never starts. That holds only while the busy
   // loop still runs at the deadline; on CI it once ended before it, and `pass.test.ts` then
-  // started and was killed. The premise is checked first and names the loop's exit and stderr.
+  // started and was killed. The premise is checked first and names the loop's exit, stderr and stdout.
   it("does not start files left in the queue when the deadline passes", SLOW, async () => {
     const tier = files(edge, "test/busy-loop.test.ts", "test/pass.test.ts");
     const logDir = join(logs, randomUUID());
@@ -133,9 +133,11 @@ describe("runNodeTest", () => {
     };
     const [loop, queued] = log.files;
     const stderr = readFileSync(join(logDir, "stderr-0.log"), "utf8");
+    // Row 003-47: an exit 1 with empty stderr is node:test reporting a failure on stdout.
+    const stdout = readFileSync(join(logDir, "stdout-0.log"), "utf8");
     expect(
       loop?.completed,
-      `the busy loop ended before the deadline: ${JSON.stringify(loop?.exit)}\n${stderr}`,
+      `the busy loop ended before the deadline: ${JSON.stringify(loop?.exit)}\nstderr:\n${stderr}\nstdout:\n${stdout}`,
     ).toBe(false);
     expect(queued).toEqual({ ...queued, exit: null, completed: false });
     expect(existsSync(join(logDir, "stdout-1.log"))).toBe(false);
