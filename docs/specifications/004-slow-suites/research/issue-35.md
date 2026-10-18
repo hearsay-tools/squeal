@@ -90,3 +90,28 @@ Treat #35 as two parts. The run without build output is 004-65; cezarion declari
 - 0.1.199: `~/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs`, `skills/squeal/SKILL.md:15`
 - cezarion `463a5bf0`: `squeal.config.json` (`stop`, `baseline`, `inputs`, `nodeTest` `test:package` `slow: true`), `packages/cezar/package.json` `test:package`
 - `spec.md` D5, D7–D9 (D8 as amended for 004-65), `status.md`, `tasks/004-65/amendment.md`, `research/issue-3-preconditions.md`, `research/issue-29.md`; `docs/board.md` rows 004-62, 004-65, 004-67, gh-29
+
+## Coordinator verification (2026-10-18)
+
+Documentation-only integration: `npm ci` completed (196 packages, 0 vulnerabilities); `npm run lint`, `npm run typecheck`, and `npm run build` exited 0. Build left no tracked drift. `git diff --check` passed.
+
+Required checkpoint command:
+
+```sh
+node --disable-warning=ExperimentalWarning /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs run --all --wait
+```
+
+Output (exit 1):
+
+```text
+Checkpoint c7a9819a-ceab-4778-ab12-15a8db81aa78 completed at revision 2: 2 known failures: 2 tests; 712 test files, 710 already current, 2 run by the baseline checkpoint 85427f05-e5e3-470b-8555-7bc6696b48f4 it joined
+Known failures: 2 (2 tests)
+FAIL test/runners/node-test/run-reads-fidelity.test.ts:116:30
+  expected [ [ 'fail', undefined ] ] to deeply equal [ [ 'pass', undefined ] ]
+FAIL test/runners/vitest/observe-fidelity.test.ts:119:37
+  expected [ [ 'fail', undefined, false ], …(1) ] to deeply equal [ [ 'pass', undefined, false ], …(1) ]
+Affected checks: 6769 passed (6057 tests, 712 test files loaded), 0 running, 0 queued, 10 skipped (10 tests)
+Full-suite checkpoint: completed at revision 2
+```
+
+Both are recorder-signature fidelity assertions in unchanged product tests; cause not investigated within this documentation-only triage. No passing full-suite claim is made. This does not authorize any product repair or lift any existing hold.
