@@ -55,7 +55,7 @@ function teardownRepo({ once, testFails = false }: { once: boolean; testFails?: 
       'import { existsSync, rmSync } from "node:fs";',
       'import { afterAll, expect, it } from "vitest";',
       "",
-      `it("cleans", () => expect(${testFails ? "existsSync(" + at + ")" : "true"}).toBe(${testFails ? "false" : "true"}));`,
+      `it("cleans", () => expect(${testFails ? `existsSync(${at})` : "false"}).toBe(false));`,
       "",
       "afterAll(() => {",
       `  if (!existsSync(${at})) return;`,
