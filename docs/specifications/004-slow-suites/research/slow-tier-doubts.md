@@ -1,4 +1,4 @@
-# The human's doubts about the slow tier (open, 2026-10-18)
+# The human's doubts about the slow tier (decided 2026-10-18: `../tasks/004-79/amendment.md`)
 
 After `slow-tier-role.md` (004-74) and `slow-tier-advisory.md` (004-75), the human chose "keep, wording only for now" and recorded these doubts for a separate session. Nothing here is decided; no row acts on them yet.
 
