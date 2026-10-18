@@ -107,6 +107,44 @@ export function readNamedFiles(
   });
 }
 
+/**
+ * Task 004-78 (research `atomic-flags-0215.md` 4, item 1): the ids of
+ * `files` that run only on a pause, each a slow file still queued with
+ * nothing holding it but the slow tier's turn (`queuedReason`'s `slow`): no
+ * run of its own, none in its lane, no other worktree's claim. A named wait
+ * leaves them out of what it holds for, since nothing runs them inside the
+ * agent's turn but `run --slow` (004 D2, D9).
+ */
+export function pauseOnlyIds(
+  store: Store,
+  worktreeId: WorktreeId,
+  root: AbsolutePath,
+  files: readonly TestFileRef[],
+  daemon: DaemonLiveness,
+  now: EpochMs,
+): ReadonlySet<string> {
+  const policy = readPolicy(root);
+  const slow = files.filter((ref) => slowView(policy).isSlow(ref));
+  if (slow.length === 0) return new Set();
+  const rows = new Map(
+    store.testFileKeys.list(worktreeId, slow).map((row) => [testFileId(row.testFile), row]),
+  );
+  const checks = checksByFile(store.knownStates.list(worktreeId));
+  const runs = openRunsOf(store, worktreeId, daemon);
+  const ids = new Set<string>();
+  for (const ref of slow) {
+    const id = testFileId(ref);
+    const row = rows.get(id);
+    const own = checks.get(id) ?? [];
+    if (fileClassOf(row, own) !== "pending") continue;
+    if (row?.pending === "running" || own.some((s) => s.pendingPhase === "running")) continue;
+    const lane = laneFor(policy, ref, runnerLaneOf(policy, ref.project));
+    const reason = queuedReason(store, worktreeId, ref, row?.key ?? null, lane, runs, policy, now);
+    if (reason.kind === "slow") ids.add(id);
+  }
+  return ids;
+}
+
 /** What the live daemon published as promoted now (`promotedIds`); nothing without one. */
 function promotedOf(
   store: Store,
