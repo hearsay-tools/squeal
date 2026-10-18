@@ -11,7 +11,7 @@ import {
   type TestFileRef,
   type WorktreeId,
 } from "../types/index.js";
-import { resumeOwed } from "./checkpoint-requests.js";
+import { owedStrict, resumeOwed } from "./checkpoint-requests.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
 import { block, type Failures } from "./failures.js";
 import { durationOf, type FileState } from "./files.js";
@@ -169,11 +169,13 @@ export async function baseline(
   }
   const unkeyed = [...ledger.files.values()].filter((file) => file.key === null);
   const skipped = skippedHits(context, ledger, [...misses, ...unkeyed]);
+  const owed = ledger.checkpoints.takeOwed();
+  const forced = outside(owedStrict(ledger, owed), [...misses, ...unkeyed, ...skipped]);
   ledger.checkpoints.start(
     checkpointId,
     "baseline",
     ledger.revision.number,
-    [...misses, ...unkeyed, ...skipped].map((file) => file.ref),
+    [...misses, ...unkeyed, ...skipped, ...forced].map((file) => file.ref),
   );
   if (policy.baseline.onStart === "lookup-only") {
     ledger.checkpoints.finish("abandoned");
@@ -185,7 +187,7 @@ export async function baseline(
   }
   restoreReruns(context, ledger, policy.baseline.onStart !== "lookup-only");
   for (const file of [...unkeyed, ...skipped]) ledger.checkpoints.failed(file.ref);
-  resumeOwed(ledger);
+  resumeOwed(ledger, owed);
   if (failures.size > 0) block(ledger, failures);
   ledger.commit({ refined: ledger.revision.number });
   const persisted = persistedNoteTexts(store, worktreeId);
@@ -207,8 +209,16 @@ function skippedHits(
   others: readonly FileState[],
 ): FileState[] {
   const ids = skippedSlowIds(readSlowSkips(context.store, context.worktreeId));
+  return outside(
+    [...ledger.files.values()].filter((file) => ids.has(file.id)),
+    others,
+  );
+}
+
+/** `files` without those in `others`. */
+function outside(files: readonly FileState[], others: readonly FileState[]): FileState[] {
   const elsewhere = new Set(others.map((file) => file.id));
-  return [...ledger.files.values()].filter((file) => ids.has(file.id) && !elsewhere.has(file.id));
+  return files.filter((file) => !elsewhere.has(file.id));
 }
 
 /**

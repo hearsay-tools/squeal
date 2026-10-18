@@ -100,22 +100,37 @@ export function queueFullSuite(
   return { ...record, owner: joins ? attributed : record.id };
 }
 
+/** What the last daemon owed (task 001-219), taken once at the baseline (`Checkpoints.takeOwed`). */
+export type Owed = ReturnType<Ledger["checkpoints"]["takeOwed"]>;
+
+/**
+ * The files of `owed` still listed and keyed that only its own forced runs
+ * count for. The baseline requests them too (task 004-69): a lookup hit is
+ * no forced run, so the baseline cannot complete, and certify a full suite,
+ * before a forced slow file's precondition resolves (spec 004 D8).
+ */
+export function owedStrict(ledger: Ledger, owed: Owed): FileState[] {
+  if (owed === null) return [];
+  const strictIds = new Set(owed.owed.strict.map((ref) => ledger.file(ref)?.id));
+  return owed.owed.remaining
+    .flatMap((ref) => ledger.file(ref) ?? [])
+    .filter((file) => strictIds.has(file.id) && file.key !== null);
+}
+
 /**
  * At the baseline (task 001-219): the explicit checkpoint the last daemon
  * owed resumes. Its files still listed and keyed run again: a forced one's
  * forced, the others when no result stands at their key; a file gone from
  * the listing needs none. With the baseline open, it ends with the
- * baseline, which already runs every file without a result; otherwise it is
- * the open checkpoint itself.
+ * baseline, which already runs every file without a result and waits for
+ * the forced ones (`owedStrict`); otherwise it is the open checkpoint itself.
  */
-export function resumeOwed(ledger: Ledger): void {
+export function resumeOwed(ledger: Ledger, taken: Owed): void {
   const { checkpoints } = ledger;
-  const taken = checkpoints.takeOwed();
   if (taken === null) return;
   const listed = taken.owed.remaining.flatMap((ref) => ledger.file(ref) ?? []);
-  const strictIds = new Set(taken.owed.strict.map((ref) => ledger.file(ref)?.id));
-  const strict = listed.filter((file) => strictIds.has(file.id) && file.key !== null);
-  const loose = listed.filter((file) => !strictIds.has(file.id) || file.key === null);
+  const strict = owedStrict(ledger, taken);
+  const loose = listed.filter((file) => !strict.includes(file));
   const unrunnable = loose.filter((file) => file.key === null || file.blocked !== null);
   const baseline = checkpoints.active;
   // The baseline requested and queued every runnable file without a result.
