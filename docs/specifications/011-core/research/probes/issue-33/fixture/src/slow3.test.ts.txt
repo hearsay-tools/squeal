@@ -1,0 +1,4 @@
+import { it, expect } from 'vitest'
+import { one } from './lib.ts'
+const spec = ['.', 'gen', 'dyn.ts'].join('/')
+it('slow 3', async () => { const { d } = await import(/* @vite-ignore */ spec); await new Promise((r) => setTimeout(r, 8000)); expect(one + d).toBe(2) })
