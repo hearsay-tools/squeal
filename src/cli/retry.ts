@@ -169,7 +169,8 @@ function askLine(
       s.check.project === row.testFile.project &&
       s.check.testPath === row.testFile.path,
   );
-  if (!own.some((s) => s.outcome === "fail")) {
+  // Only a current FAIL is a counted failure (011-15); a stale one has no result at these inputs.
+  if (!own.some((s) => s.outcome === "fail" && s.validity === "current")) {
     const ask = { testFile: row.testFile, key, session: asker, reason, at: Date.now(), worktreeId };
     const pending = row.pending !== null || own.some((s) => s.validity === "pending");
     if (pending)
