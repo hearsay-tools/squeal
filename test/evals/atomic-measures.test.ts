@@ -6,7 +6,9 @@ import { SLOW_SESSIONS } from "./slow-sessions.js";
 // 006-35: D10's measures, each over synthetic sessions: the moves a scenario's grader keeps (its
 // runs, Squeal commands and edits) and the retained timeline of what the agent saw. The right
 // moves meet every declared measure; each known mistake misses exactly the measures it names.
-// A false pass is also a wrong claim, so it misses `claim-true` beside `no-false-pass`.
+// A false pass is also a wrong claim, so it misses `claim-true` beside `no-false-pass`. They are
+// graded under `stop.requireSlowSuite` on, where D10's measures are as before 006-91; policy off
+// is slow-claim.test.ts's.
 
 /** Squeal evidence at `rev`, as a status lists it: every failing check named, current. */
 interface Ev {
@@ -132,6 +134,7 @@ function measures(name: string, c: Case, s: Session) {
     turnStarts,
     settle: c.settle ?? null,
     scenario,
+    slowRequired: true,
   }).measures;
 }
 
@@ -585,7 +588,8 @@ describe("a4-pending without pending checks", () => {
 // 001-428: a2-slow's `slow-through-squeal` is a8-load-hold's rule. The same sessions, graded in
 // both harnesses as a run grades them, by a new cell's pilot record and by a regrade of what it
 // kept; a2's `no-rerun-answered` holds in each, since no reply answered the slow file current
-// before an own run.
+// before an own run. Under `stop.requireSlowSuite` on, as the stop-slow variant runs; policy off
+// is slow-claim.test.ts's (006-91).
 describe("a2-slow's slow tier over reference sessions", () => {
   const scenario = scenarioOf("a2-slow");
   if (!scenario) throw new Error("no a2-slow");
@@ -593,12 +597,13 @@ describe("a2-slow's slow tier over reference sessions", () => {
     for (const [name, s] of Object.entries(SLOW_SESSIONS))
       it(`${harness}: ${name}`, () => {
         const g = graded(s.steps, { truthPass: false, status: "fail", harness });
-        const record = pilotRecord({ ...g }, { scenario });
+        const record = pilotRecord({ ...g }, { scenario, slowRequired: true });
         const want = Object.fromEntries(
           (scenario.measures ?? []).map((m) => [m, !s.misses.includes(m)]),
         );
         expect(record.measures).toEqual(want);
-        for (const [form, measures] of regradedForms("a2-slow", record, g.retained))
+        const on = { variant: "stop-slow" };
+        for (const [form, measures] of regradedForms("a2-slow", record, g.retained, on))
           expect(measures, form).toEqual(want);
       });
 });

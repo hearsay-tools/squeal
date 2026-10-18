@@ -171,12 +171,15 @@ export function coveredRun(tl, { runner, files, after = null }) {
   );
 }
 
-/** The latest Squeal evidence before the final message, and whether it was at the last edit. */
-function atClaim(tl) {
+/**
+ * The latest Squeal evidence before the final message of replayed timeline `tl` (`step`, at
+ * index `j`), and whether it was at the last edit.
+ */
+export function evidenceAtClaim(tl) {
   const c = tl.findLastIndex((s) => s.k === "claim");
   const end = c < 0 ? tl.length : c;
   const j = tl.slice(0, end).findLastIndex((s) => s.k === "squeal");
-  return { j, current: j >= 0 && atEdit(tl, j, lastEditBefore(tl, end)) };
+  return { j, step: tl[j], current: j >= 0 && atEdit(tl, j, lastEditBefore(tl, end)) };
 }
 
 /**
@@ -189,7 +192,7 @@ function atClaim(tl) {
 export function currentBeforeClaim(timeline, claim) {
   if (!["pass", "fail"].includes(claim)) return null;
   const tl = replayed(timeline);
-  const a = atClaim(tl);
+  const a = evidenceAtClaim(tl);
   if (!a.current) return false;
   const seen = tl[a.j];
   return clear(seen) || (claim === "fail" && seen.daemon !== false && seen.failing.length > 0);
@@ -245,7 +248,7 @@ export function claimedOnEvidence(timeline, claim) {
   if (claim === null || claim === undefined) return null;
   if (claim !== "pass") return true;
   const tl = replayed(timeline);
-  const a = atClaim(tl);
+  const a = evidenceAtClaim(tl);
   // No current evidence at the claim (none seen at all included): a `pass` claim is a miss.
   if (!a.current) return false;
   const seen = tl[a.j];

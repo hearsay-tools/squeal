@@ -58,7 +58,7 @@ const a8 = (steps: Step[], harness: Harness) => {
   const scenario = scenarioOf("a8-load-hold");
   if (!scenario) throw new Error("no a8-load-hold");
   const g = graded(steps, { truthPass: false, status: "fail", harness });
-  return { g, measures: pilotRecord({ ...g }, { scenario }).measures };
+  return { g, measures: pilotRecord({ ...g }, { scenario, slowRequired: true }).measures };
 };
 
 describe("a Squeal command Squeal never answered", () => {
