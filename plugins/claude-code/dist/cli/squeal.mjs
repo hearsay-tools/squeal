@@ -13607,17 +13607,19 @@ var init_slow_skip = __esm({
         const { context, ledger } = this.started();
         const skips = this.#adopted();
         const refs2 = new Map(skips.get(rule.source)?.refs);
-        for (const ref2 of ledger.orderedSlow()) {
-          if (preconditionFor(context.policy, ref2)?.source !== rule.source) continue;
-          const file = ledger.file(ref2);
-          if (file === void 0) continue;
-          ledger.dequeue(file);
-          ledger.checkpoints.failed(ref2);
-          refs2.set(testFileId(ref2), ref2);
-        }
-        skips.set(rule.source, { rule, reason: reason2, refs: refs2, since: context.now() });
-        this.#publish();
-        ledger.commit();
+        context.store.transaction(() => {
+          for (const ref2 of ledger.orderedSlow()) {
+            if (preconditionFor(context.policy, ref2)?.source !== rule.source) continue;
+            const file = ledger.file(ref2);
+            if (file === void 0) continue;
+            ledger.dequeue(file);
+            ledger.checkpoints.failed(ref2);
+            refs2.set(testFileId(ref2), ref2);
+          }
+          skips.set(rule.source, { rule, reason: reason2, refs: refs2, since: context.now() });
+          this.#publish();
+          ledger.commit();
+        });
       }
       /**
        * Under the lock, `source` met: its skip ends. A skipped file not queued
@@ -13628,15 +13630,17 @@ var init_slow_skip = __esm({
         const skip = this.#adopted().get(source);
         if (skip === void 0) return;
         this.#adopted().delete(source);
-        this.#publish();
-        const { ledger } = this.started();
-        const idle2 = [...skip.refs.values()].filter((ref2) => ledger.file(ref2)?.phase === null);
-        for (const ref2 of idle2) {
-          const file = ledger.file(ref2);
-          if (file !== void 0) ledger.touch(file);
-        }
-        ledger.settle(idle2, /* @__PURE__ */ new Set());
-        ledger.commit();
+        const { context, ledger } = this.started();
+        context.store.transaction(() => {
+          this.#publish();
+          const idle2 = [...skip.refs.values()].filter((ref2) => ledger.file(ref2)?.phase === null);
+          for (const ref2 of idle2) {
+            const file = ledger.file(ref2);
+            if (file !== void 0) ledger.touch(file);
+          }
+          ledger.settle(idle2, /* @__PURE__ */ new Set());
+          ledger.commit();
+        });
       }
       /**
        * Whether `ref` is one a precondition covers that has not been met: D5's
@@ -13691,15 +13695,17 @@ var init_slow_skip = __esm({
        */
       #requeue(refs2, changed) {
         if (refs2.length === 0) return false;
-        const { ledger } = this.started();
-        ledger.settle(refs2, changed);
-        for (const ref2 of refs2) {
-          const file = ledger.file(ref2);
-          if (file === void 0 || classify2(file) !== "current") continue;
-          ledger.enqueue(file, priorityOf(file, changed), true);
-        }
-        ledger.commit();
-        this.#publish();
+        const { context, ledger } = this.started();
+        context.store.transaction(() => {
+          ledger.settle(refs2, changed);
+          for (const ref2 of refs2) {
+            const file = ledger.file(ref2);
+            if (file === void 0 || classify2(file) !== "current") continue;
+            ledger.enqueue(file, priorityOf(file, changed), true);
+          }
+          ledger.commit();
+          this.#publish();
+        });
         return true;
       }
       /** The skips, the store's at first use: a skip outlives the daemon that found it. */
