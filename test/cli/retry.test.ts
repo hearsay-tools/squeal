@@ -217,6 +217,21 @@ describe("squeal retry", () => {
       ]);
     });
 
+    it("queues one run of a file whose FAIL is stale, outside the session's retry (review 011 wave 2, B1)", async () => {
+      const w = await worktree();
+      const id = w.store.worktrees.list()[0]?.id as string;
+      w.store.knownStates.upsertMany([
+        state(id, check(A, "works"), { outcome: "fail", validity: "stale", observedAt: 2 }),
+      ]);
+      const out = await retry([A, "--reason", "load"], w.root);
+      expect(out.code).toBe(0);
+      expect(out.stdout).toMatch(/^Run queued: test\/a\.test\.ts has no result at its inputs \(/);
+      expect(out.stdout).not.toContain("FAIL stays counted");
+      expect(readRetries(w.store)).toMatchObject([
+        { testFile: ref(A), reason: "load", noResult: true, end: null },
+      ]);
+    });
+
     it("queues nothing more while its run is asked", async () => {
       const { root, store } = await noResult();
       await retry([U, "--reason", "environment"], root);
