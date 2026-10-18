@@ -1345,7 +1345,7 @@ var KEY_FORMAT_VERSION;
 var init_key_format = __esm({
   "src/core/keys/key-format.ts"() {
     "use strict";
-    KEY_FORMAT_VERSION = 11;
+    KEY_FORMAT_VERSION = 12;
   }
 });
 
@@ -4287,6 +4287,58 @@ var init_state3 = __esm({
   }
 });
 
+// src/core/status/checks.ts
+function countChecks(checks) {
+  const testFiles = checks.filter((check) => check.kind === "file").length;
+  const setups = checks.filter((check) => check.kind === "setup").length;
+  return {
+    tests: checks.length - testFiles - setups,
+    testFiles,
+    ...setups > 0 ? { setups } : {}
+  };
+}
+function checkPartsText({ tests, testFiles, setups = 0 }, fileLevel = "loaded") {
+  return [
+    ...tests > 0 ? [plural(tests, "test")] : [],
+    ...testFiles > 0 ? [`${plural(testFiles, "test file")} ${fileLevel}`] : [],
+    ...setups > 0 ? [plural(setups, "global setup")] : []
+  ].join(", ");
+}
+function partsSuffix(count, fileLevel, fileLevelWord) {
+  if (count === 0 || fileLevel === void 0) return "";
+  return ` (${checkPartsText({ tests: count - fileLevel, testFiles: fileLevel }, fileLevelWord)})`;
+}
+function countedText(count, label2, fileLevel) {
+  return `${count} ${label2}${partsSuffix(count, fileLevel)}`;
+}
+function failureCountText(checks) {
+  if (checks.length === 0) return "0";
+  return `${checks.length} (${checkPartsText(countChecks(checks), "that did not load")})`;
+}
+function splitByValidity(failures) {
+  return {
+    current: failures.filter((f) => f.validity === "current"),
+    pending: failures.filter((f) => f.validity === "pending"),
+    stale: failures.filter((f) => f.validity !== "current" && f.validity !== "pending")
+  };
+}
+function knownFailureCounts(failures) {
+  const { current: current3, pending, stale } = splitByValidity(failures);
+  return { current: current3.length, pending: pending.length, stale: stale.length };
+}
+function earlierFailuresLines({ pending, stale }) {
+  if (pending + stale === 0) return [];
+  return [
+    `Earlier failures: ${pending} pending rerun, ${stale} stale (not counted until a rerun fails)`
+  ];
+}
+var init_checks = __esm({
+  "src/core/status/checks.ts"() {
+    "use strict";
+    init_text();
+  }
+});
+
 // src/core/retry/load.ts
 import { availableParallelism, loadavg } from "node:os";
 function hostLoad() {
@@ -4352,6 +4404,7 @@ function retriesAt(records, testFile, key2) {
   return records.filter((r) => r.key === key2 && testFileId(r.testFile) === id2);
 }
 function spends(record) {
+  if (record.noResult === true) return false;
   return record.end === null || record.end.outcome === "passed" || record.end.outcome === "failed";
 }
 function askRetry(store, ask) {
@@ -4359,20 +4412,33 @@ function askRetry(store, ask) {
     const records = readRetries(store);
     const spent = retriesAt(records, ask.testFile, ask.key).filter((r) => r.session === ask.session && spends(r)).at(-1);
     if (spent !== void 0) return { kind: "spent", record: spent };
-    const record = {
-      id: randomUUID(),
-      testFile: ask.testFile,
-      key: ask.key,
-      session: ask.session,
-      reason: ask.reason,
-      askedAt: ask.at,
-      askedIn: ask.worktreeId,
-      claim: null,
-      end: null
-    };
+    const record = newRecord(ask);
     writeRetries(store, [...records, record]);
     return { kind: "queued", record };
   });
+}
+function askNoResultRun(store, ask) {
+  return store.transaction(() => {
+    const records = readRetries(store);
+    const pending = retriesAt(records, ask.testFile, ask.key).find((r) => r.end === null);
+    if (pending !== void 0) return { kind: "joined", record: pending };
+    const record = { ...newRecord(ask), noResult: true };
+    writeRetries(store, [...records, record]);
+    return { kind: "queued", record };
+  });
+}
+function newRecord(ask) {
+  return {
+    id: randomUUID(),
+    testFile: ask.testFile,
+    key: ask.key,
+    session: ask.session,
+    reason: ask.reason,
+    askedAt: ask.at,
+    askedIn: ask.worktreeId,
+    claim: null,
+    end: null
+  };
 }
 function cancelRetries(store, testFile, key2, worktreeId, at2) {
   return endWhere(store, (r) => r.end === null && retriesAt([r], testFile, key2).length > 0, {
@@ -4462,7 +4528,8 @@ function entry2(records) {
   const testFile = first.testFile;
   return {
     testFile,
-    reason: records.some((r) => r.reason === "environment") ? "environment" : "load",
+    // A run asked for a file with no result starts at once too (011 C5, gh-36).
+    reason: records.some((r) => r.reason === "environment" || r.noResult === true) ? "environment" : "load",
     askedAt: first.askedAt,
     claimedBy: records.find((r) => r.claim !== null)?.claim?.worktreeId ?? null,
     requests: records.length
@@ -4479,7 +4546,7 @@ var init_pending = __esm({
 
 // src/core/retry/recorded.ts
 function retryFactOf(records) {
-  const newest = records.at(-1);
+  const newest = records.filter((r) => r.noResult !== true).at(-1);
   if (newest === void 0) return void 0;
   return { reason: newest.reason, outcome: newest.end?.outcome ?? "pending" };
 }
@@ -7167,6 +7234,7 @@ function snapshot(store, worktreeId, root, now) {
     )
   );
   const runs = openRuns(store, worktree, daemon);
+  const knownFailures = withRecorded(store, worktreeId, states, header.revision);
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
@@ -7175,8 +7243,8 @@ function snapshot(store, worktreeId, root, now) {
     ...header,
     ...statusIdentity(root, revision, header.commit, daemon),
     daemon,
-    // Task 001-404: each failure says how old its run is and the load it ran under.
-    knownFailures: withRecorded(store, worktreeId, states, header.revision),
+    knownFailures,
+    knownFailureCounts: knownFailureCounts(knownFailures),
     inherited: inheritedSources(store, states),
     breakdown: breakdown(states, keys, openFiles(runs)),
     closureMethod: CLOSURE_METHOD,
@@ -7307,6 +7375,7 @@ var init_snapshot = __esm({
     init_state3();
     init_store3();
     init_types();
+    init_checks();
     init_config_problems();
     init_died();
     init_identity();
@@ -10264,7 +10333,8 @@ var init_promotions = __esm({
 // src/core/scheduler/queue.ts
 function priorityOf(file, changed, direct = NO_DIRECT_IMPORTERS) {
   if (file.failing) return Priority.failing;
-  if (changed.has(file.ref.path) || direct.has(file.id)) return Priority.direct;
+  if (changed.has(file.ref.path)) return Priority.edited;
+  if (direct.has(file.id)) return Priority.direct;
   return file.resultKey === null ? Priority.neverRun : Priority.transitive;
 }
 function sorted(entries3, durationOf2, first, promoted) {
@@ -10272,12 +10342,15 @@ function sorted(entries3, durationOf2, first, promoted) {
   const group = (entry4) => Number(entry4.recent || promoted.has(entry4));
   const durations2 = /* @__PURE__ */ new Map();
   for (const entry4 of entries3) {
-    durations2.set(entry4, durationOf2(entry4.ref) ?? Number.POSITIVE_INFINITY);
+    durations2.set(entry4, durationOf2(entry4.ref) ?? unknownDuration(entry4.priority));
   }
   const duration2 = (entry4) => durations2.get(entry4) ?? Number.POSITIVE_INFINITY;
   return [...entries3].sort(
     (a, b) => first * (group(b) - group(a)) || byDuration(rank2(a), rank2(b)) || a.priority - b.priority || byDuration(duration2(a), duration2(b)) || a.seq - b.seq || compare(a.ref.project, b.ref.project) || compare(a.ref.path, b.ref.path)
   ).map((entry4) => entry4.ref);
+}
+function unknownDuration(priority) {
+  return priority === Priority.edited ? 0 : Number.POSITIVE_INFINITY;
 }
 function byDuration(a, b) {
   return a === b ? 0 : a < b ? -1 : 1;
@@ -10289,7 +10362,7 @@ var init_queue = __esm({
     init_fs();
     init_keys();
     init_promotions();
-    Priority = { failing: 0, direct: 1, transitive: 2, neverRun: 3 };
+    Priority = { failing: 0, edited: 1, direct: 2, transitive: 3, neverRun: 4 };
     NO_DIRECT_IMPORTERS = /* @__PURE__ */ new Set();
     RECENT_TIERS_PER_BACKLOG_TIER = 4;
     NOTHING_SLOW = () => false;
@@ -10410,7 +10483,8 @@ var init_queue = __esm({
       }
       /**
        * Recent entries first, then priority, then shortest last known duration
-       * with unknown ones last, then first queued, then project and path. Spec
+       * with unknown ones last (an `edited` entry's unknown one first, as
+       * `joinSpan` counts it 0: 011 C4 as amended, gh-31), then first queued, then project and path. Spec
        * 001 D5 step 4 as amended (task 001-100, defect 19): work an edit caused
        * runs ahead of the baseline, an environment change or `run --all`, "within
        * each group D5's order stands"; "within a class, shortest last known
@@ -10763,7 +10837,7 @@ function takeRetries(context, ledger) {
     if (!file || file.key !== request.key || file.retryKey === request.key) continue;
     if (file.blocked !== null) continue;
     const entry4 = due.get(file.id) ?? { file, key: request.key, now: false };
-    entry4.now ||= request.reason === "environment";
+    entry4.now ||= request.reason === "environment" || request.noResult === true;
     due.set(file.id, entry4);
   }
   if (due.size === 0) return changed;
@@ -47525,7 +47599,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.215";
+  if (true) return "0.1.216";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -47565,36 +47639,7 @@ function versionParts(version2) {
 // src/core/status/index.ts
 init_ignored_reads();
 init_state3();
-
-// src/core/status/checks.ts
-init_text();
-function countChecks(checks) {
-  const testFiles = checks.filter((check) => check.kind === "file").length;
-  const setups = checks.filter((check) => check.kind === "setup").length;
-  return {
-    tests: checks.length - testFiles - setups,
-    testFiles,
-    ...setups > 0 ? { setups } : {}
-  };
-}
-function checkPartsText({ tests, testFiles, setups = 0 }, fileLevel = "loaded") {
-  return [
-    ...tests > 0 ? [plural(tests, "test")] : [],
-    ...testFiles > 0 ? [`${plural(testFiles, "test file")} ${fileLevel}`] : [],
-    ...setups > 0 ? [plural(setups, "global setup")] : []
-  ].join(", ");
-}
-function partsSuffix(count, fileLevel, fileLevelWord) {
-  if (count === 0 || fileLevel === void 0) return "";
-  return ` (${checkPartsText({ tests: count - fileLevel, testFiles: fileLevel }, fileLevelWord)})`;
-}
-function countedText(count, label2, fileLevel) {
-  return `${count} ${label2}${partsSuffix(count, fileLevel)}`;
-}
-function failureCountText(checks) {
-  if (checks.length === 0) return "0";
-  return `${checks.length} (${checkPartsText(countChecks(checks), "that did not load")})`;
-}
+init_checks();
 
 // src/core/status/failures.ts
 init_fs();
@@ -47606,6 +47651,7 @@ init_types();
 init_retry();
 init_state3();
 init_text();
+init_checks();
 init_config_problems();
 init_died();
 init_identity();
@@ -47613,6 +47659,7 @@ init_unknown_files2();
 
 // src/core/status/work-line.ts
 init_text();
+init_checks();
 function workLine(s, command) {
   if (s.daemon.state !== "alive") return [];
   if (s.testFilesListed === false || s.runnerPartPending === true) {
@@ -47645,7 +47692,9 @@ function formatStatus(result, now, command = "squeal", options = {}) {
   if (!result.available) return formatUnavailable(result, command);
   const lines = [
     `Revision: ${statusRevisionText(result)}`,
-    `Known failures: ${failureCountText(result.knownFailures.map((f) => f.check))}`,
+    // Spec 011 C6 as amended (gh-34): only current failures are counted.
+    `Known failures: ${failureCountText(splitByValidity(result.knownFailures).current.map((f) => f.check))}`,
+    ...earlierFailuresLines(knownFailureCounts(result.knownFailures)),
     ...result.knownFailures.flatMap((f) => [
       `  FAIL  ${formatCheck(f.check)}`,
       ...f.summary === "" ? [] : [`        ${f.summary}`],
@@ -48017,8 +48066,14 @@ function resolve4(store, worktreeId, query) {
     candidates,
     candidateDurations: candidates.map(
       (c) => durationsOf(store.results.listForCheck(c, Number.MAX_SAFE_INTEGER))
-    )
+    ),
+    queuedWithoutResult: queuedWithoutResult(store, worktreeId)
   };
+}
+function queuedWithoutResult(store, worktreeId) {
+  return store.testFileKeys.list(worktreeId).filter(
+    ({ key: key2, pending }) => key2 !== null && pending !== null && store.results.checksForKey(key2).length === 0
+  ).length;
 }
 function held(store, worktreeId) {
   const failureKeys2 = failureKeysOnce(store, worktreeId);
@@ -48177,8 +48232,7 @@ var INDENT = "        ";
 function formatWhy(why2) {
   if (!why2.available) return formatUnavailable(why2);
   if (!why2.found) {
-    if (why2.candidates.length === 0) return `No check matches "${why2.query}" in this worktree.
-`;
+    if (why2.candidates.length === 0) return noMatch(why2);
     return `${[
       `"${why2.query}" matches ${why2.candidates.length} checks in this worktree:`,
       ...why2.candidates.map((c, i3) => {
@@ -48203,6 +48257,15 @@ function formatWhy(why2) {
     ...runLog(why2)
   ];
   return `${lines.join("\n")}
+`;
+}
+function noMatch(why2) {
+  const none2 = `No check matches "${why2.query}" in this worktree.`;
+  const queued = why2.queuedWithoutResult ?? 0;
+  if (queued === 0) return `${none2}
+`;
+  const files2 = queued === 1 ? "1 test file is queued or running without a result at its current key" : `${queued} test files are queued or running without a result at their current keys`;
+  return `${none2} ${files2}; a test that has not run yet has no name here, so it may be in ${queued === 1 ? "it" : "one of them"}.
 `;
 }
 function knownState(why2, s) {
@@ -50350,6 +50413,7 @@ init_state3();
 
 // src/core/delivery/collapse.ts
 init_state3();
+init_checks();
 init_text();
 
 // src/core/delivery/consumer-version.ts
@@ -50816,11 +50880,13 @@ init_turn();
 // src/core/delivery/format.ts
 init_retry();
 init_state3();
+init_checks();
 init_text();
 
 // src/core/delivery/header.ts
 init_awaiting_install();
 init_state3();
+init_checks();
 init_died();
 
 // src/core/delivery/format.ts
@@ -54252,8 +54318,10 @@ function safeList2(dir2) {
 // src/cli/retry.ts
 init_fs();
 init_retry();
-init_store3();
+init_state3();
 import { isAbsolute as isAbsolute17, relative as relative22, resolve as resolve20, sep as sep26 } from "node:path";
+init_store3();
+init_text();
 
 // src/cli/status-wait.ts
 import { setTimeout as sleep10 } from "node:timers/promises";
@@ -55251,7 +55319,7 @@ ${USAGE3}`);
       const rel2 = inWorktree(root, cwd, path);
       const row = rel2 === null ? void 0 : keys.find((k) => k.testFile.path === rel2);
       const shown = rel2 ?? path;
-      const answer2 = row === void 0 || row.key === null ? refuse(notKeyed(store, worktreeId, rel2, shown)) : parsed.kind === "cancel" ? cancelLine(store, row, worktreeId, shown) : askLine(store, row, worktreeId, shown, parsed.reason, session(io), load);
+      const answer2 = row === void 0 || row.key === null ? refuse(notKeyed(store, worktreeId, rel2, shown)) : parsed.kind === "cancel" ? cancelLine(store, row, worktreeId, shown) : askLine(store, row, { root, worktreeId, shown }, parsed.reason, session(io), load);
       if (!answer2.ok) refused++;
       lines.push(answer2.text);
     }
@@ -55296,12 +55364,36 @@ function session(io) {
   const pi = env.PI_SESSION_ID === "" ? void 0 : env.PI_SESSION_ID;
   return waitConsumer(env).session ?? pi ?? "";
 }
-function askLine(store, row, worktreeId, shown, reason2, asker, load) {
+function askLine(store, row, { root, worktreeId, shown }, reason2, asker, load) {
   const key2 = row.key;
-  const failing = store.knownStates.list(worktreeId).some(
-    (s) => s.outcome === "fail" && s.check.kind !== "setup" && s.check.project === row.testFile.project && s.check.testPath === row.testFile.path
+  const states = store.knownStates.list(worktreeId);
+  const own = states.filter(
+    (s) => s.check.kind !== "setup" && s.check.project === row.testFile.project && s.check.testPath === row.testFile.path
   );
-  if (!failing) return refuse(`Not retried: ${shown} has no known failure in this worktree.`);
+  if (!own.some((s) => s.outcome === "fail")) {
+    const ask = { testFile: row.testFile, key: key2, session: asker, reason: reason2, at: Date.now(), worktreeId };
+    const pending = row.pending !== null || own.some((s) => s.validity === "pending");
+    if (pending)
+      return {
+        ok: true,
+        text: `${shown} has a run queued or running at its inputs already, so nothing more is queued. ${waitText2(shown)}`
+      };
+    if (own.length > 0 && own.every((s) => s.validity === "current")) {
+      return refuse(`Not retried: ${shown} has no known failure in this worktree.`);
+    }
+    const answer3 = askNoResultRun(store, ask);
+    if (answer3.kind === "joined") {
+      return {
+        ok: true,
+        text: `${shown} has a run asked at its inputs already, pending, so nothing more is queued. ${waitText2(shown)}`
+      };
+    }
+    const state = noResultText(store, row, own, { root, worktreeId, shown }, states);
+    return {
+      ok: true,
+      text: `Run queued: ${shown} has no result at its inputs (${state}). It runs once now at its normal priority, whatever the reason; that is its one run at these inputs, and it spends no retry of this session. ${waitText2(shown)}`
+    };
+  }
   const others = pendingOf(store, row).filter((r) => r.session !== asker);
   const answer2 = askRetry(store, {
     testFile: row.testFile,
@@ -55318,6 +55410,17 @@ function askLine(store, row, worktreeId, shown, reason2, asker, load) {
     ok: true,
     text: `Retry queued (reason: ${reason2}): ${shown} ${when}.${joins} Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending.`
   };
+}
+function waitText2(shown) {
+  return `squeal status --wait 60000 ${shown} waits for its result and moves it ahead in the queue.`;
+}
+function noResultText(store, row, own, { root, worktreeId }, states) {
+  if (own.length > 0 && own.every((s) => s.validity !== "unknown")) {
+    return "stale: its last result is at other inputs";
+  }
+  const why2 = unknownReasons(store, worktreeId, states, root, Date.now()).of(row, own).reason;
+  const line = why2?.split("\n")[0]?.trim() || "no reason was kept";
+  return `unknown: ${cap(line, SUMMARY_MAX_CHARS)}`;
 }
 function notKeyed(store, worktreeId, rel2, shown) {
   const setup = store.knownStates.list(worktreeId).some((s) => s.check.kind === "setup" && s.outcome === "fail" && s.check.testPath === rel2);
