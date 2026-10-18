@@ -109,6 +109,7 @@ describe("readWhy", () => {
         null,
         null,
       ],
+      queuedWithoutResult: 0,
     });
     expect(formatWhy(ambiguous)).toBe(
       [

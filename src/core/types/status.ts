@@ -825,6 +825,12 @@ export interface WhyNoMatch {
   readonly candidates: readonly CheckId[];
   /** Each candidate's durations, in the order of `candidates` (task 001-411). */
   readonly candidateDurations: readonly (WhyDurations | null)[];
+  /**
+   * Test files of this worktree queued or running with no result at their
+   * current key: an unrun test may be in one of them (011 C4 as amended,
+   * gh-31, task 011-17). Absent from a payload that predates it.
+   */
+  readonly queuedWithoutResult?: number;
 }
 
 export type WhyResult = WhyReport | WhyNoMatch | StatusUnavailable;
