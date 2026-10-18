@@ -9,6 +9,7 @@ import { splitNul, toAbsolute, worktreeIdFor } from "../../src/core/fs/index.js"
 import { createFsHasher } from "../../src/core/hash/index.js";
 import { statCandidates } from "../../src/core/revision/index.js";
 import { WorktreeKeys } from "../../src/core/scheduler/keying.js";
+import { slowView } from "../../src/core/scheduler/slow.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
 import type { CheckKey, Revision, Store } from "../../src/core/types/index.js";
 import { candidatesFromHints } from "../../src/core/watcher/candidates.js";
@@ -30,10 +31,9 @@ import { git } from "../hash/git-repo.js";
  * reads the policy and the `.gitignore` files, so it declares them too.
  */
 
+const E2E = /^test\/e2e\/[^/]+\.test\.ts$/;
 const PLUGIN_TESTS = (tests: readonly string[]) =>
-  tests.filter(
-    (path) => path === "test/harness/plugin.test.ts" || /^test\/e2e\/[^/]+\.test\.ts$/.test(path),
-  );
+  tests.filter((path) => path === "test/harness/plugin.test.ts" || E2E.test(path));
 
 let root: string;
 let store: Store;
@@ -109,6 +109,29 @@ describe("policy: this repository's squeal.config.json", () => {
     expect(keys.unmatchedInputs(testFiles)).toEqual({ testGlobs: [], inputGlobs: [] });
   });
 
+  /*
+   * Task 004-76 (`research/slow-tier-role.md`, open question 1): the e2e
+   * tests run the committed bundles, so they are the slow tier, keyed on
+   * every plugin they open, OpenCode's and Pi's included (004 D1, D5).
+   */
+  it("declares the e2e tests, and only them, slow", () => {
+    const { policy } = loadPolicy(REPO_ROOT);
+    const { isSlow, globs } = slowView(policy);
+    expect(globs).toEqual(["test/e2e/*.test.ts"]);
+    const slow = testFiles.filter((path) => isSlow({ project: "", path }));
+    expect(slow).toContain("test/e2e/opencode.test.ts");
+    expect(slow).toContain("test/e2e/pi.test.ts");
+    expect(slow).toEqual(testFiles.filter((path) => E2E.test(path)));
+  });
+
+  it.each(["plugins/claude-code/**", "plugins/codex/**", "plugins/opencode/**", "plugins/pi/**"])(
+    "keys the e2e tests on %s",
+    (glob) => {
+      const { policy } = loadPolicy(REPO_ROOT);
+      expect(policy.inputs["test/e2e/*.test.ts"]).toContain(glob);
+    },
+  );
+
   it("re-keys exactly plugin.test.ts and the e2e tests when a bundle changes", async () => {
     const plugin = PLUGIN_TESTS(testFiles);
     expect(plugin).toContain("test/harness/plugin.test.ts");
@@ -133,18 +156,22 @@ describe("policy: this repository's squeal.config.json", () => {
   it.each([
     ["opencode", "plugins/opencode/dist/plugin.mjs"],
     ["pi", "plugins/pi/dist/extension.mjs"],
-  ])("re-keys exactly the %s harness tests when its package changes", async (harness, bundle) => {
-    const tests = testFiles.filter((path) => path.startsWith(`test/harness/${harness}/`));
-    expect(tests).toContain(`test/harness/${harness}/package.test.ts`);
-    const before = allKeys();
+  ])(
+    "re-keys exactly the %s harness and e2e tests when its package changes",
+    async (harness, bundle) => {
+      const harnessTests = testFiles.filter((path) => path.startsWith(`test/harness/${harness}/`));
+      const tests = testFiles.filter((path) => harnessTests.includes(path) || E2E.test(path));
+      expect(harnessTests).toContain(`test/harness/${harness}/package.test.ts`);
+      const before = allKeys();
 
-    write(bundle, "// rebuilt\n");
-    const revision = await batch(bundle);
-    keys.index.rekey(revision?.changes.map((c) => c.path) ?? []);
+      write(bundle, "// rebuilt\n");
+      const revision = await batch(bundle);
+      keys.index.rekey(revision?.changes.map((c) => c.path) ?? []);
 
-    const after = allKeys();
-    expect(testFiles.filter((path) => after[path] !== before[path])).toEqual(tests);
-  });
+      const after = allKeys();
+      expect(testFiles.filter((path) => after[path] !== before[path])).toEqual(tests);
+    },
+  );
 
   it("re-keys the OpenCode and Pi package tests when a source they bundle changes", async () => {
     const before = allKeys();
