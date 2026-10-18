@@ -156,7 +156,7 @@ describe("sources changed since, by content (lessons defect 15)", () => {
     change(s, "src/paths.ts", "h-tested", "h-edited");
     change(s, "src/paths.ts", "h-edited", "h-edited-again");
     expect(slowLine(status(s))).toBe(
-      `Slow tier: 2 test files; 2 current against plugins/** as of revision 2, sources changed since. Squeal runs them when the agent pauses.`,
+      `Slow tier: 2 test files; 2 current against plugins/** as of revision 2; the source changes since are not in it, so these files have not tested them. Squeal runs them when the agent pauses.`,
     );
   });
 });
@@ -199,7 +199,7 @@ describe("which changed paths are sources (lessons defect 18)", () => {
     const s = current();
     change(s, path, "h-tested", "h-edited");
     expect(slowLine(status(s))).toBe(
-      `Slow tier: 2 test files; 2 current against plugins/** as of revision 2, sources changed since. Squeal runs them when the agent pauses.`,
+      `Slow tier: 2 test files; 2 current against plugins/** as of revision 2; the source changes since are not in it, so these files have not tested them. Squeal runs them when the agent pauses.`,
     );
   });
 
@@ -242,7 +242,7 @@ describe("a broad fast declaration keeps the sources other files load (review wa
     const s = current();
     change(s, path, "h-tested", "h-edited");
     expect(slowLine(status(s))).toBe(
-      `Slow tier: 2 test files; 2 current against plugins/** as of revision 2, sources changed since. Squeal runs them when the agent pauses.`,
+      `Slow tier: 2 test files; 2 current against plugins/** as of revision 2; the source changes since are not in it, so these files have not tested them. Squeal runs them when the agent pauses.`,
     );
   });
 

@@ -56,6 +56,20 @@ const slowPending: StatusSnapshot = {
     activity: null,
   },
 };
+/** Row 004-76: current against an artifact, the sources changed since or not. */
+const slowCurrent = (sourcesChangedSince: boolean): StatusSnapshot => ({
+  ...settled,
+  slowTier: {
+    testFiles: 1,
+    current: 1,
+    pending: 0,
+    notRun: 0,
+    currentAt: 2,
+    artifact: ["plugins/**"],
+    sourcesChangedSince,
+    activity: null,
+  },
+});
 const variants: [string, StatusSnapshot, object][] = [
   ["settled", settled, { verdict: "pass" }],
   [
@@ -90,6 +104,8 @@ const variants: [string, StatusSnapshot, object][] = [
   ["1 unknown test file without checks", withoutChecks(0, 1), { verdict: "unknown" }],
   ["1 pending and 1 unknown test file without checks", withoutChecks(1, 1), { verdict: "unknown" }],
   ["slow tier pending", slowPending, { slow: false, verdict: "unknown" }],
+  ["slow tier current", slowCurrent(false), { slow: true, verdict: "pass" }],
+  ["slow tier older than its sources", slowCurrent(true), { slow: false }],
 ];
 
 /** The pending, stale and unknown counts a snapshot holds, test files without checks included. */

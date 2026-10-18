@@ -128,7 +128,8 @@ export function squealEvidence(text, from, failures = 0) {
   const slow =
     tier === undefined
       ? null
-      : !/no slow test files listed|sources changed since|pending|queued|running|not run/.test(
+      : // "sources changed since" before 0.1.218, "have not tested" from it (row 004-76).
+        !/no slow test files listed|sources changed since|have not tested|pending|queued|running|not run/.test(
           tier,
         );
   const listed = /^Known failures: (\d+)/m.exec(t);
