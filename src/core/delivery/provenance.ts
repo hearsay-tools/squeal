@@ -1,4 +1,4 @@
-import type { StatusHeader, TransitionEntry } from "../types/index.js";
+import type { BeforeEdits, CommitSha, StatusHeader, TransitionEntry } from "../types/index.js";
 
 /*
  * Where a reported result came from (task 001-91, lessons defect 16): that
@@ -15,7 +15,8 @@ const TOUCHED_SHOWN = 3;
 export function change(entry: TransitionEntry): string {
   switch (entry.kind) {
     case "first-seen-fail":
-      return entry.from === null ? "first observed: FAIL" : `${upper(entry.from)} -> FAIL`;
+      if (entry.from !== null) return `${upper(entry.from)} -> FAIL`;
+      return entry.beforeEdits?.outcome === "pass" ? "PASS -> FAIL" : "first observed: FAIL";
     case "fail-changed":
       return "FAIL -> FAIL, failure changed";
     default:
@@ -23,11 +24,47 @@ export function change(entry: TransitionEntry): string {
   }
 }
 
+const commitText = (commit: CommitSha) =>
+  commit === null ? "no commit" : `commit ${commit.slice(0, 12)}`;
+
 function inheritedFrom(entry: TransitionEntry): string | null {
   if (entry.origin.kind !== "inherited") return null;
-  const commit =
-    entry.origin.commit === null ? "no commit" : `commit ${entry.origin.commit.slice(0, 12)}`;
-  return `${entry.originRoot ?? `worktree ${entry.origin.worktreeId}`} at ${commit}`;
+  return `${entry.originRoot ?? `worktree ${entry.origin.worktreeId}`} at ${commitText(entry.origin.commit)}`;
+}
+
+/**
+ * 011 C5 as amended (gh-32, task 011-18): what a first-seen failure's
+ * baseline says, `null` when it says nothing more. A pass baseline is told
+ * as the transition instead (`change`).
+ */
+function beforeEditsText(before: BeforeEdits | undefined): string | null {
+  switch (before?.outcome) {
+    case "none": {
+      const settle =
+        before.commit === null
+          ? ""
+          : `; to settle it, run it in a checkout of ${before.commit.slice(0, 12)}: its result is shared with this worktree`;
+      return `no baseline result, may predate your edits${settle}`;
+    }
+    case "fail": {
+      const where = before.worktreeRoot ?? `worktree ${before.worktreeId}`;
+      return `it also failed before your edits (${where} at ${commitText(before.commit)})`;
+    }
+    default:
+      return null;
+  }
+}
+
+/**
+ * The change with what is known of a first-seen failure before the edits,
+ * the baseline sentence after a semicolon, so the rest of the line follows
+ * after another.
+ */
+function changeBefore(entry: TransitionEntry): { text: string; joined: string } {
+  const before = entry.kind === "first-seen-fail" ? beforeEditsText(entry.beforeEdits) : null;
+  return before === null
+    ? { text: change(entry), joined: ", " }
+    : { text: `${change(entry)}; ${before}`, joined: "; " };
 }
 
 function validityText(entry: TransitionEntry, revision: number): string | null {
@@ -45,14 +82,14 @@ function validityText(entry: TransitionEntry, revision: number): string | null {
 export function seenLine(entry: TransitionEntry, revision: number): string {
   const from = inheritedFrom(entry);
   const baseline = entry.baseline === true;
+  const { text, joined } = changeBefore(entry);
   const parts = [
-    change(entry),
     from === null
       ? `seen by Squeal's ${baseline ? "baseline " : ""}run at revision ${entry.observedAt}`
       : `seen by Squeal's run in ${from}, inherited ${baseline ? "by the baseline " : ""}at revision ${entry.observedAt}`,
     validityText(entry, revision),
   ];
-  return parts.filter((p) => p !== null).join(", ");
+  return `${text}${joined}${parts.filter((p) => p !== null).join(", ")}`;
 }
 
 /**
@@ -64,8 +101,8 @@ export function seenLine(entry: TransitionEntry, revision: number): string {
 export function slowSeenLine(entry: TransitionEntry, revision: number): string {
   const artifact = entry.slowArtifact;
   const from = inheritedFrom(entry);
+  const { text, joined } = changeBefore(entry);
   const parts = [
-    change(entry),
     from === null
       ? `slow tier, Squeal's run saw it at revision ${entry.observedAt}`
       : `slow tier, Squeal's run in ${from} saw it, inherited at revision ${entry.observedAt}`,
@@ -76,7 +113,7 @@ export function slowSeenLine(entry: TransitionEntry, revision: number): string {
         : `against ${artifact.join(", ")} as of revision ${entry.observedAt}`,
     validityText(entry, revision),
   ];
-  return parts.filter((p) => p !== null).join(", ");
+  return `${text}${joined}${parts.filter((p) => p !== null).join(", ")}`;
 }
 
 /** Provenance of a recovery that is not own and current; `null` when it is. */
@@ -94,14 +131,23 @@ export function recoveryProvenance(entry: TransitionEntry, revision: number): st
 /** What the attribution lines count: changes in the worktree, anyone's (review wave 10d, N1). */
 const CHANGED_HERE = "files changed here since this session started";
 
-/** Whether the failure's imports hold a file changed since registration; `null` when not known. */
+/**
+ * Whether the failure's imports hold a file changed since registration;
+ * `null` when not known. A fact, never a cause (011 C5 as amended, gh-32):
+ * kept when the failure's message names other files, since a diagnostic's
+ * location need not name every input that caused it.
+ */
 export function touchesLine(entry: TransitionEntry): string | null {
-  const paths = entry.changesInClosure;
+  return closureLine(entry.changesInClosure);
+}
+
+/** `touchesLine` over the changed closure paths themselves, for a registration and `why`. */
+export function closureLine(paths: readonly string[] | undefined): string | null {
   if (paths === undefined) return null;
   if (paths.length === 0) return `none of the ${CHANGED_HERE} are in its imports`;
   const more = paths.length - TOUCHED_SHOWN;
   const shown = paths.slice(0, TOUCHED_SHOWN).join(", ");
-  return `touches ${CHANGED_HERE}: ${shown}${more > 0 ? ` and ${more} more` : ""}`;
+  return `its closure reads ${CHANGED_HERE}: ${shown}${more > 0 ? ` and ${more} more` : ""}`;
 }
 
 /** The load a timed-out test ran under; `null` for any other failure. */

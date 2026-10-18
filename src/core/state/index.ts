@@ -1,6 +1,7 @@
 /** Known state, fingerprints and transitions, spec 001 D6. Task 001-21. */
 
 export { baselineFindings } from "./baseline.js";
+export { beforeEditsFor, recordRegisteredKeys, registeredKeysMetaKey } from "./before-edits.js";
 export { formatCheck, parseCheck } from "./check-name.js";
 export { checkIdentity, classify, testFileKeyOf, testFileOf } from "./derive.js";
 export {

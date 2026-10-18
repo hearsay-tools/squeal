@@ -1,4 +1,5 @@
 import { isRecord } from "../fs/index.js";
+import { recordRegisteredKeys } from "../state/index.js";
 import {
   bootstrappedMetaKey,
   CONSUMER_EXPIRY_MS,
@@ -125,7 +126,19 @@ export function tellRegistered(
   const parked = unpark(store, consumer, at);
   const next = parked === null ? fresh(revision, scanned) : back(parked, revision, scanned);
   writeSlot(store, registeredMetaKey(consumer.worktreeId), consumer, stored(next));
+  // 011-18: the keys a first-seen failure's baseline is looked up at.
+  recordRegisteredKeys(store, consumer.worktreeId, next.since, registeredSinces(store, consumer));
   return parked === null ? null : { said: parked.said === true, uncovered: parked.uncovered ?? [] };
+}
+
+/** The revisions every registration and parked registration of `consumer`'s worktree starts after. */
+function registeredSinces(store: Store, consumer: Consumer): ReadonlySet<RevisionNumber> {
+  const { worktreeId } = consumer;
+  const values = [
+    ...Object.values(readAll(store, registeredMetaKey(worktreeId))),
+    ...Object.values(readAll(store, parkedMetaKey(worktreeId))),
+  ];
+  return new Set(values.flatMap((v) => toRegistration(v)?.since ?? []));
 }
 
 function fresh(since: RevisionNumber, scanned: EpochMs | null): Registration {
