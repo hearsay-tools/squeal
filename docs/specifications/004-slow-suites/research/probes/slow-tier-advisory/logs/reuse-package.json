@@ -1,0 +1,82 @@
+{
+ "totals": {
+  "own-current": {
+   "files": 85,
+   "minutes": 16.4
+  },
+  "own-stale": {
+   "files": 20,
+   "minutes": 2.8
+  },
+  "own-pending": {
+   "files": 9,
+   "minutes": 2.8
+  },
+  "inherited-current": {
+   "files": 16,
+   "minutes": 2.2
+  }
+ },
+ "runsInStore": {
+  "n": 240,
+  "minutes": 45.4
+ },
+ "perWorktree": {
+  "agent-ad8974545d7f2f950": {
+   "own-current": 13
+  },
+  "agent-a53122e43ca4b5937": {
+   "own-current": 13
+  },
+  "agent-a06e3c59f05774c4a": {
+   "own-stale": 7,
+   "own-current": 6
+  },
+  "agent-ae36f47254b9d5b33": {
+   "own-current": 1
+  },
+  "agent-a093b1364b09ce75f": {
+   "own-pending": 1
+  },
+  "agent-a3232b6032035fd18": {
+   "own-pending": 1
+  },
+  "agent-aa4e225f859cc33c5": {
+   "own-current": 5
+  },
+  "cezar": {
+   "own-stale": 13
+  },
+  "4bbb2adf-011d-467e-886e-": {
+   "own-current": 13
+  },
+  "3e372257-42e7-4686-8977-": {
+   "own-current": 13
+  },
+  "7679d523-846d-4d6b-94df-": {
+   "own-current": 13
+  },
+  "469e1cd2-ac79-4619-a8ac-": {
+   "own-current": 1
+  },
+  "fe9bcbc6-6403-43c8-bf3b-": {
+   "own-current": 1
+  },
+  "02cfc481-0e05-4986-bd56-": {
+   "inherited-current": 1
+  },
+  "30f48aff-31ad-4a55-8172-": {
+   "inherited-current": 1
+  },
+  "0c942edc-4845-40d2-bb19-": {
+   "inherited-current": 1
+  },
+  "17413271-a7d9-491e-b190-": {
+   "own-pending": 7,
+   "own-current": 6
+  },
+  "3eb81483-8d1f-4052-8f48-": {
+   "inherited-current": 13
+  }
+ }
+}

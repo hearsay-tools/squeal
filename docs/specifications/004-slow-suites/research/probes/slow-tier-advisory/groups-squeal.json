@@ -1,0 +1,1 @@
+{ "e2e": {"tests": "test/e2e/%.test.ts", "inputs": ["plugins/claude-code/**","plugins/codex/**","test/e2e/**","test/fixtures/**","test/harness/**","test/helpers/**","src/core/**","src/harness/**","squeal.config.json","package.json"]} }

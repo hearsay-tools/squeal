@@ -1,0 +1,31 @@
+{
+ "range": "4f2f01c0..3c5ea595",
+ "changed": 42,
+ "changedWeb": [
+  "packages/web/src/routes/task-thread/ask-card.test.tsx",
+  "packages/web/src/routes/task-thread/ask-card.tsx",
+  "packages/web/src/routes/task-thread/thread-state.test.ts",
+  "packages/web/src/routes/task-thread/thread-state.ts"
+ ],
+ "specs": 81,
+ "oneHop": [],
+ "tokens": 11,
+ "kept": [
+  "ask-card"
+ ],
+ "dropped": [
+  "true",
+  "false",
+  "parent"
+ ],
+ "named": [
+  "worker-relationships.e2e.ts"
+ ],
+ "wanted": [
+  {
+   "spec": "review-gate.e2e.ts",
+   "named": false,
+   "tokens": []
+  }
+ ]
+}

@@ -1,0 +1,108 @@
+{
+ "totals": {
+  "inherited-current": {
+   "files": 614,
+   "minutes": 247.5
+  },
+  "inherited-pending": {
+   "files": 19,
+   "minutes": 33.2
+  },
+  "own-current": {
+   "files": 815,
+   "minutes": 293
+  },
+  "inherited-stale": {
+   "files": 84,
+   "minutes": 33.6
+  },
+  "own-stale": {
+   "files": 1,
+   "minutes": 0.3
+  },
+  "own-pending": {
+   "files": 81,
+   "minutes": 33.5
+  }
+ },
+ "runsInStore": {
+  "n": 1616,
+  "minutes": 574.6
+ },
+ "perWorktree": {
+  "agent-ad8974545d7f2f950": {
+   "inherited-current": 53
+  },
+  "agent-a3232b6032035fd18": {
+   "inherited-pending": 2,
+   "own-current": 50
+  },
+  "agent-aa2a16753f6a94438": {
+   "own-current": 69
+  },
+  "agent-a16d2518c9e74f138": {
+   "inherited-pending": 1,
+   "own-current": 68
+  },
+  "agent-a53122e43ca4b5937": {
+   "own-current": 75
+  },
+  "agent-a06e3c59f05774c4a": {
+   "inherited-current": 75
+  },
+  "agent-ae36f47254b9d5b33": {
+   "own-current": 61
+  },
+  "tfs-1056": {
+   "own-current": 75
+  },
+  "agent-a093b1364b09ce75f": {
+   "own-current": 52
+  },
+  "agent-aa4e225f859cc33c5": {
+   "own-current": 57
+  },
+  "gate-902": {
+   "inherited-stale": 8
+  },
+  "cezar": {
+   "inherited-stale": 76,
+   "own-stale": 1
+  },
+  "4bbb2adf-011d-467e-886e-": {
+   "own-current": 81
+  },
+  "3e372257-42e7-4686-8977-": {
+   "own-current": 81
+  },
+  "7679d523-846d-4d6b-94df-": {
+   "inherited-current": 81
+  },
+  "469e1cd2-ac79-4619-a8ac-": {
+   "inherited-pending": 10,
+   "own-current": 71
+  },
+  "fe9bcbc6-6403-43c8-bf3b-": {
+   "inherited-pending": 6,
+   "own-current": 75
+  },
+  "02cfc481-0e05-4986-bd56-": {
+   "inherited-current": 81
+  },
+  "30f48aff-31ad-4a55-8172-": {
+   "inherited-current": 81
+  },
+  "0c942edc-4845-40d2-bb19-": {
+   "inherited-current": 81
+  },
+  "17413271-a7d9-491e-b190-": {
+   "own-pending": 81
+  },
+  "3eb81483-8d1f-4052-8f48-": {
+   "inherited-current": 81
+  },
+  "1160408d-fc4f-4373-a29e-": {
+   "inherited-current": 81
+  }
+ }
+}
