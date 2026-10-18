@@ -10,6 +10,7 @@ import { BLOCK_VERSION, instructionFiles } from "./block.js";
 import { slowCandidates } from "./candidates.js";
 import { scanGates, squealLine } from "./gates.js";
 import { type HarnessFact, readHarnesses } from "./harnesses.js";
+import { type PreconditionCommand, preconditionCommands } from "./preconditions.js";
 import { type PytestRunner, pytestRunners } from "./pytest.js";
 import { otherWorktrees, type RepoFacts, readJson, readRepoFacts } from "./repo.js";
 import { testFileUniverse, unselected } from "./test-globs.js";
@@ -37,6 +38,8 @@ export interface SetupPlan {
   /** The test command where it is no gate: other files, negated or naming Squeal (D5, 005-47). */
   readonly mentions: readonly Mention[];
   readonly slow: SlowFacts;
+  /** Declared slow-tier precondition commands (004 D7): facts, never outdated. */
+  readonly preconditions: readonly PreconditionCommand[];
   readonly codexTrust: CodexTrust;
   readonly warmup: Warmup;
   /** One line per finding that makes `--check` exit 1. */
@@ -225,6 +228,7 @@ export async function readPlan(
     gates,
     mentions,
     slow,
+    preconditions: preconditionCommands(policy),
     codexTrust: await codexTrust(root, harnesses, options),
     warmup: {
       source: testFiles.source,
