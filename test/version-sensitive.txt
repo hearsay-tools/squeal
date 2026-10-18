@@ -71,6 +71,7 @@
 #   test/harness/test-command.test.ts
 #   test/policy/node-test.test.ts
 #   test/policy/slow.test.ts
+#   test/policy/vitest-exclude.test.ts
 #   test/slow/classify.test.ts
 #   test/types.test.ts
 #
