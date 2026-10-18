@@ -224,7 +224,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -414,7 +414,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -562,7 +562,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -759,7 +759,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -906,7 +906,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -1054,7 +1054,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -1202,7 +1202,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -1349,7 +1349,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -1497,7 +1497,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -1667,7 +1667,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -1818,7 +1818,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -2004,7 +2004,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -2153,7 +2153,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -2333,7 +2333,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -2508,7 +2508,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": false,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -2700,7 +2700,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": false,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -2869,7 +2869,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -3098,7 +3098,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": false
     }
    },
@@ -3304,7 +3304,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": false,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -3452,7 +3452,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -3602,7 +3602,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -3750,7 +3750,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -3918,7 +3918,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -4065,7 +4065,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -4245,7 +4245,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -4395,7 +4395,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -4544,7 +4544,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -4741,7 +4741,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -4936,7 +4936,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": false,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -5103,7 +5103,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": false,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -5273,7 +5273,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": false,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -5480,7 +5480,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -5630,7 +5630,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -5779,7 +5779,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -5957,7 +5957,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": false
     }
    },
@@ -6144,7 +6144,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": false,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -6293,7 +6293,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -6442,7 +6442,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -6608,7 +6608,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": false,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -6757,7 +6757,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -6907,7 +6907,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -7060,7 +7060,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -7210,7 +7210,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -7389,7 +7389,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -7593,7 +7593,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -7784,7 +7784,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -7932,7 +7932,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -8131,7 +8131,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -8280,7 +8280,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -8429,7 +8429,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -8626,7 +8626,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -8826,7 +8826,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -9055,7 +9055,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": false
     }
    },
@@ -9238,7 +9238,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -9418,7 +9418,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": false,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -9647,7 +9647,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -9796,7 +9796,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -9946,7 +9946,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -10151,7 +10151,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": false,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -10299,7 +10299,7 @@
     "measures": {
      "claim-true": true,
      "no-false-pass": true,
-     "slow-through-squeal": true,
+     "slow-through-squeal": null,
      "no-rerun-answered": true
     }
    },
@@ -10342,6 +10342,73 @@
     "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r30"
    ],
    "note": "slow-through-squeal requires the current slow result before the claim (review 001-427 B1)"
+  },
+  {
+   "by": "006-91",
+   "date": "2026-10-18",
+   "changed": [
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r1",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r1",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r2",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r2",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r3",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r3",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r4",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r4",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r5",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r5",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r6",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r6",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r7",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r7",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r8",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r8",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r9",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r9",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r10",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r10",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r11",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r11",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r12",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r12",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r13",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r13",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r14",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r14",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r15",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r15",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r16",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r16",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r17",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r17",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r18",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r18",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r19",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r19",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r20",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r20",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r21",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r21",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r22",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r22",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r23",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r23",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r24",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r24",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r25",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r25",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r26",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r26",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r27",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r27",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r28",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r28",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r29",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r29",
+    "a2-slow.p0.claude-claude-haiku-5-5.e-medium.r30",
+    "a2-slow.old-slow-line.claude-claude-haiku-5-5.e-medium.r30"
+   ],
+   "note": "D10 as amended 2026-10-18: under stop.requireSlowSuite off, an unknown claim stating the slow files not current is met and slow-through-squeal is not computed"
   }
  ]
 }
