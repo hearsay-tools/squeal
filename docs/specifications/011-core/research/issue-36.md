@@ -77,3 +77,23 @@ One host, one synthetic repo of three files, one Vitest project, touches made by
 - `plugins/claude-code/skills/squeal/SKILL.md` step 5, `references/commands.md` "squeal run --all".
 - `docs/board.md` rows 011-06, 011-12, 005-67, gh-30, gh-33, gh-34.
 - Probe: `probes/issue-36/` (`README.md`, `probe.sh`, `output-*.txt`).
+
+## Coordinator verification
+
+Documentation and probe files only; no product, spec, status or skill edits. After `npm ci`, verification output:
+
+```text
+$ npm run lint
+Checked 1428 files in 678ms. No fixes applied.
+$ npm run typecheck
+> tsc --noEmit
+(exit 0)
+$ npm run build
+> tsc -p tsconfig.build.json && npm run build:plugin
+(exit 0; no tracked bundle changes)
+$ node --disable-warning=ExperimentalWarning /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs run --all --wait
+Checkpoint 559d3a2e-e332-42f5-bf6c-88a8f561e498 completed at revision 4: 2 known failures: 2 tests; 712 test files, 712 already current, 0 run now
+(exit 1)
+```
+
+The failures are `test/runners/node-test/run-reads-fidelity.test.ts:116` and `test/runners/vitest/observe-fidelity.test.ts:119`, each the case that names the recorder in a failure. Both expected pass but observed fail in their nested fixture. A partial-name `squeal why` lookup reports 9 results (0 pass/9 fail) and 8 results (0 pass/8 fail), respectively. This is not a passing full-suite claim. No retry or product repair is authorized by this triage. `git diff --check` and `bash -n research/probes/issue-36/probe.sh` passed.
