@@ -83,9 +83,16 @@ describe(
       // Only the file the first daemon never ran, forced: every key had a result.
       const rest = ALL_TEST_FILES.filter((path) => !forcedFirst.includes(path));
       expect(ran(second.runner.runs)).toEqual(rest);
+      // The baseline waits for the forced runs (task 004-69): they are its, and the owed one ends with it.
+      const baseline = store.runs.get(second.runner.runs[0]?.options.runId ?? "")?.checkpointId;
       for (const run of second.runner.runs) {
-        expect(store.runs.get(run.options.runId)?.checkpointId).toBe(checkpoint.id);
+        expect(store.runs.get(run.options.runId)?.checkpointId).toBe(baseline);
       }
+      expect(store.checkpoints.get(baseline ?? "")).toMatchObject({
+        kind: "baseline",
+        end: "completed",
+      });
+      expect(store.checkpoints.get(baseline ?? "")?.testFiles.map((ref) => ref.path)).toEqual(rest);
       expect(store.checkpoints.get(checkpoint.id)?.end).toBe("completed");
     });
 
