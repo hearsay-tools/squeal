@@ -32,6 +32,13 @@ export const REVISION =
 type Naming = "every" | "first" | "none";
 
 /**
+ * Which wait sentence the primer says: the path wait (005-68), the sentence
+ * it replaced, or that sentence without its example, which names the CLI at
+ * the wait where the others no longer fit (task 004-78).
+ */
+type WaitForm = "paths" | "plain" | "short";
+
+/**
  * How to work with Squeal, decided by the human (task 001-88). The one
  * prohibition D6's factual wording allows, paired with what to do instead.
  * `command` is how it names the CLI (spec 002 D1 as amended). It names the
@@ -57,10 +64,10 @@ type Naming = "every" | "first" | "none";
  */
 export function primer(command: string = SQUEAL_COMMAND, coverage: Coverage = VITEST_ONLY): string {
   const names = runnerNames(coverage);
-  const sentences = (covers: string, naming: Naming, paths: boolean) =>
+  const sentences = (covers: string, naming: Naming, wait: WaitForm) =>
     [
       `${PRIMER_OPENING}${listed(names, "and")} tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run ${listed(names, "or")} to learn whether your edits broke something.`,
-      waitSentence(command, naming, paths),
+      waitSentence(command, naming, wait),
       ...(coverage.slow === null
         ? []
         : slowSentences(command, naming, coverage.slow.requireSlowSuite === true)),
@@ -71,15 +78,22 @@ export function primer(command: string = SQUEAL_COMMAND, coverage: Coverage = VI
       "Squeal does not cover typecheck, build or any other test suite: run those yourself.",
     ].join(" ");
   // Fold the node:test and pytest projects first, then name the CLI less, until the primer fits;
-  // the path wait joins only where it fits without folding more (task 005-68).
+  // the path wait joins only where it fits without folding more (task 005-68). Before the
+  // CLI goes unnamed, the wait sentence drops its example, so a long CLI is still named at
+  // the wait (task 004-78: a 217-character Codex CLI went unnamed and agents ran a bare wait).
   let text = "";
   const most = Math.max(coverage.nodeTest.length, coverage.pytest?.length ?? 0);
   for (const naming of ["every", "first", "none"] as const) {
     for (let node = most; node >= 0; node--) {
-      text = sentences(coversSentence(coverage, node), naming, false);
+      text = sentences(coversSentence(coverage, node), naming, "plain");
       if (text.length > PRIMER_CAP_CHARS) continue;
-      const paths = sentences(coversSentence(coverage, node), naming, true);
+      const paths = sentences(coversSentence(coverage, node), naming, "paths");
       return paths.length <= PRIMER_CAP_CHARS ? paths : text;
+    }
+    if (naming !== "first") continue;
+    for (let node = most; node >= 0; node--) {
+      text = sentences(coversSentence(coverage, node), naming, "short");
+      if (text.length <= PRIMER_CAP_CHARS) return text;
     }
   }
   return text;
@@ -94,9 +108,14 @@ export function primer(command: string = SQUEAL_COMMAND, coverage: Coverage = VI
  * skill's: the primer is at its cap. Where it does not fit, `paths` off
  * gives the sentence it replaced, so no primer says less than before it,
  * projects and the CLI's naming included (the 005 coordinator, 2026-10-17).
+ * `short` is that sentence in fewer words, for a CLI too long for it, so the
+ * CLI stays named at the wait (task 004-78).
  */
-function waitSentence(command: string, naming: Naming, paths: boolean): string {
-  if (!paths) {
+function waitSentence(command: string, naming: Naming, form: WaitForm): string {
+  if (form === "short") {
+    return `Wait only when you need a result, as before you finish: \`${command} status --wait 60000\`.`;
+  }
+  if (form === "plain") {
     const wait =
       naming === "none"
         ? "`status --wait 60000` on the CLI SQUEAL messages name"
