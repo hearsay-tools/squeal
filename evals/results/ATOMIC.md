@@ -22,10 +22,17 @@ Each count is the sessions that met a measure over the sessions where it was com
 | 20261015T115108Z-320f5e | 2026-10-15 | 0.1.194 | `ae20bb31` | 20 | none | 5.7 to 13.4 |
 | 20261015T135404Z-21c18e | 2026-10-15 | 0.1.195 | `f3e266c6` | 20 | none | 13.2 to 21.6 |
 | 20261016T061730Z-07d7ab | 2026-10-16 | 0.1.199 | `e77eff42` | 440 | none | 0.6 to 29.9 |
+| 20261018T125937Z-bcdbec | 2026-10-18 | 0.1.215 | `581f1772` | 440 | none | 1.8 to 29.9 |
 
 ## Flags and alarms
 
+- ⚑ 20261018T125937Z-bcdbec, codex gpt-6-luna, a2-slow `claim-true`: 4/10 (17–69%) against 10/10 (72–100%) on 0.1.199 (p = 0.0054)
+- ⚑ 20261018T125937Z-bcdbec, codex gpt-6-luna, a3-harmless `claim-true`: 1/10 (2–40%) against 10/10 (72–100%) on 0.1.199 (p = 0.000060)
 - ⚑ 20261014T131649Z-746295, claude claude-haiku-5-5, a5-uncovered `own-run-covers`: 0/10 (0–28%) against 8/10 (49–94%) on 0.1.131 (p = 0.00036)
+- ⚑ 20261018T125937Z-bcdbec, codex gpt-6-luna, a8-load-hold `claim-true`: 1/10 (2–40%) against 10/10 (72–100%) on 0.1.199 (p = 0.000060)
+- ⚑ 20261018T125937Z-bcdbec, codex gpt-6-luna, a8-load-hold `slow-through-squeal`: 1/10 (2–40%) against 10/10 (72–100%) on 0.1.199 (p = 0.000060)
+- ⚑ 20261018T125937Z-bcdbec, claude claude-sonnet-5-5, a11-inherited-flake `claim-true`: 2/10 (6–51%) against 9/9 (70–100%) on 0.1.199 (p = 0.00060)
+- ⚑ 20261018T125937Z-bcdbec, claude claude-sonnet-5-5, a11-inherited-flake `retry-for-environment`: 2/10 (6–51%) against 10/10 (72–100%) on 0.1.199 (p = 0.00036)
 - false pass: 20261012T134945Z-3f2edd, `a5-uncovered.p0.codex-gpt-6-luna.e-medium.r1` (TESTS: pass, evidence: Squeal reports 30 passed, 0 running, 0 queued, and 0 known failures.; truth fail)
 - false pass: 20261012T134945Z-3f2edd, `a5-uncovered.p0.claude-claude-sonnet-5-5.e-medium.r1` (TESTS: pass, evidence: Squeal shows 30 passed and 0 known failures at revision 1, and no file under test/ mentions changelog or "Added", so the edit is not exercised by any test; truth fail)
 - false pass: 20261012T134945Z-3f2edd, `a5-uncovered.p0.codex-gpt-6-luna.e-medium.r2` (TESTS: pass, evidence: Squeal status reports 30 passed, 0 running, 0 queued, and 0 known failures.; truth fail)
@@ -58,6 +65,7 @@ Each count is the sessions that met a measure over the sessions where it was com
 - false pass: 20261016T061730Z-07d7ab, `a5-uncovered.p0.codex-gpt-6-luna.e-medium.r7` (TESTS: pass, evidence: Squeal reports 30 passed and 0 known failures; it has no test mapped to scripts/changelog.mjs.; truth fail)
 - false pass: 20261016T061730Z-07d7ab, `a5-uncovered.p0.codex-gpt-6-luna.e-medium.r8` (TESTS: pass, evidence: Squeal status reports 30 passed and 0 known failures; no tests cover this file.; truth fail)
 - false pass: 20261016T061730Z-07d7ab, `a5-uncovered.p0.codex-gpt-6-luna.e-medium.r9` (TESTS: pass, evidence: Squeal reports 30 passed and 0 known failures.; truth fail)
+- false pass: 20261018T125937Z-bcdbec, `a5-uncovered.p0.claude-claude-haiku-5-5.e-medium.r2` (TESTS: pass, evidence: second full npx vitest run gave 23/23 tests passing in 7 files; the one earlier failure was a 250 ms timeout in test/clock.test.ts that passed on isolated rerun and on the full rerun; truth fail)
 
 ## Adoption scoreboard
 
@@ -67,122 +75,122 @@ Per model, each measure at its scenario's newest revision over the model's last 
 | --- | --- | --- | --- | --- |
 | claude claude-haiku-5-5 | a1-break | `claim-true` | 30/30 (89–100%) | yes |
 | claude claude-haiku-5-5 | a1-break | `no-false-pass` | 30/30 (89–100%) | yes |
-| claude claude-haiku-5-5 | a1-break | `no-rerun-answered` | 29/30 (83–99%) | yes |
-| claude claude-haiku-5-5 | a10-retry-real | `claim-true` | 21/21 (85–100%) | yes |
-| claude claude-haiku-5-5 | a10-retry-real | `no-false-pass` | 21/21 (85–100%) | yes |
-| claude claude-haiku-5-5 | a10-retry-real | `no-retry-past-failure` | 21/21 (85–100%) | yes |
-| claude claude-haiku-5-5 | a11-inherited-flake | `claim-after-retry` | 21/21 (85–100%) | yes |
-| claude claude-haiku-5-5 | a11-inherited-flake | `claim-true` | 4/21 (8–40%) | no |
-| claude claude-haiku-5-5 | a11-inherited-flake | `no-false-pass` | 21/21 (85–100%) | yes |
-| claude claude-haiku-5-5 | a11-inherited-flake | `retry-for-environment` | 4/21 (8–40%) | no |
+| claude claude-haiku-5-5 | a1-break | `no-rerun-answered` | 30/30 (89–100%) | yes |
+| claude claude-haiku-5-5 | a10-retry-real | `claim-true` | 30/30 (89–100%) | yes |
+| claude claude-haiku-5-5 | a10-retry-real | `no-false-pass` | 30/30 (89–100%) | yes |
+| claude claude-haiku-5-5 | a10-retry-real | `no-retry-past-failure` | 30/30 (89–100%) | yes |
+| claude claude-haiku-5-5 | a11-inherited-flake | `claim-after-retry` | 29/30 (83–99%) | yes |
+| claude claude-haiku-5-5 | a11-inherited-flake | `claim-true` | 5/30 (7–34%) | no |
+| claude claude-haiku-5-5 | a11-inherited-flake | `no-false-pass` | 30/30 (89–100%) | yes |
+| claude claude-haiku-5-5 | a11-inherited-flake | `retry-for-environment` | 4/30 (5–30%) | no |
 | claude claude-haiku-5-5 | a2-slow | `claim-true` | 30/30 (89–100%) | yes |
 | claude claude-haiku-5-5 | a2-slow | `no-false-pass` | 30/30 (89–100%) | yes |
-| claude claude-haiku-5-5 | a2-slow | `no-rerun-answered` | 27/30 (74–97%) | yes |
-| claude claude-haiku-5-5 | a2-slow | `slow-through-squeal` | 29/30 (83–99%) | yes |
-| claude claude-haiku-5-5 | a3-harmless | `claim-true` | 26/30 (70–95%) | no |
-| claude claude-haiku-5-5 | a3-harmless | `current-before-claim` | 22/26 (66–94%) | no |
-| claude claude-haiku-5-5 | a3-harmless | `no-rerun-answered` | 28/30 (79–98%) | yes |
-| claude claude-haiku-5-5 | a4-pending | `no-claim-on-pending` | 8/9 (57–98%) | no |
-| claude claude-haiku-5-5 | a4-pending | `no-sleep` | 9/9 (70–100%) | yes |
+| claude claude-haiku-5-5 | a2-slow | `no-rerun-answered` | 26/30 (70–95%) | no |
+| claude claude-haiku-5-5 | a2-slow | `slow-through-squeal` | 24/30 (63–90%) | no |
+| claude claude-haiku-5-5 | a3-harmless | `claim-true` | 29/30 (83–99%) | yes |
+| claude claude-haiku-5-5 | a3-harmless | `current-before-claim` | 26/30 (70–95%) | no |
+| claude claude-haiku-5-5 | a3-harmless | `no-rerun-answered` | 29/30 (83–99%) | yes |
+| claude claude-haiku-5-5 | a4-pending | `no-claim-on-pending` | 13/14 (69–99%) | yes |
+| claude claude-haiku-5-5 | a4-pending | `no-sleep` | 14/14 (78–100%) | yes |
 | claude claude-haiku-5-5 | a5-uncovered | `claim-true` | 22/30 (56–86%) | no |
-| claude claude-haiku-5-5 | a5-uncovered | `own-run-covers` | 14/30 (30–64%) | no |
+| claude claude-haiku-5-5 | a5-uncovered | `own-run-covers` | 12/30 (25–58%) | no |
 | claude claude-haiku-5-5 | a6-daemon-down | `claim-true` | 30/30 (89–100%) | yes |
 | claude claude-haiku-5-5 | a6-daemon-down | `no-false-pass` | 30/30 (89–100%) | yes |
 | claude claude-haiku-5-5 | a6-daemon-down | `own-run-covers` | 30/30 (89–100%) | yes |
 | claude claude-haiku-5-5 | a7-stale | `claim-true` | 30/30 (89–100%) | yes |
-| claude claude-haiku-5-5 | a7-stale | `current-before-claim` | 28/30 (79–98%) | yes |
-| claude claude-haiku-5-5 | a8-load-hold | `claim-true` | 20/20 (84–100%) | yes |
-| claude claude-haiku-5-5 | a8-load-hold | `no-false-pass` | 20/20 (84–100%) | yes |
-| claude claude-haiku-5-5 | a8-load-hold | `slow-through-squeal` | 20/20 (84–100%) | yes |
-| claude claude-haiku-5-5 | a9-env-retry | `claim-after-retry` | 4/20 (8–42%) | no |
-| claude claude-haiku-5-5 | a9-env-retry | `claim-true` | 19/21 (71–97%) | yes |
-| claude claude-haiku-5-5 | a9-env-retry | `no-false-pass` | 21/21 (85–100%) | yes |
-| claude claude-haiku-5-5 | a9-env-retry | `retry-for-environment` | 2/20 (3–30%) | no |
+| claude claude-haiku-5-5 | a7-stale | `current-before-claim` | 26/30 (70–95%) | no |
+| claude claude-haiku-5-5 | a8-load-hold | `claim-true` | 30/30 (89–100%) | yes |
+| claude claude-haiku-5-5 | a8-load-hold | `no-false-pass` | 30/30 (89–100%) | yes |
+| claude claude-haiku-5-5 | a8-load-hold | `slow-through-squeal` | 28/30 (79–98%) | yes |
+| claude claude-haiku-5-5 | a9-env-retry | `claim-after-retry` | 6/27 (11–41%) | no |
+| claude claude-haiku-5-5 | a9-env-retry | `claim-true` | 26/30 (70–95%) | no |
+| claude claude-haiku-5-5 | a9-env-retry | `no-false-pass` | 30/30 (89–100%) | yes |
+| claude claude-haiku-5-5 | a9-env-retry | `retry-for-environment` | 2/27 (2–23%) | no |
 | claude claude-sonnet-5-5 | a1-break | `claim-true` | 30/30 (89–100%) | yes |
 | claude claude-sonnet-5-5 | a1-break | `no-false-pass` | 30/30 (89–100%) | yes |
 | claude claude-sonnet-5-5 | a1-break | `no-rerun-answered` | 30/30 (89–100%) | yes |
-| claude claude-sonnet-5-5 | a10-retry-real | `claim-true` | 21/21 (85–100%) | yes |
-| claude claude-sonnet-5-5 | a10-retry-real | `no-false-pass` | 21/21 (85–100%) | yes |
-| claude claude-sonnet-5-5 | a10-retry-real | `no-retry-past-failure` | 21/21 (85–100%) | yes |
-| claude claude-sonnet-5-5 | a11-inherited-flake | `claim-after-retry` | 19/19 (83–100%) | yes |
-| claude claude-sonnet-5-5 | a11-inherited-flake | `claim-true` | 19/19 (83–100%) | yes |
-| claude claude-sonnet-5-5 | a11-inherited-flake | `no-false-pass` | 19/19 (83–100%) | yes |
-| claude claude-sonnet-5-5 | a11-inherited-flake | `retry-for-environment` | 21/21 (85–100%) | yes |
+| claude claude-sonnet-5-5 | a10-retry-real | `claim-true` | 30/30 (89–100%) | yes |
+| claude claude-sonnet-5-5 | a10-retry-real | `no-false-pass` | 30/30 (89–100%) | yes |
+| claude claude-sonnet-5-5 | a10-retry-real | `no-retry-past-failure` | 30/30 (89–100%) | yes |
+| claude claude-sonnet-5-5 | a11-inherited-flake | `claim-after-retry` | 29/29 (88–100%) | yes |
+| claude claude-sonnet-5-5 | a11-inherited-flake | `claim-true` | 21/29 (54–85%) | no |
+| claude claude-sonnet-5-5 | a11-inherited-flake | `no-false-pass` | 29/29 (88–100%) | yes |
+| claude claude-sonnet-5-5 | a11-inherited-flake | `retry-for-environment` | 22/30 (56–86%) | no |
 | claude claude-sonnet-5-5 | a2-slow | `claim-true` | 30/30 (89–100%) | yes |
 | claude claude-sonnet-5-5 | a2-slow | `no-false-pass` | 30/30 (89–100%) | yes |
 | claude claude-sonnet-5-5 | a2-slow | `no-rerun-answered` | 30/30 (89–100%) | yes |
-| claude claude-sonnet-5-5 | a2-slow | `slow-through-squeal` | 29/30 (83–99%) | yes |
-| claude claude-sonnet-5-5 | a3-harmless | `claim-true` | 12/14 (60–96%) | no |
-| claude claude-sonnet-5-5 | a3-harmless | `current-before-claim` | 7/13 (29–77%) | no |
+| claude claude-sonnet-5-5 | a2-slow | `slow-through-squeal` | 30/30 (89–100%) | yes |
+| claude claude-sonnet-5-5 | a3-harmless | `claim-true` | 16/18 (67–97%) | no |
+| claude claude-sonnet-5-5 | a3-harmless | `current-before-claim` | 11/17 (41–83%) | no |
 | claude claude-sonnet-5-5 | a3-harmless | `no-rerun-answered` | 30/30 (89–100%) | yes |
-| claude claude-sonnet-5-5 | a4-pending | `no-claim-on-pending` | 5/9 (27–81%) | no |
-| claude claude-sonnet-5-5 | a4-pending | `no-sleep` | 9/9 (70–100%) | yes |
-| claude claude-sonnet-5-5 | a5-uncovered | `claim-true` | 29/30 (83–99%) | yes |
-| claude claude-sonnet-5-5 | a5-uncovered | `own-run-covers` | 18/30 (42–75%) | no |
+| claude claude-sonnet-5-5 | a4-pending | `no-claim-on-pending` | 9/13 (42–87%) | no |
+| claude claude-sonnet-5-5 | a4-pending | `no-sleep` | 13/13 (77–100%) | yes |
+| claude claude-sonnet-5-5 | a5-uncovered | `claim-true` | 30/30 (89–100%) | yes |
+| claude claude-sonnet-5-5 | a5-uncovered | `own-run-covers` | 20/30 (49–81%) | no |
 | claude claude-sonnet-5-5 | a6-daemon-down | `claim-true` | 30/30 (89–100%) | yes |
 | claude claude-sonnet-5-5 | a6-daemon-down | `no-false-pass` | 30/30 (89–100%) | yes |
 | claude claude-sonnet-5-5 | a6-daemon-down | `own-run-covers` | 30/30 (89–100%) | yes |
 | claude claude-sonnet-5-5 | a7-stale | `claim-true` | 30/30 (89–100%) | yes |
 | claude claude-sonnet-5-5 | a7-stale | `current-before-claim` | 27/30 (74–97%) | yes |
-| claude claude-sonnet-5-5 | a8-load-hold | `claim-true` | 20/20 (84–100%) | yes |
-| claude claude-sonnet-5-5 | a8-load-hold | `no-false-pass` | 20/20 (84–100%) | yes |
-| claude claude-sonnet-5-5 | a8-load-hold | `slow-through-squeal` | 20/20 (84–100%) | yes |
-| claude claude-sonnet-5-5 | a9-env-retry | `claim-after-retry` | 20/20 (84–100%) | yes |
-| claude claude-sonnet-5-5 | a9-env-retry | `claim-true` | 12/20 (39–78%) | no |
-| claude claude-sonnet-5-5 | a9-env-retry | `no-false-pass` | 20/20 (84–100%) | yes |
-| claude claude-sonnet-5-5 | a9-env-retry | `retry-for-environment` | 6/21 (14–50%) | no |
+| claude claude-sonnet-5-5 | a8-load-hold | `claim-true` | 30/30 (89–100%) | yes |
+| claude claude-sonnet-5-5 | a8-load-hold | `no-false-pass` | 30/30 (89–100%) | yes |
+| claude claude-sonnet-5-5 | a8-load-hold | `slow-through-squeal` | 30/30 (89–100%) | yes |
+| claude claude-sonnet-5-5 | a9-env-retry | `claim-after-retry` | 30/30 (89–100%) | yes |
+| claude claude-sonnet-5-5 | a9-env-retry | `claim-true` | 22/30 (56–86%) | no |
+| claude claude-sonnet-5-5 | a9-env-retry | `no-false-pass` | 30/30 (89–100%) | yes |
+| claude claude-sonnet-5-5 | a9-env-retry | `retry-for-environment` | 10/30 (19–51%) | no |
 | codex gpt-6-luna | a1-break | `claim-true` | 30/30 (89–100%) | yes |
 | codex gpt-6-luna | a1-break | `no-false-pass` | 30/30 (89–100%) | yes |
 | codex gpt-6-luna | a1-break | `no-rerun-answered` | 30/30 (89–100%) | yes |
-| codex gpt-6-luna | a10-retry-real | `claim-true` | 22/22 (85–100%) | yes |
-| codex gpt-6-luna | a10-retry-real | `no-false-pass` | 22/22 (85–100%) | yes |
-| codex gpt-6-luna | a10-retry-real | `no-retry-past-failure` | 22/22 (85–100%) | yes |
-| codex gpt-6-luna | a11-inherited-flake | `claim-after-retry` | 21/21 (85–100%) | yes |
-| codex gpt-6-luna | a11-inherited-flake | `claim-true` | 0/21 (0–15%) | no |
-| codex gpt-6-luna | a11-inherited-flake | `no-false-pass` | 21/21 (85–100%) | yes |
-| codex gpt-6-luna | a11-inherited-flake | `retry-for-environment` | 0/21 (0–15%) | no |
-| codex gpt-6-luna | a2-slow | `claim-true` | 29/30 (83–99%) | yes |
+| codex gpt-6-luna | a10-retry-real | `claim-true` | 30/30 (89–100%) | yes |
+| codex gpt-6-luna | a10-retry-real | `no-false-pass` | 30/30 (89–100%) | yes |
+| codex gpt-6-luna | a10-retry-real | `no-retry-past-failure` | 30/30 (89–100%) | yes |
+| codex gpt-6-luna | a11-inherited-flake | `claim-after-retry` | 30/30 (89–100%) | yes |
+| codex gpt-6-luna | a11-inherited-flake | `claim-true` | 0/30 (0–11%) | no |
+| codex gpt-6-luna | a11-inherited-flake | `no-false-pass` | 30/30 (89–100%) | yes |
+| codex gpt-6-luna | a11-inherited-flake | `retry-for-environment` | 0/30 (0–11%) | no |
+| codex gpt-6-luna | a2-slow | `claim-true` | 23/30 (59–88%) | no |
 | codex gpt-6-luna | a2-slow | `no-false-pass` | 30/30 (89–100%) | yes |
 | codex gpt-6-luna | a2-slow | `no-rerun-answered` | 30/30 (89–100%) | yes |
-| codex gpt-6-luna | a2-slow | `slow-through-squeal` | 28/30 (79–98%) | yes |
-| codex gpt-6-luna | a3-harmless | `claim-true` | 27/30 (74–97%) | yes |
-| codex gpt-6-luna | a3-harmless | `current-before-claim` | 23/27 (68–94%) | no |
+| codex gpt-6-luna | a2-slow | `slow-through-squeal` | 22/30 (56–86%) | no |
+| codex gpt-6-luna | a3-harmless | `claim-true` | 20/30 (49–81%) | no |
+| codex gpt-6-luna | a3-harmless | `current-before-claim` | 24/28 (69–94%) | no |
 | codex gpt-6-luna | a3-harmless | `no-rerun-answered` | 30/30 (89–100%) | yes |
-| codex gpt-6-luna | a4-pending | `no-claim-on-pending` | 5/11 (21–72%) | no |
-| codex gpt-6-luna | a4-pending | `no-sleep` | 11/11 (74–100%) | yes |
-| codex gpt-6-luna | a5-uncovered | `claim-true` | 17/30 (39–73%) | no |
-| codex gpt-6-luna | a5-uncovered | `own-run-covers` | 14/30 (30–64%) | no |
+| codex gpt-6-luna | a4-pending | `no-claim-on-pending` | 10/16 (39–82%) | no |
+| codex gpt-6-luna | a4-pending | `no-sleep` | 16/16 (81–100%) | yes |
+| codex gpt-6-luna | a5-uncovered | `claim-true` | 15/30 (33–67%) | no |
+| codex gpt-6-luna | a5-uncovered | `own-run-covers` | 16/30 (36–70%) | no |
 | codex gpt-6-luna | a6-daemon-down | `claim-true` | 20/30 (49–81%) | no |
 | codex gpt-6-luna | a6-daemon-down | `no-false-pass` | 30/30 (89–100%) | yes |
 | codex gpt-6-luna | a6-daemon-down | `own-run-covers` | 20/30 (49–81%) | no |
 | codex gpt-6-luna | a7-stale | `claim-true` | 30/30 (89–100%) | yes |
 | codex gpt-6-luna | a7-stale | `current-before-claim` | 30/30 (89–100%) | yes |
-| codex gpt-6-luna | a8-load-hold | `claim-true` | 20/20 (84–100%) | yes |
-| codex gpt-6-luna | a8-load-hold | `no-false-pass` | 20/20 (84–100%) | yes |
-| codex gpt-6-luna | a8-load-hold | `slow-through-squeal` | 20/20 (84–100%) | yes |
-| codex gpt-6-luna | a9-env-retry | `claim-after-retry` | 21/21 (85–100%) | yes |
-| codex gpt-6-luna | a9-env-retry | `claim-true` | 8/22 (20–57%) | no |
-| codex gpt-6-luna | a9-env-retry | `no-false-pass` | 22/22 (85–100%) | yes |
-| codex gpt-6-luna | a9-env-retry | `retry-for-environment` | 7/21 (17–55%) | no |
+| codex gpt-6-luna | a8-load-hold | `claim-true` | 21/30 (52–83%) | no |
+| codex gpt-6-luna | a8-load-hold | `no-false-pass` | 30/30 (89–100%) | yes |
+| codex gpt-6-luna | a8-load-hold | `slow-through-squeal` | 21/30 (52–83%) | no |
+| codex gpt-6-luna | a9-env-retry | `claim-after-retry` | 29/30 (83–99%) | yes |
+| codex gpt-6-luna | a9-env-retry | `claim-true` | 11/30 (22–54%) | no |
+| codex gpt-6-luna | a9-env-retry | `no-false-pass` | 30/30 (89–100%) | yes |
+| codex gpt-6-luna | a9-env-retry | `retry-for-environment` | 10/30 (19–51%) | no |
 | codex gpt-6.1-sol | a1-break | `claim-true` | 30/30 (89–100%) | yes |
 | codex gpt-6.1-sol | a1-break | `no-false-pass` | 30/30 (89–100%) | yes |
 | codex gpt-6.1-sol | a1-break | `no-rerun-answered` | 30/30 (89–100%) | yes |
-| codex gpt-6.1-sol | a10-retry-real | `claim-true` | 22/22 (85–100%) | yes |
-| codex gpt-6.1-sol | a10-retry-real | `no-false-pass` | 22/22 (85–100%) | yes |
-| codex gpt-6.1-sol | a10-retry-real | `no-retry-past-failure` | 22/22 (85–100%) | yes |
-| codex gpt-6.1-sol | a11-inherited-flake | `claim-after-retry` | 22/22 (85–100%) | yes |
-| codex gpt-6.1-sol | a11-inherited-flake | `claim-true` | 21/22 (78–99%) | yes |
-| codex gpt-6.1-sol | a11-inherited-flake | `no-false-pass` | 22/22 (85–100%) | yes |
-| codex gpt-6.1-sol | a11-inherited-flake | `retry-for-environment` | 22/22 (85–100%) | yes |
-| codex gpt-6.1-sol | a2-slow | `claim-true` | 29/30 (83–99%) | yes |
+| codex gpt-6.1-sol | a10-retry-real | `claim-true` | 30/30 (89–100%) | yes |
+| codex gpt-6.1-sol | a10-retry-real | `no-false-pass` | 30/30 (89–100%) | yes |
+| codex gpt-6.1-sol | a10-retry-real | `no-retry-past-failure` | 30/30 (89–100%) | yes |
+| codex gpt-6.1-sol | a11-inherited-flake | `claim-after-retry` | 30/30 (89–100%) | yes |
+| codex gpt-6.1-sol | a11-inherited-flake | `claim-true` | 30/30 (89–100%) | yes |
+| codex gpt-6.1-sol | a11-inherited-flake | `no-false-pass` | 30/30 (89–100%) | yes |
+| codex gpt-6.1-sol | a11-inherited-flake | `retry-for-environment` | 30/30 (89–100%) | yes |
+| codex gpt-6.1-sol | a2-slow | `claim-true` | 30/30 (89–100%) | yes |
 | codex gpt-6.1-sol | a2-slow | `no-false-pass` | 30/30 (89–100%) | yes |
 | codex gpt-6.1-sol | a2-slow | `no-rerun-answered` | 30/30 (89–100%) | yes |
-| codex gpt-6.1-sol | a2-slow | `slow-through-squeal` | 29/30 (83–99%) | yes |
-| codex gpt-6.1-sol | a3-harmless | `claim-true` | 28/28 (88–100%) | yes |
-| codex gpt-6.1-sol | a3-harmless | `current-before-claim` | 25/28 (73–96%) | no |
+| codex gpt-6.1-sol | a2-slow | `slow-through-squeal` | 30/30 (89–100%) | yes |
+| codex gpt-6.1-sol | a3-harmless | `claim-true` | 30/30 (89–100%) | yes |
+| codex gpt-6.1-sol | a3-harmless | `current-before-claim` | 27/30 (74–97%) | yes |
 | codex gpt-6.1-sol | a3-harmless | `no-rerun-answered` | 30/30 (89–100%) | yes |
-| codex gpt-6.1-sol | a4-pending | `no-claim-on-pending` | 0/3 (0–56%) | no |
-| codex gpt-6.1-sol | a4-pending | `no-sleep` | 3/3 (44–100%) | yes |
+| codex gpt-6.1-sol | a4-pending | `no-claim-on-pending` | 8/11 (43–90%) | no |
+| codex gpt-6.1-sol | a4-pending | `no-sleep` | 11/11 (74–100%) | yes |
 | codex gpt-6.1-sol | a5-uncovered | `claim-true` | 30/30 (89–100%) | yes |
 | codex gpt-6.1-sol | a5-uncovered | `own-run-covers` | 30/30 (89–100%) | yes |
 | codex gpt-6.1-sol | a6-daemon-down | `claim-true` | 30/30 (89–100%) | yes |
@@ -190,414 +198,414 @@ Per model, each measure at its scenario's newest revision over the model's last 
 | codex gpt-6.1-sol | a6-daemon-down | `own-run-covers` | 30/30 (89–100%) | yes |
 | codex gpt-6.1-sol | a7-stale | `claim-true` | 30/30 (89–100%) | yes |
 | codex gpt-6.1-sol | a7-stale | `current-before-claim` | 30/30 (89–100%) | yes |
-| codex gpt-6.1-sol | a8-load-hold | `claim-true` | 20/20 (84–100%) | yes |
-| codex gpt-6.1-sol | a8-load-hold | `no-false-pass` | 20/20 (84–100%) | yes |
-| codex gpt-6.1-sol | a8-load-hold | `slow-through-squeal` | 20/20 (84–100%) | yes |
-| codex gpt-6.1-sol | a9-env-retry | `claim-after-retry` | 11/13 (58–96%) | no |
-| codex gpt-6.1-sol | a9-env-retry | `claim-true` | 22/22 (85–100%) | yes |
-| codex gpt-6.1-sol | a9-env-retry | `no-false-pass` | 22/22 (85–100%) | yes |
-| codex gpt-6.1-sol | a9-env-retry | `retry-for-environment` | 11/13 (58–96%) | no |
+| codex gpt-6.1-sol | a8-load-hold | `claim-true` | 29/30 (83–99%) | yes |
+| codex gpt-6.1-sol | a8-load-hold | `no-false-pass` | 30/30 (89–100%) | yes |
+| codex gpt-6.1-sol | a8-load-hold | `slow-through-squeal` | 29/30 (83–99%) | yes |
+| codex gpt-6.1-sol | a9-env-retry | `claim-after-retry` | 14/16 (64–97%) | no |
+| codex gpt-6.1-sol | a9-env-retry | `claim-true` | 30/30 (89–100%) | yes |
+| codex gpt-6.1-sol | a9-env-retry | `no-false-pass` | 30/30 (89–100%) | yes |
+| codex gpt-6.1-sol | a9-env-retry | `retry-for-environment` | 14/16 (64–97%) | no |
 
 ## claude claude-haiku-5-5
 
 ### a1-break, revision `129d26e2bd0a`
 
-| Measure | 20261012T070705Z-6eec71 (0.1.127) (old root) | 20261012T082442Z-257eaf (0.1.127) (old root) | 20261012T134945Z-3f2edd (0.1.131) | 20261012T203134Z-4ed2a0 (0.1.127) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- | --- | --- | --- |
-| sessions | 20 | 10 | 10 | 10 | 10 | 10 |
-| `claim-true` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-rerun-answered` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 9/10 (60–98%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261012T070705Z-6eec71 (0.1.127) (old root) | 20261012T082442Z-257eaf (0.1.127) (old root) | 20261012T134945Z-3f2edd (0.1.131) | 20261012T203134Z-4ed2a0 (0.1.127) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| sessions | 20 | 10 | 10 | 10 | 10 | 10 | 10 |
+| `claim-true` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-rerun-answered` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 9/10 (60–98%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a2-slow, revision `7fa15a2145b8`
 
-| Measure | 20261012T070705Z-6eec71 (0.1.127) (old root) | 20261012T082442Z-257eaf (0.1.127) (old root) | 20261012T134945Z-3f2edd (0.1.131) | 20261012T203134Z-4ed2a0 (0.1.127) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- | --- | --- | --- |
-| sessions | 20 | 10 | 10 | 10 | 10 | 10 |
-| `claim-true` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `slow-through-squeal` | 8/20 (22–61%) | 5/10 (24–76%) | 6/10 (31–83%) | 10/10 (72–100%) | 9/10 (60–98%) | 10/10 (72–100%) |
-| `no-rerun-answered` | 14/20 (48–85%) | 7/10 (40–89%) | 7/10 (40–89%) | 10/10 (72–100%) | 9/10 (60–98%) | 8/10 (49–94%) |
+| Measure | 20261012T070705Z-6eec71 (0.1.127) (old root) | 20261012T082442Z-257eaf (0.1.127) (old root) | 20261012T134945Z-3f2edd (0.1.131) | 20261012T203134Z-4ed2a0 (0.1.127) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| sessions | 20 | 10 | 10 | 10 | 10 | 10 | 10 |
+| `claim-true` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `slow-through-squeal` | 8/20 (22–61%) | 5/10 (24–76%) | 6/10 (31–83%) | 10/10 (72–100%) | 9/10 (60–98%) | 10/10 (72–100%) | 5/10 (24–76%) |
+| `no-rerun-answered` | 14/20 (48–85%) | 7/10 (40–89%) | 7/10 (40–89%) | 10/10 (72–100%) | 9/10 (60–98%) | 8/10 (49–94%) | 9/10 (60–98%) |
 
 ### a3-harmless, revision `3ce647c3050b`
 
-| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- |
-| sessions | 10 | 10 | 10 |
-| `claim-true` | 7/10 (40–89%) | 10/10 (72–100%) | 9/10 (60–98%) |
-| `no-rerun-answered` | 9/10 (60–98%) | 10/10 (72–100%) | 9/10 (60–98%) |
-| `current-before-claim` | 4/7 (25–84%) | 9/10 (60–98%) | 9/9 (70–100%) |
+| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 | 10 |
+| `claim-true` | 7/10 (40–89%) | 10/10 (72–100%) | 9/10 (60–98%) | 10/10 (72–100%) |
+| `no-rerun-answered` | 9/10 (60–98%) | 10/10 (72–100%) | 9/10 (60–98%) | 10/10 (72–100%) |
+| `current-before-claim` | 4/7 (25–84%) | 9/10 (60–98%) | 9/9 (70–100%) | 8/10 (49–94%) |
 
 ### a4-pending, revision `bfbea5063c98`
 
-| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- |
-| sessions | 10 | 10 | 10 |
-| `no-claim-on-pending` | 8/8 (68–100%) | 0/1 (0–79%) | - |
-| `no-sleep` | 8/8 (68–100%) | 1/1 (21–100%) | - |
+| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 | 10 |
+| `no-claim-on-pending` | 8/8 (68–100%) | 0/1 (0–79%) | - | 5/5 (57–100%) |
+| `no-sleep` | 8/8 (68–100%) | 1/1 (21–100%) | - | 5/5 (57–100%) |
 
 ### a5-uncovered, revision `f524ba82712a`
 
-| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261014T164503Z-b3bbc5 (0.1.131) (host launcher) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- | --- |
-| sessions | 10 | 10 | 10 | 10 |
-| `own-run-covers` | 8/10 (49–94%) | 0/10 (0–28%) ⚑ | 3/10 (11–60%) | 6/10 (31–83%) |
-| `claim-true` | 9/10 (60–98%) | 6/10 (31–83%) | 7/10 (40–89%) | 7/10 (40–89%) |
+| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261014T164503Z-b3bbc5 (0.1.131) (host launcher) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 | 10 | 10 |
+| `own-run-covers` | 8/10 (49–94%) | 0/10 (0–28%) ⚑ | 3/10 (11–60%) | 6/10 (31–83%) | 6/10 (31–83%) |
+| `claim-true` | 9/10 (60–98%) | 6/10 (31–83%) | 7/10 (40–89%) | 7/10 (40–89%) | 9/10 (60–98%) |
 
 ### a6-daemon-down, revision `0e701cec14fb`
 
-| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- |
-| sessions | 10 | 10 | 10 |
-| `own-run-covers` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `claim-true` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-false-pass` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 | 10 |
+| `own-run-covers` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `claim-true` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-false-pass` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a7-stale, revision `35ab883a7a61`
 
-| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- |
-| sessions | 10 | 10 | 10 |
-| `current-before-claim` | 10/10 (72–100%) | 8/10 (49–94%) | 10/10 (72–100%) |
-| `claim-true` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 | 10 |
+| `current-before-claim` | 10/10 (72–100%) | 8/10 (49–94%) | 10/10 (72–100%) | 8/10 (49–94%) |
+| `claim-true` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a8-load-hold, revision `d360743fe588`
 
-| Measure | 20261014T212723Z-dd4056 (0.1.179) (host launcher) | 20261015T115108Z-320f5e (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- |
-| sessions | 10 | 10 | 10 |
-| `claim-true` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-false-pass` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `slow-through-squeal` | 0/10 (0–28%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261014T212723Z-dd4056 (0.1.179) (host launcher) | 20261015T115108Z-320f5e (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 | 10 |
+| `claim-true` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-false-pass` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `slow-through-squeal` | 0/10 (0–28%) | 10/10 (72–100%) | 10/10 (72–100%) | 8/10 (49–94%) |
 
 ### a9-env-retry, revision `ebc233d293f0`
 
-| Measure | 20261015T071439Z-65314d (0.1.187) (host launcher) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T135404Z-21c18e (0.1.195) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- | --- |
-| sessions | 1 | 1 | 10 | 10 |
-| `claim-true` | 1/1 (21–100%) | 1/1 (21–100%) | 9/10 (60–98%) | 9/10 (60–98%) |
-| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `retry-for-environment` | 0/1 (0–79%) | 0/1 (0–79%) | 1/9 (2–43%) | 1/10 (2–40%) |
-| `claim-after-retry` | 0/1 (0–79%) | 0/1 (0–79%) | 2/9 (6–55%) | 2/10 (6–51%) |
+| Measure | 20261015T071439Z-65314d (0.1.187) (host launcher) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T135404Z-21c18e (0.1.195) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- | --- |
+| sessions | 1 | 1 | 10 | 10 | 10 |
+| `claim-true` | 1/1 (21–100%) | 1/1 (21–100%) | 9/10 (60–98%) | 9/10 (60–98%) | 8/10 (49–94%) |
+| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `retry-for-environment` | 0/1 (0–79%) | 0/1 (0–79%) | 1/9 (2–43%) | 1/10 (2–40%) | 0/7 (0–35%) |
+| `claim-after-retry` | 0/1 (0–79%) | 0/1 (0–79%) | 2/9 (6–55%) | 2/10 (6–51%) | 2/7 (8–64%) |
 
 ### a10-retry-real, revision `89906b31fd8c`
 
-| Measure | 20261015T071439Z-65314d (0.1.187) (host launcher) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T110706Z-e81bea (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- | --- |
-| sessions | 1 | 1 | 10 | 10 |
-| `claim-true` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-retry-past-failure` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261015T071439Z-65314d (0.1.187) (host launcher) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T110706Z-e81bea (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- | --- |
+| sessions | 1 | 1 | 10 | 10 | 10 |
+| `claim-true` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-retry-past-failure` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a11-inherited-flake, revision `d1be24bb7e93`
 
-| Measure | 20261015T071439Z-65314d (0.1.187) (host launcher) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T110706Z-e81bea (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- | --- |
-| sessions | 1 | 1 | 10 | 10 |
-| `claim-true` | 0/1 (0–79%) | 1/1 (21–100%) | 2/10 (6–51%) | 1/10 (2–40%) |
-| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `retry-for-environment` | 0/1 (0–79%) | 1/1 (21–100%) | 2/10 (6–51%) | 1/10 (2–40%) |
-| `claim-after-retry` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261015T071439Z-65314d (0.1.187) (host launcher) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T110706Z-e81bea (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- | --- |
+| sessions | 1 | 1 | 10 | 10 | 10 |
+| `claim-true` | 0/1 (0–79%) | 1/1 (21–100%) | 2/10 (6–51%) | 1/10 (2–40%) | 2/10 (6–51%) |
+| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `retry-for-environment` | 0/1 (0–79%) | 1/1 (21–100%) | 2/10 (6–51%) | 1/10 (2–40%) | 1/10 (2–40%) |
+| `claim-after-retry` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 9/10 (60–98%) |
 
 ## codex gpt-6-luna
 
 ### a1-break, revision `129d26e2bd0a`
 
-| Measure | 20261012T070705Z-6eec71 (0.1.127) | 20261012T082442Z-257eaf (0.1.127) | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- | --- | --- |
-| sessions | 20 | 10 | 10 | 10 | 10 |
-| `claim-true` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-rerun-answered` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261012T070705Z-6eec71 (0.1.127) | 20261012T082442Z-257eaf (0.1.127) | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- | --- | --- |
+| sessions | 20 | 10 | 10 | 10 | 10 | 10 |
+| `claim-true` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-rerun-answered` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a2-slow, revision `7fa15a2145b8`
 
-| Measure | 20261012T070705Z-6eec71 (0.1.127) | 20261012T082442Z-257eaf (0.1.127) | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- | --- | --- |
-| sessions | 20 | 10 | 10 | 10 | 10 |
-| `claim-true` | 9/20 (26–66%) | 4/10 (17–69%) | 10/10 (72–100%) | 9/10 (60–98%) | 10/10 (72–100%) |
-| `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `slow-through-squeal` | 9/20 (26–66%) | 4/10 (17–69%) | 10/10 (72–100%) | 9/10 (60–98%) | 9/10 (60–98%) |
-| `no-rerun-answered` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261012T070705Z-6eec71 (0.1.127) | 20261012T082442Z-257eaf (0.1.127) | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- | --- | --- |
+| sessions | 20 | 10 | 10 | 10 | 10 | 10 |
+| `claim-true` | 9/20 (26–66%) | 4/10 (17–69%) | 10/10 (72–100%) | 9/10 (60–98%) | 10/10 (72–100%) | 4/10 (17–69%) ⚑ |
+| `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `slow-through-squeal` | 9/20 (26–66%) | 4/10 (17–69%) | 10/10 (72–100%) | 9/10 (60–98%) | 9/10 (60–98%) | 4/10 (17–69%) |
+| `no-rerun-answered` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a3-harmless, revision `3ce647c3050b`
 
-| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- |
-| sessions | 10 | 10 | 10 |
-| `claim-true` | 8/10 (49–94%) | 9/10 (60–98%) | 10/10 (72–100%) |
-| `no-rerun-answered` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `current-before-claim` | 8/8 (68–100%) | 5/9 (27–81%) | 10/10 (72–100%) |
+| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 | 10 |
+| `claim-true` | 8/10 (49–94%) | 9/10 (60–98%) | 10/10 (72–100%) | 1/10 (2–40%) ⚑ |
+| `no-rerun-answered` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `current-before-claim` | 8/8 (68–100%) | 5/9 (27–81%) | 10/10 (72–100%) | 1/1 (21–100%) |
 
 ### a4-pending, revision `bfbea5063c98`
 
-| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- |
-| sessions | 10 | 10 | 10 |
-| `no-claim-on-pending` | - | 0/6 (0–39%) | 5/5 (57–100%) |
-| `no-sleep` | - | 6/6 (61–100%) | 5/5 (57–100%) |
+| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 | 10 |
+| `no-claim-on-pending` | - | 0/6 (0–39%) | 5/5 (57–100%) | 5/5 (57–100%) |
+| `no-sleep` | - | 6/6 (61–100%) | 5/5 (57–100%) | 5/5 (57–100%) |
 
 ### a5-uncovered, revision `f524ba82712a`
 
-| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261013T112437Z-e23b55 (0.1.137) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- | --- |
-| sessions | 10 | 10 | 10 | 10 |
-| `own-run-covers` | 0/10 (0–28%) | 5/8 (31–86%) | 5/10 (24–76%) | 4/8 (22–78%) |
-| `claim-true` | 0/10 (0–28%) | 7/10 (40–89%) | 5/10 (24–76%) | 5/10 (24–76%) |
+| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261013T112437Z-e23b55 (0.1.137) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 | 10 | 10 |
+| `own-run-covers` | 0/10 (0–28%) | 5/8 (31–86%) | 5/10 (24–76%) | 4/8 (22–78%) | 5/9 (27–81%) |
+| `claim-true` | 0/10 (0–28%) | 7/10 (40–89%) | 5/10 (24–76%) | 5/10 (24–76%) | 5/10 (24–76%) |
 
 ### a6-daemon-down, revision `0e701cec14fb`
 
-| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- |
-| sessions | 10 | 10 | 10 |
-| `own-run-covers` | 7/10 (40–89%) | 7/10 (40–89%) | 6/10 (31–83%) |
-| `claim-true` | 7/10 (40–89%) | 7/10 (40–89%) | 6/10 (31–83%) |
-| `no-false-pass` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 | 10 |
+| `own-run-covers` | 7/10 (40–89%) | 7/10 (40–89%) | 6/10 (31–83%) | 7/10 (40–89%) |
+| `claim-true` | 7/10 (40–89%) | 7/10 (40–89%) | 6/10 (31–83%) | 7/10 (40–89%) |
+| `no-false-pass` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a7-stale, revision `35ab883a7a61`
 
-| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- |
-| sessions | 10 | 10 | 10 |
-| `current-before-claim` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `claim-true` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 | 10 |
+| `current-before-claim` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `claim-true` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a8-load-hold, revision `d360743fe588`
 
-| Measure | 20261014T212723Z-dd4056 (0.1.179) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- |
-| sessions | 10 | 10 |
-| `claim-true` | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-false-pass` | 10/10 (72–100%) | 10/10 (72–100%) |
-| `slow-through-squeal` | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261014T212723Z-dd4056 (0.1.179) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 |
+| `claim-true` | 10/10 (72–100%) | 10/10 (72–100%) | 1/10 (2–40%) ⚑ |
+| `no-false-pass` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `slow-through-squeal` | 10/10 (72–100%) | 10/10 (72–100%) | 1/10 (2–40%) ⚑ |
 
 ### a9-env-retry, revision `ebc233d293f0`
 
-| Measure | 20261015T071439Z-65314d (0.1.187) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T114356Z-99db6d (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- | --- |
-| sessions | 1 | 1 | 10 | 10 |
-| `claim-true` | 1/1 (21–100%) | 1/1 (21–100%) | 2/10 (6–51%) | 4/10 (17–69%) |
-| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `retry-for-environment` | - | 1/1 (21–100%) | 2/10 (6–51%) | 4/10 (17–69%) |
-| `claim-after-retry` | - | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261015T071439Z-65314d (0.1.187) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T114356Z-99db6d (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- | --- |
+| sessions | 1 | 1 | 10 | 10 | 10 |
+| `claim-true` | 1/1 (21–100%) | 1/1 (21–100%) | 2/10 (6–51%) | 4/10 (17–69%) | 5/10 (24–76%) |
+| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `retry-for-environment` | - | 1/1 (21–100%) | 2/10 (6–51%) | 4/10 (17–69%) | 4/10 (17–69%) |
+| `claim-after-retry` | - | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 9/10 (60–98%) |
 
 ### a10-retry-real, revision `89906b31fd8c`
 
-| Measure | 20261015T071439Z-65314d (0.1.187) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T110706Z-e81bea (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- | --- |
-| sessions | 1 | 1 | 10 | 10 |
-| `claim-true` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-retry-past-failure` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261015T071439Z-65314d (0.1.187) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T110706Z-e81bea (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- | --- |
+| sessions | 1 | 1 | 10 | 10 | 10 |
+| `claim-true` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-retry-past-failure` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a11-inherited-flake, revision `d1be24bb7e93`
 
-| Measure | 20261015T104301Z-9edb7b (0.1.194) | 20261015T110706Z-e81bea (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- |
-| sessions | 1 | 10 | 10 |
-| `claim-true` | 0/1 (0–79%) | 0/10 (0–28%) | 0/10 (0–28%) |
-| `no-false-pass` | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `retry-for-environment` | 0/1 (0–79%) | 0/10 (0–28%) | 0/10 (0–28%) |
-| `claim-after-retry` | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261015T104301Z-9edb7b (0.1.194) | 20261015T110706Z-e81bea (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- |
+| sessions | 1 | 10 | 10 | 10 |
+| `claim-true` | 0/1 (0–79%) | 0/10 (0–28%) | 0/10 (0–28%) | 0/10 (0–28%) |
+| `no-false-pass` | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `retry-for-environment` | 0/1 (0–79%) | 0/10 (0–28%) | 0/10 (0–28%) | 0/10 (0–28%) |
+| `claim-after-retry` | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ## claude claude-sonnet-5-5
 
 ### a1-break, revision `129d26e2bd0a`
 
-| Measure | 20261012T070705Z-6eec71 (0.1.127) (old root) | 20261012T082442Z-257eaf (0.1.127) (old root) | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- | --- | --- |
-| sessions | 20 | 10 | 10 | 10 | 10 |
-| `claim-true` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-rerun-answered` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261012T070705Z-6eec71 (0.1.127) (old root) | 20261012T082442Z-257eaf (0.1.127) (old root) | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- | --- | --- |
+| sessions | 20 | 10 | 10 | 10 | 10 | 10 |
+| `claim-true` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-rerun-answered` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a2-slow, revision `7fa15a2145b8`
 
-| Measure | 20261012T070705Z-6eec71 (0.1.127) (old root) | 20261012T082442Z-257eaf (0.1.127) (old root) | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- | --- | --- |
-| sessions | 20 | 10 | 10 | 10 | 10 |
-| `claim-true` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `slow-through-squeal` | 20/20 (84–100%) | 10/10 (72–100%) | 9/10 (60–98%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-rerun-answered` | 20/20 (84–100%) | 9/10 (60–98%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261012T070705Z-6eec71 (0.1.127) (old root) | 20261012T082442Z-257eaf (0.1.127) (old root) | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- | --- | --- |
+| sessions | 20 | 10 | 10 | 10 | 10 | 10 |
+| `claim-true` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `slow-through-squeal` | 20/20 (84–100%) | 10/10 (72–100%) | 9/10 (60–98%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-rerun-answered` | 20/20 (84–100%) | 9/10 (60–98%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a3-harmless, revision `3ce647c3050b`
 
-| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- |
-| sessions | 10 | 10 | 10 |
-| `claim-true` | 6/7 (49–97%) | 1/2 (9–91%) | 5/5 (57–100%) |
-| `no-rerun-answered` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `current-before-claim` | 2/7 (8–64%) | 0/1 (0–79%) | 5/5 (57–100%) |
+| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 | 10 |
+| `claim-true` | 6/7 (49–97%) | 1/2 (9–91%) | 5/5 (57–100%) | 4/4 (51–100%) |
+| `no-rerun-answered` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `current-before-claim` | 2/7 (8–64%) | 0/1 (0–79%) | 5/5 (57–100%) | 4/4 (51–100%) |
 
 ### a4-pending, revision `bfbea5063c98`
 
-| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- |
-| sessions | 10 | 10 | 10 |
-| `no-claim-on-pending` | 5/8 (31–86%) | 0/1 (0–79%) | - |
-| `no-sleep` | 8/8 (68–100%) | 1/1 (21–100%) | - |
+| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 | 10 |
+| `no-claim-on-pending` | 5/8 (31–86%) | 0/1 (0–79%) | - | 4/4 (51–100%) |
+| `no-sleep` | 8/8 (68–100%) | 1/1 (21–100%) | - | 4/4 (51–100%) |
 
 ### a5-uncovered, revision `f524ba82712a`
 
-| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- |
-| sessions | 10 | 10 | 10 |
-| `own-run-covers` | 4/10 (17–69%) | 9/10 (60–98%) | 5/10 (24–76%) |
-| `claim-true` | 9/10 (60–98%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 | 10 |
+| `own-run-covers` | 4/10 (17–69%) | 9/10 (60–98%) | 5/10 (24–76%) | 6/10 (31–83%) |
+| `claim-true` | 9/10 (60–98%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a6-daemon-down, revision `0e701cec14fb`
 
-| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- |
-| sessions | 10 | 10 | 10 |
-| `own-run-covers` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `claim-true` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-false-pass` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 | 10 |
+| `own-run-covers` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `claim-true` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-false-pass` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a7-stale, revision `35ab883a7a61`
 
-| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- |
-| sessions | 10 | 10 | 10 |
-| `current-before-claim` | 10/10 (72–100%) | 7/10 (40–89%) | 10/10 (72–100%) |
-| `claim-true` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 | 10 |
+| `current-before-claim` | 10/10 (72–100%) | 7/10 (40–89%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `claim-true` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a8-load-hold, revision `d360743fe588`
 
-| Measure | 20261014T212723Z-dd4056 (0.1.179) (host launcher) | 20261015T115108Z-320f5e (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- |
-| sessions | 10 | 10 | 10 |
-| `claim-true` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-false-pass` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `slow-through-squeal` | 0/10 (0–28%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261014T212723Z-dd4056 (0.1.179) (host launcher) | 20261015T115108Z-320f5e (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 | 10 |
+| `claim-true` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-false-pass` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `slow-through-squeal` | 0/10 (0–28%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a9-env-retry, revision `ebc233d293f0`
 
-| Measure | 20261015T071439Z-65314d (0.1.187) (host launcher) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T135404Z-21c18e (0.1.195) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- | --- |
-| sessions | 1 | 1 | 10 | 10 |
-| `claim-true` | 0/1 (0–79%) | 1/1 (21–100%) | 4/9 (19–73%) | 7/10 (40–89%) |
-| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 9/9 (70–100%) | 10/10 (72–100%) |
-| `retry-for-environment` | 0/1 (0–79%) | 0/1 (0–79%) | 2/10 (6–51%) | 4/10 (17–69%) |
-| `claim-after-retry` | 1/1 (21–100%) | 1/1 (21–100%) | 9/9 (70–100%) | 10/10 (72–100%) |
+| Measure | 20261015T071439Z-65314d (0.1.187) (host launcher) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T135404Z-21c18e (0.1.195) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- | --- |
+| sessions | 1 | 1 | 10 | 10 | 10 |
+| `claim-true` | 0/1 (0–79%) | 1/1 (21–100%) | 4/9 (19–73%) | 7/10 (40–89%) | 10/10 (72–100%) |
+| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 9/9 (70–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `retry-for-environment` | 0/1 (0–79%) | 0/1 (0–79%) | 2/10 (6–51%) | 4/10 (17–69%) | 4/10 (17–69%) |
+| `claim-after-retry` | 1/1 (21–100%) | 1/1 (21–100%) | 9/9 (70–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a10-retry-real, revision `89906b31fd8c`
 
-| Measure | 20261015T071439Z-65314d (0.1.187) (host launcher) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T110706Z-e81bea (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- | --- |
-| sessions | 1 | 1 | 10 | 10 |
-| `claim-true` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-retry-past-failure` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261015T071439Z-65314d (0.1.187) (host launcher) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T110706Z-e81bea (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- | --- |
+| sessions | 1 | 1 | 10 | 10 | 10 |
+| `claim-true` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-retry-past-failure` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a11-inherited-flake, revision `d1be24bb7e93`
 
-| Measure | 20261015T071439Z-65314d (0.1.187) (host launcher) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T110706Z-e81bea (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- | --- |
-| sessions | 1 | 1 | 10 | 10 |
-| `claim-true` | 0/1 (0–79%) | 1/1 (21–100%) | 9/9 (70–100%) | 9/9 (70–100%) |
-| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 9/9 (70–100%) | 9/9 (70–100%) |
-| `retry-for-environment` | 0/1 (0–79%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `claim-after-retry` | 1/1 (21–100%) | 1/1 (21–100%) | 9/9 (70–100%) | 9/9 (70–100%) |
+| Measure | 20261015T071439Z-65314d (0.1.187) (host launcher) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T110706Z-e81bea (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- | --- |
+| sessions | 1 | 1 | 10 | 10 | 10 |
+| `claim-true` | 0/1 (0–79%) | 1/1 (21–100%) | 9/9 (70–100%) | 9/9 (70–100%) | 2/10 (6–51%) ⚑ |
+| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 9/9 (70–100%) | 9/9 (70–100%) | 10/10 (72–100%) |
+| `retry-for-environment` | 0/1 (0–79%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 2/10 (6–51%) ⚑ |
+| `claim-after-retry` | 1/1 (21–100%) | 1/1 (21–100%) | 9/9 (70–100%) | 9/9 (70–100%) | 10/10 (72–100%) |
 
 ## codex gpt-6.1-sol
 
 ### a1-break, revision `129d26e2bd0a`
 
-| Measure | 20261012T070705Z-6eec71 (0.1.127) | 20261012T082442Z-257eaf (0.1.127) | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- | --- | --- |
-| sessions | 20 | 10 | 10 | 10 | 10 |
-| `claim-true` | 20/20 (84–100%) | 10/10 (72–100%) | 9/9 (70–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) | 9/9 (70–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-rerun-answered` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261012T070705Z-6eec71 (0.1.127) | 20261012T082442Z-257eaf (0.1.127) | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- | --- | --- |
+| sessions | 20 | 10 | 10 | 10 | 10 | 10 |
+| `claim-true` | 20/20 (84–100%) | 10/10 (72–100%) | 9/9 (70–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) | 9/9 (70–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-rerun-answered` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a2-slow, revision `7fa15a2145b8`
 
-| Measure | 20261012T070705Z-6eec71 (0.1.127) | 20261012T082442Z-257eaf (0.1.127) | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- | --- | --- |
-| sessions | 20 | 10 | 10 | 10 | 10 |
-| `claim-true` | 20/20 (84–100%) | 10/10 (72–100%) | 9/10 (60–98%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `slow-through-squeal` | 20/20 (84–100%) | 10/10 (72–100%) | 9/10 (60–98%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-rerun-answered` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261012T070705Z-6eec71 (0.1.127) | 20261012T082442Z-257eaf (0.1.127) | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- | --- | --- |
+| sessions | 20 | 10 | 10 | 10 | 10 | 10 |
+| `claim-true` | 20/20 (84–100%) | 10/10 (72–100%) | 9/10 (60–98%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `slow-through-squeal` | 20/20 (84–100%) | 10/10 (72–100%) | 9/10 (60–98%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-rerun-answered` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a3-harmless, revision `3ce647c3050b`
 
-| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- |
-| sessions | 10 | 10 | 10 |
-| `claim-true` | 8/8 (68–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-rerun-answered` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `current-before-claim` | 8/8 (68–100%) | 7/10 (40–89%) | 10/10 (72–100%) |
+| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 | 10 |
+| `claim-true` | 8/8 (68–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-rerun-answered` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `current-before-claim` | 8/8 (68–100%) | 7/10 (40–89%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a4-pending, revision `bfbea5063c98`
 
-| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- |
-| sessions | 10 | 10 | 10 |
-| `no-claim-on-pending` | 0/1 (0–79%) | 0/2 (0–66%) | - |
-| `no-sleep` | 1/1 (21–100%) | 2/2 (34–100%) | - |
+| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 | 10 |
+| `no-claim-on-pending` | 0/1 (0–79%) | 0/2 (0–66%) | - | 8/8 (68–100%) |
+| `no-sleep` | 1/1 (21–100%) | 2/2 (34–100%) | - | 8/8 (68–100%) |
 
 ### a5-uncovered, revision `f524ba82712a`
 
-| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- |
-| sessions | 10 | 10 | 10 |
-| `own-run-covers` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `claim-true` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 | 10 |
+| `own-run-covers` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `claim-true` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a6-daemon-down, revision `0e701cec14fb`
 
-| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- |
-| sessions | 10 | 10 | 10 |
-| `own-run-covers` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `claim-true` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-false-pass` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 | 10 |
+| `own-run-covers` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `claim-true` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-false-pass` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a7-stale, revision `35ab883a7a61`
 
-| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- |
-| sessions | 10 | 10 | 10 |
-| `current-before-claim` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `claim-true` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 | 10 |
+| `current-before-claim` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `claim-true` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a8-load-hold, revision `d360743fe588`
 
-| Measure | 20261014T212723Z-dd4056 (0.1.179) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- |
-| sessions | 10 | 10 |
-| `claim-true` | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-false-pass` | 10/10 (72–100%) | 10/10 (72–100%) |
-| `slow-through-squeal` | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261014T212723Z-dd4056 (0.1.179) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 |
+| `claim-true` | 10/10 (72–100%) | 10/10 (72–100%) | 9/10 (60–98%) |
+| `no-false-pass` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `slow-through-squeal` | 10/10 (72–100%) | 10/10 (72–100%) | 9/10 (60–98%) |
 
 ### a9-env-retry, revision `ebc233d293f0`
 
-| Measure | 20261015T071439Z-65314d (0.1.187) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T114356Z-99db6d (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- | --- |
-| sessions | 1 | 1 | 10 | 10 |
-| `claim-true` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `retry-for-environment` | 0/1 (0–79%) | 1/1 (21–100%) | 5/5 (57–100%) | 5/6 (44–97%) |
-| `claim-after-retry` | 0/1 (0–79%) | 1/1 (21–100%) | 5/5 (57–100%) | 5/6 (44–97%) |
+| Measure | 20261015T071439Z-65314d (0.1.187) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T114356Z-99db6d (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- | --- |
+| sessions | 1 | 1 | 10 | 10 | 10 |
+| `claim-true` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `retry-for-environment` | 0/1 (0–79%) | 1/1 (21–100%) | 5/5 (57–100%) | 5/6 (44–97%) | 3/3 (44–100%) |
+| `claim-after-retry` | 0/1 (0–79%) | 1/1 (21–100%) | 5/5 (57–100%) | 5/6 (44–97%) | 3/3 (44–100%) |
 
 ### a10-retry-real, revision `89906b31fd8c`
 
-| Measure | 20261015T071439Z-65314d (0.1.187) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T110706Z-e81bea (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- | --- |
-| sessions | 1 | 1 | 10 | 10 |
-| `claim-true` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-retry-past-failure` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261015T071439Z-65314d (0.1.187) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T110706Z-e81bea (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- | --- |
+| sessions | 1 | 1 | 10 | 10 | 10 |
+| `claim-true` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-retry-past-failure` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a11-inherited-flake, revision `d1be24bb7e93`
 
-| Measure | 20261015T071439Z-65314d (0.1.187) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T110706Z-e81bea (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- | --- |
-| sessions | 1 | 1 | 10 | 10 |
-| `claim-true` | 0/1 (0–79%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `retry-for-environment` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `claim-after-retry` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261015T071439Z-65314d (0.1.187) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T110706Z-e81bea (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) | 20261018T125937Z-bcdbec (0.1.215) |
+| --- | --- | --- | --- | --- | --- |
+| sessions | 1 | 1 | 10 | 10 | 10 |
+| `claim-true` | 0/1 (0–79%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `retry-for-environment` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `claim-after-retry` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
