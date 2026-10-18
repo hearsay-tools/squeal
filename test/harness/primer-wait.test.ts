@@ -63,6 +63,48 @@ describe("the primer's waits (005-68)", () => {
     }
   });
 
+  /*
+   * Task 004-78 (research `atomic-flags-0215.md` 2, line 3): at the eval
+   * cell's 217-character Codex CLI the primer named no CLI and kept the path
+   * wait, and agents ran `status --wait` with no CLI. The fold now drops the
+   * path wait and the sentence's example before it drops the CLI's name.
+   */
+  it("names a 217-character Codex CLI at the wait, under either slow policy", () => {
+    const home =
+      "/tmp/squeal-evals-1001/cells/581f1772dc45/20261018T125937Z-bcdbec/a3-harmless.p0.codex-gpt-6-luna.e-medium.r3/codex";
+    const cli = `node --disable-warning=ExperimentalWarning "${home}/plugins/cache/hearsay/squeal/0.1.215/dist/cli/squeal.mjs"`;
+    expect(cli).toHaveLength(217);
+    for (const requireSlowSuite of [false, true]) {
+      const text = primer(cli, coverage([], { files: 1, requireSlowSuite }));
+      expect(text).toContain(
+        `Wait only when you need a result, as before you finish: \`${cli} status --wait 60000\`.`,
+      );
+      expect(text).toContain("the CLI's `run --slow --wait 60000`");
+      expect(text).not.toContain("CLI SQUEAL messages name");
+      expect(text.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
+    }
+  });
+
+  /*
+   * The 004 coordinator (2026-10-18): the short sentence is tried once the
+   * projects are folded and before the CLI goes unnamed. At 230 characters
+   * it still fits under either policy; past it the primer names no CLI path,
+   * as before 004-78, and keeps the path wait.
+   */
+  it("names a 230-character CLI at the wait, and none past the fold's reach", () => {
+    for (const requireSlowSuite of [false, true]) {
+      const slow = coverage([], { files: 1, requireSlowSuite });
+      const at = "x".repeat(230);
+      const text = primer(at, slow);
+      expect(text).toContain(`\`${at} status --wait 60000\`.`);
+      expect(text.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
+      const past = "x".repeat(240);
+      const none = primer(past, slow);
+      expect(none).not.toContain(past);
+      expect(none).toContain("on the CLI SQUEAL messages name: `status --wait 60000 <path>...`");
+    }
+  });
+
   it("keeps every project and today's sentence under Claude Code with slow files and projects", () => {
     const text = primer("squeal", coverage([SCRIPTS, E2E], { files: 2, requireSlowSuite: true }));
     expect(text).toContain(TODAY("`squeal status --wait 60000`"));
