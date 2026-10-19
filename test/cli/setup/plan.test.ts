@@ -5,7 +5,15 @@ import { main } from "../../../src/cli/main.js";
 import { blockText } from "../../../src/cli/setup/block.js";
 import { buildPlan, type SetupPlan } from "../../../src/cli/setup/plan.js";
 import { git } from "../../hash/git-repo.js";
-import { capture, cleanupFixtures, harnessEnv, json, scratch, squealShaped } from "./fixture.js";
+import {
+  capture,
+  cleanupFixtures,
+  harnessEnv,
+  json,
+  SLOW_ONLY_E2E,
+  scratch,
+  squealShaped,
+} from "./fixture.js";
 
 /* Spec 005 D3 step 2, row 005-12: `squeal setup --plan [--json]` reads and writes nothing. */
 
@@ -88,7 +96,8 @@ describe("squeal setup --plan --json", () => {
     git(root, ["commit", "-q", "-m", "untrack"]);
     expect((await planJson(root)).outdated).toEqual([
       "squeal.config.json is not tracked by git: other worktrees run on defaults",
-      'squeal.config.json has no "slow" key',
+      // Row 005-70: test/e2e names plugins/codex/dist, so it is an exclude candidate.
+      'squeal.config.json has no "vitest.exclude" key',
     ]);
 
     const worktree = join(scratch("squeal-setup-wt-"), "wt");
@@ -120,8 +129,16 @@ describe("squeal setup --plan --json", () => {
     expect(plan.runners.nodeTest).toEqual([
       { name: "test:unit", cwd: "packages/demo", include: ["test/unit/*.test.js"], source: "seed" },
     ]);
-    // test/e2e is a slow candidate too, so the config lacks both keys.
-    expect(plan.config.missingKeys).toEqual(["nodeTest", "slow"]);
+    // test/e2e is an exclude candidate too, so the config lacks both keys (row 005-70).
+    expect(plan.config.missingKeys).toEqual(["nodeTest", "vitest.exclude"]);
+    const slowOnly = await buildPlan(
+      squealShaped({
+        ...SLOW_ONLY_E2E,
+        "package.json": json({ name: "squeal", workspaces: ["packages/*"] }),
+      }),
+      { env: harnessEnv() },
+    );
+    expect(slowOnly.config.missingKeys).toEqual(["slow"]);
   });
 });
 
