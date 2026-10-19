@@ -268,3 +268,288 @@ None. No new findings outside B1.
 The repair closes B1 without changing the settled lane-selection, capability-forwarding, per-run sweep or Vitest cancel behavior. `KEY_FORMAT_VERSION` remains 15 for this unreleased candidate, with the repaired source hash pinned to `ef314c953f520d87f2b3ec8d61963d3d8b5430cc05d22b601a0e5f1b5be6cbba`; the independent suite includes the passing key-format guard. The build regenerated all four plugin bundles with no tracked drift.
 
 No further fix wave is required by this review. Slice 2 must retain the first review's inputs: each selected run carries its own snapshot, changed paths, key/claim ownership and process mark; W is the grant, at most `runner.tierSize`, one permit per backlog slot, with batched record commits and no permit for an edit's extra run. Vitest continues to cancel. This review does not authorize that later slice.
+
+## Wave 4, slice 2
+
+**FAIL 1fb030983d7bdf265ebe218970c566ebd6cd6e6c**. Two proven blockers, one proven nonblocking should-fix item, zero nits. W4 of `tasks/wave-4.md`, reviewed 2026-10-20. Range: `4fe11939..1fb03098`. The slice 1 verdict and its closed B1 remain above; the finding IDs below are specific to slice 2.
+
+### Verification output
+
+HEAD matched the pinned candidate before checks and after the suite. The candidate tree was clean throughout these checks and before this append. Installation, lint, typecheck and build each exited 0. The build left all committed bundles unchanged.
+
+```text
+$ npm ci
+npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+
+added 196 packages, and audited 197 packages in 10s
+
+32 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+npm warn install-scripts 6 packages have install scripts not yet covered by allowScripts:
+npm warn install-scripts   @google/genai@2.21.0 (preinstall: echo 'preinstall: no-op')
+npm warn install-scripts   @parcel/watcher@2.6.0 (install: node scripts/build-from-source.js)
+npm warn install-scripts   esbuild@0.28.2 (postinstall: node install.js)
+npm warn install-scripts   msgpackr-extract@3.0.4 (install: node-gyp-build-optional-packages)
+npm warn install-scripts   opencode-ai@1.18.35 (postinstall: node ./postinstall.mjs)
+npm warn install-scripts   protobufjs@7.6.6 (postinstall: node scripts/postinstall)
+npm warn install-scripts
+npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+```
+
+```text
+$ npm run lint
+
+> squeal@0.1.225 lint
+> biome check .
+
+Checked 1476 files in 554ms. No fixes applied.
+```
+
+```text
+$ npm run typecheck
+
+> squeal@0.1.225 typecheck
+> tsc --noEmit
+```
+
+```text
+$ npm run build
+
+> squeal@0.1.225 build
+> tsc -p tsconfig.build.json && npm run build:plugin
+
+
+> squeal@0.1.225 build:plugin
+> tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts
+```
+
+```text
+$ git rev-parse HEAD
+1fb030983d7bdf265ebe218970c566ebd6cd6e6c
+$ git diff --exit-code
+$ git status --porcelain
+```
+
+Both cleanliness checks exited 0 with no output. The full independent run took the host lock once, with four workers; the invocation below was wrapped in timestamps and load reads under that same lock. It exited 1. The one-minute load was 83.47 at start, sampled as high as 84.81, and 22.25 at finish (24 CPUs).
+
+```text
+$ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
+Mon Oct 19 22:21:52 UTC 2026
+ 00:21:52 up 5 days, 13:10,  7 users,  load average: 83.47, 53.60, 32.92
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/efeadf4c-ff0f-41d8-9c00-80cdea0f47ef
+
+ ❯ test/daemon/vacant-wait.test.ts (6 tests | 1 failed) 24578ms
+   ❯ a lock waiter decides again once it holds the lock (review 001-347, B2) (3)
+     × a vacant-lock waiter serves when a daemon of its own version came and went (accepted, D10) 5201ms
+ ❯ test/harness/opencode-dispose.test.ts (3 tests | 1 failed) 52241ms
+   ❯ a report held while dispose meets newer input (3)
+     × serve: an abort of the new turn, then the old Stop's answer, stores nothing 30030ms
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/efeadf4c-ff0f-41d8-9c00-80cdea0f47ef/test/fixtures/scheduler/.tmp/27c2efe8-e33b-4a77-8745-3c355b0ed4a8/main/.git/worktrees/staged/gitdir
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/efeadf4c-ff0f-41d8-9c00-80cdea0f47ef/test/fixtures/scheduler/.tmp/f24540e7-8c2e-437d-bc82-42bb5ce308bf/main/.git/worktrees/staged/gitdir
+squeal tests: killing 1 process(es) an earlier run left: 3020540
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/daemon/vacant-wait.test.ts > a lock waiter decides again once it holds the lock (review 001-347, B2) > a vacant-lock waiter serves when a daemon of its own version came and went (accepted, D10)
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ test/daemon/vacant-wait.test.ts:99:3
+     97|   });
+     98|
+     99|   it("a vacant-lock waiter serves when a daemon of its own version cam…
+       |   ^
+    100|     const repo = createFixtureRepo();
+    101|     repos.push(repo);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/harness/opencode-dispose.test.ts > a report held while dispose meets newer input > serve: an abort of the new turn, then the old Stop's answer, stores nothing
+Error: before the new turn's request, the plugin killed the held Stop at +2007, at or after its idle deadline (+2000)
+marks, ms since the first idle: idle +0, stop +47 (pid 2790278), dispose +117, input +1042, kill +2007 (pid 2790278); the held Stop's deadline: +2000
+ ❯ reached test/harness/opencode/held-stop.ts:210:27
+    208|     if (gone !== null) {
+    209|       const message = `before ${what}, ${gone.why}\n${timeline(b)}`;
+    210|       throw gone.missed ? new Missed(message) : new Error(message);
+       |                           ^
+    211|     }
+    212|     if (Date.now() > limit) throw new Error(`${what}: not within ${BAR…
+ ❯ test/harness/opencode-dispose.test.ts:172:9
+ ❯ Object.afterReply test/harness/opencode-dispose.test.ts:112:7
+ ❯ runOpenCode test/helpers/opencode.ts:204:11
+ ❯ squealOpenCode test/harness/opencode/real.ts:75:17
+ ❯ overtaken test/harness/opencode-dispose.test.ts:99:18
+ ❯ test/harness/opencode-dispose.test.ts:170:21
+ ❯ ordered test/harness/opencode-dispose.test.ts:66:14
+ ❯ test/harness/opencode-dispose.test.ts:168:26
+
+ ❯ test/harness/opencode-dispose.test.ts:69:17 notice
+   ↳ attempt 1 of 3 missed its barriers: before the new turn's request, the plugin killed the held Stop at +2127, at or after its idle deadline (+2000)
+marks, ms since the first idle: idle +0, stop +110 (pid 2775127), dispose +176, input +419, kill +2127 (pid 2775127); the held Stop's deadline: +2000
+   ↳ attempt 2 of 3 missed its barriers: before the new turn's request, the plugin killed the held Stop at +2212, at or after its idle deadline (+2000)
+marks, ms since the first idle: idle +0, stop +82 (pid 2782866), dispose +140, input +364, kill +2212 (pid 2782866); the held Stop's deadline: +2000
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 742 passed | 1 skipped (745)
+      Tests  2 failed | 6322 passed | 10 skipped (6334)
+   Start at  00:21:54
+   Duration  1139.61s (tests 97%, import 2%, transform 1%)
+
+    Isolate  745 workers spawned · ~171ms startup each (spawn + environment, per file)
+             at least ~31.71s faster with isolate: false — reuses workers across files instead of one per file
+
+ 00:40:54 up 5 days, 13:29,  6 users,  load average: 22.25, 28.50, 35.08
+Mon Oct 19 22:40:54 UTC 2026
+```
+
+The only full-gate failures were `test/daemon/vacant-wait.test.ts:99` (5 s timeout) and `test/harness/opencode-dispose.test.ts:172` (the held Stop reached its 2 s idle deadline before the new turn request, after three missed-barrier attempts). Neither test file changed in this range. Both passed the focused two-file rerun below at the same clean candidate. This does not turn the full run green or establish the failures' root cause; these are verification observations, not blockers against this diff.
+
+```text
+$ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run test/daemon/vacant-wait.test.ts test/harness/opencode-dispose.test.ts --maxWorkers=4
+Mon Oct 19 22:41:32 UTC 2026
+ 00:41:32 up 5 days, 13:30,  6 users,  load average: 19.15, 26.85, 34.24
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/efeadf4c-ff0f-41d8-9c00-80cdea0f47ef
+
+
+ Test Files  2 passed (2)
+      Tests  9 passed (9)
+   Start at  00:41:32
+   Duration  20.45s (tests 96%, transform 4%, import 1%)
+
+ 00:41:53 up 5 days, 13:30,  6 users,  load average: 21.13, 26.86, 34.09
+Mon Oct 19 22:41:53 UTC 2026
+```
+
+The focused run exited 0. All slot-specific, stale-run, pool-cap, slow-lane and Vitest-cancel tests passed the independent full run.
+
+**Adapted regression discrimination.** In a disposable detached worktree at this candidate, I changed only `supersededIn` to return `false`, then ran the two adapted cases under the host lock. Both failed on state/result assertions, rather than setup or timing prerequisites:
+
+```text
+$ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run test/scheduler/edit-beside-backlog.test.ts -t '3\.|4\.' --maxWorkers=4
+Case 3, line 288: storedBy(h, REKEYED, edit), expected true, received false.
+Case 4, line 316: outcome(h, REKEYED), expected pass, received unknown.
+ Test Files  1 failed (1)
+      Tests  2 failed | 2 skipped (4)
+   Duration  36.76s (tests 94%, transform 5%, import 1%)
+Exit 1.
+```
+
+The same tests passed at the unmodified candidate in the full suite. The disposable worktree and the throwaway module probes were removed before the findings commit. Intentional red probe/mutation results are evidence for the findings and regression strength, not candidate gate failures.
+
+Squeal's separate revision-0 baseline reported the two known recorder-fidelity observations (`run-reads-fidelity.test.ts:116`, `observe-fidelity.test.ts:119`, 001-390), plus `opencode-wake.test.ts:53`, `repository-inputs.test.ts:99`, `backlog-slots.test.ts:61` and `edit-beside-backlog.test.ts:309`. OpenCode wake and repository-inputs then recovered under the same inputs. The makespan assertion exceeded its 5% bound twice (16298.89 against 15637.59 ms; 15605.43 against 15161.28 ms); stale-crash case 4 missed its timing prerequisite twice (S2-S1). All six files passed the independent gate. No Squeal checkpoint substituted for this reviewer's run.
+
+### Blockers
+
+#### S2-B1. Proven: a failed slot record can terminate the daemon before its caller receives the rejection
+
+Location: `src/core/scheduler/slot-records.ts:60`, `:70`, `:76`, `:90`; daemon caller `src/core/scheduler/scheduler.ts:663` and recovery `:675`.
+
+C7: “A busy error of the pump or of a tier's record puts the tier's files back and resumes the pump after the same backoff, with no stall note.” W4 also requires that `SlotRecords` never lose a slot's results and that departure waits for slots in flight.
+
+`record()` creates an inner `outcome` promise, then waits for the gather and the entire mutex drain before returning/adopting that promise. The drain rejects a failed slot's `outcome` immediately. If it then awaits another slot's unfinished reads, or its asynchronous record work, across an event-loop turn, that inner rejection has no handler yet. Handling the public `record()` promise does not handle the separate inner promise during this interval. Node's default unhandled-rejection behavior exits the process. The scheduler's `try/catch`, requeue and busy-resume paths have not received the error and cannot recover. The daemon installs no unhandled-rejection handler.
+
+A disposable probe imported the candidate's unmodified `SlotRecords` and `Mutex`, opened two `node:sqlite` connections to a temporary database, and held `BEGIN IMMEDIATE` on one. The first slot's record attempted an insert on the other connection (`busy_timeout=1`); the next slot's ended/read promise resolved after 150 ms. Both public calls were immediately passed to `Promise.allSettled`. No candidate file changed. The process nevertheless exited 1 before the `allSettled` result:
+
+```text
+Error: database is locked
+    at Object.record (/tmp/w4-slot-busy-probe.mts:16:75)
+    at .../src/core/scheduler/slot-records.ts:74:61 {
+  code: 'ERR_SQLITE_ERROR',
+  errcode: 5,
+  errstr: 'database is locked'
+}
+Node.js v24.21.0
+```
+
+The failure also has a minimal reproduction without SQLite (imports are the candidate's two modules):
+
+```ts
+const slots = new SlotRecords({
+  lock: new Mutex(),
+  record: async (value: string) => {
+    if (value === "bad") throw new Error("record failed");
+    return value;
+  },
+  commit() {},
+});
+await Promise.allSettled([
+  slots.record(Promise.resolve("bad")),
+  slots.record(new Promise<string>((r) => setTimeout(() => r("good"), 150))),
+]);
+```
+
+This process exits 1 before `allSettled` returns. This is not a timing-dependent failure of the repository suite: the later pending read gives the failed promise a deterministic unhandled turn. In the daemon, a busy `#record` transaction and another ended slot still performing its completion-barrier reads provide these two inputs. A later record's own asynchronous preparation provides the same gap even when its initial reads already resolved.
+
+**One-worker repair:** attach rejection handling to each outcome when it is created, or return that outcome immediately while a separately handled drain runs. Preserve one outcome per slot, FIFO recording and the single gathered commit; make every failure reach the existing scheduler recovery. Add a regression with the failed slot first and a later slot still pending across a turn, with both public promises handled. Exercise this in a child process with Node's default rejection behavior, and verify that the good sibling records once and the bad slot rejects without process exit. Retain the failed-commit and failed-read tests.
+
+#### S2-B2. Proven: an edit stream can starve a slot lane's backlog past its required fairness turn
+
+Location: `src/core/scheduler/tiers.ts:153`, `:180`; related slot admission `src/core/scheduler/slots.ts:47`.
+
+C4 step 4: “After four tiers in a row of the first group only while the second waited, the next tier is the second group's, so edits that keep the first group full still move the backlog by one tier in five.” C15 preserves this rule for promotions too.
+
+`RunQueue.ordered()` puts the backlog first on that fifth turn, but `selectTier` still sets `backlog` solely from whether any first-group work is queued. The new slot-specific skip then discards every non-first-group candidate while `backlog` is false, including the entry the fairness order deliberately put first. It picks another edit and calls `tierSelected(false)`. The backlog remains first in the queue order but is skipped again at every later boundary while edits or promoted waits keep coming. Existing slots can finish without replacement while the lane continues its edit tiers; a queued baseline, checkpoint or confirming rerun can wait indefinitely.
+
+A cheap selector probe used the real candidate `RunQueue`, `newFileState`, `StatCache` and `selectTier`, with a minimal in-memory store/ledger boundary (no results, no foreign claims), `tierSize=1` and `backlogSlot=1`. It queued one backlog file and added one recent file before each of six selections. All entries were unforced. The candidate selected:
+
+```text
+Selected tiers: [["edit0"],["edit1"],["edit2"],["edit3"],["edit4"],["edit5"]]
+Backlog still queued: true
+AssertionError [ERR_ASSERTION]: The fifth tier must take the waiting backlog
+'edit4' !== 'backlog'
+Exit 1.
+```
+
+With only `backlogSlot` changed to `null` in the same probe (the existing tier path), the fifth selection is the backlog, it leaves the queue, and the assertion exits 0:
+
+```text
+Selected tiers: [["edit0"],["edit1"],["edit2"],["edit3"],["backlog"],["edit4"]]
+Backlog still queued: false
+```
+
+The existing queue-only fairness test passes because it slices `queue.ordered()` directly, bypassing the selector's new skip. The new slots tests finish a backlog without a sustained first-group queue, so they do not discriminate this regression.
+
+**One-worker repair:** make the owed backlog turn explicit in slot selection and admission, rather than treating all nonempty first-group queues as edit-only turns. Select an actual backlog slot for that turn, with `take(1)`, honoring the lane's W cap and host pool grant. Keep ordinary edit tiers limited to first-group files and permitless. Add scheduler/selector regressions with a backlog continuously waiting and edits or promotions replenished for more than five turns, including when other backlog slots and an edit tier overlap. Assert the fifth turn advances the backlog without exceeding W.
+
+### Should-fix
+
+#### S2-S1. Proven, nonblocking: stale-crash test 4 relies on a timing lead rather than enforcing its completion order
+
+Location: `test/scheduler/edit-beside-backlog.test.ts:299`, `:309`.
+
+The adapted case makes the new run sleep 3 s less, waits for its PASS, and then requires the old run still to be open. That sleep difference does not order process starts or recording under load. Squeal's clean revision-0 baseline failed this candidate twice at the `expect(backlog.end).toBeNull()` prerequisite, with observed end times `52744.473282` and `45503.383027`; the later stale-crash state assertion was never reached. The coordinator separately reported the same test failing under load 75. These are observations about the regression's timing, not proof that the product's stale-run guard failed.
+
+**One-worker fix:** hold the old run's crash report behind an explicit test barrier, release it only after the newer PASS is recorded, and then assert that the PASS survives. Keep case 3's opposite completion order and verify both cases fail for their state assertions with `supersededIn` disabled. This keeps the test's intended property while removing the race in its prerequisite.
+
+### Nits
+
+None.
+
+### What fits
+
+- The new capability is runner-owned. The shipped factories answer one file for node:test, the configured/default batch size for pytest, and no slot for Vitest. Composite ownership, recovering runners before adapter creation, slow-instance and sweep wrappers forward it. Pytest packing stays within a part, packs light files, and leaves a heavy file alone.
+- Ordinary backlog slots use `take(1)`, release their lease when execution ends and refill without waiting for their delayed record. Active backlog slots are capped by `runner.tierSize`; the host pool can reduce the width further. Slow lanes keep their slow-tier selection path. Vitest retains its wall-budgeted tiers and cancel.
+- Each slot retains its snapshot, changed-path set, key, checkpoint and per-run process mark. The unchanged `supersededIn` check precedes per-file state mutation in `recordTier` and error cleanup, preserving the slice 1 repair for newer-key runs/results.
+- Successful gathered records use the scheduler mutex, keep enqueue order and commit once after the records in the batch. Edit tiers bypass gathering and use their immediate record path. S2-B1 concerns failure delivery while that batch is still draining.
+- The adapted `edit-beside-backlog` cases still follow the old run of the re-keyed file; case 3 observes the newer run pending, and case 4 observes its PASS before the old crash. `backlog-wall-latency` now checks one-file runs and the one-slot wait. `capacity-project` waits for demand 3 with grant 2 and still checks the repository root's cap.
+- The notes record the required real pytest comparison and host load, and the 16-file makespan, departure, 300-file overhead and other-daemon capacity tests cover the five done-when scenarios. Those scenarios do not cover the two failure cases above.
+- `KEY_FORMAT_VERSION` rises from released 15 to 16 with a new pin. Version 0.1.225 and all four committed plugin bundle trees rebuild without drift.
+
+### Inputs for the fix wave and next wave
+
+Repair S2-B1 and S2-B2 before landing this candidate; include S2-S1 in the focused test repair. A single scheduler worker can own `slot-records.ts`, `tiers.ts`, `slots.ts`, the queue's fairness seam if needed and focused regressions. Keep `RunnerAdapter.backlogSlot`, per-run snapshots/marks, per-slot leases and the slice 1 stale-run guard unchanged. Re-pin the guarded source hash after the repairs and rebuild the bundles in the coordinator's release commit.
+
+Re-review the repair delta against both blocker scenarios, with the existing departure/stop, throughput, pool-cap, Vitest-cancel and stale-run cases kept green. No new runner capability or store schema is needed. The known forced-queue promotion gap and delayed failure-confirmation observation in slice 1's notes predate this range; they are not additional findings here. A continuing first-group stream starving confirmation because of S2-B2 is the new regression.
+
+The subsequent 011-22 pull/re-key classification and 011-23 cross-worktree adoption work remain separate rows. Neither should be used to absorb these slot correctness repairs.
