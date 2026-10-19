@@ -10,6 +10,17 @@ The second half of the issue reproduces as described but is spec-conforming: a f
 
 Host load immediately before each live probe: `5.84 12.75 18.10` (checkout, `run.sh`) and `5.55 12.46 17.95` (installed, `installed.sh`), on 24 CPUs; both below the CPU count. Node v24.21.0.
 
+## Exact probe commands
+
+From the worker checkout root:
+
+```sh
+bash docs/specifications/011-core/research/probes/issue-45/run.sh
+bash docs/specifications/011-core/research/probes/issue-45/installed.sh
+```
+
+Each script printed the load immediately before its probes; the values are recorded above. The scripts preserve their expanded Node and CLI invocations. No full suite was run for this documentation-only investigation.
+
 ## Questions answered
 
 | # | Question | Answer | Tag |
@@ -19,7 +30,7 @@ Host load immediately before each live probe: `5.84 12.75 18.10` (checkout, `run
 | 3 | Does the registration header do the same? | Yes in shape: its count line (`Revision N: a current, b pending, c stale, d unknown.`) and `Known failures: N` are separate lines. Seen in this session's own SessionStart header on 0.1.223. | read in source code (`src/core/delivery/header.ts`); observed in this session's header, not a probe |
 | 4 | Does a known failure observed at an older revision show that revision? | Yes, already: `observed at revision 6, current`. | verified by experiment (all three versions) |
 | 5 | Should such a failure read as stale? | Not under C4: validity is per key, not per revision. Same key since revision 6 is `current` and counted; a moved key is `stale`, printed `observed at revision 6, stale` and not counted (gh-34). | verified by experiment; read in source code (`classify`, `src/core/state/derive.ts`); read in spec 011 C4, C6 |
-| 6 | What decides the `[web]` case (passes when run directly, kept 20 revisions)? | C5: a failure caused outside its keyed inputs "stays a counted FAIL, current while its key stands"; the remedy is `squeal retry <file> --reason load|environment`, never a timer. The issue's ask to mark it stale contradicts C4/C5. | read in spec 011 C5 |
+| 6 | What decides the `[web]` case (passes when run directly, kept 20 revisions)? | C5: a failure caused outside its keyed inputs "stays a counted FAIL, current while its key stands"; the remedy is `squeal retry <file> --reason load|environment`, never a timer. Marking a same-key result stale solely by age would contradict C4/C5; the incident key history is unverified. | read in spec 011 C5 |
 
 ## Findings
 
@@ -56,7 +67,7 @@ Earlier failures: 1 pending rerun, 1 stale (not counted until a rerun fails)
 Two distinct facts are in play:
 
 - **Changed-key stale.** The file's key moved and no run is queued. Already shown as `stale` with its revision and excluded from the count since 0.1.216. No gap here.
-- **Old revision, same key.** Nothing the check reads changed since revision 6, so by C4 the result is the current truth for revision 26, and it is counted. The issue's `[web]` failure is this case: it passed when run directly, so its cause lay outside the keyed inputs (load, a server). C5 keeps it counted until a retry passes. The revision is shown; what the line does not say is that the result is 20 revisions old with no rerun since, nor point at `squeal retry`.
+- **Old revision, same key.** Nothing the check reads changed since revision 6, so by C4 the result is the current truth for revision 26, and it is counted. The issue's `[web]` failure may be this case (inferred): passing when run directly does not establish unchanged inputs or its cause without the incident store and run evidence. C5 keeps it counted until a retry passes. The revision is shown; what the line does not say is that the result is 20 revisions old with no rerun since, nor point at `squeal retry`.
 
 ### Source evidence
 
