@@ -246,17 +246,23 @@ async function lifecycle() {
     await stopDaemon("daemon knob");
     env.SQUEAL_CLI = join(CELL, "no-daemon", "squeal.mjs"); // names no file: nothing can start one
   }
-  // 006-54: the slow tier held for host load, set after the warm-up so the warm-up's slow file ran.
-  // The keys go into the committed policy, so the session's `git status` stays clean; its daemon
-  // starts on the new policy as for a stale edit.
-  if (knobs.loadHold) {
-    if (plugin) await stopDaemon("load-hold knob");
+  // 006-54: the slow tier held for host load, set after the warm-up so the warm-up's slow file ran;
+  // 006-94: the slow suite required at stop. The keys go into the committed policy, so the
+  // session's `git status` stays clean; its daemon starts on the new policy as for a stale edit.
+  if (knobs.loadHold || knobs.requireSlowSuite) {
+    if (plugin) await stopDaemon("policy knob");
     const file = join(WORK, "squeal.config.json");
     const policy = JSON.parse(readFileSync(file, "utf8"));
-    policy.slow = { ...policy.slow, ...knobs.loadHold };
+    if (knobs.loadHold) policy.slow = { ...policy.slow, ...knobs.loadHold };
+    if (knobs.requireSlowSuite) policy.stop = { ...policy.stop, requireSlowSuite: true };
     writeFileSync(file, `${JSON.stringify(policy, null, 2)}\n`);
-    git(["commit", "-q", "-m", "Hold slow tests while the host is busy", "--", file]);
-    log(`load hold: slow ${JSON.stringify(knobs.loadHold)}`);
+    const why = [
+      knobs.loadHold && "Hold slow tests while the host is busy",
+      knobs.requireSlowSuite && "Require slow tests before finishing",
+    ];
+    git(["commit", "-q", "-m", why.filter(Boolean).join("; "), "--", file]);
+    if (knobs.loadHold) log(`load hold: slow ${JSON.stringify(knobs.loadHold)}`);
+    if (knobs.requireSlowSuite) log("stop: requireSlowSuite true");
   }
   if (knobs.staleEdit) {
     if (plugin) await stopDaemon("stale-edit knob");

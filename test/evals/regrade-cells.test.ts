@@ -15,6 +15,7 @@ import {
   regradeFromOut,
 } from "../../evals/lib/index.mjs";
 import { CLAIM, claudeEvents, REGISTERED, RESULT, type Step } from "./reference-sessions.js";
+import { HELD_OPENING } from "./slow-sessions.js";
 import { settled } from "./status-snapshot.js";
 
 // Row 006-82: a results file's cells graded again from their kept raw `out/`, with the parser at
@@ -236,6 +237,28 @@ describe("regradeFromOut", () => {
     const next = (r2.data as unknown as Results).cells[0]?.atomic;
     expect(next).toEqual(atomic);
     expect(r2.diffs[0]?.grades).toContainEqual(["atomic claim-true", false, true]);
+  });
+
+  // 006-94: a8's policy is the one its run recorded; an earlier a8 run stays policy off.
+  it("grades an a8-load-hold cell under the knobs its run recorded", () => {
+    const steps = [...HELD_OPENING, CLAIM("pass")];
+    const out = keep("R5", "y", "a8-load-hold", steps);
+    const grade = gradeOut(out) as Record<string, unknown>;
+    const scenario = config.scenarios["a8-load-hold"] ?? null;
+    const atomic = pilotRecord(grade, { scenario });
+    const cell = { ...cellRecord({ ...grade, id: "y" }), atomic };
+    const { requireSlowSuite: _, ...before } = scenario?.knobs ?? {};
+    const slowThrough = (knobs: object) => {
+      const conditions = { tasks: { "a8-load-hold": { prompt: "p", knobs } } };
+      const run = { kind: "atomic", run: "R5", conditions, cells: [cell] } as unknown as Json;
+      const r = regradeFromOut(run, { gradeOf: byOut("R5"), declared, config, ...STAMP });
+      const { cells } = r.data as unknown as { cells: { atomic: { measures: Json } }[] };
+      return (cells[0]?.atomic.measures as Record<string, Json> | undefined)?.[
+        "slow-through-squeal"
+      ];
+    };
+    expect(slowThrough(scenario?.knobs ?? {})).toBe(false);
+    expect(slowThrough(before)).toBeNull();
   });
 });
 

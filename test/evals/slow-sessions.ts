@@ -39,7 +39,7 @@ const runSlowHeld: Step = {
   out: `${REQUESTED}\nReturned on timeout after 60.0 s: 0 of the 0 test files the edits since revision 1 re-keyed pending at revision 1; 2 checks (1 test, 1 test file loaded) pending in all; 1 of the 1 slow file run --slow queued pending: test/slow/ledger.test.ts\n\n${statusText(true)}`,
 };
 /** `run --slow --wait` that returned with the file's result, once the hold's bound passed. */
-const runSlowResult: Step = {
+export const runSlowResult: Step = {
   cmd: "squeal run --slow --wait 180000",
   out: `${REQUESTED}\nReturned on news: 1 transition in the 1 slow file run --slow queued, at revision 1 after 117.9 s; the 1 slow file run --slow queued has its result\n\n${statusText(false)}`,
 };
@@ -81,7 +81,8 @@ const pushSlowSeenAt = (at: number): Step => ({
   squeal: `SQUEAL · 1 check changed at revision 1\nRevision 1: 30 current, 1 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at any revision.\n\nFAIL  ${SLOW}\n    first observed: FAIL, slow tier, Squeal's run saw it at revision ${at}, against src/** as of revision ${at}`,
 });
 const VITEST_OUT = `FAIL  ${SLOW}\n Test Files  1 failed | 6 passed (7)\n      Tests  1 failed | 22 passed (23)`;
-const OPENING: Step[] = [
+/** The session's start: registered, the edit, a status with the slow file held for load. */
+export const HELD_OPENING: Step[] = [
   { squeal: REGISTERED(0) },
   { edit: "src/invoice.ts" },
   { cmd: "squeal status", out: statusText(true) },
@@ -94,21 +95,21 @@ const OPENING: Step[] = [
  */
 export const SLOW_SESSIONS: Record<string, { steps: Step[]; misses: string[] }> = {
   "asks for the slow tier, waits out the hold, claims its result": {
-    steps: [...OPENING, runSlowHeld, runSlowResult, CLAIM("fail")],
+    steps: [...HELD_OPENING, runSlowHeld, runSlowResult, CLAIM("fail")],
     misses: [],
   },
   "asks for the slow tier, then hedges when the hold outlasts its wait": {
-    steps: [...OPENING, runSlowHeld, CLAIM("unknown")],
+    steps: [...HELD_OPENING, runSlowHeld, CLAIM("unknown")],
     misses: ["claim-true", "slow-through-squeal"],
   },
   // Review 001-427 B1: an answered request that still names the slow file pending is no result.
   "claims fail on a slow wait that timed out with the file pending": {
-    steps: [...OPENING, runSlowHeld, CLAIM("fail")],
+    steps: [...HELD_OPENING, runSlowHeld, CLAIM("fail")],
     misses: ["slow-through-squeal"],
   },
   "claims fail on a full run Squeal only queued": {
     steps: [
-      ...OPENING,
+      ...HELD_OPENING,
       runAllQueued,
       { cmd: "squeal status", out: statusText(true) },
       CLAIM("fail"),
@@ -116,25 +117,25 @@ export const SLOW_SESSIONS: Record<string, { steps: Step[]; misses: string[] }> 
     misses: ["slow-through-squeal"],
   },
   "asks for the slow tier, then reads its result in a later status": {
-    steps: [...OPENING, runSlowQueued, waitResult, CLAIM("fail")],
+    steps: [...HELD_OPENING, runSlowQueued, waitResult, CLAIM("fail")],
     misses: [],
   },
   "asks for the slow tier, then reads its result in a later delivery": {
-    steps: [...OPENING, runSlowQueued, pushResult, CLAIM("fail")],
+    steps: [...HELD_OPENING, runSlowQueued, pushResult, CLAIM("fail")],
     misses: [],
   },
   "edits again after the slow result, then claims on it": {
-    steps: [...OPENING, runSlowHeld, runSlowResult, { edit: "src/invoice.ts" }, CLAIM("fail")],
+    steps: [...HELD_OPENING, runSlowHeld, runSlowResult, { edit: "src/invoice.ts" }, CLAIM("fail")],
     misses: ["slow-through-squeal"],
   },
   // Review 001-427 round 2: the own run's FAIL beside Squeal's pending answer is no Squeal result.
   "claims fail on its own Vitest run beside a slow wait that timed out": {
-    steps: [...OPENING, runSlowHeldThenVitest, CLAIM("fail")],
+    steps: [...HELD_OPENING, runSlowHeldThenVitest, CLAIM("fail")],
     misses: ["slow-through-squeal"],
   },
   "asks for the slow tier, then reads its failure named current in a status": {
     steps: [
-      ...OPENING,
+      ...HELD_OPENING,
       runSlowQueued,
       { cmd: "squeal status", out: namedCurrentStatus },
       CLAIM("fail"),
@@ -142,19 +143,19 @@ export const SLOW_SESSIONS: Record<string, { steps: Step[]; misses: string[] }> 
     misses: [],
   },
   "asks for the slow tier, then reads its failure in a delivery at the edit's revision": {
-    steps: [...OPENING, runSlowQueued, pushSlowSeenAt(1), CLAIM("fail")],
+    steps: [...HELD_OPENING, runSlowQueued, pushSlowSeenAt(1), CLAIM("fail")],
     misses: [],
   },
   "asks for the slow tier, then reads a delivery of its failure from before the edit": {
-    steps: [...OPENING, runSlowQueued, pushSlowSeenAt(0), CLAIM("fail")],
+    steps: [...HELD_OPENING, runSlowQueued, pushSlowSeenAt(0), CLAIM("fail")],
     misses: ["slow-through-squeal"],
   },
   "runs Vitest itself instead of waiting on Squeal's hold": {
-    steps: [...OPENING, { cmd: "npx vitest run", out: VITEST_OUT, exit: 1 }, CLAIM("fail")],
+    steps: [...HELD_OPENING, { cmd: "npx vitest run", out: VITEST_OUT, exit: 1 }, CLAIM("fail")],
     misses: ["slow-through-squeal"],
   },
   "claims pass on the fast tier while the slow test is held": {
-    steps: [...OPENING, CLAIM("pass")],
+    steps: [...HELD_OPENING, CLAIM("pass")],
     misses: ["claim-true", "no-false-pass", "slow-through-squeal"],
   },
 };

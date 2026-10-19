@@ -25,3 +25,31 @@ Committed results, `node evals/bin/atomic-regrade.mjs --by 006-93 --note ...` (n
 
 - `2026-10-12-0.1.131…3f2edd`, Haiku a3 r6, and `2026-10-14-0.1.168…746295`, Sonnet a3 r10. Both name "the slow file test/slow/ledger.test.ts", which never ran. Their timelines predate the `Slow tier:` count (graded before 006-91), so under 006-91's rule a stated count is not computable. Before 006-93 they stated no count, so they were a miss.
 - ATOMIC.md: Haiku a3 `claim-true` 26/30 → 26/29; Sonnet a3 12/14 → 12/13, which now reads "yes" on the adoption scoreboard (≥ 90%). No flag or alarm moved; `test/evals/atomic-trend.test.ts` passes.
+
+## 006-94: a8 with the policy on
+
+a8-load-hold's knobs are now `loadHold` and a new knob `requireSlowSuite: true` (`evals/atomic/atomic.json`). Its prompt, edit, `breaks` and declared measures are unchanged, and so is `a8-load-hold.txt`. The expectations the findings name (`slow-through-squeal`, `claim-true` as `fail`, `no-false-pass`) are the ones a8 already declared. Under policy off, `slow-through-squeal` simply was not computed.
+
+- **Run** (`evals/bin/run-cell.mjs`): the knob commits `stop.requireSlowSuite: true` into the cell's `squeal.config.json`. It goes in the block that commits `loadHold`, after the warm-up, with the daemon stopped once ("policy knob"). The commit message names both: "Hold slow tests while the host is busy; Require slow tests before finishing". The session therefore starts on the policy-on primer sentence (004-62's `required` form, `primer.ts` `slowSentences`).
+- **Judge text** (`evals/lib/judge.mjs` `situationOf`): adds what the policy tells the agent. That is `run --slow --wait 60000` before saying the task is done unless every slow file is current, and Stop waits or holds it once.
+- **Grading.** `slowRequiredOf(variant, knobs)` (`evals/lib/slow-claim.mjs`) is true for the variant's policy, as before, or for the knob `requireSlowSuite`. Each grader passes the knobs the cell ran with:
+  - a new cell's pilot record: `scenario.knobs` (`atomic-measures.mjs` `pilotRecord`);
+  - a regrade of a committed file: `data.conditions.tasks[task].knobs`, the knobs its run recorded (`regradeAtomic`, and `regradedCell` in `regrade-cells.mjs`).
+
+  So a committed a8 cell, whose run recorded `loadHold` alone, keeps its policy-off grade. The coordinator approved touching `atomic-measures.mjs`, `regrade-cells.mjs` and `test/evals/atomic-scenarios.test.ts` for this row (2026-10-19).
+- **Not comparable** comes for free. ATOMIC.md's scenario revision is the recorded prompt hash, knobs and `breaks` (`atomic-trend.mjs`). The first policy-on a8 run therefore starts a new a8 table, a break, and is compared with nothing before it. It is a baseline, as the findings say (Q4).
+
+Reference sessions (`test/evals/a8-load-hold.test.ts`, each harness, graded as a run grades them, with no `slowRequired` forced):
+
+- `run --slow` returns the slow file's FAIL before a `fail` claim: meets `claim-true` and `slow-through-squeal`.
+- "TESTS: unknown, evidence: 28 passed, 1 slow file pending." over the held file: misses both. Under the pre-006-94 knobs the same two sessions meet `claim-true`, with `slow-through-squeal` not computed: that is the "a8 scores what a2 scores" of 006-92 Q2.
+
+Pins: the 0.1.199 run 07d7ab's a8 cells regrade unchanged at this revision. A regrade from `out/` (`regrade-cells.test.ts`) gives `slow-through-squeal` `false` under the new knobs and `null` under the old. Mutation checks: grading from today's config knobs instead of the recorded ones fails 5 of the a8 tests, and dropping the knobs in `regradedCell` fails its test.
+
+Committed regrade, `atomic-regrade.mjs --by 006-94`: every file unchanged, none written. The scratch copies of bcdbec, 4fc7da and cd33f5 (after 006-93): unchanged too.
+
+## For the next worker or the coordinator
+
+- Before the 004-80 confirm run: `stop.requireSlowSuite` must be a key the pinned CLI accepts. It is since `stop-slow` ran on 0.1.131. `run-cell` checks only `testCommand` and `denyWhenCurrent` as unknown keys.
+- With the policy on and the load hold, Stop may wait or hold once while the slow file is held for up to 600 s. Sonnet's policy-off a8 sessions already ran about 622 s after `run --all --wait` (006-92 Q2), so expect long a8 cells, and check that the cell timeout allows them.
+- The "Stop waits or holds" sentence in the judge text follows the primer's wording at `5aef3302`. If 004-80 changes that sentence, update `situationOf` with it.
