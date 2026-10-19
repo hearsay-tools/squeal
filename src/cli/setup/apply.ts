@@ -6,6 +6,7 @@ import { globToRegExp } from "../../core/keys/glob.js";
 import type { AbsolutePath } from "../../core/types/index.js";
 import type { CliIo } from "../main.js";
 import { blockText, resolved, unfindableBlock, withBlock, writeBlockFile } from "./block.js";
+import { addExcludes } from "./exclude.js";
 import { rewordGates } from "./gates.js";
 import { readPlan, type SetupPlan } from "./plan.js";
 import { writePytestSeed } from "./pytest.js";
@@ -14,9 +15,10 @@ import { asDirectoryGlob, directoryIn, holdsTestFile, selectsAny } from "./test-
 /*
  * Spec 005 D3 step 4: `squeal init` gains one flag per setup choice, which
  * the setup command and skill pass: `--block <file|none>`, `--gate
- * <id>=<reword|keep>`, `--slow <glob>`, `--input <test glob>=<input glob>`.
- * Without them, init behaves as before. Row 005-40: a test glob must select
- * a test file, a bare directory is taken as `<dir>/**`, and `=none` is no input.
+ * <id>=<reword|keep>`, `--slow <glob>`, `--input <test glob>=<input glob>`,
+ * and `--exclude <test glob>` (row 005-70: the runners' `exclude`). Without
+ * them, init behaves as before. Row 005-40: a test glob must select a test
+ * file, a bare directory is taken as `<dir>/**`, and `=none` is no input.
  */
 
 export interface SetupChoices {
@@ -25,10 +27,12 @@ export interface SetupChoices {
   readonly gates: readonly { readonly id: string; readonly choice: "reword" | "keep" }[];
   readonly slow: readonly string[];
   readonly inputs: readonly { readonly test: string; readonly input: string }[];
+  /** Worktree-relative test globs for each runner's `exclude`. */
+  readonly exclude: readonly string[];
 }
 
 export const SETUP_FLAGS_USAGE = `       Setup choices, any harness: [--block <file|none>] [--gate <id>=<reword|keep>]...
-         [--slow <glob>]... [--input <test glob>=<input glob|none>]...
+         [--slow <glob>]... [--input <test glob>=<input glob|none>]... [--exclude <test glob>]...
 `;
 
 /** Takes the setup flags out of `args`; the rest is init's own. A string is a usage error. */
@@ -39,10 +43,11 @@ export function takeSetupFlags(
   const gates: { id: string; choice: "reword" | "keep" }[] = [];
   const slow: string[] = [];
   const inputs: { test: string; input: string }[] = [];
+  const exclude: string[] = [];
   const rest: string[] = [];
   for (let i = 0; i < args.length; i++) {
     const arg = args[i] as string;
-    const flag = ["--block", "--gate", "--slow", "--input"].find(
+    const flag = ["--block", "--gate", "--slow", "--input", "--exclude"].find(
       (f) => arg === f || arg.startsWith(`${f}=`),
     );
     if (flag === undefined) {
@@ -62,6 +67,7 @@ export function takeSetupFlags(
       }
       gates.push({ id: value.slice(0, at), choice });
     } else if (flag === "--slow") slow.push(value);
+    else if (flag === "--exclude") exclude.push(value);
     else {
       const at = value.indexOf("=");
       if (at <= 0 || at === value.length - 1) {
@@ -70,7 +76,7 @@ export function takeSetupFlags(
       inputs.push({ test: value.slice(0, at), input: value.slice(at + 1) });
     }
   }
-  return { choices: { block, gates, slow, inputs }, rest };
+  return { choices: { block, gates, slow, inputs, exclude }, rest };
 }
 
 export function hasChoices(choices: SetupChoices): boolean {
@@ -78,20 +84,23 @@ export function hasChoices(choices: SetupChoices): boolean {
     choices.block !== null ||
     choices.gates.length > 0 ||
     choices.slow.length > 0 ||
-    choices.inputs.length > 0
+    choices.inputs.length > 0 ||
+    choices.exclude.length > 0
   );
 }
 
 /**
- * Row 005-40: the `--slow` and `--input` globs as they apply, each bare
- * directory as `<dir>/**` and each `--input <glob>=none` left out, with a
- * line saying so; a string names a test glob that selects none of `testFiles`.
+ * Row 005-40: the `--slow`, `--input` and `--exclude` globs as they apply,
+ * each bare directory as `<dir>/**` and each `--input <glob>=none` left out,
+ * with a line saying so; a string names a test glob that selects none of `testFiles`.
  */
 export function normalizeGlobs(
   root: string,
-  given: Pick<SetupChoices, "slow" | "inputs">,
+  given: Pick<SetupChoices, "slow" | "inputs" | "exclude">,
   testFiles: readonly string[],
-): (Pick<SetupChoices, "slow" | "inputs"> & { readonly lines: readonly string[] }) | string {
+):
+  | (Pick<SetupChoices, "slow" | "inputs" | "exclude"> & { readonly lines: readonly string[] })
+  | string {
   const lines: string[] = [];
   const as = (glob: string, isDirectory: (dir: string) => boolean) => {
     const taken = asDirectoryGlob(glob, isDirectory);
@@ -115,7 +124,13 @@ export function normalizeGlobs(
     if (input === "none") lines.push(`no input for ${taken}`);
     else inputs.push({ test: taken, input: as(input, directoryIn(root)) });
   }
-  return { slow, inputs, lines: [...new Set(lines)] };
+  const exclude: string[] = [];
+  for (const glob of given.exclude) {
+    const taken = testGlob(glob);
+    if (taken === null) return `--exclude ${glob} selects no test file`;
+    exclude.push(taken);
+  }
+  return { slow, inputs, exclude, lines: [...new Set(lines)] };
 }
 
 /**
@@ -147,7 +162,7 @@ export async function initWithChoices(
     return code;
   }
   try {
-    for (const line of applyChoices(root, checked.choices, checked.plan)) {
+    for (const line of applyChoices(root, checked)) {
       io.stdout(`squeal init: ${line}\n`);
     }
   } catch (error) {
@@ -164,7 +179,12 @@ async function checkChoices(
   choices: SetupChoices,
   env: Readonly<Record<string, string | undefined>>,
 ): Promise<
-  | { readonly plan: SetupPlan; readonly choices: SetupChoices; readonly lines: readonly string[] }
+  | {
+      readonly plan: SetupPlan;
+      readonly testFiles: readonly string[];
+      readonly choices: SetupChoices;
+      readonly lines: readonly string[];
+    }
   | string
 > {
   const { plan, testFiles } = await readPlan(root, { env });
@@ -188,7 +208,11 @@ async function checkChoices(
       return `${path}:${written.unterminated}: a Squeal block begins with no end; fix it by hand`;
     }
   }
-  for (const glob of [...choices.slow, ...choices.inputs.flatMap((i) => [i.test, i.input])]) {
+  for (const glob of [
+    ...choices.slow,
+    ...choices.inputs.flatMap((i) => [i.test, i.input]),
+    ...choices.exclude,
+  ]) {
     try {
       globToRegExp(glob);
     } catch (error) {
@@ -199,7 +223,7 @@ async function checkChoices(
   if (typeof globs === "string") return globs;
   const config = readConfig(root);
   if (
-    globs.slow.length + globs.inputs.length > 0 &&
+    globs.slow.length + globs.inputs.length + globs.exclude.length > 0 &&
     config === null &&
     readOrEmpty(join(root, POLICY_FILE)) !== ""
   ) {
@@ -210,13 +234,21 @@ async function checkChoices(
   }
   return {
     plan,
-    choices: { ...choices, slow: globs.slow, inputs: globs.inputs },
+    testFiles,
+    choices: { ...choices, slow: globs.slow, inputs: globs.inputs, exclude: globs.exclude },
     lines: globs.lines,
   };
 }
 
 /** Applies checked choices; the lines say what changed. Throws only on a failed write. */
-function applyChoices(root: AbsolutePath, choices: SetupChoices, plan: SetupPlan): string[] {
+function applyChoices(
+  root: AbsolutePath,
+  {
+    choices,
+    plan,
+    testFiles,
+  }: { choices: SetupChoices; plan: SetupPlan; testFiles: readonly string[] },
+): string[] {
   const lines: string[] = [];
   const reword = choices.gates.filter((g) => g.choice === "reword").map((g) => g.id);
   if (reword.length > 0) {
@@ -243,14 +275,25 @@ function applyChoices(root: AbsolutePath, choices: SetupChoices, plan: SetupPlan
         : `wrote the Squeal block to ${choices.block}`,
     );
   } else if (choices.block === "none") lines.push("wrote no Squeal block");
-  if (choices.slow.length > 0 || choices.inputs.length > 0)
-    lines.push(...editConfig(root, choices));
+  if (choices.slow.length + choices.inputs.length + choices.exclude.length > 0)
+    lines.push(
+      ...editConfig(root, choices, (config) =>
+        addExcludes(config, plan, testFiles, choices.exclude),
+      ),
+    );
   lines.push(...writePytestSeed(root, plan));
   return lines;
 }
 
-/** Adds `--slow` globs to `slow.include` and `--input` globs to the `inputs` map, keeping the rest. */
-function editConfig(root: AbsolutePath, choices: SetupChoices): string[] {
+/**
+ * Adds `--slow` globs to `slow.include`, `--input` globs to the `inputs` map
+ * and `--exclude` globs to each runner's `exclude`, keeping the rest.
+ */
+function editConfig(
+  root: AbsolutePath,
+  choices: SetupChoices,
+  exclude: (config: Record<string, unknown>) => string[],
+): string[] {
   const path = join(root, POLICY_FILE);
   const text = readOrEmpty(path);
   const config = readConfig(root) ?? {};
@@ -271,6 +314,7 @@ function editConfig(root: AbsolutePath, choices: SetupChoices): string[] {
     lines.push(`added ${input} to inputs["${test}"] in ${POLICY_FILE}`);
   }
   if (choices.inputs.length > 0) config.inputs = inputs;
+  lines.push(...exclude(config));
   if (lines.length > 0) {
     const indent = /^([ \t]+)"/m.exec(text)?.[1] ?? 2;
     writeFileSync(path, `${JSON.stringify(config, null, indent)}\n`);

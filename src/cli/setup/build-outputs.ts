@@ -13,14 +13,13 @@ import {
 } from "./repo.js";
 
 /*
- * Build-output evidence: the directories a group of test files may test,
- * each with its evidence. Setup proposed them as slow files' declared
- * artifacts until task 004-81 (004 D5 as amended 2026-10-18) removed that
- * proposal; kept for row 005-70, where the wizard proposes the runner's
- * `exclude` for a build-output suite. Nothing calls them until then. Leads
- * from 005-04: never ranked by how much evidence a candidate has, `files`
- * entries are weak evidence, and a gitignored candidate that does not exist
- * is "not built in this worktree".
+ * Build-output evidence, spec 005 D3 "Slow tests and build-output tests"
+ * step 2: the directories a group of test files may test, each with its
+ * evidence. A group whose tests name one that is gitignored or a build
+ * script writes is an exclude candidate (row 005-70, `testsBuildOutput`).
+ * Leads from 005-04: never ranked by how much evidence a candidate has,
+ * `files` entries are weak evidence, and a gitignored candidate that does
+ * not exist is "not built in this worktree".
  */
 
 /** A directory a group of test files may test, with its evidence. */
@@ -67,6 +66,16 @@ export async function buildOutputCandidates(
       ignored: ignored.has(path),
       evidence,
     }));
+}
+
+/**
+ * Whether the group's tests name `c` and it is a build output: gitignored or
+ * written by a build script. A manifest field alone is not enough, since
+ * `main` and `bin` can name sources (`lib/index.js`) the tests may name too.
+ */
+export function testsBuildOutput(c: BuildOutputCandidate): boolean {
+  const rules = new Set(c.evidence.map((e) => e.rule));
+  return rules.has("named") && (c.ignored || rules.has("build-script"));
 }
 
 /** The directories the manifest's `bin`, `main`, `module`, `exports` and `files` name. */
@@ -167,14 +176,15 @@ async function namedCandidates(
   files: readonly string[],
   found: readonly Found[],
 ): Promise<Found[]> {
+  const literals = files.map((file) => ({ file, strings: stringLiterals(facts, file) }));
   const ignored = new Set([
     ...(await existingIgnoredDirs(facts.root)),
     ...(await ignoredDirs(facts.root, [...new Set(found.map((f) => f.path))])),
+    ...(await ignoredAncestors(facts, manifest.dir, literals)),
   ]);
   const inPackage = [...ignored].filter(
     (dir) => manifest.dir === "" || dir.startsWith(`${manifest.dir}/`),
   );
-  const literals = files.map((file) => ({ file, strings: stringLiterals(facts, file) }));
   const out: Found[] = [];
   for (const dir of [...new Set([...inPackage, ...found.map((f) => f.path)])].sort()) {
     const hits = literals.flatMap(({ file, strings }) => {
@@ -191,6 +201,43 @@ async function namedCandidates(
     });
   }
   return out;
+}
+
+/**
+ * Row 005-70: the existing directories a gitignore rule names above a path
+ * the strings read, the shallowest per path, though git tracks them: a bundle
+ * committed past its `dist/` rule, as `plugins/codex/dist` here, is a build
+ * output by the repository's own rule.
+ */
+async function ignoredAncestors(
+  facts: RepoFacts,
+  pkg: string,
+  literals: readonly { readonly file: string; readonly strings: readonly string[] }[],
+): Promise<string[]> {
+  const chains = new Set<string>();
+  for (const { file, strings } of literals) {
+    for (const s of strings) {
+      if (!s.includes("/") || s.startsWith("/") || s.includes("${")) continue;
+      const bases = /^\.\.?\//.test(s) ? [posix.dirname(file)] : [posix.dirname(file), pkg, ""];
+      for (const base of bases) {
+        const path = posix.join(base, s);
+        if (!path.startsWith("../")) chains.add(posix.dirname(path));
+      }
+    }
+  }
+  const dirs = new Set<string>();
+  for (const chain of chains) {
+    const parts = chain.split("/");
+    for (let i = 1; i <= parts.length; i++) dirs.add(parts.slice(0, i).join("/"));
+  }
+  const existing = [...dirs].filter(
+    (d) => d !== "." && !/(^|\/)(node_modules|\.git)(\/|$)/.test(d) && dirExists(facts.root, d),
+  );
+  const ignored = new Set(await ignoredDirs(facts.root, existing));
+  // The shallowest: `plugins/codex/dist`, not also `plugins/codex/dist/cli`.
+  return [...ignored].filter(
+    (d) => !d.split("/").some((_, i, p) => i > 0 && ignored.has(p.slice(0, i).join("/"))),
+  );
 }
 
 /** The contents of a file's quoted strings, each up to its first blank. */

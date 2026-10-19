@@ -101,8 +101,9 @@ async function apply(answers: SetupAnswers, io: CliIo): Promise<number> {
             gates: answers.gates,
             slow: answers.slow,
             inputs: answers.inputs,
+            exclude: answers.exclude,
           }
-        : { block: answers.blocks[i] ?? null, gates: [], slow: [], inputs: [] };
+        : { block: answers.blocks[i] ?? null, gates: [], slow: [], inputs: [], exclude: [] };
     const code = await initWithChoices(choices, io, () =>
       harness === undefined ? 0 : init(["--harness", harness], io),
     );
