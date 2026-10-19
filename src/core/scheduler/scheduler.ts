@@ -51,6 +51,7 @@ import { slowView } from "./slow.js";
 import { queueSlowSuite, type SlowRun, SlowTier } from "./slow-tier.js";
 import { Withholds, withheldForTouch, withholdNote } from "./stability.js";
 import {
+  busyLanes,
   endTier,
   executeTier,
   laneOf,
@@ -62,7 +63,7 @@ import {
 } from "./tiers.js";
 import { WarmUp } from "./warm-up.js";
 
-/** A tier in flight: its lane is busy until `done`, which never rejects. */
+/** A tier in flight: its lane is busy until `done` (`busyLanes`), which never rejects. */
 interface InFlight {
   readonly tier: Tier;
   readonly done: Promise<void>;
@@ -90,7 +91,10 @@ class TierScheduler implements Scheduler {
   #pumping: Promise<void> | null = null;
   /** The runner work being applied beside the tiers in flight (task 001-140). */
   #draining: Promise<void> | null = null;
-  /** The tiers in flight by lane, at most one per lane; a backlog tier carries its `cancel`. */
+  /**
+   * The tiers in flight by run id: one per lane, or an edit's beside a backlog tier (`busyLanes`,
+   * task 011-21); a backlog tier carries its `cancel`.
+   */
   readonly #inFlight = new Map<string, InFlight>();
   /** A `run --all` with `observeIgnored` (task 001-307). */
   readonly #warmUp = new WarmUp();
@@ -431,7 +435,7 @@ class TierScheduler implements Scheduler {
 
   slowPending(): boolean {
     if (this.#closed || !this.#ledger) return false;
-    if ([...this.#inFlight.keys()].some(isSlowLane)) return true;
+    if (this.#lanes().some(isSlowLane)) return true;
     return this.#ledger.orderedSlow().length > 0;
   }
 
@@ -554,7 +558,7 @@ class TierScheduler implements Scheduler {
               return null;
             }
             if (this.#runnerWork.size > 0) return "runner-work" as const;
-            return selectTier(context, ledger, new Set(this.#inFlight.keys()));
+            return selectTier(context, ledger, this.#busyLanes());
           });
           this.#busy?.landed();
           if (next === "runner-work") continue;
@@ -678,13 +682,13 @@ class TierScheduler implements Scheduler {
       } finally {
         slow?.slot.release();
         tier.lease?.release();
-        this.#inFlight.delete(tier.lane);
+        this.#inFlight.delete(tier.runId);
         // A fast tier's lane is free: the slow tier's load guard gives way to its next tier.
         if (slow === null) this.#slow.preempt();
         this.#notify();
       }
     })();
-    this.#inFlight.set(tier.lane, { tier, done });
+    this.#inFlight.set(tier.runId, { tier, done });
   }
 
   /**
@@ -702,10 +706,26 @@ class TierScheduler implements Scheduler {
     );
   }
 
-  /** A fast file whose lane has no tier in flight is queued. */
+  /** A fast file whose lane may take a tier is queued. */
   #freeLaneQueued(): boolean {
     const { context, ledger } = this.#started();
-    return ledger.queue.hasFast((ref) => !this.#inFlight.has(laneOf(context, ref)));
+    const busy = this.#busyLanes();
+    return ledger.queue.hasFast((ref) => !busy.has(laneOf(context, ref)));
+  }
+
+  /** The lanes no tier may start in now. */
+  #busyLanes(): Set<string> {
+    const { context, ledger } = this.#started();
+    return busyLanes(
+      context,
+      ledger,
+      [...this.#inFlight.values()].map(({ tier }) => tier),
+    );
+  }
+
+  /** The lane of each tier in flight. */
+  #lanes(): string[] {
+    return [...this.#inFlight.values()].map(({ tier }) => tier.lane);
   }
 
   /** Applies the queued runner work beside the tiers in flight, unless it is already being applied. */
@@ -802,7 +822,7 @@ class TierScheduler implements Scheduler {
   #fastIdle(): boolean {
     const work = this.#runnerWork;
     if (work.size > 0 || work.refining || (this.#ledger?.queue.fastSize ?? 0) > 0) return false;
-    return [...this.#inFlight.keys()].every(isSlowLane);
+    return this.#lanes().every(isSlowLane);
   }
 
   /**
@@ -813,7 +833,7 @@ class TierScheduler implements Scheduler {
   #slowMayStart(): boolean {
     if (this.#inFlight.size === 0) return true;
     if ((this.#ledger?.queue.slowSize ?? 0) === 0) return false;
-    if ([...this.#inFlight.keys()].some(isSlowLane)) return false;
+    if (this.#lanes().some(isSlowLane)) return false;
     return !this.#editPending();
   }
 

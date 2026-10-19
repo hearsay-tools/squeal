@@ -167,6 +167,8 @@ export function createPytestRunners(
         }),
       // A run starts `runner.tierSize` processes at once whatever its grant (task 001-366).
       tierWidth: () => options.tierSize(),
+      // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
+      besideBacklog: true,
       onFailure: (text) => options.note(`${text} (pytest project ${JSON.stringify(project.name)})`),
       onRecovered: () => options.note(`pytest project ${JSON.stringify(project.name)} started`),
     });
