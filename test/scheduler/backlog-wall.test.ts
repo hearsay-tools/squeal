@@ -91,6 +91,17 @@ describe("scheduler: a backlog tier is budgeted by its wall time (C4 step 5, tas
     await side.scheduler.idle();
   });
 
+  it("caps the wall estimate at half of runner.timeoutMs when that is less than 120 s", async () => {
+    // 16 files of 1 s, 4 wide, a 4 s timeout: the budget is 2 s, so a round of 4 and one more.
+    const side = wallSide({ durations: Array(16).fill(1_000), hostSlots: 4, timeoutMs: 4_000 });
+    const tiers = await side.backlog();
+    expect(tiers.map((t) => t.files.length)).toEqual([5, 5, 5, 1]);
+    for (const tier of tiers) {
+      const durations = tier.files.map(() => 1_000);
+      if (durations.length > 4) expect(wallOf(durations, 4)).toBeLessThanOrEqual(2_000);
+    }
+  });
+
   it("still takes 200 light files a tier, a file of no known duration counting 0", async () => {
     const light = spread(600, 100, 3_000);
     const side = wallSide({ durations: light, hostSlots: 23 });
