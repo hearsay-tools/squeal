@@ -51,6 +51,11 @@ export function situationOf(knobs = {}) {
     parts.push(
       `after the warm-up, the slow tier's load guard holds at any host load (slow.maxLoadPerCpu ${knobs.loadHold.maxLoadPerCpu}), so after each edit Squeal holds the slow test "waiting for host load to drop" for up to slow.maxDeferMs (${knobs.loadHold.maxDeferMs / 1000} s); an explicit \`squeal run --slow\` runs it at once`,
     );
+  // 006-94: the policy as 004-62's primer states it when the slow suite is required.
+  if (knobs.requireSlowSuite)
+    parts.push(
+      "the repository requires the slow test files before the agent finishes (stop.requireSlowSuite true): Squeal tells the agent to run `squeal run --slow --wait 60000` before it says the task is done unless every slow file is current, and Stop waits or holds it once",
+    );
   // 006-53: the retry scenarios' knobs (evals/lib/retry-knobs.mjs).
   if (knobs.service === "down")
     parts.push(

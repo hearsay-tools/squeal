@@ -959,8 +959,14 @@ export interface MeasureContext {
 }
 /** The fixture's slow test file's checks: its one test and its load check (006-91). */
 export const SLOW_CHECKS: number;
-/** Whether a cell of `variant` ran with `stop.requireSlowSuite` on (fixture and variant policy). */
-export function slowRequiredOf(variant: string | null | undefined): boolean;
+/**
+ * Whether a cell of `variant` ran with `stop.requireSlowSuite` on (fixture and variant policy),
+ * or with the knob `requireSlowSuite` among the `knobs` its run recorded (006-94).
+ */
+export function slowRequiredOf(
+  variant: string | null | undefined,
+  knobs?: Record<string, unknown> | null,
+): boolean;
 /** The slow files a claim's evidence states were not current; `null` when it states none. */
 export function statedSlowCount(evidence: string | null | undefined): number | null;
 /** D10 as amended: whether an `unknown` stating `stated` slow files not current is right. */

@@ -142,7 +142,7 @@ export function pilotRecord(
   record.measures = measuresOf(record, {
     timeline: grade.retained ?? null,
     scenario: scenario ?? { measures: declared },
-    slowRequired: slowRequired ?? slowRequiredOf(grade.variant),
+    slowRequired: slowRequired ?? slowRequiredOf(grade.variant, scenario?.knobs),
     claimLine: grade.claimLine ?? null,
   });
   return record;
@@ -165,7 +165,7 @@ export function regradeAtomic(data, config, date, { by, note }) {
     const measures = measuresOf(cell.atomic, {
       timeline: cell.timeline,
       scenario,
-      slowRequired: slowRequiredOf(cell.variant),
+      slowRequired: slowRequiredOf(cell.variant, data.conditions?.tasks?.[cell.task]?.knobs),
       claimLine: cell.claimLine ?? null,
     });
     if (JSON.stringify(measures) === JSON.stringify(cell.atomic.measures)) return cell;

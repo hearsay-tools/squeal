@@ -11,6 +11,7 @@ import { expectationsOf, parserOf } from "./behaviours.mjs";
 import { gradeCell, serviceStartsOf } from "./grade.mjs";
 import { cellRecord, stamped } from "./results.mjs";
 import { STARTS_FILE } from "./retry-knobs.mjs";
+import { slowRequiredOf } from "./slow-claim.mjs";
 import { claudeTimeline, codexTimeline, reportedEffort } from "./transcript.mjs";
 import { walk } from "./variant.mjs";
 
@@ -115,7 +116,13 @@ export function regradedCell(cell, grade, { conditions, declared, config }) {
       const { turns, turnStarts, settle } = cell.atomic;
       next.atomic = {
         ...cell.atomic,
-        ...pilotRecord(grade, { turns, turnStarts, settle, scenario }),
+        ...pilotRecord(grade, {
+          turns,
+          turnStarts,
+          settle,
+          scenario,
+          slowRequired: slowRequiredOf(cell.variant, conditions?.tasks?.[cell.task]?.knobs),
+        }),
       };
     }
     return next;

@@ -12,9 +12,11 @@ const REQUIRED = new Map();
 
 /**
  * Whether a cell of variant `variant` ran with `stop.requireSlowSuite` on: the fixture's
- * `squeal.config.json` with the variant's policy merged over it, as `buildFixture` writes it.
+ * `squeal.config.json` with the variant's policy merged over it, as `buildFixture` writes it,
+ * or its scenario's knob `requireSlowSuite` among `knobs`, the knobs its run recorded (006-94).
  */
-export function slowRequiredOf(variant) {
+export function slowRequiredOf(variant, knobs = {}) {
+  if (knobs?.requireSlowSuite === true) return true;
   const key = typeof variant === "string" ? variant : null;
   if (!REQUIRED.has(key)) REQUIRED.set(key, policyOf(key).stop?.requireSlowSuite === true);
   return REQUIRED.get(key);

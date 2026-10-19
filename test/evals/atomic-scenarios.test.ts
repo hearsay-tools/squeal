@@ -225,11 +225,11 @@ describe("the atomic scenarios", () => {
     expect([a11?.reference, a11?.breaks]).toEqual([a3?.reference, a3?.breaks]);
   });
 
-  it("a8-load-hold is a2-slow's prompt and edit under the load hold, so the two compare", () => {
+  it("a8-load-hold is a2-slow's prompt and edit under the load hold and the policy on (006-94)", () => {
     const [a2, a8] = [scenarioOf("a2-slow"), scenarioOf("a8-load-hold")];
     expect(a8?.prompts).toEqual(a2?.prompts);
     expect([a8?.reference, a8?.breaks]).toEqual([a2?.reference, a2?.breaks]);
-    expect(Object.keys(a8?.knobs ?? {})).toEqual(["loadHold"]);
+    expect(Object.keys(a8?.knobs ?? {})).toEqual(["loadHold", "requireSlowSuite"]);
   });
 
   it("end only the last turn with the claim line's request", () => {
