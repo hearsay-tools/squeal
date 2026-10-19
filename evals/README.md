@@ -1,6 +1,6 @@
 # Model evals
 
-Spec 006 (`docs/specifications/006-model-evals/spec.md`): a recurring baseline that shows whether models use Squeal well, run at every hub release and with every `/quality` scan, at calm load. Never in CI or in this repository's Vitest suite. Built from 005-06's prototype (`docs/specifications/005-agent-adoption/research/probes/model-evals/`, whose logs stay there).
+Spec 006 (`docs/specifications/006-model-evals/spec.md`): a recurring baseline that shows whether models use Squeal well, run with every `/quality` scan and when the human asks, at calm load, on Sonnet and Sol only for now (`--models claude-sonnet-5-5,gpt-6.1-sol`; no release waits for it since 2026-10-19, spec D7). Never in CI or in this repository's Vitest suite. Built from 005-06's prototype (`docs/specifications/005-agent-adoption/research/probes/model-evals/`, whose logs stay there).
 
 ```sh
 node evals/bin/run-baseline.mjs                    # the baseline on HEAD: 48 sessions, about 45 min at 2 at once;

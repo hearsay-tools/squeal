@@ -19,8 +19,8 @@ The human (2026-10-10): a recurring baseline, run at every hub release and whene
 1. One command runs the baseline against a given Squeal commit: fixed tasks × fixed models at a fixed effort level × repetitions, each cell isolated, with a results file at the end.
 2. Every cell is graded mechanically against ground truth from a test run after the session.
 3. Every scored item is an expectation: the right behaviour at the right moment for one task, declared with that task (D4). A reference session doing the right thing on every task meets every expectation, and a session making each known mistake misses the one that names it. Results are committed per run, and a trend table shows each expectation's rate per model across runs. A false pass or a forbidden edit is always listed by cell. A rate that falls against the previous release is flagged in the atomic tier (goal 7), not in the long tasks (the human, 2026-10-12).
-4. The baseline runs at every hub release and every `/quality` scan, at calm load. It never runs in CI or in this repository's Vitest suite.
-7. Per model, a regression in one behaviour is visible at a release: atomic scenarios exercise one or two behaviours each, many times per model, and gate the long tasks (D10; the human, 2026-10-12).
+4. The baseline runs with every `/quality` scan and when the human asks, at calm load; no release waits for it (amended 2026-10-19, D7). It never runs in CI or in this repository's Vitest suite.
+7. Per model, a regression in one behaviour is visible between releases: atomic scenarios exercise one or two behaviours each, many times per model, and gate the long tasks (D10; the human, 2026-10-12).
 8. Adoption is a scoreboard: per model and measure, whether the agent does the right thing at least 90% of the time. It is a target that gates nothing (D10; the human, 2026-10-12).
 5. A variant (a patched plugin copy) runs with the same tasks and grader, for text changes such as 005-15.
 6. The fixture and tasks cover the situations agents meet: a silent pass, a failure to read and fix, a knock-on failure in an unopened module, checks pending at "done", a red-then-green fix, a flaky failure and Squeal's re-run, a slow file, a suite Squeal does not cover, a repository gate, a task that must end red, no daemon validating, a result from an older revision, slow files held for host load, and a failure caused outside the code that the agent asks Squeal to retry (the human, 2026-10-14). 005's D8 deny is measured by 005-18 with the `d8-deny` variant arm, not a standing scenario, while it is off by default (the human, 2026-10-13).
@@ -113,7 +113,9 @@ Each run writes `evals/results/<date>-<squeal version>.<run>.json` (`.<variant>.
 
 ### D7. Cadence
 
-At every hub release, before the hub commit, on the release commit (`docs/process.md` 6a): the atomic tier first (D10), then the long baseline at one repetition per task and model, only when the atomic tier raised no flag or alarm (the human, 2026-10-12: atomic scenarios first, the long tasks less often). The release check is the atomic tier's flags and alarms, plus the long baseline's alarms. A flag or an alarm goes to the human, who decides whether the release goes ahead. The adoption scoreboard is reported with it and gates nothing. The full baseline (three repetitions) runs with every `/quality` scan. With every `/quality` scan: the coordinator runs the baseline on the scanned range's last commit beside it (`.claude/skills/coordinator/SKILL.md`, "Quality"). Decided by the human 2026-10-10.
+Amended 2026-10-19 (the human, to speed up the release cycle): no eval runs before a hub release, and none gates one (`docs/process.md` 6a). The evals run on their own cadence (`docs/process.md` 6b): with every `/quality` scan, beside it on the scanned range's last commit (`.claude/skills/coordinator/SKILL.md`, "Quality"), and whenever the human asks; a regular cadence is the human's to set. Each run is the atomic tier first (D10), then the long baseline at three repetitions, only when the atomic tier raised no flag or alarm. A flag or an alarm goes to the human, who decides whether it becomes a row and whether the next release waits for it. The adoption scoreboard is reported with it and gates nothing. Until the human says otherwise, runs cover Sonnet and Sol only (`--models claude-sonnet-5-5,gpt-6.1-sol`): the human tests mostly with Opus and Sol, and tuning for Haiku and Luna waits until the release friction is gone. Their configs keep all four models, and their earlier results stay in the trend.
+
+Before 2026-10-19: at every hub release, before the hub commit, on the release commit, the atomic tier, then the long baseline at one repetition, the release check being the atomic tier's flags and alarms plus the long baseline's alarms (the human, 2026-10-10 and 2026-10-12).
 
 ### D9. The judge
 
@@ -181,4 +183,4 @@ Short scenarios, each built to exercise or avoid one or two behaviours, run many
 
 - `../005-agent-adoption/research/model-evals.md` and its probes, the prototype this spec moves; `../005-agent-adoption/status.md` (2026-10-10 entries on model evals and Haiku 5.5).
 - Spec 005 D6 to D8 (the texts and levers the baseline watches) and 005-18 (its proof runs on this suite); spec 004 D1 and D5 (slow files and declared inputs); spec 001 D9 (the primer).
-- `docs/process.md` 6a (release) and the coordinator skill's "Quality" section, which D7 amends.
+- `docs/process.md` 6a (release), 6b (evals) and the coordinator skill's "Quality" section, which D7 amends.
