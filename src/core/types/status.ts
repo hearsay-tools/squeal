@@ -76,6 +76,12 @@ export interface SlowPendingCounts {
   readonly checks: number;
   /** Slow test files queued or running without checks, a part of `testFilesWithoutChecks.pending`. */
   readonly testFilesWithoutChecks: number;
+  /**
+   * The first `SLOW_FILES_NAMED` of `testFiles` in path order, which the
+   * `Affected checks` line names (004 D8 as amended 2026-10-19, row 004-83).
+   * Absent from a header read before it.
+   */
+  readonly files?: readonly TestFileRef[];
 }
 
 /**
