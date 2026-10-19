@@ -1,6 +1,7 @@
 import type { Ask } from "./ask.js";
+import { excludeKeys } from "./exclude.js";
 import type { HarnessId } from "./harnesses.js";
-import type { SetupPlan, SlowGroup } from "./plan.js";
+import type { ExcludeProposal, SetupPlan, SlowGroup } from "./plan.js";
 
 /*
  * Spec 005 D3 step 3: one question per open choice of the plan, the plan's
@@ -24,6 +25,8 @@ export interface SetupAnswers {
   readonly gates: readonly { readonly id: string; readonly choice: "reword" | "keep" }[];
   readonly slow: readonly string[];
   readonly inputs: readonly { readonly test: string; readonly input: string }[];
+  /** Row 005-70: the groups answered yes to "leave these tests to CI", as `--exclude` globs. */
+  readonly exclude: readonly string[];
   readonly trust: boolean;
   readonly warmup: boolean;
 }
@@ -33,8 +36,8 @@ export interface GivenAnswers {
   readonly harnesses: readonly HarnessId[] | null;
   readonly blocks: readonly string[] | null;
   readonly gates: readonly { readonly id: string; readonly choice: "reword" | "keep" }[];
-  /** `--slow` and `--input` answer every slow group's questions together. */
-  readonly slow: Pick<SetupAnswers, "slow" | "inputs"> | null;
+  /** `--slow`, `--input` and `--exclude` answer every slow group's questions together. */
+  readonly slow: Pick<SetupAnswers, "slow" | "inputs" | "exclude"> | null;
   readonly trust: boolean | null;
   readonly warmup: boolean | null;
 }
@@ -114,9 +117,19 @@ export async function answerPlan(
 
   const slow: string[] = [...(given.slow?.slow ?? [])];
   const inputs: { test: string; input: string }[] = [...(given.slow?.inputs ?? [])];
+  const exclude: string[] = [...(given.slow?.exclude ?? [])];
   if (given.slow === null) {
     for (const group of plan.slow.groups) {
       const glob = groupGlob(group);
+      // Row 005-70: an exclude candidate is asked first, yes by default; no keeps it a slow candidate.
+      if (
+        !group.declaredSlow &&
+        group.exclude != null &&
+        (await yes(excludeQuestion(group, group.exclude), true, "exclude", "keep"))
+      ) {
+        exclude.push(group.exclude.glob);
+        continue;
+      }
       const isSlow =
         group.declaredSlow ||
         (await yes(
@@ -146,7 +159,28 @@ export async function answerPlan(
       true,
     ));
 
-  return { harnesses, blocks, gates, slow, inputs, trust, warmup };
+  return { harnesses, blocks, gates, slow, inputs, exclude, trust, warmup };
+}
+
+/**
+ * D3 step 3: the evidence, the reason (Squeal never builds, so a result
+ * against a build it cannot see is tied to no code state, vision principle
+ * 2) and where a yes writes the glob.
+ */
+function excludeQuestion(group: SlowGroup, proposal: ExcludeProposal): string {
+  const outputs = (group.buildOutputs ?? []).map((o) => {
+    const evidence = o.evidence.map((e) => e.detail).join("; ");
+    return `    ${o.path}${o.exists ? "" : " (not built here)"}: ${evidence}\n`;
+  });
+  const what = outputs.length === 1 ? "a build output" : "build outputs";
+  const inputs = group.declaredInputs.length === 0 ? "" : "; their inputs entries go too";
+  return [
+    `${proposal.glob} (${group.files.length} files) tests ${what} Squeal does not produce:\n`,
+    ...outputs,
+    "Squeal never builds, so a result against a build it cannot see is tied to no code state. ",
+    "No keeps them a slow candidate. Leave these tests to CI and to runs after a build ",
+    `(${excludeKeys(proposal)}${inputs})?`,
+  ].join("");
 }
 
 /** The glob a slow group's files go under, as `slow.include` and `inputs` take it. */

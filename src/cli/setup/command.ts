@@ -10,7 +10,7 @@ import type { GivenAnswers } from "./questions.js";
 
 export const SETUP_USAGE = `Usage: squeal setup [--yes] [--harness <claude-code|codex|none>]... [--block <file|none>]...
          [--gate <id>=<reword|keep>]... [--slow <glob|none>]... [--input <test glob>=<input glob|none>]...
-         [--no-trust] [--no-warmup]
+         [--exclude <test glob>]... [--no-trust] [--no-warmup]
        squeal setup --plan [--json]
        squeal setup --check [--json]
 `;
@@ -55,7 +55,10 @@ export async function setupCommand(
         return 1;
       }
       for (const line of globs.lines) io.stdout(`squeal setup: ${line}\n`);
-      given = { ...given, slow: { slow: globs.slow, inputs: globs.inputs } };
+      given = {
+        ...given,
+        slow: { slow: globs.slow, inputs: globs.inputs, exclude: globs.exclude },
+      };
     }
     const asker = parsed.yes ? null : (deps.asker ?? terminalAsker)();
     return runSetup({ plan, given, yes: parsed.yes, asker }, io);
@@ -104,7 +107,7 @@ function parseSetupArgs(args: readonly string[]): SetupArgs | string {
   // `--harness none` answers "no" to every harness, which leaving the flag out cannot say.
   const noHarness = harnesses.includes("none");
   if (noHarness && harnesses.length > 1) return "--harness none goes alone";
-  const { gates, inputs } = setup.choices;
+  const { gates, inputs, exclude } = setup.choices;
   // `--slow none` answers every slow group "not slow", which no glob can say.
   const noSlow = setup.choices.slow.includes("none");
   if (noSlow && setup.choices.slow.length + inputs.length > 1) return "--slow none goes alone";
@@ -116,7 +119,11 @@ function parseSetupArgs(args: readonly string[]): SetupArgs | string {
       harnesses: harnesses.length > 0 ? harnesses.filter((h) => h !== "none") : null,
       blocks: blocks.length > 0 ? blocks : null,
       gates,
-      slow: noSlow || slow.length + inputs.length > 0 ? { slow, inputs } : null,
+      // Row 005-70: `--exclude` answers the group questions with `--slow` and `--input`.
+      slow:
+        noSlow || slow.length + inputs.length + exclude.length > 0
+          ? { slow, inputs, exclude }
+          : null,
       trust: setup.rest.includes("--no-trust") ? false : null,
       warmup: setup.rest.includes("--no-warmup") ? false : null,
     },

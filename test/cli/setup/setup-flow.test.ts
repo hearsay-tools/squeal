@@ -6,7 +6,14 @@ import { main } from "../../../src/cli/main.js";
 import { terminalAsker } from "../../../src/cli/setup/ask.js";
 import { setupCommand } from "../../../src/cli/setup/command.js";
 import { git } from "../../hash/git-repo.js";
-import { capture, cleanupFixtures, harnessEnv, squealShaped, VITEST_GATE } from "./fixture.js";
+import {
+  capture,
+  cleanupFixtures,
+  harnessEnv,
+  SLOW_ONLY_E2E,
+  squealShaped,
+  VITEST_GATE,
+} from "./fixture.js";
 
 /*
  * Spec 005 D3 steps 3 to 5, row 005-14a: bare `squeal setup` asks one
@@ -39,7 +46,7 @@ async function setup(root: string, args: readonly string[], env = harnessEnv(["c
 
 describe("squeal setup on a terminal", () => {
   it("asks one question per open choice, the default first, and applies the answers", async () => {
-    const root = squealShaped();
+    const root = squealShaped(SLOW_ONLY_E2E);
     const { io, out } = capture(root, harnessEnv(["claude"]));
     // Claude Code yes (default), Codex no (default), no block, keep the gate, slow (default).
     const terminal = fakeTerminal(["", "", "2", "keep", ""]);
@@ -89,7 +96,7 @@ describe("squeal setup on a terminal", () => {
 
 describe("squeal setup --yes", () => {
   it("takes the plan's defaults, after which setup --check finds nothing outdated", async () => {
-    const root = squealShaped();
+    const root = squealShaped(SLOW_ONLY_E2E);
     const { code, stdout, stderr } = await setup(root, ["--yes", "--no-warmup"]);
     expect(stderr).toBe("");
     expect(code).toBe(0);
