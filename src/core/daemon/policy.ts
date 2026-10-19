@@ -86,6 +86,9 @@ const SHAPE: Shape = {
     maxDeferMs: atLeastZero,
     maxParallel: positiveInteger,
     rank: oneOf("tokens", "duration"),
+    // Spec 004 D2, D7 as amended 2026-10-18 (row 004-80).
+    trigger: oneOf("continuous", "idle"),
+    quietMs: atLeastZero,
   },
   delivery: { uncoveredEdits: boolean },
   daemon: { idleExitMinutes: aboveZero, unusedExitMinutes: aboveZero },
