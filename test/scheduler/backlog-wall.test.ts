@@ -130,6 +130,18 @@ describe("scheduler: a backlog tier is budgeted by its wall time (C4 step 5, tas
     expect(wall.take(100_000, 4, "A")).toBe(false);
   });
 
+  it("selects A, B, then leaves A's longer file for the next tier, in C4 order (re-review R1)", async () => {
+    // B = 1.2 s at timeoutMs 2.4 s: the reviewer's scratch case, [3] before the fix.
+    const side = wallSide({
+      durations: [600, 600, 1_000],
+      hostSlots: 4,
+      timeoutMs: 2_400,
+      tierWidth: () => 4,
+      tierPart: (f) => (f.path === fileName(1) ? "B" : "A"),
+    });
+    expect((await side.backlog()).map((t) => t.files.length)).toEqual([2, 1]);
+  });
+
   it("caps the wall estimate at half of runner.timeoutMs when that is less than 120 s", async () => {
     // 16 files of 1 s, 4 wide, a 4 s timeout: the budget is 2 s, so a round of 4 and one more.
     const side = wallSide({ durations: Array(16).fill(1_000), hostSlots: 4, timeoutMs: 4_000 });
