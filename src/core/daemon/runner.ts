@@ -18,6 +18,8 @@ export interface RecoveringRunnerOptions {
   readonly onFailure: (message: string) => void;
   /** A creation attempt worked after a failure. */
   readonly onRecovered?: () => void;
+  /** `RunnerAdapter.tierWidth` when the adapter answers none, as node:test's `runner.tierSize` (task 001-366). */
+  readonly tierWidth?: (testFile: TestFileRef, grant: number) => number;
   /** Wraps every call that reaches the adapter, creation included (the working directory, D10). */
   readonly around?: (<T>(call: () => Promise<T>) => Promise<T>) | undefined;
 }
@@ -126,6 +128,8 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
     testFiles: () => around(async () => (await adapter()).testFiles()),
     omittedTestFiles: () => inner?.omittedTestFiles?.() ?? 0,
     slowWidth: (testFiles) => inner?.slowWidth?.(testFiles) ?? testFiles.length,
+    tierWidth: (testFile, grant) =>
+      inner?.tierWidth?.(testFile, grant) ?? options.tierWidth?.(testFile, grant) ?? grant,
     environment: () => around(async () => (await adapter()).environment()),
     run: (testFiles, runOptions) =>
       around(async () => (await adapter()).run(testFiles, runOptions)),

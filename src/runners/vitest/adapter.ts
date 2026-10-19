@@ -399,6 +399,15 @@ export class VitestAdapter implements RunnerAdapter {
     return this.#widths?.atOnce(testFiles) ?? testFiles.length;
   }
 
+  /**
+   * Spec 011 C4 step 5 (task 001-366): the workers a backlog tier holding
+   * `testFile` runs with at `grant`, under its project's own `maxWorkers`.
+   * No instance yet: `grant`.
+   */
+  tierWidth(testFile: TestFileRef, grant: number): number {
+    return this.#widths?.of(testFile.project, grant) ?? grant;
+  }
+
   environment(): Promise<readonly RunnerEnvironment[]> {
     return this.#part(async (vitest) => {
       const context = {

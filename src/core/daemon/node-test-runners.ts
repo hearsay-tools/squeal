@@ -141,6 +141,8 @@ export function createNodeTestRunners(
           tempDir: options.tempDir,
           ...(options.childEnv === undefined ? {} : { childEnv: options.childEnv }),
         }),
+      // A run starts `runner.tierSize` files at once whatever its grant (task 001-366).
+      tierWidth: () => options.tierSize(),
       onFailure: (text) =>
         options.note(`${text} (node-test project ${JSON.stringify(project.name)})`),
       onRecovered: () => options.note(`node-test project ${JSON.stringify(project.name)} started`),

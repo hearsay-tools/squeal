@@ -165,6 +165,8 @@ export function createPytestRunners(
           cacheDir: pytestCacheDir(options.stateDir, options.root, project.name),
           ...(options.childEnv === undefined ? {} : { childEnv: options.childEnv }),
         }),
+      // A run starts `runner.tierSize` processes at once whatever its grant (task 001-366).
+      tierWidth: () => options.tierSize(),
       onFailure: (text) => options.note(`${text} (pytest project ${JSON.stringify(project.name)})`),
       onRecovered: () => options.note(`pytest project ${JSON.stringify(project.name)} started`),
     });

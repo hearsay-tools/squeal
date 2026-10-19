@@ -56,6 +56,8 @@ export function withSlowInstance(
     omittedTestFiles: () => fast.omittedTestFiles?.() ?? 0,
     // The slow instance may not exist yet; the fast one has the same configs (review 001-394 B2).
     slowWidth: (testFiles) => fast.slowWidth?.(testFiles) ?? testFiles.length,
+    // A backlog tier runs on the fast instance (task 001-366).
+    tierWidth: (testFile, grant) => fast.tierWidth?.(testFile, grant) ?? grant,
     environment: () => fast.environment(),
     ...(lane === undefined ? {} : { lane }),
     async run(testFiles, options) {

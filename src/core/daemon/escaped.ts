@@ -395,6 +395,7 @@ export function afterEachRun(
     testFiles: () => runner.testFiles(),
     omittedTestFiles: () => runner.omittedTestFiles?.() ?? 0,
     slowWidth: (testFiles) => runner.slowWidth?.(testFiles) ?? testFiles.length,
+    tierWidth: (testFile, grant) => runner.tierWidth?.(testFile, grant) ?? grant,
     environment: () => runner.environment(),
     ...(lane === undefined ? {} : { lane }),
     ...(releaseLane === undefined ? {} : { releaseLane }),

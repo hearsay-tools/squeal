@@ -111,6 +111,9 @@ export function createCompositeRunner(adapters: readonly RunnerAdapter[]): Runne
       const own = end === -1 ? testFiles : testFiles.slice(0, end);
       return owner.slowWidth?.(own) ?? own.length;
     },
+    // A backlog tier holds one lane, so one owner's files (task 001-366).
+    tierWidth: (testFile, grant) =>
+      owners.get(testFile.project)?.tierWidth?.(testFile, grant) ?? grant,
     async run(testFiles, options) {
       const groups = new Map<RunnerAdapter, TestFileRef[]>();
       for (const testFile of testFiles) {
