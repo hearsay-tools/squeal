@@ -12,6 +12,10 @@ import { DEFAULT_POLICY } from "../../src/core/types/index.js";
  * 2026-10-09), `slow.rank` (`"tokens"`, D2 as amended 2026-10-18, task
  * 004-82), `nodeTest[].slow` (`false`) and `stop.requireSlowSuite`
  * (`false`), all under the 001 D11 loader rules.
+ * 2026-10-09), `nodeTest[].slow` (`false`) and `stop.requireSlowSuite`
+ * (`false`), all under the 001 D11 loader rules; `slow.trigger`
+ * (`"continuous"`) and `slow.quietMs` (3000), D7 as amended 2026-10-18 (row
+ * 004-80).
  */
 
 const dirs: string[] = [];
@@ -33,6 +37,8 @@ const FULL = {
   maxDeferMs: 0,
   maxParallel: 2,
   rank: "duration",
+  trigger: "idle",
+  quietMs: 1_000,
 };
 
 describe("policy slow (spec 004 D7)", () => {
@@ -44,6 +50,8 @@ describe("policy slow (spec 004 D7)", () => {
       maxDeferMs: 600_000,
       maxParallel: 4,
       rank: "tokens",
+      trigger: "continuous",
+      quietMs: 3_000,
     });
     expect(DEFAULT_POLICY.stop.requireSlowSuite).toBe(false);
   });
@@ -86,6 +94,8 @@ describe("policy slow (spec 004 D7)", () => {
     ["maxParallel", 0, `"slow.maxParallel" must be a positive integer, got 0`],
     ["maxParallel", 2.5, `"slow.maxParallel" must be a positive integer, got 2.5`],
     ["rank", "evidence", `"slow.rank" must be one of "tokens", "duration", got "evidence"`],
+    ["trigger", "pause", `"slow.trigger" must be one of "continuous", "idle", got "pause"`],
+    ["quietMs", -1, `"slow.quietMs" must be a number >= 0, got -1`],
   ])("rejects slow.%s = %j with one problem and its default", (key, value, problem) => {
     const { policy, problems } = load({ slow: { ...FULL, [key]: value } });
     expect(problems).toEqual([problem]);
