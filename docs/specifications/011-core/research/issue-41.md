@@ -56,7 +56,7 @@ waits for the one-minute load average to fall below the CPU count (load average 
 
 ## Commands, limits and next evidence
 
-Exact commands used to establish the report and reproduce the probe, from this worktree's root:
+Commands used to establish the report and reproduce the probe, from the worktree root (probe paths relocated by the coordinator to the required owning-spec directory; the original run used `research/probes/issue-41/`):
 
 ```sh
 uptime
@@ -66,7 +66,7 @@ git rev-parse HEAD
 gh issue view 41 --repo hearsay-tools/squeal --json number,title,body,url,comments
 git rev-parse squeal--v0.1.222
 git diff --stat squeal--v0.1.222 HEAD -- src/core/status src/core/scheduler src/core/state src/cli/status-wait-lines.ts src/core/retry
-node --experimental-transform-types --disable-warning=ExperimentalWarning --import ./research/probes/issue-41/source-loader.mjs research/probes/issue-41/probe.mjs
+node --experimental-transform-types --disable-warning=ExperimentalWarning --import ./docs/specifications/011-core/research/probes/issue-41/source-loader.mjs docs/specifications/011-core/research/probes/issue-41/probe.mjs
 ```
 
 The tag diff was empty. The final probe exited **0**:
@@ -75,6 +75,8 @@ The tag diff was empty. The final probe exited **0**:
 PASS: lookup-only scheduler keeps misses unknown; queued wording requires queued stored rows in this probe.
 ```
 
-Probe: `research/probes/issue-41/{README.md,probe.mjs,source-loader.mjs,.gitignore}`. No dependencies were installed. Temporary Git and SQLite data is cleaned up. The heartbeat is seeded; there is no live fixture daemon. No Vitest, harness registration, real watcher, socket sync, actual 60-second CLI wait or cezarion suite is exercised. The 553 rows and 91-file edit-window result are deliberately synthetic. Probe-development assertion mistakes are recorded in its README.
+Probe: `docs/specifications/011-core/research/probes/issue-41/{README.md,probe.mjs,source-loader.mjs,.gitignore}`. No dependencies were installed. Temporary Git and SQLite data is cleaned up. The heartbeat is seeded; there is no live fixture daemon. No Vitest, harness registration, real watcher, socket sync, actual 60-second CLI wait or cezarion suite is exercised. The 553 rows and 91-file edit-window result are deliberately synthetic. Probe-development assertion mistakes are recorded in its README.
 
 The original incident's root cause remains **not determined**, because its policy, contemporaneous key phases, open runs, claimant heartbeats, daemon notes and selected-file pending reasons were not captured here. Those observations, ideally from the same `status --json --wait 60000` snapshot with named-file reasons, decide whether it was scheduled work held by a constraint or a stalled scheduler. The safe next decision is evidence collection and clearer status wording; this research authorizes no implementation.
+
+Coordinator verification after relocating the probes to the owning-spec directory: the command above exited 0 at one-minute load **9.95 on 24 CPUs**, with the same final PASS line. `git diff --check` was clean. This documentation-only landing does not run full product suites or build.

@@ -3,7 +3,7 @@
 Throwaway research, not product tests. Run from the repository root with Node 24.21.0:
 
 ```sh
-node --experimental-transform-types --disable-warning=ExperimentalWarning --import ./research/probes/issue-41/source-loader.mjs research/probes/issue-41/probe.mjs
+node --experimental-transform-types --disable-warning=ExperimentalWarning --import ./docs/specifications/011-core/research/probes/issue-41/source-loader.mjs docs/specifications/011-core/research/probes/issue-41/probe.mjs
 ```
 
 No npm install, build, test suite, daemon or external service is needed. The loader resolves this checkout's `.js` imports to its `.ts` sources; Node transforms the TypeScript. The probe refuses to run when one-minute load exceeds available CPU count.
