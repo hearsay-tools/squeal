@@ -1,0 +1,4854 @@
+{
+  "arm": "stream",
+  "cancel": null,
+  "beside": false,
+  "editAt": -1,
+  "baselineExit": 0,
+  "forcedWallS": 15.556,
+  "edit": null,
+  "load": {
+    "min": 8,
+    "max": 9.62,
+    "marks": [
+      {
+        "what": "start",
+        "at": -16.861,
+        "load": 7.65
+      },
+      {
+        "what": "baseline done exit 0",
+        "at": 0,
+        "load": 9.62
+      },
+      {
+        "what": "force",
+        "at": 0,
+        "load": 9.62
+      },
+      {
+        "what": "forced done exit 0",
+        "at": 15.556,
+        "load": 9.33
+      }
+    ]
+  },
+  "checkpointOutput": " they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: node/light-298.test.mjs\n  2026-10-19T16:44:28.095Z, revision 0: node-test project \"fx-node\": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: node/light-299.test.mjs\n",
+  "runs": [
+    {
+      "start": -16.496,
+      "end": -16.279,
+      "state": "completed",
+      "files": [
+        "node/light-000.test.mjs"
+      ]
+    },
+    {
+      "start": -16.479,
+      "end": -16.26,
+      "state": "completed",
+      "files": [
+        "node/light-001.test.mjs"
+      ]
+    },
+    {
+      "start": -16.469,
+      "end": -16.249,
+      "state": "completed",
+      "files": [
+        "node/light-002.test.mjs"
+      ]
+    },
+    {
+      "start": -16.457,
+      "end": -16.237,
+      "state": "completed",
+      "files": [
+        "node/light-003.test.mjs"
+      ]
+    },
+    {
+      "start": -16.269,
+      "end": -16.099,
+      "state": "completed",
+      "files": [
+        "node/light-004.test.mjs"
+      ]
+    },
+    {
+      "start": -16.253,
+      "end": -15.999,
+      "state": "completed",
+      "files": [
+        "node/light-005.test.mjs"
+      ]
+    },
+    {
+      "start": -16.242,
+      "end": -16.03,
+      "state": "completed",
+      "files": [
+        "node/light-006.test.mjs"
+      ]
+    },
+    {
+      "start": -16.228,
+      "end": -16.013,
+      "state": "completed",
+      "files": [
+        "node/light-007.test.mjs"
+      ]
+    },
+    {
+      "start": -16.095,
+      "end": -15.913,
+      "state": "completed",
+      "files": [
+        "node/light-008.test.mjs"
+      ]
+    },
+    {
+      "start": -16.018,
+      "end": -15.825,
+      "state": "completed",
+      "files": [
+        "node/light-009.test.mjs"
+      ]
+    },
+    {
+      "start": -16.005,
+      "end": -15.796,
+      "state": "completed",
+      "files": [
+        "node/light-010.test.mjs"
+      ]
+    },
+    {
+      "start": -15.992,
+      "end": -15.779,
+      "state": "completed",
+      "files": [
+        "node/light-011.test.mjs"
+      ]
+    },
+    {
+      "start": -15.904,
+      "end": -15.717,
+      "state": "completed",
+      "files": [
+        "node/light-012.test.mjs"
+      ]
+    },
+    {
+      "start": -15.813,
+      "end": -15.626,
+      "state": "completed",
+      "files": [
+        "node/light-013.test.mjs"
+      ]
+    },
+    {
+      "start": -15.787,
+      "end": -15.568,
+      "state": "completed",
+      "files": [
+        "node/light-014.test.mjs"
+      ]
+    },
+    {
+      "start": -15.773,
+      "end": -15.553,
+      "state": "completed",
+      "files": [
+        "node/light-015.test.mjs"
+      ]
+    },
+    {
+      "start": -15.712,
+      "end": -15.502,
+      "state": "completed",
+      "files": [
+        "node/light-016.test.mjs"
+      ]
+    },
+    {
+      "start": -15.618,
+      "end": -15.422,
+      "state": "completed",
+      "files": [
+        "node/light-017.test.mjs"
+      ]
+    },
+    {
+      "start": -15.561,
+      "end": -15.344,
+      "state": "completed",
+      "files": [
+        "node/light-018.test.mjs"
+      ]
+    },
+    {
+      "start": -15.545,
+      "end": -15.329,
+      "state": "completed",
+      "files": [
+        "node/light-019.test.mjs"
+      ]
+    },
+    {
+      "start": -15.497,
+      "end": -15.269,
+      "state": "completed",
+      "files": [
+        "node/light-020.test.mjs"
+      ]
+    },
+    {
+      "start": -15.411,
+      "end": -15.217,
+      "state": "completed",
+      "files": [
+        "node/light-021.test.mjs"
+      ]
+    },
+    {
+      "start": -15.336,
+      "end": -15.125,
+      "state": "completed",
+      "files": [
+        "node/light-022.test.mjs"
+      ]
+    },
+    {
+      "start": -15.323,
+      "end": -15.11,
+      "state": "completed",
+      "files": [
+        "node/light-023.test.mjs"
+      ]
+    },
+    {
+      "start": -15.264,
+      "end": -15.07,
+      "state": "completed",
+      "files": [
+        "node/light-024.test.mjs"
+      ]
+    },
+    {
+      "start": -15.204,
+      "end": -15.021,
+      "state": "completed",
+      "files": [
+        "node/light-025.test.mjs"
+      ]
+    },
+    {
+      "start": -15.118,
+      "end": -14.917,
+      "state": "completed",
+      "files": [
+        "node/light-026.test.mjs"
+      ]
+    },
+    {
+      "start": -15.103,
+      "end": -14.889,
+      "state": "completed",
+      "files": [
+        "node/light-027.test.mjs"
+      ]
+    },
+    {
+      "start": -15.064,
+      "end": -14.863,
+      "state": "completed",
+      "files": [
+        "node/light-028.test.mjs"
+      ]
+    },
+    {
+      "start": -15.013,
+      "end": -14.828,
+      "state": "completed",
+      "files": [
+        "node/light-029.test.mjs"
+      ]
+    },
+    {
+      "start": -14.905,
+      "end": -14.724,
+      "state": "completed",
+      "files": [
+        "node/light-030.test.mjs"
+      ]
+    },
+    {
+      "start": -14.878,
+      "end": -14.677,
+      "state": "completed",
+      "files": [
+        "node/light-031.test.mjs"
+      ]
+    },
+    {
+      "start": -14.858,
+      "end": -14.663,
+      "state": "completed",
+      "files": [
+        "node/light-032.test.mjs"
+      ]
+    },
+    {
+      "start": -14.82,
+      "end": -14.631,
+      "state": "completed",
+      "files": [
+        "node/light-033.test.mjs"
+      ]
+    },
+    {
+      "start": -14.717,
+      "end": -14.532,
+      "state": "completed",
+      "files": [
+        "node/light-034.test.mjs"
+      ]
+    },
+    {
+      "start": -14.67,
+      "end": -14.443,
+      "state": "completed",
+      "files": [
+        "node/light-035.test.mjs"
+      ]
+    },
+    {
+      "start": -14.654,
+      "end": -14.384,
+      "state": "completed",
+      "files": [
+        "node/light-036.test.mjs"
+      ]
+    },
+    {
+      "start": -14.622,
+      "end": -14.368,
+      "state": "completed",
+      "files": [
+        "node/light-037.test.mjs"
+      ]
+    },
+    {
+      "start": -14.521,
+      "end": -14.299,
+      "state": "completed",
+      "files": [
+        "node/light-038.test.mjs"
+      ]
+    },
+    {
+      "start": -14.429,
+      "end": -14.213,
+      "state": "completed",
+      "files": [
+        "node/light-039.test.mjs"
+      ]
+    },
+    {
+      "start": -14.377,
+      "end": -14.178,
+      "state": "completed",
+      "files": [
+        "node/light-040.test.mjs"
+      ]
+    },
+    {
+      "start": -14.358,
+      "end": -14.149,
+      "state": "completed",
+      "files": [
+        "node/light-041.test.mjs"
+      ]
+    },
+    {
+      "start": -14.288,
+      "end": -14.092,
+      "state": "completed",
+      "files": [
+        "node/light-042.test.mjs"
+      ]
+    },
+    {
+      "start": -14.205,
+      "end": -14.021,
+      "state": "completed",
+      "files": [
+        "node/light-043.test.mjs"
+      ]
+    },
+    {
+      "start": -14.173,
+      "end": -13.943,
+      "state": "completed",
+      "files": [
+        "node/light-044.test.mjs"
+      ]
+    },
+    {
+      "start": -14.14,
+      "end": -13.918,
+      "state": "completed",
+      "files": [
+        "node/light-045.test.mjs"
+      ]
+    },
+    {
+      "start": -14.084,
+      "end": -13.88,
+      "state": "completed",
+      "files": [
+        "node/light-046.test.mjs"
+      ]
+    },
+    {
+      "start": -14.012,
+      "end": -13.814,
+      "state": "completed",
+      "files": [
+        "node/light-047.test.mjs"
+      ]
+    },
+    {
+      "start": -13.934,
+      "end": -13.729,
+      "state": "completed",
+      "files": [
+        "node/light-048.test.mjs"
+      ]
+    },
+    {
+      "start": -13.91,
+      "end": -13.709,
+      "state": "completed",
+      "files": [
+        "node/light-049.test.mjs"
+      ]
+    },
+    {
+      "start": -13.869,
+      "end": -13.674,
+      "state": "completed",
+      "files": [
+        "node/light-050.test.mjs"
+      ]
+    },
+    {
+      "start": -13.805,
+      "end": -13.623,
+      "state": "completed",
+      "files": [
+        "node/light-051.test.mjs"
+      ]
+    },
+    {
+      "start": -13.722,
+      "end": -13.52,
+      "state": "completed",
+      "files": [
+        "node/light-052.test.mjs"
+      ]
+    },
+    {
+      "start": -13.702,
+      "end": -13.507,
+      "state": "completed",
+      "files": [
+        "node/light-053.test.mjs"
+      ]
+    },
+    {
+      "start": -13.663,
+      "end": -13.474,
+      "state": "completed",
+      "files": [
+        "node/light-054.test.mjs"
+      ]
+    },
+    {
+      "start": -13.614,
+      "end": -13.434,
+      "state": "completed",
+      "files": [
+        "node/light-055.test.mjs"
+      ]
+    },
+    {
+      "start": -13.516,
+      "end": -13.301,
+      "state": "completed",
+      "files": [
+        "node/light-056.test.mjs"
+      ]
+    },
+    {
+      "start": -13.5,
+      "end": -13.276,
+      "state": "completed",
+      "files": [
+        "node/light-057.test.mjs"
+      ]
+    },
+    {
+      "start": -13.465,
+      "end": -13.236,
+      "state": "completed",
+      "files": [
+        "node/light-058.test.mjs"
+      ]
+    },
+    {
+      "start": -13.425,
+      "end": -13.213,
+      "state": "completed",
+      "files": [
+        "node/light-059.test.mjs"
+      ]
+    },
+    {
+      "start": -13.294,
+      "end": -13.103,
+      "state": "completed",
+      "files": [
+        "node/light-060.test.mjs"
+      ]
+    },
+    {
+      "start": -13.266,
+      "end": -13.045,
+      "state": "completed",
+      "files": [
+        "node/light-061.test.mjs"
+      ]
+    },
+    {
+      "start": -13.225,
+      "end": -12.998,
+      "state": "completed",
+      "files": [
+        "node/light-062.test.mjs"
+      ]
+    },
+    {
+      "start": -13.204,
+      "end": -12.974,
+      "state": "completed",
+      "files": [
+        "node/light-063.test.mjs"
+      ]
+    },
+    {
+      "start": -13.096,
+      "end": -12.9,
+      "state": "completed",
+      "files": [
+        "node/light-064.test.mjs"
+      ]
+    },
+    {
+      "start": -13.032,
+      "end": -12.834,
+      "state": "completed",
+      "files": [
+        "node/light-065.test.mjs"
+      ]
+    },
+    {
+      "start": -12.986,
+      "end": -12.767,
+      "state": "completed",
+      "files": [
+        "node/light-066.test.mjs"
+      ]
+    },
+    {
+      "start": -12.967,
+      "end": -12.743,
+      "state": "completed",
+      "files": [
+        "node/light-067.test.mjs"
+      ]
+    },
+    {
+      "start": -12.892,
+      "end": -12.689,
+      "state": "completed",
+      "files": [
+        "node/light-068.test.mjs"
+      ]
+    },
+    {
+      "start": -12.821,
+      "end": -12.627,
+      "state": "completed",
+      "files": [
+        "node/light-069.test.mjs"
+      ]
+    },
+    {
+      "start": -12.755,
+      "end": -12.579,
+      "state": "completed",
+      "files": [
+        "node/light-070.test.mjs"
+      ]
+    },
+    {
+      "start": -12.736,
+      "end": -12.539,
+      "state": "completed",
+      "files": [
+        "node/light-071.test.mjs"
+      ]
+    },
+    {
+      "start": -12.685,
+      "end": -12.501,
+      "state": "completed",
+      "files": [
+        "node/light-072.test.mjs"
+      ]
+    },
+    {
+      "start": -12.618,
+      "end": -12.433,
+      "state": "completed",
+      "files": [
+        "node/light-073.test.mjs"
+      ]
+    },
+    {
+      "start": -12.57,
+      "end": -12.384,
+      "state": "completed",
+      "files": [
+        "node/light-074.test.mjs"
+      ]
+    },
+    {
+      "start": -12.531,
+      "end": -12.343,
+      "state": "completed",
+      "files": [
+        "node/light-075.test.mjs"
+      ]
+    },
+    {
+      "start": -12.494,
+      "end": -12.305,
+      "state": "completed",
+      "files": [
+        "node/light-076.test.mjs"
+      ]
+    },
+    {
+      "start": -12.425,
+      "end": -12.25,
+      "state": "completed",
+      "files": [
+        "node/light-077.test.mjs"
+      ]
+    },
+    {
+      "start": -12.375,
+      "end": -12.16,
+      "state": "completed",
+      "files": [
+        "node/light-078.test.mjs"
+      ]
+    },
+    {
+      "start": -12.335,
+      "end": -12.116,
+      "state": "completed",
+      "files": [
+        "node/light-079.test.mjs"
+      ]
+    },
+    {
+      "start": -12.3,
+      "end": -12.092,
+      "state": "completed",
+      "files": [
+        "node/light-080.test.mjs"
+      ]
+    },
+    {
+      "start": -12.239,
+      "end": -12.063,
+      "state": "completed",
+      "files": [
+        "node/light-081.test.mjs"
+      ]
+    },
+    {
+      "start": -12.148,
+      "end": -11.97,
+      "state": "completed",
+      "files": [
+        "node/light-082.test.mjs"
+      ]
+    },
+    {
+      "start": -12.105,
+      "end": -11.912,
+      "state": "completed",
+      "files": [
+        "node/light-083.test.mjs"
+      ]
+    },
+    {
+      "start": -12.086,
+      "end": -11.891,
+      "state": "completed",
+      "files": [
+        "node/light-084.test.mjs"
+      ]
+    },
+    {
+      "start": -12.056,
+      "end": -11.853,
+      "state": "completed",
+      "files": [
+        "node/light-085.test.mjs"
+      ]
+    },
+    {
+      "start": -11.961,
+      "end": -11.784,
+      "state": "completed",
+      "files": [
+        "node/light-086.test.mjs"
+      ]
+    },
+    {
+      "start": -11.899,
+      "end": -11.716,
+      "state": "completed",
+      "files": [
+        "node/light-087.test.mjs"
+      ]
+    },
+    {
+      "start": -11.881,
+      "end": -11.679,
+      "state": "completed",
+      "files": [
+        "node/light-088.test.mjs"
+      ]
+    },
+    {
+      "start": -11.844,
+      "end": -11.643,
+      "state": "completed",
+      "files": [
+        "node/light-089.test.mjs"
+      ]
+    },
+    {
+      "start": -11.776,
+      "end": -11.594,
+      "state": "completed",
+      "files": [
+        "node/light-090.test.mjs"
+      ]
+    },
+    {
+      "start": -11.706,
+      "end": -11.524,
+      "state": "completed",
+      "files": [
+        "node/light-091.test.mjs"
+      ]
+    },
+    {
+      "start": -11.672,
+      "end": -11.486,
+      "state": "completed",
+      "files": [
+        "node/light-092.test.mjs"
+      ]
+    },
+    {
+      "start": -11.634,
+      "end": -11.443,
+      "state": "completed",
+      "files": [
+        "node/light-093.test.mjs"
+      ]
+    },
+    {
+      "start": -11.587,
+      "end": -11.403,
+      "state": "completed",
+      "files": [
+        "node/light-094.test.mjs"
+      ]
+    },
+    {
+      "start": -11.515,
+      "end": -11.32,
+      "state": "completed",
+      "files": [
+        "node/light-095.test.mjs"
+      ]
+    },
+    {
+      "start": -11.479,
+      "end": -11.281,
+      "state": "completed",
+      "files": [
+        "node/light-096.test.mjs"
+      ]
+    },
+    {
+      "start": -11.429,
+      "end": -11.242,
+      "state": "completed",
+      "files": [
+        "node/light-097.test.mjs"
+      ]
+    },
+    {
+      "start": -11.396,
+      "end": -11.197,
+      "state": "completed",
+      "files": [
+        "node/light-098.test.mjs"
+      ]
+    },
+    {
+      "start": -11.312,
+      "end": -11.119,
+      "state": "completed",
+      "files": [
+        "node/light-099.test.mjs"
+      ]
+    },
+    {
+      "start": -11.273,
+      "end": -11.083,
+      "state": "completed",
+      "files": [
+        "node/light-100.test.mjs"
+      ]
+    },
+    {
+      "start": -11.228,
+      "end": -11.039,
+      "state": "completed",
+      "files": [
+        "node/light-101.test.mjs"
+      ]
+    },
+    {
+      "start": -11.189,
+      "end": -10.997,
+      "state": "completed",
+      "files": [
+        "node/light-102.test.mjs"
+      ]
+    },
+    {
+      "start": -11.112,
+      "end": -10.92,
+      "state": "completed",
+      "files": [
+        "node/light-103.test.mjs"
+      ]
+    },
+    {
+      "start": -11.075,
+      "end": -10.871,
+      "state": "completed",
+      "files": [
+        "node/light-104.test.mjs"
+      ]
+    },
+    {
+      "start": -11.024,
+      "end": -10.828,
+      "state": "completed",
+      "files": [
+        "node/light-105.test.mjs"
+      ]
+    },
+    {
+      "start": -10.987,
+      "end": -10.781,
+      "state": "completed",
+      "files": [
+        "node/light-106.test.mjs"
+      ]
+    },
+    {
+      "start": -10.91,
+      "end": -10.713,
+      "state": "completed",
+      "files": [
+        "node/light-107.test.mjs"
+      ]
+    },
+    {
+      "start": -10.86,
+      "end": -10.657,
+      "state": "completed",
+      "files": [
+        "node/light-108.test.mjs"
+      ]
+    },
+    {
+      "start": -10.819,
+      "end": -10.597,
+      "state": "completed",
+      "files": [
+        "node/light-109.test.mjs"
+      ]
+    },
+    {
+      "start": -10.766,
+      "end": -10.54,
+      "state": "completed",
+      "files": [
+        "node/light-110.test.mjs"
+      ]
+    },
+    {
+      "start": -10.705,
+      "end": -10.497,
+      "state": "completed",
+      "files": [
+        "node/light-111.test.mjs"
+      ]
+    },
+    {
+      "start": -10.65,
+      "end": -10.45,
+      "state": "completed",
+      "files": [
+        "node/light-112.test.mjs"
+      ]
+    },
+    {
+      "start": -10.588,
+      "end": -10.373,
+      "state": "completed",
+      "files": [
+        "node/light-113.test.mjs"
+      ]
+    },
+    {
+      "start": -10.53,
+      "end": -10.326,
+      "state": "completed",
+      "files": [
+        "node/light-114.test.mjs"
+      ]
+    },
+    {
+      "start": -10.488,
+      "end": -10.288,
+      "state": "completed",
+      "files": [
+        "node/light-115.test.mjs"
+      ]
+    },
+    {
+      "start": -10.438,
+      "end": -10.255,
+      "state": "completed",
+      "files": [
+        "node/light-116.test.mjs"
+      ]
+    },
+    {
+      "start": -10.363,
+      "end": -10.173,
+      "state": "completed",
+      "files": [
+        "node/light-117.test.mjs"
+      ]
+    },
+    {
+      "start": -10.312,
+      "end": -10.12,
+      "state": "completed",
+      "files": [
+        "node/light-118.test.mjs"
+      ]
+    },
+    {
+      "start": -10.279,
+      "end": -10.089,
+      "state": "completed",
+      "files": [
+        "node/light-119.test.mjs"
+      ]
+    },
+    {
+      "start": -10.25,
+      "end": -10.048,
+      "state": "completed",
+      "files": [
+        "node/light-120.test.mjs"
+      ]
+    },
+    {
+      "start": -10.161,
+      "end": -9.983,
+      "state": "completed",
+      "files": [
+        "node/light-121.test.mjs"
+      ]
+    },
+    {
+      "start": -10.109,
+      "end": -9.922,
+      "state": "completed",
+      "files": [
+        "node/light-122.test.mjs"
+      ]
+    },
+    {
+      "start": -10.079,
+      "end": -9.883,
+      "state": "completed",
+      "files": [
+        "node/light-123.test.mjs"
+      ]
+    },
+    {
+      "start": -10.043,
+      "end": -9.845,
+      "state": "completed",
+      "files": [
+        "node/light-124.test.mjs"
+      ]
+    },
+    {
+      "start": -9.975,
+      "end": -9.779,
+      "state": "completed",
+      "files": [
+        "node/light-125.test.mjs"
+      ]
+    },
+    {
+      "start": -9.913,
+      "end": -9.718,
+      "state": "completed",
+      "files": [
+        "node/light-126.test.mjs"
+      ]
+    },
+    {
+      "start": -9.874,
+      "end": -9.678,
+      "state": "completed",
+      "files": [
+        "node/light-127.test.mjs"
+      ]
+    },
+    {
+      "start": -9.839,
+      "end": -9.632,
+      "state": "completed",
+      "files": [
+        "node/light-128.test.mjs"
+      ]
+    },
+    {
+      "start": -9.77,
+      "end": -9.578,
+      "state": "completed",
+      "files": [
+        "node/light-129.test.mjs"
+      ]
+    },
+    {
+      "start": -9.707,
+      "end": -9.482,
+      "state": "completed",
+      "files": [
+        "node/light-130.test.mjs"
+      ]
+    },
+    {
+      "start": -9.668,
+      "end": -9.453,
+      "state": "completed",
+      "files": [
+        "node/light-131.test.mjs"
+      ]
+    },
+    {
+      "start": -9.627,
+      "end": -9.405,
+      "state": "completed",
+      "files": [
+        "node/light-132.test.mjs"
+      ]
+    },
+    {
+      "start": -9.569,
+      "end": -9.345,
+      "state": "completed",
+      "files": [
+        "node/light-133.test.mjs"
+      ]
+    },
+    {
+      "start": -9.469,
+      "end": -9.261,
+      "state": "completed",
+      "files": [
+        "node/light-134.test.mjs"
+      ]
+    },
+    {
+      "start": -9.44,
+      "end": -9.209,
+      "state": "completed",
+      "files": [
+        "node/light-135.test.mjs"
+      ]
+    },
+    {
+      "start": -9.398,
+      "end": -9.171,
+      "state": "completed",
+      "files": [
+        "node/light-136.test.mjs"
+      ]
+    },
+    {
+      "start": -9.336,
+      "end": -9.109,
+      "state": "completed",
+      "files": [
+        "node/light-137.test.mjs"
+      ]
+    },
+    {
+      "start": -9.25,
+      "end": -9.038,
+      "state": "completed",
+      "files": [
+        "node/light-138.test.mjs"
+      ]
+    },
+    {
+      "start": -9.197,
+      "end": -8.99,
+      "state": "completed",
+      "files": [
+        "node/light-139.test.mjs"
+      ]
+    },
+    {
+      "start": -9.159,
+      "end": -8.954,
+      "state": "completed",
+      "files": [
+        "node/light-140.test.mjs"
+      ]
+    },
+    {
+      "start": -9.1,
+      "end": -8.896,
+      "state": "completed",
+      "files": [
+        "node/light-141.test.mjs"
+      ]
+    },
+    {
+      "start": -9.029,
+      "end": -8.841,
+      "state": "completed",
+      "files": [
+        "node/light-142.test.mjs"
+      ]
+    },
+    {
+      "start": -8.98,
+      "end": -8.783,
+      "state": "completed",
+      "files": [
+        "node/light-143.test.mjs"
+      ]
+    },
+    {
+      "start": -8.941,
+      "end": -8.737,
+      "state": "completed",
+      "files": [
+        "node/light-144.test.mjs"
+      ]
+    },
+    {
+      "start": -8.887,
+      "end": -8.687,
+      "state": "completed",
+      "files": [
+        "node/light-145.test.mjs"
+      ]
+    },
+    {
+      "start": -8.827,
+      "end": -8.638,
+      "state": "completed",
+      "files": [
+        "node/light-146.test.mjs"
+      ]
+    },
+    {
+      "start": -8.769,
+      "end": -8.583,
+      "state": "completed",
+      "files": [
+        "node/light-147.test.mjs"
+      ]
+    },
+    {
+      "start": -8.729,
+      "end": -8.537,
+      "state": "completed",
+      "files": [
+        "node/light-148.test.mjs"
+      ]
+    },
+    {
+      "start": -8.675,
+      "end": -8.49,
+      "state": "completed",
+      "files": [
+        "node/light-149.test.mjs"
+      ]
+    },
+    {
+      "start": -8.63,
+      "end": -8.456,
+      "state": "completed",
+      "files": [
+        "node/light-150.test.mjs"
+      ]
+    },
+    {
+      "start": -8.574,
+      "end": -8.397,
+      "state": "completed",
+      "files": [
+        "node/light-151.test.mjs"
+      ]
+    },
+    {
+      "start": -8.527,
+      "end": -8.348,
+      "state": "completed",
+      "files": [
+        "node/light-152.test.mjs"
+      ]
+    },
+    {
+      "start": -8.482,
+      "end": -8.304,
+      "state": "completed",
+      "files": [
+        "node/light-153.test.mjs"
+      ]
+    },
+    {
+      "start": -8.446,
+      "end": -8.268,
+      "state": "completed",
+      "files": [
+        "node/light-154.test.mjs"
+      ]
+    },
+    {
+      "start": -8.389,
+      "end": -8.208,
+      "state": "completed",
+      "files": [
+        "node/light-155.test.mjs"
+      ]
+    },
+    {
+      "start": -8.342,
+      "end": -8.16,
+      "state": "completed",
+      "files": [
+        "node/light-156.test.mjs"
+      ]
+    },
+    {
+      "start": -8.295,
+      "end": -8.109,
+      "state": "completed",
+      "files": [
+        "node/light-157.test.mjs"
+      ]
+    },
+    {
+      "start": -8.259,
+      "end": -8.061,
+      "state": "completed",
+      "files": [
+        "node/light-158.test.mjs"
+      ]
+    },
+    {
+      "start": -8.195,
+      "end": -8.019,
+      "state": "completed",
+      "files": [
+        "node/light-159.test.mjs"
+      ]
+    },
+    {
+      "start": -8.155,
+      "end": -7.979,
+      "state": "completed",
+      "files": [
+        "node/light-160.test.mjs"
+      ]
+    },
+    {
+      "start": -8.101,
+      "end": -7.921,
+      "state": "completed",
+      "files": [
+        "node/light-161.test.mjs"
+      ]
+    },
+    {
+      "start": -8.053,
+      "end": -7.884,
+      "state": "completed",
+      "files": [
+        "node/light-162.test.mjs"
+      ]
+    },
+    {
+      "start": -8.011,
+      "end": -7.838,
+      "state": "completed",
+      "files": [
+        "node/light-163.test.mjs"
+      ]
+    },
+    {
+      "start": -7.975,
+      "end": -7.797,
+      "state": "completed",
+      "files": [
+        "node/light-164.test.mjs"
+      ]
+    },
+    {
+      "start": -7.91,
+      "end": -7.733,
+      "state": "completed",
+      "files": [
+        "node/light-165.test.mjs"
+      ]
+    },
+    {
+      "start": -7.874,
+      "end": -7.696,
+      "state": "completed",
+      "files": [
+        "node/light-166.test.mjs"
+      ]
+    },
+    {
+      "start": -7.828,
+      "end": -7.654,
+      "state": "completed",
+      "files": [
+        "node/light-167.test.mjs"
+      ]
+    },
+    {
+      "start": -7.792,
+      "end": -7.607,
+      "state": "completed",
+      "files": [
+        "node/light-168.test.mjs"
+      ]
+    },
+    {
+      "start": -7.725,
+      "end": -7.551,
+      "state": "completed",
+      "files": [
+        "node/light-169.test.mjs"
+      ]
+    },
+    {
+      "start": -7.687,
+      "end": -7.513,
+      "state": "completed",
+      "files": [
+        "node/light-170.test.mjs"
+      ]
+    },
+    {
+      "start": -7.645,
+      "end": -7.47,
+      "state": "completed",
+      "files": [
+        "node/light-171.test.mjs"
+      ]
+    },
+    {
+      "start": -7.6,
+      "end": -7.424,
+      "state": "completed",
+      "files": [
+        "node/light-172.test.mjs"
+      ]
+    },
+    {
+      "start": -7.543,
+      "end": -7.365,
+      "state": "completed",
+      "files": [
+        "node/light-173.test.mjs"
+      ]
+    },
+    {
+      "start": -7.5,
+      "end": -7.326,
+      "state": "completed",
+      "files": [
+        "node/light-174.test.mjs"
+      ]
+    },
+    {
+      "start": -7.462,
+      "end": -7.274,
+      "state": "completed",
+      "files": [
+        "node/light-175.test.mjs"
+      ]
+    },
+    {
+      "start": -7.418,
+      "end": -7.228,
+      "state": "completed",
+      "files": [
+        "node/light-176.test.mjs"
+      ]
+    },
+    {
+      "start": -7.356,
+      "end": -7.177,
+      "state": "completed",
+      "files": [
+        "node/light-177.test.mjs"
+      ]
+    },
+    {
+      "start": -7.316,
+      "end": -7.121,
+      "state": "completed",
+      "files": [
+        "node/light-178.test.mjs"
+      ]
+    },
+    {
+      "start": -7.258,
+      "end": -7.065,
+      "state": "completed",
+      "files": [
+        "node/light-179.test.mjs"
+      ]
+    },
+    {
+      "start": -7.221,
+      "end": -7.005,
+      "state": "completed",
+      "files": [
+        "node/light-180.test.mjs"
+      ]
+    },
+    {
+      "start": -7.155,
+      "end": -6.966,
+      "state": "completed",
+      "files": [
+        "node/light-181.test.mjs"
+      ]
+    },
+    {
+      "start": -7.111,
+      "end": -6.928,
+      "state": "completed",
+      "files": [
+        "node/light-182.test.mjs"
+      ]
+    },
+    {
+      "start": -7.054,
+      "end": -6.872,
+      "state": "completed",
+      "files": [
+        "node/light-183.test.mjs"
+      ]
+    },
+    {
+      "start": -6.996,
+      "end": -6.8,
+      "state": "completed",
+      "files": [
+        "node/light-184.test.mjs"
+      ]
+    },
+    {
+      "start": -6.957,
+      "end": -6.772,
+      "state": "completed",
+      "files": [
+        "node/light-185.test.mjs"
+      ]
+    },
+    {
+      "start": -6.919,
+      "end": -6.734,
+      "state": "completed",
+      "files": [
+        "node/light-186.test.mjs"
+      ]
+    },
+    {
+      "start": -6.862,
+      "end": -6.676,
+      "state": "completed",
+      "files": [
+        "node/light-187.test.mjs"
+      ]
+    },
+    {
+      "start": -6.793,
+      "end": -6.619,
+      "state": "completed",
+      "files": [
+        "node/light-188.test.mjs"
+      ]
+    },
+    {
+      "start": -6.763,
+      "end": -6.575,
+      "state": "completed",
+      "files": [
+        "node/light-189.test.mjs"
+      ]
+    },
+    {
+      "start": -6.724,
+      "end": -6.535,
+      "state": "completed",
+      "files": [
+        "node/light-190.test.mjs"
+      ]
+    },
+    {
+      "start": -6.666,
+      "end": -6.479,
+      "state": "completed",
+      "files": [
+        "node/light-191.test.mjs"
+      ]
+    },
+    {
+      "start": -6.613,
+      "end": -6.429,
+      "state": "completed",
+      "files": [
+        "node/light-192.test.mjs"
+      ]
+    },
+    {
+      "start": -6.566,
+      "end": -6.381,
+      "state": "completed",
+      "files": [
+        "node/light-193.test.mjs"
+      ]
+    },
+    {
+      "start": -6.524,
+      "end": -6.341,
+      "state": "completed",
+      "files": [
+        "node/light-194.test.mjs"
+      ]
+    },
+    {
+      "start": -6.468,
+      "end": -6.289,
+      "state": "completed",
+      "files": [
+        "node/light-195.test.mjs"
+      ]
+    },
+    {
+      "start": -6.424,
+      "end": -6.222,
+      "state": "completed",
+      "files": [
+        "node/light-196.test.mjs"
+      ]
+    },
+    {
+      "start": -6.366,
+      "end": -6.173,
+      "state": "completed",
+      "files": [
+        "node/light-197.test.mjs"
+      ]
+    },
+    {
+      "start": -6.329,
+      "end": -6.128,
+      "state": "completed",
+      "files": [
+        "node/light-198.test.mjs"
+      ]
+    },
+    {
+      "start": -6.278,
+      "end": -6.08,
+      "state": "completed",
+      "files": [
+        "node/light-199.test.mjs"
+      ]
+    },
+    {
+      "start": -6.213,
+      "end": -5.996,
+      "state": "completed",
+      "files": [
+        "node/light-200.test.mjs"
+      ]
+    },
+    {
+      "start": -6.163,
+      "end": -5.938,
+      "state": "completed",
+      "files": [
+        "node/light-201.test.mjs"
+      ]
+    },
+    {
+      "start": -6.119,
+      "end": -5.904,
+      "state": "completed",
+      "files": [
+        "node/light-202.test.mjs"
+      ]
+    },
+    {
+      "start": -6.069,
+      "end": -5.869,
+      "state": "completed",
+      "files": [
+        "node/light-203.test.mjs"
+      ]
+    },
+    {
+      "start": -5.981,
+      "end": -5.784,
+      "state": "completed",
+      "files": [
+        "node/light-204.test.mjs"
+      ]
+    },
+    {
+      "start": -5.923,
+      "end": -5.731,
+      "state": "completed",
+      "files": [
+        "node/light-205.test.mjs"
+      ]
+    },
+    {
+      "start": -5.894,
+      "end": -5.682,
+      "state": "completed",
+      "files": [
+        "node/light-206.test.mjs"
+      ]
+    },
+    {
+      "start": -5.858,
+      "end": -5.623,
+      "state": "completed",
+      "files": [
+        "node/light-207.test.mjs"
+      ]
+    },
+    {
+      "start": -5.776,
+      "end": -5.564,
+      "state": "completed",
+      "files": [
+        "node/light-208.test.mjs"
+      ]
+    },
+    {
+      "start": -5.719,
+      "end": -5.496,
+      "state": "completed",
+      "files": [
+        "node/light-209.test.mjs"
+      ]
+    },
+    {
+      "start": -5.667,
+      "end": -5.457,
+      "state": "completed",
+      "files": [
+        "node/light-210.test.mjs"
+      ]
+    },
+    {
+      "start": -5.606,
+      "end": -5.399,
+      "state": "completed",
+      "files": [
+        "node/light-211.test.mjs"
+      ]
+    },
+    {
+      "start": -5.557,
+      "end": -5.349,
+      "state": "completed",
+      "files": [
+        "node/light-212.test.mjs"
+      ]
+    },
+    {
+      "start": -5.486,
+      "end": -5.288,
+      "state": "completed",
+      "files": [
+        "node/light-213.test.mjs"
+      ]
+    },
+    {
+      "start": -5.446,
+      "end": -5.249,
+      "state": "completed",
+      "files": [
+        "node/light-214.test.mjs"
+      ]
+    },
+    {
+      "start": -5.384,
+      "end": -5.188,
+      "state": "completed",
+      "files": [
+        "node/light-215.test.mjs"
+      ]
+    },
+    {
+      "start": -5.343,
+      "end": -5.141,
+      "state": "completed",
+      "files": [
+        "node/light-216.test.mjs"
+      ]
+    },
+    {
+      "start": -5.279,
+      "end": -5.084,
+      "state": "completed",
+      "files": [
+        "node/light-217.test.mjs"
+      ]
+    },
+    {
+      "start": -5.236,
+      "end": -5.039,
+      "state": "completed",
+      "files": [
+        "node/light-218.test.mjs"
+      ]
+    },
+    {
+      "start": -5.178,
+      "end": -4.967,
+      "state": "completed",
+      "files": [
+        "node/light-219.test.mjs"
+      ]
+    },
+    {
+      "start": -5.133,
+      "end": -4.923,
+      "state": "completed",
+      "files": [
+        "node/light-220.test.mjs"
+      ]
+    },
+    {
+      "start": -5.075,
+      "end": -4.877,
+      "state": "completed",
+      "files": [
+        "node/light-221.test.mjs"
+      ]
+    },
+    {
+      "start": -5.027,
+      "end": -4.825,
+      "state": "completed",
+      "files": [
+        "node/light-222.test.mjs"
+      ]
+    },
+    {
+      "start": -4.952,
+      "end": -4.737,
+      "state": "completed",
+      "files": [
+        "node/light-223.test.mjs"
+      ]
+    },
+    {
+      "start": -4.916,
+      "end": -4.692,
+      "state": "completed",
+      "files": [
+        "node/light-224.test.mjs"
+      ]
+    },
+    {
+      "start": -4.863,
+      "end": -4.656,
+      "state": "completed",
+      "files": [
+        "node/light-225.test.mjs"
+      ]
+    },
+    {
+      "start": -4.807,
+      "end": -4.603,
+      "state": "completed",
+      "files": [
+        "node/light-226.test.mjs"
+      ]
+    },
+    {
+      "start": -4.718,
+      "end": -4.475,
+      "state": "completed",
+      "files": [
+        "node/light-227.test.mjs"
+      ]
+    },
+    {
+      "start": -4.685,
+      "end": -4.371,
+      "state": "completed",
+      "files": [
+        "node/light-228.test.mjs"
+      ]
+    },
+    {
+      "start": -4.639,
+      "end": -4.407,
+      "state": "completed",
+      "files": [
+        "node/light-229.test.mjs"
+      ]
+    },
+    {
+      "start": -4.586,
+      "end": -4.333,
+      "state": "completed",
+      "files": [
+        "node/light-230.test.mjs"
+      ]
+    },
+    {
+      "start": -4.458,
+      "end": -4.236,
+      "state": "completed",
+      "files": [
+        "node/light-231.test.mjs"
+      ]
+    },
+    {
+      "start": -4.388,
+      "end": -4.138,
+      "state": "completed",
+      "files": [
+        "node/light-232.test.mjs"
+      ]
+    },
+    {
+      "start": -4.362,
+      "end": -4.093,
+      "state": "completed",
+      "files": [
+        "node/light-233.test.mjs"
+      ]
+    },
+    {
+      "start": -4.315,
+      "end": -4.044,
+      "state": "completed",
+      "files": [
+        "node/light-234.test.mjs"
+      ]
+    },
+    {
+      "start": -4.22,
+      "end": -3.934,
+      "state": "completed",
+      "files": [
+        "node/light-235.test.mjs"
+      ]
+    },
+    {
+      "start": -4.118,
+      "end": -3.837,
+      "state": "completed",
+      "files": [
+        "node/light-236.test.mjs"
+      ]
+    },
+    {
+      "start": -4.083,
+      "end": -3.827,
+      "state": "completed",
+      "files": [
+        "node/light-237.test.mjs"
+      ]
+    },
+    {
+      "start": -4.014,
+      "end": -3.751,
+      "state": "completed",
+      "files": [
+        "node/light-238.test.mjs"
+      ]
+    },
+    {
+      "start": -3.892,
+      "end": -3.67,
+      "state": "completed",
+      "files": [
+        "node/light-239.test.mjs"
+      ]
+    },
+    {
+      "start": -3.817,
+      "end": -3.57,
+      "state": "completed",
+      "files": [
+        "node/light-240.test.mjs"
+      ]
+    },
+    {
+      "start": -3.789,
+      "end": -3.525,
+      "state": "completed",
+      "files": [
+        "node/light-241.test.mjs"
+      ]
+    },
+    {
+      "start": -3.729,
+      "end": -3.475,
+      "state": "completed",
+      "files": [
+        "node/light-242.test.mjs"
+      ]
+    },
+    {
+      "start": -3.651,
+      "end": -3.417,
+      "state": "completed",
+      "files": [
+        "node/light-243.test.mjs"
+      ]
+    },
+    {
+      "start": -3.541,
+      "end": -3.328,
+      "state": "completed",
+      "files": [
+        "node/light-244.test.mjs"
+      ]
+    },
+    {
+      "start": -3.507,
+      "end": -3.278,
+      "state": "completed",
+      "files": [
+        "node/light-245.test.mjs"
+      ]
+    },
+    {
+      "start": -3.459,
+      "end": -3.202,
+      "state": "completed",
+      "files": [
+        "node/light-246.test.mjs"
+      ]
+    },
+    {
+      "start": -3.399,
+      "end": -3.143,
+      "state": "completed",
+      "files": [
+        "node/light-247.test.mjs"
+      ]
+    },
+    {
+      "start": -3.317,
+      "end": -3.068,
+      "state": "completed",
+      "files": [
+        "node/light-248.test.mjs"
+      ]
+    },
+    {
+      "start": -3.255,
+      "end": -3.006,
+      "state": "completed",
+      "files": [
+        "node/light-249.test.mjs"
+      ]
+    },
+    {
+      "start": -3.162,
+      "end": -2.867,
+      "state": "completed",
+      "files": [
+        "node/light-250.test.mjs"
+      ]
+    },
+    {
+      "start": -3.114,
+      "end": -2.818,
+      "state": "completed",
+      "files": [
+        "node/light-251.test.mjs"
+      ]
+    },
+    {
+      "start": -3.047,
+      "end": -2.746,
+      "state": "completed",
+      "files": [
+        "node/light-252.test.mjs"
+      ]
+    },
+    {
+      "start": -2.981,
+      "end": -2.721,
+      "state": "completed",
+      "files": [
+        "node/light-253.test.mjs"
+      ]
+    },
+    {
+      "start": -2.851,
+      "end": -2.64,
+      "state": "completed",
+      "files": [
+        "node/light-254.test.mjs"
+      ]
+    },
+    {
+      "start": -2.792,
+      "end": -2.577,
+      "state": "completed",
+      "files": [
+        "node/light-255.test.mjs"
+      ]
+    },
+    {
+      "start": -2.734,
+      "end": -2.528,
+      "state": "completed",
+      "files": [
+        "node/light-256.test.mjs"
+      ]
+    },
+    {
+      "start": -2.704,
+      "end": -2.488,
+      "state": "completed",
+      "files": [
+        "node/light-257.test.mjs"
+      ]
+    },
+    {
+      "start": -2.622,
+      "end": -2.428,
+      "state": "completed",
+      "files": [
+        "node/light-258.test.mjs"
+      ]
+    },
+    {
+      "start": -2.567,
+      "end": -2.378,
+      "state": "completed",
+      "files": [
+        "node/light-259.test.mjs"
+      ]
+    },
+    {
+      "start": -2.523,
+      "end": -2.324,
+      "state": "completed",
+      "files": [
+        "node/light-260.test.mjs"
+      ]
+    },
+    {
+      "start": -2.469,
+      "end": -2.273,
+      "state": "completed",
+      "files": [
+        "node/light-261.test.mjs"
+      ]
+    },
+    {
+      "start": -2.415,
+      "end": -2.225,
+      "state": "completed",
+      "files": [
+        "node/light-262.test.mjs"
+      ]
+    },
+    {
+      "start": -2.366,
+      "end": -2.178,
+      "state": "completed",
+      "files": [
+        "node/light-263.test.mjs"
+      ]
+    },
+    {
+      "start": -2.316,
+      "end": -2.124,
+      "state": "completed",
+      "files": [
+        "node/light-264.test.mjs"
+      ]
+    },
+    {
+      "start": -2.262,
+      "end": -2.046,
+      "state": "completed",
+      "files": [
+        "node/light-265.test.mjs"
+      ]
+    },
+    {
+      "start": -2.214,
+      "end": -1.998,
+      "state": "completed",
+      "files": [
+        "node/light-266.test.mjs"
+      ]
+    },
+    {
+      "start": -2.162,
+      "end": -1.947,
+      "state": "completed",
+      "files": [
+        "node/light-267.test.mjs"
+      ]
+    },
+    {
+      "start": -2.116,
+      "end": -1.889,
+      "state": "completed",
+      "files": [
+        "node/light-268.test.mjs"
+      ]
+    },
+    {
+      "start": -2.034,
+      "end": -1.825,
+      "state": "completed",
+      "files": [
+        "node/light-269.test.mjs"
+      ]
+    },
+    {
+      "start": -1.982,
+      "end": -1.778,
+      "state": "completed",
+      "files": [
+        "node/light-270.test.mjs"
+      ]
+    },
+    {
+      "start": -1.936,
+      "end": -1.731,
+      "state": "completed",
+      "files": [
+        "node/light-271.test.mjs"
+      ]
+    },
+    {
+      "start": -1.877,
+      "end": -1.681,
+      "state": "completed",
+      "files": [
+        "node/light-272.test.mjs"
+      ]
+    },
+    {
+      "start": -1.809,
+      "end": -1.614,
+      "state": "completed",
+      "files": [
+        "node/light-273.test.mjs"
+      ]
+    },
+    {
+      "start": -1.765,
+      "end": -1.573,
+      "state": "completed",
+      "files": [
+        "node/light-274.test.mjs"
+      ]
+    },
+    {
+      "start": -1.72,
+      "end": -1.523,
+      "state": "completed",
+      "files": [
+        "node/light-275.test.mjs"
+      ]
+    },
+    {
+      "start": -1.673,
+      "end": -1.463,
+      "state": "completed",
+      "files": [
+        "node/light-276.test.mjs"
+      ]
+    },
+    {
+      "start": -1.603,
+      "end": -1.408,
+      "state": "completed",
+      "files": [
+        "node/light-277.test.mjs"
+      ]
+    },
+    {
+      "start": -1.56,
+      "end": -1.36,
+      "state": "completed",
+      "files": [
+        "node/light-278.test.mjs"
+      ]
+    },
+    {
+      "start": -1.504,
+      "end": -1.301,
+      "state": "completed",
+      "files": [
+        "node/light-279.test.mjs"
+      ]
+    },
+    {
+      "start": -1.456,
+      "end": -1.262,
+      "state": "completed",
+      "files": [
+        "node/light-280.test.mjs"
+      ]
+    },
+    {
+      "start": -1.396,
+      "end": -1.218,
+      "state": "completed",
+      "files": [
+        "node/light-281.test.mjs"
+      ]
+    },
+    {
+      "start": -1.35,
+      "end": -1.161,
+      "state": "completed",
+      "files": [
+        "node/light-282.test.mjs"
+      ]
+    },
+    {
+      "start": -1.291,
+      "end": -1.11,
+      "state": "completed",
+      "files": [
+        "node/light-283.test.mjs"
+      ]
+    },
+    {
+      "start": -1.254,
+      "end": -1.073,
+      "state": "completed",
+      "files": [
+        "node/light-284.test.mjs"
+      ]
+    },
+    {
+      "start": -1.209,
+      "end": -1.032,
+      "state": "completed",
+      "files": [
+        "node/light-285.test.mjs"
+      ]
+    },
+    {
+      "start": -1.152,
+      "end": -0.97,
+      "state": "completed",
+      "files": [
+        "node/light-286.test.mjs"
+      ]
+    },
+    {
+      "start": -1.1,
+      "end": -0.901,
+      "state": "completed",
+      "files": [
+        "node/light-287.test.mjs"
+      ]
+    },
+    {
+      "start": -1.066,
+      "end": -0.861,
+      "state": "completed",
+      "files": [
+        "node/light-288.test.mjs"
+      ]
+    },
+    {
+      "start": -1.022,
+      "end": -0.818,
+      "state": "completed",
+      "files": [
+        "node/light-289.test.mjs"
+      ]
+    },
+    {
+      "start": -0.959,
+      "end": -0.762,
+      "state": "completed",
+      "files": [
+        "node/light-290.test.mjs"
+      ]
+    },
+    {
+      "start": -0.889,
+      "end": -0.69,
+      "state": "completed",
+      "files": [
+        "node/light-291.test.mjs"
+      ]
+    },
+    {
+      "start": -0.854,
+      "end": -0.639,
+      "state": "completed",
+      "files": [
+        "node/light-292.test.mjs"
+      ]
+    },
+    {
+      "start": -0.801,
+      "end": -0.589,
+      "state": "completed",
+      "files": [
+        "node/light-293.test.mjs"
+      ]
+    },
+    {
+      "start": -0.749,
+      "end": -0.543,
+      "state": "completed",
+      "files": [
+        "node/light-294.test.mjs"
+      ]
+    },
+    {
+      "start": -0.675,
+      "end": -0.466,
+      "state": "completed",
+      "files": [
+        "node/light-295.test.mjs"
+      ]
+    },
+    {
+      "start": -0.629,
+      "end": -0.418,
+      "state": "completed",
+      "files": [
+        "node/light-296.test.mjs"
+      ]
+    },
+    {
+      "start": -0.575,
+      "end": -0.373,
+      "state": "completed",
+      "files": [
+        "node/light-297.test.mjs"
+      ]
+    },
+    {
+      "start": -0.533,
+      "end": -0.329,
+      "state": "completed",
+      "files": [
+        "node/light-298.test.mjs"
+      ]
+    },
+    {
+      "start": -0.454,
+      "end": -0.23,
+      "state": "completed",
+      "files": [
+        "node/light-299.test.mjs"
+      ]
+    },
+    {
+      "start": -0.41,
+      "end": -0.241,
+      "state": "completed",
+      "files": [
+        "node/quick.test.mjs"
+      ]
+    },
+    {
+      "start": 0.115,
+      "end": 0.255,
+      "state": "completed",
+      "files": [
+        "node/quick.test.mjs"
+      ]
+    },
+    {
+      "start": 0.129,
+      "end": 0.339,
+      "state": "completed",
+      "files": [
+        "node/light-002.test.mjs"
+      ]
+    },
+    {
+      "start": 0.144,
+      "end": 0.381,
+      "state": "completed",
+      "files": [
+        "node/light-000.test.mjs"
+      ]
+    },
+    {
+      "start": 0.159,
+      "end": 0.401,
+      "state": "completed",
+      "files": [
+        "node/light-171.test.mjs"
+      ]
+    },
+    {
+      "start": 0.268,
+      "end": 0.458,
+      "state": "completed",
+      "files": [
+        "node/light-162.test.mjs"
+      ]
+    },
+    {
+      "start": 0.359,
+      "end": 0.541,
+      "state": "completed",
+      "files": [
+        "node/light-004.test.mjs"
+      ]
+    },
+    {
+      "start": 0.392,
+      "end": 0.603,
+      "state": "completed",
+      "files": [
+        "node/light-285.test.mjs"
+      ]
+    },
+    {
+      "start": 0.412,
+      "end": 0.632,
+      "state": "completed",
+      "files": [
+        "node/light-170.test.mjs"
+      ]
+    },
+    {
+      "start": 0.465,
+      "end": 0.672,
+      "state": "completed",
+      "files": [
+        "node/light-167.test.mjs"
+      ]
+    },
+    {
+      "start": 0.551,
+      "end": 0.742,
+      "state": "completed",
+      "files": [
+        "node/light-007.test.mjs"
+      ]
+    },
+    {
+      "start": 0.62,
+      "end": 0.827,
+      "state": "completed",
+      "files": [
+        "node/light-166.test.mjs"
+      ]
+    },
+    {
+      "start": 0.646,
+      "end": 0.862,
+      "state": "completed",
+      "files": [
+        "node/light-115.test.mjs"
+      ]
+    },
+    {
+      "start": 0.679,
+      "end": 0.889,
+      "state": "completed",
+      "files": [
+        "node/light-174.test.mjs"
+      ]
+    },
+    {
+      "start": 0.753,
+      "end": 0.943,
+      "state": "completed",
+      "files": [
+        "node/light-033.test.mjs"
+      ]
+    },
+    {
+      "start": 0.846,
+      "end": 1.028,
+      "state": "completed",
+      "files": [
+        "node/light-010.test.mjs"
+      ]
+    },
+    {
+      "start": 0.874,
+      "end": 1.082,
+      "state": "completed",
+      "files": [
+        "node/light-011.test.mjs"
+      ]
+    },
+    {
+      "start": 0.897,
+      "end": 1.11,
+      "state": "completed",
+      "files": [
+        "node/light-151.test.mjs"
+      ]
+    },
+    {
+      "start": 0.956,
+      "end": 1.146,
+      "state": "completed",
+      "files": [
+        "node/light-188.test.mjs"
+      ]
+    },
+    {
+      "start": 1.039,
+      "end": 1.223,
+      "state": "completed",
+      "files": [
+        "node/light-075.test.mjs"
+      ]
+    },
+    {
+      "start": 1.095,
+      "end": 1.29,
+      "state": "completed",
+      "files": [
+        "node/light-118.test.mjs"
+      ]
+    },
+    {
+      "start": 1.119,
+      "end": 1.335,
+      "state": "completed",
+      "files": [
+        "node/light-281.test.mjs"
+      ]
+    },
+    {
+      "start": 1.158,
+      "end": 1.368,
+      "state": "completed",
+      "files": [
+        "node/light-070.test.mjs"
+      ]
+    },
+    {
+      "start": 1.235,
+      "end": 1.441,
+      "state": "completed",
+      "files": [
+        "node/light-131.test.mjs"
+      ]
+    },
+    {
+      "start": 1.304,
+      "end": 1.495,
+      "state": "completed",
+      "files": [
+        "node/light-176.test.mjs"
+      ]
+    },
+    {
+      "start": 1.344,
+      "end": 1.546,
+      "state": "completed",
+      "files": [
+        "node/light-081.test.mjs"
+      ]
+    },
+    {
+      "start": 1.38,
+      "end": 1.582,
+      "state": "completed",
+      "files": [
+        "node/light-053.test.mjs"
+      ]
+    },
+    {
+      "start": 1.454,
+      "end": 1.66,
+      "state": "completed",
+      "files": [
+        "node/light-183.test.mjs"
+      ]
+    },
+    {
+      "start": 1.513,
+      "end": 1.708,
+      "state": "completed",
+      "files": [
+        "node/light-160.test.mjs"
+      ]
+    },
+    {
+      "start": 1.555,
+      "end": 1.761,
+      "state": "completed",
+      "files": [
+        "node/light-092.test.mjs"
+      ]
+    },
+    {
+      "start": 1.605,
+      "end": 1.807,
+      "state": "completed",
+      "files": [
+        "node/light-184.test.mjs"
+      ]
+    },
+    {
+      "start": 1.673,
+      "end": 1.888,
+      "state": "completed",
+      "files": [
+        "node/light-177.test.mjs"
+      ]
+    },
+    {
+      "start": 1.719,
+      "end": 1.925,
+      "state": "completed",
+      "files": [
+        "node/light-169.test.mjs"
+      ]
+    },
+    {
+      "start": 1.773,
+      "end": 1.967,
+      "state": "completed",
+      "files": [
+        "node/light-150.test.mjs"
+      ]
+    },
+    {
+      "start": 1.825,
+      "end": 2.024,
+      "state": "completed",
+      "files": [
+        "node/light-001.test.mjs"
+      ]
+    },
+    {
+      "start": 1.9,
+      "end": 2.093,
+      "state": "completed",
+      "files": [
+        "node/light-175.test.mjs"
+      ]
+    },
+    {
+      "start": 1.936,
+      "end": 2.136,
+      "state": "completed",
+      "files": [
+        "node/light-032.test.mjs"
+      ]
+    },
+    {
+      "start": 1.975,
+      "end": 2.199,
+      "state": "completed",
+      "files": [
+        "node/light-077.test.mjs"
+      ]
+    },
+    {
+      "start": 2.035,
+      "end": 2.253,
+      "state": "completed",
+      "files": [
+        "node/light-003.test.mjs"
+      ]
+    },
+    {
+      "start": 2.104,
+      "end": 2.313,
+      "state": "completed",
+      "files": [
+        "node/light-192.test.mjs"
+      ]
+    },
+    {
+      "start": 2.153,
+      "end": 2.362,
+      "state": "completed",
+      "files": [
+        "node/light-283.test.mjs"
+      ]
+    },
+    {
+      "start": 2.211,
+      "end": 2.402,
+      "state": "completed",
+      "files": [
+        "node/light-028.test.mjs"
+      ]
+    },
+    {
+      "start": 2.268,
+      "end": 2.45,
+      "state": "completed",
+      "files": [
+        "node/light-082.test.mjs"
+      ]
+    },
+    {
+      "start": 2.326,
+      "end": 2.507,
+      "state": "completed",
+      "files": [
+        "node/light-158.test.mjs"
+      ]
+    },
+    {
+      "start": 2.372,
+      "end": 2.554,
+      "state": "completed",
+      "files": [
+        "node/light-201.test.mjs"
+      ]
+    },
+    {
+      "start": 2.411,
+      "end": 2.598,
+      "state": "completed",
+      "files": [
+        "node/light-153.test.mjs"
+      ]
+    },
+    {
+      "start": 2.46,
+      "end": 2.645,
+      "state": "completed",
+      "files": [
+        "node/light-012.test.mjs"
+      ]
+    },
+    {
+      "start": 2.519,
+      "end": 2.705,
+      "state": "completed",
+      "files": [
+        "node/light-122.test.mjs"
+      ]
+    },
+    {
+      "start": 2.567,
+      "end": 2.747,
+      "state": "completed",
+      "files": [
+        "node/light-009.test.mjs"
+      ]
+    },
+    {
+      "start": 2.616,
+      "end": 2.794,
+      "state": "completed",
+      "files": [
+        "node/light-042.test.mjs"
+      ]
+    },
+    {
+      "start": 2.656,
+      "end": 2.849,
+      "state": "completed",
+      "files": [
+        "node/light-148.test.mjs"
+      ]
+    },
+    {
+      "start": 2.716,
+      "end": 2.914,
+      "state": "completed",
+      "files": [
+        "node/light-103.test.mjs"
+      ]
+    },
+    {
+      "start": 2.757,
+      "end": 2.955,
+      "state": "completed",
+      "files": [
+        "node/light-069.test.mjs"
+      ]
+    },
+    {
+      "start": 2.807,
+      "end": 3.004,
+      "state": "completed",
+      "files": [
+        "node/light-164.test.mjs"
+      ]
+    },
+    {
+      "start": 2.86,
+      "end": 3.055,
+      "state": "completed",
+      "files": [
+        "node/light-006.test.mjs"
+      ]
+    },
+    {
+      "start": 2.926,
+      "end": 3.111,
+      "state": "completed",
+      "files": [
+        "node/light-185.test.mjs"
+      ]
+    },
+    {
+      "start": 2.965,
+      "end": 3.15,
+      "state": "completed",
+      "files": [
+        "node/light-013.test.mjs"
+      ]
+    },
+    {
+      "start": 3.013,
+      "end": 3.203,
+      "state": "completed",
+      "files": [
+        "node/light-155.test.mjs"
+      ]
+    },
+    {
+      "start": 3.065,
+      "end": 3.251,
+      "state": "completed",
+      "files": [
+        "node/light-157.test.mjs"
+      ]
+    },
+    {
+      "start": 3.122,
+      "end": 3.309,
+      "state": "completed",
+      "files": [
+        "node/light-084.test.mjs"
+      ]
+    },
+    {
+      "start": 3.162,
+      "end": 3.366,
+      "state": "completed",
+      "files": [
+        "node/light-043.test.mjs"
+      ]
+    },
+    {
+      "start": 3.211,
+      "end": 3.405,
+      "state": "completed",
+      "files": [
+        "node/light-119.test.mjs"
+      ]
+    },
+    {
+      "start": 3.263,
+      "end": 3.445,
+      "state": "completed",
+      "files": [
+        "node/light-083.test.mjs"
+      ]
+    },
+    {
+      "start": 3.321,
+      "end": 3.498,
+      "state": "completed",
+      "files": [
+        "node/light-193.test.mjs"
+      ]
+    },
+    {
+      "start": 3.377,
+      "end": 3.563,
+      "state": "completed",
+      "files": [
+        "node/light-060.test.mjs"
+      ]
+    },
+    {
+      "start": 3.411,
+      "end": 3.606,
+      "state": "completed",
+      "files": [
+        "node/light-197.test.mjs"
+      ]
+    },
+    {
+      "start": 3.458,
+      "end": 3.646,
+      "state": "completed",
+      "files": [
+        "node/light-165.test.mjs"
+      ]
+    },
+    {
+      "start": 3.509,
+      "end": 3.691,
+      "state": "completed",
+      "files": [
+        "node/light-091.test.mjs"
+      ]
+    },
+    {
+      "start": 3.574,
+      "end": 3.762,
+      "state": "completed",
+      "files": [
+        "node/light-149.test.mjs"
+      ]
+    },
+    {
+      "start": 3.613,
+      "end": 3.808,
+      "state": "completed",
+      "files": [
+        "node/light-161.test.mjs"
+      ]
+    },
+    {
+      "start": 3.658,
+      "end": 3.841,
+      "state": "completed",
+      "files": [
+        "node/light-181.test.mjs"
+      ]
+    },
+    {
+      "start": 3.701,
+      "end": 3.887,
+      "state": "completed",
+      "files": [
+        "node/light-125.test.mjs"
+      ]
+    },
+    {
+      "start": 3.774,
+      "end": 3.963,
+      "state": "completed",
+      "files": [
+        "node/light-173.test.mjs"
+      ]
+    },
+    {
+      "start": 3.815,
+      "end": 4.019,
+      "state": "completed",
+      "files": [
+        "node/light-163.test.mjs"
+      ]
+    },
+    {
+      "start": 3.853,
+      "end": 4.052,
+      "state": "completed",
+      "files": [
+        "node/light-087.test.mjs"
+      ]
+    },
+    {
+      "start": 3.899,
+      "end": 4.093,
+      "state": "completed",
+      "files": [
+        "node/light-286.test.mjs"
+      ]
+    },
+    {
+      "start": 3.978,
+      "end": 4.184,
+      "state": "completed",
+      "files": [
+        "node/light-049.test.mjs"
+      ]
+    },
+    {
+      "start": 4.028,
+      "end": 4.259,
+      "state": "completed",
+      "files": [
+        "node/light-029.test.mjs"
+      ]
+    },
+    {
+      "start": 4.062,
+      "end": 4.283,
+      "state": "completed",
+      "files": [
+        "node/light-152.test.mjs"
+      ]
+    },
+    {
+      "start": 4.103,
+      "end": 4.329,
+      "state": "completed",
+      "files": [
+        "node/light-030.test.mjs"
+      ]
+    },
+    {
+      "start": 4.203,
+      "end": 4.435,
+      "state": "completed",
+      "files": [
+        "node/light-194.test.mjs"
+      ]
+    },
+    {
+      "start": 4.267,
+      "end": 4.492,
+      "state": "completed",
+      "files": [
+        "node/light-005.test.mjs"
+      ]
+    },
+    {
+      "start": 4.297,
+      "end": 4.55,
+      "state": "completed",
+      "files": [
+        "node/light-023.test.mjs"
+      ]
+    },
+    {
+      "start": 4.341,
+      "end": 4.589,
+      "state": "completed",
+      "files": [
+        "node/light-182.test.mjs"
+      ]
+    },
+    {
+      "start": 4.447,
+      "end": 4.646,
+      "state": "completed",
+      "files": [
+        "node/light-186.test.mjs"
+      ]
+    },
+    {
+      "start": 4.504,
+      "end": 4.708,
+      "state": "completed",
+      "files": [
+        "node/light-086.test.mjs"
+      ]
+    },
+    {
+      "start": 4.565,
+      "end": 4.778,
+      "state": "completed",
+      "files": [
+        "node/light-159.test.mjs"
+      ]
+    },
+    {
+      "start": 4.601,
+      "end": 4.824,
+      "state": "completed",
+      "files": [
+        "node/light-117.test.mjs"
+      ]
+    },
+    {
+      "start": 4.662,
+      "end": 4.869,
+      "state": "completed",
+      "files": [
+        "node/light-008.test.mjs"
+      ]
+    },
+    {
+      "start": 4.719,
+      "end": 4.923,
+      "state": "completed",
+      "files": [
+        "node/light-074.test.mjs"
+      ]
+    },
+    {
+      "start": 4.796,
+      "end": 5.001,
+      "state": "completed",
+      "files": [
+        "node/light-076.test.mjs"
+      ]
+    },
+    {
+      "start": 4.835,
+      "end": 5.047,
+      "state": "completed",
+      "files": [
+        "node/light-129.test.mjs"
+      ]
+    },
+    {
+      "start": 4.881,
+      "end": 5.085,
+      "state": "completed",
+      "files": [
+        "node/light-147.test.mjs"
+      ]
+    },
+    {
+      "start": 4.93,
+      "end": 5.135,
+      "state": "completed",
+      "files": [
+        "node/light-259.test.mjs"
+      ]
+    },
+    {
+      "start": 5.018,
+      "end": 5.201,
+      "state": "completed",
+      "files": [
+        "node/light-051.test.mjs"
+      ]
+    },
+    {
+      "start": 5.061,
+      "end": 5.248,
+      "state": "completed",
+      "files": [
+        "node/light-172.test.mjs"
+      ]
+    },
+    {
+      "start": 5.096,
+      "end": 5.287,
+      "state": "completed",
+      "files": [
+        "node/light-154.test.mjs"
+      ]
+    },
+    {
+      "start": 5.143,
+      "end": 5.332,
+      "state": "completed",
+      "files": [
+        "node/light-190.test.mjs"
+      ]
+    },
+    {
+      "start": 5.213,
+      "end": 5.423,
+      "state": "completed",
+      "files": [
+        "node/light-096.test.mjs"
+      ]
+    },
+    {
+      "start": 5.26,
+      "end": 5.471,
+      "state": "completed",
+      "files": [
+        "node/light-116.test.mjs"
+      ]
+    },
+    {
+      "start": 5.298,
+      "end": 5.527,
+      "state": "completed",
+      "files": [
+        "node/light-202.test.mjs"
+      ]
+    },
+    {
+      "start": 5.339,
+      "end": 5.577,
+      "state": "completed",
+      "files": [
+        "node/light-126.test.mjs"
+      ]
+    },
+    {
+      "start": 5.437,
+      "end": 5.643,
+      "state": "completed",
+      "files": [
+        "node/light-273.test.mjs"
+      ]
+    },
+    {
+      "start": 5.489,
+      "end": 5.704,
+      "state": "completed",
+      "files": [
+        "node/light-195.test.mjs"
+      ]
+    },
+    {
+      "start": 5.54,
+      "end": 5.753,
+      "state": "completed",
+      "files": [
+        "node/light-102.test.mjs"
+      ]
+    },
+    {
+      "start": 5.591,
+      "end": 5.8,
+      "state": "completed",
+      "files": [
+        "node/light-284.test.mjs"
+      ]
+    },
+    {
+      "start": 5.658,
+      "end": 5.879,
+      "state": "completed",
+      "files": [
+        "node/light-187.test.mjs"
+      ]
+    },
+    {
+      "start": 5.721,
+      "end": 5.94,
+      "state": "completed",
+      "files": [
+        "node/light-222.test.mjs"
+      ]
+    },
+    {
+      "start": 5.765,
+      "end": 5.991,
+      "state": "completed",
+      "files": [
+        "node/light-144.test.mjs"
+      ]
+    },
+    {
+      "start": 5.808,
+      "end": 6.036,
+      "state": "completed",
+      "files": [
+        "node/light-156.test.mjs"
+      ]
+    },
+    {
+      "start": 5.902,
+      "end": 6.118,
+      "state": "completed",
+      "files": [
+        "node/light-031.test.mjs"
+      ]
+    },
+    {
+      "start": 5.952,
+      "end": 6.152,
+      "state": "completed",
+      "files": [
+        "node/light-025.test.mjs"
+      ]
+    },
+    {
+      "start": 6.006,
+      "end": 6.188,
+      "state": "completed",
+      "files": [
+        "node/light-061.test.mjs"
+      ]
+    },
+    {
+      "start": 6.044,
+      "end": 6.234,
+      "state": "completed",
+      "files": [
+        "node/light-055.test.mjs"
+      ]
+    },
+    {
+      "start": 6.127,
+      "end": 6.302,
+      "state": "completed",
+      "files": [
+        "node/light-293.test.mjs"
+      ]
+    },
+    {
+      "start": 6.161,
+      "end": 6.339,
+      "state": "completed",
+      "files": [
+        "node/light-095.test.mjs"
+      ]
+    },
+    {
+      "start": 6.199,
+      "end": 6.384,
+      "state": "completed",
+      "files": [
+        "node/light-120.test.mjs"
+      ]
+    },
+    {
+      "start": 6.241,
+      "end": 6.437,
+      "state": "completed",
+      "files": [
+        "node/light-034.test.mjs"
+      ]
+    },
+    {
+      "start": 6.312,
+      "end": 6.484,
+      "state": "completed",
+      "files": [
+        "node/light-121.test.mjs"
+      ]
+    },
+    {
+      "start": 6.352,
+      "end": 6.536,
+      "state": "completed",
+      "files": [
+        "node/light-093.test.mjs"
+      ]
+    },
+    {
+      "start": 6.394,
+      "end": 6.578,
+      "state": "completed",
+      "files": [
+        "node/light-101.test.mjs"
+      ]
+    },
+    {
+      "start": 6.444,
+      "end": 6.622,
+      "state": "completed",
+      "files": [
+        "node/light-106.test.mjs"
+      ]
+    },
+    {
+      "start": 6.495,
+      "end": 6.68,
+      "state": "completed",
+      "files": [
+        "node/light-280.test.mjs"
+      ]
+    },
+    {
+      "start": 6.546,
+      "end": 6.74,
+      "state": "completed",
+      "files": [
+        "node/light-263.test.mjs"
+      ]
+    },
+    {
+      "start": 6.589,
+      "end": 6.793,
+      "state": "completed",
+      "files": [
+        "node/light-052.test.mjs"
+      ]
+    },
+    {
+      "start": 6.63,
+      "end": 6.843,
+      "state": "completed",
+      "files": [
+        "node/light-289.test.mjs"
+      ]
+    },
+    {
+      "start": 6.696,
+      "end": 6.901,
+      "state": "completed",
+      "files": [
+        "node/light-179.test.mjs"
+      ]
+    },
+    {
+      "start": 6.753,
+      "end": 6.939,
+      "state": "completed",
+      "files": [
+        "node/light-200.test.mjs"
+      ]
+    },
+    {
+      "start": 6.806,
+      "end": 6.996,
+      "state": "completed",
+      "files": [
+        "node/light-276.test.mjs"
+      ]
+    },
+    {
+      "start": 6.851,
+      "end": 7.039,
+      "state": "completed",
+      "files": [
+        "node/light-189.test.mjs"
+      ]
+    },
+    {
+      "start": 6.913,
+      "end": 7.103,
+      "state": "completed",
+      "files": [
+        "node/light-079.test.mjs"
+      ]
+    },
+    {
+      "start": 6.951,
+      "end": 7.164,
+      "state": "completed",
+      "files": [
+        "node/light-065.test.mjs"
+      ]
+    },
+    {
+      "start": 7.007,
+      "end": 7.203,
+      "state": "completed",
+      "files": [
+        "node/light-073.test.mjs"
+      ]
+    },
+    {
+      "start": 7.048,
+      "end": 7.254,
+      "state": "completed",
+      "files": [
+        "node/light-140.test.mjs"
+      ]
+    },
+    {
+      "start": 7.12,
+      "end": 7.303,
+      "state": "completed",
+      "files": [
+        "node/light-123.test.mjs"
+      ]
+    },
+    {
+      "start": 7.174,
+      "end": 7.352,
+      "state": "completed",
+      "files": [
+        "node/light-219.test.mjs"
+      ]
+    },
+    {
+      "start": 7.214,
+      "end": 7.401,
+      "state": "completed",
+      "files": [
+        "node/light-050.test.mjs"
+      ]
+    },
+    {
+      "start": 7.261,
+      "end": 7.457,
+      "state": "completed",
+      "files": [
+        "node/light-262.test.mjs"
+      ]
+    },
+    {
+      "start": 7.315,
+      "end": 7.505,
+      "state": "completed",
+      "files": [
+        "node/light-274.test.mjs"
+      ]
+    },
+    {
+      "start": 7.367,
+      "end": 7.55,
+      "state": "completed",
+      "files": [
+        "node/light-100.test.mjs"
+      ]
+    },
+    {
+      "start": 7.412,
+      "end": 7.594,
+      "state": "completed",
+      "files": [
+        "node/light-127.test.mjs"
+      ]
+    },
+    {
+      "start": 7.466,
+      "end": 7.64,
+      "state": "completed",
+      "files": [
+        "node/light-213.test.mjs"
+      ]
+    },
+    {
+      "start": 7.515,
+      "end": 7.693,
+      "state": "completed",
+      "files": [
+        "node/light-218.test.mjs"
+      ]
+    },
+    {
+      "start": 7.562,
+      "end": 7.746,
+      "state": "completed",
+      "files": [
+        "node/light-288.test.mjs"
+      ]
+    },
+    {
+      "start": 7.607,
+      "end": 7.795,
+      "state": "completed",
+      "files": [
+        "node/light-191.test.mjs"
+      ]
+    },
+    {
+      "start": 7.647,
+      "end": 7.831,
+      "state": "completed",
+      "files": [
+        "node/light-090.test.mjs"
+      ]
+    },
+    {
+      "start": 7.704,
+      "end": 7.889,
+      "state": "completed",
+      "files": [
+        "node/light-142.test.mjs"
+      ]
+    },
+    {
+      "start": 7.764,
+      "end": 7.944,
+      "state": "completed",
+      "files": [
+        "node/light-027.test.mjs"
+      ]
+    },
+    {
+      "start": 7.805,
+      "end": 7.988,
+      "state": "completed",
+      "files": [
+        "node/light-214.test.mjs"
+      ]
+    },
+    {
+      "start": 7.845,
+      "end": 8.027,
+      "state": "completed",
+      "files": [
+        "node/light-089.test.mjs"
+      ]
+    },
+    {
+      "start": 7.898,
+      "end": 8.07,
+      "state": "completed",
+      "files": [
+        "node/light-291.test.mjs"
+      ]
+    },
+    {
+      "start": 7.964,
+      "end": 8.137,
+      "state": "completed",
+      "files": [
+        "node/light-278.test.mjs"
+      ]
+    },
+    {
+      "start": 7.999,
+      "end": 8.177,
+      "state": "completed",
+      "files": [
+        "node/light-247.test.mjs"
+      ]
+    },
+    {
+      "start": 8.034,
+      "end": 8.224,
+      "state": "completed",
+      "files": [
+        "node/light-264.test.mjs"
+      ]
+    },
+    {
+      "start": 8.079,
+      "end": 8.269,
+      "state": "completed",
+      "files": [
+        "node/light-071.test.mjs"
+      ]
+    },
+    {
+      "start": 8.147,
+      "end": 8.328,
+      "state": "completed",
+      "files": [
+        "node/light-072.test.mjs"
+      ]
+    },
+    {
+      "start": 8.192,
+      "end": 8.371,
+      "state": "completed",
+      "files": [
+        "node/light-272.test.mjs"
+      ]
+    },
+    {
+      "start": 8.232,
+      "end": 8.414,
+      "state": "completed",
+      "files": [
+        "node/light-252.test.mjs"
+      ]
+    },
+    {
+      "start": 8.278,
+      "end": 8.47,
+      "state": "completed",
+      "files": [
+        "node/light-130.test.mjs"
+      ]
+    },
+    {
+      "start": 8.342,
+      "end": 8.521,
+      "state": "completed",
+      "files": [
+        "node/light-020.test.mjs"
+      ]
+    },
+    {
+      "start": 8.383,
+      "end": 8.568,
+      "state": "completed",
+      "files": [
+        "node/light-180.test.mjs"
+      ]
+    },
+    {
+      "start": 8.421,
+      "end": 8.608,
+      "state": "completed",
+      "files": [
+        "node/light-225.test.mjs"
+      ]
+    },
+    {
+      "start": 8.486,
+      "end": 8.666,
+      "state": "completed",
+      "files": [
+        "node/light-062.test.mjs"
+      ]
+    },
+    {
+      "start": 8.536,
+      "end": 8.722,
+      "state": "completed",
+      "files": [
+        "node/light-287.test.mjs"
+      ]
+    },
+    {
+      "start": 8.58,
+      "end": 8.782,
+      "state": "completed",
+      "files": [
+        "node/light-105.test.mjs"
+      ]
+    },
+    {
+      "start": 8.616,
+      "end": 8.832,
+      "state": "completed",
+      "files": [
+        "node/light-085.test.mjs"
+      ]
+    },
+    {
+      "start": 8.677,
+      "end": 8.872,
+      "state": "completed",
+      "files": [
+        "node/light-114.test.mjs"
+      ]
+    },
+    {
+      "start": 8.733,
+      "end": 8.934,
+      "state": "completed",
+      "files": [
+        "node/light-054.test.mjs"
+      ]
+    },
+    {
+      "start": 8.801,
+      "end": 8.99,
+      "state": "completed",
+      "files": [
+        "node/light-097.test.mjs"
+      ]
+    },
+    {
+      "start": 8.846,
+      "end": 9.03,
+      "state": "completed",
+      "files": [
+        "node/light-282.test.mjs"
+      ]
+    },
+    {
+      "start": 8.883,
+      "end": 9.07,
+      "state": "completed",
+      "files": [
+        "node/light-047.test.mjs"
+      ]
+    },
+    {
+      "start": 8.945,
+      "end": 9.13,
+      "state": "completed",
+      "files": [
+        "node/light-064.test.mjs"
+      ]
+    },
+    {
+      "start": 9.001,
+      "end": 9.187,
+      "state": "completed",
+      "files": [
+        "node/light-211.test.mjs"
+      ]
+    },
+    {
+      "start": 9.038,
+      "end": 9.229,
+      "state": "completed",
+      "files": [
+        "node/light-143.test.mjs"
+      ]
+    },
+    {
+      "start": 9.081,
+      "end": 9.278,
+      "state": "completed",
+      "files": [
+        "node/light-244.test.mjs"
+      ]
+    },
+    {
+      "start": 9.149,
+      "end": 9.344,
+      "state": "completed",
+      "files": [
+        "node/light-146.test.mjs"
+      ]
+    },
+    {
+      "start": 9.197,
+      "end": 9.382,
+      "state": "completed",
+      "files": [
+        "node/light-088.test.mjs"
+      ]
+    },
+    {
+      "start": 9.239,
+      "end": 9.425,
+      "state": "completed",
+      "files": [
+        "node/light-199.test.mjs"
+      ]
+    },
+    {
+      "start": 9.29,
+      "end": 9.492,
+      "state": "completed",
+      "files": [
+        "node/light-094.test.mjs"
+      ]
+    },
+    {
+      "start": 9.355,
+      "end": 9.541,
+      "state": "completed",
+      "files": [
+        "node/light-078.test.mjs"
+      ]
+    },
+    {
+      "start": 9.394,
+      "end": 9.583,
+      "state": "completed",
+      "files": [
+        "node/light-277.test.mjs"
+      ]
+    },
+    {
+      "start": 9.432,
+      "end": 9.625,
+      "state": "completed",
+      "files": [
+        "node/light-205.test.mjs"
+      ]
+    },
+    {
+      "start": 9.506,
+      "end": 9.691,
+      "state": "completed",
+      "files": [
+        "node/light-066.test.mjs"
+      ]
+    },
+    {
+      "start": 9.551,
+      "end": 9.746,
+      "state": "completed",
+      "files": [
+        "node/light-260.test.mjs"
+      ]
+    },
+    {
+      "start": 9.594,
+      "end": 9.792,
+      "state": "completed",
+      "files": [
+        "node/light-026.test.mjs"
+      ]
+    },
+    {
+      "start": 9.632,
+      "end": 9.837,
+      "state": "completed",
+      "files": [
+        "node/light-080.test.mjs"
+      ]
+    },
+    {
+      "start": 9.707,
+      "end": 9.897,
+      "state": "completed",
+      "files": [
+        "node/light-024.test.mjs"
+      ]
+    },
+    {
+      "start": 9.76,
+      "end": 9.945,
+      "state": "completed",
+      "files": [
+        "node/light-040.test.mjs"
+      ]
+    },
+    {
+      "start": 9.803,
+      "end": 9.989,
+      "state": "completed",
+      "files": [
+        "node/light-021.test.mjs"
+      ]
+    },
+    {
+      "start": 9.846,
+      "end": 10.026,
+      "state": "completed",
+      "files": [
+        "node/light-279.test.mjs"
+      ]
+    },
+    {
+      "start": 9.911,
+      "end": 10.097,
+      "state": "completed",
+      "files": [
+        "node/light-104.test.mjs"
+      ]
+    },
+    {
+      "start": 9.955,
+      "end": 10.136,
+      "state": "completed",
+      "files": [
+        "node/light-124.test.mjs"
+      ]
+    },
+    {
+      "start": 10,
+      "end": 10.19,
+      "state": "completed",
+      "files": [
+        "node/light-294.test.mjs"
+      ]
+    },
+    {
+      "start": 10.035,
+      "end": 10.233,
+      "state": "completed",
+      "files": [
+        "node/light-275.test.mjs"
+      ]
+    },
+    {
+      "start": 10.11,
+      "end": 10.3,
+      "state": "completed",
+      "files": [
+        "node/light-046.test.mjs"
+      ]
+    },
+    {
+      "start": 10.15,
+      "end": 10.34,
+      "state": "completed",
+      "files": [
+        "node/light-212.test.mjs"
+      ]
+    },
+    {
+      "start": 10.201,
+      "end": 10.393,
+      "state": "completed",
+      "files": [
+        "node/light-220.test.mjs"
+      ]
+    },
+    {
+      "start": 10.241,
+      "end": 10.437,
+      "state": "completed",
+      "files": [
+        "node/light-168.test.mjs"
+      ]
+    },
+    {
+      "start": 10.311,
+      "end": 10.496,
+      "state": "completed",
+      "files": [
+        "node/light-296.test.mjs"
+      ]
+    },
+    {
+      "start": 10.352,
+      "end": 10.559,
+      "state": "completed",
+      "files": [
+        "node/light-056.test.mjs"
+      ]
+    },
+    {
+      "start": 10.412,
+      "end": 10.608,
+      "state": "completed",
+      "files": [
+        "node/light-196.test.mjs"
+      ]
+    },
+    {
+      "start": 10.444,
+      "end": 10.643,
+      "state": "completed",
+      "files": [
+        "node/light-258.test.mjs"
+      ]
+    },
+    {
+      "start": 10.51,
+      "end": 10.7,
+      "state": "completed",
+      "files": [
+        "node/light-178.test.mjs"
+      ]
+    },
+    {
+      "start": 10.582,
+      "end": 10.759,
+      "state": "completed",
+      "files": [
+        "node/light-063.test.mjs"
+      ]
+    },
+    {
+      "start": 10.619,
+      "end": 10.795,
+      "state": "completed",
+      "files": [
+        "node/light-059.test.mjs"
+      ]
+    },
+    {
+      "start": 10.649,
+      "end": 10.83,
+      "state": "completed",
+      "files": [
+        "node/light-297.test.mjs"
+      ]
+    },
+    {
+      "start": 10.717,
+      "end": 10.892,
+      "state": "completed",
+      "files": [
+        "node/light-057.test.mjs"
+      ]
+    },
+    {
+      "start": 10.771,
+      "end": 10.949,
+      "state": "completed",
+      "files": [
+        "node/light-037.test.mjs"
+      ]
+    },
+    {
+      "start": 10.805,
+      "end": 10.989,
+      "state": "completed",
+      "files": [
+        "node/light-266.test.mjs"
+      ]
+    },
+    {
+      "start": 10.838,
+      "end": 11.029,
+      "state": "completed",
+      "files": [
+        "node/light-048.test.mjs"
+      ]
+    },
+    {
+      "start": 10.901,
+      "end": 11.082,
+      "state": "completed",
+      "files": [
+        "node/light-203.test.mjs"
+      ]
+    },
+    {
+      "start": 10.959,
+      "end": 11.15,
+      "state": "completed",
+      "files": [
+        "node/light-099.test.mjs"
+      ]
+    },
+    {
+      "start": 11,
+      "end": 11.19,
+      "state": "completed",
+      "files": [
+        "node/light-267.test.mjs"
+      ]
+    },
+    {
+      "start": 11.049,
+      "end": 11.23,
+      "state": "completed",
+      "files": [
+        "node/light-206.test.mjs"
+      ]
+    },
+    {
+      "start": 11.093,
+      "end": 11.274,
+      "state": "completed",
+      "files": [
+        "node/light-017.test.mjs"
+      ]
+    },
+    {
+      "start": 11.161,
+      "end": 11.339,
+      "state": "completed",
+      "files": [
+        "node/light-295.test.mjs"
+      ]
+    },
+    {
+      "start": 11.201,
+      "end": 11.377,
+      "state": "completed",
+      "files": [
+        "node/light-141.test.mjs"
+      ]
+    },
+    {
+      "start": 11.237,
+      "end": 11.422,
+      "state": "completed",
+      "files": [
+        "node/light-137.test.mjs"
+      ]
+    },
+    {
+      "start": 11.287,
+      "end": 11.471,
+      "state": "completed",
+      "files": [
+        "node/light-107.test.mjs"
+      ]
+    },
+    {
+      "start": 11.351,
+      "end": 11.53,
+      "state": "completed",
+      "files": [
+        "node/light-016.test.mjs"
+      ]
+    },
+    {
+      "start": 11.389,
+      "end": 11.574,
+      "state": "completed",
+      "files": [
+        "node/light-207.test.mjs"
+      ]
+    },
+    {
+      "start": 11.43,
+      "end": 11.61,
+      "state": "completed",
+      "files": [
+        "node/light-217.test.mjs"
+      ]
+    },
+    {
+      "start": 11.487,
+      "end": 11.659,
+      "state": "completed",
+      "files": [
+        "node/light-019.test.mjs"
+      ]
+    },
+    {
+      "start": 11.54,
+      "end": 11.71,
+      "state": "completed",
+      "files": [
+        "node/light-045.test.mjs"
+      ]
+    },
+    {
+      "start": 11.584,
+      "end": 11.758,
+      "state": "completed",
+      "files": [
+        "node/light-022.test.mjs"
+      ]
+    },
+    {
+      "start": 11.617,
+      "end": 11.79,
+      "state": "completed",
+      "files": [
+        "node/light-036.test.mjs"
+      ]
+    },
+    {
+      "start": 11.669,
+      "end": 11.843,
+      "state": "completed",
+      "files": [
+        "node/light-035.test.mjs"
+      ]
+    },
+    {
+      "start": 11.721,
+      "end": 11.891,
+      "state": "completed",
+      "files": [
+        "node/light-257.test.mjs"
+      ]
+    },
+    {
+      "start": 11.768,
+      "end": 11.934,
+      "state": "completed",
+      "files": [
+        "node/light-139.test.mjs"
+      ]
+    },
+    {
+      "start": 11.796,
+      "end": 11.969,
+      "state": "completed",
+      "files": [
+        "node/light-113.test.mjs"
+      ]
+    },
+    {
+      "start": 11.854,
+      "end": 12.025,
+      "state": "completed",
+      "files": [
+        "node/light-058.test.mjs"
+      ]
+    },
+    {
+      "start": 11.904,
+      "end": 12.072,
+      "state": "completed",
+      "files": [
+        "node/light-039.test.mjs"
+      ]
+    },
+    {
+      "start": 11.943,
+      "end": 12.115,
+      "state": "completed",
+      "files": [
+        "node/light-221.test.mjs"
+      ]
+    },
+    {
+      "start": 11.976,
+      "end": 12.153,
+      "state": "completed",
+      "files": [
+        "node/light-215.test.mjs"
+      ]
+    },
+    {
+      "start": 12.035,
+      "end": 12.204,
+      "state": "completed",
+      "files": [
+        "node/light-290.test.mjs"
+      ]
+    },
+    {
+      "start": 12.083,
+      "end": 12.257,
+      "state": "completed",
+      "files": [
+        "node/light-245.test.mjs"
+      ]
+    },
+    {
+      "start": 12.125,
+      "end": 12.302,
+      "state": "completed",
+      "files": [
+        "node/light-204.test.mjs"
+      ]
+    },
+    {
+      "start": 12.16,
+      "end": 12.34,
+      "state": "completed",
+      "files": [
+        "node/light-198.test.mjs"
+      ]
+    },
+    {
+      "start": 12.216,
+      "end": 12.389,
+      "state": "completed",
+      "files": [
+        "node/light-128.test.mjs"
+      ]
+    },
+    {
+      "start": 12.268,
+      "end": 12.444,
+      "state": "completed",
+      "files": [
+        "node/light-265.test.mjs"
+      ]
+    },
+    {
+      "start": 12.316,
+      "end": 12.484,
+      "state": "completed",
+      "files": [
+        "node/light-292.test.mjs"
+      ]
+    },
+    {
+      "start": 12.347,
+      "end": 12.525,
+      "state": "completed",
+      "files": [
+        "node/light-270.test.mjs"
+      ]
+    },
+    {
+      "start": 12.4,
+      "end": 12.584,
+      "state": "completed",
+      "files": [
+        "node/light-136.test.mjs"
+      ]
+    },
+    {
+      "start": 12.453,
+      "end": 12.623,
+      "state": "completed",
+      "files": [
+        "node/light-216.test.mjs"
+      ]
+    },
+    {
+      "start": 12.495,
+      "end": 12.668,
+      "state": "completed",
+      "files": [
+        "node/light-014.test.mjs"
+      ]
+    },
+    {
+      "start": 12.531,
+      "end": 12.705,
+      "state": "completed",
+      "files": [
+        "node/light-261.test.mjs"
+      ]
+    },
+    {
+      "start": 12.598,
+      "end": 12.767,
+      "state": "completed",
+      "files": [
+        "node/light-299.test.mjs"
+      ]
+    },
+    {
+      "start": 12.637,
+      "end": 12.803,
+      "state": "completed",
+      "files": [
+        "node/light-209.test.mjs"
+      ]
+    },
+    {
+      "start": 12.679,
+      "end": 12.85,
+      "state": "completed",
+      "files": [
+        "node/light-108.test.mjs"
+      ]
+    },
+    {
+      "start": 12.711,
+      "end": 12.887,
+      "state": "completed",
+      "files": [
+        "node/light-226.test.mjs"
+      ]
+    },
+    {
+      "start": 12.776,
+      "end": 12.941,
+      "state": "completed",
+      "files": [
+        "node/light-269.test.mjs"
+      ]
+    },
+    {
+      "start": 12.812,
+      "end": 12.976,
+      "state": "completed",
+      "files": [
+        "node/light-041.test.mjs"
+      ]
+    },
+    {
+      "start": 12.859,
+      "end": 13.017,
+      "state": "completed",
+      "files": [
+        "node/light-018.test.mjs"
+      ]
+    },
+    {
+      "start": 12.894,
+      "end": 13.062,
+      "state": "completed",
+      "files": [
+        "node/light-044.test.mjs"
+      ]
+    },
+    {
+      "start": 12.952,
+      "end": 13.124,
+      "state": "completed",
+      "files": [
+        "node/light-271.test.mjs"
+      ]
+    },
+    {
+      "start": 12.985,
+      "end": 13.16,
+      "state": "completed",
+      "files": [
+        "node/light-239.test.mjs"
+      ]
+    },
+    {
+      "start": 13.027,
+      "end": 13.197,
+      "state": "completed",
+      "files": [
+        "node/light-109.test.mjs"
+      ]
+    },
+    {
+      "start": 13.07,
+      "end": 13.244,
+      "state": "completed",
+      "files": [
+        "node/light-068.test.mjs"
+      ]
+    },
+    {
+      "start": 13.136,
+      "end": 13.307,
+      "state": "completed",
+      "files": [
+        "node/light-067.test.mjs"
+      ]
+    },
+    {
+      "start": 13.17,
+      "end": 13.344,
+      "state": "completed",
+      "files": [
+        "node/light-224.test.mjs"
+      ]
+    },
+    {
+      "start": 13.206,
+      "end": 13.382,
+      "state": "completed",
+      "files": [
+        "node/light-298.test.mjs"
+      ]
+    },
+    {
+      "start": 13.25,
+      "end": 13.417,
+      "state": "completed",
+      "files": [
+        "node/light-210.test.mjs"
+      ]
+    },
+    {
+      "start": 13.317,
+      "end": 13.484,
+      "state": "completed",
+      "files": [
+        "node/light-223.test.mjs"
+      ]
+    },
+    {
+      "start": 13.354,
+      "end": 13.523,
+      "state": "completed",
+      "files": [
+        "node/light-138.test.mjs"
+      ]
+    },
+    {
+      "start": 13.392,
+      "end": 13.563,
+      "state": "completed",
+      "files": [
+        "node/light-145.test.mjs"
+      ]
+    },
+    {
+      "start": 13.424,
+      "end": 13.619,
+      "state": "completed",
+      "files": [
+        "node/light-015.test.mjs"
+      ]
+    },
+    {
+      "start": 13.494,
+      "end": 13.723,
+      "state": "completed",
+      "files": [
+        "node/light-253.test.mjs"
+      ]
+    },
+    {
+      "start": 13.534,
+      "end": 13.729,
+      "state": "completed",
+      "files": [
+        "node/light-268.test.mjs"
+      ]
+    },
+    {
+      "start": 13.582,
+      "end": 13.772,
+      "state": "completed",
+      "files": [
+        "node/light-238.test.mjs"
+      ]
+    },
+    {
+      "start": 13.626,
+      "end": 13.805,
+      "state": "completed",
+      "files": [
+        "node/light-110.test.mjs"
+      ]
+    },
+    {
+      "start": 13.738,
+      "end": 13.918,
+      "state": "completed",
+      "files": [
+        "node/light-228.test.mjs"
+      ]
+    },
+    {
+      "start": 13.749,
+      "end": 13.956,
+      "state": "completed",
+      "files": [
+        "node/light-256.test.mjs"
+      ]
+    },
+    {
+      "start": 13.782,
+      "end": 13.998,
+      "state": "completed",
+      "files": [
+        "node/light-098.test.mjs"
+      ]
+    },
+    {
+      "start": 13.811,
+      "end": 14.021,
+      "state": "completed",
+      "files": [
+        "node/light-241.test.mjs"
+      ]
+    },
+    {
+      "start": 13.932,
+      "end": 14.101,
+      "state": "completed",
+      "files": [
+        "node/light-134.test.mjs"
+      ]
+    },
+    {
+      "start": 13.97,
+      "end": 14.144,
+      "state": "completed",
+      "files": [
+        "node/light-227.test.mjs"
+      ]
+    },
+    {
+      "start": 14.01,
+      "end": 14.181,
+      "state": "completed",
+      "files": [
+        "node/light-135.test.mjs"
+      ]
+    },
+    {
+      "start": 14.027,
+      "end": 14.22,
+      "state": "completed",
+      "files": [
+        "node/light-132.test.mjs"
+      ]
+    },
+    {
+      "start": 14.111,
+      "end": 14.286,
+      "state": "completed",
+      "files": [
+        "node/light-237.test.mjs"
+      ]
+    },
+    {
+      "start": 14.155,
+      "end": 14.338,
+      "state": "completed",
+      "files": [
+        "node/light-234.test.mjs"
+      ]
+    },
+    {
+      "start": 14.191,
+      "end": 14.377,
+      "state": "completed",
+      "files": [
+        "node/light-133.test.mjs"
+      ]
+    },
+    {
+      "start": 14.233,
+      "end": 14.418,
+      "state": "completed",
+      "files": [
+        "node/light-229.test.mjs"
+      ]
+    },
+    {
+      "start": 14.297,
+      "end": 14.472,
+      "state": "completed",
+      "files": [
+        "node/light-248.test.mjs"
+      ]
+    },
+    {
+      "start": 14.35,
+      "end": 14.52,
+      "state": "completed",
+      "files": [
+        "node/light-112.test.mjs"
+      ]
+    },
+    {
+      "start": 14.39,
+      "end": 14.563,
+      "state": "completed",
+      "files": [
+        "node/light-240.test.mjs"
+      ]
+    },
+    {
+      "start": 14.426,
+      "end": 14.605,
+      "state": "completed",
+      "files": [
+        "node/light-231.test.mjs"
+      ]
+    },
+    {
+      "start": 14.482,
+      "end": 14.669,
+      "state": "completed",
+      "files": [
+        "node/light-246.test.mjs"
+      ]
+    },
+    {
+      "start": 14.53,
+      "end": 14.705,
+      "state": "completed",
+      "files": [
+        "node/light-243.test.mjs"
+      ]
+    },
+    {
+      "start": 14.575,
+      "end": 14.751,
+      "state": "completed",
+      "files": [
+        "node/light-111.test.mjs"
+      ]
+    },
+    {
+      "start": 14.612,
+      "end": 14.783,
+      "state": "completed",
+      "files": [
+        "node/light-233.test.mjs"
+      ]
+    },
+    {
+      "start": 14.679,
+      "end": 14.844,
+      "state": "completed",
+      "files": [
+        "node/light-232.test.mjs"
+      ]
+    },
+    {
+      "start": 14.715,
+      "end": 14.882,
+      "state": "completed",
+      "files": [
+        "node/light-255.test.mjs"
+      ]
+    },
+    {
+      "start": 14.761,
+      "end": 14.934,
+      "state": "completed",
+      "files": [
+        "node/light-038.test.mjs"
+      ]
+    },
+    {
+      "start": 14.789,
+      "end": 14.969,
+      "state": "completed",
+      "files": [
+        "node/light-254.test.mjs"
+      ]
+    },
+    {
+      "start": 14.858,
+      "end": 15.033,
+      "state": "completed",
+      "files": [
+        "node/light-208.test.mjs"
+      ]
+    },
+    {
+      "start": 14.89,
+      "end": 15.073,
+      "state": "completed",
+      "files": [
+        "node/light-249.test.mjs"
+      ]
+    },
+    {
+      "start": 14.944,
+      "end": 15.115,
+      "state": "completed",
+      "files": [
+        "node/light-235.test.mjs"
+      ]
+    },
+    {
+      "start": 14.975,
+      "end": 15.153,
+      "state": "completed",
+      "files": [
+        "node/light-242.test.mjs"
+      ]
+    },
+    {
+      "start": 15.044,
+      "end": 15.226,
+      "state": "completed",
+      "files": [
+        "node/light-230.test.mjs"
+      ]
+    },
+    {
+      "start": 15.083,
+      "end": 15.254,
+      "state": "completed",
+      "files": [
+        "node/light-236.test.mjs"
+      ]
+    },
+    {
+      "start": 15.126,
+      "end": 15.298,
+      "state": "completed",
+      "files": [
+        "node/light-251.test.mjs"
+      ]
+    },
+    {
+      "start": 15.159,
+      "end": 15.331,
+      "state": "completed",
+      "files": [
+        "node/light-250.test.mjs"
+      ]
+    }
+  ]
+}

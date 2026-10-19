@@ -1,0 +1,121 @@
+{
+  "arm": "w1",
+  "cancel": "drain",
+  "beside": false,
+  "editAt": 100,
+  "baselineExit": 0,
+  "forcedWallS": 248.85,
+  "edit": {
+    "startAfterS": 58.539,
+    "currentAfterS": 58.643000000000015
+  },
+  "load": {
+    "min": 1.79,
+    "max": 16.3,
+    "marks": [
+      {
+        "what": "start",
+        "at": -249.261,
+        "load": 7.55
+      },
+      {
+        "what": "baseline done exit 0",
+        "at": 0,
+        "load": 3.03
+      },
+      {
+        "what": "force",
+        "at": 0,
+        "load": 3.03
+      },
+      {
+        "what": "edit",
+        "at": 100.002,
+        "load": 2.02
+      },
+      {
+        "what": "forced done exit 3",
+        "at": 100.364,
+        "load": 2.02
+      },
+      {
+        "what": "checkpoint again exit 0",
+        "at": 248.85,
+        "load": 3.96
+      }
+    ]
+  },
+  "checkpointOutput": "re it in inputs: node/heavy-00.test.mjs, node/heavy-01.test.mjs, node/heavy-02.test.mjs, node/heavy-03.test.mjs, node/heavy-04.test.mjs, node/heavy-05.test.mjs, node/heavy-06.test.mjs, node/heavy-07.test.mjs, node/heavy-08.test.mjs, node/heavy-09.test.mjs, node/heavy-10.test.mjs, node/heavy-11.test.mjs, node/heavy-12.test.mjs, node/heavy-13.test.mjs, node/heavy-14.test.mjs, node/heavy-15.test.mjs\n",
+  "runs": [
+    {
+      "start": -248.739,
+      "end": -0.179,
+      "state": "completed",
+      "files": [
+        "node/heavy-00.test.mjs",
+        "node/heavy-01.test.mjs",
+        "node/heavy-02.test.mjs",
+        "node/heavy-03.test.mjs",
+        "node/heavy-04.test.mjs",
+        "node/heavy-05.test.mjs",
+        "node/heavy-06.test.mjs",
+        "node/heavy-07.test.mjs",
+        "node/heavy-08.test.mjs",
+        "node/heavy-09.test.mjs",
+        "node/heavy-10.test.mjs",
+        "node/heavy-11.test.mjs",
+        "node/heavy-12.test.mjs",
+        "node/heavy-13.test.mjs",
+        "node/heavy-14.test.mjs",
+        "node/heavy-15.test.mjs",
+        "node/quick.test.mjs"
+      ]
+    },
+    {
+      "start": 0.083,
+      "end": 87.406,
+      "state": "completed",
+      "files": [
+        "node/quick.test.mjs",
+        "node/heavy-00.test.mjs",
+        "node/heavy-01.test.mjs",
+        "node/heavy-02.test.mjs",
+        "node/heavy-03.test.mjs",
+        "node/heavy-04.test.mjs",
+        "node/heavy-05.test.mjs",
+        "node/heavy-06.test.mjs",
+        "node/heavy-07.test.mjs"
+      ]
+    },
+    {
+      "start": 87.418,
+      "end": 158.538,
+      "state": "completed",
+      "files": [
+        "node/heavy-08.test.mjs",
+        "node/heavy-09.test.mjs",
+        "node/heavy-10.test.mjs",
+        "node/heavy-11.test.mjs"
+      ]
+    },
+    {
+      "start": 158.541,
+      "end": 158.645,
+      "state": "completed",
+      "files": [
+        "node/quick.test.mjs"
+      ]
+    },
+    {
+      "start": 158.655,
+      "end": 248.776,
+      "state": "completed",
+      "files": [
+        "node/heavy-12.test.mjs",
+        "node/heavy-13.test.mjs",
+        "node/heavy-14.test.mjs",
+        "node/heavy-15.test.mjs"
+      ]
+    }
+  ]
+}
