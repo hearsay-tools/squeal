@@ -1,0 +1,773 @@
+load: 9.20 18.63 20.29; cpus: 24; version: 0.1.222
+
+### $ squeal status test/cli/main.test.ts
+exit: 2; stdout lines: 0; stderr lines: 79
+--- stderr
+squeal status: takes paths only with --wait <ms>
+
+squeal: continuous validation for coding agents. Push transitions, pull state.
+
+Usage:
+  squeal status [--notes] [--json]
+                                Current validation state of this worktree; --notes
+                                lists every stopped-process note in full
+  squeal status --wait <ms> [--json]
+                                Wait up to <ms> until nothing is pending at the current
+                                revision or a check changed, then print status
+  squeal status --wait <ms> <path>... [--json]
+                                Wait up to <ms> for the test files the paths select (a
+                                test file, or a file in test files' closures), then give
+                                their verdict: exit 0, 1 on known failures, 3 without one
+  squeal why <check> [--include-logs] [--json]
+                                History and provenance of one check, and the run log
+                                holding its console output; --include-logs also prints
+                                that log's lines from the check's test file
+  squeal failures [--all-worktrees] [--since <duration>] [--json]
+                                Stored failing results of this worktree, or every
+                                worktree's, newest first: check, worktree, revision,
+                                commit, time, duration, fingerprint; --since 2h
+                                lists only the last two hours
+  squeal init                   Set up this repository: squeal.config.json and the
+                                plugin entries in .claude/settings.json
+  squeal init --harness codex [--print-launcher-config | --trust [--yes]]
+                                Write squeal.config.json and print the Codex plugin
+                                install and trust steps; or print the hooks and their
+                                trust as thread/start config for a launcher; --trust
+                                then shows the hooks Codex has not trusted and, on
+                                your yes (--yes: without asking), has Codex trust them
+  squeal init [--block <file|none>] [--gate <id>=<reword|keep>]...
+              [--slow <glob>]... [--input <test glob>=<input glob|none>]...
+                                Set the harness up, then apply these setup choices
+  squeal setup --plan [--json]  What setting this repository up would change: harnesses,
+                                runners, instruction files and their Squeal block, gate
+                                lines, slow groups and their inputs, the warm-up's size
+  squeal setup --check [--json] The plan; exit 1 when anything in it is outdated
+  squeal setup [--yes] [<choice flags>]
+                                Ask one question per open choice of the plan (--yes:
+                                take the defaults), apply them, warm up, show the diff
+  squeal warmup                 Start the daemon and run every test file without a
+                                current result; exit 0, 1 on known failures, 3 without
+                                a verdict; suggestions it finds, applied by squeal setup
+  squeal start [root]           Start this worktree's daemon if none runs, print status
+  squeal run --all [--force] [--wait]
+                                Request a full-suite checkpoint from the daemon; both
+                                lanes, fast files first
+  squeal run --fast [--force] [--wait]
+                                A checkpoint of the fast lane only, which is not a
+                                full-suite checkpoint
+  squeal run --slow [--wait <ms>]
+                                Run the slow lane once no fast work is pending; with
+                                --wait, then wait as status --wait does. --fast --slow
+                                is --all
+  squeal retry <test file>... --reason load|environment
+                                Re-run each file's failure once, caused outside the
+                                code: load waits until the one-minute load average is
+                                below the CPU count, environment runs at once; once per
+                                file, inputs and session; the FAIL stays counted until
+                                a retry passes
+  squeal retry --cancel <test file>...
+                                Withdraw a pending retry
+  squeal stop [root]            Stop this worktree's daemon
+  squeal remove [--config]      Take Squeal out of this repository: stop every worktree's
+                                daemon, delete the store and temp directories; --config
+                                also deletes squeal.config.json
+  squeal update                 Update the plugin in every harness that has it, to one
+                                version, and the launcher install.sh put on the PATH
+  squeal daemon <root> [--await-lock <ms>]
+                                Run the daemon in the foreground (hooks start it); a
+                                step-down's successor waits up to <ms> for the lock
+  squeal --version              Print the version
+  squeal --help                 Print this help
+  squeal <command> --help       Print that command's part of this help
+
+A check is named as in status output: "path > describe > test", or any
+unique part of that name. Status reads the store directly; no daemon needed.
+--- stdout
+
+### $ squeal status test/cli/main.test.ts test/cli/remove.test.ts
+exit: 2; stdout lines: 0; stderr lines: 79
+--- stderr
+squeal status: takes paths only with --wait <ms>
+
+squeal: continuous validation for coding agents. Push transitions, pull state.
+
+Usage:
+  squeal status [--notes] [--json]
+                                Current validation state of this worktree; --notes
+                                lists every stopped-process note in full
+  squeal status --wait <ms> [--json]
+                                Wait up to <ms> until nothing is pending at the current
+                                revision or a check changed, then print status
+  squeal status --wait <ms> <path>... [--json]
+                                Wait up to <ms> for the test files the paths select (a
+                                test file, or a file in test files' closures), then give
+                                their verdict: exit 0, 1 on known failures, 3 without one
+  squeal why <check> [--include-logs] [--json]
+                                History and provenance of one check, and the run log
+                                holding its console output; --include-logs also prints
+                                that log's lines from the check's test file
+  squeal failures [--all-worktrees] [--since <duration>] [--json]
+                                Stored failing results of this worktree, or every
+                                worktree's, newest first: check, worktree, revision,
+                                commit, time, duration, fingerprint; --since 2h
+                                lists only the last two hours
+  squeal init                   Set up this repository: squeal.config.json and the
+                                plugin entries in .claude/settings.json
+  squeal init --harness codex [--print-launcher-config | --trust [--yes]]
+                                Write squeal.config.json and print the Codex plugin
+                                install and trust steps; or print the hooks and their
+                                trust as thread/start config for a launcher; --trust
+                                then shows the hooks Codex has not trusted and, on
+                                your yes (--yes: without asking), has Codex trust them
+  squeal init [--block <file|none>] [--gate <id>=<reword|keep>]...
+              [--slow <glob>]... [--input <test glob>=<input glob|none>]...
+                                Set the harness up, then apply these setup choices
+  squeal setup --plan [--json]  What setting this repository up would change: harnesses,
+                                runners, instruction files and their Squeal block, gate
+                                lines, slow groups and their inputs, the warm-up's size
+  squeal setup --check [--json] The plan; exit 1 when anything in it is outdated
+  squeal setup [--yes] [<choice flags>]
+                                Ask one question per open choice of the plan (--yes:
+                                take the defaults), apply them, warm up, show the diff
+  squeal warmup                 Start the daemon and run every test file without a
+                                current result; exit 0, 1 on known failures, 3 without
+                                a verdict; suggestions it finds, applied by squeal setup
+  squeal start [root]           Start this worktree's daemon if none runs, print status
+  squeal run --all [--force] [--wait]
+                                Request a full-suite checkpoint from the daemon; both
+                                lanes, fast files first
+  squeal run --fast [--force] [--wait]
+                                A checkpoint of the fast lane only, which is not a
+                                full-suite checkpoint
+  squeal run --slow [--wait <ms>]
+                                Run the slow lane once no fast work is pending; with
+                                --wait, then wait as status --wait does. --fast --slow
+                                is --all
+  squeal retry <test file>... --reason load|environment
+                                Re-run each file's failure once, caused outside the
+                                code: load waits until the one-minute load average is
+                                below the CPU count, environment runs at once; once per
+                                file, inputs and session; the FAIL stays counted until
+                                a retry passes
+  squeal retry --cancel <test file>...
+                                Withdraw a pending retry
+  squeal stop [root]            Stop this worktree's daemon
+  squeal remove [--config]      Take Squeal out of this repository: stop every worktree's
+                                daemon, delete the store and temp directories; --config
+                                also deletes squeal.config.json
+  squeal update                 Update the plugin in every harness that has it, to one
+                                version, and the launcher install.sh put on the PATH
+  squeal daemon <root> [--await-lock <ms>]
+                                Run the daemon in the foreground (hooks start it); a
+                                step-down's successor waits up to <ms> for the lock
+  squeal --version              Print the version
+  squeal --help                 Print this help
+  squeal <command> --help       Print that command's part of this help
+
+A check is named as in status output: "path > describe > test", or any
+unique part of that name. Status reads the store directly; no daemon needed.
+--- stdout
+
+### $ squeal status --json test/cli/main.test.ts
+exit: 2; stdout lines: 0; stderr lines: 79
+--- stderr
+squeal status: takes paths only with --wait <ms>
+
+squeal: continuous validation for coding agents. Push transitions, pull state.
+
+Usage:
+  squeal status [--notes] [--json]
+                                Current validation state of this worktree; --notes
+                                lists every stopped-process note in full
+  squeal status --wait <ms> [--json]
+                                Wait up to <ms> until nothing is pending at the current
+                                revision or a check changed, then print status
+  squeal status --wait <ms> <path>... [--json]
+                                Wait up to <ms> for the test files the paths select (a
+                                test file, or a file in test files' closures), then give
+                                their verdict: exit 0, 1 on known failures, 3 without one
+  squeal why <check> [--include-logs] [--json]
+                                History and provenance of one check, and the run log
+                                holding its console output; --include-logs also prints
+                                that log's lines from the check's test file
+  squeal failures [--all-worktrees] [--since <duration>] [--json]
+                                Stored failing results of this worktree, or every
+                                worktree's, newest first: check, worktree, revision,
+                                commit, time, duration, fingerprint; --since 2h
+                                lists only the last two hours
+  squeal init                   Set up this repository: squeal.config.json and the
+                                plugin entries in .claude/settings.json
+  squeal init --harness codex [--print-launcher-config | --trust [--yes]]
+                                Write squeal.config.json and print the Codex plugin
+                                install and trust steps; or print the hooks and their
+                                trust as thread/start config for a launcher; --trust
+                                then shows the hooks Codex has not trusted and, on
+                                your yes (--yes: without asking), has Codex trust them
+  squeal init [--block <file|none>] [--gate <id>=<reword|keep>]...
+              [--slow <glob>]... [--input <test glob>=<input glob|none>]...
+                                Set the harness up, then apply these setup choices
+  squeal setup --plan [--json]  What setting this repository up would change: harnesses,
+                                runners, instruction files and their Squeal block, gate
+                                lines, slow groups and their inputs, the warm-up's size
+  squeal setup --check [--json] The plan; exit 1 when anything in it is outdated
+  squeal setup [--yes] [<choice flags>]
+                                Ask one question per open choice of the plan (--yes:
+                                take the defaults), apply them, warm up, show the diff
+  squeal warmup                 Start the daemon and run every test file without a
+                                current result; exit 0, 1 on known failures, 3 without
+                                a verdict; suggestions it finds, applied by squeal setup
+  squeal start [root]           Start this worktree's daemon if none runs, print status
+  squeal run --all [--force] [--wait]
+                                Request a full-suite checkpoint from the daemon; both
+                                lanes, fast files first
+  squeal run --fast [--force] [--wait]
+                                A checkpoint of the fast lane only, which is not a
+                                full-suite checkpoint
+  squeal run --slow [--wait <ms>]
+                                Run the slow lane once no fast work is pending; with
+                                --wait, then wait as status --wait does. --fast --slow
+                                is --all
+  squeal retry <test file>... --reason load|environment
+                                Re-run each file's failure once, caused outside the
+                                code: load waits until the one-minute load average is
+                                below the CPU count, environment runs at once; once per
+                                file, inputs and session; the FAIL stays counted until
+                                a retry passes
+  squeal retry --cancel <test file>...
+                                Withdraw a pending retry
+  squeal stop [root]            Stop this worktree's daemon
+  squeal remove [--config]      Take Squeal out of this repository: stop every worktree's
+                                daemon, delete the store and temp directories; --config
+                                also deletes squeal.config.json
+  squeal update                 Update the plugin in every harness that has it, to one
+                                version, and the launcher install.sh put on the PATH
+  squeal daemon <root> [--await-lock <ms>]
+                                Run the daemon in the foreground (hooks start it); a
+                                step-down's successor waits up to <ms> for the lock
+  squeal --version              Print the version
+  squeal --help                 Print this help
+  squeal <command> --help       Print that command's part of this help
+
+A check is named as in status output: "path > describe > test", or any
+unique part of that name. Status reads the store directly; no daemon needed.
+--- stdout
+
+### $ squeal status --wait 1 test/cli/main.test.ts
+exit: 3; stdout lines: 40; stderr lines: 0
+--- stderr
+--- stdout
+Revision: 837 · 71e23f77 + 0, dirty not known
+Known failures: 0
+Affected checks: 0 passed, 0 running, 0 queued, 4400 unknown (3932 tests, 468 test files loaded)
+Full-suite checkpoint: none completed since revision 466 (the counts are for revision 837; `squeal run --all` requests one)
+Not run: Vitest test files matching "test/e2e/**", excluded by squeal.config.json
+
+Worktree: /home/agent/projects/squeal (HEAD 71e23f7, dirty state not known: no daemon is validating)
+Daemon: no daemon running since 2026-10-19T16:41:13.416Z
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Test files without a result: 468 (nothing current at their inputs, none queued)
+  test/cli/codex-hash.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/codex-trust.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/codex.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/daemon-commands.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/daemon-socket.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/init-node-test.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/install-sh-uninstall.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/install-sh.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/launcher.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/main.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/remove.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/round-trip.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/run-all-owner.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/run-all-verdict-daemon.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/run-all-verdict.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/run-slow-held.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/run-slow-wait.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/run-slow.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/setup/block-remove.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/setup/block.test.ts: no result: no dependencies are installed in this worktree
+  and 448 more test files
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-19T15:43:08.530Z, revision 837: no dependencies are installed in this worktree, so Squeal runs none of its tests and inherits none of their results. Run `npm ci` to install them: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest
+  2026-10-19T16:41:15.429Z, revision 837: daemon stopped: no session registered for 3 s after its last one ended (19 notes since 2026-10-19T15:41:55.649Z; `squeal status --notes` lists each)
+
+Selected: test/cli/main.test.ts
+Unknown (1): test/cli/main.test.ts: no result: no dependencies are installed in this worktree
+Named test files have no verdict: no daemon has validated since 2026-10-19T16:41:13.416Z: the daemon stopped; results are as of revision 837; `squeal start` starts one. Worktree: known failures 0; checks 0 running, 0 queued
+
+### $ squeal status --wait 1 test/cli/main.test.ts test/cli/remove.test.ts
+exit: 3; stdout lines: 40; stderr lines: 0
+--- stderr
+--- stdout
+Revision: 837 · 71e23f77 + 0, dirty not known
+Known failures: 0
+Affected checks: 0 passed, 0 running, 0 queued, 4400 unknown (3932 tests, 468 test files loaded)
+Full-suite checkpoint: none completed since revision 466 (the counts are for revision 837; `squeal run --all` requests one)
+Not run: Vitest test files matching "test/e2e/**", excluded by squeal.config.json
+
+Worktree: /home/agent/projects/squeal (HEAD 71e23f7, dirty state not known: no daemon is validating)
+Daemon: no daemon running since 2026-10-19T16:41:13.416Z
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Test files without a result: 468 (nothing current at their inputs, none queued)
+  test/cli/codex-hash.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/codex-trust.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/codex.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/daemon-commands.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/daemon-socket.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/init-node-test.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/install-sh-uninstall.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/install-sh.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/launcher.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/main.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/remove.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/round-trip.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/run-all-owner.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/run-all-verdict-daemon.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/run-all-verdict.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/run-slow-held.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/run-slow-wait.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/run-slow.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/setup/block-remove.test.ts: no result: no dependencies are installed in this worktree
+  test/cli/setup/block.test.ts: no result: no dependencies are installed in this worktree
+  and 448 more test files
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-19T15:43:08.530Z, revision 837: no dependencies are installed in this worktree, so Squeal runs none of its tests and inherits none of their results. Run `npm ci` to install them: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest
+  2026-10-19T16:41:15.429Z, revision 837: daemon stopped: no session registered for 3 s after its last one ended (19 notes since 2026-10-19T15:41:55.649Z; `squeal status --notes` lists each)
+
+Selected: test/cli/main.test.ts, test/cli/remove.test.ts
+Unknown (2): test/cli/main.test.ts: no result: no dependencies are installed in this worktree; test/cli/remove.test.ts: no result: no dependencies are installed in this worktree
+Named test files have no verdict: no daemon has validated since 2026-10-19T16:41:13.416Z: the daemon stopped; results are as of revision 837; `squeal start` starts one. Worktree: known failures 0; checks 0 running, 0 queued
+
+### $ squeal status --json --wait 1 test/cli/main.test.ts
+exit: 3; stdout lines: 421; stderr lines: 3
+--- stderr
+Selected: test/cli/main.test.ts
+Unknown (1): test/cli/main.test.ts: no result: no dependencies are installed in this worktree
+Named test files have no verdict: no daemon has validated since 2026-10-19T16:41:13.416Z: the daemon stopped; results are as of revision 837; `squeal start` starts one. Worktree: known failures 0; checks 0 running, 0 queued
+--- stdout
+{
+  "schemaVersion": 1,
+  "available": true,
+  "worktreeId": "a6b4acd940a004f5",
+  "worktreeRoot": "/home/agent/projects/squeal",
+  "revision": 837,
+  "commit": {
+    "head": "71e23f779368ec264336da2ef510ca3817c9082e",
+    "sinceHead": 0,
+    "dirty": true
+  },
+  "counts": {
+    "current": 0,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 4400
+  },
+  "fileLevelCounts": {
+    "current": 0,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 468
+  },
+  "testFilesWithoutChecks": {
+    "pending": 0,
+    "unknown": 0
+  },
+  "fullSuite": {
+    "atCurrentRevision": false,
+    "lastCompletedRevision": 466
+  },
+  "testFilesListed": true,
+  "inheritedCount": 0,
+  "inheritedFileLevelCount": 0,
+  "refinedRevision": 837,
+  "runnerPartPending": false,
+  "head": "71e23f779368ec264336da2ef510ca3817c9082e",
+  "dirty": null,
+  "dirtyObservedAt": null,
+  "daemon": {
+    "state": "down",
+    "since": 1792428073416
+  },
+  "knownFailures": [],
+  "knownFailureCounts": {
+    "current": 0,
+    "pending": 0,
+    "stale": 0
+  },
+  "inherited": {
+    "count": 0,
+    "sources": []
+  },
+  "breakdown": {
+    "currentByOutcome": {
+      "pass": 0,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "pendingByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "fileLevelByOutcome": {
+      "pass": 0,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "fileLevelByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "testFiles": 468,
+    "testFilesWithoutChecks": 0,
+    "testFilesWithoutChecksRunning": 0
+  },
+  "closureMethod": "static imports plus declared inputs",
+  "storeSchemaVersion": 1,
+  "notes": [],
+  "daemonNotes": [
+    {
+      "at": 1792424515649,
+      "revision": 837,
+      "text": "daemon stopped: no session registered for 3 s after its last one ended",
+      "exitOf": "0.1.222@1792424509212#64bb97f5-0269-4242-87e5-748f02c563f6"
+    },
+    {
+      "at": 1792424586292,
+      "revision": 837,
+      "text": "daemon stopped: no session registered for 3 s after its last one ended",
+      "exitOf": "0.1.222@1792424580966#96e6a6e0-7c56-49d2-b310-a7bab7051885"
+    },
+    {
+      "at": 1792424588530,
+      "revision": 837,
+      "text": "no dependencies are installed in this worktree, so Squeal runs none of its tests and inherits none of their results. Run `npm ci` to install them: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest"
+    },
+    {
+      "at": 1792424594134,
+      "revision": 837,
+      "text": "daemon stopped: no session registered for 3 s after its last one ended",
+      "exitOf": "0.1.222@1792424588096#f6995abb-9a03-4d91-82c5-2ef59c29cb74"
+    },
+    {
+      "at": 1792424689296,
+      "revision": 837,
+      "text": "daemon stopped: no session registered for 3 s after its last one ended",
+      "exitOf": "0.1.222@1792424683363#002cf296-523c-485f-8aa3-a0e8216290e8"
+    },
+    {
+      "at": 1792424822573,
+      "revision": 837,
+      "text": "daemon stopped: no session registered for 3 s after its last one ended",
+      "exitOf": "0.1.222@1792424815995#6d55a6b2-5d9b-4d79-8259-f4d226d8d331"
+    },
+    {
+      "at": 1792425521357,
+      "revision": 837,
+      "text": "daemon stopped: no session registered for 3 s after its last one ended",
+      "exitOf": "0.1.222@1792425515769#b5fc6f88-ce68-4fd2-970a-1bad11cae904"
+    },
+    {
+      "at": 1792425683177,
+      "revision": 837,
+      "text": "daemon stopped: no session registered for 3 s after its last one ended",
+      "exitOf": "0.1.222@1792425677821#284ad87f-910e-4f32-aad0-a9997e5e7fab"
+    },
+    {
+      "at": 1792425740615,
+      "revision": 837,
+      "text": "daemon stopped: no session registered for 3 s after its last one ended",
+      "exitOf": "0.1.222@1792425737129#1e0d2c7d-a5b6-4f21-b97c-8e306e672c4b"
+    },
+    {
+      "at": 1792426023725,
+      "revision": 837,
+      "text": "daemon stopped: no session registered for 3 s after its last one ended",
+      "exitOf": "0.1.222@1792426018583#fc55b4c0-e073-4306-b905-8018051f7a1d"
+    },
+    {
+      "at": 1792426517244,
+      "revision": 837,
+      "text": "daemon stopped: no session registered for 3 s after its last one ended",
+      "exitOf": "0.1.222@1792426511999#695a8c09-3b9b-4ac0-9abd-633743510f76"
+    },
+    {
+      "at": 1792426617014,
+      "revision": 837,
+      "text": "daemon stopped: no session registered for 3 s after its last one ended",
+      "exitOf": "0.1.222@1792426610664#99a91faa-860a-446b-99c0-248a054b0638"
+    },
+    {
+      "at": 1792426677988,
+      "revision": 837,
+      "text": "daemon stopped: no session registered for 3 s after its last one ended",
+      "exitOf": "0.1.222@1792426672479#4db3498e-0975-45fa-bb46-f3f6f772a57a"
+    },
+    {
+      "at": 1792426687698,
+      "revision": 837,
+      "text": "daemon stopped: no session registered for 3 s after its last one ended",
+      "exitOf": "0.1.222@1792426682125#4fd7bd65-c120-458b-966d-c7454df80b34"
+    },
+    {
+      "at": 1792426698594,
+      "revision": 837,
+      "text": "daemon stopped: no session registered for 3 s after its last one ended",
+      "exitOf": "0.1.222@1792426691826#885fdbf3-eae6-4dfa-9613-ddfbdbc3e215"
+    },
+    {
+      "at": 1792427516259,
+      "revision": 837,
+      "text": "daemon stopped: no session registered for 3 s after its last one ended",
+      "exitOf": "0.1.222@1792427510486#e4bf10d1-1643-4fbf-9297-18f9c4568186"
+    },
+    {
+      "at": 1792427715221,
+      "revision": 837,
+      "text": "daemon stopped: no session registered for 3 s after its last one ended",
+      "exitOf": "0.1.222@1792427708363#55a34cde-3214-472a-908b-976d4d45df92"
+    },
+    {
+      "at": 1792427882588,
+      "revision": 837,
+      "text": "daemon stopped: no session registered for 3 s after its last one ended",
+      "exitOf": "0.1.222@1792427877240#52139700-316c-4035-bd0d-edd76b60b57f"
+    },
+    {
+      "at": 1792428016772,
+      "revision": 837,
+      "text": "daemon stopped: no session registered for 3 s after its last one ended",
+      "exitOf": "0.1.222@1792428010706#00e45764-ea22-4cfc-bdd8-8119ebac93c3"
+    },
+    {
+      "at": 1792428075429,
+      "revision": 837,
+      "text": "daemon stopped: no session registered for 3 s after its last one ended",
+      "exitOf": "0.1.222@1792428068374#2f48755b-05ae-4486-ad6a-95c3c66dabc1"
+    }
+  ],
+  "vitestExcludedFiles": [
+    "test/e2e/**"
+  ],
+  "unknownTestFiles": {
+    "total": 468,
+    "files": [
+      {
+        "testFile": {
+          "project": "",
+          "path": "test/cli/codex-hash.test.ts"
+        },
+        "ran": false,
+        "reason": "no dependencies are installed in this worktree",
+        "samples": []
+      },
+      {
+        "testFile": {
+          "project": "",
+          "path": "test/cli/codex-trust.test.ts"
+        },
+        "ran": false,
+        "reason": "no dependencies are installed in this worktree",
+        "samples": []
+      },
+      {
+        "testFile": {
+          "project": "",
+          "path": "test/cli/codex.test.ts"
+        },
+        "ran": false,
+        "reason": "no dependencies are installed in this worktree",
+        "samples": []
+      },
+      {
+        "testFile": {
+          "project": "",
+          "path": "test/cli/daemon-commands.test.ts"
+        },
+        "ran": false,
+        "reason": "no dependencies are installed in this worktree",
+        "samples": []
+      },
+      {
+        "testFile": {
+          "project": "",
+          "path": "test/cli/daemon-socket.test.ts"
+        },
+        "ran": false,
+        "reason": "no dependencies are installed in this worktree",
+        "samples": []
+      },
+      {
+        "testFile": {
+          "project": "",
+          "path": "test/cli/init-node-test.test.ts"
+        },
+        "ran": false,
+        "reason": "no dependencies are installed in this worktree",
+        "samples": []
+      },
+      {
+        "testFile": {
+          "project": "",
+          "path": "test/cli/install-sh-uninstall.test.ts"
+        },
+        "ran": false,
+        "reason": "no dependencies are installed in this worktree",
+        "samples": []
+      },
+      {
+        "testFile": {
+          "project": "",
+          "path": "test/cli/install-sh.test.ts"
+        },
+        "ran": false,
+        "reason": "no dependencies are installed in this worktree",
+        "samples": []
+      },
+      {
+        "testFile": {
+          "project": "",
+          "path": "test/cli/launcher.test.ts"
+        },
+        "ran": false,
+        "reason": "no dependencies are installed in this worktree",
+        "samples": []
+      },
+      {
+        "testFile": {
+          "project": "",
+          "path": "test/cli/main.test.ts"
+        },
+        "ran": false,
+        "reason": "no dependencies are installed in this worktree",
+        "samples": []
+      },
+      {
+        "testFile": {
+          "project": "",
+          "path": "test/cli/remove.test.ts"
+        },
+        "ran": false,
+        "reason": "no dependencies are installed in this worktree",
+        "samples": []
+      },
+      {
+        "testFile": {
+          "project": "",
+          "path": "test/cli/round-trip.test.ts"
+        },
+        "ran": false,
+        "reason": "no dependencies are installed in this worktree",
+        "samples": []
+      },
+      {
+        "testFile": {
+          "project": "",
+          "path": "test/cli/run-all-owner.test.ts"
+        },
+        "ran": false,
+        "reason": "no dependencies are installed in this worktree",
+        "samples": []
+      },
+      {
+        "testFile": {
+          "project": "",
+          "path": "test/cli/run-all-verdict-daemon.test.ts"
+        },
+        "ran": false,
+        "reason": "no dependencies are installed in this worktree",
+        "samples": []
+      },
+      {
+        "testFile": {
+          "project": "",
+          "path": "test/cli/run-all-verdict.test.ts"
+        },
+        "ran": false,
+        "reason": "no dependencies are installed in this worktree",
+        "samples": []
+      },
+      {
+        "testFile": {
+          "project": "",
+          "path": "test/cli/run-slow-held.test.ts"
+        },
+        "ran": false,
+        "reason": "no dependencies are installed in this worktree",
+        "samples": []
+      },
+      {
+        "testFile": {
+          "project": "",
+          "path": "test/cli/run-slow-wait.test.ts"
+        },
+        "ran": false,
+        "reason": "no dependencies are installed in this worktree",
+        "samples": []
+      },
+      {
+        "testFile": {
+          "project": "",
+          "path": "test/cli/run-slow.test.ts"
+        },
+        "ran": false,
+        "reason": "no dependencies are installed in this worktree",
+        "samples": []
+      },
+      {
+        "testFile": {
+          "project": "",
+          "path": "test/cli/setup/block-remove.test.ts"
+        },
+        "ran": false,
+        "reason": "no dependencies are installed in this worktree",
+        "samples": []
+      },
+      {
+        "testFile": {
+          "project": "",
+          "path": "test/cli/setup/block.test.ts"
+        },
+        "ran": false,
+        "reason": "no dependencies are installed in this worktree",
+        "samples": []
+      }
+    ]
+  },
+  "wait": {
+    "outcome": "no-daemon",
+    "waitedMs": 193,
+    "code": 3,
+    "testFiles": [
+      {
+        "project": "",
+        "path": "test/cli/main.test.ts",
+        "state": "unknown",
+        "reason": "no result: no dependencies are installed in this worktree"
+      }
+    ],
+    "unmatched": [],
+    "leftForPause": [],
+    "verdict": {
+      "revision": 837,
+      "testFiles": 1,
+      "byClass": {
+        "current": 0,
+        "pending": 0,
+        "stale": 0,
+        "unknown": 1
+      },
+      "unlisted": false,
+      "failures": {
+        "tests": 0,
+        "testFiles": 0
+      }
+    }
+  }
+}
+
