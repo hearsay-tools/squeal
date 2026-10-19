@@ -57,6 +57,7 @@ import {
   laneOf,
   recordTier,
   selectTier,
+  supersededIn,
   type Tier,
   unfinishedFiles,
   unstableInputs,
@@ -850,7 +851,9 @@ class TierScheduler implements Scheduler {
     await this.#lock.run(() => {
       const { context, ledger } = this.#started();
       endTier(context, ledger, tier);
-      for (const { file } of tier.files) {
+      for (const { file, key } of tier.files) {
+        // A newer run holds the file at another key: it is that run's (review wave-4 B1).
+        if (supersededIn(file, key)) continue;
         ledger.setRunning(file, null);
         if (ledger.files.get(file.id) === file) {
           ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED));
