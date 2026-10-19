@@ -826,9 +826,9 @@ var init_observed = __esm({
       below(directory) {
         const prefix = directory === "" ? "" : `${directory}/`;
         const out2 = [listingPath(directory)];
-        for (const [listed2, names3] of this.#index()) {
-          if (listed2 !== directory && listed2.startsWith(prefix) && names3.size > 0) {
-            out2.push(listingPath(listed2));
+        for (const [listed3, names3] of this.#index()) {
+          if (listed3 !== directory && listed3.startsWith(prefix) && names3.size > 0) {
+            out2.push(listingPath(listed3));
           }
         }
         return out2.sort(compare);
@@ -1251,16 +1251,16 @@ import { createHash as createHash5 } from "node:crypto";
 import { lstatSync as lstatSync2, readdirSync as readdirSync2, readFileSync as readFileSync4, readlinkSync } from "node:fs";
 import { isAbsolute as isAbsolute3, join as join7 } from "node:path";
 function staleHiddenLockfile(dir2, content) {
-  const listed2 = listedPackages(content);
-  if (listed2 === null) return "not valid JSON";
+  const listed3 = listedPackages(content);
+  if (listed3 === null) return "not valid JSON";
   const lockTime = lstatSync2(join7(dir2, HIDDEN_LOCKFILE)).mtimeMs;
-  const folders = packageFolders(dir2, workspaces(listed2));
+  const folders = packageFolders(dir2, workspaces(listed3));
   const seen = new Set(folders.map((folder) => folder.path));
-  const unlisted = folders.filter((folder) => !Object.hasOwn(listed2, folder.path)).map((folder) => folder.path);
+  const unlisted = folders.filter((folder) => !Object.hasOwn(listed3, folder.path)).map((folder) => folder.path);
   const newer = folders.filter(
-    (folder) => Object.hasOwn(listed2, folder.path) && folder.mtimeMs > lockTime
+    (folder) => Object.hasOwn(listed3, folder.path) && folder.mtimeMs > lockTime
   );
-  const missing2 = Object.keys(listed2).filter((path) => isInstalledFolder(path) && !seen.has(path));
+  const missing2 = Object.keys(listed3).filter((path) => isInstalledFolder(path) && !seen.has(path));
   const parts2 = [
     ["not listed in it", unlisted],
     ["newer than it", newer.map((folder) => folder.path)],
@@ -1292,8 +1292,8 @@ function isInstalledFolder(path) {
 function insideInstall(path) {
   return path !== "" && !isAbsolute3(path) && path !== ".." && !path.startsWith("../");
 }
-function workspaces(listed2) {
-  return Object.keys(listed2).filter((path) => insideInstall(path) && !isInstalledFolder(path));
+function workspaces(listed3) {
+  return Object.keys(listed3).filter((path) => insideInstall(path) && !isInstalledFolder(path));
 }
 function packageFolders(dir2, workspaceFolders) {
   const folders = [];
@@ -1438,9 +1438,9 @@ async function installedDependencies(projectRoot, worktreeRoot2, scans) {
   }
   const lockfile = toRelative(worktreeRoot2, join8(dir2, format.path)) ?? format.path;
   const note = stale === null ? null : `${lockfile} does not describe the installed packages (${stale}); dependencies are keyed by their package.json files until npm rewrites it`;
-  const listed2 = format.path === HIDDEN_LOCKFILE && stale === null ? packagesOf(content) : null;
+  const listed3 = format.path === HIDDEN_LOCKFILE && stale === null ? packagesOf(content) : null;
   const base = resolve2(dir2) === resolve2(worktreeRoot2) ? "" : toRelative(worktreeRoot2, dir2);
-  const graph = listed2 === null || base === null ? null : new InstalledGraph(dir2, base, listed2, scans);
+  const graph = listed3 === null || base === null ? null : new InstalledGraph(dir2, base, listed3, scans);
   return { fingerprint: hash2.digest("hex"), note, graph, patches: patches.digest("hex") };
 }
 function packagesOf(content) {
@@ -3097,12 +3097,13 @@ function countFilesWithoutChecks(states, keys) {
 }
 function countSlowPending(states, keys, isSlow) {
   const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
-  const files2 = /* @__PURE__ */ new Set();
+  const files2 = /* @__PURE__ */ new Map();
   let checks = 0;
   for (const state of states) {
-    if (state.validity !== "pending" || !isSlow(testFileOf(state.check))) continue;
+    const ref2 = testFileOf(state.check);
+    if (state.validity !== "pending" || !isSlow(ref2)) continue;
     checks++;
-    files2.add(testFileKeyOf(state.check));
+    files2.set(testFileKeyOf(state.check), ref2);
   }
   let testFilesWithoutChecks = 0;
   for (const row of keys) {
@@ -3111,9 +3112,15 @@ function countSlowPending(states, keys, isSlow) {
       continue;
     }
     testFilesWithoutChecks++;
-    files2.add(id2);
+    files2.set(id2, row.testFile);
   }
-  return { testFiles: files2.size, checks, testFilesWithoutChecks };
+  const named = [...files2.values()].sort((a, b) => a.path.localeCompare(b.path) || a.project.localeCompare(b.project)).slice(0, SLOW_FILES_NAMED);
+  return {
+    testFiles: files2.size,
+    checks,
+    testFilesWithoutChecks,
+    ...named.length === 0 ? {} : { files: named }
+  };
 }
 function hasKey(row) {
   return row.key !== null;
@@ -3130,6 +3137,7 @@ function toKnownFailure(state, revision) {
     location: state.location
   };
 }
+var SLOW_FILES_NAMED;
 var init_header = __esm({
   "src/core/state/header.ts"() {
     "use strict";
@@ -3139,6 +3147,7 @@ var init_header = __esm({
     init_optimizer_note();
     init_revision_commit();
     init_slow();
+    SLOW_FILES_NAMED = 3;
   }
 });
 
@@ -3509,8 +3518,26 @@ function slowTierText(header, command) {
     parts2.push(pendingText(tier.pending, tier.activity, header.daemon?.state === "down"));
   }
   if (tier.notRun > 0) parts2.push(`${tier.notRun} not run at revision ${header.revision}`);
-  const runs = tier.current >= tier.testFiles ? "" : `; \`${command} run --slow\` runs them now`;
+  const open5 = tier.testFiles - tier.current;
+  const runs = open5 <= 0 ? "" : `; ${slowWaitText(command, open5)}`;
   return `Slow tier: ${plural(tier.testFiles, "test file")}; ${parts2.join("; ")}. ${capitalized(stopText(tier))}${runs}.`;
+}
+function slowWaitText(command, open5) {
+  return `\`${command} run --slow --wait 60000\` waits for ${open5 === 1 ? "its result" : "their results"}`;
+}
+function slowAffectedText(slow, command) {
+  const n = slow?.testFiles ?? 0;
+  if (slow === void 0 || n === 0) return "";
+  const shown = (slow.files ?? []).map(
+    ({ project, path }) => project === "" ? path : `${project}: ${path}`
+  );
+  const rest = n - shown.length;
+  const named = shown.length === 0 ? "" : rest > 0 ? ` ${shown.join(", ")} and ${rest} more` : ` ${listed(shown)}`;
+  return `; among them ${plural(n, "slow test file")}${named === "" ? "" : `,${named}`}: ${slowWaitText(command, n)}`;
+}
+function listed(names3) {
+  const last = names3.at(-1) ?? "";
+  return names3.length < 2 ? last : `${names3.slice(0, -1).join(", ")} and ${last}`;
 }
 function stopText(tier) {
   if (tier.stopWaitMs !== void 0) {
@@ -3586,9 +3613,11 @@ __export(state_exports, {
   runnerPartText: () => runnerPartText,
   sameFingerprint: () => sameFingerprint,
   shownResult: () => shownResult,
+  slowAffectedText: () => slowAffectedText,
   slowFilesNotCurrent: () => slowFilesNotCurrent,
   slowPolicyView: () => slowPolicyView,
   slowTierText: () => slowTierText,
+  slowWaitText: () => slowWaitText,
   testFileKeyOf: () => testFileKeyOf,
   testFileOf: () => testFileOf,
   toKnownFailure: () => toKnownFailure,
@@ -6813,12 +6842,12 @@ function unknownReasons(store, worktreeId, states, root, now) {
   };
 }
 function unknownFilesLines(s) {
-  const listed2 = s.unknownTestFiles;
-  if (listed2 === void 0) return [];
-  const more = listed2.total - listed2.files.length;
+  const listed3 = s.unknownTestFiles;
+  if (listed3 === void 0) return [];
+  const more = listed3.total - listed3.files.length;
   return [
-    `Test files without a result: ${listed2.total} (nothing current at their inputs, none queued)`,
-    ...listed2.files.map((f) => `  ${unknownFileText(f)}`),
+    `Test files without a result: ${listed3.total} (nothing current at their inputs, none queued)`,
+    ...listed3.files.map((f) => `  ${unknownFileText(f)}`),
     ...more > 0 ? [`  and ${plural(more, "more test file")}`] : []
   ];
 }
@@ -7666,14 +7695,14 @@ async function readCleanIndexHashes(root) {
     ])
   ]);
   if (AUTOCRLF_ON.has(autocrlf.trim().toLowerCase())) return /* @__PURE__ */ new Map();
-  const listed2 = new Set(splitNul(status2).map((line) => line.slice(3)));
+  const listed3 = new Set(splitNul(status2).map((line) => line.slice(3)));
   const candidates = /* @__PURE__ */ new Map();
   for (const line of splitNul(entries3)) {
     const tab = line.indexOf("	");
     const [tag, mode, oid, stage] = line.slice(0, tab).split(" ");
     const path = line.slice(tab + 1);
     if (tag !== "H" || stage !== "0" || !FILE_MODES.has(mode ?? "") || oid === void 0) continue;
-    if (listed2.has(path)) continue;
+    if (listed3.has(path)) continue;
     candidates.set(path, oid);
   }
   if (candidates.size === 0) return candidates;
@@ -8069,9 +8098,9 @@ function omittedTestFilesMetaKey(worktreeId) {
 }
 async function listTestFilesOf(context, bound) {
   const { runner, store, worktreeId } = context;
-  const listed2 = await bound.call(() => runner.testFiles());
+  const listed3 = await bound.call(() => runner.testFiles());
   store.meta.set(omittedTestFilesMetaKey(worktreeId), String(runner.omittedTestFiles?.() ?? 0));
-  return listed2;
+  return listed3;
 }
 var init_omitted_test_files = __esm({
   "src/core/scheduler/omitted-test-files.ts"() {
@@ -8261,9 +8290,9 @@ async function retryRunner(context, ledger) {
   const bound = runnerPartBound(context);
   const failures = /* @__PURE__ */ new Map();
   const touched = (await readEnvironments(context, failures, bound)).map((c) => c.testFile);
-  const listed2 = await listTestFiles2(context, ledger, bound);
+  const listed3 = await listTestFiles2(context, ledger, bound);
   const blocked = [...ledger.files.values()].filter((f) => f.blocked !== null).map((f) => f.ref);
-  const refs2 = [...listed2, ...blocked];
+  const refs2 = [...listed3, ...blocked];
   touched.push(
     ...(await resolveClosures(context, refs2, failures, bound)).map((c) => c.testFile),
     ...refs2
@@ -8282,20 +8311,20 @@ async function readEnvironments(context, failures, bound) {
   return environments2 === null ? [] : context.keys.setEnvironments(environments2);
 }
 async function listTestFiles2(context, ledger, bound) {
-  const listed2 = await tryRunner(context, "testFiles", () => listTestFilesOf(context, bound));
-  return applyListing(context, ledger, listed2);
+  const listed3 = await tryRunner(context, "testFiles", () => listTestFilesOf(context, bound));
+  return applyListing(context, ledger, listed3);
 }
-function applyListing(context, ledger, listed2) {
-  ledger.listingFailed = listed2 === null;
-  if (listed2 === null) return [];
-  const ids = new Set(listed2.map(testFileId));
+function applyListing(context, ledger, listed3) {
+  ledger.listingFailed = listed3 === null;
+  if (listed3 === null) return [];
+  const ids = new Set(listed3.map(testFileId));
   for (const file of [...ledger.files.values()]) {
     if (!ids.has(file.id)) ledger.removeFile(file);
   }
-  for (const ref2 of listed2) {
+  for (const ref2 of listed3) {
     if (!ledger.file(ref2)) ledger.addFile(ref2);
   }
-  return listed2.filter((ref2) => !context.keys.index.closure(ref2));
+  return listed3.filter((ref2) => !context.keys.index.closure(ref2));
 }
 async function resolveClosures(context, refs2, failures, bound) {
   const changes = [];
@@ -11425,13 +11454,13 @@ async function observedGrowth(context, report2, run4) {
   const seen = [];
   for (const observed of report2.observed) {
     const closure = new Set(keys.index.closure(observed.testFile)?.paths ?? []);
-    const listed2 = new Set(observed.directories.map(listingPath));
+    const listed3 = new Set(observed.directories.map(listingPath));
     for (const root of observed.recursive ?? []) {
-      for (const path of keys.listingsBelow(root)) listed2.add(path);
+      for (const path of keys.listingsBelow(root)) listed3.add(path);
     }
     const read5 = observed.paths.filter((path) => !closure.has(path));
     const targets = await linkTargets(context.root, read5);
-    const fresh = [.../* @__PURE__ */ new Set([...read5, ...targets, ...listed2])].filter(
+    const fresh = [.../* @__PURE__ */ new Set([...read5, ...targets, ...listed3])].filter(
       (path) => !closure.has(path)
     );
     for (const path of fresh) candidates.add(listedDirectory(path) ?? path);
@@ -11552,15 +11581,15 @@ function recordsForFile(input) {
   return records;
 }
 function fileResults({ ref: ref2, report: report2, previousChecks }, inFile) {
-  const listed2 = report2.results.filter((result) => inFile(result.check));
+  const listed3 = report2.results.filter((result) => inFile(result.check));
   const skipped2 = report2.skippedFiles?.some(
     (s) => s.testFile.project === ref2.project && s.testFile.path === ref2.path
   );
-  if (skipped2 !== true) return listed2;
+  if (skipped2 !== true) return listed3;
   const known2 = previousChecks.filter(
     (check) => check.kind === "test" && inFile(check)
   );
-  if (known2.length === 0) return listed2;
+  if (known2.length === 0) return listed3;
   return known2.map((check) => ({
     check,
     outcome: "skip",
@@ -12085,9 +12114,9 @@ function owedStrict(ledger, owed) {
 function resumeOwed(ledger, taken2) {
   const { checkpoints } = ledger;
   if (taken2 === null) return;
-  const listed2 = taken2.owed.remaining.flatMap((ref2) => ledger.file(ref2) ?? []);
+  const listed3 = taken2.owed.remaining.flatMap((ref2) => ledger.file(ref2) ?? []);
   const strict = owedStrict(ledger, taken2);
-  const loose = listed2.filter((file) => !strict.includes(file));
+  const loose = listed3.filter((file) => !strict.includes(file));
   const unrunnable = loose.filter((file) => file.key === null || file.blocked !== null);
   const baseline2 = checkpoints.active;
   const others = baseline2 === null ? loose.filter((file) => !unrunnable.includes(file) && classify2(file) !== "current") : [];
@@ -12134,12 +12163,12 @@ async function baseline(context, ledger, changed = NOTHING_CHANGED) {
   const failures = /* @__PURE__ */ new Map();
   takeHeldFiles(store, worktreeId);
   await readEnvironments(context, failures, bound);
-  const listed2 = await tryRunner(context, "testFiles", () => listTestFilesOf(context, bound));
-  ledger.listingFailed = listed2 === null;
+  const listed3 = await tryRunner(context, "testFiles", () => listTestFilesOf(context, bound));
+  ledger.listingFailed = listed3 === null;
   const previousKeys = new Map(
     store.testFileKeys.list(worktreeId).map((row) => [testFileId(row.testFile), row])
   );
-  const refs2 = listed2 ?? [...previousKeys.values()].map((row) => row.testFile);
+  const refs2 = listed3 ?? [...previousKeys.values()].map((row) => row.testFile);
   const known2 = knownChecks(context, ledger);
   const fromStore = /* @__PURE__ */ new Set();
   const unresolved = [];
@@ -12155,7 +12184,7 @@ async function baseline(context, ledger, changed = NOTHING_CHANGED) {
     }
   }
   await resolveClosures(context, unresolved, failures, bound);
-  if (listed2 !== null) {
+  if (listed3 !== null) {
     for (const row of previousKeys.values()) {
       if (ledger.file(row.testFile)) continue;
       const gone3 = ledger.addFile(row.testFile);
@@ -12929,7 +12958,7 @@ var init_keying = __esm({
        * closure that still names one tracks it again.
        */
       async bootstrap(head) {
-        const listed2 = splitNul(
+        const listed3 = splitNul(
           await runGit(this.options.root, [
             "ls-files",
             "-z",
@@ -12938,7 +12967,7 @@ var init_keying = __esm({
             "--exclude-standard"
           ])
         );
-        const known2 = new Set(listed2);
+        const known2 = new Set(listed3);
         const unlisted = [...this.cache.paths()].filter((path) => !known2.has(path));
         const scratch = [];
         for (const path of await checkIgnored(this.options.root, unlisted)) {
@@ -12951,9 +12980,9 @@ var init_keying = __esm({
           const paths = await statCandidates(this.cache.paths(), this.options.hasher);
           revision = await this.reconcile({ trigger: "start", paths }, head);
         }
-        const linked = await linkedFiles(this.options.root, listed2, this.extraFiles());
+        const linked = await linkedFiles(this.options.root, listed3, this.extraFiles());
         await this.#seed(
-          [...listed2, ...linked].filter((path) => this.cache.hashOf(path) === void 0)
+          [...listed3, ...linked].filter((path) => this.cache.hashOf(path) === void 0)
         );
         this.#declared = createDeclaredInputs(this.#policy.inputs, this.#declarable());
         return revision;
@@ -13341,9 +13370,9 @@ async function fetchRunnerPart(context, ledger, revision, content, carried, touc
     () => bound.call(() => runner.environment()),
     (reason2) => failed(failures, null, reason2)
   ) : null;
-  const listed2 = structural2 || recreated.size > 0 || ledger.listingFailed ? await tryRunner(context, "testFiles", () => listTestFilesOf(context, bound)) : void 0;
+  const listed3 = structural2 || recreated.size > 0 || ledger.listingFailed ? await tryRunner(context, "testFiles", () => listTestFilesOf(context, bound)) : void 0;
   const exists2 = new Set(
-    listed2 ? listed2.map(testFileId) : [...ledger.files.values()].map((f) => f.id)
+    listed3 ? listed3.map(testFileId) : [...ledger.files.values()].map((f) => f.id)
   );
   const reresolve = /* @__PURE__ */ new Map();
   const pick = (refs2) => {
@@ -13352,7 +13381,7 @@ async function fetchRunnerPart(context, ledger, revision, content, carried, touc
       if (exists2.has(id2)) reresolve.set(id2, ref2);
     }
   };
-  pick((listed2 ?? []).filter((ref2) => !keys.index.closure(ref2)));
+  pick((listed3 ?? []).filter((ref2) => !keys.index.closure(ref2)));
   pick(
     [...ledger.files.values()].filter((file) => recreated.has(file.ref.project) || file.blocked !== null).map((file) => file.ref)
   );
@@ -13383,7 +13412,7 @@ async function fetchRunnerPart(context, ledger, revision, content, carried, touc
     retrying,
     failures,
     environments: environments2,
-    listed: listed2,
+    listed: listed3,
     direct: new Set((affected2?.direct ?? []).map(testFileId)),
     reresolved: [...reresolve.values()],
     closures
@@ -17877,13 +17906,13 @@ function observedInputs(recorded2, completed, paths) {
       return [...kept2].sort(compare);
     };
     const read5 = relative23(entry4.paths, (abs) => abs === git || !isDirectory5(abs));
-    const listed2 = relative23(entry4.listed, () => true);
+    const listed3 = relative23(entry4.listed, () => true);
     const recursive = relative23(entry4.recursive, () => true);
-    if (read5.length > 0 || listed2.length > 0) {
+    if (read5.length > 0 || listed3.length > 0) {
       out2.push({
         testFile,
         paths: read5,
-        directories: listed2,
+        directories: listed3,
         ...recursive.length > 0 ? { recursive } : {}
       });
     }
@@ -21253,8 +21282,8 @@ var init_adapter_observed = __esm({
         return [...this.preloadSet].sort(compare);
       }
       /** Test files another worktree's observations re-key, once each. */
-      takeGrown(listed2) {
-        const out2 = [...this.grown].filter((f) => listed2.has(f)).sort(compare);
+      takeGrown(listed3) {
+        const out2 = [...this.grown].filter((f) => listed3.has(f)).sort(compare);
         this.grown.clear();
         return out2;
       }
@@ -21274,12 +21303,12 @@ var init_adapter_observed = __esm({
        * sorted, so the scheduler keeps no result of a file whose key lacked
        * one (task 003-43).
        */
-      record(seen, listed2) {
+      record(seen, listed3) {
         const tests = {};
         const preloadStatic = new Set(this.graph.preloads().paths);
         const preloads = /* @__PURE__ */ new Set();
         for (const { testFile, paths, preloadPaths } of seen) {
-          if (!listed2.has(testFile.path)) continue;
+          if (!listed3.has(testFile.path)) continue;
           for (const path of preloadPaths) if (!preloadStatic.has(path)) preloads.add(path);
           const closure = new Set(this.graph.closure(testFile.path).paths);
           const added = this.addTest(
@@ -40217,11 +40246,11 @@ function listTestFiles4(root, project, note) {
   const exclude = createInputMatcher(project.exclude ?? []);
   const { norecursedirs, pythonFiles } = recursionSettings(root, cwd);
   const env = environmentDir(root, project);
-  const listed2 = (path) => {
+  const listed3 = (path) => {
     const fromCwd = slashes4(relative14(cwd, path));
     return include(fromCwd) && !exclude(fromCwd);
   };
-  const isTest = (path) => listed2(path) && pythonFiles.some((pattern2) => fnmatchEx(pattern2, path));
+  const isTest = (path) => listed3(path) && pythonFiles.some((pattern2) => fnmatchEx(pattern2, path));
   const found2 = [];
   const skipped2 = [];
   const walk2 = (dir2) => {
@@ -40231,7 +40260,7 @@ function listTestFiles4(root, project, note) {
         if (never(path, env)) continue;
         if (!norecursedirs.some((pattern2) => fnmatchEx(pattern2, path))) walk2(path);
         else if (holds(path, env, isTest)) skipped2.push(slashes4(relative14(root, path)));
-      } else if (entry4.isFile() && listed2(path)) found2.push(slashes4(relative14(root, path)));
+      } else if (entry4.isFile() && listed3(path)) found2.push(slashes4(relative14(root, path)));
     }
   };
   for (const base of bases2(project.include)) walk2(join74(cwd, base));
@@ -40539,11 +40568,11 @@ var init_adapter_observed2 = __esm({
        * not: `RunReport.environmentObserved`, so the core stores nothing for a
        * file whose key lacked one and runs it again under the key that holds it.
        */
-      recordSession(seen, plugins, listed2) {
+      recordSession(seen, plugins, listed3) {
         const known2 = new Set(plugins);
         const everywhere = (path) => {
           const { direct, transitive } = this.graph.affected([path]);
-          return direct.length + transitive.length >= listed2;
+          return direct.length + transitive.length >= listed3;
         };
         const paths = seen.filter((p) => !known2.has(p) && !this.outside(p) && !everywhere(p));
         const added = this.addSession(paths);
@@ -40566,8 +40595,8 @@ var init_adapter_observed2 = __esm({
         return this.tests.get(testFile);
       }
       /** Listed test files another worktree's observations re-key, once each. */
-      takeGrown(listed2) {
-        const out2 = [...this.grown].filter((f) => listed2.has(f)).sort(compare);
+      takeGrown(listed3) {
+        const out2 = [...this.grown].filter((f) => listed3.has(f)).sort(compare);
         this.grown.clear();
         return out2;
       }
@@ -40578,10 +40607,10 @@ var init_adapter_observed2 = __esm({
        * review wave 1 input 4): another worktree keys the file with them from
        * the stored closure and re-runs it once. A spare run, never a stale pass.
        */
-      record(seen, listed2) {
+      record(seen, listed3) {
         const additions = {};
         for (const { testFile, paths } of seen) {
-          if (!listed2.has(testFile.path)) continue;
+          if (!listed3.has(testFile.path)) continue;
           const closure = new Set(this.graph.closure(testFile.path).paths);
           const added = this.add(
             testFile.path,
@@ -45737,8 +45766,8 @@ async function runProject(context, testFiles, runOptions) {
   return { kind: "ran", run: run4, report: report2 };
 }
 async function skipKnown(root, testFile, names3) {
-  const listed2 = await enumerate2(toAbsolute(root, testFile.path), testFile, names3).catch(() => []);
-  return listed2.map(({ check, location: location2 }) => ({
+  const listed3 = await enumerate2(toAbsolute(root, testFile.path), testFile, names3).catch(() => []);
+  return listed3.map(({ check, location: location2 }) => ({
     check,
     outcome: "skip",
     durationMs: 0,
@@ -46281,8 +46310,8 @@ function setuptools(dir2, project, sink) {
     sink.entry(`__editable__.${n}-${version2}.pth`, join84(dir2, packageDir[""]));
     return;
   }
-  const listed2 = Array.isArray(st.packages) ? st.packages.filter((p) => !p.includes(".")) : null;
-  const packages = listed2 ?? listDir(dir2).filter(
+  const listed3 = Array.isArray(st.packages) ? st.packages.filter((p) => !p.includes(".")) : null;
+  const packages = listed3 ?? listDir(dir2).filter(
     (d) => isFile2(join84(dir2, d, "__init__.py")) && !/^(?:tests?|docs?|examples?|build|dist)$/.test(d)
   );
   for (const p of packages) {
@@ -46792,9 +46821,9 @@ async function createPytestAdapter(project, options) {
     const config = settings.config === null ? null : toRelative(root, settings.config.path);
     const relist = built === null || rebuild || paths.some((p) => p.kind !== "change" || p.path === config);
     if (relist) {
-      const listed2 = isDirectory4(cwd) ? listTestFiles4(root, project, note) : [];
-      if (!sameList(listed2, files2)) {
-        files2 = listed2;
+      const listed3 = isDirectory4(cwd) ? listTestFiles4(root, project, note) : [];
+      if (!sameList(listed3, files2)) {
+        files2 = listed3;
         built?.graph.setTestFiles(files2);
       }
     }
@@ -47290,7 +47319,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.221";
+  if (true) return "0.1.222";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -47397,7 +47426,7 @@ function formatStatus(result, now, command = "squeal", options = {}) {
       ...f.recorded === void 0 ? f.recordedUnknown === true ? [`        ${RECORDED_UNKNOWN_TEXT}`] : [] : [`        ${recordedText(f.recorded, result.worktreeId, now)}`]
     ]),
     ...retryLines(result),
-    `Affected checks: ${affected(result)}`,
+    `Affected checks: ${affected(result, command)}`,
     ...workLine(result, command),
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
     ...checkpointLine(result, now, command),
@@ -47517,7 +47546,7 @@ function formatUnavailable(result, command = "squeal") {
   return `${lines.join("\n")}
 `;
 }
-function affected(s) {
+function affected(s, command) {
   if (s.testFilesListed === false) {
     return "none counted; the daemon has not listed this worktree's test files yet";
   }
@@ -47539,7 +47568,7 @@ function affected(s) {
   }
   const fresh = freshText(s);
   const runnerPart = s.runnerPartPending === true ? `; ${runnerPartText(s.revision)} is pending, so test files it adds are not counted yet` : "";
-  return `${parts2.join(", ")}${fresh}${runnerPart}`;
+  return `${parts2.join(", ")}${slowAffectedText(s.slowPending, command)}${fresh}${runnerPart}`;
 }
 function freshText(s) {
   const files2 = s.testFilesWithoutChecks.pending;
@@ -48534,8 +48563,8 @@ function workspaceDirs(root, manifest) {
       const path = dir2 === "" ? entry4.name : `${dir2}/${entry4.name}`;
       const reachable2 = include.filter((p) => depth < p.depth && overlaps(path, p.prefix));
       if (reachable2.length === 0) continue;
-      const listed2 = reachable2.some((p) => p.regexp.test(path)) && !exclude.some((p) => p.test(path));
-      if (listed2 && hasManifest(root, path)) dirs.push(path);
+      const listed3 = reachable2.some((p) => p.regexp.test(path)) && !exclude.some((p) => p.test(path));
+      if (listed3 && hasManifest(root, path)) dirs.push(path);
       walk2(path, depth + 1);
     }
   };
@@ -48656,11 +48685,11 @@ function failureCount(failures) {
   return failures.tests + failures.testFiles + (failures.setups ?? 0);
 }
 function gapText2(status2) {
-  const listed2 = status2.available ? status2.unknownTestFiles : void 0;
-  const [first] = listed2?.files ?? [];
-  if (listed2 === void 0 || first === void 0) return "";
-  if (listed2.total === 1) return `. Without a result: ${unknownFileText(first)}`;
-  return `. Without a result: ${listed2.total} test files, listed below; the first: ${unknownFileText(first)}`;
+  const listed3 = status2.available ? status2.unknownTestFiles : void 0;
+  const [first] = listed3?.files ?? [];
+  if (listed3 === void 0 || first === void 0) return "";
+  if (listed3.total === 1) return `. Without a result: ${unknownFileText(first)}`;
+  return `. Without a result: ${listed3.total} test files, listed below; the first: ${unknownFileText(first)}`;
 }
 
 // src/cli/setup/repo.ts
@@ -48733,15 +48762,15 @@ var VITEST_CONFIGS = ["vitest.config", "vite.config"].flatMap(
 var DEFAULT_INCLUDE = ["**/*.{test,spec}.?(c|m)[jt]s?(x)"];
 var DEFAULT_EXCLUDE = ["**/node_modules/**", "**/dist/**"];
 function listTestFiles(root, tracked) {
-  const listed2 = withStatusStore(root, {}, ({ store }) => {
+  const listed3 = withStatusStore(root, {}, ({ store }) => {
     const id2 = worktreeIdFor(root);
     const rows = store.testFileKeys.list(id2);
     if (rows.length === 0) return null;
     const current3 = readVerdict(store, id2).byClass.current;
     return { paths: [...new Set(rows.map((row) => row.testFile.path))].sort(), current: current3 };
   });
-  if (listed2 !== null && "paths" in listed2) {
-    return { source: "store", paths: listed2.paths, current: listed2.current };
+  if (listed3 !== null && "paths" in listed3) {
+    return { source: "store", paths: listed3.paths, current: listed3.current };
   }
   const config = VITEST_CONFIGS.map((name2) => readText(join18(root, name2))).find((t) => t !== null);
   const include = config == null ? [] : stringArrays(config, "include");
@@ -48987,12 +49016,12 @@ async function trustCodexHooks(io, root, options) {
       io.env ?? process.env,
       options.timeoutMs ?? CODEX_APP_SERVER_TIMEOUT_MS
     );
-    const listed2 = await listHooks(server, root, [
+    const listed3 = await listHooks(server, root, [
       options.pluginId,
       ...options.previous === void 0 ? [] : [options.previous.pluginId]
     ]);
-    const hooks = listed2.filter((h) => h.pluginId === options.pluginId);
-    const old = listed2.filter((h) => h.pluginId === options.previous?.pluginId);
+    const hooks = listed3.filter((h) => h.pluginId === options.pluginId);
+    const old = listed3.filter((h) => h.pluginId === options.previous?.pluginId);
     if (options.previous !== void 0 && old.length > 0) {
       const trusted2 = old.filter((h) => h.trustStatus === "trusted").length;
       io.stdout(
@@ -49133,8 +49162,8 @@ async function listHooks(server, root, pluginIds) {
     throw new AppServerError("codex app-server answered hooks/list without data");
   const hooks = [];
   for (const entry4 of data2) {
-    const listed2 = isRecord(entry4) && Array.isArray(entry4.hooks) ? entry4.hooks : [];
-    for (const hook of listed2) {
+    const listed3 = isRecord(entry4) && Array.isArray(entry4.hooks) ? entry4.hooks : [];
+    for (const hook of listed3) {
       if (!isRecord(hook) || typeof hook.pluginId !== "string") continue;
       const { key: key2, eventName, command, currentHash, trustStatus, pluginId } = hook;
       if (!pluginIds.includes(pluginId)) continue;
@@ -52337,12 +52366,12 @@ function withPytest(runners) {
     `<!-- squeal:begin v${BLOCK_VERSION} (managed by Squeal setup; edits inside are replaced) -->`,
     "## Tests",
     "",
-    `Squeal runs the ${listed(names3, "and")} tests after each edit. Before you say the work is done, run \`squeal status --wait 60000\` (or the command the SQUEAL messages name) and report its known failures and pending checks instead of running ${listed(names3, "or")}. If you have seen no SQUEAL message in this session, run ${fallback} instead. Where this file's verification steps name a test command, they take precedence.`,
+    `Squeal runs the ${listed2(names3, "and")} tests after each edit. Before you say the work is done, run \`squeal status --wait 60000\` (or the command the SQUEAL messages name) and report its known failures and pending checks instead of running ${listed2(names3, "or")}. If you have seen no SQUEAL message in this session, run ${fallback} instead. Where this file's verification steps name a test command, they take precedence.`,
     "<!-- squeal:end -->",
     ""
   ].join("\n");
 }
-function listed(words, conjunction) {
+function listed2(words, conjunction) {
   if (words.length <= 2) return words.join(` ${conjunction} `);
   return `${words.slice(0, -1).join(", ")} ${conjunction} ${words.at(-1)}`;
 }
@@ -52483,8 +52512,8 @@ async function blockFiles(root) {
     "--",
     ...BLOCK_FILE_NAMES.map((name2) => `:(glob)**/${name2}`)
   ]).catch(() => "");
-  const listed2 = [...new Set(splitNul(out2))].filter((path) => !ROOT_FILES.includes(path)).sort();
-  return [...ROOT_FILES, ...listed2];
+  const listed3 = [...new Set(splitNul(out2))].filter((path) => !ROOT_FILES.includes(path)).sort();
+  return [...ROOT_FILES, ...listed3];
 }
 function removeBlocks(root, paths = ROOT_FILES) {
   const edits = [];
@@ -54616,7 +54645,7 @@ function slowTierText2(snapshot3, command) {
   const runs = tier.pausesOnly === true || tier.pending === 0 ? "" : ` and Squeal runs ${tier.notRun === 0 ? them : "the pending ones"} after the fast tests`;
   const files2 = `${plural(open5, "slow file")} ${open5 === 1 ? "is" : "are"} not current${runs}`;
   if (tier.stopWaitMs === void 0) {
-    return `; ${files2}; this repository does not require ${them} before you finish (\`${command} run --slow\` runs ${them})`;
+    return `; ${files2}; this repository does not require ${them} before you finish; ${slowWaitText(command, open5)}`;
   }
   return `; ${files2}, which this wait does not hold for: \`${command} run --slow --wait 60000\` runs and waits for ${them}`;
 }
@@ -54664,7 +54693,7 @@ function pauseText(wait, command) {
   const more = n > NAMED_FILES_SHOWN ? ` and ${n - NAMED_FILES_SHOWN} more` : "";
   const them = n === 1 ? "it" : "them";
   const what = `${plural(n, "slow test file")} ${n === 1 ? "waits" : "wait"} for a pause or \`${command} run --slow\`, which this wait does not hold for: ${shown}${more}`;
-  return wait.result.slowTier?.stopWaitMs === void 0 ? `${what}; this repository does not require ${them} before you finish` : `${what}; this repository requires ${them} before you finish: \`${command} run --slow --wait 60000\` runs and waits for ${them}`;
+  return wait.result.slowTier?.stopWaitMs === void 0 ? `${what}; this repository does not require ${them} before you finish; ${slowWaitText(command, n)}` : `${what}; this repository requires ${them} before you finish: \`${command} run --slow --wait 60000\` runs and waits for ${them}`;
 }
 function refText({ project, path }) {
   return project === "" ? path : `${project}: ${path}`;
@@ -55731,8 +55760,8 @@ function filesText2(root, checkpoint) {
   const toRun2 = plural(checkpoint.testFiles.length, "test file");
   const current3 = inStore(root, (store) => {
     const requested = new Set(checkpoint.testFiles.map(testFileId));
-    const listed2 = laneFiles(store, checkpoint) ?? store.testFileKeys.list(checkpoint.worktreeId).map((row) => row.testFile);
-    const rest = listed2.filter((file) => !requested.has(testFileId(file)));
+    const listed3 = laneFiles(store, checkpoint) ?? store.testFileKeys.list(checkpoint.worktreeId).map((row) => row.testFile);
+    const rest = listed3.filter((file) => !requested.has(testFileId(file)));
     return readVerdict(store, checkpoint.worktreeId, rest).byClass.current;
   });
   return `${toRun2} to run${current3 === null ? "" : `, ${current3} already current`}`;
@@ -55981,8 +56010,8 @@ function ignoredReadText(read5) {
   const bound = read5.moreAtMost === true && read5.more > 0;
   const count = bound ? read5.paths.length : read5.paths.length + read5.more;
   const more = read5.more > 0 ? [`and ${bound ? "up to " : ""}${read5.more} more`] : [];
-  const listed2 = [...read5.paths, ...more];
-  return `${read5.path} read ${bound ? "at least " : ""}${plural(count, "gitignored path")}, unkeyed: a change to ${count === 1 ? "it" : "them"} re-runs nothing, and no input declaration keys a gitignored path; a test of build output Squeal does not produce belongs in its runner's exclude (vitest.exclude, or its project's exclude), for you or CI to run${listed2.map((p) => `
+  const listed3 = [...read5.paths, ...more];
+  return `${read5.path} read ${bound ? "at least " : ""}${plural(count, "gitignored path")}, unkeyed: a change to ${count === 1 ? "it" : "them"} re-runs nothing, and no input declaration keys a gitignored path; a test of build output Squeal does not produce belongs in its runner's exclude (vitest.exclude, or its project's exclude), for you or CI to run${listed3.map((p) => `
     ${p}`).join("")}`;
 }
 function ignoredReadNotes({ reads, unobserved }) {
@@ -56834,7 +56863,7 @@ function openCodePackage(env) {
   const link = join100(packagesHome("opencode", env), "current");
   const spec = `file:${link}`;
   const config = join100(env.XDG_CONFIG_HOME || join100(env.HOME ?? "", ".config"), "opencode");
-  const listed2 = ["opencode.json", "opencode.jsonc", "config.json"].some((name2) => {
+  const listed3 = ["opencode.json", "opencode.jsonc", "config.json"].some((name2) => {
     let text2;
     try {
       text2 = readFileSync39(join100(config, name2), "utf8");
@@ -56849,7 +56878,7 @@ function openCodePackage(env) {
       return text2.includes(JSON.stringify(spec));
     }
   });
-  if (!listed2) return null;
+  if (!listed3) return null;
   try {
     const manifest = JSON.parse(readFileSync39(join100(link, "package.json"), "utf8"));
     return isRecord(manifest) && typeof manifest.version === "string" ? { version: manifest.version } : null;

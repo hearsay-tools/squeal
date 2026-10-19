@@ -704,7 +704,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.221";
+  if (true) return "0.1.222";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -1413,14 +1413,16 @@ function countFilesWithoutChecks(states, keys) {
   }
   return counts;
 }
+var SLOW_FILES_NAMED = 3;
 function countSlowPending(states, keys, isSlow) {
   const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
-  const files2 = /* @__PURE__ */ new Set();
+  const files2 = /* @__PURE__ */ new Map();
   let checks = 0;
   for (const state of states) {
-    if (state.validity !== "pending" || !isSlow(testFileOf(state.check))) continue;
+    const ref = testFileOf(state.check);
+    if (state.validity !== "pending" || !isSlow(ref)) continue;
     checks++;
-    files2.add(testFileKeyOf(state.check));
+    files2.set(testFileKeyOf(state.check), ref);
   }
   let testFilesWithoutChecks = 0;
   for (const row of keys) {
@@ -1429,9 +1431,15 @@ function countSlowPending(states, keys, isSlow) {
       continue;
     }
     testFilesWithoutChecks++;
-    files2.add(id);
+    files2.set(id, row.testFile);
   }
-  return { testFiles: files2.size, checks, testFilesWithoutChecks };
+  const named = [...files2.values()].sort((a, b) => a.path.localeCompare(b.path) || a.project.localeCompare(b.project)).slice(0, SLOW_FILES_NAMED);
+  return {
+    testFiles: files2.size,
+    checks,
+    testFilesWithoutChecks,
+    ...named.length === 0 ? {} : { files: named }
+  };
 }
 function hasKey(row) {
   return row.key !== null;
@@ -1554,8 +1562,12 @@ function slowTierText(header, command) {
     parts.push(pendingText(tier.pending, tier.activity, header.daemon?.state === "down"));
   }
   if (tier.notRun > 0) parts.push(`${tier.notRun} not run at revision ${header.revision}`);
-  const runs = tier.current >= tier.testFiles ? "" : `; \`${command} run --slow\` runs them now`;
+  const open = tier.testFiles - tier.current;
+  const runs = open <= 0 ? "" : `; ${slowWaitText(command, open)}`;
   return `Slow tier: ${plural(tier.testFiles, "test file")}; ${parts.join("; ")}. ${capitalized(stopText(tier))}${runs}.`;
+}
+function slowWaitText(command, open) {
+  return `\`${command} run --slow --wait 60000\` waits for ${open === 1 ? "its result" : "their results"}`;
 }
 function stopText(tier) {
   if (tier.stopWaitMs !== void 0) {
