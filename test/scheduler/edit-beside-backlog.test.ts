@@ -187,7 +187,7 @@ describe("scheduler: an edit's node:test tier beside the backlog tier (task 011-
     if (edit?.end == null) throw new Error("the edit's run did not end before its result");
     const ownMs = edit.end - edit.start;
     console.log(
-      `011-21: the edit was current after ${Math.round(currentAt - editedAt)} ms, its own run ${Math.round(ownMs)} ms; the backlog tier ran ${Math.round((backlog.end ?? now()) - backlog.start)} ms`,
+      `011-21: the edit was current after ${Math.round(currentAt - editedAt)} ms, its own run ${Math.round(ownMs)} ms, ${Math.round(now() - backlog.start)} ms into the backlog tier`,
     );
     expect(currentAt - editedAt).toBeLessThanOrEqual(ownMs + 1_000);
     expect(backlog.end).toBeNull();
