@@ -122,18 +122,21 @@ export async function answerPlan(
     for (const group of plan.slow.groups) {
       const glob = groupGlob(group);
       // Row 005-70: an exclude candidate is asked first, yes by default; no keeps it a slow candidate.
+      // B1: a yes excludes only the files that name a build output; the rest are asked about as slow.
+      let left = group.files.length;
       if (
         !group.declaredSlow &&
         group.exclude != null &&
         (await yes(excludeQuestion(group, group.exclude), true, "exclude", "keep"))
       ) {
-        exclude.push(group.exclude.glob);
-        continue;
+        exclude.push(...group.exclude.globs);
+        left = group.exclude.kept.length;
+        if (left === 0) continue;
       }
       const isSlow =
         group.declaredSlow ||
         (await yes(
-          `${glob} (${group.files.length} files: ${group.reasons.join("; ")}). Run these tests in the slow tier?`,
+          `${glob} (${left} ${left === group.files.length ? "" : "other "}files: ${group.reasons.join("; ")}). Run these tests in the slow tier?`,
           group.defaultSlow,
           "slow",
           "not slow",
@@ -173,13 +176,27 @@ function excludeQuestion(group: SlowGroup, proposal: ExcludeProposal): string {
     return `    ${o.path}${o.exists ? "" : " (not built here)"}: ${evidence}\n`;
   });
   const what = outputs.length === 1 ? "a build output" : "build outputs";
-  const inputs = group.declaredInputs.length === 0 ? "" : "; their inputs entries go too";
+  const { kept } = proposal;
+  const inputs =
+    group.declaredInputs.length === 0 || kept.length > 0 ? "" : "; their inputs entries go too";
+  if (kept.length === 0) {
+    return [
+      `${proposal.globs.join(", ")} (${group.files.length} files) tests ${what} Squeal does not produce:\n`,
+      ...outputs,
+      "Squeal never builds, so a result against a build it cannot see is tied to no code state. ",
+      "No keeps them a slow candidate. Leave these tests to CI and to runs after a build ",
+      `(${excludeKeys(proposal)}${inputs})?`,
+    ].join("");
+  }
+  const named = group.files.length - kept.length;
   return [
-    `${proposal.glob} (${group.files.length} files) tests ${what} Squeal does not produce:\n`,
+    `${groupGlob(group)} (${group.files.length} files): ${named} ${named === 1 ? "tests" : "test"} ${what} Squeal does not produce:\n`,
     ...outputs,
+    `  ${named === 1 ? "It" : "They"}, as --exclude takes ${named === 1 ? "it" : "them"}:\n`,
+    ...proposal.globs.map((g) => `    ${g}\n`),
     "Squeal never builds, so a result against a build it cannot see is tied to no code state. ",
-    "No keeps them a slow candidate. Leave these tests to CI and to runs after a build ",
-    `(${excludeKeys(proposal)}${inputs})?`,
+    `The ${kept.length} other${kept.length === 1 ? "" : "s"} name no build output and stay slow candidates; no keeps all ${group.files.length}. `,
+    `Leave the ${named} to CI and to runs after a build (${excludeKeys(proposal)})?`,
   ].join("");
 }
 

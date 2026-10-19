@@ -39,6 +39,7 @@ describe("build-output candidates", () => {
             weak: false,
           },
         ],
+        namedBy: [],
       },
       {
         path: "plugins",
@@ -52,6 +53,7 @@ describe("build-output candidates", () => {
             weak: false,
           },
         ],
+        namedBy: ["test/e2e/plugin-copy.test.ts"],
       },
       {
         path: "plugins/codex/dist",
@@ -65,6 +67,7 @@ describe("build-output candidates", () => {
             weak: false,
           },
         ],
+        namedBy: ["test/e2e/plugin-copy.test.ts"],
       },
     ]);
   });
