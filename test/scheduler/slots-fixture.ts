@@ -55,14 +55,24 @@ export interface SlotHarness {
 }
 
 export interface SlotOptions {
-  /** Test file path under `nt/test/` without the suffix, and its sleep in ms. */
-  readonly files: readonly { readonly name: string; readonly sleepMs: number }[];
+  /** Test file path under `nt/test/` without the suffix, its sleep in ms, and its CPU spin. */
+  readonly files: readonly {
+    readonly name: string;
+    readonly sleepMs: number;
+    readonly spinMs?: number;
+  }[];
   readonly hostSlots: number;
   readonly tierSize?: number;
   readonly timeoutMs?: number;
   readonly backlogTierSize?: number;
   /** `false` hides `backlogSlot`: the backlog runs in tiers, as before slots. */
   readonly slots?: boolean;
+  /**
+   * Each sink call that applies results holds the thread this long, as one
+   * that lists every known state of a large store does (`mergeApplied`:
+   * 55 to 340 ms a call on cezar's).
+   */
+  readonly applyMs?: number;
 }
 
 export const testPath = (name: string) => `nt/test/${name}.test.mjs`;
@@ -77,7 +87,7 @@ export async function slotHarness(options: SlotOptions): Promise<SlotHarness> {
   // No Vitest files: the Vitest lane's own backlog tier would share the pool.
   rmSync(join(repo.main, "test"), { recursive: true, force: true });
   mkdirSync(join(repo.main, "nt/test"), { recursive: true });
-  for (const { name, sleepMs } of options.files) {
+  for (const { name, sleepMs, spinMs = 0 } of options.files) {
     const path = testPath(name);
     writeFileSync(
       join(repo.main, path),
@@ -85,7 +95,7 @@ export async function slotHarness(options: SlotOptions): Promise<SlotHarness> {
         'import { appendFileSync } from "node:fs";',
         'import { test } from "node:test";',
         `process.on("exit", () => appendFileSync(${JSON.stringify(log)}, JSON.stringify({ path: ${JSON.stringify(path)}, start: performance.timeOrigin, end: performance.timeOrigin + performance.now() }) + "\\n"));`,
-        `test("sleeps", () => new Promise((resolve) => setTimeout(resolve, ${sleepMs})));`,
+        `test("sleeps", () => { const end = Date.now() + ${spinMs}; while (Date.now() < end); return new Promise((resolve) => setTimeout(resolve, ${sleepMs})); });`,
         "",
       ].join("\n"),
     );
@@ -126,6 +136,15 @@ export async function slotHarness(options: SlotOptions): Promise<SlotHarness> {
     adapters: [timed],
     capacity: { dir: poolDir, hostSlots: options.hostSlots },
   });
+  const applyMs = options.applyMs ?? 0;
+  if (applyMs > 0) {
+    const apply = h.sink.applyResults.bind(h.sink);
+    h.sink.applyResults = (...args) => {
+      const end = performance.now() + applyMs;
+      while (performance.now() < end);
+      return apply(...args);
+    };
+  }
   const spans = () =>
     readFileSync(log, "utf8")
       .split("\n")
