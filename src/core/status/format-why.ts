@@ -9,6 +9,7 @@ import type {
   Transition,
   WhyChangedSince,
   WhyNoMatch,
+  WhyRankedBy,
   WhyReport,
   WhyResult,
   WhyResultEntry,
@@ -24,14 +25,17 @@ const INDENT = "        ";
 export function formatWhy(why: WhyResult): string {
   if (!why.available) return formatUnavailable(why);
   if (!why.found) {
-    if (why.candidates.length === 0) return noMatch(why);
+    const ranked = rankedLine(why.rankedBy)
+      .map((line) => `${line}\n`)
+      .join("");
+    if (why.candidates.length === 0) return `${noMatch(why)}${ranked}`;
     return `${[
       `"${why.query}" matches ${why.candidates.length} checks in this worktree:`,
       ...why.candidates.map((c, i) => {
         const d = why.candidateDurations[i];
         return `  ${formatCheck(c)}${d == null ? "" : `  ${durationsText(d)}`}`;
       }),
-    ].join("\n")}\n`;
+    ].join("\n")}\n${ranked}`;
   }
   const lines = [
     `Check: ${formatCheck(why.check)}`,
@@ -71,6 +75,7 @@ function knownState(why: WhyReport, s: KnownState | null): string[] {
     ...stateLines(why, s),
     ...changedLine(why.changedSince),
     ...closureLines(why),
+    ...rankedLine(why.rankedBy).map((line) => `  ${line}`),
     ...replacedLine(why),
     ...heldLine(why),
     ...flakyLine(why),
@@ -94,6 +99,15 @@ function changedLine(since: WhyChangedSince | undefined): string[] {
       ? ` (first ${since.paths.length} of ${since.total} paths)`
       : "";
   return [`  Changed since revision ${since.revision}${capped}: ${paths.join(", ")}`];
+}
+
+/** 004 D2 as amended (task 004-82): the tokens that put a slow file ahead in its class. */
+function rankedLine(rankedBy: WhyRankedBy | undefined): string[] {
+  if (rankedBy === undefined) return [];
+  const tokens = rankedBy.tokens.join(", ");
+  return [
+    `Slow order: ${rankedBy.testFile} runs ahead by evidence: it selects ${tokens}, tokens of the files edited`,
+  ];
 }
 
 /** 011 C5 as amended (gh-32): whether the failure's closure reads the session's changes, a fact. */

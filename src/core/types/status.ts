@@ -684,6 +684,8 @@ export interface WhyReport {
    * registered session or the changes are not known.
    */
   readonly changesInClosure?: readonly RelativePath[];
+  /** The tokens that ranked the check's slow test file (004 D2, task 004-82). Absent when none did. */
+  readonly rankedBy?: WhyRankedBy;
   /**
    * Durations over every stored result of the check, not only the listed
    * ones (task 001-411). `null` when no pass or fail is stored.
@@ -706,6 +708,16 @@ export interface WhyDurations {
   readonly medianMs: number;
   readonly p95Ms: number;
   readonly maxMs: number;
+}
+
+/**
+ * Spec 004 D2 as amended 2026-10-18 (task 004-82): "`why <slow file>` names
+ * the tokens that ranked it", at the key its file was queued for.
+ */
+export interface WhyRankedBy {
+  readonly testFile: RelativePath;
+  /** Tokens of the changed files that the slow file or its helpers select. */
+  readonly tokens: readonly string[];
 }
 
 /** What changed in this worktree since an older result's revision. Task 001-225. */
@@ -821,6 +833,8 @@ export interface WhyNoMatch {
    * gh-31, task 011-17). Absent from a payload that predates it.
    */
   readonly queuedWithoutResult?: number;
+  /** The query names a slow test file that evidence ranked (task 004-82). Absent otherwise. */
+  readonly rankedBy?: WhyRankedBy;
 }
 
 export type WhyResult = WhyReport | WhyNoMatch | StatusUnavailable;
