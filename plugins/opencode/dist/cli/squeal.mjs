@@ -9321,18 +9321,22 @@ var init_rank = __esm({
         }
         return out2;
       }
-      /** Tokens the changed files and their `./` and `../` imports offer, each read once. */
+      /**
+       * Tokens the changed files and their `./` and `../` imports offer, each
+       * read once. A changed file read first as another's import still has its
+       * own imports inspected (review wave-13 S1), whatever the order.
+       */
       #offered(paths) {
         const tokens = /* @__PURE__ */ new Set();
-        const read5 = /* @__PURE__ */ new Set();
+        const texts = /* @__PURE__ */ new Map();
         const take = (path) => {
-          if (read5.has(path)) return null;
-          read5.add(path);
+          if (texts.has(path)) return texts.get(path) ?? null;
           const text2 = this.source.read(path);
+          texts.set(path, text2);
           if (text2 !== null) for (const token of offeredTokens(text2)) tokens.add(token);
           return text2;
         };
-        for (const path of paths) {
+        for (const path of new Set(paths)) {
           const text2 = take(path);
           if (text2 === null) continue;
           for (const imported of this.#resolve(path, localSpecifiers(text2, true))) take(imported);
@@ -52577,12 +52581,14 @@ function excludeKeys(proposal) {
   const keys = proposal.into.map(
     (i3) => i3.runner === "vitest" ? "vitest.exclude" : `nodeTest "${i3.project}" exclude`
   );
-  return keys.join(" and ") || "no runner's exclude lists them";
+  return [...new Set(keys)].join(" and ") || "no runner's exclude lists them";
 }
 function excludeTargets(plan, testFiles, globs2) {
+  const cwd = new Map(plan.runners.nodeTest.map((p) => [p.name, p.cwd]));
+  const of = (t) => t.runner === "vitest" ? t.glob : posix9.join(cwd.get(t.project) ?? "", t.glob);
   return globs2.flatMap((glob2) => {
-    const group = plan.slow.groups.find((g2) => g2.exclude?.glob === glob2);
-    if (group?.exclude != null) return [...group.exclude.into];
+    const group = plan.slow.groups.find((g2) => g2.exclude?.globs.includes(glob2) === true);
+    if (group?.exclude != null) return group.exclude.into.filter((t) => of(t) === glob2);
     const selects = matcher2([glob2]);
     return excludeInto(plan.runners, glob2, testFiles.filter(selects), () => true);
   });
@@ -52900,21 +52906,27 @@ async function buildOutputCandidates(facts, dir2, files2) {
   const all = [...found2, ...named];
   const ignored = new Set(await ignoredDirs(facts.root, [...new Set(all.map((f) => f.path))]));
   const byPath = /* @__PURE__ */ new Map();
-  for (const { path, ...evidence } of all) {
+  const namedBy = /* @__PURE__ */ new Map();
+  for (const { path, files: by, ...evidence } of all) {
     const list2 = byPath.get(path) ?? [];
     if (!list2.some((e) => e.detail === evidence.detail)) list2.push(evidence);
     byPath.set(path, list2);
+    if (by !== void 0) namedBy.set(path, by);
   }
   return [...byPath].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([path, evidence]) => ({
     path,
     exists: dirExists(facts.root, path),
     ignored: ignored.has(path),
-    evidence
+    evidence,
+    namedBy: namedBy.get(path) ?? []
   }));
 }
 function testsBuildOutput(c) {
   const rules = new Set(c.evidence.map((e) => e.rule));
   return rules.has("named") && (c.ignored || rules.has("build-script"));
+}
+function evidencedFiles(candidates) {
+  return [...new Set(candidates.filter(testsBuildOutput).flatMap((c) => c.namedBy))].sort();
 }
 function fieldCandidates(manifest) {
   const where2 = `${manifest.dir || "."}/package.json`;
@@ -52992,12 +53004,13 @@ async function namedCandidates(facts, manifest, files2, found2) {
   for (const dir2 of [.../* @__PURE__ */ new Set([...inPackage, ...found2.map((f) => f.path)])].sort()) {
     const hits = literals.flatMap(({ file, strings: strings5 }) => {
       const hit = strings5.find((s) => names2(facts, posix11.dirname(file), manifest.dir, s, dir2));
-      return hit === void 0 ? [] : [hit];
+      return hit === void 0 ? [] : [{ file, hit }];
     });
     if (hits.length === 0) continue;
-    const named = `named by ${hits.length} of ${files2.length} test files, such as "${hits[0]}"`;
+    const named = `named by ${hits.length} of ${files2.length} test files, such as "${hits[0]?.hit}"`;
     out2.push({
       path: dir2,
+      files: hits.map((h) => h.file).sort(),
       rule: "named",
       detail: ignored.has(dir2) ? `gitignored, ${named}` : named,
       weak: false
@@ -53086,11 +53099,15 @@ async function slowCandidates(facts, policy, runners) {
     const dir2 = posix12.dirname(file);
     byDir.set(dir2, [...byDir.get(dir2) ?? [], file]);
   }
+  const outputs = /* @__PURE__ */ new Map();
+  for (const [dir2, files2] of byDir) {
+    outputs.set(dir2, (await buildOutputCandidates(facts, dir2, files2)).filter(testsBuildOutput));
+  }
+  const evidenced = new Set([...outputs.values()].flatMap(evidencedFiles));
+  const isVitest = (f) => facts.testFiles.paths.includes(f);
   const groups = [];
   for (const [dir2, files2] of byDir) {
     const why2 = [...new Set(files2.flatMap((f) => [...reasons.get(f) ?? []]))];
-    const declaredInputs = inputsFor(policy, files2);
-    const buildOutputs = (await buildOutputCandidates(facts, dir2, files2)).filter(testsBuildOutput);
     groups.push({
       dir: dir2,
       files: files2,
@@ -53098,20 +53115,26 @@ async function slowCandidates(facts, policy, runners) {
       // 005-04: a node:test project alone is not a slow group (cezarion's `test/unit`).
       defaultSlow: why2.some((r) => !r.startsWith(NODE_TEST2)),
       declaredSlow: files2.some(isDeclared),
-      declaredInputs,
-      buildOutputs,
-      exclude: buildOutputs.length === 0 ? null : {
-        glob: dir2 === "" ? "**" : `${dir2}/**`,
-        into: excludeInto(
-          runners,
-          dir2 === "" ? "**" : `${dir2}/**`,
-          files2,
-          (f) => facts.testFiles.paths.includes(f)
-        )
-      }
+      declaredInputs: inputsFor(policy, files2),
+      buildOutputs: outputs.get(dir2) ?? [],
+      exclude: excludeProposal(dir2, files2, evidenced, universe, runners, isVitest)
     });
   }
   return { groups, unresolvedScripts };
+}
+function excludeProposal(dir2, files2, evidenced, universe, runners, isVitest) {
+  const named = files2.filter((f) => evidenced.has(f));
+  if (named.length === 0) return null;
+  const glob2 = dir2 === "" ? "**" : `${dir2}/**`;
+  const selected = universe.filter(globMatcher([glob2]));
+  const globs2 = selected.every((f) => evidenced.has(f)) ? [glob2] : named;
+  return {
+    globs: globs2,
+    into: globs2.flatMap(
+      (g2) => excludeInto(runners, g2, selected.filter(globMatcher([g2])), isVitest)
+    ),
+    kept: files2.filter((f) => !named.includes(f))
+  };
 }
 function scriptFiles(facts, manifest, name2, universe, depth) {
   const text2 = scriptsOf(manifest).find(([n]) => n === name2)?.[1];
@@ -53396,8 +53419,9 @@ async function readPlan(root, options) {
     problems,
     missingKeys: [
       ...exists2 && runners.nodeTest.some((p) => p.source === "seed") ? ["nodeTest"] : [],
-      // Row 005-70: an exclude candidate's default is the runner's `exclude`, not `slow`.
-      ...exists2 && !(isRecord(raw) && "slow" in raw) && slow.groups.some((g2) => g2.defaultSlow && (g2.exclude ?? null) === null) ? ["slow"] : [],
+      // Row 005-70: an exclude candidate's default is the runner's `exclude`, not `slow`;
+      // B1: the files it keeps are still slow candidates.
+      ...exists2 && !(isRecord(raw) && "slow" in raw) && slow.groups.some((g2) => g2.defaultSlow && (g2.exclude?.kept.length ?? 1) > 0) ? ["slow"] : [],
       // Spec 007 D1: only an absent key; init's default `pytest: []` is seeded over, not reported.
       ...exists2 && !(isRecord(raw) && "pytest" in raw) && pytest.some((p) => p.source === "seed") ? ["pytest"] : [],
       // Row 005-70: an exclude candidate for Vitest not kept slow, and no `vitest.exclude`.
@@ -56109,7 +56133,8 @@ function formatPlan(plan) {
   if (plan.slow.groups.length === 0) lines.push("  none found");
   for (const group of plan.slow.groups) {
     const exclude = group.declaredSlow ? null : group.exclude ?? null;
-    const byDefault = exclude === null ? `default ${group.defaultSlow ? "slow" : "not slow"}` : `default excluded (${excludeKeys(exclude)})`;
+    const slow = `default ${group.defaultSlow ? "slow" : "not slow"}`;
+    const byDefault = exclude === null ? slow : exclude.kept.length === 0 ? `default excluded (${excludeKeys(exclude)})` : `default excluded: ${exclude.globs.join(", ")} (${excludeKeys(exclude)}); the ${exclude.kept.length} other${exclude.kept.length === 1 ? "" : "s"} ${slow}`;
     lines.push(
       `  ${group.dir} (${group.files.length} files): ${group.reasons.join("; ")}`,
       ...(group.buildOutputs ?? []).map(
@@ -56211,12 +56236,14 @@ async function answerPlan(plan, given, pick) {
   if (given.slow === null) {
     for (const group of plan.slow.groups) {
       const glob2 = groupGlob(group);
+      let left = group.files.length;
       if (!group.declaredSlow && group.exclude != null && await yes(excludeQuestion(group, group.exclude), true, "exclude", "keep")) {
-        exclude.push(group.exclude.glob);
-        continue;
+        exclude.push(...group.exclude.globs);
+        left = group.exclude.kept.length;
+        if (left === 0) continue;
       }
       const isSlow = group.declaredSlow || await yes(
-        `${glob2} (${group.files.length} files: ${group.reasons.join("; ")}). Run these tests in the slow tier?`,
+        `${glob2} (${left} ${left === group.files.length ? "" : "other "}files: ${group.reasons.join("; ")}). Run these tests in the slow tier?`,
         group.defaultSlow,
         "slow",
         "not slow"
@@ -56242,14 +56269,30 @@ function excludeQuestion(group, proposal) {
 `;
   });
   const what = outputs.length === 1 ? "a build output" : "build outputs";
-  const inputs2 = group.declaredInputs.length === 0 ? "" : "; their inputs entries go too";
+  const { kept: kept2 } = proposal;
+  const inputs2 = group.declaredInputs.length === 0 || kept2.length > 0 ? "" : "; their inputs entries go too";
+  if (kept2.length === 0) {
+    return [
+      `${proposal.globs.join(", ")} (${group.files.length} files) tests ${what} Squeal does not produce:
+`,
+      ...outputs,
+      "Squeal never builds, so a result against a build it cannot see is tied to no code state. ",
+      "No keeps them a slow candidate. Leave these tests to CI and to runs after a build ",
+      `(${excludeKeys(proposal)}${inputs2})?`
+    ].join("");
+  }
+  const named = group.files.length - kept2.length;
   return [
-    `${proposal.glob} (${group.files.length} files) tests ${what} Squeal does not produce:
+    `${groupGlob(group)} (${group.files.length} files): ${named} ${named === 1 ? "tests" : "test"} ${what} Squeal does not produce:
 `,
     ...outputs,
+    `  ${named === 1 ? "It" : "They"}, as --exclude takes ${named === 1 ? "it" : "them"}:
+`,
+    ...proposal.globs.map((g2) => `    ${g2}
+`),
     "Squeal never builds, so a result against a build it cannot see is tied to no code state. ",
-    "No keeps them a slow candidate. Leave these tests to CI and to runs after a build ",
-    `(${excludeKeys(proposal)}${inputs2})?`
+    `The ${kept2.length} other${kept2.length === 1 ? "" : "s"} name no build output and stay slow candidates; no keeps all ${group.files.length}. `,
+    `Leave the ${named} to CI and to runs after a build (${excludeKeys(proposal)})?`
   ].join("");
 }
 function groupGlob(group) {
