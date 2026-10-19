@@ -142,6 +142,11 @@ describe("the count a claim's evidence states", () => {
     ["27 checks passed, but 2 checks remain queued and the slow file is not current.", 1],
     ["the slow test file is still pending", 1],
     ["the slow test has not run yet; it is not run at revision 1", 1],
+    // 006-93: Luna's forms on 0.1.219 (006-92 Q1), "the slow file" whatever verb follows.
+    ["28 checks passed; 2 checks are still queued, including the slow test file.", 1],
+    ["28 passed with 0 known failures, but 2 checks remain queued, including the slow file.", 1],
+    ["the slow test is running", 1],
+    ["the slow file test/slow/ledger.test.ts is queued", 1],
     ["no slow files pending", 0],
     // None stated: a check count, the tier without a number, a plural without one.
     ["Squeal reports 28 passed, 2 queued, and 0 known failures.", null],
@@ -150,7 +155,10 @@ describe("the count a claim's evidence states", () => {
     // Review wave-11 B1: "the slow test" inside an unnumbered plural states none.
     ["the slow test files are still pending", null],
     ["the slow tests are not current", null],
+    // One slow file said to pass states none not current.
     ["the slow file passed", null],
+    ["the slow test file has also passed", null],
+    ["the slow file is passing", null],
     // Counts that disagree state none.
     ["1 slow file pending, 2 slow files not run", null],
     [null as unknown as string, null],
@@ -204,6 +212,15 @@ const SESSIONS: Record<string, { steps: (h: Harness) => Step[]; met: boolean | n
   },
   "names the one slow file in the singular": {
     steps: (h) => [...opening(h), wait(held(1)), say("28 passed; the slow file is still pending.")],
+    met: true,
+  },
+  // 006-93: Luna on 0.1.219, a2 r5, r7, r9, r10 (006-92 Q1).
+  "names the one slow file among the queued checks": {
+    steps: (h) => [
+      ...opening(h),
+      wait(held(1)),
+      say("28 passed, but 2 checks remain queued, including the slow file."),
+    ],
     met: true,
   },
   "states the wrong count": {
