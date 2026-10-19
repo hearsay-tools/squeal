@@ -134,7 +134,7 @@ async function queuedInTurn(maxParallel: number) {
   const files: Record<string, string> = {
     "squeal.config.json": `${JSON.stringify({
       runner: { tierSize: 1 },
-      slow: { include: ["test/slow-*.test.ts"], maxParallel, maxLoadPerCpu: 1000 },
+      slow: { include: ["test/slow-*.test.ts"], maxParallel, maxLoadPerCpu: 1000, trigger: "idle" },
     })}\n`,
   };
   for (const name of SLOW_NAMES) files[slowPath(name)] = heldTest(dir, name);

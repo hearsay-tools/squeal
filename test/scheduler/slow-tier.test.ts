@@ -51,7 +51,7 @@ function slotDir(): string {
 
 /** One slow file at a time, one permit per user: D2's rules before the idle width (task 004-34). */
 function slowPolicy(include: readonly string[], inputs: PolicyInputs = []): Partial<Policy> {
-  return { slow: { ...DEFAULT_POLICY.slow, include, maxParallel: 1 }, inputs };
+  return { slow: { ...DEFAULT_POLICY.slow, trigger: "idle", include, maxParallel: 1 }, inputs };
 }
 
 function options(extra: Partial<HarnessOptions> & { inputs?: PolicyInputs } = {}): HarnessOptions {
@@ -200,7 +200,9 @@ describe("the slow tier (spec 004 D2)", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, {
       ...options({ slow: { slotDir: slotDir(), recheckMs: 50, load: () => [3], cpus: () => 1 } }),
-      policy: { slow: { ...DEFAULT_POLICY.slow, include: SLOW_FILES, maxDeferMs: 300 } },
+      policy: {
+        slow: { ...DEFAULT_POLICY.slow, trigger: "idle", include: SLOW_FILES, maxDeferMs: 300 },
+      },
     });
     await h.scheduler.start();
     await waitFor(() => slowRuns(h).length === 2, 60_000);

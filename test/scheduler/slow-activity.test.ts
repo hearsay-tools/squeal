@@ -48,7 +48,7 @@ function options(load = 0, dir = slotDir(), maxParallel?: number): HarnessOption
   const width = maxParallel === undefined ? {} : { maxParallel };
   return {
     tierSize: 4,
-    policy: { slow: { ...DEFAULT_POLICY.slow, include: SLOW_FILES, ...width } },
+    policy: { slow: { ...DEFAULT_POLICY.slow, trigger: "idle", include: SLOW_FILES, ...width } },
     slow: { slotDir: dir, recheckMs: 50, load: () => [load], cpus: () => 1 },
     // A held run waits before the Vitest adapter's queue, as in its own slow lane (004-18).
     runnerPartBesideRun: true,
