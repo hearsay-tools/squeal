@@ -58,9 +58,8 @@ describe("the primer states the slow-suite policy, in every harness (004-62)", (
     const text = await primerUnder(harness, false);
     expect(text).toContain("this repository does not require them before you finish");
     expect(text).toContain(
-      "say slow tests pass only when the latest `Slow tier:` line states every slow file is current, else say how many are not;",
+      "say slow tests pass only when the latest `Slow tier:` line states every slow file is current, else say how many are not, or wait for them with ",
     );
-    expect(text).toContain(", or wait for them with ");
     expect(text).toContain("run --slow --wait 60000`.");
     expect(text).not.toContain("before you say the task is done");
     expect(text).not.toContain("Stop");
