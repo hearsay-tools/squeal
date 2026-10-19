@@ -1354,7 +1354,7 @@ var KEY_FORMAT_VERSION;
 var init_key_format = __esm({
   "src/core/keys/key-format.ts"() {
     "use strict";
-    KEY_FORMAT_VERSION = 13;
+    KEY_FORMAT_VERSION = 14;
   }
 });
 
@@ -6363,6 +6363,7 @@ function createRecoveringRunner(options) {
     testFiles: () => around(async () => (await adapter()).testFiles()),
     omittedTestFiles: () => inner?.omittedTestFiles?.() ?? 0,
     slowWidth: (testFiles) => inner?.slowWidth?.(testFiles) ?? testFiles.length,
+    tierWidth: (testFile, grant) => inner?.tierWidth?.(testFile, grant) ?? options.tierWidth?.(testFile, grant) ?? grant,
     environment: () => around(async () => (await adapter()).environment()),
     run: (testFiles, runOptions) => around(async () => (await adapter()).run(testFiles, runOptions)),
     close: () => around(async () => {
@@ -8956,7 +8957,7 @@ var init_pool = __esm({
       }
       acquire(want, lane = "fast") {
         if (this.#closed) return null;
-        const { dir: dir2, owner: owner2, project } = this.#options;
+        const { dir: dir2 } = this.#options;
         preparePrivateDir(dir2, this.#options.uid ?? currentUid(), "capacity pool directory");
         const now = this.#now();
         if (this.#leases.size === 0 && this.#idleSince !== null) {
@@ -8964,27 +8965,12 @@ var init_pool = __esm({
         }
         this.#idleSince = null;
         const wanted = Math.max(1, Math.floor(want));
-        const others = readMarks(dir2, owner2.worktreeId, now);
-        const inUse = this.#inUse();
-        const demand = this.#demand() + wanted;
+        const { others, inUse, demand, shares, free, entitled, target } = this.#share(
+          wanted,
+          lane,
+          now
+        );
         const slow = lane === "slow";
-        const me = {
-          id: owner2.worktreeId,
-          want: demand,
-          since: this.#since,
-          ...slow ? { slow } : {},
-          ...project === void 0 ? {} : { project }
-        };
-        const shares = fairShares(this.#hostSlots, [me, ...others]);
-        const free = [...this.#leases].every((lease2) => !lease2.free);
-        const entitled = Math.min(wanted, Math.max(0, (shares.get(me.id) ?? 1) - inUse));
-        let target = entitled;
-        if (project !== void 0) {
-          const theirs = others.filter((o) => o.project?.id === project.id);
-          const held2 = theirs.reduce((sum, o) => sum + o.grant, 0);
-          target = Math.min(target, Math.max(0, project.slots - held2 - inUse));
-        }
-        if (free) target = Math.max(1, target);
         const rank2 = this.#since ?? now;
         const ahead = (o) => {
           if (o.since === null) return false;
@@ -9015,12 +9001,41 @@ var init_pool = __esm({
         this.#startRefresh();
         return this.#handle(lease);
       }
+      offer(want, lane = "fast") {
+        if (this.#closed) return 0;
+        return this.#share(Math.max(1, Math.floor(want)), lane, this.#now()).target;
+      }
       close() {
         this.#closed = true;
         for (const lease of this.#leases) for (const db of lease.permits.splice(0)) db.close();
         this.#leases.clear();
         this.#stopRefresh();
         this.#clear();
+      }
+      /** What a tier of `wanted` workers is entitled to now, and what it may take with the free worker. */
+      #share(wanted, lane, now) {
+        const { dir: dir2, owner: owner2, project } = this.#options;
+        const others = readMarks(dir2, owner2.worktreeId, now);
+        const inUse = this.#inUse();
+        const demand = this.#demand() + wanted;
+        const me = {
+          id: owner2.worktreeId,
+          want: demand,
+          since: this.#since,
+          ...lane === "slow" ? { slow: true } : {},
+          ...project === void 0 ? {} : { project }
+        };
+        const shares = fairShares(this.#hostSlots, [me, ...others]);
+        const free = [...this.#leases].every((lease) => !lease.free);
+        const entitled = Math.min(wanted, Math.max(0, (shares.get(me.id) ?? 1) - inUse));
+        let target = entitled;
+        if (project !== void 0) {
+          const theirs = others.filter((o) => o.project?.id === project.id);
+          const held2 = theirs.reduce((sum, o) => sum + o.grant, 0);
+          target = Math.min(target, Math.max(0, project.slots - held2 - inUse));
+        }
+        if (free) target = Math.max(1, target);
+        return { others, inUse, demand, shares, free, entitled, target };
       }
       /**
        * Up to `count` free permits, after leaving `reserve` for older waiters.
@@ -9146,6 +9161,18 @@ var init_capacity = __esm({
 });
 
 // src/core/scheduler/capacity.ts
+function widthLease(lease, width) {
+  return {
+    get grant() {
+      return lease.grant;
+    },
+    get permits() {
+      return lease.permits;
+    },
+    shrinkTo: (files2) => lease.shrinkTo(Math.min(files2, width)),
+    release: () => lease.release()
+  };
+}
 function perFileLease(lease, perFile) {
   return {
     get grant() {
@@ -9196,6 +9223,19 @@ var init_capacity2 = __esm({
           }
           this.#failed = reason2;
           return null;
+        }
+      }
+      /**
+       * The grant a tier of `want` workers would get now, taking nothing (spec
+       * 011 C4 step 5, task 001-366): what a backlog tier is budgeted at before
+       * its files are picked. `want` when the pool fails, as `take` then runs
+       * the tier ungranted.
+       */
+      offer(want) {
+        try {
+          return this.#pool.offer(want);
+        } catch {
+          return want;
         }
       }
       close() {
@@ -11713,8 +11753,8 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
   ledger.claims.begin();
   const backlog = !ledger.queue.hasFirstGroup((ref2) => !busy.has(laneOf(context, ref2)));
   let size = backlog ? ledger.claims.backlogSize(ledger.queue.fastSize) : policy.runner.tierSize;
-  const budget = backlog ? backlogBudget(policy.runner.timeoutMs) : Number.POSITIVE_INFINITY;
-  let known2 = 0;
+  const offer = backlog ? context.capacity?.offer(size) ?? defaultHostSlots2() : 0;
+  const wall = backlog ? new BacklogWall(backlogBudget(policy.runner.timeoutMs)) : null;
   let span = null;
   let tookBacklog = false;
   let lane = null;
@@ -11748,8 +11788,7 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
       if (joined === null) continue;
       span = joined;
     }
-    known2 += file.durationMs ?? 0;
-    if (picked.length > 0 && known2 > budget) break;
+    if (wall !== null && !wall.take(file.durationMs, tierWidth(context, ref2, offer))) break;
     tookBacklog ||= !recent && !ledger.queue.isPromoted(ref2);
     lane = at2;
     size = cap2;
@@ -11757,10 +11796,19 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
     const inputs2 = keys.stabilityPaths(ref2);
     picked.push({ file, key: key2, inputs: inputs2, checkpointId, forced, recent, waits });
   }
-  const lease = picked.length > 0 && backlog ? context.capacity?.take(picked.length) : null;
-  if (lease === WAIT_FOR_CAPACITY) {
+  const width = backlog ? widest(context, picked) : 0;
+  const taken2 = picked.length > 0 && backlog ? context.capacity?.take(width) : null;
+  if (taken2 === WAIT_FOR_CAPACITY) {
     ledger.commit();
     return null;
+  }
+  const lease = taken2 ? widthLease(taken2, width) : taken2;
+  if (lease && lease.grant < Math.min(width, offer)) {
+    const fits = new BacklogWall(backlogBudget(policy.runner.timeoutMs));
+    const keep = picked.findIndex(
+      (p) => !fits.take(p.file.durationMs, tierWidth(context, p.file.ref, lease.grant))
+    );
+    if (keep !== -1) picked.splice(keep);
   }
   let tier = null;
   try {
@@ -11775,6 +11823,13 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
   ledger.commit();
   const settled = picked.some((p) => !ledger.queue.has(p.file.ref));
   return settled ? selectTier(context, ledger, busy) : null;
+}
+function tierWidth(context, ref2, grant) {
+  return Math.max(1, context.runner.tierWidth?.(ref2, grant) ?? grant);
+}
+function widest(context, picked) {
+  const widths = picked.map((p) => tierWidth(context, p.file.ref, picked.length));
+  return Math.min(picked.length, Math.max(1, ...widths));
 }
 function startTier(context, ledger, picked, cancellable, lease) {
   const { store, keys } = context;
@@ -12015,6 +12070,7 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, requeue = fal
 var init_tiers = __esm({
   "src/core/scheduler/tiers.ts"() {
     "use strict";
+    init_capacity();
     init_keys();
     init_backlog();
     init_capacity2();
@@ -12047,12 +12103,40 @@ function queuesEdit(context, ledger, tier) {
 function backlogBudget(timeoutMs) {
   return timeoutMs === null ? BACKLOG_TIER_BUDGET_MS : Math.min(BACKLOG_TIER_BUDGET_MS, timeoutMs / 2);
 }
-var BACKLOG_TIER_BUDGET_MS;
+function wallEstimate(sum, longest2, width) {
+  return sum / width + (1 - 1 / width) * longest2;
+}
+var BACKLOG_TIER_BUDGET_MS, BacklogWall;
 var init_backlog = __esm({
   "src/core/scheduler/backlog.ts"() {
     "use strict";
     init_tiers();
-    BACKLOG_TIER_BUDGET_MS = 3e5;
+    BACKLOG_TIER_BUDGET_MS = 12e4;
+    BacklogWall = class {
+      constructor(budget) {
+        this.budget = budget;
+      }
+      budget;
+      #count = 0;
+      #sum = 0;
+      #longest = 0;
+      #width = Number.POSITIVE_INFINITY;
+      /**
+       * Whether a file of `durationMs`, `null` when unknown and counted 0, joins
+       * a tier it runs `width` wide in; it is counted when it does.
+       */
+      take(durationMs2, width) {
+        const w2 = Math.max(1, Math.min(this.#width, Math.floor(width)));
+        const sum = this.#sum + (durationMs2 ?? 0);
+        const longest2 = Math.max(this.#longest, durationMs2 ?? 0);
+        if (this.#count >= w2 && wallEstimate(sum, longest2, w2) > this.budget) return false;
+        this.#count += 1;
+        this.#sum = sum;
+        this.#longest = longest2;
+        this.#width = w2;
+        return true;
+      }
+    };
   }
 });
 
@@ -20520,7 +20604,7 @@ var init_version = __esm({
 });
 
 // src/runners/vitest/width.ts
-function tierWidth(want, ceiling) {
+function tierWidth2(want, ceiling) {
   if (want === void 0 || ceiling === 1) return ceiling;
   const width = Math.max(2, Math.floor(want));
   return ceiling === void 0 ? width : Math.min(width, ceiling);
@@ -20556,7 +20640,7 @@ var init_width = __esm({
       atOnce(testFiles) {
         const first = testFiles[0] === void 0 ? void 0 : this.#byName.get(testFiles[0].project);
         if (first === void 0) return testFiles.length;
-        const width = tierWidth(testFiles.length, first.ceiling) ?? testFiles.length;
+        const width = tierWidth2(testFiles.length, first.ceiling) ?? testFiles.length;
         let count = 0;
         for (const { project } of testFiles) {
           if (count >= width || this.#byName.get(project)?.group !== first.group) break;
@@ -20564,13 +20648,21 @@ var init_width = __esm({
         }
         return Math.max(1, count);
       }
+      /**
+       * The workers a run of `project`'s files takes at a grant of `grant` (spec
+       * 011 C4 step 5, task 001-366): `tierWidth` under its own ceiling. An
+       * unknown project's run fails on its own: `grant`, at least 2.
+       */
+      of(project, grant) {
+        return tierWidth2(grant, this.#byName.get(project)?.ceiling) ?? Math.max(2, grant);
+      }
       /** Sizes `vitest`'s next run for `want` workers. */
       apply(vitest, want) {
-        vitest.config.maxWorkers = tierWidth(want, this.#root);
+        vitest.config.maxWorkers = tierWidth2(want, this.#root);
         for (const project of vitest.projects) {
           const own = this.#projects.get(project);
           if (project.config !== vitest.config && own !== void 0) {
-            project.config.maxWorkers = tierWidth(want, own);
+            project.config.maxWorkers = tierWidth2(want, own);
           }
         }
       }
@@ -20909,6 +21001,14 @@ var init_adapter = __esm({
        */
       slowWidth(testFiles) {
         return this.#widths?.atOnce(testFiles) ?? testFiles.length;
+      }
+      /**
+       * Spec 011 C4 step 5 (task 001-366): the workers a backlog tier holding
+       * `testFile` runs with at `grant`, under its project's own `maxWorkers`.
+       * No instance yet: `grant`.
+       */
+      tierWidth(testFile, grant) {
+        return this.#widths?.of(testFile.project, grant) ?? grant;
       }
       environment() {
         return this.#part(async (vitest) => {
@@ -38526,6 +38626,8 @@ function createNodeTestRunners(projects2, options) {
         tempDir: options.tempDir,
         ...options.childEnv === void 0 ? {} : { childEnv: options.childEnv }
       }),
+      // A run starts `runner.tierSize` files at once whatever its grant (task 001-366).
+      tierWidth: () => options.tierSize(),
       onFailure: (text2) => options.note(`${text2} (node-test project ${JSON.stringify(project.name)})`),
       onRecovered: () => options.note(`node-test project ${JSON.stringify(project.name)} started`)
     })
@@ -47053,6 +47155,8 @@ function createPytestRunners(projects2, options) {
         cacheDir: pytestCacheDir(options.stateDir, options.root, project.name),
         ...options.childEnv === void 0 ? {} : { childEnv: options.childEnv }
       }),
+      // A run starts `runner.tierSize` processes at once whatever its grant (task 001-366).
+      tierWidth: () => options.tierSize(),
       onFailure: (text2) => options.note(`${text2} (pytest project ${JSON.stringify(project.name)})`),
       onRecovered: () => options.note(`pytest project ${JSON.stringify(project.name)} started`)
     });
@@ -47151,6 +47255,8 @@ function createCompositeRunner(adapters) {
       const own2 = end === -1 ? testFiles : testFiles.slice(0, end);
       return owner2.slowWidth?.(own2) ?? own2.length;
     },
+    // A backlog tier holds one lane, so one owner's files (task 001-366).
+    tierWidth: (testFile, grant) => owners.get(testFile.project)?.tierWidth?.(testFile, grant) ?? grant,
     async run(testFiles, options) {
       const groups = /* @__PURE__ */ new Map();
       for (const testFile of testFiles) {
@@ -47278,6 +47384,8 @@ function withSlowInstance(fast, createSlow) {
     omittedTestFiles: () => fast.omittedTestFiles?.() ?? 0,
     // The slow instance may not exist yet; the fast one has the same configs (review 001-394 B2).
     slowWidth: (testFiles) => fast.slowWidth?.(testFiles) ?? testFiles.length,
+    // A backlog tier runs on the fast instance (task 001-366).
+    tierWidth: (testFile, grant) => fast.tierWidth?.(testFile, grant) ?? grant,
     environment: () => fast.environment(),
     ...lane === void 0 ? {} : { lane },
     async run(testFiles, options) {
@@ -47319,7 +47427,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.222";
+  if (true) return "0.1.223";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -50228,6 +50336,7 @@ function afterEachRun(runner, children, note) {
     testFiles: () => runner.testFiles(),
     omittedTestFiles: () => runner.omittedTestFiles?.() ?? 0,
     slowWidth: (testFiles) => runner.slowWidth?.(testFiles) ?? testFiles.length,
+    tierWidth: (testFile, grant) => runner.tierWidth?.(testFile, grant) ?? grant,
     environment: () => runner.environment(),
     ...lane === void 0 ? {} : { lane },
     ...releaseLane === void 0 ? {} : { releaseLane },
@@ -54499,7 +54608,7 @@ function reasonGroups(files2, command) {
     const group = groups.get(id2);
     groups.set(id2, {
       n: (group?.n ?? 0) + 1,
-      reason: group === void 0 ? pending : widest(group.reason, pending)
+      reason: group === void 0 ? pending : widest2(group.reason, pending)
     });
   }
   const all = [...groups.values()];
@@ -54522,7 +54631,7 @@ function groupId(reason2) {
       return reason2.kind;
   }
 }
-function widest(a, b) {
+function widest2(a, b) {
   if (a.kind === "running" && b.kind === "running") {
     return a.since === null || b.since !== null && b.since < a.since ? b : a;
   }
