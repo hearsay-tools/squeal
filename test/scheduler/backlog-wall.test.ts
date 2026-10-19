@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { poolPermitFile } from "../../src/core/capacity/index.js";
+import { BacklogWall } from "../../src/core/scheduler/backlog.js";
 import { takePermit } from "../../src/core/slow/index.js";
 import { fileName } from "./claims-fixture.js";
 import { spread, wallOf, wallSide } from "./wall-fixture.js";
@@ -118,6 +119,15 @@ describe("scheduler: a backlog tier is budgeted by its wall time (C4 step 5, tas
       tierPart: (f) => f.path,
     });
     expect((await parts.backlog()).map((t) => t.files.length)).toEqual([2, 2, 2, 2]);
+  });
+
+  it("ends the first part's round once another part joins (review wave-3 re-review)", () => {
+    // C4 order A 60 s, B 60 s, A 100 s at W 4 and B 120 s: A then B fit (45 + 45 s), but A's
+    // 100 s file would make the parts 115 + 45 s, which run in turn: it waits for the next tier.
+    const wall = new BacklogWall(120_000);
+    expect(wall.take(60_000, 4, "A")).toBe(true);
+    expect(wall.take(60_000, 4, "B")).toBe(true);
+    expect(wall.take(100_000, 4, "A")).toBe(false);
   });
 
   it("caps the wall estimate at half of runner.timeoutMs when that is less than 120 s", async () => {
