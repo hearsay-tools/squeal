@@ -167,7 +167,19 @@ export interface SlowPolicy {
    * by duration alone. Default `"tokens"`.
    */
   readonly rank: "tokens" | "duration";
+  // Spec 004 D2, D7 as amended 2026-10-18 (004-79, row 004-80): when the slow tier starts.
+  /**
+   * `"continuous"`: once the current revision's fast work is done and the
+   * revision is `quietMs` old, mid-turn or not. `"idle"`: once every consumer
+   * pauses or none is registered. Default `"continuous"`.
+   */
+  readonly trigger: SlowTrigger;
+  /** How long the latest revision must be quiet before a continuous slow tier starts. */
+  readonly quietMs: number;
 }
+
+/** Spec 004 D2 trigger (a): `slow.trigger`. */
+export type SlowTrigger = "continuous" | "idle";
 
 /**
  * One node:test project (spec 003 D1). Its identity is `(runner "node-test",
@@ -262,6 +274,8 @@ export const DEFAULT_POLICY: Policy = {
     maxDeferMs: 600_000,
     maxParallel: 4,
     rank: "tokens",
+    trigger: "continuous",
+    quietMs: 5_000,
   },
   delivery: { uncoveredEdits: true },
   daemon: { idleExitMinutes: 60, unusedExitMinutes: 30 },
