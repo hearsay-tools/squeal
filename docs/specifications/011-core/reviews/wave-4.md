@@ -145,3 +145,126 @@ Repair B1 before landing this slice. One scheduler worker can own `files.ts`, `l
 For slice 2, each selected run must retain its own input snapshot, changed-path set, key/claim ownership and process mark from selection through recording and error cleanup. Do not extend the current single `runningKey` assumption to slots. W remains the grant, at most `runner.tierSize`, with one permit per backlog slot, batched record commits, and no permit for an edit's extra run. Vitest continues to cancel. Slot throughput, departure, claims and pytest batch packing remain the later slice's work.
 
 The worker notes' forced-queue promotion and delayed confirming-rerun observations predate this candidate. They are not findings against this range. The brief names node:test `run-reads-fidelity` and Vitest `observe-fidelity` under the Squeal daemon on main (001-390); name any gate sightings separately from B1 rather than treating that known context as a new blocker.
+
+## Re-review
+
+**PASS bc8ed7742f55bc5dbfb5db235d03e31fb4242a6a**. B1 closed. Zero blockers, zero should-fix items, zero nits. W2r of `tasks/wave-4.md`, reviewed 2026-10-19. This re-review covers only B1 and the repair delta `dae700644275fa262d1bfeca8c58bb0c8d11f2b1..bc8ed7742f55bc5dbfb5db235d03e31fb4242a6a`; the first review's settled list stands.
+
+### Verification output
+
+HEAD matched the pinned candidate before any checks and still matched after the full run. `git status --porcelain` and `git diff --exit-code` produced no output before installation, after build and after the suite. All checks below ran at the clean candidate, before this append. The independent run took the host lock once; Squeal's checkpoint was not substituted.
+
+```text
+$ npm ci
+npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+
+added 196 packages, and audited 197 packages in 12s
+
+32 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+npm warn install-scripts 6 packages have install scripts not yet covered by allowScripts:
+npm warn install-scripts   @google/genai@2.21.0 (preinstall: echo 'preinstall: no-op')
+npm warn install-scripts   @parcel/watcher@2.6.0 (install: node scripts/build-from-source.js)
+npm warn install-scripts   esbuild@0.28.2 (postinstall: node install.js)
+npm warn install-scripts   msgpackr-extract@3.0.4 (install: node-gyp-build-optional-packages)
+npm warn install-scripts   opencode-ai@1.18.35 (postinstall: node ./postinstall.mjs)
+npm warn install-scripts   protobufjs@7.6.6 (postinstall: node scripts/postinstall)
+npm warn install-scripts
+npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+```
+
+```text
+$ npm run lint
+
+> squeal@0.1.224 lint
+> biome check .
+
+Checked 1465 files in 647ms. No fixes applied.
+```
+
+```text
+$ npm run typecheck
+
+> squeal@0.1.224 typecheck
+> tsc --noEmit
+```
+
+```text
+$ npm run build
+
+> squeal@0.1.224 build
+> tsc -p tsconfig.build.json && npm run build:plugin
+
+
+> squeal@0.1.224 build:plugin
+> tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts
+```
+
+All four commands exited 0. The build left every committed plugin bundle unchanged.
+
+```text
+$ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
+Mon Oct 19 20:05:53 UTC 2026
+ 22:05:53 up 5 days, 10:54,  6 users,  load average: 34.11, 18.38, 17.53
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/a8053e61-5d3a-499b-a307-9d57d036d6c4
+
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/a8053e61-5d3a-499b-a307-9d57d036d6c4/test/fixtures/scheduler/.tmp/4a66cce4-35d4-416e-9c52-babd5b361679/main/.git/worktrees/staged/gitdir
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/a8053e61-5d3a-499b-a307-9d57d036d6c4/test/fixtures/scheduler/.tmp/19fe2fd2-f47d-476a-a0c1-866532acd7df/main/.git/worktrees/staged/gitdir
+squeal tests: killing 1 process(es) an earlier run left: 3427950
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+
+ Test Files  739 passed | 1 skipped (740)
+      Tests  6314 passed | 10 skipped (6324)
+   Start at  22:05:54
+   Duration  928.14s (tests 98%, import 2%)
+
+    Isolate  740 workers spawned · ~136ms startup each (spawn + environment, per file)
+             at least ~25.10s faster with isolate: false — reuses workers across files instead of one per file
+
+ 22:21:22 up 5 days, 11:09,  6 users,  load average: 14.90, 20.10, 23.21
+Mon Oct 19 20:21:22 UTC 2026
+```
+
+The full run exited 0. Host load was 34.11 at start, sampled as high as 58.30 during the run, and 14.90 at finish on 24 CPUs. No file failed this gate, so no isolated rerun was needed. The coordinator's reported 6314-test gate at code-equivalent `079bac6c` is supporting context; it is not this review's verification.
+
+Squeal's separate baseline reported the two recorder-fidelity observations named in the brief (`test/runners/node-test/run-reads-fidelity.test.ts:116` and `test/runners/vitest/observe-fidelity.test.ts:119`, 001-390). It also reported `test/daemon/busy-edit.test.ts:127`, with 3469 ms after lock release against a 1000 ms bound; Squeal then delivered `FAIL -> PASS` for that test under the same inputs. All three files passed the independent gate. These daemon observations are separate from B1.
+
+### B1: closed, proven
+
+`src/core/scheduler/tiers.ts:265` now recognizes a file held by another run at a different key, or a file whose different current key already has its applied result. `recordTier` calls that guard at the head of its per-file loop (`tiers.ts:523`), before clearing running ownership and before the withheld, cancel/requeue, crash/unknown, timeout-split, stability-discard, result-application and checkpoint paths. A superseded file is not added to the later unknown, growth, startup or failure-rerun worklists. The tier itself still finishes and releases its lease and input snapshot.
+
+The scheduler's error cleanup uses the same guard before clearing and enqueuing a file (`src/core/scheduler/scheduler.ts:856`). Both completion orders in B1 are covered: a live different-key run retains its running claim; after it stores, its current result remains authoritative when the old run finishes or crashes. At an unchanged current key, with no different-key owner, both guard conditions are false and the run reaches the existing recording, crash and timeout handling. The repair changes no failure classification or same-key result handling.
+
+The two new scheduler regressions discriminate the repair. In a disposable detached worktree at the original `dae70064`, I overlaid only the candidate's `test/scheduler/edit-beside-backlog.test.ts` and ran:
+
+```text
+$ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run test/scheduler/edit-beside-backlog.test.ts -t '3\.|4\.' --maxWorkers=4
+Test 3, line 277: expected pending "running", received "queued".
+Test 4, line 311: expected outcome "pass", received "unknown".
+Test Files  1 failed (1)
+     Tests  2 failed | 2 skipped (4)
+  Duration  30.73s
+Exit 1.
+```
+
+Both regressions passed in the clean candidate's independent full suite above, along with the unchanged crash, timeout, discard and checkpoint suites. Test 3 also asserts that only two runs hold the re-keyed file and that the edit's result is eventually stored; test 4 first observes the edit's PASS before releasing the backlog crash, then asserts that the edit's current PASS survives.
+
+The disposable worktree was removed. These intentional red results are evidence for B1, separate from candidate verification; the candidate source and tests stayed untouched.
+
+### Should-fix and nits
+
+None. No new findings outside B1.
+
+### What fits and next-wave inputs
+
+The repair closes B1 without changing the settled lane-selection, capability-forwarding, per-run sweep or Vitest cancel behavior. `KEY_FORMAT_VERSION` remains 15 for this unreleased candidate, with the repaired source hash pinned to `ef314c953f520d87f2b3ec8d61963d3d8b5430cc05d22b601a0e5f1b5be6cbba`; the independent suite includes the passing key-format guard. The build regenerated all four plugin bundles with no tracked drift.
+
+No further fix wave is required by this review. Slice 2 must retain the first review's inputs: each selected run carries its own snapshot, changed paths, key/claim ownership and process mark; W is the grant, at most `runner.tierSize`, one permit per backlog slot, with batched record commits and no permit for an edit's extra run. Vitest continues to cancel. This review does not authorize that later slice.
