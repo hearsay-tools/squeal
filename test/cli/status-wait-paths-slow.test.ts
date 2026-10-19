@@ -24,12 +24,15 @@ const synced = (): SyncState => ({
 });
 const sync = () => (): DaemonSync => ({ current: synced, stop: () => {} });
 
-/** `A` pending, then passing after 100 ms; the slow file queued, never run; the policy's `stop`. */
-function fastAndSlow(stop: Record<string, unknown>, fast = true) {
+/**
+ * `A` pending, then passing after 100 ms; the slow file queued, never run;
+ * the policy's `stop` and `slow.trigger`, `"idle"` unless named (004-80).
+ */
+function fastAndSlow(stop: Record<string, unknown>, fast = true, trigger = "idle") {
   const { repo, store } = repoWith(fast ? [A, SLOW_FILE] : [SLOW_FILE]);
   writeFileSync(
     join(repo.main, "squeal.config.json"),
-    JSON.stringify({ slow: { include: [SLOW_FILE] }, stop }),
+    JSON.stringify({ slow: { include: [SLOW_FILE], trigger }, stop }),
   );
   if (fast) later(100, () => finish(store, repo.mainId, A));
   return { repo, store };
@@ -155,6 +158,36 @@ describe("a named wait leaves out slow files that run only on a pause (004-78)",
     expect(wait.outcome).toBe("settled");
     expect(wait.leftForPause).toEqual([]);
     expect(wait.verdict.testFiles).toBe(2);
+  });
+});
+
+/*
+ * Task 004-80: under `slow.trigger: "continuous"` a queued slow file runs in
+ * the agent's turn once the revision is `slow.quietMs` old, so a named wait
+ * holds for it as for any pending file.
+ */
+describe('a named wait under slow.trigger "continuous" holds for a queued slow file (004-80)', () => {
+  it("holds until the slow file's result and counts it in the verdict", async () => {
+    const { repo, store } = fastAndSlow({}, true, "continuous");
+    later(400, () => finish(store, repo.mainId, SLOW_FILE));
+
+    const { wait, last } = await named(repo.main, [A, SLOW_FILE]);
+
+    expect(wait.outcome).toBe("settled");
+    expect(wait.waitedMs).toBeGreaterThanOrEqual(300);
+    expect(wait.leftForPause).toEqual([]);
+    expect(wait.verdict).toMatchObject({ testFiles: 2, byClass: { current: 2, pending: 0 } });
+    expect(last).not.toContain("waits for a pause");
+  });
+
+  it("over slow files alone, holds for their result rather than returning without a verdict", async () => {
+    const { repo, store } = fastAndSlow({}, false, "continuous");
+    later(400, () => finish(store, repo.mainId, SLOW_FILE));
+
+    const { wait } = await named(repo.main, [SLOW_FILE]);
+
+    expect(wait.outcome).toBe("settled");
+    expect(wait.verdict).toMatchObject({ testFiles: 1, byClass: { current: 1 } });
   });
 });
 
