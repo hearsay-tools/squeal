@@ -31,6 +31,8 @@ export interface SlowPolicyView {
   readonly slowGlobs: readonly string[];
   /** How long Stop waits for slow files (`stopSlowWaitMs`); `null` when it does not. */
   readonly stopWaitMs: number | null;
+  /** `slow.trigger: "idle"`: slow files run only when the agent pauses (004-80). */
+  readonly pausesOnly: boolean;
 }
 
 /** The slow view of `policy`; `null` when it declares no slow file (D1). */
@@ -41,6 +43,7 @@ export function slowPolicyView(policy: Policy): SlowPolicyView | null {
     isSlow: slowFiles(policy, policy.nodeTest),
     slowGlobs: globs,
     stopWaitMs: stopSlowWaitMs(policy),
+    pausesOnly: policy.slow.trigger === "idle",
   };
 }
 
@@ -122,6 +125,7 @@ export function readSlowTier(
     ...(currentUpTo !== null && currentUpTo !== currentAt ? { currentUpTo } : {}),
     activity: liveActivity(store, worktreeId, keys, view.isSlow),
     ...(view.stopWaitMs === null ? {} : { stopWaitMs: view.stopWaitMs }),
+    ...(view.pausesOnly ? { pausesOnly: true as const } : {}),
   };
 }
 
