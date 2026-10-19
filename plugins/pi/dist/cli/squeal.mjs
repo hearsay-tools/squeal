@@ -12141,7 +12141,7 @@ var init_backlog = __esm({
           longest: Math.max(was.longest, durationMs2 ?? 0),
           width: w2
         };
-        const firstRound = (this.#first ?? part) === part && was.count < w2;
+        const firstRound = (this.#first ?? part) === part && this.#parts.size <= 1 && was.count < w2;
         if (!firstRound && this.#estimate(part, next) > this.budget) return false;
         this.#first ??= part;
         this.#parts.set(part, next);
