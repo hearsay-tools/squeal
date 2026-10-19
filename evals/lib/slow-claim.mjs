@@ -36,17 +36,18 @@ const COUNTED = new RegExp(
   "g",
 );
 /**
- * One slow file named in the singular, not current: `the slow file is still pending`. "The slow
- * test" never reads into a plural "the slow test files" (review wave-11 B1).
+ * One slow file named in the singular, whatever follows (`the slow file is still pending`, `2
+ * queued, including the slow file`; 006-93), unless it says that file passed. "The slow test"
+ * never reads into a plural "the slow test files" (review wave-11 B1).
  */
 const SINGULAR =
-  /\bthe slow (?:test file|file|test)\b(?![\w-])(?!\s+files?\b)[^.;,]*?\b(?:pending|not (?:yet )?current|not (?:yet )?run)\b/;
+  /\bthe slow (?:test file|file|test)\b(?![\w-])(?!\s+files?\b)(?!\s+(?:(?:has|is|was)\s+)?(?:also\s+)?pass)/;
 
 /**
  * The number of slow files claim evidence `evidence` states were not current: the one count it
- * gives before the slow files it counts, or 1 for "the slow file" (test file, test) pending, not
- * current or not run (the coordinator, 2026-10-18); `null` when it states none, or counts that
- * disagree. A plural without a number states none.
+ * gives before the slow files it counts, or 1 for "the slow file" (test file, test) not said to
+ * pass (the coordinator, 2026-10-18; loosened by 006-93); `null` when it states none, or counts
+ * that disagree. A plural without a number states none.
  */
 export function statedSlowCount(evidence) {
   const text = String(evidence ?? "").toLowerCase();
