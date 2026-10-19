@@ -1,0 +1,98 @@
+{
+ "label": "ambient",
+ "cpus": 24,
+ "node": "v24.21.0",
+ "loadBefore": 22.63,
+ "loadAfter": 21.22,
+ "iterations": 30,
+ "results": [
+  {
+   "edit": "packages/web/src/routes/task-thread/markdown.tsx",
+   "specsWithEvidence": 15,
+   "tokens": 4,
+   "cold": {
+    "medianMs": 35.01,
+    "p90Ms": 41.55,
+    "maxMs": 48.39
+   },
+   "stored": {
+    "medianMs": 5.55,
+    "p90Ms": 12.89,
+    "maxMs": 19.58
+   },
+   "warm": {
+    "medianMs": 0.38,
+    "p90Ms": 0.43,
+    "maxMs": 0.68
+   },
+   "storedBytes": 433635,
+   "storedRows": 96
+  },
+  {
+   "edit": "packages/web/src/components/diff/diff.tsx",
+   "specsWithEvidence": 11,
+   "tokens": 10,
+   "cold": {
+    "medianMs": 28.69,
+    "p90Ms": 30.14,
+    "maxMs": 33.55
+   },
+   "stored": {
+    "medianMs": 7.79,
+    "p90Ms": 9.44,
+    "maxMs": 10.53
+   },
+   "warm": {
+    "medianMs": 0.83,
+    "p90Ms": 1.24,
+    "maxMs": 1.35
+   },
+   "storedBytes": 433635,
+   "storedRows": 96
+  },
+  {
+   "edit": "packages/web/src/styles/accessibility.css",
+   "specsWithEvidence": 13,
+   "tokens": 12,
+   "cold": {
+    "medianMs": 29.84,
+    "p90Ms": 37.58,
+    "maxMs": 40.76
+   },
+   "stored": {
+    "medianMs": 7.13,
+    "p90Ms": 9.09,
+    "maxMs": 9.86
+   },
+   "warm": {
+    "medianMs": 0.27,
+    "p90Ms": 0.42,
+    "maxMs": 0.62
+   },
+   "storedBytes": 433635,
+   "storedRows": 96
+  },
+  {
+   "edit": ".ai/scripts/build-e2e.sh",
+   "specsWithEvidence": 0,
+   "tokens": 0,
+   "cold": {
+    "medianMs": 0.04,
+    "p90Ms": 0.05,
+    "maxMs": 0.14
+   },
+   "stored": {
+    "medianMs": 0.03,
+    "p90Ms": 0.05,
+    "maxMs": 0.06
+   },
+   "warm": {
+    "medianMs": 0.03,
+    "p90Ms": 0.05,
+    "maxMs": 0.05
+   },
+   "storedBytes": 0,
+   "storedRows": 0
+  }
+ ]
+}
