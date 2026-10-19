@@ -12,6 +12,7 @@ import {
   isSlowLane,
   type RelativePath,
   type Revision,
+  type RunReport,
   type Scheduler,
   type SchedulerCloseOptions,
   type SchedulerStatus,
@@ -47,11 +48,11 @@ import { RERUN_CAP } from "./rerun.js";
 import { takeRetries } from "./retries.js";
 import { retryRunner } from "./revision.js";
 import { RunnerWork } from "./runner-work.js";
+import { busyLanes } from "./slots.js";
 import { slowView } from "./slow.js";
 import { queueSlowSuite, type SlowRun, SlowTier } from "./slow-tier.js";
-import { Withholds, withheldForTouch, withholdNote } from "./stability.js";
+import { type Moved, Withholds, withheldForTouch, withholdNote } from "./stability.js";
 import {
-  busyLanes,
   endTier,
   executeTier,
   laneOf,
@@ -67,7 +68,32 @@ import { WarmUp } from "./warm-up.js";
 /** A tier in flight: its lane is busy until `done` (`busyLanes`), which never rejects. */
 interface InFlight {
   readonly tier: Tier;
-  readonly done: Promise<void>;
+  done: Promise<void>;
+  /** A slot whose run ended: its lane may take the next file while it records (task 011-21). */
+  ran: boolean;
+}
+
+/** A run that ended, with what its record reads outside the lock. */
+interface EndedRun {
+  readonly tier: Tier;
+  readonly ran: RunReport;
+  readonly ignored: Awaited<ReturnType<WarmUp["read"]>>;
+  readonly inputs: Moved;
+  readonly installMoved: boolean;
+  readonly slow: SlowRun | null;
+}
+
+/** What a record leaves to do outside the lock: the paths to reconcile, the withhold notes. */
+interface Recorded {
+  readonly moved: readonly RelativePath[];
+  readonly withheld: readonly string[];
+}
+
+/** A slot's ended run waiting for the next record (`#recordSlot`). */
+interface EndedSlot {
+  readonly ended: EndedRun;
+  resolve(record: Recorded): void;
+  reject(error: unknown): void;
 }
 
 /** Creates the scheduler of one worktree. Call `start` before anything else. */
@@ -97,6 +123,8 @@ class TierScheduler implements Scheduler {
    * task 011-21); a backlog tier carries its `cancel`.
    */
   readonly #inFlight = new Map<string, InFlight>();
+  /** Slots whose runs ended, recorded together by the next record (`#recordSlot`, task 011-21). */
+  readonly #ended: EndedSlot[] = [];
   /** A `run --all` with `observeIgnored` (task 001-307). */
   readonly #warmUp = new WarmUp();
   /** Task 007-30: files the completion barrier withheld, so a withheld tier runs once more. */
@@ -603,13 +631,18 @@ class TierScheduler implements Scheduler {
   /**
    * Runs `tier` in its lane and records it under the lock; `slow` is the
    * slow run it belongs to, whose slot it releases. Never rejects: an error
-   * stops the pump and puts the tier's files back.
+   * stops the pump and puts the tier's files back. A backlog slot (spec 011
+   * C4 step 5 as amended for slots, task 011-21 slice 2) returns its permit
+   * and frees its place in the lane once its run ends, so the lane's next
+   * file starts while it records, and its record joins the other slots that
+   * ended by then (`#recordSlot`).
    */
   #fly(tier: Tier, installStamp: string, slow: SlowRun | null): void {
-    const { context, ledger } = this.#started();
-    const done = (async () => {
+    const { context } = this.#started();
+    const flight: InFlight = { tier, done: Promise.resolve(), ran: false };
+    this.#inFlight.set(tier.runId, flight);
+    flight.done = (async () => {
       let recorded = false;
-      const withheld: string[] = [];
       try {
         const ran = await executeTier(
           context,
@@ -617,65 +650,26 @@ class TierScheduler implements Scheduler {
           this.#warmUp.observes(tier),
           this.#stop.signal,
         );
+        if (tier.slot === true) {
+          tier.lease?.release();
+          flight.ran = true;
+          this.#notify();
+        }
         const ignored = await this.#warmUp.read(context, tier, ran);
         // The completion barrier (task 001-168): a touch since selection withholds the run.
         const inputs = await unstableInputs(context, tier);
         const installMoved = this.#reinstalled || (await this.#install.stamp()) !== installStamp;
-        const moved = await this.#lock.run(async () => {
-          // Task 003-43: environment files the run loaded beyond the keyed ones re-key first.
-          const environment = installMoved
-            ? undefined
-            : await rekeyEnvironments(context, ran, tier);
-          // Task 001-132: what the run read beyond its closures, hashed under the lock.
-          const read = installMoved ? undefined : await prepareObserved(context, ran, tier.run);
-          const observed =
-            environment === undefined || read === undefined ? read : { ...read, environment };
-          const touched = [...new Set([...inputs.touched, ...(observed?.touched ?? [])])].sort();
-          const report = withheldForTouch(ran, touched);
-          // Task 007-30: no revision follows the touch; a file's first withhold at its key queues it
-          // again as a moved install does, its previous state standing, and a second leaves it
-          // `unknown`, per file whatever tier it shares (review 007-31, B1).
-          const withhold = touched.length === 0 ? null : this.#withholds.record(tier.files);
-          if (withhold === null) this.#withholds.clear(tier.files);
-          else {
-            const notes = [
-              withholdNote(touched, withhold.again, true),
-              withholdNote(touched, withhold.exhausted, false),
-            ];
-            withheld.push(...notes.filter((note) => note !== null));
-          }
-          // Only the first withholds are queued again; the exhausted files, forced or not, record
-          // the withheld report and are `unknown` in the same commit (review 007-33, B1). What a
-          // stop's cancel cut short stays queued for the next daemon (D10, task 001-367).
-          const unfinished = this.#stop.signal.aborted ? unfinishedFiles(tier, ran) : [];
-          const again = [...(withhold?.again.map(({ file }) => file.id) ?? []), ...unfinished];
-          const requeue =
-            installMoved || (withhold === null && unfinished.length === 0)
-              ? installMoved
-              : new Set(again);
-          // Spec 004 D8: a slow run's activity goes with its results (review wave 2, B1, B2).
-          return context.store.transaction(() => {
-            this.#warmUp.record(context, ignored);
-            const result = recordTier(
-              context,
-              ledger,
-              tier,
-              report,
-              inputs.changed,
-              requeue,
-              observed,
-            );
-            if (slow !== null) this.#slow.ended();
-            // The runner hears the touches too, so its next run reads the disk again.
-            return [...new Set([...result, ...touched])];
-          });
-        });
+        const ended: EndedRun = { tier, ran, ignored, inputs, installMoved, slow };
+        const record =
+          tier.slot === true
+            ? await this.#recordSlot(ended)
+            : await this.#lock.run(() => this.#record(ended, true));
         recorded = true;
         this.#busy?.landed();
-        for (const note of withheld) this.#note(note);
+        for (const note of record.withheld) this.#note(note);
         slow?.slot.release();
         // The watcher may not have reported these yet; reconciling twice is harmless.
-        if (moved.length > 0) await this.#reconcilePaths(moved);
+        if (record.moved.length > 0) await this.#reconcilePaths(record.moved);
         if (slow !== null) await this.#releaseIfDrained(tier.lane);
       } catch (error) {
         this.#stall(error, `${plural(tier.files.length, "file")} of a tier queued again`);
@@ -689,7 +683,99 @@ class TierScheduler implements Scheduler {
         this.#notify();
       }
     })();
-    this.#inFlight.set(tier.runId, { tier, done });
+  }
+
+  /**
+   * Records an ended run under the lock: what it loaded and read beyond its
+   * keys, the completion barrier's withholds, then `recordTier`. `commit`
+   * false leaves the ledger's writes to the caller's commit (`#recordSlot`).
+   */
+  async #record(ended: EndedRun, commit: boolean): Promise<Recorded> {
+    const { context, ledger } = this.#started();
+    const { tier, ran, ignored, inputs, installMoved, slow } = ended;
+    // Task 003-43: environment files the run loaded beyond the keyed ones re-key first.
+    const environment = installMoved ? undefined : await rekeyEnvironments(context, ran, tier);
+    // Task 001-132: what the run read beyond its closures, hashed under the lock.
+    const read = installMoved ? undefined : await prepareObserved(context, ran, tier.run);
+    const observed =
+      environment === undefined || read === undefined ? read : { ...read, environment };
+    const touched = [...new Set([...inputs.touched, ...(observed?.touched ?? [])])].sort();
+    const report = withheldForTouch(ran, touched);
+    // Task 007-30: no revision follows the touch; a file's first withhold at its key queues it
+    // again as a moved install does, its previous state standing, and a second leaves it
+    // `unknown`, per file whatever tier it shares (review 007-31, B1).
+    const withheld: string[] = [];
+    const withhold = touched.length === 0 ? null : this.#withholds.record(tier.files);
+    if (withhold === null) this.#withholds.clear(tier.files);
+    else {
+      const notes = [
+        withholdNote(touched, withhold.again, true),
+        withholdNote(touched, withhold.exhausted, false),
+      ];
+      withheld.push(...notes.filter((note) => note !== null));
+    }
+    // Only the first withholds are queued again; the exhausted files, forced or not, record
+    // the withheld report and are `unknown` in the same commit (review 007-33, B1). What a
+    // stop's cancel cut short stays queued for the next daemon (D10, task 001-367).
+    const unfinished = this.#stop.signal.aborted ? unfinishedFiles(tier, ran) : [];
+    const again = [...(withhold?.again.map(({ file }) => file.id) ?? []), ...unfinished];
+    const requeue =
+      installMoved || (withhold === null && unfinished.length === 0)
+        ? installMoved
+        : new Set(again);
+    // Spec 004 D8: a slow run's activity goes with its results (review wave 2, B1, B2).
+    const moved = context.store.transaction(() => {
+      this.#warmUp.record(context, ignored);
+      const result = recordTier(
+        context,
+        ledger,
+        tier,
+        report,
+        inputs.changed,
+        requeue,
+        observed,
+        commit,
+      );
+      if (slow !== null) this.#slow.ended();
+      // The runner hears the touches too, so its next run reads the disk again.
+      return [...new Set([...result, ...touched])];
+    });
+    return { moved, withheld };
+  }
+
+  /**
+   * Records an ended slot together with every slot that ended by the time
+   * the lock is free, in one commit (spec 011 C4 step 5 as amended for
+   * slots, task 011-21 slice 2): each commit's sink call lists every known
+   * state of the worktree, 55 to 340 ms of write lock on cezar's store
+   * (`mergeApplied`). A slot an earlier holder recorded finds the batch
+   * empty and takes that holder's outcome; an error fails only the slots
+   * whose records it reached.
+   */
+  async #recordSlot(ended: EndedRun): Promise<Recorded> {
+    const outcome = new Promise<Recorded>((resolve, reject) => {
+      this.#ended.push({ ended, resolve, reject });
+    });
+    await this.#lock.run(async () => {
+      const batch = this.#ended.splice(0);
+      const recorded: { slot: EndedSlot; record: Recorded }[] = [];
+      for (const slot of batch) {
+        try {
+          recorded.push({ slot, record: await this.#record(slot.ended, false) });
+        } catch (error) {
+          slot.reject(error);
+        }
+      }
+      if (recorded.length === 0) return;
+      try {
+        this.#started().ledger.commit();
+      } catch (error) {
+        for (const { slot } of recorded) slot.reject(error);
+        return;
+      }
+      for (const { slot, record } of recorded) slot.resolve(record);
+    });
+    return outcome;
   }
 
   /**
@@ -717,10 +803,11 @@ class TierScheduler implements Scheduler {
   /** The lanes no tier may start in now. */
   #busyLanes(): Set<string> {
     const { context, ledger } = this.#started();
+    const running = [...this.#inFlight.values()].filter(({ ran }) => !ran);
     return busyLanes(
       context,
       ledger,
-      [...this.#inFlight.values()].map(({ tier }) => tier),
+      running.map(({ tier }) => tier),
     );
   }
 

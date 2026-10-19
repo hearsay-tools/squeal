@@ -145,6 +145,8 @@ export function createNodeTestRunners(
       tierWidth: () => options.tierSize(),
       // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
       besideBacklog: true,
+      // A process per file: the backlog runs in one-file slots (task 011-21 slice 2).
+      backlogSlot: 1,
       onFailure: (text) =>
         options.note(`${text} (node-test project ${JSON.stringify(project.name)})`),
       onRecovered: () => options.note(`node-test project ${JSON.stringify(project.name)} started`),
