@@ -69,7 +69,8 @@ interface WallPart {
  * `wallEstimate` of their last-known durations stays within `budget`. Each
  * part (`RunnerAdapter.tierPart`) runs as wide as the narrowest of its
  * files' widths, and the parts run one after another, so their estimates
- * add up (review wave-3 B1); the first round is the first part's.
+ * add up (review wave-3 B1); the first round is the first part's, while it
+ * is the only part.
  */
 export class BacklogWall {
   readonly #parts = new Map<string, WallPart>();
@@ -90,7 +91,8 @@ export class BacklogWall {
       longest: Math.max(was.longest, durationMs ?? 0),
       width: w,
     };
-    const firstRound = (this.#first ?? part) === part && was.count < w;
+    // The round is the tier's head: it ends once another part joins (review wave-3 re-review).
+    const firstRound = (this.#first ?? part) === part && this.#parts.size <= 1 && was.count < w;
     if (!firstRound && this.#estimate(part, next) > this.budget) return false;
     this.#first ??= part;
     this.#parts.set(part, next);
