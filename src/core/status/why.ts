@@ -34,6 +34,7 @@ import { type StatusContext, type StatusStoreOptions, withStatusStore } from "./
 import { runLogOf } from "./run-log.js";
 import { type WhySession, whyClosureChanges } from "./why-closure.js";
 import { replacement, unshownLog } from "./why-log.js";
+import { namesFile, whyRankedBy } from "./why-rank.js";
 
 /** Most results `squeal why` lists for one check. */
 export const WHY_RESULT_LIMIT = 20;
@@ -101,6 +102,7 @@ function resolve(store: Store, worktreeId: string, query: string): CheckId | Why
   const [only] = matches;
   if (matches.length === 1 && only !== undefined) return only.check;
   const candidates = matches.slice(0, WHY_CANDIDATE_LIMIT).map((n) => n.check);
+  const rankedBy = whyRankedBy(store, worktreeId, namesFile(query));
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
@@ -111,6 +113,7 @@ function resolve(store: Store, worktreeId: string, query: string): CheckId | Why
       durationsOf(store.results.listForCheck(c, Number.MAX_SAFE_INTEGER)),
     ),
     queuedWithoutResult: queuedWithoutResult(store, worktreeId),
+    ...(rankedBy === undefined ? {} : { rankedBy }),
   };
 }
 
@@ -184,6 +187,8 @@ function report(
   const commit = readRevisionCommit(store, worktreeId, latest);
   const changed = changedSince(store, worktreeId, knownState?.observedAt ?? null, revision);
   const closure = whyClosureChanges(store, worktreeId, check, knownState, revision, session);
+  const file = testFileId(testFileOf(check));
+  const rankedBy = whyRankedBy(store, worktreeId, (ref) => testFileId(ref) === file);
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
@@ -209,6 +214,7 @@ function report(
     ...(rerunFirstFailure === undefined ? {} : { rerunFirstFailure }),
     ...(changed === undefined ? {} : { changedSince: changed }),
     ...(closure === undefined ? {} : { changesInClosure: closure }),
+    ...(rankedBy === undefined ? {} : { rankedBy }),
   };
 }
 
