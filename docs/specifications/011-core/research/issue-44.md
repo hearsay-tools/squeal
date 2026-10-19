@@ -81,3 +81,7 @@ Named test files at revision 1: no known failures; 1 test file, each with a curr
 - `docs/specifications/011-core/spec.md` C6, C15; `docs/specifications/005-agent-adoption/spec.md` D2; `docs/board.md` rows 011-10 and gh-42; `research/issue-42.md`, `research/issue-26.md`.
 - `src/cli/status-wait-lines.ts`, `src/cli/status-wait-paths.ts`, `src/core/status/unknown-files.ts`, `src/core/status/format-status.ts` at 2ee1e3bf.
 - Probe: `research/probes/issue-44/probe.sh`, `output.txt`.
+
+## Human direction, 2026-10-19
+
+The human requested shorter, better organized status output in general, beyond named waits, and notes optional behind a flag. They find the remaining report hard to read and believe it may confuse agents too. This is direct user feedback, not an experimental finding about agent comprehension. The board records that direction on gh-44 alongside its overlap with gh-42. A proposed layout leads with the requested verdict, outstanding work and actionable failures while preserving provenance and uncertainty. The exact layout and how it retains 011-10's final verdict need design work within the owning spec; this documentation-only triage changes no contract and authorizes no implementation dispatch. Existing holds stand.
