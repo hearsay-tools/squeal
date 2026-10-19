@@ -62,6 +62,9 @@ export class SlotRecords<E, R> {
     });
     // Its rejection is the slot's outcome's, below.
     ended.catch(() => {});
+    // A record may fail this slot while it still awaits a later slot's reads, before this call
+    // returns `outcome`: handled here, so Node does not exit on it (review wave-4 slice 2, B1).
+    outcome.catch(() => {});
     const gather = Math.max(SLOT_GATHER_MS, SLOT_GATHER_COMMITS * this.#commitMs);
     this.#gathering ??= sleep(gather).then(() => {
       this.#gathering = null;
