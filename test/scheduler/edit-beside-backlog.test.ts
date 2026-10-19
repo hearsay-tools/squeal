@@ -55,17 +55,20 @@ function writeProject(root: string): void {
   mkdirSync(join(root, "nt/src"), { recursive: true });
   mkdirSync(join(root, "nt/test"), { recursive: true });
   writeFileSync(join(root, "nt/src/a.mjs"), "export const a = 1;\n");
-  writeFileSync(join(root, "nt/src/b.mjs"), "export const b = 1;\n");
+  writeFileSync(join(root, "nt/src/b.mjs"), "export const b = 1;\nexport const wait = 0;\n");
   writeFileSync(
     join(root, QUICK),
     test('import { a } from "../src/a.mjs";', 'test("a", () => assert.ok(a > 0));'),
   );
   for (const [i, path] of BACKLOG.entries()) {
-    const imports = path === REKEYED ? ['import { b } from "../src/b.mjs";'] : [];
+    const imports = path === REKEYED ? ['import { b, wait } from "../src/b.mjs";'] : [];
     const check = path === REKEYED ? "assert.ok(b > 0)" : "assert.ok(true)";
     writeFileSync(
       join(root, path),
-      test(...imports, `test("sleeps", async () => { await sleep(${sleeps[i]}); ${check}; });`),
+      test(
+        ...imports,
+        `test("sleeps", async () => { await sleep(${sleeps[i]}${path === REKEYED ? " + wait" : ""}); ${check}; });`,
+      ),
     );
   }
 }
@@ -212,7 +215,7 @@ describe("scheduler: an edit's node:test tier beside the backlog tier (task 011-
     let ranUnder: CheckKey | null = null;
     const { backlog } = await editDuringBacklog(h, runs, async () => {
       ranUnder = keyOf(h, REKEYED);
-      h.write("nt/src/b.mjs", "export const b = 2;\n");
+      h.write("nt/src/b.mjs", "export const b = 2;\nexport const wait = 0;\n");
       const at = now();
       await h.batch("nt/src/b.mjs");
       return at;
@@ -238,5 +241,42 @@ describe("scheduler: an edit's node:test tier beside the backlog tier (task 011-
       expect(storedBy(h, path, backlog), path).toBe(true);
       expect(outcome(h, path), path).toBe("pass");
     }
+  });
+
+  it("3. keeps the edit's run of a re-keyed file running when the backlog tier records first (review wave-4 B1)", {
+    timeout: 120_000,
+  }, async () => {
+    const { h, runs } = await harness();
+    // The edit makes the re-keyed file sleep 12 s longer, so its new run outlasts the backlog tier.
+    const { backlog } = await editDuringBacklog(h, runs, async () => {
+      h.write("nt/src/b.mjs", "export const b = 2;\nexport const wait = 12000;\n");
+      const at = now();
+      await h.batch("nt/src/b.mjs");
+      return at;
+    });
+    const again = () => runs.find((run) => run !== backlog && holds(run, REKEYED));
+    await expect
+      .poll(() => backlog.end !== null && again() !== undefined, { timeout: 60_000 })
+      .toBe(true);
+    const edit = again();
+    if (edit === undefined)
+      throw new Error("the re-keyed file did not run beside the backlog tier");
+    // The backlog tier recorded while the edit's run still held the file: the file is still running.
+    expect(edit.end).toBeNull();
+    const row = () =>
+      h.store.testFileKeys.list(h.worktreeId).find((r) => r.testFile.path === REKEYED);
+    await expect.poll(() => backlog.report !== null).toBe(true);
+    expect(edit.end).toBeNull();
+    expect(row()?.pending).toBe("running");
+    expect(
+      h.store.knownStates
+        .list(h.worktreeId)
+        .some((st) => st.check.testPath === REKEYED && st.outcome === "unknown"),
+    ).toBe(false);
+
+    await h.scheduler.idle();
+    expect(storedBy(h, REKEYED, edit)).toBe(true);
+    expect(outcome(h, REKEYED)).toBe("pass");
+    expect(runs.filter((run) => holds(run, REKEYED))).toHaveLength(2);
   });
 });
