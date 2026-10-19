@@ -28,6 +28,8 @@ export interface BuildOutputCandidate {
   readonly exists: boolean;
   readonly ignored: boolean;
   readonly evidence: readonly Evidence[];
+  /** Wave 13 B1: the group's test files that name it, sorted; empty when none does. */
+  readonly namedBy: readonly string[];
 }
 
 export interface Evidence {
@@ -37,7 +39,7 @@ export interface Evidence {
   readonly weak: boolean;
 }
 
-type Found = { readonly path: string } & Evidence;
+type Found = { readonly path: string; readonly files?: readonly string[] } & Evidence;
 
 const FIELDS = ["bin", "main", "module", "exports", "files"] as const;
 
@@ -53,10 +55,12 @@ export async function buildOutputCandidates(
   const all = [...found, ...named];
   const ignored = new Set(await ignoredDirs(facts.root, [...new Set(all.map((f) => f.path))]));
   const byPath = new Map<string, Evidence[]>();
-  for (const { path, ...evidence } of all) {
+  const namedBy = new Map<string, readonly string[]>();
+  for (const { path, files: by, ...evidence } of all) {
     const list = byPath.get(path) ?? [];
     if (!list.some((e) => e.detail === evidence.detail)) list.push(evidence);
     byPath.set(path, list);
+    if (by !== undefined) namedBy.set(path, by);
   }
   return [...byPath]
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
@@ -65,6 +69,7 @@ export async function buildOutputCandidates(
       exists: dirExists(facts.root, path),
       ignored: ignored.has(path),
       evidence,
+      namedBy: namedBy.get(path) ?? [],
     }));
 }
 
@@ -76,6 +81,11 @@ export async function buildOutputCandidates(
 export function testsBuildOutput(c: BuildOutputCandidate): boolean {
   const rules = new Set(c.evidence.map((e) => e.rule));
   return rules.has("named") && (c.ignored || rules.has("build-script"));
+}
+
+/** Wave 13 B1: the test files that name a build output of `candidates`, the evidence an exclude needs. */
+export function evidencedFiles(candidates: readonly BuildOutputCandidate[]): string[] {
+  return [...new Set(candidates.filter(testsBuildOutput).flatMap((c) => c.namedBy))].sort();
 }
 
 /** The directories the manifest's `bin`, `main`, `module`, `exports` and `files` name. */
@@ -189,12 +199,13 @@ async function namedCandidates(
   for (const dir of [...new Set([...inPackage, ...found.map((f) => f.path)])].sort()) {
     const hits = literals.flatMap(({ file, strings }) => {
       const hit = strings.find((s) => names(facts, posix.dirname(file), manifest.dir, s, dir));
-      return hit === undefined ? [] : [hit];
+      return hit === undefined ? [] : [{ file, hit }];
     });
     if (hits.length === 0) continue;
-    const named = `named by ${hits.length} of ${files.length} test files, such as "${hits[0]}"`;
+    const named = `named by ${hits.length} of ${files.length} test files, such as "${hits[0]?.hit}"`;
     out.push({
       path: dir,
+      files: hits.map((h) => h.file).sort(),
       rule: "named",
       detail: ignored.has(dir) ? `gitignored, ${named}` : named,
       weak: false,

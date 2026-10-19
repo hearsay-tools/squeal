@@ -3,6 +3,7 @@ import { main } from "../../../src/cli/main.js";
 import { buildPlan } from "../../../src/cli/setup/plan.js";
 import { answerPlan, NO_ANSWERS } from "../../../src/cli/setup/questions.js";
 import {
+  ALL_NAMED_E2E,
   capture,
   cezarionShaped,
   cleanupFixtures,
@@ -29,9 +30,11 @@ describe("this repository's shape", () => {
     const root = squealShaped();
     const { slow } = await plan(root);
     expect(slow.groups[0]?.buildOutputs?.map((o) => o.path)).toEqual(["plugins/codex/dist"]);
+    // Wave 13 B1: shipped-plugin names no build output, so only plugin-copy is excluded.
     expect(slow.groups[0]?.exclude).toEqual({
-      glob: "test/e2e/**",
-      into: [{ runner: "vitest", glob: "test/e2e/**" }],
+      globs: ["test/e2e/plugin-copy.test.ts"],
+      into: [{ runner: "vitest", glob: "test/e2e/plugin-copy.test.ts" }],
+      kept: ["test/e2e/shipped-plugin.test.ts"],
     });
     const { buildOutputs: _, exclude: __, ...group } = slow.groups[0] ?? {};
     expect({ ...slow, groups: [group] }).toEqual({
@@ -60,14 +63,17 @@ describe("this repository's shape", () => {
   });
 
   it("names no artifact, and says the config lacks the slow key or, for an exclude candidate, vitest.exclude", async () => {
-    for (const [files, key] of [
-      [SLOW_ONLY_E2E, "slow"],
-      [{}, "vitest.exclude"],
+    for (const [files, keys] of [
+      [SLOW_ONLY_E2E, ["slow"]],
+      [ALL_NAMED_E2E, ["vitest.exclude"]],
+      // Wave 13 B1: a partial exclude leaves slow candidates too.
+      [{}, ["slow", "vitest.exclude"]],
     ] as const) {
       const { io, out } = capture(squealShaped(files));
       expect(await main(["setup", "--check"], io)).toBe(1);
       expect(out.stdout).not.toContain("artifact");
-      expect(out.stdout).toContain(`Outdated:\n  squeal.config.json has no "${key}" key\n`);
+      const lines = keys.map((key) => `  squeal.config.json has no "${key}" key\n`).join("");
+      expect(out.stdout).toContain(`Outdated:\n${lines}`);
     }
   });
 
