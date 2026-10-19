@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { slotHarness, testPath } from "./slots-fixture.js";
+import { type SlotHarness, slotHarness, testPath } from "./slots-fixture.js";
 
 /*
  * Task 011-21 slice 2, done-when 3 (`research/streaming-lanes.md` finding 1,
@@ -11,26 +11,14 @@ import { slotHarness, testPath } from "./slots-fixture.js";
  * share its commit: fewer sink commits than files. Each commit holds the
  * thread 55 ms, the least a sink call took on cezar's store, so a commit per
  * slot, 16.5 s of them, would not fit: one per slot with no gather took 1.39
- * times at 50 ms.
+ * times at 50 ms. One harness alternates the two, tier first, and each is
+ * its best of two rounds, so a load that moves between passes moves both.
  */
 const FILES = 300;
 const APPLY_MS = 55;
+const ROUNDS = 2;
 
-async function forcedPass(slots: boolean, applyMs: number) {
-  const files = Array.from({ length: FILES }, (_, i) => ({
-    name: `o${String(i).padStart(3, "0")}`,
-    sleepMs: 0,
-    spinMs: 50,
-  }));
-  const { h, runs } = await slotHarness({
-    files,
-    hostSlots: 4,
-    backlogTierSize: FILES,
-    slots,
-    applyMs,
-  });
-  await h.scheduler.start();
-  await h.scheduler.idle();
+async function forcedPass({ h, runs }: SlotHarness) {
   const before = { runs: runs.length, commits: h.sink.calls.length };
   const started = performance.now();
   await h.scheduler.requestFullSuite({ force: true });
@@ -40,29 +28,52 @@ async function forcedPass(slots: boolean, applyMs: number) {
   const commits = h.sink.calls
     .slice(before.commits)
     .filter((call) => call.method === "applyResults").length;
-  const stored = files.every((f) =>
-    h.store.knownStates
-      .list(h.worktreeId)
-      .some((s) => s.check.testPath === testPath(f.name) && s.outcome === "pass"),
-  );
-  await h.scheduler.close();
-  return { ms, pass, commits, stored };
+  return { ms, pass, commits };
 }
 
 describe("scheduler: a node:test backlog in one-file slots, per-file overhead (task 011-21 slice 2)", () => {
   it("3. runs 300 files of about 50 ms within 1.2 times one tier's time, with fewer commits than files", {
-    timeout: 300_000,
+    timeout: 600_000,
   }, async () => {
-    const tier = await forcedPass(false, APPLY_MS);
-    const slots = await forcedPass(true, APPLY_MS);
-    console.log(
-      `011-21 slots: 300 files in ${Math.round(slots.ms)} ms in ${slots.pass.length} runs and ${slots.commits} commits; one tier ${Math.round(tier.ms)} ms in ${tier.pass.length} runs (${(slots.ms / tier.ms).toFixed(2)} times)`,
+    const files = Array.from({ length: FILES }, (_, i) => ({
+      name: `o${String(i).padStart(3, "0")}`,
+      sleepMs: 0,
+      spinMs: 50,
+    }));
+    const harness = await slotHarness({
+      files,
+      hostSlots: 4,
+      backlogTierSize: FILES,
+      applyMs: APPLY_MS,
+    });
+    const { h } = harness;
+    await h.scheduler.start();
+    await h.scheduler.idle();
+    const tiers: Awaited<ReturnType<typeof forcedPass>>[] = [];
+    const slots: typeof tiers = [];
+    for (let round = 0; round < ROUNDS; round++) {
+      harness.slots(false);
+      tiers.push(await forcedPass(harness));
+      harness.slots(true);
+      slots.push(await forcedPass(harness));
+    }
+    const stored = files.every((f) =>
+      h.store.knownStates
+        .list(h.worktreeId)
+        .some((s) => s.check.testPath === testPath(f.name) && s.outcome === "pass"),
     );
-    expect(tier.stored && slots.stored).toBe(true);
-    expect(tier.pass).toHaveLength(1);
-    expect(slots.pass).toHaveLength(FILES);
-    expect(slots.pass.every((run) => run.files.length === 1)).toBe(true);
-    expect(slots.ms).toBeLessThanOrEqual(tier.ms * 1.2);
-    expect(slots.commits).toBeLessThan(FILES);
+    await h.scheduler.close();
+    const best = (passes: typeof tiers) => Math.min(...passes.map((p) => p.ms));
+    console.log(
+      `011-21 slots: 300 files in ${slots.map((p) => `${Math.round(p.ms)} ms in ${p.pass.length} runs and ${p.commits} commits`).join(", ")}; one tier ${tiers.map((p) => `${Math.round(p.ms)} ms in ${p.pass.length} runs`).join(", ")} (best ${(best(slots) / best(tiers)).toFixed(2)} times)`,
+    );
+    expect(stored).toBe(true);
+    for (const tier of tiers) expect(tier.pass).toHaveLength(1);
+    for (const pass of slots) {
+      expect(pass.pass).toHaveLength(FILES);
+      expect(pass.pass.every((run) => run.files.length === 1)).toBe(true);
+      expect(pass.commits).toBeLessThan(FILES);
+    }
+    expect(best(slots)).toBeLessThanOrEqual(best(tiers) * 1.2);
   });
 });

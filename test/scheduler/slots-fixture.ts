@@ -52,6 +52,8 @@ export interface SlotHarness {
   spans(): Span[];
   /** The pool's directory, for another daemon's pool. */
   readonly poolDir: string;
+  /** Whether the backlog runs in slots from the next selection on (`SlotOptions.slots`). */
+  slots(on: boolean): void;
 }
 
 export interface SlotOptions {
@@ -110,25 +112,8 @@ export async function slotHarness(options: SlotOptions): Promise<SlotHarness> {
     note: () => {},
   });
   if (nodeTest === undefined) throw new Error("no node:test runner");
-  const runs: TimedRun[] = [];
-  const timed: RunnerAdapter = Object.create(nodeTest, {
-    run: {
-      value: async (files: readonly TestFileRef[], runOptions: RunOptions) => {
-        const run: TimedRun = {
-          files,
-          options: runOptions,
-          start: Date.now(),
-          end: null,
-          report: null,
-        };
-        runs.push(run);
-        run.report = await nodeTest.run(files, runOptions);
-        run.end = Date.now();
-        return run.report;
-      },
-    },
-    ...(options.slots === false ? { backlogSlot: { value: () => null } } : {}),
-  });
+  const mode = { slots: options.slots ?? true };
+  const { timed, runs } = timedRunner(nodeTest, () => mode.slots);
   const h = await openHarness(repo.main, store, repo.commonDir, {
     tierSize,
     backlogTierSize: options.backlogTierSize ?? 200,
@@ -151,7 +136,48 @@ export async function slotHarness(options: SlotOptions): Promise<SlotHarness> {
       .filter((line) => line !== "")
       .map((line) => JSON.parse(line) as Span)
       .sort((a, b) => a.start - b.start);
-  return { h, runs, spans, poolDir };
+  return {
+    h,
+    runs,
+    spans,
+    poolDir,
+    slots: (on) => {
+      mode.slots = on;
+    },
+  };
+}
+
+/**
+ * `runner` with each `run` call timed into `runs`; while `slots` says false
+ * its `backlogSlot` answers `null`, so its backlog runs in tiers, as before
+ * slots.
+ */
+export function timedRunner(
+  runner: RunnerAdapter,
+  slots: () => boolean = () => true,
+): { timed: RunnerAdapter; runs: TimedRun[] } {
+  const runs: TimedRun[] = [];
+  const timed: RunnerAdapter = Object.create(runner, {
+    run: {
+      value: async (files: readonly TestFileRef[], runOptions: RunOptions) => {
+        const run: TimedRun = {
+          files,
+          options: runOptions,
+          start: Date.now(),
+          end: null,
+          report: null,
+        };
+        runs.push(run);
+        run.report = await runner.run(files, runOptions);
+        run.end = Date.now();
+        return run.report;
+      },
+    },
+    backlogSlot: {
+      value: (testFile: TestFileRef) => (slots() ? (runner.backlogSlot?.(testFile) ?? null) : null),
+    },
+  });
+  return { timed, runs };
 }
 
 /**
