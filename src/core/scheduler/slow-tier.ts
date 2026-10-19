@@ -1,6 +1,5 @@
 import { setTimeout as delay } from "node:timers/promises";
 import type { PoolLease } from "../capacity/index.js";
-import { readTurn } from "../delivery/turn.js";
 import {
   acquireSlowSlot,
   clearSlotWaiter,
@@ -13,15 +12,13 @@ import {
   waitForCapacity,
 } from "../slow/index.js";
 import { publishSlowActivity, readSlowActivity } from "../slow/state.js";
-import {
-  type AbsolutePath,
-  type CheckKey,
-  CONSUMER_EXPIRY_MS,
-  type EpochMs,
-  type SlowTierActivity,
-  type Store,
-  type TestFileRef,
-  type WorktreeId,
+import type {
+  AbsolutePath,
+  CheckKey,
+  EpochMs,
+  SlowTierActivity,
+  TestFileRef,
+  WorktreeId,
 } from "../types/index.js";
 import { perFileLease, WAIT_FOR_CAPACITY } from "./capacity.js";
 import { claimOf } from "./claims.js";
@@ -31,9 +28,16 @@ import type { Ledger } from "./ledger.js";
 import type { Mutex } from "./mutex.js";
 import type { SlowTierOptions } from "./options.js";
 import { slowView } from "./slow.js";
+import { policyTriggered, quietLeftMs } from "./slow-trigger.js";
 import { laneOf, startTier, type Tier, type TierFile } from "./tiers.js";
 
-/** Spec 004 D2, D3: the longest a pending slow file waits before the scheduler looks again. */
+export { consumersIdle } from "./slow-trigger.js";
+
+/**
+ * Spec 004 D2, D3: the longest a pending slow file waits for the slot, or for
+ * an idle consumer under `slow.trigger: "idle"`, before the scheduler looks
+ * again. A continuous lane pumps at its quiet window's end instead.
+ */
 export const SLOW_RECHECK_MS = 15_000;
 
 /** After this long without the slot, a note says another daemon holds it. */
@@ -88,17 +92,21 @@ export type SlowNext = SlowRun | "again" | null;
  * queue's slow class until no fast work of this daemon is pending or
  * running, its backlog's included (D2 as amended 2026-10-14, task 004-60;
  * an open `run --slow` request waits only for an edit's, `#fastFirst`), and
- * a trigger holds: every registered consumer is idle or none is (`consumersIdle`), a
- * `run --slow` request is open (`request`), or a `run --all` checkpoint
- * requested the file. Then `next` waits for the load guard with what is left
+ * a trigger holds: the latest revision is `slow.quietMs` old under
+ * `slow.trigger: "continuous"` (`quietLeftMs`, D2 as amended 2026-10-18,
+ * row 004-80), every registered consumer is idle or none is under `"idle"`
+ * (`consumersIdle`), a `run --slow` request is open (`request`), or a
+ * `run --all` checkpoint requested the file. Then `next` waits for the load guard with what is left
  * of the pass's `slow.maxDeferMs`, unless a `run --slow` request is open (D3
  * as amended 2026-10-14, task 004-59), takes the per-user slot, and selects a
  * tier, its workers from the per-user pool (001 D11 Capacity, task 001-386): one file, or up to `slow.maxParallel` files of one lane when the
  * machine is idle (no fast work at all and the load below the guard's
  * threshold), holding a permit per file. The pump runs and records it as any
  * tier (D4: the stability check discards and re-queues). A pass ends when no
- * slow file is pending. Waiting for a trigger or the slot arms a timer that
- * pumps again; a silent Stop's nudge pumps at once (`nudge`, task 001-281).
+ * slow file is pending. Waiting for the quiet window arms a timer for its
+ * end; waiting for an idle consumer or the slot arms one at
+ * `SLOW_RECHECK_MS`; a silent Stop's nudge pumps at once (`nudge`, task
+ * 001-281). A fast tier that ends pumps as any tier's end does.
  */
 export class SlowTier {
   /** A `run --slow` request is open until no slow file is pending. */
@@ -112,6 +120,8 @@ export class SlowTier {
   #tookLast = false;
   #slotNoted = false;
   #timer: NodeJS.Timeout | null = null;
+  /** When `#timer` fires, so an earlier deadline replaces it. */
+  #timerAt = 0;
   /** The load guard's wait in progress; `preempt` aborts it. */
   #wait: AbortController | null = null;
   /** Counts `preempt` calls, so one between selection and the wait is not lost. */
@@ -261,20 +271,31 @@ export class SlowTier {
     // A result applied left the queue: what is left decides.
     if ([...claims.values()].includes("settled")) return this.#candidates();
     if ([...claims.values()].includes("waits")) return [];
-    this.#publish({ kind: "waiting", for: "idle" });
-    this.#arm();
+    this.#publishUntriggered(context);
+    const quiet = quietLeftMs(context);
+    this.#arm(quiet === null ? this.#recheckMs() : Math.max(1, quiet));
     return [];
   }
 
   /**
-   * Under the lock: whether a trigger lets a slow file run now. Idle or absent
-   * consumers, an open `run --slow` request, or the file's open `run --all`
-   * checkpoint.
+   * Under the lock: whether a trigger lets a slow file run now. Trigger (a)
+   * by `slow.trigger` (`policyTriggered`), an open `run --slow` request, or
+   * the file's open `run --all` checkpoint.
    */
   #trigger(context: SchedulerContext, ledger: Ledger): (ref: TestFileRef) => boolean {
-    const idle = consumersIdle(context.store, context.worktreeId, context.now());
+    const policy = policyTriggered(context);
     const runAll = ledger.checkpoints.active?.explicit === true;
-    return (ref) => idle || this.#requested || (runAll && ledger.checkpoints.idFor(ref) !== null);
+    return (ref) => policy || this.#requested || (runAll && ledger.checkpoints.idFor(ref) !== null);
+  }
+
+  /**
+   * What pending slow files no trigger lets run wait for (D8): the agent's
+   * pause under `"idle"`; under `"continuous"` only the quiet window, which
+   * the line states as pending with no reason.
+   */
+  #publishUntriggered(context: SchedulerContext): void {
+    if (context.policy.slow.trigger === "idle") this.#publish({ kind: "waiting", for: "idle" });
+    else this.#publish(null);
   }
 
   /**
@@ -465,7 +486,7 @@ export class SlowTier {
     if (queued.length === 0) this.#publish(null);
     else if (this.#fastFirst()) this.#publish({ kind: "waiting", for: "fast" });
     else if (queued.some(this.#trigger(context, ledger))) this.#publish(null);
-    else this.#publish({ kind: "waiting", for: "idle" });
+    else this.#publishUntriggered(context);
   }
 
   /** At close: clears the activity unless another daemon published since (a handover), and the waiter's mark. */
@@ -495,13 +516,22 @@ export class SlowTier {
     );
   }
 
-  /** Pumps again after `recheckMs`, once; the pump re-arms while slow work still waits. */
-  #arm(): void {
-    if (this.#timer !== null || this.host.closed()) return;
+  /**
+   * Pumps again after `ms`, once; an armed timer that fires later gives way.
+   * The pump re-arms while slow work still waits.
+   */
+  #arm(ms: number = this.#recheckMs()): void {
+    if (this.host.closed()) return;
+    const at = performance.now() + ms;
+    if (this.#timer !== null) {
+      if (this.#timerAt <= at) return;
+      clearTimeout(this.#timer);
+    }
+    this.#timerAt = at;
     this.#timer = setTimeout(() => {
       this.#timer = null;
       this.host.pump();
-    }, this.#recheckMs());
+    }, ms);
     this.#timer.unref();
   }
 
@@ -541,20 +571,6 @@ export function tierKeys(tier: Tier, ledger: Ledger): CheckKey[] {
 function fileKeys({ file, key }: TierFile, ledger: Ledger): CheckKey[] {
   const current = ledger.files.get(file.id)?.key ?? null;
   return current === null || current === key ? [key] : [key, current];
-}
-
-/**
- * Spec 004 D2 trigger (a): no registered consumer of the worktree is in a
- * turn (001 D9). A consumer not heard from or delivered to within
- * `CONSUMER_EXPIRY_MS` counts as absent, as its expiry would remove it.
- */
-export function consumersIdle(store: Store, worktreeId: WorktreeId, now: EpochMs): boolean {
-  for (const record of store.consumers.list(worktreeId)) {
-    const heard = Math.max(record.lastSeenAt, record.lastDeliveredAt ?? 0);
-    if (heard < now - CONSUMER_EXPIRY_MS) continue;
-    if (readTurn(store, record.consumer).turn === "in-turn") return false;
-  }
-  return true;
 }
 
 /**
