@@ -1,0 +1,134 @@
+diff --git a/src/core/capacity/pool.ts b/src/core/capacity/pool.ts
+index c30678df..83d28bfa 100644
+--- a/src/core/capacity/pool.ts
++++ b/src/core/capacity/pool.ts
+@@ -52,6 +52,8 @@ export interface PermitPool {
+    * chance. When it throws it holds nothing it took.
+    */
+   acquire(want: number, lane?: PoolLane): PoolLease | null;
++  /** PROTOTYPE (research backlog-wall-budget): the grant `acquire(want)` would give now, taking nothing. */
++  offer(want: number): number;
+   /** Releases every lease and clears the mark. */
+   close(): void;
+ }
+@@ -193,6 +195,23 @@ class LockFilePool implements PermitPool {
+     return this.#handle(lease);
+   }
+ 
++  offer(want: number): number {
++    const { dir, owner, project } = this.#options;
++    const now = this.#now();
++    const wanted = Math.max(1, Math.floor(want));
++    const others = readMarks(dir, owner.worktreeId, now);
++    const inUse = this.#inUse();
++    const me = { id: owner.worktreeId, want: this.#demand() + wanted, since: this.#since, ...(project === undefined ? {} : { project }) };
++    const shares = fairShares(this.#hostSlots, [me, ...others]);
++    const free = [...this.#leases].every((lease) => !lease.free);
++    let target = Math.min(wanted, Math.max(0, (shares.get(me.id) ?? 1) - inUse));
++    if (project !== undefined) {
++      const held = others.filter((o) => o.project?.id === project.id).reduce((sum, o) => sum + o.grant, 0);
++      target = Math.min(target, Math.max(0, project.slots - held - inUse));
++    }
++    return free ? Math.max(1, target) : target;
++  }
++
+   close(): void {
+     this.#closed = true;
+     for (const lease of this.#leases) for (const db of lease.permits.splice(0)) db.close();
+diff --git a/src/core/scheduler/capacity.ts b/src/core/scheduler/capacity.ts
+index 1069fcda..c99ae910 100644
+--- a/src/core/scheduler/capacity.ts
++++ b/src/core/scheduler/capacity.ts
+@@ -54,6 +54,15 @@ export class TierCapacity {
+     }
+   }
+ 
++  /** PROTOTYPE: the grant a tier of `want` would get now; `want` when the pool fails. */
++  offer(want: number): number {
++    try {
++      return this.#pool.offer(want);
++    } catch {
++      return want;
++    }
++  }
++
+   close(): void {
+     this.#pool.close();
+   }
+diff --git a/src/core/scheduler/tiers.ts b/src/core/scheduler/tiers.ts
+index 5500797b..73aade38 100644
+--- a/src/core/scheduler/tiers.ts
++++ b/src/core/scheduler/tiers.ts
+@@ -136,6 +136,10 @@ export function selectTier(
+   let size = backlog ? ledger.claims.backlogSize(ledger.queue.fastSize) : policy.runner.tierSize;
+   const budget = backlog ? backlogBudget(policy.runner.timeoutMs) : Number.POSITIVE_INFINITY;
+   let known = 0;
++  // PROTOTYPE (research backlog-wall-budget): the backlog budget bounds the tier's expected wall
++  // time under the workers it will run with, a greedy schedule of the picked files in order.
++  const offer = backlog ? (context.capacity?.offer(size) ?? size) : size;
++  let wall: WallEstimate | null = null;
+   let span: TierSpan | null = null;
+   let tookBacklog = false;
+   let lane: string | null = null;
+@@ -170,7 +174,11 @@ export function selectTier(
+       span = joined;
+     }
+     known += file.durationMs ?? 0;
+-    if (picked.length > 0 && known > budget) break;
++    if (process.env.SQUEAL_PROTO_WALL === "1" && backlog) {
++      wall ??= new WallEstimate(laneWidth(context, at, offer));
++      if (picked.length > 0 && wall.with(file.durationMs ?? 0) > budget) break;
++      wall.add(file.durationMs ?? 0);
++    } else if (picked.length > 0 && known > budget) break;
+     tookBacklog ||= !recent && !ledger.queue.isPromoted(ref);
+     lane = at;
+     size = cap;
+@@ -183,6 +191,17 @@ export function selectTier(
+     ledger.commit();
+     return null;
+   }
++  if (process.env.SQUEAL_PROTO_WALL === "1" && backlog && lease && lease.grant < offer) {
++    // Granted less than offered: keep the prefix that fits the budget at the grant.
++    const trimmed = new WallEstimate(laneWidth(context, lane ?? "", lease.grant));
++    let keep = 0;
++    for (const p of picked) {
++      if (keep > 0 && trimmed.with(p.file.durationMs ?? 0) > budget) break;
++      trimmed.add(p.file.durationMs ?? 0);
++      keep++;
++    }
++    picked.splice(keep);
++  }
+   let tier: Tier | null = null;
+   try {
+     tier =
+@@ -201,6 +220,30 @@ export function selectTier(
+   return settled ? selectTier(context, ledger, busy) : null;
+ }
+ 
++/** PROTOTYPE: the workers a backlog tier of `lane` runs with at a grant of `grant`. */
++function laneWidth(context: SchedulerContext, lane: string, grant: number): number {
++  // node:test and pytest run `runner.tierSize` processes at once whatever the grant.
++  if (lane.startsWith("node-test") || lane.startsWith("pytest")) return context.policy.runner.tierSize;
++  return Math.max(2, Math.floor(grant)); // Vitest: `tierWidth`'s floor of 2, no project ceiling known here.
++}
++
++/** PROTOTYPE: makespan of files started in order on the earliest free of `width` workers. */
++class WallEstimate {
++  readonly #free: number[];
++  #makespan = 0;
++  constructor(width: number) {
++    this.#free = Array.from({ length: Math.max(1, width) }, () => 0);
++  }
++  with(durationMs: number): number {
++    return Math.max(this.#makespan, Math.min(...this.#free) + durationMs);
++  }
++  add(durationMs: number): void {
++    const i = this.#free.indexOf(Math.min(...this.#free));
++    this.#free[i] = (this.#free[i] ?? 0) + durationMs;
++    this.#makespan = Math.max(this.#makespan, this.#free[i] ?? 0);
++  }
++}
++
+ /**
+  * Records the start of a tier of `picked`, files still queued: in one
+  * `BEGIN IMMEDIATE`, each file that is not forced is looked up once more

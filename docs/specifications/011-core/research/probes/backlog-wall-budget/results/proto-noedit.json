@@ -1,0 +1,122 @@
+{
+  "proto": true,
+  "editAt": -1,
+  "forcedWallS": 249.979,
+  "editDelayS": {
+    "vitest": null,
+    "node-test": null
+  },
+  "log": [
+    {
+      "what": "start",
+      "at": -250.561,
+      "load": "4.89"
+    },
+    {
+      "what": "baseline done exit 0",
+      "at": 0,
+      "load": "2.86"
+    },
+    {
+      "what": "force",
+      "at": 0,
+      "load": "2.86"
+    },
+    {
+      "what": "forced done exit 0",
+      "at": 249.979,
+      "load": "5.29"
+    }
+  ],
+  "checkpointOutput": "ery current result here was run in this worktree)\nClosure method: static imports plus declared inputs\nStore schema: 1\nNotes:\n  no revision recorded for this worktree yet\n  2026-10-19T13:54:46.577Z, revision 0: node-test project \"heavy-node\": 8 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: node/heavy-0.test.mjs, node/heavy-1.test.mjs, node/heavy-2.test.mjs, node/heavy-3.test.mjs, node/heavy-4.test.mjs, node/heavy-5.test.mjs, node/heavy-6.test.mjs, node/heavy-7.test.mjs\n",
+  "runs": [
+    {
+      "lane": "vitest",
+      "start": -249.656,
+      "end": -98.994,
+      "wall": 150.662,
+      "state": "completed",
+      "files": [
+        "test/heavy-00.test.ts",
+        "test/heavy-01.test.ts",
+        "test/heavy-02.test.ts",
+        "test/heavy-03.test.ts",
+        "test/heavy-04.test.ts",
+        "test/heavy-05.test.ts",
+        "test/heavy-06.test.ts",
+        "test/heavy-07.test.ts",
+        "test/heavy-08.test.ts",
+        "test/heavy-09.test.ts",
+        "test/heavy-10.test.ts",
+        "test/heavy-11.test.ts",
+        "test/heavy-12.test.ts",
+        "test/heavy-13.test.ts",
+        "test/heavy-14.test.ts",
+        "test/heavy-15.test.ts",
+        "test/quick.test.ts"
+      ]
+    },
+    {
+      "lane": "node-test",
+      "start": -249.588,
+      "end": -0.187,
+      "wall": 249.401,
+      "state": "completed",
+      "files": [
+        "node/heavy-0.test.mjs",
+        "node/heavy-1.test.mjs",
+        "node/heavy-2.test.mjs",
+        "node/heavy-3.test.mjs",
+        "node/heavy-4.test.mjs",
+        "node/heavy-5.test.mjs",
+        "node/heavy-6.test.mjs",
+        "node/heavy-7.test.mjs",
+        "node/quick.test.mjs"
+      ]
+    },
+    {
+      "lane": "vitest",
+      "start": 0.129,
+      "end": 150.441,
+      "wall": 150.312,
+      "state": "completed",
+      "files": [
+        "test/quick.test.ts",
+        "test/heavy-00.test.ts",
+        "test/heavy-01.test.ts",
+        "test/heavy-02.test.ts",
+        "test/heavy-03.test.ts",
+        "test/heavy-04.test.ts",
+        "test/heavy-05.test.ts",
+        "test/heavy-06.test.ts",
+        "test/heavy-07.test.ts",
+        "test/heavy-08.test.ts",
+        "test/heavy-09.test.ts",
+        "test/heavy-10.test.ts",
+        "test/heavy-11.test.ts",
+        "test/heavy-12.test.ts",
+        "test/heavy-13.test.ts",
+        "test/heavy-14.test.ts",
+        "test/heavy-15.test.ts"
+      ]
+    },
+    {
+      "lane": "node-test",
+      "start": 0.151,
+      "end": 249.803,
+      "wall": 249.652,
+      "state": "completed",
+      "files": [
+        "node/quick.test.mjs",
+        "node/heavy-0.test.mjs",
+        "node/heavy-1.test.mjs",
+        "node/heavy-2.test.mjs",
+        "node/heavy-3.test.mjs",
+        "node/heavy-4.test.mjs",
+        "node/heavy-5.test.mjs",
+        "node/heavy-6.test.mjs",
+        "node/heavy-7.test.mjs"
+      ]
+    }
+  ]
+}

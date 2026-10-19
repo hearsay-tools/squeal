@@ -1,0 +1,170 @@
+{
+  "proto": true,
+  "editAt": 100,
+  "forcedWallS": 250.999,
+  "editDelayS": {
+    "vitest": 0.3649999999999949,
+    "node-test": 149.85000000000002
+  },
+  "log": [
+    {
+      "what": "start",
+      "at": -250.282,
+      "load": "5.79"
+    },
+    {
+      "what": "baseline done exit 0",
+      "at": 0,
+      "load": "4.27"
+    },
+    {
+      "what": "force",
+      "at": 0,
+      "load": "4.27"
+    },
+    {
+      "what": "edit",
+      "at": 100.003,
+      "load": "4.83"
+    },
+    {
+      "what": "forced done exit 3",
+      "at": 100.219,
+      "load": "4.83"
+    },
+    {
+      "what": "checkpoint again exit 0",
+      "at": 250.999,
+      "load": "6.86"
+    }
+  ],
+  "checkpointOutput": " ago\nInherited from other worktrees: none (every current result here was run in this worktree)\nClosure method: static imports plus declared inputs\nStore schema: 1\nNotes:\n  2026-10-19T14:01:22.045Z, revision 0: node-test project \"heavy-node\": 8 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: node/heavy-0.test.mjs, node/heavy-1.test.mjs, node/heavy-2.test.mjs, node/heavy-3.test.mjs, node/heavy-4.test.mjs, node/heavy-5.test.mjs, node/heavy-6.test.mjs, node/heavy-7.test.mjs\n",
+  "runs": [
+    {
+      "lane": "vitest",
+      "start": -249.473,
+      "end": -98.971,
+      "wall": 150.502,
+      "state": "completed",
+      "files": [
+        "test/heavy-00.test.ts",
+        "test/heavy-01.test.ts",
+        "test/heavy-02.test.ts",
+        "test/heavy-03.test.ts",
+        "test/heavy-04.test.ts",
+        "test/heavy-05.test.ts",
+        "test/heavy-06.test.ts",
+        "test/heavy-07.test.ts",
+        "test/heavy-08.test.ts",
+        "test/heavy-09.test.ts",
+        "test/heavy-10.test.ts",
+        "test/heavy-11.test.ts",
+        "test/heavy-12.test.ts",
+        "test/heavy-13.test.ts",
+        "test/heavy-14.test.ts",
+        "test/heavy-15.test.ts",
+        "test/quick.test.ts"
+      ]
+    },
+    {
+      "lane": "node-test",
+      "start": -249.443,
+      "end": -0.148,
+      "wall": 249.295,
+      "state": "completed",
+      "files": [
+        "node/heavy-0.test.mjs",
+        "node/heavy-1.test.mjs",
+        "node/heavy-2.test.mjs",
+        "node/heavy-3.test.mjs",
+        "node/heavy-4.test.mjs",
+        "node/heavy-5.test.mjs",
+        "node/heavy-6.test.mjs",
+        "node/heavy-7.test.mjs",
+        "node/quick.test.mjs"
+      ]
+    },
+    {
+      "lane": "vitest",
+      "start": 0.152,
+      "end": 100.188,
+      "wall": 100.036,
+      "state": "completed",
+      "files": [
+        "test/quick.test.ts",
+        "test/heavy-00.test.ts",
+        "test/heavy-01.test.ts",
+        "test/heavy-02.test.ts",
+        "test/heavy-03.test.ts",
+        "test/heavy-04.test.ts",
+        "test/heavy-05.test.ts",
+        "test/heavy-06.test.ts",
+        "test/heavy-07.test.ts",
+        "test/heavy-08.test.ts",
+        "test/heavy-09.test.ts",
+        "test/heavy-10.test.ts",
+        "test/heavy-11.test.ts",
+        "test/heavy-12.test.ts",
+        "test/heavy-13.test.ts",
+        "test/heavy-14.test.ts",
+        "test/heavy-15.test.ts"
+      ]
+    },
+    {
+      "lane": "node-test",
+      "start": 0.171,
+      "end": 249.668,
+      "wall": 249.497,
+      "state": "completed",
+      "files": [
+        "node/quick.test.mjs",
+        "node/heavy-0.test.mjs",
+        "node/heavy-1.test.mjs",
+        "node/heavy-2.test.mjs",
+        "node/heavy-3.test.mjs",
+        "node/heavy-4.test.mjs",
+        "node/heavy-5.test.mjs",
+        "node/heavy-6.test.mjs",
+        "node/heavy-7.test.mjs"
+      ]
+    },
+    {
+      "lane": "vitest",
+      "start": 100.201,
+      "end": 100.368,
+      "wall": 0.167,
+      "state": "completed",
+      "files": [
+        "test/quick.test.ts"
+      ]
+    },
+    {
+      "lane": "vitest",
+      "start": 100.395,
+      "end": 250.724,
+      "wall": 150.329,
+      "state": "completed",
+      "files": [
+        "test/heavy-07.test.ts",
+        "test/heavy-08.test.ts",
+        "test/heavy-09.test.ts",
+        "test/heavy-10.test.ts",
+        "test/heavy-11.test.ts",
+        "test/heavy-12.test.ts",
+        "test/heavy-13.test.ts",
+        "test/heavy-14.test.ts",
+        "test/heavy-15.test.ts"
+      ]
+    },
+    {
+      "lane": "node-test",
+      "start": 249.69,
+      "end": 249.853,
+      "wall": 0.163,
+      "state": "completed",
+      "files": [
+        "node/quick.test.mjs"
+      ]
+    }
+  ]
+}
