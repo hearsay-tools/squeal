@@ -1,0 +1,53 @@
+in a HEAD move: 72 revisions; keyed sources p50 2, p90 39, p99 428, max 428; fast files re-keyed p50 8, p90 426, max 642
+no HEAD move: 364 revisions; keyed sources p50 1, p90 5, p99 235, max 250; fast files re-keyed p50 7, p90 245, max 472
+
+no HEAD move, keyed sources >= 5:
+  0dff3a87 r10 10-15T01:15:17 watch: changed 125, keyed 59, re-keyed 6
+  0dff3a87 r12 10-15T01:15:18 watch: changed 118, keyed 57, re-keyed 6
+  0dff3a87 r17 10-15T01:20:51 watch: changed 118, keyed 58, re-keyed 6
+  0dff3a87 r19 10-15T01:20:52 watch: changed 118, keyed 57, re-keyed 6
+  20f9e9ba r3 10-15T08:35:36 watch: changed 6, keyed 6, re-keyed 10
+  52bc6c9a r7 10-19T11:30:28 interval: changed 837, keyed 250, re-keyed 8
+  5788e80c r9 10-19T20:04:35 watch: changed 5, keyed 5, re-keyed 50
+  5788e80c r14 10-19T20:13:53 watch: changed 7, keyed 7, re-keyed 50
+  5788e80c r15 10-19T20:13:55 watch: changed 6, keyed 6, re-keyed 279
+  5788e80c r20 10-19T20:54:21 watch: changed 6, keyed 6, re-keyed 106
+  66a59a96 r9 10-14T23:17:49 interval: changed 5, keyed 5, re-keyed 258
+  66a59a96 r27 10-14T23:30:52 interval: changed 5, keyed 5, re-keyed 260
+  6c9474d5 r6 10-14T23:17:11 watch: changed 755, keyed 235, re-keyed 8
+  6c9474d5 r7 10-14T23:17:19 watch: changed 99, keyed 45, re-keyed 6
+  6c9474d5 r8 10-14T23:17:20 watch: changed 18, keyed 12, re-keyed 6
+  729119b9 r1 10-15T20:25:00 watch: changed 7, keyed 7, re-keyed 398
+  729119b9 r2 10-15T20:25:42 start: changed 5, keyed 5, re-keyed 247
+  ab49f08d r9 10-19T22:05:12 watch: changed 5, keyed 5, re-keyed 45
+  b20a0d00 r19 10-19T12:08:08 interval: changed 8, keyed 8, re-keyed 225
+  b20a0d00 r20 10-19T12:10:59 interval: changed 6, keyed 6, re-keyed 225
+  b7555ac0 r7 10-14T21:29:47 watch: changed 117, keyed 57, re-keyed 6
+  b7555ac0 r9 10-14T21:29:48 watch: changed 118, keyed 57, re-keyed 6
+  b7555ac0 r23 10-14T22:16:03 watch: changed 119, keyed 57, re-keyed 6
+  b7555ac0 r25 10-14T22:16:15 watch: changed 118, keyed 57, re-keyed 6
+  b7555ac0 r54 10-14T23:02:15 watch: changed 92, keyed 45, re-keyed 6
+  b7555ac0 r55 10-14T23:02:16 watch: changed 26, keyed 12, re-keyed 6
+  b7555ac0 r58 10-14T23:02:19 watch: changed 118, keyed 57, re-keyed 6
+  b7555ac0 r79 10-14T23:50:13 watch: changed 8, keyed 8, re-keyed 22
+  ba5234dc r13 10-19T14:26:38 interval: changed 6, keyed 6, re-keyed 218
+  ba5234dc r26 10-19T15:50:55 interval: changed 837, keyed 250, re-keyed 8
+  ba5234dc r28 10-19T17:03:50 watch: changed 129, keyed 61, re-keyed 6
+  ba5234dc r30 10-19T17:03:52 watch: changed 128, keyed 61, re-keyed 6
+  ba5234dc r32 10-19T17:04:29 watch: changed 18, keyed 6, re-keyed 6
+  ba5234dc r36 10-19T17:44:11 watch: changed 126, keyed 61, re-keyed 6
+  ba5234dc r38 10-19T17:44:12 watch: changed 128, keyed 61, re-keyed 6
+  f4451e53 r21 10-15T01:49:57 interval: changed 788, keyed 237, re-keyed 8
+  f54e49b1 r2 10-14T23:10:02 interval: changed 672, keyed 16, re-keyed 8
+
+threshold T on keyed sources changed: revisions at or above T
+┌─────────┬─────┬───────┬──────────────┬────────┬───────────────┐
+│ (index) │ T   │ moves │ movesRekeyed │ noMove │ noMoveRekeyed │
+├─────────┼─────┼───────┼──────────────┼────────┼───────────────┤
+│ 0       │ 5   │ 26    │ 6907         │ 37     │ 2541          │
+│ 1       │ 10  │ 14    │ 4654         │ 22     │ 142           │
+│ 2       │ 20  │ 11    │ 3725         │ 19     │ 122           │
+│ 3       │ 30  │ 8     │ 2673         │ 19     │ 122           │
+│ 4       │ 50  │ 7     │ 2335         │ 17     │ 110           │
+│ 5       │ 100 │ 5     │ 2323         │ 4      │ 32            │
+└─────────┴─────┴───────┴──────────────┴────────┴───────────────┘

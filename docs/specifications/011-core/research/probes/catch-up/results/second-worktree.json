@@ -1,0 +1,4168 @@
+{
+ "baselines": [
+  "20:53:06",
+  "21:24:14",
+  "21:56:52"
+ ],
+ "sizes": [
+  876,
+  747,
+  83
+ ],
+ "viaKey": 294,
+ "viaWindow": 370,
+ "none": 0,
+ "rows": [
+  {
+   "id": "contract\u0000packages/contract/src/automation-schedule.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "contract\u0000packages/contract/src/delegation.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "contract\u0000packages/contract/src/live-coordination.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "contract\u0000packages/contract/src/preview.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "contract\u0000packages/contract/src/projects.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "contract\u0000packages/contract/src/session-transport.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "contract\u0000packages/contract/src/sidebar-limits.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "contract\u0000packages/contract/src/worker-destroy.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "e2e\u0000packages/web/e2e/inbox.e2e.ts",
+   "at": 1792446987616,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "e2e\u0000packages/web/e2e/screenshot-element.e2e.ts",
+   "at": 1792446999360,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "e2e\u0000packages/web/e2e/tools-menu.e2e.ts",
+   "at": 1792446993270,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/agent-config/files.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/agent-config/model-settings/shared.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/agent-config/models.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/agent-config/seed.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/agent-config/validate.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/application-update/bin-recovery.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/application-update/discovery.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/application-update/hoisted-recovery.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/application-update/lock.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/application-update/npm-process.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/application-update/service.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/application-update/windows.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/archive-on-merge-setting.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/artifacts/cli.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/artifacts/contract.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/artifacts/lifecycle.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/artifacts/store-windows.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/artifacts/store.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/automations/automation-cli.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/automations/coordinator.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/automations/github-poller.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/automations/prompts.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/automations/schedule-runner.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/automations/scheduler.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/automations/store.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/automations/task-template.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/automations/types.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/autosave-attribution.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/autosave-cleanup.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/autosave-conflict-guard.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/autosave-holders.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/autosave-task-branch.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/autosave-timeout.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/autosave-windows.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/ci-wait/process.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/ci-wait/scheduling.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/ci-wait/supervisor.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/config.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/contract-import-boundaries.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/contract-subpaths.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/agent-env.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/agent-model-policy.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/agent-profiles.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/backend-detect.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/claude-cli-runner.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/claude-model-catalog.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/claude-ui-mapper.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/codex-app-server-runner.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/codex-app-server-transport.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/codex-approvals.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/codex-model-catalog.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/codex-permission-recovery.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/codex-permissions.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/codex-provider-failure.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/codex-startup.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/codex-steering.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/codex-ui-mapper.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/conversation-batch-ack.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/conversation-questions.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/conversation-resume.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/cursor-cli-flags.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/cursor-config-options.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/cursor-integration.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/cursor-print-capabilities.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/cursor-print-model-retry.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/cursor-print-process.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/cursor-provider-error.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/cursor-runner.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/cursor-ui-mapper.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/dry-run-backends.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/effort.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/harness-autosave-branch.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/harness-autosave-settlement.test.ts",
+   "at": 1792446087683,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/harness-autosave.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/harness-parity.test.ts",
+   "at": 1792445557845,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/managed-session.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/mock-patch.testkit.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/model-discovery-guard.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/model-presets.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/omp-input-pipe.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/omp-model-catalog.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/omp-ui-mapper.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/opencode-model-catalog.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/opencode-serve-retry.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/opencode-server-runner.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/opencode-steering.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/opencode-ui-mapper.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/owned-attach-placement.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/owned-input-delivery.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/owned-input-failure.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/pi-model-catalog.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/pi-retry-degraded-service.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/pi-steering.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/pi-ui-mapper.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/process-usage.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/provider-auth.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/provider-availability.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/runner-model-catalog.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/runner-runtime.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/runner-shutdown-parity.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/runner-stderr.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/secret-redaction.test.ts",
+   "at": 1792445558675,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/session-process-reuse.test.ts",
+   "at": 1792445558675,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/session-process.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/shell-env.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/tool-display.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/ui-events.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/unread-input.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/usage-limit.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/workflow-followup-parity.test.ts",
+   "at": 1792446961427,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/workflow-no-progress-parity.test.ts",
+   "at": 1792446961427,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/workflow-timeout-parity.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/core/worktree-setup-parity.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/delegation/capacity.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/delegation/context.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/delegation/conversations.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/delegation/destroy-observation.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/delegation/destruction-results.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/delegation/discovery.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/delegation/execution-identity.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/delegation/policy.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/delegation/process-liveness.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/delegation/process-scope.testkit.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/delegation/provision-workflows.test.ts",
+   "at": 1792446961427,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/delegation/question-contract.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/delegation/results.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/delegation/retry-backoff.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/delegation/routes.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/delegation/scratch-cleanup.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/delegation/service.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/delegation/service.testkit.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/delegation/workspace.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/discovery/cli.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/git-worktree-lock.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/git-worktree-race.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/git-worktree-release.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/git-worktree.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/headless-repo-handle.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/install-as-command.test.ts",
+   "at": 1792445558675,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/paths.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/pid-file.testkit.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/preview/cdp.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/preview/chromium.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/preview/dev-server.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/preview/host-teardown.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/preview/host.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/preview/registration.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/preview/session.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/release/manifests.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/release/snapshot.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/run-store-unavailable-cli.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/agent-tmpdir.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/archive-on-merge.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/arm-repo-handle.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/auto-name.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/ci-wait-store.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/client-request.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/history-compressor.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/history-file.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/history-readers.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/human-ask-summary.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/live-item-snapshots.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/pull-requests.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/repo-handle-recovery.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/retention-enforce.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/retention-rematerialize.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/retention.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/run-claims.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/run-index.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/run-row.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/run-search.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/run-store-benchmark-fixture.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/session-transport.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/store-claims.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/store-database.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/store-history-compression.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/store-import.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/store-live-set.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/store-order.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/store-run-window.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/store-transcript-facts.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/store.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/task-refs.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/transcript-facts-queue.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/transcript-facts-startup.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/ui-event-sink.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/runs/webhook.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server-install/engine.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server-install/platforms/macosx-ngrok.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server-install/platforms/ubuntu-vps.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server-install/state.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server-install/steps.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server-install/strategies.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server-install/types.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server-install/ui.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/agent-config-api.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/agent-profiles-api.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/api-types.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/archive-on-merge-boot.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/archive-on-merge.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/artifacts-api.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/attachments-api.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/auto-resume-api.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/automations-gate.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/bc-route-inventory.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/capabilities.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/checkout.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/cockpit-address.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/cockpit-ownership.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/cold-repo-handles.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/config-api.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/continue-run.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/contract-parity.automations.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/contract-parity.github.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/contract-parity.runs.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/contract-parity.workflows.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/contract-parity.workspace.test.ts",
+   "at": 1792445558675,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/create-project-api.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/create-project.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/cursor-workspace-contract.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/delegation-cleanup.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/finishability.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/forge/draft-pr-autosave.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/forge/github-coalescing.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/forge/github-filters.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/forge/github-merged-prs.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/forge/github-pr-diff.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/forge/github.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/forge/index.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/fs-browse.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/git-changes.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/git.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/github-checks-api.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/github-comment-counts-api.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/github-comments-api.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/github-item-api.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/github-merge-api.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/github-pr-changes-api.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/github-ref-status-api.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/github-search-api.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/group-pick.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/health-forge.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/health-topic.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/host-guard.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/inbox-gate.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/live-routes.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/model-contract.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/models-api.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/nonblocking-discovery.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/open-in-app.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/open-in-cli-resume.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/open-in-file.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/open-in-project.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/open-in-terminal.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/origin-guard.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/patch-run.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/permissions-api.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/preview-boot-sweep.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/project-context-repo-handle.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/project-context-warm.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/project-context.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/project-warmup.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/projects-api.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/provider-action-gate.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/provider-action-gating.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/provider-auth-runtime.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/providers-api.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/query-repeat-parity.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/queued-messages.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/read-run.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/ref-status-invalidation.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/repo-branches-api.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/repo-branches-witness.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/repo-branches.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/repo-pull.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/request-validation.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/resume-command.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/route-parity.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/run-event-feed.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/run-ownership-controls.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/run-relationships.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/run-store-unavailable.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/run-summaries-api.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/runs-index-api.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/skills-update-api.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/sse-headers.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/start-run-idempotent.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/start-run-todo.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/start-run.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/static-ui.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/todos-start.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/tool-display-mirror.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/typed-client.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/ui-state-api.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/ui-state.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/upgrade-router.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/usage-scope.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/versioned-surface.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/workspace-api.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/workspace-events.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/worktrees-api.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/ws.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/server/wsl.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/session-signal-cli.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/skills-banner.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/skills-remote.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/skills-update.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/skills.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/task-cli/cli.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/task-cli/discovery.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/task-cli/hint.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/task-cli/http.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/task-cli/watch.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/test-task-env.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/test-wait-discipline.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/todos.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/ui-state.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/agent-profile-wiring.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/agent-tmpdir.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/allowed-tools.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/auto-resume.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/automations-prompt.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/autosave-gate.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/autosave-report.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/check-stop-kill.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/ci-wait-failure-parity.test.ts",
+   "at": 1792446087683,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/ci-wait-parity.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/ci-wait-registration.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/codex-startup-cancel.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/continuation-tools.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/continue-unarchive.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/cursor-bootstrap-continue.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/dead-owner-claims.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/delegation-integration.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/delegation-transcript-reads.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/delegation-wire-gate.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/fixture-cleanup.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/grouped-command.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/held-human-input-liveness.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/human-waits.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/maintenance-claims.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/model-identity-wiring.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/monitoring-channel-order.test.ts",
+   "at": 1792446087683,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/monitoring-turn.test.ts",
+   "at": 1792445557845,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/pasted-attachments.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/permissions.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/pi-teardown.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/prelaunch-cancel.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/pump-repo-cache.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/recover-autonomous.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/recover-followups.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/recover-session-failure.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/recovery-order.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/retention-wiring.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/run-active-pin.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/run-isolation.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/run-lease.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/run-preview.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/run-settlement.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/run.test.ts",
+   "at": 1792445557845,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/scoped-recovery.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/skill-resume-continuation.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/skill-system-prompt.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/stopped-composer.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/team-skill-materialize.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/timeout-schema.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/turn-end.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/types.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/unread-liveness.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/waits-parity.test.ts",
+   "at": 1792446961427,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/worker-inbox-liveness.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/worker-location-evidence.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/worker-parent-attention.test.ts",
+   "at": 1792445557845,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/worker-reboot-parity.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/worker-restart-parity.test.ts",
+   "at": 1792446961427,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/worker-waits.test.ts",
+   "at": 1792446961427,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/workspace-semaphore.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workflows/worktree-setup-run.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workspace/agent-accounts.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workspace/agent-profiles.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workspace/config.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workspace/home-safety.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workspace/migrations.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workspace/projects-cli.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workspace/projects.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/workspace/semaphore.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "server\u0000packages/cezar/src/worktree-setup.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/api/client.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/api/contract-pipeline.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/api/events.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/api/github-pages.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/api/global-events-lifecycle.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/api/global-events.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/api/live-coordinator.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/api/live-fallback.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/api/live-owner.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/api/live-workspace-source.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/api/permissions-client.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/api/preview-socket.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/api/project-scope-context.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/api/project-ui-state.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/api/queries.github-pages.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/api/queries.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/api/run-events.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/api/run-history.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/api/sse-reader.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/api/ws.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/add-project-dialog.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/add-project-menu.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/app-error-boundary.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/app-shell.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/application-update-handoff.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/centered-state.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/clone-project-dialog.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/code-editor.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/command-palette.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/composer/composer-attachments.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/composer/composer-text.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/composer/composer.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/composer/dictation.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/create-project-dialog.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/design-icons.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/diff-stat.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/diff/diff-fallback.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/diff/diff-scroll.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/diff/diff-virtualize.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/diff/diff.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/diff/markdown.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/diff/parse-patch.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/diff/word-diff.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/directional-usage.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/engine-pills.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/github-item-detail.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/github-template-input.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/last-location-controller.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/list-view.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/mobile-projects.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/mobile-sidebar-tasks.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/mobile-tab-bar-shell.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/mobile-tab-bar.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/nav-items.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/nav-selection.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/picker-pill.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/pill.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/project-switch.integration.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/provider-banner-container.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/provider-banner.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/reference-chip.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/reference-conflict-action.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/reference-overflow.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/reference-status.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/run-notifications.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/sidebar-archive.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/sidebar-limits.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/sidebar-project-header.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/status-dot.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/task-quick-list.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/theme-provider.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/theme-toggle.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/tools-menu.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/ui/button.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/ui/searchable-popover.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/ui/toaster.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/use-application-update.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/use-swipe-to-archive.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/components/zoomable-image.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/design-guardian.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/appearance.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/attention.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/automation-cli.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/automation-format.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/bookmarklet.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/cez-idle.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/ellipsis-hidden.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/format.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/git-actions.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/github-list-width.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/github-nav-contract.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/github-task.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/github-templates.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/global-tasks.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/group-summary.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/highlighter.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/is-newer-version.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/keyboard-inset.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/last-location.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/live-refetch.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/notifications.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/project-order.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/project-rail-expanded.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/project-router.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/project-signal.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/project-switch.client.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/project-switch.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/project-tags.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/prompt-templates.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/provider-auth-alert.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/provider-status.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/read-state.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/request-wait-attention.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/sidebar-collapse.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/sidebar-width.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/skills.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/task-columns.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/task-groups.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/tasks-table.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/theme.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/token-metrics.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/unified-diff.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/use-command-shortcut.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/use-document-title.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/use-now.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/use-project-order.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/use-sidebar-sections.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/use-submit-shortcut.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/use-task-table-columns.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/utils.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/webhook.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/lib/workflow-builder.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes.test.tsx",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/automations/automations-list.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/automations/automations-route.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/automations/copy-as-cli-card.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/automations/editor-draft.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/automations/editor.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/automations/log.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/automations/next-runs-preview.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/compare-variants.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/cross-project-task-navigation.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/github/github-filter.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/github/github-paging.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/github/github-route-wiring.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/github/github-sidebar-filters.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/github/github-sidebar-model.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/github/github.test.tsx",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/github/hand-to-agent-draft.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/github/issue-linked-tasks.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/github/use-hand-to-agent-state.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/global-tasks.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/inbox.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/new-task-autostart.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/new-task-draft.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/new-task-form.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/new-task-params.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/new-task-plan.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/new-task-project.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/new-task.test.tsx",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/plan-review.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/repo-git/git-sections.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/repo-git/git-sidebar.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/repo-git/repo-git.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/repo-git/worktrees-panel.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/settings/accounts-defaults.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/settings/accounts-section.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/settings/agent-config-section.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/settings/agent-descriptors.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/settings/agents-section.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/settings/appearance.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/settings/archive-on-merge-field.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/settings/bookmarklets-section.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/settings/notifications-section.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/settings/project-general.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/settings/project-location.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/settings/projects-section.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/settings/prompt-templates-section.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/settings/provider-settings.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/settings/resources-section.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/settings/settings.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/settings/sidebar-section.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/settings/skills-section.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/settings/worktrees-section.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/skills.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-git/commit-list.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-git/file-tree.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-git/task-changes.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-git/task-files.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-git/worktree-files.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-github/task-github-item.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/active-provider.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/agents-dock.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/ask-answer.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/conversation-presentation.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/exec-command.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/file-links.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/follow-up-engine.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/handoff-action.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/markdown.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/permission-card.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/plan-dock.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/preview/input-map.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/preview/page-dialog.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/preview/preview-input.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/preview/preview-layout-css.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/preview/preview-pane.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/preview/preview-stage.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/preview/preview-states.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/preview/preview-toolbar.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/preview/preview-url.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/preview/server-card.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/preview/task-preview-layout.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/review-panel.test.tsx",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/run-actions.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/run-activity-dock.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/run-header-mobile.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/run-reconcile.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/run-relationships.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/session-transcript.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/step-rail.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/subagent-dock.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/subagent-replay.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/subagent-sheet.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/task-file-scope.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/task-thread.test.tsx",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/thread-groups.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/thread-items-exec-command.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/thread-items.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/thread-open-cards.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/thread-permissions.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/thread-scroll.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/thread-scroller-virtualizer.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/thread-scroller.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/task-thread/thread-time.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/tasks-overview.test.tsx",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/workflows/workflows.test.tsx",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/routes/workspace-tools.test.tsx",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/seed-transcript.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/test/agent-browser-failure.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/test/agent-browser-interact.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/test/agent-browser-launch.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/test/agent-browser-wait-value.test.ts",
+   "at": 1792446384410,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/test/api-client-subpaths.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/test/card-2-contrast.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/test/e2e-socket-safe-tmpdir.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/test/e2e-wait-discipline.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/test/fixture-serve-env.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/test/fixture-server-diagnostics.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/test/fixture-server-start.test.ts",
+   "at": 1792446274874,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/test/fixture-server-stop.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/test/poll.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/test/project-rail-ready.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/test/session-layout.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/test/transcript-measurements.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/test/visual-ready.test.ts",
+   "at": 1792446200962,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "web\u0000packages/web/src/vite-config.test.ts",
+   "at": 1792446169204,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "test:unit\u0000packages/cezar/test/unit/cursor-hang-stdin.test.ts",
+   "at": 1792446276066,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "test:unit\u0000packages/cezar/test/unit/resolve-browser-launch.test.ts",
+   "at": 1792446276066,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "test:unit\u0000packages/cezar/test/unit/test-env-launcher.test.ts",
+   "at": 1792446276066,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "test:unit\u0000packages/cezar/test/unit/todo-task-text.test.ts",
+   "at": 1792446276066,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "test:unit\u0000packages/cezar/test/unit/web-typecheck.test.ts",
+   "at": 1792446276066,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "test:unit\u0000packages/cezar/test/unit/workflow-types.test.ts",
+   "at": 1792446276066,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "root:test:unit\u0000scripts/e2e-lanes.test.mjs",
+   "at": 1792446276066,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "root:test:unit\u0000scripts/squeal-browser.test.mjs",
+   "at": 1792446276066,
+   "by": "b7555ac0",
+   "fail": false
+  },
+  {
+   "id": "root:test:unit\u0000scripts/test-changed.test.mjs",
+   "at": 1792446276066,
+   "by": "b7555ac0",
+   "fail": false
+  }
+ ],
+ "curve": [
+  {
+   "at": "21:24:14",
+   "today": 747,
+   "adopt": 747
+  },
+  {
+   "at": "21:25:14",
+   "today": 747,
+   "adopt": 747
+  },
+  {
+   "at": "21:26:14",
+   "today": 747,
+   "adopt": 747
+  },
+  {
+   "at": "21:27:14",
+   "today": 747,
+   "adopt": 747
+  },
+  {
+   "at": "21:28:14",
+   "today": 747,
+   "adopt": 747
+  },
+  {
+   "at": "21:29:14",
+   "today": 747,
+   "adopt": 747
+  },
+  {
+   "at": "21:30:14",
+   "today": 747,
+   "adopt": 747
+  },
+  {
+   "at": "21:31:14",
+   "today": 747,
+   "adopt": 747
+  },
+  {
+   "at": "21:32:14",
+   "today": 747,
+   "adopt": 747
+  },
+  {
+   "at": "21:33:14",
+   "today": 747,
+   "adopt": 739
+  },
+  {
+   "at": "21:34:14",
+   "today": 747,
+   "adopt": 739
+  },
+  {
+   "at": "21:35:14",
+   "today": 747,
+   "adopt": 739
+  },
+  {
+   "at": "21:36:14",
+   "today": 747,
+   "adopt": 739
+  },
+  {
+   "at": "21:37:14",
+   "today": 747,
+   "adopt": 739
+  },
+  {
+   "at": "21:38:14",
+   "today": 747,
+   "adopt": 739
+  },
+  {
+   "at": "21:39:14",
+   "today": 747,
+   "adopt": 739
+  },
+  {
+   "at": "21:40:14",
+   "today": 747,
+   "adopt": 739
+  },
+  {
+   "at": "21:41:14",
+   "today": 747,
+   "adopt": 739
+  },
+  {
+   "at": "21:42:14",
+   "today": 747,
+   "adopt": 736
+  },
+  {
+   "at": "21:43:14",
+   "today": 747,
+   "adopt": 536
+  },
+  {
+   "at": "21:44:14",
+   "today": 747,
+   "adopt": 337
+  },
+  {
+   "at": "21:45:14",
+   "today": 747,
+   "adopt": 131
+  },
+  {
+   "at": "21:46:14",
+   "today": 747,
+   "adopt": 131
+  },
+  {
+   "at": "21:47:14",
+   "today": 747,
+   "adopt": 92
+  },
+  {
+   "at": "21:48:14",
+   "today": 747,
+   "adopt": 92
+  },
+  {
+   "at": "21:49:14",
+   "today": 747,
+   "adopt": 92
+  },
+  {
+   "at": "21:50:14",
+   "today": 747,
+   "adopt": 92
+  },
+  {
+   "at": "21:51:14",
+   "today": 747,
+   "adopt": 92
+  },
+  {
+   "at": "21:52:14",
+   "today": 747,
+   "adopt": 92
+  },
+  {
+   "at": "21:53:14",
+   "today": 747,
+   "adopt": 92
+  },
+  {
+   "at": "21:54:14",
+   "today": 747,
+   "adopt": 92
+  },
+  {
+   "at": "21:55:14",
+   "today": 747,
+   "adopt": 92
+  },
+  {
+   "at": "21:56:14",
+   "today": 747,
+   "adopt": 86
+  }
+ ]
+}
