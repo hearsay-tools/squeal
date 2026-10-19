@@ -27,7 +27,7 @@ const slowTier: SlowTierState = {
   activity: null,
 };
 const SLOW_LINE =
-  "Slow tier: 2 test files; 2 current at revision 180. Squeal runs them when the agent pauses.";
+  "Slow tier: 2 test files; 2 current at revision 180. Squeal runs them after the fast tests.";
 
 const header: StatusHeader = {
   revision: 184,

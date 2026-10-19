@@ -129,15 +129,22 @@ function slowText(slow: StatusWaitSlow): string {
  * D8 as amended 2026-10-18 (gh-35, task 004-71): it follows
  * `stop.requireSlowSuite`, read as the `Slow tier:` line reads it (a
  * `stopWaitMs` only when on); off, the files are not required before the
- * agent finishes.
+ * agent finishes. Under `slow.trigger: "continuous"` it says the pending
+ * ones run after the fast tests, as the `Slow tier:` line does, so the
+ * return on quiet does not read as their running only on a pause; under
+ * `"idle"` it is 004-71's text (row 004-80).
  */
 function slowTierText(snapshot: StatusSnapshot, command: string): string {
   const tier = snapshot.slowTier;
   if (tier === undefined) return "";
   const open = tier.pending + tier.notRun;
   if (open === 0) return "";
-  const files = `${plural(open, "slow file")} ${open === 1 ? "is" : "are"} not current`;
   const them = open === 1 ? "it" : "them";
+  const runs =
+    tier.pausesOnly === true || tier.pending === 0
+      ? ""
+      : ` and Squeal runs ${tier.notRun === 0 ? them : "the pending ones"} after the fast tests`;
+  const files = `${plural(open, "slow file")} ${open === 1 ? "is" : "are"} not current${runs}`;
   if (tier.stopWaitMs === undefined) {
     return (
       `; ${files}; this repository does not require ${them} before you finish ` +
