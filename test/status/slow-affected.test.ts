@@ -51,7 +51,7 @@ describe("the Affected checks headline names the slow files among them (row 004-
       expect(affectedLine(text)).toBe(
         `Affected checks: 1 passed (1 test), 4 running (4 tests), 0 queued; among them 4 slow test files, ${SLOW_A}, ${SLOW_B}, ${SLOW_C} and 1 more: ${WAIT} waits for their results`,
       );
-      expect(slowLine(text)).toMatch(new RegExp(`; ${escape(WAIT)} waits for their results\\.$`));
+      expect(slowLine(text)).toMatch(new RegExp(`; ${literal(WAIT)} waits for their results\\.$`));
     });
 
     it(`names one slow file and its result, policy ${name}`, () => {
@@ -60,7 +60,7 @@ describe("the Affected checks headline names the slow files among them (row 004-
         `Affected checks: 1 passed (1 test), 1 running (1 test), 0 queued; among them 1 slow test file, ${SLOW_A}: ${WAIT} waits for its result`,
       );
       // The seed lists SLOW_B too, not run: the line counts two not current.
-      expect(slowLine(text)).toMatch(new RegExp(`; ${escape(WAIT)} waits for their results\\.$`));
+      expect(slowLine(text)).toMatch(new RegExp(`; ${literal(WAIT)} waits for their results\\.$`));
     });
   }
 
@@ -89,6 +89,6 @@ describe("the Affected checks headline names the slow files among them (row 004-
   });
 });
 
-function escape(text: string): string {
+function literal(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
