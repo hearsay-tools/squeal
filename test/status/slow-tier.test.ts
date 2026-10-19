@@ -103,7 +103,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
       lastDurationMs: 72_000,
     });
     expect(slowLine(status(s))).toBe(
-      `Slow tier: 2 test files; 1 current at revision 2; running ${SLOW_A} since ${clockText(since)} (last run 1 min 12 s). Squeal runs them after the fast tests; \`squeal run --slow\` runs them now.`,
+      `Slow tier: 2 test files; 1 current at revision 2; running ${SLOW_A} since ${clockText(since)} (last run 1 min 12 s). Squeal runs them after the fast tests; \`squeal run --slow --wait 60000\` waits for its result.`,
     );
   });
 
@@ -119,7 +119,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
       lastDurationMs: 72_000,
     });
     expect(slowLine(status(s))).toBe(
-      `Slow tier: 2 test files; running 2 slow files since ${clockText(since)}: ${SLOW_A} and ${SLOW_B} (longest last run 1 min 12 s). Squeal runs them after the fast tests; \`squeal run --slow\` runs them now.`,
+      `Slow tier: 2 test files; running 2 slow files since ${clockText(since)}: ${SLOW_A} and ${SLOW_B} (longest last run 1 min 12 s). Squeal runs them after the fast tests; \`squeal run --slow --wait 60000\` waits for their results.`,
     );
   });
 
@@ -135,7 +135,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
       lastDurationMs: null,
     });
     expect(slowLine(status(s))).toBe(
-      `Slow tier: 3 test files; running 3 slow files since ${clockText(since)}: ${SLOW_A}, ${SLOW_B} and 1 more (no earlier run). Squeal runs them after the fast tests; \`squeal run --slow\` runs them now.`,
+      `Slow tier: 3 test files; running 3 slow files since ${clockText(since)}: ${SLOW_A}, ${SLOW_B} and 1 more (no earlier run). Squeal runs them after the fast tests; \`squeal run --slow --wait 60000\` waits for their results.`,
     );
   });
 
@@ -159,7 +159,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
       lastDurationMs: 12_000,
     });
     expect(slowLine(status(s))).toBe(
-      `Slow tier: 4 test files; 1 current at revision 2; 3 pending, running 2 slow files since ${clockText(since)}: ${SLOW_B} and ${SLOW_C} (longest last run 12 s). Squeal runs them after the fast tests; \`squeal run --slow\` runs them now.`,
+      `Slow tier: 4 test files; 1 current at revision 2; 3 pending, running 2 slow files since ${clockText(since)}: ${SLOW_B} and ${SLOW_C} (longest last run 12 s). Squeal runs them after the fast tests; \`squeal run --slow --wait 60000\` waits for their results.`,
     );
   });
 
@@ -191,7 +191,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
     });
     expect(readHeader(s.store, s.repo.mainId).slowTier?.activity).toBeNull();
     expect(slowLine(status(s))).toBe(
-      "Slow tier: 2 test files; 1 current at revision 2; 1 pending. Squeal runs them after the fast tests; `squeal run --slow` runs them now.",
+      "Slow tier: 2 test files; 1 current at revision 2; 1 pending. Squeal runs them after the fast tests; `squeal run --slow --wait 60000` waits for its result.",
     );
   });
 
@@ -213,9 +213,10 @@ describe("the slow-tier line (spec 004 D8)", () => {
       testFiles: 2,
       checks: 0,
       testFilesWithoutChecks: 2,
+      files: [SLOW_A, SLOW_B].map((path) => ({ project: "", path })),
     });
     expect(slowLine(status(s))).toBe(
-      `Slow tier: 2 test files; ${words}. Squeal runs them after the fast tests; \`squeal run --slow\` runs them now.`,
+      `Slow tier: 2 test files; ${words}. Squeal runs them after the fast tests; \`squeal run --slow --wait 60000\` waits for their results.`,
     );
   });
 
@@ -236,7 +237,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
     const s = seed();
     states(s.store, s.repo, [{ validity: "stale", observedAt: 1 }], [SLOW_A]);
     expect(slowLine(status(s))).toBe(
-      "Slow tier: 2 test files; 2 not run at revision 2. Squeal has not queued them; `squeal run --slow` runs them now.",
+      "Slow tier: 2 test files; 2 not run at revision 2. Squeal has not queued them; `squeal run --slow --wait 60000` waits for their results.",
     );
   });
 
@@ -246,7 +247,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
     states(s.store, s.repo, [{ validity: "stale", observedAt: 1 }], [SLOW_A]);
     expect(readHeader(s.store, s.repo.mainId).slowTier?.stopWaitMs).toBe(90_000);
     expect(slowLine(status(s))).toBe(
-      "Slow tier: 2 test files; 2 not run at revision 2. Stop waits up to 1 min 30 s for them or holds the agent once; `squeal run --slow` runs them now.",
+      "Slow tier: 2 test files; 2 not run at revision 2. Stop waits up to 1 min 30 s for them or holds the agent once; `squeal run --slow --wait 60000` waits for their results.",
     );
     const capped = seed({
       ...SLOW_POLICY,
@@ -300,7 +301,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
     });
     expect(text.length).toBeLessThanOrEqual(MESSAGE_CAP_CHARS);
     expect(slowLine(text)).toBe(
-      "Slow tier: 2 test files; 1 pending; 1 not run at revision 2. Squeal runs the pending ones after the fast tests and has not queued the rest; `squeal run --slow` runs them now.",
+      "Slow tier: 2 test files; 1 pending; 1 not run at revision 2. Squeal runs the pending ones after the fast tests and has not queued the rest; `squeal run --slow --wait 60000` waits for their results.",
     );
   });
 
@@ -316,7 +317,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
     const lines = delivered.split("\n");
     expect(lines[0]).toBe("SQUEAL · registered at revision 2");
     expect(lines[2]).toBe(
-      "Slow tier: 2 test files; 1 pending, waiting for the agent to pause; 1 not run at revision 2. Squeal runs the pending ones after the fast tests and has not queued the rest; `squeal run --slow` runs them now.",
+      "Slow tier: 2 test files; 1 pending, waiting for the agent to pause; 1 not run at revision 2. Squeal runs the pending ones after the fast tests and has not queued the rest; `squeal run --slow --wait 60000` waits for their results.",
     );
     expect(lines[3]).toBe("Known failures: 0");
     expect(slowLine(status(s))).toBe(lines[2]);
@@ -347,7 +348,7 @@ describe('the slow-tier line under slow.trigger "idle" (004-80)', () => {
     const s = seed(IDLE_POLICY);
     keys(s.store, s.repo, { [SLOW_A]: "queued" });
     expect(slowLine(status(s))).toBe(
-      "Slow tier: 2 test files; 1 pending; 1 not run at revision 2. Squeal runs the pending ones when the agent pauses and has not queued the rest; `squeal run --slow` runs them now.",
+      "Slow tier: 2 test files; 1 pending; 1 not run at revision 2. Squeal runs the pending ones when the agent pauses and has not queued the rest; `squeal run --slow --wait 60000` waits for their results.",
     );
   });
 

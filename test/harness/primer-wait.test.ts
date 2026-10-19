@@ -90,8 +90,9 @@ describe("the primer's waits (005-68)", () => {
    * projects are folded and before the CLI goes unnamed. At 230 characters
    * it still fits under either policy; past it the primer names no CLI path,
    * as before 004-78, and keeps the path wait. Under either `slow.trigger`
-   * (004-80): the continuous sentence is 8 characters shorter, so its reach
-   * is 238 to 241 characters against idle's 230 to 233; 250 is past both.
+   * (004-80) and with the wait named in the slow sentence (004-83), the
+   * reach is 230 to 235 characters under continuous and 232 to 237 under
+   * idle, whose "between your turns" is 2 characters shorter; 250 is past both.
    */
   it("names a 230-character CLI at the wait, and none past the fold's reach", () => {
     for (const [requireSlowSuite, pausesOnly] of [
