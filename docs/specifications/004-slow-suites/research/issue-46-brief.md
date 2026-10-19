@@ -1,0 +1,5 @@
+# Issue 46 reproduction brief
+
+Use /researcher. Shape: research. Within 20 minutes, determine whether a manual browser run can tear down the environment used by a Squeal slow run, what status reports, and whether connection-refused errors are classified as environment failures. Read issue hearsay-tools/squeal#46, Spec 004 D2/D4/D8 and status.md, Spec 011 C5/C6, and the relevant runner source. Start at src/core/slow and the Vitest runner; inspect the shared-environment teardown seam before writing a minimal isolated probe.
+
+Own only research/issue-46.md and throwaway research/probes/issue-46/ under this folder. Never edit board, spec.md, status.md, skills or product code. Do not operate on an existing live browser environment or stop another session’s services. A synthetic isolated fixture is acceptable; distinguish it from the original cezarion incident. If one-minute load exceeds CPU count, skip live reproduction. Record exact commands, versions, load, verdict and limitations, with tagged findings. Do not run broad suites or builds for this documentation task. Commit the findings and probes. Existing holds stand; no implementation is authorized.
