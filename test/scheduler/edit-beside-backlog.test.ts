@@ -16,16 +16,16 @@ import { createRepo, type Harness, openHarness, openRepoStore } from "./helpers.
 /*
  * Task 011-21, done-when 1 and 2 (spec 011 C4 step 5 as amended 2026-10-19,
  * `research/streaming-lanes.md` finding 4 (b)): node:test cannot cancel a
- * run, so an edit's tier of its lane starts beside the lane's backlog tier,
- * with no permit, instead of waiting for its end. A backlog file the edit
+ * run, so an edit's tier of its lane starts beside the lane's backlog runs,
+ * with no permit, instead of waiting for their end. A backlog file the edit
  * re-keyed runs to its end and is discarded at record; the others store.
  *
- * The baseline is the backlog: its first tier holds the eight files that
- * sleep 2 to 6 s (`runner.backlogTierSize` 8, path order), run
- * `runner.tierSize` 4 wide; the quick file stays queued behind them until an
- * edit reaches it. The pool holds 4 permits, all the backlog tier's. The
- * Vitest half, an edit cancelling a backlog tier, is `backlog-tiers.test.ts`,
- * unchanged.
+ * The baseline is the backlog: since slice 2 it runs in one-file slots,
+ * `runner.tierSize` 4 at once, the eight files that sleep 2 to 6 s first
+ * (path order); the quick file stays queued behind them until an edit
+ * reaches it. The pool holds 4 permits, all the slots'. Tests 2 to 4 follow
+ * the backlog's run of the re-keyed file. The Vitest half, an edit
+ * cancelling a backlog tier, is `backlog-tiers.test.ts`, unchanged.
  */
 const NT: NodeTestProject = {
   name: "nt",
@@ -113,8 +113,8 @@ async function harness(
         };
         runs.push(run);
         const ran = await nodeTest.run(files, options);
-        // The backlog tier's run reported as a crash once it ends (review wave-4 B1).
-        const crashed = probe.crashBacklog === true && files.some((f) => f.path === BACKLOG[0]);
+        // The backlog's run of the re-keyed file reported as a crash once it ends (review wave-4 B1).
+        const crashed = probe.crashBacklog === true && runs.find((r) => holds(r, REKEYED)) === run;
         const report: RunReport = crashed
           ? { ...ran, end: "crashed", completedFiles: [], results: [], failure: "probe crash" }
           : ran;
@@ -152,7 +152,10 @@ function storedBy(h: Harness, path: string, run: TimedRun, key = keyOf(h, path))
 
 const holds = (run: TimedRun, path: string) => run.files.some((f) => f.path === path);
 
-/** Starts the scheduler; `edit` runs 300 ms after the backlog tier starts, then the backlog tier. */
+/**
+ * Starts the scheduler; `edit` runs 300 ms after the backlog starts. Then
+ * the backlog's run of the re-keyed file, started with the first four.
+ */
 async function editDuringBacklog(
   h: Harness,
   runs: TimedRun[],
@@ -169,8 +172,8 @@ async function editDuringBacklog(
   await h.scheduler.start();
   await expect.poll(() => edited !== null, { timeout: 30_000 }).toBe(true);
   const editedAt = await (edited as unknown as Promise<number>);
-  const backlog = runs.find((run) => holds(run, BACKLOG[0] ?? ""));
-  if (backlog === undefined) throw new Error("no backlog tier ran");
+  const backlog = runs.find((run) => holds(run, REKEYED));
+  if (backlog === undefined || backlog.start > editedAt) throw new Error("no backlog run of h3");
   return { backlog, editedAt };
 }
 
@@ -185,7 +188,6 @@ describe("scheduler: an edit's node:test tier beside the backlog tier (task 011-
       await h.batch("nt/src/a.mjs");
       return at;
     });
-    expect(backlog.files.map((f) => f.path).sort()).toEqual(BACKLOG);
     const own = () => runs.find((run) => holds(run, QUICK));
     const current = () => {
       const run = own();
@@ -197,21 +199,23 @@ describe("scheduler: an edit's node:test tier beside the backlog tier (task 011-
     if (edit?.end == null) throw new Error("the edit's run did not end before its result");
     const ownMs = edit.end - edit.start;
     console.log(
-      `011-21: the edit was current after ${Math.round(currentAt - editedAt)} ms, its own run ${Math.round(ownMs)} ms, ${Math.round(now() - backlog.start)} ms into the backlog tier`,
+      `011-21: the edit was current after ${Math.round(currentAt - editedAt)} ms, its own run ${Math.round(ownMs)} ms, ${Math.round(now() - backlog.start)} ms into the backlog`,
     );
     expect(currentAt - editedAt).toBeLessThanOrEqual(ownMs + 1_000);
-    expect(backlog.end).toBeNull();
+    // A backlog slot still runs: the edit did not wait for the backlog.
+    expect(runs.some((run) => run.end === null && BACKLOG.some((path) => holds(run, path)))).toBe(
+      true,
+    );
 
     await h.scheduler.idle();
-    expect(backlog.report?.end).toBe("completed");
     for (const path of BACKLOG) {
-      expect(storedBy(h, path, backlog), path).toBe(true);
+      // Each ran once, in a slot of its own: nothing went back to the queue.
+      const ran = runs.filter((run) => holds(run, path));
+      expect(ran, path).toHaveLength(1);
+      expect(ran[0]?.files, path).toHaveLength(1);
+      expect(ran[0]?.report?.end, path).toBe("completed");
+      expect(storedBy(h, path, ran[0] as TimedRun), path).toBe(true);
       expect(outcome(h, path), path).toBe("pass");
-      // Each ran once: nothing went back to the queue.
-      expect(
-        runs.filter((run) => holds(run, path)),
-        path,
-      ).toHaveLength(1);
     }
   });
 
@@ -227,11 +231,10 @@ describe("scheduler: an edit's node:test tier beside the backlog tier (task 011-
       await h.batch("nt/src/b.mjs");
       return at;
     });
-    expect(holds(backlog, REKEYED)).toBe(true);
     await h.scheduler.idle();
 
     expect(backlog.report?.end).toBe("completed");
-    // The edit's run of the re-keyed file started beside the backlog tier, not after it.
+    // The edit's run of the re-keyed file started beside the backlog's run of it, not after it.
     const again = runs.find((run) => run !== backlog && holds(run, REKEYED));
     if (again === undefined) throw new Error("the re-keyed file did not run again");
     expect(again.start).toBeLessThan(backlog.end ?? 0);
@@ -245,12 +248,13 @@ describe("scheduler: an edit's node:test tier beside the backlog tier (task 011-
     expect(runs.filter((run) => holds(run, REKEYED))).toHaveLength(2);
     for (const path of BACKLOG) {
       if (path === REKEYED) continue;
-      expect(storedBy(h, path, backlog), path).toBe(true);
+      const ran = runs.find((run) => holds(run, path));
+      expect(ran !== undefined && storedBy(h, path, ran), path).toBe(true);
       expect(outcome(h, path), path).toBe("pass");
     }
   });
 
-  it("3. keeps the edit's run of a re-keyed file running when the backlog tier records first (review wave-4 B1)", {
+  it("3. keeps the edit's run of a re-keyed file running when the backlog's run of it records first (review wave-4 B1)", {
     timeout: 120_000,
   }, async () => {
     const { h, runs } = await harness();
@@ -266,9 +270,8 @@ describe("scheduler: an edit's node:test tier beside the backlog tier (task 011-
       .poll(() => backlog.end !== null && again() !== undefined, { timeout: 60_000 })
       .toBe(true);
     const edit = again();
-    if (edit === undefined)
-      throw new Error("the re-keyed file did not run beside the backlog tier");
-    // The backlog tier recorded while the edit's run still held the file: the file is still running.
+    if (edit === undefined) throw new Error("the re-keyed file did not run beside the backlog");
+    // The backlog's run recorded while the edit's run still held the file: the file is still running.
     expect(edit.end).toBeNull();
     const row = () =>
       h.store.testFileKeys.list(h.worktreeId).find((r) => r.testFile.path === REKEYED);
@@ -287,28 +290,30 @@ describe("scheduler: an edit's node:test tier beside the backlog tier (task 011-
     expect(runs.filter((run) => holds(run, REKEYED))).toHaveLength(2);
   });
 
-  it("4. keeps the edit's PASS when the backlog tier then ends crashed (review wave-4 B1)", {
+  it("4. keeps the edit's PASS when the backlog's run of the file then ends crashed (review wave-4 B1)", {
     timeout: 120_000,
   }, async () => {
     const { h, runs } = await harness({ crashBacklog: true });
+    let ranUnder: CheckKey | null = null;
+    // The edit makes the re-keyed file sleep 3 s less, so its new run ends before the backlog's.
     const { backlog } = await editDuringBacklog(h, runs, async () => {
-      h.write("nt/src/b.mjs", "export const b = 2;\nexport const wait = 0;\n");
+      ranUnder = keyOf(h, REKEYED);
+      h.write("nt/src/b.mjs", "export const b = 2;\nexport const wait = -3000;\n");
       const at = now();
       await h.batch("nt/src/b.mjs");
       return at;
     });
     const again = () => runs.find((run) => run !== backlog && holds(run, REKEYED));
-    // The edit's run stores its PASS before the backlog tier ends.
+    // The edit's run stores its PASS before the backlog's run of the file ends.
     await expect.poll(() => outcome(h, REKEYED), { timeout: 60_000, interval: 25 }).toBe("pass");
     expect(backlog.end).toBeNull();
     await h.scheduler.idle();
     expect(backlog.report?.end).toBe("crashed");
     const edit = again();
-    if (edit === undefined)
-      throw new Error("the re-keyed file did not run beside the backlog tier");
+    if (edit === undefined) throw new Error("the re-keyed file did not run beside the backlog");
     expect(storedBy(h, REKEYED, edit)).toBe(true);
-    // The stale crash at the old key leaves the current PASS alone; the others store nothing.
+    // The stale crash at the old key leaves the current PASS alone and stores nothing.
     expect(outcome(h, REKEYED)).toBe("pass");
-    expect(storedBy(h, BACKLOG[0] ?? "", backlog)).toBe(false);
+    expect(storedBy(h, REKEYED, backlog, ranUnder)).toBe(false);
   });
 });
