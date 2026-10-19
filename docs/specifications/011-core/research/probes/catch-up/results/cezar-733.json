@@ -1,0 +1,5963 @@
+[
+ {
+  "id": "ac2c455e",
+  "revision": 98,
+  "route": "edit",
+  "lane": "vitest",
+  "startedAt": 1792444492460,
+  "wallS": 2.128,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/workflows/waits.test.ts",
+    "s": 0.377019161,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/questions.test.ts",
+    "s": 0.39652254000000003,
+    "stored": true
+   },
+   {
+    "id": "contract\u0000packages/contract/src/attention.test.ts",
+    "s": 0.924922446,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/ask.test.ts",
+    "s": 0.8209431450000001,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "ef40ad0d",
+  "revision": 98,
+  "route": "edit",
+  "lane": "node:test",
+  "startedAt": 1792444492625,
+  "wallS": 0.617,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/failure-diagnostics.test.cjs",
+    "s": 0.13876292599999998,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/report-workflow-failure.test.cjs",
+    "s": 0.16079859400000002,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/failure-workflow.test.cjs",
+    "s": 0.223144912,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/failure-issue-writer.test.cjs",
+    "s": 0.17675415800000002,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "05e7fb73",
+  "revision": 98,
+  "route": "edit",
+  "lane": "node:test",
+  "startedAt": 1792444493635,
+  "wallS": 0.457,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/ci-sweep-report.test.cjs",
+    "s": 0.17256190100000002,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/issue-template.test.cjs",
+    "s": 0.103127364,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/apply-issue-intake.test.cjs",
+    "s": 0.115105356,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/ci-sweep-patterns.test.cjs",
+    "s": 0.124121759,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "bb2ac8ab",
+  "revision": 98,
+  "route": "edit",
+  "lane": "node:test",
+  "startedAt": 1792444494339,
+  "wallS": 3.675,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/automated-code-review.workflow.test.cjs",
+    "s": 3.258936854,
+    "stored": true
+   },
+   {
+    "id": "test:unit\u0000packages/cezar/test/unit/planner.test.ts",
+    "s": 0,
+    "stored": false
+   },
+   {
+    "id": "test:unit\u0000packages/cezar/test/unit/skill-dirs.test.ts",
+    "s": 0.6598252019999999,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/node-floor-reporter.test.cjs",
+    "s": 1.000050511,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "c73b1054",
+  "revision": 98,
+  "route": "edit",
+  "lane": "vitest",
+  "startedAt": 1792444494931,
+  "wallS": 0.638,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/git-diff-base.test.ts",
+    "s": 0.051930386999999995,
+    "stored": true
+   },
+   {
+    "id": "api-client\u0000packages/api-client/src/protocol/tool-display.test.ts",
+    "s": 0.03776766899999998,
+    "stored": true
+   },
+   {
+    "id": "contract\u0000packages/contract/src/zoned-time.test.ts",
+    "s": 0.05764532100000003,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/agent-config/catalog.test.ts",
+    "s": 0.040926407999999984,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "ed249b88",
+  "revision": 98,
+  "route": "edit",
+  "lane": "vitest",
+  "startedAt": 1792444495868,
+  "wallS": 1.214,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/core/cursor-runner.test.ts",
+    "s": 0,
+    "stored": false
+   },
+   {
+    "id": "contract\u0000packages/contract/src/run-summary.test.ts",
+    "s": 0.5832117400000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/ci-wait/preview-stop.test.ts",
+    "s": 0.6933126830000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/wait.test.ts",
+    "s": 0.5970384690000001,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "0b12109c",
+  "revision": 99,
+  "route": "edit",
+  "lane": "vitest",
+  "startedAt": 1792444500447,
+  "wallS": 2.355,
+  "end": "completed",
+  "files": [
+   {
+    "id": "contract\u0000packages/contract/src/waits.test.ts",
+    "s": 0.6255810029999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/ci-wait/mcp.test.ts",
+    "s": 0.7348604140000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/handoff.test.ts",
+    "s": 0.5290498049999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/cursor-model-catalog.test.ts",
+    "s": 0.6111666189999998,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "03d9f693",
+  "revision": 99,
+  "route": "edit",
+  "lane": "node:test",
+  "startedAt": 1792444500641,
+  "wallS": 0.476,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/jev-intake-replay.test.cjs",
+    "s": 0.103163661,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/jev-issue-intake.test.cjs",
+    "s": 0.171112131,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/fetch-ci-results.test.cjs",
+    "s": 0.182276831,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/issue-intake-candidates.test.cjs",
+    "s": 0.130600763,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "1dc9e65f",
+  "revision": 99,
+  "route": "edit",
+  "lane": "node:test",
+  "startedAt": 1792444501410,
+  "wallS": 0.766,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/ci-sweep-api.test.cjs",
+    "s": 0.17673887,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/release-bump-pr.test.cjs",
+    "s": 0.172350534,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/e2e-fetch.test.cjs",
+    "s": 0.21338759400000004,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/ci-sweep-collect.test.cjs",
+    "s": 0.31329733499999995,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "7d36d775",
+  "revision": 99,
+  "route": "edit",
+  "lane": "node:test",
+  "startedAt": 1792444502516,
+  "wallS": 1.033,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/issue-intake.workflow.test.cjs",
+    "s": 0.126699384,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/pr-readiness.test.cjs",
+    "s": 0.17543252,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/upstream-scan.workflow.test.cjs",
+    "s": 0.20923454,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/release.workflow.test.cjs",
+    "s": 0.190999081,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "7cebed0e",
+  "revision": 99,
+  "route": "edit",
+  "lane": "vitest",
+  "startedAt": 1792444503223,
+  "wallS": 1.742,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/preview/url.test.ts",
+    "s": 0.05171736900000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/usage.test.ts",
+    "s": 0.039211420000000004,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/contract-parity.test.ts",
+    "s": 0.05047721099999995,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/review-gate.test.ts",
+    "s": 0.03945928600000002,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "dd00cb1f",
+  "revision": 99,
+  "route": "edit",
+  "lane": "node:test",
+  "startedAt": 1792444503854,
+  "wallS": 0.568,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/automated-review.test.cjs",
+    "s": 0.14254818900000005,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/sweep-ci-failures.test.cjs",
+    "s": 0.141399724,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/ci-sweep-workflow.test.cjs",
+    "s": 0.197740861,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/transcript-facts-responsiveness.workflow.test.cjs",
+    "s": 0.212008656,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "aa279582",
+  "revision": 99,
+  "route": "edit",
+  "lane": "node:test",
+  "startedAt": 1792444504691,
+  "wallS": 1.726,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/change-surface.test.cjs",
+    "s": 0.365587812,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/ci-test-sequencer.test.cjs",
+    "s": 0.6914193780000002,
+    "stored": true
+   },
+   {
+    "id": "test:unit\u0000packages/cezar/test/unit/codex-reasoning-summary.test.ts",
+    "s": 0.47283623799999996,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/cockpit-test-sequencer.test.cjs",
+    "s": 0.7372883379999999,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "32102927",
+  "revision": 99,
+  "route": "edit",
+  "lane": "vitest",
+  "startedAt": 1792444505249,
+  "wallS": 2.613,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/runs/waits-store.test.ts",
+    "s": 0.815433785,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/transcript-facts.test.ts",
+    "s": 0.28368555500000003,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/permissions.test.ts",
+    "s": 0,
+    "stored": false
+   },
+   {
+    "id": "server\u0000packages/cezar/src/ci-wait/contract.test.ts",
+    "s": 0.376668174,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "1f92856d",
+  "revision": 99,
+  "route": "edit",
+  "lane": "node:test",
+  "startedAt": 1792444506710,
+  "wallS": 2.294,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/upstream-ledger.test.cjs",
+    "s": 0.422404484,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/require-e2e-passed.test.cjs",
+    "s": 0.521412678,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/change-surface-readers.test.cjs",
+    "s": 0.6627896700000001,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/vitest-actions-report.test.cjs",
+    "s": 1.062078882,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "bdf2bc8d",
+  "revision": 100,
+  "route": "edit",
+  "lane": "vitest",
+  "startedAt": 1792444511662,
+  "wallS": 0.705,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/release/stable.test.ts",
+    "s": 0.03911613800000001,
+    "stored": true
+   },
+   {
+    "id": "api-client\u0000packages/api-client/src/utils/project-scope.test.ts",
+    "s": 0.042399336,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/agent-config/account-identity.test.ts",
+    "s": 0.04900840400000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/session-process-win32.test.ts",
+    "s": 0.03668179599999999,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "a4e71e74",
+  "revision": 100,
+  "route": "edit",
+  "lane": "node:test",
+  "startedAt": 1792444511791,
+  "wallS": 2.196,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/change-surface-readers.test.cjs",
+    "s": 0.661163358,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/release-ci.test.cjs",
+    "s": 0.8520498970000001,
+    "stored": true
+   },
+   {
+    "id": "test:unit\u0000packages/cezar/test/unit/planner.test.ts",
+    "s": 0.49939085899999996,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/e2e-runner.test.cjs",
+    "s": 1.142312866,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "a315b644",
+  "revision": 100,
+  "route": "edit",
+  "lane": "vitest",
+  "startedAt": 1792444512710,
+  "wallS": 1.859,
+  "end": "completed",
+  "files": [
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/thread-state.test.ts",
+    "s": 0.46750672899999995,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/provision.test.ts",
+    "s": 1.3167049370000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/run-database.test.ts",
+    "s": 0.8222376229999998,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/input.test.ts",
+    "s": 1.3388866690000003,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "0b023abb",
+  "revision": 100,
+  "route": "edit",
+  "lane": "node:test",
+  "startedAt": 1792444514245,
+  "wallS": 9.168,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/ci.workflow.test.cjs",
+    "s": 2.1238371820000004,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/pr-snapshot.test.cjs",
+    "s": 3.3195216780000005,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/ci-package-manager.test.cjs",
+    "s": 2.940301315,
+    "stored": true
+   },
+   {
+    "id": "test:unit\u0000packages/cezar/test/unit/skills-remote.test.ts",
+    "s": 5.214884759999999,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "f09e312d",
+  "revision": 100,
+  "route": "edit",
+  "lane": "vitest",
+  "startedAt": 1792444515022,
+  "wallS": 3.78,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/runs/delegation-state.test.ts",
+    "s": 1.6311082399999997,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/conversation-batch.test.ts",
+    "s": 1.518594343,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/event-history.test.ts",
+    "s": 1.12354164,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/ask-card.test.tsx",
+    "s": 2.9229996500000004,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "fa351082",
+  "revision": 100,
+  "route": "edit",
+  "lane": "vitest",
+  "startedAt": 1792444519146,
+  "wallS": 0.514,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/git-index-copy.test.ts",
+    "s": 0.031234703999999995,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/checkout-progress.test.ts",
+    "s": 0.03015963899999997,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/credentials.test.ts",
+    "s": 0.030915693999999945,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/model-identity.test.ts",
+    "s": 0.052633882,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "6651a923",
+  "revision": 100,
+  "route": "edit",
+  "lane": "vitest",
+  "startedAt": 1792444520022,
+  "wallS": 4.343,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/workflows/delegation-reconcile.test.ts",
+    "s": 1.9397031619999998,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/autonomous-nudge-guards.test.ts",
+    "s": 1.9712528130000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/ci-wait/controller.test.ts",
+    "s": 3.642946933,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/scoped-recovery.test.ts",
+    "s": 0,
+    "stored": false
+   }
+  ]
+ },
+ {
+  "id": "e0e9949d",
+  "revision": 100,
+  "route": "edit",
+  "lane": "node:test",
+  "startedAt": 1792444523677,
+  "wallS": 7.168,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/ci-dispatch.workflow.test.cjs",
+    "s": 6.82161053,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "e826a4bb",
+  "revision": 101,
+  "route": "edit",
+  "lane": "vitest",
+  "startedAt": 1792444527020,
+  "wallS": 7.22,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/core/cursor-print-capabilities.test.ts",
+    "s": 0,
+    "stored": false
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/conversation-service.test.ts",
+    "s": 3.5845135449999996,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/project-rail.test.tsx",
+    "s": 5.341170815,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/conversation-resume-wait.test.ts",
+    "s": 2.36730167,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "23fd8372",
+  "revision": 101,
+  "route": "edit",
+  "lane": "node:test",
+  "startedAt": 1792444531070,
+  "wallS": 0.836,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/change-surface-readers.test.cjs",
+    "s": 0.554001399,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/nightly.workflow.test.cjs",
+    "s": 0,
+    "stored": false
+   }
+  ]
+ },
+ {
+  "id": "a4727770",
+  "revision": 102,
+  "route": "edit",
+  "lane": "node:test",
+  "startedAt": 1792444533834,
+  "wallS": 1.292,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/nightly.workflow.test.cjs",
+    "s": 0.20813525100000005,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/issue-template.test.cjs",
+    "s": 0.13292094499999998,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/jev-intake-replay.test.cjs",
+    "s": 0.130629409,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/apply-issue-intake.test.cjs",
+    "s": 0.140433726,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "8a530938",
+  "revision": 103,
+  "route": "edit",
+  "lane": "vitest",
+  "startedAt": 1792444536584,
+  "wallS": 1.381,
+  "end": "completed",
+  "files": [
+   {
+    "id": "contract\u0000packages/contract/src/github.test.ts",
+    "s": 0.37066871799999995,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/task-markers.test.ts",
+    "s": 0.307880627,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/raw-record.test.ts",
+    "s": 0.30199490100000004,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/ui-parity.test.ts",
+    "s": 0.34136483799999995,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "a1a46132",
+  "revision": 103,
+  "route": "edit",
+  "lane": "node:test",
+  "startedAt": 1792444536737,
+  "wallS": 0.537,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/ci-sweep-patterns.test.cjs",
+    "s": 0.12445785499999999,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/issue-intake.workflow.test.cjs",
+    "s": 0.11514643499999999,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/issue-intake-candidates.test.cjs",
+    "s": 0.142415089,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/failure-diagnostics.test.cjs",
+    "s": 0.138060868,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "2a2ba5eb",
+  "revision": 103,
+  "route": "edit",
+  "lane": "node:test",
+  "startedAt": 1792444537524,
+  "wallS": 0.938,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/sweep-ci-failures.test.cjs",
+    "s": 0.13554116,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/automated-review.test.cjs",
+    "s": 0.152753783,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/report-workflow-failure.test.cjs",
+    "s": 0.14392548400000002,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/jev-issue-intake.test.cjs",
+    "s": 0.123668847,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "a145ddf5",
+  "revision": 103,
+  "route": "edit",
+  "lane": "vitest",
+  "startedAt": 1792444538234,
+  "wallS": 11.49,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/workflows/worker-wait-continuation.test.ts",
+    "s": 8.151259842,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/cursor-transport.test.ts",
+    "s": 8.384852931,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/app-shell-container.test.tsx",
+    "s": 10.386665053,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/cursor-print-runner.test.ts",
+    "s": 8.161201559,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "d58cea10",
+  "revision": 103,
+  "route": "edit",
+  "lane": "node:test",
+  "startedAt": 1792444538727,
+  "wallS": 0.469,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/release-bump-pr.test.cjs",
+    "s": 0.094606936,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/ci-sweep-report.test.cjs",
+    "s": 0.12595771,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/pr-readiness.test.cjs",
+    "s": 0.143487629,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/ci-sweep-api.test.cjs",
+    "s": 0.11219340200000001,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "c0963f25",
+  "revision": 103,
+  "route": "edit",
+  "lane": "node:test",
+  "startedAt": 1792444539507,
+  "wallS": 0.532,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/failure-issue-writer.test.cjs",
+    "s": 0.120949846,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/fetch-ci-results.test.cjs",
+    "s": 0.124681164,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/release.workflow.test.cjs",
+    "s": 0.191574939,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/ci-sweep-workflow.test.cjs",
+    "s": 0.164624603,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "9177780f",
+  "revision": 103,
+  "route": "edit",
+  "lane": "node:test",
+  "startedAt": 1792444540304,
+  "wallS": 0.685,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/upstream-scan.workflow.test.cjs",
+    "s": 0.299625386,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/transcript-facts-responsiveness.workflow.test.cjs",
+    "s": 0.32605459999999997,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/e2e-fetch.test.cjs",
+    "s": 0.169572483,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/failure-workflow.test.cjs",
+    "s": 0.261506174,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "1e6bac60",
+  "revision": 103,
+  "route": "edit",
+  "lane": "node:test",
+  "startedAt": 1792444541256,
+  "wallS": 0.914,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/ci-sweep-collect.test.cjs",
+    "s": 0.180891584,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/change-surface.test.cjs",
+    "s": 0.39222967,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/upstream-ledger.test.cjs",
+    "s": 0.513272301,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/require-e2e-passed.test.cjs",
+    "s": 0.5615577540000001,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "d974cbd1",
+  "revision": 103,
+  "route": "edit",
+  "lane": "node:test",
+  "startedAt": 1792444542420,
+  "wallS": 1.351,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/change-surface-readers.test.cjs",
+    "s": 0.7131564709999999,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/ci-test-sequencer.test.cjs",
+    "s": 0.377090364,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/cockpit-test-sequencer.test.cjs",
+    "s": 0.784136174,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/release-ci.test.cjs",
+    "s": 0.8685354610000001,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "1a7bfc61",
+  "revision": 103,
+  "route": "edit",
+  "lane": "node:test",
+  "startedAt": 1792444544045,
+  "wallS": 2.783,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/node-floor-reporter.test.cjs",
+    "s": 1.7941138209999998,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/vitest-actions-report.test.cjs",
+    "s": 1.555214409,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/e2e-runner.test.cjs",
+    "s": 1.5952271400000002,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/ci.workflow.test.cjs",
+    "s": 2.328918062,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "f2732f89",
+  "revision": 103,
+  "route": "edit",
+  "lane": "node:test",
+  "startedAt": 1792444547181,
+  "wallS": 6.408,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/ci-package-manager.test.cjs",
+    "s": 2.119417259,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/automated-code-review.workflow.test.cjs",
+    "s": 2.843199171,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/pr-snapshot.test.cjs",
+    "s": 1.8366049009999998,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/ci-dispatch.workflow.test.cjs",
+    "s": 6.028386695,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "7882f831",
+  "revision": 103,
+  "route": "edit",
+  "lane": "vitest",
+  "startedAt": 1792444550005,
+  "wallS": 0.422,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/pack-check.test.ts",
+    "s": 0.03122360499999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/contract-parity.delegation.test.ts",
+    "s": 0.025315084000000012,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/git-refs.test.ts",
+    "s": 0.027583638000000008,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/v1-text-coalescer.test.ts",
+    "s": 0.03178999100000002,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "3f5319a2",
+  "revision": 103,
+  "route": "edit",
+  "lane": "vitest",
+  "startedAt": 1792444550634,
+  "wallS": 14.588,
+  "end": "completed",
+  "files": [
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/run-header.test.tsx",
+    "s": 10.717858129,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/cli.test.ts",
+    "s": 9.141887444,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/cursor-model-selection.test.ts",
+    "s": 11.620558720999998,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/cursor-acp-runner.test.ts",
+    "s": 14.175313542,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "9fedba04",
+  "revision": 103,
+  "route": "edit",
+  "lane": "node:test",
+  "startedAt": 1792444553845,
+  "wallS": 63.252,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/upstream-targets.test.cjs",
+    "s": 38.248561175999995,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000.github/scripts/release-finalization.test.cjs",
+    "s": 62.91644513599999,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "4672e784",
+  "revision": 103,
+  "route": "edit",
+  "lane": "vitest",
+  "startedAt": 1792444565672,
+  "wallS": 24.374,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/core/conversation-delivery.test.ts",
+    "s": 18.623404009,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/pi-runner.test.ts",
+    "s": 18.373366803,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/ci-wait-refusal.test.ts",
+    "s": 22.691529858000003,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/omp-runner.test.ts",
+    "s": 23.762683123,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "5f6f1733",
+  "revision": 103,
+  "route": "edit",
+  "lane": "vitest",
+  "startedAt": 1792444590326,
+  "wallS": 52.027,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/workflows/immediate-delivery.test.ts",
+    "s": 29.049349445,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/conversation-answer-delivery.test.ts",
+    "s": 41.218938267,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/ci-tools.test.ts",
+    "s": 51.433746258,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/system-prompt.test.ts",
+    "s": 47.80418769799999,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "ce28986c",
+  "revision": 103,
+  "route": "edit",
+  "lane": "vitest",
+  "startedAt": 1792444642564,
+  "wallS": 0.419,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/core/cursor-print-ui-mapper.test.ts",
+    "s": 0.037067283000000006,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/input-submissions.test.ts",
+    "s": 0.026168643000000016,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/typed-bodies.test.ts",
+    "s": 0.022115074999999977,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/application-update/helper.test.ts",
+    "s": 0.05921236800000004,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "095945e0",
+  "revision": 103,
+  "route": "edit",
+  "lane": "vitest",
+  "startedAt": 1792444643203,
+  "wallS": 70.465,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/workflows/waits-wake.test.ts",
+    "s": 55.670943574000006,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/worker-destroy.test.ts",
+    "s": 61.487426466,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/worker-wait.test.ts",
+    "s": 61.945182962,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/worker-wait-conversations.test.ts",
+    "s": 70.03552511999999,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "54c76898",
+  "revision": 103,
+  "route": "edit",
+  "lane": "vitest",
+  "startedAt": 1792444713933,
+  "wallS": 104.656,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/workflows/ci-wait.test.ts",
+    "s": 73.12609512400002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/workflow-ask-parity.test.ts",
+    "s": 76.08401991699999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/worker-wait-durability.test.ts",
+    "s": 104.026408152,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/skill-resume-parity.test.ts",
+    "s": 94.05194598799999,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "7f267cc7",
+  "revision": 103,
+  "route": "edit",
+  "lane": "vitest",
+  "startedAt": 1792444818838,
+  "wallS": 184.118,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/workflows/worker-wait-capacity.test.ts",
+    "s": 101.727880545,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/workflow-final-message-parity.test.ts",
+    "s": 123.16602283900001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/worker-questions.test.ts",
+    "s": 161.73287496199998,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/workflow-autonomous-parity.test.ts",
+    "s": 183.543755141,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "d4c998b6",
+  "revision": 103,
+  "route": "edit",
+  "lane": "vitest",
+  "startedAt": 1792445003214,
+  "wallS": 554.631,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/workflows/worker-parent-attention.test.ts",
+    "s": 200.563627794,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/run.test.ts",
+    "s": 192.52819264399997,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/monitoring-turn.test.ts",
+    "s": 375.960290341,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/harness-parity.test.ts",
+    "s": 553.9877411690001,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "77bbe202",
+  "revision": 103,
+  "route": "edit",
+  "lane": "vitest",
+  "startedAt": 1792445558173,
+  "wallS": 0.502,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/install-as-command.test.ts",
+    "s": 0.03478397600000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/secret-redaction.test.ts",
+    "s": 0.03891336600000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/session-process-reuse.test.ts",
+    "s": 0.03630709499999995,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/contract-parity.workspace.test.ts",
+    "s": 0.02754039100000003,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "5338e278",
+  "revision": 103,
+  "route": "edit",
+  "lane": "vitest",
+  "startedAt": 1792445558888,
+  "wallS": 528.795,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/workflows/waits-parity.test.ts",
+    "s": 0,
+    "stored": false
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/ci-wait-failure-parity.test.ts",
+    "s": 155.93610528399998,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/harness-autosave-settlement.test.ts",
+    "s": 152.05546587700002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/monitoring-channel-order.test.ts",
+    "s": 203.464630693,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "9ca92b54",
+  "revision": 104,
+  "route": "edit",
+  "lane": "node:test",
+  "startedAt": 1792445712228,
+  "wallS": 0.973,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/change-surface-readers.test.cjs",
+    "s": 0.6904787470000001,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "0565c19e",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "node:test",
+  "startedAt": 1792446157294,
+  "wallS": 118.772,
+  "end": "completed",
+  "files": [
+   {
+    "id": "root:test:unit\u0000.github/scripts/change-surface-readers.test.cjs",
+    "s": 0.9242088690000001,
+    "stored": true
+   },
+   {
+    "id": "test:unit\u0000packages/cezar/test/unit/cursor-hang-stdin.test.ts",
+    "s": 0.372482886,
+    "stored": true
+   },
+   {
+    "id": "test:unit\u0000packages/cezar/test/unit/todo-task-text.test.ts",
+    "s": 0.352562107,
+    "stored": true
+   },
+   {
+    "id": "test:unit\u0000packages/cezar/test/unit/workflow-types.test.ts",
+    "s": 0.395656212,
+    "stored": true
+   },
+   {
+    "id": "test:unit\u0000packages/cezar/test/unit/resolve-browser-launch.test.ts",
+    "s": 0.537713923,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000scripts/squeal-browser.test.mjs",
+    "s": 2.2263694439999995,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000scripts/e2e-lanes.test.mjs",
+    "s": 11.005591998000005,
+    "stored": true
+   },
+   {
+    "id": "root:test:unit\u0000scripts/test-changed.test.mjs",
+    "s": 15.478103693,
+    "stored": true
+   },
+   {
+    "id": "test:unit\u0000packages/cezar/test/unit/web-typecheck.test.ts",
+    "s": 44.41451850400001,
+    "stored": true
+   },
+   {
+    "id": "test:unit\u0000packages/cezar/test/unit/test-env-launcher.test.ts",
+    "s": 101.532732655,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "8f9d6c67",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "vitest",
+  "startedAt": 1792446157590,
+  "wallS": 11.614,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/workflows/run-active-pin.test.ts",
+    "s": 0.06770329600000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/arm-repo-handle.test.ts",
+    "s": 0.21333619099999998,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/mock-patch.testkit.test.ts",
+    "s": 0.065330228,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/cold-repo-handles.test.ts",
+    "s": 0.11603145799999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/cursor-cli-flags.test.ts",
+    "s": 0.087177344,
+    "stored": true
+   },
+   {
+    "id": "contract\u0000packages/contract/src/projects.test.ts",
+    "s": 0.25299735000000007,
+    "stored": true
+   },
+   {
+    "id": "contract\u0000packages/contract/src/delegation.test.ts",
+    "s": 0.183327647,
+    "stored": true
+   },
+   {
+    "id": "contract\u0000packages/contract/src/live-coordination.test.ts",
+    "s": 0.25607496700000004,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/preview/registration.test.ts",
+    "s": 0.4161852280000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/cursor-ui-mapper.test.ts",
+    "s": 0.10958101999999997,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/automations/github-poller.test.ts",
+    "s": 0.344342493,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/model-presets.test.ts",
+    "s": 0.148909819,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/open-in-terminal.test.ts",
+    "s": 0.31231521599999995,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/retry-backoff.test.ts",
+    "s": 0.07903729699999996,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/tool-display.test.ts",
+    "s": 0.13204371699999992,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/archive-on-merge-setting.test.ts",
+    "s": 0.20764991800000002,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/test/agent-browser-launch.test.ts",
+    "s": 0.24176882400000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/managed-session.test.ts",
+    "s": 0.19757523999999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/model-discovery-guard.test.ts",
+    "s": 0.755265053,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/api-types.test.ts",
+    "s": 0.13582918600000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/runner-stderr.test.ts",
+    "s": 0.09988918000000004,
+    "stored": true
+   },
+   {
+    "id": "contract\u0000packages/contract/src/automation-schedule.test.ts",
+    "s": 0.183345722,
+    "stored": true
+   },
+   {
+    "id": "contract\u0000packages/contract/src/session-transport.test.ts",
+    "s": 0.370154839,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/contract-parity.runs.test.ts",
+    "s": 0.07299221999999994,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/contract-parity.automations.test.ts",
+    "s": 0.07579019100000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/git-worktree-release.test.ts",
+    "s": 0.33371282899999993,
+    "stored": true
+   },
+   {
+    "id": "contract\u0000packages/contract/src/preview.test.ts",
+    "s": 0.18984056999999996,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/ui-events.test.ts",
+    "s": 0.08345475000000005,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/skills-banner.test.ts",
+    "s": 0.34890928799999993,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/runner-model-catalog.test.ts",
+    "s": 0.3264894499999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/static-ui.test.ts",
+    "s": 0.175239532,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/test/e2e-socket-safe-tmpdir.test.ts",
+    "s": 0.11428583,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/wsl.test.ts",
+    "s": 0.058024130999999986,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/cursor-provider-error.test.ts",
+    "s": 0.07828952800000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/effort.test.ts",
+    "s": 0.15169208999999992,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/shell-env.test.ts",
+    "s": 0.19428977899999994,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/github-task.test.ts",
+    "s": 0.346472395,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/diff/parse-patch.test.ts",
+    "s": 0.325599322,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/pull-requests.test.ts",
+    "s": 0.5913146399999999,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/provider-auth-alert.test.ts",
+    "s": 0.12461307500000003,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/ui-state.test.ts",
+    "s": 0.24164844900000002,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/test/fixture-serve-env.test.ts",
+    "s": 0.416852624,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/allowed-tools.test.ts",
+    "s": 0.23087244700000006,
+    "stored": true
+   },
+   {
+    "id": "contract\u0000packages/contract/src/worker-destroy.test.ts",
+    "s": 0.38113492700000007,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/composer/composer-text.test.ts",
+    "s": 0.16179678900000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/artifacts/contract.test.ts",
+    "s": 0.19852251100000007,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/timeout-schema.test.ts",
+    "s": 0.21656715799999998,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/cursor-runner.test.ts",
+    "s": 0.671333716,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/autosave-holders.test.ts",
+    "s": 0.199613068,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/format.test.ts",
+    "s": 0.241242874,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/live-item-snapshots.test.ts",
+    "s": 0.10368604299999998,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/token-metrics.test.ts",
+    "s": 0.11071050700000007,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/session-transport.test.ts",
+    "s": 0.8441403249999999,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-git/file-tree.test.ts",
+    "s": 0.272879906,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/capacity.test.ts",
+    "s": 1.0082797070000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/opencode-model-catalog.test.ts",
+    "s": 0.28445272599999993,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/preview/host.test.ts",
+    "s": 0.647848184,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/automations/types.test.ts",
+    "s": 0.578458071,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/usage-limit.test.ts",
+    "s": 0.155212965,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/provider-availability.test.ts",
+    "s": 0.26143232899999996,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server-install/types.test.ts",
+    "s": 0.25558242899999994,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/subagent-dock.test.ts",
+    "s": 0.34889231499999995,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/run-row.test.ts",
+    "s": 0.705956093,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/execution-identity.test.ts",
+    "s": 0.41897241800000007,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workspace/migrations.test.ts",
+    "s": 0.36424094999999995,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/release/snapshot.test.ts",
+    "s": 0.159625237,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/forge/index.test.ts",
+    "s": 0.7239260470000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/ui-event-sink.test.ts",
+    "s": 1.21524695,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workspace/agent-profiles.test.ts",
+    "s": 0.636587981,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/forge/github-pr-diff.test.ts",
+    "s": 0.736644648,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/automations/prompts.test.ts",
+    "s": 0.706033328,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/agent-config/files.test.ts",
+    "s": 0.19448151299999994,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workspace/semaphore.test.ts",
+    "s": 0.4404436270000001,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/read-state.test.ts",
+    "s": 0.5260769919999999,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/provider-status.test.ts",
+    "s": 0.29148469500000007,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/workflow-builder.test.ts",
+    "s": 0.5271100879999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/client-request.test.ts",
+    "s": 1.036230624,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/turn-end.test.ts",
+    "s": 0.11429329599999995,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/tool-display-mirror.test.ts",
+    "s": 0.2740732350000001,
+    "stored": true
+   },
+   {
+    "id": "contract\u0000packages/contract/src/sidebar-limits.test.ts",
+    "s": 0.16532691700000007,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/forge/github-merged-prs.test.ts",
+    "s": 0.6923470119999999,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/project-tags.test.ts",
+    "s": 0.321334067,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/diff/word-diff.test.ts",
+    "s": 0.16436957300000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/run-search.test.ts",
+    "s": 0.15996261999999997,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/github/github-sidebar-model.test.ts",
+    "s": 0.7930231839999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/agent-config/model-settings/shared.test.ts",
+    "s": 0.21367183399999995,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/codex-app-server-transport.test.ts",
+    "s": 0.09549795700000004,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/artifacts/lifecycle.test.ts",
+    "s": 1.048446724,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/automations/coordinator.test.ts",
+    "s": 0.7164807300000001,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/thread-scroll.test.ts",
+    "s": 0.25323356399999997,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/contract-parity.workflows.test.ts",
+    "s": 0.190598888,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/forge/github-coalescing.test.ts",
+    "s": 0.684073329,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/agent-config/validate.test.ts",
+    "s": 0.23473481399999996,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/application-update/discovery.test.ts",
+    "s": 0.219877243,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/cursor-config-options.test.ts",
+    "s": 0.276700072,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/question-contract.test.ts",
+    "s": 0.30489341600000003,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/preview/cdp.test.ts",
+    "s": 0.28291944799999996,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/group-summary.test.ts",
+    "s": 0.8072066559999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/contract-parity.github.test.ts",
+    "s": 0.221392799,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/task-cli/hint.test.ts",
+    "s": 0.38940792999999996,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/global-tasks.test.ts",
+    "s": 0.751541532,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/types.test.ts",
+    "s": 0.12855661699999998,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/skills-update.test.ts",
+    "s": 0.36592206699999996,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/request-wait-attention.test.ts",
+    "s": 0.718633725,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/forge/github-filters.test.ts",
+    "s": 0.8828038549999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/artifacts/store-windows.test.ts",
+    "s": 0.24236675300000005,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/skills.test.ts",
+    "s": 0.3073118300000001,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/attention.test.ts",
+    "s": 0.65408843,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/utils.test.ts",
+    "s": 0.262271019,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/codex-model-catalog.test.ts",
+    "s": 0.3349888819999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/paths.test.ts",
+    "s": 0.24277170400000003,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/agent-model-policy.test.ts",
+    "s": 0.26483637299999996,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/model-contract.test.ts",
+    "s": 0.199785143,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/test-task-env.test.ts",
+    "s": 0.20059440900000003,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/agent-profiles.test.ts",
+    "s": 0.28026436699999996,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/store-order.test.ts",
+    "s": 1.057904825,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/github/github-filter.test.ts",
+    "s": 0.215098342,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-git/worktree-files.test.ts",
+    "s": 0.33147768600000005,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server-install/ui.test.ts",
+    "s": 0.4080921920000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workspace/config.test.ts",
+    "s": 0.812313428,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/preview/session.test.ts",
+    "s": 0.206383613,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/omp-ui-mapper.test.ts",
+    "s": 0.3870569610000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/cursor-workspace-contract.test.ts",
+    "s": 0.24243476100000003,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/autosave-cleanup.test.ts",
+    "s": 0.3935941260000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workspace/agent-accounts.test.ts",
+    "s": 0.45018188300000006,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/api/events.test.ts",
+    "s": 0.682627916,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/new-task-form.test.ts",
+    "s": 0.5533197939999999,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/tasks-table.test.ts",
+    "s": 0.8833360269999999,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/automation-format.test.ts",
+    "s": 0.31456986400000003,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/policy.test.ts",
+    "s": 0.9353349569999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/process-usage.test.ts",
+    "s": 0.1542766490000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/cursor-integration.test.ts",
+    "s": 0.547916173,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/diff/diff-scroll.test.ts",
+    "s": 0.355878424,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/pi-model-catalog.test.ts",
+    "s": 0.379621906,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/thread-permissions.test.ts",
+    "s": 0.3913380680000001,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/task-groups.test.ts",
+    "s": 0.6547866859999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/history-compressor.test.ts",
+    "s": 0.37697409800000004,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/agent-env.test.ts",
+    "s": 0.13922032599999995,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/history-file.test.ts",
+    "s": 0.34413672400000006,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/unified-diff.test.ts",
+    "s": 0.24989995099999993,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/new-task-plan.test.ts",
+    "s": 0.445438456,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/create-project.test.ts",
+    "s": 0.310745541,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/ci-wait-store.test.ts",
+    "s": 1.0829418610000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/agent-config/models.test.ts",
+    "s": 0.32087171499999995,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/active-provider.test.ts",
+    "s": 0.409705741,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server-install/steps.test.ts",
+    "s": 0.31984172699999996,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/prompt-templates.test.ts",
+    "s": 0.36781720599999995,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/codex-startup.test.ts",
+    "s": 0.994995821,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/new-task-params.test.ts",
+    "s": 0.26561399799999996,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/omp-model-catalog.test.ts",
+    "s": 0.46888126000000013,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/git-actions.test.ts",
+    "s": 0.47356040499999996,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/application-update/bin-recovery.test.ts",
+    "s": 0.10537103000000005,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/new-task-autostart.test.ts",
+    "s": 0.20391057500000004,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/pi-ui-mapper.test.ts",
+    "s": 0.18812610800000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/repo-handle-recovery.test.ts",
+    "s": 0.840184294,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/run-event-feed.test.ts",
+    "s": 0.9750934459999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/provider-auth.test.ts",
+    "s": 0.491027109,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/bookmarklet.test.ts",
+    "s": 0.14409916800000003,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/task-cli/http.test.ts",
+    "s": 0.361923624,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/forge/draft-pr-autosave.test.ts",
+    "s": 1.164817536,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/history-readers.test.ts",
+    "s": 1.0757754999999998,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/retention.test.ts",
+    "s": 0.4421359769999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/upgrade-router.test.ts",
+    "s": 0.32941325800000004,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/thread-groups.test.ts",
+    "s": 0.7509508579999998,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workspace/projects.test.ts",
+    "s": 0.988750425,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/vite-config.test.ts",
+    "s": 0.335293897,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/use-submit-shortcut.test.ts",
+    "s": 0.3646029119999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/webhook.test.ts",
+    "s": 1.0298074420000003,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/settings/agent-descriptors.test.ts",
+    "s": 0.29606239900000003,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/api/preview-socket.test.ts",
+    "s": 0.5269031049999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/application-update/npm-process.test.ts",
+    "s": 0.4871861640000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server-install/state.test.ts",
+    "s": 0.357316043,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/pid-file.testkit.test.ts",
+    "s": 0.6379980080000001,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/run-actions.test.ts",
+    "s": 1.485142021,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/git.test.ts",
+    "s": 0.43362214500000007,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/test/fixture-server-diagnostics.test.ts",
+    "s": 0.5939267220000001,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/nav-items.test.ts",
+    "s": 0.5505560359999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/cursor-print-process.test.ts",
+    "s": 0.49664903899999996,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/automations/editor-draft.test.ts",
+    "s": 0.422305726,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workspace/projects-cli.test.ts",
+    "s": 1.1817835380000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/process-scope.testkit.test.ts",
+    "s": 0.570642739,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/repo-branches-witness.test.ts",
+    "s": 1.208842445,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/test/fixture-server-stop.test.ts",
+    "s": 0.8490977940000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/automations/schedule-runner.test.ts",
+    "s": 1.1996327139999998,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/api/contract-pipeline.test.ts",
+    "s": 0.18955722399999994,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/forge/github.test.ts",
+    "s": 1.1822130859999997,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/store-claims.test.ts",
+    "s": 1.4110462630000002,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/design-guardian.test.ts",
+    "s": 1.156663624,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/pi-retry-degraded-service.test.ts",
+    "s": 0.6186893640000001,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/test/card-2-contrast.test.ts",
+    "s": 1.558509567,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/task-columns.test.ts",
+    "s": 0.29587147900000005,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/config.test.ts",
+    "s": 0.6944100200000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/store-run-window.test.ts",
+    "s": 1.152491874,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/resume-command.test.ts",
+    "s": 3.1449569679999994,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/capabilities.test.ts",
+    "s": 0.30935839599999987,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/bc-route-inventory.test.ts",
+    "s": 3.2506195839999994,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/store-live-set.test.ts",
+    "s": 1.574991708,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/agent-tmpdir.test.ts",
+    "s": 1.416614995,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/highlighter.test.ts",
+    "s": 0.8681246269999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/automations/task-template.test.ts",
+    "s": 1.1950036540000002,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "70a6dce1",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "vitest",
+  "startedAt": 1792446170117,
+  "wallS": 30.845,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/server/sse-headers.test.ts",
+    "s": 1.6365407729999997,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/test-wait-discipline.test.ts",
+    "s": 0.715590804,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/notifications.test.ts",
+    "s": 1.4232719619999998,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/preview-boot-sweep.test.ts",
+    "s": 1.432794019,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/conversation-presentation.test.ts",
+    "s": 1.3433017079999998,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/backend-detect.test.ts",
+    "s": 1.4958113610000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/store-database.test.ts",
+    "s": 1.499279032,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/project-signal.test.ts",
+    "s": 1.5931866210000005,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/cockpit-address.test.ts",
+    "s": 1.953935794,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/agent-config/seed.test.ts",
+    "s": 0.9749018440000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/github-ref-status-api.test.ts",
+    "s": 1.764811915,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/github-comments-api.test.ts",
+    "s": 1.801155621,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/cockpit-ownership.test.ts",
+    "s": 1.504889581,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/application-update/hoisted-recovery.test.ts",
+    "s": 0.8594787300000001,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/api/permissions-client.test.ts",
+    "s": 2.075752018,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/versioned-surface.test.ts",
+    "s": 1.63751957,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/usage-scope.test.ts",
+    "s": 1.7818713239999997,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/pump-repo-cache.test.ts",
+    "s": 1.3841386590000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/project-context-repo-handle.test.ts",
+    "s": 1.4877794409999996,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/cursor-bootstrap-continue.test.ts",
+    "s": 1.388294019,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/dead-owner-claims.test.ts",
+    "s": 1.160769802,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/autosave-windows.test.ts",
+    "s": 0.7643992820000001,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/test/poll.test.ts",
+    "s": 0.636933539,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/api/client.test.ts",
+    "s": 1.9122950369999996,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/service.testkit.test.ts",
+    "s": 1.300408783,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server-install/engine.test.ts",
+    "s": 0.40418127900000006,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/auto-resume-api.test.ts",
+    "s": 1.7040083380000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/permissions.test.ts",
+    "s": 1.4315530329999997,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/inbox-gate.test.ts",
+    "s": 1.698300268,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/run-notifications.test.tsx",
+    "s": 1.88200426,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/continue-unarchive.test.ts",
+    "s": 1.1334863599999998,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/open-in-project.test.ts",
+    "s": 1.6223834470000003,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/claude-model-catalog.test.ts",
+    "s": 0.5444985429999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/run-store-unavailable.test.ts",
+    "s": 1.7519714059999998,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/test/visual-ready.test.ts",
+    "s": 1.4044690690000001,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/api/live-workspace-source.test.ts",
+    "s": 0.882968141,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/is-newer-version.test.ts",
+    "s": 1.1006781119999998,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/github-search-api.test.ts",
+    "s": 1.703493259,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/live-refetch.test.ts",
+    "s": 0.9078945500000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/agent-profile-wiring.test.ts",
+    "s": 1.357719592,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/exec-command.test.ts",
+    "s": 1.048003397,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/github/use-hand-to-agent-state.test.tsx",
+    "s": 2.0723830140000006,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/api/global-events-lifecycle.test.tsx",
+    "s": 1.9847559630000007,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/run-reconcile.test.ts",
+    "s": 2.037606579,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/api/project-ui-state.test.tsx",
+    "s": 1.9800301709999997,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/api/queries.github-pages.test.tsx",
+    "s": 1.9212720170000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/human-ask-summary.test.ts",
+    "s": 2.033216569,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/archive-on-merge.test.ts",
+    "s": 1.9415867710000003,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/maintenance-claims.test.ts",
+    "s": 1.5115849460000004,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/permissions-api.test.ts",
+    "s": 1.8581094370000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/recover-session-failure.test.ts",
+    "s": 1.371736548,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/archive-on-merge.test.ts",
+    "s": 1.9241665549999998,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/typed-client.test.ts",
+    "s": 1.7954778239999998,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/patch-run.test.ts",
+    "s": 1.630550592,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/github-merge-api.test.ts",
+    "s": 1.8262319630000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/agent-config-api.test.ts",
+    "s": 1.6932202170000004,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/ws.test.ts",
+    "s": 1.7395663140000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/skills.test.ts",
+    "s": 0.4624489720000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/github-pr-changes-api.test.ts",
+    "s": 1.78194938,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/skills-update-api.test.ts",
+    "s": 1.818206455,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/codex-app-server-runner.test.ts",
+    "s": 1.253892564,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/run-settlement.test.ts",
+    "s": 1.289143147,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/add-project-menu.test.tsx",
+    "s": 2.6288550139999995,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/preview/preview-layout-css.test.ts",
+    "s": 1.11413932,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/recover-followups.test.ts",
+    "s": 1.653291623,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/run-index.test.ts",
+    "s": 1.5707237059999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/github-comment-counts-api.test.ts",
+    "s": 1.843609683,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/codex-approvals.test.ts",
+    "s": 1.5448432520000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/contract-import-boundaries.test.ts",
+    "s": 1.8145281359999998,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/cez-idle.test.ts",
+    "s": 1.1681774920000003,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server-install/platforms/ubuntu-vps.test.ts",
+    "s": 2.175637988,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/provider-auth-runtime.test.ts",
+    "s": 1.463525167,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/webhook.test.ts",
+    "s": 1.0623924780000003,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/test/session-layout.test.ts",
+    "s": 1.1598772440000003,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/api/ws.test.ts",
+    "s": 1.8405486030000004,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/api/run-events.test.ts",
+    "s": 1.4274006179999998,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/thread-time.test.tsx",
+    "s": 1.402084126,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/query-repeat-parity.test.ts",
+    "s": 1.755433882,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/start-run-idempotent.test.ts",
+    "s": 2.5557567289999996,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/github-nav-contract.test.ts",
+    "s": 1.3900535109999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/start-run-todo.test.ts",
+    "s": 1.8414427309999999,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/github/hand-to-agent-draft.test.ts",
+    "s": 1.2217274059999998,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/appearance.test.ts",
+    "s": 1.6168117969999998,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/ask-answer.test.ts",
+    "s": 2.1404159669999996,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/ui-state.test.ts",
+    "s": 1.7138453530000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/github-checks-api.test.ts",
+    "s": 1.8392361430000004,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/ref-status-invalidation.test.ts",
+    "s": 1.8035413190000003,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/preview/preview-stage.test.tsx",
+    "s": 1.440101459,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/new-task-draft.test.ts",
+    "s": 1.228598721,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/api/live-fallback.test.ts",
+    "s": 1.6059614679999998,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/group-pick.test.ts",
+    "s": 2.135342594,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/last-location.test.ts",
+    "s": 1.522375289,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/github-templates.test.ts",
+    "s": 1.1388802799999995,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/composer/composer-attachments.test.ts",
+    "s": 1.3310776179999997,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/nonblocking-discovery.test.ts",
+    "s": 2.254887853,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/api/live-owner.test.ts",
+    "s": 1.543526419,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/test/transcript-measurements.test.ts",
+    "s": 1.342368769,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/agent-tmpdir.test.ts",
+    "s": 2.896381565,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/use-task-table-columns.test.tsx",
+    "s": 2.2764575359999997,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/preview/input-map.test.ts",
+    "s": 1.382743662,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/application-update/lock.test.ts",
+    "s": 1.247606559,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/fs-browse.test.ts",
+    "s": 2.142298608,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/diff-stat.test.tsx",
+    "s": 1.4814443930000003,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/read-run.test.ts",
+    "s": 1.6367821910000002,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/api/github-pages.test.ts",
+    "s": 1.247501259,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/start-run.test.ts",
+    "s": 2.29091713,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/continue-run.test.ts",
+    "s": 2.1649339420000002,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/sidebar-collapse.test.ts",
+    "s": 1.2870503239999997,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/provider-banner-container.test.tsx",
+    "s": 2.3783948930000007,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/use-document-title.test.ts",
+    "s": 1.188838082,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/pi-teardown.test.ts",
+    "s": 2.939867288,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/directional-usage.test.tsx",
+    "s": 1.4658737780000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/store-history-compression.test.ts",
+    "s": 2.1385377119999998,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/opencode-ui-mapper.test.ts",
+    "s": 1.388305012,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/settings/archive-on-merge-field.test.tsx",
+    "s": 2.1619515299999996,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/project-warmup.test.ts",
+    "s": 1.6644258100000002,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/task-file-scope.test.tsx",
+    "s": 1.391662503,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/project-order.test.ts",
+    "s": 1.4871100469999998,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/artifacts-api.test.ts",
+    "s": 3.014658645,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/recover-autonomous.test.ts",
+    "s": 2.9626633510000002,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/api/sse-reader.test.ts",
+    "s": 1.608333899,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/permission-card.test.tsx",
+    "s": 2.525780613,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/api/project-scope-context.test.tsx",
+    "s": 1.236814287,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/github-list-width.test.ts",
+    "s": 1.4611282380000001,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/thread-open-cards.test.tsx",
+    "s": 2.543474296,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/plan-dock.test.tsx",
+    "s": 1.3589111429999998,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/subagent-replay.test.tsx",
+    "s": 2.7242832779999993,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/plan-review.test.tsx",
+    "s": 2.722735352,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/repo-git/git-sections.test.ts",
+    "s": 1.267324292,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/run-summaries-api.test.ts",
+    "s": 2.4338866259999996,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/file-links.test.ts",
+    "s": 1.5249559520000002,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/preview/task-preview-layout.test.tsx",
+    "s": 2.01476005,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/archive-on-merge-boot.test.ts",
+    "s": 3.6232370809999996,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/automations/scheduler.test.ts",
+    "s": 2.3044384919999996,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/api/live-coordinator.test.ts",
+    "s": 1.6827396490000002,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/diff/diff-fallback.test.tsx",
+    "s": 1.603191792,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/theme-provider.test.tsx",
+    "s": 1.444359426,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/project-rail-expanded.test.ts",
+    "s": 1.4364576320000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/ci-wait/scheduling.test.ts",
+    "s": 1.442004547,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/github/issue-linked-tasks.test.tsx",
+    "s": 3.782950238,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/status-dot.test.tsx",
+    "s": 1.4879321130000005,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/workspace-tools.test.tsx",
+    "s": 2.4939448389999996,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/preview/preview-url.test.ts",
+    "s": 1.2576383979999999,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/composer/dictation.test.tsx",
+    "s": 3.7958873,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/agents-dock.test.tsx",
+    "s": 1.3498882460000003,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/preview/preview-input.test.tsx",
+    "s": 1.6370499879999998,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/settings/notifications-section.test.tsx",
+    "s": 2.5622399249999988,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/sidebar-width.test.ts",
+    "s": 1.4868953509999998,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/settings/appearance.test.tsx",
+    "s": 2.731499272,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/use-now.test.tsx",
+    "s": 1.5130188529999997,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/use-command-shortcut.test.tsx",
+    "s": 1.3319928800000003,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/models-api.test.ts",
+    "s": 3.6025644739999994,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/github-item-api.test.ts",
+    "s": 2.89026883,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/release/manifests.test.ts",
+    "s": 0.119477924,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/queued-messages.test.ts",
+    "s": 2.535973058,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/use-sidebar-sections.test.tsx",
+    "s": 1.287355393,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/sidebar-archive.test.tsx",
+    "s": 2.440485359,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/theme.test.ts",
+    "s": 1.421135647,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/reference-conflict-action.test.tsx",
+    "s": 2.49728503,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/task-refs.test.ts",
+    "s": 0.1714538970000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/project-context-warm.test.ts",
+    "s": 2.3942642619999996,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/test/e2e-wait-discipline.test.ts",
+    "s": 2.009640564,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workspace/home-safety.test.ts",
+    "s": 2.645017736,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/keyboard-inset.test.ts",
+    "s": 1.415045233,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/thread-items-exec-command.test.tsx",
+    "s": 2.934904356,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/use-application-update.test.tsx",
+    "s": 2.7397119349999994,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/stopped-composer.test.ts",
+    "s": 2.2892100849999997,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/ui-state-api.test.ts",
+    "s": 2.4782341850000003,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/conversations.test.ts",
+    "s": 0.15124681899999995,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/automation-cli.test.ts",
+    "s": 1.810987845,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/config-api.test.ts",
+    "s": 2.6728905160000003,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/app-error-boundary.test.tsx",
+    "s": 1.6644183520000002,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/reference-overflow.test.tsx",
+    "s": 3.029109076,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/todos.test.ts",
+    "s": 1.606821972,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/preview/page-dialog.test.tsx",
+    "s": 1.7956871919999997,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/zoomable-image.test.tsx",
+    "s": 1.4540867319999995,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/pill.test.tsx",
+    "s": 1.4498932739999995,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/provider-action-gate.test.ts",
+    "s": 0.24158683199999995,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/list-view.test.tsx",
+    "s": 1.474029656,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/project-router.test.tsx",
+    "s": 1.3929242300000002,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/test/api-client-subpaths.test.ts",
+    "s": 1.1589425740000001,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/run-activity-dock.test.tsx",
+    "s": 4.455418871,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/clone-project-dialog.test.tsx",
+    "s": 4.246330191999999,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/github/github-paging.test.tsx",
+    "s": 1.3905287669999997,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/application-update.test.ts",
+    "s": 2.011509896,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/ellipsis-hidden.test.ts",
+    "s": 1.5837625800000001,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/diff/markdown.test.ts",
+    "s": 1.7813337089999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/runner-runtime.test.ts",
+    "s": 1.582749724,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/thread-scroller-virtualizer.test.tsx",
+    "s": 1.6645298240000002,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/test/project-rail-ready.test.ts",
+    "s": 1.5198016930000002,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/ui/button.test.tsx",
+    "s": 1.8419719430000001,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/ui/toaster.test.tsx",
+    "s": 1.722462801,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/code-editor.test.tsx",
+    "s": 1.71107551,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/subagent-sheet.test.tsx",
+    "s": 4.04031255,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/use-swipe-to-archive.test.tsx",
+    "s": 1.4945949080000003,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/live-routes.test.ts",
+    "s": 2.3745367189999995,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/checkout.test.ts",
+    "s": 3.479489616,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/open-in-app.test.ts",
+    "s": 1.719849042,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/todos-start.test.ts",
+    "s": 2.189183032,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/process-liveness.test.ts",
+    "s": 0.911339002,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "32863026",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "vitest",
+  "startedAt": 1792446201605,
+  "wallS": 73.269,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/server/open-in-file.test.ts",
+    "s": 4.240018024,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/seed-transcript.test.ts",
+    "s": 1.017905702,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/automations/automations-list.test.tsx",
+    "s": 2.480167447,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/github-template-input.test.tsx",
+    "s": 1.4449577780000002,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/provider-banner.test.tsx",
+    "s": 1.552311568,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/reference-status.test.tsx",
+    "s": 3.4428063870000005,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/autosave-gate.test.ts",
+    "s": 3.7154268380000004,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/create-project-dialog.test.tsx",
+    "s": 3.294979238,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/last-location-controller.test.tsx",
+    "s": 1.9940007179999997,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/session-transcript.test.tsx",
+    "s": 3.34664662,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/ui/searchable-popover.test.tsx",
+    "s": 1.7045447870000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/autosave-conflict-guard.test.ts",
+    "s": 2.990623054,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/automations/next-runs-preview.test.tsx",
+    "s": 1.2946487530000002,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/settings/prompt-templates-section.test.tsx",
+    "s": 3.8741461669999997,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/auto-name.test.ts",
+    "s": 2.190881372,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/preview/server-card.test.tsx",
+    "s": 2.036297871,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/step-rail.test.tsx",
+    "s": 1.8108872350000005,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/repo-git/worktrees-panel.test.tsx",
+    "s": 2.873857975,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/task-cli/discovery.test.ts",
+    "s": 2.1786756169999997,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/settings/provider-settings.test.tsx",
+    "s": 3.8615929020000004,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/automations-gate.test.ts",
+    "s": 3.301205573,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/centered-state.test.tsx",
+    "s": 1.5150572459999998,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/settings/bookmarklets-section.test.tsx",
+    "s": 3.1080490530000002,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/automations/automations-route.test.tsx",
+    "s": 3.663137804,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/codex-startup-cancel.test.ts",
+    "s": 3.4338383650000006,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/request-validation.test.ts",
+    "s": 3.696466045,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/discovery.test.ts",
+    "s": 3.7154918120000002,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/design-icons.test.tsx",
+    "s": 1.505367003,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/automations/log.test.tsx",
+    "s": 3.5982206769999996,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/theme-toggle.test.tsx",
+    "s": 1.494609854,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/open-in-cli-resume.test.ts",
+    "s": 2.6194777969999996,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/automations/automation-cli.test.ts",
+    "s": 5.183162952,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/route-parity.test.ts",
+    "s": 4.071759184,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/workspace-events.test.ts",
+    "s": 3.394009373,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/session-process.test.ts",
+    "s": 2.075442939,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/artifacts/cli.test.ts",
+    "s": 3.552857977,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/preview-socket.test.ts",
+    "s": 3.583404263,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/nav-selection.test.tsx",
+    "s": 4.008771418,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/settings/worktrees-section.test.tsx",
+    "s": 3.4742373470000003,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/settings/project-location.test.tsx",
+    "s": 3.9104208859999994,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/test/agent-browser-interact.test.ts",
+    "s": 2.421748096,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/engine-pills.test.ts",
+    "s": 3.8337936970000004,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/project-context.test.ts",
+    "s": 2.41408887,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/providers-api.test.ts",
+    "s": 2.597709019,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/settings/skills-section.test.tsx",
+    "s": 3.164146121,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/contract-subpaths.test.ts",
+    "s": 2.653027913,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/mobile-tab-bar.test.tsx",
+    "s": 2.909323478,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/preview/preview-states.test.tsx",
+    "s": 2.222120159,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/project-switch.client.test.ts",
+    "s": 1.830022762,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/origin-guard.test.ts",
+    "s": 2.6237568090000005,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/mobile-tab-bar-shell.test.tsx",
+    "s": 3.3993652269999997,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/diff/diff-virtualize.test.tsx",
+    "s": 2.804783858,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/settings/agent-config-section.test.tsx",
+    "s": 2.9041796270000004,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/use-project-order.test.tsx",
+    "s": 2.443784167,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/add-project-dialog.test.tsx",
+    "s": 2.7749122820000003,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/omp-input-pipe.test.ts",
+    "s": 3.1738515319999996,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/cursor-print-model-retry.test.ts",
+    "s": 2.6195346369999997,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/tools-menu.test.tsx",
+    "s": 3.4063045100000005,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/held-human-input-liveness.test.ts",
+    "s": 2.8409636110000003,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/preview/preview-pane.test.tsx",
+    "s": 4.2122291789999995,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server-install/platforms/macosx-ngrok.test.ts",
+    "s": 1.7906971630000001,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/run-relationships.test.tsx",
+    "s": 4.025203460999999,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/automations/copy-as-cli-card.test.tsx",
+    "s": 1.761091285,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/codex-provider-failure.test.ts",
+    "s": 3.479330779000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/retention-rematerialize.test.ts",
+    "s": 1.823812107,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/task-webhook-api.test.ts",
+    "s": 3.8939357960000005,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-git/commit-list.test.tsx",
+    "s": 1.839928305,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/reference-chip.test.tsx",
+    "s": 3.1392888240000003,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/picker-pill.test.tsx",
+    "s": 2.7069101330000005,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/workspace-api.test.ts",
+    "s": 3.0987670940000003,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/projects-api.test.ts",
+    "s": 5.456572294,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/github-item-detail.test.tsx",
+    "s": 3.8514165059999996,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/codex-steering.test.ts",
+    "s": 3.1575028780000003,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/recovery-order.test.ts",
+    "s": 3.247583455999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/skill-system-prompt.test.ts",
+    "s": 2.7118970760000005,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/settings/accounts-defaults.test.tsx",
+    "s": 4.187029193,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/autosave-attribution.test.ts",
+    "s": 3.1232830510000005,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/mobile-sidebar-tasks.test.tsx",
+    "s": 4.28548415,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/scoped-recovery.test.ts",
+    "s": 3.319766229,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/runs-index-api.test.ts",
+    "s": 3.390434973,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/dry-run-backends.test.ts",
+    "s": 3.2543982020000004,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/settings/project-general.test.tsx",
+    "s": 4.056374464,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/repo-git/repo-git.test.tsx",
+    "s": 4.672549216,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/create-project-api.test.ts",
+    "s": 4.032268888000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/health-forge.test.ts",
+    "s": 2.656867688,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/cursor-print-capabilities.test.ts",
+    "s": 3.0178295840000002,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/settings/settings.test.tsx",
+    "s": 4.399399052,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-git/task-files.test.tsx",
+    "s": 4.7751719249999995,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server-install/strategies.test.ts",
+    "s": 1.6049680149999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/application-update/windows.test.ts",
+    "s": 3.7131753749999996,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/handoff-action.test.tsx",
+    "s": 4.767690285999999,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/repo-git/git-sidebar.test.tsx",
+    "s": 5.079120284,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/new-task-project.test.tsx",
+    "s": 5.068754178000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/store.test.ts",
+    "s": 4.243538592,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/cross-project-task-navigation.test.tsx",
+    "s": 4.369822153,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/workflows/workflows.test.tsx",
+    "s": 4.773767003,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/codex-permission-recovery.test.ts",
+    "s": 3.7780683340000003,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/continuation-tools.test.ts",
+    "s": 2.4469111719999996,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/attachments-api.test.ts",
+    "s": 3.2802187360000006,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/codex-ui-mapper.test.ts",
+    "s": 4.570288499999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/worktree-setup.test.ts",
+    "s": 3.0521863029999996,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/composer/composer.test.tsx",
+    "s": 5.080173783,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/skills.test.tsx",
+    "s": 5.106968568,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/host-guard.test.ts",
+    "s": 3.5166305089999996,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/thread-items.test.tsx",
+    "s": 4.819047122000001,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/sidebar-project-header.test.tsx",
+    "s": 4.596376725,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/agent-profiles-api.test.ts",
+    "s": 3.7531530949999996,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/compare-variants.test.tsx",
+    "s": 4.612256374,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/health-topic.test.ts",
+    "s": 4.112471385,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/team-skill-materialize.test.ts",
+    "s": 4.467880534,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/run-header-mobile.test.tsx",
+    "s": 5.783525480000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/context.test.ts",
+    "s": 4.555732066000001,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/automations/editor.test.tsx",
+    "s": 5.2004813709999995,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/github/github-route-wiring.test.tsx",
+    "s": 4.779876376,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/sidebar-limits.test.tsx",
+    "s": 5.727235661000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/store-transcript-facts.test.ts",
+    "s": 3.78733707,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/run-isolation.test.ts",
+    "s": 4.116074842,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/delegation-cleanup.test.ts",
+    "s": 4.437055252,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/run-store-unavailable-cli.test.ts",
+    "s": 4.5955515469999995,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/settings/projects-section.test.tsx",
+    "s": 5.417317172,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/retention-wiring.test.ts",
+    "s": 5.201961437,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/run-preview.test.ts",
+    "s": 4.140168221,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/preview/preview-toolbar.test.tsx",
+    "s": 3.5612646179999996,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/markdown.test.tsx",
+    "s": 3.6038537629999996,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/application-update/service.test.ts",
+    "s": 2.9858663839999995,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/codex-permissions.test.ts",
+    "s": 4.187874396,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/diff/diff.test.tsx",
+    "s": 3.8959196990000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/provider-action-gating.test.ts",
+    "s": 4.534480510000001,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/inbox.test.tsx",
+    "s": 6.337017141000002,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/settings/sidebar-section.test.tsx",
+    "s": 5.413758306,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/repo-branches-api.test.ts",
+    "s": 5.481169234000001,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/settings/agents-section.test.tsx",
+    "s": 4.903953365,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/thread-scroller.test.tsx",
+    "s": 3.9632738459999994,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/routes.test.ts",
+    "s": 6.178010623,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/run-relationships.test.ts",
+    "s": 6.079023181,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/settings/accounts-section.test.tsx",
+    "s": 5.785213285,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/automations/store.test.ts",
+    "s": 4.87746191,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/discovery/cli.test.ts",
+    "s": 5.234468909,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/mobile-projects.test.tsx",
+    "s": 5.663923680999999,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/test/agent-browser-failure.test.ts",
+    "s": 5.421339754,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/worker-inbox-liveness.test.ts",
+    "s": 5.715054467,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/artifacts/store.test.ts",
+    "s": 2.081166394,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/run-lease.test.ts",
+    "s": 3.2027033,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/task-quick-list.test.tsx",
+    "s": 6.858519929999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/run-store-benchmark-fixture.test.ts",
+    "s": 4.683430607,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/settings/resources-section.test.tsx",
+    "s": 3.587531879999999,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/project-switch.integration.test.tsx",
+    "s": 3.6013462230000006,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/scratch-cleanup.test.ts",
+    "s": 6.938223173,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/owned-input-failure.test.ts",
+    "s": 6.700469375000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/run-ownership-controls.test.ts",
+    "s": 4.8199350139999995,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/skills-remote.test.ts",
+    "s": 2.5366339000000004,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/unread-liveness.test.ts",
+    "s": 4.972202397999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/preview/chromium.test.ts",
+    "s": 2.3864931129999998,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/follow-up-engine.test.tsx",
+    "s": 5.592941989999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/automations-prompt.test.ts",
+    "s": 3.2510724210000004,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/run-claims.test.ts",
+    "s": 5.7079341999999995,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/pi-steering.test.ts",
+    "s": 5.095520862000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/delegation-transcript-reads.test.ts",
+    "s": 5.838462335,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/command-palette.test.tsx",
+    "s": 7.788131869,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/api/run-history.test.tsx",
+    "s": 5.040363586000001,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/app-shell.test.tsx",
+    "s": 9.205087908000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/automations-api.test.ts",
+    "s": 6.026979891999999,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/components/application-update-handoff.test.tsx",
+    "s": 8.825347421,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-git/task-changes.test.tsx",
+    "s": 5.027095579,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/github/github-sidebar-filters.test.tsx",
+    "s": 10.209455706,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/lib/project-switch.test.ts",
+    "s": 1.993064295,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/api/queries.test.tsx",
+    "s": 7.915149355999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/git-changes.test.ts",
+    "s": 11.281836025,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/fixture-cleanup.test.ts",
+    "s": 7.462078021000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/opencode-steering.test.ts",
+    "s": 6.851950820999999,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-github/task-github-item.test.tsx",
+    "s": 10.500576675,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/prelaunch-cancel.test.ts",
+    "s": 7.7679182010000005,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/headless-repo-handle.test.ts",
+    "s": 8.629959211999997,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/global-tasks.test.tsx",
+    "s": 10.790301200000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/grouped-command.test.ts",
+    "s": 6.8279906200000005,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/transcript-facts-startup.test.ts",
+    "s": 3.62252829,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/delegation-wire-gate.test.ts",
+    "s": 5.990446424000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/results.test.ts",
+    "s": 9.159804034999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/repo-branches.test.ts",
+    "s": 9.977767060999998,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/autosave-report.test.ts",
+    "s": 9.78329498,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/destroy-observation.test.ts",
+    "s": 9.040806798000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/skill-resume-continuation.test.ts",
+    "s": 7.776663494,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/preview/dev-server.test.ts",
+    "s": 7.486048865,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/opencode-server-runner.test.ts",
+    "s": 7.6887862810000005,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/task-cli/cli.test.ts",
+    "s": 10.941541780999998,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/check-stop-kill.test.ts",
+    "s": 8.417775673,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/owned-attach-placement.test.ts",
+    "s": 10.321865622999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/finishability.test.ts",
+    "s": 10.387406294999998,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/worktree-setup-parity.test.ts",
+    "s": 10.138870123999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/claude-ui-mapper.test.ts",
+    "s": 6.780298783,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/conversation-questions.test.ts",
+    "s": 9.853739885,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/test/fixture-server-start.test.ts",
+    "s": 11.003030636000002,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/api/global-events.test.tsx",
+    "s": 12.820778267999998,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/git-worktree.test.ts",
+    "s": 6.155040379000001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/conversation-batch-ack.test.ts",
+    "s": 12.228710157,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/retention-enforce.test.ts",
+    "s": 5.463661503999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/repo-pull.test.ts",
+    "s": 13.925032845999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/git-worktree-lock.test.ts",
+    "s": 5.668486830999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/autosave-timeout.test.ts",
+    "s": 10.176800639,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/autosave-task-branch.test.ts",
+    "s": 9.085038586,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "11df4042",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "vitest",
+  "startedAt": 1792446275581,
+  "wallS": 108.829,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/preview/host-teardown.test.ts",
+    "s": 10.671190398999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/transcript-facts-queue.test.ts",
+    "s": 4.5541327009999995,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes.test.tsx",
+    "s": 13.041839319000001,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/test/agent-browser-wait-value.test.ts",
+    "s": 14.994008725,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/review-panel.test.tsx",
+    "s": 3.238884308,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/server/worktrees-api.test.ts",
+    "s": 14.924905065999999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/ci-wait-registration.test.ts",
+    "s": 16.522427435,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/destruction-results.test.ts",
+    "s": 17.722915248,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/ci-wait/supervisor.test.ts",
+    "s": 13.515761837,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/runs/store-import.test.ts",
+    "s": 15.150411320999998,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/ci-wait/process.test.ts",
+    "s": 13.727822613,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/unread-input.test.ts",
+    "s": 15.768040115,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/git-worktree-race.test.ts",
+    "s": 15.514084403,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/session-signal-cli.test.ts",
+    "s": 16.684164715999998,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/task-thread/task-thread.test.tsx",
+    "s": 13.358021057000002,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/workspace-semaphore.test.ts",
+    "s": 20.127573997999995,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/new-task.test.tsx",
+    "s": 21.538274472000005,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/conversation-resume.test.ts",
+    "s": 22.923102829,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/opencode-serve-retry.test.ts",
+    "s": 18.886601694,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/task-cli/watch.test.ts",
+    "s": 19.869655548000004,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/tasks-overview.test.tsx",
+    "s": 22.352724934,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/human-waits.test.ts",
+    "s": 29.772673386,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/runner-shutdown-parity.test.ts",
+    "s": 26.83820189699999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/auto-resume.test.ts",
+    "s": 28.895552227000003,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/claude-cli-runner.test.ts",
+    "s": 27.843640045,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/harness-autosave.test.ts",
+    "s": 31.638877771000004,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/ci-wait-parity.test.ts",
+    "s": 41.37507535099999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/harness-autosave-branch.test.ts",
+    "s": 40.45899054,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/worktree-setup-run.test.ts",
+    "s": 36.975309102,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/worker-location-evidence.test.ts",
+    "s": 44.27534417100001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/model-identity-wiring.test.ts",
+    "s": 39.575234935,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/delegation-integration.test.ts",
+    "s": 42.65125117,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/workflow-timeout-parity.test.ts",
+    "s": 44.744082768999995,
+    "stored": true
+   },
+   {
+    "id": "web\u0000packages/web/src/routes/github/github.test.tsx",
+    "s": 46.84470042900001,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/workspace.test.ts",
+    "s": 62.66793972699999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/owned-input-delivery.test.ts",
+    "s": 58.908469892,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/service.test.ts",
+    "s": 57.98696728499999,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/pasted-attachments.test.ts",
+    "s": 51.559480918,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/worker-reboot-parity.test.ts",
+    "s": 57.814552531,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "5e0d31b3",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "vitest",
+  "startedAt": 1792446384829,
+  "wallS": 576.598,
+  "end": "completed",
+  "files": [
+   {
+    "id": "server\u0000packages/cezar/src/workflows/worker-restart-parity.test.ts",
+    "s": 57.82501414,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/delegation/provision-workflows.test.ts",
+    "s": 58.49304809,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/worker-waits.test.ts",
+    "s": 55.144563346,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/workflow-followup-parity.test.ts",
+    "s": 92.43503271599998,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/core/workflow-no-progress-parity.test.ts",
+    "s": 145.110590929,
+    "stored": true
+   },
+   {
+    "id": "server\u0000packages/cezar/src/workflows/waits-parity.test.ts",
+    "s": 576.0308563429999,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "f60d36f0",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792446961754,
+  "wallS": 25.862,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/inbox.e2e.ts",
+    "s": 3.395452187,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "0af8c7f3",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792446988354,
+  "wallS": 4.916,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/tools-menu.e2e.ts",
+    "s": 4.0528339970000005,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "b2d1fd91",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792446993801,
+  "wallS": 5.559,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/screenshot-element.e2e.ts",
+    "s": 4.400998637,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "4b438b27",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447449938,
+  "wallS": 4.048,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/command-palette.e2e.ts",
+    "s": 2.689917729,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "91de7930",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447454715,
+  "wallS": 5.338,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/project-sidebar.e2e.ts",
+    "s": 4.905677465999999,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "9ba65873",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447460283,
+  "wallS": 3.437,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/sidebar-ellipsis-click.e2e.ts",
+    "s": 2.945347951,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "fb3c1ff8",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447463991,
+  "wallS": 3.133,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/skills-update.e2e.ts",
+    "s": 2.6734054910000005,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "9b889af2",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447467373,
+  "wallS": 4.415,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/settings-task-archiving.e2e.ts",
+    "s": 3.962226355,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "d4d82b79",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447472173,
+  "wallS": 5.192,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/github-paging.e2e.ts",
+    "s": 4.444080777,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "71c0854d",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447477634,
+  "wallS": 6.049,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/settings-agents.e2e.ts",
+    "s": 5.501252028000001,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "11c4b7e5",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447484112,
+  "wallS": 4.731,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/agent-browser-tabs.e2e.ts",
+    "s": 4.080487321,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "958facac",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447489117,
+  "wallS": 3.528,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/settings-bookmarklets.e2e.ts",
+    "s": 3.107724553,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "3e20775a",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447492867,
+  "wallS": 3.022,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/empty-states.e2e.ts",
+    "s": 2.556040685,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "2a70384e",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447496121,
+  "wallS": 2.814,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/settings-resources.e2e.ts",
+    "s": 2.3529083440000003,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "aef7b279",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447499203,
+  "wallS": 4.128,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/commit-list.e2e.ts",
+    "s": 3.6879186139999995,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "08612264",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447503555,
+  "wallS": 3.895,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/settings-agent-config.e2e.ts",
+    "s": 3.4664176469999997,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "b8eeef9d",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447507672,
+  "wallS": 5.814,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/settings-appearance.e2e.ts",
+    "s": 4.4413529679999995,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "adc05bc0",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447513711,
+  "wallS": 4.851,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/skill-search-ranking.e2e.ts",
+    "s": 4.383517616,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "d756670f",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447518775,
+  "wallS": 4.552,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/project-order.e2e.ts",
+    "s": 4.123466426,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "94e197af",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447523548,
+  "wallS": 5.003,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/settings-monitoring.e2e.ts",
+    "s": 4.549978171,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "81e45f01",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447529398,
+  "wallS": 4.771,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/create-project.e2e.ts",
+    "s": 4.308158669,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "26596c95",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447534398,
+  "wallS": 5.228,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/settings-sidebar.e2e.ts",
+    "s": 4.816815631,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "da235dea",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447539859,
+  "wallS": 7.931,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/settings-skills.e2e.ts",
+    "s": 6.279637704999999,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "e3d29df7",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447549875,
+  "wallS": 7.139,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/chat-code-fence.e2e.ts",
+    "s": 6.550824921999999,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "438a62d5",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447557301,
+  "wallS": 6.04,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/assistant-line-breaks.e2e.ts",
+    "s": 5.543960061,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "dae695ce",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447563567,
+  "wallS": 5.594,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/issue-linked-tasks.e2e.ts",
+    "s": 5.189865501,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "1cc60401",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447569424,
+  "wallS": 6.273,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/assistant-reply-copy.e2e.ts",
+    "s": 5.673948150999999,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "5f1108b0",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447575949,
+  "wallS": 6.415,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/diff-scroll.e2e.ts",
+    "s": 6.005876639,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "ae6b3125",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447582568,
+  "wallS": 6.568,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/worktree-setup.e2e.ts",
+    "s": 6.167759202999999,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "2243b038",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447589351,
+  "wallS": 6.867,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/automations.e2e.ts",
+    "s": 6.441440258000001,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "038a5f38",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447596421,
+  "wallS": 8.266,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/composer-defaults.e2e.ts",
+    "s": 7.045409944999999,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "97f3cf9a",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447604906,
+  "wallS": 6.905,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/repo-git-diff.e2e.ts",
+    "s": 6.4852955119999995,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "23108a27",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447612002,
+  "wallS": 10.741,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/variants-compare.e2e.ts",
+    "s": 10.293193325,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "aa3b16ed",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447623066,
+  "wallS": 10.771,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/artifact-project-links.e2e.ts",
+    "s": 10.23155722,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "e30928d5",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447634054,
+  "wallS": 10.241,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/page-headings.e2e.ts",
+    "s": 9.840126893,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "4493bed4",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447644534,
+  "wallS": 9.697,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/markdown-preview.e2e.ts",
+    "s": 8.957176249,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "af11ece3",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447654445,
+  "wallS": 9.331,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/live-preview.e2e.ts",
+    "s": 8.699866376,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "e7efaaea",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447663999,
+  "wallS": 10.433,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/task-handoff.e2e.ts",
+    "s": 9.62596139,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "e4d267a4",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447674670,
+  "wallS": 11.394,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/new-task.e2e.ts",
+    "s": 10.889404973,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "2e206d35",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447686421,
+  "wallS": 12.823,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/repo-git.e2e.ts",
+    "s": 12.228391908,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "db6d1382",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447699578,
+  "wallS": 12.517,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/run-header-ci-wait.e2e.ts",
+    "s": 12.102392974999999,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "7b096f6e",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447712334,
+  "wallS": 10.566,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/sidebar-project-header.e2e.ts",
+    "s": 10.145844821999999,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "86fc540a",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447723132,
+  "wallS": 10.316,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/github-core.e2e.ts",
+    "s": 9.856562635,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "45233034",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447733664,
+  "wallS": 11.518,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/sidebar-limits.e2e.ts",
+    "s": 10.582355751,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "5082d943",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447745748,
+  "wallS": 12.375,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/composer.e2e.ts",
+    "s": 11.849404434,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "11997ac4",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447758453,
+  "wallS": 17.718,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/github-states.e2e.ts",
+    "s": 16.513408559,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "34595d66",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447776399,
+  "wallS": 10.855,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/task-changes.e2e.ts",
+    "s": 10.446761728,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "287bfd3c",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447787481,
+  "wallS": 11.647,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/task-github-items.e2e.ts",
+    "s": 11.008541346999998,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "597580be",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447799697,
+  "wallS": 13.987,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/agents-dock.e2e.ts",
+    "s": 13.514911116999999,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "b1d22f2a",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447814146,
+  "wallS": 14.812,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/mobile-projects.e2e.ts",
+    "s": 14.11941655,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "37bb0f00",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447829235,
+  "wallS": 14.825,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/workflows.e2e.ts",
+    "s": 14.299671693,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "c28bbc29",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447844356,
+  "wallS": 14.439,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/task-files.e2e.ts",
+    "s": 13.931933098000002,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "9ef24031",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447859101,
+  "wallS": 14.427,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/ios-sweep.e2e.ts",
+    "s": 13.931204549000002,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "74ee652a",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447873773,
+  "wallS": 15.248,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/plan-mode.e2e.ts",
+    "s": 14.792274739,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "81f513fa",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447889258,
+  "wallS": 17.67,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/progressive-history.e2e.ts",
+    "s": 17.236316892999998,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "8053a106",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447907155,
+  "wallS": 16.292,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/smoke.e2e.ts",
+    "s": 15.839596439000001,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "994a6bc7",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447923636,
+  "wallS": 16.764,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/worker-conversation.e2e.ts",
+    "s": 16.374197307000003,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "429f136c",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447940613,
+  "wallS": 22.191,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/mobile-tab-bar.e2e.ts",
+    "s": 21.71465285,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "02794137",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447963049,
+  "wallS": 14.759,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/git-sidebar.e2e.ts",
+    "s": 14.328699532,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "c9f872ae",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792447978030,
+  "wallS": 22.992,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/task-pr-collection.e2e.ts",
+    "s": 22.586446782,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "5aab1f45",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792448001227,
+  "wallS": 21.577,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/project-rail.e2e.ts",
+    "s": 21.174992352,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "7809c859",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792448023079,
+  "wallS": 23.385,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/good-css.e2e.ts",
+    "s": 22.951739113,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "ff28c80a",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792448046658,
+  "wallS": 22.725,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/mobile-task-controls.e2e.ts",
+    "s": 22.355274448,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "15a5b191",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792448069571,
+  "wallS": 25.575,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/search-focus.e2e.ts",
+    "s": 25.195270603,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "927d2bee",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792448095381,
+  "wallS": 26.066,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/new-task-picker-layout.e2e.ts",
+    "s": 25.678520986000002,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "3c901408",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792448121722,
+  "wallS": 27.481,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/github-sidebar.e2e.ts",
+    "s": 27.087513346,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "87ebb765",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792448149473,
+  "wallS": 34.676,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/queued-stack.e2e.ts",
+    "s": 34.170869183,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "b21467aa",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792448184747,
+  "wallS": 42.671,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/new-task-hierarchy.e2e.ts",
+    "s": 41.534259358,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "20f93a9c",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792448378337,
+  "wallS": 82.294,
+  "end": "completed",
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/worker-relationships.e2e.ts",
+    "s": 81.32601795500001,
+    "stored": true
+   }
+  ]
+ },
+ {
+  "id": "7e8816b4",
+  "revision": 104,
+  "route": "backlog",
+  "lane": "slow",
+  "startedAt": 1792448461177,
+  "wallS": null,
+  "end": null,
+  "files": [
+   {
+    "id": "e2e\u0000packages/web/e2e/review-gate.e2e.ts",
+    "s": 0,
+    "stored": false
+   }
+  ]
+ }
+]

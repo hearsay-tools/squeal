@@ -1,0 +1,14 @@
+┌─────────┬─────────────────────────────────────────────────────┬─────────────┬───────────┬──────┬───────┬──────┬────────┬────────┬─────────┬───────┬───────────────────────┐
+│ (index) │ rule                                                │ lane        │ meanDoneS │ sumS │ files │ endS │ at2min │ at5min │ at10min │ tiers │ editWaitS             │
+├─────────┼─────────────────────────────────────────────────────┼─────────────┼───────────┼──────┼───────┼──────┼────────┼────────┼─────────┼───────┼───────────────────────┤
+│ 0       │ 'edit route, tierSize 4 (0.1.224)'                  │ 'vitest'    │ 1588      │ 6852 │ 740   │ 2574 │ 72     │ 84     │ 88      │ 186   │ '116 mean, 577 worst' │
+│ 1       │ 'edit route, tierSize 4 (0.1.224)'                  │ 'node:test' │ 24        │ 313  │ 55    │ 140  │ 48     │ 55     │ 55      │ 15    │ '38 mean, 102 worst'  │
+│ 2       │ 'edit route, tierSize 12 (cezar stopgap)'           │ 'vitest'    │ 1013      │ 6852 │ 740   │ 1520 │ 84     │ 96     │ 107     │ 65    │ '165 mean, 577 worst' │
+│ 3       │ 'edit route, tierSize 12 (cezar stopgap)'           │ 'node:test' │ 14        │ 313  │ 55    │ 124  │ 51     │ 55     │ 55      │ 6     │ '43 mean, 102 worst'  │
+│ 4       │ 'first group at backlog width (uncancelled)'        │ 'vitest'    │ 621       │ 6852 │ 740   │ 929  │ 82     │ 82     │ 82      │ 7     │ '197 mean, 577 worst' │
+│ 5       │ 'first group at backlog width (uncancelled)'        │ 'node:test' │ 65        │ 313  │ 55    │ 165  │ 54     │ 55     │ 55      │ 2     │ '44 mean, 102 worst'  │
+│ 6       │ 'third group, backlog route (cancelled by an edit)' │ 'vitest'    │ 621       │ 6852 │ 740   │ 929  │ 82     │ 82     │ 82      │ 7     │ '≤ 6 (cancel)'        │
+│ 7       │ 'third group, backlog route (cancelled by an edit)' │ 'node:test' │ 14        │ 313  │ 55    │ 139  │ 54     │ 55     │ 55      │ 55    │ '0 (beside)'          │
+│ 8       │ 'third group, one class shortest first'             │ 'vitest'    │ 51        │ 6852 │ 740   │ 857  │ 710    │ 733    │ 733     │ 6     │ '≤ 6 (cancel)'        │
+│ 9       │ 'third group, one class shortest first'             │ 'node:test' │ 12        │ 313  │ 55    │ 132  │ 54     │ 55     │ 55      │ 55    │ '0 (beside)'          │
+└─────────┴─────────────────────────────────────────────────────┴─────────────┴───────────┴──────┴───────┴──────┴────────┴────────┴─────────┴───────┴───────────────────────┘

@@ -1,0 +1,44 @@
+[
+ {
+  "T": 5,
+  "moves": 26,
+  "movesRekeyed": 6907,
+  "noMove": 37,
+  "noMoveRekeyed": 2541
+ },
+ {
+  "T": 10,
+  "moves": 14,
+  "movesRekeyed": 4654,
+  "noMove": 22,
+  "noMoveRekeyed": 142
+ },
+ {
+  "T": 20,
+  "moves": 11,
+  "movesRekeyed": 3725,
+  "noMove": 19,
+  "noMoveRekeyed": 122
+ },
+ {
+  "T": 30,
+  "moves": 8,
+  "movesRekeyed": 2673,
+  "noMove": 19,
+  "noMoveRekeyed": 122
+ },
+ {
+  "T": 50,
+  "moves": 7,
+  "movesRekeyed": 2335,
+  "noMove": 17,
+  "noMoveRekeyed": 110
+ },
+ {
+  "T": 100,
+  "moves": 5,
+  "movesRekeyed": 2323,
+  "noMove": 4,
+  "noMoveRekeyed": 32
+ }
+]

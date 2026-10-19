@@ -1,0 +1,8 @@
+load 52.2
+(a) storer, one 200-file tier (200 keys): 3.8 ms for 645 other worktrees' rows at those keys
+(b) receiver, keys recorded in a 1 s window during the run-all: 0.02 ms, 0 keys
+(b) receiver, keys recorded in a 30 s window during the run-all: 1.53 ms, 200 keys
+(b) receiver, an empty window: 0.017 ms
+(c) receiver, re-look-up of 876 stale keys: 12.3 ms (9 with results)
+foreign sink.refresh's begin(): 74.0 ms to list 20284 state and key rows of one worktree
+data_version read: 0.028 ms
