@@ -130,6 +130,7 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
     slowWidth: (testFiles) => inner?.slowWidth?.(testFiles) ?? testFiles.length,
     tierWidth: (testFile, grant) =>
       inner?.tierWidth?.(testFile, grant) ?? options.tierWidth?.(testFile, grant) ?? grant,
+    tierPart: (testFile) => inner?.tierPart?.(testFile) ?? "",
     environment: () => around(async () => (await adapter()).environment()),
     run: (testFiles, runOptions) =>
       around(async () => (await adapter()).run(testFiles, runOptions)),

@@ -91,6 +91,22 @@ describe("scheduler: a backlog tier is budgeted by its wall time (C4 step 5, tas
     await side.scheduler.idle();
   });
 
+  it("sums the estimates of parts that run one after another (review wave-3 B1)", async () => {
+    // Eight 1 s files, 4 wide, B = 2 s: as one part a tier takes 5 (1.25 + 0.75 = 2 s); as
+    // eight node:test projects of one lane, which a composite runs in turn, 5 would take 5 s.
+    const durations = Array(8).fill(1_000);
+    const one = wallSide({ durations, hostSlots: 4, timeoutMs: 4_000, tierWidth: () => 4 });
+    expect((await one.backlog()).map((t) => t.files.length)).toEqual([5, 3]);
+    const parts = wallSide({
+      durations,
+      hostSlots: 4,
+      timeoutMs: 4_000,
+      tierWidth: () => 4,
+      tierPart: (f) => f.path,
+    });
+    expect((await parts.backlog()).map((t) => t.files.length)).toEqual([2, 2, 2, 2]);
+  });
+
   it("caps the wall estimate at half of runner.timeoutMs when that is less than 120 s", async () => {
     // 16 files of 1 s, 4 wide, a 4 s timeout: the budget is 2 s, so a round of 4 and one more.
     const side = wallSide({ durations: Array(16).fill(1_000), hostSlots: 4, timeoutMs: 4_000 });

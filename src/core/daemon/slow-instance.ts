@@ -58,6 +58,7 @@ export function withSlowInstance(
     slowWidth: (testFiles) => fast.slowWidth?.(testFiles) ?? testFiles.length,
     // A backlog tier runs on the fast instance (task 001-366).
     tierWidth: (testFile, grant) => fast.tierWidth?.(testFile, grant) ?? grant,
+    tierPart: (testFile) => fast.tierPart?.(testFile) ?? "",
     environment: () => fast.environment(),
     ...(lane === undefined ? {} : { lane }),
     async run(testFiles, options) {

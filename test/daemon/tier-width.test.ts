@@ -65,5 +65,9 @@ describe("runners: the width of a backlog tier (task 001-366)", () => {
     await composite.testFiles();
     expect(composite.tierWidth?.({ project: "", path: "test/a.test.ts" }, 1)).toBe(2);
     expect(composite.tierWidth?.({ project: "other", path: "other/a" }, 23)).toBe(3);
+    // The composite runs its owners in turn, so their files are parts of a tier (review wave-3 B1).
+    const part = (project: string, path: string) => composite.tierPart?.({ project, path });
+    expect(part("", "test/a.test.ts")).toBe(part("", "test/b.test.ts"));
+    expect(part("", "test/a.test.ts")).not.toBe(part("other", "other/a"));
   });
 });
