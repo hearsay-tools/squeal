@@ -69,7 +69,7 @@ A new spec starts with one `/researcher` per open topic, in parallel, from a bri
 
 ## Quality
 
-After a spec ships, or about every ten landed rows, spawn one `/quality` over that stretch. Its findings become rows or drop candidates; it never edits the board and never gates a merge. Beside it, run the eval baseline on the stretch's last commit (`node evals/bin/run-baseline.mjs`, spec 006), commit its results and `evals/results/TREND.md`, and bring the human any flagged drop, false final claim or forbidden edit *(Squeal)*.
+After a spec ships, or about every ten landed rows, spawn one `/quality` over that stretch. Its findings become rows or drop candidates; it never edits the board and never gates a merge. Beside it, run the evals on the stretch's last commit as `docs/process.md` 6b says (atomic tier, then the baseline, on the models it names; spec 006 D7), commit their results, `ATOMIC.md` and `TREND.md`, and bring the human any flagged drop, false final claim or forbidden edit *(Squeal)*. No release waits for an eval (human, 2026-10-19).
 
 ## Proof
 
