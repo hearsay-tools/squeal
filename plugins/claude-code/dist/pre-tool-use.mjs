@@ -108,6 +108,7 @@ var WORKTREE_META_ROWS = {
   daemonRest: { prefix: "daemon-rest:", owner: "types/daemon" },
   daemonStopped: { prefix: "daemon-stopped:", owner: "delivery/stopped" },
   slowTier: { prefix: "slow-tier:", owner: "slow/state" },
+  slowEvidence: { prefix: "slow-evidence:", owner: "slow/rank-store" },
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
   failureProducers: { prefix: "failure-producers:", owner: "state/producers" },
   reruns: { prefix: "reruns:", owner: "scheduler/rerun-memory" },
@@ -164,7 +165,16 @@ var DEFAULT_POLICY = {
   nodeTest: [],
   pytest: [],
   vitest: { excludeProjects: [], exclude: [] },
-  slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 6e5, maxParallel: 4 },
+  slow: {
+    include: [],
+    maxWorkers: 2,
+    maxLoadPerCpu: 1,
+    maxDeferMs: 6e5,
+    maxParallel: 4,
+    rank: "tokens",
+    trigger: "continuous",
+    quietMs: 3e3
+  },
   delivery: { uncoveredEdits: true },
   daemon: { idleExitMinutes: 60, unusedExitMinutes: 30 },
   store: { retentionDays: 7, maxSizeMb: null }
@@ -574,7 +584,11 @@ var SHAPE = {
     maxWorkers: positiveInteger,
     maxLoadPerCpu: aboveZero,
     maxDeferMs: atLeastZero,
-    maxParallel: positiveInteger
+    maxParallel: positiveInteger,
+    rank: oneOf("tokens", "duration"),
+    // Spec 004 D2, D7 as amended 2026-10-18 (row 004-80).
+    trigger: oneOf("continuous", "idle"),
+    quietMs: atLeastZero
   },
   delivery: { uncoveredEdits: boolean2 },
   daemon: { idleExitMinutes: aboveZero, unusedExitMinutes: aboveZero },
@@ -1090,7 +1104,8 @@ function slowPolicyView(policy) {
   return {
     isSlow: slowFiles(policy, policy.nodeTest),
     slowGlobs: globs2,
-    stopWaitMs: stopSlowWaitMs(policy)
+    stopWaitMs: stopSlowWaitMs(policy),
+    pausesOnly: policy.slow.trigger === "idle"
   };
 }
 function worktreeSlowView(store, worktreeId) {
@@ -1134,7 +1149,8 @@ function readSlowTier(store, worktreeId, states, keys, view) {
     currentAt,
     ...currentUpTo !== null && currentUpTo !== currentAt ? { currentUpTo } : {},
     activity: liveActivity(store, worktreeId, keys, view.isSlow),
-    ...view.stopWaitMs === null ? {} : { stopWaitMs: view.stopWaitMs }
+    ...view.stopWaitMs === null ? {} : { stopWaitMs: view.stopWaitMs },
+    ...view.pausesOnly ? { pausesOnly: true } : {}
   };
 }
 function liveActivity(store, worktreeId, keys, isSlow) {
@@ -1398,9 +1414,13 @@ function stopText(tier) {
   if (tier.stopWaitMs !== void 0) {
     return `Stop waits up to ${durationText(tier.stopWaitMs)} for them or holds the agent once`;
   }
-  if (tier.notRun === 0) return "Squeal runs them when the agent pauses";
+  const when = slowRunsWhen(tier);
+  if (tier.notRun === 0) return `Squeal runs them ${when}`;
   if (tier.pending === 0) return "Squeal has not queued them";
-  return "Squeal runs the pending ones when the agent pauses and has not queued the rest";
+  return `Squeal runs the pending ones ${when} and has not queued the rest`;
+}
+function slowRunsWhen(tier) {
+  return tier.pausesOnly === true ? "when the agent pauses" : "after the fast tests";
 }
 function capitalized(text) {
   return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
@@ -5662,7 +5682,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.220";
+  if (true) return "0.1.221";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
