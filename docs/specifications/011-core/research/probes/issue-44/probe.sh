@@ -7,6 +7,8 @@
 # ones. Starts that repo's daemon, edits one test file, runs a named wait on it,
 # stops the daemon and removes the temp dir.
 set -u
+# Coordinator guard added after the recorded run; do not start above CPU capacity.
+python3 -c 'import os, sys; load=os.getloadavg()[0]; cpus=os.cpu_count(); print(f"load guard: {load}, CPUs: {cpus}"); sys.exit(0 if load <= cpus else 3)' || exit 3
 cli=$1 n=${2:-25}
 tmp=$(mktemp -d)
 export HOME="$tmp/home" XDG_CONFIG_HOME="$tmp/home/.config" XDG_DATA_HOME="$tmp/home/.local/share" \
