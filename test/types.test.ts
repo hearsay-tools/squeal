@@ -28,6 +28,8 @@ describe("core types", () => {
         maxDeferMs: 600_000,
         maxParallel: 4,
         rank: "tokens",
+        trigger: "continuous",
+        quietMs: 3_000,
       },
       delivery: { uncoveredEdits: true },
       daemon: { idleExitMinutes: 60, unusedExitMinutes: 30 },
