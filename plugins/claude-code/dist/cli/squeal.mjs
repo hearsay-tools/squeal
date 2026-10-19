@@ -1354,7 +1354,7 @@ var KEY_FORMAT_VERSION;
 var init_key_format = __esm({
   "src/core/keys/key-format.ts"() {
     "use strict";
-    KEY_FORMAT_VERSION = 14;
+    KEY_FORMAT_VERSION = 15;
   }
 });
 
@@ -6365,6 +6365,7 @@ function createRecoveringRunner(options) {
     slowWidth: (testFiles) => inner?.slowWidth?.(testFiles) ?? testFiles.length,
     tierWidth: (testFile, grant) => inner?.tierWidth?.(testFile, grant) ?? options.tierWidth?.(testFile, grant) ?? grant,
     tierPart: (testFile) => inner?.tierPart?.(testFile) ?? "",
+    besideBacklog: () => options.besideBacklog === true,
     environment: () => around(async () => (await adapter()).environment()),
     run: (testFiles, runOptions) => around(async () => (await adapter()).run(testFiles, runOptions)),
     close: () => around(async () => {
@@ -11748,6 +11749,18 @@ import { join as join38 } from "node:path";
 function laneOf(context, ref2) {
   return laneFor(context.policy, ref2, context.runner.lane?.(ref2) ?? "");
 }
+function busyLanes(context, ledger, inFlight) {
+  const held2 = /* @__PURE__ */ new Map();
+  for (const tier of inFlight) held2.set(tier.lane, [...held2.get(tier.lane) ?? [], tier]);
+  const busy = /* @__PURE__ */ new Set();
+  for (const [lane, tiers] of held2) {
+    const only = tiers.length === 1 ? tiers[0] : void 0;
+    const lead = only?.cancel === null ? void 0 : only?.files[0]?.file.ref;
+    const beside = lead !== void 0 && context.runner.besideBacklog?.(lead) === true && ledger.queue.hasFirstGroup((ref2) => laneOf(context, ref2) === lane);
+    if (!beside) busy.add(lane);
+  }
+  return busy;
+}
 function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
   const { keys, policy } = context;
   const picked = [];
@@ -14385,7 +14398,10 @@ var init_scheduler2 = __esm({
       #pumping = null;
       /** The runner work being applied beside the tiers in flight (task 001-140). */
       #draining = null;
-      /** The tiers in flight by lane, at most one per lane; a backlog tier carries its `cancel`. */
+      /**
+       * The tiers in flight by run id: one per lane, or an edit's beside a backlog tier (`busyLanes`,
+       * task 011-21); a backlog tier carries its `cancel`.
+       */
       #inFlight = /* @__PURE__ */ new Map();
       /** A `run --all` with `observeIgnored` (task 001-307). */
       #warmUp = new WarmUp();
@@ -14665,7 +14681,7 @@ var init_scheduler2 = __esm({
       }
       slowPending() {
         if (this.#closed || !this.#ledger) return false;
-        if ([...this.#inFlight.keys()].some(isSlowLane)) return true;
+        if (this.#lanes().some(isSlowLane)) return true;
         return this.#ledger.orderedSlow().length > 0;
       }
       owedWork() {
@@ -14776,7 +14792,7 @@ var init_scheduler2 = __esm({
                   return null;
                 }
                 if (this.#runnerWork.size > 0) return "runner-work";
-                return selectTier(context, ledger, new Set(this.#inFlight.keys()));
+                return selectTier(context, ledger, this.#busyLanes());
               });
               this.#busy?.landed();
               if (next === "runner-work") continue;
@@ -14879,12 +14895,12 @@ var init_scheduler2 = __esm({
           } finally {
             slow?.slot.release();
             tier.lease?.release();
-            this.#inFlight.delete(tier.lane);
+            this.#inFlight.delete(tier.runId);
             if (slow === null) this.#slow.preempt();
             this.#notify();
           }
         })();
-        this.#inFlight.set(tier.lane, { tier, done });
+        this.#inFlight.set(tier.runId, { tier, done });
       }
       /**
        * The slow pass of `lane` drained: no file of it is queued, so its runner
@@ -14900,10 +14916,24 @@ var init_scheduler2 = __esm({
           (error) => this.#backgroundError(`could not close the runner of lane ${lane}`, error)
         );
       }
-      /** A fast file whose lane has no tier in flight is queued. */
+      /** A fast file whose lane may take a tier is queued. */
       #freeLaneQueued() {
         const { context, ledger } = this.#started();
-        return ledger.queue.hasFast((ref2) => !this.#inFlight.has(laneOf(context, ref2)));
+        const busy = this.#busyLanes();
+        return ledger.queue.hasFast((ref2) => !busy.has(laneOf(context, ref2)));
+      }
+      /** The lanes no tier may start in now. */
+      #busyLanes() {
+        const { context, ledger } = this.#started();
+        return busyLanes(
+          context,
+          ledger,
+          [...this.#inFlight.values()].map(({ tier }) => tier)
+        );
+      }
+      /** The lane of each tier in flight. */
+      #lanes() {
+        return [...this.#inFlight.values()].map(({ tier }) => tier.lane);
       }
       /** Applies the queued runner work beside the tiers in flight, unless it is already being applied. */
       #drain() {
@@ -14986,7 +15016,7 @@ var init_scheduler2 = __esm({
       #fastIdle() {
         const work = this.#runnerWork;
         if (work.size > 0 || work.refining || (this.#ledger?.queue.fastSize ?? 0) > 0) return false;
-        return [...this.#inFlight.keys()].every(isSlowLane);
+        return this.#lanes().every(isSlowLane);
       }
       /**
        * The pump may ask the slow tier: nothing is in flight (it then also ends
@@ -14996,7 +15026,7 @@ var init_scheduler2 = __esm({
       #slowMayStart() {
         if (this.#inFlight.size === 0) return true;
         if ((this.#ledger?.queue.slowSize ?? 0) === 0) return false;
-        if ([...this.#inFlight.keys()].some(isSlowLane)) return false;
+        if (this.#lanes().some(isSlowLane)) return false;
         return !this.#editPending();
       }
       #retireSlow() {
@@ -38646,6 +38676,8 @@ function createNodeTestRunners(projects2, options) {
       }),
       // A run starts `runner.tierSize` files at once whatever its grant (task 001-366).
       tierWidth: () => options.tierSize(),
+      // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
+      besideBacklog: true,
       onFailure: (text2) => options.note(`${text2} (node-test project ${JSON.stringify(project.name)})`),
       onRecovered: () => options.note(`node-test project ${JSON.stringify(project.name)} started`)
     })
@@ -47175,6 +47207,8 @@ function createPytestRunners(projects2, options) {
       }),
       // A run starts `runner.tierSize` processes at once whatever its grant (task 001-366).
       tierWidth: () => options.tierSize(),
+      // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
+      besideBacklog: true,
       onFailure: (text2) => options.note(`${text2} (pytest project ${JSON.stringify(project.name)})`),
       onRecovered: () => options.note(`pytest project ${JSON.stringify(project.name)} started`)
     });
@@ -47281,6 +47315,7 @@ function createCompositeRunner(adapters) {
       if (owner2 === void 0) return "";
       return `${adapters.indexOf(owner2)}:${owner2.tierPart?.(testFile) ?? ""}`;
     },
+    besideBacklog: (testFile) => owners.get(testFile.project)?.besideBacklog?.(testFile) ?? false,
     async run(testFiles, options) {
       const groups = /* @__PURE__ */ new Map();
       for (const testFile of testFiles) {
@@ -47411,6 +47446,7 @@ function withSlowInstance(fast, createSlow) {
     // A backlog tier runs on the fast instance (task 001-366).
     tierWidth: (testFile, grant) => fast.tierWidth?.(testFile, grant) ?? grant,
     tierPart: (testFile) => fast.tierPart?.(testFile) ?? "",
+    besideBacklog: (testFile) => fast.besideBacklog?.(testFile) ?? false,
     environment: () => fast.environment(),
     ...lane === void 0 ? {} : { lane },
     async run(testFiles, options) {
@@ -47452,7 +47488,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.223";
+  if (true) return "0.1.224";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -50363,11 +50399,15 @@ function afterEachRun(runner, children, note) {
     slowWidth: (testFiles) => runner.slowWidth?.(testFiles) ?? testFiles.length,
     tierWidth: (testFile, grant) => runner.tierWidth?.(testFile, grant) ?? grant,
     tierPart: (testFile) => runner.tierPart?.(testFile) ?? "",
+    besideBacklog: (testFile) => runner.besideBacklog?.(testFile) ?? false,
     environment: () => runner.environment(),
     ...lane === void 0 ? {} : { lane },
     ...releaseLane === void 0 ? {} : { releaseLane },
     async run(testFiles, options) {
       const at2 = laneOf2(testFiles, options);
+      const lead = testFiles[0];
+      const overlaps2 = lead !== void 0 && runner.besideBacklog?.(lead) === true;
+      const mark = overlaps2 ? `${at2}#${options.runId}` : at2;
       const since = children.mark();
       if (inFlight === 0) {
         first = since;
@@ -50376,9 +50416,9 @@ function afterEachRun(runner, children, note) {
       if (!overlapped.includes(options.runId)) overlapped.push(options.runId);
       inFlight += 1;
       const settled = new AbortController();
-      const lowering = lowerWhile(children, at2, since, settled.signal);
+      const lowering = lowerWhile(children, mark, since, settled.signal);
       try {
-        const childEnv2 = { ...options.childEnv, ...children.envFor(at2) };
+        const childEnv2 = { ...options.childEnv, ...children.envFor(mark) };
         return await runner.run(testFiles, { ...options, lane: at2, childEnv: childEnv2 });
       } finally {
         settled.abort();
@@ -50386,7 +50426,7 @@ function afterEachRun(runner, children, note) {
         inFlight -= 1;
         const alone = inFlight === 0 ? first : null;
         const runs = [...overlapped];
-        const stop2 = await children.afterRun(at2, since, alone, options.runId, runs).catch(() => null);
+        const stop2 = await children.afterRun(mark, since, alone, options.runId, runs).catch(() => null);
         if (stop2 !== null) note(stop2);
       }
     },
