@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-import type { PoolLease } from "../capacity/index.js";
+import { defaultHostSlots, type PoolLease } from "../capacity/index.js";
 import type { StatCache } from "../hash/index.js";
 import { listedDirectory, testFileId } from "../keys/index.js";
 import type { CheckKey, Provenance, RelativePath, RunReport, TestFileRef } from "../types/index.js";
-import { backlogBudget } from "./backlog.js";
-import { WAIT_FOR_CAPACITY } from "./capacity.js";
+import { BacklogWall, backlogBudget } from "./backlog.js";
+import { WAIT_FOR_CAPACITY, widthLease } from "./capacity.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { rerunGrown } from "./environment-growth.js";
 import type { FileState } from "./files.js";
@@ -91,11 +91,14 @@ export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
  * files are never in these tiers (spec 004 D2, `selectSlowTier`).
  *
  * While no queued file is recent or promoted (spec 011 C15), the tier is
- * the backlog's: up to `runner.backlogTierSize` files and `backlogBudget` of
- * last-known file time, cancelled by the next edit (D5 step 5 as amended,
- * task 001-124; lessons, defect 25: 559 tiers of 4 took 4.6 h where one
- * `npm test` took 514 s). The budget bounds the selection, not the run:
- * unknown durations count 0 and the first file is always taken.
+ * the backlog's: up to `runner.backlogTierSize` files, cancelled by the next
+ * edit (D5 step 5 as amended, task 001-124; lessons, defect 25: 559 tiers of
+ * 4 took 4.6 h where one `npm test` took 514 s). It takes one file per
+ * worker it will run with at the grant the pool offers (`tierWidth`), then
+ * more while their estimated wall time stays within `backlogBudget`
+ * (`BacklogWall`, spec 011 C4 step 5 as amended, task 001-366). The budget
+ * bounds the selection, not the run: unknown durations count 0 and the
+ * first round is always taken.
  *
  * A tier holds the files of one lane, the lane of the first file it takes;
  * files of a lane in `busy`, which has a tier in flight, stay queued and
@@ -119,7 +122,9 @@ export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
  *
  * A backlog tier takes its grant from the per-user pool after its files are
  * picked and before `startTier` claims their keys, so a daemon that waits for
- * capacity holds no claim (D11 Capacity, task 001-376). It waits only while
+ * capacity holds no claim (D11 Capacity, task 001-376). It asks for no more
+ * workers than its runner runs it with, and a grant below the offer trims
+ * the picked tail to the same rule at the grant (task 001-366). It waits only while
  * another lane's backlog tier of this daemon has its free worker and no
  * permit is free: that tier's end wakes the pump. An edit's tier takes no
  * grant and never waits on the pool.
@@ -134,8 +139,9 @@ export function selectTier(
   ledger.claims.begin();
   const backlog = !ledger.queue.hasFirstGroup((ref) => !busy.has(laneOf(context, ref)));
   let size = backlog ? ledger.claims.backlogSize(ledger.queue.fastSize) : policy.runner.tierSize;
-  const budget = backlog ? backlogBudget(policy.runner.timeoutMs) : Number.POSITIVE_INFINITY;
-  let known = 0;
+  // Without a pool a runner runs as wide as its own default: CPUs − 1 for Vitest and node:test.
+  const offer = backlog ? (context.capacity?.offer(size) ?? defaultHostSlots()) : 0;
+  const wall = backlog ? new BacklogWall(backlogBudget(policy.runner.timeoutMs)) : null;
   let span: TierSpan | null = null;
   let tookBacklog = false;
   let lane: string | null = null;
@@ -169,8 +175,7 @@ export function selectTier(
       if (joined === null) continue;
       span = joined;
     }
-    known += file.durationMs ?? 0;
-    if (picked.length > 0 && known > budget) break;
+    if (wall !== null && !wall.take(file.durationMs, tierWidth(context, ref, offer))) break;
     tookBacklog ||= !recent && !ledger.queue.isPromoted(ref);
     lane = at;
     size = cap;
@@ -178,10 +183,20 @@ export function selectTier(
     const inputs = keys.stabilityPaths(ref);
     picked.push({ file, key, inputs, checkpointId, forced, recent, waits });
   }
-  const lease = picked.length > 0 && backlog ? context.capacity?.take(picked.length) : null;
-  if (lease === WAIT_FOR_CAPACITY) {
+  const width = backlog ? widest(context, picked) : 0;
+  const taken = picked.length > 0 && backlog ? context.capacity?.take(width) : null;
+  if (taken === WAIT_FOR_CAPACITY) {
     ledger.commit();
     return null;
+  }
+  const lease = taken ? widthLease(taken, width) : taken;
+  if (lease && lease.grant < Math.min(width, offer)) {
+    // Granted less than offered (another daemon took permits meanwhile): the prefix that fits.
+    const fits = new BacklogWall(backlogBudget(policy.runner.timeoutMs));
+    const keep = picked.findIndex(
+      (p) => !fits.take(p.file.durationMs, tierWidth(context, p.file.ref, lease.grant)),
+    );
+    if (keep !== -1) picked.splice(keep);
   }
   let tier: Tier | null = null;
   try {
@@ -199,6 +214,17 @@ export function selectTier(
   // A result recorded since the lookup settled a pick in the start: the queue moved (review wave 13o, B1).
   const settled = picked.some((p) => !ledger.queue.has(p.file.ref));
   return settled ? selectTier(context, ledger, busy) : null;
+}
+
+/** How many files a backlog tier holding `ref` runs at once at `grant` workers (task 001-366). */
+function tierWidth(context: SchedulerContext, ref: TestFileRef, grant: number): number {
+  return Math.max(1, context.runner.tierWidth?.(ref, grant) ?? grant);
+}
+
+/** The workers a backlog tier of `picked` asks the pool for: no more than its runner runs it with. */
+function widest(context: SchedulerContext, picked: readonly TierFile[]): number {
+  const widths = picked.map((p) => tierWidth(context, p.file.ref, picked.length));
+  return Math.min(picked.length, Math.max(1, ...widths));
 }
 
 /**

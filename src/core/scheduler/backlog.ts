@@ -4,14 +4,15 @@ import type { Ledger } from "./ledger.js";
 import { laneOf, type Tier } from "./tiers.js";
 
 /**
- * Last-known file time a backlog tier selects at most, and at most half of
- * `runner.timeoutMs`, summed as if the files ran one after another (task
- * 001-124). It limits what is selected, not how long the tier runs: a file
- * with no known duration counts 0, the first file is always taken, a file
- * can run slower than it last did, and a tier cut short by the run deadline
- * or a cancel gets a grace before it is forced (review wave 12b, S1).
+ * The estimated wall time a backlog tier selects at most, and at most half
+ * of `runner.timeoutMs` (spec 011 C4 step 5 as amended 2026-10-19, task
+ * 001-366, `research/backlog-wall-budget.md`; the human chose 120 s). It
+ * limits what is selected, not how long the tier runs: a file with no known
+ * duration counts 0, the first round is always taken, a file can run slower
+ * than it last did, and a tier cut short by the run deadline or a cancel
+ * gets a grace before it is forced (review wave 12b, S1).
  */
-export const BACKLOG_TIER_BUDGET_MS = 300_000;
+export const BACKLOG_TIER_BUDGET_MS = 120_000;
 
 /**
  * Whether `revision` cancels a backlog tier in flight (D5 step 5 as
@@ -43,4 +44,45 @@ export function backlogBudget(timeoutMs: number | null): number {
   return timeoutMs === null
     ? BACKLOG_TIER_BUDGET_MS
     : Math.min(BACKLOG_TIER_BUDGET_MS, timeoutMs / 2);
+}
+
+/**
+ * List scheduling's bound on the wall time of files of `sum` and `longest`
+ * last-known time over `width` workers, in any start order: `sum / W +
+ * (1 − 1/W) × longest` (task 001-366: `max(longest, sum / W)` gave 93 s for
+ * a node:test tier that took 168 s).
+ */
+export function wallEstimate(sum: number, longest: number, width: number): number {
+  return sum / width + (1 - 1 / width) * longest;
+}
+
+/**
+ * A backlog tier's files as they are picked (spec 011 C4 step 5, task
+ * 001-366): one per worker the tier runs with, then more while
+ * `wallEstimate` of their last-known durations stays within `budget`. The
+ * tier runs as wide as the narrowest of its files' widths.
+ */
+export class BacklogWall {
+  #count = 0;
+  #sum = 0;
+  #longest = 0;
+  #width = Number.POSITIVE_INFINITY;
+
+  constructor(private readonly budget: number) {}
+
+  /**
+   * Whether a file of `durationMs`, `null` when unknown and counted 0, joins
+   * a tier it runs `width` wide in; it is counted when it does.
+   */
+  take(durationMs: number | null, width: number): boolean {
+    const w = Math.max(1, Math.min(this.#width, Math.floor(width)));
+    const sum = this.#sum + (durationMs ?? 0);
+    const longest = Math.max(this.#longest, durationMs ?? 0);
+    if (this.#count >= w && wallEstimate(sum, longest, w) > this.budget) return false;
+    this.#count += 1;
+    this.#sum = sum;
+    this.#longest = longest;
+    this.#width = w;
+    return true;
+  }
 }
