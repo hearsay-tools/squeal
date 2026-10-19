@@ -378,11 +378,10 @@ export class VitestAdapter implements RunnerAdapter {
   testFiles(): Promise<readonly TestFileRef[]> {
     return this.#part(async (vitest) => {
       const specs = await vitest.globTestSpecifications();
-      const listed = supported(specs);
-      this.#omitted = specs.length - listed.length;
-      return this.#covered(listed)
-        .map((s) => this.#ref(s))
-        .sort(compareRefs);
+      // A file `vitest.exclude` drops is left out too: a bare `vitest run` still runs it (005 D8 step 3).
+      const covered = this.#covered(supported(specs));
+      this.#omitted = specs.length - covered.length;
+      return covered.map((s) => this.#ref(s)).sort(compareRefs);
     });
   }
 

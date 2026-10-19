@@ -106,6 +106,15 @@ describe("the one-time deny of a test command Squeal has answered (spec 005 D8)"
     expect(testCommandDenied(r.store, r.consumer())).toBe(false);
   });
 
+  it("runs every Vitest command while vitest.exclude drops a file, the listing's count aside (review 004 wave-12 B2)", async () => {
+    // The last listing recorded nothing left out; the live policy still decides.
+    const r = await answered({ ...ON, vitest: { exclude: ["test/e2e/**"] } });
+    for (const command of ["npx vitest run", "npx vitest run math", "vitest run test/e2e"]) {
+      expect(await preToolUse(r, bash(command))).toEqual(SILENT);
+    }
+    expect(testCommandDenied(r.store, r.consumer())).toBe(false);
+  });
+
   it("runs a command one of whose files is pending", async () => {
     const r = await answered();
     r.queue("k2");
