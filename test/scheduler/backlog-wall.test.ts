@@ -65,14 +65,14 @@ describe("scheduler: a backlog tier is budgeted by its wall time (C4 step 5, tas
 
   it("holds at most a node:test lane's width in permits, and the other lane runs beside it with the rest", async () => {
     // Files 0-8 are a node:test project's, run `runner.tierSize` (4) wide; 9-24 another lane's.
-    const nodeTest = (path: string) => Number(path.match(/f(\d+)/)?.[1]) < 9;
+    const inNodeLane = (path: string) => Number(path.match(/f(\d+)/)?.[1]) < 9;
     // 9 files of 5 to 20 s fit 4 wide: 28 s + 15 s estimated.
     const durations = [...spread(9, 5_000, 20_000), ...heavy];
     const side = wallSide({
       durations,
       hostSlots: 23,
-      lane: (f) => (nodeTest(f.path) ? "node-test" : "vitest"),
-      tierWidth: (f, grant) => (nodeTest(f.path) ? 4 : grant),
+      lane: (f) => (inNodeLane(f.path) ? "node-test" : "vitest"),
+      tierWidth: (f, grant) => (inNodeLane(f.path) ? 4 : grant),
     });
     await side.scheduler.start();
     await side.scheduler.idle();
@@ -81,8 +81,8 @@ describe("scheduler: a backlog tier is budgeted by its wall time (C4 step 5, tas
     await side.scheduler.requestFullSuite({ force: true });
     await expect.poll(() => side.runner.active).toBe(2);
     const tiers = side.runner.runs.slice(before);
-    const nt = tiers.find((t) => t.files.every((f) => nodeTest(f.path)));
-    const vt = tiers.find((t) => t.files.every((f) => !nodeTest(f.path)));
+    const nt = tiers.find((t) => t.files.every((f) => inNodeLane(f.path)));
+    const vt = tiers.find((t) => t.files.every((f) => !inNodeLane(f.path)));
     expect(nt?.files).toHaveLength(9);
     expect(nt?.workers).toBe(4);
     expect(vt?.files).toHaveLength(16);
