@@ -45,10 +45,10 @@ A node:test or pytest lane runs its backlog as up to W slots: each holds one per
 - `scheduler.ts`:
   - `InFlight.ran`. When a slot's run ends, the slot releases its lease and frees its place in the lane (`#busyLanes` ignores flights that `ran`), so the pump starts the next file while the slot records.
   - `#ended` holds the record's reads outside the lock (warm-up read, completion barrier, install stamp). `#record(ended, commit)` is the body that runs under the lock.
-  - `#recordSlot` gathers. It waits outside the lock for `max(SLOT_GATHER_MS = 25, SLOT_GATHER_COMMITS = 3 × the last commit of slots)`, then takes every slot that ended until none is left and commits them once.
+  - `SlotRecords` (`slot-records.ts`, new) gathers. It waits outside the lock for `max(SLOT_GATHER_MS = 25, SLOT_GATHER_COMMITS = 3 × the last commit of slots)`, then takes every slot that ended until none is left and commits them once. `test/scheduler/slot-records.test.ts` covers it.
   - The pump fills every free slot in one lock hold.
 - Why records gather: each commit's sink call lists every known state (`mergeApplied`), 55 to 340 ms on cezar's store, and the node:sqlite call holds the thread. Slots that end during a commit are not seen until it ends. Without the gather, ends stagger and commits stay near one per file: 224 of 300 at a 100 ms sink, 1.61 times one tier; 300 at 50 ms, 1.39 times.
-- `KEY_FORMAT_VERSION` 16, hash `bc4febe6…0c02`. `test/version-sensitive.txt` lists `test/scheduler/backlog-slots`.
+- `KEY_FORMAT_VERSION` 16, hash `054b5d7c…7e9c`. `test/version-sensitive.txt` lists `test/scheduler/backlog-slots`.
 
 ## Tests (the brief's done-when; red on main at 89a69023 in a detached worktree)
 
