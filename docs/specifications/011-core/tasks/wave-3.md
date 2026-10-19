@@ -60,3 +60,9 @@ Read W1 above, spec 011 C4 step 5 and C10 Capacity as amended 2026-10-19 (`statu
 - the seven done-when tests prove the rule (red on main where the notes say so), and `KEY_FORMAT_VERSION` 14 is right against the released 13.
 
 Run `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once in the candidate tree; a file that fails loaded and passes alone is named. Write `reviews/wave-3.md` with a PASS or FAIL verdict and commit it.
+
+## W2r: 001-366, re-review of the repaired cand/0.1.223
+
+Use /reviewer. Shape: review, bounded. Pinned to the `cand/0.1.223` SHA named in the spawn; the repair is `79f1d5fe..<sha>`. Read `reviews/wave-3.md` (B1, S1, the settled behaviour list) and append a "Re-review" section to it.
+
+Check only that: B1 is closed (`RunnerAdapter.tierPart`, `BacklogWall` summing parts, the composite and every wrapper passing it through, the first round the first part's) and its regression test is red without the fix; S1 is closed; the single-part behaviour you settled is unchanged; the `KEY_FORMAT_VERSION` 14 re-pin and the regenerated bundles match the tree. New findings outside the repair are recorded for later rows, not blockers. The coordinator's gate on this SHA: 736 files passed, 1 skipped, 803 s. Run one `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` only if the repair delta gives you reason to doubt it, and say which.
