@@ -3,6 +3,7 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { observedMetaKey } from "../../src/core/keys/observed.js";
 import { RETRIES_META_KEY, RUN_LOADS_META_KEY } from "../../src/core/retry/index.js";
+import { slowTokensMetaKey } from "../../src/core/slow/rank-store.js";
 import { FLAKY_META_KEY } from "../../src/core/state/flaky.js";
 import { RERUN_FIRST_META_KEY } from "../../src/core/state/rerun-first.js";
 import { META_STORE_RECOVERED } from "../../src/core/store/open.js";
@@ -33,6 +34,7 @@ const SHARED_KEY_FUNCTIONS = [
   "nodeTestObservedPreloadsMetaKey",
   "pytestObservedMetaKey",
   "pytestObservedSessionMetaKey",
+  "slowTokensMetaKey",
 ];
 /** `meta` key constants of rows shared across worktrees. */
 const SHARED_KEY_CONSTANTS = [
@@ -72,6 +74,7 @@ describe("worktree removal and its meta rows (task 001-254, review wave 13u S1)"
       nodeTestObservedPreloadsMetaKey("gone"),
       pytestObservedMetaKey("gone"),
       pytestObservedSessionMetaKey("gone"),
+      slowTokensMetaKey("gone"),
       "unlisted:gone",
     ];
     for (const key of shared) store.meta.set(key, "{}");
