@@ -7,7 +7,7 @@ import { createPytestRunners } from "../../src/core/daemon/pytest-runners.js";
 import type { AbsolutePath } from "../../src/core/types/index.js";
 import { findPython, pythonEnv } from "../helpers/pytest-env.js";
 import { createRepo, openHarness, openRepoStore } from "./helpers.js";
-import { timedRunner } from "./slots-fixture.js";
+import { timedRunner } from "./timed-runner.js";
 
 /*
  * Task 011-21 slice 2, done-when 5 (spec 011 C4 step 5 as amended for slots,
