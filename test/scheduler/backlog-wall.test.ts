@@ -1,3 +1,4 @@
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { poolPermitFile } from "../../src/core/capacity/index.js";
@@ -55,12 +56,24 @@ describe("scheduler: a backlog tier is budgeted by its wall time (C4 step 5, tas
     // At 5 workers: the round of 5, then while the estimate stays within 120 s.
     let keep = 5;
     while (keep < ordered.length && wallOf(ordered.slice(0, keep + 1), 5) <= BUDGET_MS) keep++;
-    expect(first?.files).toHaveLength(keep);
+    // C4 order, shortest first: the started tier is the prefix, the rest stays queued in order
+    // (review wave-3 S1).
+    const expected = heavy
+      .map((d, i) => ({ d, path: fileName(i) }))
+      .sort((x, y) => x.d - y.d)
+      .map((f) => f.path);
+    expect(first?.files.map((f) => f.path)).toEqual(expected.slice(0, keep));
     expect(first?.workers).toBe(5);
+    const marks = readdirSync(side.dir)
+      .filter((name) => name.startsWith("pool.mark.") && !name.endsWith(".tmp"))
+      .map(
+        (name) => JSON.parse(readFileSync(join(side.dir, name), "utf8")) as Record<string, unknown>,
+      );
+    expect(marks).toEqual([expect.objectContaining({ grant: 5, want: keep })]);
     side.runner.release();
     await side.scheduler.idle();
     const later = side.runner.runs.slice(before + 1).flatMap((t) => t.files);
-    expect(new Set([...(first?.files ?? []), ...later].map((f) => f.path)).size).toBe(16);
+    expect(later.map((f) => f.path)).toEqual(expected.slice(keep));
   });
 
   it("holds at most a node:test lane's width in permits, and the other lane runs beside it with the rest", async () => {
@@ -118,7 +131,10 @@ describe("scheduler: a backlog tier is budgeted by its wall time (C4 step 5, tas
     }
   });
 
-  it("still takes 200 light files a tier, a file of no known duration counting 0", async () => {
+  // 600 files' records take seconds; it timed out at the 5 s default at load 63 (review wave-3).
+  it("still takes 200 light files a tier, a file of no known duration counting 0", {
+    timeout: 60_000,
+  }, async () => {
     const light = spread(600, 100, 3_000);
     const side = wallSide({ durations: light, hostSlots: 23 });
     const tiers = await side.backlog();
