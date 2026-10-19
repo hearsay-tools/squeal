@@ -6364,6 +6364,7 @@ function createRecoveringRunner(options) {
     omittedTestFiles: () => inner?.omittedTestFiles?.() ?? 0,
     slowWidth: (testFiles) => inner?.slowWidth?.(testFiles) ?? testFiles.length,
     tierWidth: (testFile, grant) => inner?.tierWidth?.(testFile, grant) ?? options.tierWidth?.(testFile, grant) ?? grant,
+    tierPart: (testFile) => inner?.tierPart?.(testFile) ?? "",
     environment: () => around(async () => (await adapter()).environment()),
     run: (testFiles, runOptions) => around(async () => (await adapter()).run(testFiles, runOptions)),
     close: () => around(async () => {
@@ -11788,7 +11789,8 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
       if (joined === null) continue;
       span = joined;
     }
-    if (wall !== null && !wall.take(file.durationMs, tierWidth(context, ref2, offer))) break;
+    if (wall !== null && !wall.take(file.durationMs, tierWidth(context, ref2, offer), partOf(context, ref2)))
+      break;
     tookBacklog ||= !recent && !ledger.queue.isPromoted(ref2);
     lane = at2;
     size = cap2;
@@ -11806,7 +11808,11 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
   if (lease && lease.grant < Math.min(width, offer)) {
     const fits = new BacklogWall(backlogBudget(policy.runner.timeoutMs));
     const keep = picked.findIndex(
-      (p) => !fits.take(p.file.durationMs, tierWidth(context, p.file.ref, lease.grant))
+      (p) => !fits.take(
+        p.file.durationMs,
+        tierWidth(context, p.file.ref, lease.grant),
+        partOf(context, p.file.ref)
+      )
     );
     if (keep !== -1) picked.splice(keep);
   }
@@ -11826,6 +11832,9 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
 }
 function tierWidth(context, ref2, grant) {
   return Math.max(1, context.runner.tierWidth?.(ref2, grant) ?? grant);
+}
+function partOf(context, ref2) {
+  return context.runner.tierPart?.(ref2) ?? "";
 }
 function widest(context, picked) {
   const widths = picked.map((p) => tierWidth(context, p.file.ref, picked.length));
@@ -12117,24 +12126,33 @@ var init_backlog = __esm({
         this.budget = budget;
       }
       budget;
-      #count = 0;
-      #sum = 0;
-      #longest = 0;
-      #width = Number.POSITIVE_INFINITY;
+      #parts = /* @__PURE__ */ new Map();
+      #first = null;
       /**
        * Whether a file of `durationMs`, `null` when unknown and counted 0, joins
-       * a tier it runs `width` wide in; it is counted when it does.
+       * a tier where its part runs `width` wide; it is counted when it does.
        */
-      take(durationMs2, width) {
-        const w2 = Math.max(1, Math.min(this.#width, Math.floor(width)));
-        const sum = this.#sum + (durationMs2 ?? 0);
-        const longest2 = Math.max(this.#longest, durationMs2 ?? 0);
-        if (this.#count >= w2 && wallEstimate(sum, longest2, w2) > this.budget) return false;
-        this.#count += 1;
-        this.#sum = sum;
-        this.#longest = longest2;
-        this.#width = w2;
+      take(durationMs2, width, part = "") {
+        const was = this.#parts.get(part) ?? { count: 0, sum: 0, longest: 0, width: Infinity };
+        const w2 = Math.max(1, Math.min(was.width, Math.floor(width)));
+        const next = {
+          count: was.count + 1,
+          sum: was.sum + (durationMs2 ?? 0),
+          longest: Math.max(was.longest, durationMs2 ?? 0),
+          width: w2
+        };
+        const firstRound = (this.#first ?? part) === part && was.count < w2;
+        if (!firstRound && this.#estimate(part, next) > this.budget) return false;
+        this.#first ??= part;
+        this.#parts.set(part, next);
         return true;
+      }
+      /** The tier's wall estimate with `part` as `next`: its parts' estimates summed. */
+      #estimate(part, next) {
+        let total = wallEstimate(next.sum, next.longest, next.width);
+        for (const [name2, p] of this.#parts)
+          if (name2 !== part) total += wallEstimate(p.sum, p.longest, p.width);
+        return total;
       }
     };
   }
@@ -47257,6 +47275,12 @@ function createCompositeRunner(adapters) {
     },
     // A backlog tier holds one lane, so one owner's files (task 001-366).
     tierWidth: (testFile, grant) => owners.get(testFile.project)?.tierWidth?.(testFile, grant) ?? grant,
+    // `run` below runs the owners one after another (review wave-3 B1).
+    tierPart(testFile) {
+      const owner2 = owners.get(testFile.project);
+      if (owner2 === void 0) return "";
+      return `${adapters.indexOf(owner2)}:${owner2.tierPart?.(testFile) ?? ""}`;
+    },
     async run(testFiles, options) {
       const groups = /* @__PURE__ */ new Map();
       for (const testFile of testFiles) {
@@ -47386,6 +47410,7 @@ function withSlowInstance(fast, createSlow) {
     slowWidth: (testFiles) => fast.slowWidth?.(testFiles) ?? testFiles.length,
     // A backlog tier runs on the fast instance (task 001-366).
     tierWidth: (testFile, grant) => fast.tierWidth?.(testFile, grant) ?? grant,
+    tierPart: (testFile) => fast.tierPart?.(testFile) ?? "",
     environment: () => fast.environment(),
     ...lane === void 0 ? {} : { lane },
     async run(testFiles, options) {
@@ -50337,6 +50362,7 @@ function afterEachRun(runner, children, note) {
     omittedTestFiles: () => runner.omittedTestFiles?.() ?? 0,
     slowWidth: (testFiles) => runner.slowWidth?.(testFiles) ?? testFiles.length,
     tierWidth: (testFile, grant) => runner.tierWidth?.(testFile, grant) ?? grant,
+    tierPart: (testFile) => runner.tierPart?.(testFile) ?? "",
     environment: () => runner.environment(),
     ...lane === void 0 ? {} : { lane },
     ...releaseLane === void 0 ? {} : { releaseLane },
