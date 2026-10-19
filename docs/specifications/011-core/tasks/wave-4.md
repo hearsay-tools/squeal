@@ -36,3 +36,20 @@ Run `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
 Use /reviewer. Shape: review, bounded. Pinned to the `cand/0.1.224` SHA named in the spawn; the repair is `dae70064..<sha>`. Read `reviews/wave-4.md` (B1, the settled list) and append a "Re-review" section to it.
 
 Check only that B1 is closed: `supersededIn` in `src/core/scheduler/tiers.ts` skips a file whose newer key another run holds or has already stored, at the head of `recordTier`'s per-file loop and in the scheduler's `#requeue`, so a stale run's clear, re-queue, unknown, timeout, discard and checkpoint handling never reach it; a same-key failure, crash or timeout still marks the file as before; tests 3 (the backlog tier records first) and 4 (the backlog tier crashes after the edit's PASS) in `test/scheduler/edit-beside-backlog.test.ts` are red without the repair and green with it; `KEY_FORMAT_VERSION` 15's re-pin and the bundles match the tree. The coordinator's gate on this SHA is reported in the spawn. Anything outside B1 is recorded for a later row, not a blocker.
+
+## W3: 011-21 slice 2, one-file slots for node:test and pytest backlogs
+
+Use /worker. Shape: slice. Read board row 011-21, spec 011 C4 step 5 and C10 as amended for slots 2026-10-19 (`status.md`), `research/streaming-lanes.md` finding 1 (slots, "Per-file overhead") and its Recommendation, `reviews/wave-4.md` (B1 and the stale-run rule, `supersededIn`), and `tasks/011-21/notes.md` (slice 1's seams and its notes for slice 2).
+
+Outcome: a node:test or pytest lane runs its backlog as up to W slots, each starting the next queued file (pytest: the next batch) as it frees and storing that file's results when it ends; Vitest keeps tiers and the cancel.
+
+Seams: `busyLanes` and `selectTier` in `src/core/scheduler/tiers.ts` (a slot lane holds up to W backlog tiers in flight, each of one file or one pytest batch), the scheduler's `#inFlight` (keyed by run id since slice 1), the pool lease (`take(1)` per slot), and the record path's commit (`ledger.commit`, `mergeApplied` in `ledger.ts`: the per-file record is the dear part on a large store, so slots ending while a record holds the lock are recorded together). Lead: `research/probes/streaming-lanes/prototype.patch`'s `SQUEAL_PROTO=stream` path, without the env switch. Whether a lane runs slots comes from the runner, as `besideBacklog` does. Raise `KEY_FORMAT_VERSION` to 16 and pin the printed hash.
+
+Owns: those files, the node:test and pytest adapter seams the patch touches, their tests, new tests under `test/scheduler/`. Write `tasks/011-21/notes.md` (append). Slice 1's tests stay green unchanged.
+
+Done when, each red on main first where it can be (the research's tests 4 to 7, then the pytest open question):
+1. 16 node:test files of 1 to 5 s at W = 4 finish within 5 % of the list-scheduling makespan, no slot idle while files are queued, and checkpoint progress moves per file.
+2. A departure during the backlog exits after the files in flight record; no new file starts; the rest stay queued.
+3. 300 node:test files of about 50 ms run in at most 1.2 times today's single-tier time, with fewer record commits than files.
+4. Another daemon's waiter gets its share within one slot's file of the holder, not one tier.
+5. A pytest lane runs one batch per slot (light files packed, a heavy file alone); measure a small real pytest fixture's backlog against today's tiers and record it, with the load, in the notes.
