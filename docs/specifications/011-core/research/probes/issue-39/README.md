@@ -1,0 +1,7 @@
+# Issue 39 probes (throwaway)
+
+Throwaway research, not part of the test suite. Nothing here is imported by product code, and no `node_modules` exists or is committed.
+
+- `selection.mjs`: run from the repository root with `node --disable-warning=ExperimentalWarning docs/specifications/011-core/research/probes/issue-39/selection.mjs > docs/specifications/011-core/research/probes/issue-39/output.txt`. It records one-minute load and CPU count first and skips itself above the CPU count. It extracts the real `selectNamedFiles`, `validClosures`, `worktreePath` and `realOrNull` from the installed 0.1.222 and 0.1.199 bundles, the checkout source (types stripped by Node) and the committed checkout bundle, the same way the issue-30 probe did (`../../../../005-agent-adoption/research/probes/issue-30/`). Its root is a real `mkdtemp` directory with `packages/cezar/src/core`, so cwd resolution and `realpathSync` run as shipped; the directory is removed afterwards. The store is in memory. It models cezar at `2a5e7a7fb`: two listed unit tests, one source file and 81 browser specs whose closures hold all three (the `packages/web/e2e/*.e2e.ts` input `packages/cezar/src/**`). No daemon, database, runner or browser runs.
+- `output.txt`: the actual run.
+- `live.txt`: six real `squeal status --wait 90000` calls through the installed 0.1.222 CLI in this worktree, from its root and from `test/`. All six timed out unlisted (see the findings, finding 5). Each call appended to this file inside the worktree, which is why the revision went up by one per call.
