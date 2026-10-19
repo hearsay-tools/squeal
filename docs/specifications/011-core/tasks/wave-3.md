@@ -47,3 +47,16 @@ Questions:
 Isolation and load: as R1. Owns: `research/streaming-lanes.md`, `research/probes/streaming-lanes/`.
 
 Done when: the findings file answers 1 to 3 and ends with a recommendation per runner, the C4 sentences it would change, and a slice's done-when as tests.
+
+## W2: 001-366, review of cand/0.1.223
+
+Use /reviewer. Shape: review. Pinned to the `cand/0.1.223` SHA named in the spawn; the range is `origin/main..<sha>`: W1's six commits, the release commit (version 0.1.223 and the bundles) and this brief.
+
+Read W1 above, spec 011 C4 step 5 and C10 Capacity as amended 2026-10-19 (`status.md`), `research/backlog-wall-budget.md` (Recommendation and Slice done-when) and `tasks/001-366/notes.md`. Check that:
+- a backlog tier takes one round at its width, then files while `sum / W + (1 − 1/W) × longest` stays within `backlogBudget`, and edit tiers are unchanged;
+- `offer` in `src/core/capacity/pool.ts` takes nothing and matches `acquire`'s arithmetic; a grant below the offer trims the picked tail and the lease, and a daemon waiting for capacity still holds no claim;
+- node:test and pytest tiers hold and state a demand of at most `runner.tierSize`; slow tiers are unchanged;
+- Vitest's width honours the project's own `maxWorkers` and the floor of 2;
+- the seven done-when tests prove the rule (red on main where the notes say so), and `KEY_FORMAT_VERSION` 14 is right against the released 13.
+
+Run `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once in the candidate tree; a file that fails loaded and passes alone is named. Write `reviews/wave-3.md` with a PASS or FAIL verdict and commit it.
