@@ -25,6 +25,7 @@ import { endRetry, recordFailedLoad, tierLoad } from "./retries.js";
 import { storeClosures } from "./revision.js";
 import { failStartup } from "./setup.js";
 import { joinSpan, type TierSpan } from "./sharing.js";
+import { backlogSlot, joinsSlot } from "./slots.js";
 import { laneFor } from "./slow.js";
 import { changedSince, type Moved, snapshotInputs } from "./stability.js";
 import { storeResults } from "./store-results.js";
@@ -67,6 +68,12 @@ export interface Tier {
   readonly lease?: PoolLease;
   /** The host's load per CPU when the tier started (`tierLoad`, 001-368); `null` when not known. */
   readonly loadPerCpu?: number | null;
+  /**
+   * A backlog slot (`backlogSlot`, spec 011 C4 step 5 as amended for slots,
+   * task 011-21 slice 2): its lane takes the next file once its run ends,
+   * and its record joins the next one.
+   */
+  readonly slot?: boolean;
 }
 
 /**
@@ -78,35 +85,6 @@ export interface Tier {
  */
 export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
   return laneFor(context.policy, ref, context.runner.lane?.(ref) ?? "");
-}
-
-/**
- * The lanes no tier may start in now, of the tiers `inFlight` (`selectTier`'s
- * `busy`): one tier at a time per lane (task 001-140), except that an edit's
- * tier starts beside a backlog tier of a runner that cannot cancel it
- * (`RunnerAdapter.besideBacklog`; spec 011 C4 step 5 as amended 2026-10-19,
- * task 011-21). Such a lane is free while that backlog tier is its only tier
- * in flight and an edit's work of it is queued, so the tier selected is an
- * edit's, with no permit (C10).
- */
-export function busyLanes(
-  context: SchedulerContext,
-  ledger: Ledger,
-  inFlight: readonly Tier[],
-): Set<string> {
-  const held = new Map<string, Tier[]>();
-  for (const tier of inFlight) held.set(tier.lane, [...(held.get(tier.lane) ?? []), tier]);
-  const busy = new Set<string>();
-  for (const [lane, tiers] of held) {
-    const only = tiers.length === 1 ? tiers[0] : undefined;
-    const lead = only?.cancel === null ? undefined : only?.files[0]?.file.ref;
-    const beside =
-      lead !== undefined &&
-      context.runner.besideBacklog?.(lead) === true &&
-      ledger.queue.hasFirstGroup((ref) => laneOf(context, ref) === lane);
-    if (!beside) busy.add(lane);
-  }
-  return busy;
 }
 
 /**
@@ -127,10 +105,14 @@ export function busyLanes(
  * more while their estimated wall time stays within `backlogBudget`
  * (`BacklogWall`, spec 011 C4 step 5 as amended, task 001-366). The budget
  * bounds the selection, not the run: unknown durations count 0 and the
- * first round is always taken.
+ * first round is always taken. A runner that cannot cancel runs its backlog
+ * in slots instead (`backlogSlot`, C4 step 5 as amended for slots, task
+ * 011-21 slice 2): a backlog tier of its lane is one slot, one file, or a
+ * pytest batch of light files (`joinsSlot`), and asks the pool for one
+ * permit; its lane holds up to `runner.tierSize` of them (`busyLanes`).
  *
  * A tier holds the files of one lane, the lane of the first file it takes;
- * files of a lane in `busy` (`busyLanes`), which has a tier in flight, stay
+ * files of a lane in `busy` (`busyLanes`), which takes no tier now, stay
  * queued and are not looked up (task 001-140). Whether the tier is the
  * backlog's is decided on the free lanes' files.
  *
@@ -174,6 +156,8 @@ export function selectTier(
   let span: TierSpan | null = null;
   let tookBacklog = false;
   let lane: string | null = null;
+  /** The files a backlog slot takes at most, once its first file's runner runs slots. */
+  let slot: number | null = null;
   for (const ref of ledger.ordered()) {
     if (picked.length >= size) break;
     const at = laneOf(context, ref);
@@ -203,27 +187,29 @@ export function selectTier(
       const joined = joinSpan(span, file.durationMs);
       if (joined === null) continue;
       span = joined;
-    }
+    } else if (picked.length === 0) slot = backlogSlot(context, ref);
+    else if (slot !== null && !joinsSlot(picked, file, (r) => partOf(context, r))) break;
     if (
+      slot === null &&
       wall !== null &&
       !wall.take(file.durationMs, tierWidth(context, ref, offer), partOf(context, ref))
     )
       break;
     tookBacklog ||= !recent && !ledger.queue.isPromoted(ref);
     lane = at;
-    size = cap;
+    size = Math.min(cap, slot ?? cap);
     const checkpointId = ledger.checkpoints.idFor(ref);
     const inputs = keys.stabilityPaths(ref);
     picked.push({ file, key, inputs, checkpointId, forced, recent, waits });
   }
-  const width = backlog ? widest(context, picked) : 0;
+  const width = slot !== null ? 1 : backlog ? widest(context, picked) : 0;
   const taken = picked.length > 0 && backlog ? context.capacity?.take(width) : null;
   if (taken === WAIT_FOR_CAPACITY) {
     ledger.commit();
     return null;
   }
   const lease = taken ? widthLease(taken, width) : taken;
-  if (lease && lease.grant < Math.min(width, offer)) {
+  if (slot === null && lease && lease.grant < Math.min(width, offer)) {
     // Granted less than offered (another daemon took permits meanwhile): the prefix that fits.
     const fits = new BacklogWall(backlogBudget(policy.runner.timeoutMs));
     const keep = picked.findIndex(
@@ -331,6 +317,7 @@ export function startTier(
       cancel: cancellable ? new AbortController() : null,
       ...(lease === undefined ? {} : { lease }),
       loadPerCpu: tierLoad(context),
+      ...(cancellable && backlogSlot(context, first.file.ref) !== null ? { slot: true } : {}),
     };
     lease?.shrinkTo(files.length);
     for (const { file, key } of files) {
@@ -476,6 +463,10 @@ export function unstableInputs(context: SchedulerContext, tier: Tier): Promise<M
  *   were read again, and it runs again under the key that holds them
  *   (`rerunGrown`), at most `MAX_DISCARDS` times in a row.
  * - The report's notes become status notes (D7), after the transaction.
+ *
+ * `commit` false leaves the ledger's writes to the caller's next commit: the
+ * records of slots that ended together share one (spec 011 C4 step 5 as
+ * amended for slots, task 011-21 slice 2).
  */
 export function recordTier(
   context: SchedulerContext,
@@ -485,6 +476,7 @@ export function recordTier(
   changedOnDisk: ReadonlySet<RelativePath>,
   requeue: boolean | ReadonlySet<string> = false,
   observed: TierObservations = NOTHING_OBSERVED,
+  commit = true,
 ): RelativePath[] {
   const { store, worktreeId } = context;
   const duringRun = tier.changes;
@@ -632,7 +624,7 @@ export function recordTier(
     for (const { file } of notStarted)
       if (file.key !== null) endRetry(context, file, file.key, null, tier.runId);
     ledger.markUnknown(unknown, reason);
-    ledger.commit();
+    if (commit) ledger.commit();
   });
   return [...new Set([...changedOnDisk, ...observed.changed])];
 }

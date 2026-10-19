@@ -60,6 +60,7 @@ export function withSlowInstance(
     tierWidth: (testFile, grant) => fast.tierWidth?.(testFile, grant) ?? grant,
     tierPart: (testFile) => fast.tierPart?.(testFile) ?? "",
     besideBacklog: (testFile) => fast.besideBacklog?.(testFile) ?? false,
+    backlogSlot: (testFile) => fast.backlogSlot?.(testFile) ?? null,
     environment: () => fast.environment(),
     ...(lane === undefined ? {} : { lane }),
     async run(testFiles, options) {

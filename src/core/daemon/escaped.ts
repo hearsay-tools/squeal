@@ -404,6 +404,7 @@ export function afterEachRun(
     tierWidth: (testFile, grant) => runner.tierWidth?.(testFile, grant) ?? grant,
     tierPart: (testFile) => runner.tierPart?.(testFile) ?? "",
     besideBacklog: (testFile) => runner.besideBacklog?.(testFile) ?? false,
+    backlogSlot: (testFile) => runner.backlogSlot?.(testFile) ?? null,
     environment: () => runner.environment(),
     ...(lane === undefined ? {} : { lane }),
     ...(releaseLane === undefined ? {} : { releaseLane }),

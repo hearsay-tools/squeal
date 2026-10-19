@@ -491,6 +491,17 @@ export interface RunnerAdapter {
   besideBacklog?(testFile: TestFileRef): boolean;
 
   /**
+   * The test files one backlog slot holding `testFile` runs (spec 011 C4
+   * step 5 as amended for slots, task 011-21 slice 2): node:test 1, a
+   * process per file; pytest its batch size, light files packed into one
+   * process. A runner that answers runs its backlog in slots, up to
+   * `runner.tierSize` runs in flight per lane, each storing when it ends.
+   * Synchronous, as `tierWidth`. Absent or `null`: the backlog runs in
+   * tiers (Vitest, one run per instance).
+   */
+  backlogSlot?(testFile: TestFileRef): number | null;
+
+  /**
    * Spec 001 D4: "`run(testFiles) -> results`: `runTestSpecifications`. [...]
    * `process.exitCode` is reset after each run."
    */

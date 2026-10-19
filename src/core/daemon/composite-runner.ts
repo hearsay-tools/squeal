@@ -121,6 +121,7 @@ export function createCompositeRunner(adapters: readonly RunnerAdapter[]): Runne
       return `${adapters.indexOf(owner)}:${owner.tierPart?.(testFile) ?? ""}`;
     },
     besideBacklog: (testFile) => owners.get(testFile.project)?.besideBacklog?.(testFile) ?? false,
+    backlogSlot: (testFile) => owners.get(testFile.project)?.backlogSlot?.(testFile) ?? null,
     async run(testFiles, options) {
       const groups = new Map<RunnerAdapter, TestFileRef[]>();
       for (const testFile of testFiles) {

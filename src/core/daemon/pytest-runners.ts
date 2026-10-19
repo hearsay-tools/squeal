@@ -6,6 +6,7 @@ import {
   type ObservedStore,
   PYTEST_ADAPTER_VERSION,
 } from "../../runners/pytest/adapter.js";
+import { DEFAULT_BATCH_SIZE } from "../../runners/pytest/run/run.js";
 import { compare, isRecord } from "../fs/index.js";
 import {
   type AbsolutePath,
@@ -169,6 +170,8 @@ export function createPytestRunners(
       tierWidth: () => options.tierSize(),
       // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
       besideBacklog: true,
+      // A slot is one batch process (spec 007 D6): light files packed, a heavy file alone.
+      backlogSlot: batchSize ?? DEFAULT_BATCH_SIZE,
       onFailure: (text) => options.note(`${text} (pytest project ${JSON.stringify(project.name)})`),
       onRecovered: () => options.note(`pytest project ${JSON.stringify(project.name)} started`),
     });
