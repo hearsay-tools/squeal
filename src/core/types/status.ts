@@ -149,6 +149,12 @@ export interface SlowTierState {
    * slow files (004 D9 as amended 2026-10-12, task 001-285). Absent when off.
    */
   readonly stopWaitMs?: number;
+  /**
+   * Under `slow.trigger: "idle"` (004 D2 as amended 2026-10-18, row 004-80):
+   * slow files run only when the agent pauses. Absent under `"continuous"`,
+   * where they run after the fast tests.
+   */
+  readonly pausesOnly?: true;
 }
 
 /**
