@@ -113,8 +113,16 @@ async function harness(
         };
         runs.push(run);
         const ran = await nodeTest.run(files, options);
-        // The backlog's run of the re-keyed file reported as a crash once it ends (review wave-4 B1).
+        // The backlog's run of the re-keyed file reported as a crash once it ends (review wave-4 B1),
+        // and not before the edit's run stored its PASS, however loaded the host.
         const crashed = probe.crashBacklog === true && runs.find((r) => holds(r, REKEYED)) === run;
+        for (
+          let held = 0;
+          crashed && held < 60_000 && outcome(opened(), REKEYED) !== "pass";
+          held += 25
+        ) {
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
         const report: RunReport = crashed
           ? { ...ran, end: "crashed", completedFiles: [], results: [], failure: "probe crash" }
           : ran;
@@ -124,7 +132,12 @@ async function harness(
       },
     },
   });
-  const h = await openHarness(repo.main, store, repo.commonDir, {
+  let h: Harness | null = null;
+  const opened = () => {
+    if (h === null) throw new Error("the harness is not open");
+    return h;
+  };
+  h = await openHarness(repo.main, store, repo.commonDir, {
     tierSize: 4,
     backlogTierSize: 8,
     adapters: [timed],
