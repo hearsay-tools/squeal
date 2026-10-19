@@ -174,7 +174,12 @@ export interface SlowPolicy {
    * pauses or none is registered. Default `"continuous"`.
    */
   readonly trigger: SlowTrigger;
-  /** How long the latest revision must be quiet before a continuous slow tier starts. */
+  /**
+   * How long the latest revision must be quiet before a continuous slow tier
+   * starts. Default `3000`: past it a longer window barely lowers how often
+   * the next edit discards the slow run, and delays every slow result
+   * (`docs/specifications/004-slow-suites/tasks/004-80/notes.md`).
+   */
   readonly quietMs: number;
 }
 
@@ -275,7 +280,7 @@ export const DEFAULT_POLICY: Policy = {
     maxParallel: 4,
     rank: "tokens",
     trigger: "continuous",
-    quietMs: 5_000,
+    quietMs: 3_000,
   },
   delivery: { uncoveredEdits: true },
   daemon: { idleExitMinutes: 60, unusedExitMinutes: 30 },

@@ -49,11 +49,15 @@ describe("the skill's waits (005-68)", () => {
     expect(commands).not.toContain("A test file's path selects that test file, and");
   });
 
-  /* Task 004-78, at the coordinator's request: a named wait leaves out slow files that run only on a pause. */
+  /*
+   * Task 004-78, at the coordinator's request: a named wait leaves out slow
+   * files that run only on a pause; since 004-80 only under `slow.trigger:
+   * "idle"`, as by default they run after the fast tests and it holds for them.
+   */
   it("says in every copy of `commands.md` that a named wait does not hold for a slow file waiting for a pause", () => {
     for (const dir of COPIES) {
       expect(read(dir, "references/commands.md")).toContain(
-        "A selected slow file that waits for a pause or `squeal run --slow` is not held for: the verdict line names it, and a wait that selects only such files returns at once without a verdict (exit 3).",
+        'A selected slow file is held for like any file, since it runs after the fast tests; under `slow.trigger: "idle"` one that waits for a pause or `squeal run --slow` is not held for: the verdict line names it, and a wait that selects only such files returns at once without a verdict (exit 3).',
       );
     }
   });
