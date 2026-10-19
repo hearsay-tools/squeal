@@ -10127,8 +10127,12 @@ var init_queue = __esm({
        * files included. Fast entries only.
        */
       ordered(durationOf2 = () => null) {
-        const first = this.#recentTiers >= RECENT_TIERS_PER_BACKLOG_TIER ? -1 : 1;
+        const first = this.backlogTurn() ? -1 : 1;
         return sorted(this.#fast(), durationOf2, first, this.#ranks());
+      }
+      /** The backlog comes first once: `RECENT_TIERS_PER_BACKLOG_TIER` tiers of the first group ran. */
+      backlogTurn() {
+        return this.#recentTiers >= RECENT_TIERS_PER_BACKLOG_TIER;
       }
       /**
        * The slow entries in the order the slow tier runs them, one at a time
@@ -11811,7 +11815,7 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
     }
     const forced = ledger.queue.isForced(ref2);
     const recent = ledger.queue.isRecent(ref2);
-    if (!backlog && !ledger.queue.isFirstGroup(ref2) && backlogSlot(context, ref2) !== null) {
+    if (!backlog && !ledger.queue.isFirstGroup(ref2) && !ledger.queue.backlogTurn() && backlogSlot(context, ref2) !== null) {
       skipped2 = true;
       continue;
     }
@@ -13857,6 +13861,8 @@ var init_slot_records = __esm({
           this.#ended.push({ ended: ended2, resolve: resolve23, reject });
         });
         ended2.catch(() => {
+        });
+        outcome2.catch(() => {
         });
         const gather = Math.max(SLOT_GATHER_MS, SLOT_GATHER_COMMITS * this.#commitMs);
         this.#gathering ??= sleep6(gather).then(() => {
