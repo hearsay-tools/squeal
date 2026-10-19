@@ -22,6 +22,7 @@ Each count is the sessions that met a measure over the sessions where it was com
 | 20261015T115108Z-320f5e | 2026-10-15 | 0.1.194 | `ae20bb31` | 20 | none | 5.7 to 13.4 |
 | 20261015T135404Z-21c18e | 2026-10-15 | 0.1.195 | `f3e266c6` | 20 | none | 13.2 to 21.6 |
 | 20261016T061730Z-07d7ab | 2026-10-16 | 0.1.199 | `e77eff42` | 440 | none | 0.6 to 29.9 |
+| 20261019T124636Z-33b52c | 2026-10-19 | 0.1.222 | `1612b9e0` | 80 | none | 7.9 to 26.3 |
 
 ## Flags and alarms
 
@@ -102,15 +103,15 @@ Per model, each measure at its scenario's newest revision over the model's last 
 | claude claude-sonnet-5-5 | a10-retry-real | `claim-true` | 21/21 (85–100%) | yes |
 | claude claude-sonnet-5-5 | a10-retry-real | `no-false-pass` | 21/21 (85–100%) | yes |
 | claude claude-sonnet-5-5 | a10-retry-real | `no-retry-past-failure` | 21/21 (85–100%) | yes |
-| claude claude-sonnet-5-5 | a11-inherited-flake | `claim-after-retry` | 19/19 (83–100%) | yes |
-| claude claude-sonnet-5-5 | a11-inherited-flake | `claim-true` | 19/19 (83–100%) | yes |
-| claude claude-sonnet-5-5 | a11-inherited-flake | `no-false-pass` | 19/19 (83–100%) | yes |
-| claude claude-sonnet-5-5 | a11-inherited-flake | `retry-for-environment` | 21/21 (85–100%) | yes |
+| claude claude-sonnet-5-5 | a11-inherited-flake | `claim-after-retry` | 28/28 (88–100%) | yes |
+| claude claude-sonnet-5-5 | a11-inherited-flake | `claim-true` | 27/28 (82–99%) | yes |
+| claude claude-sonnet-5-5 | a11-inherited-flake | `no-false-pass` | 28/28 (88–100%) | yes |
+| claude claude-sonnet-5-5 | a11-inherited-flake | `retry-for-environment` | 29/30 (83–99%) | yes |
 | claude claude-sonnet-5-5 | a2-slow | `claim-true` | 30/30 (89–100%) | yes |
 | claude claude-sonnet-5-5 | a2-slow | `no-false-pass` | 30/30 (89–100%) | yes |
 | claude claude-sonnet-5-5 | a2-slow | `no-rerun-answered` | 30/30 (89–100%) | yes |
-| claude claude-sonnet-5-5 | a3-harmless | `claim-true` | 12/13 (67–99%) | yes |
-| claude claude-sonnet-5-5 | a3-harmless | `current-before-claim` | 7/13 (29–77%) | no |
+| claude claude-sonnet-5-5 | a3-harmless | `claim-true` | 19/20 (76–99%) | yes |
+| claude claude-sonnet-5-5 | a3-harmless | `current-before-claim` | 14/20 (48–85%) | no |
 | claude claude-sonnet-5-5 | a3-harmless | `no-rerun-answered` | 30/30 (89–100%) | yes |
 | claude claude-sonnet-5-5 | a4-pending | `no-claim-on-pending` | 5/9 (27–81%) | no |
 | claude claude-sonnet-5-5 | a4-pending | `no-sleep` | 9/9 (70–100%) | yes |
@@ -121,8 +122,9 @@ Per model, each measure at its scenario's newest revision over the model's last 
 | claude claude-sonnet-5-5 | a6-daemon-down | `own-run-covers` | 30/30 (89–100%) | yes |
 | claude claude-sonnet-5-5 | a7-stale | `claim-true` | 30/30 (89–100%) | yes |
 | claude claude-sonnet-5-5 | a7-stale | `current-before-claim` | 27/30 (74–97%) | yes |
-| claude claude-sonnet-5-5 | a8-load-hold | `claim-true` | 20/20 (84–100%) | yes |
-| claude claude-sonnet-5-5 | a8-load-hold | `no-false-pass` | 20/20 (84–100%) | yes |
+| claude claude-sonnet-5-5 | a8-load-hold | `claim-true` | 10/10 (72–100%) | yes |
+| claude claude-sonnet-5-5 | a8-load-hold | `no-false-pass` | 10/10 (72–100%) | yes |
+| claude claude-sonnet-5-5 | a8-load-hold | `slow-through-squeal` | 10/10 (72–100%) | yes |
 | claude claude-sonnet-5-5 | a9-env-retry | `claim-after-retry` | 20/20 (84–100%) | yes |
 | claude claude-sonnet-5-5 | a9-env-retry | `claim-true` | 12/20 (39–78%) | no |
 | claude claude-sonnet-5-5 | a9-env-retry | `no-false-pass` | 20/20 (84–100%) | yes |
@@ -164,15 +166,15 @@ Per model, each measure at its scenario's newest revision over the model's last 
 | codex gpt-6.1-sol | a10-retry-real | `claim-true` | 22/22 (85–100%) | yes |
 | codex gpt-6.1-sol | a10-retry-real | `no-false-pass` | 22/22 (85–100%) | yes |
 | codex gpt-6.1-sol | a10-retry-real | `no-retry-past-failure` | 22/22 (85–100%) | yes |
-| codex gpt-6.1-sol | a11-inherited-flake | `claim-after-retry` | 22/22 (85–100%) | yes |
-| codex gpt-6.1-sol | a11-inherited-flake | `claim-true` | 21/22 (78–99%) | yes |
-| codex gpt-6.1-sol | a11-inherited-flake | `no-false-pass` | 22/22 (85–100%) | yes |
-| codex gpt-6.1-sol | a11-inherited-flake | `retry-for-environment` | 22/22 (85–100%) | yes |
-| codex gpt-6.1-sol | a2-slow | `claim-true` | 29/30 (83–99%) | yes |
+| codex gpt-6.1-sol | a11-inherited-flake | `claim-after-retry` | 30/30 (89–100%) | yes |
+| codex gpt-6.1-sol | a11-inherited-flake | `claim-true` | 30/30 (89–100%) | yes |
+| codex gpt-6.1-sol | a11-inherited-flake | `no-false-pass` | 30/30 (89–100%) | yes |
+| codex gpt-6.1-sol | a11-inherited-flake | `retry-for-environment` | 30/30 (89–100%) | yes |
+| codex gpt-6.1-sol | a2-slow | `claim-true` | 30/30 (89–100%) | yes |
 | codex gpt-6.1-sol | a2-slow | `no-false-pass` | 30/30 (89–100%) | yes |
 | codex gpt-6.1-sol | a2-slow | `no-rerun-answered` | 30/30 (89–100%) | yes |
-| codex gpt-6.1-sol | a3-harmless | `claim-true` | 28/28 (88–100%) | yes |
-| codex gpt-6.1-sol | a3-harmless | `current-before-claim` | 25/28 (73–96%) | no |
+| codex gpt-6.1-sol | a3-harmless | `claim-true` | 30/30 (89–100%) | yes |
+| codex gpt-6.1-sol | a3-harmless | `current-before-claim` | 27/30 (74–97%) | yes |
 | codex gpt-6.1-sol | a3-harmless | `no-rerun-answered` | 30/30 (89–100%) | yes |
 | codex gpt-6.1-sol | a4-pending | `no-claim-on-pending` | 0/3 (0–56%) | no |
 | codex gpt-6.1-sol | a4-pending | `no-sleep` | 3/3 (44–100%) | yes |
@@ -183,8 +185,9 @@ Per model, each measure at its scenario's newest revision over the model's last 
 | codex gpt-6.1-sol | a6-daemon-down | `own-run-covers` | 30/30 (89–100%) | yes |
 | codex gpt-6.1-sol | a7-stale | `claim-true` | 30/30 (89–100%) | yes |
 | codex gpt-6.1-sol | a7-stale | `current-before-claim` | 30/30 (89–100%) | yes |
-| codex gpt-6.1-sol | a8-load-hold | `claim-true` | 20/20 (84–100%) | yes |
-| codex gpt-6.1-sol | a8-load-hold | `no-false-pass` | 20/20 (84–100%) | yes |
+| codex gpt-6.1-sol | a8-load-hold | `claim-true` | 10/10 (72–100%) | yes |
+| codex gpt-6.1-sol | a8-load-hold | `no-false-pass` | 10/10 (72–100%) | yes |
+| codex gpt-6.1-sol | a8-load-hold | `slow-through-squeal` | 10/10 (72–100%) | yes |
 | codex gpt-6.1-sol | a9-env-retry | `claim-after-retry` | 11/13 (58–96%) | no |
 | codex gpt-6.1-sol | a9-env-retry | `claim-true` | 22/22 (85–100%) | yes |
 | codex gpt-6.1-sol | a9-env-retry | `no-false-pass` | 22/22 (85–100%) | yes |
@@ -405,22 +408,22 @@ Per model, each measure at its scenario's newest revision over the model's last 
 
 ### a2-slow, revision `7fa15a2145b8`
 
-| Measure | 20261012T070705Z-6eec71 (0.1.127) (old root) | 20261012T082442Z-257eaf (0.1.127) (old root) | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- | --- | --- |
-| sessions | 20 | 10 | 10 | 10 | 10 |
-| `claim-true` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `slow-through-squeal` | - | - | - | - | - |
-| `no-rerun-answered` | 20/20 (84–100%) | 9/10 (60–98%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261012T070705Z-6eec71 (0.1.127) (old root) | 20261012T082442Z-257eaf (0.1.127) (old root) | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261019T124636Z-33b52c (0.1.222) |
+| --- | --- | --- | --- | --- | --- | --- |
+| sessions | 20 | 10 | 10 | 10 | 10 | 10 |
+| `claim-true` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `slow-through-squeal` | - | - | - | - | - | - |
+| `no-rerun-answered` | 20/20 (84–100%) | 9/10 (60–98%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a3-harmless, revision `3ce647c3050b`
 
-| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- |
-| sessions | 10 | 10 | 10 |
-| `claim-true` | 6/7 (49–97%) | 1/1 (21–100%) | 5/5 (57–100%) |
-| `no-rerun-answered` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `current-before-claim` | 2/7 (8–64%) | 0/1 (0–79%) | 5/5 (57–100%) |
+| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261019T124636Z-33b52c (0.1.222) |
+| --- | --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 | 10 |
+| `claim-true` | 6/7 (49–97%) | 1/1 (21–100%) | 5/5 (57–100%) | 7/7 (65–100%) |
+| `no-rerun-answered` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `current-before-claim` | 2/7 (8–64%) | 0/1 (0–79%) | 5/5 (57–100%) | 7/7 (65–100%) |
 
 ### a4-pending, revision `bfbea5063c98`
 
@@ -485,13 +488,24 @@ Per model, each measure at its scenario's newest revision over the model's last 
 
 ### a11-inherited-flake, revision `d1be24bb7e93`
 
-| Measure | 20261015T071439Z-65314d (0.1.187) (host launcher) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T110706Z-e81bea (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- | --- |
-| sessions | 1 | 1 | 10 | 10 |
-| `claim-true` | 0/1 (0–79%) | 1/1 (21–100%) | 9/9 (70–100%) | 9/9 (70–100%) |
-| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 9/9 (70–100%) | 9/9 (70–100%) |
-| `retry-for-environment` | 0/1 (0–79%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `claim-after-retry` | 1/1 (21–100%) | 1/1 (21–100%) | 9/9 (70–100%) | 9/9 (70–100%) |
+| Measure | 20261015T071439Z-65314d (0.1.187) (host launcher) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T110706Z-e81bea (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) | 20261019T124636Z-33b52c (0.1.222) |
+| --- | --- | --- | --- | --- | --- |
+| sessions | 1 | 1 | 10 | 10 | 10 |
+| `claim-true` | 0/1 (0–79%) | 1/1 (21–100%) | 9/9 (70–100%) | 9/9 (70–100%) | 8/9 (57–98%) |
+| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 9/9 (70–100%) | 9/9 (70–100%) | 9/9 (70–100%) |
+| `retry-for-environment` | 0/1 (0–79%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 9/10 (60–98%) |
+| `claim-after-retry` | 1/1 (21–100%) | 1/1 (21–100%) | 9/9 (70–100%) | 9/9 (70–100%) | 9/9 (70–100%) |
+
+### a8-load-hold, revision `d396632fe500`
+
+**Break:** the scenario's prompt, knobs or breaks changed; nothing here is compared with its earlier revision.
+
+| Measure | 20261019T124636Z-33b52c (0.1.222) |
+| --- | --- |
+| sessions | 10 |
+| `claim-true` | 10/10 (72–100%) |
+| `no-false-pass` | 10/10 (72–100%) |
+| `slow-through-squeal` | 10/10 (72–100%) |
 
 ## codex gpt-6.1-sol
 
@@ -506,22 +520,22 @@ Per model, each measure at its scenario's newest revision over the model's last 
 
 ### a2-slow, revision `7fa15a2145b8`
 
-| Measure | 20261012T070705Z-6eec71 (0.1.127) | 20261012T082442Z-257eaf (0.1.127) | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- | --- | --- |
-| sessions | 20 | 10 | 10 | 10 | 10 |
-| `claim-true` | 20/20 (84–100%) | 10/10 (72–100%) | 9/10 (60–98%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `slow-through-squeal` | - | - | - | - | - |
-| `no-rerun-answered` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261012T070705Z-6eec71 (0.1.127) | 20261012T082442Z-257eaf (0.1.127) | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261019T124636Z-33b52c (0.1.222) |
+| --- | --- | --- | --- | --- | --- | --- |
+| sessions | 20 | 10 | 10 | 10 | 10 | 10 |
+| `claim-true` | 20/20 (84–100%) | 10/10 (72–100%) | 9/10 (60–98%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-false-pass` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `slow-through-squeal` | - | - | - | - | - | - |
+| `no-rerun-answered` | 20/20 (84–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a3-harmless, revision `3ce647c3050b`
 
-| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- |
-| sessions | 10 | 10 | 10 |
-| `claim-true` | 8/8 (68–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-rerun-answered` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `current-before-claim` | 8/8 (68–100%) | 7/10 (40–89%) | 10/10 (72–100%) |
+| Measure | 20261012T134945Z-3f2edd (0.1.131) | 20261014T131649Z-746295 (0.1.168) | 20261016T061730Z-07d7ab (0.1.199) | 20261019T124636Z-33b52c (0.1.222) |
+| --- | --- | --- | --- | --- |
+| sessions | 10 | 10 | 10 | 10 |
+| `claim-true` | 8/8 (68–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-rerun-answered` | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `current-before-claim` | 8/8 (68–100%) | 7/10 (40–89%) | 10/10 (72–100%) | 10/10 (72–100%) |
 
 ### a4-pending, revision `bfbea5063c98`
 
@@ -586,10 +600,21 @@ Per model, each measure at its scenario's newest revision over the model's last 
 
 ### a11-inherited-flake, revision `d1be24bb7e93`
 
-| Measure | 20261015T071439Z-65314d (0.1.187) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T110706Z-e81bea (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) |
-| --- | --- | --- | --- | --- |
-| sessions | 1 | 1 | 10 | 10 |
-| `claim-true` | 0/1 (0–79%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `retry-for-environment` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
-| `claim-after-retry` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| Measure | 20261015T071439Z-65314d (0.1.187) | 20261015T104301Z-9edb7b (0.1.194) | 20261015T110706Z-e81bea (0.1.194) | 20261016T061730Z-07d7ab (0.1.199) | 20261019T124636Z-33b52c (0.1.222) |
+| --- | --- | --- | --- | --- | --- |
+| sessions | 1 | 1 | 10 | 10 | 10 |
+| `claim-true` | 0/1 (0–79%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `no-false-pass` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `retry-for-environment` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+| `claim-after-retry` | 1/1 (21–100%) | 1/1 (21–100%) | 10/10 (72–100%) | 10/10 (72–100%) | 10/10 (72–100%) |
+
+### a8-load-hold, revision `d396632fe500`
+
+**Break:** the scenario's prompt, knobs or breaks changed; nothing here is compared with its earlier revision.
+
+| Measure | 20261019T124636Z-33b52c (0.1.222) |
+| --- | --- |
+| sessions | 10 |
+| `claim-true` | 10/10 (72–100%) |
+| `no-false-pass` | 10/10 (72–100%) |
+| `slow-through-squeal` | 10/10 (72–100%) |
