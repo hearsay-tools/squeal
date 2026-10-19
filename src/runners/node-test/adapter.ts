@@ -4,6 +4,7 @@ import type {
   AbsolutePath,
   InvalidatedPath,
   NodeTestProject,
+  PolicyInputs,
   RelativePath,
   RunnerAdapter,
 } from "../../core/types/index.js";
@@ -52,6 +53,11 @@ export interface NodeTestAdapterOptions {
    * file of the tier; a slow lane's run always starts every file (task 004-37).
    */
   readonly concurrency?: () => number;
+  /**
+   * Policy `inputs`, read per run: a test file they declare inputs for is not
+   * named in the note on runs that loaded nothing (task 001-365). Default none.
+   */
+  readonly inputs?: () => PolicyInputs;
   /** Spec 001 D10: the daemon's temp directory, every child's `TMPDIR`, `TMP` and `TEMP`. */
   readonly tempDir?: AbsolutePath;
   /**
