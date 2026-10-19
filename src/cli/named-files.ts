@@ -113,7 +113,9 @@ export function readNamedFiles(
  * nothing holding it but the slow tier's turn (`queuedReason`'s `slow`): no
  * run of its own, none in its lane, no other worktree's claim. A named wait
  * leaves them out of what it holds for, since nothing runs them inside the
- * agent's turn but `run --slow` (004 D2, D9).
+ * agent's turn but `run --slow` (004 D2, D9). Only under `slow.trigger:
+ * "idle"`: a continuous lane runs them in the turn once the revision is
+ * `slow.quietMs` old, so the wait holds for them as for any file (004-80).
  */
 export function pauseOnlyIds(
   store: Store,
@@ -124,6 +126,7 @@ export function pauseOnlyIds(
   now: EpochMs,
 ): ReadonlySet<string> {
   const policy = readPolicy(root);
+  if (policy.slow.trigger !== "idle") return new Set();
   const slow = files.filter((ref) => slowView(policy).isSlow(ref));
   if (slow.length === 0) return new Set();
   const rows = new Map(
