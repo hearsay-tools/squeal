@@ -11,8 +11,6 @@ import { DEFAULT_POLICY } from "../../src/core/types/index.js";
  * `slow.maxDeferMs` (600000), `slow.maxParallel` (4, D2 as amended
  * 2026-10-09), `slow.rank` (`"tokens"`, D2 as amended 2026-10-18, task
  * 004-82), `nodeTest[].slow` (`false`) and `stop.requireSlowSuite`
- * (`false`), all under the 001 D11 loader rules.
- * 2026-10-09), `nodeTest[].slow` (`false`) and `stop.requireSlowSuite`
  * (`false`), all under the 001 D11 loader rules; `slow.trigger`
  * (`"continuous"`) and `slow.quietMs` (3000), D7 as amended 2026-10-18 (row
  * 004-80).
