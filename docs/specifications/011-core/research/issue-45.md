@@ -97,3 +97,23 @@ Synthetic stores written with the checkout's store API; no daemon, no Vitest run
 - Code at `3c993aea` (0.1.223): `src/core/status/format-status.ts`, `src/core/status/checks.ts`, `src/core/state/derive.ts`, `src/core/delivery/header.ts`.
 - Installed CLIs: `~/.claude/plugins/cache/hearsay/squeal/0.1.222/bin/squeal`, `.../0.1.223/bin/squeal`; launcher `~/.local/bin/squeal --version` → 0.1.223.
 - Probes: `research/probes/issue-45/` (`run.sh`, `installed.sh`, `probe.mjs`, README).
+
+## Coordinator verification
+
+Documentation-only integration, 2026-10-19. `git diff --check` passed; build left no bundle changes. After `npm ci`:
+
+```text
+npm run lint
+Checked 1461 files in 653ms. No fixes applied.
+npm run typecheck
+> tsc --noEmit
+(exit 0)
+npm run build
+> tsc -p tsconfig.build.json && npm run build:plugin
+(exit 0)
+node --disable-warning=ExperimentalWarning "/home/agent/.codex/plugins/cache/hearsay/squeal/0.1.223/dist/cli/squeal.mjs" run --all --wait
+Checkpoint f5bfb47c-125a-4c96-8609-73592e7cfa7f completed at revision 2: 2 known failures: 2 tests; 720 test files, 717 already current, 3 run by the baseline checkpoint 8485d3a3-f9c7-486b-af3a-b9d7cf8b387a it joined
+(exit 1)
+```
+
+Failures: `test/runners/node-test/run-reads-fidelity.test.ts:116` and `test/runners/vitest/observe-fidelity.test.ts:119`, both recorder-signature cases expecting pass and receiving fail, at load 0.50 per CPU. Squeal reported first observations with no baseline, so causation is unknown; no product files changed. No retry or fix attempted under this documentation-only scope. E2E is excluded from Squeal and was not run. The research experiments above are separate from this suite checkpoint.
