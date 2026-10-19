@@ -9,7 +9,8 @@ import { DEFAULT_POLICY } from "../../src/core/types/index.js";
  * Spec 004 D1 and D7 (one `slow` object, status.md 2026-10-08): `slow.include`
  * (default `[]`), `slow.maxWorkers` (2), `slow.maxLoadPerCpu` (1.0),
  * `slow.maxDeferMs` (600000), `slow.maxParallel` (4, D2 as amended
- * 2026-10-09), `nodeTest[].slow` (`false`) and `stop.requireSlowSuite`
+ * 2026-10-09), `slow.rank` (`"tokens"`, D2 as amended 2026-10-18, task
+ * 004-82), `nodeTest[].slow` (`false`) and `stop.requireSlowSuite`
  * (`false`), all under the 001 D11 loader rules.
  */
 
@@ -31,6 +32,7 @@ const FULL = {
   maxLoadPerCpu: 0.5,
   maxDeferMs: 0,
   maxParallel: 2,
+  rank: "duration",
 };
 
 describe("policy slow (spec 004 D7)", () => {
@@ -41,6 +43,7 @@ describe("policy slow (spec 004 D7)", () => {
       maxLoadPerCpu: 1,
       maxDeferMs: 600_000,
       maxParallel: 4,
+      rank: "tokens",
     });
     expect(DEFAULT_POLICY.stop.requireSlowSuite).toBe(false);
   });
@@ -82,6 +85,7 @@ describe("policy slow (spec 004 D7)", () => {
     ["maxDeferMs", null, `"slow.maxDeferMs" must be a number >= 0, got null`],
     ["maxParallel", 0, `"slow.maxParallel" must be a positive integer, got 0`],
     ["maxParallel", 2.5, `"slow.maxParallel" must be a positive integer, got 2.5`],
+    ["rank", "evidence", `"slow.rank" must be one of "tokens", "duration", got "evidence"`],
   ])("rejects slow.%s = %j with one problem and its default", (key, value, problem) => {
     const { policy, problems } = load({ slow: { ...FULL, [key]: value } });
     expect(problems).toEqual([problem]);

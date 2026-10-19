@@ -160,6 +160,13 @@ export interface SlowPolicy {
    * and the slot's permits per user (D2 as amended 2026-10-09). Default `4`.
    */
   readonly maxParallel: number;
+  /**
+   * D2 as amended 2026-10-18 (task 004-82): `"tokens"` orders slow files of
+   * one class by evidence, tokens from the revision's changed files matched
+   * against each slow file and its helpers, then by duration; `"duration"`
+   * by duration alone. Default `"tokens"`.
+   */
+  readonly rank: "tokens" | "duration";
 }
 
 /**
@@ -248,7 +255,14 @@ export const DEFAULT_POLICY: Policy = {
   nodeTest: [],
   pytest: [],
   vitest: { excludeProjects: [], exclude: [] },
-  slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 600_000, maxParallel: 4 },
+  slow: {
+    include: [],
+    maxWorkers: 2,
+    maxLoadPerCpu: 1,
+    maxDeferMs: 600_000,
+    maxParallel: 4,
+    rank: "tokens",
+  },
   delivery: { uncoveredEdits: true },
   daemon: { idleExitMinutes: 60, unusedExitMinutes: 30 },
   store: { retentionDays: 7, maxSizeMb: null },
