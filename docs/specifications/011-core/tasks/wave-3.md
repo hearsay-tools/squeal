@@ -1,10 +1,10 @@
-# Wave 19 (2026-10-19)
+# 011 wave 3 (2026-10-19)
 
 One row, the research 001-366 asks for before its code. Leave `docs/board.md`, `docs/specifications/*/status.md`, `spec.md`, `package.json` versions and `plugins/*/dist` to the coordinator. No product code.
 
 ## R1: 001-366, what a backlog tier's budget should bound when its files run in parallel
 
-Use /researcher. Shape: research. Read the board row 001-366, spec 001 D5 step 5 and D11 Capacity, `005-agent-adoption/lessons.md` proposed row 5, and `src/core/scheduler/backlog.ts`, `tiers.ts` (`selectTier`), `claims.ts` (`backlogSize`), `src/core/capacity/pool.ts`.
+Use /researcher. Shape: research. Read the board row 001-366 (under Feature 011; it kept its 001 number at the split), spec 011 C4 step 5 and C10 Capacity, `../005-agent-adoption/lessons.md` proposed row 5, and `src/core/scheduler/backlog.ts`, `tiers.ts` (`selectTier`), `claims.ts` (`backlogSize`), `src/core/capacity/pool.ts`.
 
 Outcome: a recommended budget rule, sized by the tier's expected wall time under the workers it will run with, and the interrupt-latency cost of it, with numbers.
 
@@ -17,6 +17,6 @@ Questions:
 
 Isolation: scratch clones by commit SHA, a scratch `XDG_RUNTIME_DIR`, `XDG_CONFIG_HOME` and store, never the real pool directory or a real session. Hold measurements while the one-minute load is above 8 on 24 and record the load beside every number. Related, out of scope: 001-381 (an edit splits a running backlog tier).
 
-Owns: `research/backlog-wall-budget.md`, `research/probes/backlog-wall-budget/`.
+Owns: `docs/specifications/011-core/research/backlog-wall-budget.md`, `docs/specifications/011-core/research/probes/backlog-wall-budget/`.
 
-Done when: the findings file answers 1 to 3 in the README's structure and ends with the rule, the D5 step 5 sentences it changes, and a slice's done-when as tests.
+Done when: the findings file answers 1 to 3 under the findings rules of `../001-core-loop/research/README.md` and ends with the rule, the C4 step 5 sentences it changes, and a slice's done-when as tests.
