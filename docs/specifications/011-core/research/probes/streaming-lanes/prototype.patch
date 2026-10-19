@@ -1,0 +1,266 @@
+diff --git a/src/core/daemon/escaped.ts b/src/core/daemon/escaped.ts
+index 4f513cb4..e874db10 100644
+--- a/src/core/daemon/escaped.ts
++++ b/src/core/daemon/escaped.ts
+@@ -400,6 +400,12 @@ export function afterEachRun(
+     ...(releaseLane === undefined ? {} : { releaseLane }),
+     async run(testFiles, options) {
+       const at = laneOf(testFiles, options);
++      // PROTOTYPE (research streaming-lanes): a slot's processes carry a mark of their own run, so
++      // the sweep after one slot's run stops its own leftovers, not the other slots' tests.
++      const slots =
++        process.env.SQUEAL_PROTO === "stream" || process.env.SQUEAL_PROTO === "stream-over" ||
++        process.env.SQUEAL_PROTO_BESIDE === "1";
++      const mark = slots && !at.startsWith("slow:") ? `${at}#${options.runId}` : at;
+       const since = children.mark();
+       if (inFlight === 0) {
+         first = since;
+@@ -408,9 +414,9 @@ export function afterEachRun(
+       if (!overlapped.includes(options.runId)) overlapped.push(options.runId);
+       inFlight += 1;
+       const settled = new AbortController();
+-      const lowering = lowerWhile(children, at, since, settled.signal);
++      const lowering = lowerWhile(children, mark, since, settled.signal);
+       try {
+-        const childEnv = { ...options.childEnv, ...children.envFor(at) };
++        const childEnv = { ...options.childEnv, ...children.envFor(mark) };
+         return await runner.run(testFiles, { ...options, lane: at, childEnv });
+       } finally {
+         settled.abort();
+@@ -419,7 +425,7 @@ export function afterEachRun(
+         const alone = inFlight === 0 ? first : null;
+         const runs = [...overlapped];
+         const stop = await children
+-          .afterRun(at, since, alone, options.runId, runs)
++          .afterRun(mark, since, alone, options.runId, runs)
+           .catch(() => null);
+         if (stop !== null) note(stop);
+       }
+diff --git a/src/core/scheduler/scheduler.ts b/src/core/scheduler/scheduler.ts
+index f563ccc8..73a3170f 100644
+--- a/src/core/scheduler/scheduler.ts
++++ b/src/core/scheduler/scheduler.ts
+@@ -59,6 +59,8 @@ import {
+   type Tier,
+   unfinishedFiles,
+   unstableInputs,
++  protoStreamable,
++  protoStreaming,
+ } from "./tiers.js";
+ import { WarmUp } from "./warm-up.js";
+ 
+@@ -554,7 +556,7 @@ class TierScheduler implements Scheduler {
+               return null;
+             }
+             if (this.#runnerWork.size > 0) return "runner-work" as const;
+-            return selectTier(context, ledger, new Set(this.#inFlight.keys()));
++            return selectTier(context, ledger, this.#busyLanes());
+           });
+           this.#busy?.landed();
+           if (next === "runner-work") continue;
+@@ -602,6 +604,11 @@ class TierScheduler implements Scheduler {
+    */
+   #fly(tier: Tier, installStamp: string, slow: SlowRun | null): void {
+     const { context, ledger } = this.#started();
++    // PROTOTYPE: a streaming lane holds several tiers in flight, keyed by run.
++    const slotKey =
++      (protoStreaming() && protoStreamable(tier.lane)) || process.env.SQUEAL_PROTO_BESIDE === "1"
++        ? `${tier.lane}#${tier.runId}`
++        : tier.lane;
+     const done = (async () => {
+       let recorded = false;
+       const withheld: string[] = [];
+@@ -678,13 +685,13 @@ class TierScheduler implements Scheduler {
+       } finally {
+         slow?.slot.release();
+         tier.lease?.release();
+-        this.#inFlight.delete(tier.lane);
++        this.#inFlight.delete(slotKey);
+         // A fast tier's lane is free: the slow tier's load guard gives way to its next tier.
+         if (slow === null) this.#slow.preempt();
+         this.#notify();
+       }
+     })();
+-    this.#inFlight.set(tier.lane, { tier, done });
++    this.#inFlight.set(slotKey, { tier, done });
+   }
+ 
+   /**
+@@ -705,7 +712,48 @@ class TierScheduler implements Scheduler {
+   /** A fast file whose lane has no tier in flight is queued. */
+   #freeLaneQueued(): boolean {
+     const { context, ledger } = this.#started();
+-    return ledger.queue.hasFast((ref) => !this.#inFlight.has(laneOf(context, ref)));
++    const busy = this.#busyLanes();
++    return ledger.queue.hasFast((ref) => !busy.has(laneOf(context, ref)));
++  }
++
++  /**
++   * PROTOTYPE (research streaming-lanes): the lanes that take no tier now. A lane runs one
++   * tier at a time, a streaming lane `runner.tierSize` one-file tiers (slots); with
++   * `stream-over` an edit's file starts beside them while fewer than W edit slots run.
++   */
++  #busyLanes(): Set<string> {
++    const { context, ledger } = this.#started();
++    const counts = new Map<string, { all: number; edit: number }>();
++    for (const { tier } of this.#inFlight.values()) {
++      const c = counts.get(tier.lane) ?? { all: 0, edit: 0 };
++      c.all += 1;
++      if (tier.cancel === null) c.edit += 1;
++      counts.set(tier.lane, c);
++    }
++    const busy = new Set<string>();
++    const w = context.policy.runner.tierSize;
++    for (const [lane, c] of counts) {
++      const slots = protoStreaming() && protoStreamable(lane) ? w : 1;
++      if (c.all < slots) continue;
++      // PROTOTYPE: `SQUEAL_PROTO_BESIDE=1`, an edit's tier starts beside a backlog tier of its lane.
++      if (
++        process.env.SQUEAL_PROTO_BESIDE === "1" &&
++        c.edit === 0 &&
++        ledger.queue.hasFirstGroup((ref) => laneOf(context, ref) === lane)
++      ) {
++        continue;
++      }
++      if (
++        process.env.SQUEAL_PROTO === "stream-over" &&
++        protoStreamable(lane) &&
++        c.edit < w &&
++        ledger.queue.hasFirstGroup((ref) => laneOf(context, ref) === lane)
++      ) {
++        continue;
++      }
++      busy.add(lane);
++    }
++    return busy;
+   }
+ 
+   /** Applies the queued runner work beside the tiers in flight, unless it is already being applied. */
+diff --git a/src/core/scheduler/tiers.ts b/src/core/scheduler/tiers.ts
+index 5500797b..b4310e31 100644
+--- a/src/core/scheduler/tiers.ts
++++ b/src/core/scheduler/tiers.ts
+@@ -136,6 +136,9 @@ export function selectTier(
+   let size = backlog ? ledger.claims.backlogSize(ledger.queue.fastSize) : policy.runner.tierSize;
+   const budget = backlog ? backlogBudget(policy.runner.timeoutMs) : Number.POSITIVE_INFINITY;
+   let known = 0;
++  // PROTOTYPE (research streaming-lanes): W1's rule on node:test lanes, `SQUEAL_PROTO=w1`.
++  const w1 = process.env.SQUEAL_PROTO === "w1";
++  const w1Durations: number[] = [];
+   let span: TierSpan | null = null;
+   let tookBacklog = false;
+   let lane: string | null = null;
+@@ -170,15 +173,29 @@ export function selectTier(
+       span = joined;
+     }
+     known += file.durationMs ?? 0;
+-    if (picked.length > 0 && known > budget) break;
++    if (w1 && backlog && protoStreamable(at)) {
++      // One round of W = runner.tierSize, then sum/W + (1 - 1/W) * longest within 120 s.
++      const w = policy.runner.tierSize;
++      const ds = [...w1Durations, file.durationMs ?? 0];
++      const wall = ds.reduce((a, b) => a + b, 0) / w + (1 - 1 / w) * Math.max(...ds);
++      const b = Math.min(120_000, budget);
++      if (picked.length >= w && wall > b) break;
++      w1Durations.push(file.durationMs ?? 0);
++    } else if (picked.length > 0 && known > budget) break;
+     tookBacklog ||= !recent && !ledger.queue.isPromoted(ref);
+     lane = at;
+     size = cap;
++    // PROTOTYPE: a streaming lane's tier is one file, a slot (`SQUEAL_PROTO=stream|stream-over`).
++    if (protoStreaming() && protoStreamable(at)) size = 1;
+     const checkpointId = ledger.checkpoints.idFor(ref);
+     const inputs = keys.stabilityPaths(ref);
+     picked.push({ file, key, inputs, checkpointId, forced, recent, waits });
+   }
+-  const lease = picked.length > 0 && backlog ? context.capacity?.take(picked.length) : null;
++  const want =
++    w1 && lane !== null && protoStreamable(lane)
++      ? Math.min(picked.length, policy.runner.tierSize)
++      : picked.length;
++  const lease = picked.length > 0 && backlog ? context.capacity?.take(want) : null;
+   if (lease === WAIT_FOR_CAPACITY) {
+     ledger.commit();
+     return null;
+@@ -201,6 +218,16 @@ export function selectTier(
+   return settled ? selectTier(context, ledger, busy) : null;
+ }
+ 
++/** PROTOTYPE (research streaming-lanes): slots on, `SQUEAL_PROTO=stream` or `stream-over`. */
++export function protoStreaming(): boolean {
++  return process.env.SQUEAL_PROTO === "stream" || process.env.SQUEAL_PROTO === "stream-over";
++}
++
++/** PROTOTYPE: lanes Squeal spawns the processes of (node:test, pytest). */
++export function protoStreamable(lane: string): boolean {
++  return lane.startsWith("node-test") || lane.startsWith("pytest");
++}
++
+ /**
+  * Records the start of a tier of `picked`, files still queued: in one
+  * `BEGIN IMMEDIATE`, each file that is not forced is looked up once more
+diff --git a/src/runners/node-test/adapter-project.ts b/src/runners/node-test/adapter-project.ts
+index 70de98a2..23bfddfe 100644
+--- a/src/runners/node-test/adapter-project.ts
++++ b/src/runners/node-test/adapter-project.ts
+@@ -6,6 +6,7 @@ import {
+   type NodeTestProject,
+   type RelativePath,
+   type RunnerAdapter,
++  type RunOptions,
+   type RunReport,
+   type TestFileRef,
+ } from "../../core/types/index.js";
+@@ -167,7 +168,9 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
+           : { concurrency: options.concurrency() }),
+         ...(env === undefined ? {} : { env }),
+         ...(runOptions.observeIgnored === true ? { observeIgnored: true } : {}),
+-        ...(runOptions.stop === undefined ? {} : { signal: runOptions.stop }),
++        // PROTOTYPE (research streaming-lanes): `SQUEAL_PROTO_CANCEL=kill` honours the edit's cancel
++        // as a stop (running processes killed), `drain` starts no further file.
++        ...protoSignals(runOptions),
+       });
+       const report = reads === undefined ? ran : { ...ran, reads };
+       const preloaded = observed.record(seen, new Set(files));
+@@ -180,6 +183,19 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
+   };
+ }
+ 
++/** PROTOTYPE: the stop and drain signals of a run under `SQUEAL_PROTO_CANCEL`. */
++function protoSignals(runOptions: RunOptions): { signal?: AbortSignal; drain?: AbortSignal } {
++  const mode = process.env.SQUEAL_PROTO_CANCEL;
++  const stops = [runOptions.stop, mode === "kill" ? runOptions.signal : undefined].filter(
++    (s): s is AbortSignal => s !== undefined,
++  );
++  const signal = stops.length > 1 ? AbortSignal.any(stops) : stops[0];
++  return {
++    ...(signal === undefined ? {} : { signal }),
++    ...(mode === "drain" && runOptions.signal !== undefined ? { drain: runOptions.signal } : {}),
++  };
++}
++
+ /** A run in a slow file's lane (task 004-18). */
+ function slowLane(lane: string | undefined): boolean {
+   return lane !== undefined && isSlowLane(lane);
+diff --git a/src/runners/node-test/run/run.ts b/src/runners/node-test/run/run.ts
+index 544f314e..eb532907 100644
+--- a/src/runners/node-test/run/run.ts
++++ b/src/runners/node-test/run/run.ts
+@@ -44,6 +44,8 @@ export interface NodeTestRunOptions {
+   readonly observeIgnored?: boolean;
+   /** A `squeal stop`'s cancel (`RunOptions.signal`): the running processes are stopped, no other starts, and only completed files report. */
+   readonly signal?: AbortSignal;
++  /** PROTOTYPE (research streaming-lanes): an edit's cancel that starts no further file and lets the running ones end. */
++  readonly drain?: AbortSignal;
+ }
+ 
+ /** A tier's report and, for each completed file, what its process loaded. */
+@@ -144,7 +146,7 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
+   const worker = async () => {
+     for (
+       let run = queue.shift();
+-      run !== undefined && !expired && !cancelled;
++      run !== undefined && !expired && !cancelled && options.drain?.aborted !== true;
+       run = queue.shift()
+     ) {
+       const group = startGroup({

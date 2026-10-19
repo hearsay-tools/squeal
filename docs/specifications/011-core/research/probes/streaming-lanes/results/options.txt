@@ -1,0 +1,9 @@
+fixture node:test, 16 files 20-90 s, today, W=4: {"after":"42 / 90","drain":"38 / 90","kill":"0 / 0, loses 84","beside":"0 / 0"}
+fixture node:test, 16 files 20-90 s, w1, W=4: {"after":"42 / 90","drain":"36 / 90","kill":"0 / 0, loses 112","beside":"0 / 0"}
+fixture node:test, 16 files 20-90 s, slots, W=4: next free slot 10 / 34; an edit's slot beside 0 / 0
+cezar node:test lane, 54 files, today, W=4: {"after":"58 / 117","drain":"42 / 93","kill":"0 / 0, loses 67","beside":"0 / 0"}
+cezar node:test lane, 54 files, w1, W=4: {"after":"43 / 93","drain":"37 / 93","kill":"0 / 0, loses 46","beside":"0 / 0"}
+cezar node:test lane, 54 files, slots, W=4: next free slot 11 / 40; an edit's slot beside 0 / 0
+30 files 80-145 s, today, W=4: {"after":"60 / 144","drain":"60 / 144","kill":"0 / 0, loses 119","beside":"0 / 0"}
+30 files 80-145 s, w1, W=4: {"after":"60 / 145","drain":"60 / 145","kill":"0 / 0, loses 208","beside":"0 / 0"}
+30 files 80-145 s, slots, W=4: next free slot 35 / 95; an edit's slot beside 0 / 0

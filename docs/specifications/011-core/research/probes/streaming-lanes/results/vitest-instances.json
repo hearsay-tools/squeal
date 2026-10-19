@@ -1,0 +1,385 @@
+{
+  "vitest": "5.0.3",
+  "instanceA": {
+    "startupMs": 50,
+    "rssBeforeMiB": 95,
+    "rssAfterMiB": 120
+  },
+  "A": {
+    "askedBothAtMs": 52,
+    "firstEndMs": 5283,
+    "secondEndMs": 1268,
+    "events": [
+      {
+        "tag": "A",
+        "ev": "start",
+        "file": "idle-1-1.test.ts",
+        "at": 235
+      },
+      {
+        "tag": "A",
+        "ev": "start",
+        "file": "idle-1-3.test.ts",
+        "at": 252
+      },
+      {
+        "tag": "A",
+        "ev": "start",
+        "file": "idle-1-2.test.ts",
+        "at": 259
+      },
+      {
+        "tag": "A",
+        "ev": "start",
+        "file": "idle-5-9.test.ts",
+        "at": 265
+      },
+      {
+        "tag": "A",
+        "ev": "end",
+        "file": "idle-1-1.test.ts",
+        "at": 1240
+      },
+      {
+        "tag": "A",
+        "ev": "end",
+        "file": "idle-1-3.test.ts",
+        "at": 1257
+      },
+      {
+        "tag": "A",
+        "ev": "end",
+        "file": "idle-1-2.test.ts",
+        "at": 1265
+      },
+      {
+        "tag": "A",
+        "ev": "run-end",
+        "at": 1268
+      },
+      {
+        "tag": "A",
+        "ev": "start",
+        "file": "idle-3-9.test.ts",
+        "at": 1385
+      },
+      {
+        "tag": "A",
+        "ev": "start",
+        "file": "idle-1-9.test.ts",
+        "at": 1400
+      },
+      {
+        "tag": "A",
+        "ev": "end",
+        "file": "idle-1-9.test.ts",
+        "at": 2404
+      },
+      {
+        "tag": "A",
+        "ev": "end",
+        "file": "idle-3-9.test.ts",
+        "at": 4390
+      },
+      {
+        "tag": "A",
+        "ev": "end",
+        "file": "idle-5-9.test.ts",
+        "at": 5281
+      },
+      {
+        "tag": "A",
+        "ev": "run-end",
+        "at": 5283
+      }
+    ]
+  },
+  "A1": {
+    "first": 10421,
+    "second": 11550,
+    "askedSecond": 5584,
+    "events": [
+      {
+        "tag": "A",
+        "ev": "start",
+        "file": "idle-5-9.test.ts",
+        "at": 5404
+      },
+      {
+        "tag": "A",
+        "ev": "start",
+        "file": "idle-1-9.test.ts",
+        "at": 5419
+      },
+      {
+        "tag": "A",
+        "ev": "start",
+        "file": "idle-3-9.test.ts",
+        "at": 5422
+      },
+      {
+        "tag": "A",
+        "ev": "end",
+        "file": "idle-1-9.test.ts",
+        "at": 6424
+      },
+      {
+        "tag": "A",
+        "ev": "end",
+        "file": "idle-3-9.test.ts",
+        "at": 8427
+      },
+      {
+        "tag": "A",
+        "ev": "end",
+        "file": "idle-5-9.test.ts",
+        "at": 10420
+      },
+      {
+        "tag": "A",
+        "ev": "run-end",
+        "at": 10421
+      },
+      {
+        "tag": "A",
+        "ev": "start",
+        "file": "idle-1-2.test.ts",
+        "at": 10542
+      },
+      {
+        "tag": "A",
+        "ev": "start",
+        "file": "idle-1-3.test.ts",
+        "at": 10542
+      },
+      {
+        "tag": "A",
+        "ev": "start",
+        "file": "idle-1-1.test.ts",
+        "at": 10544
+      },
+      {
+        "tag": "A",
+        "ev": "end",
+        "file": "idle-1-2.test.ts",
+        "at": 11546
+      },
+      {
+        "tag": "A",
+        "ev": "end",
+        "file": "idle-1-3.test.ts",
+        "at": 11546
+      },
+      {
+        "tag": "A",
+        "ev": "end",
+        "file": "idle-1-1.test.ts",
+        "at": 11548
+      },
+      {
+        "tag": "A",
+        "ev": "run-end",
+        "at": 11550
+      }
+    ]
+  },
+  "rssAfterRunsA": 134,
+  "instanceB": {
+    "startupMs": 16,
+    "rssBeforeMiB": 134,
+    "rssAfterMiB": 145
+  },
+  "C": {
+    "wallMs": 2178,
+    "events": [
+      {
+        "tag": "A",
+        "ev": "start",
+        "file": "idle-1-2.test.ts",
+        "at": 11704
+      },
+      {
+        "tag": "A",
+        "ev": "start",
+        "file": "idle-1-1.test.ts",
+        "at": 11713
+      },
+      {
+        "tag": "A",
+        "ev": "start",
+        "file": "idle-1-3.test.ts",
+        "at": 11713
+      },
+      {
+        "tag": "B",
+        "ev": "start",
+        "file": "idle-2-3.test.ts",
+        "at": 11733
+      },
+      {
+        "tag": "B",
+        "ev": "start",
+        "file": "idle-2-2.test.ts",
+        "at": 11738
+      },
+      {
+        "tag": "B",
+        "ev": "start",
+        "file": "idle-2-1.test.ts",
+        "at": 11738
+      },
+      {
+        "tag": "A",
+        "ev": "end",
+        "file": "idle-1-2.test.ts",
+        "at": 12708
+      },
+      {
+        "tag": "A",
+        "ev": "end",
+        "file": "idle-1-1.test.ts",
+        "at": 12716
+      },
+      {
+        "tag": "A",
+        "ev": "end",
+        "file": "idle-1-3.test.ts",
+        "at": 12717
+      },
+      {
+        "tag": "A",
+        "ev": "run-end",
+        "at": 12718
+      },
+      {
+        "tag": "B",
+        "ev": "end",
+        "file": "idle-2-3.test.ts",
+        "at": 13737
+      },
+      {
+        "tag": "B",
+        "ev": "end",
+        "file": "idle-2-2.test.ts",
+        "at": 13742
+      },
+      {
+        "tag": "B",
+        "ev": "end",
+        "file": "idle-2-1.test.ts",
+        "at": 13742
+      },
+      {
+        "tag": "B",
+        "ev": "run-end",
+        "at": 13744
+      }
+    ],
+    "rssAfterBoth": 145
+  },
+  "D": {
+    "serialMs": 7288,
+    "alternatingMs": 5141,
+    "events": [
+      {
+        "tag": "A",
+        "ev": "start",
+        "file": "idle-6-1.test.ts",
+        "at": 21154
+      },
+      {
+        "tag": "A",
+        "ev": "start",
+        "file": "idle-1-2.test.ts",
+        "at": 21162
+      },
+      {
+        "tag": "A",
+        "ev": "start",
+        "file": "idle-1-3.test.ts",
+        "at": 21165
+      },
+      {
+        "tag": "A",
+        "ev": "start",
+        "file": "idle-1-1.test.ts",
+        "at": 21172
+      },
+      {
+        "tag": "A",
+        "ev": "end",
+        "file": "idle-1-2.test.ts",
+        "at": 22166
+      },
+      {
+        "tag": "A",
+        "ev": "end",
+        "file": "idle-1-3.test.ts",
+        "at": 22169
+      },
+      {
+        "tag": "A",
+        "ev": "end",
+        "file": "idle-1-1.test.ts",
+        "at": 22176
+      },
+      {
+        "tag": "B",
+        "ev": "start",
+        "file": "idle-2-1.test.ts",
+        "at": 22307
+      },
+      {
+        "tag": "B",
+        "ev": "start",
+        "file": "idle-2-3.test.ts",
+        "at": 22309
+      },
+      {
+        "tag": "B",
+        "ev": "start",
+        "file": "idle-2-2.test.ts",
+        "at": 22311
+      },
+      {
+        "tag": "B",
+        "ev": "end",
+        "file": "idle-2-1.test.ts",
+        "at": 24312
+      },
+      {
+        "tag": "B",
+        "ev": "end",
+        "file": "idle-2-3.test.ts",
+        "at": 24314
+      },
+      {
+        "tag": "B",
+        "ev": "end",
+        "file": "idle-2-2.test.ts",
+        "at": 24316
+      },
+      {
+        "tag": "B",
+        "ev": "run-end",
+        "at": 24317
+      },
+      {
+        "tag": "A",
+        "ev": "end",
+        "file": "idle-6-1.test.ts",
+        "at": 26170
+      },
+      {
+        "tag": "A",
+        "ev": "run-end",
+        "at": 26173
+      }
+    ]
+  },
+  "setups": [
+    "549535 A 1792423326439",
+    "549535 A 1792423326439",
+    "549535 B 1792423337954"
+  ]
+}
