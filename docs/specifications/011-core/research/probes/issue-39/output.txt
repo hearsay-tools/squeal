@@ -1,0 +1,129 @@
+{"at":"2026-10-19T14:13:54.633Z","node":"v24.21.0","load1":3.2,"cpuCount":24}
+{"label":"installed-0.1.222","file":"/home/agent/.claude/plugins/cache/hearsay/squeal/0.1.222/dist/cli/squeal.mjs","sha256":"94380a2e8fa4b409f8c57f564184bdd7fb9a1d0ddb5e20d2ada32a1086685f9b"}
+{"target":"installed-0.1.222","case":"A cwd-relative from sub","cwd":"packages/cezar","args":["src/core/cursor-acp-runner.test.ts"],"selected":1,"browsers":0,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
+{"target":"installed-0.1.222","case":"A repo-relative from root","cwd":".","args":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"selected":1,"browsers":0,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
+{"target":"installed-0.1.222","case":"A absolute from sub","cwd":"packages/cezar","args":["<root>/packages/cezar/src/core/cursor-acp-runner.test.ts"],"selected":1,"browsers":0,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
+{"target":"installed-0.1.222","case":"A absolute from root","cwd":".","args":["<root>/packages/cezar/src/core/cursor-acp-runner.test.ts"],"selected":1,"browsers":0,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
+{"target":"installed-0.1.222","case":"B repo-relative from sub (incident 1)","cwd":"packages/cezar","args":["packages/cezar/src/core/cursor-print-capabilities.test.ts"],"selected":0,"browsers":0,"units":[],"unmatched":["packages/cezar/packages/cezar/src/core/cursor-print-capabilities.test.ts"]}
+{"target":"installed-0.1.222","case":"B cwd-relative from sub","cwd":"packages/cezar","args":["src/core/cursor-print-capabilities.test.ts"],"selected":1,"browsers":0,"units":["packages/cezar/src/core/cursor-print-capabilities.test.ts"],"unmatched":[]}
+{"target":"installed-0.1.222","case":"A cwd-relative from root (wrong base)","cwd":".","args":["src/core/cursor-acp-runner.test.ts"],"selected":0,"browsers":0,"units":[],"unmatched":["src/core/cursor-acp-runner.test.ts"]}
+{"target":"installed-0.1.222","case":"source cwd-relative from sub","cwd":"packages/cezar","args":["src/core/cursor-acp-runner.ts"],"selected":82,"browsers":81,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
+{"target":"installed-0.1.222","case":"source repo-relative from root","cwd":".","args":["packages/cezar/src/core/cursor-acp-runner.ts"],"selected":82,"browsers":81,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
+{"target":"installed-0.1.222","case":"missing test under src/** from sub","cwd":"packages/cezar","args":["src/core/missing.test.ts"],"selected":0,"browsers":0,"units":[],"unmatched":["packages/cezar/src/core/missing.test.ts"]}
+{"target":"installed-0.1.222","case":"A cwd-relative from sub, A unlisted","cwd":"packages/cezar","args":["src/core/cursor-acp-runner.test.ts"],"selected":81,"browsers":81,"units":[],"unmatched":[]}
+{"target":"installed-0.1.222","case":"outside worktree from sub","cwd":"packages/cezar","args":["../../../elsewhere.test.ts"],"selected":0,"browsers":0,"units":[],"unmatched":["../../../elsewhere.test.ts"]}
+{"label":"installed-0.1.199","file":"/home/agent/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs","sha256":"6869478e38d3233f30c3e95f3dcdadafcfc2d1520a1579606bad6c3b6f5ae31f"}
+{"target":"installed-0.1.199","case":"A cwd-relative from sub","cwd":"packages/cezar","args":["src/core/cursor-acp-runner.test.ts"],"selected":82,"browsers":81,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
+{"target":"installed-0.1.199","case":"A repo-relative from root","cwd":".","args":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"selected":82,"browsers":81,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
+{"target":"installed-0.1.199","case":"A absolute from sub","cwd":"packages/cezar","args":["<root>/packages/cezar/src/core/cursor-acp-runner.test.ts"],"selected":82,"browsers":81,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
+{"target":"installed-0.1.199","case":"A absolute from root","cwd":".","args":["<root>/packages/cezar/src/core/cursor-acp-runner.test.ts"],"selected":82,"browsers":81,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
+{"target":"installed-0.1.199","case":"B repo-relative from sub (incident 1)","cwd":"packages/cezar","args":["packages/cezar/src/core/cursor-print-capabilities.test.ts"],"selected":0,"browsers":0,"units":[],"unmatched":["packages/cezar/packages/cezar/src/core/cursor-print-capabilities.test.ts"]}
+{"target":"installed-0.1.199","case":"B cwd-relative from sub","cwd":"packages/cezar","args":["src/core/cursor-print-capabilities.test.ts"],"selected":82,"browsers":81,"units":["packages/cezar/src/core/cursor-print-capabilities.test.ts"],"unmatched":[]}
+{"target":"installed-0.1.199","case":"A cwd-relative from root (wrong base)","cwd":".","args":["src/core/cursor-acp-runner.test.ts"],"selected":0,"browsers":0,"units":[],"unmatched":["src/core/cursor-acp-runner.test.ts"]}
+{"target":"installed-0.1.199","case":"source cwd-relative from sub","cwd":"packages/cezar","args":["src/core/cursor-acp-runner.ts"],"selected":82,"browsers":81,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
+{"target":"installed-0.1.199","case":"source repo-relative from root","cwd":".","args":["packages/cezar/src/core/cursor-acp-runner.ts"],"selected":82,"browsers":81,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
+{"target":"installed-0.1.199","case":"missing test under src/** from sub","cwd":"packages/cezar","args":["src/core/missing.test.ts"],"selected":0,"browsers":0,"units":[],"unmatched":["packages/cezar/src/core/missing.test.ts"]}
+{"target":"installed-0.1.199","case":"A cwd-relative from sub, A unlisted","cwd":"packages/cezar","args":["src/core/cursor-acp-runner.test.ts"],"selected":81,"browsers":81,"units":[],"unmatched":[]}
+{"target":"installed-0.1.199","case":"outside worktree from sub","cwd":"packages/cezar","args":["../../../elsewhere.test.ts"],"selected":0,"browsers":0,"units":[],"unmatched":["../../../elsewhere.test.ts"]}
+{"label":"checkout-source","file":"src/cli/status-wait-paths.ts","sha256":"9d2bc6d9cd3278a495b25774f365a30f1deb98b4c74d0e2a38b46476e158077d"}
+{"target":"checkout-source","case":"A cwd-relative from sub","cwd":"packages/cezar","args":["src/core/cursor-acp-runner.test.ts"],"selected":1,"browsers":0,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
+{"target":"checkout-source","case":"A repo-relative from root","cwd":".","args":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"selected":1,"browsers":0,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
+{"target":"checkout-source","case":"A absolute from sub","cwd":"packages/cezar","args":["<root>/packages/cezar/src/core/cursor-acp-runner.test.ts"],"selected":1,"browsers":0,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
+{"target":"checkout-source","case":"A absolute from root","cwd":".","args":["<root>/packages/cezar/src/core/cursor-acp-runner.test.ts"],"selected":1,"browsers":0,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
+{"target":"checkout-source","case":"B repo-relative from sub (incident 1)","cwd":"packages/cezar","args":["packages/cezar/src/core/cursor-print-capabilities.test.ts"],"selected":0,"browsers":0,"units":[],"unmatched":["packages/cezar/packages/cezar/src/core/cursor-print-capabilities.test.ts"]}
+{"target":"checkout-source","case":"B cwd-relative from sub","cwd":"packages/cezar","args":["src/core/cursor-print-capabilities.test.ts"],"selected":1,"browsers":0,"units":["packages/cezar/src/core/cursor-print-capabilities.test.ts"],"unmatched":[]}
+{"target":"checkout-source","case":"A cwd-relative from root (wrong base)","cwd":".","args":["src/core/cursor-acp-runner.test.ts"],"selected":0,"browsers":0,"units":[],"unmatched":["src/core/cursor-acp-runner.test.ts"]}
+{"target":"checkout-source","case":"source cwd-relative from sub","cwd":"packages/cezar","args":["src/core/cursor-acp-runner.ts"],"selected":82,"browsers":81,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
+{"target":"checkout-source","case":"source repo-relative from root","cwd":".","args":["packages/cezar/src/core/cursor-acp-runner.ts"],"selected":82,"browsers":81,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
+{"target":"checkout-source","case":"missing test under src/** from sub","cwd":"packages/cezar","args":["src/core/missing.test.ts"],"selected":0,"browsers":0,"units":[],"unmatched":["packages/cezar/src/core/missing.test.ts"]}
+{"target":"checkout-source","case":"A cwd-relative from sub, A unlisted","cwd":"packages/cezar","args":["src/core/cursor-acp-runner.test.ts"],"selected":81,"browsers":81,"units":[],"unmatched":[]}
+{"target":"checkout-source","case":"outside worktree from sub","cwd":"packages/cezar","args":["../../../elsewhere.test.ts"],"selected":0,"browsers":0,"units":[],"unmatched":["../../../elsewhere.test.ts"]}
+{"label":"checkout-bundle","file":"plugins/claude-code/dist/cli/squeal.mjs","sha256":"94380a2e8fa4b409f8c57f564184bdd7fb9a1d0ddb5e20d2ada32a1086685f9b"}
+{"target":"checkout-bundle","case":"A cwd-relative from sub","cwd":"packages/cezar","args":["src/core/cursor-acp-runner.test.ts"],"selected":1,"browsers":0,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
+{"target":"checkout-bundle","case":"A repo-relative from root","cwd":".","args":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"selected":1,"browsers":0,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
+{"target":"checkout-bundle","case":"A absolute from sub","cwd":"packages/cezar","args":["<root>/packages/cezar/src/core/cursor-acp-runner.test.ts"],"selected":1,"browsers":0,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
+{"target":"checkout-bundle","case":"A absolute from root","cwd":".","args":["<root>/packages/cezar/src/core/cursor-acp-runner.test.ts"],"selected":1,"browsers":0,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
+{"target":"checkout-bundle","case":"B repo-relative from sub (incident 1)","cwd":"packages/cezar","args":["packages/cezar/src/core/cursor-print-capabilities.test.ts"],"selected":0,"browsers":0,"units":[],"unmatched":["packages/cezar/packages/cezar/src/core/cursor-print-capabilities.test.ts"]}
+{"target":"checkout-bundle","case":"B cwd-relative from sub","cwd":"packages/cezar","args":["src/core/cursor-print-capabilities.test.ts"],"selected":1,"browsers":0,"units":["packages/cezar/src/core/cursor-print-capabilities.test.ts"],"unmatched":[]}
+{"target":"checkout-bundle","case":"A cwd-relative from root (wrong base)","cwd":".","args":["src/core/cursor-acp-runner.test.ts"],"selected":0,"browsers":0,"units":[],"unmatched":["src/core/cursor-acp-runner.test.ts"]}
+{"target":"checkout-bundle","case":"source cwd-relative from sub","cwd":"packages/cezar","args":["src/core/cursor-acp-runner.ts"],"selected":82,"browsers":81,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
+{"target":"checkout-bundle","case":"source repo-relative from root","cwd":".","args":["packages/cezar/src/core/cursor-acp-runner.ts"],"selected":82,"browsers":81,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
+{"target":"checkout-bundle","case":"missing test under src/** from sub","cwd":"packages/cezar","args":["src/core/missing.test.ts"],"selected":0,"browsers":0,"units":[],"unmatched":["packages/cezar/src/core/missing.test.ts"]}
+{"target":"checkout-bundle","case":"A cwd-relative from sub, A unlisted","cwd":"packages/cezar","args":["src/core/cursor-acp-runner.test.ts"],"selected":81,"browsers":81,"units":[],"unmatched":[]}
+{"target":"checkout-bundle","case":"outside worktree from sub","cwd":"packages/cezar","args":["../../../elsewhere.test.ts"],"selected":0,"browsers":0,"units":[],"unmatched":["../../../elsewhere.test.ts"]}
+SUMMARY selected/browsers per case and target:
+{
+ "A cwd-relative from sub": {
+  "installed-0.1.222": "1/0",
+  "installed-0.1.199": "82/81",
+  "checkout-source": "1/0",
+  "checkout-bundle": "1/0"
+ },
+ "A repo-relative from root": {
+  "installed-0.1.222": "1/0",
+  "installed-0.1.199": "82/81",
+  "checkout-source": "1/0",
+  "checkout-bundle": "1/0"
+ },
+ "A absolute from sub": {
+  "installed-0.1.222": "1/0",
+  "installed-0.1.199": "82/81",
+  "checkout-source": "1/0",
+  "checkout-bundle": "1/0"
+ },
+ "A absolute from root": {
+  "installed-0.1.222": "1/0",
+  "installed-0.1.199": "82/81",
+  "checkout-source": "1/0",
+  "checkout-bundle": "1/0"
+ },
+ "B repo-relative from sub (incident 1)": {
+  "installed-0.1.222": "0/0 unmatched=packages/cezar/packages/cezar/src/core/cursor-print-capabilities.test.ts",
+  "installed-0.1.199": "0/0 unmatched=packages/cezar/packages/cezar/src/core/cursor-print-capabilities.test.ts",
+  "checkout-source": "0/0 unmatched=packages/cezar/packages/cezar/src/core/cursor-print-capabilities.test.ts",
+  "checkout-bundle": "0/0 unmatched=packages/cezar/packages/cezar/src/core/cursor-print-capabilities.test.ts"
+ },
+ "B cwd-relative from sub": {
+  "installed-0.1.222": "1/0",
+  "installed-0.1.199": "82/81",
+  "checkout-source": "1/0",
+  "checkout-bundle": "1/0"
+ },
+ "A cwd-relative from root (wrong base)": {
+  "installed-0.1.222": "0/0 unmatched=src/core/cursor-acp-runner.test.ts",
+  "installed-0.1.199": "0/0 unmatched=src/core/cursor-acp-runner.test.ts",
+  "checkout-source": "0/0 unmatched=src/core/cursor-acp-runner.test.ts",
+  "checkout-bundle": "0/0 unmatched=src/core/cursor-acp-runner.test.ts"
+ },
+ "source cwd-relative from sub": {
+  "installed-0.1.222": "82/81",
+  "installed-0.1.199": "82/81",
+  "checkout-source": "82/81",
+  "checkout-bundle": "82/81"
+ },
+ "source repo-relative from root": {
+  "installed-0.1.222": "82/81",
+  "installed-0.1.199": "82/81",
+  "checkout-source": "82/81",
+  "checkout-bundle": "82/81"
+ },
+ "missing test under src/** from sub": {
+  "installed-0.1.222": "0/0 unmatched=packages/cezar/src/core/missing.test.ts",
+  "installed-0.1.199": "0/0 unmatched=packages/cezar/src/core/missing.test.ts",
+  "checkout-source": "0/0 unmatched=packages/cezar/src/core/missing.test.ts",
+  "checkout-bundle": "0/0 unmatched=packages/cezar/src/core/missing.test.ts"
+ },
+ "A cwd-relative from sub, A unlisted": {
+  "installed-0.1.222": "81/81",
+  "installed-0.1.199": "81/81",
+  "checkout-source": "81/81",
+  "checkout-bundle": "81/81"
+ },
+ "outside worktree from sub": {
+  "installed-0.1.222": "0/0 unmatched=../../../elsewhere.test.ts",
+  "installed-0.1.199": "0/0 unmatched=../../../elsewhere.test.ts",
+  "checkout-source": "0/0 unmatched=../../../elsewhere.test.ts",
+  "checkout-bundle": "0/0 unmatched=../../../elsewhere.test.ts"
+ }
+}
+PASS: cwd-relative, repo-relative-from-root and absolute forms select the same file on every target; no daemon started.

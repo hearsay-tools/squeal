@@ -1,0 +1,48 @@
+### cwd=/test/ load=3.39 cpus=24 $ squeal status --wait 90000 cli/status-wait-paths-overlap.test.ts
+  2026-10-19T14:11:46.836Z, revision 0: no dependencies are installed in this worktree, so Squeal runs none of its tests and inherits none of their results. Run `npm ci` to install them: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest
+Selected: 
+Named test files have no verdict: the deadline passed after 90.0 s: the runner has not listed the test files of revision 2 yet. Worktree: known failures 0; checks 0 running, 0 queued; the daemon has not listed this worktree's test files yet, so these counts are not complete
+Selected: 
+Named test files have no verdict: the deadline passed after 90.0 s: the runner has not listed the test files of revision 2 yet. Worktree: known failures 0; checks 0 running, 0 queued; the daemon has not listed this worktree's test files yet, so these counts are not complete
+exit=3 elapsed=90.2s
+
+### cwd=/ load=3.62 cpus=24 $ squeal status --wait 90000 test/cli/status-wait-paths-overlap.test.ts
+  2026-10-19T14:11:46.836Z, revision 0: no dependencies are installed in this worktree, so Squeal runs none of its tests and inherits none of their results. Run `npm ci` to install them: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest
+Selected: 
+Named test files have no verdict: the deadline passed after 90.0 s: the runner has not listed the test files of revision 3 yet. Worktree: known failures 0; checks 0 running, 0 queued; the daemon has not listed this worktree's test files yet, so these counts are not complete
+Selected: 
+Named test files have no verdict: the deadline passed after 90.0 s: the runner has not listed the test files of revision 3 yet. Worktree: known failures 0; checks 0 running, 0 queued; the daemon has not listed this worktree's test files yet, so these counts are not complete
+exit=3 elapsed=90.2s
+
+### cwd=/test/ load=4.12 cpus=24 $ squeal status --wait 90000 /home/agent/projects/squeal/.ai/cezar/worktrees/4e657a12-7adb-4b39-919d-6b16923ce811/test/cli/status-wait-paths-overlap.test.ts
+  2026-10-19T14:11:46.836Z, revision 0: no dependencies are installed in this worktree, so Squeal runs none of its tests and inherits none of their results. Run `npm ci` to install them: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest
+Selected: 
+Named test files have no verdict: the deadline passed after 90.0 s: the runner has not listed the test files of revision 4 yet. Worktree: known failures 0; checks 0 running, 0 queued; the daemon has not listed this worktree's test files yet, so these counts are not complete
+Selected: 
+Named test files have no verdict: the deadline passed after 90.0 s: the runner has not listed the test files of revision 4 yet. Worktree: known failures 0; checks 0 running, 0 queued; the daemon has not listed this worktree's test files yet, so these counts are not complete
+exit=3 elapsed=90.2s
+
+### cwd=/test/ load=3.18 cpus=24 $ squeal status --wait 90000 test/cli/status-wait-paths-overlap.test.ts
+  2026-10-19T14:11:46.836Z, revision 0: no dependencies are installed in this worktree, so Squeal runs none of its tests and inherits none of their results. Run `npm ci` to install them: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest
+Selected: 
+Named test files have no verdict: the deadline passed after 90.0 s: the runner has not listed the test files of revision 5 yet. Worktree: known failures 0; checks 0 running, 0 queued; the daemon has not listed this worktree's test files yet, so these counts are not complete
+Selected: 
+Named test files have no verdict: the deadline passed after 90.0 s: the runner has not listed the test files of revision 5 yet. Worktree: known failures 0; checks 0 running, 0 queued; the daemon has not listed this worktree's test files yet, so these counts are not complete
+exit=3 elapsed=90.2s
+
+### cwd=/test/ load=3.39 cpus=24 $ squeal status --wait 90000 cli/missing-issue-39.test.ts
+  2026-10-19T14:11:46.836Z, revision 0: no dependencies are installed in this worktree, so Squeal runs none of its tests and inherits none of their results. Run `npm ci` to install them: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest
+Selected: 
+Named test files have no verdict: the deadline passed after 90.0 s: the runner has not listed the test files of revision 6 yet. Worktree: known failures 0; checks 0 running, 0 queued; the daemon has not listed this worktree's test files yet, so these counts are not complete
+Selected: 
+Named test files have no verdict: the deadline passed after 90.0 s: the runner has not listed the test files of revision 6 yet. Worktree: known failures 0; checks 0 running, 0 queued; the daemon has not listed this worktree's test files yet, so these counts are not complete
+exit=3 elapsed=90.2s
+
+### cwd=/test/ load=2.57 cpus=24 $ squeal status --wait 90000 ../src/cli/status-wait-paths.ts
+  2026-10-19T14:11:46.836Z, revision 0: no dependencies are installed in this worktree, so Squeal runs none of its tests and inherits none of their results. Run `npm ci` to install them: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest
+Selected: 
+Named test files have no verdict: the deadline passed after 90.0 s: the runner has not listed the test files of revision 7 yet. Worktree: known failures 0; checks 0 running, 0 queued; the daemon has not listed this worktree's test files yet, so these counts are not complete
+Selected: 
+Named test files have no verdict: the deadline passed after 90.0 s: the runner has not listed the test files of revision 7 yet. Worktree: known failures 0; checks 0 running, 0 queued; the daemon has not listed this worktree's test files yet, so these counts are not complete
+exit=3 elapsed=90.2s
+
