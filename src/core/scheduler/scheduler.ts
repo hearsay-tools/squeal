@@ -1,3 +1,4 @@
+import { setTimeout as sleep } from "node:timers/promises";
 import { createFsHasher, readObjectFormat } from "../hash/index.js";
 import { appendNote } from "../notes.js";
 import { hostLoad } from "../retry/index.js";
@@ -91,10 +92,23 @@ interface Recorded {
 
 /** A slot's ended run waiting for the next record (`#recordSlot`). */
 interface EndedSlot {
-  readonly ended: EndedRun;
+  readonly ended: Promise<EndedRun>;
   resolve(record: Recorded): void;
   reject(error: unknown): void;
 }
+
+/**
+ * How long a record of slots waits at least for the slots that end
+ * meanwhile (`#recordSlot`, task 011-21 slice 2): slots a selection started
+ * together end within tens of milliseconds of each other.
+ */
+const SLOT_GATHER_MS = 25;
+/**
+ * How many times the last commit of slots a record of slots waits: a slot
+ * that ends during a commit waits for it to end before the pump refills it,
+ * so commits hold the thread a quarter of the time at most.
+ */
+const SLOT_GATHER_COMMITS = 3;
 
 /** Creates the scheduler of one worktree. Call `start` before anything else. */
 export function createScheduler(options: SchedulerOptions): Scheduler {
@@ -124,7 +138,11 @@ class TierScheduler implements Scheduler {
    */
   readonly #inFlight = new Map<string, InFlight>();
   /** Slots whose runs ended, recorded together by the next record (`#recordSlot`, task 011-21). */
-  readonly #ended: EndedSlot[] = [];
+  readonly #endedSlots: EndedSlot[] = [];
+  /** The wait of the next record of slots, while one is open. */
+  #gathering: Promise<void> | null = null;
+  /** How long the last commit of slots took: the next one gathers at least that long. */
+  #slotCommitMs = 0;
   /** A `run --all` with `observeIgnored` (task 001-307). */
   readonly #warmUp = new WarmUp();
   /** Task 007-30: files the completion barrier withheld, so a withheld tier runs once more. */
@@ -587,14 +605,21 @@ class TierScheduler implements Scheduler {
               return null;
             }
             if (this.#runnerWork.size > 0) return "runner-work" as const;
-            return selectTier(context, ledger, this.#busyLanes());
+            const tier = selectTier(context, ledger, this.#busyLanes());
+            if (tier === null) return null;
+            this.#fly(tier, install.stamp, null);
+            // A lane of slots fills every free slot in this hold, so its slots end, and record,
+            // together rather than one record per selection (task 011-21 slice 2).
+            for (let more = tier; more.slot === true; ) {
+              const again = selectTier(context, ledger, this.#busyLanes());
+              if (again === null) break;
+              this.#fly(again, install.stamp, null);
+              more = again;
+            }
+            return "flown" as const;
           });
           this.#busy?.landed();
-          if (next === "runner-work") continue;
-          if (next !== null) {
-            this.#fly(next, install.stamp, null);
-            continue;
-          }
+          if (next !== null) continue;
           if (this.#reinstalled) break;
           if (this.#slowMayStart()) {
             // Spec 004 D2: no edit's fast work pending or running; the slow tier decides the rest.
@@ -650,20 +675,16 @@ class TierScheduler implements Scheduler {
           this.#warmUp.observes(tier),
           this.#stop.signal,
         );
+        let record: Recorded;
         if (tier.slot === true) {
           tier.lease?.release();
           flight.ran = true;
           this.#notify();
+          record = await this.#recordSlot(this.#ended(tier, ran, installStamp, slow));
+        } else {
+          const ended = await this.#ended(tier, ran, installStamp, slow);
+          record = await this.#lock.run(() => this.#record(ended, true));
         }
-        const ignored = await this.#warmUp.read(context, tier, ran);
-        // The completion barrier (task 001-168): a touch since selection withholds the run.
-        const inputs = await unstableInputs(context, tier);
-        const installMoved = this.#reinstalled || (await this.#install.stamp()) !== installStamp;
-        const ended: EndedRun = { tier, ran, ignored, inputs, installMoved, slow };
-        const record =
-          tier.slot === true
-            ? await this.#recordSlot(ended)
-            : await this.#lock.run(() => this.#record(ended, true));
         recorded = true;
         this.#busy?.landed();
         for (const note of record.withheld) this.#note(note);
@@ -683,6 +704,21 @@ class TierScheduler implements Scheduler {
         this.#notify();
       }
     })();
+  }
+
+  /** What the record of a run that ended reads outside the lock. */
+  async #ended(
+    tier: Tier,
+    ran: RunReport,
+    installStamp: string,
+    slow: SlowRun | null,
+  ): Promise<EndedRun> {
+    const { context } = this.#started();
+    const ignored = await this.#warmUp.read(context, tier, ran);
+    // The completion barrier (task 001-168): a touch since selection withholds the run.
+    const inputs = await unstableInputs(context, tier);
+    const installMoved = this.#reinstalled || (await this.#install.stamp()) !== installStamp;
+    return { tier, ran, ignored, inputs, installMoved, slow };
   }
 
   /**
@@ -744,31 +780,44 @@ class TierScheduler implements Scheduler {
   }
 
   /**
-   * Records an ended slot together with every slot that ended by the time
-   * the lock is free, in one commit (spec 011 C4 step 5 as amended for
-   * slots, task 011-21 slice 2): each commit's sink call lists every known
-   * state of the worktree, 55 to 340 ms of write lock on cezar's store
-   * (`mergeApplied`). A slot an earlier holder recorded finds the batch
-   * empty and takes that holder's outcome; an error fails only the slots
+   * Records a slot whose run ended, `ended` its reads outside the lock,
+   * together with the slots that end meanwhile, in one commit (spec 011 C4
+   * step 5 as amended for slots, task 011-21 slice 2): each commit's sink
+   * call lists every known state of the worktree, 55 to 340 ms of write lock
+   * on cezar's store (`mergeApplied`), and holds the thread meanwhile, so
+   * the slots that end during one commit are recorded by the next. The
+   * record first waits, outside the lock, `SLOT_GATHER_COMMITS` times as
+   * long as the last commit of slots took and at least `SLOT_GATHER_MS`, so
+   * they join it while the pump refills their slots; then it takes every
+   * slot that ended until none is left. A slot joins as its run ends, before its reads; one an earlier
+   * record took gets that record's outcome. An error fails only the slots
    * whose records it reached.
    */
-  async #recordSlot(ended: EndedRun): Promise<Recorded> {
+  async #recordSlot(ended: Promise<EndedRun>): Promise<Recorded> {
     const outcome = new Promise<Recorded>((resolve, reject) => {
-      this.#ended.push({ ended, resolve, reject });
+      this.#endedSlots.push({ ended, resolve, reject });
     });
+    // Its rejection is the slot's outcome's, below.
+    ended.catch(() => {});
+    const gather = Math.max(SLOT_GATHER_MS, SLOT_GATHER_COMMITS * this.#slotCommitMs);
+    this.#gathering ??= sleep(gather).then(() => {
+      this.#gathering = null;
+    });
+    await this.#gathering;
     await this.#lock.run(async () => {
-      const batch = this.#ended.splice(0);
       const recorded: { slot: EndedSlot; record: Recorded }[] = [];
-      for (const slot of batch) {
+      for (let slot = this.#endedSlots.shift(); slot; slot = this.#endedSlots.shift()) {
         try {
-          recorded.push({ slot, record: await this.#record(slot.ended, false) });
+          recorded.push({ slot, record: await this.#record(await slot.ended, false) });
         } catch (error) {
           slot.reject(error);
         }
       }
       if (recorded.length === 0) return;
+      const started = performance.now();
       try {
         this.#started().ledger.commit();
+        this.#slotCommitMs = performance.now() - started;
       } catch (error) {
         for (const { slot } of recorded) slot.reject(error);
         return;
