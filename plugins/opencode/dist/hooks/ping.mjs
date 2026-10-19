@@ -94,39 +94,6 @@ function splitTopLevel(body) {
   return parts;
 }
 
-// src/core/daemon/policy-precondition.ts
-var PRECONDITION_KEYS = /* @__PURE__ */ new Set(["exists", "command", "timeoutMs"]);
-function slowPrecondition(value) {
-  const expected = 'an object with "exists" (an array of paths or globs) or "command" (an argv array), and optionally "timeoutMs"';
-  if (!isRecord(value)) return expected;
-  const unknown = Object.keys(value).find((key) => !PRECONDITION_KEYS.has(key));
-  if (unknown !== void 0) return { problem: `has an unknown key "${unknown}"` };
-  const { exists, command, timeoutMs } = value;
-  if (exists === void 0 && command === void 0) return expected;
-  if (exists !== void 0) {
-    if (!nonEmptyStrings(exists)) {
-      return { problem: '"exists" must be a non-empty array of strings' };
-    }
-    for (const glob of exists) {
-      try {
-        globToRegExp(glob);
-      } catch (error) {
-        return { problem: `"exists" has a glob Squeal cannot use: ${error.message}` };
-      }
-    }
-  }
-  if (command !== void 0 && !nonEmptyStrings(command)) {
-    return { problem: '"command" must be a non-empty array of strings, the program first' };
-  }
-  if (timeoutMs !== void 0 && !(Number.isInteger(timeoutMs) && timeoutMs > 0)) {
-    return { problem: '"timeoutMs" must be a positive integer' };
-  }
-  return null;
-}
-function nonEmptyStrings(value) {
-  return Array.isArray(value) && value.length > 0 && value.every((s) => typeof s === "string" && s.length > 0);
-}
-
 // src/core/daemon/policy-node-test.ts
 function compiles(globs2) {
   for (const glob of globs2) {
@@ -156,8 +123,7 @@ var FIELDS = {
   env: variables,
   include: globs,
   exclude: globs,
-  slow: boolean,
-  precondition: slowPrecondition
+  slow: boolean
 };
 var REQUIRED = /* @__PURE__ */ new Set(["name", "include"]);
 function nodeTestProjects(value, path) {
@@ -290,14 +256,13 @@ var SHAPE = {
   },
   nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
   pytest: (v) => pytestProjects(v, "pytest"),
-  vitest: { excludeProjects: strings2 },
+  vitest: { excludeProjects: strings2, exclude: (v) => strings2(v) ?? compiles(v) },
   slow: {
     include: slowInclude,
     maxWorkers: positiveInteger,
     maxLoadPerCpu: aboveZero,
     maxDeferMs: atLeastZero,
-    maxParallel: positiveInteger,
-    precondition: slowPrecondition
+    maxParallel: positiveInteger
   },
   delivery: { uncoveredEdits: boolean2 },
   daemon: { idleExitMinutes: aboveZero, unusedExitMinutes: aboveZero },
@@ -308,6 +273,9 @@ function isNumber(value) {
 }
 
 // src/core/text.ts
+function plural(count, word) {
+  return `${count} ${word}${count === 1 ? "" : "s"}`;
+}
 function excludedProjectsText(entries) {
   const quoted = (list, join) => {
     const all = list.map((entry) => JSON.stringify(entry));
@@ -321,6 +289,15 @@ function excludedProjectsText(entries) {
     ...patterns.length === 0 ? [] : [`projects matching ${quoted(patterns, "or")}`]
   ];
   return { text: parts.join(" and "), plural: patterns.length > 0 || names.length > 1 };
+}
+var EXCLUDED_GLOBS_NAMED = 3;
+function excludedFilesText(globs2) {
+  const quoted = globs2.slice(0, EXCLUDED_GLOBS_NAMED).map((glob) => JSON.stringify(glob));
+  const rest = globs2.length - quoted.length;
+  if (rest > 0)
+    return `Vitest test files matching ${quoted.join(", ")} and ${plural(rest, "more glob")}`;
+  const last = quoted.pop();
+  return `Vitest test files matching ${quoted.length === 0 ? last : `${quoted.join(", ")} or ${last}`}`;
 }
 
 // src/core/store/connection.ts
@@ -655,7 +632,7 @@ function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
     retrySentence(command, naming),
     REVISION,
     covers,
-    "Squeal does not cover typecheck, build or any other test suite: run those yourself."
+    notCovered(coverage)
   ].join(" ");
   let text = "";
   const most = Math.max(coverage.nodeTest.length, coverage.pytest?.length ?? 0);
@@ -730,6 +707,11 @@ function excluded(coverage) {
   if (entries.length === 0) return "";
   const { text, plural: plural2 } = excludedProjectsText(entries);
   return `; its ${text} ${plural2 ? "are" : "is"} not run, excluded by squeal.config.json`;
+}
+function notCovered(coverage) {
+  const globs2 = coverage.vitestExcludedFiles ?? [];
+  const what = globs2.length === 0 ? "typecheck, build" : `typecheck, build, the ${excludedFilesText(globs2)}, which squeal.config.json excludes,`;
+  return `Squeal does not cover ${what} or any other test suite: run those yourself.`;
 }
 function named(noun, entries, shown) {
   const nouns = entries.length === 1 ? noun : `${noun}s`;

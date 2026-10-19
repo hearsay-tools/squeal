@@ -154,8 +154,6 @@ var WORKTREE_META_ROWS = {
   daemonRest: { prefix: "daemon-rest:", owner: "types/daemon" },
   daemonStopped: { prefix: "daemon-stopped:", owner: "delivery/stopped" },
   slowTier: { prefix: "slow-tier:", owner: "slow/state" },
-  slowArtifacts: { prefix: "slow-artifacts:", owner: "slow/state" },
-  slowSkips: { prefix: "slow-skips:", owner: "state/slow-skipped" },
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
   failureProducers: { prefix: "failure-producers:", owner: "state/producers" },
   reruns: { prefix: "reruns:", owner: "scheduler/rerun-memory" },
@@ -212,7 +210,7 @@ var DEFAULT_POLICY = {
   runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5 },
   nodeTest: [],
   pytest: [],
-  vitest: { excludeProjects: [] },
+  vitest: { excludeProjects: [], exclude: [] },
   slow: { include: [], maxWorkers: 2, maxLoadPerCpu: 1, maxDeferMs: 6e5, maxParallel: 4 },
   delivery: { uncoveredEdits: true },
   daemon: { idleExitMinutes: 60, unusedExitMinutes: 30 },
@@ -454,39 +452,6 @@ function splitTopLevel(body) {
   return parts;
 }
 
-// src/core/daemon/policy-precondition.ts
-var PRECONDITION_KEYS = /* @__PURE__ */ new Set(["exists", "command", "timeoutMs"]);
-function slowPrecondition(value) {
-  const expected = 'an object with "exists" (an array of paths or globs) or "command" (an argv array), and optionally "timeoutMs"';
-  if (!isRecord(value)) return expected;
-  const unknown = Object.keys(value).find((key) => !PRECONDITION_KEYS.has(key));
-  if (unknown !== void 0) return { problem: `has an unknown key "${unknown}"` };
-  const { exists, command, timeoutMs } = value;
-  if (exists === void 0 && command === void 0) return expected;
-  if (exists !== void 0) {
-    if (!nonEmptyStrings(exists)) {
-      return { problem: '"exists" must be a non-empty array of strings' };
-    }
-    for (const glob of exists) {
-      try {
-        globToRegExp(glob);
-      } catch (error) {
-        return { problem: `"exists" has a glob Squeal cannot use: ${error.message}` };
-      }
-    }
-  }
-  if (command !== void 0 && !nonEmptyStrings(command)) {
-    return { problem: '"command" must be a non-empty array of strings, the program first' };
-  }
-  if (timeoutMs !== void 0 && !(Number.isInteger(timeoutMs) && timeoutMs > 0)) {
-    return { problem: '"timeoutMs" must be a positive integer' };
-  }
-  return null;
-}
-function nonEmptyStrings(value) {
-  return Array.isArray(value) && value.length > 0 && value.every((s) => typeof s === "string" && s.length > 0);
-}
-
 // src/core/daemon/policy-node-test.ts
 function compiles(globs2) {
   for (const glob of globs2) {
@@ -516,8 +481,7 @@ var FIELDS = {
   env: variables,
   include: globs,
   exclude: globs,
-  slow: boolean,
-  precondition: slowPrecondition
+  slow: boolean
 };
 var REQUIRED = /* @__PURE__ */ new Set(["name", "include"]);
 function nodeTestProjects(value, path) {
@@ -651,14 +615,13 @@ var SHAPE = {
   },
   nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
   pytest: (v) => pytestProjects(v, "pytest"),
-  vitest: { excludeProjects: strings2 },
+  vitest: { excludeProjects: strings2, exclude: (v) => strings2(v) ?? compiles(v) },
   slow: {
     include: slowInclude,
     maxWorkers: positiveInteger,
     maxLoadPerCpu: aboveZero,
     maxDeferMs: atLeastZero,
-    maxParallel: positiveInteger,
-    precondition: slowPrecondition
+    maxParallel: positiveInteger
   },
   delivery: { uncoveredEdits: boolean2 },
   daemon: { idleExitMinutes: aboveZero, unusedExitMinutes: aboveZero },
@@ -677,9 +640,6 @@ function isNumber(value) {
 
 // src/core/keys/closure.ts
 var CLOSURE_METHOD = "static imports plus declared inputs";
-function isInputList(inputs2) {
-  return Array.isArray(inputs2);
-}
 
 // src/core/keys/hidden-lockfile.ts
 var HIDDEN_LOCKFILE = "node_modules/.package-lock.json";
@@ -730,6 +690,15 @@ function excludedProjectsText(entries) {
     ...patterns.length === 0 ? [] : [`projects matching ${quoted(patterns, "or")}`]
   ];
   return { text: parts.join(" and "), plural: patterns.length > 0 || names.length > 1 };
+}
+var EXCLUDED_GLOBS_NAMED = 3;
+function excludedFilesText(globs2) {
+  const quoted = globs2.slice(0, EXCLUDED_GLOBS_NAMED).map((glob) => JSON.stringify(glob));
+  const rest = globs2.length - quoted.length;
+  if (rest > 0)
+    return `Vitest test files matching ${quoted.join(", ")} and ${plural(rest, "more glob")}`;
+  const last = quoted.pop();
+  return `Vitest test files matching ${quoted.length === 0 ? last : `${quoted.join(", ")} or ${last}`}`;
 }
 
 // src/core/state/fingerprint.ts
@@ -1096,22 +1065,13 @@ function writeSlot(store, key, consumer, value) {
 }
 
 // src/core/slow/classify.ts
+import { posix as posix3 } from "node:path";
 function slowFiles(policy, projects) {
   const matches = createInputMatcher(policy.slow.include);
   const slowProjects = new Set(
     projects.filter((project) => project.slow === true).map((project) => project.name)
   );
   return (testFile) => slowProjects.has(testFile.project) || matches(testFile.path);
-}
-
-// src/core/slow/inherit.ts
-import { posix as posix3 } from "node:path";
-function inheritsAcrossWorktrees(testFile, declaredInputs, testFiles, slowGlobs2) {
-  if (!testFile.slow) return true;
-  const covered = slowGlobs2.map(coveredPrefix);
-  return declaredInputs.some(
-    (path) => !testFiles.has(path) && !covered.some((prefix) => covers(prefix, path))
-  );
 }
 function slowGlobs(policy, projects) {
   const globs2 = [...policy.slow.include];
@@ -1121,19 +1081,6 @@ function slowGlobs(policy, projects) {
     for (const glob of project.include) globs2.push(posix3.join(cwd, glob));
   }
   return globs2;
-}
-var GLOB_CHARS = /[*?[{]/;
-function coveredPrefix(glob) {
-  const source = glob.startsWith("./") ? glob.slice(2) : glob;
-  const segments = source.split("/");
-  const wild = segments.findIndex((segment) => GLOB_CHARS.test(segment));
-  if (wild === -1) return { file: source };
-  return {
-    dir: segments.slice(0, wild).map((segment) => `${segment}/`).join("")
-  };
-}
-function covers(covered, path) {
-  return "file" in covered ? covered.file === path : path.startsWith(covered.dir);
 }
 
 // src/core/slow/state.ts
@@ -1170,24 +1117,6 @@ function toActivity(value) {
   }
   return null;
 }
-function slowArtifactsMetaKey(worktreeId) {
-  return worktreeMetaKey("slowArtifacts", worktreeId);
-}
-function readSlowArtifacts(store, worktreeId) {
-  const raw = store.meta.get(slowArtifactsMetaKey(worktreeId));
-  if (raw === null) return /* @__PURE__ */ new Map();
-  try {
-    const value = JSON.parse(raw);
-    if (typeof value !== "object" || value === null || Array.isArray(value)) return /* @__PURE__ */ new Map();
-    return new Map(
-      Object.entries(value).filter(
-        (entry3) => Array.isArray(entry3[1]) && entry3[1].every((glob) => typeof glob === "string")
-      )
-    );
-  } catch {
-    return /* @__PURE__ */ new Map();
-  }
-}
 function failureKeysMetaKey(worktreeId) {
   return worktreeMetaKey("failureKeys", worktreeId);
 }
@@ -1220,87 +1149,13 @@ function forgetStopWait(store, consumer) {
   writeSlot(store, stopWaitMetaKey(consumer.worktreeId), consumer, null);
 }
 
-// src/core/state/slow-skipped.ts
-function slowSkipsMetaKey(worktreeId) {
-  return worktreeMetaKey("slowSkips", worktreeId);
-}
-function readSlowSkips(store, worktreeId) {
-  const raw = store.meta.get(slowSkipsMetaKey(worktreeId));
-  if (raw === null) return [];
-  try {
-    const value = JSON.parse(raw);
-    return Array.isArray(value) ? value.flatMap(toSkip) : [];
-  } catch {
-    return [];
-  }
-}
-function skippedSlowIds(skips) {
-  return new Set(skips.flatMap((skip) => skip.testFiles.map(testFileId)));
-}
-function toSkip(value) {
-  if (!isRecord(value) || !isRecord(value.precondition)) return [];
-  const { source, reason, since, testFiles } = value;
-  if (typeof source !== "string" || typeof reason !== "string" || typeof since !== "number") {
-    return [];
-  }
-  if (!Array.isArray(testFiles) || !testFiles.every(isRef)) return [];
-  return [{ precondition: value.precondition, source, reason, since, testFiles }];
-}
-function isRef(value) {
-  return isRecord(value) && typeof value.project === "string" && typeof value.path === "string";
-}
-
-// src/core/state/slow-sources.ts
-function sourcesChanged(store, worktreeId, since, revision, artifact, isSource) {
-  if (since >= revision) return false;
-  const tested = /* @__PURE__ */ new Map();
-  const now = /* @__PURE__ */ new Map();
-  for (const { changes } of store.revisions.range(worktreeId, since, revision)) {
-    for (const change2 of changes) {
-      if (!tested.has(change2.path)) tested.set(change2.path, change2.oldHash);
-      now.set(change2.path, change2.newHash);
-    }
-  }
-  const isArtifact = createInputMatcher(artifact);
-  return [...now].some(
-    ([path, hash]) => hash !== tested.get(path) && path !== POLICY_FILE && !isArtifact(path) && isSource(path)
-  );
-}
-function artifactSources(store, keys, view) {
-  const testFiles = new Set(keys.map((row) => row.testFile.path));
-  let closures;
-  return (path) => {
-    if (!inheritsAcrossWorktrees({ path, slow: true }, [path], testFiles, view.slowGlobs)) {
-      return false;
-    }
-    closures ??= undeclaredClosures(store, keys, view);
-    return closures.has(path);
-  };
-}
-function undeclaredClosures(store, keys, view) {
-  const listed2 = new Set(keys.map((row) => testFileId(row.testFile)));
-  const paths = /* @__PURE__ */ new Set();
-  for (const record of store.testFiles.list()) {
-    if (!listed2.has(testFileId(record.testFile))) continue;
-    const declared = createInputMatcher(view.artifactFor(record.testFile.path));
-    for (const path of record.closure.paths) if (!declared(path)) paths.add(path);
-  }
-  return paths;
-}
-
 // src/core/state/slow.ts
 function slowPolicyView(policy) {
   const globs2 = slowGlobs(policy, policy.nodeTest);
   if (globs2.length === 0) return null;
-  const { inputs: inputs2 } = policy;
-  const rules = isInputList(inputs2) ? [{ applies: () => true, globs: inputs2 }] : Object.entries(inputs2).map(([testGlob, globs3]) => ({
-    applies: createInputMatcher([testGlob]),
-    globs: globs3
-  }));
   return {
     isSlow: slowFiles(policy, policy.nodeTest),
     slowGlobs: globs2,
-    artifactFor: (path) => [...new Set(rules.filter((r) => r.applies(path)).flatMap((r) => r.globs))].sort(),
     stopWaitMs: stopSlowWaitMs(policy)
   };
 }
@@ -1308,7 +1163,7 @@ function worktreeSlowView(store, worktreeId) {
   const root = store.worktrees.get(worktreeId)?.root;
   return root === void 0 ? null : slowPolicyView(readPolicy(root));
 }
-function classifySlowFiles(states, keys, isSlow, skipped = /* @__PURE__ */ new Set()) {
+function classifySlowFiles(states, keys, isSlow) {
   const checks = /* @__PURE__ */ new Map();
   for (const state of states) {
     const ref = testFileOf(state.check);
@@ -1322,80 +1177,30 @@ function classifySlowFiles(states, keys, isSlow, skipped = /* @__PURE__ */ new S
     const id = testFileId(row.testFile);
     const own = checks.get(id) ?? [];
     const cls = own.length === 0 ? row.key !== null && row.pending !== null ? "pending" : "notRun" : own.some((s) => s.validity === "pending") ? "pending" : own.every((s) => s.validity === "current") ? "current" : "notRun";
-    const held = cls === "current" && skipped.has(id);
-    files2.set(id, {
-      ref: row.testFile,
-      class: held ? row.pending === null ? "notRun" : "pending" : cls
-    });
+    files2.set(id, { ref: row.testFile, class: cls });
   }
   return files2;
 }
-function readSlowTier(store, worktreeId, revision, states, keys, view) {
-  const skips = readSlowSkips(store, worktreeId);
-  const files2 = classifySlowFiles(states, keys, view.isSlow, skippedSlowIds(skips));
+function readSlowTier(store, worktreeId, states, keys, view) {
+  const files2 = classifySlowFiles(states, keys, view.isSlow);
   const counts = { current: 0, pending: 0, notRun: 0 };
   for (const { class: cls } of files2.values()) counts[cls]++;
   let currentAt = null;
   let currentUpTo = null;
-  const ranFrom = /* @__PURE__ */ new Map();
   for (const state of states) {
     if (state.validity !== "current" || state.observedAt === null) continue;
     const id = testFileId(testFileOf(state.check));
     if (files2.get(id)?.class !== "current") continue;
     currentAt = currentAt === null ? state.observedAt : Math.min(currentAt, state.observedAt);
     currentUpTo = Math.max(currentUpTo ?? state.observedAt, state.observedAt);
-    const origin = state.origin?.kind === "inherited" ? state.origin.worktreeId : worktreeId;
-    ranFrom.set(id, origin);
   }
-  const artifactOf = recordedArtifacts(store);
-  const artifact = /* @__PURE__ */ new Set();
-  const declaredToday = /* @__PURE__ */ new Set();
-  let artifactUnknown = 0;
-  for (const row of keys) {
-    const from = ranFrom.get(testFileId(row.testFile));
-    if (from === void 0) continue;
-    const recorded = row.key === null ? void 0 : artifactOf(from, row.key);
-    if (recorded === void 0) artifactUnknown++;
-    for (const glob of recorded ?? []) artifact.add(glob);
-    for (const glob of recorded === void 0 ? view.artifactFor(row.testFile.path) : []) {
-      declaredToday.add(glob);
-    }
-  }
-  const globs2 = [...artifact].sort();
-  const isSource = artifactSources(store, keys, view);
   return {
     testFiles: files2.size,
     ...counts,
     currentAt,
     ...currentUpTo !== null && currentUpTo !== currentAt ? { currentUpTo } : {},
-    artifact: globs2,
-    ...artifactUnknown > 0 ? { artifactUnknown } : {},
-    sourcesChangedSince: currentAt !== null && sourcesChanged(
-      store,
-      worktreeId,
-      currentAt,
-      revision,
-      [...globs2, ...declaredToday],
-      isSource
-    ),
     activity: liveActivity(store, worktreeId, keys, view.isSlow),
-    ...skippedField(skips, files2),
     ...view.stopWaitMs === null ? {} : { stopWaitMs: view.stopWaitMs }
-  };
-}
-function skippedField(skips, files2) {
-  const reasons = skips.filter((skip) => skip.testFiles.some((ref) => files2.get(testFileId(ref))?.class === "notRun")).map((skip) => skip.reason);
-  return reasons.length === 0 ? {} : { skipped: reasons.join("; ") };
-}
-function recordedArtifacts(store) {
-  const records = /* @__PURE__ */ new Map();
-  return (from, key) => {
-    let byKey = records.get(from);
-    if (byKey === void 0) {
-      byKey = readSlowArtifacts(store, from);
-      records.set(from, byKey);
-    }
-    return byKey.get(key);
   };
 }
 function liveActivity(store, worktreeId, keys, isSlow) {
@@ -1473,7 +1278,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     refinedRevision,
     runnerPartPending: refinedRevision !== null && refinedRevision < revision,
     ...slow === void 0 ? {} : { slowPending: countSlowPending(states, keys, slow) },
-    ...view === null ? {} : { slowTier: readSlowTier(store, worktreeId, revision, states, keys, view) },
+    ...view === null ? {} : { slowTier: readSlowTier(store, worktreeId, states, keys, view) },
     ...awaiting ? { awaitingInstall: true } : {},
     ...missing !== null && missing.length > 0 ? { missingInstalls: missing } : {},
     ...awaiting ? installCommandField(store, worktreeId) : {},
@@ -1639,52 +1444,23 @@ function pendingText(pending, activity, late) {
   const running = `${reported}running ${what} (${last})`;
   return pending === paths.length ? running : `${pending} pending, ${running}`;
 }
-function artifactText(artifact) {
-  const [only] = artifact;
-  return artifact.length === 1 && only !== void 0 ? only : `${artifact.length} declared artifacts`;
-}
 function currentText(tier) {
-  const unknown = tier.artifactUnknown ?? 0;
-  const at2 = tier.currentUpTo === void 0 ? `revision ${tier.currentAt}` : `revisions ${tier.currentAt} to ${tier.currentUpTo}`;
-  if (unknown >= tier.current) return `current at ${at2}, declared artifact unknown`;
-  const against = tier.artifact.length === 0 ? `current at ${at2}, against no declared artifact` : `current against ${artifactText(tier.artifact)} as of ${at2}`;
-  return unknown === 0 ? against : `${against} (declared artifact unknown for ${unknown})`;
-}
-function untestedText(tier) {
-  const unknown = tier.artifactUnknown ?? 0;
-  if (tier.artifact.length === 0 || unknown >= tier.current) {
-    return "these files have not tested the source changes since";
-  }
-  const it = tier.artifact.length === 1 ? "it" : "them";
-  return `the source changes since are not in ${it}, so these files have not tested them`;
+  return tier.currentUpTo === void 0 ? `current at revision ${tier.currentAt}` : `current at revisions ${tier.currentAt} to ${tier.currentUpTo}`;
 }
 function slowTierText(header, command) {
   const tier = header.slowTier;
   if (tier === void 0) return null;
   if (tier.testFiles === 0) return `Slow tier: no slow test files listed yet; ${stopText(tier)}.`;
   const parts = [];
-  if (tier.current > 0) {
-    const untested = tier.sourcesChangedSince ? `; ${untestedText(tier)}` : "";
-    parts.push(`${tier.current} ${currentText(tier)}${untested}`);
-  }
+  if (tier.current > 0) parts.push(`${tier.current} ${currentText(tier)}`);
   if (tier.pending > 0) {
     parts.push(pendingText(tier.pending, tier.activity, header.daemon?.state === "down"));
   }
-  const skip = skippedReason(tier);
-  if (tier.notRun > 0) {
-    const skipped = skip === null ? "" : `, skipped: ${skip}`;
-    parts.push(`${tier.notRun} not run at revision ${header.revision}${skipped}`);
-  }
-  const runs = tier.current >= tier.testFiles ? "" : skip === null ? `; \`${command} run --slow\` runs them now` : `; the next revision or \`${command} run --slow\` checks it again`;
+  if (tier.notRun > 0) parts.push(`${tier.notRun} not run at revision ${header.revision}`);
+  const runs = tier.current >= tier.testFiles ? "" : `; \`${command} run --slow\` runs them now`;
   return `Slow tier: ${plural(tier.testFiles, "test file")}; ${parts.join("; ")}. ${capitalized(stopText(tier))}${runs}.`;
 }
-function skippedReason(tier) {
-  return tier?.skipped ?? null;
-}
 function stopText(tier) {
-  if (skippedReason(tier) !== null) {
-    return tier.stopWaitMs === void 0 ? "Squeal runs them once the precondition holds" : "Squeal runs them once the precondition holds, and Stop holds the agent once naming it";
-  }
   if (tier.stopWaitMs !== void 0) {
     return `Stop waits up to ${durationText(tier.stopWaitMs)} for them or holds the agent once`;
   }
@@ -3795,33 +3571,10 @@ function loadOf(store, worktreeId, entry3) {
   const result = store.results.listForCheck(entry3.check, LOAD_RESULTS_READ).find((r) => r.outcome === "fail" && r.provenance.worktreeId === from);
   return result?.errors.find((e) => e.loadAverage !== void 0)?.loadAverage;
 }
-function slowRunArtifact(worktreeId, slow, failureKeys, artifactOf, entry3) {
-  const { origin } = entry3;
-  const from = origin.kind === "inherited" ? origin.worktreeId : worktreeId;
-  const key = failureKeys.get(checkIdentity(entry3.check));
-  const recorded = key === void 0 ? void 0 : artifactOf(from, key);
-  if (recorded !== void 0) return recorded;
-  const { project, testPath } = entry3.check;
-  return slow?.isSlow({ project, path: testPath }) === true ? null : void 0;
-}
-function recordedArtifacts2(store) {
-  const records = /* @__PURE__ */ new Map();
-  return (from, key) => {
-    let byKey = records.get(from);
-    if (byKey === void 0) {
-      byKey = readSlowArtifacts(store, from);
-      records.set(from, byKey);
-    }
-    return byKey.get(key);
-  };
-}
 function attribute(store, consumer, entries, revision) {
   if (!entries.some((e) => e.to === "fail")) return entries;
   const from = registration(store, consumer);
   const changesOf = closureChanges(store, consumer, revision);
-  const slow = worktreeSlowView(store, consumer.worktreeId);
-  const failureKeys = readFailureKeys(store, consumer.worktreeId);
-  const artifactOf = recordedArtifacts2(store);
   const before = from === null ? null : beforeEditsFor(store, consumer.worktreeId, slot(consumer), from.since);
   return entries.map((entry3) => {
     if (entry3.kind === "fail-retired" || entry3.to !== "fail") return entry3;
@@ -3831,8 +3584,6 @@ function attribute(store, consumer, entries, revision) {
       ...load === void 0 ? {} : { loadAverage: load },
       ...firstSeen ? { beforeEdits: before(entry3.check) } : {}
     };
-    const slowArtifact = slowRunArtifact(consumer.worktreeId, slow, failureKeys, artifactOf, entry3);
-    if (slowArtifact !== void 0) return { ...entry3, slowArtifact, ...facts };
     const told = changesOf(entry3.check);
     return { ...entry3, ...told === void 0 ? {} : { changesInClosure: told }, ...facts };
   });
@@ -3851,10 +3602,7 @@ function closureChanges(store, consumer, revision) {
 function withClosureChanges(store, consumer, failures, revision) {
   if (failures.length === 0) return failures;
   const changesOf = closureChanges(store, consumer, revision);
-  const slow = worktreeSlowView(store, consumer.worktreeId);
   return failures.map((f) => {
-    const { project, testPath } = f.check;
-    if (slow?.isSlow({ project, path: testPath }) === true) return f;
     const paths = changesOf(f.check);
     return paths === void 0 || paths.length === 0 ? f : { ...f, changesInClosure: paths };
   });
@@ -4638,9 +4386,13 @@ function snapshot(store, worktreeId, root, now) {
 }
 function vitestExcluded(root) {
   const policy = readPolicy(root);
-  const names = policy.vitest.excludeProjects;
-  if (names.length === 0) return {};
-  return policy.nodeTest.length === 0 || vitestDetected(root) ? { vitestExcluded: names } : {};
+  const { excludeProjects: names, exclude: globs2 } = policy.vitest;
+  if (names.length + globs2.length === 0) return {};
+  if (policy.nodeTest.length > 0 && !vitestDetected(root)) return {};
+  return {
+    ...names.length === 0 ? {} : { vitestExcluded: names },
+    ...globs2.length === 0 ? {} : { vitestExcludedFiles: globs2 }
+  };
 }
 function openCheckpoint(store, worktreeId, daemon) {
   const progress = parseCheckpointProgress(store.meta.get(checkpointMetaKey(worktreeId)));
@@ -4878,12 +4630,7 @@ function slowTierState(tier) {
     tier.pending,
     tier.notRun,
     tier.currentAt,
-    tier.currentUpTo ?? null,
-    tier.artifact,
-    tier.artifactUnknown ?? 0,
-    tier.sourcesChangedSince,
-    // A skip is a state (004 D8 as amended 2026-10-17): its reason is told once, as it changes.
-    ...skippedReason(tier) === null ? [] : [skippedReason(tier)]
+    tier.currentUpTo ?? null
   ]);
 }
 function slowTierChanged(store, consumer, tier) {
@@ -5341,17 +5088,6 @@ function seenLine(entry3, revision) {
   ];
   return `${text}${joined}${parts.filter((p) => p !== null).join(", ")}`;
 }
-function slowSeenLine(entry3, revision) {
-  const artifact = entry3.slowArtifact;
-  const from = inheritedFrom(entry3);
-  const { text, joined } = changeBefore(entry3);
-  const parts = [
-    from === null ? `slow tier, Squeal's run saw it at revision ${entry3.observedAt}` : `slow tier, Squeal's run in ${from} saw it, inherited at revision ${entry3.observedAt}`,
-    artifact === null ? "declared artifact unknown" : artifact === void 0 || artifact.length === 0 ? "against no declared artifact" : `against ${artifact.join(", ")} as of revision ${entry3.observedAt}`,
-    validityText(entry3, revision)
-  ];
-  return `${text}${joined}${parts.filter((p) => p !== null).join(", ")}`;
-}
 function recoveryProvenance(entry3, revision) {
   const parts = [];
   if (entry3.validity === "stale") parts.push(`stale, observed at revision ${entry3.observedAt}`);
@@ -5476,14 +5212,13 @@ function block(head, lines, counted) {
 }
 function entryBlock(entry3, revision) {
   const failed = entry3.to === "fail";
-  const slow = failed && entry3.slowArtifact !== void 0;
   return block(
     `${upper2(entry3.to)}  ${checkName(entry3.check)}`,
     [
-      slow ? slowSeenLine(entry3, revision) : failed ? seenLine(entry3, revision) : change(entry3),
+      failed ? seenLine(entry3, revision) : change(entry3),
       entry3.summary === null ? null : cap(entry3.summary, SUMMARY_MAX_CHARS),
       entry3.location === null ? null : at(entry3.location),
-      ...failed ? [slow ? null : touchesLine(entry3), loadLine(entry3)] : [recoveryProvenance(entry3, revision)],
+      ...failed ? [touchesLine(entry3), loadLine(entry3)] : [recoveryProvenance(entry3, revision)],
       entry3.flaky === void 0 ? null : capitalize2(flakyText(entry3.flaky)),
       entry3.retry === void 0 ? null : capitalize2(retryText(entry3.retry))
     ],
@@ -5732,6 +5467,7 @@ function coverageOf(context) {
     vitest,
     vitestConfig: vitest ? vitestConfig(context.root) : null,
     vitestExcluded: vitest ? policy.vitest.excludeProjects : [],
+    vitestExcludedFiles: vitest ? policy.vitest.exclude : [],
     nodeTest: policy.nodeTest.map(fromRoot),
     pytest: policy.pytest.map(fromRoot),
     slow: view === null ? null : {
@@ -5923,7 +5659,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.219";
+  if (true) return "0.1.220";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -6099,15 +5835,15 @@ var PRIMER_OPENING = "Squeal runs this repository's ";
 var REVISION = "A revision is Squeal's number for each saved change to this worktree's files; every result names the revision it ran at, and a header names the files its revision changed.";
 function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
   const names = runnerNames(coverage);
-  const sentences = (covers2, naming, wait) => [
+  const sentences = (covers, naming, wait) => [
     `${PRIMER_OPENING}${listed(names, "and")} tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run ${listed(names, "or")} to learn whether your edits broke something.`,
     waitSentence(command, naming, wait),
     ...coverage.slow === null ? [] : slowSentences(command, naming, coverage.slow.requireSlowSuite === true),
     "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
     retrySentence(command, naming),
     REVISION,
-    covers2,
-    "Squeal does not cover typecheck, build or any other test suite: run those yourself."
+    covers,
+    notCovered(coverage)
   ].join(" ");
   let text = "";
   const most = Math.max(coverage.nodeTest.length, coverage.pytest?.length ?? 0);
@@ -6182,6 +5918,11 @@ function excluded(coverage) {
   if (entries.length === 0) return "";
   const { text, plural: plural2 } = excludedProjectsText(entries);
   return `; its ${text} ${plural2 ? "are" : "is"} not run, excluded by squeal.config.json`;
+}
+function notCovered(coverage) {
+  const globs2 = coverage.vitestExcludedFiles ?? [];
+  const what = globs2.length === 0 ? "typecheck, build" : `typecheck, build, the ${excludedFilesText(globs2)}, which squeal.config.json excludes,`;
+  return `Squeal does not cover ${what} or any other test suite: run those yourself.`;
 }
 function named(noun, entries, shown) {
   const nouns = entries.length === 1 ? noun : `${noun}s`;
