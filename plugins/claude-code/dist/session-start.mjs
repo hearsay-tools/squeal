@@ -1327,14 +1327,16 @@ function countFilesWithoutChecks(states, keys) {
   }
   return counts;
 }
+var SLOW_FILES_NAMED = 3;
 function countSlowPending(states, keys, isSlow) {
   const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
-  const files2 = /* @__PURE__ */ new Set();
+  const files2 = /* @__PURE__ */ new Map();
   let checks = 0;
   for (const state of states) {
-    if (state.validity !== "pending" || !isSlow(testFileOf(state.check))) continue;
+    const ref = testFileOf(state.check);
+    if (state.validity !== "pending" || !isSlow(ref)) continue;
     checks++;
-    files2.add(testFileKeyOf(state.check));
+    files2.set(testFileKeyOf(state.check), ref);
   }
   let testFilesWithoutChecks = 0;
   for (const row of keys) {
@@ -1343,9 +1345,15 @@ function countSlowPending(states, keys, isSlow) {
       continue;
     }
     testFilesWithoutChecks++;
-    files2.add(id);
+    files2.set(id, row.testFile);
   }
-  return { testFiles: files2.size, checks, testFilesWithoutChecks };
+  const named2 = [...files2.values()].sort((a, b) => a.path.localeCompare(b.path) || a.project.localeCompare(b.project)).slice(0, SLOW_FILES_NAMED);
+  return {
+    testFiles: files2.size,
+    checks,
+    testFilesWithoutChecks,
+    ...named2.length === 0 ? {} : { files: named2 }
+  };
 }
 function hasKey(row) {
   return row.key !== null;
@@ -1468,8 +1476,12 @@ function slowTierText(header, command) {
     parts.push(pendingText(tier.pending, tier.activity, header.daemon?.state === "down"));
   }
   if (tier.notRun > 0) parts.push(`${tier.notRun} not run at revision ${header.revision}`);
-  const runs = tier.current >= tier.testFiles ? "" : `; \`${command} run --slow\` runs them now`;
+  const open = tier.testFiles - tier.current;
+  const runs = open <= 0 ? "" : `; ${slowWaitText(command, open)}`;
   return `Slow tier: ${plural(tier.testFiles, "test file")}; ${parts.join("; ")}. ${capitalized(stopText(tier))}${runs}.`;
+}
+function slowWaitText(command, open) {
+  return `\`${command} run --slow --wait 60000\` waits for ${open === 1 ? "its result" : "their results"}`;
 }
 function stopText(tier) {
   if (tier.stopWaitMs !== void 0) {
@@ -5491,7 +5503,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.221";
+  if (true) return "0.1.222";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -5767,9 +5779,9 @@ function named(noun, entries, shown) {
 }
 function slowSentences(command, naming, slow) {
   const run = naming === "every" ? `\`${command} run --slow --wait 60000\`` : "the CLI's `run --slow --wait 60000`";
-  const when = slow.pausesOnly === true ? "when you pause between turns" : "after the fast tests";
+  const when = slow.pausesOnly === true ? "between your turns" : "after the fast tests";
   return [
-    slow.requireSlowSuite === true ? `Slow test files run ${when}; this repository requires them once you change a file: before you say the task is done, run ${run} unless the latest \`Slow tier:\` line says every slow file is current; Stop waits or holds you once.` : `Slow test files run ${when}; this repository does not require them before you finish: say slow tests pass only when the latest \`Slow tier:\` line states every slow file is current, else say how many are not; ${run} runs them now.`,
+    slow.requireSlowSuite === true ? `Slow test files run ${when}; this repository requires them once you change a file: before you say the task is done, wait with ${run} unless the latest \`Slow tier:\` line says every slow file is current; Stop waits or holds you once.` : `Slow test files run ${when}; this repository does not require them before you finish: say slow tests pass only when the latest \`Slow tier:\` line states every slow file is current, else say how many are not, or wait for them with ${run}.`,
     command === SQUEAL_COMMAND ? "A slow failure wakes you when you are idle in an interactive session; otherwise it arrives with your next prompt or tool call." : "A slow failure arrives with your next prompt or tool call."
   ];
 }
