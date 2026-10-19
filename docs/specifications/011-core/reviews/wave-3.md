@@ -145,3 +145,147 @@ None.
 3. Retain B = `min(120000, timeoutMs / 2)` (120000 when unbounded), the mandatory first round, unknown duration zero, Vitest ceiling/floor behavior, C4 queue priority, timeout caps, and the transaction's second claim/result check.
 4. Fold S1 into the repair's tests. The bounded re-review should verify B1, inspect the repair delta and the regenerated bundles/key pin, and preserve the settled single-part behavior above.
 5. Streaming lanes (011-21/001-381) remain separate research. This review authorizes no per-file storage, extra lanes or interruption change. The coordinator still needs to update the running board row when this candidate eventually lands; it is correctly running at review time.
+
+## Re-review
+
+**FAIL dc3135bc00ce8a6ce9457ef28d9494443c9eea13**. One proven blocking remainder of B1 (R1 below), zero new should-fix items, zero nits. S1 is closed. Reviewed 2026-10-19, W2r, bounded by the first review and `tasks/wave-3.md` W2r. Repair range: `79f1d5fe..dc3135bc`.
+
+### Verification output
+
+HEAD exactly matched the supplied pin. The worktree was clean before installation, after build, and after the focused checks and probes, before this appendix was written. `npm ci`, lint, typecheck, build, and the three-file focused run below all exited 0 on that clean candidate. Rebuilding all four plugin bundles left no tracked changes.
+
+```text
+$ git rev-parse HEAD
+dc3135bc00ce8a6ce9457ef28d9494443c9eea13
+$ git status --porcelain=v1
+(no output)
+
+$ npm ci
+npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+
+added 196 packages, and audited 197 packages in 6s
+
+32 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+npm warn install-scripts 6 packages have install scripts not yet covered by allowScripts:
+npm warn install-scripts   @google/genai@2.21.0 (preinstall: echo 'preinstall: no-op')
+npm warn install-scripts   @parcel/watcher@2.6.0 (install: node scripts/build-from-source.js)
+npm warn install-scripts   esbuild@0.28.2 (postinstall: node install.js)
+npm warn install-scripts   msgpackr-extract@3.0.4 (install: node-gyp-build-optional-packages)
+npm warn install-scripts   opencode-ai@1.18.35 (postinstall: node ./postinstall.mjs)
+npm warn install-scripts   protobufjs@7.6.6 (postinstall: node scripts/postinstall)
+npm warn install-scripts
+npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+
+$ npm run lint
+> squeal@0.1.223 lint
+> biome check .
+
+Checked 1461 files in 488ms. No fixes applied.
+
+$ npm run typecheck
+> squeal@0.1.223 typecheck
+> tsc --noEmit
+
+$ npm run build
+> squeal@0.1.223 build
+> tsc -p tsconfig.build.json && npm run build:plugin
+
+> squeal@0.1.223 build:plugin
+> tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts
+
+$ git diff --exit-code
+(no output)
+$ git status --porcelain=v1
+(no output)
+
+$ npx vitest run test/scheduler/backlog-wall.test.ts test/daemon/tier-width.test.ts test/keys/key-format.test.ts --maxWorkers=4
+RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/301d425b-3b64-429a-9671-3b0a35bb9513
+
+ Test Files  3 passed (3)
+      Tests  37 passed (37)
+   Start at  18:33:03
+   Duration  9.52s (tests 55%, transform 39%, import 7%)
+```
+
+**Full-suite provenance:** W2r explicitly makes a repeat independent full run conditional on reason to doubt the coordinator's gate on this SHA (736 files passed, one skipped, 803 s). No repeat was run. The repair changes a narrow estimator seam, the focused checks pass, and R1 is an uncovered input case, not evidence that the reported full-suite result is inaccurate. A repeat of the unchanged suite would not discriminate R1. The coordinator's reported gate is supplied evidence, not a new independent result from this reviewer. No Squeal checkpoint replaces it here.
+
+**B1 regression red/green:** The focused run above is green at the candidate. In an isolated scratch copy of candidate `src/`, `test/`, package and config files, with the same installed dependencies, I replaced only `src/core/scheduler/backlog.ts` with its `79f1d5fe` contents. The candidate regression then failed as intended:
+
+```text
+$ npx vitest run test/scheduler/backlog-wall.test.ts -t 'sums the estimates of parts' --maxWorkers=4
+FAIL test/scheduler/backlog-wall.test.ts:120
+AssertionError: expected [ 5, 3 ] to deeply equal [ 2, 2, 2, 2 ]
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 skipped (7)
+   Duration  1.74s
+(exit 1)
+```
+
+That mutation was never made in the candidate worktree. The additional R1 probe below used restored candidate sources in scratch and was deleted after inspection. Its failing assertion is evidence of a missing case, not a failure of a committed test or a claim that the candidate's suite was red.
+
+### Blocker
+
+#### R1. Proven: B1 remains when C4 order returns to the first part after another part joined
+
+Locations: `src/core/scheduler/backlog.ts:93` and `:94`; reached by `src/core/scheduler/tiers.ts:180` and its grant-trim replay at `:204`. This is inside the repair, in B1's sequential-part budgeting and first-round exception.
+
+The eight-distinct-owner case from B1 is repaired, but the first part's unconditional round can resume after another part has already consumed budget. `firstRound` asks only whether this is the first part and its count is below its width. It does not account for another serial part already being selected, and bypasses the whole summed estimate at line 94.
+
+Concrete input, all in the same node:test lane, `runner.tierSize = 4`, sufficient capacity, known durations, no edit-caused work:
+
+| C4 order | Owner | Last-known duration |
+| --- | --- | --- |
+| 1 | A | 60 s |
+| 2 | B | 60 s |
+| 3 | A | 100 s |
+
+At B = 120 s, A's first file is taken unconditionally; B's first file fits the sum (60 + 60 = 120). A's second file is then admitted unconditionally because A's count is still below four. The resulting estimate is `160 / 4 + 0.75 × 100 + 60 = 175 s`. The composite actually runs A's two files together (100 s) and B's file afterward (60 s), for 160 s even with perfectly accurate known durations and no startup overhead. Its longest file is 100 s, so both exceed C4's stated `max(120 s, its longest file)` bound and the research's done-when 7 latency premise. This tier contains two serial parts, so it is not the one-round-only exception of a single part.
+
+Two cheap checks independently establish selection and execution. The scheduler uses only its fixture's private store and permit directory; the composite probe takes no permits. Neither uses a user store or session:
+
+1. A throwaway test uses the candidate `wallSide` scheduler fixture, durations `[600, 600, 1000]`, `hostSlots: 4`, `timeoutMs: 2400` (B = 1200 ms), width four, and part B only for `fileName(1)`. It expects tier sizes `[2, 1]`, preserving C4's prefix. It fails on candidate sources:
+
+   ```text
+   $ npx vitest run test/scheduler/w2r-first-round.test.ts --maxWorkers=4
+   {"selected":[["test/f00.test.ts","test/f01.test.ts","test/f02.test.ts"]]}
+   AssertionError: expected [ 3 ] to deeply equal [ 2, 1 ]
+    Test Files  1 failed (1)
+         Tests  1 failed (1)
+      Duration  2.30s
+   (exit 1)
+   ```
+
+2. An inline probe imports the candidate's actual `BacklogWall` and `createCompositeRunner`. Two same-name adapters own A and B, with those three files. Each adapter sleeps for the maximum duration of its selected files and reports that duration, matching one parallel round. The estimator selects by the composite's actual `tierWidth` and `tierPart` hooks at the same scale, then the composite runs the selection:
+
+   ```json
+   {
+     "budgetMs": 1200,
+     "width": 4,
+     "selected": ["A/a1", "B/b1", "A/a2"],
+     "parts": ["0:", "1:", "0:"],
+     "summedEstimateMs": 1750,
+     "longestMs": 1000,
+     "reportedMs": 1600,
+     "elapsedMs": 1602,
+     "events": ["start A", "end A", "start B", "end B"]
+   }
+   ```
+
+The trace and durations establish a serial-part selection error, not a plausible host-speed race. This reopens B1's same scheduler/composite boundary; no settled unrelated behavior is re-prosecuted.
+
+**One-worker fix:** stop granting the unconditional first-part round once another serial part has joined, or conservatively keep the tier within its first owner. Every subsequent pick must respect the sum of the parts' estimates; keep C4 order and stop at the first non-fitting file. Preserve the complete first-round allowance for single-part tiers, including a round whose files exceed B. Exercise A/B/A selection, a first part over B, single-part behavior, and the same replay after a smaller grant. Use the actual same-name composite seam in a regression as well as the estimator/selector. Do not add lanes or change edit, slow, claim, or completion behavior.
+
+### Closed and settled
+
+- B1's hook plumbing is present: `RunnerAdapter.tierPart` names sequential parts; the composite prefixes the owning adapter's index and preserves any nested part; recovering, after-run and slow-instance wrappers forward it. Both initial selection and a smaller-grant replay pass it to `BacklogWall`. The former eight-one-file-project counterexample now selects `[2, 2, 2, 2]` at B = 2 s. R1 is the remaining first-round interaction, not missing hook propagation.
+- S1 is closed: the grant-race test asserts the first tier's exact shortest-first prefix, the exact remaining suffix (including order and multiplicity), and the held mark's `grant: 5` and `want: keep` while the runner is gated. This is stronger than the former length/set assertions. The candidate focused run passes it.
+- For absent or constant `tierPart`, the estimator's one-entry map reduces to its previous count, sum, longest and narrowest-width rule. The comparison uses the same prospective width and sum. The focused suite retains heavy first-round, light/unknown, half-timeout, single-part grant trim and demand checks. This repair adds no edits to pool arithmetic, claim ordering, edit/slow selection or result barriers. Those first-review conclusions stand.
+- `KEY_FORMAT_VERSION` remains 14, the unreleased candidate's value, against released 13 at `squeal--v0.1.222`. Its new pin is `156f4319405276c35ece1ea65c36847656fb43413dcc154370bbb1e83c1a8fe5`; the candidate key guard passes. All four committed bundles reproduce from the tree with no diff. A further guarded repair will require another re-pin and rebuild before the next gate.
+
+### Should-fix, nits, and later inputs
+
+No new should-fix items or nits. No findings outside the repair were added. Preserve the first review's settled behavior and downstream inputs. Dispatch R1 within `backlog.ts`, its selection/trim tests and the composite regression; the coordinator owns the key re-pin, bundles and any clarification of C4's first-round exception. The streaming-lane work remains separate. This is the second FAIL; `docs/process.md` step 6 sends that decision to the human through the coordinator.
