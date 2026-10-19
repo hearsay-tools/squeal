@@ -99,7 +99,7 @@ describe("the primer's waits (005-68)", () => {
       [true, false],
       [false, true],
       [true, true],
-    ]) {
+    ] as const) {
       const slow = coverage([], { files: 1, requireSlowSuite, pausesOnly });
       const at = "x".repeat(230);
       const text = primer(at, slow);
