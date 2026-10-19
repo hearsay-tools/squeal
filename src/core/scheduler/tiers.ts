@@ -109,7 +109,9 @@ export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
  * in slots instead (`backlogSlot`, C4 step 5 as amended for slots, task
  * 011-21 slice 2): a backlog tier of its lane is one slot, one file, or a
  * pytest batch of light files (`joinsSlot`), and asks the pool for one
- * permit; its lane holds up to `runner.tierSize` of them (`busyLanes`).
+ * permit; its lane holds up to `runner.tierSize` of them (`busyLanes`). An
+ * edit's tier of such a lane takes only the edit's work: the backlog's
+ * files run in the slots, which hold the permits.
  *
  * A tier holds the files of one lane, the lane of the first file it takes;
  * files of a lane in `busy` (`busyLanes`), which takes no tier now, stay
@@ -158,6 +160,8 @@ export function selectTier(
   let lane: string | null = null;
   /** The files a backlog slot takes at most, once its first file's runner runs slots. */
   let slot: number | null = null;
+  /** A backlog file left to a lane's slots by an edit's tier. */
+  let skipped = false;
   for (const ref of ledger.ordered()) {
     if (picked.length >= size) break;
     const at = laneOf(context, ref);
@@ -171,6 +175,12 @@ export function selectTier(
     }
     const forced = ledger.queue.isForced(ref);
     const recent = ledger.queue.isRecent(ref);
+    // A lane of slots runs the backlog's files there, each with its permit: an edit's tier takes
+    // only the edit's work (task 011-21 slice 2).
+    if (!backlog && !ledger.queue.isFirstGroup(ref) && backlogSlot(context, ref) !== null) {
+      skipped = true;
+      continue;
+    }
     let waits = false;
     if (!forced) {
       const { hits, mayWait } = ledger.probe(key);
@@ -237,7 +247,12 @@ export function selectTier(
   ledger.commit();
   // A result recorded since the lookup settled a pick in the start: the queue moved (review wave 13o, B1).
   const settled = picked.some((p) => !ledger.queue.has(p.file.ref));
-  return settled ? selectTier(context, ledger, busy) : null;
+  // The edit's work settled by lookups and left only the backlog's: its slots start now.
+  const slots =
+    skipped &&
+    picked.length === 0 &&
+    !ledger.queue.hasFirstGroup((r) => !busy.has(laneOf(context, r)));
+  return settled || slots ? selectTier(context, ledger, busy) : null;
 }
 
 /**
