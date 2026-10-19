@@ -1354,7 +1354,7 @@ var KEY_FORMAT_VERSION;
 var init_key_format = __esm({
   "src/core/keys/key-format.ts"() {
     "use strict";
-    KEY_FORMAT_VERSION = 15;
+    KEY_FORMAT_VERSION = 16;
   }
 });
 
@@ -6366,6 +6366,7 @@ function createRecoveringRunner(options) {
     tierWidth: (testFile, grant) => inner?.tierWidth?.(testFile, grant) ?? options.tierWidth?.(testFile, grant) ?? grant,
     tierPart: (testFile) => inner?.tierPart?.(testFile) ?? "",
     besideBacklog: () => options.besideBacklog === true,
+    backlogSlot: () => options.backlogSlot ?? null,
     environment: () => around(async () => (await adapter()).environment()),
     run: (testFiles, runOptions) => around(async () => (await adapter()).run(testFiles, runOptions)),
     close: () => around(async () => {
@@ -6945,7 +6946,7 @@ function loadPerCpu(wait = {}) {
   return (load()[0] ?? 0) / Math.max(1, cpus());
 }
 async function waitForCapacity(wait) {
-  const sleep15 = wait.sleep ?? delay;
+  const sleep16 = wait.sleep ?? delay;
   const now = wait.now ?? (() => performance.now());
   const recheckMs = wait.recheckMs ?? 15e3;
   const perCpu2 = () => loadPerCpu(wait);
@@ -6956,7 +6957,7 @@ async function waitForCapacity(wait) {
     if (current3 <= wait.maxLoadPerCpu) return { waitedMs, ranUnderLoad: null };
     const left = wait.maxDeferMs - waitedMs;
     if (left <= 0) return { waitedMs, ranUnderLoad: current3 };
-    await sleep15(Math.min(recheckMs, left));
+    await sleep16(Math.min(recheckMs, left));
   }
 }
 var init_guard = __esm({
@@ -11663,6 +11664,41 @@ var init_sharing = __esm({
   }
 });
 
+// src/core/scheduler/slots.ts
+function backlogSlot(context, ref2) {
+  const files2 = context.runner.backlogSlot?.(ref2) ?? null;
+  return files2 === null ? null : Math.max(1, Math.floor(files2));
+}
+function busyLanes(context, ledger, inFlight) {
+  const held2 = /* @__PURE__ */ new Map();
+  for (const tier of inFlight) held2.set(tier.lane, [...held2.get(tier.lane) ?? [], tier]);
+  const busy = /* @__PURE__ */ new Set();
+  for (const [lane, tiers] of held2) {
+    const backlog = tiers.filter((tier) => tier.cancel !== null);
+    const edit = backlog.length < tiers.length;
+    const queued = ledger.queue.hasFirstGroup((ref2) => laneOf(context, ref2) === lane);
+    const lead = backlog[0]?.files[0]?.file.ref;
+    const beside = queued && !edit && lead !== void 0 && context.runner.besideBacklog?.(lead) === true;
+    const any = tiers[0]?.files[0]?.file.ref;
+    const slots = !queued && !isSlowLane(lane) && any !== void 0 && backlogSlot(context, any) !== null && backlog.length < context.policy.runner.tierSize;
+    if (!beside && !slots) busy.add(lane);
+  }
+  return busy;
+}
+function joinsSlot(picked, file, partOf2) {
+  const light = (ms2) => (ms2 ?? 0) <= SHARE_FLOOR_MS;
+  const part = partOf2(file.ref);
+  return light(file.durationMs) && picked.every((p) => light(p.file.durationMs) && partOf2(p.file.ref) === part);
+}
+var init_slots2 = __esm({
+  "src/core/scheduler/slots.ts"() {
+    "use strict";
+    init_types();
+    init_sharing();
+    init_tiers();
+  }
+});
+
 // src/core/scheduler/growth.ts
 function unresolvedPreloads(context, project) {
   const raw = context.store.meta.get(nodeTestObservedPreloadsMetaKey(project));
@@ -11749,18 +11785,6 @@ import { join as join38 } from "node:path";
 function laneOf(context, ref2) {
   return laneFor(context.policy, ref2, context.runner.lane?.(ref2) ?? "");
 }
-function busyLanes(context, ledger, inFlight) {
-  const held2 = /* @__PURE__ */ new Map();
-  for (const tier of inFlight) held2.set(tier.lane, [...held2.get(tier.lane) ?? [], tier]);
-  const busy = /* @__PURE__ */ new Set();
-  for (const [lane, tiers] of held2) {
-    const only = tiers.length === 1 ? tiers[0] : void 0;
-    const lead = only?.cancel === null ? void 0 : only?.files[0]?.file.ref;
-    const beside = lead !== void 0 && context.runner.besideBacklog?.(lead) === true && ledger.queue.hasFirstGroup((ref2) => laneOf(context, ref2) === lane);
-    if (!beside) busy.add(lane);
-  }
-  return busy;
-}
 function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
   const { keys, policy } = context;
   const picked = [];
@@ -11772,6 +11796,8 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
   let span = null;
   let tookBacklog = false;
   let lane = null;
+  let slot2 = null;
+  let skipped2 = false;
   for (const ref2 of ledger.ordered()) {
     if (picked.length >= size) break;
     const at2 = laneOf(context, ref2);
@@ -11785,6 +11811,10 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
     }
     const forced = ledger.queue.isForced(ref2);
     const recent = ledger.queue.isRecent(ref2);
+    if (!backlog && !ledger.queue.isFirstGroup(ref2) && backlogSlot(context, ref2) !== null) {
+      skipped2 = true;
+      continue;
+    }
     let waits = false;
     if (!forced) {
       const { hits, mayWait } = ledger.probe(key2);
@@ -11801,24 +11831,25 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
       const joined = joinSpan(span, file.durationMs);
       if (joined === null) continue;
       span = joined;
-    }
-    if (wall !== null && !wall.take(file.durationMs, tierWidth(context, ref2, offer), partOf(context, ref2)))
+    } else if (picked.length === 0) slot2 = backlogSlot(context, ref2);
+    else if (slot2 !== null && !joinsSlot(picked, file, (r) => partOf(context, r))) break;
+    if (slot2 === null && wall !== null && !wall.take(file.durationMs, tierWidth(context, ref2, offer), partOf(context, ref2)))
       break;
     tookBacklog ||= !recent && !ledger.queue.isPromoted(ref2);
     lane = at2;
-    size = cap2;
+    size = Math.min(cap2, slot2 ?? cap2);
     const checkpointId = ledger.checkpoints.idFor(ref2);
     const inputs2 = keys.stabilityPaths(ref2);
     picked.push({ file, key: key2, inputs: inputs2, checkpointId, forced, recent, waits });
   }
-  const width = backlog ? widest(context, picked) : 0;
+  const width = slot2 !== null ? 1 : backlog ? widest(context, picked) : 0;
   const taken2 = picked.length > 0 && backlog ? context.capacity?.take(width) : null;
   if (taken2 === WAIT_FOR_CAPACITY) {
     ledger.commit();
     return null;
   }
   const lease = taken2 ? widthLease(taken2, width) : taken2;
-  if (lease && lease.grant < Math.min(width, offer)) {
+  if (slot2 === null && lease && lease.grant < Math.min(width, offer)) {
     const fits = new BacklogWall(backlogBudget(policy.runner.timeoutMs));
     const keep = picked.findIndex(
       (p) => !fits.take(
@@ -11841,7 +11872,8 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
   }
   ledger.commit();
   const settled = picked.some((p) => !ledger.queue.has(p.file.ref));
-  return settled ? selectTier(context, ledger, busy) : null;
+  const slots = skipped2 && picked.length === 0 && !ledger.queue.hasFirstGroup((r) => !busy.has(laneOf(context, r)));
+  return settled || slots ? selectTier(context, ledger, busy) : null;
 }
 function supersededIn(file, key2) {
   if (file.runningKey !== null && file.runningKey !== key2) return true;
@@ -11883,7 +11915,8 @@ function startTier(context, ledger, picked, cancellable, lease) {
       ),
       cancel: cancellable ? new AbortController() : null,
       ...lease === void 0 ? {} : { lease },
-      loadPerCpu: tierLoad(context)
+      loadPerCpu: tierLoad(context),
+      ...cancellable && backlogSlot(context, first.file.ref) !== null ? { slot: true } : {}
     };
     lease?.shrinkTo(files2.length);
     for (const { file, key: key2 } of files2) {
@@ -11958,7 +11991,7 @@ function unstableInputs(context, tier) {
   for (const path of inputs2) if (listedDirectory(path) !== null) inputs2.delete(path);
   return changedSince2(tier.snapshot, inputs2, context.hasher);
 }
-function recordTier(context, ledger, tier, report2, changedOnDisk, requeue = false, observed = NOTHING_OBSERVED) {
+function recordTier(context, ledger, tier, report2, changedOnDisk, requeue = false, observed = NOTHING_OBSERVED, commit = true) {
   const { store, worktreeId } = context;
   const duringRun = tier.changes;
   endTier(context, ledger, tier);
@@ -12090,7 +12123,7 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, requeue = fal
     for (const { file } of notStarted)
       if (file.key !== null) endRetry(context, file, file.key, null, tier.runId);
     ledger.markUnknown(unknown, reason2);
-    ledger.commit();
+    if (commit) ledger.commit();
   });
   return [.../* @__PURE__ */ new Set([...changedOnDisk, ...observed.changed])];
 }
@@ -12111,6 +12144,7 @@ var init_tiers = __esm({
     init_revision2();
     init_setup();
     init_sharing();
+    init_slots2();
     init_slow3();
     init_stability();
     init_store_results();
@@ -13800,6 +13834,61 @@ var init_runner_work = __esm({
   }
 });
 
+// src/core/scheduler/slot-records.ts
+import { setTimeout as sleep6 } from "node:timers/promises";
+var SLOT_GATHER_MS, SLOT_GATHER_COMMITS, SlotRecords;
+var init_slot_records = __esm({
+  "src/core/scheduler/slot-records.ts"() {
+    "use strict";
+    SLOT_GATHER_MS = 25;
+    SLOT_GATHER_COMMITS = 3;
+    SlotRecords = class {
+      #options;
+      #ended = [];
+      /** The wait of the next record, while one is open. */
+      #gathering = null;
+      #commitMs = 0;
+      constructor(options) {
+        this.#options = options;
+      }
+      /** Records the slot whose run ended, `ended` its reads outside the lock. */
+      async record(ended2) {
+        const outcome2 = new Promise((resolve23, reject) => {
+          this.#ended.push({ ended: ended2, resolve: resolve23, reject });
+        });
+        ended2.catch(() => {
+        });
+        const gather = Math.max(SLOT_GATHER_MS, SLOT_GATHER_COMMITS * this.#commitMs);
+        this.#gathering ??= sleep6(gather).then(() => {
+          this.#gathering = null;
+        });
+        await this.#gathering;
+        await this.#options.lock.run(async () => {
+          const recorded2 = [];
+          for (let slot2 = this.#ended.shift(); slot2; slot2 = this.#ended.shift()) {
+            try {
+              recorded2.push({ slot: slot2, record: await this.#options.record(await slot2.ended) });
+            } catch (error) {
+              slot2.reject(error);
+            }
+          }
+          if (recorded2.length === 0) return;
+          const started2 = performance.now();
+          try {
+            this.#options.commit();
+            this.#commitMs = performance.now() - started2;
+          } catch (error) {
+            for (const { slot: slot2 } of recorded2) slot2.reject(error);
+            return;
+          }
+          for (const { slot: slot2, record } of recorded2) slot2.resolve(record);
+        });
+        return outcome2;
+      }
+    };
+  }
+});
+
 // src/core/scheduler/slow-trigger.ts
 function policyTriggered(context) {
   if (context.policy.slow.trigger === "idle") {
@@ -14360,6 +14449,8 @@ var init_scheduler2 = __esm({
     init_retries();
     init_revision2();
     init_runner_work();
+    init_slot_records();
+    init_slots2();
     init_slow3();
     init_slow_tier();
     init_stability();
@@ -14408,6 +14499,12 @@ var init_scheduler2 = __esm({
        * task 011-21); a backlog tier carries its `cancel`.
        */
       #inFlight = /* @__PURE__ */ new Map();
+      /** The records of backlog slots, each with the slots that end meanwhile (task 011-21 slice 2). */
+      #slotRecords = new SlotRecords({
+        lock: this.#lock,
+        record: (ended2) => this.#record(ended2, false),
+        commit: () => this.#started().ledger.commit()
+      });
       /** A `run --all` with `observeIgnored` (task 001-307). */
       #warmUp = new WarmUp();
       /** Task 007-30: files the completion barrier withheld, so a withheld tier runs once more. */
@@ -14797,14 +14894,19 @@ var init_scheduler2 = __esm({
                   return null;
                 }
                 if (this.#runnerWork.size > 0) return "runner-work";
-                return selectTier(context, ledger, this.#busyLanes());
+                const tier = selectTier(context, ledger, this.#busyLanes());
+                if (tier === null) return null;
+                this.#fly(tier, install.stamp, null);
+                for (let more = tier; more.slot === true; ) {
+                  const again = selectTier(context, ledger, this.#busyLanes());
+                  if (again === null) break;
+                  this.#fly(again, install.stamp, null);
+                  more = again;
+                }
+                return "flown";
               });
               this.#busy?.landed();
-              if (next === "runner-work") continue;
-              if (next !== null) {
-                this.#fly(next, install.stamp, null);
-                continue;
-              }
+              if (next !== null) continue;
               if (this.#reinstalled) break;
               if (this.#slowMayStart()) {
                 const after = await this.#slow.next();
@@ -14838,13 +14940,18 @@ var init_scheduler2 = __esm({
       /**
        * Runs `tier` in its lane and records it under the lock; `slow` is the
        * slow run it belongs to, whose slot it releases. Never rejects: an error
-       * stops the pump and puts the tier's files back.
+       * stops the pump and puts the tier's files back. A backlog slot (spec 011
+       * C4 step 5 as amended for slots, task 011-21 slice 2) returns its permit
+       * and frees its place in the lane once its run ends, so the lane's next
+       * file starts while it records, and its record joins the other slots that
+       * ended by then (`SlotRecords`).
        */
       #fly(tier, installStamp, slow) {
-        const { context, ledger } = this.#started();
-        const done = (async () => {
+        const { context } = this.#started();
+        const flight = { tier, done: Promise.resolve(), ran: false };
+        this.#inFlight.set(tier.runId, flight);
+        flight.done = (async () => {
           let recorded2 = false;
-          const withheld = [];
           try {
             const ran = await executeTier(
               context,
@@ -14852,47 +14959,21 @@ var init_scheduler2 = __esm({
               this.#warmUp.observes(tier),
               this.#stop.signal
             );
-            const ignored = await this.#warmUp.read(context, tier, ran);
-            const inputs2 = await unstableInputs(context, tier);
-            const installMoved = this.#reinstalled || await this.#install.stamp() !== installStamp;
-            const moved2 = await this.#lock.run(async () => {
-              const environment = installMoved ? void 0 : await rekeyEnvironments(context, ran, tier);
-              const read5 = installMoved ? void 0 : await prepareObserved(context, ran, tier.run);
-              const observed = environment === void 0 || read5 === void 0 ? read5 : { ...read5, environment };
-              const touched = [.../* @__PURE__ */ new Set([...inputs2.touched, ...observed?.touched ?? []])].sort();
-              const report2 = withheldForTouch(ran, touched);
-              const withhold = touched.length === 0 ? null : this.#withholds.record(tier.files);
-              if (withhold === null) this.#withholds.clear(tier.files);
-              else {
-                const notes2 = [
-                  withholdNote(touched, withhold.again, true),
-                  withholdNote(touched, withhold.exhausted, false)
-                ];
-                withheld.push(...notes2.filter((note) => note !== null));
-              }
-              const unfinished = this.#stop.signal.aborted ? unfinishedFiles(tier, ran) : [];
-              const again = [...withhold?.again.map(({ file }) => file.id) ?? [], ...unfinished];
-              const requeue = installMoved || withhold === null && unfinished.length === 0 ? installMoved : new Set(again);
-              return context.store.transaction(() => {
-                this.#warmUp.record(context, ignored);
-                const result = recordTier(
-                  context,
-                  ledger,
-                  tier,
-                  report2,
-                  inputs2.changed,
-                  requeue,
-                  observed
-                );
-                if (slow !== null) this.#slow.ended();
-                return [.../* @__PURE__ */ new Set([...result, ...touched])];
-              });
-            });
+            let record;
+            if (tier.slot === true) {
+              tier.lease?.release();
+              flight.ran = true;
+              this.#notify();
+              record = await this.#slotRecords.record(this.#ended(tier, ran, installStamp, slow));
+            } else {
+              const ended2 = await this.#ended(tier, ran, installStamp, slow);
+              record = await this.#lock.run(() => this.#record(ended2, true));
+            }
             recorded2 = true;
             this.#busy?.landed();
-            for (const note of withheld) this.#note(note);
+            for (const note of record.withheld) this.#note(note);
             slow?.slot.release();
-            if (moved2.length > 0) await this.#reconcilePaths(moved2);
+            if (record.moved.length > 0) await this.#reconcilePaths(record.moved);
             if (slow !== null) await this.#releaseIfDrained(tier.lane);
           } catch (error) {
             this.#stall(error, `${plural(tier.files.length, "file")} of a tier queued again`);
@@ -14905,7 +14986,57 @@ var init_scheduler2 = __esm({
             this.#notify();
           }
         })();
-        this.#inFlight.set(tier.runId, { tier, done });
+      }
+      /** What the record of a run that ended reads outside the lock. */
+      async #ended(tier, ran, installStamp, slow) {
+        const { context } = this.#started();
+        const ignored = await this.#warmUp.read(context, tier, ran);
+        const inputs2 = await unstableInputs(context, tier);
+        const installMoved = this.#reinstalled || await this.#install.stamp() !== installStamp;
+        return { tier, ran, ignored, inputs: inputs2, installMoved, slow };
+      }
+      /**
+       * Records an ended run under the lock: what it loaded and read beyond its
+       * keys, the completion barrier's withholds, then `recordTier`. `commit`
+       * false leaves the ledger's writes to the caller's commit (`SlotRecords`).
+       */
+      async #record(ended2, commit) {
+        const { context, ledger } = this.#started();
+        const { tier, ran, ignored, inputs: inputs2, installMoved, slow } = ended2;
+        const environment = installMoved ? void 0 : await rekeyEnvironments(context, ran, tier);
+        const read5 = installMoved ? void 0 : await prepareObserved(context, ran, tier.run);
+        const observed = environment === void 0 || read5 === void 0 ? read5 : { ...read5, environment };
+        const touched = [.../* @__PURE__ */ new Set([...inputs2.touched, ...observed?.touched ?? []])].sort();
+        const report2 = withheldForTouch(ran, touched);
+        const withheld = [];
+        const withhold = touched.length === 0 ? null : this.#withholds.record(tier.files);
+        if (withhold === null) this.#withholds.clear(tier.files);
+        else {
+          const notes2 = [
+            withholdNote(touched, withhold.again, true),
+            withholdNote(touched, withhold.exhausted, false)
+          ];
+          withheld.push(...notes2.filter((note) => note !== null));
+        }
+        const unfinished = this.#stop.signal.aborted ? unfinishedFiles(tier, ran) : [];
+        const again = [...withhold?.again.map(({ file }) => file.id) ?? [], ...unfinished];
+        const requeue = installMoved || withhold === null && unfinished.length === 0 ? installMoved : new Set(again);
+        const moved2 = context.store.transaction(() => {
+          this.#warmUp.record(context, ignored);
+          const result = recordTier(
+            context,
+            ledger,
+            tier,
+            report2,
+            inputs2.changed,
+            requeue,
+            observed,
+            commit
+          );
+          if (slow !== null) this.#slow.ended();
+          return [.../* @__PURE__ */ new Set([...result, ...touched])];
+        });
+        return { moved: moved2, withheld };
       }
       /**
        * The slow pass of `lane` drained: no file of it is queued, so its runner
@@ -14930,10 +15061,11 @@ var init_scheduler2 = __esm({
       /** The lanes no tier may start in now. */
       #busyLanes() {
         const { context, ledger } = this.#started();
+        const running = [...this.#inFlight.values()].filter(({ ran }) => !ran);
         return busyLanes(
           context,
           ledger,
-          [...this.#inFlight.values()].map(({ tier }) => tier)
+          running.map(({ tier }) => tier)
         );
       }
       /** The lane of each tier in flight. */
@@ -38684,6 +38816,8 @@ function createNodeTestRunners(projects2, options) {
       tierWidth: () => options.tierSize(),
       // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
       besideBacklog: true,
+      // A process per file: the backlog runs in one-file slots (task 011-21 slice 2).
+      backlogSlot: 1,
       onFailure: (text2) => options.note(`${text2} (node-test project ${JSON.stringify(project.name)})`),
       onRecovered: () => options.note(`node-test project ${JSON.stringify(project.name)} started`)
     })
@@ -47215,6 +47349,8 @@ function createPytestRunners(projects2, options) {
       tierWidth: () => options.tierSize(),
       // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
       besideBacklog: true,
+      // A slot is one batch process (spec 007 D6): light files packed, a heavy file alone.
+      backlogSlot: batchSize ?? DEFAULT_BATCH_SIZE,
       onFailure: (text2) => options.note(`${text2} (pytest project ${JSON.stringify(project.name)})`),
       onRecovered: () => options.note(`pytest project ${JSON.stringify(project.name)} started`)
     });
@@ -47224,6 +47360,7 @@ var init_pytest_runners = __esm({
   "src/core/daemon/pytest-runners.ts"() {
     "use strict";
     init_adapter3();
+    init_run3();
     init_fs();
     init_types();
     init_runner2();
@@ -47322,6 +47459,7 @@ function createCompositeRunner(adapters) {
       return `${adapters.indexOf(owner2)}:${owner2.tierPart?.(testFile) ?? ""}`;
     },
     besideBacklog: (testFile) => owners.get(testFile.project)?.besideBacklog?.(testFile) ?? false,
+    backlogSlot: (testFile) => owners.get(testFile.project)?.backlogSlot?.(testFile) ?? null,
     async run(testFiles, options) {
       const groups = /* @__PURE__ */ new Map();
       for (const testFile of testFiles) {
@@ -47453,6 +47591,7 @@ function withSlowInstance(fast, createSlow) {
     tierWidth: (testFile, grant) => fast.tierWidth?.(testFile, grant) ?? grant,
     tierPart: (testFile) => fast.tierPart?.(testFile) ?? "",
     besideBacklog: (testFile) => fast.besideBacklog?.(testFile) ?? false,
+    backlogSlot: (testFile) => fast.backlogSlot?.(testFile) ?? null,
     environment: () => fast.environment(),
     ...lane === void 0 ? {} : { lane },
     async run(testFiles, options) {
@@ -47494,7 +47633,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.224";
+  if (true) return "0.1.225";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -49577,7 +49716,7 @@ init_optimizer_note();
 init_store3();
 init_types();
 import { randomUUID as randomUUID7 } from "node:crypto";
-import { setTimeout as sleep6 } from "node:timers/promises";
+import { setTimeout as sleep7 } from "node:timers/promises";
 
 // src/core/daemon/desk.ts
 import { existsSync as existsSync9 } from "node:fs";
@@ -50406,6 +50545,7 @@ function afterEachRun(runner, children, note) {
     tierWidth: (testFile, grant) => runner.tierWidth?.(testFile, grant) ?? grant,
     tierPart: (testFile) => runner.tierPart?.(testFile) ?? "",
     besideBacklog: (testFile) => runner.besideBacklog?.(testFile) ?? false,
+    backlogSlot: (testFile) => runner.backlogSlot?.(testFile) ?? null,
     environment: () => runner.environment(),
     ...lane === void 0 ? {} : { lane },
     ...releaseLane === void 0 ? {} : { releaseLane },
@@ -52301,7 +52441,7 @@ var Daemon = class {
       () => true
     );
     this.#cancelling = (async () => {
-      const grace = sleep6(CANCEL_GRACE_MS, false, { ref: false });
+      const grace = sleep7(CANCEL_GRACE_MS, false, { ref: false });
       if (await Promise.race([closed, grace])) return;
       const stop2 = await this.#children.stopMarked().catch(() => null);
       if (stop2 !== null) this.#note(stop2.text, stop2.stopped);
@@ -54243,7 +54383,7 @@ function opencodeStatusLine(cwd, env) {
 // src/cli/remove.ts
 import { existsSync as existsSync34, lstatSync as lstatSync6, readdirSync as readdirSync20, readFileSync as readFileSync37, rmSync as rmSync13 } from "node:fs";
 import { basename as basename22, dirname as dirname40, join as join98 } from "node:path";
-import { setTimeout as sleep7 } from "node:timers/promises";
+import { setTimeout as sleep8 } from "node:timers/promises";
 init_lock();
 init_paths3();
 init_fs();
@@ -54437,7 +54577,7 @@ async function holdDaemonLocks(commonDir, waitMs) {
         for (const lock3 of held2) lock3.release();
         return { held: name2.slice(0, -".sqlite".length), lockPath };
       }
-      await sleep7(50);
+      await sleep8(50);
     }
   }
   return held2;
@@ -54492,7 +54632,7 @@ init_store3();
 init_text();
 
 // src/cli/status-wait.ts
-import { setTimeout as sleep10 } from "node:timers/promises";
+import { setTimeout as sleep11 } from "node:timers/promises";
 init_fs();
 init_rekeyed_moves();
 init_state3();
@@ -54521,7 +54661,7 @@ function statusCommand(env, cli = fileURLToPath13(import.meta.url)) {
 }
 
 // src/cli/status-sync.ts
-import { setTimeout as sleep8 } from "node:timers/promises";
+import { setTimeout as sleep9 } from "node:timers/promises";
 var UNSUPPORTED = { state: "unsupported" };
 function syncDaemon(root, pollMs) {
   let current3 = { state: "pending" };
@@ -54559,7 +54699,7 @@ async function syncOnce(root, pollMs, stopped) {
       return { state: "synced", revision: state.revision, incarnation };
     }
     if (state.error !== null) return UNSUPPORTED;
-    await sleep8(pollMs, void 0, { ref: false });
+    await sleep9(pollMs, void 0, { ref: false });
     if (stopped()) return UNSUPPORTED;
     const next = await askDaemon(socketPath, {
       type: "sync-status",
@@ -54953,7 +55093,7 @@ function pendingText2(snapshot3) {
 // src/cli/status-wait-paths.ts
 import { realpathSync as realpathSync20 } from "node:fs";
 import { isAbsolute as isAbsolute16, relative as relative21, resolve as resolve19, sep as sep25 } from "node:path";
-import { setTimeout as sleep9 } from "node:timers/promises";
+import { setTimeout as sleep10 } from "node:timers/promises";
 init_fs();
 init_keys();
 
@@ -55256,7 +55396,7 @@ async function waitForNamed(cwd, paths, options) {
       }
       first = false;
       const remaining = options.timeoutMs - elapsed();
-      if (remaining > 0) await sleep9(Math.min(options.pollMs, remaining));
+      if (remaining > 0) await sleep10(Math.min(options.pollMs, remaining));
     }
   } finally {
     sync?.stop();
@@ -55441,7 +55581,7 @@ async function waitForStatus(cwd, options) {
         return { ...read5, waitedMs: elapsed() };
       }
       const remaining = options.timeoutMs - elapsed();
-      if (remaining > 0) await sleep10(Math.min(pollMs, remaining));
+      if (remaining > 0) await sleep11(Math.min(pollMs, remaining));
     }
   } finally {
     syncing.sync?.stop();
@@ -55681,7 +55821,7 @@ async function tellDaemon(root) {
 // src/cli/run.ts
 init_fs();
 init_keys();
-import { setTimeout as sleep12 } from "node:timers/promises";
+import { setTimeout as sleep13 } from "node:timers/promises";
 init_store3();
 init_text();
 init_types();
@@ -55713,7 +55853,7 @@ function laneFiles(store, checkpoint) {
 }
 
 // src/cli/run-slow.ts
-import { setTimeout as sleep11 } from "node:timers/promises";
+import { setTimeout as sleep12 } from "node:timers/promises";
 init_text();
 
 // src/cli/wait-arg.ts
@@ -55790,7 +55930,7 @@ async function taken(socketPath, first, io) {
       );
       return null;
     }
-    await sleep11(POLL_MS);
+    await sleep12(POLL_MS);
     const next = await askDaemon(socketPath, {
       type: "run-slow-status",
       requestId: state.requestId
@@ -55926,7 +56066,7 @@ async function recorded(socketPath, first, deadline) {
     if (state.checkpoint !== null) return { checkpoint: state.checkpoint, owner: state.owner };
     if (state.error !== null) return `run --all failed: ${state.error}`;
     if (Date.now() > deadline) return null;
-    await sleep12(POLL_MS2);
+    await sleep13(POLL_MS2);
     const next = await askDaemon(socketPath, {
       type: "run-all-status",
       requestId: first.requestId
@@ -56003,7 +56143,7 @@ async function ended(root, socketPath, checkpoint, deadline) {
     if (polls % 20 === 19 && await askDaemon(socketPath, { type: "ping" }) === null) {
       return { kind: "stopped" };
     }
-    await sleep12(Math.max(0, Math.min(STORE_POLL_MS, deadline - Date.now())));
+    await sleep13(Math.max(0, Math.min(STORE_POLL_MS, deadline - Date.now())));
   }
 }
 
@@ -56047,7 +56187,7 @@ init_text();
 init_types();
 
 // src/cli/start.ts
-import { setTimeout as sleep13 } from "node:timers/promises";
+import { setTimeout as sleep14 } from "node:timers/promises";
 
 // src/cli/stopped-mark.ts
 init_stopped();
@@ -56108,7 +56248,7 @@ async function startCommand(args2, io) {
 `);
         return 1;
       }
-      await sleep13(50);
+      await sleep14(50);
     }
   }
   io.stdout(`Squeal daemon ${result} for ${root}
@@ -56762,7 +56902,7 @@ function parseSetupArgs(args2) {
 // src/cli/stop.ts
 import { realpathSync as realpathSync21 } from "node:fs";
 import { resolve as resolve21 } from "node:path";
-import { setTimeout as sleep14 } from "node:timers/promises";
+import { setTimeout as sleep15 } from "node:timers/promises";
 
 // src/core/daemon/leftovers.ts
 import { readdirSync as readdirSync21, readFileSync as readFileSync38 } from "node:fs";
@@ -56869,7 +57009,7 @@ async function stopCommand(args2, io, bounds = STOP_BOUNDS) {
       );
       return 1;
     }
-    await sleep14(50);
+    await sleep15(50);
   }
   stoppedMark(root, tree, io);
   const lock2 = await lockFreed(root, daemon, bounds.lockMs);
@@ -56940,7 +57080,7 @@ async function leftoversGone(marks, ms2) {
   for (; ; ) {
     const left = await leftovers(marks);
     if (left.length === 0 || Date.now() > deadline) return left;
-    await sleep14(100);
+    await sleep15(100);
   }
 }
 function seconds2(ms2) {
@@ -56955,7 +57095,7 @@ async function lockFreed(root, daemon, ms2) {
     if (missing(path) || daemon !== null && gone2(root, daemon)) return { state: "free" };
     const probe = probeLock(path);
     if (probe.state === "free" || Date.now() > deadline) return probe;
-    await sleep14(50);
+    await sleep15(50);
   }
 }
 function gone2(root, daemon) {
