@@ -139,15 +139,25 @@ export interface SlowGroup {
   readonly exclude?: ExcludeProposal | null;
 }
 
-/** D3 step 4: each runner's `exclude` an excluded group is written to. */
+/**
+ * D3 step 4: each runner's `exclude` an excluded group is written to. Wave 13
+ * B1: the globs select only test files that name a build output, so a yes by
+ * default never drops a source test.
+ */
 export interface ExcludeProposal {
-  /** Worktree-relative, as `squeal setup --exclude` takes it. */
-  readonly glob: string;
-  /** A node:test project's glob is relative to its `cwd`, as its `exclude` takes it. */
+  /**
+   * Worktree-relative, as `squeal setup --exclude` takes them: the group's
+   * `<dir>/**` when every test file it selects names a build output,
+   * descendants included; else each of the group's files that names one.
+   */
+  readonly globs: readonly string[];
+  /** Each glob's targets; a node:test project's glob is relative to its `cwd`, as its `exclude` takes it. */
   readonly into: readonly (
     | { readonly runner: "vitest"; readonly glob: string }
     | { readonly runner: "nodeTest"; readonly project: string; readonly glob: string }
   )[];
+  /** The group's files no glob selects: they name no build output and stay slow candidates. */
+  readonly kept: readonly string[];
 }
 
 /**
@@ -202,10 +212,11 @@ export async function readPlan(
     problems,
     missingKeys: [
       ...(exists && runners.nodeTest.some((p) => p.source === "seed") ? ["nodeTest" as const] : []),
-      // Row 005-70: an exclude candidate's default is the runner's `exclude`, not `slow`.
+      // Row 005-70: an exclude candidate's default is the runner's `exclude`, not `slow`;
+      // B1: the files it keeps are still slow candidates.
       ...(exists &&
       !(isRecord(raw) && "slow" in raw) &&
-      slow.groups.some((g) => g.defaultSlow && (g.exclude ?? null) === null)
+      slow.groups.some((g) => g.defaultSlow && (g.exclude?.kept.length ?? 1) > 0)
         ? ["slow" as const]
         : []),
       // Spec 007 D1: only an absent key; init's default `pytest: []` is seeded over, not reported.

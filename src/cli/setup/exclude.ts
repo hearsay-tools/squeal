@@ -41,7 +41,7 @@ export function excludeKeys(proposal: ExcludeProposal): string {
   const keys = proposal.into.map((i) =>
     i.runner === "vitest" ? "vitest.exclude" : `nodeTest "${i.project}" exclude`,
   );
-  return keys.join(" and ") || "no runner's exclude lists them";
+  return [...new Set(keys)].join(" and ") || "no runner's exclude lists them";
 }
 
 /** The targets of each `--exclude` glob: its group's proposal, else read off the test files. */
@@ -50,9 +50,13 @@ function excludeTargets(
   testFiles: readonly string[],
   globs: readonly string[],
 ): Target[] {
+  const cwd = new Map(plan.runners.nodeTest.map((p) => [p.name, p.cwd]));
+  // A target's worktree-relative glob: a node:test one is relative to its project's `cwd`.
+  const of = (t: Target) =>
+    t.runner === "vitest" ? t.glob : posix.join(cwd.get(t.project) ?? "", t.glob);
   return globs.flatMap((glob) => {
-    const group = plan.slow.groups.find((g) => g.exclude?.glob === glob);
-    if (group?.exclude != null) return [...group.exclude.into];
+    const group = plan.slow.groups.find((g) => g.exclude?.globs.includes(glob) === true);
+    if (group?.exclude != null) return group.exclude.into.filter((t) => of(t) === glob);
     const selects = matcher([glob]);
     return excludeInto(plan.runners, glob, testFiles.filter(selects), () => true);
   });

@@ -96,7 +96,9 @@ describe("squeal setup --plan --json", () => {
     git(root, ["commit", "-q", "-m", "untrack"]);
     expect((await planJson(root)).outdated).toEqual([
       "squeal.config.json is not tracked by git: other worktrees run on defaults",
-      // Row 005-70: test/e2e names plugins/codex/dist, so it is an exclude candidate.
+      // Row 005-70: plugin-copy names plugins/codex/dist, so it is an exclude candidate;
+      // wave 13 B1: shipped-plugin names none, so it stays a slow candidate.
+      'squeal.config.json has no "slow" key',
       'squeal.config.json has no "vitest.exclude" key',
     ]);
 
@@ -129,8 +131,8 @@ describe("squeal setup --plan --json", () => {
     expect(plan.runners.nodeTest).toEqual([
       { name: "test:unit", cwd: "packages/demo", include: ["test/unit/*.test.js"], source: "seed" },
     ]);
-    // test/e2e is an exclude candidate too, so the config lacks both keys (row 005-70).
-    expect(plan.config.missingKeys).toEqual(["nodeTest", "vitest.exclude"]);
+    // test/e2e is partly an exclude candidate too, so the config lacks every key (row 005-70, B1).
+    expect(plan.config.missingKeys).toEqual(["nodeTest", "slow", "vitest.exclude"]);
     const slowOnly = await buildPlan(
       squealShaped({
         ...SLOW_ONLY_E2E,

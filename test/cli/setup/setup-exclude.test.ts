@@ -5,8 +5,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import { main } from "../../../src/cli/main.js";
 import { terminalAsker } from "../../../src/cli/setup/ask.js";
 import { setupCommand } from "../../../src/cli/setup/command.js";
+import { buildPlan } from "../../../src/cli/setup/plan.js";
 import { git } from "../../hash/git-repo.js";
 import {
+  ALL_NAMED_E2E,
   capture,
   cezarionShaped,
   cleanupFixtures,
@@ -23,6 +25,8 @@ import {
  */
 
 afterEach(cleanupFixtures);
+
+// Both e2e files name the bundle, so the whole group is the proposal (B1: `exclude-bounded.test.ts`).
 
 const config = (root: string) =>
   JSON.parse(readFileSync(join(root, "squeal.config.json"), "utf8")) as Record<string, unknown>;
@@ -46,12 +50,12 @@ async function onTerminal(root: string, lines: readonly string[]) {
 }
 
 const QUESTION = `test/e2e/** (2 files) tests a build output Squeal does not produce:
-    plugins/codex/dist: gitignored, named by 1 of 2 test files, such as "plugins/codex/dist/cli/squeal.mjs"
+    plugins/codex/dist: gitignored, named by 2 of 2 test files, such as "plugins/codex/dist/cli/squeal.mjs"
 Squeal never builds, so a result against a build it cannot see is tied to no code state. No keeps them a slow candidate. Leave these tests to CI and to runs after a build (vitest.exclude; their inputs entries go too)?`;
 
 describe("squeal setup and an exclude candidate", () => {
   it("--yes writes vitest.exclude, never a slow glob, after which --check finds nothing outdated", async () => {
-    const root = squealShaped();
+    const root = squealShaped(ALL_NAMED_E2E);
     const { code, stdout, stderr } = await setup(root, ["--yes", "--no-warmup"]);
     expect(stderr).toBe("");
     expect(code).toBe(0);
@@ -70,7 +74,7 @@ describe("squeal setup and an exclude candidate", () => {
   });
 
   it("on a terminal, yes (the default) excludes the group", async () => {
-    const root = squealShaped();
+    const root = squealShaped(ALL_NAMED_E2E);
     // Claude Code yes, Codex no, keep the gate, exclude (default).
     const { code, stdout } = await onTerminal(root, ["", "", "keep", ""]);
     expect(code).toBe(0);
@@ -80,7 +84,7 @@ describe("squeal setup and an exclude candidate", () => {
   });
 
   it("on a terminal, no keeps the group a slow candidate and asks whether it is slow", async () => {
-    const root = squealShaped();
+    const root = squealShaped(ALL_NAMED_E2E);
     const { code, stdout } = await onTerminal(root, ["", "", "keep", "keep", ""]);
     expect(code).toBe(0);
     expect(stdout).toContain("Run these tests in the slow tier?\n  1. slow (default)\n");
@@ -90,7 +94,7 @@ describe("squeal setup and an exclude candidate", () => {
   });
 
   it("without a terminal or --yes lists the question and writes nothing", async () => {
-    const root = squealShaped();
+    const root = squealShaped(ALL_NAMED_E2E);
     const { code, stdout } = await setup(root, []);
     expect(code).toBe(1);
     expect(stdout).toContain(`${QUESTION}\n  1. exclude (default)\n`);
@@ -98,9 +102,9 @@ describe("squeal setup and an exclude candidate", () => {
   });
 
   it("plan names the evidence and the default", async () => {
-    const { stdout } = await setup(squealShaped(), ["--plan"]);
+    const { stdout } = await setup(squealShaped(ALL_NAMED_E2E), ["--plan"]);
     expect(stdout).toContain(
-      '  test/e2e (2 files): under a directory named e2e\n    tests build output plugins/codex/dist: gitignored, named by 1 of 2 test files, such as "plugins/codex/dist/cli/squeal.mjs"\n    not declared slow; default excluded (vitest.exclude);',
+      '  test/e2e (2 files): under a directory named e2e\n    tests build output plugins/codex/dist: gitignored, named by 2 of 2 test files, such as "plugins/codex/dist/cli/squeal.mjs"\n    not declared slow; default excluded (vitest.exclude);',
     );
   });
 });
@@ -160,5 +164,39 @@ describe("--exclude", () => {
     expect(stdout).toContain(
       'squeal init: nodeTest project "test:package" is not in squeal.config.json; give it exclude ["test/e2e/**"] when you add it',
     );
+  });
+
+  it("wave 13 B1: a partial exclude gives a node:test project each path relative to its cwd", async () => {
+    const root = cezarionShaped({
+      "squeal.config.json": json({
+        nodeTest: [
+          { name: "test:package", cwd: "packages/cezar", include: ["test/e2e/*.test.ts"] },
+        ],
+      }),
+      "packages/cezar/test/e2e/source.test.ts": "\n",
+    });
+    const [group] = (await buildPlan(root, { env: harnessEnv() })).slow.groups;
+    expect(group?.exclude?.kept).toEqual(["packages/cezar/test/e2e/source.test.ts"]);
+    const { io } = capture(root, harnessEnv(["claude"]));
+    const code = await main(
+      ["setup", "--yes", "--harness", "none", "--block", "none", "--no-warmup"],
+      io,
+    );
+    expect(code).toBe(0);
+    expect(config(root)).toMatchObject({
+      vitest: {
+        exclude: [
+          "packages/cezar/test/e2e/package-cli.test.ts",
+          "packages/cezar/test/e2e/update.test.ts",
+        ],
+      },
+      nodeTest: [
+        {
+          name: "test:package",
+          exclude: ["test/e2e/package-cli.test.ts", "test/e2e/update.test.ts"],
+        },
+      ],
+      slow: { include: ["packages/cezar/test/e2e/**"] },
+    });
   });
 });
