@@ -86,3 +86,38 @@ exit 1
 ```
 
 Known failures, all six outside this row's code: the four bundle-drift tests (no `npm run build` by the brief) and the two fidelity tests that fail under load and pass alone.
+
+## Repair B1
+
+Review: `../../../004-slow-suites/reviews/wave-13.md` B1 (on main). Baseline `cand/0.1.221` (`14a31e2c`), branch `cez/efdebc9d`. Shape: repair. Outcome: a default-yes exclude never drops a source test.
+
+### What changed
+
+- `src/cli/setup/build-outputs.ts`: each `BuildOutputCandidate` carries `namedBy`, the group's test files whose strings name it (`namedCandidates` already found them per file and kept only a count). `evidencedFiles(candidates)`: the files that name a qualifying build output (`testsBuildOutput`), the evidence an exclude needs.
+- `src/cli/setup/candidates.ts`: two passes. The first collects every group's qualifying build outputs and the evidenced files across all groups; the second builds `excludeProposal`: `null` when none of the group's files is evidenced; `<dir>/**` only when every test file that glob selects in the slow universe (the Vitest listing plus every node:test project's files, descendants and other groups' files included) is evidenced; else the group's evidenced files by path. The files no glob selects are `kept`.
+- `src/cli/setup/plan.ts`: `ExcludeProposal` is `{ globs, into, kept }`; `into` holds each glob's targets. `missingKeys` counts a group with kept files toward the missing `slow` key, as it is still a slow candidate.
+- `src/cli/setup/questions.ts`: a yes pushes every glob of the proposal; when the group keeps files, the slow question follows for them ("`test/e2e/** (2 other files: …)`"). A partial question lists the files "as --exclude takes them", says the others name no build output and stay slow candidates, and that no keeps all of them; it drops "their inputs entries go too", which `addExcludes` would not do for a key a kept file still matches.
+- `src/cli/setup/exclude.ts`: `excludeTargets` finds the group whose proposal holds the `--exclude` glob and takes only that glob's targets (a node:test target's glob read back through its project's `cwd`); `excludeKeys` names each key once.
+- `src/cli/setup/format.ts`: `default excluded: <paths> (<keys>); the N others default slow` for a partial group.
+
+### Tests
+
+- `test/cli/setup/exclude-bounded.test.ts` (new, the review's reproduction first): `squealShaped` with `src/math.ts`, `test/e2e/source.test.ts` and `test/e2e/nested/source.test.ts`. The plan proposes `test/e2e/plugin-copy.test.ts` alone and keeps `shipped-plugin` and `source`; the nested group has no proposal. `setup --yes`, the terminal default and the skill's flags (`--exclude test/e2e/plugin-copy.test.ts --slow test/e2e --slow test/e2e/nested`) each write `vitest.exclude: ["test/e2e/plugin-copy.test.ts"]` and both slow globs; afterwards `readRepoFacts` still lists both source tests and not `plugin-copy`, and the replanned groups hold them, declared slow. Positive control: every file under `test/e2e`, the nested one too, names the bundle, and the proposals are `test/e2e/**` and `test/e2e/nested/**`. A `test/bundle.e2e.test.ts` group (dir `test`) proposes its path, not `test/**`.
+- `test/cli/setup/setup-exclude.test.ts`: the whole-group yes/no flow runs on `ALL_NAMED_E2E` (both e2e files name the bundle), so its question, `inputs` removal and no path are unchanged; new: a partial exclude in cezarion's shape writes each path to `vitest.exclude` and, relative to `packages/cezar`, to the node:test project's `exclude`, with the kept file slow. It lives here, not in the new file, because it names `nodeTest` and this file is already exempt in `test/version-sensitive.txt` (not mine to edit).
+- Updated to the bounded truth where `squealShaped`'s own `shipped-plugin.test.ts` (it names `dist/cli/squeal.mjs`, the tail of the tracked bundle, so no build output) is now kept: `candidates.test.ts`, `exclude-proposal.test.ts` (and its `spawnsDist` fixture, whose second file now spawns `dist` too so the directory-glob case stays covered), `plan.test.ts` (`slow` joins the missing keys), `build-outputs.test.ts` (`namedBy`). The manifest-only negative control and the no-to-exclusion path are unchanged.
+
+### Decisions the review did not settle
+
+1. **The slow universe is the selection checked.** "Every file it selects for that runner" is checked over the union of the Vitest listing and every node:test project's files, not per runner: a glob is used only when no runner it reaches would drop an unevidenced file. Conservative: a mixed group gets paths where a per-runner check might allow a glob.
+2. **Evidence counts across groups.** A descendant in another group is evidenced by its own group's build outputs, so `test/e2e/**` is proposed when `test/e2e/nested` names one too.
+3. **A partial group keeps its slow glob as `<dir>/**`.** The kept files are asked about as `test/e2e/**`; that glob also matches the excluded paths, which is harmless, as an excluded file is not listed. Exact slow paths would grow with the group.
+4. **`ExcludeProposal.glob` became `globs`, plus `kept`.** Not additive, but the type was introduced in this unreleased candidate (0.1.221) and nothing outside `src/cli/setup` reads it; plan JSON schema stays 1 (the field is optional).
+5. **The setup skill's text was not changed** (not owned): it says "`--exclude <glob>` for each group answered yes, the glob as the question shows it". A partial question lists each path "as --exclude takes them", one per line, so the skill's flags carry the bounded selection; the wording would read better as "each glob the question shows". Worth folding into the next skill edit.
+
+No guarded source changed: `KEY_FORMAT_VERSION` stays 13. No build, no version change, no board edit.
+
+### Type changes
+
+- `BuildOutputCandidate.namedBy: readonly string[]` (added).
+- `ExcludeProposal`: `glob: string` replaced by `globs: readonly string[]`; `kept: readonly string[]` added.
+- `evidencedFiles` exported from `build-outputs.ts` (new function).
