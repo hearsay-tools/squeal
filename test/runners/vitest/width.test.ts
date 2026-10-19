@@ -175,3 +175,20 @@ export default defineConfig({ test: { maxWorkers: 3, projects: [
     expect(fx.adapter.slowWidth?.([a(0), b(0), a(1)])).toBe(1);
   });
 });
+
+/*
+ * Spec 011 C4 step 5 (task 001-366): a backlog tier is budgeted by its wall
+ * time over the workers it runs with, which the adapter reports at the
+ * pool's offer: `tierWidth` under the project's own `maxWorkers`.
+ */
+describe("vitest adapter: the backlog tier's width it reports (001-366)", SLOW, () => {
+  it("is the offer under the project's ceiling, at least 2, and a ceiling of 1 kept", async () => {
+    const four = await fixture(", maxWorkers: 4");
+    expect(four.adapter.tierWidth?.(refs[0] ?? ref("x"), 23)).toBe(4);
+    expect(four.adapter.tierWidth?.(refs[0] ?? ref("x"), 1)).toBe(2);
+    const unset = await fixture();
+    expect(unset.adapter.tierWidth?.(refs[0] ?? ref("x"), 23)).toBe(23);
+    const one = await fixture(", maxWorkers: 1");
+    expect(one.adapter.tierWidth?.(refs[0] ?? ref("x"), 23)).toBe(1);
+  });
+});

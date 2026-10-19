@@ -73,6 +73,15 @@ export class Widths {
     return Math.max(1, count);
   }
 
+  /**
+   * The workers a run of `project`'s files takes at a grant of `grant` (spec
+   * 011 C4 step 5, task 001-366): `tierWidth` under its own ceiling. An
+   * unknown project's run fails on its own: `grant`, at least 2.
+   */
+  of(project: string, grant: number): number {
+    return tierWidth(grant, this.#byName.get(project)?.ceiling) ?? Math.max(2, grant);
+  }
+
   /** Sizes `vitest`'s next run for `want` workers. */
   apply(vitest: Vitest, want: number | undefined): void {
     // The root project's config is the instance's; a project without a value of its own reads it.
