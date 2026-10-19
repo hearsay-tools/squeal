@@ -1,0 +1,18 @@
+heavy-today: backlog 334.2 s, 5 runs of 18 files; edit started 58.7 s, current 58.8 s after it; load 2.78 to 10.44
+  9f 0-87q | 4f 87-159 | 1f 159-159q | 3f 159-244 | 1f 244-334
+heavy-w1: backlog 249.2 s, 4 runs of 18 files; edit started 58.8 s, current 58.9 s after it; load 6.34 to 26.62
+  9f 0-88q | 4f 88-159 | 1f 159-159q | 4f 159-249
+heavy-stream-lane-mark: backlog 712.9 s, 47 runs of 47 files; edit started 43.1 s, current 45.0 s after it; load 7.45 to 80.45
+heavy-stream: backlog 249.0 s, 18 runs of 18 files; edit started 16.7 s, current 16.9 s after it; load 7.41 to 32
+  1f 0-0q | 1f 0-20 | 1f 0-25 | 1f 0-29 | 1f 0-34 | 1f 20-60 | 1f 25-68 | 1f 29-78 | 1f 34-88 | 1f 60-117 | 1f 68-131 | 1f 78-145 | 1f 88-159 | 1f 117-117q | 1f 117-193 | 1f 131-212 | 1f 145-230 | 1f 159-249
+heavy-stream-over: backlog 249.1 s, 18 runs of 18 files; edit started 0.1 s, current 0.3 s after it; load 3.49 to 45.58
+  1f 0-0q | 1f 0-20 | 1f 0-25 | 1f 0-29 | 1f 0-34 | 1f 20-60 | 1f 25-68 | 1f 29-77 | 1f 34-88 | 1f 60-117 | 1f 68-131 | 1f 77-145 | 1f 88-159 | 1f 100-100q | 1f 117-193 | 1f 131-212 | 1f 145-230 | 1f 159-249
+heavy-w1-drain: backlog 248.8 s, 4 runs of 18 files; edit started 58.5 s, current 58.6 s after it; load 1.79 to 16.3
+  9f 0-87q | 4f 87-159 | 1f 159-159q | 4f 159-249
+heavy-w1-kill: backlog 261.8 s, 5 runs of 22 files; edit started 0.2 s, current 0.3 s after it; load 2 to 10.36
+  9f 0-87q | 4f 87-100 | 1f 100-100q | 4f 100-172 | 4f 172-262
+heavy-w1-beside: backlog 249.0 s, 4 runs of 18 files; edit started 0.1 s, current 0.2 s after it; load 3.29 to 7.23
+  9f 0-88q | 4f 88-159 | 1f 100-100q | 4f 159-249
+light-today: backlog 13.2 s, 2 runs of 301 files; edit none; load 8.11 to 8.83
+  200f 0-8q | 101f 9-13
+light-stream: backlog 15.6 s, 301 runs of 301 files; edit none; load 8 to 9.62
