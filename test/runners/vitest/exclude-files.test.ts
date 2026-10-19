@@ -31,19 +31,24 @@ const sorted = (refs: readonly TestFileRef[]) =>
   [...refs].sort((a, b) => a.project.localeCompare(b.project));
 
 describe("vitest.exclude (004 D7, task 004-81)", () => {
-  it("lists no file an exclude glob selects, and counts none as omitted", SLOW, async () => {
-    const { fx, notes } = await open(() => ["e2e/**", "test/web.test.ts"]);
-    expect(sorted(await fx.adapter.testFiles())).toEqual(FOUR.filter((r) => r.project !== "web"));
-    expect(fx.adapter.omittedTestFiles?.()).toBe(0);
-    const shared = await fx.adapter.affected(["src/shared.ts"]);
-    expect(sorted([...shared.direct, ...shared.transitive])).toEqual(
-      FOUR.filter((r) => r.project !== "web"),
-    );
-    // A file only the excluded suite reads affects nothing.
-    const browser = await fx.adapter.affected(["src/browser-only.ts"]);
-    expect([...browser.direct, ...browser.transitive]).toEqual([]);
-    expect(notes).toEqual([]);
-  });
+  it(
+    "lists no file an exclude glob selects, and counts each as omitted (review wave-12 B2)",
+    SLOW,
+    async () => {
+      const { fx, notes } = await open(() => ["e2e/**", "test/web.test.ts"]);
+      expect(sorted(await fx.adapter.testFiles())).toEqual(FOUR.filter((r) => r.project !== "web"));
+      // A bare `vitest run` still runs them, so the hook must not answer it (005 D8 step 3).
+      expect(fx.adapter.omittedTestFiles?.()).toBe(2);
+      const shared = await fx.adapter.affected(["src/shared.ts"]);
+      expect(sorted([...shared.direct, ...shared.transitive])).toEqual(
+        FOUR.filter((r) => r.project !== "web"),
+      );
+      // A file only the excluded suite reads affects nothing.
+      const browser = await fx.adapter.affected(["src/browser-only.ts"]);
+      expect([...browser.direct, ...browser.transitive]).toEqual([]);
+      expect(notes).toEqual([]);
+    },
+  );
 
   it("takes an edit of the key mid-session, so the next listing has it", SLOW, async () => {
     let excluded: readonly string[] = [];

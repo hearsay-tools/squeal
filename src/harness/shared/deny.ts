@@ -156,7 +156,11 @@ export function denyCurrentTestCommand(
     if (header.daemon?.state !== "alive" || header.testFilesListed === false) return null;
     if (header.runnerPartPending === true || header.awaitingInstall === true) return null;
     // Vitest's files are the listing's others: the policy's pytest projects are read only for it.
-    const pytest = command.runner === "vitest" ? readPolicy(context.root).pytest : [];
+    const live = command.runner === "vitest" ? readPolicy(context.root) : null;
+    // 004 D7: a file `vitest.exclude` drops is one a bare Vitest command still runs; read live, so
+    // an exclusion added since the last listing counts too (review 004 wave-12 B2).
+    if (live !== null && live.vitest.exclude.length > 0) return null;
+    const pytest = live?.pytest ?? [];
     const names = new Set([...nodeTest, ...pytest].map((p) => p.name));
     const files = resolveTestFiles(
       command,
