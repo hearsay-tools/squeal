@@ -255,14 +255,16 @@ export function selectTier(
 }
 
 /**
- * Whether a newer run holds `file` at a key other than `key`, the one this
+ * Whether a newer run has `file` at a key other than `key`, the one this
  * tier ran it at: an edit's tier beside a backlog tier took the file it
- * re-keyed (spec 011 C4 step 5, task 011-21). The older run then neither
- * ends the file's running state, nor queues it, nor marks it unknown; its
- * outcome is discarded.
+ * re-keyed (spec 011 C4 step 5, task 011-21), and still runs it or already
+ * stored its result. The older run then neither ends the file's running
+ * state, nor queues it, nor marks it unknown on a crash or a timeout; its
+ * outcome is discarded (review wave-4 B1, both completion orders).
  */
 export function supersededIn(file: FileState, key: CheckKey): boolean {
-  return file.runningKey !== null && file.runningKey !== key;
+  if (file.runningKey !== null && file.runningKey !== key) return true;
+  return file.key !== null && file.key !== key && file.resultKey === file.key;
 }
 
 /** How many files a backlog tier holding `ref` runs at once at `grant` workers (task 001-366). */
@@ -516,9 +518,8 @@ export function recordTier(
   store.transaction(() => {
     store.runs.finish(tier.runId, report.end, context.now());
     for (const { file, key, inputs, checkpointId, forced, recent } of tier.files) {
-      // A newer run took the file at another key (an edit's tier beside this backlog tier, task
-      // 011-21): its running state is that run's, and this run's outcome is superseded (review
-      // wave-4 B1).
+      // A newer run has the file at another key (an edit's tier beside this backlog tier, task
+      // 011-21): its state is that run's, and this run's outcome is superseded (review wave-4 B1).
       if (supersededIn(file, key)) continue;
       ledger.setRunning(file, null);
       if (ledger.files.get(file.id) !== file) continue;

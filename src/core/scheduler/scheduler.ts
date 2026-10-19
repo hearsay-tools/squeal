@@ -852,7 +852,7 @@ class TierScheduler implements Scheduler {
       const { context, ledger } = this.#started();
       endTier(context, ledger, tier);
       for (const { file, key } of tier.files) {
-        // A newer run holds the file at another key: it is that run's (review wave-4 B1).
+        // A newer run has the file at another key: it is that run's (review wave-4 B1).
         if (supersededIn(file, key)) continue;
         ledger.setRunning(file, null);
         if (ledger.files.get(file.id) === file) {
