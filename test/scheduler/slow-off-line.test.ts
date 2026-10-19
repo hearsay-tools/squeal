@@ -36,7 +36,7 @@ async function harness(onStart: Policy["baseline"]["onStart"]) {
   slotDirs.push(slotDir);
   const policy = {
     baseline: { ...DEFAULT_POLICY.baseline, onStart },
-    slow: { ...DEFAULT_POLICY.slow, include: [STRINGS] },
+    slow: { ...DEFAULT_POLICY.slow, trigger: "idle" as const, include: [STRINGS] },
   };
   // The header reads the slow view from the policy file at the worktree row's root.
   writeFileSync(join(repo.main, "squeal.config.json"), JSON.stringify(policy));

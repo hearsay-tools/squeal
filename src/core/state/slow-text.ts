@@ -99,22 +99,29 @@ export function slowTierText(header: StatusHeader, command: string): string | nu
 }
 
 /**
- * What happens to the slow files: by default Squeal runs the queued ones
- * once the agent pauses (D2's idle trigger, the `idle` wait above; task
- * 001-317). A file not run is not queued, and a pause queues nothing (with
- * `baseline.onStart: "lookup-only"` a miss stays so), so the line claims no
- * run for it: `run --slow` is what runs it (review wave-13ax B1, task
- * 001-323). With `stop.requireSlowSuite` on Stop waits up to its bound, or,
- * before the harness's waiting entry ran in the worktree, holds the agent
- * once (004 D9 as amended 2026-10-12).
+ * What happens to the slow files: Squeal runs the queued ones after the fast
+ * tests under `slow.trigger: "continuous"`, or once the agent pauses under
+ * `"idle"` (`pausesOnly`; D2's trigger a, amended 2026-10-18, row 004-80;
+ * the `idle` wait above; task 001-317). A file not run is not queued, and a
+ * pause queues nothing (with `baseline.onStart: "lookup-only"` a miss stays
+ * so), so the line claims no run for it: `run --slow` is what runs it
+ * (review wave-13ax B1, task 001-323). With `stop.requireSlowSuite` on Stop
+ * waits up to its bound, or, before the harness's waiting entry ran in the
+ * worktree, holds the agent once (004 D9 as amended 2026-10-12).
  */
 function stopText(tier: SlowTierState): string {
   if (tier.stopWaitMs !== undefined) {
     return `Stop waits up to ${durationText(tier.stopWaitMs)} for them or holds the agent once`;
   }
-  if (tier.notRun === 0) return "Squeal runs them when the agent pauses";
+  const when = slowRunsWhen(tier);
+  if (tier.notRun === 0) return `Squeal runs them ${when}`;
   if (tier.pending === 0) return "Squeal has not queued them";
-  return "Squeal runs the pending ones when the agent pauses and has not queued the rest";
+  return `Squeal runs the pending ones ${when} and has not queued the rest`;
+}
+
+/** When Squeal runs queued slow files, by `slow.trigger` (D8 as amended 2026-10-18). */
+export function slowRunsWhen(tier: Pick<SlowTierState, "pausesOnly">): string {
+  return tier.pausesOnly === true ? "when the agent pauses" : "after the fast tests";
 }
 
 function capitalized(text: string): string {
