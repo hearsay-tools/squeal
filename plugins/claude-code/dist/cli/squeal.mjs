@@ -20445,9 +20445,9 @@ var init_adapter = __esm({
       testFiles() {
         return this.#part(async (vitest) => {
           const specs = await vitest.globTestSpecifications();
-          const listed2 = supported(specs);
-          this.#omitted = specs.length - listed2.length;
-          return this.#covered(listed2).map((s) => this.#ref(s)).sort(compareRefs);
+          const covered = this.#covered(supported(specs));
+          this.#omitted = specs.length - covered.length;
+          return covered.map((s) => this.#ref(s)).sort(compareRefs);
         });
       }
       omittedTestFiles() {
@@ -48124,6 +48124,7 @@ import { accessSync, constants, readdirSync as readdirSync5 } from "node:fs";
 import { delimiter, join as join19 } from "node:path";
 
 // src/cli/setup/repo.ts
+init_policy2();
 init_fs();
 init_glob();
 import { existsSync as existsSync6, readFileSync as readFileSync10 } from "node:fs";
@@ -48267,9 +48268,10 @@ function listTestFiles(root, tracked) {
   const exclude = config == null ? [] : stringArrays(config, "exclude");
   const included = matcher(include.length > 0 ? include : DEFAULT_INCLUDE);
   const excluded = matcher([...exclude, ...DEFAULT_EXCLUDE]);
+  const notCovered = createInputMatcher(loadPolicy(root).policy.vitest.exclude);
   return {
     source: include.length > 0 ? "config-text" : "default",
-    paths: tracked.filter((path) => included(path) && !excluded(path)),
+    paths: tracked.filter((path) => included(path) && !excluded(path) && !notCovered(path)),
     current: null
   };
 }

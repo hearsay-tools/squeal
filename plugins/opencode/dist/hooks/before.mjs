@@ -5917,7 +5917,9 @@ function denyCurrentTestCommand(context, command, nodeTest, now) {
     const header = readLiveHeader(store, consumer.worktreeId, now, states, null, keys);
     if (header.daemon?.state !== "alive" || header.testFilesListed === false) return null;
     if (header.runnerPartPending === true || header.awaitingInstall === true) return null;
-    const pytest = command.runner === "vitest" ? readPolicy(context.root).pytest : [];
+    const live = command.runner === "vitest" ? readPolicy(context.root) : null;
+    if (live !== null && live.vitest.exclude.length > 0) return null;
+    const pytest = live?.pytest ?? [];
     const names = new Set([...nodeTest, ...pytest].map((p) => p.name));
     const files2 = resolveTestFiles(
       command,
