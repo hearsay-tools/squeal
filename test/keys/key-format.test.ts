@@ -68,7 +68,7 @@ const SEAMS = [
   // Whether a retry's claimant is alive decides who runs it, not what it records (001-368).
   "src/core/scheduler/retries.ts -> src/core/delivery/liveness.ts",
   // Whether a consumer is in a turn decides when the slow tier runs, not what it records.
-  "src/core/scheduler/slow-tier.ts -> src/core/delivery/turn.ts",
+  "src/core/scheduler/slow-trigger.ts -> src/core/delivery/turn.ts",
   // Whether this session's waiting Stop entry ran decides where Stop waits, not what it records (001-297).
   "src/core/slow/stop-wait.ts -> src/core/delivery/slots.ts",
   "src/core/state/slow.ts -> src/core/delivery/slots.ts",
