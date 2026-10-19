@@ -1,0 +1,136 @@
+### 20261018T125937Z-bcdbec 0.1.215
+   {"rep":1,"claim":"fail","ct":true,"wait":"run--slow+path-wait","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":2,"claim":"unknown","ct":true,"wait":"path-wait+plain-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":true}
+   {"rep":3,"claim":"unknown","ct":true,"wait":"plain-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":false}
+   {"rep":4,"claim":"unknown","ct":true,"wait":"path-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":true}
+   {"rep":5,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":true}
+   {"rep":6,"claim":"unknown","ct":false,"wait":"path-wait+plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":true}
+   {"rep":7,"claim":"fail","ct":true,"wait":"run--all+plain-wait","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":8,"claim":"fail","ct":true,"wait":"run--all+path-wait+plain-wait","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":9,"claim":"fail","ct":true,"wait":"run--slow+path-wait","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":10,"claim":"unknown","ct":false,"wait":"path-wait+plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":false}
+## a2-slow {"wait:run--slow+path-wait":2,"claim:fail":4,"ct:true":7,"wait:path-wait+plain-wait":3,"claim:unknown":6,"looseMet:true":3,"wait:plain-wait":2,"wait:path-wait":1,"ct:false":3,"looseMet:false":3,"noCount,proseSlow:true":2,"wait:run--all+plain-wait":1,"wait:run--all+path-wait+plain-wait":1,"noCount,proseSlow:false":1}
+   {"rep":1,"claim":"unknown","ct":false,"wait":"path-wait+plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":true}
+   {"rep":2,"claim":"unknown","ct":false,"wait":"path-wait+plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":true}
+   {"rep":3,"claim":"unknown","ct":false,"wait":"path-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":false}
+   {"rep":4,"claim":"unknown","ct":true,"wait":"path-wait+plain-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":true}
+   {"rep":5,"claim":"unknown","ct":false,"wait":"path-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":false}
+   {"rep":6,"claim":"pass","ct":true,"wait":"run--all+path-wait+plain-wait","stated":null,"loose":null,"looseMet":null,"proseSlow":false}
+   {"rep":7,"claim":"unknown","ct":false,"wait":"path-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":false}
+   {"rep":8,"claim":"unknown","ct":false,"wait":"path-wait+plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":true}
+   {"rep":9,"claim":"unknown","ct":false,"wait":"path-wait","stated":null,"loose":1,"looseMet":true,"proseSlow":false}
+   {"rep":10,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":true}
+## a3-harmless {"wait:path-wait+plain-wait":4,"claim:unknown":9,"ct:false":8,"looseMet:false":7,"noCount,proseSlow:true":4,"wait:path-wait":4,"noCount,proseSlow:false":4,"ct:true":2,"looseMet:true":2,"wait:run--all+path-wait+plain-wait":1,"claim:pass":1,"wait:plain-wait":1}
+   {"rep":1,"claim":"unknown","ct":false,"wait":"path-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":false}
+   {"rep":2,"claim":"unknown","ct":false,"wait":"path-wait+plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":true}
+   {"rep":3,"claim":"unknown","ct":false,"wait":"run--all+path-wait+plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":false}
+   {"rep":4,"claim":"unknown","ct":true,"wait":"path-wait+plain-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":false}
+   {"rep":5,"claim":"unknown","ct":false,"wait":"run--all+path-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":false}
+   {"rep":6,"claim":"unknown","ct":true,"wait":"path-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":true}
+   {"rep":7,"claim":"unknown","ct":false,"wait":"path-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":true}
+   {"rep":8,"claim":"unknown","ct":false,"wait":"run--all+path-wait+plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":false}
+   {"rep":9,"claim":"fail","ct":true,"wait":"run--slow+plain-wait","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":10,"claim":"unknown","ct":true,"wait":"path-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":true}
+## a8-load-hold {"wait:path-wait":4,"claim:unknown":9,"ct:false":6,"looseMet:false":6,"noCount,proseSlow:false":4,"wait:path-wait+plain-wait":2,"noCount,proseSlow:true":2,"wait:run--all+path-wait+plain-wait":2,"ct:true":4,"looseMet:true":3,"wait:run--all+path-wait":1,"wait:run--slow+plain-wait":1,"claim:fail":1}
+### 20261018T184306Z-4fc7da 0.1.216
+   {"rep":1,"claim":"unknown","ct":true,"wait":"path-wait+plain-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":true}
+   {"rep":2,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":true}
+   {"rep":3,"claim":"unknown","ct":false,"wait":"path-wait+plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":true}
+   {"rep":4,"claim":"unknown","ct":true,"wait":"path-wait+plain-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":true}
+   {"rep":5,"claim":"unknown","ct":true,"wait":"path-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":true}
+   {"rep":6,"claim":"fail","ct":true,"wait":"run--all+path-wait","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":7,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":true}
+   {"rep":8,"claim":"unknown","ct":false,"wait":"path-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":false}
+   {"rep":9,"claim":"unknown","ct":true,"wait":"path-wait+plain-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":true}
+   {"rep":10,"claim":"fail","ct":true,"wait":"run--all+path-wait","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+## a2-slow {"wait:path-wait+plain-wait":4,"claim:unknown":8,"ct:true":6,"looseMet:true":4,"wait:plain-wait":2,"ct:false":4,"looseMet:false":4,"noCount,proseSlow:true":3,"wait:path-wait":2,"wait:run--all+path-wait":2,"claim:fail":2,"noCount,proseSlow:false":1}
+   {"rep":1,"claim":"unknown","ct":true,"wait":"path-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":true}
+   {"rep":2,"claim":"unknown","ct":false,"wait":"path-wait+plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":true}
+   {"rep":3,"claim":"unknown","ct":false,"wait":"path-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":false}
+   {"rep":4,"claim":"unknown","ct":true,"wait":"path-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":true}
+   {"rep":5,"claim":"unknown","ct":true,"wait":"path-wait+plain-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":true}
+   {"rep":6,"claim":"pass","ct":true,"wait":"run--all+path-wait+plain-wait","stated":null,"loose":1,"looseMet":null,"proseSlow":false}
+   {"rep":7,"claim":"unknown","ct":true,"wait":"path-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":true}
+   {"rep":8,"claim":"unknown","ct":true,"wait":"path-wait+plain-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":true}
+   {"rep":9,"claim":"unknown","ct":false,"wait":"path-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":false}
+   {"rep":10,"claim":"unknown","ct":false,"wait":"path-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":false}
+## a3-harmless {"wait:path-wait":6,"claim:unknown":9,"ct:true":6,"looseMet:true":5,"wait:path-wait+plain-wait":3,"ct:false":4,"looseMet:false":4,"noCount,proseSlow:true":1,"noCount,proseSlow:false":3,"wait:run--all+path-wait+plain-wait":1,"claim:pass":1}
+   {"rep":1,"claim":"unknown","ct":true,"wait":"path-wait+plain-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":false}
+   {"rep":2,"claim":"unknown","ct":true,"wait":"plain-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":true}
+   {"rep":3,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":true}
+   {"rep":4,"claim":"unknown","ct":false,"wait":"path-wait+plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":true}
+   {"rep":5,"claim":"unknown","ct":true,"wait":"path-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":true}
+   {"rep":6,"claim":"fail","ct":true,"wait":"run--slow+path-wait","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":7,"claim":"unknown","ct":false,"wait":"path-wait+plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":false}
+   {"rep":8,"claim":"unknown","ct":true,"wait":"path-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":true}
+   {"rep":9,"claim":"unknown","ct":true,"wait":"path-wait+plain-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":true}
+   {"rep":10,"claim":"unknown","ct":true,"wait":"path-wait+plain-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":false}
+## a8-load-hold {"wait:path-wait+plain-wait":5,"claim:unknown":9,"ct:true":7,"looseMet:true":6,"wait:plain-wait":2,"ct:false":3,"looseMet:false":3,"noCount,proseSlow:true":2,"wait:path-wait":2,"wait:run--slow+path-wait":1,"claim:fail":1,"noCount,proseSlow:false":1}
+### 20261018T211619Z-cd33f5 0.1.219
+   {"rep":1,"claim":"unknown","ct":true,"wait":"plain-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":false}
+   {"rep":2,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":true}
+   {"rep":3,"claim":"unknown","ct":true,"wait":"plain-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":true}
+   {"rep":4,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":true}
+   {"rep":5,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":1,"looseMet":true,"proseSlow":false}
+   {"rep":6,"claim":"unknown","ct":true,"wait":"plain-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":false}
+   {"rep":7,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":1,"looseMet":true,"proseSlow":false}
+   {"rep":8,"claim":"unknown","ct":true,"wait":"plain-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":false}
+   {"rep":9,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":1,"looseMet":true,"proseSlow":false}
+   {"rep":10,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":1,"looseMet":true,"proseSlow":false}
+## a2-slow {"wait:plain-wait":10,"claim:unknown":10,"ct:true":4,"looseMet:true":8,"ct:false":6,"looseMet:false":2,"noCount,proseSlow:true":2,"noCount,proseSlow:false":4}
+   {"rep":1,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":true}
+   {"rep":2,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":true}
+   {"rep":3,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":true}
+   {"rep":4,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":false}
+   {"rep":5,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":true}
+   {"rep":6,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":false}
+   {"rep":7,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":false}
+   {"rep":8,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":true}
+   {"rep":9,"claim":"unknown","ct":true,"wait":"path-wait+plain-wait","stated":1,"loose":1,"looseMet":true,"proseSlow":true}
+   {"rep":10,"claim":"unknown","ct":false,"wait":"none","stated":null,"loose":null,"looseMet":false,"proseSlow":false}
+## a3-harmless {"wait:plain-wait":8,"claim:unknown":10,"ct:false":9,"looseMet:false":9,"noCount,proseSlow:true":5,"noCount,proseSlow:false":4,"wait:path-wait+plain-wait":1,"ct:true":1,"looseMet:true":1,"wait:none":1}
+   {"rep":1,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":true}
+   {"rep":2,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":false}
+   {"rep":3,"claim":"unknown","ct":false,"wait":"run--all+plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":false}
+   {"rep":4,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":false}
+   {"rep":5,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":false}
+   {"rep":6,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":false}
+   {"rep":7,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":true}
+   {"rep":8,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":false}
+   {"rep":9,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":false}
+   {"rep":10,"claim":"unknown","ct":false,"wait":"plain-wait","stated":null,"loose":null,"looseMet":false,"proseSlow":false}
+## a8-load-hold {"wait:plain-wait":9,"claim:unknown":10,"ct:false":10,"looseMet:false":10,"noCount,proseSlow:true":2,"noCount,proseSlow:false":8,"wait:run--all+plain-wait":1}
+### 20261016T061730Z-07d7ab 0.1.199
+   {"rep":1,"claim":"fail","ct":true,"wait":"run--slow+plain-wait","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":2,"claim":"fail","ct":true,"wait":"run--slow+plain-wait","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":3,"claim":"fail","ct":true,"wait":"run--slow","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":4,"claim":"fail","ct":true,"wait":"run--slow","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":5,"claim":"fail","ct":true,"wait":"run--slow+plain-wait","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":6,"claim":"fail","ct":true,"wait":"run--slow","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":7,"claim":"fail","ct":true,"wait":"run--slow+plain-wait","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":8,"claim":"fail","ct":true,"wait":"run--slow+plain-wait","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":9,"claim":"fail","ct":true,"wait":"run--slow","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":10,"claim":"fail","ct":true,"wait":"run--slow+plain-wait","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+## a2-slow {"wait:run--slow+plain-wait":6,"claim:fail":10,"ct:true":10,"wait:run--slow":4}
+   {"rep":1,"claim":"pass","ct":true,"wait":"run--slow","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":2,"claim":"pass","ct":true,"wait":"run--slow","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":3,"claim":"pass","ct":true,"wait":"run--slow","stated":null,"loose":null,"looseMet":null,"proseSlow":false}
+   {"rep":4,"claim":"pass","ct":true,"wait":"run--slow","stated":null,"loose":null,"looseMet":null,"proseSlow":false}
+   {"rep":5,"claim":"pass","ct":true,"wait":"run--slow","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":6,"claim":"pass","ct":true,"wait":"run--slow","stated":null,"loose":1,"looseMet":null,"proseSlow":false}
+   {"rep":7,"claim":"pass","ct":true,"wait":"run--slow+plain-wait","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":8,"claim":"pass","ct":true,"wait":"run--slow","stated":null,"loose":null,"looseMet":null,"proseSlow":false}
+   {"rep":9,"claim":"pass","ct":true,"wait":"run--slow","stated":null,"loose":null,"looseMet":null,"proseSlow":false}
+   {"rep":10,"claim":"pass","ct":true,"wait":"run--slow","stated":null,"loose":null,"looseMet":null,"proseSlow":false}
+## a3-harmless {"wait:run--slow":9,"claim:pass":10,"ct:true":10,"wait:run--slow+plain-wait":1}
+   {"rep":1,"claim":"fail","ct":true,"wait":"run--slow","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":2,"claim":"fail","ct":true,"wait":"run--slow+plain-wait","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":3,"claim":"fail","ct":true,"wait":"run--slow+plain-wait","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":4,"claim":"fail","ct":true,"wait":"run--slow","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":5,"claim":"fail","ct":true,"wait":"run--slow","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":6,"claim":"fail","ct":true,"wait":"run--slow","stated":null,"loose":null,"looseMet":null,"proseSlow":false}
+   {"rep":7,"claim":"fail","ct":true,"wait":"run--slow","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":8,"claim":"fail","ct":true,"wait":"run--slow","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":9,"claim":"fail","ct":true,"wait":"run--slow+plain-wait","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+   {"rep":10,"claim":"fail","ct":true,"wait":"run--slow+plain-wait","stated":null,"loose":null,"looseMet":null,"proseSlow":true}
+## a8-load-hold {"wait:run--slow":6,"claim:fail":10,"ct:true":10,"wait:run--slow+plain-wait":4}

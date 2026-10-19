@@ -1,0 +1,6 @@
+a2-slow codex-gpt-6-luna: edit-to-claim s [8.0, 4.4, 4.8, 5.2, 5.0, 4.4, 4.3, 4.1, 7.8, 7.3]; median 4.9; >=17.5 s: 0/10
+a2-slow claude-claude-sonnet-5-5: edit-to-claim s [21.2, 20.0, 19.7, 20.1, 20.4, 19.2, 21.1, 19.6, 20.0, 20.0]; median 20.0; >=17.5 s: 10/10
+a3-harmless codex-gpt-6-luna: edit-to-claim s [4.4, 5.8, 5.7, 5.4, 5.5, 4.9, 5.0, 5.6, 8.7, 1.8]; median 5.45; >=17.5 s: 0/10
+a3-harmless claude-claude-sonnet-5-5: edit-to-claim s [19.9, 20.4, 18.1, 17.9, 21.2, 18.3, 16.1, 19.9, 18.1, 20.0]; median 19.1; >=17.5 s: 9/10
+a8-load-hold codex-gpt-6-luna: edit-to-claim s [5.1, 4.9, 169.3, 4.7, 4.6, 4.7, 7.9, 4.7, 5.1, 4.9]; median 4.9; >=17.5 s: 1/10
+a8-load-hold claude-claude-sonnet-5-5: edit-to-claim s [623.0, 625.2, 623.7, 622.8, 20.9, 622.3, 622.1, 66.9, 621.9, 623.0]; median 622.55; >=17.5 s: 10/10
