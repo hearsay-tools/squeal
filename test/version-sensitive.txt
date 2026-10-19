@@ -45,12 +45,14 @@
 #   test/cli/init-node-test.test.ts
 #   test/cli/run-slow-held.test.ts
 #   test/cli/setup/block.test.ts
+#   test/cli/setup/exclude-proposal.test.ts
 #   test/cli/setup/excluded.test.ts
 #   test/cli/setup/gates-allow-list.test.ts
 #   test/cli/setup/gates.test.ts
 #   test/cli/setup/init-flags.test.ts
 #   test/cli/setup/plan.test.ts
 #   test/cli/setup/pytest.test.ts
+#   test/cli/setup/setup-exclude.test.ts
 #   test/daemon/observed-timer.test.ts
 #   test/daemon/policy.test.ts
 #   test/evals/claim-grades.test.ts
