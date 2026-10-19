@@ -1,5 +1,5 @@
 import { testFileId } from "../core/keys/index.js";
-import { runnerPartText } from "../core/state/index.js";
+import { runnerPartText, slowWaitText } from "../core/state/index.js";
 import {
   countedText,
   failureCountText,
@@ -132,7 +132,8 @@ function slowText(slow: StatusWaitSlow): string {
  * agent finishes. Under `slow.trigger: "continuous"` it says the pending
  * ones run after the fast tests, as the `Slow tier:` line does, so the
  * return on quiet does not read as their running only on a pause; under
- * `"idle"` it is 004-71's text (row 004-80).
+ * `"idle"` it is 004-71's text (row 004-80). Off, it names the wait for
+ * them, `slowWaitText` (D8 as amended 2026-10-19, row 004-83).
  */
 function slowTierText(snapshot: StatusSnapshot, command: string): string {
   const tier = snapshot.slowTier;
@@ -146,10 +147,7 @@ function slowTierText(snapshot: StatusSnapshot, command: string): string {
       : ` and Squeal runs ${tier.notRun === 0 ? them : "the pending ones"} after the fast tests`;
   const files = `${plural(open, "slow file")} ${open === 1 ? "is" : "are"} not current${runs}`;
   if (tier.stopWaitMs === undefined) {
-    return (
-      `; ${files}; this repository does not require ${them} before you finish ` +
-      `(\`${command} run --slow\` runs ${them})`
-    );
+    return `; ${files}; this repository does not require ${them} before you finish; ${slowWaitText(command, open)}`;
   }
   return (
     `; ${files}, which this wait does not hold for: ` +
@@ -221,7 +219,8 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
  * files a named wait left for a pause, by path, and what this repository's
  * `stop.requireSlowSuite` asks of them, read as the quiet line reads it
  * (`slowTierText`, 004-71): off, not required before the agent finishes; on,
- * `run --slow --wait` runs and waits for them.
+ * `run --slow --wait` runs and waits for them. Off, it names that wait too
+ * (row 004-83).
  */
 function pauseText(wait: EndedNamed, command: string): string {
   const files = wait.leftForPause ?? [];
@@ -233,7 +232,7 @@ function pauseText(wait: EndedNamed, command: string): string {
     `${plural(n, "slow test file")} ${n === 1 ? "waits" : "wait"} for a pause or ` +
     `\`${command} run --slow\`, which this wait does not hold for: ${shown}${more}`;
   return wait.result.slowTier?.stopWaitMs === undefined
-    ? `${what}; this repository does not require ${them} before you finish`
+    ? `${what}; this repository does not require ${them} before you finish; ${slowWaitText(command, n)}`
     : `${what}; this repository requires ${them} before you finish: \`${command} run --slow --wait 60000\` runs and waits for ${them}`;
 }
 

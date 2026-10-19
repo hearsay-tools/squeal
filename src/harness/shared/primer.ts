@@ -241,6 +241,9 @@ function named(noun: string, entries: readonly string[], shown: number): string 
  * Row 004-80 (D8 as amended 2026-10-18): slow files run after the fast
  * tests under `slow.trigger: "continuous"`, when the agent pauses under
  * `"idle"` (`pausesOnly`).
+ * Row 004-83 (D8 as amended 2026-10-19): under both policies `run --slow
+ * --wait` is named as the wait for the slow files' results, which joins a
+ * file already running; "runs them now" read as a second run.
  * Each within 280 characters under `squeal`, which the longest Claude Code
  * primer of the coverage matrix keeps with every project named.
  */
@@ -253,11 +256,11 @@ function slowSentences(
     naming === "every"
       ? `\`${command} run --slow --wait 60000\``
       : "the CLI's `run --slow --wait 60000`";
-  const when = slow.pausesOnly === true ? "when you pause between turns" : "after the fast tests";
+  const when = slow.pausesOnly === true ? "between your turns" : "after the fast tests";
   return [
     slow.requireSlowSuite === true
-      ? `Slow test files run ${when}; this repository requires them once you change a file: before you say the task is done, run ${run} unless the latest \`Slow tier:\` line says every slow file is current; Stop waits or holds you once.`
-      : `Slow test files run ${when}; this repository does not require them before you finish: say slow tests pass only when the latest \`Slow tier:\` line states every slow file is current, else say how many are not; ${run} runs them now.`,
+      ? `Slow test files run ${when}; this repository requires them once you change a file: before you say the task is done, wait with ${run} unless the latest \`Slow tier:\` line says every slow file is current; Stop waits or holds you once.`
+      : `Slow test files run ${when}; this repository does not require them before you finish: say slow tests pass only when the latest \`Slow tier:\` line states every slow file is current, else say how many are not, or wait for them with ${run}.`,
     command === SQUEAL_COMMAND
       ? "A slow failure wakes you when you are idle in an interactive session; otherwise it arrives with your next prompt or tool call."
       : "A slow failure arrives with your next prompt or tool call.",

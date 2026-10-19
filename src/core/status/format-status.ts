@@ -1,5 +1,11 @@
 import { RECORDED_UNKNOWN_TEXT, recordedText, waitsText } from "../retry/index.js";
-import { formatCheck, fullSuiteText, runnerPartText, slowTierText } from "../state/index.js";
+import {
+  formatCheck,
+  fullSuiteText,
+  runnerPartText,
+  slowAffectedText,
+  slowTierText,
+} from "../state/index.js";
 import { excludedFilesText, excludedProjectsText, plural } from "../text.js";
 import type {
   DaemonNote,
@@ -66,7 +72,7 @@ export function formatStatus(
         : [`        ${recordedText(f.recorded, result.worktreeId, now)}`]),
     ]),
     ...retryLines(result),
-    `Affected checks: ${affected(result)}`,
+    `Affected checks: ${affected(result, command)}`,
     ...workLine(result, command),
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
     ...checkpointLine(result, now, command),
@@ -248,7 +254,7 @@ export function formatUnavailable(result: StatusUnavailable, command = "squeal")
  * part of the revision is pending, the counts say what they leave out (D2 as
  * amended, review wave 4.5 S1).
  */
-function affected(s: StatusSnapshot): string {
+function affected(s: StatusSnapshot, command: string): string {
   if (s.testFilesListed === false) {
     return "none counted; the daemon has not listed this worktree's test files yet";
   }
@@ -276,7 +282,7 @@ function affected(s: StatusSnapshot): string {
     s.runnerPartPending === true
       ? `; ${runnerPartText(s.revision)} is pending, so test files it adds are not counted yet`
       : "";
-  return `${parts.join(", ")}${fresh}${runnerPart}`;
+  return `${parts.join(", ")}${slowAffectedText(s.slowPending, command)}${fresh}${runnerPart}`;
 }
 
 /**
