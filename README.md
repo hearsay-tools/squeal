@@ -45,7 +45,7 @@ Each worktree has a daemon of its own, which runs that worktree's tests in the b
 
 ## Slow tests
 
-Slow test files (`slow.include` in `squeal.config.json`, or `"slow": true` on a `nodeTest` or `pytest` project) run in a tier of their own, after the fast ones: when the agent pauses, or on `squeal run --slow`. They are keyed, run and inherited by another worktree as any test file is. The `Slow tier:` line in `squeal status` says how many there are and which are current, pending, running or not run.
+Slow test files (`slow.include` in `squeal.config.json`, or `"slow": true` on a `nodeTest` or `pytest` project) run in a tier of their own, after the fast ones: once the latest edit's fast tests are done and no edit has come for `slow.quietMs` (default 3000), whether or not the agent is mid-turn, so a slow result reaches the agent with its next tool call; or on `squeal run --slow`. With `"slow": { "trigger": "idle" }` they run only when the agent pauses. They are keyed, run and inherited by another worktree as any test file is. The `Slow tier:` line in `squeal status` says how many there are and which are current, pending, running or not run.
 
 ## Tests Squeal does not cover
 

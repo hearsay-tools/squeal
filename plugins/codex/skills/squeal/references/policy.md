@@ -39,6 +39,8 @@ With policy `interrupt.onRegression` on (the default), the first file edit after
 | `slow.maxLoadPerCpu` | `1.0` | The slow tier waits while the one-minute load average per CPU is above this. |
 | `slow.maxDeferMs` | `600000` | How long the slow tier waits for the load to drop before it runs a slow file anyway, with a note. |
 | `slow.maxParallel` | `4` | The most slow files run at once when the machine is idle (nothing of the edits' or the backlog's running or queued, load below `slow.maxLoadPerCpu`); otherwise one at a time. Also how many slow files all of one user's daemons run at once. |
+| `slow.trigger` | `"continuous"` | When the slow tier starts. `"continuous"`: once the latest edit's fast tests are done and no edit has come for `slow.quietMs`, whether or not the agent is mid-turn; a slow result arrives with the next tool call. `"idle"`: only when the agent pauses, or no session is registered. Both run on `squeal run --slow`. |
+| `slow.quietMs` | `3000` | Under `"continuous"`, how long after the latest edit the slow tier waits before it starts a slow file. |
 | `delivery.uncoveredEdits` | `true` | After an edit, the next delivery names the changed code files (`.js`, `.ts`, `.py` and their variants, outside `dist/`) that no test Squeal runs reads, once per file per session or subagent. `false` turns the line off. |
 | `daemon.idleExitMinutes` | `60` | The daemon exits after this long with no registered session. |
 | `store.retentionDays` | `7` | Results for file contents no worktree has any more are dropped after this many days. |
