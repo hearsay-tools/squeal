@@ -11843,6 +11843,10 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
   const settled = picked.some((p) => !ledger.queue.has(p.file.ref));
   return settled ? selectTier(context, ledger, busy) : null;
 }
+function supersededIn(file, key2) {
+  if (file.runningKey !== null && file.runningKey !== key2) return true;
+  return file.key !== null && file.key !== key2 && file.resultKey === file.key;
+}
 function tierWidth(context, ref2, grant) {
   return Math.max(1, context.runner.tierWidth?.(ref2, grant) ?? grant);
 }
@@ -11985,6 +11989,7 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, requeue = fal
   store.transaction(() => {
     store.runs.finish(tier.runId, report2.end, context.now());
     for (const { file, key: key2, inputs: inputs2, checkpointId, forced, recent } of tier.files) {
+      if (supersededIn(file, key2)) continue;
       ledger.setRunning(file, null);
       if (ledger.files.get(file.id) !== file) continue;
       const queued = typeof requeue === "boolean" ? requeue : requeue.has(file.id);
@@ -15041,7 +15046,8 @@ var init_scheduler2 = __esm({
         await this.#lock.run(() => {
           const { context, ledger } = this.#started();
           endTier(context, ledger, tier);
-          for (const { file } of tier.files) {
+          for (const { file, key: key2 } of tier.files) {
+            if (supersededIn(file, key2)) continue;
             ledger.setRunning(file, null);
             if (ledger.files.get(file.id) === file) {
               ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED));
