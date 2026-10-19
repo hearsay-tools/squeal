@@ -54,9 +54,41 @@ export class TierCapacity {
     }
   }
 
+  /**
+   * The grant a tier of `want` workers would get now, taking nothing (spec
+   * 011 C4 step 5, task 001-366): what a backlog tier is budgeted at before
+   * its files are picked. `want` when the pool fails, as `take` then runs
+   * the tier ungranted.
+   */
+  offer(want: number): number {
+    try {
+      return this.#pool.offer(want);
+    } catch {
+      return want;
+    }
+  }
+
   close(): void {
     this.#pool.close();
   }
+}
+
+/**
+ * A backlog tier's pool lease under its runner's width (task 001-366):
+ * `startTier` keeps the workers of the files that start, at most `width`, so
+ * a node:test tier of 9 files run 4 wide holds and states a demand of 4.
+ */
+export function widthLease(lease: PoolLease, width: number): PoolLease {
+  return {
+    get grant() {
+      return lease.grant;
+    },
+    get permits() {
+      return lease.permits;
+    },
+    shrinkTo: (files) => lease.shrinkTo(Math.min(files, width)),
+    release: () => lease.release(),
+  };
 }
 
 /**

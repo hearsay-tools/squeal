@@ -65,7 +65,8 @@ export interface Policy {
     /**
      * Test files per tier while the queue holds backlog work only (D5 step 5
      * as amended, task 001-124): every queued backlog file up to this many,
-     * and up to `BACKLOG_TIER_BUDGET_MS` of last known file time. Default `200`.
+     * and up to `BACKLOG_TIER_BUDGET_MS` of estimated wall time (task
+     * 001-366). Default `200`.
      */
     readonly backlogTierSize: number;
     /**

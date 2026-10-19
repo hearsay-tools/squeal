@@ -52,6 +52,15 @@ export interface PermitPool {
    * chance. When it throws it holds nothing it took.
    */
   acquire(want: number, lane?: PoolLane): PoolLease | null;
+  /**
+   * The grant `acquire(want)` would give now, taking nothing (spec 011 C4
+   * step 5, task 001-366): the fair share less what this daemon's tiers
+   * hold, under the project's cap. It reads the marks only, so permits taken
+   * since without a mark, or left free for an older waiter, may make the
+   * grant smaller. `0` when the daemon's free worker is taken and no share
+   * is left. Throws as `acquire` does when the marks cannot be read.
+   */
+  offer(want: number, lane?: PoolLane): number;
   /** Releases every lease and clears the mark. */
   close(): void;
 }
@@ -126,7 +135,7 @@ class LockFilePool implements PermitPool {
 
   acquire(want: number, lane: PoolLane = "fast"): PoolLease | null {
     if (this.#closed) return null;
-    const { dir, owner, project } = this.#options;
+    const { dir } = this.#options;
     preparePrivateDir(dir, this.#options.uid ?? currentUid(), "capacity pool directory");
     const now = this.#now();
     if (this.#leases.size === 0 && this.#idleSince !== null) {
@@ -134,28 +143,12 @@ class LockFilePool implements PermitPool {
     }
     this.#idleSince = null;
     const wanted = Math.max(1, Math.floor(want));
-    const others = readMarks(dir, owner.worktreeId, now);
-    const inUse = this.#inUse();
-    const demand = this.#demand() + wanted;
+    const { others, inUse, demand, shares, free, entitled, target } = this.#share(
+      wanted,
+      lane,
+      now,
+    );
     const slow = lane === "slow";
-    const me = {
-      id: owner.worktreeId,
-      want: demand,
-      since: this.#since,
-      ...(slow ? { slow } : {}),
-      ...(project === undefined ? {} : { project }),
-    };
-    const shares = fairShares(this.#hostSlots, [me, ...others]);
-    const free = [...this.#leases].every((lease) => !lease.free);
-    const entitled = Math.min(wanted, Math.max(0, (shares.get(me.id) ?? 1) - inUse));
-    let target = entitled;
-    if (project !== undefined) {
-      // No preemption: what the project's other daemons hold now stays theirs.
-      const theirs = others.filter((o) => o.project?.id === project.id);
-      const held = theirs.reduce((sum, o) => sum + o.grant, 0);
-      target = Math.min(target, Math.max(0, project.slots - held - inUse));
-    }
-    if (free) target = Math.max(1, target);
     const rank = this.#since ?? now;
     // Task 004-61: a contended pool serves fast lanes first. A fast lane's tier leaves free only
     // what older fast waiters lack, a slow lane's also what every fast waiter lacks.
@@ -193,12 +186,44 @@ class LockFilePool implements PermitPool {
     return this.#handle(lease);
   }
 
+  offer(want: number, lane: PoolLane = "fast"): number {
+    if (this.#closed) return 0;
+    return this.#share(Math.max(1, Math.floor(want)), lane, this.#now()).target;
+  }
+
   close(): void {
     this.#closed = true;
     for (const lease of this.#leases) for (const db of lease.permits.splice(0)) db.close();
     this.#leases.clear();
     this.#stopRefresh();
     this.#clear();
+  }
+
+  /** What a tier of `wanted` workers is entitled to now, and what it may take with the free worker. */
+  #share(wanted: number, lane: PoolLane, now: number) {
+    const { dir, owner, project } = this.#options;
+    const others = readMarks(dir, owner.worktreeId, now);
+    const inUse = this.#inUse();
+    const demand = this.#demand() + wanted;
+    const me = {
+      id: owner.worktreeId,
+      want: demand,
+      since: this.#since,
+      ...(lane === "slow" ? { slow: true } : {}),
+      ...(project === undefined ? {} : { project }),
+    };
+    const shares = fairShares(this.#hostSlots, [me, ...others]);
+    const free = [...this.#leases].every((lease) => !lease.free);
+    const entitled = Math.min(wanted, Math.max(0, (shares.get(me.id) ?? 1) - inUse));
+    let target = entitled;
+    if (project !== undefined) {
+      // No preemption: what the project's other daemons hold now stays theirs.
+      const theirs = others.filter((o) => o.project?.id === project.id);
+      const held = theirs.reduce((sum, o) => sum + o.grant, 0);
+      target = Math.min(target, Math.max(0, project.slots - held - inUse));
+    }
+    if (free) target = Math.max(1, target);
+    return { others, inUse, demand, shares, free, entitled, target };
   }
 
   /**

@@ -463,6 +463,16 @@ export interface RunnerAdapter {
   slowWidth?(testFiles: readonly TestFileRef[]): number;
 
   /**
+   * How many test files a backlog tier holding `testFile` runs at once at a
+   * grant of `grant` workers, at least 1 (spec 011 C4 step 5, task 001-366):
+   * Vitest's `maxWorkers` for it, at least 2 and never above the project's
+   * own; node:test's and pytest's `runner.tierSize`, whatever the grant. The
+   * scheduler budgets the tier's wall time over it and asks the pool for no
+   * more. Synchronous: selection holds the scheduler's lock. Absent: `grant`.
+   */
+  tierWidth?(testFile: TestFileRef, grant: number): number;
+
+  /**
    * Spec 001 D4: "`run(testFiles) -> results`: `runTestSpecifications`. [...]
    * `process.exitCode` is reset after each run."
    */
