@@ -31,7 +31,7 @@ async function open() {
   slotDirs.push(slotDir);
   const h = await openHarness(repo.main, store, repo.commonDir, {
     tierSize: 4,
-    policy: { slow: { ...DEFAULT_POLICY.slow, include: [STRINGS] } },
+    policy: { slow: { ...DEFAULT_POLICY.slow, trigger: "idle", include: [STRINGS] } },
     slow: { slotDir, recheckMs: 50, load: () => [0], cpus: () => 1 },
     runnerPartBesideRun: true,
   });

@@ -59,7 +59,7 @@ describe("a slow e2e file behind an edit's fast tests (spec 004 D2, D9)", SLOW, 
     const h = await openHarness(repo.main, store, repo.commonDir, {
       tierSize: 4,
       policy: {
-        slow: { ...DEFAULT_POLICY.slow, include: ["test/e2e/**/*.test.ts"] },
+        slow: { ...DEFAULT_POLICY.slow, trigger: "idle", include: ["test/e2e/**/*.test.ts"] },
         inputs: { "test/e2e/**/*.test.ts": ["dist/**"] },
       },
       slow: { slotDir, recheckMs: 50, load: () => [0], cpus: () => 1 },
