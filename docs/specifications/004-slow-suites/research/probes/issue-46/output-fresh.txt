@@ -1,0 +1,80 @@
+== versions: node v24.21.0, vitest vitest/4.1.10 linux-x64 node-v24.21.0, squeal 0.1.223, load 14.30 12.61 16.56, cpus 24
+== mode fresh, ttl 600s, work /tmp/issue46-o0w8sr
+== squeal start: Squeal daemon spawned for /tmp/issue46-o0w8sr/repo
+== slow file started in Squeal's run after 1s at http://127.0.0.1:38269
+== squeal status while the slow file runs (Slow tier line)
+Slow tier: 1 test file; running e2e/held.e2e.ts since 22:01 (no earlier run). Squeal runs them after the fast tests; `squeal run --slow --wait 60000` waits for its result.
+== manual run: npx vitest run e2e/held.e2e.ts
+manual exit 0
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  22:01:48
+   Duration  8.35s (transform 6ms, setup 0ms, import 16ms, tests 8.06s, environment 0ms)
+
+== squeal run --all --wait exit 0
+Checkpoint dc4c7429-e15b-4881-9f7c-5fb057203b65 completed at revision 0: no known failures; 2 test files, 0 already current, 2 run by the baseline checkpoint 91e9cc37-576c-4d1c-8c8a-25b331a70957 it joined
+Checkpoint dc4c7429-e15b-4881-9f7c-5fb057203b65 started at revision 0: 2 test files to run, 0 already current, joining the baseline checkpoint 91e9cc37-576c-4d1c-8c8a-25b331a70957 already running them (0 of 2 test files done); it ends when that one ends
+
+Revision: 0
+Known failures: 0
+Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+Slow tier: 1 test file; 1 current at revision 0. Squeal runs them after the fast tests.
+
+Worktree: /tmp/issue46-o0w8sr/repo (HEAD 21de1dc, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 5 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+== env.log
+[env-up 2846170] booted pid 2846182 on port 38269
+[env-up 2846331] reusing pid 2846182 (age 0s)
+[env-up 2848507] reusing pid 2846182 (age 4s)
+== squeal status
+Revision: 0
+Known failures: 0
+Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+Slow tier: 1 test file; 1 current at revision 0. Squeal runs them after the fast tests.
+
+Worktree: /tmp/issue46-o0w8sr/repo (HEAD 21de1dc, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 3 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+== status --json known failures
+{
+ "knownFailureCounts": {
+  "current": 0,
+  "pending": 0,
+  "stale": 0
+ },
+ "knownFailures": []
+}
+== squeal why e2e/held.e2e.ts
+Check: e2e/held.e2e.ts (file-level)
+Worktree: /tmp/issue46-o0w8sr/repo
+Revision: none recorded
+
+Known state: PASS, current, observed at revision 0, commit 21de1dc
+
+History: no transitions in this worktree
+
+Durations (1 result, 1 pass / 0 fail): 20 ms
+Results (1, newest first):
+  PASS  2026-10-19T20:01:52.616Z  /tmp/issue46-o0w8sr/repo (this worktree), revision 0, commit 21de1dc, dirty
+        run 899663ef-0338-488b-baf0-1852dbffb150, 20 ms, key a7292dedc4d2
+        log: /tmp/issue46-o0w8sr/repo/.git/squeal/runs/899663ef-0338-488b-baf0-1852dbffb150
+
+Run log: /tmp/issue46-o0w8sr/repo/.git/squeal/runs/899663ef-0338-488b-baf0-1852dbffb150/vitest.log
+  Run 899663ef-0338-488b-baf0-1852dbffb150 in /tmp/issue46-o0w8sr/repo (this worktree) produced the result shown. The log covers that whole run, every test file in it, not only this check.
+  --include-logs prints the console lines of e2e/held.e2e.ts from it.
+== cleanup
+  /tmp/issue46-o0w8sr/repo/squeal.config.json (tracked by git: the deletion is a change to commit)
+Still there:
+  The plugin: claude plugin uninstall squeal@hearsay --scope project (the scope it was installed with).

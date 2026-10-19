@@ -1,0 +1,129 @@
+== versions: node v24.21.0, vitest vitest/4.1.10 linux-x64 node-v24.21.0, squeal 0.1.223, load 12.52 11.74 16.50, cpus 24
+== mode stale, ttl 2s, work /tmp/issue46-4xz069
+== squeal start: Squeal daemon spawned for /tmp/issue46-4xz069/repo
+== slow file started in Squeal's run after 1s at http://127.0.0.1:39587
+== manual run: npx vitest run e2e/held.e2e.ts
+manual exit 0
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  22:00:55
+   Duration  8.85s (transform 7ms, setup 0ms, import 25ms, tests 8.12s, environment 0ms)
+
+== squeal run --all --wait exit 1
+Checkpoint 31b80793-f80c-4529-b427-124ea22e88cf completed at revision 0: 1 known failure: 1 test; 2 test files, 0 already current, 2 run by the baseline checkpoint 79f2350b-47d4-46b7-bfdd-a675d4186b93 it joined
+Checkpoint 31b80793-f80c-4529-b427-124ea22e88cf started at revision 0: 2 test files to run, 0 already current, joining the baseline checkpoint 79f2350b-47d4-46b7-bfdd-a675d4186b93 already running them (0 of 2 test files done); it ends when that one ends
+
+Revision: 0
+Known failures: 1 (1 test)
+  FAIL  e2e/held.e2e.ts > uses the shared env for 8 s
+        fetch failed; cause: connect ECONNREFUSED 127.0.0.1:39587
+        at e2e/held.e2e.ts:7:1, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.52 per CPU when it ran; no retry asked at these inputs
+Affected checks: 3 passed (1 test, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+Slow tier: 1 test file; 1 current at revision 0. Squeal runs them after the fast tests.
+
+Worktree: /tmp/issue46-4xz069/repo (HEAD 59d425f, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+== env.log
+[env-up 2821138] booted pid 2821162 on port 39587
+[env-up 2821678] reusing pid 2821162 (age 0s)
+[env-up 2823828] not reusing (age 5s > 2s); stopping stale instance pid 2821162
+[env-up 2823828] booted pid 2823924 on port 36197
+== squeal status
+Revision: 0
+Known failures: 1 (1 test)
+  FAIL  e2e/held.e2e.ts > uses the shared env for 8 s
+        fetch failed; cause: connect ECONNREFUSED 127.0.0.1:39587
+        at e2e/held.e2e.ts:7:1, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.52 per CPU when it ran; no retry asked at these inputs
+Affected checks: 3 passed (1 test, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+Slow tier: 1 test file; 1 current at revision 0. Squeal runs them after the fast tests.
+
+Worktree: /tmp/issue46-4xz069/repo (HEAD 59d425f, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 4 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+== status --json known failures
+{
+ "knownFailureCounts": {
+  "current": 1,
+  "pending": 0,
+  "stale": 0
+ },
+ "knownFailures": [
+  {
+   "check": {
+    "kind": "test",
+    "project": "",
+    "testPath": "e2e/held.e2e.ts",
+    "fullName": "uses the shared env for 8 s"
+   },
+   "outcome": "fail",
+   "validity": "current",
+   "observedAt": 0,
+   "summary": "fetch failed; cause: connect ECONNREFUSED 127.0.0.1:39587",
+   "fingerprint": "TypeError: fetch failed @ e2e/held.e2e.ts:7:1",
+   "location": {
+    "path": "e2e/held.e2e.ts",
+    "line": 7,
+    "column": 1
+   },
+   "recorded": {
+    "worktreeId": "69bf0903086146e9",
+    "worktreeRoot": "/tmp/issue46-4xz069/repo",
+    "revision": 0,
+    "recordedAt": 1792440056056,
+    "loadPerCpu": 0.5216666666666666
+   }
+  }
+ ]
+}
+== squeal why e2e/held.e2e.ts
+Check: e2e/held.e2e.ts (file-level)
+Worktree: /tmp/issue46-4xz069/repo
+Revision: none recorded
+
+Known state: PASS, current, observed at revision 0, commit 59d425f
+
+History: no transitions in this worktree
+
+Durations (1 result, 1 pass / 0 fail): 27 ms
+Results (1, newest first):
+  PASS  2026-10-19T20:00:56.056Z  /tmp/issue46-4xz069/repo (this worktree), revision 0, commit 59d425f, dirty
+        run cfb2bc97-49c3-4877-a556-d7ca91bf70fd, 27 ms, key a7292dedc4d2
+        log: /tmp/issue46-4xz069/repo/.git/squeal/runs/cfb2bc97-49c3-4877-a556-d7ca91bf70fd
+
+Run log: /tmp/issue46-4xz069/repo/.git/squeal/runs/cfb2bc97-49c3-4877-a556-d7ca91bf70fd/vitest.log
+  Run cfb2bc97-49c3-4877-a556-d7ca91bf70fd in /tmp/issue46-4xz069/repo (this worktree) produced the result shown. The log covers that whole run, every test file in it, not only this check.
+  --include-logs prints the console lines of e2e/held.e2e.ts from it.
+== squeal retry e2e/held.e2e.ts --reason environment
+Retry queued (reason: environment): e2e/held.e2e.ts runs once more now. Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending.
+== status after retry
+Revision: 0
+Known failures: 0
+Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+Slow tier: 1 test file; 1 current at revision 0. Squeal runs them after the fast tests.
+
+Worktree: /tmp/issue46-4xz069/repo (HEAD 59d425f, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+== cleanup
+  /tmp/issue46-4xz069/repo/squeal.config.json (tracked by git: the deletion is a change to commit)
+Still there:
+  The plugin: claude plugin uninstall squeal@hearsay --scope project (the scope it was installed with).
