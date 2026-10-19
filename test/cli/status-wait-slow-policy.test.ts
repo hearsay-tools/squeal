@@ -24,18 +24,23 @@ import {
 
 const SECOND = "test/slow-two.test.ts";
 
-/** The issue's sequence: `A` re-keyed by the edit and finished, two slow files not run. */
-async function docsOnly(stop: Record<string, unknown>) {
+/**
+ * The issue's sequence: `A` re-keyed by the edit and finished, two slow files
+ * not run, or with `queued` that many of them queued instead (004-80).
+ */
+async function docsOnly(stop: Record<string, unknown>, trigger = "continuous", queued = 0) {
   const { repo, store } = repoWith([A]);
-  for (const path of [SLOW_FILE, SECOND]) key(store, repo.mainId, path, null);
+  [SLOW_FILE, SECOND].forEach((path, i) => {
+    key(store, repo.mainId, path, i < queued ? "queued" : null);
+  });
   writeFileSync(
     join(repo.main, "squeal.config.json"),
-    JSON.stringify({ slow: { include: [SLOW_FILE, SECOND] }, stop }),
+    JSON.stringify({ slow: { include: [SLOW_FILE, SECOND], trigger }, stop }),
   );
   later(200, () => finish(store, repo.mainId, A));
   const wait = await waitForStatus(repo.main, options(answering(store, repo.mainId, [A]).sync));
   expect(wait.outcome).toBe("quiet");
-  expect(wait.result).toMatchObject({ slowTier: { notRun: 2, pending: 0 } });
+  expect(wait.result).toMatchObject({ slowTier: { notRun: 2 - queued, pending: queued } });
   return waitLine(wait as EndedWait);
 }
 
@@ -67,5 +72,46 @@ describe("the quiet `status --wait` line follows `stop.requireSlowSuite` (004-71
       "; 2 slow files are not current, which this wait does not hold for: `squeal run --slow --wait 60000` runs and waits for them. Worktree: ",
     );
     expect(line).not.toContain("does not require");
+  });
+});
+
+/*
+ * Row 004-80 (the coordinator's condition on the brief's quiet-line clause,
+ * 2026-10-19): under `slow.trigger: "continuous"` the quiet line says the
+ * pending slow files run after the fast tests, so the return on quiet does
+ * not read as their running only on a pause; under `"idle"` it is 004-71's.
+ */
+describe("the quiet `status --wait` line's slow clause by slow.trigger (004-80)", () => {
+  it("continuous, off: the queued slow files run after the fast tests", async () => {
+    const line = await docsOnly({}, "continuous", 2);
+
+    expect(line).toContain(
+      "; 2 slow files are not current and Squeal runs them after the fast tests; this repository does not require them before you finish (`squeal run --slow` runs them). Worktree: ",
+    );
+  });
+
+  it("continuous, on: the same clause before the command that waits for them", async () => {
+    const line = await docsOnly({ requireSlowSuite: true }, "continuous", 2);
+
+    expect(line).toContain(
+      "; 2 slow files are not current and Squeal runs them after the fast tests, which this wait does not hold for: `squeal run --slow --wait 60000` runs and waits for them. Worktree: ",
+    );
+  });
+
+  it("continuous, one queued and one not run: only the pending one is said to run", async () => {
+    const line = await docsOnly({}, "continuous", 1);
+
+    expect(line).toContain(
+      "; 2 slow files are not current and Squeal runs the pending ones after the fast tests; this repository",
+    );
+  });
+
+  it("idle: 004-71's clause, with no claim of when they run", async () => {
+    const line = await docsOnly({}, "idle", 2);
+
+    expect(line).toContain(
+      "; 2 slow files are not current; this repository does not require them before you finish (`squeal run --slow` runs them). Worktree: ",
+    );
+    expect(line).not.toContain("after the fast tests");
   });
 });

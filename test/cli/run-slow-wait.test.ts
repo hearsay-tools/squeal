@@ -180,7 +180,7 @@ describe("squeal status --wait does not hold for slow files, and says so (001-28
 
     expect(result.ms).toBeLessThan(10_000);
     expect(result.stdout).toMatch(
-      /\n\nReturned on quiet: [^\n]*; 1 slow file is not current; this repository does not require it before you finish \(`squeal run --slow` runs it\)\. Worktree: [^\n]*\n$/,
+      /\n\nReturned on quiet: [^\n]*; 1 slow file is not current and Squeal runs it after the fast tests; this repository does not require it before you finish \(`squeal run --slow` runs it\)\. Worktree: [^\n]*\n$/,
     );
   });
 
@@ -190,7 +190,7 @@ describe("squeal status --wait does not hold for slow files, and says so (001-28
     const result = await run(["status", "--wait", "20000"], repo.main);
 
     expect(result.stdout).toMatch(
-      /\n\nReturned on quiet: [^\n]*; 1 slow file is not current, which this wait does not hold for: `squeal run --slow --wait 60000` runs and waits for it\. Worktree: [^\n]*\n$/,
+      /\n\nReturned on quiet: [^\n]*; 1 slow file is not current and Squeal runs it after the fast tests, which this wait does not hold for: `squeal run --slow --wait 60000` runs and waits for it\. Worktree: [^\n]*\n$/,
     );
   });
 

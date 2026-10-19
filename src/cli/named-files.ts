@@ -46,7 +46,8 @@ export type PendingReason =
       readonly promoted?: boolean;
     }
   | { readonly kind: "claim"; readonly worktree: string; readonly until: EpochMs | null }
-  | { readonly kind: "slow" }
+  /** A slow file the slow tier has not started; `pausesOnly` under `slow.trigger: "idle"` (004-80). */
+  | { readonly kind: "slow"; readonly pausesOnly?: true }
   | { readonly kind: "unlisted"; readonly revision: number; readonly callBoundMs: number };
 
 export interface NamedFile {
@@ -195,7 +196,9 @@ function queuedReason(
     run.testFiles.some((f) => laneFor(policy, f, runnerLaneOf(policy, f.project)) === lane),
   );
   if (tier !== undefined) return { kind: "queued", lane, behind: tier.startedAt };
-  if (slowView(policy).isSlow(ref)) return { kind: "slow" };
+  if (slowView(policy).isSlow(ref)) {
+    return policy.slow.trigger === "idle" ? { kind: "slow", pausesOnly: true } : { kind: "slow" };
+  }
   return { kind: "queued", lane, behind: null };
 }
 

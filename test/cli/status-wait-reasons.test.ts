@@ -212,19 +212,24 @@ describe("a named wait names what holds each pending selected file (011-12)", ()
     expect(text).not.toContain(`${dead.root}'s run`);
   });
 
-  it("slow, run when the agent pauses or on run --slow", async () => {
-    const { repo } = repoWith([SLOW_FILE]);
-    writeFileSync(
-      join(repo.main, "squeal.config.json"),
-      JSON.stringify({ slow: { include: ["test/slow.test.ts"] } }),
-    );
+  for (const [trigger, when] of [
+    ["continuous", "after the fast tests"],
+    ["idle", "when the agent pauses"],
+  ] as const) {
+    it(`slow, run ${when} or on run --slow, under slow.trigger "${trigger}" (004-80)`, async () => {
+      const { repo } = repoWith([SLOW_FILE]);
+      writeFileSync(
+        join(repo.main, "squeal.config.json"),
+        JSON.stringify({ slow: { include: ["test/slow.test.ts"], trigger } }),
+      );
 
-    const { text } = await timedOut(repo.main, [SLOW_FILE]);
+      const { text } = await timedOut(repo.main, [SLOW_FILE]);
 
-    expect(text).toContain(
-      `Pending (1): ${SLOW_FILE}: slow, run when the agent pauses or on \`squeal run --slow\`\n`,
-    );
-  });
+      expect(text).toContain(
+        `Pending (1): ${SLOW_FILE}: slow, run ${when} or on \`squeal run --slow\`\n`,
+      );
+    });
+  }
 
   it("revision not listed yet, with the runner part's per-call bound (review wave-1.11 B3)", async () => {
     const { repo, store } = repoWith([A]);
