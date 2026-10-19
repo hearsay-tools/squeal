@@ -473,6 +473,14 @@ export interface RunnerAdapter {
   tierWidth?(testFile: TestFileRef, grant: number): number;
 
   /**
+   * Which part of a backlog tier `testFile` runs in (task 001-366, review
+   * wave-3 B1): the parts of one tier run one after another, so the
+   * scheduler sums their wall estimates. A composite's adapters share a
+   * lane but run in turn. Synchronous, as `tierWidth`. Absent: one part.
+   */
+  tierPart?(testFile: TestFileRef): string;
+
+  /**
    * Spec 001 D4: "`run(testFiles) -> results`: `runTestSpecifications`. [...]
    * `process.exitCode` is reset after each run."
    */

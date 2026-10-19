@@ -114,6 +114,12 @@ export function createCompositeRunner(adapters: readonly RunnerAdapter[]): Runne
     // A backlog tier holds one lane, so one owner's files (task 001-366).
     tierWidth: (testFile, grant) =>
       owners.get(testFile.project)?.tierWidth?.(testFile, grant) ?? grant,
+    // `run` below runs the owners one after another (review wave-3 B1).
+    tierPart(testFile) {
+      const owner = owners.get(testFile.project);
+      if (owner === undefined) return "";
+      return `${adapters.indexOf(owner)}:${owner.tierPart?.(testFile) ?? ""}`;
+    },
     async run(testFiles, options) {
       const groups = new Map<RunnerAdapter, TestFileRef[]>();
       for (const testFile of testFiles) {

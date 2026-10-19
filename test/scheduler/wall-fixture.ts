@@ -45,15 +45,18 @@ export class WallRunner implements RunnerAdapter {
   declare readonly lane?: (testFile: TestFileRef) => string;
   /** `RunnerAdapter.tierWidth`; absent, the runner has none. */
   declare readonly tierWidth?: (testFile: TestFileRef, grant: number) => number;
+  /** `RunnerAdapter.tierPart`; absent, one part. */
+  declare readonly tierPart?: (testFile: TestFileRef) => string;
 
   constructor(
     private readonly files: readonly TestFileRef[],
     /** Each file's reported duration in ms. */
     private readonly durations: (path: string) => number,
-    hooks: Pick<WallOptions, "lane" | "tierWidth"> = {},
+    hooks: Pick<WallOptions, "lane" | "tierWidth" | "tierPart"> = {},
   ) {
     if (hooks.lane !== undefined) this.lane = hooks.lane;
     if (hooks.tierWidth !== undefined) this.tierWidth = hooks.tierWidth;
+    if (hooks.tierPart !== undefined) this.tierPart = hooks.tierPart;
   }
 
   /** Later runs wait until `release`. */
@@ -136,6 +139,7 @@ export interface WallOptions {
   readonly timeoutMs?: number | null;
   readonly lane?: (testFile: TestFileRef) => string;
   readonly tierWidth?: (testFile: TestFileRef, grant: number) => number;
+  readonly tierPart?: (testFile: TestFileRef) => string;
 }
 
 /** A lone daemon over `durations.length` files, its pool `hostSlots` wide. */

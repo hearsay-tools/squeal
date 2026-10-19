@@ -56,33 +56,52 @@ export function wallEstimate(sum: number, longest: number, width: number): numbe
   return sum / width + (1 - 1 / width) * longest;
 }
 
+interface WallPart {
+  readonly count: number;
+  readonly sum: number;
+  readonly longest: number;
+  readonly width: number;
+}
+
 /**
  * A backlog tier's files as they are picked (spec 011 C4 step 5, task
  * 001-366): one per worker the tier runs with, then more while
- * `wallEstimate` of their last-known durations stays within `budget`. The
- * tier runs as wide as the narrowest of its files' widths.
+ * `wallEstimate` of their last-known durations stays within `budget`. Each
+ * part (`RunnerAdapter.tierPart`) runs as wide as the narrowest of its
+ * files' widths, and the parts run one after another, so their estimates
+ * add up (review wave-3 B1); the first round is the first part's.
  */
 export class BacklogWall {
-  #count = 0;
-  #sum = 0;
-  #longest = 0;
-  #width = Number.POSITIVE_INFINITY;
+  readonly #parts = new Map<string, WallPart>();
+  #first: string | null = null;
 
   constructor(private readonly budget: number) {}
 
   /**
    * Whether a file of `durationMs`, `null` when unknown and counted 0, joins
-   * a tier it runs `width` wide in; it is counted when it does.
+   * a tier where its part runs `width` wide; it is counted when it does.
    */
-  take(durationMs: number | null, width: number): boolean {
-    const w = Math.max(1, Math.min(this.#width, Math.floor(width)));
-    const sum = this.#sum + (durationMs ?? 0);
-    const longest = Math.max(this.#longest, durationMs ?? 0);
-    if (this.#count >= w && wallEstimate(sum, longest, w) > this.budget) return false;
-    this.#count += 1;
-    this.#sum = sum;
-    this.#longest = longest;
-    this.#width = w;
+  take(durationMs: number | null, width: number, part = ""): boolean {
+    const was = this.#parts.get(part) ?? { count: 0, sum: 0, longest: 0, width: Infinity };
+    const w = Math.max(1, Math.min(was.width, Math.floor(width)));
+    const next: WallPart = {
+      count: was.count + 1,
+      sum: was.sum + (durationMs ?? 0),
+      longest: Math.max(was.longest, durationMs ?? 0),
+      width: w,
+    };
+    const firstRound = (this.#first ?? part) === part && was.count < w;
+    if (!firstRound && this.#estimate(part, next) > this.budget) return false;
+    this.#first ??= part;
+    this.#parts.set(part, next);
     return true;
+  }
+
+  /** The tier's wall estimate with `part` as `next`: its parts' estimates summed. */
+  #estimate(part: string, next: WallPart): number {
+    let total = wallEstimate(next.sum, next.longest, next.width);
+    for (const [name, p] of this.#parts)
+      if (name !== part) total += wallEstimate(p.sum, p.longest, p.width);
+    return total;
   }
 }

@@ -175,7 +175,11 @@ export function selectTier(
       if (joined === null) continue;
       span = joined;
     }
-    if (wall !== null && !wall.take(file.durationMs, tierWidth(context, ref, offer))) break;
+    if (
+      wall !== null &&
+      !wall.take(file.durationMs, tierWidth(context, ref, offer), partOf(context, ref))
+    )
+      break;
     tookBacklog ||= !recent && !ledger.queue.isPromoted(ref);
     lane = at;
     size = cap;
@@ -194,7 +198,12 @@ export function selectTier(
     // Granted less than offered (another daemon took permits meanwhile): the prefix that fits.
     const fits = new BacklogWall(backlogBudget(policy.runner.timeoutMs));
     const keep = picked.findIndex(
-      (p) => !fits.take(p.file.durationMs, tierWidth(context, p.file.ref, lease.grant)),
+      (p) =>
+        !fits.take(
+          p.file.durationMs,
+          tierWidth(context, p.file.ref, lease.grant),
+          partOf(context, p.file.ref),
+        ),
     );
     if (keep !== -1) picked.splice(keep);
   }
@@ -219,6 +228,11 @@ export function selectTier(
 /** How many files a backlog tier holding `ref` runs at once at `grant` workers (task 001-366). */
 function tierWidth(context: SchedulerContext, ref: TestFileRef, grant: number): number {
   return Math.max(1, context.runner.tierWidth?.(ref, grant) ?? grant);
+}
+
+/** The part of a backlog tier `ref` runs in; parts run one after another (review wave-3 B1). */
+function partOf(context: SchedulerContext, ref: TestFileRef): string {
+  return context.runner.tierPart?.(ref) ?? "";
 }
 
 /** The workers a backlog tier of `picked` asks the pool for: no more than its runner runs it with. */
