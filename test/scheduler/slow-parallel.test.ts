@@ -45,7 +45,7 @@ function options(
 ): HarnessOptions {
   return {
     tierSize: 4,
-    policy: { slow: { ...DEFAULT_POLICY.slow, include, maxParallel } },
+    policy: { slow: { ...DEFAULT_POLICY.slow, trigger: "idle", include, maxParallel } },
     slow: { slotDir: slotDir(), recheckMs: 50, load: () => [0], cpus: () => 1 },
     runnerPartBesideRun: true,
     ...extra,
@@ -85,7 +85,7 @@ describe("an idle slow tier takes several files (spec 004 D2, slow.maxParallel)"
     const base = options(slow, 4);
     const h = await openHarness(repo.main, store, repo.commonDir, {
       ...base,
-      policy: { slow: { ...DEFAULT_POLICY.slow, include: slow, maxDeferMs: 300 } },
+      policy: { slow: { ...DEFAULT_POLICY.slow, trigger: "idle", include: slow, maxDeferMs: 300 } },
       slow: { slotDir: slotDir(), recheckMs: 50, load: () => [3], cpus: () => 1 },
     });
     await h.scheduler.start();
