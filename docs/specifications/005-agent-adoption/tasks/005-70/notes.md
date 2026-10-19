@@ -121,3 +121,60 @@ No guarded source changed: `KEY_FORMAT_VERSION` stays 13. No build, no version c
 - `BuildOutputCandidate.namedBy: readonly string[]` (added).
 - `ExcludeProposal`: `glob: string` replaced by `globs: readonly string[]`; `kept: readonly string[]` added.
 - `evidencedFiles` exported from `build-outputs.ts` (new function).
+
+### Verification
+
+- `npm run lint`: `Checked 1453 files in 410ms. No fixes applied.`
+- `npm run typecheck` (`tsc --noEmit`): exit 0, no output.
+- `npm run build`: not run (the brief says no build); hence the four bundle-drift failures below.
+- `npx vitest run test/cli/setup test/version-sensitive.test.ts`: 142 passed (after moving the node:test case into the exempt file).
+- `npx vitest run test/cli/setup test/harness/setup-skill.test.ts test/cli/init-node-test.test.ts test/real-cli`: 181 passed (before the two cases added last; both pass in the 142-test run).
+
+`squeal run --all --wait` at HEAD `0503fcbb` (`6e7397a5` plus these notes; clean tree), exit 1:
+
+```
+Checkpoint cb1362b7-ef94-4e3a-8f25-8ac3549ee805 completed at revision 23: 7 known failures: 7 tests; 730 test files, 88 already current, 642 run now
+Checkpoint cb1362b7-ef94-4e3a-8f25-8ac3549ee805 started at revision 23: 642 test files to run, 88 already current
+
+Revision: 23 · 0503fcbb + 0
+Known failures: 7 (7 tests)
+  FAIL  test/harness/codex/plugin.test.ts > committed Codex plugin > has the bundles exactly as `npm run build:plugin` produces them
+        cli/squeal.mjs differs from the build: expected false to be true // Object.is equality; diff (- Expected, + Received): - true | + false
+        at test/harness/bundle-helpers.ts:122:52, observed at revision 19, current
+        recorded 12 min ago in this worktree at revision 19, load 0.13 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/harness/opencode/package.test.ts > the OpenCode package > has the bundles exactly as `npm run build:plugin` produces them
+        cli/squeal.mjs differs from the build: expected false to be true // Object.is equality; diff (- Expected, + Received): - true | + false
+        at test/harness/bundle-helpers.ts:122:52, observed at revision 23, current
+        recorded 11 min ago in this worktree at revision 23, load 0.14 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/harness/pi/latency.test.ts > the Pi delivery worker's round trip > stays under 80 ms p95 per call at calm load
+        boundary on a fresh worker: expected 83.6 to be less than 80
+        at test/harness/pi/latency.test.ts:128:57, observed at revision 23, current
+        recorded 10 min ago in this worktree at revision 23, load 0.13 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/harness/pi/package.test.ts > the Pi package > has the bundles exactly as `npm run build:plugin` produces them
+        cli/squeal.mjs differs from the build: expected false to be true // Object.is equality; diff (- Expected, + Received): - true | + false
+        at test/harness/bundle-helpers.ts:122:52, observed at revision 23, current
+        recorded 10 min ago in this worktree at revision 23, load 0.16 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/harness/plugin.test.ts > bundles > are committed exactly as `npm run build` produces them
+        cli/squeal.mjs differs from the build: expected false to be true // Object.is equality; diff (- Expected, + Received): - true | + false
+        at test/harness/bundle-helpers.ts:122:52, observed at revision 23, current
+        recorded 10 min ago in this worktree at revision 23, load 0.16 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/runners/node-test/run-reads-fidelity.test.ts > a node:test warm-up's recorder a test cannot tell is there (task 001-390) > names the recorder in a failure with its signature while it is in NODE_OPTIONS
+        expected [ [ 'fail', undefined ] ] to deeply equal [ [ 'pass', undefined ] ]; diff (- Expected, + Received): - "pass", | + "fail",
+        at test/runners/node-test/run-reads-fidelity.test.ts:116:30, observed at revision 23, current
+        recorded just now in this worktree at revision 23, load 0.40 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/runners/vitest/observe-fidelity.test.ts > vitest adapter: a recorder a test cannot tell is there (task 001-390) > names the recorder in a failure with its signature, and only under it
+        expected [ [ 'fail', undefined, false ], …(1) ] to deeply equal [ [ 'pass', undefined, false ], …(1) ]; diff (- Expected, + Received): - "pass", | + "fail",
+        at test/runners/vitest/observe-fidelity.test.ts:119:37, observed at revision 23, current
+        recorded just now in this worktree at revision 23, load 0.40 per CPU when it ran; no retry asked at these inputs
+Affected checks: 6976 passed (6246 tests, 730 test files loaded), 0 running, 0 queued, 10 skipped (10 tests)
+Full-suite checkpoint: completed at revision 23
+
+  stopped 13 processes a test left running after its tier, in 3 notes since 2026-10-19T08:09:37.108Z: 4 × /usr/bin/git -c safe.bareRepository=explicit ls-remote https://github.com/openai/plugins.git HEAD; 4 × /usr/lib/git-core/git remote-https https://github.com/openai/plugins.git https://github.com/openai/plugins.git; 4 × /usr/lib/git-core/git-remote-https https://github.com/openai/plugins.git https://github.com/openai/plugins.git; 1 × /home/agent/projects/squeal/.ai/cezar/worktrees/efdebc9d-b315-42a8-b7c1-6cbb6d6aa2c3/node_modules/@esbuild/linux-x64/... (`squeal status --notes` lists each)
+exit 1
+```
+
+Known failures, none in this row's code:
+
+- The four bundle-drift tests (`test/harness/plugin.test.ts`, `codex/plugin.test.ts`, `opencode/package.test.ts`, `pi/package.test.ts`): `src/cli/setup` changed and the brief says no `npm run build`. The coordinator rebuilds.
+- **Fail under load, pass alone:** `test/runners/node-test/run-reads-fidelity.test.ts` and `test/runners/vitest/observe-fidelity.test.ts` (same pair as the first 005-70 checkpoint). Alone right after the checkpoint (`npx vitest run` on both, load average 3.76): 5 passed.
+- **Load-sensitive at its bound:** `test/harness/pi/latency.test.ts`, "boundary on a fresh worker" p95 against the 80 ms budget (85.2 and 83.6 ms in the checkpoint). Alone, below load average 4 where it asserts: 82.4, 82.4, then a pass. Alternated with a detached worktree at the baseline `14a31e2c` at load 4.3 to 4.7 (reported only), the fresh-worker p95 was mine 89.5 / 91.3 / 82.3 ms and baseline 79.3 / 97.7 / 84.5 ms: the baseline crosses 80 ms too, at the same load. This diff touches only `src/cli/setup`: `src/harness/pi` imports nothing from `src/cli`, and the CLI bundle the test builds and starts grows only by this row's few setup lines.
