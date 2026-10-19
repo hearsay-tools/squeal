@@ -1,0 +1,56 @@
+load: 24.57 13.70 10.35; cpus: 24; version: 0.1.223
+### $ squeal start
+exit: 0
+### $ squeal status --wait 60000 (discovery)
+exit: 0
+### edited test/f01.test.mjs
+### $ squeal status --wait 60000 test/f01.test.mjs
+exit: 0; stdout lines: 39; stderr lines: 0
+first line starting Selected: 38
+--- stderr
+--- stdout
+Revision: 1 · 64cf3a8f + 1, dirty
+Known failures: 0
+Affected checks: 3 passed (2 tests, 1 test file loaded), 0 running, 0 queued
+Idle: nothing is running and no run is open; 24 test files without a result, none queued (`squeal run --all --wait` runs every test file without a result and waits)
+Full-suite checkpoint: none completed at any revision (the counts are for revision 1; `squeal run --all` requests one)
+
+Worktree: /home/agent/projects/squeal/.ai/cezar/t/a231c63c/tmp.vABFnSDzbJ/repo (HEAD 64cf3a8, dirty at revision 1)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Test files without checks: 0 pending, 24 unknown
+Test files without a result: 24 (nothing current at their inputs, none queued)
+  unit: test/f02.test.mjs: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  unit: test/f03.test.mjs: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  unit: test/f04.test.mjs: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  unit: test/f05.test.mjs: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  unit: test/f06.test.mjs: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  unit: test/f07.test.mjs: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  unit: test/f08.test.mjs: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  unit: test/f09.test.mjs: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  unit: test/f10.test.mjs: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  unit: test/f11.test.mjs: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  unit: test/f12.test.mjs: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  unit: test/f13.test.mjs: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  unit: test/f14.test.mjs: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  unit: test/f15.test.mjs: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  unit: test/f16.test.mjs: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  unit: test/f17.test.mjs: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  unit: test/f18.test.mjs: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  unit: test/f19.test.mjs: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  unit: test/f20.test.mjs: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  unit: test/f21.test.mjs: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  and 4 more test files
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-19T18:16:02.471Z, revision 1: node-test project "unit": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: test/f01.test.mjs
+
+Selected: test/f01.test.mjs
+Named test files at revision 1: no known failures; 1 test file, each with a current result, after 0.5 s. Worktree: known failures 0; checks 0 running, 0 queued
+### $ squeal status --json --wait 60000 test/f01.test.mjs (stderr only)
+exit: 0; stdout lines: 305; stderr lines: 2
+Selected: test/f01.test.mjs
+Named test files at revision 1: no known failures; 1 test file, each with a current result, after 0.5 s. Worktree: known failures 0; checks 0 running, 0 queued
+### $ squeal stop
+exit: 0
