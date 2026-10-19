@@ -13,11 +13,12 @@ import { until } from "../e2e/support.js";
 /*
  * Review 001-384, B3, through a daemon run from the sources: a
  * `--separate-git-dir` repository whose user config caps its root at 2 slots
- * runs its baseline's backlog tier on a grant of 2 of the host's 8, and its
- * pool mark names the root as its project. Before the repair the daemon
- * looked the metadata directory up, found no entry and took 4. The four
- * node:test files hold until the test releases them, so the tier's mark is
- * read while it runs. Every path is temporary: HOME, XDG_CONFIG_HOME and
+ * runs its baseline's backlog on a grant of 2 of the host's 8, and its pool
+ * mark names the root as its project. Before the repair the daemon looked
+ * the metadata directory up, found no entry and took 4. The four node:test
+ * files hold until the test releases them, so the mark is read while they
+ * run: in one-file slots, one permit each (task 011-21 slice 2), the mark of
+ * a lane that wants a third slot holds 2. Every path is temporary: HOME, XDG_CONFIG_HOME and
  * XDG_RUNTIME_DIR (`childEnv`), git's config shut out.
  */
 
@@ -75,7 +76,7 @@ function createRepo(): string {
 }
 
 describe("a --separate-git-dir repository's capacity.projects cap (review 001-384, B3)", () => {
-  it("applies to its daemon's backlog tier and names its root in the pool mark", SLOW, async () => {
+  it("applies to its daemon's backlog and names its root in the pool mark", SLOW, async () => {
     const root = createRepo();
     const env = childEnv(runtime);
     const config = join(env.XDG_CONFIG_HOME as string, "squeal", "config.json");
@@ -91,12 +92,12 @@ describe("a --separate-git-dir repository's capacity.projects cap (review 001-38
     });
     daemons.push(child);
     const dir = slowSlotDir(env);
-    const mark = await until("the baseline tier's pool mark", 120_000, async () => {
+    const mark = await until("the pool mark of a third slot", 120_000, async () => {
       const [found] = readMarks(dir, "reader", Date.now());
-      return found ?? null;
+      return found !== undefined && found.want >= 3 ? found : null;
     });
     expect({ want: mark.want, grant: mark.grant, project: mark.project }).toEqual({
-      want: 4,
+      want: 3,
       grant: 2,
       project: { id: root, slots: 2 },
     });
