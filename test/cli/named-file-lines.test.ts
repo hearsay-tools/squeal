@@ -50,7 +50,14 @@ describe("the verdict line's reason groups (task 011-13)", () => {
       pending(3, { kind: "slow" }),
     ];
     expect(reasonGroups(files, "squeal")).toBe(
-      "2 queued, promoted, 1 queued, 1 slow, run when the agent pauses or on `squeal run --slow`",
+      "2 queued, promoted, 1 queued, 1 slow, run after the fast tests or on `squeal run --slow`",
+    );
+  });
+
+  it('says a slow file runs when the agent pauses under slow.trigger "idle" (004-80)', () => {
+    const files = [pending(0, { kind: "slow", pausesOnly: true })];
+    expect(reasonGroups(files, "squeal")).toBe(
+      "1 slow, run when the agent pauses or on `squeal run --slow`",
     );
   });
 });

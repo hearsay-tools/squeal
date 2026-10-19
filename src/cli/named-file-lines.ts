@@ -65,8 +65,10 @@ export function reasonText(reason: PendingReason, command: string): string {
     }
     case "claim":
       return `waiting for ${reason.worktree}'s run of its key${reason.until === null ? "" : `, at most until ${clock(reason.until)}`}`;
-    case "slow":
-      return `slow, run when the agent pauses or on \`${command} run --slow\``;
+    case "slow": {
+      const when = reason.pausesOnly === true ? "when the agent pauses" : "after the fast tests";
+      return `slow, run ${when} or on \`${command} run --slow\``;
+    }
     case "unlisted":
       return `revision ${reason.revision} not listed yet, because the runner part waits for the run in flight, each of its calls bounded at ${Math.ceil(reason.callBoundMs / 1_000)} s`;
   }
