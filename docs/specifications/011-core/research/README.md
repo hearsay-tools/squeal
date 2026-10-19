@@ -23,4 +23,5 @@ Links only. The findings behind this spec were written for 001 and stay in `../.
 ## Briefs for new topics
 
 - [issue-20-brief](issue-20-brief.md): setup failures under Squeal's own tmp root (gh-20; the human, 2026-10-17: reproduce first). Findings go to `issue-20-reproduction.md`.
+- [issue-33-dist-brief](issue-33-dist-brief.md): whether a `dist` rewrite drops runs that loaded the same bytes (gh-33; the human, 2026-10-20: one researcher). Findings go to `issue-33-dist.md`.
 - [backlog-wall-budget](backlog-wall-budget.md) (001-366; brief `../tasks/wave-3.md` R1)
