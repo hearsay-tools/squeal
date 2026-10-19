@@ -54,6 +54,22 @@ Done when, each red on main first where it can be (the research's tests 4 to 7, 
 4. Another daemon's waiter gets its share within one slot's file of the holder, not one tier.
 5. A pytest lane runs one batch per slot (light files packed, a heavy file alone); measure a small real pytest fixture's backlog against today's tiers and record it, with the load, in the notes.
 
+Decision during W3 (the coordinator, 2026-10-19, decision (A)): slice 1's tests and 001-366's latency test could not stay unchanged under slots, since they took a backlog tier of several files. They were adapted in their own commits ("tests follow slots, coordinator decision"), each keeping its property, with no factory option that differs from real callers. This replaces the line "Slice 1's tests stay green unchanged".
+
+## W4: 011-21 slice 2, review of cand/0.1.225
+
+Use /reviewer. Shape: review. Pinned to the `cand/0.1.225` SHA named in the spawn; the range is `origin/main..<sha>`: W3's nine commits, the release commit (version 0.1.225 and the bundles) and this brief.
+
+Read W3 and the decision above, spec 011 C4 step 5 and C10 as amended for slots 2026-10-19 (`status.md`), `research/streaming-lanes.md` (finding 1, "Per-file overhead", Recommendation), `reviews/wave-4.md` (B1, the stale-run rule) and `tasks/011-21/notes.md` (slice 2's seam map and edges). Check that:
+- only runners whose `backlogSlot` answers run slots: node:test one file, pytest one batch (light files of one part packed, a heavy file alone); Vitest keeps tiers, the 120 s wall and the cancel; slow lanes keep one slow tier;
+- a slot lane never holds more than `runner.tierSize` backlog slots, each a `take(1)` lease returned when its run ends, and the pool's grant still bounds the lane;
+- in a lane of slots an edit's tier takes only the edit's work, still starts with no permit, and the stale-run rule (`supersededIn`) holds for slots that record after an edit's run of the same file;
+- `SlotRecords` (`slot-records.ts`) never loses, duplicates or reorders a slot's results, never records an edit's tier late, and a departure or `stop` waits for slots in flight and starts none;
+- the adapted tests (`edit-beside-backlog` 1 to 4, `backlog-wall-latency`, `capacity-project`) each still prove the property they were written for; tests 3 and 4 of `edit-beside-backlog` are red with `supersededIn` reverted;
+- `backlogSlot` passes through every wrapper (composite, recovering, slow instance, sweep), and `KEY_FORMAT_VERSION` 16 is right against the released 15.
+
+Run `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once in the candidate tree; a file that fails loaded and passes alone is named. Append a "Wave 4, slice 2" section to `reviews/wave-4.md` with a PASS or FAIL verdict and commit it.
+
 ## W4r: 011-21 slice 2, re-review of the repaired cand/0.1.225
 
 Use /reviewer. Shape: review, bounded. Pinned to the `cand/0.1.225` SHA named in the resume; the repair is `1fb03098..<sha>`. Read `reviews/wave-4.md` (Wave 4, slice 2: S2-B1, S2-B2, S2-S1) and append a "Slice 2 re-review" section to it.
