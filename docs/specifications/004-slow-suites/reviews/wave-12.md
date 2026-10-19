@@ -1,8 +1,10 @@
-FAIL fd9b1a1f1d77b827d270d8678b0ba7e60daee90d
+PASS 726ef233e6dbeaab785844bf42690c2bfe142a3f
 
 # Wave 12 review: 004-81
 
-Verdict: **FAIL**, 2 proven blockers, 0 should-fix, 0 nits. Candidate `cand/0.1.220`, pinned HEAD `fd9b1a1f1d77b827d270d8678b0ba7e60daee90d`; base `origin/main` at `2929a3fa29bc2710c06843a2719a2ea021f8de48` (0.1.219). The blockers are two consumers of the new file exclusion that still assume Squeal's listing describes Vitest's complete suite.
+Latest verdict: **PASS** on `726ef233e6dbeaab785844bf42690c2bfe142a3f`; B1 and B2 are closed. See the dated re-review below. The original review remains as the record of the first candidate.
+
+Original verdict (2026-10-19): **FAIL**, 2 proven blockers, 0 should-fix, 0 nits. Candidate `cand/0.1.220`, pinned HEAD `fd9b1a1f1d77b827d270d8678b0ba7e60daee90d`; base `origin/main` at `2929a3fa29bc2710c06843a2719a2ea021f8de48` (0.1.219). The blockers are two consumers of the new file exclusion that still assume Squeal's listing describes Vitest's complete suite.
 
 ## Verification
 
@@ -133,3 +135,54 @@ There is no proven 004-81 latency regression. The measured failing path includes
 3. 004-80 starts on the smaller scheduler: `SlowRun` is `{ tier, slot }`, `SlowTier.next()` has no precondition gate, and `ended()` publishes activity in the result transaction. `Ledger.probe(key)` returns `{ hits, mayWait }`; no artifact argument or rule returns. Preserve the slot/load guard, finish-then-discard, claim waiting and Stop budgets. Continuous triggering, quiet-window measurement and ranking remain 004-80, not missing work in 004-81.
 4. 005-70 can consume `buildOutputCandidates(facts, dir, files)` and its evidence to propose runner exclusions. Respect exclusions already present before proposing any slow group. The retained `--input` flag does not authorize build-output inputs.
 5. Regenerate/version bundles and re-pin the key guard as required by the actual repair, then run the candidate checks and a narrow re-review against B1/B2. This review approves no landing. The build/drift evidence remains the coordinator's responsibility under the no-build review brief.
+
+## Re-review — 2026-10-19
+
+Candidate: `cand/0.1.220`, pinned and independently verified at clean HEAD `726ef233e6dbeaab785844bf42690c2bfe142a3f`. **PASS: 0 open blockers, 0 new should-fix, 0 new nits.** This re-review is bounded by B1/B2 above and the delta from `fd9b1a1f`: the two repair commits, rebuilt bundles, the key hash and the version-sensitive test exemption. No settled part of the original review was re-prosecuted.
+
+### B1 — closed (proven)
+
+`src/cli/setup/repo.ts:158` now compiles the validated policy's `vitest.exclude` with the same `createInputMatcher` used by the adapter, and filters the no-store Vitest facts before setup consumes them. Therefore the slow candidate groups, returned test universe, missing-slow-key decision and estimated warm-up count share the covered Vitest list. The store-backed path continues to use the daemon's coverage rows. Independently covered node:test/pytest files remain in the separate project universe.
+
+The added `test/cli/setup/excluded.test.ts` cases verify the no-store two-scope fixture counts only one file, produces no excluded slow group/question and no missing `slow` key; the all-excluded case counts zero; and a node:test project restores its matching e2e file to the universe. Existing setup candidate tests retain the covered slow-group behavior. This closes the original static-facts failure without waiting for 005-70.
+
+### B2 — closed (proven)
+
+`src/runners/vitest/adapter.ts:383` computes omissions against the final covered list, so excluded Vitest specs now contribute to the omission metadata without reappearing in coverage, keys or visible covered-file counts. More importantly, `src/harness/shared/deny.ts:159` reads the live policy and returns `null` for Vitest commands whenever `vitest.exclude` is nonempty, before resolving files or consuming the one-time denial. A stored zero omission count cannot bypass this conservative guard. Node:test and pytest command decisions keep their prior behavior; Vitest's existing non-file/typecheck omission guard remains.
+
+The real adapter regression now expects two omitted specs while preserving filtered `testFiles()`/`affected()` results. The hook regression starts with current covered checks and a stored zero omission count, then verifies bare, filtered and excluded-only Vitest commands run and leave the denial slot unused. The guard applies to every recognized Vitest command, including npm scripts resolved to that runner, rather than relying on each filter to reveal the excluded scope. Existing no-exclusion denial tests remain. These complementary adapter and live-hook checks close the original seam and its stale-metadata variant.
+
+### Repair delta and verification
+
+The bundle delta carries exactly the setup filter, omitted-spec calculation and live-policy guard into the shipped CLIs/hooks. `KEY_FORMAT_VERSION` remains 13, with its unpublished pin recomputed for the adapter repair; versions 11/12 are untouched. The setup fixture test joins the version-sensitive exemption list because it names synthetic package versions. No Vitest config or independent e2e scope changed. Build/drift regeneration is still **unverified** by this reviewer under the explicit no-build brief, not a finding.
+
+All checks below ran after `npm ci` at the pinned HEAD with a clean tree; this report was edited only afterward. No build, eval or real-HOME probe was run.
+
+```text
+$ git rev-parse HEAD
+726ef233e6dbeaab785844bf42690c2bfe142a3f
+$ git status --porcelain=v1
+(no output)
+$ npm ci
+added 196 packages, and audited 197 packages in 7s
+found 0 vulnerabilities
+(exit 0)
+$ npm run lint
+Checked 1439 files in 615ms. No fixes applied.
+(exit 0)
+$ npm run typecheck
+> tsc --noEmit
+(exit 0)
+$ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
+RUN  v5.0.3
+Test Files  722 passed | 1 skipped (723)
+     Tests  6180 passed | 8 skipped (6188)
+  Start at  08:02:43
+  Duration  753.55s (tests 98%, import 2%)
+   Isolate  723 workers spawned · ~107ms startup each
+(exit 0)
+```
+
+The npm warnings match the original review (deprecated `node-domexception`, six unapproved install-script packages). The independent gate above is the reviewer's own run, not the coordinator's pre-pin run or Squeal's background results. The log contains two fixture gitdir-repair notices, one stale-process cleanup notice and Vitest's experimental type-testing notices; there are no failures. The Pi test produced no failure; successful timing tables are not exposed in this log, so this is not a separate calm-load timing proof. HEAD and the clean tree were rechecked after the run, before adding this section.
+
+No repair work remains from B1/B2. The original next-wave interface and budget notes still apply; continuous triggering/ranking and 005-70 proposals remain future work. This judgment is for the coordinator to decide what lands.
