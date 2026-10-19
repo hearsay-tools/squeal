@@ -81,7 +81,7 @@ describe("the slow-tier off-line's automatic-run claim (review wave-13ax B1)", S
     expect(row()?.pending).toBeNull();
     expect(line()).toBe(
       `Slow tier: 1 test file; 1 not run at revision ${h.header().revision}. ` +
-        "Squeal has not queued them; `squeal run --slow` runs them now.",
+        "Squeal has not queued them; `squeal run --slow --wait 60000` waits for its result.",
     );
     expect(line()).not.toContain(LANDED);
 

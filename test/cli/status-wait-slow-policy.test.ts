@@ -19,7 +19,8 @@ import {
  * `research/issue-35.md`, its reproduction): a docs edit re-keys one fast
  * test file, whose result comes in, while the slow files were never run.
  * The quiet line's slow-file clause follows `stop.requireSlowSuite`, as the
- * `Slow tier:` line's ending does.
+ * `Slow tier:` line's ending does. Amended 2026-10-19 (row 004-83): off, it
+ * names `run --slow --wait 60000` as the wait for their results.
  */
 
 const SECOND = "test/slow-two.test.ts";
@@ -53,9 +54,10 @@ describe("the quiet `status --wait` line follows `stop.requireSlowSuite` (004-71
 
     expect(line).toMatch(EDIT);
     expect(line).toContain(
-      "; 2 slow files are not current; this repository does not require them before you finish (`squeal run --slow` runs them). Worktree: ",
+      "; 2 slow files are not current; this repository does not require them before you finish; `squeal run --slow --wait 60000` waits for their results. Worktree: ",
     );
-    expect(line).not.toContain("--wait 60000");
+    // Row 004-83: off names the wait too, as the way to their results; it no longer says "runs".
+    expect(line).not.toContain("runs them");
   });
 
   it("off by default, with no `stop` key", async () => {
@@ -86,7 +88,7 @@ describe("the quiet `status --wait` line's slow clause by slow.trigger (004-80)"
     const line = await docsOnly({}, "continuous", 2);
 
     expect(line).toContain(
-      "; 2 slow files are not current and Squeal runs them after the fast tests; this repository does not require them before you finish (`squeal run --slow` runs them). Worktree: ",
+      "; 2 slow files are not current and Squeal runs them after the fast tests; this repository does not require them before you finish; `squeal run --slow --wait 60000` waits for their results. Worktree: ",
     );
   });
 
@@ -110,7 +112,7 @@ describe("the quiet `status --wait` line's slow clause by slow.trigger (004-80)"
     const line = await docsOnly({}, "idle", 2);
 
     expect(line).toContain(
-      "; 2 slow files are not current; this repository does not require them before you finish (`squeal run --slow` runs them). Worktree: ",
+      "; 2 slow files are not current; this repository does not require them before you finish; `squeal run --slow --wait 60000` waits for their results. Worktree: ",
     );
     expect(line).not.toContain("after the fast tests");
   });

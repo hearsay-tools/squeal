@@ -23,7 +23,7 @@ import {
  * (lessons, "Confirmation at 0.1.85", defect 18).
  */
 
-const RUN_SLOW = "Squeal runs them after the fast tests; `squeal run --slow` runs them now.";
+const RUN_SLOW = "Squeal runs them after the fast tests; `squeal run --slow --wait 60000` waits for their results.";
 
 /** Appends one revision changing `path` from `from` to `to` (`null`: absent). */
 function _change(s: Seeded, path: string, from: FileHash | null, to: FileHash | null): void {
