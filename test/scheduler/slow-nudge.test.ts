@@ -30,7 +30,7 @@ async function waitingForIdle() {
   slotDirs.push(slotDir);
   const h = await openHarness(repo.main, store, repo.commonDir, {
     tierSize: 4,
-    policy: { slow: { ...DEFAULT_POLICY.slow, include: [STRINGS] } },
+    policy: { slow: { ...DEFAULT_POLICY.slow, trigger: "idle", include: [STRINGS] } },
     slow: { slotDir, load: () => [0], cpus: () => 1 },
   });
   const { delivery, consumer } = await h.consumer();
@@ -62,7 +62,7 @@ describe("the slow tier on a nudge (task 001-281)", SLOW, () => {
     slotDirs.push(slotDir);
     const h = await openHarness(repo.main, store, repo.commonDir, {
       tierSize: 4,
-      policy: { slow: { ...DEFAULT_POLICY.slow, include: [STRINGS] } },
+      policy: { slow: { ...DEFAULT_POLICY.slow, trigger: "idle", include: [STRINGS] } },
       slow: { slotDir, load: () => [0], cpus: () => 1 },
     });
     const { delivery, consumer } = await h.consumer();

@@ -32,7 +32,9 @@ async function guarded() {
   let reads = 0;
   const h = await openHarness(repo.main, store, repo.commonDir, {
     tierSize: 4,
-    policy: { slow: { ...DEFAULT_POLICY.slow, include: [STRINGS], maxDeferMs: 60_000 } },
+    policy: {
+      slow: { ...DEFAULT_POLICY.slow, trigger: "idle", include: [STRINGS], maxDeferMs: 60_000 },
+    },
     slow: {
       slotDir,
       recheckMs: 25,

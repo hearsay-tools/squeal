@@ -98,7 +98,12 @@ async function open(projects: Record<string, readonly string[]>, maxParallel: nu
     runnerPartBesideRun: true,
     policy: {
       nodeTest: Object.keys(projects).map(project),
-      slow: { ...DEFAULT_POLICY.slow, include: ["*/test/slow-*.test.mjs"], maxParallel },
+      slow: {
+        ...DEFAULT_POLICY.slow,
+        trigger: "idle",
+        include: ["*/test/slow-*.test.mjs"],
+        maxParallel,
+      },
     },
     slow: {
       slotDir: scratch("squeal-004-37-slot-"),
