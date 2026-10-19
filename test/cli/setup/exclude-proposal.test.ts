@@ -19,7 +19,7 @@ function spawnsDist(): string {
   const root = squealShaped({
     "squeal.config.json": json({}),
     "test/e2e/plugin-copy.test.ts": `spawn("node", ["../../dist/cli/squeal.mjs"]);\n`,
-    "test/e2e/shipped-plugin.test.ts": "\n",
+    "test/e2e/shipped-plugin.test.ts": `spawn("node", ["../../dist/cli/squeal.mjs", "--version"]);\n`,
   });
   mkdirSync(join(root, "dist/cli"), { recursive: true });
   writeFileSync(join(root, "dist/cli/squeal.mjs"), "\n");
@@ -30,20 +30,22 @@ describe("the plan's exclude candidates", () => {
   it("proposes vitest.exclude for a test/e2e that spawns a gitignored dist file", async () => {
     const [group] = (await plan(spawnsDist())).slow.groups;
     expect(group?.exclude).toEqual({
-      glob: "test/e2e/**",
+      globs: ["test/e2e/**"],
       into: [{ runner: "vitest", glob: "test/e2e/**" }],
+      kept: [],
     });
     expect(
       group?.buildOutputs?.map((o) => [o.path, o.ignored, o.evidence.map((e) => e.rule)]),
     ).toEqual([["dist", true, ["bin", "files", "build-script", "named"]]]);
     expect(group?.buildOutputs?.[0]?.evidence.at(-1)?.detail).toBe(
-      'gitignored, named by 1 of 2 test files, such as "../../dist/cli/squeal.mjs"',
+      'gitignored, named by 2 of 2 test files, such as "../../dist/cli/squeal.mjs"',
     );
   });
 
   it("finds a committed bundle a gitignore rule names, as this repository's plugins/*/dist", async () => {
     const [group] = (await plan(squealShaped())).slow.groups;
-    expect(group?.exclude?.glob).toBe("test/e2e/**");
+    // Wave 13 B1: shipped-plugin names none of it, so plugin-copy alone, by path.
+    expect(group?.exclude?.globs).toEqual(["test/e2e/plugin-copy.test.ts"]);
     expect(group?.buildOutputs?.map((o) => o.path)).toEqual(["plugins/codex/dist"]);
   });
 

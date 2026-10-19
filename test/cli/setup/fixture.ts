@@ -98,6 +98,15 @@ export const SLOW_ONLY_E2E: Readonly<Record<string, string>> = {
 };
 
 /**
+ * `squealShaped` e2e files that both name the committed bundle, so the whole
+ * group is evidenced and its exclude proposal is `test/e2e/**` (wave 13 B1:
+ * `squealShaped`'s own `shipped-plugin` names none, and stays a slow candidate).
+ */
+export const ALL_NAMED_E2E: Readonly<Record<string, string>> = {
+  "test/e2e/shipped-plugin.test.ts": `const bundle = "plugins/codex/dist/cli/squeal.mjs";\n`,
+};
+
+/**
  * Cezarion at `c07b0bf`, reduced: the same scripts, manifest fields and test
  * strings. `files` adds or replaces files, as `squealShaped` takes them.
  */

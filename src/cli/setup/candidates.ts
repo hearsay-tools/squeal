@@ -2,9 +2,14 @@ import { posix } from "node:path";
 import { globToRegExp } from "../../core/keys/glob.js";
 import type { Policy } from "../../core/types/index.js";
 import { parseTestScript } from "../node-test-seed.js";
-import { buildOutputCandidates, testsBuildOutput } from "./build-outputs.js";
+import {
+  type BuildOutputCandidate,
+  buildOutputCandidates,
+  evidencedFiles,
+  testsBuildOutput,
+} from "./build-outputs.js";
 import { excludeInto } from "./exclude.js";
-import type { Runners, SlowFacts, SlowGroup } from "./plan.js";
+import type { ExcludeProposal, Runners, SlowFacts, SlowGroup } from "./plan.js";
 import { type Manifest, type RepoFacts, scriptsOf } from "./repo.js";
 
 /*
@@ -62,11 +67,15 @@ export async function slowCandidates(
     const dir = posix.dirname(file);
     byDir.set(dir, [...(byDir.get(dir) ?? []), file]);
   }
+  const outputs = new Map<string, BuildOutputCandidate[]>();
+  for (const [dir, files] of byDir) {
+    outputs.set(dir, (await buildOutputCandidates(facts, dir, files)).filter(testsBuildOutput));
+  }
+  const evidenced = new Set([...outputs.values()].flatMap(evidencedFiles));
+  const isVitest = (f: string) => facts.testFiles.paths.includes(f);
   const groups: SlowGroup[] = [];
   for (const [dir, files] of byDir) {
     const why = [...new Set(files.flatMap((f) => [...(reasons.get(f) ?? [])]))];
-    const declaredInputs = inputsFor(policy, files);
-    const buildOutputs = (await buildOutputCandidates(facts, dir, files)).filter(testsBuildOutput);
     groups.push({
       dir,
       files,
@@ -74,20 +83,40 @@ export async function slowCandidates(
       // 005-04: a node:test project alone is not a slow group (cezarion's `test/unit`).
       defaultSlow: why.some((r) => !r.startsWith(NODE_TEST)),
       declaredSlow: files.some(isDeclared),
-      declaredInputs,
-      buildOutputs,
-      exclude:
-        buildOutputs.length === 0
-          ? null
-          : {
-              glob: dir === "" ? "**" : `${dir}/**`,
-              into: excludeInto(runners, dir === "" ? "**" : `${dir}/**`, files, (f) =>
-                facts.testFiles.paths.includes(f),
-              ),
-            },
+      declaredInputs: inputsFor(policy, files),
+      buildOutputs: outputs.get(dir) ?? [],
+      exclude: excludeProposal(dir, files, evidenced, universe, runners, isVitest),
     });
   }
   return { groups, unresolvedScripts };
+}
+
+/**
+ * Wave 13 B1: the exclude a group's evidence bounds, `null` when none of its
+ * files names a build output. The directory glob only when every test file it
+ * selects is evidenced, descendants and other groups' files included; else
+ * the evidenced files by path, the rest kept as slow candidates.
+ */
+function excludeProposal(
+  dir: string,
+  files: readonly string[],
+  evidenced: ReadonlySet<string>,
+  universe: readonly string[],
+  runners: Runners,
+  isVitest: (file: string) => boolean,
+): ExcludeProposal | null {
+  const named = files.filter((f) => evidenced.has(f));
+  if (named.length === 0) return null;
+  const glob = dir === "" ? "**" : `${dir}/**`;
+  const selected = universe.filter(globMatcher([glob]));
+  const globs = selected.every((f) => evidenced.has(f)) ? [glob] : named;
+  return {
+    globs,
+    into: globs.flatMap((g) =>
+      excludeInto(runners, g, selected.filter(globMatcher([g])), isVitest),
+    ),
+    kept: files.filter((f) => !named.includes(f)),
+  };
 }
 
 /**

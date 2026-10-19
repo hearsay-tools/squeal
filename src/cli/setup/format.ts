@@ -78,10 +78,14 @@ export function formatPlan(plan: SetupPlan): string {
   for (const group of plan.slow.groups) {
     // Row 005-70: an exclude candidate's default is its runners' `exclude`, never slow.
     const exclude = group.declaredSlow ? null : (group.exclude ?? null);
+    const slow = `default ${group.defaultSlow ? "slow" : "not slow"}`;
+    // B1: a partial exclude names its files; the rest keep the slow default.
     const byDefault =
       exclude === null
-        ? `default ${group.defaultSlow ? "slow" : "not slow"}`
-        : `default excluded (${excludeKeys(exclude)})`;
+        ? slow
+        : exclude.kept.length === 0
+          ? `default excluded (${excludeKeys(exclude)})`
+          : `default excluded: ${exclude.globs.join(", ")} (${excludeKeys(exclude)}); the ${exclude.kept.length} other${exclude.kept.length === 1 ? "" : "s"} ${slow}`;
     lines.push(
       `  ${group.dir} (${group.files.length} files): ${group.reasons.join("; ")}`,
       ...(group.buildOutputs ?? []).map(
