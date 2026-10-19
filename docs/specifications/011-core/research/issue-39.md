@@ -2,7 +2,7 @@
 
 Recommendation: do not treat #39 as a path-resolution bug. Named paths already resolve against the caller's working directory on every version examined. The second symptom is #6/#30's selector, fixed in 0.1.204, on a plugin that was 0.1.199 until 12:50Z on the day the issue was filed. What is left is a human scope decision about guidance for an unmatched path that would match from the worktree root.
 
-Examined 2026-10-19, 16:11 to 16:30 CEST. Checkout `036be0a0` (package 0.1.222). Installed Claude Code and Codex plugins are both 0.1.222 (`installed_plugins.json`: user scope `lastUpdated 2026-10-19T12:50:15Z`, commit `1612b9e0`), and `squeal --version` prints 0.1.222. Cached 0.1.199 was examined too. The checkout bundle and the installed 0.1.222 bundle hash the same (`94380a2e…`). Load before work was 3.60 / 4.36 / 4.64 on 24 CPUs (`uptime`, `nproc`). The probe ran at 3.2, and the live calls at 2.57 to 4.12. The load stayed below the CPU count throughout, so the live attempt was allowed. Documentation only: no product, board, spec, status or skill edits.
+Examined 2026-10-19, 16:11 to 16:24 CEST. Checkout `036be0a0` (package 0.1.222). Installed Claude Code and Codex plugins are both 0.1.222 (`installed_plugins.json`: user scope `lastUpdated 2026-10-19T12:50:15Z`, commit `1612b9e0`), and `squeal --version` prints 0.1.222. Cached 0.1.199 was examined too. The checkout bundle and the installed 0.1.222 bundle hash the same (`94380a2e…`). Load before work was 3.60 / 4.36 / 4.64 on 24 CPUs (`uptime`, `nproc`). The probe ran at 3.2, and the live calls at 2.57 to 4.12. The load stayed below the CPU count throughout, so the live attempt was allowed. Documentation only: no product, board, spec, status or skill edits.
 
 ## Questions answered
 
