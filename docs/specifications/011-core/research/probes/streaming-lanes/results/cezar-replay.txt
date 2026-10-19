@@ -1,0 +1,25 @@
+┌─────────┬────────────────────────────────────────┬────┬───────────────┬────────┬───────────┬──────────┬────────────┬─────────────────┐
+│ (index) │ lane                                   │ W  │ rule          │ totalS │ meanWaitS │ maxWaitS │ shape      │ meanCancelLossS │
+├─────────┼────────────────────────────────────────┼────┼───────────────┼────────┼───────────┼──────────┼────────────┼─────────────────┤
+│ 0       │ 'node:test lane, 54 files'             │ 4  │ 'today'       │ 117    │ 58        │ 117      │ '1 tiers'  │                 │
+│ 1       │ 'node:test lane, 54 files'             │ 4  │ 'w1'          │ 170    │ 43        │ 93       │ '2 tiers'  │                 │
+│ 2       │ 'node:test lane, 54 files'             │ 4  │ 'stream'      │ 117    │ 11        │ 40       │ 'no tiers' │                 │
+│ 3       │ 'node:test lane, 54 files'             │ 4  │ 'stream-over' │ 117    │ 0         │ 0        │ 'no tiers' │                 │
+│ 4       │ 'Vitest tail, 47 files from 13:06:12Z' │ 23 │ 'today'       │ 2092   │ 102       │ 408      │ '15 tiers' │ 130             │
+│ 5       │ 'Vitest tail, 47 files from 13:06:12Z' │ 23 │ 'w1'          │ 507    │ 175       │ 409      │ '2 tiers'  │ 534             │
+│ 6       │ 'Vitest tail, 47 files from 13:06:12Z' │ 23 │ 'stream'      │ 462    │ 34        │ 148      │ 'no tiers' │ 0               │
+│ 7       │ 'Vitest tail, 47 files from 13:06:12Z' │ 23 │ 'stream-over' │ 462    │ 0         │ 0        │ 'no tiers' │ 0               │
+│ 8       │ 'Vitest tail, 47 files from 13:06:12Z' │ 6  │ 'today'       │ 2157   │ 101       │ 409      │ '15 tiers' │ 125             │
+│ 9       │ 'Vitest tail, 47 files from 13:06:12Z' │ 6  │ 'w1'          │ 951    │ 122       │ 409      │ '6 tiers'  │ 285             │
+│ 10      │ 'Vitest tail, 47 files from 13:06:12Z' │ 6  │ 'stream'      │ 867    │ 32        │ 156      │ 'no tiers' │ 0               │
+│ 11      │ 'Vitest tail, 47 files from 13:06:12Z' │ 6  │ 'stream-over' │ 867    │ 0         │ 0        │ 'no tiers' │ 0               │
+│ 12      │ 'Vitest whole backlog, 735 files'      │ 23 │ 'today'       │ 2141   │ 98        │ 408      │ '22 tiers' │ 130             │
+│ 13      │ 'Vitest whole backlog, 735 files'      │ 23 │ 'w1'          │ 735    │ 143       │ 409      │ '6 tiers'  │ 379             │
+│ 14      │ 'Vitest whole backlog, 735 files'      │ 23 │ 'stream'      │ 560    │ 28        │ 149      │ 'no tiers' │ 0               │
+│ 15      │ 'Vitest whole backlog, 735 files'      │ 23 │ 'stream-over' │ 560    │ 0         │ 0        │ 'no tiers' │ 0               │
+│ 16      │ 'Vitest whole backlog, 735 files'      │ 6  │ 'today'       │ 2428   │ 91        │ 408      │ '22 tiers' │ 115             │
+│ 17      │ 'Vitest whole backlog, 735 files'      │ 6  │ 'w1'          │ 1393   │ 103       │ 409      │ '11 tiers' │ 200             │
+│ 18      │ 'Vitest whole backlog, 735 files'      │ 6  │ 'stream'      │ 1196   │ 22        │ 160      │ 'no tiers' │ 0               │
+│ 19      │ 'Vitest whole backlog, 735 files'      │ 6  │ 'stream-over' │ 1196   │ 0         │ 0        │ 'no tiers' │ 0               │
+└─────────┴────────────────────────────────────────┴────┴───────────────┴────────┴───────────┴──────────┴────────────┴─────────────────┘
+measured: node:test tier 168 s (one tier of 54); Vitest tail 2575 s of tiers

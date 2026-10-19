@@ -1,0 +1,53 @@
+{
+  "root": "/tmp/r2sl/squeal",
+  "files": [
+    "test/keys/check-key.test.ts",
+    "test/keys/closure.test.ts",
+    "test/keys/glob.test.ts",
+    "test/keys/key-index.test.ts",
+    "test/keys/reverse-index.test.ts",
+    "test/keys/resolution.test.ts",
+    "test/scheduler/claims.test.ts",
+    "test/scheduler/checkpoints.test.ts"
+  ],
+  "steps": [
+    {
+      "step": "start",
+      "rssMiB": 96,
+      "heapMiB": 16
+    },
+    {
+      "step": "first created",
+      "startMs": 75,
+      "rssMiB": 124,
+      "heapMiB": 18
+    },
+    {
+      "step": "first ran",
+      "runMs": 7273,
+      "passed": 8,
+      "of": 8,
+      "rssMiB": 351,
+      "heapMiB": 31
+    },
+    {
+      "step": "second created",
+      "startMs": 18,
+      "rssMiB": 357,
+      "heapMiB": 31
+    },
+    {
+      "step": "second ran",
+      "runMs": 6626,
+      "passed": 8,
+      "of": 8,
+      "rssMiB": 441,
+      "heapMiB": 40
+    },
+    {
+      "step": "closed",
+      "rssMiB": 441,
+      "heapMiB": 40
+    }
+  ]
+}

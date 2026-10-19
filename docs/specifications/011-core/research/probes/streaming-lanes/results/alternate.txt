@@ -1,0 +1,4 @@
+Vitest tail, 47 files, W=23: w1 one instance 507 s; two alternating 507 s at 0 % idle, 507 s at 25 % idle, 521 s at 50 % idle; streaming 462 s
+Vitest tail, 47 files, W=6: w1 one instance 951 s; two alternating 951 s at 0 % idle, 865 s at 25 % idle, 878 s at 50 % idle; streaming 867 s
+Vitest whole backlog, 735 files, W=23: w1 one instance 735 s; two alternating 615 s at 0 % idle, 616 s at 25 % idle, 665 s at 50 % idle; streaming 560 s
+Vitest whole backlog, 735 files, W=6: w1 one instance 1393 s; two alternating 1215 s at 0 % idle, 1251 s at 25 % idle, 1231 s at 50 % idle; streaming 1196 s
