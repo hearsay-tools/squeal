@@ -149,3 +149,166 @@ None.
 2. S1 can be a separate small 004-82 fix in `src/core/slow/rank.ts` and its rank tests. It must not alter invalidation or scheduling eligibility. Keep the 100-changed-path/1 MiB read limits, common-token threshold of 20 and duration fallback.
 3. Preserve the continuous scheduler seam: fast completion and quiet expiry pump; selection checks pending fast work and the latest revision again; the load guard, permits, finish-and-discard and bounded idle recheck stay intact. No new public scheduler interface is needed for either finding.
 4. Rebuild committed bundles after product repairs and re-pin guarded sources according to the candidate's unreleased-version rule. This review does not authorize a release or landing. Re-review B1 against the repaired candidate and inspect its delta; S1 stays a nonblocking note unless that delta changes its impact.
+
+## Re-review
+
+PASS `160e6874b0c022011dbe16f879abbe648b1e1fa0` (0.1.221).
+
+Counts: 0 remaining blockers, 1 proven new nonblocking should-fix note, 0 nits. B1's original reproduction and S1 are resolved. This is the requested narrow re-review of `14a31e2c..160e6874`: the setup repair, ranking repair, version-13 re-pin and rebuilt bundles. The first-round conclusions about unchanged code stand. New delta findings are notes under the re-review rule.
+
+### Verification
+
+The exact candidate was checked on a clean tree. `npm ci` ran first; the build left no tracked or untracked changes. The independent suite, rather than the installed 0.1.199 Squeal daemon's results, supplies this review's full-run evidence. No product source or test was edited. The review file was restored from `origin/main` and extended only after verification.
+
+```text
+$ git rev-parse HEAD
+160e6874b0c022011dbe16f879abbe648b1e1fa0
+$ git status --short
+(no output)
+$ npm ci
+added 196 packages, and audited 197 packages in 8s
+found 0 vulnerabilities
+(exit 0; node-domexception deprecation and six install-scripts notices)
+$ npm run lint
+> squeal@0.1.221 lint
+> biome check .
+Checked 1454 files in 441ms. No fixes applied.
+(exit 0)
+$ npm run typecheck
+> squeal@0.1.221 typecheck
+> tsc --noEmit
+(exit 0)
+$ npm run build
+> squeal@0.1.221 build
+> tsc -p tsconfig.build.json && npm run build:plugin
+> squeal@0.1.221 build:plugin
+> tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts
+(exit 0)
+$ git status --short
+(no output; all four committed CLI bundles match the build)
+
+$ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/906767af-ca52-4672-9a67-2cf70c27552c
+
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/906767af-ca52-4672-9a67-2cf70c27552c/test/fixtures/scheduler/.tmp/d7978dac-3149-4d16-82e8-acf0e83fefc3/main/.git/worktrees/staged/gitdir
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/906767af-ca52-4672-9a67-2cf70c27552c/test/fixtures/scheduler/.tmp/858b2d9a-13ad-4481-8d6b-e683468440a7/main/.git/worktrees/staged/gitdir
+squeal tests: killing 1 process(es) an earlier run left: 3962045
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+
+ Test Files  730 passed | 1 skipped (731)
+      Tests  6255 passed | 10 skipped (6265)
+   Start at  10:42:18
+   Duration  943.10s (tests 97%, import 2%, transform 1%)
+
+    Isolate  731 workers spawned · ~149ms startup each (spawn + environment, per file)
+             at least ~27.12s faster with isolate: false — reuses workers across files instead of one per file
+(exit 0)
+$ git rev-parse HEAD
+160e6874b0c022011dbe16f879abbe648b1e1fa0
+$ git status --short
+(no output)
+```
+
+The independent run took 943.10 s. Sampled one-minute host loads during it ranged from 10.05 to 38.18 on 24 CPUs. No file failed the independent run, so no isolated rerun was necessary. In particular, `test/harness/pi/latency.test.ts` passed this run; this does not establish an improvement to its previously reported calm-load 80 ms timing margin. Fixture-repair, process-cleanup and experimental-typechecking notices above did not fail the run.
+
+Separately, the installed 0.1.199 background Squeal baseline reported `test/runners/node-test/run-reads-fidelity.test.ts` and `test/runners/vitest/observe-fidelity.test.ts` failing at revision 0, with the same signatures the first review and worker notes record. Both pass in the independent run above. Those background observations remain distinct from this review's gate.
+
+A throwaway source probe outside the checkout used the existing setup fixture builders, `main`, `setupCommand`, `buildPlan`, `readRepoFacts` and `SlowRanker`. It created and removed only scratch repositories. Its assertion-backed results follow. The first probe attempt used a gate-answer sequence for the wrong fixture shape and stopped on an assertion; the corrected probe presses Enter for every terminal default and completed successfully. No candidate file changed between attempts.
+
+### Previously blocking B1: resolved for the recorded reproduction
+
+`src/cli/setup/build-outputs.ts` now retains `namedBy`; `candidates.ts:68` gathers the evidenced file set before forming proposals. `excludeProposal` checks the complete Vitest/node:test universe, including descendants and files outside the immediate candidate group, before proposing a directory glob. A mixed group uses its evidenced file paths and carries its unevidenced files in `kept`. `questions.ts` asks the remaining slow question after accepting a partial exclusion; `exclude.ts` routes only the selected proposal's targets, joining node:test cwd back to worktree-relative form for comparison.
+
+The first-round fixture was replayed with the same `src/math.ts`, source-only sibling and source-only descendant:
+
+```text
+setup --yes:
+  vitest.exclude: ["test/e2e/plugin-copy.test.ts"]
+  slow.include: ["test/e2e/nested/**", "test/e2e/**"]
+terminal defaults:
+  identical selection
+--exclude test/e2e/plugin-copy.test.ts --slow test/e2e --slow test/e2e/nested:
+  identical selection (slow globs in flag order)
+after every mode:
+  test/e2e/source.test.ts: listed, declared slow
+  test/e2e/nested/source.test.ts: listed, declared slow
+  test/e2e/plugin-copy.test.ts: not listed
+```
+
+Positive control: when both immediate tests and a descendant name the committed bundle, proposals are `test/e2e/**` and `test/e2e/nested/**`. The new `exclude-bounded.test.ts` also checks the `*.e2e.*` case whose directory contains unrelated tests. The original no-to-exclusion and manifest-only negative controls remain.
+
+A second fixture used cezarion's package cwd `packages/cezar`, two evidenced files and an unevidenced `test/e2e/source.test.ts`. Terminal defaults, `--yes` and explicit `--exclude`/`--slow` flags all produced:
+
+```text
+vitest.exclude:
+  packages/cezar/test/e2e/package-cli.test.ts
+  packages/cezar/test/e2e/update.test.ts
+nodeTest["test:package"].exclude:
+  test/e2e/package-cli.test.ts
+  test/e2e/update.test.ts
+slow.include: ["packages/cezar/test/e2e/**"]
+```
+
+The source-only node:test file matches neither exclusion. The new partial-selection path preserves existing cwd semantics. These conclusions apply to paths without glob metacharacters; R-S1 records the new edge case.
+
+### Previously nonblocking S1: resolved
+
+`src/core/slow/rank.ts:128` memoizes text separately from token offering. Every distinct changed path still has its direct imports inspected, including one first read as another changed file's import. It does not expand arbitrary imports recursively. The original `a -> b -> c` probe now yields:
+
+```text
+changed ["src/a.ts", "src/b.ts"] -> test/slow.test.ts: ["panel-body"]
+changed ["src/b.ts", "src/a.ts"] -> test/slow.test.ts: ["panel-body"]
+changed ["src/a.ts", "src/b.ts", "src/a.ts"] -> same evidence
+all three: changed-side reads exactly [a, b, c], once each
+```
+
+The added permutation regression checks evidence and read counts. The limits are unchanged: 100 changed paths, 1 MiB per read, common tokens dropped above 20 matching slow files. A 101-path probe returned no evidence without reading a file. Queue eligibility, class ordering and duration fallback were untouched.
+
+The guarded-source hash independently computed through `keySourcesHash()` is `b1c641b3862385740e280279a3d5b070d8c6eabf75c68b4072de5041bca6ad20`, matching `KEY_SOURCES_HASHES[13]`; `KEY_FORMAT_VERSION` remains 13 under the candidate's unreleased-version rule.
+
+### Blockers
+
+None remaining from the first-round findings.
+
+### Should-fix notes
+
+#### R-S1, proven, nonblocking under the narrow re-review rule: a literal file path is still interpreted as a glob
+
+Location: `src/cli/setup/candidates.ts:112`, `:116`; applied by `src/cli/setup/exclude.ts:64`.
+
+Contract: 005 D3, "a suite that is only slow, or that prepares itself from the sources, stays a slow candidate keyed like any file." The repair's fallback passes raw evidenced filenames to the glob compiler. A supported glob metacharacter in a literal filename can select a different source-only sibling. This is a new delta note, rather than a reopening of the first-round sibling/descendant reproduction.
+
+Proven source probe, on a `squealShaped` fixture with its two original e2e tests changed to source-only `export {};`:
+
+```text
+test/e2e/bundle{a,b}.test.ts: const p="plugins/codex/dist/cli/squeal.mjs";
+test/e2e/bundlea.test.ts: imports ../../src/math.ts; asserts sum(1, 2) === 3
+plan.exclude.globs: ["test/e2e/bundle{a,b}.test.ts"]
+plan.exclude.kept includes test/e2e/bundlea.test.ts
+setup --yes exits 0
+vitest.exclude: ["test/e2e/bundle{a,b}.test.ts"]
+after setup:
+  bundlea.test.ts: absent from listing, though the plan called it kept
+  bundle{a,b}.test.ts: still listed, though it supplied the exclude evidence
+```
+
+The brace compiler treats the filename as alternatives and drops the wrong test. `[` and `?` in filenames or directories need the same care. The normal B1 reproduction passes, but this special-path case still loses source coverage.
+
+Worker-sized fix: make literal-path exclusion proposals safe for the existing glob language and re-check the actual selected file set for every emitted proposal, including fallback paths. If a literal cannot be represented safely, retain it and explain why no exclusion is proposed. Add a metacharacter filename fixture proving the source-only sibling stays listed and the proposal selects only evidenced files through default setup and answer flags. Own `src/cli/setup/**` and its tests; no scheduler or key change is needed. Rebuild bundles afterwards.
+
+### Nits
+
+None.
+
+### What fits and inputs for the next wave
+
+- B1's ordinary sibling, descendant and broad-directory cases are covered by the new tests and the independent replay. Preserve the `globs`/`into`/`kept` seam: choose a bounded selection first, then ask about kept slow files, then apply runner-relative targets. No wider exclusion is needed for these cases.
+- S1's direct-import evidence and read-once behavior hold in both changed-path orders. Preserve the 100-path/1 MiB/20-file budgets, duration fallback and ranking-only scope.
+- Committed bundles match `npm run build`; key version 13 matches the re-pinned source hash. No other first-round contract was reopened by this delta.
+- R-S1 is the only new follow-up input. The coordinator decides whether to dispatch that note before landing. This review changes no product, board or status file and does not land or release the candidate.
