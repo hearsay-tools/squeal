@@ -176,8 +176,14 @@ export function selectTier(
     const forced = ledger.queue.isForced(ref);
     const recent = ledger.queue.isRecent(ref);
     // A lane of slots runs the backlog's files there, each with its permit: an edit's tier takes
-    // only the edit's work (task 011-21 slice 2).
-    if (!backlog && !ledger.queue.isFirstGroup(ref) && backlogSlot(context, ref) !== null) {
+    // only the edit's work (task 011-21 slice 2), except on the backlog's turn after four tiers of
+    // the first group, which takes them as it does in any lane (review wave-4 slice 2, B2).
+    if (
+      !backlog &&
+      !ledger.queue.isFirstGroup(ref) &&
+      !ledger.queue.backlogTurn() &&
+      backlogSlot(context, ref) !== null
+    ) {
       skipped = true;
       continue;
     }

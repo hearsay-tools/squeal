@@ -272,8 +272,13 @@ export class RunQueue {
    * files included. Fast entries only.
    */
   ordered(durationOf: DurationOf = () => null): TestFileRef[] {
-    const first = this.#recentTiers >= RECENT_TIERS_PER_BACKLOG_TIER ? -1 : 1;
+    const first = this.backlogTurn() ? -1 : 1;
     return sorted(this.#fast(), durationOf, first, this.#ranks());
+  }
+
+  /** The backlog comes first once: `RECENT_TIERS_PER_BACKLOG_TIER` tiers of the first group ran. */
+  backlogTurn(): boolean {
+    return this.#recentTiers >= RECENT_TIERS_PER_BACKLOG_TIER;
   }
 
   /**
