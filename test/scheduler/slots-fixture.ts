@@ -3,14 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { onTestFinished } from "vitest";
 import { createNodeTestRunners } from "../../src/core/daemon/node-test-runners.js";
-import type {
-  NodeTestProject,
-  RunnerAdapter,
-  RunOptions,
-  RunReport,
-  TestFileRef,
-} from "../../src/core/types/index.js";
+import type { NodeTestProject } from "../../src/core/types/index.js";
 import { createRepo, type Harness, openHarness, openRepoStore } from "./helpers.js";
+import { type TimedRun, timedRunner } from "./timed-runner.js";
 
 /*
  * Task 011-21 slice 2 (spec 011 C4 step 5 as amended for slots): a project
@@ -34,15 +29,6 @@ export interface Span {
   readonly path: string;
   readonly start: number;
   readonly end: number;
-}
-
-/** One `run` call the scheduler made, timed on the epoch clock. */
-export interface TimedRun {
-  readonly files: readonly TestFileRef[];
-  readonly options: RunOptions;
-  readonly start: number;
-  end: number | null;
-  report: RunReport | null;
 }
 
 export interface SlotHarness {
@@ -145,39 +131,6 @@ export async function slotHarness(options: SlotOptions): Promise<SlotHarness> {
       mode.slots = on;
     },
   };
-}
-
-/**
- * `runner` with each `run` call timed into `runs`; while `slots` says false
- * its `backlogSlot` answers `null`, so its backlog runs in tiers, as before
- * slots.
- */
-export function timedRunner(
-  runner: RunnerAdapter,
-  slots: () => boolean = () => true,
-): { timed: RunnerAdapter; runs: TimedRun[] } {
-  const runs: TimedRun[] = [];
-  const timed: RunnerAdapter = Object.create(runner, {
-    run: {
-      value: async (files: readonly TestFileRef[], runOptions: RunOptions) => {
-        const run: TimedRun = {
-          files,
-          options: runOptions,
-          start: Date.now(),
-          end: null,
-          report: null,
-        };
-        runs.push(run);
-        run.report = await runner.run(files, runOptions);
-        run.end = Date.now();
-        return run.report;
-      },
-    },
-    backlogSlot: {
-      value: (testFile: TestFileRef) => (slots() ? (runner.backlogSlot?.(testFile) ?? null) : null),
-    },
-  });
-  return { timed, runs };
 }
 
 /**
