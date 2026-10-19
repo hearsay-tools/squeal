@@ -35,5 +35,8 @@ The Vitest half of 7 (an edit cancels a backlog tier within its graces) is `back
 
 ## For the next worker
 
+- `KEY_FORMAT_VERSION` is 14 with this slice's guard hash: `squeal--v0.1.222` carries 13, and every `src/` change is guarded. Re-pin 14 in place at integration if other rows also changed guarded sources.
+- `observe-fidelity.test.ts` (Vitest) and `run-reads-fidelity.test.ts` (node:test), task 001-390, fail under the Squeal daemon (17 of 17 results across worktrees and commits, a1da5df included) and pass under `npx vitest run`; not this slice's.
+
 - The bundles (`plugins/*/dist`) are not rebuilt: the four bundle drift tests fail until the coordinator builds.
 - R2 (011-21, streaming lanes) replaces the tier barrier; this rule is what it is measured against.
