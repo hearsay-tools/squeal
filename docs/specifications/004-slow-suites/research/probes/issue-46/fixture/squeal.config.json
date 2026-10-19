@@ -1,0 +1,3 @@
+{
+  "slow": { "include": ["e2e/*.e2e.ts"], "maxParallel": 1 }
+}
