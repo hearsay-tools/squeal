@@ -55,7 +55,11 @@ interface Entry {
   forced: boolean;
   /** Queued by a revision's edit: its closure changed or it was added (`Ledger.settle`). */
   recent: boolean;
+  /** Tokens that ranked a slow entry (004 D2's evidence), gathered until it leaves the queue. */
+  evidence: ReadonlySet<string>;
 }
+
+const NO_EVIDENCE: ReadonlySet<string> = new Set();
 
 const NOTHING_SLOW = (): boolean => false;
 
@@ -153,7 +157,31 @@ export class RunQueue {
       entry.recent ||= recent;
       return;
     }
-    this.#entries.set(id, { ref, priority, seq: this.#seq++, forced, recent });
+    this.#entries.set(id, {
+      ref,
+      priority,
+      seq: this.#seq++,
+      forced,
+      recent,
+      evidence: NO_EVIDENCE,
+    });
+  }
+
+  /**
+   * Spec 004 D2 as amended (task 004-82): `tokens` a revision's changed
+   * files offered that `ref`'s slow file matches. They add to the entry's
+   * evidence until it leaves the queue; an absent entry takes none.
+   */
+  addEvidence(ref: TestFileRef, tokens: Iterable<string>): void {
+    const entry = this.#entries.get(testFileId(ref));
+    if (entry === undefined) return;
+    const evidence = new Set([...entry.evidence, ...tokens]);
+    if (evidence.size > entry.evidence.size) entry.evidence = evidence;
+  }
+
+  /** The tokens `ref`'s queued entry gathered (`addEvidence`); none when it is not queued. */
+  evidenceOf(ref: TestFileRef): ReadonlySet<string> {
+    return this.#entries.get(testFileId(ref))?.evidence ?? NO_EVIDENCE;
   }
 
   /**
@@ -252,13 +280,16 @@ export class RunQueue {
    * The slow entries in the order the slow tier runs them, one at a time
    * (spec 004 D2): `ordered`'s, where recent work comes first too and a
    * promoted file leads (C15), which does not make the slow tier eligible.
+   * `ranked` (`slow.rank` `"tokens"`, D2 as amended 2026-10-18): within a
+   * class, more evidence first, then the duration order.
    */
-  orderedSlow(durationOf: DurationOf = () => null): TestFileRef[] {
+  orderedSlow(durationOf: DurationOf = () => null, ranked = false): TestFileRef[] {
     return sorted(
       [...this.#entries.values()].filter((entry) => this.#isSlow(entry.ref)),
       durationOf,
       1,
       this.#ranks(),
+      ranked,
     );
   }
 
@@ -284,14 +315,17 @@ export class RunQueue {
 /**
  * `RunQueue.ordered`'s sort; `first` is 1 for recent entries first, -1 for
  * the backlog first. `promoted` holds each promoted entry's request order:
- * of the first group, ahead of its other classes (C15).
+ * of the first group, ahead of its other classes (C15). `ranked` orders a
+ * class by evidence before duration (004 D2).
  */
 function sorted(
   entries: readonly Entry[],
   durationOf: DurationOf,
   first: 1 | -1,
   promoted: ReadonlyMap<Entry, number>,
+  ranked = false,
 ): TestFileRef[] {
+  const evidence = (entry: Entry) => (ranked ? entry.evidence.size : 0);
   const rank = (entry: Entry) => promoted.get(entry) ?? Number.POSITIVE_INFINITY;
   const group = (entry: Entry) => Number(entry.recent || promoted.has(entry));
   const durations = new Map<Entry, number>();
@@ -305,6 +339,7 @@ function sorted(
         first * (group(b) - group(a)) ||
         byDuration(rank(a), rank(b)) ||
         a.priority - b.priority ||
+        evidence(b) - evidence(a) ||
         byDuration(duration(a), duration(b)) ||
         a.seq - b.seq ||
         compare(a.ref.project, b.ref.project) ||

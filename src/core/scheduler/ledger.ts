@@ -1,4 +1,6 @@
 import { testFileId } from "../keys/index.js";
+import { fsRankSource, SlowRanker } from "../slow/rank.js";
+import { metaTokenRecords, publishSlowEvidence, readSlowEvidence } from "../slow/rank-store.js";
 import { heldFailure } from "../state/index.js";
 import {
   type CheckId,
@@ -114,6 +116,8 @@ export class Ledger {
   readonly #rekeyed = new Map<string, RevisionNumber | null>();
   /** A commit took in the rows the store's writers before this ledger left pending (`recordMoves`). */
   #adopted = false;
+  /** Spec 004 D2's evidence order (task 004-82): token records by the key cache's hashes. */
+  readonly #ranker: SlowRanker;
 
   constructor(private readonly context: SchedulerContext) {
     this.checkpoints = new Checkpoints(context.store, context.worktreeId, context.now);
@@ -124,6 +128,10 @@ export class Ledger {
       context.now,
       (ref) => (this.file(ref)?.runningKey ?? null) !== null,
       (live) => publishPromotions(context.store, context.worktreeId, live, context.now()),
+    );
+    this.#ranker = new SlowRanker(
+      fsRankSource(context.root, (path) => context.keys.cache.hashOf(path)),
+      metaTokenRecords(context.store),
     );
   }
 
@@ -136,9 +144,15 @@ export class Ledger {
     return this.queue.ordered((ref) => this.file(ref)?.durationMs ?? null);
   }
 
-  /** The slow class of the queue in the order the slow tier runs it (spec 004 D2). */
+  /**
+   * The slow class of the queue in the order the slow tier runs it (spec 004
+   * D2): by evidence within a class unless `slow.rank` is `"duration"`.
+   */
   orderedSlow(): TestFileRef[] {
-    return this.queue.orderedSlow((ref) => this.file(ref)?.durationMs ?? null);
+    return this.queue.orderedSlow(
+      (ref) => this.file(ref)?.durationMs ?? null,
+      this.context.policy.slow.rank !== "duration",
+    );
   }
 
   addFile(ref: TestFileRef): FileState {
@@ -231,7 +245,36 @@ export class Ledger {
         this.enqueue(file, priorityOf(file, changed, options.direct), false, recent.has(file.id));
       }
     }
+    this.#rank(changed, misses);
     return misses;
+  }
+
+  /**
+   * Spec 004 D2 as amended 2026-10-18 (task 004-82): the slow files `changed`
+   * queued gather the tokens of its files that they match, and `why` reads
+   * them. Ranking only reorders: nothing is queued or dropped here.
+   */
+  #rank(changed: ReadonlySet<RelativePath>, misses: readonly FileState[]): void {
+    if (changed.size === 0 || this.context.policy.slow.rank === "duration") return;
+    const queued = misses.filter((f) => this.queue.has(f.ref) && this.queue.isSlow(f.ref));
+    if (queued.length === 0) return;
+    const slow = [...this.files.values()].filter((f) => this.queue.isSlow(f.ref));
+    const evidence = this.#ranker.evidence(
+      changed,
+      slow.map((f) => f.ref.path),
+    );
+    const { store, worktreeId } = this.context;
+    const ranked = readSlowEvidence(store, worktreeId);
+    for (const [id, entry] of ranked) if (this.files.get(id)?.key !== entry.key) ranked.delete(id);
+    let moved = false;
+    for (const file of queued) {
+      const tokens = evidence.get(file.ref.path);
+      if (tokens === undefined || file.key === null) continue;
+      this.queue.addEvidence(file.ref, tokens);
+      ranked.set(file.id, { key: file.key, tokens: [...this.queue.evidenceOf(file.ref)] });
+      moved = true;
+    }
+    if (moved) publishSlowEvidence(store, worktreeId, ranked);
   }
 
   /**

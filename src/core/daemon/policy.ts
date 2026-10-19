@@ -85,6 +85,7 @@ const SHAPE: Shape = {
     maxLoadPerCpu: aboveZero,
     maxDeferMs: atLeastZero,
     maxParallel: positiveInteger,
+    rank: oneOf("tokens", "duration"),
   },
   delivery: { uncoveredEdits: boolean },
   daemon: { idleExitMinutes: aboveZero, unusedExitMinutes: aboveZero },
