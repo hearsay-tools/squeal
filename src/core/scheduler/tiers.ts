@@ -81,6 +81,35 @@ export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
 }
 
 /**
+ * The lanes no tier may start in now, of the tiers `inFlight` (`selectTier`'s
+ * `busy`): one tier at a time per lane (task 001-140), except that an edit's
+ * tier starts beside a backlog tier of a runner that cannot cancel it
+ * (`RunnerAdapter.besideBacklog`; spec 011 C4 step 5 as amended 2026-10-19,
+ * task 011-21). Such a lane is free while that backlog tier is its only tier
+ * in flight and an edit's work of it is queued, so the tier selected is an
+ * edit's, with no permit (C10).
+ */
+export function busyLanes(
+  context: SchedulerContext,
+  ledger: Ledger,
+  inFlight: readonly Tier[],
+): Set<string> {
+  const held = new Map<string, Tier[]>();
+  for (const tier of inFlight) held.set(tier.lane, [...(held.get(tier.lane) ?? []), tier]);
+  const busy = new Set<string>();
+  for (const [lane, tiers] of held) {
+    const only = tiers.length === 1 ? tiers[0] : undefined;
+    const lead = only?.cancel === null ? undefined : only?.files[0]?.file.ref;
+    const beside =
+      lead !== undefined &&
+      context.runner.besideBacklog?.(lead) === true &&
+      ledger.queue.hasFirstGroup((ref) => laneOf(context, ref) === lane);
+    if (!beside) busy.add(lane);
+  }
+  return busy;
+}
+
+/**
  * Picks the next tier from the queue as the latest revision ordered it.
  *
  * Spec 001 D5: "runs them in tiers of a configurable size (default 4 test
@@ -101,9 +130,9 @@ export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
  * first round is always taken.
  *
  * A tier holds the files of one lane, the lane of the first file it takes;
- * files of a lane in `busy`, which has a tier in flight, stay queued and
- * are not looked up (task 001-140). Whether the tier is the backlog's is
- * decided on the free lanes' files.
+ * files of a lane in `busy` (`busyLanes`), which has a tier in flight, stay
+ * queued and are not looked up (task 001-140). Whether the tier is the
+ * backlog's is decided on the free lanes' files.
  *
  * Any other tier takes a file only beside files of a comparable last-known
  * time (`joinSpan`, task 001-184): a tier stores its results when it ends,

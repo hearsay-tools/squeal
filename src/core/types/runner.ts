@@ -481,6 +481,16 @@ export interface RunnerAdapter {
   tierPart?(testFile: TestFileRef): string;
 
   /**
+   * Whether an edit's tier holding `testFile` may start beside a backlog
+   * tier of its lane (spec 011 C4 step 5 as amended 2026-10-19, task
+   * 011-21): node:test and pytest, which cannot cancel a run and start the
+   * processes of each run with that run's `childEnv`, so the run's sweep
+   * can be its own. Synchronous, as `tierWidth`. Absent: `false`, the edit
+   * cancels the backlog tier instead (Vitest).
+   */
+  besideBacklog?(testFile: TestFileRef): boolean;
+
+  /**
    * Spec 001 D4: "`run(testFiles) -> results`: `runTestSpecifications`. [...]
    * `process.exitCode` is reset after each run."
    */

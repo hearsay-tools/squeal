@@ -93,7 +93,7 @@ test/runners/node-test/
 test/integration/node-test
 # A real `node --test` through the scheduler: the slow tier, preloads,
 # observed and environment growth, capacity, lanes, scratch inputs, the idle
-# pass (beside pytest) and warm-up.
+# pass (beside pytest), warm-up and an edit's tier beside the backlog tier.
 test/scheduler/slow-node-test
 test/scheduler/preload-heal
 test/scheduler/preload-refresh
@@ -105,13 +105,16 @@ test/scheduler/scratch-inputs
 test/scheduler/lanes
 test/scheduler/idle-pass
 test/scheduler/warm-up
+test/scheduler/edit-beside-backlog
 # A daemon started on a node:test project: its results, its slow tier and
-# capacity mark, and the version probe of each project's Node at startup.
+# capacity mark, the version probe of each project's Node at startup, and
+# two overlapping runs of its lane through the sweep.
 test/integration/slow-spawn
 test/integration/capacity-project
 test/daemon/composite-runner
 test/daemon/died-startup
 test/daemon/repeated-notes
+test/daemon/escaped-run-mark
 # A real `node --test` through the shipped plugin.
 test/e2e/node-test
 test/e2e/slow-node-test

@@ -25,7 +25,9 @@ export type { ProcessEntry } from "./terminate.js";
  * The variable every Vitest worker of a daemon carries, and with it every
  * process a test starts with its env, wherever it ends up (spec 001 D12;
  * lessons 003, defect 8; task 001-142). Its value is the daemon's token and
- * the lane of the run, `<token>:<lane>` (task 004-18).
+ * the lane of the run, `<token>:<lane>` (task 004-18), or of the run itself,
+ * `<token>:<lane>#<runId>`, where runs of a lane overlap (`afterEachRun`,
+ * task 011-21).
  */
 export const CHILD_VARIABLE = "SQUEAL_DAEMON_CHILD";
 
@@ -368,7 +370,11 @@ export type RunSweeper = Pick<EscapedChildren, "mark" | "afterRun" | "envFor" | 
  * stopped when the last overlapping run settles, looking back to the mark of
  * the first, and named with every overlapping run (review wave-13r B1). A
  * run's processes run at `nice` 10, a slow lane's at idle I/O too
- * (`lowerWhile`; 001 D11 Capacity, spec 004 D2).
+ * (`lowerWhile`; 001 D11 Capacity, spec 004 D2). A runner whose runs of one
+ * lane overlap (`besideBacklog`: an edit's tier beside a backlog tier, spec
+ * 011 C4 step 5 as amended, task 011-21) gives each run's processes a mark
+ * of their own, `<lane>#<runId>`, so one run's stop never reaches the
+ * other's.
  */
 export function afterEachRun(
   runner: RunnerAdapter,
@@ -397,11 +403,15 @@ export function afterEachRun(
     slowWidth: (testFiles) => runner.slowWidth?.(testFiles) ?? testFiles.length,
     tierWidth: (testFile, grant) => runner.tierWidth?.(testFile, grant) ?? grant,
     tierPart: (testFile) => runner.tierPart?.(testFile) ?? "",
+    besideBacklog: (testFile) => runner.besideBacklog?.(testFile) ?? false,
     environment: () => runner.environment(),
     ...(lane === undefined ? {} : { lane }),
     ...(releaseLane === undefined ? {} : { releaseLane }),
     async run(testFiles, options) {
       const at = laneOf(testFiles, options);
+      const lead = testFiles[0];
+      const overlaps = lead !== undefined && runner.besideBacklog?.(lead) === true;
+      const mark = overlaps ? `${at}#${options.runId}` : at;
       const since = children.mark();
       if (inFlight === 0) {
         first = since;
@@ -410,9 +420,9 @@ export function afterEachRun(
       if (!overlapped.includes(options.runId)) overlapped.push(options.runId);
       inFlight += 1;
       const settled = new AbortController();
-      const lowering = lowerWhile(children, at, since, settled.signal);
+      const lowering = lowerWhile(children, mark, since, settled.signal);
       try {
-        const childEnv = { ...options.childEnv, ...children.envFor(at) };
+        const childEnv = { ...options.childEnv, ...children.envFor(mark) };
         return await runner.run(testFiles, { ...options, lane: at, childEnv });
       } finally {
         settled.abort();
@@ -421,7 +431,7 @@ export function afterEachRun(
         const alone = inFlight === 0 ? first : null;
         const runs = [...overlapped];
         const stop = await children
-          .afterRun(at, since, alone, options.runId, runs)
+          .afterRun(mark, since, alone, options.runId, runs)
           .catch(() => null);
         if (stop !== null) note(stop);
       }
