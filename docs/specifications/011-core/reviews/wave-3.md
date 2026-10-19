@@ -289,3 +289,127 @@ The trace and durations establish a serial-part selection error, not a plausible
 ### Should-fix, nits, and later inputs
 
 No new should-fix items or nits. No findings outside the repair were added. Preserve the first review's settled behavior and downstream inputs. Dispatch R1 within `backlog.ts`, its selection/trim tests and the composite regression; the coordinator owns the key re-pin, bundles and any clarification of C4's first-round exception. The streaming-lane work remains separate. This is the second FAIL; `docs/process.md` step 6 sends that decision to the human through the coordinator.
+
+
+## Third round
+
+**PASS d8394cdde2c5bdc51d6156435439ede4ac7bf7f5**. Zero blockers, zero should-fix items, one proven non-blocking nit. R1 is closed. Reviewed 2026-10-19, W2r2, the human-approved third round bounded by `tasks/wave-3.md` and Re-review R1 above.
+
+### Verification output
+
+HEAD exactly matched the supplied pin. The worktree was clean before installation, after build, and after the focused checks and scratch experiments, before this appendix was written. The requested delta is `4b8a12ae..d8394cdd`: it adds the scheduler regression, regenerated bundles and the brief. R1's source repair (`60d201dc`) already precedes `4b8a12ae`; I also compared `dc3135bc..d8394cdd` to inspect that repair and the key re-pin. No candidate source or test was edited during review.
+
+All of the following candidate-tree commands exited 0:
+
+```text
+$ git rev-parse HEAD
+d8394cdde2c5bdc51d6156435439ede4ac7bf7f5
+$ git status --porcelain=v1
+(no output)
+
+$ npm ci
+npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+
+added 196 packages, and audited 197 packages in 7s
+
+32 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+npm warn install-scripts 6 packages have install scripts not yet covered by allowScripts:
+npm warn install-scripts   @google/genai@2.21.0 (preinstall: echo 'preinstall: no-op')
+npm warn install-scripts   @parcel/watcher@2.6.0 (install: node scripts/build-from-source.js)
+npm warn install-scripts   esbuild@0.28.2 (postinstall: node install.js)
+npm warn install-scripts   msgpackr-extract@3.0.4 (install: node-gyp-build-optional-packages)
+npm warn install-scripts   opencode-ai@1.18.35 (postinstall: node ./postinstall.mjs)
+npm warn install-scripts   protobufjs@7.6.6 (postinstall: node scripts/postinstall)
+npm warn install-scripts
+npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+
+$ npm run lint
+> squeal@0.1.223 lint
+> biome check .
+
+Checked 1461 files in 613ms. No fixes applied.
+
+$ npm run typecheck
+> squeal@0.1.223 typecheck
+> tsc --noEmit
+
+$ npm run build
+> squeal@0.1.223 build
+> tsc -p tsconfig.build.json && npm run build:plugin
+
+> squeal@0.1.223 build:plugin
+> tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts
+
+$ npx vitest run test/scheduler/backlog-wall.test.ts test/daemon/tier-width.test.ts test/keys/key-format.test.ts --maxWorkers=4
+RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/68f2e914-709f-4c3a-941c-05924dd2f33f
+
+ Test Files  3 passed (3)
+      Tests  39 passed (39)
+   Start at  19:13:14
+   Duration  4.45s (tests 56%, transform 37%, import 5%)
+
+$ git diff --exit-code
+(no output)
+$ git status --porcelain=v1
+(no output)
+$ git diff --check
+(no output)
+```
+
+**Full-suite provenance:** no repeat independent full run. The supplied coordinator gate on `29320d5f` reports 736 files passed, one skipped, 6308 tests passed, 801 s, load 2 to 17 on 24 CPUs. `d8394cdd` adds only the review brief to that code. This narrow condition and test addition give no reason to doubt that gate; the discriminating checks below address R1 directly. The supplied gate is not a fresh full-suite result from this reviewer. No Squeal checkpoint substitutes for it.
+
+Squeal's separate `status --wait 60000` returned on quiet at revision 0, with zero known failures but 720 test files still pending in its baseline (200 running, 520 queued). That incomplete baseline is not evidence of a passing suite. The clean-tree focused run above is this reviewer's candidate test evidence.
+
+### R1 closed
+
+- At `src/core/scheduler/backlog.ts:95`, the first-round exception now requires both the first part and `#parts.size <= 1`. A second part must fit the summed estimate before it joins; once it joins, a return to the first part also has to fit. A rejected file never mutates the map. This closes the A/B/A bypass while retaining the full round for a single part, even above B.
+- The committed scheduler regression at `test/scheduler/backlog-wall.test.ts:133` uses durations `[600, 600, 1000]`, B = 1200 ms, W = 4 and owners A/B/A. It selects `[2, 1]` in the candidate run above. Both initial selection and the smaller-grant replay still call the same `BacklogWall.take` with the runner's part and the width at the relevant grant (`src/core/scheduler/tiers.ts:180`, `:204`). Queue order and the tail splice are unchanged.
+- Red/green was checked in an isolated scratch copy with the candidate test and dependencies. Replacing only `src/core/scheduler/backlog.ts` with its `dc3135bc` contents makes the committed scheduler regression fail:
+
+  ```text
+  $ ./node_modules/.bin/vitest run test/scheduler/backlog-wall.test.ts -t 'selects A, B' --maxWorkers=4
+  FAIL test/scheduler/backlog-wall.test.ts:142
+  AssertionError: expected [ 3 ] to deeply equal [ 2, 1 ]
+   Test Files  1 failed (1)
+        Tests  1 failed | 8 skipped (9)
+     Duration  4.33s
+  (exit 1)
+  ```
+
+  Restoring the candidate estimator, the complete backlog-wall file plus three scratch probes passed: two files, 12 tests, 5.34 s. The controlled old-source failure is experimental evidence, not a failed candidate verification command.
+- The three scratch probes exercised the real scheduler fixture with its own temporary store and permit directory. Single-part durations `[2000, 3000, 4000, 5000, 6000]`, W = 4, B = 1200 ms retain the entire over-budget first round, then the remaining file (`[4, 1]`). Giving only the last file to B also yields `[4, 1]`, so the over-budget round cannot admit another part.
+- The third probe forces the smaller-grant replay: durations `[600, 600, 1000, 1000]`, owners A/B/A/A, B = 1700 ms, offer 23 and 20 permits occupied without a mark. All four fit at the offer (summed estimate about 1670 ms). Acquisition grants three workers; at that width, A/B/A would estimate 1800 ms. The candidate starts exactly `f00, f01`, then runs exactly `f02, f03` as the suffix, preserving order and multiplicity. With only the old estimator substituted, the same probe instead starts all four with three workers and fails the prefix assertion. After restoring candidate source, all three probes passed again:
+
+  ```text
+  $ ./node_modules/.bin/vitest run test/scheduler/w2r2-probe.test.ts -t 'replays A B A' --maxWorkers=4
+  {"replayFirst":["test/f00.test.ts","test/f01.test.ts","test/f02.test.ts","test/f03.test.ts"],"workers":3}
+  AssertionError: expected [ 'test/f00.test.ts', …(3) ] to deeply equal [ 'test/f00.test.ts', …(1) ]
+   Test Files  1 failed (1)
+        Tests  1 failed | 2 skipped (3)
+     Duration  1.64s
+  (exit 1, old estimator only)
+
+  $ ./node_modules/.bin/vitest run test/scheduler/w2r2-probe.test.ts --maxWorkers=4
+   Test Files  1 passed (1)
+        Tests  3 passed (3)
+     Duration  3.65s
+  (exit 0, restored candidate estimator)
+  ```
+
+  The scratch copy and probes were deleted before committing. The candidate worktree stayed clean throughout these experiments.
+- `KEY_FORMAT_VERSION` remains the unreleased 14 against released 13 in `squeal--v0.1.222`. Its new hash is `0e1b67d720a9cddb5891ab0b1fc5be8a48c89cce4569a701461d90a07cc7cd78`; the guard passes. All four committed plugin bundles reproduce from the candidate with no diff. No version, pool arithmetic, claims, edit/slow selection or completion behavior changed in this repair. The first review and re-review's settled conclusions stand.
+
+### Blockers and should-fix
+
+None. R1 needs no further repair. No finding outside R1 was opened.
+
+### Nit for a later row
+
+**N1, proven, non-blocking:** `test/scheduler/backlog-wall.test.ts:125` gives incorrect arithmetic in the new explanatory comment. A single 60 s file's estimate at W = 4 is `60/4 + 3/4 × 60 = 60 s`, so A then B is `60 + 60 = 120 s`, and the attempted A/B/A tier is `115 + 60 = 175 s`. The comment says `45 + 45` and `115 + 45`. The assertions and selection are correct; this does not break R1 or the row's done-when. A one-worker correction changes only those two comment values.
+
+### What fits and inputs for the next wave
+
+R1 is closed at the supplied pin. Retain the first-part-only round, summed sequential-part estimate, C4 prefix order and the same estimator for selection and grant replay. Single-part rounds above B, the lower-grant prefix/suffix behavior, key pin and bundle reproducibility were checked here; do not re-prosecute them without a new change. No product fix wave is required by this round. N1 can be folded into a later test edit. The coordinator owns the landing decision; streaming lanes remain separate.
