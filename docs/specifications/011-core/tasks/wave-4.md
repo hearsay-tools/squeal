@@ -30,3 +30,9 @@ Read W1 above, spec 011 C4 step 5 and the lanes paragraph as amended 2026-10-19 
 - `besideBacklog` passes through every wrapper (composite, recovering, slow instance, sweep), and `KEY_FORMAT_VERSION` 15 is right against the released 14.
 
 Run `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once in the candidate tree; a file that fails loaded and passes alone is named. Write `reviews/wave-4.md` with a PASS or FAIL verdict and commit it.
+
+## W2r: 011-21 slice 1, re-review of the repaired cand/0.1.224
+
+Use /reviewer. Shape: review, bounded. Pinned to the `cand/0.1.224` SHA named in the spawn; the repair is `dae70064..<sha>`. Read `reviews/wave-4.md` (B1, the settled list) and append a "Re-review" section to it.
+
+Check only that B1 is closed: `supersededIn` in `src/core/scheduler/tiers.ts` skips a file whose newer key another run holds or has already stored, at the head of `recordTier`'s per-file loop and in the scheduler's `#requeue`, so a stale run's clear, re-queue, unknown, timeout, discard and checkpoint handling never reach it; a same-key failure, crash or timeout still marks the file as before; tests 3 (the backlog tier records first) and 4 (the backlog tier crashes after the edit's PASS) in `test/scheduler/edit-beside-backlog.test.ts` are red without the repair and green with it; `KEY_FORMAT_VERSION` 15's re-pin and the bundles match the tree. The coordinator's gate on this SHA is reported in the spawn. Anything outside B1 is recorded for a later row, not a blocker.
