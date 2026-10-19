@@ -10,6 +10,7 @@ import {
   type NodeTestProject,
   nodeTestObservedMetaKey,
   nodeTestObservedPreloadsMetaKey,
+  type PolicyInputs,
   type ProjectName,
   type RelativePath,
   type Store,
@@ -114,6 +115,8 @@ export interface NodeTestRunnersOptions {
   readonly childEnv?: Readonly<Record<string, string>>;
   /** Policy `runner.tierSize`, read per run. */
   readonly tierSize: () => number;
+  /** Policy `inputs`, read per run (task 001-365). */
+  readonly inputs?: () => PolicyInputs;
   readonly note: (text: string, topic?: string) => void;
 }
 
@@ -139,6 +142,7 @@ export function createNodeTestRunners(
           note: options.note,
           concurrency: options.tierSize,
           tempDir: options.tempDir,
+          ...(options.inputs === undefined ? {} : { inputs: options.inputs }),
           ...(options.childEnv === undefined ? {} : { childEnv: options.childEnv }),
         }),
       // A run starts `runner.tierSize` files at once whatever its grant (task 001-366).
