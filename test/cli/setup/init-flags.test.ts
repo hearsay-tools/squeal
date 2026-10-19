@@ -9,6 +9,7 @@ import {
   cleanupFixtures,
   harnessEnv,
   json,
+  SLOW_ONLY_E2E,
   squealShaped,
   VITEST_GATE,
 } from "./fixture.js";
@@ -296,6 +297,7 @@ describe("a --slow or --input test glob", () => {
 describe("setup --check", () => {
   it("names a slow.include entry or inputs key that selects no test file", async () => {
     const root = squealShaped({
+      ...SLOW_ONLY_E2E,
       "squeal.config.json": json({
         slow: { include: ["test/e2e"] },
         inputs: {
@@ -390,7 +392,10 @@ describe("a test glob over a node:test project's exclusions (review 005-42 B1)",
       expect(stderr, lister).toBe("");
       expect(code, lister).toBe(0);
       expect(JSON.parse(read(root, "squeal.config.json")).slow.include, lister).toEqual([EXCLUDED]);
-      expect(await main(["setup", "--check"], capture(root).io), lister).toBe(0);
+      // Row 005-70: cezarion's e2e group is an exclude candidate, so --check exits 1 for its key.
+      const check = capture(root);
+      await main(["setup", "--check"], check.io);
+      expect(check.out.stdout, lister).not.toContain("selects no test file");
     }
   });
 });

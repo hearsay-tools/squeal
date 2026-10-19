@@ -7,10 +7,11 @@ import { readRepoFacts } from "../../../src/cli/setup/repo.js";
 import { cezarionShaped, cleanupFixtures, harnessEnv, json, squealShaped } from "./fixture.js";
 
 /*
- * The build-output finders setup proposed as artifacts until task 004-81,
- * kept for row 005-70 (the wizard proposes the runner's `exclude`): on the
- * fixtures of `research/wave-0-checks.md` 7's two repositories, each slow
- * group's candidates with their evidence, as row 005-12 found them.
+ * Spec 005 D3 "Slow tests and build-output tests" step 2, the evidence row
+ * 005-70's exclude candidates come from: on the fixtures of
+ * `research/wave-0-checks.md` 7's two repositories, each slow group's
+ * candidates with their evidence, as row 005-12 found them, and since 005-70
+ * a tracked directory a gitignore rule names (`plugins/codex/dist`).
  */
 
 afterEach(cleanupFixtures);
@@ -23,7 +24,7 @@ async function candidates(root: string) {
 }
 
 describe("build-output candidates", () => {
-  it("this repository's shape: dist and plugins as siblings, only plugins named", async () => {
+  it("this repository's shape: dist and plugins as siblings, only plugins and its committed bundle named", async () => {
     expect(await candidates(squealShaped())).toEqual([
       {
         path: "dist",
@@ -52,6 +53,19 @@ describe("build-output candidates", () => {
           },
         ],
       },
+      {
+        path: "plugins/codex/dist",
+        exists: true,
+        ignored: true,
+        evidence: [
+          {
+            rule: "named",
+            detail:
+              'gitignored, named by 1 of 2 test files, such as "plugins/codex/dist/cli/squeal.mjs"',
+            weak: false,
+          },
+        ],
+      },
     ]);
   });
 
@@ -68,6 +82,7 @@ describe("build-output candidates", () => {
     expect(found.map((a) => [a.path, a.evidence.map((e) => e.rule)])).toEqual([
       ["dist", ["bin", "files", "build-script", "named"]],
       ["plugins", ["files", "named"]],
+      ["plugins/codex/dist", ["named"]],
     ]);
     expect(found[0]?.evidence.at(-1)?.detail).toBe(
       'gitignored, named by 1 of 2 test files, such as "../../dist/cli/squeal.mjs"',

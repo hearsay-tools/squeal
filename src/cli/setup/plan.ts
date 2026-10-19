@@ -7,6 +7,7 @@ import { type CodexHookTrust, readCodexTrust } from "../codex/trust.js";
 import { seedNodeTest } from "../node-test-seed.js";
 import { PLUGIN_ID } from "../plugin-id.js";
 import { BLOCK_VERSION, instructionFiles } from "./block.js";
+import type { BuildOutputCandidate } from "./build-outputs.js";
 import { slowCandidates } from "./candidates.js";
 import { scanGates, squealLine } from "./gates.js";
 import { type HarnessFact, readHarnesses } from "./harnesses.js";
@@ -71,7 +72,7 @@ export interface ConfigFact {
   /** What `loadPolicy` reports: unknown keys, wrong types, unreadable JSON. */
   readonly problems: readonly string[];
   /** Keys specs 002 to 005 added that the repository's evidence calls for and the file lacks. */
-  readonly missingKeys: readonly ("nodeTest" | "slow" | "pytest")[];
+  readonly missingKeys: readonly ("nodeTest" | "slow" | "pytest" | "vitest.exclude")[];
 }
 
 export interface InstructionFile {
@@ -117,7 +118,7 @@ export interface SlowFacts {
   readonly unresolvedScripts: readonly string[];
 }
 
-/** D3 "Slow tests and their inputs": test files of one directory, one question. */
+/** D3 "Slow tests and build-output tests": test files of one directory, one question. */
 export interface SlowGroup {
   readonly dir: string;
   readonly files: readonly string[];
@@ -129,6 +130,24 @@ export interface SlowGroup {
   readonly declaredSlow: boolean;
   /** The `inputs` globs that apply to the group's files. */
   readonly declaredInputs: readonly string[];
+  /**
+   * Row 005-70: the build outputs the group's tests name, gitignored or
+   * written by a build script, each with its evidence. Absent from older plans.
+   */
+  readonly buildOutputs?: readonly BuildOutputCandidate[];
+  /** Row 005-70: where the group goes when excluded; `null` without build-output evidence. */
+  readonly exclude?: ExcludeProposal | null;
+}
+
+/** D3 step 4: each runner's `exclude` an excluded group is written to. */
+export interface ExcludeProposal {
+  /** Worktree-relative, as `squeal setup --exclude` takes it. */
+  readonly glob: string;
+  /** A node:test project's glob is relative to its `cwd`, as its `exclude` takes it. */
+  readonly into: readonly (
+    | { readonly runner: "vitest"; readonly glob: string }
+    | { readonly runner: "nodeTest"; readonly project: string; readonly glob: string }
+  )[];
 }
 
 /**
@@ -183,12 +202,23 @@ export async function readPlan(
     problems,
     missingKeys: [
       ...(exists && runners.nodeTest.some((p) => p.source === "seed") ? ["nodeTest" as const] : []),
-      ...(exists && !(isRecord(raw) && "slow" in raw) && slow.groups.some((g) => g.defaultSlow)
+      // Row 005-70: an exclude candidate's default is the runner's `exclude`, not `slow`.
+      ...(exists &&
+      !(isRecord(raw) && "slow" in raw) &&
+      slow.groups.some((g) => g.defaultSlow && (g.exclude ?? null) === null)
         ? ["slow" as const]
         : []),
       // Spec 007 D1: only an absent key; init's default `pytest: []` is seeded over, not reported.
       ...(exists && !(isRecord(raw) && "pytest" in raw) && pytest.some((p) => p.source === "seed")
         ? ["pytest" as const]
+        : []),
+      // Row 005-70: an exclude candidate for Vitest not kept slow, and no `vitest.exclude`.
+      ...(exists &&
+      !(isRecord(raw) && isRecord(raw.vitest) && "exclude" in raw.vitest) &&
+      slow.groups.some(
+        (g) => !g.declaredSlow && g.exclude?.into.some((i) => i.runner === "vitest") === true,
+      )
+        ? ["vitest.exclude" as const]
         : []),
     ],
   };

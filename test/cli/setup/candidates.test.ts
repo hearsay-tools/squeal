@@ -8,14 +8,16 @@ import {
   cleanupFixtures,
   harnessEnv,
   json,
+  SLOW_ONLY_E2E,
   squealShaped,
 } from "./fixture.js";
 
 /*
- * Spec 005 D3, "Slow tests and their inputs", row 005-12: the candidates
- * match `research/wave-0-checks.md` 7's table on fixtures of its two
- * repositories. Task 004-81 (004 D5 as amended 2026-10-18): no artifact is
- * proposed, asked about or called outdated.
+ * Spec 005 D3, "Slow tests and build-output tests", row 005-12: the
+ * candidates match `research/wave-0-checks.md` 7's table on fixtures of its
+ * two repositories. Task 004-81 (004 D5 as amended 2026-10-18): no artifact
+ * is proposed, asked about or called outdated; row 005-70 proposes the
+ * runner's `exclude` instead (`exclude-proposal.test.ts`).
  */
 
 afterEach(cleanupFixtures);
@@ -23,10 +25,16 @@ afterEach(cleanupFixtures);
 const plan = (root: string) => buildPlan(root, { env: harnessEnv() });
 
 describe("this repository's shape", () => {
-  it("finds test/e2e exactly, with no artifact candidate", async () => {
+  it("finds test/e2e exactly, an exclude candidate and no artifact one", async () => {
     const root = squealShaped();
     const { slow } = await plan(root);
-    expect(slow).toEqual({
+    expect(slow.groups[0]?.buildOutputs?.map((o) => o.path)).toEqual(["plugins/codex/dist"]);
+    expect(slow.groups[0]?.exclude).toEqual({
+      glob: "test/e2e/**",
+      into: [{ runner: "vitest", glob: "test/e2e/**" }],
+    });
+    const { buildOutputs: _, exclude: __, ...group } = slow.groups[0] ?? {};
+    expect({ ...slow, groups: [group] }).toEqual({
       unresolvedScripts: [],
       groups: [
         {
@@ -51,12 +59,16 @@ describe("this repository's shape", () => {
     expect((await plan(root)).slow.groups.map((g) => g.dir)).toEqual(["test/e2e"]);
   });
 
-  it("names no artifact, and says the config lacks the slow key", async () => {
-    const root = squealShaped();
-    const { io, out } = capture(root);
-    expect(await main(["setup", "--check"], io)).toBe(1);
-    expect(out.stdout).not.toContain("artifact");
-    expect(out.stdout).toContain('Outdated:\n  squeal.config.json has no "slow" key\n');
+  it("names no artifact, and says the config lacks the slow key or, for an exclude candidate, vitest.exclude", async () => {
+    for (const [files, key] of [
+      [SLOW_ONLY_E2E, "slow"],
+      [{}, "vitest.exclude"],
+    ] as const) {
+      const { io, out } = capture(squealShaped(files));
+      expect(await main(["setup", "--check"], io)).toBe(1);
+      expect(out.stdout).not.toContain("artifact");
+      expect(out.stdout).toContain(`Outdated:\n  squeal.config.json has no "${key}" key\n`);
+    }
   });
 
   it("--check calls a declared slow group with no artifact input nothing outdated", async () => {

@@ -88,6 +88,16 @@ export function squealShaped(files: Readonly<Record<string, string>> = {}): stri
 }
 
 /**
+ * `squealShaped` e2e files that name no build output, so `test/e2e` is a slow
+ * candidate and not an exclude candidate (row 005-70): the plugin-copy test
+ * names `plugins/codex/dist`, which the `dist/` rule ignores though git tracks it.
+ */
+export const SLOW_ONLY_E2E: Readonly<Record<string, string>> = {
+  "test/e2e/plugin-copy.test.ts": `const a = "src/cli/index.ts";\n`,
+  "test/e2e/shipped-plugin.test.ts": "\n",
+};
+
+/**
  * Cezarion at `c07b0bf`, reduced: the same scripts, manifest fields and test
  * strings. `files` adds or replaces files, as `squealShaped` takes them.
  */

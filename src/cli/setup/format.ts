@@ -1,3 +1,4 @@
+import { excludeKeys } from "./exclude.js";
 import type { CodexTrust, SetupPlan } from "./plan.js";
 
 /** The plan for a human: one section per D3 step 2 fact, then what is outdated. */
@@ -75,9 +76,19 @@ export function formatPlan(plan: SetupPlan): string {
   lines.push("", "Slow groups:");
   if (plan.slow.groups.length === 0) lines.push("  none found");
   for (const group of plan.slow.groups) {
+    // Row 005-70: an exclude candidate's default is its runners' `exclude`, never slow.
+    const exclude = group.declaredSlow ? null : (group.exclude ?? null);
+    const byDefault =
+      exclude === null
+        ? `default ${group.defaultSlow ? "slow" : "not slow"}`
+        : `default excluded (${excludeKeys(exclude)})`;
     lines.push(
       `  ${group.dir} (${group.files.length} files): ${group.reasons.join("; ")}`,
-      `    ${group.declaredSlow ? "declared slow" : `not declared slow; default ${group.defaultSlow ? "slow" : "not slow"}`}; inputs: ${group.declaredInputs.join(", ") || "none"}`,
+      ...(group.buildOutputs ?? []).map(
+        (o) =>
+          `    tests build output ${o.path}${o.exists ? "" : " (not built here)"}: ${o.evidence.map((e) => e.detail).join("; ")}`,
+      ),
+      `    ${group.declaredSlow ? "declared slow" : `not declared slow; ${byDefault}`}; inputs: ${group.declaredInputs.join(", ") || "none"}`,
     );
   }
   for (const script of plan.slow.unresolvedScripts) {

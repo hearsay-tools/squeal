@@ -65,8 +65,10 @@ describe("the setup skill", () => {
   it("says an input is never build output nor what the suite's bootstrap rewrites", () => {
     expect(body).not.toContain("artifact");
     expect(body).toContain(
-      "Setup asks no input question: Squeal covers no test of a build output, which `vitest.exclude` names instead.",
+      "Setup asks no input question: Squeal covers no test of a build output, which goes in the runner's `exclude` instead; show the user the evidence the question names, and that Squeal never builds.",
     );
+    // Row 005-70: the exclude question has its flag.
+    expect(body).toContain("`--exclude <glob>` for each group answered yes");
     expect(body).toContain(
       "never a file the suite's own bootstrap rewrites on each run (an environment descriptor, a log, a PID file): declared, every boot re-runs the group.",
     );

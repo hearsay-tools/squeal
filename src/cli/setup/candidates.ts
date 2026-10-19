@@ -2,14 +2,17 @@ import { posix } from "node:path";
 import { globToRegExp } from "../../core/keys/glob.js";
 import type { Policy } from "../../core/types/index.js";
 import { parseTestScript } from "../node-test-seed.js";
+import { buildOutputCandidates, testsBuildOutput } from "./build-outputs.js";
+import { excludeInto } from "./exclude.js";
 import type { Runners, SlowFacts, SlowGroup } from "./plan.js";
 import { type Manifest, type RepoFacts, scriptsOf } from "./repo.js";
 
 /*
- * Spec 005 D3, "Slow tests and their inputs", step 1: slow candidates from
- * static evidence, grouped by directory. Checked against hand declarations in
- * `research/wave-0-checks.md` 7. No artifact is proposed (004 D5 as amended
- * 2026-10-18, task 004-81: Squeal covers no test of a build output).
+ * Spec 005 D3, "Slow tests and build-output tests", steps 1 and 2: slow
+ * candidates from static evidence, grouped by directory, checked against hand
+ * declarations in `research/wave-0-checks.md` 7. A group whose tests name a
+ * build output is an exclude candidate (row 005-70): Squeal covers no test of
+ * a build output (004 goal 8), so no artifact is proposed as an input.
  */
 
 /** The npm scripts whose test files are slow candidates (D3 step 1). */
@@ -63,6 +66,7 @@ export async function slowCandidates(
   for (const [dir, files] of byDir) {
     const why = [...new Set(files.flatMap((f) => [...(reasons.get(f) ?? [])]))];
     const declaredInputs = inputsFor(policy, files);
+    const buildOutputs = (await buildOutputCandidates(facts, dir, files)).filter(testsBuildOutput);
     groups.push({
       dir,
       files,
@@ -71,6 +75,16 @@ export async function slowCandidates(
       defaultSlow: why.some((r) => !r.startsWith(NODE_TEST)),
       declaredSlow: files.some(isDeclared),
       declaredInputs,
+      buildOutputs,
+      exclude:
+        buildOutputs.length === 0
+          ? null
+          : {
+              glob: dir === "" ? "**" : `${dir}/**`,
+              into: excludeInto(runners, dir === "" ? "**" : `${dir}/**`, files, (f) =>
+                facts.testFiles.paths.includes(f),
+              ),
+            },
     });
   }
   return { groups, unresolvedScripts };
