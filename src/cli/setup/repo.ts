@@ -1,7 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, posix } from "node:path";
+import { loadPolicy } from "../../core/daemon/policy.js";
 import { isRecord, runGit, splitNul, worktreeIdFor } from "../../core/fs/index.js";
-import { globToRegExp } from "../../core/keys/glob.js";
+import { createInputMatcher, globToRegExp } from "../../core/keys/glob.js";
 import { withStatusStore } from "../../core/status/index.js";
 import type { AbsolutePath } from "../../core/types/index.js";
 import { readVerdict } from "../verdict.js";
@@ -152,9 +153,12 @@ function listTestFiles(root: AbsolutePath, tracked: readonly string[]): TestFile
   const exclude = config == null ? [] : stringArrays(config, "exclude");
   const included = matcher(include.length > 0 ? include : DEFAULT_INCLUDE);
   const excluded = matcher([...exclude, ...DEFAULT_EXCLUDE]);
+  // Policy `vitest.exclude` drops files as the adapter does (task 004-81); the store's rows
+  // already lack them.
+  const notCovered = createInputMatcher(loadPolicy(root).policy.vitest.exclude);
   return {
     source: include.length > 0 ? "config-text" : "default",
-    paths: tracked.filter((path) => included(path) && !excluded(path)),
+    paths: tracked.filter((path) => included(path) && !excluded(path) && !notCovered(path)),
     current: null,
   };
 }

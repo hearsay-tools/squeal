@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { main } from "../../../src/cli/main.js";
-import type { SetupPlan } from "../../../src/cli/setup/plan.js";
-import { capture, cleanupFixtures, json, squealShaped } from "./fixture.js";
+import { readPlan, type SetupPlan } from "../../../src/cli/setup/plan.js";
+import type { AbsolutePath } from "../../../src/core/types/index.js";
+import { capture, cleanupFixtures, harnessEnv, json, squealShaped } from "./fixture.js";
 
 /*
  * Spec 004 D7 as amended 2026-10-18 (task 004-81): `squeal setup --plan` and
@@ -30,6 +31,40 @@ describe("squeal setup names the excluded Vitest test files", () => {
     );
     expect(stdout).not.toContain("problem:");
     expect(plan.outdated.join("\n")).not.toContain("exclude");
+  });
+
+  it("lists and counts no excluded file before a daemon has listed any (review wave-12 B1)", async () => {
+    const root = squealShaped({
+      "squeal.config.json": json({ vitest: { exclude: ["test/e2e/**"] } }),
+    });
+    const plan = JSON.parse((await check(root, true)).stdout) as SetupPlan;
+    expect(plan.warmup.source).not.toBe("store");
+    expect(plan.warmup.testFiles).toBe(1);
+    expect(JSON.stringify(plan.slow)).not.toContain("test/e2e");
+    expect(plan.outdated.join("\n")).not.toContain("test/e2e");
+    expect(plan.outdated.join("\n")).not.toContain('no "slow" key');
+    const { stdout } = await check(root, false);
+    expect(stdout).not.toContain("Run these tests in the slow tier?");
+    expect(stdout).toContain("runs all 1 test file");
+  });
+
+  it("counts none when every Vitest file is excluded", async () => {
+    const root = squealShaped({ "squeal.config.json": json({ vitest: { exclude: ["**"] } }) });
+    const plan = JSON.parse((await check(root, true)).stdout) as SetupPlan;
+    expect(plan.warmup.testFiles).toBe(0);
+    expect(plan.slow.groups).toEqual([]);
+  });
+
+  it("keeps a node:test project's files a Vitest-only exclusion also matches", async () => {
+    const root = squealShaped({
+      "squeal.config.json": json({
+        vitest: { exclude: ["test/e2e/**"] },
+        nodeTest: [{ name: "e2e", include: ["test/e2e/*.test.ts"] }],
+      }),
+    });
+    const { testFiles } = await readPlan(root as AbsolutePath, { env: harnessEnv() });
+    expect(testFiles).toContain("test/e2e/plugin-copy.test.ts");
+    expect(testFiles).toContain("test/cli/main.test.ts");
   });
 
   it("has no section without the key", async () => {
