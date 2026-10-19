@@ -118,18 +118,22 @@ export class SlowRanker {
     return out;
   }
 
-  /** Tokens the changed files and their `./` and `../` imports offer, each read once. */
+  /**
+   * Tokens the changed files and their `./` and `../` imports offer, each
+   * read once. A changed file read first as another's import still has its
+   * own imports inspected (review wave-13 S1), whatever the order.
+   */
   #offered(paths: readonly RelativePath[]): Set<string> {
     const tokens = new Set<string>();
-    const read = new Set<RelativePath>();
+    const texts = new Map<RelativePath, string | null>();
     const take = (path: RelativePath): string | null => {
-      if (read.has(path)) return null;
-      read.add(path);
+      if (texts.has(path)) return texts.get(path) ?? null;
       const text = this.source.read(path);
+      texts.set(path, text);
       if (text !== null) for (const token of offeredTokens(text)) tokens.add(token);
       return text;
     };
-    for (const path of paths) {
+    for (const path of new Set(paths)) {
       const text = take(path);
       if (text === null) continue;
       for (const imported of this.#resolve(path, localSpecifiers(text, true))) take(imported);
