@@ -22,6 +22,8 @@ Slice: a backlog tier fills one round, then 120 s of estimated wall time (spec 0
 | 6 | `backlog-wall.test.ts` "still takes 200 light files a tier…" | yes: today 200, 195, 129, 76 (600 files of 0.1 to 3 s sum past 300 s serially) |
 | 7 | `test/scheduler/backlog-wall-latency.test.ts`: real node:test through the daemon's runner, `timeoutMs` 8 s so B = 4 s, eight files sleeping 1.2 to 2.4 s; measured a tier of 6 files and the edit current after 3.5 s against a 7 s bound, load 9.9 on 24 | partly: the latency bound holds on main too (tighter serial budget); the tier of ≥ 4 files (one round) fails on main |
 
+Retired: `backlog-tiers.test.ts` "caps a backlog tier at half of runner.timeoutMs of last known file time" asserted the serial rule (9 files of 300 ms, at most 3 a tier); `backlog-wall.test.ts` "caps the wall estimate at half of runner.timeoutMs…" replaces it (16 files of 1 s, 4 wide, a 4 s timeout: tiers of 5, 5, 5, 1).
+
 The Vitest half of 7 (an edit cancels a backlog tier within its graces) is `backlog-tiers.test.ts`'s existing cancel test; without a pool its 200 files still fit one tier under the new rule, so it still exercises a 200-file cancel. Not duplicated.
 
 `test/scheduler/wall-fixture.ts`: a lone daemon over a real store and a real pool directory with a fake runner whose results report fixed durations and whose runs end at once; `backlog()` is the baseline then `requestFullSuite({ force: true })`. `spread(n, from, to)` interleaves with `i * 7 mod n`, a permutation only when 7 does not divide n.

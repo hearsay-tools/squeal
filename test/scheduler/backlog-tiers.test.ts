@@ -169,35 +169,4 @@ describe("scheduler: backlog work runs in machine-wide tiers (D5, defect 25)", (
       rmSync(mark, { force: true });
     }
   });
-
-  it("caps a backlog tier at half of runner.timeoutMs of last known file time", {
-    timeout: 120_000,
-  }, async () => {
-    const repo = suite(9, 300);
-    const store = openRepoStore(repo.commonDir);
-    const first = await openHarness(repo.main, store, repo.commonDir, {
-      tierSize: 4,
-      backlogTierSize: 200,
-    });
-    await first.scheduler.start();
-    await first.scheduler.idle();
-    expect(first.runner.runs).toHaveLength(1);
-    await first.scheduler.close();
-    await first.runner.close();
-
-    // Durations are known now; the budget is 1,200 ms of them, about three files.
-    const h = await openHarness(repo.main, store, repo.commonDir, {
-      tierSize: 4,
-      backlogTierSize: 200,
-      timeoutMs: 2_400,
-    });
-    await h.scheduler.start();
-    await h.scheduler.idle();
-    await h.scheduler.requestFullSuite({ force: true });
-    await h.scheduler.idle();
-    const sizes = h.runner.runs.map((r) => r.files.length);
-    expect(sizes.reduce((a, b) => a + b, 0)).toBe(9);
-    expect(sizes.length).toBeGreaterThanOrEqual(3);
-    expect(Math.max(...sizes)).toBeLessThanOrEqual(3);
-  });
 });
