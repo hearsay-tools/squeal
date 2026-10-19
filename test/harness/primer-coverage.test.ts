@@ -185,15 +185,17 @@ describe("the slow sentence by harness (spec 004 D8, D9)", () => {
   /*
    * Row 004-80 (D8 as amended 2026-10-18): the primer says when slow files
    * run by `slow.trigger`: after the fast tests by default, when the agent
-   * pauses under `"idle"`, under either policy and both harnesses.
+   * pauses under `"idle"`, under either policy and both harnesses. Row
+   * 004-83: "between your turns", ten characters shorter, so the fold keeps
+   * the CLI named at the wait with the wait named in the slow sentence.
    */
   it.each(["squeal", CODEX])("says when slow files run by slow.trigger, under %s", (command) => {
     for (const base of [slow.slow, required.slow]) {
       const continuous = primer(command, { ...slow, slow: base });
       const idle = primer(command, { ...slow, slow: { ...base, pausesOnly: true } });
       expect(continuous).toContain("Slow test files run after the fast tests; this repository");
-      expect(continuous).not.toContain("pause between turns");
-      expect(idle).toContain("Slow test files run when you pause between turns; this repository");
+      expect(continuous).not.toContain("between your turns");
+      expect(idle).toContain("Slow test files run between your turns; this repository");
       expect(idle.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
     }
   });
@@ -219,7 +221,7 @@ describe("the slow sentence by harness (spec 004 D8, D9)", () => {
             ? `\`${command} run --slow --wait 60000\``
             : "the CLI's `run --slow --wait 60000`";
         expect(text).toContain(
-          `Slow test files run after the fast tests; this repository does not require them before you finish: say slow tests pass only when the latest \`Slow tier:\` line states every slow file is current, else say how many are not; ${run} runs them now.`,
+          `Slow test files run after the fast tests; this repository does not require them before you finish: say slow tests pass only when the latest \`Slow tier:\` line states every slow file is current, else say how many are not, or wait for them with ${run}.`,
         );
         expect(text).not.toContain("before you say the task is done");
         expect(text).not.toContain("Stop");
@@ -242,7 +244,7 @@ describe("the slow sentence by harness (spec 004 D8, D9)", () => {
           ? `\`${command} run --slow --wait 60000\``
           : "the CLI's `run --slow --wait 60000`";
       expect(text).toContain(
-        `Slow test files run after the fast tests; this repository requires them once you change a file: before you say the task is done, run ${run} unless the latest \`Slow tier:\` line says every slow file is current; Stop waits or holds you once.`,
+        `Slow test files run after the fast tests; this repository requires them once you change a file: before you say the task is done, wait with ${run} unless the latest \`Slow tier:\` line says every slow file is current; Stop waits or holds you once.`,
       );
       expect(text.indexOf("run --slow --wait")).toBeGreaterThan(text.indexOf("status --wait"));
       expect(text).not.toContain("does not require");

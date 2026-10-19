@@ -60,7 +60,8 @@ describe("the primer states the slow-suite policy, in every harness (004-62)", (
     expect(text).toContain(
       "say slow tests pass only when the latest `Slow tier:` line states every slow file is current, else say how many are not;",
     );
-    expect(text).toContain("run --slow --wait 60000` runs them now.");
+    expect(text).toContain(", or wait for them with ");
+    expect(text).toContain("run --slow --wait 60000`.");
     expect(text).not.toContain("before you say the task is done");
     expect(text).not.toContain("Stop");
     expect(text.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
@@ -71,7 +72,7 @@ describe("the primer states the slow-suite policy, in every harness (004-62)", (
     async (harness) => {
       const text = await primerUnder(harness, true);
       expect(text).toContain(
-        "this repository requires them once you change a file: before you say the task is done, run ",
+        "this repository requires them once you change a file: before you say the task is done, wait with ",
       );
       expect(text).toContain(
         "run --slow --wait 60000` unless the latest `Slow tier:` line says every slow file is current; Stop waits or holds you once.",
@@ -94,7 +95,7 @@ describe("the primer states the slow-suite policy, in every harness (004-62)", (
       const end = text.indexOf("holds you once.", start) + "holds you once.".length;
       const sentence = text.slice(start, end);
       const run = sentence.slice(
-        sentence.indexOf(", run ") + ", run ".length,
+        sentence.indexOf(", wait with ") + ", wait with ".length,
         sentence.indexOf(" unless "),
       );
       expect(sentence.length).toBeLessThanOrEqual(

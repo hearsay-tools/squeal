@@ -106,7 +106,12 @@ describe.each(HARNESSES)("Stop with slow files pending, $name (spec 004 D9)", (h
     };
     const isSlow = slowFiles(policy, policy.nodeTest);
     const header = readHeader(r.store, r.worktreeId, undefined, undefined, isSlow);
-    expect(header.slowPending).toEqual({ testFiles: 1, checks: 0, testFilesWithoutChecks: 1 });
+    expect(header.slowPending).toEqual({
+      testFiles: 1,
+      checks: 0,
+      testFilesWithoutChecks: 1,
+      files: [SLOW_FILE],
+    });
     expect(isFastPending(header)).toBe(true);
     // The fast file's run lands while Stop waits.
     const ran = setTimeout(() => r.apply(r.pass()), 300);
