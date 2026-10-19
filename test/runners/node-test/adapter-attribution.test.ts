@@ -166,9 +166,39 @@ describe("a test that spawns the package's CLI (spec 004 D5)", () => {
       "lib/helper.mjs",
     );
     expect(await affected(adapter, "lib/helper.mjs")).toEqual([]);
-    expect(notes.filter((n) => n.includes("inputs"))).toEqual([
-      `node-test project "p": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: ${FILE}`,
-    ]);
+    expect(notes.filter((n) => n.includes("inputs"))).toEqual([bareNote(FILE)]);
+  });
+});
+
+const bareNote = (files: string) =>
+  `node-test project "p": ${files.split(", ").length} test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: ${files}`;
+
+// Row 001-365 (005 lessons.md proposed row 3, gh-37): a bare file whose declared `inputs` cover it
+// is not named, with no wording of its own, since a declaration does not prove every read is.
+describe("a bare file's declared inputs (row 001-365)", () => {
+  const BARE = `${TEST}test("bare", () => {});\n`;
+  const [A, B] = ["test/a.test.mjs", "test/b.test.mjs"] as const;
+  it.each([
+    { name: "a map entry for one file", inputs: { "test/a.*": ["fixtures/**"] }, named: B },
+    { name: "a map entry with no input glob", inputs: { "test/a.*": [] }, named: `${A}, ${B}` },
+    { name: "an empty list", inputs: [], named: `${A}, ${B}` },
+    { name: "a list", inputs: ["fixtures/**"], named: null },
+  ])("$name: names only the files no declaration covers", SLOW, async ({ inputs, named }) => {
+    const root = repo(`declared-${randomUUID()}`, {
+      "package.json": `${JSON.stringify({ name: "bare", private: true, type: "module" })}\n`,
+      [A]: BARE,
+      [B]: BARE,
+    });
+    const notes: string[] = [];
+    const adapter = await createNodeTestAdapter(project({}), {
+      root,
+      note: (text) => notes.push(text),
+      inputs: () => inputs,
+    });
+    await ran(adapter, A, B);
+    expect(notes.filter((n) => n.includes("inputs"))).toEqual(
+      named === null ? [] : [bareNote(named)],
+    );
   });
 });
 

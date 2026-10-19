@@ -1,9 +1,12 @@
 import { basename, join } from "node:path";
 import { compare, sameList, toAbsolute } from "../../core/fs/index.js";
+import { isInputList } from "../../core/keys/closure.js";
+import { createInputMatcher } from "../../core/keys/glob.js";
 import {
   type AbsolutePath,
   isSlowLane,
   type NodeTestProject,
+  type PolicyInputs,
   type RelativePath,
   type RunnerAdapter,
   type RunReport,
@@ -171,7 +174,7 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
       });
       const report = reads === undefined ? ran : { ...ran, reads };
       const preloaded = observed.record(seen, new Set(files));
-      const named = bareNote(seen, bare);
+      const named = bareNote(seen, bare, declaresInputs(options.inputs?.() ?? []));
       if (named !== null) note(named);
       if (preloaded.length === 0) return report;
       return { ...report, environmentObserved: [{ project: project.name, paths: preloaded }] };
@@ -230,18 +233,37 @@ function loaderThreadNotes(project: NodeTestProject): string[] {
  * Lessons.md defect 6: test files whose run loaded nothing beyond themselves
  * and a manifest, each named once (`named`), so their author can declare
  * what they reach through a spawned process or a `readFileSync` in
- * `inputs`. `null` when this run found none not named before.
+ * `inputs`. A file `declared` already has inputs for is left out, silently
+ * (task 001-365): its declaration is not proof that every read is covered.
+ * `null` when this run found none not named before.
  */
-function bareNote(seen: readonly ObservedClosure[], named: Set<RelativePath>): string | null {
+function bareNote(
+  seen: readonly ObservedClosure[],
+  named: Set<RelativePath>,
+  declared: (testFile: RelativePath) => boolean,
+): string | null {
   const found = seen
     .filter(({ testFile, paths }) =>
       paths.every((p) => p === testFile.path || MANIFEST.test(basename(p))),
     )
     .map((c) => c.testFile.path)
-    .filter((path) => !named.has(path));
+    .filter((path) => !named.has(path) && !declared(path));
   if (found.length === 0) return null;
   for (const path of found) named.add(path);
   return `${found.length} test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: ${found.sort(compare).join(", ")}`;
+}
+
+/**
+ * Whether policy `inputs` declare an input glob for a test file: a list
+ * applies to every test file, a map entry to those its test-file glob
+ * matches (001 D11 as amended). An entry whose globs select no file is the
+ * scheduler's unmatched-inputs note, not this one's.
+ */
+function declaresInputs(inputs: PolicyInputs): (testFile: RelativePath) => boolean {
+  if (isInputList(inputs)) return () => inputs.length > 0;
+  return createInputMatcher(
+    Object.entries(inputs).flatMap(([testGlob, globs]) => (globs.length > 0 ? [testGlob] : [])),
+  );
 }
 
 /** A run of a project that cannot run: nothing completed (001 D12). */
