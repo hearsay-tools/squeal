@@ -1,0 +1,203 @@
+{
+  "proto": false,
+  "editAt": -1,
+  "forcedWallS": 829.984,
+  "editDelayS": {
+    "vitest": null,
+    "node-test": null
+  },
+  "log": [
+    {
+      "what": "start",
+      "at": -250.236,
+      "load": "4.89"
+    },
+    {
+      "what": "baseline done exit 0",
+      "at": 0,
+      "load": "2.86"
+    },
+    {
+      "what": "force",
+      "at": 0,
+      "load": "2.86"
+    },
+    {
+      "what": "forced done exit 0",
+      "at": 829.984,
+      "load": "4.66"
+    }
+  ],
+  "checkpointOutput": "ery current result here was run in this worktree)\nClosure method: static imports plus declared inputs\nStore schema: 1\nNotes:\n  no revision recorded for this worktree yet\n  2026-10-19T13:54:46.046Z, revision 0: node-test project \"heavy-node\": 8 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: node/heavy-0.test.mjs, node/heavy-1.test.mjs, node/heavy-2.test.mjs, node/heavy-3.test.mjs, node/heavy-4.test.mjs, node/heavy-5.test.mjs, node/heavy-6.test.mjs, node/heavy-7.test.mjs\n",
+  "runs": [
+    {
+      "lane": "vitest",
+      "start": -249.482,
+      "end": -98.969,
+      "wall": 150.513,
+      "state": "completed",
+      "files": [
+        "test/heavy-00.test.ts",
+        "test/heavy-01.test.ts",
+        "test/heavy-02.test.ts",
+        "test/heavy-03.test.ts",
+        "test/heavy-04.test.ts",
+        "test/heavy-05.test.ts",
+        "test/heavy-06.test.ts",
+        "test/heavy-07.test.ts",
+        "test/heavy-08.test.ts",
+        "test/heavy-09.test.ts",
+        "test/heavy-10.test.ts",
+        "test/heavy-11.test.ts",
+        "test/heavy-12.test.ts",
+        "test/heavy-13.test.ts",
+        "test/heavy-14.test.ts",
+        "test/heavy-15.test.ts",
+        "test/quick.test.ts"
+      ]
+    },
+    {
+      "lane": "node-test",
+      "start": -249.451,
+      "end": -0.097,
+      "wall": 249.354,
+      "state": "completed",
+      "files": [
+        "node/heavy-0.test.mjs",
+        "node/heavy-1.test.mjs",
+        "node/heavy-2.test.mjs",
+        "node/heavy-3.test.mjs",
+        "node/heavy-4.test.mjs",
+        "node/heavy-5.test.mjs",
+        "node/heavy-6.test.mjs",
+        "node/heavy-7.test.mjs",
+        "node/quick.test.mjs"
+      ]
+    },
+    {
+      "lane": "vitest",
+      "start": 0.093,
+      "end": 78.397,
+      "wall": 78.304,
+      "state": "completed",
+      "files": [
+        "test/quick.test.ts",
+        "test/heavy-00.test.ts",
+        "test/heavy-01.test.ts",
+        "test/heavy-02.test.ts",
+        "test/heavy-03.test.ts"
+      ]
+    },
+    {
+      "lane": "node-test",
+      "start": 0.107,
+      "end": 86.265,
+      "wall": 86.158,
+      "state": "completed",
+      "files": [
+        "node/quick.test.mjs",
+        "node/heavy-0.test.mjs",
+        "node/heavy-1.test.mjs",
+        "node/heavy-2.test.mjs"
+      ]
+    },
+    {
+      "lane": "vitest",
+      "start": 78.409,
+      "end": 174.661,
+      "wall": 96.252,
+      "state": "completed",
+      "files": [
+        "test/heavy-04.test.ts",
+        "test/heavy-05.test.ts",
+        "test/heavy-06.test.ts"
+      ]
+    },
+    {
+      "lane": "node-test",
+      "start": 86.277,
+      "end": 197.403,
+      "wall": 111.126,
+      "state": "completed",
+      "files": [
+        "node/heavy-3.test.mjs",
+        "node/heavy-4.test.mjs"
+      ]
+    },
+    {
+      "lane": "vitest",
+      "start": 174.673,
+      "end": 282.871,
+      "wall": 108.198,
+      "state": "completed",
+      "files": [
+        "test/heavy-07.test.ts",
+        "test/heavy-08.test.ts"
+      ]
+    },
+    {
+      "lane": "node-test",
+      "start": 197.416,
+      "end": 334.574,
+      "wall": 137.158,
+      "state": "completed",
+      "files": [
+        "node/heavy-5.test.mjs",
+        "node/heavy-6.test.mjs"
+      ]
+    },
+    {
+      "lane": "vitest",
+      "start": 282.879,
+      "end": 403.112,
+      "wall": 120.233,
+      "state": "completed",
+      "files": [
+        "test/heavy-09.test.ts",
+        "test/heavy-10.test.ts"
+      ]
+    },
+    {
+      "lane": "node-test",
+      "start": 334.583,
+      "end": 484.74,
+      "wall": 150.157,
+      "state": "completed",
+      "files": [
+        "node/heavy-7.test.mjs"
+      ]
+    },
+    {
+      "lane": "vitest",
+      "start": 403.129,
+      "end": 535.311,
+      "wall": 132.182,
+      "state": "completed",
+      "files": [
+        "test/heavy-11.test.ts",
+        "test/heavy-12.test.ts"
+      ]
+    },
+    {
+      "lane": "vitest",
+      "start": 535.319,
+      "end": 679.577,
+      "wall": 144.258,
+      "state": "completed",
+      "files": [
+        "test/heavy-13.test.ts",
+        "test/heavy-14.test.ts"
+      ]
+    },
+    {
+      "lane": "vitest",
+      "start": 679.583,
+      "end": 829.76,
+      "wall": 150.177,
+      "state": "completed",
+      "files": [
+        "test/heavy-15.test.ts"
+      ]
+    }
+  ]
+}
