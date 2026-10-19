@@ -42,4 +42,47 @@ No guarded source changed: `KEY_FORMAT_VERSION` stays 13.
 
 ## Verification
 
-See below: lint, typecheck, and `squeal run --all --wait`.
+- `npm run lint`: `Checked 1443 files in 509ms. No fixes applied.`
+- `npm run typecheck` (`tsc --noEmit`): exit 0, no output.
+- `npm run build`: not run (the brief says no build); hence the four bundle-drift failures below.
+- `npx vitest run test/cli/setup test/harness/setup-skill.test.ts test/cli/init-node-test.test.ts`: 171 passed.
+- `npx vitest run test/runners/node-test/run-reads-fidelity.test.ts test/runners/vitest/observe-fidelity.test.ts`, alone at a load average of 22: 5 passed. In the checkpoint both failed under load (load average 22 to 29 at the time). `squeal retry --reason load` was queued for both after it; `squeal status` still listed them as failures when these notes were written.
+
+`squeal run --all --wait` at HEAD `3640132d` (the checkpoint joined the one started at revision 34; the files changed in between were the version-sensitive exemption and these notes), exit 1:
+
+```
+Checkpoint 322d2bc7-7690-4d11-9312-698653e5f78f completed at revision 36: 6 known failures: 6 tests; 725 test files, 86 already current, 639 run by the `run --all` checkpoint cd0342da-6c93-4c2f-85f8-60ac7dee2ba0 it joined
+Checkpoint 322d2bc7-7690-4d11-9312-698653e5f78f started at revision 36: 85 test files to run, 640 already current, joining the `run --all` checkpoint cd0342da-6c93-4c2f-85f8-60ac7dee2ba0 already running them (554 of 639 test files done); it ends when that one ends
+
+Revision: 36 · 3640132d + 0
+Known failures: 6 (6 tests)
+  FAIL  test/harness/codex/plugin.test.ts > committed Codex plugin > has the bundles exactly as `npm run build:plugin` produces them
+        cli/squeal.mjs differs from the build: expected false to be true // Object.is equality; diff (- Expected, + Received): - true | + false
+        at test/harness/bundle-helpers.ts:122:52, observed at revision 34, current
+        recorded 11 min ago in this worktree at revision 34, load 1.06 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/harness/opencode/package.test.ts > the OpenCode package > has the bundles exactly as `npm run build:plugin` produces them
+        cli/squeal.mjs differs from the build: expected false to be true // Object.is equality; diff (- Expected, + Received): - true | + false
+        at test/harness/bundle-helpers.ts:122:52, observed at revision 34, current
+        recorded 11 min ago in this worktree at revision 34, load 0.72 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/harness/pi/package.test.ts > the Pi package > has the bundles exactly as `npm run build:plugin` produces them
+        cli/squeal.mjs differs from the build: expected false to be true // Object.is equality; diff (- Expected, + Received): - true | + false
+        at test/harness/bundle-helpers.ts:122:52, observed at revision 34, current
+        recorded 1 min ago in this worktree at revision 34, load 1.18 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/harness/plugin.test.ts > bundles > are committed exactly as `npm run build` produces them
+        cli/squeal.mjs differs from the build: expected false to be true // Object.is equality; diff (- Expected, + Received): - true | + false
+        at test/harness/bundle-helpers.ts:122:52, observed at revision 34, current
+        recorded 3 min ago in this worktree at revision 34, load 1.75 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/runners/node-test/run-reads-fidelity.test.ts > a node:test warm-up's recorder a test cannot tell is there (task 001-390) > names the recorder in a failure with its signature while it is in NODE_OPTIONS
+        expected [ [ 'fail', undefined ] ] to deeply equal [ [ 'pass', undefined ] ]; diff (- Expected, + Received): - "pass", | + "fail",
+        at test/runners/node-test/run-reads-fidelity.test.ts:116:30, observed at revision 34, current
+        recorded 2 min ago in this worktree at revision 34, load 1.42 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/runners/vitest/observe-fidelity.test.ts > vitest adapter: a recorder a test cannot tell is there (task 001-390) > names the recorder in a failure with its signature, and only under it
+        expected [ [ 'fail', undefined, false ], …(1) ] to deeply equal [ [ 'pass', undefined, false ], …(1) ]; diff (- Expected, + Received): - "pass", | + "fail",
+        at test/runners/vitest/observe-fidelity.test.ts:119:37, observed at revision 34, current
+        recorded at an unknown time and load: the result that produced it is no longer identifiable in the store
+Affected checks: 6911 passed (6186 tests, 725 test files loaded), 0 running, 0 queued, 10 skipped (10 tests)
+Full-suite checkpoint: completed at revision 36
+exit 1
+```
+
+Known failures, all six outside this row's code: the four bundle-drift tests (no `npm run build` by the brief) and the two fidelity tests that fail under load and pass alone.
