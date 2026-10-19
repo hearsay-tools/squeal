@@ -46,5 +46,11 @@ export {
   slowPolicyView,
   worktreeSlowView,
 } from "./slow.js";
-export { clockText, durationText, slowTierText } from "./slow-text.js";
+export {
+  clockText,
+  durationText,
+  slowAffectedText,
+  slowTierText,
+  slowWaitText,
+} from "./slow-text.js";
 export { type Observation, transitionKind } from "./transitions.js";
