@@ -74,6 +74,8 @@ describe("loadPolicy (spec 001 D11)", () => {
         maxDeferMs: 600_000,
         maxParallel: 4,
         rank: "tokens",
+        trigger: "continuous",
+        quietMs: 3_000,
       },
       delivery: { uncoveredEdits: false },
       daemon: { idleExitMinutes: 0.5, unusedExitMinutes: 10 },
@@ -118,6 +120,21 @@ describe("loadPolicy (spec 001 D11)", () => {
       '"daemon.idleExitMinutes" must be a number > 0, got 0',
     ]);
     expect(problems('{"runner": 4}')).toEqual(['"runner" must be an object, got 4']);
+  });
+
+  /* Spec 004 D7 as amended 2026-10-18 (row 004-80): `slow.trigger` and `slow.quietMs`. */
+  it("reads slow.trigger and slow.quietMs, and reports a wrong value of either", () => {
+    const { policy, problems: none } = loadPolicy(
+      rootWith('{"slow": {"trigger": "idle", "quietMs": 0}}'),
+    );
+    expect(none).toEqual([]);
+    expect(policy.slow).toMatchObject({ trigger: "idle", quietMs: 0 });
+    expect(problems('{"slow": {"trigger": "pause"}}')).toEqual([
+      '"slow.trigger" must be one of "continuous", "idle", got "pause"',
+    ]);
+    expect(problems('{"slow": {"quietMs": -1}}')).toEqual([
+      '"slow.quietMs" must be a number >= 0, got -1',
+    ]);
   });
 
   it("accepts inputs as a map from test-file glob to input globs (D11 as amended)", () => {
