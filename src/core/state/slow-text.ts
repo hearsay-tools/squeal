@@ -1,5 +1,6 @@
 import { plural } from "../text.js";
 import type {
+  SlowPendingCounts,
   SlowTierActivity,
   SlowTierState,
   SlowTierWait,
@@ -79,7 +80,8 @@ function currentText(tier: SlowTierState): string {
  * The slow-tier line, or `null` when the header has no slow tier. The
  * daemon's activity is the one the JSON carries, kept when no daemon is
  * validating (lessons defect 8c). It ends with what Squeal or Stop does
- * about the slow files (`stopText`). `command` is how the text names the CLI.
+ * about the slow files (`stopText`), then the wait for those not current
+ * (`slowWaitText`). `command` is how the text names the CLI.
  */
 export function slowTierText(header: StatusHeader, command: string): string | null {
   const tier = header.slowTier;
@@ -91,11 +93,49 @@ export function slowTierText(header: StatusHeader, command: string): string | nu
     parts.push(pendingText(tier.pending, tier.activity, header.daemon?.state === "down"));
   }
   if (tier.notRun > 0) parts.push(`${tier.notRun} not run at revision ${header.revision}`);
-  const runs = tier.current >= tier.testFiles ? "" : `; \`${command} run --slow\` runs them now`;
+  const open = tier.testFiles - tier.current;
+  const runs = open <= 0 ? "" : `; ${slowWaitText(command, open)}`;
   return (
     `Slow tier: ${plural(tier.testFiles, "test file")}; ${parts.join("; ")}. ` +
     `${capitalized(stopText(tier))}${runs}.`
   );
+}
+
+/**
+ * Spec 004 D8 as amended 2026-10-19 (row 004-83): every text that names
+ * `open` slow files not current names the one wait for their results, under
+ * both policies. `run --slow --wait` queues those not queued and joins a run
+ * already going, so it reads as a wait, not as a second run.
+ */
+export function slowWaitText(command: string, open: number): string {
+  return `\`${command} run --slow --wait 60000\` waits for ${open === 1 ? "its result" : "their results"}`;
+}
+
+/**
+ * Row 004-83 (D8 as amended 2026-10-19): the `Affected checks` line names
+ * the slow files among its running and queued work, a few by path and the
+ * rest by count, and the wait for them; `""` with none pending.
+ */
+export function slowAffectedText(slow: SlowPendingCounts | undefined, command: string): string {
+  const n = slow?.testFiles ?? 0;
+  if (slow === undefined || n === 0) return "";
+  const shown = (slow.files ?? []).map(({ project, path }) =>
+    project === "" ? path : `${project}: ${path}`,
+  );
+  const rest = n - shown.length;
+  const named =
+    shown.length === 0
+      ? ""
+      : rest > 0
+        ? ` ${shown.join(", ")} and ${rest} more`
+        : ` ${listed(shown)}`;
+  return `; among them ${plural(n, "slow test file")}${named === "" ? "" : `,${named}`}: ${slowWaitText(command, n)}`;
+}
+
+/** `a`, `a and b`, `a, b and c`. */
+function listed(names: readonly string[]): string {
+  const last = names.at(-1) ?? "";
+  return names.length < 2 ? last : `${names.slice(0, -1).join(", ")} and ${last}`;
 }
 
 /**

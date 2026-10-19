@@ -210,6 +210,9 @@ function countFilesWithoutChecks(
   return counts;
 }
 
+/** How many pending slow files the `Affected checks` line names before counting the rest. */
+const SLOW_FILES_NAMED = 3;
+
 /** The pending work of the slow test files, counted as `readHeader` counts all of it. */
 function countSlowPending(
   states: readonly KnownState[],
@@ -217,12 +220,13 @@ function countSlowPending(
   isSlow: (testFile: TestFileRef) => boolean,
 ): SlowPendingCounts {
   const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
-  const files = new Set<string>();
+  const files = new Map<string, TestFileRef>();
   let checks = 0;
   for (const state of states) {
-    if (state.validity !== "pending" || !isSlow(testFileOf(state.check))) continue;
+    const ref = testFileOf(state.check);
+    if (state.validity !== "pending" || !isSlow(ref)) continue;
     checks++;
-    files.add(testFileKeyOf(state.check));
+    files.set(testFileKeyOf(state.check), ref);
   }
   let testFilesWithoutChecks = 0;
   for (const row of keys) {
@@ -231,9 +235,17 @@ function countSlowPending(
       continue;
     }
     testFilesWithoutChecks++;
-    files.add(id);
+    files.set(id, row.testFile);
   }
-  return { testFiles: files.size, checks, testFilesWithoutChecks };
+  const named = [...files.values()]
+    .sort((a, b) => a.path.localeCompare(b.path) || a.project.localeCompare(b.project))
+    .slice(0, SLOW_FILES_NAMED);
+  return {
+    testFiles: files.size,
+    checks,
+    testFilesWithoutChecks,
+    ...(named.length === 0 ? {} : { files: named }),
+  };
 }
 
 /** Task 001-23 widens `TestFileKeyRecord.key` to `CheckKey | null` for unkeyed files. */
