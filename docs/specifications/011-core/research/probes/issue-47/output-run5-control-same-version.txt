@@ -1,0 +1,144 @@
+== old 0.1.224, new 0.1.224, load 6.49, 24 CPUs, node v24.21.0, root $T=/tmp/issue47.hKRy
+baseline.onStart: lookup-only
+[21:52:25.206] $ squeal(/home/agent/.claude/plugins/cache/hearsay/squeal/0.1.224) start
+Squeal daemon spawned for /tmp/issue47.hKRy/repo
+
+Revision: 0
+Known failures: 0
+Affected checks: none counted; the daemon has not listed this worktree's test files yet
+Discovery: the daemon is still listing this worktree's test files (`squeal status --wait 60000` waits for it)
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+
+Worktree: /tmp/issue47.hKRy/repo (HEAD 61429af, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 0 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+(exit 0)
+[21:52:25.476] $ squeal(old) run --all --wait (baseline, no hold)
+Checkpoint e8ef968c-6d26-47c9-aa96-f3ce4f1cd669 completed at revision 0: no known failures; 4 test files, 0 already current, 4 run now
+Checkpoint e8ef968c-6d26-47c9-aa96-f3ce4f1cd669 started at revision 0: 4 test files to run, 0 already current
+
+[21:52:26.146] edited hold.test.ts and a.test.ts with the hold on
+[21:52:30.150] $ squeal(/home/agent/.claude/plugins/cache/hearsay/squeal/0.1.224) status
+Revision: 1 · 61429af5 + 1, dirty
+Known failures: 0
+Affected checks: 4 passed (2 tests, 2 test files loaded), 4 running (2 tests, 2 test files loaded), 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+
+Worktree: /tmp/issue47.hKRy/repo (HEAD 61429af, dirty at revision 1)
+Daemon: running, last heartbeat 5 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+(exit 0)
+[21:52:30.257] processes:
+1762713 /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.224/dist/cli/squeal.mjs daemon $T/repo
+1763974 sed s#$T#$T#g
+[21:52:30.361] hook s2 exit 0 (1469 bytes)
+[21:52:30.366] hook s1 exit 0 (1469 bytes)
+[21:52:30.371] hook s3 exit 0 (1469 bytes)
+[21:52:31.455] hook s4 exit 0 (1469 bytes)
+[21:52:32.542] hook s5 exit 0 (1469 bytes)
+[21:52:33.629] hook s6 exit 0 (1469 bytes)
+[21:52:34.634] processes:
+1762713 /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.224/dist/cli/squeal.mjs daemon $T/repo
+1765228 sed s#$T#$T#g
+Squeal daemon alive for /tmp/issue47.hKRy/repo
+Affected checks: 4 passed (2 tests, 2 test files loaded), 4 running (2 tests, 2 test files loaded), 0 queued
+Daemon: running, last heartbeat 4 s ago
+(exit 0)
+[21:52:34.766] $ squeal(new) status --json | daemon
+{"daemon":{"state":"alive","lastHeartbeatAt":1792446750461},"counts":{"current":4,"pending":4,"stale":0,"unknown":0}}
+[21:52:34.876] $ squeal(new) status --wait 3000 tests/hold.test.ts
+Daemon: running, last heartbeat 3 s ago
+(exit 0)
+[21:52:52.984] +15 s
+  successors: 0
+[21:53:08.016] +31 s
+  successors: 0
+[21:53:08.048] processes:
+1762713 /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.224/dist/cli/squeal.mjs daemon $T/repo
+1771348 sed s#$T#$T#g
+Squeal daemon alive for /tmp/issue47.hKRy/repo
+Affected checks: 4 passed (2 tests, 2 test files loaded), 4 running (2 tests, 2 test files loaded), 0 queued
+Daemon: running, last heartbeat 3 s ago
+(exit 0)
+[21:53:08.188] $ squeal(new) status --json | daemon
+{"daemon":{"state":"alive","lastHeartbeatAt":1792446785461},"counts":{"current":4,"pending":4,"stale":0,"unknown":0}}
+[21:53:08.301] $ squeal(new) status --wait 3000 tests/hold.test.ts
+Daemon: running, last heartbeat 1 s ago
+(exit 0)
+[21:53:11.407] $ squeal(/home/agent/.claude/plugins/cache/hearsay/squeal/0.1.224) stop
+Squeal daemon stopped for /tmp/issue47.hKRy/repo
+(exit 0)
+[21:53:12.675] processes:
+1772701 sed s#$T#$T#g
+[21:53:12.710] $ squeal(/home/agent/.claude/plugins/cache/hearsay/squeal/0.1.224) start
+Squeal daemon spawned for /tmp/issue47.hKRy/repo
+
+Revision: 1 · 61429af5 + 1, dirty
+Known failures: 0
+Affected checks: 6 passed (3 tests, 3 test files loaded), 0 running, 2 queued (1 test, 1 test file loaded)
+Idle: nothing is running and no run is open; 2 queued (1 test, 1 test file loaded) (`squeal run --all --wait` runs every test file without a result and waits)
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+
+Worktree: /tmp/issue47.hKRy/repo (HEAD 61429af, dirty at revision 1)
+Daemon: running, last heartbeat 0 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+[21:53:16.048] $ squeal(/home/agent/.claude/plugins/cache/hearsay/squeal/0.1.224) status
+Revision: 1 · 61429af5 + 1, dirty
+Known failures: 0
+Affected checks: 6 passed (3 tests, 3 test files loaded), 0 running, 0 queued, 2 stale (1 test, 1 test file loaded)
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+
+Worktree: /tmp/issue47.hKRy/repo (HEAD 61429af, dirty at revision 1)
+Daemon: running, last heartbeat 3 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-19T21:53:11.535Z, revision 1: daemon stopped: squeal stop
+(exit 0)
+[21:53:16.160] releasing the hold
+[21:53:24.165] processes:
+1772739 /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.224/dist/cli/squeal.mjs daemon $T/repo
+1775075 sed s#$T#$T#g
+[21:53:24.193] $ squeal(/home/agent/.claude/plugins/cache/hearsay/squeal/0.1.224) status
+Revision: 1 · 61429af5 + 1, dirty
+Known failures: 0
+Affected checks: 6 passed (3 tests, 3 test files loaded), 0 running, 0 queued, 2 stale (1 test, 1 test file loaded)
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+
+Worktree: /tmp/issue47.hKRy/repo (HEAD 61429af, dirty at revision 1)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-19T21:53:11.535Z, revision 1: daemon stopped: squeal stop
+(exit 0)
+[21:53:24.296] $ squeal(new) status --wait 60000
+Revision: 1 · 61429af5 + 1, dirty
+Known failures: 0
+Affected checks: 6 passed (3 tests, 3 test files loaded), 0 running, 0 queued, 2 stale (1 test, 1 test file loaded)
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+
+Worktree: /tmp/issue47.hKRy/repo (HEAD 61429af, dirty at revision 1)
+Daemon: running, last heartbeat 2 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-19T21:53:11.535Z, revision 1: daemon stopped: squeal stop
+
+Returned on quiet: nothing the edits since revision 1 re-keyed is pending (1 test file) at revision 1 after 0.5 s. Worktree: known failures 0; checks 0 running, 0 queued
+(exit 0)
+[21:53:24.906] processes:
+1772739 /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.224/dist/cli/squeal.mjs daemon $T/repo
+1775184 sed s#$T#$T#g
+[21:53:27.168] processes:
+1775448 sed s#$T#$T#g
+== probe root /tmp/issue47.hKRy (left for inspection; rm -rf it)

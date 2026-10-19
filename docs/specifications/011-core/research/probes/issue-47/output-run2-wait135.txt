@@ -1,0 +1,147 @@
+== old 0.1.223, new 0.1.224, load 18.16, 24 CPUs, node v24.21.0, root $T=/tmp/issue47.ppW3
+[21:46:39.349] $ squeal(/home/agent/.claude/plugins/cache/hearsay/squeal/0.1.223) start
+Squeal daemon spawned for /tmp/issue47.ppW3/repo
+
+Revision: 0
+Known failures: 0
+Affected checks: none counted; the daemon has not listed this worktree's test files yet
+Discovery: the daemon is still listing this worktree's test files (`squeal status --wait 60000` waits for it)
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+
+Worktree: /tmp/issue47.ppW3/repo (HEAD 01a51f1, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 0 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+(exit 0)
+[21:46:39.627] $ squeal(old) run --all --wait (baseline, no hold)
+Checkpoint 0595b7b5-1c26-4ef1-aa40-357a80cdb2cf completed at revision 0: no known failures; 4 test files, 0 already current, 4 run by the baseline checkpoint b5f188f2-49a7-4d27-acdf-26a9722781b5 it joined
+Checkpoint 0595b7b5-1c26-4ef1-aa40-357a80cdb2cf started at revision 0: 4 test files to run, 0 already current, joining the baseline checkpoint b5f188f2-49a7-4d27-acdf-26a9722781b5 already running them (0 of 4 test files done); it ends when that one ends
+
+[21:46:40.416] edited hold.test.ts and a.test.ts with the hold on
+[21:46:44.419] $ squeal(/home/agent/.claude/plugins/cache/hearsay/squeal/0.1.223) status
+Revision: 1 · 01a51f11 + 1, dirty
+Known failures: 0
+Affected checks: 4 passed (2 tests, 2 test files loaded), 4 running (2 tests, 2 test files loaded), 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+
+Worktree: /tmp/issue47.ppW3/repo (HEAD 01a51f1, dirty at revision 1)
+Daemon: running, last heartbeat 5 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+(exit 0)
+[21:46:44.527] processes:
+1619912 /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.223/dist/cli/squeal.mjs daemon $T/repo
+1622102 sed s#$T#$T#g
+[21:46:44.644] hook s3 exit 0 (1469 bytes)
+[21:46:44.653] hook s1 exit 0 (1469 bytes)
+[21:46:44.664] hook s2 exit 0 (1469 bytes)
+[21:46:45.752] hook s4 exit 0 (1469 bytes)
+[21:46:46.837] hook s5 exit 0 (1469 bytes)
+[21:46:47.931] hook s6 exit 0 (1469 bytes)
+[21:46:48.936] processes:
+1619912 /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.223/dist/cli/squeal.mjs daemon $T/repo
+1622177 /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.224/dist/cli/squeal.mjs daemon $T/repo --await-lock 120000
+1622179 /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.224/dist/cli/squeal.mjs daemon $T/repo --await-lock 120000
+1622181 /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.224/dist/cli/squeal.mjs daemon $T/repo --await-lock 120000
+1622615 /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.224/dist/cli/squeal.mjs daemon $T/repo --await-lock 120000
+1623040 /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.224/dist/cli/squeal.mjs daemon $T/repo --await-lock 120000
+1623626 /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.224/dist/cli/squeal.mjs daemon $T/repo --await-lock 120000
+1624304 sed s#$T#$T#g
+Squeal daemon alive for /tmp/issue47.ppW3/repo
+Affected checks: 4 passed (2 tests, 2 test files loaded), 4 running (2 tests, 2 test files loaded), 0 queued
+Daemon: running, last heartbeat 4 s ago
+Notes:
+  2026-10-19T21:46:44.622Z, revision 1: daemon stopped: hooks at Squeal 0.1.224 are newer than this daemon (0.1.223); their daemon starts once this one exits
+(exit 0)
+[21:46:49.101] $ squeal(new) status --json | daemon
+{"daemon":{"state":"alive","lastHeartbeatAt":1792446404600},"counts":{"current":4,"pending":4,"stale":0,"unknown":0}}
+[21:46:49.226] $ squeal(new) status --wait 3000 tests/hold.test.ts
+Daemon: running, last heartbeat 8 s ago
+(exit 0)
+[21:47:07.343] +15 s
+  successors: 6
+[21:47:22.380] +30 s
+  successors: 6
+[21:47:37.417] +45 s
+  successors: 6
+[21:47:52.465] +60 s
+  successors: 6
+[21:48:07.499] +75 s
+  successors: 6
+[21:48:22.534] +90 s
+  successors: 6
+[21:48:37.567] +105 s
+  successors: 6
+[21:48:52.603] +120 s
+  successors: 0
+[21:49:07.646] +135 s
+  successors: 0
+[21:49:07.676] processes:
+1619912 /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.223/dist/cli/squeal.mjs daemon $T/repo
+1676454 sed s#$T#$T#g
+Squeal daemon alive for /tmp/issue47.ppW3/repo
+Affected checks: 4 passed (2 tests, 2 test files loaded), 4 running (2 tests, 2 test files loaded), 0 queued
+Daemon: no daemon running since 2026-10-19T21:46:44.600Z
+Notes:
+  2026-10-19T21:46:44.622Z, revision 1: daemon stopped: hooks at Squeal 0.1.224 are newer than this daemon (0.1.223); their daemon starts once this one exits
+(exit 0)
+[21:49:07.810] $ squeal(new) status --json | daemon
+{"daemon":{"state":"down","since":1792446404600},"counts":{"current":4,"pending":4,"stale":0,"unknown":0}}
+[21:49:07.932] $ squeal(new) status --wait 3000 tests/hold.test.ts
+Daemon: no daemon running since 2026-10-19T21:46:44.600Z
+Named test files have no verdict: the deadline passed after 3.0 s: 1 test file still pending at revision 1: 1 running in the vitest lane; the daemon's heartbeat went 146 s stale while its socket showed it alive (a busy store or a stalled daemon), so the wait went on. Worktree: known failures 0; checks 4 running (2 tests, 2 test files loaded), 0 queued
+(exit 0)
+[21:49:11.041] releasing the hold
+[21:49:19.048] processes:
+1682838 sed s#$T#$T#g
+[21:49:19.102] $ squeal(/home/agent/.claude/plugins/cache/hearsay/squeal/0.1.224) status
+Revision: 1 · 01a51f11 + 1, dirty not known
+Known failures: 0
+Affected checks: 8 passed (4 tests, 4 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+
+Worktree: /tmp/issue47.ppW3/repo (HEAD 01a51f1, dirty state not known: no daemon is validating)
+Daemon: no daemon running since 2026-10-19T21:46:44.600Z
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-19T21:46:44.622Z, revision 1: daemon stopped: hooks at Squeal 0.1.224 are newer than this daemon (0.1.223); their daemon starts once this one exits
+  2026-10-19T21:48:44.728Z: a successor daemon gave up: the lock was still held after 120000 ms; the next hook boundary starts one
+  2026-10-19T21:48:44.731Z: a successor daemon gave up: the lock was still held after 120000 ms; the next hook boundary starts one
+  2026-10-19T21:48:44.738Z: a successor daemon gave up: the lock was still held after 120000 ms; the next hook boundary starts one
+  2026-10-19T21:48:45.838Z: a successor daemon gave up: the lock was still held after 120000 ms; the next hook boundary starts one
+  2026-10-19T21:48:46.930Z: a successor daemon gave up: the lock was still held after 120000 ms; the next hook boundary starts one
+  2026-10-19T21:48:48.046Z: a successor daemon gave up: the lock was still held after 120000 ms; the next hook boundary starts one
+(exit 0)
+[21:49:19.288] $ squeal(new) status --wait 60000
+Revision: 1 · 01a51f11 + 1, dirty not known
+Known failures: 0
+Affected checks: 8 passed (4 tests, 4 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+
+Worktree: /tmp/issue47.ppW3/repo (HEAD 01a51f1, dirty state not known: no daemon is validating)
+Daemon: no daemon running since 2026-10-19T21:46:44.600Z
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-19T21:46:44.622Z, revision 1: daemon stopped: hooks at Squeal 0.1.224 are newer than this daemon (0.1.223); their daemon starts once this one exits
+  2026-10-19T21:48:44.728Z: a successor daemon gave up: the lock was still held after 120000 ms; the next hook boundary starts one
+  2026-10-19T21:48:44.731Z: a successor daemon gave up: the lock was still held after 120000 ms; the next hook boundary starts one
+  2026-10-19T21:48:44.738Z: a successor daemon gave up: the lock was still held after 120000 ms; the next hook boundary starts one
+  2026-10-19T21:48:45.838Z: a successor daemon gave up: the lock was still held after 120000 ms; the next hook boundary starts one
+  2026-10-19T21:48:46.930Z: a successor daemon gave up: the lock was still held after 120000 ms; the next hook boundary starts one
+  2026-10-19T21:48:48.046Z: a successor daemon gave up: the lock was still held after 120000 ms; the next hook boundary starts one
+
+Returned without a daemon: no daemon has validated since 2026-10-19T21:46:44.600Z: the daemon stopped; results are as of revision 1. Worktree: known failures 0; checks 0 running, 0 queued
+(exit 0)
+[21:49:20.230] processes:
+1683531 sed s#$T#$T#g
+[21:49:22.433] processes:
+1684810 sed s#$T#$T#g
+== probe root /tmp/issue47.ppW3 (left for inspection; rm -rf it)
