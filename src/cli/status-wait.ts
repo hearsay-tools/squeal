@@ -39,8 +39,7 @@ import {
   windowRefined,
 } from "./status-wait-edit.js";
 import { readHeld, type StartView, startView } from "./status-wait-held.js";
-import type { NamedTextOptions } from "./status-wait-lines.js";
-import { waitLine, waitText } from "./status-wait-lines.js";
+import { type NamedTextOptions, waitLine, waitText } from "./status-wait-lines.js";
 import { namedWaitCommand } from "./status-wait-paths.js";
 import { type HeldSlow, heldSlowLeft, heldSlowNews, pendingSlow } from "./status-wait-slow.js";
 import {
