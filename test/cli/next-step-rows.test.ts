@@ -1,7 +1,11 @@
-import { mkdirSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { CliIo } from "../../src/cli/main.js";
+import { fileEntry } from "../../src/cli/named-file-lines.js";
+import { retryCommand } from "../../src/cli/retry.js";
 import { CLOSURE_METHOD } from "../../src/core/keys/closure.js";
+import { readRetries } from "../../src/core/retry/index.js";
 import { AWAITING_INSTALL_REASON } from "../../src/core/scheduler/install.js";
 import {
   awaitingInstallMetaKey,
@@ -206,6 +210,61 @@ describe("a stale or unknown selected file names what advances it (011-27)", () 
     ]);
     expect(groups).not.toContain("retry");
     expect(entries[0]).not.toHaveProperty("command");
+  });
+
+  it("from a subdirectory, each command names its paths from there, and following it retries each file at its key (review of cand/0.1.231, B1)", async () => {
+    const N = "tests/n.test.ts";
+    const { repo, store, id } = keyed(T, N, U);
+    store.knownStates.upsertMany([
+      state(id, check(T, "holds"), { validity: "stale", observedAt: 1 }),
+      state(id, check(U, "holds"), { validity: "stale", observedAt: 1 }),
+    ]);
+    const cwd = join(repo.main, "tests");
+    mkdirSync(cwd, { recursive: true });
+
+    const { wait, lines } = await waited(cwd, ["a.test.ts", "n.test.ts", "../src/u.test.ts"]);
+
+    // The stale files and the never-run one, each group's command from tests/.
+    expect(wait.selection.base).toBe("tests");
+    expect(lines).toContain(
+      `  2 last passed at other inputs, nothing queued them: ${T}, ${U}; \`squeal retry a.test.ts ../src/u.test.ts\` runs each once`,
+    );
+    expect(lines).toContain(
+      `  1 never run at its inputs, nothing queued it: ${N}; \`squeal retry n.test.ts\` runs it once`,
+    );
+    expect(lines.at(-1)).toContain("`squeal retry a.test.ts ../src/u.test.ts`");
+    expect(lines.at(-1)).toContain("`squeal retry n.test.ts`");
+    const commands = wait.files.map((f) => fileEntry(f, "squeal", wait.selection.base).command);
+    expect(commands).toEqual([
+      "squeal retry a.test.ts",
+      "squeal retry n.test.ts",
+      "squeal retry ../src/u.test.ts",
+    ]);
+
+    const runtime = mkdtempSync("/tmp/sq-");
+    const saved = process.env.XDG_RUNTIME_DIR;
+    process.env.XDG_RUNTIME_DIR = runtime;
+    try {
+      const io: CliIo = {
+        stdout: () => {},
+        stderr: () => {},
+        cwd,
+        env: { CLAUDE_CODE_SESSION_ID: "s1" },
+      };
+      const load = { hostLoad: () => ({ oneMinute: 1, cpus: 8 }) };
+      // Each JSON command as printed, run from the same directory.
+      for (const command of commands) {
+        const argv = (command ?? "").split(" ").slice(2);
+        expect(await retryCommand(argv, io, load), command ?? "").toBe(0);
+      }
+      expect(readRetries(store)).toMatchObject(
+        [T, N, U].map((path) => ({ testFile: ref(path), key: doneKey(path), noResult: true })),
+      );
+    } finally {
+      if (saved === undefined) delete process.env.XDG_RUNTIME_DIR;
+      else process.env.XDG_RUNTIME_DIR = saved;
+      rmSync(runtime, { recursive: true, force: true });
+    }
   });
 
   it("gh-39: an unmatched path names the directory it was resolved against and the root's test file", async () => {
