@@ -10,6 +10,7 @@ import {
   RECORDER_VERSION,
   recorderOption,
   takeRecorded,
+  unobservedEnv,
 } from "../observe/index.js";
 import type { WorktreePaths } from "./paths.js";
 
@@ -22,11 +23,13 @@ import type { WorktreePaths } from "./paths.js";
  * (`recorderOption`, task 001-390), and the settings. A project whose config sets
  * `env.NODE_OPTIONS` overrides that, so the recorder goes ahead of its value.
  * Each instance writes into its own directory under the daemon's temp
- * directory, read and emptied after each run.
+ * directory, read and emptied after each run. An instance that does not
+ * observe keeps another Squeal's recorder, inherited when a test runs this
+ * one, out of its workers instead (`unobservedEnv`, task 001-431).
  */
 export class VitestObserver {
   #out: AbsolutePath | null = null;
-  /** The env the current instance's workers got from the recorder. */
+  /** The env the current instance's workers got from the recorder, or in place of another Squeal's. */
   #injected: Record<string, string> = {};
   #recorder: AbsolutePath | null | undefined;
 
@@ -55,17 +58,19 @@ export class VitestObserver {
     return this.active ? `${base}+observe.${RECORDER_VERSION}` : base;
   }
 
-  /** What the recorder added to the current instance's env: left out of the environment hash. */
+  /** What the recorder added to, or took out of, the current instance's env: left out of the environment hash. */
   get injected(): Readonly<Record<string, string>> {
     return this.#injected;
   }
 
-  /** The `env` option of the next instance, or `{}` when it does not observe. */
+  /** The `env` option of the next instance: `{}` when it neither observes nor inherits a recorder. */
   start(): { env?: Record<string, string> } {
     this.stop();
-    if (!this.enabled()) return {};
-    const recorder = this.#find();
-    if (recorder === null) return {};
+    const recorder = this.enabled() ? this.#find() : null;
+    if (recorder === null) {
+      this.#injected = unobservedEnv(process.env);
+      return Object.keys(this.#injected).length === 0 ? {} : { env: this.#injected };
+    }
     const out = mkdtempSync(join(tmpdir(), "squeal-observe-"));
     this.#out = out;
     // The temp directory is skipped when it lies inside the worktree, never when the worktree lies in it.

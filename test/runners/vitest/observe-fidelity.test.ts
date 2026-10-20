@@ -1,5 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { describeFailure } from "../../../src/core/state/index.js";
+import { observeRecorder } from "../../../src/runners/observe/index.js";
 import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import { openFixture, ref, SLOW } from "./helpers.js";
 
@@ -11,6 +16,10 @@ import { openFixture, ref, SLOW } from "./helpers.js";
  * the child died with ERR_INVALID_PACKAGE_CONFIG. Under `--import` it starts as
  * without Squeal, and what it and a Worker read is still recorded.
  */
+
+const recorder = observeRecorder(
+  new URL("../../../src/runners/observe/runtime.ts", import.meta.url),
+) as string;
 
 const observing = (root: string) => createVitestAdapter({ root, observe: () => true });
 
@@ -115,7 +124,15 @@ it("runs Node with its own --require where package.json is not JSON", () => {
       ["fail", "Node before 18.18 rejects its --import", true],
       ["fail", expect.stringContaining("ERR_INVALID_PACKAGE_CONFIG"), true],
     ]);
-    // without the recorder the old Node starts; the project's own --require fails as before, unnamed
+    // Without its recorder the old Node starts; the project's own --require fails as before,
+    // unnamed. So under another Squeal's recorder, as when Squeal runs this test (task 001-431).
+    const outer = mkdtempSync(join(tmpdir(), "squeal-outer-"));
+    onTestFinished(() => {
+      vi.unstubAllEnvs();
+      rmSync(outer, { recursive: true, force: true });
+    });
+    vi.stubEnv("NODE_OPTIONS", `--import ${pathToFileURL(recorder).href}`);
+    vi.stubEnv("SQUEAL_OBSERVE", JSON.stringify({ out: outer, root: process.cwd(), skip: [] }));
     expect(await signatures(false)).toEqual([
       ["pass", undefined, false],
       ["fail", undefined, false],
