@@ -28,8 +28,14 @@ describe("scheduler: revisions during a running tier (D2, D5)", SLOW, () => {
     h.runner.beforeRun = (files) => {
       if (files.some((f) => f.path === "test/barrel.test.ts")) tierStarted();
     };
-    h.write("src/strings.ts", "export const upper = (s: string) => s.toUpperCase() + '';\n");
-    await h.batch("src/strings.ts");
+    // The barrel's own import: `index.ts` has no namesake, so its direct importer is the edit's
+    // work, a tier a later edit does not cancel (011 C4 step 4 as amended for 011-25; through
+    // `strings.ts` the barrel test is transitive, catch-up, and the edits below cancel it).
+    h.write(
+      "src/index.ts",
+      'export { add } from "./math.ts";\nexport { upper } from "./strings.ts";\n// 1\n',
+    );
+    await h.batch("src/index.ts");
     await started;
     const runsBefore = h.runner.runs.length;
     const first = store.revisions.latest(h.worktreeId)?.number ?? 0;
