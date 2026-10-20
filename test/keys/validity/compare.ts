@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, symlinkSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { isRecord } from "../../../src/core/fs/index.js";
 import { sameFingerprint } from "../../../src/core/state/fingerprint.js";
@@ -135,8 +135,9 @@ export async function compareTrees(options: CompareOptions): Promise<Comparison>
   };
   // D1 (a): the candidate decides over the store each tree wrote from the same runs.
   for (const name of ["baseline", "candidate"] as const) {
-    const stored = join(sides[name].dir, "run");
-    const decided = execute(work, sides.candidate, "decide", cases, stored, `decide-${name}`);
+    const label = `decide-${name}`;
+    const stored = storedFor(sides[name], cases, label);
+    const decided = execute(work, sides.candidate, "decide", cases, stored, label);
     for (const [c, output] of Object.entries(decided)) {
       if (outputs[name][c]?.error === undefined) outputs[name][c] = output;
     }
@@ -144,12 +145,28 @@ export async function compareTrees(options: CompareOptions): Promise<Comparison>
   // For coverage only: the release decides over its own store too, so a line
   // its decisions removed is held to the same proof. Its outputs are dropped;
   // the compared ones stay D1 (a)'s (review of cand/0.1.228, B1).
-  execute(work, sides.baseline, "decide", cases, join(sides.baseline.dir, "run"), "decide-own");
+  const own = storedFor(sides.baseline, cases, "decide-own");
+  execute(work, sides.baseline, "decide", cases, own, "decide-own");
   const verdicts = cases.map((c) =>
     verdictOf(c, outputs.baseline[c.name] ?? {}, outputs.candidate[c.name] ?? {}),
   );
   const uncovered = [...uncoveredInBundles(work, sides, overlay), ...uncoveredInRuntime(sides)];
   return { versions, fired, dependencies, cases: verdicts, uncovered };
+}
+
+/**
+ * A copy of the stores `side`'s run wrote, for one decision: a lookup
+ * writes (a set copied from a format read as one, a last-used time), so a
+ * decision over the run's own stores would leave the next one a store the
+ * run did not write (row 011-40).
+ */
+function storedFor(side: Side, cases: readonly Case[], label: string): string {
+  const copy = join(side.dir, `${label}-stored`);
+  for (const at of cases.keys()) {
+    const store = join(side.dir, "run", String(at), "store");
+    if (existsSync(store)) cpSync(store, join(copy, String(at), "store"), { recursive: true });
+  }
+  return copy;
 }
 
 /** Each changed bundle line from a changed source line that ran in no case, at the side that holds it. */

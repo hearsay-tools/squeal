@@ -15,6 +15,9 @@ import type {
 
 export const KEY: CheckKey = "validity-key";
 
+/** `KEY`'s file's key at a format read as one (011 C3 as amended 2026-10-20, task 011-38). */
+export const LISTED_KEY: CheckKey = "validity-key-listed";
+
 export const provenance = (worktree: string, recordedAt = 1_000, runId = "validity-run") =>
   ({
     worktreeId: worktree as WorktreeId,

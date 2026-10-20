@@ -139,12 +139,12 @@ describe("the comparison, under a change unmade", SLOW, () => {
   });
 
   it("passes an unchanged meaning in code only the decisions run, at both trees (review of cand/0.1.228, B1)", async () => {
-    const path = "src/core/scheduler/ledger.ts";
+    const path = "src/core/scheduler/accept.ts";
     const result = await compare(
       edited(
         path,
-        "const { store, worktreeId, now } = this.context;\n    let hits",
-        "const { store, worktreeId, now: readTime } = this.context;\n    const now = readTime;\n    let hits",
+        "  let hits = store.results.byKey(key, now());",
+        "  const clock = now;\n  let hits = store.results.byKey(key, clock());",
       ),
       only("accept"),
     );
