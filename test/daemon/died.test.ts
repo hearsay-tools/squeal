@@ -81,9 +81,15 @@ async function expectDeath(repo: FixtureRepo): Promise<void> {
   const runs = snapshot.daemon.state === "down" ? (snapshot.daemon.died?.runs ?? []) : [];
   const run = runs[0];
   expect(run?.testFiles.map((ref) => ref.path)).toContain("test/held.test.ts");
-  const daemonLine = formatStatus(snapshot, later)
+  const daemonLine = formatStatus(snapshot, later, "squeal", { full: true })
     .split("\n")
     .find((line) => line.startsWith("Daemon: "));
+  // Row 011-29: the default text says it in its first outstanding group.
+  expect(formatStatus(snapshot, later)).toMatch(
+    new RegExp(
+      `\n {2}no daemon has validated since \\S+; results are as of revision \\d+; it died without shutting down, during run ${run?.id} \\(revision \\d+\\) of .*test/held\\.test\\.ts.*; \`squeal start\` starts one\\. A SIGKILL, or a test that signals its own process group`,
+    ),
+  );
   expect(daemonLine).toMatch(
     new RegExp(
       `^Daemon: no daemon running since \\S+; it died without shutting down, during run ${run?.id} \\(revision \\d+\\) of .*test/held\\.test\\.ts.*\\. A SIGKILL, or a test that signals its own process group`,

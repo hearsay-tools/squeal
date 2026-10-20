@@ -256,6 +256,25 @@ describe("readStatus", () => {
         { at: Date.UTC(2026, 9, 4, 10, 0, 0), revision: 1, text: "runner environment failed: x" },
         { at: Date.UTC(2026, 9, 4, 11, 0, 0), revision: null, text: "watcher dropped events" },
       ],
+      // Row 011-29: each test file not current, in a group with where it stands.
+      outstanding: [
+        {
+          standing: { kind: "no-result", reason: "no result: no reason was kept", notCurrent: 4 },
+          files: [{ project: "", path: "src/util.test.ts" }],
+        },
+        {
+          standing: { kind: "never-run", lookupOnly: false, notCurrent: 4 },
+          files: [{ project: "", path: "src/never.test.ts" }],
+        },
+        {
+          standing: { kind: "running", lane: "vitest", since: null },
+          files: [{ project: "", path: "src/math.test.ts" }],
+        },
+        {
+          standing: { kind: "queued", lane: "vitest", behind: null },
+          files: [{ project: "", path: "src/empty.test.ts" }],
+        },
+      ],
     } satisfies StatusSnapshot);
   });
 
@@ -281,21 +300,12 @@ describe("readStatus", () => {
               recorded at an unknown time and load: the result that produced it is no longer identifiable in the store
       Affected checks: 4 passed (3 tests, 1 test file loaded), 1 running (1 test), 1 queued (1 test), 1 skipped (1 test), 1 stale (1 test), 1 unknown (1 test)
       Full-suite checkpoint: none completed since revision 1 (the counts are for revision 2; \`squeal run --all\` requests one)
-
-      Worktree: <b> (HEAD abc1234, dirty at revision 2)
-      Daemon: running, last heartbeat 2 s ago
-      Inherited from other worktrees: 2 current results (2 tests)
-        2 (2 tests) from <main> at abc1234
-      Test files without checks: 1 pending, 1 unknown
-      Test files without a result: 2 (nothing current at their inputs, none queued)
-        src/never.test.ts: no result: never run at this key, and nothing queued it
-        src/util.test.ts: no result: no reason was kept
-      Closure method: static imports plus declared inputs
-      Store schema: 1
-      Notes:
-        store was recovered from corruption at 2026-10-04T09:00:00.000Z; the baseline was lost (corrupt file moved to /repo/.git/squeal/store.sqlite.corrupt-1)
-        2026-10-04T10:00:00.000Z, revision 1: runner environment failed: x
-        2026-10-04T11:00:00.000Z: watcher dropped events
+      Outstanding:
+        1 test file without a result: no reason was kept: src/util.test.ts; \`squeal retry src/util.test.ts\` runs it once
+        1 test file never run at its inputs, nothing queued it: src/never.test.ts; \`squeal retry src/never.test.ts\` runs it once
+        1 test file running in the vitest lane: src/math.test.ts
+        1 test file queued; no run is open and nothing recorded holds it: src/empty.test.ts; the store records no reason the daemon has not taken it (\`squeal status --json\` lists each file's state)
+      More: \`squeal status --full\` adds the worktree and daemon, the 2 current results inherited from 1 worktree, the 2 test files without a result one by one and 3 notes
       "
     `);
   });
@@ -359,7 +369,9 @@ describe("readStatus", () => {
     });
     store.checkpoints.finish("cp-170", "completed", 2);
 
-    const lines = formatStatus(readStatus(repo.main, { now: () => NOW }), NOW).split("\n");
+    const lines = formatStatus(readStatus(repo.main, { now: () => NOW }), NOW, "squeal", {
+      full: true,
+    }).split("\n");
 
     expect(lines.slice(0, 4)).toEqual([
       "Revision: 187 · abc1234d + 0",
@@ -387,7 +399,7 @@ describe("readStatus", () => {
     const status = snapshotOf(readStatus(repo.main, { now: () => NOW }));
 
     expect(status.fullSuite).toEqual({ atCurrentRevision: true, lastCompletedRevision: 3 });
-    const lines = formatStatus(status, NOW).split("\n");
+    const lines = formatStatus(status, NOW, "squeal", { full: true }).split("\n");
     expect(lines[3]).toBe("Full-suite checkpoint: completed at revision 3");
     expect(lines).toContain(
       "Inherited from other worktrees: none (every current result here was run in this worktree)",
@@ -458,7 +470,7 @@ describe("readStatus", () => {
     appendRevisions(store, repo.mainId, 4, { head: COMMIT, dirty: false });
     const worktreeLine = () => {
       const status = snapshotOf(readStatus(repo.main, { now: () => NOW }));
-      const line = formatStatus(status, NOW)
+      const line = formatStatus(status, NOW, "squeal", { full: true })
         .split("\n")
         .find((l) => l.startsWith("Worktree: "));
       return { dirty: status.dirty, at: status.dirtyObservedAt, line };
@@ -503,7 +515,7 @@ describe("readStatus", () => {
     const status = snapshotOf(readStatus(repo.main, { now: () => NOW }));
 
     expect(status.dirty).toBeNull();
-    expect(formatStatus(status, NOW)).toContain(
+    expect(formatStatus(status, NOW, "squeal", { full: true })).toContain(
       ", dirty state not known: no revision recorded yet)",
     );
   });
@@ -607,7 +619,9 @@ describe("readStatus", () => {
     const status = snapshotOf(readStatus(repo.main, { now: () => NOW }));
 
     expect(status.daemon).toEqual({ state: "down", since: null });
-    expect(formatStatus(status, NOW)).toContain("\nDaemon: no daemon running\n");
+    expect(formatStatus(status, NOW, "squeal", { full: true })).toContain(
+      "\nDaemon: no daemon running\n",
+    );
   });
 
   it("says since when no daemon is running after squeal stop cleared the daemon (review wave 4.5, N5)", () => {
@@ -635,7 +649,7 @@ describe("readStatus", () => {
     const status = snapshotOf(readStatus(repo.main, { now: () => NOW }));
 
     expect(status.daemon).toEqual({ state: "down", since: heartbeatAt });
-    expect(formatStatus(status, NOW)).toContain(
+    expect(formatStatus(status, NOW, "squeal", { full: true })).toContain(
       "\nDaemon: no daemon running since 2026-10-04T11:59:00.000Z\n",
     );
   });
@@ -662,7 +676,7 @@ describe("readStatus", () => {
     const status = snapshotOf(readStatus(repo.main, { now: () => NOW }));
 
     expect(status.daemon).toEqual({ state: "down", since: heartbeatAt });
-    expect(formatStatus(status, NOW)).toContain(
+    expect(formatStatus(status, NOW, "squeal", { full: true })).toContain(
       "\nDaemon: no daemon running since 2026-10-04T11:59:00.000Z\n",
     );
   });
@@ -701,7 +715,7 @@ describe("readStatus", () => {
         "no revision recorded for this worktree yet",
       ],
     });
-    const lines = formatStatus(status, NOW).split("\n");
+    const lines = formatStatus(status, NOW, "squeal", { full: true }).split("\n");
     expect(lines.slice(0, 4)).toEqual([
       "Revision: 0",
       "Known failures: 0; the daemon has not listed this worktree's test files yet",
