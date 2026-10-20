@@ -108,7 +108,7 @@ describe("a named wait leaves out slow files that run only on a pause (004-78)",
     expect(wait.waitedMs).toBeLessThan(2_000);
     expect(namedCode(wait)).toBe(3);
     expect(text).toContain(
-      `Pending (1): ${SLOW_FILE}: slow, run when the agent pauses or on \`squeal run --slow\`\n`,
+      `Pending (1):\n  1 slow, run when the agent pauses or on \`squeal run --slow\`: ${SLOW_FILE}\n`,
     );
     expect(last).toMatch(
       /^Named test files have no verdict: every selected test file is slow: 1 slow test file waits for a pause or `squeal run --slow`, which this wait does not hold for: test\/slow\.test\.ts; this repository does not require it before you finish; `squeal run --slow --wait 60000` waits for its result\. Worktree: /,
@@ -132,6 +132,7 @@ describe("a named wait leaves out slow files that run only on a pause (004-78)",
       ...ref(SLOW_FILE),
       state: "pending",
       reason: "slow, run when the agent pauses or on `squeal run --slow`",
+      command: "squeal run --slow",
     });
     expect(out.stderr).toContain(OFF);
   });
