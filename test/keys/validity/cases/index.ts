@@ -2,6 +2,7 @@ import type { Case } from "../case.js";
 import { INHERIT } from "./accept/inherit.js";
 import { RETIRED } from "./accept/retired.js";
 import { SLOW_INHERIT } from "./accept/slow.js";
+import { VITEST_RUNS } from "./adapter/vitest.js";
 import { DECLARED } from "./assemble/declared.js";
 import { GOLDEN_KEYS } from "./key/golden.js";
 import { OBSERVED_READS } from "./observe/reads.js";
@@ -22,4 +23,5 @@ export const CASES: readonly Case[] = [
   ...SLOW_INHERIT,
   ...DECLARED,
   ...STORE_TIERS,
+  ...VITEST_RUNS,
 ];

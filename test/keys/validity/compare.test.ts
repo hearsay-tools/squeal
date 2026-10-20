@@ -27,7 +27,10 @@ const reworded = () =>
 
 describe("the candidate against the last release", SLOW, () => {
   it("runs every case at the release's tree and at the candidate", async () => {
-    const result = await compare(reworded(), CASES, tree());
+    // An emitted line in Vitest's adapter too, so its cases run whatever the release holds.
+    const adapter = "src/runners/vitest/adapter.ts";
+    const vitest = { [adapter]: `${read(adapter)}export const validityRun = 1;\n` };
+    const result = await compare({ ...reworded(), ...vitest }, CASES, tree());
     expect(result.fired).toBe(true);
     const thrown = result.cases.flatMap((c) =>
       [c.baseline.error, c.candidate.error].flatMap((e) =>

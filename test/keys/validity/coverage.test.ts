@@ -38,6 +38,20 @@ describe("unrun, over one report per process", () => {
     expect(unrun(TEXT, [neverCalled], [3, 5])).toEqual([3, 5]);
     expect(unrun(TEXT, [], [3])).toEqual([3]);
   });
+
+  // Row 011-41: esbuild prints `}, b = 2, c = 3) {` after a default `a = () => {` never called.
+  it("reads a line after the brackets that close an earlier block, unless it holds only those", () => {
+    const text = ["function g(a = () => {", "}, b = 2) {", "  return b;", "}"].join("\n");
+    const fallback = { start: text.indexOf("() => {"), end: text.indexOf(", b = 2"), count: 0 };
+    const called: Range[] = [{ start: 0, end: text.length, count: 1 }, fallback];
+    expect(unrun(text, [called], [2, 3, 4])).toEqual([]);
+    const closing = ["function h() {", "  if (x) {", "    y();", "  }", "}"].join("\n");
+    const skipped: Range[] = [
+      { start: 0, end: closing.length, count: 1 },
+      { start: closing.indexOf("{\n    y"), end: closing.indexOf("\n}"), count: 0 },
+    ];
+    expect(unrun(closing, [skipped], [3, 4])).toEqual([3, 4]);
+  });
 });
 
 /*
