@@ -31,11 +31,15 @@ import type { CliIo } from "./main.js";
 import { waitConsumer } from "./status-wait.js";
 
 const USAGE =
-  "usage: squeal retry <test file>... --reason load|environment\n       squeal retry --cancel <test file>...\n";
+  "usage: squeal retry <test file>... [--reason load|environment]\n       squeal retry --cancel <test file>...\n";
 
-/** What the command was asked: queue retries with a reason, or withdraw pending ones. */
+/**
+ * What the command was asked: queue retries, with a reason or, for a file
+ * with no result at its key, none (011 C5 as amended 2026-10-20, row
+ * 011-27); or withdraw pending ones.
+ */
 type Parsed =
-  | { readonly kind: "ask"; readonly reason: RetryReason; readonly paths: readonly string[] }
+  | { readonly kind: "ask"; readonly reason: RetryReason | null; readonly paths: readonly string[] }
   | { readonly kind: "cancel"; readonly paths: readonly string[] };
 
 /** One file's line, and whether its request was taken. */
@@ -52,7 +56,7 @@ export interface RetryInternal {
 }
 
 /**
- * `squeal retry <file>... --reason load|environment` and `squeal retry
+ * `squeal retry <file>... [--reason load|environment]` and `squeal retry
  * --cancel <file>...` (spec 001 D6 as amended, 001-368). Stores each request
  * in the shared store and tells the worktree's daemon, which claims and runs
  * it; with no daemon it waits there for the next daemon at the file's key.
@@ -125,7 +129,7 @@ function parse(args: readonly string[]): Parsed | string {
   if (cancel) {
     return reason === null ? { kind: "cancel", paths } : "--cancel takes no --reason";
   }
-  if (reason === null) return "--reason load or --reason environment is required";
+  if (reason === null) return { kind: "ask", reason: null, paths };
   if (!RETRY_REASONS.includes(reason as RetryReason)) {
     return `--reason must be load or environment, not "${reason}"`;
   }
@@ -157,7 +161,7 @@ function askLine(
   store: Store,
   row: TestFileKeyRecord,
   { root, worktreeId, shown }: Where,
-  reason: RetryReason,
+  reason: RetryReason | null,
   asker: string,
   load: HostLoad,
 ): Answer {
@@ -171,7 +175,16 @@ function askLine(
   );
   // Only a current FAIL is a counted failure (011-15); a stale one has no result at these inputs.
   if (!own.some((s) => s.outcome === "fail" && s.validity === "current")) {
-    const ask = { testFile: row.testFile, key, session: asker, reason, at: Date.now(), worktreeId };
+    // Its run starts at once whatever the reason; the record keeps one for older readers.
+    const kept = reason ?? "environment";
+    const ask = {
+      testFile: row.testFile,
+      key,
+      session: asker,
+      reason: kept,
+      at: Date.now(),
+      worktreeId,
+    };
     const pending = row.pending !== null || own.some((s) => s.validity === "pending");
     if (pending)
       return {
@@ -189,12 +202,18 @@ function askLine(
       };
     }
     const state = noResultText(store, row, own, { root, worktreeId, shown }, states);
+    const whatever = reason === null ? "" : ", whatever the reason";
     return {
       ok: true,
       text:
-        `Run queued: ${shown} has no result at its inputs (${state}). It runs once now at its normal priority, whatever the reason; ` +
+        `Run queued: ${shown} has no result at its inputs (${state}). It runs once now at its normal priority${whatever}; ` +
         `that is its one run at these inputs, and it spends no retry of this session. ${waitText(shown)}`,
     };
+  }
+  if (reason === null) {
+    return refuse(
+      `Not retried: ${shown} has a known failure at its inputs; a retry of it needs --reason load or --reason environment, the cause outside the code.`,
+    );
   }
   const others = pendingOf(store, row).filter((r) => r.session !== asker);
   const answer = askRetry(store, {

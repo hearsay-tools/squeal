@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { askRetry, claimRetries } from "../../src/core/retry/index.js";
+import {
+  askNoResultRun,
+  askRetry,
+  claimRetries,
+  pendingRetriesOf,
+} from "../../src/core/retry/index.js";
 import { formatStatus, readStatus } from "../../src/core/status/index.js";
-import type { StatusSnapshot } from "../../src/core/types/index.js";
+import { timeText } from "../../src/core/text.js";
+import type { EpochMs, RunRecord, StatusSnapshot } from "../../src/core/types/index.js";
 import { FAST, NOW, SLOW_A, seed } from "./slow-tier-seed.js";
 
 /*
@@ -25,8 +31,14 @@ function seeded() {
   return { ...s, keyOf, ask };
 }
 
-const lines = (s: ReturnType<typeof seeded>) => {
-  const snapshot = readStatus(s.repo.main, { now: () => NOW }) as StatusSnapshot;
+/** Status at `NOW` with the host's load as given, so a `load` request's text does not follow the host's. */
+const lines = (s: ReturnType<typeof seeded>, oneMinute = 12.4, cpus = 8) => {
+  const read = readStatus(s.repo.main, { now: () => NOW }) as StatusSnapshot;
+  const pending = read.pendingRetries;
+  const snapshot =
+    pending === undefined
+      ? read
+      : { ...read, pendingRetries: { ...pending, loadAverage: oneMinute, cpus } };
   return { snapshot, lines: formatStatus(snapshot, NOW).split("\n") };
 };
 
@@ -43,8 +55,8 @@ describe("status lists pending retries (001-368)", () => {
     ]);
     const at = text.indexOf("Pending retries: 2");
     expect(at).toBeGreaterThan(0);
-    expect(text[at + 1]).toMatch(
-      /^ {2}src\/a\.test\.ts \(load\): waits for the one-minute load average to fall below the CPU count \(load average \d+\.\d\d on \d+ CPUs? now\)$/,
+    expect(text[at + 1]).toBe(
+      "  src/a.test.ts (load): waits for the one-minute load average to fall below the CPU count (load average 12.40 on 8 CPUs now)",
     );
     expect(text[at + 2]).toBe("  test/e2e/a.test.ts (environment): runs at once");
   });
@@ -64,5 +76,55 @@ describe("status lists pending retries (001-368)", () => {
     const { snapshot, lines: text } = lines(s);
     expect(snapshot.pendingRetries).toBeUndefined();
     expect(text.some((l) => l.startsWith("Pending retries"))).toBe(false);
+  });
+});
+
+describe("a pending retry says when it runs (011-27, gh-41's comment)", () => {
+  it("a load request the load lets run runs at the daemon's next look", () => {
+    const s = seeded();
+    s.ask(FAST, "load");
+    expect(lines(s, 7.45, 24).lines).toContain(
+      "  src/a.test.ts (load): runs at the daemon's next look: the one-minute load average is below the CPU count (load average 7.45 on 24 CPUs now)",
+    );
+  });
+
+  it("one whose run is open says since when", () => {
+    const s = seeded();
+    s.ask(FAST, "load");
+    const keys = s.store.testFileKeys
+      .list(s.repo.mainId)
+      .map((k) => (k.testFile.path === FAST ? { ...k, pending: "running" as const } : k));
+    const run: RunRecord = {
+      id: "run-a",
+      worktreeId: s.repo.mainId,
+      revision: 1 as never,
+      testFiles: [{ project: "", path: FAST as never }],
+      checkpointId: null,
+      logDir: "/tmp/run-a" as never,
+      startedAt: (NOW - 30_000) as EpochMs,
+      endedAt: null,
+      end: null,
+    };
+    const { pendingRetries } = pendingRetriesOf(s.store, keys, () => ({ oneMinute: 30, cpus: 8 }), [
+      run,
+    ]);
+    expect(pendingRetries?.retries[0]?.runningSince).toBe(NOW - 30_000);
+    const snapshot = readStatus(s.repo.main, { now: () => NOW }) as StatusSnapshot;
+    expect(
+      formatStatus({ ...snapshot, pendingRetries } as StatusSnapshot, NOW).split("\n"),
+    ).toContain(`  src/a.test.ts (load): running since ${timeText(NOW - 30_000)}`);
+  });
+
+  it("a run asked for a file with no result names no reason: it runs at once whatever the reason", () => {
+    const s = seeded();
+    askNoResultRun(s.store, {
+      testFile: { project: "", path: FAST },
+      key: s.keyOf(FAST),
+      session: "s1",
+      reason: "load",
+      at: NOW,
+      worktreeId: s.repo.mainId,
+    });
+    expect(lines(s).lines).toContain("  src/a.test.ts (no result at its inputs): runs at once");
   });
 });
