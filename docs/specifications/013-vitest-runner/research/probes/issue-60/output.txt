@@ -1,0 +1,363 @@
+{"timestamp":"2026-10-20T23:20:27.856Z","node":"v24.21.0","cpus":24,"load":[18.66,11.04,12.4],"root":"/home/agent/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856"}
+DAEMON_PID 1448592
+$ node --disable-warning=ExperimentalWarning /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.233/dist/cli/squeal.mjs run --all --wait
+Checkpoint a59ecce0-a0d7-4620-a49c-952985a53c09 completed at revision 0: no known failures; 1 test file, 0 already current, 1 run now
+Checkpoint a59ecce0-a0d7-4620-a49c-952985a53c09 started at revision 0: 1 test file to run, 0 already current
+
+Revision: 0
+Known failures: 0; all 1 test file current
+Affected checks: 2 passed (1 test, 1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+
+Worktree: /home/agent/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856 (HEAD 50d62f7, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 4 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+
+FIRST_EVENTS setup:Run activity
+
+$ node --disable-warning=ExperimentalWarning /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.233/dist/cli/squeal.mjs run --all --wait
+Checkpoint 0bb443b8-8728-4960-82ef-fb2388dff09f completed at revision 1: 1 known failure: 1 test; 1 test file, 0 already current, 1 run now
+Checkpoint 0bb443b8-8728-4960-82ef-fb2388dff09f started at revision 1: 1 test file to run, 0 already current
+
+Revision: 1 · 50d62f75 + 1, dirty
+Known failures: 1 (1 test); all 1 test file current
+  FAIL  browser-check.test.ts > prepared assets match declared source
+        expected 'Run activity' to be 'Session activity' // Object.is equality
+        at browser-check.test.ts:5:18, observed at revision 1, current
+        recorded just now in this worktree at revision 1, load 0.78 per CPU when it ran; no retry asked at these inputs
+Affected checks: 1 passed (1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 1
+
+Worktree: /home/agent/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856 (HEAD 50d62f7, dirty at revision 1)
+Daemon: running, last heartbeat 5 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+
+SECOND_EVENTS setup:Run activity
+
+SECOND_ASSET Run activity
+$ node --disable-warning=ExperimentalWarning /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.233/dist/cli/squeal.mjs status --json
+{
+  "schemaVersion": 1,
+  "available": true,
+  "worktreeId": "479b87fda5479404",
+  "worktreeRoot": "/home/agent/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856",
+  "revision": 1,
+  "commit": {
+    "head": "50d62f75a52c5f3c82854946b336278e53b6d89a",
+    "sinceHead": 1,
+    "dirty": true
+  },
+  "counts": {
+    "current": 2,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "fileLevelCounts": {
+    "current": 1,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesWithoutChecks": {
+    "pending": 0,
+    "unknown": 0
+  },
+  "testFileCounts": {
+    "current": 1,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesByPhase": {
+    "running": 0,
+    "queued": 0
+  },
+  "testsByPhase": {
+    "running": 0,
+    "queued": 0
+  },
+  "fullSuite": {
+    "atCurrentRevision": true,
+    "lastCompletedRevision": 1
+  },
+  "testFilesListed": true,
+  "inheritedCount": 0,
+  "inheritedFileLevelCount": 0,
+  "refinedRevision": 1,
+  "runnerPartPending": false,
+  "head": "50d62f75a52c5f3c82854946b336278e53b6d89a",
+  "dirty": true,
+  "dirtyObservedAt": 1,
+  "daemon": {
+    "state": "alive",
+    "lastHeartbeatAt": 1792538428082
+  },
+  "knownFailures": [
+    {
+      "check": {
+        "kind": "test",
+        "project": "",
+        "testPath": "browser-check.test.ts",
+        "fullName": "prepared assets match declared source"
+      },
+      "outcome": "fail",
+      "validity": "current",
+      "observedAt": 1,
+      "summary": "expected 'Run activity' to be 'Session activity' // Object.is equality",
+      "fingerprint": "AssertionError: expected 'Run activity' to be 'Session activity' // Object.is equality @ browser-check.test.ts:5:18",
+      "location": {
+        "path": "browser-check.test.ts",
+        "line": 5,
+        "column": 18
+      },
+      "recorded": {
+        "worktreeId": "479b87fda5479404",
+        "worktreeRoot": "/home/agent/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856",
+        "revision": 1,
+        "recordedAt": 1792538432260,
+        "loadPerCpu": 0.7775
+      }
+    }
+  ],
+  "knownFailureCounts": {
+    "current": 1,
+    "pending": 0,
+    "stale": 0
+  },
+  "inherited": {
+    "count": 0,
+    "sources": []
+  },
+  "breakdown": {
+    "currentByOutcome": {
+      "pass": 1,
+      "fail": 1,
+      "skip": 0,
+      "unknown": 0
+    },
+    "pendingByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "fileLevelByOutcome": {
+      "pass": 1,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "fileLevelByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "testFiles": 1,
+    "testFilesWithoutChecks": 0,
+    "testFilesWithoutChecksRunning": 0
+  },
+  "closureMethod": "static imports plus declared inputs",
+  "storeSchemaVersion": 1,
+  "notes": [],
+  "daemonNotes": [],
+  "runsOpen": 0
+}
+
+$ node --disable-warning=ExperimentalWarning /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.233/dist/cli/squeal.mjs why prepared assets match declared source --json
+{
+  "schemaVersion": 1,
+  "available": true,
+  "found": true,
+  "worktreeId": "479b87fda5479404",
+  "worktreeRoot": "/home/agent/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856",
+  "revision": 1,
+  "commit": {
+    "head": "50d62f75a52c5f3c82854946b336278e53b6d89a",
+    "sinceHead": 1,
+    "dirty": true
+  },
+  "check": {
+    "kind": "test",
+    "project": "",
+    "testPath": "browser-check.test.ts",
+    "fullName": "prepared assets match declared source"
+  },
+  "worktreeRoots": {
+    "479b87fda5479404": "/home/agent/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856"
+  },
+  "knownState": {
+    "worktreeId": "479b87fda5479404",
+    "check": {
+      "kind": "test",
+      "project": "",
+      "testPath": "browser-check.test.ts",
+      "fullName": "prepared assets match declared source"
+    },
+    "outcome": "fail",
+    "validity": "current",
+    "pendingPhase": null,
+    "observedAt": 1,
+    "commit": "50d62f75a52c5f3c82854946b336278e53b6d89a",
+    "origin": {
+      "kind": "own"
+    },
+    "durationMs": 20.591662999999983,
+    "location": {
+      "path": "browser-check.test.ts",
+      "line": 5,
+      "column": 18
+    },
+    "summary": "expected 'Run activity' to be 'Session activity' // Object.is equality",
+    "fingerprint": "AssertionError: expected 'Run activity' to be 'Session activity' // Object.is equality @ browser-check.test.ts:5:18"
+  },
+  "history": [
+    {
+      "worktreeId": "479b87fda5479404",
+      "check": {
+        "kind": "test",
+        "project": "",
+        "testPath": "browser-check.test.ts",
+        "fullName": "prepared assets match declared source"
+      },
+      "kind": "pass-to-fail",
+      "from": "pass",
+      "to": "fail",
+      "fromFingerprint": null,
+      "toFingerprint": "AssertionError: expected 'Run activity' to be 'Session activity' // Object.is equality @ browser-check.test.ts:5:18",
+      "revision": 1,
+      "at": 1792538431989
+    }
+  ],
+  "results": [
+    {
+      "result": {
+        "check": {
+          "kind": "test",
+          "project": "",
+          "testPath": "browser-check.test.ts",
+          "fullName": "prepared assets match declared source"
+        },
+        "key": "b6e912bbde85e77e5228a58c4cd058e2fcb3694de4a78a654a5bf70949186940",
+        "outcome": "fail",
+        "durationMs": 20.591662999999983,
+        "location": {
+          "path": "browser-check.test.ts",
+          "line": 3,
+          "column": 1
+        },
+        "fingerprint": "AssertionError: expected 'Run activity' to be 'Session activity' // Object.is equality @ browser-check.test.ts:5:18",
+        "summary": "expected 'Run activity' to be 'Session activity' // Object.is equality",
+        "errors": [
+          {
+            "name": "AssertionError",
+            "message": "expected 'Run activity' to be 'Session activity' // Object.is equality",
+            "stack": "AssertionError: expected 'Run activity' to be 'Session activity' // Object.is equality\n    at browser-check.test.ts:5:18\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///home/agent/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:2783:20",
+            "location": {
+              "path": "browser-check.test.ts",
+              "line": 5,
+              "column": 18
+            },
+            "diff": "Expected: \"Session activity\"\nReceived: \"Run activity\""
+          }
+        ],
+        "provenance": {
+          "worktreeId": "479b87fda5479404",
+          "revision": 1,
+          "commit": "50d62f75a52c5f3c82854946b336278e53b6d89a",
+          "dirty": true,
+          "runId": "0e566c08-0c77-4dea-9d3d-47853661621d",
+          "recordedAt": 1792538432260
+        }
+      },
+      "worktreeRoot": "/home/agent/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856",
+      "logDir": "/home/agent/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856/.git/squeal/runs/0e566c08-0c77-4dea-9d3d-47853661621d"
+    },
+    {
+      "result": {
+        "check": {
+          "kind": "test",
+          "project": "",
+          "testPath": "browser-check.test.ts",
+          "fullName": "prepared assets match declared source"
+        },
+        "key": "fe6139152c81525106615dd059ccef73dcc13901dc873ae54722e61fcbf5320b",
+        "outcome": "pass",
+        "durationMs": 23.384221999999994,
+        "location": {
+          "path": "browser-check.test.ts",
+          "line": 3,
+          "column": 1
+        },
+        "fingerprint": null,
+        "summary": null,
+        "errors": [],
+        "provenance": {
+          "worktreeId": "479b87fda5479404",
+          "revision": 0,
+          "commit": "50d62f75a52c5f3c82854946b336278e53b6d89a",
+          "dirty": false,
+          "runId": "15bb2fca-15e9-40fa-901a-a5e98feeeeb3",
+          "recordedAt": 1792538430805
+        }
+      },
+      "worktreeRoot": "/home/agent/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856",
+      "logDir": "/home/agent/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856/.git/squeal/runs/15bb2fca-15e9-40fa-901a-a5e98feeeeb3"
+    }
+  ],
+  "durations": {
+    "results": 2,
+    "pass": 1,
+    "fail": 1,
+    "skip": 0,
+    "minMs": 20.591662999999983,
+    "medianMs": 20.591662999999983,
+    "p95Ms": 23.384221999999994,
+    "maxMs": 23.384221999999994
+  },
+  "runLog": {
+    "runId": "0e566c08-0c77-4dea-9d3d-47853661621d",
+    "worktreeId": "479b87fda5479404",
+    "path": "/home/agent/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856/.git/squeal/runs/0e566c08-0c77-4dea-9d3d-47853661621d/vitest.log",
+    "state": "present",
+    "console": null
+  }
+}
+
+$ node --disable-warning=ExperimentalWarning /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.233/dist/cli/squeal.mjs run --all --wait
+Checkpoint 077589be-457a-49a8-8d17-915c8e8a635e completed at revision 2: no known failures; 1 test file, 0 already current, 1 run now
+Checkpoint 077589be-457a-49a8-8d17-915c8e8a635e started at revision 2: 1 test file to run, 0 already current
+
+Revision: 2 · 50d62f75 + 2, dirty
+Known failures: 0; all 1 test file current
+Affected checks: 2 passed (1 test, 1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 2
+
+Worktree: /home/agent/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856 (HEAD 50d62f7, dirty at revision 2)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+
+CONTROL_EVENTS setup:Run activity
+teardown:Run activity
+setup:Session activity
+
+REPRODUCED: new key/current FAIL with old assets; setup-closure edit restores PASS
+$ node --disable-warning=ExperimentalWarning /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.233/dist/cli/squeal.mjs stop
+Squeal daemon stopped for /home/agent/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856
+
+DAEMON_EXIT { code: 0, signal: null }
+FINAL_EVENTS setup:Run activity
+teardown:Run activity
+setup:Session activity
+teardown:Session activity
+
+DAEMON_LOG squeal daemon: serving /home/agent/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856 on /run/user/1001/squeal-479b87fda5479404.sock
+squeal daemon: daemon stopped: squeal stop
+squeal daemon: daemon stopped: squeal stop
+
+FINAL_LOAD [18.77,11.19,12.45]
