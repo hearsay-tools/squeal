@@ -77,12 +77,13 @@ describe("a named wait names what holds each pending selected file (011-12)", ()
     const { wait, text } = await timedOut(repo.main, [A, B]);
 
     expect(wait.outcome).toBe("timeout");
+    // Row 011-27: a group per reason, with what advances it.
     expect(text).toContain(
-      `Pending (2): ${A}: running since ${clock(STARTED)} in the vitest lane; ${B}: queued behind the vitest tier running since ${clock(STARTED)}\n`,
+      `Pending (2):\n  1 running since ${clock(STARTED)} in the vitest lane: ${A}\n  1 queued behind the vitest tier of 1 test file running since ${clock(STARTED)}: ${B}; no command runs it sooner (a running tier is not interrupted)\n`,
     );
     expect(text.trimEnd().split("\n").at(-1)).toContain(`the deadline passed after 0.`);
     expect(text.trimEnd().split("\n").at(-1)).toContain(
-      `2 test files still pending at revision 4: 1 running since ${clock(STARTED)} in the vitest lane, 1 queued behind the vitest tier running since ${clock(STARTED)}. Worktree:`,
+      `2 test files still pending at revision 4: 1 running since ${clock(STARTED)} in the vitest lane, 1 queued behind the vitest tier of 1 test file running since ${clock(STARTED)}. Worktree:`,
     );
   });
 
@@ -93,7 +94,7 @@ describe("a named wait names what holds each pending selected file (011-12)", ()
     const { text } = await timedOut(repo.main, [A]);
 
     expect(text).toContain(
-      `Pending (1): ${A}: queued behind the vitest tier running since ${clock(STARTED)}\n`,
+      `Pending (1):\n  1 queued behind the vitest tier of 1 test file running since ${clock(STARTED)}: ${A}; no command runs it sooner (a running tier is not interrupted)\n`,
     );
   });
 
@@ -131,7 +132,7 @@ describe("a named wait names what holds each pending selected file (011-12)", ()
     // Default runner.timeoutMs 600 s plus C7's 6 s grace, from now: the waiter's first
     // sighting is no later, and the claimant's own policy bounds its run (review wave-1.11 B1).
     expect(text).toContain(
-      `${C}: waiting for ${other.root}'s run of its key, at most until ${clock(NOW + 606_000)}`,
+      `  1 waiting for ${other.root}'s run of its key, at most until ${clock(NOW + 606_000)}: ${C}; its result is shared here when that run stores it\n`,
     );
   });
 
@@ -192,7 +193,7 @@ describe("a named wait names what holds each pending selected file (011-12)", ()
     const { text } = await timedOut(repo.main, [C]);
 
     expect(text).toContain(
-      `${C}: waiting for ${other.root}'s run of its key, at most until ${clock(NOW + 600_000)}`,
+      `waiting for ${other.root}'s run of its key, at most until ${clock(NOW + 600_000)}: ${C}`,
     );
   });
 
@@ -208,7 +209,7 @@ describe("a named wait names what holds each pending selected file (011-12)", ()
 
     const { text } = await timedOut(repo.main, [C]);
 
-    expect(text).toContain(`${C}: waiting for ${live.root}'s run of its key`);
+    expect(text).toContain(`1 waiting for ${live.root}'s run of its key`);
     expect(text).not.toContain(`${dead.root}'s run`);
   });
 
@@ -226,7 +227,7 @@ describe("a named wait names what holds each pending selected file (011-12)", ()
       const { text } = await timedOut(repo.main, [SLOW_FILE]);
 
       expect(text).toContain(
-        `Pending (1): ${SLOW_FILE}: slow, run ${when} or on \`squeal run --slow\`\n`,
+        `Pending (1):\n  1 slow, run ${when} or on \`squeal run --slow\`: ${SLOW_FILE}\n`,
       );
     });
   }
@@ -248,7 +249,7 @@ describe("a named wait names what holds each pending selected file (011-12)", ()
     // 600 s run timeout + 6 s grace + 60 s margin, per call: the revision's 10 s age is no call's.
     const reason =
       "revision 5 not listed yet, because the runner part waits for the run in flight, each of its calls bounded at 666 s";
-    expect(text).toContain(`Pending (1): ${A}: ${reason}\n`);
+    expect(text).toContain(`Pending (1):\n  1 ${reason}: ${A}\n`);
     expect(text).toContain(
       `the runner has not listed the test files of revision 5 yet: 1 ${reason}. Worktree:`,
     );
@@ -300,12 +301,19 @@ describe("a timed-out named wait lists the selected files by class with verdicts
       "        observed at revision 4, current",
       "  FAIL  src/s2.test.ts > holds",
       "        observed at revision 1, stale",
-      "Pending (3): src/p1.test.ts: queued; src/p2.test.ts: queued; src/p3.test.ts: queued",
-      "Current (4): src/c1.test.ts: pass; src/c2.test.ts: pass; src/c3.test.ts: pass; src/c4.test.ts: fail",
-      "Stale (2): src/s1.test.ts: last pass; src/s2.test.ts: last fail",
-      "Unknown (2): src/u1.test.ts: no result: never run at this key, and nothing queued it; src/u2.test.ts: no result: no key: its project's environment or closure is not known (a runner call failed), or a closure path is untracked",
+      "Pending (3):",
+      "  3 queued; no run is open and nothing recorded holds them: src/p1.test.ts, src/p2.test.ts, src/p3.test.ts; the store records no reason the daemon has not taken them (`squeal status --json` lists each file's state)",
+      "Current (4):",
+      "  3 pass: src/c1.test.ts, src/c2.test.ts, src/c3.test.ts",
+      "  1 fail: src/c4.test.ts",
+      "Stale (2):",
+      "  1 last passed at other inputs, nothing queued it: src/s1.test.ts; `squeal retry src/s1.test.ts` runs it once",
+      "  1 last failed at other inputs, nothing queued it: src/s2.test.ts; `squeal retry src/s2.test.ts` runs it once",
+      "Unknown (2):",
+      "  1 never run at its inputs, nothing queued it: src/u1.test.ts; `squeal retry src/u1.test.ts` runs it once",
+      "  1 no key: its project's environment or closure is not known (a runner call failed), or a closure path is untracked: src/u2.test.ts; the next edit or `squeal run --all --wait` calls the runner again",
       expect.stringMatching(
-        /^Named test files have no verdict: the deadline passed after \d+\.\d s: 3 test files still pending at revision 4: 3 queued\. Worktree: /,
+        /^Named test files have no verdict: the deadline passed after \d+\.\d s: 3 test files still pending at revision 4: 3 queued, nothing recorded holds them\. Worktree: /,
       ),
     ]);
   });
@@ -343,16 +351,28 @@ describe("a timed-out named wait lists the selected files by class with verdicts
       project: "",
       path: "src/p1.test.ts",
       state: "pending",
-      reason: "queued",
+      reason: "queued; no run is open and nothing recorded holds it",
+      next: "the store records no reason the daemon has not taken it (`squeal status --json` lists each file's state)",
     });
-    expect(by["src/s2.test.ts"]).toMatchObject({ state: "stale", verdict: "fail" });
+    // Row 011-27: each entry carries its own next step and command.
+    expect(by["src/s2.test.ts"]).toEqual({
+      project: "",
+      path: "src/s2.test.ts",
+      state: "stale",
+      verdict: "fail",
+      reason: "last failed at other inputs, nothing queued it",
+      next: "`squeal retry src/s2.test.ts` runs it once",
+      command: "squeal retry src/s2.test.ts",
+    });
     expect(by["src/u1.test.ts"]).toEqual({
       project: "",
       path: "src/u1.test.ts",
       state: "unknown",
       reason: "no result: never run at this key, and nothing queued it",
+      next: "`squeal retry src/u1.test.ts` runs it once",
+      command: "squeal retry src/u1.test.ts",
     });
-    expect(stderr).toContain("Pending (3): ");
+    expect(stderr).toContain("Pending (3):\n");
     expect(stderr.trimEnd().split("\n").at(-1)).toMatch(/^Named test files have no verdict: /);
   });
 });
