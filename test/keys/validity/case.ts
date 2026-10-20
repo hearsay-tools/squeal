@@ -52,6 +52,8 @@ export interface AcceptInput {
     readonly recordedAt: number;
   }[];
   readonly receiver: string;
+  /** The runs are stored under the file's key at a format read as one, which the lookup reads (011-38). */
+  readonly readAsOne?: true;
   /** The checks the receiver's current results of the file hold before the lookup (D8). */
   readonly current?: readonly CheckId[];
   /** The receiving worktree's `squeal.config.json`. */
