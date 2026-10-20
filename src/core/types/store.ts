@@ -171,6 +171,15 @@ export interface ResultRepo {
    */
   keysSince(since: EpochMs): readonly StoredKey[];
   /**
+   * Copies the newest set stored under one of `from` (by its newest record
+   * time) to `key`, each row with its provenance and record time, only while
+   * `key` holds no row; true when it copied one. A miss among `from` reads
+   * and writes nothing. Spec 011 C7 as amended 2026-10-20 (task 011-38): a
+   * set copied from a format read as one "is written only under a key that
+   * holds no row, so it never replaces a stored set or mixes with one".
+   */
+  copyNewest(key: CheckKey, from: readonly CheckKey[]): boolean;
+  /**
    * Spec 001 D5: "A result is stored only under a key whose inputs were
    * stable for the whole run." A stored result's last-used time starts at
    * `provenance.recordedAt`.

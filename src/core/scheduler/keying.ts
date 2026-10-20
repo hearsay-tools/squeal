@@ -11,6 +11,7 @@ import {
   environmentHash,
   gitEntryByKind,
   inputGlobs,
+  KEY_FORMATS_READ_AS_ONE,
   type KeyChange,
   KeyIndex,
   Listings,
@@ -192,7 +193,8 @@ export class WorktreeKeys {
   /**
    * Sets the environment hash of every project from runner output (D3). The
    * runner files and each project's installed lockfile are hashed first; the
-   * lockfile is looked up from the project's root (review N8).
+   * lockfile is looked up from the project's root (review N8). Each project
+   * gets its hashes at the formats read as one too (011 C3, task 011-38).
    */
   async setEnvironments(environments: readonly RunnerEnvironment[]): Promise<KeyChange[]> {
     const { squealVersion, env } = this.options;
@@ -210,6 +212,8 @@ export class WorktreeKeys {
 
     const hashOf = (path: RelativePath) => this.cache.hashOf(path);
     const hashes = new Map<ProjectName, EnvironmentHash>();
+    const readAsOne = new Map<ProjectName, EnvironmentHash[]>();
+    const formats = Object.keys(KEY_FORMATS_READ_AS_ONE).map(Number);
     for (const environment of environments) {
       const core = coreEnvironmentInputs({
         squealVersion,
@@ -218,14 +222,22 @@ export class WorktreeKeys {
         ...(env === undefined ? {} : { env }),
       });
       hashes.set(environment.project, environmentHash(core, environment, hashOf));
+      readAsOne.set(
+        environment.project,
+        formats.map((format) => environmentHash(core, environment, hashOf, format)),
+      );
     }
     // Task 001-105: each test file's packages are keyed against the new install.
-    return this.index.setInstalled(hashes, (ref) => {
-      const runner = this.#runnerClosures.get(testFileId(ref));
-      // Review wave-11b N1: no closure yet keys by the whole fingerprint, never by no packages.
-      if (runner === undefined) return this.#dependencies.get(ref.project)?.of(undefined) ?? "";
-      return this.#dependencySegment(runner);
-    });
+    return this.index.setInstalled(
+      hashes,
+      (ref) => {
+        const runner = this.#runnerClosures.get(testFileId(ref));
+        // Review wave-11b N1: no closure yet keys by the whole fingerprint, never by no packages.
+        if (runner === undefined) return this.#dependencies.get(ref.project)?.of(undefined) ?? "";
+        return this.#dependencySegment(runner);
+      },
+      readAsOne,
+    );
   }
 
   /** A test file's installed-dependency segment of its key (D3, task 001-105). */

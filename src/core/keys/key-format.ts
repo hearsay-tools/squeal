@@ -15,7 +15,24 @@
  * itself re-keys every check once and no row stored under a version-hashed key
  * is trusted.
  */
-export const KEY_FORMAT_VERSION = 17;
+export const KEY_FORMAT_VERSION = 18;
+
+/**
+ * The formats read as the current one, each with the row whose change raised
+ * it (spec 011 C3 as amended 2026-10-20, task 011-37): from 13, the first after
+ * 004-81, to the one below `KEY_FORMAT_VERSION`. The guard of task 001-203
+ * raised each for a change that left every stored meaning alone
+ * (`research/key-format-guard.md`). A lookup that misses at its key reads the
+ * key at each and copies the newest set stored under one (C4 step 3, C7). A
+ * raise for a change of stored meaning empties the list.
+ */
+export const KEY_FORMATS_READ_AS_ONE: Readonly<Record<number, string>> = {
+  13: "004-81: a slow file's artifact leaves its closure",
+  14: "001-366: the backlog's width and wall budget",
+  15: "011-21: the edit tier beside the backlog",
+  16: "011-21: slots, their records committed together",
+  17: "011-22 and 011-23: catch-up's order, the keys stored since the last read",
+};
 
 /**
  * The guarded sources' hash at each `KEY_FORMAT_VERSION`, as the guard
@@ -39,4 +56,5 @@ export const KEY_SOURCES_HASHES: Readonly<Record<number, string>> = {
   15: "ef314c953f520d87f2b3ec8d61963d3d8b5430cc05d22b601a0e5f1b5be6cbba",
   16: "174eed89ebcf5d3fad6942b3c4c1c2a8a02bfede2f719bb7b038d90ec0be5804",
   17: "e89738c4684948d7dd43972cf679d3c429e6edb0d3a85156e1062fee67da9353",
+  18: "1b079f99aa7a09eeb7440e548ad0697253cdbdcaa0d9a0bd545dbabfd6642f26",
 };
