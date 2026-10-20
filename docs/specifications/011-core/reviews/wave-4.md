@@ -701,3 +701,74 @@ C4's fifth-selection requirement is satisfied; this note does not reopen its sta
 ### Inputs for the next wave
 
 No further repair is required for W4r's three closure checks. Keep immediate rejection handling on both the input-read and outcome promises; keep the backlog-turn predicate shared with queue order; preserve the explicit crash barrier and both stale-run state assertions. Carry S2r-N1 as a separate capacity follow-up, without claiming the fifth-turn test proves slot-width or permit accounting. The previously settled runner, recording, departure, pool, pytest and Vitest boundaries above remain the inputs to 011-22 and 011-23.
+
+
+## Slice 2, third check
+
+**PASS 0e23edf793d7da405cba757970be7a9b3c862d7e**. Zero blockers; one nonblocking test-cleanup note. This last bounded check covers only `c141fa8f..0e23edf7`, as requested by the coordinator on 2026-10-20 after branch CI exposed timing assumptions. The earlier product verdict and its settled findings stand.
+
+### Verification output
+
+HEAD matched the requested candidate, and the tree was clean before and after the focused run. The delta contains only `test/scheduler/edit-beside-backlog.test.ts` and `test/scheduler/backlog-slots.test.ts`. A direct diff confirms no changes to product code, plugin bundles, package manifests or key sources. Node v24.21.0; host load sampled during the checks was 18.32–21.71 on 24 CPUs. This was a focused check of the two requested properties; general gates and a full suite were not repeated at this test-only candidate.
+
+```text
+$ git rev-parse HEAD
+0e23edf793d7da405cba757970be7a9b3c862d7e
+$ git status --porcelain
+(no output)
+$ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run test/scheduler/edit-beside-backlog.test.ts test/scheduler/backlog-slots.test.ts -t 'keeps the edit|runs 16 files' --maxWorkers=4
+RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/efeadf4c-ff0f-41d8-9c00-80cdea0f47ef
+
+
+ Test Files  2 passed (2)
+      Tests  3 passed | 4 skipped (7)
+   Start at  09:42:00
+   Duration  31.90s (tests 93%, transform 6%, import 1%)
+Exit 0.
+```
+
+### Requested closure checks
+
+**Both stale-run tests still discriminate — proven.** Case 3 holds the edit's completed runner call before publishing its report, so the old backlog run can record while the newer run still holds the file. Its explicit release follows the running-state assertions; case 4's crash barrier remains intact. Both cases pass at the candidate.
+
+In a disposable detached worktree at this candidate, `supersededIn` was changed to return `false`. The exact candidate tests then failed at their intended state assertions, after their ordering prerequisites had passed:
+
+```text
+edit-beside-backlog case 3, line 291:
+  expected row.pending running; received queued.
+edit-beside-backlog case 4, line 334:
+  expected outcome pass; received unknown.
+```
+
+Case 3 additionally hit the cleanup timeout described below; this did not replace or obscure its state assertion failure.
+
+**The 15% bound still separates slots from the tier barrier — proven for this fixture.** The unmodified slot-mode case passes the new assertion, the W=4 peak-width assertion and the per-file progress assertion. For the control, the same disposable worktree changed only the makespan case's harness option to `slots: false`, retaining its durations, W=4 pool and 20 s timeout/wall budget. The control fails at the makespan assertion itself, before its progress assertion:
+
+```text
+011-21 slots: 16 files in 17880 ms against list scheduling's 13985 ms (27.9 %), 1 progress steps
+backlog-slots.test.ts:63:
+  actual 17879.747802734375 ms
+  expected <= 16082.19493408203 ms (list * 1.15)
+```
+
+Thus the widened CI tolerance still rejects the tier barrier in the requested comparison. This check does not establish a universal 15% threshold or verify the original 5% target under load; the quiet-host 2.2–3.6% measurements in the comment remain prior coordinator evidence.
+
+The controls ran together under the host lock, with only those two independent mutations (the stale-run guard and the makespan harness's slot switch):
+
+```text
+$ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run test/scheduler/edit-beside-backlog.test.ts test/scheduler/backlog-slots.test.ts -t 'keeps the edit|runs 16 files' --maxWorkers=4
+ Test Files  2 failed (2)
+      Tests  3 failed | 4 skipped (7)
+   Duration  137.84s (tests 97%, transform 3%)
+Exit 1 (intentional controls).
+```
+
+The disposable worktree was removed before this findings append. No candidate implementation or test was changed by the reviewer.
+
+### Nonblocking note
+
+**S2t-N1 — proven: case 3's assertion-failure cleanup waits on its own barrier.** Location: `test/scheduler/edit-beside-backlog.test.ts:270`, `:291`, `:297`; teardown `test/scheduler/helpers.ts:59`. With the guard disabled, case 3 fails at the expected pending-state assertion before its normal `release()` call. Its `onTestFinished(release)` then runs after the shared `afterEach` teardown, whose `scheduler.close()` waits for that held edit. The control therefore also reports `Hook timed out in 120000ms` from `helpers.ts:59`. The green candidate does not take this path; both requested state assertions still discriminate, so this is a nonblocking diagnostic/cleanup note. One-worker fix: put case 3's held section in `try/finally` and release there, before teardown, retaining the explicit ordering and state assertions.
+
+### What fits and inputs for the next wave
+
+Both stale-state completion orders remain covered; the added barrier removes case 3's sleep-based ordering assumption without weakening its state assertions. Slot mode passes while the tier control misses the 15% bound by 12.9 percentage points. No further repair is needed for these two bounded checks. Carry S2t-N1 into a test-cleanup row and keep the earlier S2r-N1 capacity note separate. This append follows the prior `ed35b8ce` re-review commit on the branch rooted at `origin/main`; the coordinator must retain both findings commits when integrating them.
