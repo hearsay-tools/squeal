@@ -61,7 +61,13 @@ function countAt(ranges: readonly Range[], offset: number): number {
   return best?.count ?? 0;
 }
 
-/** Of `lines` (1-based) of `text`, those holding code whose block ran in none of `reports`. Blank lines hold none. */
+/**
+ * Of `lines` (1-based) of `text`, those holding code whose block ran in none
+ * of `reports`. Blank lines hold none. A line is read at its first character
+ * past the brackets and commas that close an earlier block, as esbuild
+ * prints `}, b = 2) {` after a default parameter's function, which no call
+ * need reach (row 011-41); a line of those alone is read at its first.
+ */
 export function unrun(
   text: string,
   reports: readonly (readonly Range[])[],
@@ -79,7 +85,8 @@ export function unrun(
     const line = all[n - 1] ?? "";
     const indent = line.search(/\S/);
     if (indent < 0) continue;
-    const offset = (starts[n - 1] ?? 0) + indent;
+    const past = line.slice(indent).search(/[^\s)\]},;]/);
+    const offset = (starts[n - 1] ?? 0) + indent + Math.max(past, 0);
     if (reports.every((ranges) => countAt(ranges, offset) === 0)) out.push(n);
   }
   return out;

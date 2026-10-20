@@ -41,7 +41,7 @@ export const COMPONENTS: readonly Component[] = [
     version: { path: "src/runners/vitest/version.ts", constant: "VITEST_ADAPTER_VERSION" },
     entries: "entries/vitest.ts",
     texts: [],
-    kinds: [],
+    kinds: ["adapter:vitest"],
   },
   {
     name: "node:test",
