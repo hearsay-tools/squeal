@@ -141,12 +141,13 @@ export function endRerun(context: SchedulerContext, file: FileState): void {
 /**
  * At the baseline (review wave 13i, S1): each listed file takes the key its
  * new failure was re-run at, and a re-run a daemon queued and never ran is
- * queued forced again while the file is still at that key. Under a
- * lookup-only baseline (`queue` false) it stays pending for a later daemon.
- * A slow file's pending re-run is queued too: only a failure after all its
- * tests passed queues one (task 011-19). A file no longer listed is forgotten.
+ * queued forced again while the file is still at that key, whatever the
+ * baseline's policy: a predecessor queued it, so it is handed over (011 C4
+ * as amended 2026-10-20, row 011-30 Q5 (a), task 011-33). A slow file's
+ * pending re-run is queued too: only a failure after all its tests passed
+ * queues one (task 011-19). A file no longer listed is forgotten.
  */
-export function restoreReruns(context: SchedulerContext, ledger: Ledger, queue: boolean): void {
+export function restoreReruns(context: SchedulerContext, ledger: Ledger): void {
   const { store, worktreeId } = context;
   const ended: RerunMemory[] = [];
   for (const [id, memory] of readReruns(store, worktreeId)) {
@@ -156,7 +157,7 @@ export function restoreReruns(context: SchedulerContext, ledger: Ledger, queue: 
     if (!memory.pending) continue;
     if (file.key !== memory.key) {
       ended.push({ ...memory, pending: false });
-    } else if (queue) {
+    } else {
       file.rerunPending = true;
       ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
     }
