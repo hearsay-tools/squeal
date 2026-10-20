@@ -52,6 +52,8 @@ export interface AcceptInput {
     readonly recordedAt: number;
   }[];
   readonly receiver: string;
+  /** The checks the receiver's current results of the file hold before the lookup (D8). */
+  readonly current?: readonly CheckId[];
   /** The receiving worktree's `squeal.config.json`. */
   readonly policy?: Readonly<Record<string, unknown>>;
   /** The existing files its declared inputs select (format 12 read them, 004 D6). */
