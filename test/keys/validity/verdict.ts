@@ -100,8 +100,12 @@ function decided(output: CaseOutput): Map<string, Filed> {
 interface Reported {
   readonly completed: readonly string[];
   readonly withheld: readonly string[];
-  readonly results: readonly { readonly check: string; readonly outcome: string }[];
-  readonly loadErrors: readonly string[];
+  readonly results: readonly {
+    readonly check: string;
+    readonly outcome: string;
+    readonly fingerprint: string | null;
+  }[];
+  readonly loadErrors: readonly { readonly file: string; readonly fingerprint: string }[];
 }
 
 const fileOf = (check: string) => {
@@ -112,14 +116,19 @@ const fileOf = (check: string) => {
 /**
  * The `adapter:vitest` harness's runs, by run and file: the scheduler
  * stores a run's completed files (`recordsForFile`), each with its results
- * and its load error.
+ * and its load error, each with its fingerprint.
  */
 function ranFiles(output: CaseOutput): Map<string, Filed> {
   const runs = isRecord(output.outputs) ? output.outputs.runs : undefined;
   const filed = new Map<string, Filed>();
   (Array.isArray(runs) ? (runs as Reported[]) : []).forEach((run, i) => {
     const results = run.results.map((r) => [fileOf(r.check), r] as const);
-    const files = [...run.completed, ...run.withheld, ...results.map(([file]) => file)];
+    const files = [
+      ...run.completed,
+      ...run.withheld,
+      ...results.map(([file]) => file),
+      ...run.loadErrors.map((e) => e.file),
+    ];
     for (const file of new Set(files)) {
       const state = run.completed.includes(file)
         ? "completed"
@@ -127,7 +136,7 @@ function ranFiles(output: CaseOutput): Map<string, Filed> {
           ? "withheld"
           : "reported";
       const own = results.filter(([f]) => f === file).map(([, r]) => r);
-      const loadError = run.loadErrors.includes(file);
+      const loadError = run.loadErrors.find((e) => e.file === file) ?? null;
       filed.set(`run ${i + 1}, ${file}`, {
         stored: state === "completed" ? state : null,
         state,

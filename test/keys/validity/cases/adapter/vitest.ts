@@ -52,6 +52,37 @@ const BASIC: Readonly<Record<string, string>> = {
   ].join("\n"),
 };
 
+/** A held file with no skip, so a change to how a skip is read leaves the failure case alone. */
+const HELD_ONLY = [
+  'import { existsSync, writeFileSync } from "node:fs";',
+  'import { setTimeout as delay } from "node:timers/promises";',
+  'import { expect, it } from "vitest";',
+  'it("holds", async () => {',
+  '  writeFileSync($STARTED, "");',
+  "  while (existsSync($HOLD)) await delay(20);",
+  "  expect(1).toBe(1);",
+  "}, 120_000);",
+  "",
+].join("\n");
+
+const FAILING: Readonly<Record<string, string>> = {
+  ...BASIC,
+  "test/held.test.ts": HELD_ONLY,
+  "test/fails.test.ts": [
+    'import { expect, it } from "vitest";',
+    'it("fails", () => {',
+    "  expect(1).toBe(2);",
+    "});",
+    "",
+  ].join("\n"),
+  "test/broken.test.ts": [
+    'import { expect, it } from "vitest";',
+    'import { missing } from "../src/missing.ts";',
+    'it("never runs", () => expect(missing).toBe(1));',
+    "",
+  ].join("\n"),
+};
+
 const ref = (path: string, project = ""): TestFileRef => ({ project, path });
 const SLOW = [1, 2, 3].map((n) => ref(`test/slow${n}.test.ts`));
 const [, SLOW2, SLOW3] = SLOW;
@@ -99,6 +130,19 @@ export const VITEST_RUNS: readonly Case[] = [
         {
           files: [ref("a/test/held.test.ts", "a"), ref("b/test/only.test.ts", "b")],
           touched: ["src/only-b.ts"],
+        },
+      ],
+    },
+  ),
+  vitest(
+    "a failing test and a file that fails to load store their fingerprints (review of cand/0.1.232, B1)",
+    "a failure's fingerprint decides whether a later fail is the same failure (001 D6), so a change to how the adapter reads Vitest's errors changes what is stored",
+    {
+      files: FAILING,
+      runs: [
+        {
+          files: [ref("test/held.test.ts"), ref("test/fails.test.ts"), ref("test/broken.test.ts")],
+          touched: ["dist/unrelated.js"],
         },
       ],
     },
