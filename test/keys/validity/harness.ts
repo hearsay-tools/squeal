@@ -7,6 +7,7 @@ import { decideAccept, writeAccept } from "./harness/accept.js";
 import { assemble } from "./harness/assemble.js";
 import { observe } from "./harness/observe.js";
 import { KEY, provenance, REPORT, scratchStore, verdictOf, wordingOf } from "./harness/shared.js";
+import { traceStore } from "./harness/store-traced.js";
 
 /*
  * One function per case kind (task 011-37 section 3). Bundled once against
@@ -64,6 +65,8 @@ export async function runCase(c: Case, scratch: string, runtime: string): Promis
       return writeAccept(c.input, scratch);
     case "assemble":
       return assemble(c.input, scratch);
+    case "store":
+      return traceStore(c.input, scratch);
   }
 }
 

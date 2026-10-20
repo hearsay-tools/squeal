@@ -5,6 +5,7 @@ import { DECLARED } from "./assemble/declared.js";
 import { GOLDEN_KEYS } from "./key/golden.js";
 import { OBSERVED_READS } from "./observe/reads.js";
 import { GOLDEN_ROWS } from "./rows/golden.js";
+import { STORE_TIERS } from "./store/tier.js";
 
 /**
  * The corpus: every case, run at both trees when the comparison fires. A case
@@ -18,4 +19,5 @@ export const CASES: readonly Case[] = [
   ...INHERIT,
   ...SLOW_INHERIT,
   ...DECLARED,
+  ...STORE_TIERS,
 ];
