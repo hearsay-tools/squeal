@@ -8669,6 +8669,19 @@ ${reason2}`,
     ...stillWithheld.length > 0 ? { withheld: stillWithheld } : {}
   };
 }
+function barredByTouch(report2, files2, touched, growth) {
+  const isTouched = new Set(touched);
+  const named = (paths2 = []) => paths2.filter((p) => isTouched.has(p));
+  const touchedOf = (ran) => [...named(ran.inputs), ...named(growth?.get(ran.file.id)?.growth)];
+  const barred = files2.filter((ran) => touchedOf(ran).length > 0);
+  const paths = [...new Set(barred.flatMap(touchedOf))].sort();
+  const withheld = withheldForTouch(
+    report2,
+    paths,
+    barred.map(({ file }) => file.ref)
+  );
+  return { report: withheld, barred, paths };
+}
 function withholdNote(touched, files2, retry2) {
   if (files2.length === 0) return null;
   const paths = listPaths(touched);
@@ -9714,6 +9727,41 @@ var init_rank = __esm({
         return out2;
       }
     };
+  }
+});
+
+// src/core/scheduler/accept.ts
+function acceptedAt(store, worktreeId, key2, now, listed3) {
+  let hits = store.results.byKey(key2, now());
+  if (hits.length === 0 && copyReadAsOne(store, key2, listed3))
+    hits = store.results.byKey(key2, now());
+  if (hits.length === 0) return { hits, mayWait: true };
+  if (hits.every((hit) => hit.provenance.worktreeId === worktreeId)) {
+    return { hits, mayWait: false };
+  }
+  const held2 = heldFailure(store, worktreeId, hits) !== void 0;
+  return { hits: held2 ? [] : hits, mayWait: false };
+}
+function copyReadAsOne(store, key2, listed3) {
+  const found2 = listed3.keys(key2);
+  if (found2 === null || found2.keys.length === 0) return false;
+  const id2 = testFileId(found2.testFile);
+  if (listed3.read.get(id2) === key2) return false;
+  const copied = store.results.copyNewest(key2, found2.keys);
+  listed3.read.set(id2, key2);
+  return copied;
+}
+function currentChecks(previous, results2) {
+  const checks = results2.map((r) => r.check);
+  const kept2 = new Set(checks.map(checkId));
+  return { checks, retired: previous.filter((check) => !kept2.has(checkId(check))) };
+}
+var init_accept = __esm({
+  "src/core/scheduler/accept.ts"() {
+    "use strict";
+    init_keys();
+    init_state3();
+    init_files();
   }
 });
 
@@ -10950,8 +10998,8 @@ var init_ledger = __esm({
     init_keys();
     init_rank();
     init_rank_store();
-    init_state3();
     init_types();
+    init_accept();
     init_checkpoints();
     init_claims();
     init_context();
@@ -11027,6 +11075,11 @@ var init_ledger = __esm({
       #ranker;
       /** The key each file was last read at under the formats read as one, by `testFileId` (task 011-38). */
       #readAsOne = /* @__PURE__ */ new Map();
+      /** The formats read as one, as `acceptedAt` reads them: the key index's keys, this daemon's reads. */
+      #listed = {
+        keys: (key2) => this.context.keys.index.keysReadAsOne(key2),
+        read: this.#readAsOne
+      };
       file(ref2) {
         return this.files.get(testFileId(ref2));
       }
@@ -11158,50 +11211,20 @@ var init_ledger = __esm({
         if (moved2) publishSlowEvidence(store, worktreeId, ranked);
       }
       /**
-       * The stored results of `key` that may stand for its file: every hit, unless
-       * one is another worktree's fail this worktree has not
-       * confirmed (spec 001 D6 as amended, task 001-170, `heldFailure`), when
-       * there is none: the file is a miss and runs here, and its local result
-       * replaces the shared row. The store holds one result per check and key,
-       * so a mixed set is never partly this worktree's own.
+       * The stored results of `key` that may stand for its file (`acceptedAt`):
+       * when there are none, the file is a miss and runs here.
        */
       lookup(key2) {
         return this.probe(key2).hits;
       }
       /**
        * `lookup`, and whether a miss may wait on another worktree's claim of
-       * `key` (task 001-205): only when no result is stored, so none was
-       * withheld (001-170). A slow file inherits as any file (004 D6 as amended
-       * 2026-10-18, task 004-81). A miss first copies a set stored at a format
-       * read as one (`#copyReadAsOne`).
+       * `key` (task 001-205): the accept rule's (`acceptedAt`), the formats read
+       * as one once per file and key in this daemon (task 011-38).
        */
       probe(key2) {
         const { store, worktreeId, now } = this.context;
-        let hits = store.results.byKey(key2, now());
-        if (hits.length === 0 && this.#copyReadAsOne(key2)) hits = store.results.byKey(key2, now());
-        if (hits.length === 0) return { hits, mayWait: true };
-        if (hits.every((hit) => hit.provenance.worktreeId === worktreeId)) {
-          return { hits, mayWait: false };
-        }
-        const held2 = heldFailure(store, worktreeId, hits) !== void 0;
-        return { hits: held2 ? [] : hits, mayWait: false };
-      }
-      /**
-       * Spec 011 C4 step 3 as amended 2026-10-20 (task 011-38): "A key with no
-       * result is first read at the formats C3 reads as one, once per file and
-       * key in a daemon". The newest set stored at one is copied to `key`
-       * (`ResultRepo.copyNewest`, C7) in a statement of its own, so the write
-       * lock is held for one copy at a time. True when it copied a set. A busy
-       * store's error leaves the read to the next lookup.
-       */
-      #copyReadAsOne(key2) {
-        const found2 = this.context.keys.index.keysReadAsOne(key2);
-        if (found2 === null || found2.keys.length === 0) return false;
-        const id2 = testFileId(found2.testFile);
-        if (this.#readAsOne.get(id2) === key2) return false;
-        const copied = this.context.store.results.copyNewest(key2, found2.keys);
-        this.#readAsOne.set(id2, key2);
-        return copied;
+        return acceptedAt(store, worktreeId, key2, now, this.#listed);
       }
       /**
        * The next lookup of each of `refs` reads the formats read as one again:
@@ -11222,15 +11245,14 @@ var init_ledger = __esm({
       /**
        * Makes `results` the current results of `file` under `key`: from a run of
        * this worktree or a lookup hit. Checks of the previous results that are
-       * not among them are retired (D8).
+       * not among them are retired (D8, `currentChecks`).
        */
       applyResults(file, key2, results2, checkpointId) {
         if (results2.length > 0) this.#applied.push({ results: results2, checkpointId });
-        const next = results2.map((r) => r.check);
-        const kept2 = new Set(next.map(checkId));
-        this.#retired.push(...file.checks.filter((check) => !kept2.has(checkId(check))));
+        const { checks, retired } = currentChecks(file.checks, results2);
+        this.#retired.push(...retired);
         file.resultKey = key2;
-        file.checks = next;
+        file.checks = checks;
         file.failing = results2.some((r) => r.outcome === "fail");
         file.durationMs = durationOf(results2) ?? file.durationMs;
         file.unknownKey = null;
@@ -12037,6 +12059,68 @@ var init_slots2 = __esm({
   }
 });
 
+// src/core/scheduler/store-decision.ts
+function tierEnd(tier, report2, changedOnDisk, requeue, observed) {
+  const completed = new Set(report2.completedFiles.map(testFileId));
+  const duringRun = tier.changes;
+  return {
+    completed,
+    withheld: new Set((report2.withheld ?? []).map(testFileId)),
+    cancelled: tier.cancel?.signal.aborted === true && report2.end === "completed",
+    requeue,
+    notStarted: new Set((report2.startupFailure?.testFiles ?? []).map(testFileId)),
+    splitCap: timeoutCap(
+      report2,
+      tier.lane,
+      tier.files.map((f) => f.file),
+      completed
+    ),
+    growth: observed.growth,
+    environment: new Set(observed.environment?.files.keys() ?? []),
+    unstable: (path) => changedOnDisk.has(path) || duringRun.has(path) || observed.changed.has(path)
+  };
+}
+function timeoutCap(report2, lane, files2, completed) {
+  if (report2.end !== "timed-out" || files2.length < 2 || isSlowLane(lane)) return null;
+  const incomplete = files2.filter((file) => !completed.has(file.id)).length;
+  return Math.max(1, Math.floor(incomplete / 2));
+}
+function supersededIn(file, key2) {
+  if (file.runningKey !== null && file.runningKey !== key2) return true;
+  return file.key !== null && file.key !== key2 && file.resultKey === file.key;
+}
+function storeDecision(entry4, end, held2) {
+  const { file, key: key2, inputs: inputs2 } = entry4;
+  if (supersededIn(file, key2)) return { kind: "superseded" };
+  if (!held2) return { kind: "gone" };
+  const queued = typeof end.requeue === "boolean" ? end.requeue : end.requeue.has(file.id);
+  if (!queued && end.withheld.has(file.id)) return { kind: "withheld" };
+  if (queued || end.cancelled && !end.completed.has(file.id)) return { kind: "requeue" };
+  if (!end.completed.has(file.id)) {
+    if (end.notStarted.has(file.id)) return { kind: "not-started" };
+    if (end.splitCap === null) return { kind: "unknown" };
+    return { kind: "split", cap: end.splitCap };
+  }
+  const growth = end.growth.get(file.id);
+  const grew = growth === void 0 ? {} : { growth };
+  const paths = [...inputs2, ...growth?.growth ?? []].filter(end.unstable);
+  if (paths.length > 0) return { kind: "unstable", paths, ...grew };
+  if (growth !== void 0 && growth.firstSeen.length > 0) {
+    return { kind: "first-seen", rerun: file.key === key2, ...grew };
+  }
+  if (end.environment.has(file.id)) return { kind: "environment", ...grew };
+  if (growth === void 0) return { kind: "store", at: "ran", current: file.key === key2 };
+  if (file.key !== key2) return { kind: "no-key", ...grew };
+  return { kind: "store", at: "grown", current: false, ...grew };
+}
+var init_store_decision = __esm({
+  "src/core/scheduler/store-decision.ts"() {
+    "use strict";
+    init_keys();
+    init_types();
+  }
+});
+
 // src/core/scheduler/growth.ts
 function unresolvedPreloads(context, project) {
   const raw = context.store.meta.get(nodeTestObservedPreloadsMetaKey(project));
@@ -12095,11 +12179,6 @@ var init_store_results = __esm({
 });
 
 // src/core/scheduler/timeout-split.ts
-function timeoutCap(report2, lane, files2, completed) {
-  if (report2.end !== "timed-out" || files2.length < 2 || isSlowLane(lane)) return null;
-  const incomplete = files2.filter((file) => !completed.has(file.id)).length;
-  return Math.max(1, Math.floor(incomplete / 2));
-}
 function requeueSplit(ledger, file, cap2, forced, recent) {
   file.tierCap = Math.min(cap2, file.tierCap ?? cap2);
   if (file.key === null || file.blocked !== null) return;
@@ -12111,7 +12190,6 @@ function timedOutReason(timeoutMs) {
 var init_timeout_split = __esm({
   "src/core/scheduler/timeout-split.ts"() {
     "use strict";
-    init_types();
     init_context();
     init_queue();
   }
@@ -12220,10 +12298,6 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), turnDue =
   const settled = picked.some((p) => !ledger.queue.has(p.file.ref));
   const slots = skipped2 && picked.length === 0 && !ledger.queue.hasFirstGroup((r) => !busy.has(laneOf(context, r)));
   return settled || slots ? selectTier(context, ledger, busy, turnDue) : null;
-}
-function supersededIn(file, key2) {
-  if (file.runningKey !== null && file.runningKey !== key2) return true;
-  return file.key !== null && file.key !== key2 && file.resultKey === file.key;
 }
 function tierWidth(context, ref2, grant) {
   return Math.max(1, context.runner.tierWidth?.(ref2, grant) ?? grant);
@@ -12339,13 +12413,8 @@ function unstableInputs(context, tier) {
 }
 function recordTier(context, ledger, tier, report2, changedOnDisk, requeue = false, observed = NOTHING_OBSERVED, commit = true) {
   const { store, worktreeId } = context;
-  const duringRun = tier.changes;
   endTier(context, ledger, tier);
-  const completed = new Set(report2.completedFiles.map(testFileId));
-  const withheld = new Set((report2.withheld ?? []).map(testFileId));
-  const cancelled = tier.cancel?.signal.aborted === true && report2.end === "completed";
-  const files2 = tier.files.map((f) => f.file);
-  const splitCap = timeoutCap(report2, tier.lane, files2, completed);
+  const end = tierEnd(tier, report2, changedOnDisk, requeue, observed);
   const provenance = {
     worktreeId,
     revision: tier.revision.number,
@@ -12362,53 +12431,53 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, requeue = fal
   const failedAnew = [];
   const notStarted = [];
   const startup = report2.startupFailure;
-  const startupIds = new Set((startup?.testFiles ?? []).map(testFileId));
   const { environment } = observed;
-  const unstable = (path) => changedOnDisk.has(path) || duringRun.has(path) || observed.changed.has(path);
   store.transaction(() => {
     store.runs.finish(tier.runId, report2.end, context.now());
-    for (const { file, key: key2, inputs: inputs2, checkpointId, forced, recent, catchUp } of tier.files) {
-      if (supersededIn(file, key2)) continue;
+    for (const entry4 of tier.files) {
+      const { file, key: key2, checkpointId, forced, recent, catchUp } = entry4;
+      const decision = storeDecision(entry4, end, ledger.files.get(file.id) === file);
+      if (decision.kind === "superseded") continue;
       ledger.setRunning(file, null);
-      if (ledger.files.get(file.id) !== file) continue;
-      const queued = typeof requeue === "boolean" ? requeue : requeue.has(file.id);
-      if (!queued && withheld.has(file.id)) {
+      if (decision.kind === "gone") continue;
+      if (decision.kind === "withheld") {
         ledger.discard(file, key2, forced, [], report2.failure ?? `run ${report2.end}`);
         continue;
       }
-      if (queued || cancelled && !completed.has(file.id)) {
+      if (decision.kind === "requeue") {
         if (file.key !== null && file.blocked === null) {
           ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), forced, false, catchUp === true);
         }
         continue;
       }
-      if (!completed.has(file.id)) {
-        if (startupIds.has(file.id)) notStarted.push({ file, forced });
-        else if (splitCap === null) unknown.push({ file, key: key2 });
-        else requeueSplit(ledger, file, splitCap, forced, recent === true);
+      if (decision.kind === "not-started") notStarted.push({ file, forced });
+      else if (decision.kind === "unknown") unknown.push({ file, key: key2 });
+      else if (decision.kind === "split") {
+        requeueSplit(ledger, file, decision.cap, forced, recent === true);
+      }
+      if (decision.kind === "not-started" || decision.kind === "unknown" || decision.kind === "split") {
         continue;
       }
-      const growth = observed.growth.get(file.id);
+      const { growth } = decision;
       let storeKey = key2;
       if (growth !== void 0) {
-        const ranUnderCurrent = file.key === key2;
         rekeyed.push(...context.keys.addObserved(file.ref, growth.add).map((c) => c.testFile));
         grown.push({ ref: file.ref, checkpointId });
-        storeKey = ranUnderCurrent ? context.keys.index.key(file.ref) : null;
+        storeKey = decision.kind === "store" ? context.keys.index.key(file.ref) : null;
       }
-      if (inputs2.some(unstable) || growth?.growth.some(unstable)) {
-        ledger.discard(file, key2, forced, [...inputs2, ...growth?.growth ?? []].filter(unstable));
+      if (decision.kind === "unstable") {
+        ledger.discard(file, key2, forced, decision.paths);
         continue;
       }
-      if (growth !== void 0 && growth.firstSeen.length > 0) {
-        if (file.key === key2) firstSeen.push({ file, firstSeen: growth.firstSeen });
+      if (decision.kind === "first-seen") {
+        if (decision.rerun) firstSeen.push({ file, firstSeen: growth?.firstSeen ?? [] });
         continue;
       }
-      if (environment?.files.has(file.id)) {
+      if (decision.kind === "environment") {
         grewEnvironment.push(file);
         continue;
       }
-      if (storeKey === null) continue;
+      if (decision.kind === "no-key" || storeKey === null) continue;
       const previous = file.resultKey;
       const records = recordsForFile({
         ref: file.ref,
@@ -12432,9 +12501,7 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, requeue = fal
           });
         }
       }
-      if (growth === void 0 && file.key === key2) {
-        ledger.applyResults(file, key2, records, checkpointId);
-      }
+      if (decision.current) ledger.applyResults(file, key2, records, checkpointId);
     }
     if (environment !== void 0) {
       const unkeyed = [];
@@ -12493,8 +12560,10 @@ var init_tiers = __esm({
     init_slots2();
     init_slow3();
     init_stability();
+    init_store_decision();
     init_store_results();
     init_timeout_split();
+    init_store_decision();
   }
 });
 
@@ -15638,19 +15707,11 @@ var init_scheduler2 = __esm({
         const read5 = installMoved ? void 0 : await prepareObserved(context, ran, tier.run);
         const observed = environment === void 0 || read5 === void 0 ? read5 : { ...read5, environment };
         const touched = [.../* @__PURE__ */ new Set([...inputs2.touched, ...observed?.touched ?? []])].sort();
-        const isTouched = new Set(touched);
-        const named = (paths = []) => paths.filter((p) => isTouched.has(p));
-        const touchedOf = (ran2) => [
-          ...named(ran2.inputs),
-          ...named(observed?.growth.get(ran2.file.id)?.growth)
-        ];
-        const barred = tier.files.filter((ran2) => touchedOf(ran2).length > 0);
-        const barredPaths = [...new Set(barred.flatMap(touchedOf))].sort();
-        const report2 = withheldForTouch(
-          ran,
-          barredPaths,
-          barred.map(({ file }) => file.ref)
-        );
+        const {
+          report: report2,
+          barred,
+          paths: barredPaths
+        } = barredByTouch(ran, tier.files, touched, observed?.growth);
         const withheld = [];
         const withhold = barred.length === 0 ? null : this.#withholds.record(barred);
         this.#withholds.clear(tier.files.filter((ran2) => !barred.includes(ran2)));
@@ -21597,73 +21658,6 @@ var init_version = __esm({
   }
 });
 
-// src/runners/vitest/width.ts
-function tierWidth2(want, ceiling) {
-  if (want === void 0 || ceiling === 1) return ceiling;
-  const width = Math.max(2, Math.floor(want));
-  return ceiling === void 0 ? width : Math.min(width, ceiling);
-}
-var Widths;
-var init_width = __esm({
-  "src/runners/vitest/width.ts"() {
-    "use strict";
-    Widths = class {
-      #root;
-      #projects;
-      /** By project name: its own ceiling, else the root's, and its group. */
-      #byName;
-      constructor(vitest) {
-        this.#root = vitest.config.maxWorkers;
-        this.#projects = new Map(vitest.projects.map((p) => [p, p.config.maxWorkers]));
-        this.#byName = new Map(
-          vitest.projects.map((p) => {
-            const own = p.config.maxWorkers;
-            const order = p.config.sequence.groupOrder;
-            const group = p.config.isolate && order === 0 && own === 1 ? "sequential" : order;
-            return [p.name, { ceiling: own ?? this.#root, group }];
-          })
-        );
-      }
-      /**
-       * How many of `testFiles`, in order, one slow run starts at once (spec 004
-       * D2, review 001-394 B2): the first file's group's, up to its width. The
-       * slow instance's width and a slow grant are each at least one worker per
-       * file, so the width is `tierWidth` of the files under the ceiling. An
-       * unknown project's run fails on its own: all of them.
-       */
-      atOnce(testFiles) {
-        const first = testFiles[0] === void 0 ? void 0 : this.#byName.get(testFiles[0].project);
-        if (first === void 0) return testFiles.length;
-        const width = tierWidth2(testFiles.length, first.ceiling) ?? testFiles.length;
-        let count = 0;
-        for (const { project } of testFiles) {
-          if (count >= width || this.#byName.get(project)?.group !== first.group) break;
-          count++;
-        }
-        return Math.max(1, count);
-      }
-      /**
-       * The workers a run of `project`'s files takes at a grant of `grant` (spec
-       * 011 C4 step 5, task 001-366): `tierWidth` under its own ceiling. An
-       * unknown project's run fails on its own: `grant`, at least 2.
-       */
-      of(project, grant) {
-        return tierWidth2(grant, this.#byName.get(project)?.ceiling) ?? Math.max(2, grant);
-      }
-      /** Sizes `vitest`'s next run for `want` workers. */
-      apply(vitest, want) {
-        vitest.config.maxWorkers = tierWidth2(want, this.#root);
-        for (const project of vitest.projects) {
-          const own = this.#projects.get(project);
-          if (project.config !== vitest.config && own !== void 0) {
-            project.config.maxWorkers = tierWidth2(want, own);
-          }
-        }
-      }
-    };
-  }
-});
-
 // src/runners/vitest/adapter.ts
 async function testSpecifications(vitest) {
   return supported(await vitest.globTestSpecifications());
@@ -21674,7 +21668,7 @@ function excludedStamp(projects2, files2) {
 function supported(specs) {
   return specs.filter((s) => s.pool !== "typescript");
 }
-var VitestAdapter;
+var NO_HINTS, VitestAdapter;
 var init_adapter = __esm({
   "src/runners/vitest/adapter.ts"() {
     "use strict";
@@ -21705,7 +21699,9 @@ var init_adapter = __esm({
     init_startup();
     init_touched();
     init_version();
-    init_width();
+    NO_HINTS = { started: () => {
+    }, size: () => {
+    } };
     VitestAdapter = class {
       /**
        * `vitest` is the project's own `vitest/node` (`loadVitest`). Only types
@@ -21714,17 +21710,16 @@ var init_adapter = __esm({
        * `observe` is policy `observe.runtimeInputs`, read before each call
        * (task 001-132); absent, nothing is observed. `childEnv` goes into every
        * worker's env beside the recorder's and, like it, stays out of the
-       * environment hash (D12, task 001-142). `maxWorkers` is the width of a
-       * run without a grant (spec 004 D2: the slow tier's instance), under the
-       * project's own as a grant is (D11, task 001-378). `optimizer` hears, at
-       * each start, the projects whose config turns the dependency optimizer on,
-       * none included (task 001-181). `exclude` is policy
+       * environment hash (D12, task 001-142). `hints` sizes each run (D11, task
+       * 001-378; `VitestWidths`); absent, a run takes its configs' own width.
+       * `optimizer` hears, at each start, the projects whose config turns the
+       * dependency optimizer on, none included (task 001-181). `exclude` is policy
        * `vitest.excludeProjects`, read at each start (task 001-349);
        * `excludeFiles` is policy `vitest.exclude`, read at each start too (spec
        * 004 D7, task 004-81).
        */
       constructor(paths, vitest, note = () => {
-      }, observe = () => false, childEnv2 = {}, maxWorkers, optimizer = () => {
+      }, observe = () => false, childEnv2 = {}, hints = NO_HINTS, optimizer = () => {
       }, exclude = () => [], excludeFiles = () => []) {
         this.paths = paths;
         this.#exclude = exclude;
@@ -21733,7 +21728,7 @@ var init_adapter = __esm({
         this.#optimizer = optimizer;
         this.#sources = new SourceStamps(paths);
         this.#childEnv = childEnv2;
-        this.#maxWorkers = maxWorkers;
+        this.#hints = hints;
         this.#note = note;
         this.#observer = new VitestObserver(paths, observe);
       }
@@ -21763,8 +21758,8 @@ var init_adapter = __esm({
        * forgotten once the calls in flight when it was heard have returned.
        */
       #touches = new Touches();
-      /** The current instance's projects' own `maxWorkers`, each run sized under them (task 001-378). */
-      #widths = null;
+      /** Told of each instance, and asked to size each run (`VitestHints`, row 011-40). */
+      #hints;
       /** Installed lockfiles the current instance started with. */
       #lockfiles = /* @__PURE__ */ new Set();
       /** The next start imports `vitest/node` again: the installed dependencies changed. */
@@ -21783,7 +21778,6 @@ var init_adapter = __esm({
       #optimizer;
       #observer;
       #childEnv;
-      #maxWorkers;
       #exclude;
       #excludeFiles;
       /** Policy `vitest.excludeProjects` and `vitest.exclude` as the current instance started with them (tasks 001-349, 004-81). */
@@ -21827,7 +21821,7 @@ var init_adapter = __esm({
           await vitest.standalone();
           this.#observer.configure(vitest);
           this.#tempDirs = instanceTempDirs(vitest);
-          this.#widths = new Widths(vitest);
+          this.#hints.started(vitest);
           this.#lockfiles = await this.#installedLockfiles(vitest);
           this.#configFiles = configFiles(vitest);
           this.#config = config;
@@ -22015,23 +22009,6 @@ var init_adapter = __esm({
       omittedTestFiles() {
         return this.#omitted;
       }
-      /**
-       * Spec 004 D2 (review 001-394 B2): the files a slow run starts at once,
-       * under each project's own `maxWorkers` (001 D11 Runner ceiling). The
-       * slow instance has the same configs, so this instance's are read. None
-       * started yet: all of them.
-       */
-      slowWidth(testFiles) {
-        return this.#widths?.atOnce(testFiles) ?? testFiles.length;
-      }
-      /**
-       * Spec 011 C4 step 5 (task 001-366): the workers a backlog tier holding
-       * `testFile` runs with at `grant`, under its project's own `maxWorkers`.
-       * No instance yet: `grant`.
-       */
-      tierWidth(testFile, grant) {
-        return this.#widths?.of(testFile.project, grant) ?? grant;
-      }
       environment() {
         return this.#part(async (vitest) => {
           const context = {
@@ -22067,7 +22044,7 @@ var init_adapter = __esm({
               writeRunLog(options, collector, empty2);
               return empty2;
             }
-            this.#widths?.apply(vitest, options.workers ?? this.#maxWorkers);
+            this.#hints.size(vitest, options.workers);
             const exitCode = process.exitCode;
             const unsure = this.#unsure;
             const loadedSince = Date.now();
@@ -22218,6 +22195,103 @@ var init_paths5 = __esm({
   }
 });
 
+// src/runners/vitest/width.ts
+function tierWidth2(want, ceiling) {
+  if (want === void 0 || ceiling === 1) return ceiling;
+  const width = Math.max(2, Math.floor(want));
+  return ceiling === void 0 ? width : Math.min(width, ceiling);
+}
+var Widths, VitestWidths;
+var init_width = __esm({
+  "src/runners/vitest/width.ts"() {
+    "use strict";
+    Widths = class {
+      #root;
+      #projects;
+      /** By project name: its own ceiling, else the root's, and its group. */
+      #byName;
+      constructor(vitest) {
+        this.#root = vitest.config.maxWorkers;
+        this.#projects = new Map(vitest.projects.map((p) => [p, p.config.maxWorkers]));
+        this.#byName = new Map(
+          vitest.projects.map((p) => {
+            const own = p.config.maxWorkers;
+            const order = p.config.sequence.groupOrder;
+            const group = p.config.isolate && order === 0 && own === 1 ? "sequential" : order;
+            return [p.name, { ceiling: own ?? this.#root, group }];
+          })
+        );
+      }
+      /**
+       * How many of `testFiles`, in order, one slow run starts at once (spec 004
+       * D2, review 001-394 B2): the first file's group's, up to its width. The
+       * slow instance's width and a slow grant are each at least one worker per
+       * file, so the width is `tierWidth` of the files under the ceiling. An
+       * unknown project's run fails on its own: all of them.
+       */
+      atOnce(testFiles) {
+        const first = testFiles[0] === void 0 ? void 0 : this.#byName.get(testFiles[0].project);
+        if (first === void 0) return testFiles.length;
+        const width = tierWidth2(testFiles.length, first.ceiling) ?? testFiles.length;
+        let count = 0;
+        for (const { project } of testFiles) {
+          if (count >= width || this.#byName.get(project)?.group !== first.group) break;
+          count++;
+        }
+        return Math.max(1, count);
+      }
+      /**
+       * The workers a run of `project`'s files takes at a grant of `grant` (spec
+       * 011 C4 step 5, task 001-366): `tierWidth` under its own ceiling. An
+       * unknown project's run fails on its own: `grant`, at least 2.
+       */
+      of(project, grant) {
+        return tierWidth2(grant, this.#byName.get(project)?.ceiling) ?? Math.max(2, grant);
+      }
+      /** Sizes `vitest`'s next run for `want` workers. */
+      apply(vitest, want) {
+        vitest.config.maxWorkers = tierWidth2(want, this.#root);
+        for (const project of vitest.projects) {
+          const own = this.#projects.get(project);
+          if (project.config !== vitest.config && own !== void 0) {
+            project.config.maxWorkers = tierWidth2(want, own);
+          }
+        }
+      }
+    };
+    VitestWidths = class {
+      constructor(maxWorkers) {
+        this.maxWorkers = maxWorkers;
+      }
+      maxWorkers;
+      #widths = null;
+      started(vitest) {
+        this.#widths = new Widths(vitest);
+      }
+      size(vitest, workers) {
+        this.#widths?.apply(vitest, workers ?? this.maxWorkers);
+      }
+      /**
+       * Spec 004 D2 (review 001-394 B2): the files a slow run starts at once,
+       * under each project's own `maxWorkers` (001 D11 Runner ceiling). The
+       * slow instance has the same configs, so this instance's are read. None
+       * started yet: all of them.
+       */
+      slowWidth(testFiles) {
+        return this.#widths?.atOnce(testFiles) ?? testFiles.length;
+      }
+      /**
+       * Spec 011 C4 step 5 (task 001-366): the workers a backlog tier holding
+       * `testFile` runs with at `grant`, under its project's own `maxWorkers`.
+       * No instance yet: `grant`.
+       */
+      tierWidth(testFile, grant) {
+        return this.#widths?.of(testFile.project, grant) ?? grant;
+      }
+    };
+  }
+});
+
 // src/runners/vitest/index.ts
 var vitest_exports = {};
 __export(vitest_exports, {
@@ -22227,13 +22301,13 @@ __export(vitest_exports, {
 import { realpathSync as realpathSync5 } from "node:fs";
 async function createVitestAdapter(options) {
   const root = realpathSync5(options.root);
-  const adapter = new VitestAdapter(
+  const adapter = new SizedVitestAdapter(
+    new VitestWidths(options.maxWorkers),
     new WorktreePaths(root),
     await loadVitest(root),
     options.note,
     options.observe,
     options.childEnv,
-    options.maxWorkers,
     options.optimizer,
     options.excludeProjects,
     options.exclude
@@ -22241,13 +22315,28 @@ async function createVitestAdapter(options) {
   await adapter.open();
   return adapter;
 }
+var SizedVitestAdapter;
 var init_vitest = __esm({
   "src/runners/vitest/index.ts"() {
     "use strict";
     init_adapter();
     init_load2();
     init_paths5();
+    init_width();
     init_version();
+    SizedVitestAdapter = class extends VitestAdapter {
+      #widths;
+      constructor(widths, paths, vitest, note, observe, childEnv2, optimizer, exclude, excludeFiles) {
+        super(paths, vitest, note, observe, childEnv2, widths, optimizer, exclude, excludeFiles);
+        this.#widths = widths;
+      }
+      slowWidth(testFiles) {
+        return this.#widths.slowWidth(testFiles);
+      }
+      tierWidth(testFile, grant) {
+        return this.#widths.tierWidth(testFile, grant);
+      }
+    };
   }
 });
 
@@ -48499,7 +48588,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.231";
+  if (true) return "0.1.232";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
