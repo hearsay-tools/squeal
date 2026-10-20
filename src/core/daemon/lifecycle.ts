@@ -374,9 +374,9 @@ function unusedText(unusedMs: number, registered: number): string {
 
 /**
  * The one note of a daemon that steps down for a newer hook (lessons, defect
- * 26). The shutdown lets a tier in flight finish and store its results; the
- * asking hook's successor, waiting for the lock, starts from its own CLI
- * (task 001-130).
+ * 26). The step-down cancels its tiers in flight, as a stop does (row
+ * 011-31); the asking hook's successor, waiting for the lock, starts from its
+ * own CLI (task 001-130).
  */
 export function stepDownNote(own: string, hook: string): string {
   return `daemon stopped: hooks at Squeal ${hook} are newer than this daemon (${own}); their daemon starts once this one exits`;
