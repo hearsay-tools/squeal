@@ -16,6 +16,7 @@ export {
   type FailuresByValidity,
   failureCountText,
   knownFailureCounts,
+  notCurrentText,
   splitByValidity,
 } from "./checks.js";
 export {

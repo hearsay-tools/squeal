@@ -20,6 +20,7 @@ import {
   type WorktreeId,
 } from "../types/index.js";
 import { testFileKeyOf, testFileOf } from "./derive.js";
+import { countNotCurrent } from "./file-class.js";
 import { readOptimizerOff } from "./optimizer-note.js";
 import { readRevisionCommit } from "./revision-commit.js";
 import { readSlowTier, worktreeSlowView } from "./slow.js";
@@ -52,6 +53,11 @@ import { readSlowTier, worktreeSlowView } from "./slow.js";
  *
  * `optimizerOff` is the note that Squeal runs Vitest without the dependency
  * optimizer the newest instance's config turns on (D4, tasks 001-176, 001-181).
+ *
+ * Every listed test file is counted by class, and the pending ones and the
+ * pending tests by phase (011 C6 as amended 2026-10-20, row 011-26); a
+ * caller that passes `openFiles`, the `testFileId`s the live daemon's open
+ * runs hold, gets them counted running (C15).
  */
 export function readHeader(
   store: Store,
@@ -59,6 +65,7 @@ export function readHeader(
   states: readonly KnownState[] = store.knownStates.list(worktreeId),
   keys: readonly TestFileKeyRecord[] = store.testFileKeys.list(worktreeId),
   isSlow?: (testFile: TestFileRef) => boolean,
+  openFiles?: ReadonlySet<string>,
 ): StatusHeader {
   const latest = store.revisions.latest(worktreeId);
   const revision = latest?.number ?? 0;
@@ -96,6 +103,7 @@ export function readHeader(
     counts,
     fileLevelCounts,
     testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
+    ...countNotCurrent(states, keys, openFiles),
     fullSuite: {
       atCurrentRevision: !awaiting && last !== null && last.revision === revision,
       lastCompletedRevision: last?.revision ?? null,

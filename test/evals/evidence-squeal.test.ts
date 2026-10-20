@@ -41,6 +41,9 @@ const failure = {
 const withoutChecks = (pending: number, unknown: number): StatusSnapshot => ({
   ...settled,
   testFilesWithoutChecks: { pending, unknown },
+  // Row 011-26: the test files by class, as `readHeader` counts them.
+  testFileCounts: { current: 6 - pending - unknown, pending, stale: 0, unknown },
+  testFilesByPhase: { running: 0, queued: pending },
   breakdown: { ...settled.breakdown, testFilesWithoutChecks: pending + unknown },
 });
 const slowPending: StatusSnapshot = {
@@ -73,6 +76,9 @@ const variants: [string, StatusSnapshot, object][] = [
     {
       ...settled,
       counts: { ...settled.counts, pending: 2 },
+      testFileCounts: { current: 4, pending: 2, stale: 0, unknown: 0 },
+      testFilesByPhase: { running: 1, queued: 1 },
+      testsByPhase: { running: 1, queued: 1 },
       breakdown: { ...settled.breakdown, pendingByPhase: { queued: 1, running: 1 } },
     },
     { verdict: "unknown" },
@@ -82,6 +88,7 @@ const variants: [string, StatusSnapshot, object][] = [
     {
       ...settled,
       counts: { ...settled.counts, stale: 1, unknown: 1 },
+      testFileCounts: { current: 4, pending: 0, stale: 1, unknown: 1 },
     },
     { verdict: "unknown" },
   ],
@@ -249,6 +256,26 @@ describe("squealEvidence", () => {
           expect(worktree(squealEvidence(wrap(text), "pull"))).toEqual(
             worktree(squealEvidence(wrap(status(s)), "pull")),
           );
+        });
+
+  // Row 011-26 (011 C6 as amended 2026-10-20, gh-45): a wait's verdict line alone, as a `tail -1`
+  // keeps it, says through its not-current clause whether anything is not current, as the status
+  // it ends does.
+  const notCurrent = (e: { pending?: unknown; stale?: unknown; unknown?: unknown } | null) =>
+    [e?.pending, e?.stale, e?.unknown].some((n) => typeof n === "number" && n > 0);
+  for (const [name, s] of variants)
+    for (const [form, format] of [
+      ["status --wait", wait],
+      ["status --wait <ms> <path>", named],
+      ["timed-out status --wait <ms> <path>", timedOut],
+    ] as const)
+      for (const [wrapped, wrap] of wrappings)
+        it(`reads what is not current from a ${name} ${form}'s verdict line alone, ${wrapped}`, () => {
+          const line = format(s).trimEnd().split("\n").at(-1) ?? "";
+          const e = squealEvidence(wrap(line), "pull");
+          expect(e?.pending).toEqual(expect.any(Number));
+          expect(notCurrent(e)).toBe(notCurrent(countsOf(s)));
+          if (notCurrent(countsOf(s))) expect(e?.verdict).not.toBe("pass");
         });
 
   for (const [wrapped, wrap] of wrappings)

@@ -19,6 +19,7 @@ import {
   earlierFailuresLines,
   failureCountText,
   knownFailureCounts,
+  notCurrentText,
   partsSuffix,
   splitByValidity,
 } from "./checks.js";
@@ -52,8 +53,8 @@ export function formatStatus(
   if (!result.available) return formatUnavailable(result, command);
   const lines = [
     `Revision: ${statusRevisionText(result)}`,
-    // Spec 011 C6 as amended (gh-34): only current failures are counted.
-    `Known failures: ${failureCountText(splitByValidity(result.knownFailures).current.map((f) => f.check))}`,
+    // Spec 011 C6 as amended (gh-34): only current failures are counted; (gh-45) then what is not current.
+    `Known failures: ${failureCountText(splitByValidity(result.knownFailures).current.map((f) => f.check))}${notCurrentText(result)}`,
     ...earlierFailuresLines(knownFailureCounts(result.knownFailures)),
     ...result.knownFailures.flatMap((f) => [
       `  FAIL  ${formatCheck(f.check)}`,
