@@ -139,3 +139,106 @@ After repairs, re-pin key format 17 for the combined guarded sources and rebuild
 W1's cezar selection replay records 862 s versus 2,574 s on the old edit route, mean time to a result 54 s versus 1,588 s; these are worker-supplied model results, not a live reviewer measurement. W2's margin notes now exist and bound/measure the 120 s overlap against observed commits up to 67 s. Live cezar catch-up/adoption measurements below load 8 remain the coordinator's work; no live experiment was attempted in this review. Load was about 62–77 during the early probes and later fell below 8 during the independent suite; that window was reported to the coordinator.
 
 Known boundary for later work: `stored-keys.ts:83` explicitly excludes a file `unknown` at its current key, as the existing settle path does. W2 records this exception; the stale-file acceptance cases do not establish adoption after a local crash/timeout. Carry that limit into 011-27 rather than claiming all no-result files now adopt. No new finding is made against the pre-existing crash/retry behavior.
+
+
+## Re-review (W3r)
+
+Verdict: **PASS c2c94c7f922546baf99de79312beb69994961417**. **0 blockers, 0 should-fix, 0 nits. B1–B3 closed.**
+
+Bounded to the repair delta `276ed939..c2c94c7f` and B1–B3 above, including the explicitly requested checks of first-group preservation, promotions and the demotion guard. The initial re-review target `d84444b9` was superseded during review: the coordinator supplied `f4116d7e` (revision-specific recent reasons) and `c2c94c7f` (format-17 re-pin and bundles) to close the overlap failures described below. Adoption and settled wave-5 behavior were not re-prosecuted.
+
+### Verification output
+
+`git rev-parse HEAD` matched `c2c94c7f922546baf99de79312beb69994961417`; the candidate tree was clean. The original findings-only commit `ee8ab04e`, already cherry-picked to main as `2eaa9fc7`, was excluded from the candidate checkout. Its text was saved outside the project and restored only after verification, with this section appended.
+
+```text
+$ npm ci
+added 196 packages, and audited 197 packages in 11s
+found 0 vulnerabilities
+exit 0
+
+$ npm run lint
+> biome check .
+Checked 1487 files in 637ms. No fixes applied.
+exit 0
+
+$ npm run typecheck
+> tsc --noEmit
+exit 0
+
+$ npm run build
+> tsc -p tsconfig.build.json && npm run build:plugin
+> tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts
+exit 0
+
+$ git status --short
+<empty>
+
+$ npx vitest run test/scheduler/catch-up-classification.test.ts --maxWorkers=4
+Test Files  1 passed (1)
+Tests       9 passed (9)
+Duration    4.36s
+exit 0
+
+$ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
+FAIL test/scheduler/backlog-slots-overhead.test.ts:82
+expected 21798.859410999998 to be <= 21681.347626799998
+011-21 slots: best 1.21 times one tier (limit 1.20)
+Test Files  1 failed | 752 passed | 1 skipped (754)
+Tests       1 failed | 6361 passed | 10 skipped (6372)
+Start at    11:29:19
+Duration    965.64s
+exit 1
+
+$ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run test/scheduler/backlog-slots-overhead.test.ts --maxWorkers=4
+FAIL test/scheduler/backlog-slots-overhead.test.ts:82
+expected 34661.497974 to be <= 25629.79428959999
+011-21 slots: best 1.62 times one tier (limit 1.20)
+Test Files  1 failed (1)
+Tests       1 failed (1)
+Start at    11:45:32
+Duration    208.16s
+exit 1
+```
+
+The first install at this final SHA hit `ENOTEMPTY` removing `node_modules/.vite`, following the superseded Vitest run and the daemon's dependency transition. Retrying `npm ci` succeeded without changing project files; the checks above followed that successful install. The superseded independent run at `d84444b9` was stopped with SIGINT (exit 130) when the coordinator changed the target; its incomplete results are not evidence for this candidate. The final candidate's full run above is this reviewer's own independent locked run, not the coordinator's gate or a Squeal checkpoint.
+
+The full run therefore does **not** establish an all-green suite. Its only failure was the existing 011-21 overhead comparison, also reported on the original candidate before this repair (the coordinator's supplied 1.30 result in the initial review). The isolated run failed too: it was not a quiet-load comparison. Load samples were 12.43 at 09:42 UTC after the full-run failure, 32.64 at the isolated run's start, 47.63 during it, and 69.22 afterward. These timings neither prove load caused the failure nor prove the repair introduced it. This remains unresolved verification context outside B1–B3; no new blocking regression is inferred. The isolated run's best slots time was 34,661 ms versus 21,358 ms for one tier, and both runs remained within the commit-count budget. Carry the unresolved 011-21 check into the coordinator's landing note. The independent full run passed both recorder-fidelity files, `runner-part-bound.test.ts`, and the repair regressions.
+
+A final Squeal status query returned on quiet at revision 14, with zero running or queued checks and three known failures: the two daemon-only recorder checks (001-390), plus OpenCode's held-Stop timing case. Squeal's temporary-fixture traversal failure recovered on its automatic retry. These daemon observations are separate from the independent results above and do not supply a passing gate.
+
+The nine new regression tests pass independently. They cover the original isolated B1–B3 failures, mixed edited/added test files, below-threshold controls, small-plus-large startup priority, install-wait revision boundaries and the earlier runner-part ordering. The coordinator's red-on-unrepaired-source comparisons are supplied evidence, not experiments repeated by this reviewer.
+
+Five external scratch probes used the real scheduler, store and per-fixture pool with `catch-up-fixture.ts`, fixed reported durations and controlled `invalidate` promises. They changed no project file:
+
+```text
+ordering.test.ts at d84444b9: 2 failed | 3 passed (5), Duration 7.28s
+ordering.test.ts at c2c94c7f: 5 passed (5), Duration 2.05s
+```
+
+At the final SHA, these controls all pass: an earlier content part's queued edit stays in the first group; a later small edit stays there; and a named promotion survives recount. The two overlap regressions below also pass. The probes use `tierSize: 1`: a larger edit tier can fill spare places with catch-up files and conceal a wrong group behind an ungranted run. Scratch probe files and config were deleted before committing this review.
+
+### B1 closed: count additions and preserve each revision's first-group work
+
+The runner part recounts after listing, closure application and tracking. Added tests now count; twelve new tests and six edited plus six added take the backlog grant. Nine keyed sources plus three unrelated additions retain edit tiers. `Ledger.settle` carries `keyedAt` into `RunQueue.add`; `Entry.recentBy` retains the revisions that justify its first-group flag. The final recount removes only its own provisional reason through `toCatchUp(ref, keyedAt)`. Promotions remain separate.
+
+Two failures of the superseded snapshot/`changedMeanwhile` repair were reproduced and checked against the final revision-specific implementation:
+
+- **Later revision is also large.** Baseline has `target`, nine other existing tests and a dummy. Hold B's invalidate while B edits `target` and adds ten tests. While held, C edits `target` and the nine other existing tests (ten known keyed paths). On `d84444b9`, the path-union guard kept `target` recent although both revisions were catch-up; it ran alone without a grant. At the final SHA all twenty reached files, `target` included, take a backlog grant. The later large revision creates no recent reason, and B removes its own provisional reason.
+- **Earlier runner part discovers first-group work after the later content part.** Baseline has `target` without `src/earlier.ts` in its closure and `dummy` importing that source. Hold small A's invalidate while it edits the source. For A, have `affected` name `target` directly and its refreshed closure include that source. Before releasing A, B edits `target` and adds ten tests. A's runner part then makes `target` recent before B's recount. On `d84444b9`, B cleared that valid reason and `target` took a backlog grant. At the final SHA both A-reached files run in ungranted edit tiers of one, and the ten additions use the backlog grant. The coordinator's named known limit therefore matters, and is closed by the final repair.
+
+These checks verify the original B1 guidance to preserve earlier first-group work and promotions, including the requested later-revision guard behavior. There is no remaining `changedMeanwhile` demotion guard: provenance in the queue replaces the lossy path union and boolean snapshot.
+
+### B2 closed: failure recovery uses the revision's classification
+
+`settleFailures` receives the same `SettleOptions` as the initial runner-part settle: direct importers, keying revision and catch-up classification. The twelve-source recovery takes catch-up grants; the six-source recovery preserves its reached files' first-group priority. Callers with no specific content revision retain default options. The recovery path no longer changes this revision's group while unblocking its files.
+
+### B3 closed: startup and install waits classify revisions separately
+
+`scan` and `reconcileWaiting` retain one path set per revision through `UnseenChanges`; both scheduler baseline callers pass it unchanged. Baseline classifies each set separately. A small revision's reach wins for a file also reached by a large one. Two six-source revisions remain edit work at startup and across an install wait; the small-plus-large startup test runs the small revision's files first as edit work and the others as catch-up. The threshold remains ten keyed paths, with no blanket startup catch-up classification.
+
+### What fits and inputs for the next wave
+
+B1–B3 need no further repair. Keep per-revision recent reasons when changing queue grouping; a content-only boolean snapshot or union of later paths loses valid priority or invents it. The supplied regressions plus the five ordering probes cover the repair's seam. Adoption, the 120 s wall/overlap, fairness, grants, slots and named-demand ranking remain as settled in the original review.
+
+The candidate keeps unreleased key format 17, re-pinned to `e89738c4684948d7dd43972cf679d3c429e6edb0d3a85156e1062fee67da9353`; old pins remain unchanged. Rebuilding all four bundles produces no drift. The coordinator still owns live cezar measurements and the landing decision. No additional note or product limitation was introduced by this bounded re-review.
