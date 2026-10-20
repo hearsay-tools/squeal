@@ -1,6 +1,6 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import type { Case, CaseOutput } from "./case.js";
 import { decideCase, runCase } from "./harness.js";
 
@@ -30,7 +30,8 @@ export * as schema from "../../../src/core/store/schema.js";
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 const [script, mode, casesPath, outPath, scratch, other] = process.argv.slice(1);
-const main = script !== undefined && import.meta.url === pathToFileURL(script).href;
+// Node runs its entry at the real path, which a temporary directory may not be (macOS).
+const main = script !== undefined && realpathSync(script) === fileURLToPath(import.meta.url);
 if (main && casesPath !== undefined && outPath !== undefined && scratch !== undefined && other) {
   const cases = JSON.parse(readFileSync(casesPath, "utf8")) as Case[];
   const out: Record<string, CaseOutput> = {};
