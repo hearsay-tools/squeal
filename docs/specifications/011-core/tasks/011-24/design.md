@@ -19,6 +19,8 @@ Sources: `research/issue-{38,39,40,41,42,43,44,45}.md`, `../004-slow-suites/rese
 
 One recommendation each; the samples below follow the recommendations.
 
+**Decided 2026-10-20 by the human:** Q1 (a), Q2 (a), Q3 option 1, Q4 (a); Q5 (a) as the coordinator's stated default, which the human did not change. The spec text below is in 011 C5, C6, C15 and 005 D2 (`status.md` 2026-10-20). R1 to R4 are board rows 011-26 to 011-29.
+
 | # | Question | Options | Recommendation |
 | --- | --- | --- | --- |
 | Q1 | Where does `Outstanding:` sit in `squeal status`? | (a) After the vision's head and the failures: revision, known failures and their blocks, affected checks, checkpoint, slow tier, then outstanding. (b) In the human's literal order: verdict, outstanding, then the failure blocks, then the counts. | (a). Its first four lines stay the vision's example and the registration's shape (count, then each failure under it); outstanding is at most six lines, so it is never far down. |
