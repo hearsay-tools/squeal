@@ -4,14 +4,14 @@ Board row 011-37, a docs-only design draft (brief `brief.md`). The human approve
 
 Nothing here is in `spec.md` until the human accepts it. On acceptance, the drafts in "Spec text" replace 011 C3's "Key format version" bullet (tasks 001-199, 001-203) and amend C4 step 3, C7, C12 and C14. `status.md` gets a dated line, and the board numbers the code rows of section 6.
 
-Sources: `research/key-format-guard.md` and `research/probes/key-format-guard/`; 011 C3, C4, C7, C12, C14 and `status.md`; `test/keys/key-format.test.ts`, `test/keys/key-sources.ts` and `src/core/keys/`. The validity path's modules the findings name were read at main `ad2a9bd9` (0.1.225, format 16) and at `origin/cand/0.1.226` `276ed939` (format 17). For question 4 I also read 013's `tasks/013-01/design.md` and `wip/001-365` at `1457d60b`. Probe: `probes/alias-cost.sh` (section 4). Evidence tags follow `docs/process.md`.
+Sources: `research/key-format-guard.md` and `research/probes/key-format-guard/`; 011 C3, C4, C7, C12, C14 and `status.md`; `test/keys/key-format.test.ts`, `test/keys/key-sources.ts` and `src/core/keys/`. The validity path's modules the findings name were read at main `ad2a9bd9` (0.1.225, format 16) and at `origin/cand/0.1.226` `276ed939` (format 17). For question 4 I also read 013's `tasks/013-01/design.md` and `wip/001-365` at `1457d60b`. Probe: `probes/alias-cost.sh`, output `probes/alias-cost.out` (section 4), run at a one-minute load of 19.36 on 24 CPUs. Evidence tags follow `docs/process.md`.
 
 ## Summary
 
 - **The rule.** `KEY_FORMAT_VERSION` moves only when a key this release computes can find something an earlier release stored, and this release would have stored it or decided on it differently. That covers a run's rows and a decision read from stored rows. A change to what a key is computed from re-keys its own checks and moves nothing. A change to what a runner observes and keeps moves that runner's version. Wording is not meaning: a stored row keeps its wording until its file runs again. Under this rule, 1 of the 8 raises from 9→10 to 16→17 was due (9→10).
 - **The alarm.** It hashes the emitted code of the validity path: an esbuild bundle of its entries, tree-shaken, with comments and types gone. It compares that with the same bundle built from the last release's tag. There is no pin table: the last release is the pin. Each runner adapter and the shared recorder get the same comparison under their own versions. The guard's `GUARDED`, `EXEMPT` and `SEAMS` lists retire, and so does `KEY_SOURCES_HASHES`.
 - **The decision.** When the emitted code differs, a corpus of cases runs through one harness at both trees. It covers keys, rows, kept observed sets, and decisions over a store the last release wrote and over one the candidate wrote. Two things must hold. Every case with equal keys gives equal rows (wording aside), equal sets and equal decisions. V8 coverage shows that every changed emitted line ran in some case. Then the version stays. Otherwise it is raised, and a raise must carry a case whose outputs differ.
-- **Formats 13 to 17 read as one.** A lookup that misses at its key computes the key at each listed format. It copies the newest set stored under one of them to the current key, with its provenance intact, and only where nothing is stored yet. Then it looks up as today. The cost is a few extra hashes and one indexed read per missed file, once per daemon (section 4).
+- **Formats 13 to 17 read as one.** A lookup that misses at its key computes the key at each listed format. It copies the newest set stored under one of them to the current key, with its provenance intact, and only where nothing is stored yet. Then it looks up as today. Measured: about 0.17 ms per missed file and 0.6 ms per copied set, once per daemon (section 4).
 - **013-02 with 001-365 joins.** 013-02 only narrows what a touch withholds, so every row 17 stores is a row 18 stores the same way. 001-365 changes a note. That release's format (18 under today's guard) joins the list. If R1 is ready by then, it ships in that release, and the release re-keys nothing for users of 0.1.222 to 0.1.226.
 - **The refactors.** The accept rule leaves `Ledger` for `scheduler/accept.ts`. `recordTier`'s per-file decision leaves `tiers.ts` for `scheduler/store-decision.ts`. Vitest's widths leave the adapter class for a hints object that `index.ts` passes in.
 - **Four code rows**, R1 to R4 (section 6). R1 (read as one) comes first and stands alone. R2 (corpus and comparison, tests only) follows. R3 (refactors) and R4 (the alarm replaces the guard) ship in one release, which keeps the last release's format.
@@ -143,16 +143,18 @@ The `accept` kind is the upgrade itself. L writes a store. C opens it and migrat
 
 **Why copy (D4).** C7's pruning keeps a key that is current in a live worktree and drops others once `recorded_at` is 7 days old (`src/core/store/prune.ts:55-57`). Read through, a set under an old key would be dropped while still in use. Every lookup of every daemon would also pay the extra read. And `keysSince`, claims, `test_file_keys_by_key` and the heal all work by key, so each would have to learn the old keys. A copied set is read once and is then an ordinary row. The copy keeps the run's provenance and `recorded_at`, so status and `why` name the run that produced it, and 011-23's watermark does not treat it as new. Because `NOT EXISTS` sits in the same statement, a set another daemon stored at the current key in the meantime is never mixed with an older one. C7 holds one result per check and key.
 
-**Cost against C4's catch-up.** *Estimates (inferred). `probes/alias-cost.sh` measures them; see the measured line below, or "What is not known" if it is absent.* Per missed file, with five listed formats (13 to 17):
+**Cost against C4's catch-up.** Measured by `probes/alias-cost.sh` (`probes/alias-cost.out`). It ran in a throwaway worktree at `d75e1bde` under `/tmp/kfg37`, at a one-minute load of 19.36 on 24 CPUs, Node v24.21.0, on a synthetic store of 200,000 rows (20,000 keys of 10 checks) with the product's schema. *verified by experiment (synthetic store, not cezar's)*
 
-| Part | Estimate | Compared with |
+| Part, per missed file, five listed formats (13 to 17) | Measured | Compared with |
 | --- | --- | --- |
-| Five more check keys, SHA-256 over a closure's segments | about 20 µs per key at 300 paths, so about 100 µs per file | today's one key per file |
-| One `SELECT` over five keys on `results_by_key`, rows absent | about one lookup, 0.014 ms | 011-23's full re-look-up: 12 ms per 876 stale keys (`research/catch-up.md`) |
-| On a hit, one `INSERT ... SELECT` copying about 10 rows | under 1 ms | a run of that file, 0.1 s to minutes |
-| Five more environment hashes per project | microseconds | none |
+| Five more check keys (`keyFromSegments`) | 33 µs at 50 paths, 115 µs at 300, 360 µs at 1,000 | today's one key per file |
+| One `SELECT` over the five keys, none stored | 59 µs | today's miss (`byKey`, `UPDATE` then `SELECT`): 20 µs |
+| On a hit: that `SELECT`, then the copy of 10 rows as its own statement | 0.60 ms | a run of that file: 0.1 s to minutes |
+| The same for 876 files in one transaction | 399 ms (0.46 ms each) | 876 runs |
 
-For cezar's 876 stale files after an upgrade, that comes to roughly 90 ms of hashing and 15 to 45 ms of reads, once per daemon. The read happens at the lookup, before catch-up's first tier. So it delays that tier by about 0.1 s against the 120 s wall budget of a backlog tier (C4 step 5), and it replaces a re-run of every file. For scale, a pull's catch-up of 795 cezar files took a modelled 857 s on the backlog route (`research/catch-up.md`). An idle 011-23 pass stays at 0.02 ms, because a miss reads the old keys only once.
+For cezar's 876 stale files after an upgrade, that is about 150 ms when nothing is found (keys plus reads at 300 paths). It is about 0.53 s when every file is found and copied, statement by statement. That happens once per daemon. The copy should commit per statement, as `byKey`'s `UPDATE` does today. That holds the store's write lock for about 0.6 ms at a time, never the 0.4 s of one transaction, which matters given C7's history of long write transactions (001-161).
+
+The read happens at the lookup, before catch-up's first tier. So it delays that tier by under a second against the 120 s wall budget of a backlog tier (C4 step 5), and it replaces a re-run of every file. For scale, a pull's catch-up of 795 cezar files took a modelled 857 s on the backlog route (`research/catch-up.md`). An idle 011-23 pass stays at 0.02 ms, because a miss reads the old keys only once per file and key.
 
 **What it does not do.**
 
@@ -266,7 +268,7 @@ The order is R1, then R2, then R3 with R4. R1 is the user-visible win and does n
 
 ## What is not known
 
-- **The reading's real cost.** `probes/alias-cost.sh` would measure it (extra keys at 50, 300 and 1,000 paths; a miss's read; a hit's copy on a 200,000-row store) in a throwaway worktree under `/tmp`. It was not run: the one-minute load stayed at 35 to 92 on 24 CPUs during this session. The numbers in section 4 are estimates.
+- **The reading's cost on a real store.** The probe used a synthetic 200,000-row store. Cezar's store, its page cache under load, and closures above 1,000 paths were not measured.
 - **R3's effect on the alarm.** Whether its modules add firings over the probe's `no-tiers` variant.
 - **How much adapter code the corpus can drive.** That is, how much of each adapter's changed code canned runner objects can reach. A change only a live runner executes needs a fake object or raises that adapter's version. The share of past adapter changes of that kind was not measured. In the eight windows, adapter files changed in 9→10 (pytest, new), 12→13 (Vitest wiring) and 13→14 (Vitest width) (`raises.out`).
 - **The comparison's time** when the alarm fires: two bundles, the corpus twice, and coverage. Not measured. An adapter case that runs a real runner over a fixture project costs a runner start per tree. node:test's run path also produces notes (001-365's `bareNote` sits in it), so a note change fires the node:test comparison, and only such a case can cover its lines without raising the adapter's version.

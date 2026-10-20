@@ -1,0 +1,11 @@
+## d75e1bde, load 19.36 on 24 CPUs, node v24.21.0
+## extra check keys per missed file
+closure 50 paths, 5 formats	32.6 us each
+closure 300 paths, 5 formats	115.2 us each
+closure 1000 paths, 5 formats	360.4 us each
+## store, 20,000 keys x 10 checks
+results rows	200000
+today's miss: byKey (UPDATE, SELECT)	19.6 us each
+extra formats' miss: one SELECT over 5 keys	58.6 us each
+hit at an extra format: SELECT, then copy 10 rows (autocommit)	602.5 us each
+876 hits copied in one transaction	398.8 ms
