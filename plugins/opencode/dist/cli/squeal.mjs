@@ -56699,7 +56699,11 @@ function namedText(wait, now, command = "squeal", options = {}) {
     ...namedClassLines(wait, command),
     namedLine(wait, command)
   ];
-  const head = options.full === true ? `${formatStatus(wait.result, now, command, { allNotes: options.allNotes === true })}
+  const head = options.full === true ? `${formatStatus(wait.result, now, command, {
+    full: true,
+    allNotes: options.allNotes === true,
+    ...wait.selection.base === void 0 ? {} : { base: wait.selection.base }
+  })}
 ` : `Revision: ${statusRevisionText(wait.result)}
 `;
   return `${head}${lines.join("\n")}
