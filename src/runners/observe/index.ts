@@ -7,6 +7,7 @@ export {
   observeRecorder,
   RECORDER_VERSION,
   recorderOption,
+  unobservedEnv,
 } from "./runtime.js";
 export {
   type RecorderUse,
