@@ -8036,9 +8036,9 @@ var init_context = __esm({
 function failed(failures, project, reason2) {
   if (!failures.has(project)) failures.set(project, reason2);
 }
-function settleFailures(ledger, failures, retrying, changed) {
+function settleFailures(ledger, failures, retrying, changed, options = {}) {
   if (failures.size > 0) block(ledger, failures);
-  else if (retrying) ledger.settle(unblock(ledger), changed);
+  else if (retrying) ledger.settle(unblock(ledger), changed, options);
 }
 function block(ledger, failures, only = () => true) {
   const every = failures.get(null);
@@ -8291,8 +8291,17 @@ function rekeyContent(context, ledger, revision) {
   if (declared !== null) touched.push(...declared.map((c) => c.testFile));
   const inputs2 = changes.some((c) => keys.isEnvironmentInput(c.path));
   if (inputs2) touched.push(...keys.provisionalEnvironments(changes).map((c) => c.testFile));
+  const wasRecent = new Set(touched.filter((ref2) => ledger.queue.isRecent(ref2)).map(testFileId));
   ledger.settle(touched, paths, { keyedAt: revision.number, catchUp });
-  return { rekeyed, environment: inputs2 || policy.environment, catchUp };
+  const recent = touched.filter(
+    (ref2) => !wasRecent.has(testFileId(ref2)) && ledger.queue.isRecent(ref2)
+  );
+  return {
+    rekeyed,
+    environment: inputs2 || policy.environment,
+    catchUp,
+    ...recent.length > 0 ? { recent } : {}
+  };
 }
 function reloadPolicy(context, ledger, changes) {
   const policy = context.reloadPolicy(changes);
@@ -8759,11 +8768,11 @@ function startWaiting(context, ledger, missing2) {
   const note = awaitingInstallNote(missing2.workspaces, missing2.command);
   if (!persistedNoteTexts(store, worktreeId).has(note)) context.note(note);
 }
-async function reconcileWaiting(context, ledger, batch, changed) {
+async function reconcileWaiting(context, ledger, batch, unseen) {
   const { applied } = await reconcileBatch(context, ledger, batch);
   if (applied !== null) {
     ledger.commit({ refined: applied.revision.number });
-    for (const change2 of applied.revision.changes) changed.add(change2.path);
+    unseen.push(new Set(applied.revision.changes.map((change2) => change2.path)));
   }
   const missing2 = await missingInstall(context.root);
   if (missing2 !== null) {
@@ -10119,6 +10128,17 @@ var init_queue = __esm({
         this.#entries.clear();
         this.#recentTiers = 0;
         this.#promotions.clear();
+      }
+      /**
+       * A recent entry becomes catch-up: its revision turned out catch-up once
+       * its runner part listed the test files it added (review wave 5, B1). A
+       * promotion keeps it in the first group.
+       */
+      toCatchUp(ref2) {
+        const entry4 = this.#entries.get(testFileId(ref2));
+        if (entry4 === void 0) return;
+        entry4.recent = false;
+        entry4.catchUp = true;
       }
       remove(ref2) {
         return this.#entries.delete(testFileId(ref2));
@@ -12372,19 +12392,15 @@ async function scan(context, ledger) {
   const refined = readRefined2(store, worktreeId) ?? latest?.number ?? 0;
   const revision = await keys.bootstrap(context.head) ?? latest;
   ledger.revision = revision === null ? { number: 0, ...await context.head() } : { number: revision.number, head: revision.head, dirty: revision.dirty };
-  const changed = /* @__PURE__ */ new Set();
-  if (revision === null) return changed;
-  for (const { changes } of store.revisions.range(worktreeId, refined, revision.number)) {
-    for (const change2 of changes) changed.add(change2.path);
-  }
-  return changed;
+  if (revision === null) return [];
+  return store.revisions.range(worktreeId, refined, revision.number).map(({ changes }) => new Set(changes.map((change2) => change2.path)));
 }
 function readRefined2(store, worktreeId) {
   const raw = store.meta.get(refinedMetaKey(worktreeId));
   const value = raw === null ? Number.NaN : Number(raw);
   return Number.isInteger(value) ? value : null;
 }
-async function baseline(context, ledger, changed = NOTHING_CHANGED) {
+async function baseline(context, ledger, unseen = []) {
   const { store, keys, worktreeId, policy } = context;
   const bound = runnerPartBound(context);
   const failures = /* @__PURE__ */ new Map();
@@ -12456,17 +12472,16 @@ async function baseline(context, ledger, changed = NOTHING_CHANGED) {
   if (policy.baseline.onStart === "lookup-only") {
     ledger.checkpoints.finish("abandoned");
   } else {
-    const recent = ledger.recentOf(changed);
-    const catchUp = isCatchUp(context, ledger, changed);
+    const changed = new Set(unseen.flatMap((paths) => [...paths]));
+    const recent = /* @__PURE__ */ new Set();
+    const catchUp = /* @__PURE__ */ new Set();
+    for (const paths of unseen) {
+      const reached = isCatchUp(context, ledger, paths) ? catchUp : recent;
+      for (const id2 of ledger.recentOf(paths)) reached.add(id2);
+    }
     for (const file of misses) {
-      const reached = recent.has(file.id);
-      ledger.enqueue(
-        file,
-        priorityOf(file, changed),
-        false,
-        reached && !catchUp,
-        reached && catchUp
-      );
+      const first2 = recent.has(file.id);
+      ledger.enqueue(file, priorityOf(file, changed), false, first2, !first2 && catchUp.has(file.id));
     }
   }
   restoreReruns(context, ledger, policy.baseline.onStart !== "lookup-only");
@@ -13650,6 +13665,7 @@ async function fetchRunnerPart(context, ledger, revision, content, carried, touc
     listed: listed3,
     direct: new Set((affected2?.direct ?? []).map(testFileId)),
     ...content.catchUp === true ? { catchUp: true } : {},
+    ...content.recent === void 0 ? {} : { recent: content.recent },
     reresolved: [...reresolve.values()],
     closures
   };
@@ -13682,12 +13698,20 @@ async function applyRunnerPart(context, ledger, part, changedMeanwhile, keyedAt)
   touchKeys(await keys.trackUntracked());
   storeClosures(context, resolved2);
   touch(part.reresolved);
-  ledger.settle(touched.values(), changed, {
+  const catchUp = part.catchUp === true || keyedAt !== void 0 && isCatchUp(context, ledger, changed);
+  if (catchUp && part.catchUp !== true) {
+    const later = ledger.recentOf(changedMeanwhile);
+    for (const ref2 of part.recent ?? []) {
+      if (!later.has(testFileId(ref2))) ledger.queue.toCatchUp(ref2);
+    }
+  }
+  const options = {
     direct: part.direct,
     ...keyedAt === void 0 ? {} : { keyedAt },
-    ...part.catchUp === true ? { catchUp: true } : {}
-  });
-  settleFailures(ledger, part.failures, part.retrying, changed);
+    ...catchUp ? { catchUp: true } : {}
+  };
+  ledger.settle(touched.values(), changed, options);
+  settleFailures(ledger, part.failures, part.retrying, changed, options);
   return stale;
 }
 var init_refinement = __esm({
@@ -14660,7 +14684,7 @@ var init_scheduler2 = __esm({
       /** No runner call until an install (`awaitsInstall`, task 001-100). */
       #awaitingInstall = false;
       /** Paths no runner saw change: edits the baseline queues recent (review wave 11, S2; `scan`). */
-      #waitChanges = /* @__PURE__ */ new Set();
+      #waitChanges = [];
       /** The install went under this scheduler: it stores nothing more (`#reinstall`, task 001-113). */
       #reinstalled = false;
       #reinstallTold = false;
@@ -14806,9 +14830,9 @@ var init_scheduler2 = __esm({
       /** The baseline, at start or at the install that ends a wait; the wait ends in the store with it. */
       async #baseline(context, ledger) {
         stopWaiting(context);
-        const changed = this.#waitChanges;
-        this.#waitChanges = /* @__PURE__ */ new Set();
-        await baseline(context, ledger, changed);
+        const unseen = this.#waitChanges;
+        this.#waitChanges = [];
+        await baseline(context, ledger, unseen);
       }
       /**
        * The install went while the scheduler runs (`npm ci` removes
