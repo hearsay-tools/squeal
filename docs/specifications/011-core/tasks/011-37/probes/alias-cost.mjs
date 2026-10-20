@@ -15,7 +15,7 @@ const load = (path) => import(pathToFileURL(join(root, path)).href);
 const { keyFromSegments, encodeSegment } = await load("src/core/keys/check-key.ts");
 const { MIGRATIONS } = await load("src/core/store/schema.ts");
 
-const EXTRA = 4; // formats 13 to 16 read beside 17
+const EXTRA = 5; // formats 13 to 17 read beside 18
 const hex = (n) => randomBytes(n).toString("hex");
 const time = (label, n, fn) => {
   for (let i = 0; i < Math.min(n, 50); i++) fn(i); // warm
@@ -100,7 +100,7 @@ time(`extra formats' miss: one SELECT over ${EXTRA} keys`, 2000, (i) => {
 let k = 0;
 time(`hit at an extra format: SELECT, then copy ${CHECKS} rows (autocommit)`, 876, () => {
   const alias = keyOf(k++ % KEYS);
-  const found = newest.all(alias, missing(1), missing(2), missing(3));
+  const found = newest.all(alias, missing(1), missing(2), missing(3), missing(4));
   const current = missing(k);
   copy.run(current, 9e12, found[0].key, current);
 });
@@ -108,7 +108,7 @@ const t0 = process.hrtime.bigint();
 db.exec("BEGIN");
 for (let i = 0; i < 876; i++) {
   const alias = keyOf((k + i) % KEYS);
-  const found = newest.all(alias, missing(1), missing(2), missing(3));
+  const found = newest.all(alias, missing(1), missing(2), missing(3), missing(4));
   const current = missing(1e6 + i);
   copy.run(current, 9e12, found[0].key, current);
 }
