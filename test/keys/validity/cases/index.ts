@@ -1,5 +1,6 @@
 import type { Case } from "../case.js";
 import { INHERIT } from "./accept/inherit.js";
+import { RETIRED } from "./accept/retired.js";
 import { SLOW_INHERIT } from "./accept/slow.js";
 import { DECLARED } from "./assemble/declared.js";
 import { GOLDEN_KEYS } from "./key/golden.js";
@@ -17,6 +18,7 @@ export const CASES: readonly Case[] = [
   ...GOLDEN_ROWS,
   ...OBSERVED_READS,
   ...INHERIT,
+  ...RETIRED,
   ...SLOW_INHERIT,
   ...DECLARED,
   ...STORE_TIERS,
