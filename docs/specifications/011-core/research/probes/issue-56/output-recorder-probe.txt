@@ -1,0 +1,18 @@
+--- 1-missing
+child failed: Command failed: /home/agent/.nvm/versions/node/v24.21.0/bin/node --input-type=module --eval import register from 'file:///home/agent/projects/squeal/.ai/cezar/t/04b7163c/squeal-issue56-OgF1pM/scripts/pi-default-tools.mjs'; console.log(typeof register);
+  f: (none)
+  l: (none)
+  r: (none)
+  w: (none)
+--- 2-created
+child ok: function
+  f: <root>/scripts/pi-default-tools.mjs  (for <root>/src/pi-default-tools.test.mjs)
+  l: (none)
+  r: (none)
+  w: (none)
+--- 3-edited
+child ok: function
+  f: <root>/scripts/pi-default-tools.mjs  (for <root>/src/pi-default-tools.test.mjs)
+  l: (none)
+  r: (none)
+  w: (none)

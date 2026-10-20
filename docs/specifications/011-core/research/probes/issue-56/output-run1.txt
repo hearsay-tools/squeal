@@ -1,0 +1,75 @@
+load 10.47 on 24 CPUs
+scratch /tmp/i56-8aN2YB; squeal 0.1.231
+Squeal daemon spawned for /tmp/i56-8aN2YB/repo
+
+Revision: 0
+=== phase A: a.mjs and c.mjs missing; checkpoint
+Checkpoint f5d96480-d30e-42cc-9bf2-50c9bf343a44 completed at revision 0: 2 known failures: 2 tests; 3 test files, 0 already current, 3 run by the baseline checkpoint 92e7a64f-b429-4f62-bf18-b808ed068d37 it joined
+Checkpoint f5d96480-d30e-42cc-9bf2-50c9bf343a44 started at revision 0: 3 test files to run, 0 already current, joining the baseline checkpoint 92e7a64f-b429-4f62-bf18-b808ed068d37 already running them (0 of 3 test files done); it ends when that one ends
+
+Revision: 0
+Known failures: 2 (2 tests); all 3 test files current
+  FAIL  test/a.test.ts > a: the script's default export answers 1
+        Command failed: /home/agent/.nvm/versions/node/v24.21.0/bin/node --input-type=module --eval import register from 'scripts/a.mjs'; console.log(register());
+        at test/a.test.ts:7:15, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.41 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/c.test.ts > c: the script's default export answers 1
+        Command failed: /home/agent/.nvm/versions/node/v24.21.0/bin/node --input-type=module --eval import register from 'scripts/c.mjs'; console.log(register());
+        at test/c.test.ts:7:15, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.41 per CPU when it ran; no retry asked at these inputs
+Affected checks: 4 passed (1 test, 3 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+
+Worktree: /tmp/i56-8aN2YB/repo (HEAD 2719f15, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 2 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+=== phase B: create scripts/a.mjs and scripts/c.mjs (both answer 1)
+Revision: 1 · 2719f155 + 1, dirty
+Known failures: 1 (1 test); all 3 test files current
+  FAIL  test/a.test.ts > a: the script's default export answers 1
+        Command failed: /home/agent/.nvm/versions/node/v24.21.0/bin/node --input-type=module --eval import register from 'scripts/a.mjs'; console.log(register());
+        at test/a.test.ts:7:15, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.41 per CPU when it ran; no retry asked at these inputs
+Affected checks: 5 passed (2 tests, 3 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+
+Worktree: /tmp/i56-8aN2YB/repo (HEAD 2719f15, dirty at revision 1)
+Daemon: running, last heartbeat 5 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-20T19:01:21.314Z, revision 0: squeal.config.json: inputs glob "scripts/c.mjs" matches no file
+
+Returned on quiet: nothing the edits since revision 1 re-keyed is pending (0 test files) at revision 1 after 0.3 s. Worktree: known failures 1 (1 test); all 3 test files current
+=== phase C: edit scripts/b.mjs to answer 2 (b should now fail)
+Revision: 2 · 2719f155 + 2, dirty
+Known failures: 2 (2 tests); all 3 test files current
+  FAIL  test/a.test.ts > a: the script's default export answers 1
+        Command failed: /home/agent/.nvm/versions/node/v24.21.0/bin/node --input-type=module --eval import register from 'scripts/a.mjs'; console.log(register());
+        at test/a.test.ts:7:15, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.41 per CPU when it ran; no retry asked at these inputs
+  FAIL  test/b.test.ts > b: the script's default export answers 1
+        expected '2' to be '1' // Object.is equality
+        at test/b.test.ts:12:22, observed at revision 2, current
+        recorded just now in this worktree at revision 2, load 0.41 per CPU when it ran; no retry asked at these inputs
+Affected checks: 4 passed (1 test, 3 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 2; `squeal run --all` requests one)
+
+Worktree: /tmp/i56-8aN2YB/repo (HEAD 2719f15, dirty at revision 2)
+Daemon: running, last heartbeat 3 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-20T19:01:21.314Z, revision 0: squeal.config.json: inputs glob "scripts/c.mjs" matches no file
+=== control: npx vitest run (the truth at this point: a and c pass, b fails)
+   × b: the script's default export answers 1 66ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  test/b.test.ts > b: the script's default export answers 1
+      Tests  1 failed | 2 passed (3)
+=== observed map in the store
+observed. {"test/b.test.ts":["scripts/b.mjs"]}
+=== stop
+Squeal daemon stopped for /tmp/i56-8aN2YB/repo
