@@ -43,7 +43,7 @@ export function waitText(
   command = "squeal",
   options: StatusFormatOptions = {},
 ): string {
-  return `${formatStatus(wait.result, now, command, options)}${waitLine(wait, command)}\n`;
+  return `${formatStatus(wait.result, now, command, options)}\n${waitLine(wait, command)}\n`;
 }
 
 function ownLine(wait: EndedWait, command: string): string {

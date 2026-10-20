@@ -251,7 +251,10 @@ describe("squeal status --wait without a daemon (review wave 4.5, S2)", WAITS, (
         "its heartbeat stopped and nothing listens on its socket; results are as of revision 3. " +
         "Worktree: known failures 0; the daemon has not listed this worktree's test files yet",
     );
-    expect(stdout).toContain("Daemon: no daemon running since 2026-10-06T11:59:00.000Z\n");
+    // Row 011-29: a down daemon is the first outstanding group of the default text.
+    expect(stdout).toContain(
+      "\n  no daemon has validated since 2026-10-06T11:59:00.000Z; results are as of revision 3; `squeal start` starts one\n",
+    );
     // A daemon a hook just spawned gets the settle time to record its heartbeat.
     expect(elapsed).toBeGreaterThanOrEqual(700);
     expect(elapsed).toBeLessThan(2_000);

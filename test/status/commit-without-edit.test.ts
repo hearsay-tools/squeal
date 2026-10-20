@@ -85,7 +85,7 @@ async function pass(): Promise<void> {
 function read(): { status: StatusSnapshot; revisionLine: string; worktreeLine: string } {
   const result = readStatus(root, { now: () => NOW });
   if (!result.available) throw new Error(result.message);
-  const lines = formatStatus(result, NOW).split("\n");
+  const lines = formatStatus(result, NOW, "squeal", { full: true }).split("\n");
   const find = (prefix: string) => lines.find((l) => l.startsWith(prefix)) ?? "";
   return { status: result, revisionLine: find("Revision: "), worktreeLine: find("Worktree: ") };
 }

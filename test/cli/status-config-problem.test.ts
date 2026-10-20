@@ -65,7 +65,7 @@ describe("squeal status names a squeal.config.json problem (011-07)", () => {
     });
   });
 
-  it("with a store: one line after the checkpoint lines; exit 0 as before", () => {
+  it("with a store: one line after the checkpoint and outstanding lines; exit 0 as before", () => {
     const repo = withStore();
     writeConfig(repo, NEGATED);
 
@@ -75,7 +75,10 @@ describe("squeal status names a squeal.config.json problem (011-07)", () => {
     expect(human.code).toBe(0);
     const lines = human.stdout.split("\n");
     expect(lines.filter((line) => line === LINE)).toHaveLength(1);
-    expect(lines.indexOf(LINE)).toBe(lines.findIndex((l) => l.startsWith("Full-suite")) + 1);
+    // Row 011-29: the coverage lines follow the outstanding work, and the `More:` line them.
+    expect(lines.indexOf(LINE)).toBeGreaterThan(lines.findIndex((l) => l.startsWith("Full-suite")));
+    expect(lines[lines.indexOf(LINE) - 1]).toMatch(/^Outstanding:$|^ {2}/);
+    expect(lines[lines.indexOf(LINE) + 1]).toMatch(/^More: /);
     expect(json.code).toBe(0);
     expect(JSON.parse(json.stdout)).toMatchObject({ available: true, configProblems: [PROBLEM] });
   });

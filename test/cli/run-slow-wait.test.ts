@@ -155,7 +155,7 @@ describe("squeal run --slow --wait holds for the slow files it queued (001-282)"
 
     // The news is the slow files', not the empty edit window's (review wave-13ak, S1).
     expect(result.stdout).toMatch(
-      /\nReturned on news: 1 transition in the 2 slow files run --slow queued, at revision 4 after \d+\.\d s; 1 check \(1 test\) pending in all; 1 of the 2 slow files run --slow queued pending: test\/slow-two\.test\.ts\. Worktree: [^\n]*\n$/,
+      /\nReturned on news: 1 transition in the 2 slow files run --slow queued, at revision 4 after \d+\.\d s; 1 of the 2 slow files run --slow queued pending: test\/slow-two\.test\.ts\. Worktree: [^\n]*\n$/,
     );
   });
 

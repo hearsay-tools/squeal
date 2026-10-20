@@ -7,7 +7,7 @@ import {
 } from "../../src/core/retry/index.js";
 import { formatStatus, readStatus } from "../../src/core/status/index.js";
 import { timeText } from "../../src/core/text.js";
-import type { EpochMs, RunRecord, StatusSnapshot } from "../../src/core/types/index.js";
+import type { EpochMs, StatusSnapshot } from "../../src/core/types/index.js";
 import { FAST, NOW, SLOW_A, seed } from "./slow-tier-seed.js";
 
 /*
@@ -43,7 +43,7 @@ const lines = (s: ReturnType<typeof seeded>, oneMinute = 12.4, cpus = 8) => {
 };
 
 describe("status lists pending retries (001-368)", () => {
-  it("each file once, with what it waits for", () => {
+  it("each file once, with what it waits for, as an outstanding group (011-29)", () => {
     const s = seeded();
     s.ask(FAST, "load");
     s.ask(FAST, "load", "s2");
@@ -53,12 +53,12 @@ describe("status lists pending retries (001-368)", () => {
       { testFile: { path: FAST }, reason: "load", requests: 2, claimedBy: null },
       { testFile: { path: SLOW_A }, reason: "environment", requests: 1 },
     ]);
-    const at = text.indexOf("Pending retries: 2");
-    expect(at).toBeGreaterThan(0);
-    expect(text[at + 1]).toBe(
-      "  src/a.test.ts (load): waits for the one-minute load average to fall below the CPU count (load average 12.40 on 8 CPUs now)",
+    expect(text).toContain(
+      "  1 test file with a pending retry (load): src/a.test.ts; waits for the one-minute load average to fall below the CPU count (load average 12.40 on 8 CPUs now)",
     );
-    expect(text[at + 2]).toBe("  test/e2e/a.test.ts (environment): runs at once");
+    expect(text).toContain(
+      "  1 test file with a pending retry (environment): test/e2e/a.test.ts; runs at once",
+    );
   });
 
   it("says when another worktree's daemon queued it", () => {
@@ -66,7 +66,7 @@ describe("status lists pending retries (001-368)", () => {
     s.ask(FAST, "environment");
     claimRetries(s.store, { project: "", path: FAST }, s.keyOf(FAST), "wt-other", NOW, () => true);
     expect(lines(s).lines).toContain(
-      "  src/a.test.ts (environment): runs at once, queued by another worktree's daemon",
+      "  1 test file with a pending retry (environment): src/a.test.ts; runs at once, queued by another worktree's daemon",
     );
   });
 
@@ -75,7 +75,7 @@ describe("status lists pending retries (001-368)", () => {
     s.ask(FAST, "load", "s1", "older-key");
     const { snapshot, lines: text } = lines(s);
     expect(snapshot.pendingRetries).toBeUndefined();
-    expect(text.some((l) => l.startsWith("Pending retries"))).toBe(false);
+    expect(text.some((l) => l.includes("pending retry"))).toBe(false);
   });
 });
 
@@ -84,7 +84,7 @@ describe("a pending retry says when it runs (011-27, gh-41's comment)", () => {
     const s = seeded();
     s.ask(FAST, "load");
     expect(lines(s, 7.45, 24).lines).toContain(
-      "  src/a.test.ts (load): runs at the daemon's next look: the one-minute load average is below the CPU count (load average 7.45 on 24 CPUs now)",
+      "  1 test file with a pending retry (load): src/a.test.ts; runs at the daemon's next look: the one-minute load average is below the CPU count (load average 7.45 on 24 CPUs now)",
     );
   });
 
@@ -94,7 +94,8 @@ describe("a pending retry says when it runs (011-27, gh-41's comment)", () => {
     const keys = s.store.testFileKeys
       .list(s.repo.mainId)
       .map((k) => (k.testFile.path === FAST ? { ...k, pending: "running" as const } : k));
-    const run: RunRecord = {
+    s.store.testFileKeys.upsertMany(keys.filter((k) => k.testFile.path === FAST));
+    const run = s.store.runs.start({
       id: "run-a",
       worktreeId: s.repo.mainId,
       revision: 1 as never,
@@ -102,17 +103,14 @@ describe("a pending retry says when it runs (011-27, gh-41's comment)", () => {
       checkpointId: null,
       logDir: "/tmp/run-a" as never,
       startedAt: (NOW - 30_000) as EpochMs,
-      endedAt: null,
-      end: null,
-    };
+    });
     const { pendingRetries } = pendingRetriesOf(s.store, keys, () => ({ oneMinute: 30, cpus: 8 }), [
       run,
     ]);
     expect(pendingRetries?.retries[0]?.runningSince).toBe(NOW - 30_000);
-    const snapshot = readStatus(s.repo.main, { now: () => NOW }) as StatusSnapshot;
-    expect(
-      formatStatus({ ...snapshot, pendingRetries } as StatusSnapshot, NOW).split("\n"),
-    ).toContain(`  src/a.test.ts (load): running since ${timeText(NOW - 30_000)}`);
+    expect(lines(s).lines).toContain(
+      `  1 test file with a pending retry (load): src/a.test.ts; running since ${timeText(NOW - 30_000)}`,
+    );
   });
 
   it("a run asked for a file with no result names no reason: it runs at once whatever the reason", () => {
@@ -125,6 +123,8 @@ describe("a pending retry says when it runs (011-27, gh-41's comment)", () => {
       at: NOW,
       worktreeId: s.repo.mainId,
     });
-    expect(lines(s).lines).toContain("  src/a.test.ts (no result at its inputs): runs at once");
+    expect(lines(s).lines).toContain(
+      "  1 test file with a pending retry (no result at its inputs): src/a.test.ts; runs at once",
+    );
   });
 });

@@ -67,7 +67,7 @@ function seeded() {
     row,
     marked,
     status,
-    text: () => formatStatus(status(), NOW),
+    text: () => formatStatus(status(), NOW, "squeal", { full: true }),
   };
 }
 
