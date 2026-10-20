@@ -1256,13 +1256,13 @@ function staleHiddenLockfile(dir2, content) {
   const lockTime = lstatSync2(join7(dir2, HIDDEN_LOCKFILE)).mtimeMs;
   const folders = packageFolders(dir2, workspaces(listed3));
   const seen = new Set(folders.map((folder) => folder.path));
-  const unlisted = folders.filter((folder) => !Object.hasOwn(listed3, folder.path)).map((folder) => folder.path);
+  const unlisted2 = folders.filter((folder) => !Object.hasOwn(listed3, folder.path)).map((folder) => folder.path);
   const newer = folders.filter(
     (folder) => Object.hasOwn(listed3, folder.path) && folder.mtimeMs > lockTime
   );
   const missing2 = Object.keys(listed3).filter((path) => isInstalledFolder(path) && !seen.has(path));
   const parts2 = [
-    ["not listed in it", unlisted],
+    ["not listed in it", unlisted2],
     ["newer than it", newer.map((folder) => folder.path)],
     ["missing", missing2]
   ];
@@ -2498,10 +2498,10 @@ function topicOf(item) {
   return typeof item === "object" && item !== null ? item.topic : void 0;
 }
 function readDaemonNotes(store, worktreeId) {
-  const notes2 = parseList(store.meta.get(notesMetaKey(worktreeId))).flatMap(toNote).slice(-MAX_PERSISTED_NOTES);
+  const notes = parseList(store.meta.get(notesMetaKey(worktreeId))).flatMap(toNote).slice(-MAX_PERSISTED_NOTES);
   const latest = /* @__PURE__ */ new Map();
-  for (const note of notes2) if (note.topic !== void 0) latest.set(note.topic, note);
-  return notes2.filter((note) => note.topic === void 0 || latest.get(note.topic) === note);
+  for (const note of notes) if (note.topic !== void 0) latest.set(note.topic, note);
+  return notes.filter((note) => note.topic === void 0 || latest.get(note.topic) === note);
 }
 function parseList(raw) {
   if (typeof raw !== "string") return [];
@@ -3800,10 +3800,10 @@ function notCurrentText(header) {
   if (header.testFilesListed === false) {
     return "; the daemon has not listed this worktree's test files yet";
   }
-  const unlisted = header.runnerPartPending === true ? [`revision ${header.revision} is not listed yet, so test files it adds are not counted`] : [];
-  return `; ${[filesText2(header, files2, unlisted.length > 0), ...unlisted].join("; ")}`;
+  const unlisted2 = header.runnerPartPending === true ? [`revision ${header.revision} is not listed yet, so test files it adds are not counted`] : [];
+  return `; ${[filesText2(header, files2, unlisted2.length > 0), ...unlisted2].join("; ")}`;
 }
-function filesText2(header, files2, unlisted) {
+function filesText2(header, files2, unlisted2) {
   const total = files2.current + files2.pending + files2.stale + files2.unknown;
   if (total > files2.current) {
     const fileParts = partsText({
@@ -3815,7 +3815,7 @@ function filesText2(header, files2, unlisted) {
     return `not current: ${total - files2.current} of ${plural(total, "test file")} (${fileParts})${tests}`;
   }
   if (total === 0) return "the daemon listed no test files";
-  if (unlisted) return `${plural(total, "test file")} current`;
+  if (unlisted2) return `${plural(total, "test file")} current`;
   if (header.daemon?.state !== "alive" || header.awaitingInstall === true) {
     return `${plural(total, "test file")} current as of revision ${header.revision}`;
   }
@@ -4199,6 +4199,90 @@ var init_config_problems = __esm({
   }
 });
 
+// src/core/status/git-head.ts
+import { readFileSync as readFileSync6 } from "node:fs";
+import { join as join10 } from "node:path";
+function readGitHead(root) {
+  const gitDir = gitDirOf(root);
+  const commonDir = resolveCommonDir(root);
+  if (gitDir === null || commonDir === null) return null;
+  let value = read3(join10(gitDir, "HEAD"));
+  for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
+    if (SHA.test(value)) return value;
+    const ref2 = /^ref:\s*(\S+)$/.exec(value)?.[1];
+    if (ref2 === void 0) return null;
+    value = read3(join10(gitDir, ref2)) ?? read3(join10(commonDir, ref2)) ?? packed(commonDir, ref2);
+  }
+  return null;
+}
+function packed(commonDir, ref2) {
+  for (const line of (read3(join10(commonDir, "packed-refs")) ?? "").split("\n")) {
+    const [sha, name2] = line.split(" ");
+    if (name2 === ref2 && sha !== void 0 && SHA.test(sha)) return sha;
+  }
+  return null;
+}
+function read3(path) {
+  try {
+    return readFileSync6(path, "utf8").trim();
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+}
+var SHA, MAX_REF_DEPTH;
+var init_git_head = __esm({
+  "src/core/status/git-head.ts"() {
+    "use strict";
+    init_fs();
+    SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
+    MAX_REF_DEPTH = 5;
+  }
+});
+
+// src/core/status/identity.ts
+function statusIdentity(root, latest, commit, daemon) {
+  const live = readGitHead(root);
+  if (latest === null) return { head: live, dirty: null, dirtyObservedAt: null };
+  const recorded2 = commit?.head ?? latest.head;
+  if (live !== null && live !== recorded2) {
+    return { head: live, dirty: null, dirtyObservedAt: null, headMovedSince: latest.number };
+  }
+  if (daemon.state !== "alive") return { head: recorded2, dirty: null, dirtyObservedAt: null };
+  return { head: recorded2, dirty: commit?.dirty ?? latest.dirty, dirtyObservedAt: latest.number };
+}
+function statusRevisionText(s) {
+  const moved2 = s.headMovedSince !== void 0;
+  if (s.commit === void 0 && !moved2) return revisionText(s.revision, void 0);
+  const sinceHead = moved2 ? 0 : s.commit?.sinceHead ?? 0;
+  const text2 = revisionText(s.revision, { head: s.head, sinceHead, dirty: s.dirty === true });
+  return s.dirty === null && s.head !== null ? `${text2}, dirty not known` : text2;
+}
+function worktreeLine(s) {
+  return `Worktree: ${s.worktreeRoot} (HEAD ${shortCommit(s.head)}, ${dirtyText(s)})`;
+}
+function dirtyText(s) {
+  if (s.dirty !== null) {
+    return `${s.dirty ? "dirty" : "clean"} at revision ${s.dirtyObservedAt ?? s.revision}`;
+  }
+  const alive = s.daemon.state === "alive";
+  if (s.headMovedSince !== void 0) {
+    const reason2 = alive ? " until the next pass" : ": no daemon is validating";
+    return `moved since revision ${s.headMovedSince}; dirty state not known${reason2}`;
+  }
+  return alive ? "dirty state not known: no revision recorded yet" : "dirty state not known: no daemon is validating";
+}
+function shortCommit(commit) {
+  return commit === null ? "no commit" : commit.slice(0, 7);
+}
+var init_identity = __esm({
+  "src/core/status/identity.ts"() {
+    "use strict";
+    init_state3();
+    init_git_head();
+  }
+});
+
 // src/core/store/busy.ts
 function busyBackoffMs(attempt) {
   return BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length - 1)] ?? 0;
@@ -4408,18 +4492,18 @@ var init_connection = __esm({
 });
 
 // src/core/store/paths.ts
-import { join as join10 } from "node:path";
+import { join as join11 } from "node:path";
 function storePaths(commonDir) {
-  const dir2 = join10(commonDir, "squeal");
+  const dir2 = join11(commonDir, "squeal");
   return {
     dir: dir2,
-    database: join10(dir2, "store.sqlite"),
-    runsDir: join10(dir2, "runs"),
-    locksDir: join10(dir2, "locks")
+    database: join11(dir2, "store.sqlite"),
+    runsDir: join11(dir2, "runs"),
+    locksDir: join11(dir2, "locks")
   };
 }
 function lockFileFor(commonDir, worktreeId) {
-  return join10(storePaths(commonDir).locksDir, `${worktreeId}.sqlite`);
+  return join11(storePaths(commonDir).locksDir, `${worktreeId}.sqlite`);
 }
 var init_paths2 = __esm({
   "src/core/store/paths.ts"() {
@@ -4740,12 +4824,12 @@ var init_codec = __esm({
 
 // src/core/store/prune.ts
 import { existsSync as existsSync2, rmSync } from "node:fs";
-import { join as join11, resolve as resolve3, sep as sep3 } from "node:path";
+import { join as join12, resolve as resolve3, sep as sep3 } from "node:path";
 function prune(conn, worktrees, paths, options) {
   const cutoff = options.now - options.retentionDays * DAY_MS;
   let worktreesRemoved = 0;
   for (const worktree of worktrees.list()) {
-    if (existsSync2(join11(worktree.root, ".git"))) continue;
+    if (existsSync2(join12(worktree.root, ".git"))) continue;
     worktrees.remove(worktree.id);
     worktreesRemoved++;
   }
@@ -6001,7 +6085,7 @@ var init_store2 = __esm({
 
 // src/core/store/open.ts
 import { existsSync as existsSync3, mkdirSync, renameSync, rmSync as rmSync2 } from "node:fs";
-import { join as join12 } from "node:path";
+import { join as join13 } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 function isStoreOpenFailure(value) {
   return "reason" in value;
@@ -6077,7 +6161,7 @@ function isCorruption(error) {
 }
 function recover(paths, options) {
   mkdirSync(paths.locksDir, { recursive: true });
-  const lock2 = new DatabaseSync(join12(paths.locksDir, "store-recovery.sqlite"));
+  const lock2 = new DatabaseSync(join13(paths.locksDir, "store-recovery.sqlite"));
   try {
     lock2.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
     lock2.exec("BEGIN EXCLUSIVE");
@@ -6331,90 +6415,6 @@ var init_died = __esm({
     init_types();
     DIED_FILES_SHOWN = 5;
     DEATH_CAUSE = "A SIGKILL, or a test that signals its own process group (`kill(0, ...)`), ends a daemon this way.";
-  }
-});
-
-// src/core/status/git-head.ts
-import { readFileSync as readFileSync6 } from "node:fs";
-import { join as join13 } from "node:path";
-function readGitHead(root) {
-  const gitDir = gitDirOf(root);
-  const commonDir = resolveCommonDir(root);
-  if (gitDir === null || commonDir === null) return null;
-  let value = read3(join13(gitDir, "HEAD"));
-  for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
-    if (SHA.test(value)) return value;
-    const ref2 = /^ref:\s*(\S+)$/.exec(value)?.[1];
-    if (ref2 === void 0) return null;
-    value = read3(join13(gitDir, ref2)) ?? read3(join13(commonDir, ref2)) ?? packed(commonDir, ref2);
-  }
-  return null;
-}
-function packed(commonDir, ref2) {
-  for (const line of (read3(join13(commonDir, "packed-refs")) ?? "").split("\n")) {
-    const [sha, name2] = line.split(" ");
-    if (name2 === ref2 && sha !== void 0 && SHA.test(sha)) return sha;
-  }
-  return null;
-}
-function read3(path) {
-  try {
-    return readFileSync6(path, "utf8").trim();
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
-}
-var SHA, MAX_REF_DEPTH;
-var init_git_head = __esm({
-  "src/core/status/git-head.ts"() {
-    "use strict";
-    init_fs();
-    SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
-    MAX_REF_DEPTH = 5;
-  }
-});
-
-// src/core/status/identity.ts
-function statusIdentity(root, latest, commit, daemon) {
-  const live = readGitHead(root);
-  if (latest === null) return { head: live, dirty: null, dirtyObservedAt: null };
-  const recorded2 = commit?.head ?? latest.head;
-  if (live !== null && live !== recorded2) {
-    return { head: live, dirty: null, dirtyObservedAt: null, headMovedSince: latest.number };
-  }
-  if (daemon.state !== "alive") return { head: recorded2, dirty: null, dirtyObservedAt: null };
-  return { head: recorded2, dirty: commit?.dirty ?? latest.dirty, dirtyObservedAt: latest.number };
-}
-function statusRevisionText(s) {
-  const moved2 = s.headMovedSince !== void 0;
-  if (s.commit === void 0 && !moved2) return revisionText(s.revision, void 0);
-  const sinceHead = moved2 ? 0 : s.commit?.sinceHead ?? 0;
-  const text2 = revisionText(s.revision, { head: s.head, sinceHead, dirty: s.dirty === true });
-  return s.dirty === null && s.head !== null ? `${text2}, dirty not known` : text2;
-}
-function worktreeLine(s) {
-  return `Worktree: ${s.worktreeRoot} (HEAD ${shortCommit(s.head)}, ${dirtyText(s)})`;
-}
-function dirtyText(s) {
-  if (s.dirty !== null) {
-    return `${s.dirty ? "dirty" : "clean"} at revision ${s.dirtyObservedAt ?? s.revision}`;
-  }
-  const alive = s.daemon.state === "alive";
-  if (s.headMovedSince !== void 0) {
-    const reason2 = alive ? " until the next pass" : ": no daemon is validating";
-    return `moved since revision ${s.headMovedSince}; dirty state not known${reason2}`;
-  }
-  return alive ? "dirty state not known: no revision recorded yet" : "dirty state not known: no daemon is validating";
-}
-function shortCommit(commit) {
-  return commit === null ? "no commit" : commit.slice(0, 7);
-}
-var init_identity = __esm({
-  "src/core/status/identity.ts"() {
-    "use strict";
-    init_state3();
-    init_git_head();
   }
 });
 
@@ -6751,31 +6751,850 @@ var init_open2 = __esm({
   }
 });
 
+// src/core/scheduler/claims.ts
+import { setTimeout as delay } from "node:timers/promises";
+function claimBoundMs(timeoutMs) {
+  return timeoutMs === null ? CLAIM_UNBOUNDED_MS : timeoutMs + CLAIM_GRACE_MS;
+}
+function claimOf(ledger, ref2) {
+  const file = ledger.file(ref2);
+  const key2 = file?.key ?? null;
+  if (!file || key2 === null || file.blocked !== null) return "free";
+  if (ledger.queue.isForced(ref2) || ledger.queue.isRecent(ref2)) return "free";
+  const { hits, mayWait } = ledger.probe(key2);
+  if (hits.length > 0) {
+    ledger.applyResults(file, key2, hits, ledger.checkpoints.idFor(ref2));
+    ledger.commit();
+    return "settled";
+  }
+  return mayWait && ledger.claims.holds(key2) ? "waits" : "free";
+}
+async function claimWake(store, signal2) {
+  const before = changeMarker(store);
+  const until = performance.now() + CLAIM_RECHECK_MS;
+  try {
+    while (performance.now() < until) {
+      await delay(CLAIM_POLL_MS, void 0, { signal: signal2 });
+      const now = changeMarker(store);
+      if (now?.others !== before?.others || now?.own !== before?.own) return;
+    }
+  } catch (error) {
+    if (!signal2.aborted) throw error;
+  }
+}
+var CLAIM_GRACE_MS, CLAIM_UNBOUNDED_MS, CLAIM_RECHECK_MS, CLAIM_POLL_MS, Claims;
+var init_claims = __esm({
+  "src/core/scheduler/claims.ts"() {
+    "use strict";
+    init_snapshot();
+    init_store3();
+    CLAIM_GRACE_MS = 6e3;
+    CLAIM_UNBOUNDED_MS = 6e5;
+    CLAIM_RECHECK_MS = 1e3;
+    CLAIM_POLL_MS = 250;
+    Claims = class {
+      constructor(context) {
+        this.context = context;
+      }
+      context;
+      /** When this worktree first found each key claimed: the waiter's bound runs from it. */
+      #seen = /* @__PURE__ */ new Map();
+      #waiting = false;
+      /** Some queued file waited on a claim since `begin`: the pump looks again (`claimWake`). */
+      get waiting() {
+        return this.#waiting;
+      }
+      /** A scheduling pass starts. */
+      begin() {
+        this.#waiting = false;
+      }
+      /** Whether a file at `key` waits: another live worktree runs it, and the waiter's bound holds. */
+      holds(key2) {
+        const { store, worktreeId, now } = this.context;
+        if (!store.testFileKeys.claimed(worktreeId, key2, this.#live())) {
+          this.#seen.delete(key2);
+          return false;
+        }
+        const at2 = now();
+        const since = this.#seen.get(key2) ?? at2;
+        this.#seen.set(key2, since);
+        if (at2 - since > this.#boundMs()) return false;
+        this.#waiting = true;
+        return true;
+      }
+      /** `key` runs here: a later claim on it starts a new bound. */
+      taken(key2) {
+        this.#seen.delete(key2);
+      }
+      /**
+       * D5 step 5 as amended: a backlog tier's file count while other live
+       * daemons have this worktree's queued keys pending too. The queued files
+       * divided by those daemons and this one, rounded up, at least
+       * `runner.tierSize` and at most `runner.backlogTierSize`; with none, the
+       * latter.
+       */
+      backlogSize(queued) {
+        const { store, worktreeId, policy } = this.context;
+        const { tierSize, backlogTierSize } = policy.runner;
+        const sharers = store.testFileKeys.sharers(worktreeId, this.#live());
+        if (sharers === 0) return backlogTierSize;
+        return Math.min(backlogTierSize, Math.max(tierSize, Math.ceil(queued / (sharers + 1))));
+      }
+      #live() {
+        return { now: this.context.now(), graceIntervals: HEARTBEAT_GRACE_INTERVALS };
+      }
+      #boundMs() {
+        return claimBoundMs(this.context.policy.runner.timeoutMs);
+      }
+    };
+  }
+});
+
+// src/core/scheduler/runner-work-bound.ts
+function runnerPartBoundMs(timeoutMs) {
+  return (timeoutMs ?? CLAIM_UNBOUNDED_MS) + CLAIM_GRACE_MS + RUNNER_PART_MARGIN_MS;
+}
+function runnerPartBound(context) {
+  return new RunnerPartBound(
+    context.runnerPartMs ?? runnerPartBoundMs(context.policy.runner.timeoutMs)
+  );
+}
+function seconds(ms2) {
+  return ms2 >= 1e3 ? `${Math.round(ms2 / 1e3)} s` : `${ms2} ms`;
+}
+var RUNNER_PART_MARGIN_MS, RunnerPartBound;
+var init_runner_work_bound = __esm({
+  "src/core/scheduler/runner-work-bound.ts"() {
+    "use strict";
+    init_claims();
+    RUNNER_PART_MARGIN_MS = 6e4;
+    RunnerPartBound = class {
+      constructor(ms2) {
+        this.ms = ms2;
+      }
+      ms;
+      #abandoned = null;
+      call(call) {
+        if (this.#abandoned !== null) return Promise.reject(new Error(this.#abandoned));
+        const answer2 = call();
+        answer2.catch(() => {
+        });
+        let timer;
+        const abandoned = new Promise((_, reject) => {
+          timer = setTimeout(() => {
+            this.#abandoned ??= `no answer within ${seconds(this.ms)}; the call was abandoned`;
+            reject(new Error(this.#abandoned));
+          }, this.ms);
+          timer.unref?.();
+        });
+        return Promise.race([answer2, abandoned]).finally(() => clearTimeout(timer));
+      }
+    };
+  }
+});
+
+// src/core/slow/guard.ts
+import { availableParallelism as availableParallelism2, loadavg as loadavg2 } from "node:os";
+import { setTimeout as delay2 } from "node:timers/promises";
+function loadPerCpu(wait = {}) {
+  const load = wait.load ?? loadavg2;
+  const cpus = wait.cpus ?? availableParallelism2;
+  return (load()[0] ?? 0) / Math.max(1, cpus());
+}
+async function waitForCapacity(wait) {
+  const sleep15 = wait.sleep ?? delay2;
+  const now = wait.now ?? (() => performance.now());
+  const recheckMs = wait.recheckMs ?? 15e3;
+  const perCpu2 = () => loadPerCpu(wait);
+  const start2 = now();
+  for (; ; ) {
+    const current3 = perCpu2();
+    const waitedMs = now() - start2;
+    if (current3 <= wait.maxLoadPerCpu) return { waitedMs, ranUnderLoad: null };
+    const left = wait.maxDeferMs - waitedMs;
+    if (left <= 0) return { waitedMs, ranUnderLoad: current3 };
+    await sleep15(Math.min(recheckMs, left));
+  }
+}
+var init_guard = __esm({
+  "src/core/slow/guard.ts"() {
+    "use strict";
+  }
+});
+
+// src/core/daemon/paths.ts
+import { chmodSync, lstatSync as lstatSync3, mkdirSync as mkdirSync3 } from "node:fs";
+import { dirname as dirname5, isAbsolute as isAbsolute6, join as join16 } from "node:path";
+function runtimeDir(env = process.env) {
+  return xdgRuntimeDir(env) ?? userTmpDir();
+}
+function socketPathFor(worktreeId, env = process.env) {
+  const name2 = `squeal-${worktreeId}.sock`;
+  const path = join16(runtimeDir(env), name2);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join16(userTmpDir(), name2);
+}
+function prepareSocketDir(socketPath, env = process.env, uid = currentUid()) {
+  const dir2 = dirname5(socketPath);
+  if (dir2 === xdgRuntimeDir(env)) {
+    mkdirSync3(dir2, { recursive: true, mode: 448 });
+    return;
+  }
+  preparePrivateDir(dir2, uid);
+}
+function preparePrivateDir(dir2, uid = currentUid(), role = "socket directory") {
+  mkdirSync3(dirname5(dir2), { recursive: true });
+  try {
+    mkdirSync3(dir2, { mode: 448 });
+    chmodSync(dir2, 448);
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+  }
+  checkPrivateDir(dir2, uid, role);
+}
+function checkPrivateDir(dir2, uid, role = "socket directory") {
+  const stat7 = lstatSync3(dir2);
+  if (!stat7.isDirectory()) {
+    throw new Error(`${role} ${dir2} is not a directory; refusing to use it`);
+  }
+  if (stat7.uid !== uid) {
+    throw new Error(`${role} ${dir2} is owned by uid ${stat7.uid}, not ${uid}; refusing to use it`);
+  }
+  if ((stat7.mode & 63) !== 0) {
+    const mode = (stat7.mode & 511).toString(8).padStart(3, "0");
+    throw new Error(`${role} ${dir2} has mode ${mode}, not 700; refusing to use it`);
+  }
+}
+function userTmpDir(uid = currentUid()) {
+  return join16("/tmp", `squeal-${uid}`);
+}
+function xdgRuntimeDir(env) {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return xdg !== void 0 && xdg !== "" && isAbsolute6(xdg) ? xdg : null;
+}
+function currentUid() {
+  return process.getuid?.() ?? 0;
+}
+var MAX_SOCKET_PATH_BYTES;
+var init_paths3 = __esm({
+  "src/core/daemon/paths.ts"() {
+    "use strict";
+    MAX_SOCKET_PATH_BYTES = 103;
+  }
+});
+
+// src/core/slow/slot.ts
+import { createHash as createHash9 } from "node:crypto";
+import { readdirSync as readdirSync4, rmSync as rmSync3, statSync as statSync2, writeFileSync } from "node:fs";
+import { isAbsolute as isAbsolute7, join as join17 } from "node:path";
+import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+function slowSlotDir(env = process.env) {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return xdg !== void 0 && xdg !== "" && isAbsolute7(xdg) ? join17(xdg, "squeal") : userTmpDir();
+}
+function acquireSlowSlot(request) {
+  const { dir: dir2, owner: owner2, signal: signal2 } = request;
+  if (signal2?.aborted) return null;
+  preparePrivateDir(dir2, request.uid ?? currentUid(), "slow slot directory");
+  const permits = Math.max(1, request.permits ?? 1);
+  const want = Math.max(1, request.want ?? 1);
+  const held2 = [];
+  try {
+    for (let i3 = 0; i3 < permits && held2.length < want; i3++) {
+      const db = takePermit(join17(dir2, permitFile(i3)), owner2);
+      if (db !== null) held2.push(db);
+    }
+  } catch (error) {
+    for (const db of held2) db.close();
+    throw error;
+  }
+  if (held2.length === 0) return null;
+  const keep = (count) => {
+    for (const db of held2.splice(count)) db.close();
+    if (held2.length === 0) signal2?.removeEventListener("abort", release);
+  };
+  const release = () => keep(0);
+  signal2?.addEventListener("abort", release, { once: true });
+  return {
+    get permits() {
+      return held2.length;
+    },
+    shrinkTo: (count) => keep(Math.max(1, count)),
+    release
+  };
+}
+function permitFile(i3) {
+  return i3 === 0 ? SLOW_LOCK_FILE : `slow.${i3}.lock`;
+}
+function takePermit(path, owner2) {
+  const db = new DatabaseSync3(path);
+  try {
+    db.exec("PRAGMA busy_timeout = 0");
+    db.exec("PRAGMA locking_mode = EXCLUSIVE");
+    db.exec("BEGIN EXCLUSIVE");
+  } catch (error) {
+    db.close();
+    if (isBusy(error)) return null;
+    throw error;
+  }
+  try {
+    db.exec(
+      "CREATE TABLE IF NOT EXISTS holder (pid INTEGER NOT NULL, worktree_id TEXT NOT NULL, since INTEGER NOT NULL)"
+    );
+    db.exec("DELETE FROM holder");
+    db.prepare("INSERT INTO holder (pid, worktree_id, since) VALUES (?, ?, ?)").run(
+      owner2.pid,
+      owner2.worktreeId,
+      Date.now()
+    );
+    db.exec("COMMIT");
+  } catch (error) {
+    db.close();
+    throw error;
+  }
+  return db;
+}
+function waiterPath(dir2, worktreeId) {
+  const name2 = createHash9("sha256").update(worktreeId).digest("hex").slice(0, 16);
+  return join17(dir2, `${WAITER_PREFIX}${name2}`);
+}
+function markSlotWaiter(dir2, worktreeId) {
+  writeFileSync(waiterPath(dir2, worktreeId), `${worktreeId}
+`, { mode: 384 });
+}
+function clearSlotWaiter(dir2, worktreeId) {
+  rmSync3(waiterPath(dir2, worktreeId), { force: true });
+}
+function othersWaitingForSlot(dir2, worktreeId, now = Date.now()) {
+  const own = waiterPath(dir2, worktreeId);
+  let names3;
+  try {
+    names3 = readdirSync4(dir2);
+  } catch {
+    return false;
+  }
+  return names3.some((name2) => {
+    const path = join17(dir2, name2);
+    if (!name2.startsWith(WAITER_PREFIX) || path === own) return false;
+    const stat7 = statSync2(path, { throwIfNoEntry: false });
+    return stat7 !== void 0 && now - stat7.mtimeMs < SLOT_WAITER_FRESH_MS;
+  });
+}
+var SLOW_LOCK_FILE, WAITER_PREFIX, SLOT_WAITER_FRESH_MS;
+var init_slot = __esm({
+  "src/core/slow/slot.ts"() {
+    "use strict";
+    init_paths3();
+    init_store3();
+    SLOW_LOCK_FILE = "slow.lock";
+    WAITER_PREFIX = "slow.wait.";
+    SLOT_WAITER_FRESH_MS = 3e4;
+  }
+});
+
+// src/core/slow/index.ts
+var init_slow2 = __esm({
+  "src/core/slow/index.ts"() {
+    "use strict";
+    init_classify();
+    init_guard();
+    init_slot();
+    init_stop_wait();
+  }
+});
+
+// src/core/scheduler/slow.ts
+function slowView(policy) {
+  let view = views.get(policy);
+  if (view === void 0) {
+    const globs2 = slowGlobs(policy, policy.nodeTest);
+    view = { isSlow: slowFiles(policy, policy.nodeTest), globs: globs2, declared: globs2.length > 0 };
+    views.set(policy, view);
+  }
+  return view;
+}
+function laneFor(policy, ref2, runnerLane) {
+  return slowView(policy).isSlow(ref2) ? SLOW_LANE_PREFIX + runnerLane : runnerLane;
+}
+var views;
+var init_slow3 = __esm({
+  "src/core/scheduler/slow.ts"() {
+    "use strict";
+    init_slow2();
+    init_types();
+    views = /* @__PURE__ */ new WeakMap();
+  }
+});
+
+// src/core/scheduler/promotions.ts
+function promotionsMetaKey(worktreeId) {
+  return worktreeMetaKey("promotions", worktreeId);
+}
+function publishPromotions(store, worktreeId, live, at2) {
+  const key2 = promotionsMetaKey(worktreeId);
+  if (live.length === 0) store.meta.delete(key2);
+  else store.meta.set(key2, JSON.stringify({ at: at2, promotions: live }));
+}
+function promotedIds(store, worktreeId, daemonStartedAt, now) {
+  const raw = store.meta.get(promotionsMetaKey(worktreeId));
+  if (raw === null) return /* @__PURE__ */ new Set();
+  try {
+    const { at: at2, promotions } = JSON.parse(raw);
+    if (typeof at2 !== "number" || at2 < daemonStartedAt || !Array.isArray(promotions)) {
+      return /* @__PURE__ */ new Set();
+    }
+    const live = promotions.filter(
+      (p) => typeof p === "object" && p !== null && typeof p.until === "number" && p.until > now && Array.isArray(p.files)
+    );
+    return new Set(live.flatMap((p) => p.files.filter((f) => typeof f === "string")));
+  } catch {
+    return /* @__PURE__ */ new Set();
+  }
+}
+var NOT_RUNNING, Promotions;
+var init_promotions = __esm({
+  "src/core/scheduler/promotions.ts"() {
+    "use strict";
+    init_keys();
+    init_types();
+    NOT_RUNNING = () => false;
+    Promotions = class {
+      #promotions = [];
+      #seq = 0;
+      #now = Date.now;
+      #isRunning = NOT_RUNNING;
+      #publish = null;
+      /**
+       * The clock deadlines are on, whether a test file's run is in flight, and
+       * where each change of the live promotions is told (`publishPromotions`).
+       */
+      setClock(now, isRunning2, publish) {
+        this.#now = now;
+        this.#isRunning = isRunning2;
+        this.#publish = publish ?? null;
+      }
+      now() {
+        return this.#now();
+      }
+      /** A wait's promotion of `refs` until `until`; none when no file of it is open. */
+      add(refs2, until, queued) {
+        let changed = this.#settle(queued);
+        const files2 = new Map(refs2.map((ref2) => [testFileId(ref2), ref2]));
+        const promotion = { files: files2, until, seq: this.#seq++ };
+        if (this.#open(promotion, queued)) {
+          this.#promotions.push(promotion);
+          changed = true;
+        }
+        if (changed) this.#told();
+      }
+      /** The request order of the earliest live promotion of `id`; `null` when none holds it. */
+      rankOf(id2) {
+        if (this.#promotions.length === 0) return null;
+        const now = this.#now();
+        return this.#promotions.find((p) => p.until > now && p.files.has(id2))?.seq ?? null;
+      }
+      /** Drops the promotions past their deadline or whose files all settled. */
+      settle(queued) {
+        if (this.#settle(queued)) this.#told();
+      }
+      /** The live promotions as now; the returned function puts them back as they were (`RunQueue.hold`). */
+      hold() {
+        const held2 = [...this.#promotions];
+        return () => {
+          const same2 = held2.length === this.#promotions.length && held2.every((p, i3) => p === this.#promotions[i3]);
+          this.#promotions = [...held2];
+          if (!same2) this.#told();
+        };
+      }
+      clear() {
+        if (this.#promotions.length === 0) return;
+        this.#promotions = [];
+        this.#told();
+      }
+      /** `settle` without the telling; whether any promotion was dropped. */
+      #settle(queued) {
+        if (this.#promotions.length === 0) return false;
+        const now = this.#now();
+        const before = this.#promotions.length;
+        this.#promotions = this.#promotions.filter((p) => p.until > now && this.#open(p, queued));
+        return this.#promotions.length !== before;
+      }
+      #told() {
+        this.#publish?.(
+          this.#promotions.map((p) => ({ files: [...p.files.keys()], until: p.until }))
+        );
+      }
+      #open(promotion, queued) {
+        for (const [id2, ref2] of promotion.files) {
+          if (queued(id2) || this.#isRunning(ref2)) return true;
+        }
+        return false;
+      }
+    };
+  }
+});
+
+// src/core/status/standing-facts.ts
+function unknownStanding(unknown, facts) {
+  const reason2 = unknown.reason ?? "no reason was kept";
+  switch (unknown.cause) {
+    case "timeout":
+      return { kind: "timed-out", reason: reason2, load: facts.load(), notCurrent: facts.notCurrent() };
+    case "install":
+      return { kind: "no-install", command: facts.installCommand };
+    case "runner":
+      return { kind: "runner", reason: reason2 };
+    case "setup":
+      return { kind: "setup-failed" };
+    case "never-run":
+      return { kind: "never-run", lookupOnly: facts.lookupOnly, notCurrent: facts.notCurrent() };
+    default:
+      return {
+        kind: "no-result",
+        reason: `${unknown.ran ? "ran, nothing recorded" : "no result"}: ${reason2}`,
+        notCurrent: facts.notCurrent()
+      };
+  }
+}
+function setupsOf(states) {
+  const setups = /* @__PURE__ */ new Map();
+  for (const s of states) {
+    if (s.check.kind === "setup") setups.set(s.check.project, { file: s.check.testPath });
+  }
+  return setups;
+}
+function once(read5) {
+  let value;
+  return () => {
+    value ??= { v: read5() };
+    return value.v;
+  };
+}
+var init_standing_facts = __esm({
+  "src/core/status/standing-facts.ts"() {
+    "use strict";
+  }
+});
+
+// src/core/status/standing.ts
+function readNamedFiles(store, worktreeId, root, files2, daemon, now, load = hostLoad) {
+  return standingsOf(store, worktreeId, root, daemon, now, load)(files2);
+}
+function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, reads) {
+  const states = reads?.states ?? store.knownStates.list(worktreeId);
+  const keys = reads?.keys ?? store.testFileKeys.list(worktreeId);
+  const rows = new Map(keys.map((row) => [testFileId(row.testFile), row]));
+  const checks = checksByFile(states);
+  const policy = readPolicy(root);
+  const runs = reads?.runs ?? openRunsOf(store, worktreeId, daemon);
+  const promoted = promotedOf(store, worktreeId, daemon, now);
+  const header = reads?.header ?? readHeader(store, worktreeId, states, keys);
+  const unlisted2 = unlistedReason(header, policy);
+  const reasons = unknownReasons(store, worktreeId, states, root, now);
+  const setups = setupsOf(states);
+  const facts = {
+    lookupOnly: policy.baseline.onStart === "lookup-only",
+    installCommand: header.installCommand ?? null,
+    load: once(load),
+    // What `run --all --wait` runs, from the rows and states read above: no further read.
+    notCurrent: once(
+      () => keys.filter(
+        (row) => fileClassOf(row, checks.get(testFileId(row.testFile)) ?? []) !== "current"
+      ).length
+    )
+  };
+  return (files2) => files2.map((ref2) => {
+    const row = rows.get(testFileId(ref2));
+    const own = checks.get(testFileId(ref2)) ?? [];
+    const state = fileClassOf(row, own);
+    if (state === "current") return { testFile: ref2, state, ...verdictOf(own) };
+    const key2 = row?.key ?? null;
+    const claimant = state === "pending" || key2 === null ? null : claimantOf(store, worktreeId, ref2, key2, now);
+    const claim = claimant === null ? null : { kind: "claim", worktree: claimant.worktree.root, until: claimBound(policy, now) };
+    if (state === "stale") {
+      const verdict = verdictOf(own);
+      const standing = claim ?? {
+        kind: "stale",
+        verdict: verdict.verdict ?? null,
+        lookupOnly: facts.lookupOnly,
+        notCurrent: facts.notCurrent()
+      };
+      return { testFile: ref2, state, ...verdict, standing };
+    }
+    if (state === "unknown") {
+      if (row === void 0) return { testFile: ref2, state };
+      const unknown = reasons.of(row, own);
+      return {
+        testFile: ref2,
+        state,
+        unknown,
+        standing: claim ?? unknownStanding(unknown, facts)
+      };
+    }
+    const running = row?.pending === "running" || own.some((s) => s.pendingPhase === "running");
+    const lane = laneFor(policy, ref2, runnerLaneOf(policy, ref2.project));
+    const run4 = running ? runOf(runs, ref2) : void 0;
+    const setup = isSlowLane(lane) ? setups.get(ref2.project) : void 0;
+    const pending = running ? {
+      kind: "running",
+      lane,
+      since: run4?.startedAt ?? null,
+      ...run4 === void 0 ? {} : { files: run4.testFiles.length },
+      ...setup === void 0 ? {} : { setup }
+    } : unlisted2 ?? queuedReason(store, worktreeId, ref2, key2, lane, runs, policy, now);
+    if (pending.kind === "queued" && promoted.has(testFileId(ref2))) {
+      const promotedReason = { ...pending, promoted: true };
+      return { testFile: ref2, state, pending: promotedReason, standing: promotedReason };
+    }
+    return { testFile: ref2, state, pending, standing: pending };
+  });
+}
+function claimBound(policy, now) {
+  return now + claimBoundMs(policy.runner.timeoutMs);
+}
+function pauseOnlyIds(store, worktreeId, root, files2, daemon, now) {
+  const policy = readPolicy(root);
+  if (policy.slow.trigger !== "idle") return /* @__PURE__ */ new Set();
+  const slow = files2.filter((ref2) => slowView(policy).isSlow(ref2));
+  if (slow.length === 0) return /* @__PURE__ */ new Set();
+  const rows = new Map(
+    store.testFileKeys.list(worktreeId, slow).map((row) => [testFileId(row.testFile), row])
+  );
+  const checks = checksByFile(store.knownStates.list(worktreeId, slow));
+  const runs = openRunsOf(store, worktreeId, daemon);
+  const ids = /* @__PURE__ */ new Set();
+  for (const ref2 of slow) {
+    const id2 = testFileId(ref2);
+    const row = rows.get(id2);
+    const own = checks.get(id2) ?? [];
+    if (fileClassOf(row, own) !== "pending") continue;
+    if (row?.pending === "running" || own.some((s) => s.pendingPhase === "running")) continue;
+    const lane = laneFor(policy, ref2, runnerLaneOf(policy, ref2.project));
+    const reason2 = queuedReason(store, worktreeId, ref2, row?.key ?? null, lane, runs, policy, now);
+    if (reason2.kind === "slow") ids.add(id2);
+  }
+  return ids;
+}
+function promotedOf(store, worktreeId, daemon, now) {
+  const record = store.worktrees.get(worktreeId)?.daemon ?? null;
+  if (record === null || daemon.state !== "alive") return /* @__PURE__ */ new Set();
+  return promotedIds(store, worktreeId, record.startedAt, now);
+}
+function runnerLaneOf(policy, project) {
+  if (policy.nodeTest.some((p) => p.name === project)) return "node-test";
+  if (policy.pytest.some((p) => p.name === project)) return "pytest";
+  return "vitest";
+}
+function queuedReason(store, worktreeId, ref2, key2, lane, runs, policy, now) {
+  const claimant = key2 === null ? null : claimantOf(store, worktreeId, ref2, key2, now);
+  if (claimant !== null) {
+    return { kind: "claim", worktree: claimant.worktree.root, until: claimBound(policy, now) };
+  }
+  const tier = runs.find(
+    (run4) => run4.testFiles.some((f) => laneFor(policy, f, runnerLaneOf(policy, f.project)) === lane)
+  );
+  if (tier !== void 0) {
+    return { kind: "queued", lane, behind: tier.startedAt, files: tier.testFiles.length };
+  }
+  if (slowView(policy).isSlow(ref2)) {
+    return policy.slow.trigger === "idle" ? { kind: "slow", pausesOnly: true } : { kind: "slow" };
+  }
+  return { kind: "queued", lane, behind: null };
+}
+function unlistedReason(header, policy) {
+  const refined = header.refinedRevision;
+  if (header.runnerPartPending !== true || refined === null || refined === void 0) return null;
+  const callBoundMs = runnerPartBoundMs(policy.runner.timeoutMs);
+  return { kind: "unlisted", revision: header.revision, callBoundMs };
+}
+function runOf(runs, ref2) {
+  const id2 = testFileId(ref2);
+  return runs.find((run4) => run4.testFiles.some((f) => testFileId(f) === id2));
+}
+function verdictOf(own) {
+  for (const verdict of ["fail", "pass", "skip"]) {
+    if (own.some((s) => s.outcome === verdict)) return { verdict };
+  }
+  return {};
+}
+var init_standing = __esm({
+  "src/core/status/standing.ts"() {
+    "use strict";
+    init_policy2();
+    init_keys();
+    init_load();
+    init_claims();
+    init_promotions();
+    init_runner_work_bound();
+    init_slow3();
+    init_state3();
+    init_types();
+    init_open_runs();
+    init_standing_facts();
+    init_unknown_files2();
+  }
+});
+
+// src/core/status/standing-groups.ts
+function groupId(s) {
+  switch (s.kind) {
+    case "running":
+      return `running ${s.lane} ${(s.files ?? 1) > 1} ${s.setup?.file ?? ""}`;
+    case "queued":
+      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true}`;
+    case "claim":
+      return `claim ${s.worktree}`;
+    case "stale":
+      return `stale ${s.verdict} ${s.lookupOnly}`;
+    case "timed-out":
+    case "no-result":
+    case "runner":
+      return `${s.kind} ${s.reason}`;
+    case "retry":
+      return `retry ${s.reason} ${s.noResult} ${s.runningSince} ${s.elsewhere}`;
+    default:
+      return s.kind;
+  }
+}
+function widest(a, b) {
+  if (a.kind === "running" && b.kind === "running") {
+    return a.since === null || b.since !== null && b.since < a.since ? b : a;
+  }
+  if (a.kind === "queued" && b.kind === "queued" && a.behind !== null && b.behind !== null) {
+    return b.behind < a.behind ? b : a;
+  }
+  if (a.kind === "claim" && b.kind === "claim") {
+    return a.until === null || b.until !== null && b.until > a.until ? b : a;
+  }
+  return a;
+}
+var init_standing_groups = __esm({
+  "src/core/status/standing-groups.ts"() {
+    "use strict";
+  }
+});
+
+// src/core/status/outstanding.ts
+function outstandingOf(store, worktreeId, root, reads, now, load) {
+  const { daemon, header } = reads;
+  if (daemon.state !== "alive") {
+    const since = daemon.since;
+    return [{ standing: { kind: "no-daemon", since, revision: header.revision }, files: [] }];
+  }
+  if (header.testFilesListed === false) return [{ standing: { kind: "listing" }, files: [] }];
+  const policy = readPolicy(root);
+  const slow = slowView(policy);
+  const retries = retryStandings(reads.pendingRetries, worktreeId);
+  const refs2 = reads.keys.map((row) => row.testFile).sort((a, b) => testFileId(a).localeCompare(testFileId(b)));
+  const files2 = standingsOf(store, worktreeId, root, daemon, now, load, reads)(refs2);
+  const groups = /* @__PURE__ */ new Map();
+  const add2 = (standing, ref2) => {
+    const id2 = groupId(standing);
+    const group = groups.get(id2);
+    if (group === void 0) {
+      groups.set(id2, { standing, files: ref2 === null ? [] : [ref2] });
+      return;
+    }
+    if (ref2 !== null) group.files.push(ref2);
+    group.standing = widest(group.standing, standing);
+  };
+  for (const file of files2) {
+    const retry2 = retries.get(testFileId(file.testFile));
+    if (retry2 !== void 0) {
+      add2(retry2, file.testFile);
+      continue;
+    }
+    const standing = file.state === "current" ? void 0 : file.standing ?? file.pending;
+    if (standing === void 0) continue;
+    const held2 = standing.kind === "running" && standing.setup !== void 0;
+    if (slow.isSlow(file.testFile) && !held2) continue;
+    add2(standing, file.testFile);
+  }
+  if (header.runnerPartPending === true && !groups.has(groupId(unlisted(header, policy)))) {
+    add2(unlisted(header, policy), null);
+  }
+  if (reads.checkpoint !== void 0 && !reads.checkpoint.owed) {
+    add2({ kind: "checkpoint" }, null);
+  }
+  return [...groups.values()].sort(
+    (a, b) => ORDER.indexOf(a.standing.kind) - ORDER.indexOf(b.standing.kind)
+  );
+}
+function unlisted(header, policy) {
+  return {
+    kind: "unlisted",
+    revision: header.revision,
+    callBoundMs: runnerPartBoundMs(policy.runner.timeoutMs)
+  };
+}
+function retryStandings(pending, worktreeId) {
+  const retries = /* @__PURE__ */ new Map();
+  for (const r of pending?.retries ?? []) {
+    retries.set(testFileId(r.testFile), {
+      kind: "retry",
+      reason: r.reason,
+      noResult: r.noResult === true,
+      runningSince: r.runningSince ?? null,
+      elsewhere: r.claimedBy !== null && r.claimedBy !== worktreeId
+    });
+  }
+  return retries;
+}
+var ORDER;
+var init_outstanding = __esm({
+  "src/core/status/outstanding.ts"() {
+    "use strict";
+    init_policy2();
+    init_keys();
+    init_runner_work_bound();
+    init_slow3();
+    init_standing();
+    init_standing_groups();
+    ORDER = [
+      "no-daemon",
+      "listing",
+      "unlisted",
+      "checkpoint",
+      "retry",
+      "no-install",
+      "setup-failed",
+      "runner",
+      "timed-out",
+      "no-result",
+      "stale",
+      "never-run",
+      "claim",
+      "running",
+      "queued",
+      "slow"
+    ];
+  }
+});
+
 // src/core/status/snapshot.ts
 function readStatus(cwd, options = {}) {
   const now = options.now ?? Date.now;
   const result = withStatusStore(
     cwd,
     options,
-    ({ store, root }) => buildSnapshot(store, root, now())
+    ({ store, root }) => buildSnapshot(store, root, now(), options.load)
   );
   return withConfigProblems(result, cwd);
 }
-function buildSnapshot(store, root, now) {
-  return readTransaction(store, () => snapshot(store, worktreeIdFor(root), root, now));
+function buildSnapshot(store, root, now, load = hostLoad) {
+  return readTransaction(store, () => snapshot(store, worktreeIdFor(root), root, now, load));
 }
-function snapshot(store, worktreeId, root, now) {
+function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad) {
   const worktree = store.worktrees.get(worktreeId);
   const revision = store.revisions.latest(worktreeId);
   const states = store.knownStates.list(worktreeId);
   const keys = store.testFileKeys.list(worktreeId);
-  const notes2 = [];
+  const notes = [];
   if (worktree === null) {
-    notes2.push("this worktree is not registered in the store; no daemon has run here");
+    notes.push("this worktree is not registered in the store; no daemon has run here");
   }
-  if (revision === null) notes2.push("no revision recorded for this worktree yet");
+  if (revision === null) notes.push("no revision recorded for this worktree yet");
   const recovered = recoveryNote(store.meta.get(META_STORE_RECOVERED));
-  if (recovered !== null) notes2.push(recovered);
+  if (recovered !== null) notes.push(recovered);
   const daemon = withDeath(
     store,
     worktree,
@@ -6789,6 +7608,18 @@ function snapshot(store, worktreeId, root, now) {
   const runs = openRuns(store, worktree, daemon);
   const header = readHeader(store, worktreeId, states, keys, void 0, openFiles(runs));
   const knownFailures = withRecorded(store, worktreeId, states, header.revision);
+  const load = once(hostLoadNow);
+  const retries = pendingRetriesOf(store, keys, load, runs);
+  const checkpoint = openCheckpoint(store, worktreeId, daemon);
+  const at2 = worktree?.root ?? root;
+  const outstanding = outstandingOf(
+    store,
+    worktreeId,
+    at2,
+    { states, keys, header, runs, daemon, ...retries, ...checkpoint },
+    now,
+    load
+  );
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
@@ -6803,14 +7634,15 @@ function snapshot(store, worktreeId, root, now) {
     breakdown: breakdown(states, keys, openFiles(runs)),
     closureMethod: CLOSURE_METHOD,
     storeSchemaVersion: store.schemaVersion,
-    notes: notes2,
+    notes,
     daemonNotes: readDaemonNotes(store, worktreeId),
-    ...openCheckpoint(store, worktreeId, daemon),
-    ...vitestExcluded(worktree?.root ?? root),
-    ...configProblemsOf(worktree?.root ?? root),
-    ...pendingRetriesOf(store, keys, void 0, runs),
-    ...unknownTestFilesOf(store, worktreeId, states, keys, worktree?.root ?? root, now),
-    ...daemon.state === "alive" ? { runsOpen: runs.length } : {}
+    ...checkpoint,
+    ...vitestExcluded(at2),
+    ...configProblemsOf(at2),
+    ...retries,
+    ...unknownTestFilesOf(store, worktreeId, states, keys, at2, now),
+    ...daemon.state === "alive" ? { runsOpen: runs.length } : {},
+    outstanding
   };
 }
 function vitestExcluded(root) {
@@ -6836,8 +7668,8 @@ function openCheckpoint(store, worktreeId, daemon) {
 }
 function liveness(daemon, now, lastHeartbeatAt) {
   if (daemon === null) return { state: "down", since: lastHeartbeatAt };
-  const age2 = now - daemon.heartbeatAt;
-  if (age2 <= daemon.heartbeatIntervalMs * HEARTBEAT_GRACE_INTERVALS) {
+  const age = now - daemon.heartbeatAt;
+  if (age <= daemon.heartbeatIntervalMs * HEARTBEAT_GRACE_INTERVALS) {
     return { state: "alive", lastHeartbeatAt: daemon.heartbeatAt };
   }
   return { state: "down", since: daemon.heartbeatAt };
@@ -6930,6 +7762,7 @@ var init_snapshot = __esm({
     init_keys();
     init_notes();
     init_retry();
+    init_load();
     init_state3();
     init_store3();
     init_types();
@@ -6939,6 +7772,8 @@ var init_snapshot = __esm({
     init_identity();
     init_open2();
     init_open_runs();
+    init_outstanding();
+    init_standing_facts();
     init_unknown_files2();
     HEARTBEAT_GRACE_INTERVALS = 2;
   }
@@ -7141,215 +7976,6 @@ var init_rank_store = __esm({
   }
 });
 
-// src/core/slow/guard.ts
-import { availableParallelism as availableParallelism2, loadavg as loadavg2 } from "node:os";
-import { setTimeout as delay } from "node:timers/promises";
-function loadPerCpu(wait = {}) {
-  const load = wait.load ?? loadavg2;
-  const cpus = wait.cpus ?? availableParallelism2;
-  return (load()[0] ?? 0) / Math.max(1, cpus());
-}
-async function waitForCapacity(wait) {
-  const sleep15 = wait.sleep ?? delay;
-  const now = wait.now ?? (() => performance.now());
-  const recheckMs = wait.recheckMs ?? 15e3;
-  const perCpu2 = () => loadPerCpu(wait);
-  const start2 = now();
-  for (; ; ) {
-    const current3 = perCpu2();
-    const waitedMs = now() - start2;
-    if (current3 <= wait.maxLoadPerCpu) return { waitedMs, ranUnderLoad: null };
-    const left = wait.maxDeferMs - waitedMs;
-    if (left <= 0) return { waitedMs, ranUnderLoad: current3 };
-    await sleep15(Math.min(recheckMs, left));
-  }
-}
-var init_guard = __esm({
-  "src/core/slow/guard.ts"() {
-    "use strict";
-  }
-});
-
-// src/core/daemon/paths.ts
-import { chmodSync, lstatSync as lstatSync3, mkdirSync as mkdirSync3 } from "node:fs";
-import { dirname as dirname7, isAbsolute as isAbsolute6, join as join22 } from "node:path";
-function runtimeDir(env = process.env) {
-  return xdgRuntimeDir(env) ?? userTmpDir();
-}
-function socketPathFor(worktreeId, env = process.env) {
-  const name2 = `squeal-${worktreeId}.sock`;
-  const path = join22(runtimeDir(env), name2);
-  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join22(userTmpDir(), name2);
-}
-function prepareSocketDir(socketPath, env = process.env, uid = currentUid()) {
-  const dir2 = dirname7(socketPath);
-  if (dir2 === xdgRuntimeDir(env)) {
-    mkdirSync3(dir2, { recursive: true, mode: 448 });
-    return;
-  }
-  preparePrivateDir(dir2, uid);
-}
-function preparePrivateDir(dir2, uid = currentUid(), role = "socket directory") {
-  mkdirSync3(dirname7(dir2), { recursive: true });
-  try {
-    mkdirSync3(dir2, { mode: 448 });
-    chmodSync(dir2, 448);
-  } catch (error) {
-    if (error.code !== "EEXIST") throw error;
-  }
-  checkPrivateDir(dir2, uid, role);
-}
-function checkPrivateDir(dir2, uid, role = "socket directory") {
-  const stat7 = lstatSync3(dir2);
-  if (!stat7.isDirectory()) {
-    throw new Error(`${role} ${dir2} is not a directory; refusing to use it`);
-  }
-  if (stat7.uid !== uid) {
-    throw new Error(`${role} ${dir2} is owned by uid ${stat7.uid}, not ${uid}; refusing to use it`);
-  }
-  if ((stat7.mode & 63) !== 0) {
-    const mode = (stat7.mode & 511).toString(8).padStart(3, "0");
-    throw new Error(`${role} ${dir2} has mode ${mode}, not 700; refusing to use it`);
-  }
-}
-function userTmpDir(uid = currentUid()) {
-  return join22("/tmp", `squeal-${uid}`);
-}
-function xdgRuntimeDir(env) {
-  const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute6(xdg) ? xdg : null;
-}
-function currentUid() {
-  return process.getuid?.() ?? 0;
-}
-var MAX_SOCKET_PATH_BYTES;
-var init_paths3 = __esm({
-  "src/core/daemon/paths.ts"() {
-    "use strict";
-    MAX_SOCKET_PATH_BYTES = 103;
-  }
-});
-
-// src/core/slow/slot.ts
-import { createHash as createHash10 } from "node:crypto";
-import { readdirSync as readdirSync6, rmSync as rmSync3, statSync as statSync2, writeFileSync as writeFileSync2 } from "node:fs";
-import { isAbsolute as isAbsolute7, join as join23 } from "node:path";
-import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
-function slowSlotDir(env = process.env) {
-  const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute7(xdg) ? join23(xdg, "squeal") : userTmpDir();
-}
-function acquireSlowSlot(request) {
-  const { dir: dir2, owner: owner2, signal: signal2 } = request;
-  if (signal2?.aborted) return null;
-  preparePrivateDir(dir2, request.uid ?? currentUid(), "slow slot directory");
-  const permits = Math.max(1, request.permits ?? 1);
-  const want = Math.max(1, request.want ?? 1);
-  const held2 = [];
-  try {
-    for (let i3 = 0; i3 < permits && held2.length < want; i3++) {
-      const db = takePermit(join23(dir2, permitFile(i3)), owner2);
-      if (db !== null) held2.push(db);
-    }
-  } catch (error) {
-    for (const db of held2) db.close();
-    throw error;
-  }
-  if (held2.length === 0) return null;
-  const keep = (count) => {
-    for (const db of held2.splice(count)) db.close();
-    if (held2.length === 0) signal2?.removeEventListener("abort", release);
-  };
-  const release = () => keep(0);
-  signal2?.addEventListener("abort", release, { once: true });
-  return {
-    get permits() {
-      return held2.length;
-    },
-    shrinkTo: (count) => keep(Math.max(1, count)),
-    release
-  };
-}
-function permitFile(i3) {
-  return i3 === 0 ? SLOW_LOCK_FILE : `slow.${i3}.lock`;
-}
-function takePermit(path, owner2) {
-  const db = new DatabaseSync3(path);
-  try {
-    db.exec("PRAGMA busy_timeout = 0");
-    db.exec("PRAGMA locking_mode = EXCLUSIVE");
-    db.exec("BEGIN EXCLUSIVE");
-  } catch (error) {
-    db.close();
-    if (isBusy(error)) return null;
-    throw error;
-  }
-  try {
-    db.exec(
-      "CREATE TABLE IF NOT EXISTS holder (pid INTEGER NOT NULL, worktree_id TEXT NOT NULL, since INTEGER NOT NULL)"
-    );
-    db.exec("DELETE FROM holder");
-    db.prepare("INSERT INTO holder (pid, worktree_id, since) VALUES (?, ?, ?)").run(
-      owner2.pid,
-      owner2.worktreeId,
-      Date.now()
-    );
-    db.exec("COMMIT");
-  } catch (error) {
-    db.close();
-    throw error;
-  }
-  return db;
-}
-function waiterPath(dir2, worktreeId) {
-  const name2 = createHash10("sha256").update(worktreeId).digest("hex").slice(0, 16);
-  return join23(dir2, `${WAITER_PREFIX}${name2}`);
-}
-function markSlotWaiter(dir2, worktreeId) {
-  writeFileSync2(waiterPath(dir2, worktreeId), `${worktreeId}
-`, { mode: 384 });
-}
-function clearSlotWaiter(dir2, worktreeId) {
-  rmSync3(waiterPath(dir2, worktreeId), { force: true });
-}
-function othersWaitingForSlot(dir2, worktreeId, now = Date.now()) {
-  const own = waiterPath(dir2, worktreeId);
-  let names3;
-  try {
-    names3 = readdirSync6(dir2);
-  } catch {
-    return false;
-  }
-  return names3.some((name2) => {
-    const path = join23(dir2, name2);
-    if (!name2.startsWith(WAITER_PREFIX) || path === own) return false;
-    const stat7 = statSync2(path, { throwIfNoEntry: false });
-    return stat7 !== void 0 && now - stat7.mtimeMs < SLOT_WAITER_FRESH_MS;
-  });
-}
-var SLOW_LOCK_FILE, WAITER_PREFIX, SLOT_WAITER_FRESH_MS;
-var init_slot = __esm({
-  "src/core/slow/slot.ts"() {
-    "use strict";
-    init_paths3();
-    init_store3();
-    SLOW_LOCK_FILE = "slow.lock";
-    WAITER_PREFIX = "slow.wait.";
-    SLOT_WAITER_FRESH_MS = 3e4;
-  }
-});
-
-// src/core/slow/index.ts
-var init_slow2 = __esm({
-  "src/core/slow/index.ts"() {
-    "use strict";
-    init_classify();
-    init_guard();
-    init_slot();
-    init_stop_wait();
-  }
-});
-
 // src/core/daemon/terminate.ts
 import { readdirSync as readdirSync7, readFileSync as readFileSync12 } from "node:fs";
 import { readFile as readFile2 } from "node:fs/promises";
@@ -7402,13 +8028,13 @@ function entryText({ pid, args: args2, ppid, parent: parent2, ageSeconds, killed
   const parentText = `parent ${ppid} ${parent2}`.trimEnd();
   const facts = [
     parentText,
-    `${ageText(ageSeconds)} old`,
+    `${ageText2(ageSeconds)} old`,
     ended2,
     ...run4 === void 0 ? [] : [run4]
   ];
   return `${`${pid} ${args2}`.trimEnd()} (${facts.join(", ")})`;
 }
-function ageText(seconds3) {
+function ageText2(seconds3) {
   if (seconds3 < 60) return `${seconds3.toFixed(1)} s`;
   const whole = Math.floor(seconds3);
   if (whole < 3600) return `${Math.floor(whole / 60)} min ${whole % 60} s`;
@@ -8316,148 +8942,6 @@ var init_omitted_test_files = __esm({
   "src/core/scheduler/omitted-test-files.ts"() {
     "use strict";
     init_types();
-  }
-});
-
-// src/core/scheduler/claims.ts
-import { setTimeout as delay2 } from "node:timers/promises";
-function claimBoundMs(timeoutMs) {
-  return timeoutMs === null ? CLAIM_UNBOUNDED_MS : timeoutMs + CLAIM_GRACE_MS;
-}
-function claimOf(ledger, ref2) {
-  const file = ledger.file(ref2);
-  const key2 = file?.key ?? null;
-  if (!file || key2 === null || file.blocked !== null) return "free";
-  if (ledger.queue.isForced(ref2) || ledger.queue.isRecent(ref2)) return "free";
-  const { hits, mayWait } = ledger.probe(key2);
-  if (hits.length > 0) {
-    ledger.applyResults(file, key2, hits, ledger.checkpoints.idFor(ref2));
-    ledger.commit();
-    return "settled";
-  }
-  return mayWait && ledger.claims.holds(key2) ? "waits" : "free";
-}
-async function claimWake(store, signal2) {
-  const before = changeMarker(store);
-  const until = performance.now() + CLAIM_RECHECK_MS;
-  try {
-    while (performance.now() < until) {
-      await delay2(CLAIM_POLL_MS, void 0, { signal: signal2 });
-      const now = changeMarker(store);
-      if (now?.others !== before?.others || now?.own !== before?.own) return;
-    }
-  } catch (error) {
-    if (!signal2.aborted) throw error;
-  }
-}
-var CLAIM_GRACE_MS, CLAIM_UNBOUNDED_MS, CLAIM_RECHECK_MS, CLAIM_POLL_MS, Claims;
-var init_claims = __esm({
-  "src/core/scheduler/claims.ts"() {
-    "use strict";
-    init_snapshot();
-    init_store3();
-    CLAIM_GRACE_MS = 6e3;
-    CLAIM_UNBOUNDED_MS = 6e5;
-    CLAIM_RECHECK_MS = 1e3;
-    CLAIM_POLL_MS = 250;
-    Claims = class {
-      constructor(context) {
-        this.context = context;
-      }
-      context;
-      /** When this worktree first found each key claimed: the waiter's bound runs from it. */
-      #seen = /* @__PURE__ */ new Map();
-      #waiting = false;
-      /** Some queued file waited on a claim since `begin`: the pump looks again (`claimWake`). */
-      get waiting() {
-        return this.#waiting;
-      }
-      /** A scheduling pass starts. */
-      begin() {
-        this.#waiting = false;
-      }
-      /** Whether a file at `key` waits: another live worktree runs it, and the waiter's bound holds. */
-      holds(key2) {
-        const { store, worktreeId, now } = this.context;
-        if (!store.testFileKeys.claimed(worktreeId, key2, this.#live())) {
-          this.#seen.delete(key2);
-          return false;
-        }
-        const at2 = now();
-        const since = this.#seen.get(key2) ?? at2;
-        this.#seen.set(key2, since);
-        if (at2 - since > this.#boundMs()) return false;
-        this.#waiting = true;
-        return true;
-      }
-      /** `key` runs here: a later claim on it starts a new bound. */
-      taken(key2) {
-        this.#seen.delete(key2);
-      }
-      /**
-       * D5 step 5 as amended: a backlog tier's file count while other live
-       * daemons have this worktree's queued keys pending too. The queued files
-       * divided by those daemons and this one, rounded up, at least
-       * `runner.tierSize` and at most `runner.backlogTierSize`; with none, the
-       * latter.
-       */
-      backlogSize(queued) {
-        const { store, worktreeId, policy } = this.context;
-        const { tierSize, backlogTierSize } = policy.runner;
-        const sharers = store.testFileKeys.sharers(worktreeId, this.#live());
-        if (sharers === 0) return backlogTierSize;
-        return Math.min(backlogTierSize, Math.max(tierSize, Math.ceil(queued / (sharers + 1))));
-      }
-      #live() {
-        return { now: this.context.now(), graceIntervals: HEARTBEAT_GRACE_INTERVALS };
-      }
-      #boundMs() {
-        return claimBoundMs(this.context.policy.runner.timeoutMs);
-      }
-    };
-  }
-});
-
-// src/core/scheduler/runner-work-bound.ts
-function runnerPartBoundMs(timeoutMs) {
-  return (timeoutMs ?? CLAIM_UNBOUNDED_MS) + CLAIM_GRACE_MS + RUNNER_PART_MARGIN_MS;
-}
-function runnerPartBound(context) {
-  return new RunnerPartBound(
-    context.runnerPartMs ?? runnerPartBoundMs(context.policy.runner.timeoutMs)
-  );
-}
-function seconds(ms2) {
-  return ms2 >= 1e3 ? `${Math.round(ms2 / 1e3)} s` : `${ms2} ms`;
-}
-var RUNNER_PART_MARGIN_MS, RunnerPartBound;
-var init_runner_work_bound = __esm({
-  "src/core/scheduler/runner-work-bound.ts"() {
-    "use strict";
-    init_claims();
-    RUNNER_PART_MARGIN_MS = 6e4;
-    RunnerPartBound = class {
-      constructor(ms2) {
-        this.ms = ms2;
-      }
-      ms;
-      #abandoned = null;
-      call(call) {
-        if (this.#abandoned !== null) return Promise.reject(new Error(this.#abandoned));
-        const answer2 = call();
-        answer2.catch(() => {
-        });
-        let timer;
-        const abandoned = new Promise((_, reject) => {
-          timer = setTimeout(() => {
-            this.#abandoned ??= `no answer within ${seconds(this.ms)}; the call was abandoned`;
-            reject(new Error(this.#abandoned));
-          }, this.ms);
-          timer.unref?.();
-        });
-        return Promise.race([answer2, abandoned]).finally(() => clearTimeout(timer));
-      }
-    };
   }
 });
 
@@ -10097,114 +10581,6 @@ var init_held = __esm({
   }
 });
 
-// src/core/scheduler/promotions.ts
-function promotionsMetaKey(worktreeId) {
-  return worktreeMetaKey("promotions", worktreeId);
-}
-function publishPromotions(store, worktreeId, live, at2) {
-  const key2 = promotionsMetaKey(worktreeId);
-  if (live.length === 0) store.meta.delete(key2);
-  else store.meta.set(key2, JSON.stringify({ at: at2, promotions: live }));
-}
-function promotedIds(store, worktreeId, daemonStartedAt, now) {
-  const raw = store.meta.get(promotionsMetaKey(worktreeId));
-  if (raw === null) return /* @__PURE__ */ new Set();
-  try {
-    const { at: at2, promotions } = JSON.parse(raw);
-    if (typeof at2 !== "number" || at2 < daemonStartedAt || !Array.isArray(promotions)) {
-      return /* @__PURE__ */ new Set();
-    }
-    const live = promotions.filter(
-      (p) => typeof p === "object" && p !== null && typeof p.until === "number" && p.until > now && Array.isArray(p.files)
-    );
-    return new Set(live.flatMap((p) => p.files.filter((f) => typeof f === "string")));
-  } catch {
-    return /* @__PURE__ */ new Set();
-  }
-}
-var NOT_RUNNING, Promotions;
-var init_promotions = __esm({
-  "src/core/scheduler/promotions.ts"() {
-    "use strict";
-    init_keys();
-    init_types();
-    NOT_RUNNING = () => false;
-    Promotions = class {
-      #promotions = [];
-      #seq = 0;
-      #now = Date.now;
-      #isRunning = NOT_RUNNING;
-      #publish = null;
-      /**
-       * The clock deadlines are on, whether a test file's run is in flight, and
-       * where each change of the live promotions is told (`publishPromotions`).
-       */
-      setClock(now, isRunning2, publish) {
-        this.#now = now;
-        this.#isRunning = isRunning2;
-        this.#publish = publish ?? null;
-      }
-      now() {
-        return this.#now();
-      }
-      /** A wait's promotion of `refs` until `until`; none when no file of it is open. */
-      add(refs2, until, queued) {
-        let changed = this.#settle(queued);
-        const files2 = new Map(refs2.map((ref2) => [testFileId(ref2), ref2]));
-        const promotion = { files: files2, until, seq: this.#seq++ };
-        if (this.#open(promotion, queued)) {
-          this.#promotions.push(promotion);
-          changed = true;
-        }
-        if (changed) this.#told();
-      }
-      /** The request order of the earliest live promotion of `id`; `null` when none holds it. */
-      rankOf(id2) {
-        if (this.#promotions.length === 0) return null;
-        const now = this.#now();
-        return this.#promotions.find((p) => p.until > now && p.files.has(id2))?.seq ?? null;
-      }
-      /** Drops the promotions past their deadline or whose files all settled. */
-      settle(queued) {
-        if (this.#settle(queued)) this.#told();
-      }
-      /** The live promotions as now; the returned function puts them back as they were (`RunQueue.hold`). */
-      hold() {
-        const held2 = [...this.#promotions];
-        return () => {
-          const same2 = held2.length === this.#promotions.length && held2.every((p, i3) => p === this.#promotions[i3]);
-          this.#promotions = [...held2];
-          if (!same2) this.#told();
-        };
-      }
-      clear() {
-        if (this.#promotions.length === 0) return;
-        this.#promotions = [];
-        this.#told();
-      }
-      /** `settle` without the telling; whether any promotion was dropped. */
-      #settle(queued) {
-        if (this.#promotions.length === 0) return false;
-        const now = this.#now();
-        const before = this.#promotions.length;
-        this.#promotions = this.#promotions.filter((p) => p.until > now && this.#open(p, queued));
-        return this.#promotions.length !== before;
-      }
-      #told() {
-        this.#publish?.(
-          this.#promotions.map((p) => ({ files: [...p.files.keys()], until: p.until }))
-        );
-      }
-      #open(promotion, queued) {
-        for (const [id2, ref2] of promotion.files) {
-          if (queued(id2) || this.#isRunning(ref2)) return true;
-        }
-        return false;
-      }
-    };
-  }
-});
-
 // src/core/scheduler/queue.ts
 function priorityOf(file, changed, direct = NO_DIRECT_IMPORTERS) {
   if (file.failing) return Priority.failing;
@@ -10948,29 +11324,6 @@ var init_setup = __esm({
         return this.#owed.splice(0);
       }
     };
-  }
-});
-
-// src/core/scheduler/slow.ts
-function slowView(policy) {
-  let view = views.get(policy);
-  if (view === void 0) {
-    const globs2 = slowGlobs(policy, policy.nodeTest);
-    view = { isSlow: slowFiles(policy, policy.nodeTest), globs: globs2, declared: globs2.length > 0 };
-    views.set(policy, view);
-  }
-  return view;
-}
-function laneFor(policy, ref2, runnerLane) {
-  return slowView(policy).isSlow(ref2) ? SLOW_LANE_PREFIX + runnerLane : runnerLane;
-}
-var views;
-var init_slow3 = __esm({
-  "src/core/scheduler/slow.ts"() {
-    "use strict";
-    init_slow2();
-    init_types();
-    views = /* @__PURE__ */ new WeakMap();
   }
 });
 
@@ -12265,7 +12618,7 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), turnDue =
     picked.push({ file, key: key2, inputs: inputs2, checkpointId, forced, recent, waits, catchUp });
   }
   const granted = backlog || turnTier;
-  const width = slot2 !== null ? 1 : granted ? widest(context, picked) : 0;
+  const width = slot2 !== null ? 1 : granted ? widest2(context, picked) : 0;
   const taken2 = picked.length > 0 && granted ? context.capacity?.take(width) : null;
   if (taken2 === WAIT_FOR_CAPACITY) {
     ledger.commit();
@@ -12305,7 +12658,7 @@ function tierWidth(context, ref2, grant) {
 function partOf(context, ref2) {
   return context.runner.tierPart?.(ref2) ?? "";
 }
-function widest(context, picked) {
+function widest2(context, picked) {
   const widths = picked.map((p) => tierWidth(context, p.file.ref, picked.length));
   return Math.min(picked.length, Math.max(1, ...widths));
 }
@@ -12707,44 +13060,44 @@ var init_checkpoint_requests = __esm({
 });
 
 // src/core/scheduler/namesakes.ts
-import { posix as posix9 } from "node:path";
+import { posix as posix10 } from "node:path";
 function languageOf(path) {
   if (SCRIPT.test(path)) return "script";
   return path.endsWith(".py") ? "python" : null;
 }
 function testedName(path, language) {
-  const base = posix9.basename(path);
+  const base = posix10.basename(path);
   if (language === "python") {
     const match3 = MARKED_PYTHON.exec(base);
     return match3 === null ? null : match3[1] ?? match3[2] ?? null;
   }
   const match2 = MARKED_SCRIPT.exec(base);
   if (match2 !== null) return match2[1] ?? null;
-  const inTests = posix9.basename(posix9.dirname(path)) === "__tests__";
+  const inTests = posix10.basename(posix10.dirname(path)) === "__tests__";
   return inTests && SCRIPT.test(base) ? base.replace(SCRIPT, "") : null;
 }
 function conventionalDirs(source) {
-  const dir2 = posix9.dirname(source);
-  const dirs = /* @__PURE__ */ new Set([dir2, posix9.join(dir2, "__tests__")]);
+  const dir2 = posix10.dirname(source);
+  const dirs = /* @__PURE__ */ new Set([dir2, posix10.join(dir2, "__tests__")]);
   const segments2 = source.split("/");
   const at2 = segments2.indexOf("src");
   if (at2 >= 0 && at2 < segments2.length - 1) {
     const prefix = segments2.slice(0, at2);
     const below2 = segments2.slice(at2 + 1, -1);
-    for (const tree of ["test", "tests"]) dirs.add(posix9.join(...prefix, tree, ...below2));
+    for (const tree of ["test", "tests"]) dirs.add(posix10.join(...prefix, tree, ...below2));
   }
   return dirs;
 }
 function namesakesOf(source, testFiles) {
   const language = languageOf(source);
   if (language === null) return [];
-  const name2 = posix9.basename(source).replace(/\.[^.]+$/, "");
+  const name2 = posix10.basename(source).replace(/\.[^.]+$/, "");
   if (name2 === "index") return [];
   const named = [...new Set(testFiles)].filter(
     (path) => path !== source && testedName(path, language) === name2
   );
   const dirs = conventionalDirs(source);
-  const near = named.filter((path) => dirs.has(posix9.dirname(path)));
+  const near = named.filter((path) => dirs.has(posix10.dirname(path)));
   if (near.length > 0) return near;
   return named.length === 1 ? named : [];
 }
@@ -13723,9 +14076,9 @@ var init_keying = __esm({
           ])
         );
         const known2 = new Set(listed3);
-        const unlisted = [...this.cache.paths()].filter((path) => !known2.has(path));
+        const unlisted2 = [...this.cache.paths()].filter((path) => !known2.has(path));
         const scratch = [];
-        for (const path of await checkIgnored(this.options.root, unlisted)) {
+        for (const path of await checkIgnored(this.options.root, unlisted2)) {
           if (this.#isDeclared(path)) scratch.push(path);
           else this.#extra.add(path);
         }
@@ -15716,11 +16069,11 @@ var init_scheduler2 = __esm({
         const withhold = barred.length === 0 ? null : this.#withholds.record(barred);
         this.#withholds.clear(tier.files.filter((ran2) => !barred.includes(ran2)));
         if (withhold !== null) {
-          const notes2 = [
+          const notes = [
             withholdNote(barredPaths, withhold.again, true),
             withholdNote(barredPaths, withhold.exhausted, false)
           ];
-          withheld.push(...notes2.filter((note) => note !== null));
+          withheld.push(...notes.filter((note) => note !== null));
         }
         const unfinished = this.#stop.signal.aborted ? unfinishedFiles(tier, ran) : [];
         const again = [...withhold?.again.map(({ file }) => file.id) ?? [], ...unfinished];
@@ -29170,18 +29523,18 @@ var init_modules = __esm({
 // src/runners/node-test/graph/preload-notes.ts
 function preloadNotes({ table, roots, outside: outside2, rules, rel: rel2 }) {
   const chain = rules === "tsx" ? "tsx's" : "Node's own";
-  const notes2 = outside2.map(
+  const notes = outside2.map(
     (loader) => `node-test: unrecognized loader ${JSON.stringify(loader)} in argv or NODE_OPTIONS; resolving with ${chain} rules`
   );
   for (const root of roots) {
     const hooks = importerOfModule(table, root);
     if (hooks === null) continue;
     const through = hooks === root ? "" : ` through ${JSON.stringify(rel2(hooks))}`;
-    notes2.push(
+    notes.push(
       `node-test: preload ${JSON.stringify(rel2(root))} imports node:module${through} and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; declare it in inputs; resolving with ${chain} rules`
     );
   }
-  return notes2;
+  return notes;
 }
 function importerOfModule(table, root) {
   const seen = /* @__PURE__ */ new Set([root]);
@@ -39404,7 +39757,7 @@ async function openProject(context) {
     noted2.add(text2);
     note(text2, topic);
   };
-  const notes2 = () => {
+  const notes = () => {
     for (const text2 of graph.notes()) once2(text2.replace(/^node-test: /, ""));
     for (const text2 of loaderThreadNotes(project)) once2(text2);
     for (const reason2 of graph.preloads().incomplete) once2(`preload closure incomplete: ${reason2}`);
@@ -39418,7 +39771,7 @@ async function openProject(context) {
       );
     }
   };
-  notes2();
+  notes();
   const bare = /* @__PURE__ */ new Set();
   return {
     name: "node-test",
@@ -39433,7 +39786,7 @@ async function openProject(context) {
           graph.setTestFiles(files2);
         }
       }
-      notes2();
+      notes();
       const recreate = observed.takeRecreate(paths.map((p) => p.path));
       if (!probe.ok) {
         probe = await probeNode(project, cwd);
@@ -46858,7 +47211,7 @@ async function runPytest(options) {
     bytecode.remove();
     basetemp.remove();
   }
-  const notes2 = [];
+  const notes = [];
   let refusedAtRun = null;
   const trusted2 = batches.filter((b) => {
     const code = b.exit?.code;
@@ -46868,14 +47221,14 @@ async function runPytest(options) {
       return false;
     }
     if (code === 5)
-      notes2.push(`pytest project "${project.name}" collected nothing in ${names(b)}.`);
+      notes.push(`pytest project "${project.name}" collected nothing in ${names(b)}.`);
     return code !== 3 && code !== 4;
   });
   const done = trusted2.flatMap((b) => b.read?.files.filter((f) => f.completed) ?? []);
-  if (refusedAtRun !== null) notes2.push(refusedAtRun);
+  if (refusedAtRun !== null) notes.push(refusedAtRun);
   const addresses = [...new Set(trusted2.flatMap((b) => b.read?.addressIds ?? []))];
   if (addresses.length > 0) {
-    notes2.push(
+    notes.push(
       `pytest project "${project.name}": these test ids hold a memory address, so they change every run: ${addresses.join(", ")}.`
     );
   }
@@ -46887,7 +47240,7 @@ async function runPytest(options) {
   });
   const whole = end === "completed" && failure2 === null && refusedAtRun === null && done.length === options.files.length;
   const skippedAll = whole ? allSkippedNote(project, done) : null;
-  if (skippedAll !== null) notes2.push(skippedAll);
+  if (skippedAll !== null) notes.push(skippedAll);
   const report2 = {
     end,
     durationMs: Math.round(performance.now() - started2),
@@ -46899,7 +47252,7 @@ async function runPytest(options) {
   };
   const observed = trusted2.map((b) => observeBatch(b.edges, b.files, paths));
   const completed = new Set(report2.completedFiles);
-  writeRunLog3(options.logDir, { python, cwd, batches, report: report2, notes: notes2 });
+  writeRunLog3(options.logDir, { python, cwd, batches, report: report2, notes });
   return {
     report: report2,
     observed: observed.flatMap((o) => o.closures).filter((c) => completed.has(c.testFile)),
@@ -46907,7 +47260,7 @@ async function runPytest(options) {
     skippedFiles: done.flatMap(
       (f) => f.skipped === null ? [] : [{ testFile: f.testFile, reason: f.skipped }]
     ),
-    notes: notes2
+    notes
   };
 }
 function allSkippedNote(project, files2) {
@@ -47430,12 +47783,12 @@ import { join as join84, relative as relative18, resolve as resolve17, sep as se
 function deriveRoots(root) {
   const entries3 = [];
   const mapped = [];
-  const notes2 = [];
-  const top = readPyproject(root, notes2);
-  if (top === null) return { pthPaths: [], mapped, notes: notes2 };
+  const notes = [];
+  const top = readPyproject(root, notes);
+  if (top === null) return { pthPaths: [], mapped, notes };
   const installed = /* @__PURE__ */ new Map();
   if (nameOf(top) !== void 0 && isPackage(top)) installed.set(root, top);
-  const members = workspaceMembers(root, top, notes2);
+  const members = workspaceMembers(root, top, notes);
   const seen = /* @__PURE__ */ new Set();
   const walk2 = (dir2, project) => {
     const sources = get(project, "tool", "uv", "sources") ?? get(top, "tool", "uv", "sources") ?? {};
@@ -47450,10 +47803,10 @@ function deriveRoots(root) {
       } else if (typeof source?.path === "string" && source.editable === true) {
         const path = resolve17(dir2, source.path);
         const inside = path.startsWith(root + sep23);
-        const project2 = inside ? readPyproject(path, notes2) : null;
+        const project2 = inside ? readPyproject(path, notes) : null;
         if (project2 !== null) installed.set(path, project2);
         else if (!inside)
-          notes2.push(`editable path source ${dep} outside the worktree: ${source.path}`);
+          notes.push(`editable path source ${dep} outside the worktree: ${source.path}`);
       }
     }
   };
@@ -47462,13 +47815,13 @@ function deriveRoots(root) {
     layout(dir2, project, {
       entry: (pth, path) => entries3.push({ pth, path }),
       map: (module2, path, finder2) => mapped.push({ module: module2, path, finder: finder2 }),
-      note: (text2) => notes2.push(`${relative18(root, dir2) || "."}: ${text2}`)
+      note: (text2) => notes.push(`${relative18(root, dir2) || "."}: ${text2}`)
     });
   }
   entries3.sort((a, b) => a.pth < b.pth ? -1 : a.pth > b.pth ? 1 : 0);
   const pthPaths = [];
   for (const { path } of entries3) if (isDir(path) && !pthPaths.includes(path)) pthPaths.push(path);
-  return { pthPaths, mapped, notes: notes2 };
+  return { pthPaths, mapped, notes };
 }
 function layout(dir2, project, sink) {
   const backend = String(get(project, "build-system", "build-backend") ?? "");
@@ -47566,7 +47919,7 @@ function setuptools(dir2, project, sink) {
     sink.map(p, join84(dir2, base), "setuptools");
   }
 }
-function workspaceMembers(root, top, notes2) {
+function workspaceMembers(root, top, notes) {
   const members = /* @__PURE__ */ new Map();
   for (const glob2 of get(top, "tool", "uv", "workspace", "members") ?? []) {
     let dirs = [root];
@@ -47579,20 +47932,20 @@ function workspaceMembers(root, top, notes2) {
       ) : dirs.map((d) => join84(d, part));
     }
     for (const dir2 of dirs) {
-      const project = isDir(dir2) ? readPyproject(dir2, notes2) : null;
+      const project = isDir(dir2) ? readPyproject(dir2, notes) : null;
       const name2 = project === null ? void 0 : nameOf(project);
       if (project !== null && name2 !== void 0) members.set(normalize6(name2), { dir: dir2, project });
     }
   }
   return members;
 }
-function readPyproject(dir2, notes2) {
+function readPyproject(dir2, notes) {
   const text2 = readOptional(join84(dir2, "pyproject.toml"));
   if (text2 === null) return null;
   try {
     return parse7(text2);
   } catch (error) {
-    notes2.push(
+    notes.push(
       `${join84(dir2, "pyproject.toml")} does not parse: ${error.message.split("\n")[0]}`
     );
     return null;
@@ -47680,7 +48033,7 @@ function searchPath(inputs2) {
   const stdlib = { kind: "stdlib", names: stdlibNames(minorVersion(cfg) ?? pin(inputs2)) };
   const tail = [stdlib];
   let mapped;
-  let notes2 = [];
+  let notes = [];
   if (env !== null) {
     const roots = importRoots(env);
     if (roots.sitePackages !== null) tail.push(dir(roots.sitePackages));
@@ -47690,7 +48043,7 @@ function searchPath(inputs2) {
     const derived = deriveRoots(inputs2.root);
     tail.push(...derived.pthPaths.map(dir));
     mapped = derived.mapped;
-    notes2 = derived.notes;
+    notes = derived.notes;
   }
   const front = [];
   const known2 = /* @__PURE__ */ new Set([inputs2.cwd]);
@@ -47715,7 +48068,7 @@ function searchPath(inputs2) {
       locations.push(basedirLocation(path));
     }
   }
-  return { locations, mapped, source: env === null ? "derived" : "environment", notes: notes2 };
+  return { locations, mapped, source: env === null ? "derived" : "environment", notes };
 }
 function basedir(file) {
   let at2 = dirname35(file);
@@ -48022,7 +48375,7 @@ async function createPytestAdapter(project, options) {
         });
         built = { graph, observed: new Observed2(graph, options.observed, outside2, note) };
         failure2 = null;
-        notes2();
+        notes();
         return true;
       } catch (error) {
         failure2 = `its module graph cannot be built: ${error instanceof Error ? error.message : String(error)}`;
@@ -48036,7 +48389,7 @@ async function createPytestAdapter(project, options) {
     const env = toRelative(root, dir2);
     return env !== null && (path === env || path.startsWith(`${env}/`));
   };
-  const notes2 = () => {
+  const notes = () => {
     if (built === null) return;
     for (const text2 of built.graph.notes()) note(text2.replace(/^pytest: /, ""));
     const incomplete = built.graph.incompleteClosures();
@@ -48081,7 +48434,7 @@ async function createPytestAdapter(project, options) {
     }
     built.observed.refresh();
     built.graph.invalidate(moved2 ? [...paths, ...structural(root, dir2)] : paths);
-    notes2();
+    notes();
     const grew = built.observed.takeRecreate(paths.map((p) => p.path));
     return { recreatedProjects: moved2 || grew ? [project.name] : [] };
   };
@@ -48588,7 +48941,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.233";
+  if (true) return "0.1.234";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -48642,128 +48995,278 @@ init_state3();
 init_text();
 init_checks();
 init_config_problems();
+init_identity();
+
+// src/core/status/outstanding-text.ts
+init_text2();
+init_text();
+init_died();
+
+// src/core/status/next-step.ts
+init_text2();
+init_text();
+init_types();
+var NOT_INTERRUPTED = "no command runs {it} sooner (a running tier is not interrupted)";
+function retry(s, note = "") {
+  return {
+    kind: "retry",
+    ...note === "" ? {} : { note },
+    ...s.notCurrent === void 0 ? {} : { all: s.notCurrent }
+  };
+}
+function nextStep(s, context = { named: true }) {
+  switch (s.kind) {
+    case "no-daemon": {
+      const since = s.since === null ? "" : ` since ${new Date(s.since).toISOString()}`;
+      const reason2 = `no daemon has validated${since}; results are as of revision ${s.revision}`;
+      return same(reason2, { kind: "command", args: "start", text: "{command} starts one" });
+    }
+    case "unlisted":
+      return same(
+        `revision ${s.revision} not listed yet, because the runner part waits for the run in flight, each of its calls bounded at ${Math.ceil(s.callBoundMs / 1e3)} s`,
+        context.named ? { kind: "none", text: "" } : { kind: "command", args: "status --wait 60000", text: "{command} waits for it" }
+      );
+    case "stale": {
+      const last = s.verdict === null ? "ran" : LAST[s.verdict];
+      return {
+        reason: `last ${last} at other inputs, nothing queued {it}${lookupOnly(s.lookupOnly)}`,
+        short: "stale, nothing queued {it}",
+        step: retry(s)
+      };
+    }
+    case "never-run":
+      return {
+        reason: `never run at {its} inputs, nothing queued {it}${lookupOnly(s.lookupOnly)}`,
+        short: "never run, nothing queued {it}",
+        step: retry(s)
+      };
+    case "timed-out": {
+      const busy = s.load !== null && s.load.oneMinute !== null && s.load.oneMinute >= s.load.cpus;
+      const note = busy && s.load !== null ? ` (${loadText(s.load)} now: under that load {it} may time out again)` : "";
+      return {
+        reason: `${s.reason}; Squeal does not run {it} again at these inputs by itself`,
+        short: s.reason,
+        step: retry(s, note)
+      };
+    }
+    case "no-result":
+      return { reason: s.reason, short: "no result at its inputs", step: retry(s) };
+    case "setup-failed":
+      return {
+        reason: "its project's global setup failed",
+        short: "its project's global setup failed",
+        step: {
+          kind: "command",
+          args: "run --all --wait",
+          text: "the next edit or {command} starts the runner again"
+        }
+      };
+    case "runner":
+      return {
+        reason: s.reason,
+        short: "no key, a runner call failed",
+        step: {
+          kind: "command",
+          args: "run --all --wait",
+          text: "the next edit or {command} calls the runner again"
+        }
+      };
+    case "no-install":
+      return same(
+        "no dependencies are installed in this worktree",
+        s.command === null ? { kind: "none", text: "a daemon runs {it} once the dependencies are installed" } : { kind: "shell", command: s.command, text: "{command} installs them" }
+      );
+    case "running":
+      return runningStep(s);
+    case "queued":
+      return queuedStep(s, context);
+    case "claim": {
+      const until = s.until === null ? "" : `, at most until ${timeText(s.until)}`;
+      return same(`waiting for ${s.worktree}'s run of its key${until}`, {
+        kind: "none",
+        text: "its result is shared here when that run stores it"
+      });
+    }
+    case "slow": {
+      const when = s.pausesOnly === true ? "when the agent pauses" : "after the fast tests";
+      const reason2 = `slow, run ${when} or on {command}`;
+      return {
+        reason: reason2,
+        // Under `slow.trigger: "idle"` the verdict line keeps when it runs (004-80).
+        short: s.pausesOnly === true ? reason2 : "slow",
+        step: { kind: "command", args: "run --slow", text: "", said: true }
+      };
+    }
+    case "checkpoint":
+      return same("a checkpoint in progress", {
+        kind: "command",
+        args: "run --all --wait",
+        text: "{command} waits for it"
+      });
+  }
+}
+var LAST = { pass: "passed", fail: "failed", skip: "skipped" };
+function same(reason2, step) {
+  return { reason: reason2, short: reason2, step };
+}
+function lookupOnly(on) {
+  return on ? " (the baseline is lookup-only)" : "";
+}
+function runningStep(s) {
+  const since = s.since === null ? "" : ` since ${timeText(s.since)}`;
+  const several = s.files !== void 0 && s.files > 1;
+  const where2 = several ? `in the ${laneText(s.lane)} tier of ${s.files} test files running${since}` : `running${since} in the ${laneText(s.lane)} lane`;
+  if (isSlowLane(s.lane)) {
+    const setup = s.setup === void 0 ? "" : `; its project's global setup${s.setup.file === "" ? "" : ` (${s.setup.file})`} ran once when this slow pass started, and Squeal does not hold what it started, so another run of that project meanwhile may replace it`;
+    return { reason: `${where2}${setup}`, short: where2, step: { kind: "retry", again: true } };
+  }
+  return same(where2, { kind: "none", text: several ? NOT_INTERRUPTED : "" });
+}
+function queuedStep(s, context) {
+  const promoted = s.promoted === true;
+  if (s.behind === null) {
+    if (promoted) return same("queued, promoted", { kind: "none", text: "" });
+    return {
+      reason: "queued; no run is open and nothing recorded holds {it}",
+      short: "queued, nothing recorded holds {it}",
+      step: {
+        kind: "none",
+        text: "the store records no reason the daemon has not taken {it} (`{squeal} status --json` lists each file's state)"
+      }
+    };
+  }
+  const of = s.files === void 0 ? "" : ` of ${s.files === 1 ? "1 test file" : `${s.files} test files`}`;
+  const tier = `behind the ${laneText(s.lane)} tier${of} running since ${timeText(s.behind)}`;
+  const reason2 = promoted ? `queued, promoted, ${tier}` : `queued ${tier}`;
+  return same(
+    reason2,
+    context.named ? { kind: "none", text: NOT_INTERRUPTED } : {
+      kind: "command",
+      args: "status --wait 60000 <test file>",
+      text: "{command} moves a named one ahead when that tier ends"
+    }
+  );
+}
+function laneText(lane) {
+  if (!isSlowLane(lane)) return lane;
+  const runner = lane.slice(SLOW_LANE_PREFIX.length);
+  return runner === "" ? "slow" : `slow ${runner}`;
+}
+
+// src/core/status/next-step-text.ts
+init_text();
+import { posix as posix8 } from "node:path";
+var PATHS_IN_COMMAND = 3;
+function stepText(step, paths, command) {
+  const n = paths.length;
+  const it = n === 1 ? "it" : "them";
+  const cmd = stepCommand(step, paths, command);
+  switch (step.kind) {
+    case "retry": {
+      if (step.again === true) {
+        const one = n === 1 ? "this one file" : "each of them";
+        return `after an environment failure, \`${cmd}\` runs ${one} again`;
+      }
+      const runs = n === 1 ? "runs it once" : "runs each once";
+      const every = step.all === void 0 ? "every test file" : `all ${plural(step.all, "test file")}`;
+      const all = n > PATHS_IN_COMMAND ? `, \`${command} run --all --wait\` runs ${every} not current here` : "";
+      return `\`${cmd}\` ${runs}${all}${(step.note ?? "").replaceAll("{it}", it)}`;
+    }
+    case "command":
+    case "shell":
+      return step.kind === "command" && step.said === true ? "" : fill(step.text, cmd, command, it);
+    case "none":
+      return fill(step.text, null, command, it);
+  }
+}
+function reasonWords(next, paths, command) {
+  return fill(
+    next.reason,
+    stepCommand(next.step, paths, command),
+    command,
+    paths.length === 1 ? "it" : "them"
+  );
+}
+function fromBase(base, path) {
+  if (base === void 0 || base === "" || posix8.isAbsolute(base)) return path;
+  return posix8.relative(base, path);
+}
+function stepCommand(step, paths, command) {
+  switch (step.kind) {
+    case "retry": {
+      const files2 = paths.length > PATHS_IN_COMMAND ? "<test file>..." : paths.join(" ");
+      return `${command} retry ${files2}${step.again === true ? " --reason environment" : ""}`;
+    }
+    case "command":
+      return `${command} ${step.args}`;
+    case "shell":
+      return step.command;
+    case "none":
+      return null;
+  }
+}
+function fill(text2, cmd, command, it) {
+  return text2.replaceAll("{command}", cmd === null ? "" : `\`${cmd}\``).replaceAll("{squeal}", command).replaceAll("{its}", it === "it" ? "its" : "their").replaceAll("{it}", it);
+}
+
+// src/core/status/status-detail.ts
+init_text();
+init_checks();
 init_died();
 init_identity();
 init_unknown_files2();
-
-// src/core/status/work-line.ts
-init_text();
-init_checks();
-function workLine(s, command) {
-  if (s.daemon.state !== "alive") return [];
-  if (s.testFilesListed === false || s.runnerPartPending === true) {
-    const what = s.testFilesListed === false ? "listing this worktree's test files" : `listing and keying the test files of revision ${s.revision}`;
-    return [
-      `Discovery: the daemon is still ${what} (\`${command} status --wait 60000\` waits for it)`
-    ];
-  }
-  const { pendingByPhase, fileLevelByPhase, testFilesWithoutChecksRunning } = s.breakdown;
-  const fresh = s.testFilesWithoutChecks.pending;
-  if (pendingByPhase.running > 0 || (testFilesWithoutChecksRunning ?? 0) > 0) return [];
-  if ((s.runsOpen ?? 0) > 0) return [];
-  const parts2 = [];
-  if (pendingByPhase.queued > 0) {
-    parts2.push(countedText(pendingByPhase.queued, "queued", fileLevelByPhase?.queued));
-  }
-  if (fresh > 0) parts2.push(`${plural(fresh, "test file")} without checks queued`);
-  const unrun = s.unknownTestFiles?.total ?? 0;
-  if (unrun > 0) parts2.push(`${plural(unrun, "test file")} without a result, none queued`);
-  if (parts2.length === 0) return [];
-  const all = `\`${command} run --all --wait\` runs every test file without a result and waits`;
-  const slow = s.slowTier?.pending ?? 0;
-  const commands = slow === 0 ? all : `${plural(slow, "slow file")} among them: \`${command} run --slow --wait 60000\` runs those; ${all}`;
-  return [`Idle: nothing is running and no run is open; ${parts2.join("; ")} (${commands})`];
-}
-
-// src/core/status/format-status.ts
-init_identity();
-function formatStatus(result, now, command = "squeal", options = {}) {
-  if (!result.available) return formatUnavailable(result, command);
-  const lines = [
-    `Revision: ${statusRevisionText(result)}`,
-    // Spec 011 C6 as amended (gh-34): only current failures are counted; (gh-45) then what is not current.
-    `Known failures: ${failureCountText(splitByValidity(result.knownFailures).current.map((f) => f.check))}${notCurrentText(result)}`,
-    ...earlierFailuresLines(knownFailureCounts(result.knownFailures)),
-    ...result.knownFailures.flatMap((f) => [
-      `  FAIL  ${formatCheck(f.check)}`,
-      ...f.summary === "" ? [] : [`        ${f.summary}`],
-      `        ${[
-        ...f.location === null ? [] : [`at ${f.location.path}:${f.location.line}:${f.location.column}`],
-        `observed at revision ${f.observedAt}`,
-        f.validity
-      ].join(", ")}`,
-      ...f.recorded === void 0 ? f.recordedUnknown === true ? [`        ${RECORDED_UNKNOWN_TEXT}`] : [] : [`        ${recordedText(f.recorded, result.worktreeId, now)}`]
-    ]),
-    ...retryLines(result),
-    `Affected checks: ${affected(result, command)}`,
-    ...workLine(result, command),
-    `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
-    ...checkpointLine(result, now, command),
-    ...slowLine(result, command),
-    ...configProblemsLine(result, command),
-    ...excludedLine(result),
-    "",
-    worktreeLine(result),
-    daemonLine(result, now, command),
-    inheritedLine(result),
-    ...result.inherited.sources.map(
-      (s) => `  ${s.count}${partsSuffix(s.count, s.fileLevelCount)} from ${s.worktreeRoot ?? s.worktreeId} at ${shortCommit(s.commit)}`
+function detailLines(s, now, command, allNotes) {
+  return [
+    worktreeLine(s),
+    daemonLine(s, now, command),
+    inheritedLine(s),
+    ...s.inherited.sources.map(
+      (source) => `  ${source.count}${partsSuffix(source.count, source.fileLevelCount)} from ${source.worktreeRoot ?? source.worktreeId} at ${shortCommit(source.commit)}`
     ),
-    ...result.breakdown.testFilesWithoutChecks === 0 ? [] : [
-      `Test files without checks: ${result.testFilesWithoutChecks.pending} pending, ${result.testFilesWithoutChecks.unknown} unknown`
+    ...s.breakdown.testFilesWithoutChecks === 0 ? [] : [
+      `Test files without checks: ${s.testFilesWithoutChecks.pending} pending, ${s.testFilesWithoutChecks.unknown} unknown`
     ],
-    ...unknownFilesLines(result),
-    `Closure method: ${result.closureMethod}`,
-    `Store schema: ${result.storeSchemaVersion}`,
-    ...notes(result, command, options.allNotes === true)
-  ];
-  return `${lines.join("\n")}
-`;
-}
-function retryLines(s) {
-  const pending = s.pendingRetries;
-  if (pending === void 0) return [];
-  const load = { oneMinute: pending.loadAverage, cpus: pending.cpus };
-  return [
-    `Pending retries: ${pending.retries.length}`,
-    ...pending.retries.map((r) => {
-      const where2 = r.claimedBy === null || r.claimedBy === s.worktreeId ? "" : ", queued by another worktree's daemon";
-      const asked = r.noResult === true ? "no result at its inputs" : r.reason;
-      return `  ${r.testFile.path} (${asked}): ${waitsText(r.noResult === true ? "environment" : r.reason, load, r.runningSince ?? null)}${where2}`;
-    })
+    ...unknownFilesLines(s),
+    `Closure method: ${s.closureMethod}`,
+    `Store schema: ${s.storeSchemaVersion}`,
+    ...notesLines(s, command, allNotes)
   ];
 }
-function slowLine(s, command) {
-  const text2 = slowTierText(s, command);
-  return text2 === null ? [] : [text2];
-}
-function excludedLine(s) {
-  const entries3 = s.vitestExcluded ?? [];
-  const globs2 = s.vitestExcludedFiles ?? [];
+function hiddenParts(s, command) {
+  const sources = new Set(s.inherited.sources.map((source) => source.worktreeId)).size;
+  const unknown = s.unknownTestFiles?.total ?? 0;
+  const notes = Math.max(0, notesLines(s, command, false).length - 1);
   return [
-    ...entries3.length === 0 ? [] : [`Not run: Vitest ${excludedProjectsText(entries3).text}, excluded by squeal.config.json`],
-    ...globs2.length === 0 ? [] : [`Not run: ${excludedFilesText(globs2)}, excluded by squeal.config.json`]
+    "the worktree and daemon",
+    ...s.inherited.count === 0 ? [] : [
+      `the ${plural(s.inherited.count, "current result")} inherited from ${plural(sources, "worktree")}`
+    ],
+    ...unknown === 0 ? [] : [`the ${plural(unknown, "test file")} without a result one by one`],
+    ...notes === 0 ? [] : [plural(notes, "note")]
   ];
 }
 function inheritedLine(s) {
   return s.inherited.count === 0 ? "Inherited from other worktrees: none (every current result here was run in this worktree)" : `Inherited from other worktrees: ${plural(s.inherited.count, "current result")}${partsSuffix(s.inherited.count, s.inheritedFileLevelCount)}`;
 }
-function checkpointLine(s, now, command) {
-  const checkpoint = s.checkpoint;
-  if (checkpoint === void 0) return [];
-  const what = checkpoint.kind === "run-all" ? `\`run --all\` requested at revision ${checkpoint.revision}` : `the baseline from revision ${checkpoint.revision}`;
-  const done = `${checkpoint.done} of ${plural(checkpoint.total, "test file")} done`;
-  if (checkpoint.owed) {
-    return [
-      `Checkpoint owed: ${what}, ${done} when its daemon stopped; the next daemon resumes it`
-    ];
+function daemonLine(s, now, command) {
+  if (s.daemon.state === "alive") {
+    return `Daemon: running, last heartbeat ${ageText(now - s.daemon.lastHeartbeatAt)} ago`;
   }
-  const started2 = `started ${age(now - checkpoint.startedAt)} ago`;
-  return [
-    `Checkpoint in progress: ${what}, ${started2}: ${done} (\`${command} run --all --wait\` waits for it)`
-  ];
+  if (s.daemon.stopped === true) {
+    return `Daemon: stopped by request (\`${command} stop\`); a hook starts one at the next edit, or run \`${command} start\``;
+  }
+  const down = s.daemon.since === null ? "Daemon: no daemon running" : `Daemon: no daemon running since ${new Date(s.daemon.since).toISOString()}`;
+  if (s.daemon.died === void 0) return down;
+  return `${down}; it ${deathText(s.daemon.died)}. ${DEATH_CAUSE}`;
 }
-function notes(s, command, all) {
+function ageText(ms2) {
+  const seconds3 = Math.max(0, Math.round(ms2 / 1e3));
+  if (seconds3 < 120) return `${seconds3} s`;
+  const minutes = Math.round(seconds3 / 60);
+  if (minutes < 120) return `${minutes} min`;
+  return `${Math.round(minutes / 60)} h`;
+}
+function notesLines(s, command, all) {
   const exits = /* @__PURE__ */ new Map();
   for (const note of all ? [] : s.daemonNotes) {
     if (note.exitOf !== void 0) exits.set(note.text, [...exits.get(note.text) ?? [], note]);
@@ -48807,6 +49310,158 @@ function foldedText(what, list2, command) {
   const processes2 = total === 1 ? "1 process" : `${total} processes`;
   return `stopped ${processes2} ${what}, in ${plural(list2.length, "note")} since ${since}: ${byCommand.join("; ")} (\`${command} status --notes\` lists each)`;
 }
+
+// src/core/status/outstanding-text.ts
+var OUTSTANDING_GROUPS_SHOWN = 6;
+var OUTSTANDING_FILES_SHOWN = 3;
+function outstandingLines(s, now, command, options = {}) {
+  const groups = groupsOf(s);
+  if (groups.length === 0) return [];
+  const shown = options.all === true ? groups : groups.slice(0, OUTSTANDING_GROUPS_SHOWN);
+  const rest = groups.slice(shown.length);
+  const files2 = rest.reduce((sum, g2) => sum + g2.files.length, 0);
+  const more = rest.length === 0 ? [] : [
+    `  and ${plural(files2, "test file")} in ${plural(rest.length, "more group")} (\`${command} status --full\` lists every group)`
+  ];
+  return [
+    "Outstanding:",
+    ...shown.map((g2) => `  ${groupLine(g2, s, now, command, options.base)}`),
+    ...more
+  ];
+}
+function groupsOf(s) {
+  if (s.outstanding !== void 0) return s.outstanding;
+  if (s.daemon.state !== "alive") {
+    return [
+      { standing: { kind: "no-daemon", since: s.daemon.since, revision: s.revision }, files: [] }
+    ];
+  }
+  return s.testFilesListed === false ? [{ standing: { kind: "listing" }, files: [] }] : [];
+}
+function groupLine({ standing, files: files2 }, s, now, command, base) {
+  switch (standing.kind) {
+    case "no-daemon":
+      return daemonText(standing, s, command);
+    case "listing":
+      return `the daemon is still listing this worktree's test files; \`${command} status --wait 60000\` waits for it`;
+    case "checkpoint":
+      return checkpointText(s, now, command);
+    case "retry":
+      return retryText2(standing, files2, s);
+  }
+  const next = nextStep(standing, { named: false });
+  const paths = files2.map((f) => fromBase(base, f.path));
+  const reason2 = reasonWords(next, paths, command);
+  const step = stepText(next.step, paths, command);
+  const head = files2.length === 0 ? reason2 : `${plural(files2.length, "test file")} ${wordsOf(standing.kind, reason2)}: ${shownText(files2)}`;
+  return step === "" ? head : `${head}; ${step}`;
+}
+function wordsOf(kind, reason2) {
+  switch (kind) {
+    case "no-install":
+    case "setup-failed":
+    case "runner":
+      return `without a result, ${reason2}`;
+    case "no-result":
+      return reason2.startsWith("no result: ") ? `without a result: ${reason2.slice("no result: ".length)}` : reason2;
+    case "unlisted":
+      return `queued, ${reason2}`;
+    default:
+      return reason2;
+  }
+}
+function shownText(files2) {
+  const shown = files2.slice(0, OUTSTANDING_FILES_SHOWN).map(({ project, path }) => project === "" ? path : `${project}: ${path}`).join(", ");
+  const more = files2.length - OUTSTANDING_FILES_SHOWN;
+  return more > 0 ? `${shown} and ${more} more` : shown;
+}
+function daemonText(standing, s, command) {
+  const next = nextStep(standing, { named: false });
+  const reason2 = reasonWords(next, [], command);
+  const start2 = stepText(next.step, [], command);
+  if (s.daemon.state === "alive") return `${reason2}; ${start2}`;
+  if (s.daemon.stopped === true) {
+    return `${reason2}; stopped by request (\`${command} stop\`): a hook starts one at the next edit, or ${start2}`;
+  }
+  if (s.daemon.died === void 0) return `${reason2}; ${start2}`;
+  return `${reason2}; it ${deathText(s.daemon.died)}; ${start2}. ${DEATH_CAUSE}`;
+}
+function checkpointText(s, now, command) {
+  const checkpoint = s.checkpoint;
+  if (checkpoint === void 0) return "a checkpoint in progress";
+  const what = checkpoint.kind === "run-all" ? `\`run --all\` requested at revision ${checkpoint.revision}` : `the baseline from revision ${checkpoint.revision}`;
+  const done = `${checkpoint.done} of ${plural(checkpoint.total, "test file")} done`;
+  return `a checkpoint in progress: ${what}, started ${ageText(now - checkpoint.startedAt)} ago: ${done}; \`${command} run --all --wait\` waits for it`;
+}
+function retryText2(standing, files2, s) {
+  const asked = standing.noResult ? "no result at its inputs" : standing.reason;
+  const load = {
+    oneMinute: s.pendingRetries?.loadAverage ?? null,
+    cpus: s.pendingRetries?.cpus ?? 1
+  };
+  const reason2 = standing.noResult ? "environment" : standing.reason;
+  const where2 = standing.elsewhere ? ", queued by another worktree's daemon" : "";
+  return `${plural(files2.length, "test file")} with a pending retry (${asked}): ${shownText(files2)}; ${waitsText(reason2, load, standing.runningSince)}${where2}`;
+}
+
+// src/core/status/format-status.ts
+init_identity();
+function formatStatus(result, now, command = "squeal", options = {}) {
+  if (!result.available) return formatUnavailable(result, command);
+  const allNotes = options.allNotes === true;
+  const full = allNotes || options.full === true;
+  const lines = [
+    `Revision: ${statusRevisionText(result)}`,
+    // Spec 011 C6 as amended (gh-34): only current failures are counted; (gh-45) then what is not current.
+    `Known failures: ${failureCountText(splitByValidity(result.knownFailures).current.map((f) => f.check))}${notCurrentText(result)}`,
+    ...earlierFailuresLines(knownFailureCounts(result.knownFailures)),
+    ...result.knownFailures.flatMap((f) => [
+      `  FAIL  ${formatCheck(f.check)}`,
+      ...f.summary === "" ? [] : [`        ${f.summary}`],
+      `        ${[
+        ...f.location === null ? [] : [`at ${f.location.path}:${f.location.line}:${f.location.column}`],
+        `observed at revision ${f.observedAt}`,
+        f.validity
+      ].join(", ")}`,
+      ...f.recorded === void 0 ? f.recordedUnknown === true ? [`        ${RECORDED_UNKNOWN_TEXT}`] : [] : [`        ${recordedText(f.recorded, result.worktreeId, now)}`]
+    ]),
+    `Affected checks: ${affected(result, command)}`,
+    `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
+    ...owedLine(result),
+    ...slowLine(result, command),
+    ...outstandingLines(result, now, command, {
+      all: full,
+      ...options.base === void 0 ? {} : { base: options.base }
+    }),
+    ...configProblemsLine(result, command),
+    ...excludedLine(result),
+    ...full ? ["", ...detailLines(result, now, command, allNotes)] : [`More: \`${command} status --full\` adds ${listText(hiddenParts(result, command))}`]
+  ];
+  return `${lines.join("\n")}
+`;
+}
+function listText(parts2) {
+  return parts2.length < 2 ? parts2.join("") : `${parts2.slice(0, -1).join(", ")} and ${parts2[parts2.length - 1]}`;
+}
+function slowLine(s, command) {
+  const text2 = slowTierText(s, command);
+  return text2 === null ? [] : [text2];
+}
+function excludedLine(s) {
+  const entries3 = s.vitestExcluded ?? [];
+  const globs2 = s.vitestExcludedFiles ?? [];
+  return [
+    ...entries3.length === 0 ? [] : [`Not run: Vitest ${excludedProjectsText(entries3).text}, excluded by squeal.config.json`],
+    ...globs2.length === 0 ? [] : [`Not run: ${excludedFilesText(globs2)}, excluded by squeal.config.json`]
+  ];
+}
+function owedLine(s) {
+  const checkpoint = s.checkpoint;
+  if (checkpoint === void 0 || !checkpoint.owed) return [];
+  const what = checkpoint.kind === "run-all" ? `\`run --all\` requested at revision ${checkpoint.revision}` : `the baseline from revision ${checkpoint.revision}`;
+  const done = `${checkpoint.done} of ${plural(checkpoint.total, "test file")} done`;
+  return [`Checkpoint owed: ${what}, ${done} when its daemon stopped; the next daemon resumes it`];
+}
 function formatUnavailable(result, command = "squeal") {
   const lines = [
     `${result.message.charAt(0).toUpperCase()}${result.message.slice(1)}`,
@@ -48843,24 +49498,6 @@ function freshText(s) {
   const files2 = s.testFilesWithoutChecks.pending;
   const running = Math.min(files2, s.breakdown.testFilesWithoutChecksRunning ?? 0);
   return running === 0 ? "" : `; ${plural(files2, "test file")} without checks yet: ${running} running, ${files2 - running} queued`;
-}
-function daemonLine(s, now, command) {
-  if (s.daemon.state === "alive") {
-    return `Daemon: running, last heartbeat ${age(now - s.daemon.lastHeartbeatAt)} ago`;
-  }
-  if (s.daemon.stopped === true) {
-    return `Daemon: stopped by request (\`${command} stop\`); a hook starts one at the next edit, or run \`${command} start\``;
-  }
-  const down = s.daemon.since === null ? "Daemon: no daemon running" : `Daemon: no daemon running since ${new Date(s.daemon.since).toISOString()}`;
-  if (s.daemon.died === void 0) return down;
-  return `${down}; it ${deathText(s.daemon.died)}. ${DEATH_CAUSE}`;
-}
-function age(ms2) {
-  const seconds3 = Math.max(0, Math.round(ms2 / 1e3));
-  if (seconds3 < 120) return `${seconds3} s`;
-  const minutes = Math.round(seconds3 / 60);
-  if (minutes < 120) return `${minutes} min`;
-  return `${Math.round(minutes / 60)} h`;
 }
 
 // src/core/status/failures.ts
@@ -48907,11 +49544,11 @@ init_open2();
 // src/core/status/run-log.ts
 init_run_log();
 import { existsSync as existsSync5, readFileSync as readFileSync8 } from "node:fs";
-import { join as join16 } from "node:path";
+import { join as join18 } from "node:path";
 var WHY_LOG_LINE_LIMIT = 200;
 function runLogOf(run4, logDir, check, runsDir, includeLogs) {
   const { runId, worktreeId } = run4;
-  const dir2 = logDir ?? join16(runsDir, runId);
+  const dir2 = logDir ?? join18(runsDir, runId);
   const nodeTest = nodeTestLogs(dir2, check);
   if (nodeTest !== null) {
     const base = { runId, worktreeId, path: nodeTest.stdout, stderrPath: nodeTest.stderr };
@@ -48928,7 +49565,7 @@ function runLogOf(run4, logDir, check, runsDir, includeLogs) {
     ];
     return { ...base, state: "node-test", console: capped2(lines) };
   }
-  const path = join16(dir2, VITEST_LOG);
+  const path = join18(dir2, VITEST_LOG);
   const state = existsSync5(path) ? "present" : existsSync5(dir2) ? "not-vitest" : "pruned";
   const text2 = includeLogs && state === "present" ? read4(path) : null;
   if (includeLogs && state === "present" && text2 === null) {
@@ -48938,8 +49575,8 @@ function runLogOf(run4, logDir, check, runsDir, includeLogs) {
   return { runId, worktreeId, path, state, console: text2 === null ? none2 : consoleOf(text2, check) };
 }
 function nodeTestLogs(dir2, check) {
-  const project = join16(dir2, "node-test", encodeURIComponent(check.project));
-  const text2 = read4(join16(project, "run.json"));
+  const project = join18(dir2, "node-test", encodeURIComponent(check.project));
+  const text2 = read4(join18(project, "run.json"));
   if (text2 === null) return null;
   let files2;
   try {
@@ -48953,8 +49590,8 @@ function nodeTestLogs(dir2, check) {
   );
   if (index < 0) return null;
   return {
-    stdout: join16(project, `stdout-${index}.log`),
-    stderr: join16(project, `stderr-${index}.log`)
+    stdout: join18(project, `stdout-${index}.log`),
+    stderr: join18(project, `stderr-${index}.log`)
   };
 }
 function read4(path) {
@@ -49361,7 +49998,7 @@ function formatFailures(report2) {
 }
 
 // src/core/status/format-why.ts
-import { basename, dirname as dirname5 } from "node:path";
+import { basename, dirname as dirname6 } from "node:path";
 
 // src/core/delivery/provenance.ts
 var TOUCHED_SHOWN = 3;
@@ -49562,7 +50199,7 @@ function runLog(why2) {
   if (log.state === "not-vitest") {
     return [
       `Run log: none, run ${log.runId} in ${where2} wrote no ${basename(log.path)}`,
-      `  Its runner's output is under ${dirname5(log.path)}`,
+      `  Its runner's output is under ${dirname6(log.path)}`,
       ...log.console === null ? [] : [`  No console of ${file} was captured in this run.`]
     ];
   }
@@ -49644,21 +50281,21 @@ init_fs();
 // src/cli/codex/init.ts
 init_fs();
 init_types();
-import { existsSync as existsSync8, writeFileSync } from "node:fs";
-import { join as join21 } from "node:path";
+import { existsSync as existsSync8, writeFileSync as writeFileSync2 } from "node:fs";
+import { join as join23 } from "node:path";
 
 // src/cli/node-test-seed.ts
 init_policy_node_test();
 init_fs();
 init_glob();
-import { readdirSync as readdirSync4, readFileSync as readFileSync9 } from "node:fs";
-import { join as join17 } from "node:path";
+import { readdirSync as readdirSync5, readFileSync as readFileSync9 } from "node:fs";
+import { join as join19 } from "node:path";
 function seedNodeTest(root) {
-  const notes2 = [];
+  const notes = [];
   const found2 = [];
-  const rootManifest = readManifest(root, "", notes2);
+  const rootManifest = readManifest(root, "", notes);
   for (const dir2 of ["", ...workspaceDirs(root, rootManifest)]) {
-    const manifest = dir2 === "" ? rootManifest : readManifest(root, dir2, notes2);
+    const manifest = dir2 === "" ? rootManifest : readManifest(root, dir2, notes);
     const scripts = isRecord(manifest) && isRecord(manifest.scripts) ? manifest.scripts : {};
     for (const [script, text2] of Object.entries(scripts)) {
       if (typeof text2 !== "string") continue;
@@ -49680,16 +50317,16 @@ function seedNodeTest(root) {
     const where2 = manifestPath(dir2);
     const cwd = dir2 === "" ? {} : { cwd: dir2 };
     if (typeof parsed === "string") {
-      notes2.push(
+      notes.push(
         `script "${script}" in ${where2} is not \`node [flags...] --test <globs...>\` (${parsed}); add its nodeTest entry by hand from the template below`
       );
       templates.push({ name: name2, ...cwd, argv: [], include: ["<test-file glob>"] });
     } else {
-      notes2.push(`seeded nodeTest project "${name2}" from ${where2}`);
+      notes.push(`seeded nodeTest project "${name2}" from ${where2}`);
       projects2.push({ name: name2, ...cwd, argv: parsed.argv, include: parsed.include });
     }
   }
-  return { projects: projects2, notes: notes2, templates: uniqueNames(templates, projects2) };
+  return { projects: projects2, notes, templates: uniqueNames(templates, projects2) };
 }
 function uniqueNames(templates, projects2) {
   const taken2 = new Set(projects2.map((project) => project.name));
@@ -49789,10 +50426,10 @@ var SPECIAL = {
 function manifestPath(dir2) {
   return dir2 === "" ? "package.json" : `${dir2}/package.json`;
 }
-function readManifest(root, dir2, notes2) {
+function readManifest(root, dir2, notes) {
   let text2;
   try {
-    text2 = readFileSync9(join17(root, dir2, "package.json"), "utf8");
+    text2 = readFileSync9(join19(root, dir2, "package.json"), "utf8");
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
@@ -49803,7 +50440,7 @@ function readManifest(root, dir2, notes2) {
   } catch {
   }
   if (!isRecord(value)) {
-    notes2.push(`${manifestPath(dir2)} is not a JSON object; no nodeTest project seeded from it`);
+    notes.push(`${manifestPath(dir2)} is not a JSON object; no nodeTest project seeded from it`);
   }
   return value;
 }
@@ -49825,7 +50462,7 @@ function workspaceDirs(root, manifest) {
   }
   const dirs = [];
   const walk2 = (dir2, depth) => {
-    for (const entry4 of readdirSync4(join17(root, dir2), { withFileTypes: true })) {
+    for (const entry4 of readdirSync5(join19(root, dir2), { withFileTypes: true })) {
       if (!entry4.isDirectory() || entry4.name === "node_modules" || entry4.name.startsWith(".")) {
         continue;
       }
@@ -49855,7 +50492,7 @@ function overlaps(path, prefix) {
 }
 function hasManifest(root, dir2) {
   try {
-    return readdirSync4(join17(root, dir2)).includes("package.json");
+    return readdirSync5(join19(root, dir2)).includes("package.json");
   } catch {
     return false;
   }
@@ -49871,15 +50508,15 @@ var PREVIOUS_PLUGIN_ID = `${PLUGIN_NAME}@${PREVIOUS_MARKETPLACE_NAME}`;
 
 // src/cli/setup/harnesses.ts
 init_fs();
-import { accessSync, constants, readdirSync as readdirSync5 } from "node:fs";
-import { delimiter, join as join19 } from "node:path";
+import { accessSync, constants, readdirSync as readdirSync6 } from "node:fs";
+import { delimiter, join as join21 } from "node:path";
 
 // src/cli/setup/repo.ts
 init_policy2();
 init_fs();
 init_glob();
 import { existsSync as existsSync6, readFileSync as readFileSync10 } from "node:fs";
-import { join as join18, posix as posix8 } from "node:path";
+import { join as join20, posix as posix9 } from "node:path";
 
 // src/cli/verdict.ts
 init_keys();
@@ -49969,10 +50606,10 @@ async function readRepoFacts(root) {
   const tracked = splitNul(await runGit(root, ["ls-files", "-z"]));
   const manifests = [];
   for (const path of tracked) {
-    if (posix8.basename(path) !== "package.json" || path.split("/").includes("node_modules"))
+    if (posix9.basename(path) !== "package.json" || path.split("/").includes("node_modules"))
       continue;
-    const value = readJson(join18(root, path));
-    if (isRecord(value)) manifests.push({ dir: posix8.dirname(path).replace(/^\.$/, ""), value });
+    const value = readJson(join20(root, path));
+    if (isRecord(value)) manifests.push({ dir: posix9.dirname(path).replace(/^\.$/, ""), value });
   }
   return { root, tracked, manifests, testFiles: listTestFiles(root, tracked) };
 }
@@ -49991,7 +50628,7 @@ function readText(path) {
   }
 }
 function nearestManifest(facts, dir2) {
-  for (let d = dir2; ; d = posix8.dirname(d)) {
+  for (let d = dir2; ; d = posix9.dirname(d)) {
     const key2 = d === "." ? "" : d;
     const found2 = facts.manifests.find((m) => m.dir === key2);
     if (found2 !== void 0) return found2;
@@ -50044,7 +50681,7 @@ function listTestFiles(root, tracked) {
   if (listed3 !== null && "paths" in listed3) {
     return { source: "store", paths: listed3.paths, current: listed3.current };
   }
-  const config = VITEST_CONFIGS.map((name2) => readText(join18(root, name2))).find((t) => t !== null);
+  const config = VITEST_CONFIGS.map((name2) => readText(join20(root, name2))).find((t) => t !== null);
   const include = config == null ? [] : stringArrays(config, "include");
   const exclude = config == null ? [] : stringArrays(config, "exclude");
   const included = matcher(include.length > 0 ? include : DEFAULT_INCLUDE);
@@ -50080,7 +50717,7 @@ function matcher(globs2) {
   return (path) => patterns.some((pattern2) => pattern2.test(path));
 }
 function dirExists(root, dir2) {
-  return existsSync6(join18(root, dir2));
+  return existsSync6(join20(root, dir2));
 }
 
 // src/cli/setup/harnesses.ts
@@ -50110,7 +50747,7 @@ function onPath(name2, env) {
   for (const dir2 of (env.PATH ?? "").split(delimiter)) {
     if (dir2 === "") continue;
     try {
-      accessSync(join19(dir2, name2), constants.X_OK);
+      accessSync(join21(dir2, name2), constants.X_OK);
       return true;
     } catch {
     }
@@ -50118,8 +50755,8 @@ function onPath(name2, env) {
   return false;
 }
 function claudeCodePlugin(root, env) {
-  const configDir = env.CLAUDE_CONFIG_DIR ?? join19(env.HOME ?? "", ".claude");
-  const file = readJson(join19(configDir, "plugins", "installed_plugins.json"));
+  const configDir = env.CLAUDE_CONFIG_DIR ?? join21(env.HOME ?? "", ".claude");
+  const file = readJson(join21(configDir, "plugins", "installed_plugins.json"));
   const plugins = isRecord(file) && isRecord(file.plugins) ? file.plugins : {};
   const entries3 = plugins[PLUGIN_ID];
   if (!Array.isArray(entries3)) return null;
@@ -50132,10 +50769,10 @@ function claudeCodePlugin(root, env) {
   return null;
 }
 function codexPlugin(env) {
-  const home = env.CODEX_HOME ?? join19(env.HOME ?? "", ".codex");
+  const home = env.CODEX_HOME ?? join21(env.HOME ?? "", ".codex");
   let versions;
   try {
-    versions = readdirSync5(join19(home, "plugins", "cache", MARKETPLACE_NAME, PLUGIN_NAME));
+    versions = readdirSync6(join21(home, "plugins", "cache", MARKETPLACE_NAME, PLUGIN_NAME));
   } catch {
     return null;
   }
@@ -50154,11 +50791,11 @@ function compareVersions(a, b) {
 
 // src/cli/codex/launcher.ts
 import { existsSync as existsSync7, readFileSync as readFileSync11 } from "node:fs";
-import { dirname as dirname6, join as join20 } from "node:path";
+import { dirname as dirname7, join as join22 } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // src/cli/codex/hash.ts
-import { createHash as createHash9 } from "node:crypto";
+import { createHash as createHash10 } from "node:crypto";
 var PLUGIN_KEY_SOURCE = `${PLUGIN_ID}:hooks/hooks.json`;
 var LAUNCHER_KEY_SOURCE = "/<session-flags>/config.toml";
 var LABELS = {
@@ -50205,7 +50842,7 @@ function hookHash(event2, matcher4, handler) {
   }
   const identity3 = { event_name: eventLabel(event2), hooks: [normalized] };
   if (matcher4 !== void 0 && !NO_MATCHER.has(event2)) identity3.matcher = matcher4;
-  const digest = createHash9("sha256").update(JSON.stringify(canonical(identity3))).digest("hex");
+  const digest = createHash10("sha256").update(JSON.stringify(canonical(identity3))).digest("hex");
   return `sha256:${digest}`;
 }
 function hookHashes(file, keySource) {
@@ -50233,20 +50870,20 @@ function canonical(value) {
 }
 
 // src/cli/codex/launcher.ts
-var MANIFEST = join20(".codex-plugin", "plugin.json");
+var MANIFEST = join22(".codex-plugin", "plugin.json");
 function findCodexPlugin(module2 = new URL(import.meta.url)) {
-  let dir2 = dirname6(fileURLToPath2(module2));
+  let dir2 = dirname7(fileURLToPath2(module2));
   for (; ; ) {
-    if (existsSync7(join20(dir2, MANIFEST))) return dir2;
-    const nested = join20(dir2, "plugins", "codex");
-    if (existsSync7(join20(nested, MANIFEST))) return nested;
-    const parent2 = dirname6(dir2);
+    if (existsSync7(join22(dir2, MANIFEST))) return dir2;
+    const nested = join22(dir2, "plugins", "codex");
+    if (existsSync7(join22(nested, MANIFEST))) return nested;
+    const parent2 = dirname7(dir2);
     if (parent2 === dir2) return null;
     dir2 = parent2;
   }
 }
 function readPluginHooks(pluginRoot) {
-  return JSON.parse(readFileSync11(join20(pluginRoot, "hooks", "hooks.json"), "utf8"));
+  return JSON.parse(readFileSync11(join22(pluginRoot, "hooks", "hooks.json"), "utf8"));
 }
 function launcherConfig(pluginRoot, hooks) {
   if (/["$`\\\n]/.test(pluginRoot)) {
@@ -50592,14 +51229,14 @@ function initCodex(io, options = { trust: false, yes: false }, deps = {}) {
 `);
     return 1;
   }
-  const configPath = join21(root, "squeal.config.json");
+  const configPath = join23(root, "squeal.config.json");
   const writeConfig = !existsSync8(configPath);
   let seed = { projects: [], notes: [], templates: [] };
   try {
     if (writeConfig) {
       seed = seedNodeTest(root);
       const config = { ...DEFAULT_POLICY, nodeTest: seed.projects };
-      writeFileSync(configPath, `${JSON.stringify(config, null, 2)}
+      writeFileSync2(configPath, `${JSON.stringify(config, null, 2)}
 `);
     }
   } catch (error) {
@@ -52299,10 +52936,10 @@ function noteInNewerStore(commonDir, worktreeId, note) {
     const key2 = notesMetaKey(worktreeId);
     db.exec("BEGIN IMMEDIATE");
     const row = db.prepare("SELECT value FROM meta WHERE key = ?").get(key2);
-    const notes2 = withNote(row?.value, note);
+    const notes = withNote(row?.value, note);
     db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)").run(
       key2,
-      JSON.stringify(notes2)
+      JSON.stringify(notes)
     );
     db.exec("COMMIT");
     return true;
@@ -53882,12 +54519,12 @@ function readOrEmpty(path) {
 init_policy2();
 init_fs();
 init_glob();
-import { posix as posix10 } from "node:path";
+import { posix as posix11 } from "node:path";
 function excludeInto(runners, glob2, files2, isVitest) {
   const into = [];
   if (runners.vitest && files2.some(isVitest)) into.push({ runner: "vitest", glob: glob2 });
   for (const p of runners.nodeTest) {
-    const lists = matcher2(p.include.map((g2) => posix10.join(p.cwd, g2)));
+    const lists = matcher2(p.include.map((g2) => posix11.join(p.cwd, g2)));
     if (!files2.some(lists)) continue;
     const relative23 = p.cwd === "" ? glob2 : glob2.startsWith(`${p.cwd}/`) ? glob2.slice(p.cwd.length + 1) : null;
     if (relative23 !== null) into.push({ runner: "nodeTest", project: p.name, glob: relative23 });
@@ -53902,7 +54539,7 @@ function excludeKeys(proposal) {
 }
 function excludeTargets(plan, testFiles, globs2) {
   const cwd = new Map(plan.runners.nodeTest.map((p) => [p.name, p.cwd]));
-  const of = (t) => t.runner === "vitest" ? t.glob : posix10.join(cwd.get(t.project) ?? "", t.glob);
+  const of = (t) => t.runner === "vitest" ? t.glob : posix11.join(cwd.get(t.project) ?? "", t.glob);
   return globs2.flatMap((glob2) => {
     const group = plan.slow.groups.find((g2) => g2.exclude?.globs.includes(glob2) === true);
     if (group?.exclude != null) return group.exclude.into.filter((t) => of(t) === glob2);
@@ -53969,7 +54606,7 @@ function matcher2(globs2) {
 
 // src/cli/setup/gates.ts
 import { readFileSync as readFileSync32, writeFileSync as writeFileSync11 } from "node:fs";
-import { posix as posix11 } from "node:path";
+import { posix as posix12 } from "node:path";
 var GATE_WAIT_MS = 11e4;
 var BEGIN2 = /^<!-- squeal:begin v\d+/;
 var END3 = /^<!-- squeal:end -->/;
@@ -53997,7 +54634,7 @@ function commandPattern(nodeTest) {
   return new RegExp(`(?<![\\w-])(?:${commands.join("|")})`);
 }
 function isInstructionFile(path) {
-  return ["AGENTS.md", "CLAUDE.md", "CLAUDE.local.md"].includes(posix11.basename(path));
+  return ["AGENTS.md", "CLAUDE.md", "CLAUDE.local.md"].includes(posix12.basename(path));
 }
 function isAgentFile(path) {
   return /^\.(claude|agents|codex)\//.test(path) && path.endsWith(".md");
@@ -54210,11 +54847,11 @@ import { join as join93 } from "node:path";
 
 // src/cli/setup/candidates.ts
 init_glob();
-import { posix as posix13 } from "node:path";
+import { posix as posix14 } from "node:path";
 
 // src/cli/setup/build-outputs.ts
 init_fs();
-import { join as join90, posix as posix12 } from "node:path";
+import { join as join90, posix as posix13 } from "node:path";
 var FIELDS3 = ["bin", "main", "module", "exports", "files"];
 async function buildOutputCandidates(facts, dir2, files2) {
   const manifest = nearestManifest(facts, dir2);
@@ -54255,7 +54892,7 @@ function fieldCandidates(manifest) {
       const dir2 = rule === "files" ? /\.\w+$/.test(clean) || /[*?{[]/.test(clean) ? null : clean : parts2.length > 1 ? parts2[0] : null;
       if (dir2 === null || dir2 === "" || dir2 === "..") continue;
       found2.push({
-        path: posix12.join(manifest.dir, dir2),
+        path: posix13.join(manifest.dir, dir2),
         rule,
         detail: `${where2} ${rule} "${value}"`,
         weak: rule === "files"
@@ -54277,11 +54914,11 @@ function buildCandidates(facts, manifest) {
     for (const part of text2.split(/&&|;|\|\|/)) {
       const words = part.trim().split(/\s+/);
       const flag2 = words.findIndex((w2) => ["--outDir", "--outdir", "-o"].includes(w2));
-      let out2 = flag2 === -1 ? null : posix12.join(manifest.dir, words[flag2 + 1] ?? "");
+      let out2 = flag2 === -1 ? null : posix13.join(manifest.dir, words[flag2 + 1] ?? "");
       if (flag2 === -1 && words[0] === "tsc") {
         const project = words.findIndex((w2) => w2 === "-p" || w2 === "--project");
         const tsconfig = project === -1 ? "tsconfig.json" : words[project + 1] ?? "tsconfig.json";
-        out2 = outDir(facts, posix12.join(manifest.dir, tsconfig), 0);
+        out2 = outDir(facts, posix13.join(manifest.dir, tsconfig), 0);
       }
       if (out2 === null || out2 === "." || out2 === "") continue;
       const path = out2.replace(/\/+$/, "");
@@ -54296,16 +54933,16 @@ function buildCandidates(facts, manifest) {
   return found2;
 }
 function outDir(facts, tsconfig, depth) {
-  const path = tsconfig.endsWith(".json") ? tsconfig : posix12.join(tsconfig, "tsconfig.json");
+  const path = tsconfig.endsWith(".json") ? tsconfig : posix13.join(tsconfig, "tsconfig.json");
   const text2 = readText(join90(facts.root, path));
   if (text2 === null || depth > 4) return null;
   const parsed = readJson(join90(facts.root, path));
   const options = isRecord(parsed) ? parsed.compilerOptions : null;
   const dir2 = isRecord(options) && typeof options.outDir === "string" ? options.outDir : null;
   const value = dir2 ?? /"outDir"\s*:\s*"([^"]+)"/.exec(text2)?.[1] ?? null;
-  if (value !== null) return posix12.join(posix12.dirname(path), value);
+  if (value !== null) return posix13.join(posix13.dirname(path), value);
   const extended = /"extends"\s*:\s*"(\.[^"]+)"/.exec(text2)?.[1];
-  return extended === void 0 ? null : outDir(facts, posix12.join(posix12.dirname(path), extended), depth + 1);
+  return extended === void 0 ? null : outDir(facts, posix13.join(posix13.dirname(path), extended), depth + 1);
 }
 async function namedCandidates(facts, manifest, files2, found2) {
   const literals = files2.map((file) => ({ file, strings: stringLiterals(facts, file) }));
@@ -54320,7 +54957,7 @@ async function namedCandidates(facts, manifest, files2, found2) {
   const out2 = [];
   for (const dir2 of [.../* @__PURE__ */ new Set([...inPackage, ...found2.map((f) => f.path)])].sort()) {
     const hits = literals.flatMap(({ file, strings: strings5 }) => {
-      const hit = strings5.find((s) => names2(facts, posix12.dirname(file), manifest.dir, s, dir2));
+      const hit = strings5.find((s) => names2(facts, posix13.dirname(file), manifest.dir, s, dir2));
       return hit === void 0 ? [] : [{ file, hit }];
     });
     if (hits.length === 0) continue;
@@ -54340,10 +54977,10 @@ async function ignoredAncestors(facts, pkg, literals) {
   for (const { file, strings: strings5 } of literals) {
     for (const s of strings5) {
       if (!s.includes("/") || s.startsWith("/") || s.includes("${")) continue;
-      const bases4 = /^\.\.?\//.test(s) ? [posix12.dirname(file)] : [posix12.dirname(file), pkg, ""];
+      const bases4 = /^\.\.?\//.test(s) ? [posix13.dirname(file)] : [posix13.dirname(file), pkg, ""];
       for (const base of bases4) {
-        const path = posix12.join(base, s);
-        if (!path.startsWith("../")) chains.add(posix12.dirname(path));
+        const path = posix13.join(base, s);
+        if (!path.startsWith("../")) chains.add(posix13.dirname(path));
       }
     }
   }
@@ -54368,7 +55005,7 @@ function stringLiterals(facts, file) {
 }
 function names2(facts, from, pkg, s, dir2) {
   if (s === "" || s.startsWith("/") || s.includes("${")) return false;
-  const under2 = (base) => posix12.join(base, s).startsWith(`${dir2}/`);
+  const under2 = (base) => posix13.join(base, s).startsWith(`${dir2}/`);
   if (/^\.\.?\//.test(s) && under2(from)) return true;
   if (![from, pkg, ""].some(under2)) return false;
   const tail = s.replace(/^(\.\.?\/)+/, "");
@@ -54383,7 +55020,7 @@ var NODE_TEST2 = "node:test project";
 async function slowCandidates(facts, policy, runners) {
   const projects2 = runners.nodeTest.map((p) => ({
     name: p.name,
-    files: facts.tracked.filter(globMatcher(p.include.map((g2) => posix13.join(p.cwd, g2)))),
+    files: facts.tracked.filter(globMatcher(p.include.map((g2) => posix14.join(p.cwd, g2)))),
     slow: policy.nodeTest.some((q) => q.name === p.name && q.slow === true)
   }));
   const universe = [.../* @__PURE__ */ new Set([...facts.testFiles.paths, ...projects2.flatMap((p) => p.files)])];
@@ -54393,7 +55030,7 @@ async function slowCandidates(facts, policy, runners) {
   };
   for (const file of universe) {
     if (file.split("/").slice(0, -1).includes("e2e")) add2(file, "under a directory named e2e");
-    if (posix13.basename(file).includes(".e2e.")) add2(file, "named *.e2e.*");
+    if (posix14.basename(file).includes(".e2e.")) add2(file, "named *.e2e.*");
   }
   const known2 = new Set(universe);
   const unresolvedScripts = [];
@@ -54413,7 +55050,7 @@ async function slowCandidates(facts, policy, runners) {
   for (const file of universe) if (isDeclared(file)) add2(file, "declared slow");
   const byDir = /* @__PURE__ */ new Map();
   for (const file of [...reasons.keys()].sort()) {
-    const dir2 = posix13.dirname(file);
+    const dir2 = posix14.dirname(file);
     byDir.set(dir2, [...byDir.get(dir2) ?? [], file]);
   }
   const outputs = /* @__PURE__ */ new Map();
@@ -54459,7 +55096,7 @@ function scriptFiles(facts, manifest, name2, universe, depth) {
   const parsed = parseTestScript(text2);
   if (parsed !== null && typeof parsed !== "string") {
     return facts.tracked.filter(
-      globMatcher(parsed.include.map((g2) => posix13.join(manifest.dir, g2)))
+      globMatcher(parsed.include.map((g2) => posix14.join(manifest.dir, g2)))
     );
   }
   const npm = /^npm run (\S+)(?: (?:-w|--workspace)(?: |=)(\S+))?\s*$/.exec(text2);
@@ -54469,7 +55106,7 @@ function scriptFiles(facts, manifest, name2, universe, depth) {
   }
   const vitest = /^vitest run((?: [^-\s]\S*)+)\s*$/.exec(text2);
   if (vitest !== null) {
-    const prefixes = vitest[1].trim().split(/\s+/).map((p) => posix13.join(manifest.dir, p));
+    const prefixes = vitest[1].trim().split(/\s+/).map((p) => posix14.join(manifest.dir, p));
     return universe.filter(
       (file) => prefixes.some((p) => file === p || file.startsWith(`${p.replace(/\/$/, "")}/`))
     );
@@ -54511,7 +55148,7 @@ init_config();
 init_config_values();
 init_discover();
 init_command();
-import { posix as posix14 } from "node:path";
+import { posix as posix15 } from "node:path";
 var CONFIG_NAMES = /* @__PURE__ */ new Set([
   "pytest.toml",
   ".pytest.toml",
@@ -54527,7 +55164,7 @@ var SKIPPED2 = /(^|\/)(node_modules|fixtures|__fixtures__|\.[^/]*)(\/|$)/;
 function seedPytest(root, tracked, env) {
   const dirs = projectDirs(root, tracked);
   const projects2 = [];
-  const notes2 = [];
+  const notes = [];
   for (const dir2 of dirs) {
     const cwd = toAbsolute(root, dir2);
     const found2 = findPytestConfig(root, cwd);
@@ -54536,24 +55173,24 @@ function seedPytest(root, tracked, env) {
     const nested = dirs.filter((d) => d !== dir2 && (dir2 === "" || d.startsWith(`${dir2}/`)));
     const entry4 = seededEntry(name2, dir2, config, nested);
     projects2.push(entry4);
-    const from = config === null ? `${posix14.join(dir2, "tests")}/ beside pyproject.toml` : rel(root, config);
-    notes2.push(`seeded pytest project "${name2}" from ${from}`);
+    const from = config === null ? `${posix15.join(dir2, "tests")}/ beside pyproject.toml` : rel(root, config);
+    notes.push(`seeded pytest project "${name2}" from ${from}`);
     const project = { ...entry4, args: [], env: {} };
     const refused = refusedFlags(inheritedArgs(found2, env), project);
     if (refused.length > 0) {
       const flags2 = refused.map((r) => `${r.flag} (in ${r.source})`).join(", ");
-      notes2.push(
+      notes.push(
         `pytest project "${name2}": Squeal does not run pytest with ${flags2}, which change what runs or wait for input; remove it there, or its checks stay unknown`
       );
     }
     const discovery = discoverEnvironment(root, project);
     if (discovery.kind === "none") {
-      notes2.push(
+      notes.push(
         `pytest project "${name2}" has no environment yet; \`${discovery.command}\` in ${dir2 === "" ? "the root" : dir2} creates one`
       );
     }
   }
-  return { projects: projects2, notes: notes2 };
+  return { projects: projects2, notes };
 }
 function seededEntry(name2, dir2, config, nested) {
   const value = (key2) => {
@@ -54564,11 +55201,11 @@ function seededEntry(name2, dir2, config, nested) {
   const pythonFiles = value("python_files") ?? PYTHON_FILES2;
   const bases4 = testpaths.length === 0 ? [""] : testpaths;
   const include = bases4.flatMap(
-    (base) => pythonFiles.map((pattern2) => posix14.join(base, "**", pattern2))
+    (base) => pythonFiles.map((pattern2) => posix15.join(base, "**", pattern2))
   );
   const exclude = testpaths.length === 0 ? [
     ...(value("norecursedirs") ?? NORECURSEDIRS2).map((d) => `**/${d}/**`),
-    ...nested.map((d) => `${posix14.relative(dir2, d)}/**`)
+    ...nested.map((d) => `${posix15.relative(dir2, d)}/**`)
   ] : [];
   return {
     name: name2,
@@ -54580,14 +55217,14 @@ function seededEntry(name2, dir2, config, nested) {
 function projectDirs(root, tracked) {
   const dirs = /* @__PURE__ */ new Set();
   for (const path of tracked) {
-    const name2 = posix14.basename(path);
+    const name2 = posix15.basename(path);
     if (!CONFIG_NAMES.has(name2)) continue;
-    const dir2 = posix14.dirname(path) === "." ? "" : posix14.dirname(path);
+    const dir2 = posix15.dirname(path) === "." ? "" : posix15.dirname(path);
     if (SKIPPED2.test(dir2)) continue;
     const cwd = toAbsolute(root, dir2);
     const config = findPytestConfig(root, cwd);
     const holds2 = config?.rootdir === cwd && config.holds === "pytest";
-    const tests = `${posix14.join(dir2, "tests")}/`;
+    const tests = `${posix15.join(dir2, "tests")}/`;
     if (holds2 || name2 === "pyproject.toml" && tracked.some((p) => p.startsWith(tests))) {
       dirs.add(dir2);
     }
@@ -54595,7 +55232,7 @@ function projectDirs(root, tracked) {
   return [...dirs].sort();
 }
 function rel(root, config) {
-  return posix14.relative(root, config.path);
+  return posix15.relative(root, config.path);
 }
 
 // src/cli/setup/pytest.ts
@@ -54662,10 +55299,10 @@ function writePytestSeed(root, plan) {
 init_policy2();
 init_glob();
 import { statSync as statSync18 } from "node:fs";
-import { join as join92, posix as posix15 } from "node:path";
+import { join as join92, posix as posix16 } from "node:path";
 function testFileUniverse(facts, projects2) {
   const inProjects = projects2.map((p) => {
-    const under2 = (globs2) => matcher3(globs2.map((g2) => posix15.join(p.cwd ?? "", g2)));
+    const under2 = (globs2) => matcher3(globs2.map((g2) => posix16.join(p.cwd ?? "", g2)));
     const include = under2(p.include);
     const exclude = under2(p.exclude ?? []);
     return (path) => include(path) && !exclude(path);
@@ -55782,215 +56419,7 @@ init_text();
 // src/cli/named-file-lines.ts
 init_keys();
 init_state3();
-
-// src/core/status/next-step.ts
-init_text2();
-init_text();
-init_types();
-var NOT_INTERRUPTED = "no command runs {it} sooner (a running tier is not interrupted)";
-function retry(s, note = "") {
-  return {
-    kind: "retry",
-    ...note === "" ? {} : { note },
-    ...s.notCurrent === void 0 ? {} : { all: s.notCurrent }
-  };
-}
-function nextStep(s, context = { named: true }) {
-  switch (s.kind) {
-    case "no-daemon": {
-      const since = s.since === null ? "" : ` since ${new Date(s.since).toISOString()}`;
-      const reason2 = `no daemon has validated${since}; results are as of revision ${s.revision}`;
-      return same(reason2, { kind: "command", args: "start", text: "{command} starts one" });
-    }
-    case "unlisted":
-      return same(
-        `revision ${s.revision} not listed yet, because the runner part waits for the run in flight, each of its calls bounded at ${Math.ceil(s.callBoundMs / 1e3)} s`,
-        context.named ? { kind: "none", text: "" } : { kind: "command", args: "status --wait 60000", text: "{command} waits for it" }
-      );
-    case "stale": {
-      const last = s.verdict === null ? "ran" : LAST[s.verdict];
-      return {
-        reason: `last ${last} at other inputs, nothing queued {it}${lookupOnly(s.lookupOnly)}`,
-        short: "stale, nothing queued {it}",
-        step: retry(s)
-      };
-    }
-    case "never-run":
-      return {
-        reason: `never run at its inputs, nothing queued {it}${lookupOnly(s.lookupOnly)}`,
-        short: "never run, nothing queued {it}",
-        step: retry(s)
-      };
-    case "timed-out": {
-      const busy = s.load !== null && s.load.oneMinute !== null && s.load.oneMinute >= s.load.cpus;
-      const note = busy && s.load !== null ? ` (${loadText(s.load)} now: under that load {it} may time out again)` : "";
-      return {
-        reason: `${s.reason}; Squeal does not run {it} again at these inputs by itself`,
-        short: s.reason,
-        step: retry(s, note)
-      };
-    }
-    case "no-result":
-      return { reason: s.reason, short: "no result at its inputs", step: retry(s) };
-    case "setup-failed":
-      return {
-        reason: "its project's global setup failed",
-        short: "its project's global setup failed",
-        step: {
-          kind: "command",
-          args: "run --all --wait",
-          text: "the next edit or {command} starts the runner again"
-        }
-      };
-    case "runner":
-      return {
-        reason: s.reason,
-        short: "no key, a runner call failed",
-        step: {
-          kind: "command",
-          args: "run --all --wait",
-          text: "the next edit or {command} calls the runner again"
-        }
-      };
-    case "no-install":
-      return same(
-        "no dependencies are installed in this worktree",
-        s.command === null ? { kind: "none", text: "a daemon runs {it} once the dependencies are installed" } : { kind: "shell", command: s.command, text: "{command} installs them" }
-      );
-    case "running":
-      return runningStep(s);
-    case "queued":
-      return queuedStep(s, context);
-    case "claim": {
-      const until = s.until === null ? "" : `, at most until ${timeText(s.until)}`;
-      return same(`waiting for ${s.worktree}'s run of its key${until}`, {
-        kind: "none",
-        text: "its result is shared here when that run stores it"
-      });
-    }
-    case "slow": {
-      const when = s.pausesOnly === true ? "when the agent pauses" : "after the fast tests";
-      const reason2 = `slow, run ${when} or on {command}`;
-      return {
-        reason: reason2,
-        // Under `slow.trigger: "idle"` the verdict line keeps when it runs (004-80).
-        short: s.pausesOnly === true ? reason2 : "slow",
-        step: { kind: "command", args: "run --slow", text: "", said: true }
-      };
-    }
-    case "checkpoint":
-      return same("a checkpoint in progress", {
-        kind: "command",
-        args: "run --all --wait",
-        text: "{command} waits for it"
-      });
-  }
-}
-var LAST = { pass: "passed", fail: "failed", skip: "skipped" };
-function same(reason2, step) {
-  return { reason: reason2, short: reason2, step };
-}
-function lookupOnly(on) {
-  return on ? " (the baseline is lookup-only)" : "";
-}
-function runningStep(s) {
-  const since = s.since === null ? "" : ` since ${timeText(s.since)}`;
-  const several = s.files !== void 0 && s.files > 1;
-  const where2 = several ? `in the ${laneText(s.lane)} tier of ${s.files} test files running${since}` : `running${since} in the ${laneText(s.lane)} lane`;
-  if (isSlowLane(s.lane)) {
-    const setup = s.setup === void 0 ? "" : `; its project's global setup${s.setup.file === "" ? "" : ` (${s.setup.file})`} ran once when this slow pass started, and Squeal does not hold what it started, so another run of that project meanwhile may replace it`;
-    return { reason: `${where2}${setup}`, short: where2, step: { kind: "retry", again: true } };
-  }
-  return same(where2, { kind: "none", text: several ? NOT_INTERRUPTED : "" });
-}
-function queuedStep(s, context) {
-  const promoted = s.promoted === true;
-  if (s.behind === null) {
-    if (promoted) return same("queued, promoted", { kind: "none", text: "" });
-    return {
-      reason: "queued; no run is open and nothing recorded holds {it}",
-      short: "queued, nothing recorded holds {it}",
-      step: {
-        kind: "none",
-        text: "the store records no reason the daemon has not taken {it} (`{squeal} status --json` lists each file's state)"
-      }
-    };
-  }
-  const of = s.files === void 0 ? "" : ` of ${s.files === 1 ? "1 test file" : `${s.files} test files`}`;
-  const tier = `behind the ${laneText(s.lane)} tier${of} running since ${timeText(s.behind)}`;
-  const reason2 = promoted ? `queued, promoted, ${tier}` : `queued ${tier}`;
-  return same(
-    reason2,
-    context.named ? { kind: "none", text: NOT_INTERRUPTED } : {
-      kind: "command",
-      args: "status --wait 60000 <test file>",
-      text: "{command} moves a named one ahead when that tier ends"
-    }
-  );
-}
-function laneText(lane) {
-  if (!isSlowLane(lane)) return lane;
-  const runner = lane.slice(SLOW_LANE_PREFIX.length);
-  return runner === "" ? "slow" : `slow ${runner}`;
-}
-
-// src/core/status/next-step-text.ts
-init_text();
-import { posix as posix16 } from "node:path";
-var PATHS_IN_COMMAND = 3;
-function stepText(step, paths, command) {
-  const n = paths.length;
-  const it = n === 1 ? "it" : "them";
-  const cmd = stepCommand(step, paths, command);
-  switch (step.kind) {
-    case "retry": {
-      if (step.again === true) {
-        const one = n === 1 ? "this one file" : "each of them";
-        return `after an environment failure, \`${cmd}\` runs ${one} again`;
-      }
-      const runs = n === 1 ? "runs it once" : "runs each once";
-      const every = step.all === void 0 ? "every test file" : `all ${plural(step.all, "test file")}`;
-      const all = n > PATHS_IN_COMMAND ? `, \`${command} run --all --wait\` runs ${every} not current here` : "";
-      return `\`${cmd}\` ${runs}${all}${(step.note ?? "").replaceAll("{it}", it)}`;
-    }
-    case "command":
-    case "shell":
-      return step.kind === "command" && step.said === true ? "" : fill(step.text, cmd, command, it);
-    case "none":
-      return fill(step.text, null, command, it);
-  }
-}
-function reasonWords(next, paths, command) {
-  return fill(
-    next.reason,
-    stepCommand(next.step, paths, command),
-    command,
-    paths.length === 1 ? "it" : "them"
-  );
-}
-function fromBase(base, path) {
-  if (base === void 0 || base === "" || posix16.isAbsolute(base)) return path;
-  return posix16.relative(base, path);
-}
-function stepCommand(step, paths, command) {
-  switch (step.kind) {
-    case "retry": {
-      const files2 = paths.length > PATHS_IN_COMMAND ? "<test file>..." : paths.join(" ");
-      return `${command} retry ${files2}${step.again === true ? " --reason environment" : ""}`;
-    }
-    case "command":
-      return `${command} ${step.args}`;
-    case "shell":
-      return step.command;
-    case "none":
-      return null;
-  }
-}
-function fill(text2, cmd, command, it) {
-  return text2.replaceAll("{command}", cmd === null ? "" : `\`${cmd}\``).replaceAll("{squeal}", command).replaceAll("{it}", it);
-}
-
-// src/cli/named-file-lines.ts
+init_standing_groups();
 var CLASS_FILES_SHOWN = 10;
 var CLASSES = [
   ["pending", "Pending"],
@@ -56004,11 +56433,11 @@ function classLines(files2, command, base) {
     if (of.length === 0) return [];
     return [
       `${label2} (${of.length}):`,
-      ...groupsOf(of).map((g2) => `  ${groupLine(g2, command, base)}`)
+      ...groupsOf2(of).map((g2) => `  ${groupLine2(g2, command, base)}`)
     ];
   });
 }
-function groupsOf(files2) {
+function groupsOf2(files2) {
   const groups = /* @__PURE__ */ new Map();
   for (const f of files2) {
     const standing = standingOf(f);
@@ -56025,7 +56454,7 @@ function groupsOf(files2) {
     }
     group.files.push(f.testFile);
     if (standing !== void 0 && group.standing !== void 0) {
-      group.standing = widest2(group.standing, standing);
+      group.standing = widest(group.standing, standing);
     }
   }
   return [...groups.values()].map(({ files: refs2, standing, words }) => ({
@@ -56037,7 +56466,7 @@ function groupsOf(files2) {
 function standingOf(f) {
   return f.state === "current" ? void 0 : f.standing ?? f.pending;
 }
-function groupLine({ files: files2, next, words }, command, base) {
+function groupLine2({ files: files2, next, words }, command, base) {
   const paths = files2.map((f) => fromBase(base, f.path));
   const shown = files2.slice(0, CLASS_FILES_SHOWN).map(pathText).join(", ");
   const more = files2.length > CLASS_FILES_SHOWN ? ` and ${files2.length - CLASS_FILES_SHOWN} more` : "";
@@ -56052,7 +56481,7 @@ var REASON_GROUPS_SHOWN = 5;
 function reasonGroups(files2, command, base) {
   const pending = files2.filter((f) => f.state === "pending");
   const counted = pending.length > 0 ? pending : files2.filter((f) => f.state !== "current");
-  const all = groupsOf(counted);
+  const all = groupsOf2(counted);
   const shown = all.slice(0, REASON_GROUPS_SHOWN).map((g2) => groupShort(g2, command, base));
   const rest = all.slice(REASON_GROUPS_SHOWN);
   if (rest.length === 0) return shown.join(", ");
@@ -56068,36 +56497,6 @@ function groupShort({ files: files2, next, words }, command, base) {
   const short = fill(next.short, cmd, command, it);
   const named = cmd === null || next.short.includes("{command}");
   return `${files2.length} ${short}${named ? "" : `: \`${cmd}\``}`;
-}
-function groupId(s) {
-  switch (s.kind) {
-    case "running":
-      return `running ${s.lane} ${(s.files ?? 1) > 1} ${s.setup?.file ?? ""}`;
-    case "queued":
-      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true}`;
-    case "claim":
-      return `claim ${s.worktree}`;
-    case "stale":
-      return `stale ${s.verdict} ${s.lookupOnly}`;
-    case "timed-out":
-    case "no-result":
-    case "runner":
-      return `${s.kind} ${s.reason}`;
-    default:
-      return s.kind;
-  }
-}
-function widest2(a, b) {
-  if (a.kind === "running" && b.kind === "running") {
-    return a.since === null || b.since !== null && b.since < a.since ? b : a;
-  }
-  if (a.kind === "queued" && b.kind === "queued" && a.behind !== null && b.behind !== null) {
-    return b.behind < a.behind ? b : a;
-  }
-  if (a.kind === "claim" && b.kind === "claim") {
-    return a.until === null || b.until !== null && b.until > a.until ? b : a;
-  }
-  return a;
 }
 function unmatchedText(selection) {
   const paths = selection.unmatchedPaths ?? selection.unmatched.map((resolved2) => ({ resolved: resolved2, given: resolved2 }));
@@ -56144,8 +56543,8 @@ function waitLine(wait, command = "squeal") {
   const slow = wait.slow === void 0 || wait.outcome === "no-daemon" ? "" : slowText(wait.slow);
   return `${line}${slow}${lapseText(wait.lapse)}${worktreeText(wait.result)}`;
 }
-function waitText(wait, now, command = "squeal") {
-  return `${formatStatus(wait.result, now, command)}
+function waitText(wait, now, command = "squeal", options = {}) {
+  return `${formatStatus(wait.result, now, command, options)}
 ${waitLine(wait, command)}
 `;
 }
@@ -56153,7 +56552,7 @@ function ownLine(wait, command) {
   const { outcome: outcome2, transitions, edit, result: snapshot3 } = wait;
   const after = `after ${(wait.waitedMs / 1e3).toFixed(1)} s`;
   const at2 = `at revision ${snapshot3.revision}`;
-  const running = outcome2 === "quiet" ? `${checkpointText(snapshot3, command)}${wait.slow === void 0 ? slowTierText2(snapshot3, command) : ""}` : "";
+  const running = outcome2 === "quiet" ? `${checkpointText2(snapshot3, command)}${wait.slow === void 0 ? slowTierText2(snapshot3, command) : ""}` : "";
   if (edit !== void 0 && outcome2 !== "no-daemon") {
     return `${editLine(edit, wait, at2, after)}${running}`;
   }
@@ -56171,15 +56570,22 @@ function ownLine(wait, command) {
 function editLine(edit, wait, at2, after) {
   const files2 = `${plural(edit.testFiles, "test file")} the edits since revision ${edit.since} re-keyed`;
   const others = edit.otherTransitions > 0 ? `; ${plural(edit.otherTransitions, "transition")} of other checks` : "";
-  const pending = anyPending(wait.result) ? `; ${pendingText2(wait.result)} in all` : "";
   switch (wait.outcome) {
-    case "quiet":
-      return `Returned on quiet: nothing the edits since revision ${edit.since} re-keyed is pending (${plural(edit.testFiles, "test file")}) ${at2} ${after}${pending}${others}`;
+    case "quiet": {
+      const rest = anyPending(wait.result) || (wait.result.outstanding ?? []).length > 0 ? "; this wait does not hold for the rest of the worktree" : "";
+      return `Returned on quiet: ${quietText(edit)}, ${at2} ${after}${rest}${others}`;
+    }
     case "news":
-      return `Returned on news: ${newsText(wait, files2)}, ${at2} ${after}${pending}${others}`;
+      return `Returned on news: ${newsText(wait, files2)}, ${at2} ${after}${others}`;
     default:
-      return `Returned on timeout ${after}: ${edit.pending} of the ${files2} pending ${at2}${pending}${others}`;
+      return `Returned on timeout ${after}: ${edit.pending} of the ${files2} pending ${at2}${others}`;
   }
+}
+function quietText(edit) {
+  const since = `the edits since revision ${edit.since} re-keyed`;
+  if (edit.testFiles === 0) return `${since} no test file`;
+  if (edit.testFiles === 1) return `the 1 test file ${since} is not pending`;
+  return `none of the ${edit.testFiles} test files ${since} is pending`;
 }
 function newsText(wait, files2) {
   const slow = wait.slow?.transitions ?? 0;
@@ -56192,7 +56598,7 @@ function newsText(wait, files2) {
   }
   return parts2.join(" and ");
 }
-function checkpointText(snapshot3, command) {
+function checkpointText2(snapshot3, command) {
   const checkpoint = snapshot3.checkpoint;
   if (checkpoint === void 0 || checkpoint.owed) return "";
   const what = checkpoint.kind === "run-all" ? "a `run --all` checkpoint" : "the baseline checkpoint";
@@ -56329,8 +56735,8 @@ function noDaemonText(daemon, down) {
 }
 function lapseText(lapse) {
   if (lapse === void 0) return "";
-  const age2 = Math.round(lapse.staleMs / 1e3);
-  return `; the daemon's heartbeat went ${age2} s stale while its socket showed it alive (a busy store or a stalled daemon), so the wait went on`;
+  const age = Math.round(lapse.staleMs / 1e3);
+  return `; the daemon's heartbeat went ${age} s stale while its socket showed it alive (a busy store or a stalled daemon), so the wait went on`;
 }
 function worktreeText(snapshot3) {
   const current3 = splitByValidity(snapshot3.knownFailures).current;
@@ -56357,186 +56763,7 @@ init_fs();
 init_keys();
 
 // src/cli/named-files.ts
-init_policy2();
-init_keys();
-init_load();
-init_claims();
-init_promotions();
-init_runner_work_bound();
-init_slow3();
-init_state3();
-init_types();
-
-// src/cli/named-standing.ts
-function unknownStanding(unknown, facts) {
-  const reason2 = unknown.reason ?? "no reason was kept";
-  switch (unknown.cause) {
-    case "timeout":
-      return { kind: "timed-out", reason: reason2, load: facts.load(), notCurrent: facts.notCurrent() };
-    case "install":
-      return { kind: "no-install", command: facts.installCommand };
-    case "runner":
-      return { kind: "runner", reason: reason2 };
-    case "setup":
-      return { kind: "setup-failed" };
-    case "never-run":
-      return { kind: "never-run", lookupOnly: facts.lookupOnly, notCurrent: facts.notCurrent() };
-    default:
-      return {
-        kind: "no-result",
-        reason: `${unknown.ran ? "ran, nothing recorded" : "no result"}: ${reason2}`,
-        notCurrent: facts.notCurrent()
-      };
-  }
-}
-function setupsOf(states) {
-  const setups = /* @__PURE__ */ new Map();
-  for (const s of states) {
-    if (s.check.kind === "setup") setups.set(s.check.project, { file: s.check.testPath });
-  }
-  return setups;
-}
-function once(read5) {
-  let value;
-  return () => {
-    value ??= { v: read5() };
-    return value.v;
-  };
-}
-
-// src/cli/named-files.ts
-function readNamedFiles(store, worktreeId, root, files2, daemon, now, load = hostLoad) {
-  const states = store.knownStates.list(worktreeId);
-  const keys = store.testFileKeys.list(worktreeId);
-  const rows = new Map(keys.map((row) => [testFileId(row.testFile), row]));
-  const checks = checksByFile(states);
-  const policy = readPolicy(root);
-  const runs = openRunsOf(store, worktreeId, daemon);
-  const promoted = promotedOf(store, worktreeId, daemon, now);
-  const header = readHeader(store, worktreeId, states, keys);
-  const unlisted = unlistedReason(header, policy);
-  const reasons = unknownReasons(store, worktreeId, states, root, now);
-  const setups = setupsOf(states);
-  const facts = {
-    lookupOnly: policy.baseline.onStart === "lookup-only",
-    installCommand: header.installCommand ?? null,
-    load: once(load),
-    // What `run --all --wait` runs, from the rows and states read above: no further read.
-    notCurrent: once(
-      () => keys.filter(
-        (row) => fileClassOf(row, checks.get(testFileId(row.testFile)) ?? []) !== "current"
-      ).length
-    )
-  };
-  return files2.map((ref2) => {
-    const row = rows.get(testFileId(ref2));
-    const own = checks.get(testFileId(ref2)) ?? [];
-    const state = fileClassOf(row, own);
-    if (state === "current") return { testFile: ref2, state, ...verdictOf(own) };
-    const key2 = row?.key ?? null;
-    const claimant = state === "pending" || key2 === null ? null : claimantOf(store, worktreeId, ref2, key2, now);
-    const claim = claimant === null ? null : { kind: "claim", worktree: claimant.worktree.root, until: claimBound(policy, now) };
-    if (state === "stale") {
-      const verdict = verdictOf(own);
-      const standing = claim ?? {
-        kind: "stale",
-        verdict: verdict.verdict ?? null,
-        lookupOnly: facts.lookupOnly,
-        notCurrent: facts.notCurrent()
-      };
-      return { testFile: ref2, state, ...verdict, standing };
-    }
-    if (state === "unknown") {
-      if (row === void 0) return { testFile: ref2, state };
-      const unknown = reasons.of(row, own);
-      return { testFile: ref2, state, unknown, standing: claim ?? unknownStanding(unknown, facts) };
-    }
-    const running = row?.pending === "running" || own.some((s) => s.pendingPhase === "running");
-    const lane = laneFor(policy, ref2, runnerLaneOf(policy, ref2.project));
-    const run4 = running ? runOf(runs, ref2) : void 0;
-    const setup = isSlowLane(lane) ? setups.get(ref2.project) : void 0;
-    const pending = running ? {
-      kind: "running",
-      lane,
-      since: run4?.startedAt ?? null,
-      ...run4 === void 0 ? {} : { files: run4.testFiles.length },
-      ...setup === void 0 ? {} : { setup }
-    } : unlisted ?? queuedReason(store, worktreeId, ref2, key2, lane, runs, policy, now);
-    if (pending.kind === "queued" && promoted.has(testFileId(ref2))) {
-      const promotedReason = { ...pending, promoted: true };
-      return { testFile: ref2, state, pending: promotedReason, standing: promotedReason };
-    }
-    return { testFile: ref2, state, pending, standing: pending };
-  });
-}
-function claimBound(policy, now) {
-  return now + claimBoundMs(policy.runner.timeoutMs);
-}
-function pauseOnlyIds(store, worktreeId, root, files2, daemon, now) {
-  const policy = readPolicy(root);
-  if (policy.slow.trigger !== "idle") return /* @__PURE__ */ new Set();
-  const slow = files2.filter((ref2) => slowView(policy).isSlow(ref2));
-  if (slow.length === 0) return /* @__PURE__ */ new Set();
-  const rows = new Map(
-    store.testFileKeys.list(worktreeId, slow).map((row) => [testFileId(row.testFile), row])
-  );
-  const checks = checksByFile(store.knownStates.list(worktreeId, slow));
-  const runs = openRunsOf(store, worktreeId, daemon);
-  const ids = /* @__PURE__ */ new Set();
-  for (const ref2 of slow) {
-    const id2 = testFileId(ref2);
-    const row = rows.get(id2);
-    const own = checks.get(id2) ?? [];
-    if (fileClassOf(row, own) !== "pending") continue;
-    if (row?.pending === "running" || own.some((s) => s.pendingPhase === "running")) continue;
-    const lane = laneFor(policy, ref2, runnerLaneOf(policy, ref2.project));
-    const reason2 = queuedReason(store, worktreeId, ref2, row?.key ?? null, lane, runs, policy, now);
-    if (reason2.kind === "slow") ids.add(id2);
-  }
-  return ids;
-}
-function promotedOf(store, worktreeId, daemon, now) {
-  const record = store.worktrees.get(worktreeId)?.daemon ?? null;
-  if (record === null || daemon.state !== "alive") return /* @__PURE__ */ new Set();
-  return promotedIds(store, worktreeId, record.startedAt, now);
-}
-function runnerLaneOf(policy, project) {
-  if (policy.nodeTest.some((p) => p.name === project)) return "node-test";
-  if (policy.pytest.some((p) => p.name === project)) return "pytest";
-  return "vitest";
-}
-function queuedReason(store, worktreeId, ref2, key2, lane, runs, policy, now) {
-  const claimant = key2 === null ? null : claimantOf(store, worktreeId, ref2, key2, now);
-  if (claimant !== null) {
-    return { kind: "claim", worktree: claimant.worktree.root, until: claimBound(policy, now) };
-  }
-  const tier = runs.find(
-    (run4) => run4.testFiles.some((f) => laneFor(policy, f, runnerLaneOf(policy, f.project)) === lane)
-  );
-  if (tier !== void 0) {
-    return { kind: "queued", lane, behind: tier.startedAt, files: tier.testFiles.length };
-  }
-  if (slowView(policy).isSlow(ref2)) {
-    return policy.slow.trigger === "idle" ? { kind: "slow", pausesOnly: true } : { kind: "slow" };
-  }
-  return { kind: "queued", lane, behind: null };
-}
-function unlistedReason(header, policy) {
-  const refined = header.refinedRevision;
-  if (header.runnerPartPending !== true || refined === null || refined === void 0) return null;
-  const callBoundMs = runnerPartBoundMs(policy.runner.timeoutMs);
-  return { kind: "unlisted", revision: header.revision, callBoundMs };
-}
-function runOf(runs, ref2) {
-  const id2 = testFileId(ref2);
-  return runs.find((run4) => run4.testFiles.some((f) => testFileId(f) === id2));
-}
-function verdictOf(own) {
-  for (const verdict of ["fail", "pass", "skip"]) {
-    if (own.some((s) => s.outcome === verdict)) return { verdict };
-  }
-  return {};
-}
+init_standing();
 
 // src/cli/status-wait-promote.ts
 var promoteNamed = (root, testFiles, withinMs) => {
@@ -57013,7 +57240,8 @@ async function statusWaitCommand(timeoutMs, json3, io, holdSlow = false, paths =
 `);
     io.stderr(line);
   } else {
-    io.stdout(waitText(wait, now(), statusCommand(env)));
+    const base = baseOf(wait.result.worktreeRoot, io.cwd ?? process.cwd());
+    io.stdout(waitText(wait, now(), statusCommand(env), { ...named, base }));
   }
   return holdSlow ? slowWaitCode(wait) : 0;
 }
@@ -58842,18 +59070,22 @@ function onPath2(name2, env) {
 var HELP = `squeal: continuous validation for coding agents. Push transitions, pull state.
 
 Usage:
-  squeal status [--notes] [--json]
-                                Current validation state of this worktree; --notes
-                                lists every stopped-process note in full
+  squeal status [--full] [--notes] [--json]
+                                Current validation state of this worktree: its verdict,
+                                known failures and outstanding work, each with what
+                                advances it; --full adds the worktree, daemon,
+                                inheritance, each file without a result and the notes;
+                                --notes is --full with every note in full
   squeal status <path>... [--full] [--json]
                                 The verdict of the test files the paths select (a test
                                 file, or a file in test files' closures) now, if the
                                 daemon stores its pass over your edits within 750 ms:
                                 exit 0, 1 on known failures, 3 without one; --full
                                 prints this worktree's status first
-  squeal status --wait <ms> [--json]
+  squeal status --wait <ms> [--full] [--json]
                                 Wait up to <ms> until nothing is pending at the current
-                                revision or a check changed, then print status
+                                revision or a check changed, then print status (--full:
+                                in full) and last the line saying why it returned
   squeal status --wait <ms> <path>... [--full] [--json]
                                 Wait up to <ms> for the test files the paths select,
                                 then give their verdict as status <path>... does
@@ -58999,7 +59231,8 @@ function status(args2, io) {
   const result = readStatus(cwd, { now, busyRetryMs: CLI_READ_RETRY_MS });
   const env = io.env ?? process.env;
   const harness = parsed.json ? null : codexStatusLine(cwd, env) ?? piStatusLine(cwd, env, fileURLToPath14(import.meta.url)) ?? opencodeStatusLine(cwd, env);
-  const human = () => `${formatStatus(result, now(), statusCommand(env), { allNotes })}${harness ?? ""}`;
+  const base = result.available ? baseOf(result.worktreeRoot, cwd) : "";
+  const human = () => `${formatStatus(result, now(), statusCommand(env), { full, allNotes, base })}${harness ?? ""}`;
   io.stdout(parsed.json ? json2(result) : human());
   return result.available ? 0 : 1;
 }

@@ -574,6 +574,9 @@ var pauses = channel(TEST_PAUSE_CHANNEL);
 // src/core/status/open.ts
 var SLEEP = new Int32Array(new SharedArrayBuffer(4));
 
+// src/core/slow/slot.ts
+import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
+
 // src/core/delivery/format.ts
 var SQUEAL_COMMAND = "squeal";
 function shellWord(text) {

@@ -107,6 +107,12 @@ var DEFAULT_POLICY = {
   store: { retentionDays: 7, maxSizeMb: null }
 };
 
+// src/core/types/runner.ts
+var SLOW_LANE_PREFIX = "slow:";
+function isSlowLane(lane) {
+  return lane.startsWith(SLOW_LANE_PREFIX);
+}
+
 // src/core/types/scheduler.ts
 var MAX_PERSISTED_NOTES = 20;
 function notesMetaKey(worktreeId) {
@@ -3630,7 +3636,7 @@ function withFlaky(store, worktreeId, entries) {
     store.testFileKeys.list(worktreeId).map((r) => [testFileId(r.testFile), r.key])
   );
   const rows = /* @__PURE__ */ new Map();
-  const runOf = (check, key) => {
+  const runOf2 = (check, key) => {
     if (!rows.has(key)) rows.set(key, store.results.byKey(key));
     const identity2 = checkIdentity(check);
     return rows.get(key)?.find((r) => checkIdentity(r.check) === identity2)?.provenance.runId;
@@ -3640,7 +3646,7 @@ function withFlaky(store, worktreeId, entries) {
     const note = notes.get(checkIdentity(entry3.check));
     const key = keys.get(testFileId(testFileOf(entry3.check)));
     if (note === void 0 || note.key !== key) return entry3;
-    const runId = entry3.kind === "fail-to-pass" && key !== null ? runOf(entry3.check, key) : void 0;
+    const runId = entry3.kind === "fail-to-pass" && key !== null ? runOf2(entry3.check, key) : void 0;
     const retry = runId !== void 0 && key !== null ? passedRetry(store, testFileOf(entry3.check), key, runId) : void 0;
     return { ...entry3, flaky: note, ...retry === void 0 ? {} : { retry } };
   });
@@ -4190,6 +4196,135 @@ function unavailable(reason, detail) {
 }
 var SLEEP = new Int32Array(new SharedArrayBuffer(4));
 
+// src/core/scheduler/claims.ts
+var CLAIM_GRACE_MS = 6e3;
+var CLAIM_UNBOUNDED_MS = 6e5;
+function claimBoundMs(timeoutMs) {
+  return timeoutMs === null ? CLAIM_UNBOUNDED_MS : timeoutMs + CLAIM_GRACE_MS;
+}
+
+// src/core/scheduler/runner-work-bound.ts
+var RUNNER_PART_MARGIN_MS = 6e4;
+function runnerPartBoundMs(timeoutMs) {
+  return (timeoutMs ?? CLAIM_UNBOUNDED_MS) + CLAIM_GRACE_MS + RUNNER_PART_MARGIN_MS;
+}
+
+// src/core/slow/slot.ts
+import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
+
+// src/core/daemon/paths.ts
+import { chmodSync, lstatSync as lstatSync2, mkdirSync as mkdirSync4 } from "node:fs";
+import { dirname as dirname3, isAbsolute as isAbsolute4, join as join9 } from "node:path";
+function runtimeDir(env = process.env) {
+  return xdgRuntimeDir(env) ?? userTmpDir();
+}
+function preparePrivateDir(dir, uid = currentUid(), role = "socket directory") {
+  mkdirSync4(dirname3(dir), { recursive: true });
+  try {
+    mkdirSync4(dir, { mode: 448 });
+    chmodSync(dir, 448);
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+  }
+  checkPrivateDir(dir, uid, role);
+}
+function checkPrivateDir(dir, uid, role = "socket directory") {
+  const stat = lstatSync2(dir);
+  if (!stat.isDirectory()) {
+    throw new Error(`${role} ${dir} is not a directory; refusing to use it`);
+  }
+  if (stat.uid !== uid) {
+    throw new Error(`${role} ${dir} is owned by uid ${stat.uid}, not ${uid}; refusing to use it`);
+  }
+  if ((stat.mode & 63) !== 0) {
+    const mode = (stat.mode & 511).toString(8).padStart(3, "0");
+    throw new Error(`${role} ${dir} has mode ${mode}, not 700; refusing to use it`);
+  }
+}
+function userTmpDir(uid = currentUid()) {
+  return join9("/tmp", `squeal-${uid}`);
+}
+function xdgRuntimeDir(env) {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return xdg !== void 0 && xdg !== "" && isAbsolute4(xdg) ? xdg : null;
+}
+function currentUid() {
+  return process.getuid?.() ?? 0;
+}
+
+// src/core/scheduler/slow.ts
+var views = /* @__PURE__ */ new WeakMap();
+function slowView(policy) {
+  let view = views.get(policy);
+  if (view === void 0) {
+    const globs2 = slowGlobs(policy, policy.nodeTest);
+    view = { isSlow: slowFiles(policy, policy.nodeTest), globs: globs2, declared: globs2.length > 0 };
+    views.set(policy, view);
+  }
+  return view;
+}
+function laneFor(policy, ref, runnerLane) {
+  return slowView(policy).isSlow(ref) ? SLOW_LANE_PREFIX + runnerLane : runnerLane;
+}
+
+// src/core/scheduler/promotions.ts
+function promotionsMetaKey(worktreeId) {
+  return worktreeMetaKey("promotions", worktreeId);
+}
+function promotedIds(store, worktreeId, daemonStartedAt, now) {
+  const raw = store.meta.get(promotionsMetaKey(worktreeId));
+  if (raw === null) return /* @__PURE__ */ new Set();
+  try {
+    const { at: at2, promotions } = JSON.parse(raw);
+    if (typeof at2 !== "number" || at2 < daemonStartedAt || !Array.isArray(promotions)) {
+      return /* @__PURE__ */ new Set();
+    }
+    const live = promotions.filter(
+      (p) => typeof p === "object" && p !== null && typeof p.until === "number" && p.until > now && Array.isArray(p.files)
+    );
+    return new Set(live.flatMap((p) => p.files.filter((f) => typeof f === "string")));
+  } catch {
+    return /* @__PURE__ */ new Set();
+  }
+}
+
+// src/core/status/standing-facts.ts
+function unknownStanding(unknown, facts) {
+  const reason = unknown.reason ?? "no reason was kept";
+  switch (unknown.cause) {
+    case "timeout":
+      return { kind: "timed-out", reason, load: facts.load(), notCurrent: facts.notCurrent() };
+    case "install":
+      return { kind: "no-install", command: facts.installCommand };
+    case "runner":
+      return { kind: "runner", reason };
+    case "setup":
+      return { kind: "setup-failed" };
+    case "never-run":
+      return { kind: "never-run", lookupOnly: facts.lookupOnly, notCurrent: facts.notCurrent() };
+    default:
+      return {
+        kind: "no-result",
+        reason: `${unknown.ran ? "ran, nothing recorded" : "no result"}: ${reason}`,
+        notCurrent: facts.notCurrent()
+      };
+  }
+}
+function setupsOf(states) {
+  const setups = /* @__PURE__ */ new Map();
+  for (const s of states) {
+    if (s.check.kind === "setup") setups.set(s.check.project, { file: s.check.testPath });
+  }
+  return setups;
+}
+function once(read4) {
+  let value;
+  return () => {
+    value ??= { v: read4() };
+    return value.v;
+  };
+}
+
 // src/core/scheduler/unknown-files.ts
 function unknownFilesMetaKey(worktreeId) {
   return worktreeMetaKey("unknownFiles", worktreeId);
@@ -4291,6 +4426,241 @@ function unknownReasons(store, worktreeId, states, root, now) {
   };
 }
 
+// src/core/status/standing.ts
+function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, reads) {
+  const states = reads?.states ?? store.knownStates.list(worktreeId);
+  const keys = reads?.keys ?? store.testFileKeys.list(worktreeId);
+  const rows = new Map(keys.map((row) => [testFileId(row.testFile), row]));
+  const checks = checksByFile(states);
+  const policy = readPolicy(root);
+  const runs = reads?.runs ?? openRunsOf(store, worktreeId, daemon);
+  const promoted = promotedOf(store, worktreeId, daemon, now);
+  const header = reads?.header ?? readHeader(store, worktreeId, states, keys);
+  const unlisted2 = unlistedReason(header, policy);
+  const reasons = unknownReasons(store, worktreeId, states, root, now);
+  const setups = setupsOf(states);
+  const facts = {
+    lookupOnly: policy.baseline.onStart === "lookup-only",
+    installCommand: header.installCommand ?? null,
+    load: once(load),
+    // What `run --all --wait` runs, from the rows and states read above: no further read.
+    notCurrent: once(
+      () => keys.filter(
+        (row) => fileClassOf(row, checks.get(testFileId(row.testFile)) ?? []) !== "current"
+      ).length
+    )
+  };
+  return (files2) => files2.map((ref) => {
+    const row = rows.get(testFileId(ref));
+    const own = checks.get(testFileId(ref)) ?? [];
+    const state = fileClassOf(row, own);
+    if (state === "current") return { testFile: ref, state, ...verdictOf(own) };
+    const key = row?.key ?? null;
+    const claimant = state === "pending" || key === null ? null : claimantOf(store, worktreeId, ref, key, now);
+    const claim = claimant === null ? null : { kind: "claim", worktree: claimant.worktree.root, until: claimBound(policy, now) };
+    if (state === "stale") {
+      const verdict = verdictOf(own);
+      const standing = claim ?? {
+        kind: "stale",
+        verdict: verdict.verdict ?? null,
+        lookupOnly: facts.lookupOnly,
+        notCurrent: facts.notCurrent()
+      };
+      return { testFile: ref, state, ...verdict, standing };
+    }
+    if (state === "unknown") {
+      if (row === void 0) return { testFile: ref, state };
+      const unknown = reasons.of(row, own);
+      return {
+        testFile: ref,
+        state,
+        unknown,
+        standing: claim ?? unknownStanding(unknown, facts)
+      };
+    }
+    const running = row?.pending === "running" || own.some((s) => s.pendingPhase === "running");
+    const lane = laneFor(policy, ref, runnerLaneOf(policy, ref.project));
+    const run = running ? runOf(runs, ref) : void 0;
+    const setup = isSlowLane(lane) ? setups.get(ref.project) : void 0;
+    const pending = running ? {
+      kind: "running",
+      lane,
+      since: run?.startedAt ?? null,
+      ...run === void 0 ? {} : { files: run.testFiles.length },
+      ...setup === void 0 ? {} : { setup }
+    } : unlisted2 ?? queuedReason(store, worktreeId, ref, key, lane, runs, policy, now);
+    if (pending.kind === "queued" && promoted.has(testFileId(ref))) {
+      const promotedReason = { ...pending, promoted: true };
+      return { testFile: ref, state, pending: promotedReason, standing: promotedReason };
+    }
+    return { testFile: ref, state, pending, standing: pending };
+  });
+}
+function claimBound(policy, now) {
+  return now + claimBoundMs(policy.runner.timeoutMs);
+}
+function promotedOf(store, worktreeId, daemon, now) {
+  const record = store.worktrees.get(worktreeId)?.daemon ?? null;
+  if (record === null || daemon.state !== "alive") return /* @__PURE__ */ new Set();
+  return promotedIds(store, worktreeId, record.startedAt, now);
+}
+function runnerLaneOf(policy, project) {
+  if (policy.nodeTest.some((p) => p.name === project)) return "node-test";
+  if (policy.pytest.some((p) => p.name === project)) return "pytest";
+  return "vitest";
+}
+function queuedReason(store, worktreeId, ref, key, lane, runs, policy, now) {
+  const claimant = key === null ? null : claimantOf(store, worktreeId, ref, key, now);
+  if (claimant !== null) {
+    return { kind: "claim", worktree: claimant.worktree.root, until: claimBound(policy, now) };
+  }
+  const tier = runs.find(
+    (run) => run.testFiles.some((f) => laneFor(policy, f, runnerLaneOf(policy, f.project)) === lane)
+  );
+  if (tier !== void 0) {
+    return { kind: "queued", lane, behind: tier.startedAt, files: tier.testFiles.length };
+  }
+  if (slowView(policy).isSlow(ref)) {
+    return policy.slow.trigger === "idle" ? { kind: "slow", pausesOnly: true } : { kind: "slow" };
+  }
+  return { kind: "queued", lane, behind: null };
+}
+function unlistedReason(header, policy) {
+  const refined2 = header.refinedRevision;
+  if (header.runnerPartPending !== true || refined2 === null || refined2 === void 0) return null;
+  const callBoundMs = runnerPartBoundMs(policy.runner.timeoutMs);
+  return { kind: "unlisted", revision: header.revision, callBoundMs };
+}
+function runOf(runs, ref) {
+  const id = testFileId(ref);
+  return runs.find((run) => run.testFiles.some((f) => testFileId(f) === id));
+}
+function verdictOf(own) {
+  for (const verdict of ["fail", "pass", "skip"]) {
+    if (own.some((s) => s.outcome === verdict)) return { verdict };
+  }
+  return {};
+}
+
+// src/core/status/standing-groups.ts
+function groupId(s) {
+  switch (s.kind) {
+    case "running":
+      return `running ${s.lane} ${(s.files ?? 1) > 1} ${s.setup?.file ?? ""}`;
+    case "queued":
+      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true}`;
+    case "claim":
+      return `claim ${s.worktree}`;
+    case "stale":
+      return `stale ${s.verdict} ${s.lookupOnly}`;
+    case "timed-out":
+    case "no-result":
+    case "runner":
+      return `${s.kind} ${s.reason}`;
+    case "retry":
+      return `retry ${s.reason} ${s.noResult} ${s.runningSince} ${s.elsewhere}`;
+    default:
+      return s.kind;
+  }
+}
+function widest(a, b) {
+  if (a.kind === "running" && b.kind === "running") {
+    return a.since === null || b.since !== null && b.since < a.since ? b : a;
+  }
+  if (a.kind === "queued" && b.kind === "queued" && a.behind !== null && b.behind !== null) {
+    return b.behind < a.behind ? b : a;
+  }
+  if (a.kind === "claim" && b.kind === "claim") {
+    return a.until === null || b.until !== null && b.until > a.until ? b : a;
+  }
+  return a;
+}
+
+// src/core/status/outstanding.ts
+var ORDER = [
+  "no-daemon",
+  "listing",
+  "unlisted",
+  "checkpoint",
+  "retry",
+  "no-install",
+  "setup-failed",
+  "runner",
+  "timed-out",
+  "no-result",
+  "stale",
+  "never-run",
+  "claim",
+  "running",
+  "queued",
+  "slow"
+];
+function outstandingOf(store, worktreeId, root, reads, now, load) {
+  const { daemon, header } = reads;
+  if (daemon.state !== "alive") {
+    const since = daemon.since;
+    return [{ standing: { kind: "no-daemon", since, revision: header.revision }, files: [] }];
+  }
+  if (header.testFilesListed === false) return [{ standing: { kind: "listing" }, files: [] }];
+  const policy = readPolicy(root);
+  const slow = slowView(policy);
+  const retries = retryStandings(reads.pendingRetries, worktreeId);
+  const refs = reads.keys.map((row) => row.testFile).sort((a, b) => testFileId(a).localeCompare(testFileId(b)));
+  const files2 = standingsOf(store, worktreeId, root, daemon, now, load, reads)(refs);
+  const groups = /* @__PURE__ */ new Map();
+  const add = (standing, ref) => {
+    const id = groupId(standing);
+    const group = groups.get(id);
+    if (group === void 0) {
+      groups.set(id, { standing, files: ref === null ? [] : [ref] });
+      return;
+    }
+    if (ref !== null) group.files.push(ref);
+    group.standing = widest(group.standing, standing);
+  };
+  for (const file of files2) {
+    const retry = retries.get(testFileId(file.testFile));
+    if (retry !== void 0) {
+      add(retry, file.testFile);
+      continue;
+    }
+    const standing = file.state === "current" ? void 0 : file.standing ?? file.pending;
+    if (standing === void 0) continue;
+    const held = standing.kind === "running" && standing.setup !== void 0;
+    if (slow.isSlow(file.testFile) && !held) continue;
+    add(standing, file.testFile);
+  }
+  if (header.runnerPartPending === true && !groups.has(groupId(unlisted(header, policy)))) {
+    add(unlisted(header, policy), null);
+  }
+  if (reads.checkpoint !== void 0 && !reads.checkpoint.owed) {
+    add({ kind: "checkpoint" }, null);
+  }
+  return [...groups.values()].sort(
+    (a, b) => ORDER.indexOf(a.standing.kind) - ORDER.indexOf(b.standing.kind)
+  );
+}
+function unlisted(header, policy) {
+  return {
+    kind: "unlisted",
+    revision: header.revision,
+    callBoundMs: runnerPartBoundMs(policy.runner.timeoutMs)
+  };
+}
+function retryStandings(pending, worktreeId) {
+  const retries = /* @__PURE__ */ new Map();
+  for (const r of pending?.retries ?? []) {
+    retries.set(testFileId(r.testFile), {
+      kind: "retry",
+      reason: r.reason,
+      noResult: r.noResult === true,
+      runningSince: r.runningSince ?? null,
+      elsewhere: r.claimedBy !== null && r.claimedBy !== worktreeId
+    });
+  }
+  return retries;
+}
+
 // src/core/status/snapshot.ts
 var HEARTBEAT_GRACE_INTERVALS = 2;
 function createStatusBuilder(store, options = {}) {
@@ -4310,7 +4680,7 @@ function createStatusBuilder(store, options = {}) {
     }
   };
 }
-function snapshot(store, worktreeId, root, now) {
+function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad) {
   const worktree = store.worktrees.get(worktreeId);
   const revision = store.revisions.latest(worktreeId);
   const states = store.knownStates.list(worktreeId);
@@ -4335,6 +4705,18 @@ function snapshot(store, worktreeId, root, now) {
   const runs = openRuns(store, worktree, daemon);
   const header = readHeader(store, worktreeId, states, keys, void 0, openFiles(runs));
   const knownFailures = withRecorded(store, worktreeId, states, header.revision);
+  const load = once(hostLoadNow);
+  const retries = pendingRetriesOf(store, keys, load, runs);
+  const checkpoint = openCheckpoint(store, worktreeId, daemon);
+  const at2 = worktree?.root ?? root;
+  const outstanding = outstandingOf(
+    store,
+    worktreeId,
+    at2,
+    { states, keys, header, runs, daemon, ...retries, ...checkpoint },
+    now,
+    load
+  );
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
@@ -4351,12 +4733,13 @@ function snapshot(store, worktreeId, root, now) {
     storeSchemaVersion: store.schemaVersion,
     notes,
     daemonNotes: readDaemonNotes(store, worktreeId),
-    ...openCheckpoint(store, worktreeId, daemon),
-    ...vitestExcluded(worktree?.root ?? root),
-    ...configProblemsOf(worktree?.root ?? root),
-    ...pendingRetriesOf(store, keys, void 0, runs),
-    ...unknownTestFilesOf(store, worktreeId, states, keys, worktree?.root ?? root, now),
-    ...daemon.state === "alive" ? { runsOpen: runs.length } : {}
+    ...checkpoint,
+    ...vitestExcluded(at2),
+    ...configProblemsOf(at2),
+    ...retries,
+    ...unknownTestFilesOf(store, worktreeId, states, keys, at2, now),
+    ...daemon.state === "alive" ? { runsOpen: runs.length } : {},
+    outstanding
   };
 }
 function vitestExcluded(root) {
@@ -4471,6 +4854,9 @@ function openRuns(store, worktree, daemon) {
   const record = worktree?.daemon ?? null;
   if (worktree === null || record === null || daemon.state !== "alive") return [];
   return store.runs.inFlight(worktree.id, record.startedAt);
+}
+function openRunsOf(store, worktreeId, daemon) {
+  return openRuns(store, store.worktrees.get(worktreeId), daemon);
 }
 function claimantOf(store, worktreeId, ref, key, now) {
   if (!store.testFileKeys.claimed(worktreeId, key, { now, graceIntervals: HEARTBEAT_GRACE_INTERVALS })) {
@@ -5365,20 +5751,20 @@ function livenessTitle(liveness2, revision) {
 
 // src/core/daemon/version.ts
 import { readFileSync as readFileSync6 } from "node:fs";
-import { dirname as dirname3, join as join9 } from "node:path";
+import { dirname as dirname4, join as join10 } from "node:path";
 import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.233";
+  if (true) return "0.1.234";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
-  let dir = dirname3(fileURLToPath(module));
+  let dir = dirname4(fileURLToPath(module));
   for (; ; ) {
-    const version = readVersion(join9(dir, "package.json"));
+    const version = readVersion(join10(dir, "package.json"));
     if (version !== null) return version;
-    const parent = dirname3(dir);
+    const parent = dirname4(dir);
     if (parent === dir) return null;
     dir = parent;
   }
@@ -5557,48 +5943,6 @@ import {
   writeFileSync
 } from "node:fs";
 import { join as join11 } from "node:path";
-
-// src/core/daemon/paths.ts
-import { chmodSync, lstatSync as lstatSync2, mkdirSync as mkdirSync4 } from "node:fs";
-import { dirname as dirname4, isAbsolute as isAbsolute4, join as join10 } from "node:path";
-function runtimeDir(env = process.env) {
-  return xdgRuntimeDir(env) ?? userTmpDir();
-}
-function preparePrivateDir(dir, uid = currentUid(), role = "socket directory") {
-  mkdirSync4(dirname4(dir), { recursive: true });
-  try {
-    mkdirSync4(dir, { mode: 448 });
-    chmodSync(dir, 448);
-  } catch (error) {
-    if (error.code !== "EEXIST") throw error;
-  }
-  checkPrivateDir(dir, uid, role);
-}
-function checkPrivateDir(dir, uid, role = "socket directory") {
-  const stat = lstatSync2(dir);
-  if (!stat.isDirectory()) {
-    throw new Error(`${role} ${dir} is not a directory; refusing to use it`);
-  }
-  if (stat.uid !== uid) {
-    throw new Error(`${role} ${dir} is owned by uid ${stat.uid}, not ${uid}; refusing to use it`);
-  }
-  if ((stat.mode & 63) !== 0) {
-    const mode = (stat.mode & 511).toString(8).padStart(3, "0");
-    throw new Error(`${role} ${dir} has mode ${mode}, not 700; refusing to use it`);
-  }
-}
-function userTmpDir(uid = currentUid()) {
-  return join10("/tmp", `squeal-${uid}`);
-}
-function xdgRuntimeDir(env) {
-  const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute4(xdg) ? xdg : null;
-}
-function currentUid() {
-  return process.getuid?.() ?? 0;
-}
-
-// src/harness/shared/session-root.ts
 var AGENT_SEPARATOR = "\0";
 function rootKey(input) {
   return input.agent_id === void 0 ? input.session_id : `${input.session_id}${AGENT_SEPARATOR}${input.agent_id}`;
