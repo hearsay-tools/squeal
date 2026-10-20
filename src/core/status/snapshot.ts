@@ -146,7 +146,7 @@ function snapshot(
     ...openCheckpoint(store, worktreeId, daemon),
     ...vitestExcluded(worktree?.root ?? root),
     ...configProblemsOf(worktree?.root ?? root),
-    ...pendingRetriesOf(store, keys),
+    ...pendingRetriesOf(store, keys, undefined, runs),
     ...unknownTestFilesOf(store, worktreeId, states, keys, worktree?.root ?? root, now),
     ...(daemon.state === "alive" ? { runsOpen: runs.length } : {}),
   };

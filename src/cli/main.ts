@@ -80,12 +80,14 @@ Usage:
                                 Run the slow lane once no fast work is pending; with
                                 --wait, then wait as status --wait does. --fast --slow
                                 is --all
-  squeal retry <test file>... --reason load|environment
+  squeal retry <test file>... [--reason load|environment]
                                 Re-run each file's failure once, caused outside the
                                 code: load waits until the one-minute load average is
                                 below the CPU count, environment runs at once; once per
                                 file, inputs and session; the FAIL stays counted until
-                                a retry passes
+                                a retry passes. A file with no result at its inputs
+                                (stale, never run, timed out) runs once at once, any
+                                reason or none
   squeal retry --cancel <test file>...
                                 Withdraw a pending retry
   squeal stop [root]            Stop this worktree's daemon
