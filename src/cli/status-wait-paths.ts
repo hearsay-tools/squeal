@@ -43,6 +43,19 @@ import {
 export interface NamedSelection {
   readonly files: readonly TestFileRef[];
   readonly unmatched: readonly string[];
+  /** Row 011-27 (gh-39): each of `unmatched`, in its order, with how it was read. */
+  readonly unmatchedPaths?: readonly UnmatchedPath[];
+}
+
+/** A path that selects nothing, as given and as resolved (row 011-27, gh-39). */
+export interface UnmatchedPath {
+  /** `unmatched`'s entry: relative to the root, or as given outside it. */
+  readonly resolved: string;
+  readonly given: string;
+  /** The directory it was resolved against, relative to the root (`""` the root itself), else absolute. */
+  readonly base?: string;
+  /** The listed test file the same path names from the worktree root, which it never selects. */
+  readonly fromRoot?: string;
 }
 
 /**
@@ -68,7 +81,7 @@ export function selectNamedFiles(
   // Read only for a path no test file has: every stored closure is a large read (task 011-42).
   let closures: ReturnType<typeof validClosures> | undefined;
   const selected = new Map<string, TestFileRef>();
-  const unmatched: string[] = [];
+  const unmatched: UnmatchedPath[] = [];
   for (const path of paths) {
     const rel = worktreePath(root, cwd, path);
     const own = rows.filter((row) => row.testFile.path === rel);
@@ -81,10 +94,30 @@ export function selectNamedFiles(
               closures ??= validClosures(store, worktreeId, rows);
               return closures.get(row)?.has(rel) === true;
             });
-    if (hits.length === 0) unmatched.push(rel ?? path);
+    if (hits.length === 0) unmatched.push(unmatchedOf(root, cwd, path, rel, rows));
     for (const row of hits) selected.set(testFileId(row.testFile), row.testFile);
   }
-  return { files: [...selected.values()], unmatched };
+  const resolved = unmatched.map((p) => p.resolved);
+  return { files: [...selected.values()], unmatched: resolved, unmatchedPaths: unmatched };
+}
+
+/**
+ * Row 011-27 (gh-39): how `path` was read, `rel` its reading from `cwd`:
+ * the directory it was resolved against and, for a relative path given
+ * below the root, the listed test file the same path names from the root.
+ */
+function unmatchedOf(
+  root: AbsolutePath,
+  cwd: AbsolutePath,
+  path: string,
+  rel: RelativePath | null,
+  rows: readonly TestFileKeyRecord[],
+): UnmatchedPath {
+  const own = { resolved: rel ?? path, given: path, base: baseOf(root, cwd) };
+  if (isAbsolute(path) || own.base === "") return own;
+  const fromRoot = worktreePath(root, root, path);
+  const listed = fromRoot !== null && rows.some((row) => row.testFile.path === fromRoot);
+  return listed ? { ...own, fromRoot } : own;
 }
 
 /** Each row's stored closure, when it is valid for the row's key (`selectNamedFiles`). */
@@ -128,6 +161,18 @@ function worktreePath(root: AbsolutePath, cwd: AbsolutePath, path: string): Rela
     if (rel !== "" && !outside) return rel.split(sep).join("/");
   }
   return null;
+}
+
+/** `cwd` relative to `root` with `/` (`""` the root itself), as `worktreePath` reads it; else `cwd`. */
+function baseOf(root: AbsolutePath, cwd: AbsolutePath): string {
+  for (const base of [cwd, realOrNull(cwd)]) {
+    if (base === null) continue;
+    const rel = relative(root, base);
+    if (rel === "") return "";
+    const outside = rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel);
+    if (!outside) return rel.split(sep).join("/");
+  }
+  return cwd;
 }
 
 function realOrNull(path: string): string | null {
