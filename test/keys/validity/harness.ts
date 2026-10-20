@@ -1,69 +1,20 @@
-import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { CLOSURE_METHOD, checkKey, environmentHash } from "../../../src/core/keys/index.js";
 import { recordsForFile } from "../../../src/core/scheduler/records.js";
 import { describeFailure } from "../../../src/core/state/fingerprint.js";
-import { isStoreOpenFailure, openStore } from "../../../src/core/store/open.js";
-import type {
-  CheckKey,
-  Provenance,
-  ResultRecord,
-  RunReport,
-  Store,
-  WorktreeId,
-} from "../../../src/core/types/index.js";
 import type { Case, CaseOutput, KeyInput, RowsInput } from "./case.js";
+import { decideAccept, writeAccept } from "./harness/accept.js";
+import { assemble } from "./harness/assemble.js";
+import { observe } from "./harness/observe.js";
+import { KEY, provenance, REPORT, scratchStore, verdictOf, wordingOf } from "./harness/shared.js";
 
 /*
  * One function per case kind (task 011-37 section 3). Bundled once against
- * each tree: every `src/` import below resolves into the tree under test, so
- * these lines are the same at both and only the tree's code differs. A tree
- * that moves a function is read at the new path, the old one kept for the
- * last release until it carries the move.
+ * each tree: every `src/` import here and under `harness/` resolves into the
+ * tree under test, so these lines are the same at both and only the tree's
+ * code differs. A tree that moves a function is read at the new path, the
+ * old one kept for the last release until it carries the move.
  */
-
-const KEY: CheckKey = "validity-key";
-
-const PROVENANCE: Provenance = {
-  worktreeId: "validity-a" as WorktreeId,
-  revision: 1,
-  commit: null,
-  dirty: false,
-  runId: "validity-run",
-  recordedAt: 1_000,
-};
-
-const REPORT: RunReport = {
-  end: "completed",
-  durationMs: 50,
-  completedFiles: [],
-  results: [],
-  fileErrors: [],
-  failure: null,
-};
-
-/** A store of the tree's own schema in `dir`. */
-export function scratchStore(dir: string): Store {
-  mkdirSync(dir, { recursive: true });
-  const store = openStore(dir, { busyTimeoutMs: 10_000 });
-  if (isStoreOpenFailure(store)) throw new Error(`store: ${JSON.stringify(store)}`);
-  return store;
-}
-
-/** A row as a decision reads it: identity, outcome, fingerprint (compared through `sameFingerprint`). */
-function verdictOf(row: ResultRecord) {
-  return { check: row.check, outcome: row.outcome, fingerprint: row.fingerprint };
-}
-
-/** What a row carries for its reader and no decision reads. */
-function wordingOf(row: ResultRecord) {
-  return {
-    summary: row.summary,
-    errors: row.errors,
-    location: row.location,
-    durationMs: row.durationMs,
-  };
-}
 
 function key(input: KeyInput): CaseOutput {
   const hashOf = (path: string) => input.hashes[path] ?? null;
@@ -84,7 +35,7 @@ function rows(input: RowsInput, scratch: string): CaseOutput {
     key: KEY,
     report: { ...REPORT, completedFiles: [input.testFile], ...input.report },
     previousChecks: input.previousChecks,
-    provenance: PROVENANCE,
+    provenance: provenance("validity-a"),
     describe: describeFailure,
   });
   const store = scratchStore(scratch);
@@ -100,12 +51,23 @@ function rows(input: RowsInput, scratch: string): CaseOutput {
   }
 }
 
-/** Runs `c` at this tree; `scratch` is its own empty directory. */
-export async function runCase(c: Case, scratch: string): Promise<CaseOutput> {
+/** Runs `c` at this tree; `scratch` is its own empty directory, `runtime` the tree's recorder files. */
+export async function runCase(c: Case, scratch: string, runtime: string): Promise<CaseOutput> {
   switch (c.kind) {
     case "key":
       return key(c.input);
     case "rows":
       return rows(c.input, join(scratch, "store"));
+    case "observe":
+      return observe(c.input, scratch, runtime);
+    case "accept":
+      return writeAccept(c.input, scratch);
+    case "assemble":
+      return assemble(c.input, scratch);
   }
+}
+
+/** This tree's decision over what `runCase` stored for `c` at `stored`, `undefined` for a kind with none. */
+export function decideCase(c: Case, stored: string, scratch: string): CaseOutput | undefined {
+  return c.kind === "accept" ? decideAccept(c.input, stored, scratch) : undefined;
 }

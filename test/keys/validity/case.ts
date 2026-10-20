@@ -32,9 +32,48 @@ export interface RowsInput {
   readonly previousChecks: readonly CheckId[];
 }
 
+/** A script run in a fixture worktree under the tree's recorder, for one test file. */
+export interface ObserveInput {
+  readonly files: Readonly<Record<string, string>>;
+  /** The test file the script's process works for. */
+  readonly testFile: string;
+  /** Run as `node -e`, in the worktree. */
+  readonly script: string;
+}
+
+/** Runs several worktrees stored under one key, and the worktree that looks it up. */
+export interface AcceptInput {
+  readonly testFile: TestFileRef;
+  /** In order; each applied to its own worktree's states. */
+  readonly runs: readonly {
+    readonly worktree: string;
+    readonly report: Partial<RunReport>;
+    readonly previousChecks?: readonly CheckId[];
+    readonly recordedAt: number;
+  }[];
+  readonly receiver: string;
+  /** The receiving worktree's `squeal.config.json`. */
+  readonly policy?: Readonly<Record<string, unknown>>;
+  /** The existing files its declared inputs select (format 12 read them, 004 D6). */
+  readonly declared?: readonly string[];
+}
+
+/** A fixture repository keyed as a daemon keys it. */
+export interface AssembleInput {
+  /** Committed, `squeal.config.json` among them. */
+  readonly files: Readonly<Record<string, string>>;
+  /** Written after the commit: gitignored artifacts among them. */
+  readonly untracked?: Readonly<Record<string, string>>;
+  /** Each test file and the paths the runner reported it imports. */
+  readonly closures: readonly { readonly path: string; readonly imports: readonly string[] }[];
+}
+
 export type Case = { readonly name: string; readonly why: string } & (
   | { readonly kind: "key"; readonly input: KeyInput }
   | { readonly kind: "rows"; readonly input: RowsInput }
+  | { readonly kind: "observe"; readonly input: ObserveInput }
+  | { readonly kind: "accept"; readonly input: AcceptInput }
+  | { readonly kind: "assemble"; readonly input: AssembleInput }
 );
 
 export type CaseKind = Case["kind"];
@@ -49,10 +88,4 @@ export interface CaseOutput {
   readonly wording?: unknown;
   /** The case threw: the message, compared as an output. */
   readonly error?: string;
-}
-
-/** What the driver is told beside the cases. */
-export interface DriverContext {
-  /** An empty directory the case may write in, one per case below it. */
-  readonly scratch: string;
 }
