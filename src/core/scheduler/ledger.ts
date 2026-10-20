@@ -124,6 +124,8 @@ export class Ledger {
   #adopted = false;
   /** Spec 004 D2's evidence order (task 004-82): token records by the key cache's hashes. */
   readonly #ranker: SlowRanker;
+  /** The key each file was last read at under the formats read as one, by `testFileId` (task 011-38). */
+  readonly #readAsOne = new Map<string, CheckKey>();
 
   constructor(private readonly context: SchedulerContext) {
     this.checkpoints = new Checkpoints(context.store, context.worktreeId, context.now);
@@ -176,6 +178,7 @@ export class Ledger {
     this.context.keys.removeTestFile(file.ref);
     this.queue.remove(file.ref);
     this.files.delete(file.id);
+    this.#readAsOne.delete(file.id);
     dropRetry(this.context, file);
     this.#retired.push(...file.checks);
     this.#removed.push(file.ref);
@@ -306,17 +309,45 @@ export class Ledger {
    * `lookup`, and whether a miss may wait on another worktree's claim of
    * `key` (task 001-205): only when no result is stored, so none was
    * withheld (001-170). A slow file inherits as any file (004 D6 as amended
-   * 2026-10-18, task 004-81).
+   * 2026-10-18, task 004-81). A miss first copies a set stored at a format
+   * read as one (`#copyReadAsOne`).
    */
   probe(key: CheckKey): { hits: readonly ResultRecord[]; mayWait: boolean } {
     const { store, worktreeId, now } = this.context;
-    const hits = store.results.byKey(key, now());
+    let hits = store.results.byKey(key, now());
+    if (hits.length === 0 && this.#copyReadAsOne(key)) hits = store.results.byKey(key, now());
     if (hits.length === 0) return { hits, mayWait: true };
     if (hits.every((hit) => hit.provenance.worktreeId === worktreeId)) {
       return { hits, mayWait: false };
     }
     const held = heldFailure(store, worktreeId, hits) !== undefined;
     return { hits: held ? [] : hits, mayWait: false };
+  }
+
+  /**
+   * Spec 011 C4 step 3 as amended 2026-10-20 (task 011-38): "A key with no
+   * result is first read at the formats C3 reads as one, once per file and
+   * key in a daemon". The newest set stored at one is copied to `key`
+   * (`ResultRepo.copyNewest`, C7) in a statement of its own, so the write
+   * lock is held for one copy at a time. True when it copied a set. A busy
+   * store's error leaves the read to the next lookup.
+   */
+  #copyReadAsOne(key: CheckKey): boolean {
+    const found = this.context.keys.index.keysReadAsOne(key);
+    if (found === null || found.keys.length === 0) return false;
+    const id = testFileId(found.testFile);
+    if (this.#readAsOne.get(id) === key) return false;
+    const copied = this.context.store.results.copyNewest(key, found.keys);
+    this.#readAsOne.set(id, key);
+    return copied;
+  }
+
+  /**
+   * The next lookup of each of `refs` reads the formats read as one again:
+   * another worktree stored at one of them since (`StoredKeys`, task 011-38).
+   */
+  rereadFormats(refs: Iterable<TestFileRef>): void {
+    for (const ref of refs) this.#readAsOne.delete(testFileId(ref));
   }
 
   /** `testFileId`s of the test files `changed` edited or added, or whose closure it touches. */

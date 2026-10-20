@@ -18,6 +18,23 @@
 export const KEY_FORMAT_VERSION = 18;
 
 /**
+ * The formats read as the current one, each with the row whose change raised
+ * it (spec 011 C3 as amended 2026-10-20, task 011-37): from 13, the first after
+ * 004-81, to the one below `KEY_FORMAT_VERSION`. The guard of task 001-203
+ * raised each for a change that left every stored meaning alone
+ * (`research/key-format-guard.md`). A lookup that misses at its key reads the
+ * key at each and copies the newest set stored under one (C4 step 3, C7). A
+ * raise for a change of stored meaning empties the list.
+ */
+export const KEY_FORMATS_READ_AS_ONE: Readonly<Record<number, string>> = {
+  13: "004-81: a slow file's artifact leaves its closure",
+  14: "001-366: the backlog's width and wall budget",
+  15: "011-21: the edit tier beside the backlog",
+  16: "011-21: slots, their records committed together",
+  17: "011-22 and 011-23: catch-up's order, the keys stored since the last read",
+};
+
+/**
  * The guarded sources' hash at each `KEY_FORMAT_VERSION`, as the guard
  * test computes it. Append only: one entry per version, never edit an old one.
  */

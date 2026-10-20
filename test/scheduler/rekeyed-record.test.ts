@@ -55,7 +55,7 @@ function ledgerOf(store: Store, keys: Map<string, CheckKey>): Ledger {
     policy: DEFAULT_POLICY,
     now: Date.now,
     keys: {
-      index: { key: (ref: TestFileRef) => keys.get(ref.path) ?? null },
+      index: { key: (ref: TestFileRef) => keys.get(ref.path) ?? null, keysReadAsOne: () => null },
       removeTestFile: () => {},
     },
   } as unknown as SchedulerContext;
