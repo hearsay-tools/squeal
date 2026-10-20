@@ -81,10 +81,11 @@ export function stepCommand(step: Step, paths: readonly string[], command: strin
   }
 }
 
-/** `text` with `{command}` in backticks, `{squeal}` the CLI's name and `{it}` as given. */
+/** `text` with `{command}` in backticks, `{squeal}` the CLI's name, `{it}` as given and `{its}` to match. */
 export function fill(text: string, cmd: string | null, command: string, it: string): string {
   return text
     .replaceAll("{command}", cmd === null ? "" : `\`${cmd}\``)
     .replaceAll("{squeal}", command)
+    .replaceAll("{its}", it === "it" ? "its" : "their")
     .replaceAll("{it}", it);
 }

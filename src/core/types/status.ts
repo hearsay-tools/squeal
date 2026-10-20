@@ -11,6 +11,7 @@ import type {
 } from "./common.js";
 import type { CheckKey, ClosureMethod, TestFileRef } from "./keys.js";
 import type { DaemonNote } from "./scheduler.js";
+import type { OutstandingGroup } from "./standing.js";
 import type {
   DiagnosticFingerprint,
   FlakyNote,
@@ -559,6 +560,18 @@ export interface StatusSnapshot extends StatusHeader {
    * while no daemon is validating.
    */
   readonly runsOpen?: number;
+  /**
+   * Spec 011 C6 as amended 2026-10-20 (row 011-29): the worktree's test
+   * files that are not current in groups that read alike, each with where
+   * they stand (011 C15), as `Outstanding:` prints them with what advances
+   * each: no daemon validating, the files not listed, the revision's runner
+   * part, a checkpoint in progress, a pending retry, then each file's own
+   * state. Every file is in one group; slow files the `Slow tier:` line
+   * counts are in none, except a running one whose project has a global
+   * setup. Absent from payloads before the field; empty when nothing is
+   * outstanding.
+   */
+  readonly outstanding?: readonly OutstandingGroup[];
   /**
    * Row 011-07: what the policy loader reports for `squeal.config.json`, as
    * `setup --check` names it (011 C6, C10). Absent for a valid or missing config.
