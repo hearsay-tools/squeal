@@ -243,7 +243,11 @@ describe("squeal status --wait without a daemon (review wave 4.5, S2)", WAITS, (
     const { repo } = repoWithDaemon(stale, currentPass());
 
     // No harness session in env: the text names the plain `squeal` command, under Codex too.
-    const { code, stdout, stderr, elapsed } = await run(["status", "--wait", "5000"], repo.main, {});
+    const { code, stdout, stderr, elapsed } = await run(
+      ["status", "--wait", "5000"],
+      repo.main,
+      {},
+    );
 
     expect(code).toBe(0);
     expect(stderr).toBe("");
