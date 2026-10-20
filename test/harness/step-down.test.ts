@@ -11,8 +11,10 @@ import { SOCKET_TIMEOUT_MS, stepDownIfOlder } from "../../src/harness/shared/ens
 /*
  * Lessons, defect 26: a hook newer than the daemon asks it to step down;
  * an equal or newer daemon is left alone, and a daemon from before the
- * request is sent `stop`. Against stand-in sockets; `test/daemon/step-down`
- * runs real daemons.
+ * request is sent `stop`. Row 011-31 (C9 as amended 2026-10-20): a daemon
+ * that accepted the step-down is sent `stop` too, so one from 0.1.200 on
+ * that steps down without a cancel cancels its tiers. Against stand-in
+ * sockets; `test/daemon/step-down` runs real daemons.
  */
 
 let dir: string;
@@ -77,16 +79,24 @@ describe("isNewerVersion", () => {
 });
 
 describe("stepDownIfOlder (hook side)", () => {
-  it("asks an older daemon with a fresh heartbeat to step down, with the hook's version", async () => {
+  it("asks an older daemon with a fresh heartbeat to step down, with the hook's version, then sends it stop", async () => {
     const d = await daemonAt(current);
     expect(await stepDownIfOlder(record(d.socketPath, "0.1.24"), Date.now(), "0.1.31")).toBe(true);
-    expect(d.asked).toEqual([{ type: "step-down", version: "0.1.31" }]);
+    expect(d.asked).toEqual([{ type: "step-down", version: "0.1.31" }, { type: "stop" }]);
+  });
+
+  it("is true for an accepted step-down whatever the stop after it answers", async () => {
+    const d = await daemonAt((request) =>
+      request.type === "stop" ? { ok: false, error: "daemon error: boom" } : current(request),
+    );
+    expect(await stepDownIfOlder(record(d.socketPath, "0.1.24"), Date.now(), "0.1.31")).toBe(true);
+    expect(d.asked).toEqual([{ type: "step-down", version: "0.1.31" }, { type: "stop" }]);
   });
 
   it("uses the hook's own version by default", async () => {
     const d = await daemonAt(current);
     await stepDownIfOlder(record(d.socketPath, "0.0.1"), Date.now());
-    expect(d.asked).toEqual([{ type: "step-down", version: squealVersion() }]);
+    expect(d.asked[0]).toEqual({ type: "step-down", version: squealVersion() });
   });
 
   it("asks nothing of an equal or newer daemon (a downgrade stays a no-op)", async () => {
@@ -112,7 +122,7 @@ describe("stepDownIfOlder (hook side)", () => {
     }
     expect(d.asked).toEqual([]);
     expect(await stepDownIfOlder(older, Date.now(), "0.1.31", ["0.1.31", "0.2.0"])).toBe(true);
-    expect(d.asked).toHaveLength(1);
+    expect(d.asked).toEqual([{ type: "step-down", version: "0.1.31" }, { type: "stop" }]);
   });
 
   it("is false when the daemon answers that it keeps running", async () => {
@@ -123,6 +133,7 @@ describe("stepDownIfOlder (hook side)", () => {
       steppingDown: false,
     }));
     expect(await stepDownIfOlder(record(d.socketPath, "0.1.24"), Date.now(), "0.1.31")).toBe(false);
+    expect(d.asked).toEqual([{ type: "step-down", version: "0.1.31" }]);
   });
 
   it("sends stop to a daemon from before the request", async () => {
@@ -154,6 +165,24 @@ describe("the hook's budget", () => {
     const at = performance.now();
     expect(await stepDownIfOlder(record(socketPath, "0.1.0"), Date.now(), "0.1.31")).toBe(false);
     expect(performance.now() - at).toBeLessThan(SOCKET_TIMEOUT_MS + 400);
+  });
+
+  it("stays within two round trips when the stop after an accepted step-down goes unanswered", async () => {
+    // Row 011-31: the step-down is answered, the stop that follows hangs.
+    const socketPath = join(dir, "hung-stop.sock");
+    const server = createServer((socket) => {
+      socket.on("error", () => {});
+      socket.once("data", (chunk) => {
+        const request = JSON.parse(chunk.toString("utf8")) as DaemonRequest;
+        if (request.type === "stop") return;
+        socket.end(`${JSON.stringify({ schemaVersion: 1, ...current(request) })}\n`);
+      });
+    });
+    servers.push(server);
+    await new Promise<void>((resolve) => server.listen(socketPath, resolve));
+    const at = performance.now();
+    expect(await stepDownIfOlder(record(socketPath, "0.1.0"), Date.now(), "0.1.31")).toBe(true);
+    expect(performance.now() - at).toBeLessThan(2 * SOCKET_TIMEOUT_MS + 400);
   });
 });
 
