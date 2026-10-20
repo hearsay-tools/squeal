@@ -55846,6 +55846,7 @@ function laneText(lane) {
 
 // src/core/status/next-step-text.ts
 init_text();
+import { posix as posix16 } from "node:path";
 var PATHS_IN_COMMAND = 3;
 function stepText(step, paths, command) {
   const n = paths.length;
@@ -55877,6 +55878,10 @@ function reasonWords(next, paths, command) {
     paths.length === 1 ? "it" : "them"
   );
 }
+function fromBase(base, path) {
+  if (base === void 0 || base === "" || posix16.isAbsolute(base)) return path;
+  return posix16.relative(base, path);
+}
 function stepCommand(step, paths, command) {
   switch (step.kind) {
     case "retry": {
@@ -55903,11 +55908,14 @@ var CLASSES = [
   ["stale", "Stale"],
   ["unknown", "Unknown"]
 ];
-function classLines(files2, command) {
+function classLines(files2, command, base) {
   return CLASSES.flatMap(([state, label2]) => {
     const of = files2.filter((f) => f.state === state);
     if (of.length === 0) return [];
-    return [`${label2} (${of.length}):`, ...groupsOf(of).map((g2) => `  ${groupLine(g2, command)}`)];
+    return [
+      `${label2} (${of.length}):`,
+      ...groupsOf(of).map((g2) => `  ${groupLine(g2, command, base)}`)
+    ];
   });
 }
 function groupsOf(files2) {
@@ -55939,8 +55947,8 @@ function groupsOf(files2) {
 function standingOf(f) {
   return f.state === "current" ? void 0 : f.standing ?? f.pending;
 }
-function groupLine({ files: files2, next, words }, command) {
-  const paths = files2.map((f) => f.path);
+function groupLine({ files: files2, next, words }, command, base) {
+  const paths = files2.map((f) => fromBase(base, f.path));
   const shown = files2.slice(0, CLASS_FILES_SHOWN).map(pathText).join(", ");
   const more = files2.length > CLASS_FILES_SHOWN ? ` and ${files2.length - CLASS_FILES_SHOWN} more` : "";
   if (next === null) return `${files2.length} ${words}: ${shown}${more}`;
@@ -55951,20 +55959,20 @@ function pathText({ project, path }) {
   return project === "" ? path : `${project}: ${path}`;
 }
 var REASON_GROUPS_SHOWN = 5;
-function reasonGroups(files2, command) {
+function reasonGroups(files2, command, base) {
   const pending = files2.filter((f) => f.state === "pending");
   const counted = pending.length > 0 ? pending : files2.filter((f) => f.state !== "current");
   const all = groupsOf(counted);
-  const shown = all.slice(0, REASON_GROUPS_SHOWN).map((g2) => groupShort(g2, command));
+  const shown = all.slice(0, REASON_GROUPS_SHOWN).map((g2) => groupShort(g2, command, base));
   const rest = all.slice(REASON_GROUPS_SHOWN);
   if (rest.length === 0) return shown.join(", ");
   const more = rest.reduce((sum, { files: of }) => sum + of.length, 0);
   const others = rest.length === 1 ? "1 other reason" : `${rest.length} other reasons`;
   return [...shown, `and ${more} more for ${others}`].join(", ");
 }
-function groupShort({ files: files2, next, words }, command) {
+function groupShort({ files: files2, next, words }, command, base) {
   if (next === null) return `${files2.length} ${words}`;
-  const paths = files2.map((f) => f.path);
+  const paths = files2.map((f) => fromBase(base, f.path));
   const it = files2.length === 1 ? "it" : "them";
   const cmd = stepCommand(next.step, paths, command);
   const short = fill(next.short, cmd, command, it);
@@ -56021,13 +56029,14 @@ function namedFailures(files2, knownFailures) {
     ].join(", ")}`
   ]);
 }
-function fileEntry(f, command) {
+function fileEntry(f, command, base) {
   const { project, path } = f.testFile;
+  const named = fromBase(base, path);
   const standing = standingOf(f);
   const next = standing === void 0 ? null : nextStep(standing);
-  const reason2 = f.unknown !== void 0 ? `${f.unknown.ran ? "ran, nothing recorded" : "no result"}: ${f.unknown.reason ?? "no reason was kept"}` : next === null ? void 0 : reasonWords(next, [path], command);
-  const step = next === null ? "" : stepText(next.step, [path], command);
-  const run4 = next === null ? null : stepCommand(next.step, [path], command);
+  const reason2 = f.unknown !== void 0 ? `${f.unknown.ran ? "ran, nothing recorded" : "no result"}: ${f.unknown.reason ?? "no reason was kept"}` : next === null ? void 0 : reasonWords(next, [named], command);
+  const step = next === null ? "" : stepText(next.step, [named], command);
+  const run4 = next === null ? null : stepCommand(next.step, [named], command);
   return {
     project,
     path,
@@ -56141,7 +56150,7 @@ function namedLine(wait, command = "squeal") {
     case "timeout": {
       const paused = new Set((wait.leftForPause ?? []).map(testFileId));
       const holding = wait.files.filter((f) => !paused.has(testFileId(f.testFile)));
-      const groups = reasonGroups(holding, command);
+      const groups = reasonGroups(holding, command, wait.selection.base);
       const why2 = noVerdictText(verdict);
       const held2 = why2 === null ? "no result yet" : groups === "" ? why2 : `${why2}: ${groups}`;
       line = none2(
@@ -56153,7 +56162,8 @@ function namedLine(wait, command = "squeal") {
       const why2 = verdictCode(verdict) === 3 ? noVerdictText(verdict) : null;
       const groups = reasonGroups(
         wait.files.filter((f) => f.state !== "pending"),
-        command
+        command,
+        wait.selection.base
       );
       line = why2 === null ? `Named test files at revision ${verdict.revision}: ${failuresText(verdict.failures)}; ${plural(verdict.testFiles, "test file")}, each with a current result, ${after}` : none2(groups === "" ? why2 : `${why2}: ${groups}`);
     }
@@ -56195,7 +56205,7 @@ ${lines.join("\n")}
 function namedClassLines(wait, command = "squeal") {
   if (wait.outcome === "unmatched") return [];
   if (wait.outcome === "settled" && verdictCode(wait.verdict) !== 3) return [];
-  return classLines(wait.files, command);
+  return classLines(wait.files, command, wait.selection.base);
 }
 function unsyncedText(sync, revision) {
   if (sync.state === "pending") {
@@ -56513,7 +56523,12 @@ function selectNamedFiles(store, worktreeId, root, cwd, paths) {
     for (const row of hits) selected.set(testFileId(row.testFile), row.testFile);
   }
   const resolved2 = unmatched.map((p) => p.resolved);
-  return { files: [...selected.values()], unmatched: resolved2, unmatchedPaths: unmatched };
+  return {
+    files: [...selected.values()],
+    unmatched: resolved2,
+    unmatchedPaths: unmatched,
+    base: baseOf(root, cwd)
+  };
 }
 function unmatchedOf(root, cwd, path, rel2, rows) {
   const own = { resolved: rel2 ?? path, given: path, base: baseOf(root, cwd) };
@@ -56669,7 +56684,7 @@ async function namedWaitCommand(paths, json3, io, options) {
       outcome: wait.outcome,
       waitedMs: Math.round(wait.waitedMs),
       code,
-      testFiles: wait.files.map((f) => fileEntry(f, command)),
+      testFiles: wait.files.map((f) => fileEntry(f, command, wait.selection.base)),
       unmatched: wait.selection.unmatched,
       leftForPause: wait.leftForPause ?? [],
       verdict: wait.verdict
