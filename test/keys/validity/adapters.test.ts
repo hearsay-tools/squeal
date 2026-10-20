@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { failures } from "./compare.js";
+import { failures, reportedChanges } from "./compare.js";
 // The validity path's entries, statically, so a change to one re-runs this file (`compare.test.ts`).
 import "./driver.js";
 import { comparisons, edited, only, SLOW } from "./self-test.js";
@@ -31,6 +31,37 @@ describe("each adapter's comparison (risk 3)", SLOW, () => {
     expect(failed).toHaveLength(2);
     for (const line of failed)
       expect(line).toMatch(/^adapter:vitest case .* raise VITEST_ADAPTER_VERSION/);
+  });
+
+  const withholding = (kept: string) =>
+    edited(
+      "src/runners/vitest/moved.ts",
+      "const kept = (ref: TestFileRef) => !gone.has(refKey(ref));",
+      `const kept = (_ref: TestFileRef) => ${kept};`,
+    );
+
+  it("fails Vitest's when it withholds a file the last release completed", async () => {
+    const result = await compare(withholding("false"), only("adapter:vitest"));
+    const failed = failures(result, release());
+    expect(failed).toEqual([
+      expect.stringMatching(
+        /^adapter:vitest case "a touched module withholds .*run 1, :test\/slow2\.test\.ts: completed at the last release, withheld at the candidate; .* raise VITEST_ADAPTER_VERSION/,
+      ),
+      expect.stringMatching(
+        /^adapter:vitest case "a module only another project loaded .*run 1, a:a\/test\/held\.test\.ts: completed at the last release, withheld at the candidate\).* raise VITEST_ADAPTER_VERSION/,
+      ),
+    ]);
+  });
+
+  it("reports a file Vitest's completes that the last release withheld, without failing", async () => {
+    const result = await compare(withholding("true"), only("adapter:vitest"));
+    expect(result.cases.every((c) => c.outputsEqual)).toBe(true);
+    expect(failures(result, release())).toEqual([]);
+    const reported = reportedChanges(result);
+    expect(reported).toContain(
+      'adapter:vitest case "a touched module withholds the files that reach it (013-01 test 2)": run 1, :test/slow1.test.ts: withheld at the last release, completed at the candidate (the candidate stores more)',
+    );
+    for (const line of reported) expect(line).toMatch(/\(the candidate stores more\)$/);
   });
 
   it("fires none for a change to Vitest's width hints", async () => {
