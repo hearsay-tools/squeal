@@ -6,7 +6,7 @@ import { fakeRepo } from "../status/helpers.js";
 
 /** Every command `main` dispatches, with the flags its help must name (row 005-69, gh-11). */
 const COMMANDS: Record<string, readonly string[]> = {
-  status: ["--notes", "--json", "--wait <ms>"],
+  status: ["--notes", "--json", "--wait <ms>", "<path>...", "--full"],
   why: ["<check>", "--include-logs", "--json"],
   failures: ["--all-worktrees", "--since <duration>", "--json"],
   init: ["--harness codex", "--print-launcher-config", "--trust", "--yes", "--block", "--gate"],

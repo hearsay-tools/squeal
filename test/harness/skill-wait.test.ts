@@ -62,6 +62,24 @@ describe("the skill's waits (005-68)", () => {
     }
   });
 
+  /* Row 011-28 (005 D2 as amended 2026-10-20, gh-42, gh-44): the short named text and the snapshot. */
+  it("says in every copy of `commands.md` what a named wait prints and what `status <path>...` answers", () => {
+    for (const dir of COPIES) {
+      const commands = read(dir, "references/commands.md");
+      expect(commands).toContain(
+        "It prints the revision line, then the files it selected and their failures in full",
+      );
+      expect(commands).toContain("`--full` prints the worktree's status first.");
+      expect(commands).toContain(
+        "`squeal status <path>...` without `--wait` answers the same question now, without waiting for pending files, whose results arrive with your next tool call.",
+      );
+      expect(commands).toContain(
+        "`results are as of revision N; the daemon has not stored its pass over the latest edits` and gives no verdict",
+      );
+      expect(commands).not.toContain("It prints status, then the files it selected");
+    }
+  });
+
   /* Task 004-66, at the coordinator's request: `run --slow --wait` without a verdict exits 3. */
   it("gives `run --slow --wait`'s exit 3 in `commands.md`", () => {
     expect(read(claude, "references/commands.md")).toContain(
