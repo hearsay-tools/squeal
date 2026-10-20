@@ -6950,7 +6950,7 @@ function loadPerCpu(wait = {}) {
   return (load()[0] ?? 0) / Math.max(1, cpus());
 }
 async function waitForCapacity(wait) {
-  const sleep16 = wait.sleep ?? delay;
+  const sleep14 = wait.sleep ?? delay;
   const now = wait.now ?? (() => performance.now());
   const recheckMs = wait.recheckMs ?? 15e3;
   const perCpu2 = () => loadPerCpu(wait);
@@ -6961,7 +6961,7 @@ async function waitForCapacity(wait) {
     if (current3 <= wait.maxLoadPerCpu) return { waitedMs, ranUnderLoad: null };
     const left = wait.maxDeferMs - waitedMs;
     if (left <= 0) return { waitedMs, ranUnderLoad: current3 };
-    await sleep16(Math.min(recheckMs, left));
+    await sleep14(Math.min(recheckMs, left));
   }
 }
 var init_guard = __esm({
@@ -54815,7 +54815,6 @@ init_text();
 init_fs();
 init_rekeyed_moves();
 init_state3();
-import { setTimeout as sleep11 } from "node:timers/promises";
 
 // src/cli/status-command.ts
 import { fileURLToPath as fileURLToPath13 } from "node:url";
@@ -54843,11 +54842,12 @@ function statusCommand(env, cli = fileURLToPath13(import.meta.url)) {
 // src/cli/status-sync.ts
 import { setTimeout as sleep9 } from "node:timers/promises";
 var UNSUPPORTED = { state: "unsupported" };
+var SYNC_POLL_MS = 250;
 function syncDaemon(root, pollMs) {
   let current3 = { state: "pending" };
   let stopped = false;
   const isStopped = () => stopped;
-  void (async () => {
+  const answered = (async () => {
     for (; ; ) {
       const outcome2 = await syncOnce(root, pollMs, isStopped);
       if (outcome2 !== "again") return outcome2;
@@ -54862,10 +54862,22 @@ function syncDaemon(root, pollMs) {
   );
   return {
     current: () => current3,
+    answered,
     stop: () => {
       stopped = true;
     }
   };
+}
+async function pollPause(ms2, sync) {
+  if (sync?.answered === void 0 || sync.current().state !== "pending") {
+    await sleep9(ms2);
+    return;
+  }
+  const abort2 = new AbortController();
+  const timer = sleep9(ms2, void 0, { signal: abort2.signal }).catch(() => {
+  });
+  await Promise.race([timer, sync.answered]);
+  abort2.abort();
 }
 async function syncOnce(root, pollMs, stopped) {
   const socketPath = await daemonSocket(root).catch(() => null);
@@ -55311,7 +55323,6 @@ function pendingText2(snapshot3) {
 // src/cli/status-wait-paths.ts
 import { realpathSync as realpathSync20 } from "node:fs";
 import { isAbsolute as isAbsolute16, relative as relative21, resolve as resolve19, sep as sep25 } from "node:path";
-import { setTimeout as sleep10 } from "node:timers/promises";
 init_fs();
 init_keys();
 
@@ -55557,7 +55568,7 @@ async function waitForNamed(cwd, paths, options) {
       const busyTimeoutMs = final ? STATUS_BUSY_TIMEOUT_MS : Math.round(Math.max(50, Math.min(STATUS_BUSY_TIMEOUT_MS, left)));
       const read5 = withStatusStore(cwd, { busyTimeoutMs }, ({ store, root }) => {
         const id2 = worktreeIdFor(root);
-        sync ??= options.sync(root, options.pollMs);
+        sync ??= options.sync(root, Math.min(options.pollMs, SYNC_POLL_MS));
         const selection = selectNamedFiles(store, id2, root, cwd, paths);
         const all = readClasses(store, id2, selection.files);
         const settled = final || elapsed() >= options.settleMs;
@@ -55618,7 +55629,7 @@ async function waitForNamed(cwd, paths, options) {
       }
       first = false;
       const remaining = options.timeoutMs - elapsed();
-      if (remaining > 0) await sleep10(Math.min(options.pollMs, remaining));
+      if (remaining > 0) await pollPause(Math.min(options.pollMs, remaining), sync);
     }
   } finally {
     sync?.stop();
@@ -55729,7 +55740,7 @@ async function waitForStatus(cwd, options) {
         const revision = store.revisions.latest(id2)?.number ?? 0;
         syncing.heard ??= lastHeard(store, id2, revision, session2, agent);
         const heard = syncing.heard;
-        syncing.sync ??= startSync(root, pollMs);
+        syncing.sync ??= startSync(root, Math.min(pollMs, SYNC_POLL_MS));
         const current3 = syncing.sync.current();
         if (current3.state === "synced" && !syncing.fallback) {
           const seq = movesSeq(store, id2);
@@ -55805,7 +55816,7 @@ async function waitForStatus(cwd, options) {
         return { ...read5, waitedMs: elapsed() };
       }
       const remaining = options.timeoutMs - elapsed();
-      if (remaining > 0) await sleep11(Math.min(pollMs, remaining));
+      if (remaining > 0) await pollPause(Math.min(pollMs, remaining), syncing.sync);
     }
   } finally {
     syncing.sync?.stop();
@@ -56032,7 +56043,7 @@ async function tellDaemon(root) {
 // src/cli/run.ts
 init_fs();
 init_keys();
-import { setTimeout as sleep13 } from "node:timers/promises";
+import { setTimeout as sleep11 } from "node:timers/promises";
 init_store3();
 init_text();
 init_types();
@@ -56064,7 +56075,7 @@ function laneFiles(store, checkpoint) {
 }
 
 // src/cli/run-slow.ts
-import { setTimeout as sleep12 } from "node:timers/promises";
+import { setTimeout as sleep10 } from "node:timers/promises";
 init_text();
 
 // src/cli/wait-arg.ts
@@ -56141,7 +56152,7 @@ async function taken(socketPath, first, io) {
       );
       return null;
     }
-    await sleep12(POLL_MS);
+    await sleep10(POLL_MS);
     const next = await askDaemon(socketPath, {
       type: "run-slow-status",
       requestId: state.requestId
@@ -56278,7 +56289,7 @@ async function recorded(socketPath, first, deadline) {
     if (state.checkpoint !== null) return { checkpoint: state.checkpoint, owner: state.owner };
     if (state.error !== null) return `run --all failed: ${state.error}`;
     if (Date.now() > deadline) return null;
-    await sleep13(POLL_MS2);
+    await sleep11(POLL_MS2);
     const next = await askDaemon(socketPath, {
       type: "run-all-status",
       requestId: first.requestId
@@ -56346,7 +56357,7 @@ async function ended(root, socketPath, checkpoint, deadline) {
     if (polls % PING_POLLS === PING_POLLS - 1 && await askDaemon(socketPath, { type: "ping" }) === null) {
       return { kind: "stopped" };
     }
-    await sleep13(Math.max(0, Math.min(STORE_POLL_MS, deadline - Date.now())));
+    await sleep11(Math.max(0, Math.min(STORE_POLL_MS, deadline - Date.now())));
   }
 }
 function pollCheckpoint(store, checkpoint, deadline) {
@@ -56402,7 +56413,7 @@ init_text();
 init_types();
 
 // src/cli/start.ts
-import { setTimeout as sleep14 } from "node:timers/promises";
+import { setTimeout as sleep12 } from "node:timers/promises";
 
 // src/cli/stopped-mark.ts
 init_stopped();
@@ -56463,7 +56474,7 @@ async function startCommand(args2, io) {
 `);
         return 1;
       }
-      await sleep14(50);
+      await sleep12(50);
     }
   }
   io.stdout(`Squeal daemon ${result} for ${root}
@@ -57117,7 +57128,7 @@ function parseSetupArgs(args2) {
 // src/cli/stop.ts
 import { realpathSync as realpathSync21 } from "node:fs";
 import { resolve as resolve21 } from "node:path";
-import { setTimeout as sleep15 } from "node:timers/promises";
+import { setTimeout as sleep13 } from "node:timers/promises";
 
 // src/core/daemon/leftovers.ts
 import { readdirSync as readdirSync21, readFileSync as readFileSync38 } from "node:fs";
@@ -57224,7 +57235,7 @@ async function stopCommand(args2, io, bounds = STOP_BOUNDS) {
       );
       return 1;
     }
-    await sleep15(50);
+    await sleep13(50);
   }
   stoppedMark(root, tree, io);
   const lock2 = await lockFreed(root, daemon, bounds.lockMs);
@@ -57295,7 +57306,7 @@ async function leftoversGone(marks, ms2) {
   for (; ; ) {
     const left = await leftovers(marks);
     if (left.length === 0 || Date.now() > deadline) return left;
-    await sleep15(100);
+    await sleep13(100);
   }
 }
 function seconds2(ms2) {
@@ -57310,7 +57321,7 @@ async function lockFreed(root, daemon, ms2) {
     if (missing(path) || daemon !== null && gone2(root, daemon)) return { state: "free" };
     const probe = probeLock(path);
     if (probe.state === "free" || Date.now() > deadline) return probe;
-    await sleep15(50);
+    await sleep13(50);
   }
 }
 function gone2(root, daemon) {
