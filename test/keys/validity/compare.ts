@@ -148,16 +148,20 @@ export async function compareTrees(options: CompareOptions): Promise<Comparison>
   const verdicts = cases.map((c) =>
     verdictOf(c, outputs.baseline[c.name] ?? {}, outputs.candidate[c.name] ?? {}),
   );
-  const uncovered = [...uncoveredInBundles(work, sides), ...uncoveredInRuntime(sides)];
+  const uncovered = [...uncoveredInBundles(work, sides, overlay), ...uncoveredInRuntime(sides)];
   return { versions, fired, dependencies, cases: verdicts, uncovered };
 }
 
 /** Each changed bundle line from a changed source line that ran in no case, at the side that holds it. */
-function uncoveredInBundles(work: string, sides: Record<SideName, Side>): string[] {
+function uncoveredInBundles(
+  work: string,
+  sides: Record<SideName, Side>,
+  overlay: Overlay,
+): string[] {
   const bundles = changedLines(sides.baseline.file, sides.candidate.file);
   const sources = changedSources(
     { map: sides.baseline.bundle.map, tree: sides.baseline.tree },
-    { map: sides.candidate.bundle.map, tree: sides.candidate.tree },
+    { map: sides.candidate.bundle.map, tree: sides.candidate.tree, overlay },
     join(work, "diff"),
   );
   const out: string[] = [];
