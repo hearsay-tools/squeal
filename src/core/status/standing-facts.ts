@@ -1,5 +1,11 @@
-import type { KnownState, ProjectName, UnknownTestFile } from "../types/index.js";
-import type { KnownSetup, LoadNow, Standing } from "./next-step.js";
+import type {
+  KnownSetup,
+  KnownState,
+  LoadNow,
+  ProjectName,
+  Standing,
+  UnknownTestFile,
+} from "../types/index.js";
 
 /*
  * Row 011-27 (011 C15 as amended 2026-10-20): what `readNamedFiles` needs

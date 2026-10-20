@@ -182,7 +182,7 @@ function worktreePath(root: AbsolutePath, cwd: AbsolutePath, path: string): Rela
 }
 
 /** `cwd` relative to `root` with `/` (`""` the root itself), as `worktreePath` reads it; else `cwd`. */
-function baseOf(root: AbsolutePath, cwd: AbsolutePath): string {
+export function baseOf(root: AbsolutePath, cwd: AbsolutePath): string {
   for (const base of [cwd, realOrNull(cwd)]) {
     if (base === null) continue;
     const rel = relative(root, base);

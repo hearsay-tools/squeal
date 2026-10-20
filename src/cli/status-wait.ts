@@ -40,7 +40,7 @@ import {
 } from "./status-wait-edit.js";
 import { readHeld, type StartView, startView } from "./status-wait-held.js";
 import { type NamedTextOptions, waitLine, waitText } from "./status-wait-lines.js";
-import { namedWaitCommand } from "./status-wait-paths.js";
+import { baseOf, namedWaitCommand } from "./status-wait-paths.js";
 import { type HeldSlow, heldSlowLeft, heldSlowNews, pendingSlow } from "./status-wait-slow.js";
 import {
   type DaemonWatch,
@@ -467,7 +467,8 @@ export async function statusWaitCommand(
     io.stdout(`${JSON.stringify({ ...result, wait: payload }, null, 2)}\n`);
     io.stderr(line);
   } else {
-    io.stdout(waitText(wait, now(), statusCommand(env)));
+    const base = baseOf(wait.result.worktreeRoot, io.cwd ?? process.cwd());
+    io.stdout(waitText(wait, now(), statusCommand(env), { ...named, base }));
   }
   return holdSlow ? slowWaitCode(wait) : 0;
 }

@@ -9,6 +9,7 @@ import {
   stepCommand,
   stepText,
 } from "../core/status/next-step-text.js";
+import { groupId, widest } from "../core/status/standing-groups.js";
 import type { StatusSnapshot, TestFileRef } from "../core/types/index.js";
 import type { NamedFile, NamedVerdict } from "./named-files.js";
 import type { NamedSelection, UnmatchedPath } from "./status-wait-paths.js";
@@ -138,39 +139,6 @@ function groupShort({ files, next, words }: Group, command: string, base?: strin
   const short = fill(next.short, cmd, command, it);
   const named = cmd === null || next.short.includes("{command}");
   return `${files.length} ${short}${named ? "" : `: \`${cmd}\``}`;
-}
-
-function groupId(s: Standing): string {
-  switch (s.kind) {
-    case "running":
-      return `running ${s.lane} ${(s.files ?? 1) > 1} ${s.setup?.file ?? ""}`;
-    case "queued":
-      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true}`;
-    case "claim":
-      return `claim ${s.worktree}`;
-    case "stale":
-      return `stale ${s.verdict} ${s.lookupOnly}`;
-    case "timed-out":
-    case "no-result":
-    case "runner":
-      return `${s.kind} ${s.reason}`;
-    default:
-      return s.kind;
-  }
-}
-
-/** Of two standings of one group, the earliest start or the latest bound. */
-function widest(a: Standing, b: Standing): Standing {
-  if (a.kind === "running" && b.kind === "running") {
-    return a.since === null || (b.since !== null && b.since < a.since) ? b : a;
-  }
-  if (a.kind === "queued" && b.kind === "queued" && a.behind !== null && b.behind !== null) {
-    return b.behind < a.behind ? b : a;
-  }
-  if (a.kind === "claim" && b.kind === "claim") {
-    return a.until === null || (b.until !== null && b.until > a.until) ? b : a;
-  }
-  return a;
 }
 
 /**
