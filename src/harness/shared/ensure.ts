@@ -27,9 +27,9 @@ const SETTLE_POLL_MS = 25;
 
 /**
  * How long the successor a step-down spawns waits for the old daemon's lock
- * (task 001-130): its running tier, then its shutdown. The backlog budget
- * bounds a tier's last-known run time only, so a tier can outlast this
- * wait; the successor then exits with a note and the next boundary spawns.
+ * (task 001-130): its cancelled tiers, then its shutdown (row 011-31). A
+ * daemon before 0.1.200 finishes its tier, which can outlast this wait; the
+ * successor then exits with a note and the next boundary spawns.
  */
 export const SUCCESSOR_LOCK_WAIT_MS = 120_000;
 
@@ -126,11 +126,14 @@ function successor(location: HookLocation, deps: HookDeps): Promise<EnsureDaemon
  * Lessons, defect 26: hooks at 0.1.31 talked to a 0.1.24 daemon for hours.
  * A daemon whose recorded version (`worktrees.daemon_version`) is strictly
  * older than this hook's, while its heartbeat is fresh, is asked over its
- * socket to step down: it lets a tier in flight finish and store, persists
- * one note, clears its record and exits. The hook then spawns its successor
- * (`successor`), which waits for the lock; a daemon spawned meanwhile loses
- * it and exits (D10). A daemon from before the request answers "unknown
- * request type" and is sent `stop`, which shuts down in the same order. An
+ * socket to step down: it cancels its tiers in flight, persists one note,
+ * clears its record and exits (row 011-31, C9 as amended 2026-10-20). A
+ * daemon that accepts is sent `stop` too, whatever it answers, so one from
+ * 0.1.200 on that steps down without the cancel cancels on the stop. The
+ * hook then spawns its successor (`successor`), which waits for the lock; a
+ * daemon spawned meanwhile loses it and exits (D10). A daemon from before
+ * the request answers "unknown request type" and is sent `stop`, which
+ * shuts down in the same order. An
  * equal or newer daemon is left alone, so a downgrade replaces nothing; a
  * version that is not plain `major.minor.patch` on either side compares as
  * not newer.
@@ -161,7 +164,12 @@ export async function stepDownIfOlder(
       { type: "step-down", version },
       SOCKET_TIMEOUT_MS,
     );
-    if (answer.ok) return answer.type === "step-down" && answer.steppingDown;
+    if (answer.ok) {
+      if (answer.type !== "step-down" || !answer.steppingDown) return false;
+      // Row 011-31: a daemon from 0.1.200 on that steps down without a cancel cancels on `stop`.
+      await requestDaemon(record.socketPath, { type: "stop" }, SOCKET_TIMEOUT_MS).catch(() => null);
+      return true;
+    }
     if (!answer.error.startsWith("unknown request type")) return false;
     return (await requestDaemon(record.socketPath, { type: "stop" }, SOCKET_TIMEOUT_MS)).ok;
   } catch {
