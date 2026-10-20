@@ -1,0 +1,40 @@
+== old 0.1.223, new 0.1.224, load 14.25, 24 CPUs, node v24.21.0
+[07:40:39.643] old daemon started
+Checkpoint 615f4923-7225-4785-8793-b2696d48d907 completed at revision 0: no known failures; 4 test files, 0 already current, 4 run by the baseline checkpoint ae4bbc7c-b5a0-46d9-b77e-786384b6c95b it joined
+[07:40:40.580] edited hold.test.ts with the hold on
+[07:40:48.045] six hooks done
+[07:40:54.050] +10 s, load 13.80
+  successor 3372466: 9 s alive, 0 s CPU, 91 MB
+  successor 3372467: 9 s alive, 0 s CPU, 91 MB
+  successor 3372468: 9 s alive, 0 s CPU, 91 MB
+  successor 3372936: 8 s alive, 0 s CPU, 90 MB
+  successor 3373363: 7 s alive, 0 s CPU, 91 MB
+  successor 3373754: 6 s alive, 0 s CPU, 91 MB
+  successors: 6, CPU 0 s total, RSS 547 MB total
+  daemon 3370125: 14 s alive, 1 s CPU
+[07:41:14.193] +30 s, load 13.22
+  successor 3372466: 29 s alive, 1 s CPU, 96 MB
+  successor 3372467: 29 s alive, 1 s CPU, 97 MB
+  successor 3372468: 29 s alive, 1 s CPU, 97 MB
+  successor 3372936: 28 s alive, 1 s CPU, 96 MB
+  successor 3373363: 27 s alive, 1 s CPU, 97 MB
+  successor 3373754: 26 s alive, 1 s CPU, 96 MB
+  successors: 6, CPU 6 s total, RSS 582 MB total
+  daemon 3370125: 34 s alive, 2 s CPU
+[07:41:44.341] +60 s, load 24.79
+  successor 3372466: 59 s alive, 2 s CPU, 96 MB
+  successor 3372467: 59 s alive, 2 s CPU, 97 MB
+  successor 3372468: 59 s alive, 2 s CPU, 97 MB
+  successor 3372936: 58 s alive, 2 s CPU, 96 MB
+  successor 3373363: 57 s alive, 2 s CPU, 97 MB
+  successor 3373754: 56 s alive, 2 s CPU, 96 MB
+  successors: 6, CPU 12 s total, RSS 582 MB total
+  daemon 3370125: 65 s alive, 2 s CPU
+[07:41:44.529] releasing the hold
+[07:41:54.537] +70 s, load 24.99
+  successor 3373754: 66 s alive, 3 s CPU, 179 MB
+  successors: 1, CPU 3 s total, RSS 179 MB total
+Affected checks: 8 passed (4 tests, 4 test files loaded), 0 running, 0 queued
+Daemon: running, last heartbeat 5 s ago
+left: 0 processes
+== probe root removed
