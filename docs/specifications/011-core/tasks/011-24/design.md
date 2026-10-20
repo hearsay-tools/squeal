@@ -74,7 +74,7 @@ Today it exits 2 (`takes paths only with --wait <ms>`, pinned by `test/cli/statu
 - The last line reads as a snapshot: `Named test files at revision N: ...` with a verdict, or `Named test files have no verdict at revision N: ...` with the reason groups and their commands. No deadline is named.
 - Exit code per Q4.
 - `--json`: the snapshot plus a `named` field, the named wait's payload with `outcome: "snapshot"` and `waitedMs` the sync's time.
-- `--wait 0 <path>` is not the snapshot: it is a wait whose deadline has passed, worded `the deadline passed after 0.0 s`, and it promotes.
+- `--wait 0 <path>` is not the snapshot: it is a wait whose deadline has passed, worded `the deadline passed after 0.0 s`. It sends no promotion: its first read is final, and a promotion for 0 ms lapses at once (corrected 2026-10-20, 011-28).
 
 ## 2. Stale and pending counts beside `Known failures` (gh-45)
 
