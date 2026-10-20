@@ -4,6 +4,7 @@ import type { NodeTestProject } from "../../../src/core/types/index.js";
 import {
   isSquealRecorder,
   projectEnv,
+  UNOBSERVED,
   withoutSquealRecorders,
 } from "../../../src/runners/node-test/recorders.js";
 
@@ -11,7 +12,9 @@ import {
  * Task 003-35: under a Squeal daemon a test process inherits 001-132's
  * recorder in `NODE_OPTIONS` and its settings in `SQUEAL_OBSERVE`. Neither is
  * the project's: the node:test runner keys and runs a project as a plain
- * shell would, and a project's own `--require` still counts.
+ * shell would, and a project's own `--require` still counts. Task 001-431:
+ * the settings become `UNOBSERVED`, so the recorder's spawn hook, still in the
+ * daemon's test process that starts the run, leaves its processes alone.
  */
 
 const PLUGIN = "/home/u/.claude/plugins/cache/squeal/squeal/0.1.40/dist";
@@ -73,13 +76,18 @@ const project = (env: Readonly<Record<string, string>> = {}): NodeTestProject =>
 });
 
 describe("projectEnv", () => {
-  it("drops the inherited recorders, SQUEAL_OBSERVE and NODE_TEST_CONTEXT", () => {
+  it("drops the inherited recorders and NODE_TEST_CONTEXT, and their settings for UNOBSERVED", () => {
     const env = projectEnv(project(), {
       PATH: "/bin",
       NODE_OPTIONS: `--require ${JSON.stringify(OBSERVE)}`,
       SQUEAL_OBSERVE: '{"out":"/tmp/o","root":"/w"}',
       NODE_TEST_CONTEXT: "child-v8",
     });
+    expect(env).toEqual({ PATH: "/bin", SQUEAL_OBSERVE: UNOBSERVED });
+  });
+
+  it("adds no settings where none were inherited", () => {
+    const env = projectEnv(project(), { PATH: "/bin", NODE_OPTIONS: `--require ${OBSERVE}` });
     expect(env).toEqual({ PATH: "/bin" });
   });
 
@@ -102,6 +110,6 @@ describe("projectEnv", () => {
       SQUEAL_OBSERVE: "{}",
       MODE: "dev",
     });
-    expect(env).toEqual({ NODE_OPTIONS: own, MODE: "test" });
+    expect(env).toEqual({ NODE_OPTIONS: own, MODE: "test", SQUEAL_OBSERVE: UNOBSERVED });
   });
 });

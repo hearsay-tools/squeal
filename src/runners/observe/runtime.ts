@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import type { AbsolutePath } from "../../core/types/index.js";
-import { ownNodeOptions } from "../node-test/recorders.js";
+import { ownNodeOptions, UNOBSERVED } from "../node-test/recorders.js";
 import { holdsRequire, quoteNodeOption } from "../node-test/run/node-options.js";
 
 /**
@@ -74,4 +74,21 @@ export function observeEnv(
     NODE_OPTIONS: options === "" ? option : `${option} ${options}`,
     [OBSERVE_VARIABLE]: JSON.stringify(settings),
   };
+}
+
+/**
+ * The env of a run that does not observe, under another Squeal's recorder
+ * (spec 001 D11 Fidelity, task 001-431): `NODE_OPTIONS` without that
+ * recorder, `""` when it was all there was (a Worker reads an unset value as
+ * `"undefined"`), and that Squeal's settings replaced by `UNOBSERVED`, so its
+ * spawn hook in this process leaves the run's processes as they are. `{}`
+ * when `inherited` holds neither.
+ */
+export function unobservedEnv(inherited: NodeJS.ProcessEnv): Record<string, string> {
+  const env: Record<string, string> = {};
+  const options = inherited.NODE_OPTIONS;
+  const own = options === undefined ? undefined : ownNodeOptions(options);
+  if (own !== options) env.NODE_OPTIONS = own ?? "";
+  if (inherited[OBSERVE_VARIABLE] !== undefined) env[OBSERVE_VARIABLE] = UNOBSERVED;
+  return env;
 }

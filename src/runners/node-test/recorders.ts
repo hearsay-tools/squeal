@@ -16,6 +16,16 @@ const RECORDERS = [
 /** Settings of 001-132's recorder (`src/runners/observe/runtime.ts`). */
 const OBSERVE_VARIABLE = "SQUEAL_OBSERVE";
 
+/**
+ * The settings in the processes of a run that does not observe, in place of
+ * another Squeal's (task 001-431). They name no worktree, so no recorder
+ * records with them, and that Squeal's spawn hook, still in the process that
+ * starts the run, leaves a child with settings other than its own as they are
+ * (`spawn.cjs`), so its recorder stays out of the run as it does out of an
+ * observing one.
+ */
+export const UNOBSERVED = JSON.stringify({ out: "" });
+
 /** Whether a `--require` or `--import` value is one of Squeal's recorders, by absolute path or `file:` URL. */
 export function isSquealRecorder(specifier: string): boolean {
   let path = specifier;
@@ -58,18 +68,21 @@ export function withoutSquealRecorders(tokens: readonly string[]): string[] {
  * Squeal itself put there, with the project's `env` merged over it (D1).
  * Dropped: `NODE_TEST_CONTEXT`, from a `node --test` around Squeal, which
  * would make the project's runner act as a child and write no report; and,
- * under a Squeal daemon (task 003-35), `SQUEAL_OBSERVE` and Squeal's
- * recorders in `NODE_OPTIONS`, which are no project preload. A project's own
- * `env` is kept as written.
+ * under a Squeal daemon (task 003-35), Squeal's recorders in `NODE_OPTIONS`,
+ * which are no project preload. Its `SQUEAL_OBSERVE` becomes `UNOBSERVED`,
+ * so that daemon's recorder stays out of these processes too (task 001-431);
+ * a warm-up's own settings replace it. A project's own `env` is kept as
+ * written.
  */
 export function projectEnv(
   project: NodeTestProject,
   inherited: NodeJS.ProcessEnv,
 ): NodeJS.ProcessEnv {
-  const { NODE_TEST_CONTEXT: _, [OBSERVE_VARIABLE]: __, ...base } = inherited;
+  const { NODE_TEST_CONTEXT: _, [OBSERVE_VARIABLE]: outer, ...base } = inherited;
   const options = base.NODE_OPTIONS === undefined ? undefined : ownNodeOptions(base.NODE_OPTIONS);
   if (options === undefined) delete base.NODE_OPTIONS;
   else base.NODE_OPTIONS = options;
+  if (outer !== undefined) base[OBSERVE_VARIABLE] = UNOBSERVED;
   return { ...base, ...project.env };
 }
 
