@@ -69,7 +69,7 @@ An old row keeps its wording until its file runs again: when its key changes, or
 | `src/core/state/inherited.ts` | `heldFailure` | C5's held fail |
 | `src/core/state/derive.ts` | `stateFromResult`, `classify` | the state rows give |
 
-Hashed beside the bundle: the `location@version#integrity` lock closure of the packages the bundle imports (its metafile's external imports), the same for `esbuild`, and the plugins' `bin/` launchers, which decide how Node runs the daemon.
+Hashed beside the bundle: the `location@version#integrity` lock closure of the packages the bundle imports (its metafile's external imports) and the same for `esbuild`. The plugins' `bin/` launchers are not hashed (amended 2026-10-20, 011-41): no case can run one, the Node they pick is in every environment hash, the CLI they pick carries its own format, and `--disable-warning` stores nothing. A test pins that every launcher's `node` takes only `--disable-warning=<name>` flags and that no launcher sets an environment variable or `NODE_OPTIONS` for what it runs. Each tree bundles at its own build target (`src/harness/build.ts`) and its own `tsconfig.json`.
 
 Everything else is out without a list: the CLI, status, delivery, the harnesses, `Ledger`'s queueing, `tiers.ts`'s selection, and the scheduling hints. Each is out because no entry reaches it. The risk moves to the other side: a decision that lands where no entry reaches. R4's tests mutate each decision and require the alarm to fire (section 6, risk 4).
 
