@@ -53,6 +53,7 @@ import { busyLanes } from "./slots.js";
 import { slowView } from "./slow.js";
 import { queueSlowSuite, type SlowRun, SlowTier } from "./slow-tier.js";
 import { type Moved, Withholds, withheldForTouch, withholdNote } from "./stability.js";
+import { StoredKeys } from "./stored-keys.js";
 import {
   endTier,
   executeTier,
@@ -152,9 +153,12 @@ class TierScheduler implements Scheduler {
   readonly #capacity: TierCapacity | null;
   /** The pump's resume after a busy store (task 001-422); `null` without `busyWaits`. */
   readonly #busy: BusyResume | null;
+  /** The keys other worktrees stored since the last read (spec 011 C4 step 3, task 011-23). */
+  readonly #storedKeys: StoredKeys;
 
   constructor(private readonly options: SchedulerOptions) {
     this.#install = new InstallStamps(options.root);
+    this.#storedKeys = new StoredKeys((options.now ?? Date.now)());
     this.#busy =
       options.busyWaits === undefined
         ? null
@@ -284,6 +288,7 @@ class TierScheduler implements Scheduler {
     if (ledger.confirmHeld()) ledger.commit();
     // Each pass looks again for a load retry's load, and another worktree's requests (001-368).
     if (batch.trigger === "interval" && takeRetries(context, ledger)) ledger.commit();
+    this.#adopt(context, ledger);
     const { applied, touched } = await reconcileBatch(context, ledger, batch);
     // Every reconciliation pass looks too: a workspace's `node_modules` is not watched (D5).
     const install = applied?.revision.changes.some((change) => touchesInstall(change.path));
@@ -303,6 +308,17 @@ class TierScheduler implements Scheduler {
     // The runner part waits for the runner: a backlog tier yields to an edit (task 001-124).
     this.#cancelBacklogs(applied.revision);
     this.#runnerWork.queueRefine(applied.revision, applied.content, touched);
+  }
+
+  /**
+   * Spec 011 C4 step 3 as amended (task 011-23): files with no result at
+   * their key take what other worktrees stored there since the last read.
+   * Not while runner work waits: keys would come from a revision the runner
+   * has not invalidated yet, as a tier's would.
+   */
+  #adopt(context: SchedulerContext, ledger: Ledger): void {
+    if (this.#runnerWork.size > 0 || this.#runnerWork.refining) return;
+    this.#storedKeys.adopt(context, ledger);
   }
 
   /**
@@ -585,6 +601,7 @@ class TierScheduler implements Scheduler {
               return null;
             }
             if (this.#runnerWork.size > 0) return "runner-work" as const;
+            this.#adopt(context, ledger);
             const tier = selectTier(context, ledger, this.#busyLanes());
             if (tier === null) return null;
             this.#fly(tier, install.stamp, null);
