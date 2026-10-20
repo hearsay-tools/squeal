@@ -85,7 +85,7 @@ const now = () => performance.now();
 
 /** A harness over the daemon's node:test runner, not started; `runs` times each run. */
 async function harness(
-  probe: { readonly crashBacklog?: Promise<void> } = {},
+  probe: { readonly crashBacklog?: Promise<void>; readonly holdEdit?: Promise<void> } = {},
 ): Promise<{ h: Harness; runs: TimedRun[] }> {
   const dir = join(mkdtempSync(join(tmpdir(), "squeal-beside-")), "squeal-uid");
   onTestFinished(() => rmSync(join(dir, ".."), { recursive: true, force: true }));
@@ -118,6 +118,9 @@ async function harness(
         const crashed =
           probe.crashBacklog !== undefined && runs.find((r) => holds(r, REKEYED)) === run;
         if (crashed) await probe.crashBacklog;
+        // The edit's run of the re-keyed file held open until the test releases it (test 3).
+        const second = runs.filter((r) => holds(r, REKEYED))[1];
+        if (probe.holdEdit !== undefined && second === run) await probe.holdEdit;
         const report: RunReport = crashed
           ? { ...ran, end: "crashed", completedFiles: [], results: [], failure: "probe crash" }
           : ran;
@@ -260,10 +263,15 @@ describe("scheduler: an edit's node:test tier beside the backlog tier (task 011-
   it("3. keeps the edit's run of a re-keyed file running when the backlog's run of it records first (review wave-4 B1)", {
     timeout: 120_000,
   }, async () => {
-    const { h, runs } = await harness();
-    // The edit makes the re-keyed file sleep 12 s longer, so its new run outlasts the backlog tier.
+    let release: () => void = () => {};
+    const hold = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    onTestFinished(release);
+    const { h, runs } = await harness({ holdEdit: hold });
+    // The edit's run of the re-keyed file is held open until the backlog's run of it recorded.
     const { backlog } = await editDuringBacklog(h, runs, async () => {
-      h.write("nt/src/b.mjs", "export const b = 2;\nexport const wait = 12000;\n");
+      h.write("nt/src/b.mjs", "export const b = 2;\nexport const wait = 0;\n");
       const at = now();
       await h.batch("nt/src/b.mjs");
       return at;
@@ -286,6 +294,7 @@ describe("scheduler: an edit's node:test tier beside the backlog tier (task 011-
         .list(h.worktreeId)
         .some((st) => st.check.testPath === REKEYED && st.outcome === "unknown"),
     ).toBe(false);
+    release();
 
     await h.scheduler.idle();
     expect(storedBy(h, REKEYED, edit)).toBe(true);

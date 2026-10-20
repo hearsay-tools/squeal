@@ -58,7 +58,9 @@ describe("scheduler: a node:test backlog in one-file slots (task 011-21 slice 2)
     console.log(
       `011-21 slots: 16 files in ${Math.round(actual)} ms against list scheduling's ${Math.round(list)} ms (${((actual / list - 1) * 100).toFixed(1)} %), ${steps.size} progress steps`,
     );
-    expect(actual).toBeLessThanOrEqual(list * 1.05);
+    // Within 5 % on a quiet host (2.2 % and 3.6 % measured); 15 % keeps it red against the
+    // tier barrier (26 % over) where a loaded CI runner widens each slot's refill gap.
+    expect(actual).toBeLessThanOrEqual(list * 1.15);
     // W slots at once, never more: no slot idled while files were queued.
     expect(widest(pass)).toBe(4);
     // Checkpoint progress moves per file, not per tier.
