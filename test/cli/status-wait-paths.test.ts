@@ -13,7 +13,7 @@ import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { CLOSURE_METHOD } from "../../src/core/keys/closure.js";
 import { withStatusStore } from "../../src/core/status/index.js";
 import type { CheckKey, RevisionNumber, Store } from "../../src/core/types/index.js";
-import { appendRevisions } from "../status/helpers.js";
+import { appendRevisions, check, state as stateRow } from "../status/helpers.js";
 import {
   A,
   ADDS,
@@ -265,6 +265,25 @@ describe("squeal status --wait <ms> <path>...", () => {
     const [blank, selected, verdict, end] = result.stdout.split("\n").slice(-4);
     expect([blank, selected, end]).toEqual(["", `Selected: ${A}`, ""]);
     expect(verdict).toMatch(/^Named test files at revision 4: no known failures; /);
+  });
+
+  it("names --full's commands from the directory the paths were given in", async () => {
+    // Review of cand/0.1.234, B1: the full status's commands resolve as `retry` reads its arguments.
+    const { repo, store } = repoWith([], [A, B]);
+    store.knownStates.upsertMany([
+      stateRow(repo.mainId, check(B, "holds"), {
+        validity: "stale",
+        pendingPhase: null,
+        observedAt: 3,
+      }),
+    ]);
+    mkdirSync(join(repo.main, "src"), { recursive: true });
+    const result = await run(
+      ["status", "--wait", "3000", "--full", "a.test.ts"],
+      join(repo.main, "src"),
+    );
+    expect(result.stdout).toContain("`squeal retry b.test.ts`");
+    expect(result.stdout).not.toContain("squeal retry src/b.test.ts");
   });
 
   it("lists a selected failure in full and exits 1; --json carries the verdict", async () => {
