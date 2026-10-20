@@ -1,12 +1,13 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
-import { isRecord } from "../../../src/core/fs/index.js";
-import { sameFingerprint } from "../../../src/core/state/fingerprint.js";
 import { bundleDriver } from "./bundle.js";
-import type { Case, CaseKind, CaseOutput } from "./case.js";
+import type { Case, CaseKind } from "./case.js";
 import { changedLines, changedSources, mappedLines, unrun } from "./coverage.js";
 import { coverageAt, execute, prepare, runtimeTexts, type Side, type SideName } from "./sides.js";
 import { dependencyLines, formatVersionOf, type Overlay, ROOT } from "./trees.js";
+import { type CaseVerdict, same, verdictOf } from "./verdict.js";
+
+export type { CaseVerdict } from "./verdict.js";
 
 /*
  * The comparison (011 C3, task 011-37 section 3): the driver bundled at the
@@ -26,17 +27,6 @@ export const MOVES: Readonly<Record<CaseKind, string>> = {
   store: FORMAT,
   observe: "RECORDER_VERSION (src/runners/observe/runtime.ts)",
 };
-
-export interface CaseVerdict {
-  readonly name: string;
-  readonly kind: CaseKind;
-  readonly keysEqual: boolean;
-  /** Outputs equal where keys are, and no case threw at one tree only. */
-  readonly outputsEqual: boolean;
-  readonly wordingEqual: boolean;
-  readonly baseline: CaseOutput;
-  readonly candidate: CaseOutput;
-}
 
 export interface Comparison {
   readonly versions: { readonly baseline: number; readonly candidate: number };
@@ -59,39 +49,6 @@ export interface CompareOptions {
   readonly cases: readonly Case[];
   /** An empty directory for bundles, runs and stores. */
   readonly work: string;
-}
-
-/** Deep equality, a `fingerprint` field read through the candidate's `sameFingerprint`. */
-export function same(a: unknown, b: unknown, field?: string): boolean {
-  const fingerprint = (v: unknown) => typeof v === "string" || v === null;
-  if (field === "fingerprint" && fingerprint(a) && fingerprint(b)) {
-    return sameFingerprint(a as string | null, b as string | null);
-  }
-  if (a === b) return true;
-  if (Array.isArray(a) && Array.isArray(b)) {
-    return a.length === b.length && a.every((v, i) => same(v, b[i]));
-  }
-  if (isRecord(a) && isRecord(b)) {
-    const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
-    return [...keys].every((k) => same(a[k], b[k], k));
-  }
-  return false;
-}
-
-function verdictOf(c: Case, baseline: CaseOutput, candidate: CaseOutput): CaseVerdict {
-  // A case that throws at one tree only differs whatever its keys.
-  const errorsEqual = same(baseline.error, candidate.error);
-  const keysEqual = errorsEqual && same(baseline.keys, candidate.keys);
-  const outputsEqual = errorsEqual && (!keysEqual || same(baseline.outputs, candidate.outputs));
-  return {
-    name: c.name,
-    kind: c.kind,
-    keysEqual,
-    outputsEqual,
-    wordingEqual: same(baseline.wording, candidate.wording),
-    baseline,
-    candidate,
-  };
 }
 
 /** Bundles both trees and, when they differ, runs the corpus at both and checks coverage. */
@@ -270,4 +227,9 @@ export function failures(c: Comparison, ref: string): string[] {
 /** The wording that differs at equal keys and outputs: listed, never failed. */
 export function wordingChanges(c: Comparison): string[] {
   return c.cases.filter((v) => v.keysEqual && v.outputsEqual && !v.wordingEqual).map((v) => v.name);
+}
+
+/** Outputs that differ and ask no raise (the `store` kind's direction), by case: listed, never failed. */
+export function reportedChanges(c: Comparison): string[] {
+  return c.cases.flatMap((v) => v.reported.map((line) => `${v.kind} case "${v.name}": ${line}`));
 }
