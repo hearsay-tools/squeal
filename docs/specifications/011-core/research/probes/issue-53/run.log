@@ -1,0 +1,268 @@
+== load: 18.95 18.67 24.84 5/2400 3538413 cpus: 24
+== squeal 0.1.229 node v24.21.0
+$ squeal start
+Squeal daemon spawned for /tmp/sq53.LTnl/repo
+
+Revision: 0
+Known failures: 0
+Affected checks: none counted; the daemon has not listed this worktree's test files yet
+Discovery: the daemon is still listing this worktree's test files (`squeal status --wait 60000` waits for it)
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+
+Worktree: /tmp/sq53.LTnl/repo (HEAD 152a783, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 0 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+[exit 0]
+$ squeal run --all --wait
+Checkpoint b3fa7d9f-ad83-477f-8e07-70dcd100cadd completed at revision 0: 1 known failure: 1 test; 2 test files, 0 already current, 2 run by the baseline checkpoint f463a3a7-7b31-47bb-975f-afa9bb4cc3a5 it joined
+Checkpoint b3fa7d9f-ad83-477f-8e07-70dcd100cadd started at revision 0: 2 test files to run, 0 already current, joining the baseline checkpoint f463a3a7-7b31-47bb-975f-afa9bb4cc3a5 already running them (0 of 2 test files done); it ends when that one ends
+
+Revision: 0
+Known failures: 1 (1 test)
+  FAIL  [gone] gone/gone.test.mjs > gone fails
+        removed project still ran
+        at gone/gone.test.mjs:3:35, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.79 per CPU when it ran; no retry asked at these inputs
+Affected checks: 3 passed (1 test, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+
+Worktree: /tmp/sq53.LTnl/repo (HEAD 152a783, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+  2026-10-20T15:51:54.973Z, revision 0: node-test project "keep": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: keep/keep.test.mjs
+  2026-10-20T15:51:54.978Z, revision 0: node-test project "gone": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: gone/gone.test.mjs
+[exit 1]
+$ squeal status
+Revision: 0
+Known failures: 1 (1 test)
+  FAIL  [gone] gone/gone.test.mjs > gone fails
+        removed project still ran
+        at gone/gone.test.mjs:3:35, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.79 per CPU when it ran; no retry asked at these inputs
+Affected checks: 3 passed (1 test, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+
+Worktree: /tmp/sq53.LTnl/repo (HEAD 152a783, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+  2026-10-20T15:51:54.973Z, revision 0: node-test project "keep": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: keep/keep.test.mjs
+  2026-10-20T15:51:54.978Z, revision 0: node-test project "gone": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: gone/gone.test.mjs
+[exit 0]
+== remove project gone from squeal.config.json
+$ squeal status --wait 30000
+Revision: 1 · 24615118 + 1
+Known failures: 1 (1 test)
+  FAIL  [gone] gone/gone.test.mjs > gone fails
+        removed project still ran
+        at gone/gone.test.mjs:3:35, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.79 per CPU when it ran; no retry asked at these inputs
+Affected checks: 3 passed (1 test, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+
+Worktree: /tmp/sq53.LTnl/repo (HEAD 2461511, clean at revision 1)
+Daemon: running, last heartbeat 5 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-20T15:51:54.973Z, revision 0: node-test project "keep": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: keep/keep.test.mjs
+  2026-10-20T15:51:54.978Z, revision 0: node-test project "gone": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: gone/gone.test.mjs
+  2026-10-20T15:51:56.163Z, revision 1: squeal.config.json changed; policy reloaded
+
+Returned on quiet: nothing the edits since revision 1 re-keyed is pending (0 test files) at revision 1 after 0.3 s. Worktree: known failures 1 (1 test); checks 0 running, 0 queued
+[exit 0]
+== edit gone's test file (a revision touching only the removed project's file)
+$ squeal status --wait 30000
+Revision: 2 · 24615118 + 2, dirty
+Known failures: 1 (1 test)
+  FAIL  [gone] gone/gone.test.mjs > gone fails
+        removed project still ran
+        at gone/gone.test.mjs:3:35, observed at revision 2, current
+        recorded just now in this worktree at revision 2, load 0.76 per CPU when it ran; no retry asked at these inputs
+Affected checks: 3 passed (1 test, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 2; `squeal run --all` requests one)
+
+Worktree: /tmp/sq53.LTnl/repo (HEAD 2461511, dirty at revision 2)
+Daemon: running, last heartbeat 2 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-20T15:51:54.973Z, revision 0: node-test project "keep": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: keep/keep.test.mjs
+  2026-10-20T15:51:54.978Z, revision 0: node-test project "gone": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: gone/gone.test.mjs
+  2026-10-20T15:51:56.163Z, revision 1: squeal.config.json changed; policy reloaded
+
+Returned on quiet: nothing the edits since revision 2 re-keyed is pending (0 test files) at revision 2 after 0.3 s. Worktree: known failures 1 (1 test); checks 0 running, 0 queued
+[exit 0]
+$ squeal status --wait 30000 gone/gone.test.mjs
+Revision: 2 · 24615118 + 2, dirty
+Known failures: 1 (1 test)
+  FAIL  [gone] gone/gone.test.mjs > gone fails
+        removed project still ran
+        at gone/gone.test.mjs:3:35, observed at revision 2, current
+        recorded just now in this worktree at revision 2, load 0.76 per CPU when it ran; no retry asked at these inputs
+Affected checks: 3 passed (1 test, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 2; `squeal run --all` requests one)
+
+Worktree: /tmp/sq53.LTnl/repo (HEAD 2461511, dirty at revision 2)
+Daemon: running, last heartbeat 2 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-20T15:51:54.973Z, revision 0: node-test project "keep": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: keep/keep.test.mjs
+  2026-10-20T15:51:54.978Z, revision 0: node-test project "gone": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: gone/gone.test.mjs
+  2026-10-20T15:51:56.163Z, revision 1: squeal.config.json changed; policy reloaded
+
+Selected: gone/gone.test.mjs
+  FAIL  [gone] gone/gone.test.mjs > gone fails
+        removed project still ran
+        at gone/gone.test.mjs:3:35, observed at revision 2, current
+Named test files at revision 2: 1 known failure: 1 test; 1 test file, each with a current result, after 0.3 s. Worktree: known failures 1 (1 test); checks 0 running, 0 queued
+[exit 1]
+$ squeal retry gone/gone.test.mjs --reason environment
+Retry queued (reason: environment): gone/gone.test.mjs runs once more now. Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending.
+[exit 0]
+$ squeal status --wait 30000 gone/gone.test.mjs
+Revision: 2 · 24615118 + 2, dirty
+Known failures: 1 (1 test)
+  FAIL  [gone] gone/gone.test.mjs > gone fails
+        removed project still ran
+        at gone/gone.test.mjs:3:35, observed at revision 2, current
+        recorded just now in this worktree at revision 2, load 0.73 per CPU when it ran; retry asked (environment) at these inputs: it failed again
+Affected checks: 3 passed (1 test, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 2; `squeal run --all` requests one)
+
+Worktree: /tmp/sq53.LTnl/repo (HEAD 2461511, dirty at revision 2)
+Daemon: running, last heartbeat 3 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-20T15:51:54.973Z, revision 0: node-test project "keep": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: keep/keep.test.mjs
+  2026-10-20T15:51:54.978Z, revision 0: node-test project "gone": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: gone/gone.test.mjs
+  2026-10-20T15:51:56.163Z, revision 1: squeal.config.json changed; policy reloaded
+
+Selected: gone/gone.test.mjs
+  FAIL  [gone] gone/gone.test.mjs > gone fails
+        removed project still ran
+        at gone/gone.test.mjs:3:35, observed at revision 2, current
+Named test files at revision 2: 1 known failure: 1 test; 1 test file, each with a current result, after 0.3 s. Worktree: known failures 1 (1 test); checks 0 running, 0 queued
+[exit 1]
+$ squeal run --all --wait
+Checkpoint 44d7e714-2d33-4917-a741-63f69df77ba0 completed at revision 2: 1 known failure: 1 test; 2 test files, 2 already current, 0 run now
+Checkpoint 44d7e714-2d33-4917-a741-63f69df77ba0 started at revision 2: 0 test files to run, 2 already current
+
+Revision: 2 · 24615118 + 2, dirty
+Known failures: 1 (1 test)
+  FAIL  [gone] gone/gone.test.mjs > gone fails
+        removed project still ran
+        at gone/gone.test.mjs:3:35, observed at revision 2, current
+        recorded just now in this worktree at revision 2, load 0.73 per CPU when it ran; retry asked (environment) at these inputs: it failed again
+Affected checks: 3 passed (1 test, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 2
+
+Worktree: /tmp/sq53.LTnl/repo (HEAD 2461511, dirty at revision 2)
+Daemon: running, last heartbeat 3 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-20T15:51:54.973Z, revision 0: node-test project "keep": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: keep/keep.test.mjs
+  2026-10-20T15:51:54.978Z, revision 0: node-test project "gone": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: gone/gone.test.mjs
+  2026-10-20T15:51:56.163Z, revision 1: squeal.config.json changed; policy reloaded
+[exit 1]
+$ squeal failures
+Failures in this worktree (2 failures, newest first):
+  FAIL  2026-10-20T15:52:03.583Z  [gone] gone/gone.test.mjs > gone fails
+        /tmp/sq53.LTnl/repo (this worktree), revision 2, commit 2461511, dirty, 1 ms, run ca2f0cb4-aea8-45b7-a156-3bd0c1591326
+        AssertionError: removed project still ran @ gone/gone.test.mjs:3:35
+  FAIL  2026-10-20T15:51:55.224Z  [gone] gone/gone.test.mjs > gone fails
+        /tmp/sq53.LTnl/repo (this worktree), revision 0, commit 152a783, clean, 1 ms, run 493cd20b-dd90-4d35-8d35-e1924ae9b9f4
+        AssertionError: removed project still ran @ gone/gone.test.mjs:3:35
+
+squeal why "<check>" prints a failure's full output.
+[exit 0]
+== restart the daemon on the new config
+$ squeal stop
+Squeal daemon stopped for /tmp/sq53.LTnl/repo
+[exit 0]
+$ squeal start
+Squeal daemon spawned for /tmp/sq53.LTnl/repo
+
+Revision: 2 · 24615118 + 2, dirty
+Known failures: 1 (1 test)
+  FAIL  [gone] gone/gone.test.mjs > gone fails
+        removed project still ran
+        at gone/gone.test.mjs:3:35, observed at revision 2, current
+        recorded just now in this worktree at revision 2, load 0.73 per CPU when it ran; retry asked (environment) at these inputs: it failed again
+Affected checks: 3 passed (1 test, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 2
+
+Worktree: /tmp/sq53.LTnl/repo (HEAD 2461511, dirty at revision 2)
+Daemon: running, last heartbeat 0 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-20T15:51:54.973Z, revision 0: node-test project "keep": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: keep/keep.test.mjs
+  2026-10-20T15:51:54.978Z, revision 0: node-test project "gone": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: gone/gone.test.mjs
+  2026-10-20T15:51:56.163Z, revision 1: squeal.config.json changed; policy reloaded
+  2026-10-20T15:52:04.241Z, revision 2: daemon stopped: squeal stop
+[exit 0]
+$ squeal run --all --wait
+Checkpoint 030be200-fdce-4f8f-97b9-fa96c3fe8fe1 completed at revision 2: no known failures; 1 test file, 1 already current, 0 run now
+Checkpoint 030be200-fdce-4f8f-97b9-fa96c3fe8fe1 started at revision 2: 0 test files to run, 1 already current
+
+Revision: 2 · 24615118 + 2, dirty
+Known failures: 0
+Affected checks: 2 passed (1 test, 1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 2
+
+Worktree: /tmp/sq53.LTnl/repo (HEAD 2461511, dirty at revision 2)
+Daemon: running, last heartbeat 0 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-20T15:51:54.973Z, revision 0: node-test project "keep": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: keep/keep.test.mjs
+  2026-10-20T15:51:54.978Z, revision 0: node-test project "gone": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: gone/gone.test.mjs
+  2026-10-20T15:51:56.163Z, revision 1: squeal.config.json changed; policy reloaded
+  2026-10-20T15:52:04.241Z, revision 2: daemon stopped: squeal stop
+[exit 0]
+$ squeal status
+Revision: 2 · 24615118 + 2, dirty
+Known failures: 0
+Affected checks: 2 passed (1 test, 1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 2
+
+Worktree: /tmp/sq53.LTnl/repo (HEAD 2461511, dirty at revision 2)
+Daemon: running, last heartbeat 0 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-10-20T15:51:54.973Z, revision 0: node-test project "keep": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: keep/keep.test.mjs
+  2026-10-20T15:51:54.978Z, revision 0: node-test project "gone": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: gone/gone.test.mjs
+  2026-10-20T15:51:56.163Z, revision 1: squeal.config.json changed; policy reloaded
+  2026-10-20T15:52:04.241Z, revision 2: daemon stopped: squeal stop
+[exit 0]
+$ squeal retry gone/gone.test.mjs --reason environment
+Not retried: gone/gone.test.mjs is not a test file Squeal has keyed in this worktree.
+[exit 1]
+$ squeal stop
+Squeal daemon stopped for /tmp/sq53.LTnl/repo
+[exit 0]
+== tmp: /tmp/sq53.LTnl
