@@ -35,22 +35,43 @@ export function fileClassOf(
 }
 
 /**
- * What the store says of a set of test files at the worktree's current
- * revision (spec 005 D1): how many have a current result, how many do not
- * and why, and the known failures among them.
+ * How a set of test files stands at the worktree's current revision: how
+ * many have a current result and how many do not and why, which is what
+ * decides whether a wait on them ends (task 011-42).
  */
-export interface FileVerdict {
+export interface FileClasses {
   readonly revision: RevisionNumber;
   readonly testFiles: number;
   readonly byClass: Readonly<Record<FileClass, number>>;
   /** The runner has not listed the revision's test files yet (`runnerPartPending`). */
   readonly unlisted: boolean;
+}
+
+/** What the store says of a set of test files (spec 005 D1): their classes and the known failures among them. */
+export interface FileVerdict extends FileClasses {
   readonly failures: CheckCounts;
 }
 
 /**
+ * The classes of `files`, or of every test file the worktree lists when
+ * `null`, read from their own states and rows only: a wait's poll reads
+ * this, never every state of the worktree for a few files (task 011-42).
+ */
+export function readClasses(
+  store: Store,
+  worktreeId: WorktreeId,
+  files: readonly TestFileRef[] | null = null,
+): FileClasses {
+  const only = files ?? undefined;
+  const states = store.knownStates.list(worktreeId, only);
+  return tally(store, worktreeId, files, states, store.testFileKeys.list(worktreeId, only)).classes;
+}
+
+/**
  * Reads the verdict on `files`, or on every test file the worktree lists when
- * `null`, each file classed by `fileClassOf`.
+ * `null`, each file classed by `fileClassOf`. It reads every state: a failed
+ * global setup is no test file's and counts for its project's files (task
+ * 001-382), and no read lists a worktree's setup checks apart.
  */
 export function readVerdict(
   store: Store,
@@ -58,25 +79,14 @@ export function readVerdict(
   files: readonly TestFileRef[] | null = null,
 ): FileVerdict {
   const states = store.knownStates.list(worktreeId);
-  const keys = store.testFileKeys.list(worktreeId);
-  const header = readHeader(store, worktreeId, states, keys);
-  const checks = new Map<string, KnownState[]>();
-  for (const state of states) {
-    const id = testFileKeyOf(state.check);
-    checks.set(id, [...(checks.get(id) ?? []), state]);
-  }
-  const rows = new Map(keys.map((row) => [testFileId(row.testFile), row]));
-  const ids = files === null ? [...rows.keys()] : [...new Set(files.map(testFileId))];
-  const byClass: Record<FileClass, number> = { current: 0, pending: 0, stale: 0, unknown: 0 };
+  const keys = store.testFileKeys.list(worktreeId, files ?? undefined);
+  const { classes, ids, rows, checks } = tally(store, worktreeId, files, states, keys);
   const failures = { tests: 0, testFiles: 0 };
   for (const id of ids) {
-    const own = checks.get(id) ?? [];
-    byClass[fileClassOf(rows.get(id), own)]++;
-    for (const state of own) {
+    for (const state of checks.get(id) ?? []) {
       if (state.outcome === "fail") failures[state.check.kind === "test" ? "tests" : "testFiles"]++;
     }
   }
-  // Task 001-382: a failed global setup is no test file's, and counts for the project's files.
   const projects = new Set(ids.map((id) => rows.get(id)?.testFile.project));
   const setups = states.filter(
     (s) =>
@@ -84,13 +94,36 @@ export function readVerdict(
       s.outcome === "fail" &&
       (files === null || projects.has(s.check.project)),
   ).length;
-  return {
+  return { ...classes, failures: setups > 0 ? { ...failures, setups } : failures };
+}
+
+/** `files`' classes from `states` and `keys`, which hold at least theirs, grouped in one pass. */
+function tally(
+  store: Store,
+  worktreeId: WorktreeId,
+  files: readonly TestFileRef[] | null,
+  states: readonly KnownState[],
+  keys: readonly TestFileKeyRecord[],
+) {
+  const header = readHeader(store, worktreeId, states, keys);
+  const checks = new Map<string, KnownState[]>();
+  for (const state of states) {
+    const id = testFileKeyOf(state.check);
+    const own = checks.get(id);
+    if (own === undefined) checks.set(id, [state]);
+    else own.push(state);
+  }
+  const rows = new Map(keys.map((row) => [testFileId(row.testFile), row]));
+  const ids = files === null ? [...rows.keys()] : [...new Set(files.map(testFileId))];
+  const byClass: Record<FileClass, number> = { current: 0, pending: 0, stale: 0, unknown: 0 };
+  for (const id of ids) byClass[fileClassOf(rows.get(id), checks.get(id) ?? [])]++;
+  const classes: FileClasses = {
     revision: header.revision,
     testFiles: ids.length,
     byClass,
     unlisted: header.runnerPartPending === true || header.awaitingInstall === true,
-    failures: setups > 0 ? { ...failures, setups } : failures,
   };
+  return { classes, ids, rows, checks };
 }
 
 /**
