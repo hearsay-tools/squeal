@@ -1,5 +1,6 @@
+import { timeText } from "../text.js";
 import type { EpochMs, RecordedFacts, RetryFact, WorktreeId } from "../types/index.js";
-import type { HostLoad } from "./load.js";
+import { type HostLoad, loadAllows } from "./load.js";
 import type { RetryOutcome, RetryReason } from "./records.js";
 
 /*
@@ -16,9 +17,22 @@ export function loadText(load: HostLoad): string {
     : `load average ${load.oneMinute.toFixed(2)} on ${cpus}`;
 }
 
-/** What a pending request of `reason` waits for, with the load now. */
-export function waitsText(reason: RetryReason, load: HostLoad): string {
+/**
+ * What a pending request of `reason` waits for, with the load now; row
+ * 011-27 (gh-41's comment): a `load` one the load lets run says it runs at
+ * the daemon's next look, and one whose run is open since when.
+ */
+export function waitsText(
+  reason: RetryReason,
+  load: HostLoad,
+  runningSince: EpochMs | null = null,
+): string {
+  if (runningSince !== null) return `running since ${timeText(runningSince)}`;
   if (reason === "environment") return "runs at once";
+  if (load.oneMinute === null) return `runs at the daemon's next look (${loadText(load)})`;
+  if (loadAllows(load)) {
+    return `runs at the daemon's next look: the one-minute load average is below the CPU count (${loadText(load)} now)`;
+  }
   return `waits for the one-minute load average to fall below the CPU count (${loadText(load)} now)`;
 }
 

@@ -162,9 +162,9 @@ describe("squeal retry", () => {
     expect(readRetries(store)).toHaveLength(1);
   });
 
-  it("rejects a missing or unknown reason and a file outside the keyed test files", async () => {
+  // Row 011-27: a missing reason is no usage error; `retry-no-reason.test.ts` has its cases.
+  it("rejects an unknown reason and a file outside the keyed test files", async () => {
     const { root } = await worktree();
-    expect((await retry([A], root)).code).toBe(2);
     expect((await retry([A, "--reason", "flaky"], root)).stderr).toContain(
       '--reason must be load or environment, not "flaky"',
     );
