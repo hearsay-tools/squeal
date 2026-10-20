@@ -49,7 +49,9 @@ The waits' read budget is unchanged: the counts are one more pass over states an
     - slow files,
     - a failed global setup's file.
   - `all N test files current` only with a live daemon; not with none, not while the runner part is pending, not before the listing; the unlisted revision after a not-current part.
-- `test/evals/evidence-squeal.test.ts`: every variant's wait, named-wait and timed-out named-wait verdict line, read alone, plain and in hook JSON, says whether anything is not current as its status does. The `settled` fixture (`test/evals/status-snapshot.ts`) and the variants carry consistent file classes.
+- `test/evals/evidence-squeal.test.ts`:
+  - Stop's status text (`statusText`) joins status, the registration header and the news header among the formatters read plain and in hook JSON.
+  - Every variant's wait, named-wait and timed-out named-wait verdict line, read alone, plain and in hook JSON, says whether anything is not current as its status does. The `settled` fixture (`test/evals/status-snapshot.ts`) and the variants carry consistent file classes.
 - Pins updated for the new text:
   - `test/status/status.test.ts`: the snapshot, the inline sample and the vision example, which now seeds its files' key rows,
   - `test/status/header.test.ts` and `test/status/known-failure-counts.test.ts`,
