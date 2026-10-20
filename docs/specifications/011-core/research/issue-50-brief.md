@@ -1,0 +1,5 @@
+# Issue 50 reproduction
+
+Use /researcher. Shape: research. In under 20 minutes, determine whether hearsay-tools/squeal#50 reproduces on current 0.1.228: queued/running work lost on a same-revision restart with baseline.onStart=lookup-only, including shutdown-induced UNKNOWN. Read the issue with gh, 011 C4/C5/C6/C9, status amendments and 011-33’s tests as the starting seam. Use a bounded isolated fixture, never stop another worktree’s daemon. Before live probes check one-minute load against CPU count; if above, skip live reproduction and document why.
+
+Own only research/issue-50.md and throwaway research/probes/issue-50/ under this spec. Leave board, spec.md, status.md, skills and all product files alone. Findings must name Squeal version, host load/CPU count, exact commands and outcomes, distinguish original incident from synthetic reproduction and source reading, and assess coverage by shipped 011-31/011-33 versus residual UNKNOWN handling. Commit findings and intended probes. No product implementation, no delegation. Done when each reported symptom has an evidence-tagged verdict or explicit not-reproduced-because.
