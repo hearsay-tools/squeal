@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
@@ -33,15 +33,15 @@ interface Run {
 }
 
 /** `sh -c <script>` with `stdin`, from `cwd`, with only the environment Cursor gives a hook. */
-function shell(script: string, stdin: string, cwd: string): Promise<Run> {
+function shell(script: string, stdin: string, cwd: string, root = PLUGIN): Promise<Run> {
   return new Promise((resolve, reject) => {
     const child = spawn("sh", ["-c", script], {
       cwd,
       env: {
         PATH: process.env.PATH ?? "",
         HOME: cwd,
-        CLAUDE_PLUGIN_ROOT: PLUGIN,
-        CURSOR_PLUGIN_ROOT: PLUGIN,
+        CLAUDE_PLUGIN_ROOT: root,
+        CURSOR_PLUGIN_ROOT: root,
         CLAUDE_PROJECT_DIR: cwd,
       },
     });
@@ -59,9 +59,10 @@ function shell(script: string, stdin: string, cwd: string): Promise<Run> {
 
 /** Cursor's two transports: the payload written to stdin, or `<command> <<'CURSOR_HOOK_EOF'`. */
 const FORMS = {
-  stdin: (command: string, payload: string, cwd: string) => shell(command, payload, cwd),
-  heredoc: (command: string, payload: string, cwd: string) =>
-    shell(`${command} <<'CURSOR_HOOK_EOF'\n${payload}\nCURSOR_HOOK_EOF`, "", cwd),
+  stdin: (command: string, payload: string, cwd: string, root?: string) =>
+    shell(command, payload, cwd, root),
+  heredoc: (command: string, payload: string, cwd: string, root?: string) =>
+    shell(`${command} <<'CURSOR_HOOK_EOF'\n${payload}\nCURSOR_HOOK_EOF`, "", cwd, root),
 };
 
 /** A Squeal project, so a command that tested for Squeal would find it, and two markers. */
@@ -93,4 +94,27 @@ describe("every hooks.json command run without its args (012 CC1, task 012-01)",
       }
     }
   });
+
+  // Review 012-01 B1 and CC1's exception: Claude Code spawns the command in exec
+  // form, where quotes would be part of the path, so a shell splits a root with
+  // whitespace. The first word names no file: the hook fails, never blocks
+  // (exit 2), and runs and reads nothing.
+  it.each(entries)(
+    "$name under a plugin root with whitespace runs nothing and never blocks",
+    async ({ command }) => {
+      const { dir, markers, payloads } = project();
+      const root = join(dir, "plugin with spaces");
+      mkdirSync(join(root, "hooks"), { recursive: true });
+      copyFileSync(join(PLUGIN, "hooks/run"), join(root, "hooks/run"));
+      for (const [form, run] of Object.entries(FORMS)) {
+        for (const [payload, stdin] of Object.entries(payloads)) {
+          const out = await run(command, stdin, dir, root);
+          expect(out.code, `${form}, ${payload}`).toBe(127);
+          expect(out.stdout, `${form}, ${payload}`).toBe("");
+          for (const marker of markers)
+            expect(existsSync(marker), `${form}, ${marker}`).toBe(false);
+        }
+      }
+    },
+  );
 });
