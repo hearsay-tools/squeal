@@ -8,6 +8,13 @@ export function cap(text: string, max: number): string {
   return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
 }
 
+/** Local `HH:MM:SS`, as a human reads a clock. */
+export function timeText(at: number): string {
+  const date = new Date(at);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
 /** The most paths a note or a reason names before "N more" (tasks 007-30, 011-02). */
 export const PATHS_NAMED = 5;
 
