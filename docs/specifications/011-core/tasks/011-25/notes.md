@@ -59,3 +59,7 @@ Done-when 11 (the cezar replay) is skipped: optional in the brief, and the host'
 ## Release
 
 The scheduler sources are guarded, so this row raises the key format. As the brief says, there is no version bump and no re-pin. Expected failures until the coordinators bundle it: `test/keys/key-format.test.ts` (3 tests) and the 4 bundle-drift tests (`test/harness/plugin.test.ts`, `codex/plugin.test.ts`, `pi/package.test.ts`, `opencode/package.test.ts`).
+
+## Verification
+
+On `5d8d030e`, rebased onto main `e34c7b62` (whose new commits change docs only). `npm run lint` and `npm run typecheck` are clean. `squeal run --all --wait` (Squeal 0.1.226) completed checkpoint `9c8d6e0c` at revision 32 and exited 1: 740 test files current, 7,033 checks passed, 7 skipped, 9 known failures. Seven of the failures are the expected ones above. The other two are row 001-431's recorder-fidelity tests (`observe-fidelity.test.ts:119`, `run-reads-fidelity.test.ts:116`), which fail under Squeal's daemon on main too. Load was 12 to 84 on 24 CPUs during the session.
