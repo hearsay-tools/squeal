@@ -415,7 +415,7 @@ export interface Evidence {
   verdict: "pass" | "fail" | "unknown";
   /** A pull's subcommand, `status` or `run` (review 006-57 B1). */
   sub?: string;
-  /** The test files a status lists under `Pending retries:` (row 006-53). */
+  /** The test files a status lists under `Pending retries:` (row 006-53), or names in its `Outstanding:` retry groups (row 011-29). */
   pendingRetries?: string[];
   /** The test files a named-files wait selected, each with a current result (row 006-55). */
   selected?: string[];
