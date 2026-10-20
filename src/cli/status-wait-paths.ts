@@ -26,7 +26,13 @@ import { fileEntry, type NamedFileEntry } from "./named-file-lines.js";
 import { type NamedFile, pauseOnlyIds, readNamedFiles } from "./named-files.js";
 import { statusCommand } from "./status-command.js";
 import { type DaemonSync, pollPause, SYNC_POLL_MS, type SyncState } from "./status-sync.js";
-import { namedClassLines, namedLine, namedText, selectedLine } from "./status-wait-lines.js";
+import {
+  type NamedTextOptions,
+  namedClassLines,
+  namedLine,
+  namedText,
+  selectedLine,
+} from "./status-wait-lines.js";
 import { ownPathFiles, type PromoteNamed, promoteNamed } from "./status-wait-promote.js";
 import { type FileVerdict, readClasses, readVerdict, verdictCode } from "./verdict.js";
 import {
@@ -223,6 +229,12 @@ export type NamedWait =
       readonly down?: DownReason;
       /** A heartbeat lapse the wait went on through, the daemon alive (task 004-66). */
       readonly lapse?: HeartbeatLapse;
+      /**
+       * `status <path>...` without `--wait` (row 011-28, 005 D2 as amended
+       * 2026-10-20): one read after one sync, worded as a snapshot; its
+       * `timeout` is a read with no verdict.
+       */
+      readonly snapshot?: boolean;
     }
   | {
       readonly outcome: "unavailable";
@@ -230,9 +242,13 @@ export type NamedWait =
       readonly result: StatusUnavailable;
     };
 
-/** The `wait` field `status --json --wait <ms> <path>...` adds to the snapshot. */
+/**
+ * The `wait` field `status --json --wait <ms> <path>...` adds to the
+ * snapshot, and the `named` field of `status --json <path>...`, whose
+ * outcome is `snapshot` (row 011-28).
+ */
 export interface NamedWaitPayload {
-  readonly outcome: NamedWaitOutcome;
+  readonly outcome: NamedWaitOutcome | "snapshot";
   readonly waitedMs: number;
   readonly code: 0 | 1 | 3;
   readonly testFiles: readonly NamedFileEntry[];
@@ -388,46 +404,65 @@ export function namedCode(wait: Extract<NamedWait, { result: StatusSnapshot }>):
   return wait.outcome === "settled" ? verdictCode(wait.verdict) : 3;
 }
 
+/** How a named wait or snapshot prints (`printNamed`). */
+export interface NamedPrint extends NamedTextOptions {
+  readonly json: boolean;
+}
+
 /**
- * `squeal status [--json] --wait <ms> <path>...` (spec 005 D2). The
- * snapshot, then the line naming the selected files and their failures in
- * full, then last the verdict on them (issue 26); with `--json` the naming
- * and verdict lines go to stderr and stdout is the
- * snapshot plus a `wait` field (`NamedWaitPayload`). Exits as D1 for the
- * selected files only: 0, 1 with known failures among them, 3 without a
- * verdict, an unreadable store included.
+ * `squeal status [--json] [--full] --wait <ms> <path>...` (spec 005 D2):
+ * the wait, then `printNamed`.
  */
 export async function namedWaitCommand(
   paths: readonly string[],
-  json: boolean,
+  how: NamedPrint,
   io: CliIo,
   options: NamedWaitOptions,
 ): Promise<number> {
-  const env = io.env ?? process.env;
   const wait = await waitForNamed(io.cwd ?? process.cwd(), paths, options);
+  return printNamed(wait, how, io, options.now);
+}
+
+/**
+ * Prints a named wait or snapshot (005 D2 as amended 2026-10-20, row
+ * 011-28): the revision line, or with `--full` the worktree's status, then
+ * the line naming the selected files and their failures in full, then last
+ * the verdict on them (issue 26); with `--json` the naming and verdict lines
+ * go to stderr and stdout is the snapshot plus a `wait` field
+ * (`NamedWaitPayload`), `named` for a snapshot. Returns D1's code for the
+ * selected files only: 0, 1 with known failures among them, 3 without a
+ * verdict, an unreadable store included.
+ */
+export function printNamed(
+  wait: NamedWait,
+  how: NamedPrint,
+  io: CliIo,
+  now: () => EpochMs,
+): number {
   if (wait.outcome === "unavailable") {
     const { result } = wait;
-    io.stdout(json ? `${JSON.stringify(result, null, 2)}\n` : formatStatus(result, options.now()));
+    io.stdout(how.json ? `${JSON.stringify(result, null, 2)}\n` : formatStatus(result, now()));
     return 3;
   }
   const code = namedCode(wait);
-  const command = statusCommand(env);
-  if (json) {
-    const payload: NamedWaitPayload = {
-      outcome: wait.outcome,
-      waitedMs: Math.round(wait.waitedMs),
-      code,
-      testFiles: wait.files.map((f) => fileEntry(f, command, wait.selection.base)),
-      unmatched: wait.selection.unmatched,
-      leftForPause: wait.leftForPause ?? [],
-      verdict: wait.verdict,
-    };
-    io.stdout(`${JSON.stringify({ ...wait.result, wait: payload }, null, 2)}\n`);
-    const selected = selectedLine(wait);
-    const lines = [...(selected === null ? [] : [selected]), ...namedClassLines(wait, command)];
-    io.stderr(`${lines.map((line) => `${line}\n`).join("")}${namedLine(wait, command)}\n`);
-  } else {
-    io.stdout(namedText(wait, options.now(), command));
+  const command = statusCommand(io.env ?? process.env);
+  if (!how.json) {
+    io.stdout(namedText(wait, now(), command, how));
+    return code;
   }
+  const payload: NamedWaitPayload = {
+    outcome: wait.snapshot === true ? "snapshot" : wait.outcome,
+    waitedMs: Math.round(wait.waitedMs),
+    code,
+    testFiles: wait.files.map((f) => fileEntry(f, command, wait.selection.base)),
+    unmatched: wait.selection.unmatched,
+    leftForPause: wait.leftForPause ?? [],
+    verdict: wait.verdict,
+  };
+  const field = wait.snapshot === true ? "named" : "wait";
+  io.stdout(`${JSON.stringify({ ...wait.result, [field]: payload }, null, 2)}\n`);
+  const selected = selectedLine(wait);
+  const lines = [...(selected === null ? [] : [selected]), ...namedClassLines(wait, command)];
+  io.stderr(`${lines.map((line) => `${line}\n`).join("")}${namedLine(wait, command)}\n`);
   return code;
 }

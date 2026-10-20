@@ -39,6 +39,7 @@ import {
   windowRefined,
 } from "./status-wait-edit.js";
 import { readHeld, type StartView, startView } from "./status-wait-held.js";
+import type { NamedTextOptions } from "./status-wait-lines.js";
 import { waitLine, waitText } from "./status-wait-lines.js";
 import { namedWaitCommand } from "./status-wait-paths.js";
 import { type HeldSlow, heldSlowLeft, heldSlowNews, pendingSlow } from "./status-wait-slow.js";
@@ -421,7 +422,8 @@ export function slowWaitCode(wait: Extract<StatusWait, { result: StatusSnapshot 
  * where stdout is the snapshot payload plus a `wait` field
  * (`StatusWaitPayload`) with the same outcome. `holdSlow` is
  * `run --slow --wait`'s (`StatusWaitOptions`). With `paths`, the wait is
- * spec 005 D2's on the test files they select (`namedWaitCommand`).
+ * spec 005 D2's on the test files they select (`namedWaitCommand`), printed
+ * as `named` says (`--full`, `--notes`; row 011-28).
  */
 export async function statusWaitCommand(
   timeoutMs: number,
@@ -429,13 +431,14 @@ export async function statusWaitCommand(
   io: CliIo,
   holdSlow = false,
   paths: readonly string[] = [],
+  named: NamedTextOptions = {},
 ): Promise<number> {
   const now = io.now ?? Date.now;
   const env = io.env ?? process.env;
   if (paths.length > 0) {
     const pollMs = STATUS_WAIT_POLL_MS;
     const settleMs = STATUS_WAIT_SETTLE_MS;
-    return namedWaitCommand(paths, json, io, {
+    return namedWaitCommand(paths, { ...named, json }, io, {
       timeoutMs,
       pollMs,
       settleMs,
