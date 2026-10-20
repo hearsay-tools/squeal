@@ -25,6 +25,15 @@ const SELECT_RESULTS = `
   JOIN checks c ON c.id = r.check_id
   LEFT JOIN failure_texts f ON f.id = r.failure_id`;
 
+/**
+ * `ResultRepo.keysSince` (task 011-23). The index is named: for `GROUP BY
+ * key`, SQLite scans all of `results_by_key` instead, 0.56 s on a
+ * 300,000-row store for an empty window.
+ */
+export const KEYS_SINCE = `
+  SELECT key, MAX(recorded_at) AS recorded_at FROM results INDEXED BY results_by_time
+  WHERE recorded_at > ? GROUP BY key`;
+
 export function createResultRepo(conn: Connection): ResultRepo {
   return {
     byKey: (key, usedAt = Date.now()) => {
@@ -88,6 +97,10 @@ export function createResultRepo(conn: Connection): ResultRepo {
         ) ?? { n: 0 },
         "n",
       ),
+    keysSince: (since) =>
+      conn
+        .all(KEYS_SINCE, since)
+        .map((row) => ({ key: str(row, "key"), recordedAt: num(row, "recorded_at") })),
     putMany: (records) =>
       conn.transaction(() => {
         for (const r of records) {

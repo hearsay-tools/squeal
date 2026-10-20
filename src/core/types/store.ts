@@ -122,6 +122,12 @@ export interface FailureFilter {
   readonly since: EpochMs | null;
 }
 
+/** A key with results, and when its newest one was recorded (`ResultRepo.keysSince`). */
+export interface StoredKey {
+  readonly key: CheckKey;
+  readonly recordedAt: EpochMs;
+}
+
 export interface ResultRepo {
   /**
    * Every result stored under a key. Spec 001 D5: "looks each new key up in
@@ -157,6 +163,13 @@ export interface ResultRepo {
   listFailures(filter: FailureFilter, limit: number): readonly ResultRecord[];
   /** How many stored `fail` results match `filter`, for the cap's "first N of M". */
   countFailures(filter: FailureFilter): number;
+  /**
+   * Each key with a result recorded after `since`, with its newest record
+   * time (`results_by_time`). Read only, as `listForCheck`. Spec 011 C4 step 3
+   * as amended 2026-10-20 (task 011-23): the keys other worktrees stored
+   * since a worktree last read.
+   */
+  keysSince(since: EpochMs): readonly StoredKey[];
   /**
    * Spec 001 D5: "A result is stored only under a key whose inputs were
    * stable for the whole run." A stored result's last-used time starts at
