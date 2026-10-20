@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { CaseKind } from "./case.js";
 import { CASES } from "./cases/index.js";
 import { compareTrees, failures, reportedChanges, wordingChanges } from "./compare.js";
+import { versionName } from "./components.js";
 import { execute, type Side } from "./sides.js";
 import { extractTree } from "./trees.js";
 
@@ -63,6 +64,16 @@ try {
   console.log(`wording: ${JSON.stringify(wordingChanges(result))}`);
   for (const line of reportedChanges(result)) console.log(`  reported: ${line}`);
   console.log(`uncovered: ${result.uncovered.length}`);
+  for (const alarm of result.alarms.filter((a) => a.uncovered.length > 0)) {
+    const by = new Map<string, number>();
+    for (const line of alarm.uncovered) {
+      const [, file, side] = /^([^:\s]+):\d+.*\((\w+) bundle line/.exec(line) ?? [];
+      const at = `${file ?? line} at the ${side ?? "?"}`;
+      by.set(at, (by.get(at) ?? 0) + 1);
+    }
+    const files = [...by].map(([at, n]) => `${at}: ${n}`).join(", ");
+    console.log(`  uncovered under ${versionName(alarm.component)}: ${files}`);
+  }
   // Each version held at the baseline's, so a raise between two past releases still shows every check.
   const held = result.alarms.map((a) => ({
     ...a,
