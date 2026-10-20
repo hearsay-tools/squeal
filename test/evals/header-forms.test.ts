@@ -304,6 +304,10 @@ describe("a Claude Code hook's JSON around Squeal's text", () => {
 const withoutChecks = (pending: number, unknown: number): StatusSnapshot => ({
   ...settled,
   testFilesWithoutChecks: { pending, unknown },
+  // Row 011-26: the test files by class, as `readHeader` counts them; status's default text
+  // (row 011-29) says them only there.
+  testFileCounts: { current: 6 - pending - unknown, pending, stale: 0, unknown },
+  testFilesByPhase: { running: 0, queued: pending },
   breakdown: { ...settled.breakdown, testFilesWithoutChecks: pending + unknown },
 });
 /** Each form's steps; a news header names no known failure, so the ledger's recovery comes first. */

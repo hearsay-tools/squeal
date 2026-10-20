@@ -120,6 +120,21 @@ const countsOf = (s: StatusSnapshot) => ({
   unknown: s.counts.unknown + s.testFilesWithoutChecks.unknown,
 });
 /**
+ * Row 011-29: the counts status's default text gives. It has no `Test files without checks:`
+ * line, so while its `Known failures:` clause says what is not current, they are the clause's,
+ * its test files and its tests by class; else the snapshot's.
+ */
+const statusCounts = (s: StatusSnapshot) => {
+  const files = s.testFileCounts;
+  const tests = (v: "pending" | "stale" | "unknown") => s.counts[v] - (s.fileLevelCounts?.[v] ?? 0);
+  if (files === undefined || files.pending + files.stale + files.unknown === 0) return countsOf(s);
+  return {
+    pending: files.pending + tests("pending"),
+    stale: files.stale + tests("stale"),
+    unknown: files.unknown + tests("unknown"),
+  };
+};
+/**
  * `s` with its pending slow files among its test files' counts, as `readHeader` counts every
  * listed file (row 011-26); `slowPending` above leaves them out.
  */
@@ -262,7 +277,7 @@ describe("squealEvidence", () => {
           const e = squealEvidence(wrap(format(s)), from, known);
           expect(e).toMatchObject({
             revision: 3,
-            ...countsOf(s),
+            ...(form === "status" ? statusCounts(s) : countsOf(s)),
             ...rest,
             ...(form === "status" && failing ? { failing } : {}),
           });
