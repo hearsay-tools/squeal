@@ -218,6 +218,10 @@ describe("squeal status <path>... (005 D2 as amended, gh-42)", () => {
 
     expect(result.code).toBe(0);
     expect(result.stdout).toMatch(/^Revision: 4\nKnown failures: 0/);
+    // Review of cand/0.1.234: `--full` is the full status, its detail block included (row 011-29).
+    expect(result.stdout).toMatch(/\nWorktree: [^\n]*\nDaemon: [^\n]*\n/);
+    expect(result.stdout).toContain("\nClosure method: ");
+    expect(result.stdout).not.toContain("\nMore: ");
     expect(result.stdout).toMatch(
       /\n\nSelected: src\/a\.test\.ts\nNamed test files at revision 4: /,
     );

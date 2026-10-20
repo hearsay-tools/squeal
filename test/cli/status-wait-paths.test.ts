@@ -258,6 +258,10 @@ describe("squeal status --wait <ms> <path>...", () => {
     const result = await run(["status", "--wait", "3000", "--full", A], repo.main);
     expect(result.code).toBe(0);
     expect(result.stdout).toMatch(/^Revision: 4\nKnown failures: 0; [^\n]*\nAffected checks: /);
+    // Review of cand/0.1.234: `--full` is the full status, its detail block included (row 011-29).
+    expect(result.stdout).toMatch(/\nWorktree: [^\n]*\nDaemon: [^\n]*\n/);
+    expect(result.stdout).toContain("\nClosure method: ");
+    expect(result.stdout).not.toContain("\nMore: ");
     const [blank, selected, verdict, end] = result.stdout.split("\n").slice(-4);
     expect([blank, selected, end]).toEqual(["", `Selected: ${A}`, ""]);
     expect(verdict).toMatch(/^Named test files at revision 4: no known failures; /);

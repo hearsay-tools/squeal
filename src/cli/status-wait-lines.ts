@@ -323,7 +323,11 @@ export function namedText(
   ];
   const head =
     options.full === true
-      ? `${formatStatus(wait.result, now, command, { allNotes: options.allNotes === true })}\n`
+      ? `${formatStatus(wait.result, now, command, {
+          full: true,
+          allNotes: options.allNotes === true,
+          ...(wait.selection.base === undefined ? {} : { base: wait.selection.base }),
+        })}\n`
       : `Revision: ${statusRevisionText(wait.result)}\n`;
   return `${head}${lines.join("\n")}\n`;
 }

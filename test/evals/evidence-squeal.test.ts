@@ -294,22 +294,25 @@ describe("squealEvidence", () => {
   // Row 011-10 (issue 26): a wait prints its verdict last, after the snapshot; its text says of
   // the worktree what the status it prints says, as text and in a hook's JSON (review wave-1.9
   // S1). Row 011-12: so does a named wait that lists the selected files by class; from row
-  // 011-28 a named wait prints the status only with `--full`.
+  // 011-28 a named wait prints the status only with `--full`, and from row 011-29 that status is
+  // the full text (review of cand/0.1.234).
+  const full = (s: StatusSnapshot) => formatStatus(s, 2_000 as never, "squeal", { full: true });
   for (const [name, s] of variants)
-    for (const [form, format] of [
-      ["status --wait", wait],
-      ["status --wait --full <ms> <path>", (t: StatusSnapshot) => named(t, { full: true })],
+    for (const [form, format, printed] of [
+      ["status --wait", wait, status],
+      ["status --wait --full <ms> <path>", (t: StatusSnapshot) => named(t, { full: true }), full],
       [
         "timed-out status --wait --full <ms> <path>",
         (t: StatusSnapshot) => timedOut(t, { full: true }),
+        full,
       ],
     ] as const)
       for (const [wrapped, wrap] of wrappings)
         it(`reads a ${name} ${form} as the status it prints, ${wrapped}`, () => {
           const text = format(s);
-          expect(text.startsWith(status(s))).toBe(true);
+          expect(text.startsWith(printed(s))).toBe(true);
           expect(worktree(squealEvidence(wrap(text), "pull"))).toEqual(
-            worktree(squealEvidence(wrap(status(s)), "pull")),
+            worktree(squealEvidence(wrap(printed(s)), "pull")),
           );
         });
 
