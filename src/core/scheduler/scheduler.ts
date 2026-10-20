@@ -52,7 +52,7 @@ import { SlotRecords } from "./slot-records.js";
 import { busyLanes } from "./slots.js";
 import { slowView } from "./slow.js";
 import { queueSlowSuite, type SlowRun, SlowTier } from "./slow-tier.js";
-import { type Moved, Withholds, withheldForTouch, withholdNote } from "./stability.js";
+import { barredByTouch, type Moved, Withholds, withholdNote } from "./stability.js";
 import { StoredKeys } from "./stored-keys.js";
 import {
   endTier,
@@ -734,19 +734,11 @@ class TierScheduler implements Scheduler {
       environment === undefined || read === undefined ? read : { ...read, environment };
     const touched = [...new Set([...inputs.touched, ...(observed?.touched ?? [])])].sort();
     // Task 013-02 (D2 of 013-01): the files whose keys name a touched path, as a content change.
-    const isTouched = new Set(touched);
-    const named = (paths: readonly RelativePath[] = []) => paths.filter((p) => isTouched.has(p));
-    const touchedOf = (ran: Tier["files"][number]) => [
-      ...named(ran.inputs),
-      ...named(observed?.growth.get(ran.file.id)?.growth),
-    ];
-    const barred = tier.files.filter((ran) => touchedOf(ran).length > 0);
-    const barredPaths = [...new Set(barred.flatMap(touchedOf))].sort();
-    const report = withheldForTouch(
-      ran,
-      barredPaths,
-      barred.map(({ file }) => file.ref),
-    );
+    const {
+      report,
+      barred,
+      paths: barredPaths,
+    } = barredByTouch(ran, tier.files, touched, observed?.growth);
     // Task 007-30: no revision follows the touch; a file's first withhold at its key queues it
     // again as a moved install does, its previous state standing, and a second leaves it
     // `unknown`, per file whatever tier it shares (review 007-31, B1).
