@@ -124,3 +124,27 @@ function shortestFirst(a: FileState, b: FileState): number {
   const y = b.durationMs ?? Number.POSITIVE_INFINITY;
   return x === y ? compare(a.id, b.id) : x < y ? -1 : 1;
 }
+
+/**
+ * A daemon start's cut of one unrefined revision that changed `paths`, of
+ * fewer keyed paths than catch-up takes (011 C4 step 4 as amended for
+ * 011-25): the runner's `affected` for them, bounded as the baseline's
+ * other calls, then `editWork`. `kept` is `null` when `affected` gave no
+ * answer, so every file it reaches stays an edit's work.
+ */
+export async function cutAtStart(
+  context: SchedulerContext,
+  ledger: Ledger,
+  paths: ReadonlySet<RelativePath>,
+  bound: RunnerPartBound,
+): Promise<{ kept: Set<string> | null; reached: Set<string>; direct: ReadonlySet<string> }> {
+  const list = [...paths];
+  const affected = await tryRunner(context, `affected (${listPaths(list)})`, () =>
+    bound.call(() => context.runner.affected(list)),
+  );
+  if (affected === null) return { kept: null, reached: ledger.recentOf(paths), direct: new Set() };
+  const direct = new Set(affected.direct.map(testFileId));
+  const refs = [...ledger.files.values()].map((file) => file.ref);
+  const cut = await fetchEditCut(context, refs, list, affected, bound);
+  return { ...editWork(context, ledger, cut, paths, direct), direct };
+}
