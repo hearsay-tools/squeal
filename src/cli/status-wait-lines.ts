@@ -191,7 +191,7 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
     case "timeout": {
       const paused = new Set((wait.leftForPause ?? []).map(testFileId));
       const holding = wait.files.filter((f) => !paused.has(testFileId(f.testFile)));
-      const groups = reasonGroups(holding, command);
+      const groups = reasonGroups(holding, command, wait.selection.base);
       const why = noVerdictText(verdict);
       const held = why === null ? "no result yet" : groups === "" ? why : `${why}: ${groups}`;
       line = none(
@@ -205,6 +205,7 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
       const groups = reasonGroups(
         wait.files.filter((f) => f.state !== "pending"),
         command,
+        wait.selection.base,
       );
       line =
         why === null
@@ -280,7 +281,7 @@ export function namedText(wait: EndedNamed, now: EpochMs, command = "squeal"): s
 export function namedClassLines(wait: EndedNamed, command = "squeal"): string[] {
   if (wait.outcome === "unmatched") return [];
   if (wait.outcome === "settled" && verdictCode(wait.verdict) !== 3) return [];
-  return classLines(wait.files, command);
+  return classLines(wait.files, command, wait.selection.base);
 }
 
 /**

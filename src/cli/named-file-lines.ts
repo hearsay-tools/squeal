@@ -2,7 +2,13 @@ import { testFileId } from "../core/keys/index.js";
 import { testFileKeyOf } from "../core/state/index.js";
 import { formatCheck } from "../core/status/index.js";
 import { type NextStep, nextStep, type Standing } from "../core/status/next-step.js";
-import { fill, reasonWords, stepCommand, stepText } from "../core/status/next-step-text.js";
+import {
+  fill,
+  fromBase,
+  reasonWords,
+  stepCommand,
+  stepText,
+} from "../core/status/next-step-text.js";
 import type { StatusSnapshot, TestFileRef } from "../core/types/index.js";
 import type { NamedFile, NamedVerdict } from "./named-files.js";
 import type { NamedSelection, UnmatchedPath } from "./status-wait-paths.js";
@@ -31,11 +37,14 @@ const CLASSES: readonly [FileClass, string][] = [
  * of 4 test files running since 12:00:03: a, b; no command runs them sooner
  * (…)`. One block per class there is.
  */
-export function classLines(files: readonly NamedFile[], command: string): string[] {
+export function classLines(files: readonly NamedFile[], command: string, base?: string): string[] {
   return CLASSES.flatMap(([state, label]) => {
     const of = files.filter((f) => f.state === state);
     if (of.length === 0) return [];
-    return [`${label} (${of.length}):`, ...groupsOf(of).map((g) => `  ${groupLine(g, command)}`)];
+    return [
+      `${label} (${of.length}):`,
+      ...groupsOf(of).map((g) => `  ${groupLine(g, command, base)}`),
+    ];
   });
 }
 
@@ -79,8 +88,8 @@ function standingOf(f: NamedFile): Standing | undefined {
   return f.state === "current" ? undefined : (f.standing ?? f.pending);
 }
 
-function groupLine({ files, next, words }: Group, command: string): string {
-  const paths = files.map((f) => f.path);
+function groupLine({ files, next, words }: Group, command: string, base?: string): string {
+  const paths = files.map((f) => fromBase(base, f.path));
   const shown = files.slice(0, CLASS_FILES_SHOWN).map(pathText).join(", ");
   const more =
     files.length > CLASS_FILES_SHOWN ? ` and ${files.length - CLASS_FILES_SHOWN} more` : "";
@@ -109,11 +118,11 @@ export const REASON_GROUPS_SHOWN = 5;
  * worktrees hold them (review wave-1.11 S1). The class lines and
  * `wait.testFiles` still give every file's own reason.
  */
-export function reasonGroups(files: readonly NamedFile[], command: string): string {
+export function reasonGroups(files: readonly NamedFile[], command: string, base?: string): string {
   const pending = files.filter((f) => f.state === "pending");
   const counted = pending.length > 0 ? pending : files.filter((f) => f.state !== "current");
   const all = groupsOf(counted);
-  const shown = all.slice(0, REASON_GROUPS_SHOWN).map((g) => groupShort(g, command));
+  const shown = all.slice(0, REASON_GROUPS_SHOWN).map((g) => groupShort(g, command, base));
   const rest = all.slice(REASON_GROUPS_SHOWN);
   if (rest.length === 0) return shown.join(", ");
   const more = rest.reduce((sum, { files: of }) => sum + of.length, 0);
@@ -121,9 +130,9 @@ export function reasonGroups(files: readonly NamedFile[], command: string): stri
   return [...shown, `and ${more} more for ${others}`].join(", ");
 }
 
-function groupShort({ files, next, words }: Group, command: string): string {
+function groupShort({ files, next, words }: Group, command: string, base?: string): string {
   if (next === null) return `${files.length} ${words}`;
-  const paths = files.map((f) => f.path);
+  const paths = files.map((f) => fromBase(base, f.path));
   const it = files.length === 1 ? "it" : "them";
   const cmd = stepCommand(next.step, paths, command);
   const short = fill(next.short, cmd, command, it);
@@ -225,8 +234,9 @@ export interface NamedFileEntry extends TestFileRef {
   readonly command?: string;
 }
 
-export function fileEntry(f: NamedFile, command: string): NamedFileEntry {
+export function fileEntry(f: NamedFile, command: string, base?: string): NamedFileEntry {
   const { project, path } = f.testFile;
+  const named = fromBase(base, path);
   const standing = standingOf(f);
   const next = standing === undefined ? null : nextStep(standing);
   const reason =
@@ -234,9 +244,9 @@ export function fileEntry(f: NamedFile, command: string): NamedFileEntry {
       ? `${f.unknown.ran ? "ran, nothing recorded" : "no result"}: ${f.unknown.reason ?? "no reason was kept"}`
       : next === null
         ? undefined
-        : reasonWords(next, [path], command);
-  const step = next === null ? "" : stepText(next.step, [path], command);
-  const run = next === null ? null : stepCommand(next.step, [path], command);
+        : reasonWords(next, [named], command);
+  const step = next === null ? "" : stepText(next.step, [named], command);
+  const run = next === null ? null : stepCommand(next.step, [named], command);
   return {
     project,
     path,
