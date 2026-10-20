@@ -318,9 +318,13 @@ export function namedClassLines(wait: EndedNamed, command = "squeal"): string[] 
 /**
  * Review wave-1, B1: why a named wait's deadline came before the revision
  * holding the edits made before it, or `null` when it did not; a snapshot's
- * sync, after its 750 ms (row 011-28).
+ * sync, after its 750 ms (row 011-28), or one the daemon could not answer
+ * (review of cand/0.1.233, B1).
  */
 function unsyncedText(sync: SyncState, revision: number, snapshot: boolean): string | null {
+  if (sync.state === "unsupported" && snapshot) {
+    return `results are as of revision ${revision}; the daemon did not answer its sync, so they may not hold the latest edits`;
+  }
   if (sync.state === "pending" && snapshot) {
     return `results are as of revision ${revision}; the daemon has not stored its pass over the latest edits`;
   }
