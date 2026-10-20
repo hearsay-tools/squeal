@@ -56,6 +56,7 @@ For development, load this directory for one session: `claude --plugin-dir plugi
 | Path | What |
 | --- | --- |
 | `hooks/hooks.json` | SessionStart, SubagentStart, UserPromptSubmit, PostToolBatch, PreToolUse (`Edit\|Write\|NotebookEdit`), Stop, SubagentStop, SessionEnd: each `timeout: 2`. The idle waiter on SessionStart, UserPromptSubmit and Stop: `asyncRewake`, `timeout: 3600`. |
+| `hooks/run` | Every entry's `command`. Without its `args` it exits 0 before reading anything, so a harness that drops them (Cursor CLI) runs nothing (spec 012 CC1). With them it `exec`s them, after the per-tool hooks' `--if-squeal` test for Squeal. |
 | `dist/*.mjs` | One bundle per hook, Node built-ins only. Sources: `src/harness/claude-code/`. |
 | `dist/cli/squeal.mjs`, `bin/squeal` | The CLI on the Bash tool's PATH, and the daemon the hooks spawn. |
 | `bin/squeal-launcher` | The terminal's `squeal`, copied by `install.sh`: runs the installed plugin's CLI. The same file as the Codex plugin's. |
