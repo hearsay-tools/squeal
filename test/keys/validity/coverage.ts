@@ -1,8 +1,8 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import type { SourceMap } from "./bundle.js";
-import { ROOT } from "./trees.js";
+import { type Overlay, ROOT } from "./trees.js";
 
 /*
  * The coverage proof (task 011-37 section 3; 011-35 Q4, risk 1): every line
@@ -158,17 +158,44 @@ export function mappedLines(map: SourceMap, tree: string): Map<number, string[]>
   return out;
 }
 
+/** One side's bundle for `changedSources`: its source map and its tree, `overlay`'s texts in place. */
+export interface SourceSide {
+  readonly map: SourceMap;
+  readonly tree: string;
+  readonly overlay?: Overlay;
+}
+
 /**
- * The source lines that differ between two bundles' sources, as `path:line`
- * at each side: what each bundle compiled (`sourcesContent`, overlays and the
- * pinned format included), diffed file by file under `dir`.
+ * The text `side` has at `path`: what its bundle compiled there (overlays and
+ * the pinned format included), else the file of its tree, else none. A path
+ * outside `src/` is the harness's, this checkout's at both sides.
+ */
+function textAt(side: SourceSide, bundled: ReadonlyMap<string, string>, path: string) {
+  const compiled = bundled.get(path);
+  if (compiled !== undefined) return compiled;
+  const own = path.startsWith("src/");
+  if (own && side.overlay?.[path] !== undefined) return side.overlay[path];
+  const file = join(own ? side.tree : ROOT, path);
+  return existsSync(file) ? readFileSync(file, "utf8") : undefined;
+}
+
+/**
+ * The source lines that differ between the two trees, as `path:line` at each
+ * side, for every path either bundle compiled (task 011-40, the
+ * coordinator's conditions of 2026-10-20). A path only one tree has is
+ * changed in every line at that side; a path whose texts differ counts its
+ * diff's lines at each side, deleted lines at the baseline included; a path
+ * the trees hold alike counts none, even when only one bundle holds it. A
+ * bundle stops holding a module when no entry or harness module imports it
+ * any longer: the import's own line is the change, and the module's
+ * unchanged lines vouch for nothing new.
  */
 export function changedSources(
-  baseline: { readonly map: SourceMap; readonly tree: string },
-  candidate: { readonly map: SourceMap; readonly tree: string },
+  baseline: SourceSide,
+  candidate: SourceSide,
   dir: string,
 ): { readonly baseline: Set<string>; readonly candidate: Set<string> } {
-  const texts = (side: typeof baseline) =>
+  const texts = (side: SourceSide) =>
     new Map(
       side.map.sources.map((s, i) => [named(s, side.tree), side.map.sourcesContent?.[i] ?? ""]),
     );
@@ -177,7 +204,7 @@ export function changedSources(
   const out = { baseline: new Set<string>(), candidate: new Set<string>() };
   mkdirSync(dir, { recursive: true });
   for (const path of new Set([...before.keys(), ...after.keys()])) {
-    const [a, b] = [before.get(path) ?? "", after.get(path) ?? ""];
+    const [a, b] = [textAt(baseline, before, path) ?? "", textAt(candidate, after, path) ?? ""];
     if (a === b) continue;
     const [from, to] = [join(dir, "a"), join(dir, "b")];
     writeFileSync(from, a);
