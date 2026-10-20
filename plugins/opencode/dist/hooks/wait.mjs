@@ -2390,6 +2390,14 @@ var SELECT_RESULTS = `
 var KEYS_SINCE = `
   SELECT key, MAX(recorded_at) AS recorded_at FROM results INDEXED BY results_by_time
   WHERE recorded_at > ? GROUP BY key`;
+var COPY_SET = `
+  INSERT INTO results (check_id, key, outcome, duration_ms, location_path, location_line,
+    location_column, fingerprint, failure_id, worktree_id, revision, commit_sha, dirty, run_id,
+    recorded_at, last_used_at)
+  SELECT check_id, ?, outcome, duration_ms, location_path, location_line, location_column,
+    fingerprint, failure_id, worktree_id, revision, commit_sha, dirty, run_id, recorded_at,
+    last_used_at
+  FROM results WHERE key = ? AND NOT EXISTS (SELECT 1 FROM results WHERE key = ?)`;
 function createResultRepo(conn) {
   return {
     byKey: (key, usedAt = Date.now()) => {
@@ -2442,6 +2450,16 @@ function createResultRepo(conn) {
       ) ?? { n: 0 },
       "n"
     ),
+    copyNewest: (key, from) => {
+      if (from.length === 0) return false;
+      const newest = conn.get(
+        `SELECT key FROM results WHERE key IN (${from.map(() => "?").join(", ")})
+         GROUP BY key ORDER BY MAX(recorded_at) DESC, key LIMIT 1`,
+        ...from
+      );
+      if (newest === null) return false;
+      return conn.run(COPY_SET, key, str(newest, "key"), key) > 0;
+    },
     keysSince: (since) => conn.all(KEYS_SINCE, since).map((row) => ({ key: str(row, "key"), recordedAt: num(row, "recorded_at") })),
     putMany: (records) => conn.transaction(() => {
       for (const r of records) {
@@ -5348,7 +5366,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.227";
+  if (true) return "0.1.228";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
