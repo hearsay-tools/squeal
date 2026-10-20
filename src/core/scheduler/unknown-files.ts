@@ -7,6 +7,7 @@ import {
   type RevisionNumber,
   type Store,
   type TestFileRef,
+  type UnknownCause,
   type WorktreeId,
   worktreeMetaKey,
 } from "../types/index.js";
@@ -37,7 +38,16 @@ export interface UnknownFileRecord {
   readonly samples: readonly RelativePath[];
   readonly revision: RevisionNumber;
   readonly at: EpochMs;
+  /**
+   * Row 011-27: why, where the reason's words alone do not say what advances
+   * it; absent otherwise and in a record from a daemon before it, which
+   * status treats as any other reason.
+   */
+  readonly cause?: RecordedCause;
 }
+
+/** The causes the scheduler records with a file; status derives `never-run`. */
+export type RecordedCause = Exclude<UnknownCause, "never-run">;
 
 export function unknownFilesMetaKey(worktreeId: WorktreeId): string {
   return worktreeMetaKey("unknownFiles", worktreeId);
@@ -57,7 +67,7 @@ export function readUnknownFiles(
     return new Map();
   }
   if (!Array.isArray(value)) return new Map();
-  const entries = value.filter(isEntry);
+  const entries = value.filter(isEntry).map(knownCause);
   return new Map(entries.map((e) => [testFileId(e.testFile), e]));
 }
 
@@ -86,6 +96,8 @@ export function samplesOf(paths: Iterable<RelativePath>): RelativePath[] {
   return [...new Set(paths)].sort().slice(0, UNKNOWN_SAMPLES_KEPT);
 }
 
+const CAUSES: readonly RecordedCause[] = ["timeout", "install", "runner", "setup"];
+
 function isEntry(value: unknown): value is UnknownFileRecord {
   if (!isRecord(value) || !isRecord(value.testFile)) return false;
   return (
@@ -99,4 +111,11 @@ function isEntry(value: unknown): value is UnknownFileRecord {
     typeof value.revision === "number" &&
     typeof value.at === "number"
   );
+}
+
+/** `entry` without a `cause` this reader does not know, a newer daemon's: its reason still stands. */
+function knownCause(entry: UnknownFileRecord): UnknownFileRecord {
+  if (entry.cause === undefined || CAUSES.includes(entry.cause)) return entry;
+  const { cause: _cause, ...rest } = entry;
+  return rest;
 }

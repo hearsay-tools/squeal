@@ -1,6 +1,7 @@
 import type { ProjectName, RelativePath, TestFileRef } from "../types/index.js";
 import type { FileState } from "./files.js";
 import type { Ledger, SettleOptions } from "./ledger.js";
+import type { RecordedCause } from "./unknown-files.js";
 
 /**
  * Failed runner calls of one revision, by project; `null` is every project.
@@ -36,12 +37,14 @@ export function settleFailures(
  * revision with the runner's message as the reason". A blocked file is not
  * queued until `unblock`; the next revision or `run --all` retries the runner
  * (`Ledger.broken`). `only` narrows the files blocked (task 001-382: those
- * a run that failed to start kept from running). Returns the files blocked.
+ * a run that failed to start kept from running, whose `cause` is `setup`).
+ * Returns the files blocked.
  */
 export function block(
   ledger: Ledger,
   failures: Failures,
   only: (file: FileState) => boolean = () => true,
+  cause: RecordedCause = "runner",
 ): FileState[] {
   const every = failures.get(null);
   const byReason = new Map<string, FileState[]>();
@@ -58,6 +61,7 @@ export function block(
     ledger.markUnknown(
       files.map((file) => ({ file, key: file.key })),
       reason,
+      { cause },
     );
   }
   ledger.broken = true;
