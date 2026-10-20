@@ -177,7 +177,7 @@ export async function fetchRunnerPart(
   const cut =
     affected === null || content.catchUp === true
       ? undefined
-      : await fetchEditCut(context, refsOf(ledger, listed), paths, affected, bound);
+      : await fetchEditCut(context, refsOf(ledger, listed), paths, affected, bound, closures);
   return {
     revision,
     retrying,
