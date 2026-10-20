@@ -95,12 +95,14 @@ describe("every hooks.json command run without its args (012 CC1, task 012-01)",
     }
   });
 
-  // Review 012-01 B1 and CC1's exception: Claude Code spawns the command in exec
-  // form, where quotes would be part of the path, so a shell splits a root with
-  // whitespace. The first word names no file: the hook fails, never blocks
-  // (exit 2), and runs and reads nothing.
+  // Reviews 012-01 and 012-01-r2, B1, and CC1's exception as the human accepted it:
+  // Claude Code spawns the command in exec form, where quotes would be part of the
+  // path, so a shell splits a root with whitespace and runs the file its first word
+  // names. This pins the case where no file is there: the hook fails, never blocks
+  // (exit 2), and runs and reads nothing. An executable at that path would run with
+  // the payload on stdin; CC1 names that residual.
   it.each(entries)(
-    "$name under a plugin root with whitespace runs nothing and never blocks",
+    "$name under a plugin root with whitespace and no file at its first word runs nothing",
     async ({ command }) => {
       const { dir, markers, payloads } = project();
       const root = join(dir, "plugin with spaces");
