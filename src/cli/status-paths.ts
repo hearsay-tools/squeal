@@ -38,8 +38,8 @@ export interface NamedSnapshotOptions {
  * snapshot. It asks the daemon's sync once and reads when its pass is
  * stored, or after `settleMs`, whichever comes first, so an edit the daemon
  * has not stored yet never leaves an older result current: that read has no
- * verdict and says so. A daemon that cannot sync is read at `settleMs`, as
- * a wait reads it, and a daemon that is not validating gives no verdict, as
+ * verdict and says so. A daemon that cannot sync is read at `settleMs` and
+ * gives no verdict either, and one that is not validating gives none, as
  * status says of it. It promotes nothing (C15).
  */
 export async function readNamedSnapshot(
@@ -88,11 +88,15 @@ function readOnce(
   const record = store.worktrees.get(id)?.daemon ?? null;
   const liveness = daemonLiveness(record, now);
   const current = sync?.current() ?? { state: "unsupported" as const };
+  // Only a daemon that answered its sync says the store holds the latest
+  // edits: one that could not (paused, its socket gone, its pass failed)
+  // gives no verdict, though its heartbeat is fresh (review of
+  // cand/0.1.233, B1). A wait falls back to its settle time instead.
   const ready =
     liveness.state === "alive" &&
-    (current.state === "synced"
-      ? all.revision >= current.revision && !all.unlisted
-      : current.state === "unsupported");
+    current.state === "synced" &&
+    all.revision >= current.revision &&
+    !all.unlisted;
   const paused = new Set(
     ready ? pauseOnlyIds(store, id, root, selection.files, liveness, now) : [],
   );
