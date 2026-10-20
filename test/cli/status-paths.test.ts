@@ -160,6 +160,36 @@ describe("squeal status <path>... (005 D2 as amended, gh-42)", () => {
     expect(seen).not.toContain("promote");
   });
 
+  it("gives no verdict when the daemon cannot answer its sync, though its heartbeat is fresh (review of cand/0.1.233, B1)", async () => {
+    const { repo } = repoWith([], [A]);
+    // A pass that failed: the sync answers with an error, as a paused or
+    // socketless daemon leaves it unanswered; the files read current at 4.
+    const seen = await fakeDaemon(socketPathFor(repo.mainId), {
+      sync: [{ ...synced(null), error: "the pass failed" }],
+    });
+
+    const result = await run(["status", A], repo.main);
+
+    expect(result.code).toBe(3);
+    expect(result.stdout.trimEnd().split("\n").at(-1)).toMatch(
+      /^Named test files have no verdict: results are as of revision 4; the daemon did not answer its sync, so they may not hold the latest edits\. Worktree: /,
+    );
+    expect(result.stdout).not.toContain("each with a current result");
+    expect(seen).not.toContain("promote");
+  });
+
+  it("gives no verdict when the daemon's socket is gone, though its heartbeat is fresh (review of cand/0.1.233, B1)", async () => {
+    // No daemon listens on the socket: the sync cannot be asked at all.
+    const { repo } = repoWith([], [A]);
+
+    const result = await run(["status", A], repo.main);
+
+    expect(result.code).toBe(3);
+    expect(result.stdout.trimEnd().split("\n").at(-1)).toMatch(
+      /^Named test files have no verdict: results are as of revision 4; the daemon did not answer its sync, so they may not hold the latest edits\. Worktree: /,
+    );
+  });
+
   it("puts the named payload beside the snapshot with --json, outcome snapshot, the lines on stderr", async () => {
     const { repo } = repoWith([], [A]);
     await daemon(repo.mainId, 4);
