@@ -8,7 +8,7 @@ import {
 } from "../core/status/index.js";
 import { plural } from "../core/text.js";
 import type { DaemonLiveness, EpochMs, StatusSnapshot, TestFileRef } from "../core/types/index.js";
-import { classLines, namedFailures, reasonGroups } from "./named-file-lines.js";
+import { classLines, namedFailures, reasonGroups, unmatchedText } from "./named-file-lines.js";
 import type { SyncState } from "./status-sync.js";
 import type { StatusWait, StatusWaitEdit, StatusWaitSlow } from "./status-wait.js";
 import type { NamedWait } from "./status-wait-paths.js";
@@ -177,7 +177,7 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
   let line: string;
   switch (wait.outcome) {
     case "unmatched":
-      line = `No verdict: ${selection.unmatched.map((p) => `no test file's closure holds ${p}`).join("; ")}`;
+      line = `No verdict: ${unmatchedText(selection)}`;
       break;
     case "no-daemon":
       line = none(
@@ -200,10 +200,15 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
     }
     case "settled": {
       const why = verdictCode(verdict) === 3 ? noVerdictText(verdict) : null;
+      // Row 011-27: what advances each group; the pending files left are those left for a pause.
+      const groups = reasonGroups(
+        wait.files.filter((f) => f.state !== "pending"),
+        command,
+      );
       line =
         why === null
           ? `Named test files at revision ${verdict.revision}: ${failuresText(verdict.failures)}; ${plural(verdict.testFiles, "test file")}, each with a current result, ${after}`
-          : none(why);
+          : none(groups === "" ? why : `${why}: ${groups}`);
     }
   }
   const pause =
