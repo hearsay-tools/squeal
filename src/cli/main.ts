@@ -35,9 +35,9 @@ Usage:
                                 lists every stopped-process note in full
   squeal status <path>... [--full] [--json]
                                 The verdict of the test files the paths select (a test
-                                file, or a file in test files' closures) once the daemon
-                                stored its pass over your edits, asked for at most 750
-                                ms: exit 0, 1 on known failures, 3 without one; --full
+                                file, or a file in test files' closures) now, if the
+                                daemon stores its pass over your edits within 750 ms:
+                                exit 0, 1 on known failures, 3 without one; --full
                                 prints this worktree's status first
   squeal status --wait <ms> [--json]
                                 Wait up to <ms> until nothing is pending at the current
