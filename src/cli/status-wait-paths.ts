@@ -45,6 +45,13 @@ export interface NamedSelection {
   readonly unmatched: readonly string[];
   /** Row 011-27 (gh-39): each of `unmatched`, in its order, with how it was read. */
   readonly unmatchedPaths?: readonly UnmatchedPath[];
+  /**
+   * The directory the paths were resolved against, relative to the root (`""`
+   * the root itself), else absolute: a printed command names its paths from
+   * it, since `retry` resolves its arguments against the cwd (review of
+   * cand/0.1.231, B1).
+   */
+  readonly base?: string;
 }
 
 /** A path that selects nothing, as given and as resolved (row 011-27, gh-39). */
@@ -98,7 +105,12 @@ export function selectNamedFiles(
     for (const row of hits) selected.set(testFileId(row.testFile), row.testFile);
   }
   const resolved = unmatched.map((p) => p.resolved);
-  return { files: [...selected.values()], unmatched: resolved, unmatchedPaths: unmatched };
+  return {
+    files: [...selected.values()],
+    unmatched: resolved,
+    unmatchedPaths: unmatched,
+    base: baseOf(root, cwd),
+  };
 }
 
 /**
@@ -405,7 +417,7 @@ export async function namedWaitCommand(
       outcome: wait.outcome,
       waitedMs: Math.round(wait.waitedMs),
       code,
-      testFiles: wait.files.map((f) => fileEntry(f, command)),
+      testFiles: wait.files.map((f) => fileEntry(f, command, wait.selection.base)),
       unmatched: wait.selection.unmatched,
       leftForPause: wait.leftForPause ?? [],
       verdict: wait.verdict,
