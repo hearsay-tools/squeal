@@ -74,6 +74,10 @@ describe("scheduler: a node:test backlog in one-file slots, per-file overhead (t
       expect(pass.pass.every((run) => run.files.length === 1)).toBe(true);
       expect(pass.commits).toBeLessThan(FILES);
     }
-    expect(best(slots)).toBeLessThanOrEqual(best(tiers) * 1.2);
+    // 1.2 on this host (1.09 measured). A 4-vCPU CI runner took 1.45 (branch CI 39388147377): each
+    // slot's selection and record share its few CPUs with the files, so there the bound is 1.6;
+    // the commit count above still fails records that stop gathering (one commit per file at a
+    // 50 ms sink, `tasks/011-21/notes.md`).
+    expect(best(slots)).toBeLessThanOrEqual(best(tiers) * (process.env.CI ? 1.6 : 1.2));
   });
 });
