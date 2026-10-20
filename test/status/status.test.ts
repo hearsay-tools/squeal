@@ -191,6 +191,8 @@ describe("readStatus", () => {
           ran: false,
           reason,
           samples: [],
+          // Row 011-27: the structured cause of a key that never had a result.
+          ...(reason === null ? {} : { cause: "never-run" }),
         })),
       },
       fullSuite: { atCurrentRevision: false, lastCompletedRevision: 1 },
