@@ -18,6 +18,8 @@ Sources: `research/key-format-guard.md` and `research/probes/key-format-guard/`;
 
 ## Decisions for the human
 
+**Decided 2026-10-20 by the human:** D1 to D6 as recommended. The spec text below is in 011 C3, C4 step 3, C7, C12 and C14 (`status.md` 2026-10-20). R1 to R4 are board rows 011-38 to 011-41.
+
 Already decided by the human on 2026-10-20: the mechanism; formats 13 to 17 read as one; stored wording re-keys nothing. The table holds what this design adds. The spec text follows the recommendations.
 
 | # | Question | Options | Recommendation |
