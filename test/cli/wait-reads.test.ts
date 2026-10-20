@@ -1,14 +1,16 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
+import type { DaemonSync } from "../../src/cli/status-sync.js";
 import { waitForStatus } from "../../src/cli/status-wait.js";
+import { waitForNamed } from "../../src/cli/status-wait-paths.js";
 import type { openStore as OpenStore } from "../../src/core/store/index.js";
 import type { RevisionNumber } from "../../src/core/types/index.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
 import { sessions } from "./counting-store.js";
 import { closeFakeDaemons, fakeDaemon } from "./fake-daemon.js";
-import { A, answering, B, NOW, repoWith } from "./status-wait-fixture.js";
+import { A, answering, B, key, NOW, repoWith, SLOW_FILE } from "./status-wait-fixture.js";
 
 /*
  * Task 011-42 (C6 as amended 2026-10-20): a wait the agent asked for polls
@@ -81,6 +83,30 @@ describe("a wait polls once a second and reads only what decides it (C6, 011-42)
     for (const poll of between(polls)) expect(poll.reads).toEqual(["file-states"]);
     expect(sessions.slice(0, -1).filter((s) => s.reads.includes("states"))).toEqual([]);
     expect(sessions.at(-1)?.reads).toContain("states");
+  });
+
+  it("status --wait <slow file> under slow.trigger idle reads only its states while it runs", async () => {
+    const { repo, store } = repoWith([SLOW_FILE]);
+    key(store, repo.mainId, SLOW_FILE, "running");
+    writeFileSync(
+      join(repo.main, "squeal.config.json"),
+      JSON.stringify({ slow: { include: [SLOW_FILE], trigger: "idle" } }),
+    );
+    const synced = { state: "synced", revision: 4 as RevisionNumber, incarnation: null } as const;
+    const sync = (): DaemonSync => ({ current: () => synced, stop: () => {} });
+    sessions.length = 0;
+
+    const wait = await waitForNamed(repo.main, [SLOW_FILE], {
+      timeoutMs: WAIT_MS,
+      pollMs: 1_000,
+      settleMs: 0,
+      now: () => NOW,
+      sync,
+    });
+
+    expect(wait.outcome).toBe("timeout");
+    // Reviews/011-42.md: `pauseOnlyIds` read every state on each poll that found the wait ready.
+    for (const poll of between(sessions)) expect(poll.reads).not.toContain("states");
   });
 
   it("run --all --wait reads the checkpoint and the revision until it ends, and the verdict at the deadline", async () => {
