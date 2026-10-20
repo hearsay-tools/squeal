@@ -28,8 +28,11 @@ import { joinSpan, type TierSpan } from "./sharing.js";
 import { backlogSlot, joinsSlot } from "./slots.js";
 import { laneFor } from "./slow.js";
 import { changedSince, type Moved, snapshotInputs } from "./stability.js";
+import { storeDecision, tierEnd } from "./store-decision.js";
 import { storeResults } from "./store-results.js";
-import { requeueSplit, timedOutReason, timeoutCap } from "./timeout-split.js";
+import { requeueSplit, timedOutReason } from "./timeout-split.js";
+
+export { supersededIn } from "./store-decision.js";
 
 /** One test file of a tier and the key it runs under. */
 export interface TierFile {
@@ -285,19 +288,6 @@ export function selectTier(
   return settled || slots ? selectTier(context, ledger, busy, turnDue) : null;
 }
 
-/**
- * Whether a newer run has `file` at a key other than `key`, the one this
- * tier ran it at: an edit's tier beside a backlog tier took the file it
- * re-keyed (spec 011 C4 step 5, task 011-21), and still runs it or already
- * stored its result. The older run then neither ends the file's running
- * state, nor queues it, nor marks it unknown on a crash or a timeout; its
- * outcome is discarded (review wave-4 B1, both completion orders).
- */
-export function supersededIn(file: FileState, key: CheckKey): boolean {
-  if (file.runningKey !== null && file.runningKey !== key) return true;
-  return file.key !== null && file.key !== key && file.resultKey === file.key;
-}
-
 /** How many files a backlog tier holding `ref` runs at once at `grant` workers (task 001-366). */
 function tierWidth(context: SchedulerContext, ref: TestFileRef, grant: number): number {
   return Math.max(1, context.runner.tierWidth?.(ref, grant) ?? grant);
@@ -525,13 +515,8 @@ export function recordTier(
   commit = true,
 ): RelativePath[] {
   const { store, worktreeId } = context;
-  const duringRun = tier.changes;
   endTier(context, ledger, tier);
-  const completed = new Set(report.completedFiles.map(testFileId));
-  const withheld = new Set((report.withheld ?? []).map(testFileId));
-  const cancelled = tier.cancel?.signal.aborted === true && report.end === "completed";
-  const files = tier.files.map((f) => f.file);
-  const splitCap = timeoutCap(report, tier.lane, files, completed);
+  const end = tierEnd(tier, report, changedOnDisk, requeue, observed);
 
   const provenance: Provenance = {
     worktreeId,
@@ -549,58 +534,61 @@ export function recordTier(
   const failedAnew: NewFailure[] = [];
   const notStarted: { file: FileState; forced: boolean }[] = [];
   const startup = report.startupFailure;
-  const startupIds = new Set((startup?.testFiles ?? []).map(testFileId));
   const { environment } = observed;
-  const unstable = (path: RelativePath) =>
-    changedOnDisk.has(path) || duringRun.has(path) || observed.changed.has(path);
   store.transaction(() => {
     store.runs.finish(tier.runId, report.end, context.now());
-    for (const { file, key, inputs, checkpointId, forced, recent, catchUp } of tier.files) {
+    for (const entry of tier.files) {
+      const { file, key, checkpointId, forced, recent, catchUp } = entry;
+      const decision = storeDecision(entry, end, ledger.files.get(file.id) === file);
       // A newer run has the file at another key (an edit's tier beside this backlog tier, task
       // 011-21): its state is that run's, and this run's outcome is superseded (review wave-4 B1).
-      if (supersededIn(file, key)) continue;
+      if (decision.kind === "superseded") continue;
       ledger.setRunning(file, null);
-      if (ledger.files.get(file.id) !== file) continue;
-      const queued = typeof requeue === "boolean" ? requeue : requeue.has(file.id);
-      if (!queued && withheld.has(file.id)) {
+      if (decision.kind === "gone") continue;
+      if (decision.kind === "withheld") {
         ledger.discard(file, key, forced, [], report.failure ?? `run ${report.end}`);
         continue;
       }
-      if (queued || (cancelled && !completed.has(file.id))) {
+      if (decision.kind === "requeue") {
         // Catch-up that did not run stays catch-up (C4 step 4 as amended 2026-10-20, task 011-22).
         if (file.key !== null && file.blocked === null) {
           ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), forced, false, catchUp === true);
         }
         continue;
       }
-      if (!completed.has(file.id)) {
-        if (startupIds.has(file.id)) notStarted.push({ file, forced });
-        else if (splitCap === null) unknown.push({ file, key });
-        else requeueSplit(ledger, file, splitCap, forced, recent === true);
+      if (decision.kind === "not-started") notStarted.push({ file, forced });
+      else if (decision.kind === "unknown") unknown.push({ file, key });
+      else if (decision.kind === "split") {
+        requeueSplit(ledger, file, decision.cap, forced, recent === true);
+      }
+      if (
+        decision.kind === "not-started" ||
+        decision.kind === "unknown" ||
+        decision.kind === "split"
+      ) {
         continue;
       }
-      const growth = observed.growth.get(file.id);
+      const { growth } = decision;
       let storeKey: CheckKey | null = key;
       if (growth !== undefined) {
-        const ranUnderCurrent = file.key === key;
         rekeyed.push(...context.keys.addObserved(file.ref, growth.add).map((c) => c.testFile));
         grown.push({ ref: file.ref, checkpointId });
-        storeKey = ranUnderCurrent ? context.keys.index.key(file.ref) : null;
+        storeKey = decision.kind === "store" ? context.keys.index.key(file.ref) : null;
       }
-      if (inputs.some(unstable) || growth?.growth.some(unstable)) {
-        ledger.discard(file, key, forced, [...inputs, ...(growth?.growth ?? [])].filter(unstable));
+      if (decision.kind === "unstable") {
+        ledger.discard(file, key, forced, decision.paths);
         continue;
       }
-      if (growth !== undefined && growth.firstSeen.length > 0) {
-        if (file.key === key) firstSeen.push({ file, firstSeen: growth.firstSeen });
+      if (decision.kind === "first-seen") {
+        if (decision.rerun) firstSeen.push({ file, firstSeen: growth?.firstSeen ?? [] });
         continue;
       }
-      if (environment?.files.has(file.id)) {
+      if (decision.kind === "environment") {
         // Task 003-43: the key it ran under lacks what the run loaded; it runs again at the key with it.
         grewEnvironment.push(file);
         continue;
       }
-      if (storeKey === null) continue;
+      if (decision.kind === "no-key" || storeKey === null) continue;
       const previous = file.resultKey;
       const records = recordsForFile({
         ref: file.ref,
@@ -626,9 +614,7 @@ export function recordTier(
           });
         }
       }
-      if (growth === undefined && file.key === key) {
-        ledger.applyResults(file, key, records, checkpointId);
-      }
+      if (decision.current) ledger.applyResults(file, key, records, checkpointId);
     }
     // Task 003-43: the environments read again moved the keys of every file of their projects.
     // A file an edit re-keyed keeps that edit's revision (001-186), so a wait that holds for the

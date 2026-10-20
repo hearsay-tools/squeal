@@ -14,7 +14,7 @@ import type {
 } from "../../../../src/core/types/index.js";
 import type { CaseOutput, StoreInput } from "../case.js";
 import { scratchStore, writeTree } from "./shared.js";
-import { keysOf, recorded, refOf } from "./store-input.js";
+import { keysOf, observationsOf, recorded, refOf } from "./store-input.js";
 
 /*
  * The `store` kind at a tree whose per-file decision still lives in
@@ -27,10 +27,18 @@ import { keysOf, recorded, refOf } from "./store-input.js";
 
 type Call = { readonly method: string; readonly args: readonly unknown[] };
 
-const TRACED = ["setRunning", "discard", "enqueue", "markUnknown", "rerunFirstSeen", "settle"];
+const TRACED = [
+  "setRunning",
+  "discard",
+  "enqueue",
+  "markUnknown",
+  "rerunFirstSeen",
+  "settle",
+  "applyResults",
+];
 
-/** What recording `input`'s tier decided for each file, as `storeDecisions` names it. */
-export function traceStore(input: StoreInput, scratch: string): CaseOutput {
+/** What recording `input`'s tier decided for each file, named as `store.ts` names `storeDecision`'s. */
+export function storeCase(input: StoreInput, scratch: string): CaseOutput {
   const store = scratchStore(join(scratch, "store"));
   try {
     const root = writeTree(join(scratch, "worktree"), { "squeal.config.json": "{}" });
@@ -115,29 +123,6 @@ export function traceStore(input: StoreInput, scratch: string): CaseOutput {
     };
     const { report, requeue } = recorded(input);
     const discards = new Map(files.map(({ file }) => [file.id, file.discards]));
-    const growth = new Map(
-      files.flatMap(({ f, file }) =>
-        f.growth === undefined
-          ? []
-          : [
-              [
-                file.id,
-                {
-                  add: f.growth.growth,
-                  growth: f.growth.growth,
-                  firstSeen: f.growth.firstSeen ?? [],
-                },
-              ],
-            ],
-      ),
-    );
-    const environment =
-      input.environment === undefined
-        ? undefined
-        : {
-            files: new Map(input.environment.map((p) => [testFileId(refOf(p)), ["env.json"]])),
-            changes: [],
-          };
     recordTier(
       context,
       ledger,
@@ -145,7 +130,7 @@ export function traceStore(input: StoreInput, scratch: string): CaseOutput {
       report,
       new Set(input.changed ?? []),
       requeue,
-      { growth, changed: new Set(), touched: new Set(), ...(environment ? { environment } : {}) },
+      observationsOf(input),
       false,
     );
     const end = calls.findIndex((c) => c.method === "settle");
@@ -166,7 +151,7 @@ export function traceStore(input: StoreInput, scratch: string): CaseOutput {
               ? "withheld"
               : `unstable: ${(discard.args[3] as string[]).join(", ")}`
             : file.tierCap !== null
-              ? "split"
+              ? `split at ${file.tierCap}`
               : of(loop, "enqueue", file).length > 0
                 ? "requeue"
                 : stored.has(file.id)
@@ -183,7 +168,8 @@ export function traceStore(input: StoreInput, scratch: string): CaseOutput {
                         : file.discards > (discards.get(file.id) ?? 0)
                           ? "environment"
                           : "nothing";
-      return { path: f.path, decision, grown: added.has(file.id) };
+      const current = of(loop, "applyResults", file).length > 0;
+      return { path: f.path, decision, grown: added.has(file.id), current };
     });
     return { outputs: { decisions }, wording: { failure: report.failure } };
   } finally {
