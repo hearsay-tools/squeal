@@ -670,7 +670,7 @@ export function recordTier(
     for (const { file, key } of unknown) endRetry(context, file, key, null, tier.runId);
     for (const { file } of notStarted)
       if (file.key !== null) endRetry(context, file, file.key, null, tier.runId);
-    ledger.markUnknown(unknown, reason);
+    ledger.markUnknown(unknown, reason, timedOut === null ? {} : { cause: "timeout" });
     if (commit) ledger.commit();
   });
   return [...new Set([...changedOnDisk, ...observed.changed])];

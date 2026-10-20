@@ -130,6 +130,7 @@ describe("status: test files without a result, named (001-403)", () => {
         ran: false,
         reason: "never run at this key, and nothing queued it",
         samples: [],
+        cause: "never-run",
       },
     ]);
     expect(w.text()).toContain(
