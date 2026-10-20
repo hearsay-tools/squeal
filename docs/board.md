@@ -850,6 +850,7 @@ Spec: `specifications/013-vitest-runner/spec.md`. Sections referenced as V1 to V
 - 007: data files read at run time enter no pytest closure (spec 007 open question 2); an audit hook on `open` was measured in wave 1 and not shipped. A row once a dogfood shows a missed data-file edit.
 
 
+- 012 (from 012-01, the human 2026-10-20): Cursor CLI imports the Claude Code plugin and drops each hook's `args`. Since 0.1.230 every command alone exits 0, except under a plugin root with whitespace. There the shell runs whatever file the root's first word names, which gets the payload on stdin (CC1's exception). A route through Cursor's own manifest would close it and would let Squeal work under Cursor at all: Cursor reads `.cursor-plugin/plugin.json` before `.claude-plugin/plugin.json` in a plugin directory (read in its 2026.10.16 source). Whether that manifest stops the import of our Claude hooks is unverified. Research first.
 - 012: a SubagentStop report restarts the subagent in Claude Code, so the parent receives the subagent's reply to the report instead of its answer to the task (005 `research/instruction-surfaces.md` 1, session `can-c`; 2.1.295). Probe first.
 
 - 005 (from 001): `squeal` is not on a user's PATH after a plugin install: now spec 005 D3 (`install.sh`, the launcher, `squeal setup`; rows 005-14 and 005-19), decided by the human 2026-10-09.
